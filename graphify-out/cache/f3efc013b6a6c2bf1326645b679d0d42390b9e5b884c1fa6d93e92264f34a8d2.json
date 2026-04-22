@@ -1,0 +1,1 @@
+{"nodes": [{"id": "browser", "label": "browser.ts", "file_type": "code", "source_file": "app\\generated\\prisma\\browser.ts", "source_location": "L1"}], "edges": [{"source": "browser", "target": "prismanamespacebrowser", "relation": "imports_from", "confidence": "EXTRACTED", "source_file": "app\\generated\\prisma\\browser.ts", "source_location": "L16", "weight": 1.0}]}
