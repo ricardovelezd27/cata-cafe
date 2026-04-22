@@ -126,7 +126,7 @@ export async function joinViaToken(token: string, locale: string = "es") {
     });
 
     // Use admin client to bypass RLS for the participant insert
-    await admin.from("session_participants").upsert(
+    const { error: upsertError } = await admin.from("session_participants").upsert(
       {
         sessionId: invite.sessionId,
         userId: user.id,
@@ -134,6 +134,7 @@ export async function joinViaToken(token: string, locale: string = "es") {
       },
       { onConflict: "sessionId,userId" },
     );
+    if (upsertError) throw new Error(upsertError.message);
   });
 
   redirect(`/${locale}/app/sessions/${invite.sessionId}/cup`);
