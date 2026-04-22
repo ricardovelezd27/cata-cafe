@@ -4,10 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { joinViaToken } from "@/app/actions/community";
 
-export function generateStaticParams() {
-  return [];
-}
-export const dynamicParams = true;
+export const dynamic = "force-dynamic";
 
 export default async function JoinPage({
   params,
