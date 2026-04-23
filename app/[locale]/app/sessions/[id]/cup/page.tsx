@@ -116,8 +116,6 @@ export default async function CupPage({
         submittedOf: tg("submittedOf", { count: submittedParticipantsResult.length, total: session.participants.length }),
         closeSession: tg("closeSession"),
         confirmClose: tg("confirmClose"),
-        reveal: tg("reveal"),
-        selectCoffee: tg("selectCoffee"),
         masterRole: tg("masterRole"),
         participantRole: tg("participantRole"),
       }}

@@ -152,6 +152,7 @@
     "closeSession": "Close session",
     "confirmClose": "Close the session? Results will be finalized.",
     "reveal": "Reveal identity",
+    "revealed": "Revealed",
     "selectCoffee": "Select coffee",
     "joinSession": "Join session",
     "joining": "Joining...",

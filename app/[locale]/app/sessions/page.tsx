@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { DeleteSessionButton } from "./DeleteSessionButton";
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "#C17817",
@@ -57,40 +58,49 @@ export default async function SessionsList({
 
   const joinedSessions = joinedParticipants.map((p) => p.session);
 
-  function SessionCard({ s }: { s: (typeof ownSessions)[0] }) {
+  function SessionCard({
+    s,
+    showDelete,
+  }: {
+    s: (typeof ownSessions)[0];
+    showDelete?: boolean;
+  }) {
     return (
-      <Link
-        href={`/${locale}/app/sessions/${s.id}/cup`}
-        className="block bg-[#FDFBF7] border border-brown-light rounded-lg px-4 py-3 hover:border-green-dark"
-      >
-        <div className="flex items-center gap-2 mb-0.5">
-          <span className="font-semibold text-brown-dark">{s.name}</span>
-          {s.isGroup && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-green-dark/10 text-green-dark border border-green-dark/20 font-semibold">
-              {tg("toggle")}
+      <div className="relative bg-[#FDFBF7] border border-brown-light rounded-lg hover:border-green-dark">
+        <Link
+          href={`/${locale}/app/sessions/${s.id}/cup`}
+          className="block px-4 py-3 pr-10"
+        >
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className="font-semibold text-brown-dark">{s.name}</span>
+            {s.isGroup && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-green-dark/10 text-green-dark border border-green-dark/20 font-semibold">
+                {tg("toggle")}
+              </span>
+            )}
+            <span
+              className="text-xs px-2 py-0.5 rounded-full font-semibold ml-auto"
+              style={{
+                background: `${STATUS_COLORS[s.status] ?? "#8B7355"}18`,
+                color: STATUS_COLORS[s.status] ?? "#8B7355",
+                border: `1px solid ${STATUS_COLORS[s.status] ?? "#8B7355"}40`,
+              }}
+            >
+              {s.status}
             </span>
-          )}
-          <span
-            className="text-xs px-2 py-0.5 rounded-full font-semibold ml-auto"
-            style={{
-              background: `${STATUS_COLORS[s.status] ?? "#8B7355"}18`,
-              color: STATUS_COLORS[s.status] ?? "#8B7355",
-              border: `1px solid ${STATUS_COLORS[s.status] ?? "#8B7355"}40`,
-            }}
-          >
-            {s.status}
-          </span>
-        </div>
-        <div className="text-xs text-brown-mid">
-          {new Date(s.date).toLocaleDateString(locale)} · {s.samples.length} muestras ·{" "}
-          {s.format}
-          {s.isGroup && (
-            <span className="ml-2">
-              · {s.participants.length} {tg("participants").toLowerCase()}
-            </span>
-          )}
-        </div>
-      </Link>
+          </div>
+          <div className="text-xs text-brown-mid">
+            {new Date(s.date).toLocaleDateString(locale)} · {s.samples.length} muestras ·{" "}
+            {s.format}
+            {s.isGroup && (
+              <span className="ml-2">
+                · {s.participants.length} {tg("participants").toLowerCase()}
+              </span>
+            )}
+          </div>
+        </Link>
+        {showDelete && <DeleteSessionButton sessionId={s.id} locale={locale} />}
+      </div>
     );
   }
 
@@ -110,7 +120,7 @@ export default async function SessionsList({
       <ul className="grid gap-2">
         {ownSessions.map((s) => (
           <li key={s.id}>
-            <SessionCard s={s} />
+            <SessionCard s={s} showDelete />
           </li>
         ))}
       </ul>

@@ -175,7 +175,7 @@ export async function upsertEvaluation(input: {
   const defectTypes =
     (input.data.defecto_tipo as string[] | undefined) ?? [];
 
-  await prisma.evaluation.upsert({
+  const result = await prisma.evaluation.upsert({
     where: {
       sessionSampleId_cupperId: {
         sessionSampleId: input.sessionSampleId,
@@ -202,10 +202,28 @@ export async function upsertEvaluation(input: {
       rawScore,
       individualScore,
     },
+    select: { id: true },
   });
 
   revalidatePath(`/app/sessions`);
-  return { ok: true };
+  return { ok: true, evaluationId: result.id };
+}
+
+export async function deleteSession(sessionId: string, locale: string = "es") {
+  const user = await requireUser();
+
+  const session = await prisma.cuppingSession.findUnique({
+    where: { id: sessionId },
+    select: { createdBy: true },
+  });
+
+  if (!session || session.createdBy !== user.id) {
+    throw new Error("not_found_or_forbidden");
+  }
+
+  await prisma.cuppingSession.delete({ where: { id: sessionId } });
+
+  revalidatePath(`/${locale}/app/sessions`);
 }
 
 export async function upsertPhysical(input: {

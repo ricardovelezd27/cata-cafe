@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   RadarChart,
@@ -17,6 +17,7 @@ import {
   SWEETNESS_DESCRIPTORS,
   MOUTHFEEL_DESCRIPTORS,
 } from "@/lib/constants";
+import { revealSample } from "@/app/actions/community";
 
 function resolveLabel(id: string): string {
   for (const cat of FLAVOR_TREE) {
@@ -46,9 +47,21 @@ type AggregateScoreData = {
   attrAverages: Record<string, number>;
 };
 
+type CoffeeInfo = {
+  name: string;
+  country: string | null;
+  region: string | null;
+  producer: string | null;
+  variety: string | null;
+  altitude: string | null;
+  roastLevel: string | null;
+};
+
 type SampleResult = {
   id: string;
   label: string;
+  revealed: boolean;
+  coffee: CoffeeInfo | null;
   descriptive: Record<string, unknown>;
   affective: Record<string, unknown>;
   combined: Record<string, unknown>;
@@ -91,10 +104,13 @@ export function ResultsClient({
     myScore: string;
     delta: string;
     noGroupData: string;
+    reveal: string;
+    revealed: string;
   };
 }) {
   const router = useRouter();
   const [view, setView] = useState<ViewMode>("mine");
+  const [, startTransition] = useTransition();
 
   const isAffective = session.format === "affective";
   const isCombined = session.format === "combined";
@@ -110,6 +126,13 @@ export function ResultsClient({
     { id: "dulzor", label: "Dulzor" },
     { id: "sensacion", label: "Sensación en Boca" },
   ];
+
+  const handleReveal = (sampleId: string) => {
+    startTransition(async () => {
+      await revealSample(sampleId);
+      router.refresh();
+    });
+  };
 
   return (
     <div
@@ -164,7 +187,7 @@ export function ResultsClient({
         </div>
       </div>
 
-      {/* View toggle — only for group sessions where user can see group data */}
+      {/* View toggle — only for group sessions */}
       {canViewGroup && (
         <div
           style={{
@@ -220,6 +243,63 @@ export function ResultsClient({
 
           const agg = sample.aggregateScore;
 
+          // ── Coffee identity card (shown when revealed) ──────────────────────
+          const CoffeeCard = sample.revealed && sample.coffee ? (
+            <div
+              style={{
+                background: "#E8F0E8",
+                border: "1px solid #B4C8A8",
+                borderRadius: 8,
+                padding: "8px 12px",
+                marginBottom: 10,
+                fontSize: 12,
+              }}
+            >
+              <div style={{ fontWeight: 700, color: "#3D5A3E", marginBottom: 4 }}>
+                {sample.coffee.name}
+              </div>
+              {[
+                sample.coffee.producer && `Productor: ${sample.coffee.producer}`,
+                sample.coffee.country && `País: ${sample.coffee.country}`,
+                sample.coffee.region && `Región: ${sample.coffee.region}`,
+                sample.coffee.variety && `Variedad: ${sample.coffee.variety}`,
+                sample.coffee.altitude && `Altitud: ${sample.coffee.altitude}`,
+                sample.coffee.roastLevel && `Tueste: ${sample.coffee.roastLevel}`,
+              ]
+                .filter(Boolean)
+                .map((line) => (
+                  <div key={line as string} style={{ color: "#5C4A32", lineHeight: 1.6 }}>
+                    {line}
+                  </div>
+                ))}
+            </div>
+          ) : null;
+
+          // ── Reveal button (owner only, not yet revealed) ─────────────────────
+          const RevealBtn = isOwner && !sample.revealed ? (
+            <button
+              onClick={() => handleReveal(sample.id)}
+              style={{
+                padding: "4px 12px",
+                borderRadius: 6,
+                border: "1px solid #3D5A3E",
+                background: "white",
+                color: "#3D5A3E",
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: "inherit",
+                marginBottom: 10,
+              }}
+            >
+              {translations.reveal}
+            </button>
+          ) : isOwner && sample.revealed ? (
+            <div style={{ fontSize: 10, color: "#3D5A3E", marginBottom: 6 }}>
+              ✓ {translations.revealed}
+            </div>
+          ) : null;
+
           // ── Group view ──────────────────────────────────────────────────────
           if (view === "group" && canViewGroup) {
             const radarData =
@@ -260,11 +340,14 @@ export function ResultsClient({
                     fontFamily: "'Cormorant Garamond', Georgia, serif",
                     textTransform: "uppercase",
                     letterSpacing: "0.5px",
-                    marginBottom: 10,
+                    marginBottom: 6,
                   }}
                 >
                   {sample.label}
                 </div>
+
+                {RevealBtn}
+                {CoffeeCard}
 
                 {agg ? (
                   <>
@@ -438,7 +521,7 @@ export function ResultsClient({
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "flex-start",
-                  marginBottom: 10,
+                  marginBottom: 6,
                 }}
               >
                 <div
@@ -479,6 +562,9 @@ export function ResultsClient({
                   </div>
                 )}
               </div>
+
+              {RevealBtn}
+              {CoffeeCard}
 
               {/* Affective attribute rows */}
               {affData &&

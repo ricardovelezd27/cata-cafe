@@ -68,6 +68,7 @@ model CuppingSession {
   createdBy     String
   createdByUser Profile   @relation(fields: [createdBy], references: [id])
   closesAt      DateTime?
+  startedAt     DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

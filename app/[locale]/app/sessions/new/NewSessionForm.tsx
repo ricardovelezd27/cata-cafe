@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createSession, createGroupSession } from "@/app/actions/sessions";
+import { startSession } from "@/app/actions/community";
 
 type CoffeeInput = {
   name: string;
@@ -214,7 +215,12 @@ export function NewSessionForm({ locale, t }: { locale: string; t: Translations 
         </div>
         <button
           type="button"
-          onClick={() => router.push(`/${locale}/app/sessions/${sessionId}/cup`)}
+          onClick={() => {
+            start(async () => {
+              await startSession(sessionId);
+              router.push(`/${locale}/app/sessions/${sessionId}/cup`);
+            });
+          }}
           className="w-full py-3 rounded-lg bg-green-dark text-white font-bold hover:bg-green-mid"
         >
           {t.groupStartCupping}

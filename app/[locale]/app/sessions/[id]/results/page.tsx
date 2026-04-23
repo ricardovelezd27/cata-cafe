@@ -34,6 +34,17 @@ export default async function ResultsPage({
           physical: true,
           extrinsic: true,
           aggregateScore: true,
+          coffee: {
+            select: {
+              name: true,
+              country: true,
+              region: true,
+              producer: true,
+              variety: true,
+              altitude: true,
+              roastLevel: true,
+            },
+          },
         },
       },
     },
@@ -42,11 +53,10 @@ export default async function ResultsPage({
   if (!session) notFound();
 
   const isOwner = session.createdBy === user.id;
-  const hasGroupData = session.samples.some((s) => s.aggregateScore !== null);
-  const canViewGroup =
-    session.isGroup && (session.status === "closed" || isOwner || hasGroupData);
+  const canViewGroup = session.isGroup;
 
   const tCommunity = await getTranslations("community");
+  const tg = await getTranslations("group");
 
   const dateStr = session.date.toLocaleDateString(locale === "es" ? "es-CO" : "en-US", {
     year: "numeric",
@@ -73,6 +83,8 @@ export default async function ResultsPage({
           return {
             id: s.id,
             label: s.label,
+            revealed: s.revealed,
+            coffee: s.revealed && s.coffee ? s.coffee : null,
             descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
             affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
             combined: (ev?.combinedData as Record<string, unknown>) ?? {},
@@ -104,6 +116,8 @@ export default async function ResultsPage({
         myScore: tCommunity("myScore"),
         delta: tCommunity("delta"),
         noGroupData: tCommunity("noGroupData"),
+        reveal: tg("reveal"),
+        revealed: tg("revealed"),
       }}
     />
   );

@@ -39,6 +39,31 @@ export async function submitAllEvaluations(sessionId: string) {
   return { ok: true };
 }
 
+// ─── Submit a single sample's evaluation (triggers aggregate) ─────────────────
+export async function submitSampleEvaluation(sessionSampleId: string) {
+  const user = await requireUser();
+
+  const evaluation = await prisma.evaluation.findUnique({
+    where: {
+      sessionSampleId_cupperId: {
+        sessionSampleId,
+        cupperId: user.id,
+      },
+    },
+    select: { id: true, isDraft: true, sessionSample: { select: { sessionId: true } } },
+  });
+
+  if (!evaluation || !evaluation.isDraft) return { ok: true };
+
+  await prisma.evaluation.update({
+    where: { id: evaluation.id },
+    data: { isDraft: false, submittedAt: new Date() },
+  });
+
+  revalidatePath(`/app/sessions/${evaluation.sessionSample.sessionId}/results`);
+  return { ok: true };
+}
+
 // ─── Submit an evaluation (set isDraft=false) ─────────────────────────────────
 export async function submitEvaluation(evaluationId: string) {
   const user = await requireUser();
@@ -60,6 +85,28 @@ export async function submitEvaluation(evaluationId: string) {
   revalidatePath(
     `/app/sessions/${evaluation.sessionSample.sessionId}/results`,
   );
+  return { ok: true };
+}
+
+// ─── Start a session (maestro moves past invite screen) ───────────────────────
+export async function startSession(sessionId: string) {
+  const user = await requireUser();
+
+  const session = await prisma.cuppingSession.findUnique({
+    where: { id: sessionId },
+    select: { id: true, createdBy: true },
+  });
+
+  if (!session || session.createdBy !== user.id) {
+    throw new Error("not_found_or_forbidden");
+  }
+
+  await prisma.cuppingSession.update({
+    where: { id: sessionId },
+    data: { startedAt: new Date() },
+  });
+
+  revalidatePath(`/app/sessions/${sessionId}/cup`);
   return { ok: true };
 }
 
@@ -89,7 +136,7 @@ export async function closeSession(sessionId: string) {
 }
 
 // ─── Reveal a sample (link coffee identity) ───────────────────────────────────
-export async function revealSample(sampleId: string, coffeeId: string) {
+export async function revealSample(sampleId: string, coffeeId?: string) {
   const user = await requireUser();
 
   const sample = await prisma.sessionSample.findUnique({
@@ -110,10 +157,10 @@ export async function revealSample(sampleId: string, coffeeId: string) {
 
   await prisma.sessionSample.update({
     where: { id: sampleId },
-    data: { coffeeId, revealed: true },
+    data: { revealed: true, ...(coffeeId ? { coffeeId } : {}) },
   });
 
-  revalidatePath(`/app/sessions/${sample.sessionId}/cup`);
+  revalidatePath(`/app/sessions/${sample.sessionId}/results`);
   return { ok: true };
 }
 
@@ -129,6 +176,7 @@ export async function joinViaToken(token: string, locale: string = "es") {
       maxUses: true,
       useCount: true,
       expiresAt: true,
+      session: { select: { startedAt: true } },
     },
   });
 
@@ -160,6 +208,11 @@ export async function joinViaToken(token: string, locale: string = "es") {
     );
     if (upsertError) throw new Error(upsertError.message);
   });
+
+  // If maestro hasn't started the session yet, send participant to waiting room
+  if (!invite.session.startedAt) {
+    redirect(`/${locale}/app/sessions/${invite.sessionId}/waiting`);
+  }
 
   redirect(`/${locale}/app/sessions/${invite.sessionId}/cup`);
 }

@@ -13,7 +13,7 @@ import {
   upsertExtrinsic,
   upsertPhysical,
 } from "@/app/actions/sessions";
-import { submitAllEvaluations, closeSession, revealSample } from "@/app/actions/community";
+import { submitAllEvaluations, submitSampleEvaluation, closeSession } from "@/app/actions/community";
 import { DevRoleBadge } from "@/components/dev/DevRoleBadge";
 
 type Data = Record<string, unknown>;
@@ -77,8 +77,6 @@ export function CupClient({
     submittedOf: string;
     closeSession: string;
     confirmClose: string;
-    reveal: string;
-    selectCoffee: string;
     masterRole: string;
     participantRole: string;
   };
@@ -91,8 +89,10 @@ export function CupClient({
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [submittedCount, setSubmittedCount] = useState(initialSubmittedCount);
   const [isGoingToResults, setIsGoingToResults] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
   const [, startTransition] = useTransition();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingSaveRef = useRef<{ sampleId: string; key: keyof Sample; data: Data } | null>(null);
 
   // Realtime subscription for group sessions
   useEffect(() => {
@@ -128,22 +128,42 @@ export function CupClient({
     };
   }, [isGroup, session.id, session.samples]);
 
+  const flushSave = async (sampleId: string, key: keyof Sample, data: Data) => {
+    try {
+      if (key === "descriptive" || key === "affective" || key === "combined") {
+        await upsertEvaluation({
+          sessionSampleId: sampleId,
+          moduleKey: key,
+          data,
+          cupsPerSample: session.cupsPerSample,
+        });
+      } else if (key === "extrinsic") {
+        await upsertExtrinsic({ sessionSampleId: sampleId, data });
+      } else if (key === "physical") {
+        await upsertPhysical({ sessionSampleId: sampleId, data });
+      }
+    } catch {
+      // best effort
+    }
+  };
+
+  const flushPending = async () => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    if (pendingSaveRef.current) {
+      const pending = pendingSaveRef.current;
+      pendingSaveRef.current = null;
+      await flushSave(pending.sampleId, pending.key, pending.data);
+    }
+  };
+
   const persist = (sampleId: string, key: keyof Sample, data: Data) => {
     setSaveStatus("saving");
     startTransition(async () => {
       try {
-        if (key === "descriptive" || key === "affective" || key === "combined") {
-          await upsertEvaluation({
-            sessionSampleId: sampleId,
-            moduleKey: key,
-            data,
-            cupsPerSample: session.cupsPerSample,
-          });
-        } else if (key === "extrinsic") {
-          await upsertExtrinsic({ sessionSampleId: sampleId, data });
-        } else if (key === "physical") {
-          await upsertPhysical({ sessionSampleId: sampleId, data });
-        }
+        await flushSave(sampleId, key, data);
         setSaveStatus("saved");
         setTimeout(() => setSaveStatus("idle"), 1500);
       } catch {
@@ -154,7 +174,11 @@ export function CupClient({
 
   const scheduleAutoSave = (sampleId: string, key: keyof Sample, data: Data) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => persist(sampleId, key, data), 800);
+    pendingSaveRef.current = { sampleId, key, data };
+    debounceRef.current = setTimeout(() => {
+      persist(sampleId, key, data);
+      pendingSaveRef.current = null;
+    }, 800);
   };
 
   const setCurrentData = (key: keyof Sample, data: Data) => {
@@ -164,13 +188,23 @@ export function CupClient({
     scheduleAutoSave(samples[sampleIdx].id, key, data);
   };
 
-  const handleGoToResults = async () => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-      debounceRef.current = null;
+  const handleNextSample = async () => {
+    if (isNavigating) return;
+    setIsNavigating(true);
+    try {
+      await flushPending();
+      await submitSampleEvaluation(samples[sampleIdx].id);
+      setSampleIdx((i) => Math.min(samples.length - 1, i + 1));
+      window.scrollTo({ top: 0, behavior: "instant" });
+    } finally {
+      setIsNavigating(false);
     }
+  };
+
+  const handleGoToResults = async () => {
     setIsGoingToResults(true);
     try {
+      await flushPending();
       await submitAllEvaluations(session.id);
     } finally {
       router.push(`/${locale}/app/sessions/${session.id}/results`);
@@ -182,15 +216,6 @@ export function CupClient({
     startTransition(async () => {
       await closeSession(session.id);
       router.push(`/${locale}/app/sessions/${session.id}/results`);
-    });
-  };
-
-  const handleReveal = (sampleId: string, coffeeId: string) => {
-    startTransition(async () => {
-      await revealSample(sampleId, coffeeId);
-      setSamples((prev) =>
-        prev.map((s) => (s.id === sampleId ? { ...s, revealed: true, coffeeId } : s)),
-      );
     });
   };
 
@@ -305,7 +330,7 @@ export function CupClient({
             {samples.map((s, i) => (
               <button
                 key={s.id}
-                onClick={() => setSampleIdx(i)}
+                onClick={() => { setSampleIdx(i); window.scrollTo({ top: 0, behavior: "instant" }); }}
                 style={{
                   padding: "3px 10px",
                   borderRadius: 20,
@@ -376,7 +401,7 @@ export function CupClient({
         </div>
       </div>
 
-      {/* Master controls panel — owner only */}
+      {/* Master controls panel — owner only, no reveal here */}
       {isOwner && isGroup && (
         <div
           style={{
@@ -407,41 +432,6 @@ export function CupClient({
             }}
           >
             {submittedCount} / {participantCount} {translations.submittedOf}
-          </div>
-
-          {/* Per-sample reveal buttons */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
-            {samples.map((s) => (
-              <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <span style={{ fontSize: 11, color: "#5C4A32" }}>{s.label}:</span>
-                {s.revealed ? (
-                  <span style={{ fontSize: 10, color: "#3D5A3E" }}>✓ Revelado</span>
-                ) : (
-                  <button
-                    onClick={() => {
-                      if (s.coffeeId) {
-                        handleReveal(s.id, s.coffeeId);
-                      } else {
-                        const coffeeId = prompt(translations.selectCoffee);
-                        if (coffeeId) handleReveal(s.id, coffeeId);
-                      }
-                    }}
-                    style={{
-                      padding: "2px 8px",
-                      borderRadius: 6,
-                      border: "1px solid #3D5A3E",
-                      background: "white",
-                      color: "#3D5A3E",
-                      fontSize: 10,
-                      cursor: "pointer",
-                      fontFamily: "inherit",
-                    }}
-                  >
-                    {translations.reveal}
-                  </button>
-                )}
-              </div>
-            ))}
           </div>
 
           <button
@@ -523,8 +513,8 @@ export function CupClient({
         }}
       >
         <button
-          onClick={() => setSampleIdx((i) => Math.max(0, i - 1))}
-          disabled={sampleIdx === 0}
+          onClick={() => { setSampleIdx((i) => Math.max(0, i - 1)); window.scrollTo({ top: 0, behavior: "instant" }); }}
+          disabled={sampleIdx === 0 || isNavigating}
           style={{
             flex: 1,
             padding: "10px 0",
@@ -564,21 +554,24 @@ export function CupClient({
           </button>
         ) : (
           <button
-            onClick={() => setSampleIdx((i) => Math.min(samples.length - 1, i + 1))}
+            onClick={handleNextSample}
+            disabled={isNavigating}
             style={{
               flex: 1,
               padding: "10px 0",
               borderRadius: 10,
               border: "none",
-              background: "linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%)",
+              background: isNavigating
+                ? "#C4B49A"
+                : "linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%)",
               color: "#FFF",
               fontSize: 13,
               fontWeight: 700,
-              cursor: "pointer",
+              cursor: isNavigating ? "default" : "pointer",
               fontFamily: "inherit",
             }}
           >
-            {translations.nextSample} →
+            {isNavigating ? translations.submitting : `${translations.nextSample} →`}
           </button>
         )}
       </div>
