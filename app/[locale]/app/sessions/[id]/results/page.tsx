@@ -42,8 +42,9 @@ export default async function ResultsPage({
   if (!session) notFound();
 
   const isOwner = session.createdBy === user.id;
+  const hasGroupData = session.samples.some((s) => s.aggregateScore !== null);
   const canViewGroup =
-    session.isGroup && (session.status === "closed" || isOwner);
+    session.isGroup && (session.status === "closed" || isOwner || hasGroupData);
 
   const tCommunity = await getTranslations("community");
 
@@ -102,6 +103,7 @@ export default async function ResultsPage({
         radarChart: tCommunity("radarChart"),
         myScore: tCommunity("myScore"),
         delta: tCommunity("delta"),
+        noGroupData: tCommunity("noGroupData"),
       }}
     />
   );

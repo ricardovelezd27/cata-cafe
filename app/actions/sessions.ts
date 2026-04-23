@@ -6,11 +6,48 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { calcAffectiveSum, calcIndividualScore, calcRawScore } from "@/lib/scoring";
 
+type CoffeeInput = {
+  name: string;
+  producer?: string;
+  variety?: string;
+  altitude?: string;
+  roastLevel?: string;
+  country?: string;
+  region?: string;
+};
+
+type SampleInput = {
+  label: string;
+  coffeeIdx?: number;
+};
+
 async function requireUser() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("not_authenticated");
   return user;
+}
+
+async function createCoffees(coffees: CoffeeInput[], userId: string) {
+  if (!coffees || coffees.length === 0) return [];
+  return Promise.all(
+    coffees.map((c) =>
+      prisma.coffee.create({
+        data: {
+          name: c.name || "Sin nombre",
+          producer: c.producer || null,
+          variety: c.variety || null,
+          altitude: c.altitude || null,
+          roastLevel: c.roastLevel || null,
+          country: c.country || null,
+          region: c.region || null,
+          createdBy: userId,
+          isPublic: false,
+        },
+        select: { id: true },
+      })
+    )
+  );
 }
 
 export async function createSession(input: {
@@ -19,10 +56,13 @@ export async function createSession(input: {
   objective?: string;
   format: "descriptive" | "affective" | "combined";
   cupsPerSample: number;
-  samples: { label: string }[];
+  coffees?: CoffeeInput[];
+  samples: SampleInput[];
   locale?: string;
 }) {
   const user = await requireUser();
+
+  const createdCoffees = await createCoffees(input.coffees ?? [], user.id);
 
   const session = await prisma.cuppingSession.create({
     data: {
@@ -36,6 +76,10 @@ export async function createSession(input: {
         create: input.samples.map((s, i) => ({
           label: s.label || `Muestra ${i + 1}`,
           position: i,
+          coffeeId:
+            typeof s.coffeeIdx === "number" && createdCoffees[s.coffeeIdx]
+              ? createdCoffees[s.coffeeIdx].id
+              : null,
         })),
       },
     },
@@ -52,11 +96,13 @@ export async function createGroupSession(input: {
   objective?: string;
   format: "descriptive" | "affective" | "combined";
   cupsPerSample: number;
-  samples: { label: string }[];
-  isAsync: boolean;
+  coffees?: CoffeeInput[];
+  samples: SampleInput[];
   closesAt?: string;
 }): Promise<{ sessionId: string; inviteToken: string }> {
   const user = await requireUser();
+
+  const createdCoffees = await createCoffees(input.coffees ?? [], user.id);
 
   const token = crypto.randomUUID();
 
@@ -68,7 +114,7 @@ export async function createGroupSession(input: {
       format: input.format,
       cupsPerSample: input.cupsPerSample,
       isGroup: true,
-      isAsync: input.isAsync,
+      isAsync: !!input.closesAt,
       status: "active",
       closesAt: input.closesAt ? new Date(input.closesAt) : null,
       createdBy: user.id,
@@ -76,6 +122,10 @@ export async function createGroupSession(input: {
         create: input.samples.map((s, i) => ({
           label: s.label || `Muestra ${i + 1}`,
           position: i,
+          coffeeId:
+            typeof s.coffeeIdx === "number" && createdCoffees[s.coffeeIdx]
+              ? createdCoffees[s.coffeeIdx].id
+              : null,
         })),
       },
       participants: {

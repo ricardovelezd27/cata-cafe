@@ -90,6 +90,7 @@ export function ResultsClient({
     radarChart: string;
     myScore: string;
     delta: string;
+    noGroupData: string;
   };
 }) {
   const router = useRouter();
@@ -411,8 +412,8 @@ export function ResultsClient({
                     </div>
                   </>
                 ) : (
-                  <div style={{ fontSize: 12, color: "#8B7355", textAlign: "center" }}>
-                    Sin datos de grupo aún
+                  <div style={{ fontSize: 12, color: "#8B7355", textAlign: "center", lineHeight: 1.5 }}>
+                    {translations.noGroupData}
                   </div>
                 )}
               </div>

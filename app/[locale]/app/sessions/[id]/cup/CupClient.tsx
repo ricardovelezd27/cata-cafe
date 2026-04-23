@@ -13,7 +13,7 @@ import {
   upsertExtrinsic,
   upsertPhysical,
 } from "@/app/actions/sessions";
-import { submitEvaluation, closeSession, revealSample } from "@/app/actions/community";
+import { submitAllEvaluations, closeSession, revealSample } from "@/app/actions/community";
 import { DevRoleBadge } from "@/components/dev/DevRoleBadge";
 
 type Data = Record<string, unknown>;
@@ -43,8 +43,6 @@ type Session = {
 
 type CuppingTab = "cupping" | "extrinsic" | "physical";
 
-const SAMPLE_IDS_SET_KEY = "__sampleIds";
-
 export function CupClient({
   locale,
   session,
@@ -66,15 +64,15 @@ export function CupClient({
   translations: {
     sample: string;
     ofTotal: string;
-    next: string;
+    nextSample: string;
+    viewResults: string;
+    submitting: string;
     prev: string;
     extrinsic: string;
     physical: string;
     results: string;
     process: string;
     individual: string;
-    submitEval: string;
-    evalSubmitted: string;
     masterControls: string;
     submittedOf: string;
     closeSession: string;
@@ -92,6 +90,7 @@ export function CupClient({
   const [activeTab, setActiveTab] = useState<CuppingTab>("cupping");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [submittedCount, setSubmittedCount] = useState(initialSubmittedCount);
+  const [isGoingToResults, setIsGoingToResults] = useState(false);
   const [, startTransition] = useTransition();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -165,15 +164,17 @@ export function CupClient({
     scheduleAutoSave(samples[sampleIdx].id, key, data);
   };
 
-  const handleSubmitEval = () => {
-    const evalId = samples[sampleIdx].evaluationId;
-    if (!evalId) return;
-    startTransition(async () => {
-      await submitEvaluation(evalId);
-      setSamples((prev) =>
-        prev.map((s, i) => (i === sampleIdx ? { ...s, isDraft: false } : s)),
-      );
-    });
+  const handleGoToResults = async () => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    setIsGoingToResults(true);
+    try {
+      await submitAllEvaluations(session.id);
+    } finally {
+      router.push(`/${locale}/app/sessions/${session.id}/results`);
+    }
   };
 
   const handleCloseSession = () => {
@@ -195,7 +196,6 @@ export function CupClient({
 
   const current = samples[sampleIdx];
   const isLastSample = sampleIdx >= samples.length - 1;
-  const currentIsDraft = current.isDraft;
 
   const TABS = [
     { key: "cupping" as const, icon: "☕", label: "Cata" },
@@ -325,9 +325,6 @@ export function CupClient({
                 }}
               >
                 {s.label}
-                {!s.isDraft && (
-                  <span style={{ marginLeft: 4, fontSize: 9, opacity: 0.8 }}>✓</span>
-                )}
               </button>
             ))}
           </div>
@@ -346,13 +343,14 @@ export function CupClient({
             return (
               <button
                 key={tab.key}
-                onClick={() => {
+                onClick={async () => {
                   if (tab.key === "results") {
-                    router.push(`/${locale}/app/sessions/${session.id}/results`);
+                    await handleGoToResults();
                   } else {
                     setActiveTab(tab.key);
                   }
                 }}
+                disabled={isGoingToResults}
                 style={{
                   flex: 1,
                   padding: "8px 4px",
@@ -362,7 +360,7 @@ export function CupClient({
                   background: isActive ? "#E8F0E8" : "transparent",
                   border: "none",
                   borderBottom: isActive ? "2px solid #3D5A3E" : "2px solid transparent",
-                  cursor: "pointer",
+                  cursor: isGoingToResults ? "default" : "pointer",
                   fontFamily: "inherit",
                   display: "flex",
                   flexDirection: "column",
@@ -421,8 +419,12 @@ export function CupClient({
                 ) : (
                   <button
                     onClick={() => {
-                      const coffeeId = prompt(translations.selectCoffee);
-                      if (coffeeId) handleReveal(s.id, coffeeId);
+                      if (s.coffeeId) {
+                        handleReveal(s.id, s.coffeeId);
+                      } else {
+                        const coffeeId = prompt(translations.selectCoffee);
+                        if (coffeeId) handleReveal(s.id, coffeeId);
+                      }
                     }}
                     style={{
                       padding: "2px 8px",
@@ -498,35 +500,6 @@ export function CupClient({
             onChange={(d) => setCurrentData("physical", d)}
           />
         )}
-
-        {/* Submit evaluation button — group sessions, cupping tab */}
-        {isGroup && activeTab === "cupping" && (
-          <div style={{ marginTop: 16 }}>
-            <button
-              onClick={handleSubmitEval}
-              disabled={!currentIsDraft || !current.evaluationId}
-              style={{
-                width: "100%",
-                padding: "12px 0",
-                borderRadius: 10,
-                border: "none",
-                background: currentIsDraft && current.evaluationId
-                  ? "linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%)"
-                  : "#C4B49A",
-                color: "#FFF",
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: currentIsDraft && current.evaluationId ? "pointer" : "default",
-                fontFamily: "'Cormorant Garamond', Georgia, serif",
-                letterSpacing: "0.3px",
-              }}
-            >
-              {currentIsDraft
-                ? translations.submitEval
-                : `✓ ${translations.evalSubmitted}`}
-            </button>
-          </div>
-        )}
       </div>
 
       <DevRoleBadge email={userEmail} />
@@ -569,22 +542,25 @@ export function CupClient({
         </button>
         {isLastSample ? (
           <button
-            onClick={() => router.push(`/${locale}/app/sessions/${session.id}/results`)}
+            onClick={handleGoToResults}
+            disabled={isGoingToResults}
             style={{
               flex: 1.5,
               padding: "10px 0",
               borderRadius: 10,
               border: "none",
-              background: "linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%)",
+              background: isGoingToResults
+                ? "#C4B49A"
+                : "linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%)",
               color: "#FFF",
               fontSize: 13,
               fontWeight: 700,
-              cursor: "pointer",
+              cursor: isGoingToResults ? "default" : "pointer",
               fontFamily: "'Cormorant Garamond', Georgia, serif",
               letterSpacing: "0.3px",
             }}
           >
-            {translations.process} →
+            {isGoingToResults ? translations.submitting : `${translations.viewResults} →`}
           </button>
         ) : (
           <button
@@ -602,7 +578,7 @@ export function CupClient({
               fontFamily: "inherit",
             }}
           >
-            {translations.next} →
+            {translations.nextSample} →
           </button>
         )}
       </div>

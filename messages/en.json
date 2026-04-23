@@ -43,6 +43,12 @@
     "objectivePh": "What do you want to learn from this session?",
     "format": "Format",
     "cups": "Cups per sample",
+    "coffees": "Coffees to evaluate",
+    "coffeeName": "Coffee name",
+    "producerRoaster": "Producer / Roaster",
+    "addCoffee": "Add another coffee",
+    "removeCoffee": "Remove",
+    "sampleCoffee": "Corresponding coffee",
     "samples": "Samples",
     "addSample": "Add sample",
     "removeSample": "Remove",
@@ -66,6 +72,9 @@
     "sample": "Sample",
     "ofTotal": "of {total}",
     "next": "Next",
+    "nextSample": "Next Sample",
+    "viewResults": "View Results",
+    "submitting": "Submitting...",
     "prev": "Previous",
     "fragrance": "Fragrance / Aroma",
     "flavor": "Flavor",
@@ -106,7 +115,15 @@
     "displayName": "Display name",
     "preferredLang": "Preferred language",
     "bio": "Bio",
-    "save": "Save"
+    "save": "Save",
+    "ownedSessions": "My sessions as master",
+    "participatedSessions": "Sessions I participated in",
+    "noOwnedSessions": "You haven't created any sessions yet.",
+    "noParticipatedSessions": "You haven't participated in any sessions yet.",
+    "email": "Email",
+    "statusDraft": "Draft",
+    "statusActive": "Active",
+    "statusClosed": "Closed"
   },
   "actions": {
     "save": "Save",
@@ -152,7 +169,8 @@
     "attrAverages": "Attribute averages",
     "radarChart": "Group sensory profile",
     "myScore": "My score",
-    "delta": "Difference vs. community"
+    "delta": "Difference vs. community",
+    "noGroupData": "Group results appear once participants submit their evaluations."
   },
   "history": {
     "title": "Coffee history",
@@ -171,6 +189,8 @@
     "variety": "Variety",
     "harvest": "Harvest",
     "process": "Process",
+    "altitude": "Altitude",
+    "roastLevel": "Roast level",
     "certifications": "Certifications",
     "tastingHistory": "Tasting history"
   }

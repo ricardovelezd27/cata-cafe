@@ -15,6 +15,30 @@ async function requireUser() {
   return user;
 }
 
+// ─── Submit all draft evaluations for a session ───────────────────────────────
+export async function submitAllEvaluations(sessionId: string) {
+  const user = await requireUser();
+
+  const draftEvals = await prisma.evaluation.findMany({
+    where: {
+      isDraft: true,
+      cupperId: user.id,
+      sessionSample: { sessionId },
+    },
+    select: { id: true },
+  });
+
+  for (const ev of draftEvals) {
+    await prisma.evaluation.update({
+      where: { id: ev.id },
+      data: { isDraft: false, submittedAt: new Date() },
+    });
+  }
+
+  revalidatePath(`/app/sessions/${sessionId}/results`);
+  return { ok: true };
+}
+
 // ─── Submit an evaluation (set isDraft=false) ─────────────────────────────────
 export async function submitEvaluation(evaluationId: string) {
   const user = await requireUser();

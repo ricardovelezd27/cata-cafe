@@ -13,6 +13,7 @@ export default async function NewSessionPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("session");
+  const tc = await getTranslations("coffee");
   const tg = await getTranslations("group");
   const ta = await getTranslations("actions");
 
@@ -25,6 +26,19 @@ export default async function NewSessionPage({
     objectivePh: t("objectivePh"),
     format: t("format"),
     cups: t("cups"),
+    // coffee section
+    coffees: t("coffees"),
+    coffeeName: t("coffeeName"),
+    producerRoaster: t("producerRoaster"),
+    coffeeVariety: tc("variety"),
+    coffeeAltitude: tc("altitude"),
+    coffeeRoastLevel: tc("roastLevel"),
+    coffeeCountry: tc("country"),
+    coffeeRegion: tc("region"),
+    addCoffee: t("addCoffee"),
+    removeCoffee: t("removeCoffee"),
+    sampleCoffee: t("sampleCoffee"),
+    // samples
     samples: t("samples"),
     addSample: t("addSample"),
     removeSample: t("removeSample"),
@@ -35,7 +49,6 @@ export default async function NewSessionPage({
     formatCombined: t("formats.combined"),
     // group
     groupToggle: tg("toggle"),
-    groupAsync: tg("async"),
     groupClosesAt: tg("closesAt"),
     groupInviteLink: tg("inviteLink"),
     groupCopyLink: tg("copyLink"),

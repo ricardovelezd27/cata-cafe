@@ -41,6 +41,8 @@ model Coffee {
   variety        String?
   harvestYear    String?
   processType    String?
+  altitude       String?
+  roastLevel     String?
   certifications String[]
   notes          String?
   isPublic       Boolean  @default(true)

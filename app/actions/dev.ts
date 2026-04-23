@@ -31,7 +31,6 @@ export async function devQuickStartSession(
       date: new Date().toISOString().split("T")[0],
       format: "combined",
       cupsPerSample: 2,
-      isAsync: false,
       samples: [{ label: "Muestra A" }, { label: "Muestra B" }],
     });
   } catch {

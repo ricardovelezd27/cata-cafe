@@ -43,6 +43,12 @@
     "objectivePh": "¿Qué quieres aprender con esta sesión?",
     "format": "Formato",
     "cups": "Tazas por muestra",
+    "coffees": "Cafés a evaluar",
+    "coffeeName": "Nombre del café",
+    "producerRoaster": "Productor / Tostador",
+    "addCoffee": "Agregar otro café",
+    "removeCoffee": "Quitar",
+    "sampleCoffee": "Café correspondiente",
     "samples": "Muestras",
     "addSample": "Agregar muestra",
     "removeSample": "Quitar",
@@ -66,6 +72,9 @@
     "sample": "Muestra",
     "ofTotal": "de {total}",
     "next": "Siguiente",
+    "nextSample": "Siguiente Muestra",
+    "viewResults": "Ver Resultados",
+    "submitting": "Enviando...",
     "prev": "Anterior",
     "fragrance": "Fragancia / Aroma",
     "flavor": "Sabor",
@@ -106,7 +115,15 @@
     "displayName": "Nombre para mostrar",
     "preferredLang": "Idioma preferido",
     "bio": "Bio",
-    "save": "Guardar"
+    "save": "Guardar",
+    "ownedSessions": "Mis sesiones como maestro",
+    "participatedSessions": "Sesiones en las que participé",
+    "noOwnedSessions": "Aún no has creado sesiones.",
+    "noParticipatedSessions": "Aún no has participado en sesiones.",
+    "email": "Correo",
+    "statusDraft": "Borrador",
+    "statusActive": "Activa",
+    "statusClosed": "Cerrada"
   },
   "actions": {
     "save": "Guardar",
@@ -152,7 +169,8 @@
     "attrAverages": "Promedios de atributos",
     "radarChart": "Perfil sensorial grupal",
     "myScore": "Mi puntaje",
-    "delta": "Diferencia vs. comunidad"
+    "delta": "Diferencia vs. comunidad",
+    "noGroupData": "Los resultados grupales aparecen cuando los participantes envíen sus evaluaciones."
   },
   "history": {
     "title": "Historial de cafés",
@@ -171,6 +189,8 @@
     "variety": "Variedad",
     "harvest": "Cosecha",
     "process": "Proceso",
+    "altitude": "Altitud",
+    "roastLevel": "Nivel de tueste",
     "certifications": "Certificaciones",
     "tastingHistory": "Historial de catas"
   }
