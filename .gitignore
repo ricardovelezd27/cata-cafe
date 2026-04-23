@@ -87,4 +87,4 @@ next-env.d.ts
 /app/generated/prisma
 
 # graphify cache
-graphify-out/
+graphify-out/".claude/" 
