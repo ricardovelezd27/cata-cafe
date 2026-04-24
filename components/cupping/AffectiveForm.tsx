@@ -56,14 +56,24 @@ export function AffectiveForm({
             count={cupsPerSample}
             label="TAZAS NO UNIFORMES"
             checked={getBools("tazas_no_uniformes")}
-            onChange={(v) => set("tazas_no_uniformes", v)}
+            onChange={(v) => {
+              // unchecking non-uniform must also uncheck defective
+              const curDef = getBools("tazas_defectuosas");
+              const newDef = curDef.map((def, i) => def && v[i]);
+              onChange({ ...d, tazas_no_uniformes: v, tazas_defectuosas: newDef });
+            }}
             color="#C17817"
           />
           <CupCheckboxes
             count={cupsPerSample}
             label="TAZAS DEFECTUOSAS"
             checked={getBools("tazas_defectuosas")}
-            onChange={(v) => set("tazas_defectuosas", v)}
+            onChange={(v) => {
+              // checking defective auto-checks non-uniform
+              const curNU = getBools("tazas_no_uniformes");
+              const newNU = curNU.map((nu, i) => nu || v[i]);
+              onChange({ ...d, tazas_defectuosas: v, tazas_no_uniformes: newNU });
+            }}
             color="#A83232"
           />
           {!uniformityInScore && (

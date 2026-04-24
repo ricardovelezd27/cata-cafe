@@ -200,13 +200,16 @@ BEGIN
   JOIN cupping_sessions cs ON cs.id = ss."sessionId"
   WHERE ss.id = NEW."sessionSampleId";
 
-  -- Aggregate over all submitted evaluations for this sample
+  -- Aggregate over all submitted evaluations for this sample.
+  -- totalNonUniform = ALL cups marked non-uniform (including defective ones).
+  -- totalDefective  = ALL cups marked defective.
+  -- A defective cup contributes to both, so its community penalty = 10/cup + 30/cup = 40/cup.
   SELECT
     COUNT(*)::int,
     AVG("rawScore"),
     COALESCE(SUM((
-      SELECT COUNT(*) FROM unnest("nonUniformCups", "defectiveCups") AS t(u, d)
-      WHERE u = true AND d = false
+      SELECT COUNT(*) FROM unnest("nonUniformCups") AS t(u)
+      WHERE u = true
     )::int), 0),
     COALESCE(SUM((
       SELECT COUNT(*) FROM unnest("defectiveCups") AS d(v)

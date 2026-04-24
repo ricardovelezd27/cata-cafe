@@ -18,42 +18,56 @@ export default async function ResultsPage({
   } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
 
-  const session = await prisma.cuppingSession.findFirst({
-    where: {
-      id,
-      OR: [
-        { createdBy: user.id },
-        { participants: { some: { userId: user.id } } },
-      ],
-    },
-    include: {
-      samples: {
-        orderBy: { position: "asc" },
-        include: {
-          evaluations: { where: { cupperId: user.id } },
-          physical: true,
-          extrinsic: true,
-          aggregateScore: true,
-          coffee: {
-            select: {
-              name: true,
-              country: true,
-              region: true,
-              producer: true,
-              variety: true,
-              altitude: true,
-              roastLevel: true,
+  const [session, submittedCupperCount] = await Promise.all([
+    prisma.cuppingSession.findFirst({
+      where: {
+        id,
+        OR: [
+          { createdBy: user.id },
+          { participants: { some: { userId: user.id } } },
+        ],
+      },
+      include: {
+        samples: {
+          orderBy: { position: "asc" },
+          include: {
+            evaluations: { where: { cupperId: user.id } },
+            physical: true,
+            extrinsic: true,
+            aggregateScore: true,
+            coffee: {
+              select: {
+                name: true,
+                country: true,
+                region: true,
+                producer: true,
+                variety: true,
+                altitude: true,
+                roastLevel: true,
+              },
             },
           },
         },
+        participants: { select: { userId: true } },
       },
-    },
-  });
+    }),
+    prisma.evaluation
+      .groupBy({
+        by: ["cupperId"],
+        where: { sessionSample: { sessionId: id }, isDraft: false },
+      })
+      .then((rows) => rows.length),
+  ]);
 
   if (!session) notFound();
 
   const isOwner = session.createdBy === user.id;
-  const canViewGroup = session.isGroup;
+  const totalParticipants = session.participants.length;
+  const allSubmitted = totalParticipants > 0 && submittedCupperCount >= totalParticipants;
+  const sessionExpired = session.closesAt ? session.closesAt < new Date() : false;
+  const canViewGroup =
+    session.isGroup &&
+    (isOwner || session.status === "closed" || allSubmitted || sessionExpired);
 
   const tCommunity = await getTranslations("community");
   const tg = await getTranslations("group");

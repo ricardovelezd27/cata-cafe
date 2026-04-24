@@ -49,8 +49,9 @@ export function calcIndividualScore(
 }
 
 // Community formula: normalized penalties across all participants
-// totalNonUniform = non-uniform but NOT defective cups, summed over all participants
-// totalDefective  = defective cups only, summed over all participants
+// totalNonUniform = ALL cups marked non-uniform (including defective) — defective implies non-uniform
+// totalDefective  = ALL cups marked defective
+// A defective cup contributes to both → penalty = 10/cup + 30/cup = 40/cup
 // totalCups       = cupsPerSample × participantCount
 // uniformityPenalty = totalNonUniform × (10 / totalCups)
 // defectPenalty     = totalDefective  × (30 / totalCups)
