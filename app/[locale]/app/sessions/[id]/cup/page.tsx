@@ -104,6 +104,7 @@ export default async function CupPage({
         sample: t("cupping.sample"),
         ofTotal: t("cupping.ofTotal", { total: session.samples.length }),
         nextSample: t("cupping.nextSample"),
+        nextPhase: t("cupping.nextPhase"),
         viewResults: t("cupping.viewResults"),
         submitting: t("cupping.submitting"),
         prev: t("cupping.prev"),

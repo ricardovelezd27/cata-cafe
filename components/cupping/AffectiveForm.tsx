@@ -1,6 +1,6 @@
 "use client";
 
-import { AFFECTIVE_ATTRIBUTES, DEFECT_TYPES } from "@/lib/constants";
+import { AFFECTIVE_ATTRIBUTES, DEFECT_TYPES, PHASE_ATTRIBUTES, type CuppingPhase } from "@/lib/constants";
 import { calcIndividualScore } from "@/lib/scoring";
 import { Section } from "./Section";
 import { AffectiveScale } from "./AffectiveScale";
@@ -13,10 +13,12 @@ export function AffectiveForm({
   sampleData,
   onChange,
   cupsPerSample,
+  currentPhase,
 }: {
   sampleData: Data;
   onChange: (d: Data) => void;
   cupsPerSample: number;
+  currentPhase: CuppingPhase;
 }) {
   const d = sampleData;
   const set = (key: string, val: unknown) => onChange({ ...d, [key]: val });
@@ -29,13 +31,16 @@ export function AffectiveForm({
   const showUniformity = cupsPerSample >= 2;
   const uniformityInScore = cupsPerSample >= 5;
 
+  const phaseAttrIds = new Set(PHASE_ATTRIBUTES[currentPhase].map((a) => a.affectiveId));
+  const visibleAttrs = AFFECTIVE_ATTRIBUTES.filter((a) => phaseAttrIds.has(a.id));
+
   return (
     <div>
       <div className="text-[11px] text-brown-mid mb-3 p-2 bg-cream rounded-lg text-center">
         ① Extremadamente baja → ⑨ Extremadamente alta
       </div>
 
-      {AFFECTIVE_ATTRIBUTES.map((attr) => (
+      {visibleAttrs.map((attr) => (
         <Section key={attr.id} title={attr.label}>
           <AffectiveScale
             value={getNum(attr.id)}
@@ -50,7 +55,7 @@ export function AffectiveForm({
         </Section>
       ))}
 
-      {showUniformity && (
+      {currentPhase === "liquoring" && showUniformity && (
         <Section title="Tazas">
           <CupCheckboxes
             count={cupsPerSample}
@@ -109,16 +114,18 @@ export function AffectiveForm({
         </Section>
       )}
 
-      <Section title="Puntaje Calculado">
-        <div className="text-center text-3xl font-bold text-green-dark font-serif">
-          {calcIndividualScore(d, cupsPerSample)}
-        </div>
-        {cupsPerSample < 5 && (
-          <div className="text-center text-[10px] text-brown-mid">
-            Sin penalización por uniformidad/defectos ({cupsPerSample} tazas)
+      {currentPhase === "liquoring" && (
+        <Section title="Puntaje Calculado">
+          <div className="text-center text-3xl font-bold text-green-dark font-serif">
+            {calcIndividualScore(d, cupsPerSample)}
           </div>
-        )}
-      </Section>
+          {cupsPerSample < 5 && (
+            <div className="text-center text-[10px] text-brown-mid">
+              Sin penalización por uniformidad/defectos ({cupsPerSample} tazas)
+            </div>
+          )}
+        </Section>
+      )}
     </div>
   );
 }

@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import {
   ACIDITY_DESCRIPTORS,
   DEFECT_TYPES,
   MOUTHFEEL_DESCRIPTORS,
   SWEETNESS_DESCRIPTORS,
+  PHASE_ATTRIBUTES,
+  type CuppingPhase,
 } from "@/lib/constants";
 import { calcIndividualScore } from "@/lib/scoring";
 import { Section } from "./Section";
@@ -32,11 +35,17 @@ export function CombinedForm({
   sampleData,
   onChange,
   cupsPerSample,
+  currentPhase,
 }: {
   sampleData: Data;
   onChange: (d: Data) => void;
   cupsPerSample: number;
+  currentPhase: CuppingPhase;
 }) {
+  // viewMode resets to "descriptive" on phase change automatically because the content
+  // wrapper in CupClient uses key={currentPhase}, causing this component to remount.
+  const [viewMode, setViewMode] = useState<"descriptive" | "affective">("descriptive");
+
   const d = sampleData;
   const set = (key: string, val: unknown) => onChange({ ...d, [key]: val });
   const num = (k: string, def = 7.5) => (d[k] as number | undefined) ?? def;
@@ -49,111 +58,159 @@ export function CombinedForm({
   const showUniformity = cupsPerSample >= 2;
   const uniformityInScore = cupsPerSample >= 5;
 
+  const phaseDescIds = new Set(
+    PHASE_ATTRIBUTES[currentPhase].map((a) => a.descriptiveId).filter(Boolean)
+  );
+  const phaseAffIds = new Set(PHASE_ATTRIBUTES[currentPhase].map((a) => a.affectiveId));
+
+  const visibleAttrs = COMBINED_ATTRS.filter((attr) =>
+    viewMode === "descriptive" ? phaseDescIds.has(attr.id) : phaseAffIds.has(attr.affId)
+  );
+
   return (
     <div>
-      <Section title="Nivel de Tueste">
-        <IntensitySlider value={num("tueste")} onChange={(v) => set("tueste", v)} />
-      </Section>
+      {currentPhase === "fragrance" && (
+        <Section title="Nivel de Tueste">
+          <IntensitySlider value={num("tueste")} onChange={(v) => set("tueste", v)} />
+        </Section>
+      )}
 
-      <div className="text-[11px] text-brown-mid mb-3 p-2 bg-cream rounded-lg text-center">
-        Cada atributo: primero <span className="text-green-mid font-bold">descriptivo</span>, luego{" "}
-        <span className="text-amber-warm font-bold">afectivo</span> (1-9).
+      {/* Descriptive / Affective toggle */}
+      <div
+        style={{
+          display: "flex",
+          gap: 0,
+          background: "#E8E0D0",
+          borderRadius: 8,
+          padding: 3,
+          marginBottom: 12,
+        }}
+      >
+        {(["descriptive", "affective"] as const).map((mode) => (
+          <button
+            key={mode}
+            onClick={() => setViewMode(mode)}
+            style={{
+              flex: 1,
+              padding: "6px 0",
+              borderRadius: 6,
+              fontSize: 11,
+              fontWeight: viewMode === mode ? 700 : 400,
+              background: viewMode === mode ? "#3D5A3E" : "transparent",
+              color: viewMode === mode ? "#FFF" : "#8B7355",
+              border: "none",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              transition: "all 0.12s",
+            }}
+          >
+            {mode === "descriptive" ? "Descriptivo" : "Afectivo (1–9)"}
+          </button>
+        ))}
       </div>
 
-      {COMBINED_ATTRS.map((attr) => (
+      {visibleAttrs.map((attr) => (
         <Section key={attr.id} title={attr.label}>
-          <div className="text-[9px] font-bold tracking-widest text-green-mid uppercase mb-1">
-            Descriptivo — Intensidad
-          </div>
-          <IntensitySlider
-            value={num(`${attr.id}_int`)}
-            onChange={(v) => set(`${attr.id}_int`, v)}
-          />
+          {viewMode === "descriptive" ? (
+            <>
+              <div className="text-[9px] font-bold tracking-widest text-green-mid uppercase mb-1">
+                Descriptivo — Intensidad
+              </div>
+              <IntensitySlider
+                value={num(`${attr.id}_int`)}
+                onChange={(v) => set(`${attr.id}_int`, v)}
+              />
 
-          {attr.kind === "flavor" && (
-            <div className="mt-2">
-              <FlavorTreeSelector
-                selected={arr(`${attr.id}_desc`)}
-                onChange={(v) => set(`${attr.id}_desc`, v)}
-              />
-            </div>
-          )}
-          {attr.kind === "acidity" && (
-            <div className="mt-2">
-              <div className="text-[11px] font-semibold text-brown-mid mb-1">Tipo de acidez</div>
-              <DescriptorSelector
-                descriptors={ACIDITY_DESCRIPTORS}
-                selected={arr(`${attr.id}_desc`)}
-                onChange={(v) => set(`${attr.id}_desc`, v)}
-              />
-            </div>
-          )}
-          {attr.kind === "sweetness" && (
-            <div className="mt-2">
-              <div className="text-[11px] font-semibold text-brown-mid mb-1">Tipo de dulzor</div>
-              <DescriptorSelector
-                descriptors={SWEETNESS_DESCRIPTORS}
-                selected={arr(`${attr.id}_desc`)}
-                onChange={(v) => set(`${attr.id}_desc`, v)}
-              />
-            </div>
-          )}
-          {attr.kind === "mouthfeel" && (
-            <div className="mt-2">
-              <DescriptorSelector
-                descriptors={MOUTHFEEL_DESCRIPTORS}
-                selected={arr(`${attr.id}_desc`)}
-                onChange={(v) => set(`${attr.id}_desc`, v)}
-                hasSubs
-              />
-            </div>
-          )}
+              {attr.kind === "flavor" && (
+                <div className="mt-2">
+                  <FlavorTreeSelector
+                    selected={arr(`${attr.id}_desc`)}
+                    onChange={(v) => set(`${attr.id}_desc`, v)}
+                  />
+                </div>
+              )}
+              {attr.kind === "acidity" && (
+                <div className="mt-2">
+                  <div className="text-[11px] font-semibold text-brown-mid mb-1">Tipo de acidez</div>
+                  <DescriptorSelector
+                    descriptors={ACIDITY_DESCRIPTORS}
+                    selected={arr(`${attr.id}_desc`)}
+                    onChange={(v) => set(`${attr.id}_desc`, v)}
+                  />
+                </div>
+              )}
+              {attr.kind === "sweetness" && (
+                <div className="mt-2">
+                  <div className="text-[11px] font-semibold text-brown-mid mb-1">Tipo de dulzor</div>
+                  <DescriptorSelector
+                    descriptors={SWEETNESS_DESCRIPTORS}
+                    selected={arr(`${attr.id}_desc`)}
+                    onChange={(v) => set(`${attr.id}_desc`, v)}
+                  />
+                </div>
+              )}
+              {attr.kind === "mouthfeel" && (
+                <div className="mt-2">
+                  <DescriptorSelector
+                    descriptors={MOUTHFEEL_DESCRIPTORS}
+                    selected={arr(`${attr.id}_desc`)}
+                    onChange={(v) => set(`${attr.id}_desc`, v)}
+                    hasSubs
+                  />
+                </div>
+              )}
 
-          <div className="mt-1.5">
-            <NotesInput
-              value={str(`${attr.id}_notas`)}
-              onChange={(v) => set(`${attr.id}_notas`, v)}
-              placeholder="Notas descriptivas..."
-            />
-          </div>
-
-          <div className="border-t border-dashed border-[#D4C5A9] mt-3 pt-2">
-            <div className="text-[9px] font-bold tracking-widest text-amber-warm uppercase mb-1">
-              Afectivo — Impresión de calidad
-            </div>
-            <AffectiveScale
-              value={nOrNull(attr.affId)}
-              onChange={(v) => set(attr.affId, v)}
-              showFinal
-              finalValue={nOrNull(`${attr.affId}_final`)}
-              onFinalChange={(v) => set(`${attr.affId}_final`, v)}
-            />
-            <div className="mt-1.5">
-              <NotesInput
-                value={str(`${attr.affId}_notas`)}
-                onChange={(v) => set(`${attr.affId}_notas`, v)}
-                placeholder="Notas afectivas..."
+              <div className="mt-1.5">
+                <NotesInput
+                  value={str(`${attr.id}_notas`)}
+                  onChange={(v) => set(`${attr.id}_notas`, v)}
+                  placeholder="Notas descriptivas..."
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-[9px] font-bold tracking-widest text-amber-warm uppercase mb-1">
+                Afectivo — Impresión de calidad
+              </div>
+              <AffectiveScale
+                value={nOrNull(attr.affId)}
+                onChange={(v) => set(attr.affId, v)}
+                showFinal
+                finalValue={nOrNull(`${attr.affId}_final`)}
+                onFinalChange={(v) => set(`${attr.affId}_final`, v)}
               />
-            </div>
-          </div>
+              <div className="mt-1.5">
+                <NotesInput
+                  value={str(`${attr.affId}_notas`)}
+                  onChange={(v) => set(`${attr.affId}_notas`, v)}
+                  placeholder="Notas afectivas..."
+                />
+              </div>
+            </>
+          )}
         </Section>
       ))}
 
-      <Section title="Gustos Predominantes">
-        <GustosSelector selected={arr("gustos")} onChange={(v) => set("gustos", v)} />
-      </Section>
+      {currentPhase === "liquoring" && viewMode === "descriptive" && (
+        <Section title="Gustos Predominantes">
+          <GustosSelector selected={arr("gustos")} onChange={(v) => set("gustos", v)} />
+        </Section>
+      )}
 
-      <Section title="Impresión Global">
-        <AffectiveScale
-          value={nOrNull("impresion_global")}
-          onChange={(v) => set("impresion_global", v)}
-          showFinal
-          finalValue={nOrNull("impresion_global_final")}
-          onFinalChange={(v) => set("impresion_global_final", v)}
-        />
-      </Section>
+      {currentPhase === "liquoring" && viewMode === "affective" && (
+        <Section title="Impresión Global">
+          <AffectiveScale
+            value={nOrNull("impresion_global")}
+            onChange={(v) => set("impresion_global", v)}
+            showFinal
+            finalValue={nOrNull("impresion_global_final")}
+            onFinalChange={(v) => set("impresion_global_final", v)}
+          />
+        </Section>
+      )}
 
-      {showUniformity && (
+      {currentPhase === "liquoring" && showUniformity && (
         <Section title="Tazas">
           <CupCheckboxes
             count={cupsPerSample}
@@ -209,24 +266,28 @@ export function CombinedForm({
         </Section>
       )}
 
-      <Section title="Otras Notas">
-        <NotesInput
-          value={str("otras_notas")}
-          onChange={(v) => set("otras_notas", v)}
-          placeholder="Notas adicionales..."
-        />
-      </Section>
+      {currentPhase === "liquoring" && (
+        <Section title="Otras Notas">
+          <NotesInput
+            value={str("otras_notas")}
+            onChange={(v) => set("otras_notas", v)}
+            placeholder="Notas adicionales..."
+          />
+        </Section>
+      )}
 
-      <Section title="Puntaje Calculado">
-        <div className="text-center text-3xl font-bold text-green-dark font-serif">
-          {calcIndividualScore(d, cupsPerSample)}
-        </div>
-        {cupsPerSample < 5 && (
-          <div className="text-center text-[10px] text-brown-mid">
-            Sin penalización por uniformidad/defectos ({cupsPerSample} tazas)
+      {currentPhase === "liquoring" && (
+        <Section title="Puntaje Calculado">
+          <div className="text-center text-3xl font-bold text-green-dark font-serif">
+            {calcIndividualScore(d, cupsPerSample)}
           </div>
-        )}
-      </Section>
+          {cupsPerSample < 5 && (
+            <div className="text-center text-[10px] text-brown-mid">
+              Sin penalización por uniformidad/defectos ({cupsPerSample} tazas)
+            </div>
+          )}
+        </Section>
+      )}
     </div>
   );
 }

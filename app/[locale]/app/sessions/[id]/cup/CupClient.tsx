@@ -13,7 +13,8 @@ import {
   upsertExtrinsic,
   upsertPhysical,
 } from "@/app/actions/sessions";
-import { submitAllEvaluations, submitSampleEvaluation, closeSession } from "@/app/actions/community";
+import { submitAllEvaluations, closeSession } from "@/app/actions/community";
+import { CUPPING_PHASES, PHASE_LABELS, PHASE_ATTRIBUTES, type CuppingPhase } from "@/lib/constants";
 import { DevRoleBadge } from "@/components/dev/DevRoleBadge";
 
 type Data = Record<string, unknown>;
@@ -65,6 +66,7 @@ export function CupClient({
     sample: string;
     ofTotal: string;
     nextSample: string;
+    nextPhase: string;
     viewResults: string;
     submitting: string;
     prev: string;
@@ -84,6 +86,7 @@ export function CupClient({
 }) {
   const router = useRouter();
   const [sampleIdx, setSampleIdx] = useState(0);
+  const [currentPhase, setCurrentPhase] = useState<CuppingPhase>("fragrance");
   const [samples, setSamples] = useState(session.samples);
   const [activeTab, setActiveTab] = useState<CuppingTab>("cupping");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
@@ -188,17 +191,45 @@ export function CupClient({
     scheduleAutoSave(samples[sampleIdx].id, key, data);
   };
 
+  const handlePhaseChange = async (phase: CuppingPhase) => {
+    if (phase === currentPhase) return;
+    await flushPending();
+    setCurrentPhase(phase);
+    setSampleIdx(0);
+    window.scrollTo({ top: 0, behavior: "instant" });
+  };
+
   const handleNextSample = async () => {
     if (isNavigating) return;
     setIsNavigating(true);
     try {
       await flushPending();
-      await submitSampleEvaluation(samples[sampleIdx].id);
-      setSampleIdx((i) => Math.min(samples.length - 1, i + 1));
+      if (sampleIdx < samples.length - 1) {
+        setSampleIdx((i) => i + 1);
+      } else {
+        const phaseIdx = CUPPING_PHASES.indexOf(currentPhase);
+        if (phaseIdx < CUPPING_PHASES.length - 1) {
+          await handlePhaseChange(CUPPING_PHASES[phaseIdx + 1]);
+        }
+      }
       window.scrollTo({ top: 0, behavior: "instant" });
     } finally {
       setIsNavigating(false);
     }
+  };
+
+  const handlePrev = async () => {
+    await flushPending();
+    if (sampleIdx > 0) {
+      setSampleIdx((i) => i - 1);
+    } else {
+      const phaseIdx = CUPPING_PHASES.indexOf(currentPhase);
+      if (phaseIdx > 0) {
+        setCurrentPhase(CUPPING_PHASES[phaseIdx - 1]);
+        setSampleIdx(samples.length - 1);
+      }
+    }
+    window.scrollTo({ top: 0, behavior: "instant" });
   };
 
   const handleGoToResults = async () => {
@@ -220,7 +251,36 @@ export function CupClient({
   };
 
   const current = samples[sampleIdx];
-  const isLastSample = sampleIdx >= samples.length - 1;
+  const isLastSampleInPhase = sampleIdx >= samples.length - 1;
+  const isLastPhase = CUPPING_PHASES.indexOf(currentPhase) >= CUPPING_PHASES.length - 1;
+  const isLastSampleOverall = isLastSampleInPhase && isLastPhase;
+  const prevDisabled = sampleIdx === 0 && currentPhase === "fragrance";
+
+  // Detect whether a sample has been touched in a given phase (any attribute key present)
+  const hasPhaseFill = (sample: Sample, phase: CuppingPhase): boolean => {
+    return PHASE_ATTRIBUTES[phase].some((attr) => {
+      if (session.format === "affective") {
+        const v = sample.affective[attr.affectiveId];
+        return v !== null && v !== undefined;
+      }
+      if (session.format === "descriptive") {
+        if (!attr.descriptiveId) return false;
+        const v = sample.descriptive[`${attr.descriptiveId}_int`];
+        return v !== null && v !== undefined;
+      }
+      // combined: check either side
+      const aff = sample.combined[attr.affectiveId];
+      const desc = attr.descriptiveId ? sample.combined[`${attr.descriptiveId}_int`] : undefined;
+      return (aff !== null && aff !== undefined) || (desc !== null && desc !== undefined);
+    });
+  };
+
+  const getPhaseStatus = (phase: CuppingPhase): "empty" | "partial" | "complete" => {
+    const filled = samples.filter((s) => hasPhaseFill(s, phase)).length;
+    if (filled === 0) return "empty";
+    if (filled === samples.length) return "complete";
+    return "partial";
+  };
 
   const TABS = [
     { key: "cupping" as const, icon: "☕", label: "Cata" },
@@ -299,7 +359,9 @@ export function CupClient({
                 {session.name}
               </div>
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.65)" }}>
-                {translations.sample} {sampleIdx + 1} {translations.ofTotal}
+                {activeTab === "cupping"
+                  ? `${PHASE_LABELS[currentPhase]} · ${translations.sample} ${sampleIdx + 1} ${translations.ofTotal}`
+                  : `${translations.sample} ${sampleIdx + 1} ${translations.ofTotal}`}
                 {isGroup && (
                   <span style={{ marginLeft: 8 }}>
                     · {translations.submittedOf}
@@ -317,7 +379,66 @@ export function CupClient({
             )}
           </div>
 
-          {/* Sample pills */}
+          {/* Phase tabs — cupping tab only */}
+          {activeTab === "cupping" && (
+            <div
+              style={{
+                display: "flex",
+                gap: 0,
+                background: "rgba(0,0,0,0.15)",
+                borderRadius: 8,
+                padding: 3,
+                margin: "6px 0 4px",
+              }}
+            >
+              {CUPPING_PHASES.map((phase) => {
+                const status = getPhaseStatus(phase);
+                const isActive = currentPhase === phase;
+                return (
+                  <button
+                    key={phase}
+                    onClick={() => handlePhaseChange(phase)}
+                    style={{
+                      flex: 1,
+                      minHeight: 44,
+                      padding: "6px 4px",
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: isActive ? 700 : 400,
+                      background: isActive ? "rgba(255,255,255,0.92)" : "transparent",
+                      color: isActive ? "#3D5A3E" : "rgba(255,255,255,0.75)",
+                      border: "none",
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      transition: "all 0.15s",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 2,
+                    }}
+                  >
+                    <span>{PHASE_LABELS[phase]}</span>
+                    {/* Completion indicator dot */}
+                    <span style={{
+                      fontSize: 7,
+                      lineHeight: 1,
+                      color: status === "complete"
+                        ? (isActive ? "#3D5A3E" : "#B4C8A8")
+                        : status === "partial"
+                        ? (isActive ? "#C17817" : "rgba(193,120,23,0.7)")
+                        : "transparent",
+                      transition: "color 0.3s",
+                    }}>
+                      {status === "complete" ? "✓ listo" : status === "partial" ? "● en curso" : "○"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Sample pills with phase fill-state indicator */}
           <div
             style={{
               display: "flex",
@@ -325,33 +446,48 @@ export function CupClient({
               overflowX: "auto",
               paddingBottom: 4,
               scrollbarWidth: "none",
+              /* Fade right edge to hint at scroll */
+              maskImage: "linear-gradient(to right, black 85%, transparent 100%)",
+              WebkitMaskImage: "linear-gradient(to right, black 85%, transparent 100%)",
             }}
           >
-            {samples.map((s, i) => (
-              <button
-                key={s.id}
-                onClick={() => { setSampleIdx(i); window.scrollTo({ top: 0, behavior: "instant" }); }}
-                style={{
-                  padding: "3px 10px",
-                  borderRadius: 20,
-                  fontSize: 12,
-                  fontWeight: i === sampleIdx ? 700 : 400,
-                  background:
-                    i === sampleIdx ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.1)",
-                  color: "#FFF",
-                  border:
-                    i === sampleIdx
+            {samples.map((s, i) => {
+              const filled = hasPhaseFill(s, currentPhase);
+              const isActive = i === sampleIdx;
+              return (
+                <button
+                  key={s.id}
+                  onClick={async () => { await flushPending(); setSampleIdx(i); window.scrollTo({ top: 0, behavior: "instant" }); }}
+                  style={{
+                    minHeight: 36,
+                    padding: "4px 12px",
+                    borderRadius: 20,
+                    fontSize: 12,
+                    fontWeight: isActive ? 700 : 400,
+                    background: isActive ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.1)",
+                    color: "#FFF",
+                    border: isActive
                       ? "1px solid rgba(255,255,255,0.6)"
+                      : filled
+                      ? "1px solid rgba(180,200,168,0.6)"
                       : "1px solid rgba(255,255,255,0.25)",
-                  whiteSpace: "nowrap",
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  flexShrink: 0,
-                }}
-              >
-                {s.label}
-              </button>
-            ))}
+                    whiteSpace: "nowrap",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    transition: "border-color 0.2s",
+                  }}
+                >
+                  {s.label}
+                  {filled && !isActive && (
+                    <span style={{ fontSize: 7, color: "#B4C8A8", lineHeight: 1 }}>✓</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -454,12 +590,13 @@ export function CupClient({
         </div>
       )}
 
-      {/* Content */}
-      <div style={{ padding: 16, paddingBottom: 88 }}>
+      {/* Content — keyed by phase so it fades in on phase change */}
+      <div key={currentPhase} style={{ padding: 16, paddingBottom: 88, animation: "phase-in 0.22s ease-out" }}>
         {activeTab === "cupping" && session.format === "descriptive" && (
           <DescriptiveForm
             sampleData={current.descriptive}
             onChange={(d) => setCurrentData("descriptive", d)}
+            currentPhase={currentPhase}
           />
         )}
         {activeTab === "cupping" && session.format === "affective" && (
@@ -467,6 +604,7 @@ export function CupClient({
             sampleData={current.affective}
             onChange={(d) => setCurrentData("affective", d)}
             cupsPerSample={session.cupsPerSample}
+            currentPhase={currentPhase}
           />
         )}
         {activeTab === "cupping" &&
@@ -476,6 +614,7 @@ export function CupClient({
               sampleData={current.combined}
               onChange={(d) => setCurrentData("combined", d)}
               cupsPerSample={session.cupsPerSample}
+              currentPhase={currentPhase}
             />
           )}
         {activeTab === "extrinsic" && (
@@ -513,24 +652,24 @@ export function CupClient({
         }}
       >
         <button
-          onClick={() => { setSampleIdx((i) => Math.max(0, i - 1)); window.scrollTo({ top: 0, behavior: "instant" }); }}
-          disabled={sampleIdx === 0 || isNavigating}
+          onClick={handlePrev}
+          disabled={prevDisabled || isNavigating}
           style={{
             flex: 1,
             padding: "10px 0",
             borderRadius: 10,
             border: "1px solid #D4C5A9",
             background: "transparent",
-            color: sampleIdx === 0 ? "#C4B49A" : "#5C4A32",
+            color: prevDisabled ? "#C4B49A" : "#5C4A32",
             fontSize: 13,
             fontWeight: 600,
-            cursor: sampleIdx === 0 ? "default" : "pointer",
+            cursor: prevDisabled ? "default" : "pointer",
             fontFamily: "inherit",
           }}
         >
           ← {translations.prev}
         </button>
-        {isLastSample ? (
+        {isLastSampleOverall ? (
           <button
             onClick={handleGoToResults}
             disabled={isGoingToResults}
@@ -563,15 +702,23 @@ export function CupClient({
               border: "none",
               background: isNavigating
                 ? "#C4B49A"
+                : isLastSampleInPhase && !isLastPhase
+                ? "linear-gradient(135deg, #C17817 0%, #A56A10 100%)"
                 : "linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%)",
               color: "#FFF",
               fontSize: 13,
               fontWeight: 700,
               cursor: isNavigating ? "default" : "pointer",
-              fontFamily: "inherit",
+              fontFamily: isLastSampleInPhase && !isLastPhase ? "'Cormorant Garamond', Georgia, serif" : "inherit",
+              letterSpacing: isLastSampleInPhase && !isLastPhase ? "0.2px" : 0,
+              transition: "background 0.2s",
             }}
           >
-            {isNavigating ? translations.submitting : `${translations.nextSample} →`}
+            {isNavigating
+              ? translations.submitting
+              : isLastSampleInPhase && !isLastPhase
+              ? `${translations.nextPhase} ⟶`
+              : `${translations.nextSample} →`}
           </button>
         )}
       </div>
