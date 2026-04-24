@@ -231,12 +231,10 @@ BEGIN
   ));
 
   INSERT INTO aggregate_scores (
-    id,
     "sessionSampleId", "participantCount", "cupsPerSample", "totalCups",
     "avgRawScore", "totalNonUniform", "totalDefective",
     "uniformityPenalty", "defectPenalty", "communityScore", "computedAt"
   ) VALUES (
-    gen_random_uuid()::text,
     NEW."sessionSampleId", v_participant_count, v_cups_per_sample, v_total_cups,
     v_avg_raw, v_total_non_uniform, v_total_defective,
     v_uniformity_penalty, v_defect_penalty, v_community_score, now()

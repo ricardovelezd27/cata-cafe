@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx prisma *)",
+      "Bash(rm -rf .next)",
+      "Bash(npx tsc *)",
+      "Bash(npm install *)",
+      "Bash(npx next *)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(npm run *)",
+      "mcp__1b49c2c7-a120-43d9-9931-8b594db055fa__execute_sql",
+      "mcp__1b49c2c7-a120-43d9-9931-8b594db055fa__list_projects"
+    ]
+  }
+}
