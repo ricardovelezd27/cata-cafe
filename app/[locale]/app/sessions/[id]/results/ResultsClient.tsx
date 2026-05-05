@@ -92,13 +92,28 @@ export function ResultsClient({
     });
   };
 
-  const toggleBtnStyle = (active: boolean): React.CSSProperties => ({
+  const showGroup = view === "group" && canViewGroup;
+
+  const pillStyle = (active: boolean): React.CSSProperties => ({
+    padding: "5px 14px",
+    borderRadius: 9999,
+    border: active ? "1px solid #3D5A3E" : "1px solid #E8E0D0",
+    background: active ? "#3D5A3E" : "transparent",
+    color: active ? "#FFF" : "#8B7355",
+    fontSize: 12,
+    fontWeight: active ? 700 : 400,
+    cursor: "pointer",
+    fontFamily: "inherit",
+    transition: "all 0.15s",
+  });
+
+  const segStyle = (active: boolean): React.CSSProperties => ({
     flex: 1,
-    padding: "7px 0",
-    borderRadius: 8,
+    padding: "6px 0",
+    borderRadius: 7,
     border: "none",
     background: active ? "#FDFBF7" : "transparent",
-    color: active ? "#3D5A3E" : "#8B7355",
+    color: active ? "#5C4A32" : "#8B7355",
     fontSize: 12,
     fontWeight: active ? 700 : 400,
     cursor: "pointer",
@@ -107,39 +122,36 @@ export function ResultsClient({
     transition: "all 0.15s",
   });
 
-  const showGroup = view === "group" && canViewGroup;
-
   return (
     <div
-      style={{
-        maxWidth: 520,
-        margin: "0 auto",
-        minHeight: "100vh",
-        background: "linear-gradient(180deg, #F5F0E6 0%, #EDE5D5 100%)",
-        color: "#5C4A32",
-      }}
+      className="-m-4 -mb-20 lg:-m-6 flex flex-col"
+      style={{ minHeight: "100%", background: "#FDFBF7", color: "#5C4A32" }}
     >
-      {/* Sticky header */}
+      {/* Sticky header — light themed */}
       <div
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 100,
-          background: "linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%)",
-          padding: "12px 16px",
-        }}
+        className="sticky top-0 z-50"
+        style={{ background: "#FDFBF7", borderBottom: "1px solid #E8E0D0" }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {/* Title row */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "10px 16px",
+          }}
+        >
           <button
             onClick={() => router.back()}
             style={{
-              color: "#FFF",
+              color: "#8B7355",
               background: "transparent",
               border: "none",
               fontSize: 18,
               cursor: "pointer",
-              padding: "0 4px",
               lineHeight: 1,
+              padding: "0 2px",
+              flexShrink: 0,
             }}
           >
             ←
@@ -147,101 +159,53 @@ export function ResultsClient({
           <div>
             <div
               style={{
-                color: "#FFF",
-                fontWeight: 700,
-                fontSize: 20,
                 fontFamily: "'Cormorant Garamond', Georgia, serif",
+                fontSize: 17,
+                fontWeight: 700,
+                color: "#3D5A3E",
               }}
             >
               Resultados de la Sesión
             </div>
-            <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 12 }}>
+            <div style={{ fontSize: 11, color: "#8B7355" }}>
               {session.name} · {session.date}
             </div>
           </div>
         </div>
-      </div>
 
-      <div style={{ padding: "12px 16px 0" }}>
-        {/* Mine / Group toggle */}
+        {/* Mine / Group pills */}
         {canViewGroup && (
-          <div
-            style={{
-              display: "flex",
-              background: "#E8E0D0",
-              borderRadius: 10,
-              padding: 3,
-              gap: 2,
-              marginBottom: 8,
-            }}
-          >
+          <div style={{ padding: "0 16px 8px", display: "flex", gap: 4 }}>
             {(["mine", "group"] as ViewMode[]).map((v) => (
-              <button key={v} onClick={() => setView(v)} style={toggleBtnStyle(view === v)}>
+              <button key={v} onClick={() => setView(v)} style={pillStyle(view === v)}>
                 {v === "mine" ? translations.myResults : translations.groupResults}
               </button>
             ))}
           </div>
         )}
 
-        {/* Tabla / Gráfico toggle */}
+        {/* Tabla / Gráfico segmented control */}
         <div
           style={{
             display: "flex",
+            margin: "0 16px 10px",
             background: "#E8E0D0",
-            borderRadius: 10,
+            borderRadius: 9,
             padding: 3,
             gap: 2,
-            marginBottom: 12,
           }}
         >
           {(["table", "radar"] as DisplayView[]).map((v) => (
-            <button key={v} onClick={() => setDisplayView(v)} style={toggleBtnStyle(displayView === v)}>
+            <button key={v} onClick={() => setDisplayView(v)} style={segStyle(displayView === v)}>
               {v === "table" ? "📋 Tabla" : "📡 Gráfico"}
             </button>
           ))}
         </div>
-
-        {/* Format badge */}
-        <div style={{ marginBottom: 10, display: "flex", gap: 6, alignItems: "center" }}>
-          <span
-            style={{
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: "0.5px",
-              padding: "2px 8px",
-              borderRadius: 10,
-              background: "#E8F0E8",
-              color: "#3D5A3E",
-              textTransform: "uppercase",
-            }}
-          >
-            {session.format}
-          </span>
-          <span style={{ fontSize: 11, color: "#8B7355" }}>
-            {session.samples.length} muestra{session.samples.length !== 1 ? "s" : ""}
-          </span>
-          {showGroup && (
-            <span
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                letterSpacing: "0.4px",
-                padding: "2px 8px",
-                borderRadius: 10,
-                background: "#FEF3E2",
-                color: "#C17817",
-                textTransform: "uppercase",
-              }}
-            >
-              Vista grupal
-            </span>
-          )}
-        </div>
       </div>
 
       {/* Main content */}
-      <div style={{ padding: "0 16px", paddingBottom: 88 }}>
-        {displayView === "table" ? (
+      {displayView === "table" ? (
+        <div className="p-4 lg:p-6">
           <ScoreTable
             samples={session.samples}
             cupsPerSample={session.cupsPerSample}
@@ -250,8 +214,10 @@ export function ResultsClient({
             isOwner={isOwner}
             onReveal={handleReveal}
           />
-        ) : (
-          session.samples.map((sample) => (
+        </div>
+      ) : (
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-3 p-4 lg:p-6">
+          {session.samples.map((sample) => (
             <SampleRadarChart
               key={sample.id}
               sample={sample}
@@ -261,31 +227,27 @@ export function ResultsClient({
               isOwner={isOwner}
               onReveal={handleReveal}
             />
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
 
-      {/* Print CTA */}
+      {/* Print CTA — sticky footer */}
       <div
         style={{
-          position: "fixed",
+          position: "sticky",
           bottom: 0,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "100%",
-          maxWidth: 520,
+          zIndex: 99,
           background: "#FDFBF7",
           borderTop: "1px solid #E8E0D0",
           padding: "12px 16px",
-          boxSizing: "border-box",
-          zIndex: 99,
+          paddingBottom: "max(12px, calc(env(safe-area-inset-bottom) + 8px))",
         }}
       >
         <button
           onClick={() => router.push(`/${locale}/app/sessions/${session.id}/print`)}
           style={{
             width: "100%",
-            padding: "14px 0",
+            padding: "13px 0",
             borderRadius: 10,
             border: "none",
             background: "linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%)",
