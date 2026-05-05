@@ -14,7 +14,7 @@ import {
 } from "@/lib/constants";
 import { IntensitySlider } from "@/components/ui/IntensitySlider";
 import { AffectiveBubbles } from "@/components/ui/AffectiveBubbles";
-import { CATAPills, type CATAOption } from "@/components/ui/CATAPills";
+import { CATAPills, type CATAOption, type CATASubItem } from "@/components/ui/CATAPills";
 import { CupIndicators } from "@/components/ui/CupIndicators";
 import { ScoreDisplay } from "@/components/ui/ScoreDisplay";
 import { Section } from "./Section";
@@ -26,7 +26,7 @@ const flavorCATAOptions: CATAOption[] = FLAVOR_FAMILIES.map((f) => ({
   id: f.id,
   label: f.label,
   color: f.color,
-  subItems: f.subItems as unknown as string[],
+  subItems: f.subItems as unknown as CATASubItem[],
 }));
 
 const mouthfeelCATAOptions: CATAOption[] = MOUTHFEEL_OPTIONS.map((o) => ({

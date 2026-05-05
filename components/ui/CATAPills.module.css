@@ -8,7 +8,8 @@
 .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
 .selected { background: var(--pill-color) !important; border-color: transparent !important; color: var(--color-bg) !important; }
 .selected .dot { background: rgba(255, 255, 255, 0.65); }
-.sub { font-size: 11.5px; padding: 5px 11px; }
+.sub { font-size: 11.5px; padding: 5px 11px; cursor: pointer; }
+.sub:not(:disabled):hover { background: color-mix(in oklch, var(--pill-color) 20%, transparent) !important; }
 .subRow { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 8px; margin: -2px 0 2px; background: color-mix(in oklch, var(--color-cream) 60%, var(--color-bg)); border-radius: 8px; }
 @media (max-width: 480px) {
   .pill { padding: 6px 11px; font-size: 12px; }

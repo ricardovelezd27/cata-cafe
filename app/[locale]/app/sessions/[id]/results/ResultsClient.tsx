@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { revealSample } from "@/app/actions/community";
 import { ScoreTable } from "@/components/results/ScoreTable";
 import { SampleRadarChart } from "@/components/results/SampleRadarChart";
+import { FlavorCloud } from "@/components/results/FlavorCloud";
 
 type AggregateScoreData = {
   communityScore: number | null;
@@ -205,7 +206,7 @@ export function ResultsClient({
 
       {/* Main content */}
       {displayView === "table" ? (
-        <div className="p-4 lg:p-6">
+        <div className="p-4 lg:p-6 flex flex-col gap-6">
           <ScoreTable
             samples={session.samples}
             cupsPerSample={session.cupsPerSample}
@@ -214,19 +215,74 @@ export function ResultsClient({
             isOwner={isOwner}
             onReveal={handleReveal}
           />
+          {session.samples.some((s) => Object.keys(s.descriptive).length > 0) && (
+            <div
+              style={{
+                background: "#fff",
+                borderRadius: 12,
+                border: "1px solid #E8E0D0",
+                padding: "16px",
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: "'Cormorant Garamond', Georgia, serif",
+                  fontSize: 15,
+                  fontWeight: 700,
+                  color: "#3D5A3E",
+                  marginBottom: 12,
+                }}
+              >
+                Perfiles de Sabor
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {session.samples.map((sample) => (
+                  <div key={sample.id}>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: "#8B7355",
+                        letterSpacing: "0.1em",
+                        textTransform: "uppercase",
+                        marginBottom: 4,
+                      }}
+                    >
+                      {sample.label}
+                    </div>
+                    <FlavorCloud descriptive={sample.descriptive} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-3 p-4 lg:p-6">
           {session.samples.map((sample) => (
-            <SampleRadarChart
-              key={sample.id}
-              sample={sample}
-              format={session.format}
-              cupsPerSample={session.cupsPerSample}
-              showCommunity={showGroup}
-              isOwner={isOwner}
-              onReveal={handleReveal}
-            />
+            <div key={sample.id} style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+              <SampleRadarChart
+                sample={sample}
+                format={session.format}
+                cupsPerSample={session.cupsPerSample}
+                showCommunity={showGroup}
+                isOwner={isOwner}
+                onReveal={handleReveal}
+              />
+              {Object.keys(sample.descriptive).length > 0 && (
+                <div
+                  style={{
+                    background: "#fff",
+                    borderRadius: "0 0 12px 12px",
+                    border: "1px solid #E8E0D0",
+                    borderTop: "none",
+                    padding: "12px 16px 16px",
+                  }}
+                >
+                  <FlavorCloud descriptive={sample.descriptive} />
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}

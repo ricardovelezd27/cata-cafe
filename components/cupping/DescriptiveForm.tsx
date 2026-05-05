@@ -8,7 +8,7 @@ import {
   type CuppingPhase,
 } from "@/lib/constants";
 import { IntensitySlider } from "@/components/ui/IntensitySlider";
-import { CATAPills, type CATAOption } from "@/components/ui/CATAPills";
+import { CATAPills, type CATAOption, type CATASubItem } from "@/components/ui/CATAPills";
 import { Section } from "./Section";
 import { NotesInput } from "./NotesInput";
 
@@ -18,7 +18,7 @@ const flavorCATAOptions: CATAOption[] = FLAVOR_FAMILIES.map((f) => ({
   id: f.id,
   label: f.label,
   color: f.color,
-  subItems: f.subItems as unknown as string[],
+  subItems: f.subItems as unknown as CATASubItem[],
 }));
 
 const mouthfeelCATAOptions: CATAOption[] = MOUTHFEEL_OPTIONS.map((o) => ({
@@ -63,6 +63,7 @@ export function DescriptiveForm({
               selected={arr("fragancia_desc")}
               onChange={(v) => set("fragancia_desc", v)}
               maxSelect={CATA_MAX_SELECT.fragrance}
+              showSubItems
             />
           </div>
           <div className="mt-2">
@@ -92,6 +93,7 @@ export function DescriptiveForm({
               selected={arr("aroma_desc")}
               onChange={(v) => set("aroma_desc", v)}
               maxSelect={CATA_MAX_SELECT.aroma}
+              showSubItems
             />
           </div>
           <div className="mt-2">
@@ -121,6 +123,7 @@ export function DescriptiveForm({
               selected={arr("sabor_desc")}
               onChange={(v) => set("sabor_desc", v)}
               maxSelect={CATA_MAX_SELECT.flavor}
+              showSubItems
             />
           </div>
           <div className="mt-2">
@@ -144,6 +147,7 @@ export function DescriptiveForm({
               selected={arr("sabor_residual_desc")}
               onChange={(v) => set("sabor_residual_desc", v)}
               maxSelect={CATA_MAX_SELECT.flavor}
+              showSubItems
             />
           </div>
           <div className="mt-2">
