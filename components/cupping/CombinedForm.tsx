@@ -275,6 +275,7 @@ export function CombinedForm({
                               ? CATA_MAX_SELECT.flavor
                               : CATA_MAX_SELECT.fragrance
                           }
+                          showSubItems
                         />
                       </div>
                     )}
