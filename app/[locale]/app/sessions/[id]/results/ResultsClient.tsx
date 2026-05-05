@@ -136,35 +136,33 @@ export function ResultsClient({
 
   return (
     <div
-      style={{
-        maxWidth: 480,
-        margin: "0 auto",
-        minHeight: "100vh",
-        background: "linear-gradient(180deg, #F5F0E6 0%, #EDE5D5 100%)",
-        color: "#5C4A32",
-      }}
+      className="-m-4 -mb-20 lg:-m-6 flex flex-col"
+      style={{ minHeight: "100%", background: "#FDFBF7", color: "#5C4A32" }}
     >
-      {/* Sticky header */}
+      {/* Sticky header — light themed */}
       <div
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 100,
-          background: "linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%)",
-          padding: "12px 16px",
-        }}
+        className="sticky top-0 z-50"
+        style={{ background: "#FDFBF7", borderBottom: "1px solid #E8E0D0" }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "10px 16px",
+          }}
+        >
           <button
             onClick={() => router.back()}
             style={{
-              color: "#FFF",
+              color: "#8B7355",
               background: "transparent",
               border: "none",
               fontSize: 18,
               cursor: "pointer",
-              padding: "0 4px",
               lineHeight: 1,
+              padding: "0 2px",
+              flexShrink: 0,
             }}
           >
             ←
@@ -172,58 +170,49 @@ export function ResultsClient({
           <div>
             <div
               style={{
-                color: "#FFF",
-                fontWeight: 700,
-                fontSize: 20,
                 fontFamily: "'Cormorant Garamond', Georgia, serif",
+                fontSize: 17,
+                fontWeight: 700,
+                color: "#3D5A3E",
               }}
             >
               Resultados de la Sesión
             </div>
-            <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 12 }}>
+            <div style={{ fontSize: 11, color: "#8B7355" }}>
               {session.name} · {session.date}
             </div>
           </div>
         </div>
+
+        {/* Group view toggle — inside header */}
+        {canViewGroup && (
+          <div style={{ padding: "0 16px 10px", display: "flex", gap: 4 }}>
+            {(["mine", "group"] as ViewMode[]).map((v) => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                style={{
+                  padding: "5px 14px",
+                  borderRadius: 9999,
+                  border: view === v ? "1px solid #3D5A3E" : "1px solid #E8E0D0",
+                  background: view === v ? "#3D5A3E" : "transparent",
+                  color: view === v ? "#FFF" : "#8B7355",
+                  fontSize: 12,
+                  fontWeight: view === v ? 700 : 400,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  transition: "all 0.15s",
+                }}
+              >
+                {v === "mine" ? translations.myResults : translations.groupResults}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* View toggle — only for group sessions */}
-      {canViewGroup && (
-        <div
-          style={{
-            display: "flex",
-            margin: "12px 16px 0",
-            background: "#E8E0D0",
-            borderRadius: 10,
-            padding: 3,
-            gap: 2,
-          }}
-        >
-          {(["mine", "group"] as ViewMode[]).map((v) => (
-            <button
-              key={v}
-              onClick={() => setView(v)}
-              style={{
-                flex: 1,
-                padding: "7px 0",
-                borderRadius: 8,
-                border: "none",
-                background: view === v ? "#FDFBF7" : "transparent",
-                color: view === v ? "#3D5A3E" : "#8B7355",
-                fontSize: 12,
-                fontWeight: view === v ? 700 : 400,
-                cursor: "pointer",
-                fontFamily: "inherit",
-                boxShadow: view === v ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
-              }}
-            >
-              {v === "mine" ? translations.myResults : translations.groupResults}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div style={{ padding: 16, paddingBottom: 88 }}>
+      {/* Sample cards — responsive grid */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-3 p-4 lg:p-6">
         {session.samples.map((sample) => {
           const affData = isAffective
             ? sample.affective
@@ -243,7 +232,6 @@ export function ResultsClient({
 
           const agg = sample.aggregateScore;
 
-          // ── Coffee identity card (shown when revealed) ──────────────────────
           const CoffeeCard = sample.revealed && sample.coffee ? (
             <div
               style={{
@@ -275,7 +263,6 @@ export function ResultsClient({
             </div>
           ) : null;
 
-          // ── Reveal button (owner only, not yet revealed) ─────────────────────
           const RevealBtn = isOwner && !sample.revealed ? (
             <button
               onClick={() => handleReveal(sample.id)}
@@ -300,7 +287,7 @@ export function ResultsClient({
             </div>
           ) : null;
 
-          // ── Group view ──────────────────────────────────────────────────────
+          // ── Group view ──────────────────────────────────────────────────
           if (view === "group" && canViewGroup) {
             const radarData =
               agg && Object.keys(agg.attrAverages).length > 0
@@ -329,7 +316,6 @@ export function ResultsClient({
                   border: "1px solid #E8E0D0",
                   borderRadius: 12,
                   padding: 14,
-                  marginBottom: 12,
                 }}
               >
                 <div
@@ -351,7 +337,6 @@ export function ResultsClient({
 
                 {agg ? (
                   <>
-                    {/* Community score hero */}
                     <div style={{ textAlign: "center", marginBottom: 16 }}>
                       <div
                         style={{
@@ -380,7 +365,6 @@ export function ResultsClient({
                       </div>
                     </div>
 
-                    {/* Radar chart */}
                     {showCVA && radarData.some((d) => d.score > 0) && (
                       <div style={{ marginBottom: 12 }}>
                         <div
@@ -412,7 +396,6 @@ export function ResultsClient({
                       </div>
                     )}
 
-                    {/* Score breakdown */}
                     <div style={{ fontSize: 12, color: "#5C4A32" }}>
                       <div
                         style={{
@@ -503,7 +486,7 @@ export function ResultsClient({
             );
           }
 
-          // ── My results view (default) ───────────────────────────────────────
+          // ── My results view (default) ───────────────────────────────────
           return (
             <div
               key={sample.id}
@@ -512,10 +495,8 @@ export function ResultsClient({
                 border: "1px solid #E8E0D0",
                 borderRadius: 12,
                 padding: 14,
-                marginBottom: 12,
               }}
             >
-              {/* Sample header row */}
               <div
                 style={{
                   display: "flex",
@@ -566,7 +547,6 @@ export function ResultsClient({
               {RevealBtn}
               {CoffeeCard}
 
-              {/* Affective attribute rows */}
               {affData &&
                 AFFECTIVE_ATTRIBUTES.map((attr, i) => {
                   const first = affData[attr.id] as number | undefined;
@@ -604,7 +584,6 @@ export function ResultsClient({
                   );
                 })}
 
-              {/* Descriptive attribute rows */}
               {descData &&
                 !affData &&
                 DESCRIPTIVE_ATTRS.map((attr, i) => {
@@ -639,7 +618,6 @@ export function ResultsClient({
                   );
                 })}
 
-              {/* Gustos predominantes */}
               {gustos.length > 0 && (
                 <div
                   style={{
@@ -678,7 +656,6 @@ export function ResultsClient({
                 </div>
               )}
 
-              {/* Defective cups warning */}
               {defectCount > 0 && (
                 <div
                   style={{
@@ -697,27 +674,23 @@ export function ResultsClient({
         })}
       </div>
 
-      {/* Print CTA */}
+      {/* Print CTA — full-width sticky footer */}
       <div
         style={{
-          position: "fixed",
+          position: "sticky",
           bottom: 0,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "100%",
-          maxWidth: 480,
+          zIndex: 99,
           background: "#FDFBF7",
           borderTop: "1px solid #E8E0D0",
           padding: "12px 16px",
-          boxSizing: "border-box",
-          zIndex: 99,
+          paddingBottom: "max(12px, calc(env(safe-area-inset-bottom) + 8px))",
         }}
       >
         <button
           onClick={() => router.push(`/${locale}/app/sessions/${session.id}/print`)}
           style={{
             width: "100%",
-            padding: "14px 0",
+            padding: "13px 0",
             borderRadius: 10,
             border: "none",
             background: "linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%)",
