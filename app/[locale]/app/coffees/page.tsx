@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { prisma } from "@/lib/prisma";
+import { getCoffeesWithStats } from "@/app/actions/coffees";
+import CoffeesTable from "@/components/coffees/CoffeesTable";
 
 export function generateStaticParams() {
   return [{ locale: "es" }, { locale: "en" }];
@@ -24,43 +24,40 @@ export default async function CoffeesPage({
 
   const t = await getTranslations("coffee");
 
-  const coffees = await prisma.coffee.findMany({
-    where: {
-      OR: [{ isPublic: true }, { createdBy: user.id }],
-    },
-    orderBy: { name: "asc" },
-    select: {
-      id: true,
-      name: true,
-      country: true,
-      variety: true,
-      processType: true,
-    },
-  });
+  const raw = await getCoffeesWithStats(user.id);
+  const coffees = raw.map((c) => ({
+    ...c,
+    coffeeHistory: c.coffeeHistory.map((h) => ({
+      ...h,
+      tastedAt: h.tastedAt.toISOString(),
+    })),
+  }));
+
+  const translations = {
+    searchPlaceholder: t("searchPlaceholder"),
+    colName: t("colName"),
+    colOrigin: t("colOrigin"),
+    colProcess: t("colProcess"),
+    colVariety: t("colVariety"),
+    colSessions: t("colSessions"),
+    colLastScore: t("colLastScore"),
+    colLastDate: t("colLastDate"),
+    noData: t("noData"),
+    showing: t("showing"),
+    view: t("view"),
+  };
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <h1 className="font-serif text-3xl text-green-dark font-semibold">{t("title")}</h1>
-
-      {coffees.length === 0 ? (
-        <p className="text-sm text-brown-mid">No hay cafés registrados aún.</p>
-      ) : (
-        <ul className="grid gap-2">
-          {coffees.map((c) => (
-            <li key={c.id}>
-              <Link
-                href={`/${locale}/app/coffees/${c.id}`}
-                className="block bg-[#FDFBF7] border border-brown-light rounded-lg px-4 py-3 hover:border-green-dark"
-              >
-                <div className="font-semibold text-brown-dark">{c.name}</div>
-                <div className="text-xs text-brown-mid">
-                  {[c.country, c.variety, c.processType].filter(Boolean).join(" · ")}
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+    <div className="space-y-6">
+      <div>
+        <h1 className="font-serif text-3xl text-green-dark font-semibold">
+          {t("list")}
+        </h1>
+        <p className="text-sm text-brown-mid mt-1">
+          {t("registered", { count: coffees.length })}
+        </p>
+      </div>
+      <CoffeesTable coffees={coffees} locale={locale} translations={translations} />
     </div>
   );
 }

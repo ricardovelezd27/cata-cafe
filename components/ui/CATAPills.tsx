@@ -1,11 +1,16 @@
 'use client'
 import styles from './CATAPills.module.css'
 
+export interface CATASubItem {
+  id: string
+  label: string
+}
+
 export interface CATAOption {
   id: string
   label: string
   color: string
-  subItems?: readonly string[]
+  subItems?: readonly CATASubItem[]
 }
 
 export interface CATAPillsProps {
@@ -15,6 +20,12 @@ export interface CATAPillsProps {
   maxSelect?: number
   showSubItems?: boolean
   disabled?: boolean
+}
+
+function getCounterColor(count: number, max: number): string {
+  if (count >= max) return '#A83232'
+  if (count >= max - 1) return '#C17817'
+  return '#3D5A3E'
 }
 
 export function CATAPills({ options, selected, onChange, maxSelect, showSubItems = false, disabled }: CATAPillsProps) {
@@ -34,7 +45,10 @@ export function CATAPills({ options, selected, onChange, maxSelect, showSubItems
       {maxSelect !== undefined && (
         <div className={styles.counter}>
           <span>Selecciona hasta {maxSelect}</span>
-          <span className={styles.count}>
+          <span
+            className={styles.count}
+            style={{ color: selected.length > 0 ? getCounterColor(selected.length, maxSelect) : undefined }}
+          >
             <strong>{selected.length}</strong>/{maxSelect}
           </span>
         </div>
@@ -43,6 +57,8 @@ export function CATAPills({ options, selected, onChange, maxSelect, showSubItems
       <div className={styles.familyList}>
         {options.map((opt) => {
           const isSel = selected.includes(opt.id)
+          const hasSubItems = showSubItems && opt.subItems && opt.subItems.length > 0
+
           return (
             <div key={opt.id} className={styles.family}>
               <button
@@ -62,24 +78,31 @@ export function CATAPills({ options, selected, onChange, maxSelect, showSubItems
                 {opt.label}
               </button>
 
-              {showSubItems && isSel && opt.subItems && opt.subItems.length > 0 && (
+              {hasSubItems && isSel && (
                 <div className={styles.subRow}>
-                  {opt.subItems.map((sub) => (
-                    <button
-                      key={sub}
-                      type="button"
-                      className={`${styles.pill} ${styles.sub}`}
-                      style={
-                        {
-                          '--pill-color': opt.color,
-                          '--pill-bg-soft': `color-mix(in oklch, ${opt.color} 10%, transparent)`,
-                        } as React.CSSProperties
-                      }
-                    >
-                      <span className={styles.dot} />
-                      {sub}
-                    </button>
-                  ))}
+                  {opt.subItems!.map((sub) => {
+                    const isSubSel = selected.includes(sub.id)
+                    const isSubDisabled = disabled || (!isSubSel && atLimit)
+                    return (
+                      <button
+                        key={sub.id}
+                        type="button"
+                        disabled={isSubDisabled}
+                        onClick={() => toggle(sub.id)}
+                        aria-pressed={isSubSel}
+                        className={`${styles.pill} ${styles.sub} ${isSubSel ? styles.selected : ''}`}
+                        style={
+                          {
+                            '--pill-color': opt.color,
+                            '--pill-bg-soft': `color-mix(in oklch, ${opt.color} 10%, transparent)`,
+                          } as React.CSSProperties
+                        }
+                      >
+                        <span className={styles.dot} />
+                        {sub.label}
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </div>
