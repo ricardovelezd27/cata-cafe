@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/prisma";
 import Sidebar from "@/components/layout/Sidebar";
 import TopBar from "@/components/layout/TopBar";
 import BottomNav from "@/components/layout/BottomNav";
+import OnboardingWrapper from "@/components/onboarding/OnboardingWrapper";
 import type { ReactNode } from "react";
 
 export default async function AppLayout({
@@ -22,6 +24,15 @@ export default async function AppLayout({
   } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
 
+  const profile = await prisma.profile.findUnique({
+    where: { id: user.id },
+    select: { onboardingCompleted: true, displayName: true },
+  });
+
+  const showOnboarding = !profile?.onboardingCompleted;
+  const initialDisplayName =
+    profile?.displayName ?? user.email?.split("@")[0] ?? "";
+
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar locale={locale} />
@@ -32,6 +43,11 @@ export default async function AppLayout({
         </main>
         <BottomNav locale={locale} className="lg:hidden" />
       </div>
+      <OnboardingWrapper
+        showOnboarding={showOnboarding}
+        locale={locale}
+        initialDisplayName={initialDisplayName}
+      />
     </div>
   );
 }

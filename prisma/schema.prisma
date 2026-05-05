@@ -8,13 +8,15 @@ datasource db {
 }
 
 model Profile {
-  id            String   @id
-  displayName   String
-  role          String   @default("cupping_pro")
-  preferredLang String   @default("es")
-  avatarUrl     String?
-  bio           String?
-  createdAt     DateTime @default(now())
+  id                  String   @id
+  displayName         String
+  role                String   @default("cupping_pro")
+  preferredLang       String   @default("es")
+  avatarUrl           String?
+  bio                 String?
+  country             String?
+  onboardingCompleted Boolean  @default(false)
+  createdAt           DateTime @default(now())
 
   cuppingSessions CuppingSession[]
   coffees         Coffee[]
