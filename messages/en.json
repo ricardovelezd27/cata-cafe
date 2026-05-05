@@ -25,6 +25,7 @@
     "sending": "Sending...",
     "sent": "Check your inbox and click the link to sign in.",
     "error": "We couldn't send the link. Check the email and try again.",
+    "rateLimitError": "Too many requests in a short time. Wait a few minutes and try again.",
     "signOut": "Sign out"
   },
   "dashboard": {

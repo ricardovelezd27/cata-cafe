@@ -24,6 +24,7 @@ export default async function LoginPage({
           sendingLabel={t("sending")}
           sentLabel={t("sent")}
           errorLabel={t("error")}
+          rateLimitErrorLabel={t("rateLimitError")}
           next={next}
         />
       </div>

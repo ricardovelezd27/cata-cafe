@@ -9,6 +9,7 @@ export function LoginForm({
   sendingLabel,
   sentLabel,
   errorLabel,
+  rateLimitErrorLabel,
   next,
 }: {
   emailLabel: string;
@@ -16,9 +17,10 @@ export function LoginForm({
   sendingLabel: string;
   sentLabel: string;
   errorLabel: string;
+  rateLimitErrorLabel: string;
   next?: string;
 }) {
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error" | "rate_limit">("idle");
   const [email, setEmail] = useState("");
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -26,7 +28,13 @@ export function LoginForm({
     setStatus("sending");
     const fd = new FormData(e.currentTarget);
     const result = await signInWithMagicLink(fd, next);
-    setStatus(result.ok ? "sent" : "error");
+    if (result.ok) {
+      setStatus("sent");
+    } else if (result.error?.toLowerCase().includes("rate limit")) {
+      setStatus("rate_limit");
+    } else {
+      setStatus("error");
+    }
   }
 
   if (status === "sent") {
@@ -44,7 +52,12 @@ export function LoginForm({
           name="email"
           required
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => setEmail(e.target.value.trim())}
+          autoComplete="email"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          inputMode="email"
           className="mt-1 w-full px-3 py-2 border border-[#D4C5A9] rounded-lg text-sm bg-white text-brown-dark focus:outline-none focus:border-green-dark"
         />
       </label>
@@ -56,6 +69,7 @@ export function LoginForm({
         {status === "sending" ? sendingLabel : sendLabel}
       </button>
       {status === "error" && <div className="text-red-defect text-sm">{errorLabel}</div>}
+      {status === "rate_limit" && <div className="text-red-defect text-sm">{rateLimitErrorLabel}</div>}
     </form>
   );
 }
