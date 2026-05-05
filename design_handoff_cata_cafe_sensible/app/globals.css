@@ -1,0 +1,109 @@
+/* ============================================================
+   Cata Café Sensible · Global tokens
+   SCA CVA cupping web app
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* ---------- Color · Greens ---------- */
+  --color-green-dark:   #3D5A3E;   /* primary brand · headers, locked states */
+  --color-green-mid:    #6B8F71;   /* secondary · slider fills, fresh accents */
+  --color-green-light:  #B4C8A8;   /* tertiary · subtle highlights, hovers */
+
+  /* ---------- Color · Warm accents ---------- */
+  --color-amber:        #C17817;   /* affective scores ≥7 / quality emphasis */
+
+  /* ---------- Color · Surface palette ---------- */
+  --color-bg:           #FDFBF7;   /* parchment background */
+  --color-cream:        #F5F0E6;   /* elevated surfaces */
+  --color-white:        #FFFFFF;
+
+  /* ---------- Color · Browns ---------- */
+  --color-brown-dark:   #5C4A32;   /* body text */
+  --color-brown-mid:    #8B7355;   /* secondary text */
+  --color-brown-light:  #E8E0D0;   /* hairline borders */
+
+  /* ---------- Color · Status ---------- */
+  --color-red-defect:   #A83232;   /* defects only — never decorative */
+
+  /* ---------- Color · Flavor families ---------- */
+  --color-flavor-floral:    #C17817;
+  --color-flavor-fruity:    #E8834A;
+  --color-flavor-sweet:     #B4874E;
+  --color-flavor-sour:      #A83232;
+  --color-flavor-green:     #6B8F71;
+  --color-flavor-nutty:     #8B7355;
+  --color-flavor-spice:     #9B6B4A;
+  --color-flavor-roasted:   #5C4A32;
+  --color-flavor-other:     #7A6E5F;
+
+  /* ---------- Radius ---------- */
+  --radius-card:   12px;
+  --radius-input:  8px;
+  --radius-pill:   9999px;
+
+  /* ---------- Shadow ---------- */
+  --shadow-card:    0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-card-lg: 0 8px 24px rgba(92, 74, 50, 0.10), 0 2px 6px rgba(92, 74, 50, 0.05);
+  --shadow-inset:   inset 0 1px 2px rgba(92, 74, 50, 0.06);
+
+  /* ---------- Typography ---------- */
+  --font-display: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  --font-ui:      'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* ---------- Motion ---------- */
+  --transition-fast: 150ms ease;
+  --transition-med:  240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* ---------- Spacing scale ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+}
+
+/* ============================================================
+   Base
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg);
+  color: var(--color-brown-dark);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--color-brown-dark);
+  margin: 0;
+}
+
+button { font-family: inherit; cursor: pointer; }
+
+/* Numeric tabular by default in mono contexts */
+.mono, code, pre { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* Editorial italic helper */
+.display-italic { font-family: var(--font-display); font-style: italic; }
+
+/* Visually hidden but accessible */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}

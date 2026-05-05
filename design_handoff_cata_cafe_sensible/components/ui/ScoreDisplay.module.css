@@ -1,0 +1,22 @@
+.card { position: relative; border-radius: var(--radius-card); padding: 28px 28px 24px; border: 1px solid var(--color-brown-light); background: var(--color-cream); overflow: hidden; }
+.card.green { background: color-mix(in oklch, var(--color-green-mid) 14%, var(--color-bg)); border-color: color-mix(in oklch, var(--color-green-dark) 35%, var(--color-brown-light)); }
+.card.amber { background: color-mix(in oklch, var(--color-amber) 10%, var(--color-bg)); border-color: color-mix(in oklch, var(--color-amber) 35%, var(--color-brown-light)); }
+.card.red   { background: color-mix(in oklch, var(--color-red-defect) 9%, var(--color-bg)); border-color: color-mix(in oklch, var(--color-red-defect) 30%, var(--color-brown-light)); }
+.band { position: absolute; top: 22px; right: 24px; font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; padding: 4px 8px; border-radius: 3px; color: var(--color-bg); }
+.green .band { background: var(--color-green-dark); }
+.amber .band { background: var(--color-amber); }
+.red   .band { background: var(--color-red-defect); }
+.label { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--color-brown-mid); font-weight: 500; margin: 0; }
+.num { font-family: var(--font-display); font-size: 88px; font-weight: 500; line-height: 0.95; letter-spacing: -0.025em; color: var(--color-brown-dark); font-variant-numeric: tabular-nums; margin: 4px 0; }
+.decimal { font-size: 56px; color: var(--color-brown-mid); font-style: italic; margin-left: -6px; }
+.formula { margin: 20px 0 0; padding-top: 14px; border-top: 1px solid color-mix(in oklch, var(--color-brown-light) 80%, transparent); display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; font-family: var(--font-mono); font-size: 11.5px; color: var(--color-brown-mid); }
+.formula dt { display: flex; align-items: baseline; gap: 8px; margin: 0; }
+.formula dt span { font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em; opacity: 0.7; }
+.formula dd { margin: 0; font-variant-numeric: tabular-nums; color: var(--color-brown-dark); font-weight: 500; }
+.positive { color: var(--color-green-dark) !important; }
+.penalty  { color: var(--color-red-defect) !important; }
+.expand { width: 100%; margin-top: 16px; background: transparent; border: 1px solid color-mix(in oklch, var(--color-brown-dark) 20%, var(--color-brown-light)); color: var(--color-brown-dark); font-family: var(--font-ui); font-size: 12px; font-weight: 500; padding: 10px 14px; border-radius: var(--radius-input); display: flex; align-items: center; justify-content: space-between; }
+.expandIcon { font-family: var(--font-mono); color: var(--color-brown-mid); }
+.sections { list-style: none; margin: 14px 0 0; padding: 14px 0 0; border-top: 1px dashed var(--color-brown-light); display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; font-family: var(--font-mono); font-size: 11px; color: var(--color-brown-mid); }
+.sections li { display: flex; justify-content: space-between; }
+.sectionScore { font-family: var(--font-display); font-size: 14px; font-weight: 600; color: var(--color-brown-dark); }

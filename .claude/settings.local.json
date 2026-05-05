@@ -9,7 +9,10 @@
       "mcp__Claude_Preview__preview_start",
       "Bash(npm run *)",
       "mcp__1b49c2c7-a120-43d9-9931-8b594db055fa__execute_sql",
-      "mcp__1b49c2c7-a120-43d9-9931-8b594db055fa__list_projects"
+      "mcp__1b49c2c7-a120-43d9-9931-8b594db055fa__list_projects",
+      "mcp__1b49c2c7-a120-43d9-9931-8b594db055fa__get_project",
+      "mcp__1b49c2c7-a120-43d9-9931-8b594db055fa__get_logs",
+      "Bash(node -e ' *)"
     ]
   }
 }

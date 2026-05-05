@@ -1,0 +1,13 @@
+.root { width: 100%; }
+.row { display: flex; align-items: flex-start; gap: 12px; }
+.cup { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.circle { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-mono); font-size: 13px; font-weight: 600; position: relative; }
+.uniform .circle { background: var(--color-green-mid); border: 1.5px solid var(--color-green-dark); color: var(--color-bg); }
+.nonuniform .circle { background: var(--color-bg); border: 1.5px solid var(--color-amber); color: var(--color-amber); }
+.nonuniform .circle::after { content: "≠"; position: absolute; top: -4px; right: -4px; width: 14px; height: 14px; background: var(--color-amber); color: var(--color-bg); border-radius: 50%; font-family: var(--font-ui); font-size: 9px; font-weight: 700; display: grid; place-items: center; }
+.defective .circle { background: var(--color-red-defect); border: 1.5px solid var(--color-red-defect); color: var(--color-bg); }
+.defective .circle::before { content: "×"; position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-ui); font-size: 26px; font-weight: 300; line-height: 1; color: rgba(255, 255, 255, 0.95); }
+.defective .circle span { opacity: 0; }
+.defectBadge { font-family: var(--font-mono); font-size: 8.5px; font-weight: 700; letter-spacing: 0.14em; color: var(--color-red-defect); background: color-mix(in oklch, var(--color-red-defect) 12%, var(--color-bg)); border: 1px solid color-mix(in oklch, var(--color-red-defect) 30%, transparent); padding: 3px 7px; border-radius: 3px; text-transform: uppercase; white-space: nowrap; }
+.summary { margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--color-brown-light); display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; color: var(--color-brown-mid); letter-spacing: 0.04em; }
+.summary strong { color: var(--color-brown-dark); font-family: var(--font-display); font-size: 18px; font-weight: 600; margin-left: 6px; font-variant-numeric: tabular-nums; }

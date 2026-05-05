@@ -1,0 +1,1407 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Cata Café Sensible — Design System</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --primary: #3D5A3E;
+    --secondary: #6B8F71;
+    --accent: #C17817;
+    --bg: #FDFBF7;
+    --surface: #F5F0E6;
+    --border: #E8E0D0;
+    --text-1: #5C4A32;
+    --text-2: #8B7355;
+    --danger: #A83232;
+
+    /* Flavor families */
+    --floral: #C17817;
+    --fruity: #E8834A;
+    --sweet: #B4874E;
+    --sour: #A83232;
+    --green: #6B8F71;
+    --nutty: #8B7355;
+    --spice: #9B6B4A;
+    --roasted: #5C4A32;
+    --other: #7A6E5F;
+
+    --display: "Cormorant Garamond", "Times New Roman", serif;
+    --ui: "Inter", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, monospace;
+
+    --radius-sm: 4px;
+    --radius: 8px;
+    --radius-lg: 14px;
+    --shadow-sm: 0 1px 2px rgba(92, 74, 50, 0.06);
+    --shadow: 0 2px 6px rgba(92, 74, 50, 0.08), 0 1px 2px rgba(92, 74, 50, 0.04);
+    --shadow-lg: 0 8px 24px rgba(92, 74, 50, 0.10), 0 2px 6px rgba(92, 74, 50, 0.05);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--ui);
+    background: var(--bg);
+    color: var(--text-1);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* ========== HEADER ========== */
+  .app-header {
+    background: var(--primary);
+    color: #F5F0E6;
+    padding: 18px 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(0,0,0,0.15);
+  }
+  .wordmark {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+  .wordmark-mark {
+    width: 36px; height: 36px;
+    border: 1.5px solid #C9B98A;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-family: var(--display);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 22px;
+    color: #C9B98A;
+    align-self: center;
+  }
+  .wordmark-text {
+    font-family: var(--display);
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    line-height: 1;
+  }
+  .wordmark-text em {
+    font-style: italic;
+    color: #C9B98A;
+    font-weight: 400;
+  }
+  .wordmark-sub {
+    font-family: var(--ui);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: rgba(245, 240, 230, 0.6);
+    border-left: 1px solid rgba(245, 240, 230, 0.25);
+    padding-left: 14px;
+    align-self: center;
+  }
+  .header-meta {
+    display: flex; align-items: center; gap: 24px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: rgba(245, 240, 230, 0.65);
+    font-weight: 500;
+  }
+  .header-meta .dot {
+    display: inline-block; width: 6px; height: 6px;
+    border-radius: 50%; background: #C17817;
+    margin-right: 8px; vertical-align: middle;
+  }
+
+  /* ========== CANVAS ========== */
+  .canvas {
+    padding: 48px 56px 80px;
+    max-width: 1440px;
+    margin: 0 auto;
+  }
+  .canvas-title {
+    font-family: var(--display);
+    font-size: 48px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+    color: var(--text-1);
+  }
+  .canvas-title em { font-style: italic; color: var(--primary); }
+  .canvas-sub {
+    font-size: 13px;
+    color: var(--text-2);
+    margin: 0 0 40px;
+    max-width: 640px;
+    line-height: 1.55;
+  }
+  .canvas-meta {
+    display: flex; gap: 32px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-2);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin: 0 0 56px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .canvas-meta span strong { color: var(--text-1); font-weight: 600; margin-right: 6px;}
+
+  /* ========== COMPONENT CARD ========== */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 24px;
+  }
+  .card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 28px 32px 32px;
+    position: relative;
+  }
+  .card.span-12 { grid-column: span 12; }
+  .card.span-8 { grid-column: span 8; }
+  .card.span-7 { grid-column: span 7; }
+  .card.span-6 { grid-column: span 6; }
+  .card.span-5 { grid-column: span 5; }
+  .card.span-4 { grid-column: span 4; }
+  .card-num {
+    position: absolute; top: 22px; right: 26px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-2);
+    letter-spacing: 0.1em;
+  }
+  .card-eyebrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+    margin: 0 0 4px;
+    font-weight: 500;
+  }
+  .card-title {
+    font-family: var(--display);
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text-1);
+    margin: 0 0 6px;
+    letter-spacing: -0.005em;
+  }
+  .card-desc {
+    font-size: 12.5px;
+    color: var(--text-2);
+    margin: 0 0 28px;
+    line-height: 1.5;
+    max-width: 460px;
+  }
+  .state-row {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+  .state {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    gap: 24px;
+    align-items: center;
+  }
+  .state-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--text-2);
+    font-weight: 500;
+    border-right: 1px solid var(--border);
+    padding-right: 16px;
+    text-align: right;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+  .state-body { min-width: 0; }
+
+  /* ========== 1. INTENSITY SLIDER ========== */
+  .slider {
+    position: relative;
+    padding: 28px 0 32px;
+  }
+  .slider-track {
+    height: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    position: relative;
+  }
+  .slider-fill {
+    position: absolute;
+    top: -1px; left: -1px;
+    height: 6px;
+    background: var(--secondary);
+    border: 1px solid var(--primary);
+    border-radius: 999px;
+  }
+  .slider-thumb {
+    position: absolute;
+    top: 50%;
+    width: 22px; height: 22px;
+    background: #FDFBF7;
+    border: 2px solid var(--primary);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: var(--shadow);
+  }
+  .slider-thumb::after {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    background: var(--primary);
+    border-radius: 50%;
+  }
+  .slider-value {
+    position: absolute;
+    top: -4px;
+    transform: translate(-50%, -100%);
+    font-family: var(--display);
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--primary);
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .slider-value-num { font-variant-numeric: tabular-nums; }
+  .slider-value-cap {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-2);
+    letter-spacing: 0.14em;
+    margin-left: 4px;
+    font-weight: 500;
+    text-transform: uppercase;
+  }
+  .slider-ticks {
+    position: relative;
+    margin-top: 14px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .slider-tick {
+    position: relative;
+    text-align: center;
+    flex: 1;
+  }
+  .slider-tick:first-child { text-align: left; }
+  .slider-tick:last-child { text-align: right; }
+  .slider-tick-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-2);
+    font-weight: 500;
+  }
+  .slider-tick-label {
+    display: block;
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--text-2);
+    margin-top: 4px;
+    font-weight: 500;
+  }
+  .slider-tick.major .slider-tick-num { color: var(--text-1); font-weight: 600; }
+  .slider-tick-mark {
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1px; height: 6px;
+    background: var(--border);
+  }
+  .slider-tick:first-child .slider-tick-mark { left: 0; transform: none; }
+  .slider-tick:last-child .slider-tick-mark { left: auto; right: 0; transform: none; }
+  /* empty state */
+  .slider.is-empty .slider-fill { display: none; }
+  .slider.is-empty .slider-thumb { left: 0 !important; background: var(--surface); border-color: var(--border); box-shadow: none;}
+  .slider.is-empty .slider-thumb::after { background: var(--border); }
+  .slider.is-empty .slider-value { color: var(--text-2); font-style: italic; font-size: 16px; font-weight: 500; font-family: var(--ui); }
+  /* locked state */
+  .slider.is-locked .slider-thumb { background: var(--primary); }
+  .slider.is-locked .slider-thumb::after { background: #FDFBF7; inset: 6px; }
+  .slider.is-locked .slider-fill { background: var(--primary); border-color: var(--primary); }
+  .slider.is-locked .slider-track { border-color: var(--primary); opacity: 0.4; }
+  .slider.is-locked .slider-value::after {
+    content: "✓";
+    margin-left: 8px;
+    color: var(--primary);
+    font-family: var(--ui);
+    font-size: 14px;
+    font-weight: 700;
+    vertical-align: 4px;
+  }
+
+  /* ========== 2. AFFECTIVE BUBBLE ========== */
+  .bubbles {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .bubble {
+    flex: 0 0 auto;
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    background: var(--bg);
+    display: grid; place-items: center;
+    font-family: var(--display);
+    font-size: 19px;
+    font-weight: 600;
+    color: var(--text-1);
+    transition: all .15s;
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+  }
+  .bubble:hover { border-color: var(--secondary); }
+  .bubble.is-selected {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #FDFBF7;
+    box-shadow: 0 0 0 4px rgba(61, 90, 62, 0.10);
+  }
+  .bubble.is-selected.high {
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px rgba(193, 120, 23, 0.15);
+  }
+  .bubble.is-selected.low {
+    background: var(--danger);
+    border-color: var(--danger);
+    box-shadow: 0 0 0 4px rgba(168, 50, 50, 0.12);
+  }
+  .bubble-spacer { flex: 1; min-width: 8px; max-width: 16px; }
+  .bubble-final {
+    flex: 0 0 auto;
+    margin-left: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .bubble-final-input {
+    width: 58px; height: 44px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-2);
+    text-align: center;
+    line-height: 44px;
+    font-variant-numeric: tabular-nums;
+  }
+  .bubble-final.is-set .bubble-final-input {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #FDFBF7;
+  }
+  .bubble-final-cap {
+    font-family: var(--mono);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--text-2);
+    font-weight: 600;
+  }
+  .bubble-final.is-set .bubble-final-cap { color: var(--accent); }
+  .bubbles-scale {
+    display: flex; justify-content: space-between;
+    margin-top: 12px;
+    padding-right: 90px;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-2);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+  }
+  .bubbles-scale span { width: 44px; text-align: center; line-height: 1.3; }
+  .bubbles-scale span:nth-child(2) { width: auto; flex: 1; text-align: center; }
+  .final-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    background: var(--primary);
+    color: #FDFBF7;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    border-radius: 3px;
+    margin-bottom: 10px;
+    width: fit-content;
+  }
+  .final-badge::before {
+    content: "";
+    width: 5px; height: 5px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+
+  /* Mobile bubble variant */
+  .device-frame {
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: 18px;
+    padding: 18px;
+    display: inline-block;
+    margin-top: 4px;
+  }
+  .device-frame.mobile { width: 375px; }
+  .device-frame.desktop { width: 100%; max-width: 720px; padding: 24px;}
+  .device-frame-cap {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-2);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    margin-bottom: 10px;
+    display: flex; justify-content: space-between;
+  }
+  .bubbles.mobile {
+    gap: 4px;
+  }
+  .bubbles.mobile .bubble {
+    width: 32px; height: 32px;
+    font-size: 15px;
+    border-width: 1.25px;
+  }
+  .bubbles.mobile .bubble-final-input {
+    width: 42px; height: 32px;
+    font-size: 17px;
+    line-height: 32px;
+  }
+  .bubbles.mobile .bubble-final {
+    margin-left: 8px;
+  }
+  .bubbles-scale.mobile {
+    padding-right: 56px;
+    font-size: 8px;
+    margin-top: 8px;
+  }
+  .bubbles-scale.mobile span { width: 32px; }
+
+  /* ========== 3. FLAVOR PILLS ========== */
+  .pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid;
+    font-family: var(--ui);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1;
+    cursor: pointer;
+    transition: all .12s;
+    white-space: nowrap;
+    background: transparent;
+  }
+  .pill .pill-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+  .pill.is-selected {
+    color: #FDFBF7 !important;
+    border-color: transparent !important;
+  }
+  .pill.is-selected .pill-dot { background: rgba(255,255,255,0.65); }
+  .pill.is-sub {
+    font-size: 11.5px;
+    padding: 5px 11px;
+  }
+  .pill-group {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .pill-sub-row {
+    padding-left: 16px;
+    display: flex; flex-wrap: wrap; gap: 6px;
+    border-left: 2px solid var(--border);
+    margin-left: 6px;
+    margin-top: -2px;
+  }
+
+  /* color helpers */
+  .pill[data-c="floral"]   { color: var(--floral);  border-color: var(--floral);  background: color-mix(in oklch, var(--floral)  10%, transparent);}
+  .pill[data-c="fruity"]   { color: var(--fruity);  border-color: var(--fruity);  background: color-mix(in oklch, var(--fruity)  10%, transparent);}
+  .pill[data-c="sweet"]    { color: var(--sweet);   border-color: var(--sweet);   background: color-mix(in oklch, var(--sweet)   10%, transparent);}
+  .pill[data-c="sour"]     { color: var(--sour);    border-color: var(--sour);    background: color-mix(in oklch, var(--sour)    10%, transparent);}
+  .pill[data-c="green"]    { color: var(--green);   border-color: var(--green);   background: color-mix(in oklch, var(--green)   10%, transparent);}
+  .pill[data-c="nutty"]    { color: var(--nutty);   border-color: var(--nutty);   background: color-mix(in oklch, var(--nutty)   10%, transparent);}
+  .pill[data-c="spice"]    { color: var(--spice);   border-color: var(--spice);   background: color-mix(in oklch, var(--spice)   10%, transparent);}
+  .pill[data-c="roasted"]  { color: var(--roasted); border-color: var(--roasted); background: color-mix(in oklch, var(--roasted) 10%, transparent);}
+  .pill[data-c="other"]    { color: var(--other);   border-color: var(--other);   background: color-mix(in oklch, var(--other)   10%, transparent);}
+
+  .pill[data-c="floral"].is-selected   { background: var(--floral); }
+  .pill[data-c="fruity"].is-selected   { background: var(--fruity); }
+  .pill[data-c="sweet"].is-selected    { background: var(--sweet); }
+  .pill[data-c="sour"].is-selected     { background: var(--sour); }
+  .pill[data-c="green"].is-selected    { background: var(--green); }
+  .pill[data-c="nutty"].is-selected    { background: var(--nutty); }
+  .pill[data-c="spice"].is-selected    { background: var(--spice); }
+  .pill[data-c="roasted"].is-selected  { background: var(--roasted); }
+  .pill[data-c="other"].is-selected    { background: var(--other); }
+
+  .pill-family-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--text-2);
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+
+  /* ========== 4. CUP STATUS ========== */
+  .cups {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .cup {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .cup-circle {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    color: var(--text-2);
+    position: relative;
+  }
+  .cup.uniform .cup-circle {
+    background: var(--secondary);
+    border-color: var(--primary);
+    color: #FDFBF7;
+  }
+  .cup.nonuniform .cup-circle {
+    background: var(--bg);
+    border: 1.5px solid var(--accent);
+    color: var(--accent);
+  }
+  .cup.nonuniform .cup-circle::after {
+    content: "≠";
+    position: absolute;
+    top: -4px; right: -4px;
+    width: 14px; height: 14px;
+    background: var(--accent);
+    color: #FDFBF7;
+    border-radius: 50%;
+    font-size: 9px;
+    display: grid; place-items: center;
+    font-family: var(--ui);
+    font-weight: 700;
+  }
+  .cup.defective .cup-circle {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: #FDFBF7;
+  }
+  .cup.defective .cup-circle::before {
+    content: "×";
+    position: absolute;
+    inset: 0;
+    display: grid; place-items: center;
+    font-size: 26px;
+    font-weight: 300;
+    color: rgba(255,255,255,0.95);
+    font-family: var(--ui);
+    line-height: 1;
+  }
+  .cup.defective .cup-circle span { opacity: 0; }
+  .defect-badge {
+    font-family: var(--mono);
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: var(--danger);
+    background: color-mix(in oklch, var(--danger) 12%, var(--bg));
+    border: 1px solid color-mix(in oklch, var(--danger) 30%, transparent);
+    padding: 3px 7px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .cup-cap {
+    font-family: var(--mono);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--text-2);
+    font-weight: 500;
+    text-align: center;
+  }
+  .cups-row-summary {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-2);
+    letter-spacing: 0.06em;
+  }
+  .cups-row-summary strong { color: var(--text-1); font-family: var(--display); font-size: 18px; font-weight: 600;}
+
+  /* ========== 5. SCORE CARD ========== */
+  .score-card {
+    border-radius: var(--radius-lg);
+    padding: 28px 28px 24px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    position: relative;
+    overflow: hidden;
+  }
+  .score-card.high {
+    background: color-mix(in oklch, var(--secondary) 14%, var(--bg));
+    border-color: color-mix(in oklch, var(--primary) 35%, var(--border));
+  }
+  .score-card.mid {
+    background: color-mix(in oklch, var(--accent) 10%, var(--bg));
+    border-color: color-mix(in oklch, var(--accent) 35%, var(--border));
+  }
+  .score-card.low {
+    background: color-mix(in oklch, var(--danger) 9%, var(--bg));
+    border-color: color-mix(in oklch, var(--danger) 30%, var(--border));
+  }
+  .score-band {
+    position: absolute;
+    top: 22px; right: 24px;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    padding: 4px 8px;
+    border-radius: 3px;
+  }
+  .score-card.high .score-band { background: var(--primary); color: #FDFBF7; }
+  .score-card.mid  .score-band { background: var(--accent); color: #FDFBF7; }
+  .score-card.low  .score-band { background: var(--danger); color: #FDFBF7; }
+  .score-num {
+    font-family: var(--display);
+    font-size: 88px;
+    font-weight: 500;
+    line-height: 0.95;
+    letter-spacing: -0.025em;
+    color: var(--text-1);
+    font-variant-numeric: tabular-nums;
+    margin: 4px 0 4px;
+  }
+  .score-num .score-decimal {
+    font-size: 56px;
+    color: var(--text-2);
+    font-style: italic;
+    margin-left: -6px;
+  }
+  .score-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--text-2);
+    font-weight: 500;
+  }
+  .score-formula {
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px 16px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--text-2);
+  }
+  .score-formula dt {
+    display: flex; align-items: baseline; gap: 8px;
+  }
+  .score-formula dt span {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--text-2); opacity: 0.7;
+  }
+  .score-formula dd {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-1);
+    font-weight: 500;
+  }
+  .score-formula dd.positive { color: var(--primary); }
+  .score-formula dd.penalty { color: var(--danger); }
+  .score-expand {
+    margin-top: 18px;
+    width: 100%;
+    background: transparent;
+    border: 1px solid color-mix(in oklch, var(--text-1) 20%, var(--border));
+    color: var(--text-1);
+    font-family: var(--ui);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    padding: 10px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .score-expand::after {
+    content: "↓";
+    font-family: var(--mono);
+    color: var(--text-2);
+  }
+
+  /* ========== 6. SAMPLE TABS ========== */
+  .sample-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    padding: 5px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    width: fit-content;
+  }
+  .sample-tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: transparent;
+    border: 0;
+    font-family: var(--ui);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-1);
+    cursor: pointer;
+    line-height: 1.2;
+  }
+  .sample-tab.is-active {
+    background: var(--primary);
+    color: #FDFBF7;
+    box-shadow: var(--shadow-sm);
+  }
+  .sample-tab .sample-letter {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1;
+  }
+  .sample-tab.has-name { padding-right: 18px; }
+  .sample-tab .sample-name {
+    font-size: 12px;
+    font-weight: 500;
+    opacity: 0.92;
+    letter-spacing: 0.01em;
+  }
+  .sample-tab .sample-name em {
+    font-style: normal;
+    opacity: 0.7;
+    font-weight: 400;
+  }
+  .sample-tab .flag { font-size: 14px; line-height: 1;}
+  .sample-tabs-block + .sample-tabs-block { margin-top: 18px;}
+  .sample-mode-cap {
+    font-family: var(--mono);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--text-2);
+    margin-bottom: 8px;
+    font-weight: 500;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .sample-mode-cap::before {
+    content: "";
+    width: 5px; height: 5px;
+    background: var(--text-2);
+    border-radius: 50%;
+  }
+  .sample-mode-cap.revealed::before { background: var(--accent); }
+
+  /* ========== 7. PHASE STEPPER ========== */
+  .stepper {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    width: 100%;
+  }
+  .step {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    min-width: 0;
+  }
+  .step-dot {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    display: grid; place-items: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-2);
+    z-index: 1;
+    transition: all .15s;
+  }
+  .step.complete .step-dot {
+    background: var(--secondary);
+    border-color: var(--primary);
+    color: #FDFBF7;
+  }
+  .step.complete .step-dot::after {
+    content: "✓"; font-family: var(--ui); font-size: 13px; font-weight: 700;
+  }
+  .step.complete .step-dot span { display: none; }
+  .step.current .step-dot {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #FDFBF7;
+    box-shadow: 0 0 0 4px rgba(61, 90, 62, 0.12);
+  }
+  .step-label {
+    font-family: var(--ui);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-2);
+    letter-spacing: 0.02em;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .step.current .step-label {
+    font-weight: 700;
+    color: var(--text-1);
+  }
+  .step.complete .step-label { color: var(--text-1); }
+  .step-connector {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+    margin: 0 -12px;
+    align-self: flex-start;
+    margin-top: 13px;
+    min-width: 8px;
+    position: relative;
+    z-index: 0;
+  }
+  .step-connector.is-done {
+    background: var(--secondary);
+  }
+
+  /* ========== FOOT ========== */
+  .legend {
+    margin-top: 64px;
+    padding: 24px 32px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 32px;
+  }
+  .legend h4 {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--text-2);
+    margin: 0 0 12px;
+    font-weight: 500;
+  }
+  .legend-row {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12px; color: var(--text-1);
+    margin-bottom: 6px;
+  }
+  .swatch {
+    width: 14px; height: 14px;
+    border-radius: 3px;
+    border: 1px solid rgba(0,0,0,0.06);
+  }
+  .legend-row code {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--text-2);
+    margin-left: auto;
+  }
+  .type-spec {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .type-spec-item {
+    display: flex; align-items: baseline; gap: 10px;
+    font-size: 12px; color: var(--text-2);
+  }
+  .type-spec-item .specimen { font-size: 22px; font-weight: 500; color: var(--text-1); width: 38px;}
+  .type-spec-item .specimen.disp { font-family: var(--display); font-style: italic; }
+  .type-spec-item .specimen.ui   { font-family: var(--ui); }
+  .type-spec-item .specimen.mono { font-family: var(--mono); font-size: 18px;}
+
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="wordmark">
+    <div class="wordmark-mark">c</div>
+    <div>
+      <div class="wordmark-text">Cata <em>Café Sensible</em></div>
+    </div>
+    <div class="wordmark-sub">Sistema de Cata · CVA · SCA</div>
+  </div>
+  <div class="header-meta">
+    <span><span class="dot"></span>Sesión activa · 18 muestras</span>
+    <span>v 1.0 · Spec sheet</span>
+  </div>
+</header>
+
+<main class="canvas">
+
+  <p class="card-eyebrow" style="color: var(--text-2);">Sistema de diseño</p>
+  <h1 class="canvas-title">Componentes <em>atómicos</em></h1>
+  <p class="canvas-sub">Una colección de los siete componentes fundamentales que estructuran la evaluación CVA. Cada componente se documenta en estado inactivo y activo. Tipografía Cormorant Garamond para puntuaciones e itálicas editoriales; Inter para todo lo funcional; JetBrains Mono para precisión numérica.</p>
+
+  <div class="canvas-meta">
+    <span><strong>01</strong>Slider</span>
+    <span><strong>02</strong>Burbujas afectivas</span>
+    <span><strong>03</strong>Píldoras CATA</span>
+    <span><strong>04</strong>Estado de tazas</span>
+    <span><strong>05</strong>Puntuación</span>
+    <span><strong>06</strong>Pestañas de muestra</span>
+    <span><strong>07</strong>Fase de cata</span>
+  </div>
+
+  <div class="grid">
+
+    <!-- 01 INTENSITY SLIDER -->
+    <section class="card span-7">
+      <span class="card-num">01 / 07</span>
+      <p class="card-eyebrow">Atributo descriptivo · Intensidad</p>
+      <h2 class="card-title">Intensity Slider</h2>
+      <p class="card-desc">Escala lineal 0–15 para los seis atributos descriptivos: Fragancia/Aroma, Sabor, Regusto, Acidez, Dulzor, Sensación. Pista horizontal con anclas LOW · MEDIUM · HIGH a 0 / 5 / 10 / 15.</p>
+
+      <div class="state-row">
+        <div class="state">
+          <div class="state-label">Vacío</div>
+          <div class="state-body">
+            <div class="slider is-empty">
+              <div class="slider-track"></div>
+              <div class="slider-thumb" style="left: 0%"></div>
+              <div class="slider-value" style="left: 0%; transform: translate(0, -100%);">Sin marcar</div>
+              <div class="slider-ticks">
+                <div class="slider-tick major"><span class="slider-tick-mark"></span><span class="slider-tick-num">0</span><span class="slider-tick-label">Low</span></div>
+                <div class="slider-tick"><span class="slider-tick-mark"></span><span class="slider-tick-num">5</span></div>
+                <div class="slider-tick major"><span class="slider-tick-mark"></span><span class="slider-tick-num">10</span><span class="slider-tick-label">Medium</span></div>
+                <div class="slider-tick major"><span class="slider-tick-mark"></span><span class="slider-tick-num">15</span><span class="slider-tick-label">High</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="state">
+          <div class="state-label">Marcado</div>
+          <div class="state-body">
+            <div class="slider">
+              <div class="slider-track"><div class="slider-fill" style="width: 56%"></div></div>
+              <div class="slider-thumb" style="left: 56%"></div>
+              <div class="slider-value" style="left: 56%"><span class="slider-value-num">8.4</span><span class="slider-value-cap">/15</span></div>
+              <div class="slider-ticks">
+                <div class="slider-tick major"><span class="slider-tick-mark"></span><span class="slider-tick-num">0</span><span class="slider-tick-label">Low</span></div>
+                <div class="slider-tick"><span class="slider-tick-mark"></span><span class="slider-tick-num">5</span></div>
+                <div class="slider-tick major"><span class="slider-tick-mark"></span><span class="slider-tick-num">10</span><span class="slider-tick-label">Medium</span></div>
+                <div class="slider-tick major"><span class="slider-tick-mark"></span><span class="slider-tick-num">15</span><span class="slider-tick-label">High</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="state">
+          <div class="state-label">Bloqueado</div>
+          <div class="state-body">
+            <div class="slider is-locked">
+              <div class="slider-track"><div class="slider-fill" style="width: 73.3%"></div></div>
+              <div class="slider-thumb" style="left: 73.3%"></div>
+              <div class="slider-value" style="left: 73.3%"><span class="slider-value-num">11.0</span><span class="slider-value-cap">/15</span></div>
+              <div class="slider-ticks">
+                <div class="slider-tick major"><span class="slider-tick-mark"></span><span class="slider-tick-num">0</span><span class="slider-tick-label">Low</span></div>
+                <div class="slider-tick"><span class="slider-tick-mark"></span><span class="slider-tick-num">5</span></div>
+                <div class="slider-tick major"><span class="slider-tick-mark"></span><span class="slider-tick-num">10</span><span class="slider-tick-label">Medium</span></div>
+                <div class="slider-tick major"><span class="slider-tick-mark"></span><span class="slider-tick-num">15</span><span class="slider-tick-label">High</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05 SCORE CARD -->
+    <section class="card span-5">
+      <span class="card-num">05 / 07</span>
+      <p class="card-eyebrow">Salida · Cálculo final</p>
+      <h2 class="card-title">Score Display</h2>
+      <p class="card-desc">Puntuación final CVA. El color de banda refleja el rango: ≥85 verde, 75–84 ámbar, &lt;75 rojo.</p>
+      <div class="score-card high">
+        <span class="score-band">Excepcional</span>
+        <p class="score-label">Puntuación CVA</p>
+        <div class="score-num">86<span class="score-decimal">.25</span></div>
+        <dl class="score-formula">
+          <dt><span>Σhᵢ</span> Suma de afectivos</dt>
+          <dd class="positive">+ 56.00</dd>
+          <dt><span>×0.65625</span> Coeficiente</dt>
+          <dd>36.75</dd>
+          <dt><span>+ 52.75</span> Constante CVA</dt>
+          <dd>89.50</dd>
+          <dt><span>u</span> Penalización uniformidad</dt>
+          <dd class="penalty">− 1.25</dd>
+          <dt><span>d</span> Penalización defectos</dt>
+          <dd class="penalty">− 2.00</dd>
+        </dl>
+        <button class="score-expand">Ver desglose completo</button>
+      </div>
+    </section>
+
+    <!-- 02 AFFECTIVE BUBBLE -->
+    <section class="card span-12">
+      <span class="card-num">02 / 07</span>
+      <p class="card-eyebrow">Evaluación afectiva · 1–9</p>
+      <h2 class="card-title">Affective Bubble Selector</h2>
+      <p class="card-desc">Escala hedónica de nueve puntos. Selección por toque; el casillero FINAL al final de la fila confirma la lectura definitiva. Ámbar para excelencia (≥7), rojo apagado para puntuaciones bajas (≤3).</p>
+
+      <div class="state-row">
+        <div class="state">
+          <div class="state-label">Vacío</div>
+          <div class="state-body">
+            <div class="bubbles">
+              <div class="bubble">1</div><div class="bubble">2</div><div class="bubble">3</div>
+              <div class="bubble">4</div><div class="bubble">5</div><div class="bubble">6</div>
+              <div class="bubble">7</div><div class="bubble">8</div><div class="bubble">9</div>
+              <div class="bubble-final">
+                <div class="bubble-final-cap">Final</div>
+                <div class="bubble-final-input">—</div>
+              </div>
+            </div>
+            <div class="bubbles-scale">
+              <span>Extr.<br/>baja</span>
+              <span>Ni alta ni baja</span>
+              <span>Extr.<br/>alta</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="state">
+          <div class="state-label">Alto · 8</div>
+          <div class="state-body">
+            <span class="final-badge">Final · 8.00</span>
+            <div class="bubbles">
+              <div class="bubble">1</div><div class="bubble">2</div><div class="bubble">3</div>
+              <div class="bubble">4</div><div class="bubble">5</div><div class="bubble">6</div>
+              <div class="bubble">7</div><div class="bubble is-selected high">8</div><div class="bubble">9</div>
+              <div class="bubble-final is-set">
+                <div class="bubble-final-cap">Final</div>
+                <div class="bubble-final-input">8</div>
+              </div>
+            </div>
+            <div class="bubbles-scale">
+              <span>Extr.<br/>baja</span>
+              <span>Ni alta ni baja</span>
+              <span>Extr.<br/>alta</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="state">
+          <div class="state-label">Bajo · 2</div>
+          <div class="state-body">
+            <span class="final-badge">Final · 2.00</span>
+            <div class="bubbles">
+              <div class="bubble">1</div><div class="bubble is-selected low">2</div><div class="bubble">3</div>
+              <div class="bubble">4</div><div class="bubble">5</div><div class="bubble">6</div>
+              <div class="bubble">7</div><div class="bubble">8</div><div class="bubble">9</div>
+              <div class="bubble-final is-set">
+                <div class="bubble-final-cap">Final</div>
+                <div class="bubble-final-input">2</div>
+              </div>
+            </div>
+            <div class="bubbles-scale">
+              <span>Extr.<br/>baja</span>
+              <span>Ni alta ni baja</span>
+              <span>Extr.<br/>alta</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- responsive variants -->
+      <div style="margin-top: 36px; padding-top: 28px; border-top: 1px dashed var(--border);">
+        <p class="card-eyebrow" style="color: var(--text-2);">Variantes responsivas</p>
+        <h3 style="font-family: var(--display); font-size: 18px; margin: 0 0 18px; font-weight: 600;">Adaptación a viewport</h3>
+        <div style="display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap;">
+          <div class="device-frame mobile">
+            <div class="device-frame-cap"><span>Mobile · 375px</span><span>bubble 32×32</span></div>
+            <div class="bubbles mobile">
+              <div class="bubble">1</div><div class="bubble">2</div><div class="bubble">3</div>
+              <div class="bubble">4</div><div class="bubble">5</div><div class="bubble">6</div>
+              <div class="bubble is-selected high">7</div><div class="bubble">8</div><div class="bubble">9</div>
+              <div class="bubble-final is-set">
+                <div class="bubble-final-cap">Final</div>
+                <div class="bubble-final-input">7</div>
+              </div>
+            </div>
+            <div class="bubbles-scale mobile">
+              <span>Baja</span><span>Neutra</span><span>Alta</span>
+            </div>
+          </div>
+          <div class="device-frame desktop" style="flex: 1; min-width: 480px;">
+            <div class="device-frame-cap"><span>Desktop · 1280px</span><span>bubble 44×44</span></div>
+            <div class="bubbles">
+              <div class="bubble">1</div><div class="bubble">2</div><div class="bubble">3</div>
+              <div class="bubble">4</div><div class="bubble">5</div><div class="bubble">6</div>
+              <div class="bubble is-selected high">7</div><div class="bubble">8</div><div class="bubble">9</div>
+              <div class="bubble-final is-set">
+                <div class="bubble-final-cap">Final</div>
+                <div class="bubble-final-input">7</div>
+              </div>
+            </div>
+            <div class="bubbles-scale">
+              <span>Extremadamente baja</span>
+              <span>Ni alta ni baja</span>
+              <span>Extremadamente alta</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 FLAVOR PILLS -->
+    <section class="card span-8">
+      <span class="card-num">03 / 07</span>
+      <p class="card-eyebrow">CATA · Marcar todos los aplicables</p>
+      <h2 class="card-title">Flavor Pills</h2>
+      <p class="card-desc">Nueve familias de descriptores con sub-categorías opcionales. Sin marcar muestra fondo translúcido al 10 % del color de familia con borde y texto en color sólido; al seleccionar el píldoro se rellena.</p>
+
+      <div class="state-row" style="gap: 20px;">
+        <div class="state">
+          <div class="state-label">Familias</div>
+          <div class="state-body">
+            <div class="pills">
+              <span class="pill" data-c="floral"><span class="pill-dot"></span>Floral</span>
+              <span class="pill is-selected" data-c="fruity"><span class="pill-dot"></span>Frutal</span>
+              <span class="pill is-selected" data-c="sweet"><span class="pill-dot"></span>Dulce</span>
+              <span class="pill" data-c="sour"><span class="pill-dot"></span>Ácido / Fermentado</span>
+              <span class="pill" data-c="green"><span class="pill-dot"></span>Verde / Vegetal</span>
+              <span class="pill is-selected" data-c="nutty"><span class="pill-dot"></span>Nuez / Cacao</span>
+              <span class="pill" data-c="spice"><span class="pill-dot"></span>Especia</span>
+              <span class="pill" data-c="roasted"><span class="pill-dot"></span>Tostado</span>
+              <span class="pill" data-c="other"><span class="pill-dot"></span>Otro</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="state" style="align-items: flex-start;">
+          <div class="state-label" style="padding-top: 8px;">Sub-cat.</div>
+          <div class="state-body">
+            <p class="pill-family-label">Frutal · 4 sub-categorías</p>
+            <div class="pill-sub-row">
+              <span class="pill is-sub is-selected" data-c="fruity"><span class="pill-dot"></span>Bayas</span>
+              <span class="pill is-sub" data-c="fruity"><span class="pill-dot"></span>Frutas secas</span>
+              <span class="pill is-sub is-selected" data-c="fruity"><span class="pill-dot"></span>Cítrico</span>
+              <span class="pill is-sub" data-c="fruity"><span class="pill-dot"></span>Otra fruta</span>
+            </div>
+            <p class="pill-family-label" style="margin-top: 16px;">Nuez / Cacao · 2 sub-categorías</p>
+            <div class="pill-sub-row">
+              <span class="pill is-sub is-selected" data-c="nutty"><span class="pill-dot"></span>Nuez</span>
+              <span class="pill is-sub" data-c="nutty"><span class="pill-dot"></span>Cacao</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 CUP STATUS -->
+    <section class="card span-4">
+      <span class="card-num">04 / 07</span>
+      <p class="card-eyebrow">Calidad · 5 tazas por muestra</p>
+      <h2 class="card-title">Cup Status</h2>
+      <p class="card-desc">Cinco tazas por muestra. Uniformes, no uniformes y defectuosas con etiqueta de defecto.</p>
+
+      <div class="state-row">
+        <div class="state" style="grid-template-columns: 70px 1fr;">
+          <div class="state-label">Uniforme</div>
+          <div class="state-body">
+            <div class="cups">
+              <div class="cup uniform"><div class="cup-circle"><span>1</span></div></div>
+              <div class="cup uniform"><div class="cup-circle"><span>2</span></div></div>
+              <div class="cup uniform"><div class="cup-circle"><span>3</span></div></div>
+              <div class="cup uniform"><div class="cup-circle"><span>4</span></div></div>
+              <div class="cup uniform"><div class="cup-circle"><span>5</span></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="state" style="grid-template-columns: 70px 1fr;">
+          <div class="state-label">No unif.</div>
+          <div class="state-body">
+            <div class="cups">
+              <div class="cup uniform"><div class="cup-circle"><span>1</span></div></div>
+              <div class="cup uniform"><div class="cup-circle"><span>2</span></div></div>
+              <div class="cup nonuniform"><div class="cup-circle"><span>3</span></div></div>
+              <div class="cup uniform"><div class="cup-circle"><span>4</span></div></div>
+              <div class="cup uniform"><div class="cup-circle"><span>5</span></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="state" style="grid-template-columns: 70px 1fr;">
+          <div class="state-label">Defecto</div>
+          <div class="state-body">
+            <div class="cups">
+              <div class="cup uniform"><div class="cup-circle"><span>1</span></div></div>
+              <div class="cup defective"><div class="cup-circle"><span>2</span></div><span class="defect-badge">Potato</span></div>
+              <div class="cup uniform"><div class="cup-circle"><span>3</span></div></div>
+              <div class="cup defective"><div class="cup-circle"><span>4</span></div><span class="defect-badge">Phenolic</span></div>
+              <div class="cup uniform"><div class="cup-circle"><span>5</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cups-row-summary">
+        <span>Uniformidad <strong>3 / 5</strong></span>
+        <span>Defectos <strong>2</strong></span>
+      </div>
+    </section>
+
+    <!-- 06 SAMPLE TABS -->
+    <section class="card span-7">
+      <span class="card-num">06 / 07</span>
+      <p class="card-eyebrow">Navegación · Selector de muestra</p>
+      <h2 class="card-title">Sample Tabs</h2>
+      <p class="card-desc">Pestañas para alternar entre muestras de la sesión. Modo ciego oculta el origen; modo revelado muestra hacienda y país tras la sesión.</p>
+
+      <div class="sample-tabs-block">
+        <div class="sample-mode-cap">Modo ciego · pre-cata</div>
+        <div class="sample-tabs">
+          <button class="sample-tab is-active"><span class="sample-letter">A</span><span class="sample-name">Muestra A</span></button>
+          <button class="sample-tab"><span class="sample-letter">B</span><span class="sample-name">Muestra B</span></button>
+          <button class="sample-tab"><span class="sample-letter">C</span><span class="sample-name">Muestra C</span></button>
+          <button class="sample-tab"><span class="sample-letter">D</span><span class="sample-name">Muestra D</span></button>
+          <button class="sample-tab"><span class="sample-letter">E</span><span class="sample-name">Muestra E</span></button>
+        </div>
+      </div>
+
+      <div class="sample-tabs-block">
+        <div class="sample-mode-cap revealed">Modo revelado · post-cata</div>
+        <div class="sample-tabs">
+          <button class="sample-tab is-active has-name"><span class="sample-letter">A</span><span class="sample-name">Hacienda La Palma <em>· Colombia</em></span><span class="flag">🇨🇴</span></button>
+          <button class="sample-tab has-name"><span class="sample-letter">B</span><span class="sample-name">Finca El Injerto <em>· Guatemala</em></span><span class="flag">🇬🇹</span></button>
+          <button class="sample-tab has-name"><span class="sample-letter">C</span><span class="sample-name">Yirgacheffe Konga <em>· Etiopía</em></span><span class="flag">🇪🇹</span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 07 PHASE STEPPER -->
+    <section class="card span-5">
+      <span class="card-num">07 / 07</span>
+      <p class="card-eyebrow">Progreso · Fases de cata</p>
+      <h2 class="card-title">Phase Stepper</h2>
+      <p class="card-desc">Las siete fases del protocolo CVA, cronológicas. Bloqueadas hasta firmar la fase anterior.</p>
+
+      <div style="margin-top: 8px;">
+        <div class="stepper">
+          <div class="step complete"><div class="step-dot"><span>1</span></div><div class="step-label">Fragancia</div></div>
+          <div class="step-connector is-done"></div>
+          <div class="step complete"><div class="step-dot"><span>2</span></div><div class="step-label">Aroma</div></div>
+          <div class="step-connector is-done"></div>
+          <div class="step current"><div class="step-dot"><span>3</span></div><div class="step-label">Sabor / Regusto</div></div>
+          <div class="step-connector"></div>
+          <div class="step"><div class="step-dot"><span>4</span></div><div class="step-label">Acidez</div></div>
+          <div class="step-connector"></div>
+          <div class="step"><div class="step-dot"><span>5</span></div><div class="step-label">Dulzor</div></div>
+          <div class="step-connector"></div>
+          <div class="step"><div class="step-dot"><span>6</span></div><div class="step-label">Sensación</div></div>
+          <div class="step-connector"></div>
+          <div class="step"><div class="step-dot"><span>7</span></div><div class="step-label">Global</div></div>
+        </div>
+      </div>
+
+      <div style="margin-top: 28px; padding-top: 16px; border-top: 1px dashed var(--border); display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--text-2); letter-spacing: 0.04em;">
+        <span>Progreso · <strong style="color: var(--text-1); font-family: var(--display); font-size: 16px; font-weight: 600;">2 / 7</strong></span>
+        <span>Tiempo en cata · <strong style="color: var(--text-1); font-family: var(--display); font-size: 16px; font-weight: 600;">14:32</strong></span>
+        <span style="color: var(--accent);">● En progreso</span>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- LEGEND -->
+  <section class="legend">
+    <div>
+      <h4>Paleta</h4>
+      <div class="legend-row"><span class="swatch" style="background: #3D5A3E"></span>Verde bosque <code>#3D5A3E</code></div>
+      <div class="legend-row"><span class="swatch" style="background: #6B8F71"></span>Verde sage <code>#6B8F71</code></div>
+      <div class="legend-row"><span class="swatch" style="background: #C17817"></span>Ámbar cálido <code>#C17817</code></div>
+      <div class="legend-row"><span class="swatch" style="background: #FDFBF7"></span>Pergamino <code>#FDFBF7</code></div>
+      <div class="legend-row"><span class="swatch" style="background: #F5F0E6"></span>Crema <code>#F5F0E6</code></div>
+      <div class="legend-row"><span class="swatch" style="background: #5C4A32"></span>Marrón texto <code>#5C4A32</code></div>
+      <div class="legend-row"><span class="swatch" style="background: #A83232"></span>Rojo defecto <code>#A83232</code></div>
+    </div>
+    <div>
+      <h4>Tipografía</h4>
+      <div class="type-spec">
+        <div class="type-spec-item"><span class="specimen disp">86</span>Cormorant Garamond · Display</div>
+        <div class="type-spec-item"><span class="specimen ui">Aa</span>Inter · UI</div>
+        <div class="type-spec-item"><span class="specimen mono">15</span>JetBrains Mono · Numérico</div>
+      </div>
+    </div>
+    <div>
+      <h4>Radios</h4>
+      <div class="legend-row"><span class="swatch" style="background: var(--surface); border-radius: 3px;"></span>4 px · controles</div>
+      <div class="legend-row"><span class="swatch" style="background: var(--surface); border-radius: 8px;"></span>8 px · entradas</div>
+      <div class="legend-row"><span class="swatch" style="background: var(--surface); border-radius: 14px;"></span>14 px · tarjetas</div>
+      <div class="legend-row"><span class="swatch" style="background: var(--surface); border-radius: 999px;"></span>Pill · botones</div>
+    </div>
+    <div>
+      <h4>Espaciado</h4>
+      <div class="legend-row"><span class="swatch" style="background: var(--primary); width: 4px; height: 14px;"></span>4 / 8 / 12 px · interno</div>
+      <div class="legend-row"><span class="swatch" style="background: var(--primary); width: 8px; height: 14px;"></span>16 / 24 px · agrupar</div>
+      <div class="legend-row"><span class="swatch" style="background: var(--primary); width: 14px; height: 14px;"></span>32 / 48 px · sección</div>
+      <div class="legend-row"><span class="swatch" style="background: var(--primary); width: 20px; height: 14px;"></span>56 / 80 px · página</div>
+    </div>
+  </section>
+
+</main>
+
+</body>
+</html>

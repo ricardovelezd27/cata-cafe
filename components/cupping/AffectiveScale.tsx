@@ -101,19 +101,19 @@ export function AffectiveScale({
             <div style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 6, width: "100%" }}>
               <span style={{ color: "#C17817" }}>
                 {value}{" "}
-                <span style={{ fontSize: 9 }}>({AFFECTIVE_LABELS[value - 1]})</span>
+                <span style={{ fontSize: 9 }}>({AFFECTIVE_LABELS[value]})</span>
               </span>
               <span style={{ color: "#8B7355", fontSize: 13 }}>→</span>
               <span style={{ color: "#3D5A3E", fontWeight: 700 }}>
                 {effectiveFinal}{" "}
                 <span style={{ fontSize: 9 }}>
-                  ({AFFECTIVE_LABELS[(effectiveFinal as number) - 1]})
+                  ({AFFECTIVE_LABELS[effectiveFinal as number]})
                 </span>
               </span>
             </div>
           ) : (
             <div style={{ fontSize: 11, color: "#3D5A3E", fontStyle: "italic", textAlign: "center", width: "100%" }}>
-              {AFFECTIVE_LABELS[value - 1]}
+              {AFFECTIVE_LABELS[value]}
             </div>
           )}
         </div>

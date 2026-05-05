@@ -1,5 +1,108 @@
-// Reference data ported verbatim from the v1 single-file app.
-// Labels stay in Spanish; translations happen in the UI layer via next-intl.
+// Reference data for the SCA CVA cupping protocol.
+// Labels are in Spanish; translations happen in the UI layer via next-intl.
+
+/* ============================================================
+   NEW: Cupping sections (SCA CVA chronological order)
+   ============================================================ */
+export const CUPPING_SECTIONS = [
+  { id: 'fragrance',  label: 'Fragancia',         labelEs: 'Fragancia',         step: 1, type: 'orthonasal' },
+  { id: 'aroma',      label: 'Aroma',             labelEs: 'Aroma',             step: 2, type: 'orthonasal' },
+  { id: 'flavor',     label: 'Sabor',             labelEs: 'Sabor',             step: 3, type: 'gustative_retronasal' },
+  { id: 'aftertaste', label: 'Regusto',           labelEs: 'Regusto',           step: 3, type: 'gustative_retronasal' },
+  { id: 'acidity',    label: 'Acidez',            labelEs: 'Acidez',            step: 3, type: 'gustative',            freeDescriptors: true },
+  { id: 'sweetness',  label: 'Dulzor',            labelEs: 'Dulzor',            step: 3, type: 'gustative_retronasal', freeDescriptors: true },
+  { id: 'mouthfeel',  label: 'Sensación en Boca', labelEs: 'Sensación en Boca', step: 3, type: 'tactile' },
+  { id: 'overall',    label: 'Global',            labelEs: 'Global',            step: 4, affectiveOnly: true },
+] as const
+
+export type CuppingSectionId = (typeof CUPPING_SECTIONS)[number]['id']
+
+/* ============================================================
+   NEW: Affective scale (1–9) labels — Record<number, string>
+   ============================================================ */
+export const AFFECTIVE_LABELS: Record<number, string> = {
+  1: 'Extremadamente bajo',
+  2: 'Muy bajo',
+  3: 'Moderadamente bajo',
+  4: 'Ligeramente bajo',
+  5: 'Ni alto ni bajo',
+  6: 'Ligeramente alto',
+  7: 'Moderadamente alto',
+  8: 'Muy alto',
+  9: 'Extremadamente alto',
+}
+
+export const AFFECTIVE_SHORT: Record<number, string> = {
+  1: 'Extr. bajo', 2: 'Muy bajo',  3: 'Mod. bajo',
+  4: 'Lig. bajo',  5: 'Neutro',    6: 'Lig. alto',
+  7: 'Mod. alto',  8: 'Muy alto',  9: 'Extr. alto',
+}
+
+/* ============================================================
+   NEW: CATA flavor families (with sub-descriptors + colors)
+   ============================================================ */
+export const FLAVOR_FAMILIES = [
+  { id: 'floral',         label: 'Floral',           color: '#C17817', subItems: ['Floral'] },
+  { id: 'fruity',         label: 'Frutal',           color: '#E8834A', subItems: ['Berry', 'Fruta Seca', 'Cítrico'] },
+  { id: 'sweet',          label: 'Dulce',            color: '#B4874E', subItems: ['Vainilla/Vainillín', 'Azúcar moreno'] },
+  { id: 'sour_fermented', label: 'Ácido/Fermentado', color: '#A83232', subItems: ['Ácido', 'Fermentado'] },
+  { id: 'green_veg',      label: 'Verde/Vegetal',    color: '#6B8F71', subItems: ['Verde/Vegetal'] },
+  { id: 'nutty_cocoa',    label: 'Nueces/Cacao',     color: '#8B7355', subItems: ['Nueces', 'Cacao'] },
+  { id: 'spice',          label: 'Especia',          color: '#9B6B4A', subItems: ['Especia'] },
+  { id: 'roasted',        label: 'Tostado',          color: '#5C4A32', subItems: ['Cereal', 'Quemado', 'Tabaco'] },
+  { id: 'other',          label: 'Otro',             color: '#7A6E5F', subItems: ['Químico', 'Húmedo/Terroso', 'Madera'] },
+] as const
+
+export type FlavorFamilyId = (typeof FLAVOR_FAMILIES)[number]['id']
+
+/* ============================================================
+   NEW: Mouthfeel CATA (flat list)
+   ============================================================ */
+export const MOUTHFEEL_OPTIONS = [
+  { id: 'rough',        label: 'Rugoso (Granuloso, Calcáreo, Arenoso)' },
+  { id: 'oily',         label: 'Aceitoso' },
+  { id: 'smooth',       label: 'Suave (Aterciopelado, Sedoso, Almíbar)' },
+  { id: 'mouth_drying', label: 'Astringente (Boca Seca)' },
+  { id: 'metallic',     label: 'Metálico' },
+] as const
+
+/* ============================================================
+   NEW: Five basic tastes (structured)
+   ============================================================ */
+export const MAIN_TASTES = [
+  { id: 'salty',  label: 'Salado' },
+  { id: 'sour',   label: 'Ácido' },
+  { id: 'sweet',  label: 'Dulce' },
+  { id: 'bitter', label: 'Amargo' },
+  { id: 'umami',  label: 'Umami' },
+] as const
+
+/* ============================================================
+   NEW: Sensory defects (English IDs, Spanish display)
+   ============================================================ */
+export const SENSORY_DEFECTS = ['potato', 'moldy', 'phenolic'] as const
+export type SensoryDefect = (typeof SENSORY_DEFECTS)[number]
+
+export const SENSORY_DEFECT_LABELS: Record<SensoryDefect, string> = {
+  potato:   'POTATO',
+  moldy:    'MOLDY',
+  phenolic: 'PHENOLIC',
+}
+
+/* ============================================================
+   NEW: CATA selection limits per section
+   ============================================================ */
+export const CATA_MAX_SELECT: Partial<Record<CuppingSectionId, number>> = {
+  fragrance: 5,
+  aroma:     5,
+  flavor:    5,
+  mouthfeel: 2,
+}
+
+/* ============================================================
+   EXISTING: Legacy data — kept for backward compatibility
+   Used by PhysicalEvalForm, ExtrinsicForm, and other existing components
+   ============================================================ */
 
 export type DescriptorOption = { id: string; label: string };
 export type FlavorNode = { id: string; label: string; subs: DescriptorOption[] };
@@ -108,18 +211,6 @@ export const GUSTOS_PREDOMINANTES = [
   "Umami",
 ] as const;
 
-export const AFFECTIVE_LABELS = [
-  "Extremadamente baja",
-  "Muy baja",
-  "Moderadamente baja",
-  "Ligeramente baja",
-  "Ni alta ni baja",
-  "Ligeramente alta",
-  "Moderadamente alta",
-  "Muy alta",
-  "Extremadamente alta",
-] as const;
-
 export const AFFECTIVE_ATTRIBUTES: readonly { id: string; label: string }[] = [
   { id: "fragancia_af", label: "Fragancia" },
   { id: "aroma_af", label: "Aroma" },
@@ -208,6 +299,9 @@ export const PROCESS_TYPES = [
   "Natural",
   "Honey",
   "Anaeróbico",
+  "Maceración Carbónica",
+  "Láctico",
+  "Co-fermentación",
   "Otro",
 ] as const;
 
