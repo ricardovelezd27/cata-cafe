@@ -8,9 +8,11 @@ interface PhaseStepperProps {
   currentPhase: CuppingPhase;
   phaseStatuses: Record<CuppingPhase, "empty" | "partial" | "complete">;
   onSelect: (phase: CuppingPhase) => void;
+  variant?: "dark" | "light";
 }
 
-export function PhaseStepper({ phases, currentPhase, phaseStatuses, onSelect }: PhaseStepperProps) {
+export function PhaseStepper({ phases, currentPhase, phaseStatuses, onSelect, variant = "dark" }: PhaseStepperProps) {
+  const isLight = variant === "light";
   const activeRef = useRef<HTMLButtonElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -40,9 +42,9 @@ export function PhaseStepper({ phases, currentPhase, phaseStatuses, onSelect }: 
 
         const statusDot =
           status === "complete"
-            ? { symbol: "✓", color: isActive ? "#3D5A3E" : "#B4C8A8" }
+            ? { symbol: "✓", color: isLight ? (isActive ? "#3D5A3E" : "#6B8F71") : (isActive ? "#3D5A3E" : "#B4C8A8") }
             : status === "partial"
-            ? { symbol: "●", color: isActive ? "#C17817" : "rgba(193,120,23,0.65)" }
+            ? { symbol: "●", color: "#C17817" }
             : { symbol: "○", color: "transparent" };
 
         return (
@@ -60,9 +62,15 @@ export function PhaseStepper({ phases, currentPhase, phaseStatuses, onSelect }: 
               borderRadius: 20,
               fontSize: 11,
               fontWeight: isActive ? 700 : 400,
-              background: isActive ? "rgba(255,255,255,0.92)" : "transparent",
-              color: isActive ? "#3D5A3E" : "rgba(255,255,255,0.72)",
-              border: isActive ? "1px solid rgba(255,255,255,0.5)" : "1px solid transparent",
+              background: isLight
+                ? (isActive ? "#FFFFFF" : "transparent")
+                : (isActive ? "rgba(255,255,255,0.92)" : "transparent"),
+              color: isLight
+                ? (isActive ? "#3D5A3E" : "#8B7355")
+                : (isActive ? "#3D5A3E" : "rgba(255,255,255,0.72)"),
+              border: isLight
+                ? (isActive ? "1px solid #3D5A3E" : "1px solid #E8E0D0")
+                : (isActive ? "1px solid rgba(255,255,255,0.5)" : "1px solid transparent"),
               cursor: "pointer",
               fontFamily: "inherit",
               transition: "all 0.15s",
