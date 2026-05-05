@@ -1,35 +1,57 @@
 "use client";
 
-import { useState } from "react";
 import {
-  ACIDITY_DESCRIPTORS,
-  DEFECT_TYPES,
-  MOUTHFEEL_DESCRIPTORS,
-  SWEETNESS_DESCRIPTORS,
+  AFFECTIVE_ATTRIBUTES,
   PHASE_ATTRIBUTES,
+  FLAVOR_FAMILIES,
+  MOUTHFEEL_OPTIONS,
+  MAIN_TASTES,
+  CATA_MAX_SELECT,
+  SENSORY_DEFECTS,
+  SENSORY_DEFECT_LABELS,
   type CuppingPhase,
+  type SensoryDefect,
 } from "@/lib/constants";
-import { calcIndividualScore } from "@/lib/scoring";
+import { IntensitySlider } from "@/components/ui/IntensitySlider";
+import { AffectiveBubbles } from "@/components/ui/AffectiveBubbles";
+import { CATAPills, type CATAOption } from "@/components/ui/CATAPills";
+import { CupIndicators } from "@/components/ui/CupIndicators";
+import { ScoreDisplay } from "@/components/ui/ScoreDisplay";
 import { Section } from "./Section";
-import { IntensitySlider } from "./IntensitySlider";
-import { AffectiveScale } from "./AffectiveScale";
-import { FlavorTreeSelector } from "./FlavorTreeSelector";
-import { DescriptorSelector } from "./DescriptorSelector";
-import { GustosSelector } from "./GustosSelector";
 import { NotesInput } from "./NotesInput";
-import { CupCheckboxes } from "./CupCheckboxes";
 
 type Data = Record<string, unknown>;
 
-const COMBINED_ATTRS = [
-  { id: "fragancia", affId: "fragancia_af", label: "Fragancia", kind: "flavor" },
-  { id: "aroma", affId: "aroma_af", label: "Aroma", kind: "flavor" },
-  { id: "sabor", affId: "sabor_af", label: "Sabor", kind: "flavor" },
-  { id: "sabor_residual", affId: "sabor_residual_af", label: "Sabor Residual", kind: "flavor" },
-  { id: "acidez", affId: "acidez_af", label: "Acidez", kind: "acidity" },
-  { id: "dulzor", affId: "dulzor_af", label: "Dulzor", kind: "sweetness" },
-  { id: "sensacion", affId: "sensacion_af", label: "Sensación en Boca", kind: "mouthfeel" },
-] as const;
+const flavorCATAOptions: CATAOption[] = FLAVOR_FAMILIES.map((f) => ({
+  id: f.id,
+  label: f.label,
+  color: f.color,
+  subItems: f.subItems as unknown as string[],
+}));
+
+const mouthfeelCATAOptions: CATAOption[] = MOUTHFEEL_OPTIONS.map((o) => ({
+  id: o.id,
+  label: o.label,
+  color: "#8B7355",
+}));
+
+const mainTasteOptions: CATAOption[] = MAIN_TASTES.map((t) => ({
+  id: t.id,
+  label: t.label,
+  color: "#C17817",
+}));
+
+type AttrKind = "flavor" | "acidity" | "sweetness" | "mouthfeel" | "none";
+
+const ATTR_KIND: Record<string, AttrKind> = {
+  fragancia: "flavor",
+  aroma: "flavor",
+  sabor: "flavor",
+  sabor_residual: "flavor",
+  acidez: "acidity",
+  dulzor: "sweetness",
+  sensacion: "mouthfeel",
+};
 
 export function CombinedForm({
   sampleData,
@@ -42,250 +64,299 @@ export function CombinedForm({
   cupsPerSample: number;
   currentPhase: CuppingPhase;
 }) {
-  // viewMode resets to "descriptive" on phase change automatically because the content
-  // wrapper in CupClient uses key={currentPhase}, causing this component to remount.
-  const [viewMode, setViewMode] = useState<"descriptive" | "affective">("descriptive");
-
   const d = sampleData;
   const set = (key: string, val: unknown) => onChange({ ...d, [key]: val });
-  const num = (k: string, def = 7.5) => (d[k] as number | undefined) ?? def;
-  const nOrNull = (k: string): number | null => (d[k] as number | undefined) ?? null;
+  const num = (k: string): number | null => (d[k] as number | undefined) ?? null;
   const arr = (k: string): string[] => (d[k] as string[] | undefined) ?? [];
   const str = (k: string): string => (d[k] as string | undefined) ?? "";
-  const bools = (k: string): boolean[] =>
+  const getBools = (k: string): boolean[] =>
     (d[k] as boolean[] | undefined) ?? Array(cupsPerSample).fill(false);
 
-  const showUniformity = cupsPerSample >= 2;
+  const showCups = cupsPerSample >= 2;
   const uniformityInScore = cupsPerSample >= 5;
 
-  const phaseDescIds = new Set(
-    PHASE_ATTRIBUTES[currentPhase].map((a) => a.descriptiveId).filter(Boolean)
-  );
-  const phaseAffIds = new Set(PHASE_ATTRIBUTES[currentPhase].map((a) => a.affectiveId));
+  const nonUniformBools = getBools("tazas_no_uniformes");
+  const defectiveBools = getBools("tazas_defectuosas");
+  const defectoTipo = arr("defecto_tipo");
 
-  const visibleAttrs = COMBINED_ATTRS.filter((attr) =>
-    viewMode === "descriptive" ? phaseDescIds.has(attr.id) : phaseAffIds.has(attr.affId)
-  );
+  const nonUniformCups = nonUniformBools.map((v, i) => (v ? i + 1 : -1)).filter((n) => n > 0);
+  const defectiveCupsList = defectiveBools
+    .map((v, i) =>
+      v ? { cup: i + 1, type: (defectoTipo[0] as SensoryDefect | undefined) ?? "moldy" } : null
+    )
+    .filter(Boolean) as { cup: number; type: SensoryDefect }[];
+
+  function toggleNonUniform(idx: number) {
+    const next = [...nonUniformBools];
+    if (next[idx]) {
+      next[idx] = false;
+      const nextDef = [...defectiveBools];
+      nextDef[idx] = false;
+      onChange({ ...d, tazas_no_uniformes: next, tazas_defectuosas: nextDef });
+    } else {
+      next[idx] = true;
+      onChange({ ...d, tazas_no_uniformes: next });
+    }
+  }
+
+  function toggleDefective(idx: number) {
+    const next = [...defectiveBools];
+    next[idx] = !next[idx];
+    const nextNU = [...nonUniformBools];
+    if (next[idx]) nextNU[idx] = true;
+    onChange({ ...d, tazas_defectuosas: next, tazas_no_uniformes: nextNU });
+  }
+
+  function setDefectType(type: SensoryDefect) {
+    const cur = arr("defecto_tipo");
+    if (cur.includes(type)) {
+      set("defecto_tipo", cur.filter((x) => x !== type));
+    } else {
+      set("defecto_tipo", [...cur, type]);
+    }
+  }
+
+  const phaseAttrs = PHASE_ATTRIBUTES[currentPhase];
+
+  // Overall phase — affective only + cups + score
+  if (currentPhase === "overall") {
+    return (
+      <div>
+        <Section title="Impresión Global">
+          <AffectiveBubbles
+            value={num("impresion_global_final")}
+            onChange={(v) => set("impresion_global_final", v)}
+          />
+          <div className="mt-1.5">
+            <NotesInput
+              value={str("impresion_global_notas")}
+              onChange={(v) => set("impresion_global_notas", v)}
+              placeholder="Notas finales..."
+            />
+          </div>
+        </Section>
+
+        {showCups && (
+          <Section title="Tazas">
+            {/* Legend */}
+            <div style={{ display: "flex", gap: 12, marginBottom: 10 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: "#8B7355", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.7px" }}>
+                <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#C17817", display: "inline-block" }} />
+                No uniforme
+              </span>
+              <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: "#A83232", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.7px" }}>
+                <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#A83232", display: "inline-block" }} />
+                Defectuosa
+              </span>
+            </div>
+
+            <div className="mb-3">
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.8px", textTransform: "uppercase", color: "#8B7355", marginBottom: 6 }}>
+                No uniformes <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "#8B7355", opacity: 0.7 }}>(1 toque)</span>
+              </div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {Array.from({ length: cupsPerSample }, (_, i) => {
+                  const isNU = nonUniformBools[i];
+                  const isDef = defectiveBools[i];
+                  return (
+                    <button key={i} type="button" onClick={() => toggleNonUniform(i)}
+                      style={{ width: 40, height: 40, borderRadius: "50%", border: `2px solid ${isDef ? "#A83232" : isNU ? "#C17817" : "#D4C5A9"}`, background: isDef ? "#A83232" : isNU ? "#C17817" : "transparent", color: isNU || isDef ? "#FFF" : "#8B7355", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s", minWidth: 40 }}>
+                      {i + 1}
+                    </button>
+                  );
+                })}
+              </div>
+              {!uniformityInScore && (
+                <div className="text-[10px] text-amber-warm italic mt-1">
+                  ⓘ Se registra pero no afecta el puntaje (requiere ≥5 tazas)
+                </div>
+              )}
+            </div>
+
+            <div className="mb-3">
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.8px", textTransform: "uppercase", color: "#A83232", marginBottom: 6 }}>
+                Defectuosas <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "#A83232", opacity: 0.7 }}>(1 toque)</span>
+              </div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {Array.from({ length: cupsPerSample }, (_, i) => {
+                  const isDef = defectiveBools[i];
+                  return (
+                    <button key={i} type="button" onClick={() => toggleDefective(i)}
+                      style={{ width: 40, height: 40, borderRadius: "50%", border: `2px solid ${isDef ? "#A83232" : "#D4C5A9"}`, background: isDef ? "#A83232" : "transparent", color: isDef ? "#FFF" : "#8B7355", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s", minWidth: 40 }}>
+                      {isDef ? "✗" : i + 1}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {defectiveBools.some(Boolean) && (
+              <div className="mb-3">
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.8px", textTransform: "uppercase", color: "#8B7355", marginBottom: 6 }}>Tipo de defecto</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {SENSORY_DEFECTS.map((dt) => {
+                    const active = defectoTipo.includes(dt);
+                    return (
+                      <button key={dt} type="button" onClick={() => setDefectType(dt)}
+                        style={{ padding: "6px 14px", borderRadius: 20, border: `1.5px solid ${active ? "#A83232" : "#D4C5A9"}`, background: active ? "#A83232" : "transparent", color: active ? "#FFF" : "#5C4A32", fontSize: 12, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s", fontWeight: active ? 700 : 400 }}>
+                        {SENSORY_DEFECT_LABELS[dt]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <CupIndicators
+              totalCups={cupsPerSample}
+              nonUniform={nonUniformCups}
+              defective={defectiveCupsList}
+              showSummary
+            />
+          </Section>
+        )}
+
+        <Section title="Puntaje Calculado">
+          <ScoreDisplay
+            sectionScores={AFFECTIVE_ATTRIBUTES.map((a) => num(`${a.id}_final`) ?? 0)}
+            nonUniformCups={nonUniformBools.filter(Boolean).length}
+            defectiveCups={defectiveBools.filter(Boolean).length}
+            defaultExpanded={false}
+          />
+        </Section>
+      </div>
+    );
+  }
 
   return (
     <div>
-      {currentPhase === "fragrance" && (
-        <Section title="Nivel de Tueste">
-          <IntensitySlider value={num("tueste")} onChange={(v) => set("tueste", v)} />
-        </Section>
-      )}
+      {phaseAttrs.map((attr) => {
+        const descId = attr.descriptiveId;
+        const affId = attr.affectiveId;
+        const kind: AttrKind = descId ? (ATTR_KIND[descId] ?? "none") : "none";
 
-      {/* Descriptive / Affective toggle */}
-      <div
-        style={{
-          display: "flex",
-          gap: 0,
-          background: "#E8E0D0",
-          borderRadius: 8,
-          padding: 3,
-          marginBottom: 12,
-        }}
-      >
-        {(["descriptive", "affective"] as const).map((mode) => (
-          <button
-            key={mode}
-            onClick={() => setViewMode(mode)}
-            style={{
-              flex: 1,
-              padding: "6px 0",
-              borderRadius: 6,
-              fontSize: 11,
-              fontWeight: viewMode === mode ? 700 : 400,
-              background: viewMode === mode ? "#3D5A3E" : "transparent",
-              color: viewMode === mode ? "#FFF" : "#8B7355",
-              border: "none",
-              cursor: "pointer",
-              fontFamily: "inherit",
-              transition: "all 0.12s",
-            }}
-          >
-            {mode === "descriptive" ? "Descriptivo" : "Afectivo (1–9)"}
-          </button>
-        ))}
-      </div>
+        const sectionTitle =
+          descId === "sabor" ? "Sabor"
+          : descId === "sabor_residual" ? "Sabor Residual (Regusto)"
+          : descId === "fragancia" ? "Fragancia"
+          : descId === "aroma" ? "Aroma"
+          : descId === "acidez" ? "Acidez"
+          : descId === "dulzor" ? "Dulzor"
+          : descId === "sensacion" ? "Sensación en Boca"
+          : "Evaluación";
 
-      {visibleAttrs.map((attr) => (
-        <Section key={attr.id} title={attr.label}>
-          {viewMode === "descriptive" ? (
-            <>
-              <div className="text-[9px] font-bold tracking-widest text-green-mid uppercase mb-1">
-                Descriptivo — Intensidad
+        return (
+          <Section key={affId} title={sectionTitle}>
+            <div
+              style={{ display: "grid", gap: 12 }}
+              className="grid-cols-1 sm:grid-cols-2"
+            >
+              {/* Left — Descriptive */}
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", color: "#6B8F71", marginBottom: 6 }}>
+                  Descriptivo
+                </div>
+                {descId && (
+                  <>
+                    <IntensitySlider
+                      label="Intensidad"
+                      value={num(`${descId}_int`)}
+                      onChange={(v) => set(`${descId}_int`, v)}
+                    />
+
+                    {(kind === "flavor") && (
+                      <div className="mt-2">
+                        <CATAPills
+                          options={flavorCATAOptions}
+                          selected={arr(`${descId}_desc`)}
+                          onChange={(v) => set(`${descId}_desc`, v)}
+                          maxSelect={
+                            descId === "sabor" || descId === "sabor_residual"
+                              ? CATA_MAX_SELECT.flavor
+                              : CATA_MAX_SELECT.fragrance
+                          }
+                        />
+                      </div>
+                    )}
+
+                    {kind === "acidity" && (
+                      <div className="mt-2">
+                        <textarea
+                          value={str(`${descId}_desc_libre`)}
+                          onChange={(e) => set(`${descId}_desc_libre`, e.target.value)}
+                          placeholder="Ej: cítrica, málica..."
+                          rows={2}
+                          style={{ width: "100%", padding: "7px 9px", borderRadius: 8, border: "1px solid #E8E0D0", background: "#FDFBF7", fontSize: 12, color: "#5C4A32", fontFamily: "inherit", resize: "none", outline: "none", boxSizing: "border-box" }}
+                        />
+                      </div>
+                    )}
+
+                    {kind === "sweetness" && (
+                      <div className="mt-2">
+                        <textarea
+                          value={str(`${descId}_desc_libre`)}
+                          onChange={(e) => set(`${descId}_desc_libre`, e.target.value)}
+                          placeholder="Ej: miel, panela..."
+                          rows={2}
+                          style={{ width: "100%", padding: "7px 9px", borderRadius: 8, border: "1px solid #E8E0D0", background: "#FDFBF7", fontSize: 12, color: "#5C4A32", fontFamily: "inherit", resize: "none", outline: "none", boxSizing: "border-box" }}
+                        />
+                      </div>
+                    )}
+
+                    {kind === "mouthfeel" && (
+                      <div className="mt-2">
+                        <CATAPills
+                          options={mouthfeelCATAOptions}
+                          selected={arr(`${descId}_desc`)}
+                          onChange={(v) => set(`${descId}_desc`, v)}
+                          maxSelect={2}
+                        />
+                      </div>
+                    )}
+
+                    <div className="mt-1.5">
+                      <NotesInput
+                        value={str(`${descId}_notas`)}
+                        onChange={(v) => set(`${descId}_notas`, v)}
+                        placeholder="Notas..."
+                      />
+                    </div>
+                  </>
+                )}
               </div>
-              <IntensitySlider
-                value={num(`${attr.id}_int`)}
-                onChange={(v) => set(`${attr.id}_int`, v)}
-              />
 
-              {attr.kind === "flavor" && (
-                <div className="mt-2">
-                  <FlavorTreeSelector
-                    selected={arr(`${attr.id}_desc`)}
-                    onChange={(v) => set(`${attr.id}_desc`, v)}
-                  />
+              {/* Right — Affective */}
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", color: "#C17817", marginBottom: 6 }}>
+                  Afectivo 1–9
                 </div>
-              )}
-              {attr.kind === "acidity" && (
-                <div className="mt-2">
-                  <div className="text-[11px] font-semibold text-brown-mid mb-1">Tipo de acidez</div>
-                  <DescriptorSelector
-                    descriptors={ACIDITY_DESCRIPTORS}
-                    selected={arr(`${attr.id}_desc`)}
-                    onChange={(v) => set(`${attr.id}_desc`, v)}
-                  />
-                </div>
-              )}
-              {attr.kind === "sweetness" && (
-                <div className="mt-2">
-                  <div className="text-[11px] font-semibold text-brown-mid mb-1">Tipo de dulzor</div>
-                  <DescriptorSelector
-                    descriptors={SWEETNESS_DESCRIPTORS}
-                    selected={arr(`${attr.id}_desc`)}
-                    onChange={(v) => set(`${attr.id}_desc`, v)}
-                  />
-                </div>
-              )}
-              {attr.kind === "mouthfeel" && (
-                <div className="mt-2">
-                  <DescriptorSelector
-                    descriptors={MOUTHFEEL_DESCRIPTORS}
-                    selected={arr(`${attr.id}_desc`)}
-                    onChange={(v) => set(`${attr.id}_desc`, v)}
-                    hasSubs
-                  />
-                </div>
-              )}
-
-              <div className="mt-1.5">
-                <NotesInput
-                  value={str(`${attr.id}_notas`)}
-                  onChange={(v) => set(`${attr.id}_notas`, v)}
-                  placeholder="Notas descriptivas..."
+                <AffectiveBubbles
+                  value={num(`${affId}_final`)}
+                  onChange={(v) => set(`${affId}_final`, v)}
                 />
+                <div className="mt-1.5">
+                  <NotesInput
+                    value={str(`${affId}_notas`)}
+                    onChange={(v) => set(`${affId}_notas`, v)}
+                    placeholder="Notas..."
+                  />
+                </div>
               </div>
-            </>
-          ) : (
-            <>
-              <div className="text-[9px] font-bold tracking-widest text-amber-warm uppercase mb-1">
-                Afectivo — Impresión de calidad
-              </div>
-              <AffectiveScale
-                value={nOrNull(attr.affId)}
-                onChange={(v) => set(attr.affId, v)}
-                showFinal
-                finalValue={nOrNull(`${attr.affId}_final`)}
-                onFinalChange={(v) => set(`${attr.affId}_final`, v)}
-              />
-              <div className="mt-1.5">
-                <NotesInput
-                  value={str(`${attr.affId}_notas`)}
-                  onChange={(v) => set(`${attr.affId}_notas`, v)}
-                  placeholder="Notas afectivas..."
-                />
-              </div>
-            </>
-          )}
-        </Section>
-      ))}
+            </div>
+          </Section>
+        );
+      })}
 
-      {currentPhase === "liquoring" && viewMode === "descriptive" && (
+      {/* Main tastes — flavor phase only, below both sections */}
+      {currentPhase === "flavor" && (
         <Section title="Gustos Predominantes">
-          <GustosSelector selected={arr("gustos")} onChange={(v) => set("gustos", v)} />
-        </Section>
-      )}
-
-      {currentPhase === "liquoring" && viewMode === "affective" && (
-        <Section title="Impresión Global">
-          <AffectiveScale
-            value={nOrNull("impresion_global")}
-            onChange={(v) => set("impresion_global", v)}
-            showFinal
-            finalValue={nOrNull("impresion_global_final")}
-            onFinalChange={(v) => set("impresion_global_final", v)}
+          <div className="text-[11px] text-brown-mid mb-2">Selecciona hasta 2 sabores principales</div>
+          <CATAPills
+            options={mainTasteOptions}
+            selected={arr("gustos")}
+            onChange={(v) => set("gustos", v)}
+            maxSelect={2}
           />
-        </Section>
-      )}
-
-      {currentPhase === "liquoring" && showUniformity && (
-        <Section title="Tazas">
-          <CupCheckboxes
-            count={cupsPerSample}
-            label="TAZAS NO UNIFORMES"
-            checked={bools("tazas_no_uniformes")}
-            onChange={(v) => {
-              const curDef = bools("tazas_defectuosas");
-              const newDef = curDef.map((def, i) => def && v[i]);
-              onChange({ ...d, tazas_no_uniformes: v, tazas_defectuosas: newDef });
-            }}
-            color="#C17817"
-          />
-          <CupCheckboxes
-            count={cupsPerSample}
-            label="TAZAS DEFECTUOSAS"
-            checked={bools("tazas_defectuosas")}
-            onChange={(v) => {
-              const curNU = bools("tazas_no_uniformes");
-              const newNU = curNU.map((nu, i) => nu || v[i]);
-              onChange({ ...d, tazas_defectuosas: v, tazas_no_uniformes: newNU });
-            }}
-            color="#A83232"
-          />
-          {!uniformityInScore && (
-            <div className="text-[10px] text-amber-warm italic">
-              ⓘ Se registra pero no afecta el puntaje (requiere ≥5 tazas por catador)
-            </div>
-          )}
-          <div className="mt-2">
-            <div className="text-[11px] font-bold text-brown-mid mb-1">DEFECTO (DE HABERLO)</div>
-            <div className="flex gap-1.5">
-              {DEFECT_TYPES.map((dt) => {
-                const active = arr("defecto_tipo").includes(dt);
-                return (
-                  <button
-                    key={dt}
-                    onClick={() => {
-                      const cur = arr("defecto_tipo");
-                      set("defecto_tipo", active ? cur.filter((x) => x !== dt) : [...cur, dt]);
-                    }}
-                    className={`px-3 py-[5px] rounded-lg border text-xs cursor-pointer ${
-                      active
-                        ? "bg-red-defect text-white border-red-defect"
-                        : "bg-transparent text-brown-dark border-[#D4C5A9]"
-                    }`}
-                  >
-                    {dt}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </Section>
-      )}
-
-      {currentPhase === "liquoring" && (
-        <Section title="Otras Notas">
-          <NotesInput
-            value={str("otras_notas")}
-            onChange={(v) => set("otras_notas", v)}
-            placeholder="Notas adicionales..."
-          />
-        </Section>
-      )}
-
-      {currentPhase === "liquoring" && (
-        <Section title="Puntaje Calculado">
-          <div className="text-center text-3xl font-bold text-green-dark font-serif">
-            {calcIndividualScore(d, cupsPerSample)}
-          </div>
-          {cupsPerSample < 5 && (
-            <div className="text-center text-[10px] text-brown-mid">
-              Sin penalización por uniformidad/defectos ({cupsPerSample} tazas)
-            </div>
-          )}
         </Section>
       )}
     </div>

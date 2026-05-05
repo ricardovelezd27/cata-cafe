@@ -50,9 +50,12 @@ export function AffectiveBubbles({ value, onChange, label, disabled, showFinal =
       </div>
 
       <div className={styles.scale}>
-        <span>{AFFECTIVE_LABELS[1]}</span>
-        <span>{AFFECTIVE_LABELS[5]}</span>
-        <span>{AFFECTIVE_LABELS[9]}</span>
+        <div className={styles.scaleInner}>
+          <span>{AFFECTIVE_LABELS[1]}</span>
+          <span>{AFFECTIVE_LABELS[5]}</span>
+          <span>{AFFECTIVE_LABELS[9]}</span>
+        </div>
+        {showFinal && <div className={styles.scaleSpacer} />}
       </div>
     </div>
   )

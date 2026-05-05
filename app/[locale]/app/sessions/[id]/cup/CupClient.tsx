@@ -15,6 +15,7 @@ import {
 } from "@/app/actions/sessions";
 import { submitAllEvaluations, closeSession } from "@/app/actions/community";
 import { CUPPING_PHASES, PHASE_LABELS, PHASE_ATTRIBUTES, type CuppingPhase } from "@/lib/constants";
+import { PhaseStepper } from "@/components/cupping/PhaseStepper";
 import { DevRoleBadge } from "@/components/dev/DevRoleBadge";
 
 type Data = Record<string, unknown>;
@@ -254,7 +255,7 @@ export function CupClient({
   const isLastSampleInPhase = sampleIdx >= samples.length - 1;
   const isLastPhase = CUPPING_PHASES.indexOf(currentPhase) >= CUPPING_PHASES.length - 1;
   const isLastSampleOverall = isLastSampleInPhase && isLastPhase;
-  const prevDisabled = sampleIdx === 0 && currentPhase === "fragrance";
+  const prevDisabled = sampleIdx === 0 && currentPhase === CUPPING_PHASES[0];
 
   // Detect whether a sample has been touched in a given phase (any attribute key present)
   const hasPhaseFill = (sample: Sample, phase: CuppingPhase): boolean => {
@@ -379,63 +380,16 @@ export function CupClient({
             )}
           </div>
 
-          {/* Phase tabs — cupping tab only */}
+          {/* Phase stepper — cupping tab only */}
           {activeTab === "cupping" && (
-            <div
-              style={{
-                display: "flex",
-                gap: 0,
-                background: "rgba(0,0,0,0.15)",
-                borderRadius: 8,
-                padding: 3,
-                margin: "6px 0 4px",
-              }}
-            >
-              {CUPPING_PHASES.map((phase) => {
-                const status = getPhaseStatus(phase);
-                const isActive = currentPhase === phase;
-                return (
-                  <button
-                    key={phase}
-                    onClick={() => handlePhaseChange(phase)}
-                    style={{
-                      flex: 1,
-                      minHeight: 44,
-                      padding: "6px 4px",
-                      borderRadius: 6,
-                      fontSize: 12,
-                      fontWeight: isActive ? 700 : 400,
-                      background: isActive ? "rgba(255,255,255,0.92)" : "transparent",
-                      color: isActive ? "#3D5A3E" : "rgba(255,255,255,0.75)",
-                      border: "none",
-                      cursor: "pointer",
-                      fontFamily: "inherit",
-                      transition: "all 0.15s",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 2,
-                    }}
-                  >
-                    <span>{PHASE_LABELS[phase]}</span>
-                    {/* Completion indicator dot */}
-                    <span style={{
-                      fontSize: 7,
-                      lineHeight: 1,
-                      color: status === "complete"
-                        ? (isActive ? "#3D5A3E" : "#B4C8A8")
-                        : status === "partial"
-                        ? (isActive ? "#C17817" : "rgba(193,120,23,0.7)")
-                        : "transparent",
-                      transition: "color 0.3s",
-                    }}>
-                      {status === "complete" ? "✓ listo" : status === "partial" ? "● en curso" : "○"}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            <PhaseStepper
+              phases={CUPPING_PHASES}
+              currentPhase={currentPhase}
+              phaseStatuses={Object.fromEntries(
+                CUPPING_PHASES.map((p) => [p, getPhaseStatus(p)])
+              ) as Record<CuppingPhase, "empty" | "partial" | "complete">}
+              onSelect={handlePhaseChange}
+            />
           )}
 
           {/* Sample pills with phase fill-state indicator */}
@@ -591,7 +545,7 @@ export function CupClient({
       )}
 
       {/* Content — keyed by phase so it fades in on phase change */}
-      <div key={currentPhase} style={{ padding: 16, paddingBottom: 88, animation: "phase-in 0.22s ease-out" }}>
+      <div key={currentPhase} style={{ padding: 16, paddingBottom: "max(96px, calc(env(safe-area-inset-bottom) + 80px))", animation: "phase-in 0.22s ease-out" }}>
         {activeTab === "cupping" && session.format === "descriptive" && (
           <DescriptiveForm
             sampleData={current.descriptive}
@@ -644,7 +598,8 @@ export function CupClient({
           maxWidth: 480,
           background: "#FDFBF7",
           borderTop: "1px solid #E8E0D0",
-          padding: "12px 16px",
+          padding: "10px 16px",
+          paddingBottom: "max(10px, calc(env(safe-area-inset-bottom) + 6px))",
           display: "flex",
           gap: 8,
           zIndex: 99,
@@ -674,7 +629,7 @@ export function CupClient({
             onClick={handleGoToResults}
             disabled={isGoingToResults}
             style={{
-              flex: 1.5,
+              flex: 1,
               padding: "10px 0",
               borderRadius: 10,
               border: "none",

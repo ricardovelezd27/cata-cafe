@@ -1,4 +1,4 @@
-.root { width: 100%; }
+.root { width: 100%; container-type: inline-size; }
 .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .label { font-family: var(--font-ui); font-size: 13px; font-weight: 500; color: var(--color-brown-dark); }
 .finalBadge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; background: var(--color-green-dark); color: var(--color-bg); font-family: var(--font-mono); font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.18em; border-radius: 3px; }
@@ -16,15 +16,49 @@
 .finalSet .finalCap { color: var(--color-amber); }
 .finalInput { width: 58px; height: 44px; line-height: 44px; text-align: center; border: 1.5px solid var(--color-brown-light); border-radius: var(--radius-input); background: var(--color-cream); font-family: var(--font-display); font-size: 22px; font-weight: 600; color: var(--color-brown-mid); font-variant-numeric: tabular-nums; }
 .finalSet .finalInput { background: var(--color-green-dark); border-color: var(--color-green-dark); color: var(--color-bg); }
-.scale { display: flex; justify-content: space-between; margin-top: 12px; padding-right: 90px; font-family: var(--font-mono); font-size: 9px; color: var(--color-brown-mid); text-transform: uppercase; letter-spacing: 0.16em; }
-.scale span:nth-child(1) { width: 44px; }
-.scale span:nth-child(2) { flex: 1; text-align: center; }
-.scale span:nth-child(3) { width: 44px; text-align: right; }
+.scale { display: flex; justify-content: space-between; margin-top: 12px; font-family: var(--font-mono); font-size: 9px; color: var(--color-brown-mid); text-transform: uppercase; letter-spacing: 0.16em; }
+/* Reserve space equal to final box + margin so labels align under bubbles only */
+.scaleInner { display: flex; justify-content: space-between; flex: 1; }
+.scaleInner span:nth-child(1) { width: 44px; }
+.scaleInner span:nth-child(2) { flex: 1; text-align: center; }
+.scaleInner span:nth-child(3) { width: 44px; text-align: right; }
+.scaleSpacer { flex-shrink: 0; width: calc(58px + 16px); } /* matches .final: margin-left 16px + finalInput 58px */
+/* Container query: fires when AffectiveBubbles' own width is narrow
+   (covers both: mobile viewports AND the ~203px right column in 2-col layout) */
+@container (max-width: 440px) {
+  .row { gap: 4px; }
+  .bubble { width: 32px; height: 32px; font-size: 15px; border-width: 1.25px; }
+  .final { margin-left: 8px; }
+  .finalInput { width: 42px; height: 32px; line-height: 32px; font-size: 17px; }
+  .scale { font-size: 8px; }
+  .scaleInner span:nth-child(1), .scaleInner span:nth-child(3) { width: 32px; }
+  .scaleSpacer { width: calc(42px + 8px); }
+}
+/* Extra-compact: very narrow containers (mobile single-col ≤360px, desktop 2-col ~203px)
+   At these widths 9×32px bubbles + final don't fit on one line — use 28px + wrap + hide final */
+@container (max-width: 360px) {
+  .row { gap: 3px; flex-wrap: wrap; }
+  .bubble { width: 28px; height: 28px; font-size: 12px; border-width: 1px; }
+  .final { display: none; }
+  .scale { font-size: 7.5px; margin-top: 6px; }
+  .scaleInner span:nth-child(1), .scaleInner span:nth-child(3) { width: 28px; }
+  .scaleSpacer { display: none; }
+}
+/* Fallback for older browsers that don't support container queries */
 @media (max-width: 480px) {
   .row { gap: 4px; }
   .bubble { width: 32px; height: 32px; font-size: 15px; border-width: 1.25px; }
   .final { margin-left: 8px; }
   .finalInput { width: 42px; height: 32px; line-height: 32px; font-size: 17px; }
-  .scale { padding-right: 56px; font-size: 8px; }
-  .scale span:nth-child(1), .scale span:nth-child(3) { width: 32px; }
+  .scale { font-size: 8px; }
+  .scaleInner span:nth-child(1), .scaleInner span:nth-child(3) { width: 32px; }
+  .scaleSpacer { width: calc(42px + 8px); }
+}
+@media (max-width: 400px) {
+  .row { gap: 3px; flex-wrap: wrap; }
+  .bubble { width: 28px; height: 28px; font-size: 12px; border-width: 1px; }
+  .final { display: none; }
+  .scale { font-size: 7.5px; margin-top: 6px; }
+  .scaleInner span:nth-child(1), .scaleInner span:nth-child(3) { width: 28px; }
+  .scaleSpacer { display: none; }
 }

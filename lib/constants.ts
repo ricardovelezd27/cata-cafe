@@ -222,31 +222,39 @@ export const AFFECTIVE_ATTRIBUTES: readonly { id: string; label: string }[] = [
   { id: "impresion_global", label: "Impresión global" },
 ] as const;
 
-export type CuppingPhase = "fragrance" | "aroma" | "liquoring";
+export type CuppingPhase =
+  | "fragrance" | "aroma" | "flavor"
+  | "acidity"  | "sweetness" | "mouthfeel" | "overall";
 
 export const PHASE_ATTRIBUTES: Record<
   CuppingPhase,
   { descriptiveId: string | null; affectiveId: string }[]
 > = {
-  fragrance: [{ descriptiveId: "fragancia", affectiveId: "fragancia_af" }],
-  aroma:     [{ descriptiveId: "aroma",     affectiveId: "aroma_af" }],
-  liquoring: [
+  fragrance: [{ descriptiveId: "fragancia",      affectiveId: "fragancia_af" }],
+  aroma:     [{ descriptiveId: "aroma",          affectiveId: "aroma_af" }],
+  flavor:    [
     { descriptiveId: "sabor",          affectiveId: "sabor_af" },
     { descriptiveId: "sabor_residual", affectiveId: "sabor_residual_af" },
-    { descriptiveId: "acidez",         affectiveId: "acidez_af" },
-    { descriptiveId: "dulzor",         affectiveId: "dulzor_af" },
-    { descriptiveId: "sensacion",      affectiveId: "sensacion_af" },
-    { descriptiveId: null,             affectiveId: "impresion_global" },
   ],
+  acidity:   [{ descriptiveId: "acidez",    affectiveId: "acidez_af" }],
+  sweetness: [{ descriptiveId: "dulzor",    affectiveId: "dulzor_af" }],
+  mouthfeel: [{ descriptiveId: "sensacion", affectiveId: "sensacion_af" }],
+  overall:   [{ descriptiveId: null,        affectiveId: "impresion_global" }],
 };
 
 export const PHASE_LABELS: Record<CuppingPhase, string> = {
   fragrance: "Fragancia",
   aroma:     "Aroma",
-  liquoring: "En taza",
+  flavor:    "Sabor/Regusto",
+  acidity:   "Acidez",
+  sweetness: "Dulzor",
+  mouthfeel: "Sensación",
+  overall:   "Global",
 };
 
-export const CUPPING_PHASES: CuppingPhase[] = ["fragrance", "aroma", "liquoring"];
+export const CUPPING_PHASES: CuppingPhase[] = [
+  "fragrance", "aroma", "flavor", "acidity", "sweetness", "mouthfeel", "overall",
+];
 
 export const DEFECT_TYPES = ["Mohoso", "Fenólico", "Papa"] as const;
 

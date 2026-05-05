@@ -9,4 +9,9 @@
 .selected { background: var(--pill-color) !important; border-color: transparent !important; color: var(--color-bg) !important; }
 .selected .dot { background: rgba(255, 255, 255, 0.65); }
 .sub { font-size: 11.5px; padding: 5px 11px; }
-.subRow { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; padding-left: 16px; margin-left: 6px; border-left: 2px solid var(--color-brown-light); }
+.subRow { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 8px; margin: -2px 0 2px; background: color-mix(in oklch, var(--color-cream) 60%, var(--color-bg)); border-radius: 8px; }
+@media (max-width: 480px) {
+  .pill { padding: 6px 11px; font-size: 12px; }
+  .sub { font-size: 10.5px; padding: 4px 9px; }
+  .familyList { gap: 6px; }
+}

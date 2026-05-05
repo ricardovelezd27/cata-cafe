@@ -1,4 +1,4 @@
-.card { position: relative; border-radius: var(--radius-card); padding: 28px 28px 24px; border: 1px solid var(--color-brown-light); background: var(--color-cream); overflow: hidden; }
+.card { position: relative; border-radius: var(--radius-card); padding: 24px 20px 20px; border: 1px solid var(--color-brown-light); background: var(--color-cream); overflow: hidden; }
 .card.green { background: color-mix(in oklch, var(--color-green-mid) 14%, var(--color-bg)); border-color: color-mix(in oklch, var(--color-green-dark) 35%, var(--color-brown-light)); }
 .card.amber { background: color-mix(in oklch, var(--color-amber) 10%, var(--color-bg)); border-color: color-mix(in oklch, var(--color-amber) 35%, var(--color-brown-light)); }
 .card.red   { background: color-mix(in oklch, var(--color-red-defect) 9%, var(--color-bg)); border-color: color-mix(in oklch, var(--color-red-defect) 30%, var(--color-brown-light)); }
@@ -20,3 +20,12 @@
 .sections { list-style: none; margin: 14px 0 0; padding: 14px 0 0; border-top: 1px dashed var(--color-brown-light); display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; font-family: var(--font-mono); font-size: 11px; color: var(--color-brown-mid); }
 .sections li { display: flex; justify-content: space-between; }
 .sectionScore { font-family: var(--font-display); font-size: 14px; font-weight: 600; color: var(--color-brown-dark); }
+@media (max-width: 480px) {
+  .card { padding: 18px 16px 16px; }
+  .band { font-size: 8.5px; padding: 3px 6px; top: 16px; right: 14px; }
+  .num { font-size: 60px; }
+  .decimal { font-size: 38px; }
+  .formula { margin: 14px 0 0; grid-template-columns: 1fr; gap: 4px; }
+  .formula dd { text-align: left; }
+  .sections { grid-template-columns: 1fr; gap: 4px; }
+}
