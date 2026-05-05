@@ -18,19 +18,23 @@ export default async function PrintPage({
   } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
 
-  const session = await prisma.cuppingSession.findFirst({
-    where: { id, createdBy: user.id },
-    include: {
-      samples: {
-        orderBy: { position: "asc" },
-        include: {
-          evaluations: { where: { cupperId: user.id } },
-          physical: true,
-          extrinsic: true,
+  const [session, profile] = await Promise.all([
+    prisma.cuppingSession.findFirst({
+      where: { id, createdBy: user.id },
+      include: {
+        samples: {
+          orderBy: { position: "asc" },
+          include: {
+            coffee: { select: { name: true } },
+            evaluations: { where: { cupperId: user.id } },
+            physical: true,
+            extrinsic: true,
+          },
         },
       },
-    },
-  });
+    }),
+    prisma.profile.findUnique({ where: { id: user.id }, select: { displayName: true } }),
+  ]);
 
   if (!session) notFound();
 
@@ -49,11 +53,13 @@ export default async function PrintPage({
         cupsPerSample: session.cupsPerSample,
         date: dateStr,
         objective: session.objective,
+        cupperName: profile?.displayName ?? "",
         samples: session.samples.map((s) => {
           const ev = s.evaluations[0];
           return {
             id: s.id,
             label: s.label,
+            coffeeName: s.coffee?.name ?? null,
             descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
             affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
             combined: (ev?.combinedData as Record<string, unknown>) ?? {},
