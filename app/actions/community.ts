@@ -12,6 +12,11 @@ async function requireUser() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("not_authenticated");
+  await prisma.profile.upsert({
+    where: { id: user.id },
+    create: { id: user.id, displayName: user.email?.split("@")[0] ?? "Catador" },
+    update: {},
+  });
   return user;
 }
 
