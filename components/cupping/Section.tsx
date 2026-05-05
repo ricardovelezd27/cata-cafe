@@ -16,12 +16,11 @@ export function Section({
   const [open, setOpen] = useState(collapsible ? defaultOpen : true);
   return (
     <div
+      className="p-[14px] mb-3 lg:p-5 lg:mb-4"
       style={{
         background: "#FDFBF7",
         border: "1px solid #E8E0D0",
         borderRadius: 12,
-        padding: 14,
-        marginBottom: 12,
       }}
     >
       <div

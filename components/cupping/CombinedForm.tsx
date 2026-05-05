@@ -249,7 +249,7 @@ export function CombinedForm({
           <Section key={affId} title={sectionTitle}>
             <div
               style={{ display: "grid", gap: 12 }}
-              className="grid-cols-1 sm:grid-cols-2"
+              className="grid-cols-1 lg:grid-cols-2"
             >
               {/* Left — Descriptive */}
               <div>
