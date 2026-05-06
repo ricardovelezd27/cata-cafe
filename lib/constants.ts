@@ -43,11 +43,12 @@ export const AFFECTIVE_SHORT: Record<number, string> = {
    ============================================================ */
 export const FLAVOR_FAMILIES = [
   { id: 'floral',         label: 'Floral',           color: '#C17817',
-    subItems: [{ id: 'floral:floral',              label: 'Floral' }] },
+    subItems: [] as readonly { id: string; label: string }[] },
   { id: 'fruity',         label: 'Frutal',           color: '#E8834A',
     subItems: [{ id: 'fruity:berry',               label: 'Berry' },
                { id: 'fruity:dried',               label: 'Fruta Seca' },
-               { id: 'fruity:citrus',              label: 'Cítrico' }] },
+               { id: 'fruity:citrus',              label: 'Cítrico' },
+               { id: 'fruity:other_fruit',         label: 'Otra fruta' }] },
   { id: 'sweet',          label: 'Dulce',            color: '#B4874E',
     subItems: [{ id: 'sweet:vanilla',              label: 'Vainilla/Vainillín' },
                { id: 'sweet:brown_sugar',          label: 'Azúcar moreno' }] },
@@ -55,12 +56,12 @@ export const FLAVOR_FAMILIES = [
     subItems: [{ id: 'sour_fermented:sour',        label: 'Ácido' },
                { id: 'sour_fermented:fermented',   label: 'Fermentado' }] },
   { id: 'green_veg',      label: 'Verde/Vegetal',    color: '#6B8F71',
-    subItems: [{ id: 'green_veg:green_veg',        label: 'Verde/Vegetal' }] },
+    subItems: [] as readonly { id: string; label: string }[] },
   { id: 'nutty_cocoa',    label: 'Nueces/Cacao',     color: '#8B7355',
     subItems: [{ id: 'nutty_cocoa:nutty',          label: 'Nueces' },
                { id: 'nutty_cocoa:cocoa',          label: 'Cacao' }] },
   { id: 'spice',          label: 'Especia',          color: '#9B6B4A',
-    subItems: [{ id: 'spice:spice',                label: 'Especia' }] },
+    subItems: [] as readonly { id: string; label: string }[] },
   { id: 'roasted',        label: 'Tostado',          color: '#5C4A32',
     subItems: [{ id: 'roasted:cereal',             label: 'Cereal' },
                { id: 'roasted:burned',             label: 'Quemado' },
@@ -68,7 +69,7 @@ export const FLAVOR_FAMILIES = [
   { id: 'other',          label: 'Otro',             color: '#7A6E5F',
     subItems: [{ id: 'other:chemical',             label: 'Químico' },
                { id: 'other:earthy',               label: 'Húmedo/Terroso' },
-               { id: 'other:wood',                 label: 'Madera' }] },
+               { id: 'other:wood',                 label: 'Papel/Madera' }] },
 ] as const
 
 export type FlavorFamilyId = (typeof FLAVOR_FAMILIES)[number]['id']
@@ -350,19 +351,16 @@ export const STEP_DESC_LABELS: Record<string, string> = {
    English IDs (stable in JSON), Spanish display labels.
    ============================================================ */
 export const ACIDITY_CATA = [
-  { id: "acidity",       label: "Acidez", color: "#A83232",
-    subItems: [
-      { id: "acidity:juicy",      label: "Jugosa" },
-      { id: "acidity:fruit_like", label: "Afrutada" },
-      { id: "acidity:bright",     label: "Brillante" },
-      { id: "acidity:tart",       label: "Astringente" },
-      { id: "acidity:sharp",      label: "Aguda" },
-      { id: "acidity:winey",      label: "Vinosa" },
-      { id: "acidity:vinegary",   label: "Avinagrada" },
-      { id: "acidity:herbal",     label: "Herbal" },
-      { id: "acidity:grassy",     label: "Herbácea" },
-      { id: "acidity:dry",        label: "Seca" },
-    ] },
+  { id: "acidity:juicy",      label: "Jugosa",     color: "#A83232", subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:fruit_like", label: "Afrutada",   color: "#A83232", subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:bright",     label: "Brillante",  color: "#A83232", subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:tart",       label: "Astringente", color: "#A83232", subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:sharp",      label: "Aguda",      color: "#A83232", subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:winey",      label: "Vinosa",     color: "#A83232", subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:vinegary",   label: "Avinagrada", color: "#A83232", subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:herbal",     label: "Herbal",     color: "#A83232", subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:grassy",     label: "Herbácea",   color: "#A83232", subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:dry",        label: "Seca",       color: "#A83232", subItems: [] as readonly { id: string; label: string }[] },
 ] as const;
 
 export const SWEETNESS_CATA = [

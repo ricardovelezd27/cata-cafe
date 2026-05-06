@@ -29,7 +29,22 @@ function getCounterColor(count: number, max: number): string {
 }
 
 export function CATAPills({ options, selected, onChange, maxSelect, showSubItems = false, disabled }: CATAPillsProps) {
-  const atLimit = maxSelect !== undefined && selected.length >= maxSelect
+  // A parent with at least one selected sub doesn't count toward the limit —
+  // only the subs do. Parents with no selected subs count as 1.
+  const parentSubMap = new Map<string, string[]>(
+    options.map((o) => [o.id, (o.subItems ?? []).map((s) => s.id)])
+  )
+  const selectedSet = new Set(selected)
+  const isCountedSelection = (id: string): boolean => {
+    const subs = parentSubMap.get(id)
+    if (subs && subs.length > 0) {
+      // It's a parent — count only if none of its subs are selected.
+      return !subs.some((sid) => selectedSet.has(sid))
+    }
+    return true
+  }
+  const effectiveCount = selected.filter(isCountedSelection).length
+  const atLimit = maxSelect !== undefined && effectiveCount >= maxSelect
 
   function toggle(id: string) {
     if (disabled) return
@@ -47,9 +62,9 @@ export function CATAPills({ options, selected, onChange, maxSelect, showSubItems
           <span>Selecciona hasta {maxSelect}</span>
           <span
             className={styles.count}
-            style={{ color: selected.length > 0 ? getCounterColor(selected.length, maxSelect) : undefined }}
+            style={{ color: effectiveCount > 0 ? getCounterColor(effectiveCount, maxSelect) : undefined }}
           >
-            <strong>{selected.length}</strong>/{maxSelect}
+            <strong>{effectiveCount}</strong>/{maxSelect}
           </span>
         </div>
       )}

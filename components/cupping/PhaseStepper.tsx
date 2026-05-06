@@ -36,10 +36,9 @@ export function PhaseStepper<T extends string>({
         display: "flex",
         gap: 4,
         overflowX: "auto",
-        padding: "4px 2px 4px",
+        padding: "4px 8px",
         scrollbarWidth: "none",
-        maskImage: "linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)",
-        WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)",
+        justifyContent: "center",
       }}
     >
       {phases.map((phase, idx) => {

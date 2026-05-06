@@ -356,13 +356,22 @@ export function CupClient({
 
   return (
     <div
-      className="-m-4 -mb-20 lg:-m-6 flex flex-col"
-      style={{ minHeight: "100%", background: "#FDFBF7", color: "#5C4A32" }}
+      className="-mx-4 -mt-4 lg:-mx-6 lg:-mt-6 flex flex-col"
+      style={{
+        minHeight: "calc(100% + 14px)",
+        marginBottom: "-70px",
+        background: "#FDFBF7",
+        color: "#5C4A32",
+      }}
     >
       {/* ══ HORIZONTAL PROGRESS HEADER ══════════════════════════════════════ */}
       <div
-        className="sticky top-0 z-50"
-        style={{ background: "#FDFBF7", borderBottom: "1px solid #E8E0D0" }}
+        className="sticky -top-4 lg:-top-6 z-50"
+        style={{
+          background: "#FDFBF7",
+          borderBottom: "1px solid #E8E0D0",
+          paddingTop: "max(env(safe-area-inset-top), 0px)",
+        }}
       >
         {/* Group role banner */}
         {isGroup && (
@@ -631,16 +640,10 @@ export function CupClient({
 
       {/* ══ STICKY FOOTER — single set of nav buttons ════════════════════════ */}
       <div
+        className="sticky -bottom-20 lg:-bottom-6 z-50 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+92px)] lg:pb-7 flex gap-2.5"
         style={{
-          position: "sticky",
-          bottom: 0,
-          zIndex: 50,
           background: "#FDFBF7",
           borderTop: "1px solid #E8E0D0",
-          padding: "12px 16px",
-          paddingBottom: "max(12px, calc(env(safe-area-inset-bottom) + 8px))",
-          display: "flex",
-          gap: 10,
         }}
       >
         <button
