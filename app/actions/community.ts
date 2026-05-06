@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { prisma } from "@/lib/prisma";
+import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -252,6 +253,61 @@ export async function createInviteToken(
   });
 
   return { token };
+}
+
+// ─── Recompute attrAverages for all samples in a session (owner only) ────────
+export async function refreshAggregateScores(sessionId: string) {
+  const user = await requireUser();
+
+  const session = await prisma.cuppingSession.findFirst({
+    where: { id: sessionId, createdBy: user.id },
+    select: {
+      format: true,
+      samples: {
+        select: {
+          id: true,
+          evaluations: {
+            where: { isDraft: false },
+            select: { affectiveData: true, combinedData: true },
+          },
+        },
+      },
+    },
+  });
+  if (!session) throw new Error("not_found_or_forbidden");
+
+  for (const sample of session.samples) {
+    if (sample.evaluations.length === 0) continue;
+
+    const attrAverages: Record<string, number> = {};
+
+    for (const attr of AFFECTIVE_ATTRIBUTES) {
+      const key = `${attr.id}_final`;
+      const vals = sample.evaluations
+        .map((e) => {
+          const data = (
+            session.format === "affective" ? e.affectiveData : e.combinedData
+          ) as Record<string, unknown> | null;
+          const v = data?.[key];
+          return typeof v === "number" ? v : null;
+        })
+        .filter((v): v is number => v !== null);
+
+      if (vals.length > 0) {
+        attrAverages[attr.label] =
+          Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) / 100;
+      }
+    }
+
+    await prisma.aggregateScore.updateMany({
+      where: { sessionSampleId: sample.id },
+      data: { attrAverages, computedAt: new Date() },
+    });
+  }
+
+  revalidatePath(`/es/app/sessions/${sessionId}/results`);
+  revalidatePath(`/en/app/sessions/${sessionId}/results`);
+  return { ok: true };
 }
 
 // ─── Sync coffee history after session close ──────────────────────────────────

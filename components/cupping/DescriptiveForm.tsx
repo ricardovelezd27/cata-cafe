@@ -2,10 +2,12 @@
 
 import {
   FLAVOR_FAMILIES,
-  MOUTHFEEL_OPTIONS,
+  ACIDITY_CATA,
+  SWEETNESS_CATA,
+  MOUTHFEEL_CATA,
   MAIN_TASTES,
-  CATA_MAX_SELECT,
-  type CuppingPhase,
+  STEP_CATA_MAX,
+  type CuppingStep,
 } from "@/lib/constants";
 import { IntensitySlider } from "@/components/ui/IntensitySlider";
 import { CATAPills, type CATAOption, type CATASubItem } from "@/components/ui/CATAPills";
@@ -21,10 +23,25 @@ const flavorCATAOptions: CATAOption[] = FLAVOR_FAMILIES.map((f) => ({
   subItems: f.subItems as unknown as CATASubItem[],
 }));
 
-const mouthfeelCATAOptions: CATAOption[] = MOUTHFEEL_OPTIONS.map((o) => ({
+const acidityCATAOptions: CATAOption[] = ACIDITY_CATA.map((o) => ({
   id: o.id,
   label: o.label,
-  color: "#8B7355",
+  color: o.color,
+  subItems: o.subItems as unknown as CATASubItem[],
+}));
+
+const sweetnessCATAOptions: CATAOption[] = SWEETNESS_CATA.map((o) => ({
+  id: o.id,
+  label: o.label,
+  color: o.color,
+  subItems: o.subItems as unknown as CATASubItem[],
+}));
+
+const mouthfeelCATAOptions: CATAOption[] = MOUTHFEEL_CATA.map((o) => ({
+  id: o.id,
+  label: o.label,
+  color: o.color,
+  subItems: o.subItems as unknown as CATASubItem[],
 }));
 
 const mainTasteOptions: CATAOption[] = MAIN_TASTES.map((t) => ({
@@ -36,11 +53,11 @@ const mainTasteOptions: CATAOption[] = MAIN_TASTES.map((t) => ({
 export function DescriptiveForm({
   sampleData,
   onChange,
-  currentPhase,
+  currentStep,
 }: {
   sampleData: Data;
   onChange: (d: Data) => void;
-  currentPhase: CuppingPhase;
+  currentStep: CuppingStep;
 }) {
   const d = sampleData;
   const set = (key: string, val: unknown) => onChange({ ...d, [key]: val });
@@ -48,119 +65,55 @@ export function DescriptiveForm({
   const arr = (k: string): string[] => (d[k] as string[] | undefined) ?? [];
   const str = (k: string): string => (d[k] as string | undefined) ?? "";
 
-  if (currentPhase === "fragrance") {
+  const renderBlock = (
+    id: string,
+    title: string,
+    options: CATAOption[],
+    showSubItems: boolean,
+  ) => (
+    <Section key={id} title={title}>
+      <IntensitySlider
+        label="Intensidad"
+        value={num(`${id}_int`)}
+        onChange={(v) => set(`${id}_int`, v)}
+      />
+      <div className="mt-3">
+        <CATAPills
+          options={options}
+          selected={arr(`${id}_desc`)}
+          onChange={(v) => set(`${id}_desc`, v)}
+          maxSelect={STEP_CATA_MAX[id]}
+          showSubItems={showSubItems}
+        />
+      </div>
+      <div className="mt-2">
+        <NotesInput
+          value={str(`${id}_notas`)}
+          onChange={(v) => set(`${id}_notas`, v)}
+          placeholder="Notas descriptivas..."
+        />
+      </div>
+    </Section>
+  );
+
+  if (currentStep === "fragrance_aroma") {
     return (
       <div>
-        <Section title="Fragancia">
-          <IntensitySlider
-            label="Intensidad"
-            value={num("fragancia_int")}
-            onChange={(v) => set("fragancia_int", v)}
-          />
-          <div className="mt-3">
-            <CATAPills
-              options={flavorCATAOptions}
-              selected={arr("fragancia_desc")}
-              onChange={(v) => set("fragancia_desc", v)}
-              maxSelect={CATA_MAX_SELECT.fragrance}
-              showSubItems
-            />
-          </div>
-          <div className="mt-2">
-            <NotesInput
-              value={str("fragancia_notas")}
-              onChange={(v) => set("fragancia_notas", v)}
-              placeholder="Notas descriptivas..."
-            />
-          </div>
-        </Section>
+        {renderBlock("fragancia", "Fragancia", flavorCATAOptions, true)}
+        {renderBlock("aroma", "Aroma", flavorCATAOptions, true)}
       </div>
     );
   }
 
-  if (currentPhase === "aroma") {
+  if (currentStep === "taste_aftertaste") {
     return (
       <div>
-        <Section title="Aroma">
-          <IntensitySlider
-            label="Intensidad"
-            value={num("aroma_int")}
-            onChange={(v) => set("aroma_int", v)}
-          />
-          <div className="mt-3">
-            <CATAPills
-              options={flavorCATAOptions}
-              selected={arr("aroma_desc")}
-              onChange={(v) => set("aroma_desc", v)}
-              maxSelect={CATA_MAX_SELECT.aroma}
-              showSubItems
-            />
-          </div>
-          <div className="mt-2">
-            <NotesInput
-              value={str("aroma_notas")}
-              onChange={(v) => set("aroma_notas", v)}
-              placeholder="Notas descriptivas..."
-            />
-          </div>
-        </Section>
-      </div>
-    );
-  }
-
-  if (currentPhase === "flavor") {
-    return (
-      <div>
-        <Section title="Sabor">
-          <IntensitySlider
-            label="Intensidad"
-            value={num("sabor_int")}
-            onChange={(v) => set("sabor_int", v)}
-          />
-          <div className="mt-3">
-            <CATAPills
-              options={flavorCATAOptions}
-              selected={arr("sabor_desc")}
-              onChange={(v) => set("sabor_desc", v)}
-              maxSelect={CATA_MAX_SELECT.flavor}
-              showSubItems
-            />
-          </div>
-          <div className="mt-2">
-            <NotesInput
-              value={str("sabor_notas")}
-              onChange={(v) => set("sabor_notas", v)}
-              placeholder="Notas descriptivas..."
-            />
-          </div>
-        </Section>
-
-        <Section title="Sabor Residual (Regusto)">
-          <IntensitySlider
-            label="Intensidad"
-            value={num("sabor_residual_int")}
-            onChange={(v) => set("sabor_residual_int", v)}
-          />
-          <div className="mt-3">
-            <CATAPills
-              options={flavorCATAOptions}
-              selected={arr("sabor_residual_desc")}
-              onChange={(v) => set("sabor_residual_desc", v)}
-              maxSelect={CATA_MAX_SELECT.flavor}
-              showSubItems
-            />
-          </div>
-          <div className="mt-2">
-            <NotesInput
-              value={str("sabor_residual_notas")}
-              onChange={(v) => set("sabor_residual_notas", v)}
-              placeholder="Notas descriptivas..."
-            />
-          </div>
-        </Section>
-
+        {renderBlock("sabor", "Sabor", flavorCATAOptions, true)}
+        {renderBlock("sabor_residual", "Sabor Residual (Regusto)", flavorCATAOptions, true)}
         <Section title="Gustos Predominantes">
-          <div className="text-[11px] text-brown-mid mb-2">Selecciona hasta 2 sabores principales</div>
+          <div className="text-[11px] text-brown-mid mb-2">
+            Selecciona hasta 2 sabores principales
+          </div>
           <CATAPills
             options={mainTasteOptions}
             selected={arr("gustos")}
@@ -172,137 +125,15 @@ export function DescriptiveForm({
     );
   }
 
-  if (currentPhase === "acidity") {
+  if (currentStep === "acidity_sweetness_mouthfeel") {
     return (
       <div>
-        <Section title="Acidez">
-          <IntensitySlider
-            label="Intensidad"
-            value={num("acidez_int")}
-            onChange={(v) => set("acidez_int", v)}
-          />
-          <div className="mt-3">
-            <label className="text-[11px] font-semibold text-brown-mid block mb-1">
-              Descriptores (libre)
-            </label>
-            <textarea
-              value={str("acidez_desc_libre")}
-              onChange={(e) => set("acidez_desc_libre", e.target.value)}
-              placeholder="Ej: cítrica, málica, brillante..."
-              rows={2}
-              style={{
-                width: "100%",
-                padding: "8px 10px",
-                borderRadius: 8,
-                border: "1px solid #E8E0D0",
-                background: "#FDFBF7",
-                fontSize: 13,
-                color: "#5C4A32",
-                fontFamily: "inherit",
-                resize: "none",
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
-          </div>
-          <div className="mt-2">
-            <NotesInput
-              value={str("acidez_notas")}
-              onChange={(v) => set("acidez_notas", v)}
-              placeholder="Notas adicionales..."
-            />
-          </div>
-        </Section>
+        {renderBlock("acidez", "Acidez", acidityCATAOptions, true)}
+        {renderBlock("dulzor", "Dulzor", sweetnessCATAOptions, true)}
+        {renderBlock("sensacion", "Sensación en Boca", mouthfeelCATAOptions, true)}
       </div>
     );
   }
 
-  if (currentPhase === "sweetness") {
-    return (
-      <div>
-        <Section title="Dulzor">
-          <IntensitySlider
-            label="Intensidad"
-            value={num("dulzor_int")}
-            onChange={(v) => set("dulzor_int", v)}
-          />
-          <div className="mt-3">
-            <label className="text-[11px] font-semibold text-brown-mid block mb-1">
-              Descriptores (libre)
-            </label>
-            <textarea
-              value={str("dulzor_desc_libre")}
-              onChange={(e) => set("dulzor_desc_libre", e.target.value)}
-              placeholder="Ej: miel, panela, caramelo..."
-              rows={2}
-              style={{
-                width: "100%",
-                padding: "8px 10px",
-                borderRadius: 8,
-                border: "1px solid #E8E0D0",
-                background: "#FDFBF7",
-                fontSize: 13,
-                color: "#5C4A32",
-                fontFamily: "inherit",
-                resize: "none",
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
-          </div>
-          <div className="mt-2">
-            <NotesInput
-              value={str("dulzor_notas")}
-              onChange={(v) => set("dulzor_notas", v)}
-              placeholder="Notas adicionales..."
-            />
-          </div>
-        </Section>
-      </div>
-    );
-  }
-
-  if (currentPhase === "mouthfeel") {
-    return (
-      <div>
-        <Section title="Sensación en Boca">
-          <IntensitySlider
-            label="Intensidad"
-            value={num("sensacion_int")}
-            onChange={(v) => set("sensacion_int", v)}
-          />
-          <div className="mt-3">
-            <CATAPills
-              options={mouthfeelCATAOptions}
-              selected={arr("sensacion_desc")}
-              onChange={(v) => set("sensacion_desc", v)}
-              maxSelect={2}
-            />
-          </div>
-          <div className="mt-2">
-            <NotesInput
-              value={str("sensacion_notas")}
-              onChange={(v) => set("sensacion_notas", v)}
-              placeholder="Notas descriptivas..."
-            />
-          </div>
-        </Section>
-      </div>
-    );
-  }
-
-  // overall — affective only
-  return (
-    <div
-      style={{
-        textAlign: "center",
-        padding: "24px 16px",
-        color: "#8B7355",
-        fontSize: 13,
-        fontStyle: "italic",
-      }}
-    >
-      Esta sección es solo afectiva — registra tu impresión global con la escala 1–9.
-    </div>
-  );
+  return null;
 }

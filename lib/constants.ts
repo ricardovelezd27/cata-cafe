@@ -274,6 +274,141 @@ export const CUPPING_PHASES: CuppingPhase[] = [
   "fragrance", "aroma", "flavor", "acidity", "sweetness", "mouthfeel", "overall",
 ];
 
+/* ============================================================
+   NEW: 4-step CVA flow (replaces 7-phase model in UI)
+   - Descriptive uses 3 steps (no overall affective scoring)
+   - Affective and Combined use all 4 steps
+   ============================================================ */
+export type CuppingStep =
+  | "fragrance_aroma"
+  | "taste_aftertaste"
+  | "acidity_sweetness_mouthfeel"
+  | "overall";
+
+export const CUPPING_STEPS: CuppingStep[] = [
+  "fragrance_aroma",
+  "taste_aftertaste",
+  "acidity_sweetness_mouthfeel",
+  "overall",
+];
+
+export const DESCRIPTIVE_STEPS: CuppingStep[] = [
+  "fragrance_aroma",
+  "taste_aftertaste",
+  "acidity_sweetness_mouthfeel",
+];
+
+export const STEP_LABELS: Record<CuppingStep, string> = {
+  fragrance_aroma: "Fragancia y Aroma",
+  taste_aftertaste: "Sabor y Regusto",
+  acidity_sweetness_mouthfeel: "Acidez, Dulzor y Sensación",
+  overall: "Global",
+};
+
+export const STEP_LABELS_SHORT: Record<CuppingStep, string> = {
+  fragrance_aroma: "Frag. / Aroma",
+  taste_aftertaste: "Sabor / Regusto",
+  acidity_sweetness_mouthfeel: "Acidez / Dulzor",
+  overall: "Global",
+};
+
+/** Attributes covered by each step. Same shape as PHASE_ATTRIBUTES. */
+export const STEP_ATTRIBUTES: Record<
+  CuppingStep,
+  { descriptiveId: string | null; affectiveId: string }[]
+> = {
+  fragrance_aroma: [
+    { descriptiveId: "fragancia", affectiveId: "fragancia_af" },
+    { descriptiveId: "aroma",     affectiveId: "aroma_af" },
+  ],
+  taste_aftertaste: [
+    { descriptiveId: "sabor",          affectiveId: "sabor_af" },
+    { descriptiveId: "sabor_residual", affectiveId: "sabor_residual_af" },
+  ],
+  acidity_sweetness_mouthfeel: [
+    { descriptiveId: "acidez",    affectiveId: "acidez_af" },
+    { descriptiveId: "dulzor",    affectiveId: "dulzor_af" },
+    { descriptiveId: "sensacion", affectiveId: "sensacion_af" },
+  ],
+  overall: [
+    { descriptiveId: null, affectiveId: "impresion_global" },
+  ],
+};
+
+export const STEP_DESC_LABELS: Record<string, string> = {
+  fragancia:       "Fragancia",
+  aroma:           "Aroma",
+  sabor:           "Sabor",
+  sabor_residual:  "Sabor Residual (Regusto)",
+  acidez:          "Acidez",
+  dulzor:          "Dulzor",
+  sensacion:       "Sensación en Boca",
+};
+
+/* ============================================================
+   NEW: Acidity / Sweetness / Mouthfeel CATA descriptor sets
+   English IDs (stable in JSON), Spanish display labels.
+   ============================================================ */
+export const ACIDITY_CATA = [
+  { id: "acidity",       label: "Acidez", color: "#A83232",
+    subItems: [
+      { id: "acidity:juicy",      label: "Jugosa" },
+      { id: "acidity:fruit_like", label: "Afrutada" },
+      { id: "acidity:bright",     label: "Brillante" },
+      { id: "acidity:tart",       label: "Astringente" },
+      { id: "acidity:sharp",      label: "Aguda" },
+      { id: "acidity:winey",      label: "Vinosa" },
+      { id: "acidity:vinegary",   label: "Avinagrada" },
+      { id: "acidity:herbal",     label: "Herbal" },
+      { id: "acidity:grassy",     label: "Herbácea" },
+      { id: "acidity:dry",        label: "Seca" },
+    ] },
+] as const;
+
+export const SWEETNESS_CATA = [
+  { id: "sweetness:vanilla",      label: "Vainilla", color: "#B4874E",
+    subItems: [] },
+  { id: "sweetness:brown_sugar",  label: "Azúcar moreno", color: "#8B7355",
+    subItems: [
+      { id: "sweetness:honey",         label: "Miel" },
+      { id: "sweetness:caramelized",   label: "Caramelizado" },
+      { id: "sweetness:maple_syrup",   label: "Sirope de arce" },
+      { id: "sweetness:molasses",      label: "Melaza" },
+    ] },
+] as const;
+
+export const MOUTHFEEL_CATA = [
+  { id: "mouthfeel:rough",        label: "Rugoso", color: "#7A6E5F",
+    subItems: [
+      { id: "mouthfeel:gritty", label: "Granuloso" },
+      { id: "mouthfeel:chalky", label: "Calcáreo" },
+      { id: "mouthfeel:sandy",  label: "Arenoso" },
+    ] },
+  { id: "mouthfeel:oily",         label: "Aceitoso", color: "#C17817",
+    subItems: [] },
+  { id: "mouthfeel:smooth",       label: "Suave", color: "#6B8F71",
+    subItems: [
+      { id: "mouthfeel:velvety", label: "Aterciopelado" },
+      { id: "mouthfeel:silky",   label: "Sedoso" },
+      { id: "mouthfeel:syrupy",  label: "Almíbar" },
+    ] },
+  { id: "mouthfeel:mouth_drying", label: "Astringente", color: "#A83232",
+    subItems: [] },
+  { id: "mouthfeel:metallic",     label: "Metálico", color: "#5C4A32",
+    subItems: [] },
+] as const;
+
+/** Max selections per CATA section in the new step model. */
+export const STEP_CATA_MAX: Record<string, number> = {
+  fragancia:      5,
+  aroma:          5,
+  sabor:          5,
+  sabor_residual: 5,
+  acidez:         3,
+  dulzor:         3,
+  sensacion:      2,
+};
+
 export const DEFECT_TYPES = ["Mohoso", "Fenólico", "Papa"] as const;
 
 export const GREEN_COLORS = [

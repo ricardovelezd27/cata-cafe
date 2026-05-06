@@ -2,13 +2,20 @@
 
 import {
   AFFECTIVE_ATTRIBUTES,
-  PHASE_ATTRIBUTES,
+  STEP_ATTRIBUTES,
+  STEP_DESC_LABELS,
+  STEP_CATA_MAX,
+  FLAVOR_FAMILIES,
+  ACIDITY_CATA,
+  SWEETNESS_CATA,
+  MOUTHFEEL_CATA,
   SENSORY_DEFECTS,
   SENSORY_DEFECT_LABELS,
-  type CuppingPhase,
+  type CuppingStep,
   type SensoryDefect,
 } from "@/lib/constants";
 import { AffectiveBubbles } from "@/components/ui/AffectiveBubbles";
+import { CATAPills, type CATAOption, type CATASubItem } from "@/components/ui/CATAPills";
 import { CupIndicators } from "@/components/ui/CupIndicators";
 import { ScoreDisplay } from "@/components/ui/ScoreDisplay";
 import { Section } from "./Section";
@@ -16,32 +23,70 @@ import { NotesInput } from "./NotesInput";
 
 type Data = Record<string, unknown>;
 
+const flavorCATAOptions: CATAOption[] = FLAVOR_FAMILIES.map((f) => ({
+  id: f.id,
+  label: f.label,
+  color: f.color,
+  subItems: f.subItems as unknown as CATASubItem[],
+}));
+
+const acidityCATAOptions: CATAOption[] = ACIDITY_CATA.map((o) => ({
+  id: o.id,
+  label: o.label,
+  color: o.color,
+  subItems: o.subItems as unknown as CATASubItem[],
+}));
+
+const sweetnessCATAOptions: CATAOption[] = SWEETNESS_CATA.map((o) => ({
+  id: o.id,
+  label: o.label,
+  color: o.color,
+  subItems: o.subItems as unknown as CATASubItem[],
+}));
+
+const mouthfeelCATAOptions: CATAOption[] = MOUTHFEEL_CATA.map((o) => ({
+  id: o.id,
+  label: o.label,
+  color: o.color,
+  subItems: o.subItems as unknown as CATASubItem[],
+}));
+
+function pillsForDescId(descId: string | null): CATAOption[] | null {
+  if (!descId) return null;
+  if (descId === "fragancia" || descId === "aroma" || descId === "sabor" || descId === "sabor_residual") {
+    return flavorCATAOptions;
+  }
+  if (descId === "acidez") return acidityCATAOptions;
+  if (descId === "dulzor") return sweetnessCATAOptions;
+  if (descId === "sensacion") return mouthfeelCATAOptions;
+  return null;
+}
+
 export function AffectiveForm({
   sampleData,
   onChange,
   cupsPerSample,
-  currentPhase,
+  currentStep,
 }: {
   sampleData: Data;
   onChange: (d: Data) => void;
   cupsPerSample: number;
-  currentPhase: CuppingPhase;
+  currentStep: CuppingStep;
 }) {
   const d = sampleData;
   const set = (key: string, val: unknown) => onChange({ ...d, [key]: val });
   const getNum = (k: string): number | null => (d[k] as number | undefined) ?? null;
   const getStr = (k: string): string => (d[k] as string | undefined) ?? "";
+  const getArr = (k: string): string[] => (d[k] as string[] | undefined) ?? [];
   const getBools = (k: string): boolean[] =>
     (d[k] as boolean[] | undefined) ?? Array(cupsPerSample).fill(false);
-  const getArr = (k: string): string[] => (d[k] as string[] | undefined) ?? [];
 
   const showCups = cupsPerSample >= 2;
   const uniformityInScore = cupsPerSample >= 5;
 
-  const phaseAttrIds = new Set(PHASE_ATTRIBUTES[currentPhase].map((a) => a.affectiveId));
-  const visibleAttrs = AFFECTIVE_ATTRIBUTES.filter((a) => phaseAttrIds.has(a.id));
+  const stepAttrs = STEP_ATTRIBUTES[currentStep];
 
-  // Cup state helpers
+  // Cup state helpers (only used in overall step)
   const nonUniformBools = getBools("tazas_no_uniformes");
   const defectiveBools = getBools("tazas_defectuosas");
   const defectoTipo = getArr("defecto_tipo");
@@ -56,7 +101,6 @@ export function AffectiveForm({
   function toggleNonUniform(idx: number) {
     const next = [...nonUniformBools];
     if (next[idx]) {
-      // unchecking non-uniform also clears defective
       next[idx] = false;
       const nextDef = [...defectiveBools];
       nextDef[idx] = false;
@@ -70,7 +114,6 @@ export function AffectiveForm({
   function toggleDefective(idx: number) {
     const next = [...defectiveBools];
     next[idx] = !next[idx];
-    // defective auto-marks non-uniform
     const nextNU = [...nonUniformBools];
     if (next[idx]) nextNU[idx] = true;
     onChange({ ...d, tazas_defectuosas: next, tazas_no_uniformes: nextNU });
@@ -85,28 +128,69 @@ export function AffectiveForm({
     }
   }
 
+  // Non-overall steps: render each attribute as a Section with bubbles + CATA + notes.
+  if (currentStep !== "overall") {
+    return (
+      <div>
+        {stepAttrs.map((attr) => {
+          const title = attr.descriptiveId
+            ? STEP_DESC_LABELS[attr.descriptiveId] ?? attr.affectiveId
+            : attr.affectiveId;
+          const pills = pillsForDescId(attr.descriptiveId);
+          const descKey = attr.descriptiveId ?? attr.affectiveId;
+          const max = attr.descriptiveId ? STEP_CATA_MAX[attr.descriptiveId] : undefined;
+
+          return (
+            <Section key={attr.affectiveId} title={title}>
+              <AffectiveBubbles
+                value={getNum(`${attr.affectiveId}_final`)}
+                onChange={(v) => set(`${attr.affectiveId}_final`, v)}
+              />
+              {pills && (
+                <div className="mt-3">
+                  <CATAPills
+                    options={pills}
+                    selected={getArr(`${descKey}_desc`)}
+                    onChange={(v) => set(`${descKey}_desc`, v)}
+                    maxSelect={max}
+                    showSubItems
+                  />
+                </div>
+              )}
+              <div className="mt-2">
+                <NotesInput
+                  value={getStr(`${attr.affectiveId}_notas`)}
+                  onChange={(v) => set(`${attr.affectiveId}_notas`, v)}
+                  placeholder="Notas afectivas..."
+                />
+              </div>
+            </Section>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Overall step: impresión global + cups + score
   return (
     <div>
-      {visibleAttrs.map((attr) => (
-        <Section key={attr.id} title={attr.label}>
-          <AffectiveBubbles
-            value={getNum(`${attr.id}_final`)}
-            onChange={(v) => set(`${attr.id}_final`, v)}
+      <Section title="Impresión Global">
+        <AffectiveBubbles
+          value={getNum("impresion_global_final")}
+          onChange={(v) => set("impresion_global_final", v)}
+        />
+        <div className="mt-2">
+          <NotesInput
+            value={getStr("impresion_global_notas")}
+            onChange={(v) => set("impresion_global_notas", v)}
+            placeholder="Notas finales..."
           />
-          <div className="mt-1.5">
-            <NotesInput
-              value={getStr(`${attr.id}_notas`)}
-              onChange={(v) => set(`${attr.id}_notas`, v)}
-              placeholder="Notas afectivas..."
-            />
-          </div>
-        </Section>
-      ))}
+        </div>
+      </Section>
 
-      {currentPhase === "overall" && showCups && (
+      {showCups && (
         <Section title="Tazas">
-          {/* Legend */}
-          <div style={{ display: "flex", gap: 12, marginBottom: 10 }}>
+          <div style={{ display: "flex", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
             <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: "#8B7355", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.7px" }}>
               <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#C17817", display: "inline-block" }} />
               No uniforme
@@ -117,7 +201,6 @@ export function AffectiveForm({
             </span>
           </div>
 
-          {/* Interactive cup marking */}
           <div className="mb-3">
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.8px", textTransform: "uppercase", color: "#8B7355", marginBottom: 6 }}>
               No uniformes <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, opacity: 0.7 }}>(1 toque)</span>
@@ -235,16 +318,14 @@ export function AffectiveForm({
         </Section>
       )}
 
-      {currentPhase === "overall" && (
-        <Section title="Puntaje Calculado">
-          <ScoreDisplay
-            sectionScores={AFFECTIVE_ATTRIBUTES.map((a) => (getNum(`${a.id}_final`) ?? 0))}
-            nonUniformCups={nonUniformBools.filter(Boolean).length}
-            defectiveCups={defectiveBools.filter(Boolean).length}
-            defaultExpanded={false}
-          />
-        </Section>
-      )}
+      <Section title="Puntaje Calculado">
+        <ScoreDisplay
+          sectionScores={AFFECTIVE_ATTRIBUTES.map((a) => (getNum(`${a.id}_final`) ?? 0))}
+          nonUniformCups={nonUniformBools.filter(Boolean).length}
+          defectiveCups={defectiveBools.filter(Boolean).length}
+          defaultExpanded={false}
+        />
+      </Section>
     </div>
   );
 }

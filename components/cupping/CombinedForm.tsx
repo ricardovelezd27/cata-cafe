@@ -2,14 +2,17 @@
 
 import {
   AFFECTIVE_ATTRIBUTES,
-  PHASE_ATTRIBUTES,
+  STEP_ATTRIBUTES,
+  STEP_DESC_LABELS,
+  STEP_CATA_MAX,
   FLAVOR_FAMILIES,
-  MOUTHFEEL_OPTIONS,
+  ACIDITY_CATA,
+  SWEETNESS_CATA,
+  MOUTHFEEL_CATA,
   MAIN_TASTES,
-  CATA_MAX_SELECT,
   SENSORY_DEFECTS,
   SENSORY_DEFECT_LABELS,
-  type CuppingPhase,
+  type CuppingStep,
   type SensoryDefect,
 } from "@/lib/constants";
 import { IntensitySlider } from "@/components/ui/IntensitySlider";
@@ -29,10 +32,25 @@ const flavorCATAOptions: CATAOption[] = FLAVOR_FAMILIES.map((f) => ({
   subItems: f.subItems as unknown as CATASubItem[],
 }));
 
-const mouthfeelCATAOptions: CATAOption[] = MOUTHFEEL_OPTIONS.map((o) => ({
+const acidityCATAOptions: CATAOption[] = ACIDITY_CATA.map((o) => ({
   id: o.id,
   label: o.label,
-  color: "#8B7355",
+  color: o.color,
+  subItems: o.subItems as unknown as CATASubItem[],
+}));
+
+const sweetnessCATAOptions: CATAOption[] = SWEETNESS_CATA.map((o) => ({
+  id: o.id,
+  label: o.label,
+  color: o.color,
+  subItems: o.subItems as unknown as CATASubItem[],
+}));
+
+const mouthfeelCATAOptions: CATAOption[] = MOUTHFEEL_CATA.map((o) => ({
+  id: o.id,
+  label: o.label,
+  color: o.color,
+  subItems: o.subItems as unknown as CATASubItem[],
 }));
 
 const mainTasteOptions: CATAOption[] = MAIN_TASTES.map((t) => ({
@@ -41,28 +59,26 @@ const mainTasteOptions: CATAOption[] = MAIN_TASTES.map((t) => ({
   color: "#C17817",
 }));
 
-type AttrKind = "flavor" | "acidity" | "sweetness" | "mouthfeel" | "none";
-
-const ATTR_KIND: Record<string, AttrKind> = {
-  fragancia: "flavor",
-  aroma: "flavor",
-  sabor: "flavor",
-  sabor_residual: "flavor",
-  acidez: "acidity",
-  dulzor: "sweetness",
-  sensacion: "mouthfeel",
-};
+function pillsForDescId(descId: string): CATAOption[] | null {
+  if (descId === "fragancia" || descId === "aroma" || descId === "sabor" || descId === "sabor_residual") {
+    return flavorCATAOptions;
+  }
+  if (descId === "acidez") return acidityCATAOptions;
+  if (descId === "dulzor") return sweetnessCATAOptions;
+  if (descId === "sensacion") return mouthfeelCATAOptions;
+  return null;
+}
 
 export function CombinedForm({
   sampleData,
   onChange,
   cupsPerSample,
-  currentPhase,
+  currentStep,
 }: {
   sampleData: Data;
   onChange: (d: Data) => void;
   cupsPerSample: number;
-  currentPhase: CuppingPhase;
+  currentStep: CuppingStep;
 }) {
   const d = sampleData;
   const set = (key: string, val: unknown) => onChange({ ...d, [key]: val });
@@ -116,10 +132,8 @@ export function CombinedForm({
     }
   }
 
-  const phaseAttrs = PHASE_ATTRIBUTES[currentPhase];
-
-  // Overall phase — affective only + cups + score
-  if (currentPhase === "overall") {
+  // Overall step
+  if (currentStep === "overall") {
     return (
       <div>
         <Section title="Impresión Global">
@@ -127,7 +141,7 @@ export function CombinedForm({
             value={num("impresion_global_final")}
             onChange={(v) => set("impresion_global_final", v)}
           />
-          <div className="mt-1.5">
+          <div className="mt-2">
             <NotesInput
               value={str("impresion_global_notas")}
               onChange={(v) => set("impresion_global_notas", v)}
@@ -138,8 +152,7 @@ export function CombinedForm({
 
         {showCups && (
           <Section title="Tazas">
-            {/* Legend */}
-            <div style={{ display: "flex", gap: 12, marginBottom: 10 }}>
+            <div style={{ display: "flex", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
               <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: "#8B7355", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.7px" }}>
                 <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#C17817", display: "inline-block" }} />
                 No uniforme
@@ -152,7 +165,7 @@ export function CombinedForm({
 
             <div className="mb-3">
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.8px", textTransform: "uppercase", color: "#8B7355", marginBottom: 6 }}>
-                No uniformes <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "#8B7355", opacity: 0.7 }}>(1 toque)</span>
+                No uniformes <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, opacity: 0.7 }}>(1 toque)</span>
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {Array.from({ length: cupsPerSample }, (_, i) => {
@@ -175,7 +188,7 @@ export function CombinedForm({
 
             <div className="mb-3">
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.8px", textTransform: "uppercase", color: "#A83232", marginBottom: 6 }}>
-                Defectuosas <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "#A83232", opacity: 0.7 }}>(1 toque)</span>
+                Defectuosas <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, opacity: 0.7 }}>(1 toque)</span>
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {Array.from({ length: cupsPerSample }, (_, i) => {
@@ -228,130 +241,67 @@ export function CombinedForm({
     );
   }
 
+  // Non-overall: render each attribute as a stacked block
+  const stepAttrs = STEP_ATTRIBUTES[currentStep];
+
   return (
     <div>
-      {phaseAttrs.map((attr) => {
+      {stepAttrs.map((attr) => {
         const descId = attr.descriptiveId;
+        if (!descId) return null;
         const affId = attr.affectiveId;
-        const kind: AttrKind = descId ? (ATTR_KIND[descId] ?? "none") : "none";
-
-        const sectionTitle =
-          descId === "sabor" ? "Sabor"
-          : descId === "sabor_residual" ? "Sabor Residual (Regusto)"
-          : descId === "fragancia" ? "Fragancia"
-          : descId === "aroma" ? "Aroma"
-          : descId === "acidez" ? "Acidez"
-          : descId === "dulzor" ? "Dulzor"
-          : descId === "sensacion" ? "Sensación en Boca"
-          : "Evaluación";
+        const title = STEP_DESC_LABELS[descId] ?? descId;
+        const pills = pillsForDescId(descId);
+        const max = STEP_CATA_MAX[descId];
 
         return (
-          <Section key={affId} title={sectionTitle}>
-            <div
-              style={{ display: "grid", gap: 12 }}
-              className="grid-cols-1 lg:grid-cols-2"
-            >
-              {/* Left — Descriptive */}
-              <div>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", color: "#6B8F71", marginBottom: 6 }}>
-                  Descriptivo
-                </div>
-                {descId && (
-                  <>
-                    <IntensitySlider
-                      label="Intensidad"
-                      value={num(`${descId}_int`)}
-                      onChange={(v) => set(`${descId}_int`, v)}
-                    />
-
-                    {(kind === "flavor") && (
-                      <div className="mt-2">
-                        <CATAPills
-                          options={flavorCATAOptions}
-                          selected={arr(`${descId}_desc`)}
-                          onChange={(v) => set(`${descId}_desc`, v)}
-                          maxSelect={
-                            descId === "sabor" || descId === "sabor_residual"
-                              ? CATA_MAX_SELECT.flavor
-                              : CATA_MAX_SELECT.fragrance
-                          }
-                          showSubItems
-                        />
-                      </div>
-                    )}
-
-                    {kind === "acidity" && (
-                      <div className="mt-2">
-                        <textarea
-                          value={str(`${descId}_desc_libre`)}
-                          onChange={(e) => set(`${descId}_desc_libre`, e.target.value)}
-                          placeholder="Ej: cítrica, málica..."
-                          rows={2}
-                          style={{ width: "100%", padding: "7px 9px", borderRadius: 8, border: "1px solid #E8E0D0", background: "#FDFBF7", fontSize: 12, color: "#5C4A32", fontFamily: "inherit", resize: "none", outline: "none", boxSizing: "border-box" }}
-                        />
-                      </div>
-                    )}
-
-                    {kind === "sweetness" && (
-                      <div className="mt-2">
-                        <textarea
-                          value={str(`${descId}_desc_libre`)}
-                          onChange={(e) => set(`${descId}_desc_libre`, e.target.value)}
-                          placeholder="Ej: miel, panela..."
-                          rows={2}
-                          style={{ width: "100%", padding: "7px 9px", borderRadius: 8, border: "1px solid #E8E0D0", background: "#FDFBF7", fontSize: 12, color: "#5C4A32", fontFamily: "inherit", resize: "none", outline: "none", boxSizing: "border-box" }}
-                        />
-                      </div>
-                    )}
-
-                    {kind === "mouthfeel" && (
-                      <div className="mt-2">
-                        <CATAPills
-                          options={mouthfeelCATAOptions}
-                          selected={arr(`${descId}_desc`)}
-                          onChange={(v) => set(`${descId}_desc`, v)}
-                          maxSelect={2}
-                        />
-                      </div>
-                    )}
-
-                    <div className="mt-1.5">
-                      <NotesInput
-                        value={str(`${descId}_notas`)}
-                        onChange={(v) => set(`${descId}_notas`, v)}
-                        placeholder="Notas..."
-                      />
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Right — Affective */}
-              <div>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", color: "#C17817", marginBottom: 6 }}>
-                  Afectivo 1–9
-                </div>
-                <AffectiveBubbles
-                  value={num(`${affId}_final`)}
-                  onChange={(v) => set(`${affId}_final`, v)}
+          <Section key={affId} title={title}>
+            <div style={{ marginBottom: 6, fontSize: 9, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", color: "#6B8F71" }}>
+              Descriptivo
+            </div>
+            <IntensitySlider
+              label="Intensidad"
+              value={num(`${descId}_int`)}
+              onChange={(v) => set(`${descId}_int`, v)}
+            />
+            {pills && (
+              <div className="mt-3">
+                <CATAPills
+                  options={pills}
+                  selected={arr(`${descId}_desc`)}
+                  onChange={(v) => set(`${descId}_desc`, v)}
+                  maxSelect={max}
+                  showSubItems
                 />
-                <div className="mt-1.5">
-                  <NotesInput
-                    value={str(`${affId}_notas`)}
-                    onChange={(v) => set(`${affId}_notas`, v)}
-                    placeholder="Notas..."
-                  />
-                </div>
               </div>
+            )}
+
+            <div style={{ height: 1, background: "#E8E0D0", margin: "14px 0 10px" }} />
+
+            <div style={{ marginBottom: 6, fontSize: 9, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", color: "#C17817" }}>
+              Calidad 1–9
+            </div>
+            <AffectiveBubbles
+              value={num(`${affId}_final`)}
+              onChange={(v) => set(`${affId}_final`, v)}
+            />
+
+            <div className="mt-3">
+              <NotesInput
+                value={str(`${descId}_notas`)}
+                onChange={(v) => set(`${descId}_notas`, v)}
+                placeholder="Notas..."
+              />
             </div>
           </Section>
         );
       })}
 
-      {/* Main tastes — flavor phase only, below both sections */}
-      {currentPhase === "flavor" && (
+      {currentStep === "taste_aftertaste" && (
         <Section title="Gustos Predominantes">
-          <div className="text-[11px] text-brown-mid mb-2">Selecciona hasta 2 sabores principales</div>
+          <div className="text-[11px] text-brown-mid mb-2">
+            Selecciona hasta 2 sabores principales
+          </div>
           <CATAPills
             options={mainTasteOptions}
             selected={arr("gustos")}

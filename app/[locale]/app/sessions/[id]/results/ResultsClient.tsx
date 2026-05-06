@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { revealSample } from "@/app/actions/community";
+import { revealSample, refreshAggregateScores } from "@/app/actions/community";
 import { ScoreTable } from "@/components/results/ScoreTable";
 import { SampleRadarChart } from "@/components/results/SampleRadarChart";
 import { FlavorCloud } from "@/components/results/FlavorCloud";
@@ -84,6 +84,7 @@ export function ResultsClient({
   const router = useRouter();
   const [view, setView] = useState<ViewMode>("mine");
   const [displayView, setDisplayView] = useState<DisplayView>("table");
+  const [refreshing, setRefreshing] = useState(false);
   const [, startTransition] = useTransition();
 
   const handleReveal = (sampleId: string) => {
@@ -91,6 +92,16 @@ export function ResultsClient({
       await revealSample(sampleId);
       router.refresh();
     });
+  };
+
+  const handleRefreshScores = async () => {
+    setRefreshing(true);
+    try {
+      await refreshAggregateScores(session.id);
+      router.refresh();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const showGroup = view === "group" && canViewGroup;
@@ -176,12 +187,33 @@ export function ResultsClient({
 
         {/* Mine / Group pills */}
         {canViewGroup && (
-          <div style={{ padding: "0 16px 8px", display: "flex", gap: 4 }}>
+          <div style={{ padding: "0 16px 8px", display: "flex", gap: 4, alignItems: "center" }}>
             {(["mine", "group"] as ViewMode[]).map((v) => (
               <button key={v} onClick={() => setView(v)} style={pillStyle(view === v)}>
                 {v === "mine" ? translations.myResults : translations.groupResults}
               </button>
             ))}
+            {isOwner && (
+              <button
+                onClick={handleRefreshScores}
+                disabled={refreshing}
+                style={{
+                  marginLeft: "auto",
+                  padding: "5px 12px",
+                  borderRadius: 9999,
+                  border: "1px solid #C17817",
+                  background: refreshing ? "#FEF3E2" : "transparent",
+                  color: "#C17817",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: refreshing ? "default" : "pointer",
+                  fontFamily: "inherit",
+                  flexShrink: 0,
+                }}
+              >
+                {refreshing ? "Actualizando…" : "⟳ Actualizar puntuaciones"}
+              </button>
+            )}
           </div>
         )}
 

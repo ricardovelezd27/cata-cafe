@@ -14,7 +14,13 @@ import {
   upsertPhysical,
 } from "@/app/actions/sessions";
 import { submitAllEvaluations, closeSession } from "@/app/actions/community";
-import { CUPPING_PHASES, PHASE_LABELS, PHASE_ATTRIBUTES, type CuppingPhase } from "@/lib/constants";
+import {
+  CUPPING_STEPS,
+  DESCRIPTIVE_STEPS,
+  STEP_LABELS,
+  STEP_ATTRIBUTES,
+  type CuppingStep,
+} from "@/lib/constants";
 import { PhaseStepper } from "@/components/cupping/PhaseStepper";
 import { DevRoleBadge } from "@/components/dev/DevRoleBadge";
 
@@ -86,8 +92,11 @@ export function CupClient({
   userEmail?: string;
 }) {
   const router = useRouter();
+  const stepsForFormat: CuppingStep[] =
+    session.format === "descriptive" ? DESCRIPTIVE_STEPS : CUPPING_STEPS;
+
   const [sampleIdx, setSampleIdx] = useState(0);
-  const [currentPhase, setCurrentPhase] = useState<CuppingPhase>("fragrance");
+  const [currentStep, setCurrentStep] = useState<CuppingStep>(stepsForFormat[0]);
   const [samples, setSamples] = useState(session.samples);
   const [activeTab, setActiveTab] = useState<CuppingTab>("cupping");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
@@ -192,10 +201,10 @@ export function CupClient({
     scheduleAutoSave(samples[sampleIdx].id, key, data);
   };
 
-  const handlePhaseChange = async (phase: CuppingPhase) => {
-    if (phase === currentPhase) return;
+  const handleStepChange = async (step: CuppingStep) => {
+    if (step === currentStep) return;
     await flushPending();
-    setCurrentPhase(phase);
+    setCurrentStep(step);
     setSampleIdx(0);
     window.scrollTo({ top: 0, behavior: "instant" });
   };
@@ -208,9 +217,9 @@ export function CupClient({
       if (sampleIdx < samples.length - 1) {
         setSampleIdx((i) => i + 1);
       } else {
-        const phaseIdx = CUPPING_PHASES.indexOf(currentPhase);
-        if (phaseIdx < CUPPING_PHASES.length - 1) {
-          await handlePhaseChange(CUPPING_PHASES[phaseIdx + 1]);
+        const stepIdx = stepsForFormat.indexOf(currentStep);
+        if (stepIdx < stepsForFormat.length - 1) {
+          await handleStepChange(stepsForFormat[stepIdx + 1]);
         }
       }
       window.scrollTo({ top: 0, behavior: "instant" });
@@ -224,9 +233,9 @@ export function CupClient({
     if (sampleIdx > 0) {
       setSampleIdx((i) => i - 1);
     } else {
-      const phaseIdx = CUPPING_PHASES.indexOf(currentPhase);
-      if (phaseIdx > 0) {
-        setCurrentPhase(CUPPING_PHASES[phaseIdx - 1]);
+      const stepIdx = stepsForFormat.indexOf(currentStep);
+      if (stepIdx > 0) {
+        setCurrentStep(stepsForFormat[stepIdx - 1]);
         setSampleIdx(samples.length - 1);
       }
     }
@@ -252,15 +261,15 @@ export function CupClient({
   };
 
   const current = samples[sampleIdx];
-  const isLastSampleInPhase = sampleIdx >= samples.length - 1;
-  const isLastPhase = CUPPING_PHASES.indexOf(currentPhase) >= CUPPING_PHASES.length - 1;
-  const isLastSampleOverall = isLastSampleInPhase && isLastPhase;
-  const prevDisabled = sampleIdx === 0 && currentPhase === CUPPING_PHASES[0];
+  const isLastSampleInStep = sampleIdx >= samples.length - 1;
+  const isLastStep = stepsForFormat.indexOf(currentStep) >= stepsForFormat.length - 1;
+  const isLastSampleOverall = isLastSampleInStep && isLastStep;
+  const prevDisabled = sampleIdx === 0 && currentStep === stepsForFormat[0];
 
-  const hasPhaseFill = (sample: Sample, phase: CuppingPhase): boolean => {
-    return PHASE_ATTRIBUTES[phase].some((attr) => {
+  const hasStepFill = (sample: Sample, step: CuppingStep): boolean => {
+    return STEP_ATTRIBUTES[step].some((attr) => {
       if (session.format === "affective") {
-        const v = sample.affective[attr.affectiveId];
+        const v = sample.affective[`${attr.affectiveId}_final`];
         return v !== null && v !== undefined;
       }
       if (session.format === "descriptive") {
@@ -268,22 +277,22 @@ export function CupClient({
         const v = sample.descriptive[`${attr.descriptiveId}_int`];
         return v !== null && v !== undefined;
       }
-      const aff = sample.combined[attr.affectiveId];
+      const aff = sample.combined[`${attr.affectiveId}_final`];
       const desc = attr.descriptiveId ? sample.combined[`${attr.descriptiveId}_int`] : undefined;
       return (aff !== null && aff !== undefined) || (desc !== null && desc !== undefined);
     });
   };
 
-  const getPhaseStatus = (phase: CuppingPhase): "empty" | "partial" | "complete" => {
-    const filled = samples.filter((s) => hasPhaseFill(s, phase)).length;
+  const getStepStatus = (step: CuppingStep): "empty" | "partial" | "complete" => {
+    const filled = samples.filter((s) => hasStepFill(s, step)).length;
     if (filled === 0) return "empty";
     if (filled === samples.length) return "complete";
     return "partial";
   };
 
-  const phaseStatuses = Object.fromEntries(
-    CUPPING_PHASES.map((p) => [p, getPhaseStatus(p)])
-  ) as Record<CuppingPhase, "empty" | "partial" | "complete">;
+  const stepStatuses = Object.fromEntries(
+    stepsForFormat.map((s) => [s, getStepStatus(s)])
+  ) as Record<string, "empty" | "partial" | "complete">;
 
   const TABS = [
     { key: "cupping" as const, icon: "☕", label: "Cata" },
@@ -307,14 +316,14 @@ export function CupClient({
     border: "none" as const,
     background: isNavigating
       ? "#C4B49A"
-      : isLastSampleInPhase && !isLastPhase
+      : isLastSampleInStep && !isLastStep
       ? "linear-gradient(135deg, #C17817 0%, #A56A10 100%)"
       : "linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%)",
     color: "#FFF",
     fontSize: 14,
     fontWeight: 700,
     cursor: isNavigating ? "default" as const : "pointer" as const,
-    fontFamily: isLastSampleInPhase && !isLastPhase ? "'Cormorant Garamond', Georgia, serif" : "inherit",
+    fontFamily: isLastSampleInStep && !isLastStep ? "'Cormorant Garamond', Georgia, serif" : "inherit",
     transition: "background 0.2s",
   });
 
@@ -438,7 +447,7 @@ export function CupClient({
           }}
         >
           {samples.map((s, i) => {
-            const filled = hasPhaseFill(s, currentPhase);
+            const filled = hasStepFill(s, currentStep);
             const isActive = i === sampleIdx;
             return (
               <button
@@ -516,10 +525,11 @@ export function CupClient({
         {activeTab === "cupping" && (
           <div style={{ background: "#F5F0E6", borderTop: "1px solid #F0EBE0" }}>
             <PhaseStepper
-              phases={CUPPING_PHASES}
-              currentPhase={currentPhase}
-              phaseStatuses={phaseStatuses}
-              onSelect={handlePhaseChange}
+              phases={stepsForFormat}
+              currentPhase={currentStep}
+              phaseStatuses={stepStatuses}
+              labels={STEP_LABELS}
+              onSelect={handleStepChange}
               variant="light"
             />
           </div>
@@ -574,7 +584,7 @@ export function CupClient({
 
       {/* ══ FORM CONTENT ════════════════════════════════════════════════════ */}
       <div
-        key={currentPhase}
+        key={currentStep}
         className="flex-1 p-4 lg:px-8 lg:py-6"
         style={{ animation: "phase-in 0.22s ease-out" }}
       >
@@ -582,7 +592,7 @@ export function CupClient({
           <DescriptiveForm
             sampleData={current.descriptive}
             onChange={(d) => setCurrentData("descriptive", d)}
-            currentPhase={currentPhase}
+            currentStep={currentStep}
           />
         )}
         {activeTab === "cupping" && session.format === "affective" && (
@@ -590,7 +600,7 @@ export function CupClient({
             sampleData={current.affective}
             onChange={(d) => setCurrentData("affective", d)}
             cupsPerSample={session.cupsPerSample}
-            currentPhase={currentPhase}
+            currentStep={currentStep}
           />
         )}
         {activeTab === "cupping" &&
@@ -600,7 +610,7 @@ export function CupClient({
               sampleData={current.combined}
               onChange={(d) => setCurrentData("combined", d)}
               cupsPerSample={session.cupsPerSample}
-              currentPhase={currentPhase}
+              currentStep={currentStep}
             />
           )}
         {activeTab === "extrinsic" && (
@@ -656,7 +666,7 @@ export function CupClient({
           >
             {isNavigating
               ? translations.submitting
-              : isLastSampleInPhase && !isLastPhase
+              : isLastSampleInStep && !isLastStep
               ? `${translations.nextPhase} ⟶`
               : `${translations.nextSample} →`}
           </button>

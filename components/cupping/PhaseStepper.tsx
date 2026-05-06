@@ -1,17 +1,24 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { PHASE_LABELS, type CuppingPhase } from "@/lib/constants";
 
-interface PhaseStepperProps {
-  phases: CuppingPhase[];
-  currentPhase: CuppingPhase;
-  phaseStatuses: Record<CuppingPhase, "empty" | "partial" | "complete">;
-  onSelect: (phase: CuppingPhase) => void;
+interface PhaseStepperProps<T extends string> {
+  phases: readonly T[];
+  currentPhase: T;
+  phaseStatuses: Record<string, "empty" | "partial" | "complete">;
+  labels: Record<string, string>;
+  onSelect: (phase: T) => void;
   variant?: "dark" | "light";
 }
 
-export function PhaseStepper({ phases, currentPhase, phaseStatuses, onSelect, variant = "dark" }: PhaseStepperProps) {
+export function PhaseStepper<T extends string>({
+  phases,
+  currentPhase,
+  phaseStatuses,
+  labels,
+  onSelect,
+  variant = "dark",
+}: PhaseStepperProps<T>) {
   const isLight = variant === "light";
   const activeRef = useRef<HTMLButtonElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -31,14 +38,13 @@ export function PhaseStepper({ phases, currentPhase, phaseStatuses, onSelect, va
         overflowX: "auto",
         padding: "4px 2px 4px",
         scrollbarWidth: "none",
-        /* Fade both edges to signal scrollability */
         maskImage: "linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)",
         WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)",
       }}
     >
       {phases.map((phase, idx) => {
         const isActive = phase === currentPhase;
-        const status = phaseStatuses[phase];
+        const status = phaseStatuses[phase] ?? "empty";
 
         const statusDot =
           status === "complete"
@@ -74,12 +80,12 @@ export function PhaseStepper({ phases, currentPhase, phaseStatuses, onSelect, va
               cursor: "pointer",
               fontFamily: "inherit",
               transition: "all 0.15s",
-              minHeight: 44, /* WCAG 2.5.5 minimum touch target */
+              minHeight: 44,
               minWidth: 44,
             }}
           >
             <span style={{ whiteSpace: "nowrap" }}>
-              {idx + 1}. {PHASE_LABELS[phase]}
+              {idx + 1}. {labels[phase] ?? phase}
             </span>
             <span
               style={{
