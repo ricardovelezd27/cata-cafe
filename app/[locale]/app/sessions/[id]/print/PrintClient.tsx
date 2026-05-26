@@ -27,11 +27,21 @@ const C = {
 const PRINT_STYLE = `
   @media print {
     .no-print { display: none !important; }
+    .mobile-print-overlay { display: none !important; }
     body { background: white !important; margin: 0 !important; padding: 0 !important; }
     .print-area { padding: 0 !important; }
     .print-topbar-pad { padding-top: 0 !important; }
+    .print-document { display: block !important; }
   }
   @page { size: A4; margin: 12mm 14mm; }
+  @media screen and (max-width: 767px) {
+    .mobile-print-overlay { display: flex !important; }
+    .print-document { display: none !important; }
+    .no-print { display: none !important; }
+  }
+  @media screen and (min-width: 768px) {
+    .mobile-print-overlay { display: none !important; }
+  }
 `;
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
@@ -822,6 +832,102 @@ export function PrintClient({
     >
       <style>{PRINT_STYLE}</style>
 
+      {/* Mobile-only overlay — clean print/share screen */}
+      <div
+        className="mobile-print-overlay"
+        style={{
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+          padding: "40px 28px",
+          background: C.creamPage,
+          gap: 28,
+          textAlign: "center" as const,
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontFamily: "Georgia, 'Times New Roman', serif",
+              fontSize: 22,
+              fontWeight: 700,
+              color: C.green,
+              lineHeight: 1.2,
+              marginBottom: 10,
+            }}
+          >
+            {session.name}
+          </div>
+          <div
+            style={{
+              display: "inline-block",
+              background: C.green,
+              color: C.white,
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: "1.5px",
+              textTransform: "uppercase" as const,
+              padding: "3px 10px",
+              borderRadius: 3,
+            }}
+          >
+            SCA CVA · {formatLabel}
+          </div>
+        </div>
+        <div>
+          <div
+            style={{
+              fontSize: 16,
+              color: C.brown,
+              fontWeight: 600,
+              marginBottom: 10,
+              lineHeight: 1.4,
+            }}
+          >
+            Tu evaluación está lista para exportar como PDF.
+          </div>
+          <div style={{ fontSize: 13, color: C.brownMid, lineHeight: 1.7 }}>
+            Toca el botón para abrir el diálogo de impresión.{" "}
+            Elige &quot;Guardar como PDF&quot; y comparte el archivo.
+          </div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column" as const, gap: 12, width: "100%", maxWidth: 320 }}>
+          <button
+            onClick={() => window.print()}
+            style={{
+              background: C.green,
+              color: C.white,
+              border: "none",
+              padding: "15px 0",
+              borderRadius: 9,
+              fontSize: 16,
+              fontWeight: 700,
+              cursor: "pointer",
+              width: "100%",
+              fontFamily: "Georgia, 'Times New Roman', serif",
+            }}
+          >
+            🖨 Guardar como PDF
+          </button>
+          <button
+            onClick={() => window.history.back()}
+            style={{
+              background: "transparent",
+              border: `1px solid ${C.brownLight}`,
+              color: C.brownMid,
+              padding: "12px 0",
+              borderRadius: 9,
+              fontSize: 13,
+              cursor: "pointer",
+              width: "100%",
+            }}
+          >
+            ← Volver
+          </button>
+        </div>
+      </div>
+
       {/* Screen-only top bar */}
       <div
         className="no-print"
@@ -875,6 +981,7 @@ export function PrintClient({
       </div>
 
       {/* Printable area */}
+      <div className="print-document">
       <div
         className="print-topbar-pad"
         style={{ paddingTop: 52, maxWidth: 760, margin: "0 auto", padding: "64px 24px 24px" }}
@@ -957,6 +1064,7 @@ export function PrintClient({
           Cata Café Sensible · Evaluación CVA SCA · Coffee Value Assessment v2 · {session.date}
         </div>
       </div>
+      </div>{/* /print-document */}
     </div>
   );
 }

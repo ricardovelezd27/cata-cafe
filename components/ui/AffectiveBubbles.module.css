@@ -19,9 +19,9 @@
 .scale { display: flex; justify-content: space-between; margin-top: 12px; font-family: var(--font-mono); font-size: 9px; color: var(--color-brown-mid); text-transform: uppercase; letter-spacing: 0.16em; }
 /* Reserve space equal to final box + margin so labels align under bubbles only */
 .scaleInner { display: flex; justify-content: space-between; flex: 1; }
-.scaleInner span:nth-child(1) { width: 44px; }
+.scaleInner span:nth-child(1) { max-width: 34%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scaleInner span:nth-child(2) { flex: 1; text-align: center; }
-.scaleInner span:nth-child(3) { width: 44px; text-align: right; }
+.scaleInner span:nth-child(3) { max-width: 34%; min-width: 0; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scaleSpacer { flex-shrink: 0; width: calc(58px + 16px); } /* matches .final: margin-left 16px + finalInput 58px */
 /* Container query: fires when AffectiveBubbles' own width is narrow
    (covers both: mobile viewports AND the ~203px right column in 2-col layout) */
@@ -31,7 +31,7 @@
   .final { margin-left: 8px; }
   .finalInput { width: 42px; height: 32px; line-height: 32px; font-size: 17px; }
   .scale { font-size: 8px; }
-  .scaleInner span:nth-child(1), .scaleInner span:nth-child(3) { width: 32px; }
+  .scaleInner span:nth-child(1), .scaleInner span:nth-child(3) { max-width: 34%; white-space: nowrap; }
   .scaleSpacer { width: calc(42px + 8px); }
 }
 /* Extra-compact: very narrow containers (mobile single-col ≤360px, desktop 2-col ~203px)
@@ -41,7 +41,7 @@
   .bubble { width: 28px; height: 28px; font-size: 12px; border-width: 1px; }
   .final { display: none; }
   .scale { font-size: 7.5px; margin-top: 6px; }
-  .scaleInner span:nth-child(1), .scaleInner span:nth-child(3) { width: 28px; }
+  .scaleInner span:nth-child(1), .scaleInner span:nth-child(3) { max-width: 34%; white-space: nowrap; }
   .scaleSpacer { display: none; }
 }
 /* Fallback for older browsers that don't support container queries */
@@ -51,7 +51,7 @@
   .final { margin-left: 8px; }
   .finalInput { width: 42px; height: 32px; line-height: 32px; font-size: 17px; }
   .scale { font-size: 8px; }
-  .scaleInner span:nth-child(1), .scaleInner span:nth-child(3) { width: 32px; }
+  .scaleInner span:nth-child(1), .scaleInner span:nth-child(3) { max-width: 34%; white-space: nowrap; }
   .scaleSpacer { width: calc(42px + 8px); }
 }
 @media (max-width: 400px) {
@@ -59,6 +59,6 @@
   .bubble { width: 28px; height: 28px; font-size: 12px; border-width: 1px; }
   .final { display: none; }
   .scale { font-size: 7.5px; margin-top: 6px; }
-  .scaleInner span:nth-child(1), .scaleInner span:nth-child(3) { width: 28px; }
+  .scaleInner span:nth-child(1), .scaleInner span:nth-child(3) { max-width: 34%; white-space: nowrap; }
   .scaleSpacer { display: none; }
 }

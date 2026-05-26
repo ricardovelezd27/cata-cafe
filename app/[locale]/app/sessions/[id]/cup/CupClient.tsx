@@ -367,7 +367,7 @@ export function CupClient({
     >
       {/* ══ HORIZONTAL PROGRESS HEADER ══════════════════════════════════════ */}
       <div
-        className="sticky -top-4 lg:-top-6 z-50"
+        className="sticky top-0 z-50"
         style={{
           background: "#FDFBF7",
           borderBottom: "1px solid #E8E0D0",
@@ -465,7 +465,7 @@ export function CupClient({
                 onClick={async () => {
                   await flushPending();
                   setSampleIdx(i);
-                  window.scrollTo({ top: 0, behavior: "instant" });
+                  document.querySelector("main")?.scrollTo({ top: 0, behavior: "instant" });
                 }}
                 style={{
                   padding: "5px 14px",

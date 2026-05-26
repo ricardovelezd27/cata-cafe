@@ -141,7 +141,7 @@ export function ResultsClient({
     >
       {/* Sticky header — light themed */}
       <div
-        className="sticky top-0 z-50"
+        className="sticky top-0 z-[100]"
         style={{ background: "#FDFBF7", borderBottom: "1px solid #E8E0D0" }}
       >
         {/* Title row */}
@@ -170,7 +170,7 @@ export function ResultsClient({
           >
             ← Editar evaluación
           </button>
-          <div>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <div
               style={{
                 fontFamily: "'Cormorant Garamond', Georgia, serif",
@@ -181,7 +181,15 @@ export function ResultsClient({
             >
               Resultados de la Sesión
             </div>
-            <div style={{ fontSize: 11, color: "#8B7355" }}>
+            <div
+              style={{
+                fontSize: 11,
+                color: "#8B7355",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
               {session.name} · {session.date}
             </div>
           </div>
@@ -189,7 +197,7 @@ export function ResultsClient({
 
         {/* Mine / Group pills */}
         {canViewGroup && (
-          <div style={{ padding: "0 16px 8px", display: "flex", gap: 4, alignItems: "center" }}>
+          <div style={{ padding: "0 16px 8px", display: "flex", gap: 4, alignItems: "center", overflow: "hidden" }}>
             {(["mine", "group"] as ViewMode[]).map((v) => (
               <button key={v} onClick={() => setView(v)} style={pillStyle(view === v)}>
                 {v === "mine" ? translations.myResults : translations.groupResults}
@@ -212,7 +220,7 @@ export function ResultsClient({
                 flexShrink: 0,
               }}
             >
-              {refreshing ? "Actualizando…" : "⟳ Actualizar puntuaciones"}
+              {refreshing ? "Actualizando…" : "⟳ Actualizar"}
             </button>
           </div>
         )}
