@@ -306,6 +306,7 @@ export function CupClient({
       await handleGoToResults();
     } else {
       setActiveTab(key);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
