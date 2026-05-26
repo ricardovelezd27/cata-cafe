@@ -26,7 +26,7 @@ export function IntensitySlider({
   disabled = false,
   min = 0,
   max = 15,
-  step = 0.5,
+  step = 1,
 }: IntensitySliderProps) {
   const id = useId()
   const v = value ?? 0
@@ -39,7 +39,7 @@ export function IntensitySlider({
         <div className={styles.head}>
           <label htmlFor={id} className={styles.label}>{label}</label>
           <span className={styles.valueDisplay}>
-            {empty ? <em>Sin marcar</em> : <><span className={styles.num}>{v.toFixed(1)}</span><span className={styles.cap}>/15</span></>}
+            {empty ? <em>Sin marcar</em> : <><span className={styles.num}>{String(v)}</span><span className={styles.cap}>/15</span></>}
           </span>
         </div>
       )}
@@ -54,7 +54,7 @@ export function IntensitySlider({
           step={step}
           value={v}
           disabled={disabled}
-          onChange={(e) => onChange(Number(e.target.value))}
+          onChange={(e) => onChange(Math.round(Number(e.target.value)))}
           className={styles.input}
           aria-label={label}
         />
