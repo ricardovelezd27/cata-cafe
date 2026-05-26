@@ -9,16 +9,21 @@ export function WaitingRoomClient({
   sessionId,
   sessionName,
   locale,
+  isAsync,
   translations,
 }: {
   sessionId: string;
   sessionName: string;
   locale: string;
+  isAsync: boolean;
   translations: {
     title: string;
-    subtitle: string;
     description: string;
+    asyncDetail: string;
     waiting: string;
+    buttonLabel: string;
+    checkingLabel: string;
+    notStartedMsg: string;
   };
 }) {
   const router = useRouter();
@@ -26,6 +31,8 @@ export function WaitingRoomClient({
   const [notStarted, setNotStarted] = useState(false);
 
   useEffect(() => {
+    if (isAsync) return;
+
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -53,9 +60,13 @@ export function WaitingRoomClient({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [sessionId, locale, router]);
+  }, [sessionId, locale, router, isAsync]);
 
-  const handleCheckStart = async () => {
+  const handleStart = async () => {
+    if (isAsync) {
+      router.push(`/${locale}/app/sessions/${sessionId}/cup`);
+      return;
+    }
     setChecking(true);
     const started = await checkSessionStarted(sessionId);
     setChecking(false);
@@ -70,7 +81,6 @@ export function WaitingRoomClient({
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-16">
       <div className="w-full max-w-md space-y-8 text-center">
-        {/* Coffee cup animation */}
         <div className="text-6xl select-none" aria-hidden>
           ☕
         </div>
@@ -83,26 +93,31 @@ export function WaitingRoomClient({
           <p className="text-sm text-brown-mid leading-relaxed">
             {translations.description}
           </p>
+          {isAsync && (
+            <p className="text-sm text-brown-mid leading-relaxed">
+              {translations.asyncDetail}
+            </p>
+          )}
         </div>
 
-        {/* Animated dots */}
-        <div className="flex items-center justify-center gap-2">
-          <span className="text-sm text-brown-mid">{translations.waiting}</span>
-          <span className="flex gap-1">
-            {[0, 1, 2].map((i) => (
-              <span
-                key={i}
-                className="inline-block w-1.5 h-1.5 rounded-full bg-green-dark/60 animate-bounce"
-                style={{ animationDelay: `${i * 0.2}s` }}
-              />
-            ))}
-          </span>
-        </div>
+        {!isAsync && (
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-sm text-brown-mid">{translations.waiting}</span>
+            <span className="flex gap-1">
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className="inline-block w-1.5 h-1.5 rounded-full bg-green-dark/60 animate-bounce"
+                  style={{ animationDelay: `${i * 0.2}s` }}
+                />
+              ))}
+            </span>
+          </div>
+        )}
 
-        {/* Manual refresh button */}
         <div className="space-y-2">
           <button
-            onClick={handleCheckStart}
+            onClick={handleStart}
             disabled={checking}
             className="w-full rounded-xl py-3 px-6 text-sm font-semibold text-white"
             style={{
@@ -115,10 +130,10 @@ export function WaitingRoomClient({
               transition: "background 0.2s",
             }}
           >
-            {checking ? "Verificando..." : "Iniciar cata"}
+            {checking ? translations.checkingLabel : translations.buttonLabel}
           </button>
           {notStarted && (
-            <p className="text-sm text-brown-mid">Aún no ha comenzado</p>
+            <p className="text-sm text-brown-mid">{translations.notStartedMsg}</p>
           )}
         </div>
       </div>

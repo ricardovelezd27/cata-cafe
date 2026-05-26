@@ -154,7 +154,7 @@ export function ResultsClient({
           }}
         >
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push(`/${locale}/app/sessions/${session.id}/cup`)}
             style={{
               color: "#8B7355",
               background: "transparent",
