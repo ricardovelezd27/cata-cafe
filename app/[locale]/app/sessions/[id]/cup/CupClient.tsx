@@ -206,7 +206,7 @@ export function CupClient({
     await flushPending();
     setCurrentStep(step);
     setSampleIdx(0);
-    window.scrollTo({ top: 0, behavior: "instant" });
+    document.querySelector("main")?.scrollTo({ top: 0, behavior: "instant" });
   };
 
   const handleNextSample = async () => {
@@ -222,7 +222,7 @@ export function CupClient({
           await handleStepChange(stepsForFormat[stepIdx + 1]);
         }
       }
-      window.scrollTo({ top: 0, behavior: "instant" });
+      document.querySelector("main")?.scrollTo({ top: 0, behavior: "instant" });
     } finally {
       setIsNavigating(false);
     }
@@ -239,7 +239,7 @@ export function CupClient({
         setSampleIdx(samples.length - 1);
       }
     }
-    window.scrollTo({ top: 0, behavior: "instant" });
+    document.querySelector("main")?.scrollTo({ top: 0, behavior: "instant" });
   };
 
   const handleGoToResults = async () => {
@@ -306,7 +306,7 @@ export function CupClient({
       await handleGoToResults();
     } else {
       setActiveTab(key);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      document.querySelector("main")?.scrollTo({ top: 0, behavior: "instant" });
     }
   };
 
