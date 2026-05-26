@@ -46,7 +46,7 @@ export const FLAVOR_FAMILIES = [
     subItems: [] as readonly { id: string; label: string }[] },
   { id: 'fruity',         label: 'Frutal',           color: '#E8834A',
     subItems: [{ id: 'fruity:berry',               label: 'Berry' },
-               { id: 'fruity:dried',               label: 'Fruta Seca' },
+               { id: 'fruity:dried',               label: 'Fruta deshidratada' },
                { id: 'fruity:citrus',              label: 'Cítrico' },
                { id: 'fruity:other_fruit',         label: 'Otra fruta' }] },
   { id: 'sweet',          label: 'Dulce',            color: '#B4874E',
