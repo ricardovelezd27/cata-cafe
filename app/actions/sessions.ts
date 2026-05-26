@@ -265,3 +265,14 @@ export async function upsertExtrinsic(input: {
   });
   return { ok: true };
 }
+
+export async function checkSessionStarted(sessionId: string): Promise<boolean> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  const session = await prisma.cuppingSession.findFirst({
+    where: { id: sessionId },
+    select: { startedAt: true },
+  });
+  return session?.startedAt != null;
+}

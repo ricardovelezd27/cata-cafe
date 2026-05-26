@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
+import { checkSessionStarted } from "@/app/actions/sessions";
 
 export function WaitingRoomClient({
   sessionId,
@@ -21,6 +22,8 @@ export function WaitingRoomClient({
   };
 }) {
   const router = useRouter();
+  const [checking, setChecking] = useState(false);
+  const [notStarted, setNotStarted] = useState(false);
 
   useEffect(() => {
     const supabase = createBrowserClient(
@@ -52,6 +55,18 @@ export function WaitingRoomClient({
     };
   }, [sessionId, locale, router]);
 
+  const handleCheckStart = async () => {
+    setChecking(true);
+    const started = await checkSessionStarted(sessionId);
+    setChecking(false);
+    if (started) {
+      router.push(`/${locale}/app/sessions/${sessionId}/cup`);
+    } else {
+      setNotStarted(true);
+      setTimeout(() => setNotStarted(false), 2000);
+    }
+  };
+
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-16">
       <div className="w-full max-w-md space-y-8 text-center">
@@ -82,6 +97,29 @@ export function WaitingRoomClient({
               />
             ))}
           </span>
+        </div>
+
+        {/* Manual refresh button */}
+        <div className="space-y-2">
+          <button
+            onClick={handleCheckStart}
+            disabled={checking}
+            className="w-full rounded-xl py-3 px-6 text-sm font-semibold text-white"
+            style={{
+              background: checking
+                ? "#C4B49A"
+                : "linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%)",
+              border: "none",
+              cursor: checking ? "default" : "pointer",
+              fontFamily: "inherit",
+              transition: "background 0.2s",
+            }}
+          >
+            {checking ? "Verificando..." : "Iniciar cata"}
+          </button>
+          {notStarted && (
+            <p className="text-sm text-brown-mid">Aún no ha comenzado</p>
+          )}
         </div>
       </div>
     </main>
