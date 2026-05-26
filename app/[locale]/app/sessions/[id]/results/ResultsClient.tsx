@@ -195,27 +195,25 @@ export function ResultsClient({
                 {v === "mine" ? translations.myResults : translations.groupResults}
               </button>
             ))}
-            {isOwner && (
-              <button
-                onClick={handleRefreshScores}
-                disabled={refreshing}
-                style={{
-                  marginLeft: "auto",
-                  padding: "5px 12px",
-                  borderRadius: 9999,
-                  border: "1px solid #C17817",
-                  background: refreshing ? "#FEF3E2" : "transparent",
-                  color: "#C17817",
-                  fontSize: 11,
-                  fontWeight: 600,
-                  cursor: refreshing ? "default" : "pointer",
-                  fontFamily: "inherit",
-                  flexShrink: 0,
-                }}
-              >
-                {refreshing ? "Actualizando…" : "⟳ Actualizar puntuaciones"}
-              </button>
-            )}
+            <button
+              onClick={handleRefreshScores}
+              disabled={refreshing}
+              style={{
+                marginLeft: "auto",
+                padding: "5px 12px",
+                borderRadius: 9999,
+                border: "1px solid #C17817",
+                background: refreshing ? "#FEF3E2" : "transparent",
+                color: "#C17817",
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: refreshing ? "default" : "pointer",
+                fontFamily: "inherit",
+                flexShrink: 0,
+              }}
+            >
+              {refreshing ? "Actualizando…" : "⟳ Actualizar puntuaciones"}
+            </button>
           </div>
         )}
 
