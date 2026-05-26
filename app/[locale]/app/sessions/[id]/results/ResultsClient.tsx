@@ -159,14 +159,16 @@ export function ResultsClient({
               color: "#8B7355",
               background: "transparent",
               border: "none",
-              fontSize: 18,
+              fontSize: 13,
               cursor: "pointer",
               lineHeight: 1,
               padding: "0 2px",
               flexShrink: 0,
+              fontFamily: "inherit",
+              letterSpacing: "0.3px",
             }}
           >
-            ←
+            ← Editar evaluación
           </button>
           <div>
             <div
