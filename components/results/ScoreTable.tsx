@@ -333,16 +333,16 @@ export function ScoreTable({
                 {/* Descriptive intensity cells */}
                 {showDescriptive &&
                   DESCRIPTIVE_ATTRS.map((attr) => {
-                    const val = descData
+                    const raw = descData
                       ? (descData[`${attr.id}_int`] as number | undefined)
                       : undefined;
+                    const val = raw !== undefined && raw > 0 ? raw : 1;
+                    const isDefault = raw === undefined || raw === 0;
                     return (
                       <td key={attr.id} style={{ ...tdBase, background: rowBg }}>
-                        {val !== undefined ? (
-                          val.toFixed(1)
-                        ) : (
-                          <span style={{ color: "#C8C0B0" }}>—</span>
-                        )}
+                        <span style={isDefault ? { color: "#C8C0B0" } : undefined}>
+                          {val}
+                        </span>
                       </td>
                     );
                   })}

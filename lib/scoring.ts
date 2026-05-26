@@ -93,9 +93,10 @@ export function calcAffectiveSum(data: EvalData): {
   let sum = 0;
   let filled = 0;
   for (const attr of AFFECTIVE_ATTRIBUTES) {
-    const finalVal = Number(data[`${attr.id}_final`] ?? data[attr.id] ?? 0);
+    const rawVal = Number(data[`${attr.id}_final`] ?? data[attr.id] ?? 0);
+    const finalVal = rawVal > 0 ? rawVal : 5;
     sum += finalVal;
-    if (finalVal > 0) filled += 1;
+    filled += 1;
   }
   return { sum, filled };
 }
@@ -109,9 +110,7 @@ export function calcIndividualScore(
   data: EvalData,
   cupsPerSample: number,
 ): number | "—" {
-  const { sum, filled } = calcAffectiveSum(data);
-  if (filled === 0) return "—";
-
+  const { sum } = calcAffectiveSum(data);
   let score = 0.65625 * sum + 52.75;
 
   if (cupsPerSample >= 5) {

@@ -78,22 +78,23 @@ export function SampleRadarChart({
       : null;
 
   const radarData = AFFECTIVE_ATTRIBUTES.map((attr) => {
-    const myVal = affData
+    const rawVal = affData
       ? Number(
           (affData[`${attr.id}_final`] as number | undefined) ??
           (affData[attr.id] as number | undefined) ??
           0
         )
       : 0;
+    const myVal = rawVal > 0 ? rawVal : 5;
     const comVal = sample.aggregateScore?.attrAverages[attr.label] ?? 0;
     return {
       subject: attr.label,
-      mine: myVal > 0 ? myVal : undefined,
+      mine: affData ? myVal : undefined,
       community: comVal > 0 ? comVal : undefined,
     };
   });
 
-  const hasMyData = radarData.some((d) => d.mine !== undefined && d.mine > 0);
+  const hasMyData = affData !== null;
   const hasCommunityData =
     showCommunity &&
     Object.keys(sample.aggregateScore?.attrAverages ?? {}).length > 0 &&
