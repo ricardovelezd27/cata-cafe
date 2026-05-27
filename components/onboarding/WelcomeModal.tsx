@@ -48,6 +48,9 @@ const PATHS = [
   },
 ];
 
+const inputClass =
+  "w-full border border-outline-variant rounded-input px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/60 bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary-container/25 focus:border-primary-container transition-colors";
+
 interface WelcomeModalProps {
   locale: string;
   initialDisplayName: string;
@@ -87,24 +90,21 @@ export default function WelcomeModal({ locale, initialDisplayName }: WelcomeModa
   const selectedPathLabel = PATHS.find((p) => p.id === selectedPath)?.label ?? "";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[480px] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-inverse-surface/60">
+      <div className="bg-surface-container-lowest rounded-lg shadow-card-lg w-full max-w-[480px] overflow-hidden">
 
         {/* Step 1 — Bienvenida */}
         {step === 1 && (
           <div className="p-8 flex flex-col items-center text-center gap-5">
             <span className="text-5xl">☕</span>
             <div className="space-y-2">
-              <h1
-                className="text-[28px] font-semibold leading-tight text-[#3D5A3E]"
-                style={{ fontFamily: "var(--font-cormorant, Georgia, serif)" }}
-              >
+              <h1 className="font-display text-[28px] font-medium leading-tight text-primary-container">
                 Bienvenido a Cata Café Sensible
               </h1>
-              <p className="text-sm font-medium text-[#5C4033]">
+              <p className="text-sm font-medium text-on-surface">
                 La plataforma profesional para evaluadores SCA CVA
               </p>
-              <p className="text-sm text-[#7a6a5a]">
+              <p className="text-sm text-on-surface-variant">
                 Evaluación descriptiva, afectiva y extrínseca siguiendo el protocolo CVA 2024.
               </p>
             </div>
@@ -113,14 +113,14 @@ export default function WelcomeModal({ locale, initialDisplayName }: WelcomeModa
 
             <button
               onClick={() => setStep(2)}
-              className="w-full bg-[#3D5A3E] text-white rounded-xl py-3 font-medium flex items-center justify-center gap-2 hover:bg-[#2e4530] transition-colors"
+              className="w-full bg-primary-container text-on-primary rounded-pill py-3 font-medium flex items-center justify-center gap-2 hover:bg-primary transition-colors"
             >
               Comenzar <ChevronRight className="w-4 h-4" />
             </button>
             <button
               onClick={handleSkip}
               disabled={isPending}
-              className="text-sm text-[#9e8e7e] hover:text-[#5C4033] transition-colors"
+              className="text-sm text-on-surface-variant hover:text-on-surface transition-colors"
             >
               Omitir introducción
             </button>
@@ -130,18 +130,13 @@ export default function WelcomeModal({ locale, initialDisplayName }: WelcomeModa
         {/* Step 2 — Tu perfil */}
         {step === 2 && (
           <div className="p-8 flex flex-col gap-5">
-            <div>
-              <h2
-                className="text-2xl font-semibold text-[#3D5A3E]"
-                style={{ fontFamily: "var(--font-cormorant, Georgia, serif)" }}
-              >
-                Cuéntanos sobre ti
-              </h2>
-            </div>
+            <h2 className="font-display text-2xl font-medium text-primary-container">
+              Cuéntanos sobre ti
+            </h2>
 
             <div className="space-y-4">
               <label className="block">
-                <span className="text-sm font-medium text-[#5C4033] mb-1 block">
+                <span className="text-sm font-medium text-on-surface mb-1 block">
                   Nombre completo
                 </span>
                 <input
@@ -149,18 +144,18 @@ export default function WelcomeModal({ locale, initialDisplayName }: WelcomeModa
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="Tu nombre"
-                  className="w-full border border-[#d4c5b0] rounded-lg px-3 py-2 text-sm text-[#3a2e22] placeholder:text-[#b0a090] focus:outline-none focus:ring-2 focus:ring-[#3D5A3E]/30 focus:border-[#3D5A3E]"
+                  className={inputClass}
                 />
               </label>
 
               <label className="block">
-                <span className="text-sm font-medium text-[#5C4033] mb-1 block">
+                <span className="text-sm font-medium text-on-surface mb-1 block">
                   Rol
                 </span>
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
-                  className="w-full border border-[#d4c5b0] rounded-lg px-3 py-2 text-sm text-[#3a2e22] focus:outline-none focus:ring-2 focus:ring-[#3D5A3E]/30 focus:border-[#3D5A3E] bg-white"
+                  className={inputClass}
                 >
                   <option value="" disabled>Selecciona tu rol</option>
                   {ROLES.map((r) => (
@@ -170,13 +165,13 @@ export default function WelcomeModal({ locale, initialDisplayName }: WelcomeModa
               </label>
 
               <label className="block">
-                <span className="text-sm font-medium text-[#5C4033] mb-1 block">
+                <span className="text-sm font-medium text-on-surface mb-1 block">
                   País
                 </span>
                 <select
                   value={country}
                   onChange={(e) => setCountry(e.target.value)}
-                  className="w-full border border-[#d4c5b0] rounded-lg px-3 py-2 text-sm text-[#3a2e22] focus:outline-none focus:ring-2 focus:ring-[#3D5A3E]/30 focus:border-[#3D5A3E] bg-white"
+                  className={inputClass}
                 >
                   <option value="" disabled>Selecciona tu país</option>
                   {COUNTRIES.map((c) => (
@@ -191,14 +186,14 @@ export default function WelcomeModal({ locale, initialDisplayName }: WelcomeModa
             <div className="flex gap-3">
               <button
                 onClick={() => setStep(1)}
-                className="flex items-center gap-1 px-4 py-3 text-sm text-[#5C4033] border border-[#d4c5b0] rounded-xl hover:bg-[#f5ede0] transition-colors"
+                className="flex items-center gap-1 px-4 py-3 text-sm text-on-surface border border-outline-variant rounded-pill hover:bg-surface-container transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" /> Atrás
               </button>
               <button
                 onClick={() => setStep(3)}
                 disabled={!displayName || !role || !country}
-                className="flex-1 bg-[#3D5A3E] text-white rounded-xl py-3 font-medium flex items-center justify-center gap-2 hover:bg-[#2e4530] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 bg-primary-container text-on-primary rounded-pill py-3 font-medium flex items-center justify-center gap-2 hover:bg-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Siguiente <ChevronRight className="w-4 h-4" />
               </button>
@@ -209,14 +204,9 @@ export default function WelcomeModal({ locale, initialDisplayName }: WelcomeModa
         {/* Step 3 — Primer paso */}
         {step === 3 && (
           <div className="p-8 flex flex-col gap-5">
-            <div>
-              <h2
-                className="text-2xl font-semibold text-[#3D5A3E]"
-                style={{ fontFamily: "var(--font-cormorant, Georgia, serif)" }}
-              >
-                ¿Por dónde empezar?
-              </h2>
-            </div>
+            <h2 className="font-display text-2xl font-medium text-primary-container">
+              ¿Por dónde empezar?
+            </h2>
 
             <div className="space-y-3">
               {PATHS.map((path) => {
@@ -226,24 +216,26 @@ export default function WelcomeModal({ locale, initialDisplayName }: WelcomeModa
                   <button
                     key={path.id}
                     onClick={() => setSelectedPath(path.id)}
-                    className={`w-full text-left rounded-xl border-2 p-4 flex items-start gap-3 transition-all ${
+                    className={`w-full text-left rounded-card border-2 p-4 flex items-start gap-3 transition-all ${
                       isSelected
-                        ? "border-[#3D5A3E] bg-[#E8F0E8]"
-                        : "border-[#e0d4c0] bg-white hover:border-[#b0c4b0] hover:bg-[#f5f8f5]"
+                        ? "border-primary-container bg-primary-fixed"
+                        : "border-outline-variant bg-surface-container-lowest hover:border-outline hover:bg-surface-container-low"
                     }`}
                   >
                     <div
-                      className={`mt-0.5 p-1.5 rounded-lg ${
-                        isSelected ? "bg-[#3D5A3E] text-white" : "bg-[#f0e8d8] text-[#5C4033]"
+                      className={`mt-0.5 p-1.5 rounded-sm ${
+                        isSelected
+                          ? "bg-primary-container text-on-primary"
+                          : "bg-surface-container text-on-surface-variant"
                       }`}
                     >
                       <Icon className="w-4 h-4" />
                     </div>
                     <div>
-                      <p className={`text-sm font-medium ${isSelected ? "text-[#3D5A3E]" : "text-[#3a2e22]"}`}>
+                      <p className={`text-sm font-medium ${isSelected ? "text-primary-container" : "text-on-surface"}`}>
                         {path.label}
                       </p>
-                      <p className="text-xs text-[#7a6a5a] mt-0.5">{path.description}</p>
+                      <p className="text-xs text-on-surface-variant mt-0.5">{path.description}</p>
                     </div>
                   </button>
                 );
@@ -255,14 +247,14 @@ export default function WelcomeModal({ locale, initialDisplayName }: WelcomeModa
             <div className="flex gap-3">
               <button
                 onClick={() => setStep(2)}
-                className="flex items-center gap-1 px-4 py-3 text-sm text-[#5C4033] border border-[#d4c5b0] rounded-xl hover:bg-[#f5ede0] transition-colors"
+                className="flex items-center gap-1 px-4 py-3 text-sm text-on-surface border border-outline-variant rounded-pill hover:bg-surface-container transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" /> Atrás
               </button>
               <button
                 onClick={handleFinish}
                 disabled={!selectedPath || isPending}
-                className="flex-1 bg-[#3D5A3E] text-white rounded-xl py-3 font-medium flex items-center justify-center gap-2 hover:bg-[#2e4530] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 bg-primary-container text-on-primary rounded-pill py-3 font-medium flex items-center justify-center gap-2 hover:bg-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isPending ? "Guardando…" : `Ir a ${selectedPathLabel}`}
                 {!isPending && <ChevronRight className="w-4 h-4" />}
@@ -282,7 +274,7 @@ function Dots({ current }: { current: 1 | 2 | 3 }) {
         <div
           key={n}
           className={`w-2 h-2 rounded-full transition-colors ${
-            n === current ? "bg-[#3D5A3E]" : "bg-[#d4c5b0]"
+            n === current ? "bg-primary-container" : "bg-outline-variant"
           }`}
         />
       ))}

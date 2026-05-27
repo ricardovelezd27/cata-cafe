@@ -1,7 +1,7 @@
 # Cata Café — Design System Reference
 
-> The single source of truth for visual and interaction design decisions.
-> Last updated: 2026-05-05
+> **Sensory Studio** — Warm Minimalist · Editorial Precision
+> Last updated: 2026-05-28
 
 ---
 
@@ -9,81 +9,98 @@
 
 1. **Data speaks first.** Scores and evaluation data are always the visual hero. Typography and spacing serve legibility above everything else. Never bury a number.
 
-2. **Trust through precision.** Exact values, consistent rounding, tabular numerics (JetBrains Mono). Nothing ambiguous. If it's 83.25, show 83.25.
+2. **Trust through precision.** Exact values, consistent rounding, tabular numerics (Hanken Grotesk with `tabular-nums`). Nothing ambiguous.
 
-3. **Craft without decoration.** The earthy palette and serif typography reference specialty coffee craft. Achieve richness through type and color — not illustration, texture, or ornament.
+3. **Craft without decoration.** The earthy palette and serif typography reference the tactile heritage of SCA paper forms. Richness through type and color — not illustration, texture, or ornament.
 
-4. **Calm before complexity.** The CVA protocol is cognitively demanding. The interface must be spacious and sequenced to protect the user's focus. One thing at a time. Collapse what isn't needed now.
+4. **Calm before complexity.** The CVA protocol is cognitively demanding. Spacious layout, sequenced disclosure. One thing at a time.
 
-5. **Spanish first, always.** Language, labels, and units are rooted in Latin American specialty coffee culture. Translations exist; Spanish is the design language.
+5. **Spanish first, always.** Language, labels, and units are rooted in Latin American specialty coffee culture.
+
+---
+
+## Aesthetic
+
+**Warm Minimalist** — generous whitespace, disciplined layout, organic earth tones. The feel of a high-end apothecary or analytical laboratory: precise and professional, yet deeply human. Depth is communicated through tonal surface layering, not shadows.
 
 ---
 
 ## Color Palette
 
-All tokens are defined as CSS custom properties in `app/globals.css` and exposed as Tailwind utilities via `@theme inline`.
+All tokens are CSS custom properties in `app/globals.css`, exposed as Tailwind utilities via `@theme inline`.
 
-### Brand Greens
+### MD3 Color Roles (primary API)
 
-| Token | Value | Tailwind Class | Use |
+| Token | Hex | Tailwind Class | Use |
 |---|---|---|---|
-| `--color-green-dark` | `#3D5A3E` | `text-green-dark`, `bg-green-dark` | Primary actions, headings, locked states |
-| `--color-green-mid` | `#6B8F71` | `text-green-mid`, `bg-green-mid` | Slider fills, cup uniform state, fresh accents |
-| `--color-green-light` | `#B4C8A8` | `text-green-light`, `bg-green-light` | Subtle highlights, hover states |
+| `--color-primary` | `#153526` | `text-primary`, `bg-primary` | Hover state for primary actions |
+| `--color-primary-container` | `#2c4c3b` | `bg-primary-container` | Primary buttons, active states, brand accents |
+| `--color-on-primary` | `#ffffff` | `text-on-primary` | Text on primary-container buttons |
+| `--color-on-primary-container` | `#98bca6` | `text-on-primary-container` | Subtle text on dark green surfaces |
+| `--color-primary-fixed` | `#c7ebd4` | `bg-primary-fixed` | Light green tint for selected card bg |
+| `--color-primary-fixed-dim` | `#abcfb8` | `bg-primary-fixed-dim` | Muted green highlight |
+| `--color-secondary` | `#9d4326` | `bg-secondary` | Terracotta accent — highlights, warnings |
+| `--color-secondary-container` | `#fd8c6a` | `bg-secondary-container` | Light terracotta fill |
+| `--color-on-secondary` | `#ffffff` | `text-on-secondary` | Text on secondary bg |
+| `--color-surface` | `#fff8f6` | `bg-surface` | Page background (warm cream parchment) |
+| `--color-surface-container-lowest` | `#ffffff` | `bg-surface-container-lowest` | Modals, high-contrast surfaces |
+| `--color-surface-container-low` | `#fcf1ee` | `bg-surface-container-low` | Subtle lift from page bg |
+| `--color-surface-container` | `#f6ece8` | `bg-surface-container` | Cards, form inputs |
+| `--color-surface-container-high` | `#f0e6e3` | `bg-surface-container-high` | Selected rows, hover backgrounds |
+| `--color-surface-container-highest` | `#ebe0dd` | `bg-surface-container-highest` | Dividers with fill |
+| `--color-on-surface` | `#1f1b19` | `text-on-surface` | Primary body text, labels |
+| `--color-on-surface-variant` | `#424843` | `text-on-surface-variant` | Secondary text, captions, icons |
+| `--color-outline` | `#727973` | `border-outline` | Interactive borders, hover states |
+| `--color-outline-variant` | `#c1c8c2` | `border-outline-variant` | Hairline dividers, input borders |
+| `--color-inverse-surface` | `#352f2d` | `bg-inverse-surface` | Dark overlay backgrounds |
+| `--color-inverse-on-surface` | `#f9efeb` | `text-inverse-on-surface` | Text on dark overlay |
+| `--color-error` | `#ba1a1a` | `text-error`, `bg-error` | Defective cups, error states |
+| `--color-error-container` | `#ffdad6` | `bg-error-container` | Error background tint |
+| `--color-on-error-container` | `#93000a` | `text-on-error-container` | Text on error container |
 
-### Warm Accent
+> **Terracotta rule:** `secondary` (#9d4326) replaces amber as the accent. It signals energy and emphasis, not quality scoring. For quality signals, use green (`primary-container`).
 
-| Token | Value | Tailwind Class | Use |
+### Backward-Compat Aliases (legacy code)
+
+These keep existing Tailwind utility classes working. Prefer MD3 names in new code.
+
+| Old class | Maps to |
+|---|---|
+| `text-green-dark` / `bg-green-dark` | `primary-container` (#2c4c3b) |
+| `text-green-mid` / `bg-green-mid` | #6b8f71 (unchanged) |
+| `text-green-light` / `bg-green-light` | `primary-fixed-dim` (#abcfb8) |
+| `text-amber` / `bg-amber` / `text-amber-warm` | `secondary` (#9d4326) |
+| `bg-bg` | `surface` (#fff8f6) |
+| `bg-cream` | `surface-container` (#f6ece8) |
+| `bg-white` | `surface-container-lowest` (#ffffff) |
+| `text-brown-dark` | `on-surface` (#1f1b19) |
+| `text-brown-mid` | `on-surface-variant` (#424843) |
+| `border-brown-light` | `outline-variant` (#c1c8c2) |
+| `text-red-defect` / `bg-red-defect` | `error` (#ba1a1a) |
+
+### Score Band Colors
+
+| Score | Band | Background | Badge |
 |---|---|---|---|
-| `--color-amber` | `#C17817` | `text-amber`, `bg-amber` | Affective scores ≥7, non-uniform badges, quality emphasis |
-
-> **Rule:** Amber is a quality signal, not a warning. It means "notably good." Use red-defect for problems.
-
-### Surface Palette
-
-| Token | Value | Tailwind Class | Use |
-|---|---|---|---|
-| `--color-bg` | `#FDFBF7` | `bg-bg` | Page background (parchment) |
-| `--color-cream` | `#F5F0E6` | `bg-cream` | Elevated surfaces, form backgrounds, cards |
-| `--color-white` | `#FFFFFF` | `bg-white` | Modal backgrounds, high-contrast surfaces |
-
-### Browns (Text & Structure)
-
-| Token | Value | Tailwind Class | Use |
-|---|---|---|---|
-| `--color-brown-dark` | `#5C4A32` | `text-brown-dark` | Body text, primary labels, headings |
-| `--color-brown-mid` | `#8B7355` | `text-brown-mid` | Secondary text, captions, section labels, icons |
-| `--color-brown-light` | `#E8E0D0` | `border-brown-light` | Hairline borders, dividers, input borders |
-
-### Status
-
-| Token | Value | Tailwind Class | Use |
-|---|---|---|---|
-| `--color-red-defect` | `#A83232` | `text-red-defect`, `bg-red-defect` | Defective cups, defect indicators — **never decorative** |
+| ≥ 85 | Excepcional / Excelente | `bg-primary-fixed` | `bg-primary-container text-on-primary` |
+| 75–84 | Muy bueno / Bueno | `bg-secondary-fixed` | `bg-secondary text-on-secondary` |
+| < 75 | Promedio / Bajo | `bg-error-container` | `bg-error text-on-error` |
 
 ### Flavor Family Colors
 
 Used only in `CATAPills` and flavor-family labels. Do not use elsewhere.
 
-| Family | Color |
+| Family | Hex |
 |---|---|
-| Floral | `#C17817` |
-| Frutal | `#E8834A` |
-| Dulce | `#B4874E` |
-| Ácido/Fermentado | `#A83232` |
-| Verde/Vegetal | `#6B8F71` |
-| Nueces/Cacao | `#8B7355` |
-| Especia | `#9B6B4A` |
-| Tostado | `#5C4A32` |
-| Otro | `#7A6E5F` |
-
-### Score Band Colors
-
-| Score | Band | Background tint | Badge color |
-|---|---|---|---|
-| ≥ 85 | Green | `color-mix(in oklch, green-mid 14%, bg)` | `green-dark` |
-| 75–84 | Amber | `color-mix(in oklch, amber 10%, bg)` | `amber` |
-| < 75 | Red | `color-mix(in oklch, red-defect 9%, bg)` | `red-defect` |
+| Floral | `#b07d2f` |
+| Frutal | `#c0552a` |
+| Dulce | `#a07040` |
+| Ácido/Fermentado | `#ba1a1a` |
+| Verde/Vegetal | `#456553` |
+| Nueces/Cacao | `#6b5240` |
+| Especia | `#8b5e3c` |
+| Tostado | `#332f2a` |
+| Otro | `#5e5a55` |
 
 ---
 
@@ -91,39 +108,44 @@ Used only in `CATAPills` and flavor-family labels. Do not use elsewhere.
 
 ### Font Stack
 
-| Role | Font | Token | Tailwind |
+| Role | Font | CSS Variable | Tailwind Class |
 |---|---|---|---|
-| Display / Editorial | Cormorant Garamond | `--font-display` | `font-display` |
-| UI / Body | Inter | `--font-ui` | `font-ui`, `font-sans` |
-| Mono / Data | JetBrains Mono | `--font-mono` | `font-mono` |
+| Display / Editorial | Newsreader | `--font-display` | `font-display` |
+| UI / Body | Hanken Grotesk | `--font-ui` | `font-ui`, `font-sans` |
+| Data / Mono | Hanken Grotesk + tabular-nums | `--font-mono` | `font-mono`, `.mono` class |
 
-Loaded via Google Fonts at the top of `globals.css`.
+Loaded via `next/font/google` in `app/layout.tsx` with variables `--font-display` and `--font-ui`.
 
-### Type Scale & Usage
+**Newsreader** is the editorial voice. Literary character for headlines, section titles, and score numerals. Evokes traditional printing and SCA paper forms.
+
+**Hanken Grotesk** is the precise voice. Clean, geometric for all UI elements, data entry, labels, and numeric readouts. Enable `font-variant-numeric: tabular-nums` for all score/count displays.
+
+### Type Scale
 
 | Role | Font | Size | Weight | Color | Notes |
 |---|---|---|---|---|---|
-| Page title | Display | 30px / text-3xl | 500 | green-dark | `font-display leading-tight` |
-| Section heading | Display | 20px / text-xl | 500 | green-dark | |
-| Card heading | Display | 16px | 500 | brown-dark | |
-| Section label (uppercase) | Mono | 10–11px | 500–600 | brown-mid | `uppercase letter-spacing: 0.18em` |
-| Body text | UI | 14px | 400 | brown-dark | `line-height: 1.5` |
-| Label | UI | 13px | 500 | brown-dark | |
-| Caption / meta | Mono | 10–11px | 500 | brown-mid | |
-| Score numeral | Display | 88px | 500 | brown-dark | `tabular-nums line-height: 0.95` |
-| Score decimal | Display | 56px | 500 | brown-mid | Italic, `margin-left: -6px` for tight spacing |
-| Bubble numeral | Display | 19px | 600 | brown-dark | `tabular-nums` |
+| Page title | Display | 32px / `text-3xl` | 500 | `text-primary-container` | `font-display leading-tight` |
+| Section heading | Display | 24px / `text-2xl` | 500 | `text-primary-container` | |
+| Card heading | Display | 20px / `text-xl` | 500 | `text-on-surface` | |
+| Section label (uppercase) | UI | 11px | 600 | `text-on-surface-variant` | `uppercase tracking-widest` |
+| Body text | UI | 14px | 400 | `text-on-surface` | `leading-relaxed` |
+| Label | UI | 14px | 600 | `text-on-surface` | |
+| Caption / meta | UI | 12px | 500 | `text-on-surface-variant` | `tabular-nums` |
+| Score numeral | Display | 88px | 500 | `text-on-surface` | `tabular-nums leading-none` |
+| Score decimal | Display | 56px | 400 italic | `text-on-surface-variant` | `display-italic` |
+| Bubble numeral | Display | 19px | 600 | `text-on-surface` | `tabular-nums` |
 
 ### Rules
-- All numeric readouts use `font-variant-numeric: tabular-nums` (use `.mono` class or `font-mono`)
-- Headings have `margin: 0` by default (set in globals.css)
-- Serif italic (`.display-italic`) is reserved for score decimals and editorial emphasis only
+- All numeric readouts use `font-variant-numeric: tabular-nums` (`.mono` class or `font-mono`)
+- Headings have `margin: 0` by default
+- Italic (`display-italic` class) reserved for score decimals and editorial emphasis only
+- Do not reference old font variables: `--font-cormorant`, `--font-geist-sans`, `--font-serif-alt` — they no longer exist
 
 ---
 
-## Spacing Scale
+## Spacing
 
-8px base. Use CSS custom properties in CSS Modules; use Tailwind spacing utilities in JSX.
+4px unit, 8px base grid. Generous outer margins create a "letterhead" feel.
 
 | Token | Value | Approx Tailwind |
 |---|---|---|
@@ -136,25 +158,39 @@ Loaded via Google Fonts at the top of `globals.css`.
 | `--space-7` | 48px | `p-12` / `gap-12` |
 | `--space-8` | 64px | `p-16` / `gap-16` |
 
+Desktop outer margin: 48px. Mobile: 16px. Container max: 1280px.
+
 ---
 
 ## Border Radius
 
+Contemporary, pill-influenced geometry. 16px cards soften the analytical rigor.
+
 | Token | Value | Tailwind | Use |
 |---|---|---|---|
-| `--radius-pill` | `9999px` | `rounded-pill` | Pills, tags, badges |
-| `--radius-card` | `12px` | `rounded-card` | Cards, section containers |
-| `--radius-input` | `8px` | `rounded-input` | Inputs, buttons, small interactive elements |
+| `--radius-sm` | 8px | `rounded-sm` | Small interactive elements, icon containers |
+| `--radius-pill` | 9999px | `rounded-pill` | Buttons, tags, badges |
+| `--radius-card` | 16px | `rounded-card` | Cards, section containers, modal |
+| `--radius-input` | 16px | `rounded-input` | Inputs, selects |
+| `--radius-md` | 24px | `rounded-md` | Side panels (leading corner) |
+| `--radius-lg` | 32px | `rounded-lg` | Large containers |
+| `--radius-xl` | 48px | `rounded-xl` | Hero elements |
 
 ---
 
-## Shadows
+## Elevation & Depth
+
+No heavy drop shadows. Depth through tonal surface layering ("stacked paper" effect).
 
 | Token | Value | Tailwind | Use |
 |---|---|---|---|
-| `--shadow-card` | `0 2px 8px rgba(0,0,0,0.06)` | `shadow-card` | Standard card elevation |
-| `--shadow-card-lg` | `0 8px 24px rgba(92,74,50,0.10), 0 2px 6px rgba(92,74,50,0.05)` | `shadow-card-lg` | Modal, focused card |
-| `--shadow-inset` | `inset 0 1px 2px rgba(92,74,50,0.06)` | `shadow-inset` | Input fields, inset surfaces |
+| `--shadow-card` | `0 1px 3px rgba(31,27,25,0.06)` | `shadow-card` | Standard card |
+| `--shadow-card-lg` | `0 4px 16px rgba(31,27,25,0.08), 0 1px 4px rgba(31,27,25,0.04)` | `shadow-card-lg` | Modal, focused card |
+| `--shadow-inset` | `inset 0 1px 2px rgba(31,27,25,0.04)` | `shadow-inset` | Inset surfaces |
+
+**Tonal layering:** interactive cards (`surface-container-lowest`) sit atop the page background (`surface`). Use 1px `border-outline-variant` to define card boundaries instead of shadow.
+
+**Glassmorphism:** reserved for side panels and overlays (Flavor Wheel selector, etc.). Use `backdrop-blur-xl` with `bg-surface-container-lowest/80` — not decorative.
 
 ---
 
@@ -162,207 +198,145 @@ Loaded via Google Fonts at the top of `globals.css`.
 
 | Token | Value | Use |
 |---|---|---|
-| `--transition-fast` | `150ms ease` | Color/border state changes, hover effects |
-| `--transition-med` | `240ms cubic-bezier(0.2, 0.8, 0.2, 1)` | Layout transitions, panel open/close |
+| `--transition-fast` | `150ms ease` | Color/border state changes, hover |
+| `--transition-med` | `240ms cubic-bezier(0.2, 0.8, 0.2, 1)` | Panel open/close, layout transitions |
 
-**Animation:** `@keyframes phase-in` — `opacity 0→1` + `translateY 8px→0`. Use for page/section entry.
+**Animation:** `@keyframes phase-in` — `opacity 0→1` + `translateY 8px→0`. For page/section entry.
 
 **Rules:**
 - Do not animate score numbers (instant swap)
-- Do not animate box-shadow as a length/transform
-- Keep animations subtle — the user is concentrating on sensory evaluation
+- Keep animations subtle — user is in sensory evaluation mode
 
 ---
 
-## Atomic Components (`components/ui/`)
+## Component Patterns
 
-All components are **controlled** — state lives in the parent (`CupClient` / Zustand store).
+### Buttons
+
+```html
+<!-- Primary: pill, forest green -->
+<button class="bg-primary-container text-on-primary rounded-pill px-6 py-3 font-medium hover:bg-primary transition-colors">
+  Acción
+</button>
+
+<!-- Secondary: outlined pill -->
+<button class="border border-primary-container text-primary-container rounded-pill px-6 py-3 font-medium hover:bg-primary-fixed transition-colors">
+  Secundaria
+</button>
+
+<!-- Ghost: no border -->
+<button class="text-on-surface-variant hover:text-on-surface transition-colors">
+  Cancelar
+</button>
+```
+
+### Input / Select
+
+```html
+<input class="w-full border border-outline-variant rounded-input px-3 py-2 text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary-container/25 focus:border-primary-container transition-colors" />
+```
+
+### Card
+
+```html
+<div class="bg-surface-container-lowest border border-outline-variant rounded-card shadow-card p-4">
+```
+
+### Section Container
+
+```html
+<div class="bg-surface-container border border-outline-variant rounded-card p-4 mb-3">
+  <h3 class="font-display text-sm font-semibold text-primary-container uppercase tracking-widest">
+    Fragancia
+  </h3>
+</div>
+```
 
 ### `IntensitySlider`
+
 **File:** `IntensitySlider.tsx` + `IntensitySlider.module.css`
-**Purpose:** 0–15 linear intensity scale for descriptive attributes.
 
-```tsx
-<IntensitySlider
-  value={value}           // number | null
-  onChange={setValue}     // (v: number) => void
-  label="Fragancia"
-  disabled={false}
-  min={0} max={15} step={0.5}
-/>
-```
-
-- Track: 8px, cream bg, brown-light border, pill radius
-- Fill: green-mid, green-dark border
-- Thumb: 22px circle, green-dark border, inner dot
-- Value display: Cormorant Garamond 24px/600, green-dark; `/15` suffix in mono 10px
-- Empty state: "Sin marcar" italic, desaturated thumb
-- Anchors: `0 LOW`, `5`, `10 MEDIUM`, `15 HIGH`
-
----
+- Track: 8px, `surface-container` bg, `outline-variant` border, pill ends
+- Fill: `primary-container`
+- Thumb: 22px circle, `primary-container` border, terracotta (`secondary`) inner dot needle
+- Value: Newsreader 24px/600, `primary-container`; `/15` in UI 10px
+- Empty state: "Sin marcar" italic, desaturated
+- Anchors: `0 LOW`, `5`, `10 MEDIUM`, `15 HIGH` in `on-surface-variant` 10px
 
 ### `AffectiveBubbles`
+
 **File:** `AffectiveBubbles.tsx` + `AffectiveBubbles.module.css`
-**Purpose:** 1–9 hedonic scale for affective scoring.
 
-```tsx
-<AffectiveBubbles
-  value={value}           // number | null
-  onChange={setValue}     // (v: number) => void
-  label="Acidez"
-  showFinal={true}
-/>
-```
-
-- 9 circles, 44×44px, Cormorant Garamond 19px/600
-- Selected color by value: `n ≥ 7` → amber, `n ≤ 3` → red-defect, else → green-dark
-- FINAL readout box (right end): green-dark when set, amber "FINAL" cap
-- Scale legend: `AFFECTIVE_LABELS[1]` / `[5]` / `[9]` in mono 9px
-- Container-query responsive: shrinks at ≤440px, hides final box at ≤360px
-
----
+- 9 circles, 44×44px, Newsreader 19px/600
+- Selected by value: `n ≥ 7` → `secondary` (terracotta), `n ≤ 3` → `error`, else → `primary-container`
+- FINAL readout: `primary-container` when set, `secondary` "FINAL" label
 
 ### `CATAPills`
-**File:** `CATAPills.tsx` + `CATAPills.module.css`
-**Purpose:** Multi-select CATA (Check All That Apply) for flavor families.
 
-```tsx
-<CATAPills
-  options={FLAVOR_FAMILIES}    // readonly CATAOption[]
-  selected={selected}          // string[]
-  onChange={setSelected}       // (next: string[]) => void
-  maxSelect={5}
-  showSubItems={true}
-/>
-```
-
-- Each option has `id`, `label`, `color`, `subItems?`
-- Unselected: outlined in `option.color`, soft color fill
-- Selected: solid `option.color` fill, white text
-- At-limit: unselected pills get `opacity: 0.45`
-- Sub-items appear indented below parent when `showSubItems && selected`
-
----
+- Unselected: `outline-variant` border, transparent fill, pill shape
+- Selected: solid `primary-container` fill, `on-primary` text
+- At-limit: unselected at `opacity: 0.45`
 
 ### `CupIndicators`
-**File:** `CupIndicators.tsx` + `CupIndicators.module.css`
-**Purpose:** Per-sample cup status row.
 
-```tsx
-<CupIndicators
-  totalCups={5}
-  nonUniform={[2]}                           // cup numbers
-  defective={[{ cup: 4, type: 'moldy' }]}
-  showSummary={true}
-/>
-```
-
-- Uniform: green-mid bg, green-dark border, white digit
-- Non-uniform: bg, amber border + digit, `≠` superscript badge
-- Defective: red-defect bg, `×` glyph, defect badge below (`POTATO` / `MOLDY` / `PHENOLIC`)
-- Summary row: mono 10–11px with Cormorant numerals
-
----
+- Uniform: `primary-fixed` bg, `primary-container` border, `on-surface` digit
+- Non-uniform: `secondary-fixed` bg, `secondary` border + digit, `≠` badge
+- Defective: `error-container` bg, `error` `×` glyph + defect badge
 
 ### `ScoreDisplay`
-**File:** `ScoreDisplay.tsx` + `ScoreDisplay.module.css`
-**Purpose:** Final CVA score card with formula breakdown.
 
-```tsx
-<ScoreDisplay
-  sectionScores={[7, 7, 8, 7, 8, 7, 7, 8]}  // 8 values, 1–9
-  nonUniformCups={0}
-  defectiveCups={0}
-  expandable={true}
-  defaultExpanded={false}
-/>
-```
-
-- Score numeral: Cormorant Garamond 88px/500, tabular-nums
-- Band label (top-right): mono 9.5px/700, white text on score-color bg
-- Formula `<dl>`: 2-column grid, mono 11.5px; `Σhᵢ` in green-dark, penalties in red-defect
-- Expandable section list: 8 rows with `labelEs` + score
-- Responsive: compact at ≤480px (60px numeral, single-column formula)
-
----
-
-## Component Conventions (existing `components/cupping/`)
-
-Legacy components in `components/cupping/` use inline styles with hardcoded hex values. These will be migrated to CSS Modules in Phase 3. Do not add new inline-style components — all new work goes through `components/ui/`.
-
-### `Section` wrapper pattern
-```tsx
-<Section title="Fragancia" collapsible defaultOpen>
-  {/* content */}
-</Section>
-```
-- Cream bg (#FDFBF7), brown-light border, 12px radius, 14px padding
-- Title: uppercase, green-dark, Cormorant Garamond 14px/700
-
----
-
-## Icon Usage
-
-**Library:** `lucide-react` — the only icon set used.
-
-- Default color: `--color-brown-mid` for decorative icons
-- Action icons: `--color-green-dark` or inherit parent color
-- Status icons: use appropriate status color
-- Size: 16px (inline), 20px (standalone buttons)
+- Numeral: Newsreader 88px/500, `tabular-nums`
+- Band label: score-band bg, `on-primary` or `on-secondary` text
+- Formula `<dl>`: 2-column, UI 11.5px; `Σhᵢ` in `primary-container`, penalties in `error`
 
 ---
 
 ## Layout Patterns
 
-### Page structure
-```
-[locale]/app/
-├── layout.tsx          ← Auth guard, no layout chrome
-└── sessions/[id]/
-    └── cup/page.tsx    ← Full-height, no sidebar
-```
-
-Every page component must:
-1. `await params` before destructuring (Next.js 16 async params)
-2. Call `setRequestLocale(locale)` as first line
-3. Export `generateStaticParams()` returning `[{ locale: 'es' }, { locale: 'en' }]`
-
-### Card
 ```html
-<div class="bg-white border border-brown-light rounded-card shadow-card p-4">
+<!-- Page shell -->
+<main class="min-h-screen bg-surface">
+  <div class="max-w-[1280px] mx-auto px-12 py-8">
 ```
 
-### Section container (new design system)
 ```html
-<div class="bg-cream border border-brown-light rounded-card p-4 mb-3">
-  <h3 class="font-display text-sm font-bold text-green-dark uppercase tracking-wide">
-    Fragancia
-  </h3>
-</div>
+<!-- Section dividers -->
+<hr class="border-t border-outline-variant my-6" />
 ```
 
 ---
 
 ## Accessibility
 
-- `.sr-only` utility for visually hidden but accessible text (defined in `globals.css`)
-- All interactive elements have `aria-label` or visible label
+- `.sr-only` for visually hidden accessible text
 - `aria-pressed` on toggle buttons (bubbles, pills)
-- `font-variant-numeric: tabular-nums` for all score/count displays (prevents layout shift)
-- Color is never the sole carrier of meaning (status also uses text/icons)
-- Reduced motion: components use CSS `transition` not JS animation; respects `prefers-reduced-motion` implicitly via short durations
+- `tabular-nums` on all score/count displays
+- Color is never the sole carrier of meaning (status uses text + icons too)
+- Reduced motion: short CSS transition durations
+
+---
+
+## Icon Usage
+
+**Library:** `lucide-react` only.
+
+- Default: `text-on-surface-variant`, 16px inline / 20px standalone
+- Action: `text-primary-container` or inherit
+- Status: match status color
 
 ---
 
 ## What Not To Do
 
-| ❌ Don't | ✅ Do instead |
+| Don't | Do instead |
 |---|---|
-| Use `red-defect` decoratively | Reserve it strictly for cup defects |
-| Generate Tailwind class names dynamically (string concat) | Use full static class names |
-| Add inline styles to new components | Use CSS Modules in `components/ui/` |
-| Import `PrismaClient` directly | Import from `lib/prisma.ts` singleton |
+| Use `error` / `red-defect` decoratively | Reserve strictly for cup defects and errors |
+| Use `secondary` (terracotta) as a quality signal | Quality = green (`primary-container`) |
+| Generate Tailwind classes via string concat | Full static class names only (Tailwind v4) |
+| Add inline styles to new components | CSS Modules in `components/ui/` |
+| Import `PrismaClient` directly | `lib/prisma.ts` singleton |
 | Import `admin.ts` in client components | Server actions / API routes only |
-| Add `revalidatePath` inside debounced auto-save | Auto-save is already debounced at 800ms |
+| Add `revalidatePath` inside debounced auto-save | Auto-save is debounced at 800ms |
 | Use `middleware.ts` | Middleware is `proxy.ts` (Next.js 16) |
-| Access `params` without `await` | Always `const { locale } = await params` |
+| Access `params` without `await` | `const { locale } = await params` |
+| Reference `--font-cormorant`, `--font-geist-sans`, `--font-serif-alt` | Use `--font-display` and `--font-ui` |

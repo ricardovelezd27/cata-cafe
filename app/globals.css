@@ -1,68 +1,123 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
 /* ============================================================
+   Fonts — loaded via next/font/google in app/layout.tsx
+   Fallbacks here; next/font variables override on <html>.
+   ============================================================ */
+
+/* ============================================================
    Design tokens — CSS custom properties
-   Available in CSS Modules and inline styles via var(--*)
    ============================================================ */
 :root {
-  /* Compatibility aliases for existing code */
-  --background: #FDFBF7;
-  --foreground: #3D2B1F;
+  /* ── Sensory Studio · MD3 color roles ─────────────────── */
+  --color-primary:              #153526;
+  --color-on-primary:           #ffffff;
+  --color-primary-container:    #2c4c3b;
+  --color-on-primary-container: #98bca6;
+  --color-inverse-primary:      #abcfb8;
+  --color-primary-fixed:        #c7ebd4;
+  --color-primary-fixed-dim:    #abcfb8;
+  --color-on-primary-fixed:     #002113;
+  --color-on-primary-fixed-variant: #2d4d3c;
 
-  /* Color · Greens */
-  --color-green-dark:  #3D5A3E;
-  --color-green-mid:   #6B8F71;
-  --color-green-light: #B4C8A8;
+  --color-secondary:              #9d4326;
+  --color-on-secondary:           #ffffff;
+  --color-secondary-container:    #fd8c6a;
+  --color-on-secondary-container: #74250a;
+  --color-secondary-fixed:        #ffdbd0;
+  --color-secondary-fixed-dim:    #ffb59f;
+  --color-on-secondary-fixed:     #3a0a00;
+  --color-on-secondary-fixed-variant: #7d2c11;
 
-  /* Color · Warm accent */
-  --color-amber:      #C17817;
-  --color-amber-warm: #C17817; /* alias for existing Tailwind classes */
+  --color-tertiary:              #332f2a;
+  --color-on-tertiary:           #ffffff;
+  --color-tertiary-container:    #494540;
+  --color-on-tertiary-container: #b9b2ac;
 
-  /* Color · Surface */
-  --color-bg:    #FDFBF7;
-  --color-cream: #F5F0E6;
-  --color-white: #FFFFFF;
+  --color-surface:                  #fff8f6;
+  --color-surface-dim:              #e2d8d5;
+  --color-surface-bright:           #fff8f6;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low:    #fcf1ee;
+  --color-surface-container:        #f6ece8;
+  --color-surface-container-high:   #f0e6e3;
+  --color-surface-container-highest:#ebe0dd;
+  --color-surface-variant:          #ebe0dd;
+  --color-surface-tint:             #456553;
+  --color-on-surface:               #1f1b19;
+  --color-on-surface-variant:       #424843;
+  --color-inverse-surface:          #352f2d;
+  --color-inverse-on-surface:       #f9efeb;
 
-  /* Color · Browns */
-  --color-brown-dark:  #5C4A32;
-  --color-brown-mid:   #8B7355;
-  --color-brown-light: #E8E0D0;
+  --color-outline:         #727973;
+  --color-outline-variant: #c1c8c2;
 
-  /* Color · Status */
-  --color-red-defect: #A83232;
+  --color-error:              #ba1a1a;
+  --color-on-error:           #ffffff;
+  --color-error-container:    #ffdad6;
+  --color-on-error-container: #93000a;
 
-  /* Color · Flavor families */
-  --color-flavor-floral:  #C17817;
-  --color-flavor-fruity:  #E8834A;
-  --color-flavor-sweet:   #B4874E;
-  --color-flavor-sour:    #A83232;
-  --color-flavor-green:   #6B8F71;
-  --color-flavor-nutty:   #8B7355;
-  --color-flavor-spice:   #9B6B4A;
-  --color-flavor-roasted: #5C4A32;
-  --color-flavor-other:   #7A6E5F;
+  /* ── Compatibility aliases (maps old names to new values) ─ */
+  /* These keep existing Tailwind utility classes working.     */
+  --color-background: var(--color-surface);
+  --color-foreground: var(--color-on-surface);
+  --background:       var(--color-surface);
+  --foreground:       var(--color-on-surface);
 
-  /* Radius */
+  --color-green-dark:  var(--color-primary-container); /* #2c4c3b */
+  --color-green-mid:   #6b8f71;
+  --color-green-light: var(--color-primary-fixed-dim); /* #abcfb8 */
+
+  --color-amber:      var(--color-secondary);          /* #9d4326 */
+  --color-amber-warm: var(--color-secondary);
+
+  --color-bg:    var(--color-surface);                 /* #fff8f6 */
+  --color-cream: var(--color-surface-container);       /* #f6ece8 */
+  --color-white: var(--color-surface-container-lowest);/* #ffffff */
+
+  --color-brown-dark:  var(--color-on-surface);        /* #1f1b19 */
+  --color-brown-mid:   var(--color-on-surface-variant);/* #424843 */
+  --color-brown-light: var(--color-outline-variant);   /* #c1c8c2 */
+
+  --color-red-defect: var(--color-error);              /* #ba1a1a */
+
+  /* ── Flavor families (CATA pills only) ─────────────────── */
+  --color-flavor-floral:  #b07d2f;
+  --color-flavor-fruity:  #c0552a;
+  --color-flavor-sweet:   #a07040;
+  --color-flavor-sour:    #ba1a1a;
+  --color-flavor-green:   #456553;
+  --color-flavor-nutty:   #6b5240;
+  --color-flavor-spice:   #8b5e3c;
+  --color-flavor-roasted: #332f2a;
+  --color-flavor-other:   #5e5a55;
+
+  /* ── Typography ─────────────────────────────────────────── */
+  --font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --font-ui:      'Hanken Grotesk', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:    'Hanken Grotesk', system-ui, sans-serif; /* tabular-nums via class */
+  --font-serif:   var(--font-display);
+  --font-sans:    var(--font-ui);
+
+  /* ── Radius ─────────────────────────────────────────────── */
+  --radius-sm:    0.5rem;  /* 8px  */
   --radius-pill:  9999px;
-  --radius-card:  12px;
-  --radius-input: 8px;
+  --radius-card:  1rem;    /* 16px */
+  --radius-input: 1rem;    /* 16px */
+  --radius-md:    1.5rem;  /* 24px */
+  --radius-lg:    2rem;    /* 32px */
+  --radius-xl:    3rem;    /* 48px */
 
-  /* Shadow */
-  --shadow-card:    0 2px 8px rgba(0, 0, 0, 0.06);
-  --shadow-card-lg: 0 8px 24px rgba(92, 74, 50, 0.10), 0 2px 6px rgba(92, 74, 50, 0.05);
-  --shadow-inset:   inset 0 1px 2px rgba(92, 74, 50, 0.06);
+  /* ── Shadows (tonal, no heavy drops) ────────────────────── */
+  --shadow-card:    0 1px 3px rgba(31, 27, 25, 0.06);
+  --shadow-card-lg: 0 4px 16px rgba(31, 27, 25, 0.08), 0 1px 4px rgba(31, 27, 25, 0.04);
+  --shadow-inset:   inset 0 1px 2px rgba(31, 27, 25, 0.04);
 
-  /* Typography */
-  --font-display: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
-  --font-ui:      'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
-
-  /* Motion */
+  /* ── Motion ─────────────────────────────────────────────── */
   --transition-fast: 150ms ease;
   --transition-med:  240ms cubic-bezier(0.2, 0.8, 0.2, 1);
 
-  /* Spacing scale (8px base) */
+  /* ── Spacing (4px unit) ─────────────────────────────────── */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -75,62 +130,103 @@
 
 /* ============================================================
    Tailwind design tokens
-   Exposes all tokens as Tailwind utility classes
    ============================================================ */
 @theme inline {
-  /* Compatibility */
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  /* MD3 color roles */
+  --color-primary:              #153526;
+  --color-on-primary:           #ffffff;
+  --color-primary-container:    #2c4c3b;
+  --color-on-primary-container: #98bca6;
+  --color-inverse-primary:      #abcfb8;
+  --color-primary-fixed:        #c7ebd4;
+  --color-primary-fixed-dim:    #abcfb8;
 
-  /* Greens */
-  --color-green-dark:  #3D5A3E;
-  --color-green-mid:   #6B8F71;
-  --color-green-light: #B4C8A8;
+  --color-secondary:              #9d4326;
+  --color-on-secondary:           #ffffff;
+  --color-secondary-container:    #fd8c6a;
+  --color-on-secondary-container: #74250a;
+  --color-secondary-fixed:        #ffdbd0;
+  --color-secondary-fixed-dim:    #ffb59f;
 
-  /* Warm accent */
-  --color-amber:      #C17817;
-  --color-amber-warm: #C17817;
+  --color-tertiary:              #332f2a;
+  --color-on-tertiary:           #ffffff;
+  --color-tertiary-container:    #494540;
+  --color-on-tertiary-container: #b9b2ac;
 
-  /* Surface */
-  --color-bg:    #FDFBF7;
-  --color-cream: #F5F0E6;
-  --color-white: #FFFFFF;
+  --color-surface:                   #fff8f6;
+  --color-surface-dim:               #e2d8d5;
+  --color-surface-container-lowest:  #ffffff;
+  --color-surface-container-low:     #fcf1ee;
+  --color-surface-container:         #f6ece8;
+  --color-surface-container-high:    #f0e6e3;
+  --color-surface-container-highest: #ebe0dd;
+  --color-surface-variant:           #ebe0dd;
+  --color-surface-tint:              #456553;
+  --color-on-surface:                #1f1b19;
+  --color-on-surface-variant:        #424843;
+  --color-inverse-surface:           #352f2d;
+  --color-inverse-on-surface:        #f9efeb;
 
-  /* Browns */
-  --color-brown-dark:  #5C4A32;
-  --color-brown-mid:   #8B7355;
-  --color-brown-light: #E8E0D0;
+  --color-outline:         #727973;
+  --color-outline-variant: #c1c8c2;
 
-  /* Status */
-  --color-red-defect: #A83232;
+  --color-error:              #ba1a1a;
+  --color-on-error:           #ffffff;
+  --color-error-container:    #ffdad6;
+  --color-on-error-container: #93000a;
+
+  /* Compatibility aliases */
+  --color-background: #fff8f6;
+  --color-foreground: #1f1b19;
+
+  --color-green-dark:  #2c4c3b;
+  --color-green-mid:   #6b8f71;
+  --color-green-light: #abcfb8;
+
+  --color-amber:      #9d4326;
+  --color-amber-warm: #9d4326;
+
+  --color-bg:    #fff8f6;
+  --color-cream: #f6ece8;
+  --color-white: #ffffff;
+
+  --color-brown-dark:  #1f1b19;
+  --color-brown-mid:   #424843;
+  --color-brown-light: #c1c8c2;
+
+  --color-red-defect: #ba1a1a;
 
   /* Flavor families */
-  --color-flavor-floral:  #C17817;
-  --color-flavor-fruity:  #E8834A;
-  --color-flavor-sweet:   #B4874E;
-  --color-flavor-sour:    #A83232;
-  --color-flavor-green:   #6B8F71;
-  --color-flavor-nutty:   #8B7355;
-  --color-flavor-spice:   #9B6B4A;
-  --color-flavor-roasted: #5C4A32;
-  --color-flavor-other:   #7A6E5F;
+  --color-flavor-floral:  #b07d2f;
+  --color-flavor-fruity:  #c0552a;
+  --color-flavor-sweet:   #a07040;
+  --color-flavor-sour:    #ba1a1a;
+  --color-flavor-green:   #456553;
+  --color-flavor-nutty:   #6b5240;
+  --color-flavor-spice:   #8b5e3c;
+  --color-flavor-roasted: #332f2a;
+  --color-flavor-other:   #5e5a55;
 
-  /* Radius → rounded-pill, rounded-card, rounded-input */
+  /* Radius */
+  --radius-sm:    0.5rem;
   --radius-pill:  9999px;
-  --radius-card:  12px;
-  --radius-input: 8px;
+  --radius-card:  1rem;
+  --radius-input: 1rem;
+  --radius-md:    1.5rem;
+  --radius-lg:    2rem;
+  --radius-xl:    3rem;
 
-  /* Shadows → shadow-card, shadow-card-lg, shadow-inset */
-  --shadow-card:    0 2px 8px rgba(0, 0, 0, 0.06);
-  --shadow-card-lg: 0 8px 24px rgba(92, 74, 50, 0.10), 0 2px 6px rgba(92, 74, 50, 0.05);
-  --shadow-inset:   inset 0 1px 2px rgba(92, 74, 50, 0.06);
+  /* Shadows */
+  --shadow-card:    0 1px 3px rgba(31, 27, 25, 0.06);
+  --shadow-card-lg: 0 4px 16px rgba(31, 27, 25, 0.08), 0 1px 4px rgba(31, 27, 25, 0.04);
+  --shadow-inset:   inset 0 1px 2px rgba(31, 27, 25, 0.04);
 
-  /* Fonts → font-display, font-ui, font-mono, font-serif (alias), font-sans (alias) */
-  --font-display: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
-  --font-ui:      'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
-  --font-serif:   'Cormorant Garamond', Georgia, serif;
-  --font-sans:    'Inter', system-ui, sans-serif;
+  /* Fonts */
+  --font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --font-ui:      'Hanken Grotesk', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:    'Hanken Grotesk', system-ui, sans-serif;
+  --font-serif:   'Newsreader', Georgia, serif;
+  --font-sans:    'Hanken Grotesk', system-ui, sans-serif;
 }
 
 /* ============================================================
@@ -141,8 +237,8 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--color-bg);
-  color: var(--color-brown-dark);
+  background: var(--color-surface);
+  color: var(--color-on-surface);
   font-family: var(--font-ui);
   font-size: 14px;
   line-height: 1.5;
@@ -154,15 +250,18 @@ html, body {
 h1, h2, h3, h4, .font-serif {
   font-family: var(--font-display);
   font-weight: 500;
-  letter-spacing: -0.005em;
-  color: var(--color-brown-dark);
+  letter-spacing: -0.01em;
+  color: var(--color-on-surface);
   margin: 0;
 }
 
 button { font-family: inherit; cursor: pointer; }
 
-/* Monospace + tabular numerics for measurements and captions */
-.mono, code, pre { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+/* Tabular numerics for measurements and data */
+.mono, code, pre {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
 
 /* Editorial italic for score numerals and display text */
 .display-italic { font-family: var(--font-display); font-style: italic; }

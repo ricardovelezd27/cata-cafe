@@ -1,17 +1,20 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Lato } from "next/font/google";
+import { Newsreader, Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
 
-const lato = Lato({
-  weight: ["400", "700", "900"],
-  variable: "--font-geist-sans",
+const hankenGrotesk = Hanken_Grotesk({
+  weight: ["400", "500", "600"],
+  variable: "--font-ui",
   subsets: ["latin"],
+  display: "swap",
 });
 
-const cormorant = Cormorant_Garamond({
-  weight: ["400", "600", "700"],
-  variable: "--font-serif-alt",
+const newsreader = Newsreader({
+  weight: ["400", "500"],
+  style: ["normal", "italic"],
+  variable: "--font-display",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -24,7 +27,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
-      className={`${lato.variable} ${cormorant.variable} h-full antialiased`}
+      className={`${hankenGrotesk.variable} ${newsreader.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">{children}</body>
