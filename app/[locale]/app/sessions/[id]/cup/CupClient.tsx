@@ -13,7 +13,7 @@ import {
   upsertExtrinsic,
   upsertPhysical,
 } from "@/app/actions/sessions";
-import { submitAllEvaluations, closeSession } from "@/app/actions/community";
+import { submitAllEvaluations, closeSession, createInviteToken } from "@/app/actions/community";
 import {
   CUPPING_STEPS,
   DESCRIPTIVE_STEPS,
@@ -103,6 +103,9 @@ export function CupClient({
   const [submittedCount, setSubmittedCount] = useState(initialSubmittedCount);
   const [isGoingToResults, setIsGoingToResults] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [isCopied, setIsCopied] = useState(false);
+  const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
   const [, startTransition] = useTransition();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSaveRef = useRef<{ sampleId: string; key: keyof Sample; data: Data } | null>(null);
@@ -250,6 +253,24 @@ export function CupClient({
     } finally {
       router.push(`/${locale}/app/sessions/${session.id}/results`);
     }
+  };
+
+  const handleGenerateInvite = async () => {
+    setIsGeneratingInvite(true);
+    try {
+      const { token } = await createInviteToken(session.id);
+      const link = `${window.location.origin}/${locale}/join/${token}`;
+      setInviteLink(link);
+    } finally {
+      setIsGeneratingInvite(false);
+    }
+  };
+
+  const handleCopyInvite = async () => {
+    if (!inviteLink) return;
+    await navigator.clipboard.writeText(inviteLink);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
   };
 
   const handleCloseSession = () => {
@@ -572,23 +593,105 @@ export function CupClient({
           <div style={{ fontSize: 12, color: "#5C4A32", marginBottom: 10 }}>
             {submittedCount} / {participantCount} {translations.submittedOf}
           </div>
-          <button
-            onClick={handleCloseSession}
-            disabled={sessionStatus === "closed"}
-            style={{
-              padding: "6px 14px",
-              borderRadius: 8,
-              border: "none",
-              background: sessionStatus === "closed" ? "#C4B49A" : "#A83232",
-              color: "#FFF",
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: sessionStatus === "closed" ? "default" : "pointer",
-              fontFamily: "inherit",
-            }}
-          >
-            {translations.closeSession}
-          </button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <button
+              onClick={handleCloseSession}
+              disabled={sessionStatus === "closed"}
+              style={{
+                padding: "6px 14px",
+                borderRadius: 8,
+                border: "none",
+                background: sessionStatus === "closed" ? "#C4B49A" : "#A83232",
+                color: "#FFF",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: sessionStatus === "closed" ? "default" : "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              {translations.closeSession}
+            </button>
+            {!inviteLink ? (
+              <button
+                onClick={handleGenerateInvite}
+                disabled={isGeneratingInvite || sessionStatus === "closed"}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: 8,
+                  border: "1px solid #6B8F71",
+                  background: "transparent",
+                  color: sessionStatus === "closed" ? "#C4B49A" : "#3D5A3E",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: isGeneratingInvite || sessionStatus === "closed" ? "default" : "pointer",
+                  fontFamily: "inherit",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                }}
+              >
+                <span style={{ fontSize: 13 }}>🔗</span>
+                {isGeneratingInvite ? "Generando…" : "Invitar participantes"}
+              </button>
+            ) : (
+              <div style={{ display: "flex", gap: 6, alignItems: "center", width: "100%", marginTop: 6 }}>
+                <div
+                  style={{
+                    flex: 1,
+                    fontSize: 11,
+                    color: "#5C4A32",
+                    background: "#FFF",
+                    border: "1px solid #D4C5A9",
+                    borderRadius: 6,
+                    padding: "4px 8px",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    fontFamily: "monospace",
+                  }}
+                  title={inviteLink}
+                >
+                  {inviteLink}
+                </div>
+                <button
+                  onClick={handleCopyInvite}
+                  style={{
+                    padding: "5px 10px",
+                    borderRadius: 6,
+                    border: "none",
+                    background: isCopied ? "#3D5A3E" : "#6B8F71",
+                    color: "#FFF",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                    transition: "background 0.2s",
+                  }}
+                >
+                  {isCopied ? "✓ Copiado" : "Copiar"}
+                </button>
+                <button
+                  onClick={() => setInviteLink(null)}
+                  title="Generar nuevo enlace"
+                  style={{
+                    padding: "5px 8px",
+                    borderRadius: 6,
+                    border: "1px solid #D4C5A9",
+                    background: "transparent",
+                    color: "#8B7355",
+                    fontSize: 11,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    flexShrink: 0,
+                  }}
+                >
+                  ↺
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

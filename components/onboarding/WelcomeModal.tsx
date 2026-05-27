@@ -70,6 +70,7 @@ export default function WelcomeModal({ locale, initialDisplayName }: WelcomeModa
         role: role || "enthusiast",
         country: country || "",
       });
+      router.refresh();
     });
   }
 
