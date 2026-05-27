@@ -26,6 +26,8 @@
     "sent": "Revisa tu correo. Haz clic en el enlace para entrar.",
     "error": "No pudimos enviar el enlace. Verifica el correo e inténtalo de nuevo.",
     "rateLimitError": "Demasiados intentos en poco tiempo. Espera unos minutos e inténtalo de nuevo.",
+    "signInWithGoogle": "Continuar con Google",
+    "or": "o",
     "signOut": "Cerrar sesión"
   },
   "dashboard": {
