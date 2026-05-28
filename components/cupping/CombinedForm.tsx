@@ -216,6 +216,7 @@ export function CombinedForm({
 
   return (
     <div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-4">
       {stepAttrs.map((attr) => {
         const descId = attr.descriptiveId;
         if (!descId) return null;
@@ -266,6 +267,7 @@ export function CombinedForm({
           </FormSection>
         );
       })}
+      </div>
 
       {currentStep === "taste_aftertaste" && (
         <FormSection title="Gustos Predominantes" accent>

@@ -20,10 +20,8 @@
 .ticks { position: relative; margin-top: 14px; display: flex; justify-content: space-between; }
 .tick { flex: 1; min-width: 0; }
 .tickNum { font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--color-brown-mid); display: block; }
-.tickLabel { display: block; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.18em; color: var(--color-brown-mid); margin-top: 2px; font-weight: 600; }
 @media (max-width: 480px) {
   .valueDisplay { font-size: 18px; }
-  .tickLabel { font-size: 8px; letter-spacing: 0.12em; }
   .tickNum { font-size: 10px; }
   .head { margin-bottom: 12px; }
 }

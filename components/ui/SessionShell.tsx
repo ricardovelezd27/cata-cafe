@@ -23,6 +23,8 @@ interface SessionShellProps {
   footer?: ReactNode;
   /** Optional title shown next to hamburger on mobile. */
   mobileTitle?: string;
+  /** Auto-save status — drives the top-right indicator dot. */
+  saveStatus?: "idle" | "saving" | "saved";
 }
 
 export function SessionShell({
@@ -35,6 +37,7 @@ export function SessionShell({
   children,
   footer,
   mobileTitle,
+  saveStatus = "idle",
 }: SessionShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -70,6 +73,12 @@ export function SessionShell({
 
       {/* Main column */}
       <div className={styles.main}>
+        {saveStatus !== "idle" && (
+          <div
+            className={`${styles.saveIndicator} ${saveStatus === "saved" ? styles.saveIndicatorSaved : ""}`}
+            aria-hidden
+          />
+        )}
         {/* Mobile-only header with hamburger */}
         <div className={styles.mobileHeader}>
           <button

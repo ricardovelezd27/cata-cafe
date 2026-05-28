@@ -3,7 +3,6 @@
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import styles from "./CanvasFooter.module.css";
 
-export type SaveStatus = "idle" | "saving" | "saved";
 export type NextVariant = "next-sample" | "next-phase" | "view-results";
 
 interface CanvasFooterProps {
@@ -14,9 +13,6 @@ interface CanvasFooterProps {
   prevDisabled?: boolean;
   nextDisabled?: boolean;
   nextVariant?: NextVariant;
-  saveStatus?: SaveStatus;
-  savingLabel?: string;
-  savedLabel?: string;
 }
 
 export function CanvasFooter({
@@ -27,9 +23,6 @@ export function CanvasFooter({
   prevDisabled = false,
   nextDisabled = false,
   nextVariant = "next-sample",
-  saveStatus = "idle",
-  savingLabel = "Saving…",
-  savedLabel = "Saved",
 }: CanvasFooterProps) {
   const nextClass =
     nextVariant === "next-phase" ? styles.nextPhase : styles.next;
@@ -46,20 +39,7 @@ export function CanvasFooter({
         {prevLabel}
       </button>
 
-      <span className={styles.spacer}>
-        {saveStatus === "saving" && (
-          <span className={styles.status}>
-            <span className={`${styles.dot} ${styles.dotSaving}`} aria-hidden />
-            {savingLabel}
-          </span>
-        )}
-        {saveStatus === "saved" && (
-          <span className={`${styles.status} ${styles.saved}`}>
-            <span className={styles.dot} aria-hidden />
-            {savedLabel}
-          </span>
-        )}
-      </span>
+      <span className={styles.spacer} />
 
       <button
         type="button"

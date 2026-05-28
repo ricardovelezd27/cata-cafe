@@ -12,12 +12,7 @@ export interface IntensitySliderProps {
   step?: number
 }
 
-const ANCHORS: { v: number; label: string }[] = [
-  { v: 0,  label: 'LOW' },
-  { v: 5,  label: '' },
-  { v: 10, label: 'MEDIUM' },
-  { v: 15, label: 'HIGH' },
-]
+const ANCHORS: number[] = [0, 5, 10, 15]
 
 export function IntensitySlider({
   value,
@@ -60,10 +55,9 @@ export function IntensitySlider({
         />
       </div>
       <div className={styles.ticks}>
-        {ANCHORS.map((a, i) => (
-          <div key={a.v} className={styles.tick} style={{ textAlign: i === 0 ? 'left' : i === ANCHORS.length - 1 ? 'right' : 'center' }}>
-            <span className={styles.tickNum}>{a.v}</span>
-            {a.label && <span className={styles.tickLabel}>{a.label}</span>}
+        {ANCHORS.map((v, i) => (
+          <div key={v} className={styles.tick} style={{ textAlign: i === 0 ? 'left' : i === ANCHORS.length - 1 ? 'right' : 'center' }}>
+            <span className={styles.tickNum}>{v}</span>
           </div>
         ))}
       </div>

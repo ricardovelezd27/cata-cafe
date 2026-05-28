@@ -110,8 +110,6 @@ export function CupClient({
     generating: string;
     copy: string;
     copied: string;
-    saving: string;
-    saved: string;
     formatLabel: string;
   };
   userEmail?: string;
@@ -420,10 +418,10 @@ export function CupClient({
 
   // ─── Footer next-button labelling ─────────────────────────────
   const nextLabel = isLastSampleOverall
-    ? `${translations.viewResults} →`
+    ? translations.viewResults
     : isLastSampleInStep && !isLastStep
-    ? `${translations.nextPhase} →`
-    : `${translations.nextSample} →`;
+    ? translations.nextPhase
+    : translations.nextSample;
 
   const nextVariant: "next-sample" | "next-phase" | "view-results" =
     isLastSampleOverall
@@ -540,9 +538,6 @@ export function CupClient({
       prevDisabled={prevDisabled || isNavigating}
       nextDisabled={isNavigating || isGoingToResults}
       nextVariant={nextVariant}
-      saveStatus={saveStatus}
-      savingLabel={translations.saving}
-      savedLabel={translations.saved}
     />
   );
 
@@ -557,6 +552,7 @@ export function CupClient({
       topBar={topBar}
       footer={footer}
       mobileTitle={session.name}
+      saveStatus={saveStatus}
     >
       <div key={`${activeTab}-${currentStep}-${current.id}`}>
         {activeTab === "cupping" && session.format === "descriptive" && (

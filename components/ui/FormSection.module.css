@@ -5,6 +5,7 @@
   box-shadow: var(--shadow-card);
   padding: 20px;
   margin-bottom: 16px;
+  overflow: hidden;
 }
 
 @media (max-width: 640px) {

@@ -128,8 +128,6 @@ export default async function CupPage({
         generating: t("cupping.shell.generating"),
         copy: t("cupping.shell.copy"),
         copied: t("cupping.shell.copied"),
-        saving: t("actions.saving"),
-        saved: t("actions.saved"),
         formatLabel: t(`session.formats.${session.format}`),
       }}
     />
