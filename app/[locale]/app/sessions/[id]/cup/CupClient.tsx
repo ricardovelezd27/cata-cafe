@@ -504,14 +504,27 @@ export function CupClient({
   // ─── Top bar content ──────────────────────────────────────────
   const topBar =
     activeTab === "cupping" ? (
-      <PhaseStepper
-        phases={stepsForFormat}
-        currentPhase={currentStep}
-        phaseStatuses={stepStatuses}
-        labels={STEP_LABELS}
-        onSelect={handleStepChange}
-        variant="light"
-      />
+      <>
+        <PhaseStepper
+          phases={stepsForFormat}
+          currentPhase={currentStep}
+          phaseStatuses={stepStatuses}
+          labels={STEP_LABELS}
+          onSelect={handleStepChange}
+          variant="light"
+        />
+        <div className="sm:hidden flex items-center gap-2 px-4 py-1.5 border-t border-brown-light bg-bg">
+          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-brown-mid">
+            {translations.sample}
+          </span>
+          <span className="font-display text-sm font-semibold text-green-dark">
+            {current.label}
+          </span>
+          <span className="font-mono text-[10px] text-brown-mid">
+            {sampleIdx + 1}/{samples.length}
+          </span>
+        </div>
+      </>
     ) : (
       <div className="flex items-center gap-3 px-6 py-3">
         <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-brown-mid">
