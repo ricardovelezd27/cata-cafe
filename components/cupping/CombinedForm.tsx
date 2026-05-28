@@ -226,7 +226,8 @@ export function CombinedForm({
         const max = STEP_CATA_MAX[descId];
 
         return (
-          <FormSection key={affId} title={title} accent>
+          <div key={affId} className="min-w-0">
+          <FormSection title={title} accent>
             <div className="font-mono text-[10px] font-semibold tracking-[0.18em] uppercase text-green-mid mb-2">
               Descriptivo
             </div>
@@ -265,6 +266,7 @@ export function CombinedForm({
               />
             </div>
           </FormSection>
+          </div>
         );
       })}
       </div>
