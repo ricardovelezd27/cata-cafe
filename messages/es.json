@@ -110,7 +110,18 @@
     "defectiveCups": "Tazas defectuosas",
     "defectType": "Tipo de defecto",
     "notes": "Notas",
-    "notesPh": "Observaciones adicionales..."
+    "notesPh": "Observaciones adicionales...",
+    "shell": {
+      "samplesHeader": "Muestras",
+      "evaluationHeader": "Evaluación",
+      "cuppingModule": "Cata",
+      "exitToSessions": "Salir a sesiones",
+      "invite": "Invitar participantes",
+      "generating": "Generando…",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "currentSample": "Muestra activa"
+    }
   },
   "score": {
     "individual": "Puntaje individual",

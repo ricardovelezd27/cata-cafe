@@ -119,6 +119,18 @@ export default async function CupPage({
         confirmClose: tg("confirmClose"),
         masterRole: tg("masterRole"),
         participantRole: tg("participantRole"),
+        // Shell (Phase 3)
+        samplesHeader: t("cupping.shell.samplesHeader"),
+        evaluationHeader: t("cupping.shell.evaluationHeader"),
+        cuppingModule: t("cupping.shell.cuppingModule"),
+        exitToSessions: t("cupping.shell.exitToSessions"),
+        invite: t("cupping.shell.invite"),
+        generating: t("cupping.shell.generating"),
+        copy: t("cupping.shell.copy"),
+        copied: t("cupping.shell.copied"),
+        saving: t("actions.saving"),
+        saved: t("actions.saved"),
+        formatLabel: t(`session.formats.${session.format}`),
       }}
     />
   );

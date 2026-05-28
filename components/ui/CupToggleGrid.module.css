@@ -1,0 +1,162 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.legendDot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.legendDotNonUniform {
+  background: var(--color-amber);
+}
+
+.legendDotDefective {
+  background: var(--color-red-defect);
+}
+
+.legendItem.nonUniform { color: var(--color-amber); }
+.legendItem.defective  { color: var(--color-red-defect); }
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rowLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-brown-mid);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.rowLabel.nonUniform { color: var(--color-amber); }
+.rowLabel.defective  { color: var(--color-red-defect); }
+
+.rowHint {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--color-brown-mid);
+  opacity: 0.75;
+}
+
+.grid {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cup {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 2px solid var(--color-brown-light);
+  background: transparent;
+  color: var(--color-brown-mid);
+  transition: background-color var(--transition-fast),
+              color var(--transition-fast),
+              border-color var(--transition-fast);
+}
+
+.cup:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--color-cream) 60%, transparent);
+}
+
+.cup:focus-visible {
+  outline: 2px solid var(--color-green-dark);
+  outline-offset: 2px;
+}
+
+.cup.isNonUniform {
+  background: var(--color-amber);
+  border-color: var(--color-amber);
+  color: var(--color-white);
+}
+
+.cup.isDefective {
+  background: var(--color-red-defect);
+  border-color: var(--color-red-defect);
+  color: var(--color-white);
+}
+
+.note {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-style: italic;
+  color: var(--color-amber);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.defectPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.defectPill {
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1.5px solid var(--color-brown-light);
+  background: transparent;
+  color: var(--color-brown-dark);
+  transition: background-color var(--transition-fast),
+              color var(--transition-fast),
+              border-color var(--transition-fast);
+}
+
+.defectPill:hover:not(.active) {
+  background: var(--color-cream);
+}
+
+.defectPill.active {
+  background: var(--color-red-defect);
+  border-color: var(--color-red-defect);
+  color: var(--color-white);
+  font-weight: 600;
+}

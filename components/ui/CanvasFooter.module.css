@@ -1,0 +1,97 @@
+.bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  background: color-mix(in oklch, var(--color-bg) 92%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-top: 1px solid var(--color-brown-light);
+}
+
+.spacer { flex: 1; }
+
+.status {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--color-brown-mid);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.status.saved { color: var(--color-green-dark); }
+
+.dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.dotSaving {
+  background: var(--color-amber);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color var(--transition-fast),
+              color var(--transition-fast),
+              border-color var(--transition-fast);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--color-green-dark);
+  outline-offset: 2px;
+}
+
+.button:disabled { cursor: default; opacity: 0.45; }
+
+.prev {
+  background: transparent;
+  color: var(--color-brown-dark);
+  border-color: var(--color-brown-light);
+}
+
+.prev:hover:not(:disabled) {
+  background: var(--color-cream);
+}
+
+.next {
+  background: var(--color-green-dark);
+  color: var(--color-white);
+}
+
+.next:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--color-green-dark) 88%, black);
+}
+
+.nextPhase {
+  background: var(--color-amber);
+  color: var(--color-white);
+}
+
+.nextPhase:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--color-amber) 88%, black);
+}

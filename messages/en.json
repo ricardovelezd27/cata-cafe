@@ -110,7 +110,18 @@
     "defectiveCups": "Defective cups",
     "defectType": "Defect type",
     "notes": "Notes",
-    "notesPh": "Additional observations..."
+    "notesPh": "Additional observations...",
+    "shell": {
+      "samplesHeader": "Samples",
+      "evaluationHeader": "Evaluation",
+      "cuppingModule": "Cupping",
+      "exitToSessions": "Exit to sessions",
+      "invite": "Invite participants",
+      "generating": "Generating…",
+      "copy": "Copy",
+      "copied": "Copied",
+      "currentSample": "Current sample"
+    }
   },
   "score": {
     "individual": "Individual score",

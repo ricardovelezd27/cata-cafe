@@ -1,0 +1,135 @@
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  background: var(--color-bg);
+  color: var(--color-brown-dark);
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 256px;
+  flex-shrink: 0;
+  background: var(--color-cream);
+  border-right: 1px solid var(--color-brown-light);
+  min-height: 0;
+}
+
+@media (max-width: 1023px) {
+  .sidebar { width: 220px; }
+}
+
+@media (max-width: 640px) {
+  .sidebar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 20;
+    width: 260px;
+    box-shadow: var(--shadow-card-lg);
+    transform: translateX(-100%);
+    transition: transform var(--transition-med);
+  }
+  .sidebar.open { transform: translateX(0); }
+  .backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    background: color-mix(in oklch, var(--color-brown-dark) 30%, transparent);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-med);
+  }
+  .backdrop.open { opacity: 1; pointer-events: auto; }
+}
+
+.identity {
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--color-brown-light);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.navStack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px 0;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.spacer { flex: 1; min-height: 8px; }
+
+.ownerSlot {
+  padding: 0 0 16px;
+}
+
+.exit {
+  padding: 14px 20px;
+  border-top: 1px solid var(--color-brown-light);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--color-brown-mid);
+  background: color-mix(in oklch, var(--color-cream) 70%, var(--color-bg));
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.topBar {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-brown-light);
+  background: var(--color-bg);
+}
+
+.canvas {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.canvasInner {
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 32px 32px 24px;
+}
+
+@media (max-width: 768px) {
+  .canvasInner { padding: 20px 16px 16px; }
+}
+
+.mobileHeader {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .mobileHeader {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--color-brown-light);
+    background: var(--color-bg);
+  }
+  .hamburger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    border: 1px solid var(--color-brown-light);
+    color: var(--color-brown-dark);
+    cursor: pointer;
+  }
+}

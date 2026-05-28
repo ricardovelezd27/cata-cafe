@@ -9,10 +9,13 @@ import {
   STEP_CATA_MAX,
   type CuppingStep,
 } from "@/lib/constants";
-import { IntensitySlider } from "@/components/ui/IntensitySlider";
-import { CATAPills, type CATAOption, type CATASubItem } from "@/components/ui/CATAPills";
-import { Section } from "./Section";
-import { NotesInput } from "./NotesInput";
+import {
+  IntensitySlider,
+  CATAPills,
+  FormSection,
+  Notes,
+} from "@/components/ui";
+import type { CATAOption, CATASubItem } from "@/components/ui/CATAPills";
 
 type Data = Record<string, unknown>;
 
@@ -47,7 +50,7 @@ const mouthfeelCATAOptions: CATAOption[] = MOUTHFEEL_CATA.map((o) => ({
 const mainTasteOptions: CATAOption[] = MAIN_TASTES.map((t) => ({
   id: t.id,
   label: t.label,
-  color: "#C17817",
+  color: "var(--color-amber)",
 }));
 
 export function DescriptiveForm({
@@ -71,13 +74,13 @@ export function DescriptiveForm({
     options: CATAOption[],
     showSubItems: boolean,
   ) => (
-    <Section key={id} title={title}>
+    <FormSection key={id} title={title} accent>
       <IntensitySlider
         label="Intensidad"
         value={num(`${id}_int`)}
         onChange={(v) => set(`${id}_int`, v)}
       />
-      <div className="mt-3">
+      <div className="mt-4">
         <CATAPills
           options={options}
           selected={arr(`${id}_desc`)}
@@ -86,14 +89,14 @@ export function DescriptiveForm({
           showSubItems={showSubItems}
         />
       </div>
-      <div className="mt-2">
-        <NotesInput
+      <div className="mt-3">
+        <Notes
           value={str(`${id}_notas`)}
           onChange={(v) => set(`${id}_notas`, v)}
           placeholder="Notas descriptivas..."
         />
       </div>
-    </Section>
+    </FormSection>
   );
 
   if (currentStep === "fragrance_aroma") {
@@ -110,7 +113,7 @@ export function DescriptiveForm({
       <div>
         {renderBlock("sabor", "Sabor", flavorCATAOptions, true)}
         {renderBlock("sabor_residual", "Sabor Residual (Regusto)", flavorCATAOptions, true)}
-        <Section title="Gustos Predominantes">
+        <FormSection title="Gustos Predominantes" accent>
           <div className="text-[11px] text-brown-mid mb-2">
             Selecciona hasta 2 sabores principales
           </div>
@@ -120,7 +123,7 @@ export function DescriptiveForm({
             onChange={(v) => set("gustos", v)}
             maxSelect={2}
           />
-        </Section>
+        </FormSection>
       </div>
     );
   }

@@ -3,6 +3,7 @@
 import { useState, useRef, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
+import { Coffee, Scale, FileText, BarChart3 } from "lucide-react";
 import { DescriptiveForm } from "@/components/cupping/DescriptiveForm";
 import { AffectiveForm } from "@/components/cupping/AffectiveForm";
 import { CombinedForm } from "@/components/cupping/CombinedForm";
@@ -13,7 +14,11 @@ import {
   upsertExtrinsic,
   upsertPhysical,
 } from "@/app/actions/sessions";
-import { submitAllEvaluations, closeSession, createInviteToken } from "@/app/actions/community";
+import {
+  submitAllEvaluations,
+  closeSession,
+  createInviteToken,
+} from "@/app/actions/community";
 import {
   CUPPING_STEPS,
   DESCRIPTIVE_STEPS,
@@ -23,6 +28,14 @@ import {
 } from "@/lib/constants";
 import { PhaseStepper } from "@/components/cupping/PhaseStepper";
 import { DevRoleBadge } from "@/components/dev/DevRoleBadge";
+import {
+  SessionShell,
+  SampleTabs,
+  ModuleSwitcher,
+  MasterControls,
+  CanvasFooter,
+  type ModuleItem,
+} from "@/components/ui";
 
 type Data = Record<string, unknown>;
 
@@ -88,6 +101,18 @@ export function CupClient({
     confirmClose: string;
     masterRole: string;
     participantRole: string;
+    // Shell (Phase 3)
+    samplesHeader: string;
+    evaluationHeader: string;
+    cuppingModule: string;
+    exitToSessions: string;
+    invite: string;
+    generating: string;
+    copy: string;
+    copied: string;
+    saving: string;
+    saved: string;
+    formatLabel: string;
   };
   userEmail?: string;
 }) {
@@ -99,7 +124,9 @@ export function CupClient({
   const [currentStep, setCurrentStep] = useState<CuppingStep>(stepsForFormat[0]);
   const [samples, setSamples] = useState(session.samples);
   const [activeTab, setActiveTab] = useState<CuppingTab>("cupping");
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
+    "idle"
+  );
   const [submittedCount, setSubmittedCount] = useState(initialSubmittedCount);
   const [isGoingToResults, setIsGoingToResults] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
@@ -108,15 +135,19 @@ export function CupClient({
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
   const [, startTransition] = useTransition();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingSaveRef = useRef<{ sampleId: string; key: keyof Sample; data: Data } | null>(null);
+  const pendingSaveRef = useRef<{
+    sampleId: string;
+    key: keyof Sample;
+    data: Data;
+  } | null>(null);
 
-  // Realtime subscription for group sessions
+  // ─── Realtime subscription for group sessions ─────────────────
   useEffect(() => {
     if (!isGroup) return;
 
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
     const sampleIds = new Set(session.samples.map((s) => s.id));
@@ -135,7 +166,7 @@ export function CupClient({
           ) {
             setSubmittedCount((prev) => prev + 1);
           }
-        },
+        }
       )
       .subscribe();
 
@@ -144,7 +175,12 @@ export function CupClient({
     };
   }, [isGroup, session.id, session.samples]);
 
-  const flushSave = async (sampleId: string, key: keyof Sample, data: Data) => {
+  // ─── Save plumbing ────────────────────────────────────────────
+  const flushSave = async (
+    sampleId: string,
+    key: keyof Sample,
+    data: Data
+  ) => {
     try {
       if (key === "descriptive" || key === "affective" || key === "combined") {
         await upsertEvaluation({
@@ -188,7 +224,11 @@ export function CupClient({
     });
   };
 
-  const scheduleAutoSave = (sampleId: string, key: keyof Sample, data: Data) => {
+  const scheduleAutoSave = (
+    sampleId: string,
+    key: keyof Sample,
+    data: Data
+  ) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     pendingSaveRef.current = { sampleId, key, data };
     debounceRef.current = setTimeout(() => {
@@ -199,9 +239,18 @@ export function CupClient({
 
   const setCurrentData = (key: keyof Sample, data: Data) => {
     setSamples((prev) =>
-      prev.map((s, i) => (i === sampleIdx ? { ...s, [key]: data } : s)),
+      prev.map((s, i) => (i === sampleIdx ? { ...s, [key]: data } : s))
     );
     scheduleAutoSave(samples[sampleIdx].id, key, data);
+  };
+
+  // ─── Navigation ───────────────────────────────────────────────
+  const scrollCanvasToTop = () => {
+    // Scroll the canvas (SessionShell's overflow container)
+    const canvas = document.querySelector<HTMLElement>(
+      "[data-session-canvas]"
+    );
+    canvas?.scrollTo({ top: 0, behavior: "instant" });
   };
 
   const handleStepChange = async (step: CuppingStep) => {
@@ -209,7 +258,14 @@ export function CupClient({
     await flushPending();
     setCurrentStep(step);
     setSampleIdx(0);
-    document.querySelector("main")?.scrollTo({ top: 0, behavior: "instant" });
+    scrollCanvasToTop();
+  };
+
+  const handleSampleSelect = async (i: number) => {
+    if (i === sampleIdx) return;
+    await flushPending();
+    setSampleIdx(i);
+    scrollCanvasToTop();
   };
 
   const handleNextSample = async () => {
@@ -225,7 +281,7 @@ export function CupClient({
           await handleStepChange(stepsForFormat[stepIdx + 1]);
         }
       }
-      document.querySelector("main")?.scrollTo({ top: 0, behavior: "instant" });
+      scrollCanvasToTop();
     } finally {
       setIsNavigating(false);
     }
@@ -242,7 +298,7 @@ export function CupClient({
         setSampleIdx(samples.length - 1);
       }
     }
-    document.querySelector("main")?.scrollTo({ top: 0, behavior: "instant" });
+    scrollCanvasToTop();
   };
 
   const handleGoToResults = async () => {
@@ -255,6 +311,7 @@ export function CupClient({
     }
   };
 
+  // ─── Invite link / close session ──────────────────────────────
   const handleGenerateInvite = async () => {
     setIsGeneratingInvite(true);
     try {
@@ -281,11 +338,14 @@ export function CupClient({
     });
   };
 
+  // ─── Derived state ────────────────────────────────────────────
   const current = samples[sampleIdx];
   const isLastSampleInStep = sampleIdx >= samples.length - 1;
-  const isLastStep = stepsForFormat.indexOf(currentStep) >= stepsForFormat.length - 1;
+  const isLastStep =
+    stepsForFormat.indexOf(currentStep) >= stepsForFormat.length - 1;
   const isLastSampleOverall = isLastSampleInStep && isLastStep;
   const prevDisabled = sampleIdx === 0 && currentStep === stepsForFormat[0];
+  const sessionClosed = sessionStatus === "closed";
 
   const hasStepFill = (sample: Sample, step: CuppingStep): boolean => {
     return STEP_ATTRIBUTES[step].some((attr) => {
@@ -299,12 +359,19 @@ export function CupClient({
         return v !== null && v !== undefined;
       }
       const aff = sample.combined[`${attr.affectiveId}_final`];
-      const desc = attr.descriptiveId ? sample.combined[`${attr.descriptiveId}_int`] : undefined;
-      return (aff !== null && aff !== undefined) || (desc !== null && desc !== undefined);
+      const desc = attr.descriptiveId
+        ? sample.combined[`${attr.descriptiveId}_int`]
+        : undefined;
+      return (
+        (aff !== null && aff !== undefined) ||
+        (desc !== null && desc !== undefined)
+      );
     });
   };
 
-  const getStepStatus = (step: CuppingStep): "empty" | "partial" | "complete" => {
+  const getStepStatus = (
+    step: CuppingStep
+  ): "empty" | "partial" | "complete" => {
     const filled = samples.filter((s) => hasStepFill(s, step)).length;
     if (filled === 0) return "empty";
     if (filled === samples.length) return "complete";
@@ -315,392 +382,183 @@ export function CupClient({
     stepsForFormat.map((s) => [s, getStepStatus(s)])
   ) as Record<string, "empty" | "partial" | "complete">;
 
-  const TABS = [
-    { key: "cupping" as const, icon: "☕", label: "Cata" },
-    { key: "extrinsic" as const, icon: "📋", label: translations.extrinsic },
-    { key: "physical" as const, icon: "⚖", label: translations.physical },
-    { key: "results" as const, icon: "📊", label: translations.results },
+  // ─── Module list ──────────────────────────────────────────────
+  const modules: ModuleItem[] = [
+    {
+      key: "cupping",
+      label: translations.cuppingModule,
+      icon: <Coffee size={16} />,
+    },
+    {
+      key: "physical",
+      label: translations.physical,
+      icon: <Scale size={16} />,
+    },
+    {
+      key: "extrinsic",
+      label: translations.extrinsic,
+      icon: <FileText size={16} />,
+    },
+    {
+      key: "results",
+      label: translations.results,
+      icon: <BarChart3 size={16} />,
+      isAction: true,
+      disabled: isGoingToResults,
+    },
   ];
 
-  const handleTabClick = async (key: typeof TABS[number]["key"]) => {
+  const handleModuleSelect = async (key: string) => {
     if (key === "results") {
       await handleGoToResults();
-    } else {
-      setActiveTab(key);
-      document.querySelector("main")?.scrollTo({ top: 0, behavior: "instant" });
+      return;
     }
+    if (key !== "cupping" && key !== "extrinsic" && key !== "physical") return;
+    setActiveTab(key);
+    scrollCanvasToTop();
   };
 
-  const nextButtonStyle = () => ({
-    flex: 1,
-    padding: "11px 0",
-    borderRadius: 10,
-    border: "none" as const,
-    background: isNavigating
-      ? "#C4B49A"
+  // ─── Footer next-button labelling ─────────────────────────────
+  const nextLabel = isLastSampleOverall
+    ? `${translations.viewResults} →`
+    : isLastSampleInStep && !isLastStep
+    ? `${translations.nextPhase} →`
+    : `${translations.nextSample} →`;
+
+  const nextVariant: "next-sample" | "next-phase" | "view-results" =
+    isLastSampleOverall
+      ? "view-results"
       : isLastSampleInStep && !isLastStep
-      ? "linear-gradient(135deg, #C17817 0%, #A56A10 100%)"
-      : "linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%)",
-    color: "#FFF",
-    fontSize: 14,
-    fontWeight: 700,
-    cursor: isNavigating ? "default" as const : "pointer" as const,
-    fontFamily: isLastSampleInStep && !isLastStep ? "'Cormorant Garamond', Georgia, serif" : "inherit",
-    transition: "background 0.2s",
-  });
+      ? "next-phase"
+      : "next-sample";
 
-  const resultsButtonStyle = () => ({
-    flex: 1,
-    padding: "11px 0",
-    borderRadius: 10,
-    border: "none" as const,
-    background: isGoingToResults ? "#C4B49A" : "linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%)",
-    color: "#FFF",
-    fontSize: 14,
-    fontWeight: 700,
-    cursor: isGoingToResults ? "default" as const : "pointer" as const,
-    fontFamily: "'Cormorant Garamond', Georgia, serif",
-    letterSpacing: "0.3px",
-  });
-
-  const prevButtonStyle = () => ({
-    flex: 1,
-    padding: "11px 0",
-    borderRadius: 10,
-    border: "1px solid #D4C5A9",
-    background: "transparent",
-    color: prevDisabled ? "#C4B49A" : "#5C4A32",
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: prevDisabled ? "default" as const : "pointer" as const,
-    fontFamily: "inherit",
-  });
-
-  return (
-    <div
-      className="-mx-4 -mt-4 lg:-mx-6 lg:-mt-6 flex flex-col"
-      style={{
-        minHeight: "calc(100% + 14px)",
-        marginBottom: "-70px",
-        background: "#FDFBF7",
-        color: "#5C4A32",
-      }}
-    >
-      {/* ══ HORIZONTAL PROGRESS HEADER ══════════════════════════════════════ */}
-      <div
-        className="sticky top-0 z-50"
-        style={{
-          background: "#FDFBF7",
-          borderBottom: "1px solid #E8E0D0",
-          paddingTop: "max(env(safe-area-inset-top), 0px)",
-        }}
-      >
-        {/* Group role banner */}
-        {isGroup && (
-          <div
-            style={{
-              background: isOwner ? "#3D5A3E" : "#C17817",
-              color: "#FFF",
-              fontSize: 10,
-              fontWeight: 700,
-              textAlign: "center",
-              padding: "4px 16px",
-              letterSpacing: "1px",
-              textTransform: "uppercase",
-            }}
-          >
-            {isOwner ? translations.masterRole : translations.participantRole}
-          </div>
-        )}
-
-        {/* Row 1: Back + Session name + save status */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            padding: "10px 16px",
-            borderBottom: "1px solid #F0EBE0",
-          }}
-        >
-          <button
-            onClick={() => router.back()}
-            style={{
-              color: "#8B7355",
-              background: "transparent",
-              border: "none",
-              fontSize: 18,
-              cursor: "pointer",
-              lineHeight: 1,
-              padding: "0 2px",
-              flexShrink: 0,
-            }}
-          >
-            ←
-          </button>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div
-              style={{
-                fontFamily: "'Cormorant Garamond', Georgia, serif",
-                fontSize: 17,
-                fontWeight: 700,
-                color: "#3D5A3E",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {session.name}
-            </div>
-            {isGroup && (
-              <div style={{ fontSize: 11, color: "#8B7355", fontFamily: "monospace" }}>
-                {submittedCount}/{participantCount} {translations.submittedOf}
-              </div>
-            )}
-          </div>
-          {saveStatus === "saving" && (
-            <span style={{ fontSize: 10, color: "#8B7355", flexShrink: 0 }}>Guardando…</span>
-          )}
-          {saveStatus === "saved" && (
-            <span style={{ fontSize: 10, color: "#3D5A3E", flexShrink: 0 }}>✓ Guardado</span>
-          )}
-        </div>
-
-        {/* Row 2: Sample tabs */}
-        <div
-          style={{
-            display: "flex",
-            gap: 6,
-            overflowX: "auto",
-            padding: "8px 16px",
-            scrollbarWidth: "none",
-            borderBottom: "1px solid #F0EBE0",
-          }}
-        >
-          {samples.map((s, i) => {
-            const filled = hasStepFill(s, currentStep);
-            const isActive = i === sampleIdx;
-            return (
-              <button
-                key={s.id}
-                onClick={async () => {
-                  await flushPending();
-                  setSampleIdx(i);
-                  document.querySelector("main")?.scrollTo({ top: 0, behavior: "instant" });
-                }}
-                style={{
-                  padding: "5px 14px",
-                  borderRadius: 9999,
-                  fontSize: 12,
-                  fontWeight: isActive ? 700 : 500,
-                  background: isActive ? "#3D5A3E" : "transparent",
-                  color: isActive ? "#FFF" : "#5C4A32",
-                  border: isActive
-                    ? "1px solid #3D5A3E"
-                    : filled
-                    ? "1px solid #B4C8A8"
-                    : "1px solid #E8E0D0",
-                  whiteSpace: "nowrap",
-                  cursor: "pointer",
-                  flexShrink: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                  transition: "all 0.15s",
-                  fontFamily: "inherit",
-                }}
-              >
-                {s.label}
-                {filled && !isActive && (
-                  <span style={{ fontSize: 7, color: "#6B8F71" }}>✓</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Row 3: Module tabs */}
-        <div style={{ display: "flex" }}>
-          {TABS.map((tab) => {
-            const isActive = tab.key !== "results" && activeTab === tab.key;
-            return (
-              <button
-                key={tab.key}
-                onClick={() => handleTabClick(tab.key)}
-                disabled={isGoingToResults}
-                style={{
-                  flex: 1,
-                  padding: "8px 4px",
-                  fontSize: 11,
-                  fontWeight: isActive ? 700 : 400,
-                  color: isActive ? "#3D5A3E" : "#8B7355",
-                  background: isActive ? "#F0F5F0" : "transparent",
-                  border: "none",
-                  borderBottom: isActive ? "2px solid #3D5A3E" : "2px solid transparent",
-                  cursor: isGoingToResults ? "default" : "pointer",
-                  fontFamily: "inherit",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 2,
-                }}
-              >
-                <span style={{ fontSize: 13 }}>{tab.icon}</span>
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Row 4: Phase stepper — only on Cata tab */}
-        {activeTab === "cupping" && (
-          <div style={{ background: "#F5F0E6", borderTop: "1px solid #F0EBE0" }}>
-            <PhaseStepper
-              phases={stepsForFormat}
-              currentPhase={currentStep}
-              phaseStatuses={stepStatuses}
-              labels={STEP_LABELS}
-              onSelect={handleStepChange}
-              variant="light"
-            />
-          </div>
-        )}
+  // ─── Sidebar slot content ─────────────────────────────────────
+  const identity = (
+    <>
+      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-brown-mid">
+        {translations.formatLabel}
+        {isGroup ? ` · ${isOwner ? translations.masterRole : translations.participantRole}` : ""}
       </div>
-
-      {/* ══ MASTER CONTROLS (group owner only) ══════════════════════════════ */}
-      {isOwner && isGroup && (
-        <div
-          style={{
-            margin: "16px 16px 0",
-            padding: "12px 14px",
-            background: "#E8F0E8",
-            borderRadius: 10,
-            border: "1px solid #B4C8A8",
-          }}
-        >
-          <div
-            style={{
-              fontSize: 10,
-              fontWeight: 700,
-              color: "#3D5A3E",
-              textTransform: "uppercase",
-              letterSpacing: "0.8px",
-              marginBottom: 8,
-            }}
-          >
-            {translations.masterControls}
-          </div>
-          <div style={{ fontSize: 12, color: "#5C4A32", marginBottom: 10 }}>
-            {submittedCount} / {participantCount} {translations.submittedOf}
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <button
-              onClick={handleCloseSession}
-              disabled={sessionStatus === "closed"}
-              style={{
-                padding: "6px 14px",
-                borderRadius: 8,
-                border: "none",
-                background: sessionStatus === "closed" ? "#C4B49A" : "#A83232",
-                color: "#FFF",
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: sessionStatus === "closed" ? "default" : "pointer",
-                fontFamily: "inherit",
-              }}
-            >
-              {translations.closeSession}
-            </button>
-            {!inviteLink ? (
-              <button
-                onClick={handleGenerateInvite}
-                disabled={isGeneratingInvite || sessionStatus === "closed"}
-                style={{
-                  padding: "6px 14px",
-                  borderRadius: 8,
-                  border: "1px solid #6B8F71",
-                  background: "transparent",
-                  color: sessionStatus === "closed" ? "#C4B49A" : "#3D5A3E",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: isGeneratingInvite || sessionStatus === "closed" ? "default" : "pointer",
-                  fontFamily: "inherit",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                }}
-              >
-                <span style={{ fontSize: 13 }}>🔗</span>
-                {isGeneratingInvite ? "Generando…" : "Invitar participantes"}
-              </button>
-            ) : (
-              <div style={{ display: "flex", gap: 6, alignItems: "center", width: "100%", marginTop: 6 }}>
-                <div
-                  style={{
-                    flex: 1,
-                    fontSize: 11,
-                    color: "#5C4A32",
-                    background: "#FFF",
-                    border: "1px solid #D4C5A9",
-                    borderRadius: 6,
-                    padding: "4px 8px",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    fontFamily: "monospace",
-                  }}
-                  title={inviteLink}
-                >
-                  {inviteLink}
-                </div>
-                <button
-                  onClick={handleCopyInvite}
-                  style={{
-                    padding: "5px 10px",
-                    borderRadius: 6,
-                    border: "none",
-                    background: isCopied ? "#3D5A3E" : "#6B8F71",
-                    color: "#FFF",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                    whiteSpace: "nowrap",
-                    flexShrink: 0,
-                    transition: "background 0.2s",
-                  }}
-                >
-                  {isCopied ? "✓ Copiado" : "Copiar"}
-                </button>
-                <button
-                  onClick={() => setInviteLink(null)}
-                  title="Generar nuevo enlace"
-                  style={{
-                    padding: "5px 8px",
-                    borderRadius: 6,
-                    border: "1px solid #D4C5A9",
-                    background: "transparent",
-                    color: "#8B7355",
-                    fontSize: 11,
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                    flexShrink: 0,
-                  }}
-                >
-                  ↺
-                </button>
-              </div>
-            )}
-          </div>
+      <div className="font-display text-xl leading-tight text-green-dark truncate">
+        {session.name}
+      </div>
+      {isGroup && (
+        <div className="font-mono text-[11px] text-brown-mid mt-0.5">
+          {translations.submittedOf}
         </div>
       )}
+    </>
+  );
 
-      {/* ══ FORM CONTENT ════════════════════════════════════════════════════ */}
-      <div
-        key={currentStep}
-        className="flex-1 p-4 lg:px-8 lg:py-6"
-        style={{ animation: "phase-in 0.22s ease-out" }}
-      >
+  const primaryNav = (
+    <SampleTabs
+      header={translations.samplesHeader}
+      samples={samples.map((s) => ({
+        id: s.id,
+        label: s.label,
+        filled: hasStepFill(s, currentStep),
+      }))}
+      activeIndex={sampleIdx}
+      onSelect={handleSampleSelect}
+    />
+  );
+
+  const secondaryNav = (
+    <ModuleSwitcher
+      header={translations.evaluationHeader}
+      modules={modules}
+      activeKey={activeTab}
+      onSelect={handleModuleSelect}
+    />
+  );
+
+  const ownerControls =
+    isOwner && isGroup ? (
+      <MasterControls
+        title={translations.masterControls}
+        submittedLabel={`${submittedCount} / ${participantCount}`}
+        closeLabel={translations.closeSession}
+        inviteLabel={translations.invite}
+        generatingLabel={translations.generating}
+        copyLabel={translations.copy}
+        copiedLabel={translations.copied}
+        sessionClosed={sessionClosed}
+        inviteLink={inviteLink}
+        isGenerating={isGeneratingInvite}
+        isCopied={isCopied}
+        onClose={handleCloseSession}
+        onGenerate={handleGenerateInvite}
+        onCopy={handleCopyInvite}
+        onResetInvite={() => setInviteLink(null)}
+      />
+    ) : undefined;
+
+  const exitLink = (
+    <button
+      type="button"
+      onClick={() => router.push(`/${locale}/app/sessions`)}
+      className="inline-flex items-center gap-2 font-sans text-sm text-brown-mid hover:text-green-dark transition-colors focus-visible:outline-2 focus-visible:outline-green-dark focus-visible:outline-offset-2 rounded-sm"
+    >
+      <span aria-hidden>←</span> {translations.exitToSessions}
+    </button>
+  );
+
+  // ─── Top bar content ──────────────────────────────────────────
+  const topBar =
+    activeTab === "cupping" ? (
+      <PhaseStepper
+        phases={stepsForFormat}
+        currentPhase={currentStep}
+        phaseStatuses={stepStatuses}
+        labels={STEP_LABELS}
+        onSelect={handleStepChange}
+        variant="light"
+      />
+    ) : (
+      <div className="flex items-center gap-3 px-6 py-3">
+        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-brown-mid">
+          {activeTab === "physical"
+            ? translations.physical
+            : translations.extrinsic}
+        </span>
+        <span className="text-brown-light">·</span>
+        <span className="font-display text-base text-brown-dark">
+          {translations.sample} {current.label}
+        </span>
+      </div>
+    );
+
+  // ─── Footer ───────────────────────────────────────────────────
+  const footer = (
+    <CanvasFooter
+      onPrev={handlePrev}
+      onNext={isLastSampleOverall ? handleGoToResults : handleNextSample}
+      prevLabel={translations.prev}
+      nextLabel={
+        isNavigating || isGoingToResults ? translations.submitting : nextLabel
+      }
+      prevDisabled={prevDisabled || isNavigating}
+      nextDisabled={isNavigating || isGoingToResults}
+      nextVariant={nextVariant}
+      saveStatus={saveStatus}
+      savingLabel={translations.saving}
+      savedLabel={translations.saved}
+    />
+  );
+
+  // ─── Render ───────────────────────────────────────────────────
+  return (
+    <SessionShell
+      identity={identity}
+      primaryNav={primaryNav}
+      secondaryNav={secondaryNav}
+      ownerControls={ownerControls}
+      exitLink={exitLink}
+      topBar={topBar}
+      footer={footer}
+      mobileTitle={session.name}
+    >
+      <div key={`${activeTab}-${currentStep}-${current.id}`}>
         {activeTab === "cupping" && session.format === "descriptive" && (
           <DescriptiveForm
             sampleData={current.descriptive}
@@ -741,44 +599,6 @@ export function CupClient({
       </div>
 
       <DevRoleBadge email={userEmail} />
-
-      {/* ══ STICKY FOOTER — single set of nav buttons ════════════════════════ */}
-      <div
-        className="sticky -bottom-20 lg:-bottom-6 z-50 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+92px)] lg:pb-7 flex gap-2.5"
-        style={{
-          background: "#FDFBF7",
-          borderTop: "1px solid #E8E0D0",
-        }}
-      >
-        <button
-          onClick={handlePrev}
-          disabled={prevDisabled || isNavigating}
-          style={prevButtonStyle()}
-        >
-          ← {translations.prev}
-        </button>
-        {isLastSampleOverall ? (
-          <button
-            onClick={handleGoToResults}
-            disabled={isGoingToResults}
-            style={resultsButtonStyle()}
-          >
-            {isGoingToResults ? translations.submitting : `${translations.viewResults} →`}
-          </button>
-        ) : (
-          <button
-            onClick={handleNextSample}
-            disabled={isNavigating}
-            style={nextButtonStyle()}
-          >
-            {isNavigating
-              ? translations.submitting
-              : isLastSampleInStep && !isLastStep
-              ? `${translations.nextPhase} ⟶`
-              : `${translations.nextSample} →`}
-          </button>
-        )}
-      </div>
-    </div>
+    </SessionShell>
   );
 }
