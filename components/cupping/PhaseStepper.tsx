@@ -33,14 +33,19 @@ export function PhaseStepper<T extends string>({
     <div
       ref={scrollRef}
       style={{
-        display: "flex",
-        gap: 4,
         overflowX: "auto",
         padding: "4px 8px",
         scrollbarWidth: "none",
-        justifyContent: "center",
       }}
     >
+      <div
+        style={{
+          display: "flex",
+          gap: 4,
+          width: "fit-content",
+          margin: "0 auto",
+        }}
+      >
       {phases.map((phase, idx) => {
         const isActive = phase === currentPhase;
         const status = phaseStatuses[phase] ?? "empty";
@@ -99,6 +104,7 @@ export function PhaseStepper<T extends string>({
           </button>
         );
       })}
+      </div>
     </div>
   );
 }
