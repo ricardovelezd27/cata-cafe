@@ -106,13 +106,12 @@ export function DescriptiveForm({
     </FormSection>
   );
 
-  if (currentStep === "fragrance_aroma") {
-    return (
-      <div>
-        {renderBlock("fragancia", "Fragancia", flavorCATAOptions, true)}
-        {renderBlock("aroma", "Aroma", flavorCATAOptions, true)}
-      </div>
-    );
+  if (currentStep === "fragrance") {
+    return <div>{renderBlock("fragancia", "Fragancia", flavorCATAOptions, true)}</div>;
+  }
+
+  if (currentStep === "aroma") {
+    return <div>{renderBlock("aroma", "Aroma", flavorCATAOptions, true)}</div>;
   }
 
   if (currentStep === "taste_aftertaste") {

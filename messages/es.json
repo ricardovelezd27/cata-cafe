@@ -111,6 +111,13 @@
     "defectType": "Tipo de defecto",
     "notes": "Notas",
     "notesPh": "Observaciones adicionales...",
+    "phases": {
+      "fragrance": "Fragancia",
+      "aroma": "Aroma",
+      "taste_aftertaste": "Sabor y Regusto",
+      "acidity_sweetness_mouthfeel": "Acidez, Dulzor y Sensación",
+      "overall": "Global"
+    },
     "shell": {
       "samplesHeader": "Muestras",
       "evaluationHeader": "Evaluación",

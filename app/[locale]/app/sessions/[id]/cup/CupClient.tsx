@@ -22,7 +22,6 @@ import {
 import {
   CUPPING_STEPS,
   DESCRIPTIVE_STEPS,
-  STEP_LABELS,
   STEP_ATTRIBUTES,
   type CuppingStep,
 } from "@/lib/constants";
@@ -112,6 +111,7 @@ export function CupClient({
     copy: string;
     copied: string;
     formatLabel: string;
+    phaseLabels: Record<string, string>;
   };
   userEmail?: string;
 }) {
@@ -418,10 +418,14 @@ export function CupClient({
   };
 
   // ─── Footer next-button labelling ─────────────────────────────
+  const nextStep =
+    isLastSampleInStep && !isLastStep
+      ? stepsForFormat[stepsForFormat.indexOf(currentStep) + 1]
+      : null;
   const nextLabel = isLastSampleOverall
     ? translations.viewResults
-    : isLastSampleInStep && !isLastStep
-    ? translations.nextPhase
+    : nextStep
+    ? `${translations.nextPhase} → ${translations.phaseLabels[nextStep]}`
     : translations.nextSample;
 
   const nextVariant: "next-sample" | "next-phase" | "view-results" =
@@ -522,7 +526,7 @@ export function CupClient({
       phases={stepsForFormat}
       currentPhase={currentStep}
       phaseStatuses={stepStatuses}
-      labels={STEP_LABELS}
+      labels={translations.phaseLabels}
       onSelect={handleStepChange}
       variant="light"
     />

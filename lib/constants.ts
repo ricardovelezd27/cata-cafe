@@ -281,33 +281,38 @@ export const CUPPING_PHASES: CuppingPhase[] = [
    - Affective and Combined use all 4 steps
    ============================================================ */
 export type CuppingStep =
-  | "fragrance_aroma"
+  | "fragrance"
+  | "aroma"
   | "taste_aftertaste"
   | "acidity_sweetness_mouthfeel"
   | "overall";
 
 export const CUPPING_STEPS: CuppingStep[] = [
-  "fragrance_aroma",
+  "fragrance",
+  "aroma",
   "taste_aftertaste",
   "acidity_sweetness_mouthfeel",
   "overall",
 ];
 
 export const DESCRIPTIVE_STEPS: CuppingStep[] = [
-  "fragrance_aroma",
+  "fragrance",
+  "aroma",
   "taste_aftertaste",
   "acidity_sweetness_mouthfeel",
 ];
 
 export const STEP_LABELS: Record<CuppingStep, string> = {
-  fragrance_aroma: "Fragancia y Aroma",
+  fragrance: "Fragancia",
+  aroma: "Aroma",
   taste_aftertaste: "Sabor y Regusto",
   acidity_sweetness_mouthfeel: "Acidez, Dulzor y Sensación",
   overall: "Global",
 };
 
 export const STEP_LABELS_SHORT: Record<CuppingStep, string> = {
-  fragrance_aroma: "Frag. / Aroma",
+  fragrance: "Fragancia",
+  aroma: "Aroma",
   taste_aftertaste: "Sabor / Regusto",
   acidity_sweetness_mouthfeel: "Acidez / Dulzor",
   overall: "Global",
@@ -318,9 +323,11 @@ export const STEP_ATTRIBUTES: Record<
   CuppingStep,
   { descriptiveId: string | null; affectiveId: string }[]
 > = {
-  fragrance_aroma: [
+  fragrance: [
     { descriptiveId: "fragancia", affectiveId: "fragancia_af" },
-    { descriptiveId: "aroma",     affectiveId: "aroma_af" },
+  ],
+  aroma: [
+    { descriptiveId: "aroma", affectiveId: "aroma_af" },
   ],
   taste_aftertaste: [
     { descriptiveId: "sabor",          affectiveId: "sabor_af" },

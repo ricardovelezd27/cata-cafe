@@ -130,6 +130,13 @@ export default async function CupPage({
         copy: t("cupping.shell.copy"),
         copied: t("cupping.shell.copied"),
         formatLabel: t(`session.formats.${session.format}`),
+        phaseLabels: {
+          fragrance: t("cupping.phases.fragrance"),
+          aroma: t("cupping.phases.aroma"),
+          taste_aftertaste: t("cupping.phases.taste_aftertaste"),
+          acidity_sweetness_mouthfeel: t("cupping.phases.acidity_sweetness_mouthfeel"),
+          overall: t("cupping.phases.overall"),
+        },
       }}
     />
   );

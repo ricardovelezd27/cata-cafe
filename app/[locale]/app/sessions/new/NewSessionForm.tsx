@@ -61,6 +61,17 @@ type Translations = {
 
 type WizardStep = "form" | "invite";
 
+const sampleLetter = (i: number) => {
+  let n = i + 1;
+  let s = "";
+  while (n > 0) {
+    const r = (n - 1) % 26;
+    s = String.fromCharCode(65 + r) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s; // 0→A … 25→Z, 26→AA
+};
+
 const EMPTY_COFFEE: CoffeeInput = {
   name: "",
   producer: "",
@@ -79,16 +90,16 @@ export function NewSessionForm({ locale, t }: { locale: string; t: Translations 
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [objective, setObjective] = useState("");
   const [format, setFormat] = useState<"descriptive" | "affective" | "combined">("combined");
-  const [cupsPerSample, setCupsPerSample] = useState(5);
+  const [cupsPerSample, setCupsPerSample] = useState(2);
 
   // Coffee entries
   const [coffees, setCoffees] = useState<CoffeeInput[]>([{ ...EMPTY_COFFEE }]);
 
   // Sample entries (each maps to a coffee by index)
   const [samples, setSamples] = useState<SampleEntry[]>([
-    { label: "Muestra A", coffeeIdx: 0 },
-    { label: "Muestra B", coffeeIdx: 0 },
-    { label: "Muestra C", coffeeIdx: 0 },
+    { label: `Muestra ${sampleLetter(0)}`, coffeeIdx: 0 },
+    { label: `Muestra ${sampleLetter(1)}`, coffeeIdx: 0 },
+    { label: `Muestra ${sampleLetter(2)}`, coffeeIdx: 0 },
   ]);
 
   // Group session fields
@@ -128,13 +139,15 @@ export function NewSessionForm({ locale, t }: { locale: string; t: Translations 
     setSamples((prev) => prev.map((s, idx) => (idx === i ? { ...s, coffeeIdx } : s)));
 
   const addSample = () =>
-    setSamples((prev) => [...prev, { label: `Muestra ${prev.length + 1}`, coffeeIdx: 0 }]);
+    setSamples((prev) => [...prev, { label: `Muestra ${sampleLetter(prev.length)}`, coffeeIdx: 0 }]);
 
   const removeSample = (i: number) =>
     setSamples((prev) => prev.filter((_, idx) => idx !== i));
 
-  const getCoffeeLabel = (i: number) =>
-    coffees[i]?.name.trim() || `Café ${i + 1}`;
+  const getCoffeeLabel = (i: number) => {
+    const name = coffees[i]?.name.trim();
+    return name ? `${i + 1}. ${name}` : `${i + 1}.`;
+  };
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -261,7 +274,7 @@ export function NewSessionForm({ locale, t }: { locale: string; t: Translations 
             max={5}
             className={inputCls}
             value={cupsPerSample}
-            onChange={(e) => setCupsPerSample(parseInt(e.target.value) || 5)}
+            onChange={(e) => setCupsPerSample(parseInt(e.target.value) || 2)}
           />
         </div>
       </div>
