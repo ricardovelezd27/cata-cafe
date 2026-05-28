@@ -63,6 +63,12 @@
   flex-shrink: 0;
 }
 
+/* Sample tabs live in the sidebar on mobile/tablet; on desktop they
+   move to a horizontal top row, so hide the sidebar copy at >=1024px. */
+@media (min-width: 1024px) {
+  .primaryNavSlot { display: none; }
+}
+
 .spacer { flex: 1; min-height: 8px; }
 
 .ownerSlot {

@@ -13,6 +13,7 @@ interface SampleTabsProps {
   activeIndex: number;
   onSelect: (index: number) => void;
   header?: string;
+  orientation?: "vertical" | "horizontal";
 }
 
 export function SampleTabs({
@@ -20,11 +21,20 @@ export function SampleTabs({
   activeIndex,
   onSelect,
   header,
+  orientation = "vertical",
 }: SampleTabsProps) {
+  const horizontal = orientation === "horizontal";
   return (
-    <nav aria-label={header ?? "Samples"}>
-      {header && <div className={styles.header}>{header}</div>}
-      <ul className="m-0 list-none p-0">
+    <nav
+      aria-label={header ?? "Samples"}
+      className={horizontal ? styles.horizontal : undefined}
+    >
+      {header && (
+        <div className={`${styles.header} ${horizontal ? styles.headerH : ""}`}>
+          {header}
+        </div>
+      )}
+      <ul className={horizontal ? styles.listH : "m-0 list-none p-0"}>
         {samples.map((s, i) => {
           const isActive = i === activeIndex;
           return (
@@ -33,7 +43,11 @@ export function SampleTabs({
                 type="button"
                 onClick={() => onSelect(i)}
                 aria-current={isActive ? "page" : undefined}
-                className={`${styles.row} ${isActive ? styles.active : ""}`}
+                className={
+                  horizontal
+                    ? `${styles.rowH} ${isActive ? styles.activeH : ""}`
+                    : `${styles.row} ${isActive ? styles.active : ""}`
+                }
               >
                 <span className={styles.position}>{i + 1}</span>
                 <span className={styles.label}>{s.label}</span>

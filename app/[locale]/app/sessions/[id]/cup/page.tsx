@@ -122,6 +122,7 @@ export default async function CupPage({
         // Shell (Phase 3)
         samplesHeader: t("cupping.shell.samplesHeader"),
         evaluationHeader: t("cupping.shell.evaluationHeader"),
+        phaseTitle: t("cupping.shell.phaseTitle"),
         cuppingModule: t("cupping.shell.cuppingModule"),
         exitToSessions: t("cupping.shell.exitToSessions"),
         invite: t("cupping.shell.invite"),

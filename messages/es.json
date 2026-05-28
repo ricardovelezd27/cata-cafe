@@ -114,6 +114,7 @@
     "shell": {
       "samplesHeader": "Muestras",
       "evaluationHeader": "Evaluación",
+      "phaseTitle": "Fase de cata",
       "cuppingModule": "Cata",
       "exitToSessions": "Salir a sesiones",
       "invite": "Invitar participantes",

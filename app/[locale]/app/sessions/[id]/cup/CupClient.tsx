@@ -104,6 +104,7 @@ export function CupClient({
     // Shell (Phase 3)
     samplesHeader: string;
     evaluationHeader: string;
+    phaseTitle: string;
     cuppingModule: string;
     exitToSessions: string;
     invite: string;
@@ -461,6 +462,20 @@ export function CupClient({
     />
   );
 
+  const desktopSampleTabs = (
+    <SampleTabs
+      orientation="horizontal"
+      header={translations.samplesHeader}
+      samples={samples.map((s) => ({
+        id: s.id,
+        label: s.label,
+        filled: hasStepFill(s, currentStep),
+      }))}
+      activeIndex={sampleIdx}
+      onSelect={handleSampleSelect}
+    />
+  );
+
   const secondaryNav = (
     <ModuleSwitcher
       header={translations.evaluationHeader}
@@ -502,17 +517,34 @@ export function CupClient({
   );
 
   // ─── Top bar content ──────────────────────────────────────────
+  const phaseStepper = (
+    <PhaseStepper
+      phases={stepsForFormat}
+      currentPhase={currentStep}
+      phaseStatuses={stepStatuses}
+      labels={STEP_LABELS}
+      onSelect={handleStepChange}
+      variant="light"
+    />
+  );
+
   const topBar =
     activeTab === "cupping" ? (
       <>
-        <PhaseStepper
-          phases={stepsForFormat}
-          currentPhase={currentStep}
-          phaseStatuses={stepStatuses}
-          labels={STEP_LABELS}
-          onSelect={handleStepChange}
-          variant="light"
-        />
+        {/* Desktop: "Fase de cata" title + phase stepper */}
+        <div className="hidden lg:flex items-center justify-between gap-4 px-6 py-2">
+          <span className="font-display text-base text-brown-dark whitespace-nowrap">
+            {translations.phaseTitle}
+          </span>
+          <div className="min-w-0">{phaseStepper}</div>
+        </div>
+        {/* Desktop: horizontal sample tabs */}
+        <div className="hidden lg:block px-6 py-1.5 border-t border-brown-light">
+          {desktopSampleTabs}
+        </div>
+        {/* Mobile/tablet: phase stepper */}
+        <div className="lg:hidden">{phaseStepper}</div>
+        {/* Mobile: current-sample info bar */}
         <div className="sm:hidden flex items-center gap-2 px-4 py-1.5 border-t border-brown-light bg-bg">
           <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-brown-mid">
             {translations.sample}
@@ -526,17 +558,23 @@ export function CupClient({
         </div>
       </>
     ) : (
-      <div className="flex items-center gap-3 px-6 py-3">
-        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-brown-mid">
-          {activeTab === "physical"
-            ? translations.physical
-            : translations.extrinsic}
-        </span>
-        <span className="text-brown-light">·</span>
-        <span className="font-display text-base text-brown-dark">
-          {translations.sample} {current.label}
-        </span>
-      </div>
+      <>
+        {/* Desktop: horizontal sample tabs */}
+        <div className="hidden lg:block px-6 py-1.5 border-b border-brown-light">
+          {desktopSampleTabs}
+        </div>
+        <div className="flex items-center gap-3 px-6 py-3">
+          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-brown-mid">
+            {activeTab === "physical"
+              ? translations.physical
+              : translations.extrinsic}
+          </span>
+          <span className="text-brown-light">·</span>
+          <span className="font-display text-base text-brown-dark">
+            {translations.sample} {current.label}
+          </span>
+        </div>
+      </>
     );
 
   // ─── Footer ───────────────────────────────────────────────────

@@ -58,7 +58,7 @@ export function SessionShell({
         <div className={styles.identity}>{identity}</div>
 
         <div className={styles.navStack}>
-          {primaryNav}
+          <div className={styles.primaryNavSlot}>{primaryNav}</div>
           {secondaryNav}
         </div>
 

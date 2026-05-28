@@ -89,3 +89,61 @@
   text-transform: uppercase;
   color: var(--color-brown-mid);
 }
+
+/* ── Horizontal variant (desktop top row) ───────────────────── */
+.horizontal {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.headerH {
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.listH {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rowH {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  text-align: left;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-brown-dark);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: background-color var(--transition-fast),
+              color var(--transition-fast),
+              border-color var(--transition-fast);
+}
+
+.rowH:hover:not(.activeH) {
+  background: color-mix(in oklch, var(--color-cream) 60%, transparent);
+}
+
+.rowH:focus-visible {
+  outline: 2px solid var(--color-green-dark);
+  outline-offset: -2px;
+}
+
+.activeH {
+  color: var(--color-green-dark);
+  font-weight: 600;
+  border-bottom-color: var(--color-green-dark);
+}
+
+.activeH .position { color: var(--color-green-dark); }

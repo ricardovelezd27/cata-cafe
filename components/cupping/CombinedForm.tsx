@@ -216,7 +216,6 @@ export function CombinedForm({
 
   return (
     <div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-4">
       {stepAttrs.map((attr) => {
         const descId = attr.descriptiveId;
         if (!descId) return null;
@@ -226,50 +225,53 @@ export function CombinedForm({
         const max = STEP_CATA_MAX[descId];
 
         return (
-          <div key={affId} className="min-w-0">
-          <FormSection title={title} accent>
-            <div className="font-mono text-[10px] font-semibold tracking-[0.18em] uppercase text-green-mid mb-2">
-              Descriptivo
-            </div>
-            <IntensitySlider
-              label="Intensidad"
-              value={num(`${descId}_int`)}
-              onChange={(v) => set(`${descId}_int`, v)}
-            />
-            {pills && (
-              <div className="mt-4">
-                <CATAPills
-                  options={pills}
-                  selected={arr(`${descId}_desc`)}
-                  onChange={(v) => set(`${descId}_desc`, v)}
-                  maxSelect={max}
-                  showSubItems
+          <FormSection key={affId} title={title} accent>
+            <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-6">
+              {/* Left: descriptive */}
+              <div className="min-w-0">
+                <div className="font-mono text-[10px] font-semibold tracking-[0.18em] uppercase text-green-mid mb-2">
+                  Descriptivo
+                </div>
+                <IntensitySlider
+                  label="Intensidad"
+                  value={num(`${descId}_int`)}
+                  onChange={(v) => set(`${descId}_int`, v)}
                 />
+                {pills && (
+                  <div className="mt-4">
+                    <CATAPills
+                      options={pills}
+                      selected={arr(`${descId}_desc`)}
+                      onChange={(v) => set(`${descId}_desc`, v)}
+                      maxSelect={max}
+                      showSubItems
+                    />
+                  </div>
+                )}
               </div>
-            )}
 
-            <div className="h-px bg-brown-light my-5" />
+              {/* Right: affective + notes */}
+              <div className="min-w-0 mt-5 pt-5 border-t border-brown-light lg:mt-0 lg:pt-0 lg:border-t-0 lg:border-l lg:pl-6">
+                <div className="font-mono text-[10px] font-semibold tracking-[0.18em] uppercase text-amber mb-2">
+                  Calidad 1–9
+                </div>
+                <AffectiveBubbles
+                  value={num(`${affId}_final`)}
+                  onChange={(v) => set(`${affId}_final`, v)}
+                />
 
-            <div className="font-mono text-[10px] font-semibold tracking-[0.18em] uppercase text-amber mb-2">
-              Calidad 1–9
-            </div>
-            <AffectiveBubbles
-              value={num(`${affId}_final`)}
-              onChange={(v) => set(`${affId}_final`, v)}
-            />
-
-            <div className="mt-4">
-              <Notes
-                value={str(`${descId}_notas`)}
-                onChange={(v) => set(`${descId}_notas`, v)}
-                placeholder="Notas..."
-              />
+                <div className="mt-4">
+                  <Notes
+                    value={str(`${descId}_notas`)}
+                    onChange={(v) => set(`${descId}_notas`, v)}
+                    placeholder="Notas..."
+                  />
+                </div>
+              </div>
             </div>
           </FormSection>
-          </div>
         );
       })}
-      </div>
 
       {currentStep === "taste_aftertaste" && (
         <FormSection title="Gustos Predominantes" accent>

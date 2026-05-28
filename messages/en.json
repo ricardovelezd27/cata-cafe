@@ -114,6 +114,7 @@
     "shell": {
       "samplesHeader": "Samples",
       "evaluationHeader": "Evaluation",
+      "phaseTitle": "Tasting phase",
       "cuppingModule": "Cupping",
       "exitToSessions": "Exit to sessions",
       "invite": "Invite participants",

@@ -165,27 +165,34 @@ export function AffectiveForm({
 
           return (
             <FormSection key={attr.affectiveId} title={title} accent>
-              <AffectiveBubbles
-                value={getNum(`${attr.affectiveId}_final`)}
-                onChange={(v) => set(`${attr.affectiveId}_final`, v)}
-              />
-              {pills && (
-                <div className="mt-4">
-                  <CATAPills
-                    options={pills}
-                    selected={getArr(`${descKey}_desc`)}
-                    onChange={(v) => set(`${descKey}_desc`, v)}
-                    maxSelect={max}
-                    showSubItems
+              <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-6">
+                {/* Left: quality + descriptors */}
+                <div className="min-w-0">
+                  <AffectiveBubbles
+                    value={getNum(`${attr.affectiveId}_final`)}
+                    onChange={(v) => set(`${attr.affectiveId}_final`, v)}
+                  />
+                  {pills && (
+                    <div className="mt-4">
+                      <CATAPills
+                        options={pills}
+                        selected={getArr(`${descKey}_desc`)}
+                        onChange={(v) => set(`${descKey}_desc`, v)}
+                        maxSelect={max}
+                        showSubItems
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Right: notes */}
+                <div className="min-w-0 mt-5 pt-5 border-t border-brown-light lg:mt-0 lg:pt-0 lg:border-t-0 lg:border-l lg:pl-6">
+                  <Notes
+                    value={getStr(`${attr.affectiveId}_notas`)}
+                    onChange={(v) => set(`${attr.affectiveId}_notas`, v)}
+                    placeholder="Notas afectivas..."
                   />
                 </div>
-              )}
-              <div className="mt-3">
-                <Notes
-                  value={getStr(`${attr.affectiveId}_notas`)}
-                  onChange={(v) => set(`${attr.affectiveId}_notas`, v)}
-                  placeholder="Notas afectivas..."
-                />
               </div>
             </FormSection>
           );

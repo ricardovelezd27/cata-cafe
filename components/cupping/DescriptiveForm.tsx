@@ -75,26 +75,33 @@ export function DescriptiveForm({
     showSubItems: boolean,
   ) => (
     <FormSection key={id} title={title} accent>
-      <IntensitySlider
-        label="Intensidad"
-        value={num(`${id}_int`)}
-        onChange={(v) => set(`${id}_int`, v)}
-      />
-      <div className="mt-4">
-        <CATAPills
-          options={options}
-          selected={arr(`${id}_desc`)}
-          onChange={(v) => set(`${id}_desc`, v)}
-          maxSelect={STEP_CATA_MAX[id]}
-          showSubItems={showSubItems}
-        />
-      </div>
-      <div className="mt-3">
-        <Notes
-          value={str(`${id}_notas`)}
-          onChange={(v) => set(`${id}_notas`, v)}
-          placeholder="Notas descriptivas..."
-        />
+      <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-6">
+        {/* Left: intensity + descriptors */}
+        <div className="min-w-0">
+          <IntensitySlider
+            label="Intensidad"
+            value={num(`${id}_int`)}
+            onChange={(v) => set(`${id}_int`, v)}
+          />
+          <div className="mt-4">
+            <CATAPills
+              options={options}
+              selected={arr(`${id}_desc`)}
+              onChange={(v) => set(`${id}_desc`, v)}
+              maxSelect={STEP_CATA_MAX[id]}
+              showSubItems={showSubItems}
+            />
+          </div>
+        </div>
+
+        {/* Right: notes */}
+        <div className="min-w-0 mt-5 pt-5 border-t border-brown-light lg:mt-0 lg:pt-0 lg:border-t-0 lg:border-l lg:pl-6">
+          <Notes
+            value={str(`${id}_notas`)}
+            onChange={(v) => set(`${id}_notas`, v)}
+            placeholder="Notas descriptivas..."
+          />
+        </div>
       </div>
     </FormSection>
   );
