@@ -59,6 +59,7 @@ type Session = {
   format: string;
   cupsPerSample: number;
   samples: Sample[];
+  date: string;
 };
 
 type CuppingTab = "cupping" | "extrinsic" | "physical";
@@ -132,7 +133,17 @@ export function CupClient({
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
+  const [clockTime, setClockTime] = useState(() =>
+    new Date().toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+  );
   const [, startTransition] = useTransition();
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setClockTime(new Date().toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [locale]);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSaveRef = useRef<{
     sampleId: string;
@@ -535,16 +546,27 @@ export function CupClient({
   const topBar =
     activeTab === "cupping" ? (
       <>
-        {/* Desktop: "Fase de cata" title + phase stepper */}
-        <div className="hidden lg:flex items-center justify-between gap-4 px-6 py-2">
-          <span className="font-display text-base text-brown-dark whitespace-nowrap">
-            {translations.phaseTitle}
-          </span>
-          <div className="min-w-0">{phaseStepper}</div>
-        </div>
-        {/* Desktop: horizontal sample tabs */}
-        <div className="hidden lg:block px-6 py-1.5 border-t border-brown-light">
-          {desktopSampleTabs}
+        {/* Desktop: phases + samples (left) / session info (right) */}
+        <div className="hidden lg:grid grid-cols-[1fr_auto] items-start gap-x-8 px-6 py-2">
+          <div className="min-w-0 space-y-1.5">
+            {phaseStepper}
+            <div className="border-t border-brown-light pt-1.5">
+              {desktopSampleTabs}
+            </div>
+          </div>
+          <div className="flex flex-col items-end justify-center gap-0.5 text-right shrink-0 pt-0.5">
+            <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-brown-mid">
+              {new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short", year: "numeric" }).format(new Date(session.date))}
+            </span>
+            <span className="font-mono text-xl font-semibold tabular-nums text-green-dark leading-none">
+              {clockTime}
+            </span>
+            {isGroup && (
+              <span className="font-mono text-[11px] text-brown-mid mt-0.5">
+                {participantCount} {participantCount === 1 ? "participante" : "participantes"}
+              </span>
+            )}
+          </div>
         </div>
         {/* Mobile/tablet: phase stepper */}
         <div className="lg:hidden">{phaseStepper}</div>

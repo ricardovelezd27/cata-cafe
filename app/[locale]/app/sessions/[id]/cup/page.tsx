@@ -82,6 +82,7 @@ export default async function CupPage({
         name: session.name,
         format: session.format,
         cupsPerSample: session.cupsPerSample,
+        date: session.date.toISOString(),
         samples: session.samples.map((s) => {
           const ev = s.evaluations[0];
           return {
