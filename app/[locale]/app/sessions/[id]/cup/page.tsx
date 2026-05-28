@@ -65,6 +65,11 @@ export default async function CupPage({
     distinct: ["cupperId"],
   });
 
+  const profile = await prisma.profile.findUnique({
+    where: { id: user.id },
+    select: { country: true },
+  });
+
   const t = await getTranslations();
   const tg = await getTranslations("group");
 
@@ -74,6 +79,7 @@ export default async function CupPage({
       isOwner={isOwner}
       isGroup={session.isGroup}
       userEmail={user.email ?? undefined}
+      userCountry={profile?.country ?? undefined}
       sessionStatus={session.status}
       participantCount={session.participants.length}
       submittedCount={submittedParticipantsResult.length}

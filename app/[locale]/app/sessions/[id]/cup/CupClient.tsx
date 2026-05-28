@@ -74,6 +74,7 @@ export function CupClient({
   submittedCount: initialSubmittedCount,
   translations,
   userEmail,
+  userCountry,
 }: {
   locale: string;
   session: Session;
@@ -115,6 +116,7 @@ export function CupClient({
     phaseLabels: Record<string, string>;
   };
   userEmail?: string;
+  userCountry?: string;
 }) {
   const router = useRouter();
   const stepsForFormat: CuppingStep[] =
@@ -549,7 +551,15 @@ export function CupClient({
         {/* Desktop: phases + samples (left) / session info (right) */}
         <div className="hidden lg:grid grid-cols-[1fr_auto] items-start gap-x-8 px-6 py-2">
           <div className="min-w-0 space-y-1.5">
-            {phaseStepper}
+            <PhaseStepper
+              phases={stepsForFormat}
+              currentPhase={currentStep}
+              phaseStatuses={stepStatuses}
+              labels={translations.phaseLabels}
+              onSelect={handleStepChange}
+              variant="light"
+              align="start"
+            />
             <div className="border-t border-brown-light pt-1.5">
               {desktopSampleTabs}
             </div>
@@ -564,6 +574,11 @@ export function CupClient({
             {isGroup && (
               <span className="font-mono text-[11px] text-brown-mid mt-0.5">
                 {participantCount} {participantCount === 1 ? "participante" : "participantes"}
+              </span>
+            )}
+            {userCountry && (
+              <span className="font-mono text-[11px] text-brown-mid">
+                {userCountry}
               </span>
             )}
           </div>

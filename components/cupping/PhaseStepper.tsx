@@ -9,6 +9,7 @@ interface PhaseStepperProps<T extends string> {
   labels: Record<string, string>;
   onSelect: (phase: T) => void;
   variant?: "dark" | "light";
+  align?: "start" | "center";
 }
 
 export function PhaseStepper<T extends string>({
@@ -18,6 +19,7 @@ export function PhaseStepper<T extends string>({
   labels,
   onSelect,
   variant = "dark",
+  align = "center",
 }: PhaseStepperProps<T>) {
   const isLight = variant === "light";
   const activeRef = useRef<HTMLButtonElement | null>(null);
@@ -43,7 +45,7 @@ export function PhaseStepper<T extends string>({
           display: "flex",
           gap: 4,
           width: "fit-content",
-          margin: "0 auto",
+          margin: align === "start" ? "0" : "0 auto",
         }}
       >
       {phases.map((phase, idx) => {
