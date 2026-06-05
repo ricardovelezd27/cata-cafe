@@ -7,6 +7,10 @@ import { ScoreTable } from "@/components/results/ScoreTable";
 import { SampleRadarChart } from "@/components/results/SampleRadarChart";
 import { FlavorCloud } from "@/components/results/FlavorCloud";
 import { MyResultsSummary } from "@/components/results/MyResultsSummary";
+import {
+  IndividualResultsPanel,
+  type ParticipantResult,
+} from "@/components/results/IndividualResultsPanel";
 
 type AggregateScoreData = {
   communityScore: number | null;
@@ -44,7 +48,7 @@ type SampleResult = {
 };
 
 type ViewMode = "mine" | "group";
-type DisplayView = "summary" | "table" | "radar";
+type DisplayView = "summary" | "table" | "radar" | "individual";
 
 export function ResultsClient({
   locale,
@@ -53,6 +57,7 @@ export function ResultsClient({
   isGroup,
   sessionStatus,
   canViewGroup,
+  participants,
   translations,
 }: {
   locale: string;
@@ -68,6 +73,7 @@ export function ResultsClient({
   isGroup: boolean;
   sessionStatus: string;
   canViewGroup: boolean;
+  participants?: ParticipantResult[] | null;
   translations: {
     myResults: string;
     groupResults: string;
@@ -110,6 +116,10 @@ export function ResultsClient({
   };
 
   const showGroup = view === "group" && canViewGroup;
+  const canViewIndividual = isOwner && isGroup && !!participants?.length;
+  // Defensive: never render the master panel for a non-owner.
+  const effectiveDisplayView: DisplayView =
+    displayView === "individual" && !canViewIndividual ? "summary" : displayView;
 
   const pillStyle = (active: boolean): React.CSSProperties => ({
     padding: "5px 14px",
@@ -201,7 +211,7 @@ export function ResultsClient({
         </div>
 
         {/* Mine / Group pills — only relevant to table/chart views */}
-        {canViewGroup && displayView !== "summary" && (
+        {canViewGroup && displayView !== "summary" && displayView !== "individual" && (
           <div style={{ padding: "0 16px 8px", display: "flex", gap: 4, alignItems: "center", overflow: "hidden" }}>
             {(["mine", "group"] as ViewMode[]).map((v) => (
               <button key={v} onClick={() => setView(v)} style={pillStyle(view === v)}>
@@ -241,20 +251,38 @@ export function ResultsClient({
             gap: 2,
           }}
         >
-          {(["summary", "table", "radar"] as DisplayView[]).map((v) => (
+          {(
+            [
+              "summary",
+              "table",
+              "radar",
+              ...(canViewIndividual ? (["individual"] as const) : []),
+            ] as DisplayView[]
+          ).map((v) => (
             <button key={v} onClick={() => setDisplayView(v)} style={segStyle(displayView === v)}>
               {v === "summary"
                 ? locale === "es" ? "📝 Resumen" : "📝 Summary"
                 : v === "table"
                 ? locale === "es" ? "📋 Tabla" : "📋 Table"
-                : locale === "es" ? "📡 Gráfico" : "📡 Chart"}
+                : v === "radar"
+                ? locale === "es" ? "📡 Gráfico" : "📡 Chart"
+                : locale === "es" ? "👥 Individual" : "👥 Individual"}
             </button>
           ))}
         </div>
       </div>
 
       {/* Main content */}
-      {displayView === "summary" ? (
+      {effectiveDisplayView === "individual" && canViewIndividual ? (
+        <div className="p-4 lg:p-6">
+          <IndividualResultsPanel
+            participants={participants!}
+            format={session.format}
+            cupsPerSample={session.cupsPerSample}
+            locale={locale}
+          />
+        </div>
+      ) : effectiveDisplayView === "summary" ? (
         <div className="p-4 lg:p-6">
           <MyResultsSummary
             samples={session.samples}
@@ -264,7 +292,7 @@ export function ResultsClient({
             onEdit={handleEditSample}
           />
         </div>
-      ) : displayView === "table" ? (
+      ) : effectiveDisplayView === "table" ? (
         <div className="p-4 lg:p-6 flex flex-col gap-6">
           <ScoreTable
             samples={session.samples}

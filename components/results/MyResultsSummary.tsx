@@ -144,12 +144,14 @@ export function MyResultsSummary({
   cupsPerSample,
   locale,
   onEdit,
+  hideEdit = false,
 }: {
   samples: SampleResult[];
   format: string;
   cupsPerSample: number;
   locale: string;
-  onEdit: (sampleId: string) => void;
+  onEdit?: (sampleId: string) => void;
+  hideEdit?: boolean;
 }) {
   const t = LABELS[locale === "en" ? "en" : "es"];
   const showDescriptive = format !== "affective";
@@ -225,23 +227,25 @@ export function MyResultsSummary({
                   )}
                 </div>
               </div>
-              <button
-                onClick={() => onEdit(sample.id)}
-                style={{
-                  flexShrink: 0,
-                  padding: "5px 12px",
-                  borderRadius: 8,
-                  border: "1px solid #3D5A3E",
-                  background: "#fff",
-                  color: "#3D5A3E",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                ✎ {t.edit}
-              </button>
+              {!hideEdit && (
+                <button
+                  onClick={() => onEdit?.(sample.id)}
+                  style={{
+                    flexShrink: 0,
+                    padding: "5px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #3D5A3E",
+                    background: "#fff",
+                    color: "#3D5A3E",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  ✎ {t.edit}
+                </button>
+              )}
             </div>
 
             {!filled ? (
