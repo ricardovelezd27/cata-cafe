@@ -6,10 +6,13 @@ import { CupClient } from "./CupClient";
 
 export default async function CupPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
+  searchParams: Promise<{ sample?: string }>;
 }) {
   const { locale, id } = await params;
+  const { sample: initialSampleId } = await searchParams;
   setRequestLocale(locale);
 
   const supabase = await createClient();
@@ -76,6 +79,7 @@ export default async function CupPage({
   return (
     <CupClient
       locale={locale}
+      initialSampleId={initialSampleId}
       isOwner={isOwner}
       isGroup={session.isGroup}
       userEmail={user.email ?? undefined}

@@ -66,6 +66,7 @@ type CuppingTab = "cupping" | "extrinsic" | "physical";
 
 export function CupClient({
   locale,
+  initialSampleId,
   session,
   isOwner,
   isGroup,
@@ -77,6 +78,7 @@ export function CupClient({
   userCountry,
 }: {
   locale: string;
+  initialSampleId?: string;
   session: Session;
   isOwner: boolean;
   isGroup: boolean;
@@ -122,7 +124,10 @@ export function CupClient({
   const stepsForFormat: CuppingStep[] =
     session.format === "descriptive" ? DESCRIPTIVE_STEPS : CUPPING_STEPS;
 
-  const [sampleIdx, setSampleIdx] = useState(0);
+  const initialSampleIdx = initialSampleId
+    ? Math.max(0, session.samples.findIndex((s) => s.id === initialSampleId))
+    : 0;
+  const [sampleIdx, setSampleIdx] = useState(initialSampleIdx);
   const [currentStep, setCurrentStep] = useState<CuppingStep>(stepsForFormat[0]);
   const [samples, setSamples] = useState(session.samples);
   const [activeTab, setActiveTab] = useState<CuppingTab>("cupping");

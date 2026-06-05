@@ -6,6 +6,7 @@ import { revealSample, refreshAggregateScores } from "@/app/actions/community";
 import { ScoreTable } from "@/components/results/ScoreTable";
 import { SampleRadarChart } from "@/components/results/SampleRadarChart";
 import { FlavorCloud } from "@/components/results/FlavorCloud";
+import { MyResultsSummary } from "@/components/results/MyResultsSummary";
 
 type AggregateScoreData = {
   communityScore: number | null;
@@ -43,7 +44,7 @@ type SampleResult = {
 };
 
 type ViewMode = "mine" | "group";
-type DisplayView = "table" | "radar";
+type DisplayView = "summary" | "table" | "radar";
 
 export function ResultsClient({
   locale,
@@ -83,9 +84,13 @@ export function ResultsClient({
 }) {
   const router = useRouter();
   const [view, setView] = useState<ViewMode>("mine");
-  const [displayView, setDisplayView] = useState<DisplayView>("table");
+  const [displayView, setDisplayView] = useState<DisplayView>("summary");
   const [refreshing, setRefreshing] = useState(false);
   const [, startTransition] = useTransition();
+
+  const handleEditSample = (sampleId: string) => {
+    router.push(`/${locale}/app/sessions/${session.id}/cup?sample=${sampleId}`);
+  };
 
   const handleReveal = (sampleId: string) => {
     startTransition(async () => {
@@ -195,8 +200,8 @@ export function ResultsClient({
           </div>
         </div>
 
-        {/* Mine / Group pills */}
-        {canViewGroup && (
+        {/* Mine / Group pills — only relevant to table/chart views */}
+        {canViewGroup && displayView !== "summary" && (
           <div style={{ padding: "0 16px 8px", display: "flex", gap: 4, alignItems: "center", overflow: "hidden" }}>
             {(["mine", "group"] as ViewMode[]).map((v) => (
               <button key={v} onClick={() => setView(v)} style={pillStyle(view === v)}>
@@ -236,16 +241,30 @@ export function ResultsClient({
             gap: 2,
           }}
         >
-          {(["table", "radar"] as DisplayView[]).map((v) => (
+          {(["summary", "table", "radar"] as DisplayView[]).map((v) => (
             <button key={v} onClick={() => setDisplayView(v)} style={segStyle(displayView === v)}>
-              {v === "table" ? "📋 Tabla" : "📡 Gráfico"}
+              {v === "summary"
+                ? locale === "es" ? "📝 Resumen" : "📝 Summary"
+                : v === "table"
+                ? locale === "es" ? "📋 Tabla" : "📋 Table"
+                : locale === "es" ? "📡 Gráfico" : "📡 Chart"}
             </button>
           ))}
         </div>
       </div>
 
       {/* Main content */}
-      {displayView === "table" ? (
+      {displayView === "summary" ? (
+        <div className="p-4 lg:p-6">
+          <MyResultsSummary
+            samples={session.samples}
+            format={session.format}
+            cupsPerSample={session.cupsPerSample}
+            locale={locale}
+            onEdit={handleEditSample}
+          />
+        </div>
+      ) : displayView === "table" ? (
         <div className="p-4 lg:p-6 flex flex-col gap-6">
           <ScoreTable
             samples={session.samples}
