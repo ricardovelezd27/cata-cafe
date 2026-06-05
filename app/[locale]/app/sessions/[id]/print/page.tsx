@@ -20,7 +20,13 @@ export default async function PrintPage({
 
   const [session, profile] = await Promise.all([
     prisma.cuppingSession.findFirst({
-      where: { id, createdBy: user.id },
+      where: {
+        id,
+        OR: [
+          { createdBy: user.id },
+          { participants: { some: { userId: user.id } } },
+        ],
+      },
       include: {
         samples: {
           orderBy: { position: "asc" },
