@@ -35,7 +35,10 @@ async function requireUser() {
 
 async function createCoffees(coffees: CoffeeInput[], userId: string) {
   if (!coffees || coffees.length === 0) return [];
-  return Promise.all(
+  // Run all creates in one transaction (single round-trip). $transaction with an
+  // array preserves input order, so the returned ids stay index-aligned with
+  // `coffees` for the `coffeeIdx` mapping below. (createMany can't return ids.)
+  return prisma.$transaction(
     coffees.map((c) =>
       prisma.coffee.create({
         data: {

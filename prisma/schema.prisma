@@ -54,6 +54,8 @@ model Coffee {
   sessionSamples SessionSample[]
   coffeeHistory  UserCoffeeHistory[]
 
+  @@index([createdBy])
+  @@index([isPublic])
   @@map("coffees")
 }
 
@@ -79,6 +81,8 @@ model CuppingSession {
   invites       SessionInvite[]
   coffeeHistory UserCoffeeHistory[]
 
+  @@index([createdBy])
+  @@index([createdBy, status])
   @@map("cupping_sessions")
 }
 
@@ -99,6 +103,7 @@ model SessionSample {
   aggregateScore AggregateScore?
 
   @@unique([sessionId, position])
+  @@index([coffeeId])
   @@map("session_samples")
 }
 
@@ -128,6 +133,8 @@ model Evaluation {
   coffeeHistory UserCoffeeHistory[]
 
   @@unique([sessionSampleId, cupperId])
+  @@index([cupperId])
+  @@index([sessionSampleId, isDraft])
   @@map("evaluations")
 }
 
@@ -141,6 +148,7 @@ model PhysicalEvaluation {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
+  @@index([evaluatedBy])
   @@map("physical_evaluations")
 }
 
@@ -153,6 +161,7 @@ model ExtrinsicData {
   revealedByUser  Profile?      @relation(fields: [revealedBy], references: [id])
   revealedAt      DateTime?
 
+  @@index([revealedBy])
   @@map("extrinsic_data")
 }
 
@@ -165,6 +174,7 @@ model SessionParticipant {
   joinedAt  DateTime       @default(now())
 
   @@id([sessionId, userId])
+  @@index([userId, status])
   @@map("session_participants")
 }
 
@@ -203,6 +213,9 @@ model UserCoffeeHistory {
   createdAt       DateTime       @default(now())
 
   @@unique([userId, coffeeId, sessionId])
+  @@index([userId])
+  @@index([coffeeId])
+  @@index([sessionId])
   @@map("user_coffee_history")
 }
 
@@ -218,5 +231,7 @@ model SessionInvite {
   creator   Profile        @relation(fields: [createdBy], references: [id])
   createdAt DateTime       @default(now())
 
+  @@index([sessionId])
+  @@index([createdBy])
   @@map("session_invites")
 }

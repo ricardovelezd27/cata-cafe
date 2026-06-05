@@ -25,21 +25,16 @@ async function requireUser() {
 export async function submitAllEvaluations(sessionId: string) {
   const user = await requireUser();
 
-  const draftEvals = await prisma.evaluation.findMany({
+  // Single batched update instead of one round-trip per draft eval. The aggregate
+  // trigger is FOR EACH ROW, so it still fires once per updated evaluation.
+  await prisma.evaluation.updateMany({
     where: {
       isDraft: true,
       cupperId: user.id,
       sessionSample: { sessionId },
     },
-    select: { id: true },
+    data: { isDraft: false, submittedAt: new Date() },
   });
-
-  for (const ev of draftEvals) {
-    await prisma.evaluation.update({
-      where: { id: ev.id },
-      data: { isDraft: false, submittedAt: new Date() },
-    });
-  }
 
   revalidatePath(`/app/sessions/${sessionId}/results`);
   return { ok: true };
@@ -276,6 +271,9 @@ export async function refreshAggregateScores(sessionId: string) {
   });
   if (!session) throw new Error("not_found_or_forbidden");
 
+  const now = new Date();
+  const updates = [];
+
   for (const sample of session.samples) {
     if (sample.evaluations.length === 0) continue;
 
@@ -299,11 +297,16 @@ export async function refreshAggregateScores(sessionId: string) {
       }
     }
 
-    await prisma.aggregateScore.updateMany({
-      where: { sessionSampleId: sample.id },
-      data: { attrAverages, computedAt: new Date() },
-    });
+    updates.push(
+      prisma.aggregateScore.updateMany({
+        where: { sessionSampleId: sample.id },
+        data: { attrAverages, computedAt: now },
+      }),
+    );
   }
+
+  // One transaction instead of one round-trip per sample (matters at ~100 samples).
+  if (updates.length > 0) await prisma.$transaction(updates);
 
   revalidatePath(`/es/app/sessions/${sessionId}/results`);
   revalidatePath(`/en/app/sessions/${sessionId}/results`);
@@ -338,35 +341,46 @@ export async function syncCoffeeHistory(sessionId: string) {
     select: { date: true },
   });
 
+  const tastedAt = session?.date ?? new Date();
+  const upserts = [];
+
   for (const sample of samples) {
     if (!sample.coffeeId) continue;
+    const coffeeId = sample.coffeeId;
     const communityScore = sample.aggregateScore?.communityScore ?? null;
 
     for (const evaluation of sample.evaluations) {
-      await prisma.userCoffeeHistory.upsert({
-        where: {
-          userId_coffeeId_sessionId: {
-            userId: evaluation.cupperId,
-            coffeeId: sample.coffeeId,
-            sessionId,
+      upserts.push(
+        prisma.userCoffeeHistory.upsert({
+          where: {
+            userId_coffeeId_sessionId: {
+              userId: evaluation.cupperId,
+              coffeeId,
+              sessionId,
+            },
           },
-        },
-        create: {
-          userId: evaluation.cupperId,
-          coffeeId: sample.coffeeId,
-          evaluationId: evaluation.id,
-          sessionId,
-          individualScore: evaluation.individualScore,
-          communityScore,
-          tastedAt: session?.date ?? new Date(),
-        },
-        update: {
-          individualScore: evaluation.individualScore,
-          communityScore,
-        },
-      });
+          create: {
+            userId: evaluation.cupperId,
+            coffeeId,
+            evaluationId: evaluation.id,
+            sessionId,
+            individualScore: evaluation.individualScore,
+            communityScore,
+            tastedAt,
+          },
+          update: {
+            individualScore: evaluation.individualScore,
+            communityScore,
+          },
+        }),
+      );
     }
   }
+
+  // One transaction instead of one round-trip per evaluation. At 100 samples ×
+  // dozens of cuppers this collapses thousands of sequential upserts into a
+  // single batched call, keeping closeSession well under the action timeout.
+  if (upserts.length > 0) await prisma.$transaction(upserts);
 
   return { ok: true };
 }
