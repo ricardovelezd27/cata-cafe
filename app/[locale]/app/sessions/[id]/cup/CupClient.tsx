@@ -265,11 +265,11 @@ export function CupClient({
     canvas?.scrollTo({ top: 0, behavior: "instant" });
   };
 
-  const handleStepChange = async (step: CuppingStep) => {
+  const handleStepChange = async (step: CuppingStep, resetSample = false) => {
     if (step === currentStep) return;
     await flushPending();
     setCurrentStep(step);
-    setSampleIdx(0);
+    if (resetSample) setSampleIdx(0);
     scrollCanvasToTop();
   };
 
@@ -290,7 +290,7 @@ export function CupClient({
       } else {
         const stepIdx = stepsForFormat.indexOf(currentStep);
         if (stepIdx < stepsForFormat.length - 1) {
-          await handleStepChange(stepsForFormat[stepIdx + 1]);
+          await handleStepChange(stepsForFormat[stepIdx + 1], true);
         }
       }
       scrollCanvasToTop();
