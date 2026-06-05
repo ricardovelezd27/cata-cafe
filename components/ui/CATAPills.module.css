@@ -3,7 +3,7 @@
 .count strong { font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--color-brown-dark); margin-right: 2px; font-variant-numeric: tabular-nums; }
 .familyList { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
 .family { display: contents; }
-.pill { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius-pill); border: 1.5px solid var(--pill-color); background: var(--pill-bg-soft); color: var(--pill-color); font-family: var(--font-ui); font-size: 13px; font-weight: 500; line-height: 1; white-space: nowrap; transition: all var(--transition-fast); }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius-pill); border: 1.5px solid var(--pill-color); background: var(--pill-bg-soft); color: var(--pill-color); font-family: var(--font-ui); font-size: 13px; font-weight: 500; line-height: 1; white-space: nowrap; transition: none; }
 .pill:disabled { cursor: not-allowed; opacity: 0.45; }
 .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
 .selected { background: var(--pill-color) !important; border-color: transparent !important; color: var(--color-bg) !important; }
