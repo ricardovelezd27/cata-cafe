@@ -257,6 +257,26 @@ h1, h2, h3, h4, .font-serif {
 
 button { font-family: inherit; cursor: pointer; }
 
+/* ============================================================
+   Mobile: prevent iOS Safari auto-zoom on input focus
+   ------------------------------------------------------------
+   iOS Safari zooms the viewport whenever a focused text-entry
+   control has a font-size < 16px, forcing the user to pinch
+   back out. Many of our fields use Tailwind text-xs/text-sm
+   (12–14px) or CSS-module sizes (e.g. Notes at 13px), so we
+   force 16px on touch devices only — desktop keeps its smaller
+   visual sizing. !important is required to beat utility/module
+   classes. Pinch-to-zoom is left untouched (no maximum-scale).
+   range/checkbox/radio are excluded: they never trigger zoom.
+   ============================================================ */
+@media (pointer: coarse) {
+  input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 /* Tabular numerics for measurements and data */
 .mono, code, pre {
   font-family: var(--font-mono);
