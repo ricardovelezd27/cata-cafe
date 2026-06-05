@@ -1,16 +1,57 @@
 "use client";
 
+import { useLayoutEffect, useRef, useState } from "react";
 import {
   RadarChart,
   Radar,
   PolarGrid,
   PolarAngleAxis,
-  ResponsiveContainer,
   Legend,
   Tooltip,
 } from "recharts";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { calcIndividualScore, scoreBand } from "@/lib/scoring";
+
+const CHART_HEIGHT = 220;
+
+/**
+ * Measures the container width with useLayoutEffect (runs after layout, before
+ * paint — so width is correct the first time the chart mounts) plus a
+ * rAF-debounced resize/orientation listener.
+ *
+ * This replaces Recharts' ResponsiveContainer, whose ResizeObserver-based
+ * measurement freezes on iOS Safari when the chart mounts into a grid cell that
+ * was just revealed by a tab switch (measures width 0 and gets stuck, or trips
+ * the "ResizeObserver loop" that locks the main thread). Measuring manually
+ * sidesteps that entirely and renders identically on desktop.
+ */
+function useContainerWidth() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const measure = () => setWidth(el.clientWidth);
+    measure();
+
+    let raf = 0;
+    const onResize = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(measure);
+    };
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+    };
+  }, []);
+
+  return { ref, width };
+}
 
 type AggregateScoreData = {
   communityScore: number | null;
@@ -69,6 +110,7 @@ export function SampleRadarChart({
   onReveal: (sampleId: string) => void;
 }) {
   const showAffective = format !== "descriptive";
+  const { ref: chartRef, width: chartWidth } = useContainerWidth();
 
   const affData =
     format === "affective"
@@ -213,44 +255,51 @@ export function SampleRadarChart({
 
       {/* Radar chart */}
       {showAffective && hasMyData ? (
-        <ResponsiveContainer width="100%" height={220}>
-          <RadarChart data={radarData} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
-            <PolarGrid stroke="#E8E0D0" />
-            <PolarAngleAxis
-              dataKey="subject"
-              tick={{ fontSize: 9, fill: "#8B7355" }}
-            />
-            <Radar
-              name="Mi evaluación"
-              dataKey="mine"
-              stroke="#3D5A3E"
-              fill="#3D5A3E"
-              fillOpacity={0.2}
-              dot={false}
-            />
-            {hasCommunityData && (
+        <div ref={chartRef} style={{ width: "100%", height: CHART_HEIGHT }}>
+          {chartWidth > 0 && (
+            <RadarChart
+              width={chartWidth}
+              height={CHART_HEIGHT}
+              data={radarData}
+              margin={{ top: 8, right: 16, bottom: 8, left: 16 }}
+            >
+              <PolarGrid stroke="#E8E0D0" />
+              <PolarAngleAxis
+                dataKey="subject"
+                tick={{ fontSize: 9, fill: "#8B7355" }}
+              />
               <Radar
-                name="Comunidad"
-                dataKey="community"
-                stroke="#C17817"
-                fill="#C17817"
-                fillOpacity={0.1}
-                strokeDasharray="5 3"
+                name="Mi evaluación"
+                dataKey="mine"
+                stroke="#3D5A3E"
+                fill="#3D5A3E"
+                fillOpacity={0.2}
                 dot={false}
               />
-            )}
-            <Tooltip
-              formatter={(value) => [typeof value === "number" ? value.toFixed(1) : String(value ?? ""), ""]}
-              contentStyle={{ fontSize: 11, borderRadius: 6, border: "1px solid #E8E0D0" }}
-            />
-            {hasCommunityData && (
-              <Legend
-                iconSize={8}
-                wrapperStyle={{ fontSize: 10, paddingTop: 4 }}
+              {hasCommunityData && (
+                <Radar
+                  name="Comunidad"
+                  dataKey="community"
+                  stroke="#C17817"
+                  fill="#C17817"
+                  fillOpacity={0.1}
+                  strokeDasharray="5 3"
+                  dot={false}
+                />
+              )}
+              <Tooltip
+                formatter={(value) => [typeof value === "number" ? value.toFixed(1) : String(value ?? ""), ""]}
+                contentStyle={{ fontSize: 11, borderRadius: 6, border: "1px solid #E8E0D0" }}
               />
-            )}
-          </RadarChart>
-        </ResponsiveContainer>
+              {hasCommunityData && (
+                <Legend
+                  iconSize={8}
+                  wrapperStyle={{ fontSize: 10, paddingTop: 4 }}
+                />
+              )}
+            </RadarChart>
+          )}
+        </div>
       ) : showAffective ? (
         <div
           style={{
