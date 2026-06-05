@@ -1,5 +1,5 @@
 'use client'
-import { useId } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import styles from './IntensitySlider.module.css'
 
 export interface IntensitySliderProps {
@@ -24,9 +24,24 @@ export function IntensitySlider({
   step = 1,
 }: IntensitySliderProps) {
   const id = useId()
+  const inputRef = useRef<HTMLInputElement>(null)
   const v = value ?? 0
   const pct = ((v - min) / (max - min)) * 100
   const empty = value === null
+
+  // Prevent the mouse wheel from changing the value while the user is just
+  // scrolling the page. Only respond once the control has been focused
+  // (tapped/clicked). A native non-passive listener is required because React's
+  // synthetic onWheel is registered passively and cannot call preventDefault().
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      if (document.activeElement !== el) e.preventDefault()
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
 
   return (
     <div className={`${styles.root} ${disabled ? styles.locked : ''} ${empty ? styles.empty : ''}`}>
@@ -42,6 +57,7 @@ export function IntensitySlider({
         {!empty && <div className={styles.fill} style={{ width: `${pct}%` }} />}
         <div className={styles.thumb} style={{ left: `${empty ? 0 : pct}%` }} aria-hidden />
         <input
+          ref={inputRef}
           id={id}
           type="range"
           min={min}

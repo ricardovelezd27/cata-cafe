@@ -122,6 +122,7 @@ export function PhysicalEvalForm({
             type="number"
             value={getStr("phys_humedad")}
             onChange={(e) => set("phys_humedad", e.target.value)}
+            onWheel={(e) => e.currentTarget.blur()}
             placeholder="%"
             step={0.1}
             min={0}
@@ -161,6 +162,7 @@ export function PhysicalEvalForm({
                         type="number"
                         value={getStr(gKey)}
                         onChange={(e) => set(gKey, parseFloat(e.target.value) || 0)}
+                        onWheel={(e) => e.currentTarget.blur()}
                         placeholder="0"
                         step={0.1}
                         min={0}
