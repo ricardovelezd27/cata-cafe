@@ -8,6 +8,10 @@ import { SampleRadarChart } from "@/components/results/SampleRadarChart";
 import { FlavorCloud } from "@/components/results/FlavorCloud";
 import { MyResultsSummary } from "@/components/results/MyResultsSummary";
 import {
+  DescriptorFrequency,
+  type SampleDescriptorFreq,
+} from "@/components/results/DescriptorFrequency";
+import {
   IndividualResultsPanel,
   type ParticipantResult,
 } from "@/components/results/IndividualResultsPanel";
@@ -48,7 +52,7 @@ type SampleResult = {
 };
 
 type ViewMode = "mine" | "group";
-type DisplayView = "summary" | "table" | "radar" | "individual";
+type DisplayView = "summary" | "table" | "radar" | "descriptors" | "individual";
 
 export function ResultsClient({
   locale,
@@ -58,6 +62,7 @@ export function ResultsClient({
   sessionStatus,
   canViewGroup,
   participants,
+  descriptorFrequency,
   translations,
 }: {
   locale: string;
@@ -74,6 +79,7 @@ export function ResultsClient({
   sessionStatus: string;
   canViewGroup: boolean;
   participants?: ParticipantResult[] | null;
+  descriptorFrequency?: SampleDescriptorFreq[] | null;
   translations: {
     myResults: string;
     groupResults: string;
@@ -117,9 +123,13 @@ export function ResultsClient({
 
   const showGroup = view === "group" && canViewGroup;
   const canViewIndividual = isOwner && isGroup && !!participants?.length;
-  // Defensive: never render the master panel for a non-owner.
+  const canViewDescriptors = !!descriptorFrequency?.length;
+  // Defensive: fall back to summary if a gated view is selected without access.
   const effectiveDisplayView: DisplayView =
-    displayView === "individual" && !canViewIndividual ? "summary" : displayView;
+    (displayView === "individual" && !canViewIndividual) ||
+    (displayView === "descriptors" && !canViewDescriptors)
+      ? "summary"
+      : displayView;
 
   const pillStyle = (active: boolean): React.CSSProperties => ({
     padding: "5px 14px",
@@ -211,7 +221,7 @@ export function ResultsClient({
         </div>
 
         {/* Mine / Group pills — only relevant to table/chart views */}
-        {canViewGroup && displayView !== "summary" && displayView !== "individual" && (
+        {canViewGroup && displayView !== "summary" && displayView !== "individual" && displayView !== "descriptors" && (
           <div style={{ padding: "0 16px 8px", display: "flex", gap: 4, alignItems: "center", overflow: "hidden" }}>
             {(["mine", "group"] as ViewMode[]).map((v) => (
               <button key={v} onClick={() => setView(v)} style={pillStyle(view === v)}>
@@ -256,6 +266,7 @@ export function ResultsClient({
               "summary",
               "table",
               "radar",
+              ...(canViewDescriptors ? (["descriptors"] as const) : []),
               ...(canViewIndividual ? (["individual"] as const) : []),
             ] as DisplayView[]
           ).map((v) => (
@@ -266,6 +277,8 @@ export function ResultsClient({
                 ? locale === "es" ? "📋 Tabla" : "📋 Table"
                 : v === "radar"
                 ? locale === "es" ? "📡 Gráfico" : "📡 Chart"
+                : v === "descriptors"
+                ? locale === "es" ? "🌸 Descriptores" : "🌸 Descriptors"
                 : locale === "es" ? "👥 Individual" : "👥 Individual"}
             </button>
           ))}
@@ -279,6 +292,13 @@ export function ResultsClient({
             participants={participants!}
             format={session.format}
             cupsPerSample={session.cupsPerSample}
+            locale={locale}
+          />
+        </div>
+      ) : effectiveDisplayView === "descriptors" && canViewDescriptors ? (
+        <div className="p-4 lg:p-6">
+          <DescriptorFrequency
+            samples={descriptorFrequency!}
             locale={locale}
           />
         </div>

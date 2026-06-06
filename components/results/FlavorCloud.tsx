@@ -1,13 +1,10 @@
 'use client'
 
-import { FLAVOR_FAMILIES } from '@/lib/constants'
-
-const DESCRIPTOR_KEYS = [
-  'fragancia_desc',
-  'aroma_desc',
-  'sabor_desc',
-  'sabor_residual_desc',
-] as const
+import {
+  FLAVOR_DESC_KEYS,
+  collectDescriptors,
+  resolveDescriptor,
+} from '@/lib/descriptors'
 
 interface FlavorCloudProps {
   descriptive: Record<string, unknown>
@@ -22,41 +19,14 @@ interface ResolvedDescriptor {
   count: number
 }
 
-function resolveDescriptor(id: string): { label: string; color: string } | null {
-  // Sub-item IDs have format "familyId:subSlug"
-  if (id.includes(':')) {
-    const familyId = id.split(':')[0]
-    const family = FLAVOR_FAMILIES.find((f) => f.id === familyId)
-    if (!family) return null
-    const sub = family.subItems.find((s) => s.id === id)
-    return sub ? { label: sub.label, color: family.color } : null
-  }
-  // Family-level ID
-  const family = FLAVOR_FAMILIES.find((f) => f.id === id)
-  return family ? { label: family.label, color: family.color } : null
-}
-
-function collectDescriptors(descriptive: Record<string, unknown>): string[] {
-  const seen = new Set<string>()
-  for (const key of DESCRIPTOR_KEYS) {
-    const arr = descriptive[key]
-    if (Array.isArray(arr)) {
-      for (const id of arr) {
-        if (typeof id === 'string') seen.add(id)
-      }
-    }
-  }
-  return Array.from(seen)
-}
-
 export function FlavorCloud({ descriptive, allDescriptive, isGroup }: FlavorCloudProps) {
-  const myIds = collectDescriptors(descriptive)
+  const myIds = collectDescriptors(descriptive, FLAVOR_DESC_KEYS)
 
   // Build frequency map for group view
   const frequencyMap = new Map<string, number>()
   if (isGroup && allDescriptive && allDescriptive.length > 0) {
     for (const evDesc of allDescriptive) {
-      for (const id of collectDescriptors(evDesc)) {
+      for (const id of collectDescriptors(evDesc, FLAVOR_DESC_KEYS)) {
         frequencyMap.set(id, (frequencyMap.get(id) ?? 0) + 1)
       }
     }

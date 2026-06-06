@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { collectDescriptors, resolveDescriptor, ALL_DESC_KEYS } from "@/lib/descriptors";
 import { ResultsClient } from "./ResultsClient";
 
 export default async function ResultsPage({
@@ -63,8 +64,15 @@ export default async function ResultsPage({
 
   const isOwner = session.createdBy === user.id;
 
+  const totalParticipants = session.participants.length;
+  const allSubmitted = totalParticipants > 0 && submittedCupperCount >= totalParticipants;
+  const sessionExpired = session.closesAt ? session.closesAt < new Date() : false;
+  const canViewGroup =
+    session.isGroup &&
+    (isOwner || session.status === "closed" || allSubmitted || sessionExpired);
+
   // Master-only: every cupper's submitted evaluation, for the Individual view.
-  // Gated by isOwner so non-owners never receive other participants' data.
+  // Gated by isOwner so non-owners never receive other participants' raw data.
   type ParticipantResult = {
     id: string;
     name: string;
@@ -79,7 +87,18 @@ export default async function ResultsPage({
     }[];
   };
   let participantResults: ParticipantResult[] | null = null;
-  if (isOwner && session.isGroup) {
+
+  // Anonymous, per-sample descriptor frequency — counts only, no identities.
+  // Visible to all participants once group results are viewable.
+  type SampleDescriptorFreq = {
+    sampleId: string;
+    label: string;
+    totalEvaluators: number;
+    descriptors: { id: string; label: string; color: string; count: number }[];
+  };
+  let descriptorFrequency: SampleDescriptorFreq[] | null = null;
+
+  if (canViewGroup && session.isGroup) {
     const evals = await prisma.evaluation.findMany({
       where: { sessionSample: { sessionId: id }, isDraft: false },
       select: {
@@ -92,46 +111,97 @@ export default async function ResultsPage({
       },
     });
 
-    // Index evaluations by cupper, then by sample.
-    const byCupper = new Map<
-      string,
-      { name: string; bySample: Map<string, (typeof evals)[number]> }
-    >();
-    for (const ev of evals) {
-      let entry = byCupper.get(ev.cupperId);
-      if (!entry) {
-        entry = { name: ev.cupper.displayName, bySample: new Map() };
-        byCupper.set(ev.cupperId, entry);
+    // ---- Master-only raw participant matrix (Individual view) ----
+    if (isOwner) {
+      const byCupper = new Map<
+        string,
+        { name: string; bySample: Map<string, (typeof evals)[number]> }
+      >();
+      for (const ev of evals) {
+        let entry = byCupper.get(ev.cupperId);
+        if (!entry) {
+          entry = { name: ev.cupper.displayName, bySample: new Map() };
+          byCupper.set(ev.cupperId, entry);
+        }
+        entry.bySample.set(ev.sessionSampleId, ev);
       }
-      entry.bySample.set(ev.sessionSampleId, ev);
+
+      participantResults = [...byCupper.entries()]
+        .map(([cupperId, entry]) => ({
+          id: cupperId,
+          name: entry.name,
+          samples: session.samples.map((s) => {
+            const ev = entry.bySample.get(s.id);
+            return {
+              id: s.id,
+              label: s.label,
+              revealed: s.revealed,
+              coffee: s.revealed && s.coffee ? { name: s.coffee.name } : null,
+              descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
+              affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
+              combined: (ev?.combinedData as Record<string, unknown>) ?? {},
+            };
+          }),
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name, locale === "es" ? "es" : "en"));
     }
 
-    participantResults = [...byCupper.entries()]
-      .map(([cupperId, entry]) => ({
-        id: cupperId,
-        name: entry.name,
-        samples: session.samples.map((s) => {
-          const ev = entry.bySample.get(s.id);
-          return {
-            id: s.id,
-            label: s.label,
-            revealed: s.revealed,
-            coffee: s.revealed && s.coffee ? { name: s.coffee.name } : null,
-            descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
-            affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
-            combined: (ev?.combinedData as Record<string, unknown>) ?? {},
-          };
-        }),
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name, locale === "es" ? "es" : "en"));
-  }
+    // ---- Anonymous descriptor frequency (all participants) ----
+    // Descriptors live in a different JSON column per format; affective has none.
+    if (session.format !== "affective") {
+      const blobFor = (
+        ev: (typeof evals)[number]
+      ): Record<string, unknown> | null =>
+        session.format === "combined"
+          ? (ev.combinedData as Record<string, unknown>)
+          : session.format === "descriptive"
+            ? (ev.descriptiveData as Record<string, unknown>)
+            : null;
 
-  const totalParticipants = session.participants.length;
-  const allSubmitted = totalParticipants > 0 && submittedCupperCount >= totalParticipants;
-  const sessionExpired = session.closesAt ? session.closesAt < new Date() : false;
-  const canViewGroup =
-    session.isGroup &&
-    (isOwner || session.status === "closed" || allSubmitted || sessionExpired);
+      const perSample = new Map<
+        string,
+        { total: number; counts: Map<string, number> }
+      >();
+      for (const s of session.samples) {
+        perSample.set(s.id, { total: 0, counts: new Map() });
+      }
+      for (const ev of evals) {
+        const entry = perSample.get(ev.sessionSampleId);
+        if (!entry) continue;
+        const blob = blobFor(ev);
+        if (!blob) continue;
+        entry.total += 1;
+        for (const did of collectDescriptors(blob, ALL_DESC_KEYS)) {
+          entry.counts.set(did, (entry.counts.get(did) ?? 0) + 1);
+        }
+      }
+
+      descriptorFrequency = session.samples.map((s) => {
+        const entry = perSample.get(s.id)!;
+        const descriptors = [...entry.counts.entries()]
+          .filter(([, count]) => count >= 2)
+          .map(([did, count]) => {
+            const info = resolveDescriptor(did);
+            return info
+              ? { id: did, label: info.label, color: info.color, count }
+              : null;
+          })
+          .filter(
+            (
+              d
+            ): d is { id: string; label: string; color: string; count: number } =>
+              d !== null
+          )
+          .sort((a, b) => b.count - a.count);
+        return {
+          sampleId: s.id,
+          label: s.label,
+          totalEvaluators: entry.total,
+          descriptors,
+        };
+      });
+    }
+  }
 
   const tCommunity = await getTranslations("community");
   const tg = await getTranslations("group");
@@ -150,6 +220,7 @@ export default async function ResultsPage({
       sessionStatus={session.status}
       canViewGroup={canViewGroup}
       participants={participantResults}
+      descriptorFrequency={descriptorFrequency}
       session={{
         id: session.id,
         name: session.name,
