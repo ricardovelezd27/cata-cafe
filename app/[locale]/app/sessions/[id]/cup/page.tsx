@@ -82,6 +82,7 @@ export default async function CupPage({
       initialSampleId={initialSampleId}
       isOwner={isOwner}
       isGroup={session.isGroup}
+      userId={user.id}
       userEmail={user.email ?? undefined}
       userCountry={profile?.country ?? undefined}
       sessionStatus={session.status}
@@ -147,6 +148,18 @@ export default async function CupPage({
           taste_aftertaste: t("cupping.phases.taste_aftertaste"),
           acidity_sweetness_mouthfeel: t("cupping.phases.acidity_sweetness_mouthfeel"),
           overall: t("cupping.phases.overall"),
+        },
+        offline: {
+          bannerOffline: t("offline.bannerOffline"),
+          bannerReconnecting: t("offline.bannerReconnecting"),
+          bannerSynced: t("offline.bannerSynced"),
+          bannerSyncFailed: t("offline.bannerSyncFailed"),
+          retrySync: t("offline.retrySync"),
+          submitBlocked: t("offline.submitBlocked"),
+          conflictTitle: t("offline.conflictTitle"),
+          conflictBody: t("offline.conflictBody"),
+          conflictKeep: t("offline.conflictKeep"),
+          conflictReplace: t("offline.conflictReplace"),
         },
       }}
     />

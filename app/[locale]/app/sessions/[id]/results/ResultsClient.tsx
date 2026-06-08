@@ -65,6 +65,7 @@ export function ResultsClient({
   participants,
   descriptorFrequency,
   stageLabels,
+  partialSyncNotice,
   translations,
 }: {
   locale: string;
@@ -83,6 +84,7 @@ export function ResultsClient({
   participants?: ParticipantResult[] | null;
   descriptorFrequency?: SampleStageFreq[] | null;
   stageLabels?: Record<string, string>;
+  partialSyncNotice?: string | null;
   translations: {
     myResults: string;
     groupResults: string;
@@ -295,6 +297,14 @@ export function ResultsClient({
 
       {/* Scrollable content region — header/footer dock outside it */}
       <div className="flex-1 min-h-0 overflow-y-auto">
+      {showGroup && partialSyncNotice && (
+        <div
+          role="status"
+          className="mx-4 mt-4 rounded-md border border-amber-warm/40 bg-amber-warm/10 px-4 py-2 font-sans text-sm text-amber-warm lg:mx-6"
+        >
+          {partialSyncNotice}
+        </div>
+      )}
       {effectiveDisplayView === "individual" && canViewIndividual ? (
         <div className="p-4 lg:p-6">
           <IndividualResultsPanel

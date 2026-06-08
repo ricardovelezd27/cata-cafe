@@ -260,6 +260,21 @@ export default async function ResultsPage({
   const tg = await getTranslations("group");
   const tAttr = await getTranslations("attributes");
   const tDesc = await getTranslations("descriptors");
+  const tOffline = await getTranslations("offline");
+
+  // Group results must not silently average incomplete data. When fewer cuppers
+  // have submitted (synced) than the participant roster, surface how many are
+  // missing. computeGroupAggregate already excludes incomplete evals, so this is
+  // an explicit "X of Y" denominator, not a recompute.
+  const pendingParticipants = Math.max(0, totalParticipants - submittedCupperCount);
+  const partialSyncNotice =
+    session.isGroup && pendingParticipants > 0
+      ? tOffline("partialSyncNotice", {
+          included: submittedCupperCount,
+          total: totalParticipants,
+          pending: pendingParticipants,
+        })
+      : null;
 
   // Stage label map (es/en) keyed by stage id, for the descriptor subtabs.
   const stageLabels: Record<string, string> = {};
@@ -283,6 +298,7 @@ export default async function ResultsPage({
       participants={participantResults}
       descriptorFrequency={descriptorFrequency}
       stageLabels={stageLabels}
+      partialSyncNotice={partialSyncNotice}
       session={{
         id: session.id,
         name: session.name,

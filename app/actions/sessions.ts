@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { calcAffectiveSum, calcIndividualScore, calcRawScore } from "@/lib/scoring";
+import { computeEvaluationDerived } from "@/lib/evaluation";
 
 type CoffeeInput = {
   name: string;
@@ -163,25 +163,11 @@ export async function upsertEvaluation(input: {
 }) {
   const user = await requireUser();
 
-  const dataField =
-    input.moduleKey === "descriptive"
-      ? "descriptiveData"
-      : input.moduleKey === "affective"
-        ? "affectiveData"
-        : "combinedData";
-
-  const { sum } = calcAffectiveSum(input.data);
-  const rawScore =
-    input.moduleKey === "descriptive" ? null : calcRawScore(input.data);
-  const individual = calcIndividualScore(input.data, input.cupsPerSample);
-  const individualScore = individual === "—" ? null : individual;
-
-  const nonUniformCups =
-    (input.data.tazas_no_uniformes as boolean[] | undefined) ?? [];
-  const defectiveCups =
-    (input.data.tazas_defectuosas as boolean[] | undefined) ?? [];
-  const defectTypes =
-    (input.data.defecto_tipo as string[] | undefined) ?? [];
+  const fields = computeEvaluationDerived(
+    input.moduleKey,
+    input.data,
+    input.cupsPerSample,
+  );
 
   const result = await prisma.evaluation.upsert({
     where: {
@@ -193,23 +179,9 @@ export async function upsertEvaluation(input: {
     create: {
       sessionSampleId: input.sessionSampleId,
       cupperId: user.id,
-      [dataField]: input.data,
-      nonUniformCups,
-      defectiveCups,
-      defectTypes,
-      affectiveSum: sum || null,
-      rawScore,
-      individualScore,
+      ...fields,
     },
-    update: {
-      [dataField]: input.data,
-      nonUniformCups,
-      defectiveCups,
-      defectTypes,
-      affectiveSum: sum || null,
-      rawScore,
-      individualScore,
-    },
+    update: { ...fields },
     select: { id: true },
   });
 

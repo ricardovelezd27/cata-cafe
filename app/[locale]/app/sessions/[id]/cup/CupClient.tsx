@@ -35,8 +35,29 @@ import {
   CanvasFooter,
   type ModuleItem,
 } from "@/components/ui";
+import { useConnectivity } from "@/hooks/useConnectivity";
+import { useOfflineSync } from "@/hooks/useOfflineSync";
+import { OfflineBanner } from "@/components/offline/OfflineBanner";
+import { SyncConflictModal } from "@/components/offline/SyncConflictModal";
+import {
+  mergeModuleData,
+  setModuleStatus,
+  cacheProps,
+} from "@/lib/offline/store";
+import type { ModuleKey } from "@/lib/offline/types";
 
 type Data = Record<string, unknown>;
+
+// The five Sample fields that map to persistable evaluation modules.
+const MODULE_KEYS = new Set<ModuleKey>([
+  "descriptive",
+  "affective",
+  "combined",
+  "physical",
+  "extrinsic",
+]);
+const isModuleKey = (key: PropertyKey): key is ModuleKey =>
+  MODULE_KEYS.has(key as ModuleKey);
 
 type Sample = {
   id: string;
@@ -76,6 +97,7 @@ export function CupClient({
   translations,
   userEmail,
   userCountry,
+  userId,
 }: {
   locale: string;
   initialSampleId?: string;
@@ -85,6 +107,7 @@ export function CupClient({
   sessionStatus: string;
   participantCount: number;
   submittedCount: number;
+  userId: string;
   translations: {
     sample: string;
     ofTotal: string;
@@ -116,6 +139,18 @@ export function CupClient({
     copied: string;
     formatLabel: string;
     phaseLabels: Record<string, string>;
+    offline: {
+      bannerOffline: string;
+      bannerReconnecting: string;
+      bannerSynced: string;
+      bannerSyncFailed: string;
+      retrySync: string;
+      submitBlocked: string;
+      conflictTitle: string;
+      conflictBody: string;
+      conflictKeep: string;
+      conflictReplace: string;
+    };
   };
   userEmail?: string;
   userCountry?: string;
@@ -158,9 +193,75 @@ export function CupClient({
     data: Data;
   } | null>(null);
 
+  // ─── Offline support ──────────────────────────────────────────
+  const { online } = useConnectivity();
+  const onlineRef = useRef(online);
+  useEffect(() => {
+    onlineRef.current = online;
+  }, [online]);
+  const { syncPhase, conflicts, resolveConflict, retrySync } = useOfflineSync({
+    userId,
+    online,
+  });
+  const [submitBlocked, setSubmitBlocked] = useState(false);
+
+  // Independent 500ms debounce for durable local (IndexedDB) writes, separate
+  // from the 800ms server debounce so neither blocks the other.
+  const localDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const localPendingRef = useRef<{
+    sampleId: string;
+    label: string;
+    key: ModuleKey;
+    data: Data;
+  } | null>(null);
+  const seed = { format: session.format, cupsPerSample: session.cupsPerSample };
+
+  const writeLocal = (
+    sampleId: string,
+    label: string,
+    key: ModuleKey,
+    data: Data,
+  ) =>
+    mergeModuleData(session.id, userId, sampleId, label, key, data, seed);
+
+  // Cache the full props payload on each online mount so an offline hard-refresh
+  // can rebuild this screen from IndexedDB (see cup/error.tsx). Data durability
+  // is independent of this — the evaluation blob is always persisted.
+  useEffect(() => {
+    if (!online) return;
+    void cacheProps(session.id, userId, {
+      locale,
+      initialSampleId,
+      session,
+      isOwner,
+      isGroup,
+      sessionStatus,
+      participantCount,
+      submittedCount: initialSubmittedCount,
+      translations,
+      userEmail,
+      userCountry,
+      userId,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [online]);
+
+  // Best-effort flush of the in-flight local edit before the tab unloads.
+  // IndexedDB writes can't be awaited here; the 500ms debounce keeps the
+  // unsaved window tiny.
+  useEffect(() => {
+    const handler = () => {
+      const p = localPendingRef.current;
+      if (p) void writeLocal(p.sampleId, p.label, p.key, p.data);
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.id, userId]);
+
   // ─── Realtime subscription for group sessions ─────────────────
   useEffect(() => {
-    if (!isGroup) return;
+    if (!isGroup || !online) return;
 
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -190,14 +291,26 @@ export function CupClient({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [isGroup, session.id, session.samples]);
+  }, [isGroup, online, session.id, session.samples]);
 
   // ─── Save plumbing ────────────────────────────────────────────
+  const labelFor = (sampleId: string) =>
+    samples.find((s) => s.id === sampleId)?.label ?? "";
+
   const flushSave = async (
     sampleId: string,
     key: keyof Sample,
     data: Data
   ) => {
+    if (!isModuleKey(key)) return;
+    const mk = key as ModuleKey;
+
+    // Offline → persist locally as pending and stop. Sync-on-reconnect replays.
+    if (!onlineRef.current) {
+      await writeLocal(sampleId, labelFor(sampleId), mk, data);
+      return;
+    }
+
     try {
       if (key === "descriptive" || key === "affective" || key === "combined") {
         await upsertEvaluation({
@@ -211,12 +324,26 @@ export function CupClient({
       } else if (key === "physical") {
         await upsertPhysical({ sessionSampleId: sampleId, data });
       }
+      // Server write landed — clear any local pending flag for this module.
+      await setModuleStatus(session.id, userId, sampleId, mk, "synced");
     } catch {
-      // best effort
+      // Network/server failure → fall back to a durable local pending write so
+      // the edit survives and is replayed on the next reconnect.
+      await writeLocal(sampleId, labelFor(sampleId), mk, data);
     }
   };
 
   const flushPending = async () => {
+    // Flush the local debounce first so navigation never leaves a stale blob.
+    if (localDebounceRef.current) {
+      clearTimeout(localDebounceRef.current);
+      localDebounceRef.current = null;
+    }
+    if (localPendingRef.current) {
+      const p = localPendingRef.current;
+      localPendingRef.current = null;
+      await writeLocal(p.sampleId, p.label, p.key, p.data);
+    }
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
       debounceRef.current = null;
@@ -226,6 +353,22 @@ export function CupClient({
       pendingSaveRef.current = null;
       await flushSave(pending.sampleId, pending.key, pending.data);
     }
+  };
+
+  const scheduleLocalSave = (
+    sampleId: string,
+    label: string,
+    key: keyof Sample,
+    data: Data
+  ) => {
+    if (!isModuleKey(key)) return;
+    if (localDebounceRef.current) clearTimeout(localDebounceRef.current);
+    localPendingRef.current = { sampleId, label, key: key as ModuleKey, data };
+    localDebounceRef.current = setTimeout(() => {
+      const p = localPendingRef.current;
+      if (p) void writeLocal(p.sampleId, p.label, p.key, p.data);
+      localPendingRef.current = null;
+    }, 500);
   };
 
   const persist = (sampleId: string, key: keyof Sample, data: Data) => {
@@ -255,10 +398,12 @@ export function CupClient({
   };
 
   const setCurrentData = (key: keyof Sample, data: Data) => {
+    const sample = samples[sampleIdx];
     setSamples((prev) =>
       prev.map((s, i) => (i === sampleIdx ? { ...s, [key]: data } : s))
     );
-    scheduleAutoSave(samples[sampleIdx].id, key, data);
+    scheduleAutoSave(sample.id, key, data);
+    scheduleLocalSave(sample.id, sample.label, key, data);
   };
 
   // ─── Navigation ───────────────────────────────────────────────
@@ -319,6 +464,14 @@ export function CupClient({
   };
 
   const handleGoToResults = async () => {
+    // Final submit + results require connectivity. Offline, we keep the drafts
+    // saved locally (they sync on reconnect) and surface a notice instead of
+    // queuing an irreversible submit the user can't verify.
+    if (!onlineRef.current) {
+      await flushPending();
+      setSubmitBlocked(true);
+      return;
+    }
     setIsGoingToResults(true);
     try {
       await flushPending();
@@ -638,6 +791,39 @@ export function CupClient({
       mobileTitle={session.name}
       saveStatus={saveStatus}
     >
+      <OfflineBanner
+        online={online}
+        syncPhase={syncPhase}
+        onRetry={retrySync}
+        translations={translations.offline}
+      />
+      {submitBlocked && !online && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-md border border-amber-warm/40 bg-amber-warm/10 font-sans text-sm text-amber-warm"
+        >
+          <span className="flex-1">{translations.offline.submitBlocked}</span>
+          <button
+            type="button"
+            onClick={() => setSubmitBlocked(false)}
+            aria-label="×"
+            className="shrink-0 font-semibold hover:opacity-80"
+          >
+            ×
+          </button>
+        </div>
+      )}
+      <SyncConflictModal
+        conflicts={conflicts}
+        onResolve={resolveConflict}
+        translations={{
+          conflictTitle: translations.offline.conflictTitle,
+          conflictBody: translations.offline.conflictBody,
+          conflictKeep: translations.offline.conflictKeep,
+          conflictReplace: translations.offline.conflictReplace,
+        }}
+      />
       <div key={`${activeTab}-${currentStep}-${current.id}`}>
         {activeTab === "cupping" && session.format === "descriptive" && (
           <DescriptiveForm

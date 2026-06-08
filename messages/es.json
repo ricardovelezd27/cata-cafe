@@ -255,5 +255,20 @@
     "roastLevel": "Nivel de tueste",
     "certifications": "Certificaciones",
     "tastingHistory": "Historial de catas"
+  },
+  "offline": {
+    "bannerOffline": "Sin conexión. Tus evaluaciones se guardan localmente.",
+    "bannerReconnecting": "Conexión restablecida. Sincronizando tus evaluaciones…",
+    "bannerSynced": "Tus evaluaciones se han sincronizado.",
+    "bannerSyncFailed": "No se pudieron sincronizar algunas evaluaciones. Se reintentará automáticamente.",
+    "retrySync": "Reintentar sincronización",
+    "firstLoadErrorTitle": "Necesitas conexión para cargar esta sesión por primera vez.",
+    "firstLoadErrorRetry": "Reintentar",
+    "submitBlocked": "Necesitas conexión para enviar y ver los resultados. Tus evaluaciones están guardadas y se sincronizarán automáticamente.",
+    "conflictTitle": "Evaluación ya enviada",
+    "conflictBody": "Tus resultados de la muestra {sample} ya se enviaron desde otro dispositivo. ¿Quieres reemplazarlos con esta versión?",
+    "conflictKeep": "Mantener versión enviada",
+    "conflictReplace": "Reemplazar con esta versión",
+    "partialSyncNotice": "Mostrando resultados de {included} de {total} participantes. {pending} aún no han sincronizado."
   }
 }

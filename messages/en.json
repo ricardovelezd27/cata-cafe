@@ -255,5 +255,20 @@
     "roastLevel": "Roast level",
     "certifications": "Certifications",
     "tastingHistory": "Tasting history"
+  },
+  "offline": {
+    "bannerOffline": "You're offline. Your evaluations are being saved locally.",
+    "bannerReconnecting": "Back online. Syncing your evaluations…",
+    "bannerSynced": "Your evaluations have been synced.",
+    "bannerSyncFailed": "Some evaluations couldn't be synced. We'll retry automatically.",
+    "retrySync": "Retry sync",
+    "firstLoadErrorTitle": "You need internet to load this session for the first time.",
+    "firstLoadErrorRetry": "Retry",
+    "submitBlocked": "You need a connection to submit and view results. Your evaluations are saved and will sync automatically.",
+    "conflictTitle": "Already submitted",
+    "conflictBody": "Your results for sample {sample} were already submitted from another device. Do you want to replace them with this version?",
+    "conflictKeep": "Keep submitted version",
+    "conflictReplace": "Replace with this version",
+    "partialSyncNotice": "Showing results for {included} of {total} participants. {pending} have not yet synced."
   }
 }
