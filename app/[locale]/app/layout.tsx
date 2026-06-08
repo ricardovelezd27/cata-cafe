@@ -38,7 +38,7 @@ export default async function AppLayout({
       <Sidebar locale={locale} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <TopBar locale={locale} />
-        <main className="flex-1 overflow-y-auto bg-[#FDFBF7] p-4 lg:p-6 pb-20 lg:pb-6">
+        <main className="relative flex-1 overflow-y-auto bg-[#FDFBF7] p-4 lg:p-6 pb-20 lg:pb-6">
           {children}
         </main>
         <BottomNav locale={locale} className="lg:hidden" />

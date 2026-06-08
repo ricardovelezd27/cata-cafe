@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { collectDescriptors, resolveDescriptor, ALL_DESC_KEYS } from "@/lib/descriptors";
+import { collectDescriptors, resolveDescriptor, DESCRIPTOR_STAGES } from "@/lib/descriptors";
 import { ResultsClient } from "./ResultsClient";
 
 export default async function ResultsPage({
@@ -88,15 +88,16 @@ export default async function ResultsPage({
   };
   let participantResults: ParticipantResult[] | null = null;
 
-  // Anonymous, per-sample descriptor frequency — counts only, no identities.
-  // Visible to all participants once group results are viewable.
-  type SampleDescriptorFreq = {
+  // Anonymous, per-sample, per-stage descriptor frequency — counts only, no
+  // identities. Visible to all participants once group results are viewable.
+  type RankedDescriptor = { id: string; label: string; color: string; count: number };
+  type SampleStageFreq = {
     sampleId: string;
     label: string;
     totalEvaluators: number;
-    descriptors: { id: string; label: string; color: string; count: number }[];
+    stages: Record<string, RankedDescriptor[]>;
   };
-  let descriptorFrequency: SampleDescriptorFreq[] | null = null;
+  let descriptorFrequency: SampleStageFreq[] | null = null;
 
   if (canViewGroup && session.isGroup) {
     const evals = await prisma.evaluation.findMany({
@@ -158,12 +159,15 @@ export default async function ResultsPage({
             ? (ev.descriptiveData as Record<string, unknown>)
             : null;
 
+      // perSample[sampleId] = { total, stageCounts[stageId] = Map<descriptorId, count> }
       const perSample = new Map<
         string,
-        { total: number; counts: Map<string, number> }
+        { total: number; stageCounts: Map<string, Map<string, number>> }
       >();
       for (const s of session.samples) {
-        perSample.set(s.id, { total: 0, counts: new Map() });
+        const stageCounts = new Map<string, Map<string, number>>();
+        for (const stage of DESCRIPTOR_STAGES) stageCounts.set(stage.id, new Map());
+        perSample.set(s.id, { total: 0, stageCounts });
       }
       for (const ev of evals) {
         const entry = perSample.get(ev.sessionSampleId);
@@ -171,33 +175,34 @@ export default async function ResultsPage({
         const blob = blobFor(ev);
         if (!blob) continue;
         entry.total += 1;
-        for (const did of collectDescriptors(blob, ALL_DESC_KEYS)) {
-          entry.counts.set(did, (entry.counts.get(did) ?? 0) + 1);
+        for (const stage of DESCRIPTOR_STAGES) {
+          const counts = entry.stageCounts.get(stage.id)!;
+          for (const did of collectDescriptors(blob, [stage.descKey])) {
+            counts.set(did, (counts.get(did) ?? 0) + 1);
+          }
         }
       }
 
       descriptorFrequency = session.samples.map((s) => {
         const entry = perSample.get(s.id)!;
-        const descriptors = [...entry.counts.entries()]
-          .filter(([, count]) => count >= 2)
-          .map(([did, count]) => {
-            const info = resolveDescriptor(did);
-            return info
-              ? { id: did, label: info.label, color: info.color, count }
-              : null;
-          })
-          .filter(
-            (
-              d
-            ): d is { id: string; label: string; color: string; count: number } =>
-              d !== null
-          )
-          .sort((a, b) => b.count - a.count);
+        const stages: Record<string, RankedDescriptor[]> = {};
+        for (const stage of DESCRIPTOR_STAGES) {
+          stages[stage.id] = [...entry.stageCounts.get(stage.id)!.entries()]
+            .filter(([, count]) => count >= 2)
+            .map(([did, count]) => {
+              const info = resolveDescriptor(did);
+              return info
+                ? { id: did, label: info.label, color: info.color, count }
+                : null;
+            })
+            .filter((d): d is RankedDescriptor => d !== null)
+            .sort((a, b) => b.count - a.count);
+        }
         return {
           sampleId: s.id,
           label: s.label,
           totalEvaluators: entry.total,
-          descriptors,
+          stages,
         };
       });
     }
@@ -205,6 +210,14 @@ export default async function ResultsPage({
 
   const tCommunity = await getTranslations("community");
   const tg = await getTranslations("group");
+  const tAttr = await getTranslations("attributes");
+  const tDesc = await getTranslations("descriptors");
+
+  // Stage label map (es/en) keyed by stage id, for the descriptor subtabs.
+  const stageLabels: Record<string, string> = {};
+  for (const stage of DESCRIPTOR_STAGES) {
+    stageLabels[stage.id] = tAttr(stage.attrId);
+  }
 
   const dateStr = session.date.toLocaleDateString(locale === "es" ? "es-CO" : "en-US", {
     year: "numeric",
@@ -221,6 +234,7 @@ export default async function ResultsPage({
       canViewGroup={canViewGroup}
       participants={participantResults}
       descriptorFrequency={descriptorFrequency}
+      stageLabels={stageLabels}
       session={{
         id: session.id,
         name: session.name,
@@ -268,6 +282,11 @@ export default async function ResultsPage({
         noGroupData: tCommunity("noGroupData"),
         reveal: tg("reveal"),
         revealed: tg("revealed"),
+        descViewAll: tDesc("viewAll"),
+        descOf: tDesc("of"),
+        descParticipants: tDesc("participants"),
+        descEmptyStage: tDesc("emptyStage"),
+        descEmptyAll: tDesc("emptyAll"),
       }}
     />
   );

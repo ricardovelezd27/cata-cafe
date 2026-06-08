@@ -9,7 +9,7 @@ import { FlavorCloud } from "@/components/results/FlavorCloud";
 import { MyResultsSummary } from "@/components/results/MyResultsSummary";
 import {
   DescriptorFrequency,
-  type SampleDescriptorFreq,
+  type SampleStageFreq,
 } from "@/components/results/DescriptorFrequency";
 import {
   IndividualResultsPanel,
@@ -63,6 +63,7 @@ export function ResultsClient({
   canViewGroup,
   participants,
   descriptorFrequency,
+  stageLabels,
   translations,
 }: {
   locale: string;
@@ -79,7 +80,8 @@ export function ResultsClient({
   sessionStatus: string;
   canViewGroup: boolean;
   participants?: ParticipantResult[] | null;
-  descriptorFrequency?: SampleDescriptorFreq[] | null;
+  descriptorFrequency?: SampleStageFreq[] | null;
+  stageLabels?: Record<string, string>;
   translations: {
     myResults: string;
     groupResults: string;
@@ -92,6 +94,11 @@ export function ResultsClient({
     noGroupData: string;
     reveal: string;
     revealed: string;
+    descViewAll: string;
+    descOf: string;
+    descParticipants: string;
+    descEmptyStage: string;
+    descEmptyAll: string;
   };
 }) {
   const router = useRouter();
@@ -161,12 +168,12 @@ export function ResultsClient({
 
   return (
     <div
-      className="-m-4 -mb-20 lg:-m-6 flex flex-col"
-      style={{ minHeight: "100%", background: "#FDFBF7", color: "#5C4A32" }}
+      className="absolute inset-0 bottom-14 lg:bottom-0 flex flex-col"
+      style={{ background: "#FDFBF7", color: "#5C4A32" }}
     >
-      {/* Sticky header — light themed */}
+      {/* Docked header */}
       <div
-        className="sticky top-0 z-[100]"
+        className="shrink-0 z-[1]"
         style={{ background: "#FDFBF7", borderBottom: "1px solid #E8E0D0" }}
       >
         {/* Title row */}
@@ -285,7 +292,8 @@ export function ResultsClient({
         </div>
       </div>
 
-      {/* Main content */}
+      {/* Scrollable content region — header/footer dock outside it */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
       {effectiveDisplayView === "individual" && canViewIndividual ? (
         <div className="p-4 lg:p-6">
           <IndividualResultsPanel
@@ -299,7 +307,14 @@ export function ResultsClient({
         <div className="p-4 lg:p-6">
           <DescriptorFrequency
             samples={descriptorFrequency!}
-            locale={locale}
+            stageLabels={stageLabels ?? {}}
+            t={{
+              viewAll: translations.descViewAll,
+              of: translations.descOf,
+              participants: translations.descParticipants,
+              emptyStage: translations.descEmptyStage,
+              emptyAll: translations.descEmptyAll,
+            }}
           />
         </div>
       ) : effectiveDisplayView === "summary" ? (
@@ -393,13 +408,12 @@ export function ResultsClient({
           ))}
         </div>
       )}
+      </div>
 
-      {/* Print CTA — sticky footer */}
+      {/* Print CTA — docked footer */}
       <div
+        className="shrink-0"
         style={{
-          position: "sticky",
-          bottom: 0,
-          zIndex: 99,
           background: "#FDFBF7",
           borderTop: "1px solid #E8E0D0",
           padding: "12px 16px",

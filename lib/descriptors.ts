@@ -21,6 +21,24 @@ export const ALL_DESC_KEYS = [
   "sensacion_desc",
 ] as const;
 
+/**
+ * The 7 descriptor-bearing cupping stages, in evaluation order. Single source
+ * shared by the server aggregation and the client subtabs:
+ * - `descKey`  — the JSON array key holding that stage's selected descriptor ids
+ * - `attrId`   — the i18n `attributes.*` key for the stage's display label (es/en)
+ */
+export const DESCRIPTOR_STAGES = [
+  { id: "fragancia",      descKey: "fragancia_desc",      attrId: "fragancia_af" },
+  { id: "aroma",          descKey: "aroma_desc",          attrId: "aroma_af" },
+  { id: "sabor",          descKey: "sabor_desc",          attrId: "sabor_af" },
+  { id: "sabor_residual", descKey: "sabor_residual_desc", attrId: "sabor_residual_af" },
+  { id: "acidez",         descKey: "acidez_desc",         attrId: "acidez_af" },
+  { id: "dulzor",         descKey: "dulzor_desc",         attrId: "dulzor_af" },
+  { id: "sensacion",      descKey: "sensacion_desc",      attrId: "sensacion_af" },
+] as const;
+
+export type DescriptorStageId = (typeof DESCRIPTOR_STAGES)[number]["id"];
+
 type CATAFamily = {
   id: string;
   label: string;

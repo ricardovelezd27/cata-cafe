@@ -146,6 +146,13 @@
     "sensacion_af": "Mouthfeel",
     "impresion_global": "Overall"
   },
+  "descriptors": {
+    "viewAll": "View all",
+    "of": "of",
+    "participants": "participants",
+    "emptyStage": "No descriptor with 2 or more selections in this stage.",
+    "emptyAll": "No descriptors selected by 2 or more participants yet."
+  },
   "scale": {
     "first": "First impression",
     "final": "Final"
