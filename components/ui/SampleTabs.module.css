@@ -102,12 +102,24 @@
   flex-shrink: 0;
 }
 
+.scrollerH {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.scrollerH::-webkit-scrollbar {
+  display: none;
+}
+
 .listH {
   display: flex;
   align-items: stretch;
   gap: 4px;
   margin: 0;
   padding: 0;
+  width: fit-content;
   list-style: none;
 }
 

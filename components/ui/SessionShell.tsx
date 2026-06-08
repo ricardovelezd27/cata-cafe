@@ -7,8 +7,8 @@ import styles from "./SessionShell.module.css";
 interface SessionShellProps {
   /** Identity block: session name, format pill, etc. Rendered at top of sidebar. */
   identity: ReactNode;
-  /** Primary nav (e.g. SampleTabs). */
-  primaryNav: ReactNode;
+  /** Primary nav (e.g. SampleTabs). Optional — omit when nav lives elsewhere. */
+  primaryNav?: ReactNode;
   /** Secondary nav (e.g. ModuleSwitcher). */
   secondaryNav: ReactNode;
   /** Optional owner-only block (e.g. MasterControls). */
@@ -58,7 +58,9 @@ export function SessionShell({
         <div className={styles.identity}>{identity}</div>
 
         <div className={styles.navStack}>
-          <div className={styles.primaryNavSlot}>{primaryNav}</div>
+          {primaryNav && (
+            <div className={styles.primaryNavSlot}>{primaryNav}</div>
+          )}
           {secondaryNav}
         </div>
 

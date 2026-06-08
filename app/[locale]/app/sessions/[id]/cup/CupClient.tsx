@@ -471,20 +471,7 @@ export function CupClient({
     </>
   );
 
-  const primaryNav = (
-    <SampleTabs
-      header={translations.samplesHeader}
-      samples={samples.map((s) => ({
-        id: s.id,
-        label: s.label,
-        filled: hasStepFill(s, currentStep),
-      }))}
-      activeIndex={sampleIdx}
-      onSelect={handleSampleSelect}
-    />
-  );
-
-  const desktopSampleTabs = (
+  const sampleTabsBar = (
     <SampleTabs
       orientation="horizontal"
       header={translations.samplesHeader}
@@ -496,6 +483,16 @@ export function CupClient({
       activeIndex={sampleIdx}
       onSelect={handleSampleSelect}
     />
+  );
+
+  // Mobile/tablet (<lg): horizontal sample bar + position counter, under the phases.
+  const mobileSampleBar = (
+    <div className="lg:hidden flex items-center gap-3 px-4 py-1.5 border-t border-brown-light bg-bg">
+      <div className="min-w-0 flex-1">{sampleTabsBar}</div>
+      <span className="shrink-0 font-mono text-[10px] text-brown-mid tabular-nums">
+        {sampleIdx + 1}/{samples.length}
+      </span>
+    </div>
   );
 
   const secondaryNav = (
@@ -566,7 +563,7 @@ export function CupClient({
               align="start"
             />
             <div className="border-t border-brown-light pt-1.5">
-              {desktopSampleTabs}
+              {sampleTabsBar}
             </div>
           </div>
           <div className="flex flex-col items-end justify-center gap-0.5 text-right shrink-0 pt-0.5">
@@ -588,27 +585,18 @@ export function CupClient({
             )}
           </div>
         </div>
-        {/* Mobile/tablet: phase stepper */}
+        {/* Mobile/tablet: phase stepper + sample bar */}
         <div className="lg:hidden">{phaseStepper}</div>
-        {/* Mobile: current-sample info bar */}
-        <div className="sm:hidden flex items-center gap-2 px-4 py-1.5 border-t border-brown-light bg-bg">
-          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-brown-mid">
-            {translations.sample}
-          </span>
-          <span className="font-display text-sm font-semibold text-green-dark">
-            {current.label}
-          </span>
-          <span className="font-mono text-[10px] text-brown-mid">
-            {sampleIdx + 1}/{samples.length}
-          </span>
-        </div>
+        {mobileSampleBar}
       </>
     ) : (
       <>
         {/* Desktop: horizontal sample tabs */}
         <div className="hidden lg:block px-6 py-1.5 border-b border-brown-light">
-          {desktopSampleTabs}
+          {sampleTabsBar}
         </div>
+        {/* Mobile/tablet: horizontal sample bar */}
+        {mobileSampleBar}
         <div className="flex items-center gap-3 px-6 py-3">
           <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-brown-mid">
             {activeTab === "physical"
@@ -642,7 +630,6 @@ export function CupClient({
   return (
     <SessionShell
       identity={identity}
-      primaryNav={primaryNav}
       secondaryNav={secondaryNav}
       ownerControls={ownerControls}
       exitLink={exitLink}
