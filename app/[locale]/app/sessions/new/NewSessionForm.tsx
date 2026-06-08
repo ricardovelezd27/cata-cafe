@@ -43,6 +43,7 @@ type Translations = {
   sampleCoffee: string;
   // samples
   samples: string;
+  samplesHelper: string;
   addSample: string;
   removeSample: string;
   sampleLabel: string;
@@ -98,8 +99,6 @@ export function NewSessionForm({ locale, t }: { locale: string; t: Translations 
   // Sample entries (each maps to a coffee by index)
   const [samples, setSamples] = useState<SampleEntry[]>([
     { label: `Muestra ${sampleLetter(0)}`, coffeeIdx: 0 },
-    { label: `Muestra ${sampleLetter(1)}`, coffeeIdx: 0 },
-    { label: `Muestra ${sampleLetter(2)}`, coffeeIdx: 0 },
   ]);
 
   // Group session fields
@@ -419,6 +418,7 @@ export function NewSessionForm({ locale, t }: { locale: string; t: Translations 
       {/* ── Samples ──────────────────────────────────────────────────────────── */}
       <div>
         <label className={labelCls}>{t.samples}</label>
+        <p className="text-xs text-brown-mid mb-2">{t.samplesHelper}</p>
         <div className="space-y-2">
           {samples.map((s, i) => (
             <div key={i} className="flex gap-2 items-center">

@@ -40,6 +40,7 @@ export default async function NewSessionPage({
     sampleCoffee: t("sampleCoffee"),
     // samples
     samples: t("samples"),
+    samplesHelper: t("samplesHelper"),
     addSample: t("addSample"),
     removeSample: t("removeSample"),
     sampleLabel: t("sampleLabel"),
