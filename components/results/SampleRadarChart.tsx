@@ -57,6 +57,7 @@ type AggregateScoreData = {
   communityScore: number | null;
   avgRawScore: number | null;
   participantCount: number;
+  submittedCount: number;
   totalCups: number;
   totalNonUniform: number;
   totalDefective: number;
@@ -247,8 +248,9 @@ export function SampleRadarChart({
             </span>
           </span>
           <span style={{ color: "#8B7355" }}>
-            {sample.aggregateScore.participantCount} evaluador
-            {sample.aggregateScore.participantCount !== 1 ? "es" : ""}
+            {sample.aggregateScore.participantCount} de{" "}
+            {sample.aggregateScore.submittedCount} evaluadores incluidos en el
+            promedio
           </span>
         </div>
       )}

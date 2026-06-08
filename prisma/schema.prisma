@@ -187,6 +187,7 @@ model AggregateScore {
   sessionSampleId   String        @unique
   sessionSample     SessionSample @relation(fields: [sessionSampleId], references: [id], onDelete: Cascade)
   participantCount  Int           @default(0)
+  submittedCount    Int           @default(0)
   cupsPerSample     Int           @default(0)
   totalCups         Int           @default(0)
   avgRawScore       Float?

@@ -106,6 +106,104 @@ export function calcRawScore(data: EvalData): number {
   return 0.65625 * sum + 52.75;
 }
 
+// An evaluation counts toward the group average only when it is COMPLETE:
+// every one of the 8 affective attributes has a real value (> 0). Because
+// calcAffectiveSum() substitutes a neutral 5 for missing/zero attributes, a
+// submitted-but-empty (or partially filled) evaluation otherwise gets a real
+// rawScore that would skew the community average. This is the single definition
+// of "complete" — referenced by the group aggregate and its verification trace.
+export function isAffectiveComplete(data: EvalData): boolean {
+  for (const attr of AFFECTIVE_ATTRIBUTES) {
+    const v = Number(data[`${attr.id}_final`] ?? data[attr.id] ?? 0);
+    if (!Number.isFinite(v) || v <= 0) return false;
+  }
+  return true;
+}
+
+export interface GroupEvalInput {
+  data: EvalData;
+  nonUniformCups?: boolean[];
+  defectiveCups?: boolean[];
+}
+
+export interface GroupAggregate {
+  submitted: number;
+  included: number;
+  avgRawScore: number | null;
+  communityScore: number | null;
+  totalNonUniform: number;
+  totalDefective: number;
+  totalCups: number;
+  attrAverages: Record<string, number>;
+}
+
+// Recompute a sample's group/community aggregate from the raw submitted
+// evaluations, INCLUDING ONLY complete ones (see isAffectiveComplete). Returns
+// both the included count (denominator of the average) and the submitted count
+// so the UI can show "X of Y participants included in average". Callers must
+// pre-filter master-excluded cuppers before passing evals in.
+export function computeGroupAggregate(
+  evals: GroupEvalInput[],
+  cupsPerSample: number,
+): GroupAggregate {
+  const submitted = evals.length;
+  const complete = evals.filter((e) => isAffectiveComplete(e.data));
+  const included = complete.length;
+
+  if (included === 0) {
+    return {
+      submitted,
+      included: 0,
+      avgRawScore: null,
+      communityScore: null,
+      totalNonUniform: 0,
+      totalDefective: 0,
+      totalCups: 0,
+      attrAverages: {},
+    };
+  }
+
+  const avgRawScore =
+    complete.reduce((acc, e) => acc + calcRawScore(e.data), 0) / included;
+
+  let totalNonUniform = 0;
+  let totalDefective = 0;
+  if (cupsPerSample >= 5) {
+    for (const e of complete) {
+      totalNonUniform += (e.nonUniformCups ?? []).filter(Boolean).length;
+      totalDefective += (e.defectiveCups ?? []).filter(Boolean).length;
+    }
+  }
+  const totalCups = cupsPerSample * included;
+
+  const communityScore = calcCommunityScore({
+    avgRawScore,
+    totalNonUniform,
+    totalDefective,
+    totalCups,
+  });
+
+  const attrAverages: Record<string, number> = {};
+  for (const attr of AFFECTIVE_ATTRIBUTES) {
+    let sum = 0;
+    for (const e of complete) {
+      sum += Number(e.data[`${attr.id}_final`] ?? e.data[attr.id] ?? 0);
+    }
+    attrAverages[attr.label] = Math.round((sum / included) * 100) / 100;
+  }
+
+  return {
+    submitted,
+    included,
+    avgRawScore: Math.round(avgRawScore * 100) / 100,
+    communityScore,
+    totalNonUniform,
+    totalDefective,
+    totalCups,
+    attrAverages,
+  };
+}
+
 export function calcIndividualScore(
   data: EvalData,
   cupsPerSample: number,

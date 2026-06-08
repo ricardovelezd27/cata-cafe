@@ -7,6 +7,7 @@ type AggregateScoreData = {
   communityScore: number | null;
   avgRawScore: number | null;
   participantCount: number;
+  submittedCount: number;
   totalCups: number;
   totalNonUniform: number;
   totalDefective: number;

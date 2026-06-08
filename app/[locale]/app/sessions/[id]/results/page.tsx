@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { collectDescriptors, resolveDescriptor, DESCRIPTOR_STAGES } from "@/lib/descriptors";
+import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
 import { ResultsClient } from "./ResultsClient";
 
 export default async function ResultsPage({
@@ -108,6 +109,12 @@ export default async function ResultsPage({
   };
   let descriptorFrequency: SampleStageFreq[] | null = null;
 
+  // Per-sample group aggregate recomputed in TS from the raw evaluations,
+  // INCLUDING ONLY complete ones. Overrides the trigger-stored AggregateScore so
+  // incomplete/empty submissions don't skew the community average. Keyed by
+  // sessionSampleId.
+  let groupAggBySample: Map<string, GroupAggregate> | null = null;
+
   if (canViewGroup && session.isGroup) {
     const evals = await prisma.evaluation.findMany({
       where: { sessionSample: { sessionId: id }, isDraft: false },
@@ -117,9 +124,39 @@ export default async function ResultsPage({
         descriptiveData: true,
         affectiveData: true,
         combinedData: true,
+        nonUniformCups: true,
+        defectiveCups: true,
         cupper: { select: { id: true, displayName: true } },
       },
     });
+
+    // Recompute each sample's community aggregate, excluding master-excluded
+    // cuppers and (inside computeGroupAggregate) incomplete evaluations.
+    groupAggBySample = new Map<string, GroupAggregate>();
+    {
+      const bySample = new Map<string, (typeof evals)[number][]>();
+      for (const ev of evals) {
+        if (excludedUserIds.has(ev.cupperId)) continue;
+        const list = bySample.get(ev.sessionSampleId);
+        if (list) list.push(ev);
+        else bySample.set(ev.sessionSampleId, [ev]);
+      }
+      for (const [sampleId, list] of bySample) {
+        groupAggBySample.set(
+          sampleId,
+          computeGroupAggregate(
+            list.map((ev) => ({
+              data: (session.format === "combined"
+                ? ev.combinedData
+                : ev.affectiveData) as Record<string, unknown>,
+              nonUniformCups: ev.nonUniformCups,
+              defectiveCups: ev.defectiveCups,
+            })),
+            session.cupsPerSample,
+          ),
+        );
+      }
+    }
 
     // ---- Master-only raw participant matrix (Individual view) ----
     if (isOwner) {
@@ -255,6 +292,43 @@ export default async function ResultsPage({
         samples: session.samples.map((s) => {
           const ev = s.evaluations[0];
           const agg = s.aggregateScore;
+          // Prefer the TS recompute (complete-only, with the real X-of-Y
+          // denominator); fall back to the trigger row only when no recompute
+          // exists (e.g. solo/non-group views).
+          const recomputed = groupAggBySample?.get(s.id);
+          const aggregateScore = recomputed
+            ? {
+                communityScore: recomputed.communityScore,
+                avgRawScore: recomputed.avgRawScore,
+                participantCount: recomputed.included,
+                submittedCount: recomputed.submitted,
+                totalCups: recomputed.totalCups,
+                totalNonUniform: recomputed.totalNonUniform,
+                totalDefective: recomputed.totalDefective,
+                uniformityPenalty:
+                  recomputed.totalCups > 0
+                    ? recomputed.totalNonUniform * (10 / recomputed.totalCups)
+                    : 0,
+                defectPenalty:
+                  recomputed.totalCups > 0
+                    ? recomputed.totalDefective * (30 / recomputed.totalCups)
+                    : 0,
+                attrAverages: recomputed.attrAverages,
+              }
+            : agg
+              ? {
+                  communityScore: agg.communityScore,
+                  avgRawScore: agg.avgRawScore,
+                  participantCount: agg.participantCount,
+                  submittedCount: agg.participantCount,
+                  totalCups: agg.totalCups,
+                  totalNonUniform: agg.totalNonUniform,
+                  totalDefective: agg.totalDefective,
+                  uniformityPenalty: agg.uniformityPenalty,
+                  defectPenalty: agg.defectPenalty,
+                  attrAverages: (agg.attrAverages as Record<string, number>) ?? {},
+                }
+              : null;
           return {
             id: s.id,
             label: s.label,
@@ -265,19 +339,7 @@ export default async function ResultsPage({
             combined: (ev?.combinedData as Record<string, unknown>) ?? {},
             physical: (s.physical?.data as Record<string, unknown>) ?? {},
             extrinsic: (s.extrinsic?.data as Record<string, unknown>) ?? {},
-            aggregateScore: agg
-              ? {
-                  communityScore: agg.communityScore,
-                  avgRawScore: agg.avgRawScore,
-                  participantCount: agg.participantCount,
-                  totalCups: agg.totalCups,
-                  totalNonUniform: agg.totalNonUniform,
-                  totalDefective: agg.totalDefective,
-                  uniformityPenalty: agg.uniformityPenalty,
-                  defectPenalty: agg.defectPenalty,
-                  attrAverages: (agg.attrAverages as Record<string, number>) ?? {},
-                }
-              : null,
+            aggregateScore,
           };
         }),
       }}
