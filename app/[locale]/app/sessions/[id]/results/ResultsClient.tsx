@@ -297,6 +297,7 @@ export function ResultsClient({
       {effectiveDisplayView === "individual" && canViewIndividual ? (
         <div className="p-4 lg:p-6">
           <IndividualResultsPanel
+            sessionId={session.id}
             participants={participants!}
             format={session.format}
             cupsPerSample={session.cupsPerSample}

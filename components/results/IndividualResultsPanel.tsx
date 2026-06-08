@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { calcIndividualScore } from "@/lib/scoring";
+import { setParticipantExclusion } from "@/app/actions/community";
 import { MyResultsSummary } from "./MyResultsSummary";
 
 type SampleResult = {
@@ -17,6 +19,7 @@ type SampleResult = {
 export type ParticipantResult = {
   id: string;
   name: string;
+  excluded: boolean;
   samples: SampleResult[];
 };
 
@@ -28,6 +31,12 @@ const T = {
     legendRed: "≥ 2 DE (posible atípico)",
     selectorLabel: "Ver evaluación de:",
     noScore: "—",
+    manageTitle: "Participantes en el cálculo grupal",
+    manageHint:
+      "Desactiva un catador para excluir sus datos de los promedios, descriptores y gráficos del grupo. Seguirá viendo sus propios resultados.",
+    included: "Incluido",
+    excluded: "Excluido",
+    excludedTag: "(excluido)",
   },
   en: {
     matrixTitle: "CVA score summary",
@@ -36,6 +45,12 @@ const T = {
     legendRed: "≥ 2 SD (possible outlier)",
     selectorLabel: "View evaluation of:",
     noScore: "—",
+    manageTitle: "Participants in the group calculation",
+    manageHint:
+      "Turn a cupper off to exclude their data from group averages, descriptors and charts. They will still see their own results.",
+    included: "Included",
+    excluded: "Excluded",
+    excludedTag: "(excluded)",
   },
 };
 
@@ -75,19 +90,106 @@ function toneStyles(tone: CellTone): React.CSSProperties {
   return { background: "transparent", color: "#5C4A32", fontWeight: 600 };
 }
 
+/* Greyed styling shared by every cell/header of an excluded participant. */
+const excludedCellStyle: React.CSSProperties = {
+  background: "#F5F2EC",
+  color: "#B8AE9C",
+  fontWeight: 600,
+};
+
+/* Compact on/off switch for include/exclude. */
+function ToggleSwitch({
+  on,
+  disabled,
+  onClick,
+  ariaLabel,
+}: {
+  on: boolean;
+  disabled: boolean;
+  onClick: () => void;
+  ariaLabel: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={ariaLabel}
+      disabled={disabled}
+      onClick={onClick}
+      style={{
+        position: "relative",
+        width: 38,
+        height: 22,
+        borderRadius: 9999,
+        border: "none",
+        background: on ? "#3D5A3E" : "#D8CFBE",
+        cursor: disabled ? "default" : "pointer",
+        opacity: disabled ? 0.6 : 1,
+        transition: "background 0.15s",
+        flexShrink: 0,
+        padding: 0,
+      }}
+    >
+      <span
+        style={{
+          position: "absolute",
+          top: 2,
+          left: on ? 18 : 2,
+          width: 18,
+          height: 18,
+          borderRadius: "50%",
+          background: "#fff",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.25)",
+          transition: "left 0.15s",
+        }}
+      />
+    </button>
+  );
+}
+
 export function IndividualResultsPanel({
+  sessionId,
   participants,
   format,
   cupsPerSample,
   locale,
 }: {
+  sessionId: string;
   participants: ParticipantResult[];
   format: string;
   cupsPerSample: number;
   locale: string;
 }) {
   const t = T[locale === "en" ? "en" : "es"];
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [selectedId, setSelectedId] = useState<string>(participants[0]?.id ?? "");
+
+  // Optimistic exclusion: override per id until the server refresh confirms it.
+  const [overrides, setOverrides] = useState<Record<string, boolean>>({});
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
+  const isExcluded = (p: ParticipantResult): boolean => overrides[p.id] ?? p.excluded;
+
+  const toggleExclude = (p: ParticipantResult) => {
+    const next = !isExcluded(p);
+    setOverrides((o) => ({ ...o, [p.id]: next }));
+    setPendingIds((s) => new Set(s).add(p.id));
+    startTransition(async () => {
+      try {
+        await setParticipantExclusion(sessionId, p.id, next);
+        router.refresh();
+      } catch {
+        setOverrides((o) => ({ ...o, [p.id]: !next })); // revert on failure
+      } finally {
+        setPendingIds((s) => {
+          const n = new Set(s);
+          n.delete(p.id);
+          return n;
+        });
+      }
+    });
+  };
 
   const selected =
     participants.find((p) => p.id === selectedId) ?? participants[0] ?? null;
@@ -104,9 +206,12 @@ export function IndividualResultsPanel({
     })
   );
 
-  // Per-row mean + population SD over the numeric values, used for outlier tone.
+  // Per-row mean + population SD over the INCLUDED numeric values only — outlier
+  // detection should reflect the same population the group score uses.
   const rowStats = matrix.map((row) => {
-    const nums = row.filter((v): v is number => v !== null);
+    const nums = row.filter(
+      (v, pi): v is number => v !== null && !isExcluded(participants[pi])
+    );
     if (nums.length < 2) return { mean: 0, sd: 0, count: nums.length };
     const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
     const variance =
@@ -134,12 +239,13 @@ export function IndividualResultsPanel({
     borderBottom: "1px solid #E8E0D0",
   };
 
-  const pillStyle = (active: boolean): React.CSSProperties => ({
+  const pillStyle = (active: boolean, excluded: boolean): React.CSSProperties => ({
     padding: "5px 14px",
     borderRadius: 9999,
     border: active ? "1px solid #3D5A3E" : "1px solid #E8E0D0",
     background: active ? "#3D5A3E" : "transparent",
-    color: active ? "#FFF" : "#8B7355",
+    color: active ? "#FFF" : excluded ? "#B8AE9C" : "#8B7355",
+    textDecoration: excluded ? "line-through" : "none",
     fontSize: 12,
     fontWeight: active ? 700 : 400,
     cursor: "pointer",
@@ -149,6 +255,84 @@ export function IndividualResultsPanel({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* Master control: include/exclude each participant from the group calc */}
+      <div
+        style={{
+          background: "#fff",
+          borderRadius: 12,
+          border: "1px solid #E8E0D0",
+          padding: "14px 16px",
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "'Cormorant Garamond', Georgia, serif",
+            fontSize: 15,
+            fontWeight: 700,
+            color: "#3D5A3E",
+            marginBottom: 4,
+          }}
+        >
+          {t.manageTitle}
+        </div>
+        <div style={{ fontSize: 11, color: "#8B7355", marginBottom: 12, lineHeight: 1.45 }}>
+          {t.manageHint}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          {participants.map((p, i) => {
+            const excluded = isExcluded(p);
+            return (
+              <div
+                key={p.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "9px 0",
+                  borderTop: i === 0 ? "none" : "1px solid #F0EBE0",
+                }}
+              >
+                <span
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: excluded ? "#B8AE9C" : "#5C4A32",
+                    textDecoration: excluded ? "line-through" : "none",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {p.name}
+                  {excluded && (
+                    <span style={{ marginLeft: 6, textDecoration: "none" }}>{t.excludedTag}</span>
+                  )}
+                </span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.04em",
+                    color: excluded ? "#B8AE9C" : "#3D5A3E",
+                  }}
+                >
+                  {excluded ? t.excluded : t.included}
+                </span>
+                <ToggleSwitch
+                  on={!excluded}
+                  disabled={pendingIds.has(p.id) || isPending}
+                  onClick={() => toggleExclude(p)}
+                  ariaLabel={`${excluded ? t.included : t.excluded}: ${p.name}`}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* a) CVA summary matrix */}
       <div
         style={{
@@ -186,11 +370,35 @@ export function IndividualResultsPanel({
                 >
                   {t.sample}
                 </th>
-                {participants.map((p) => (
-                  <th key={p.id} style={thBase}>
-                    {p.name}
-                  </th>
-                ))}
+                {participants.map((p) => {
+                  const excluded = isExcluded(p);
+                  return (
+                    <th
+                      key={p.id}
+                      style={{
+                        ...thBase,
+                        ...(excluded
+                          ? { color: "#B8AE9C", textDecoration: "line-through" }
+                          : null),
+                      }}
+                    >
+                      {p.name}
+                      {excluded && (
+                        <span
+                          style={{
+                            display: "block",
+                            fontSize: 9,
+                            fontWeight: 700,
+                            textDecoration: "none",
+                            color: "#B8AE9C",
+                          }}
+                        >
+                          {t.excludedTag}
+                        </span>
+                      )}
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
@@ -214,7 +422,8 @@ export function IndividualResultsPanel({
                   </td>
                   {participants.map((p, pi) => {
                     const value = matrix[si][pi];
-                    const tone = toneFor(value, si);
+                    const excluded = isExcluded(p);
+                    const tone: CellTone = excluded ? "neutral" : toneFor(value, si);
                     return (
                       <td
                         key={p.id}
@@ -225,7 +434,7 @@ export function IndividualResultsPanel({
                           padding: "8px 10px",
                           borderBottom: "1px solid #F0EBE0",
                           cursor: "pointer",
-                          ...toneStyles(tone),
+                          ...(excluded ? excludedCellStyle : toneStyles(tone)),
                         }}
                       >
                         {value !== null ? value.toFixed(2) : t.noScore}
@@ -278,7 +487,7 @@ export function IndividualResultsPanel({
             <button
               key={p.id}
               onClick={() => setSelectedId(p.id)}
-              style={pillStyle(selected?.id === p.id)}
+              style={pillStyle(selected?.id === p.id, isExcluded(p))}
             >
               {p.name}
             </button>

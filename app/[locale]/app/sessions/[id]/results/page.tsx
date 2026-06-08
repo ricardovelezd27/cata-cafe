@@ -49,7 +49,7 @@ export default async function ResultsPage({
             },
           },
         },
-        participants: { select: { userId: true } },
+        participants: { select: { userId: true, excludedFromResults: true } },
       },
     }),
     prisma.evaluation
@@ -71,11 +71,20 @@ export default async function ResultsPage({
     session.isGroup &&
     (isOwner || session.status === "closed" || allSubmitted || sessionExpired);
 
+  // Participants the master has excluded from group results. Used to (a) flag
+  // excluded cuppers in the Individual view and (b) drop their descriptors from
+  // the anonymous frequency counts. Community/aggregate scores are filtered by
+  // the DB trigger, so no extra work is needed there.
+  const excludedUserIds = new Set(
+    session.participants.filter((p) => p.excludedFromResults).map((p) => p.userId),
+  );
+
   // Master-only: every cupper's submitted evaluation, for the Individual view.
   // Gated by isOwner so non-owners never receive other participants' raw data.
   type ParticipantResult = {
     id: string;
     name: string;
+    excluded: boolean;
     samples: {
       id: string;
       label: string;
@@ -131,6 +140,7 @@ export default async function ResultsPage({
         .map(([cupperId, entry]) => ({
           id: cupperId,
           name: entry.name,
+          excluded: excludedUserIds.has(cupperId),
           samples: session.samples.map((s) => {
             const ev = entry.bySample.get(s.id);
             return {
@@ -170,6 +180,7 @@ export default async function ResultsPage({
         perSample.set(s.id, { total: 0, stageCounts });
       }
       for (const ev of evals) {
+        if (excludedUserIds.has(ev.cupperId)) continue; // master-excluded cupper
         const entry = perSample.get(ev.sessionSampleId);
         if (!entry) continue;
         const blob = blobFor(ev);

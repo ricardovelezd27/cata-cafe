@@ -250,6 +250,49 @@ export async function createInviteToken(
   return { token };
 }
 
+// ─── Exclude / re-include a participant from group results (owner only) ──────
+// Sets session_participants.excludedFromResults, then re-fires the aggregate
+// trigger for every submitted evaluation in the session so community scores,
+// penalties and attrAverages recompute without the excluded cuppers. The
+// trigger only fires on `UPDATE OF "isDraft"`, so a no-op write to that column
+// is enough to re-run it. Descriptor frequency recomputes on the next page load.
+export async function setParticipantExclusion(
+  sessionId: string,
+  participantUserId: string,
+  excluded: boolean,
+) {
+  const user = await requireUser();
+
+  const session = await prisma.cuppingSession.findUnique({
+    where: { id: sessionId },
+    select: { createdBy: true },
+  });
+  if (!session || session.createdBy !== user.id) {
+    throw new Error("not_found_or_forbidden");
+  }
+
+  await prisma.sessionParticipant.update({
+    where: { sessionId_userId: { sessionId, userId: participantUserId } },
+    data: { excludedFromResults: excluded },
+  });
+
+  // Re-fire trg_recompute_aggregate for the whole session. Touching "isDraft"
+  // (even to its current value) satisfies `AFTER UPDATE OF "isDraft"`; the
+  // WHEN (NEW."isDraft" = false) clause keeps it to submitted evaluations.
+  await prisma.$executeRaw`
+    UPDATE evaluations e
+    SET "isDraft" = e."isDraft"
+    FROM session_samples ss
+    WHERE e."sessionSampleId" = ss.id
+      AND ss."sessionId" = ${sessionId}
+      AND e."isDraft" = false
+  `;
+
+  revalidatePath(`/es/app/sessions/${sessionId}/results`);
+  revalidatePath(`/en/app/sessions/${sessionId}/results`);
+  return { ok: true, excluded };
+}
+
 // ─── Recompute attrAverages for all samples in a session (owner only) ────────
 export async function refreshAggregateScores(sessionId: string) {
   const user = await requireUser();

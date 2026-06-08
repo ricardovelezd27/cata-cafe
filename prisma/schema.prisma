@@ -171,6 +171,10 @@ model SessionParticipant {
   userId    String
   user      Profile        @relation(fields: [userId], references: [id], onDelete: Cascade)
   status    String         @default("invited") // "invited" | "joined" | "owner"
+  // Master can exclude a participant's data from group aggregates, descriptor
+  // frequency and charts. Authoritative for the aggregate trigger (see
+  // prisma/sql/rls_and_triggers.sql Phase 4). The participant still sees their own results.
+  excludedFromResults Boolean @default(false) @map("excluded_from_results")
   joinedAt  DateTime       @default(now())
 
   @@id([sessionId, userId])
