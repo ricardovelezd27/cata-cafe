@@ -1,71 +1,997 @@
 {
-  "next-env.d.ts": 1776807107.451124,
-  "next.config.ts": 1776777853.0174363,
-  "prisma.config.ts": 1776777740.6048617,
-  "proxy.ts": 1776789610.6603441,
-  "app\\layout.tsx": 1776789396.1380658,
-  "app\\actions\\auth.ts": 1776789358.1379063,
-  "app\\actions\\profile.ts": 1776789590.3867698,
-  "app\\actions\\sessions.ts": 1776789376.1544447,
-  "app\\auth\\callback\\route.ts": 1776789456.3889778,
-  "app\\generated\\prisma\\browser.ts": 1776789901.1731997,
-  "app\\generated\\prisma\\client.ts": 1776789901.1731997,
-  "app\\generated\\prisma\\commonInputTypes.ts": 1776789901.1731997,
-  "app\\generated\\prisma\\enums.ts": 1776789901.1731997,
-  "app\\generated\\prisma\\models.ts": 1776789901.1751213,
-  "app\\generated\\prisma\\internal\\class.ts": 1776789901.189562,
-  "app\\generated\\prisma\\internal\\prismaNamespace.ts": 1776789901.188552,
-  "app\\generated\\prisma\\internal\\prismaNamespaceBrowser.ts": 1776789901.188552,
-  "app\\generated\\prisma\\models\\Coffee.ts": 1776789901.188552,
-  "app\\generated\\prisma\\models\\CuppingSession.ts": 1776789901.188552,
-  "app\\generated\\prisma\\models\\Evaluation.ts": 1776789901.188552,
-  "app\\generated\\prisma\\models\\ExtrinsicData.ts": 1776789901.188552,
-  "app\\generated\\prisma\\models\\PhysicalEvaluation.ts": 1776789901.188552,
-  "app\\generated\\prisma\\models\\Profile.ts": 1776789901.188552,
-  "app\\generated\\prisma\\models\\SessionSample.ts": 1776789901.188552,
-  "app\\[locale]\\layout.tsx": 1776789412.1907728,
-  "app\\[locale]\\page.tsx": 1776789422.0228326,
-  "app\\[locale]\\app\\layout.tsx": 1776789473.950778,
-  "app\\[locale]\\app\\page.tsx": 1776789485.1812844,
-  "app\\[locale]\\app\\profile\\page.tsx": 1776789571.638905,
-  "app\\[locale]\\app\\profile\\ProfileForm.tsx": 1776789581.913107,
-  "app\\[locale]\\app\\sessions\\page.tsx": 1776789494.1878011,
-  "app\\[locale]\\app\\sessions\\new\\NewSessionForm.tsx": 1776789520.5372322,
-  "app\\[locale]\\app\\sessions\\new\\page.tsx": 1776789502.2780912,
-  "app\\[locale]\\app\\sessions\\[id]\\cup\\CupClient.tsx": 1776806893.226194,
-  "app\\[locale]\\app\\sessions\\[id]\\cup\\page.tsx": 1776806903.703194,
-  "app\\[locale]\\app\\sessions\\[id]\\print\\page.tsx": 1776807055.2005868,
-  "app\\[locale]\\app\\sessions\\[id]\\print\\PrintClient.tsx": 1776807049.8199422,
-  "app\\[locale]\\app\\sessions\\[id]\\results\\page.tsx": 1776806996.8115928,
-  "app\\[locale]\\app\\sessions\\[id]\\results\\ResultsClient.tsx": 1776806990.1549747,
-  "app\\[locale]\\auth\\login\\LoginForm.tsx": 1776789449.252568,
-  "app\\[locale]\\auth\\login\\page.tsx": 1776789438.430403,
-  "components\\cupping\\AffectiveForm.tsx": 1776789248.3065927,
-  "components\\cupping\\AffectiveScale.tsx": 1776806710.2493894,
-  "components\\cupping\\CombinedForm.tsx": 1776789277.0539787,
-  "components\\cupping\\CupCheckboxes.tsx": 1776806732.8426034,
-  "components\\cupping\\DescriptiveForm.tsx": 1776789220.2778401,
-  "components\\cupping\\DescriptorSelector.tsx": 1776806720.5675392,
-  "components\\cupping\\ExtrinsicForm.tsx": 1776806762.8795378,
-  "components\\cupping\\FlavorTreeSelector.tsx": 1776806715.634964,
-  "components\\cupping\\GustosSelector.tsx": 1776806728.9712775,
-  "components\\cupping\\IntensitySlider.tsx": 1776806685.7934134,
-  "components\\cupping\\NotesInput.tsx": 1776806672.2573905,
-  "components\\cupping\\PhysicalEvalForm.tsx": 1776789338.4744244,
-  "components\\cupping\\Section.tsx": 1776806669.245287,
-  "i18n\\request.ts": 1776777840.751313,
-  "i18n\\routing.ts": 1776777835.3656962,
-  "lib\\constants.ts": 1776777934.2564096,
-  "lib\\prisma.ts": 1776789864.1967795,
-  "lib\\scoring.ts": 1776777949.555912,
-  "lib\\supabase\\client.ts": 1776777822.3143146,
-  "lib\\supabase\\server.ts": 1776777827.04919,
-  "AGENTS.md": 1776774061.4453764,
-  "CLAUDE.md": 1776813474.1659672,
-  "README.md": 1776773892.0793526,
-  "public\\file.svg": 1776773892.1283529,
-  "public\\globe.svg": 1776773892.1423542,
-  "public\\next.svg": 1776773892.1553566,
-  "public\\vercel.svg": 1776773892.167865,
-  "public\\window.svg": 1776773892.1778646
+  "next-env.d.ts": {
+    "mtime": 1776807107.451124,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "next.config.ts": {
+    "mtime": 1776777853.0174363,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "prisma.config.ts": {
+    "mtime": 1776777740.6048617,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "proxy.ts": {
+    "mtime": 1776789610.6603441,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\layout.tsx": {
+    "mtime": 1776789396.1380658,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\actions\\auth.ts": {
+    "mtime": 1776789358.1379063,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\actions\\profile.ts": {
+    "mtime": 1776789590.3867698,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\actions\\sessions.ts": {
+    "mtime": 1776789376.1544447,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\auth\\callback\\route.ts": {
+    "mtime": 1776789456.3889778,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\generated\\prisma\\browser.ts": {
+    "mtime": 1776789901.1731997,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\generated\\prisma\\client.ts": {
+    "mtime": 1776789901.1731997,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\generated\\prisma\\commonInputTypes.ts": {
+    "mtime": 1776789901.1731997,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\generated\\prisma\\enums.ts": {
+    "mtime": 1776789901.1731997,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\generated\\prisma\\models.ts": {
+    "mtime": 1776789901.1751213,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\generated\\prisma\\internal\\class.ts": {
+    "mtime": 1776789901.189562,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\generated\\prisma\\internal\\prismaNamespace.ts": {
+    "mtime": 1776789901.188552,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\generated\\prisma\\internal\\prismaNamespaceBrowser.ts": {
+    "mtime": 1776789901.188552,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\generated\\prisma\\models\\Coffee.ts": {
+    "mtime": 1776789901.188552,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\generated\\prisma\\models\\CuppingSession.ts": {
+    "mtime": 1776789901.188552,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\generated\\prisma\\models\\Evaluation.ts": {
+    "mtime": 1776789901.188552,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\generated\\prisma\\models\\ExtrinsicData.ts": {
+    "mtime": 1776789901.188552,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\generated\\prisma\\models\\PhysicalEvaluation.ts": {
+    "mtime": 1776789901.188552,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\generated\\prisma\\models\\Profile.ts": {
+    "mtime": 1776789901.188552,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\generated\\prisma\\models\\SessionSample.ts": {
+    "mtime": 1776789901.188552,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\[locale]\\layout.tsx": {
+    "mtime": 1776789412.1907728,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\[locale]\\page.tsx": {
+    "mtime": 1776789422.0228326,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\[locale]\\app\\layout.tsx": {
+    "mtime": 1776789473.950778,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\[locale]\\app\\page.tsx": {
+    "mtime": 1776789485.1812844,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\[locale]\\app\\profile\\page.tsx": {
+    "mtime": 1776789571.638905,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\[locale]\\app\\profile\\ProfileForm.tsx": {
+    "mtime": 1776789581.913107,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\[locale]\\app\\sessions\\page.tsx": {
+    "mtime": 1776789494.1878011,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\[locale]\\app\\sessions\\new\\NewSessionForm.tsx": {
+    "mtime": 1776789520.5372322,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\[locale]\\app\\sessions\\new\\page.tsx": {
+    "mtime": 1776789502.2780912,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\[locale]\\app\\sessions\\[id]\\cup\\CupClient.tsx": {
+    "mtime": 1776806893.226194,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\[locale]\\app\\sessions\\[id]\\cup\\page.tsx": {
+    "mtime": 1776806903.703194,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\[locale]\\app\\sessions\\[id]\\print\\page.tsx": {
+    "mtime": 1776807055.2005868,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\[locale]\\app\\sessions\\[id]\\print\\PrintClient.tsx": {
+    "mtime": 1776807049.8199422,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\[locale]\\app\\sessions\\[id]\\results\\page.tsx": {
+    "mtime": 1776806996.8115928,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\[locale]\\app\\sessions\\[id]\\results\\ResultsClient.tsx": {
+    "mtime": 1776806990.1549747,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\[locale]\\auth\\login\\LoginForm.tsx": {
+    "mtime": 1776789449.252568,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "app\\[locale]\\auth\\login\\page.tsx": {
+    "mtime": 1776789438.430403,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "components\\cupping\\AffectiveForm.tsx": {
+    "mtime": 1776789248.3065927,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "components\\cupping\\CombinedForm.tsx": {
+    "mtime": 1776789277.0539787,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "components\\cupping\\DescriptiveForm.tsx": {
+    "mtime": 1776789220.2778401,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "components\\cupping\\ExtrinsicForm.tsx": {
+    "mtime": 1776806762.8795378,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "components\\cupping\\PhysicalEvalForm.tsx": {
+    "mtime": 1776789338.4744244,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "i18n\\request.ts": {
+    "mtime": 1776777840.751313,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "i18n\\routing.ts": {
+    "mtime": 1776777835.3656962,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "lib\\constants.ts": {
+    "mtime": 1776777934.2564096,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "lib\\prisma.ts": {
+    "mtime": 1776789864.1967795,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "lib\\scoring.ts": {
+    "mtime": 1776777949.555912,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "lib\\supabase\\client.ts": {
+    "mtime": 1776777822.3143146,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "lib\\supabase\\server.ts": {
+    "mtime": 1776777827.04919,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "AGENTS.md": {
+    "mtime": 1776774061.4453764,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "CLAUDE.md": {
+    "mtime": 1776813474.1659672,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1776773892.0793526,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "public\\file.svg": {
+    "mtime": 1776773892.1283529,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "public\\globe.svg": {
+    "mtime": 1776773892.1423542,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "public\\next.svg": {
+    "mtime": 1776773892.1553566,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "public\\vercel.svg": {
+    "mtime": 1776773892.167865,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "public\\window.svg": {
+    "mtime": 1776773892.1778646,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\eslint.config.mjs": {
+    "mtime": 1779803345.2383678,
+    "ast_hash": "9b53f06c8178a6d8f010989dbee7e9dc",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\next.config.ts": {
+    "mtime": 1776873024.3418753,
+    "ast_hash": "6ae816acf6b9edf6d774ac31c1dafb1d",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\package.json": {
+    "mtime": 1780931801.9520218,
+    "ast_hash": "47072c9238a582a0fe2fca97e7f6d178",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\postcss.config.mjs": {
+    "mtime": 1776873024.3528757,
+    "ast_hash": "481fac0fdecd70e1821cc30b86030c1a",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\prisma.config.ts": {
+    "mtime": 1780652308.286912,
+    "ast_hash": "ee998d4d480dffd86d88ae498bdfdbeb",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\proxy.ts": {
+    "mtime": 1776873024.3738832,
+    "ast_hash": "378d2622f1b37c1777c5117a31df74bf",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\tsconfig.json": {
+    "mtime": 1776873024.3924124,
+    "ast_hash": "ab575e944f15d39a5486cf9fca385c5e",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\.vscode\\launch.json": {
+    "mtime": 1776873024.0243478,
+    "ast_hash": "8536c0b1b0a5a6da1637feed7ca91d43",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\layout.tsx": {
+    "mtime": 1779958539.8538969,
+    "ast_hash": "d7c9d362aa8e80c676bcb20f62d395a5",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\actions\\auth.ts": {
+    "mtime": 1781016585.911122,
+    "ast_hash": "dfe64f38a1d94ba415ae3545d2860323",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\actions\\coffees.ts": {
+    "mtime": 1778019265.6045506,
+    "ast_hash": "5ec72a3e4888bd01bdf20ba2a11e0a17",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\actions\\community.ts": {
+    "mtime": 1780923750.6421025,
+    "ast_hash": "3021bd69db47ffd96d5c7727039e0321",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\actions\\dev.ts": {
+    "mtime": 1776883179.1507227,
+    "ast_hash": "12726fa6f40042379e93dd52ea5479c1",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\actions\\offline.ts": {
+    "mtime": 1780932040.064823,
+    "ast_hash": "9cab25608918251134af04145cabb4cf",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\actions\\profile.ts": {
+    "mtime": 1778021266.2246792,
+    "ast_hash": "d02a4231861411f2e75b83a2e63280d0",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\actions\\sessions.ts": {
+    "mtime": 1780932027.052538,
+    "ast_hash": "821fc51eda18cd0630ec05c43f832b86",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\api\\dev\\sign-in\\route.ts": {
+    "mtime": 1776873024.1038187,
+    "ast_hash": "abe2772d2c6a8fee83aa4876c10076ab",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\api\\health\\route.ts": {
+    "mtime": 1780931792.2038414,
+    "ast_hash": "6f698e3fc545079bd14d817d1011c1d1",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\auth\\callback\\route.ts": {
+    "mtime": 1781016574.028077,
+    "ast_hash": "87883d40fef65fb7fb86193d65d64b3f",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\layout.tsx": {
+    "mtime": 1776873024.0917814,
+    "ast_hash": "cc9c2f85df026bb4d43f7e3897e1c747",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\page.tsx": {
+    "mtime": 1776873024.093791,
+    "ast_hash": "4fcc34db74346655bcd0bd5511b4fcf6",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\app\\layout.tsx": {
+    "mtime": 1780923750.633088,
+    "ast_hash": "8b4962e668e77e40e1dbf76f567791bd",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\app\\page.tsx": {
+    "mtime": 1778000090.930899,
+    "ast_hash": "92d4f1c6d2bcdad26ffa5d2ec037e7ea",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\app\\coffees\\page.tsx": {
+    "mtime": 1778019265.602546,
+    "ast_hash": "8a10efc3e1fcc7a9c18d01d57bb7580c",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\app\\coffees\\[id]\\page.tsx": {
+    "mtime": 1776873024.0372272,
+    "ast_hash": "c50b6048d7b3e80cd227fcfa548e2fc7",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\app\\profile\\page.tsx": {
+    "mtime": 1776882843.3303077,
+    "ast_hash": "d7122542a1d8ab9d1a391bf8a20956e0",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\app\\profile\\ProfileForm.tsx": {
+    "mtime": 1776873024.0472257,
+    "ast_hash": "cab2d9aa048daed048698ef9cda3a643",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\app\\profile\\history\\page.tsx": {
+    "mtime": 1776873024.0502267,
+    "ast_hash": "daf491c5010fcd5f6036c86d0087b074",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\app\\sessions\\DeleteSessionButton.tsx": {
+    "mtime": 1776968954.7700536,
+    "ast_hash": "c762a21f4bbd1504339309811c87ac61",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\app\\sessions\\page.tsx": {
+    "mtime": 1776993696.4087627,
+    "ast_hash": "1f5fdc8f3ffdeda23939ba0da093db2d",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\app\\sessions\\new\\NewSessionForm.tsx": {
+    "mtime": 1780930314.694101,
+    "ast_hash": "f26e8eb24737f1934435a0e001111249",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\app\\sessions\\new\\page.tsx": {
+    "mtime": 1780930292.6752567,
+    "ast_hash": "4ff412ddb96eb43c78d69e41a7d18a65",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\app\\sessions\\[id]\\cup\\CupClient.tsx": {
+    "mtime": 1780932524.3329349,
+    "ast_hash": "13d85c78002b4b1662d1a8be02c338a0",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\app\\sessions\\[id]\\cup\\error.tsx": {
+    "mtime": 1780932724.4341424,
+    "ast_hash": "3bf00de6428f2f26e1e760f5ce527ffb",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\app\\sessions\\[id]\\cup\\page.tsx": {
+    "mtime": 1780932332.5153413,
+    "ast_hash": "78e8250265940d6009e4424d96bc09ac",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\app\\sessions\\[id]\\print\\page.tsx": {
+    "mtime": 1780652308.274659,
+    "ast_hash": "d99bcd5f0fb421d4c70c23b9997ae0e7",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\app\\sessions\\[id]\\print\\PrintClient.tsx": {
+    "mtime": 1780652308.2714782,
+    "ast_hash": "8d1c0538ca052e610753b7828547ded2",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\app\\sessions\\[id]\\results\\page.tsx": {
+    "mtime": 1780932424.5323665,
+    "ast_hash": "c11c9c2ab733655e10a246da9a45219b",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\app\\sessions\\[id]\\results\\ResultsClient.tsx": {
+    "mtime": 1780932412.4372976,
+    "ast_hash": "c7eda3827027e1927b53352a33b73f3d",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\app\\sessions\\[id]\\waiting\\page.tsx": {
+    "mtime": 1779805367.8758502,
+    "ast_hash": "a046c8dcbfb6fc37cbb69f832b6f22c8",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\app\\sessions\\[id]\\waiting\\WaitingRoomClient.tsx": {
+    "mtime": 1779805384.7894173,
+    "ast_hash": "0132413e4e246de127206bc37bf96ca4",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\app\\team\\page.tsx": {
+    "mtime": 1778052875.5474544,
+    "ast_hash": "ce5d6a8e9b869ff1d71122fb44fc73a8",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\auth\\login\\LoginForm.tsx": {
+    "mtime": 1779900170.574415,
+    "ast_hash": "e56d6b953bd84b07d273ca9e68f553b2",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\auth\\login\\page.tsx": {
+    "mtime": 1779900170.5774162,
+    "ast_hash": "e9d49743813a977ab74421332cef01e4",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\dev\\DevQuickStart.tsx": {
+    "mtime": 1776873024.0847824,
+    "ast_hash": "b6f0564914b7c9556e904a7b804ff124",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\dev\\page.tsx": {
+    "mtime": 1776873024.0877817,
+    "ast_hash": "0b802eaf25a105e7bdb21a946aa4052e",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\app\\[locale]\\join\\[token]\\page.tsx": {
+    "mtime": 1776879291.8555589,
+    "ast_hash": "b24f10422fea78de152458c10eac1bc5",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\coffees\\CoffeesTable.tsx": {
+    "mtime": 1778019265.6065464,
+    "ast_hash": "408d5be682dc2d74ac151f5dc11b86bc",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\cupping\\AffectiveForm.tsx": {
+    "mtime": 1780929668.5038452,
+    "ast_hash": "086fb66b6896d8d5729ccf9dcb70cc8a",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\cupping\\CombinedForm.tsx": {
+    "mtime": 1779971507.563511,
+    "ast_hash": "787475e1d0867cc8bc69050d237bebda",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\cupping\\DescriptiveForm.tsx": {
+    "mtime": 1779984853.164313,
+    "ast_hash": "8bfc2ab837b34439036c8cad49d2006d",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\cupping\\ExtrinsicForm.tsx": {
+    "mtime": 1779958539.8607616,
+    "ast_hash": "51422be392395d1f5c44aba1cee1bb8f",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\cupping\\PhaseStepper.tsx": {
+    "mtime": 1779989556.1484768,
+    "ast_hash": "b419cbf7f7b8785d7e461b54db6ca750",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\cupping\\PhysicalEvalForm.tsx": {
+    "mtime": 1780668503.9423578,
+    "ast_hash": "437afed3ba20c6c696b97ffec11377a2",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\dashboard\\FormatBadge.tsx": {
+    "mtime": 1778000021.4462533,
+    "ast_hash": "8f0ae42d5bdd394fdbdff221c54476a2",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\dashboard\\StatCard.tsx": {
+    "mtime": 1778000011.2948039,
+    "ast_hash": "374228637bf3519669bb3a896e7e17c2",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\dev\\DevRoleBadge.tsx": {
+    "mtime": 1776873024.1407788,
+    "ast_hash": "86ebcd823f7aa402d36b5676c4ef22c1",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\layout\\BottomNav.tsx": {
+    "mtime": 1778052814.5076659,
+    "ast_hash": "251600c3f8328afc4a6e5ad4702741ad",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\layout\\Sidebar.tsx": {
+    "mtime": 1777998389.7299788,
+    "ast_hash": "6a9c3acaa05e98f6a6e4db1fc9c718ad",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\layout\\TopBar.tsx": {
+    "mtime": 1777998405.4498267,
+    "ast_hash": "ffcc0225da8b387db0ff5d3db54e2d96",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\offline\\OfflineBanner.tsx": {
+    "mtime": 1780932136.9094965,
+    "ast_hash": "55e636e33aee76d9968f9178f9b0b7c8",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\offline\\OfflineFirstLoadError.tsx": {
+    "mtime": 1780932162.1364636,
+    "ast_hash": "025d276b5622bd29dd2be6d6371f5f72",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\offline\\SyncConflictModal.tsx": {
+    "mtime": 1780932153.4848077,
+    "ast_hash": "f35fc00d5fe80f9c52c5b6a4d57395bd",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\onboarding\\OnboardingWrapper.tsx": {
+    "mtime": 1778021315.3396251,
+    "ast_hash": "7f1f8be4f0a4d420733cb23569f8bcc6",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\onboarding\\WelcomeModal.tsx": {
+    "mtime": 1779958539.865513,
+    "ast_hash": "85a355c0cd3370c45162821355f70738",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\results\\DescriptorFrequency.tsx": {
+    "mtime": 1780923750.6456187,
+    "ast_hash": "67b78f5d42570b59339c608478196505",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\results\\FlavorCloud.tsx": {
+    "mtime": 1780923750.6496172,
+    "ast_hash": "2d62ed364a3662bea8f19c6e234247c2",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\results\\IndividualResultsPanel.tsx": {
+    "mtime": 1780923750.6516151,
+    "ast_hash": "8001c54085c66af1db03f151bc2b3925",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\results\\MyResultsSummary.tsx": {
+    "mtime": 1780923750.6546764,
+    "ast_hash": "5a0cb575bb84d77abfd2a2a8d642e2b2",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\results\\SampleRadarChart.tsx": {
+    "mtime": 1780925904.8378572,
+    "ast_hash": "a0da28f2388185d53d355de9b8ee6df9",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\results\\ScoreTable.tsx": {
+    "mtime": 1780925913.4109209,
+    "ast_hash": "cd2e092ac2b9577eac2bcee44689afab",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\ui\\AffectiveBubbles.tsx": {
+    "mtime": 1778005026.558702,
+    "ast_hash": "60397be31325482a11c3ad7c7e5acb8d",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\ui\\Avatar.tsx": {
+    "mtime": 1778052777.1654234,
+    "ast_hash": "07208d4343f47c86401d2be610258384",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\ui\\CanvasFooter.tsx": {
+    "mtime": 1779958539.8674886,
+    "ast_hash": "001fad8b5a12be3f24d9eecebeb5ea09",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\ui\\CATAPills.tsx": {
+    "mtime": 1778085506.8795004,
+    "ast_hash": "3963a508731fc86c0d538b2f5ea13109",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\ui\\CupIndicators.tsx": {
+    "mtime": 1777996097.770022,
+    "ast_hash": "32c2e011ca3e86fd2915cf7f13b974c8",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\ui\\CupToggleGrid.tsx": {
+    "mtime": 1779958539.869094,
+    "ast_hash": "67b63620ede70dbad918012cd6d909cb",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\ui\\FormSection.tsx": {
+    "mtime": 1779958539.8722055,
+    "ast_hash": "938e3a362d01c82dbab804233878cfa4",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\ui\\index.ts": {
+    "mtime": 1779958539.8946612,
+    "ast_hash": "bb5ca3f68354c7d665308b63e36b4198",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\ui\\IntensitySlider.tsx": {
+    "mtime": 1780672418.9106069,
+    "ast_hash": "7cecde4275db61c77bbef3e0a82120cd",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\ui\\MasterControls.tsx": {
+    "mtime": 1779958539.880938,
+    "ast_hash": "13f508220815fd8bc68b7a37aa3be40e",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\ui\\ModuleSwitcher.tsx": {
+    "mtime": 1779958539.883659,
+    "ast_hash": "e6515828011dd8ffa1dcc143e854c133",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\ui\\Notes.tsx": {
+    "mtime": 1779958539.887207,
+    "ast_hash": "4c9f62f61339ba6fb9373058acdb3b43",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\ui\\ResponsiveDialog.tsx": {
+    "mtime": 1780923750.661945,
+    "ast_hash": "32267e6a5cd244edf232a8c888a05fb3",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\ui\\SampleTabs.tsx": {
+    "mtime": 1780925106.3474674,
+    "ast_hash": "30ee20fdb43e221f34266004114d3d96",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\ui\\ScoreDisplay.tsx": {
+    "mtime": 1777996120.1662986,
+    "ast_hash": "a6c2ac61c7620274d605bf45becd9bf1",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\components\\ui\\SessionShell.tsx": {
+    "mtime": 1780924711.2571602,
+    "ast_hash": "7837f5a17e614f7fd238857615b52a33",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\design_handoff_cata_cafe_sensible\\components\\ui\\AffectiveBubbles.tsx": {
+    "mtime": 1777994585.048173,
+    "ast_hash": "41b8c050a971368d10017526a3306808",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\design_handoff_cata_cafe_sensible\\components\\ui\\CATAPills.tsx": {
+    "mtime": 1777994586.7065125,
+    "ast_hash": "b3cfbe59c3d86cc03dab59627ff073fc",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\design_handoff_cata_cafe_sensible\\components\\ui\\CupIndicators.tsx": {
+    "mtime": 1777994588.2922223,
+    "ast_hash": "32c2e011ca3e86fd2915cf7f13b974c8",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\design_handoff_cata_cafe_sensible\\components\\ui\\index.ts": {
+    "mtime": 1777994597.4438095,
+    "ast_hash": "6196f55c81fe7bb63e2d8be40709b59b",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\design_handoff_cata_cafe_sensible\\components\\ui\\IntensitySlider.tsx": {
+    "mtime": 1777994595.0749047,
+    "ast_hash": "e3a6415aac51f2083391e548e3cecba1",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\design_handoff_cata_cafe_sensible\\components\\ui\\ScoreDisplay.tsx": {
+    "mtime": 1777994600.1392145,
+    "ast_hash": "a6c2ac61c7620274d605bf45becd9bf1",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\design_handoff_cata_cafe_sensible\\lib\\constants.ts": {
+    "mtime": 1777994602.195907,
+    "ast_hash": "6d6c7e7cf661d0c2632235946ab52f80",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\design_handoff_cata_cafe_sensible\\lib\\scoring.ts": {
+    "mtime": 1777994603.1269174,
+    "ast_hash": "f4708c8b88d9beed9303c176dd0d7046",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\hooks\\useConnectivity.ts": {
+    "mtime": 1780931896.8925533,
+    "ast_hash": "ca7eceb1bdf93ef3b65e206346eeb82e",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\hooks\\useOfflineSync.ts": {
+    "mtime": 1780932116.8844464,
+    "ast_hash": "5f070a4f7ec04e68f259a13113822490",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\i18n\\request.ts": {
+    "mtime": 1776873024.3178759,
+    "ast_hash": "ce4ce13988fa0bf85b0ba89017b1b251",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\i18n\\routing.ts": {
+    "mtime": 1776873024.3198764,
+    "ast_hash": "644caacb88c4fe3c8dd88e07f69a8eae",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\lib\\constants.ts": {
+    "mtime": 1779984843.4954648,
+    "ast_hash": "bab04726b2678f4fe202ede9774de85f",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\lib\\descriptors.ts": {
+    "mtime": 1780923750.665944,
+    "ast_hash": "6bd5cd12a72afd5eb3bac382be7aa163",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\lib\\evaluation.ts": {
+    "mtime": 1780931997.5300102,
+    "ast_hash": "81c0813d49e35d1ea9dc1e1550995163",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\lib\\prisma.ts": {
+    "mtime": 1780652308.2849052,
+    "ast_hash": "bc9b40b1c10523168a9dd6c253605fea",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\lib\\scoring.ts": {
+    "mtime": 1780925818.52954,
+    "ast_hash": "4c9bb6a561967b781c1cbe45664c2024",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\lib\\offline\\store.ts": {
+    "mtime": 1780931870.9673963,
+    "ast_hash": "da70d6b45fd972fb02918428f1eeef0b",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\lib\\offline\\types.ts": {
+    "mtime": 1780931831.3857687,
+    "ast_hash": "e9b082557d458eb9fb04d437a3fbd660",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\lib\\supabase\\admin.ts": {
+    "mtime": 1776873024.3288748,
+    "ast_hash": "a40326d8929fd8cd4d10eb53b090d2d6",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\lib\\supabase\\client.ts": {
+    "mtime": 1776873024.330877,
+    "ast_hash": "6b733047d1bc0dd630617adfca9f2910",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\lib\\supabase\\server.ts": {
+    "mtime": 1776873024.3328762,
+    "ast_hash": "194f118144eec20d15b4f7dfbbefad25",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\messages\\en.json": {
+    "mtime": 1780931942.7895644,
+    "ast_hash": "4643d8107cb0d7831aff38025f855776",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\messages\\es.json": {
+    "mtime": 1780931936.2592273,
+    "ast_hash": "6ab994a3388744af8c4f6aed92380ac2",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\prisma\\migrations\\20260421191943_init\\migration.sql": {
+    "mtime": 1776873024.3578758,
+    "ast_hash": "a1fb016efaef8be08fd1e7569cb76cb0",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\prisma\\migrations\\20260422073305_phase2_group_sessions\\migration.sql": {
+    "mtime": 1776873024.3628755,
+    "ast_hash": "6e7639115e5cca7c0ea0bda4ad96453f",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\prisma\\migrations\\20260423000000_add_altitude_roast_to_coffee\\migration.sql": {
+    "mtime": 1776914762.321673,
+    "ast_hash": "5991860b27299896c0998ee040950e3e",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\prisma\\migrations\\20260423120000_add_session_started_at\\migration.sql": {
+    "mtime": 1780928450.0187545,
+    "ast_hash": "cefd31b6665ceeeb490136d51c6f8813",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\prisma\\migrations\\20260506000000_add_onboarding_fields\\migration.sql": {
+    "mtime": 1778021964.3617532,
+    "ast_hash": "154da8bddea4fa2cb028a3a65922802d",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\prisma\\migrations\\20260605000000_add_fk_indexes\\migration.sql": {
+    "mtime": 1780652308.2909048,
+    "ast_hash": "f7ab1db23028348220ea294be8c65383",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\prisma\\migrations\\20260608000000_add_participant_exclusion\\migration.sql": {
+    "mtime": 1780923750.6849408,
+    "ast_hash": "cf303caee8878ea72aad7095f360a7ca",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\prisma\\migrations\\20260608010000_add_submitted_count_to_aggregate\\migration.sql": {
+    "mtime": 1780926886.8600383,
+    "ast_hash": "ea9a98b50156fe8937df77f2de3ec734",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\prisma\\sql\\phase1_indexes.sql": {
+    "mtime": 1780652308.2949033,
+    "ast_hash": "4c97cfc5eed576d5206d5b4d0b51cadc",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\prisma\\sql\\rls_and_triggers.sql": {
+    "mtime": 1780926555.3745937,
+    "ast_hash": "1b0baa9f7ae08dabfcb07462fc3e5e27",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\scripts\\seed-test-users.ts": {
+    "mtime": 1776873024.3904123,
+    "ast_hash": "db6274429ffcbceb6c1e3ccbd78a40fa",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\scripts\\verify-group-average.ts": {
+    "mtime": 1780925937.797615,
+    "ast_hash": "50da18f8d9cb56087ab8e12cd70c80c0",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\.impeccable.md": {
+    "mtime": 1781029410.8166165,
+    "ast_hash": "32d7d43eff66e3dd703724f453971f77",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\AGENTS.md": {
+    "mtime": 1776873024.0263464,
+    "ast_hash": "9346a4897ff955555ddedb7bebf77adb",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\CLAUDE.md": {
+    "mtime": 1781029379.702026,
+    "ast_hash": "1fc74a992b9230d38141fd9bf11fa469",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\DESIGN.md": {
+    "mtime": 1781029423.9014952,
+    "ast_hash": "3da0fa43a4e2a2904495d7cd79bfa88f",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\PRODUCT.md": {
+    "mtime": 1781029304.1523986,
+    "ast_hash": "161c68c4d54d347dedad58a7397387d3",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\README.md": {
+    "mtime": 1781029230.912996,
+    "ast_hash": "d95599388d350b164ff76e190af8bab0",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\.github\\copilot-instructions.md": {
+    "mtime": 1781029451.366535,
+    "ast_hash": "223de2b5d5928bb6429828c1ba3ad89d",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\design_handoff_cata_cafe_sensible\\Cata Caf\u00e9 Sensible.html": {
+    "mtime": 1777994581.1452458,
+    "ast_hash": "5bbacdd0018daa0d2b40cfef844a151f",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\design_handoff_cata_cafe_sensible\\Component Library.html": {
+    "mtime": 1777994582.6867597,
+    "ast_hash": "681d1c17c28308e5ba5959b71136942d",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\design_handoff_cata_cafe_sensible\\README.md": {
+    "mtime": 1777994581.8314717,
+    "ast_hash": "36852984012585e76c47f6a539957026",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\public\\file.svg": {
+    "mtime": 1776873024.3768835,
+    "ast_hash": "d09f95206c3fa0bb9bd9fefabfd0ea71",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\public\\globe.svg": {
+    "mtime": 1776873024.3788853,
+    "ast_hash": "2aaafa6a49b6563925fe440891e32717",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\public\\next.svg": {
+    "mtime": 1776873024.3803935,
+    "ast_hash": "8e061864f388b47f33a1c3780831193e",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\public\\vercel.svg": {
+    "mtime": 1776873024.3834028,
+    "ast_hash": "c0af2f507b369b085b35ef4bbe3bcf1e",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\ricar\\OneDrive\\Documentos\\2 Entrepreneurship\\Active\\HCKD\\Caldi\\Caldi for Pros\\cata-cafe\\public\\window.svg": {
+    "mtime": 1776873024.3854127,
+    "ast_hash": "a2760511c65806022ad20adf74370ff3",
+    "semantic_hash": ""
+  }
 }
