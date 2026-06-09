@@ -8,6 +8,12 @@ Built with Next.js 16, Supabase, Prisma, and Tailwind CSS 4.
 
 ## Table of Contents
 
+- [Overview](#overview)
+  - [The Problem](#the-problem)
+  - [The Solution](#the-solution)
+  - [Who It's For](#who-its-for)
+  - [Why Cata Café](#why-cata-café)
+  - [Feature Highlights](#feature-highlights)
 - [What It Does](#what-it-does)
 - [How to Use the App](#how-to-use-the-app)
   - [All Users: Getting Access](#all-users-getting-access)
@@ -26,6 +32,74 @@ Built with Next.js 16, Supabase, Prisma, and Tailwind CSS 4.
 
 ---
 
+## Overview
+
+> **The professional cupping platform that keeps a Q-grader's full attention on the coffee — not the software.**
+
+Cata Café Sensible is a web app for running rigorous, reproducible specialty-coffee evaluations the way the industry actually scores them: the official **SCA CVA (Coffee Value Assessment)** protocol, end to end. Solo or in a group, online or offline, every cup is captured, scored, and traceable — from green-bean inspection through blind tasting to the exportable certificate.
+
+**Auténtico · Profesional · Refinado** — built for people who taste coffee for a living.
+
+### The Problem
+
+Professional cupping still runs on paper forms and spreadsheets. That creates real friction in the lab:
+
+- **Manual CVA math is error-prone.** The scoring formula is fiddly, and hand-tallying uniformity and defect penalties across cups invites mistakes on results clients rely on.
+- **Group calibrations are hard to aggregate.** Collecting every taster's sheet, normalizing penalties, and producing one community score is slow and inconsistent.
+- **Blind integrity is fragile on paper.** Keeping sample identities hidden until the reveal — and tying results back to origin afterward — takes manual discipline.
+- **Connectivity is unreliable.** Cupping labs, roasteries, and farm sites often have weak or no wifi, exactly where the data is being entered.
+- **History gets lost.** Last quarter's score for the same lot lives in a folder somewhere, disconnected from the coffee itself.
+
+### The Solution
+
+Cata Café Sensible replaces the paper sheet with a purpose-built tool:
+
+- The **complete SCA CVA protocol** — Descriptive, Affective, and Combined formats — with scores computed automatically and the formula shown transparently.
+- **Solo and group sessions**, with invite links, real-time submission tracking, and a single authoritative **community aggregate score**.
+- **Offline-first cupping**: evaluate with no connection, and drafts sync automatically — with conflict resolution — the moment you're back online.
+- **Blind by design**: coded sample labels, origin data entered only after the reveal.
+- **Full traceability**: every revealed sample feeds a coffee profile and a personal tasting history.
+- **Exportable PDF certificates** for records and clients.
+
+### Who It's For
+
+| Persona | Role | What they need |
+|---|---|---|
+| **Q-Grader / Trained Cupper** | Runs formal evaluations in a lab or roastery | Fast, reliable data entry during a timed protocol; precise, transparent scoring; green-bean and post-reveal data capture; PDF export |
+| **Session Organizer / Lab Manager** | Sets up sessions, invites cuppers, manages reveals | Solo or group sessions with format choice; blind sample control; live submission progress; community aggregate scoring; shareable invites |
+| **Invited Participant** | Joins a group session via link | A frictionless join, a clean evaluation flow, and access to aggregate results after the session closes |
+
+Default language is **Spanish** (the working language of much of the specialty-coffee world), with full English support.
+
+### Why Cata Café
+
+| Value | What it means |
+|---|---|
+| **Protocol fidelity** | Implements the official SCA CVA formula exactly — no approximations. Penalties are normalized correctly across cups and participants. |
+| **Zero-friction entry** | Auto-save at every keystroke (800ms debounce). Magic-link sign-in — no passwords to manage. |
+| **Works offline** | Cup in a basement lab or on a farm with no wifi. Drafts persist locally and sync — conflict-aware — on reconnect. |
+| **Real-time group calibration** | Watch submissions land live; produce one trustworthy community score the instant the session closes. |
+| **Blind integrity** | Coded labels (A, B, C…); origin revealed only post-tasting, on the leader's command. |
+| **Full traceability** | Every cup links to a coffee profile and a personal history with both individual and community scores. |
+| **Certificate export** | One-click formatted PDF for records or clients. |
+| **Bilingual, Spanish-first** | Built for Latin-American specialty-coffee professionals, with English available throughout. |
+
+### Feature Highlights
+
+**Solo cupping** — Create a session, inspect green beans, cup each sample across the chosen format, reveal origins, and export a certificate.
+
+**Group cupping** — Invite cuppers by link, track who has submitted in real time, reveal samples on your command, exclude outliers from the aggregate, and close the session to lock in community scores.
+
+**Offline-first** — Keep evaluating with no connection; a banner shows offline status and drafts replay automatically on reconnect, with a conflict modal if a draft was already submitted elsewhere.
+
+**Guided onboarding** — First-time cuppers tell us their role and country and are routed straight to a first action (create a session or add a coffee).
+
+**Coffee library & history** — Every revealed coffee gets a profile tracking each session it appeared in; each cupper gets a personal tasting history with individual and community scores.
+
+**Mobile-ready** — A responsive cupping layout with mobile sample navigation, tuned for tablets and phones at the cupping table.
+
+---
+
 ## What It Does
 
 Cata Café Sensible allows coffee professionals to:
@@ -38,6 +112,8 @@ Cata Café Sensible allows coffee professionals to:
 - View **individual and community scores** with radar charts comparing attribute averages
 - Browse a **coffee profile library** tracking every cupping session a coffee has appeared in
 - Review a personal **tasting history** across all revealed coffees
+- Keep cupping **offline** — drafts persist locally and sync automatically (with conflict resolution) on reconnect
+- Get started fast with **guided onboarding** that captures role and country and routes to a first action
 
 ---
 
@@ -51,8 +127,11 @@ The app uses **magic link authentication** — no passwords.
 2. Enter your email address and click **Send magic link**.
 3. Open the email and click the link — you are logged in automatically.
 4. Your profile is created on first login. You can update your display name and preferred language from the **Profile** page.
+5. On your **first login**, a short onboarding welcome captures your role (Q-grader, barista, roaster, producer, trader, or enthusiast) and country, then routes you to a first action — creating a session or adding a coffee.
 
 > **Invited to a group session?** If someone sent you an invite link, open it directly. If you are not logged in yet, you will be redirected to the login page and then automatically returned to the invite after authenticating.
+
+> **Cupping offline?** The evaluation interface keeps working without a connection — an offline banner appears and your scores are saved locally. When you reconnect, drafts sync automatically. If an evaluation was already submitted from another device while you were offline, a conflict dialog lets you choose what to keep.
 
 ---
 
@@ -270,10 +349,12 @@ communityScore    = avgRawScore − uniformityPenalty − defectPenalty
 | i18n | next-intl | 4.9.1 |
 | Styling | Tailwind CSS 4 + PostCSS | 4 |
 | Client State | Zustand | 5.0.12 |
+| Offline storage | localforage (IndexedDB) | 1.10.0 |
 | Charts | Recharts | 3.8.1 |
 | PDF | @react-pdf/renderer | 4.5.1 |
 | Primitives | Radix UI (dialog) | 1.1.15 |
 | Icons | lucide-react | 1.8.0 |
+| Scripts/tooling | tsx | 4.21.0 |
 
 ---
 
@@ -400,15 +481,32 @@ cata-cafe/
 │   ├── actions/
 │   │   ├── auth.ts                     # signInWithMagicLink, signOut
 │   │   ├── sessions.ts                 # createSession, createGroupSession, upsertEvaluation...
-│   │   ├── community.ts                # submitEvaluation, closeSession, revealSample, joinViaToken...
-│   │   └── profile.ts
+│   │   ├── community.ts                # submitEvaluation, closeSession, revealSample, joinViaToken, excludeParticipant...
+│   │   ├── coffees.ts                  # Coffee profile create/update
+│   │   ├── offline.ts                  # Conflict-aware replay of offline drafts on reconnect
+│   │   ├── profile.ts                  # Profile updates, completeOnboarding
+│   │   └── dev.ts                      # Dev-only helpers
 │   └── auth/callback/route.ts          # Supabase OAuth callback
-├── components/cupping/                 # All evaluation UI components
+├── components/
+│   ├── cupping/                        # All evaluation UI components
+│   ├── results/                        # Score tables, radar charts, descriptor frequency
+│   ├── offline/                        # OfflineBanner, SyncConflictModal, OfflineFirstLoadError
+│   ├── onboarding/                     # WelcomeModal, OnboardingWrapper
+│   └── ui/, layout/, dashboard/        # Shared atoms, shell, dashboard widgets
+├── hooks/
+│   ├── useConnectivity.ts              # Online/offline detection
+│   └── useOfflineSync.ts              # Drains the offline draft queue on reconnect
 ├── lib/
 │   ├── prisma.ts                       # Prisma singleton
 │   ├── scoring.ts                      # SCA CVA formula
+│   ├── evaluation.ts                   # Derived-score computation shared by live + offline paths
 │   ├── constants.ts                    # Flavor tree, attributes, defect categories
+│   ├── descriptors.ts                  # Descriptor helpers
+│   ├── offline/
+│   │   ├── store.ts                    # localforage/IndexedDB draft store (client-only, SSR-safe)
+│   │   └── types.ts                    # Offline blob + sync-status types
 │   └── supabase/
+│       ├── client.ts                   # Browser client (Realtime + offline)
 │       ├── server.ts                   # Cookie-based client (SSR)
 │       └── admin.ts                    # Service-role client (server only)
 ├── prisma/
@@ -427,8 +525,11 @@ cata-cafe/
 
 ```bash
 npm run dev          # Start dev server → http://localhost:3000
-npm run build        # Production build
+npm run build        # Production build (runs prisma generate first)
 npm run lint         # ESLint
+
+npm run seed:test            # Seed test users (scripts/seed-test-users.ts)
+npm run verify:group-average # Verify group-average scoring (scripts/verify-group-average.ts)
 
 npx prisma migrate dev      # Apply pending migrations
 npx prisma generate         # Regenerate client after schema changes

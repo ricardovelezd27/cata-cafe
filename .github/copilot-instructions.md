@@ -23,6 +23,8 @@ This file provides context for AI coding tools (GitHub Copilot, Claude, etc.) wo
 - Never import `lib/supabase/admin.ts` in client components
 - Never generate Tailwind class names dynamically (string concat) — Tailwind v4 scans statically
 - All mutations go through `app/actions/` server actions, not direct DB calls from client
+- Never import `lib/offline/store.ts` (localforage/IndexedDB) from a Server Component or server action — it is client-only and no-ops on the server
+- Offline drafts replay through `app/actions/offline.ts` on reconnect: keep Prisma `cupperId` scoping (no raw Supabase selects), and never mutate `isDraft`/`submittedAt` during replay
 
 ---
 
@@ -80,6 +82,8 @@ Light mode only. Warm parchment background (#FDFBF7). Typography-forward: Cormor
 | `CATAPills` | Multi-select flavor CATA pills |
 | `CupIndicators` | Cup uniformity/defect status |
 | `ScoreDisplay` | CVA score card with breakdown |
+
+Other feature surfaces: `components/offline/` (OfflineBanner, SyncConflictModal, OfflineFirstLoadError), `components/onboarding/` (WelcomeModal), `components/results/` (ScoreTable, SampleRadarChart, descriptor frequency).
 
 All new UI components go in `components/ui/` as CSS Modules. No inline styles in new work.
 

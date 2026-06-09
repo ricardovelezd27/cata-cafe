@@ -1,7 +1,7 @@
 # Cata Café — Design System Reference
 
 > **Sensory Studio** — Warm Minimalist · Editorial Precision
-> Last updated: 2026-05-28
+> Last updated: 2026-06-09
 
 ---
 
@@ -288,6 +288,13 @@ No heavy drop shadows. Depth through tonal surface layering ("stacked paper" eff
 - Numeral: Newsreader 88px/500, `tabular-nums`
 - Band label: score-band bg, `on-primary` or `on-secondary` text
 - Formula `<dl>`: 2-column, UI 11.5px; `Σhᵢ` in `primary-container`, penalties in `error`
+
+### Offline & Onboarding surfaces
+
+- `OfflineBanner` (`components/offline/`): persistent, low-emphasis status strip shown while the device is offline; `secondary-container` bg, `on-secondary-container` text. Non-blocking — cupping continues underneath.
+- `SyncConflictModal` (`components/offline/`): Radix dialog surfaced on reconnect when a draft was already submitted elsewhere; offers keep-local vs. keep-remote.
+- `OfflineFirstLoadError` (`components/offline/`): fallback when a session can't be hydrated offline on first load.
+- `WelcomeModal` (`components/onboarding/`): first-run modal capturing role + country, then routing to a first action (new session / add coffee). Calm, editorial, single-column.
 
 ---
 

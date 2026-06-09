@@ -1,6 +1,6 @@
 # Cata Café — Product Document
 
-> Last updated: 2026-05-05
+> Last updated: 2026-06-09
 
 ---
 
@@ -120,6 +120,8 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 - [x] Auto-save at 800ms debounce (no manual save)
 - [x] Master Controls (session leader only): reveal, close
 - [x] Score preview (`ScoreDisplay` with expandable formula breakdown)
+- [x] Responsive cupping layout with mobile sample navigation bar
+- [x] Sample selection persists across phase tabs
 
 ### Physical Evaluation (Pre-reveal)
 - [x] Green bean defect counting (CAT1 / CAT2)
@@ -137,6 +139,23 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 - [x] Participant management (owner / joined / invited)
 - [x] Community aggregate score (PostgreSQL trigger)
 - [x] Group results tab with comparison view
+- [x] Master can exclude a participant from group aggregates (re-fires recompute)
+- [x] Master-only individual results view (per-participant breakdown)
+- [x] Session-level descriptor aggregates (CATA frequency across participants)
+- [x] Async sessions (`isAsync`) with optional close date (`closesAt`)
+- [x] Configurable cups per sample (`cupsPerSample`, default 5)
+
+### Offline-First
+- [x] Continue cupping with no connection (drafts persisted to IndexedDB via localforage)
+- [x] Online/offline detection with on-screen offline banner
+- [x] Automatic draft sync on reconnect (`useOfflineSync` + `app/actions/offline.ts`)
+- [x] Conflict-aware replay: local-wins for drafts; conflict modal if already submitted elsewhere
+- [x] SSR-safe store (no-ops on the server; never imported by server code)
+
+### Onboarding
+- [x] First-run welcome modal capturing role and country
+- [x] Guided first action (create a session / add a coffee)
+- [x] `onboardingCompleted` flag on the profile
 
 ### Results & Export
 - [x] Individual CVA score with formula breakdown
@@ -180,13 +199,14 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 
 | Model | Purpose |
 |---|---|
-| `CuppingSession` | Session event (format, status, isGroup, isAsync, closesAt) |
+| `Profile` | User account (id = Supabase UUID); `role`, `country`, `onboardingCompleted` |
+| `CuppingSession` | Session event (format, status, isGroup, isAsync, closesAt, cupsPerSample) |
 | `SessionSample` | Coffee sample within a session (position, label, revealed, coffeeId) |
 | `Evaluation` | One cupper's score for one sample (JSON data + computed scores, isDraft) |
 | `PhysicalEvaluation` | Green bean assessment (pre-reveal) |
 | `ExtrinsicData` | Origin/processing info (post-reveal) |
 | `Coffee` | Coffee product reference data |
-| `SessionParticipant` | Links user to group session (owner / joined / invited) |
+| `SessionParticipant` | Links user to group session (owner / joined / invited); `excludedFromResults` |
 | `AggregateScore` | Trigger-computed community score (one per SessionSample) |
 | `UserCoffeeHistory` | Per-user record of coffees tasted with scores |
 | `SessionInvite` | Invite token (maxUses, expiresAt) |
@@ -195,32 +215,29 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 
 ## Roadmap
 
-### Phase 3 — Evaluation UX Rebuild (Current)
-Migrate the cupping interface from the legacy inline-styled components to the new `components/ui/` design system:
-- [ ] `SampleTabs` — pill navigation between samples in a session
-- [ ] `PhaseStepper` — chronological CVA phase indicator (1 Fragancia → 7 Global)
-- [ ] `SessionShell` — page-level layout composing atoms into a sample evaluation form
-- [ ] Rebuild `DescriptiveForm`, `AffectiveForm`, `CombinedForm` using new atomic components
-- [ ] Rebuild `CupClient` orchestration with new design system
-- [ ] Replace `AffectiveScale` with `AffectiveBubbles`
-- [ ] Replace `FlavorTreeSelector` with `CATAPills`
-- [ ] Replace `CupCheckboxes` with `CupIndicators`
+### Shipped (since the original Phase 3 plan)
+- [x] Evaluation UX rebuild on the `components/ui/` atomic design system
+- [x] `IntensitySlider`, `AffectiveBubbles` (replaced `AffectiveScale`), `CATAPills`
+      (replaced `FlavorTreeSelector`), `CupIndicators` (replaced `CupCheckboxes`)
+- [x] Radar/spider chart for attribute profile comparison
+- [x] `attrAverages` populated in aggregate scores (section-level community averages)
+- [x] Async session support (`isAsync`, `closesAt`)
+- [x] Configurable cup count (`cupsPerSample`)
+- [x] Offline-first cupping with conflict-aware sync
+- [x] Guided onboarding (role + country capture)
+- [x] Mobile/responsive cupping layout
 
-### Phase 4 — Results & Analytics
-- [ ] `attrAverages` JSONB populated in aggregate scores (section-level community averages)
-- [ ] Radar/spider chart for attribute profile comparison
+### Next — Results & Analytics
 - [ ] Multi-session coffee comparison view
 - [ ] Export to CSV
 
-### Phase 5 — Session Controls & Workflow
-- [ ] Async session support (`isAsync`, `closesAt` timer)
-- [ ] Customizable cup count (3–5 cups)
+### Next — Session Controls & Workflow
 - [ ] Sample order randomization per participant
 - [ ] QR code for invite link
-
-### Phase 6 — Collaboration & Sharing
-- [ ] Organization accounts (team management)
 - [ ] Session templates (pre-configured sample sets)
+
+### Later — Collaboration & Sharing
+- [ ] Organization accounts (team management)
 - [ ] Public session results (shareable URL)
 - [ ] Role-based access (admin / cupper / observer)
 
@@ -230,5 +247,5 @@ Migrate the cupping interface from the legacy inline-styled components to the ne
 
 - **No consumer-facing features.** This is a professional tool. No star ratings, no social sharing, no gamification.
 - **No password auth.** Magic links only — by design, not by omission.
-- **No mobile-native app.** Responsive web only. The cupping table already has enough gear.
-- **No third-party integrations** (yet). Standalone tool; no CRM, no roastery software sync in Phase 3.
+- **No mobile-native app.** Responsive web only — but offline-capable, so weak lab/farm connectivity is no longer a blocker. The cupping table already has enough gear.
+- **No third-party integrations** (yet). Standalone tool; no CRM, no roastery software sync.

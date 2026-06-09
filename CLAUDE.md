@@ -94,8 +94,11 @@ cata-cafe/
 │   ├── actions/                    # Server actions (all mutations live here)
 │   │   ├── auth.ts                 # signInWithMagicLink(formData, next?), signOut
 │   │   ├── sessions.ts             # createSession, createGroupSession, upsertEvaluation, upsertPhysical, upsertExtrinsic
-│   │   ├── community.ts            # submitEvaluation, closeSession, revealSample, joinViaToken, createInviteToken, syncCoffeeHistory
-│   │   └── profile.ts              # Profile updates
+│   │   ├── community.ts            # submitEvaluation, closeSession, revealSample, joinViaToken, createInviteToken, syncCoffeeHistory, excludeParticipant
+│   │   ├── coffees.ts              # Coffee profile create/update
+│   │   ├── offline.ts              # Conflict-aware replay of offline evaluation drafts on reconnect
+│   │   ├── profile.ts              # Profile updates, completeOnboarding
+│   │   └── dev.ts                  # Dev-only helpers (seed/inspect)
 │   ├── auth/callback/route.ts      # Supabase OAuth callback (reads ?next= param)
 │   ├── generated/prisma/           # AUTO-GENERATED — DO NOT EDIT
 │   └── layout.tsx                  # Root layout
@@ -115,11 +118,24 @@ cata-cafe/
 │       ├── CupCheckboxes.tsx       # Per-cup defect/uniformity checkboxes
 │       ├── NotesInput.tsx          # Free-text notes
 │       └── Section.tsx             # Consistent section wrapper
+│   ├── results/                    # ScoreTable, SampleRadarChart, descriptor frequency, individual/my results
+│   ├── offline/                    # OfflineBanner, SyncConflictModal, OfflineFirstLoadError
+│   ├── onboarding/                 # WelcomeModal, OnboardingWrapper (role/country capture)
+│   └── ui/, layout/, dashboard/    # Shared atoms, app shell, dashboard widgets
+├── hooks/
+│   ├── useConnectivity.ts          # Online/offline detection
+│   └── useOfflineSync.ts          # Drains offline draft queue on reconnect
 ├── lib/
 │   ├── prisma.ts                   # Prisma singleton — always import from here
 │   ├── scoring.ts                  # SCA CVA formula — do not reimplement
+│   ├── evaluation.ts               # Derived-score computation shared by live + offline paths
 │   ├── constants.ts                # All cupping reference data
+│   ├── descriptors.ts              # Descriptor helpers
+│   ├── offline/
+│   │   ├── store.ts                # localforage/IndexedDB draft store — CLIENT ONLY, SSR-safe (no-ops on server)
+│   │   └── types.ts                # Offline blob + sync-status types
 │   └── supabase/
+│       ├── client.ts               # Browser client (Realtime + offline)
 │       ├── server.ts               # Server-side Supabase client (cookie-based)
 │       └── admin.ts                # Service-role client — SERVER ONLY, never import from client components
 ├── prisma/
@@ -150,7 +166,10 @@ If needed you may consult the graph version of the structure for additional cont
 - After structural changes (new modules, major refactors)
 - Command: `graphify . --update` (only processes modified files)
 - The graph is persistent — NO need to rebuild every session
-- **Phase 2 was completed (2026-04-22)** — the graph was built on Phase 1 (69 files). Run `graphify . --update` to include Phase 2 additions before querying structure of new routes/actions.
+- The graph was last built on **2026-04-22** (69 files, before offline-first, onboarding, and the
+  `coffees`/`community`/`offline`/`dev` actions). Run `graphify . --update` to refresh it before
+  querying the structure of new routes/actions. Requires an LLM API key in the environment (e.g.
+  `GEMINI_API_KEY` / `ANTHROPIC_API_KEY`) — `graphify` aborts without one.
 
 ### Plan as Context Cache
 When a detailed implementation plan encodes all the codebase knowledge needed (file paths, schema, conventions), graphify queries during implementation become redundant. The highest-ROI time to use graphify in a multi-phase project is **during planning** — not during execution. If you receive a pre-built plan, use it as your context cache and skip graph queries for information the plan already contains.
@@ -197,7 +216,13 @@ All writes go through `app/actions/`. Call `revalidatePath()` after mutations to
 - The **PostgreSQL trigger** `trg_recompute_aggregate` is the single source of truth for community scores. It fires `AFTER INSERT OR UPDATE OF "isDraft"` on `evaluations` when `isDraft=false` and writes to `aggregate_scores`.
 - TypeScript `calcCommunityScore()` in `lib/scoring.ts` is **display-only** — never store its result.
 - `prisma/sql/rls_and_triggers.sql` must be applied **manually** via the Supabase dashboard SQL editor. Prisma migrate does NOT apply triggers or functions.
-- `attrAverages` JSONB column on `AggregateScore` is not populated by the v1 trigger — Phase 2.1 enhancement.
+- `attrAverages` JSONB column on `AggregateScore` is populated alongside the score (section-level community averages); the exclude-participant path re-fires the recompute so penalties and `attrAverages` exclude removed cuppers.
+
+### Offline-First Pattern
+- The offline draft store (`lib/offline/store.ts`) wraps **localforage/IndexedDB** and is **client-only**. It is accessed through a lazy `instance()` getter that returns `null` during SSR, so an accidental server import degrades to a no-op instead of crashing. **Never import `lib/offline/store` from a Server Component or server action.**
+- Drafts are keyed by session + user (`cata_session_<sessionId>_user_<userId>`). Connectivity is tracked by `hooks/useConnectivity.ts`; `hooks/useOfflineSync.ts` drains the queue on reconnect.
+- Reconnect replay goes through `app/actions/offline.ts`, which keeps the **same authorization as the live path** — Prisma scoped by `cupperId`, never a raw Supabase select, so RLS/ownership rules hold. Conflict rules: no row → create; existing draft → local wins; already submitted → `conflict` unless `force`. `isDraft`/`submittedAt` are never mutated by replay.
+- `lib/evaluation.ts` (`computeEvaluationDerived`) computes derived scores for both the live and offline paths so a replayed draft scores identically.
 
 ### Realtime (Group Sessions)
 - Use `createBrowserClient` from `@supabase/ssr` in client components.
@@ -221,14 +246,14 @@ Cupping form components are fully controlled. State is lifted to `CupClient`, wh
 
 | Model | Purpose |
 |---|---|
-| `Profile` | User account (id = Supabase user UUID) |
-| `CuppingSession` | A cupping event (format, date, status, isGroup, isAsync, closesAt) |
+| `Profile` | User account (id = Supabase user UUID); `role`, `country`, `onboardingCompleted` |
+| `CuppingSession` | A cupping event (format, date, status, isGroup, isAsync, closesAt, cupsPerSample) |
 | `SessionSample` | A coffee sample within a session (position, label, revealed, coffeeId) |
 | `Evaluation` | A cupper's score for one sample (JSON data + computed scores, isDraft, submittedAt) |
 | `PhysicalEvaluation` | Green bean assessment for a sample (pre-reveal) |
 | `ExtrinsicData` | Origin/processing info revealed post-tasting |
 | `Coffee` | Coffee product reference data |
-| `SessionParticipant` | Links a user to a group session (status: "invited"\|"joined"\|"owner") |
+| `SessionParticipant` | Links a user to a group session (status: "invited"\|"joined"\|"owner"; `excludedFromResults`) |
 | `AggregateScore` | Trigger-computed community score for a sample (one per SessionSample) |
 | `UserCoffeeHistory` | Per-user record of coffees tasted with individual + community scores |
 | `SessionInvite` | Invite token for joining a group session (maxUses, expiresAt) |
