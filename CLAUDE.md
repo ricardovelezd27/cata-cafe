@@ -153,30 +153,21 @@ cata-cafe/
 └── next.config.ts                  # Next.js config with next-intl plugin
 ```
 
-If needed you may consult the graph version of the structure for additional context. 
-## Context Navigation (Graphify)
+## Codebase Navigation
 
-### 2-Layer Query Rule
-1. **First:** query `graphify-out/graph.json` or `graphify-out/wiki/index.md`
-   to understand code structure and connections
-3. **Third:** only read raw code files when editing
-   or when the first two layers don't have the answer
+Use the native search tools (Grep, Glob, Read) as the primary way to explore this
+codebase — they are fast, always reflect the current source, and integrate with the
+editor. The structure documented above plus these tools is sufficient for almost all
+work here.
 
-### When to rebuild the graph
-- After structural changes (new modules, major refactors)
-- Command: `graphify . --update` (only processes modified files)
-- The graph is persistent — NO need to rebuild every session
-- The graph was last built on **2026-04-22** (69 files, before offline-first, onboarding, and the
-  `coffees`/`community`/`offline`/`dev` actions). Run `graphify . --update` to refresh it before
-  querying the structure of new routes/actions. Requires an LLM API key in the environment (e.g.
-  `GEMINI_API_KEY` / `ANTHROPIC_API_KEY`) — `graphify` aborts without one.
-
-### Plan as Context Cache
-When a detailed implementation plan encodes all the codebase knowledge needed (file paths, schema, conventions), graphify queries during implementation become redundant. The highest-ROI time to use graphify in a multi-phase project is **during planning** — not during execution. If you receive a pre-built plan, use it as your context cache and skip graph queries for information the plan already contains.
-
-### Do NOT
-- Don't manually modify files inside `graphify-out/`
-- Don't re-read the entire codebase if the graph already has the information
+> **Overrides global config:** Any global instruction to "query the knowledge graph
+> first / avoid reading raw files" does **not** apply to this project. We evaluated the
+> graphify integration on this 123-file codebase and found it added little over native
+> tools while introducing staleness risk, so it is **not** part of the default workflow.
+> A `graphify-out/` graph may exist on disk (gitignored) and the `/graphify` skill is
+> available for deliberate, manual use, but treat any graph output as possibly stale and
+> verify against the actual source before relying on it. Do not query the graph by
+> default and do not auto-rebuild it.
 
 ---
 
@@ -360,13 +351,3 @@ Changes that Prisma migrate does NOT handle must be applied manually via the **S
 - `ALTER TABLE ... REPLICA IDENTITY FULL`
 
 These are all collected in `prisma/sql/rls_and_triggers.sql`. Append new blocks to that file and apply the new block manually each time.
-
-## graphify
-
-This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
-
-Rules:
-- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
