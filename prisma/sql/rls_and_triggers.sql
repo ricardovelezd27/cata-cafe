@@ -683,3 +683,11 @@ BEGIN
 END;
 $$;
 -- Trigger definition is unchanged — no need to recreate it.
+
+-- ============================================================
+-- 2026-06-12: Waitlist table (landing page email capture)
+-- Written exclusively via Prisma server actions (postgres role,
+-- bypasses RLS). Enabling RLS with NO policies closes the anon
+-- PostgREST surface entirely.
+-- ============================================================
+ALTER TABLE waitlist_entries ENABLE ROW LEVEL SECURITY;

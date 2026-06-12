@@ -19,5 +19,18 @@ export default async function LocaleLayout({
   if (!hasLocale(routing.locales, locale)) notFound();
   setRequestLocale(locale);
 
-  return <NextIntlClientProvider>{children}</NextIntlClientProvider>;
+  return (
+    <NextIntlClientProvider>
+      {/* The <html> tag lives in the root layout (above [locale]) with
+          lang="es" (default locale). Correct it before paint for /en. */}
+      {locale !== "es" && (
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `document.documentElement.lang=${JSON.stringify(locale)}`,
+          }}
+        />
+      )}
+      {children}
+    </NextIntlClientProvider>
+  );
 }

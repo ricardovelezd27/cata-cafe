@@ -1,34 +1,72 @@
-import Link from "next/link";
+import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { routing } from "@/i18n/routing";
+import LandingHeader from "@/components/landing/LandingHeader";
+import HeroSection from "@/components/landing/HeroSection";
+import CostOfGuessingSection from "@/components/landing/CostOfGuessingSection";
+import ComparisonSection from "@/components/landing/ComparisonSection";
+import HowItWorksSection from "@/components/landing/HowItWorksSection";
+import TrustStrip from "@/components/landing/TrustStrip";
+import AudienceSection from "@/components/landing/AudienceSection";
+import RoadmapSection from "@/components/landing/RoadmapSection";
+import PricingSection from "@/components/landing/PricingSection";
+import FinalCTASection from "@/components/landing/FinalCTASection";
+import LandingFooter from "@/components/landing/LandingFooter";
+import ScrollFx from "@/components/landing/ScrollFx";
 
-export default async function Home({
+export function generateStaticParams() {
+  return routing.locales.map((locale) => ({ locale }));
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "landing.meta" });
+
+  return {
+    title: t("title"),
+    description: t("description"),
+    alternates: {
+      canonical: locale === "es" ? "/" : "/en",
+      languages: { es: "/", en: "/en", "x-default": "/" },
+    },
+    openGraph: {
+      title: t("ogTitle"),
+      description: t("ogDescription"),
+      images: ["/og.png"],
+      locale: locale === "es" ? "es_ES" : "en_US",
+      type: "website",
+    },
+  };
+}
+
+export default async function LandingPage({
   params,
 }: {
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const t = await getTranslations();
 
   return (
-    <main className="flex flex-1 items-center justify-center px-6 py-16">
-      <div className="max-w-2xl text-center space-y-6">
-        <div className="text-[10px] tracking-[3px] text-brown-mid uppercase">
-          {t("brand.name")}
-        </div>
-        <h1 className="text-4xl md:text-5xl text-green-dark font-serif font-normal">
-          {t("home.heroTitle")}
-        </h1>
-        <p className="text-brown-dark text-lg">{t("home.heroSubtitle")}</p>
-        <div className="pt-4">
-          <Link
-            href={`/${locale}/auth/login`}
-            className="inline-block px-6 py-3 rounded-lg bg-green-dark text-white font-bold hover:bg-green-mid transition"
-          >
-            {t("home.cta")}
-          </Link>
-        </div>
-      </div>
-    </main>
+    <>
+      <LandingHeader locale={locale} />
+      <main className="flex-1">
+        <HeroSection locale={locale} />
+        <CostOfGuessingSection />
+        <ComparisonSection />
+        <HowItWorksSection locale={locale} />
+        <TrustStrip />
+        <AudienceSection />
+        <RoadmapSection />
+        <PricingSection locale={locale} />
+        <FinalCTASection locale={locale} />
+      </main>
+      <LandingFooter locale={locale} />
+      <ScrollFx />
+    </>
   );
 }

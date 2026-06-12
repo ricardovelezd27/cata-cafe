@@ -240,3 +240,14 @@ model SessionInvite {
   @@index([createdBy])
   @@map("session_invites")
 }
+
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  plan      String   @default("pro")
+  locale    String   @default("es")
+  source    String   @default("landing")
+  createdAt DateTime @default(now())
+
+  @@map("waitlist_entries")
+}

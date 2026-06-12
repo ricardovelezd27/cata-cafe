@@ -270,5 +270,173 @@
     "conflictKeep": "Mantener versión enviada",
     "conflictReplace": "Reemplazar con esta versión",
     "partialSyncNotice": "Mostrando resultados de {included} de {total} participantes. {pending} aún no han sincronizado."
+  },
+  "landing": {
+    "meta": {
+      "title": "Cata — Descubre cuánto vale tu café | Cata SCA CVA",
+      "description": "Evalúa tus cafés con el protocolo SCA CVA completo y descubre la banda de valor justo de cada lote. Para tostadores, importadores, cooperativas y formadores.",
+      "ogTitle": "Cata — Descubre cuánto vale tu café",
+      "ogDescription": "Cata profesional SCA CVA, gratis. La banda de valor justo de tu café, basada en transacciones reales."
+    },
+    "header": {
+      "wordmark": "Cata",
+      "signIn": "Iniciar sesión",
+      "cta": "Empieza gratis"
+    },
+    "hero": {
+      "eyebrow": "Evaluación profesional de café · SCA CVA",
+      "title": "¿Cuánto pagarías por este café?",
+      "subtitle": "Introduce puntaje CVA, origen y proceso. Cata te muestra la banda de valor justo — basada en transacciones reales, no en intuición.",
+      "cta": "Evalúa tus cafés gratis →",
+      "ctaNote": "Sin tarjeta. Sin contraseña. Solo tu correo."
+    },
+    "widget": {
+      "title": "Calcula la banda de valor",
+      "scoreLabel": "Puntaje CVA",
+      "scoreAria": "{score} puntos CVA",
+      "scorePoints": "puntos",
+      "originLabel": "Origen",
+      "processLabel": "Proceso",
+      "origins": {
+        "etiopia": "Etiopía",
+        "kenia": "Kenia",
+        "colombia": "Colombia",
+        "centroamerica": "Centroamérica",
+        "brasil": "Brasil",
+        "otros": "Otros orígenes"
+      },
+      "processes": {
+        "lavado": "Lavado",
+        "natural": "Natural",
+        "honey": "Honey",
+        "fermentacion": "Fermentación controlada"
+      },
+      "bandLabel": "Banda de valor justo",
+      "perKg": "/kg",
+      "source": "Fuente: percentiles públicos de la Specialty Coffee Transaction Guide — la banda se afinará con datos de la comunidad.",
+      "disclaimer": "Rango orientativo. No constituye una oferta de compra."
+    },
+    "cost": {
+      "eyebrow": "El coste de adivinar",
+      "statLead": "Seis catadores profesionales valoraron el mismo lote.",
+      "statPunch": "Fallaron hasta en un 40%.",
+      "statNote": "Sin una referencia de valor, cada decisión de compra es una apuesta.",
+      "exampleTitle": "Lo que cuesta en la práctica",
+      "lotLabel": "Un lote",
+      "lotValue": "1.200 kg",
+      "errorLabel": "Error de valoración",
+      "errorValue": "€0,80/kg",
+      "lossLabel": "Perdido en una sola decisión",
+      "lossValue": "€960",
+      "decisionsLabel": "Decisiones de compra al año",
+      "decisionsValue": "× 40",
+      "totalLabel": "El coste anual de adivinar",
+      "totalValue": "€38.400"
+    },
+    "comparison": {
+      "eyebrow": "Registrar vs. decidir",
+      "title": "Tu app de cata registra. Cata decide contigo.",
+      "colGeneric": "Apps de cata",
+      "colCata": "Cata",
+      "rowSca": "Sesiones SCA CVA",
+      "rowReports": "Guardar puntajes e informes",
+      "rowBand": "Banda de valor justo por lote",
+      "rowAlert": "Alerta precio-vs-calidad",
+      "rowSegment": "Encaje de segmento",
+      "included": "Incluido",
+      "notIncluded": "No incluido",
+      "roadmapMark": "En construcción",
+      "roadmapNote": "Las funciones marcadas están en construcción — mira la evolución del producto más abajo.",
+      "tagline": "Mantén tus herramientas. Añade la capa de decisión."
+    },
+    "how": {
+      "eyebrow": "Cómo funciona",
+      "title": "De la taza a la decisión en tres pasos",
+      "step1Title": "Cátalo",
+      "step1Desc": "Protocolo CVA oficial completo. Funciona sin conexión y permite calibración en grupo.",
+      "step2Title": "Descríbelo",
+      "step2Desc": "Registra los atributos extrínsecos del lote: origen, proceso, variedad, altitud.",
+      "step3Title": "Decide",
+      "step3Desc": "Exporta tu informe PDF con el puntaje CVA. La banda de valor por lote está en construcción.",
+      "frame1Aria": "Recreación de la pantalla de evaluación afectiva con escala de 1 a 9",
+      "frame2Aria": "Recreación del selector de descriptores de sabor",
+      "frame3Aria": "Recreación de la tarjeta de puntaje con informe PDF"
+    },
+    "trust": {
+      "formulaLabel": "Fórmula CVA",
+      "formula": "S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d",
+      "item1": "Protocolo CVA completo",
+      "item2": "Usado en sesiones de calibración con Q-graders profesionales",
+      "item3": "Funciona sin conexión"
+    },
+    "audience": {
+      "eyebrow": "Para quién es",
+      "title": "Hecho para quien decide sobre café",
+      "card1Title": "Tostadores",
+      "card1Desc": "Pon precio a tu próximo contrato con datos de taza, no con instinto.",
+      "card2Title": "Importadores",
+      "card2Desc": "Justifica cada lote ante tus clientes con puntajes y banda de valor.",
+      "card3Title": "Cooperativas",
+      "card3Desc": "Defiende tu precio en la negociación con evidencia de calidad.",
+      "card4Title": "Formadores",
+      "card4Desc": "Calibra a tu equipo de catadores y mide su consistencia sesión a sesión."
+    },
+    "roadmap": {
+      "eyebrow": "Evolución del producto",
+      "title": "Dónde estamos, sin adornos",
+      "chipToday": "Hoy",
+      "chipBuilding": "En construcción",
+      "chipSoon": "Próximamente",
+      "stage1Title": "Cata profesional CVA completa, gratis",
+      "stage1Desc": "Sesiones descriptivas, afectivas y combinadas. Offline. Calibración en grupo. Ya disponible.",
+      "stage2Title": "Banda de valor por lote e informes de decisión",
+      "stage2Desc": "El puntaje de tu cata, traducido a una banda de precio justa y defendible.",
+      "stage3Title": "Benchmark vivo de precios alimentado por la comunidad",
+      "stage3Desc": "Cada cata anónima y agregada afina la referencia de valor para todos."
+    },
+    "pricing": {
+      "eyebrow": "Precios",
+      "title": "Empieza gratis. Crece cuando lo necesites.",
+      "freeName": "Gratis",
+      "freePrice": "€0",
+      "freeFeature1": "Catar y puntuar con protocolo CVA completo",
+      "freeFeature2": "3 lotes al mes",
+      "freeFeature3": "Funciona sin conexión",
+      "freeCta": "Evalúa tus cafés gratis →",
+      "proName": "Pro",
+      "proBadge": "Próximamente",
+      "proPer": "por asiento",
+      "proFeature1": "Sesiones ilimitadas",
+      "proFeature2": "Informes de decisión por lote",
+      "proFeature3": "Banda de valor en cada cata",
+      "teamsName": "Equipos / Competencias",
+      "teamsBadge": "Próximamente",
+      "teamsFeature1": "Analítica de calibración",
+      "teamsFeature2": "Gestión de paneles de catadores",
+      "teamsFeature3": "Sesiones de competencia"
+    },
+    "waitlist": {
+      "label": "Únete a la lista de espera",
+      "emailPlaceholder": "tu@correo.com",
+      "button": "Únete a la lista",
+      "submitting": "Enviando…",
+      "success": "Estás en la lista. Te avisaremos cuando Pro esté disponible.",
+      "invalid": "Introduce un correo válido.",
+      "error": "No pudimos guardar tu correo. Inténtalo de nuevo."
+    },
+    "finalCta": {
+      "title": "Deja de adivinar cuánto vale el café.",
+      "cta": "Evalúa tus cafés gratis →",
+      "note": "Sin contraseñas. Entra con un enlace mágico a tu correo."
+    },
+    "footer": {
+      "language": "Idioma",
+      "signIn": "Iniciar sesión",
+      "contact": "Contacto",
+      "privacy": "Privacidad",
+      "terms": "Términos",
+      "copyright": "© {year} Cata. Todos los derechos reservados.",
+      "madeFor": "Hecho para profesionales del café de especialidad."
+    }
   }
 }

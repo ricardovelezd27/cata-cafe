@@ -270,5 +270,173 @@
     "conflictKeep": "Keep submitted version",
     "conflictReplace": "Replace with this version",
     "partialSyncNotice": "Showing results for {included} of {total} participants. {pending} have not yet synced."
+  },
+  "landing": {
+    "meta": {
+      "title": "Cata — Find out what your coffee is worth | SCA CVA Cupping",
+      "description": "Score your coffees with the full SCA CVA protocol and see the fair-value band for every lot. For roasters, importers, cooperatives and trainers.",
+      "ogTitle": "Cata — Find out what your coffee is worth",
+      "ogDescription": "Professional SCA CVA cupping, free. Your coffee's fair-value band, grounded in real transactions."
+    },
+    "header": {
+      "wordmark": "Cata",
+      "signIn": "Sign in",
+      "cta": "Start free"
+    },
+    "hero": {
+      "eyebrow": "Professional coffee evaluation · SCA CVA",
+      "title": "How much would you pay for this coffee?",
+      "subtitle": "Enter a CVA score, origin and process. Cata shows you the fair-value band — grounded in real transactions, not gut feeling.",
+      "cta": "Score your coffees for free →",
+      "ctaNote": "No card. No password. Just your email."
+    },
+    "widget": {
+      "title": "Estimate the value band",
+      "scoreLabel": "CVA score",
+      "scoreAria": "{score} CVA points",
+      "scorePoints": "points",
+      "originLabel": "Origin",
+      "processLabel": "Process",
+      "origins": {
+        "etiopia": "Ethiopia",
+        "kenia": "Kenya",
+        "colombia": "Colombia",
+        "centroamerica": "Central America",
+        "brasil": "Brazil",
+        "otros": "Other origins"
+      },
+      "processes": {
+        "lavado": "Washed",
+        "natural": "Natural",
+        "honey": "Honey",
+        "fermentacion": "Controlled fermentation"
+      },
+      "bandLabel": "Fair-value band",
+      "perKg": "/kg",
+      "source": "Source: public percentiles from the Specialty Coffee Transaction Guide — the band will sharpen with community data.",
+      "disclaimer": "Indicative range. Not an offer to buy."
+    },
+    "cost": {
+      "eyebrow": "The cost of guessing",
+      "statLead": "Six professional cuppers valued the same lot.",
+      "statPunch": "They missed by up to 40%.",
+      "statNote": "Without a value reference, every buying decision is a bet.",
+      "exampleTitle": "What it costs in practice",
+      "lotLabel": "One lot",
+      "lotValue": "1,200 kg",
+      "errorLabel": "Valuation error",
+      "errorValue": "€0.80/kg",
+      "lossLabel": "Lost in a single decision",
+      "lossValue": "€960",
+      "decisionsLabel": "Buying decisions per year",
+      "decisionsValue": "× 40",
+      "totalLabel": "The yearly cost of guessing",
+      "totalValue": "€38,400"
+    },
+    "comparison": {
+      "eyebrow": "Recording vs. deciding",
+      "title": "Your cupping app records. Cata decides with you.",
+      "colGeneric": "Cupping apps",
+      "colCata": "Cata",
+      "rowSca": "SCA CVA sessions",
+      "rowReports": "Save scores and reports",
+      "rowBand": "Fair-value band per lot",
+      "rowAlert": "Price-vs-quality alert",
+      "rowSegment": "Segment fit",
+      "included": "Included",
+      "notIncluded": "Not included",
+      "roadmapMark": "In progress",
+      "roadmapNote": "Marked features are in progress — see the product evolution below.",
+      "tagline": "Keep your tools. Add the decision layer."
+    },
+    "how": {
+      "eyebrow": "How it works",
+      "title": "From cup to decision in three steps",
+      "step1Title": "Cup it",
+      "step1Desc": "The full official CVA protocol. Works offline and supports group calibration.",
+      "step2Title": "Describe it",
+      "step2Desc": "Record the lot's extrinsic attributes: origin, process, variety, altitude.",
+      "step3Title": "Decide",
+      "step3Desc": "Export your PDF report with the CVA score. The per-lot value band is in progress.",
+      "frame1Aria": "Recreation of the affective evaluation screen with a 1-to-9 scale",
+      "frame2Aria": "Recreation of the flavor descriptor selector",
+      "frame3Aria": "Recreation of the score card with PDF report"
+    },
+    "trust": {
+      "formulaLabel": "CVA formula",
+      "formula": "S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d",
+      "item1": "Full CVA protocol",
+      "item2": "Used in calibration sessions with professional Q-graders",
+      "item3": "Works offline"
+    },
+    "audience": {
+      "eyebrow": "Who it's for",
+      "title": "Built for people who make calls on coffee",
+      "card1Title": "Roasters",
+      "card1Desc": "Price your next contract on cup data, not instinct.",
+      "card2Title": "Importers",
+      "card2Desc": "Back every lot with scores and a value band your clients can see.",
+      "card3Title": "Cooperatives",
+      "card3Desc": "Defend your price at the table with quality evidence.",
+      "card4Title": "Trainers",
+      "card4Desc": "Calibrate your cupping team and track consistency session by session."
+    },
+    "roadmap": {
+      "eyebrow": "Product evolution",
+      "title": "Where we are, plainly",
+      "chipToday": "Today",
+      "chipBuilding": "In progress",
+      "chipSoon": "Coming soon",
+      "stage1Title": "Full professional CVA cupping, free",
+      "stage1Desc": "Descriptive, affective and combined sessions. Offline. Group calibration. Available now.",
+      "stage2Title": "Per-lot value band and decision reports",
+      "stage2Desc": "Your cupping score, translated into a fair, defensible price band.",
+      "stage3Title": "Live price benchmark fed by the community",
+      "stage3Desc": "Every anonymous, aggregated cupping sharpens the value reference for everyone."
+    },
+    "pricing": {
+      "eyebrow": "Pricing",
+      "title": "Start free. Grow when you need to.",
+      "freeName": "Free",
+      "freePrice": "€0",
+      "freeFeature1": "Cup and score with the full CVA protocol",
+      "freeFeature2": "3 lots per month",
+      "freeFeature3": "Works offline",
+      "freeCta": "Score your coffees for free →",
+      "proName": "Pro",
+      "proBadge": "Coming soon",
+      "proPer": "per seat",
+      "proFeature1": "Unlimited sessions",
+      "proFeature2": "Per-lot decision reports",
+      "proFeature3": "A value band with every cupping",
+      "teamsName": "Teams / Competitions",
+      "teamsBadge": "Coming soon",
+      "teamsFeature1": "Calibration analytics",
+      "teamsFeature2": "Cupping panel management",
+      "teamsFeature3": "Competition sessions"
+    },
+    "waitlist": {
+      "label": "Join the waitlist",
+      "emailPlaceholder": "you@email.com",
+      "button": "Join the list",
+      "submitting": "Sending…",
+      "success": "You're on the list. We'll let you know when Pro is ready.",
+      "invalid": "Enter a valid email.",
+      "error": "We couldn't save your email. Please try again."
+    },
+    "finalCta": {
+      "title": "Stop guessing what coffee is worth.",
+      "cta": "Score your coffees for free →",
+      "note": "No passwords. Sign in with a magic link to your email."
+    },
+    "footer": {
+      "language": "Language",
+      "signIn": "Sign in",
+      "contact": "Contact",
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "copyright": "© {year} Cata. All rights reserved.",
+      "madeFor": "Made for specialty coffee professionals."
+    }
   }
 }
