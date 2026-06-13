@@ -321,6 +321,7 @@
       "statLead": "Seis catadores profesionales valoraron el mismo lote.",
       "statPunch": "Fallaron hasta en un 40%.",
       "statNote": "Sin una referencia de valor, cada decisión de compra es una apuesta.",
+      "statSource": "Sesión de calibración a ciegas: seis catadores profesionales, el mismo lote.",
       "exampleTitle": "Lo que cuesta en la práctica",
       "lotLabel": "Un lote",
       "lotValue": "1.200 kg",
@@ -425,7 +426,7 @@
       "error": "No pudimos guardar tu correo. Inténtalo de nuevo."
     },
     "finalCta": {
-      "title": "Deja de adivinar cuánto vale el café.",
+      "title": "Deja de adivinar <em>cuánto vale</em> el café.",
       "cta": "Evalúa tus cafés gratis →",
       "note": "Sin contraseñas. Entra con un enlace mágico a tu correo."
     },

@@ -13,7 +13,12 @@ export default async function LandingFooter({ locale }: { locale: string }) {
       <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8">
         <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="font-serif text-2xl text-surface">{th("wordmark")}</p>
+            <p className="font-serif text-2xl text-surface">
+              {th("wordmark")}
+              <span aria-hidden="true" className="text-secondary-container">
+                .
+              </span>
+            </p>
             <p className="mt-2 max-w-xs text-sm">{t("madeFor")}</p>
           </div>
 
@@ -42,20 +47,22 @@ export default async function LandingFooter({ locale }: { locale: string }) {
                 {t("language")}
               </p>
               <div className="mt-2.5 space-y-2.5">
-                <Link
+                {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- locale switch must be a full document load (metadata + <html lang>) */}
+                <a
                   href="/"
                   hrefLang="es"
                   className={locale === "es" ? "block text-surface" : "block hover:text-surface"}
                 >
                   {tl("es")}
-                </Link>
-                <Link
+                </a>
+                {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- locale switch must be a full document load (metadata + <html lang>) */}
+                <a
                   href="/en"
                   hrefLang="en"
                   className={locale === "en" ? "block text-surface" : "block hover:text-surface"}
                 >
                   {tl("en")}
-                </Link>
+                </a>
               </div>
             </div>
           </div>

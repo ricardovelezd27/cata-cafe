@@ -13,6 +13,7 @@ export default function ScrollFx() {
 
     let cancelled = false;
     let ctx: { revert: () => void } | undefined;
+    let safety: ReturnType<typeof setInterval> | undefined;
 
     const start = async () => {
       const [{ gsap }, { ScrollTrigger }] = await Promise.all([
@@ -22,9 +23,28 @@ export default function ScrollFx() {
       if (cancelled) return;
       gsap.registerPlugin(ScrollTrigger);
 
+      // content-visibility placeholders and late font swaps shift layout;
+      // re-measure trigger positions once fonts settle.
+      document.fonts?.ready.then(() => {
+        if (!cancelled) ScrollTrigger.refresh();
+      });
+
+      const hidden = new Set<HTMLElement>();
+
       ctx = gsap.context(() => {
-        // Hero entrance is pure CSS (.hero-rise) so the LCP paint is never
-        // delayed by this lazy-loaded module. GSAP handles the rest.
+        // Hero entrance is pure CSS (.hero-rise / .hero-slide) so the LCP
+        // paint is never delayed by this lazy-loaded module.
+
+        const show = (el: HTMLElement) => {
+          hidden.delete(el);
+          gsap.to(el, {
+            opacity: 1,
+            y: 0,
+            duration: 0.8,
+            ease: "power3.out",
+            clearProps: "all",
+          });
+        };
 
         // Section reveals.
         gsap.utils.toArray<HTMLElement>("[data-reveal]").forEach((el) => {
@@ -32,20 +52,24 @@ export default function ScrollFx() {
             el.getBoundingClientRect().top > window.innerHeight * 0.85;
           if (!fromBelowViewport) return;
           gsap.set(el, { opacity: 0, y: 32 });
+          hidden.add(el);
           ScrollTrigger.create({
             trigger: el,
             start: "top 85%",
             once: true,
-            onEnter: () =>
-              gsap.to(el, {
-                opacity: 1,
-                y: 0,
-                duration: 0.8,
-                ease: "power3.out",
-                clearProps: "all",
-              }),
+            onEnter: () => show(el),
           });
         });
+
+        // Safety net: if a hidden element is inside the viewport but its
+        // trigger never fired (mis-measured layout, snapshot renderers,
+        // print), reveal it anyway. Off-screen elements keep their reveal.
+        safety = setInterval(() => {
+          hidden.forEach((el) => {
+            if (el.getBoundingClientRect().top < window.innerHeight) show(el);
+          });
+          if (hidden.size === 0 && safety) clearInterval(safety);
+        }, 1500);
 
         // Count-up numerals. Final formatted value is already in SSR HTML;
         // we parse it, animate from 0 and restore the exact original string.
@@ -65,7 +89,7 @@ export default function ScrollFx() {
             onEnter: () =>
               gsap.to(obj, {
                 v: target,
-                duration: 1.4,
+                duration: 1.0,
                 ease: "power2.out",
                 onUpdate: () => {
                   el.textContent = `${prefix}${fmt.format(Math.round(obj.v))}${suffix}`;
@@ -101,6 +125,7 @@ export default function ScrollFx() {
 
     return () => {
       cancelled = true;
+      if (safety) clearInterval(safety);
       ctx?.revert();
     };
   }, []);

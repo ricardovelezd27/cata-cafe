@@ -321,6 +321,7 @@
       "statLead": "Six professional cuppers valued the same lot.",
       "statPunch": "They missed by up to 40%.",
       "statNote": "Without a value reference, every buying decision is a bet.",
+      "statSource": "Blind calibration session: six professional cuppers, the same lot.",
       "exampleTitle": "What it costs in practice",
       "lotLabel": "One lot",
       "lotValue": "1,200 kg",
@@ -425,7 +426,7 @@
       "error": "We couldn't save your email. Please try again."
     },
     "finalCta": {
-      "title": "Stop guessing what coffee is worth.",
+      "title": "Stop guessing <em>what coffee is worth</em>.",
       "cta": "Score your coffees for free →",
       "note": "No passwords. Sign in with a magic link to your email."
     },

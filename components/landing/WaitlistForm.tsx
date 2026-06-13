@@ -51,19 +51,21 @@ export default function WaitlistForm({
         className="hidden"
       />
       <input type="hidden" name="locale" value={locale} />
-      <div className="flex gap-2">
+      {/* Stacked, not inline: the card column gets narrow at lg, and an
+          email input must never truncate its own placeholder. */}
+      <div className="flex flex-col gap-2">
         <input
           id="waitlist-email"
           type="email"
           name="email"
           required
           placeholder={labels.emailPlaceholder}
-          className="min-w-0 flex-1 rounded-2xl border border-outline-variant bg-surface-container-lowest px-4 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary-container"
+          className="w-full rounded-2xl border border-outline-variant bg-surface-container-lowest px-4 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary-container"
         />
         <button
           type="submit"
           disabled={pending}
-          className="shrink-0 rounded-2xl bg-primary-container px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary disabled:opacity-60"
+          className="w-full rounded-2xl bg-primary-container px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary disabled:opacity-60"
         >
           {pending ? labels.submitting : labels.button}
         </button>

@@ -261,6 +261,7 @@ h1, h2, h3, h4, .font-serif {
 .text-surface { color: var(--color-surface); }
 .text-primary-fixed-dim { color: var(--color-primary-fixed-dim); }
 .text-green-light { color: var(--color-green-light); }
+.text-secondary-fixed { color: var(--color-secondary-fixed); }
 
 button { font-family: inherit; cursor: pointer; }
 
@@ -383,4 +384,51 @@ button { font-family: inherit; cursor: pointer; }
   .hero-rise-1 { animation-delay: 0.08s; }
   .hero-rise-2 { animation-delay: 0.16s; }
   .hero-rise-3 { animation-delay: 0.24s; }
+
+  /* Hero terroir contours: stroke draw-in on load. pathLength is normalized
+     to 1 on each path, so dasharray/dashoffset are unitless. */
+  @keyframes contour-draw {
+    from { stroke-dashoffset: 1; }
+    to   { stroke-dashoffset: 0; }
+  }
+  /* Base delay 0.45s: the draw starts after the hero's first paint so it
+     never competes with the LCP. */
+  .contour-path {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: contour-draw 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.45s forwards;
+  }
+  .contour-path:nth-of-type(2) { animation-delay: 0.55s; }
+  .contour-path:nth-of-type(3) { animation-delay: 0.65s; }
+  .contour-path:nth-of-type(4) { animation-delay: 0.75s; }
+  .contour-path:nth-of-type(5) { animation-delay: 0.85s; }
+  .contour-path:nth-of-type(6) { animation-delay: 0.95s; }
+
+  /* Cupping bowls seen from above: slow ambient ripple. Composited divs. */
+  @keyframes bowl-ripple {
+    0%, 100% { transform: scale(1);    opacity: 0.55; }
+    50%      { transform: scale(1.05); opacity: 1; }
+  }
+  .bowl-set {
+    animation: bowl-ripple 9s ease-in-out infinite;
+    will-change: transform, opacity;
+  }
+  .bowl-set-2 { animation-delay: -3s; }
+  .bowl-set-3 { animation-delay: -6s; }
+
+  /* Widget self-demo: invitation pulse on the slider thumb after the demo
+     glide ends, and a settle pulse on the band readout. */
+  @keyframes thumb-pulse {
+    0%   { box-shadow: 0 2px 8px rgba(21, 53, 38, 0.35), 0 0 0 0 rgba(171, 207, 184, 0.9); }
+    100% { box-shadow: 0 2px 8px rgba(21, 53, 38, 0.35), 0 0 0 14px rgba(171, 207, 184, 0); }
+  }
+  .landing-range.demo-pulse::-webkit-slider-thumb { animation: thumb-pulse 1.1s ease-out 2; }
+  .landing-range.demo-pulse::-moz-range-thumb     { animation: thumb-pulse 1.1s ease-out 2; }
+
+  @keyframes band-settle {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.025); }
+    100% { transform: scale(1); }
+  }
+  .band-settle { animation: band-settle 0.6s cubic-bezier(0.22, 1, 0.36, 1) 1; }
 }

@@ -14,28 +14,34 @@ export default async function ComparisonSection() {
 
   return (
     <section className="cv-auto bg-surface-container-low">
-      <div className="mx-auto max-w-4xl px-5 py-20 sm:px-8 sm:py-28">
-        <div data-reveal className="text-center">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[minmax(16rem,1fr)_minmax(0,38rem)] lg:gap-16">
+        <div data-reveal className="lg:pt-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-secondary">
             {t("eyebrow")}
           </p>
           <h2 className="mt-4 font-serif text-3xl leading-tight text-on-surface sm:text-4xl">
             {t("title")}
           </h2>
+          <p className="mt-5 max-w-sm text-xs leading-relaxed text-on-surface-variant">
+            <span className="text-secondary" aria-hidden="true">
+              *
+            </span>{" "}
+            {t("roadmapNote")}
+          </p>
         </div>
 
         <div
           data-reveal
-          className="mt-10 overflow-hidden rounded-[2rem] border border-outline-variant/60 bg-surface"
+          className="overflow-hidden rounded-[2rem] border border-outline-variant/60 bg-surface"
         >
-          <table className="w-full text-sm">
+          <table className="w-full text-xs sm:text-sm">
             <thead>
               <tr className="border-b border-outline-variant/50">
-                <th scope="col" className="w-1/2 px-5 py-4 text-left font-medium text-on-surface-variant sm:px-7" />
-                <th scope="col" className="px-3 py-4 text-center font-medium text-on-surface-variant">
+                <th scope="col" className="w-2/5 px-4 py-4 text-left font-medium text-on-surface-variant sm:w-1/2 sm:px-6" />
+                <th scope="col" className="px-2 py-4 text-center font-medium text-on-surface-variant sm:px-3">
                   {t("colGeneric")}
                 </th>
-                <th scope="col" className="bg-primary-fixed/25 px-3 py-4 text-center font-serif text-base text-primary">
+                <th scope="col" className="bg-primary-fixed/25 px-2 py-4 text-center font-serif text-sm text-primary sm:px-3 sm:text-base">
                   {t("colCata")}
                 </th>
               </tr>
@@ -43,7 +49,7 @@ export default async function ComparisonSection() {
             <tbody className="divide-y divide-outline-variant/40">
               {rows.map((row) => (
                 <tr key={row.label}>
-                  <th scope="row" className="px-5 py-4 text-left font-normal text-on-surface sm:px-7">
+                  <th scope="row" className="px-4 py-4 text-left font-normal text-on-surface sm:px-6">
                     {row.label}
                     {row.roadmap && (
                       <span className="ml-1.5 align-middle text-secondary" aria-hidden="true">
@@ -51,14 +57,14 @@ export default async function ComparisonSection() {
                       </span>
                     )}
                   </th>
-                  <td className="px-3 py-4 text-center">
+                  <td className="px-2 py-4 text-center sm:px-3">
                     {row.generic ? (
                       <Check aria-label={t("included")} className="mx-auto h-4 w-4 text-on-surface-variant" />
                     ) : (
                       <Minus aria-label={t("notIncluded")} className="mx-auto h-4 w-4 text-outline-variant" />
                     )}
                   </td>
-                  <td className="bg-primary-fixed/25 px-3 py-4 text-center">
+                  <td className="bg-primary-fixed/25 px-2 py-4 text-center sm:px-3">
                     <Check
                       aria-label={row.roadmap ? `${t("included")} — ${t("roadmapMark")}` : t("included")}
                       className="mx-auto h-4 w-4 text-primary"
@@ -69,14 +75,14 @@ export default async function ComparisonSection() {
             </tbody>
           </table>
         </div>
+      </div>
 
-        <p data-reveal className="mt-4 text-center text-xs text-on-surface-variant">
-          <span className="text-secondary" aria-hidden="true">
-            *
-          </span>{" "}
-          {t("roadmapNote")}
-        </p>
-        <p data-reveal className="mt-8 text-center font-serif text-xl text-primary sm:text-2xl">
+      {/* The thesis line gets a committed terracotta surface */}
+      <div className="bg-secondary">
+        <p
+          data-reveal
+          className="mx-auto max-w-6xl px-5 py-12 text-center font-serif text-2xl leading-snug text-secondary-fixed sm:px-8 sm:py-14 sm:text-3xl"
+        >
           {t("tagline")}
         </p>
       </div>

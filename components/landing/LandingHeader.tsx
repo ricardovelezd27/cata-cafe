@@ -14,10 +14,16 @@ export default async function LandingHeader({ locale }: { locale: string }) {
           className="font-serif text-xl tracking-tight text-primary"
         >
           {t("wordmark")}
+          <span aria-hidden="true" className="text-secondary">
+            .
+          </span>
         </Link>
         <nav className="flex items-center gap-2 sm:gap-4">
+          {/* Plain anchors: a locale switch is a full document swap
+              (metadata, <html lang>), not a client-side transition. */}
           <div className="flex items-center gap-1 text-xs font-medium">
-            <Link
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- locale switch must be a full document load (metadata + <html lang>) */}
+            <a
               href="/"
               hrefLang="es"
               aria-label={tl("es")}
@@ -28,8 +34,9 @@ export default async function LandingHeader({ locale }: { locale: string }) {
               }
             >
               ES
-            </Link>
-            <Link
+            </a>
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- locale switch must be a full document load (metadata + <html lang>) */}
+            <a
               href="/en"
               hrefLang="en"
               aria-label={tl("en")}
@@ -40,7 +47,7 @@ export default async function LandingHeader({ locale }: { locale: string }) {
               }
             >
               EN
-            </Link>
+            </a>
           </div>
           <Link
             href={localeHref(locale, "/auth/login")}

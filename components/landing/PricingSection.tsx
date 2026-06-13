@@ -43,7 +43,7 @@ export default async function PricingSection({ locale }: { locale: string }) {
           </h2>
         </div>
 
-        <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Free — the only actionable tier today */}
           <div
             data-reveal
@@ -71,7 +71,7 @@ export default async function PricingSection({ locale }: { locale: string }) {
             data-reveal
             className="flex flex-col rounded-[2rem] border border-outline-variant/60 bg-surface-container-low p-7"
           >
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <h3 className="font-serif text-2xl text-on-surface">{t("proName")}</h3>
               <span className="rounded-full bg-secondary-fixed px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-on-secondary-container">
                 {t("proBadge")}
@@ -91,11 +91,11 @@ export default async function PricingSection({ locale }: { locale: string }) {
             data-reveal
             className="flex flex-col rounded-[2rem] border border-outline-variant/60 bg-surface-container-low p-7"
           >
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <h3 className="font-serif text-2xl leading-tight text-on-surface">
                 {t("teamsName")}
               </h3>
-              <span className="shrink-0 rounded-full bg-surface-container-high px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-on-surface-variant">
+              <span className="rounded-full bg-surface-container-high px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-on-surface-variant">
                 {t("teamsBadge")}
               </span>
             </div>

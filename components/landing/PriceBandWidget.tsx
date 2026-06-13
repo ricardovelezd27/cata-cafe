@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   calcPriceBand,
   ORIGIN_KEYS,
@@ -28,6 +28,10 @@ type Labels = {
   disclaimer: string;
 };
 
+const DEMO_DELAY = 650; // after the hero entrance settles
+const DEMO_DURATION = 1500;
+const easeOutQuart = (t: number) => 1 - Math.pow(1 - t, 4);
+
 export default function PriceBandWidget({
   locale,
   labels,
@@ -38,9 +42,54 @@ export default function PriceBandWidget({
   const [score, setScore] = useState(SCORE_DEFAULT);
   const [origin, setOrigin] = useState<OriginKey>("colombia");
   const [process, setProcess] = useState<ProcessKey>("lavado");
+  // idle → running → done (demo finished) | user (visitor took over).
+  // While running, the widget "performs" one evaluation by itself (80 → 86)
+  // to teach the interaction. With reduced motion the demo never arms;
+  // "user" and "idle" render identically, so hydration stays consistent.
+  const [demo, setDemo] = useState<"idle" | "running" | "done" | "user">(() =>
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? "user"
+      : "idle",
+  );
+  const demoCancelled = useRef(false);
   const uid = useId();
 
-  const band = calcPriceBand(score, origin, process);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    demoCancelled.current = false;
+    let raf = 0;
+    const t0 = performance.now() + DEMO_DELAY;
+    const tick = (now: number) => {
+      if (demoCancelled.current) return;
+      const t = Math.min(1, Math.max(0, (now - t0) / DEMO_DURATION));
+      if (t > 0) {
+        setDemo("running");
+        const v =
+          SCORE_MIN + (SCORE_DEFAULT - SCORE_MIN) * easeOutQuart(t);
+        setScore(Math.round(v / SCORE_STEP) * SCORE_STEP);
+      }
+      if (t < 1) raf = requestAnimationFrame(tick);
+      else setDemo("done");
+    };
+    raf = requestAnimationFrame(tick);
+    return () => {
+      demoCancelled.current = true;
+      cancelAnimationFrame(raf);
+    };
+  }, []);
+
+  // The user taking over cancels the demo instantly, without the pulse.
+  const takeOver = () => {
+    demoCancelled.current = true;
+    setDemo("user");
+  };
+
+  // While the demo sweeps, the band stays frozen at the demo's destination
+  // (it "locks in" with a settle pulse at the end) and the numeral renders
+  // whole points. Both keep text width stable → zero layout shift on load.
+  const running = demo === "running";
+  const band = calcPriceBand(running ? SCORE_DEFAULT : score, origin, process);
   const eur = new Intl.NumberFormat(locale === "es" ? "es-ES" : "en-GB", {
     style: "currency",
     currency: "EUR",
@@ -48,8 +97,8 @@ export default function PriceBandWidget({
     maximumFractionDigits: 2,
   });
   const scoreFmt = new Intl.NumberFormat(locale === "es" ? "es-ES" : "en-GB", {
-    minimumFractionDigits: score % 1 === 0 ? 0 : 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: !running && score % 1 !== 0 ? 2 : 0,
+    maximumFractionDigits: running ? 0 : 2,
   }).format(score);
 
   const pct = ((score - SCORE_MIN) / (SCORE_MAX - SCORE_MIN)) * 100;
@@ -69,7 +118,7 @@ export default function PriceBandWidget({
           >
             {labels.scoreLabel}
           </label>
-          <p className="font-serif tabular-nums leading-none text-[56px] sm:text-[64px] text-primary">
+          <p className="min-w-[2ch] text-right font-serif tabular-nums leading-none text-[44px] sm:text-[52px] text-primary">
             {scoreFmt}
             <span className="ml-2 align-baseline font-sans text-xs font-medium tracking-wide text-on-surface-variant">
               {labels.scorePoints}
@@ -83,9 +132,14 @@ export default function PriceBandWidget({
           max={SCORE_MAX}
           step={SCORE_STEP}
           value={score}
-          onChange={(e) => setScore(Number(e.target.value))}
+          onChange={(e) => {
+            takeOver();
+            setScore(Number(e.target.value));
+          }}
+          onPointerDown={takeOver}
+          onKeyDown={takeOver}
           aria-valuetext={labels.scoreAria.replace("{score}", scoreFmt)}
-          className="landing-range mt-3 w-full"
+          className={`landing-range mt-3 w-full ${demo === "done" ? "demo-pulse" : ""}`}
           style={{ "--fill": `${pct}%` } as React.CSSProperties}
         />
         <div className="mt-1 flex justify-between text-[11px] tabular-nums text-on-surface-variant/70">
@@ -106,7 +160,10 @@ export default function PriceBandWidget({
           <select
             id={`${uid}-origin`}
             value={origin}
-            onChange={(e) => setOrigin(e.target.value as OriginKey)}
+            onChange={(e) => {
+              takeOver();
+              setOrigin(e.target.value as OriginKey);
+            }}
             className="mt-1.5 w-full appearance-none rounded-2xl border border-outline-variant bg-surface-container-lowest px-4 py-3 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container"
           >
             {ORIGIN_KEYS.map((k) => (
@@ -126,7 +183,10 @@ export default function PriceBandWidget({
           <select
             id={`${uid}-process`}
             value={process}
-            onChange={(e) => setProcess(e.target.value as ProcessKey)}
+            onChange={(e) => {
+              takeOver();
+              setProcess(e.target.value as ProcessKey);
+            }}
             className="mt-1.5 w-full appearance-none rounded-2xl border border-outline-variant bg-surface-container-lowest px-4 py-3 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container"
           >
             {PROCESS_KEYS.map((k) => (
@@ -138,14 +198,19 @@ export default function PriceBandWidget({
         </div>
       </div>
 
-      {/* Band readout */}
-      <div className="mt-6 rounded-2xl bg-primary px-5 py-5 text-center">
+      {/* Band readout — the payoff, visually senior to the input */}
+      <div
+        className={`mt-6 rounded-2xl bg-primary px-5 py-5 text-center transition-opacity duration-300 ${
+          running ? "opacity-70" : "opacity-100"
+        } ${demo === "done" ? "band-settle" : ""}`}
+      >
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-fixed-dim">
           {labels.bandLabel}
         </p>
         <p
-          aria-live="polite"
-          className="mt-1.5 font-serif tabular-nums text-3xl sm:text-4xl text-surface"
+          // Silenced while the demo sweeps values; polite once the user owns it.
+          aria-live={demo === "running" ? "off" : "polite"}
+          className="mt-1.5 font-serif tabular-nums text-3xl sm:text-[40px] sm:leading-tight text-surface"
         >
           {eur.format(band.low)}&thinsp;–&thinsp;{eur.format(band.high)}
           <span className="ml-1 font-sans text-sm text-primary-fixed-dim">

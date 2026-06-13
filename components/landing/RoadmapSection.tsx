@@ -34,7 +34,7 @@ export default async function RoadmapSection() {
   return (
     <section className="cv-auto bg-surface-container-low">
       <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
-        <div data-reveal className="text-center">
+        <div data-reveal className="max-w-2xl">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-secondary">
             {t("eyebrow")}
           </p>
@@ -48,8 +48,7 @@ export default async function RoadmapSection() {
           <div
             data-roadmap-line
             aria-hidden="true"
-            className="absolute left-5 top-0 hidden h-px w-full bg-outline-variant md:block"
-            style={{ top: "0.625rem", left: 0 }}
+            className="absolute left-0 top-2.5 hidden h-px w-full bg-outline-variant md:block"
           />
           <ol className="grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-8">
             {stages.map((stage) => (

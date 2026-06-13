@@ -26,6 +26,9 @@ export default async function CostOfGuessingSection() {
           <p className="mt-5 max-w-md text-base leading-relaxed text-on-surface-variant">
             {t("statNote")}
           </p>
+          <p className="mt-6 max-w-md text-xs leading-relaxed text-on-surface-variant/80">
+            {t("statSource")}
+          </p>
         </div>
 
         <div
