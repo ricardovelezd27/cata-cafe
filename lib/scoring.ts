@@ -220,7 +220,9 @@ export function calcIndividualScore(
     score -= 4 * d;
   }
 
-  return Math.max(0, Math.min(100, Math.round(score * 100) / 100));
+  // CVA scores fall on quarter-point steps — round ONCE, as the final step,
+  // to the nearest 0.25 (not 2 decimals). Applied after the cup penalties.
+  return Math.max(0, Math.min(100, Math.round(score * 4) / 4));
 }
 
 // Community formula: normalized penalties across all participants
@@ -241,5 +243,6 @@ export function calcCommunityScore(params: {
   if (!avgRawScore || totalCups === 0) return 0;
   const up = totalNonUniform * (10 / totalCups);
   const dp = totalDefective * (30 / totalCups);
-  return Math.max(0, Math.min(100, Math.round((avgRawScore - up - dp) * 100) / 100));
+  // Round the final community score to the nearest 0.25, matching the DB trigger.
+  return Math.max(0, Math.min(100, Math.round((avgRawScore - up - dp) * 4) / 4));
 }
