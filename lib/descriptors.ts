@@ -1,8 +1,10 @@
 import {
-  FLAVOR_FAMILIES,
   ACIDITY_CATA,
   SWEETNESS_CATA,
   MOUTHFEEL_CATA,
+  flavorNodeById,
+  flavorGroupColor,
+  migrateFlavorId,
 } from "@/lib/constants";
 
 /** Descriptor array keys for flavor/aroma sensory steps. */
@@ -46,23 +48,38 @@ type CATAFamily = {
   subItems: readonly { id: string; label: string }[];
 };
 
-// All four descriptor families, searched in order by resolveDescriptor.
-const ALL_FAMILIES: readonly CATAFamily[] = [
-  ...FLAVOR_FAMILIES,
+// The acidity/sweetness/mouthfeel CATA sets (Spanish-only). The flavor wheel is
+// handled separately via FLAVOR_WHEEL so resolveDescriptor sees all three levels.
+const OTHER_CATA_SETS: readonly CATAFamily[] = [
   ...ACIDITY_CATA,
   ...SWEETNESS_CATA,
   ...MOUTHFEEL_CATA,
 ] as unknown as readonly CATAFamily[];
 
 /**
- * Resolve a stored descriptor id (e.g. "floral", "fruity:berry", "acidity:juicy",
- * "sweetness:honey", "mouthfeel:gritty") to its display label and color.
- * Sub-items inherit their parent family's color.
+ * Resolve a stored descriptor id (e.g. "floral", "fruity:berry",
+ * "fruity:berry:blackberry", "acidity:juicy", "sweetness:honey",
+ * "mouthfeel:gritty") to its display label and color.
+ *
+ * - Old ids whose path changed in the 3-level restructure are aliased first
+ *   (migrateFlavorId), so existing saved sessions keep resolving.
+ * - Flavor-wheel nodes resolve at any level and inherit their L1 group color.
+ * - `locale` selects the flavor label language; the acidity/sweetness/mouthfeel
+ *   sets are Spanish-only and fall back to their Spanish label for "en".
  */
 export function resolveDescriptor(
-  id: string
+  id: string,
+  locale: "es" | "en" = "es"
 ): { label: string; color: string } | null {
-  for (const family of ALL_FAMILIES) {
+  const flavorId = migrateFlavorId(id);
+  const node = flavorNodeById(flavorId);
+  if (node) {
+    return {
+      label: locale === "en" ? node.label_en : node.label_es,
+      color: flavorGroupColor(flavorId),
+    };
+  }
+  for (const family of OTHER_CATA_SETS) {
     if (family.id === id) return { label: family.label, color: family.color };
     const sub = family.subItems.find((s) => s.id === id);
     if (sub) return { label: sub.label, color: family.color };

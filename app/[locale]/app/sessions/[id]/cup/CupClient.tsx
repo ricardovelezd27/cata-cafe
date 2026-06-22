@@ -830,6 +830,7 @@ export function CupClient({
             sampleData={current.descriptive}
             onChange={(d) => setCurrentData("descriptive", d)}
             currentStep={currentStep}
+            locale={locale === "en" ? "en" : "es"}
           />
         )}
         {activeTab === "cupping" && session.format === "affective" && (
@@ -848,6 +849,7 @@ export function CupClient({
               onChange={(d) => setCurrentData("combined", d)}
               cupsPerSample={session.cupsPerSample}
               currentStep={currentStep}
+              locale={locale === "en" ? "en" : "es"}
             />
           )}
         {activeTab === "extrinsic" && (

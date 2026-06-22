@@ -10,6 +10,7 @@ interface FlavorCloudProps {
   descriptive: Record<string, unknown>
   allDescriptive?: Record<string, unknown>[]
   isGroup?: boolean
+  locale?: "es" | "en"
 }
 
 interface ResolvedDescriptor {
@@ -19,7 +20,7 @@ interface ResolvedDescriptor {
   count: number
 }
 
-export function FlavorCloud({ descriptive, allDescriptive, isGroup }: FlavorCloudProps) {
+export function FlavorCloud({ descriptive, allDescriptive, isGroup, locale = "es" }: FlavorCloudProps) {
   const myIds = collectDescriptors(descriptive, FLAVOR_DESC_KEYS)
 
   // Build frequency map for group view
@@ -37,7 +38,7 @@ export function FlavorCloud({ descriptive, allDescriptive, isGroup }: FlavorClou
   // Build resolved list sorted by: selected first, then by count desc
   const resolved: ResolvedDescriptor[] = myIds
     .map((id) => {
-      const info = resolveDescriptor(id)
+      const info = resolveDescriptor(id, locale)
       if (!info) return null
       return { id, label: info.label, color: info.color, count: frequencyMap.get(id) ?? 0 }
     })

@@ -384,7 +384,7 @@ export function ResultsClient({
                     >
                       {sample.label}
                     </div>
-                    <FlavorCloud descriptive={sample.descriptive} />
+                    <FlavorCloud descriptive={sample.descriptive} locale={locale === "en" ? "en" : "es"} />
                   </div>
                 ))}
               </div>
@@ -413,7 +413,7 @@ export function ResultsClient({
                     padding: "12px 16px 16px",
                   }}
                 >
-                  <FlavorCloud descriptive={sample.descriptive} />
+                  <FlavorCloud descriptive={sample.descriptive} locale={locale === "en" ? "en" : "es"} />
                 </div>
               )}
             </div>

@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  FLAVOR_FAMILIES,
   ACIDITY_CATA,
   SWEETNESS_CATA,
   MOUTHFEEL_CATA,
@@ -15,16 +14,10 @@ import {
   FormSection,
   Notes,
 } from "@/components/ui";
+import { FlavorPicker } from "@/components/cupping/FlavorPicker";
 import type { CATAOption, CATASubItem } from "@/components/ui/CATAPills";
 
 type Data = Record<string, unknown>;
-
-const flavorCATAOptions: CATAOption[] = FLAVOR_FAMILIES.map((f) => ({
-  id: f.id,
-  label: f.label,
-  color: f.color,
-  subItems: f.subItems as unknown as CATASubItem[],
-}));
 
 const acidityCATAOptions: CATAOption[] = ACIDITY_CATA.map((o) => ({
   id: o.id,
@@ -57,10 +50,12 @@ export function DescriptiveForm({
   sampleData,
   onChange,
   currentStep,
+  locale = "es",
 }: {
   sampleData: Data;
   onChange: (d: Data) => void;
   currentStep: CuppingStep;
+  locale?: "es" | "en";
 }) {
   const d = sampleData;
   const set = (key: string, val: unknown) => onChange({ ...d, [key]: val });
@@ -68,11 +63,12 @@ export function DescriptiveForm({
   const arr = (k: string): string[] => (d[k] as string[] | undefined) ?? [];
   const str = (k: string): string => (d[k] as string | undefined) ?? "";
 
+  // `options === null` → flavor-wheel block (3-level modal picker);
+  // otherwise a flat/2-level CATA block (acidity/dulzor/sensación).
   const renderBlock = (
     id: string,
     title: string,
-    options: CATAOption[],
-    showSubItems: boolean,
+    options: CATAOption[] | null,
   ) => (
     <FormSection key={id} title={title} accent>
       <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-6">
@@ -84,13 +80,22 @@ export function DescriptiveForm({
             onChange={(v) => set(`${id}_int`, v)}
           />
           <div className="mt-4">
-            <CATAPills
-              options={options}
-              selected={arr(`${id}_desc`)}
-              onChange={(v) => set(`${id}_desc`, v)}
-              maxSelect={STEP_CATA_MAX[id]}
-              showSubItems={showSubItems}
-            />
+            {options === null ? (
+              <FlavorPicker
+                value={arr(`${id}_desc`)}
+                onChange={(v) => set(`${id}_desc`, v)}
+                maxSelect={STEP_CATA_MAX[id]}
+                locale={locale}
+              />
+            ) : (
+              <CATAPills
+                options={options}
+                selected={arr(`${id}_desc`)}
+                onChange={(v) => set(`${id}_desc`, v)}
+                maxSelect={STEP_CATA_MAX[id]}
+                showSubItems
+              />
+            )}
           </div>
         </div>
 
@@ -107,18 +112,18 @@ export function DescriptiveForm({
   );
 
   if (currentStep === "fragrance") {
-    return <div>{renderBlock("fragancia", "Fragancia", flavorCATAOptions, true)}</div>;
+    return <div>{renderBlock("fragancia", "Fragancia", null)}</div>;
   }
 
   if (currentStep === "aroma") {
-    return <div>{renderBlock("aroma", "Aroma", flavorCATAOptions, true)}</div>;
+    return <div>{renderBlock("aroma", "Aroma", null)}</div>;
   }
 
   if (currentStep === "taste_aftertaste") {
     return (
       <div>
-        {renderBlock("sabor", "Sabor", flavorCATAOptions, true)}
-        {renderBlock("sabor_residual", "Sabor Residual (Regusto)", flavorCATAOptions, true)}
+        {renderBlock("sabor", "Sabor", null)}
+        {renderBlock("sabor_residual", "Sabor Residual (Regusto)", null)}
         <FormSection title="Gustos Predominantes" accent>
           <div className="text-[11px] text-brown-mid mb-2">
             Selecciona hasta 2 sabores principales
@@ -137,9 +142,9 @@ export function DescriptiveForm({
   if (currentStep === "acidity_sweetness_mouthfeel") {
     return (
       <div>
-        {renderBlock("acidez", "Acidez", acidityCATAOptions, true)}
-        {renderBlock("dulzor", "Dulzor", sweetnessCATAOptions, true)}
-        {renderBlock("sensacion", "Sensación en Boca", mouthfeelCATAOptions, true)}
+        {renderBlock("acidez", "Acidez", acidityCATAOptions)}
+        {renderBlock("dulzor", "Dulzor", sweetnessCATAOptions)}
+        {renderBlock("sensacion", "Sensación en Boca", mouthfeelCATAOptions)}
       </div>
     );
   }

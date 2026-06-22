@@ -5,7 +5,6 @@ import {
   STEP_ATTRIBUTES,
   STEP_DESC_LABELS,
   STEP_CATA_MAX,
-  FLAVOR_FAMILIES,
   ACIDITY_CATA,
   SWEETNESS_CATA,
   MOUTHFEEL_CATA,
@@ -25,16 +24,10 @@ import {
   Notes,
   CupToggleGrid,
 } from "@/components/ui";
+import { FlavorPicker } from "@/components/cupping/FlavorPicker";
 import type { CATAOption, CATASubItem } from "@/components/ui/CATAPills";
 
 type Data = Record<string, unknown>;
-
-const flavorCATAOptions: CATAOption[] = FLAVOR_FAMILIES.map((f) => ({
-  id: f.id,
-  label: f.label,
-  color: f.color,
-  subItems: f.subItems as unknown as CATASubItem[],
-}));
 
 const acidityCATAOptions: CATAOption[] = ACIDITY_CATA.map((o) => ({
   id: o.id,
@@ -63,15 +56,17 @@ const mainTasteOptions: CATAOption[] = MAIN_TASTES.map((t) => ({
   color: "var(--color-amber)",
 }));
 
-function pillsForDescId(descId: string): CATAOption[] | null {
-  if (
+// Flavor-wheel stages use the 3-level modal picker; the rest use flat/2-level CATA.
+function isFlavorDesc(descId: string): boolean {
+  return (
     descId === "fragancia" ||
     descId === "aroma" ||
     descId === "sabor" ||
     descId === "sabor_residual"
-  ) {
-    return flavorCATAOptions;
-  }
+  );
+}
+
+function pillsForDescId(descId: string): CATAOption[] | null {
   if (descId === "acidez") return acidityCATAOptions;
   if (descId === "dulzor") return sweetnessCATAOptions;
   if (descId === "sensacion") return mouthfeelCATAOptions;
@@ -93,11 +88,13 @@ export function CombinedForm({
   onChange,
   cupsPerSample,
   currentStep,
+  locale = "es",
 }: {
   sampleData: Data;
   onChange: (d: Data) => void;
   cupsPerSample: number;
   currentStep: CuppingStep;
+  locale?: "es" | "en";
 }) {
   const d = sampleData;
   const set = (key: string, val: unknown) => onChange({ ...d, [key]: val });
@@ -221,6 +218,7 @@ export function CombinedForm({
         if (!descId) return null;
         const affId = attr.affectiveId;
         const title = STEP_DESC_LABELS[descId] ?? descId;
+        const flavor = isFlavorDesc(descId);
         const pills = pillsForDescId(descId);
         const max = STEP_CATA_MAX[descId];
 
@@ -237,16 +235,27 @@ export function CombinedForm({
                   value={num(`${descId}_int`)}
                   onChange={(v) => set(`${descId}_int`, v)}
                 />
-                {pills && (
+                {flavor ? (
                   <div className="mt-4">
-                    <CATAPills
-                      options={pills}
-                      selected={arr(`${descId}_desc`)}
+                    <FlavorPicker
+                      value={arr(`${descId}_desc`)}
                       onChange={(v) => set(`${descId}_desc`, v)}
                       maxSelect={max}
-                      showSubItems
+                      locale={locale}
                     />
                   </div>
+                ) : (
+                  pills && (
+                    <div className="mt-4">
+                      <CATAPills
+                        options={pills}
+                        selected={arr(`${descId}_desc`)}
+                        onChange={(v) => set(`${descId}_desc`, v)}
+                        maxSelect={max}
+                        showSubItems
+                      />
+                    </div>
+                  )
                 )}
               </div>
 

@@ -1,12 +1,7 @@
 "use client";
 
 import { calcIndividualScore } from "@/lib/scoring";
-import {
-  FLAVOR_FAMILIES,
-  ACIDITY_CATA,
-  SWEETNESS_CATA,
-  MOUTHFEEL_CATA,
-} from "@/lib/constants";
+import { resolveDescriptor } from "@/lib/descriptors";
 
 type SampleResult = {
   id: string;
@@ -18,19 +13,6 @@ type SampleResult = {
   combined: Record<string, unknown>;
 };
 
-/* ──────────────────────────────────────────────────────────────
-   Descriptor id → { label, color } lookup across every CATA set.
-   Sub-items inherit their family color.
-   ────────────────────────────────────────────────────────────── */
-const DESCRIPTOR_LOOKUP: Record<string, { label: string; color: string }> = {};
-for (const set of [FLAVOR_FAMILIES, ACIDITY_CATA, SWEETNESS_CATA, MOUTHFEEL_CATA]) {
-  for (const opt of set) {
-    DESCRIPTOR_LOOKUP[opt.id] = { label: opt.label, color: opt.color };
-    for (const sub of opt.subItems) {
-      DESCRIPTOR_LOOKUP[sub.id] = { label: sub.label, color: opt.color };
-    }
-  }
-}
 
 /* Attribute rows in SCA CVA order. */
 const ATTR_ROWS = [
@@ -74,7 +56,7 @@ function descriptorIds(data: Record<string, unknown>, descId: string): string[] 
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
 }
 
-function DescriptorPills({ ids }: { ids: string[] }) {
+function DescriptorPills({ ids, locale }: { ids: string[]; locale: "es" | "en" }) {
   // Keep only the most specific (level-two) descriptors: drop a parent family
   // pill when any of its sub-items are also selected, to avoid redundancy
   // (e.g. "Nueces/Cacao" alongside "Nueces" + "Cacao").
@@ -91,7 +73,7 @@ function DescriptorPills({ ids }: { ids: string[] }) {
   return (
     <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 4 }}>
       {visible.map((id) => {
-        const info = DESCRIPTOR_LOOKUP[id];
+        const info = resolveDescriptor(id, locale);
         if (!info) return null;
         return (
           <span
@@ -263,7 +245,7 @@ export function MyResultsSummary({
                         <span style={attrLabel}>{t[row.key as LabelKey]}</span>
                         <span style={{ minWidth: 0 }}>
                           {showDescriptive ? (
-                            <DescriptorPills ids={ids} />
+                            <DescriptorPills ids={ids} locale={locale === "en" ? "en" : "es"} />
                           ) : (
                             <span style={{ color: "#C8C0B0", fontSize: 12 }}>—</span>
                           )}

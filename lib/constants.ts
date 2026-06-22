@@ -39,40 +39,262 @@ export const AFFECTIVE_SHORT: Record<number, string> = {
 }
 
 /* ============================================================
-   NEW: CATA flavor families (with sub-descriptors + colors)
-   ============================================================ */
-export const FLAVOR_FAMILIES = [
-  { id: 'floral',         label: 'Floral',           color: '#C17817',
-    subItems: [] as readonly { id: string; label: string }[] },
-  { id: 'fruity',         label: 'Frutal',           color: '#E8834A',
-    subItems: [{ id: 'fruity:berry',               label: 'Berry' },
-               { id: 'fruity:dried',               label: 'Fruta deshidratada' },
-               { id: 'fruity:citrus',              label: 'Cítrico' },
-               { id: 'fruity:other_fruit',         label: 'Otra fruta' }] },
-  { id: 'sweet',          label: 'Dulce',            color: '#B4874E',
-    subItems: [{ id: 'sweet:vanilla',              label: 'Vainilla/Vainillín' },
-               { id: 'sweet:brown_sugar',          label: 'Azúcar moreno' }] },
-  { id: 'sour_fermented', label: 'Ácido/Fermentado', color: '#A83232',
-    subItems: [{ id: 'sour_fermented:sour',        label: 'Ácido' },
-               { id: 'sour_fermented:fermented',   label: 'Fermentado' }] },
-  { id: 'green_veg',      label: 'Verde/Vegetal',    color: '#6B8F71',
-    subItems: [] as readonly { id: string; label: string }[] },
-  { id: 'nutty_cocoa',    label: 'Nueces/Cacao',     color: '#8B7355',
-    subItems: [{ id: 'nutty_cocoa:nutty',          label: 'Nueces' },
-               { id: 'nutty_cocoa:cocoa',          label: 'Cacao' }] },
-  { id: 'spice',          label: 'Especia',          color: '#9B6B4A',
-    subItems: [] as readonly { id: string; label: string }[] },
-  { id: 'roasted',        label: 'Tostado',          color: '#5C4A32',
-    subItems: [{ id: 'roasted:cereal',             label: 'Cereal' },
-               { id: 'roasted:burned',             label: 'Quemado' },
-               { id: 'roasted:tobacco',            label: 'Tabaco' }] },
-  { id: 'other',          label: 'Otro',             color: '#7A6E5F',
-    subItems: [{ id: 'other:chemical',             label: 'Químico' },
-               { id: 'other:earthy',               label: 'Húmedo/Terroso' },
-               { id: 'other:wood',                 label: 'Papel/Madera' }] },
-] as const
+   NEW: Flavor wheel — strict 3-level tree (WCR/SCA Coffee Taster's
+   Flavor Wheel). Level 1 (group) → Level 2 (subgroup) → Level 3
+   (descriptor). Single source of truth for the flavor CATA in both
+   the Descriptive and Combined forms.
 
-export type FlavorFamilyId = (typeof FLAVOR_FAMILIES)[number]['id']
+   IDs are colon-delimited English-key paths and are STABLE in stored
+   JSON (e.g. "fruity", "fruity:berry", "fruity:berry:blackberry").
+   Display labels are bilingual (label_es / label_en).
+   ============================================================ */
+export type FlavorLevel = 1 | 2 | 3
+export type FlavorWheelNode = {
+  id: string
+  level: FlavorLevel
+  parentId: string | null
+  label_es: string
+  label_en: string
+  color?: string // present only on L1 groups; descendants inherit via flavorGroupColor()
+}
+
+// Authoring shape — flattened below into FLAVOR_WHEEL nodes so parentId/level
+// never drift from the nesting.
+type RawLeaf = { key: string; es: string; en: string }
+type RawSub = { key: string; es: string; en: string; leaves?: RawLeaf[] }
+type RawGroup = { key: string; es: string; en: string; color: string; subs: RawSub[] }
+
+const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
+  { key: 'floral', es: 'Floral', en: 'Floral', color: '#C17817', subs: [
+    { key: 'black_tea', es: 'Té negro', en: 'Black Tea' },
+    { key: 'floral', es: 'Floral', en: 'Floral', leaves: [
+      { key: 'chamomile', es: 'Manzanilla', en: 'Chamomile' },
+      { key: 'jasmine',   es: 'Jazmín',     en: 'Jasmine' },
+      { key: 'rose',      es: 'Rosa',        en: 'Rose' },
+    ] },
+  ] },
+  { key: 'fruity', es: 'Frutal', en: 'Fruity', color: '#E8834A', subs: [
+    { key: 'berry', es: 'Bayas', en: 'Berry', leaves: [
+      { key: 'blackberry', es: 'Mora',      en: 'Blackberry' },
+      { key: 'blueberry',  es: 'Arándano',  en: 'Blueberry' },
+      { key: 'raspberry',  es: 'Frambuesa', en: 'Raspberry' },
+      { key: 'strawberry', es: 'Fresa',     en: 'Strawberry' },
+    ] },
+    { key: 'citrus', es: 'Cítrico', en: 'Citrus Fruit', leaves: [
+      { key: 'grapefruit', es: 'Toronja', en: 'Grapefruit' },
+      { key: 'lemon',      es: 'Limón',   en: 'Lemon' },
+      { key: 'lime',       es: 'Lima',    en: 'Lime' },
+      { key: 'orange',     es: 'Naranja', en: 'Orange' },
+    ] },
+    { key: 'dried', es: 'Fruta deshidratada', en: 'Dried Fruit', leaves: [
+      { key: 'prune',  es: 'Ciruela pasa', en: 'Prune' },
+      { key: 'raisin', es: 'Pasa',          en: 'Raisin' },
+    ] },
+    { key: 'other_fruit', es: 'Otra fruta', en: 'Other Fruit', leaves: [
+      { key: 'apple',       es: 'Manzana', en: 'Apple' },
+      { key: 'cherry',      es: 'Cereza',  en: 'Cherry' },
+      { key: 'coconut',     es: 'Coco',    en: 'Coconut' },
+      { key: 'grape',       es: 'Uva',     en: 'Grape' },
+      { key: 'peach',       es: 'Durazno', en: 'Peach' },
+      { key: 'pear',        es: 'Pera',    en: 'Pear' },
+      { key: 'pineapple',   es: 'Piña',    en: 'Pineapple' },
+      { key: 'pomegranate', es: 'Granada', en: 'Pomegranate' },
+    ] },
+  ] },
+  // ⚠ Green/Vegetal: Kim asked for fresco/seco/cocido instead of the wheel's
+  // Beany/Green-Vegetative/Raw. The L3 distribution below is a proposed default
+  // and needs Kim's sign-off before it is considered final.
+  { key: 'green_veg', es: 'Verde/Vegetal', en: 'Green/Vegetative', color: '#6B8F71', subs: [
+    { key: 'fresh', es: 'Vegetal fresco', en: 'Fresh Vegetative', leaves: [
+      { key: 'fresh',       es: 'Fresco',            en: 'Fresh' },
+      { key: 'peapod',      es: 'Vaina de guisante', en: 'Peapod' },
+      { key: 'vegetative',  es: 'Vegetal',           en: 'Vegetative' },
+      { key: 'dark_green',  es: 'Verde oscuro',      en: 'Dark Green' },
+      { key: 'herb_like',   es: 'Herbáceo',          en: 'Herb-like' },
+      { key: 'cucumber',    es: 'Pepino',            en: 'Cucumber' },
+      { key: 'under_ripe',  es: 'Inmaduro',          en: 'Under-ripe' },
+    ] },
+    { key: 'dried', es: 'Vegetal seco', en: 'Dried Vegetative', leaves: [
+      { key: 'hay_like',     es: 'Heno',         en: 'Hay-like' },
+      { key: 'beany',        es: 'Leguminoso',   en: 'Beany' },
+      { key: 'raw',          es: 'Crudo',        en: 'Raw' },
+      { key: 'potato_skins', es: 'Piel de papa', en: 'Potato Skins' },
+    ] },
+    { key: 'cooked', es: 'Vegetal cocido', en: 'Cooked Vegetative', leaves: [
+      { key: 'olive_oil', es: 'Aceite de oliva', en: 'Olive Oil' },
+    ] },
+  ] },
+  { key: 'nutty_cocoa', es: 'Nueces/Cacao', en: 'Nutty/Cocoa', color: '#8B7355', subs: [
+    { key: 'cocoa', es: 'Cacao', en: 'Cocoa', leaves: [
+      { key: 'chocolate',      es: 'Chocolate',        en: 'Chocolate' },
+      { key: 'dark_chocolate', es: 'Chocolate amargo', en: 'Dark Chocolate' },
+    ] },
+    { key: 'nutty', es: 'Nueces', en: 'Nutty', leaves: [
+      { key: 'almond',   es: 'Almendra',  en: 'Almond' },
+      { key: 'hazelnut', es: 'Avellana',  en: 'Hazelnut' },
+      { key: 'nutty',    es: 'Nuez',      en: 'Nutty' },
+      { key: 'peanuts',  es: 'Cacahuate', en: 'Peanuts' },
+    ] },
+  ] },
+  // ⚠ Spices: keep Pungent/Pepper/Spicy as subgroups (extensible, no L3 on the
+  // wheel yet) while applying Kim's Spanish labels. Needs Kim's sign-off.
+  { key: 'spice', es: 'Especiado', en: 'Spices', color: '#9B6B4A', subs: [
+    { key: 'brown_spice', es: 'Especias dulces', en: 'Brown Spice', leaves: [
+      { key: 'anise',       es: 'Anís',         en: 'Anise' },
+      { key: 'brown_spice', es: 'Especia dulce', en: 'Brown Spice' },
+      { key: 'cinnamon',    es: 'Canela',        en: 'Cinnamon' },
+      { key: 'clove',       es: 'Clavo',         en: 'Clove' },
+      { key: 'nutmeg',      es: 'Nuez moscada',  en: 'Nutmeg' },
+    ] },
+    { key: 'pungent', es: 'Especias secas',     en: 'Pungent' },
+    { key: 'pepper',  es: 'Especias picantes',  en: 'Pepper' },
+    { key: 'spicy',   es: 'Especiado picante',  en: 'Spicy' },
+  ] },
+  { key: 'roasted', es: 'Tostado', en: 'Roasted', color: '#5C4A32', subs: [
+    { key: 'burnt', es: 'Quemado', en: 'Burnt', leaves: [
+      { key: 'acrid',       es: 'Acre',        en: 'Acrid' },
+      { key: 'ashy',        es: 'Ceniza',      en: 'Ashy' },
+      { key: 'brown_roast', es: 'Tueste medio', en: 'Brown-Roast' },
+      { key: 'burnt',       es: 'Quemado',     en: 'Burnt' },
+      { key: 'smoky',       es: 'Ahumado',     en: 'Smoky' },
+    ] },
+    { key: 'cereal', es: 'Cereal', en: 'Cereal', leaves: [
+      { key: 'cereal', es: 'Cereal', en: 'Cereal' },
+      { key: 'grain',  es: 'Grano',  en: 'Grain' },
+      { key: 'malt',   es: 'Malta',  en: 'Malt' },
+    ] },
+    { key: 'tobacco', es: 'Tabaco', en: 'Tobacco', leaves: [
+      { key: 'pipe_tobacco', es: 'Tabaco de pipa', en: 'Pipe Tobacco' },
+      { key: 'tobacco',      es: 'Tabaco',          en: 'Tobacco' },
+    ] },
+  ] },
+  { key: 'sweet', es: 'Dulce', en: 'Sweet', color: '#B4874E', subs: [
+    { key: 'brown_sugar', es: 'Azúcar moreno', en: 'Brown Sugar', leaves: [
+      { key: 'caramelized', es: 'Caramelizado',   en: 'Caramelized' },
+      { key: 'honey',       es: 'Miel',            en: 'Honey' },
+      { key: 'maple_syrup', es: 'Sirope de arce',  en: 'Maple Syrup' },
+      { key: 'molasses',    es: 'Melaza',          en: 'Molasses' },
+    ] },
+    { key: 'sweet_aromatics', es: 'Aromáticos dulces', en: 'Sweet Aromatics', leaves: [
+      { key: 'overall_sweet', es: 'Dulce general', en: 'Overall Sweet' },
+      { key: 'vanilla',       es: 'Vainilla',      en: 'Vanilla' },
+      { key: 'vanillin',      es: 'Vainillina',    en: 'Vanillin' },
+    ] },
+  ] },
+  { key: 'sour_fermented', es: 'Ácido/Fermentado', en: 'Sour/Fermented', color: '#A83232', subs: [
+    { key: 'alcohol_fermented', es: 'Alcohol/Fermentado', en: 'Alcohol/Fermented', leaves: [
+      { key: 'fermented', es: 'Fermentado', en: 'Fermented' },
+      { key: 'overripe',  es: 'Sobremaduro', en: 'Overripe' },
+      { key: 'whiskey',   es: 'Whisky',      en: 'Whiskey' },
+      { key: 'winey',     es: 'Vinoso',      en: 'Winey' },
+    ] },
+    { key: 'sour', es: 'Ácido', en: 'Sour', leaves: [
+      { key: 'acetic',         es: 'Acético',          en: 'Acetic' },
+      { key: 'butyric',        es: 'Butírico',         en: 'Butyric' },
+      { key: 'citric',         es: 'Cítrico',          en: 'Citric' },
+      { key: 'isovaleric',     es: 'Isovalérico',      en: 'Isovaleric' },
+      { key: 'malic',          es: 'Málico',           en: 'Malic' },
+      { key: 'sour_aromatics', es: 'Aromáticos ácidos', en: 'Sour Aromatics' },
+    ] },
+  ] },
+  { key: 'other', es: 'Otros', en: 'Other', color: '#7A6E5F', subs: [
+    { key: 'chemical', es: 'Químico', en: 'Chemical', leaves: [
+      { key: 'bitter',    es: 'Amargo',    en: 'Bitter' },
+      { key: 'medicinal', es: 'Medicinal', en: 'Medicinal' },
+      { key: 'petroleum', es: 'Petróleo',  en: 'Petroleum' },
+      { key: 'rubber',    es: 'Goma',      en: 'Rubber' },
+      { key: 'salty',     es: 'Salado',    en: 'Salty' },
+      { key: 'skunky',    es: 'Apestoso',  en: 'Skunky' },
+    ] },
+    { key: 'papery_musty', es: 'Papel/Mohoso', en: 'Papery/Musty', leaves: [
+      { key: 'animalic',     es: 'Animal',         en: 'Animalic' },
+      { key: 'cardboard',    es: 'Cartón',         en: 'Cardboard' },
+      { key: 'meaty_brothy', es: 'Cárnico',        en: 'Meaty/Brothy' },
+      { key: 'moldy_damp',   es: 'Mohoso húmedo',  en: 'Moldy/Damp' },
+      { key: 'musty_dusty',  es: 'Polvoriento',    en: 'Musty/Dusty' },
+      { key: 'musty_earthy', es: 'Terroso',        en: 'Musty/Earthy' },
+      { key: 'papery',       es: 'Papel',          en: 'Papery' },
+      { key: 'phenolic',     es: 'Fenólico',       en: 'Phenolic' },
+      { key: 'stale',        es: 'Rancio',         en: 'Stale' },
+      { key: 'woody',        es: 'Madera',         en: 'Woody' },
+    ] },
+  ] },
+]
+
+// Flatten the authoring source into the canonical flat node array.
+export const FLAVOR_WHEEL: readonly FlavorWheelNode[] = (() => {
+  const nodes: FlavorWheelNode[] = []
+  for (const g of FLAVOR_WHEEL_SOURCE) {
+    nodes.push({ id: g.key, level: 1, parentId: null, label_es: g.es, label_en: g.en, color: g.color })
+    for (const sub of g.subs) {
+      const subId = `${g.key}:${sub.key}`
+      nodes.push({ id: subId, level: 2, parentId: g.key, label_es: sub.es, label_en: sub.en })
+      for (const leaf of sub.leaves ?? []) {
+        nodes.push({ id: `${subId}:${leaf.key}`, level: 3, parentId: subId, label_es: leaf.es, label_en: leaf.en })
+      }
+    }
+  }
+  return nodes
+})()
+
+const FLAVOR_NODE_BY_ID = new Map(FLAVOR_WHEEL.map((n) => [n.id, n]))
+
+/** Look up a flavor node by id. */
+export function flavorNodeById(id: string): FlavorWheelNode | undefined {
+  return FLAVOR_NODE_BY_ID.get(id)
+}
+
+/** Direct children of a node (pass null for the L1 groups). Drives modal nav. */
+export function flavorChildren(parentId: string | null): FlavorWheelNode[] {
+  return FLAVOR_WHEEL.filter((n) => n.parentId === parentId)
+}
+
+/** Climb to the L1 group and return its color (descendants inherit it). */
+export function flavorGroupColor(id: string): string {
+  let node = FLAVOR_NODE_BY_ID.get(id)
+  while (node && node.parentId) node = FLAVOR_NODE_BY_ID.get(node.parentId)
+  return node?.color ?? '#7A6E5F'
+}
+
+/**
+ * Read-time migration for descriptor ids whose path changed in the 3-level
+ * restructure. Stored evaluation JSON is never rewritten; resolveDescriptor and
+ * the form loaders alias old → new ids so existing saved sessions keep working.
+ */
+export const FLAVOR_ID_MIGRATION: Record<string, string> = {
+  'sweet:vanilla':            'sweet:sweet_aromatics',
+  'sour_fermented:fermented': 'sour_fermented:alcohol_fermented',
+  'roasted:burned':           'roasted:burnt',
+  'other:earthy':             'other:papery_musty',
+  'other:wood':               'other:papery_musty',
+}
+
+/** Apply the flavor id migration alias (returns the id unchanged if none). */
+export function migrateFlavorId(id: string): string {
+  return FLAVOR_ID_MIGRATION[id] ?? id
+}
+
+/* ============================================================
+   Back-compat 2-level view derived from FLAVOR_WHEEL.
+   Existing consumers (PrintClient, MyResultsSummary, landing) import
+   FLAVOR_FAMILIES with the legacy { id, label, color, subItems } shape.
+   Spanish labels, L1 groups + their L2 subgroups.
+   ============================================================ */
+export type FlavorFamily = {
+  id: string
+  label: string
+  color: string
+  subItems: readonly { id: string; label: string }[]
+}
+
+export const FLAVOR_FAMILIES: readonly FlavorFamily[] = FLAVOR_WHEEL_SOURCE.map((g) => ({
+  id: g.key,
+  label: g.es,
+  color: g.color,
+  subItems: g.subs.map((sub) => ({ id: `${g.key}:${sub.key}`, label: sub.es })),
+}))
+
+export type FlavorFamilyId = string
 
 /* ============================================================
    NEW: Mouthfeel CATA (flat list)
@@ -124,66 +346,8 @@ export const CATA_MAX_SELECT: Partial<Record<CuppingSectionId, number>> = {
    ============================================================ */
 
 export type DescriptorOption = { id: string; label: string };
-export type FlavorNode = { id: string; label: string; subs: DescriptorOption[] };
 export type MouthfeelNode = { id: string; label: string; subs: string[] };
 export type DefectRow = { name: string; ratio: string };
-
-export const FLAVOR_TREE: readonly FlavorNode[] = [
-  { id: "floral", label: "Floral", subs: [] },
-  {
-    id: "afrutado",
-    label: "Afrutado",
-    subs: [
-      { id: "bayas", label: "Bayas" },
-      { id: "frutas_deshidratadas", label: "Frutas deshidratadas" },
-      { id: "citricos", label: "Cítricos" },
-    ],
-  },
-  {
-    id: "acido_fermentado",
-    label: "Ácido/Fermentado",
-    subs: [
-      { id: "acido_sub", label: "Ácido" },
-      { id: "fermentado", label: "Fermentado" },
-    ],
-  },
-  { id: "verde_vegetal", label: "Verde/Vegetal", subs: [] },
-  {
-    id: "otra",
-    label: "Otra",
-    subs: [
-      { id: "quimico", label: "Químico" },
-      { id: "humedad_tierra", label: "Humedad/Tierra" },
-      { id: "madera", label: "Madera" },
-    ],
-  },
-  {
-    id: "tostado",
-    label: "Tostado",
-    subs: [
-      { id: "cereal", label: "Cereal" },
-      { id: "quemado", label: "Quemado" },
-      { id: "tabaco", label: "Tabaco" },
-    ],
-  },
-  {
-    id: "nueces_cacao",
-    label: "Nueces/Cacao",
-    subs: [
-      { id: "nueces", label: "Nueces" },
-      { id: "cacao", label: "Cacao" },
-    ],
-  },
-  { id: "especias", label: "Especias", subs: [] },
-  {
-    id: "dulce_desc",
-    label: "Dulce",
-    subs: [
-      { id: "vainilla", label: "Vainilla" },
-      { id: "azucar_morena", label: "Azúcar morena" },
-    ],
-  },
-] as const;
 
 export const ACIDITY_DESCRIPTORS: readonly DescriptorOption[] = [
   { id: "citrica", label: "Cítrica" },

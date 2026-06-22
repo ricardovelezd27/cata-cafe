@@ -238,7 +238,7 @@ export default async function ResultsPage({
           stages[stage.id] = [...entry.stageCounts.get(stage.id)!.entries()]
             .filter(([, count]) => count >= 2)
             .map(([did, count]) => {
-              const info = resolveDescriptor(did);
+              const info = resolveDescriptor(did, locale === "en" ? "en" : "es");
               return info
                 ? { id: did, label: info.label, color: info.color, count }
                 : null;
