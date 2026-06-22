@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { FormatBadge } from "@/components/dashboard/FormatBadge";
+import { DashboardIntro } from "@/components/dashboard/DashboardIntro";
 
 const STATUS_STYLES: Record<string, string> = {
   draft: "text-[#C17817] border border-[#C17817]/50",
@@ -156,6 +157,34 @@ export default async function Dashboard({
           {t("newSession")}
         </Link>
       </header>
+
+      {/* Why / What / How intro + scoring methodology */}
+      <DashboardIntro
+        newSessionHref={`/${locale}/app/sessions/new`}
+        t={{
+          eyebrow: t("intro.eyebrow"),
+          title: t("intro.title"),
+          whyLabel: t("intro.whyLabel"),
+          why: t("intro.why"),
+          whatLabel: t("intro.whatLabel"),
+          what: t("intro.what"),
+          howLabel: t("intro.howLabel"),
+          how: t("intro.how"),
+          ctaPrimary: t("intro.ctaPrimary"),
+          ctaCalc: t("intro.ctaCalc"),
+          dismiss: t("intro.dismiss"),
+          reopen: t("intro.reopen"),
+          calcTitle: t("intro.calcTitle"),
+          calcLead: t("intro.calcLead"),
+          calcSigma: t("intro.calcSigma"),
+          calcU: t("intro.calcU"),
+          calcD: t("intro.calcD"),
+          calcAnchors: t("intro.calcAnchors"),
+          calcRounding: t("intro.calcRounding"),
+          calcGroup: t("intro.calcGroup"),
+          calcPerResult: t("intro.calcPerResult"),
+        }}
+      />
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

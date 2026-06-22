@@ -204,25 +204,73 @@ export function computeGroupAggregate(
   };
 }
 
+// Full, transparent breakdown of an individual CVA score. This is the single
+// source of truth for the live individual path: `calcIndividualScore` returns
+// `.score` from here, and the N5 score-transparency panel renders the same
+// intermediates, so the explainer can never drift from the displayed number.
+//
+// NOTE: distinct from `calculateCVABreakdown` above (the design-system API),
+// which always applies cup penalties. This one honors the protocol gate —
+// penalties apply ONLY when cupsPerSample >= 5 — exactly like the live score.
+export interface IndividualBreakdown {
+  affectiveSum: number; // Σhᵢ
+  affectiveTerm: number; // 0.65625 × Σhᵢ
+  base: number; // affectiveTerm + 52.75
+  u: number; // non-uniform cups counted
+  d: number; // defective cups counted
+  uniformityTracked: boolean; // cupsPerSample >= 5
+  uniformityPenalty: number; // 2u (0 when not tracked)
+  defectPenalty: number; // 4d (0 when not tracked)
+  raw: number; // base − penalties, pre-rounding/clamp
+  score: number; // final, clamped [0,100], rounded to 0.25
+  cupsPerSample: number;
+}
+
+export function calcIndividualBreakdown(
+  data: EvalData,
+  cupsPerSample: number,
+): IndividualBreakdown {
+  const { sum: affectiveSum } = calcAffectiveSum(data);
+  const affectiveTerm = 0.65625 * affectiveSum;
+  const base = affectiveTerm + 52.75;
+
+  const uniformityTracked = cupsPerSample >= 5;
+  let u = 0;
+  let d = 0;
+  if (uniformityTracked) {
+    const nonUniform = (data.tazas_no_uniformes as boolean[] | undefined) ?? [];
+    const defective = (data.tazas_defectuosas as boolean[] | undefined) ?? [];
+    u = nonUniform.filter(Boolean).length;
+    d = defective.filter(Boolean).length;
+  }
+  const uniformityPenalty = 2 * u;
+  const defectPenalty = 4 * d;
+
+  const raw = base - uniformityPenalty - defectPenalty;
+  // CVA scores fall on quarter-point steps — round ONCE, as the final step,
+  // to the nearest 0.25 (not 2 decimals). Applied after the cup penalties.
+  const score = Math.max(0, Math.min(100, Math.round(raw * 4) / 4));
+
+  return {
+    affectiveSum,
+    affectiveTerm,
+    base,
+    u,
+    d,
+    uniformityTracked,
+    uniformityPenalty,
+    defectPenalty,
+    raw,
+    score,
+    cupsPerSample,
+  };
+}
+
 export function calcIndividualScore(
   data: EvalData,
   cupsPerSample: number,
 ): number | "—" {
-  const { sum } = calcAffectiveSum(data);
-  let score = 0.65625 * sum + 52.75;
-
-  if (cupsPerSample >= 5) {
-    const nonUniform = (data.tazas_no_uniformes as boolean[] | undefined) ?? [];
-    const defective = (data.tazas_defectuosas as boolean[] | undefined) ?? [];
-    const u = nonUniform.filter(Boolean).length;
-    const d = defective.filter(Boolean).length;
-    score -= 2 * u;
-    score -= 4 * d;
-  }
-
-  // CVA scores fall on quarter-point steps — round ONCE, as the final step,
-  // to the nearest 0.25 (not 2 decimals). Applied after the cup penalties.
-  return Math.max(0, Math.min(100, Math.round(score * 4) / 4));
+  return calcIndividualBreakdown(data, cupsPerSample).score;
 }
 
 // Community formula: normalized penalties across all participants

@@ -10,7 +10,8 @@ import {
   Tooltip,
 } from "recharts";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
-import { calcIndividualScore, scoreBand } from "@/lib/scoring";
+import { calcIndividualBreakdown, calcIndividualScore, scoreBand } from "@/lib/scoring";
+import { ScoreBreakdownPanel } from "@/components/results/ScoreBreakdownPanel";
 
 const CHART_HEIGHT = 220;
 
@@ -102,6 +103,7 @@ export function SampleRadarChart({
   showCommunity,
   isOwner,
   onReveal,
+  locale,
 }: {
   sample: SampleResult;
   format: string;
@@ -109,6 +111,7 @@ export function SampleRadarChart({
   showCommunity: boolean;
   isOwner: boolean;
   onReveal: (sampleId: string) => void;
+  locale: string;
 }) {
   const showAffective = format !== "descriptive";
   const { ref: chartRef, width: chartWidth } = useContainerWidth();
@@ -147,6 +150,12 @@ export function SampleRadarChart({
   const scoreNum = score !== null && score !== "—" ? Number(score) : null;
   const band = scoreNum !== null ? scoreBand(scoreNum) : null;
   const scoreColor = band ? SCORE_COLORS[band] : "#8B7355";
+
+  const setup = {
+    cupsPerSample,
+    uniformityTracked: cupsPerSample >= 5,
+    roundingEnforced: true,
+  };
 
   return (
     <div
@@ -228,12 +237,23 @@ export function SampleRadarChart({
         </div>
       </div>
 
+      {/* Individual score transparency (N5) */}
+      {affData && scoreNum !== null && (
+        <ScoreBreakdownPanel
+          variant="individual"
+          breakdown={calcIndividualBreakdown(affData, cupsPerSample)}
+          setup={setup}
+          locale={locale}
+        />
+      )}
+
       {/* Community score line */}
       {showCommunity && sample.aggregateScore?.communityScore != null && (
         <div
           style={{
             display: "flex",
             gap: 16,
+            marginTop: 8,
             marginBottom: 8,
             padding: "6px 10px",
             background: "#FEF9EE",
@@ -253,6 +273,17 @@ export function SampleRadarChart({
             promedio
           </span>
         </div>
+      )}
+
+      {/* Community score transparency (N5) */}
+      {showCommunity && sample.aggregateScore?.communityScore != null && (
+        <ScoreBreakdownPanel
+          variant="group"
+          group={sample.aggregateScore}
+          cupsPerSample={cupsPerSample}
+          setup={setup}
+          locale={locale}
+        />
       )}
 
       {/* Radar chart */}

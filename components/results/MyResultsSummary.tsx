@@ -1,7 +1,8 @@
 "use client";
 
-import { calcIndividualScore } from "@/lib/scoring";
+import { calcIndividualBreakdown, calcIndividualScore } from "@/lib/scoring";
 import { resolveDescriptor } from "@/lib/descriptors";
+import { ScoreBreakdownPanel } from "@/components/results/ScoreBreakdownPanel";
 
 type SampleResult = {
   id: string;
@@ -281,41 +282,55 @@ export function MyResultsSummary({
 
                 {/* CVA total */}
                 {showCVA && (
-                  <div
-                    style={{
-                      marginTop: 12,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      background: "#F0F5F0",
-                      borderRadius: 9,
-                      border: "1px solid #DCE6DC",
-                      padding: "8px 14px",
-                    }}
-                  >
-                    <span
+                  <>
+                    <div
                       style={{
-                        fontSize: 11,
-                        fontWeight: 700,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.06em",
-                        color: "#3D5A3E",
+                        marginTop: 12,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        background: "#F0F5F0",
+                        borderRadius: 9,
+                        border: "1px solid #DCE6DC",
+                        padding: "8px 14px",
                       }}
                     >
-                      {t.cvaScore}
-                    </span>
-                    <span
-                      style={{
-                        fontFamily: "'Cormorant Garamond', Georgia, serif",
-                        fontSize: 26,
-                        fontWeight: 700,
-                        lineHeight: 1,
-                        color: cvaColor,
-                      }}
-                    >
-                      {cvaNum !== null ? cvaNum.toFixed(2) : "—"}
-                    </span>
-                  </div>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.06em",
+                          color: "#3D5A3E",
+                        }}
+                      >
+                        {t.cvaScore}
+                      </span>
+                      <span
+                        style={{
+                          fontFamily: "'Cormorant Garamond', Georgia, serif",
+                          fontSize: 26,
+                          fontWeight: 700,
+                          lineHeight: 1,
+                          color: cvaColor,
+                        }}
+                      >
+                        {cvaNum !== null ? cvaNum.toFixed(2) : "—"}
+                      </span>
+                    </div>
+                    {cvaNum !== null && (
+                      <ScoreBreakdownPanel
+                        variant="individual"
+                        breakdown={calcIndividualBreakdown(data, cupsPerSample)}
+                        setup={{
+                          cupsPerSample,
+                          uniformityTracked: cupsPerSample >= 5,
+                          roundingEnforced: true,
+                        }}
+                        locale={locale}
+                      />
+                    )}
+                  </>
                 )}
               </>
             )}

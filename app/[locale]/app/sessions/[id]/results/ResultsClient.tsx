@@ -402,6 +402,7 @@ export function ResultsClient({
                 showCommunity={showGroup}
                 isOwner={isOwner}
                 onReveal={handleReveal}
+                locale={locale}
               />
               {Object.keys(sample.descriptive).length > 0 && (
                 <div
