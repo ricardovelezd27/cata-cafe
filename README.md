@@ -92,6 +92,10 @@ Default language is **Spanish** (the working language of much of the specialty-c
 
 **Offline-first** — Keep evaluating with no connection; a banner shows offline status and drafts replay automatically on reconnect, with a conflict modal if a draft was already submitted elsewhere.
 
+**Predictive flavor entry** — Flavor descriptors are chosen from the SCA flavor wheel either by browsing the hierarchy or by a fuzzy typeahead (Fuse.js) that tolerates typos and accents ("framuesa" → *Frambuesa*) and shows each descriptor's breadcrumb so the cupper confirms which group it files under.
+
+**Score transparency** — A collapsible "¿Cómo se calculó?" panel breaks down exactly how each individual and community CVA score was computed — the formula, the per-section values, and the session setup (cups per sample, when penalties apply) — reading the authoritative numbers verbatim, never recomputing.
+
 **Guided onboarding** — First-time cuppers tell us their role and country and are routed straight to a first action (create a session or add a coffee).
 
 **Coffee library & history** — Every revealed coffee gets a profile tracking each session it appeared in; each cupper gets a personal tasting history with individual and community scores.
@@ -165,7 +169,7 @@ Before cupping, you can evaluate the green beans:
 1. Select a sample from the top pill navigation.
 2. Open the **Cupping** tab.
 3. Fill in the evaluation form according to the format:
-   - **Descriptive**: intensity sliders, flavor tree, acidity/sweetness/mouthfeel descriptors, gustos predominantes
+   - **Descriptive**: intensity sliders, the flavor-wheel picker (browse or type-to-search), acidity/sweetness/mouthfeel descriptors, gustos predominantes
    - **Affective**: 1–9 quality scales for each of the 8 SCA CVA attributes (Fragancia, Aroma, Sabor, Sabor residual, Acidez, Cuerpo, Uniformidad, Balance)
    - **Combined**: both forms on one page
 4. Mark any non-uniform or defective cups using the cup checkboxes.
@@ -350,10 +354,12 @@ communityScore    = avgRawScore − uniformityPenalty − defectPenalty
 | Styling | Tailwind CSS 4 + PostCSS | 4 |
 | Client State | Zustand | 5.0.12 |
 | Offline storage | localforage (IndexedDB) | 1.10.0 |
+| Flavor search | Fuse.js (fuzzy typeahead) | 7.4.2 |
 | Charts | Recharts | 3.8.1 |
 | PDF | @react-pdf/renderer | 4.5.1 |
 | Primitives | Radix UI (dialog) | 1.1.15 |
 | Icons | lucide-react | 1.8.0 |
+| Animation | GSAP (marketing landing) | 3.15.0 |
 | Scripts/tooling | tsx | 4.21.0 |
 
 ---
@@ -461,6 +467,7 @@ Open Supabase → SQL Editor → paste and run the file contents.
 cata-cafe/
 ├── app/
 │   ├── [locale]/
+│   │   ├── page.tsx                    # Public marketing landing page (es default, /en secondary)
 │   │   ├── app/                        # Authenticated routes (auth guard in layout)
 │   │   │   ├── page.tsx                # Dashboard
 │   │   │   ├── coffees/
@@ -488,11 +495,12 @@ cata-cafe/
 │   │   └── dev.ts                      # Dev-only helpers
 │   └── auth/callback/route.ts          # Supabase OAuth callback
 ├── components/
-│   ├── cupping/                        # All evaluation UI components
-│   ├── results/                        # Score tables, radar charts, descriptor frequency
+│   ├── cupping/                        # Evaluation form components (CombinedForm, FlavorPicker, …)
+│   ├── results/                        # Score tables, radar charts, descriptor frequency, ScoreBreakdownPanel
+│   ├── landing/                        # Marketing landing sections (Hero, Pricing, WaitlistForm, …)
 │   ├── offline/                        # OfflineBanner, SyncConflictModal, OfflineFirstLoadError
 │   ├── onboarding/                     # WelcomeModal, OnboardingWrapper
-│   └── ui/, layout/, dashboard/        # Shared atoms, shell, dashboard widgets
+│   └── ui/, layout/, dashboard/        # Atomic design system, shell, dashboard widgets
 ├── hooks/
 │   ├── useConnectivity.ts              # Online/offline detection
 │   └── useOfflineSync.ts              # Drains the offline draft queue on reconnect
@@ -500,8 +508,9 @@ cata-cafe/
 │   ├── prisma.ts                       # Prisma singleton
 │   ├── scoring.ts                      # SCA CVA formula
 │   ├── evaluation.ts                   # Derived-score computation shared by live + offline paths
-│   ├── constants.ts                    # Flavor tree, attributes, defect categories
+│   ├── constants.ts                    # Flavor wheel, attributes, defect categories
 │   ├── descriptors.ts                  # Descriptor helpers
+│   ├── flavorSearch.ts                 # Fuse.js predictive search over the flavor wheel
 │   ├── offline/
 │   │   ├── store.ts                    # localforage/IndexedDB draft store (client-only, SSR-safe)
 │   │   └── types.ts                    # Offline blob + sync-status types

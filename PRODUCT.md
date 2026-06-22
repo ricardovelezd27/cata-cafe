@@ -1,6 +1,6 @@
 # Cata Café — Product Document
 
-> Last updated: 2026-06-09
+> Last updated: 2026-06-22
 
 ---
 
@@ -115,7 +115,7 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 - [x] Phase tabs: Physical Evaluation / Cupping / Extrinsic Data
 - [x] `IntensitySlider` (0–15, step 0.5) for descriptive attributes
 - [x] `AffectiveBubbles` (1–9) for affective scores
-- [x] `CATAPills` for flavor family + sub-descriptor CATA selection
+- [x] `FlavorPicker` for flavor-wheel CATA selection — browse the hierarchy **or** predictive typeahead (Fuse.js, accent/typo-tolerant, breadcrumbed); unmatched input kept as a free note
 - [x] `CupIndicators` for cup uniformity and defect tracking
 - [x] Auto-save at 800ms debounce (no manual save)
 - [x] Master Controls (session leader only): reveal, close
@@ -160,9 +160,14 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 ### Results & Export
 - [x] Individual CVA score with formula breakdown
 - [x] Group results page with sample comparison
+- [x] Score transparency panel (`ScoreBreakdownPanel`, "¿Cómo se calculó?") — individual + community variants, reads authoritative numbers verbatim
 - [x] Coffee profile with full tasting history
 - [x] Personal history page (`/profile/history`)
 - [x] PDF certificate export (`/sessions/[id]/print`)
+
+### Marketing / Public
+- [x] Public marketing landing page at `/[locale]` (Spanish default, `/en` secondary) — animated hero (GSAP), audience/comparison/pricing/roadmap sections
+- [x] Waitlist signup form (`app/actions/waitlist.ts`)
 
 ### Coffee Library
 - [x] Coffee profile pages with aggregate scores
@@ -226,6 +231,9 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 - [x] Offline-first cupping with conflict-aware sync
 - [x] Guided onboarding (role + country capture)
 - [x] Mobile/responsive cupping layout
+- [x] `FlavorPicker` — predictive typeahead over the 3-level flavor wheel (Fuse.js), replacing the browse-only `CATAPills` flavor flow
+- [x] `ScoreBreakdownPanel` — score transparency ("¿Cómo se calculó?") for individual and community scores
+- [x] Public marketing landing page (animated, bilingual) + waitlist
 
 ### Next — Results & Analytics
 - [ ] Multi-session coffee comparison view

@@ -1,7 +1,7 @@
 # Cata Café — Design System Reference
 
 > **Sensory Studio** — Warm Minimalist · Editorial Precision
-> Last updated: 2026-06-09
+> Last updated: 2026-06-22
 
 ---
 
@@ -276,6 +276,25 @@ No heavy drop shadows. Depth through tonal surface layering ("stacked paper" eff
 - Unselected: `outline-variant` border, transparent fill, pill shape
 - Selected: solid `primary-container` fill, `on-primary` text
 - At-limit: unselected at `opacity: 0.45`
+
+### `FlavorPicker`
+
+**File:** `components/cupping/FlavorPicker.tsx` (modal via `ResponsiveDialog`)
+
+The flavor-wheel descriptor selector. Two entry paths to the same wheel, not two flows:
+- **Browse** — breadcrumb-navigated columns through the wheel hierarchy (L1 group → L2 → L3 leaf), `CATAPills` styling for the options.
+- **Predictive search** — a typeahead (`Search` icon) backed by `lib/flavorSearch.ts` (Fuse.js). Accent- and typo-insensitive; each result shows its ancestor breadcrumb (`Afrutado › Berry`) and inherits its L1 group color. Unmatched input can be kept as a free note (`addAsNote`).
+- Selected descriptors render as filled pills; an unmapped note uses `UNMAPPED_COLOR`.
+
+### `ScoreBreakdownPanel`
+
+**File:** `components/results/ScoreBreakdownPanel.tsx`
+
+Collapsed-by-default disclosure — "¿Cómo se calculó?" — explaining a CVA score. Two variants:
+- **individual** — one cupper's score, driven by `IndividualBreakdown` (the same source of truth as the displayed number).
+- **group** — the community aggregate, reading `AggregateScoreData` verbatim (authoritative trigger output; never recomputed in the panel).
+
+Shows the CVA formula, the per-section values, and the session setup (cups per sample, whether uniformity/defect penalties apply). `Σhᵢ` in `primary-container`, penalties in `error`, consistent with `ScoreDisplay`.
 
 ### `CupIndicators`
 

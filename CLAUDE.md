@@ -63,6 +63,9 @@ This project uses **Tailwind CSS v4** (PostCSS-based). There is no `tailwind.con
 | PDF | @react-pdf/renderer | 4.5.1 |
 | Primitives | Radix UI (dialog) | 1.1.15 |
 | Icons | lucide-react | 1.8.0 |
+| Offline storage | localforage (IndexedDB) | 1.10.0 |
+| Flavor search | Fuse.js (fuzzy typeahead) | 7.4.2 |
+| Animation | GSAP (marketing landing only) | 3.15.0 |
 
 ---
 
@@ -72,20 +75,23 @@ This project uses **Tailwind CSS v4** (PostCSS-based). There is no `tailwind.con
 cata-cafe/
 ├── app/
 │   ├── [locale]/                   # All routes are locale-prefixed
+│   │   ├── page.tsx                # Public marketing landing page (es default, /en secondary)
 │   │   ├── app/                    # Authenticated routes
 │   │   │   ├── layout.tsx          # Auth guard — redirects unauthenticated users
-│   │   │   ├── page.tsx            # Dashboard (recent sessions + group badges)
+│   │   │   ├── page.tsx            # Dashboard (DashboardIntro + recent sessions + group badges)
 │   │   │   ├── coffees/
 │   │   │   │   ├── page.tsx        # Coffee list (public + owned)
 │   │   │   │   └── [id]/page.tsx   # Coffee profile + tasting history
 │   │   │   ├── profile/
 │   │   │   │   ├── page.tsx        # User profile management
 │   │   │   │   └── history/page.tsx # Complete coffee tasting history
+│   │   │   ├── team/page.tsx       # Team / participants view
 │   │   │   └── sessions/
 │   │   │       ├── page.tsx        # Session list (own + joined sections)
 │   │   │       ├── new/            # Create session wizard (two-step for group)
 │   │   │       └── [id]/
 │   │   │           ├── cup/        # Main cupping interface (CupClient)
+│   │   │           ├── waiting/    # Pre-start waiting room (group/async sessions)
 │   │   │           ├── results/    # Scores & analysis (group tab for group sessions)
 │   │   │           └── print/      # PDF export
 │   │   ├── join/[token]/page.tsx   # Invite join page (outside /app/ — no auth guard)
@@ -98,30 +104,31 @@ cata-cafe/
 │   │   ├── coffees.ts              # Coffee profile create/update
 │   │   ├── offline.ts              # Conflict-aware replay of offline evaluation drafts on reconnect
 │   │   ├── profile.ts              # Profile updates, completeOnboarding
+│   │   ├── waitlist.ts             # Landing-page waitlist signup
 │   │   └── dev.ts                  # Dev-only helpers (seed/inspect)
 │   ├── auth/callback/route.ts      # Supabase OAuth callback (reads ?next= param)
 │   ├── generated/prisma/           # AUTO-GENERATED — DO NOT EDIT
 │   └── layout.tsx                  # Root layout
 ├── components/
-│   └── cupping/                    # All evaluation form components
-│       ├── CupClient.tsx           # Orchestrator: sample navigation, tabs, auto-save, master controls, realtime
-│       ├── CombinedForm.tsx        # Descriptive + affective dual form
-│       ├── DescriptiveForm.tsx     # Intensity & sensory descriptors
-│       ├── AffectiveForm.tsx       # 1–9 quality impressions
-│       ├── PhysicalEvalForm.tsx    # Green bean assessment (defects, color, screen)
-│       ├── ExtrinsicForm.tsx       # Post-reveal origin data entry
-│       ├── FlavorTreeSelector.tsx  # Hierarchical flavor descriptor tree
-│       ├── AffectiveScale.tsx      # 1–9 Likert scale component
-│       ├── IntensitySlider.tsx     # 0–10 intensity slider
-│       ├── DescriptorSelector.tsx  # Multi-select descriptor pills
-│       ├── GustosSelector.tsx      # Predominant taste selection
-│       ├── CupCheckboxes.tsx       # Per-cup defect/uniformity checkboxes
-│       ├── NotesInput.tsx          # Free-text notes
-│       └── Section.tsx             # Consistent section wrapper
-│   ├── results/                    # ScoreTable, SampleRadarChart, descriptor frequency, individual/my results
+│   ├── cupping/                    # Evaluation form components (lifted state, controlled by CupClient)
+│   │   ├── CombinedForm.tsx        # Descriptive + affective dual form
+│   │   ├── DescriptiveForm.tsx     # Intensity & sensory descriptors
+│   │   ├── AffectiveForm.tsx       # 1–9 quality impressions
+│   │   ├── PhysicalEvalForm.tsx    # Green bean assessment (defects, color, screen)
+│   │   ├── ExtrinsicForm.tsx       # Post-reveal origin data entry
+│   │   ├── FlavorPicker.tsx        # Flavor-wheel selector: predictive typeahead (Fuse.js) + browsable modal
+│   │   └── PhaseStepper.tsx        # Phase/step progress indicator
+│   │   # NOTE: CupClient.tsx lives at app/[locale]/app/sessions/[id]/cup/CupClient.tsx —
+│   │   #       it is the orchestrator (sample nav, tabs, auto-save, master controls, realtime)
+│   ├── ui/                         # Atomic design system (replaced old per-form widgets):
+│   │   #   IntensitySlider, AffectiveBubbles, CATAPills, CupIndicators/CupToggleGrid,
+│   │   #   ScoreDisplay, MasterControls, SampleTabs, SessionShell, ResponsiveDialog, Notes…
+│   ├── results/                    # ScoreTable, SampleRadarChart, DescriptorFrequency, FlavorCloud,
+│   │   #   MyResultsSummary, IndividualResultsPanel, ScoreBreakdownPanel ("¿Cómo se calculó?")
+│   ├── landing/                    # Marketing landing sections (Hero, Pricing, Roadmap, WaitlistForm, ScrollFx…)
 │   ├── offline/                    # OfflineBanner, SyncConflictModal, OfflineFirstLoadError
 │   ├── onboarding/                 # WelcomeModal, OnboardingWrapper (role/country capture)
-│   └── ui/, layout/, dashboard/    # Shared atoms, app shell, dashboard widgets
+│   └── layout/, dashboard/         # App shell + dashboard widgets (DashboardIntro, StatCard, FormatBadge)
 ├── hooks/
 │   ├── useConnectivity.ts          # Online/offline detection
 │   └── useOfflineSync.ts          # Drains offline draft queue on reconnect
@@ -129,8 +136,9 @@ cata-cafe/
 │   ├── prisma.ts                   # Prisma singleton — always import from here
 │   ├── scoring.ts                  # SCA CVA formula — do not reimplement
 │   ├── evaluation.ts               # Derived-score computation shared by live + offline paths
-│   ├── constants.ts                # All cupping reference data
-│   ├── descriptors.ts              # Descriptor helpers
+│   ├── constants.ts                # All cupping reference data (FLAVOR_WHEEL, attributes, defects…)
+│   ├── descriptors.ts              # Descriptor helpers + unmapped-note resolution
+│   ├── flavorSearch.ts             # Fuse.js predictive search over FLAVOR_WHEEL (powers FlavorPicker)
 │   ├── offline/
 │   │   ├── store.ts                # localforage/IndexedDB draft store — CLIENT ONLY, SSR-safe (no-ops on server)
 │   │   └── types.ts                # Offline blob + sync-status types
@@ -289,9 +297,9 @@ Verification: 2 participants, cupsPerSample=5, 1 uOnly cup → uniformityPenalty
 
 All cupping reference data is in `lib/constants.ts` (Spanish-labeled):
 
-- `FLAVOR_TREE` — 8 flavor families with hierarchical sub-descriptors
-- `ACIDITY_DESCRIPTORS`, `SWEETNESS_DESCRIPTORS`, `MOUTHFEEL_DESCRIPTORS`
-- `GUSTOS_PREDOMINANTES` — 5 basic tastes
+- `FLAVOR_WHEEL` — flat list of 3-level flavor-wheel nodes (L1 group → L2 → L3 leaf) with bilingual labels, `parentId`/`level`, synonyms, and group colors. Helpers: `flavorNodeById`, `flavorChildren`, `flavorGroupColor`, `migrateFlavorId`. `FLAVOR_FAMILIES` is a back-compat 2-level view derived from it. (Replaces the old `FLAVOR_TREE`.)
+- `ACIDITY_DESCRIPTORS`, `SWEETNESS_DESCRIPTORS`, `MOUTHFEEL_DESCRIPTORS` / `MOUTHFEEL_OPTIONS`
+- `GUSTOS_PREDOMINANTES` / `MAIN_TASTES` — basic tastes
 - `AFFECTIVE_ATTRIBUTES` — 8 scored attributes (Fragancia, Aroma, Sabor, etc.)
 - `AFFECTIVE_LABELS` — 9-point scale labels
 - `CAT1_DEFECTS`, `CAT2_DEFECTS` — green bean defect categories with ratios
