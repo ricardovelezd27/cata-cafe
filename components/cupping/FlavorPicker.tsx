@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronRight, ChevronLeft, Plus, X } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { ChevronRight, ChevronLeft, Plus, X, Search, CornerDownLeft } from "lucide-react";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import {
   flavorChildren,
@@ -9,7 +9,8 @@ import {
   flavorGroupColor,
   type FlavorWheelNode,
 } from "@/lib/constants";
-import { resolveDescriptor } from "@/lib/descriptors";
+import { resolveDescriptor, UNMAPPED_PREFIX, UNMAPPED_COLOR } from "@/lib/descriptors";
+import { searchFlavors } from "@/lib/flavorSearch";
 import pillStyles from "@/components/ui/CATAPills.module.css";
 
 type Locale = "es" | "en";
@@ -25,6 +26,9 @@ const T: Record<Locale, Record<string, string>> = {
     upTo: "Selecciona hasta",
     done: "Listo",
     remove: "Quitar",
+    search: "Escribe un descriptor…",
+    noMatches: "Sin coincidencias en la rueda",
+    addAsNote: "Agregar como nota",
   },
   en: {
     add: "Add descriptors",
@@ -36,6 +40,9 @@ const T: Record<Locale, Record<string, string>> = {
     upTo: "Select up to",
     done: "Done",
     remove: "Remove",
+    search: "Type a descriptor…",
+    noMatches: "No matches on the wheel",
+    addAsNote: "Add as note",
   },
 };
 
@@ -69,6 +76,12 @@ export function FlavorPicker({
   const [open, setOpen] = useState(false);
   const [navId, setNavId] = useState<string | null>(null); // current parent being viewed
 
+  // Predictive typeahead — a filter over the same wheel, feeding the same value.
+  const [query, setQuery] = useState("");
+  const [focused, setFocused] = useState(false);
+  const [hi, setHi] = useState(0); // highlighted dropdown row
+  const inputRef = useRef<HTMLInputElement>(null);
+
   // Selection collapses to the deepest node on a drill path: choosing a node drops
   // any selected ancestor of it (deeper replaces shallower), but never removes its
   // descendants (a separate, shallower pick coexists with an existing deeper one).
@@ -91,6 +104,57 @@ export function FlavorPicker({
     if (maxSelect === undefined) return false;
     const removed = value.filter((v) => isAncestorOf(v, id)).length;
     return value.length - removed >= maxSelect;
+  }
+
+  const trimmed = query.trim();
+  const results = useMemo(
+    () => (trimmed ? searchFlavors(trimmed, { locale }) : []),
+    [trimmed, locale]
+  );
+  // Free-text safety valve: offer to keep the perception when nothing matches.
+  const showNote = trimmed.length > 0 && results.length === 0;
+  const rowCount = results.length + (showNote ? 1 : 0);
+  const dropdownOpen = focused && rowCount > 0;
+  const clampedHi = Math.min(hi, Math.max(0, rowCount - 1));
+
+  function addById(id: string) {
+    if (!value.includes(id) && !wouldExceedLimit(id)) toggle(id);
+    setQuery("");
+    setHi(0);
+    inputRef.current?.focus();
+  }
+
+  function addNote() {
+    if (!trimmed) return;
+    const id = `${UNMAPPED_PREFIX}${trimmed}`;
+    if (!value.includes(id) && (maxSelect === undefined || value.length < maxSelect)) {
+      onChange([...value, id]);
+    }
+    setQuery("");
+    setHi(0);
+    inputRef.current?.focus();
+  }
+
+  function commitRow(i: number) {
+    if (i < results.length) addById(results[i].id);
+    else if (showNote) addNote();
+  }
+
+  function onInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!dropdownOpen) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHi((p) => Math.min(p + 1, rowCount - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHi((p) => Math.max(p - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      commitRow(clampedHi);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setQuery("");
+    }
   }
 
   const crumbs = pathOf(navId);
@@ -132,6 +196,101 @@ export function FlavorPicker({
               );
             })}
           </div>
+        )}
+      </div>
+
+      {/* Predictive typeahead — type to filter the wheel; sits alongside browse */}
+      <div className="relative mb-2">
+        <div className="relative">
+          <Search
+            size={15}
+            aria-hidden
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-brown-mid"
+          />
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setHi(0);
+            }}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setTimeout(() => setFocused(false), 120)}
+            onKeyDown={onInputKeyDown}
+            placeholder={t.search}
+            aria-label={t.search}
+            autoComplete="off"
+            className="w-full rounded-pill border-[1.5px] border-brown-light/60 bg-bg py-1.5 pl-9 pr-3 text-[13px] text-brown-dark placeholder:text-brown-mid focus:border-green-mid focus:outline-none"
+          />
+        </div>
+
+        {dropdownOpen && (
+          <ul
+            role="listbox"
+            className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-brown-light/50 bg-bg py-1 shadow-lg"
+          >
+            {results.map((m, i) => (
+              <li key={m.id} role="option" aria-selected={i === clampedHi}>
+                <button
+                  type="button"
+                  // onMouseDown (not onClick) so it fires before input blur closes the list
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    addById(m.id);
+                  }}
+                  onMouseEnter={() => setHi(i)}
+                  className={`flex w-full items-center gap-2 px-3 py-1.5 text-left ${
+                    i === clampedHi ? "bg-cream" : ""
+                  }`}
+                >
+                  <span
+                    className="size-2.5 shrink-0 rounded-full"
+                    style={{ background: m.color }}
+                    aria-hidden
+                  />
+                  <span className="text-[13px] font-medium text-brown-dark">
+                    {m.label}
+                  </span>
+                  {m.path && (
+                    <span className="ml-auto truncate pl-2 text-[11px] text-brown-mid">
+                      {m.path}
+                    </span>
+                  )}
+                </button>
+              </li>
+            ))}
+
+            {showNote && (
+              <li role="option" aria-selected={clampedHi === results.length}>
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    addNote();
+                  }}
+                  onMouseEnter={() => setHi(results.length)}
+                  className={`flex w-full items-center gap-2 px-3 py-1.5 text-left ${
+                    clampedHi === results.length ? "bg-cream" : ""
+                  }`}
+                >
+                  <span
+                    className="size-2.5 shrink-0 rounded-full"
+                    style={{ background: UNMAPPED_COLOR }}
+                    aria-hidden
+                  />
+                  <span className="text-[13px] text-brown-dark">
+                    {t.addAsNote}: <span className="font-medium">«{trimmed}»</span>
+                  </span>
+                  <CornerDownLeft
+                    size={13}
+                    aria-hidden
+                    className="ml-auto shrink-0 text-brown-mid"
+                  />
+                </button>
+              </li>
+            )}
+          </ul>
         )}
       </div>
 

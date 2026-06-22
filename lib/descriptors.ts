@@ -67,10 +67,20 @@ const OTHER_CATA_SETS: readonly CATAFamily[] = [
  * - `locale` selects the flavor label language; the acidity/sweetness/mouthfeel
  *   sets are Spanish-only and fall back to their Spanish label for "en".
  */
+/** Neutral color for free-text "unmapped" descriptors (matches the Other group). */
+export const UNMAPPED_COLOR = "#7A6E5F";
+/** Prefix marking a free-text descriptor the wheel didn't match (N2 safety valve). */
+export const UNMAPPED_PREFIX = "unmapped:";
+
 export function resolveDescriptor(
   id: string,
   locale: "es" | "en" = "es"
 ): { label: string; color: string } | null {
+  // Free-text safety-valve entries (typeahead): render the raw text the cupper
+  // typed, tagged neutrally so the perception is never lost (feeds the lexicon).
+  if (id.startsWith(UNMAPPED_PREFIX)) {
+    return { label: id.slice(UNMAPPED_PREFIX.length), color: UNMAPPED_COLOR };
+  }
   const flavorId = migrateFlavorId(id);
   const node = flavorNodeById(flavorId);
   if (node) {

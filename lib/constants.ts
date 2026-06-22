@@ -56,13 +56,16 @@ export type FlavorWheelNode = {
   label_es: string
   label_en: string
   color?: string // present only on L1 groups; descendants inherit via flavorGroupColor()
+  synonyms: readonly string[] // alternate terms (other languages / common variants) for typeahead matching; [] when none
 }
 
 // Authoring shape — flattened below into FLAVOR_WHEEL nodes so parentId/level
-// never drift from the nesting.
-type RawLeaf = { key: string; es: string; en: string }
-type RawSub = { key: string; es: string; en: string; leaves?: RawLeaf[] }
-type RawGroup = { key: string; es: string; en: string; color: string; subs: RawSub[] }
+// never drift from the nesting. `syn` holds optional alternate terms used by the
+// predictive typeahead (lib/flavorSearch.ts); label_es + label_en already match
+// without it, so seed it only where cuppers use other-language or variant words.
+type RawLeaf = { key: string; es: string; en: string; syn?: string[] }
+type RawSub = { key: string; es: string; en: string; syn?: string[]; leaves?: RawLeaf[] }
+type RawGroup = { key: string; es: string; en: string; color: string; syn?: string[]; subs: RawSub[] }
 
 const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
   { key: 'floral', es: 'Floral', en: 'Floral', color: '#C17817', subs: [
@@ -75,10 +78,10 @@ const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
   ] },
   { key: 'fruity', es: 'Frutal', en: 'Fruity', color: '#E8834A', subs: [
     { key: 'berry', es: 'Bayas', en: 'Berry', leaves: [
-      { key: 'blackberry', es: 'Mora',      en: 'Blackberry' },
-      { key: 'blueberry',  es: 'Arándano',  en: 'Blueberry' },
-      { key: 'raspberry',  es: 'Frambuesa', en: 'Raspberry' },
-      { key: 'strawberry', es: 'Fresa',     en: 'Strawberry' },
+      { key: 'blackberry', es: 'Mora',      en: 'Blackberry', syn: ['zarzamora'] },
+      { key: 'blueberry',  es: 'Arándano',  en: 'Blueberry',  syn: ['arandano'] },
+      { key: 'raspberry',  es: 'Frambuesa', en: 'Raspberry',  syn: ['framboise'] },
+      { key: 'strawberry', es: 'Fresa',     en: 'Strawberry', syn: ['fresón', 'frutilla'] },
     ] },
     { key: 'citrus', es: 'Cítrico', en: 'Citrus Fruit', leaves: [
       { key: 'grapefruit', es: 'Toronja', en: 'Grapefruit' },
@@ -87,8 +90,8 @@ const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
       { key: 'orange',     es: 'Naranja', en: 'Orange' },
     ] },
     { key: 'dried', es: 'Fruta deshidratada', en: 'Dried Fruit', leaves: [
-      { key: 'prune',  es: 'Ciruela pasa', en: 'Prune' },
-      { key: 'raisin', es: 'Pasa',          en: 'Raisin' },
+      { key: 'prune',  es: 'Ciruela pasa', en: 'Prune', syn: ['ciruela', 'pruna'] },
+      { key: 'raisin', es: 'Pasa',          en: 'Raisin', syn: ['uva pasa'] },
     ] },
     { key: 'other_fruit', es: 'Otra fruta', en: 'Other Fruit', leaves: [
       { key: 'apple',       es: 'Manzana', en: 'Apple' },
@@ -126,14 +129,14 @@ const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
   ] },
   { key: 'nutty_cocoa', es: 'Nueces/Cacao', en: 'Nutty/Cocoa', color: '#8B7355', subs: [
     { key: 'cocoa', es: 'Cacao', en: 'Cocoa', leaves: [
-      { key: 'chocolate',      es: 'Chocolate',        en: 'Chocolate' },
-      { key: 'dark_chocolate', es: 'Chocolate amargo', en: 'Dark Chocolate' },
+      { key: 'chocolate',      es: 'Chocolate',        en: 'Chocolate', syn: ['cacao'] },
+      { key: 'dark_chocolate', es: 'Chocolate amargo', en: 'Dark Chocolate', syn: ['chocolate negro', 'chocolate oscuro'] },
     ] },
     { key: 'nutty', es: 'Nueces', en: 'Nutty', leaves: [
       { key: 'almond',   es: 'Almendra',  en: 'Almond' },
       { key: 'hazelnut', es: 'Avellana',  en: 'Hazelnut' },
       { key: 'nutty',    es: 'Nuez',      en: 'Nutty' },
-      { key: 'peanuts',  es: 'Cacahuate', en: 'Peanuts' },
+      { key: 'peanuts',  es: 'Cacahuate', en: 'Peanuts', syn: ['maní', 'cacahuete'] },
     ] },
   ] },
   // ⚠ Spices: keep Pungent/Pepper/Spicy as subgroups (extensible, no L3 on the
@@ -170,10 +173,10 @@ const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
   ] },
   { key: 'sweet', es: 'Dulce', en: 'Sweet', color: '#B4874E', subs: [
     { key: 'brown_sugar', es: 'Azúcar moreno', en: 'Brown Sugar', leaves: [
-      { key: 'caramelized', es: 'Caramelizado',   en: 'Caramelized' },
-      { key: 'honey',       es: 'Miel',            en: 'Honey' },
-      { key: 'maple_syrup', es: 'Sirope de arce',  en: 'Maple Syrup' },
-      { key: 'molasses',    es: 'Melaza',          en: 'Molasses' },
+      { key: 'caramelized', es: 'Caramelizado',   en: 'Caramelized', syn: ['caramelo'] },
+      { key: 'honey',       es: 'Miel',            en: 'Honey', syn: ['miel de abeja'] },
+      { key: 'maple_syrup', es: 'Sirope de arce',  en: 'Maple Syrup', syn: ['jarabe de arce', 'maple'] },
+      { key: 'molasses',    es: 'Melaza',          en: 'Molasses', syn: ['melado', 'miel de caña'] },
     ] },
     { key: 'sweet_aromatics', es: 'Aromáticos dulces', en: 'Sweet Aromatics', leaves: [
       { key: 'overall_sweet', es: 'Dulce general', en: 'Overall Sweet' },
@@ -225,12 +228,12 @@ const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
 export const FLAVOR_WHEEL: readonly FlavorWheelNode[] = (() => {
   const nodes: FlavorWheelNode[] = []
   for (const g of FLAVOR_WHEEL_SOURCE) {
-    nodes.push({ id: g.key, level: 1, parentId: null, label_es: g.es, label_en: g.en, color: g.color })
+    nodes.push({ id: g.key, level: 1, parentId: null, label_es: g.es, label_en: g.en, color: g.color, synonyms: g.syn ?? [] })
     for (const sub of g.subs) {
       const subId = `${g.key}:${sub.key}`
-      nodes.push({ id: subId, level: 2, parentId: g.key, label_es: sub.es, label_en: sub.en })
+      nodes.push({ id: subId, level: 2, parentId: g.key, label_es: sub.es, label_en: sub.en, synonyms: sub.syn ?? [] })
       for (const leaf of sub.leaves ?? []) {
-        nodes.push({ id: `${subId}:${leaf.key}`, level: 3, parentId: subId, label_es: leaf.es, label_en: leaf.en })
+        nodes.push({ id: `${subId}:${leaf.key}`, level: 3, parentId: subId, label_es: leaf.es, label_en: leaf.en, synonyms: leaf.syn ?? [] })
       }
     }
   }
