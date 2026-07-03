@@ -13,7 +13,13 @@ import {
   upsertEvaluation,
   upsertExtrinsic,
   upsertPhysical,
+  updateSampleMetadata,
 } from "@/app/actions/sessions";
+import {
+  EditSampleMetadataForm,
+  type SampleMetadataFormData,
+} from "@/components/cupping/EditSampleMetadataForm";
+import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import {
   submitAllEvaluations,
   closeSession,
@@ -59,6 +65,18 @@ const MODULE_KEYS = new Set<ModuleKey>([
 const isModuleKey = (key: PropertyKey): key is ModuleKey =>
   MODULE_KEYS.has(key as ModuleKey);
 
+type SampleCoffee = {
+  name: string;
+  country: string;
+  region: string;
+  farm: string;
+  producer: string;
+  variety: string;
+  processType: string;
+  altitude: string;
+  roastLevel: string;
+};
+
 type Sample = {
   id: string;
   label: string;
@@ -72,6 +90,7 @@ type Sample = {
   extrinsic: Data;
   revealed: boolean;
   coffeeId: string | null;
+  coffee: SampleCoffee | null;
 };
 
 type Session = {
@@ -120,6 +139,19 @@ export function CupClient({
     physical: string;
     results: string;
     process: string;
+    editSample: string;
+    coffeeName: string;
+    coffeeCountry: string;
+    coffeeRegion: string;
+    coffeeFarm: string;
+    producerRoaster: string;
+    coffeeVariety: string;
+    coffeeProcess: string;
+    coffeeAltitude: string;
+    coffeeRoastLevel: string;
+    save: string;
+    saving: string;
+    cancel: string;
     individual: string;
     masterControls: string;
     submittedOf: string;
@@ -169,6 +201,7 @@ export function CupClient({
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
     "idle"
   );
+  const [editingSample, setEditingSample] = useState(false);
   const [submittedCount, setSubmittedCount] = useState(initialSubmittedCount);
   const [isGoingToResults, setIsGoingToResults] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
@@ -510,6 +543,29 @@ export function CupClient({
 
   // ─── Derived state ────────────────────────────────────────────
   const current = samples[sampleIdx];
+
+  const handleSaveSampleMetadata = async (data: SampleMetadataFormData) => {
+    await updateSampleMetadata(current.id, data);
+    setSamples((prev) =>
+      prev.map((s) =>
+        s.id === current.id
+          ? { ...s, label: data.label, coffee: { ...data } }
+          : s
+      )
+    );
+    setEditingSample(false);
+  };
+
+  const editSampleButton = isOwner ? (
+    <button
+      type="button"
+      onClick={() => setEditingSample(true)}
+      className="shrink-0 inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-wide text-brown-mid hover:text-green-dark"
+    >
+      ✎ {translations.editSample}
+    </button>
+  ) : null;
+
   const isLastSampleInStep = sampleIdx >= samples.length - 1;
   const isLastStep =
     stepsForFormat.indexOf(currentStep) >= stepsForFormat.length - 1;
@@ -645,6 +701,7 @@ export function CupClient({
       <span className="shrink-0 font-mono text-[10px] text-brown-mid tabular-nums">
         {sampleIdx + 1}/{samples.length}
       </span>
+      {editSampleButton}
     </div>
   );
 
@@ -715,8 +772,9 @@ export function CupClient({
               variant="light"
               align="start"
             />
-            <div className="border-t border-brown-light pt-1.5">
-              {sampleTabsBar}
+            <div className="border-t border-brown-light pt-1.5 flex items-center gap-3">
+              <div className="min-w-0 flex-1">{sampleTabsBar}</div>
+              {editSampleButton}
             </div>
           </div>
           <div className="flex flex-col items-end justify-center gap-0.5 text-right shrink-0 pt-0.5">
@@ -760,6 +818,8 @@ export function CupClient({
           <span className="font-display text-base text-brown-dark">
             {translations.sample} {current.label}
           </span>
+          <div className="flex-1" />
+          {editSampleButton}
         </div>
       </>
     );
@@ -797,6 +857,45 @@ export function CupClient({
         onRetry={retrySync}
         translations={translations.offline}
       />
+      {isOwner && editingSample && (
+        <ResponsiveDialog
+          open={editingSample}
+          onOpenChange={setEditingSample}
+          title={`${translations.editSample}: ${current.label}`}
+        >
+          <EditSampleMetadataForm
+            initialData={{
+              label: current.label,
+              name: current.coffee?.name ?? "",
+              country: current.coffee?.country ?? "",
+              region: current.coffee?.region ?? "",
+              farm: current.coffee?.farm ?? "",
+              producer: current.coffee?.producer ?? "",
+              variety: current.coffee?.variety ?? "",
+              processType: current.coffee?.processType ?? "",
+              altitude: current.coffee?.altitude ?? "",
+              roastLevel: current.coffee?.roastLevel ?? "",
+            }}
+            onSubmit={handleSaveSampleMetadata}
+            onCancel={() => setEditingSample(false)}
+            translations={{
+              label: translations.sample,
+              name: translations.coffeeName,
+              country: translations.coffeeCountry,
+              region: translations.coffeeRegion,
+              farm: translations.coffeeFarm,
+              producer: translations.producerRoaster,
+              variety: translations.coffeeVariety,
+              process: translations.coffeeProcess,
+              altitude: translations.coffeeAltitude,
+              roastLevel: translations.coffeeRoastLevel,
+              save: translations.save,
+              saving: translations.saving,
+              cancel: translations.cancel,
+            }}
+          />
+        </ResponsiveDialog>
+      )}
       {submitBlocked && !online && (
         <div
           role="status"

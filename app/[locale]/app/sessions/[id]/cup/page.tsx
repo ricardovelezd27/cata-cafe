@@ -37,6 +37,19 @@ export default async function CupPage({
           physical: true,
           extrinsic: true,
           aggregateScore: true,
+          coffee: {
+            select: {
+              name: true,
+              country: true,
+              region: true,
+              farm: true,
+              producer: true,
+              variety: true,
+              processType: true,
+              altitude: true,
+              roastLevel: true,
+            },
+          },
         },
       },
       participants: { select: { userId: true, status: true } },
@@ -75,6 +88,8 @@ export default async function CupPage({
 
   const t = await getTranslations();
   const tg = await getTranslations("group");
+  const tc = await getTranslations("coffee");
+  const ta = await getTranslations("actions");
 
   return (
     <CupClient
@@ -109,6 +124,19 @@ export default async function CupPage({
             extrinsic: (s.extrinsic?.data as Record<string, unknown>) ?? {},
             revealed: s.revealed,
             coffeeId: s.coffeeId,
+            coffee: isOwner
+              ? {
+                  name: s.coffee?.name ?? "",
+                  country: s.coffee?.country ?? "",
+                  region: s.coffee?.region ?? "",
+                  farm: s.coffee?.farm ?? "",
+                  producer: s.coffee?.producer ?? "",
+                  variety: s.coffee?.variety ?? "",
+                  processType: s.coffee?.processType ?? "",
+                  altitude: s.coffee?.altitude ?? "",
+                  roastLevel: s.coffee?.roastLevel ?? "",
+                }
+              : null,
           };
         }),
       }}
@@ -124,6 +152,19 @@ export default async function CupPage({
         physical: t("session.modules.physical"),
         results: t("session.results"),
         process: t("actions.process"),
+        editSample: t("session.editSample"),
+        coffeeName: t("session.coffeeName"),
+        coffeeCountry: tc("country"),
+        coffeeRegion: tc("region"),
+        coffeeFarm: tc("farm"),
+        producerRoaster: t("session.producerRoaster"),
+        coffeeVariety: tc("variety"),
+        coffeeProcess: tc("process"),
+        coffeeAltitude: tc("altitude"),
+        coffeeRoastLevel: tc("roastLevel"),
+        save: ta("save"),
+        saving: ta("saving"),
+        cancel: ta("cancel"),
         individual: t("score.individual"),
         masterControls: tg("masterControls"),
         submittedOf: tg("submittedOf", { count: submittedParticipantsResult.length, total: session.participants.length }),
