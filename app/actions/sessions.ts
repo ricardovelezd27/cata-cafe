@@ -223,6 +223,77 @@ export async function upsertPhysical(input: {
   return { ok: true };
 }
 
+export type SampleMetadataInput = {
+  label: string;
+  name: string;
+  country: string;
+  region: string;
+  farm: string;
+  producer: string;
+  variety: string;
+  processType: string;
+  altitude: string;
+  roastLevel: string;
+};
+
+export async function updateSampleMetadata(
+  sampleId: string,
+  input: SampleMetadataInput
+) {
+  const user = await requireUser();
+
+  const sample = await prisma.sessionSample.findUnique({
+    where: { id: sampleId },
+    select: {
+      id: true,
+      sessionId: true,
+      coffeeId: true,
+      session: { select: { createdBy: true } },
+    },
+  });
+  if (!sample) throw new Error("not_found");
+  if (sample.session.createdBy !== user.id) throw new Error("forbidden");
+
+  const coffeeData = {
+    name: input.name || "Sin nombre",
+    country: input.country || null,
+    region: input.region || null,
+    farm: input.farm || null,
+    producer: input.producer || null,
+    variety: input.variety || null,
+    processType: input.processType || null,
+    altitude: input.altitude || null,
+    roastLevel: input.roastLevel || null,
+  };
+
+  if (sample.coffeeId) {
+    await prisma.coffee.update({
+      where: { id: sample.coffeeId },
+      data: coffeeData,
+    });
+  } else {
+    const coffee = await prisma.coffee.create({
+      data: { ...coffeeData, createdBy: user.id, isPublic: false },
+      select: { id: true },
+    });
+    await prisma.sessionSample.update({
+      where: { id: sampleId },
+      data: { coffeeId: coffee.id },
+    });
+  }
+
+  await prisma.sessionSample.update({
+    where: { id: sampleId },
+    data: { label: input.label || undefined },
+  });
+
+  revalidatePath(`/app/sessions/${sample.sessionId}/cup`);
+  revalidatePath(`/app/sessions/${sample.sessionId}/results`);
+  revalidatePath(`/app/sessions/${sample.sessionId}/print`);
+
+  return { ok: true as const };
+}
+
 export async function upsertExtrinsic(input: {
   sessionSampleId: string;
   data: Record<string, unknown>;
