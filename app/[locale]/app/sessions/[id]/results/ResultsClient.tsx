@@ -15,6 +15,12 @@ import {
   IndividualResultsPanel,
   type ParticipantResult,
 } from "@/components/results/IndividualResultsPanel";
+import {
+  EditSampleMetadataForm,
+  type SampleMetadataFormData,
+} from "@/components/cupping/EditSampleMetadataForm";
+import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
+import { updateSampleMetadata } from "@/app/actions/sessions";
 
 type AggregateScoreData = {
   communityScore: number | null;
@@ -39,11 +45,24 @@ type CoffeeInfo = {
   roastLevel: string | null;
 };
 
+type SampleCoffee = {
+  name: string;
+  country: string;
+  region: string;
+  farm: string;
+  producer: string;
+  variety: string;
+  processType: string;
+  altitude: string;
+  roastLevel: string;
+};
+
 type SampleResult = {
   id: string;
   label: string;
   revealed: boolean;
   coffee: CoffeeInfo | null;
+  masterCoffee: SampleCoffee | null;
   descriptive: Record<string, unknown>;
   affective: Record<string, unknown>;
   combined: Record<string, unknown>;
@@ -102,6 +121,20 @@ export function ResultsClient({
     descParticipants: string;
     descEmptyStage: string;
     descEmptyAll: string;
+    editSample: string;
+    sampleLabel: string;
+    coffeeName: string;
+    coffeeCountry: string;
+    coffeeRegion: string;
+    coffeeFarm: string;
+    producerRoaster: string;
+    coffeeVariety: string;
+    coffeeProcess: string;
+    coffeeAltitude: string;
+    coffeeRoastLevel: string;
+    save: string;
+    saving: string;
+    cancel: string;
   };
 }) {
   const router = useRouter();
@@ -109,9 +142,19 @@ export function ResultsClient({
   const [displayView, setDisplayView] = useState<DisplayView>("summary");
   const [refreshing, setRefreshing] = useState(false);
   const [, startTransition] = useTransition();
+  const [editingSampleId, setEditingSampleId] = useState<string | null>(null);
 
   const handleEditSample = (sampleId: string) => {
     router.push(`/${locale}/app/sessions/${session.id}/cup?sample=${sampleId}`);
+  };
+
+  const editingSample = session.samples.find((s) => s.id === editingSampleId) ?? null;
+
+  const handleSaveSampleMetadata = async (data: SampleMetadataFormData) => {
+    if (!editingSampleId) return;
+    await updateSampleMetadata(editingSampleId, data);
+    setEditingSampleId(null);
+    router.refresh();
   };
 
   const handleReveal = (sampleId: string) => {
@@ -229,6 +272,40 @@ export function ResultsClient({
             </div>
           </div>
         </div>
+
+        {isOwner && (
+          <div
+            style={{
+              display: "flex",
+              gap: 6,
+              overflowX: "auto",
+              padding: "0 16px 8px",
+            }}
+          >
+            {session.samples.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setEditingSampleId(s.id)}
+                style={{
+                  flexShrink: 0,
+                  padding: "4px 10px",
+                  borderRadius: 9999,
+                  border: "1px solid #E8E0D0",
+                  background: "transparent",
+                  color: "#8B7355",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                ✎ {s.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Mine / Group pills — only relevant to table/chart views */}
         {canViewGroup && displayView !== "summary" && displayView !== "individual" && displayView !== "descriptors" && (
@@ -452,6 +529,46 @@ export function ResultsClient({
           🖨 Ver Formulario Imprimible
         </button>
       </div>
+
+      {isOwner && editingSample && (
+        <ResponsiveDialog
+          open
+          onOpenChange={() => setEditingSampleId(null)}
+          title={`${translations.editSample}: ${editingSample.label}`}
+        >
+          <EditSampleMetadataForm
+            initialData={{
+              label: editingSample.label,
+              name: editingSample.masterCoffee?.name ?? "",
+              country: editingSample.masterCoffee?.country ?? "",
+              region: editingSample.masterCoffee?.region ?? "",
+              farm: editingSample.masterCoffee?.farm ?? "",
+              producer: editingSample.masterCoffee?.producer ?? "",
+              variety: editingSample.masterCoffee?.variety ?? "",
+              processType: editingSample.masterCoffee?.processType ?? "",
+              altitude: editingSample.masterCoffee?.altitude ?? "",
+              roastLevel: editingSample.masterCoffee?.roastLevel ?? "",
+            }}
+            onSubmit={handleSaveSampleMetadata}
+            onCancel={() => setEditingSampleId(null)}
+            translations={{
+              label: translations.sampleLabel,
+              name: translations.coffeeName,
+              country: translations.coffeeCountry,
+              region: translations.coffeeRegion,
+              farm: translations.coffeeFarm,
+              producer: translations.producerRoaster,
+              variety: translations.coffeeVariety,
+              process: translations.coffeeProcess,
+              altitude: translations.coffeeAltitude,
+              roastLevel: translations.coffeeRoastLevel,
+              save: translations.save,
+              saving: translations.saving,
+              cancel: translations.cancel,
+            }}
+          />
+        </ResponsiveDialog>
+      )}
     </div>
   );
 }

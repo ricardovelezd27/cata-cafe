@@ -46,6 +46,8 @@ export default async function ResultsPage({
                 variety: true,
                 altitude: true,
                 roastLevel: true,
+                farm: true,
+                processType: true,
               },
             },
           },
@@ -261,6 +263,9 @@ export default async function ResultsPage({
   const tAttr = await getTranslations("attributes");
   const tDesc = await getTranslations("descriptors");
   const tOffline = await getTranslations("offline");
+  const t = await getTranslations("session");
+  const tc = await getTranslations("coffee");
+  const ta = await getTranslations("actions");
 
   // Group results must not silently average incomplete data. When fewer cuppers
   // have submitted (synced) than the participant roster, surface how many are
@@ -350,6 +355,19 @@ export default async function ResultsPage({
             label: s.label,
             revealed: s.revealed,
             coffee: s.revealed && s.coffee ? s.coffee : null,
+            masterCoffee: isOwner
+              ? {
+                  name: s.coffee?.name ?? "",
+                  country: s.coffee?.country ?? "",
+                  region: s.coffee?.region ?? "",
+                  farm: s.coffee?.farm ?? "",
+                  producer: s.coffee?.producer ?? "",
+                  variety: s.coffee?.variety ?? "",
+                  processType: s.coffee?.processType ?? "",
+                  altitude: s.coffee?.altitude ?? "",
+                  roastLevel: s.coffee?.roastLevel ?? "",
+                }
+              : null,
             descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
             affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
             combined: (ev?.combinedData as Record<string, unknown>) ?? {},
@@ -376,6 +394,20 @@ export default async function ResultsPage({
         descParticipants: tDesc("participants"),
         descEmptyStage: tDesc("emptyStage"),
         descEmptyAll: tDesc("emptyAll"),
+        editSample: t("editSample"),
+        sampleLabel: t("sampleLabel"),
+        coffeeName: t("coffeeName"),
+        coffeeCountry: tc("country"),
+        coffeeRegion: tc("region"),
+        coffeeFarm: tc("farm"),
+        producerRoaster: t("producerRoaster"),
+        coffeeVariety: tc("variety"),
+        coffeeProcess: tc("process"),
+        coffeeAltitude: tc("altitude"),
+        coffeeRoastLevel: tc("roastLevel"),
+        save: ta("save"),
+        saving: ta("saving"),
+        cancel: ta("cancel"),
       }}
     />
   );
