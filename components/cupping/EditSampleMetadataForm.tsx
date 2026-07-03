@@ -30,6 +30,7 @@ export type EditSampleMetadataFormTranslations = {
   save: string;
   saving: string;
   cancel: string;
+  error?: string;
 };
 
 const inputCls =
@@ -50,6 +51,7 @@ export function EditSampleMetadataForm({
 }) {
   const [data, setData] = useState(initialData);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const set = (field: keyof SampleMetadataFormData) => (
     e: React.ChangeEvent<HTMLInputElement>
@@ -57,9 +59,12 @@ export function EditSampleMetadataForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setSaving(true);
     try {
       await onSubmit(data);
+    } catch {
+      setError(t.error ?? "No se pudo guardar. Inténtalo de nuevo.");
     } finally {
       setSaving(false);
     }
@@ -92,6 +97,11 @@ export function EditSampleMetadataForm({
           </div>
         ))}
       </div>
+      {error && (
+        <p role="alert" className="text-sm text-red-defect">
+          {error}
+        </p>
+      )}
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-end pt-1">
         <button
           type="button"

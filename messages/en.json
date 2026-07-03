@@ -93,6 +93,7 @@
     "removeCoffee": "Remove",
     "sampleCoffee": "Corresponding coffee",
     "editSample": "Edit sample",
+    "editSampleError": "Couldn't save. Please try again.",
     "samples": "Number of coffees to evaluate",
     "samplesHelper": "Add one coffee per entry. Each coffee will be evaluated as a separate sample.",
     "addSample": "Add sample",

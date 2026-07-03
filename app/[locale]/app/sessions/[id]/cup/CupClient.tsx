@@ -140,6 +140,7 @@ export function CupClient({
     results: string;
     process: string;
     editSample: string;
+    editSampleError: string;
     coffeeName: string;
     coffeeCountry: string;
     coffeeRegion: string;
@@ -892,6 +893,7 @@ export function CupClient({
               save: translations.save,
               saving: translations.saving,
               cancel: translations.cancel,
+              error: translations.editSampleError,
             }}
           />
         </ResponsiveDialog>

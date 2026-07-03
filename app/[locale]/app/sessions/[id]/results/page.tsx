@@ -395,6 +395,7 @@ export default async function ResultsPage({
         descEmptyStage: tDesc("emptyStage"),
         descEmptyAll: tDesc("emptyAll"),
         editSample: t("editSample"),
+        editSampleError: t("editSampleError"),
         sampleLabel: t("sampleLabel"),
         coffeeName: t("coffeeName"),
         coffeeCountry: tc("country"),

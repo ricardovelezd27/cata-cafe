@@ -122,6 +122,7 @@ export function ResultsClient({
     descEmptyStage: string;
     descEmptyAll: string;
     editSample: string;
+    editSampleError: string;
     sampleLabel: string;
     coffeeName: string;
     coffeeCountry: string;
@@ -565,6 +566,7 @@ export function ResultsClient({
               save: translations.save,
               saving: translations.saving,
               cancel: translations.cancel,
+              error: translations.editSampleError,
             }}
           />
         </ResponsiveDialog>

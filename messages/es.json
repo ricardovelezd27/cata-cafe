@@ -93,6 +93,7 @@
     "removeCoffee": "Quitar",
     "sampleCoffee": "Café correspondiente",
     "editSample": "Editar muestra",
+    "editSampleError": "No se pudo guardar. Inténtalo de nuevo.",
     "samples": "Cafés a evaluar",
     "samplesHelper": "Añade un café por entrada. Cada café se evaluará como una muestra independiente.",
     "addSample": "Agregar muestra",
