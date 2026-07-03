@@ -47,3 +47,6 @@ graphify-out/
 
 # claude code internals
 .claude/
+
+# git worktrees (local dev isolation)
+/.worktrees/
