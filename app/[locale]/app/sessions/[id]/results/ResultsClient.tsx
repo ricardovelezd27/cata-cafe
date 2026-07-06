@@ -534,24 +534,48 @@ export function ResultsClient({
           paddingBottom: "max(12px, calc(env(safe-area-inset-bottom) + 8px))",
         }}
       >
-        <button
-          onClick={() => router.push(`/${locale}/app/sessions/${session.id}/print`)}
-          style={{
-            width: "100%",
-            padding: "13px 0",
-            borderRadius: 10,
-            border: "none",
-            background: "linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%)",
-            color: "#FFF",
-            fontSize: 15,
-            fontWeight: 700,
-            cursor: "pointer",
-            fontFamily: "'Cormorant Garamond', Georgia, serif",
-            letterSpacing: "0.3px",
-          }}
-        >
-          🖨 Ver Formulario Imprimible
-        </button>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button
+            onClick={() => router.push(`/${locale}/app/sessions/${session.id}/print`)}
+            style={{
+              flex: 1,
+              padding: "13px 0",
+              borderRadius: 10,
+              border: "none",
+              background: "linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%)",
+              color: "#FFF",
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: "pointer",
+              fontFamily: "'Cormorant Garamond', Georgia, serif",
+              letterSpacing: "0.3px",
+            }}
+          >
+            🖨 Ver Formulario Imprimible
+          </button>
+          {/* Server-generated CVA PDF — plain link so no @react-pdf ships to the client. */}
+          <a
+            href={`/api/sessions/${session.id}/cva-pdf?locale=${locale}`}
+            style={{
+              flex: 1,
+              padding: "13px 0",
+              borderRadius: 10,
+              border: "1.5px solid #3D5A3E",
+              background: "#FFF",
+              color: "#3D5A3E",
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: "pointer",
+              fontFamily: "'Cormorant Garamond', Georgia, serif",
+              letterSpacing: "0.3px",
+              textAlign: "center",
+              textDecoration: "none",
+              lineHeight: "1.2",
+            }}
+          >
+            📄 {locale === "en" ? "Download PDF (CVA)" : "Descargar PDF (CVA)"}
+          </a>
+        </div>
       </div>
 
       {isOwner && editingSample && (
