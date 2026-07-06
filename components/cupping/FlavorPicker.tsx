@@ -10,7 +10,7 @@ import {
   getContrastTextColor,
   type FlavorWheelNode,
 } from "@/lib/constants";
-import { resolveDescriptor, UNMAPPED_PREFIX, UNMAPPED_COLOR } from "@/lib/descriptors";
+import { resolveDescriptor } from "@/lib/descriptors";
 import { searchFlavors } from "@/lib/flavorSearch";
 import pillStyles from "@/components/ui/CATAPills.module.css";
 
@@ -28,8 +28,8 @@ const T: Record<Locale, Record<string, string>> = {
     done: "Listo",
     remove: "Quitar",
     search: "Escribe un descriptor…",
-    noMatches: "Sin coincidencias en la rueda",
-    addAsNote: "Agregar como nota",
+    addUnderOtherFruit: "Agregar en «Otra fruta»",
+    addUnderOther: "Agregar en «Otros»",
   },
   en: {
     add: "Add descriptors",
@@ -42,10 +42,14 @@ const T: Record<Locale, Record<string, string>> = {
     done: "Done",
     remove: "Remove",
     search: "Type a descriptor…",
-    noMatches: "No matches on the wheel",
-    addAsNote: "Add as note",
+    addUnderOtherFruit: 'Add under "Other Fruit"',
+    addUnderOther: 'Add under "Other"',
   },
 };
+
+/** Generic buckets the closed fallback routes unmatched terms into. */
+const OTHER_FRUIT_ID = "fruity:other_fruit";
+const OTHER_ID = "other";
 
 function label(node: FlavorWheelNode, locale: Locale): string {
   return locale === "en" ? node.label_en : node.label_es;
@@ -62,18 +66,80 @@ function pathOf(id: string | null): FlavorWheelNode[] {
   return out;
 }
 
+/** One closed-fallback row that routes the typed term into a generic node. */
+function GenericRow({
+  id,
+  copy,
+  term,
+  rowIndex,
+  active,
+  onPick,
+  onHover,
+}: {
+  id: string;
+  copy: string;
+  term: string;
+  rowIndex: number;
+  active: boolean;
+  onPick: (id: string) => void;
+  onHover: (i: number) => void;
+}) {
+  return (
+    <li role="option" aria-selected={active}>
+      <button
+        type="button"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          onPick(id);
+        }}
+        onMouseEnter={() => onHover(rowIndex)}
+        className={`flex w-full items-center gap-2 px-3 py-1.5 text-left ${
+          active ? "bg-cream" : ""
+        }`}
+      >
+        <span
+          className="size-2.5 shrink-0 rounded-full"
+          style={{ background: flavorNodeColor(id) }}
+          aria-hidden
+        />
+        <span className="text-[13px] text-brown-dark">
+          {copy}: <span className="font-medium">«{term}»</span>
+        </span>
+        <CornerDownLeft
+          size={13}
+          aria-hidden
+          className="ml-auto shrink-0 text-brown-mid"
+        />
+      </button>
+    </li>
+  );
+}
+
+/** Case/accent-insensitive equality for "did the typed term differ from the label". */
+function sameText(a: string, b: string): boolean {
+  const n = (s: string) =>
+    s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+  return n(a) === n(b);
+}
+
 export function FlavorPicker({
   value,
   onChange,
+  notes,
+  onNotesChange,
   maxSelect,
   locale = "es",
 }: {
   value: string[];
   onChange: (next: string[]) => void;
+  /** Qualifying notes per node id (parallel `*_desc_notes` JSON key). */
+  notes?: Record<string, string[]>;
+  onNotesChange?: (next: Record<string, string[]>) => void;
   maxSelect?: number;
   locale?: Locale;
 }) {
   const t = T[locale];
+  const notesMap = notes ?? {};
   const [open, setOpen] = useState(false);
   const [navId, setNavId] = useState<string | null>(null); // current parent being viewed
 
@@ -89,9 +155,29 @@ export function FlavorPicker({
   // Ids are colon-paths, so ancestry is a pure prefix test.
   const isAncestorOf = (v: string, id: string) => id.startsWith(`${v}:`);
 
+  /** Drop the note bucket for a node id (used when its chip is removed). */
+  function dropNote(id: string) {
+    if (!onNotesChange) return;
+    if (!(id in notesMap)) return;
+    const next = { ...notesMap };
+    delete next[id];
+    onNotesChange(next);
+  }
+
+  /** Append a trimmed, deduped qualifying term under a node id. */
+  function addNote(id: string, term: string) {
+    if (!onNotesChange) return;
+    const trimmedTerm = term.trim();
+    if (!trimmedTerm) return;
+    const existing = notesMap[id] ?? [];
+    if (existing.some((x) => sameText(x, trimmedTerm))) return;
+    onNotesChange({ ...notesMap, [id]: [...existing, trimmedTerm] });
+  }
+
   function toggle(id: string) {
     if (value.includes(id)) {
       onChange(value.filter((x) => x !== id));
+      dropNote(id);
       return;
     }
     const pruned = value.filter((v) => !isAncestorOf(v, id));
@@ -112,33 +198,51 @@ export function FlavorPicker({
     () => (trimmed ? searchFlavors(trimmed, { locale }) : []),
     [trimmed, locale]
   );
-  // Free-text safety valve: offer to keep the perception when nothing matches.
-  const showNote = trimmed.length > 0 && results.length === 0;
-  const rowCount = results.length + (showNote ? 1 : 0);
+  // Closed fallback: when nothing matches the wheel, offer to route the typed
+  // term into a real generic node («Otra fruta» / «Otros») as a qualifying note
+  // — never a free-standing unmapped entry.
+  const showGeneric = trimmed.length > 0 && results.length === 0 && !!onNotesChange;
+  const rowCount = results.length + (showGeneric ? 2 : 0);
   const dropdownOpen = focused && rowCount > 0;
   const clampedHi = Math.min(hi, Math.max(0, rowCount - 1));
 
-  function addById(id: string) {
-    if (!value.includes(id) && !wouldExceedLimit(id)) toggle(id);
-    setQuery("");
-    setHi(0);
-    inputRef.current?.focus();
-  }
-
-  function addNote() {
-    if (!trimmed) return;
-    const id = `${UNMAPPED_PREFIX}${trimmed}`;
-    if (!value.includes(id) && (maxSelect === undefined || value.length < maxSelect)) {
-      onChange([...value, id]);
+  /**
+   * Pick a real wheel node from the typeahead. If it is a "parent" (L1/L2)
+   * match whose label differs from what the cupper typed, keep the literal term
+   * as a qualifying note (Kim's "plátano deshidratado" under "Fruta
+   * deshidratada"). Leaf exact/prefix/synonym/fuzzy picks attach no note.
+   */
+  function addById(id: string, opts?: { matchType?: string; typed?: string }) {
+    const isNew = !value.includes(id) && !wouldExceedLimit(id);
+    if (isNew) toggle(id);
+    if (isNew && opts?.matchType === "parent" && opts.typed) {
+      const node = flavorNodeById(id);
+      const nodeLabel = node ? label(node, locale) : "";
+      if (nodeLabel && !sameText(opts.typed, nodeLabel)) addNote(id, opts.typed);
     }
     setQuery("");
     setHi(0);
     inputRef.current?.focus();
   }
 
+  /** Route the unmatched typed term into a generic node with a qualifying note. */
+  function addGeneric(id: string) {
+    if (!trimmed) return;
+    const alreadySelected = value.includes(id);
+    if (!alreadySelected && !wouldExceedLimit(id)) toggle(id);
+    if (alreadySelected || !wouldExceedLimit(id)) addNote(id, trimmed);
+    setQuery("");
+    setHi(0);
+    inputRef.current?.focus();
+  }
+
   function commitRow(i: number) {
-    if (i < results.length) addById(results[i].id);
-    else if (showNote) addNote();
+    if (i < results.length) {
+      const m = results[i];
+      addById(m.id, { matchType: m.matchType, typed: trimmed });
+    } else if (showGeneric) {
+      addGeneric(i === results.length ? OTHER_FRUIT_ID : OTHER_ID);
+    }
   }
 
   function onInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -182,16 +286,22 @@ export function FlavorPicker({
             {value.map((id) => {
               const info = resolveDescriptor(id, locale);
               const color = info?.color ?? flavorNodeColor(id);
+              const nodeNotes = notesMap[id] ?? [];
+              const baseLabel = info?.label ?? id;
+              const chipLabel =
+                nodeNotes.length > 0
+                  ? `${baseLabel} ${nodeNotes.map((n) => `«${n}»`).join(" ")}`
+                  : baseLabel;
               return (
                 <button
                   key={id}
                   type="button"
                   onClick={() => toggle(id)}
-                  aria-label={`${t.remove}: ${info?.label ?? id}`}
+                  aria-label={`${t.remove}: ${chipLabel}`}
                   className="inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[12px] font-medium"
                   style={{ background: color, color: getContrastTextColor(color) }}
                 >
-                  {info?.label ?? id}
+                  {chipLabel}
                   <X size={12} aria-hidden />
                 </button>
               );
@@ -238,7 +348,7 @@ export function FlavorPicker({
                   // onMouseDown (not onClick) so it fires before input blur closes the list
                   onMouseDown={(e) => {
                     e.preventDefault();
-                    addById(m.id);
+                    addById(m.id, { matchType: m.matchType, typed: trimmed });
                   }}
                   onMouseEnter={() => setHi(i)}
                   className={`flex w-full items-center gap-2 px-3 py-1.5 text-left ${
@@ -262,34 +372,27 @@ export function FlavorPicker({
               </li>
             ))}
 
-            {showNote && (
-              <li role="option" aria-selected={clampedHi === results.length}>
-                <button
-                  type="button"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    addNote();
-                  }}
-                  onMouseEnter={() => setHi(results.length)}
-                  className={`flex w-full items-center gap-2 px-3 py-1.5 text-left ${
-                    clampedHi === results.length ? "bg-cream" : ""
-                  }`}
-                >
-                  <span
-                    className="size-2.5 shrink-0 rounded-full"
-                    style={{ background: UNMAPPED_COLOR }}
-                    aria-hidden
-                  />
-                  <span className="text-[13px] text-brown-dark">
-                    {t.addAsNote}: <span className="font-medium">«{trimmed}»</span>
-                  </span>
-                  <CornerDownLeft
-                    size={13}
-                    aria-hidden
-                    className="ml-auto shrink-0 text-brown-mid"
-                  />
-                </button>
-              </li>
+            {showGeneric && (
+              <>
+                <GenericRow
+                  id={OTHER_FRUIT_ID}
+                  copy={t.addUnderOtherFruit}
+                  term={trimmed}
+                  rowIndex={results.length}
+                  active={clampedHi === results.length}
+                  onPick={addGeneric}
+                  onHover={setHi}
+                />
+                <GenericRow
+                  id={OTHER_ID}
+                  copy={t.addUnderOther}
+                  term={trimmed}
+                  rowIndex={results.length + 1}
+                  active={clampedHi === results.length + 1}
+                  onPick={addGeneric}
+                  onHover={setHi}
+                />
+              </>
             )}
           </ul>
         )}

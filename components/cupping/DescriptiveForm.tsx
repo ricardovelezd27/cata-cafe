@@ -62,6 +62,9 @@ export function DescriptiveForm({
   const num = (k: string): number | null => (d[k] as number | undefined) ?? null;
   const arr = (k: string): string[] => (d[k] as string[] | undefined) ?? [];
   const str = (k: string): string => (d[k] as string | undefined) ?? "";
+  // Qualifying notes live in a parallel `<descKey>_notes` map (node id → terms).
+  const notesOf = (descKey: string): Record<string, string[]> =>
+    (d[`${descKey}_notes`] as Record<string, string[]> | undefined) ?? {};
 
   // `options === null` → flavor-wheel block (3-level modal picker);
   // otherwise a flat/2-level CATA block (acidity/dulzor/sensación).
@@ -84,6 +87,8 @@ export function DescriptiveForm({
               <FlavorPicker
                 value={arr(`${id}_desc`)}
                 onChange={(v) => set(`${id}_desc`, v)}
+                notes={notesOf(`${id}_desc`)}
+                onNotesChange={(n) => set(`${id}_desc_notes`, n)}
                 maxSelect={STEP_CATA_MAX[id]}
                 locale={locale}
               />
