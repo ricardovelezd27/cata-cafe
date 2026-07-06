@@ -388,7 +388,7 @@ export type FlavorFamilyId = string
    NEW: Mouthfeel CATA (flat list)
    ============================================================ */
 export const MOUTHFEEL_OPTIONS = [
-  { id: 'rough',        label: 'Rugoso (Granuloso, Calcáreo, Arenoso)' },
+  { id: 'rough',        label: 'Áspero (Arenoso, Rugoso, Rasposo)' },
   { id: 'oily',         label: 'Aceitoso' },
   { id: 'smooth',       label: 'Suave (Aterciopelado, Sedoso, Almíbar)' },
   { id: 'mouth_drying', label: 'Astringente (Boca Seca)' },
@@ -635,11 +635,11 @@ export const SWEETNESS_CATA = [
 ] as const;
 
 export const MOUTHFEEL_CATA = [
-  { id: "mouthfeel:rough",        label: "Rugoso", color: L1_GROUP_COLOR.other,
+  { id: "mouthfeel:rough",        label: "Áspero", color: L1_GROUP_COLOR.other,
     subItems: [
-      { id: "mouthfeel:gritty", label: "Granuloso" },
-      { id: "mouthfeel:chalky", label: "Calcáreo" },
       { id: "mouthfeel:sandy",  label: "Arenoso" },
+      { id: "mouthfeel:rugged", label: "Rugoso" },
+      { id: "mouthfeel:raspy",  label: "Rasposo" },
     ] },
   { id: "mouthfeel:oily",         label: "Aceitoso", color: L1_GROUP_COLOR.floral,
     subItems: [] },

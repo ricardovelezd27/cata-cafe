@@ -50,7 +50,13 @@ export function CATAPills({ options, selected, onChange, maxSelect, showSubItems
   function toggle(id: string) {
     if (disabled) return
     if (selected.includes(id)) {
-      onChange(selected.filter((s) => s !== id))
+      // Deselecting a parent must also clear its subItems — otherwise their ids
+      // remain in `selected` after the subRow (which only renders while the
+      // parent is selected) disappears, leaving invisible selections that still
+      // count toward maxSelect and can permanently lock the picker at the limit.
+      const subs = parentSubMap.get(id)
+      const idsToRemove = subs && subs.length > 0 ? [id, ...subs] : [id]
+      onChange(selected.filter((s) => !idsToRemove.includes(s)))
     } else if (!atLimit) {
       onChange([...selected, id])
     }
@@ -74,6 +80,11 @@ export function CATAPills({ options, selected, onChange, maxSelect, showSubItems
         {options.map((opt) => {
           const isSel = selected.includes(opt.id)
           const hasSubItems = showSubItems && opt.subItems && opt.subItems.length > 0
+          // Defensive: a stale draft saved before this fix could still have a
+          // sub selected while its parent isn't (the old bug's aftermath). Show
+          // the subRow in that case too, so an orphaned sub is always visible
+          // and deselectable rather than invisible-but-counted.
+          const hasSelectedSub = hasSubItems && opt.subItems!.some((s) => selected.includes(s.id))
 
           return (
             <div key={opt.id} className={styles.family}>
@@ -95,7 +106,7 @@ export function CATAPills({ options, selected, onChange, maxSelect, showSubItems
                 {opt.label}
               </button>
 
-              {hasSubItems && isSel && (
+              {hasSubItems && (isSel || hasSelectedSub) && (
                 <div className={styles.subRow}>
                   {opt.subItems!.map((sub) => {
                     const isSubSel = selected.includes(sub.id)

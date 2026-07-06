@@ -57,6 +57,15 @@ const OTHER_CATA_SETS: readonly CATAFamily[] = [
   ...MOUTHFEEL_CATA,
 ] as unknown as readonly CATAFamily[];
 
+// Mouthfeel descriptors retired from the pickable list in the Áspero hierarchy
+// correction (mouthfeel:gritty / mouthfeel:chalky merged into rugged/raspy).
+// Old saved evaluations may still reference them, so they keep resolving here
+// with the Áspero group's color instead of disappearing from historical results.
+const LEGACY_MOUTHFEEL_LABELS: Record<string, string> = {
+  "mouthfeel:gritty": "Granuloso",
+  "mouthfeel:chalky": "Calcáreo",
+};
+
 /**
  * Resolve a stored descriptor id (e.g. "floral", "fruity:berry",
  * "fruity:berry:blackberry", "acidity:juicy", "sweetness:honey",
@@ -94,6 +103,11 @@ export function resolveDescriptor(
     if (family.id === id) return { label: family.label, color: family.color };
     const sub = family.subItems.find((s) => s.id === id);
     if (sub) return { label: sub.label, color: family.color };
+  }
+  const legacyLabel = LEGACY_MOUTHFEEL_LABELS[id];
+  if (legacyLabel) {
+    const roughFamily = MOUTHFEEL_CATA.find((f) => f.id === "mouthfeel:rough");
+    return { label: legacyLabel, color: roughFamily?.color ?? UNMAPPED_COLOR };
   }
   return null;
 }
