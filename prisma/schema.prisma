@@ -16,6 +16,10 @@ model Profile {
   bio                 String?
   country             String?
   onboardingCompleted Boolean  @default(false)
+  // Grants access to the /app/insights analytics area. Toggled only by the
+  // super-admin (see lib/analytics/access.ts); the super-admin email itself
+  // always has access regardless of this flag.
+  analyticsAccess     Boolean  @default(false)
   createdAt           DateTime @default(now())
 
   cuppingSessions CuppingSession[]
@@ -26,6 +30,7 @@ model Profile {
   participants    SessionParticipant[]
   coffeeHistory   UserCoffeeHistory[]
   sessionInvites  SessionInvite[]
+  savedInsights   SavedInsight[]
 
   @@map("profiles")
 }
@@ -239,6 +244,18 @@ model SessionInvite {
   @@index([sessionId])
   @@index([createdBy])
   @@map("session_invites")
+}
+
+model SavedInsight {
+  id        String   @id @default(cuid())
+  name      String
+  config    Json
+  createdBy String
+  creator   Profile  @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([createdBy])
+  @@map("saved_insights")
 }
 
 model WaitlistEntry {

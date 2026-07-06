@@ -837,3 +837,13 @@ BEGIN
 END;
 $$;
 -- Trigger definition is unchanged — no need to recreate it.
+
+-- ============================================================================
+-- Phase 5 (2026-07-06): saved_insights hardening
+-- The insights/analytics feature reads and writes exclusively through
+-- server-side Prisma (direct DATABASE_URL role), guarded by
+-- lib/analytics/access.ts. Enabling RLS with NO policies makes the table
+-- deny-all through PostgREST/Supabase clients (anon/authenticated), so it can
+-- never leak via the public API. Apply manually in the Supabase SQL editor.
+-- ============================================================================
+ALTER TABLE saved_insights ENABLE ROW LEVEL SECURITY;

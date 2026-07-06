@@ -464,5 +464,108 @@
       "copyright": "© {year} Cata. Todos los derechos reservados.",
       "madeFor": "Hecho para profesionales del café de especialidad."
     }
+  },
+  "insights": {
+    "title": "Análisis de datos",
+    "subtitle": "Panel de la plataforma: sesiones, evaluaciones y perfiles sensoriales de todos los catadores.",
+    "tabs": {
+      "dashboard": "Panel",
+      "explorer": "Explorador",
+      "access": "Acceso"
+    },
+    "status": {
+      "draft": "borrador",
+      "active": "activas",
+      "closed": "cerradas"
+    },
+    "kpi": {
+      "coffeesCupped": "Cafés catados",
+      "coffeesRegistered": "{count} registrados",
+      "sessions": "Sesiones",
+      "evaluations": "Evaluaciones",
+      "evaluationsSub": "enviadas (sin borradores)",
+      "activeCuppers": "Catadores activos",
+      "totalUsers": "{count} usuarios en total",
+      "avgScore": "Puntaje individual promedio",
+      "avgScoreSub": "SCA CVA, evaluaciones enviadas",
+      "avgCommunity": "Puntaje comunitario promedio",
+      "avgCommunitySub": "sesiones grupales",
+      "noData": "sin datos"
+    },
+    "charts": {
+      "trend": "Actividad mensual (últimos 12 meses)",
+      "seriesEvaluations": "Evaluaciones",
+      "seriesSessions": "Sesiones",
+      "topOrigins": "Principales orígenes catados",
+      "topProcesses": "Principales procesos",
+      "scoreDistribution": "Distribución de puntajes",
+      "topDescriptors": "Descriptores más frecuentes",
+      "empty": "Sin datos todavía"
+    },
+    "explorer": {
+      "dataset": "Datos",
+      "dimension": "Dimensión",
+      "measure": "Métrica",
+      "chartType": "Gráfico",
+      "dateFrom": "Desde",
+      "dateTo": "Hasta",
+      "running": "Calculando…",
+      "noResults": "Sin resultados para esta combinación",
+      "error": "No se pudo calcular. Revisa la configuración.",
+      "save": "Guardar insight",
+      "saveName": "Nombre del insight",
+      "saveConfirm": "Guardar",
+      "savedTitle": "Insights guardados",
+      "savedEmpty": "Aún no hay insights guardados. Configura un análisis y guárdalo para volver a él.",
+      "load": "Abrir",
+      "delete": "Eliminar",
+      "close": "Cerrar",
+      "datasets": {
+        "evaluations": "Evaluaciones",
+        "sessions": "Sesiones",
+        "coffees": "Cafés",
+        "samples": "Muestras"
+      },
+      "dimensions": {
+        "coffeeCountry": "País del café",
+        "coffeeRegion": "Región",
+        "coffeeProcess": "Proceso",
+        "coffeeVariety": "Variedad",
+        "coffeeSpecies": "Especie",
+        "coffeeRoastLevel": "Nivel de tueste",
+        "sessionFormat": "Formato de sesión",
+        "sessionStatus": "Estado de sesión",
+        "month": "Mes",
+        "cupper": "Catador",
+        "flavorDescriptor": "Descriptor de sabor",
+        "scoreBucket": "Rango de puntaje"
+      },
+      "measures": {
+        "count": "Cantidad",
+        "avgIndividualScore": "Puntaje individual promedio",
+        "avgCommunityScore": "Puntaje comunitario promedio",
+        "avgAffectiveSum": "Suma afectiva promedio",
+        "minIndividualScore": "Puntaje mínimo",
+        "maxIndividualScore": "Puntaje máximo"
+      },
+      "chartTypes": {
+        "bar": "Barras",
+        "line": "Línea",
+        "pie": "Circular",
+        "table": "Tabla"
+      },
+      "table": {
+        "count": "Registros"
+      }
+    },
+    "access": {
+      "lead": "Da acceso al área de análisis a los usuarios que elijas. Solo tú puedes gestionar esta lista.",
+      "search": "Buscar por nombre o correo…",
+      "accessLabel": "Acceso",
+      "superAdmin": "Superadmin",
+      "emailUnavailable": "correo no disponible",
+      "toggleError": "No se pudo actualizar. Inténtalo de nuevo.",
+      "empty": "No se encontraron usuarios."
+    }
   }
 }

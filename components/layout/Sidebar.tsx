@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Clipboard, Coffee, Users, User, LogOut, Languages } from "lucide-react";
+import { Home, Clipboard, Coffee, Users, User, LogOut, Languages, BarChart3 } from "lucide-react";
 import { signOut } from "@/app/actions/auth";
 
 const NAV_ITEMS = [
@@ -13,8 +13,17 @@ const NAV_ITEMS = [
   { href: "/app/profile", icon: User, label: "Perfil", exact: false },
 ];
 
-export default function Sidebar({ locale }: { locale: string }) {
+const INSIGHTS_ITEM = { href: "/app/insights", icon: BarChart3, label: "Análisis", exact: false };
+
+export default function Sidebar({
+  locale,
+  showInsights = false,
+}: {
+  locale: string;
+  showInsights?: boolean;
+}) {
   const pathname = usePathname();
+  const navItems = showInsights ? [...NAV_ITEMS, INSIGHTS_ITEM] : NAV_ITEMS;
   const otherLocale = locale === "es" ? "en" : "es";
   const otherPath = pathname.replace(`/${locale}/`, `/${otherLocale}/`);
 
@@ -32,7 +41,7 @@ export default function Sidebar({ locale }: { locale: string }) {
       </div>
 
       <nav className="flex-1 py-3 overflow-y-auto">
-        {NAV_ITEMS.map(({ href, icon: Icon, label, exact }) => {
+        {navItems.map(({ href, icon: Icon, label, exact }) => {
           const active = isActive(href, exact);
           return (
             <Link

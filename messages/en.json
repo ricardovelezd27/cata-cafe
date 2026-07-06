@@ -464,5 +464,108 @@
       "copyright": "© {year} Cata. All rights reserved.",
       "madeFor": "Made for specialty coffee professionals."
     }
+  },
+  "insights": {
+    "title": "Data insights",
+    "subtitle": "Platform-wide view: sessions, evaluations and sensory profiles across all cuppers.",
+    "tabs": {
+      "dashboard": "Dashboard",
+      "explorer": "Explorer",
+      "access": "Access"
+    },
+    "status": {
+      "draft": "draft",
+      "active": "active",
+      "closed": "closed"
+    },
+    "kpi": {
+      "coffeesCupped": "Coffees cupped",
+      "coffeesRegistered": "{count} registered",
+      "sessions": "Sessions",
+      "evaluations": "Evaluations",
+      "evaluationsSub": "submitted (no drafts)",
+      "activeCuppers": "Active cuppers",
+      "totalUsers": "{count} users total",
+      "avgScore": "Avg. individual score",
+      "avgScoreSub": "SCA CVA, submitted evaluations",
+      "avgCommunity": "Avg. community score",
+      "avgCommunitySub": "group sessions",
+      "noData": "no data"
+    },
+    "charts": {
+      "trend": "Monthly activity (last 12 months)",
+      "seriesEvaluations": "Evaluations",
+      "seriesSessions": "Sessions",
+      "topOrigins": "Top origins cupped",
+      "topProcesses": "Top processes",
+      "scoreDistribution": "Score distribution",
+      "topDescriptors": "Most frequent descriptors",
+      "empty": "No data yet"
+    },
+    "explorer": {
+      "dataset": "Data",
+      "dimension": "Dimension",
+      "measure": "Measure",
+      "chartType": "Chart",
+      "dateFrom": "From",
+      "dateTo": "To",
+      "running": "Calculating…",
+      "noResults": "No results for this combination",
+      "error": "Could not calculate. Check the configuration.",
+      "save": "Save insight",
+      "saveName": "Insight name",
+      "saveConfirm": "Save",
+      "savedTitle": "Saved insights",
+      "savedEmpty": "No saved insights yet. Configure an analysis and save it to come back to it.",
+      "load": "Open",
+      "delete": "Delete",
+      "close": "Close",
+      "datasets": {
+        "evaluations": "Evaluations",
+        "sessions": "Sessions",
+        "coffees": "Coffees",
+        "samples": "Samples"
+      },
+      "dimensions": {
+        "coffeeCountry": "Coffee country",
+        "coffeeRegion": "Region",
+        "coffeeProcess": "Process",
+        "coffeeVariety": "Variety",
+        "coffeeSpecies": "Species",
+        "coffeeRoastLevel": "Roast level",
+        "sessionFormat": "Session format",
+        "sessionStatus": "Session status",
+        "month": "Month",
+        "cupper": "Cupper",
+        "flavorDescriptor": "Flavor descriptor",
+        "scoreBucket": "Score range"
+      },
+      "measures": {
+        "count": "Count",
+        "avgIndividualScore": "Avg. individual score",
+        "avgCommunityScore": "Avg. community score",
+        "avgAffectiveSum": "Avg. affective sum",
+        "minIndividualScore": "Min. score",
+        "maxIndividualScore": "Max. score"
+      },
+      "chartTypes": {
+        "bar": "Bars",
+        "line": "Line",
+        "pie": "Pie",
+        "table": "Table"
+      },
+      "table": {
+        "count": "Records"
+      }
+    },
+    "access": {
+      "lead": "Grant access to the insights area to the users you choose. Only you can manage this list.",
+      "search": "Search by name or email…",
+      "accessLabel": "Access",
+      "superAdmin": "Super admin",
+      "emailUnavailable": "email unavailable",
+      "toggleError": "Could not update. Try again.",
+      "empty": "No users found."
+    }
   }
 }
