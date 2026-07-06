@@ -9,8 +9,12 @@ import { FlavorCloud } from "@/components/results/FlavorCloud";
 import { MyResultsSummary } from "@/components/results/MyResultsSummary";
 import {
   DescriptorFrequency,
-  type SampleStageFreq,
+  type SampleBlockFreq,
 } from "@/components/results/DescriptorFrequency";
+import {
+  CupperAlignment,
+  type CupperAlignmentRow,
+} from "@/components/results/CupperAlignment";
 import {
   IndividualResultsPanel,
   type ParticipantResult,
@@ -83,7 +87,8 @@ export function ResultsClient({
   canViewGroup,
   participants,
   descriptorFrequency,
-  stageLabels,
+  blockLabels,
+  cupperAlignment,
   partialSyncNotice,
   translations,
 }: {
@@ -101,8 +106,9 @@ export function ResultsClient({
   sessionStatus: string;
   canViewGroup: boolean;
   participants?: ParticipantResult[] | null;
-  descriptorFrequency?: SampleStageFreq[] | null;
-  stageLabels?: Record<string, string>;
+  descriptorFrequency?: SampleBlockFreq[] | null;
+  blockLabels?: Record<string, string>;
+  cupperAlignment?: CupperAlignmentRow[] | null;
   partialSyncNotice?: string | null;
   translations: {
     myResults: string;
@@ -120,7 +126,12 @@ export function ResultsClient({
     descOf: string;
     descParticipants: string;
     descEmptyStage: string;
+    descEmptyBlock: string;
     descEmptyAll: string;
+    alignTitle: string;
+    alignSubtitle: string;
+    alignExcluded: string;
+    alignNoData: string;
     editSample: string;
     editSampleError: string;
     sampleLabel: string;
@@ -394,18 +405,30 @@ export function ResultsClient({
           />
         </div>
       ) : effectiveDisplayView === "descriptors" && canViewDescriptors ? (
-        <div className="p-4 lg:p-6">
+        <div className="p-4 lg:p-6 flex flex-col gap-6">
           <DescriptorFrequency
             samples={descriptorFrequency!}
-            stageLabels={stageLabels ?? {}}
+            blockLabels={blockLabels ?? {}}
             t={{
               viewAll: translations.descViewAll,
               of: translations.descOf,
               participants: translations.descParticipants,
-              emptyStage: translations.descEmptyStage,
+              emptyBlock: translations.descEmptyBlock,
               emptyAll: translations.descEmptyAll,
             }}
           />
+          {/* Owner-only cupper alignment (uses per-participant consensus data). */}
+          {isOwner && cupperAlignment && cupperAlignment.length > 0 && (
+            <CupperAlignment
+              rows={cupperAlignment}
+              t={{
+                title: translations.alignTitle,
+                subtitle: translations.alignSubtitle,
+                excluded: translations.alignExcluded,
+                noData: translations.alignNoData,
+              }}
+            />
+          )}
         </div>
       ) : effectiveDisplayView === "summary" ? (
         <div className="p-4 lg:p-6">
