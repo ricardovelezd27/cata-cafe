@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { prisma } from "@/lib/prisma";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
+import type { CloseEmailSummary } from "@/lib/closeEmail";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -117,7 +118,7 @@ export async function closeSession(sessionId: string) {
 
   const session = await prisma.cuppingSession.findUnique({
     where: { id: sessionId },
-    select: { id: true, createdBy: true },
+    select: { id: true, createdBy: true, isGroup: true },
   });
 
   if (!session || session.createdBy !== user.id) {
@@ -131,9 +132,24 @@ export async function closeSession(sessionId: string) {
 
   await syncCoffeeHistory(sessionId);
 
+  // Group sessions only: email every participant their individual CVA PDF + the
+  // anonymous group summary. This is best-effort and MUST NOT fail or block the
+  // close — isolate it entirely from the action's success path.
+  let emailSummary: CloseEmailSummary | null = null;
+  if (session.isGroup) {
+    try {
+      const { sendCloseEmails } = await import("@/lib/closeEmail");
+      emailSummary = await sendCloseEmails(sessionId);
+    } catch (err) {
+      console.warn(
+        `[closeSession] sendCloseEmails threw for session ${sessionId} (close not affected): ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
   revalidatePath(`/app/sessions/${sessionId}/results`);
   revalidatePath(`/app/sessions/${sessionId}/cup`);
-  return { ok: true };
+  return { ok: true, emailSummary };
 }
 
 // ─── Reveal a sample (link coffee identity) ───────────────────────────────────
