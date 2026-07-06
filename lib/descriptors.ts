@@ -57,13 +57,26 @@ const OTHER_CATA_SETS: readonly CATAFamily[] = [
   ...MOUTHFEEL_CATA,
 ] as unknown as readonly CATAFamily[];
 
-// Mouthfeel descriptors retired from the pickable list in the Áspero hierarchy
-// correction (mouthfeel:gritty / mouthfeel:chalky merged into rugged/raspy).
+// Descriptors retired from their section's pickable list in later corrections
+// (e.g. mouthfeel:gritty / mouthfeel:chalky merged into rugged/raspy; the
+// acidity list was rebuilt from scratch and dropped several old entries).
 // Old saved evaluations may still reference them, so they keep resolving here
-// with the Áspero group's color instead of disappearing from historical results.
-const LEGACY_MOUTHFEEL_LABELS: Record<string, string> = {
-  "mouthfeel:gritty": "Granuloso",
-  "mouthfeel:chalky": "Calcáreo",
+// with a stand-in family's color instead of disappearing from historical results.
+const LEGACY_DESCRIPTOR_LABELS: Record<
+  string,
+  { label: string; colorFamilyId: string }
+> = {
+  "mouthfeel:gritty": { label: "Granuloso", colorFamilyId: "mouthfeel:rough" },
+  "mouthfeel:chalky": { label: "Calcáreo", colorFamilyId: "mouthfeel:rough" },
+  // Retired acidity descriptors (N11 rebuild) — kept for historical resolution.
+  "acidity:juicy":      { label: "Jugosa",     colorFamilyId: "acidity:bright" },
+  "acidity:fruit_like": { label: "Afrutada",   colorFamilyId: "acidity:bright" },
+  "acidity:tart":       { label: "Astringente", colorFamilyId: "acidity:bright" },
+  "acidity:sharp":      { label: "Aguda",      colorFamilyId: "acidity:bright" },
+  "acidity:vinegary":   { label: "Avinagrada", colorFamilyId: "acidity:bright" },
+  "acidity:herbal":     { label: "Herbal",     colorFamilyId: "acidity:bright" },
+  "acidity:grassy":     { label: "Herbácea",   colorFamilyId: "acidity:bright" },
+  "acidity:dry":        { label: "Seca",       colorFamilyId: "acidity:bright" },
 };
 
 /**
@@ -104,10 +117,10 @@ export function resolveDescriptor(
     const sub = family.subItems.find((s) => s.id === id);
     if (sub) return { label: sub.label, color: family.color };
   }
-  const legacyLabel = LEGACY_MOUTHFEEL_LABELS[id];
-  if (legacyLabel) {
-    const roughFamily = MOUTHFEEL_CATA.find((f) => f.id === "mouthfeel:rough");
-    return { label: legacyLabel, color: roughFamily?.color ?? UNMAPPED_COLOR };
+  const legacy = LEGACY_DESCRIPTOR_LABELS[id];
+  if (legacy) {
+    const colorFamily = OTHER_CATA_SETS.find((f) => f.id === legacy.colorFamilyId);
+    return { label: legacy.label, color: colorFamily?.color ?? UNMAPPED_COLOR };
   }
   return null;
 }
