@@ -39,6 +39,7 @@ import {
   ModuleSwitcher,
   MasterControls,
   CanvasFooter,
+  BetaBadge,
   type ModuleItem,
 } from "@/components/ui";
 import { useConnectivity } from "@/hooks/useConnectivity";
@@ -620,11 +621,13 @@ export function CupClient({
       key: "physical",
       label: translations.physical,
       icon: <Scale size={16} />,
+      badge: <BetaBadge />,
     },
     {
       key: "extrinsic",
       label: translations.extrinsic,
       icon: <FileText size={16} />,
+      badge: <BetaBadge />,
     },
     {
       key: "results",
@@ -815,6 +818,7 @@ export function CupClient({
               ? translations.physical
               : translations.extrinsic}
           </span>
+          <BetaBadge />
           <span className="text-brown-light">·</span>
           <span className="font-display text-base text-brown-dark">
             {translations.sample} {current.label}

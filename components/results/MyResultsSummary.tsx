@@ -3,6 +3,7 @@
 import { calcIndividualBreakdown, calcIndividualScore } from "@/lib/scoring";
 import { resolveDescriptor } from "@/lib/descriptors";
 import { ScoreBreakdownPanel } from "@/components/results/ScoreBreakdownPanel";
+import { ExtrinsicSummary } from "@/components/results/ExtrinsicSummary";
 
 type SampleResult = {
   id: string;
@@ -12,6 +13,7 @@ type SampleResult = {
   descriptive: Record<string, unknown>;
   affective: Record<string, unknown>;
   combined: Record<string, unknown>;
+  extrinsic?: Record<string, unknown>;
 };
 
 
@@ -230,6 +232,11 @@ export function MyResultsSummary({
                 </button>
               )}
             </div>
+
+            {/* Extrinsic data (origin/process/trade), same reveal rule as coffee identity */}
+            {sample.revealed && sample.extrinsic && (
+              <ExtrinsicSummary data={sample.extrinsic} />
+            )}
 
             {!filled ? (
               <div style={{ fontSize: 12, color: "#C8C0B0", padding: "8px 0" }}>{t.noData}</div>

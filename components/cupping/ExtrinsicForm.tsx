@@ -1,7 +1,7 @@
 "use client";
 
 import { CERTIFICATIONS, PROCESS_TYPES } from "@/lib/constants";
-import { FormSection, Notes } from "@/components/ui";
+import { FormSection, Notes, BetaBadge } from "@/components/ui";
 
 type Data = Record<string, unknown>;
 
@@ -91,6 +91,13 @@ export function ExtrinsicForm({
 
   return (
     <div>
+      <div className="flex items-center gap-2 mb-1">
+        <h2 className="font-display text-lg text-brown-dark">Extrínseco</h2>
+        <BetaBadge />
+      </div>
+      <div className="text-xs text-brown-mid mb-3">
+        No aplica todavía — sección en desarrollo
+      </div>
       <div className="text-[11px] text-brown-mid mb-4 p-3 bg-cream rounded-sm text-center italic">
         Fase POST-CATA · Rellenar después de revelar la identidad de las muestras
       </div>
