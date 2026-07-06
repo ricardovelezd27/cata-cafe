@@ -11,7 +11,7 @@ import {
   type FlavorWheelNode,
 } from "@/lib/constants";
 import { resolveDescriptor } from "@/lib/descriptors";
-import { searchFlavors } from "@/lib/flavorSearch";
+import { searchFlavors, norm, type FlavorMatchType } from "@/lib/flavorSearch";
 import pillStyles from "@/components/ui/CATAPills.module.css";
 
 type Locale = "es" | "en";
@@ -117,28 +117,31 @@ function GenericRow({
 
 /** Case/accent-insensitive equality for "did the typed term differ from the label". */
 function sameText(a: string, b: string): boolean {
-  const n = (s: string) =>
-    s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
-  return n(a) === n(b);
+  return norm(a) === norm(b);
 }
 
 export function FlavorPicker({
   value,
   onChange,
   notes,
-  onNotesChange,
   maxSelect,
   locale = "es",
 }: {
   value: string[];
-  onChange: (next: string[]) => void;
+  /**
+   * Change callback. When `notes` is provided, every change emits the next
+   * selection AND the next notes map in ONE call — the parent state is a
+   * wholesale JSON blob replaced per callback, so value+notes must land
+   * atomically (two same-tick callbacks would last-write-wins each other).
+   */
+  onChange: (next: string[], nextNotes?: Record<string, string[]>) => void;
   /** Qualifying notes per node id (parallel `*_desc_notes` JSON key). */
   notes?: Record<string, string[]>;
-  onNotesChange?: (next: Record<string, string[]>) => void;
   maxSelect?: number;
   locale?: Locale;
 }) {
   const t = T[locale];
+  const notesEnabled = notes !== undefined;
   const notesMap = notes ?? {};
   const [open, setOpen] = useState(false);
   const [navId, setNavId] = useState<string | null>(null); // current parent being viewed
@@ -155,34 +158,61 @@ export function FlavorPicker({
   // Ids are colon-paths, so ancestry is a pure prefix test.
   const isAncestorOf = (v: string, id: string) => id.startsWith(`${v}:`);
 
-  /** Drop the note bucket for a node id (used when its chip is removed). */
-  function dropNote(id: string) {
-    if (!onNotesChange) return;
-    if (!(id in notesMap)) return;
-    const next = { ...notesMap };
-    delete next[id];
-    onNotesChange(next);
+  /** Pure: `map` minus the note buckets of `ids` (same object when a no-op). */
+  function notesWithout(
+    map: Record<string, string[]>,
+    ids: string[]
+  ): Record<string, string[]> {
+    const drop = ids.filter((i) => i in map);
+    if (drop.length === 0) return map;
+    const next = { ...map };
+    for (const i of drop) delete next[i];
+    return next;
   }
 
-  /** Append a trimmed, deduped qualifying term under a node id. */
-  function addNote(id: string, term: string) {
-    if (!onNotesChange) return;
+  /** Pure: `map` plus a trimmed, deduped qualifying term under a node id. */
+  function notesWith(
+    map: Record<string, string[]>,
+    id: string,
+    term: string
+  ): Record<string, string[]> {
     const trimmedTerm = term.trim();
-    if (!trimmedTerm) return;
-    const existing = notesMap[id] ?? [];
-    if (existing.some((x) => sameText(x, trimmedTerm))) return;
-    onNotesChange({ ...notesMap, [id]: [...existing, trimmedTerm] });
+    if (!trimmedTerm) return map;
+    const existing = map[id] ?? [];
+    if (existing.some((x) => sameText(x, trimmedTerm))) return map;
+    return { ...map, [id]: [...existing, trimmedTerm] };
+  }
+
+  /** Single atomic emission of the next selection + notes pair. */
+  function emit(nextValue: string[], nextNotes: Record<string, string[]>) {
+    onChange(nextValue, notesEnabled ? nextNotes : undefined);
+  }
+
+  /**
+   * Pure: next (value, notes) after selecting `id`. A deeper pick replaces any
+   * selected ancestors — which take their qualifying notes with them, so no
+   * note bucket outlives its selected chip.
+   */
+  function selectionWith(id: string): {
+    nextValue: string[];
+    nextNotes: Record<string, string[]>;
+  } {
+    const prunedAncestors = value.filter((v) => isAncestorOf(v, id));
+    return {
+      nextValue: [...value.filter((v) => !isAncestorOf(v, id)), id],
+      nextNotes: notesWithout(notesMap, prunedAncestors),
+    };
   }
 
   function toggle(id: string) {
     if (value.includes(id)) {
-      onChange(value.filter((x) => x !== id));
-      dropNote(id);
+      // Removing a chip drops that node's notes too.
+      emit(value.filter((x) => x !== id), notesWithout(notesMap, [id]));
       return;
     }
-    const pruned = value.filter((v) => !isAncestorOf(v, id));
-    if (maxSelect !== undefined && pruned.length >= maxSelect) return; // at limit
-    onChange([...pruned, id]);
+    const { nextValue, nextNotes } = selectionWith(id);
+    if (maxSelect !== undefined && nextValue.length > maxSelect) return; // at limit
+    emit(nextValue, nextNotes);
   }
 
   // Whether selecting `id` would push past maxSelect, accounting for ancestors it
@@ -201,7 +231,7 @@ export function FlavorPicker({
   // Closed fallback: when nothing matches the wheel, offer to route the typed
   // term into a real generic node («Otra fruta» / «Otros») as a qualifying note
   // — never a free-standing unmapped entry.
-  const showGeneric = trimmed.length > 0 && results.length === 0 && !!onNotesChange;
+  const showGeneric = trimmed.length > 0 && results.length === 0 && notesEnabled;
   const rowCount = results.length + (showGeneric ? 2 : 0);
   const dropdownOpen = focused && rowCount > 0;
   const clampedHi = Math.min(hi, Math.max(0, rowCount - 1));
@@ -212,13 +242,21 @@ export function FlavorPicker({
    * as a qualifying note (Kim's "plátano deshidratado" under "Fruta
    * deshidratada"). Leaf exact/prefix/synonym/fuzzy picks attach no note.
    */
-  function addById(id: string, opts?: { matchType?: string; typed?: string }) {
-    const isNew = !value.includes(id) && !wouldExceedLimit(id);
-    if (isNew) toggle(id);
-    if (isNew && opts?.matchType === "parent" && opts.typed) {
-      const node = flavorNodeById(id);
-      const nodeLabel = node ? label(node, locale) : "";
-      if (nodeLabel && !sameText(opts.typed, nodeLabel)) addNote(id, opts.typed);
+  function addById(
+    id: string,
+    opts?: { matchType?: FlavorMatchType; typed?: string }
+  ) {
+    if (!value.includes(id) && !wouldExceedLimit(id)) {
+      const { nextValue, nextNotes } = selectionWith(id);
+      let withNote = nextNotes;
+      if (opts?.matchType === "parent" && opts.typed) {
+        const node = flavorNodeById(id);
+        const nodeLabel = node ? label(node, locale) : "";
+        if (nodeLabel && !sameText(opts.typed, nodeLabel)) {
+          withNote = notesWith(nextNotes, id, opts.typed);
+        }
+      }
+      emit(nextValue, withNote);
     }
     setQuery("");
     setHi(0);
@@ -228,9 +266,13 @@ export function FlavorPicker({
   /** Route the unmatched typed term into a generic node with a qualifying note. */
   function addGeneric(id: string) {
     if (!trimmed) return;
-    const alreadySelected = value.includes(id);
-    if (!alreadySelected && !wouldExceedLimit(id)) toggle(id);
-    if (alreadySelected || !wouldExceedLimit(id)) addNote(id, trimmed);
+    if (value.includes(id)) {
+      // Node already selected: just append the term to its note bucket.
+      emit(value, notesWith(notesMap, id, trimmed));
+    } else if (!wouldExceedLimit(id)) {
+      const { nextValue, nextNotes } = selectionWith(id);
+      emit(nextValue, notesWith(nextNotes, id, trimmed));
+    }
     setQuery("");
     setHi(0);
     inputRef.current?.focus();

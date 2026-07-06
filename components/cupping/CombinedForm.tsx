@@ -104,6 +104,15 @@ export function CombinedForm({
   // Qualifying notes live in a parallel `<descKey>_notes` map (node id → terms).
   const notesOf = (descKey: string): Record<string, string[]> =>
     (d[`${descKey}_notes`] as Record<string, string[]> | undefined) ?? {};
+  // Value + notes must land in ONE blob update — the blob is replaced wholesale
+  // per onChange, so two same-tick set() calls would clobber each other.
+  const setDescAndNotes =
+    (descKey: string) => (v: string[], n?: Record<string, string[]>) =>
+      onChange(
+        n === undefined
+          ? { ...d, [descKey]: v }
+          : { ...d, [descKey]: v, [`${descKey}_notes`]: n }
+      );
   const getBools = (k: string): boolean[] =>
     (d[k] as boolean[] | undefined) ?? Array(cupsPerSample).fill(false);
 
@@ -242,9 +251,8 @@ export function CombinedForm({
                   <div className="mt-4">
                     <FlavorPicker
                       value={arr(`${descId}_desc`)}
-                      onChange={(v) => set(`${descId}_desc`, v)}
                       notes={notesOf(`${descId}_desc`)}
-                      onNotesChange={(n) => set(`${descId}_desc_notes`, n)}
+                      onChange={setDescAndNotes(`${descId}_desc`)}
                       maxSelect={max}
                       locale={locale}
                     />

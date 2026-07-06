@@ -31,7 +31,7 @@ export type FlavorMatch = {
 };
 
 /** NFD-strip diacritics + lowercase so "limon" matches "Limón". */
-function norm(s: string): string {
+export function norm(s: string): string {
   return s
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")

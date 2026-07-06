@@ -65,6 +65,15 @@ export function DescriptiveForm({
   // Qualifying notes live in a parallel `<descKey>_notes` map (node id → terms).
   const notesOf = (descKey: string): Record<string, string[]> =>
     (d[`${descKey}_notes`] as Record<string, string[]> | undefined) ?? {};
+  // Value + notes must land in ONE blob update — the blob is replaced wholesale
+  // per onChange, so two same-tick set() calls would clobber each other.
+  const setDescAndNotes =
+    (descKey: string) => (v: string[], n?: Record<string, string[]>) =>
+      onChange(
+        n === undefined
+          ? { ...d, [descKey]: v }
+          : { ...d, [descKey]: v, [`${descKey}_notes`]: n }
+      );
 
   // `options === null` → flavor-wheel block (3-level modal picker);
   // otherwise a flat/2-level CATA block (acidity/dulzor/sensación).
@@ -86,9 +95,8 @@ export function DescriptiveForm({
             {options === null ? (
               <FlavorPicker
                 value={arr(`${id}_desc`)}
-                onChange={(v) => set(`${id}_desc`, v)}
                 notes={notesOf(`${id}_desc`)}
-                onNotesChange={(n) => set(`${id}_desc_notes`, n)}
+                onChange={setDescAndNotes(`${id}_desc`)}
                 maxSelect={STEP_CATA_MAX[id]}
                 locale={locale}
               />
