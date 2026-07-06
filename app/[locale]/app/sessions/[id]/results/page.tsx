@@ -2,13 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import {
-  collectDescriptors,
-  resolveDescriptor,
-  resolveMainTaste,
-  PERCEPTUAL_BLOCKS,
-} from "@/lib/descriptors";
-import { summarizeSample, type SummaryBlock } from "@/lib/resultsSummary";
+import { collectDescriptors, PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
+import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
 import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
 import { ResultsClient } from "./ResultsClient";
 
@@ -237,111 +232,85 @@ export default async function ResultsPage({
       const blockLabelFor = (blockId: string): string =>
         tBlocks(blockId as Parameters<typeof tBlocks>[0]);
 
-      // Resolve a raw descriptor id to a label+color for a given block. The
-      // `gusto` (taste) block resolves against MAIN_TASTES; all others against
-      // the flavor wheel / CATA sets.
-      const resolveForBlock = (blockKind: string, id: string) =>
-        blockKind === "taste"
-          ? resolveMainTaste(id, localeStr)
-          : resolveDescriptor(id, localeStr);
-
-      // Per (sampleId → blockId) the set of descriptor ids each INCLUDED cupper
-      // selected, deduped within the block (per-cupper union across the block's
-      // stages). This single matrix feeds frequency, summaries AND alignment so
-      // the three views can never disagree.
-      // selections[sampleId][blockId] = { cupperId → Set<descriptorId> }
-      type BlockSel = Map<string, Map<string, Set<string>>>;
-      const selections = new Map<string, BlockSel>();
-      const evaluatorsPerSample = new Map<string, Set<string>>();
-      for (const s of session.samples) {
-        const bySel: BlockSel = new Map();
-        for (const block of PERCEPTUAL_BLOCKS) bySel.set(block.id, new Map());
-        selections.set(s.id, bySel);
-        evaluatorsPerSample.set(s.id, new Set());
-      }
-
-      for (const ev of evals) {
-        if (excludedUserIds.has(ev.cupperId)) continue; // master-excluded cupper
-        const bySel = selections.get(ev.sessionSampleId);
-        if (!bySel) continue;
-        const blob = blobFor(ev);
-        if (!blob) continue;
-        evaluatorsPerSample.get(ev.sessionSampleId)!.add(ev.cupperId);
-        for (const block of PERCEPTUAL_BLOCKS) {
-          // Per-cupper union across the block's keys (dedup so one cupper counts
-          // once per descriptor in the block — the "nariz overlap" rule).
-          const ids = collectDescriptors(blob, block.descKeys);
-          const cupperSet = new Set(ids);
-          bySel.get(block.id)!.set(ev.cupperId, cupperSet);
-        }
-      }
-
-      // Consensus (majority) sets per sample+block: descriptors picked by >= 50%
-      // of that block's evaluators, min 2 cuppers. Shared by summaries + alignment.
-      const majoritySets = new Map<string, Map<string, Set<string>>>(); // sampleId → blockId → ids
-
-      descriptorFrequency = session.samples.map((s) => {
-        const bySel = selections.get(s.id)!;
-        const total = evaluatorsPerSample.get(s.id)!.size;
-        const blocksOut: Record<string, RankedDescriptor[]> = {};
-        const sampleMajority = new Map<string, Set<string>>();
-
-        const summaryBlocks: SummaryBlock[] = [];
-
-        for (const block of PERCEPTUAL_BLOCKS) {
-          // Count across cuppers (each cupper's deduped set contributes 1 each).
-          const counts = new Map<string, number>();
-          for (const set of bySel.get(block.id)!.values()) {
-            for (const did of set) counts.set(did, (counts.get(did) ?? 0) + 1);
-          }
-          const ranked: RankedDescriptor[] = [...counts.entries()]
-            .map(([did, count]) => {
-              const info = resolveForBlock(block.kind, did);
-              return info
-                ? { id: did, label: info.label, color: info.color, count }
-                : null;
-            })
-            .filter((d): d is RankedDescriptor => d !== null)
-            .sort((a, b) => b.count - a.count);
-          blocksOut[block.id] = ranked;
-
-          // Majority set (>=50%, min 2 cuppers) for summaries + alignment.
-          const majority = new Set(
-            ranked
-              .filter((d) => d.count >= 2 && total > 0 && d.count / total >= 0.5)
-              .map((d) => d.id),
-          );
-          sampleMajority.set(block.id, majority);
-
-          summaryBlocks.push({
-            id: block.id,
-            label: blockLabelFor(block.id),
-            descriptors: ranked.map((d) => ({ id: d.id, label: d.label, count: d.count })),
-            total,
-          });
-        }
-
-        majoritySets.set(s.id, sampleMajority);
-
-        const sentences = summarizeSample(summaryBlocks, localeStr);
-        const summary: Record<string, string | null> = {};
-        for (const sent of sentences) summary[sent.blockId] = sent.text;
-
-        return {
-          sampleId: s.id,
-          label: s.label,
-          totalEvaluators: total,
-          blocks: blocksOut,
-          summary,
-        };
-      });
+      // Anonymous per-sample block frequencies + statistical summaries. Extracted
+      // to lib/resultsAggregation so the close-session email path computes the
+      // identical numbers — this page and the emailed group summary can never
+      // disagree. Returns null only for affective sessions (guarded above).
+      descriptorFrequency =
+        computeSampleBlockFrequencies({
+          format: session.format,
+          samples: session.samples.map((s) => ({ id: s.id, label: s.label })),
+          evals: evals.map((ev) => ({
+            cupperId: ev.cupperId,
+            sessionSampleId: ev.sessionSampleId,
+            descriptiveData: ev.descriptiveData,
+            combinedData: ev.combinedData,
+          })),
+          excludedUserIds,
+          blockLabel: blockLabelFor,
+          locale: localeStr,
+        }) ?? null;
 
       // ---- Owner-only cupper alignment (Step 4) ----
-      // For each cupper, across all samples+blocks that HAVE a majority set,
-      // alignment = matched majority descriptors / total majority opportunities.
-      // Excluded cuppers are dropped from the consensus above but still get a
-      // (flagged) row so the owner can see them.
+      // Rebuilds its OWN selection matrix + majority sets: alignment is owner-only
+      // and must never be part of the shared (emailed) aggregation, so it stays
+      // here, separate from the anonymous frequency core above.
       if (isOwner) {
+        // Per (sampleId → blockId → cupperId → Set<descriptorId>), including
+        // excluded cuppers so their (flagged) rows can be scored against the
+        // excluded-free consensus.
+        type BlockSel = Map<string, Map<string, Set<string>>>;
+        const selections = new Map<string, BlockSel>();
+        const evaluatorsPerSample = new Map<string, Set<string>>();
+        for (const s of session.samples) {
+          const bySel: BlockSel = new Map();
+          for (const block of PERCEPTUAL_BLOCKS) bySel.set(block.id, new Map());
+          selections.set(s.id, bySel);
+          evaluatorsPerSample.set(s.id, new Set());
+        }
+        for (const ev of evals) {
+          const bySel = selections.get(ev.sessionSampleId);
+          if (!bySel) continue;
+          const blob = blobFor(ev);
+          if (!blob) continue;
+          if (!excludedUserIds.has(ev.cupperId)) {
+            evaluatorsPerSample.get(ev.sessionSampleId)!.add(ev.cupperId);
+          }
+          for (const block of PERCEPTUAL_BLOCKS) {
+            const ids = collectDescriptors(blob, block.descKeys);
+            bySel.get(block.id)!.set(ev.cupperId, new Set(ids));
+          }
+        }
+
+        // Consensus (majority) sets per sample+block: descriptors picked by >= 50%
+        // of that block's INCLUDED evaluators, min 2 cuppers.
+        const majoritySets = new Map<string, Map<string, Set<string>>>();
+        for (const s of session.samples) {
+          const bySel = selections.get(s.id)!;
+          const total = evaluatorsPerSample.get(s.id)!.size;
+          const sampleMajority = new Map<string, Set<string>>();
+          for (const block of PERCEPTUAL_BLOCKS) {
+            const counts = new Map<string, number>();
+            for (const [cupperId, set] of bySel.get(block.id)!) {
+              if (excludedUserIds.has(cupperId)) continue; // consensus excludes them
+              for (const did of set) counts.set(did, (counts.get(did) ?? 0) + 1);
+            }
+            const majority = new Set(
+              [...counts.entries()]
+                .filter(([, c]) => c >= 2 && total > 0 && c / total >= 0.5)
+                .map(([did]) => did),
+            );
+            sampleMajority.set(block.id, majority);
+          }
+          majoritySets.set(s.id, sampleMajority);
+        }
+
+        // For each cupper, across all samples+blocks that HAVE a majority set,
+        // alignment = matched majority descriptors / total majority opportunities.
+        // Excluded cuppers are dropped from the consensus above but still get a
+        // (flagged) row so the owner can see them. Their selections are present in
+        // `selections` (we include every eval when building the matrix above), so
+        // they score against the excluded-free consensus.
         const rows = new Map<
           string,
           { name: string; excluded: boolean; matches: number; opportunities: number }
