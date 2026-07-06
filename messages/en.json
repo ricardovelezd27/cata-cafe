@@ -196,7 +196,10 @@
     "email": "Email",
     "statusDraft": "Draft",
     "statusActive": "Active",
-    "statusClosed": "Closed"
+    "statusClosed": "Closed",
+    "account": "Account",
+    "switchAccount": "Switch account",
+    "logout": "Log out"
   },
   "actions": {
     "save": "Save",

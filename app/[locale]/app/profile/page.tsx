@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { ProfileForm } from "./ProfileForm";
 import Link from "next/link";
+import { signOut, switchAccount } from "@/app/actions/auth";
 
 export function generateStaticParams() {
   return [{ locale: "es" }, { locale: "en" }];
@@ -219,6 +220,39 @@ export default async function ProfilePage({
             ))}
           </div>
         )}
+      </div>
+
+      {/* Account actions — reachable on mobile via the "Perfil" tab */}
+      <div>
+        <h2 className="font-serif text-xl text-green-dark mb-3">{t("account")}</h2>
+        <div
+          style={{
+            padding: "14px",
+            background: "#FDFBF7",
+            border: "1px solid #E8E0D0",
+            borderRadius: 10,
+          }}
+        >
+          <div className="text-sm text-brown-mid mb-3">{user.email}</div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <form action={switchAccount.bind(null, locale)}>
+              <button
+                type="submit"
+                className="w-full sm:w-auto px-4 py-2 rounded-lg border border-[#D4C5A9] text-sm font-semibold text-brown-dark hover:bg-[#EDE8DB] transition-colors"
+              >
+                {t("switchAccount")}
+              </button>
+            </form>
+            <form action={signOut}>
+              <button
+                type="submit"
+                className="w-full sm:w-auto px-4 py-2 rounded-lg border border-[#D4C5A9] text-sm font-semibold text-red-defect hover:bg-[#EBE0E0] transition-colors"
+              >
+                {t("logout")}
+              </button>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
   );

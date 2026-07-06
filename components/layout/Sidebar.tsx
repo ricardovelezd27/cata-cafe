@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Clipboard, Coffee, Users, User, LogOut, Languages } from "lucide-react";
-import { signOut } from "@/app/actions/auth";
+import { Home, Clipboard, Coffee, Users, User, LogOut, Languages, UserCog } from "lucide-react";
+import { signOut, switchAccount } from "@/app/actions/auth";
 
 const NAV_ITEMS = [
   { href: "/app", icon: Home, label: "Inicio", exact: true },
@@ -59,6 +59,15 @@ export default function Sidebar({ locale }: { locale: string }) {
           <Languages size={18} strokeWidth={1.8} />
           {otherLocale.toUpperCase()}
         </Link>
+        <form action={switchAccount.bind(null, locale)}>
+          <button
+            type="submit"
+            className="flex items-center gap-3 py-2 text-sm text-brown-mid hover:text-brown-dark transition-colors w-full text-left"
+          >
+            <UserCog size={18} strokeWidth={1.8} />
+            Cambiar de cuenta
+          </button>
+        </form>
         <form action={signOut}>
           <button
             type="submit"

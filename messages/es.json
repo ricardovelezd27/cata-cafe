@@ -196,7 +196,10 @@
     "email": "Correo",
     "statusDraft": "Borrador",
     "statusActive": "Activa",
-    "statusClosed": "Cerrada"
+    "statusClosed": "Cerrada",
+    "account": "Cuenta",
+    "switchAccount": "Cambiar de cuenta",
+    "logout": "Salir"
   },
   "actions": {
     "save": "Guardar",
