@@ -14,6 +14,7 @@ import {
   View,
   Text,
   StyleSheet,
+  Font,
 } from "@react-pdf/renderer";
 import {
   buildCvaFormData,
@@ -25,6 +26,11 @@ import {
   type DescriptorStageModel,
   type Locale,
 } from "./cvaFormData";
+
+// Disable mid-word hyphenation document-wide: react-pdf's default breaker
+// splits words like "GLOBAL" into "GLOB-AL" in narrow columns. Paper forms wrap
+// at spaces only.
+Font.registerHyphenationCallback((word) => [word]);
 
 // ─── Palette — restrained, paper-form austerity ─────────────────────────────
 const INK = "#111111";
@@ -121,7 +127,7 @@ const s = StyleSheet.create({
     paddingVertical: 2.5,
     paddingHorizontal: 5,
   },
-  affLabel: { width: 74, fontSize: 7.5, fontFamily: "Helvetica-Bold", textTransform: "uppercase" },
+  affLabel: { width: 82, fontSize: 7.5, fontFamily: "Helvetica-Bold", textTransform: "uppercase" },
   bubbleRow: { flexDirection: "row", alignItems: "center", gap: 2.5 },
   bubble: {
     width: 12,
@@ -473,16 +479,25 @@ function CupsBlock({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, stri
 // ─── Score box ──────────────────────────────────────────────────────────────
 
 function ScoreBox({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, string> }) {
+  // Only a COMPLETE evaluation (all 8 finals) prints a total + intermediates —
+  // calcAffectiveSum's neutral-5 substitution would otherwise fabricate a
+  // number (e.g. 79.00 from an entirely empty form). Partial evaluations get
+  // an explicit "evaluación incompleta" note; empty ones stay blank, like an
+  // unfilled paper form. See CvaSampleSheet.scoreState.
   return (
     <View style={s.scoreBox} wrap={false}>
       <View>
         <Text style={s.scoreLabel}>{t.score}</Text>
-        <Text style={s.scoreFormula}>
-          0.65625 x {"Σ"}h + 52.75 - 2u - 4d ({"Σ"}h={sheet.breakdown.affectiveSum}, u=
-          {sheet.breakdown.u}, d={sheet.breakdown.d})
-        </Text>
+        {sheet.scoreState === "complete" ? (
+          <Text style={s.scoreFormula}>
+            0.65625 x {"Σ"}h + 52.75 - 2u - 4d ({"Σ"}h={sheet.breakdown.affectiveSum}, u=
+            {sheet.breakdown.u}, d={sheet.breakdown.d})
+          </Text>
+        ) : sheet.scoreState === "partial" ? (
+          <Text style={s.scoreFormula}>{t.incomplete}</Text>
+        ) : null}
       </View>
-      <Text style={s.scoreValue}>{sheet.score}</Text>
+      <Text style={s.scoreValue}>{sheet.scoreState === "complete" ? sheet.score : t.none}</Text>
     </View>
   );
 }

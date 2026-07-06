@@ -23,7 +23,7 @@ import {
   type SensoryDefect,
 } from "@/lib/constants";
 import { resolveDescriptor, normalizeDescriptorId } from "@/lib/descriptors";
-import { calcIndividualBreakdown } from "@/lib/scoring";
+import { calcIndividualBreakdown, isAffectiveComplete } from "@/lib/scoring";
 
 export type Locale = "es" | "en";
 type D = Record<string, unknown>;
@@ -82,6 +82,7 @@ export const CVA_TEXT: Record<Locale, Record<string, string>> = {
     physical: "Evaluación física",
     beta: "Beta",
     none: "—",
+    incomplete: "Evaluación incompleta",
     sheetDescriptive: "Hoja descriptiva",
     sheetAffective: "Hoja afectiva",
   },
@@ -124,6 +125,7 @@ export const CVA_TEXT: Record<Locale, Record<string, string>> = {
     physical: "Physical evaluation",
     beta: "Beta",
     none: "—",
+    incomplete: "Incomplete evaluation",
     sheetDescriptive: "Descriptive sheet",
     sheetAffective: "Affective sheet",
   },
@@ -434,6 +436,20 @@ export type CvaSampleSheet = {
   affectiveRows: AffectiveRow[]; // affective + combined
   cups: CupModel;
   score: number | "—";
+  /**
+   * Whether the affective evaluation is scoreable. calcAffectiveSum silently
+   * substitutes a neutral 5 for every missing attribute, so a total printed
+   * from a partially (or entirely) empty evaluation would fabricate a number
+   * on a document sent to producers. Edge rule (matches the app's own
+   * "complete" definition, isAffectiveComplete in lib/scoring.ts):
+   * - "complete" — all 8 attribute finals present → print the real total.
+   * - "partial"  — some finals set, some missing → print "—" plus an
+   *   "evaluación incompleta" annotation (a partial Σh with silent 5-defaults
+   *   is the same lie in smaller form).
+   * - "empty"    — no finals at all → print "—", no annotation (a blank paper
+   *   form is faithful).
+   */
+  scoreState: "complete" | "partial" | "empty";
   breakdown: { affectiveSum: number; u: number; d: number };
   extrinsic: LabeledField[];
   physical: LabeledField[];
@@ -571,14 +587,29 @@ export function buildCvaFormData(input: CvaFormInput): CvaSampleSheet {
     d: penaltiesApply ? defective.filter(Boolean).length : 0,
   };
 
-  // ── Score (only meaningful when affective data exists) ──
+  // ── Score ──
+  // calcAffectiveSum defaults every unset attribute to a neutral 5, so an
+  // empty evaluation would otherwise print a fabricated 79.00. Only print a
+  // total when the evaluation is COMPLETE (all 8 finals present — the app's
+  // own rule, isAffectiveComplete); a partial evaluation prints "—" with an
+  // "evaluación incompleta" annotation. See CvaSampleSheet.scoreState.
   const scoreSource = format === "descriptive" ? desc : aff;
   let score: number | "—" = "—";
+  let scoreState: "complete" | "partial" | "empty" = "empty";
   let breakdown = { affectiveSum: 0, u: cups.u, d: cups.d };
-  if (format !== "descriptive" && Object.keys(scoreSource).length > 0) {
-    const b = calcIndividualBreakdown(scoreSource, input.cupsPerSample);
-    score = b.score;
-    breakdown = { affectiveSum: b.affectiveSum, u: b.u, d: b.d };
+  if (format !== "descriptive") {
+    const filledCount = AFFECTIVE_ATTRIBUTES.filter((attr) => {
+      const v = Number(scoreSource[`${attr.id}_final`] ?? scoreSource[attr.id] ?? 0);
+      return Number.isFinite(v) && v > 0;
+    }).length;
+    if (isAffectiveComplete(scoreSource)) {
+      const b = calcIndividualBreakdown(scoreSource, input.cupsPerSample);
+      score = b.score;
+      scoreState = "complete";
+      breakdown = { affectiveSum: b.affectiveSum, u: b.u, d: b.d };
+    } else if (filledCount > 0) {
+      scoreState = "partial";
+    }
   }
 
   return {
@@ -597,6 +628,7 @@ export function buildCvaFormData(input: CvaFormInput): CvaSampleSheet {
     affectiveRows,
     cups,
     score,
+    scoreState,
     breakdown,
     extrinsic: input.sample.revealed
       ? collectLabeled(input.sample.extrinsic, EXTRINSIC_FIELDS)
