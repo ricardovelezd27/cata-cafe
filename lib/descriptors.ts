@@ -2,6 +2,7 @@ import {
   ACIDITY_CATA,
   SWEETNESS_CATA,
   MOUTHFEEL_CATA,
+  MAIN_TASTES,
   L1_GROUP_COLOR,
   flavorNodeById,
   flavorNodeColor,
@@ -41,6 +42,46 @@ export const DESCRIPTOR_STAGES = [
 ] as const;
 
 export type DescriptorStageId = (typeof DESCRIPTOR_STAGES)[number]["id"];
+
+/**
+ * Perceptual blocks — the results-view grouping (N15). Each block aggregates one
+ * or more raw stages, deduped PER CUPPER inside the block (so a cupper who picks
+ * "chocolate" in both fragancia and aroma counts once for "chocolate" in Nariz).
+ *
+ * - `descKeys` — the evaluation JSON array keys unioned into the block. The
+ *   special `gustos` block carries an empty `descKeys` and is resolved from the
+ *   `gustos` key against MAIN_TASTES instead of the flavor wheel.
+ * - `kind`     — `"desc"` blocks resolve via resolveDescriptor (flavor wheel +
+ *   CATA sets); the `"taste"` block resolves via resolveMainTaste.
+ * - `attrId`   — i18n `attributes.*` fallback label; blocks with a dedicated
+ *   label pass `labelKey` (resolved by the caller from the `blocks` message set).
+ */
+export const PERCEPTUAL_BLOCKS = [
+  { id: "nariz",     kind: "desc",  descKeys: ["fragancia_desc", "aroma_desc"],       labelKey: "nariz" },
+  { id: "boca",      kind: "desc",  descKeys: ["sabor_desc", "sabor_residual_desc"],  labelKey: "boca" },
+  { id: "gusto",     kind: "taste", descKeys: ["gustos"],                             labelKey: "gusto" },
+  { id: "acidez",    kind: "desc",  descKeys: ["acidez_desc"],                        labelKey: "acidez" },
+  { id: "dulzura",   kind: "desc",  descKeys: ["dulzor_desc"],                        labelKey: "dulzura" },
+  { id: "sensacion", kind: "desc",  descKeys: ["sensacion_desc"],                     labelKey: "sensacion" },
+] as const;
+
+export type PerceptualBlockId = (typeof PERCEPTUAL_BLOCKS)[number]["id"];
+
+/**
+ * Resolve a MAIN_TASTES id (e.g. "sour") to its display label + neutral color.
+ * MAIN_TASTES labels are Spanish-only, reused for both locales (parity with the
+ * acidity/sweetness/mouthfeel CATA sets, which are also Spanish-only). The
+ * `locale` param is accepted for a uniform signature with resolveDescriptor.
+ */
+export function resolveMainTaste(
+  id: string,
+  locale: "es" | "en" = "es"
+): { label: string; color: string } | null {
+  void locale;
+  const t = MAIN_TASTES.find((m) => m.id === id);
+  if (t) return { label: t.label, color: L1_GROUP_COLOR.other };
+  return null;
+}
 
 type CATAFamily = {
   id: string;

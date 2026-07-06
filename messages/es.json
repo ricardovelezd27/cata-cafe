@@ -177,7 +177,22 @@
     "of": "de",
     "participants": "catadores",
     "emptyStage": "Ningún descriptor con 2 o más selecciones en esta etapa.",
+    "emptyBlock": "Sin descriptores en común en este bloque.",
     "emptyAll": "Aún no hay descriptores seleccionados por 2 o más catadores."
+  },
+  "blocks": {
+    "nariz": "Nariz",
+    "boca": "Boca",
+    "gusto": "Gusto predominante",
+    "acidez": "Acidez",
+    "dulzura": "Dulzura",
+    "sensacion": "Sensación en boca"
+  },
+  "alignment": {
+    "title": "Alineación de catadores",
+    "subtitle": "Qué tan cerca están las selecciones de cada catador del consenso del grupo. Es informativo y no afecta los puntajes.",
+    "excluded": "(excluido)",
+    "noData": "Aún no hay consenso suficiente para calcular la alineación."
   },
   "scale": {
     "first": "Primera impresión",

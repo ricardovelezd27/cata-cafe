@@ -177,7 +177,22 @@
     "of": "of",
     "participants": "participants",
     "emptyStage": "No descriptor with 2 or more selections in this stage.",
+    "emptyBlock": "No shared descriptors in this block.",
     "emptyAll": "No descriptors selected by 2 or more participants yet."
+  },
+  "blocks": {
+    "nariz": "Nose",
+    "boca": "Mouth",
+    "gusto": "Predominant taste",
+    "acidez": "Acidity",
+    "dulzura": "Sweetness",
+    "sensacion": "Mouthfeel"
+  },
+  "alignment": {
+    "title": "Cupper alignment",
+    "subtitle": "How closely each cupper's selections match the group consensus. Informational only — it does not affect scores.",
+    "excluded": "(excluded)",
+    "noData": "Not enough consensus yet to compute alignment."
   },
   "scale": {
     "first": "First impression",
