@@ -113,7 +113,7 @@ const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
       { key: 'cherry',      es: 'Cereza',  en: 'Cherry' },
       { key: 'coconut',     es: 'Coco',    en: 'Coconut' },
       { key: 'grape',       es: 'Uva',     en: 'Grape' },
-      { key: 'peach',       es: 'Durazno', en: 'Peach' },
+      { key: 'peach',       es: 'Durazno', en: 'Peach', syn: ['melocotón'] },
       { key: 'pear',        es: 'Pera',    en: 'Pear' },
       { key: 'pineapple',   es: 'Piña',    en: 'Pineapple' },
       { key: 'pomegranate', es: 'Granada', en: 'Pomegranate' },
