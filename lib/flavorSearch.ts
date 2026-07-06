@@ -2,7 +2,7 @@ import Fuse from "fuse.js";
 import {
   FLAVOR_WHEEL,
   flavorNodeById,
-  flavorGroupColor,
+  flavorNodeColor,
   type FlavorWheelNode,
   type FlavorLevel,
 } from "@/lib/constants";
@@ -66,7 +66,7 @@ type IndexEntry = {
 const INDEX: IndexEntry[] = FLAVOR_WHEEL.map((n) => ({
   id: n.id,
   level: n.level,
-  color: flavorGroupColor(n.id),
+  color: flavorNodeColor(n.id),
   label_es: n.label_es,
   label_en: n.label_en,
   pathEs: pathLabels(n, "es"),

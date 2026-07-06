@@ -2,8 +2,9 @@ import {
   ACIDITY_CATA,
   SWEETNESS_CATA,
   MOUTHFEEL_CATA,
+  L1_GROUP_COLOR,
   flavorNodeById,
-  flavorGroupColor,
+  flavorNodeColor,
   migrateFlavorId,
 } from "@/lib/constants";
 
@@ -68,7 +69,7 @@ const OTHER_CATA_SETS: readonly CATAFamily[] = [
  *   sets are Spanish-only and fall back to their Spanish label for "en".
  */
 /** Neutral color for free-text "unmapped" descriptors (matches the Other group). */
-export const UNMAPPED_COLOR = "#7A6E5F";
+export const UNMAPPED_COLOR = L1_GROUP_COLOR.other;
 /** Prefix marking a free-text descriptor the wheel didn't match (N2 safety valve). */
 export const UNMAPPED_PREFIX = "unmapped:";
 
@@ -86,7 +87,7 @@ export function resolveDescriptor(
   if (node) {
     return {
       label: locale === "en" ? node.label_en : node.label_es,
-      color: flavorGroupColor(flavorId),
+      color: flavorNodeColor(flavorId),
     };
   }
   for (const family of OTHER_CATA_SETS) {

@@ -1,5 +1,6 @@
 'use client'
 import styles from './CATAPills.module.css'
+import { shadeForLevel, getContrastTextColor } from '@/lib/constants'
 
 export interface CATASubItem {
   id: string
@@ -86,6 +87,7 @@ export function CATAPills({ options, selected, onChange, maxSelect, showSubItems
                   {
                     '--pill-color': opt.color,
                     '--pill-bg-soft': `color-mix(in oklch, ${opt.color} 10%, transparent)`,
+                    '--pill-text': getContrastTextColor(opt.color),
                   } as React.CSSProperties
                 }
               >
@@ -98,6 +100,7 @@ export function CATAPills({ options, selected, onChange, maxSelect, showSubItems
                   {opt.subItems!.map((sub) => {
                     const isSubSel = selected.includes(sub.id)
                     const isSubDisabled = disabled || (!isSubSel && atLimit)
+                    const subColor = shadeForLevel(opt.color, 3)
                     return (
                       <button
                         key={sub.id}
@@ -108,8 +111,9 @@ export function CATAPills({ options, selected, onChange, maxSelect, showSubItems
                         className={`${styles.pill} ${styles.sub} ${isSubSel ? styles.selected : ''}`}
                         style={
                           {
-                            '--pill-color': opt.color,
-                            '--pill-bg-soft': `color-mix(in oklch, ${opt.color} 10%, transparent)`,
+                            '--pill-color': subColor,
+                            '--pill-bg-soft': `color-mix(in oklch, ${subColor} 10%, transparent)`,
+                            '--pill-text': getContrastTextColor(subColor),
                           } as React.CSSProperties
                         }
                       >

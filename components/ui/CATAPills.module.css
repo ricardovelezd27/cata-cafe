@@ -12,7 +12,7 @@
 .pill:focus-visible { outline: 2px solid var(--pill-color); outline-offset: 2px; }
 .pill:disabled { cursor: not-allowed; opacity: 0.45; }
 .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
-.selected { background: var(--pill-color) !important; border-color: transparent !important; color: var(--color-bg) !important; }
+.selected { background: var(--pill-color) !important; border-color: transparent !important; color: var(--pill-text, var(--color-bg)) !important; }
 .selected .dot { background: rgba(255, 255, 255, 0.65); }
 .sub { font-size: 11.5px; padding: 5px 11px; cursor: pointer; }
 /* Hover hint only on mouse devices, never on selected pills — keeps touch to two states. */

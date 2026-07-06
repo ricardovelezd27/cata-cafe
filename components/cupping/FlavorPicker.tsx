@@ -6,7 +6,8 @@ import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import {
   flavorChildren,
   flavorNodeById,
-  flavorGroupColor,
+  flavorNodeColor,
+  getContrastTextColor,
   type FlavorWheelNode,
 } from "@/lib/constants";
 import { resolveDescriptor, UNMAPPED_PREFIX, UNMAPPED_COLOR } from "@/lib/descriptors";
@@ -180,15 +181,15 @@ export function FlavorPicker({
           <div className="flex flex-wrap gap-1.5">
             {value.map((id) => {
               const info = resolveDescriptor(id, locale);
-              const color = info?.color ?? flavorGroupColor(id);
+              const color = info?.color ?? flavorNodeColor(id);
               return (
                 <button
                   key={id}
                   type="button"
                   onClick={() => toggle(id)}
                   aria-label={`${t.remove}: ${info?.label ?? id}`}
-                  className="inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[12px] font-medium text-bg"
-                  style={{ background: color }}
+                  className="inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[12px] font-medium"
+                  style={{ background: color, color: getContrastTextColor(color) }}
                 >
                   {info?.label ?? id}
                   <X size={12} aria-hidden />
@@ -360,7 +361,7 @@ export function FlavorPicker({
             const hasChildren = grandchildren.length > 0;
             const selectable = node.level >= 2; // L1 groups are navigation-only
             const isSel = value.includes(node.id);
-            const color = flavorGroupColor(node.id);
+            const color = flavorNodeColor(node.id);
             const disabled = selectable && !isSel && wouldExceedLimit(node.id);
 
             return (
@@ -377,6 +378,7 @@ export function FlavorPicker({
                     {
                       "--pill-color": color,
                       "--pill-bg-soft": `color-mix(in oklch, ${color} 10%, transparent)`,
+                      "--pill-text": getContrastTextColor(color),
                     } as React.CSSProperties
                   }
                 >

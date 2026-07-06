@@ -67,8 +67,23 @@ type RawLeaf = { key: string; es: string; en: string; syn?: string[] }
 type RawSub = { key: string; es: string; en: string; syn?: string[]; leaves?: RawLeaf[] }
 type RawGroup = { key: string; es: string; en: string; color: string; syn?: string[]; subs: RawSub[] }
 
+// Base hue per L1 group, matched to the real SCA/WCR Coffee Taster's Flavor Wheel
+// (there's no wheel image/asset in the repo to sample pixels from). Shared with the
+// Acidity/Sweetness/Mouthfeel CATA sets below so the whole app stays one palette.
+export const L1_GROUP_COLOR = {
+  floral: '#C2368F',
+  fruity: '#E0472E',
+  green_veg: '#4A8F5B',
+  nutty_cocoa: '#9C6B43',
+  spice: '#7A2638',
+  roasted: '#5C4632',
+  sweet: '#D4922E',
+  sour_fermented: '#C9A227',
+  other: '#6E8B94',
+} as const
+
 const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
-  { key: 'floral', es: 'Floral', en: 'Floral', color: '#C17817', subs: [
+  { key: 'floral', es: 'Floral', en: 'Floral', color: L1_GROUP_COLOR.floral, subs: [
     { key: 'black_tea', es: 'Té negro', en: 'Black Tea' },
     { key: 'floral', es: 'Floral', en: 'Floral', leaves: [
       { key: 'chamomile', es: 'Manzanilla', en: 'Chamomile' },
@@ -76,7 +91,7 @@ const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
       { key: 'rose',      es: 'Rosa',        en: 'Rose' },
     ] },
   ] },
-  { key: 'fruity', es: 'Frutal', en: 'Fruity', color: '#E8834A', subs: [
+  { key: 'fruity', es: 'Frutal', en: 'Fruity', color: L1_GROUP_COLOR.fruity, subs: [
     { key: 'berry', es: 'Bayas', en: 'Berry', leaves: [
       { key: 'blackberry', es: 'Mora',      en: 'Blackberry', syn: ['zarzamora'] },
       { key: 'blueberry',  es: 'Arándano',  en: 'Blueberry',  syn: ['arandano'] },
@@ -107,7 +122,7 @@ const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
   // ⚠ Green/Vegetal: Kim asked for fresco/seco/cocido instead of the wheel's
   // Beany/Green-Vegetative/Raw. The L3 distribution below is a proposed default
   // and needs Kim's sign-off before it is considered final.
-  { key: 'green_veg', es: 'Verde/Vegetal', en: 'Green/Vegetative', color: '#6B8F71', subs: [
+  { key: 'green_veg', es: 'Verde/Vegetal', en: 'Green/Vegetative', color: L1_GROUP_COLOR.green_veg, subs: [
     { key: 'fresh', es: 'Vegetal fresco', en: 'Fresh Vegetative', leaves: [
       { key: 'fresh',       es: 'Fresco',            en: 'Fresh' },
       { key: 'peapod',      es: 'Vaina de guisante', en: 'Peapod' },
@@ -127,7 +142,7 @@ const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
       { key: 'olive_oil', es: 'Aceite de oliva', en: 'Olive Oil' },
     ] },
   ] },
-  { key: 'nutty_cocoa', es: 'Nueces/Cacao', en: 'Nutty/Cocoa', color: '#8B7355', subs: [
+  { key: 'nutty_cocoa', es: 'Nueces/Cacao', en: 'Nutty/Cocoa', color: L1_GROUP_COLOR.nutty_cocoa, subs: [
     { key: 'cocoa', es: 'Cacao', en: 'Cocoa', leaves: [
       { key: 'chocolate',      es: 'Chocolate',        en: 'Chocolate', syn: ['cacao'] },
       { key: 'dark_chocolate', es: 'Chocolate amargo', en: 'Dark Chocolate', syn: ['chocolate negro', 'chocolate oscuro'] },
@@ -141,7 +156,7 @@ const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
   ] },
   // ⚠ Spices: keep Pungent/Pepper/Spicy as subgroups (extensible, no L3 on the
   // wheel yet) while applying Kim's Spanish labels. Needs Kim's sign-off.
-  { key: 'spice', es: 'Especiado', en: 'Spices', color: '#9B6B4A', subs: [
+  { key: 'spice', es: 'Especiado', en: 'Spices', color: L1_GROUP_COLOR.spice, subs: [
     { key: 'brown_spice', es: 'Especias dulces', en: 'Brown Spice', leaves: [
       { key: 'anise',       es: 'Anís',         en: 'Anise' },
       { key: 'brown_spice', es: 'Especia dulce', en: 'Brown Spice' },
@@ -153,7 +168,7 @@ const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
     { key: 'pepper',  es: 'Especias picantes',  en: 'Pepper' },
     { key: 'spicy',   es: 'Especiado picante',  en: 'Spicy' },
   ] },
-  { key: 'roasted', es: 'Tostado', en: 'Roasted', color: '#5C4A32', subs: [
+  { key: 'roasted', es: 'Tostado', en: 'Roasted', color: L1_GROUP_COLOR.roasted, subs: [
     { key: 'burnt', es: 'Quemado', en: 'Burnt', leaves: [
       { key: 'acrid',       es: 'Acre',        en: 'Acrid' },
       { key: 'ashy',        es: 'Ceniza',      en: 'Ashy' },
@@ -171,7 +186,7 @@ const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
       { key: 'tobacco',      es: 'Tabaco',          en: 'Tobacco' },
     ] },
   ] },
-  { key: 'sweet', es: 'Dulce', en: 'Sweet', color: '#B4874E', subs: [
+  { key: 'sweet', es: 'Dulce', en: 'Sweet', color: L1_GROUP_COLOR.sweet, subs: [
     { key: 'brown_sugar', es: 'Azúcar moreno', en: 'Brown Sugar', leaves: [
       { key: 'caramelized', es: 'Caramelizado',   en: 'Caramelized', syn: ['caramelo'] },
       { key: 'honey',       es: 'Miel',            en: 'Honey', syn: ['miel de abeja'] },
@@ -184,7 +199,7 @@ const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
       { key: 'vanillin',      es: 'Vainillina',    en: 'Vanillin' },
     ] },
   ] },
-  { key: 'sour_fermented', es: 'Ácido/Fermentado', en: 'Sour/Fermented', color: '#A83232', subs: [
+  { key: 'sour_fermented', es: 'Ácido/Fermentado', en: 'Sour/Fermented', color: L1_GROUP_COLOR.sour_fermented, subs: [
     { key: 'alcohol_fermented', es: 'Alcohol/Fermentado', en: 'Alcohol/Fermented', leaves: [
       { key: 'fermented', es: 'Fermentado', en: 'Fermented' },
       { key: 'overripe',  es: 'Sobremaduro', en: 'Overripe' },
@@ -200,7 +215,7 @@ const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
       { key: 'sour_aromatics', es: 'Aromáticos ácidos', en: 'Sour Aromatics' },
     ] },
   ] },
-  { key: 'other', es: 'Otros', en: 'Other', color: '#7A6E5F', subs: [
+  { key: 'other', es: 'Otros', en: 'Other', color: L1_GROUP_COLOR.other, subs: [
     { key: 'chemical', es: 'Químico', en: 'Chemical', leaves: [
       { key: 'bitter',    es: 'Amargo',    en: 'Bitter' },
       { key: 'medicinal', es: 'Medicinal', en: 'Medicinal' },
@@ -256,7 +271,77 @@ export function flavorChildren(parentId: string | null): FlavorWheelNode[] {
 export function flavorGroupColor(id: string): string {
   let node = FLAVOR_NODE_BY_ID.get(id)
   while (node && node.parentId) node = FLAVOR_NODE_BY_ID.get(node.parentId)
-  return node?.color ?? '#7A6E5F'
+  return node?.color ?? L1_GROUP_COLOR.other
+}
+
+// ---- Color math (no color library in the project — kept tiny and dependency-free) ----
+
+function hexToHsl(hex: string): [number, number, number] {
+  const r = parseInt(hex.slice(1, 3), 16) / 255
+  const g = parseInt(hex.slice(3, 5), 16) / 255
+  const b = parseInt(hex.slice(5, 7), 16) / 255
+  const max = Math.max(r, g, b), min = Math.min(r, g, b)
+  let h = 0
+  const l = (max + min) / 2
+  const d = max - min
+  const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1))
+  if (d !== 0) {
+    switch (max) {
+      case r: h = ((g - b) / d) % 6; break
+      case g: h = (b - r) / d + 2; break
+      default: h = (r - g) / d + 4
+    }
+    h *= 60
+    if (h < 0) h += 360
+  }
+  return [h, s, l]
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  const c = (1 - Math.abs(2 * l - 1)) * s
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1))
+  const m = l - c / 2
+  let r = 0, g = 0, b = 0
+  if (h < 60) [r, g, b] = [c, x, 0]
+  else if (h < 120) [r, g, b] = [x, c, 0]
+  else if (h < 180) [r, g, b] = [0, c, x]
+  else if (h < 240) [r, g, b] = [0, x, c]
+  else if (h < 300) [r, g, b] = [x, 0, c]
+  else [r, g, b] = [c, 0, x]
+  const toHex = (v: number) => Math.round((v + m) * 255).toString(16).padStart(2, '0')
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`
+}
+
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v))
+
+/**
+ * Derive a level-aware shade of an L1 base color so a whole flavor-wheel branch
+ * reads as one family with subtle depth: L1 = unchanged, L2 = a touch deeper/more
+ * saturated, L3 = a lighter tint (capped so it never gets light enough to break
+ * text contrast — see getContrastTextColor).
+ */
+export function shadeForLevel(hex: string, level: FlavorLevel): string {
+  if (level === 1) return hex
+  const [h, s, l] = hexToHsl(hex)
+  if (level === 2) return hslToHex(h, clamp01(s + 0.06), clamp01(l - 0.06))
+  return hslToHex(h, clamp01(s - 0.12), clamp01(Math.min(l + 0.16, 0.72)))
+}
+
+/** Climb to the L1 group like flavorGroupColor, but shade the result per the node's own level. */
+export function flavorNodeColor(id: string): string {
+  const node = FLAVOR_NODE_BY_ID.get(id)
+  const base = flavorGroupColor(id)
+  return node ? shadeForLevel(base, node.level) : base
+}
+
+/**
+ * Pick readable text color (dark brown or cream) for a solid pill fill, based on
+ * relative luminance — the same base color renders lighter at L3, so selected-state
+ * text can't always assume a light color reads well against it.
+ */
+export function getContrastTextColor(hex: string): string {
+  const [, , l] = hexToHsl(hex)
+  return l > 0.6 ? 'var(--color-brown-dark)' : 'var(--color-bg)'
 }
 
 /**
@@ -525,22 +610,22 @@ export const STEP_DESC_LABELS: Record<string, string> = {
    English IDs (stable in JSON), Spanish display labels.
    ============================================================ */
 export const ACIDITY_CATA = [
-  { id: "acidity:juicy",      label: "Jugosa",     color: "#A83232", subItems: [] as readonly { id: string; label: string }[] },
-  { id: "acidity:fruit_like", label: "Afrutada",   color: "#A83232", subItems: [] as readonly { id: string; label: string }[] },
-  { id: "acidity:bright",     label: "Brillante",  color: "#A83232", subItems: [] as readonly { id: string; label: string }[] },
-  { id: "acidity:tart",       label: "Astringente", color: "#A83232", subItems: [] as readonly { id: string; label: string }[] },
-  { id: "acidity:sharp",      label: "Aguda",      color: "#A83232", subItems: [] as readonly { id: string; label: string }[] },
-  { id: "acidity:winey",      label: "Vinosa",     color: "#A83232", subItems: [] as readonly { id: string; label: string }[] },
-  { id: "acidity:vinegary",   label: "Avinagrada", color: "#A83232", subItems: [] as readonly { id: string; label: string }[] },
-  { id: "acidity:herbal",     label: "Herbal",     color: "#A83232", subItems: [] as readonly { id: string; label: string }[] },
-  { id: "acidity:grassy",     label: "Herbácea",   color: "#A83232", subItems: [] as readonly { id: string; label: string }[] },
-  { id: "acidity:dry",        label: "Seca",       color: "#A83232", subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:juicy",      label: "Jugosa",     color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:fruit_like", label: "Afrutada",   color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:bright",     label: "Brillante",  color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:tart",       label: "Astringente", color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:sharp",      label: "Aguda",      color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:winey",      label: "Vinosa",     color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:vinegary",   label: "Avinagrada", color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:herbal",     label: "Herbal",     color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:grassy",     label: "Herbácea",   color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:dry",        label: "Seca",       color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
 ] as const;
 
 export const SWEETNESS_CATA = [
-  { id: "sweetness:vanilla",      label: "Vainilla", color: "#B4874E",
+  { id: "sweetness:vanilla",      label: "Vainilla", color: L1_GROUP_COLOR.sweet,
     subItems: [] },
-  { id: "sweetness:brown_sugar",  label: "Azúcar moreno", color: "#8B7355",
+  { id: "sweetness:brown_sugar",  label: "Azúcar moreno", color: L1_GROUP_COLOR.nutty_cocoa,
     subItems: [
       { id: "sweetness:honey",         label: "Miel" },
       { id: "sweetness:caramelized",   label: "Caramelizado" },
@@ -550,23 +635,23 @@ export const SWEETNESS_CATA = [
 ] as const;
 
 export const MOUTHFEEL_CATA = [
-  { id: "mouthfeel:rough",        label: "Rugoso", color: "#7A6E5F",
+  { id: "mouthfeel:rough",        label: "Rugoso", color: L1_GROUP_COLOR.other,
     subItems: [
       { id: "mouthfeel:gritty", label: "Granuloso" },
       { id: "mouthfeel:chalky", label: "Calcáreo" },
       { id: "mouthfeel:sandy",  label: "Arenoso" },
     ] },
-  { id: "mouthfeel:oily",         label: "Aceitoso", color: "#C17817",
+  { id: "mouthfeel:oily",         label: "Aceitoso", color: L1_GROUP_COLOR.floral,
     subItems: [] },
-  { id: "mouthfeel:smooth",       label: "Suave", color: "#6B8F71",
+  { id: "mouthfeel:smooth",       label: "Suave", color: L1_GROUP_COLOR.green_veg,
     subItems: [
       { id: "mouthfeel:velvety", label: "Aterciopelado" },
       { id: "mouthfeel:silky",   label: "Sedoso" },
       { id: "mouthfeel:syrupy",  label: "Almíbar" },
     ] },
-  { id: "mouthfeel:mouth_drying", label: "Astringente", color: "#A83232",
+  { id: "mouthfeel:mouth_drying", label: "Astringente", color: L1_GROUP_COLOR.sour_fermented,
     subItems: [] },
-  { id: "mouthfeel:metallic",     label: "Metálico", color: "#5C4A32",
+  { id: "mouthfeel:metallic",     label: "Metálico", color: L1_GROUP_COLOR.roasted,
     subItems: [] },
 ] as const;
 
