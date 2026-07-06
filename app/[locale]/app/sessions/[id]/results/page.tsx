@@ -489,7 +489,7 @@ export default async function ResultsPage({
             affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
             combined: (ev?.combinedData as Record<string, unknown>) ?? {},
             physical: (s.physical?.data as Record<string, unknown>) ?? {},
-            extrinsic: (s.extrinsic?.data as Record<string, unknown>) ?? {},
+            extrinsic: s.revealed ? ((s.extrinsic?.data as Record<string, unknown>) ?? {}) : {},
             aggregateScore,
           };
         }),

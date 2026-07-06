@@ -156,6 +156,16 @@ export function normalizeDescriptorId(id: string): { id: string; note?: string }
   return { id };
 }
 
+/**
+ * If `id` is a retired descriptor kept in LEGACY_DESCRIPTOR_LABELS, return its
+ * stand-in color family id (e.g. "mouthfeel:gritty" → "mouthfeel:rough"), so
+ * callers can attribute a historical selection to the right CATA group without
+ * exposing the raw map. Returns null for non-legacy ids.
+ */
+export function legacyDescriptorFamily(id: string): string | null {
+  return LEGACY_DESCRIPTOR_LABELS[id]?.colorFamilyId ?? null;
+}
+
 export function resolveDescriptor(
   id: string,
   locale: "es" | "en" = "es"

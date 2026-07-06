@@ -1,6 +1,7 @@
 'use client'
 import styles from './CATAPills.module.css'
 import { shadeForLevel, getContrastTextColor } from '@/lib/constants'
+import { resolveDescriptor } from '@/lib/descriptors'
 
 export interface CATASubItem {
   id: string
@@ -46,6 +47,22 @@ export function CATAPills({ options, selected, onChange, maxSelect, showSubItems
   }
   const effectiveCount = selected.filter(isCountedSelection).length
   const atLimit = maxSelect !== undefined && effectiveCount >= maxSelect
+
+  // Selected ids that exist in neither `options` nor any `subItems` are retired
+  // ids from old drafts (e.g. mouthfeel:gritty). They still count toward the
+  // limit via isCountedSelection but render nowhere and can never be removed,
+  // permanently locking the picker. Surface them as removable "legacy" pills.
+  const knownIds = new Set<string>()
+  for (const o of options) {
+    knownIds.add(o.id)
+    for (const s of o.subItems ?? []) knownIds.add(s.id)
+  }
+  const legacyIds = selected.filter((id) => !knownIds.has(id))
+
+  function removeLegacy(id: string) {
+    if (disabled) return
+    onChange(selected.filter((s) => s !== id))
+  }
 
   function toggle(id: string) {
     if (disabled) return
@@ -135,6 +152,33 @@ export function CATAPills({ options, selected, onChange, maxSelect, showSubItems
                   })}
                 </div>
               )}
+            </div>
+          )
+        })}
+
+        {legacyIds.map((id) => {
+          const resolved = resolveDescriptor(id)
+          const legacyLabel = resolved?.label ?? id
+          const legacyColor = resolved?.color ?? '#8A7A6A'
+          return (
+            <div key={id} className={styles.family}>
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => removeLegacy(id)}
+                aria-pressed={true}
+                className={`${styles.pill} ${styles.selected}`}
+                style={
+                  {
+                    '--pill-color': legacyColor,
+                    '--pill-bg-soft': `color-mix(in oklch, ${legacyColor} 10%, transparent)`,
+                    '--pill-text': getContrastTextColor(legacyColor),
+                  } as React.CSSProperties
+                }
+              >
+                <span className={styles.dot} />
+                {legacyLabel}
+              </button>
             </div>
           )
         })}

@@ -75,21 +75,32 @@ export function summarizeBlock(block: SummaryBlock, locale: Locale): BlockSenten
   const majority = descriptors.filter((d) => d.count / total >= MAJORITY_THRESHOLD);
 
   if (majority.length > 0) {
-    // All majority descriptors share the same denominator; lead with the top
-    // one's percentage for a single, readable headline figure.
+    // Majority descriptors can have DIFFERENT counts (e.g. 4/4 chocolate +
+    // 2/4 caramelo). Leading with the top count would overstate agreement for
+    // the lesser ones, so frame with the MINIMUM count among the listed
+    // descriptors ("Al menos el X%…"). When every listed count is equal, keep
+    // the exact "El X%…" phrasing since no overstatement is possible.
     const labels = majority.map((d) => d.label);
-    const top = majority[0];
-    const p = pct(top.count, total);
+    const counts = majority.map((d) => d.count);
+    const minCount = Math.min(...counts);
+    const allEqual = counts.every((c) => c === minCount);
+    const p = pct(minCount, total);
     const list = joinList(labels, locale);
     if (locale === "en") {
+      const lead = allEqual
+        ? `${p}% of cuppers (${minCount} of ${total})`
+        : `At least ${p}% of cuppers (${minCount} of ${total})`;
       return {
         blockId: block.id,
-        text: `${p}% of cuppers (${top.count} of ${total}) noted in ${label.toLowerCase()}: ${list}.`,
+        text: `${lead} found in ${label.toLowerCase()}: ${list}.`,
       };
     }
+    const lead = allEqual
+      ? `El ${p}% de los catadores (${minCount} de ${total})`
+      : `Al menos el ${p}% de los catadores (${minCount} de ${total})`;
     return {
       blockId: block.id,
-      text: `El ${p}% de los catadores (${top.count} de ${total}) encontró en ${label.toLowerCase()}: ${list}.`,
+      text: `${lead} encontró en ${label.toLowerCase()}: ${list}.`,
     };
   }
 

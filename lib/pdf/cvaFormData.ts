@@ -22,7 +22,7 @@ import {
   type FlavorWheelNode,
   type SensoryDefect,
 } from "@/lib/constants";
-import { resolveDescriptor, normalizeDescriptorId } from "@/lib/descriptors";
+import { resolveDescriptor, normalizeDescriptorId, legacyDescriptorFamily } from "@/lib/descriptors";
 import { calcIndividualBreakdown, isAffectiveComplete } from "@/lib/scoring";
 
 export type Locale = "es" | "en";
@@ -296,18 +296,37 @@ export function buildCataGroups(
   const groupOfSub = new Map<string, string>();
   for (const g of set) for (const s of g.subItems) groupOfSub.set(s.id, g.id);
 
-  const groupChecked = new Set<string>();
-  for (const id of selected) {
-    if (set.some((g) => g.id === id)) groupChecked.add(id);
-    const parent = groupOfSub.get(id);
-    if (parent) groupChecked.add(parent);
-  }
-
   const groupNotes = new Map<string, string[]>();
   const groupOfAny = (id: string): string => {
     if (set.some((g) => g.id === id)) return id;
     return groupOfSub.get(id) ?? set[0]?.id ?? id;
   };
+
+  const groupChecked = new Set<string>();
+  for (const id of selected) {
+    const isGroup = set.some((g) => g.id === id);
+    if (isGroup) groupChecked.add(id);
+    const parent = groupOfSub.get(id);
+    if (parent) groupChecked.add(parent);
+    // Retired ids (e.g. acidity:juicy, mouthfeel:gritty) live in neither the
+    // current group nor sub sets. Mirror buildFlavorGroups: resolve the label
+    // and ride it on a group's notes line so historical selections survive.
+    if (!isGroup && !parent) {
+      const resolved = resolveDescriptor(id, locale);
+      if (resolved) {
+        const famId = legacyDescriptorFamily(id);
+        const gid =
+          (famId && set.some((g) => g.id === famId) ? famId : null) ??
+          set[0]?.id ??
+          id;
+        groupChecked.add(gid);
+        const list = groupNotes.get(gid) ?? [];
+        list.push(resolved.label);
+        groupNotes.set(gid, list);
+      }
+    }
+  }
+
   for (const [nodeId, terms] of Object.entries(qualNotes)) {
     if (!Array.isArray(terms) || terms.length === 0) continue;
     const gid = groupOfAny(nodeId);
