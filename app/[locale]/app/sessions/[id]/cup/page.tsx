@@ -200,6 +200,7 @@ export default async function CupPage({
           dulzor_af: t("attributes.dulzor_af"),
           sensacion_af: t("attributes.sensacion_af"),
           impresion_global: t("attributes.impresion_global"),
+          gustos: t("attributes.gustos"),
         },
         guard: {
           nextTitle: t("cupping.guard.nextTitle"),

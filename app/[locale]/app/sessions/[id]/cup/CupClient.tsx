@@ -238,6 +238,10 @@ export function CupClient({
     kind: "next" | "submit";
     items: GuardItem[];
   } | null>(null);
+  // Sample+step combos ("sampleId:step") that have already triggered a guard —
+  // once flagged, the inline * / red indicator stays visible on that section
+  // (even if the user reviews or continues anyway) until the field is filled.
+  const [flaggedSteps, setFlaggedSteps] = useState<Set<string>>(new Set());
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
@@ -530,6 +534,11 @@ export function CupClient({
         ? stepMissing(samples[sampleIdx], currentStep, guardFormat)
         : [];
     if (missing.length > 0) {
+      setFlaggedSteps((prev) => {
+        const next = new Set(prev);
+        next.add(`${samples[sampleIdx].id}:${currentStep}`);
+        return next;
+      });
       setGuard({
         kind: "next",
         items: [{ sections: sectionLabels(missing) }],
@@ -577,6 +586,19 @@ export function CupClient({
     if (guard) return;
     const gaps = sessionMissing(samples, stepsForFormat, guardFormat);
     if (gaps.length > 0) {
+      // Flag every sample+step combo that has a gap so revisiting any of them
+      // shows the inline indicator, not just the current one.
+      setFlaggedSteps((prev) => {
+        const next = new Set(prev);
+        for (const sample of samples) {
+          for (const step of stepsForFormat) {
+            if (stepMissing(sample, step, guardFormat).length > 0) {
+              next.add(`${sample.id}:${step}`);
+            }
+          }
+        }
+        return next;
+      });
       setGuard({
         kind: "submit",
         items: gaps.map((g) => ({
@@ -625,6 +647,12 @@ export function CupClient({
 
   // ─── Derived state ────────────────────────────────────────────
   const current = samples[sampleIdx];
+
+  // Live-recomputed on every render so a flag clears the instant the field is
+  // filled in; only shown once flaggedSteps has "seen" this sample+step combo.
+  const currentMissingIds = flaggedSteps.has(`${current.id}:${currentStep}`)
+    ? stepMissing(current, currentStep, guardFormat)
+    : [];
 
   const handleSaveSampleMetadata = async (data: SampleMetadataFormData) => {
     await updateSampleMetadata(current.id, data);
@@ -1039,6 +1067,7 @@ export function CupClient({
             onChange={(d) => setCurrentData("descriptive", d)}
             currentStep={currentStep}
             locale={locale === "en" ? "en" : "es"}
+            missingIds={currentMissingIds}
           />
         )}
         {activeTab === "cupping" && session.format === "affective" && (
@@ -1047,6 +1076,7 @@ export function CupClient({
             onChange={(d) => setCurrentData("affective", d)}
             cupsPerSample={session.cupsPerSample}
             currentStep={currentStep}
+            missingIds={currentMissingIds}
           />
         )}
         {activeTab === "cupping" &&
@@ -1058,6 +1088,7 @@ export function CupClient({
               cupsPerSample={session.cupsPerSample}
               currentStep={currentStep}
               locale={locale === "en" ? "en" : "es"}
+              missingIds={currentMissingIds}
             />
           )}
         {activeTab === "extrinsic" && (

@@ -179,7 +179,8 @@
     "acidez_af": "Acidity",
     "dulzor_af": "Sweetness",
     "sensacion_af": "Mouthfeel",
-    "impresion_global": "Overall"
+    "impresion_global": "Overall",
+    "gustos": "Predominant tastes"
   },
   "descriptors": {
     "viewAll": "View all",

@@ -6,6 +6,7 @@ import {
   MOUTHFEEL_CATA,
   MAIN_TASTES,
   STEP_CATA_MAX,
+  STEP_ATTRIBUTES,
   type CuppingStep,
 } from "@/lib/constants";
 import {
@@ -51,13 +52,25 @@ export function DescriptiveForm({
   onChange,
   currentStep,
   locale = "es",
+  missingIds,
 }: {
   sampleData: Data;
   onChange: (d: Data) => void;
   currentStep: CuppingStep;
   locale?: "es" | "en";
+  /** affectiveIds (from lib/completeness) still missing on this step; drives the * / red flag. */
+  missingIds?: string[];
 }) {
   const d = sampleData;
+  // This form is keyed by descriptiveId ("fragancia", "sabor"…), not affectiveId —
+  // resolve via STEP_ATTRIBUTES so the same missingIds prop works across forms.
+  const isFlagged = (descriptiveId: string): boolean => {
+    if (descriptiveId === "gustos") return missingIds?.includes("gustos") ?? false;
+    const attr = STEP_ATTRIBUTES[currentStep].find(
+      (a) => a.descriptiveId === descriptiveId
+    );
+    return attr ? (missingIds?.includes(attr.affectiveId) ?? false) : false;
+  };
   const set = (key: string, val: unknown) => onChange({ ...d, [key]: val });
   const num = (k: string): number | null => (d[k] as number | undefined) ?? null;
   const arr = (k: string): string[] => (d[k] as string[] | undefined) ?? [];
@@ -82,7 +95,7 @@ export function DescriptiveForm({
     title: string,
     options: CATAOption[] | null,
   ) => (
-    <FormSection key={id} title={title} accent>
+    <FormSection key={id} title={title} accent flagged={isFlagged(id)}>
       <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-6">
         {/* Left: intensity + descriptors */}
         <div className="min-w-0">
@@ -137,7 +150,7 @@ export function DescriptiveForm({
       <div>
         {renderBlock("sabor", "Sabor", null)}
         {renderBlock("sabor_residual", "Sabor Residual (Regusto)", null)}
-        <FormSection title="Gustos Predominantes" accent>
+        <FormSection title="Gustos Predominantes" accent flagged={isFlagged("gustos")}>
           <div className="text-[11px] text-brown-mid mb-2">
             Selecciona hasta 2 sabores principales
           </div>

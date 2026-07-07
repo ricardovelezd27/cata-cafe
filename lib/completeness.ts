@@ -68,6 +68,14 @@ export function stepMissing(
     if (ratingMissing || descriptiveMissing) missing.push(affectiveId);
   }
 
+  // "Gustos Predominantes" (main tastes) is a standalone CATA field rendered
+  // alongside sabor/sabor_residual in taste_aftertaste — not paired with an
+  // affectiveId in STEP_ATTRIBUTES, and not present in the pure-affective form.
+  if (step === "taste_aftertaste" && format !== "affective") {
+    const bucket = format === "descriptive" ? data.descriptive : data.combined;
+    if (!hasDescriptors(bucket.gustos)) missing.push("gustos");
+  }
+
   return missing;
 }
 
