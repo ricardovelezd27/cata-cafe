@@ -1,8 +1,9 @@
 "use client";
 
 import { calcIndividualBreakdown, calcIndividualScore } from "@/lib/scoring";
-import { resolveDescriptor } from "@/lib/descriptors";
+import { resolveDescriptor, resolveMainTaste } from "@/lib/descriptors";
 import { ScoreBreakdownPanel } from "@/components/results/ScoreBreakdownPanel";
+import { ExtrinsicSummary } from "@/components/results/ExtrinsicSummary";
 
 type SampleResult = {
   id: string;
@@ -12,25 +13,58 @@ type SampleResult = {
   descriptive: Record<string, unknown>;
   affective: Record<string, unknown>;
   combined: Record<string, unknown>;
+  extrinsic?: Record<string, unknown>;
 };
 
 
-/* Attribute rows in SCA CVA order. */
-const ATTR_ROWS = [
-  { descId: "fragancia", affId: "fragancia_af", key: "fragrance" },
-  { descId: "aroma", affId: "aroma_af", key: "aroma" },
-  { descId: "sabor", affId: "sabor_af", key: "flavor" },
-  { descId: "sabor_residual", affId: "sabor_residual_af", key: "aftertaste" },
-  { descId: "acidez", affId: "acidez_af", key: "acidity" },
-  { descId: "dulzor", affId: "dulzor_af", key: "sweetness" },
-  { descId: "sensacion", affId: "sensacion_af", key: "mouthfeel" },
-] as const;
+/* Attribute rows grouped into the N15 perceptual blocks, in block order:
+   Nariz / Boca / Gusto predominante / Acidez / Dulzura / Sensación. Per-attribute
+   rows are preserved (intensity/quality chips keyed by their underlying attribute)
+   but presented under a block heading. The Gusto block is a single taste row. */
+type AttrRow = { descId: string; affId: string; key: LabelKey };
+type Block = { id: string; labelKey: LabelKey; rows: AttrRow[]; taste?: boolean };
+
+const BLOCKS: Block[] = [
+  {
+    id: "nariz",
+    labelKey: "nariz",
+    rows: [
+      { descId: "fragancia", affId: "fragancia_af", key: "fragrance" },
+      { descId: "aroma", affId: "aroma_af", key: "aroma" },
+    ],
+  },
+  {
+    id: "boca",
+    labelKey: "boca",
+    rows: [
+      { descId: "sabor", affId: "sabor_af", key: "flavor" },
+      { descId: "sabor_residual", affId: "sabor_residual_af", key: "aftertaste" },
+    ],
+  },
+  { id: "gusto", labelKey: "gusto", taste: true, rows: [] },
+  {
+    id: "acidez",
+    labelKey: "acidezBlock",
+    rows: [{ descId: "acidez", affId: "acidez_af", key: "acidity" }],
+  },
+  {
+    id: "dulzura",
+    labelKey: "dulzura",
+    rows: [{ descId: "dulzor", affId: "dulzor_af", key: "sweetness" }],
+  },
+  {
+    id: "sensacion",
+    labelKey: "sensacionBlock",
+    rows: [{ descId: "sensacion", affId: "sensacion_af", key: "mouthfeel" }],
+  },
+];
 
 type LabelKey =
   | "fragrance" | "aroma" | "flavor" | "aftertaste"
   | "acidity" | "sweetness" | "mouthfeel" | "overall"
   | "intensity" | "quality" | "notes" | "cvaScore"
-  | "edit" | "noData";
+  | "edit" | "noData"
+  | "nariz" | "boca" | "gusto" | "acidezBlock" | "dulzura" | "sensacionBlock";
 
 const LABELS: Record<"es" | "en", Record<LabelKey, string>> = {
   es: {
@@ -38,12 +72,16 @@ const LABELS: Record<"es" | "en", Record<LabelKey, string>> = {
     acidity: "Acidez", sweetness: "Dulzor", mouthfeel: "Sensación", overall: "Global",
     intensity: "Intensidad", quality: "Calidad", notes: "Notas", cvaScore: "Puntaje CVA",
     edit: "Editar", noData: "Sin evaluación registrada",
+    nariz: "Nariz", boca: "Boca", gusto: "Gusto predominante",
+    acidezBlock: "Acidez", dulzura: "Dulzura", sensacionBlock: "Sensación en boca",
   },
   en: {
     fragrance: "Fragrance", aroma: "Aroma", flavor: "Flavor", aftertaste: "Aftertaste",
     acidity: "Acidity", sweetness: "Sweetness", mouthfeel: "Mouthfeel", overall: "Overall",
     intensity: "Intensity", quality: "Quality", notes: "Notes", cvaScore: "CVA Score",
     edit: "Edit", noData: "No evaluation recorded",
+    nariz: "Nose", boca: "Mouth", gusto: "Predominant taste",
+    acidezBlock: "Acidity", dulzura: "Sweetness", sensacionBlock: "Mouthfeel",
   },
 };
 
@@ -55,6 +93,44 @@ function num(data: Record<string, unknown>, key: string): number | null {
 function descriptorIds(data: Record<string, unknown>, descId: string): string[] {
   const v = data[`${descId}_desc`];
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+}
+
+function tasteIds(data: Record<string, unknown>): string[] {
+  const v = data["gustos"];
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+}
+
+function TastePills({ ids, locale }: { ids: string[]; locale: "es" | "en" }) {
+  if (ids.length === 0) {
+    return <span style={{ color: "#C8C0B0", fontSize: 12 }}>—</span>;
+  }
+  return (
+    <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 4 }}>
+      {ids.map((id) => {
+        const info = resolveMainTaste(id, locale);
+        if (!info) return null;
+        return (
+          <span
+            key={id}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              padding: "3px 11px",
+              borderRadius: 999,
+              backgroundColor: info.color,
+              color: "#fff",
+              fontSize: 11,
+              fontWeight: 500,
+              lineHeight: 1.4,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {info.label}
+          </span>
+        );
+      })}
+    </span>
+  );
 }
 
 function DescriptorPills({ ids, locale }: { ids: string[]; locale: "es" | "en" }) {
@@ -231,30 +307,67 @@ export function MyResultsSummary({
               )}
             </div>
 
+            {/* Extrinsic data (origin/process/trade), same reveal rule as coffee identity */}
+            {sample.revealed && sample.extrinsic && (
+              <ExtrinsicSummary data={sample.extrinsic} />
+            )}
+
             {!filled ? (
               <div style={{ fontSize: 12, color: "#C8C0B0", padding: "8px 0" }}>{t.noData}</div>
             ) : (
               <>
-                {/* Attribute rows */}
+                {/* Attribute rows, grouped under perceptual-block headings */}
                 <div>
-                  {ATTR_ROWS.map((row) => {
-                    const intensity = showDescriptive ? num(data, `${row.descId}_int`) : null;
-                    const quality = showAffective ? num(data, `${row.affId}_final`) : null;
-                    const ids = showDescriptive ? descriptorIds(data, row.descId) : [];
+                  {BLOCKS.map((block) => {
+                    // Gusto predominante is descriptive-only; hide it for affective.
+                    if (block.taste && !showDescriptive) return null;
+                    const tasteSelected = block.taste ? tasteIds(data) : [];
                     return (
-                      <div key={row.key} style={rowStyle}>
-                        <span style={attrLabel}>{t[row.key as LabelKey]}</span>
-                        <span style={{ minWidth: 0 }}>
-                          {showDescriptive ? (
-                            <DescriptorPills ids={ids} locale={locale === "en" ? "en" : "es"} />
-                          ) : (
-                            <span style={{ color: "#C8C0B0", fontSize: 12 }}>—</span>
-                          )}
-                        </span>
-                        <span style={{ display: "inline-flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
-                          {showDescriptive && <StatChip label={t.intensity} value={intensity} />}
-                          {showAffective && <StatChip label={t.quality} value={quality} />}
-                        </span>
+                      <div key={block.id}>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.09em",
+                            color: "#8B7355",
+                            marginTop: 12,
+                            marginBottom: 2,
+                          }}
+                        >
+                          {t[block.labelKey]}
+                        </div>
+                        {block.taste ? (
+                          <div style={rowStyle}>
+                            <span style={attrLabel}>{t.gusto}</span>
+                            <span style={{ minWidth: 0 }}>
+                              <TastePills ids={tasteSelected} locale={locale === "en" ? "en" : "es"} />
+                            </span>
+                            <span />
+                          </div>
+                        ) : (
+                          block.rows.map((row) => {
+                            const intensity = showDescriptive ? num(data, `${row.descId}_int`) : null;
+                            const quality = showAffective ? num(data, `${row.affId}_final`) : null;
+                            const ids = showDescriptive ? descriptorIds(data, row.descId) : [];
+                            return (
+                              <div key={row.key} style={rowStyle}>
+                                <span style={attrLabel}>{t[row.key]}</span>
+                                <span style={{ minWidth: 0 }}>
+                                  {showDescriptive ? (
+                                    <DescriptorPills ids={ids} locale={locale === "en" ? "en" : "es"} />
+                                  ) : (
+                                    <span style={{ color: "#C8C0B0", fontSize: 12 }}>—</span>
+                                  )}
+                                </span>
+                                <span style={{ display: "inline-flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
+                                  {showDescriptive && <StatChip label={t.intensity} value={intensity} />}
+                                  {showAffective && <StatChip label={t.quality} value={quality} />}
+                                </span>
+                              </div>
+                            );
+                          })
+                        )}
                       </div>
                     );
                   })}

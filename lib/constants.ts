@@ -113,7 +113,7 @@ const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
       { key: 'cherry',      es: 'Cereza',  en: 'Cherry' },
       { key: 'coconut',     es: 'Coco',    en: 'Coconut' },
       { key: 'grape',       es: 'Uva',     en: 'Grape' },
-      { key: 'peach',       es: 'Durazno', en: 'Peach' },
+      { key: 'peach',       es: 'Durazno', en: 'Peach', syn: ['melocotón'] },
       { key: 'pear',        es: 'Pera',    en: 'Pear' },
       { key: 'pineapple',   es: 'Piña',    en: 'Pineapple' },
       { key: 'pomegranate', es: 'Granada', en: 'Pomegranate' },
@@ -388,7 +388,7 @@ export type FlavorFamilyId = string
    NEW: Mouthfeel CATA (flat list)
    ============================================================ */
 export const MOUTHFEEL_OPTIONS = [
-  { id: 'rough',        label: 'Rugoso (Granuloso, Calcáreo, Arenoso)' },
+  { id: 'rough',        label: 'Áspero (Arenoso, Rugoso, Rasposo)' },
   { id: 'oily',         label: 'Aceitoso' },
   { id: 'smooth',       label: 'Suave (Aterciopelado, Sedoso, Almíbar)' },
   { id: 'mouth_drying', label: 'Astringente (Boca Seca)' },
@@ -610,36 +610,48 @@ export const STEP_DESC_LABELS: Record<string, string> = {
    English IDs (stable in JSON), Spanish display labels.
    ============================================================ */
 export const ACIDITY_CATA = [
-  { id: "acidity:juicy",      label: "Jugosa",     color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
-  { id: "acidity:fruit_like", label: "Afrutada",   color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
-  { id: "acidity:bright",     label: "Brillante",  color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
-  { id: "acidity:tart",       label: "Astringente", color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
-  { id: "acidity:sharp",      label: "Aguda",      color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
-  { id: "acidity:winey",      label: "Vinosa",     color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
-  { id: "acidity:vinegary",   label: "Avinagrada", color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
-  { id: "acidity:herbal",     label: "Herbal",     color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
-  { id: "acidity:grassy",     label: "Herbácea",   color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
-  { id: "acidity:dry",        label: "Seca",       color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
+  // Acidity triangle
+  { id: "acidity:winey",    label: "Vinoso",    color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:bright",   label: "Brillante", color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:pungent",  label: "Picante",   color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:neutral",  label: "Neutral",   color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:mellow",   label: "Meloso",    color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:soft",     label: "Suave",     color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
+  // Acid types
+  { id: "acidity:citric",   label: "Ácido cítrico",   color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:malic",    label: "Ácido málico",    color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:lactic",   label: "Ácido láctico",   color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
+  { id: "acidity:tartaric", label: "Ácido tartárico", color: L1_GROUP_COLOR.sour_fermented, subItems: [] as readonly { id: string; label: string }[] },
 ] as const;
 
 export const SWEETNESS_CATA = [
-  { id: "sweetness:vanilla",      label: "Vainilla", color: L1_GROUP_COLOR.sweet,
-    subItems: [] },
-  { id: "sweetness:brown_sugar",  label: "Azúcar moreno", color: L1_GROUP_COLOR.nutty_cocoa,
+  { id: "sweetness:brown_sugar", label: "Dulzura tipo azúcar moreno", color: L1_GROUP_COLOR.nutty_cocoa,
     subItems: [
       { id: "sweetness:honey",         label: "Miel" },
       { id: "sweetness:caramelized",   label: "Caramelizado" },
       { id: "sweetness:maple_syrup",   label: "Sirope de arce" },
       { id: "sweetness:molasses",      label: "Melaza" },
+      { id: "sweetness:vanilla",       label: "Vainilla" },
+    ] },
+  { id: "sweetness:fruity", label: "Dulzura tipo frutal", color: L1_GROUP_COLOR.fruity,
+    subItems: [
+      { id: "sweetness:ripe_fruit",    label: "Fruta madura" },
+      { id: "sweetness:fresh_fruit",   label: "Fruta fresca" },
+      { id: "sweetness:unripe_fruit",  label: "Fruta inmadura" },
+    ] },
+  { id: "sweetness:vegetal", label: "Dulzura tipo vegetal", color: L1_GROUP_COLOR.green_veg,
+    subItems: [
+      { id: "sweetness:ripe_vegetal",   label: "Vegetales maduros" },
+      { id: "sweetness:unripe_vegetal", label: "Vegetales inmaduros" },
     ] },
 ] as const;
 
 export const MOUTHFEEL_CATA = [
-  { id: "mouthfeel:rough",        label: "Rugoso", color: L1_GROUP_COLOR.other,
+  { id: "mouthfeel:rough",        label: "Áspero", color: L1_GROUP_COLOR.other,
     subItems: [
-      { id: "mouthfeel:gritty", label: "Granuloso" },
-      { id: "mouthfeel:chalky", label: "Calcáreo" },
       { id: "mouthfeel:sandy",  label: "Arenoso" },
+      { id: "mouthfeel:rugged", label: "Rugoso" },
+      { id: "mouthfeel:raspy",  label: "Rasposo" },
     ] },
   { id: "mouthfeel:oily",         label: "Aceitoso", color: L1_GROUP_COLOR.floral,
     subItems: [] },

@@ -14,6 +14,8 @@ export type ModuleItem = {
    */
   isAction?: boolean;
   disabled?: boolean;
+  /** Optional trailing badge (e.g. a "Beta" pill) rendered next to the label. */
+  badge?: ReactNode;
 };
 
 interface ModuleSwitcherProps {
@@ -48,6 +50,7 @@ export function ModuleSwitcher({
                   {m.icon}
                 </span>
                 <span className={styles.label}>{m.label}</span>
+                {m.badge}
                 {m.isAction && (
                   <span className={styles.chevron} aria-hidden>
                     →

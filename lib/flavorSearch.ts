@@ -31,7 +31,7 @@ export type FlavorMatch = {
 };
 
 /** NFD-strip diacritics + lowercase so "limon" matches "Limón". */
-function norm(s: string): string {
+export function norm(s: string): string {
   return s
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
@@ -91,6 +91,59 @@ const fuse = new Fuse(INDEX, {
 /** Leaves (L3) rank ahead of inner rings within the same match strength. */
 function levelBias(level: FlavorLevel): number {
   return level === 3 ? 0 : level === 2 ? 0.4 : 0.8;
+}
+
+/** Spanish/English filler tokens ignored in multi-word token matching. */
+const STOPWORDS = new Set([
+  "de", "del", "la", "el", "los", "las", "y", "o", "con", "un", "una",
+  "of", "the", "and", "or", "with", "a",
+]);
+
+/** Significant tokens (≥3 chars, non-stopword) of a normalized string. */
+function tokens(n: string): string[] {
+  return n
+    .split(/[^a-z0-9]+/)
+    .filter((tk) => tk.length >= 3 && !STOPWORDS.has(tk));
+}
+
+/** Length of the shared leading prefix of two strings. */
+function commonPrefixLen(a: string, b: string): number {
+  const n = Math.min(a.length, b.length);
+  let i = 0;
+  while (i < n && a[i] === b[i]) i++;
+  return i;
+}
+
+/**
+ * Do two significant tokens refer to the same word? True on exact/prefix overlap
+ * or a long shared stem — the latter tolerates Spanish gender/number inflection
+ * ("deshidratado" vs "deshidratada", "seco" vs "seca") where the tokens differ
+ * only in their trailing letter.
+ */
+function tokensAlike(a: string, b: string): boolean {
+  if (a === b || a.startsWith(b) || b.startsWith(a)) return true;
+  const shared = commonPrefixLen(a, b);
+  const maxLen = Math.max(a.length, b.length);
+  // Share nearly the whole (long) word: allow a single differing trailing char.
+  return shared >= 4 && shared >= maxLen - 1;
+}
+
+/**
+ * Token-level match: does any significant query token match a significant token
+ * of the entry's label or a synonym (exact, prefix, or shared stem)? Handles
+ * multi-word queries like "plátano deshidratado" where the full string never
+ * appears as a substring but "deshidratado"/"deshidratada" tokens overlap.
+ * Weaker than any direct match.
+ */
+function tokenMatch(e: IndexEntry, queryTokens: string[]): boolean {
+  if (queryTokens.length === 0) return false;
+  const entryTokens = [
+    ...tokens(e.n_es),
+    ...tokens(e.n_en),
+    ...e.n_syn.flatMap(tokens),
+  ];
+  if (entryTokens.length === 0) return false;
+  return queryTokens.some((qt) => entryTokens.some((et) => tokensAlike(et, qt)));
 }
 
 /**
@@ -155,6 +208,20 @@ export function searchFlavors(
       const matchType =
         e.level < 3 && m.matchType !== "synonym" ? "parent" : m.matchType;
       consider(e, m.rank + levelBias(e.level), matchType);
+    }
+  }
+
+  // Token-level matches: multi-word queries whose whole tokens overlap a node's
+  // tokens ("plátano deshidratado" → "Fruta deshidratada"). Ranks between
+  // substring (3/4) and fuzzy (5). Only meaningful for multi-token queries.
+  const qTokens = tokens(q);
+  if (qTokens.length >= 1) {
+    for (const e of INDEX) {
+      if (scored.has(e.id)) continue; // a direct match already covers it, stronger
+      if (tokenMatch(e, qTokens)) {
+        const matchType: FlavorMatchType = e.level < 3 ? "parent" : "fuzzy";
+        consider(e, 4.5 + levelBias(e.level), matchType);
+      }
     }
   }
 

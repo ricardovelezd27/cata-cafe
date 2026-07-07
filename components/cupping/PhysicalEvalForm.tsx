@@ -8,7 +8,7 @@ import {
   getRatio,
   type DefectRow,
 } from "@/lib/constants";
-import { FormSection } from "@/components/ui";
+import { FormSection, BetaBadge } from "@/components/ui";
 
 type Data = Record<string, unknown>;
 
@@ -90,6 +90,13 @@ export function PhysicalEvalForm({
 
   return (
     <div>
+      <div className="flex items-center gap-2 mb-1">
+        <h2 className="font-display text-lg text-brown-dark">Evaluación física</h2>
+        <BetaBadge />
+      </div>
+      <div className="text-xs text-brown-mid mb-3">
+        No aplica todavía — sección en desarrollo
+      </div>
       <div className="text-[11px] text-brown-mid mb-4 p-3 bg-cream rounded-sm text-center italic">
         Con base en una muestra de 350g
       </div>

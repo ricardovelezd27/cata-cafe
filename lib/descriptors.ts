@@ -2,6 +2,7 @@ import {
   ACIDITY_CATA,
   SWEETNESS_CATA,
   MOUTHFEEL_CATA,
+  MAIN_TASTES,
   L1_GROUP_COLOR,
   flavorNodeById,
   flavorNodeColor,
@@ -42,6 +43,46 @@ export const DESCRIPTOR_STAGES = [
 
 export type DescriptorStageId = (typeof DESCRIPTOR_STAGES)[number]["id"];
 
+/**
+ * Perceptual blocks — the results-view grouping (N15). Each block aggregates one
+ * or more raw stages, deduped PER CUPPER inside the block (so a cupper who picks
+ * "chocolate" in both fragancia and aroma counts once for "chocolate" in Nariz).
+ *
+ * - `descKeys` — the evaluation JSON array keys unioned into the block. The
+ *   special `gustos` block carries an empty `descKeys` and is resolved from the
+ *   `gustos` key against MAIN_TASTES instead of the flavor wheel.
+ * - `kind`     — `"desc"` blocks resolve via resolveDescriptor (flavor wheel +
+ *   CATA sets); the `"taste"` block resolves via resolveMainTaste.
+ * - `attrId`   — i18n `attributes.*` fallback label; blocks with a dedicated
+ *   label pass `labelKey` (resolved by the caller from the `blocks` message set).
+ */
+export const PERCEPTUAL_BLOCKS = [
+  { id: "nariz",     kind: "desc",  descKeys: ["fragancia_desc", "aroma_desc"],       labelKey: "nariz" },
+  { id: "boca",      kind: "desc",  descKeys: ["sabor_desc", "sabor_residual_desc"],  labelKey: "boca" },
+  { id: "gusto",     kind: "taste", descKeys: ["gustos"],                             labelKey: "gusto" },
+  { id: "acidez",    kind: "desc",  descKeys: ["acidez_desc"],                        labelKey: "acidez" },
+  { id: "dulzura",   kind: "desc",  descKeys: ["dulzor_desc"],                        labelKey: "dulzura" },
+  { id: "sensacion", kind: "desc",  descKeys: ["sensacion_desc"],                     labelKey: "sensacion" },
+] as const;
+
+export type PerceptualBlockId = (typeof PERCEPTUAL_BLOCKS)[number]["id"];
+
+/**
+ * Resolve a MAIN_TASTES id (e.g. "sour") to its display label + neutral color.
+ * MAIN_TASTES labels are Spanish-only, reused for both locales (parity with the
+ * acidity/sweetness/mouthfeel CATA sets, which are also Spanish-only). The
+ * `locale` param is accepted for a uniform signature with resolveDescriptor.
+ */
+export function resolveMainTaste(
+  id: string,
+  locale: "es" | "en" = "es"
+): { label: string; color: string } | null {
+  void locale;
+  const t = MAIN_TASTES.find((m) => m.id === id);
+  if (t) return { label: t.label, color: L1_GROUP_COLOR.other };
+  return null;
+}
+
 type CATAFamily = {
   id: string;
   label: string;
@@ -57,6 +98,28 @@ const OTHER_CATA_SETS: readonly CATAFamily[] = [
   ...MOUTHFEEL_CATA,
 ] as unknown as readonly CATAFamily[];
 
+// Descriptors retired from their section's pickable list in later corrections
+// (e.g. mouthfeel:gritty / mouthfeel:chalky merged into rugged/raspy; the
+// acidity list was rebuilt from scratch and dropped several old entries).
+// Old saved evaluations may still reference them, so they keep resolving here
+// with a stand-in family's color instead of disappearing from historical results.
+const LEGACY_DESCRIPTOR_LABELS: Record<
+  string,
+  { label: string; colorFamilyId: string }
+> = {
+  "mouthfeel:gritty": { label: "Granuloso", colorFamilyId: "mouthfeel:rough" },
+  "mouthfeel:chalky": { label: "Calcáreo", colorFamilyId: "mouthfeel:rough" },
+  // Retired acidity descriptors (N11 rebuild) — kept for historical resolution.
+  "acidity:juicy":      { label: "Jugosa",     colorFamilyId: "acidity:bright" },
+  "acidity:fruit_like": { label: "Afrutada",   colorFamilyId: "acidity:bright" },
+  "acidity:tart":       { label: "Astringente", colorFamilyId: "acidity:bright" },
+  "acidity:sharp":      { label: "Aguda",      colorFamilyId: "acidity:bright" },
+  "acidity:vinegary":   { label: "Avinagrada", colorFamilyId: "acidity:bright" },
+  "acidity:herbal":     { label: "Herbal",     colorFamilyId: "acidity:bright" },
+  "acidity:grassy":     { label: "Herbácea",   colorFamilyId: "acidity:bright" },
+  "acidity:dry":        { label: "Seca",       colorFamilyId: "acidity:bright" },
+};
+
 /**
  * Resolve a stored descriptor id (e.g. "floral", "fruity:berry",
  * "fruity:berry:blackberry", "acidity:juicy", "sweetness:honey",
@@ -70,17 +133,49 @@ const OTHER_CATA_SETS: readonly CATAFamily[] = [
  */
 /** Neutral color for free-text "unmapped" descriptors (matches the Other group). */
 export const UNMAPPED_COLOR = L1_GROUP_COLOR.other;
-/** Prefix marking a free-text descriptor the wheel didn't match (N2 safety valve). */
+/**
+ * Prefix marking a legacy free-text descriptor the wheel didn't match (retired
+ * N2 safety valve). The typeahead is now a CLOSED system (N10) — no new
+ * `unmapped:` ids are ever created; every input resolves to a real wheel node,
+ * with the typed term surviving only as a qualifying note. This prefix survives
+ * solely to read old saved evaluations without crashing.
+ */
 export const UNMAPPED_PREFIX = "unmapped:";
+
+/**
+ * Fold a stored descriptor id into a closed-system pair: a real wheel node id
+ * plus an optional qualifying note. Legacy `unmapped:<text>` ids map to the
+ * generic `other` bucket with the free text preserved as the note, so
+ * statistics count them under `other` and never as standalone entries. Any
+ * other id passes through unchanged (no note).
+ */
+export function normalizeDescriptorId(id: string): { id: string; note?: string } {
+  if (id.startsWith(UNMAPPED_PREFIX)) {
+    return { id: "other", note: id.slice(UNMAPPED_PREFIX.length) };
+  }
+  return { id };
+}
+
+/**
+ * If `id` is a retired descriptor kept in LEGACY_DESCRIPTOR_LABELS, return its
+ * stand-in color family id (e.g. "mouthfeel:gritty" → "mouthfeel:rough"), so
+ * callers can attribute a historical selection to the right CATA group without
+ * exposing the raw map. Returns null for non-legacy ids.
+ */
+export function legacyDescriptorFamily(id: string): string | null {
+  return LEGACY_DESCRIPTOR_LABELS[id]?.colorFamilyId ?? null;
+}
 
 export function resolveDescriptor(
   id: string,
   locale: "es" | "en" = "es"
 ): { label: string; color: string } | null {
-  // Free-text safety-valve entries (typeahead): render the raw text the cupper
-  // typed, tagged neutrally so the perception is never lost (feeds the lexicon).
+  // Legacy free-text safety-valve entries (retired N2 typeahead path): render as
+  // an "Otros" note so old chips stay readable and never crash on old data.
   if (id.startsWith(UNMAPPED_PREFIX)) {
-    return { label: id.slice(UNMAPPED_PREFIX.length), color: UNMAPPED_COLOR };
+    const text = id.slice(UNMAPPED_PREFIX.length);
+    const otrosLabel = locale === "en" ? "Other" : "Otros";
+    return { label: `${otrosLabel} «${text}»`, color: UNMAPPED_COLOR };
   }
   const flavorId = migrateFlavorId(id);
   const node = flavorNodeById(flavorId);
@@ -94,6 +189,11 @@ export function resolveDescriptor(
     if (family.id === id) return { label: family.label, color: family.color };
     const sub = family.subItems.find((s) => s.id === id);
     if (sub) return { label: sub.label, color: family.color };
+  }
+  const legacy = LEGACY_DESCRIPTOR_LABELS[id];
+  if (legacy) {
+    const colorFamily = OTHER_CATA_SETS.find((f) => f.id === legacy.colorFamilyId);
+    return { label: legacy.label, color: colorFamily?.color ?? UNMAPPED_COLOR };
   }
   return null;
 }
@@ -111,7 +211,9 @@ export function collectDescriptors(
     const arr = data[key];
     if (Array.isArray(arr)) {
       for (const id of arr) {
-        if (typeof id === "string") seen.add(id);
+        // Normalize legacy `unmapped:<text>` ids to the real `other` node so
+        // stats only ever see real wheel-node ids (closed system, N10).
+        if (typeof id === "string") seen.add(normalizeDescriptorId(id).id);
       }
     }
   }

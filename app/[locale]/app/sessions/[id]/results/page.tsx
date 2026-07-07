@@ -2,7 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { collectDescriptors, resolveDescriptor, DESCRIPTOR_STAGES } from "@/lib/descriptors";
+import { collectDescriptors, PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
+import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
 import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
 import { ResultsClient } from "./ResultsClient";
 
@@ -67,6 +68,10 @@ export default async function ResultsPage({
 
   const isOwner = session.createdBy === user.id;
 
+  // Block labels are needed inside the server aggregation below, so resolve the
+  // translators up front.
+  const tBlocks = await getTranslations("blocks");
+
   const totalParticipants = session.participants.length;
   const allSubmitted = totalParticipants > 0 && submittedCupperCount >= totalParticipants;
   const sessionExpired = session.closesAt ? session.closesAt < new Date() : false;
@@ -100,16 +105,31 @@ export default async function ResultsPage({
   };
   let participantResults: ParticipantResult[] | null = null;
 
-  // Anonymous, per-sample, per-stage descriptor frequency — counts only, no
+  // Anonymous, per-sample, per-BLOCK descriptor frequency — counts only, no
   // identities. Visible to all participants once group results are viewable.
+  // Blocks are the perceptual grouping (Nariz / Boca / Gusto / Acidez / Dulzura
+  // / Sensación); each block is deduped per cupper before counting (N15).
   type RankedDescriptor = { id: string; label: string; color: string; count: number };
-  type SampleStageFreq = {
+  type SampleBlockFreq = {
     sampleId: string;
     label: string;
     totalEvaluators: number;
-    stages: Record<string, RankedDescriptor[]>;
+    blocks: Record<string, RankedDescriptor[]>;
+    // Per-block statistical summary sentences (null text → empty state).
+    summary: Record<string, string | null>;
   };
-  let descriptorFrequency: SampleStageFreq[] | null = null;
+  let descriptorFrequency: SampleBlockFreq[] | null = null;
+
+  // Owner-only: per-cupper alignment with the group consensus (N15, Step 4).
+  type CupperAlignmentRow = {
+    id: string;
+    name: string;
+    excluded: boolean;
+    alignment: number; // 0..1 overlap ratio vs majority sets
+    matches: number;
+    opportunities: number;
+  };
+  let cupperAlignment: CupperAlignmentRow[] | null = null;
 
   // Per-sample group aggregate recomputed in TS from the raw evaluations,
   // INCLUDING ONLY complete ones. Overrides the trigger-stored AggregateScore so
@@ -196,7 +216,7 @@ export default async function ResultsPage({
         .sort((a, b) => a.name.localeCompare(b.name, locale === "es" ? "es" : "en"));
     }
 
-    // ---- Anonymous descriptor frequency (all participants) ----
+    // ---- Anonymous block frequency + summaries + alignment ----
     // Descriptors live in a different JSON column per format; affective has none.
     if (session.format !== "affective") {
       const blobFor = (
@@ -208,60 +228,156 @@ export default async function ResultsPage({
             ? (ev.descriptiveData as Record<string, unknown>)
             : null;
 
-      // perSample[sampleId] = { total, stageCounts[stageId] = Map<descriptorId, count> }
-      const perSample = new Map<
-        string,
-        { total: number; stageCounts: Map<string, Map<string, number>> }
-      >();
-      for (const s of session.samples) {
-        const stageCounts = new Map<string, Map<string, number>>();
-        for (const stage of DESCRIPTOR_STAGES) stageCounts.set(stage.id, new Map());
-        perSample.set(s.id, { total: 0, stageCounts });
-      }
-      for (const ev of evals) {
-        if (excludedUserIds.has(ev.cupperId)) continue; // master-excluded cupper
-        const entry = perSample.get(ev.sessionSampleId);
-        if (!entry) continue;
-        const blob = blobFor(ev);
-        if (!blob) continue;
-        entry.total += 1;
-        for (const stage of DESCRIPTOR_STAGES) {
-          const counts = entry.stageCounts.get(stage.id)!;
-          for (const did of collectDescriptors(blob, [stage.descKey])) {
-            counts.set(did, (counts.get(did) ?? 0) + 1);
+      const localeStr = locale === "en" ? "en" : "es";
+      const blockLabelFor = (blockId: string): string =>
+        tBlocks(blockId as Parameters<typeof tBlocks>[0]);
+
+      // Anonymous per-sample block frequencies + statistical summaries. Extracted
+      // to lib/resultsAggregation so the close-session email path computes the
+      // identical numbers — this page and the emailed group summary can never
+      // disagree. Returns null only for affective sessions (guarded above).
+      descriptorFrequency =
+        computeSampleBlockFrequencies({
+          format: session.format,
+          samples: session.samples.map((s) => ({ id: s.id, label: s.label })),
+          evals: evals.map((ev) => ({
+            cupperId: ev.cupperId,
+            sessionSampleId: ev.sessionSampleId,
+            descriptiveData: ev.descriptiveData,
+            combinedData: ev.combinedData,
+          })),
+          excludedUserIds,
+          blockLabel: blockLabelFor,
+          locale: localeStr,
+        }) ?? null;
+
+      // ---- Owner-only cupper alignment (Step 4) ----
+      // Rebuilds its OWN selection matrix + majority sets: alignment is owner-only
+      // and must never be part of the shared (emailed) aggregation, so it stays
+      // here, separate from the anonymous frequency core above.
+      if (isOwner) {
+        // Per (sampleId → blockId → cupperId → Set<descriptorId>), including
+        // excluded cuppers so their (flagged) rows can be scored against the
+        // excluded-free consensus.
+        type BlockSel = Map<string, Map<string, Set<string>>>;
+        const selections = new Map<string, BlockSel>();
+        const evaluatorsPerSample = new Map<string, Set<string>>();
+        for (const s of session.samples) {
+          const bySel: BlockSel = new Map();
+          for (const block of PERCEPTUAL_BLOCKS) bySel.set(block.id, new Map());
+          selections.set(s.id, bySel);
+          evaluatorsPerSample.set(s.id, new Set());
+        }
+        for (const ev of evals) {
+          const bySel = selections.get(ev.sessionSampleId);
+          if (!bySel) continue;
+          const blob = blobFor(ev);
+          if (!blob) continue;
+          if (!excludedUserIds.has(ev.cupperId)) {
+            evaluatorsPerSample.get(ev.sessionSampleId)!.add(ev.cupperId);
+          }
+          for (const block of PERCEPTUAL_BLOCKS) {
+            const ids = collectDescriptors(blob, block.descKeys);
+            bySel.get(block.id)!.set(ev.cupperId, new Set(ids));
           }
         }
-      }
 
-      descriptorFrequency = session.samples.map((s) => {
-        const entry = perSample.get(s.id)!;
-        const stages: Record<string, RankedDescriptor[]> = {};
-        for (const stage of DESCRIPTOR_STAGES) {
-          stages[stage.id] = [...entry.stageCounts.get(stage.id)!.entries()]
-            .filter(([, count]) => count >= 2)
-            .map(([did, count]) => {
-              const info = resolveDescriptor(did, locale === "en" ? "en" : "es");
-              return info
-                ? { id: did, label: info.label, color: info.color, count }
-                : null;
-            })
-            .filter((d): d is RankedDescriptor => d !== null)
-            .sort((a, b) => b.count - a.count);
+        // Consensus (majority) sets per sample+block: descriptors picked by >= 50%
+        // of that block's INCLUDED evaluators, min 2 cuppers.
+        const majoritySets = new Map<string, Map<string, Set<string>>>();
+        for (const s of session.samples) {
+          const bySel = selections.get(s.id)!;
+          const total = evaluatorsPerSample.get(s.id)!.size;
+          const sampleMajority = new Map<string, Set<string>>();
+          for (const block of PERCEPTUAL_BLOCKS) {
+            const counts = new Map<string, number>();
+            for (const [cupperId, set] of bySel.get(block.id)!) {
+              if (excludedUserIds.has(cupperId)) continue; // consensus excludes them
+              for (const did of set) counts.set(did, (counts.get(did) ?? 0) + 1);
+            }
+            const majority = new Set(
+              [...counts.entries()]
+                .filter(([, c]) => c >= 2 && total > 0 && c / total >= 0.5)
+                .map(([did]) => did),
+            );
+            sampleMajority.set(block.id, majority);
+          }
+          majoritySets.set(s.id, sampleMajority);
         }
-        return {
-          sampleId: s.id,
-          label: s.label,
-          totalEvaluators: entry.total,
-          stages,
-        };
-      });
+
+        // For each cupper, across all samples+blocks that HAVE a majority set,
+        // alignment = matched majority descriptors / total majority opportunities.
+        // Excluded cuppers are dropped from the consensus above but still get a
+        // (flagged) row so the owner can see them. Their selections are present in
+        // `selections` (we include every eval when building the matrix above), so
+        // they score against the excluded-free consensus.
+        const rows = new Map<
+          string,
+          { name: string; excluded: boolean; matches: number; opportunities: number }
+        >();
+        for (const ev of evals) {
+          if (!rows.has(ev.cupperId)) {
+            rows.set(ev.cupperId, {
+              name: ev.cupper.displayName,
+              excluded: excludedUserIds.has(ev.cupperId),
+              matches: 0,
+              opportunities: 0,
+            });
+          }
+        }
+
+        for (const s of session.samples) {
+          const bySel = selections.get(s.id)!;
+          const sampleMajority = majoritySets.get(s.id)!;
+          // Build per-cupper block selections INCLUDING excluded cuppers, so
+          // excluded rows can still be scored against the (excluded-free)
+          // consensus. Re-derive from raw evals for excluded cuppers.
+          for (const [cupperId, row] of rows) {
+            for (const block of PERCEPTUAL_BLOCKS) {
+              const majority = sampleMajority.get(block.id)!;
+              if (majority.size === 0) continue; // no consensus → no opportunity
+              row.opportunities += majority.size;
+              const cupperSet = bySel.get(block.id)!.get(cupperId);
+              if (cupperSet) {
+                for (const did of majority) if (cupperSet.has(did)) row.matches += 1;
+              } else if (row.excluded) {
+                // Excluded cupper's selections aren't in `bySel`; recover them.
+                const ev = evals.find(
+                  (e: (typeof evals)[number]) =>
+                    e.cupperId === cupperId && e.sessionSampleId === s.id,
+                );
+                const blob = ev ? blobFor(ev) : null;
+                if (blob) {
+                  const ids = new Set(collectDescriptors(blob, block.descKeys));
+                  for (const did of majority) if (ids.has(did)) row.matches += 1;
+                }
+              }
+            }
+          }
+        }
+
+        cupperAlignment = [...rows.entries()]
+          .map(([id, r]) => ({
+            id,
+            name: r.name,
+            excluded: r.excluded,
+            matches: r.matches,
+            opportunities: r.opportunities,
+            alignment: r.opportunities > 0 ? r.matches / r.opportunities : 0,
+          }))
+          .sort((a, b) => {
+            // Included cuppers first (by alignment desc), excluded last.
+            if (a.excluded !== b.excluded) return a.excluded ? 1 : -1;
+            return b.alignment - a.alignment;
+          });
+      }
     }
   }
 
   const tCommunity = await getTranslations("community");
   const tg = await getTranslations("group");
-  const tAttr = await getTranslations("attributes");
   const tDesc = await getTranslations("descriptors");
+  const tAlign = await getTranslations("alignment");
   const tOffline = await getTranslations("offline");
   const t = await getTranslations("session");
   const tc = await getTranslations("coffee");
@@ -281,10 +397,10 @@ export default async function ResultsPage({
         })
       : null;
 
-  // Stage label map (es/en) keyed by stage id, for the descriptor subtabs.
-  const stageLabels: Record<string, string> = {};
-  for (const stage of DESCRIPTOR_STAGES) {
-    stageLabels[stage.id] = tAttr(stage.attrId);
+  // Block label map (es/en) keyed by block id, for the descriptor subtabs.
+  const blockLabels: Record<string, string> = {};
+  for (const block of PERCEPTUAL_BLOCKS) {
+    blockLabels[block.id] = tBlocks(block.id as Parameters<typeof tBlocks>[0]);
   }
 
   const dateStr = session.date.toLocaleDateString(locale === "es" ? "es-CO" : "en-US", {
@@ -302,7 +418,8 @@ export default async function ResultsPage({
       canViewGroup={canViewGroup}
       participants={participantResults}
       descriptorFrequency={descriptorFrequency}
-      stageLabels={stageLabels}
+      blockLabels={blockLabels}
+      cupperAlignment={cupperAlignment}
       partialSyncNotice={partialSyncNotice}
       session={{
         id: session.id,
@@ -372,7 +489,7 @@ export default async function ResultsPage({
             affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
             combined: (ev?.combinedData as Record<string, unknown>) ?? {},
             physical: (s.physical?.data as Record<string, unknown>) ?? {},
-            extrinsic: (s.extrinsic?.data as Record<string, unknown>) ?? {},
+            extrinsic: s.revealed ? ((s.extrinsic?.data as Record<string, unknown>) ?? {}) : {},
             aggregateScore,
           };
         }),
@@ -393,7 +510,12 @@ export default async function ResultsPage({
         descOf: tDesc("of"),
         descParticipants: tDesc("participants"),
         descEmptyStage: tDesc("emptyStage"),
+        descEmptyBlock: tDesc("emptyBlock"),
         descEmptyAll: tDesc("emptyAll"),
+        alignTitle: tAlign("title"),
+        alignSubtitle: tAlign("subtitle"),
+        alignExcluded: tAlign("excluded"),
+        alignNoData: tAlign("noData"),
         editSample: t("editSample"),
         editSampleError: t("editSampleError"),
         sampleLabel: t("sampleLabel"),

@@ -9,8 +9,12 @@ import { FlavorCloud } from "@/components/results/FlavorCloud";
 import { MyResultsSummary } from "@/components/results/MyResultsSummary";
 import {
   DescriptorFrequency,
-  type SampleStageFreq,
+  type SampleBlockFreq,
 } from "@/components/results/DescriptorFrequency";
+import {
+  CupperAlignment,
+  type CupperAlignmentRow,
+} from "@/components/results/CupperAlignment";
 import {
   IndividualResultsPanel,
   type ParticipantResult,
@@ -83,7 +87,8 @@ export function ResultsClient({
   canViewGroup,
   participants,
   descriptorFrequency,
-  stageLabels,
+  blockLabels,
+  cupperAlignment,
   partialSyncNotice,
   translations,
 }: {
@@ -101,8 +106,9 @@ export function ResultsClient({
   sessionStatus: string;
   canViewGroup: boolean;
   participants?: ParticipantResult[] | null;
-  descriptorFrequency?: SampleStageFreq[] | null;
-  stageLabels?: Record<string, string>;
+  descriptorFrequency?: SampleBlockFreq[] | null;
+  blockLabels?: Record<string, string>;
+  cupperAlignment?: CupperAlignmentRow[] | null;
   partialSyncNotice?: string | null;
   translations: {
     myResults: string;
@@ -120,7 +126,12 @@ export function ResultsClient({
     descOf: string;
     descParticipants: string;
     descEmptyStage: string;
+    descEmptyBlock: string;
     descEmptyAll: string;
+    alignTitle: string;
+    alignSubtitle: string;
+    alignExcluded: string;
+    alignNoData: string;
     editSample: string;
     editSampleError: string;
     sampleLabel: string;
@@ -394,18 +405,30 @@ export function ResultsClient({
           />
         </div>
       ) : effectiveDisplayView === "descriptors" && canViewDescriptors ? (
-        <div className="p-4 lg:p-6">
+        <div className="p-4 lg:p-6 flex flex-col gap-6">
           <DescriptorFrequency
             samples={descriptorFrequency!}
-            stageLabels={stageLabels ?? {}}
+            blockLabels={blockLabels ?? {}}
             t={{
               viewAll: translations.descViewAll,
               of: translations.descOf,
               participants: translations.descParticipants,
-              emptyStage: translations.descEmptyStage,
+              emptyBlock: translations.descEmptyBlock,
               emptyAll: translations.descEmptyAll,
             }}
           />
+          {/* Owner-only cupper alignment (uses per-participant consensus data). */}
+          {isOwner && cupperAlignment && cupperAlignment.length > 0 && (
+            <CupperAlignment
+              rows={cupperAlignment}
+              t={{
+                title: translations.alignTitle,
+                subtitle: translations.alignSubtitle,
+                excluded: translations.alignExcluded,
+                noData: translations.alignNoData,
+              }}
+            />
+          )}
         </div>
       ) : effectiveDisplayView === "summary" ? (
         <div className="p-4 lg:p-6">
@@ -511,24 +534,48 @@ export function ResultsClient({
           paddingBottom: "max(12px, calc(env(safe-area-inset-bottom) + 8px))",
         }}
       >
-        <button
-          onClick={() => router.push(`/${locale}/app/sessions/${session.id}/print`)}
-          style={{
-            width: "100%",
-            padding: "13px 0",
-            borderRadius: 10,
-            border: "none",
-            background: "linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%)",
-            color: "#FFF",
-            fontSize: 15,
-            fontWeight: 700,
-            cursor: "pointer",
-            fontFamily: "'Cormorant Garamond', Georgia, serif",
-            letterSpacing: "0.3px",
-          }}
-        >
-          🖨 Ver Formulario Imprimible
-        </button>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button
+            onClick={() => router.push(`/${locale}/app/sessions/${session.id}/print`)}
+            style={{
+              flex: 1,
+              padding: "13px 0",
+              borderRadius: 10,
+              border: "none",
+              background: "linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%)",
+              color: "#FFF",
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: "pointer",
+              fontFamily: "'Cormorant Garamond', Georgia, serif",
+              letterSpacing: "0.3px",
+            }}
+          >
+            🖨 Ver Formulario Imprimible
+          </button>
+          {/* Server-generated CVA PDF — plain link so no @react-pdf ships to the client. */}
+          <a
+            href={`/api/sessions/${session.id}/cva-pdf?locale=${locale}`}
+            style={{
+              flex: 1,
+              padding: "13px 0",
+              borderRadius: 10,
+              border: "1.5px solid #3D5A3E",
+              background: "#FFF",
+              color: "#3D5A3E",
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: "pointer",
+              fontFamily: "'Cormorant Garamond', Georgia, serif",
+              letterSpacing: "0.3px",
+              textAlign: "center",
+              textDecoration: "none",
+              lineHeight: "1.2",
+            }}
+          >
+            📄 {locale === "en" ? "Download PDF (CVA)" : "Descargar PDF (CVA)"}
+          </a>
+        </div>
       </div>
 
       {isOwner && editingSample && (
