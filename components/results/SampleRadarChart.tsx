@@ -104,6 +104,7 @@ export function SampleRadarChart({
   isOwner,
   onReveal,
   locale,
+  t,
 }: {
   sample: SampleResult;
   format: string;
@@ -112,6 +113,7 @@ export function SampleRadarChart({
   isOwner: boolean;
   onReveal: (sampleId: string) => void;
   locale: string;
+  t: { mine: string; community: string; deltaAttribute: string };
 }) {
   const showAffective = format !== "descriptive";
   const { ref: chartRef, width: chartWidth } = useContainerWidth();
@@ -145,6 +147,23 @@ export function SampleRadarChart({
     showCommunity &&
     Object.keys(sample.aggregateScore?.attrAverages ?? {}).length > 0 &&
     radarData.some((d) => d.community !== undefined && d.community > 0);
+
+  // Mine-vs-community delta rows. Built from the raw values (not radarData)
+  // so the chart's "default to 5 when unset" fallback never fakes a delta.
+  const deltaRows = hasCommunityData
+    ? AFFECTIVE_ATTRIBUTES.flatMap((attr) => {
+        const rawVal = affData
+          ? Number(
+              (affData[`${attr.id}_final`] as number | undefined) ??
+                (affData[attr.id] as number | undefined) ??
+                0,
+            )
+          : 0;
+        const comVal = sample.aggregateScore?.attrAverages[attr.label] ?? 0;
+        if (rawVal <= 0 || comVal <= 0) return [];
+        return [{ label: attr.label, mine: rawVal, community: comVal }];
+      })
+    : [];
 
   const score = affData ? calcIndividualScore(affData, cupsPerSample) : null;
   const scoreNum = score !== null && score !== "—" ? Number(score) : null;
@@ -302,22 +321,28 @@ export function SampleRadarChart({
                 tick={{ fontSize: 9, fill: "#8B7355" }}
               />
               <Radar
-                name="Mi evaluación"
+                name={t.mine}
                 dataKey="mine"
                 stroke="#3D5A3E"
                 fill="#3D5A3E"
                 fillOpacity={0.2}
                 dot={false}
+                isAnimationActive
+                animationDuration={600}
+                animationEasing="ease-out"
               />
               {hasCommunityData && (
                 <Radar
-                  name="Comunidad"
+                  name={t.community}
                   dataKey="community"
                   stroke="#C17817"
                   fill="#C17817"
                   fillOpacity={0.1}
                   strokeDasharray="5 3"
                   dot={false}
+                  isAnimationActive
+                  animationDuration={600}
+                  animationEasing="ease-out"
                 />
               )}
               <Tooltip
@@ -344,7 +369,85 @@ export function SampleRadarChart({
         >
           Sin datos afectivos registrados
         </div>
-      ) : (
+      ) : null}
+
+      {/* Mine vs community per-attribute delta */}
+      {showAffective && hasMyData && deltaRows.length > 0 && (
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            fontSize: 11,
+            marginTop: 8,
+          }}
+        >
+          <thead>
+            <tr
+              style={{
+                fontSize: 9,
+                color: "#8B7355",
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+              }}
+            >
+              <th style={{ textAlign: "left", padding: "4px 0", fontWeight: 600 }}>
+                {t.deltaAttribute}
+              </th>
+              <th style={{ textAlign: "right", padding: "4px 0", fontWeight: 600 }}>
+                {t.mine}
+              </th>
+              <th style={{ textAlign: "right", padding: "4px 0", fontWeight: 600 }}>
+                {t.community}
+              </th>
+              <th style={{ textAlign: "right", padding: "4px 0", fontWeight: 600 }}>
+                Δ
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {deltaRows.map((row) => {
+              const d = row.mine - row.community;
+              return (
+                <tr key={row.label} style={{ borderTop: "1px solid #E8E0D0" }}>
+                  <td style={{ padding: "4px 0", color: "#5C4A32" }}>{row.label}</td>
+                  <td
+                    style={{
+                      padding: "4px 0",
+                      textAlign: "right",
+                      color: "#3D5A3E",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {row.mine.toFixed(1)}
+                  </td>
+                  <td
+                    style={{
+                      padding: "4px 0",
+                      textAlign: "right",
+                      color: "#C17817",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {row.community.toFixed(1)}
+                  </td>
+                  <td
+                    style={{
+                      padding: "4px 0",
+                      textAlign: "right",
+                      fontWeight: 700,
+                      color: d >= 0 ? "#3D5A3E" : "#C17817",
+                    }}
+                  >
+                    {`${d >= 0 ? "+" : "−"}${Math.abs(d).toFixed(1)}`}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+
+      {!showAffective && (
         <div
           style={{
             textAlign: "center",

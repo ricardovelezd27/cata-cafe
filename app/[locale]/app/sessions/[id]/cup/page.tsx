@@ -147,6 +147,8 @@ export default async function CupPage({
         nextPhase: t("cupping.nextPhase"),
         viewResults: t("cupping.viewResults"),
         submitting: t("cupping.submitting"),
+        submitFailed: t("cupping.submitFailed"),
+        retrySubmit: t("cupping.retrySubmit"),
         prev: t("cupping.prev"),
         extrinsic: t("session.modules.extrinsic"),
         physical: t("session.modules.physical"),

@@ -155,6 +155,17 @@ export async function createGroupSession(input: {
   return { sessionId: session.id, inviteToken: token };
 }
 
+// Prisma unique-constraint violation (duck-typed like app/actions/waitlist.ts —
+// avoids importing error classes from the generated client).
+function isP2002(e: unknown): boolean {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    "code" in e &&
+    (e as { code?: unknown }).code === "P2002"
+  );
+}
+
 export async function upsertEvaluation(input: {
   sessionSampleId: string;
   moduleKey: "descriptive" | "affective" | "combined";
@@ -169,21 +180,33 @@ export async function upsertEvaluation(input: {
     input.cupsPerSample,
   );
 
-  const result = await prisma.evaluation.upsert({
-    where: {
-      sessionSampleId_cupperId: {
+  const doUpsert = () =>
+    prisma.evaluation.upsert({
+      where: {
+        sessionSampleId_cupperId: {
+          sessionSampleId: input.sessionSampleId,
+          cupperId: user.id,
+        },
+      },
+      create: {
         sessionSampleId: input.sessionSampleId,
         cupperId: user.id,
+        ...fields,
       },
-    },
-    create: {
-      sessionSampleId: input.sessionSampleId,
-      cupperId: user.id,
-      ...fields,
-    },
-    update: { ...fields },
-    select: { id: true },
-  });
+      update: { ...fields },
+      select: { id: true },
+    });
+
+  let result: { id: string };
+  try {
+    result = await doUpsert();
+  } catch (e) {
+    // Two concurrent first-saves can both take the create path of the upsert;
+    // the loser hits the (sessionSampleId, cupperId) unique constraint. One
+    // retry lands on the update path.
+    if (!isP2002(e)) throw e;
+    result = await doUpsert();
+  }
 
   revalidatePath(`/app/sessions`);
   return { ok: true, evaluationId: result.id };
@@ -220,6 +243,7 @@ export async function upsertPhysical(input: {
     },
     update: { data: input.data as never },
   });
+  revalidatePath(`/app/sessions`);
   return { ok: true };
 }
 
@@ -307,8 +331,13 @@ export async function upsertExtrinsic(input: {
       revealedBy: user.id,
       revealedAt: new Date(),
     },
-    update: { data: input.data as never },
+    update: {
+      data: input.data as never,
+      revealedBy: user.id,
+      revealedAt: new Date(),
+    },
   });
+  revalidatePath(`/app/sessions`);
   return { ok: true };
 }
 

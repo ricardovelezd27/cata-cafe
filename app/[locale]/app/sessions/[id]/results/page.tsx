@@ -375,6 +375,7 @@ export default async function ResultsPage({
   }
 
   const tCommunity = await getTranslations("community");
+  const tResults = await getTranslations("results");
   const tg = await getTranslations("group");
   const tDesc = await getTranslations("descriptors");
   const tAlign = await getTranslations("alignment");
@@ -409,6 +410,30 @@ export default async function ResultsPage({
     day: "numeric",
   });
 
+  // Freshness: the trigger stamps computedAt on every recompute, so the newest
+  // computedAt across samples is "when community data last changed".
+  let lastComputedAt: Date | null = null;
+  for (const s of session.samples) {
+    const at = s.aggregateScore?.computedAt ?? null;
+    if (at && (!lastComputedAt || at > lastComputedAt)) lastComputedAt = at;
+  }
+  const participationLabel = session.isGroup
+    ? tResults("participation", {
+        submitted: submittedCupperCount,
+        total: totalParticipants,
+      })
+    : null;
+  const lastUpdatedLabel = lastComputedAt
+    ? tResults("lastUpdated", {
+        time: lastComputedAt.toLocaleString(locale === "es" ? "es-CO" : "en-US", {
+          day: "numeric",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      })
+    : null;
+
   return (
     <ResultsClient
       locale={locale}
@@ -416,6 +441,9 @@ export default async function ResultsPage({
       isGroup={session.isGroup}
       sessionStatus={session.status}
       canViewGroup={canViewGroup}
+      currentUserId={user.id}
+      participationLabel={participationLabel}
+      lastUpdatedLabel={lastUpdatedLabel}
       participants={participantResults}
       descriptorFrequency={descriptorFrequency}
       blockLabels={blockLabels}
@@ -495,6 +523,15 @@ export default async function ResultsPage({
         }),
       }}
       translations={{
+        title: tResults("title"),
+        backToCupping: tResults("backToCupping"),
+        refresh: tResults("refresh"),
+        refreshing: tResults("refreshing"),
+        // Template — the live count is substituted client-side.
+        refreshNew: tResults("refreshNew", { count: "{count}" }),
+        radarMine: tResults("mine"),
+        radarCommunity: tResults("community"),
+        deltaAttribute: tResults("deltaAttribute"),
         myResults: locale === "es" ? "Mis resultados" : "My results",
         groupResults: locale === "es" ? "Resultados grupales" : "Group results",
         communityScore: tCommunity("score"),

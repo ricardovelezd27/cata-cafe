@@ -137,6 +137,8 @@
     "defectType": "Defect type",
     "notes": "Notes",
     "notesPh": "Additional observations...",
+    "submitFailed": "Could not submit your evaluation. Check your connection and try again.",
+    "retrySubmit": "Retry submit",
     "phases": {
       "fragrance": "Fragrance",
       "aroma": "Aroma",
@@ -253,6 +255,18 @@
     "masterControls": "Master controls",
     "masterRole": "Tasting Master",
     "participantRole": "Participant Cupper"
+  },
+  "results": {
+    "title": "Session Results",
+    "backToCupping": "← Edit evaluation",
+    "refresh": "⟳ Refresh",
+    "refreshing": "Refreshing…",
+    "refreshNew": "⟳ Refresh ({count} new)",
+    "participation": "{submitted} of {total} tasters",
+    "lastUpdated": "Updated: {time}",
+    "mine": "My evaluation",
+    "community": "Community",
+    "deltaAttribute": "Attribute"
   },
   "community": {
     "score": "Community score",

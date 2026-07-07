@@ -50,7 +50,8 @@ export function WaitingRoomClient({
         },
         (payload) => {
           const row = payload.new as Record<string, unknown>;
-          if (row.started_at) {
+          // Columns are camelCase in Postgres; accept snake_case defensively.
+          if (row.startedAt ?? row.started_at) {
             router.push(`/${locale}/app/sessions/${sessionId}/cup`);
           }
         },

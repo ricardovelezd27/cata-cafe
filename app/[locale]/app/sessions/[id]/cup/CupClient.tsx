@@ -135,6 +135,8 @@ export function CupClient({
     nextPhase: string;
     viewResults: string;
     submitting: string;
+    submitFailed: string;
+    retrySubmit: string;
     prev: string;
     extrinsic: string;
     physical: string;
@@ -239,6 +241,7 @@ export function CupClient({
     online,
   });
   const [submitBlocked, setSubmitBlocked] = useState(false);
+  const [submitError, setSubmitError] = useState(false);
 
   // Independent 500ms debounce for durable local (IndexedDB) writes, separate
   // from the 800ms server debounce so neither blocks the other.
@@ -281,16 +284,36 @@ export function CupClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [online]);
 
-  // Best-effort flush of the in-flight local edit before the tab unloads.
-  // IndexedDB writes can't be awaited here; the 500ms debounce keeps the
-  // unsaved window tiny.
+  // Best-effort flush of in-flight edits before the tab unloads or is hidden.
+  // IndexedDB writes can't be awaited here; the debounces keep the unsaved
+  // window tiny. Covers BOTH pending refs: the local 500ms one and the server
+  // 800ms one — writing the server-pending payload locally marks it "pending",
+  // so the offline replay pushes it to the server on the next visit instead of
+  // losing it when the tab dies inside the debounce window. pagehide and
+  // visibilitychange are included because beforeunload is unreliable on mobile;
+  // extra writes on tab switches are idempotent (last-write-wins merge).
   useEffect(() => {
-    const handler = () => {
-      const p = localPendingRef.current;
-      if (p) void writeLocal(p.sampleId, p.label, p.key, p.data);
+    const flushToLocal = () => {
+      const lp = localPendingRef.current;
+      if (lp) void writeLocal(lp.sampleId, lp.label, lp.key, lp.data);
+      const sp = pendingSaveRef.current;
+      if (sp && isModuleKey(sp.key)) {
+        const label =
+          session.samples.find((s) => s.id === sp.sampleId)?.label ?? "";
+        void writeLocal(sp.sampleId, label, sp.key, sp.data);
+      }
     };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
+    const onVisibility = () => {
+      if (document.hidden) flushToLocal();
+    };
+    window.addEventListener("beforeunload", flushToLocal);
+    window.addEventListener("pagehide", flushToLocal);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("beforeunload", flushToLocal);
+      window.removeEventListener("pagehide", flushToLocal);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.id, userId]);
 
@@ -312,11 +335,12 @@ export function CupClient({
         { event: "UPDATE", schema: "public", table: "evaluations" },
         (payload) => {
           const row = payload.new as Record<string, unknown>;
-          if (
-            row.is_draft === false &&
-            typeof row.session_sample_id === "string" &&
-            sampleIds.has(row.session_sample_id)
-          ) {
+          // Columns are camelCase in Postgres; accept snake_case defensively.
+          const isDraft = (row.isDraft ?? row.is_draft) as boolean | undefined;
+          const sampleId = (row.sessionSampleId ?? row.session_sample_id) as
+            | string
+            | undefined;
+          if (isDraft === false && sampleId && sampleIds.has(sampleId)) {
             setSubmittedCount((prev) => prev + 1);
           }
         }
@@ -508,11 +532,17 @@ export function CupClient({
       return;
     }
     setIsGoingToResults(true);
+    setSubmitError(false);
     try {
       await flushPending();
       await submitAllEvaluations(session.id);
-    } finally {
+      // Navigate only on success — a failed submit must not strand the user on
+      // the results page believing their drafts were sent. isGoingToResults
+      // stays true so the button remains disabled during navigation.
       router.push(`/${locale}/app/sessions/${session.id}/results`);
+    } catch {
+      setSubmitError(true);
+      setIsGoingToResults(false);
     }
   };
 
@@ -912,6 +942,30 @@ export function CupClient({
           <button
             type="button"
             onClick={() => setSubmitBlocked(false)}
+            aria-label="×"
+            className="shrink-0 font-semibold hover:opacity-80"
+          >
+            ×
+          </button>
+        </div>
+      )}
+      {submitError && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-md border border-red-defect/40 bg-red-defect/10 font-sans text-sm text-red-defect"
+        >
+          <span className="flex-1">{translations.submitFailed}</span>
+          <button
+            type="button"
+            onClick={() => void handleGoToResults()}
+            className="shrink-0 font-semibold underline hover:opacity-80"
+          >
+            {translations.retrySubmit}
+          </button>
+          <button
+            type="button"
+            onClick={() => setSubmitError(false)}
             aria-label="×"
             className="shrink-0 font-semibold hover:opacity-80"
           >

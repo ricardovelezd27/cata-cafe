@@ -847,3 +847,15 @@ $$;
 -- never leak via the public API. Apply manually in the Supabase SQL editor.
 -- ============================================================================
 ALTER TABLE saved_insights ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- Phase 7 (2026-07-07): enable Realtime postgres_changes for group sessions
+-- The supabase_realtime publication existed but contained NO tables, so no
+-- postgres_changes event ever fired: the waiting-room auto-start, the live
+-- submitted counter in CupClient, and the results-page "new results" badge
+-- all depend on UPDATE events from these two tables. REPLICA IDENTITY FULL
+-- on evaluations was already applied (see above). Metadata-only change; no
+-- data is modified. Apply manually in the Supabase SQL editor.
+-- ============================================================================
+ALTER PUBLICATION supabase_realtime ADD TABLE public.evaluations;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.cupping_sessions;

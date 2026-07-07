@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { createBrowserClient } from "@supabase/ssr";
 import { revealSample, refreshAggregateScores } from "@/app/actions/community";
 import { ScoreTable } from "@/components/results/ScoreTable";
 import { SampleRadarChart } from "@/components/results/SampleRadarChart";
@@ -85,6 +86,9 @@ export function ResultsClient({
   isGroup,
   sessionStatus,
   canViewGroup,
+  currentUserId,
+  participationLabel,
+  lastUpdatedLabel,
   participants,
   descriptorFrequency,
   blockLabels,
@@ -105,12 +109,23 @@ export function ResultsClient({
   isGroup: boolean;
   sessionStatus: string;
   canViewGroup: boolean;
+  currentUserId: string;
+  participationLabel?: string | null;
+  lastUpdatedLabel?: string | null;
   participants?: ParticipantResult[] | null;
   descriptorFrequency?: SampleBlockFreq[] | null;
   blockLabels?: Record<string, string>;
   cupperAlignment?: CupperAlignmentRow[] | null;
   partialSyncNotice?: string | null;
   translations: {
+    title: string;
+    backToCupping: string;
+    refresh: string;
+    refreshing: string;
+    refreshNew: string;
+    radarMine: string;
+    radarCommunity: string;
+    deltaAttribute: string;
     myResults: string;
     groupResults: string;
     communityScore: string;
@@ -153,8 +168,61 @@ export function ResultsClient({
   const [view, setView] = useState<ViewMode>("mine");
   const [displayView, setDisplayView] = useState<DisplayView>("summary");
   const [refreshing, setRefreshing] = useState(false);
+  const [newSubmissions, setNewSubmissions] = useState(0);
   const [, startTransition] = useTransition();
   const [editingSampleId, setEditingSampleId] = useState<string | null>(null);
+  // Evaluation ids already counted toward the badge. Never cleared (only the
+  // counter resets on refresh) so the no-op UPDATE storms from exclusion
+  // toggles / owner recomputes don't re-badge the same evaluations.
+  const seenEvalIds = useRef(new Set<string>());
+
+  // ─── Realtime: badge the refresh button when other cuppers submit ──────────
+  // Manual-refresh design is intentional (no auto re-render); this only tells
+  // the viewer that pressing "Actualizar" will show something new.
+  useEffect(() => {
+    if (!isGroup || !canViewGroup) return;
+
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    );
+
+    const sampleIds = new Set(session.samples.map((s) => s.id));
+
+    const channel = supabase
+      .channel(`results:${session.id}`)
+      .on(
+        "postgres_changes",
+        // No filter string (Realtime filter length limits) — filter client-side.
+        { event: "UPDATE", schema: "public", table: "evaluations" },
+        (payload) => {
+          const row = payload.new as Record<string, unknown>;
+          // Columns are camelCase in Postgres; accept snake_case defensively.
+          const isDraft = (row.isDraft ?? row.is_draft) as boolean | undefined;
+          const sampleId = (row.sessionSampleId ?? row.session_sample_id) as
+            | string
+            | undefined;
+          const cupperId = (row.cupperId ?? row.cupper_id) as string | undefined;
+          const evalId = row.id as string | undefined;
+          if (
+            isDraft === false &&
+            sampleId &&
+            sampleIds.has(sampleId) &&
+            cupperId !== currentUserId &&
+            evalId &&
+            !seenEvalIds.current.has(evalId)
+          ) {
+            seenEvalIds.current.add(evalId);
+            setNewSubmissions((n) => n + 1);
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isGroup, canViewGroup, session.id, session.samples, currentUserId]);
 
   const handleEditSample = (sampleId: string) => {
     router.push(`/${locale}/app/sessions/${session.id}/cup?sample=${sampleId}`);
@@ -178,12 +246,17 @@ export function ResultsClient({
 
   const handleRefreshScores = async () => {
     setRefreshing(true);
+    setNewSubmissions(0);
     try {
-      await refreshAggregateScores(session.id);
-      router.refresh();
-    } finally {
-      setRefreshing(false);
+      // Owner-only self-healing recompute (re-fires the aggregate trigger).
+      // Non-owners skip it: aggregates are trigger-maintained and the page
+      // recomputes group data at render, so a re-render is all they need.
+      if (isOwner) await refreshAggregateScores(session.id);
+    } catch {
+      // Swallow — the re-render below still shows the current server data.
     }
+    router.refresh();
+    setRefreshing(false);
   };
 
   const showGroup = view === "group" && canViewGroup;
@@ -258,7 +331,7 @@ export function ResultsClient({
               letterSpacing: "0.3px",
             }}
           >
-            ← Editar evaluación
+            {translations.backToCupping}
           </button>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div
@@ -269,7 +342,7 @@ export function ResultsClient({
                 color: "#3D5A3E",
               }}
             >
-              Resultados de la Sesión
+              {translations.title}
             </div>
             <div
               style={{
@@ -335,19 +408,50 @@ export function ResultsClient({
                 padding: "5px 12px",
                 borderRadius: 9999,
                 border: "1px solid #C17817",
-                background: refreshing ? "#FEF3E2" : "transparent",
-                color: "#C17817",
+                background: refreshing
+                  ? "#FEF3E2"
+                  : newSubmissions > 0
+                    ? "#C17817"
+                    : "transparent",
+                color: newSubmissions > 0 && !refreshing ? "#FFF" : "#C17817",
                 fontSize: 11,
                 fontWeight: 600,
                 cursor: refreshing ? "default" : "pointer",
                 fontFamily: "inherit",
                 flexShrink: 0,
+                transition: "background 0.2s, color 0.2s",
               }}
             >
-              {refreshing ? "Actualizando…" : "⟳ Actualizar"}
+              {refreshing
+                ? translations.refreshing
+                : newSubmissions > 0
+                  ? translations.refreshNew.replace("{count}", String(newSubmissions))
+                  : translations.refresh}
             </button>
           </div>
         )}
+
+        {/* Participation + freshness — muted metadata under the pill row */}
+        {canViewGroup &&
+          displayView !== "summary" &&
+          displayView !== "individual" &&
+          displayView !== "descriptors" &&
+          (participationLabel || lastUpdatedLabel) && (
+            <div
+              style={{
+                padding: "0 16px 8px",
+                display: "flex",
+                gap: 12,
+                fontSize: 10,
+                color: "#8B7355",
+                overflow: "hidden",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {participationLabel && <span>{participationLabel}</span>}
+              {lastUpdatedLabel && <span>{lastUpdatedLabel}</span>}
+            </div>
+          )}
 
         {/* Tabla / Gráfico segmented control */}
         <div
@@ -504,6 +608,11 @@ export function ResultsClient({
                 isOwner={isOwner}
                 onReveal={handleReveal}
                 locale={locale}
+                t={{
+                  mine: translations.radarMine,
+                  community: translations.radarCommunity,
+                  deltaAttribute: translations.deltaAttribute,
+                }}
               />
               {Object.keys(sample.descriptive).length > 0 && (
                 <div

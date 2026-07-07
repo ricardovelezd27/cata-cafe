@@ -137,6 +137,8 @@
     "defectType": "Tipo de defecto",
     "notes": "Notas",
     "notesPh": "Observaciones adicionales...",
+    "submitFailed": "No se pudo enviar la evaluación. Revisa tu conexión e inténtalo de nuevo.",
+    "retrySubmit": "Reintentar envío",
     "phases": {
       "fragrance": "Fragancia",
       "aroma": "Aroma",
@@ -253,6 +255,18 @@
     "masterControls": "Panel de maestro",
     "masterRole": "Maestro de Cata",
     "participantRole": "Catador Participante"
+  },
+  "results": {
+    "title": "Resultados de la Sesión",
+    "backToCupping": "← Editar evaluación",
+    "refresh": "⟳ Actualizar",
+    "refreshing": "Actualizando…",
+    "refreshNew": "⟳ Actualizar ({count} nuevas)",
+    "participation": "{submitted} de {total} catadores",
+    "lastUpdated": "Actualizado: {time}",
+    "mine": "Mi evaluación",
+    "community": "Comunidad",
+    "deltaAttribute": "Atributo"
   },
   "community": {
     "score": "Puntaje comunitario",

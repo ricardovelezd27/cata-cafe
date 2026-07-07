@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { prisma } from "@/lib/prisma";
-import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import type { CloseEmailSummary } from "@/lib/closeEmail";
 
 async function requireUser() {
@@ -309,63 +308,30 @@ export async function setParticipantExclusion(
   return { ok: true, excluded };
 }
 
-// ─── Recompute attrAverages for all samples in a session (owner only) ────────
+// ─── Recompute aggregate scores for all samples in a session (owner only) ────
+// Self-healing recompute: re-fires trg_recompute_aggregate for every submitted
+// evaluation in the session via a no-op write to "isDraft" (same pattern as
+// setParticipantExclusion). The DB trigger is the single source of truth for
+// communityScore, penalties and attrAverages — it applies the exclusion and
+// completeness filters that a TS-side recomputation would have to duplicate.
+// Owner-initiated and rare, so the per-row trigger storm is acceptable.
 export async function refreshAggregateScores(sessionId: string) {
   const user = await requireUser();
 
   const session = await prisma.cuppingSession.findFirst({
     where: { id: sessionId, createdBy: user.id },
-    select: {
-      format: true,
-      samples: {
-        select: {
-          id: true,
-          evaluations: {
-            where: { isDraft: false },
-            select: { affectiveData: true, combinedData: true },
-          },
-        },
-      },
-    },
+    select: { id: true },
   });
   if (!session) throw new Error("not_found_or_forbidden");
 
-  const now = new Date();
-  const updates = [];
-
-  for (const sample of session.samples) {
-    if (sample.evaluations.length === 0) continue;
-
-    const attrAverages: Record<string, number> = {};
-
-    for (const attr of AFFECTIVE_ATTRIBUTES) {
-      const key = `${attr.id}_final`;
-      const vals = sample.evaluations
-        .map((e) => {
-          const data = (
-            session.format === "affective" ? e.affectiveData : e.combinedData
-          ) as Record<string, unknown> | null;
-          const v = data?.[key];
-          return typeof v === "number" ? v : null;
-        })
-        .filter((v): v is number => v !== null);
-
-      if (vals.length > 0) {
-        attrAverages[attr.label] =
-          Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) / 100;
-      }
-    }
-
-    updates.push(
-      prisma.aggregateScore.updateMany({
-        where: { sessionSampleId: sample.id },
-        data: { attrAverages, computedAt: now },
-      }),
-    );
-  }
-
-  // One transaction instead of one round-trip per sample (matters at ~100 samples).
-  if (updates.length > 0) await prisma.$transaction(updates);
+  await prisma.$executeRaw`
+    UPDATE evaluations e
+    SET "isDraft" = e."isDraft"
+    FROM session_samples ss
+    WHERE e."sessionSampleId" = ss.id
+      AND ss."sessionId" = ${sessionId}
+      AND e."isDraft" = false
+  `;
 
   revalidatePath(`/es/app/sessions/${sessionId}/results`);
   revalidatePath(`/en/app/sessions/${sessionId}/results`);
