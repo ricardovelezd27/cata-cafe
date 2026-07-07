@@ -144,6 +144,15 @@
       "acidity_sweetness_mouthfeel": "Acidez, Dulzor y Sensación",
       "overall": "Global"
     },
+    "guard": {
+      "nextTitle": "Te falta completar algo",
+      "nextBody": "En esta muestra dejaste secciones sin completar. ¿Continuar de todos modos?",
+      "submitTitle": "Antes de enviar",
+      "submitBody": "Estas muestras tienen secciones sin completar. Al enviar, el puntaje se calcula sin ellas.",
+      "review": "Revisar",
+      "continueAnyway": "Continuar de todos modos",
+      "submitAnyway": "Enviar de todos modos"
+    },
     "shell": {
       "samplesHeader": "Muestras",
       "evaluationHeader": "Evaluación",
