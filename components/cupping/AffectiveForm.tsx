@@ -35,12 +35,16 @@ export function AffectiveForm({
   onChange,
   cupsPerSample,
   currentStep,
+  missingIds,
 }: {
   sampleData: Data;
   onChange: (d: Data) => void;
   cupsPerSample: number;
   currentStep: CuppingStep;
+  /** affectiveIds (from lib/completeness) still missing on this step; drives the * / red flag. */
+  missingIds?: string[];
 }) {
+  const isFlagged = (id: string) => missingIds?.includes(id) ?? false;
   const d = sampleData;
   const set = (key: string, val: unknown) => onChange({ ...d, [key]: val });
   const getNum = (k: string): number | null => (d[k] as number | undefined) ?? null;
@@ -110,7 +114,12 @@ export function AffectiveForm({
             : attr.affectiveId;
 
           return (
-            <FormSection key={attr.affectiveId} title={title} accent>
+            <FormSection
+              key={attr.affectiveId}
+              title={title}
+              accent
+              flagged={isFlagged(attr.affectiveId)}
+            >
               <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-6">
                 {/* Left: quality (liking) */}
                 <div className="min-w-0">
@@ -139,7 +148,7 @@ export function AffectiveForm({
   // Overall step: impresión global + cups + score
   return (
     <div>
-      <FormSection title="Impresión Global" accent>
+      <FormSection title="Impresión Global" accent flagged={isFlagged("impresion_global")}>
         <AffectiveBubbles
           value={getNum("impresion_global_final")}
           onChange={(v) => set("impresion_global_final", v)}

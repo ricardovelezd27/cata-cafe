@@ -11,6 +11,8 @@ interface FormSectionProps {
   headline?: string;
   /** Render the title in green-dark (accent) instead of brown-mid. */
   accent?: boolean;
+  /** Mark this section as missing a required field — red title + asterisk, until resolved. */
+  flagged?: boolean;
   collapsible?: boolean;
   defaultOpen?: boolean;
   children: ReactNode;
@@ -20,6 +22,7 @@ export function FormSection({
   title,
   headline,
   accent = false,
+  flagged = false,
   collapsible = false,
   defaultOpen = true,
   children,
@@ -37,9 +40,17 @@ export function FormSection({
       >
         <div>
           <h3
-            className={`${styles.title} ${accent ? styles.titleAccent : ""}`}
+            className={`${styles.title} ${accent ? styles.titleAccent : ""} ${
+              flagged ? styles.titleFlagged : ""
+            }`}
           >
             {title}
+            {flagged && (
+              <span className={styles.flagMark} aria-label="incompleto">
+                {" "}
+                *
+              </span>
+            )}
           </h3>
           {headline && <div className={styles.headline}>{headline}</div>}
         </div>

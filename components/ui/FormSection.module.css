@@ -36,6 +36,14 @@
   color: var(--color-green-dark);
 }
 
+.titleFlagged {
+  color: var(--color-red-defect);
+}
+
+.flagMark {
+  color: var(--color-red-defect);
+}
+
 .chevron {
   display: inline-flex;
   align-items: center;

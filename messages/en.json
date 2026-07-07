@@ -146,6 +146,15 @@
       "acidity_sweetness_mouthfeel": "Acidity, Sweetness & Mouthfeel",
       "overall": "Overall"
     },
+    "guard": {
+      "nextTitle": "You missed something",
+      "nextBody": "You left sections unfinished on this sample. Continue anyway?",
+      "submitTitle": "Before you submit",
+      "submitBody": "These samples have unfinished sections. Once submitted, the score is calculated without them.",
+      "review": "Review",
+      "continueAnyway": "Continue anyway",
+      "submitAnyway": "Submit anyway"
+    },
     "shell": {
       "samplesHeader": "Samples",
       "evaluationHeader": "Evaluation",
@@ -172,7 +181,8 @@
     "acidez_af": "Acidity",
     "dulzor_af": "Sweetness",
     "sensacion_af": "Mouthfeel",
-    "impresion_global": "Overall"
+    "impresion_global": "Overall",
+    "gustos": "Predominant tastes"
   },
   "descriptors": {
     "viewAll": "View all",

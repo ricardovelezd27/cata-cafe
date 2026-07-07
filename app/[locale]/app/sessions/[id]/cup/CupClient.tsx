@@ -31,6 +31,15 @@ import {
   STEP_ATTRIBUTES,
   type CuppingStep,
 } from "@/lib/constants";
+import {
+  stepMissing,
+  sessionMissing,
+  type CuppingFormat,
+} from "@/lib/completeness";
+import {
+  EvaluationGuardModal,
+  type GuardItem,
+} from "@/components/cupping/EvaluationGuardModal";
 import { PhaseStepper } from "@/components/cupping/PhaseStepper";
 import { DevRoleBadge } from "@/components/dev/DevRoleBadge";
 import {
@@ -175,6 +184,16 @@ export function CupClient({
     copied: string;
     formatLabel: string;
     phaseLabels: Record<string, string>;
+    attrLabels: Record<string, string>;
+    guard: {
+      nextTitle: string;
+      nextBody: string;
+      submitTitle: string;
+      submitBody: string;
+      review: string;
+      continueAnyway: string;
+      submitAnyway: string;
+    };
     offline: {
       bannerOffline: string;
       bannerReconnecting: string;
@@ -194,6 +213,14 @@ export function CupClient({
   const router = useRouter();
   const stepsForFormat: CuppingStep[] =
     session.format === "descriptive" ? DESCRIPTIVE_STEPS : CUPPING_STEPS;
+  // Formats other than affective/descriptive render the CombinedForm, so they
+  // score against combined-format completeness rules.
+  const guardFormat: CuppingFormat =
+    session.format === "affective"
+      ? "affective"
+      : session.format === "descriptive"
+        ? "descriptive"
+        : "combined";
 
   const initialSampleIdx = initialSampleId
     ? Math.max(0, session.samples.findIndex((s) => s.id === initialSampleId))
@@ -209,6 +236,14 @@ export function CupClient({
   const [submittedCount, setSubmittedCount] = useState(initialSubmittedCount);
   const [isGoingToResults, setIsGoingToResults] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [guard, setGuard] = useState<{
+    kind: "next" | "submit";
+    items: GuardItem[];
+  } | null>(null);
+  // Sample+step combos ("sampleId:step") that have already triggered a guard —
+  // once flagged, the inline * / red indicator stays visible on that section
+  // (even if the user reviews or continues anyway) until the field is filled.
+  const [flaggedSteps, setFlaggedSteps] = useState<Set<string>>(new Set());
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
@@ -489,7 +524,11 @@ export function CupClient({
     scrollCanvasToTop();
   };
 
-  const handleNextSample = async () => {
+  // Resolve completeness affectiveIds → readable section labels.
+  const sectionLabels = (ids: string[]) =>
+    ids.map((id) => translations.attrLabels[id] ?? id);
+
+  const doNextSample = async () => {
     if (isNavigating) return;
     setIsNavigating(true);
     try {
@@ -508,6 +547,31 @@ export function CupClient({
     }
   };
 
+  // Guard: warn if the current sample's current phase has empty required fields
+  // before advancing. The user can review (stay) or continue anyway.
+  const handleNextSample = async () => {
+    if (isNavigating || guard) return;
+    // Only guard the cupping module — the beta Physical/Extrinsic tabs are out
+    // of scope, so navigating samples there must not nag about cupping fields.
+    const missing =
+      activeTab === "cupping"
+        ? stepMissing(samples[sampleIdx], currentStep, guardFormat)
+        : [];
+    if (missing.length > 0) {
+      setFlaggedSteps((prev) => {
+        const next = new Set(prev);
+        next.add(`${samples[sampleIdx].id}:${currentStep}`);
+        return next;
+      });
+      setGuard({
+        kind: "next",
+        items: [{ sections: sectionLabels(missing) }],
+      });
+      return;
+    }
+    await doNextSample();
+  };
+
   const handlePrev = async () => {
     await flushPending();
     if (sampleIdx > 0) {
@@ -522,7 +586,7 @@ export function CupClient({
     scrollCanvasToTop();
   };
 
-  const handleGoToResults = async () => {
+  const doGoToResults = async () => {
     // Final submit + results require connectivity. Offline, we keep the drafts
     // saved locally (they sync on reconnect) and surface a notice instead of
     // queuing an irreversible submit the user can't verify.
@@ -544,6 +608,44 @@ export function CupClient({
       setSubmitError(true);
       setIsGoingToResults(false);
     }
+  };
+
+  // Guard: submit is effectively irreversible, so scan every sample across every
+  // phase and list the gaps before finalizing.
+  const handleGoToResults = async () => {
+    if (guard) return;
+    const gaps = sessionMissing(samples, stepsForFormat, guardFormat);
+    if (gaps.length > 0) {
+      // Flag every sample+step combo that has a gap so revisiting any of them
+      // shows the inline indicator, not just the current one.
+      setFlaggedSteps((prev) => {
+        const next = new Set(prev);
+        for (const sample of samples) {
+          for (const step of stepsForFormat) {
+            if (stepMissing(sample, step, guardFormat).length > 0) {
+              next.add(`${sample.id}:${step}`);
+            }
+          }
+        }
+        return next;
+      });
+      setGuard({
+        kind: "submit",
+        items: gaps.map((g) => ({
+          sample: g.sampleLabel,
+          sections: sectionLabels(g.sections),
+        })),
+      });
+      return;
+    }
+    await doGoToResults();
+  };
+
+  const handleGuardConfirm = async () => {
+    const kind = guard?.kind;
+    setGuard(null);
+    if (kind === "next") await doNextSample();
+    else if (kind === "submit") await doGoToResults();
   };
 
   // ─── Invite link / close session ──────────────────────────────
@@ -575,6 +677,12 @@ export function CupClient({
 
   // ─── Derived state ────────────────────────────────────────────
   const current = samples[sampleIdx];
+
+  // Live-recomputed on every render so a flag clears the instant the field is
+  // filled in; only shown once flaggedSteps has "seen" this sample+step combo.
+  const currentMissingIds = flaggedSteps.has(`${current.id}:${currentStep}`)
+    ? stepMissing(current, currentStep, guardFormat)
+    : [];
 
   const handleSaveSampleMetadata = async (data: SampleMetadataFormData) => {
     await updateSampleMetadata(current.id, data);
@@ -983,6 +1091,29 @@ export function CupClient({
           conflictReplace: translations.offline.conflictReplace,
         }}
       />
+      <EvaluationGuardModal
+        open={guard !== null}
+        title={
+          guard?.kind === "submit"
+            ? translations.guard.submitTitle
+            : translations.guard.nextTitle
+        }
+        body={
+          guard?.kind === "submit"
+            ? translations.guard.submitBody
+            : translations.guard.nextBody
+        }
+        items={guard?.items ?? []}
+        onCancel={() => setGuard(null)}
+        onConfirm={handleGuardConfirm}
+        translations={{
+          review: translations.guard.review,
+          confirm:
+            guard?.kind === "submit"
+              ? translations.guard.submitAnyway
+              : translations.guard.continueAnyway,
+        }}
+      />
       <div key={`${activeTab}-${currentStep}-${current.id}`}>
         {activeTab === "cupping" && session.format === "descriptive" && (
           <DescriptiveForm
@@ -990,6 +1121,7 @@ export function CupClient({
             onChange={(d) => setCurrentData("descriptive", d)}
             currentStep={currentStep}
             locale={locale === "en" ? "en" : "es"}
+            missingIds={currentMissingIds}
           />
         )}
         {activeTab === "cupping" && session.format === "affective" && (
@@ -998,6 +1130,7 @@ export function CupClient({
             onChange={(d) => setCurrentData("affective", d)}
             cupsPerSample={session.cupsPerSample}
             currentStep={currentStep}
+            missingIds={currentMissingIds}
           />
         )}
         {activeTab === "cupping" &&
@@ -1009,6 +1142,7 @@ export function CupClient({
               cupsPerSample={session.cupsPerSample}
               currentStep={currentStep}
               locale={locale === "en" ? "en" : "es"}
+              missingIds={currentMissingIds}
             />
           )}
         {activeTab === "extrinsic" && (

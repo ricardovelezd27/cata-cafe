@@ -89,13 +89,17 @@ export function CombinedForm({
   cupsPerSample,
   currentStep,
   locale = "es",
+  missingIds,
 }: {
   sampleData: Data;
   onChange: (d: Data) => void;
   cupsPerSample: number;
   currentStep: CuppingStep;
   locale?: "es" | "en";
+  /** affectiveIds (from lib/completeness) still missing on this step; drives the * / red flag. */
+  missingIds?: string[];
 }) {
+  const isFlagged = (id: string) => missingIds?.includes(id) ?? false;
   const d = sampleData;
   const set = (key: string, val: unknown) => onChange({ ...d, [key]: val });
   const num = (k: string): number | null => (d[k] as number | undefined) ?? null;
@@ -168,7 +172,7 @@ export function CombinedForm({
   if (currentStep === "overall") {
     return (
       <div>
-        <FormSection title="Impresión Global" accent>
+        <FormSection title="Impresión Global" accent flagged={isFlagged("impresion_global")}>
           <AffectiveBubbles
             value={num("impresion_global_final")}
             onChange={(v) => set("impresion_global_final", v)}
@@ -235,7 +239,7 @@ export function CombinedForm({
         const max = STEP_CATA_MAX[descId];
 
         return (
-          <FormSection key={affId} title={title} accent>
+          <FormSection key={affId} title={title} accent flagged={isFlagged(affId)}>
             <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-6">
               {/* Left: descriptive */}
               <div className="min-w-0">
@@ -296,7 +300,7 @@ export function CombinedForm({
       })}
 
       {currentStep === "taste_aftertaste" && (
-        <FormSection title="Gustos Predominantes" accent>
+        <FormSection title="Gustos Predominantes" accent flagged={isFlagged("gustos")}>
           <div className="text-[11px] text-brown-mid mb-2">
             Selecciona hasta 2 sabores principales
           </div>
