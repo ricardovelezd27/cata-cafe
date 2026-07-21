@@ -300,7 +300,7 @@ export default async function CoffeeProfilePage({
             </div>
 
             {/* Recent tastings (anonymous — never shows cupper identity) */}
-            <div className="bg-white border border-[#E8E0D0] rounded-xl p-5">
+            <div className="bg-white border border-[#E8E0D0] rounded-card p-5">
               <h3 className="font-serif text-lg text-green-dark font-semibold mb-3">
                 {t("recentTastingsTitle")}
               </h3>

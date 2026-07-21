@@ -94,7 +94,7 @@ export default function WelcomeModal({ locale, initialDisplayName }: WelcomeModa
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-inverse-surface/60">
-      <div className="bg-surface-container-lowest rounded-lg shadow-card-lg w-full max-w-[480px] overflow-hidden">
+      <div className="bg-surface-container-lowest rounded-card shadow-card-lg w-full max-w-[480px] overflow-hidden">
 
         {/* Step 1 — Bienvenida */}
         {step === 1 && (

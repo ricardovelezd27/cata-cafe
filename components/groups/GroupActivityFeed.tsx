@@ -37,7 +37,7 @@ export function GroupActivityFeed({
   return (
     <div className="space-y-3">
       <h2 className="font-serif text-xl text-green-dark">{title}</h2>
-      <div className="bg-white rounded-xl border border-[#E8E0D0] shadow-card p-5">
+      <div className="bg-white rounded-card border border-[#E8E0D0] shadow-card p-5">
         {events.length === 0 ? (
           <p className="text-sm text-brown-mid">{emptyText}</p>
         ) : (
