@@ -574,6 +574,7 @@
       "explorer": "Explorer",
       "benchmark": "Benchmark",
       "share": "Share",
+      "chat": "Chat",
       "access": "Access"
     },
     "report": {
@@ -727,6 +728,47 @@
       "copy": "Copy",
       "copied": "Copied",
       "exportError": "Could not export the image."
+    },
+    "chat": {
+      "title": "Ask your data",
+      "subtitle": "Ask natural-language questions about your sessions, evaluations, and sensory profiles.",
+      "placeholder": "Type your question…",
+      "send": "Send",
+      "thinking": "Analyzing your data…",
+      "disclaimer": "AI-generated — verify important figures.",
+      "notConfigured": "AI is not configured (GEMINI_API_KEY missing).",
+      "error": "Couldn't process the question. Try again.",
+      "noAnswer": "I didn't get a clear answer. Try rephrasing the question.",
+      "retry": "Retry",
+      "limitReached": "You've reached the limit of {limit} questions per day. Come back tomorrow.",
+      "remaining": "{remaining} of {limit} questions today",
+      "emptyTitle": "Ask anything about your cupping data",
+      "emptyHint": "The AI queries your real data and answers with concrete figures — it never makes up numbers.",
+      "example1": "What are my highest-scoring origins this quarter?",
+      "example2": "How does my score compare to the CQI benchmark for washed Colombian coffees?",
+      "example3": "Which flavor descriptors show up most often in my cuppings?",
+      "clear": "Clear conversation",
+      "you": "You",
+      "assistant": "Assistant",
+      "benchmark": {
+        "mine": "My cuppings",
+        "benchmark": "CQI benchmark",
+        "n": "N",
+        "avg": "Average",
+        "min": "Min",
+        "max": "Max",
+        "p25": "P25",
+        "p75": "P75"
+      },
+      "origin": {
+        "year": "Year",
+        "production": "Production (t)",
+        "myActivity": "My activity"
+      },
+      "overview": {
+        "coffeesRegistered": "Coffees registered",
+        "totalUsers": "Total users"
+      }
     }
   },
   "groups": {

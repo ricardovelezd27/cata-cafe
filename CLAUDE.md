@@ -360,6 +360,8 @@ ANALYTICS_SUPER_ADMIN_EMAIL=  # lib/analytics/access.ts — insights super-admin
 GEMINI_API_KEY=               # lib/ai/gemini.ts — AI narratives; unset → "AI not configured" UI
 GEMINI_MODEL_LITE=            # Model override; default gemini-3.1-flash-lite
 GEMINI_MODEL_STANDARD=        # Model override; default gemini-3.5-flash
+ANALYTICS_AI_ADMIN_EMAILS=    # lib/analytics/access.ts — comma-separated AI-chat admins; unset → super-admin only
+GEMINI_MODEL_PRO=             # Model override for the insights chat; default gemini-3.5-pro
 CRON_SECRET=                  # Vercel Cron auth for /api/cron/insights-digest (Vercel env)
 NEXT_PUBLIC_SITE_URL=         # Absolute URL used in email links; defaults to localhost
 ```

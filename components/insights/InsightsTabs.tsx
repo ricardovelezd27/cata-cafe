@@ -6,10 +6,18 @@ import { usePathname } from "next/navigation";
 interface InsightsTabsProps {
   locale: string;
   isSuperAdmin: boolean;
-  labels: { dashboard: string; explorer: string; benchmark: string; share: string; access: string };
+  isAiAdmin: boolean;
+  labels: {
+    dashboard: string;
+    explorer: string;
+    benchmark: string;
+    share: string;
+    chat: string;
+    access: string;
+  };
 }
 
-export function InsightsTabs({ locale, isSuperAdmin, labels }: InsightsTabsProps) {
+export function InsightsTabs({ locale, isSuperAdmin, isAiAdmin, labels }: InsightsTabsProps) {
   const pathname = usePathname();
   const base = `/${locale}/app/insights`;
 
@@ -18,6 +26,7 @@ export function InsightsTabs({ locale, isSuperAdmin, labels }: InsightsTabsProps
     { href: `${base}/explorer`, label: labels.explorer, exact: false },
     { href: `${base}/benchmark`, label: labels.benchmark, exact: false },
     { href: `${base}/share`, label: labels.share, exact: false },
+    ...(isAiAdmin ? [{ href: `${base}/chat`, label: labels.chat, exact: false }] : []),
     ...(isSuperAdmin ? [{ href: `${base}/access`, label: labels.access, exact: false }] : []),
   ];
 
