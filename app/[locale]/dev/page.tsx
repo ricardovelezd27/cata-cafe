@@ -148,7 +148,7 @@ export default async function DevPage({
           <li>Haz clic en <strong>Crear sesión de prueba</strong> — aparecen los URLs de participante.</li>
           <li>Copia el URL de <strong>Participante 1</strong> y ábrelo en una ventana incógnito.</li>
           <li>Copia el URL de <strong>Participante 2</strong> y ábrelo en otra ventana incógnito.</li>
-          <li>Cada ventana es un usuario distinto en un "ambiente físico" diferente.</li>
+          <li>Cada ventana es un usuario distinto en un &ldquo;ambiente físico&rdquo; diferente.</li>
           <li>Los participantes evalúan y envían — el contador del Maestro se actualiza en tiempo real.</li>
         </ol>
       </section>

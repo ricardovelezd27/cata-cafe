@@ -32,10 +32,14 @@ export function IntensitySlider({
   const inputRef = useRef<HTMLInputElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
   // Latest onChange/disabled without re-subscribing the native listeners.
+  // Synced in an effect (not during render) — the refs are only read inside
+  // event handlers, which always fire after effects have committed.
   const onChangeRef = useRef(onChange)
   const disabledRef = useRef(disabled)
-  onChangeRef.current = onChange
-  disabledRef.current = disabled
+  useEffect(() => {
+    onChangeRef.current = onChange
+    disabledRef.current = disabled
+  })
 
   const v = value ?? 0
   const pct = ((v - min) / (max - min)) * 100

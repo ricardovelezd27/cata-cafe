@@ -92,6 +92,30 @@ function SortIcon({ field, active, dir }: { field: string; active: boolean; dir:
   return <span className="text-green-dark ml-1 text-xs">{dir === "asc" ? "↑" : "↓"}</span>;
 }
 
+function Th({
+  field,
+  label,
+  sortField,
+  sortDir,
+  onSort,
+}: {
+  field: SortField;
+  label: string;
+  sortField: SortField;
+  sortDir: "asc" | "desc";
+  onSort: (field: SortField) => void;
+}) {
+  return (
+    <th
+      className="px-4 py-3 text-left text-xs font-semibold text-brown-mid uppercase tracking-wide cursor-pointer select-none whitespace-nowrap hover:text-brown-dark"
+      onClick={() => onSort(field)}
+    >
+      {label}
+      <SortIcon field={field} active={sortField === field} dir={sortDir} />
+    </th>
+  );
+}
+
 export default function CoffeesTable({ coffees, locale, translations: t }: Props) {
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState<SortField>("name");
@@ -167,18 +191,6 @@ export default function CoffeesTable({ coffees, locale, translations: t }: Props
     .replace("{to}", String(to))
     .replace("{total}", String(sorted.length));
 
-  function Th({ field, label }: { field: SortField; label: string }) {
-    return (
-      <th
-        className="px-4 py-3 text-left text-xs font-semibold text-brown-mid uppercase tracking-wide cursor-pointer select-none whitespace-nowrap hover:text-brown-dark"
-        onClick={() => handleSort(field)}
-      >
-        {label}
-        <SortIcon field={field} active={sortField === field} dir={sortDir} />
-      </th>
-    );
-  }
-
   return (
     <div className="space-y-4">
       {/* Search */}
@@ -211,13 +223,13 @@ export default function CoffeesTable({ coffees, locale, translations: t }: Props
             <table className="w-full text-sm">
               <thead className="bg-[#F5F0E8] border-b border-brown-light">
                 <tr>
-                  <Th field="name" label={t.colName} />
-                  <Th field="country" label={t.colOrigin} />
-                  <Th field="processType" label={t.colProcess} />
-                  <Th field="variety" label={t.colVariety} />
-                  <Th field="sessions" label={t.colSessions} />
-                  <Th field="score" label={t.colLastScore} />
-                  <Th field="date" label={t.colLastDate} />
+                  <Th field="name" label={t.colName} sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                  <Th field="country" label={t.colOrigin} sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                  <Th field="processType" label={t.colProcess} sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                  <Th field="variety" label={t.colVariety} sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                  <Th field="sessions" label={t.colSessions} sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                  <Th field="score" label={t.colLastScore} sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                  <Th field="date" label={t.colLastDate} sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
