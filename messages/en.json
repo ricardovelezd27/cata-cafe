@@ -117,8 +117,9 @@
       "required": "required",
       "optionalSuffix": "optional",
       "coffeeCard": "Coffee",
-      "addSampleOfCoffee": "+ Another sample of this coffee",
       "sampleChip": "Sample",
+      "samplesTitle": "Samples",
+      "samplesHelper": "Each sample is cupped separately. Edit its label and assign it a coffee.",
       "errors": {
         "no_samples": "Add at least one sample to start the session.",
         "no_coffees": "Add at least one coffee to start the session.",

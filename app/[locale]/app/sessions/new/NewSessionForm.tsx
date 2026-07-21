@@ -24,8 +24,6 @@ type SampleEntry = {
   coffeeId: string;
   /** True while the label is still the auto-generated "Muestra X" text (not user-edited). */
   auto: boolean;
-  /** Each coffee card owns exactly one primary sample; extras are added explicitly. */
-  primary: boolean;
 };
 
 type Translations = {
@@ -50,6 +48,11 @@ type Translations = {
   coffeeRegion: string;
   addCoffee: string;
   removeCoffee: string;
+  // samples section
+  addSample: string;
+  removeSample: string;
+  sampleLabel: string;
+  sampleCoffee: string;
   start: string;
   // group
   groupToggle: string;
@@ -63,8 +66,9 @@ type Translations = {
     required: string;
     optionalSuffix: string;
     coffeeCard: string;
-    addSampleOfCoffee: string;
     sampleChip: string;
+    samplesTitle: string;
+    samplesHelper: string;
     errors: {
       no_samples: string;
       no_coffees: string;
@@ -101,26 +105,9 @@ const EMPTY_COFFEE: CoffeeInput = {
   region: "",
 };
 
-/** All samples in card display order: coffees in order, each coffee's samples in their own order. */
-function displayOrder(coffees: CoffeeEntry[], samples: SampleEntry[]): SampleEntry[] {
-  const out: SampleEntry[] = [];
-  for (const c of coffees) {
-    for (const s of samples) {
-      if (s.coffeeId === c.id) out.push(s);
-    }
-  }
-  return out;
-}
-
-/** Recomputes A, B, C… letters across all samples in display order; leaves user-edited labels untouched. */
-function relabel(coffees: CoffeeEntry[], samples: SampleEntry[], chip: string): SampleEntry[] {
-  const ordered = displayOrder(coffees, samples);
-  const letters = new Map(ordered.map((s, i) => [s.id, sampleLetter(i)]));
-  return samples.map((s) => {
-    if (!s.auto) return s;
-    const letter = letters.get(s.id);
-    return letter ? { ...s, label: `${chip} ${letter}` } : s;
-  });
+/** Recomputes A, B, C… labels by list position; leaves user-edited labels untouched. */
+function relabel(samples: SampleEntry[], chip: string): SampleEntry[] {
+  return samples.map((s, i) => (s.auto ? { ...s, label: `${chip} ${sampleLetter(i)}` } : s));
 }
 
 const inputCls =
@@ -184,7 +171,6 @@ export function NewSessionForm({
       label: `${t.newForm.sampleChip} ${sampleLetter(0)}`,
       coffeeId: coffees[0].id,
       auto: true,
-      primary: true,
     },
   ]);
 
@@ -215,50 +201,57 @@ export function NewSessionForm({
   };
 
   const addCoffee = () => {
+    // Adding a coffee also seeds one sample assigned to it (the common 1:1 case
+    // needs zero extra clicks); the sample lives in the flat Muestras list where
+    // its label and coffee can be freely edited afterward.
     const coffeeId = newId();
-    const nextCoffees = [...coffees, { ...EMPTY_COFFEE, id: coffeeId }];
-    const nextSamples = relabel(
-      nextCoffees,
-      [...samples, { id: newId(), label: "", coffeeId, auto: true, primary: true }],
-      t.newForm.sampleChip
+    setCoffees((prev) => [...prev, { ...EMPTY_COFFEE, id: coffeeId }]);
+    setSamples((prev) =>
+      relabel([...prev, { id: newId(), label: "", coffeeId, auto: true }], t.newForm.sampleChip)
     );
-    setCoffees(nextCoffees);
-    setSamples(nextSamples);
   };
 
   const removeCoffee = (id: string) => {
     if (coffees.length <= 1) return;
     const nextCoffees = coffees.filter((c) => c.id !== id);
-    const nextSamples = relabel(
-      nextCoffees,
-      samples.filter((s) => s.coffeeId !== id),
-      t.newForm.sampleChip
-    );
+    // Drop samples that pointed at the removed coffee; never leave the list empty.
+    let nextSamples = samples.filter((s) => s.coffeeId !== id);
+    if (nextSamples.length === 0) {
+      nextSamples = [{ id: newId(), label: "", coffeeId: nextCoffees[0].id, auto: true }];
+    }
     setCoffees(nextCoffees);
-    setSamples(nextSamples);
+    setSamples(relabel(nextSamples, t.newForm.sampleChip));
     if (invalidCoffeeId === id) {
       setInvalidCoffeeId(null);
       setErrorCode(null);
     }
   };
 
-  const addSampleOfCoffee = (coffeeId: string) => {
-    const nextSamples = relabel(
-      coffees,
-      [...samples, { id: newId(), label: "", coffeeId, auto: true, primary: false }],
-      t.newForm.sampleChip
+  const addSample = () => {
+    setSamples((prev) =>
+      relabel(
+        [...prev, { id: newId(), label: "", coffeeId: coffees[0].id, auto: true }],
+        t.newForm.sampleChip
+      )
     );
-    setSamples(nextSamples);
   };
 
   const removeSample = (id: string) => {
-    const nextSamples = relabel(coffees, samples.filter((s) => s.id !== id), t.newForm.sampleChip);
-    setSamples(nextSamples);
+    if (samples.length <= 1) return;
+    setSamples((prev) => relabel(prev.filter((s) => s.id !== id), t.newForm.sampleChip));
   };
 
   const updateSampleLabel = (id: string, value: string) => {
     setSamples((prev) => prev.map((s) => (s.id === id ? { ...s, label: value, auto: false } : s)));
   };
+
+  const updateSampleCoffee = (id: string, coffeeId: string) => {
+    setSamples((prev) => prev.map((s) => (s.id === id ? { ...s, coffeeId } : s)));
+    setErrorCode(null);
+  };
+
+  const coffeeLabel = (coffee: CoffeeEntry, i: number) =>
+    coffee.name.trim() || `${t.newForm.coffeeCard} ${i + 1}`;
 
   // ── Submit ──────────────────────────────────────────────────────────────────
   const validateClient = (): boolean => {
@@ -278,14 +271,13 @@ export function NewSessionForm({
     setErrorCode(null);
     if (!validateClient()) return;
 
-    const ordered = displayOrder(coffees, samples);
     const idxById = new Map(coffees.map((c, i) => [c.id, i]));
     const coffeePayload: CoffeeInput[] = coffees.map((c) => {
       const { id, ...rest } = c;
       void id;
       return rest;
     });
-    const samplePayload = ordered.map((s) => ({
+    const samplePayload = samples.map((s) => ({
       label: s.label,
       coffeeIdx: idxById.get(s.coffeeId) ?? 0,
     }));
@@ -470,9 +462,6 @@ export function NewSessionForm({
 
         <div className="space-y-4">
           {coffees.map((coffee, i) => {
-            const forCoffee = samples.filter((s) => s.coffeeId === coffee.id);
-            const primarySample = forCoffee.find((s) => s.primary);
-            const extraSamples = forCoffee.filter((s) => !s.primary);
             const invalid = invalidCoffeeId === coffee.id;
 
             return (
@@ -490,7 +479,7 @@ export function NewSessionForm({
               >
                 <div className="flex items-center gap-2">
                   <span className="bg-surface-container rounded-pill px-3 py-1 text-xs font-semibold tracking-wide uppercase text-on-surface">
-                    {primarySample?.label ?? `${t.newForm.sampleChip} ${sampleLetter(i)}`}
+                    {t.newForm.coffeeCard} {i + 1}
                   </span>
                   <div className="flex-1" />
                   {coffees.length > 1 && (
@@ -591,36 +580,6 @@ export function NewSessionForm({
                     />
                   </div>
                 </div>
-
-                {extraSamples.length > 0 && (
-                  <div className="space-y-2">
-                    {extraSamples.map((s) => (
-                      <div key={s.id} className="flex items-center gap-2">
-                        <input
-                          value={s.label}
-                          onChange={(e) => updateSampleLabel(s.id, e.target.value)}
-                          className="flex-1 border border-outline-variant rounded-input px-2.5 py-1.5 text-xs bg-surface-container-lowest text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container/25 focus:border-primary-container transition-colors"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeSample(s.id)}
-                          aria-label={t.removeCoffee}
-                          className="p-1 text-on-surface-variant hover:text-error transition-colors"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => addSampleOfCoffee(coffee.id)}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-primary-container hover:text-primary transition-colors"
-                >
-                  {t.newForm.addSampleOfCoffee}
-                </button>
               </div>
             );
           })}
@@ -637,7 +596,63 @@ export function NewSessionForm({
 
       <hr className="border-t border-outline-variant" />
 
-      {/* 4. Group session */}
+      {/* 4. Muestras — flat list: each sample has an editable label + coffee assignment */}
+      <div className="space-y-4">
+        <div>
+          <FieldLabel>{t.newForm.samplesTitle}</FieldLabel>
+          <p className="text-xs text-on-surface-variant">{t.newForm.samplesHelper}</p>
+        </div>
+
+        <div className="space-y-2">
+          {samples.map((s) => (
+            <div key={s.id} className="flex items-center gap-2">
+              <input
+                value={s.label}
+                onChange={(e) => updateSampleLabel(s.id, e.target.value)}
+                aria-label={t.sampleLabel}
+                placeholder={t.sampleLabel}
+                className={inputCls + " flex-1"}
+              />
+              {coffees.length > 1 && (
+                <select
+                  value={s.coffeeId}
+                  onChange={(e) => updateSampleCoffee(s.id, e.target.value)}
+                  aria-label={t.sampleCoffee}
+                  className={inputCls + " flex-1 cursor-pointer"}
+                >
+                  {coffees.map((c, ci) => (
+                    <option key={c.id} value={c.id}>
+                      {coffeeLabel(c, ci)}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {samples.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeSample(s.id)}
+                  aria-label={t.removeSample}
+                  className="p-1 text-on-surface-variant hover:text-error transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={addSample}
+          className="border border-primary-container text-primary-container rounded-pill px-5 py-2.5 text-sm font-medium hover:bg-primary-fixed transition-colors"
+        >
+          + {t.addSample}
+        </button>
+      </div>
+
+      <hr className="border-t border-outline-variant" />
+
+      {/* 5. Group session */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <button

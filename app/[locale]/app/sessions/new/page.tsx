@@ -41,6 +41,11 @@ export default async function NewSessionPage({
     coffeeRegion: tc("region"),
     addCoffee: t("addCoffee"),
     removeCoffee: t("removeCoffee"),
+    // samples section
+    addSample: t("addSample"),
+    removeSample: t("removeSample"),
+    sampleLabel: t("sampleLabel"),
+    sampleCoffee: t("sampleCoffee"),
     start: t("start"),
     // group
     groupToggle: tg("toggle"),
@@ -54,8 +59,9 @@ export default async function NewSessionPage({
       required: t("newForm.required"),
       optionalSuffix: t("newForm.optionalSuffix"),
       coffeeCard: t("newForm.coffeeCard"),
-      addSampleOfCoffee: t("newForm.addSampleOfCoffee"),
       sampleChip: t("newForm.sampleChip"),
+      samplesTitle: t("newForm.samplesTitle"),
+      samplesHelper: t("newForm.samplesHelper"),
       errors: {
         no_samples: t("newForm.errors.no_samples"),
         no_coffees: t("newForm.errors.no_coffees"),

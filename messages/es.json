@@ -117,8 +117,9 @@
       "required": "obligatorio",
       "optionalSuffix": "opcional",
       "coffeeCard": "Café",
-      "addSampleOfCoffee": "+ Otra muestra de este café",
       "sampleChip": "Muestra",
+      "samplesTitle": "Muestras",
+      "samplesHelper": "Cada muestra se cata por separado. Edita su etiqueta y asígnale un café.",
       "errors": {
         "no_samples": "Agrega al menos una muestra para iniciar la sesión.",
         "no_coffees": "Agrega al menos un café para iniciar la sesión.",
