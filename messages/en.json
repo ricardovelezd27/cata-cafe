@@ -403,38 +403,6 @@
       "source": "Source: public percentiles from the Specialty Coffee Transaction Guide — the band will sharpen with community data.",
       "disclaimer": "Indicative range. Not an offer to buy."
     },
-    "drift": {
-      "eyebrow": "The cost of not calibrating",
-      "statLead": "The whole class scored the same coffee.",
-      "statPunch": "They diverged by up to ±1.5 points.",
-      "statNote": "Without a shared reference, every student cups on their own scale and the notes don't mean the same thing.",
-      "statSource": "Group calibration session: one cohort, the same lot, no instructor reference.",
-      "exampleTitle": "What the paperwork costs",
-      "lotLabel": "Students per cohort",
-      "lotValue": "24",
-      "errorLabel": "Cupping sessions per course",
-      "errorValue": "12",
-      "lossLabel": "Weekly hours moving forms into a spreadsheet",
-      "lossValue": "6 h/week",
-      "decisionsLabel": "Course weeks per year",
-      "decisionsValue": "20",
-      "totalLabel": "Hours a year lost to paperwork",
-      "totalValue": "120 h/year"
-    },
-    "comparison": {
-      "eyebrow": "Recording vs. calibrating",
-      "title": "Your cupping app records. Cata calibrates your team.",
-      "colGeneric": "Cupping apps",
-      "colCata": "Cata",
-      "rowSca": "CVA descriptive and affective forms",
-      "rowReports": "PDF reports and certificates",
-      "rowBand": "Group sessions with an instructor reference",
-      "rowAlert": "Per-student deviation and calibration metrics",
-      "rowSegment": "Works offline in the lab",
-      "included": "Included",
-      "notIncluded": "Not included",
-      "tagline": "Keep your tools. Add the calibration layer."
-    },
     "how": {
       "eyebrow": "How it works",
       "title": "From cup to calibration in three steps",
@@ -448,13 +416,33 @@
       "frame2Aria": "Recreation of the flavor descriptor selector",
       "frame3Aria": "Recreation of the score card with PDF report"
     },
-    "trust": {
-      "formulaLabel": "CVA formula",
-      "formula": "S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d",
-      "item1": "SCA CVA methodology with the full protocol",
-      "item2": "Built for labs: works offline",
-      "item3": "PDF reports and certificates",
-      "item4": "Group calibration with an instructor reference"
+    "features": {
+      "eyebrow": "What's included",
+      "title": "The whole protocol, without the friction",
+      "item1": {
+        "title": "SCA CVA methodology",
+        "desc": "The full official protocol across all three formats: descriptive, affective and combined."
+      },
+      "item2": {
+        "title": "Transparent scoring",
+        "desc": "Every score shows exactly how it was calculated, with the formula in the open."
+      },
+      "item3": {
+        "title": "AI-powered discovery",
+        "desc": "AI-powered insights that surface patterns across your cupping data."
+      },
+      "item4": {
+        "title": "Built for labs",
+        "desc": "Works fully offline and syncs as soon as you're back online."
+      },
+      "item5": {
+        "title": "Reports and certificates",
+        "desc": "Generate per-session PDF reports and certificates, ready to export."
+      },
+      "item6": {
+        "title": "Group calibration",
+        "desc": "Group sessions against the instructor reference, asynchronously too: each student cups on their own time."
+      }
     },
     "audience": {
       "eyebrow": "Who it's for",

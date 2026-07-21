@@ -3,10 +3,8 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { routing } from "@/i18n/routing";
 import LandingHeader from "@/components/landing/LandingHeader";
 import HeroSection from "@/components/landing/HeroSection";
-import CalibrationDriftSection from "@/components/landing/CalibrationDriftSection";
-import ComparisonSection from "@/components/landing/ComparisonSection";
 import HowItWorksSection from "@/components/landing/HowItWorksSection";
-import TrustStrip from "@/components/landing/TrustStrip";
+import FeaturesSection from "@/components/landing/FeaturesSection";
 import AudienceSection from "@/components/landing/AudienceSection";
 import FoundingSection from "@/components/landing/FoundingSection";
 import FinalCTASection from "@/components/landing/FinalCTASection";
@@ -55,10 +53,8 @@ export default async function LandingPage({
       <LandingHeader locale={locale} />
       <main className="flex-1">
         <HeroSection locale={locale} />
-        <CalibrationDriftSection />
-        <ComparisonSection />
         <HowItWorksSection locale={locale} />
-        <TrustStrip />
+        <FeaturesSection />
         <AudienceSection />
         <FoundingSection locale={locale} />
         <FinalCTASection locale={locale} />

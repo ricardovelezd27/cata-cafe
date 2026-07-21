@@ -403,38 +403,6 @@
       "source": "Fuente: percentiles públicos de la Specialty Coffee Transaction Guide — la banda se afinará con datos de la comunidad.",
       "disclaimer": "Rango orientativo. No constituye una oferta de compra."
     },
-    "drift": {
-      "eyebrow": "El coste de no calibrar",
-      "statLead": "Toda la clase puntuó el mismo café.",
-      "statPunch": "Se desviaron hasta ±1,5 puntos.",
-      "statNote": "Sin una referencia común, cada alumno cata en su propia escala y las notas no significan lo mismo.",
-      "statSource": "Sesión de calibración en grupo: una cohorte, el mismo lote, sin referencia del instructor.",
-      "exampleTitle": "Lo que cuesta en papeleo",
-      "lotLabel": "Alumnos por cohorte",
-      "lotValue": "24",
-      "errorLabel": "Sesiones de cata por curso",
-      "errorValue": "12",
-      "lossLabel": "Horas semanales pasando formularios a hoja de cálculo",
-      "lossValue": "6 h/semana",
-      "decisionsLabel": "Semanas de curso al año",
-      "decisionsValue": "20",
-      "totalLabel": "Horas al año perdidas en papeleo",
-      "totalValue": "120 h/año"
-    },
-    "comparison": {
-      "eyebrow": "Registrar vs. calibrar",
-      "title": "Tu app de cata registra. Cata calibra a tu equipo.",
-      "colGeneric": "Apps de cata",
-      "colCata": "Cata",
-      "rowSca": "Formularios CVA descriptivo y afectivo",
-      "rowReports": "Informes y certificados en PDF",
-      "rowBand": "Sesiones en grupo con referencia del instructor",
-      "rowAlert": "Métricas de desviación y calibración por alumno",
-      "rowSegment": "Funciona sin conexión en el laboratorio",
-      "included": "Incluido",
-      "notIncluded": "No incluido",
-      "tagline": "Mantén tus herramientas. Añade la capa de calibración."
-    },
     "how": {
       "eyebrow": "Cómo funciona",
       "title": "De la taza a la calibración en tres pasos",
@@ -448,13 +416,33 @@
       "frame2Aria": "Recreación del selector de descriptores de sabor",
       "frame3Aria": "Recreación de la tarjeta de puntaje con informe PDF"
     },
-    "trust": {
-      "formulaLabel": "Fórmula CVA",
-      "formula": "S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d",
-      "item1": "Metodología SCA CVA con el protocolo completo",
-      "item2": "Pensado para laboratorios: funciona sin conexión",
-      "item3": "Informes y certificados en PDF",
-      "item4": "Calibración en grupo con referencia del instructor"
+    "features": {
+      "eyebrow": "Lo que incluye",
+      "title": "Todo el protocolo, sin fricción",
+      "item1": {
+        "title": "Metodología SCA CVA",
+        "desc": "El protocolo oficial completo en sus tres formatos: descriptivo, afectivo y combinado."
+      },
+      "item2": {
+        "title": "Puntuación transparente",
+        "desc": "Cada puntaje muestra exactamente cómo se calculó, con la fórmula a la vista."
+      },
+      "item3": {
+        "title": "Descubrimiento con IA",
+        "desc": "Insights impulsados por IA que revelan patrones en los datos de tus catas."
+      },
+      "item4": {
+        "title": "Pensado para laboratorios",
+        "desc": "Funciona por completo sin conexión y sincroniza al recuperar la señal."
+      },
+      "item5": {
+        "title": "Informes y certificados",
+        "desc": "Genera informes y certificados en PDF por sesión, listos para exportar."
+      },
+      "item6": {
+        "title": "Calibración en grupo",
+        "desc": "Sesiones en grupo contra la referencia del instructor, también de forma asíncrona: cada alumno cata a su ritmo."
+      }
     },
     "audience": {
       "eyebrow": "Para quién es",

@@ -8,6 +8,7 @@ import {
   cupperScore,
   cvaScore,
   DEFAULT_USER_SCORE,
+  DEMO_MOVES,
   groupSpread,
   REFERENCE,
   SCORE_STEP,
@@ -30,8 +31,35 @@ type Labels = {
 };
 
 const DEMO_DELAY = 650; // after the hero entrance settles
-const DEMO_DURATION = 3000; // one calibration round, ~3s
+const DEMO_MOVE_DURATION = 1000; // each of the visitor's 3 eased moves
+const DEMO_MOVE_PAUSE = 350; // hold between consecutive moves
+// Whole-demo length: 3 moves + the 2 pauses that sit between them. Student dots
+// converge continuously across this entire span.
+const DEMO_DURATION =
+  DEMO_MOVES.length * DEMO_MOVE_DURATION +
+  (DEMO_MOVES.length - 1) * DEMO_MOVE_PAUSE;
 const easeOutQuart = (t: number) => 1 - Math.pow(1 - t, 4);
+
+// The visitor's slider value at a given elapsed time (ms since the demo armed),
+// walking DEFAULT_USER_SCORE through each DEMO_MOVES target with an eased move
+// then a flat pause. Returns the final target once the sequence completes.
+function demoUserScore(elapsed: number): number {
+  let from = DEFAULT_USER_SCORE;
+  let cursor = 0;
+  for (const to of DEMO_MOVES) {
+    const moveEnd = cursor + DEMO_MOVE_DURATION;
+    if (elapsed <= moveEnd) {
+      const mt = easeOutQuart(
+        Math.max(0, (elapsed - cursor) / DEMO_MOVE_DURATION),
+      );
+      return from + (to - from) * mt;
+    }
+    from = to;
+    cursor = moveEnd + DEMO_MOVE_PAUSE;
+    if (elapsed < cursor) return to; // holding through the pause
+  }
+  return from;
+}
 
 // Position of an affective value (1–9) as a percentage of the track width.
 const pct = (value: number) =>
@@ -71,14 +99,15 @@ export default function CalibrationWidget({
     const t0 = performance.now() + DEMO_DELAY;
     const tick = (now: number) => {
       if (demoCancelled.current) return;
-      const t = Math.min(1, Math.max(0, (now - t0) / DEMO_DURATION));
+      const elapsed = now - t0;
+      const t = Math.min(1, Math.max(0, elapsed / DEMO_DURATION));
       if (t > 0) {
         setDemo("running");
-        const p = easeOutQuart(t);
-        setProgress(p);
-        // Sweep the visitor's own dot from its scattered start toward the
-        // instructor reference, snapped to the slider step.
-        const v = DEFAULT_USER_SCORE + (REFERENCE - DEFAULT_USER_SCORE) * p;
+        // Student dots converge continuously across the whole demo span.
+        setProgress(easeOutQuart(t));
+        // The visitor's own dot makes three eased moves (undershoot →
+        // overshoot → settle on the reference), snapped to the slider step.
+        const v = demoUserScore(elapsed);
         setScore(Math.round(v / SCORE_STEP) * SCORE_STEP);
       }
       if (t < 1) raf = requestAnimationFrame(tick);

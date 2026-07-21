@@ -16,6 +16,14 @@ export const REFERENCE = 7.5;
 // The visitor's own dot starts here; the self-demo sweeps it toward REFERENCE.
 export const DEFAULT_USER_SCORE = 6.75;
 
+// The self-demo drives the visitor's slider through three eased moves (from
+// DEFAULT_USER_SCORE), dramatizing how much a single taster's rating can wander
+// before settling on the instructor reference: undershoot → overshoot → settle.
+// Clamped to the affective scale. The final move MUST land on REFERENCE.
+export const DEMO_MOVES: number[] = [5.75, 8.5, REFERENCE].map((v) =>
+  Math.min(AFFECTIVE_MAX, Math.max(AFFECTIVE_MIN, v)),
+);
+
 export type Cupper = {
   key: "c1" | "c2" | "c3" | "c4" | "c5";
   start: number; // scattered opening impression (pre-calibration)
