@@ -59,7 +59,7 @@ export function AiSummaryPanel({ locale, target, translations: t }: AiSummaryPan
   const errored = result != null && !result.ok && !result.skipped;
 
   return (
-    <div className="bg-cream rounded-xl border border-[#E8E0D0] shadow-card p-5">
+    <div className="bg-cream rounded-card border border-[#E8E0D0] shadow-card p-5">
       {isPending ? (
         <div className="flex items-center gap-2 text-sm text-brown-mid animate-pulse">
           <Sparkles size={16} />

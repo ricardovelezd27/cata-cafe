@@ -40,7 +40,7 @@ export default async function JoinPage({
   if (!isValid) {
     return (
       <main className="flex flex-1 items-center justify-center px-6 py-16">
-        <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-2xl p-8 text-center space-y-4">
+        <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-card p-8 text-center space-y-4">
           <p className="text-lg font-semibold text-red-defect">{t("invalidToken")}</p>
         </div>
       </main>
@@ -52,7 +52,7 @@ export default async function JoinPage({
 
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-16">
-      <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-2xl p-8 space-y-6">
+      <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-card p-8 space-y-6">
         <div>
           <h1 className="text-2xl font-serif text-green-dark font-semibold">
             {invite.session.name}
@@ -62,7 +62,7 @@ export default async function JoinPage({
         <form action={joinAction}>
           <button
             type="submit"
-            className="w-full py-3 rounded-lg bg-green-dark text-white font-bold hover:bg-green-mid transition"
+            className="w-full py-3 rounded-pill bg-green-dark text-white font-bold hover:bg-green-mid transition"
           >
             {t("joinSession")}
           </button>

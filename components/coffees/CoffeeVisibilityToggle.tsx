@@ -65,7 +65,7 @@ export function CoffeeVisibilityToggle({ coffeeId, isPublic, translations }: Pro
   return (
     <div className="flex items-center gap-3">
       <span
-        className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${badgeClass}`}
+        className={`text-xs font-semibold px-2.5 py-1 rounded-pill border ${badgeClass}`}
       >
         {isPublic ? translations.recordPublic : translations.recordPrivate}
       </span>
@@ -73,7 +73,7 @@ export function CoffeeVisibilityToggle({ coffeeId, isPublic, translations }: Pro
         type="button"
         onClick={handleClick}
         disabled={isPending}
-        className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-brown-light text-brown-dark hover:bg-cream transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="text-xs font-semibold px-3 py-1.5 rounded-pill border border-brown-light text-brown-dark hover:bg-cream transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isPublic
           ? translations.makePrivate

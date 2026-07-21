@@ -15,7 +15,7 @@ export default async function LoginPage({
 
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-16">
-      <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-2xl p-8 space-y-5">
+      <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-card p-8 space-y-5">
         <h1 className="text-3xl text-green-dark font-serif font-semibold">{t("loginTitle")}</h1>
         <LoginForm
           emailLabel={t("email")}

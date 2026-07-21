@@ -131,7 +131,7 @@ export default async function CoffeeProfilePage({
 
       {/* Visibility controls (owner only) */}
       {isOwner && (
-        <div className="bg-white border border-[#E8E0D0] rounded-xl p-5 space-y-4">
+        <div className="bg-white border border-[#E8E0D0] rounded-card p-5 space-y-4">
           <h2 className="font-serif text-lg text-green-dark font-semibold">
             {t("visibilityTitle")}
           </h2>
@@ -178,11 +178,11 @@ export default async function CoffeeProfilePage({
         </h2>
 
         {!showResults ? (
-          <div className="bg-white border border-[#E8E0D0] rounded-xl p-5">
+          <div className="bg-white border border-[#E8E0D0] rounded-card p-5">
             <p className="text-sm text-brown-mid">{t("resultsPrivate")}</p>
           </div>
         ) : samples.length === 0 ? (
-          <div className="bg-white border border-[#E8E0D0] rounded-xl p-5">
+          <div className="bg-white border border-[#E8E0D0] rounded-card p-5">
             <p className="text-sm text-brown-mid">{t("noResults")}</p>
           </div>
         ) : (
@@ -218,7 +218,7 @@ export default async function CoffeeProfilePage({
 
             {/* Attribute averages */}
             {Object.keys(aggregate.attrAverages).length > 0 && (
-              <div className="bg-white border border-[#E8E0D0] rounded-xl p-5">
+              <div className="bg-white border border-[#E8E0D0] rounded-card p-5">
                 <h3 className="font-serif text-lg text-green-dark font-semibold mb-4">
                   {t("attrAveragesTitle")}
                 </h3>
@@ -250,7 +250,7 @@ export default async function CoffeeProfilePage({
 
             {/* Flavor cloud */}
             {aggregate.allDescriptive.length > 0 && (
-              <div className="bg-white border border-[#E8E0D0] rounded-xl p-5">
+              <div className="bg-white border border-[#E8E0D0] rounded-card p-5">
                 <h3 className="font-serif text-lg text-green-dark font-semibold mb-2">
                   {t("flavorsTitle")}
                 </h3>
@@ -264,7 +264,7 @@ export default async function CoffeeProfilePage({
             )}
 
             {/* Per-session appearances */}
-            <div className="bg-white border border-[#E8E0D0] rounded-xl overflow-hidden">
+            <div className="bg-white border border-[#E8E0D0] rounded-card overflow-hidden">
               <h3 className="font-serif text-lg text-green-dark font-semibold p-5 pb-3">
                 {t("sessionsListTitle")}
               </h3>
@@ -335,7 +335,7 @@ export default async function CoffeeProfilePage({
       </div>
 
       {/* Details grid */}
-      <div className="bg-[#FDFBF7] border border-brown-light rounded-xl p-5 grid grid-cols-2 gap-4">
+      <div className="bg-[#FDFBF7] border border-brown-light rounded-card p-5 grid grid-cols-2 gap-4">
         {coffee.country && (
           <div>
             <p className="text-xs text-brown-mid font-semibold uppercase tracking-wide mb-0.5">
@@ -409,7 +409,7 @@ export default async function CoffeeProfilePage({
               {coffee.certifications.map((c) => (
                 <span
                   key={c}
-                  className="text-xs px-2 py-0.5 rounded-full bg-amber-warm/20 text-brown-dark border border-amber-warm/40"
+                  className="text-xs px-2 py-0.5 rounded-pill bg-amber-warm/20 text-brown-dark border border-amber-warm/40"
                 >
                   {c}
                 </span>
@@ -427,7 +427,7 @@ export default async function CoffeeProfilePage({
         {history.length === 0 ? (
           <p className="text-sm text-brown-mid">{th("empty")}</p>
         ) : (
-          <div className="bg-[#FDFBF7] border border-brown-light rounded-xl overflow-hidden">
+          <div className="bg-[#FDFBF7] border border-brown-light rounded-card overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-brown-light bg-cream/50">

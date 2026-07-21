@@ -43,7 +43,7 @@ export function CoCupperCard({
   const roleLabel = ROLE_LABELS[cupper.role]?.es ?? cupper.role;
 
   return (
-    <div className="bg-white rounded-xl border border-[#E8E0D0] p-5 flex flex-col gap-4">
+    <div className="bg-white rounded-card border border-[#E8E0D0] p-5 flex flex-col gap-4">
       <div className="flex items-center gap-4">
         <Avatar name={cupper.displayName} size={56} />
         <div className="min-w-0">

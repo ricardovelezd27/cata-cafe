@@ -56,7 +56,7 @@ const CARD_WIDTH = 1200;
 const CARD_HEIGHT = 630;
 
 const inputClass =
-  "w-full rounded-lg border border-[#E8E0D0] bg-white px-3 py-2 text-sm text-brown-dark focus:outline-none focus:border-[#3D5A3E]";
+  "w-full rounded-input border border-[#E8E0D0] bg-white px-3 py-2 text-sm text-brown-dark focus:outline-none focus:border-[#3D5A3E]";
 
 export function InsightCardComposer({ locale, savedInsights, citationLines, t }: InsightCardComposerProps) {
   const [selectedId, setSelectedId] = useState<string>(savedInsights[0]?.id ?? "");
@@ -171,7 +171,7 @@ export function InsightCardComposer({ locale, savedInsights, citationLines, t }:
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
       {/* Controls */}
       <div className="flex flex-col gap-4">
-        <div className="bg-white rounded-xl border border-[#E8E0D0] shadow-card p-5 flex flex-col gap-4">
+        <div className="bg-white rounded-card border border-[#E8E0D0] shadow-card p-5 flex flex-col gap-4">
           <label className="flex flex-col gap-1">
             <span className="text-xs font-semibold text-brown-mid uppercase tracking-wide">
               {t.pickInsight}
@@ -220,7 +220,7 @@ export function InsightCardComposer({ locale, savedInsights, citationLines, t }:
               type="button"
               onClick={handleDownloadPng}
               disabled={exporting}
-              className="flex items-center gap-1.5 rounded-lg bg-[#3D5A3E] text-white text-sm font-semibold px-4 py-2 disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-pill bg-[#3D5A3E] text-white text-sm font-semibold px-4 py-2 disabled:opacity-50"
             >
               {exporting ? <Loader2 size={15} className="animate-spin" /> : <ImageDown size={15} />}
               {t.downloadPng}
@@ -229,7 +229,7 @@ export function InsightCardComposer({ locale, savedInsights, citationLines, t }:
               type="button"
               onClick={() => generateTexts(false)}
               disabled={!selectedConfig || liPending}
-              className="flex items-center gap-1.5 rounded-lg border border-[#E8E0D0] bg-white text-sm font-semibold text-brown-dark px-4 py-2 disabled:opacity-50 hover:border-[#3D5A3E] hover:text-[#3D5A3E]"
+              className="flex items-center gap-1.5 rounded-pill border border-[#E8E0D0] bg-white text-sm font-semibold text-brown-dark px-4 py-2 disabled:opacity-50 hover:border-[#3D5A3E] hover:text-[#3D5A3E]"
             >
               <Sparkles size={15} />
               {t.generateTexts}
@@ -239,7 +239,7 @@ export function InsightCardComposer({ locale, savedInsights, citationLines, t }:
         </div>
 
         {(liPending || liResult) && (
-          <div className="bg-cream rounded-xl border border-[#E8E0D0] shadow-card p-5">
+          <div className="bg-cream rounded-card border border-[#E8E0D0] shadow-card p-5">
             {liPending ? (
               <div className="flex items-center gap-2 text-sm text-brown-mid animate-pulse">
                 <Sparkles size={16} />
@@ -304,7 +304,7 @@ export function InsightCardComposer({ locale, savedInsights, citationLines, t }:
       </div>
 
       {/* Preview */}
-      <div className="bg-white rounded-xl border border-[#E8E0D0] shadow-card p-5">
+      <div className="bg-white rounded-card border border-[#E8E0D0] shadow-card p-5">
         <div
           ref={scaleRef}
           className="relative w-full overflow-hidden"
@@ -409,7 +409,7 @@ function PostBlock({
           {copied ? copiedLabel : copyLabel}
         </button>
       </div>
-      <pre className="whitespace-pre-wrap font-sans text-sm text-brown-dark bg-white border border-[#E8E0D0] rounded-lg p-3">
+      <pre className="whitespace-pre-wrap font-sans text-sm text-brown-dark bg-white border border-[#E8E0D0] rounded-card p-3">
         {text}
       </pre>
     </div>

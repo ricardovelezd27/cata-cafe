@@ -52,7 +52,7 @@ export function MemberList({
       {members.map((m) => (
         <div
           key={m.id}
-          className="flex items-center justify-between gap-3 px-4 py-3 bg-white border border-[#E8E0D0] rounded-lg"
+          className="flex items-center justify-between gap-3 px-4 py-3 bg-white border border-[#E8E0D0] rounded-card"
         >
           <div className="min-w-0">
             <p className="text-sm font-semibold text-brown-dark truncate">

@@ -169,7 +169,7 @@ export default async function Dashboard({
         </div>
         <Link
           href={`/${locale}/app/sessions/new`}
-          className="shrink-0 px-4 py-2 rounded-lg bg-green-dark text-white text-sm font-bold hover:bg-[#2e4430] transition-colors"
+          className="shrink-0 px-4 py-2 rounded-pill bg-green-dark text-white text-sm font-bold hover:bg-[#2e4430] transition-colors"
         >
           {t("newSession")}
         </Link>
@@ -233,7 +233,7 @@ export default async function Dashboard({
           <p className="font-display text-2xl text-green-dark">{t("emptyTitle")}</p>
           <Link
             href={`/${locale}/app/sessions/new`}
-            className="mt-2 px-6 py-3 rounded-lg bg-green-dark text-white font-semibold text-sm hover:bg-[#2e4430] transition-colors"
+            className="mt-2 px-6 py-3 rounded-pill bg-green-dark text-white font-semibold text-sm hover:bg-[#2e4430] transition-colors"
           >
             {t("emptyCta")}
           </Link>
@@ -249,7 +249,7 @@ export default async function Dashboard({
                 <li key={s.id}>
                   <Link
                     href={`/${locale}/app/sessions/${s.id}/cup`}
-                    className="flex items-center gap-3 bg-white border border-[#E8E0D0] rounded-xl px-4 py-3 hover:border-l-4 hover:border-l-green-dark hover:bg-green-dark/[0.02] transition-all group"
+                    className="flex items-center gap-3 bg-white border border-[#E8E0D0] rounded-card px-4 py-3 hover:border-l-4 hover:border-l-green-dark hover:bg-green-dark/[0.02] transition-all group"
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -296,7 +296,7 @@ export default async function Dashboard({
                   return (
                     <li
                       key={g.coffeeId}
-                      className="flex items-center gap-3 bg-white border border-[#E8E0D0] rounded-xl px-4 py-3"
+                      className="flex items-center gap-3 bg-white border border-[#E8E0D0] rounded-card px-4 py-3"
                     >
                       <span className="font-display text-2xl text-green-mid w-6 text-center shrink-0">
                         {i + 1}

@@ -68,7 +68,7 @@ interface ExplorerBuilderProps {
 }
 
 const selectClass =
-  "w-full rounded-lg border border-[#E8E0D0] bg-white px-3 py-2 text-sm text-brown-dark focus:outline-none focus:border-[#3D5A3E]";
+  "w-full rounded-input border border-[#E8E0D0] bg-white px-3 py-2 text-sm text-brown-dark focus:outline-none focus:border-[#3D5A3E]";
 
 export function ExplorerBuilder({ locale, initialSaved, t }: ExplorerBuilderProps) {
   const [dataset, setDataset] = useState<Dataset>("evaluations");
@@ -172,7 +172,7 @@ export function ExplorerBuilder({ locale, initialSaved, t }: ExplorerBuilderProp
   return (
     <div className="flex flex-col gap-5 pb-8">
       {/* Builder controls */}
-      <div className="bg-white rounded-xl border border-[#E8E0D0] shadow-card p-5">
+      <div className="bg-white rounded-card border border-[#E8E0D0] shadow-card p-5">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <label className="flex flex-col gap-1">
             <span className="text-xs font-semibold text-brown-mid uppercase tracking-wide">
@@ -270,7 +270,7 @@ export function ExplorerBuilder({ locale, initialSaved, t }: ExplorerBuilderProp
       </div>
 
       {/* Preview */}
-      <div className="bg-white rounded-xl border border-[#E8E0D0] shadow-card p-5">
+      <div className="bg-white rounded-card border border-[#E8E0D0] shadow-card p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xs font-semibold text-brown-mid uppercase tracking-wide">
             {t.dimensions[dimension]} · {t.measures[measure]}
@@ -319,7 +319,7 @@ export function ExplorerBuilder({ locale, initialSaved, t }: ExplorerBuilderProp
       />
 
       {/* Saved insights */}
-      <div className="bg-white rounded-xl border border-[#E8E0D0] shadow-card p-5">
+      <div className="bg-white rounded-card border border-[#E8E0D0] shadow-card p-5">
         <h2 className="text-xs font-semibold text-brown-mid uppercase tracking-wide mb-3">
           {t.savedTitle}
         </h2>
@@ -381,7 +381,7 @@ export function ExplorerBuilder({ locale, initialSaved, t }: ExplorerBuilderProp
             type="button"
             disabled={saving || saveName.trim().length === 0}
             onClick={handleSave}
-            className="self-end rounded-lg bg-[#3D5A3E] text-white text-sm font-semibold px-4 py-2 disabled:opacity-50"
+            className="self-end rounded-pill bg-[#3D5A3E] text-white text-sm font-semibold px-4 py-2 disabled:opacity-50"
           >
             {saving ? t.running : t.saveConfirm}
           </button>

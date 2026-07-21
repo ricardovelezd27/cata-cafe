@@ -34,7 +34,7 @@ export function LevelBadge({
   const levelOfLabel = locale === "es" ? `Nivel ${level} de 6` : `Level ${level} of 6`;
 
   return (
-    <div className="bg-white border border-[#E8E0D0] rounded-xl p-5 flex flex-col gap-3">
+    <div className="bg-white border border-[#E8E0D0] rounded-card p-5 flex flex-col gap-3">
       <span className="text-xs font-semibold text-brown-mid uppercase tracking-wide">
         {t.levelTitle}
       </span>

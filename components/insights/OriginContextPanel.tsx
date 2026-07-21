@@ -40,7 +40,7 @@ interface OriginContextPanelProps {
 }
 
 const selectClass =
-  "w-full rounded-lg border border-[#E8E0D0] bg-white px-3 py-2 text-sm text-brown-dark focus:outline-none focus:border-[#3D5A3E]";
+  "w-full rounded-input border border-[#E8E0D0] bg-white px-3 py-2 text-sm text-brown-dark focus:outline-none focus:border-[#3D5A3E]";
 
 interface OriginRow {
   year: number;
@@ -93,7 +93,7 @@ export function OriginContextPanel({
   }
 
   return (
-    <section className="bg-white rounded-xl border border-[#E8E0D0] shadow-card p-5">
+    <section className="bg-white rounded-card border border-[#E8E0D0] shadow-card p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-display text-lg text-brown-dark">{t.title}</h2>
         {isPending && <Loader2 size={16} className="animate-spin text-brown-mid" aria-hidden />}

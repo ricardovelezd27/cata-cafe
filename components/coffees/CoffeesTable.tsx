@@ -217,7 +217,7 @@ export default function CoffeesTable({ coffees, locale, translations: t, isAdmin
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           placeholder={t.searchPlaceholder}
-          className="w-full pl-9 pr-4 py-2 text-sm border border-brown-light rounded-lg bg-[#FDFBF7] text-brown-dark placeholder:text-brown-mid focus:outline-none focus:border-green-dark"
+          className="w-full pl-9 pr-4 py-2 text-sm border border-brown-light rounded-input bg-[#FDFBF7] text-brown-dark placeholder:text-brown-mid focus:outline-none focus:border-green-dark"
         />
       </div>
 
@@ -226,7 +226,7 @@ export default function CoffeesTable({ coffees, locale, translations: t, isAdmin
         <p className="text-sm text-brown-mid py-8 text-center">{t.noData}</p>
       ) : (
         <>
-          <div className="hidden md:block overflow-x-auto rounded-lg border border-brown-light">
+          <div className="hidden md:block overflow-x-auto rounded-card border border-brown-light">
             <table className="w-full text-sm">
               <thead className="bg-[#F5F0E8] border-b border-brown-light">
                 <tr>
@@ -319,7 +319,7 @@ export default function CoffeesTable({ coffees, locale, translations: t, isAdmin
               return (
                 <div
                   key={c.id}
-                  className="bg-[#FDFBF7] border border-brown-light rounded-lg px-4 py-3 space-y-2"
+                  className="bg-[#FDFBF7] border border-brown-light rounded-card px-4 py-3 space-y-2"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <span className="inline-flex items-center gap-2">
@@ -370,14 +370,14 @@ export default function CoffeesTable({ coffees, locale, translations: t, isAdmin
               <button
                 disabled={safePage <= 1}
                 onClick={() => setPage((p) => p - 1)}
-                className="px-3 py-1 rounded border border-brown-light text-brown-dark disabled:opacity-40 hover:border-green-dark disabled:cursor-not-allowed"
+                className="px-3 py-1 rounded-pill border border-brown-light text-brown-dark disabled:opacity-40 hover:border-green-dark disabled:cursor-not-allowed"
               >
                 ‹ Ant.
               </button>
               <button
                 disabled={safePage >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
-                className="px-3 py-1 rounded border border-brown-light text-brown-dark disabled:opacity-40 hover:border-green-dark disabled:cursor-not-allowed"
+                className="px-3 py-1 rounded-pill border border-brown-light text-brown-dark disabled:opacity-40 hover:border-green-dark disabled:cursor-not-allowed"
               >
                 Sig. ›
               </button>

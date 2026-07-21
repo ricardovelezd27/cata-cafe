@@ -55,7 +55,7 @@ export function AccessManager({ users: initialUsers, t }: AccessManagerProps) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-[#E8E0D0] shadow-card">
+    <div className="bg-white rounded-card border border-[#E8E0D0] shadow-card">
       <div className="p-4 border-b border-[#F5F0E6]">
         <label className="relative block max-w-sm">
           <Search
@@ -68,7 +68,7 @@ export function AccessManager({ users: initialUsers, t }: AccessManagerProps) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t.search}
-            className="w-full rounded-lg border border-[#E8E0D0] bg-white pl-9 pr-3 py-2 text-sm text-brown-dark focus:outline-none focus:border-[#3D5A3E]"
+            className="w-full rounded-input border border-[#E8E0D0] bg-white pl-9 pr-3 py-2 text-sm text-brown-dark focus:outline-none focus:border-[#3D5A3E]"
           />
         </label>
       </div>

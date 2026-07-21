@@ -81,7 +81,7 @@ export default async function GroupsPage({
               <Link
                 key={g.id}
                 href={`/${locale}/app/groups/${g.id}`}
-                className="block bg-white rounded-xl border border-[#E8E0D0] p-5 transition-all hover:shadow-md hover:border-[#6B8F71]"
+                className="block bg-white rounded-card border border-[#E8E0D0] p-5 transition-all hover:shadow-md hover:border-[#6B8F71]"
               >
                 <p className="font-semibold text-[15px] text-brown-dark truncate">{g.name}</p>
                 <p className="text-xs text-brown-mid mt-2">

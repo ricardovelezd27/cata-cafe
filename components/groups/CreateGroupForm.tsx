@@ -38,7 +38,7 @@ export function CreateGroupForm({
       </label>
       <div className="flex flex-col sm:flex-row gap-2">
         <input
-          className="flex-1 px-3 py-2 border border-[#D4C5A9] rounded-lg text-sm bg-white text-brown-dark focus:outline-none focus:border-green-dark"
+          className="flex-1 px-3 py-2 border border-[#D4C5A9] rounded-input text-sm bg-white text-brown-dark focus:outline-none focus:border-green-dark"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder={t.namePlaceholder}
@@ -47,7 +47,7 @@ export function CreateGroupForm({
         <button
           type="submit"
           disabled={pending || !name.trim()}
-          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-green-dark text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 whitespace-nowrap"
+          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-pill bg-green-dark text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 whitespace-nowrap"
         >
           <Plus size={16} />
           {t.create}

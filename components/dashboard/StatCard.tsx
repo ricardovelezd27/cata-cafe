@@ -10,7 +10,7 @@ interface StatCardProps {
 
 export function StatCard({ label, value, subtext, accent, icon }: StatCardProps) {
   return (
-    <div className="relative bg-white rounded-xl border border-[#E8E0D0] shadow-card p-5 flex flex-col gap-1">
+    <div className="relative bg-white rounded-card border border-[#E8E0D0] shadow-card p-5 flex flex-col gap-1">
       {icon && (
         <span className="absolute top-4 right-4 text-green-mid opacity-70">
           {icon}

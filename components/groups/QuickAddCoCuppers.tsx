@@ -49,7 +49,7 @@ export function QuickAddCoCuppers({
         return (
           <div
             key={c.userId}
-            className="flex items-center justify-between gap-3 px-3 py-2 bg-white border border-[#E8E0D0] rounded-lg"
+            className="flex items-center justify-between gap-3 px-3 py-2 bg-white border border-[#E8E0D0] rounded-card"
           >
             <p className="text-sm text-brown-dark truncate">{c.displayName}</p>
             {added ? (

@@ -337,7 +337,7 @@ export default async function ProfilePage({
             <form action={switchAccount.bind(null, locale)}>
               <button
                 type="submit"
-                className="w-full sm:w-auto px-4 py-2 rounded-lg border border-[#D4C5A9] text-sm font-semibold text-brown-dark hover:bg-[#EDE8DB] transition-colors"
+                className="w-full sm:w-auto px-4 py-2 rounded-pill border border-[#D4C5A9] text-sm font-semibold text-brown-dark hover:bg-[#EDE8DB] transition-colors"
               >
                 {t("switchAccount")}
               </button>
@@ -345,7 +345,7 @@ export default async function ProfilePage({
             <form action={signOut}>
               <button
                 type="submit"
-                className="w-full sm:w-auto px-4 py-2 rounded-lg border border-[#D4C5A9] text-sm font-semibold text-red-defect hover:bg-[#EBE0E0] transition-colors"
+                className="w-full sm:w-auto px-4 py-2 rounded-pill border border-[#D4C5A9] text-sm font-semibold text-red-defect hover:bg-[#EBE0E0] transition-colors"
               >
                 {t("logout")}
               </button>

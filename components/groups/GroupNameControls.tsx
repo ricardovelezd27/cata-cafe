@@ -65,7 +65,7 @@ export function GroupNameControls({
         <div className="flex flex-wrap items-center gap-2">
           <input
             autoFocus
-            className="flex-1 min-w-[180px] px-3 py-2 border border-[#D4C5A9] rounded-lg text-lg font-serif bg-white text-brown-dark focus:outline-none focus:border-green-dark"
+            className="flex-1 min-w-[180px] px-3 py-2 border border-[#D4C5A9] rounded-input text-lg font-serif bg-white text-brown-dark focus:outline-none focus:border-green-dark"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             maxLength={80}
@@ -73,7 +73,7 @@ export function GroupNameControls({
           <button
             type="submit"
             disabled={pending || !value.trim()}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-green-dark text-white text-sm font-semibold disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-pill bg-green-dark text-white text-sm font-semibold disabled:opacity-50"
           >
             <Check size={16} /> {t.saveName}
           </button>
@@ -104,7 +104,7 @@ export function GroupNameControls({
           type="button"
           onClick={onDelete}
           disabled={pending}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#D4C5A9] text-sm font-semibold text-red-defect hover:bg-[#EBE0E0] transition-colors disabled:opacity-50 shrink-0"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-pill border border-[#D4C5A9] text-sm font-semibold text-red-defect hover:bg-[#EBE0E0] transition-colors disabled:opacity-50 shrink-0"
         >
           <Trash2 size={16} /> {t.delete}
         </button>

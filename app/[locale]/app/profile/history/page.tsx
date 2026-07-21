@@ -40,7 +40,7 @@ export default async function HistoryPage({
       {history.length === 0 ? (
         <p className="text-sm text-brown-mid">{t("empty")}</p>
       ) : (
-        <div className="bg-[#FDFBF7] border border-brown-light rounded-xl overflow-hidden">
+        <div className="bg-[#FDFBF7] border border-brown-light rounded-card overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-brown-light bg-cream/50">

@@ -24,9 +24,9 @@ export function DescriptorBarList({ rows, emptyLabel }: DescriptorBarListProps) 
           <span className="w-32 shrink-0 text-xs text-brown-dark truncate" title={r.label}>
             {r.label}
           </span>
-          <div className="flex-1 h-4 bg-[#F5F0E6] rounded overflow-hidden">
+          <div className="flex-1 h-4 bg-[#F5F0E6] rounded-sm overflow-hidden">
             <div
-              className="h-full rounded"
+              className="h-full rounded-sm"
               style={{
                 width: `${max > 0 ? Math.max(4, (r.value / max) * 100) : 0}%`,
                 backgroundColor: r.color ?? "#3D5A3E",

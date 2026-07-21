@@ -23,7 +23,7 @@ export function AddByEmailForm({
   const [pending, start] = useTransition();
 
   const inputCls =
-    "w-full px-3 py-2 border border-[#D4C5A9] rounded-lg text-sm bg-white text-brown-dark focus:outline-none focus:border-green-dark";
+    "w-full px-3 py-2 border border-[#D4C5A9] rounded-input text-sm bg-white text-brown-dark focus:outline-none focus:border-green-dark";
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,7 +62,7 @@ export function AddByEmailForm({
       <button
         type="submit"
         disabled={pending || !email.trim()}
-        className="px-4 py-2 rounded-lg bg-green-dark text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+        className="px-4 py-2 rounded-pill bg-green-dark text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
       >
         {t.addMember}
       </button>
