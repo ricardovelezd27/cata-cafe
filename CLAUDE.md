@@ -347,6 +347,30 @@ SUPABASE_SERVICE_ROLE_KEY=    # Used by lib/supabase/admin.ts — never expose t
 DATABASE_URL=                 # Supabase connection pooler URL
 ```
 
+Optional (features degrade gracefully to no-ops when unset):
+
+```
+RESEND_API_KEY=               # lib/email.ts — transactional email; unset → sends skipped
+EMAIL_FROM=                   # Sender override; defaults to "Cata Café <no-reply@catacafe.app>"
+ANALYTICS_SUPER_ADMIN_EMAIL=  # lib/analytics/access.ts — insights super-admin (has code fallback)
+GEMINI_API_KEY=               # lib/ai/gemini.ts — AI narratives; unset → "AI not configured" UI
+GEMINI_MODEL_LITE=            # Model override; default gemini-3.1-flash-lite
+GEMINI_MODEL_STANDARD=        # Model override; default gemini-3.5-flash
+CRON_SECRET=                  # Vercel Cron auth for /api/cron/insights-digest (Vercel env)
+NEXT_PUBLIC_SITE_URL=         # Absolute URL used in email links; defaults to localhost
+```
+
+### AI Narrative Pattern (`lib/ai/`)
+- Provider-agnostic seam: `getAiProvider()` in `lib/ai/index.ts` returns the Gemini impl (`lib/ai/gemini.ts`); a Claude impl would slot in there without touching callers.
+- All prompts live in `lib/ai/narratives.ts` and receive **only aggregated numbers/labels** — never raw evaluations or emails. Bump `PROMPT_VERSION` when editing a prompt (it invalidates the cache).
+- `cachedGenerate()` in `lib/ai/cache.ts` is cache-first over the `insight_narratives` table (sha256 data-hash key) — repeat views never re-bill the provider. Shared by server actions (`app/actions/ai.ts`), the report PDF route, and the digest cron.
+- AI is server-only and gated by `requireAnalyticsAccess()`; never call from client components.
+
+### Reference Data (`reference_series`, `benchmark_lots`)
+- Imported from vendored CSVs by `npm run import:reference` / `npm run import:benchmarks` (idempotent per source; see `scripts/data/README.md` for provenance/licenses). Refresh = re-download CSV + re-run.
+- Free-text coffee metadata (country/process/harvest/altitude) is normalized **at query time** by `lib/analytics/normalize.ts` (deterministic exact-alias matching only — extend the alias lists there; `scripts/report-normalization.ts` audits live-DB coverage).
+- Every UI/PDF/email surface showing derived numbers must render the citation lines from `lib/analytics/referenceSources.ts` (CC-BY / MIT attribution requirements).
+
 ---
 
 ## Supabase Manual Steps

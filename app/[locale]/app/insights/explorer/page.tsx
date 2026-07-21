@@ -21,8 +21,9 @@ export default async function InsightsExplorerPage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [t, saved] = await Promise.all([
+  const [t, tAi, saved] = await Promise.all([
     getTranslations("insights.explorer"),
+    getTranslations("insights.ai"),
     listSavedInsights(),
   ]);
 
@@ -59,6 +60,14 @@ export default async function InsightsExplorerPage({
         measures: record<MeasureId>(MEASURES, "measures"),
         chartTypes: record<ChartType>(CHART_TYPES, "chartTypes"),
         table: { count: t("table.count") },
+        ai: {
+          generate: tAi("generate"),
+          generating: tAi("generating"),
+          regenerate: tAi("regenerate"),
+          disclaimer: tAi("disclaimer"),
+          notConfigured: tAi("notConfigured"),
+          error: tAi("error"),
+        },
       }}
     />
   );

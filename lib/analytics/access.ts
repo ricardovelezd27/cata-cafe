@@ -12,6 +12,11 @@ export function isSuperAdminEmail(email: string | null | undefined): boolean {
   return !!email && email.toLowerCase() === SUPER_ADMIN_EMAIL;
 }
 
+/** The super-admin address itself — digest recipient resolution (cron, no cookies). */
+export function getSuperAdminEmail(): string {
+  return SUPER_ADMIN_EMAIL;
+}
+
 export type AnalyticsAccess = {
   userId: string;
   email: string | null;

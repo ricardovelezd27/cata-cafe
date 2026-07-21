@@ -11,6 +11,15 @@ import {
 import { parseInsightConfig } from "@/lib/analytics/types";
 import type { InsightConfig, InsightRow } from "@/lib/analytics/types";
 import { runInsightQuery } from "@/lib/analytics/queries";
+import {
+  getBenchmarkComparison,
+  getOriginContext,
+  type BenchmarkComparison,
+  type BenchmarkFilter,
+  type OriginContext,
+} from "@/lib/analytics/benchmarks";
+import { COFFEE_COUNTRIES } from "@/lib/analytics/normalize";
+import { PROCESS_TYPES } from "@/lib/constants";
 import type { Prisma } from "@/app/generated/prisma/client";
 
 function asLocale(locale: string): "es" | "en" {
@@ -88,6 +97,67 @@ export async function deleteSavedInsight(
   }
   await prisma.savedInsight.delete({ where: { id } });
   return { ok: true };
+}
+
+/** Whitelist validation of an untrusted benchmark filter (same spirit as parseInsightConfig). */
+function parseBenchmarkFilter(input: unknown): BenchmarkFilter {
+  if (typeof input !== "object" || input === null) throw new Error("invalid_filter");
+  const raw = input as Record<string, unknown>;
+  const filter: BenchmarkFilter = {};
+  if (raw.countryCode !== undefined && raw.countryCode !== "") {
+    if (
+      typeof raw.countryCode !== "string" ||
+      !COFFEE_COUNTRIES.some((c) => c.iso2 === raw.countryCode)
+    ) {
+      throw new Error("invalid_filter");
+    }
+    filter.countryCode = raw.countryCode;
+  }
+  if (raw.processType !== undefined && raw.processType !== "") {
+    if (
+      typeof raw.processType !== "string" ||
+      !(PROCESS_TYPES as readonly string[]).includes(raw.processType)
+    ) {
+      throw new Error("invalid_filter");
+    }
+    filter.processType = raw.processType;
+  }
+  if (raw.variety !== undefined && raw.variety !== "") {
+    if (typeof raw.variety !== "string" || raw.variety.length > 80) {
+      throw new Error("invalid_filter");
+    }
+    filter.variety = raw.variety;
+  }
+  return filter;
+}
+
+export async function runBenchmark(
+  rawFilter: unknown,
+): Promise<{ ok: true; comparison: BenchmarkComparison } | { ok: false; error: string }> {
+  await requireAnalyticsAccess();
+  let filter: BenchmarkFilter;
+  try {
+    filter = parseBenchmarkFilter(rawFilter);
+  } catch {
+    return { ok: false, error: "invalid_filter" };
+  }
+  const comparison = await getBenchmarkComparison(filter);
+  return { ok: true, comparison };
+}
+
+export async function runOriginContext(
+  countryCode: unknown,
+  locale: string,
+): Promise<{ ok: true; context: OriginContext } | { ok: false; error: string }> {
+  await requireAnalyticsAccess();
+  if (
+    typeof countryCode !== "string" ||
+    !COFFEE_COUNTRIES.some((c) => c.iso2 === countryCode)
+  ) {
+    return { ok: false, error: "invalid_country" };
+  }
+  const context = await getOriginContext(countryCode, asLocale(locale));
+  return { ok: true, context };
 }
 
 export interface AnalyticsUser {

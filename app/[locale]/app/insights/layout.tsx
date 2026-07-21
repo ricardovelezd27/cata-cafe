@@ -32,6 +32,8 @@ export default async function InsightsLayout({
         labels={{
           dashboard: t("tabs.dashboard"),
           explorer: t("tabs.explorer"),
+          benchmark: t("tabs.benchmark"),
+          share: t("tabs.share"),
           access: t("tabs.access"),
         }}
       />

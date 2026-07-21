@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 interface InsightsTabsProps {
   locale: string;
   isSuperAdmin: boolean;
-  labels: { dashboard: string; explorer: string; access: string };
+  labels: { dashboard: string; explorer: string; benchmark: string; share: string; access: string };
 }
 
 export function InsightsTabs({ locale, isSuperAdmin, labels }: InsightsTabsProps) {
@@ -16,6 +16,8 @@ export function InsightsTabs({ locale, isSuperAdmin, labels }: InsightsTabsProps
   const tabs = [
     { href: base, label: labels.dashboard, exact: true },
     { href: `${base}/explorer`, label: labels.explorer, exact: false },
+    { href: `${base}/benchmark`, label: labels.benchmark, exact: false },
+    { href: `${base}/share`, label: labels.share, exact: false },
     ...(isSuperAdmin ? [{ href: `${base}/access`, label: labels.access, exact: false }] : []),
   ];
 

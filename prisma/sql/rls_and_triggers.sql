@@ -859,3 +859,27 @@ ALTER TABLE saved_insights ENABLE ROW LEVEL SECURITY;
 -- ============================================================================
 ALTER PUBLICATION supabase_realtime ADD TABLE public.evaluations;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.cupping_sessions;
+
+-- ============================================================================
+-- Phase 8 (2026-07-20): third-party reference data tables hardening
+-- reference_series (OWID/FAO production series, USDA PSD) and benchmark_lots
+-- (CQI cupping dataset) are written only by import scripts and read only
+-- through server-side Prisma (direct DATABASE_URL role), guarded by
+-- lib/analytics/access.ts. Same rationale as saved_insights (Phase 5): RLS
+-- with NO policies = deny-all through PostgREST/Supabase clients, so the data
+-- can never leak via the public API. Apply manually in the Supabase SQL editor.
+-- ============================================================================
+ALTER TABLE reference_series ENABLE ROW LEVEL SECURITY;
+ALTER TABLE benchmark_lots ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- Phase 9 (2026-07-20): AI narrative cache hardening
+-- insight_narratives caches AI-generated narrative JSON, written/read only via
+-- server-side Prisma behind requireAnalyticsAccess(). Deny-all via RLS with no
+-- policies, same rationale as Phase 5/8.
+-- NOTE (verified 2026-07-20): this Supabase project auto-enables RLS on new
+-- public tables, so Phases 8-9 were already active on creation; these
+-- statements are kept for documentation and are idempotent.
+-- ============================================================================
+ALTER TABLE insight_narratives ENABLE ROW LEVEL SECURITY;
+ALTER TABLE digest_runs ENABLE ROW LEVEL SECURITY;
