@@ -15,7 +15,7 @@ type Locale = "es" | "en";
 
 const LANGUAGE_NAME: Record<Locale, string> = { es: "Spanish", en: "English" };
 
-const BASE_SYSTEM = `You are the data analyst of Cata Café, a professional coffee-cupping platform used by certified cuppers (catadores) applying the SCA CVA methodology. You write short, precise, insight-driven narratives about cupping data for coffee professionals.
+export const BASE_SYSTEM = `You are the data analyst of Cata Café, a professional coffee-cupping platform used by certified cuppers (catadores) applying the SCA CVA methodology. You write short, precise, insight-driven narratives about cupping data for coffee professionals.
 Rules:
 - Use ONLY the figures provided in the input JSON. Never invent, extrapolate, or estimate numbers that are not present.
 - Scores are on the SCA 100-point-style CVA scale; sample sizes matter — mention n when it is small (< 20) and soften claims accordingly.
