@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createSession, createGroupSession } from "@/app/actions/sessions";
 import { startSession } from "@/app/actions/community";
+import { NotifyGroupPanel, type NotifyGroupOption, type NotifyGroupTranslations } from "@/components/groups/NotifyGroupPanel";
 
 type CoffeeInput = {
   name: string;
@@ -83,7 +84,17 @@ const EMPTY_COFFEE: CoffeeInput = {
   region: "",
 };
 
-export function NewSessionForm({ locale, t }: { locale: string; t: Translations }) {
+export function NewSessionForm({
+  locale,
+  t,
+  groupsT,
+  groups,
+}: {
+  locale: string;
+  t: Translations;
+  groupsT: NotifyGroupTranslations;
+  groups: NotifyGroupOption[];
+}) {
   const router = useRouter();
 
   // Form fields
@@ -225,6 +236,14 @@ export function NewSessionForm({ locale, t }: { locale: string; t: Translations 
             </button>
           </div>
         </div>
+
+        <NotifyGroupPanel
+          groups={groups}
+          sessionId={sessionId}
+          defaultSubject={name}
+          t={groupsT}
+        />
+
         <button
           type="button"
           onClick={() => {

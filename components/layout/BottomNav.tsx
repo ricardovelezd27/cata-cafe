@@ -8,7 +8,7 @@ const TABS = [
   { href: "/app", icon: Home, label: "Inicio", exact: true },
   { href: "/app/sessions", icon: Clipboard, label: "Sesiones", exact: false },
   { href: "/app/coffees", icon: Coffee, label: "Cafés", exact: false },
-  { href: "/app/team", icon: Users, label: "Catadores", exact: false },
+  { href: "/app/groups", icon: Users, label: "Grupos", exact: false },
   { href: "/app/profile", icon: User, label: "Perfil", exact: false },
 ];
 
