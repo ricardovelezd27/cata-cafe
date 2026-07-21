@@ -10,6 +10,9 @@ type CoffeeRow = {
   region: string | null;
   variety: string | null;
   processType: string | null;
+  isPublic: boolean;
+  createdBy: string;
+  isMine: boolean;
   _count: { sessionSamples: number };
   coffeeHistory: Array<{
     tastedAt: string;
@@ -35,6 +38,8 @@ type Props = {
     noData: string;
     showing: string;
     view: string;
+    listPublic: string;
+    listPrivate: string;
   };
 };
 
@@ -71,6 +76,17 @@ function ScoreBadge({ score }: { score: number | null }) {
       style={{ background: bg, color: "#fff", padding: "2px 10px", borderRadius: 999, fontSize: 13, fontWeight: 600 }}
     >
       {score.toFixed(2)}
+    </span>
+  );
+}
+
+function VisibilityPill({ isPublic, labelPublic, labelPrivate }: { isPublic: boolean; labelPublic: string; labelPrivate: string }) {
+  const className = isPublic
+    ? "bg-green-dark/10 text-green-dark border-green-dark/30"
+    : "bg-cream text-brown-mid border-brown-light";
+  return (
+    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${className}`}>
+      {isPublic ? labelPublic : labelPrivate}
     </span>
   );
 }
@@ -230,12 +246,21 @@ export default function CoffeesTable({ coffees, locale, translations: t }: Props
                       className="bg-[#FDFBF7] hover:bg-amber-50/40 transition-colors border-l-2 border-l-transparent hover:border-l-green-dark"
                     >
                       <td className="px-4 py-3">
-                        <Link
-                          href={`/${locale}/app/coffees/${c.id}`}
-                          className="font-semibold text-brown-dark hover:text-green-dark"
-                        >
-                          {c.name}
-                        </Link>
+                        <span className="inline-flex items-center gap-2">
+                          <Link
+                            href={`/${locale}/app/coffees/${c.id}`}
+                            className="font-semibold text-brown-dark hover:text-green-dark"
+                          >
+                            {c.name}
+                          </Link>
+                          {c.isMine && (
+                            <VisibilityPill
+                              isPublic={c.isPublic}
+                              labelPublic={t.listPublic}
+                              labelPrivate={t.listPrivate}
+                            />
+                          )}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-brown-dark">
                         {c.country ? (
@@ -289,12 +314,21 @@ export default function CoffeesTable({ coffees, locale, translations: t }: Props
                   className="bg-[#FDFBF7] border border-brown-light rounded-lg px-4 py-3 space-y-2"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <Link
-                      href={`/${locale}/app/coffees/${c.id}`}
-                      className="font-semibold text-brown-dark hover:text-green-dark leading-tight"
-                    >
-                      {c.name}
-                    </Link>
+                    <span className="inline-flex items-center gap-2">
+                      <Link
+                        href={`/${locale}/app/coffees/${c.id}`}
+                        className="font-semibold text-brown-dark hover:text-green-dark leading-tight"
+                      >
+                        {c.name}
+                      </Link>
+                      {c.isMine && (
+                        <VisibilityPill
+                          isPublic={c.isPublic}
+                          labelPublic={t.listPublic}
+                          labelPrivate={t.listPrivate}
+                        />
+                      )}
+                    </span>
                     <ProcessBadge type={c.processType} />
                   </div>
                   {(c.country || c.region) && (

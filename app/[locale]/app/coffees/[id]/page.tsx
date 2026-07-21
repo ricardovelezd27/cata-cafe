@@ -10,6 +10,7 @@ import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { FlavorCloud } from "@/components/results/FlavorCloud";
 import { PublishResultsToggle } from "@/components/coffees/PublishResultsToggle";
+import { CoffeeVisibilityToggle } from "@/components/coffees/CoffeeVisibilityToggle";
 
 export function generateStaticParams() {
   return [];
@@ -98,13 +99,27 @@ export default async function CoffeeProfilePage({
         )}
       </div>
 
-      {/* Community results */}
-      <div>
-        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-          <h2 className="font-serif text-xl text-green-dark font-semibold">
-            {t("resultsTitle")}
+      {/* Visibility controls (owner only) */}
+      {isOwner && (
+        <div className="bg-white border border-[#E8E0D0] rounded-xl p-5 space-y-4">
+          <h2 className="font-serif text-lg text-green-dark font-semibold">
+            {t("visibilityTitle")}
           </h2>
-          {isOwner && (
+          <div className="space-y-1.5">
+            <CoffeeVisibilityToggle
+              coffeeId={coffee.id}
+              isPublic={coffee.isPublic}
+              translations={{
+                recordPublic: t("recordPublic"),
+                recordPrivate: t("recordPrivate"),
+                makePublic: t("makePublic"),
+                makePrivate: t("makePrivate"),
+                confirmMakePublic: t("confirmMakePublic"),
+              }}
+            />
+            <p className="text-xs text-brown-mid">{t("recordHint")}</p>
+          </div>
+          <div className="space-y-1.5">
             <PublishResultsToggle
               coffeeId={coffee.id}
               resultsPublished={coffee.resultsPublished}
@@ -116,8 +131,21 @@ export default async function CoffeeProfilePage({
                 confirmPublish: t("confirmPublish"),
               }}
             />
+            <p className="text-xs text-brown-mid">{t("resultsHint")}</p>
+          </div>
+          {coffee.resultsPublished && !coffee.isPublic && (
+            <p className="text-xs text-amber-warm font-medium">
+              {t("resultsButPrivateHint")}
+            </p>
           )}
         </div>
+      )}
+
+      {/* Community results */}
+      <div>
+        <h2 className="font-serif text-xl text-green-dark font-semibold mb-4">
+          {t("resultsTitle")}
+        </h2>
 
         {!showResults ? (
           <div className="bg-white border border-[#E8E0D0] rounded-xl p-5">

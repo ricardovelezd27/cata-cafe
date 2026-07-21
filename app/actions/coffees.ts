@@ -28,6 +28,8 @@ export async function getCoffeesWithStats(userId: string) {
       region: true,
       variety: true,
       processType: true,
+      isPublic: true,
+      createdBy: true,
       _count: { select: { sessionSamples: true } },
       coffeeHistory: {
         where: { userId },
@@ -71,4 +73,35 @@ export async function setCoffeeResultsPublished(
   revalidatePath("/es/app/coffees");
   revalidatePath("/en/app/coffees");
   return { ok: true, resultsPublished: published };
+}
+
+// ─── Toggle a coffee record's visibility (owner only) ─────────────────────────
+// Controls whether the coffee record itself (profile page + list entry) is
+// visible to non-owners at all. See the access gate in
+// app/[locale]/app/coffees/[id]/page.tsx (findFirst OR [isPublic, createdBy])
+// and the list query in getCoffeesWithStats above.
+export async function setCoffeeVisibility(
+  coffeeId: string,
+  isPublic: boolean,
+): Promise<{ ok: true; isPublic: boolean }> {
+  const user = await requireUser();
+
+  const coffee = await prisma.coffee.findUnique({
+    where: { id: coffeeId },
+    select: { createdBy: true },
+  });
+  if (!coffee || coffee.createdBy !== user.id) {
+    throw new Error("not_found_or_forbidden");
+  }
+
+  await prisma.coffee.update({
+    where: { id: coffeeId },
+    data: { isPublic },
+  });
+
+  revalidatePath(`/es/app/coffees/${coffeeId}`);
+  revalidatePath(`/en/app/coffees/${coffeeId}`);
+  revalidatePath("/es/app/coffees");
+  revalidatePath("/en/app/coffees");
+  return { ok: true, isPublic };
 }

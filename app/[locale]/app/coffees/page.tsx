@@ -27,6 +27,7 @@ export default async function CoffeesPage({
   const raw = await getCoffeesWithStats(user.id);
   const coffees = raw.map((c) => ({
     ...c,
+    isMine: c.createdBy === user.id,
     coffeeHistory: c.coffeeHistory.map((h) => ({
       ...h,
       tastedAt: h.tastedAt.toISOString(),
@@ -43,8 +44,11 @@ export default async function CoffeesPage({
     colLastScore: t("colLastScore"),
     colLastDate: t("colLastDate"),
     noData: t("noData"),
-    showing: t("showing"),
+    // Raw template — CoffeesTable interpolates {from}/{to}/{total} client-side.
+    showing: t.raw("showing"),
     view: t("view"),
+    listPublic: t("listPublic"),
+    listPrivate: t("listPrivate"),
   };
 
   return (
