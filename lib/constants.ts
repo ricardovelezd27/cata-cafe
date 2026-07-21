@@ -739,3 +739,18 @@ export function getRatio(ratioStr: string): number {
   const [beans, defect] = ratioStr.split(":").map(Number);
   return beans / defect;
 }
+
+// Single source of truth for DISPLAY labels of a Profile's `role` field.
+// Covers both the onboarding role values (see components/onboarding/WelcomeModal.tsx
+// ROLES — a separate concern, drives onboarding choices, not display) and
+// `cupping_pro`, the Profile model's DB default. Consumed by CoCupperCard and
+// any other place that renders a role badge.
+export const ROLE_LABELS: Record<string, { es: string; en: string }> = {
+  q_grader: { es: "Q Grader", en: "Q Grader" },
+  barista: { es: "Barista", en: "Barista" },
+  roaster: { es: "Tostador", en: "Roaster" },
+  producer: { es: "Productor", en: "Producer" },
+  trader: { es: "Comerciante", en: "Trader" },
+  enthusiast: { es: "Entusiasta", en: "Enthusiast" },
+  cupping_pro: { es: "Catador Profesional", en: "Professional Cupper" },
+};

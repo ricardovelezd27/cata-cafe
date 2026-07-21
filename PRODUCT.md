@@ -253,7 +253,7 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 
 ## Non-Goals (Explicit Scope Limits)
 
-- **No consumer-facing features.** This is a professional tool. No star ratings, no social sharing, no gamification.
+- **Professional-first social layer.** (Revised 2026-07) The platform now includes community features — tasting groups, activity levels, shared coffee profiles — but they stay professional in tone: no star ratings, no public follower counts, no engagement-bait mechanics.
 - **No password auth.** Magic links only — by design, not by omission.
 - **No mobile-native app.** Responsive web only — but offline-capable, so weak lab/farm connectivity is no longer a blocker. The cupping table already has enough gear.
 - **No third-party integrations** (yet). Standalone tool; no CRM, no roastery software sync.

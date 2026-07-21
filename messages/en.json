@@ -227,7 +227,19 @@
     "statusClosed": "Closed",
     "account": "Account",
     "switchAccount": "Switch account",
-    "logout": "Log out"
+    "logout": "Log out",
+    "statsTitle": "Your activity",
+    "statMaster": "Sessions hosted",
+    "statJoined": "Sessions joined",
+    "statEvals": "Evaluations submitted",
+    "statCoffees": "Coffees tasted",
+    "viewHistory": "View full history",
+    "levelTitle": "Cupper level",
+    "pointsLabel": "{points} points",
+    "pointsToNext": "{points} pts to {level}",
+    "topPercent": "Top {percent}% of active cuppers",
+    "maxLevel": "Maximum level reached",
+    "howPoints": "Evaluations submitted ×1 · Sessions joined ×2 · Sessions hosted ×5"
   },
   "actions": {
     "save": "Save",

@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { ClipboardList, Coffee, Users, ChevronRight, ChevronLeft } from "lucide-react";
 import { completeOnboarding } from "@/app/actions/profile";
 
+// NOTE: this list drives ONBOARDING CHOICES (values + prompt copy), a separate
+// concern from display labels shown elsewhere (profile, co-cupper cards, etc).
+// For display labels of a Profile's `role` field, see lib/constants.ts ROLE_LABELS.
 const ROLES = [
   { value: "q_grader", label: "Catador/a Certificado/a Q" },
   { value: "barista", label: "Barista" },

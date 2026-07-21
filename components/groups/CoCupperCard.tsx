@@ -5,15 +5,8 @@
 
 import { Avatar } from "@/components/ui/Avatar";
 import type { CoCupperCandidate } from "@/lib/coCuppers";
+import { ROLE_LABELS } from "@/lib/constants";
 import { AddToGroupButton, type GroupOption } from "./AddToGroupButton";
-
-const ROLE_LABELS: Record<string, string> = {
-  cupping_pro: "Catador Pro",
-  q_grader: "Q Grader",
-  barista: "Barista",
-  roaster: "Tostador",
-  producer: "Productor",
-};
 
 function formatRelativeDate(date: Date): string {
   const now = Date.now();
@@ -45,7 +38,9 @@ export function CoCupperCard({
     errorGeneric: string;
   };
 }) {
-  const roleLabel = ROLE_LABELS[cupper.role] ?? cupper.role;
+  // This component isn't passed a locale today, so it keeps rendering Spanish
+  // labels (matching its prior hard-coded map) via the shared ROLE_LABELS.
+  const roleLabel = ROLE_LABELS[cupper.role]?.es ?? cupper.role;
 
   return (
     <div className="bg-white rounded-xl border border-[#E8E0D0] p-5 flex flex-col gap-4">

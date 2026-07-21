@@ -227,7 +227,19 @@
     "statusClosed": "Cerrada",
     "account": "Cuenta",
     "switchAccount": "Cambiar de cuenta",
-    "logout": "Salir"
+    "logout": "Salir",
+    "statsTitle": "Tu actividad",
+    "statMaster": "Sesiones dirigidas",
+    "statJoined": "Sesiones participadas",
+    "statEvals": "Catas enviadas",
+    "statCoffees": "Cafés catados",
+    "viewHistory": "Ver historial completo",
+    "levelTitle": "Nivel de catador",
+    "pointsLabel": "{points} puntos",
+    "pointsToNext": "{points} pts para {level}",
+    "topPercent": "Top {percent}% de catadores activos",
+    "maxLevel": "Nivel máximo alcanzado",
+    "howPoints": "Catas enviadas ×1 · Sesiones participadas ×2 · Sesiones dirigidas ×5"
   },
   "actions": {
     "save": "Guardar",
