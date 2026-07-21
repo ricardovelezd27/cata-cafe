@@ -4,6 +4,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { Avatar } from "@/components/ui/Avatar";
+import { getCoCupperCandidates, type CoCupperCandidate } from "@/lib/coCuppers";
 
 export function generateStaticParams() {
   return [{ locale: "es" }, { locale: "en" }];
@@ -31,17 +32,7 @@ const ROLE_LABELS: Record<string, string> = {
   producer: "Productor",
 };
 
-interface CupperStat {
-  id: string;
-  displayName: string;
-  role: string;
-  sessionCount: number;
-  evaluationCount: number;
-  lastSessionDate: Date;
-  lastSessionName: string;
-}
-
-function CupperCard({ cupper, locale }: { cupper: CupperStat; locale: string }) {
+function CupperCard({ cupper, locale }: { cupper: CoCupperCandidate; locale: string }) {
   const roleLabel = ROLE_LABELS[cupper.role] ?? cupper.role;
   return (
     <div className="group bg-white rounded-xl border border-[#E8E0D0] p-5 flex flex-col gap-4 transition-all hover:shadow-md hover:border-[#6B8F71]">
@@ -97,7 +88,9 @@ export default async function TeamPage({
   } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
 
-  // Step 1: collect all group session IDs the current user is involved in
+  // Distinct group session count for the header stat (same session-id union
+  // getCoCupperCandidates uses internally, kept here since it's a header-only
+  // metric and not part of the per-cupper array it returns).
   const [asParticipant, asCreator] = await Promise.all([
     prisma.sessionParticipant.findMany({
       where: { userId: user.id },
@@ -116,61 +109,9 @@ export default async function TeamPage({
     ]),
   ];
 
-  // Step 2: all other participants across those sessions (most-recent first)
-  const rows =
-    sessionIds.length > 0
-      ? await prisma.sessionParticipant.findMany({
-          where: { sessionId: { in: sessionIds }, userId: { not: user.id } },
-          include: {
-            user: { select: { id: true, displayName: true, role: true } },
-            session: { select: { name: true, date: true } },
-          },
-          orderBy: { session: { date: "desc" } },
-        })
-      : [];
+  const cuppers = await getCoCupperCandidates(user.id);
 
-  // Deduplicate — keep first occurrence (most recent session) per userId
-  const seen = new Set<string>();
-  const cupperMap = new Map<
-    string,
-    { displayName: string; role: string; sessionCount: number; lastSessionDate: Date; lastSessionName: string }
-  >();
-
-  for (const row of rows) {
-    if (!seen.has(row.userId)) {
-      seen.add(row.userId);
-      cupperMap.set(row.userId, {
-        displayName: row.user.displayName,
-        role: row.user.role,
-        sessionCount: 1,
-        lastSessionDate: row.session.date,
-        lastSessionName: row.session.name,
-      });
-    } else {
-      cupperMap.get(row.userId)!.sessionCount++;
-    }
-  }
-
-  // Step 3: evaluation counts per cupper
-  const cupperIds = [...cupperMap.keys()];
-  const evalCounts =
-    cupperIds.length > 0
-      ? await prisma.evaluation.groupBy({
-          by: ["cupperId"],
-          where: { cupperId: { in: cupperIds } },
-          _count: { id: true },
-        })
-      : [];
-
-  const evalCountMap = new Map(evalCounts.map((e) => [e.cupperId, e._count.id]));
-
-  const cuppers: CupperStat[] = [...cupperMap.entries()].map(([id, data]) => ({
-    id,
-    ...data,
-    evaluationCount: evalCountMap.get(id) ?? 0,
-  }));
-
-  const totalEvals = evalCounts.reduce((sum, e) => sum + e._count.id, 0);
+  const totalEvals = cuppers.reduce((sum, c) => sum + c.evaluationCount, 0);
 
   return (
     <div className="space-y-8">
@@ -213,7 +154,7 @@ export default async function TeamPage({
       {cuppers.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {cuppers.map((c) => (
-            <CupperCard key={c.id} cupper={c} locale={locale} />
+            <CupperCard key={c.userId} cupper={c} locale={locale} />
           ))}
         </div>
       )}

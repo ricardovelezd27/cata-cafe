@@ -12,7 +12,7 @@
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, escapeHtml } from "@/lib/email";
 import { CvaFormDocument, type CvaDocumentProps } from "@/lib/pdf/CvaFormDocument";
 import {
   GroupSummaryDocument,
@@ -69,14 +69,6 @@ const EMAIL_TEXT: Record<Locale, { subject: (name: string) => string; body: (arg
       </div>`,
   },
 };
-
-function escapeHtml(input: string): string {
-  return input
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
 
 /** ASCII-safe filename fragment (mirrors the cva-pdf route's slug). */
 function slug(input: string): string {

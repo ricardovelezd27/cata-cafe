@@ -22,15 +22,17 @@ model Profile {
   analyticsAccess     Boolean  @default(false)
   createdAt           DateTime @default(now())
 
-  cuppingSessions CuppingSession[]
-  coffees         Coffee[]
-  evaluations     Evaluation[]
-  physicalEvals   PhysicalEvaluation[]
-  extrinsicData   ExtrinsicData[]
-  participants    SessionParticipant[]
-  coffeeHistory   UserCoffeeHistory[]
-  sessionInvites  SessionInvite[]
-  savedInsights   SavedInsight[]
+  cuppingSessions         CuppingSession[]
+  coffees                 Coffee[]
+  evaluations             Evaluation[]
+  physicalEvals           PhysicalEvaluation[]
+  extrinsicData           ExtrinsicData[]
+  participants            SessionParticipant[]
+  coffeeHistory           UserCoffeeHistory[]
+  sessionInvites          SessionInvite[]
+  savedInsights           SavedInsight[]
+  tastingGroups           TastingGroup[]
+  tastingGroupMemberships TastingGroupMember[]
 
   @@map("profiles")
 }
@@ -92,15 +94,15 @@ model CuppingSession {
 }
 
 model SessionSample {
-  id        String  @id @default(cuid())
+  id        String         @id @default(cuid())
   sessionId String
   session   CuppingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   coffeeId  String?
-  coffee    Coffee? @relation(fields: [coffeeId], references: [id])
+  coffee    Coffee?        @relation(fields: [coffeeId], references: [id])
   position  Int
   label     String
-  revealed  Boolean @default(false)
-  createdAt DateTime @default(now())
+  revealed  Boolean        @default(false)
+  createdAt DateTime       @default(now())
 
   evaluations    Evaluation[]
   physical       PhysicalEvaluation?
@@ -113,19 +115,19 @@ model SessionSample {
 }
 
 model Evaluation {
-  id              String         @id @default(cuid())
+  id              String        @id @default(cuid())
   sessionSampleId String
-  sessionSample   SessionSample  @relation(fields: [sessionSampleId], references: [id], onDelete: Cascade)
+  sessionSample   SessionSample @relation(fields: [sessionSampleId], references: [id], onDelete: Cascade)
   cupperId        String
-  cupper          Profile        @relation(fields: [cupperId], references: [id])
+  cupper          Profile       @relation(fields: [cupperId], references: [id])
 
-  descriptiveData Json      @default("{}")
-  affectiveData   Json      @default("{}")
-  combinedData    Json      @default("{}")
+  descriptiveData Json @default("{}")
+  affectiveData   Json @default("{}")
+  combinedData    Json @default("{}")
 
-  nonUniformCups  Boolean[] @default([])
-  defectiveCups   Boolean[] @default([])
-  defectTypes     String[]  @default([])
+  nonUniformCups Boolean[] @default([])
+  defectiveCups  Boolean[] @default([])
+  defectTypes    String[]  @default([])
 
   affectiveSum    Float?
   rawScore        Float?
@@ -171,16 +173,16 @@ model ExtrinsicData {
 }
 
 model SessionParticipant {
-  sessionId String
-  session   CuppingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  userId    String
-  user      Profile        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status    String         @default("invited") // "invited" | "joined" | "owner"
+  sessionId           String
+  session             CuppingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId              String
+  user                Profile        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status              String         @default("invited") // "invited" | "joined" | "owner"
   // Master can exclude a participant's data from group aggregates, descriptor
   // frequency and charts. Authoritative for the aggregate trigger (see
   // prisma/sql/rls_and_triggers.sql Phase 4). The participant still sees their own results.
-  excludedFromResults Boolean @default(false) @map("excluded_from_results")
-  joinedAt  DateTime       @default(now())
+  excludedFromResults Boolean        @default(false) @map("excluded_from_results")
+  joinedAt            DateTime       @default(now())
 
   @@id([sessionId, userId])
   @@index([userId, status])
@@ -267,4 +269,34 @@ model WaitlistEntry {
   createdAt DateTime @default(now())
 
   @@map("waitlist_entries")
+}
+
+model TastingGroup {
+  id        String   @id @default(cuid())
+  name      String
+  createdBy String
+  owner     Profile  @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members TastingGroupMember[]
+
+  @@index([createdBy])
+  @@map("tasting_groups")
+}
+
+model TastingGroupMember {
+  id          String       @id @default(cuid())
+  groupId     String
+  group       TastingGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  email       String
+  userId      String?
+  user        Profile?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  displayName String?
+  createdAt   DateTime     @default(now())
+
+  @@unique([groupId, email])
+  @@index([groupId])
+  @@index([userId])
+  @@map("tasting_group_members")
 }

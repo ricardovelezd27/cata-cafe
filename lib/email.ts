@@ -31,6 +31,15 @@ export type SendEmailResult = {
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
+/** Escapes HTML-special characters for safe interpolation into email templates. */
+export function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 /** Default sender; override with EMAIL_FROM. Must be a Resend-verified domain. */
 const DEFAULT_FROM = "Cata Café <no-reply@catacafe.app>";
 

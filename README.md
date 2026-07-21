@@ -414,6 +414,8 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 DATABASE_URL=postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
+RESEND_API_KEY=your-resend-api-key
+EMAIL_FROM="Cata Café <no-reply@yourdomain.com>"
 ```
 
 | Variable | Where to find it |
@@ -422,6 +424,8 @@ DATABASE_URL=postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supaba
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Dashboard → Project Settings → API |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase Dashboard → Project Settings → API (keep secret — server only) |
 | `DATABASE_URL` | Supabase Dashboard → Project Settings → Database → Connection pooler (Transaction mode) |
+| `RESEND_API_KEY` | Resend Dashboard → API Keys. Server-only. When unset, `lib/email.ts` degrades gracefully — sending is a no-op instead of throwing. |
+| `EMAIL_FROM` | Optional — overrides the default sender in `lib/email.ts`. Must be an address on a Resend-verified domain. |
 
 ---
 
@@ -488,7 +492,7 @@ cata-cafe/
 │   ├── actions/
 │   │   ├── auth.ts                     # signInWithMagicLink, signOut
 │   │   ├── sessions.ts                 # createSession, createGroupSession, upsertEvaluation...
-│   │   ├── community.ts                # submitEvaluation, closeSession, revealSample, joinViaToken, excludeParticipant...
+│   │   ├── community.ts                # submitEvaluation, closeSession, revealSample, joinViaToken, setParticipantExclusion...
 │   │   ├── coffees.ts                  # Coffee profile create/update
 │   │   ├── offline.ts                  # Conflict-aware replay of offline drafts on reconnect
 │   │   ├── profile.ts                  # Profile updates, completeOnboarding

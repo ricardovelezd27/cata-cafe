@@ -100,7 +100,7 @@ cata-cafe/
 │   ├── actions/                    # Server actions (all mutations live here)
 │   │   ├── auth.ts                 # signInWithMagicLink(formData, next?), signOut
 │   │   ├── sessions.ts             # createSession, createGroupSession, upsertEvaluation, upsertPhysical, upsertExtrinsic
-│   │   ├── community.ts            # submitEvaluation, closeSession, revealSample, joinViaToken, createInviteToken, syncCoffeeHistory, excludeParticipant
+│   │   ├── community.ts            # submitEvaluation, closeSession, revealSample, joinViaToken, createInviteToken, syncCoffeeHistory, setParticipantExclusion
 │   │   ├── coffees.ts              # Coffee profile create/update
 │   │   ├── offline.ts              # Conflict-aware replay of offline evaluation drafts on reconnect
 │   │   ├── profile.ts              # Profile updates, completeOnboarding
@@ -345,6 +345,8 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=    # Used by lib/supabase/admin.ts — never expose to client
 DATABASE_URL=                 # Supabase connection pooler URL
+RESEND_API_KEY=               # Server-only. Unset → lib/email.ts sending is a graceful no-op
+EMAIL_FROM=                   # Optional — overrides the default sender; must be a Resend-verified domain
 ```
 
 ---

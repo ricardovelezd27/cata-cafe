@@ -859,3 +859,64 @@ ALTER TABLE saved_insights ENABLE ROW LEVEL SECURITY;
 -- ============================================================================
 ALTER PUBLICATION supabase_realtime ADD TABLE public.evaluations;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.cupping_sessions;
+
+-- ============================================================================
+-- PHASE 8 (2026-07-21): Tasting Groups
+-- A maestro's standing address book of co-cuppers, reusable across sessions
+-- without re-inviting people one by one. All app reads/writes go through
+-- Prisma server actions (app/actions/groups.ts, lib/coCuppers.ts), which run
+-- with the postgres role and bypass RLS entirely. RLS here is a defense-in-depth
+-- backstop for the anon/authenticated PostgREST surface — same pattern as
+-- saved_insights (Phase 5) and waitlist_entries. Apply manually via the
+-- Supabase Dashboard → SQL Editor.
+-- ============================================================================
+ALTER TABLE tasting_groups ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tasting_group_members ENABLE ROW LEVEL SECURITY;
+
+-- Owner-only: only the group's creator can read or write the group row itself.
+CREATE POLICY "tasting_groups_owner_all" ON tasting_groups
+  FOR ALL USING ("createdBy" = auth.uid()::text);
+
+-- Owner-only, via the owning group.
+--
+-- Deliberately NO member-read policy for members themselves (e.g. "a member
+-- can see who else is in a group they belong to") — that would leak co-members'
+-- email addresses to every other member. The app never needs this: all reads
+-- go through Prisma (app/actions/groups.ts, lib/coCuppers.ts), which uses the
+-- postgres role and bypasses RLS, so owner-only here does not block any
+-- legitimate app functionality.
+CREATE POLICY "tasting_group_members_owner_all" ON tasting_group_members
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM tasting_groups
+      WHERE id = tasting_group_members."groupId"
+        AND "createdBy" = auth.uid()::text
+    )
+  );
+
+-- ============================================================================
+-- PHASE 8b (2026-07-21): Auto-link email-only group invitees on signup
+-- Redefines handle_new_user() — body copied verbatim from its original
+-- definition above, plus one statement after the profile insert — so an
+-- email-only tasting-group invitee is automatically linked to their Profile
+-- the moment they sign up, with no separate reconciliation job needed.
+-- Trigger definition (on_auth_user_created) is unchanged — no need to recreate it.
+-- ============================================================================
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.profiles (id, "displayName", "preferredLang")
+  VALUES (
+    NEW.id::text,
+    COALESCE(NEW.raw_user_meta_data->>'display_name', split_part(NEW.email, '@', 1)),
+    COALESCE(NEW.raw_user_meta_data->>'preferred_lang', 'es')
+  );
+
+  -- Auto-link email-only group invitees: claim any tasting_group_members rows
+  -- that were added by email before this user existed. Schema-qualified because
+  -- this trigger fires from auth.users, where search_path may not include public.
+  UPDATE public.tasting_group_members SET "userId" = NEW.id::text WHERE "userId" IS NULL AND lower(email) = lower(NEW.email);
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
