@@ -221,7 +221,7 @@ export default async function CupPage({
           retrySync: t("offline.retrySync"),
           submitBlocked: t("offline.submitBlocked"),
           conflictTitle: t("offline.conflictTitle"),
-          conflictBody: t("offline.conflictBody"),
+          conflictBody: t.raw("offline.conflictBody"),
           conflictKeep: t("offline.conflictKeep"),
           conflictReplace: t("offline.conflictReplace"),
         },

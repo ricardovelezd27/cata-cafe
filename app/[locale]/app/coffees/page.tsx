@@ -43,7 +43,7 @@ export default async function CoffeesPage({
     colLastScore: t("colLastScore"),
     colLastDate: t("colLastDate"),
     noData: t("noData"),
-    showing: t("showing"),
+    showing: t.raw("showing"),
     view: t("view"),
   };
 
