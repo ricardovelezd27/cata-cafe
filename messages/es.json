@@ -10,7 +10,8 @@
     "history": "Historial",
     "profile": "Perfil",
     "logout": "Cerrar sesión",
-    "signin": "Iniciar sesión"
+    "signin": "Iniciar sesión",
+    "groups": "Grupos"
   },
   "home": {
     "heroTitle": "Cata sensorial profesional",
@@ -654,5 +655,46 @@
       "copied": "Copiado",
       "exportError": "No se pudo exportar la imagen."
     }
+  },
+  "groups": {
+    "title": "Grupos de cata",
+    "subtitle": "Tu roster de catadores, listo para reutilizar en cualquier sesión",
+    "newGroup": "Nuevo grupo",
+    "namePlaceholder": "p. ej. Catadores de la finca",
+    "create": "Crear grupo",
+    "rename": "Renombrar",
+    "delete": "Eliminar grupo",
+    "confirmDelete": "¿Eliminar este grupo? Esta acción no se puede deshacer.",
+    "empty": "Aún no tienes grupos. Crea uno para reutilizar tu roster de catadores en cada sesión.",
+    "coCuppersTitle": "Personas con las que has catado",
+    "noCoCuppers": "Aún no has catado con nadie más — invita por correo.",
+    "addToGroup": "Añadir a grupo",
+    "members": "Integrantes",
+    "addMember": "Añadir integrante",
+    "addByEmail": "Añadir por correo",
+    "emailPlaceholder": "correo@ejemplo.com",
+    "displayNamePlaceholder": "Nombre (opcional)",
+    "unregistered": "Sin cuenta todavía",
+    "removeMember": "Quitar",
+    "confirmRemoveMember": "¿Quitar a esta persona del grupo?",
+    "composeEmail": "Enviar correo al grupo",
+    "subject": "Asunto",
+    "message": "Mensaje",
+    "includeInviteLink": "Incluir enlace de invitación a una sesión",
+    "selectSession": "Sesión a invitar",
+    "send": "Enviar",
+    "sending": "Enviando...",
+    "sendSummary": "{sent} enviados · {skipped} omitidos · {failed} fallidos",
+    "sendSkippedNotice": "El envío de correos no está configurado en este entorno.",
+    "notifyGroupTitle": "Avisar a un grupo",
+    "selectGroup": "Selecciona un grupo",
+    "noGroupsYet": "Aún no tienes grupos guardados.",
+    "skip": "Omitir",
+    "newGroupOption": "Nuevo grupo…",
+    "added": "Añadido",
+    "groupName": "Nombre del grupo",
+    "saveName": "Guardar",
+    "errorGeneric": "Algo salió mal. Inténtalo de nuevo.",
+    "backToGroups": "Volver a grupos"
   }
 }

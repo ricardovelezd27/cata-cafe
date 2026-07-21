@@ -10,7 +10,8 @@
     "history": "History",
     "profile": "Profile",
     "logout": "Sign out",
-    "signin": "Sign in"
+    "signin": "Sign in",
+    "groups": "Groups"
   },
   "home": {
     "heroTitle": "Professional sensory cupping",
@@ -654,5 +655,46 @@
       "copied": "Copied",
       "exportError": "Could not export the image."
     }
+  },
+  "groups": {
+    "title": "Tasting groups",
+    "subtitle": "Your cupper roster, ready to reuse in any session",
+    "newGroup": "New group",
+    "namePlaceholder": "e.g. Farm cuppers",
+    "create": "Create group",
+    "rename": "Rename",
+    "delete": "Delete group",
+    "confirmDelete": "Delete this group? This action cannot be undone.",
+    "empty": "You don't have any groups yet. Create one to reuse your cupper roster across sessions.",
+    "coCuppersTitle": "People you've cupped with",
+    "noCoCuppers": "You haven't cupped with anyone else yet — invite by email.",
+    "addToGroup": "Add to group",
+    "members": "Members",
+    "addMember": "Add member",
+    "addByEmail": "Add by email",
+    "emailPlaceholder": "email@example.com",
+    "displayNamePlaceholder": "Name (optional)",
+    "unregistered": "No account yet",
+    "removeMember": "Remove",
+    "confirmRemoveMember": "Remove this person from the group?",
+    "composeEmail": "Email the group",
+    "subject": "Subject",
+    "message": "Message",
+    "includeInviteLink": "Include an invite link to a session",
+    "selectSession": "Session to invite to",
+    "send": "Send",
+    "sending": "Sending...",
+    "sendSummary": "{sent} sent · {skipped} skipped · {failed} failed",
+    "sendSkippedNotice": "Email sending isn't configured in this environment.",
+    "notifyGroupTitle": "Notify a group",
+    "selectGroup": "Select a group",
+    "noGroupsYet": "You don't have any saved groups yet.",
+    "skip": "Skip",
+    "newGroupOption": "New group…",
+    "added": "Added",
+    "groupName": "Group name",
+    "saveName": "Save",
+    "errorGeneric": "Something went wrong. Please try again.",
+    "backToGroups": "Back to groups"
   }
 }
