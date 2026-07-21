@@ -75,7 +75,9 @@
     "noBestCoffees": "Sin cafés evaluados aún",
     "cuppingsCount": "{count} cataciones",
     "empty": "Aún no hay sesiones. Crea la primera.",
-    "newSession": "Nueva sesión"
+    "newSession": "Nueva sesión",
+    "statSamplesSubEvals": "con tu evaluación enviada",
+    "activityEvalSample": "Evaluaste {sample} en {session}"
   },
   "session": {
     "list": "Sesiones",
@@ -383,6 +385,10 @@
     "flavorsTitle": "Sabores reportados",
     "sessionsListTitle": "Apariciones en sesiones",
     "noResults": "Aún no hay catas enviadas para este café.",
+    "adminBadge": "Modo administrador — acceso total",
+    "adminOwnerPrefix": "Dueño:",
+    "recentTastingsTitle": "Catas recientes",
+    "recentTastingsEmpty": "Sin catas recientes.",
     "deleteCoffee": {
       "title": "Eliminar café",
       "body": "Las muestras de sesiones conservarán su etiqueta ciega. Tu historial de catas de este café se eliminará. Esta acción no se puede deshacer.",
@@ -763,6 +769,13 @@
     "groupName": "Nombre del grupo",
     "saveName": "Guardar",
     "errorGeneric": "Algo salió mal. Inténtalo de nuevo.",
-    "backToGroups": "Volver a grupos"
+    "backToGroups": "Volver a grupos",
+    "statLinked": "Con cuenta",
+    "statSharedSessions": "Sesiones compartidas",
+    "statGroupEvals": "Catas del grupo",
+    "activityTitle": "Actividad del grupo",
+    "activityEmpty": "Aún no hay actividad de los integrantes.",
+    "activityEval": "{name} evaluó {sample} en {session}",
+    "activityJoined": "{name} se unió a {session}"
   }
 }

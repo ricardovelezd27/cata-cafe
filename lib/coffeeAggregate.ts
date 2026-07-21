@@ -18,6 +18,7 @@ export interface CoffeeAggregateEvaluationInput {
   descriptiveData: unknown;
   combinedData: unknown;
   individualScore: number | null;
+  submittedAt?: Date | null;
 }
 
 export interface CoffeeAggregateSampleInput {
@@ -39,6 +40,14 @@ export interface CoffeeSessionRow {
   communityScore: number | null;
 }
 
+/** Anonymous — never carries cupper name/id. See coffees/[id]/page.tsx "recent tastings" card. */
+export interface CoffeeRecentEvaluation {
+  sessionId: string;
+  sessionName: string;
+  submittedAt: Date;
+  individualScore: number | null;
+}
+
 export interface CoffeeAggregate {
   sessionsCount: number;
   evaluationsCount: number;
@@ -48,6 +57,8 @@ export interface CoffeeAggregate {
   attrAverages: Record<string, number>;
   allDescriptive: Record<string, unknown>[];
   sessionRows: CoffeeSessionRow[];
+  /** Most recent 8 submitted evaluations across all sessions, newest first. Anonymous. */
+  recentEvaluations: CoffeeRecentEvaluation[];
 }
 
 /**
@@ -67,6 +78,7 @@ export function computeCoffeeAggregate(
   let individualSum = 0;
   let individualCount = 0;
   const allDescriptive: Record<string, unknown>[] = [];
+  const recentEvaluations: CoffeeRecentEvaluation[] = [];
 
   for (const sample of samples) {
     for (const ev of sample.evaluations) {
@@ -83,8 +95,17 @@ export function computeCoffeeAggregate(
           ? ev.combinedData
           : null;
       if (blob) allDescriptive.push(blob);
+      if (ev.submittedAt) {
+        recentEvaluations.push({
+          sessionId: sample.sessionId,
+          sessionName: sample.session.name,
+          submittedAt: ev.submittedAt,
+          individualScore: ev.individualScore,
+        });
+      }
     }
   }
+  recentEvaluations.sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime());
 
   // Community score: average of samples with a non-null communityScore,
   // weighted by participantCount; falls back to an unweighted average when
@@ -164,5 +185,6 @@ export function computeCoffeeAggregate(
     attrAverages,
     allDescriptive,
     sessionRows,
+    recentEvaluations: recentEvaluations.slice(0, 8),
   };
 }

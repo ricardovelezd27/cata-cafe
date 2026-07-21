@@ -13,6 +13,7 @@ type CoffeeRow = {
   isPublic: boolean;
   createdBy: string;
   isMine: boolean;
+  ownerName?: string | null;
   _count: { sessionSamples: number };
   coffeeHistory: Array<{
     tastedAt: string;
@@ -40,7 +41,9 @@ type Props = {
     view: string;
     listPublic: string;
     listPrivate: string;
+    adminOwnerPrefix: string;
   };
+  isAdmin?: boolean;
 };
 
 const PROCESS_COLORS: Record<string, string> = {
@@ -108,7 +111,7 @@ function SortIcon({ field, active, dir }: { field: string; active: boolean; dir:
   return <span className="text-green-dark ml-1 text-xs">{dir === "asc" ? "↑" : "↓"}</span>;
 }
 
-export default function CoffeesTable({ coffees, locale, translations: t }: Props) {
+export default function CoffeesTable({ coffees, locale, translations: t, isAdmin = false }: Props) {
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -253,7 +256,7 @@ export default function CoffeesTable({ coffees, locale, translations: t }: Props
                           >
                             {c.name}
                           </Link>
-                          {c.isMine && (
+                          {(c.isMine || isAdmin) && (
                             <VisibilityPill
                               isPublic={c.isPublic}
                               labelPublic={t.listPublic}
@@ -261,6 +264,11 @@ export default function CoffeesTable({ coffees, locale, translations: t }: Props
                             />
                           )}
                         </span>
+                        {c.ownerName && (
+                          <span className="block text-xs text-brown-mid">
+                            {t.adminOwnerPrefix} {c.ownerName}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-brown-dark">
                         {c.country ? (
@@ -321,7 +329,7 @@ export default function CoffeesTable({ coffees, locale, translations: t }: Props
                       >
                         {c.name}
                       </Link>
-                      {c.isMine && (
+                      {(c.isMine || isAdmin) && (
                         <VisibilityPill
                           isPublic={c.isPublic}
                           labelPublic={t.listPublic}
@@ -331,6 +339,11 @@ export default function CoffeesTable({ coffees, locale, translations: t }: Props
                     </span>
                     <ProcessBadge type={c.processType} />
                   </div>
+                  {c.ownerName && (
+                    <div className="text-xs text-brown-mid">
+                      {t.adminOwnerPrefix} {c.ownerName}
+                    </div>
+                  )}
                   {(c.country || c.region) && (
                     <div className="text-xs text-brown-mid">
                       {[c.country, c.region].filter(Boolean).join(", ")}

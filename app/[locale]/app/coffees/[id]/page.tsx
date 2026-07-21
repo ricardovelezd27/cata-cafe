@@ -4,6 +4,7 @@ import { ClipboardList, CheckCircle2, Users, Star } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { computeCoffeeAggregate } from "@/lib/coffeeAggregate";
 import { FLAVOR_DESC_KEYS } from "@/lib/descriptors";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
@@ -38,12 +39,12 @@ export default async function CoffeeProfilePage({
   const tattr = await getTranslations("attributes");
   const ta = await getTranslations("actions");
 
-  // Record-level access gate: public coffees, or ones the viewer owns.
+  const isAdmin = isSuperAdminEmail(user.email);
+
+  // Record-level access gate: public coffees, ones the viewer owns, or —
+  // super-admin god mode — any coffee at all (read-only testing access).
   const coffee = await prisma.coffee.findFirst({
-    where: {
-      id,
-      OR: [{ isPublic: true }, { createdBy: user.id }],
-    },
+    where: isAdmin ? { id } : { id, OR: [{ isPublic: true }, { createdBy: user.id }] },
   });
 
   if (!coffee) notFound();
@@ -69,16 +70,21 @@ export default async function CoffeeProfilePage({
         },
         evaluations: {
           where: { isDraft: false },
-          select: { descriptiveData: true, combinedData: true, individualScore: true },
+          select: {
+            descriptiveData: true,
+            combinedData: true,
+            individualScore: true,
+            submittedAt: true,
+          },
         },
       },
     }),
   ]);
 
   // Visibility rule: results (counts, scores, attr averages, flavor cloud) are
-  // visible to the owner always, or to anyone once the owner has published
-  // them. Details grid and the viewer's own tasting history are unaffected.
-  const showResults = isOwner || coffee.resultsPublished;
+  // visible to the owner always, to anyone once the owner has published them,
+  // or to the super admin. Details grid and own history are unaffected.
+  const showResults = isOwner || coffee.resultsPublished || isAdmin;
   const aggregate = computeCoffeeAggregate(samples);
 
   // A single representative descriptor blob (union of every evaluation's
@@ -100,6 +106,11 @@ export default async function CoffeeProfilePage({
           <h1 className="font-serif text-3xl text-green-dark font-semibold">{coffee.name}</h1>
           {coffee.variety && (
             <p className="text-sm text-brown-mid mt-1">{coffee.variety}</p>
+          )}
+          {isAdmin && !isOwner && (
+            <span className="inline-block mt-2 text-xs font-semibold px-2.5 py-1 rounded-full border bg-amber-warm/15 text-amber-warm border-amber-warm/40">
+              {t("adminBadge")}
+            </span>
           )}
         </div>
         {coffee.createdBy === user.id && (
@@ -286,6 +297,38 @@ export default async function CoffeeProfilePage({
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Recent tastings (anonymous — never shows cupper identity) */}
+            <div className="bg-white border border-[#E8E0D0] rounded-xl p-5">
+              <h3 className="font-serif text-lg text-green-dark font-semibold mb-3">
+                {t("recentTastingsTitle")}
+              </h3>
+              {aggregate.recentEvaluations.length === 0 ? (
+                <p className="text-sm text-brown-mid">{t("recentTastingsEmpty")}</p>
+              ) : (
+                <ul className="divide-y divide-[#E8E0D0]">
+                  {aggregate.recentEvaluations.map((ev, i) => (
+                    <li
+                      key={i}
+                      className="py-2 first:pt-0 last:pb-0 flex items-baseline justify-between gap-3 text-sm"
+                    >
+                      <span className="text-brown-dark">{ev.sessionName}</span>
+                      <span className="flex items-baseline gap-3">
+                        <span className="font-semibold text-green-dark">
+                          {ev.individualScore != null ? ev.individualScore.toFixed(2) : "—"}
+                        </span>
+                        <span className="text-xs text-brown-mid whitespace-nowrap">
+                          {ev.submittedAt.toLocaleDateString(
+                            locale === "es" ? "es-CO" : "en-US",
+                            { year: "numeric", month: "short", day: "numeric" },
+                          )}
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
         )}

@@ -75,7 +75,9 @@
     "noBestCoffees": "No coffees evaluated yet",
     "cuppingsCount": "{count} cuppings",
     "empty": "No sessions yet. Create your first.",
-    "newSession": "New session"
+    "newSession": "New session",
+    "statSamplesSubEvals": "with your evaluation submitted",
+    "activityEvalSample": "You evaluated {sample} in {session}"
   },
   "session": {
     "list": "Sessions",
@@ -383,6 +385,10 @@
     "flavorsTitle": "Reported flavors",
     "sessionsListTitle": "Session appearances",
     "noResults": "No cuppings have been submitted for this coffee yet.",
+    "adminBadge": "Admin mode — full access",
+    "adminOwnerPrefix": "Owner:",
+    "recentTastingsTitle": "Recent cuppings",
+    "recentTastingsEmpty": "No recent cuppings yet.",
     "deleteCoffee": {
       "title": "Delete coffee",
       "body": "Session samples will keep their blind label. Your tasting history for this coffee will be removed. This cannot be undone.",
@@ -763,6 +769,13 @@
     "groupName": "Group name",
     "saveName": "Save",
     "errorGeneric": "Something went wrong. Please try again.",
-    "backToGroups": "Back to groups"
+    "backToGroups": "Back to groups",
+    "statLinked": "With account",
+    "statSharedSessions": "Shared sessions",
+    "statGroupEvals": "Group cuppings",
+    "activityTitle": "Group activity",
+    "activityEmpty": "No member activity yet.",
+    "activityEval": "{name} evaluated {sample} in {session}",
+    "activityJoined": "{name} joined {session}"
   }
 }

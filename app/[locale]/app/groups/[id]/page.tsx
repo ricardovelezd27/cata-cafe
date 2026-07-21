@@ -1,11 +1,13 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clipboard, UserCheck, Users } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { getCoCupperCandidates } from "@/lib/coCuppers";
+import { StatCard } from "@/components/dashboard/StatCard";
 import { GroupNameControls } from "@/components/groups/GroupNameControls";
+import { GroupActivityFeed, type GroupActivityEvent } from "@/components/groups/GroupActivityFeed";
 import { MemberList } from "@/components/groups/MemberList";
 import { QuickAddCoCuppers } from "@/components/groups/QuickAddCoCuppers";
 import { AddByEmailForm } from "@/components/groups/AddByEmailForm";
@@ -58,6 +60,85 @@ export default async function GroupDetailPage({
   );
   const eligibleCuppers = cuppers.filter((c) => !memberUserIds.has(c.userId));
 
+  // ── Group stats + activity (linked members only — email-only invitees have
+  //    no account yet, so no activity can exist for them) ─────────────────────
+  const linkedIds = [...memberUserIds];
+  const nameByUserId = new Map(
+    group.members
+      .filter((m): m is typeof m & { userId: string } => !!m.userId)
+      .map((m) => [m.userId, m.displayName ?? m.email]),
+  );
+
+  let sharedSessionsCount = 0;
+  let groupEvalCount = 0;
+  let events: GroupActivityEvent[] = [];
+
+  if (linkedIds.length > 0) {
+    const [sharedSessions, evalCount, feedEvals, feedJoins] = await Promise.all([
+      prisma.sessionParticipant.findMany({
+        where: { userId: { in: linkedIds }, session: { createdBy: user.id } },
+        select: { sessionId: true },
+        distinct: ["sessionId"],
+      }),
+      prisma.evaluation.count({
+        where: {
+          cupperId: { in: linkedIds },
+          isDraft: false,
+          sessionSample: { session: { createdBy: user.id } },
+        },
+      }),
+      prisma.evaluation.findMany({
+        where: {
+          cupperId: { in: linkedIds },
+          isDraft: false,
+          submittedAt: { not: null },
+          sessionSample: { session: { createdBy: user.id } },
+        },
+        orderBy: { submittedAt: "desc" },
+        take: 12,
+        select: {
+          submittedAt: true,
+          cupperId: true,
+          sessionSample: { select: { label: true, session: { select: { name: true } } } },
+        },
+      }),
+      prisma.sessionParticipant.findMany({
+        where: {
+          userId: { in: linkedIds },
+          status: "joined",
+          session: { createdBy: user.id },
+        },
+        orderBy: { joinedAt: "desc" },
+        take: 12,
+        select: { joinedAt: true, userId: true, session: { select: { name: true } } },
+      }),
+    ]);
+
+    sharedSessionsCount = sharedSessions.length;
+    groupEvalCount = evalCount;
+
+    const evalEvents: GroupActivityEvent[] = feedEvals
+      .filter((e): e is typeof e & { submittedAt: Date } => !!e.submittedAt)
+      .map((e) => ({
+        message: t("activityEval", {
+          name: nameByUserId.get(e.cupperId) ?? "—",
+          sample: e.sessionSample.label,
+          session: e.sessionSample.session.name,
+        }),
+        timestamp: e.submittedAt,
+      }));
+    const joinEvents: GroupActivityEvent[] = feedJoins.map((j) => ({
+      message: t("activityJoined", {
+        name: nameByUserId.get(j.userId) ?? "—",
+        session: j.session.name,
+      }),
+      timestamp: j.joinedAt,
+    }));
+    events = [...evalEvents, ...joinEvents]
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .slice(0, 12);
+  }
+
   return (
     <div className="max-w-3xl space-y-8">
       <Link
@@ -81,6 +162,35 @@ export default async function GroupDetailPage({
         }}
       />
 
+      {/* Group stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <StatCard
+          label={t("members")}
+          value={String(group.members.length)}
+          subtext=""
+          icon={<Users size={18} />}
+        />
+        <StatCard
+          label={t("statLinked")}
+          value={String(linkedIds.length)}
+          subtext=""
+          icon={<UserCheck size={18} />}
+        />
+        <StatCard
+          label={t("statSharedSessions")}
+          value={String(sharedSessionsCount)}
+          subtext=""
+          icon={<Clipboard size={18} />}
+        />
+        <StatCard
+          label={t("statGroupEvals")}
+          value={String(groupEvalCount)}
+          subtext=""
+          accent
+          icon={<CheckCircle2 size={18} />}
+        />
+      </div>
+
       {/* Roster */}
       <div className="space-y-3">
         <h2 className="font-serif text-xl text-green-dark">{t("members")}</h2>
@@ -100,6 +210,14 @@ export default async function GroupDetailPage({
           }}
         />
       </div>
+
+      {/* Activity feed */}
+      <GroupActivityFeed
+        title={t("activityTitle")}
+        events={events}
+        emptyText={t("activityEmpty")}
+        locale={locale}
+      />
 
       {/* Add members */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

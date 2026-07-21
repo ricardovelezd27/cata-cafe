@@ -56,7 +56,7 @@ export default async function Dashboard({
   const [
     profile,
     sessionCount,
-    coffeeHistory,
+    submittedEvaluations,
     recentSessions,
     topCoffeeGroups,
     recentActivity,
@@ -75,9 +75,9 @@ export default async function Dashboard({
       },
     }),
 
-    prisma.userCoffeeHistory.findMany({
-      where: { userId: user.id },
-      select: { coffeeId: true, individualScore: true },
+    prisma.evaluation.findMany({
+      where: { cupperId: user.id, isDraft: false },
+      select: { sessionSampleId: true, individualScore: true },
     }),
 
     prisma.cuppingSession.findMany({
@@ -109,22 +109,39 @@ export default async function Dashboard({
       take: 3,
     }),
 
-    prisma.userCoffeeHistory.findMany({
-      where: { userId: user.id },
-      include: { coffee: { select: { name: true } } },
-      orderBy: { tastedAt: "desc" },
+    prisma.evaluation.findMany({
+      where: { cupperId: user.id, isDraft: false, submittedAt: { not: null } },
+      orderBy: { submittedAt: "desc" },
       take: 5,
+      select: {
+        submittedAt: true,
+        sessionSample: {
+          select: {
+            label: true,
+            revealed: true,
+            coffee: { select: { name: true } },
+            session: { select: { name: true } },
+          },
+        },
+      },
     }),
   ]);
 
   // Derived stats
-  const uniqueCoffeeCount = new Set(coffeeHistory.map((h) => h.coffeeId)).size;
-  const scores = coffeeHistory
-    .map((h) => h.individualScore)
+  // Live stats: distinct evaluated samples + average score, sourced from
+  // submitted evaluations (not UserCoffeeHistory, which stays empty until a
+  // session is closed and its samples are revealed+linked to a Coffee).
+  const evaluatedSampleCount = new Set(
+    submittedEvaluations.map((e) => e.sessionSampleId),
+  ).size;
+  const submittedScores = submittedEvaluations
+    .map((e) => e.individualScore)
     .filter((s): s is number => s !== null);
   const avgScore =
-    scores.length > 0
-      ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2)
+    submittedScores.length > 0
+      ? (
+          submittedScores.reduce((a, b) => a + b, 0) / submittedScores.length
+        ).toFixed(2)
       : null;
 
   // Top coffee details
@@ -196,8 +213,8 @@ export default async function Dashboard({
         />
         <StatCard
           label={t("statSamples")}
-          value={String(uniqueCoffeeCount)}
-          subtext={t("statSamplesSub")}
+          value={String(evaluatedSampleCount)}
+          subtext={t("statSamplesSubEvals")}
           icon={<Coffee size={20} />}
         />
         <StatCard
@@ -319,19 +336,28 @@ export default async function Dashboard({
             <p className="text-sm text-brown-mid">{t("noActivity")}</p>
           ) : (
             <ul className="space-y-1">
-              {recentActivity.map((item) => (
+              {recentActivity.map((item, i) => (
                 <li
-                  key={item.id}
+                  key={i}
                   className="flex items-center gap-3 py-2 border-b border-[#F0EDE6] last:border-0"
                 >
                   <span className="text-green-mid shrink-0">
                     <Clock size={14} />
                   </span>
                   <span className="text-sm text-brown-dark flex-1">
-                    {t("activityEval", { coffee: item.coffee.name })}
+                    {item.sessionSample.revealed && item.sessionSample.coffee
+                      ? t("activityEval", {
+                          coffee: item.sessionSample.coffee.name,
+                        })
+                      : t("activityEvalSample", {
+                          sample: item.sessionSample.label,
+                          session: item.sessionSample.session.name,
+                        })}
                   </span>
                   <span className="text-xs text-brown-mid shrink-0">
-                    {timeAgo(new Date(item.tastedAt), locale)}
+                    {item.submittedAt
+                      ? timeAgo(new Date(item.submittedAt), locale)
+                      : ""}
                   </span>
                 </li>
               ))}

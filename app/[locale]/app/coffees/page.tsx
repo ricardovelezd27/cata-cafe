@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
+import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { getCoffeesWithStats } from "@/app/actions/coffees";
 import CoffeesTable from "@/components/coffees/CoffeesTable";
 
@@ -23,16 +24,26 @@ export default async function CoffeesPage({
   if (!user) redirect(`/${locale}/auth/login`);
 
   const t = await getTranslations("coffee");
+  const isAdmin = isSuperAdminEmail(user.email);
 
-  const raw = await getCoffeesWithStats(user.id);
-  const coffees = raw.map((c) => ({
-    ...c,
-    isMine: c.createdBy === user.id,
-    coffeeHistory: c.coffeeHistory.map((h) => ({
-      ...h,
-      tastedAt: h.tastedAt.toISOString(),
-    })),
-  }));
+  const raw = await getCoffeesWithStats(user.id, { all: isAdmin });
+  const coffees = raw.map((c) => {
+    // Strip `creator` before handing rows to the client component — only the
+    // admin-gated ownerName may cross the server/client boundary; shipping
+    // every owner's displayName to every browser would leak data the UI hides.
+    const { creator, ...rest } = c;
+    const isMine = c.createdBy === user.id;
+    const ownerName = isAdmin && !isMine ? creator?.displayName ?? null : null;
+    return {
+      ...rest,
+      isMine,
+      ownerName,
+      coffeeHistory: rest.coffeeHistory.map((h) => ({
+        ...h,
+        tastedAt: h.tastedAt.toISOString(),
+      })),
+    };
+  });
 
   const translations = {
     searchPlaceholder: t("searchPlaceholder"),
@@ -49,6 +60,7 @@ export default async function CoffeesPage({
     view: t("view"),
     listPublic: t("listPublic"),
     listPrivate: t("listPrivate"),
+    adminOwnerPrefix: t("adminOwnerPrefix"),
   };
 
   return (
@@ -60,8 +72,18 @@ export default async function CoffeesPage({
         <p className="text-sm text-brown-mid mt-1">
           {t("registered", { count: coffees.length })}
         </p>
+        {isAdmin && (
+          <p className="text-xs text-amber-warm font-semibold mt-1">
+            {t("adminBadge")}
+          </p>
+        )}
       </div>
-      <CoffeesTable coffees={coffees} locale={locale} translations={translations} />
+      <CoffeesTable
+        coffees={coffees}
+        locale={locale}
+        translations={translations}
+        isAdmin={isAdmin}
+      />
     </div>
   );
 }

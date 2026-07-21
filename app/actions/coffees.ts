@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { prisma } from "@/lib/prisma";
 
 async function requireUser() {
@@ -18,9 +19,31 @@ async function requireUser() {
   return user;
 }
 
-export async function getCoffeesWithStats(userId: string) {
+// opts.all — super-admin "god mode": drops the visibility filter entirely
+// (see lib/analytics/access.ts isSuperAdminEmail, gated in the page). A single
+// select shape for both paths keeps the return type uniform; `creator` is only
+// rendered in admin mode but selecting it unconditionally is a cheap join and
+// avoids a union type at the call site.
+export async function getCoffeesWithStats(
+  userId: string,
+  opts?: { all?: boolean },
+) {
+  // God mode is re-verified HERE, never trusted from the caller: "use server"
+  // exports are independently POST-able endpoints, so an internal check is
+  // mandatory even though the page already gates (same rule as
+  // lib/analytics/access.ts documents). Non-admins asking for `all` silently
+  // get the normal filtered view.
+  let all = false;
+  if (opts?.all) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    all = !!user && isSuperAdminEmail(user.email);
+  }
+
   return prisma.coffee.findMany({
-    where: { OR: [{ isPublic: true }, { createdBy: userId }] },
+    where: all ? {} : { OR: [{ isPublic: true }, { createdBy: userId }] },
     select: {
       id: true,
       name: true,
@@ -30,6 +53,7 @@ export async function getCoffeesWithStats(userId: string) {
       processType: true,
       isPublic: true,
       createdBy: true,
+      creator: { select: { displayName: true } },
       _count: { select: { sessionSamples: true } },
       coffeeHistory: {
         where: { userId },
