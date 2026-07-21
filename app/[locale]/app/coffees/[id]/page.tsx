@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { DeleteCoffeeButton } from "./DeleteCoffeeButton";
 
 export function generateStaticParams() {
   return [];
@@ -24,6 +25,7 @@ export default async function CoffeeProfilePage({
 
   const t = await getTranslations("coffee");
   const th = await getTranslations("history");
+  const ta = await getTranslations("actions");
 
   const coffee = await prisma.coffee.findFirst({
     where: {
@@ -45,10 +47,26 @@ export default async function CoffeeProfilePage({
   return (
     <div className="max-w-2xl space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="font-serif text-3xl text-green-dark font-semibold">{coffee.name}</h1>
-        {coffee.variety && (
-          <p className="text-sm text-brown-mid mt-1">{coffee.variety}</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-3xl text-green-dark font-semibold">{coffee.name}</h1>
+          {coffee.variety && (
+            <p className="text-sm text-brown-mid mt-1">{coffee.variety}</p>
+          )}
+        </div>
+        {coffee.createdBy === user.id && (
+          <DeleteCoffeeButton
+            coffeeId={coffee.id}
+            locale={locale}
+            label={ta("delete")}
+            translations={{
+              title: t("deleteCoffee.title"),
+              body: t("deleteCoffee.body"),
+              confirm: t("deleteCoffee.confirm"),
+              cancel: t("deleteCoffee.cancel"),
+              error: t("deleteCoffee.error"),
+            }}
+          />
         )}
       </div>
 

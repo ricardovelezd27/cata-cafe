@@ -20,6 +20,14 @@ export default async function SessionsList({
   const t = await getTranslations("session");
   const tg = await getTranslations("group");
 
+  const deleteTranslations = {
+    title: t("deleteSession.title"),
+    body: t("deleteSession.body"),
+    confirm: t("deleteSession.confirm"),
+    cancel: t("deleteSession.cancel"),
+    error: t("deleteSession.error"),
+  };
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -64,7 +72,7 @@ export default async function SessionsList({
         <h1 className="font-serif text-3xl text-green-dark">{t("list")}</h1>
         <Link
           href={`/${locale}/app/sessions/new`}
-          className="px-4 py-2 rounded-lg bg-green-dark text-white text-sm font-bold"
+          className="px-4 py-2 rounded-card bg-green-dark text-white text-sm font-bold"
         >
           {t("new")}
         </Link>
@@ -73,7 +81,7 @@ export default async function SessionsList({
       {/* Own sessions */}
       <ul className="grid gap-2">
         {ownSessions.map((s) => (
-          <li key={s.id} className="relative bg-[#FDFBF7] border border-brown-light rounded-lg hover:border-green-dark">
+          <li key={s.id} className="relative bg-surface border border-brown-light rounded-card hover:border-green-dark">
             <Link
               href={`/${locale}/app/sessions/${s.id}/cup`}
               className="block px-4 py-3 pr-10"
@@ -106,7 +114,7 @@ export default async function SessionsList({
                 )}
               </div>
             </Link>
-            <DeleteSessionButton sessionId={s.id} locale={locale} />
+            <DeleteSessionButton sessionId={s.id} locale={locale} translations={deleteTranslations} />
           </li>
         ))}
       </ul>
@@ -120,7 +128,7 @@ export default async function SessionsList({
               <li key={s.id}>
                 <Link
                   href={`/${locale}/app/sessions/${s.id}/cup`}
-                  className="block bg-[#FDFBF7] border border-brown-light rounded-lg px-4 py-3 hover:border-green-dark"
+                  className="block bg-surface border border-brown-light rounded-card px-4 py-3 hover:border-green-dark"
                 >
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="font-semibold text-brown-dark">{s.name}</span>

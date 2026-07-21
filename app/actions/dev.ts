@@ -26,13 +26,28 @@ export async function devQuickStartSession(
 
   try {
     const time = new Date().toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
-    return await createGroupSession({
+    // Complete coffee data is now mandatory (validateSessionInput) — the dev
+    // quick-start seeds a plausible dummy coffee for both samples.
+    const result = await createGroupSession({
       name: `[DEV] Sesión de prueba ${time}`,
       date: new Date().toISOString().split("T")[0],
       format: "combined",
       cupsPerSample: 2,
-      samples: [{ label: "Muestra A" }, { label: "Muestra B" }],
+      coffees: [
+        {
+          name: "[DEV] Café de prueba",
+          variety: "Caturra",
+          country: "Colombia",
+          altitude: "1700",
+        },
+      ],
+      samples: [
+        { label: "Muestra A", coffeeIdx: 0 },
+        { label: "Muestra B", coffeeIdx: 0 },
+      ],
     });
+    if (!result.ok) return { error: result.error };
+    return { sessionId: result.sessionId, inviteToken: result.inviteToken };
   } catch {
     return { error: "Error al crear la sesión. Intenta de nuevo." };
   }

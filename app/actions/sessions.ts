@@ -33,6 +33,30 @@ async function requireUser() {
   return user;
 }
 
+// Data-driven platform: a session can't be created without complete basic
+// coffee data (N-series feedback + insights data-quality push). Server-side
+// twin of the form's client validation — actions are public HTTP endpoints.
+const REQUIRED_COFFEE_FIELDS = ["name", "variety", "country", "altitude"] as const;
+
+function validateSessionInput(
+  coffees: CoffeeInput[],
+  samples: SampleInput[],
+): string | null {
+  if (!samples || samples.length === 0) return "no_samples";
+  if (!coffees || coffees.length === 0) return "no_coffees";
+  for (const c of coffees) {
+    for (const field of REQUIRED_COFFEE_FIELDS) {
+      if (!c[field]?.trim()) return "missing_coffee_fields";
+    }
+  }
+  for (const s of samples) {
+    if (typeof s.coffeeIdx !== "number" || !coffees[s.coffeeIdx]) {
+      return "sample_without_coffee";
+    }
+  }
+  return null;
+}
+
 async function createCoffees(coffees: CoffeeInput[], userId: string) {
   if (!coffees || coffees.length === 0) return [];
   // Run all creates in one transaction (single round-trip). $transaction with an
@@ -67,8 +91,11 @@ export async function createSession(input: {
   coffees?: CoffeeInput[];
   samples: SampleInput[];
   locale?: string;
-}) {
+}): Promise<{ ok: false; error: string } | void> {
   const user = await requireUser();
+
+  const invalid = validateSessionInput(input.coffees ?? [], input.samples);
+  if (invalid) return { ok: false, error: invalid };
 
   const createdCoffees = await createCoffees(input.coffees ?? [], user.id);
 
@@ -107,8 +134,13 @@ export async function createGroupSession(input: {
   coffees?: CoffeeInput[];
   samples: SampleInput[];
   closesAt?: string;
-}): Promise<{ sessionId: string; inviteToken: string }> {
+}): Promise<
+  { ok: true; sessionId: string; inviteToken: string } | { ok: false; error: string }
+> {
   const user = await requireUser();
+
+  const invalid = validateSessionInput(input.coffees ?? [], input.samples);
+  if (invalid) return { ok: false, error: invalid };
 
   const createdCoffees = await createCoffees(input.coffees ?? [], user.id);
 
@@ -152,7 +184,7 @@ export async function createGroupSession(input: {
     select: { id: true },
   });
 
-  return { sessionId: session.id, inviteToken: token };
+  return { ok: true, sessionId: session.id, inviteToken: token };
 }
 
 // Prisma unique-constraint violation (duck-typed like app/actions/waitlist.ts —
@@ -227,6 +259,30 @@ export async function deleteSession(sessionId: string, locale: string = "es") {
   await prisma.cuppingSession.delete({ where: { id: sessionId } });
 
   revalidatePath(`/${locale}/app/sessions`);
+}
+
+/**
+ * Delete a coffee the user created. DB-level referential rules keep the rest
+ * of the platform consistent: session_samples.coffeeId is ON DELETE SET NULL
+ * (samples survive, showing only their blind label) and user_coffee_history
+ * rows cascade away (migration 20260721000000).
+ */
+export async function deleteCoffee(coffeeId: string, locale: string = "es") {
+  const user = await requireUser();
+
+  const coffee = await prisma.coffee.findUnique({
+    where: { id: coffeeId },
+    select: { createdBy: true },
+  });
+
+  if (!coffee || coffee.createdBy !== user.id) {
+    throw new Error("not_found_or_forbidden");
+  }
+
+  await prisma.coffee.delete({ where: { id: coffeeId } });
+
+  revalidatePath(`/${locale}/app/coffees`);
+  return { ok: true as const };
 }
 
 export async function upsertPhysical(input: {

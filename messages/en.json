@@ -112,7 +112,28 @@
       "extrinsic": "Extrinsic",
       "physical": "Physical"
     },
-    "results": "Results"
+    "results": "Results",
+    "newForm": {
+      "required": "required",
+      "optionalSuffix": "optional",
+      "coffeeCard": "Coffee",
+      "addSampleOfCoffee": "+ Another sample of this coffee",
+      "sampleChip": "Sample",
+      "errors": {
+        "no_samples": "Add at least one sample to start the session.",
+        "no_coffees": "Add at least one coffee to start the session.",
+        "missing_coffee_fields": "Fill in the required fields for each coffee: name, variety, country and altitude.",
+        "sample_without_coffee": "Each sample must be linked to a coffee.",
+        "generic": "Couldn't create the session. Please try again."
+      }
+    },
+    "deleteSession": {
+      "title": "Delete session",
+      "body": "This will permanently delete the session and all participant evaluations. This cannot be undone.",
+      "confirm": "Delete session",
+      "cancel": "Cancel",
+      "error": "Couldn't delete the session. Please try again."
+    }
   },
   "cupping": {
     "sample": "Sample",
@@ -321,7 +342,14 @@
     "altitude": "Altitude",
     "roastLevel": "Roast level",
     "certifications": "Certifications",
-    "tastingHistory": "Tasting history"
+    "tastingHistory": "Tasting history",
+    "deleteCoffee": {
+      "title": "Delete coffee",
+      "body": "Session samples will keep their blind label. Your tasting history for this coffee will be removed. This cannot be undone.",
+      "confirm": "Delete coffee",
+      "cancel": "Cancel",
+      "error": "Couldn't delete the coffee. Please try again."
+    }
   },
   "offline": {
     "bannerOffline": "You're offline. Your evaluations are being saved locally.",

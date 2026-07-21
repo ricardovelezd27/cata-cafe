@@ -3,10 +3,10 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
-import { deleteSession } from "@/app/actions/sessions";
+import { deleteCoffee } from "@/app/actions/sessions";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 
-export type DeleteSessionTranslations = {
+export type DeleteCoffeeTranslations = {
   title: string;
   body: string;
   confirm: string;
@@ -14,33 +14,29 @@ export type DeleteSessionTranslations = {
   error: string;
 };
 
-export function DeleteSessionButton({
-  sessionId,
+export function DeleteCoffeeButton({
+  coffeeId,
   locale,
+  label,
   translations: t,
 }: {
-  sessionId: string;
+  coffeeId: string;
   locale: string;
-  translations: DeleteSessionTranslations;
+  /** Trigger button text (generic "Eliminar" / "Delete" action label). */
+  label: string;
+  translations: DeleteCoffeeTranslations;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState(false);
   const [pending, start] = useTransition();
 
-  const handleOpen = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setError(false);
-    setOpen(true);
-  };
-
   const handleConfirm = () => {
     setError(false);
     start(async () => {
       try {
-        await deleteSession(sessionId, locale);
-        setOpen(false);
+        await deleteCoffee(coffeeId, locale);
+        router.push(`/${locale}/app/coffees`);
         router.refresh();
       } catch {
         setError(true);
@@ -52,11 +48,14 @@ export function DeleteSessionButton({
     <>
       <button
         type="button"
-        onClick={handleOpen}
-        aria-label={t.title}
-        className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-sm text-on-surface-variant hover:text-error hover:bg-error-container/40 transition-colors"
+        onClick={() => {
+          setError(false);
+          setOpen(true);
+        }}
+        className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-error transition-colors"
       >
         <Trash2 size={15} />
+        {label}
       </button>
 
       <ResponsiveDialog
