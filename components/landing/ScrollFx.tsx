@@ -100,19 +100,6 @@ export default function ScrollFx() {
               }),
           });
         });
-
-        // Roadmap line draw.
-        const line = document.querySelector<HTMLElement>("[data-roadmap-line]");
-        if (line) {
-          gsap.set(line, { scaleX: 0, transformOrigin: "left center" });
-          ScrollTrigger.create({
-            trigger: line,
-            start: "top 85%",
-            once: true,
-            onEnter: () =>
-              gsap.to(line, { scaleX: 1, duration: 1.2, ease: "power2.inOut" }),
-          });
-        }
       });
     };
 

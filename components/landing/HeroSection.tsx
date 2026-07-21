@@ -1,24 +1,19 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import PriceBandWidget from "./PriceBandWidget";
+import CalibrationWidget from "./CalibrationWidget";
 import { loginHref } from "./locale-href";
-import type { OriginKey, ProcessKey } from "./price-bands";
+import type { Cupper } from "./calibration-data";
 
 export default async function HeroSection({ locale }: { locale: string }) {
   const t = await getTranslations("landing.hero");
-  const tw = await getTranslations("landing.widget");
+  const tw = await getTranslations("landing.calWidget");
 
-  const origins = Object.fromEntries(
-    (["etiopia", "kenia", "colombia", "centroamerica", "brasil", "otros"] as const).map(
-      (k) => [k, tw(`origins.${k}`)],
-    ),
-  ) as Record<OriginKey, string>;
-  const processes = Object.fromEntries(
-    (["lavado", "natural", "honey", "fermentacion"] as const).map((k) => [
+  const cuppers = Object.fromEntries(
+    (["c1", "c2", "c3", "c4", "c5"] as const).map((k) => [
       k,
-      tw(`processes.${k}`),
+      tw(`cuppers.${k}`),
     ]),
-  ) as Record<ProcessKey, string>;
+  ) as Record<Cupper["key"], string>;
 
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-green-dark text-surface">
@@ -93,19 +88,19 @@ export default async function HeroSection({ locale }: { locale: string }) {
         </div>
 
         <div className="hero-slide lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-center">
-          <PriceBandWidget
+          <CalibrationWidget
             locale={locale}
             labels={{
               title: tw("title"),
               scoreLabel: tw("scoreLabel"),
               scoreAria: tw("scoreAria", { score: "{score}" }),
               scorePoints: tw("scorePoints"),
-              originLabel: tw("originLabel"),
-              processLabel: tw("processLabel"),
-              origins,
-              processes,
-              bandLabel: tw("bandLabel"),
-              perKg: tw("perKg"),
+              referenceLabel: tw("referenceLabel"),
+              groupLabel: tw("groupLabel"),
+              spreadLabel: tw("spreadLabel"),
+              spreadUnit: tw("spreadUnit"),
+              cvaLabel: tw("cvaLabel"),
+              cuppers,
               source: tw("source"),
               disclaimer: tw("disclaimer"),
             }}

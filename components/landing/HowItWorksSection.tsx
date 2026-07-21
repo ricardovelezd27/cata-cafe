@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 import MockFrameCVA from "./mockframes/MockFrameCVA";
 import MockFrameFlavorPills from "./mockframes/MockFrameFlavorPills";
@@ -37,6 +38,21 @@ export default async function HowItWorksSection({ locale }: { locale: string }) 
           <h2 className="mt-4 font-serif text-3xl leading-tight text-on-surface sm:text-4xl">
             {t("title")}
           </h2>
+        </div>
+
+        <div
+          data-reveal
+          aria-hidden="true"
+          className="mt-10 overflow-hidden rounded-[2rem] shadow-md sm:mt-12"
+        >
+          <Image
+            src="/landing/trust-detail.jpg"
+            alt=""
+            width={1600}
+            height={1200}
+            sizes="100vw"
+            className="h-48 w-full object-cover sm:h-64"
+          />
         </div>
 
         <ol className="mt-12 grid grid-cols-1 gap-10 sm:mt-16 md:grid-cols-3 md:gap-8">

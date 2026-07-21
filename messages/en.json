@@ -340,10 +340,10 @@
   },
   "landing": {
     "meta": {
-      "title": "Cata — Find out what your coffee is worth | SCA CVA Cupping",
-      "description": "Score your coffees with the full SCA CVA protocol and see the fair-value band for every lot. For roasters, importers, cooperatives and trainers.",
-      "ogTitle": "Cata — Find out what your coffee is worth",
-      "ogDescription": "Professional SCA CVA cupping, free. Your coffee's fair-value band, grounded in real transactions."
+      "title": "Cata — Calibrate palates and teach the CVA with data",
+      "description": "A professional SCA CVA cupping platform for schools, trainers and cupping labs. Group calibration sessions, an instructor reference and convergence you can see. Record, describe and calibrate your team.",
+      "ogTitle": "Cata — Calibrate palates. Teach the CVA with data.",
+      "ogDescription": "Professional SCA CVA cupping for training: group cupping sessions, an instructor reference and per-student deviation metrics."
     },
     "header": {
       "wordmark": "Cata",
@@ -351,11 +351,31 @@
       "cta": "Start free"
     },
     "hero": {
-      "eyebrow": "Professional coffee evaluation · SCA CVA",
-      "title": "How much would you pay for this coffee?",
-      "subtitle": "Enter a CVA score, origin and process. Cata shows you the fair-value band — grounded in real transactions, not gut feeling.",
-      "cta": "Score your coffees for free →",
+      "eyebrow": "Professional palate calibration · SCA CVA",
+      "title": "Calibrate palates. Teach the CVA with data.",
+      "subtitle": "Group cupping sessions with an instructor reference and convergence you can see, on the full SCA CVA protocol. For schools, trainers and cupping labs.",
+      "cta": "Calibrate your team for free →",
       "ctaNote": "No card. No password. Just your email."
+    },
+    "calWidget": {
+      "title": "Group calibration session",
+      "scoreLabel": "Your affective score",
+      "scoreAria": "Your affective score: {score} of 9",
+      "scorePoints": "pts",
+      "referenceLabel": "Instructor reference",
+      "groupLabel": "Student group",
+      "spreadLabel": "Group spread",
+      "spreadUnit": "pts",
+      "cvaLabel": "Your CVA score",
+      "cuppers": {
+        "c1": "Lucía",
+        "c2": "Mateo",
+        "c3": "Sofía",
+        "c4": "Diego",
+        "c5": "Valentina"
+      },
+      "source": "Based on the SCA CVA 1-to-9 affective scale.",
+      "disclaimer": "Demo with illustrative data."
     },
     "widget": {
       "title": "Estimate the value band",
@@ -383,49 +403,47 @@
       "source": "Source: public percentiles from the Specialty Coffee Transaction Guide — the band will sharpen with community data.",
       "disclaimer": "Indicative range. Not an offer to buy."
     },
-    "cost": {
-      "eyebrow": "The cost of guessing",
-      "statLead": "Six professional cuppers valued the same lot.",
-      "statPunch": "They missed by up to 40%.",
-      "statNote": "Without a value reference, every buying decision is a bet.",
-      "statSource": "Blind calibration session: six professional cuppers, the same lot.",
-      "exampleTitle": "What it costs in practice",
-      "lotLabel": "One lot",
-      "lotValue": "1,200 kg",
-      "errorLabel": "Valuation error",
-      "errorValue": "€0.80/kg",
-      "lossLabel": "Lost in a single decision",
-      "lossValue": "€960",
-      "decisionsLabel": "Buying decisions per year",
-      "decisionsValue": "× 40",
-      "totalLabel": "The yearly cost of guessing",
-      "totalValue": "€38,400"
+    "drift": {
+      "eyebrow": "The cost of not calibrating",
+      "statLead": "The whole class scored the same coffee.",
+      "statPunch": "They diverged by up to ±1.5 points.",
+      "statNote": "Without a shared reference, every student cups on their own scale and the notes don't mean the same thing.",
+      "statSource": "Group calibration session: one cohort, the same lot, no instructor reference.",
+      "exampleTitle": "What the paperwork costs",
+      "lotLabel": "Students per cohort",
+      "lotValue": "24",
+      "errorLabel": "Cupping sessions per course",
+      "errorValue": "12",
+      "lossLabel": "Weekly hours moving forms into a spreadsheet",
+      "lossValue": "6 h/week",
+      "decisionsLabel": "Course weeks per year",
+      "decisionsValue": "20",
+      "totalLabel": "Hours a year lost to paperwork",
+      "totalValue": "120 h/year"
     },
     "comparison": {
-      "eyebrow": "Recording vs. deciding",
-      "title": "Your cupping app records. Cata decides with you.",
+      "eyebrow": "Recording vs. calibrating",
+      "title": "Your cupping app records. Cata calibrates your team.",
       "colGeneric": "Cupping apps",
       "colCata": "Cata",
-      "rowSca": "SCA CVA sessions",
-      "rowReports": "Save scores and reports",
-      "rowBand": "Fair-value band per lot",
-      "rowAlert": "Price-vs-quality alert",
-      "rowSegment": "Segment fit",
+      "rowSca": "CVA descriptive and affective forms",
+      "rowReports": "PDF reports and certificates",
+      "rowBand": "Group sessions with an instructor reference",
+      "rowAlert": "Per-student deviation and calibration metrics",
+      "rowSegment": "Works offline in the lab",
       "included": "Included",
       "notIncluded": "Not included",
-      "roadmapMark": "In progress",
-      "roadmapNote": "Marked features are in progress — see the product evolution below.",
-      "tagline": "Keep your tools. Add the decision layer."
+      "tagline": "Keep your tools. Add the calibration layer."
     },
     "how": {
       "eyebrow": "How it works",
-      "title": "From cup to decision in three steps",
+      "title": "From cup to calibration in three steps",
       "step1Title": "Cup it",
-      "step1Desc": "The full official CVA protocol. Works offline and supports group calibration.",
+      "step1Desc": "Every student evaluates with the full official CVA protocol. Works offline and in group sessions.",
       "step2Title": "Describe it",
-      "step2Desc": "Record the lot's extrinsic attributes: origin, process, variety, altitude.",
-      "step3Title": "Decide",
-      "step3Desc": "Export your PDF report with the CVA score. The per-lot value band is in progress.",
+      "step2Desc": "The cohort records intensities and sensory descriptors, cup by cup.",
+      "step3Title": "Calibrate",
+      "step3Desc": "Compare each score against the instructor reference, measure the deviation and export the PDF report.",
       "frame1Aria": "Recreation of the affective evaluation screen with a 1-to-9 scale",
       "frame2Aria": "Recreation of the flavor descriptor selector",
       "frame3Aria": "Recreation of the score card with PDF report"
@@ -433,68 +451,47 @@
     "trust": {
       "formulaLabel": "CVA formula",
       "formula": "S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d",
-      "item1": "Full CVA protocol",
-      "item2": "Used in calibration sessions with professional Q-graders",
-      "item3": "Works offline"
+      "item1": "SCA CVA methodology with the full protocol",
+      "item2": "Built for labs: works offline",
+      "item3": "PDF reports and certificates",
+      "item4": "Group calibration with an instructor reference"
     },
     "audience": {
       "eyebrow": "Who it's for",
-      "title": "Built for people who make calls on coffee",
-      "card1Title": "Roasters",
-      "card1Desc": "Price your next contract on cup data, not instinct.",
-      "card2Title": "Importers",
-      "card2Desc": "Back every lot with scores and a value band your clients can see.",
+      "title": "Built for people who train palates",
+      "card1Title": "Schools & trainers",
+      "card1Desc": "Calibrate whole cohorts against the instructor reference, track each student's deviation session by session, and hand out PDF certificates at the end of the course.",
+      "card2Title": "Roasters",
+      "card2Desc": "Also built for your cupping table: align your team's criteria before you call a lot.",
       "card3Title": "Cooperatives",
-      "card3Desc": "Defend your price at the table with quality evidence.",
-      "card4Title": "Trainers",
-      "card4Desc": "Calibrate your cupping team and track consistency session by session."
+      "card3Desc": "Also built for your panel: keep your cuppers calibrated with evidence of consistency.",
+      "card4Title": "Importers",
+      "card4Desc": "Also built for your QC: cup as a group with scores that compare across cuppers."
     },
-    "roadmap": {
-      "eyebrow": "Product evolution",
-      "title": "Where we are, plainly",
-      "chipToday": "Today",
-      "chipBuilding": "In progress",
-      "chipSoon": "Coming soon",
-      "stage1Title": "Full professional CVA cupping, free",
-      "stage1Desc": "Descriptive, affective and combined sessions. Offline. Group calibration. Available now.",
-      "stage2Title": "Per-lot value band and decision reports",
-      "stage2Desc": "Your cupping score, translated into a fair, defensible price band.",
-      "stage3Title": "Live price benchmark fed by the community",
-      "stage3Desc": "Every anonymous, aggregated cupping sharpens the value reference for everyone."
-    },
-    "pricing": {
-      "eyebrow": "Pricing",
-      "title": "Start free. Grow when you need to.",
-      "freeName": "Free",
-      "freePrice": "€0",
-      "freeFeature1": "Cup and score with the full CVA protocol",
-      "freeFeature2": "3 lots per month",
-      "freeFeature3": "Works offline",
-      "freeCta": "Score your coffees for free →",
-      "proName": "Pro",
-      "proBadge": "Coming soon",
-      "proPer": "per seat",
-      "proFeature1": "Unlimited sessions",
-      "proFeature2": "Per-lot decision reports",
-      "proFeature3": "A value band with every cupping",
-      "teamsName": "Teams / Competitions",
-      "teamsBadge": "Coming soon",
-      "teamsFeature1": "Calibration analytics",
-      "teamsFeature2": "Cupping panel management",
-      "teamsFeature3": "Competition sessions"
+    "founding": {
+      "eyebrow": "Founding members",
+      "title": "Free for the first founding cohort",
+      "badge": "Founding cohort",
+      "offer": "Free for the first 100 founding members",
+      "feature1": "Full CVA cupping in all three formats: descriptive, affective and combined",
+      "feature2": "Group sessions and calibration with an instructor reference",
+      "feature3": "PDF reports and certificates",
+      "feature4": "Works offline, built for the lab",
+      "cta": "Claim your founding spot →",
+      "note": "No countdown and no card. We'll simply tell you when the founding spots run out."
     },
     "waitlist": {
-      "label": "Join the waitlist",
+      "label": "Claim your founding spot",
       "emailPlaceholder": "you@email.com",
-      "button": "Join the list",
+      "button": "Claim my spot",
       "submitting": "Sending…",
-      "success": "You're on the list. We'll let you know when Pro is ready.",
+      "success": "Spot reserved. We'll let you know as soon as we open your founding access.",
       "invalid": "Enter a valid email.",
       "error": "We couldn't save your email. Please try again."
     },
     "finalCta": {
-      "title": "Stop guessing <em>what coffee is worth</em>.",
-      "cta": "Score your coffees for free →",
+      "title": "Stop <em>guessing</em> whether your team cups alike.",
+      "cta": "Calibrate your team for free →",
       "note": "No passwords. Sign in with a magic link to your email."
     },
     "footer": {
@@ -513,7 +510,20 @@
     "tabs": {
       "dashboard": "Dashboard",
       "explorer": "Explorer",
+      "benchmark": "Benchmark",
+      "share": "Share",
       "access": "Access"
+    },
+    "report": {
+      "download": "PDF report"
+    },
+    "ai": {
+      "generate": "Generate AI summary",
+      "generating": "Generating…",
+      "regenerate": "Regenerate",
+      "disclaimer": "AI-generated — may contain errors.",
+      "notConfigured": "AI is not configured (GEMINI_API_KEY missing).",
+      "error": "Generation failed. Try again."
     },
     "status": {
       "draft": "draft",
@@ -580,7 +590,15 @@
         "month": "Month",
         "cupper": "Cupper",
         "flavorDescriptor": "Flavor descriptor",
-        "scoreBucket": "Score range"
+        "scoreBucket": "Score range",
+        "blockNariz": "Nose (descriptors)",
+        "blockBoca": "Mouth (descriptors)",
+        "blockGusto": "Predominant tastes",
+        "blockAcidez": "Acidity (descriptors)",
+        "blockDulzura": "Sweetness (descriptors)",
+        "blockSensacion": "Mouthfeel (descriptors)",
+        "harvestYear": "Harvest year",
+        "altitudeBand": "Altitude range"
       },
       "measures": {
         "count": "Count",
@@ -608,6 +626,45 @@
       "emailUnavailable": "email unavailable",
       "toggleError": "Could not update. Try again.",
       "empty": "No users found."
+    },
+    "benchmark": {
+      "title": "Benchmark vs. CQI",
+      "subtitle": "Compare your cupping scores against the CQI reference dataset for the same country, process, or variety.",
+      "country": "Country",
+      "process": "Process",
+      "variety": "Variety",
+      "all": "All",
+      "mineTitle": "My cuppings",
+      "benchmarkTitle": "CQI benchmark",
+      "evaluations": "evaluations",
+      "lots": "lots",
+      "avg": "Average",
+      "range": "Range",
+      "p25p75": "P25–P75",
+      "methodologyNote": "Directional comparison: CVA affective scores and CQI's SCA total cup points use different methodologies.",
+      "empty": "Not enough data for this combination."
+    },
+    "origin": {
+      "title": "Origin context",
+      "production": "Production (t)",
+      "myActivity": "My evaluations",
+      "avgScore": "Avg. score",
+      "empty": "No production series for this country."
+    },
+    "share": {
+      "title": "Share insights",
+      "subtitle": "Turn a saved insight into a share-ready card, complete with suggested social copy.",
+      "pickInsight": "Saved insight",
+      "noSaved": "No saved insights yet. Create them in the Explorer.",
+      "headline": "Headline",
+      "headlinePh": "e.g. Colombia dominates our cuppings",
+      "downloadPng": "Download PNG",
+      "generateTexts": "Generate post text",
+      "postEs": "Publicación (ES)",
+      "postEn": "Post (EN)",
+      "copy": "Copy",
+      "copied": "Copied",
+      "exportError": "Could not export the image."
     }
   }
 }

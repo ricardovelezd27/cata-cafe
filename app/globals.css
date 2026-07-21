@@ -366,6 +366,10 @@ button { font-family: inherit; cursor: pointer; }
   contain-intrinsic-size: auto 720px;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .ambient-video { display: none; }
+}
+
 /* Landing hero entrance — pure CSS so the LCP paint isn't delayed by
    lazy-loaded JS. GSAP only handles below-the-fold scroll effects. */
 @media (prefers-reduced-motion: no-preference) {

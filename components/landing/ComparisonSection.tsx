@@ -4,12 +4,12 @@ import { Check, Minus } from "lucide-react";
 export default async function ComparisonSection() {
   const t = await getTranslations("landing.comparison");
 
-  const rows: { label: string; generic: boolean; cata: boolean; roadmap: boolean }[] = [
-    { label: t("rowSca"), generic: true, cata: true, roadmap: false },
-    { label: t("rowReports"), generic: true, cata: true, roadmap: false },
-    { label: t("rowBand"), generic: false, cata: true, roadmap: true },
-    { label: t("rowAlert"), generic: false, cata: true, roadmap: true },
-    { label: t("rowSegment"), generic: false, cata: true, roadmap: true },
+  const rows: { label: string; generic: boolean; cata: boolean }[] = [
+    { label: t("rowSca"), generic: true, cata: true },
+    { label: t("rowReports"), generic: true, cata: true },
+    { label: t("rowBand"), generic: false, cata: true },
+    { label: t("rowAlert"), generic: false, cata: true },
+    { label: t("rowSegment"), generic: false, cata: true },
   ];
 
   return (
@@ -22,12 +22,6 @@ export default async function ComparisonSection() {
           <h2 className="mt-4 font-serif text-3xl leading-tight text-on-surface sm:text-4xl">
             {t("title")}
           </h2>
-          <p className="mt-5 max-w-sm text-xs leading-relaxed text-on-surface-variant">
-            <span className="text-secondary" aria-hidden="true">
-              *
-            </span>{" "}
-            {t("roadmapNote")}
-          </p>
         </div>
 
         <div
@@ -51,11 +45,6 @@ export default async function ComparisonSection() {
                 <tr key={row.label}>
                   <th scope="row" className="px-4 py-4 text-left font-normal text-on-surface sm:px-6">
                     {row.label}
-                    {row.roadmap && (
-                      <span className="ml-1.5 align-middle text-secondary" aria-hidden="true">
-                        *
-                      </span>
-                    )}
                   </th>
                   <td className="px-2 py-4 text-center sm:px-3">
                     {row.generic ? (
@@ -66,7 +55,7 @@ export default async function ComparisonSection() {
                   </td>
                   <td className="bg-primary-fixed/25 px-2 py-4 text-center sm:px-3">
                     <Check
-                      aria-label={row.roadmap ? `${t("included")} — ${t("roadmapMark")}` : t("included")}
+                      aria-label={t("included")}
                       className="mx-auto h-4 w-4 text-primary"
                     />
                   </td>

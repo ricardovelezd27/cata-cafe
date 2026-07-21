@@ -1,5 +1,5 @@
 ﻿import { getTranslations } from "next-intl/server";
-import { ShieldCheck, Users, WifiOff } from "lucide-react";
+import { ShieldCheck, Users, WifiOff, FileText } from "lucide-react";
 
 export default async function TrustStrip() {
   const t = await getTranslations("landing.trust");
@@ -15,7 +15,7 @@ export default async function TrustStrip() {
             {t("formula")}
           </span>
         </p>
-        <ul className="flex flex-col items-center gap-3 text-sm text-on-surface-variant sm:flex-row sm:gap-7">
+        <ul className="grid grid-cols-1 gap-3 text-sm text-on-surface-variant sm:grid-cols-2 sm:gap-x-6 sm:gap-y-3 lg:flex lg:flex-row lg:gap-7">
           <li className="flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 shrink-0 text-primary-container" />
             {t("item1")}
@@ -27,6 +27,10 @@ export default async function TrustStrip() {
           <li className="flex items-center gap-2">
             <WifiOff className="h-4 w-4 shrink-0 text-primary-container" />
             {t("item3")}
+          </li>
+          <li className="flex items-center gap-2">
+            <FileText className="h-4 w-4 shrink-0 text-primary-container" />
+            {t("item4")}
           </li>
         </ul>
       </div>

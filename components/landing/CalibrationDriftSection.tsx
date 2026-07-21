@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 
-export default async function CostOfGuessingSection() {
-  const t = await getTranslations("landing.cost");
+export default async function CalibrationDriftSection() {
+  const t = await getTranslations("landing.drift");
 
   const rows = [
     { label: t("lotLabel"), value: t("lotValue"), counter: false },

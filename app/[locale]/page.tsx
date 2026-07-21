@@ -3,13 +3,12 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { routing } from "@/i18n/routing";
 import LandingHeader from "@/components/landing/LandingHeader";
 import HeroSection from "@/components/landing/HeroSection";
-import CostOfGuessingSection from "@/components/landing/CostOfGuessingSection";
+import CalibrationDriftSection from "@/components/landing/CalibrationDriftSection";
 import ComparisonSection from "@/components/landing/ComparisonSection";
 import HowItWorksSection from "@/components/landing/HowItWorksSection";
 import TrustStrip from "@/components/landing/TrustStrip";
 import AudienceSection from "@/components/landing/AudienceSection";
-import RoadmapSection from "@/components/landing/RoadmapSection";
-import PricingSection from "@/components/landing/PricingSection";
+import FoundingSection from "@/components/landing/FoundingSection";
 import FinalCTASection from "@/components/landing/FinalCTASection";
 import LandingFooter from "@/components/landing/LandingFooter";
 import ScrollFx from "@/components/landing/ScrollFx";
@@ -56,13 +55,12 @@ export default async function LandingPage({
       <LandingHeader locale={locale} />
       <main className="flex-1">
         <HeroSection locale={locale} />
-        <CostOfGuessingSection />
+        <CalibrationDriftSection />
         <ComparisonSection />
         <HowItWorksSection locale={locale} />
         <TrustStrip />
         <AudienceSection />
-        <RoadmapSection />
-        <PricingSection locale={locale} />
+        <FoundingSection locale={locale} />
         <FinalCTASection locale={locale} />
       </main>
       <LandingFooter locale={locale} />

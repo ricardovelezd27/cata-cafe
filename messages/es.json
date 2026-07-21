@@ -340,10 +340,10 @@
   },
   "landing": {
     "meta": {
-      "title": "Cata — Descubre cuánto vale tu café | Cata SCA CVA",
-      "description": "Evalúa tus cafés con el protocolo SCA CVA completo y descubre la banda de valor justo de cada lote. Para tostadores, importadores, cooperativas y formadores.",
-      "ogTitle": "Cata — Descubre cuánto vale tu café",
-      "ogDescription": "Cata profesional SCA CVA, gratis. La banda de valor justo de tu café, basada en transacciones reales."
+      "title": "Cata — Calibra paladares y enseña el CVA con datos",
+      "description": "Plataforma profesional de cata SCA CVA para escuelas, formadores y laboratorios. Sesiones de calibración en grupo, referencia del instructor y convergencia que se ve. Registra, describe y calibra a tu equipo.",
+      "ogTitle": "Cata — Calibra paladares. Enseña el CVA con datos.",
+      "ogDescription": "Cata profesional SCA CVA para formación: sesiones de cata en grupo, referencia del instructor y métricas de desviación por alumno."
     },
     "header": {
       "wordmark": "Cata",
@@ -351,11 +351,31 @@
       "cta": "Empieza gratis"
     },
     "hero": {
-      "eyebrow": "Evaluación profesional de café · SCA CVA",
-      "title": "¿Cuánto pagarías por este café?",
-      "subtitle": "Introduce puntaje CVA, origen y proceso. Cata te muestra la banda de valor justo — basada en transacciones reales, no en intuición.",
-      "cta": "Evalúa tus cafés gratis →",
+      "eyebrow": "Calibración de paladar profesional · SCA CVA",
+      "title": "Calibra paladares. Enseña el CVA con datos.",
+      "subtitle": "Sesiones de cata en grupo con referencia del instructor y una convergencia que puedes ver, sobre el protocolo SCA CVA completo. Para escuelas, formadores y laboratorios de cata.",
+      "cta": "Calibra a tu equipo gratis →",
       "ctaNote": "Sin tarjeta. Sin contraseña. Solo tu correo."
+    },
+    "calWidget": {
+      "title": "Sesión de calibración en grupo",
+      "scoreLabel": "Tu puntuación afectiva",
+      "scoreAria": "Tu puntuación afectiva: {score} de 9",
+      "scorePoints": "pts",
+      "referenceLabel": "Referencia del instructor",
+      "groupLabel": "Grupo de alumnos",
+      "spreadLabel": "Dispersión del grupo",
+      "spreadUnit": "pts",
+      "cvaLabel": "Tu puntaje CVA",
+      "cuppers": {
+        "c1": "Lucía",
+        "c2": "Mateo",
+        "c3": "Sofía",
+        "c4": "Diego",
+        "c5": "Valentina"
+      },
+      "source": "Basado en la escala afectiva de 1 a 9 del SCA CVA.",
+      "disclaimer": "Demostración con datos ilustrativos."
     },
     "widget": {
       "title": "Calcula la banda de valor",
@@ -383,49 +403,47 @@
       "source": "Fuente: percentiles públicos de la Specialty Coffee Transaction Guide — la banda se afinará con datos de la comunidad.",
       "disclaimer": "Rango orientativo. No constituye una oferta de compra."
     },
-    "cost": {
-      "eyebrow": "El coste de adivinar",
-      "statLead": "Seis catadores profesionales valoraron el mismo lote.",
-      "statPunch": "Fallaron hasta en un 40%.",
-      "statNote": "Sin una referencia de valor, cada decisión de compra es una apuesta.",
-      "statSource": "Sesión de calibración a ciegas: seis catadores profesionales, el mismo lote.",
-      "exampleTitle": "Lo que cuesta en la práctica",
-      "lotLabel": "Un lote",
-      "lotValue": "1.200 kg",
-      "errorLabel": "Error de valoración",
-      "errorValue": "€0,80/kg",
-      "lossLabel": "Perdido en una sola decisión",
-      "lossValue": "€960",
-      "decisionsLabel": "Decisiones de compra al año",
-      "decisionsValue": "× 40",
-      "totalLabel": "El coste anual de adivinar",
-      "totalValue": "€38.400"
+    "drift": {
+      "eyebrow": "El coste de no calibrar",
+      "statLead": "Toda la clase puntuó el mismo café.",
+      "statPunch": "Se desviaron hasta ±1,5 puntos.",
+      "statNote": "Sin una referencia común, cada alumno cata en su propia escala y las notas no significan lo mismo.",
+      "statSource": "Sesión de calibración en grupo: una cohorte, el mismo lote, sin referencia del instructor.",
+      "exampleTitle": "Lo que cuesta en papeleo",
+      "lotLabel": "Alumnos por cohorte",
+      "lotValue": "24",
+      "errorLabel": "Sesiones de cata por curso",
+      "errorValue": "12",
+      "lossLabel": "Horas semanales pasando formularios a hoja de cálculo",
+      "lossValue": "6 h/semana",
+      "decisionsLabel": "Semanas de curso al año",
+      "decisionsValue": "20",
+      "totalLabel": "Horas al año perdidas en papeleo",
+      "totalValue": "120 h/año"
     },
     "comparison": {
-      "eyebrow": "Registrar vs. decidir",
-      "title": "Tu app de cata registra. Cata decide contigo.",
+      "eyebrow": "Registrar vs. calibrar",
+      "title": "Tu app de cata registra. Cata calibra a tu equipo.",
       "colGeneric": "Apps de cata",
       "colCata": "Cata",
-      "rowSca": "Sesiones SCA CVA",
-      "rowReports": "Guardar puntajes e informes",
-      "rowBand": "Banda de valor justo por lote",
-      "rowAlert": "Alerta precio-vs-calidad",
-      "rowSegment": "Encaje de segmento",
+      "rowSca": "Formularios CVA descriptivo y afectivo",
+      "rowReports": "Informes y certificados en PDF",
+      "rowBand": "Sesiones en grupo con referencia del instructor",
+      "rowAlert": "Métricas de desviación y calibración por alumno",
+      "rowSegment": "Funciona sin conexión en el laboratorio",
       "included": "Incluido",
       "notIncluded": "No incluido",
-      "roadmapMark": "En construcción",
-      "roadmapNote": "Las funciones marcadas están en construcción — mira la evolución del producto más abajo.",
-      "tagline": "Mantén tus herramientas. Añade la capa de decisión."
+      "tagline": "Mantén tus herramientas. Añade la capa de calibración."
     },
     "how": {
       "eyebrow": "Cómo funciona",
-      "title": "De la taza a la decisión en tres pasos",
+      "title": "De la taza a la calibración en tres pasos",
       "step1Title": "Cátalo",
-      "step1Desc": "Protocolo CVA oficial completo. Funciona sin conexión y permite calibración en grupo.",
+      "step1Desc": "Cada alumno evalúa con el protocolo CVA oficial completo. Funciona sin conexión y en sesiones de grupo.",
       "step2Title": "Descríbelo",
-      "step2Desc": "Registra los atributos extrínsecos del lote: origen, proceso, variedad, altitud.",
-      "step3Title": "Decide",
-      "step3Desc": "Exporta tu informe PDF con el puntaje CVA. La banda de valor por lote está en construcción.",
+      "step2Desc": "La cohorte registra intensidades y descriptores sensoriales, taza a taza.",
+      "step3Title": "Calibra",
+      "step3Desc": "Compara cada puntuación con la referencia del instructor, mide la desviación y exporta el informe PDF.",
       "frame1Aria": "Recreación de la pantalla de evaluación afectiva con escala de 1 a 9",
       "frame2Aria": "Recreación del selector de descriptores de sabor",
       "frame3Aria": "Recreación de la tarjeta de puntaje con informe PDF"
@@ -433,68 +451,47 @@
     "trust": {
       "formulaLabel": "Fórmula CVA",
       "formula": "S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d",
-      "item1": "Protocolo CVA completo",
-      "item2": "Usado en sesiones de calibración con Q-graders profesionales",
-      "item3": "Funciona sin conexión"
+      "item1": "Metodología SCA CVA con el protocolo completo",
+      "item2": "Pensado para laboratorios: funciona sin conexión",
+      "item3": "Informes y certificados en PDF",
+      "item4": "Calibración en grupo con referencia del instructor"
     },
     "audience": {
       "eyebrow": "Para quién es",
-      "title": "Hecho para quien decide sobre café",
-      "card1Title": "Tostadores",
-      "card1Desc": "Pon precio a tu próximo contrato con datos de taza, no con instinto.",
-      "card2Title": "Importadores",
-      "card2Desc": "Justifica cada lote ante tus clientes con puntajes y banda de valor.",
+      "title": "Hecho para quien forma paladares",
+      "card1Title": "Escuelas y formadores",
+      "card1Desc": "Calibra cohortes enteras contra la referencia del instructor, sigue la desviación de cada alumno sesión a sesión y entrega certificados en PDF al terminar el curso.",
+      "card2Title": "Tostadores",
+      "card2Desc": "También sirve a tu mesa de cata: alinea el criterio del equipo antes de decidir un lote.",
       "card3Title": "Cooperativas",
-      "card3Desc": "Defiende tu precio en la negociación con evidencia de calidad.",
-      "card4Title": "Formadores",
-      "card4Desc": "Calibra a tu equipo de catadores y mide su consistencia sesión a sesión."
+      "card3Desc": "También sirve a tu panel: mantén a tus catadores calibrados con evidencia de consistencia.",
+      "card4Title": "Importadores",
+      "card4Desc": "También sirve a tu control de calidad: cata en grupo con puntajes comparables entre catadores."
     },
-    "roadmap": {
-      "eyebrow": "Evolución del producto",
-      "title": "Dónde estamos, sin adornos",
-      "chipToday": "Hoy",
-      "chipBuilding": "En construcción",
-      "chipSoon": "Próximamente",
-      "stage1Title": "Cata profesional CVA completa, gratis",
-      "stage1Desc": "Sesiones descriptivas, afectivas y combinadas. Offline. Calibración en grupo. Ya disponible.",
-      "stage2Title": "Banda de valor por lote e informes de decisión",
-      "stage2Desc": "El puntaje de tu cata, traducido a una banda de precio justa y defendible.",
-      "stage3Title": "Benchmark vivo de precios alimentado por la comunidad",
-      "stage3Desc": "Cada cata anónima y agregada afina la referencia de valor para todos."
-    },
-    "pricing": {
-      "eyebrow": "Precios",
-      "title": "Empieza gratis. Crece cuando lo necesites.",
-      "freeName": "Gratis",
-      "freePrice": "€0",
-      "freeFeature1": "Catar y puntuar con protocolo CVA completo",
-      "freeFeature2": "3 lotes al mes",
-      "freeFeature3": "Funciona sin conexión",
-      "freeCta": "Evalúa tus cafés gratis →",
-      "proName": "Pro",
-      "proBadge": "Próximamente",
-      "proPer": "por asiento",
-      "proFeature1": "Sesiones ilimitadas",
-      "proFeature2": "Informes de decisión por lote",
-      "proFeature3": "Banda de valor en cada cata",
-      "teamsName": "Equipos / Competencias",
-      "teamsBadge": "Próximamente",
-      "teamsFeature1": "Analítica de calibración",
-      "teamsFeature2": "Gestión de paneles de catadores",
-      "teamsFeature3": "Sesiones de competencia"
+    "founding": {
+      "eyebrow": "Miembros fundadores",
+      "title": "Gratis para la primera cohorte fundadora",
+      "badge": "Cohorte fundadora",
+      "offer": "Gratis para los primeros 100 miembros fundadores",
+      "feature1": "Cata CVA completa en los tres formatos: descriptivo, afectivo y combinado",
+      "feature2": "Sesiones en grupo y calibración con referencia del instructor",
+      "feature3": "Informes y certificados en PDF",
+      "feature4": "Funciona sin conexión, pensado para el laboratorio",
+      "cta": "Reserva tu plaza fundadora →",
+      "note": "Sin cuenta atrás y sin tarjeta. Simplemente te avisaremos cuando se agoten las plazas fundadoras."
     },
     "waitlist": {
-      "label": "Únete a la lista de espera",
+      "label": "Reserva tu plaza fundadora",
       "emailPlaceholder": "tu@correo.com",
-      "button": "Únete a la lista",
+      "button": "Reservar mi plaza",
       "submitting": "Enviando…",
-      "success": "Estás en la lista. Te avisaremos cuando Pro esté disponible.",
+      "success": "Plaza reservada. Te avisaremos en cuanto abramos tu acceso fundador.",
       "invalid": "Introduce un correo válido.",
       "error": "No pudimos guardar tu correo. Inténtalo de nuevo."
     },
     "finalCta": {
-      "title": "Deja de adivinar <em>cuánto vale</em> el café.",
-      "cta": "Evalúa tus cafés gratis →",
+      "title": "Deja de <em>adivinar</em> si tu equipo cata igual.",
+      "cta": "Calibra a tu equipo gratis →",
       "note": "Sin contraseñas. Entra con un enlace mágico a tu correo."
     },
     "footer": {
@@ -513,7 +510,20 @@
     "tabs": {
       "dashboard": "Panel",
       "explorer": "Explorador",
+      "benchmark": "Benchmark",
+      "share": "Compartir",
       "access": "Acceso"
+    },
+    "report": {
+      "download": "Informe PDF"
+    },
+    "ai": {
+      "generate": "Generar resumen IA",
+      "generating": "Generando…",
+      "regenerate": "Regenerar",
+      "disclaimer": "Generado con IA — puede contener errores.",
+      "notConfigured": "La IA no está configurada (falta GEMINI_API_KEY).",
+      "error": "No se pudo generar. Inténtalo de nuevo."
     },
     "status": {
       "draft": "borrador",
@@ -580,7 +590,15 @@
         "month": "Mes",
         "cupper": "Catador",
         "flavorDescriptor": "Descriptor de sabor",
-        "scoreBucket": "Rango de puntaje"
+        "scoreBucket": "Rango de puntaje",
+        "blockNariz": "Nariz (descriptores)",
+        "blockBoca": "Boca (descriptores)",
+        "blockGusto": "Gustos predominantes",
+        "blockAcidez": "Acidez (descriptores)",
+        "blockDulzura": "Dulzura (descriptores)",
+        "blockSensacion": "Sensación (descriptores)",
+        "harvestYear": "Año de cosecha",
+        "altitudeBand": "Rango de altitud"
       },
       "measures": {
         "count": "Cantidad",
@@ -608,6 +626,45 @@
       "emailUnavailable": "correo no disponible",
       "toggleError": "No se pudo actualizar. Inténtalo de nuevo.",
       "empty": "No se encontraron usuarios."
+    },
+    "benchmark": {
+      "title": "Benchmark vs. CQI",
+      "subtitle": "Compara tus puntajes de catación con el conjunto de datos de referencia de CQI para el mismo país, proceso o variedad.",
+      "country": "País",
+      "process": "Proceso",
+      "variety": "Variedad",
+      "all": "Todos",
+      "mineTitle": "Mis cataciones",
+      "benchmarkTitle": "Benchmark CQI",
+      "evaluations": "evaluaciones",
+      "lots": "lotes",
+      "avg": "Promedio",
+      "range": "Rango",
+      "p25p75": "P25–P75",
+      "methodologyNote": "Comparación orientativa: los puntajes CVA (afectivo) y los puntajes totales de taza SCA del CQI usan metodologías distintas.",
+      "empty": "No hay datos suficientes para esta combinación."
+    },
+    "origin": {
+      "title": "Contexto de origen",
+      "production": "Producción (t)",
+      "myActivity": "Mis evaluaciones",
+      "avgScore": "Puntaje promedio",
+      "empty": "Sin serie de producción para este país."
+    },
+    "share": {
+      "title": "Compartir insights",
+      "subtitle": "Convierte un insight guardado en una tarjeta lista para compartir, con textos sugeridos para redes.",
+      "pickInsight": "Insight guardado",
+      "noSaved": "Aún no tienes insights guardados. Créalos en el Explorador.",
+      "headline": "Titular",
+      "headlinePh": "Ej. Colombia domina nuestras cataciones",
+      "downloadPng": "Descargar PNG",
+      "generateTexts": "Generar textos",
+      "postEs": "Publicación (ES)",
+      "postEn": "Post (EN)",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "exportError": "No se pudo exportar la imagen."
     }
   }
 }
