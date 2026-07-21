@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { listSavedInsights } from "@/app/actions/analytics";
-import { ExplorerBuilder } from "@/components/insights/ExplorerBuilder";
+import { ExplorerWorkspace } from "@/components/insights/ExplorerWorkspace";
 import type {
   ChartType,
   Dataset,
@@ -21,8 +21,9 @@ export default async function InsightsExplorerPage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [t, tAi, saved] = await Promise.all([
+  const [t, tPivot, tAi, saved] = await Promise.all([
     getTranslations("insights.explorer"),
+    getTranslations("insights.pivot"),
     getTranslations("insights.ai"),
     listSavedInsights(),
   ]);
@@ -30,14 +31,34 @@ export default async function InsightsExplorerPage({
   // Bulk-build option-label records; the dynamic keys defeat next-intl's
   // template-literal typing, so go through an untyped alias.
   const tr = t as unknown as (key: string) => string;
+  const tp = tPivot as unknown as (key: string) => string;
   const record = <K extends string>(keys: readonly K[], prefix: string) =>
     Object.fromEntries(keys.map((k) => [k, tr(`${prefix}.${k}`)])) as Record<K, string>;
 
+  // Pivot dataset/dimension/measure labels reuse the same "insights.explorer"
+  // records rather than duplicating ~30 translated strings under a new
+  // "insights.pivot" namespace.
+  const datasetLabels = record<Dataset>(DATASETS, "datasets");
+  const dimensionLabels = record<DimensionId>(DIMENSIONS, "dimensions");
+  const measureLabels = record<MeasureId>(MEASURES, "measures");
+
   return (
-    <ExplorerBuilder
+    <ExplorerWorkspace
       locale={locale}
       initialSaved={saved}
       t={{
+        mode: { simple: t("mode.simple"), pivot: t("mode.pivot") },
+        save: t("save"),
+        saveName: t("saveName"),
+        saveConfirm: t("saveConfirm"),
+        savedTitle: t("savedTitle"),
+        savedEmpty: t("savedEmpty"),
+        load: t("load"),
+        delete: t("delete"),
+        close: t("close"),
+        running: t("running"),
+      }}
+      simpleT={{
         dataset: t("dataset"),
         dimension: t("dimension"),
         measure: t("measure"),
@@ -47,17 +68,9 @@ export default async function InsightsExplorerPage({
         running: t("running"),
         noResults: t("noResults"),
         error: t("error"),
-        save: t("save"),
-        saveName: t("saveName"),
-        saveConfirm: t("saveConfirm"),
-        savedTitle: t("savedTitle"),
-        savedEmpty: t("savedEmpty"),
-        load: t("load"),
-        delete: t("delete"),
-        close: t("close"),
-        datasets: record<Dataset>(DATASETS, "datasets"),
-        dimensions: record<DimensionId>(DIMENSIONS, "dimensions"),
-        measures: record<MeasureId>(MEASURES, "measures"),
+        datasets: datasetLabels,
+        dimensions: dimensionLabels,
+        measures: measureLabels,
         chartTypes: record<ChartType>(CHART_TYPES, "chartTypes"),
         table: { count: t("table.count") },
         ai: {
@@ -68,6 +81,39 @@ export default async function InsightsExplorerPage({
           notConfigured: tAi("notConfigured"),
           error: tAi("error"),
         },
+      }}
+      pivotT={{
+        rows: tp("rows"),
+        columns: tp("columns"),
+        values: tp("values"),
+        filters: tp("filters"),
+        addField: tp("addField"),
+        remove: tp("remove"),
+        dataset: tp("dataset"),
+        dateFrom: tp("dateFrom"),
+        dateTo: tp("dateTo"),
+        total: tp("total"),
+        grandTotal: tp("grandTotal"),
+        heatmap: tp("heatmap"),
+        empty: tp("empty"),
+        running: tp("running"),
+        error: tp("error"),
+        viewTable: tp("viewTable"),
+        viewGrouped: tp("viewGrouped"),
+        viewStacked: tp("viewStacked"),
+        viewLine: tp("viewLine"),
+        selectValues: tp("selectValues"),
+        searchValues: tp("searchValues"),
+        apply: tp("apply"),
+        clearFilter: tp("clearFilter"),
+        countHint: tp("countHint"),
+        maxRowsHint: tp("maxRowsHint"),
+        maxColsHint: tp("maxColsHint"),
+        valueColumn: tp("valueColumn"),
+        close: tp("close"),
+        datasets: datasetLabels,
+        dimensions: dimensionLabels,
+        measures: measureLabels,
       }}
     />
   );

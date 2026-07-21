@@ -618,6 +618,10 @@
       "empty": "No data yet"
     },
     "explorer": {
+      "mode": {
+        "simple": "Simple",
+        "pivot": "Pivot table"
+      },
       "dataset": "Data",
       "dimension": "Dimension",
       "measure": "Measure",
@@ -680,6 +684,36 @@
       "table": {
         "count": "Records"
       }
+    },
+    "pivot": {
+      "rows": "Rows",
+      "columns": "Columns",
+      "values": "Values",
+      "filters": "Filters",
+      "addField": "Add",
+      "remove": "Remove",
+      "dataset": "Data",
+      "dateFrom": "From",
+      "dateTo": "To",
+      "total": "Total",
+      "grandTotal": "Grand total",
+      "heatmap": "Heatmap",
+      "empty": "No results for this combination",
+      "running": "Calculating…",
+      "error": "Could not calculate. Check the configuration.",
+      "viewTable": "Table",
+      "viewGrouped": "Grouped bars",
+      "viewStacked": "Stacked bars",
+      "viewLine": "Line",
+      "selectValues": "Select values",
+      "searchValues": "Search…",
+      "apply": "Apply",
+      "clearFilter": "Clear selection",
+      "countHint": "{count} records",
+      "maxRowsHint": "Showing up to 30 rows.",
+      "maxColsHint": "Showing up to 12 columns.",
+      "valueColumn": "Value",
+      "close": "Close"
     },
     "access": {
       "lead": "Grant access to the insights area to the users you choose. Only you can manage this list.",

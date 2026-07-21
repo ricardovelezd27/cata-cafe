@@ -1,14 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { Save, Trash2, FolderOpen, Loader2 } from "lucide-react";
-import {
-  CHART_TYPES,
-  DATASETS,
-  DATASET_DIMENSIONS,
-  DATASET_MEASURES,
-  parseInsightConfig,
-} from "@/lib/analytics/types";
+import { Loader2 } from "lucide-react";
+import { CHART_TYPES, DATASETS, DATASET_DIMENSIONS, DATASET_MEASURES, parseInsightConfig } from "@/lib/analytics/types";
 import type {
   ChartType,
   Dataset,
@@ -17,15 +11,9 @@ import type {
   InsightRow,
   MeasureId,
 } from "@/lib/analytics/types";
-import {
-  deleteSavedInsight,
-  listSavedInsights,
-  runInsight,
-  saveInsight,
-} from "@/app/actions/analytics";
+import { runInsight } from "@/app/actions/analytics";
 import { InsightChart } from "@/components/insights/InsightChart";
 import { AiSummaryPanel, type AiSummaryTranslations } from "@/components/insights/AiSummaryPanel";
-import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 
 export interface ExplorerTranslations {
   dataset: string;
@@ -37,14 +25,6 @@ export interface ExplorerTranslations {
   running: string;
   noResults: string;
   error: string;
-  save: string;
-  saveName: string;
-  saveConfirm: string;
-  savedTitle: string;
-  savedEmpty: string;
-  load: string;
-  delete: string;
-  close: string;
   datasets: Record<Dataset, string>;
   dimensions: Record<DimensionId, string>;
   measures: Record<MeasureId, string>;
@@ -53,24 +33,21 @@ export interface ExplorerTranslations {
   ai: AiSummaryTranslations;
 }
 
-export interface SavedInsightItem {
-  id: string;
-  name: string;
-  config: unknown;
-  createdAt: string;
-  isMine: boolean;
-}
-
 interface ExplorerBuilderProps {
   locale: string;
-  initialSaved: SavedInsightItem[];
   t: ExplorerTranslations;
+  /** Raw (unvalidated) config pushed down by the workspace when a saved item is loaded. */
+  loadedConfig?: unknown;
+  /** Bumped by the workspace on every "Open" click so the same item can be reloaded. */
+  loadKey?: number;
+  /** Notified (synchronously, not debounced) whenever the active config changes, so the workspace can save it. */
+  onConfigChange?: (config: InsightConfig) => void;
 }
 
 const selectClass =
   "w-full rounded-input border border-[#E8E0D0] bg-white px-3 py-2 text-sm text-brown-dark focus:outline-none focus:border-[#3D5A3E]";
 
-export function ExplorerBuilder({ locale, initialSaved, t }: ExplorerBuilderProps) {
+export function ExplorerBuilder({ locale, t, loadedConfig, loadKey, onConfigChange }: ExplorerBuilderProps) {
   const [dataset, setDataset] = useState<Dataset>("evaluations");
   const [dimension, setDimension] = useState<DimensionId>("coffeeCountry");
   const [measure, setMeasure] = useState<MeasureId>("count");
@@ -81,11 +58,6 @@ export function ExplorerBuilder({ locale, initialSaved, t }: ExplorerBuilderProp
   const [rows, setRows] = useState<InsightRow[] | null>(null);
   const [error, setError] = useState(false);
   const [isPending, startTransition] = useTransition();
-
-  const [saved, setSaved] = useState<SavedInsightItem[]>(initialSaved);
-  const [saveOpen, setSaveOpen] = useState(false);
-  const [saveName, setSaveName] = useState("");
-  const [saving, setSaving] = useState(false);
 
   const validDimensions = DATASET_DIMENSIONS[dataset];
   const validMeasures = DATASET_MEASURES[dataset];
@@ -114,11 +86,15 @@ export function ExplorerBuilder({ locale, initialSaved, t }: ExplorerBuilderProp
   }, [dataset, dimension, measure, chartType, dateFrom, dateTo]);
 
   // Auto-run debounced so every dropdown change refreshes the preview.
+  // onConfigChange fires synchronously (not debounced) on every change so the
+  // workspace's "Save" button always captures the latest selection, even
+  // before the debounced network request resolves.
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
+    const config = buildConfig();
+    onConfigChange?.(config);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      const config = buildConfig();
       startTransition(async () => {
         const result = await runInsight(config, locale);
         if (result.ok) {
@@ -132,26 +108,20 @@ export function ExplorerBuilder({ locale, initialSaved, t }: ExplorerBuilderProp
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [buildConfig, locale]);
+  }, [buildConfig, locale, onConfigChange]);
 
-  async function handleSave() {
-    setSaving(true);
+  // Applies a saved config pushed down by the workspace. Keyed on loadKey
+  // (not loadedConfig identity) so re-opening the same saved item retriggers.
+  // Adjusted during render (React's "adjust state on prop change" pattern —
+  // same as AiSummaryPanel's configKey guard) rather than in an effect, since
+  // an effect body calling several setState()s synchronously trips
+  // react-hooks/set-state-in-effect.
+  const [prevLoadKey, setPrevLoadKey] = useState(loadKey);
+  if (loadKey !== undefined && loadKey !== prevLoadKey) {
+    setPrevLoadKey(loadKey);
     try {
-      const result = await saveInsight(saveName, buildConfig());
-      if (result.ok) {
-        setSaveOpen(false);
-        setSaveName("");
-        setSaved(await listSavedInsights());
-      }
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function loadSaved(item: SavedInsightItem) {
-    try {
-      // Re-validate so stale configs degrade to an error instead of crashing.
-      const config = parseInsightConfig(item.config);
+      // Re-validate so a stale config degrades to an error instead of crashing.
+      const config = parseInsightConfig(loadedConfig);
       setDataset(config.dataset);
       setDimension(config.dimension);
       setMeasure(config.measure);
@@ -164,13 +134,8 @@ export function ExplorerBuilder({ locale, initialSaved, t }: ExplorerBuilderProp
     }
   }
 
-  async function handleDelete(id: string) {
-    const result = await deleteSavedInsight(id);
-    if (result.ok) setSaved((prev) => prev.filter((s) => s.id !== id));
-  }
-
   return (
-    <div className="flex flex-col gap-5 pb-8">
+    <div className="flex flex-col gap-5">
       {/* Builder controls */}
       <div className="bg-white rounded-card border border-[#E8E0D0] shadow-card p-5">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -275,22 +240,12 @@ export function ExplorerBuilder({ locale, initialSaved, t }: ExplorerBuilderProp
           <h2 className="text-xs font-semibold text-brown-mid uppercase tracking-wide">
             {t.dimensions[dimension]} · {t.measures[measure]}
           </h2>
-          <div className="flex items-center gap-3">
-            {isPending && (
-              <span className="flex items-center gap-1.5 text-xs text-brown-mid">
-                <Loader2 size={14} className="animate-spin" />
-                {t.running}
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={() => setSaveOpen(true)}
-              className="flex items-center gap-1.5 text-sm text-[#3D5A3E] font-semibold hover:underline"
-            >
-              <Save size={15} />
-              {t.save}
-            </button>
-          </div>
+          {isPending && (
+            <span className="flex items-center gap-1.5 text-xs text-brown-mid">
+              <Loader2 size={14} className="animate-spin" />
+              {t.running}
+            </span>
+          )}
         </div>
 
         {error ? (
@@ -317,76 +272,6 @@ export function ExplorerBuilder({ locale, initialSaved, t }: ExplorerBuilderProp
         target={{ kind: "insight", config: buildConfig() }}
         translations={t.ai}
       />
-
-      {/* Saved insights */}
-      <div className="bg-white rounded-card border border-[#E8E0D0] shadow-card p-5">
-        <h2 className="text-xs font-semibold text-brown-mid uppercase tracking-wide mb-3">
-          {t.savedTitle}
-        </h2>
-        {saved.length === 0 ? (
-          <p className="text-sm text-brown-mid">{t.savedEmpty}</p>
-        ) : (
-          <ul className="divide-y divide-[#F5F0E6]">
-            {saved.map((item) => (
-              <li key={item.id} className="flex items-center gap-3 py-2.5">
-                <span className="flex-1 text-sm text-brown-dark truncate">{item.name}</span>
-                <span className="text-xs text-brown-mid hidden sm:block">
-                  {new Date(item.createdAt).toLocaleDateString(locale)}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => loadSaved(item)}
-                  className="flex items-center gap-1 text-xs text-[#3D5A3E] font-semibold hover:underline"
-                >
-                  <FolderOpen size={14} />
-                  {t.load}
-                </button>
-                {item.isMine && (
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(item.id)}
-                    className="flex items-center gap-1 text-xs text-brown-mid hover:text-red-defect"
-                    aria-label={t.delete}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <ResponsiveDialog
-        open={saveOpen}
-        onOpenChange={setSaveOpen}
-        title={t.save}
-        closeLabel={t.close}
-      >
-        <div className="flex flex-col gap-3 p-1">
-          <label className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-brown-mid uppercase tracking-wide">
-              {t.saveName}
-            </span>
-            <input
-              type="text"
-              className={selectClass}
-              value={saveName}
-              maxLength={80}
-              onChange={(e) => setSaveName(e.target.value)}
-              autoFocus
-            />
-          </label>
-          <button
-            type="button"
-            disabled={saving || saveName.trim().length === 0}
-            onClick={handleSave}
-            className="self-end rounded-pill bg-[#3D5A3E] text-white text-sm font-semibold px-4 py-2 disabled:opacity-50"
-          >
-            {saving ? t.running : t.saveConfirm}
-          </button>
-        </div>
-      </ResponsiveDialog>
     </div>
   );
 }

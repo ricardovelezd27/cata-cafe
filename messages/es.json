@@ -618,6 +618,10 @@
       "empty": "Sin datos todavía"
     },
     "explorer": {
+      "mode": {
+        "simple": "Simple",
+        "pivot": "Tabla dinámica"
+      },
       "dataset": "Datos",
       "dimension": "Dimensión",
       "measure": "Métrica",
@@ -680,6 +684,36 @@
       "table": {
         "count": "Registros"
       }
+    },
+    "pivot": {
+      "rows": "Filas",
+      "columns": "Columnas",
+      "values": "Valores",
+      "filters": "Filtros",
+      "addField": "Agregar",
+      "remove": "Quitar",
+      "dataset": "Datos",
+      "dateFrom": "Desde",
+      "dateTo": "Hasta",
+      "total": "Total",
+      "grandTotal": "Total general",
+      "heatmap": "Mapa de calor",
+      "empty": "Sin resultados para esta combinación",
+      "running": "Calculando…",
+      "error": "No se pudo calcular. Revisa la configuración.",
+      "viewTable": "Tabla",
+      "viewGrouped": "Barras agrupadas",
+      "viewStacked": "Barras apiladas",
+      "viewLine": "Línea",
+      "selectValues": "Seleccionar valores",
+      "searchValues": "Buscar…",
+      "apply": "Aplicar",
+      "clearFilter": "Limpiar selección",
+      "countHint": "{count} registros",
+      "maxRowsHint": "Se muestran hasta 30 filas.",
+      "maxColsHint": "Se muestran hasta 12 columnas.",
+      "valueColumn": "Valor",
+      "close": "Cerrar"
     },
     "access": {
       "lead": "Da acceso al área de análisis a los usuarios que elijas. Solo tú puedes gestionar esta lista.",
