@@ -8,9 +8,23 @@ import {
   requireAnalyticsAccess,
   requireSuperAdmin,
 } from "@/lib/analytics/access";
-import { parseInsightConfig } from "@/lib/analytics/types";
-import type { InsightConfig, InsightRow } from "@/lib/analytics/types";
-import { runInsightQuery } from "@/lib/analytics/queries";
+import {
+  DATASET_DIMENSIONS,
+  DATASETS,
+  isPivotConfigLike,
+  parseInsightConfig,
+  parsePivotConfig,
+} from "@/lib/analytics/types";
+import type {
+  Dataset,
+  DimensionId,
+  InsightConfig,
+  InsightRow,
+  PivotAxisKey,
+  PivotConfig,
+  PivotResult,
+} from "@/lib/analytics/types";
+import { listDimensionValues, runInsightQuery, runPivotQuery } from "@/lib/analytics/queries";
 import {
   getBenchmarkComparison,
   getOriginContext,
@@ -41,6 +55,38 @@ export async function runInsight(
   return { ok: true, rows };
 }
 
+export async function runPivot(
+  rawConfig: unknown,
+  locale: string,
+): Promise<{ ok: true; result: PivotResult } | { ok: false; error: string }> {
+  await requireAnalyticsAccess();
+  let config: PivotConfig;
+  try {
+    config = parsePivotConfig(rawConfig);
+  } catch {
+    return { ok: false, error: "invalid_pivot" };
+  }
+  const result = await runPivotQuery(config, asLocale(locale));
+  return { ok: true, result };
+}
+
+export async function listPivotDimensionValues(
+  dataset: string,
+  dimension: string,
+  locale: string,
+): Promise<{ ok: true; values: PivotAxisKey[] } | { ok: false; error: string }> {
+  await requireAnalyticsAccess();
+  if (!DATASETS.includes(dataset as Dataset)) {
+    return { ok: false, error: "invalid_dimension" };
+  }
+  const ds = dataset as Dataset;
+  if (!DATASET_DIMENSIONS[ds].includes(dimension as DimensionId)) {
+    return { ok: false, error: "invalid_dimension" };
+  }
+  const values = await listDimensionValues(ds, dimension as DimensionId, asLocale(locale));
+  return { ok: true, values };
+}
+
 export async function saveInsight(
   name: string,
   rawConfig: unknown,
@@ -50,11 +96,12 @@ export async function saveInsight(
   if (trimmed.length < 1 || trimmed.length > 80) {
     return { ok: false, error: "invalid_name" };
   }
-  let config: InsightConfig;
+  const pivotLike = isPivotConfigLike(rawConfig);
+  let config: InsightConfig | PivotConfig;
   try {
-    config = parseInsightConfig(rawConfig);
+    config = pivotLike ? parsePivotConfig(rawConfig) : parseInsightConfig(rawConfig);
   } catch {
-    return { ok: false, error: "invalid_config" };
+    return { ok: false, error: pivotLike ? "invalid_pivot" : "invalid_config" };
   }
   const created = await prisma.savedInsight.create({
     data: {

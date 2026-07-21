@@ -14,7 +14,16 @@ import {
   parseAltitudeMeters,
   parseHarvestYear,
 } from "./normalize";
-import type { DimensionId, InsightConfig, InsightRow } from "./types";
+import type {
+  Dataset,
+  DimensionId,
+  InsightConfig,
+  InsightRow,
+  MeasureId,
+  PivotAxisKey,
+  PivotConfig,
+  PivotResult,
+} from "./types";
 
 type Locale = "es" | "en";
 
@@ -437,6 +446,296 @@ export async function runInsightQuery(
 ): Promise<InsightRow[]> {
   const rows = await FETCHERS[config.dataset](config.filters);
   return aggregateRows(rows, config, locale);
+}
+
+// ── Pivot builder ────────────────────────────────────────────────────────────
+// Row×column cross-tab over the same fetch/bucket/measure machinery above.
+// With `columns: []` this must reduce to exactly `aggregateRows`' numbers
+// (see runPivotQuery's "__total__" synthetic column) — that's the load-bearing
+// consistency guarantee the UI depends on.
+
+/** Dimensions that sort chronologically/numerically instead of by value. */
+const CHRONO_DIMS = new Set<DimensionId>(["month", "scoreBucket", "harvestYear", "altitudeBand"]);
+
+/** Cartesian product of each dim's buckets; [] if ANY dim yields no bucket
+ *  for this row (the row contributes nothing on that axis). */
+function crossBuckets(dims: DimensionId[], row: AnalyticsRow, locale: Locale): BucketRef[] {
+  if (dims.length === 0) return [];
+  const perDim = dims.map((d) => extractBuckets(row, d, locale));
+  if (perDim.some((options) => options.length === 0)) return [];
+
+  let combos: BucketRef[][] = [[]];
+  for (const options of perDim) {
+    const next: BucketRef[][] = [];
+    for (const combo of combos) {
+      for (const opt of options) next.push([...combo, opt]);
+    }
+    combos = next;
+  }
+
+  return combos.map((parts) => ({
+    key: parts.map((p) => p.key).join("|"),
+    label: parts.map((p) => p.label).join(" · "),
+    color: parts[0].color,
+  }));
+}
+
+interface PivotAccumulator {
+  count: number;
+  sum: number;
+  n: number;
+  min: number;
+  max: number;
+}
+
+function newPivotAcc(): PivotAccumulator {
+  return { count: 0, sum: 0, n: 0, min: Infinity, max: -Infinity };
+}
+
+function foldPivotAcc(acc: PivotAccumulator, v: number | null): void {
+  acc.count += 1;
+  if (v != null) {
+    acc.sum += v;
+    acc.n += 1;
+    if (v < acc.min) acc.min = v;
+    if (v > acc.max) acc.max = v;
+  }
+}
+
+function mergePivotAcc(a: PivotAccumulator, b: PivotAccumulator): PivotAccumulator {
+  return {
+    count: a.count + b.count,
+    sum: a.sum + b.sum,
+    n: a.n + b.n,
+    min: Math.min(a.min, b.min),
+    max: Math.max(a.max, b.max),
+  };
+}
+
+/** Same finalization/rounding rules as aggregateRows, but null (not a
+ *  dropped bucket) when a cell has rows but no measurable value — pivot
+ *  cells are grid slots, not a filtered list. */
+function finalizePivotCell(acc: PivotAccumulator, measure: MeasureId): { value: number | null; count: number } {
+  const round2 = (x: number) => Math.round(x * 100) / 100;
+  let value: number | null;
+  switch (measure) {
+    case "count":
+      value = acc.count;
+      break;
+    case "avgIndividualScore":
+    case "avgAffectiveSum":
+    case "avgCommunityScore":
+      value = acc.n === 0 ? null : round2(acc.sum / acc.n);
+      break;
+    case "minIndividualScore":
+      value = acc.n === 0 ? null : acc.min;
+      break;
+    case "maxIndividualScore":
+      value = acc.n === 0 ? null : acc.max;
+      break;
+  }
+  return { value, count: acc.count };
+}
+
+/** Sorts axis keys chronologically (by composite key) when the axis's first
+ *  dimension is one of CHRONO_DIMS; otherwise by total value desc, nulls
+ *  last, ties broken by count desc — mirrors aggregateRows' ordering rule. */
+function orderAxisKeys(
+  keys: string[],
+  firstDim: DimensionId | undefined,
+  totalAccFor: (key: string) => PivotAccumulator,
+  measure: MeasureId,
+): string[] {
+  if (firstDim != null && CHRONO_DIMS.has(firstDim)) {
+    return [...keys].sort((a, b) => a.localeCompare(b));
+  }
+  const finalized = new Map(keys.map((k) => [k, finalizePivotCell(totalAccFor(k), measure)]));
+  return [...keys].sort((a, b) => {
+    const va = finalized.get(a)!;
+    const vb = finalized.get(b)!;
+    if (va.value == null && vb.value == null) return vb.count - va.count;
+    if (va.value == null) return 1;
+    if (vb.value == null) return -1;
+    if (vb.value !== va.value) return vb.value - va.value;
+    return vb.count - va.count;
+  });
+}
+
+const PIVOT_TOTAL_COL = "__total__";
+
+export async function runPivotQuery(config: PivotConfig, locale: Locale): Promise<PivotResult> {
+  const rows = await FETCHERS[config.dataset](config.filters);
+
+  // cells: rowKey -> colKey -> accumulator
+  const cells = new Map<string, Map<string, PivotAccumulator>>();
+  const rowLabels = new Map<string, { label: string; color?: string }>();
+  const colLabels = new Map<string, { label: string; color?: string }>();
+  const hasColumns = config.columns.length > 0;
+  const dimensionValueFilters = config.filters?.dimensionValues ?? [];
+
+  for (const row of rows) {
+    let excluded = false;
+    for (const entry of dimensionValueFilters) {
+      const keys = extractBuckets(row, entry.dimension, locale).map((b) => b.key);
+      if (!keys.some((k) => entry.values.includes(k))) {
+        excluded = true;
+        break;
+      }
+    }
+    if (excluded) continue;
+
+    const rowRefs = crossBuckets(config.rows, row, locale);
+    if (rowRefs.length === 0) continue;
+
+    const colRefs = hasColumns
+      ? crossBuckets(config.columns, row, locale)
+      : [{ key: PIVOT_TOTAL_COL, label: "" }];
+    if (colRefs.length === 0) continue;
+
+    const v = measureValue(row, config.measure);
+
+    for (const r of rowRefs) {
+      if (!rowLabels.has(r.key)) rowLabels.set(r.key, { label: r.label, color: r.color });
+      let colMap = cells.get(r.key);
+      if (!colMap) {
+        colMap = new Map();
+        cells.set(r.key, colMap);
+      }
+      for (const c of colRefs) {
+        if (!colLabels.has(c.key)) colLabels.set(c.key, { label: c.label, color: c.color });
+        let acc = colMap.get(c.key);
+        if (!acc) {
+          acc = newPivotAcc();
+          colMap.set(c.key, acc);
+        }
+        foldPivotAcc(acc, v);
+      }
+    }
+  }
+
+  // Marginal accumulator for one row/col key, optionally restricted to a
+  // subset of the other axis's keys (used for the post-trim recompute).
+  const rowTotalAcc = (rowKey: string, colFilter?: Set<string>): PivotAccumulator => {
+    const colMap = cells.get(rowKey);
+    let acc = newPivotAcc();
+    if (!colMap) return acc;
+    for (const [colKey, cAcc] of colMap) {
+      if (colFilter && !colFilter.has(colKey)) continue;
+      acc = mergePivotAcc(acc, cAcc);
+    }
+    return acc;
+  };
+  const colTotalAcc = (colKey: string, rowFilter?: Set<string>): PivotAccumulator => {
+    let acc = newPivotAcc();
+    for (const [rowKey, colMap] of cells) {
+      if (rowFilter && !rowFilter.has(rowKey)) continue;
+      const cAcc = colMap.get(colKey);
+      if (cAcc) acc = mergePivotAcc(acc, cAcc);
+    }
+    return acc;
+  };
+
+  const allRowKeys = [...cells.keys()];
+  const allColKeySet = new Set<string>();
+  for (const colMap of cells.values()) {
+    for (const colKey of colMap.keys()) allColKeySet.add(colKey);
+  }
+  const allColKeys = [...allColKeySet];
+
+  const orderedRowKeys = orderAxisKeys(
+    allRowKeys,
+    config.rows[0],
+    (k) => rowTotalAcc(k),
+    config.measure,
+  );
+  const orderedColKeys = orderAxisKeys(
+    allColKeys,
+    hasColumns ? config.columns[0] : undefined,
+    (k) => colTotalAcc(k),
+    config.measure,
+  );
+
+  const rowLimit = config.rowLimit ?? 30;
+  const colLimit = config.colLimit ?? 12;
+  const keptRowKeys = orderedRowKeys.slice(0, rowLimit);
+  const keptColKeys = orderedColKeys.slice(0, colLimit);
+  const keptRowSet = new Set(keptRowKeys);
+  const keptColSet = new Set(keptColKeys);
+
+  const finalCells: PivotResult["cells"] = {};
+  for (const rowKey of keptRowKeys) {
+    const colMap = cells.get(rowKey);
+    if (!colMap) continue;
+    const rowOut: Record<string, { value: number | null; count: number }> = {};
+    for (const colKey of keptColKeys) {
+      const acc = colMap.get(colKey);
+      if (!acc) continue;
+      rowOut[colKey] = finalizePivotCell(acc, config.measure);
+    }
+    if (Object.keys(rowOut).length > 0) finalCells[rowKey] = rowOut;
+  }
+
+  // Totals are recomputed from the KEPT cell accumulators (not the
+  // finalized per-cell values, and not the pre-trim totals used for
+  // ordering above) so displayed totals always equal the sum of what's
+  // actually shown, including for avg/min/max measures.
+  const rowTotals: PivotResult["rowTotals"] = {};
+  for (const rowKey of keptRowKeys) {
+    rowTotals[rowKey] = finalizePivotCell(rowTotalAcc(rowKey, keptColSet), config.measure);
+  }
+  const colTotals: PivotResult["colTotals"] = {};
+  for (const colKey of keptColKeys) {
+    colTotals[colKey] = finalizePivotCell(colTotalAcc(colKey, keptRowSet), config.measure);
+  }
+  let grandAcc = newPivotAcc();
+  for (const rowKey of keptRowKeys) {
+    grandAcc = mergePivotAcc(grandAcc, rowTotalAcc(rowKey, keptColSet));
+  }
+  const grandTotal = finalizePivotCell(grandAcc, config.measure);
+
+  const rowKeysOut: PivotAxisKey[] = keptRowKeys.map((k) => {
+    const l = rowLabels.get(k)!;
+    return { key: k, label: l.label, color: l.color };
+  });
+  const colKeysOut: PivotAxisKey[] = keptColKeys.map((k) => {
+    const l = colLabels.get(k)!;
+    return { key: k, label: l.label, color: l.color };
+  });
+
+  return {
+    measure: config.measure,
+    rowKeys: rowKeysOut,
+    colKeys: colKeysOut,
+    cells: finalCells,
+    rowTotals,
+    colTotals,
+    grandTotal,
+  };
+}
+
+/** All distinct bucket values for one dimension, across the full (unfiltered)
+ *  dataset — powers the pivot builder's "filter by value" picker. */
+export async function listDimensionValues(
+  dataset: Dataset,
+  dimension: DimensionId,
+  locale: Locale,
+): Promise<PivotAxisKey[]> {
+  const rows = await FETCHERS[dataset](undefined);
+  const counts = new Map<string, { label: string; color?: string; count: number }>();
+  for (const row of rows) {
+    for (const ref of extractBuckets(row, dimension, locale)) {
+      const existing = counts.get(ref.key);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        counts.set(ref.key, { label: ref.label, color: ref.color, count: 1 });
+      }
+    }
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1].count - a[1].count)
+    .slice(0, 200)
+    .map(([key, v]) => ({ key, label: v.label, color: v.color }));
 }
 
 // ── Dashboard ────────────────────────────────────────────────────────────────
