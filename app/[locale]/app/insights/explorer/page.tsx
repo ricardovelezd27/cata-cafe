@@ -106,7 +106,10 @@ export default async function InsightsExplorerPage({
         searchValues: tp("searchValues"),
         apply: tp("apply"),
         clearFilter: tp("clearFilter"),
-        countHint: tp("countHint"),
+        // Raw ICU template — {count} is only known per-cell at render time in
+        // PivotTable, so it's interpolated client-side (next-intl placeholder
+        // gotcha; mirrors insights/chat/page.tsx's limitReachedTemplate).
+        countHint: tPivot.raw("countHint"),
         maxRowsHint: tp("maxRowsHint"),
         maxColsHint: tp("maxColsHint"),
         valueColumn: tp("valueColumn"),

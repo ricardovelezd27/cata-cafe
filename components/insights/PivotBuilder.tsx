@@ -156,13 +156,25 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
   );
 
   function changeDataset(next: Dataset) {
-    setDataset(next);
     const nextDims = DATASET_DIMENSIONS[next];
-    setRows((prev) => {
-      const kept = prev.filter((d) => nextDims.includes(d));
-      return kept.length > 0 ? kept : [nextDims[0]];
-    });
-    setColumns((prev) => prev.filter((d) => nextDims.includes(d)));
+
+    // Columns must be resolved first: the rows fallback below has to avoid
+    // whatever survives on the columns axis, or a rows/columns collision can
+    // slip through (e.g. rows=["cupper"], columns=["coffeeCountry"],
+    // evaluations -> coffees: "cupper" is invalid for coffees, and a
+    // rows-only fallback picking nextDims[0] could land on "coffeeCountry",
+    // which is already taken by columns — parsePivotConfig then rejects the
+    // whole config as invalid_pivot).
+    const nextColumns = columns.filter((d) => nextDims.includes(d));
+    const keptRows = rows.filter((d) => nextDims.includes(d) && !nextColumns.includes(d));
+    // Every dataset has at least 3 dimensions and columns holds at most 1, so
+    // there is always a dim left over for the fallback.
+    const fallbackRow = nextDims.find((d) => !nextColumns.includes(d)) ?? nextDims[0];
+    const nextRows = keptRows.length > 0 ? keptRows : [fallbackRow];
+
+    setDataset(next);
+    setRows(nextRows);
+    setColumns(nextColumns);
     setMeasure((prev) => (DATASET_MEASURES[next].includes(prev) ? prev : DATASET_MEASURES[next][0]));
     setDimensionValues((prev) => prev.filter((f) => nextDims.includes(f.dimension)));
   }
