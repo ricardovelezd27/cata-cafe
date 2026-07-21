@@ -19,6 +19,14 @@ export const DIMENSIONS = [
   "cupper",
   "flavorDescriptor",
   "scoreBucket",
+  "blockNariz",
+  "blockBoca",
+  "blockGusto",
+  "blockAcidez",
+  "blockDulzura",
+  "blockSensacion",
+  "harvestYear",
+  "altitudeBand",
 ] as const;
 export type DimensionId = (typeof DIMENSIONS)[number];
 
@@ -73,6 +81,14 @@ export const DATASET_DIMENSIONS: Record<Dataset, readonly DimensionId[]> = {
     "cupper",
     "flavorDescriptor",
     "scoreBucket",
+    "blockNariz",
+    "blockBoca",
+    "blockGusto",
+    "blockAcidez",
+    "blockDulzura",
+    "blockSensacion",
+    "harvestYear",
+    "altitudeBand",
   ],
   sessions: ["sessionFormat", "sessionStatus", "month"],
   coffees: [
@@ -83,8 +99,10 @@ export const DATASET_DIMENSIONS: Record<Dataset, readonly DimensionId[]> = {
     "coffeeSpecies",
     "coffeeRoastLevel",
     "month",
+    "harvestYear",
+    "altitudeBand",
   ],
-  samples: ["coffeeCountry", "coffeeProcess", "sessionFormat", "month"],
+  samples: ["coffeeCountry", "coffeeProcess", "sessionFormat", "month", "harvestYear", "altitudeBand"],
 };
 
 export const DATASET_MEASURES: Record<Dataset, readonly MeasureId[]> = {

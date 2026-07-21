@@ -2,10 +2,19 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import {
   FLAVOR_DESC_KEYS,
+  PERCEPTUAL_BLOCKS,
   collectDescriptors,
   resolveDescriptor,
+  resolveMainTaste,
 } from "@/lib/descriptors";
-import type { InsightConfig, InsightRow } from "./types";
+import {
+  altitudeBand,
+  normalizeCountry,
+  normalizeProcess,
+  parseAltitudeMeters,
+  parseHarvestYear,
+} from "./normalize";
+import type { DimensionId, InsightConfig, InsightRow } from "./types";
 
 type Locale = "es" | "en";
 
@@ -24,6 +33,9 @@ interface AnalyticsRow {
   coffeeVariety?: string | null;
   coffeeSpecies?: string | null;
   coffeeRoastLevel?: string | null;
+  /** Free-text; parsed by extractBuckets (parseHarvestYear / parseAltitudeMeters). */
+  coffeeHarvestYear?: string | null;
+  coffeeAltitude?: string | null;
   sessionFormat?: string | null;
   sessionStatus?: string | null;
   cupperId?: string;
@@ -73,7 +85,14 @@ async function fetchEvaluationRows(filters: InsightConfig["filters"]): Promise<A
         select: {
           session: { select: { format: true } },
           coffee: {
-            select: { country: true, region: true, processType: true, variety: true },
+            select: {
+              country: true,
+              region: true,
+              processType: true,
+              variety: true,
+              harvestYear: true,
+              altitude: true,
+            },
           },
         },
       },
@@ -85,6 +104,8 @@ async function fetchEvaluationRows(filters: InsightConfig["filters"]): Promise<A
     coffeeRegion: r.sessionSample.coffee?.region,
     coffeeProcess: r.sessionSample.coffee?.processType,
     coffeeVariety: r.sessionSample.coffee?.variety,
+    coffeeHarvestYear: r.sessionSample.coffee?.harvestYear,
+    coffeeAltitude: r.sessionSample.coffee?.altitude,
     sessionFormat: r.sessionSample.session.format,
     cupperId: r.cupperId,
     cupperName: r.cupper.displayName,
@@ -122,6 +143,8 @@ async function fetchCoffeeRows(filters: InsightConfig["filters"]): Promise<Analy
       variety: true,
       species: true,
       roastLevel: true,
+      harvestYear: true,
+      altitude: true,
       createdAt: true,
     },
   });
@@ -133,6 +156,8 @@ async function fetchCoffeeRows(filters: InsightConfig["filters"]): Promise<Analy
     coffeeVariety: r.variety,
     coffeeSpecies: r.species,
     coffeeRoastLevel: r.roastLevel,
+    coffeeHarvestYear: r.harvestYear,
+    coffeeAltitude: r.altitude,
   }));
 }
 
@@ -141,7 +166,7 @@ async function fetchSampleRows(filters: InsightConfig["filters"]): Promise<Analy
   const rows = await prisma.sessionSample.findMany({
     where: range ? { session: { date: range } } : undefined,
     select: {
-      coffee: { select: { country: true, processType: true } },
+      coffee: { select: { country: true, processType: true, harvestYear: true, altitude: true } },
       session: { select: { format: true, date: true } },
       aggregateScore: { select: { communityScore: true } },
     },
@@ -150,6 +175,8 @@ async function fetchSampleRows(filters: InsightConfig["filters"]): Promise<Analy
     date: r.session.date,
     coffeeCountry: r.coffee?.country,
     coffeeProcess: r.coffee?.processType,
+    coffeeHarvestYear: r.coffee?.harvestYear,
+    coffeeAltitude: r.coffee?.altitude,
     sessionFormat: r.session.format,
     communityScore: r.aggregateScore?.communityScore,
   }));
@@ -211,12 +238,22 @@ function extractBuckets(
   };
 
   switch (dimension) {
-    case "coffeeCountry":
+    case "coffeeCountry": {
+      // Normalized country ("Col"/"colombia"/"COLOMBIA" → CO); unmatched raw
+      // text stays visible as its own bucket, motivating data cleanup.
+      const norm = normalizeCountry(row.coffeeCountry);
+      if (norm) {
+        return [{ key: norm.iso2, label: locale === "en" ? norm.nameEn : norm.nameEs }];
+      }
       return scalar(row.coffeeCountry);
+    }
     case "coffeeRegion":
       return scalar(row.coffeeRegion);
-    case "coffeeProcess":
+    case "coffeeProcess": {
+      const norm = normalizeProcess(row.coffeeProcess);
+      if (norm) return [{ key: norm, label: norm }];
       return scalar(row.coffeeProcess);
+    }
     case "coffeeVariety":
       return scalar(row.coffeeVariety);
     case "coffeeSpecies":
@@ -250,8 +287,45 @@ function extractBuckets(
         };
       });
     }
+    case "blockNariz":
+    case "blockBoca":
+    case "blockGusto":
+    case "blockAcidez":
+    case "blockDulzura":
+    case "blockSensacion": {
+      if (!row.descriptorBlob) return [];
+      const block = PERCEPTUAL_BLOCKS.find((b) => b.id === BLOCK_DIMENSION_IDS[dimension]);
+      if (!block) return [];
+      const ids = collectDescriptors(row.descriptorBlob, block.descKeys);
+      return ids.flatMap((id) => {
+        const resolved =
+          block.kind === "taste" ? resolveMainTaste(id, locale) : resolveDescriptor(id, locale);
+        return resolved ? [{ key: id, label: resolved.label, color: resolved.color }] : [];
+      });
+    }
+    case "harvestYear": {
+      const year = parseHarvestYear(row.coffeeHarvestYear);
+      if (year == null) return [];
+      return [{ key: String(year), label: String(year) }];
+    }
+    case "altitudeBand": {
+      const meters = parseAltitudeMeters(row.coffeeAltitude);
+      if (meters == null) return [];
+      const band = altitudeBand(meters);
+      return [{ key: band.key, label: band.label }];
+    }
   }
 }
+
+/** Block-dimension id → PERCEPTUAL_BLOCKS id. */
+const BLOCK_DIMENSION_IDS: Partial<Record<DimensionId, string>> = {
+  blockNariz: "nariz",
+  blockBoca: "boca",
+  blockGusto: "gusto",
+  blockAcidez: "acidez",
+  blockDulzura: "dulzura",
+  blockSensacion: "sensacion",
+};
 
 /** Value the measure aggregates over; null contributes nothing to avg/min/max. */
 function measureValue(row: AnalyticsRow, measure: InsightConfig["measure"]): number | null {
@@ -342,7 +416,12 @@ export function aggregateRows(
     result.push({ key, label: acc.label, value, count: acc.count, color: acc.color });
   }
 
-  if (config.dimension === "month" || config.dimension === "scoreBucket") {
+  if (
+    config.dimension === "month" ||
+    config.dimension === "scoreBucket" ||
+    config.dimension === "harvestYear" ||
+    config.dimension === "altitudeBand"
+  ) {
     result.sort((a, b) => a.key.localeCompare(b.key)); // chronological / band order
   } else {
     result.sort((a, b) => b.value - a.value);

@@ -11,6 +11,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { FlavorCloud } from "@/components/results/FlavorCloud";
 import { PublishResultsToggle } from "@/components/coffees/PublishResultsToggle";
 import { CoffeeVisibilityToggle } from "@/components/coffees/CoffeeVisibilityToggle";
+import { DeleteCoffeeButton } from "./DeleteCoffeeButton";
 
 export function generateStaticParams() {
   return [];
@@ -33,7 +34,8 @@ export default async function CoffeeProfilePage({
 
   const t = await getTranslations("coffee");
   const th = await getTranslations("history");
-  const ta = await getTranslations("attributes");
+  const tattr = await getTranslations("attributes");
+  const ta = await getTranslations("actions");
 
   // Record-level access gate: public coffees, or ones the viewer owns.
   const coffee = await prisma.coffee.findFirst({
@@ -92,10 +94,26 @@ export default async function CoffeeProfilePage({
   return (
     <div className="max-w-2xl space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="font-serif text-3xl text-green-dark font-semibold">{coffee.name}</h1>
-        {coffee.variety && (
-          <p className="text-sm text-brown-mid mt-1">{coffee.variety}</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-3xl text-green-dark font-semibold">{coffee.name}</h1>
+          {coffee.variety && (
+            <p className="text-sm text-brown-mid mt-1">{coffee.variety}</p>
+          )}
+        </div>
+        {coffee.createdBy === user.id && (
+          <DeleteCoffeeButton
+            coffeeId={coffee.id}
+            locale={locale}
+            label={ta("delete")}
+            translations={{
+              title: t("deleteCoffee.title"),
+              body: t("deleteCoffee.body"),
+              confirm: t("deleteCoffee.confirm"),
+              cancel: t("deleteCoffee.cancel"),
+              error: t("deleteCoffee.error"),
+            }}
+          />
         )}
       </div>
 
@@ -200,7 +218,7 @@ export default async function CoffeeProfilePage({
                     return (
                       <div key={attr.id} className="flex items-center gap-3">
                         <span className="text-xs text-brown-mid w-36 shrink-0">
-                          {ta(attr.id)}
+                          {tattr(attr.id)}
                         </span>
                         <div className="flex-1 h-2 rounded-full bg-cream overflow-hidden">
                           <div

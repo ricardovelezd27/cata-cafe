@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Trash2, X } from "lucide-react";
 import { createSession, createGroupSession } from "@/app/actions/sessions";
 import { startSession } from "@/app/actions/community";
 import { NotifyGroupPanel, type NotifyGroupOption, type NotifyGroupTranslations } from "@/components/groups/NotifyGroupPanel";
@@ -16,13 +17,17 @@ type CoffeeInput = {
   region: string;
 };
 
+type CoffeeEntry = CoffeeInput & { id: string };
+
 type SampleEntry = {
+  id: string;
   label: string;
-  coffeeIdx: number;
+  coffeeId: string;
+  /** True while the label is still the auto-generated "Muestra X" text (not user-edited). */
+  auto: boolean;
 };
 
 type Translations = {
-  title: string;
   name: string;
   namePh: string;
   date: string;
@@ -30,6 +35,9 @@ type Translations = {
   objectivePh: string;
   format: string;
   cups: string;
+  formatDescriptive: string;
+  formatAffective: string;
+  formatCombined: string;
   // coffee section
   coffees: string;
   coffeeName: string;
@@ -41,17 +49,12 @@ type Translations = {
   coffeeRegion: string;
   addCoffee: string;
   removeCoffee: string;
-  sampleCoffee: string;
-  // samples
-  samples: string;
-  samplesHelper: string;
+  // samples section
   addSample: string;
   removeSample: string;
   sampleLabel: string;
+  sampleCoffee: string;
   start: string;
-  formatDescriptive: string;
-  formatAffective: string;
-  formatCombined: string;
   // group
   groupToggle: string;
   groupClosesAt: string;
@@ -59,6 +62,22 @@ type Translations = {
   groupCopyLink: string;
   groupCopied: string;
   groupStartCupping: string;
+  // new form microcopy
+  newForm: {
+    required: string;
+    optionalSuffix: string;
+    coffeeCard: string;
+    sampleChip: string;
+    samplesTitle: string;
+    samplesHelper: string;
+    errors: {
+      no_samples: string;
+      no_coffees: string;
+      missing_coffee_fields: string;
+      sample_without_coffee: string;
+      generic: string;
+    };
+  };
 };
 
 type WizardStep = "form" | "invite";
@@ -74,6 +93,9 @@ const sampleLetter = (i: number) => {
   return s; // 0→A … 25→Z, 26→AA
 };
 
+/** Stable id for coffees/samples so React keys and card refs survive add/remove. */
+const newId = () => crypto.randomUUID();
+
 const EMPTY_COFFEE: CoffeeInput = {
   name: "",
   producer: "",
@@ -84,37 +106,87 @@ const EMPTY_COFFEE: CoffeeInput = {
   region: "",
 };
 
+/** Recomputes A, B, C… labels by list position; leaves user-edited labels untouched. */
+function relabel(samples: SampleEntry[], chip: string): SampleEntry[] {
+  return samples.map((s, i) => (s.auto ? { ...s, label: `${chip} ${sampleLetter(i)}` } : s));
+}
+
+const inputCls =
+  "w-full border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary-container/25 focus:border-primary-container transition-colors";
+
+function FieldLabel({
+  children,
+  required,
+  requiredText,
+  optionalText,
+}: {
+  children: React.ReactNode;
+  required?: boolean;
+  requiredText?: string;
+  optionalText?: string;
+}) {
+  return (
+    <label className="block text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant mb-1.5">
+      {children}
+      {required && (
+        <>
+          <span className="text-secondary" aria-hidden="true">
+            {" "}
+            *
+          </span>
+          {requiredText && <span className="sr-only"> ({requiredText})</span>}
+        </>
+      )}
+      {!required && optionalText && (
+        <span className="normal-case tracking-normal font-normal text-on-surface-variant">
+          {" "}
+          ({optionalText})
+        </span>
+      )}
+    </label>
+  );
+}
+
 export function NewSessionForm({
   locale,
   t,
+  countries,
   groupsT,
   groups,
 }: {
   locale: string;
   t: Translations;
+  countries: string[];
   groupsT: NotifyGroupTranslations;
   groups: NotifyGroupOption[];
 }) {
   const router = useRouter();
 
-  // Form fields
+  // Session basics
   const [name, setName] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [objective, setObjective] = useState("");
   const [format, setFormat] = useState<"descriptive" | "affective" | "combined">("combined");
   const [cupsPerSample, setCupsPerSample] = useState(2);
 
-  // Coffee entries
-  const [coffees, setCoffees] = useState<CoffeeInput[]>([{ ...EMPTY_COFFEE }]);
-
-  // Sample entries (each maps to a coffee by index)
-  const [samples, setSamples] = useState<SampleEntry[]>([
-    { label: `Muestra ${sampleLetter(0)}`, coffeeIdx: 0 },
+  const [coffees, setCoffees] = useState<CoffeeEntry[]>(() => [{ ...EMPTY_COFFEE, id: newId() }]);
+  const [samples, setSamples] = useState<SampleEntry[]>(() => [
+    {
+      id: newId(),
+      label: `${t.newForm.sampleChip} ${sampleLetter(0)}`,
+      coffeeId: coffees[0].id,
+      auto: true,
+    },
   ]);
 
   // Group session fields
   const [isGroup, setIsGroup] = useState(false);
   const [closesAt, setClosesAt] = useState("");
+
+  // Client-side validation state
+  const [invalidCoffeeId, setInvalidCoffeeId] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // Wizard state
   const [step, setStep] = useState<WizardStep>("form");
@@ -124,52 +196,100 @@ export function NewSessionForm({
 
   const [pending, start] = useTransition();
 
-  // Coffee helpers
-  const updateCoffee = (i: number, field: keyof CoffeeInput, val: string) =>
-    setCoffees((prev) => prev.map((c, idx) => (idx === i ? { ...c, [field]: val } : c)));
+  // ── Coffee + sample helpers ────────────────────────────────────────────────
+  const updateCoffee = (id: string, field: keyof CoffeeInput, value: string) => {
+    setCoffees((prev) => prev.map((c) => (c.id === id ? { ...c, [field]: value } : c)));
+    if (invalidCoffeeId === id) {
+      setInvalidCoffeeId(null);
+      setErrorCode(null);
+    }
+  };
 
-  const addCoffee = () => setCoffees((prev) => [...prev, { ...EMPTY_COFFEE }]);
-
-  const removeCoffee = (i: number) => {
-    setCoffees((prev) => prev.filter((_, idx) => idx !== i));
-    // Remap sample coffeeIdx: clamp to new last index
+  const addCoffee = () => {
+    // Adding a coffee also seeds one sample assigned to it (the common 1:1 case
+    // needs zero extra clicks); the sample lives in the flat Muestras list where
+    // its label and coffee can be freely edited afterward.
+    const coffeeId = newId();
+    setCoffees((prev) => [...prev, { ...EMPTY_COFFEE, id: coffeeId }]);
     setSamples((prev) =>
-      prev.map((s) => ({
-        ...s,
-        coffeeIdx: s.coffeeIdx >= i && s.coffeeIdx > 0 ? s.coffeeIdx - 1 : s.coffeeIdx,
-      }))
+      relabel([...prev, { id: newId(), label: "", coffeeId, auto: true }], t.newForm.sampleChip)
     );
   };
 
-  // Sample helpers
-  const updateSampleLabel = (i: number, val: string) =>
-    setSamples((prev) => prev.map((s, idx) => (idx === i ? { ...s, label: val } : s)));
+  const removeCoffee = (id: string) => {
+    if (coffees.length <= 1) return;
+    const nextCoffees = coffees.filter((c) => c.id !== id);
+    // Drop samples that pointed at the removed coffee; never leave the list empty.
+    let nextSamples = samples.filter((s) => s.coffeeId !== id);
+    if (nextSamples.length === 0) {
+      nextSamples = [{ id: newId(), label: "", coffeeId: nextCoffees[0].id, auto: true }];
+    }
+    setCoffees(nextCoffees);
+    setSamples(relabel(nextSamples, t.newForm.sampleChip));
+    if (invalidCoffeeId === id) {
+      setInvalidCoffeeId(null);
+      setErrorCode(null);
+    }
+  };
 
-  const updateSampleCoffee = (i: number, coffeeIdx: number) =>
-    setSamples((prev) => prev.map((s, idx) => (idx === i ? { ...s, coffeeIdx } : s)));
+  const addSample = () => {
+    setSamples((prev) =>
+      relabel(
+        [...prev, { id: newId(), label: "", coffeeId: coffees[0].id, auto: true }],
+        t.newForm.sampleChip
+      )
+    );
+  };
 
-  const addSample = () =>
-    setSamples((prev) => [...prev, { label: `Muestra ${sampleLetter(prev.length)}`, coffeeIdx: 0 }]);
+  const removeSample = (id: string) => {
+    if (samples.length <= 1) return;
+    setSamples((prev) => relabel(prev.filter((s) => s.id !== id), t.newForm.sampleChip));
+  };
 
-  const removeSample = (i: number) =>
-    setSamples((prev) => prev.filter((_, idx) => idx !== i));
+  const updateSampleLabel = (id: string, value: string) => {
+    setSamples((prev) => prev.map((s) => (s.id === id ? { ...s, label: value, auto: false } : s)));
+  };
 
-  const getCoffeeLabel = (i: number) => {
-    const name = coffees[i]?.name.trim();
-    return name ? `${i + 1}. ${name}` : `${i + 1}.`;
+  const updateSampleCoffee = (id: string, coffeeId: string) => {
+    setSamples((prev) => prev.map((s) => (s.id === id ? { ...s, coffeeId } : s)));
+    setErrorCode(null);
+  };
+
+  const coffeeLabel = (coffee: CoffeeEntry, i: number) =>
+    coffee.name.trim() || `${t.newForm.coffeeCard} ${i + 1}`;
+
+  // ── Submit ──────────────────────────────────────────────────────────────────
+  const validateClient = (): boolean => {
+    for (const c of coffees) {
+      if (!c.name.trim() || !c.variety.trim() || !c.country.trim() || !c.altitude.trim()) {
+        setInvalidCoffeeId(c.id);
+        setErrorCode("missing_coffee_fields");
+        cardRefs.current[c.id]?.scrollIntoView({ behavior: "smooth", block: "center" });
+        return false;
+      }
+    }
+    return true;
   };
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    start(async () => {
-      const coffeePayload = coffees.filter((c) => c.name.trim());
-      const samplePayload = samples.map((s) => ({
-        label: s.label,
-        coffeeIdx: s.coffeeIdx,
-      }));
+    setErrorCode(null);
+    if (!validateClient()) return;
 
+    const idxById = new Map(coffees.map((c, i) => [c.id, i]));
+    const coffeePayload: CoffeeInput[] = coffees.map((c) => {
+      const { id, ...rest } = c;
+      void id;
+      return rest;
+    });
+    const samplePayload = samples.map((s) => ({
+      label: s.label,
+      coffeeIdx: idxById.get(s.coffeeId) ?? 0,
+    }));
+
+    start(async () => {
       if (!isGroup) {
-        await createSession({
+        const result = await createSession({
           name,
           date,
           objective: objective || undefined,
@@ -179,6 +299,7 @@ export function NewSessionForm({
           samples: samplePayload,
           locale,
         });
+        if (result) setErrorCode(result.error);
       } else {
         const result = await createGroupSession({
           name,
@@ -190,17 +311,23 @@ export function NewSessionForm({
           samples: samplePayload,
           closesAt: closesAt || undefined,
         });
-        setSessionId(result.sessionId);
-        setInviteToken(result.inviteToken);
-        setStep("invite");
+        if (result.ok) {
+          setSessionId(result.sessionId);
+          setInviteToken(result.inviteToken);
+          setStep("invite");
+        } else {
+          setErrorCode(result.error);
+        }
       }
     });
   };
 
+  const errorText = errorCode
+    ? (t.newForm.errors as Record<string, string>)[errorCode] ?? t.newForm.errors.generic
+    : null;
+
   const inviteUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/${locale}/join/${inviteToken}`
-      : "";
+    typeof window !== "undefined" ? `${window.location.origin}/${locale}/join/${inviteToken}` : "";
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(inviteUrl);
@@ -208,19 +335,13 @@ export function NewSessionForm({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const inputCls =
-    "w-full px-3 py-2 border border-[#D4C5A9] rounded-lg text-sm bg-white text-brown-dark focus:outline-none focus:border-green-dark";
-  const labelCls = "block text-xs text-brown-mid font-semibold uppercase tracking-wide mb-1";
-  const smallInputCls =
-    "w-full px-2 py-1.5 border border-[#D4C5A9] rounded-md text-xs bg-white text-brown-dark focus:outline-none focus:border-green-dark";
-
   // ── Step 2: Invite link ──────────────────────────────────────────────────────
   if (step === "invite") {
     return (
       <div className="space-y-6">
-        <div className="p-4 bg-green-dark/5 border border-green-dark/20 rounded-xl space-y-3">
-          <p className="text-sm font-semibold text-green-dark">{t.groupInviteLink}</p>
-          <div className="flex gap-2">
+        <div className="bg-surface-container-low border border-outline-variant rounded-card p-5 space-y-3">
+          <p className="text-sm font-semibold text-primary-container">{t.groupInviteLink}</p>
+          <div className="flex flex-col gap-2 sm:flex-row">
             <input
               readOnly
               value={inviteUrl}
@@ -230,7 +351,7 @@ export function NewSessionForm({
             <button
               type="button"
               onClick={handleCopy}
-              className="px-4 py-2 rounded-lg bg-green-dark text-white text-sm font-semibold whitespace-nowrap"
+              className="border border-primary-container text-primary-container rounded-pill px-5 py-2.5 text-sm font-medium hover:bg-primary-fixed transition-colors whitespace-nowrap"
             >
               {copied ? t.groupCopied : t.groupCopyLink}
             </button>
@@ -246,13 +367,14 @@ export function NewSessionForm({
 
         <button
           type="button"
+          disabled={pending}
           onClick={() => {
             start(async () => {
               await startSession(sessionId);
               router.push(`/${locale}/app/sessions/${sessionId}/cup`);
             });
           }}
-          className="w-full py-3 rounded-lg bg-green-dark text-white font-bold hover:bg-green-mid"
+          className="w-full bg-primary-container text-on-primary rounded-pill py-3.5 font-medium hover:bg-primary transition-colors disabled:opacity-50"
         >
           {t.groupStartCupping}
         </button>
@@ -262,54 +384,60 @@ export function NewSessionForm({
 
   // ── Step 1: Session form ─────────────────────────────────────────────────────
   return (
-    <form onSubmit={onSubmit} className="space-y-5">
-      <div>
-        <label className={labelCls}>{t.name}</label>
-        <input
-          className={inputCls}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          placeholder={t.namePh}
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
+    <form onSubmit={onSubmit} className="space-y-10">
+      {/* 1. Session basics */}
+      <div className="space-y-5">
         <div>
-          <label className={labelCls}>{t.date}</label>
+          <FieldLabel>{t.name}</FieldLabel>
           <input
-            type="date"
             className={inputCls}
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            placeholder={t.namePh}
           />
         </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <FieldLabel>{t.date}</FieldLabel>
+            <input
+              type="date"
+              className={inputCls}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <FieldLabel>{t.cups}</FieldLabel>
+            <input
+              type="number"
+              min={1}
+              max={5}
+              className={inputCls}
+              value={cupsPerSample}
+              onChange={(e) => setCupsPerSample(parseInt(e.target.value) || 2)}
+            />
+          </div>
+        </div>
+
         <div>
-          <label className={labelCls}>{t.cups}</label>
-          <input
-            type="number"
-            min={1}
-            max={5}
-            className={inputCls}
-            value={cupsPerSample}
-            onChange={(e) => setCupsPerSample(parseInt(e.target.value) || 2)}
+          <FieldLabel>{t.objective}</FieldLabel>
+          <textarea
+            className={inputCls + " min-h-[72px]"}
+            value={objective}
+            onChange={(e) => setObjective(e.target.value)}
+            placeholder={t.objectivePh}
           />
         </div>
       </div>
 
-      <div>
-        <label className={labelCls}>{t.objective}</label>
-        <textarea
-          className={inputCls + " min-h-[60px]"}
-          value={objective}
-          onChange={(e) => setObjective(e.target.value)}
-          placeholder={t.objectivePh}
-        />
-      </div>
+      <hr className="border-t border-outline-variant" />
 
+      {/* 2. Format */}
       <div>
-        <label className={labelCls}>{t.format}</label>
-        <div className="flex gap-2">
+        <FieldLabel>{t.format}</FieldLabel>
+        <div className="flex flex-wrap gap-2">
           {(
             [
               { v: "descriptive", l: t.formatDescriptive },
@@ -321,11 +449,11 @@ export function NewSessionForm({
               key={opt.v}
               type="button"
               onClick={() => setFormat(opt.v)}
-              className={`px-4 py-2 rounded-lg text-sm border ${
+              className={
                 format === opt.v
-                  ? "bg-green-dark text-white border-green-dark"
-                  : "bg-white text-brown-dark border-[#D4C5A9]"
-              }`}
+                  ? "bg-primary-container text-on-primary rounded-pill px-5 py-2.5 text-sm font-medium"
+                  : "border border-outline-variant text-on-surface rounded-pill px-5 py-2.5 text-sm hover:bg-surface-container transition-colors"
+              }
             >
               {opt.l}
             </button>
@@ -333,178 +461,236 @@ export function NewSessionForm({
         </div>
       </div>
 
-      {/* ── Coffees to evaluate ─────────────────────────────────────────────── */}
-      <div>
-        <label className={labelCls}>{t.coffees}</label>
-        <div className="space-y-3">
-          {coffees.map((coffee, i) => (
-            <div
-              key={i}
-              className="p-3 border border-[#D4C5A9] rounded-xl bg-white/60 space-y-2"
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-semibold text-green-dark uppercase tracking-wide">
-                  {getCoffeeLabel(i)}
-                </span>
-                {coffees.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeCoffee(i)}
-                    className="text-xs text-brown-mid hover:text-red-defect"
-                  >
-                    {t.removeCoffee}
-                  </button>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="col-span-2">
-                  <label className="block text-[10px] text-brown-mid mb-0.5">{t.coffeeName} *</label>
-                  <input
-                    className={smallInputCls}
-                    value={coffee.name}
-                    onChange={(e) => updateCoffee(i, "name", e.target.value)}
-                    required
-                    placeholder={t.coffeeName}
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-brown-mid mb-0.5">{t.producerRoaster}</label>
-                  <input
-                    className={smallInputCls}
-                    value={coffee.producer}
-                    onChange={(e) => updateCoffee(i, "producer", e.target.value)}
-                    placeholder={t.producerRoaster}
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-brown-mid mb-0.5">{t.coffeeVariety}</label>
-                  <input
-                    className={smallInputCls}
-                    value={coffee.variety}
-                    onChange={(e) => updateCoffee(i, "variety", e.target.value)}
-                    placeholder={t.coffeeVariety}
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-brown-mid mb-0.5">{t.coffeeCountry}</label>
-                  <input
-                    className={smallInputCls}
-                    value={coffee.country}
-                    onChange={(e) => updateCoffee(i, "country", e.target.value)}
-                    placeholder={t.coffeeCountry}
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-brown-mid mb-0.5">{t.coffeeRegion}</label>
-                  <input
-                    className={smallInputCls}
-                    value={coffee.region}
-                    onChange={(e) => updateCoffee(i, "region", e.target.value)}
-                    placeholder={t.coffeeRegion}
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-brown-mid mb-0.5">{t.coffeeAltitude}</label>
-                  <input
-                    className={smallInputCls}
-                    value={coffee.altitude}
-                    onChange={(e) => updateCoffee(i, "altitude", e.target.value)}
-                    placeholder="1800 msnm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-brown-mid mb-0.5">{t.coffeeRoastLevel}</label>
-                  <input
-                    className={smallInputCls}
-                    value={coffee.roastLevel}
-                    onChange={(e) => updateCoffee(i, "roastLevel", e.target.value)}
-                    placeholder="Medio"
-                  />
-                </div>
-              </div>
-            </div>
+      <hr className="border-t border-outline-variant" />
+
+      {/* 3. Cafés a evaluar — unified coffee + sample cards */}
+      <div className="space-y-4">
+        <FieldLabel>{t.coffees}</FieldLabel>
+
+        <datalist id="cata-coffee-countries">
+          {countries.map((c) => (
+            <option key={c} value={c} />
           ))}
-          <button
-            type="button"
-            onClick={addCoffee}
-            className="text-sm text-green-dark font-semibold"
-          >
-            + {t.addCoffee}
-          </button>
+        </datalist>
+
+        <div className="space-y-4">
+          {coffees.map((coffee, i) => {
+            const invalid = invalidCoffeeId === coffee.id;
+
+            return (
+              <div
+                key={coffee.id}
+                ref={(el) => {
+                  cardRefs.current[coffee.id] = el;
+                }}
+                role="group"
+                aria-label={`${t.newForm.coffeeCard} ${i + 1}`}
+                className={
+                  "bg-surface-container-lowest border rounded-card shadow-card p-5 space-y-4 " +
+                  (invalid ? "border-error" : "border-outline-variant")
+                }
+              >
+                <div className="flex items-center gap-2">
+                  <span className="bg-surface-container rounded-pill px-3 py-1 text-xs font-semibold tracking-wide uppercase text-on-surface">
+                    {t.newForm.coffeeCard} {i + 1}
+                  </span>
+                  <div className="flex-1" />
+                  {coffees.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeCoffee(coffee.id)}
+                      aria-label={t.removeCoffee}
+                      className="p-1 text-on-surface-variant hover:text-error transition-colors"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <FieldLabel required requiredText={t.newForm.required}>
+                      {t.coffeeName}
+                    </FieldLabel>
+                    <input
+                      className={inputCls}
+                      value={coffee.name}
+                      onChange={(e) => updateCoffee(coffee.id, "name", e.target.value)}
+                      required
+                      placeholder={t.coffeeName}
+                    />
+                  </div>
+
+                  <div>
+                    <FieldLabel required requiredText={t.newForm.required}>
+                      {t.coffeeCountry}
+                    </FieldLabel>
+                    <input
+                      list="cata-coffee-countries"
+                      className={inputCls}
+                      value={coffee.country}
+                      onChange={(e) => updateCoffee(coffee.id, "country", e.target.value)}
+                      required
+                      placeholder={t.coffeeCountry}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel required requiredText={t.newForm.required}>
+                      {t.coffeeVariety}
+                    </FieldLabel>
+                    <input
+                      className={inputCls}
+                      value={coffee.variety}
+                      onChange={(e) => updateCoffee(coffee.id, "variety", e.target.value)}
+                      required
+                      placeholder={t.coffeeVariety}
+                    />
+                  </div>
+
+                  <div>
+                    <FieldLabel required requiredText={t.newForm.required}>
+                      {t.coffeeAltitude}
+                    </FieldLabel>
+                    <div className="relative">
+                      <input
+                        className={inputCls + " pr-14"}
+                        value={coffee.altitude}
+                        onChange={(e) => updateCoffee(coffee.id, "altitude", e.target.value)}
+                        required
+                        placeholder="1800"
+                      />
+                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-on-surface-variant pointer-events-none">
+                        msnm
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <FieldLabel optionalText={t.newForm.optionalSuffix}>{t.coffeeRegion}</FieldLabel>
+                    <input
+                      className={inputCls}
+                      value={coffee.region}
+                      onChange={(e) => updateCoffee(coffee.id, "region", e.target.value)}
+                      placeholder={t.coffeeRegion}
+                    />
+                  </div>
+
+                  <div>
+                    <FieldLabel optionalText={t.newForm.optionalSuffix}>{t.producerRoaster}</FieldLabel>
+                    <input
+                      className={inputCls}
+                      value={coffee.producer}
+                      onChange={(e) => updateCoffee(coffee.id, "producer", e.target.value)}
+                      placeholder={t.producerRoaster}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel optionalText={t.newForm.optionalSuffix}>{t.coffeeRoastLevel}</FieldLabel>
+                    <input
+                      className={inputCls}
+                      value={coffee.roastLevel}
+                      onChange={(e) => updateCoffee(coffee.id, "roastLevel", e.target.value)}
+                      placeholder={t.coffeeRoastLevel}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
+
+        <button
+          type="button"
+          onClick={addCoffee}
+          className="border border-primary-container text-primary-container rounded-pill px-5 py-2.5 text-sm font-medium hover:bg-primary-fixed transition-colors"
+        >
+          + {t.addCoffee}
+        </button>
       </div>
 
-      {/* ── Samples ──────────────────────────────────────────────────────────── */}
-      <div>
-        <label className={labelCls}>{t.samples}</label>
-        <p className="text-xs text-brown-mid mb-2">{t.samplesHelper}</p>
+      <hr className="border-t border-outline-variant" />
+
+      {/* 4. Muestras — flat list: each sample has an editable label + coffee assignment */}
+      <div className="space-y-4">
+        <div>
+          <FieldLabel>{t.newForm.samplesTitle}</FieldLabel>
+          <p className="text-xs text-on-surface-variant">{t.newForm.samplesHelper}</p>
+        </div>
+
         <div className="space-y-2">
-          {samples.map((s, i) => (
-            <div key={i} className="flex gap-2 items-center">
+          {samples.map((s) => (
+            <div key={s.id} className="flex items-center gap-2">
               <input
-                className={inputCls + " flex-1"}
                 value={s.label}
-                onChange={(e) => updateSampleLabel(i, e.target.value)}
-                placeholder={`${t.sampleLabel} ${i + 1}`}
+                onChange={(e) => updateSampleLabel(s.id, e.target.value)}
+                aria-label={t.sampleLabel}
+                placeholder={t.sampleLabel}
+                className={inputCls + " flex-1"}
               />
               {coffees.length > 1 && (
                 <select
-                  className="px-2 py-2 border border-[#D4C5A9] rounded-lg text-xs bg-white text-brown-dark focus:outline-none focus:border-green-dark"
-                  value={s.coffeeIdx}
-                  onChange={(e) => updateSampleCoffee(i, parseInt(e.target.value))}
-                  title={t.sampleCoffee}
+                  value={s.coffeeId}
+                  onChange={(e) => updateSampleCoffee(s.id, e.target.value)}
+                  aria-label={t.sampleCoffee}
+                  className={inputCls + " flex-1 cursor-pointer"}
                 >
                   {coffees.map((c, ci) => (
-                    <option key={ci} value={ci}>
-                      {getCoffeeLabel(ci)}
+                    <option key={c.id} value={c.id}>
+                      {coffeeLabel(c, ci)}
                     </option>
                   ))}
                 </select>
               )}
-              <button
-                type="button"
-                onClick={() => removeSample(i)}
-                className="px-3 py-2 text-xs text-brown-mid hover:text-red-defect whitespace-nowrap"
-              >
-                {t.removeSample}
-              </button>
+              {samples.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeSample(s.id)}
+                  aria-label={t.removeSample}
+                  className="p-1 text-on-surface-variant hover:text-error transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              )}
             </div>
           ))}
-          <button
-            type="button"
-            onClick={addSample}
-            className="text-sm text-green-dark font-semibold"
-          >
-            + {t.addSample}
-          </button>
         </div>
-      </div>
 
-      {/* Group session toggle */}
-      <div className="flex items-center gap-3 pt-1">
         <button
           type="button"
-          role="switch"
-          aria-checked={isGroup}
-          onClick={() => setIsGroup((v) => !v)}
-          className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors ${
-            isGroup ? "bg-green-dark" : "bg-[#D4C5A9]"
-          }`}
+          onClick={addSample}
+          className="border border-primary-container text-primary-container rounded-pill px-5 py-2.5 text-sm font-medium hover:bg-primary-fixed transition-colors"
         >
-          <span
-            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-              isGroup ? "translate-x-5" : "translate-x-0"
-            }`}
-          />
+          + {t.addSample}
         </button>
-        <span className="text-sm text-brown-dark font-medium">{t.groupToggle}</span>
       </div>
 
-      {/* Group-only fields — just closing date, async is derived */}
-      {isGroup && (
-        <div className="pl-4 border-l-2 border-green-dark/30 space-y-4">
-          <div>
-            <label className={labelCls}>{t.groupClosesAt}</label>
+      <hr className="border-t border-outline-variant" />
+
+      {/* 5. Group session */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={isGroup}
+            onClick={() => setIsGroup((v) => !v)}
+            className={
+              "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors " +
+              (isGroup ? "bg-primary-container" : "bg-outline-variant")
+            }
+          >
+            <span
+              className={
+                "inline-block h-5 w-5 transform rounded-full bg-surface-container-lowest shadow-card transition-transform " +
+                (isGroup ? "translate-x-5" : "translate-x-0.5")
+              }
+            />
+          </button>
+          <span className="text-sm text-on-surface font-medium">{t.groupToggle}</span>
+        </div>
+
+        {isGroup && (
+          <div className="bg-surface-container-low rounded-card p-4">
+            <FieldLabel>{t.groupClosesAt}</FieldLabel>
             <input
               type="date"
               className={inputCls}
@@ -512,16 +698,27 @@ export function NewSessionForm({
               onChange={(e) => setClosesAt(e.target.value)}
             />
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      <button
-        type="submit"
-        disabled={pending || samples.length === 0}
-        className="w-full py-3 rounded-lg bg-green-dark text-white font-bold hover:bg-green-mid disabled:opacity-50"
-      >
-        {t.start}
-      </button>
+      <hr className="border-t border-outline-variant" />
+
+      {/* Error strip + submit */}
+      <div className="space-y-4">
+        {errorText && (
+          <div className="bg-error-container text-on-error-container rounded-card px-4 py-3 text-sm">
+            {errorText}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={pending}
+          className="w-full bg-primary-container text-on-primary rounded-pill py-3.5 font-medium hover:bg-primary transition-colors disabled:opacity-50"
+        >
+          {t.start}
+        </button>
+      </div>
     </form>
   );
 }

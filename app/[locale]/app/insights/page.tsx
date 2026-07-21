@@ -1,10 +1,11 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Coffee, ClipboardList, CheckCircle2, Users } from "lucide-react";
+import { Coffee, ClipboardList, CheckCircle2, Users, Download } from "lucide-react";
 import { getDashboardData } from "@/lib/analytics/queries";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { TrendChart } from "@/components/insights/TrendChart";
 import { InsightChart } from "@/components/insights/InsightChart";
 import { DescriptorBarList } from "@/components/insights/DescriptorBarList";
+import { AiSummaryPanel } from "@/components/insights/AiSummaryPanel";
 import type { ReactNode } from "react";
 
 export function generateStaticParams() {
@@ -49,6 +50,16 @@ export default async function InsightsDashboardPage({
 
   return (
     <div className="flex flex-col gap-5 pb-8">
+      <div className="flex items-center justify-end">
+        <a
+          href={`/api/insights/report?locale=${locale}`}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-[#E8E0D0] bg-white px-3 py-1.5 text-xs font-semibold text-brown-dark hover:border-[#3D5A3E] hover:text-[#3D5A3E] transition-colors"
+        >
+          <Download size={16} />
+          {t("report.download")}
+        </a>
+      </div>
+
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <StatCard
           label={t("kpi.coffeesCupped")}
@@ -87,6 +98,19 @@ export default async function InsightsDashboardPage({
           accent
         />
       </div>
+
+      <AiSummaryPanel
+        locale={locale}
+        target={{ kind: "dashboard" }}
+        translations={{
+          generate: t("ai.generate"),
+          generating: t("ai.generating"),
+          regenerate: t("ai.regenerate"),
+          disclaimer: t("ai.disclaimer"),
+          notConfigured: t("ai.notConfigured"),
+          error: t("ai.error"),
+        }}
+      />
 
       <ChartCard title={t("charts.trend")}>
         <TrendChart

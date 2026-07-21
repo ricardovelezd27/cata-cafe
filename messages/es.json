@@ -113,7 +113,29 @@
       "extrinsic": "Extrínseco",
       "physical": "Físico"
     },
-    "results": "Resultados"
+    "results": "Resultados",
+    "newForm": {
+      "required": "obligatorio",
+      "optionalSuffix": "opcional",
+      "coffeeCard": "Café",
+      "sampleChip": "Muestra",
+      "samplesTitle": "Muestras",
+      "samplesHelper": "Cada muestra se cata por separado. Edita su etiqueta y asígnale un café.",
+      "errors": {
+        "no_samples": "Agrega al menos una muestra para iniciar la sesión.",
+        "no_coffees": "Agrega al menos un café para iniciar la sesión.",
+        "missing_coffee_fields": "Completa los datos obligatorios de cada café: nombre, variedad, país y altitud.",
+        "sample_without_coffee": "Cada muestra debe estar vinculada a un café.",
+        "generic": "No se pudo crear la sesión. Inténtalo de nuevo."
+      }
+    },
+    "deleteSession": {
+      "title": "Eliminar sesión",
+      "body": "Esta acción eliminará permanentemente la sesión y todas las evaluaciones de los participantes. No se puede deshacer.",
+      "confirm": "Eliminar sesión",
+      "cancel": "Cancelar",
+      "error": "No se pudo eliminar la sesión. Inténtalo de nuevo."
+    }
   },
   "cupping": {
     "sample": "Muestra",
@@ -360,7 +382,14 @@
     "attrAveragesTitle": "Promedios por atributo",
     "flavorsTitle": "Sabores reportados",
     "sessionsListTitle": "Apariciones en sesiones",
-    "noResults": "Aún no hay catas enviadas para este café."
+    "noResults": "Aún no hay catas enviadas para este café.",
+    "deleteCoffee": {
+      "title": "Eliminar café",
+      "body": "Las muestras de sesiones conservarán su etiqueta ciega. Tu historial de catas de este café se eliminará. Esta acción no se puede deshacer.",
+      "confirm": "Eliminar café",
+      "cancel": "Cancelar",
+      "error": "No se pudo eliminar el café. Inténtalo de nuevo."
+    }
   },
   "offline": {
     "bannerOffline": "Sin conexión. Tus evaluaciones se guardan localmente.",

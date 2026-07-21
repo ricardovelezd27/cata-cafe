@@ -24,6 +24,7 @@ import {
   saveInsight,
 } from "@/app/actions/analytics";
 import { InsightChart } from "@/components/insights/InsightChart";
+import { AiSummaryPanel, type AiSummaryTranslations } from "@/components/insights/AiSummaryPanel";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 
 export interface ExplorerTranslations {
@@ -49,6 +50,7 @@ export interface ExplorerTranslations {
   measures: Record<MeasureId, string>;
   chartTypes: Record<ChartType, string>;
   table: { count: string };
+  ai: AiSummaryTranslations;
 }
 
 export interface SavedInsightItem {
@@ -309,6 +311,12 @@ export function ExplorerBuilder({ locale, initialSaved, t }: ExplorerBuilderProp
           />
         )}
       </div>
+
+      <AiSummaryPanel
+        locale={locale}
+        target={{ kind: "insight", config: buildConfig() }}
+        translations={t.ai}
+      />
 
       {/* Saved insights */}
       <div className="bg-white rounded-xl border border-[#E8E0D0] shadow-card p-5">

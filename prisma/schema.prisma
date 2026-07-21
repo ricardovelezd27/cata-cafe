@@ -218,13 +218,13 @@ model AggregateScore {
 model UserCoffeeHistory {
   id              String         @id @default(cuid())
   userId          String
-  user            Profile        @relation(fields: [userId], references: [id])
+  user            Profile        @relation(fields: [userId], references: [id], onDelete: Cascade)
   coffeeId        String
-  coffee          Coffee         @relation(fields: [coffeeId], references: [id])
+  coffee          Coffee         @relation(fields: [coffeeId], references: [id], onDelete: Cascade)
   evaluationId    String
-  evaluation      Evaluation     @relation(fields: [evaluationId], references: [id])
+  evaluation      Evaluation     @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
   sessionId       String
-  session         CuppingSession @relation(fields: [sessionId], references: [id])
+  session         CuppingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   individualScore Float?
   communityScore  Float?
   tastedAt        DateTime
@@ -264,6 +264,69 @@ model SavedInsight {
 
   @@index([createdBy])
   @@map("saved_insights")
+}
+
+// Third-party reference data (imported via scripts/import-*.ts, server-read-only;
+// RLS deny-all — see prisma/sql/rls_and_triggers.sql Phase 8).
+model ReferenceSeries {
+  id          String @id @default(cuid())
+  source      String // "owid_fao" | "usda_psd"
+  metric      String // "production" | "exports" | "domestic_consumption" ...
+  countryCode String // ISO2, via COFFEE_COUNTRIES in lib/analytics/normalize.ts
+  year        Int
+  value       Float
+  unit        String
+
+  @@unique([source, metric, countryCode, year])
+  @@index([countryCode, metric])
+  @@map("reference_series")
+}
+
+model BenchmarkLot {
+  id             String  @id @default(cuid())
+  source         String  @default("cqi_arabica")
+  countryCode    String? // normalized ISO2; null when unmatched
+  countryRaw     String
+  region         String?
+  variety        String?
+  processType    String? // canonical PROCESS_TYPES value
+  processRaw     String?
+  altitudeM      Int?
+  harvestYear    Int?
+  totalCupPoints Float
+  attributes     Json    @default("{}")
+
+  @@index([countryCode])
+  @@index([processType])
+  @@map("benchmark_lots")
+}
+
+// AI-narrative cache: repeat views of the same data never re-bill the AI API.
+// dataHash = sha256(canonical inputs + locale + PROMPT_VERSION); see lib/ai/narratives.ts.
+model InsightNarrative {
+  id        String   @id @default(cuid())
+  kind      String // "dashboard" | "insight" | "linkedin" | "digest"
+  dataHash  String
+  locale    String
+  content   Json
+  model     String
+  createdAt DateTime @default(now())
+
+  @@unique([kind, dataHash])
+  @@map("insight_narratives")
+}
+
+// One row per monthly insights digest actually processed — the idempotency
+// gate for the /api/cron/insights-digest route (safe retries/manual re-runs).
+model DigestRun {
+  id         String   @id @default(cuid())
+  period     String   @unique // "YYYY-MM" (previous calendar month)
+  recipients Int
+  sent       Int
+  aiSkipped  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@map("digest_runs")
 }
 
 model WaitlistEntry {

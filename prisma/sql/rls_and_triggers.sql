@@ -861,7 +861,31 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.evaluations;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.cupping_sessions;
 
 -- ============================================================================
--- PHASE 8 (2026-07-21): Tasting Groups
+-- Phase 8 (2026-07-20): third-party reference data tables hardening
+-- reference_series (OWID/FAO production series, USDA PSD) and benchmark_lots
+-- (CQI cupping dataset) are written only by import scripts and read only
+-- through server-side Prisma (direct DATABASE_URL role), guarded by
+-- lib/analytics/access.ts. Same rationale as saved_insights (Phase 5): RLS
+-- with NO policies = deny-all through PostgREST/Supabase clients, so the data
+-- can never leak via the public API. Apply manually in the Supabase SQL editor.
+-- ============================================================================
+ALTER TABLE reference_series ENABLE ROW LEVEL SECURITY;
+ALTER TABLE benchmark_lots ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- Phase 9 (2026-07-20): AI narrative cache hardening
+-- insight_narratives caches AI-generated narrative JSON, written/read only via
+-- server-side Prisma behind requireAnalyticsAccess(). Deny-all via RLS with no
+-- policies, same rationale as Phase 5/8.
+-- NOTE (verified 2026-07-20): this Supabase project auto-enables RLS on new
+-- public tables, so Phases 8-9 were already active on creation; these
+-- statements are kept for documentation and are idempotent.
+-- ============================================================================
+ALTER TABLE insight_narratives ENABLE ROW LEVEL SECURITY;
+ALTER TABLE digest_runs ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- PHASE 10 (2026-07-21): Tasting Groups
 -- A maestro's standing address book of co-cuppers, reusable across sessions
 -- without re-inviting people one by one. All app reads/writes go through
 -- Prisma server actions (app/actions/groups.ts, lib/coCuppers.ts), which run
@@ -895,7 +919,7 @@ CREATE POLICY "tasting_group_members_owner_all" ON tasting_group_members
   );
 
 -- ============================================================================
--- PHASE 8b (2026-07-21): Auto-link email-only group invitees on signup
+-- PHASE 10b (2026-07-21): Auto-link email-only group invitees on signup
 -- Redefines handle_new_user() — body copied verbatim from its original
 -- definition above, plus one statement after the profile insert — so an
 -- email-only tasting-group invitee is automatically linked to their Profile
@@ -922,7 +946,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================================================
--- PHASE 9 (2026-07-21): Fix coffees RLS — policy comment vs. behavior mismatch
+-- PHASE 11 (2026-07-21): Fix coffees RLS — policy comment vs. behavior mismatch
 -- The original Phase 1 comment above ("public ones readable by all") never
 -- matched the actual policy: "coffees_all" was FOR ALL USING ("createdBy" =
 -- auth.uid()::text), so a public coffee (isPublic = true) created by someone
