@@ -1,7 +1,15 @@
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
+import { ClipboardList, CheckCircle2, Users, Star } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { computeCoffeeAggregate } from "@/lib/coffeeAggregate";
+import { FLAVOR_DESC_KEYS } from "@/lib/descriptors";
+import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
+import { StatCard } from "@/components/dashboard/StatCard";
+import { FlavorCloud } from "@/components/results/FlavorCloud";
+import { PublishResultsToggle } from "@/components/coffees/PublishResultsToggle";
 
 export function generateStaticParams() {
   return [];
@@ -24,7 +32,9 @@ export default async function CoffeeProfilePage({
 
   const t = await getTranslations("coffee");
   const th = await getTranslations("history");
+  const ta = await getTranslations("attributes");
 
+  // Record-level access gate: public coffees, or ones the viewer owns.
   const coffee = await prisma.coffee.findFirst({
     where: {
       id,
@@ -34,13 +44,49 @@ export default async function CoffeeProfilePage({
 
   if (!coffee) notFound();
 
-  const history = await prisma.userCoffeeHistory.findMany({
-    where: { userId: user.id, coffeeId: id },
-    orderBy: { tastedAt: "desc" },
-    include: {
-      session: { select: { id: true, name: true } },
-    },
-  });
+  const isOwner = coffee.createdBy === user.id;
+
+  const [history, samples] = await Promise.all([
+    prisma.userCoffeeHistory.findMany({
+      where: { userId: user.id, coffeeId: id },
+      orderBy: { tastedAt: "desc" },
+      include: {
+        session: { select: { id: true, name: true } },
+      },
+    }),
+    prisma.sessionSample.findMany({
+      where: { coffeeId: id },
+      select: {
+        id: true,
+        sessionId: true,
+        session: { select: { id: true, name: true, date: true } },
+        aggregateScore: {
+          select: { communityScore: true, participantCount: true, attrAverages: true },
+        },
+        evaluations: {
+          where: { isDraft: false },
+          select: { descriptiveData: true, combinedData: true, individualScore: true },
+        },
+      },
+    }),
+  ]);
+
+  // Visibility rule: results (counts, scores, attr averages, flavor cloud) are
+  // visible to the owner always, or to anyone once the owner has published
+  // them. Details grid and the viewer's own tasting history are unaffected.
+  const showResults = isOwner || coffee.resultsPublished;
+  const aggregate = computeCoffeeAggregate(samples);
+
+  // A single representative descriptor blob (union of every evaluation's
+  // flavor/aroma ids) seeds which pills FlavorCloud renders; `allDescriptive`
+  // + `isGroup` then layer on per-descriptor frequency counts.
+  const unionDescriptive: Record<string, unknown> = {};
+  for (const key of FLAVOR_DESC_KEYS) {
+    unionDescriptive[key] = aggregate.allDescriptive.flatMap((blob) => {
+      const arr = blob[key];
+      return Array.isArray(arr) ? arr : [];
+    });
+  }
 
   return (
     <div className="max-w-2xl space-y-8">
@@ -49,6 +95,152 @@ export default async function CoffeeProfilePage({
         <h1 className="font-serif text-3xl text-green-dark font-semibold">{coffee.name}</h1>
         {coffee.variety && (
           <p className="text-sm text-brown-mid mt-1">{coffee.variety}</p>
+        )}
+      </div>
+
+      {/* Community results */}
+      <div>
+        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+          <h2 className="font-serif text-xl text-green-dark font-semibold">
+            {t("resultsTitle")}
+          </h2>
+          {isOwner && (
+            <PublishResultsToggle
+              coffeeId={coffee.id}
+              resultsPublished={coffee.resultsPublished}
+              translations={{
+                published: t("published"),
+                unpublished: t("unpublished"),
+                publish: t("publish"),
+                unpublish: t("unpublish"),
+                confirmPublish: t("confirmPublish"),
+              }}
+            />
+          )}
+        </div>
+
+        {!showResults ? (
+          <div className="bg-white border border-[#E8E0D0] rounded-xl p-5">
+            <p className="text-sm text-brown-mid">{t("resultsPrivate")}</p>
+          </div>
+        ) : samples.length === 0 ? (
+          <div className="bg-white border border-[#E8E0D0] rounded-xl p-5">
+            <p className="text-sm text-brown-mid">{t("noResults")}</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Stat tiles */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <StatCard
+                label={t("statSessions")}
+                value={String(aggregate.sessionsCount)}
+                subtext=""
+                icon={<ClipboardList size={18} />}
+              />
+              <StatCard
+                label={t("statEvals")}
+                value={String(aggregate.evaluationsCount)}
+                subtext=""
+                icon={<CheckCircle2 size={18} />}
+              />
+              <StatCard
+                label={t("statCommunityAvg")}
+                value={aggregate.communityAvg != null ? aggregate.communityAvg.toFixed(2) : "—"}
+                subtext=""
+                accent
+                icon={<Users size={18} />}
+              />
+              <StatCard
+                label={t("statIndividualAvg")}
+                value={aggregate.individualAvg != null ? aggregate.individualAvg.toFixed(2) : "—"}
+                subtext=""
+                icon={<Star size={18} />}
+              />
+            </div>
+
+            {/* Attribute averages */}
+            {Object.keys(aggregate.attrAverages).length > 0 && (
+              <div className="bg-white border border-[#E8E0D0] rounded-xl p-5">
+                <h3 className="font-serif text-lg text-green-dark font-semibold mb-4">
+                  {t("attrAveragesTitle")}
+                </h3>
+                <div className="flex flex-col gap-3">
+                  {AFFECTIVE_ATTRIBUTES.filter(
+                    (attr) => aggregate.attrAverages[attr.label] != null,
+                  ).map((attr) => {
+                    const value = aggregate.attrAverages[attr.label];
+                    return (
+                      <div key={attr.id} className="flex items-center gap-3">
+                        <span className="text-xs text-brown-mid w-36 shrink-0">
+                          {ta(attr.id)}
+                        </span>
+                        <div className="flex-1 h-2 rounded-full bg-cream overflow-hidden">
+                          <div
+                            className="h-full bg-green-dark rounded-full"
+                            style={{ width: `${Math.min(100, (value / 9) * 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-semibold text-brown-dark w-8 text-right">
+                          {value.toFixed(1)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Flavor cloud */}
+            {aggregate.allDescriptive.length > 0 && (
+              <div className="bg-white border border-[#E8E0D0] rounded-xl p-5">
+                <h3 className="font-serif text-lg text-green-dark font-semibold mb-2">
+                  {t("flavorsTitle")}
+                </h3>
+                <FlavorCloud
+                  descriptive={unionDescriptive}
+                  allDescriptive={aggregate.allDescriptive}
+                  isGroup
+                  locale={locale === "en" ? "en" : "es"}
+                />
+              </div>
+            )}
+
+            {/* Per-session appearances */}
+            <div className="bg-white border border-[#E8E0D0] rounded-xl overflow-hidden">
+              <h3 className="font-serif text-lg text-green-dark font-semibold p-5 pb-3">
+                {t("sessionsListTitle")}
+              </h3>
+              <table className="w-full text-sm">
+                <tbody>
+                  {aggregate.sessionRows.map((row, i) => (
+                    <tr key={`${row.sessionId}-${i}`} className="border-t border-brown-light/50">
+                      <td className="px-5 py-2 text-brown-dark">
+                        {isOwner ? (
+                          <Link
+                            href={`/${locale}/app/sessions/${row.sessionId}/results`}
+                            className="text-green-dark hover:underline"
+                          >
+                            {row.sessionName}
+                          </Link>
+                        ) : (
+                          row.sessionName
+                        )}
+                      </td>
+                      <td className="px-5 py-2 text-right text-brown-mid text-xs">
+                        {row.sessionDate.toLocaleDateString(
+                          locale === "es" ? "es-CO" : "en-US",
+                          { year: "numeric", month: "short", day: "numeric" },
+                        )}
+                      </td>
+                      <td className="px-5 py-2 text-right font-semibold text-green-dark">
+                        {row.communityScore != null ? row.communityScore.toFixed(2) : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
       </div>
 

@@ -38,25 +38,31 @@ model Profile {
 }
 
 model Coffee {
-  id             String   @id @default(cuid())
-  name           String
-  createdBy      String
-  creator        Profile  @relation(fields: [createdBy], references: [id])
-  country        String?
-  region         String?
-  farm           String?
-  producer       String?
-  species        String?
-  variety        String?
-  harvestYear    String?
-  processType    String?
-  altitude       String?
-  roastLevel     String?
-  certifications String[]
-  notes          String?
-  isPublic       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                 String    @id @default(cuid())
+  name               String
+  createdBy          String
+  creator            Profile   @relation(fields: [createdBy], references: [id])
+  country            String?
+  region             String?
+  farm               String?
+  producer           String?
+  species            String?
+  variety            String?
+  harvestYear        String?
+  processType        String?
+  altitude           String?
+  roastLevel         String?
+  certifications     String[]
+  notes              String?
+  isPublic           Boolean   @default(true)
+  // When true, the community results section (scores, attribute averages,
+  // flavor cloud) on the coffee profile page is visible to non-owners too.
+  // Owners always see their own results regardless of this flag. Toggled via
+  // setCoffeeResultsPublished (app/actions/coffees.ts).
+  resultsPublished   Boolean   @default(false)
+  resultsPublishedAt DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   sessionSamples SessionSample[]
   coffeeHistory  UserCoffeeHistory[]

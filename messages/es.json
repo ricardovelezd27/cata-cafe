@@ -334,7 +334,22 @@
     "altitude": "Altitud",
     "roastLevel": "Nivel de tueste",
     "certifications": "Certificaciones",
-    "tastingHistory": "Historial de catas"
+    "tastingHistory": "Historial de catas",
+    "resultsTitle": "Resultados de la comunidad",
+    "resultsPrivate": "Los resultados de este café son privados. El dueño puede publicarlos.",
+    "statSessions": "Sesiones",
+    "statEvals": "Catas",
+    "statCommunityAvg": "Promedio comunitario",
+    "statIndividualAvg": "Promedio individual",
+    "published": "Resultados públicos",
+    "unpublished": "Resultados privados",
+    "publish": "Publicar resultados",
+    "unpublish": "Hacer privados",
+    "confirmPublish": "¿Confirmar publicación?",
+    "attrAveragesTitle": "Promedios por atributo",
+    "flavorsTitle": "Sabores reportados",
+    "sessionsListTitle": "Apariciones en sesiones",
+    "noResults": "Aún no hay catas enviadas para este café."
   },
   "offline": {
     "bannerOffline": "Sin conexión. Tus evaluaciones se guardan localmente.",

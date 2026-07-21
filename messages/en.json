@@ -334,7 +334,22 @@
     "altitude": "Altitude",
     "roastLevel": "Roast level",
     "certifications": "Certifications",
-    "tastingHistory": "Tasting history"
+    "tastingHistory": "Tasting history",
+    "resultsTitle": "Community results",
+    "resultsPrivate": "This coffee's results are private. The owner can publish them.",
+    "statSessions": "Sessions",
+    "statEvals": "Cuppings",
+    "statCommunityAvg": "Community average",
+    "statIndividualAvg": "Individual average",
+    "published": "Results public",
+    "unpublished": "Results private",
+    "publish": "Publish results",
+    "unpublish": "Make private",
+    "confirmPublish": "Confirm publish?",
+    "attrAveragesTitle": "Attribute averages",
+    "flavorsTitle": "Reported flavors",
+    "sessionsListTitle": "Session appearances",
+    "noResults": "No cuppings have been submitted for this coffee yet."
   },
   "offline": {
     "bannerOffline": "You're offline. Your evaluations are being saved locally.",

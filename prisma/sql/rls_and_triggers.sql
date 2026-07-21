@@ -920,3 +920,24 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================================================
+-- PHASE 9 (2026-07-21): Fix coffees RLS — policy comment vs. behavior mismatch
+-- The original Phase 1 comment above ("public ones readable by all") never
+-- matched the actual policy: "coffees_all" was FOR ALL USING ("createdBy" =
+-- auth.uid()::text), so a public coffee (isPublic = true) created by someone
+-- else was NOT selectable via the anon/authenticated PostgREST surface —
+-- only Prisma's server-side postgres-role reads (which bypass RLS) ever
+-- honored isPublic. This splits SELECT (public OR own) from write (own only),
+-- matching what the app has always assumed. Also gates the new
+-- resultsPublished/resultsPublishedAt columns (Phase 3, coffee profile
+-- community results) the same way — they're plain columns on this row, no
+-- separate policy needed; setCoffeeResultsPublished() writes via Prisma
+-- (postgres role) but this keeps direct-client reads honest too.
+-- Apply manually via the Supabase Dashboard → SQL Editor.
+-- ============================================================================
+DROP POLICY IF EXISTS "coffees_all" ON coffees;
+CREATE POLICY "coffees_select" ON coffees
+  FOR SELECT USING ("isPublic" = true OR "createdBy" = auth.uid()::text);
+CREATE POLICY "coffees_write" ON coffees
+  FOR ALL USING ("createdBy" = auth.uid()::text);
