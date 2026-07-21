@@ -11,10 +11,11 @@ import { QuickAddCoCuppers } from "@/components/groups/QuickAddCoCuppers";
 import { AddByEmailForm } from "@/components/groups/AddByEmailForm";
 import { GroupEmailComposer } from "@/components/groups/GroupEmailComposer";
 
-export function generateStaticParams() {
-  return [];
-}
-export const dynamicParams = true;
+// Auth'd page with a dynamic [id] segment: must render per-request. With
+// generateStaticParams present, prod attempts on-demand static generation and
+// the cookies() call inside createClient() 500s (dev always renders dynamic,
+// so the crash only appears in production). Same pattern as join/[token].
+export const dynamic = "force-dynamic";
 
 export default async function GroupDetailPage({
   params,

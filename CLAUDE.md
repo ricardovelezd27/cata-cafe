@@ -184,7 +184,9 @@ work here.
 ### Locale-First Routing
 Every app route lives under `[locale]`. Every page component must:
 1. Call `setRequestLocale(locale)` as the first line (enables static rendering)
-2. Export `generateStaticParams()` returning `[{ locale: "es" }, { locale: "en" }]`
+2. Export `generateStaticParams()` returning `[{ locale: "es" }, { locale: "en" }]` — **but ONLY on routes whose sole dynamic segment is `[locale]`**.
+
+**EXCEPTION — authed pages with an extra dynamic segment (`[id]`, `[token]`):** do NOT export `generateStaticParams` (not even returning `[]`). With it present, production attempts on-demand static generation and the `cookies()` call inside the Supabase client crashes the route with a 500 — while dev renders dynamically and hides the bug. Instead export `export const dynamic = "force-dynamic";` (see `app/[locale]/join/[token]/page.tsx`, `app/[locale]/app/groups/[id]/page.tsx`). This caused a real production outage on 2026-07-21 (groups/[id] and coffees/[id] returned 500 for every user).
 
 ### Server Components by Default
 Pages and layouts are async RSC. Add `"use client"` only to components that use browser APIs, event handlers, or React state. Client components in `components/cupping/` receive data as props.
