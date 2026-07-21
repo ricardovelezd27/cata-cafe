@@ -965,3 +965,12 @@ CREATE POLICY "coffees_select" ON coffees
   FOR SELECT USING ("isPublic" = true OR "createdBy" = auth.uid()::text);
 CREATE POLICY "coffees_write" ON coffees
   FOR ALL USING ("createdBy" = auth.uid()::text);
+
+-- ============================================================================
+-- Phase 12 (2026-07-21): ai_chat_usage hardening
+-- Per-user daily AI-chat counters, written/read only via server-side Prisma
+-- behind requireAiAdmin(). Deny-all via RLS with no policies, same rationale
+-- as saved_insights / insight_narratives. Supabase auto-enables RLS on new
+-- public tables, so this is documentation + idempotent.
+-- ============================================================================
+ALTER TABLE ai_chat_usage ENABLE ROW LEVEL SECURITY;
