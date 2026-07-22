@@ -120,6 +120,20 @@ export function isAffectiveComplete(data: EvalData): boolean {
   return true;
 }
 
+// True when an evaluation carries at least ONE real affective rating. Guards
+// every on-screen score/chart: a sample the cupper never opened arrives as an
+// empty object (never null, see the `?? {}` in the results page loader), and
+// because calcAffectiveSum() substitutes a neutral 5 for each unset attribute,
+// an unguarded `{}` renders a fully plausible 79.00 and a perfectly symmetric
+// radar octagon instead of an empty state.
+export function hasAffectiveData(data: EvalData | null | undefined): boolean {
+  if (!data) return false;
+  return AFFECTIVE_ATTRIBUTES.some((attr) => {
+    const v = Number(data[`${attr.id}_final`] ?? data[attr.id] ?? 0);
+    return Number.isFinite(v) && v > 0;
+  });
+}
+
 export interface GroupEvalInput {
   data: EvalData;
   nonUniformCups?: boolean[];
