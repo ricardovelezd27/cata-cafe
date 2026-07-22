@@ -362,6 +362,7 @@ GEMINI_MODEL_LITE=            # Model override; default gemini-3.1-flash-lite
 GEMINI_MODEL_STANDARD=        # Model override; default gemini-3.5-flash
 CRON_SECRET=                  # Vercel Cron auth for /api/cron/insights-digest (Vercel env)
 NEXT_PUBLIC_SITE_URL=         # Absolute URL used in email links; defaults to localhost
+DB_POOL_MAX=                  # Per-instance Postgres pool size for the pg driver adapter; default 8
 ```
 
 ### AI Narrative Pattern (`lib/ai/`)

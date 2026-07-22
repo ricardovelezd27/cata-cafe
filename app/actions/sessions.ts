@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/auth";
 import { computeEvaluationDerived } from "@/lib/evaluation";
 
 type CoffeeInput = {
@@ -20,18 +21,6 @@ type SampleInput = {
   label: string;
   coffeeIdx?: number;
 };
-
-async function requireUser() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("not_authenticated");
-  await prisma.profile.upsert({
-    where: { id: user.id },
-    create: { id: user.id, displayName: user.email?.split("@")[0] ?? "Catador" },
-    update: {},
-  });
-  return user;
-}
 
 // Data-driven platform: a session can't be created without complete basic
 // coffee data (N-series feedback + insights data-quality push). Server-side
@@ -200,11 +189,12 @@ function isP2002(e: unknown): boolean {
 
 export async function upsertEvaluation(input: {
   sessionSampleId: string;
+  sessionId: string;
   moduleKey: "descriptive" | "affective" | "combined";
   data: Record<string, unknown>;
   cupsPerSample: number;
 }) {
-  const user = await requireUser();
+  const user = await requireUser({ skipProfileUpsert: true });
 
   const fields = computeEvaluationDerived(
     input.moduleKey,
@@ -222,10 +212,11 @@ export async function upsertEvaluation(input: {
       },
       create: {
         sessionSampleId: input.sessionSampleId,
+        sessionId: input.sessionId,
         cupperId: user.id,
         ...fields,
       },
-      update: { ...fields },
+      update: { sessionId: input.sessionId, ...fields },
       select: { id: true },
     });
 
@@ -240,7 +231,6 @@ export async function upsertEvaluation(input: {
     result = await doUpsert();
   }
 
-  revalidatePath(`/app/sessions`);
   return { ok: true, evaluationId: result.id };
 }
 
@@ -289,7 +279,7 @@ export async function upsertPhysical(input: {
   sessionSampleId: string;
   data: Record<string, unknown>;
 }) {
-  const user = await requireUser();
+  const user = await requireUser({ skipProfileUpsert: true });
   await prisma.physicalEvaluation.upsert({
     where: { sessionSampleId: input.sessionSampleId },
     create: {
@@ -299,7 +289,6 @@ export async function upsertPhysical(input: {
     },
     update: { data: input.data as never },
   });
-  revalidatePath(`/app/sessions`);
   return { ok: true };
 }
 
@@ -378,7 +367,7 @@ export async function upsertExtrinsic(input: {
   sessionSampleId: string;
   data: Record<string, unknown>;
 }) {
-  const user = await requireUser();
+  const user = await requireUser({ skipProfileUpsert: true });
   await prisma.extrinsicData.upsert({
     where: { sessionSampleId: input.sessionSampleId },
     create: {
@@ -393,7 +382,6 @@ export async function upsertExtrinsic(input: {
       revealedAt: new Date(),
     },
   });
-  revalidatePath(`/app/sessions`);
   return { ok: true };
 }
 

@@ -4,20 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { prisma } from "@/lib/prisma";
-
-async function requireUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("not_authenticated");
-  await prisma.profile.upsert({
-    where: { id: user.id },
-    create: { id: user.id, displayName: user.email?.split("@")[0] ?? "Catador" },
-    update: {},
-  });
-  return user;
-}
+import { requireUser } from "@/lib/auth";
 
 // opts.all — super-admin "god mode": drops the visibility filter entirely
 // (see lib/analytics/access.ts isSuperAdminEmail, gated in the page). A single

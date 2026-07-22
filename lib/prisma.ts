@@ -7,12 +7,12 @@ import { PrismaPg } from "@prisma/adapter-pg";
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 function createPrisma(): PrismaClient {
-  // Pool size for the pg driver. Defaults to ~10; raised to handle bursts of
-  // concurrent auto-saves during a live group cupping (dozens of cuppers).
-  // Override per-environment with DB_POOL_MAX. When DATABASE_URL points at
-  // Supabase's transaction pooler (port 6543, ?pgbouncer=true), the pooler caps
-  // real Postgres connections, so a larger client pool here is safe.
-  const max = Number(process.env.DB_POOL_MAX ?? 20);
+  // Pool size for the pg driver. Vercel serverless can hold many warm
+  // instances at once; a pool of 20 per instance risks exhausting the
+  // Supabase pgbouncer pooler's connection ceiling. 8 is safe for ~50
+  // concurrent cuppers' short-lived autosave writes. Raise via DB_POOL_MAX
+  // only once you've confirmed the pooler has headroom for it.
+  const max = Number(process.env.DB_POOL_MAX ?? 8);
   const adapter = new PrismaPg({
     connectionString: process.env.DATABASE_URL!,
     max,

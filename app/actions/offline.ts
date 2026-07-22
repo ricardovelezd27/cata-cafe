@@ -1,18 +1,8 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/auth";
 import { computeEvaluationDerived, type EvalModuleKey } from "@/lib/evaluation";
-
-async function requireUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("not_authenticated");
-  return user;
-}
 
 // Conflict-aware replay of an offline evaluation draft, called on reconnect.
 // Authorization stays identical to the live path: Prisma scoped by cupperId
@@ -35,7 +25,7 @@ export async function syncEvaluation(input: {
   cupsPerSample: number;
   force?: boolean;
 }): Promise<{ status: "synced" | "conflict" }> {
-  const user = await requireUser();
+  const user = await requireUser({ skipProfileUpsert: true });
 
   const existing = await prisma.evaluation.findUnique({
     where: {
@@ -50,6 +40,12 @@ export async function syncEvaluation(input: {
   if (existing && existing.isDraft === false && !input.force) {
     return { status: "conflict" };
   }
+
+  const sessionSample = await prisma.sessionSample.findUnique({
+    where: { id: input.sessionSampleId },
+    select: { sessionId: true },
+  });
+  if (!sessionSample) throw new Error("sample_not_found");
 
   const fields = computeEvaluationDerived(
     input.moduleKey,
@@ -66,13 +62,13 @@ export async function syncEvaluation(input: {
     },
     create: {
       sessionSampleId: input.sessionSampleId,
+      sessionId: sessionSample.sessionId,
       cupperId: user.id,
       ...fields,
     },
-    update: { ...fields },
+    update: { sessionId: sessionSample.sessionId, ...fields },
     select: { id: true },
   });
 
-  revalidatePath(`/app/sessions`);
   return { status: "synced" };
 }

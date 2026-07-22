@@ -965,3 +965,16 @@ CREATE POLICY "coffees_select" ON coffees
   FOR SELECT USING ("isPublic" = true OR "createdBy" = auth.uid()::text);
 CREATE POLICY "coffees_write" ON coffees
   FOR ALL USING ("createdBy" = auth.uid()::text);
+
+-- ============================================================================
+-- PHASE 12 (2026-07-22): evaluations.sessionId for server-side Realtime filtering
+-- Added via Prisma migration `evaluation_session_id` (denormalized copy of
+-- session_samples.sessionId, nullable, backfilled by the migration itself) so
+-- CupClient/ResultsClient can subscribe with a `sessionId=eq.<id>` Realtime
+-- filter instead of relying only on client-side sampleIds/isDraft filtering.
+-- REPLICA IDENTITY FULL on evaluations (set above, Phase 2) already covers
+-- this — no additional trigger or RLS change needed. No executable SQL in
+-- this section; the only manual prod step is confirming the migration's
+-- backfill ran: SELECT count(*) FROM evaluations WHERE "sessionId" IS NULL
+-- should be ~0 after deploy.
+-- ============================================================================

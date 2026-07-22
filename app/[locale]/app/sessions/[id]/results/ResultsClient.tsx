@@ -193,8 +193,13 @@ export function ResultsClient({
       .channel(`results:${session.id}`)
       .on(
         "postgres_changes",
-        // No filter string (Realtime filter length limits) — filter client-side.
-        { event: "UPDATE", schema: "public", table: "evaluations" },
+        // Denormalized sessionId column lets Realtime filter server-side; sampleIds/isDraft guards stay client-side.
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "evaluations",
+          filter: `sessionId=eq.${session.id}`,
+        },
         (payload) => {
           const row = payload.new as Record<string, unknown>;
           // Columns are camelCase in Postgres; accept snake_case defensively.

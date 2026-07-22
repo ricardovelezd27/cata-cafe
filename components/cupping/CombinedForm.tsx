@@ -12,13 +12,11 @@ import {
   SENSORY_DEFECTS,
   SENSORY_DEFECT_LABELS,
   type CuppingStep,
-  type SensoryDefect,
 } from "@/lib/constants";
 import {
   IntensitySlider,
   AffectiveBubbles,
   CATAPills,
-  CupIndicators,
   ScoreDisplay,
   FormSection,
   Notes,
@@ -130,13 +128,6 @@ export function CombinedForm({
   const nonUniformCups = nonUniformBools
     .map((v, i) => (v ? i + 1 : -1))
     .filter((n) => n > 0);
-  const defectiveCupsList = defectiveBools
-    .map((v, i) =>
-      v
-        ? { cup: i + 1, type: (defectoTipo[0] as SensoryDefect | undefined) ?? "moldy" }
-        : null
-    )
-    .filter(Boolean) as { cup: number; type: SensoryDefect }[];
 
   function toggleNonUniform(idx: number) {
     const next = [...nonUniformBools];
@@ -201,14 +192,12 @@ export function CombinedForm({
               onToggleDefective={toggleDefective}
               onToggleDefectType={toggleDefectType}
             />
-            <div className="mt-4">
-              <CupIndicators
-                totalCups={cupsPerSample}
-                nonUniform={nonUniformCups}
-                defective={defectiveCupsList}
-                showSummary
-              />
-            </div>
+            {(nonUniformCups.length > 0 || defectiveBools.some(Boolean)) && (
+              <div className="mt-2 text-[11px] text-brown-mid">
+                {nonUniformCups.length} {CUP_LABELS.nonUniform.toLowerCase()} ·{" "}
+                {defectiveBools.filter(Boolean).length} {CUP_LABELS.defective.toLowerCase()}
+              </div>
+            )}
           </FormSection>
         )}
 
