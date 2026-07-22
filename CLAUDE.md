@@ -225,6 +225,13 @@ All writes go through `app/actions/`. Call `revalidatePath()` after mutations to
 - Reconnect replay goes through `app/actions/offline.ts`, which keeps the **same authorization as the live path** — Prisma scoped by `cupperId`, never a raw Supabase select, so RLS/ownership rules hold. Conflict rules: no row → create; existing draft → local wins; already submitted → `conflict` unless `force`. `isDraft`/`submittedAt` are never mutated by replay.
 - `lib/evaluation.ts` (`computeEvaluationDerived`) computes derived scores for both the live and offline paths so a replayed draft scores identically.
 
+### PWA / Offline Shell
+- `public/sw.js` is a hand-rolled vanilla service worker (no build step, no workbox/serwist). `SW_VERSION` is baked into the cache names (`cata-static-<v>`, `cata-pages-<v>`); **bump it whenever a change would make old cached entries incompatible** (e.g. cache-key logic changes) — `activate` deletes any cache not matching the current version.
+- Exclusion rules the fetch handler applies **before** any caching logic — never intercepted: non-GET requests, cross-origin requests (Supabase Realtime `wss://`, etc.), `/api/*` (especially `/api/health` — the 30s connectivity probe in `hooks/useConnectivity.ts` must never be answered from cache), `/auth/*` (magic-link callback must always hit the network), and any path containing `hmr` (dev-only HMR sockets).
+- `/_next/static/`, `/_next/image`, `/icons/`, and root-level image assets are cache-first. Navigations and RSC data fetches are network-first with a cache fallback (falling back further to `ignoreSearch` matching, then letting the failure propagate so a route's own error boundary — e.g. `app/[locale]/app/sessions/[id]/cup/error.tsx` — can rebuild from IndexedDB). The `cata-pages` cache is capped at 60 entries (FIFO).
+- `components/pwa/ServiceWorkerRegister.tsx` registers the SW **production-only** by default (dev + Turbopack HMR interact badly with a caching layer). To test locally anyway: `localStorage.setItem("cata_sw_dev", "1")` then hard-reload. Mounted once in the root `app/layout.tsx` (the actual HTML shell — not `app/[locale]/layout.tsx`).
+- `app/manifest.ts` + `public/icons/icon-{192,512,512-maskable}.png` make the app installable. **The current icons are placeholders** (programmatically generated flat-color + glyph) — swap in real brand icons before shipping broadly.
+
 ### Realtime (Group Sessions)
 - Use `createBrowserClient` from `@supabase/ssr` in client components.
 - Subscribe to `evaluations` table updates **without a filter string** to avoid Realtime filter length limits. Filter client-side by comparing `payload.new.session_sample_id` against a `Set` of the current session's sample IDs.
