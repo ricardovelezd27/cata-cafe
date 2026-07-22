@@ -18,7 +18,9 @@ import type {
 const DEFAULT_MODELS: Record<AiGenerateRequest["tier"], string> = {
   lite: process.env.GEMINI_MODEL_LITE || "gemini-3.1-flash-lite",
   standard: process.env.GEMINI_MODEL_STANDARD || "gemini-3.5-flash",
-  pro: process.env.GEMINI_MODEL_PRO || "gemini-3.5-pro",
+  // No stable 3.x pro exists on the API yet (verified via ListModels 2026-07-22);
+  // pin a newer id via GEMINI_MODEL_PRO when one ships.
+  pro: process.env.GEMINI_MODEL_PRO || "gemini-3.1-pro-preview",
 };
 
 const DEFAULT_MAX_OUTPUT_TOKENS = 1024;

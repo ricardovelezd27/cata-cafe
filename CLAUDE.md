@@ -361,7 +361,7 @@ GEMINI_API_KEY=               # lib/ai/gemini.ts — AI narratives; unset → "A
 GEMINI_MODEL_LITE=            # Model override; default gemini-3.1-flash-lite
 GEMINI_MODEL_STANDARD=        # Model override; default gemini-3.5-flash
 ANALYTICS_AI_ADMIN_EMAILS=    # lib/analytics/access.ts — comma-separated AI-chat admins; unset → super-admin only
-GEMINI_MODEL_PRO=             # Model override for the insights chat; default gemini-3.5-pro
+GEMINI_MODEL_PRO=             # Model override for the insights chat; default gemini-3.1-pro-preview (no stable 3.x pro on the API yet)
 CRON_SECRET=                  # Vercel Cron auth for /api/cron/insights-digest (Vercel env)
 NEXT_PUBLIC_SITE_URL=         # Absolute URL used in email links; defaults to localhost
 ```
