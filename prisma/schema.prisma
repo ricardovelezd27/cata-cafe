@@ -126,6 +126,11 @@ model Evaluation {
   sessionSample   SessionSample @relation(fields: [sessionSampleId], references: [id], onDelete: Cascade)
   cupperId        String
   cupper          Profile       @relation(fields: [cupperId], references: [id])
+  // Denormalized from sessionSample.sessionId for server-side Realtime
+  // filtering (avoids the postgres_changes filter length limit). Nullable so
+  // old deployed code keeps working during rolling deploys; new writes always
+  // set it and updates heal old NULL rows.
+  sessionId String?
 
   descriptiveData Json @default("{}")
   affectiveData   Json @default("{}")
@@ -148,6 +153,7 @@ model Evaluation {
   @@unique([sessionSampleId, cupperId])
   @@index([cupperId])
   @@index([sessionSampleId, isDraft])
+  @@index([sessionId])
   @@map("evaluations")
 }
 

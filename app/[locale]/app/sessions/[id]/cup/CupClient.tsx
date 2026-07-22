@@ -25,6 +25,7 @@ import {
   closeSession,
   createInviteToken,
 } from "@/app/actions/community";
+import { buildInviteUrl } from "@/lib/inviteUrl";
 import {
   CUPPING_STEPS,
   DESCRIPTIVE_STEPS,
@@ -182,6 +183,8 @@ export function CupClient({
     generating: string;
     copy: string;
     copied: string;
+    copyImage: string;
+    downloadQr: string;
     formatLabel: string;
     phaseLabels: Record<string, string>;
     attrLabels: Record<string, string>;
@@ -367,7 +370,13 @@ export function CupClient({
       .channel(`session:${session.id}`)
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "evaluations" },
+        // Server-side sessionId filter narrows the stream; sampleIds/isDraft guards stay client-side.
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "evaluations",
+          filter: `sessionId=eq.${session.id}`,
+        },
         (payload) => {
           const row = payload.new as Record<string, unknown>;
           // Columns are camelCase in Postgres; accept snake_case defensively.
@@ -409,6 +418,7 @@ export function CupClient({
       if (key === "descriptive" || key === "affective" || key === "combined") {
         await upsertEvaluation({
           sessionSampleId: sampleId,
+          sessionId: session.id,
           moduleKey: key,
           data,
           cupsPerSample: session.cupsPerSample,
@@ -653,7 +663,7 @@ export function CupClient({
     setIsGeneratingInvite(true);
     try {
       const { token } = await createInviteToken(session.id);
-      const link = `${window.location.origin}/${locale}/join/${token}`;
+      const link = buildInviteUrl(window.location.origin, locale, token);
       setInviteLink(link);
     } finally {
       setIsGeneratingInvite(false);
@@ -866,6 +876,8 @@ export function CupClient({
         generatingLabel={translations.generating}
         copyLabel={translations.copy}
         copiedLabel={translations.copied}
+        qrCopyImageLabel={translations.copyImage}
+        qrDownloadLabel={translations.downloadQr}
         sessionClosed={sessionClosed}
         inviteLink={inviteLink}
         isGenerating={isGeneratingInvite}

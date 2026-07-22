@@ -8,9 +8,9 @@
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/auth";
 import { sendEmail, escapeHtml } from "@/lib/email";
 
 type Locale = "es" | "en";
@@ -19,20 +19,6 @@ const MAX_GROUP_MEMBERS = 200;
 
 // Same email shape check used by the landing-page waitlist (app/actions/waitlist.ts).
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-async function requireUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("not_authenticated");
-  await prisma.profile.upsert({
-    where: { id: user.id },
-    create: { id: user.id, displayName: user.email?.split("@")[0] ?? "Catador" },
-    update: {},
-  });
-  return user;
-}
 
 async function getOrigin() {
   const h = await headers();

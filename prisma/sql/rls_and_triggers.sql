@@ -974,3 +974,50 @@ CREATE POLICY "coffees_write" ON coffees
 -- public tables, so this is documentation + idempotent.
 -- ============================================================================
 ALTER TABLE ai_chat_usage ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- PHASE 13 (2026-07-22): evaluations.sessionId for server-side Realtime filtering
+-- Added via Prisma migration `evaluation_session_id` (denormalized copy of
+-- session_samples.sessionId, nullable, backfilled by the migration itself) so
+-- CupClient/ResultsClient can subscribe with a `sessionId=eq.<id>` Realtime
+-- filter instead of relying only on client-side sampleIds/isDraft filtering.
+-- REPLICA IDENTITY FULL on evaluations (set above, Phase 2) already covers
+-- this — no additional trigger or RLS change needed. No executable SQL in
+-- this section; the only manual prod step is confirming the migration's
+-- backfill ran: SELECT count(*) FROM evaluations WHERE "sessionId" IS NULL
+-- should be ~0 after deploy.
+-- ============================================================================
+
+-- ============================================================================
+-- PHASE 14 (2026-07-22): anonymous-safe handle_new_user()
+-- Redefines handle_new_user() — body copied verbatim from the Phase 10b
+-- definition above, with ONE change: the displayName expression now falls
+-- back through raw_user_meta_data.display_name → the email local-part →
+-- the literal 'Catador', instead of assuming NEW.email is non-null.
+-- REQUIRED before enabling Supabase anonymous sign-ins (Dashboard →
+-- Authentication → Sign In / Up → "Allow anonymous sign-ins"): an anonymous
+-- user has NEW.email = NULL, and split_part(NULL, '@', 1) is NULL, which
+-- would violate profiles."displayName" NOT NULL and hard-fail
+-- supabase.auth.signInAnonymously() for every guest joining via QR invite.
+-- Apply manually via the Supabase Dashboard → SQL Editor, BEFORE flipping the
+-- anonymous sign-ins toggle.
+-- ============================================================================
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.profiles (id, "displayName", "preferredLang")
+  VALUES (
+    NEW.id::text,
+    COALESCE(NEW.raw_user_meta_data->>'display_name', split_part(NEW.email, '@', 1), 'Catador'),
+    COALESCE(NEW.raw_user_meta_data->>'preferred_lang', 'es')
+  );
+
+  -- Auto-link email-only group invitees: claim any tasting_group_members rows
+  -- that were added by email before this user existed. Schema-qualified because
+  -- this trigger fires from auth.users, where search_path may not include public.
+  UPDATE public.tasting_group_members SET "userId" = NEW.id::text WHERE "userId" IS NULL AND lower(email) = lower(NEW.email);
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+-- ============================================================================

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { revealSample, refreshAggregateScores } from "@/app/actions/community";
@@ -8,6 +8,8 @@ import { ScoreTable } from "@/components/results/ScoreTable";
 import { SampleRadarChart } from "@/components/results/SampleRadarChart";
 import { FlavorCloud } from "@/components/results/FlavorCloud";
 import { MyResultsSummary } from "@/components/results/MyResultsSummary";
+import { WordCloud } from "@/components/results/WordCloud";
+import { buildFlavorCloud, buildTasterCloud } from "@/lib/wordCloud";
 import {
   DescriptorFrequency,
   type SampleBlockFreq,
@@ -143,6 +145,11 @@ export function ResultsClient({
     descEmptyStage: string;
     descEmptyBlock: string;
     descEmptyAll: string;
+    cloudTitle: string;
+    cloudScopeSession: string;
+    cloudScopeSample: string;
+    cloudScopeTaster: string;
+    cloudEmpty: string;
     alignTitle: string;
     alignSubtitle: string;
     alignExcluded: string;
@@ -193,8 +200,13 @@ export function ResultsClient({
       .channel(`results:${session.id}`)
       .on(
         "postgres_changes",
-        // No filter string (Realtime filter length limits) — filter client-side.
-        { event: "UPDATE", schema: "public", table: "evaluations" },
+        // Denormalized sessionId column lets Realtime filter server-side; sampleIds/isDraft guards stay client-side.
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "evaluations",
+          filter: `sessionId=eq.${session.id}`,
+        },
         (payload) => {
           const row = payload.new as Record<string, unknown>;
           // Columns are camelCase in Postgres; accept snake_case defensively.
@@ -262,6 +274,50 @@ export function ResultsClient({
   const showGroup = view === "group" && canViewGroup;
   const canViewIndividual = isOwner && isGroup && !!participants?.length;
   const canViewDescriptors = !!descriptorFrequency?.length;
+  // Per-taster flavor cloud reuses the same owner-only participant matrix as
+  // the Individual tab — never a new server data path.
+  const canViewTasterCloud = isOwner && !!participants?.length;
+
+  // ─── Flavor word cloud (descriptors tab) ───────────────────────────────────
+  type CloudScope = "session" | "sample" | "taster";
+  const [cloudScope, setCloudScope] = useState<CloudScope>("session");
+  const [cloudSampleId, setCloudSampleId] = useState<string>(
+    session.samples[0]?.id ?? "",
+  );
+  const [cloudParticipantId, setCloudParticipantId] = useState<string>(
+    participants?.[0]?.id ?? "",
+  );
+
+  const sessionCloudWords = useMemo(
+    () =>
+      descriptorFrequency && descriptorFrequency.length > 0
+        ? buildFlavorCloud(descriptorFrequency, { kind: "session" })
+        : [],
+    [descriptorFrequency],
+  );
+  const sampleCloudWords = useMemo(
+    () =>
+      descriptorFrequency && descriptorFrequency.length > 0 && cloudSampleId
+        ? buildFlavorCloud(descriptorFrequency, { kind: "sample", sampleId: cloudSampleId })
+        : [],
+    [descriptorFrequency, cloudSampleId],
+  );
+  const tasterCloudWords = useMemo(() => {
+    if (!canViewTasterCloud) return [];
+    const participant = participants!.find((p) => p.id === cloudParticipantId);
+    if (!participant) return [];
+    const blobs = participant.samples.map((s) =>
+      session.format === "descriptive" ? s.descriptive : s.combined,
+    );
+    return buildTasterCloud(blobs, locale === "en" ? "en" : "es");
+  }, [canViewTasterCloud, participants, cloudParticipantId, session.format, locale]);
+
+  const activeCloudWords =
+    cloudScope === "session"
+      ? sessionCloudWords
+      : cloudScope === "sample"
+        ? sampleCloudWords
+        : tasterCloudWords;
   // Defensive: fall back to summary if a gated view is selected without access.
   const effectiveDisplayView: DisplayView =
     (displayView === "individual" && !canViewIndividual) ||
@@ -510,6 +566,96 @@ export function ResultsClient({
         </div>
       ) : effectiveDisplayView === "descriptors" && canViewDescriptors ? (
         <div className="p-4 lg:p-6 flex flex-col gap-6">
+          {descriptorFrequency && descriptorFrequency.length > 0 && (
+            <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4 flex flex-col gap-3">
+              <h3 className="font-display text-lg font-medium text-primary-container">
+                {translations.cloudTitle}
+              </h3>
+
+              {/* Scope toggle */}
+              <div
+                className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1"
+                role="tablist"
+                aria-label={translations.cloudTitle}
+              >
+                {(
+                  [
+                    "session",
+                    "sample",
+                    ...(canViewTasterCloud ? (["taster"] as const) : []),
+                  ] as CloudScope[]
+                ).map((scope) => {
+                  const active = scope === cloudScope;
+                  return (
+                    <button
+                      key={scope}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setCloudScope(scope)}
+                      className={`shrink-0 whitespace-nowrap rounded-pill px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                        active
+                          ? "bg-primary-container text-on-primary"
+                          : "border border-outline-variant text-on-surface-variant hover:text-on-surface"
+                      }`}
+                    >
+                      {scope === "session"
+                        ? translations.cloudScopeSession
+                        : scope === "sample"
+                          ? translations.cloudScopeSample
+                          : translations.cloudScopeTaster}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Secondary picker row: sample pills (scope=sample) or participant pills (scope=taster) */}
+              {cloudScope === "sample" && (
+                <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                  {session.samples.map((s) => {
+                    const active = s.id === cloudSampleId;
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setCloudSampleId(s.id)}
+                        className={`shrink-0 whitespace-nowrap rounded-pill border px-3 py-1 text-xs font-medium transition-colors ${
+                          active
+                            ? "border-primary-container bg-primary-container text-on-primary"
+                            : "border-outline-variant text-on-surface-variant hover:text-on-surface"
+                        }`}
+                      >
+                        {s.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {cloudScope === "taster" && canViewTasterCloud && (
+                <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                  {participants!.map((p) => {
+                    const active = p.id === cloudParticipantId;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setCloudParticipantId(p.id)}
+                        className={`shrink-0 whitespace-nowrap rounded-pill border px-3 py-1 text-xs font-medium transition-colors ${
+                          active
+                            ? "border-primary-container bg-primary-container text-on-primary"
+                            : "border-outline-variant text-on-surface-variant hover:text-on-surface"
+                        }`}
+                      >
+                        {p.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              <WordCloud words={activeCloudWords} emptyLabel={translations.cloudEmpty} />
+            </div>
+          )}
           <DescriptorFrequency
             samples={descriptorFrequency!}
             blockLabels={blockLabels ?? {}}

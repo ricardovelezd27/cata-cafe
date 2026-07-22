@@ -80,10 +80,22 @@
 
 .button:disabled { cursor: default; opacity: 0.5; }
 
+.inviteBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .inviteSlot {
   display: flex;
   gap: 6px;
   align-items: center;
+}
+
+.qrSlot {
+  display: flex;
+  justify-content: center;
+  padding-top: 2px;
 }
 
 .inviteUrl {

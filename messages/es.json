@@ -190,6 +190,8 @@
       "generating": "Generando…",
       "copy": "Copiar",
       "copied": "Copiado",
+      "copyImage": "Copiar QR",
+      "downloadQr": "Descargar QR",
       "currentSample": "Muestra activa"
     }
   },
@@ -215,7 +217,12 @@
     "participants": "catadores",
     "emptyStage": "Ningún descriptor con 2 o más selecciones en esta etapa.",
     "emptyBlock": "Sin descriptores en común en este bloque.",
-    "emptyAll": "Aún no hay descriptores seleccionados por 2 o más catadores."
+    "emptyAll": "Aún no hay descriptores seleccionados por 2 o más catadores.",
+    "cloudTitle": "Nube de sabores",
+    "cloudScopeSession": "Sesión completa",
+    "cloudScopeSample": "Por muestra",
+    "cloudScopeTaster": "Por catador",
+    "cloudEmpty": "Sin descriptores aún"
   },
   "blocks": {
     "nariz": "Nariz",
@@ -301,7 +308,17 @@
     "evalSubmitted": "Evaluación enviada",
     "masterControls": "Panel de maestro",
     "masterRole": "Maestro de Cata",
-    "participantRole": "Catador Participante"
+    "participantRole": "Catador Participante",
+    "copyImage": "Copiar QR",
+    "downloadQr": "Descargar QR",
+    "scanToJoin": "Escanea para unirte a la cata",
+    "continueAsGuest": "Continuar como invitado",
+    "guestNamePlaceholder": "Tu nombre",
+    "guestJoinButton": "Entrar a la cata",
+    "guestJoining": "Entrando…",
+    "orSignIn": "o inicia sesión con tu correo",
+    "guestOfflineNotice": "Necesitas conexión para unirte; una vez dentro puedes catar sin internet.",
+    "guestError": "No se pudo entrar como invitado. Intenta con tu correo."
   },
   "results": {
     "title": "Resultados de la Sesión",

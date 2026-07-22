@@ -6,6 +6,8 @@ import { Trash2, X } from "lucide-react";
 import { createSession, createGroupSession } from "@/app/actions/sessions";
 import { startSession } from "@/app/actions/community";
 import { NotifyGroupPanel, type NotifyGroupOption, type NotifyGroupTranslations } from "@/components/groups/NotifyGroupPanel";
+import { InviteQR } from "@/components/ui/InviteQR";
+import { buildInviteUrl } from "@/lib/inviteUrl";
 
 type CoffeeInput = {
   name: string;
@@ -61,6 +63,8 @@ type Translations = {
   groupInviteLink: string;
   groupCopyLink: string;
   groupCopied: string;
+  groupCopyImage: string;
+  groupDownloadQr: string;
   groupStartCupping: string;
   // new form microcopy
   newForm: {
@@ -327,7 +331,7 @@ export function NewSessionForm({
     : null;
 
   const inviteUrl =
-    typeof window !== "undefined" ? `${window.location.origin}/${locale}/join/${inviteToken}` : "";
+    typeof window !== "undefined" ? buildInviteUrl(window.location.origin, locale, inviteToken) : "";
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(inviteUrl);
@@ -341,6 +345,18 @@ export function NewSessionForm({
       <div className="space-y-6">
         <div className="bg-surface-container-low border border-outline-variant rounded-card p-5 space-y-3">
           <p className="text-sm font-semibold text-primary-container">{t.groupInviteLink}</p>
+          {inviteUrl && (
+            <div className="flex justify-center py-1">
+              <InviteQR
+                url={inviteUrl}
+                labels={{
+                  copyImage: t.groupCopyImage,
+                  download: t.groupDownloadQr,
+                  copied: t.groupCopied,
+                }}
+              />
+            </div>
+          )}
           <div className="flex flex-col gap-2 sm:flex-row">
             <input
               readOnly

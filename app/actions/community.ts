@@ -2,24 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/auth";
 import type { CloseEmailSummary } from "@/lib/closeEmail";
-
-async function requireUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("not_authenticated");
-  await prisma.profile.upsert({
-    where: { id: user.id },
-    create: { id: user.id, displayName: user.email?.split("@")[0] ?? "Catador" },
-    update: {},
-  });
-  return user;
-}
 
 // ─── Submit all draft evaluations for a session ───────────────────────────────
 export async function submitAllEvaluations(sessionId: string) {
@@ -177,6 +163,24 @@ export async function revealSample(sampleId: string, coffeeId?: string) {
   });
 
   revalidatePath(`/app/sessions/${sample.sessionId}/results`);
+  return { ok: true };
+}
+
+// ─── Complete onboarding for a guest (anonymous) user ────────────────────────
+// Called right after supabase.auth.signInAnonymously() on the client, before
+// joinViaToken. Upsert (not update) because the DB trigger normally creates
+// the Profile row on signup, but we can't depend on its timing relative to
+// this call — the upsert makes either ordering safe.
+export async function completeGuestOnboarding(name: string) {
+  const user = await requireUser({ skipProfileUpsert: true });
+  const displayName = name.trim() || "Catador";
+
+  await prisma.profile.upsert({
+    where: { id: user.id },
+    create: { id: user.id, displayName, onboardingCompleted: true },
+    update: { displayName, onboardingCompleted: true },
+  });
+
   return { ok: true };
 }
 
