@@ -140,8 +140,22 @@ export async function askDataQuestion(
     break;
   }
 
-  // Bill the question — model calls were attempted even if the outcome was
-  // provider_error or no_answer. (The `skipped` path already returned above.)
+  // Billing rule: the daily quota is only discounted if at least one model
+  // API call actually succeeded (totalModelCalls > 0) — i.e. real cost was
+  // incurred. A pure failure before any successful call (e.g. a bad model
+  // name 404 on the very first call) must not cost the user a question, so
+  // we skip the upsert entirely and return the usage numbers UN-incremented.
+  // Once at least one call succeeded, bill exactly as before even if the
+  // final outcome is a mid-loop provider_error or a no_answer — API cost was
+  // actually incurred. (The `skipped`/no-API-key path already returned above.)
+  if (totalModelCalls === 0) {
+    return {
+      ok: false,
+      error: providerFailed ? "provider_error" : "no_answer",
+      usage: { used, limit, remaining: limit - used },
+    };
+  }
+
   await prisma.aiChatUsage.upsert({
     where: { userId_day: { userId: access.userId, day } },
     create: {
