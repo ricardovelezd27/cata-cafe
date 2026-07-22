@@ -1,16 +1,18 @@
 "use server";
 
 import { requireAnalyticsAccess } from "@/lib/analytics/access";
-import { getDashboardData, runInsightQuery } from "@/lib/analytics/queries";
-import { parseInsightConfig } from "@/lib/analytics/types";
-import type { InsightConfig } from "@/lib/analytics/types";
+import { getDashboardData, runInsightQuery, runPivotQuery } from "@/lib/analytics/queries";
+import { isPivotConfigLike, parseInsightConfig, parsePivotConfig } from "@/lib/analytics/types";
+import type { InsightConfig, PivotConfig } from "@/lib/analytics/types";
 import { cachedGenerate, type CachedAiResult } from "@/lib/ai/cache";
 import {
   buildDashboardNarrativeRequest,
   buildInsightNarrativeRequest,
+  buildLinkedInPivotRequest,
   buildLinkedInRequest,
   dashboardNarrativeInputs,
   insightNarrativeInputs,
+  pivotNarrativeInputs,
   type LinkedInContent,
   type NarrativeContent,
 } from "@/lib/ai/narratives";
@@ -71,13 +73,34 @@ export async function generateLinkedInDraft(
   force = false,
 ): Promise<CachedAiResult<LinkedInContent>> {
   await requireAnalyticsAccess();
+  const cleanHeadline = headline?.trim().slice(0, 140) || null;
+
+  if (isPivotConfigLike(rawConfig)) {
+    let config: PivotConfig;
+    try {
+      config = parsePivotConfig(rawConfig);
+    } catch {
+      return { ok: false, error: "invalid_config" };
+    }
+    // Locale-independent (the draft contains both languages); hash under "es".
+    const result = await runPivotQuery(config, "es");
+    if (result.rowKeys.length === 0) return { ok: false, error: "no_data" };
+    const inputs = { ...pivotNarrativeInputs(config, result), headline: cleanHeadline };
+    return cachedGenerate<LinkedInContent>(
+      "linkedin_pivot",
+      inputs,
+      "es",
+      buildLinkedInPivotRequest(inputs, cleanHeadline),
+      force,
+    );
+  }
+
   let config: InsightConfig;
   try {
     config = parseInsightConfig(rawConfig);
   } catch {
     return { ok: false, error: "invalid_config" };
   }
-  const cleanHeadline = headline?.trim().slice(0, 140) || null;
   // Locale-independent (the draft contains both languages); hash under "es".
   const rows = await runInsightQuery(config, "es");
   if (rows.length === 0) return { ok: false, error: "no_data" };

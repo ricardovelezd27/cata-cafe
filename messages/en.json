@@ -573,7 +573,6 @@
       "dashboard": "Dashboard",
       "explorer": "Explorer",
       "benchmark": "Benchmark",
-      "share": "Share",
       "chat": "Chat",
       "access": "Access"
     },
@@ -639,6 +638,7 @@
       "load": "Open",
       "delete": "Delete",
       "close": "Close",
+      "shareButton": "Share",
       "datasets": {
         "evaluations": "Evaluations",
         "sessions": "Sessions",
@@ -751,8 +751,6 @@
     "share": {
       "title": "Share insights",
       "subtitle": "Turn a saved insight into a share-ready card, complete with suggested social copy.",
-      "pickInsight": "Saved insight",
-      "noSaved": "No saved insights yet. Create them in the Explorer.",
       "headline": "Headline",
       "headlinePh": "e.g. Colombia dominates our cuppings",
       "downloadPng": "Download PNG",

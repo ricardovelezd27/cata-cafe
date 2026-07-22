@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { listSavedInsights } from "@/app/actions/analytics";
+import { citationLines } from "@/lib/analytics/referenceSources";
 import { ExplorerWorkspace } from "@/components/insights/ExplorerWorkspace";
 import type {
   ChartType,
@@ -20,11 +21,14 @@ export default async function InsightsExplorerPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const loc = locale === "en" ? "en" : "es";
 
-  const [t, tPivot, tAi, saved] = await Promise.all([
+  const [t, tPivot, tAi, tShare, tCharts, saved] = await Promise.all([
     getTranslations("insights.explorer"),
     getTranslations("insights.pivot"),
     getTranslations("insights.ai"),
+    getTranslations("insights.share"),
+    getTranslations("insights.charts"),
     listSavedInsights(),
   ]);
 
@@ -46,6 +50,7 @@ export default async function InsightsExplorerPage({
     <ExplorerWorkspace
       locale={locale}
       initialSaved={saved}
+      citationLines={citationLines(["cqi_arabica", "owid_fao"], loc)}
       t={{
         mode: { simple: t("mode.simple"), pivot: t("mode.pivot") },
         save: t("save"),
@@ -57,6 +62,37 @@ export default async function InsightsExplorerPage({
         delete: t("delete"),
         close: t("close"),
         running: t("running"),
+        shareButton: t("shareButton"),
+        shareTitle: tShare("title"),
+        shareSubtitle: tShare("subtitle"),
+      }}
+      shareT={{
+        headline: tShare("headline"),
+        headlinePh: tShare("headlinePh"),
+        downloadPng: tShare("downloadPng"),
+        generateTexts: tShare("generateTexts"),
+        postEs: tShare("postEs"),
+        postEn: tShare("postEn"),
+        copy: tShare("copy"),
+        copied: tShare("copied"),
+        exportError: tShare("exportError"),
+        countLabel: t("table.count"),
+        emptyLabel: tCharts("empty"),
+        measureLabels,
+        dimensionLabels,
+        pivot: {
+          total: tp("total"),
+          grandTotal: tp("grandTotal"),
+          countHint: tPivot.raw("countHint"),
+          empty: tp("empty"),
+        },
+        ai: {
+          generating: tAi("generating"),
+          regenerate: tAi("regenerate"),
+          disclaimer: tAi("disclaimer"),
+          notConfigured: tAi("notConfigured"),
+          error: tAi("error"),
+        },
       }}
       simpleT={{
         dataset: t("dataset"),

@@ -34,7 +34,6 @@ export default async function InsightsLayout({
           dashboard: t("tabs.dashboard"),
           explorer: t("tabs.explorer"),
           benchmark: t("tabs.benchmark"),
-          share: t("tabs.share"),
           chat: t("tabs.chat"),
           access: t("tabs.access"),
         }}

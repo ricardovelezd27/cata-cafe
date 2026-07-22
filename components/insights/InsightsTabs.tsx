@@ -11,7 +11,6 @@ interface InsightsTabsProps {
     dashboard: string;
     explorer: string;
     benchmark: string;
-    share: string;
     chat: string;
     access: string;
   };
@@ -25,7 +24,6 @@ export function InsightsTabs({ locale, isSuperAdmin, isAiAdmin, labels }: Insigh
     { href: base, label: labels.dashboard, exact: true },
     { href: `${base}/explorer`, label: labels.explorer, exact: false },
     { href: `${base}/benchmark`, label: labels.benchmark, exact: false },
-    { href: `${base}/share`, label: labels.share, exact: false },
     ...(isAiAdmin ? [{ href: `${base}/chat`, label: labels.chat, exact: false }] : []),
     ...(isSuperAdmin ? [{ href: `${base}/access`, label: labels.access, exact: false }] : []),
   ];

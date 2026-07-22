@@ -1,12 +1,16 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { Save, Trash2, FolderOpen } from "lucide-react";
+import { Save, Share2, Trash2, FolderOpen } from "lucide-react";
 import { isPivotConfigLike } from "@/lib/analytics/types";
 import type { InsightConfig, PivotConfig } from "@/lib/analytics/types";
 import { deleteSavedInsight, listSavedInsights, saveInsight } from "@/app/actions/analytics";
 import { ExplorerBuilder, type ExplorerTranslations } from "@/components/insights/ExplorerBuilder";
 import { PivotBuilder, type PivotTranslations } from "@/components/insights/PivotBuilder";
+import {
+  InsightCardComposer,
+  type ShareComposerTranslations,
+} from "@/components/insights/InsightCardComposer";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 
 export interface SavedInsightItem {
@@ -28,6 +32,11 @@ export interface ExplorerWorkspaceTranslations {
   delete: string;
   close: string;
   running: string;
+  /** Toolbar button label next to "Guardar insight" — opens the share modal. */
+  shareButton: string;
+  /** Share modal header — reuses insights.share.title/subtitle. */
+  shareTitle: string;
+  shareSubtitle: string;
 }
 
 interface ExplorerWorkspaceProps {
@@ -36,6 +45,8 @@ interface ExplorerWorkspaceProps {
   t: ExplorerWorkspaceTranslations;
   simpleT: ExplorerTranslations;
   pivotT: PivotTranslations;
+  shareT: ShareComposerTranslations;
+  citationLines: string[];
 }
 
 const inputClass =
@@ -51,15 +62,32 @@ type Mode = "simple" | "pivot";
  * (isPivotConfigLike) and pushes the raw config + a bumped loadKey into the
  * matching builder, which does its own parsing/validation.
  */
-export function ExplorerWorkspace({ locale, initialSaved, t, simpleT, pivotT }: ExplorerWorkspaceProps) {
+export function ExplorerWorkspace({
+  locale,
+  initialSaved,
+  t,
+  simpleT,
+  pivotT,
+  shareT,
+  citationLines,
+}: ExplorerWorkspaceProps) {
   const [mode, setMode] = useState<Mode>("simple");
 
   const configRef = useRef<InsightConfig | PivotConfig | null>(null);
+  // A companion boolean, NOT a re-derivation of the ref: the ref update itself
+  // is deliberately re-render-free (see class comment), but the Save/Share
+  // buttons' disabled state needs to react to "a config exists yet" at least
+  // once. setHasConfig(true) after it is already true bails out via React's
+  // same-value check, so this stays a one-time re-render per builder mount,
+  // not a re-render per keystroke.
+  const [hasConfig, setHasConfig] = useState(false);
   const handleSimpleConfigChange = useCallback((config: InsightConfig) => {
     configRef.current = config;
+    setHasConfig(true);
   }, []);
   const handlePivotConfigChange = useCallback((config: PivotConfig) => {
     configRef.current = config;
+    setHasConfig(true);
   }, []);
 
   const [simpleLoadedConfig, setSimpleLoadedConfig] = useState<unknown>(null);
@@ -71,6 +99,9 @@ export function ExplorerWorkspace({ locale, initialSaved, t, simpleT, pivotT }: 
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareConfig, setShareConfig] = useState<InsightConfig | PivotConfig | null>(null);
 
   async function handleSave() {
     if (!configRef.current) return;
@@ -104,6 +135,15 @@ export function ExplorerWorkspace({ locale, initialSaved, t, simpleT, pivotT }: 
     if (result.ok) setSaved((prev) => prev.filter((s) => s.id !== id));
   }
 
+  function openShare() {
+    if (!configRef.current) return;
+    // Frozen snapshot: the mounted builder keeps mutating configRef.current
+    // as the user keeps editing, but the open modal must stay pinned to
+    // whatever was active the moment "Compartir" was pressed.
+    setShareConfig(structuredClone(configRef.current));
+    setShareOpen(true);
+  }
+
   return (
     <div className="flex flex-col gap-5 pb-8">
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -127,14 +167,25 @@ export function ExplorerWorkspace({ locale, initialSaved, t, simpleT, pivotT }: 
             {t.mode.pivot}
           </button>
         </div>
-        <button
-          type="button"
-          onClick={() => setSaveOpen(true)}
-          className="flex items-center gap-1.5 text-sm text-[#3D5A3E] font-semibold hover:underline"
-        >
-          <Save size={15} />
-          {t.save}
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => setSaveOpen(true)}
+            className="flex items-center gap-1.5 text-sm text-[#3D5A3E] font-semibold hover:underline"
+          >
+            <Save size={15} />
+            {t.save}
+          </button>
+          <button
+            type="button"
+            onClick={openShare}
+            disabled={!hasConfig}
+            className="flex items-center gap-1.5 text-sm text-[#3D5A3E] font-semibold hover:underline disabled:opacity-50 disabled:pointer-events-none"
+          >
+            <Share2 size={15} />
+            {t.shareButton}
+          </button>
+        </div>
       </div>
 
       {/* Inactive builder stays unmounted so it doesn't run its own debounced
@@ -221,6 +272,23 @@ export function ExplorerWorkspace({ locale, initialSaved, t, simpleT, pivotT }: 
             {saving ? t.running : t.saveConfirm}
           </button>
         </div>
+      </ResponsiveDialog>
+
+      <ResponsiveDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        title={t.shareTitle}
+        subtitle={t.shareSubtitle}
+        closeLabel={t.close}
+      >
+        {shareConfig && (
+          <InsightCardComposer
+            locale={locale}
+            config={shareConfig}
+            citationLines={citationLines}
+            t={shareT}
+          />
+        )}
       </ResponsiveDialog>
     </div>
   );

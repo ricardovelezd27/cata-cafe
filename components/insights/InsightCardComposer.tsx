@@ -1,28 +1,28 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import Link from "next/link";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { toPng } from "html-to-image";
 import { Check, Copy, ImageDown, Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { generateLinkedInDraft } from "@/app/actions/ai";
-import { runInsight } from "@/app/actions/analytics";
-import { parseInsightConfig } from "@/lib/analytics/types";
-import type { ChartType, DimensionId, InsightConfig, InsightRow, MeasureId } from "@/lib/analytics/types";
+import { runInsight, runPivot } from "@/app/actions/analytics";
+import { isPivotConfigLike } from "@/lib/analytics/types";
+import type {
+  ChartType,
+  DimensionId,
+  InsightConfig,
+  InsightRow,
+  MeasureId,
+  PivotConfig,
+  PivotResult,
+} from "@/lib/analytics/types";
 import type { CachedAiResult } from "@/lib/ai/cache";
 import type { LinkedInContent } from "@/lib/ai/narratives";
 import { InsightChart } from "@/components/insights/InsightChart";
+import { PivotTable } from "@/components/insights/PivotTable";
+import { PivotChart } from "@/components/insights/PivotChart";
 import { useContainerWidth } from "@/hooks/useContainerWidth";
 
-export interface SavedInsightSummary {
-  id: string;
-  name: string;
-  config: unknown;
-}
-
 export interface ShareComposerTranslations {
-  pickInsight: string;
-  noSaved: string;
-  explorerLabel: string;
   headline: string;
   headlinePh: string;
   downloadPng: string;
@@ -36,6 +36,13 @@ export interface ShareComposerTranslations {
   emptyLabel: string;
   measureLabels: Record<MeasureId, string>;
   dimensionLabels: Record<DimensionId, string>;
+  pivot: {
+    total: string;
+    grandTotal: string;
+    /** ICU-style template with a `{count}` placeholder, interpolated locally. */
+    countHint: string;
+    empty: string;
+  };
   ai: {
     generating: string;
     regenerate: string;
@@ -47,7 +54,8 @@ export interface ShareComposerTranslations {
 
 interface InsightCardComposerProps {
   locale: string;
-  savedInsights: SavedInsightSummary[];
+  /** Already-validated snapshot of whichever builder is active in the Explorer. */
+  config: InsightConfig | PivotConfig;
   citationLines: string[];
   t: ShareComposerTranslations;
 }
@@ -55,14 +63,33 @@ interface InsightCardComposerProps {
 const CARD_WIDTH = 1200;
 const CARD_HEIGHT = 630;
 
+// The compact card box (1080x340) fits a heatmap PivotTable legibly up to this
+// size; larger cross-tabs fall back to a grouped PivotChart instead.
+const PIVOT_TABLE_MAX_ROWS = 10;
+const PIVOT_TABLE_MAX_COLS = 7;
+
 const inputClass =
   "w-full rounded-input border border-[#E8E0D0] bg-white px-3 py-2 text-sm text-brown-dark focus:outline-none focus:border-[#3D5A3E]";
 
-export function InsightCardComposer({ locale, savedInsights, citationLines, t }: InsightCardComposerProps) {
-  const [selectedId, setSelectedId] = useState<string>(savedInsights[0]?.id ?? "");
+function emptyPivotResult(measure: MeasureId): PivotResult {
+  return {
+    measure,
+    rowKeys: [],
+    colKeys: [],
+    cells: {},
+    rowTotals: {},
+    colTotals: {},
+    grandTotal: { value: null, count: 0 },
+  };
+}
+
+export function InsightCardComposer({ locale, config, citationLines, t }: InsightCardComposerProps) {
+  const pivot = isPivotConfigLike(config);
+
   const [headline, setHeadline] = useState("");
   const [rows, setRows] = useState<InsightRow[] | null>(null);
-  const [rowsPending, startRowsTransition] = useTransition();
+  const [pivotResult, setPivotResult] = useState<PivotResult | null>(null);
+  const [dataPending, startDataTransition] = useTransition();
 
   const [liResult, setLiResult] = useState<CachedAiResult<LinkedInContent> | null>(null);
   const [liPending, startLiTransition] = useTransition();
@@ -75,44 +102,36 @@ export function InsightCardComposer({ locale, savedInsights, citationLines, t }:
   const { ref: scaleRef, width: containerWidth } = useContainerWidth();
   const scale = containerWidth > 0 ? Math.min(1, containerWidth / CARD_WIDTH) : 0;
 
-  const selectedItem = useMemo(
-    () => savedInsights.find((s) => s.id === selectedId) ?? null,
-    [savedInsights, selectedId],
-  );
-
-  const selectedConfig = useMemo<InsightConfig | null>(() => {
-    if (!selectedItem) return null;
-    try {
-      return parseInsightConfig(selectedItem.config);
-    } catch {
-      return null;
-    }
-  }, [selectedItem]);
-
-  // Reset on selection change — computed during render (not an effect) per
-  // React's "adjust state on prop change" pattern. Clears any previously
-  // generated post text since it was written for a different query.
-  const selectedKey = selectedItem?.id ?? null;
-  const [prevSelectedKey, setPrevSelectedKey] = useState(selectedKey);
-  if (selectedKey !== prevSelectedKey) {
-    setPrevSelectedKey(selectedKey);
-    setLiResult(null);
+  // Reset on config change — adjusted during render (React's "adjust state on
+  // prop change" pattern, same as PivotBuilder's loadKey guard), not inside
+  // the effect below: an effect body calling setState synchronously trips
+  // react-hooks/set-state-in-effect. config is a frozen snapshot taken once
+  // when the modal opened, so in practice this fires once per mount — the
+  // reference-identity check keeps it correct if a future caller ever swaps
+  // the config while the composer stays mounted.
+  const [prevConfig, setPrevConfig] = useState(config);
+  if (config !== prevConfig) {
+    setPrevConfig(config);
     setRows(null);
+    setPivotResult(null);
   }
 
-  // Fetch fresh rows for the selected insight (a genuine external side effect).
+  // Fetch fresh data for the seeded config (a genuine external side effect).
   useEffect(() => {
-    if (!selectedConfig) return;
-    startRowsTransition(async () => {
-      const result = await runInsight(selectedConfig, locale);
-      setRows(result.ok ? result.rows : []);
+    startDataTransition(async () => {
+      if (isPivotConfigLike(config)) {
+        const result = await runPivot(config, locale);
+        setPivotResult(result.ok ? result.result : emptyPivotResult((config as PivotConfig).measure));
+      } else {
+        const result = await runInsight(config, locale);
+        setRows(result.ok ? result.rows : []);
+      }
     });
-  }, [selectedConfig, locale]);
+  }, [config, locale]);
 
   function generateTexts(force: boolean) {
-    if (!selectedConfig) return;
     startLiTransition(async () => {
-      const res = await generateLinkedInDraft(selectedConfig, headline.trim() || null, force);
+      const res = await generateLinkedInDraft(config, headline.trim() || null, force);
       setLiResult(res);
     });
   }
@@ -149,11 +168,11 @@ export function InsightCardComposer({ locale, savedInsights, citationLines, t }:
     }
   }
 
-  const displayHeadline = headline.trim() || selectedItem?.name || "";
+  const displayHeadline = headline.trim();
   const headlineSize = displayHeadline.length > 60 ? 32 : displayHeadline.length > 36 ? 42 : 54;
-  const chartType: ChartType = selectedConfig?.chartType ?? "bar";
-  const valueLabel = selectedConfig ? t.measureLabels[selectedConfig.measure] : "";
-  const dimensionLabel = selectedConfig ? t.dimensionLabels[selectedConfig.dimension] : "";
+  const chartType: ChartType = pivot ? "bar" : (config as InsightConfig).chartType;
+  const valueLabel = t.measureLabels[config.measure];
+  const dimensionLabel = pivot ? "" : t.dimensionLabels[(config as InsightConfig).dimension];
   const dateLabel = new Date().toLocaleDateString(locale === "en" ? "en-US" : "es-ES", {
     year: "numeric",
     month: "long",
@@ -163,44 +182,25 @@ export function InsightCardComposer({ locale, savedInsights, citationLines, t }:
   const liContent = liResult?.ok ? liResult.content : null;
   const liSkipped = liResult != null && !liResult.ok && liResult.skipped === true;
   const liErrored = liResult != null && !liResult.ok && !liResult.skipped;
-  // Also show the spinner in the gap between the render-phase reset (rows
-  // become null) and the fetch effect's transition actually starting.
-  const rowsLoading = rowsPending || (selectedConfig !== null && rows === null);
+  const rowsLoading = pivot
+    ? dataPending || pivotResult === null
+    : dataPending || rows === null;
+
+  const showPivotTable =
+    pivotResult !== null &&
+    pivotResult.rowKeys.length <= PIVOT_TABLE_MAX_ROWS &&
+    pivotResult.colKeys.length <= PIVOT_TABLE_MAX_COLS;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+    // Single column always: the only caller now is ResponsiveDialog, whose
+    // desktop width is capped at min(32rem, 100vw-48px) = 512px regardless of
+    // the viewport — the old lg:grid-cols-2 was a VIEWPORT breakpoint (not a
+    // container query) and would still fire on any desktop-width screen,
+    // squeezing two columns into that 512px dialog.
+    <div className="grid grid-cols-1 gap-5 items-start">
       {/* Controls */}
       <div className="flex flex-col gap-4">
         <div className="bg-white rounded-card border border-[#E8E0D0] shadow-card p-5 flex flex-col gap-4">
-          <label className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-brown-mid uppercase tracking-wide">
-              {t.pickInsight}
-            </span>
-            {savedInsights.length === 0 ? (
-              <div className="text-sm text-brown-mid">
-                <p>{t.noSaved}</p>
-                <Link
-                  href={`/${locale}/app/insights/explorer`}
-                  className="text-[#3D5A3E] font-semibold hover:underline"
-                >
-                  {t.explorerLabel} →
-                </Link>
-              </div>
-            ) : (
-              <select
-                className={inputClass}
-                value={selectedId}
-                onChange={(e) => setSelectedId(e.target.value)}
-              >
-                {savedInsights.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </label>
-
           <label className="flex flex-col gap-1">
             <span className="text-xs font-semibold text-brown-mid uppercase tracking-wide">
               {t.headline}
@@ -228,7 +228,7 @@ export function InsightCardComposer({ locale, savedInsights, citationLines, t }:
             <button
               type="button"
               onClick={() => generateTexts(false)}
-              disabled={!selectedConfig || liPending}
+              disabled={liPending}
               className="flex items-center gap-1.5 rounded-pill border border-[#E8E0D0] bg-white text-sm font-semibold text-brown-dark px-4 py-2 disabled:opacity-50 hover:border-[#3D5A3E] hover:text-[#3D5A3E]"
             >
               <Sparkles size={15} />
@@ -353,14 +353,37 @@ export function InsightCardComposer({ locale, savedInsights, citationLines, t }:
                   </div>
                 ) : (
                   <div style={{ width: 1080, height: 340 }} className="overflow-hidden">
-                    <InsightChart
-                      rows={rows ?? []}
-                      chartType={chartType}
-                      valueLabel={valueLabel}
-                      dimensionLabel={dimensionLabel}
-                      countLabel={t.countLabel}
-                      emptyLabel={t.emptyLabel}
-                    />
+                    {pivot ? (
+                      showPivotTable ? (
+                        <PivotTable
+                          result={pivotResult as PivotResult}
+                          heatmap
+                          measureLabel={valueLabel}
+                          t={{
+                            total: t.pivot.total,
+                            grandTotal: t.pivot.grandTotal,
+                            countHint: t.pivot.countHint,
+                            empty: t.pivot.empty,
+                          }}
+                        />
+                      ) : (
+                        <PivotChart
+                          result={pivotResult as PivotResult}
+                          view="grouped"
+                          measureLabel={valueLabel}
+                          t={{ empty: t.pivot.empty }}
+                        />
+                      )
+                    ) : (
+                      <InsightChart
+                        rows={rows ?? []}
+                        chartType={chartType}
+                        valueLabel={valueLabel}
+                        dimensionLabel={dimensionLabel}
+                        countLabel={t.countLabel}
+                        emptyLabel={t.emptyLabel}
+                      />
+                    )}
                   </div>
                 )}
               </div>

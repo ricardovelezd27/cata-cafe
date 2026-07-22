@@ -573,7 +573,6 @@
       "dashboard": "Panel",
       "explorer": "Explorador",
       "benchmark": "Benchmark",
-      "share": "Compartir",
       "chat": "Chat",
       "access": "Acceso"
     },
@@ -639,6 +638,7 @@
       "load": "Abrir",
       "delete": "Eliminar",
       "close": "Cerrar",
+      "shareButton": "Compartir",
       "datasets": {
         "evaluations": "Evaluaciones",
         "sessions": "Sesiones",
@@ -751,8 +751,6 @@
     "share": {
       "title": "Compartir insights",
       "subtitle": "Convierte un insight guardado en una tarjeta lista para compartir, con textos sugeridos para redes.",
-      "pickInsight": "Insight guardado",
-      "noSaved": "Aún no tienes insights guardados. Créalos en el Explorador.",
       "headline": "Titular",
       "headlinePh": "Ej. Colombia domina nuestras cataciones",
       "downloadPng": "Descargar PNG",
