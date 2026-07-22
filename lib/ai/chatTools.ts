@@ -128,6 +128,7 @@ ${compatibilityMatrix()}
 Rules:
 - Use a tool for any numeric claim: counts, averages, trends, comparisons, rankings. Never invent, extrapolate, or estimate a figure that a tool has not returned.
 - Use ONLY the figures returned by the tools in your answer.
+- If your answer reuses a benchmark (CQI) or production/reference (FAO/OWID) figure that a tool returned earlier in this conversation, without calling that tool again this turn, name the source in the answer text (e.g. "según el benchmark de CQI…" / "according to the CQI benchmark…", "según datos de FAO/OWID…" / "according to FAO/OWID data…") so the citation is never silently dropped.
 - If a result is based on a small sample (n < 20), say so and soften the claim accordingly.
 - Be concise — a few sentences, not a report.
 - Reply in plain text only. No markdown tables, no headings, no code blocks.

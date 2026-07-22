@@ -89,11 +89,24 @@ export function ChatPanel({ locale, t }: ChatPanelProps) {
     const question = raw.trim();
     if (!question || pending) return;
 
-    // History excludes error bubbles (they're UI-only failure notices, not
-    // real model turns) and the question we're about to append.
-    const history = messages
-      .filter((m) => !m.error)
-      .map((m) => ({ role: m.role, text: m.text }));
+    // Build history as strict user/assistant PAIRS instead of just filtering
+    // out error bubbles: `messages` always alternates user, assistant (the
+    // assistant turn may be an error bubble), so a user message only belongs
+    // in history when its immediate successor is a real (non-error)
+    // assistant reply — a failed question with no successful answer is
+    // dropped entirely, not left as a dangling/mid-history user turn. This
+    // guarantees the array we send always alternates user/model and ends on
+    // an assistant turn, so appending the new question server-side never
+    // produces two adjacent role:"user" contents (which Gemini 400s on).
+    const history: { role: "user" | "assistant"; text: string }[] = [];
+    for (let i = 0; i < messages.length; i++) {
+      const m = messages[i];
+      if (m.role !== "user") continue;
+      const next = messages[i + 1];
+      if (next && next.role === "assistant" && !next.error) {
+        history.push({ role: "user", text: m.text }, { role: "assistant", text: next.text });
+      }
+    }
 
     append({ id: crypto.randomUUID(), role: "user", text: question });
     setInput("");

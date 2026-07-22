@@ -450,9 +450,10 @@ export async function runInsightQuery(
 
 // ── Pivot builder ────────────────────────────────────────────────────────────
 // Row×column cross-tab over the same fetch/bucket/measure machinery above.
-// With `columns: []` this must reduce to exactly `aggregateRows`' numbers
-// (see runPivotQuery's "__total__" synthetic column) — that's the load-bearing
-// consistency guarantee the UI depends on.
+// Parity guarantee: with `columns: []` (the "__total__" synthetic column),
+// runPivotQuery's row axis must produce exactly the same buckets AND exactly
+// the same numbers as `aggregateRows` over the same rows/config/locale —
+// that's the load-bearing consistency guarantee the UI depends on.
 
 /** Dimensions that sort chronologically/numerically instead of by value. */
 const CHRONO_DIMS = new Set<DimensionId>(["month", "scoreBucket", "harvestYear", "altitudeBand"]);
@@ -584,13 +585,28 @@ export async function runPivotQuery(config: PivotConfig, locale: Locale): Promis
     }
     if (excluded) continue;
 
+    // Sparse row dims (e.g. harvestYear/altitudeBand/flavorDescriptor/month/
+    // cupper/scoreBucket/block*) intentionally DROP the record from the
+    // cross-tab entirely when no bucket applies — this mirrors aggregateRows'
+    // (Simple Explorer) semantics for a missing grouping dimension, so a
+    // rows-only pivot stays in parity with it. This is deliberately
+    // asymmetric with the columns handling just below.
     const rowRefs = crossBuckets(config.rows, row, locale);
     if (rowRefs.length === 0) continue;
 
     const colRefs = hasColumns
-      ? crossBuckets(config.columns, row, locale)
+      ? (() => {
+          const refs = crossBuckets(config.columns, row, locale);
+          // Unlike rows, a sparse column dim must NOT drop the record from
+          // the cross-tab — that would silently under-count row/grand totals
+          // with no visual signal. Fall back to the same "unknown"/"Sin
+          // dato" bucket scalar dimensions use for a missing value (see
+          // `scalar()` in extractBuckets), so it merges naturally with any
+          // row that already carries a genuine unknown bucket for the same
+          // dimension.
+          return refs.length > 0 ? refs : [{ key: "unknown", label: UNKNOWN_LABEL[locale] }];
+        })()
       : [{ key: PIVOT_TOTAL_COL, label: "" }];
-    if (colRefs.length === 0) continue;
 
     const v = measureValue(row, config.measure);
 
@@ -642,14 +658,29 @@ export async function runPivotQuery(config: PivotConfig, locale: Locale): Promis
   }
   const allColKeys = [...allColKeySet];
 
+  // Parity with aggregateRows: for avg/min/max measures it drops a bucket
+  // outright when its accumulator has n===0 (`if (acc.n === 0) continue`) —
+  // rows/columns whose only matching records had no measurable value. Apply
+  // the same rule here, BEFORE the top-N trim, using each key's full
+  // (pre-trim, not restricted to the other axis' kept keys) total
+  // accumulator, so a dropped key never consumes a row/column slot and never
+  // shows as an all-"—" line the Simple Explorer would never render. Count
+  // never drops a key here: every key in cells/allRowKeys/allColKeys already
+  // has count > 0 by construction, matching aggregateRows' unconditional
+  // `case "count": value = acc.count` (no n-check).
+  const rowKeysWithData =
+    config.measure === "count" ? allRowKeys : allRowKeys.filter((k) => rowTotalAcc(k).n > 0);
+  const colKeysWithData =
+    config.measure === "count" ? allColKeys : allColKeys.filter((k) => colTotalAcc(k).n > 0);
+
   const orderedRowKeys = orderAxisKeys(
-    allRowKeys,
+    rowKeysWithData,
     config.rows[0],
     (k) => rowTotalAcc(k),
     config.measure,
   );
   const orderedColKeys = orderAxisKeys(
-    allColKeys,
+    colKeysWithData,
     hasColumns ? config.columns[0] : undefined,
     (k) => colTotalAcc(k),
     config.measure,

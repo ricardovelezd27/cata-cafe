@@ -88,21 +88,29 @@ function FieldChip({
   removeLabel?: string;
   onClick?: () => void;
 }) {
+  // The clickable chip surface and the "remove" affordance are separate
+  // sibling <button>s (never nested — a <button> inside a <button> is
+  // invalid HTML and unreachable via keyboard/AT) inside a plain, non-
+  // interactive pill wrapper. When there's no onClick (rows/columns shelf
+  // chips), the label renders as plain text since only the remove button is
+  // interactive there.
   return (
     <span
-      onClick={onClick}
       className={`inline-flex items-center gap-1.5 rounded-pill border border-[#E8E0D0] bg-cream px-3 py-1 text-xs font-medium text-brown-dark ${
-        onClick ? "cursor-pointer hover:border-[#3D5A3E]" : ""
+        onClick ? "hover:border-[#3D5A3E]" : ""
       }`}
     >
-      {label}
+      {onClick ? (
+        <button type="button" onClick={onClick} className="cursor-pointer">
+          {label}
+        </button>
+      ) : (
+        label
+      )}
       {onRemove && (
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove();
-          }}
+          onClick={onRemove}
           aria-label={removeLabel}
           className="text-brown-mid hover:text-red-defect"
         >

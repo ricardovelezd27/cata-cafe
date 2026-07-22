@@ -102,6 +102,7 @@ export function PivotTable({ result, heatmap, measureLabel, t }: PivotTableProps
             />
             {totalOnly ? (
               <th
+                scope="col"
                 className="sticky top-0 z-10 bg-white px-3 py-2 text-right text-xs font-semibold text-brown-mid uppercase tracking-wide border-b whitespace-nowrap"
                 style={{ borderColor: BORDER }}
               >
@@ -112,6 +113,7 @@ export function PivotTable({ result, heatmap, measureLabel, t }: PivotTableProps
                 {colKeys.map((c) => (
                   <th
                     key={c.key}
+                    scope="col"
                     className="sticky top-0 z-10 bg-white px-3 py-2 text-right text-xs font-semibold text-brown-mid uppercase tracking-wide border-b whitespace-nowrap"
                     style={{ borderColor: BORDER }}
                   >
@@ -119,6 +121,7 @@ export function PivotTable({ result, heatmap, measureLabel, t }: PivotTableProps
                   </th>
                 ))}
                 <th
+                  scope="col"
                   className="sticky top-0 z-10 bg-white px-3 py-2 text-right text-xs font-semibold text-brown-dark uppercase tracking-wide border-b border-l whitespace-nowrap"
                   style={{ borderColor: BORDER }}
                 >
