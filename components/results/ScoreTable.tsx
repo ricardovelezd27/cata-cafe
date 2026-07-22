@@ -1,6 +1,6 @@
 "use client";
 
-import { calcIndividualScore } from "@/lib/scoring";
+import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 
 type AggregateScoreData = {
@@ -272,7 +272,10 @@ export function ScoreTable({
                 ? sample.combined
                 : null;
 
-            const score = affData ? calcIndividualScore(affData, cupsPerSample) : null;
+            const score =
+              affData && hasAffectiveData(affData)
+                ? calcIndividualScore(affData, cupsPerSample)
+                : null;
             const nonUniform = (affData?.tazas_no_uniformes as boolean[] | undefined) ?? [];
             const defective = (affData?.tazas_defectuosas as boolean[] | undefined) ?? [];
             const u = nonUniform.filter(Boolean).length;
@@ -337,13 +340,17 @@ export function ScoreTable({
                     const raw = descData
                       ? (descData[`${attr.id}_int`] as number | undefined)
                       : undefined;
-                    const val = raw !== undefined && raw > 0 ? raw : 1;
-                    const isDefault = raw === undefined || raw === 0;
+                    const rated = raw !== undefined && raw > 0;
                     return (
                       <td key={attr.id} style={{ ...tdBase, background: rowBg }}>
-                        <span style={isDefault ? { color: "#C8C0B0" } : undefined}>
-                          {val}
-                        </span>
+                        {rated ? (
+                          <span>{raw}</span>
+                        ) : (
+                          // Never print a literal "1" for an unrated attribute —
+                          // it reads as a real intensity. Matches the "—" the
+                          // affective cells in this same row already use.
+                          <span style={{ color: "#C8C0B0" }}>—</span>
+                        )}
                       </td>
                     );
                   })}

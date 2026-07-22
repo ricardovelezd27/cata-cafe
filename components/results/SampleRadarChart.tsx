@@ -10,7 +10,12 @@ import {
   Tooltip,
 } from "recharts";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
-import { calcIndividualBreakdown, calcIndividualScore, scoreBand } from "@/lib/scoring";
+import {
+  calcIndividualBreakdown,
+  calcIndividualScore,
+  hasAffectiveData,
+  scoreBand,
+} from "@/lib/scoring";
 import { ScoreBreakdownPanel } from "@/components/results/ScoreBreakdownPanel";
 
 const CHART_HEIGHT = 220;
@@ -125,6 +130,8 @@ export function SampleRadarChart({
       ? sample.combined
       : null;
 
+  const hasMyData = hasAffectiveData(affData);
+
   const radarData = AFFECTIVE_ATTRIBUTES.map((attr) => {
     const rawVal = affData
       ? Number(
@@ -137,12 +144,10 @@ export function SampleRadarChart({
     const comVal = sample.aggregateScore?.attrAverages[attr.label] ?? 0;
     return {
       subject: attr.label,
-      mine: affData ? myVal : undefined,
+      mine: hasMyData ? myVal : undefined,
       community: comVal > 0 ? comVal : undefined,
     };
   });
-
-  const hasMyData = affData !== null;
   const hasCommunityData =
     showCommunity &&
     Object.keys(sample.aggregateScore?.attrAverages ?? {}).length > 0 &&
@@ -165,7 +170,7 @@ export function SampleRadarChart({
       })
     : [];
 
-  const score = affData ? calcIndividualScore(affData, cupsPerSample) : null;
+  const score = hasMyData && affData ? calcIndividualScore(affData, cupsPerSample) : null;
   const scoreNum = score !== null && score !== "—" ? Number(score) : null;
   const band = scoreNum !== null ? scoreBand(scoreNum) : null;
   const scoreColor = band ? SCORE_COLORS[band] : "#8B7355";

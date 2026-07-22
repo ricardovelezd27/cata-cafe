@@ -260,11 +260,11 @@ export function MyResultsSummary({
   const showAffective = format !== "descriptive";
   const showCVA = showAffective;
 
-  // Per-block disclosure state, keyed "<sampleId>:<blockId>". Blocks default
-  // collapsed; only the CVA score section is always visible.
-  const [openBlocks, setOpenBlocks] = useState<Set<string>>(new Set());
+  // Per-block disclosure state, keyed "<sampleId>:<blockId>". Tracked as the
+  // closed set so blocks render expanded by default — collapsing is opt-in.
+  const [closedBlocks, setClosedBlocks] = useState<Set<string>>(new Set());
   const toggleBlock = (key: string) => {
-    setOpenBlocks((prev) => {
+    setClosedBlocks((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -378,7 +378,7 @@ export function MyResultsSummary({
                     if (block.taste && !showDescriptive) return null;
                     const tasteSelected = block.taste ? tasteIds(data) : [];
                     const blockKey = `${sample.id}:${block.id}`;
-                    const isOpen = openBlocks.has(blockKey);
+                    const isOpen = !closedBlocks.has(blockKey);
                     const summaryText = blockSummaryText(data, block, showDescriptive, showAffective, t);
                     return (
                       <div key={block.id}>
