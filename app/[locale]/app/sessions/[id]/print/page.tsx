@@ -77,6 +77,7 @@ export default async function PrintPage({
 
   return (
     <PrintClient
+      locale={locale}
       inviteUrl={inviteUrl}
       scanToJoinLabel={scanToJoinLabel}
       session={{
@@ -92,6 +93,7 @@ export default async function PrintPage({
           return {
             id: s.id,
             label: s.label,
+            revealed: s.revealed,
             coffeeName: s.coffee?.name ?? null,
             descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
             affective: (ev?.affectiveData as Record<string, unknown>) ?? {},

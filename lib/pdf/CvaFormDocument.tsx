@@ -1,12 +1,27 @@
-// Server-only. Renders one cupper's evaluation of a session as a PDF that
-// faithfully replicates the official SCA CVA paper cupping form — group /
-// subgroup checkboxes, qualifying notes on the category's notes line, affective
-// 1–9 scales, uniformity/defect cup rows, and the final score box.
+// Server-only. Renders one cupper's evaluation of a session as a PDF laid out
+// to the geometry of the official SCA CVA paper forms (v1.1, Sept 2023):
+//
+//   Descriptive — A4 portrait, TWO samples per page, one shared CATA box for
+//                 Fragrance+Aroma and one for Flavor+Aftertaste.
+//   Affective   — A4 LANDSCAPE, samples as side-by-side columns (3 per page),
+//                 impression-of-quality legend across the top, cup rows below.
+//   Combined    — A4 landscape, Part 1 descriptive left / Part 2 affective
+//                 right / Part 3 extrinsic + score along the bottom.
+//
+// The official form lists nine descriptor categories with their sub-options
+// inline in parentheses ("FRUITY (BERRY  DRIED FRUIT  CITRUS FRUIT)"). Our nine
+// L1 wheel groups map onto those rows one-for-one and the L2 subgroups fill the
+// parentheses, so the app's full vocabulary lands in the official footprint
+// without demoting anything. L3 leaves and qualifying notes ride the box's
+// notes line, exactly as buildFlavorGroups assembles them.
+//
+// This is a DERIVED document, not an SCA publication: the footer says so on
+// every page and no SCA copyright line is reproduced. See CVA_TEXT.attribution.
 //
 // NEVER import this (or @react-pdf/renderer) from a client component. It is
 // consumed only by the GET route (app/api/sessions/[id]/cva-pdf/route.ts) and
-// the throwaway render script. Paper-form austerity: black rules, checkbox
-// squares, built-in Helvetica (handles Spanish accents — no font files).
+// lib/closeEmail.ts. Built-in Helvetica/Times handle Spanish accents, so no
+// font files ship.
 
 import {
   Document,
@@ -23,7 +38,8 @@ import {
   type CvaSampleSheet,
   type FlavorGroupRow,
   type CataGroupRow,
-  type DescriptorStageModel,
+  type DescriptiveSheet,
+  type StageId,
   type Locale,
 } from "./cvaFormData";
 
@@ -32,7 +48,7 @@ import {
 // at spaces only.
 Font.registerHyphenationCallback((word) => [word]);
 
-// ─── Palette — restrained, paper-form austerity ─────────────────────────────
+// ─── Palette — paper-form austerity ─────────────────────────────────────────
 const INK = "#111111";
 const RULE = "#000000";
 const SOFT = "#555555";
@@ -41,165 +57,218 @@ const CREAM = "#f4f0e8";
 const RED = "#A83232";
 const WHITE = "#FFFFFF";
 
+// Section names echo the official form's serif face (and DESIGN.md's editorial
+// Newsreader voice); everything else is the grotesque.
+const SERIF = "Times-Roman";
+const SERIF_BOLD = "Times-Bold";
+
 const s = StyleSheet.create({
   page: {
-    paddingTop: 24,
-    paddingBottom: 28,
-    paddingHorizontal: 26,
+    paddingTop: 20,
+    paddingBottom: 34,
+    paddingHorizontal: 22,
     fontFamily: "Helvetica",
-    fontSize: 8,
+    fontSize: 7,
     color: INK,
-    lineHeight: 1.25,
+    lineHeight: 1.2,
   },
-  // Header
-  headerBox: { borderBottom: `2pt solid ${RULE}`, paddingBottom: 5, marginBottom: 7 },
-  headerTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" },
-  spec: { fontSize: 6.5, letterSpacing: 1, color: SOFT, textTransform: "uppercase" },
-  title: { fontSize: 13, fontFamily: "Helvetica-Bold", color: INK },
-  badge: {
-    border: `1pt solid ${RULE}`,
-    paddingVertical: 2,
-    paddingHorizontal: 7,
-    fontSize: 7.5,
-    fontFamily: "Helvetica-Bold",
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
-  },
-  metaRow: { flexDirection: "row", marginTop: 5, gap: 10 },
-  metaCell: { flexGrow: 1, flexBasis: 0 },
-  metaLabel: { fontSize: 6, letterSpacing: 1, color: SOFT, textTransform: "uppercase" },
-  metaValue: { fontSize: 8.5, borderBottom: `0.5pt solid ${RULE}`, minHeight: 11, paddingTop: 1 },
 
-  // Sample strip
+  // ── Header ──
+  header: { borderBottom: `1.5pt solid ${RULE}`, paddingBottom: 4, marginBottom: 6 },
+  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+  wordmark: { fontSize: 6.5, letterSpacing: 1.6, color: SOFT, textTransform: "uppercase" },
+  formName: { fontSize: 14, fontFamily: SERIF_BOLD, color: INK, marginTop: 1 },
+  brand: { fontSize: 6.5, letterSpacing: 1.4, color: SOFT, textTransform: "uppercase" },
+  fieldGrid: { flexDirection: "row", gap: 10, marginTop: 5 },
+  field: { flexGrow: 1, flexBasis: 0 },
+  fieldLabel: { fontSize: 5.5, letterSpacing: 1.1, color: SOFT, textTransform: "uppercase" },
+  fieldValue: {
+    fontSize: 8,
+    borderBottom: `0.5pt dotted ${SOFT}`,
+    minHeight: 11,
+    paddingTop: 1.5,
+  },
+
+  // ── Footer ──
+  footer: {
+    position: "absolute",
+    left: 22,
+    right: 22,
+    bottom: 16,
+    borderTop: `0.5pt solid ${HAIR}`,
+    paddingTop: 3,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  footerText: { fontSize: 5, color: SOFT, flexGrow: 1, flexBasis: 0, lineHeight: 1.3 },
+  footerPage: { fontSize: 5.5, color: SOFT },
+
+  // ── Sample strip ──
   sampleStrip: {
     flexDirection: "row",
     justifyContent: "space-between",
-    border: `1pt solid ${RULE}`,
+    alignItems: "center",
+    border: `0.75pt solid ${RULE}`,
     backgroundColor: CREAM,
-    paddingVertical: 3,
+    paddingVertical: 2.5,
     paddingHorizontal: 6,
-    marginBottom: 6,
+    marginBottom: 4,
   },
-  sampleLabel: { fontSize: 6, letterSpacing: 1, color: SOFT, textTransform: "uppercase" },
+  stripLabel: { fontSize: 5.5, letterSpacing: 1.1, color: SOFT, textTransform: "uppercase" },
 
-  // Section framing
-  sectionHead: {
-    fontSize: 7,
+  // ── Intensity row ──
+  intRow: { flexDirection: "row", alignItems: "flex-start", marginBottom: 3 },
+  intName: { width: 58, fontSize: 9, fontFamily: SERIF, color: INK, paddingTop: 3 },
+  intBody: { flexGrow: 1, flexBasis: 0 },
+  intBandRow: { position: "relative", height: 7 },
+  intBand: { position: "absolute", fontSize: 5, letterSpacing: 1, color: SOFT },
+  intAxis: { position: "relative", height: 12 },
+  intCaption: { fontSize: 5, letterSpacing: 0.8, color: SOFT, textTransform: "uppercase" },
+
+  // ── CATA box ──
+  cataBox: { border: `0.75pt solid ${RULE}`, marginBottom: 4 },
+  cataTitle: {
+    fontSize: 5.5,
     fontFamily: "Helvetica-Bold",
-    letterSpacing: 1.2,
+    letterSpacing: 1.1,
     textTransform: "uppercase",
     backgroundColor: CREAM,
-    borderTop: `1pt solid ${RULE}`,
     borderBottom: `0.5pt solid ${RULE}`,
-    paddingVertical: 2,
+    paddingVertical: 1.5,
     paddingHorizontal: 5,
   },
-  block: { border: `0.75pt solid ${RULE}`, marginBottom: 6 },
-  blockPad: { paddingVertical: 4, paddingHorizontal: 6 },
+  cataBody: { paddingVertical: 3, paddingHorizontal: 5 },
+  cataCols: { flexDirection: "row", gap: 8 },
+  cataCol: { flexGrow: 1, flexBasis: 0 },
+  cataRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", marginBottom: 1 },
+  cataGroupLabel: { fontSize: 6.5, fontFamily: "Helvetica-Bold", textTransform: "uppercase" },
+  cataSubLabel: { fontSize: 6, color: INK },
+  paren: { fontSize: 6, color: SOFT },
 
-  stageLabelRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 2 },
-  stageLabel: { fontSize: 8, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 0.5 },
+  notesRow: { flexDirection: "row", alignItems: "flex-start", marginTop: 2 },
+  notesLabel: { fontSize: 5, letterSpacing: 0.9, color: SOFT, textTransform: "uppercase", marginRight: 3, paddingTop: 1 },
+  notesText: { fontSize: 6, color: INK, fontStyle: "italic", flexGrow: 1, flexBasis: 0 },
+  notesBlank: { borderBottom: `0.5pt dotted ${HAIR}`, height: 8, flexGrow: 1, flexBasis: 0 },
 
-  // Intensity ruler
-  intWrap: { marginTop: 2, marginBottom: 3 },
-  intBand: { flexDirection: "row", justifyContent: "space-between" },
-  intBandLabel: { fontSize: 5.5, color: SOFT, letterSpacing: 0.8 },
-  intAxis: { position: "relative", height: 12, marginTop: 1 },
-
-  // Checkbox rows
-  checkRow: { flexDirection: "row", alignItems: "flex-start", gap: 3, marginBottom: 0.8 },
-  boxOuter: { width: 7, height: 7, borderRadius: 0.5, marginTop: 0.5 },
-  groupLabel: { fontSize: 7.5, fontFamily: "Helvetica-Bold" },
-  subLabel: { fontSize: 7 },
-  notesInline: { fontSize: 6.8, color: SOFT, fontStyle: "italic" },
-  notesLineLabel: { fontSize: 6, letterSpacing: 0.8, color: SOFT, textTransform: "uppercase", marginRight: 3 },
-  dottedLine: { borderBottom: `0.5pt dotted ${HAIR}`, height: 8, marginTop: 1 },
-
-  // Two-column flavor grid
-  twoCol: { flexDirection: "row", gap: 8 },
-  col: { flexGrow: 1, flexBasis: 0 },
-
-  // Affective rows
-  affRow: {
+  // ── Affective ──
+  legend: {
     flexDirection: "row",
-    alignItems: "center",
-    borderBottom: `0.5pt solid ${HAIR}`,
+    border: `0.5pt solid ${HAIR}`,
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+    marginBottom: 4,
+  },
+  legendTitle: {
+    fontSize: 5.5,
+    fontFamily: "Helvetica-Bold",
+    letterSpacing: 1.1,
+    textTransform: "uppercase",
+    marginRight: 6,
+  },
+  legendItem: { fontSize: 5, color: SOFT, flexGrow: 1, flexBasis: 0, textAlign: "center" },
+
+  grid: { border: `0.75pt solid ${RULE}` },
+  gridHeadRow: { flexDirection: "row", borderBottom: `0.75pt solid ${RULE}`, backgroundColor: CREAM },
+  gridRow: { flexDirection: "row", borderBottom: `0.5pt solid ${HAIR}` },
+  gridRowLast: { flexDirection: "row" },
+  rowLabel: {
+    width: 76,
+    fontSize: 7.5,
+    fontFamily: SERIF,
+    paddingVertical: 3,
+    paddingHorizontal: 4,
+    borderRight: `0.5pt solid ${HAIR}`,
+  },
+  rowLabelSm: {
+    width: 76,
+    fontSize: 5.5,
+    letterSpacing: 0.8,
+    color: SOFT,
+    textTransform: "uppercase",
+    paddingVertical: 3,
+    paddingHorizontal: 4,
+    borderRight: `0.5pt solid ${HAIR}`,
+  },
+  sampleCell: {
+    flexGrow: 1,
+    flexBasis: 0,
     paddingVertical: 2.5,
     paddingHorizontal: 5,
+    borderRight: `0.5pt solid ${HAIR}`,
   },
-  affLabel: { width: 82, fontSize: 7.5, fontFamily: "Helvetica-Bold", textTransform: "uppercase" },
-  bubbleRow: { flexDirection: "row", alignItems: "center", gap: 2.5 },
+  sampleCellHead: {
+    flexGrow: 1,
+    flexBasis: 0,
+    paddingVertical: 3,
+    paddingHorizontal: 5,
+    borderRight: `0.5pt solid ${HAIR}`,
+  },
+
+  bubbleRow: { flexDirection: "row", alignItems: "center" },
   bubble: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    border: `0.75pt solid ${INK}`,
+    border: `0.6pt solid ${INK}`,
     alignItems: "center",
     justifyContent: "center",
+    marginRight: 2,
   },
-  bubbleText: { fontSize: 6.5, fontFamily: "Helvetica-Bold" },
+  bubbleText: { fontSize: 6, fontFamily: "Helvetica-Bold" },
   finalBox: {
-    marginLeft: 5,
-    border: `1pt solid ${INK}`,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    alignItems: "center",
-    minWidth: 22,
-  },
-  finalLabel: { fontSize: 4.5, letterSpacing: 1, color: SOFT },
-  finalValue: { fontSize: 9, fontFamily: "Helvetica-Bold" },
-  affNotes: { fontSize: 6.5, color: SOFT, fontStyle: "italic", marginTop: 1 },
-
-  // Cups
-  cupCol: { flexGrow: 1, flexBasis: 0 },
-  cupGrid: { flexDirection: "row", gap: 6, marginTop: 2 },
-  cupCell: { alignItems: "center" },
-  cupNum: { fontSize: 5.5, color: SOFT, marginBottom: 1 },
-  cupBox: { width: 11, height: 11, border: `0.75pt solid ${INK}`, borderRadius: 0.5 },
-
-  // Score box
-  scoreBox: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    border: `1.25pt solid ${INK}`,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    marginTop: 4,
-  },
-  scoreLabel: { fontSize: 7, letterSpacing: 1, textTransform: "uppercase", color: SOFT },
-  scoreFormula: { fontSize: 5.5, color: SOFT, fontStyle: "italic", marginTop: 1 },
-  scoreValue: { fontSize: 18, fontFamily: "Helvetica-Bold" },
-
-  // Extrinsic / physical
-  metaBlockRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  metaField: { flexBasis: "30%", marginBottom: 2 },
-  betaTag: {
-    fontSize: 5.5,
-    fontFamily: "Helvetica-Bold",
-    letterSpacing: 1,
-    color: WHITE,
-    backgroundColor: SOFT,
+    marginLeft: 4,
+    border: `0.9pt solid ${INK}`,
     paddingHorizontal: 3,
     paddingVertical: 0.5,
-    borderRadius: 1,
+    alignItems: "center",
+    minWidth: 21,
   },
+  finalLabel: { fontSize: 4, letterSpacing: 0.9, color: SOFT },
+  finalValue: { fontSize: 8.5, fontFamily: "Helvetica-Bold" },
+  affNotes: { fontSize: 5.5, color: SOFT, fontStyle: "italic", marginTop: 1 },
+
+  cupRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap" },
+  cupCell: { alignItems: "center", marginRight: 5 },
+  cupNum: { fontSize: 4.5, color: SOFT, marginBottom: 0.5 },
+  cupBox: { width: 9, height: 9, border: `0.6pt solid ${INK}`, borderRadius: 0.5 },
+
+  scoreValue: { fontSize: 15, fontFamily: "Helvetica-Bold" },
+  scoreFormula: { fontSize: 4.5, color: SOFT, fontStyle: "italic", marginTop: 0.5 },
+
+  // ── Part banners / meta ──
+  partBanner: {
+    fontSize: 6,
+    fontFamily: "Helvetica-Bold",
+    letterSpacing: 1.3,
+    textTransform: "uppercase",
+    borderBottom: `1pt solid ${RULE}`,
+    paddingBottom: 1.5,
+    marginBottom: 4,
+  },
+  metaWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  metaField: { flexBasis: "31%", marginBottom: 2 },
+  metaFieldCompact: { flexBasis: "15%", marginBottom: 1 },
+  metaLabel: { fontSize: 5, letterSpacing: 0.9, color: SOFT, textTransform: "uppercase" },
+  metaValue: { fontSize: 7 },
+  metaValueCompact: { fontSize: 6 },
 });
 
 // ─── Primitives ─────────────────────────────────────────────────────────────
 
-function CheckBox({ checked, size = 7 }: { checked: boolean; size?: number }) {
+function CheckBox({ checked, size = 6, color = INK }: { checked: boolean; size?: number; color?: string }) {
   return (
     <View
       style={{
         width: size,
         height: size,
         borderRadius: 0.5,
-        marginTop: 0.5,
-        border: `0.75pt solid ${INK}`,
-        backgroundColor: checked ? INK : WHITE,
+        border: `0.6pt solid ${color}`,
+        backgroundColor: checked ? color : WHITE,
         alignItems: "center",
         justifyContent: "center",
+        marginRight: 2,
       }}
     >
       {checked ? (
@@ -211,494 +280,749 @@ function CheckBox({ checked, size = 7 }: { checked: boolean; size?: number }) {
   );
 }
 
-function IntensityRuler({ value, t }: { value: number | null; t: Record<string, string> }) {
-  // 0–15 horizontal ruler with major ticks at 0/5/10/15 and a marker.
-  const pct = value === null ? null : (Math.max(0, Math.min(15, value)) / 15) * 100;
+/** Label over a dotted rule — the official form's dot-leader fields. */
+function DotField({ label, value }: { label: string; value: string }) {
   return (
-    <View style={s.intWrap}>
-      <View style={s.intBand}>
-        <Text style={s.intBandLabel}>{t.low}</Text>
-        <Text style={s.intBandLabel}>{t.medium}</Text>
-        <Text style={s.intBandLabel}>{t.high}</Text>
-      </View>
-      <View style={s.intAxis}>
-        {/* axis line */}
-        <View style={{ position: "absolute", left: 0, right: 0, top: 6, height: 0.75, backgroundColor: RULE }} />
-        {Array.from({ length: 16 }, (_, i) => {
-          const major = i % 5 === 0;
-          const h = major ? 7 : 3.5;
-          return (
-            <View
-              key={i}
-              style={{
-                position: "absolute",
-                left: `${(i / 15) * 100}%`,
-                top: 6 - h / 2,
-                width: 0.75,
-                height: h,
-                backgroundColor: RULE,
-              }}
-            />
-          );
-        })}
-        {[0, 5, 10, 15].map((m) => (
-          <Text
-            key={m}
-            style={{ position: "absolute", left: `${(m / 15) * 100 - 1.5}%`, top: 6, fontSize: 5, color: SOFT }}
-          >
-            {m}
-          </Text>
-        ))}
-        {pct !== null ? (
-          <Text
-            style={{
-              position: "absolute",
-              left: `${pct - 1.5}%`,
-              top: -2,
-              fontSize: 8,
-              fontFamily: "Helvetica-Bold",
-              color: INK,
-            }}
-          >
-            {"▼"}
-          </Text>
-        ) : null}
-      </View>
+    <View style={s.field}>
+      <Text style={s.fieldLabel}>{label}</Text>
+      <Text style={s.fieldValue}>{value || " "}</Text>
     </View>
   );
 }
 
-function NotesLine({ label, items }: { label: string; items: string[] }) {
-  return (
-    <View style={{ flexDirection: "row", alignItems: "flex-start", marginTop: 1.5 }}>
-      <Text style={s.notesLineLabel}>{label}:</Text>
-      {items.length > 0 ? (
-        <Text style={[s.notesInline, { flexGrow: 1, flexBasis: 0 }]}>{items.join(", ")}</Text>
-      ) : (
-        <View style={[s.dottedLine, { flexGrow: 1, flexBasis: 0 }]} />
-      )}
-    </View>
-  );
-}
-
-// ─── Flavor checkbox grid (one descriptive stage) ───────────────────────────
-
-function FlavorGrid({
-  groups,
-  t,
-}: {
-  groups: FlavorGroupRow[];
-  t: Record<string, string>;
-}) {
-  // Split the 9 L1 groups into two balanced columns.
-  const mid = Math.ceil(groups.length / 2);
-  const cols = [groups.slice(0, mid), groups.slice(mid)];
-  return (
-    <View style={s.twoCol}>
-      {cols.map((col, ci) => (
-        <View key={ci} style={s.col}>
-          {col.map((g) => (
-            <View key={g.id} style={{ marginBottom: 2.5 }}>
-              <View style={s.checkRow}>
-                <CheckBox checked={g.checked} />
-                <Text style={s.groupLabel}>{g.label}</Text>
-              </View>
-              <View style={{ paddingLeft: 8 }}>
-                {g.subgroups.map((sub) => (
-                  <View key={sub.id} style={s.checkRow}>
-                    <CheckBox checked={sub.checked} size={6} />
-                    <Text style={s.subLabel}>{sub.label}</Text>
-                  </View>
-                ))}
-                {g.notesLine.length > 0 ? <NotesLine label={t.notes} items={g.notesLine} /> : null}
-              </View>
-            </View>
-          ))}
-        </View>
-      ))}
-    </View>
-  );
-}
-
-// ─── Flat CATA checkbox grid (acidity / sweetness / mouthfeel) ──────────────
-
-function CataGrid({ groups, t }: { groups: CataGroupRow[]; t: Record<string, string> }) {
-  return (
-    <View style={s.twoCol}>
-      {[groups.slice(0, Math.ceil(groups.length / 2)), groups.slice(Math.ceil(groups.length / 2))].map(
-        (col, ci) => (
-          <View key={ci} style={s.col}>
-            {col.map((g) => (
-              <View key={g.id} style={{ marginBottom: 2 }}>
-                <View style={s.checkRow}>
-                  <CheckBox checked={g.checked} />
-                  <Text style={s.groupLabel}>{g.label}</Text>
-                </View>
-                {g.subItems.length > 0 ? (
-                  <View style={{ paddingLeft: 8 }}>
-                    {g.subItems.map((sub) => (
-                      <View key={sub.id} style={s.checkRow}>
-                        <CheckBox checked={sub.checked} size={6} />
-                        <Text style={s.subLabel}>{sub.label}</Text>
-                      </View>
-                    ))}
-                  </View>
-                ) : null}
-                {g.notesLine.length > 0 ? (
-                  <View style={{ paddingLeft: 8 }}>
-                    <NotesLine label={t.notes} items={g.notesLine} />
-                  </View>
-                ) : null}
-              </View>
-            ))}
-          </View>
-        )
-      )}
-    </View>
-  );
-}
-
-// ─── One descriptor stage (intensity + checkbox grid + free notes) ──────────
-
-function DescriptorStage({
-  stage,
-  t,
-}: {
-  stage: DescriptorStageModel;
-  t: Record<string, string>;
-}) {
-  return (
-    <View style={s.block} wrap={false}>
-      <Text style={s.sectionHead}>{t[stage.labelKey]}</Text>
-      <View style={s.blockPad}>
-        <View style={s.stageLabelRow}>
-          <Text style={{ fontSize: 6.5, color: SOFT, letterSpacing: 0.8, textTransform: "uppercase" }}>
-            {t.intensity}
-          </Text>
-        </View>
-        <IntensityRuler value={stage.intensity} t={t} />
-        {stage.kind === "flavor" && stage.flavorGroups ? (
-          <FlavorGrid groups={stage.flavorGroups} t={t} />
-        ) : null}
-        {stage.kind === "cata" && stage.cataGroups ? (
-          <CataGrid groups={stage.cataGroups} t={t} />
-        ) : null}
-        {stage.freeNotes ? (
-          <View style={{ marginTop: 2 }}>
-            <NotesLine label={t.notes} items={[stage.freeNotes]} />
-          </View>
-        ) : null}
-      </View>
-    </View>
-  );
-}
-
-// ─── Affective attribute row (1–9 bubbles + final box + notes) ──────────────
-
-function AffectiveRowView({
-  labelKey,
+/** 0–15 continuous intensity ruler with LOW/MEDIUM/HIGH bands and a marker. */
+function IntensityRow({
+  name,
   value,
-  notes,
   t,
-  last,
+  compact,
 }: {
-  labelKey: string;
+  name: string;
   value: number | null;
-  notes: string;
   t: Record<string, string>;
-  last?: boolean;
+  compact?: boolean;
 }) {
+  const pct = value === null ? null : (Math.max(0, Math.min(15, value)) / 15) * 100;
+  // Compact rows shave ~5pt each so Part 1 of the combined sheet clears the
+  // landscape page and leaves room for Part 3.
+  const axisTop = compact ? 3 : 4;
   return (
-    <View style={[s.affRow, last ? { borderBottom: "none" } : {}]}>
-      <Text style={s.affLabel}>{t[labelKey] ?? labelKey}</Text>
-      <View style={{ flexGrow: 1, flexBasis: 0 }}>
-        <View style={s.bubbleRow}>
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => {
-            const on = n === value;
+    <View style={[s.intRow, compact ? { marginBottom: 1.5 } : {}]} wrap={false}>
+      <Text style={[s.intName, compact ? { fontSize: 8, width: 50, paddingTop: 2 } : {}]}>{name}</Text>
+      <View style={s.intBody}>
+        <View style={[s.intBandRow, compact ? { height: 5.5 } : {}]}>
+          <Text style={[s.intBand, { left: "6%" }]}>{t.low.toUpperCase()}</Text>
+          <Text style={[s.intBand, { left: "43%" }]}>{t.medium.toUpperCase()}</Text>
+          <Text style={[s.intBand, { left: "84%" }]}>{t.high.toUpperCase()}</Text>
+        </View>
+        <View style={[s.intAxis, compact ? { height: 9.5 } : {}]}>
+          <View
+            style={{ position: "absolute", left: 0, right: 0, top: axisTop, height: 0.6, backgroundColor: RULE }}
+          />
+          {Array.from({ length: 16 }, (_, i) => {
+            const major = i % 5 === 0;
+            const h = major ? 6 : 3;
             return (
-              <View key={n} style={[s.bubble, on ? { backgroundColor: INK } : {}]}>
-                <Text style={[s.bubbleText, on ? { color: WHITE } : {}]}>{n}</Text>
-              </View>
+              <View
+                key={i}
+                style={{
+                  position: "absolute",
+                  left: `${(i / 15) * 100}%`,
+                  top: axisTop - h / 2,
+                  width: 0.6,
+                  height: h,
+                  backgroundColor: RULE,
+                }}
+              />
             );
           })}
-          <View style={s.finalBox}>
-            <Text style={s.finalLabel}>FINAL</Text>
-            <Text style={s.finalValue}>{value ?? t.none}</Text>
-          </View>
-        </View>
-        {notes ? <Text style={s.affNotes}>{notes}</Text> : null}
-      </View>
-    </View>
-  );
-}
-
-// ─── Cups (uniformity + defects) ────────────────────────────────────────────
-
-function CupsBlock({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, string> }) {
-  const { cups } = sheet;
-  return (
-    <View style={[s.block, { flexDirection: "row" }]} wrap={false}>
-      <View style={[s.cupCol, s.blockPad]}>
-        <Text style={{ fontSize: 6.5, fontFamily: "Helvetica-Bold", textTransform: "uppercase", color: SOFT }}>
-          {t.uniformity} {cups.u > 0 ? `(-2 x ${cups.u})` : ""}
-        </Text>
-        <View style={s.cupGrid}>
-          {cups.nonUniform.map((on, i) => (
-            <View key={i} style={s.cupCell}>
-              <Text style={s.cupNum}>{i + 1}</Text>
-              <View style={[s.cupBox, on ? { backgroundColor: INK } : {}]} />
-            </View>
-          ))}
-        </View>
-      </View>
-      <View style={[s.cupCol, s.blockPad, { borderLeft: `0.5pt solid ${HAIR}` }]}>
-        <Text style={{ fontSize: 6.5, fontFamily: "Helvetica-Bold", textTransform: "uppercase", color: SOFT }}>
-          {t.defects} {cups.d > 0 ? `(-4 x ${cups.d})` : ""}
-        </Text>
-        <View style={s.cupGrid}>
-          {cups.defective.map((on, i) => (
-            <View key={i} style={s.cupCell}>
-              <Text style={s.cupNum}>{i + 1}</Text>
-              <View style={[s.cupBox, on ? { backgroundColor: RED, borderColor: RED } : {}]} />
-            </View>
-          ))}
-        </View>
-        <View style={{ flexDirection: "row", gap: 8, marginTop: 3 }}>
-          {cups.defectTypes.map((dt) => (
-            <View key={dt.id} style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
-              <CheckBox checked={dt.checked} size={6} />
-              <Text style={{ fontSize: 6.5, color: dt.checked ? RED : INK }}>{dt.label}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-    </View>
-  );
-}
-
-// ─── Score box ──────────────────────────────────────────────────────────────
-
-function ScoreBox({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, string> }) {
-  // Only a COMPLETE evaluation (all 8 finals) prints a total + intermediates —
-  // calcAffectiveSum's neutral-5 substitution would otherwise fabricate a
-  // number (e.g. 79.00 from an entirely empty form). Partial evaluations get
-  // an explicit "evaluación incompleta" note; empty ones stay blank, like an
-  // unfilled paper form. See CvaSampleSheet.scoreState.
-  return (
-    <View style={s.scoreBox} wrap={false}>
-      <View>
-        <Text style={s.scoreLabel}>{t.score}</Text>
-        {sheet.scoreState === "complete" ? (
-          <Text style={s.scoreFormula}>
-            0.65625 x {"Σ"}h + 52.75 - 2u - 4d ({"Σ"}h={sheet.breakdown.affectiveSum}, u=
-            {sheet.breakdown.u}, d={sheet.breakdown.d})
-          </Text>
-        ) : sheet.scoreState === "partial" ? (
-          <Text style={s.scoreFormula}>{t.incomplete}</Text>
-        ) : null}
-      </View>
-      <Text style={s.scoreValue}>{sheet.scoreState === "complete" ? sheet.score : t.none}</Text>
-    </View>
-  );
-}
-
-// ─── Extrinsic / physical labeled block ─────────────────────────────────────
-
-function MetaBlock({
-  title,
-  fields,
-  t,
-}: {
-  title: string;
-  fields: { label: string; value: string }[];
-  t: Record<string, string>;
-}) {
-  if (fields.length === 0) return null;
-  return (
-    <View style={s.block} wrap={false}>
-      <View style={[s.sectionHead, { flexDirection: "row", justifyContent: "space-between", alignItems: "center" }]}>
-        <Text>{title}</Text>
-        <Text style={s.betaTag}>{t.beta}</Text>
-      </View>
-      <View style={[s.blockPad, s.metaBlockRow]}>
-        {fields.map((f, i) => (
-          <View key={i} style={s.metaField}>
-            <Text style={s.metaLabel}>{f.label}</Text>
-            <Text style={{ fontSize: 8 }}>{f.value}</Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-// ─── Sheet header ───────────────────────────────────────────────────────────
-
-function SheetHeaderView({
-  sheet,
-  t,
-  formatBadge,
-  specSuffix,
-}: {
-  sheet: CvaSampleSheet;
-  t: Record<string, string>;
-  formatBadge: string;
-  specSuffix: string;
-}) {
-  const h = sheet.header;
-  return (
-    <View>
-      <View style={s.headerBox}>
-        <View style={s.headerTopRow}>
-          <View>
-            <Text style={s.spec}>
-              {t.spec} · {specSuffix}
+          {[0, 5, 10, 15].map((m) => (
+            <Text
+              key={m}
+              style={{
+                position: "absolute",
+                left: `${(m / 15) * 100 - 1}%`,
+                top: axisTop + 2,
+                fontSize: 4.5,
+                color: SOFT,
+              }}
+            >
+              {m}
             </Text>
-            <Text style={s.title}>{h.sessionName}</Text>
-          </View>
-          <Text style={s.badge}>{formatBadge}</Text>
-        </View>
-        <View style={s.metaRow}>
-          <View style={s.metaCell}>
-            <Text style={s.metaLabel}>{t.cupper}</Text>
-            <Text style={s.metaValue}>{h.cupperName || " "}</Text>
-          </View>
-          <View style={s.metaCell}>
-            <Text style={s.metaLabel}>{t.date}</Text>
-            <Text style={s.metaValue}>{h.date || " "}</Text>
-          </View>
-          <View style={s.metaCell}>
-            <Text style={s.metaLabel}>{t.cups}</Text>
-            <Text style={s.metaValue}>{String(h.cupsPerSample)}</Text>
-          </View>
-          {h.purpose ? (
-            <View style={s.metaCell}>
-              <Text style={s.metaLabel}>{t.purpose}</Text>
-              <Text style={s.metaValue}>{h.purpose}</Text>
-            </View>
+          ))}
+          {pct !== null ? (
+            <Text
+              style={{
+                position: "absolute",
+                left: `${pct - 1.4}%`,
+                top: axisTop - 7.5,
+                fontSize: 7,
+                fontFamily: "Helvetica-Bold",
+                color: INK,
+              }}
+            >
+              {"▼"}
+            </Text>
           ) : null}
         </View>
       </View>
-      <View style={s.sampleStrip}>
-        <Text>
-          <Text style={s.sampleLabel}>{t.sample}: </Text>
-          <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold" }}>{h.sampleLabel}</Text>
-        </Text>
-        {h.coffeeName ? (
-          <Text>
-            <Text style={s.sampleLabel}>{t.coffee}: </Text>
-            <Text style={{ fontSize: 9 }}>{h.coffeeName}</Text>
-          </Text>
-        ) : (
-          <Text style={{ fontSize: 6.5, color: SOFT, fontStyle: "italic" }} />
-        )}
+    </View>
+  );
+}
+
+/** "NOTAS ......" — carries L3 detail and qualifying terms under a CATA box. */
+function NotesLine({ label, items }: { label: string; items: string[] }) {
+  return (
+    <View style={s.notesRow}>
+      <Text style={s.notesLabel}>{label}</Text>
+      {items.length > 0 ? (
+        <Text style={s.notesText}>{items.join(" · ")}</Text>
+      ) : (
+        <View style={s.notesBlank} />
+      )}
+    </View>
+  );
+}
+
+// ─── CATA rows in the official parenthetical style ──────────────────────────
+//
+//   [x] FRUITY ( [ ] Berry  [x] Citrus  [ ] Dried fruit )
+//
+// One row per category, sub-options inline — the exact device the paper form
+// uses, which is what lets our richer wheel occupy the official footprint.
+
+type Row = {
+  id: string;
+  label: string;
+  checked: boolean;
+  subs: { id: string; label: string; checked: boolean }[];
+};
+
+const flavorToRow = (g: FlavorGroupRow): Row => ({
+  id: g.id,
+  label: g.label,
+  checked: g.checked,
+  subs: g.subgroups,
+});
+
+const cataToRow = (g: CataGroupRow): Row => ({
+  id: g.id,
+  label: g.label,
+  checked: g.checked,
+  subs: g.subItems,
+});
+
+function CataRow({ row }: { row: Row }) {
+  return (
+    <View style={s.cataRow}>
+      <CheckBox checked={row.checked} size={6} />
+      <Text style={s.cataGroupLabel}>{row.label}</Text>
+      {row.subs.length > 0 ? (
+        <>
+          <Text style={[s.paren, { marginLeft: 2, marginRight: 1 }]}>(</Text>
+          {row.subs.map((sub) => (
+            <View key={sub.id} style={{ flexDirection: "row", alignItems: "center", marginRight: 3 }}>
+              <CheckBox checked={sub.checked} size={4.5} />
+              <Text style={s.cataSubLabel}>{sub.label}</Text>
+            </View>
+          ))}
+          <Text style={s.paren}>)</Text>
+        </>
+      ) : null}
+    </View>
+  );
+}
+
+/** A bordered CATA box: caption, rows split into N columns, notes line. */
+function CataBox({
+  title,
+  section,
+  rows,
+  notes,
+  notesLabel,
+  columns = 2,
+  aside,
+  style,
+}: {
+  title: string;
+  /** Section name, when the box is not directly under its own intensity ruler. */
+  section?: string;
+  rows: Row[];
+  notes?: string[];
+  notesLabel?: string;
+  columns?: number;
+  aside?: React.ReactNode;
+  /** Flex sizing only, for boxes laid out side by side. */
+  style?: { flexGrow?: number; flexBasis?: number };
+}) {
+  const per = Math.ceil(rows.length / columns);
+  const cols = Array.from({ length: columns }, (_, i) => rows.slice(i * per, (i + 1) * per));
+  return (
+    <View style={[s.cataBox, style ?? {}]} wrap={false}>
+      <Text style={s.cataTitle}>{section ? `${section} · ${title}` : title}</Text>
+      <View style={[s.cataBody, aside ? { flexDirection: "row", gap: 8 } : {}]}>
+        <View style={{ flexGrow: 1, flexBasis: 0 }}>
+          <View style={s.cataCols}>
+            {cols.map((col, ci) => (
+              <View key={ci} style={s.cataCol}>
+                {col.map((row) => (
+                  <CataRow key={row.id} row={row} />
+                ))}
+              </View>
+            ))}
+          </View>
+          {notes && notesLabel ? <NotesLine label={notesLabel} items={notes} /> : null}
+        </View>
+        {aside}
       </View>
     </View>
   );
 }
 
-// ─── Descriptive sheet body (fragrance/aroma → flavor/aftertaste → basic
-//     tastes → acidity → sweetness → mouthfeel), matching the paper form order ─
-
-function DescriptiveBody({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, string> }) {
+/** Main tastes — the small box that sits beside Box B on the official form. */
+function MainTastesAside({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, string> }) {
   return (
-    <View>
-      {sheet.descriptorStages.map((stage) => (
-        <View key={stage.id}>
-          <DescriptorStage stage={stage} t={t} />
-          {/* Basic tastes sit right after Aftertaste on the official form. */}
-          {stage.id === "sabor_residual" ? <BasicTastes sheet={sheet} t={t} /> : null}
+    <View style={{ width: 74, borderLeft: `0.5pt solid ${HAIR}`, paddingLeft: 6 }}>
+      <Text style={[s.cataTitle, { backgroundColor: "transparent", borderBottom: "none", padding: 0, marginBottom: 2 }]}>
+        {t.mainTastesTitle}
+      </Text>
+      {sheet.basicTastes.map((bt) => (
+        <View key={bt.id} style={{ flexDirection: "row", alignItems: "center", marginBottom: 1 }}>
+          <CheckBox checked={bt.checked} size={5.5} />
+          <Text style={s.cataSubLabel}>{bt.label}</Text>
         </View>
       ))}
     </View>
   );
 }
 
-function BasicTastes({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, string> }) {
+// ─── Affective primitives ───────────────────────────────────────────────────
+
+const QUALITY_KEYS = ["q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9"];
+
+/** Grid label column is narrow; prefer the short form where one exists. */
+const shortLabel = (t: Record<string, string>, key: string) =>
+  t[`${key}Short`] ?? t[key] ?? key;
+
+function QualityLegend({ t }: { t: Record<string, string> }) {
   return (
-    <View style={s.block} wrap={false}>
-      <Text style={s.sectionHead}>{t.basicTastes}</Text>
-      <View style={[s.blockPad, { flexDirection: "row", flexWrap: "wrap", gap: 10 }]}>
-        {sheet.basicTastes.map((bt) => (
-          <View key={bt.id} style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-            <CheckBox checked={bt.checked} />
-            <Text style={s.subLabel}>{bt.label}</Text>
+    <View style={s.legend} wrap={false}>
+      <Text style={s.legendTitle}>{t.impressionOfQuality}</Text>
+      {QUALITY_KEYS.map((k, i) => (
+        <Text key={k} style={s.legendItem}>
+          {i + 1} {t[k]}
+        </Text>
+      ))}
+    </View>
+  );
+}
+
+function Bubbles({ value, none }: { value: number | null; none: string }) {
+  return (
+    <View style={s.bubbleRow}>
+      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => {
+        const on = n === value;
+        return (
+          <View key={n} style={[s.bubble, on ? { backgroundColor: INK } : {}]}>
+            <Text style={[s.bubbleText, on ? { color: WHITE } : {}]}>{n}</Text>
+          </View>
+        );
+      })}
+      <View style={s.finalBox}>
+        <Text style={s.finalLabel}>FINAL</Text>
+        <Text style={s.finalValue}>{value ?? none}</Text>
+      </View>
+    </View>
+  );
+}
+
+function CupBoxes({ marks, color = INK }: { marks: boolean[]; color?: string }) {
+  return (
+    <View style={s.cupRow}>
+      {marks.map((on, i) => (
+        <View key={i} style={s.cupCell}>
+          <Text style={s.cupNum}>{i + 1}</Text>
+          <View style={[s.cupBox, on ? { backgroundColor: color, borderColor: color } : {}]} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function ScoreCell({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, string> }) {
+  return (
+    <View>
+      <Text style={s.scoreValue}>{sheet.scoreState === "complete" ? sheet.score : t.none}</Text>
+      {sheet.scoreState === "complete" ? (
+        <Text style={s.scoreFormula}>
+          {"Σ"}h={sheet.breakdown.affectiveSum} · u={sheet.breakdown.u} · d={sheet.breakdown.d}
+        </Text>
+      ) : sheet.scoreState === "partial" ? (
+        <Text style={s.scoreFormula}>{t.incomplete}</Text>
+      ) : null}
+    </View>
+  );
+}
+
+// ─── Page furniture ─────────────────────────────────────────────────────────
+
+function SheetHeader({
+  sheet,
+  t,
+  formName,
+  extraField,
+}: {
+  sheet: CvaSampleSheet;
+  t: Record<string, string>;
+  formName: string;
+  extraField?: React.ReactNode;
+}) {
+  const h = sheet.header;
+  return (
+    <View style={s.header}>
+      <View style={s.headerRow}>
+        <View>
+          <Text style={s.wordmark}>SCA {t.methodology}</Text>
+          <Text style={s.formName}>{formName}</Text>
+        </View>
+        <Text style={s.brand}>Cata Café</Text>
+      </View>
+      <View style={s.fieldGrid}>
+        <DotField label={t.name} value={h.cupperName} />
+        <DotField label={t.date} value={h.date} />
+        <DotField label={t.purpose} value={h.purpose} />
+        <DotField label={t.session} value={h.sessionName} />
+        {extraField}
+      </View>
+    </View>
+  );
+}
+
+function SheetFooter({ t }: { t: Record<string, string> }) {
+  return (
+    <View style={s.footer} fixed>
+      <Text style={s.footerText}>{t.attribution}</Text>
+      <Text
+        style={s.footerPage}
+        render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`}
+      />
+    </View>
+  );
+}
+
+function SampleStrip({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, string> }) {
+  const h = sheet.header;
+  return (
+    <View style={s.sampleStrip}>
+      <Text>
+        <Text style={s.stripLabel}>{t.sampleNo} </Text>
+        <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold" }}>{h.sampleLabel}</Text>
+      </Text>
+      {h.coffeeName ? (
+        <Text>
+          <Text style={s.stripLabel}>{t.coffee} </Text>
+          <Text style={{ fontSize: 8 }}>{h.coffeeName}</Text>
+        </Text>
+      ) : (
+        <Text style={s.stripLabel}>{t.cups}: {h.cupsPerSample}</Text>
+      )}
+    </View>
+  );
+}
+
+// ─── Descriptive sample block (half a portrait page) ────────────────────────
+
+function DescriptiveBlock({
+  sheet,
+  t,
+  withStrip = true,
+}: {
+  sheet: CvaSampleSheet;
+  t: Record<string, string>;
+  withStrip?: boolean;
+}) {
+  const d: DescriptiveSheet = sheet.descriptive;
+  const int = (id: StageId) => d.intensity[id];
+  return (
+    <View>
+      {withStrip ? <SampleStrip sheet={sheet} t={t} /> : null}
+
+      {/* Fragrance + Aroma share Box A — orthonasal. */}
+      <IntensityRow name={t.fragrance} value={int("fragancia")} t={t} />
+      <IntensityRow name={t.aroma} value={int("aroma")} t={t} />
+      <CataBox
+        title={t.selectUpToFive}
+        rows={d.boxA.map(flavorToRow)}
+        notes={d.boxANotes}
+        notesLabel={t.notes}
+      />
+
+      {/* Flavor + Aftertaste share Box B — retronasal — with main tastes beside. */}
+      <IntensityRow name={t.flavor} value={int("sabor")} t={t} />
+      <IntensityRow name={t.aftertaste} value={int("sabor_residual")} t={t} />
+      <CataBox
+        title={t.selectUpToFive}
+        rows={d.boxB.map(flavorToRow)}
+        notes={d.boxBNotes}
+        notesLabel={t.notes}
+        aside={<MainTastesAside sheet={sheet} t={t} />}
+      />
+
+      <IntensityRow name={t.acidity} value={int("acidez")} t={t} />
+      <CataBox title={t.selectAllApply} rows={d.acidity.map(cataToRow)} columns={2} />
+
+      <IntensityRow name={t.sweetness} value={int("dulzor")} t={t} />
+      <CataBox title={t.selectAllApply} rows={d.sweetness.map(cataToRow)} columns={2} />
+
+      <IntensityRow name={t.mouthfeel} value={int("sensacion")} t={t} />
+      <CataBox title={t.selectUpToTwo} rows={d.mouthfeel.map(cataToRow)} columns={2} />
+    </View>
+  );
+}
+
+// ─── Affective grid: samples as columns, official landscape layout ──────────
+
+function AffectiveGridPage({
+  sheets,
+  t,
+  formName,
+}: {
+  sheets: CvaSampleSheet[];
+  t: Record<string, string>;
+  formName: string;
+}) {
+  const first = sheets[0];
+  const rowCount = first.affectiveRows.length;
+  // Keep column width stable when the last page holds fewer than three samples.
+  const filler = Math.max(0, 3 - sheets.length);
+  const pad = Array.from({ length: filler });
+
+  return (
+    <Page size="A4" orientation="landscape" style={s.page}>
+      <SheetHeader sheet={first} t={t} formName={formName} />
+      <QualityLegend t={t} />
+
+      <View style={s.grid}>
+        {/* Sample column headings */}
+        <View style={s.gridHeadRow}>
+          <View style={s.rowLabelSm}>
+            <Text>{t.sampleNo}</Text>
+          </View>
+          {sheets.map((sheet) => (
+            <View key={sheet.header.sampleLabel} style={s.sampleCellHead}>
+              <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold" }}>{sheet.header.sampleLabel}</Text>
+              {sheet.header.coffeeName ? (
+                <Text style={{ fontSize: 6, color: SOFT }}>{sheet.header.coffeeName}</Text>
+              ) : null}
+            </View>
+          ))}
+          {pad.map((_, i) => (
+            <View key={`p${i}`} style={s.sampleCellHead} />
+          ))}
+        </View>
+
+        {/* One row per affective attribute, one cell per sample */}
+        {first.affectiveRows.map((row, ri) => (
+          <View key={row.id} style={ri === rowCount - 1 ? s.gridRowLast : s.gridRow} wrap={false}>
+            <Text style={s.rowLabel}>{shortLabel(t, row.labelKey)}</Text>
+            {sheets.map((sheet) => {
+              const cell = sheet.affectiveRows[ri];
+              return (
+                <View key={sheet.header.sampleLabel} style={s.sampleCell}>
+                  <Bubbles value={cell?.value ?? null} none={t.none} />
+                  {cell?.notes ? <Text style={s.affNotes}>{cell.notes}</Text> : null}
+                </View>
+              );
+            })}
+            {pad.map((_, i) => (
+              <View key={`p${i}`} style={s.sampleCell} />
+            ))}
           </View>
         ))}
       </View>
-    </View>
+
+      {/* Uniformity / defects / score band */}
+      <View style={[s.grid, { marginTop: 4 }]} wrap={false}>
+        <CupBand sheets={sheets} pad={pad} t={t} />
+      </View>
+
+      <SheetFooter t={t} />
+    </Page>
   );
 }
 
-// ─── Affective sheet body (8 attributes + uniformity/defects + score) ───────
+function CupBand({
+  sheets,
+  pad,
+  t,
+}: {
+  sheets: CvaSampleSheet[];
+  pad: unknown[];
+  t: Record<string, string>;
+}) {
+  const rows: {
+    key: string;
+    label: string;
+    render: (sheet: CvaSampleSheet) => React.ReactNode;
+  }[] = [
+    {
+      key: "u",
+      label: t.nonUniform,
+      render: (sheet) => <CupBoxes marks={sheet.cups.nonUniform} />,
+    },
+    {
+      key: "d",
+      label: t.defectiveCups,
+      render: (sheet) => <CupBoxes marks={sheet.cups.defective} color={RED} />,
+    },
+    {
+      key: "type",
+      label: t.defectIfAny,
+      render: (sheet) => (
+        <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+          {sheet.cups.defectTypes.map((dt) => (
+            <View key={dt.id} style={{ flexDirection: "row", alignItems: "center", marginRight: 6 }}>
+              <CheckBox checked={dt.checked} size={5.5} color={dt.checked ? RED : INK} />
+              <Text style={{ fontSize: 6, color: dt.checked ? RED : INK }}>{dt.label}</Text>
+            </View>
+          ))}
+        </View>
+      ),
+    },
+    {
+      key: "score",
+      label: t.score,
+      render: (sheet) => <ScoreCell sheet={sheet} t={t} />,
+    },
+  ];
 
-function AffectiveBody({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, string> }) {
   return (
-    <View>
-      <Text style={{ fontSize: 6.5, color: SOFT, fontStyle: "italic", marginBottom: 3 }}>{t.scale9}</Text>
-      <View style={s.block}>
-        {sheet.affectiveRows.map((row, i) => (
-          <AffectiveRowView
-            key={row.id}
-            labelKey={row.labelKey}
-            value={row.value}
-            notes={row.notes}
-            t={t}
-            last={i === sheet.affectiveRows.length - 1}
+    <>
+      {rows.map((r, i) => (
+        <View key={r.key} style={i === rows.length - 1 ? s.gridRowLast : s.gridRow}>
+          <Text style={s.rowLabelSm}>{r.label}</Text>
+          {sheets.map((sheet) => (
+            <View key={sheet.header.sampleLabel} style={s.sampleCell}>
+              {r.render(sheet)}
+            </View>
+          ))}
+          {pad.map((_, pi) => (
+            <View key={`p${pi}`} style={s.sampleCell} />
+          ))}
+        </View>
+      ))}
+    </>
+  );
+}
+
+// ─── Combined: Part 1 left / Part 2 right / Part 3 bottom (landscape) ───────
+
+function CombinedPage({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, string> }) {
+  const d = sheet.descriptive;
+  const int = (id: StageId) => d.intensity[id];
+  return (
+    <Page size="A4" orientation="landscape" style={s.page}>
+      <SheetHeader sheet={sheet} t={t} formName={t.formCombined} />
+      <SampleStrip sheet={sheet} t={t} />
+
+      <View style={{ flexDirection: "row", gap: 10 }}>
+        {/* Part 1 — descriptive */}
+        <View style={{ flexGrow: 1, flexBasis: 0 }}>
+          <Text style={s.partBanner}>{t.partDescriptive}</Text>
+          <IntensityRow name={t.fragrance} value={int("fragancia")} t={t} compact />
+          <IntensityRow name={t.aroma} value={int("aroma")} t={t} compact />
+          <CataBox
+            title={t.selectUpToFive}
+            rows={d.boxA.map(flavorToRow)}
+            notes={d.boxANotes}
+            notesLabel={t.notes}
           />
+          <IntensityRow name={t.flavor} value={int("sabor")} t={t} compact />
+          <IntensityRow name={t.aftertaste} value={int("sabor_residual")} t={t} compact />
+          <CataBox
+            title={t.selectUpToFive}
+            rows={d.boxB.map(flavorToRow)}
+            notes={d.boxBNotes}
+            notesLabel={t.notes}
+            aside={<MainTastesAside sheet={sheet} t={t} />}
+          />
+          <IntensityRow name={t.acidity} value={int("acidez")} t={t} compact />
+          <IntensityRow name={t.sweetness} value={int("dulzor")} t={t} compact />
+          <IntensityRow name={t.mouthfeel} value={int("sensacion")} t={t} compact />
+          {/* The last three CATA lists run across rather than stacked — Part 1
+              otherwise overflows the landscape page. */}
+          <View style={{ flexDirection: "row", gap: 5 }}>
+            {/* Acidity is a flat 10-term list — two columns keep it five rows
+                tall, matching the other two boxes. */}
+            <CataBox
+              section={t.acidity}
+              title={t.selectAllApply}
+              rows={d.acidity.map(cataToRow)}
+              columns={2}
+              style={{ flexGrow: 1.6, flexBasis: 0 }}
+            />
+            <CataBox
+              section={t.sweetness}
+              title={t.selectAllApply}
+              rows={d.sweetness.map(cataToRow)}
+              columns={1}
+              style={{ flexGrow: 1, flexBasis: 0 }}
+            />
+            <CataBox
+              section={t.mouthfeel}
+              title={t.selectUpToTwo}
+              rows={d.mouthfeel.map(cataToRow)}
+              columns={1}
+              style={{ flexGrow: 1, flexBasis: 0 }}
+            />
+          </View>
+        </View>
+
+        {/* Part 2 — affective. Sized to the bubble row + FINAL box; any wider
+            just steals wrapping room from Part 1's CATA lists. */}
+        <View style={{ width: 182 }}>
+          <Text style={s.partBanner}>{t.partAffective}</Text>
+          <View style={s.grid}>
+            {sheet.affectiveRows.map((row, i) => (
+              <View
+                key={row.id}
+                style={i === sheet.affectiveRows.length - 1 ? s.gridRowLast : s.gridRow}
+                wrap={false}
+              >
+                <View style={{ paddingVertical: 3, paddingHorizontal: 4, flexGrow: 1, flexBasis: 0 }}>
+                  <Text style={{ fontSize: 8, fontFamily: SERIF, marginBottom: 1.5 }}>
+                    {t[row.labelKey] ?? row.labelKey}
+                  </Text>
+                  <Bubbles value={row.value} none={t.none} />
+                  {row.notes ? <Text style={s.affNotes}>{row.notes}</Text> : null}
+                </View>
+              </View>
+            ))}
+          </View>
+
+          {/* Uniformity / defects / score */}
+          <View style={[s.cataBox, { marginTop: 4 }]} wrap={false}>
+            <View style={s.cataBody}>
+              <Text style={s.intCaption}>{t.nonUniform}</Text>
+              <CupBoxes marks={sheet.cups.nonUniform} />
+              <Text style={[s.intCaption, { marginTop: 3 }]}>{t.defectiveCups}</Text>
+              <CupBoxes marks={sheet.cups.defective} color={RED} />
+              <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 3 }}>
+                {sheet.cups.defectTypes.map((dt) => (
+                  <View key={dt.id} style={{ flexDirection: "row", alignItems: "center", marginRight: 6 }}>
+                    <CheckBox checked={dt.checked} size={5.5} color={dt.checked ? RED : INK} />
+                    <Text style={{ fontSize: 6, color: dt.checked ? RED : INK }}>{dt.label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              border: `1.25pt solid ${INK}`,
+              paddingVertical: 3,
+              paddingHorizontal: 6,
+              marginTop: 4,
+            }}
+            wrap={false}
+          >
+            <Text style={s.intCaption}>{t.score}</Text>
+            <ScoreCell sheet={sheet} t={t} />
+          </View>
+        </View>
+      </View>
+
+      {/* Part 3 — extrinsic */}
+      {/* Part 3 (extrinsic) lives on the shared appendix page, not here: our
+          descriptor vocabulary makes Part 1 roughly twice the official form's
+          height, so nothing else fits on the landscape sheet. Keeping extrinsic
+          on a separate page also matches the CVA's own guidance to record it
+          apart from the sensory assessment to avoid bias. */}
+
+      <SheetFooter t={t} />
+    </Page>
+  );
+}
+
+function MetaFields({
+  fields,
+  compact,
+}: {
+  fields: { label: string; value: string }[];
+  compact?: boolean;
+}) {
+  if (fields.length === 0) {
+    return (
+      <View>
+        {[0, 1].map((i) => (
+          <View key={i} style={{ borderBottom: `0.5pt dotted ${HAIR}`, height: 10 }} />
         ))}
       </View>
-      {sheet.cups.cupsPerSample >= 2 ? <CupsBlock sheet={sheet} t={t} /> : null}
-      <ScoreBox sheet={sheet} t={t} />
+    );
+  }
+  return (
+    <View style={s.metaWrap}>
+      {fields.map((f, i) => (
+        <View key={i} style={compact ? s.metaFieldCompact : s.metaField}>
+          <Text style={s.metaLabel}>{f.label}</Text>
+          <Text style={compact ? s.metaValueCompact : s.metaValue}>{f.value}</Text>
+        </View>
+      ))}
     </View>
   );
 }
 
-// ─── Per-sample pages ───────────────────────────────────────────────────────
+/** Bordered block for physical / extrinsic data on the standalone sheets. */
+function MetaBlock({
+  title,
+  fields,
+}: {
+  title: string;
+  fields: { label: string; value: string }[];
+}) {
+  if (fields.length === 0) return null;
+  return (
+    <View style={s.cataBox} wrap={false}>
+      <Text style={s.cataTitle}>{title}</Text>
+      <View style={s.cataBody}>
+        <MetaFields fields={fields} />
+      </View>
+    </View>
+  );
+}
 
-function SampleSheet({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, string> }) {
-  const formatBadge =
-    sheet.format === "affective" ? t.affective : sheet.format === "combined" ? t.combined : t.descriptive;
-
-  if (sheet.format === "descriptive") {
-    return (
-      <Page size="A4" style={s.page}>
-        <SheetHeaderView sheet={sheet} t={t} formatBadge={formatBadge} specSuffix={t.sheetDescriptive} />
-        <DescriptiveBody sheet={sheet} t={t} />
-        <MetaBlock title={t.physical} fields={sheet.physical} t={t} />
-        <MetaBlock title={t.extrinsic} fields={sheet.extrinsic} t={t} />
-      </Page>
-    );
-  }
-
-  if (sheet.format === "affective") {
-    return (
-      <Page size="A4" style={s.page}>
-        <SheetHeaderView sheet={sheet} t={t} formatBadge={formatBadge} specSuffix={t.sheetAffective} />
-        <AffectiveBody sheet={sheet} t={t} />
-        <MetaBlock title={t.physical} fields={sheet.physical} t={t} />
-        <MetaBlock title={t.extrinsic} fields={sheet.extrinsic} t={t} />
-      </Page>
-    );
-  }
-
-  // Combined — descriptive sheet followed by affective sheet content (the way
-  // the app's combined format merges the two into one evaluation).
+/**
+ * Physical + extrinsic data for every sample, on one appendix page. All three
+ * formats share it: the sensory sheets stay at official density, and extrinsic
+ * data stays visually separate from the assessment, as the CVA intends.
+ */
+function MetaAppendix({
+  sheets,
+  t,
+  formName,
+}: {
+  sheets: CvaSampleSheet[];
+  t: Record<string, string>;
+  formName: string;
+}) {
+  const withData = sheets.filter((sh) => sh.physical.length + sh.extrinsic.length > 0);
+  if (withData.length === 0) return null;
   return (
     <Page size="A4" style={s.page}>
-      <SheetHeaderView sheet={sheet} t={t} formatBadge={formatBadge} specSuffix={t.combined} />
-      <Text style={s.sectionHead}>{t.partDescriptive}</Text>
-      <View style={{ marginTop: 4 }}>
-        <DescriptiveBody sheet={sheet} t={t} />
-      </View>
-      <Text style={[s.sectionHead, { marginTop: 2 }]} break>
-        {t.partAffective}
-      </Text>
-      <View style={{ marginTop: 4 }}>
-        <AffectiveBody sheet={sheet} t={t} />
-      </View>
-      <MetaBlock title={t.physical} fields={sheet.physical} t={t} />
-      <MetaBlock title={t.extrinsic} fields={sheet.extrinsic} t={t} />
+      <SheetHeader sheet={sheets[0]} t={t} formName={formName} />
+      <Text style={s.partBanner}>{t.partExtrinsic}</Text>
+      {withData.map((sheet, i) => (
+        <View key={i} wrap={false}>
+          <SampleStrip sheet={sheet} t={t} />
+          <MetaBlock title={t.physical} fields={sheet.physical} />
+          <MetaBlock title={t.extrinsic} fields={sheet.extrinsic} />
+        </View>
+      ))}
+      <SheetFooter t={t} />
     </Page>
   );
 }
@@ -725,6 +1049,12 @@ export type CvaDocumentProps = {
   }[];
 };
 
+function chunk<T>(xs: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < xs.length; i += size) out.push(xs.slice(i, i + size));
+  return out;
+}
+
 export function CvaFormDocument(props: CvaDocumentProps) {
   const t = CVA_TEXT[props.locale];
   const sheets: CvaSampleSheet[] = props.samples.map((sample) => {
@@ -741,16 +1071,60 @@ export function CvaFormDocument(props: CvaDocumentProps) {
     return buildCvaFormData(input);
   });
 
-  return (
-    <Document title={`CVA · ${props.sessionName}`} author="Cata Café">
-      {sheets.length === 0 ? (
+  const title = `CVA · ${props.sessionName}`;
+
+  if (sheets.length === 0) {
+    return (
+      <Document title={title} author="Cata Café">
         <Page size="A4" style={s.page}>
-          <Text style={s.title}>{props.sessionName}</Text>
-          <Text style={{ marginTop: 20, color: SOFT }}>—</Text>
+          <Text style={s.formName}>{props.sessionName}</Text>
+          <Text style={{ marginTop: 20, color: SOFT }}>{t.none}</Text>
         </Page>
-      ) : (
-        sheets.map((sheet, i) => <SampleSheet key={i} sheet={sheet} t={t} />)
-      )}
+      </Document>
+    );
+  }
+
+  const format = sheets[0].format;
+
+  // Affective — landscape, samples as columns, three per page.
+  if (format === "affective") {
+    return (
+      <Document title={title} author="Cata Café">
+        {chunk(sheets, 3).map((group, i) => (
+          <AffectiveGridPage key={i} sheets={group} t={t} formName={t.formAffective} />
+        ))}
+        <MetaAppendix sheets={sheets} t={t} formName={t.formAffective} />
+      </Document>
+    );
+  }
+
+  // Combined — landscape, one sample per page, extrinsic on the appendix.
+  if (format === "combined") {
+    return (
+      <Document title={title} author="Cata Café">
+        {sheets.map((sheet, i) => (
+          <CombinedPage key={i} sheet={sheet} t={t} />
+        ))}
+        <MetaAppendix sheets={sheets} t={t} formName={t.formCombined} />
+      </Document>
+    );
+  }
+
+  // Descriptive — portrait, two samples per page.
+  return (
+    <Document title={title} author="Cata Café">
+      {chunk(sheets, 2).map((pair, i) => (
+        <Page key={i} size="A4" style={s.page}>
+          <SheetHeader sheet={pair[0]} t={t} formName={t.formDescriptive} />
+          {pair.map((sheet, j) => (
+            <View key={j} style={j > 0 ? { marginTop: 6 } : {}}>
+              <DescriptiveBlock sheet={sheet} t={t} />
+            </View>
+          ))}
+          <SheetFooter t={t} />
+        </Page>
+      ))}
+      <MetaAppendix sheets={sheets} t={t} formName={t.formDescriptive} />
     </Document>
   );
 }

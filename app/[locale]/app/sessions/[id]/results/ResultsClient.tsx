@@ -28,6 +28,7 @@ import {
 } from "@/components/cupping/EditSampleMetadataForm";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { updateSampleMetadata } from "@/app/actions/sessions";
+import { FileDown, Printer } from "lucide-react";
 
 type AggregateScoreData = {
   communityScore: number | null;
@@ -781,54 +782,24 @@ export function ResultsClient({
 
       {/* Print CTA — docked footer */}
       <div
-        className="shrink-0"
-        style={{
-          background: "#FDFBF7",
-          borderTop: "1px solid #E8E0D0",
-          padding: "12px 16px",
-          paddingBottom: "max(12px, calc(env(safe-area-inset-bottom) + 8px))",
-        }}
+        className="shrink-0 border-t border-outline-variant bg-surface px-4 pt-3"
+        style={{ paddingBottom: "max(12px, calc(env(safe-area-inset-bottom) + 8px))" }}
       >
-        <div style={{ display: "flex", gap: 10 }}>
+        <div className="flex gap-2">
           <button
             onClick={() => router.push(`/${locale}/app/sessions/${session.id}/print`)}
-            style={{
-              flex: 1,
-              padding: "13px 0",
-              borderRadius: 10,
-              border: "none",
-              background: "linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%)",
-              color: "#FFF",
-              fontSize: 15,
-              fontWeight: 700,
-              cursor: "pointer",
-              fontFamily: "'Cormorant Garamond', Georgia, serif",
-              letterSpacing: "0.3px",
-            }}
+            className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-pill border border-primary-container px-4 font-ui text-sm font-medium text-primary-container transition-colors hover:bg-primary-fixed"
           >
-            🖨 Ver Formulario Imprimible
+            <Printer size={16} aria-hidden />
+            {locale === "en" ? "View form" : "Ver formulario"}
           </button>
           {/* Server-generated CVA PDF — plain link so no @react-pdf ships to the client. */}
           <a
             href={`/api/sessions/${session.id}/cva-pdf?locale=${locale}`}
-            style={{
-              flex: 1,
-              padding: "13px 0",
-              borderRadius: 10,
-              border: "1.5px solid #3D5A3E",
-              background: "#FFF",
-              color: "#3D5A3E",
-              fontSize: 15,
-              fontWeight: 700,
-              cursor: "pointer",
-              fontFamily: "'Cormorant Garamond', Georgia, serif",
-              letterSpacing: "0.3px",
-              textAlign: "center",
-              textDecoration: "none",
-              lineHeight: "1.2",
-            }}
+            className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-pill bg-primary-container px-4 font-ui text-sm font-medium text-on-primary no-underline transition-colors hover:bg-primary"
           >
-            📄 {locale === "en" ? "Download PDF (CVA)" : "Descargar PDF (CVA)"}
+            <FileDown size={16} aria-hidden />
+            {locale === "en" ? "Download PDF" : "Descargar PDF"}
           </a>
         </div>
       </div>
