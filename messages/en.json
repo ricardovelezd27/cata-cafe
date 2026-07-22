@@ -590,7 +590,7 @@
       "dashboard": "Dashboard",
       "explorer": "Explorer",
       "benchmark": "Benchmark",
-      "share": "Share",
+      "chat": "Chat",
       "access": "Access"
     },
     "report": {
@@ -634,6 +634,10 @@
       "empty": "No data yet"
     },
     "explorer": {
+      "mode": {
+        "simple": "Simple",
+        "pivot": "Pivot table"
+      },
       "dataset": "Data",
       "dimension": "Dimension",
       "measure": "Measure",
@@ -651,6 +655,7 @@
       "load": "Open",
       "delete": "Delete",
       "close": "Close",
+      "shareButton": "Share",
       "datasets": {
         "evaluations": "Evaluations",
         "sessions": "Sessions",
@@ -697,6 +702,36 @@
         "count": "Records"
       }
     },
+    "pivot": {
+      "rows": "Rows",
+      "columns": "Columns",
+      "values": "Values",
+      "filters": "Filters",
+      "addField": "Add",
+      "remove": "Remove",
+      "dataset": "Data",
+      "dateFrom": "From",
+      "dateTo": "To",
+      "total": "Total",
+      "grandTotal": "Grand total",
+      "heatmap": "Heatmap",
+      "empty": "No results for this combination",
+      "running": "Calculating…",
+      "error": "Could not calculate. Check the configuration.",
+      "viewTable": "Table",
+      "viewGrouped": "Grouped bars",
+      "viewStacked": "Stacked bars",
+      "viewLine": "Line",
+      "selectValues": "Select values",
+      "searchValues": "Search…",
+      "apply": "Apply",
+      "clearFilter": "Clear selection",
+      "countHint": "{count} records",
+      "maxRowsHint": "Showing up to 30 rows.",
+      "maxColsHint": "Showing up to 12 columns.",
+      "valueColumn": "Value",
+      "close": "Close"
+    },
     "access": {
       "lead": "Grant access to the insights area to the users you choose. Only you can manage this list.",
       "search": "Search by name or email…",
@@ -732,9 +767,7 @@
     },
     "share": {
       "title": "Share insights",
-      "subtitle": "Turn a saved insight into a share-ready card, complete with suggested social copy.",
-      "pickInsight": "Saved insight",
-      "noSaved": "No saved insights yet. Create them in the Explorer.",
+      "subtitle": "Turn the current visualization into a share-ready card, complete with suggested social copy.",
       "headline": "Headline",
       "headlinePh": "e.g. Colombia dominates our cuppings",
       "downloadPng": "Download PNG",
@@ -744,6 +777,47 @@
       "copy": "Copy",
       "copied": "Copied",
       "exportError": "Could not export the image."
+    },
+    "chat": {
+      "title": "Ask your data",
+      "subtitle": "Ask natural-language questions about your sessions, evaluations, and sensory profiles.",
+      "placeholder": "Type your question…",
+      "send": "Send",
+      "thinking": "Analyzing your data…",
+      "disclaimer": "AI-generated — verify important figures.",
+      "notConfigured": "AI is not configured (GEMINI_API_KEY missing).",
+      "error": "Couldn't process the question. Try again.",
+      "noAnswer": "I didn't get a clear answer. Try rephrasing the question.",
+      "retry": "Retry",
+      "limitReached": "You've reached the limit of {limit} questions per day. Come back tomorrow.",
+      "remaining": "{remaining} of {limit} questions today",
+      "emptyTitle": "Ask anything about your cupping data",
+      "emptyHint": "The AI queries your real data and answers with concrete figures — it never makes up numbers.",
+      "example1": "What are my highest-scoring origins this quarter?",
+      "example2": "How does my score compare to the CQI benchmark for washed Colombian coffees?",
+      "example3": "Which flavor descriptors show up most often in my cuppings?",
+      "clear": "Clear conversation",
+      "you": "You",
+      "assistant": "Assistant",
+      "benchmark": {
+        "mine": "My cuppings",
+        "benchmark": "CQI benchmark",
+        "n": "N",
+        "avg": "Average",
+        "min": "Min",
+        "max": "Max",
+        "p25": "P25",
+        "p75": "P75"
+      },
+      "origin": {
+        "year": "Year",
+        "production": "Production (t)",
+        "myActivity": "My activity"
+      },
+      "overview": {
+        "coffeesRegistered": "Coffees registered",
+        "totalUsers": "Total users"
+      }
     }
   },
   "groups": {

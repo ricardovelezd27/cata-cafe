@@ -311,7 +311,7 @@ model BenchmarkLot {
 // dataHash = sha256(canonical inputs + locale + PROMPT_VERSION); see lib/ai/narratives.ts.
 model InsightNarrative {
   id        String   @id @default(cuid())
-  kind      String // "dashboard" | "insight" | "linkedin" | "digest"
+  kind      String // "dashboard" | "insight" | "linkedin" | "linkedin_pivot" | "digest"
   dataHash  String
   locale    String
   content   Json
@@ -374,4 +374,24 @@ model TastingGroupMember {
   @@index([groupId])
   @@index([userId])
   @@map("tasting_group_members")
+}
+
+// Per-user daily AI-chat cost governor. One row per (user, UTC day); written
+// only by app/actions/aiChat.ts behind requireAiAdmin(). Deny-all RLS with no
+// policies (Prisma's postgres role bypasses RLS) — see
+// prisma/sql/rls_and_triggers.sql Phase 12.
+model AiChatUsage {
+  id            String   @id @default(cuid())
+  userId        String
+  day           String // "YYYY-MM-DD" (UTC)
+  questionCount Int      @default(0)
+  modelCalls    Int      @default(0)
+  promptTokens  Int      @default(0)
+  outputTokens  Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, day])
+  @@index([userId])
+  @@map("ai_chat_usage")
 }

@@ -1,11 +1,13 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import {
+  COFFEE_COUNTRIES,
   countryDisplayName,
   normKey,
   normalizeCountry,
   normalizeProcess,
 } from "./normalize";
+import { PROCESS_TYPES } from "@/lib/constants";
 
 type Locale = "es" | "en";
 
@@ -21,6 +23,38 @@ export interface BenchmarkFilter {
   processType?: string;
   /** normKey() of the variety text. */
   variety?: string;
+}
+
+/** Whitelist validation of an untrusted benchmark filter (same spirit as parseInsightConfig). */
+export function parseBenchmarkFilter(input: unknown): BenchmarkFilter {
+  if (typeof input !== "object" || input === null) throw new Error("invalid_filter");
+  const raw = input as Record<string, unknown>;
+  const filter: BenchmarkFilter = {};
+  if (raw.countryCode !== undefined && raw.countryCode !== "") {
+    if (
+      typeof raw.countryCode !== "string" ||
+      !COFFEE_COUNTRIES.some((c) => c.iso2 === raw.countryCode)
+    ) {
+      throw new Error("invalid_filter");
+    }
+    filter.countryCode = raw.countryCode;
+  }
+  if (raw.processType !== undefined && raw.processType !== "") {
+    if (
+      typeof raw.processType !== "string" ||
+      !(PROCESS_TYPES as readonly string[]).includes(raw.processType)
+    ) {
+      throw new Error("invalid_filter");
+    }
+    filter.processType = raw.processType;
+  }
+  if (raw.variety !== undefined && raw.variety !== "") {
+    if (typeof raw.variety !== "string" || raw.variety.length > 80) {
+      throw new Error("invalid_filter");
+    }
+    filter.variety = raw.variety;
+  }
+  return filter;
 }
 
 export interface BenchmarkComparison {

@@ -967,7 +967,16 @@ CREATE POLICY "coffees_write" ON coffees
   FOR ALL USING ("createdBy" = auth.uid()::text);
 
 -- ============================================================================
--- PHASE 12 (2026-07-22): evaluations.sessionId for server-side Realtime filtering
+-- Phase 12 (2026-07-21): ai_chat_usage hardening
+-- Per-user daily AI-chat counters, written/read only via server-side Prisma
+-- behind requireAiAdmin(). Deny-all via RLS with no policies, same rationale
+-- as saved_insights / insight_narratives. Supabase auto-enables RLS on new
+-- public tables, so this is documentation + idempotent.
+-- ============================================================================
+ALTER TABLE ai_chat_usage ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- PHASE 13 (2026-07-22): evaluations.sessionId for server-side Realtime filtering
 -- Added via Prisma migration `evaluation_session_id` (denormalized copy of
 -- session_samples.sessionId, nullable, backfilled by the migration itself) so
 -- CupClient/ResultsClient can subscribe with a `sessionId=eq.<id>` Realtime
@@ -980,7 +989,7 @@ CREATE POLICY "coffees_write" ON coffees
 -- ============================================================================
 
 -- ============================================================================
--- PHASE 13 (2026-07-22): anonymous-safe handle_new_user()
+-- PHASE 14 (2026-07-22): anonymous-safe handle_new_user()
 -- Redefines handle_new_user() — body copied verbatim from the Phase 10b
 -- definition above, with ONE change: the displayName expression now falls
 -- back through raw_user_meta_data.display_name → the email local-part →

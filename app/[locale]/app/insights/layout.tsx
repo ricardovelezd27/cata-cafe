@@ -29,11 +29,12 @@ export default async function InsightsLayout({
       <InsightsTabs
         locale={locale}
         isSuperAdmin={access.isSuperAdmin}
+        isAiAdmin={access.isAiAdmin}
         labels={{
           dashboard: t("tabs.dashboard"),
           explorer: t("tabs.explorer"),
           benchmark: t("tabs.benchmark"),
-          share: t("tabs.share"),
+          chat: t("tabs.chat"),
           access: t("tabs.access"),
         }}
       />

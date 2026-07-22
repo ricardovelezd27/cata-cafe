@@ -1,7 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import type { DashboardData } from "@/lib/analytics/queries";
-import type { InsightConfig, InsightRow } from "@/lib/analytics/types";
+import type { InsightConfig, InsightRow, PivotConfig, PivotResult } from "@/lib/analytics/types";
 import type { AiGenerateRequest } from "./types";
 
 // Prompt builders for every AI-narrative kind. Prompts receive ONLY aggregated
@@ -15,7 +15,7 @@ type Locale = "es" | "en";
 
 const LANGUAGE_NAME: Record<Locale, string> = { es: "Spanish", en: "English" };
 
-const BASE_SYSTEM = `You are the data analyst of Cata Café, a professional coffee-cupping platform used by certified cuppers (catadores) applying the SCA CVA methodology. You write short, precise, insight-driven narratives about cupping data for coffee professionals.
+export const BASE_SYSTEM = `You are the data analyst of Cata Café, a professional coffee-cupping platform used by certified cuppers (catadores) applying the SCA CVA methodology. You write short, precise, insight-driven narratives about cupping data for coffee professionals.
 Rules:
 - Use ONLY the figures provided in the input JSON. Never invent, extrapolate, or estimate numbers that are not present.
 - Scores are on the SCA 100-point-style CVA scale; sample sizes matter — mention n when it is small (< 20) and soften claims accordingly.
@@ -170,6 +170,80 @@ ${headline ? `The angle to lead with: "${headline}".` : "Choose the strongest an
 
 The finding (dataset "${inputs.dataset}" grouped by "${inputs.dimension}", measuring "${inputs.measure}"):
 ${JSON.stringify(inputs.rows)}`,
+  };
+}
+
+// ── Pivot LinkedIn draft ─────────────────────────────────────────────────────
+// Separate builder (new cache `kind`, "linkedin_pivot") rather than reusing
+// buildLinkedInRequest for a PivotConfig: the row/column cross-tab shape does
+// not fit InsightNarrativeInputs' flat rows[], and editing buildLinkedInRequest
+// itself would bump PROMPT_VERSION and invalidate every cached simple-insight
+// draft. Same tier/schema/output constraints and persona as buildLinkedInRequest.
+
+export interface PivotNarrativeInputs {
+  dataset: string;
+  /** Row-axis dimension id(s), e.g. ["coffeeCountry"]. */
+  rows: string[];
+  /** Column-axis dimension id(s); empty means a single implicit total column. */
+  columns: string[];
+  measure: string;
+  /** Top-left slice of the cross-tab: ≤10 rows × ≤7 cols, already locale-resolved labels. */
+  matrix: {
+    row: string;
+    total: number | null;
+    cells: { col: string; value: number | null; count: number }[];
+  }[];
+  grandTotal: number | null;
+  headline?: string | null;
+}
+
+const PIVOT_MATRIX_MAX_ROWS = 10;
+const PIVOT_MATRIX_MAX_COLS = 7;
+
+export function pivotNarrativeInputs(config: PivotConfig, result: PivotResult): PivotNarrativeInputs {
+  const hasColumns = config.columns.length > 0;
+  const rowKeys = result.rowKeys.slice(0, PIVOT_MATRIX_MAX_ROWS);
+  const colKeys = result.colKeys.slice(0, PIVOT_MATRIX_MAX_COLS);
+
+  const matrix = rowKeys.map((r) => ({
+    row: r.label,
+    total: result.rowTotals[r.key]?.value ?? null,
+    cells: colKeys.map((c) => {
+      const cell = result.cells[r.key]?.[c.key] ?? { value: null, count: 0 };
+      // The synthetic "__total__" column (no column dimension selected) has
+      // no human label — name it after the measure instead of sending "".
+      return { col: hasColumns ? c.label : config.measure, value: cell.value, count: cell.count };
+    }),
+  }));
+
+  return {
+    dataset: config.dataset,
+    rows: config.rows,
+    columns: config.columns,
+    measure: config.measure,
+    matrix,
+    grandTotal: result.grandTotal.value,
+  };
+}
+
+export function buildLinkedInPivotRequest(
+  inputs: PivotNarrativeInputs,
+  headline: string | null,
+): AiGenerateRequest {
+  return {
+    tier: "standard",
+    system: BASE_SYSTEM,
+    jsonSchema: LINKEDIN_SCHEMA,
+    maxOutputTokens: 2048,
+    prompt: `Write ONE LinkedIn post in Spanish and the same post in English (independent, natural versions — not literal translations) sharing a data finding from our cupping platform.
+Style: first-person plural of a specialty-coffee team sharing real data; hook first line; 2-4 short paragraphs; under 1300 characters per language; concrete numbers from the input only; end with a light question to invite discussion. No emojis-overload (max 2), no clickbait.
+${headline ? `The angle to lead with: "${headline}".` : "Choose the strongest angle yourself."}
+
+The finding is a cross-tab from dataset "${inputs.dataset}": row dimension(s) ${JSON.stringify(inputs.rows)} against column dimension(s) ${JSON.stringify(inputs.columns)}, measuring "${inputs.measure}". Highlight the most interesting cross-dimension contrast — a row/column combination that stands out, or a pattern that differs across columns.
+
+Matrix (each row's label, its overall total, and its value per column):
+${JSON.stringify(inputs.matrix)}
+Grand total: ${JSON.stringify(inputs.grandTotal)}`,
   };
 }
 

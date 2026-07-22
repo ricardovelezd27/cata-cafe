@@ -590,7 +590,7 @@
       "dashboard": "Panel",
       "explorer": "Explorador",
       "benchmark": "Benchmark",
-      "share": "Compartir",
+      "chat": "Chat",
       "access": "Acceso"
     },
     "report": {
@@ -634,6 +634,10 @@
       "empty": "Sin datos todavía"
     },
     "explorer": {
+      "mode": {
+        "simple": "Simple",
+        "pivot": "Tabla dinámica"
+      },
       "dataset": "Datos",
       "dimension": "Dimensión",
       "measure": "Métrica",
@@ -651,6 +655,7 @@
       "load": "Abrir",
       "delete": "Eliminar",
       "close": "Cerrar",
+      "shareButton": "Compartir",
       "datasets": {
         "evaluations": "Evaluaciones",
         "sessions": "Sesiones",
@@ -697,6 +702,36 @@
         "count": "Registros"
       }
     },
+    "pivot": {
+      "rows": "Filas",
+      "columns": "Columnas",
+      "values": "Valores",
+      "filters": "Filtros",
+      "addField": "Agregar",
+      "remove": "Quitar",
+      "dataset": "Datos",
+      "dateFrom": "Desde",
+      "dateTo": "Hasta",
+      "total": "Total",
+      "grandTotal": "Total general",
+      "heatmap": "Mapa de calor",
+      "empty": "Sin resultados para esta combinación",
+      "running": "Calculando…",
+      "error": "No se pudo calcular. Revisa la configuración.",
+      "viewTable": "Tabla",
+      "viewGrouped": "Barras agrupadas",
+      "viewStacked": "Barras apiladas",
+      "viewLine": "Línea",
+      "selectValues": "Seleccionar valores",
+      "searchValues": "Buscar…",
+      "apply": "Aplicar",
+      "clearFilter": "Limpiar selección",
+      "countHint": "{count} registros",
+      "maxRowsHint": "Se muestran hasta 30 filas.",
+      "maxColsHint": "Se muestran hasta 12 columnas.",
+      "valueColumn": "Valor",
+      "close": "Cerrar"
+    },
     "access": {
       "lead": "Da acceso al área de análisis a los usuarios que elijas. Solo tú puedes gestionar esta lista.",
       "search": "Buscar por nombre o correo…",
@@ -732,9 +767,7 @@
     },
     "share": {
       "title": "Compartir insights",
-      "subtitle": "Convierte un insight guardado en una tarjeta lista para compartir, con textos sugeridos para redes.",
-      "pickInsight": "Insight guardado",
-      "noSaved": "Aún no tienes insights guardados. Créalos en el Explorador.",
+      "subtitle": "Convierte la visualización actual en una tarjeta lista para compartir, con textos sugeridos para redes.",
       "headline": "Titular",
       "headlinePh": "Ej. Colombia domina nuestras cataciones",
       "downloadPng": "Descargar PNG",
@@ -744,6 +777,47 @@
       "copy": "Copiar",
       "copied": "Copiado",
       "exportError": "No se pudo exportar la imagen."
+    },
+    "chat": {
+      "title": "Pregúntale a tus datos",
+      "subtitle": "Haz preguntas en lenguaje natural sobre tus sesiones, evaluaciones y perfiles sensoriales.",
+      "placeholder": "Escribe tu pregunta…",
+      "send": "Enviar",
+      "thinking": "Analizando tus datos…",
+      "disclaimer": "Generado con IA — verifica las cifras importantes.",
+      "notConfigured": "La IA no está configurada (falta GEMINI_API_KEY).",
+      "error": "No se pudo procesar la pregunta. Inténtalo de nuevo.",
+      "noAnswer": "No obtuve una respuesta clara. Intenta reformular la pregunta.",
+      "retry": "Reintentar",
+      "limitReached": "Has alcanzado el límite de {limit} preguntas por día. Vuelve mañana.",
+      "remaining": "{remaining} de {limit} preguntas hoy",
+      "emptyTitle": "Pregunta lo que quieras sobre tus datos de catación",
+      "emptyHint": "La IA consulta tus datos reales y responde con cifras concretas — nunca inventa números.",
+      "example1": "¿Cuáles son mis orígenes mejor puntuados este trimestre?",
+      "example2": "¿Cómo se compara mi puntaje con el benchmark de CQI para cafés de Colombia lavados?",
+      "example3": "¿Qué descriptores de sabor aparecen con más frecuencia en mis catas?",
+      "clear": "Borrar conversación",
+      "you": "Tú",
+      "assistant": "Asistente",
+      "benchmark": {
+        "mine": "Mis cataciones",
+        "benchmark": "Benchmark CQI",
+        "n": "N",
+        "avg": "Promedio",
+        "min": "Mínimo",
+        "max": "Máximo",
+        "p25": "P25",
+        "p75": "P75"
+      },
+      "origin": {
+        "year": "Año",
+        "production": "Producción (t)",
+        "myActivity": "Mi actividad"
+      },
+      "overview": {
+        "coffeesRegistered": "Cafés registrados",
+        "totalUsers": "Usuarios totales"
+      }
     }
   },
   "groups": {

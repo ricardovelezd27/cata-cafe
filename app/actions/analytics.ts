@@ -8,18 +8,32 @@ import {
   requireAnalyticsAccess,
   requireSuperAdmin,
 } from "@/lib/analytics/access";
-import { parseInsightConfig } from "@/lib/analytics/types";
-import type { InsightConfig, InsightRow } from "@/lib/analytics/types";
-import { runInsightQuery } from "@/lib/analytics/queries";
+import {
+  DATASET_DIMENSIONS,
+  DATASETS,
+  isPivotConfigLike,
+  parseInsightConfig,
+  parsePivotConfig,
+} from "@/lib/analytics/types";
+import type {
+  Dataset,
+  DimensionId,
+  InsightConfig,
+  InsightRow,
+  PivotAxisKey,
+  PivotConfig,
+  PivotResult,
+} from "@/lib/analytics/types";
+import { listDimensionValues, runInsightQuery, runPivotQuery } from "@/lib/analytics/queries";
 import {
   getBenchmarkComparison,
   getOriginContext,
+  parseBenchmarkFilter,
   type BenchmarkComparison,
   type BenchmarkFilter,
   type OriginContext,
 } from "@/lib/analytics/benchmarks";
 import { COFFEE_COUNTRIES } from "@/lib/analytics/normalize";
-import { PROCESS_TYPES } from "@/lib/constants";
 import type { Prisma } from "@/app/generated/prisma/client";
 
 function asLocale(locale: string): "es" | "en" {
@@ -41,6 +55,38 @@ export async function runInsight(
   return { ok: true, rows };
 }
 
+export async function runPivot(
+  rawConfig: unknown,
+  locale: string,
+): Promise<{ ok: true; result: PivotResult } | { ok: false; error: string }> {
+  await requireAnalyticsAccess();
+  let config: PivotConfig;
+  try {
+    config = parsePivotConfig(rawConfig);
+  } catch {
+    return { ok: false, error: "invalid_pivot" };
+  }
+  const result = await runPivotQuery(config, asLocale(locale));
+  return { ok: true, result };
+}
+
+export async function listPivotDimensionValues(
+  dataset: string,
+  dimension: string,
+  locale: string,
+): Promise<{ ok: true; values: PivotAxisKey[] } | { ok: false; error: string }> {
+  await requireAnalyticsAccess();
+  if (!DATASETS.includes(dataset as Dataset)) {
+    return { ok: false, error: "invalid_dimension" };
+  }
+  const ds = dataset as Dataset;
+  if (!DATASET_DIMENSIONS[ds].includes(dimension as DimensionId)) {
+    return { ok: false, error: "invalid_dimension" };
+  }
+  const values = await listDimensionValues(ds, dimension as DimensionId, asLocale(locale));
+  return { ok: true, values };
+}
+
 export async function saveInsight(
   name: string,
   rawConfig: unknown,
@@ -50,11 +96,12 @@ export async function saveInsight(
   if (trimmed.length < 1 || trimmed.length > 80) {
     return { ok: false, error: "invalid_name" };
   }
-  let config: InsightConfig;
+  const pivotLike = isPivotConfigLike(rawConfig);
+  let config: InsightConfig | PivotConfig;
   try {
-    config = parseInsightConfig(rawConfig);
+    config = pivotLike ? parsePivotConfig(rawConfig) : parseInsightConfig(rawConfig);
   } catch {
-    return { ok: false, error: "invalid_config" };
+    return { ok: false, error: pivotLike ? "invalid_pivot" : "invalid_config" };
   }
   const created = await prisma.savedInsight.create({
     data: {
@@ -97,38 +144,6 @@ export async function deleteSavedInsight(
   }
   await prisma.savedInsight.delete({ where: { id } });
   return { ok: true };
-}
-
-/** Whitelist validation of an untrusted benchmark filter (same spirit as parseInsightConfig). */
-function parseBenchmarkFilter(input: unknown): BenchmarkFilter {
-  if (typeof input !== "object" || input === null) throw new Error("invalid_filter");
-  const raw = input as Record<string, unknown>;
-  const filter: BenchmarkFilter = {};
-  if (raw.countryCode !== undefined && raw.countryCode !== "") {
-    if (
-      typeof raw.countryCode !== "string" ||
-      !COFFEE_COUNTRIES.some((c) => c.iso2 === raw.countryCode)
-    ) {
-      throw new Error("invalid_filter");
-    }
-    filter.countryCode = raw.countryCode;
-  }
-  if (raw.processType !== undefined && raw.processType !== "") {
-    if (
-      typeof raw.processType !== "string" ||
-      !(PROCESS_TYPES as readonly string[]).includes(raw.processType)
-    ) {
-      throw new Error("invalid_filter");
-    }
-    filter.processType = raw.processType;
-  }
-  if (raw.variety !== undefined && raw.variety !== "") {
-    if (typeof raw.variety !== "string" || raw.variety.length > 80) {
-      throw new Error("invalid_filter");
-    }
-    filter.variety = raw.variety;
-  }
-  return filter;
 }
 
 export async function runBenchmark(
