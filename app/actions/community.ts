@@ -166,6 +166,24 @@ export async function revealSample(sampleId: string, coffeeId?: string) {
   return { ok: true };
 }
 
+// ─── Complete onboarding for a guest (anonymous) user ────────────────────────
+// Called right after supabase.auth.signInAnonymously() on the client, before
+// joinViaToken. Upsert (not update) because the DB trigger normally creates
+// the Profile row on signup, but we can't depend on its timing relative to
+// this call — the upsert makes either ordering safe.
+export async function completeGuestOnboarding(name: string) {
+  const user = await requireUser({ skipProfileUpsert: true });
+  const displayName = name.trim() || "Catador";
+
+  await prisma.profile.upsert({
+    where: { id: user.id },
+    create: { id: user.id, displayName, onboardingCompleted: true },
+    update: { displayName, onboardingCompleted: true },
+  });
+
+  return { ok: true };
+}
+
 // ─── Join a session via invite token ─────────────────────────────────────────
 export async function joinViaToken(token: string, locale: string = "es") {
   const user = await requireUser();

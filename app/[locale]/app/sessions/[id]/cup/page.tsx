@@ -185,6 +185,8 @@ export default async function CupPage({
         generating: t("cupping.shell.generating"),
         copy: t("cupping.shell.copy"),
         copied: t("cupping.shell.copied"),
+        copyImage: t("cupping.shell.copyImage"),
+        downloadQr: t("cupping.shell.downloadQr"),
         formatLabel: t(`session.formats.${session.format}`),
         phaseLabels: {
           fragrance: t("cupping.phases.fragrance"),

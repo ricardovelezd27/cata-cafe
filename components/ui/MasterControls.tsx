@@ -1,6 +1,7 @@
 "use client";
 
 import { Link2, X, Copy, RotateCcw, Check } from "lucide-react";
+import { InviteQR } from "./InviteQR";
 import styles from "./MasterControls.module.css";
 
 interface MasterControlsProps {
@@ -18,6 +19,10 @@ interface MasterControlsProps {
   copyLabel: string;
   /** "Copiado" */
   copiedLabel: string;
+  /** "Copiar QR" */
+  qrCopyImageLabel: string;
+  /** "Descargar QR" */
+  qrDownloadLabel: string;
   sessionClosed: boolean;
   inviteLink: string | null;
   isGenerating: boolean;
@@ -36,6 +41,8 @@ export function MasterControls({
   generatingLabel,
   copyLabel,
   copiedLabel,
+  qrCopyImageLabel,
+  qrDownloadLabel,
   sessionClosed,
   inviteLink,
   isGenerating,
@@ -64,35 +71,44 @@ export function MasterControls({
             {isGenerating ? generatingLabel : inviteLabel}
           </button>
         ) : (
-          <div className={styles.inviteSlot}>
-            <span className={styles.inviteUrl} title={inviteLink}>
-              {inviteLink}
-            </span>
-            <button
-              type="button"
-              onClick={onCopy}
-              className={`${styles.iconBtn} ${styles.copyBtn} ${
-                isCopied ? styles.copied : ""
-              }`}
-            >
-              {isCopied ? (
-                <>
-                  <Check size={12} aria-hidden /> {copiedLabel}
-                </>
-              ) : (
-                <>
-                  <Copy size={12} aria-hidden /> {copyLabel}
-                </>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={onResetInvite}
-              className={`${styles.iconBtn} ${styles.resetBtn}`}
-              aria-label="Reset invite link"
-            >
-              <RotateCcw size={12} aria-hidden />
-            </button>
+          <div className={styles.inviteBlock}>
+            <div className={styles.inviteSlot}>
+              <span className={styles.inviteUrl} title={inviteLink}>
+                {inviteLink}
+              </span>
+              <button
+                type="button"
+                onClick={onCopy}
+                className={`${styles.iconBtn} ${styles.copyBtn} ${
+                  isCopied ? styles.copied : ""
+                }`}
+              >
+                {isCopied ? (
+                  <>
+                    <Check size={12} aria-hidden /> {copiedLabel}
+                  </>
+                ) : (
+                  <>
+                    <Copy size={12} aria-hidden /> {copyLabel}
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={onResetInvite}
+                className={`${styles.iconBtn} ${styles.resetBtn}`}
+                aria-label="Reset invite link"
+              >
+                <RotateCcw size={12} aria-hidden />
+              </button>
+            </div>
+            <div className={styles.qrSlot}>
+              <InviteQR
+                url={inviteLink}
+                size={128}
+                labels={{ copyImage: qrCopyImageLabel, download: qrDownloadLabel, copied: copiedLabel }}
+              />
+            </div>
           </div>
         )}
 

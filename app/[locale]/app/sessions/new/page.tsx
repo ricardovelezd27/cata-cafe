@@ -56,6 +56,8 @@ export default async function NewSessionPage({
     groupInviteLink: tg("inviteLink"),
     groupCopyLink: tg("copyLink"),
     groupCopied: tg("copied"),
+    groupCopyImage: tg("copyImage"),
+    groupDownloadQr: tg("downloadQr"),
     groupStartCupping: ta("next"),
     // new form microcopy
     newForm: {

@@ -978,3 +978,37 @@ CREATE POLICY "coffees_write" ON coffees
 -- backfill ran: SELECT count(*) FROM evaluations WHERE "sessionId" IS NULL
 -- should be ~0 after deploy.
 -- ============================================================================
+
+-- ============================================================================
+-- PHASE 13 (2026-07-22): anonymous-safe handle_new_user()
+-- Redefines handle_new_user() — body copied verbatim from the Phase 10b
+-- definition above, with ONE change: the displayName expression now falls
+-- back through raw_user_meta_data.display_name → the email local-part →
+-- the literal 'Catador', instead of assuming NEW.email is non-null.
+-- REQUIRED before enabling Supabase anonymous sign-ins (Dashboard →
+-- Authentication → Sign In / Up → "Allow anonymous sign-ins"): an anonymous
+-- user has NEW.email = NULL, and split_part(NULL, '@', 1) is NULL, which
+-- would violate profiles."displayName" NOT NULL and hard-fail
+-- supabase.auth.signInAnonymously() for every guest joining via QR invite.
+-- Apply manually via the Supabase Dashboard → SQL Editor, BEFORE flipping the
+-- anonymous sign-ins toggle.
+-- ============================================================================
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.profiles (id, "displayName", "preferredLang")
+  VALUES (
+    NEW.id::text,
+    COALESCE(NEW.raw_user_meta_data->>'display_name', split_part(NEW.email, '@', 1), 'Catador'),
+    COALESCE(NEW.raw_user_meta_data->>'preferred_lang', 'es')
+  );
+
+  -- Auto-link email-only group invitees: claim any tasting_group_members rows
+  -- that were added by email before this user existed. Schema-qualified because
+  -- this trigger fires from auth.users, where search_path may not include public.
+  UPDATE public.tasting_group_members SET "userId" = NEW.id::text WHERE "userId" IS NULL AND lower(email) = lower(NEW.email);
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+-- ============================================================================

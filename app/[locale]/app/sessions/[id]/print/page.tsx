@@ -1,7 +1,8 @@
 import { notFound, redirect } from "next/navigation";
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { buildInviteUrl } from "@/lib/inviteUrl";
 import { PrintClient } from "./PrintClient";
 
 export default async function PrintPage({
@@ -44,6 +45,30 @@ export default async function PrintPage({
 
   if (!session) notFound();
 
+  const isOwner = session.createdBy === user.id;
+
+  // Only the owner of a group session gets a join QR on the print sheet, and
+  // only if a valid invite already exists — this page never mints one.
+  let inviteUrl: string | null = null;
+  if (session.isGroup && isOwner) {
+    const invite = await prisma.sessionInvite.findFirst({
+      where: {
+        sessionId: session.id,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    const isUsable =
+      invite && (invite.maxUses === null || invite.useCount < invite.maxUses);
+    if (isUsable) {
+      const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+      inviteUrl = buildInviteUrl(siteOrigin, locale, invite.token);
+    }
+  }
+
+  const tg = await getTranslations("group");
+  const scanToJoinLabel = tg("scanToJoin");
+
   const dateStr = session.date.toLocaleDateString(locale === "es" ? "es-CO" : "en-US", {
     year: "numeric",
     month: "long",
@@ -52,6 +77,8 @@ export default async function PrintPage({
 
   return (
     <PrintClient
+      inviteUrl={inviteUrl}
+      scanToJoinLabel={scanToJoinLabel}
       session={{
         id: session.id,
         name: session.name,

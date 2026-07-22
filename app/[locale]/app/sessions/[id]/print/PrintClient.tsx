@@ -1,5 +1,6 @@
 "use client";
 
+import { QRCodeSVG } from "qrcode.react";
 import {
   AFFECTIVE_ATTRIBUTES,
   FLAVOR_FAMILIES,
@@ -553,6 +554,48 @@ function PageHeader({
   );
 }
 
+// Large, pure black-on-white QR block for the join link — printed only on the
+// sheet's first page (per format branch), never minted here (page.tsx supplies
+// the URL only when a valid invite already exists).
+function InviteQRBlock({ url, caption }: { url: string; caption: string }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        border: `1.5px solid ${C.rule}`,
+        padding: "6px 10px",
+        marginBottom: 6,
+        pageBreakInside: "avoid",
+        breakInside: "avoid",
+      }}
+    >
+      <div style={{ background: C.white, padding: 4, lineHeight: 0 }}>
+        <QRCodeSVG
+          value={url}
+          size={200}
+          level="M"
+          marginSize={0}
+          bgColor="#FFFFFF"
+          fgColor="#000000"
+        />
+      </div>
+      <div
+        style={{
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: 0.6,
+          color: C.ink,
+          textTransform: "uppercase",
+        }}
+      >
+        {caption}
+      </div>
+    </div>
+  );
+}
+
 function NineScaleLegend() {
   return (
     <div
@@ -879,12 +922,18 @@ function CombinedSamplePage({
   cupperName,
   date,
   purpose,
+  isFirstPage,
+  inviteUrl,
+  scanToJoinLabel,
 }: {
   sample: SampleData;
   session: { name: string; cupsPerSample: number };
   cupperName: string;
   date: string;
   purpose: string;
+  isFirstPage?: boolean;
+  inviteUrl?: string | null;
+  scanToJoinLabel?: string;
 }) {
   const d = sample.combined;
   const cups = Math.max(session.cupsPerSample, 1);
@@ -933,6 +982,10 @@ function CombinedSamplePage({
         purpose={purpose}
         formatBadge="Combined"
       />
+
+      {isFirstPage && inviteUrl && (
+        <InviteQRBlock url={inviteUrl} caption={scanToJoinLabel ?? ""} />
+      )}
 
       <SampleHeader
         label={sample.label}
@@ -1159,12 +1212,16 @@ function DescriptivePages({
   cupperName,
   date,
   purpose,
+  inviteUrl,
+  scanToJoinLabel,
 }: {
   samples: SampleData[];
   sessionName: string;
   cupperName: string;
   date: string;
   purpose: string;
+  inviteUrl?: string | null;
+  scanToJoinLabel?: string;
 }) {
   const pairs = chunkPairs(samples);
   return (
@@ -1179,6 +1236,9 @@ function DescriptivePages({
             purpose={purpose}
             formatBadge="Descriptive"
           />
+          {idx === 0 && inviteUrl && (
+            <InviteQRBlock url={inviteUrl} caption={scanToJoinLabel ?? ""} />
+          )}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             <DescriptiveSampleBlock sample={left} />
             {right ? <DescriptiveSampleBlock sample={right} /> : <div />}
@@ -1196,6 +1256,8 @@ function AffectivePages({
   cupperName,
   date,
   purpose,
+  inviteUrl,
+  scanToJoinLabel,
 }: {
   samples: SampleData[];
   sessionName: string;
@@ -1203,6 +1265,8 @@ function AffectivePages({
   cupperName: string;
   date: string;
   purpose: string;
+  inviteUrl?: string | null;
+  scanToJoinLabel?: string;
 }) {
   const pairs = chunkPairs(samples);
   return (
@@ -1217,6 +1281,9 @@ function AffectivePages({
             purpose={purpose}
             formatBadge="Affective"
           />
+          {idx === 0 && inviteUrl && (
+            <InviteQRBlock url={inviteUrl} caption={scanToJoinLabel ?? ""} />
+          )}
           <div style={{ marginBottom: 4 }}>
             <NineScaleLegend />
           </div>
@@ -1238,6 +1305,8 @@ function AffectivePages({
 
 export function PrintClient({
   session,
+  inviteUrl,
+  scanToJoinLabel,
 }: {
   session: {
     id: string;
@@ -1249,6 +1318,10 @@ export function PrintClient({
     cupperName: string;
     samples: SampleData[];
   };
+  /** Join URL for the session's existing invite — null when not a group session,
+   *  not the owner, or no valid invite exists yet (this page never mints one). */
+  inviteUrl?: string | null;
+  scanToJoinLabel?: string;
 }) {
   const formatLabel =
     session.format === "descriptive"
@@ -1406,6 +1479,8 @@ export function PrintClient({
           cupperName={session.cupperName}
           date={session.date}
           purpose={purpose}
+          inviteUrl={inviteUrl}
+          scanToJoinLabel={scanToJoinLabel}
         />
       )}
 
@@ -1417,11 +1492,13 @@ export function PrintClient({
           cupperName={session.cupperName}
           date={session.date}
           purpose={purpose}
+          inviteUrl={inviteUrl}
+          scanToJoinLabel={scanToJoinLabel}
         />
       )}
 
       {session.format === "combined" &&
-        session.samples.map((s) => (
+        session.samples.map((s, idx) => (
           <CombinedSamplePage
             key={s.id}
             sample={s}
@@ -1429,6 +1506,9 @@ export function PrintClient({
             cupperName={session.cupperName}
             date={session.date}
             purpose={purpose}
+            isFirstPage={idx === 0}
+            inviteUrl={inviteUrl}
+            scanToJoinLabel={scanToJoinLabel}
           />
         ))}
 
@@ -1443,6 +1523,7 @@ export function PrintClient({
             purpose={purpose}
             formatBadge={formatLabel}
           />
+          {inviteUrl && <InviteQRBlock url={inviteUrl} caption={scanToJoinLabel ?? ""} />}
           <div style={{ fontSize: 11, color: C.inkSoft, textAlign: "center", marginTop: 40 }}>
             No hay muestras en esta sesión.
           </div>

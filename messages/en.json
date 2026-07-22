@@ -190,6 +190,8 @@
       "generating": "Generating…",
       "copy": "Copy",
       "copied": "Copied",
+      "copyImage": "Copy QR",
+      "downloadQr": "Download QR",
       "currentSample": "Current sample"
     }
   },
@@ -301,7 +303,17 @@
     "evalSubmitted": "Evaluation submitted",
     "masterControls": "Master controls",
     "masterRole": "Tasting Master",
-    "participantRole": "Participant Cupper"
+    "participantRole": "Participant Cupper",
+    "copyImage": "Copy QR",
+    "downloadQr": "Download QR",
+    "scanToJoin": "Scan to join the tasting",
+    "continueAsGuest": "Continue as guest",
+    "guestNamePlaceholder": "Your name",
+    "guestJoinButton": "Join the tasting",
+    "guestJoining": "Joining…",
+    "orSignIn": "or sign in with your email",
+    "guestOfflineNotice": "You need a connection to join; once in, you can cup offline.",
+    "guestError": "Couldn't join as guest. Try with your email."
   },
   "results": {
     "title": "Session Results",
