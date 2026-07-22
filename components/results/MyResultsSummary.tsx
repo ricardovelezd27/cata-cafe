@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { calcIndividualBreakdown, calcIndividualScore } from "@/lib/scoring";
 import { resolveDescriptor, resolveMainTaste } from "@/lib/descriptors";
 import { ScoreBreakdownPanel } from "@/components/results/ScoreBreakdownPanel";
@@ -64,7 +66,8 @@ type LabelKey =
   | "acidity" | "sweetness" | "mouthfeel" | "overall"
   | "intensity" | "quality" | "notes" | "cvaScore"
   | "edit" | "noData"
-  | "nariz" | "boca" | "gusto" | "acidezBlock" | "dulzura" | "sensacionBlock";
+  | "nariz" | "boca" | "gusto" | "acidezBlock" | "dulzura" | "sensacionBlock"
+  | "descriptorSingular" | "descriptorPlural" | "avgQuality" | "noBlockData";
 
 const LABELS: Record<"es" | "en", Record<LabelKey, string>> = {
   es: {
@@ -74,6 +77,8 @@ const LABELS: Record<"es" | "en", Record<LabelKey, string>> = {
     edit: "Editar", noData: "Sin evaluación registrada",
     nariz: "Nariz", boca: "Boca", gusto: "Gusto predominante",
     acidezBlock: "Acidez", dulzura: "Dulzura", sensacionBlock: "Sensación en boca",
+    descriptorSingular: "descriptor", descriptorPlural: "descriptores",
+    avgQuality: "Calidad prom.", noBlockData: "Sin datos",
   },
   en: {
     fragrance: "Fragrance", aroma: "Aroma", flavor: "Flavor", aftertaste: "Aftertaste",
@@ -82,8 +87,46 @@ const LABELS: Record<"es" | "en", Record<LabelKey, string>> = {
     edit: "Edit", noData: "No evaluation recorded",
     nariz: "Nose", boca: "Mouth", gusto: "Predominant taste",
     acidezBlock: "Acidity", dulzura: "Sweetness", sensacionBlock: "Mouthfeel",
+    descriptorSingular: "descriptor", descriptorPlural: "descriptors",
+    avgQuality: "Avg. quality", noBlockData: "No data",
   },
 };
+
+/**
+ * Collapsed-row summary for a perceptual block: distinct descriptor count when
+ * the format carries descriptors (descriptive/combined), otherwise an average
+ * quality summary (affective-only format has no descriptor arrays at all).
+ */
+function blockSummaryText(
+  data: Record<string, unknown>,
+  block: Block,
+  showDescriptive: boolean,
+  showAffective: boolean,
+  t: Record<LabelKey, string>
+): string {
+  if (block.taste) {
+    const count = tasteIds(data).length;
+    if (count === 0) return t.noBlockData;
+    return `${count} ${count === 1 ? t.descriptorSingular : t.descriptorPlural}`;
+  }
+  if (showDescriptive) {
+    const ids = new Set<string>();
+    for (const row of block.rows) {
+      for (const id of descriptorIds(data, row.descId)) ids.add(id);
+    }
+    if (ids.size === 0) return t.noBlockData;
+    return `${ids.size} ${ids.size === 1 ? t.descriptorSingular : t.descriptorPlural}`;
+  }
+  if (showAffective) {
+    const values = block.rows
+      .map((row) => num(data, `${row.affId}_final`))
+      .filter((v): v is number => v !== null);
+    if (values.length === 0) return t.noBlockData;
+    const avg = values.reduce((a, b) => a + b, 0) / values.length;
+    return `${t.avgQuality}: ${avg.toFixed(1)}`;
+  }
+  return t.noBlockData;
+}
 
 function num(data: Record<string, unknown>, key: string): number | null {
   const v = data[key];
@@ -217,6 +260,18 @@ export function MyResultsSummary({
   const showAffective = format !== "descriptive";
   const showCVA = showAffective;
 
+  // Per-block disclosure state, keyed "<sampleId>:<blockId>". Blocks default
+  // collapsed; only the CVA score section is always visible.
+  const [openBlocks, setOpenBlocks] = useState<Set<string>>(new Set());
+  const toggleBlock = (key: string) => {
+    setOpenBlocks((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
   const dataFor = (s: SampleResult): Record<string, unknown> =>
     format === "affective" ? s.affective : format === "descriptive" ? s.descriptive : s.combined;
 
@@ -322,22 +377,58 @@ export function MyResultsSummary({
                     // Gusto predominante is descriptive-only; hide it for affective.
                     if (block.taste && !showDescriptive) return null;
                     const tasteSelected = block.taste ? tasteIds(data) : [];
+                    const blockKey = `${sample.id}:${block.id}`;
+                    const isOpen = openBlocks.has(blockKey);
+                    const summaryText = blockSummaryText(data, block, showDescriptive, showAffective, t);
                     return (
                       <div key={block.id}>
-                        <div
+                        <button
+                          type="button"
+                          onClick={() => toggleBlock(blockKey)}
+                          aria-expanded={isOpen}
                           style={{
-                            fontSize: 10,
-                            fontWeight: 700,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.09em",
-                            color: "#8B7355",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 8,
+                            width: "100%",
                             marginTop: 12,
                             marginBottom: 2,
+                            padding: "4px 0",
+                            background: "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            fontFamily: "inherit",
+                            textAlign: "left",
                           }}
                         >
-                          {t[block.labelKey]}
-                        </div>
-                        {block.taste ? (
+                          <span
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 700,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.09em",
+                              color: "#8B7355",
+                            }}
+                          >
+                            {t[block.labelKey]}
+                          </span>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: "#8B7355" }}>
+                              {summaryText}
+                            </span>
+                            <ChevronDown
+                              size={14}
+                              color="#8B7355"
+                              style={{
+                                transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+                                transition: "transform 0.15s",
+                              }}
+                              aria-hidden
+                            />
+                          </span>
+                        </button>
+                        {!isOpen ? null : block.taste ? (
                           <div style={rowStyle}>
                             <span style={attrLabel}>{t.gusto}</span>
                             <span style={{ minWidth: 0 }}>

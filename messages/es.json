@@ -217,7 +217,12 @@
     "participants": "catadores",
     "emptyStage": "Ningún descriptor con 2 o más selecciones en esta etapa.",
     "emptyBlock": "Sin descriptores en común en este bloque.",
-    "emptyAll": "Aún no hay descriptores seleccionados por 2 o más catadores."
+    "emptyAll": "Aún no hay descriptores seleccionados por 2 o más catadores.",
+    "cloudTitle": "Nube de sabores",
+    "cloudScopeSession": "Sesión completa",
+    "cloudScopeSample": "Por muestra",
+    "cloudScopeTaster": "Por catador",
+    "cloudEmpty": "Sin descriptores aún"
   },
   "blocks": {
     "nariz": "Nariz",
