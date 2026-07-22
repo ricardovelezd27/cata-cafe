@@ -750,7 +750,7 @@
     },
     "share": {
       "title": "Share insights",
-      "subtitle": "Turn a saved insight into a share-ready card, complete with suggested social copy.",
+      "subtitle": "Turn the current visualization into a share-ready card, complete with suggested social copy.",
       "headline": "Headline",
       "headlinePh": "e.g. Colombia dominates our cuppings",
       "downloadPng": "Download PNG",

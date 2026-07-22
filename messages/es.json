@@ -750,7 +750,7 @@
     },
     "share": {
       "title": "Compartir insights",
-      "subtitle": "Convierte un insight guardado en una tarjeta lista para compartir, con textos sugeridos para redes.",
+      "subtitle": "Convierte la visualización actual en una tarjeta lista para compartir, con textos sugeridos para redes.",
       "headline": "Titular",
       "headlinePh": "Ej. Colombia domina nuestras cataciones",
       "downloadPng": "Descargar PNG",

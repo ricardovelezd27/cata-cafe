@@ -305,7 +305,7 @@ model BenchmarkLot {
 // dataHash = sha256(canonical inputs + locale + PROMPT_VERSION); see lib/ai/narratives.ts.
 model InsightNarrative {
   id        String   @id @default(cuid())
-  kind      String // "dashboard" | "insight" | "linkedin" | "digest"
+  kind      String // "dashboard" | "insight" | "linkedin" | "linkedin_pivot" | "digest"
   dataHash  String
   locale    String
   content   Json
