@@ -279,8 +279,20 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
   // same as AiSummaryPanel's configKey guard) rather than in an effect, since
   // an effect body calling several setState()s synchronously trips
   // react-hooks/set-state-in-effect.
-  const [prevLoadKey, setPrevLoadKey] = useState(loadKey);
-  if (loadKey !== undefined && loadKey !== prevLoadKey) {
+  //
+  // prevLoadKey is seeded with the hardcoded sentinel 0 — NOT `loadKey`'s
+  // current value. The workspace's loadKey counter also starts at 0 and only
+  // becomes >0 after a real "Open" click, so seeding from the literal prop
+  // would make a cross-mode load invisible: switching mode unmounts the
+  // other builder and mounts this one fresh with loadKey already at (say) 1,
+  // and `useState(loadKey)` would capture that same 1 as the "already
+  // applied" baseline on its very first render, so the loadKey!==prevLoadKey
+  // check below would never fire and the saved config would be dropped.
+  // Seeding from the constant 0 instead means a pending load (loadKey > 0)
+  // is always applied on mount, while the very first default mount (no load
+  // ever requested, loadKey still 0) still correctly does nothing.
+  const [prevLoadKey, setPrevLoadKey] = useState(0);
+  if (loadKey !== undefined && loadKey > 0 && loadKey !== prevLoadKey) {
     setPrevLoadKey(loadKey);
     try {
       const config = parsePivotConfig(loadedConfig);
