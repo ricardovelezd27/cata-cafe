@@ -6,7 +6,7 @@ import type { SyncConflict } from "@/lib/offline/types";
 
 export type SyncConflictTranslations = {
   conflictTitle: string;
-  conflictBody: string; // contains "{sample}"
+  conflictBody: string; // RAW template (via t.raw()) — contains "{sample}"
   conflictKeep: string;
   conflictReplace: string;
 };

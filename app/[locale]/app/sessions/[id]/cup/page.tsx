@@ -223,7 +223,10 @@ export default async function CupPage({
           retrySync: t("offline.retrySync"),
           submitBlocked: t("offline.submitBlocked"),
           conflictTitle: t("offline.conflictTitle"),
-          conflictBody: t("offline.conflictBody"),
+          // `{sample}` is filled client-side by SyncConflictModal (only the client
+          // knows which sample conflicted) — pass the RAW template, not a formatted
+          // string, otherwise next-intl errors on the missing ICU arg.
+          conflictBody: t.raw("offline.conflictBody") as string,
           conflictKeep: t("offline.conflictKeep"),
           conflictReplace: t("offline.conflictReplace"),
         },
