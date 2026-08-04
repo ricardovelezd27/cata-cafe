@@ -10,7 +10,7 @@ type CoffeeRow = {
   region: string | null;
   variety: string | null;
   processType: string | null;
-  isPublic: boolean;
+  visibility: string; // "private" | "shared" | "public"
   createdBy: string;
   isMine: boolean;
   ownerName?: string | null;
@@ -41,6 +41,8 @@ type Props = {
     view: string;
     listPublic: string;
     listPrivate: string;
+    listShared: string;
+    sharedWithMe: string;
     adminOwnerPrefix: string;
   };
   isAdmin?: boolean;
@@ -83,13 +85,22 @@ function ScoreBadge({ score }: { score: number | null }) {
   );
 }
 
-function VisibilityPill({ isPublic, labelPublic, labelPrivate }: { isPublic: boolean; labelPublic: string; labelPrivate: string }) {
-  const className = isPublic
-    ? "bg-green-dark/10 text-green-dark border-green-dark/30"
-    : "bg-cream text-brown-mid border-brown-light";
+function VisibilityPill({ visibility, labels }: { visibility: string; labels: { public: string; shared: string; private: string } }) {
+  const className =
+    visibility === "public"
+      ? "bg-green-dark/10 text-green-dark border-green-dark/30"
+      : visibility === "shared"
+        ? "bg-amber-warm/15 text-brown-dark border-amber-warm/40"
+        : "bg-cream text-brown-mid border-brown-light";
+  const label =
+    visibility === "public"
+      ? labels.public
+      : visibility === "shared"
+        ? labels.shared
+        : labels.private;
   return (
     <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${className}`}>
-      {isPublic ? labelPublic : labelPrivate}
+      {label}
     </span>
   );
 }
@@ -258,10 +269,14 @@ export default function CoffeesTable({ coffees, locale, translations: t, isAdmin
                           </Link>
                           {(c.isMine || isAdmin) && (
                             <VisibilityPill
-                              isPublic={c.isPublic}
-                              labelPublic={t.listPublic}
-                              labelPrivate={t.listPrivate}
+                              visibility={c.visibility}
+                              labels={{ public: t.listPublic, shared: t.listShared, private: t.listPrivate }}
                             />
+                          )}
+                          {!c.isMine && !isAdmin && c.visibility === "shared" && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full border bg-amber-warm/15 text-brown-dark border-amber-warm/40">
+                              {t.sharedWithMe}
+                            </span>
                           )}
                         </span>
                         {c.ownerName && (
@@ -331,10 +346,14 @@ export default function CoffeesTable({ coffees, locale, translations: t, isAdmin
                       </Link>
                       {(c.isMine || isAdmin) && (
                         <VisibilityPill
-                          isPublic={c.isPublic}
-                          labelPublic={t.listPublic}
-                          labelPrivate={t.listPrivate}
+                          visibility={c.visibility}
+                          labels={{ public: t.listPublic, shared: t.listShared, private: t.listPrivate }}
                         />
+                      )}
+                      {!c.isMine && !isAdmin && c.visibility === "shared" && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full border bg-amber-warm/15 text-brown-dark border-amber-warm/40">
+                          {t.sharedWithMe}
+                        </span>
                       )}
                     </span>
                     <ProcessBadge type={c.processType} />

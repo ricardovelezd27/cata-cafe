@@ -1021,3 +1021,43 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ============================================================================
+
+-- ============================================================================
+-- PHASE 15 (2026-08-05): Coffee 3-tier visibility + sharing
+-- The Prisma migration `coffee_visibility_and_sharing` replaced
+-- coffees."isPublic" (boolean) with coffees."visibility"
+-- ('private' | 'shared' | 'public') and added coffee_shares / coffee_invites.
+-- That migration already dropped the Phase 11 coffees_select policy (it
+-- referenced the removed column); this block recreates it with the new
+-- semantics: public coffees readable by all, own coffees always, shared
+-- coffees readable by users holding a coffee_shares row — but only while the
+-- coffee is actually in 'shared' state (flipping to private makes share rows
+-- inert without deleting them). coffees_write (Phase 11, owner FOR ALL) is
+-- unchanged and still valid.
+-- Writes to coffee_shares/coffee_invites happen only via server actions using
+-- Prisma (postgres role, bypasses RLS), so neither table gets write policies;
+-- coffee_invites gets no policies at all (deny-all, Phase 12 rationale —
+-- tokens must never be enumerable from the client).
+-- Apply manually via the Supabase Dashboard → SQL Editor.
+-- ============================================================================
+DROP POLICY IF EXISTS "coffees_select" ON coffees;
+CREATE POLICY "coffees_select" ON coffees
+  FOR SELECT USING (
+    "visibility" = 'public'
+    OR "createdBy" = auth.uid()::text
+    OR ("visibility" = 'shared' AND EXISTS (
+      SELECT 1 FROM coffee_shares cs
+      WHERE cs."coffeeId" = coffees.id AND cs."userId" = auth.uid()::text))
+  );
+
+ALTER TABLE coffee_shares ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "coffee_shares_select" ON coffee_shares;
+CREATE POLICY "coffee_shares_select" ON coffee_shares
+  FOR SELECT USING (
+    "userId" = auth.uid()::text
+    OR EXISTS (
+      SELECT 1 FROM coffees c
+      WHERE c.id = coffee_shares."coffeeId" AND c."createdBy" = auth.uid()::text)
+  );
+
+ALTER TABLE coffee_invites ENABLE ROW LEVEL SECURITY;

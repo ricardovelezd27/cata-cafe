@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import { Plus } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
@@ -60,23 +62,34 @@ export default async function CoffeesPage({
     view: t("view"),
     listPublic: t("listPublic"),
     listPrivate: t("listPrivate"),
+    listShared: t("listShared"),
+    sharedWithMe: t("sharedWithMe"),
     adminOwnerPrefix: t("adminOwnerPrefix"),
   };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-serif text-3xl text-green-dark font-semibold">
-          {t("list")}
-        </h1>
-        <p className="text-sm text-brown-mid mt-1">
-          {t("registered", { count: coffees.length })}
-        </p>
-        {isAdmin && (
-          <p className="text-xs text-amber-warm font-semibold mt-1">
-            {t("adminBadge")}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-3xl text-green-dark font-semibold">
+            {t("list")}
+          </h1>
+          <p className="text-sm text-brown-mid mt-1">
+            {t("registered", { count: coffees.length })}
           </p>
-        )}
+          {isAdmin && (
+            <p className="text-xs text-amber-warm font-semibold mt-1">
+              {t("adminBadge")}
+            </p>
+          )}
+        </div>
+        <Link
+          href={`/${locale}/app/coffees/new`}
+          className="inline-flex items-center gap-1.5 shrink-0 bg-green-dark text-white text-sm font-semibold px-4 py-2 rounded-pill hover:bg-green-dark/90 transition-colors"
+        >
+          <Plus size={16} />
+          {t("createCoffee")}
+        </Link>
       </div>
       <CoffeesTable
         coffees={coffees}

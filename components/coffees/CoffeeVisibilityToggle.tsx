@@ -3,28 +3,30 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setCoffeeVisibility } from "@/app/actions/coffees";
+import type { CoffeeVisibility } from "@/lib/coffeeAccess";
 
 type Props = {
   coffeeId: string;
-  isPublic: boolean;
+  visibility: CoffeeVisibility;
   translations: {
-    recordPublic: string;
     recordPrivate: string;
-    makePublic: string;
-    makePrivate: string;
+    recordShared: string;
+    recordPublic: string;
     confirmMakePublic: string;
   };
 };
 
 const ARM_TIMEOUT_MS = 3000;
 
-// Owner-only control on the coffee profile page. Mirrors PublishResultsToggle:
-// making the record public requires an inline two-step confirm (first click
-// "arms" the button for 3s, second click within that window commits) rather
-// than window.confirm(), which breaks automated browser testing. Making it
-// private again is a single click — it's non-destructive to data, just hides
-// the record from non-owners again.
-export function CoffeeVisibilityToggle({ coffeeId, isPublic, translations }: Props) {
+// Owner-only control on the coffee profile page: a three-option segmented
+// control (private / shared / public). Switching TO public keeps the inline
+// two-step confirm from the old boolean toggle (first click "arms" the option
+// for 3s, second click within that window commits) rather than
+// window.confirm(), which breaks automated browser testing. Private and
+// shared are single-click — non-destructive, they only narrow who can see the
+// record. Note: switching a shared coffee to private keeps its CoffeeShare
+// rows but makes them inert (see lib/coffeeAccess.ts).
+export function CoffeeVisibilityToggle({ coffeeId, visibility, translations }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [armed, setArmed] = useState(false);
@@ -36,16 +38,19 @@ export function CoffeeVisibilityToggle({ coffeeId, isPublic, translations }: Pro
     };
   }, []);
 
-  function commit(next: boolean) {
+  function commit(next: CoffeeVisibility) {
     startTransition(async () => {
       await setCoffeeVisibility(coffeeId, next);
       router.refresh();
     });
   }
 
-  function handleClick() {
-    if (isPublic) {
-      commit(false);
+  function handleSelect(next: CoffeeVisibility) {
+    if (next === visibility) return;
+    if (next !== "public") {
+      if (armTimeout.current) clearTimeout(armTimeout.current);
+      setArmed(false);
+      commit(next);
       return;
     }
     if (!armed) {
@@ -55,32 +60,51 @@ export function CoffeeVisibilityToggle({ coffeeId, isPublic, translations }: Pro
     }
     if (armTimeout.current) clearTimeout(armTimeout.current);
     setArmed(false);
-    commit(true);
+    commit("public");
   }
 
-  const badgeClass = isPublic
-    ? "bg-green-dark/10 text-green-dark border-green-dark/30"
-    : "bg-cream text-brown-mid border-brown-light";
+  const options: Array<{ value: CoffeeVisibility; label: string }> = [
+    { value: "private", label: translations.recordPrivate },
+    { value: "shared", label: translations.recordShared },
+    {
+      value: "public",
+      label:
+        armed && visibility !== "public"
+          ? translations.confirmMakePublic
+          : translations.recordPublic,
+    },
+  ];
 
   return (
-    <div className="flex items-center gap-3">
-      <span
-        className={`text-xs font-semibold px-2.5 py-1 rounded-pill border ${badgeClass}`}
-      >
-        {isPublic ? translations.recordPublic : translations.recordPrivate}
-      </span>
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={isPending}
-        className="text-xs font-semibold px-3 py-1.5 rounded-pill border border-brown-light text-brown-dark hover:bg-cream transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {isPublic
-          ? translations.makePrivate
-          : armed
-            ? translations.confirmMakePublic
-            : translations.makePublic}
-      </button>
+    <div
+      role="radiogroup"
+      className="inline-flex rounded-pill border border-brown-light overflow-hidden"
+    >
+      {options.map((opt, i) => {
+        const active = visibility === opt.value;
+        const armedPublic = opt.value === "public" && armed && !active;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => handleSelect(opt.value)}
+            disabled={isPending}
+            className={`text-xs font-semibold px-3 py-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+              i > 0 ? "border-l border-brown-light" : ""
+            } ${
+              active
+                ? "bg-green-dark text-white"
+                : armedPublic
+                  ? "bg-amber-warm/20 text-brown-dark"
+                  : "bg-white text-brown-mid hover:bg-cream"
+            }`}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

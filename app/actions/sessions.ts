@@ -63,7 +63,7 @@ async function createCoffees(coffees: CoffeeInput[], userId: string) {
           country: c.country || null,
           region: c.region || null,
           createdBy: userId,
-          isPublic: false,
+          visibility: "private",
         },
         select: { id: true },
       })
@@ -342,7 +342,7 @@ export async function updateSampleMetadata(
     });
   } else {
     const coffee = await prisma.coffee.create({
-      data: { ...coffeeData, createdBy: user.id, isPublic: false },
+      data: { ...coffeeData, createdBy: user.id, visibility: "private" },
       select: { id: true },
     });
     await prisma.sessionSample.update({

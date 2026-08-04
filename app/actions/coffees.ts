@@ -5,6 +5,11 @@ import { createClient } from "@/lib/supabase/server";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
+import {
+  isCoffeeVisibility,
+  usableCoffeeWhere,
+  type CoffeeVisibility,
+} from "@/lib/coffeeAccess";
 
 // opts.all — super-admin "god mode": drops the visibility filter entirely
 // (see lib/analytics/access.ts isSuperAdminEmail, gated in the page). A single
@@ -30,7 +35,7 @@ export async function getCoffeesWithStats(
   }
 
   return prisma.coffee.findMany({
-    where: all ? {} : { OR: [{ isPublic: true }, { createdBy: userId }] },
+    where: all ? {} : usableCoffeeWhere(userId),
     select: {
       id: true,
       name: true,
@@ -38,7 +43,7 @@ export async function getCoffeesWithStats(
       region: true,
       variety: true,
       processType: true,
-      isPublic: true,
+      visibility: true,
       createdBy: true,
       creator: { select: { displayName: true } },
       _count: { select: { sessionSamples: true } },
@@ -48,6 +53,31 @@ export async function getCoffeesWithStats(
         take: 1,
         select: { tastedAt: true, individualScore: true, communityScore: true },
       },
+    },
+    orderBy: { name: "asc" },
+  });
+}
+
+// ─── Coffees the user may attach to a new session ─────────────────────────────
+// Owned + public + shared-with-me, in picker-friendly shape. Powers the
+// "Usar café existente" picker in the new-session wizard; the same
+// usableCoffeeWhere filter re-validates picked ids server-side in
+// createSession/createGroupSession (app/actions/sessions.ts).
+export async function getUsableCoffees(userId: string) {
+  return prisma.coffee.findMany({
+    where: usableCoffeeWhere(userId),
+    select: {
+      id: true,
+      name: true,
+      producer: true,
+      variety: true,
+      altitude: true,
+      roastLevel: true,
+      country: true,
+      region: true,
+      processType: true,
+      createdBy: true,
+      visibility: true,
     },
     orderBy: { name: "asc" },
   });
@@ -86,16 +116,19 @@ export async function setCoffeeResultsPublished(
   return { ok: true, resultsPublished: published };
 }
 
-// ─── Toggle a coffee record's visibility (owner only) ─────────────────────────
-// Controls whether the coffee record itself (profile page + list entry) is
-// visible to non-owners at all. See the access gate in
-// app/[locale]/app/coffees/[id]/page.tsx (findFirst OR [isPublic, createdBy])
-// and the list query in getCoffeesWithStats above.
+// ─── Set a coffee record's visibility tier (owner only) ───────────────────────
+// "private" — only the owner sees the record; "shared" — owner + users holding
+// a CoffeeShare row (granted via invite link); "public" — everyone. Controls
+// the record itself (profile page + list entry); see the access gate in
+// app/[locale]/app/coffees/[id]/page.tsx (usableCoffeeWhere) and the list
+// query in getCoffeesWithStats above.
 export async function setCoffeeVisibility(
   coffeeId: string,
-  isPublic: boolean,
-): Promise<{ ok: true; isPublic: boolean }> {
+  visibility: CoffeeVisibility,
+): Promise<{ ok: true; visibility: CoffeeVisibility }> {
   const user = await requireUser();
+  // Public POST endpoint — never trust the caller's string.
+  if (!isCoffeeVisibility(visibility)) throw new Error("invalid_visibility");
 
   const coffee = await prisma.coffee.findUnique({
     where: { id: coffeeId },
@@ -107,12 +140,12 @@ export async function setCoffeeVisibility(
 
   await prisma.coffee.update({
     where: { id: coffeeId },
-    data: { isPublic },
+    data: { visibility },
   });
 
   revalidatePath(`/es/app/coffees/${coffeeId}`);
   revalidatePath(`/en/app/coffees/${coffeeId}`);
   revalidatePath("/es/app/coffees");
   revalidatePath("/en/app/coffees");
-  return { ok: true, isPublic };
+  return { ok: true, visibility };
 }

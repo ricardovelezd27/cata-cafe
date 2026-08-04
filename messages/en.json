@@ -128,7 +128,8 @@
         "no_coffees": "Add at least one coffee to start the session.",
         "missing_coffee_fields": "Fill in the required fields for each coffee: name, variety, country and altitude.",
         "sample_without_coffee": "Each sample must be linked to a coffee.",
-        "generic": "Couldn't create the session. Please try again."
+        "generic": "Couldn't create the session. Please try again.",
+        "coffee_not_found": "One of the selected coffees is no longer available. Please pick it again."
       }
     },
     "deleteSession": {
@@ -270,7 +271,11 @@
     "pointsToNext": "{points} pts to {level}",
     "topPercent": "Top {percent}% of active cuppers",
     "maxLevel": "Maximum level reached",
-    "howPoints": "Evaluations submitted ×1 · Sessions joined ×2 · Sessions hosted ×5"
+    "howPoints": "Evaluations submitted ×1 · Sessions joined ×2 · Sessions hosted ×5",
+    "myCoffees": "My coffees",
+    "myCoffeesEmpty": "You haven't created any coffees yet. Create one to reuse it across your cuppings.",
+    "createCoffee": "Create coffee",
+    "coffeeSessions": "{count} sessions"
   },
   "actions": {
     "save": "Save",
@@ -412,6 +417,56 @@
       "confirm": "Delete coffee",
       "cancel": "Cancel",
       "error": "Couldn't delete the coffee. Please try again."
+    },
+    "listShared": "Shared",
+    "sharedWithMe": "Shared with me",
+    "recordShared": "Shared coffee",
+    "createCoffee": "Create coffee",
+    "newPage": {
+      "title": "New coffee",
+      "subtitle": "Register a coffee as a reusable asset: use it across all your cuppings and accumulate results in a single profile.",
+      "notes": "Notes",
+      "notesPh": "Internal notes about this coffee…",
+      "harvestPh": "E.g. 2025/2026",
+      "visibilityLabel": "Visibility",
+      "visibilityPrivate": "Private",
+      "visibilityPrivateHint": "Only you can see and use this coffee.",
+      "visibilityShared": "Shared",
+      "visibilitySharedHint": "Only people you invite with a link can see it and use it in their cuppings.",
+      "visibilityPublic": "Public",
+      "visibilityPublicHint": "Every cupper can see it and use it in their sessions.",
+      "create": "Create coffee",
+      "creating": "Creating…",
+      "nameRequired": "Name is required.",
+      "error": "The coffee could not be created. Please try again."
+    },
+    "share": {
+      "title": "Share coffee",
+      "generateLink": "Generate link",
+      "generating": "Generating…",
+      "copyLink": "Copy link",
+      "copied": "Copied",
+      "peopleWithAccess": "People with access",
+      "noShares": "Nobody has access to this coffee yet.",
+      "revoke": "Revoke",
+      "sharedWithYou": "Shared with you",
+      "linkHint": "Anyone with the link (and a signed-in account) gains access to view this coffee and use it in their cuppings. Generating a link on a private coffee switches it to shared.",
+      "joinTitle": "You were invited to a coffee",
+      "joinBody": "Accept the invitation to view {name} and use it in your own cuppings.",
+      "joinCta": "Accept invitation",
+      "joinLogin": "Sign in to accept the invitation.",
+      "invalidToken": "This invite link is invalid or has expired."
+    },
+    "picker": {
+      "useExisting": "Use existing coffee",
+      "title": "Choose coffee",
+      "searchPlaceholder": "Search by name, origin, variety…",
+      "mine": "Mine",
+      "shared": "Shared",
+      "public": "Public",
+      "empty": "No coffees found.",
+      "linked": "Linked coffee",
+      "unlink": "Unlink"
     }
   },
   "offline": {
