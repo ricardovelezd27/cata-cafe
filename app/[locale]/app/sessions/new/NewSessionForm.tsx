@@ -172,6 +172,7 @@ export function NewSessionForm({
   const [objective, setObjective] = useState("");
   const [format, setFormat] = useState<"descriptive" | "affective" | "combined">("combined");
   const [cupsPerSample, setCupsPerSample] = useState(2);
+  const [cupsInput, setCupsInput] = useState("2");
 
   const [coffees, setCoffees] = useState<CoffeeEntry[]>(() => [{ ...EMPTY_COFFEE, id: newId() }]);
   const [samples, setSamples] = useState<SampleEntry[]>(() => [
@@ -431,8 +432,21 @@ export function NewSessionForm({
               min={1}
               max={5}
               className={inputCls}
-              value={cupsPerSample}
-              onChange={(e) => setCupsPerSample(parseInt(e.target.value) || 2)}
+              value={cupsInput}
+              onChange={(e) => {
+                const raw = e.target.value;
+                setCupsInput(raw);
+                const n = parseInt(raw, 10);
+                if (!Number.isNaN(n) && n >= 1 && n <= 5) {
+                  setCupsPerSample(n);
+                }
+              }}
+              onBlur={() => {
+                const n = parseInt(cupsInput, 10);
+                const clamped = Number.isNaN(n) ? 2 : Math.min(5, Math.max(1, n));
+                setCupsPerSample(clamped);
+                setCupsInput(String(clamped));
+              }}
             />
           </div>
         </div>
