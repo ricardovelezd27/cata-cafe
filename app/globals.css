@@ -237,6 +237,10 @@
 html, body {
   margin: 0;
   padding: 0;
+  /* Block horizontal-overscroll history navigation (Chrome/Edge/Android swipe
+     back-forward). iOS Safari's edge swipe ignores this — the cupping screen
+     adds a history sentinel + leave-confirm as the second layer. */
+  overscroll-behavior-x: none;
   background: var(--color-surface);
   color: var(--color-on-surface);
   font-family: var(--font-ui);

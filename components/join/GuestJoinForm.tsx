@@ -12,6 +12,7 @@ interface GuestJoinFormProps {
     joinButton: string;
     joining: string;
     offlineNotice: string;
+    dataNotice: string;
     error: string;
   };
 }
@@ -80,6 +81,7 @@ export function GuestJoinForm({ token, locale, translations }: GuestJoinFormProp
       </button>
       {error && <p className="text-sm text-red-defect">{translations.error}</p>}
       <p className="text-xs text-brown-mid">{translations.offlineNotice}</p>
+      <p className="text-xs text-brown-mid">{translations.dataNotice}</p>
     </form>
   );
 }

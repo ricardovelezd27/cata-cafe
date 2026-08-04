@@ -180,6 +180,12 @@
       "continueAnyway": "Continue anyway",
       "submitAnyway": "Submit anyway"
     },
+    "leaveGuard": {
+      "title": "Leave the tasting?",
+      "body": "Looks like you navigated back. Your progress is saved, but leaving now will interrupt the evaluation.",
+      "stay": "Keep tasting",
+      "leave": "Leave"
+    },
     "shell": {
       "samplesHeader": "Samples",
       "evaluationHeader": "Evaluation",
@@ -317,6 +323,7 @@
     "guestJoinButton": "Join the tasting",
     "guestJoining": "Joining…",
     "orSignIn": "or sign in with your email",
+    "guestDataNotice": "As a guest, your access is tied to this browser: clearing browsing data or switching devices means losing your progress. Sign in with your email to keep it.",
     "guestOfflineNotice": "You need a connection to join; once in, you can cup offline.",
     "guestError": "Couldn't join as guest. Try with your email."
   },

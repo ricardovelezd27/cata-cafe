@@ -180,6 +180,12 @@
       "continueAnyway": "Continuar de todos modos",
       "submitAnyway": "Enviar de todos modos"
     },
+    "leaveGuard": {
+      "title": "¿Salir de la cata?",
+      "body": "Parece que retrocediste en el navegador. Tu avance está guardado, pero si sales ahora dejarás la evaluación a medias.",
+      "stay": "Seguir catando",
+      "leave": "Salir"
+    },
     "shell": {
       "samplesHeader": "Muestras",
       "evaluationHeader": "Evaluación",
@@ -318,6 +324,7 @@
     "guestJoining": "Entrando…",
     "orSignIn": "o inicia sesión con tu correo",
     "guestOfflineNotice": "Necesitas conexión para unirte; una vez dentro puedes catar sin internet.",
+    "guestDataNotice": "Como invitado, tu acceso queda ligado a este navegador: si borras los datos de navegación o cambias de dispositivo, perderás tu avance. Inicia sesión con tu correo para conservarlo.",
     "guestError": "No se pudo entrar como invitado. Intenta con tu correo."
   },
   "results": {
