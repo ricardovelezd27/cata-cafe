@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { prisma } from "@/lib/prisma";
@@ -56,6 +57,177 @@ export async function getCoffeesWithStats(
     },
     orderBy: { name: "asc" },
   });
+}
+
+// ─── Create a coffee as a standalone reusable asset ───────────────────────────
+// Returns a value instead of redirect()ing (createGroupSession pattern) so the
+// form can surface errors and router.push to the new profile on success.
+export async function createCoffee(input: {
+  name: string;
+  country?: string;
+  region?: string;
+  farm?: string;
+  producer?: string;
+  species?: string;
+  variety?: string;
+  harvestYear?: string;
+  processType?: string;
+  altitude?: string;
+  roastLevel?: string;
+  certifications?: string[];
+  notes?: string;
+  visibility: CoffeeVisibility;
+}): Promise<{ ok: true; coffeeId: string } | { ok: false; error: string }> {
+  const user = await requireUser();
+
+  const name = input.name?.trim();
+  if (!name) return { ok: false, error: "name_required" };
+  if (!isCoffeeVisibility(input.visibility)) {
+    return { ok: false, error: "invalid_visibility" };
+  }
+
+  const coffee = await prisma.coffee.create({
+    data: {
+      name,
+      country: input.country?.trim() || null,
+      region: input.region?.trim() || null,
+      farm: input.farm?.trim() || null,
+      producer: input.producer?.trim() || null,
+      species: input.species?.trim() || null,
+      variety: input.variety?.trim() || null,
+      harvestYear: input.harvestYear?.trim() || null,
+      processType: input.processType?.trim() || null,
+      altitude: input.altitude?.trim() || null,
+      roastLevel: input.roastLevel?.trim() || null,
+      certifications: input.certifications ?? [],
+      notes: input.notes?.trim() || null,
+      createdBy: user.id,
+      visibility: input.visibility,
+    },
+    select: { id: true },
+  });
+
+  revalidatePath("/es/app/coffees");
+  revalidatePath("/en/app/coffees");
+  return { ok: true, coffeeId: coffee.id };
+}
+
+// ─── Share a coffee via invite link (owner only) ──────────────────────────────
+// Generating a link on a private coffee flips it to "shared" in the same call
+// — creating a link IS the intent to share. Reuses the newest still-valid
+// invite so repeated clicks don't mint token litter (mirrors createInviteToken
+// in app/actions/community.ts otherwise).
+export async function createCoffeeInvite(
+  coffeeId: string,
+): Promise<{ token: string }> {
+  const user = await requireUser();
+
+  const coffee = await prisma.coffee.findUnique({
+    where: { id: coffeeId },
+    select: { createdBy: true, visibility: true },
+  });
+  if (!coffee || coffee.createdBy !== user.id) {
+    throw new Error("not_found_or_forbidden");
+  }
+
+  if (coffee.visibility === "private") {
+    await prisma.coffee.update({
+      where: { id: coffeeId },
+      data: { visibility: "shared" },
+    });
+    revalidatePath(`/es/app/coffees/${coffeeId}`);
+    revalidatePath(`/en/app/coffees/${coffeeId}`);
+  }
+
+  const existing = await prisma.coffeeInvite.findFirst({
+    where: {
+      coffeeId,
+      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  if (
+    existing &&
+    (existing.maxUses === null || existing.useCount < existing.maxUses)
+  ) {
+    return { token: existing.token };
+  }
+
+  const token = crypto.randomUUID();
+  await prisma.coffeeInvite.create({
+    data: { coffeeId, token, createdBy: user.id },
+  });
+  return { token };
+}
+
+// ─── Accept a coffee-share invite (any logged-in user) ────────────────────────
+// Token is validated server-side, then the share is written via Prisma
+// (postgres role — RLS on coffee_shares is read-only by design; see
+// rls_and_triggers.sql PHASE 15). A private coffee rejects its outstanding
+// tokens: flipping to private instantly kills every link.
+export async function joinCoffeeViaToken(token: string, locale: string = "es") {
+  const user = await requireUser();
+
+  const invite = await prisma.coffeeInvite.findUnique({
+    where: { token },
+    include: { coffee: { select: { id: true, createdBy: true, visibility: true } } },
+  });
+
+  if (!invite || invite.coffee.visibility === "private") {
+    throw new Error("invalid_token");
+  }
+  if (invite.expiresAt && invite.expiresAt < new Date()) {
+    throw new Error("token_expired");
+  }
+  if (invite.maxUses !== null && invite.useCount >= invite.maxUses) {
+    throw new Error("token_exhausted");
+  }
+
+  const coffeeId = invite.coffee.id;
+
+  // The owner opening their own link just lands on the profile — no share row.
+  if (invite.coffee.createdBy !== user.id) {
+    await prisma.$transaction(async (tx) => {
+      const already = await tx.coffeeShare.findUnique({
+        where: { coffeeId_userId: { coffeeId, userId: user.id } },
+        select: { userId: true },
+      });
+      if (already) return; // re-opening the link is a no-op, not a "use"
+      await tx.coffeeShare.create({ data: { coffeeId, userId: user.id } });
+      await tx.coffeeInvite.update({
+        where: { id: invite.id },
+        data: { useCount: { increment: 1 } },
+      });
+    });
+    revalidatePath(`/es/app/coffees/${coffeeId}`);
+    revalidatePath(`/en/app/coffees/${coffeeId}`);
+    revalidatePath("/es/app/coffees");
+    revalidatePath("/en/app/coffees");
+  }
+
+  redirect(`/${locale}/app/coffees/${coffeeId}`);
+}
+
+// ─── Revoke a person's access to a shared coffee (owner only) ─────────────────
+export async function revokeCoffeeShare(
+  coffeeId: string,
+  userId: string,
+): Promise<{ ok: true }> {
+  const user = await requireUser();
+
+  const coffee = await prisma.coffee.findUnique({
+    where: { id: coffeeId },
+    select: { createdBy: true },
+  });
+  if (!coffee || coffee.createdBy !== user.id) {
+    throw new Error("not_found_or_forbidden");
+  }
+
+  await prisma.coffeeShare.deleteMany({ where: { coffeeId, userId } });
+
+  revalidatePath(`/es/app/coffees/${coffeeId}`);
+  revalidatePath(`/en/app/coffees/${coffeeId}`);
+  return { ok: true };
 }
 
 // ─── Coffees the user may attach to a new session ─────────────────────────────

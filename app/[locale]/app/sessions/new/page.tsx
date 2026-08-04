@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NewSessionForm } from "./NewSessionForm";
 import { COFFEE_COUNTRIES } from "@/lib/analytics/normalize";
+import { getUsableCoffees } from "@/app/actions/coffees";
+import type { UsableCoffee } from "@/components/coffees/CoffeePicker";
 
 export function generateStaticParams() {
   return [{ locale: "es" }, { locale: "en" }];
@@ -73,7 +75,20 @@ export default async function NewSessionPage({
         missing_coffee_fields: t("newForm.errors.missing_coffee_fields"),
         sample_without_coffee: t("newForm.errors.sample_without_coffee"),
         generic: t("newForm.errors.generic"),
+        coffee_not_found: t("newForm.errors.coffee_not_found"),
       },
+    },
+    // coffee picker
+    picker: {
+      useExisting: tc("picker.useExisting"),
+      title: tc("picker.title"),
+      searchPlaceholder: tc("picker.searchPlaceholder"),
+      mine: tc("picker.mine"),
+      shared: tc("picker.shared"),
+      public: tc("picker.public"),
+      empty: tc("picker.empty"),
+      linked: tc("picker.linked"),
+      unlink: tc("picker.unlink"),
     },
   };
 
@@ -108,6 +123,20 @@ export default async function NewSessionPage({
 
   const countries = COFFEE_COUNTRIES.map((c) => (locale === "en" ? c.nameEn : c.nameEs));
 
+  const usableRaw = user ? await getUsableCoffees(user.id) : [];
+  const usableCoffees: UsableCoffee[] = usableRaw.map((c) => ({
+    id: c.id,
+    name: c.name,
+    producer: c.producer,
+    variety: c.variety,
+    altitude: c.altitude,
+    roastLevel: c.roastLevel,
+    country: c.country,
+    region: c.region,
+    processType: c.processType,
+    origin: c.createdBy === user!.id ? "mine" : c.visibility === "public" ? "public" : "shared",
+  }));
+
   return (
     <div className="max-w-2xl">
       <h1 className="font-serif text-3xl text-green-dark mb-6">{translations.title}</h1>
@@ -117,6 +146,7 @@ export default async function NewSessionPage({
         groupsT={groupsT}
         groups={groupOptions}
         countries={countries}
+        usableCoffees={usableCoffees}
       />
     </div>
   );

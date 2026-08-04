@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { ClipboardList, Users, CheckCircle2, Coffee } from "lucide-react";
+import { ClipboardList, Users, CheckCircle2, Coffee, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { ProfileForm } from "./ProfileForm";
@@ -69,6 +69,7 @@ export default async function ProfilePage({
     evaluationsSubmitted,
     distinctCoffees,
     percentileRows,
+    myCoffees,
   ] = await Promise.all([
     prisma.profile.findUnique({ where: { id: user.id } }),
     prisma.cuppingSession.findMany({
@@ -114,9 +115,21 @@ export default async function ProfilePage({
         (SELECT count(*) FROM active) AS active_count,
         (SELECT count(*) FROM active a WHERE a.points < (SELECT points FROM pts WHERE id = ${user.id})) AS below_count
     `,
+    prisma.coffee.findMany({
+      where: { createdBy: user.id },
+      orderBy: { updatedAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        variety: true,
+        visibility: true,
+        _count: { select: { sessionSamples: true } },
+      },
+    }),
   ]);
 
   const t = await getTranslations("profile");
+  const tc = await getTranslations("coffee");
 
   const statusLabels = {
     draft: t("statusDraft"),
@@ -242,6 +255,79 @@ export default async function ProfilePage({
             save: t("save"),
           }}
         />
+      </div>
+
+      {/* My coffees */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-serif text-xl text-green-dark">{t("myCoffees")}</h2>
+          <Link
+            href={`/${locale}/app/coffees/new`}
+            className="inline-flex items-center gap-1 text-xs font-semibold text-green-dark hover:underline"
+          >
+            <Plus size={14} />
+            {t("createCoffee")}
+          </Link>
+        </div>
+        {myCoffees.length === 0 ? (
+          <p className="text-sm text-brown-mid">{t("myCoffeesEmpty")}</p>
+        ) : (
+          <div className="space-y-2">
+            {myCoffees.slice(0, 8).map((c) => {
+              const visibilityLabel =
+                c.visibility === "public"
+                  ? tc("listPublic")
+                  : c.visibility === "shared"
+                    ? tc("listShared")
+                    : tc("listPrivate");
+              const visibilityCls =
+                c.visibility === "public"
+                  ? "bg-green-dark/10 text-green-dark border-green-dark/30"
+                  : c.visibility === "shared"
+                    ? "bg-amber-warm/15 text-brown-dark border-amber-warm/40"
+                    : "bg-cream text-brown-mid border-brown-light";
+
+              return (
+                <Link
+                  key={c.id}
+                  href={`/${locale}/app/coffees/${c.id}`}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "10px 14px",
+                    background: "#FDFBF7",
+                    border: "1px solid #E8E0D0",
+                    borderRadius: 10,
+                    textDecoration: "none",
+                    color: "inherit",
+                    gap: 12,
+                  }}
+                >
+                  <div className="min-w-0">
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#3D5A3E" }}>
+                      {c.name}
+                      {c.variety && (
+                        <span className="text-brown-mid font-normal"> · {c.variety}</span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#8B7355", marginTop: 2 }}>
+                      {t("coffeeSessions", { count: c._count.sessionSamples })}
+                    </div>
+                  </div>
+                  <span
+                    className={
+                      "shrink-0 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-pill border " +
+                      visibilityCls
+                    }
+                  >
+                    {visibilityLabel}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Owned sessions */}

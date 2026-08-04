@@ -8,6 +8,7 @@ import { startSession } from "@/app/actions/community";
 import { NotifyGroupPanel, type NotifyGroupOption, type NotifyGroupTranslations } from "@/components/groups/NotifyGroupPanel";
 import { InviteQR } from "@/components/ui/InviteQR";
 import { buildInviteUrl } from "@/lib/inviteUrl";
+import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 
 type CoffeeInput = {
   name: string;
@@ -19,7 +20,12 @@ type CoffeeInput = {
   region: string;
 };
 
-type CoffeeEntry = CoffeeInput & { id: string };
+type CoffeeEntry = CoffeeInput & {
+  id: string;
+  existingCoffeeId?: string;
+  /** Origin badge of the linked coffee — display-only, never submitted. */
+  linkedOrigin?: UsableCoffee["origin"];
+};
 
 type SampleEntry = {
   id: string;
@@ -80,7 +86,19 @@ type Translations = {
       missing_coffee_fields: string;
       sample_without_coffee: string;
       generic: string;
+      coffee_not_found: string;
     };
+  };
+  picker: {
+    useExisting: string;
+    title: string;
+    searchPlaceholder: string;
+    mine: string;
+    shared: string;
+    public: string;
+    empty: string;
+    linked: string;
+    unlink: string;
   };
 };
 
@@ -117,6 +135,17 @@ function relabel(samples: SampleEntry[], chip: string): SampleEntry[] {
 
 const inputCls =
   "w-full border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary-container/25 focus:border-primary-container transition-colors";
+
+/** Origin badge colors mirror CoffeePicker's own badges. */
+const originBadgeCls: Record<UsableCoffee["origin"], string> = {
+  mine: "bg-green-dark/10 text-green-dark border-green-dark/30",
+  shared: "bg-amber-warm/15 text-brown-dark border-amber-warm/40",
+  public: "bg-cream text-brown-mid border-brown-light",
+};
+
+function originBadgeLabel(origin: UsableCoffee["origin"], t: Translations): string {
+  return origin === "mine" ? t.picker.mine : origin === "shared" ? t.picker.shared : t.picker.public;
+}
 
 function FieldLabel({
   children,
@@ -157,12 +186,14 @@ export function NewSessionForm({
   countries,
   groupsT,
   groups,
+  usableCoffees,
 }: {
   locale: string;
   t: Translations;
   countries: string[];
   groupsT: NotifyGroupTranslations;
   groups: NotifyGroupOption[];
+  usableCoffees: UsableCoffee[];
 }) {
   const router = useRouter();
 
@@ -192,6 +223,9 @@ export function NewSessionForm({
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
+  // Coffee picker — targets a single CoffeeEntry card at a time.
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
+
   // Wizard state
   const [step, setStep] = useState<WizardStep>("form");
   const [inviteToken, setInviteToken] = useState("");
@@ -207,6 +241,40 @@ export function NewSessionForm({
       setInvalidCoffeeId(null);
       setErrorCode(null);
     }
+  };
+
+  const applyExistingCoffee = (id: string, picked: UsableCoffee) => {
+    setCoffees((prev) =>
+      prev.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              name: picked.name,
+              producer: picked.producer ?? "",
+              variety: picked.variety ?? "",
+              altitude: picked.altitude ?? "",
+              roastLevel: picked.roastLevel ?? "",
+              country: picked.country ?? "",
+              region: picked.region ?? "",
+              existingCoffeeId: picked.id,
+              linkedOrigin: picked.origin,
+            }
+          : c
+      )
+    );
+    if (invalidCoffeeId === id) {
+      setInvalidCoffeeId(null);
+      setErrorCode(null);
+    }
+    setPickerFor(null);
+  };
+
+  const unlinkCoffee = (id: string) => {
+    setCoffees((prev) =>
+      prev.map((c) =>
+        c.id === id ? { ...c, existingCoffeeId: undefined, linkedOrigin: undefined } : c
+      )
+    );
   };
 
   const addCoffee = () => {
@@ -265,6 +333,7 @@ export function NewSessionForm({
   // ── Submit ──────────────────────────────────────────────────────────────────
   const validateClient = (): boolean => {
     for (const c of coffees) {
+      if (c.existingCoffeeId) continue;
       if (!c.name.trim() || !c.variety.trim() || !c.country.trim() || !c.altitude.trim()) {
         setInvalidCoffeeId(c.id);
         setErrorCode("missing_coffee_fields");
@@ -281,10 +350,11 @@ export function NewSessionForm({
     if (!validateClient()) return;
 
     const idxById = new Map(coffees.map((c, i) => [c.id, i]));
-    const coffeePayload: CoffeeInput[] = coffees.map((c) => {
-      const { id, ...rest } = c;
+    const coffeePayload = coffees.map((c) => {
+      const { id, linkedOrigin, existingCoffeeId, ...rest } = c;
       void id;
-      return rest;
+      void linkedOrigin;
+      return existingCoffeeId ? { ...rest, existingCoffeeId } : rest;
     });
     const samplePayload = samples.map((s) => ({
       label: s.label,
@@ -511,6 +581,15 @@ export function NewSessionForm({
                     {t.newForm.coffeeCard} {i + 1}
                   </span>
                   <div className="flex-1" />
+                  {usableCoffees.length > 0 && !coffee.existingCoffeeId && (
+                    <button
+                      type="button"
+                      onClick={() => setPickerFor(coffee.id)}
+                      className="rounded-pill border border-primary-container px-3 py-1 text-xs font-medium text-primary-container hover:bg-primary-fixed transition-colors"
+                    >
+                      {t.picker.useExisting}
+                    </button>
+                  )}
                   {coffees.length > 1 && (
                     <button
                       type="button"
@@ -523,96 +602,149 @@ export function NewSessionForm({
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2">
-                    <FieldLabel required requiredText={t.newForm.required}>
-                      {t.coffeeName}
-                    </FieldLabel>
-                    <input
-                      className={inputCls}
-                      value={coffee.name}
-                      onChange={(e) => updateCoffee(coffee.id, "name", e.target.value)}
-                      required
-                      placeholder={t.coffeeName}
-                    />
+                {coffee.existingCoffeeId ? (
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
+                      {t.picker.linked}
+                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-sm text-on-surface">{coffee.name}</span>
+                      {coffee.linkedOrigin && (
+                        <span
+                          className={`rounded-pill border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
+                            originBadgeCls[coffee.linkedOrigin]
+                          }`}
+                        >
+                          {originBadgeLabel(coffee.linkedOrigin, t)}
+                        </span>
+                      )}
+                    </div>
+                    {[coffee.country, coffee.region, coffee.variety, coffee.altitude]
+                      .filter(Boolean)
+                      .join(" · ") && (
+                      <p className="text-xs text-on-surface-variant">
+                        {[coffee.country, coffee.region, coffee.variety, coffee.altitude]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => unlinkCoffee(coffee.id)}
+                      className="rounded-pill border border-outline-variant px-3 py-1.5 text-xs font-medium text-on-surface hover:bg-surface-container transition-colors"
+                    >
+                      {t.picker.unlink}
+                    </button>
                   </div>
-
-                  <div>
-                    <FieldLabel required requiredText={t.newForm.required}>
-                      {t.coffeeCountry}
-                    </FieldLabel>
-                    <input
-                      list="cata-coffee-countries"
-                      className={inputCls}
-                      value={coffee.country}
-                      onChange={(e) => updateCoffee(coffee.id, "country", e.target.value)}
-                      required
-                      placeholder={t.coffeeCountry}
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel required requiredText={t.newForm.required}>
-                      {t.coffeeVariety}
-                    </FieldLabel>
-                    <input
-                      className={inputCls}
-                      value={coffee.variety}
-                      onChange={(e) => updateCoffee(coffee.id, "variety", e.target.value)}
-                      required
-                      placeholder={t.coffeeVariety}
-                    />
-                  </div>
-
-                  <div>
-                    <FieldLabel required requiredText={t.newForm.required}>
-                      {t.coffeeAltitude}
-                    </FieldLabel>
-                    <div className="relative">
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
+                      <FieldLabel required requiredText={t.newForm.required}>
+                        {t.coffeeName}
+                      </FieldLabel>
                       <input
-                        className={inputCls + " pr-14"}
-                        value={coffee.altitude}
-                        onChange={(e) => updateCoffee(coffee.id, "altitude", e.target.value)}
+                        className={inputCls}
+                        value={coffee.name}
+                        onChange={(e) => updateCoffee(coffee.id, "name", e.target.value)}
                         required
-                        placeholder="1800"
+                        placeholder={t.coffeeName}
                       />
-                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-on-surface-variant pointer-events-none">
-                        msnm
-                      </span>
+                    </div>
+
+                    <div>
+                      <FieldLabel required requiredText={t.newForm.required}>
+                        {t.coffeeCountry}
+                      </FieldLabel>
+                      <input
+                        list="cata-coffee-countries"
+                        className={inputCls}
+                        value={coffee.country}
+                        onChange={(e) => updateCoffee(coffee.id, "country", e.target.value)}
+                        required
+                        placeholder={t.coffeeCountry}
+                      />
+                    </div>
+                    <div>
+                      <FieldLabel required requiredText={t.newForm.required}>
+                        {t.coffeeVariety}
+                      </FieldLabel>
+                      <input
+                        className={inputCls}
+                        value={coffee.variety}
+                        onChange={(e) => updateCoffee(coffee.id, "variety", e.target.value)}
+                        required
+                        placeholder={t.coffeeVariety}
+                      />
+                    </div>
+
+                    <div>
+                      <FieldLabel required requiredText={t.newForm.required}>
+                        {t.coffeeAltitude}
+                      </FieldLabel>
+                      <div className="relative">
+                        <input
+                          className={inputCls + " pr-14"}
+                          value={coffee.altitude}
+                          onChange={(e) => updateCoffee(coffee.id, "altitude", e.target.value)}
+                          required
+                          placeholder="1800"
+                        />
+                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-on-surface-variant pointer-events-none">
+                          msnm
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <FieldLabel optionalText={t.newForm.optionalSuffix}>{t.coffeeRegion}</FieldLabel>
+                      <input
+                        className={inputCls}
+                        value={coffee.region}
+                        onChange={(e) => updateCoffee(coffee.id, "region", e.target.value)}
+                        placeholder={t.coffeeRegion}
+                      />
+                    </div>
+
+                    <div>
+                      <FieldLabel optionalText={t.newForm.optionalSuffix}>{t.producerRoaster}</FieldLabel>
+                      <input
+                        className={inputCls}
+                        value={coffee.producer}
+                        onChange={(e) => updateCoffee(coffee.id, "producer", e.target.value)}
+                        placeholder={t.producerRoaster}
+                      />
+                    </div>
+                    <div>
+                      <FieldLabel optionalText={t.newForm.optionalSuffix}>{t.coffeeRoastLevel}</FieldLabel>
+                      <input
+                        className={inputCls}
+                        value={coffee.roastLevel}
+                        onChange={(e) => updateCoffee(coffee.id, "roastLevel", e.target.value)}
+                        placeholder={t.coffeeRoastLevel}
+                      />
                     </div>
                   </div>
-                  <div>
-                    <FieldLabel optionalText={t.newForm.optionalSuffix}>{t.coffeeRegion}</FieldLabel>
-                    <input
-                      className={inputCls}
-                      value={coffee.region}
-                      onChange={(e) => updateCoffee(coffee.id, "region", e.target.value)}
-                      placeholder={t.coffeeRegion}
-                    />
-                  </div>
-
-                  <div>
-                    <FieldLabel optionalText={t.newForm.optionalSuffix}>{t.producerRoaster}</FieldLabel>
-                    <input
-                      className={inputCls}
-                      value={coffee.producer}
-                      onChange={(e) => updateCoffee(coffee.id, "producer", e.target.value)}
-                      placeholder={t.producerRoaster}
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel optionalText={t.newForm.optionalSuffix}>{t.coffeeRoastLevel}</FieldLabel>
-                    <input
-                      className={inputCls}
-                      value={coffee.roastLevel}
-                      onChange={(e) => updateCoffee(coffee.id, "roastLevel", e.target.value)}
-                      placeholder={t.coffeeRoastLevel}
-                    />
-                  </div>
-                </div>
+                )}
               </div>
             );
           })}
         </div>
+
+        <CoffeePicker
+          open={pickerFor !== null}
+          onOpenChange={(o) => !o && setPickerFor(null)}
+          coffees={usableCoffees}
+          onSelect={(picked) => {
+            if (pickerFor) applyExistingCoffee(pickerFor, picked);
+          }}
+          translations={{
+            title: t.picker.title,
+            searchPlaceholder: t.picker.searchPlaceholder,
+            mine: t.picker.mine,
+            shared: t.picker.shared,
+            public: t.picker.public,
+            empty: t.picker.empty,
+          }}
+        />
 
         <button
           type="button"

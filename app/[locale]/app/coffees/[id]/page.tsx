@@ -13,6 +13,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { FlavorCloud } from "@/components/results/FlavorCloud";
 import { PublishResultsToggle } from "@/components/coffees/PublishResultsToggle";
 import { CoffeeVisibilityToggle } from "@/components/coffees/CoffeeVisibilityToggle";
+import { CoffeeShareManager } from "@/components/coffees/CoffeeShareManager";
 import { DeleteCoffeeButton } from "./DeleteCoffeeButton";
 
 // Auth'd page with a dynamic [id] segment: must render per-request. With
@@ -52,6 +53,28 @@ export default async function CoffeeProfilePage({
   if (!coffee) notFound();
 
   const isOwner = coffee.createdBy === user.id;
+
+  const [shares, invite] = isOwner
+    ? await Promise.all([
+        prisma.coffeeShare.findMany({
+          where: { coffeeId: id },
+          include: { user: { select: { displayName: true } } },
+          orderBy: { createdAt: "asc" },
+        }),
+        prisma.coffeeInvite.findFirst({
+          where: {
+            coffeeId: id,
+            OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+          },
+          orderBy: { createdAt: "desc" },
+        }),
+      ])
+    : [[], null];
+
+  const shareInitialToken =
+    invite && (invite.maxUses === null || invite.useCount < invite.maxUses)
+      ? invite.token
+      : null;
 
   const [history, samples] = await Promise.all([
     prisma.userCoffeeHistory.findMany({
@@ -174,6 +197,26 @@ export default async function CoffeeProfilePage({
               {t("resultsButPrivateHint")}
             </p>
           )}
+
+          <div className="border-t border-brown-light/50 pt-4">
+            <CoffeeShareManager
+              coffeeId={coffee.id}
+              locale={locale}
+              initialToken={shareInitialToken}
+              shares={shares.map((s) => ({ userId: s.userId, displayName: s.user.displayName }))}
+              translations={{
+                title: t("share.title"),
+                generateLink: t("share.generateLink"),
+                generating: t("share.generating"),
+                copyLink: t("share.copyLink"),
+                copied: t("share.copied"),
+                peopleWithAccess: t("share.peopleWithAccess"),
+                noShares: t("share.noShares"),
+                revoke: t("share.revoke"),
+                linkHint: t("share.linkHint"),
+              }}
+            />
+          </div>
         </div>
       )}
 
