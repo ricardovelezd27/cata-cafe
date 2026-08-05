@@ -42,6 +42,7 @@ export type SessionsTableTranslations = {
   filterRole: string;
   roleMine: string;
   roleParticipant: string;
+  participantBadge: string;
   emptyTitle: string;
   emptyBody: string;
   groupBadge: string;
@@ -103,6 +104,11 @@ export function SessionsTable({
             {row.groupName && (
               <Badge tone="neutral" size="xs">
                 {row.groupName}
+              </Badge>
+            )}
+            {!row.isOwner && (
+              <Badge tone="outline" size="xs">
+                {t.participantBadge}
               </Badge>
             )}
           </div>
@@ -218,6 +224,11 @@ export function SessionsTable({
                 {row.groupName && (
                   <Badge tone="neutral" size="xs">
                     {row.groupName}
+                  </Badge>
+                )}
+                {!row.isOwner && (
+                  <Badge tone="outline" size="xs">
+                    {t.participantBadge}
                   </Badge>
                 )}
               </div>

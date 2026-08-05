@@ -173,6 +173,7 @@
       "filterRole": "Rol",
       "roleMine": "Mías",
       "roleParticipant": "Como participante",
+      "participantBadge": "Participante",
       "emptyTitle": "Aún no tienes sesiones",
       "emptyBody": "Crea tu primera sesión de cata para empezar a evaluar cafés.",
       "solo": "Individual",

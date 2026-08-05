@@ -71,10 +71,25 @@ export default async function ProfilePage({
         (SELECT count(*) FROM active a WHERE a.points < (SELECT points FROM pts WHERE id = ${user.id})) AS below_count
     `,
     prisma.cuppingSession.findMany({
-      where: { createdBy: user.id },
+      // Own AND participated — participated sessions must stay visible by
+      // default, labeled as such (they're part of your activity, not owned).
+      where: {
+        OR: [
+          { createdBy: user.id },
+          { participants: { some: { userId: user.id } } },
+        ],
+      },
       orderBy: { date: "desc" },
-      take: 3,
-      select: { id: true, name: true, date: true, status: true, isGroup: true, startedAt: true },
+      take: 4,
+      select: {
+        id: true,
+        name: true,
+        date: true,
+        status: true,
+        isGroup: true,
+        startedAt: true,
+        createdBy: true,
+      },
     }),
     prisma.coffee.findMany({
       where: { createdBy: user.id },
@@ -87,6 +102,7 @@ export default async function ProfilePage({
   const t = await getTranslations("profile");
   const tc = await getTranslations("common");
   const tCoffee = await getTranslations("coffee");
+  const tSession = await getTranslations("session");
 
   // Activity points + level (lib/gamification.ts is the single source of truth
   // for the weights/thresholds; this just feeds it the counts from above).
@@ -280,11 +296,18 @@ export default async function ProfilePage({
                   {recentSessions.map((s) => (
                     <Link
                       key={s.id}
-                      href={sessionHref(s, { locale, isOwner: true })}
+                      href={sessionHref(s, { locale, isOwner: s.createdBy === user.id })}
                       className="flex items-center justify-between gap-3 rounded-card border border-outline-variant bg-surface px-4 py-2.5 transition-colors hover:bg-surface-container-low"
                     >
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-on-surface">{s.name}</div>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="truncate text-sm font-semibold text-on-surface">{s.name}</span>
+                          {s.createdBy !== user.id && (
+                            <Badge tone="outline" size="xs">
+                              {tSession("table.participantBadge")}
+                            </Badge>
+                          )}
+                        </div>
                         <div className="mt-0.5 text-xs text-on-surface-variant">{formatDate(s.date)}</div>
                       </div>
                       <StatusPill status={s.status} labels={statusLabels} />

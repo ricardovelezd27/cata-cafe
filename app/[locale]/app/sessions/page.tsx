@@ -110,6 +110,7 @@ export default async function SessionsList({
     filterRole: t("table.filterRole"),
     roleMine: t("table.roleMine"),
     roleParticipant: t("table.roleParticipant"),
+    participantBadge: t("table.participantBadge"),
     emptyTitle: t("table.emptyTitle"),
     emptyBody: t("table.emptyBody"),
     groupBadge: t("table.groupBadge"),

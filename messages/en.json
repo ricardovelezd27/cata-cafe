@@ -173,6 +173,7 @@
       "filterRole": "Role",
       "roleMine": "Mine",
       "roleParticipant": "As participant",
+      "participantBadge": "Participant",
       "emptyTitle": "No sessions yet",
       "emptyBody": "Create your first cupping session to start evaluating coffees.",
       "solo": "Solo",

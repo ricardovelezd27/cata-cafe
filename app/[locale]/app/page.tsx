@@ -46,6 +46,7 @@ export default async function Dashboard({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("dashboard");
+  const tSession = await getTranslations("session");
 
   const supabase = await createClient();
   const {
@@ -99,7 +100,9 @@ export default async function Dashboard({
         startedAt: true,
         _count: { select: { samples: true } },
       },
-      orderBy: { createdAt: "desc" },
+      // Order by session DATE (not createdAt) so a session you joined shows up
+      // by when it happened — same default ordering as the sessions table.
+      orderBy: { date: "desc" },
       take: 5,
     }),
 
@@ -260,6 +263,11 @@ export default async function Dashboard({
                           {s.name}
                         </span>
                         <FormatBadge format={s.format} />
+                        {s.createdBy !== user.id && (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-semibold border border-outline-variant text-on-surface-variant">
+                            {tSession("table.participantBadge")}
+                          </span>
+                        )}
                         <span
                           className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
                             STATUS_STYLES[s.status] ?? STATUS_STYLES.closed
@@ -273,7 +281,9 @@ export default async function Dashboard({
                           {new Date(s.date).toLocaleDateString(locale)}
                         </span>
                         <span>·</span>
-                        <span>{s._count.samples} muestras</span>
+                        <span>
+                          {s._count.samples} {tSession("table.colSamples").toLowerCase()}
+                        </span>
                       </div>
                     </div>
                     <ChevronRight
