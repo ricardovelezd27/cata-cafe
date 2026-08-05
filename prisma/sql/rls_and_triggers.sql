@@ -1021,3 +1021,38 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ============================================================================
+
+-- ============================================================================
+-- PHASE 15 (2026-08-05): Groups v2 — description + session groupId (no RLS
+-- changes; comment-only documentation block, nothing to run this round).
+--
+-- Migration `20260805000000_group_description_and_session_group` added
+-- `tasting_groups.description` (plain text column, no new access surface) and
+-- `cupping_sessions.groupId` (nullable FK, ON DELETE SET NULL) plus its index.
+--
+-- Why no policy work is required:
+--   - Every group/session read added by Groups v2 (owner group list, member
+--     group list, group→sessions list, session→group name) is served through
+--     Prisma from server actions/RSCs, which run as the `postgres` role and
+--     bypass RLS entirely. There is no new PostgREST/anon-key access path for
+--     these columns.
+--   - The Phase 10 owner-only policies on tasting_groups /
+--     tasting_group_members are intentionally left unchanged. A member-read
+--     policy (letting a linked member SELECT the group row and its member
+--     list directly via PostgREST) would leak co-member email addresses to
+--     every member, not just the owner — the read-only member view added in
+--     this feature deliberately goes through a server action instead, which
+--     masks co-member emails before they ever reach the client
+--     (`j***@domain.com`, never the full address, per the plan's decision).
+--   - `cupping_sessions.groupId` needs no policy of its own: cupping_sessions
+--     already has no direct-client RLS surface (all reads/writes go through
+--     Prisma), and the new column is just a nullable FK alongside the
+--     existing ones.
+--   - `handle_new_user()` (redefined in Phase 14 above) already auto-links
+--     email-only tasting_group_members rows to a Profile on signup — Groups
+--     v2's new invitation-email flow reuses that same trigger; no further
+--     trigger change is needed.
+--
+-- No executable SQL in this block — nothing to apply via the Supabase
+-- Dashboard SQL editor for this phase.
+-- ============================================================================

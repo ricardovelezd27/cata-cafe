@@ -14,6 +14,7 @@ export function LoginForm({
   orLabel,
   subtitleLabel,
   next,
+  initialEmail,
 }: {
   emailLabel: string;
   sendLabel: string;
@@ -25,9 +26,10 @@ export function LoginForm({
   orLabel: string;
   subtitleLabel: string;
   next?: string;
+  initialEmail?: string;
 }) {
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error" | "rate_limit">("idle");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail ?? "");
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

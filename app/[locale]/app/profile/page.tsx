@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ClipboardList, Users, CheckCircle2, Coffee } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { claimGroupMembershipsByEmail } from "@/lib/groupMembership";
 import { ProfileForm } from "./ProfileForm";
 import Link from "next/link";
 import { signOut, switchAccount } from "@/app/actions/auth";
@@ -60,6 +61,10 @@ export default async function ProfilePage({
   } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
 
+  // Link any email-only group memberships to this account before querying —
+  // covers users who already had an account when they were added by email.
+  await claimGroupMembershipsByEmail(user.id, user.email);
+
   const [
     profile,
     ownedSessions,
@@ -69,6 +74,8 @@ export default async function ProfilePage({
     evaluationsSubmitted,
     distinctCoffees,
     percentileRows,
+    ownedGroups,
+    memberGroups,
   ] = await Promise.all([
     prisma.profile.findUnique({ where: { id: user.id } }),
     prisma.cuppingSession.findMany({
@@ -114,9 +121,41 @@ export default async function ProfilePage({
         (SELECT count(*) FROM active) AS active_count,
         (SELECT count(*) FROM active a WHERE a.points < (SELECT points FROM pts WHERE id = ${user.id})) AS below_count
     `,
+    prisma.tastingGroup.findMany({
+      where: { createdBy: user.id },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        _count: { select: { members: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.tastingGroup.findMany({
+      where: { createdBy: { not: user.id }, members: { some: { userId: user.id } } },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        _count: { select: { members: true } },
+        owner: { select: { displayName: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
 
   const t = await getTranslations("profile");
+  const tGroups = await getTranslations("groups");
+
+  // profile.groupMembers is a plain "{count} integrantes" template (not ICU
+  // plural) — interpolate it manually server-side rather than passing count
+  // through t() directly.
+  const formatGroupMembers = (count: number) => t.raw("groupMembers").replace("{count}", String(count));
+
+  const combinedGroups = [
+    ...ownedGroups.map((g) => ({ ...g, isOwned: true as const, ownerName: null as string | null })),
+    ...memberGroups.map((g) => ({ ...g, isOwned: false as const, ownerName: g.owner.displayName })),
+  ].slice(0, 10);
 
   const statusLabels = {
     draft: t("statusDraft"),
@@ -242,6 +281,71 @@ export default async function ProfilePage({
             save: t("save"),
           }}
         />
+      </div>
+
+      {/* My groups */}
+      <div>
+        <h2 className="font-serif text-xl text-green-dark mb-3">{t("myGroups")}</h2>
+        {combinedGroups.length === 0 ? (
+          <p className="text-sm text-brown-mid">{t("noGroups")}</p>
+        ) : (
+          <div className="space-y-2">
+            {combinedGroups.map((g) => (
+              <Link
+                key={g.id}
+                href={`/${locale}/app/groups/${g.id}`}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "10px 14px",
+                  background: "#FDFBF7",
+                  border: "1px solid #E8E0D0",
+                  borderRadius: 10,
+                  textDecoration: "none",
+                  color: "inherit",
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#3D5A3E" }}>
+                    {g.name}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#8B7355", marginTop: 2 }}>
+                    {formatGroupMembers(g._count.members)}
+                    {g.ownerName && ` · ${g.ownerName}`}
+                  </div>
+                  {g.description && (
+                    <div
+                      className="line-clamp-1"
+                      style={{ fontSize: 11, color: "#A89B84", marginTop: 2 }}
+                    >
+                      {g.description}
+                    </div>
+                  )}
+                </div>
+                {!g.isOwned && (
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      padding: "2px 8px",
+                      borderRadius: 10,
+                      background: "#E8F0E8",
+                      color: "#3D5A3E",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                      whiteSpace: "nowrap",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {tGroups("memberBadge")}
+                  </span>
+                )}
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Owned sessions */}

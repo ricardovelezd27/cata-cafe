@@ -41,6 +41,7 @@ export default async function SessionsList({
         include: {
           samples: { select: { id: true } },
           participants: { select: { userId: true } },
+          group: { select: { name: true } },
         },
       })
     : [];
@@ -91,6 +92,11 @@ export default async function SessionsList({
                 {s.isGroup && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-green-dark/10 text-green-dark border border-green-dark/20 font-semibold">
                     {tg("toggle")}
+                  </span>
+                )}
+                {s.group && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-warm/10 text-brown-dark border border-amber-warm/30 font-semibold">
+                    {s.group.name}
                   </span>
                 )}
                 <span

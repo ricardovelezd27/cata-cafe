@@ -5,9 +5,29 @@ import { useRouter } from "next/navigation";
 import { Trash2, X } from "lucide-react";
 import { createSession, createGroupSession } from "@/app/actions/sessions";
 import { startSession } from "@/app/actions/community";
+import type { GroupEmailSummary } from "@/app/actions/groups";
 import { NotifyGroupPanel, type NotifyGroupOption, type NotifyGroupTranslations } from "@/components/groups/NotifyGroupPanel";
 import { InviteQR } from "@/components/ui/InviteQR";
 import { buildInviteUrl } from "@/lib/inviteUrl";
+
+// Groups v2: session wizard extends NotifyGroupTranslations with the
+// step-1 "link a group" selector copy + the step-2 auto-invite success
+// strip template. Kept local (not exported from components/groups/*) since
+// this file owns the wizard's translation shape.
+type SessionGroupsTranslations = NotifyGroupTranslations & {
+  linkGroupLabel: string;
+  noGroupOption: string;
+  autoInviteToggle: string;
+  // Raw ICU template — interpolated locally via formatTemplate, not t().
+  autoInviteSummary: string;
+};
+
+// Same tiny interpolation helper as components/groups/NotifyGroupPanel.tsx.
+function formatTemplate(template: string, vars: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (match, key: string) =>
+    Object.prototype.hasOwnProperty.call(vars, key) ? String(vars[key]) : match,
+  );
+}
 
 type CoffeeInput = {
   name: string;
@@ -161,7 +181,7 @@ export function NewSessionForm({
   locale: string;
   t: Translations;
   countries: string[];
-  groupsT: NotifyGroupTranslations;
+  groupsT: SessionGroupsTranslations;
   groups: NotifyGroupOption[];
 }) {
   const router = useRouter();
@@ -186,6 +206,9 @@ export function NewSessionForm({
   // Group session fields
   const [isGroup, setIsGroup] = useState(false);
   const [closesAt, setClosesAt] = useState("");
+  const [linkedGroupId, setLinkedGroupId] = useState("");
+  const [notifyGroup, setNotifyGroup] = useState(true);
+  const [emailSummary, setEmailSummary] = useState<GroupEmailSummary | undefined>(undefined);
 
   // Client-side validation state
   const [invalidCoffeeId, setInvalidCoffeeId] = useState<string | null>(null);
@@ -314,10 +337,13 @@ export function NewSessionForm({
           coffees: coffeePayload,
           samples: samplePayload,
           closesAt: closesAt || undefined,
+          groupId: linkedGroupId || undefined,
+          notifyGroup,
         });
         if (result.ok) {
           setSessionId(result.sessionId);
           setInviteToken(result.inviteToken);
+          setEmailSummary(result.emailSummary);
           setStep("invite");
         } else {
           setErrorCode(result.error);
@@ -373,6 +399,16 @@ export function NewSessionForm({
             </button>
           </div>
         </div>
+
+        {emailSummary && (
+          <div className="bg-primary-fixed border border-primary-container/40 rounded-card px-4 py-3 text-sm text-primary-container font-medium">
+            {formatTemplate(groupsT.autoInviteSummary, {
+              sent: emailSummary.sent,
+              skipped: emailSummary.skipped,
+              failed: emailSummary.failed,
+            })}
+          </div>
+        )}
 
         <NotifyGroupPanel
           groups={groups}
@@ -705,14 +741,44 @@ export function NewSessionForm({
         </div>
 
         {isGroup && (
-          <div className="bg-surface-container-low rounded-card p-4">
-            <FieldLabel>{t.groupClosesAt}</FieldLabel>
-            <input
-              type="date"
-              className={inputCls}
-              value={closesAt}
-              onChange={(e) => setClosesAt(e.target.value)}
-            />
+          <div className="bg-surface-container-low rounded-card p-4 space-y-4">
+            <div>
+              <FieldLabel>{t.groupClosesAt}</FieldLabel>
+              <input
+                type="date"
+                className={inputCls}
+                value={closesAt}
+                onChange={(e) => setClosesAt(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <FieldLabel>{groupsT.linkGroupLabel}</FieldLabel>
+              <select
+                value={linkedGroupId}
+                onChange={(e) => setLinkedGroupId(e.target.value)}
+                className={inputCls + " cursor-pointer"}
+              >
+                <option value="">{groupsT.noGroupOption}</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name} · {g.memberCount}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {linkedGroupId && (
+              <label className="flex items-center gap-2.5 text-sm text-on-surface cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={notifyGroup}
+                  onChange={(e) => setNotifyGroup(e.target.checked)}
+                  className="h-4 w-4 rounded accent-primary-container cursor-pointer"
+                />
+                {groupsT.autoInviteToggle}
+              </label>
+            )}
           </div>
         )}
       </div>

@@ -86,6 +86,13 @@ function slug(input: string): string {
  * (email resolution, PDF render, send) — those are isolated per participant and
  * counted. A thrown error only escapes for a total failure to load the session,
  * which the caller (closeSession) still catches so the close itself is safe.
+ *
+ * Locale is resolved PER RECIPIENT from their Profile.preferredLang (batch
+ * fetched below) — every participant gets subject/body/filenames and a
+ * CvaFormDocument in their own language, not the session's. The `locale`
+ * param is now only a fallback for the rare case a participant's Profile row
+ * is missing entirely; the existing call site (community.ts closeSession)
+ * doesn't pass it, so it still defaults to "es".
  */
 export async function sendCloseEmails(
   sessionId: string,
@@ -129,12 +136,9 @@ export async function sendCloseEmails(
     session.participants.filter((p) => p.excludedFromResults).map((p) => p.userId),
   );
 
-  const dateStr = session.date.toLocaleDateString(
-    locale === "es" ? "es-CO" : "en-US",
-    { year: "numeric", month: "long", day: "numeric" },
-  );
-
   // ── Per-sample community score (complete-only, excluded-free) — same as page ──
+  // Locale-independent — computed once regardless of how many locales the
+  // recipients need.
   const aggBySample = new Map<string, ReturnType<typeof computeGroupAggregate>>();
   {
     const bySample = new Map<string, (typeof evals)[number][]>();
@@ -161,54 +165,6 @@ export async function sendCloseEmails(
     }
   }
 
-  // ── Anonymous per-sample block sentences — same aggregation as the page ──
-  const messages = locale === "en" ? enMessages : esMessages;
-  const blockLabels = messages.blocks as Record<string, string>;
-  const blockLabel = (blockId: string) => blockLabels[blockId] ?? blockId;
-
-  const freq = computeSampleBlockFrequencies({
-    format: session.format,
-    samples: session.samples.map((s) => ({ id: s.id, label: s.label })),
-    evals: evals.map((ev) => ({
-      cupperId: ev.cupperId,
-      sessionSampleId: ev.sessionSampleId,
-      descriptiveData: ev.descriptiveData,
-      combinedData: ev.combinedData,
-    })),
-    excludedUserIds,
-    blockLabel,
-    locale,
-  });
-  const freqBySample = new Map(freq?.map((f) => [f.sampleId, f]) ?? []);
-
-  // ── Build the shared group-summary PDF once ──
-  const summarySamples: GroupSummarySample[] = session.samples.map((s) => {
-    const agg = aggBySample.get(s.id);
-    const f = freqBySample.get(s.id);
-    // Sentences in canonical block order; drop nulls at render time.
-    const sentences = PERCEPTUAL_BLOCKS.map((b) => ({
-      blockId: b.id,
-      text: f?.summary[b.id] ?? null,
-    }));
-    return {
-      label: s.label,
-      coffeeName: s.revealed ? (s.coffee?.name ?? null) : null,
-      communityScore: agg?.communityScore ?? null,
-      evaluators: f?.totalEvaluators ?? 0,
-      sentences,
-    };
-  });
-
-  const summaryBuffer = await renderToBuffer(
-    GroupSummaryDocument({
-      sessionName: session.name,
-      date: dateStr,
-      participantCount: session.participants.length,
-      locale,
-      samples: summarySamples,
-    }),
-  );
-
   const evalsByCupper = new Map<string, Map<string, (typeof evals)[number]>>();
   for (const ev of evals) {
     let m = evalsByCupper.get(ev.cupperId);
@@ -219,7 +175,91 @@ export async function sendCloseEmails(
     m.set(ev.sessionSampleId, ev);
   }
 
-  const text = EMAIL_TEXT[locale];
+  // Batch-fetch every participant's Profile once (displayName + preferredLang)
+  // instead of one query per recipient inside the send loop.
+  const participantIds = session.participants.map((p) => p.userId);
+  const profiles =
+    participantIds.length > 0
+      ? await prisma.profile.findMany({
+          where: { id: { in: participantIds } },
+          select: { id: true, displayName: true, preferredLang: true },
+        })
+      : [];
+  const profileById = new Map(profiles.map((p) => [p.id, p]));
+
+  function resolveRecipientLocale(userId: string): Locale {
+    const pref = profileById.get(userId)?.preferredLang;
+    if (pref === "en") return "en";
+    if (pref === "es") return "es";
+    return locale; // Profile row missing entirely — fall back to the default param.
+  }
+
+  const localesNeeded = new Set<Locale>(
+    session.participants.map((p) => resolveRecipientLocale(p.userId)),
+  );
+
+  // ── Per-locale assets (date string, anonymous block sentences, group-summary
+  // PDF) — memoized so each locale (es/en, at most 2) is only built once no
+  // matter how many recipients share it. ──
+  type LocaleAssets = { dateStr: string; summaryBuffer: Buffer };
+  const assetsByLocale = new Map<Locale, LocaleAssets>();
+
+  for (const loc of localesNeeded) {
+    const dateStr = session.date.toLocaleDateString(loc === "es" ? "es-CO" : "en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const messages = loc === "en" ? enMessages : esMessages;
+    const blockLabels = messages.blocks as Record<string, string>;
+    const blockLabel = (blockId: string) => blockLabels[blockId] ?? blockId;
+
+    const freq = computeSampleBlockFrequencies({
+      format: session.format,
+      samples: session.samples.map((s) => ({ id: s.id, label: s.label })),
+      evals: evals.map((ev) => ({
+        cupperId: ev.cupperId,
+        sessionSampleId: ev.sessionSampleId,
+        descriptiveData: ev.descriptiveData,
+        combinedData: ev.combinedData,
+      })),
+      excludedUserIds,
+      blockLabel,
+      locale: loc,
+    });
+    const freqBySample = new Map(freq?.map((f) => [f.sampleId, f]) ?? []);
+
+    const summarySamples: GroupSummarySample[] = session.samples.map((s) => {
+      const agg = aggBySample.get(s.id);
+      const f = freqBySample.get(s.id);
+      // Sentences in canonical block order; drop nulls at render time.
+      const sentences = PERCEPTUAL_BLOCKS.map((b) => ({
+        blockId: b.id,
+        text: f?.summary[b.id] ?? null,
+      }));
+      return {
+        label: s.label,
+        coffeeName: s.revealed ? (s.coffee?.name ?? null) : null,
+        communityScore: agg?.communityScore ?? null,
+        evaluators: f?.totalEvaluators ?? 0,
+        sentences,
+      };
+    });
+
+    const summaryBuffer = await renderToBuffer(
+      GroupSummaryDocument({
+        sessionName: session.name,
+        date: dateStr,
+        participantCount: session.participants.length,
+        locale: loc,
+        samples: summarySamples,
+      }),
+    );
+
+    assetsByLocale.set(loc, { dateStr, summaryBuffer });
+  }
+
   const admin = createAdminClient();
   const nameSlug = slug(session.name);
 
@@ -240,21 +280,21 @@ export async function sendCloseEmails(
         return { status: "failed" as const };
       }
 
-      // This participant's own CVA PDF (per-cupper data, mirroring cva-pdf route).
-      const profile = await prisma.profile.findUnique({
-        where: { id: p.userId },
-        select: { displayName: true },
-      });
+      const recipientLocale = resolveRecipientLocale(p.userId);
+      const assets = assetsByLocale.get(recipientLocale)!;
+      const text = EMAIL_TEXT[recipientLocale];
+      const profile = profileById.get(p.userId);
 
+      // This participant's own CVA PDF (per-cupper data, mirroring cva-pdf route).
       const own = evalsByCupper.get(p.userId);
       const cvaProps: CvaDocumentProps = {
         sessionName: session.name,
-        date: dateStr,
+        date: assets.dateStr,
         cupperName: profile?.displayName ?? "",
         purpose: session.objective ?? "",
         cupsPerSample: session.cupsPerSample,
         format: session.format,
-        locale,
+        locale: recipientLocale,
         samples: session.samples.map((s) => {
           const ev = own?.get(s.id);
           return {
@@ -275,10 +315,10 @@ export async function sendCloseEmails(
       const result = await sendEmail({
         to: email,
         subject: text.subject(session.name),
-        html: text.body({ name: session.name, date: dateStr }),
+        html: text.body({ name: session.name, date: assets.dateStr }),
         attachments: [
           { filename: `cva_${text.individualFile}_${nameSlug}.pdf`, content: cvaBuffer },
-          { filename: `${text.summaryFile}_${nameSlug}.pdf`, content: summaryBuffer },
+          { filename: `${text.summaryFile}_${nameSlug}.pdf`, content: assets.summaryBuffer },
         ],
       });
 

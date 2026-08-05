@@ -270,7 +270,10 @@
     "pointsToNext": "{points} pts para {level}",
     "topPercent": "Top {percent}% de catadores activos",
     "maxLevel": "Nivel máximo alcanzado",
-    "howPoints": "Catas enviadas ×1 · Sesiones participadas ×2 · Sesiones dirigidas ×5"
+    "howPoints": "Catas enviadas ×1 · Sesiones participadas ×2 · Sesiones dirigidas ×5",
+    "myGroups": "Mis grupos",
+    "noGroups": "Aún no perteneces a ningún grupo.",
+    "groupMembers": "{count} integrantes"
   },
   "actions": {
     "save": "Guardar",
@@ -867,6 +870,30 @@
     "activityTitle": "Actividad del grupo",
     "activityEmpty": "Aún no hay actividad de los integrantes.",
     "activityEval": "{name} evaluó {sample} en {session}",
-    "activityJoined": "{name} se unió a {session}"
+    "activityJoined": "{name} se unió a {session}",
+    "createGroupCta": "+ Crear grupo",
+    "createGroupTitle": "Crear grupo de cata",
+    "descriptionLabel": "Descripción",
+    "descriptionPlaceholder": "p. ej. Catadores de la finca La Esperanza, cosecha 2026",
+    "noDescription": "Sin descripción",
+    "membersSectionTitle": "Integrantes",
+    "addAnotherMember": "Añadir otro integrante",
+    "removeRow": "Quitar",
+    "quickAddTitle": "Personas con las que ya has catado",
+    "createAndInvite": "Crear grupo e invitar",
+    "creating": "Creando...",
+    "invitesSentSummary": "{sent} invitaciones enviadas · {failed} fallidas",
+    "memberBadge": "Integrante",
+    "ownerLabel": "Maestro de cata",
+    "memberGroupsTitle": "Grupos donde participas",
+    "sessionsTitle": "Sesiones del grupo",
+    "noSessions": "Aún no hay sesiones vinculadas a este grupo.",
+    "editDetails": "Editar detalles",
+    "saveDetails": "Guardar detalles",
+    "linkGroupLabel": "Vincular a un grupo",
+    "noGroupOption": "Sin grupo",
+    "autoInviteToggle": "Enviar invitación al grupo al crear",
+    "autoInviteSummary": "Invitación enviada a {sent} integrantes · {skipped} omitidas · {failed} fallidas",
+    "joinSessionLink": "Unirme a la sesión"
   }
 }
