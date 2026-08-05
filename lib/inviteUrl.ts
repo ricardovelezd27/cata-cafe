@@ -6,3 +6,11 @@
 export function buildInviteUrl(origin: string, locale: string, token: string): string {
   return `${origin}/${locale}/join/${token}`;
 }
+
+/**
+ * Absolute join URL for a coffee-share invite token (CoffeeInvite). The static
+ * `coffee` segment can never collide with a session token: those are UUIDs.
+ */
+export function buildCoffeeInviteUrl(origin: string, locale: string, token: string): string {
+  return `${origin}/${locale}/join/coffee/${token}`;
+}

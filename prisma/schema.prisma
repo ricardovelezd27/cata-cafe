@@ -33,6 +33,8 @@ model Profile {
   savedInsights           SavedInsight[]
   tastingGroups           TastingGroup[]
   tastingGroupMemberships TastingGroupMember[]
+  coffeeShares            CoffeeShare[]
+  coffeeInvites           CoffeeInvite[]
 
   @@map("profiles")
 }
@@ -54,7 +56,17 @@ model Coffee {
   roastLevel         String?
   certifications     String[]
   notes              String?
-  isPublic           Boolean   @default(true)
+  // "private" | "shared" | "public". CoffeeShare rows grant access only while
+  // visibility = "shared" (switching to private keeps them but makes them
+  // inert); CoffeeInvite tokens are honored only while not private.
+  visibility         String    @default("private")
+  // DEPRECATED mirror of (visibility === "public"). Re-added additively to the
+  // shared DB on 2026-08-05 because origin/main (= production) and the groups
+  // branch still read/write it (drift incident — see rls_and_triggers.sql
+  // PHASE 16 note). This branch keeps it in sync on every visibility write;
+  // never READ it here. Drop via a reconciliation migration once every branch
+  // uses `visibility`.
+  isPublic           Boolean   @default(false)
   // When true, the community results section (scores, attribute averages,
   // flavor cloud) on the coffee profile page is visible to non-owners too.
   // Owners always see their own results regardless of this flag. Toggled via
@@ -66,10 +78,40 @@ model Coffee {
 
   sessionSamples SessionSample[]
   coffeeHistory  UserCoffeeHistory[]
+  shares         CoffeeShare[]
+  invites        CoffeeInvite[]
 
   @@index([createdBy])
-  @@index([isPublic])
+  @@index([visibility])
   @@map("coffees")
+}
+
+model CoffeeShare {
+  coffeeId  String
+  coffee    Coffee   @relation(fields: [coffeeId], references: [id], onDelete: Cascade)
+  userId    String
+  user      Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([coffeeId, userId])
+  @@index([userId])
+  @@map("coffee_shares")
+}
+
+model CoffeeInvite {
+  id        String    @id @default(cuid())
+  coffeeId  String
+  coffee    Coffee    @relation(fields: [coffeeId], references: [id], onDelete: Cascade)
+  token     String    @unique
+  maxUses   Int?
+  useCount  Int       @default(0)
+  expiresAt DateTime?
+  createdBy String
+  creator   Profile   @relation(fields: [createdBy], references: [id])
+  createdAt DateTime  @default(now())
+
+  @@index([coffeeId])
+  @@map("coffee_invites")
 }
 
 model CuppingSession {

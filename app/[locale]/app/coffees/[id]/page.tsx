@@ -5,6 +5,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
+import { usableCoffeeWhere, type CoffeeVisibility } from "@/lib/coffeeAccess";
 import { computeCoffeeAggregate } from "@/lib/coffeeAggregate";
 import { FLAVOR_DESC_KEYS } from "@/lib/descriptors";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
@@ -12,6 +13,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { FlavorCloud } from "@/components/results/FlavorCloud";
 import { PublishResultsToggle } from "@/components/coffees/PublishResultsToggle";
 import { CoffeeVisibilityToggle } from "@/components/coffees/CoffeeVisibilityToggle";
+import { CoffeeShareManager } from "@/components/coffees/CoffeeShareManager";
 import { DeleteCoffeeButton } from "./DeleteCoffeeButton";
 
 // Auth'd page with a dynamic [id] segment: must render per-request. With
@@ -41,15 +43,38 @@ export default async function CoffeeProfilePage({
 
   const isAdmin = isSuperAdminEmail(user.email);
 
-  // Record-level access gate: public coffees, ones the viewer owns, or —
-  // super-admin god mode — any coffee at all (read-only testing access).
+  // Record-level access gate: public coffees, ones the viewer owns, ones
+  // shared with the viewer via invite link, or — super-admin god mode — any
+  // coffee at all (read-only testing access).
   const coffee = await prisma.coffee.findFirst({
-    where: isAdmin ? { id } : { id, OR: [{ isPublic: true }, { createdBy: user.id }] },
+    where: isAdmin ? { id } : { id, AND: [usableCoffeeWhere(user.id)] },
   });
 
   if (!coffee) notFound();
 
   const isOwner = coffee.createdBy === user.id;
+
+  const [shares, invite] = isOwner
+    ? await Promise.all([
+        prisma.coffeeShare.findMany({
+          where: { coffeeId: id },
+          include: { user: { select: { displayName: true } } },
+          orderBy: { createdAt: "asc" },
+        }),
+        prisma.coffeeInvite.findFirst({
+          where: {
+            coffeeId: id,
+            OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+          },
+          orderBy: { createdAt: "desc" },
+        }),
+      ])
+    : [[], null];
+
+  const shareInitialToken =
+    invite && (invite.maxUses === null || invite.useCount < invite.maxUses)
+      ? invite.token
+      : null;
 
   const [history, samples] = await Promise.all([
     prisma.userCoffeeHistory.findMany({
@@ -112,6 +137,11 @@ export default async function CoffeeProfilePage({
               {t("adminBadge")}
             </span>
           )}
+          {!isOwner && coffee.visibility === "shared" && (
+            <span className="inline-block mt-2 text-xs font-semibold px-2.5 py-1 rounded-full border bg-amber-warm/15 text-brown-dark border-amber-warm/40">
+              {t("share.sharedWithYou")}
+            </span>
+          )}
         </div>
         {coffee.createdBy === user.id && (
           <DeleteCoffeeButton
@@ -138,12 +168,11 @@ export default async function CoffeeProfilePage({
           <div className="space-y-1.5">
             <CoffeeVisibilityToggle
               coffeeId={coffee.id}
-              isPublic={coffee.isPublic}
+              visibility={coffee.visibility as CoffeeVisibility}
               translations={{
                 recordPublic: t("recordPublic"),
                 recordPrivate: t("recordPrivate"),
-                makePublic: t("makePublic"),
-                makePrivate: t("makePrivate"),
+                recordShared: t("recordShared"),
                 confirmMakePublic: t("confirmMakePublic"),
               }}
             />
@@ -163,11 +192,31 @@ export default async function CoffeeProfilePage({
             />
             <p className="text-xs text-brown-mid">{t("resultsHint")}</p>
           </div>
-          {coffee.resultsPublished && !coffee.isPublic && (
+          {coffee.resultsPublished && coffee.visibility !== "public" && (
             <p className="text-xs text-amber-warm font-medium">
               {t("resultsButPrivateHint")}
             </p>
           )}
+
+          <div className="border-t border-brown-light/50 pt-4">
+            <CoffeeShareManager
+              coffeeId={coffee.id}
+              locale={locale}
+              initialToken={shareInitialToken}
+              shares={shares.map((s) => ({ userId: s.userId, displayName: s.user.displayName }))}
+              translations={{
+                title: t("share.title"),
+                generateLink: t("share.generateLink"),
+                generating: t("share.generating"),
+                copyLink: t("share.copyLink"),
+                copied: t("share.copied"),
+                peopleWithAccess: t("share.peopleWithAccess"),
+                noShares: t("share.noShares"),
+                revoke: t("share.revoke"),
+                linkHint: t("share.linkHint"),
+              }}
+            />
+          </div>
         </div>
       )}
 

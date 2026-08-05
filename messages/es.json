@@ -128,7 +128,8 @@
         "no_coffees": "Agrega al menos un café para iniciar la sesión.",
         "missing_coffee_fields": "Completa los datos obligatorios de cada café: nombre, variedad, país y altitud.",
         "sample_without_coffee": "Cada muestra debe estar vinculada a un café.",
-        "generic": "No se pudo crear la sesión. Inténtalo de nuevo."
+        "generic": "No se pudo crear la sesión. Inténtalo de nuevo.",
+        "coffee_not_found": "Uno de los cafés seleccionados ya no está disponible. Vuelve a elegirlo."
       }
     },
     "deleteSession": {
@@ -273,7 +274,11 @@
     "howPoints": "Catas enviadas ×1 · Sesiones participadas ×2 · Sesiones dirigidas ×5",
     "myGroups": "Mis grupos",
     "noGroups": "Aún no perteneces a ningún grupo.",
-    "groupMembers": "{count} integrantes"
+    "groupMembers": "{count} integrantes",
+    "myCoffees": "Mis cafés",
+    "myCoffeesEmpty": "Aún no has creado cafés. Crea uno para reutilizarlo en tus catas.",
+    "createCoffee": "Crear café",
+    "coffeeSessions": "{count} sesiones"
   },
   "actions": {
     "save": "Guardar",
@@ -415,6 +420,56 @@
       "confirm": "Eliminar café",
       "cancel": "Cancelar",
       "error": "No se pudo eliminar el café. Inténtalo de nuevo."
+    },
+    "listShared": "Compartido",
+    "sharedWithMe": "Compartido conmigo",
+    "recordShared": "Café compartido",
+    "createCoffee": "Crear café",
+    "newPage": {
+      "title": "Nuevo café",
+      "subtitle": "Registra un café como activo reutilizable: úsalo en todas tus catas y acumula resultados en un solo perfil.",
+      "notes": "Notas",
+      "notesPh": "Notas internas sobre este café…",
+      "harvestPh": "Ej. 2025/2026",
+      "visibilityLabel": "Visibilidad",
+      "visibilityPrivate": "Privado",
+      "visibilityPrivateHint": "Solo tú puedes ver y usar este café.",
+      "visibilityShared": "Compartido",
+      "visibilitySharedHint": "Solo las personas que invites con un enlace pueden verlo y usarlo en sus catas.",
+      "visibilityPublic": "Público",
+      "visibilityPublicHint": "Todos los catadores pueden verlo y usarlo en sus sesiones.",
+      "create": "Crear café",
+      "creating": "Creando…",
+      "nameRequired": "El nombre es obligatorio.",
+      "error": "No se pudo crear el café. Inténtalo de nuevo."
+    },
+    "share": {
+      "title": "Compartir café",
+      "generateLink": "Generar enlace",
+      "generating": "Generando…",
+      "copyLink": "Copiar enlace",
+      "copied": "Copiado",
+      "peopleWithAccess": "Personas con acceso",
+      "noShares": "Aún nadie tiene acceso a este café.",
+      "revoke": "Revocar",
+      "sharedWithYou": "Compartido contigo",
+      "linkHint": "Cualquier persona con el enlace (y sesión iniciada) obtiene acceso para ver este café y usarlo en sus catas. Generar un enlace en un café privado lo cambia a compartido.",
+      "joinTitle": "Te invitaron a un café",
+      "joinBody": "Acepta la invitación para ver {name} y usarlo en tus propias catas.",
+      "joinCta": "Aceptar invitación",
+      "joinLogin": "Inicia sesión para aceptar la invitación.",
+      "invalidToken": "Este enlace de invitación no es válido o ya expiró."
+    },
+    "picker": {
+      "useExisting": "Usar café existente",
+      "title": "Elegir café",
+      "searchPlaceholder": "Buscar por nombre, origen, variedad…",
+      "mine": "Mío",
+      "shared": "Compartido",
+      "public": "Público",
+      "empty": "No se encontraron cafés.",
+      "linked": "Café vinculado",
+      "unlink": "Desvincular"
     }
   },
   "offline": {

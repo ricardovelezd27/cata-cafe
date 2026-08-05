@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { computeEvaluationDerived } from "@/lib/evaluation";
 import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/groups";
+import { usableCoffeeWhere } from "@/lib/coffeeAccess";
 
 type CoffeeInput = {
   name: string;
@@ -16,6 +17,10 @@ type CoffeeInput = {
   roastLevel?: string;
   country?: string;
   region?: string;
+  // When set, the entry references an existing Coffee (picked via the
+  // "Usar café existente" picker) instead of creating a new row. Access is
+  // re-validated server-side in resolveCoffees — never trusted from the client.
+  existingCoffeeId?: string;
 };
 
 type SampleInput = {
@@ -35,6 +40,10 @@ function validateSessionInput(
   if (!samples || samples.length === 0) return "no_samples";
   if (!coffees || coffees.length === 0) return "no_coffees";
   for (const c of coffees) {
+    // Linked entries reference an already-created coffee; the data-quality
+    // gate only applies to coffees being entered from scratch (an older
+    // shared/public coffee may legitimately lack e.g. altitude).
+    if (c.existingCoffeeId) continue;
     for (const field of REQUIRED_COFFEE_FIELDS) {
       if (!c[field]?.trim()) return "missing_coffee_fields";
     }
@@ -47,28 +56,60 @@ function validateSessionInput(
   return null;
 }
 
-async function createCoffees(coffees: CoffeeInput[], userId: string) {
+// Resolves the wizard's coffee entries to database ids, index-aligned with the
+// input array so the `coffeeIdx` sample mapping below stays untouched. Linked
+// entries (existingCoffeeId) are re-validated against the caller's usable set
+// (owned + public + shared-with-me) — a tampered id for someone else's private
+// coffee returns the "coffee_not_found" error string instead. Non-linked
+// entries are created in one transaction ($transaction with an array preserves
+// input order; createMany can't return ids).
+async function resolveCoffees(
+  coffees: CoffeeInput[],
+  userId: string,
+): Promise<{ id: string }[] | "coffee_not_found"> {
   if (!coffees || coffees.length === 0) return [];
-  // Run all creates in one transaction (single round-trip). $transaction with an
-  // array preserves input order, so the returned ids stay index-aligned with
-  // `coffees` for the `coffeeIdx` mapping below. (createMany can't return ids.)
-  return prisma.$transaction(
-    coffees.map((c) =>
-      prisma.coffee.create({
-        data: {
-          name: c.name || "Sin nombre",
-          producer: c.producer || null,
-          variety: c.variety || null,
-          altitude: c.altitude || null,
-          roastLevel: c.roastLevel || null,
-          country: c.country || null,
-          region: c.region || null,
-          createdBy: userId,
-          isPublic: false,
-        },
-        select: { id: true },
-      })
-    )
+
+  const existingIds = [
+    ...new Set(
+      coffees
+        .map((c) => c.existingCoffeeId)
+        .filter((id): id is string => typeof id === "string" && id.length > 0),
+    ),
+  ];
+  if (existingIds.length > 0) {
+    const usable = await prisma.coffee.findMany({
+      where: { id: { in: existingIds }, AND: [usableCoffeeWhere(userId)] },
+      select: { id: true },
+    });
+    if (usable.length !== existingIds.length) return "coffee_not_found";
+  }
+
+  const toCreate = coffees.filter((c) => !c.existingCoffeeId);
+  const created =
+    toCreate.length > 0
+      ? await prisma.$transaction(
+          toCreate.map((c) =>
+            prisma.coffee.create({
+              data: {
+                name: c.name || "Sin nombre",
+                producer: c.producer || null,
+                variety: c.variety || null,
+                altitude: c.altitude || null,
+                roastLevel: c.roastLevel || null,
+                country: c.country || null,
+                region: c.region || null,
+                createdBy: userId,
+                visibility: "private",
+              },
+              select: { id: true },
+            }),
+          ),
+        )
+      : [];
+
+  let createdIdx = 0;
+  return coffees.map((c) =>
+    c.existingCoffeeId ? { id: c.existingCoffeeId } : created[createdIdx++],
   );
 }
 
@@ -87,7 +128,10 @@ export async function createSession(input: {
   const invalid = validateSessionInput(input.coffees ?? [], input.samples);
   if (invalid) return { ok: false, error: invalid };
 
-  const createdCoffees = await createCoffees(input.coffees ?? [], user.id);
+  const createdCoffees = await resolveCoffees(input.coffees ?? [], user.id);
+  if (createdCoffees === "coffee_not_found") {
+    return { ok: false, error: "coffee_not_found" };
+  }
 
   const session = await prisma.cuppingSession.create({
     data: {
@@ -148,7 +192,10 @@ export async function createGroupSession(input: {
     }
   }
 
-  const createdCoffees = await createCoffees(input.coffees ?? [], user.id);
+  const createdCoffees = await resolveCoffees(input.coffees ?? [], user.id);
+  if (createdCoffees === "coffee_not_found") {
+    return { ok: false, error: "coffee_not_found" };
+  }
 
   const token = crypto.randomUUID();
 
@@ -351,6 +398,7 @@ export async function updateSampleMetadata(
       id: true,
       sessionId: true,
       coffeeId: true,
+      coffee: { select: { createdBy: true } },
       session: { select: { createdBy: true } },
     },
   });
@@ -370,13 +418,19 @@ export async function updateSampleMetadata(
   };
 
   if (sample.coffeeId) {
-    await prisma.coffee.update({
-      where: { id: sample.coffeeId },
-      data: coffeeData,
-    });
+    // Samples can point at coffees the session owner merely USES (picked
+    // shared/public coffees) — only the coffee's own creator may edit the
+    // coffee record itself. For non-owned coffees the label update below
+    // still applies; the coffee edit is silently skipped.
+    if (sample.coffee?.createdBy === user.id) {
+      await prisma.coffee.update({
+        where: { id: sample.coffeeId },
+        data: coffeeData,
+      });
+    }
   } else {
     const coffee = await prisma.coffee.create({
-      data: { ...coffeeData, createdBy: user.id, isPublic: false },
+      data: { ...coffeeData, createdBy: user.id, visibility: "private" },
       select: { id: true },
     });
     await prisma.sessionSample.update({
