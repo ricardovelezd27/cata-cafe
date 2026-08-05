@@ -6,10 +6,10 @@ export default async function LoginPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; email?: string }>;
 }) {
   const { locale } = await params;
-  const { next } = await searchParams;
+  const { next, email } = await searchParams;
   setRequestLocale(locale);
   const t = await getTranslations("auth");
 
@@ -28,6 +28,7 @@ export default async function LoginPage({
           orLabel={t("or")}
           subtitleLabel={t("loginSubtitle")}
           next={next}
+          initialEmail={email}
         />
       </div>
     </main>

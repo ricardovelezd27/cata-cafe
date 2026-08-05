@@ -270,7 +270,10 @@
     "pointsToNext": "{points} pts to {level}",
     "topPercent": "Top {percent}% of active cuppers",
     "maxLevel": "Maximum level reached",
-    "howPoints": "Evaluations submitted ×1 · Sessions joined ×2 · Sessions hosted ×5"
+    "howPoints": "Evaluations submitted ×1 · Sessions joined ×2 · Sessions hosted ×5",
+    "myGroups": "My groups",
+    "noGroups": "You don't belong to any groups yet.",
+    "groupMembers": "{count} members"
   },
   "actions": {
     "save": "Save",
@@ -867,6 +870,30 @@
     "activityTitle": "Group activity",
     "activityEmpty": "No member activity yet.",
     "activityEval": "{name} evaluated {sample} in {session}",
-    "activityJoined": "{name} joined {session}"
+    "activityJoined": "{name} joined {session}",
+    "createGroupCta": "+ Create group",
+    "createGroupTitle": "Create tasting group",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "e.g. Cuppers from La Esperanza farm, 2026 harvest",
+    "noDescription": "No description",
+    "membersSectionTitle": "Members",
+    "addAnotherMember": "Add another member",
+    "removeRow": "Remove",
+    "quickAddTitle": "People you've already cupped with",
+    "createAndInvite": "Create group and invite",
+    "creating": "Creating...",
+    "invitesSentSummary": "{sent} invitations sent · {failed} failed",
+    "memberBadge": "Member",
+    "ownerLabel": "Tasting master",
+    "memberGroupsTitle": "Groups you're part of",
+    "sessionsTitle": "Group sessions",
+    "noSessions": "No sessions linked to this group yet.",
+    "editDetails": "Edit details",
+    "saveDetails": "Save details",
+    "linkGroupLabel": "Link to a group",
+    "noGroupOption": "No group",
+    "autoInviteToggle": "Send an invitation to the group on creation",
+    "autoInviteSummary": "Invitation sent to {sent} members · {skipped} skipped · {failed} failed",
+    "joinSessionLink": "Join the session"
   }
 }

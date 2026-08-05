@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { computeEvaluationDerived } from "@/lib/evaluation";
+import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/groups";
 
 type CoffeeInput = {
   name: string;
@@ -123,13 +124,29 @@ export async function createGroupSession(input: {
   coffees?: CoffeeInput[];
   samples: SampleInput[];
   closesAt?: string;
+  // Groups v2: optionally link the session to one of the owner's standing
+  // tasting groups. When set, notifyGroup (default true) fires a best-effort
+  // invitation email to every member right after creation.
+  groupId?: string;
+  notifyGroup?: boolean;
 }): Promise<
-  { ok: true; sessionId: string; inviteToken: string } | { ok: false; error: string }
+  | { ok: true; sessionId: string; inviteToken: string; emailSummary?: GroupEmailSummary }
+  | { ok: false; error: string }
 > {
   const user = await requireUser();
 
   const invalid = validateSessionInput(input.coffees ?? [], input.samples);
   if (invalid) return { ok: false, error: invalid };
+
+  if (input.groupId) {
+    const group = await prisma.tastingGroup.findUnique({
+      where: { id: input.groupId },
+      select: { createdBy: true },
+    });
+    if (!group || group.createdBy !== user.id) {
+      return { ok: false, error: "not_found_or_forbidden" };
+    }
+  }
 
   const createdCoffees = await createCoffees(input.coffees ?? [], user.id);
 
@@ -147,6 +164,7 @@ export async function createGroupSession(input: {
       status: "active",
       closesAt: input.closesAt ? new Date(input.closesAt) : null,
       createdBy: user.id,
+      groupId: input.groupId ?? null,
       samples: {
         create: input.samples.map((s, i) => ({
           label: s.label || `Muestra ${i + 1}`,
@@ -173,7 +191,23 @@ export async function createGroupSession(input: {
     select: { id: true },
   });
 
-  return { ok: true, sessionId: session.id, inviteToken: token };
+  // Best-effort — a failed/skipped auto-invite email must never fail session
+  // creation itself.
+  let emailSummary: GroupEmailSummary | undefined;
+  if (input.groupId && input.notifyGroup !== false) {
+    try {
+      emailSummary = await notifyGroupOfSession({
+        groupId: input.groupId,
+        sessionId: session.id,
+      });
+    } catch (err) {
+      console.warn(
+        `[createGroupSession] notifyGroupOfSession threw for session ${session.id}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  return { ok: true, sessionId: session.id, inviteToken: token, emailSummary };
 }
 
 // Prisma unique-constraint violation (duck-typed like app/actions/waitlist.ts —

@@ -73,21 +73,26 @@ model Coffee {
 }
 
 model CuppingSession {
-  id            String    @id @default(cuid())
+  id            String        @id @default(cuid())
   name          String
   date          DateTime
   objective     String?
   format        String
-  cupsPerSample Int       @default(5)
-  isGroup       Boolean   @default(false)
-  isAsync       Boolean   @default(false)
-  status        String    @default("draft")
+  cupsPerSample Int           @default(5)
+  isGroup       Boolean       @default(false)
+  isAsync       Boolean       @default(false)
+  status        String        @default("draft")
   createdBy     String
-  createdByUser Profile   @relation(fields: [createdBy], references: [id])
+  createdByUser Profile       @relation(fields: [createdBy], references: [id])
+  // Optional link to the standing tasting group this session belongs to
+  // (Groups v2). Nullable — sessions can still be created without a group.
+  // SetNull on group deletion so the session itself is never cascaded away.
+  groupId       String?
+  group         TastingGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
   closesAt      DateTime?
   startedAt     DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   samples       SessionSample[]
   participants  SessionParticipant[]
@@ -96,6 +101,7 @@ model CuppingSession {
 
   @@index([createdBy])
   @@index([createdBy, status])
+  @@index([groupId])
   @@map("cupping_sessions")
 }
 
@@ -347,14 +353,18 @@ model WaitlistEntry {
 }
 
 model TastingGroup {
-  id        String   @id @default(cuid())
-  name      String
-  createdBy String
-  owner     Profile  @relation(fields: [createdBy], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  name        String
+  // Optional free-text description shown on the group's detail page and in
+  // invitation emails (Groups v2).
+  description String?
+  createdBy   String
+  owner       Profile  @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  members TastingGroupMember[]
+  members  TastingGroupMember[]
+  sessions CuppingSession[]
 
   @@index([createdBy])
   @@map("tasting_groups")

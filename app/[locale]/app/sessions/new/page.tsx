@@ -89,6 +89,12 @@ export default async function NewSessionPage({
     sendSkippedNotice: tgroups("sendSkippedNotice"),
     skip: tgroups("skip"),
     inviteDefaultMessage: tgroups("inviteDefaultMessage"),
+    // Groups v2: session wizard's "link a group" step-1 selector + step-2
+    // auto-invite success strip.
+    linkGroupLabel: tgroups("linkGroupLabel"),
+    noGroupOption: tgroups("noGroupOption"),
+    autoInviteToggle: tgroups("autoInviteToggle"),
+    autoInviteSummary: tgroups.raw("autoInviteSummary"),
   };
 
   const supabase = await createClient();

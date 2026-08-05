@@ -399,3 +399,16 @@ Changes that Prisma migrate does NOT handle must be applied manually via the **S
 - Apply the PHASE 13 `handle_new_user()` redefinition in `prisma/sql/rls_and_triggers.sql` **before** enabling anonymous sign-ins above — otherwise an anonymous user's NULL email hard-fails the profile insert
 
 These are all collected in `prisma/sql/rls_and_triggers.sql`. Append new blocks to that file and apply the new block manually each time.
+
+---
+
+## Orchestration Policy
+
+- Fable (claude-fable-5) acts as the orchestrator for multi-part work in this repo:
+  it plans, decomposes, and reviews, but delegates self-contained subtasks
+  (mechanical edits, i18n key mirroring, boilerplate components, test runs) to
+  cheaper Sonnet/Haiku agents. Reserve Fable-level reasoning for schema/auth/RLS
+  design, cross-cutting refactors, and hard debugging.
+- Never assume on ambiguity: surface clarifying questions to the user via the
+  AskUserQuestion tool before committing to a direction; do not resolve product
+  decisions inside a subagent.
