@@ -1023,7 +1023,10 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ============================================================================
 
 -- ============================================================================
--- PHASE 15 (2026-08-05): Coffee 3-tier visibility + sharing
+-- PHASE 16 (2026-08-05): Coffee 3-tier visibility + sharing
+-- (Renumbered from 15: the groups-creation branch independently added a
+-- comment-only PHASE 15 the same day; the migration file's comment still says
+-- 15 but can't be edited — it's checksum-locked as applied.)
 -- The Prisma migration `coffee_visibility_and_sharing` replaced
 -- coffees."isPublic" (boolean) with coffees."visibility"
 -- ('private' | 'shared' | 'public') and added coffee_shares / coffee_invites.
@@ -1038,6 +1041,12 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Prisma (postgres role, bypasses RLS), so neither table gets write policies;
 -- coffee_invites gets no policies at all (deny-all, Phase 12 rationale —
 -- tokens must never be enumerable from the client).
+-- NOTE (drift incident 2026-08-05): after this branch's migration dropped
+-- coffees."isPublic" on the shared DB, the column was re-added ADDITIVELY
+-- (boolean, default false, backfilled from visibility) because origin/main
+-- (= production) and the groups branch still read/write it. This branch now
+-- mirrors isPublic = (visibility = 'public') on every write; a reconciliation
+-- migration should drop isPublic again once every branch reads `visibility`.
 -- Apply manually via the Supabase Dashboard → SQL Editor.
 -- ============================================================================
 DROP POLICY IF EXISTS "coffees_select" ON coffees;

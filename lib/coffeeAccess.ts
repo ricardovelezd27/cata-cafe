@@ -16,7 +16,7 @@ export function isCoffeeVisibility(v: unknown): v is CoffeeVisibility {
 // sessions": owned + public + shared-with-me. Share rows only count while the
 // coffee is actually in "shared" state — flipping a coffee back to private
 // makes its shares inert without deleting them. Mirrors the coffees_select
-// RLS policy (prisma/sql/rls_and_triggers.sql PHASE 15).
+// RLS policy (prisma/sql/rls_and_triggers.sql PHASE 16).
 export function usableCoffeeWhere(userId: string): Prisma.CoffeeWhereInput {
   return {
     OR: [
