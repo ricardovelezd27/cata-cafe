@@ -735,6 +735,19 @@ export const PROCESS_TYPES = [
   "Otro",
 ] as const;
 
+// Fixed 7-step roast scale (Spanish labels, same convention as PROCESS_TYPES).
+// Mandatory on every coffee-creation surface since 2026-08-05; legacy coffees
+// may still hold free-text values — edit forms keep those selectable.
+export const ROAST_LEVELS = [
+  "Muy claro",
+  "Claro",
+  "Medio claro",
+  "Medio",
+  "Medio oscuro",
+  "Oscuro",
+  "Muy oscuro",
+] as const;
+
 export function getRatio(ratioStr: string): number {
   const [beans, defect] = ratioStr.split(":").map(Number);
   return beans / defect;

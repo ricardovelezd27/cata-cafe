@@ -142,10 +142,12 @@
       "sampleChip": "Sample",
       "samplesTitle": "Samples",
       "samplesHelper": "Each sample is cupped separately. Edit its label and assign it a coffee.",
+      "moreDetails": "More coffee details (optional)",
       "errors": {
         "no_samples": "Add at least one sample to start the session.",
         "no_coffees": "Add at least one coffee to start the session.",
-        "missing_coffee_fields": "Fill in the required fields for each coffee: name, variety, country and altitude.",
+        "missing_coffee_fields": "Fill in the required fields for each coffee: name, variety, country, altitude and roast level.",
+        "invalid_altitude": "Altitude must be a number in masl (e.g. 1800).",
         "sample_without_coffee": "Each sample must be linked to a coffee.",
         "generic": "Couldn't create the session. Please try again.",
         "coffee_not_found": "One of the selected coffees is no longer available. Please pick it again."
@@ -496,6 +498,7 @@
     "saveChanges": "Save changes",
     "savingChanges": "Saving…",
     "updateError": "Couldn't save the coffee. Please try again.",
+    "roastRequired": "Select a roast level.",
     "filterProcess": "Process",
     "filterCountry": "Origin",
     "filterOwnership": "Ownership",

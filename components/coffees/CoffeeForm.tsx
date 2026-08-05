@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createCoffee, updateCoffee } from "@/app/actions/coffees";
-import { PROCESS_TYPES, CERTIFICATIONS } from "@/lib/constants";
+import { PROCESS_TYPES, CERTIFICATIONS, ROAST_LEVELS } from "@/lib/constants";
 
 type Visibility = "private" | "shared" | "public";
 
@@ -35,6 +35,7 @@ export type CoffeeFormTranslations = {
   create: string;
   creating: string;
   nameRequired: string;
+  roastRequired: string;
   error: string;
 };
 
@@ -137,6 +138,10 @@ export function CoffeeForm({
       setErrorCode("name_required");
       return;
     }
+    if (!roastLevel.trim()) {
+      setErrorCode("roast_required");
+      return;
+    }
 
     start(async () => {
       const fields = {
@@ -178,9 +183,18 @@ export function CoffeeForm({
   const errorText =
     errorCode === "name_required"
       ? t.nameRequired
-      : errorCode
-        ? t.error
-        : null;
+      : errorCode === "roast_required"
+        ? t.roastRequired
+        : errorCode
+          ? t.error
+          : null;
+
+  // Legacy coffees may hold free-text roast values from before the fixed
+  // scale — keep the saved value selectable instead of silently dropping it.
+  const roastOptions: string[] =
+    initialValues?.roastLevel && !ROAST_LEVELS.includes(initialValues.roastLevel as (typeof ROAST_LEVELS)[number])
+      ? [initialValues.roastLevel, ...ROAST_LEVELS]
+      : [...ROAST_LEVELS];
 
   const visibilityOptions: {
     value: Visibility;
@@ -299,20 +313,31 @@ export function CoffeeForm({
           <div>
             <FieldLabel>{t.altitude}</FieldLabel>
             <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={6000}
               className={inputCls}
               value={altitude}
               onChange={(e) => setAltitude(e.target.value)}
-              placeholder={t.altitude}
+              placeholder="1800"
             />
           </div>
           <div>
-            <FieldLabel>{t.roastLevel}</FieldLabel>
-            <input
-              className={inputCls}
+            <FieldLabel required>{t.roastLevel}</FieldLabel>
+            <select
+              className={inputCls + " cursor-pointer"}
               value={roastLevel}
               onChange={(e) => setRoastLevel(e.target.value)}
-              placeholder={t.roastLevel}
-            />
+              required
+            >
+              <option value="">—</option>
+              {roastOptions.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>

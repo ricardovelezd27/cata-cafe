@@ -56,6 +56,7 @@ export default async function NewCoffeePage({
     create: t("newPage.create"),
     creating: t("newPage.creating"),
     nameRequired: t("newPage.nameRequired"),
+    roastRequired: t("roastRequired"),
     error: t("newPage.error"),
   };
 

@@ -2,7 +2,8 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, X } from "lucide-react";
+import { Trash2, X, ChevronDown } from "lucide-react";
+import { PROCESS_TYPES, CERTIFICATIONS, ROAST_LEVELS } from "@/lib/constants";
 import { createSession, createGroupSession } from "@/app/actions/sessions";
 import { startSession } from "@/app/actions/community";
 import type { GroupEmailSummary } from "@/app/actions/groups";
@@ -30,6 +31,8 @@ function formatTemplate(template: string, vars: Record<string, string | number>)
   );
 }
 
+// Same field set as the standalone CoffeeForm — wizard coffees land in the
+// same coffees table with the same shape (no wizard-only subset).
 type CoffeeInput = {
   name: string;
   producer: string;
@@ -38,6 +41,12 @@ type CoffeeInput = {
   roastLevel: string;
   country: string;
   region: string;
+  farm: string;
+  species: string;
+  harvestYear: string;
+  processType: string;
+  certifications: string[];
+  notes: string;
 };
 
 type CoffeeEntry = CoffeeInput & {
@@ -75,6 +84,14 @@ type Translations = {
   coffeeRoastLevel: string;
   coffeeCountry: string;
   coffeeRegion: string;
+  coffeeFarm: string;
+  coffeeSpecies: string;
+  coffeeHarvest: string;
+  coffeeHarvestPh: string;
+  coffeeProcess: string;
+  coffeeCertifications: string;
+  coffeeNotes: string;
+  coffeeNotesPh: string;
   addCoffee: string;
   removeCoffee: string;
   // samples section
@@ -100,10 +117,12 @@ type Translations = {
     sampleChip: string;
     samplesTitle: string;
     samplesHelper: string;
+    moreDetails: string;
     errors: {
       no_samples: string;
       no_coffees: string;
       missing_coffee_fields: string;
+      invalid_altitude: string;
       sample_without_coffee: string;
       generic: string;
       coffee_not_found: string;
@@ -147,6 +166,12 @@ const EMPTY_COFFEE: CoffeeInput = {
   roastLevel: "",
   country: "",
   region: "",
+  farm: "",
+  species: "",
+  harvestYear: "",
+  processType: "",
+  certifications: [],
+  notes: "",
 };
 
 /** Recomputes A, B, C… labels by list position; leaves user-edited labels untouched. */
@@ -265,12 +290,31 @@ export function NewSessionForm({
   const [pending, start] = useTransition();
 
   // ── Coffee + sample helpers ────────────────────────────────────────────────
-  const updateCoffee = (id: string, field: keyof CoffeeInput, value: string) => {
+  const updateCoffee = (
+    id: string,
+    field: Exclude<keyof CoffeeInput, "certifications">,
+    value: string,
+  ) => {
     setCoffees((prev) => prev.map((c) => (c.id === id ? { ...c, [field]: value } : c)));
     if (invalidCoffeeId === id) {
       setInvalidCoffeeId(null);
       setErrorCode(null);
     }
+  };
+
+  const toggleCoffeeCertification = (id: string, cert: string) => {
+    setCoffees((prev) =>
+      prev.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              certifications: c.certifications.includes(cert)
+                ? c.certifications.filter((x) => x !== cert)
+                : [...c.certifications, cert],
+            }
+          : c,
+      ),
+    );
   };
 
   const applyExistingCoffee = (id: string, picked: UsableCoffee) => {
@@ -286,6 +330,14 @@ export function NewSessionForm({
               roastLevel: picked.roastLevel ?? "",
               country: picked.country ?? "",
               region: picked.region ?? "",
+              // Linked entries never submit field data (the server resolves by
+              // existingCoffeeId) — reset the create-only extras.
+              farm: "",
+              species: "",
+              harvestYear: "",
+              processType: picked.processType ?? "",
+              certifications: [],
+              notes: "",
               existingCoffeeId: picked.id,
               linkedOrigin: picked.origin,
             }
@@ -362,13 +414,27 @@ export function NewSessionForm({
 
   // ── Submit ──────────────────────────────────────────────────────────────────
   const validateClient = (): boolean => {
+    const fail = (id: string, code: string) => {
+      setInvalidCoffeeId(id);
+      setErrorCode(code);
+      cardRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return false;
+    };
     for (const c of coffees) {
       if (c.existingCoffeeId) continue;
-      if (!c.name.trim() || !c.variety.trim() || !c.country.trim() || !c.altitude.trim()) {
-        setInvalidCoffeeId(c.id);
-        setErrorCode("missing_coffee_fields");
-        cardRefs.current[c.id]?.scrollIntoView({ behavior: "smooth", block: "center" });
-        return false;
+      if (
+        !c.name.trim() ||
+        !c.variety.trim() ||
+        !c.country.trim() ||
+        !c.altitude.trim() ||
+        !c.roastLevel.trim()
+      ) {
+        return fail(c.id, "missing_coffee_fields");
+      }
+      // Altitude is a plain msnm number — mirror of the server-side rule.
+      const altitude = Number(c.altitude);
+      if (!Number.isFinite(altitude) || altitude <= 0 || altitude > 6000) {
+        return fail(c.id, "invalid_altitude");
       }
     }
     return true;
@@ -693,91 +759,208 @@ export function NewSessionForm({
                     </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="col-span-2">
-                      <FieldLabel required requiredText={t.newForm.required}>
-                        {t.coffeeName}
-                      </FieldLabel>
-                      <input
-                        className={inputCls}
-                        value={coffee.name}
-                        onChange={(e) => updateCoffee(coffee.id, "name", e.target.value)}
-                        required
-                        placeholder={t.coffeeName}
-                      />
-                    </div>
-
-                    <div>
-                      <FieldLabel required requiredText={t.newForm.required}>
-                        {t.coffeeCountry}
-                      </FieldLabel>
-                      <input
-                        list="cata-coffee-countries"
-                        className={inputCls}
-                        value={coffee.country}
-                        onChange={(e) => updateCoffee(coffee.id, "country", e.target.value)}
-                        required
-                        placeholder={t.coffeeCountry}
-                      />
-                    </div>
-                    <div>
-                      <FieldLabel required requiredText={t.newForm.required}>
-                        {t.coffeeVariety}
-                      </FieldLabel>
-                      <input
-                        className={inputCls}
-                        value={coffee.variety}
-                        onChange={(e) => updateCoffee(coffee.id, "variety", e.target.value)}
-                        required
-                        placeholder={t.coffeeVariety}
-                      />
-                    </div>
-
-                    <div>
-                      <FieldLabel required requiredText={t.newForm.required}>
-                        {t.coffeeAltitude}
-                      </FieldLabel>
-                      <div className="relative">
+                  <div className="space-y-3">
+                    {/* Mandatory fields — always visible */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2">
+                        <FieldLabel required requiredText={t.newForm.required}>
+                          {t.coffeeName}
+                        </FieldLabel>
                         <input
-                          className={inputCls + " pr-14"}
-                          value={coffee.altitude}
-                          onChange={(e) => updateCoffee(coffee.id, "altitude", e.target.value)}
+                          className={inputCls}
+                          value={coffee.name}
+                          onChange={(e) => updateCoffee(coffee.id, "name", e.target.value)}
                           required
-                          placeholder="1800"
+                          placeholder={t.coffeeName}
                         />
-                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-on-surface-variant pointer-events-none">
-                          msnm
-                        </span>
+                      </div>
+
+                      <div>
+                        <FieldLabel required requiredText={t.newForm.required}>
+                          {t.coffeeCountry}
+                        </FieldLabel>
+                        <input
+                          list="cata-coffee-countries"
+                          className={inputCls}
+                          value={coffee.country}
+                          onChange={(e) => updateCoffee(coffee.id, "country", e.target.value)}
+                          required
+                          placeholder={t.coffeeCountry}
+                        />
+                      </div>
+                      <div>
+                        <FieldLabel required requiredText={t.newForm.required}>
+                          {t.coffeeVariety}
+                        </FieldLabel>
+                        <input
+                          className={inputCls}
+                          value={coffee.variety}
+                          onChange={(e) => updateCoffee(coffee.id, "variety", e.target.value)}
+                          required
+                          placeholder={t.coffeeVariety}
+                        />
+                      </div>
+
+                      <div>
+                        <FieldLabel required requiredText={t.newForm.required}>
+                          {t.coffeeAltitude}
+                        </FieldLabel>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            min={1}
+                            max={6000}
+                            className={inputCls + " pr-14"}
+                            value={coffee.altitude}
+                            onChange={(e) => updateCoffee(coffee.id, "altitude", e.target.value)}
+                            required
+                            placeholder="1800"
+                          />
+                          <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-on-surface-variant pointer-events-none">
+                            msnm
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <FieldLabel required requiredText={t.newForm.required}>
+                          {t.coffeeRoastLevel}
+                        </FieldLabel>
+                        <select
+                          className={inputCls + " cursor-pointer"}
+                          value={coffee.roastLevel}
+                          onChange={(e) => updateCoffee(coffee.id, "roastLevel", e.target.value)}
+                          required
+                        >
+                          <option value="">—</option>
+                          {ROAST_LEVELS.map((r) => (
+                            <option key={r} value={r}>
+                              {r}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
-                    <div>
-                      <FieldLabel optionalText={t.newForm.optionalSuffix}>{t.coffeeRegion}</FieldLabel>
-                      <input
-                        className={inputCls}
-                        value={coffee.region}
-                        onChange={(e) => updateCoffee(coffee.id, "region", e.target.value)}
-                        placeholder={t.coffeeRegion}
-                      />
-                    </div>
 
-                    <div>
-                      <FieldLabel optionalText={t.newForm.optionalSuffix}>{t.producerRoaster}</FieldLabel>
-                      <input
-                        className={inputCls}
-                        value={coffee.producer}
-                        onChange={(e) => updateCoffee(coffee.id, "producer", e.target.value)}
-                        placeholder={t.producerRoaster}
-                      />
-                    </div>
-                    <div>
-                      <FieldLabel optionalText={t.newForm.optionalSuffix}>{t.coffeeRoastLevel}</FieldLabel>
-                      <input
-                        className={inputCls}
-                        value={coffee.roastLevel}
-                        onChange={(e) => updateCoffee(coffee.id, "roastLevel", e.target.value)}
-                        placeholder={t.coffeeRoastLevel}
-                      />
-                    </div>
+                    {/* Optional fields — collapsed accordion keeps the card light */}
+                    <details className="group rounded-input border border-outline-variant bg-surface-container-low/50">
+                      <summary className="flex cursor-pointer select-none items-center justify-between px-3.5 py-2.5 text-xs font-semibold uppercase tracking-widest text-on-surface-variant [&::-webkit-details-marker]:hidden">
+                        {t.newForm.moreDetails}
+                        <ChevronDown
+                          size={14}
+                          className="transition-transform group-open:rotate-180"
+                        />
+                      </summary>
+                      <div className="grid grid-cols-2 gap-3 px-3.5 pb-3.5">
+                        <div>
+                          <FieldLabel optionalText={t.newForm.optionalSuffix}>
+                            {t.coffeeRegion}
+                          </FieldLabel>
+                          <input
+                            className={inputCls}
+                            value={coffee.region}
+                            onChange={(e) => updateCoffee(coffee.id, "region", e.target.value)}
+                            placeholder={t.coffeeRegion}
+                          />
+                        </div>
+                        <div>
+                          <FieldLabel optionalText={t.newForm.optionalSuffix}>
+                            {t.coffeeFarm}
+                          </FieldLabel>
+                          <input
+                            className={inputCls}
+                            value={coffee.farm}
+                            onChange={(e) => updateCoffee(coffee.id, "farm", e.target.value)}
+                            placeholder={t.coffeeFarm}
+                          />
+                        </div>
+                        <div>
+                          <FieldLabel optionalText={t.newForm.optionalSuffix}>
+                            {t.producerRoaster}
+                          </FieldLabel>
+                          <input
+                            className={inputCls}
+                            value={coffee.producer}
+                            onChange={(e) => updateCoffee(coffee.id, "producer", e.target.value)}
+                            placeholder={t.producerRoaster}
+                          />
+                        </div>
+                        <div>
+                          <FieldLabel optionalText={t.newForm.optionalSuffix}>
+                            {t.coffeeSpecies}
+                          </FieldLabel>
+                          <input
+                            className={inputCls}
+                            value={coffee.species}
+                            onChange={(e) => updateCoffee(coffee.id, "species", e.target.value)}
+                            placeholder={t.coffeeSpecies}
+                          />
+                        </div>
+                        <div>
+                          <FieldLabel optionalText={t.newForm.optionalSuffix}>
+                            {t.coffeeHarvest}
+                          </FieldLabel>
+                          <input
+                            className={inputCls}
+                            value={coffee.harvestYear}
+                            onChange={(e) => updateCoffee(coffee.id, "harvestYear", e.target.value)}
+                            placeholder={t.coffeeHarvestPh}
+                          />
+                        </div>
+                        <div>
+                          <FieldLabel optionalText={t.newForm.optionalSuffix}>
+                            {t.coffeeProcess}
+                          </FieldLabel>
+                          <select
+                            className={inputCls + " cursor-pointer"}
+                            value={coffee.processType}
+                            onChange={(e) => updateCoffee(coffee.id, "processType", e.target.value)}
+                          >
+                            <option value="">—</option>
+                            {PROCESS_TYPES.map((pt) => (
+                              <option key={pt} value={pt}>
+                                {pt}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="col-span-2">
+                          <FieldLabel optionalText={t.newForm.optionalSuffix}>
+                            {t.coffeeCertifications}
+                          </FieldLabel>
+                          <div className="flex flex-wrap gap-1.5">
+                            {CERTIFICATIONS.map((cert) => {
+                              const active = coffee.certifications.includes(cert);
+                              return (
+                                <button
+                                  key={cert}
+                                  type="button"
+                                  onClick={() => toggleCoffeeCertification(coffee.id, cert)}
+                                  className={
+                                    active
+                                      ? "rounded-pill bg-primary-container px-3 py-1 text-xs font-semibold text-on-primary transition-colors"
+                                      : "rounded-pill border border-outline-variant px-3 py-1 text-xs font-medium text-on-surface transition-colors hover:bg-surface-container"
+                                  }
+                                >
+                                  {cert}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <div className="col-span-2">
+                          <FieldLabel optionalText={t.newForm.optionalSuffix}>
+                            {t.coffeeNotes}
+                          </FieldLabel>
+                          <textarea
+                            className={inputCls + " min-h-[64px]"}
+                            value={coffee.notes}
+                            onChange={(e) => updateCoffee(coffee.id, "notes", e.target.value)}
+                            placeholder={t.coffeeNotesPh}
+                          />
+                        </div>
+                      </div>
+                    </details>
                   </div>
                 )}
               </div>

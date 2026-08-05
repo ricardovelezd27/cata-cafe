@@ -142,10 +142,12 @@
       "sampleChip": "Muestra",
       "samplesTitle": "Muestras",
       "samplesHelper": "Cada muestra se cata por separado. Edita su etiqueta y asígnale un café.",
+      "moreDetails": "Más detalles del café (opcional)",
       "errors": {
         "no_samples": "Agrega al menos una muestra para iniciar la sesión.",
         "no_coffees": "Agrega al menos un café para iniciar la sesión.",
-        "missing_coffee_fields": "Completa los datos obligatorios de cada café: nombre, variedad, país y altitud.",
+        "missing_coffee_fields": "Completa los datos obligatorios de cada café: nombre, variedad, país, altitud y nivel de tueste.",
+        "invalid_altitude": "La altitud debe ser un número en msnm (por ejemplo 1800).",
         "sample_without_coffee": "Cada muestra debe estar vinculada a un café.",
         "generic": "No se pudo crear la sesión. Inténtalo de nuevo.",
         "coffee_not_found": "Uno de los cafés seleccionados ya no está disponible. Vuelve a elegirlo."
@@ -496,6 +498,7 @@
     "saveChanges": "Guardar cambios",
     "savingChanges": "Guardando…",
     "updateError": "No se pudo guardar el café. Inténtalo de nuevo.",
+    "roastRequired": "Selecciona el nivel de tueste.",
     "filterProcess": "Proceso",
     "filterCountry": "Origen",
     "filterOwnership": "Propiedad",

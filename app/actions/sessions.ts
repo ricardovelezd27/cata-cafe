@@ -14,6 +14,8 @@ import { computeEvaluationDerived } from "@/lib/evaluation";
 import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/groups";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
 
+// Mirrors the standalone CoffeeForm's field set — wizard-created coffees land
+// in the SAME coffees table with the same shape (no wizard-only subset).
 type CoffeeInput = {
   name: string;
   producer?: string;
@@ -22,6 +24,12 @@ type CoffeeInput = {
   roastLevel?: string;
   country?: string;
   region?: string;
+  farm?: string;
+  species?: string;
+  harvestYear?: string;
+  processType?: string;
+  certifications?: string[];
+  notes?: string;
   // When set, the entry references an existing Coffee (picked via the
   // "Usar café existente" picker) instead of creating a new row. Access is
   // re-validated server-side in resolveCoffees — never trusted from the client.
@@ -36,7 +44,13 @@ type SampleInput = {
 // Data-driven platform: a session can't be created without complete basic
 // coffee data (N-series feedback + insights data-quality push). Server-side
 // twin of the form's client validation — actions are public HTTP endpoints.
-const REQUIRED_COFFEE_FIELDS = ["name", "variety", "country", "altitude"] as const;
+const REQUIRED_COFFEE_FIELDS = [
+  "name",
+  "variety",
+  "country",
+  "altitude",
+  "roastLevel",
+] as const;
 
 function validateSessionInput(
   coffees: CoffeeInput[],
@@ -51,6 +65,11 @@ function validateSessionInput(
     if (c.existingCoffeeId) continue;
     for (const field of REQUIRED_COFFEE_FIELDS) {
       if (!c[field]?.trim()) return "missing_coffee_fields";
+    }
+    // Altitude is a plain number (msnm) — same rule as the cups input.
+    const altitude = Number(c.altitude);
+    if (!Number.isFinite(altitude) || altitude <= 0 || altitude > 6000) {
+      return "invalid_altitude";
     }
   }
   for (const s of samples) {
@@ -97,12 +116,18 @@ async function resolveCoffees(
             prisma.coffee.create({
               data: {
                 name: c.name || "Sin nombre",
-                producer: c.producer || null,
-                variety: c.variety || null,
-                altitude: c.altitude || null,
-                roastLevel: c.roastLevel || null,
-                country: c.country || null,
-                region: c.region || null,
+                producer: c.producer?.trim() || null,
+                variety: c.variety?.trim() || null,
+                altitude: c.altitude?.trim() || null,
+                roastLevel: c.roastLevel?.trim() || null,
+                country: c.country?.trim() || null,
+                region: c.region?.trim() || null,
+                farm: c.farm?.trim() || null,
+                species: c.species?.trim() || null,
+                harvestYear: c.harvestYear?.trim() || null,
+                processType: c.processType?.trim() || null,
+                certifications: c.certifications ?? [],
+                notes: c.notes?.trim() || null,
                 createdBy: userId,
                 visibility: "private",
               },

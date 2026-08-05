@@ -61,6 +61,7 @@ export default async function EditCoffeePage({
     create: t("newPage.create"),
     creating: t("newPage.creating"),
     nameRequired: t("newPage.nameRequired"),
+    roastRequired: t("roastRequired"),
     // edit-specific failure copy (create flow uses newPage.error instead)
     error: t("updateError"),
   };

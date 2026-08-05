@@ -106,6 +106,8 @@ export async function createCoffee(input: {
 
   const name = input.name?.trim();
   if (!name) return { ok: false, error: "name_required" };
+  // Roast level is mandatory on every coffee-creation surface (2026-08-05).
+  if (!input.roastLevel?.trim()) return { ok: false, error: "roast_required" };
   if (!isCoffeeVisibility(input.visibility)) {
     return { ok: false, error: "invalid_visibility" };
   }
@@ -170,6 +172,7 @@ export async function updateCoffee(
 
   const name = input.name?.trim();
   if (!name) return { ok: false, error: "name_required" };
+  if (!input.roastLevel?.trim()) return { ok: false, error: "roast_required" };
 
   await prisma.coffee.update({
     where: { id: coffeeId },
