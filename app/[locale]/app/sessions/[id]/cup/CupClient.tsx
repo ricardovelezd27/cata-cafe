@@ -60,6 +60,7 @@ import {
   mergeModuleData,
   setModuleStatus,
   cacheProps,
+  loadSession,
 } from "@/lib/offline/store";
 import type { ModuleKey } from "@/lib/offline/types";
 
@@ -197,6 +198,15 @@ export function CupClient({
       continueAnyway: string;
       submitAnyway: string;
     };
+    // Optional: props can be rehydrated from a pre-upgrade IndexedDB cache
+    // (cup/error.tsx offline rebuild) that predates this key — CupClient
+    // falls back to built-in copy when absent.
+    leaveGuard?: {
+      title: string;
+      body: string;
+      stay: string;
+      leave: string;
+    };
     offline: {
       bannerOffline: string;
       bannerReconnecting: string;
@@ -280,6 +290,7 @@ export function CupClient({
   });
   const [submitBlocked, setSubmitBlocked] = useState(false);
   const [submitError, setSubmitError] = useState(false);
+  const [leaveGuardOpen, setLeaveGuardOpen] = useState(false);
 
   // Independent 500ms debounce for durable local (IndexedDB) writes, separate
   // from the 800ms server debounce so neither blocks the other.
@@ -299,6 +310,19 @@ export function CupClient({
     data: Data,
   ) =>
     mergeModuleData(session.id, userId, sampleId, label, key, data, seed);
+
+  // Synchronous localStorage mirror of the pending refs, written on pagehide.
+  // IndexedDB writes are async and can be aborted when the page dies instantly
+  // (hard reload, tab kill mid-debounce); localStorage.setItem is synchronous
+  // and always lands. Consumed + cleared by the mount rehydration below.
+  const flushBackupKey = `cata_flush_backup_${session.id}_${userId}`;
+  type FlushBackupEntry = {
+    sampleId: string;
+    label: string;
+    key: ModuleKey;
+    data: Data;
+    ts: number;
+  };
 
   // Cache the full props payload on each online mount so an offline hard-refresh
   // can rebuild this screen from IndexedDB (see cup/error.tsx). Data durability
@@ -322,6 +346,78 @@ export function CupClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [online]);
 
+  // Rehydrate locally-persisted pending edits (IndexedDB) over the
+  // server-rendered snapshot. When the user leaves mid-debounce (back swipe,
+  // tab kill), the pagehide flush stored the edit locally but the server may
+  // never have received it — so a fresh server render shows stale/empty
+  // fields even though the data survived. Pending modules are "local wins" by
+  // the offline-replay contract, so merging them over the props is safe.
+  // Runs once per mount, before the reconnect replay can flip statuses
+  // (IndexedDB read resolves in ms; the replay needs network round-trips).
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      // Sync localStorage backup first — it holds edits from a page that died
+      // before its async IndexedDB flush completed, so it's newest-or-equal.
+      let backup: FlushBackupEntry[] = [];
+      try {
+        const raw = localStorage.getItem(flushBackupKey);
+        if (raw) backup = JSON.parse(raw) as FlushBackupEntry[];
+      } catch {
+        backup = [];
+      }
+
+      const blob = await loadSession(session.id, userId);
+      if (cancelled) return;
+
+      if (blob || backup.length > 0) {
+        setSamples((prev) =>
+          prev.map((s) => {
+            let next = s;
+            const local = blob?.samples[s.id];
+            if (local) {
+              for (const [mk, mod] of Object.entries(local.modules)) {
+                // Conflicts are the SyncConflictModal's job — don't pre-apply them.
+                if (!mod || mod.syncStatus !== "pending" || !isModuleKey(mk))
+                  continue;
+                next = { ...next, [mk]: mod.data };
+              }
+            }
+            for (const entry of backup) {
+              if (entry.sampleId !== s.id || !isModuleKey(entry.key)) continue;
+              // A crash can leave a backup behind without pagehide clearing
+              // it — never let it regress a newer IndexedDB write.
+              const mod = blob?.samples[s.id]?.modules[entry.key];
+              if (mod && mod.updatedAt > entry.ts) continue;
+              next = { ...next, [entry.key]: entry.data };
+            }
+            return next;
+          }),
+        );
+      }
+
+      // Promote backup entries into the durable pending store (so the replay
+      // pushes them to the server), then clear the one-shot backup.
+      for (const entry of backup) {
+        if (!isModuleKey(entry.key)) continue;
+        const mod = blob?.samples[entry.sampleId]?.modules[entry.key];
+        if (mod && mod.updatedAt > entry.ts) continue;
+        await writeLocal(entry.sampleId, entry.label, entry.key, entry.data);
+      }
+      if (backup.length > 0) {
+        try {
+          localStorage.removeItem(flushBackupKey);
+        } catch {
+          /* ignore */
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.id, userId]);
+
   // Best-effort flush of in-flight edits before the tab unloads or is hidden.
   // IndexedDB writes can't be awaited here; the debounces keep the unsaved
   // window tiny. Covers BOTH pending refs: the local 500ms one and the server
@@ -332,13 +428,31 @@ export function CupClient({
   // extra writes on tab switches are idempotent (last-write-wins merge).
   useEffect(() => {
     const flushToLocal = () => {
+      const entries: FlushBackupEntry[] = [];
+      const now = Date.now();
       const lp = localPendingRef.current;
-      if (lp) void writeLocal(lp.sampleId, lp.label, lp.key, lp.data);
+      if (lp) {
+        void writeLocal(lp.sampleId, lp.label, lp.key, lp.data);
+        entries.push({ ...lp, ts: now });
+      }
       const sp = pendingSaveRef.current;
       if (sp && isModuleKey(sp.key)) {
         const label =
           session.samples.find((s) => s.id === sp.sampleId)?.label ?? "";
         void writeLocal(sp.sampleId, label, sp.key, sp.data);
+        entries.push({ sampleId: sp.sampleId, label, key: sp.key, data: sp.data, ts: now });
+      }
+      // Sync mirror: survives even if the async IndexedDB writes above are
+      // aborted by an instant page kill. Always rewritten (or cleared) so it
+      // reflects exactly what was pending at the last departure — never stale.
+      try {
+        if (entries.length > 0) {
+          localStorage.setItem(flushBackupKey, JSON.stringify(entries));
+        } else {
+          localStorage.removeItem(flushBackupKey);
+        }
+      } catch {
+        /* quota/private-mode — IndexedDB path still applies */
       }
     };
     const onVisibility = () => {
@@ -457,6 +571,55 @@ export function CupClient({
       pendingSaveRef.current = null;
       await flushSave(pending.sampleId, pending.key, pending.data);
     }
+  };
+
+  // ─── Back-navigation trap ─────────────────────────────────────
+  // The #1 reported data-loss trigger in live tastings: a stray horizontal
+  // swipe (or a tap on the browser's back arrow, which sits right next to the
+  // footer buttons on phones) navigates away mid-evaluation. A same-URL
+  // history sentinel absorbs the back action — the URL doesn't change, so the
+  // router stays put — then we flush pending saves and ask before leaving.
+  // Chrome/Android swipe-nav is additionally blocked by overscroll-behavior-x
+  // in globals.css; iOS edge swipes can't be blocked, so this trap is the
+  // safety net there.
+  const flushPendingRef = useRef<() => Promise<void>>(async () => {});
+  useEffect(() => {
+    flushPendingRef.current = flushPending;
+  });
+  useEffect(() => {
+    window.history.pushState({ cataCupSentinel: true }, "");
+    const onPopState = () => {
+      // Re-arm so the next back action is absorbed too, then confirm.
+      window.history.pushState({ cataCupSentinel: true }, "");
+      void flushPendingRef.current();
+      setLeaveGuardOpen(true);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  // Fallback mirrors messages.*.cupping.leaveGuard for props rehydrated from a
+  // pre-upgrade offline cache (see the prop's comment).
+  const leaveGuardCopy =
+    translations.leaveGuard ??
+    (locale === "en"
+      ? {
+          title: "Leave the tasting?",
+          body: "Looks like you navigated back. Your progress is saved, but leaving now will interrupt the evaluation.",
+          stay: "Keep tasting",
+          leave: "Leave",
+        }
+      : {
+          title: "¿Salir de la cata?",
+          body: "Parece que retrocediste en el navegador. Tu avance está guardado, pero si sales ahora dejarás la evaluación a medias.",
+          stay: "Seguir catando",
+          leave: "Salir",
+        });
+
+  const handleLeaveConfirm = async () => {
+    setLeaveGuardOpen(false);
+    await flushPendingRef.current();
+    router.push(`/${locale}/app/sessions`);
   };
 
   const scheduleLocalSave = (
@@ -1101,6 +1264,18 @@ export function CupClient({
           conflictBody: translations.offline.conflictBody,
           conflictKeep: translations.offline.conflictKeep,
           conflictReplace: translations.offline.conflictReplace,
+        }}
+      />
+      <EvaluationGuardModal
+        open={leaveGuardOpen}
+        title={leaveGuardCopy.title}
+        body={leaveGuardCopy.body}
+        items={[]}
+        onCancel={() => setLeaveGuardOpen(false)}
+        onConfirm={() => void handleLeaveConfirm()}
+        translations={{
+          review: leaveGuardCopy.stay,
+          confirm: leaveGuardCopy.leave,
         }}
       />
       <EvaluationGuardModal

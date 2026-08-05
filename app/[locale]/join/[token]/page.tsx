@@ -69,6 +69,7 @@ export default async function JoinPage({
                 joinButton: t("guestJoinButton"),
                 joining: t("guestJoining"),
                 offlineNotice: t("guestOfflineNotice"),
+                dataNotice: t("guestDataNotice"),
                 error: t("guestError"),
               }}
             />

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Newsreader, Hanken_Grotesk } from "next/font/google";
 import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
 import "./globals.css";
@@ -32,6 +32,14 @@ const newsreaderItalic = Newsreader({
   display: "swap",
   preload: false,
 });
+
+// viewportFit "cover" makes env(safe-area-inset-*) report real values on iOS,
+// which the cupping footer uses to keep its buttons out of the gesture zone.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(

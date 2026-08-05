@@ -126,6 +126,9 @@
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
+  /* Keep scroll chaining inside the canvas — a flick at the top/bottom or a
+     sideways drag must never bubble into a browser navigation gesture. */
+  overscroll-behavior: contain;
 }
 
 .canvasInner {

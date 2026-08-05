@@ -215,6 +215,12 @@ export default async function CupPage({
           continueAnyway: t("cupping.guard.continueAnyway"),
           submitAnyway: t("cupping.guard.submitAnyway"),
         },
+        leaveGuard: {
+          title: t("cupping.leaveGuard.title"),
+          body: t("cupping.leaveGuard.body"),
+          stay: t("cupping.leaveGuard.stay"),
+          leave: t("cupping.leaveGuard.leave"),
+        },
         offline: {
           bannerOffline: t("offline.bannerOffline"),
           bannerReconnecting: t("offline.bannerReconnecting"),
