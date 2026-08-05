@@ -1,0 +1,11 @@
+-- Reconciliation for the 2026-08-05 isPublic/visibility drift incident:
+-- `coffees."visibility"` has been the single source of truth since the
+-- four-session consolidation merge (6daa842) deployed; the deprecated
+-- `isPublic` mirror column is no longer read or written by any code path.
+-- Verified zero drift before the merge (isPublic === (visibility = 'public')
+-- on all rows), so this drop loses no information.
+--
+-- APPLY ORDER (shared live DB, deploys never run migrate): this migration is
+-- applied manually via `prisma db execute` + `migrate resolve --applied`
+-- ONLY AFTER the deploy that stops referencing the column is confirmed live.
+ALTER TABLE "coffees" DROP COLUMN "isPublic";

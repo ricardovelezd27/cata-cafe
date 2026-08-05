@@ -60,13 +60,6 @@ model Coffee {
   // visibility = "shared" (switching to private keeps them but makes them
   // inert); CoffeeInvite tokens are honored only while not private.
   visibility         String    @default("private")
-  // DEPRECATED mirror of (visibility === "public"). Re-added additively to the
-  // shared DB on 2026-08-05 because origin/main (= production) and the groups
-  // branch still read/write it (drift incident — see rls_and_triggers.sql
-  // PHASE 16 note). This branch keeps it in sync on every visibility write;
-  // never READ it here. Drop via a reconciliation migration once every branch
-  // uses `visibility`.
-  isPublic           Boolean   @default(false)
   // When true, the community results section (scores, attribute averages,
   // flavor cloud) on the coffee profile page is visible to non-owners too.
   // Owners always see their own results regardless of this flag. Toggled via

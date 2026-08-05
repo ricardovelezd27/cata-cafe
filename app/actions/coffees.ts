@@ -103,7 +103,6 @@ export async function createCoffee(input: {
       notes: input.notes?.trim() || null,
       createdBy: user.id,
       visibility: input.visibility,
-      isPublic: input.visibility === "public", // deprecated mirror (schema comment)
     },
     select: { id: true },
   });
@@ -313,9 +312,7 @@ export async function setCoffeeVisibility(
 
   await prisma.coffee.update({
     where: { id: coffeeId },
-    // isPublic is a deprecated mirror kept for origin/main + the groups branch
-    // (see schema comment) — always written alongside visibility, never read.
-    data: { visibility, isPublic: visibility === "public" },
+    data: { visibility },
   });
 
   revalidatePath(`/es/app/coffees/${coffeeId}`);
