@@ -12,7 +12,7 @@ import { Badge, StatusPill } from "@/components/ui/Badge";
 import { calcActivityPoints, computeLevel, LEVELS } from "@/lib/gamification";
 import { ROLE_LABELS, COUNTRIES } from "@/lib/constants";
 import { sessionHref } from "@/lib/sessionRouting";
-import { ProfileForm } from "./ProfileForm";
+import { EditProfileDialog } from "./EditProfileDialog";
 
 export function generateStaticParams() {
   return [{ locale: "es" }, { locale: "en" }];
@@ -151,162 +151,186 @@ export default async function ProfilePage({
     : null;
   const metaLine = [roleLabelText, profile?.country].filter(Boolean).join(" · ");
 
+  const editDialog = (
+    <EditProfileDialog
+      label={t("editProfile")}
+      closeLabel={tc("close")}
+      form={{
+        initial: {
+          displayName: profile?.displayName ?? "",
+          preferredLang: (profile?.preferredLang as "es" | "en") ?? "es",
+          bio: profile?.bio ?? "",
+          role: profile?.role ?? "cupping_pro",
+          country: profile?.country ?? "",
+        },
+        roleOptions,
+        countryOptions: [...COUNTRIES],
+        t: {
+          displayName: t("displayName"),
+          preferredLang: t("preferredLang"),
+          bio: t("bio"),
+          save: t("save"),
+          roleLabel: t("roleLabel"),
+          countryLabel: t("countryLabel"),
+          saveSuccess: t("saveSuccess"),
+          saveError: t("saveError"),
+        },
+      }}
+    />
+  );
+
   return (
-    <div className="lg:grid lg:grid-cols-[320px_1fr] lg:gap-8">
-      {/* LEFT — identity rail */}
-      <div className="space-y-6">
-        <div className="flex flex-col items-center gap-3 rounded-card border border-outline-variant bg-surface-container-lowest p-6 text-center shadow-card">
-          <Avatar name={profile?.displayName || user.email || "?"} size={64} />
-          <div>
-            <div className="font-display text-xl font-medium text-on-surface">
-              {profile?.displayName || "—"}
-            </div>
-            <div className="text-sm text-on-surface-variant">{user.email}</div>
-          </div>
-          {metaLine && <div className="text-xs text-on-surface-variant">{metaLine}</div>}
-        </div>
+    <div>
+      {/* Banner — brand-toned, spans the full content width (LinkedIn-style) */}
+      <div className="h-32 rounded-card bg-gradient-to-r from-primary via-primary-container to-primary shadow-card sm:h-40" />
 
-        <LevelBadge
-          locale={locale as "es" | "en"}
-          level={levelInfo.level}
-          levelLabel={levelLabel}
-          progress={levelInfo.progress}
-          progressText={progressText}
-          topPercentText={topPercentText}
-          t={{
-            levelTitle: t("levelTitle"),
-            pointsLabel: t("pointsLabel", { points: activityPoints }),
-            howPoints: t("howPoints"),
-          }}
-        />
-
-        <div className="grid grid-cols-2 gap-3">
-          <StatCard
-            label={t("statMaster")}
-            value={String(sessionsHosted)}
-            subtext=""
-            icon={<ClipboardList size={18} />}
-          />
-          <StatCard
-            label={t("statJoined")}
-            value={String(sessionsJoined)}
-            subtext=""
-            icon={<Users size={18} />}
-          />
-          <StatCard
-            label={t("statEvals")}
-            value={String(evaluationsSubmitted)}
-            subtext=""
-            icon={<CheckCircle2 size={18} />}
-          />
-          <Link href={`/${locale}/app/profile/history`} className="block">
-            <StatCard
-              label={t("statCoffees")}
-              value={String(distinctCoffees)}
-              subtext={t("viewHistory")}
-              accent
-              icon={<Coffee size={18} />}
-            />
-          </Link>
-        </div>
-      </div>
-
-      {/* RIGHT column */}
-      <div className="mt-8 space-y-8 lg:mt-0">
-        {/* Settings */}
-        <section>
-          <h2 className="mb-4 font-display text-2xl text-primary-container">{t("settingsTitle")}</h2>
+      {/* Cards float over the banner's bottom edge */}
+      <div className="relative -mt-10 space-y-6 px-2 sm:px-4">
+        {/* Row 1 — profile block + stats */}
+        <div className="grid gap-6 lg:grid-cols-[minmax(320px,380px)_1fr]">
           <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-6 shadow-card">
-            <ProfileForm
-              initial={{
-                displayName: profile?.displayName ?? "",
-                preferredLang: (profile?.preferredLang as "es" | "en") ?? "es",
-                bio: profile?.bio ?? "",
-                role: profile?.role ?? "cupping_pro",
-                country: profile?.country ?? "",
-              }}
-              roleOptions={roleOptions}
-              countryOptions={[...COUNTRIES]}
-              t={{
-                displayName: t("displayName"),
-                preferredLang: t("preferredLang"),
-                bio: t("bio"),
-                save: t("save"),
-                roleLabel: t("roleLabel"),
-                countryLabel: t("countryLabel"),
-                saveSuccess: t("saveSuccess"),
-                saveError: t("saveError"),
-              }}
+            <div className="flex items-start justify-between gap-3">
+              <div className="-mt-14 shrink-0 rounded-full ring-4 ring-surface-container-lowest">
+                <Avatar name={profile?.displayName || user.email || "?"} size={88} />
+              </div>
+              {editDialog}
+            </div>
+            <div className="mt-3">
+              <div className="font-display text-2xl text-on-surface">
+                {profile?.displayName || "—"}
+              </div>
+              <div className="text-sm text-on-surface-variant">{user.email}</div>
+              {metaLine && (
+                <div className="mt-1 text-xs font-medium text-on-surface-variant">{metaLine}</div>
+              )}
+            </div>
+            {profile?.bio && (
+              <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-on-surface">
+                {profile.bio}
+              </p>
+            )}
+          </div>
+
+          <div className="grid content-start grid-cols-2 gap-3 xl:grid-cols-4">
+            <StatCard
+              label={t("statMaster")}
+              value={String(sessionsHosted)}
+              subtext=""
+              icon={<ClipboardList size={18} />}
             />
-          </div>
-        </section>
-
-        {/* Recent sessions teaser */}
-        <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-display text-xl text-primary-container">{t("recentSessions")}</h2>
-            <Link
-              href={`/${locale}/app/sessions`}
-              className="text-xs font-semibold text-primary-container hover:underline"
-            >
-              {t("viewAllSessions")}
+            <StatCard
+              label={t("statJoined")}
+              value={String(sessionsJoined)}
+              subtext=""
+              icon={<Users size={18} />}
+            />
+            <StatCard
+              label={t("statEvals")}
+              value={String(evaluationsSubmitted)}
+              subtext=""
+              icon={<CheckCircle2 size={18} />}
+            />
+            <Link href={`/${locale}/app/profile/history`} className="block">
+              <StatCard
+                label={t("statCoffees")}
+                value={String(distinctCoffees)}
+                subtext={t("viewHistory")}
+                accent
+                icon={<Coffee size={18} />}
+              />
             </Link>
           </div>
-          {recentSessions.length === 0 ? (
-            <p className="text-sm text-on-surface-variant">{t("noOwnedSessions")}</p>
-          ) : (
-            <div className="space-y-2">
-              {recentSessions.map((s) => (
-                <Link
-                  key={s.id}
-                  href={sessionHref(s, { locale, isOwner: true })}
-                  className="flex items-center justify-between gap-3 rounded-card border border-outline-variant bg-surface-container-lowest px-4 py-2.5 transition-colors hover:bg-surface-container-low"
-                >
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold text-on-surface">{s.name}</div>
-                    <div className="mt-0.5 text-xs text-on-surface-variant">{formatDate(s.date)}</div>
-                  </div>
-                  <StatusPill status={s.status} labels={statusLabels} />
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
+        </div>
 
-        {/* Recent coffees teaser */}
-        <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-display text-xl text-primary-container">{t("recentCoffees")}</h2>
-            <Link
-              href={`/${locale}/app/coffees`}
-              className="text-xs font-semibold text-primary-container hover:underline"
-            >
-              {t("viewAllCoffees")}
-            </Link>
-          </div>
-          {recentCoffees.length === 0 ? (
-            <p className="text-sm text-on-surface-variant">{t("myCoffeesEmpty")}</p>
-          ) : (
-            <div className="space-y-2">
-              {recentCoffees.map((c) => (
+        {/* Row 2 — level + recent activity */}
+        <div className="grid gap-6 lg:grid-cols-[minmax(320px,380px)_1fr]">
+          <LevelBadge
+            locale={locale as "es" | "en"}
+            level={levelInfo.level}
+            levelLabel={levelLabel}
+            progress={levelInfo.progress}
+            progressText={progressText}
+            topPercentText={topPercentText}
+            t={{
+              levelTitle: t("levelTitle"),
+              pointsLabel: t("pointsLabel", { points: activityPoints }),
+              howPoints: t("howPoints"),
+            }}
+          />
+
+          <div className="space-y-6 rounded-card border border-outline-variant bg-surface-container-lowest p-6 shadow-card">
+            <h2 className="font-display text-xl text-primary-container">{t("recentActivity")}</h2>
+
+            <section>
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                  {t("recentSessions")}
+                </h3>
                 <Link
-                  key={c.id}
-                  href={`/${locale}/app/coffees/${c.id}`}
-                  className="flex items-center justify-between gap-3 rounded-card border border-outline-variant bg-surface-container-lowest px-4 py-2.5 transition-colors hover:bg-surface-container-low"
+                  href={`/${locale}/app/sessions`}
+                  className="text-xs font-semibold text-primary-container hover:underline"
                 >
-                  <span className="truncate text-sm font-semibold text-on-surface">{c.name}</span>
-                  <Badge
-                    tone={
-                      c.visibility === "public" ? "success" : c.visibility === "shared" ? "accent" : "neutral"
-                    }
-                  >
-                    {visibilityLabels[c.visibility] ?? c.visibility}
-                  </Badge>
+                  {t("viewAllSessions")}
                 </Link>
-              ))}
-            </div>
-          )}
-        </section>
+              </div>
+              {recentSessions.length === 0 ? (
+                <p className="text-sm text-on-surface-variant">{t("noOwnedSessions")}</p>
+              ) : (
+                <div className="space-y-2">
+                  {recentSessions.map((s) => (
+                    <Link
+                      key={s.id}
+                      href={sessionHref(s, { locale, isOwner: true })}
+                      className="flex items-center justify-between gap-3 rounded-card border border-outline-variant bg-surface px-4 py-2.5 transition-colors hover:bg-surface-container-low"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-on-surface">{s.name}</div>
+                        <div className="mt-0.5 text-xs text-on-surface-variant">{formatDate(s.date)}</div>
+                      </div>
+                      <StatusPill status={s.status} labels={statusLabels} />
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section>
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                  {t("recentCoffees")}
+                </h3>
+                <Link
+                  href={`/${locale}/app/coffees`}
+                  className="text-xs font-semibold text-primary-container hover:underline"
+                >
+                  {t("viewAllCoffees")}
+                </Link>
+              </div>
+              {recentCoffees.length === 0 ? (
+                <p className="text-sm text-on-surface-variant">{t("myCoffeesEmpty")}</p>
+              ) : (
+                <div className="space-y-2">
+                  {recentCoffees.map((c) => (
+                    <Link
+                      key={c.id}
+                      href={`/${locale}/app/coffees/${c.id}`}
+                      className="flex items-center justify-between gap-3 rounded-card border border-outline-variant bg-surface px-4 py-2.5 transition-colors hover:bg-surface-container-low"
+                    >
+                      <span className="truncate text-sm font-semibold text-on-surface">{c.name}</span>
+                      <Badge
+                        tone={
+                          c.visibility === "public" ? "success" : c.visibility === "shared" ? "accent" : "neutral"
+                        }
+                      >
+                        {visibilityLabels[c.visibility] ?? c.visibility}
+                      </Badge>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
+        </div>
 
         {/* Account actions — reachable on mobile via the "Perfil" tab */}
         <section>

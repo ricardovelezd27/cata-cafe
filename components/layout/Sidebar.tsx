@@ -29,21 +29,25 @@ export default function Sidebar({
       </div>
 
       <nav className="flex-1 py-3 overflow-y-auto">
-        {navItems.map(({ href, icon: Icon, i18nKey, exact }) => {
+        {navItems.map(({ href, icon: Icon, i18nKey, exact, startsGroup }) => {
           const active = isActive(pathname, locale, href, exact);
           return (
-            <Link
-              key={href}
-              href={`/${locale}${href}`}
-              className={`flex items-center gap-3 px-5 py-2.5 text-sm transition-colors ${
-                active
-                  ? "border-l-[3px] border-primary-container bg-primary-fixed text-primary-container font-semibold pl-[17px]"
-                  : "border-l-[3px] border-transparent text-on-surface hover:bg-surface-container-high pl-[17px]"
-              }`}
-            >
-              <Icon size={18} strokeWidth={active ? 2.5 : 1.8} />
-              {translations.nav[i18nKey]}
-            </Link>
+            <div key={href}>
+              {startsGroup && (
+                <hr className="my-2 mx-5 border-t border-outline-variant" />
+              )}
+              <Link
+                href={`/${locale}${href}`}
+                className={`flex items-center gap-3 px-5 py-2.5 text-sm transition-colors ${
+                  active
+                    ? "border-l-[3px] border-primary-container bg-primary-fixed text-primary-container font-semibold pl-[17px]"
+                    : "border-l-[3px] border-transparent text-on-surface hover:bg-surface-container-high pl-[17px]"
+                }`}
+              >
+                <Icon size={18} strokeWidth={active ? 2.5 : 1.8} />
+                {translations.nav[i18nKey]}
+              </Link>
+            </div>
           );
         })}
       </nav>

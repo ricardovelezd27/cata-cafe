@@ -13,6 +13,9 @@ export interface NavItem {
   icon: LucideIcon;
   i18nKey: NavItemKey;
   exact?: boolean;
+  /** Renders a visual divider ABOVE this item in the Sidebar — separates the
+   *  personal group (Inicio, Perfil) from the work group (Sesiones, Cafés, Grupos). */
+  startsGroup?: boolean;
 }
 
 /** Shared translations shape passed down from app/[locale]/app/layout.tsx (server) to
@@ -34,13 +37,14 @@ export interface NavTranslations {
   };
 }
 
-/** Primary nav destinations, shared by Sidebar and BottomNav. */
+/** Primary nav destinations, shared by Sidebar and BottomNav.
+ *  Order is deliberate: personal (Inicio, Perfil) first, then the work group. */
 export const NAV_ITEMS: NavItem[] = [
   { href: "/app", icon: Home, i18nKey: "home", exact: true },
-  { href: "/app/sessions", icon: Clipboard, i18nKey: "sessions" },
+  { href: "/app/profile", icon: User, i18nKey: "profile" },
+  { href: "/app/sessions", icon: Clipboard, i18nKey: "sessions", startsGroup: true },
   { href: "/app/coffees", icon: Coffee, i18nKey: "coffees" },
   { href: "/app/groups", icon: Users, i18nKey: "groups" },
-  { href: "/app/profile", icon: User, i18nKey: "profile" },
 ];
 
 /** Appended conditionally when the current user has analytics access (see showInsights). */
