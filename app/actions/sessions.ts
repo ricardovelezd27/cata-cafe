@@ -2,9 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
+import {
+  requireSessionOwner,
+  requireSessionMember,
+  requireSampleMember,
+  requireSampleOwner,
+} from "@/lib/sessionAuth";
 import { computeEvaluationDerived } from "@/lib/evaluation";
 import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/groups";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
@@ -140,6 +145,10 @@ export async function createSession(input: {
       objective: input.objective,
       format: input.format,
       cupsPerSample: input.cupsPerSample,
+      // A solo session is immediately cuppable — "draft" is meaningless for it.
+      // Lifecycle: active → closed (auto, when all samples are submitted; see
+      // submitAllEvaluations in app/actions/community.ts).
+      status: "active",
       createdBy: user.id,
       samples: {
         create: input.samples.map((s, i) => ({
@@ -270,12 +279,16 @@ function isP2002(e: unknown): boolean {
 
 export async function upsertEvaluation(input: {
   sessionSampleId: string;
+  // Kept for API compatibility with existing callers, but IGNORED — the
+  // denormalized Evaluation.sessionId is resolved server-side from the sample
+  // so a tampered sessionId can't mislabel Realtime events.
   sessionId: string;
   moduleKey: "descriptive" | "affective" | "combined";
   data: Record<string, unknown>;
   cupsPerSample: number;
 }) {
   const user = await requireUser({ skipProfileUpsert: true });
+  const { sessionId } = await requireSampleMember(input.sessionSampleId, user.id);
 
   const fields = computeEvaluationDerived(
     input.moduleKey,
@@ -293,11 +306,11 @@ export async function upsertEvaluation(input: {
       },
       create: {
         sessionSampleId: input.sessionSampleId,
-        sessionId: input.sessionId,
+        sessionId,
         cupperId: user.id,
         ...fields,
       },
-      update: { sessionId: input.sessionId, ...fields },
+      update: { sessionId, ...fields },
       select: { id: true },
     });
 
@@ -317,42 +330,201 @@ export async function upsertEvaluation(input: {
 
 export async function deleteSession(sessionId: string, locale: string = "es") {
   const user = await requireUser();
-
-  const session = await prisma.cuppingSession.findUnique({
-    where: { id: sessionId },
-    select: { createdBy: true },
-  });
-
-  if (!session || session.createdBy !== user.id) {
-    throw new Error("not_found_or_forbidden");
-  }
+  await requireSessionOwner(sessionId, user.id);
 
   await prisma.cuppingSession.delete({ where: { id: sessionId } });
 
   revalidatePath(`/${locale}/app/sessions`);
 }
 
-/**
- * Delete a coffee the user created. DB-level referential rules keep the rest
- * of the platform consistent: session_samples.coffeeId is ON DELETE SET NULL
- * (samples survive, showing only their blind label) and user_coffee_history
- * rows cascade away (migration 20260721000000).
- */
-export async function deleteCoffee(coffeeId: string, locale: string = "es") {
+// NOTE: deleteCoffee moved to app/actions/coffees.ts with the rest of the
+// coffee CRUD actions.
+
+export type UpdateSessionInput = {
+  name?: string;
+  date?: string;
+  objective?: string | null;
+  // Only valid for group sessions; null unlinks. A solo session must not carry
+  // a groupId — the group page lists sessions by groupId and members would get
+  // dead links to a session they can't open.
+  groupId?: string | null;
+  // format/cupsPerSample are LOCKED once any evaluation exists (scores are
+  // derived from them); the server rejects regardless of what the form shows.
+  format?: "descriptive" | "affective" | "combined";
+  cupsPerSample?: number;
+  locale?: string;
+};
+
+export async function updateSession(sessionId: string, input: UpdateSessionInput) {
   const user = await requireUser();
+  const session = await requireSessionOwner(sessionId, user.id);
 
-  const coffee = await prisma.coffee.findUnique({
-    where: { id: coffeeId },
-    select: { createdBy: true },
-  });
+  const data: {
+    name?: string;
+    date?: Date;
+    objective?: string | null;
+    groupId?: string | null;
+    format?: string;
+    cupsPerSample?: number;
+  } = {};
 
-  if (!coffee || coffee.createdBy !== user.id) {
-    throw new Error("not_found_or_forbidden");
+  if (input.name !== undefined) {
+    const name = input.name.trim();
+    if (!name) return { ok: false as const, error: "invalid_name" };
+    data.name = name;
+  }
+  if (input.date !== undefined) {
+    const d = new Date(input.date);
+    if (Number.isNaN(d.getTime())) return { ok: false as const, error: "invalid_date" };
+    data.date = d;
+  }
+  if (input.objective !== undefined) {
+    data.objective = input.objective?.trim() || null;
   }
 
-  await prisma.coffee.delete({ where: { id: coffeeId } });
+  if (input.groupId !== undefined) {
+    if (!session.isGroup) return { ok: false as const, error: "not_group_session" };
+    if (input.groupId === null) {
+      data.groupId = null;
+    } else {
+      const group = await prisma.tastingGroup.findUnique({
+        where: { id: input.groupId },
+        select: { createdBy: true },
+      });
+      if (!group || group.createdBy !== user.id) {
+        return { ok: false as const, error: "not_found_or_forbidden" };
+      }
+      data.groupId = input.groupId;
+    }
+  }
 
-  revalidatePath(`/${locale}/app/coffees`);
+  if (input.format !== undefined || input.cupsPerSample !== undefined) {
+    const evalCount = await prisma.evaluation.count({
+      where: { sessionSample: { sessionId } },
+    });
+    if (evalCount > 0) return { ok: false as const, error: "format_locked" };
+    if (input.format !== undefined) data.format = input.format;
+    if (input.cupsPerSample !== undefined) {
+      if (
+        !Number.isInteger(input.cupsPerSample) ||
+        input.cupsPerSample < 1 ||
+        input.cupsPerSample > 5
+      ) {
+        return { ok: false as const, error: "invalid_cups" };
+      }
+      data.cupsPerSample = input.cupsPerSample;
+    }
+  }
+
+  if (Object.keys(data).length > 0) {
+    await prisma.cuppingSession.update({ where: { id: sessionId }, data });
+  }
+
+  const locale = input.locale || "es";
+  revalidatePath(`/${locale}/app/sessions`);
+  revalidatePath(`/${locale}/app/sessions/${sessionId}/cup`);
+  revalidatePath(`/${locale}/app/sessions/${sessionId}/results`);
+  return { ok: true as const };
+}
+
+export async function addSessionSample(
+  sessionId: string,
+  input: { label?: string; coffeeId?: string | null; locale?: string },
+) {
+  const user = await requireUser();
+  await requireSessionOwner(sessionId, user.id);
+
+  if (input.coffeeId) {
+    // Same re-validation as the wizard: the coffee must be usable by the
+    // caller (owned + public + shared-with-me) — never trusted from the client.
+    const usable = await prisma.coffee.findFirst({
+      where: { id: input.coffeeId, AND: [usableCoffeeWhere(user.id)] },
+      select: { id: true },
+    });
+    if (!usable) return { ok: false as const, error: "coffee_not_found" };
+  }
+
+  const max = await prisma.sessionSample.aggregate({
+    where: { sessionId },
+    _max: { position: true },
+  });
+  const position = (max._max.position ?? -1) + 1;
+
+  const sample = await prisma.sessionSample.create({
+    data: {
+      sessionId,
+      label: input.label?.trim() || `Muestra ${position + 1}`,
+      position,
+      coffeeId: input.coffeeId ?? null,
+    },
+    select: { id: true },
+  });
+
+  const locale = input.locale || "es";
+  revalidatePath(`/${locale}/app/sessions/${sessionId}/cup`);
+  return { ok: true as const, sampleId: sample.id };
+}
+
+// Label-only rename. Deliberately separate from updateSampleMetadata (which
+// rewrites the linked coffee's fields and expects the full metadata input).
+export async function renameSessionSample(sampleId: string, label: string) {
+  const user = await requireUser();
+  const { sessionId } = await requireSampleOwner(sampleId, user.id);
+
+  const trimmed = label.trim();
+  if (!trimmed) return { ok: false as const, error: "invalid_label" };
+
+  await prisma.sessionSample.update({
+    where: { id: sampleId },
+    data: { label: trimmed },
+  });
+
+  revalidatePath(`/es/app/sessions/${sessionId}/cup`);
+  revalidatePath(`/en/app/sessions/${sessionId}/cup`);
+  return { ok: true as const };
+}
+
+export async function removeSessionSample(sampleId: string, locale: string = "es") {
+  const user = await requireUser();
+
+  const sample = await prisma.sessionSample.findUnique({
+    where: { id: sampleId },
+    select: {
+      id: true,
+      sessionId: true,
+      session: { select: { createdBy: true } },
+      _count: { select: { evaluations: true } },
+    },
+  });
+  if (!sample || sample.session.createdBy !== user.id) {
+    throw new Error("not_found_or_forbidden");
+  }
+  // A sample with ANY cupper's evaluation is load-bearing data — refuse.
+  // (Deleting would cascade evaluations/physical/extrinsic/aggregate rows.)
+  if (sample._count.evaluations > 0) {
+    return { ok: false as const, error: "sample_has_evaluations" };
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.sessionSample.delete({ where: { id: sampleId } });
+    // Re-pack positions ascending so the (sessionId, position) unique key
+    // stays dense; each shifted row lands on a slot vacated one step earlier.
+    const rest = await tx.sessionSample.findMany({
+      where: { sessionId: sample.sessionId },
+      orderBy: { position: "asc" },
+      select: { id: true, position: true },
+    });
+    for (let i = 0; i < rest.length; i++) {
+      if (rest[i].position !== i) {
+        await tx.sessionSample.update({
+          where: { id: rest[i].id },
+          data: { position: i },
+        });
+      }
+    }
+  });
+
+  revalidatePath(`/${locale}/app/sessions/${sample.sessionId}/cup`);
   return { ok: true as const };
 }
 
@@ -361,6 +533,7 @@ export async function upsertPhysical(input: {
   data: Record<string, unknown>;
 }) {
   const user = await requireUser({ skipProfileUpsert: true });
+  await requireSampleMember(input.sessionSampleId, user.id);
   await prisma.physicalEvaluation.upsert({
     where: { sessionSampleId: input.sessionSampleId },
     create: {
@@ -456,6 +629,7 @@ export async function upsertExtrinsic(input: {
   data: Record<string, unknown>;
 }) {
   const user = await requireUser({ skipProfileUpsert: true });
+  await requireSampleMember(input.sessionSampleId, user.id);
   await prisma.extrinsicData.upsert({
     where: { sessionSampleId: input.sessionSampleId },
     create: {
@@ -473,13 +647,15 @@ export async function upsertExtrinsic(input: {
   return { ok: true };
 }
 
+// Boolean poller for the waiting room. Returns false (never throws) so a
+// signed-out or non-member poller degrades gracefully; joinViaToken upserts
+// the participant row before redirecting here, so real waiters always pass.
 export async function checkSessionStarted(sessionId: string): Promise<boolean> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return false;
-  const session = await prisma.cuppingSession.findFirst({
-    where: { id: sessionId },
-    select: { startedAt: true },
-  });
-  return session?.startedAt != null;
+  try {
+    const user = await requireUser({ skipProfileUpsert: true });
+    const session = await requireSessionMember(sessionId, user.id);
+    return session.startedAt != null;
+  } catch {
+    return false;
+  }
 }

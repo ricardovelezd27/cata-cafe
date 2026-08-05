@@ -231,12 +231,17 @@ When you're ready to reveal which coffee was which (after all or most participan
 
 #### 5. Close the session
 
-When cupping is complete:
+**Group sessions** — when cupping is complete:
 
 1. Click **Cerrar sesión** in the Master Controls panel.
 2. Confirm the dialog — session status changes to `closed`.
-3. This triggers `syncCoffeeHistory`: for every revealed sample, each participant's individual score and the community aggregate score are written to the **coffee history**.
+3. This triggers the coffee-history sync (`lib/coffeeHistory.ts`): for every revealed sample, each participant's individual score and the community aggregate score are written to the **coffee history**.
 4. Community results (aggregate scores, radar charts, per-participant breakdown) become visible to all participants.
+
+**Solo sessions close themselves** — there is no close button. When you submit
+evaluations for every sample (going to results submits all drafts), the session
+auto-closes: coffee-linked samples are revealed, status flips to `closed`, and
+your scores land in the coffee history. See `docs/flows.md` §1 for the diagrams.
 
 ---
 

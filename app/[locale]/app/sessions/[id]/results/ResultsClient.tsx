@@ -666,6 +666,7 @@ export function ResultsClient({
               participants: translations.descParticipants,
               emptyBlock: translations.descEmptyBlock,
               emptyAll: translations.descEmptyAll,
+              close: translations.cancel,
             }}
           />
           {/* Owner-only cupper alignment (uses per-participant consensus data). */}
@@ -809,6 +810,7 @@ export function ResultsClient({
           open
           onOpenChange={() => setEditingSampleId(null)}
           title={`${translations.editSample}: ${editingSample.label}`}
+          closeLabel={translations.cancel}
         >
           <EditSampleMetadataForm
             initialData={{

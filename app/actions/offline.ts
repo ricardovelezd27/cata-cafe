@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
+import { requireSampleMember } from "@/lib/sessionAuth";
 import { computeEvaluationDerived, type EvalModuleKey } from "@/lib/evaluation";
 
 // Conflict-aware replay of an offline evaluation draft, called on reconnect.
@@ -26,6 +27,9 @@ export async function syncEvaluation(input: {
   force?: boolean;
 }): Promise<{ status: "synced" | "conflict" }> {
   const user = await requireUser({ skipProfileUpsert: true });
+  // Same authorization as the live upsertEvaluation path: session member only.
+  // Also resolves the sample's real sessionId in one round-trip.
+  const { sessionId } = await requireSampleMember(input.sessionSampleId, user.id);
 
   const existing = await prisma.evaluation.findUnique({
     where: {
@@ -40,12 +44,6 @@ export async function syncEvaluation(input: {
   if (existing && existing.isDraft === false && !input.force) {
     return { status: "conflict" };
   }
-
-  const sessionSample = await prisma.sessionSample.findUnique({
-    where: { id: input.sessionSampleId },
-    select: { sessionId: true },
-  });
-  if (!sessionSample) throw new Error("sample_not_found");
 
   const fields = computeEvaluationDerived(
     input.moduleKey,
@@ -62,11 +60,11 @@ export async function syncEvaluation(input: {
     },
     create: {
       sessionSampleId: input.sessionSampleId,
-      sessionId: sessionSample.sessionId,
+      sessionId,
       cupperId: user.id,
       ...fields,
     },
-    update: { sessionId: sessionSample.sessionId, ...fields },
+    update: { sessionId, ...fields },
     select: { id: true },
   });
 

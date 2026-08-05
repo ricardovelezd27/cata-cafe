@@ -34,21 +34,21 @@ export function LevelBadge({
   const levelOfLabel = locale === "es" ? `Nivel ${level} de 6` : `Level ${level} of 6`;
 
   return (
-    <div className="bg-white border border-[#E8E0D0] rounded-card p-5 flex flex-col gap-3">
-      <span className="text-xs font-semibold text-brown-mid uppercase tracking-wide">
+    <div className="bg-surface-container-lowest border border-outline-variant rounded-card p-5 flex flex-col gap-3">
+      <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
         {t.levelTitle}
       </span>
 
       <div className="flex items-center gap-3">
-        <span className="flex items-center justify-center h-8 w-8 rounded-full bg-green-dark text-white text-sm font-bold shrink-0">
+        <span className="flex items-center justify-center h-8 w-8 rounded-full bg-primary-container text-white text-sm font-bold shrink-0">
           {level}
         </span>
-        <span className="font-serif text-xl text-green-dark font-bold">
+        <span className="font-display text-xl text-primary-container font-bold">
           {levelLabel}
         </span>
       </div>
 
-      <span className="text-sm text-brown-dark">{t.pointsLabel}</span>
+      <span className="text-sm text-on-surface">{t.pointsLabel}</span>
 
       <div
         role="progressbar"
@@ -56,21 +56,21 @@ export function LevelBadge({
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label={levelOfLabel}
-        className="h-2 w-full rounded-full bg-[#E8E0D0] overflow-hidden"
+        className="h-2 w-full rounded-full bg-outline-variant overflow-hidden"
       >
         <div
-          className="h-full rounded-full bg-green-dark transition-[width] duration-300"
+          className="h-full rounded-full bg-primary-container transition-[width] duration-300"
           style={{ width: `${progressPct}%` }}
         />
       </div>
 
-      <span className="text-xs text-brown-mid">{progressText}</span>
+      <span className="text-xs text-on-surface-variant">{progressText}</span>
 
       {topPercentText && (
-        <span className="text-xs font-semibold text-amber-warm">{topPercentText}</span>
+        <span className="text-xs font-semibold text-secondary">{topPercentText}</span>
       )}
 
-      <p className="text-xs text-brown-mid border-t border-[#E8E0D0] pt-2 mt-1">
+      <p className="text-xs text-on-surface-variant border-t border-outline-variant pt-2 mt-1">
         {t.howPoints}
       </p>
     </div>

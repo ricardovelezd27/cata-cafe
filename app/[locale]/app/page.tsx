@@ -3,14 +3,15 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ClipboardList, Coffee, Star, ChevronRight, Clock } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { sessionHref } from "@/lib/sessionRouting";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { FormatBadge } from "@/components/dashboard/FormatBadge";
 import { DashboardIntro } from "@/components/dashboard/DashboardIntro";
 
 const STATUS_STYLES: Record<string, string> = {
-  draft: "text-[#C17817] border border-[#C17817]/50",
-  active: "text-[#3D5A3E] border border-[#3D5A3E]",
-  closed: "bg-[#F0EDE6] text-[#8B7355] border border-[#E8E0D0]",
+  draft: "text-secondary border border-secondary/50",
+  active: "text-primary-container border border-primary-container",
+  closed: "bg-[#F0EDE6] text-on-surface-variant border border-outline-variant",
 };
 const STATUS_LABELS: Record<string, string> = {
   draft: "BORRADOR",
@@ -19,9 +20,9 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 function scorePillClass(score: number) {
-  if (score >= 85) return "bg-[#E8F0E8] text-[#3D5A3E]";
-  if (score >= 75) return "bg-[#FEF3E2] text-[#C17817]";
-  return "bg-[#FDE8E8] text-[#A83232]";
+  if (score >= 85) return "bg-primary-fixed text-primary-container";
+  if (score >= 75) return "bg-[#FEF3E2] text-secondary";
+  return "bg-error-container text-error";
 }
 
 function timeAgo(date: Date, locale: string): string {
@@ -94,6 +95,8 @@ export default async function Dashboard({
         format: true,
         status: true,
         isGroup: true,
+        createdBy: true,
+        startedAt: true,
         _count: { select: { samples: true } },
       },
       orderBy: { createdAt: "desc" },
@@ -162,14 +165,14 @@ export default async function Dashboard({
       {/* Header */}
       <header className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl text-green-dark leading-tight">
+          <h1 className="font-display text-3xl text-primary-container leading-tight">
             {t("welcome", { name: profile?.displayName ?? "" })}
           </h1>
-          <p className="text-sm text-brown-mid mt-1">{t("subtitle")}</p>
+          <p className="text-sm text-on-surface-variant mt-1">{t("subtitle")}</p>
         </div>
         <Link
           href={`/${locale}/app/sessions/new`}
-          className="shrink-0 px-4 py-2 rounded-pill bg-green-dark text-white text-sm font-bold hover:bg-[#2e4430] transition-colors"
+          className="shrink-0 px-4 py-2 rounded-pill bg-primary-container text-white text-sm font-bold hover:bg-primary transition-colors"
         >
           {t("newSession")}
         </Link>
@@ -230,10 +233,10 @@ export default async function Dashboard({
       {!hasData ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
           <span className="text-6xl">☕</span>
-          <p className="font-display text-2xl text-green-dark">{t("emptyTitle")}</p>
+          <p className="font-display text-2xl text-primary-container">{t("emptyTitle")}</p>
           <Link
             href={`/${locale}/app/sessions/new`}
-            className="mt-2 px-6 py-3 rounded-pill bg-green-dark text-white font-semibold text-sm hover:bg-[#2e4430] transition-colors"
+            className="mt-2 px-6 py-3 rounded-pill bg-primary-container text-white font-semibold text-sm hover:bg-primary transition-colors"
           >
             {t("emptyCta")}
           </Link>
@@ -243,17 +246,17 @@ export default async function Dashboard({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Recent sessions */}
           <section className="space-y-3">
-            <h2 className="font-display text-xl text-green-dark">{t("recent")}</h2>
+            <h2 className="font-display text-xl text-primary-container">{t("recent")}</h2>
             <ul className="space-y-2">
               {recentSessions.map((s) => (
                 <li key={s.id}>
                   <Link
-                    href={`/${locale}/app/sessions/${s.id}/cup`}
-                    className="flex items-center gap-3 bg-white border border-[#E8E0D0] rounded-card px-4 py-3 hover:border-l-4 hover:border-l-green-dark hover:bg-green-dark/[0.02] transition-all group"
+                    href={sessionHref(s, { locale, isOwner: s.createdBy === user.id })}
+                    className="flex items-center gap-3 bg-surface-container-lowest border border-outline-variant rounded-card px-4 py-3 hover:border-l-4 hover:border-l-primary-container hover:bg-primary transition-all group"
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-brown-dark text-sm truncate">
+                        <span className="font-semibold text-on-surface text-sm truncate">
                           {s.name}
                         </span>
                         <FormatBadge format={s.format} />
@@ -265,7 +268,7 @@ export default async function Dashboard({
                           {STATUS_LABELS[s.status] ?? s.status.toUpperCase()}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 mt-1 text-xs text-brown-mid">
+                      <div className="flex items-center gap-2 mt-1 text-xs text-on-surface-variant">
                         <span>
                           {new Date(s.date).toLocaleDateString(locale)}
                         </span>
@@ -275,7 +278,7 @@ export default async function Dashboard({
                     </div>
                     <ChevronRight
                       size={16}
-                      className="text-brown-mid group-hover:text-green-dark shrink-0 transition-colors"
+                      className="text-on-surface-variant group-hover:text-primary-container shrink-0 transition-colors"
                     />
                   </Link>
                 </li>
@@ -285,9 +288,9 @@ export default async function Dashboard({
 
           {/* Top coffees */}
           <section className="space-y-3">
-            <h2 className="font-display text-xl text-green-dark">{t("bestCoffees")}</h2>
+            <h2 className="font-display text-xl text-primary-container">{t("bestCoffees")}</h2>
             {topCoffeeGroups.length === 0 ? (
-              <p className="text-sm text-brown-mid">{t("noBestCoffees")}</p>
+              <p className="text-sm text-on-surface-variant">{t("noBestCoffees")}</p>
             ) : (
               <ul className="space-y-2">
                 {topCoffeeGroups.map((g, i) => {
@@ -296,17 +299,17 @@ export default async function Dashboard({
                   return (
                     <li
                       key={g.coffeeId}
-                      className="flex items-center gap-3 bg-white border border-[#E8E0D0] rounded-card px-4 py-3"
+                      className="flex items-center gap-3 bg-surface-container-lowest border border-outline-variant rounded-card px-4 py-3"
                     >
                       <span className="font-display text-2xl text-green-mid w-6 text-center shrink-0">
                         {i + 1}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-brown-dark text-sm truncate">
+                        <p className="font-semibold text-on-surface text-sm truncate">
                           {coffee?.name ?? "—"}
                         </p>
                         {coffee?.country && (
-                          <p className="text-xs text-brown-mid">{coffee.country}</p>
+                          <p className="text-xs text-on-surface-variant">{coffee.country}</p>
                         )}
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
@@ -315,7 +318,7 @@ export default async function Dashboard({
                         >
                           {avg.toFixed(2)}
                         </span>
-                        <span className="text-xs text-brown-mid">
+                        <span className="text-xs text-on-surface-variant">
                           {t("cuppingsCount", { count: g._count.coffeeId })}
                         </span>
                       </div>
@@ -331,9 +334,9 @@ export default async function Dashboard({
       {/* Activity feed */}
       {hasData && (
         <section className="space-y-3">
-          <h2 className="font-display text-xl text-green-dark">{t("activityFeed")}</h2>
+          <h2 className="font-display text-xl text-primary-container">{t("activityFeed")}</h2>
           {recentActivity.length === 0 ? (
-            <p className="text-sm text-brown-mid">{t("noActivity")}</p>
+            <p className="text-sm text-on-surface-variant">{t("noActivity")}</p>
           ) : (
             <ul className="space-y-1">
               {recentActivity.map((item, i) => (
@@ -344,7 +347,7 @@ export default async function Dashboard({
                   <span className="text-green-mid shrink-0">
                     <Clock size={14} />
                   </span>
-                  <span className="text-sm text-brown-dark flex-1">
+                  <span className="text-sm text-on-surface flex-1">
                     {item.sessionSample.revealed && item.sessionSample.coffee
                       ? t("activityEval", {
                           coffee: item.sessionSample.coffee.name,
@@ -354,7 +357,7 @@ export default async function Dashboard({
                           session: item.sessionSample.session.name,
                         })}
                   </span>
-                  <span className="text-xs text-brown-mid shrink-0">
+                  <span className="text-xs text-on-surface-variant shrink-0">
                     {item.submittedAt
                       ? timeAgo(new Date(item.submittedAt), locale)
                       : ""}

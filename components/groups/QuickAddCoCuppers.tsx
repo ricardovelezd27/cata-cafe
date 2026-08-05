@@ -39,7 +39,7 @@ export function QuickAddCoCuppers({
   };
 
   if (candidates.length === 0) {
-    return <p className="text-sm text-brown-mid">{t.noCoCuppers}</p>;
+    return <p className="text-sm text-on-surface-variant">{t.noCoCuppers}</p>;
   }
 
   return (
@@ -49,11 +49,11 @@ export function QuickAddCoCuppers({
         return (
           <div
             key={c.userId}
-            className="flex items-center justify-between gap-3 px-3 py-2 bg-white border border-[#E8E0D0] rounded-card"
+            className="flex items-center justify-between gap-3 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-card"
           >
-            <p className="text-sm text-brown-dark truncate">{c.displayName}</p>
+            <p className="text-sm text-on-surface truncate">{c.displayName}</p>
             {added ? (
-              <span className="inline-flex items-center gap-1 text-xs font-medium text-green-dark shrink-0">
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-primary-container shrink-0">
                 <Check size={14} /> {t.added}
               </span>
             ) : (
@@ -61,7 +61,7 @@ export function QuickAddCoCuppers({
                 type="button"
                 onClick={() => onAdd(c.userId)}
                 disabled={pendingId === c.userId}
-                className="p-1.5 text-brown-mid hover:text-green-dark transition-colors disabled:opacity-50 shrink-0"
+                className="p-1.5 text-on-surface-variant hover:text-primary-container transition-colors disabled:opacity-50 shrink-0"
               >
                 <Plus size={16} />
               </button>
@@ -69,7 +69,7 @@ export function QuickAddCoCuppers({
           </div>
         );
       })}
-      {error && <p className="text-xs text-red-defect">{error}</p>}
+      {error && <p className="text-xs text-error">{error}</p>}
     </div>
   );
 }

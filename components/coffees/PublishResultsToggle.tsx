@@ -58,8 +58,8 @@ export function PublishResultsToggle({ coffeeId, resultsPublished, translations 
   }
 
   const badgeClass = resultsPublished
-    ? "bg-green-dark/10 text-green-dark border-green-dark/30"
-    : "bg-cream text-brown-mid border-brown-light";
+    ? "bg-primary-container/10 text-primary-container border-primary-container/30"
+    : "bg-surface-container text-on-surface-variant border-outline-variant";
 
   return (
     <div className="flex items-center gap-3">
@@ -72,7 +72,7 @@ export function PublishResultsToggle({ coffeeId, resultsPublished, translations 
         type="button"
         onClick={handleClick}
         disabled={isPending}
-        className="text-xs font-semibold px-3 py-1.5 rounded-pill border border-brown-light text-brown-dark hover:bg-cream transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="text-xs font-semibold px-3 py-1.5 rounded-pill border border-outline-variant text-on-surface hover:bg-surface-container transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {resultsPublished
           ? translations.unpublish

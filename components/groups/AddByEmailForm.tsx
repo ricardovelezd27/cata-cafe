@@ -11,9 +11,9 @@ type EmailStatus = "sent" | "skipped" | "failed";
 // status rows — only "sent" and "skipped" have accompanying copy (there's no
 // dedicated translation key for "failed"; the amber icon alone conveys it).
 const STATUS_STYLE: Record<EmailStatus, { icon: LucideIcon; className: string }> = {
-  sent: { icon: Check, className: "text-green-dark" },
-  skipped: { icon: Clock, className: "text-amber-warm" },
-  failed: { icon: X, className: "text-amber-warm" },
+  sent: { icon: Check, className: "text-primary-container" },
+  skipped: { icon: Clock, className: "text-secondary" },
+  failed: { icon: X, className: "text-secondary" },
 };
 
 export function AddByEmailForm({
@@ -38,7 +38,7 @@ export function AddByEmailForm({
   const [pending, start] = useTransition();
 
   const inputCls =
-    "w-full px-3 py-2 border border-[#D4C5A9] rounded-input text-sm bg-white text-brown-dark focus:outline-none focus:border-green-dark";
+    "w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:outline-none focus:border-primary-container";
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,11 +81,11 @@ export function AddByEmailForm({
       <button
         type="submit"
         disabled={pending || !email.trim()}
-        className="px-4 py-2 rounded-pill bg-green-dark text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+        className="px-4 py-2 rounded-pill bg-primary-container text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
       >
         {t.addMember}
       </button>
-      {error && <p className="text-xs text-red-defect">{error}</p>}
+      {error && <p className="text-xs text-error">{error}</p>}
       {status && StatusIcon && (
         <div className={`flex items-center gap-1.5 text-xs font-medium ${STATUS_STYLE[status].className}`}>
           <StatusIcon size={14} />

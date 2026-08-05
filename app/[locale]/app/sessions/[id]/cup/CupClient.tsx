@@ -1180,6 +1180,7 @@ export function CupClient({
           open={editingSample}
           onOpenChange={setEditingSample}
           title={`${translations.editSample}: ${current.label}`}
+          closeLabel={translations.cancel}
         >
           <EditSampleMetadataForm
             initialData={{

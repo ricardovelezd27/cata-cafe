@@ -12,7 +12,7 @@ interface ResponsiveDialogProps {
   /** Optional secondary line under the title (e.g. stage name). */
   subtitle?: ReactNode;
   children: ReactNode;
-  closeLabel?: string;
+  closeLabel: string;
 }
 
 /**
@@ -26,7 +26,7 @@ export function ResponsiveDialog({
   title,
   subtitle,
   children,
-  closeLabel = "Cerrar",
+  closeLabel,
 }: ResponsiveDialogProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>

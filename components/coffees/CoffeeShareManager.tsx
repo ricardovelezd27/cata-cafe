@@ -73,7 +73,7 @@ export function CoffeeShareManager({
 
   return (
     <div className="space-y-4">
-      <h2 className="font-serif text-lg text-green-dark font-semibold">{t.title}</h2>
+      <h2 className="font-display text-lg text-primary-container font-semibold">{t.title}</h2>
 
       {token ? (
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -81,12 +81,12 @@ export function CoffeeShareManager({
             readOnly
             value={inviteUrl}
             onFocus={(e) => e.target.select()}
-            className="flex-1 border border-brown-light rounded-input px-3 py-2 text-xs font-mono truncate bg-white"
+            className="flex-1 border border-outline-variant rounded-input px-3 py-2 text-xs font-mono truncate bg-surface-container-lowest"
           />
           <button
             type="button"
             onClick={handleCopy}
-            className="rounded-pill border border-brown-light text-xs font-semibold px-3 py-1.5 hover:bg-cream whitespace-nowrap"
+            className="rounded-pill border border-outline-variant text-xs font-semibold px-3 py-1.5 hover:bg-surface-container whitespace-nowrap"
           >
             {copied ? t.copied : t.copyLink}
           </button>
@@ -96,31 +96,31 @@ export function CoffeeShareManager({
           type="button"
           disabled={isPending}
           onClick={handleGenerate}
-          className="rounded-pill bg-green-dark text-white text-xs font-semibold px-3 py-1.5 hover:bg-green-mid transition disabled:opacity-60"
+          className="rounded-pill bg-primary-container text-white text-xs font-semibold px-3 py-1.5 hover:bg-green-mid transition disabled:opacity-60"
         >
           {isPending ? t.generating : t.generateLink}
         </button>
       )}
 
       <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-brown-mid">
+        <p className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
           {t.peopleWithAccess}
         </p>
         {shares.length === 0 ? (
-          <p className="text-sm text-brown-mid">{t.noShares}</p>
+          <p className="text-sm text-on-surface-variant">{t.noShares}</p>
         ) : (
           <ul className="space-y-1.5">
             {shares.map((s) => (
               <li
                 key={s.userId}
-                className="flex items-center justify-between gap-3 text-sm text-brown-dark"
+                className="flex items-center justify-between gap-3 text-sm text-on-surface"
               >
                 <span>{s.displayName}</span>
                 <button
                   type="button"
                   disabled={isPending && revokingId === s.userId}
                   onClick={() => handleRevoke(s.userId)}
-                  className="rounded-pill border border-brown-light text-xs font-semibold px-3 py-1.5 hover:bg-cream disabled:opacity-60"
+                  className="rounded-pill border border-outline-variant text-xs font-semibold px-3 py-1.5 hover:bg-surface-container disabled:opacity-60"
                 >
                   {t.revoke}
                 </button>
@@ -130,7 +130,7 @@ export function CoffeeShareManager({
         )}
       </div>
 
-      <p className="text-xs text-brown-mid">{t.linkHint}</p>
+      <p className="text-xs text-on-surface-variant">{t.linkHint}</p>
     </div>
   );
 }

@@ -73,21 +73,8 @@ async function resolveOrCreateSessionInvite(
   return token;
 }
 
-// ─── Create a tasting group ────────────────────────────────────────────────────
-export async function createGroup(input: { name: string }): Promise<{ groupId: string }> {
-  const user = await requireUser();
-
-  const name = input.name.trim();
-  if (name.length < 1 || name.length > 80) throw new Error("invalid_name");
-
-  const group = await prisma.tastingGroup.create({
-    data: { name, createdBy: user.id },
-  });
-
-  revalidatePath("/es/app/groups");
-  revalidatePath("/en/app/groups");
-  return { groupId: group.id };
-}
+// NOTE: the old name-only `createGroup` action was removed — every creation
+// path now goes through createGroupWithMembers (empty roster is fine).
 
 // ─── Update a tasting group's name/description (owner only) ───────────────────
 // Replaces the old renameGroup — name and description are both optional so
@@ -939,4 +926,232 @@ export async function notifyGroupOfSession(input: {
     failed: results.filter((r) => r.status === "failed").length,
     results,
   };
+}
+
+// ═══ Announcements feed (GroupPost) ═══════════════════════════════════════════
+// Owner-only authorship; members read the feed on the group page. Optional
+// email notification reuses the sendGroupEmail broadcast machinery (chunked
+// Resend sends, per-recipient locale) and is best-effort — a failed blast
+// never fails the post itself.
+
+export async function createGroupPost(input: {
+  groupId: string;
+  title?: string;
+  body: string;
+  notifyByEmail?: boolean;
+}): Promise<
+  | { ok: true; postId: string; emailSummary?: GroupEmailSummary }
+  | { ok: false; error: "body_required" | "body_too_long" | "title_too_long" }
+> {
+  const user = await requireUser();
+
+  const group = await prisma.tastingGroup.findUnique({
+    where: { id: input.groupId },
+    select: { createdBy: true, name: true },
+  });
+  if (!group || group.createdBy !== user.id) {
+    throw new Error("not_found_or_forbidden");
+  }
+
+  const body = input.body?.trim();
+  if (!body) return { ok: false, error: "body_required" };
+  if (body.length > 5000) return { ok: false, error: "body_too_long" };
+  const title = input.title?.trim() || null;
+  if (title && title.length > 120) return { ok: false, error: "title_too_long" };
+
+  const post = await prisma.groupPost.create({
+    data: { groupId: input.groupId, authorId: user.id, title, body },
+    select: { id: true },
+  });
+
+  let emailSummary: GroupEmailSummary | undefined;
+  if (input.notifyByEmail) {
+    try {
+      emailSummary = await sendGroupEmail({
+        groupId: input.groupId,
+        subject: title || group.name,
+        message: body,
+      });
+      if (emailSummary.sent > 0) {
+        await prisma.groupPost.update({
+          where: { id: post.id },
+          data: { emailSent: true },
+        });
+      }
+    } catch (e) {
+      console.warn(
+        `[createGroupPost] notify email threw for post ${post.id}: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
+  }
+
+  revalidatePath(`/es/app/groups/${input.groupId}`);
+  revalidatePath(`/en/app/groups/${input.groupId}`);
+  return { ok: true, postId: post.id, emailSummary };
+}
+
+export async function updateGroupPost(
+  postId: string,
+  input: { title?: string | null; body?: string },
+): Promise<{ ok: true } | { ok: false; error: "body_required" | "body_too_long" | "title_too_long" }> {
+  const user = await requireUser();
+
+  const post = await prisma.groupPost.findUnique({
+    where: { id: postId },
+    select: { groupId: true, group: { select: { createdBy: true } } },
+  });
+  if (!post || post.group.createdBy !== user.id) {
+    throw new Error("not_found_or_forbidden");
+  }
+
+  const data: { title?: string | null; body?: string } = {};
+  if (input.title !== undefined) {
+    const title = input.title?.trim() || null;
+    if (title && title.length > 120) return { ok: false, error: "title_too_long" };
+    data.title = title;
+  }
+  if (input.body !== undefined) {
+    const body = input.body.trim();
+    if (!body) return { ok: false, error: "body_required" };
+    if (body.length > 5000) return { ok: false, error: "body_too_long" };
+    data.body = body;
+  }
+
+  await prisma.groupPost.update({ where: { id: postId }, data });
+
+  revalidatePath(`/es/app/groups/${post.groupId}`);
+  revalidatePath(`/en/app/groups/${post.groupId}`);
+  return { ok: true };
+}
+
+export async function deleteGroupPost(postId: string): Promise<{ ok: true }> {
+  const user = await requireUser();
+
+  const post = await prisma.groupPost.findUnique({
+    where: { id: postId },
+    select: { groupId: true, group: { select: { createdBy: true } } },
+  });
+  if (!post || post.group.createdBy !== user.id) {
+    throw new Error("not_found_or_forbidden");
+  }
+
+  await prisma.groupPost.delete({ where: { id: postId } });
+
+  revalidatePath(`/es/app/groups/${post.groupId}`);
+  revalidatePath(`/en/app/groups/${post.groupId}`);
+  return { ok: true };
+}
+
+// ─── Member self-service: leave a group ───────────────────────────────────────
+// A member deletes their OWN membership row(s). The owner can never leave
+// their own group (it would orphan it) — deleting the group is their exit.
+export async function leaveGroup(groupId: string): Promise<{ ok: true }> {
+  const user = await requireUser();
+
+  const group = await prisma.tastingGroup.findUnique({
+    where: { id: groupId },
+    select: { createdBy: true },
+  });
+  if (!group) throw new Error("not_found_or_forbidden");
+  if (group.createdBy === user.id) throw new Error("owner_cannot_leave");
+
+  const res = await prisma.tastingGroupMember.deleteMany({
+    where: { groupId, userId: user.id },
+  });
+  if (res.count === 0) throw new Error("not_found_or_forbidden");
+
+  revalidatePath("/es/app/groups");
+  revalidatePath("/en/app/groups");
+  revalidatePath(`/es/app/groups/${groupId}`);
+  revalidatePath(`/en/app/groups/${groupId}`);
+  return { ok: true };
+}
+
+// ─── Edit a member's display name (owner only) ────────────────────────────────
+export async function updateMemberDisplayName(
+  groupId: string,
+  memberId: string,
+  displayName: string,
+): Promise<{ ok: true }> {
+  const user = await requireUser();
+
+  const group = await prisma.tastingGroup.findUnique({
+    where: { id: groupId },
+    select: { createdBy: true },
+  });
+  if (!group || group.createdBy !== user.id) {
+    throw new Error("not_found_or_forbidden");
+  }
+
+  const member = await prisma.tastingGroupMember.findUnique({
+    where: { id: memberId },
+    select: { groupId: true },
+  });
+  if (!member || member.groupId !== groupId) {
+    throw new Error("not_found_or_forbidden");
+  }
+
+  const trimmed = displayName.trim();
+  if (trimmed.length < 1 || trimmed.length > 80) throw new Error("invalid_name");
+
+  await prisma.tastingGroupMember.update({
+    where: { id: memberId },
+    data: { displayName: trimmed },
+  });
+
+  revalidatePath(`/es/app/groups/${groupId}`);
+  revalidatePath(`/en/app/groups/${groupId}`);
+  return { ok: true };
+}
+
+// ─── Resend a membership invitation (owner only) ──────────────────────────────
+// Only meaningful for unlinked members (no account yet) — linked members are
+// already in; returns "skipped" for them instead of erroring so the UI can
+// simply hide/disable the affordance.
+export async function resendInvitation(
+  groupId: string,
+  memberId: string,
+): Promise<{ ok: true; emailStatus: "sent" | "skipped" | "failed" }> {
+  const user = await requireUser();
+
+  const group = await prisma.tastingGroup.findUnique({
+    where: { id: groupId },
+    select: { createdBy: true, name: true, description: true },
+  });
+  if (!group || group.createdBy !== user.id) {
+    throw new Error("not_found_or_forbidden");
+  }
+
+  const member = await prisma.tastingGroupMember.findUnique({
+    where: { id: memberId },
+    select: { groupId: true, email: true, userId: true, displayName: true },
+  });
+  if (!member || member.groupId !== groupId) {
+    throw new Error("not_found_or_forbidden");
+  }
+  if (member.userId !== null) return { ok: true, emailStatus: "skipped" };
+
+  try {
+    const inviterProfile = await prisma.profile.findUnique({
+      where: { id: user.id },
+      select: { displayName: true, preferredLang: true },
+    });
+    const senderLocale: Locale = inviterProfile?.preferredLang === "en" ? "en" : "es";
+    const origin = await getOrigin();
+    const summary = await sendGroupInvitationEmails({
+      group: { id: groupId, name: group.name, description: group.description },
+      inviterName: inviterProfile?.displayName ?? "",
+      recipients: [
+        { email: member.email, userId: null, displayName: member.displayName },
+      ],
+      origin,
+      senderLocale,
+    });
+    return { ok: true, emailStatus: summary.results[0]?.status ?? "failed" };
+  } catch (e) {
+    console.warn(
+      `[resendInvitation] invitation email threw: ${e instanceof Error ? e.message : String(e)}`,
+    );
+    return { ok: true, emailStatus: "failed" };
+  }
 }

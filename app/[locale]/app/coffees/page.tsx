@@ -5,6 +5,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { getCoffeesWithStats } from "@/app/actions/coffees";
+import { PageHeader } from "@/components/ui";
 import CoffeesTable from "@/components/coffees/CoffeesTable";
 
 export function generateStaticParams() {
@@ -26,6 +27,7 @@ export default async function CoffeesPage({
   if (!user) redirect(`/${locale}/auth/login`);
 
   const t = await getTranslations("coffee");
+  const tc = await getTranslations("common");
   const isAdmin = isSuperAdminEmail(user.email);
 
   const raw = await getCoffeesWithStats(user.id, { all: isAdmin });
@@ -48,7 +50,6 @@ export default async function CoffeesPage({
   });
 
   const translations = {
-    searchPlaceholder: t("searchPlaceholder"),
     colName: t("colName"),
     colOrigin: t("colOrigin"),
     colProcess: t("colProcess"),
@@ -56,41 +57,55 @@ export default async function CoffeesPage({
     colSessions: t("colSessions"),
     colLastScore: t("colLastScore"),
     colLastDate: t("colLastDate"),
-    noData: t("noData"),
-    // Raw template — CoffeesTable interpolates {from}/{to}/{total} client-side.
-    showing: t.raw("showing"),
     view: t("view"),
     listPublic: t("listPublic"),
     listPrivate: t("listPrivate"),
     listShared: t("listShared"),
     sharedWithMe: t("sharedWithMe"),
     adminOwnerPrefix: t("adminOwnerPrefix"),
+    noData: t("noData"),
+    // Generic table controls — shared common.* strings, not coffee-scoped.
+    searchPlaceholder: tc("searchPlaceholder"),
+    // Raw template — DataTable interpolates {from}/{to}/{total} client-side.
+    showing: tc.raw("showing"),
+    prev: tc("prev"),
+    next: tc("next"),
+    clearFilters: tc("clearFilters"),
+    all: tc("all"),
+    noResults: tc("noResults"),
+    // Facets
+    filterProcess: t("filterProcess"),
+    filterCountry: t("filterCountry"),
+    filterOwnership: t("filterOwnership"),
+    ownershipMine: t("ownershipMine"),
+    ownershipShared: t("ownershipShared"),
+    ownershipPublic: t("ownershipPublic"),
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="font-serif text-3xl text-green-dark font-semibold">
-            {t("list")}
-          </h1>
-          <p className="text-sm text-brown-mid mt-1">
+      <PageHeader
+        title={t("list")}
+        description={
+          <>
             {t("registered", { count: coffees.length })}
-          </p>
-          {isAdmin && (
-            <p className="text-xs text-amber-warm font-semibold mt-1">
-              {t("adminBadge")}
-            </p>
-          )}
-        </div>
-        <Link
-          href={`/${locale}/app/coffees/new`}
-          className="inline-flex items-center gap-1.5 shrink-0 bg-green-dark text-white text-sm font-semibold px-4 py-2 rounded-pill hover:bg-green-dark/90 transition-colors"
-        >
-          <Plus size={16} />
-          {t("createCoffee")}
-        </Link>
-      </div>
+            {isAdmin && (
+              <span className="mt-1 block text-xs font-semibold text-secondary">
+                {t("adminBadge")}
+              </span>
+            )}
+          </>
+        }
+        action={
+          <Link
+            href={`/${locale}/app/coffees/new`}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-pill bg-primary-container px-4 py-2 text-sm font-semibold text-on-primary transition-colors hover:bg-primary"
+          >
+            <Plus size={16} />
+            {t("createCoffee")}
+          </Link>
+        }
+      />
       <CoffeesTable
         coffees={coffees}
         locale={locale}

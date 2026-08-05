@@ -12,16 +12,20 @@ export function generateStaticParams() {
 
 export default async function NewSessionPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ groupId?: string }>;
 }) {
   const { locale } = await params;
+  const { groupId: requestedGroupId } = await searchParams;
   setRequestLocale(locale);
   const t = await getTranslations("session");
   const tc = await getTranslations("coffee");
   const tg = await getTranslations("group");
   const ta = await getTranslations("actions");
   const tgroups = await getTranslations("groups");
+  const tCommon = await getTranslations("common");
 
   const translations = {
     title: t("new"),
@@ -89,6 +93,7 @@ export default async function NewSessionPage({
       empty: tc("picker.empty"),
       linked: tc("picker.linked"),
       unlink: tc("picker.unlink"),
+      close: tCommon("close"),
     },
   };
 
@@ -127,6 +132,14 @@ export default async function NewSessionPage({
 
   const groupOptions = groups.map((g) => ({ id: g.id, name: g.name, memberCount: g._count.members }));
 
+  // ?groupId=<id> prefill (e.g. the "Crear sesión para este grupo" CTA on a
+  // group's page) — only honored when the id belongs to a group this user
+  // owns (already the universe fetched above for the selector), never trusted
+  // blindly from the query string.
+  const initialGroupId = groupOptions.some((g) => g.id === requestedGroupId)
+    ? requestedGroupId
+    : undefined;
+
   const countries = COFFEE_COUNTRIES.map((c) => (locale === "en" ? c.nameEn : c.nameEs));
 
   const usableRaw = user ? await getUsableCoffees(user.id) : [];
@@ -145,7 +158,7 @@ export default async function NewSessionPage({
 
   return (
     <div className="max-w-2xl">
-      <h1 className="font-serif text-3xl text-green-dark mb-6">{translations.title}</h1>
+      <h1 className="font-display text-3xl text-primary-container mb-6">{translations.title}</h1>
       <NewSessionForm
         locale={locale}
         t={translations}
@@ -153,6 +166,7 @@ export default async function NewSessionPage({
         groups={groupOptions}
         countries={countries}
         usableCoffees={usableCoffees}
+        initialGroupId={initialGroupId}
       />
     </div>
   );

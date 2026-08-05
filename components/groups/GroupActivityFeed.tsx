@@ -36,19 +36,19 @@ export function GroupActivityFeed({
 }) {
   return (
     <div className="space-y-3">
-      <h2 className="font-serif text-xl text-green-dark">{title}</h2>
-      <div className="bg-white rounded-card border border-[#E8E0D0] shadow-card p-5">
+      <h2 className="font-display text-xl text-primary-container">{title}</h2>
+      <div className="bg-surface-container-lowest rounded-card border border-outline-variant shadow-card p-5">
         {events.length === 0 ? (
-          <p className="text-sm text-brown-mid">{emptyText}</p>
+          <p className="text-sm text-on-surface-variant">{emptyText}</p>
         ) : (
-          <ul className="divide-y divide-[#E8E0D0]">
+          <ul className="divide-y divide-outline-variant">
             {events.map((event, i) => (
               <li
                 key={i}
                 className="py-2.5 first:pt-0 last:pb-0 flex items-baseline justify-between gap-3"
               >
-                <span className="text-sm text-brown-dark">{event.message}</span>
-                <span className="text-xs text-brown-mid whitespace-nowrap">
+                <span className="text-sm text-on-surface">{event.message}</span>
+                <span className="text-xs text-on-surface-variant whitespace-nowrap">
                   {formatRelativeDate(event.timestamp, locale)}
                 </span>
               </li>

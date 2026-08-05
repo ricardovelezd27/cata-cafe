@@ -1105,3 +1105,36 @@ CREATE POLICY "coffee_shares_select" ON coffee_shares
   );
 
 ALTER TABLE coffee_invites ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- PHASE 17 (2026-08-05): Group announcements feed (group_posts)
+-- The Prisma migration `group_posts` added the group_posts table (owner-only
+-- authorship, members read in-app). Same access model as Phase 10's
+-- tasting_groups: RLS is enabled with OWNER-ONLY policies, and every
+-- member-facing read goes through Prisma (postgres role, bypasses RLS) — the
+-- server actions in app/actions/groups.ts are the real gate. Do NOT move
+-- group_posts reads to the Supabase client: members would silently see
+-- nothing (Phase 15 rationale).
+-- Apply manually via the Supabase Dashboard → SQL Editor.
+-- ============================================================================
+ALTER TABLE group_posts ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "group_posts_select" ON group_posts;
+CREATE POLICY "group_posts_select" ON group_posts
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM tasting_groups g
+      WHERE g.id = group_posts."groupId"
+        AND g."createdBy" = auth.uid()::text
+    )
+  );
+
+DROP POLICY IF EXISTS "group_posts_write" ON group_posts;
+CREATE POLICY "group_posts_write" ON group_posts
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM tasting_groups g
+      WHERE g.id = group_posts."groupId"
+        AND g."createdBy" = auth.uid()::text
+    )
+  );

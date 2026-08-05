@@ -144,14 +144,14 @@ export function CreateGroupDialog({
   };
 
   const inputCls =
-    "w-full px-3 py-2 border border-[#D4C5A9] rounded-input text-sm bg-white text-brown-dark focus:outline-none focus:border-green-dark";
+    "w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:outline-none focus:border-primary-container";
 
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-pill bg-green-dark text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-pill bg-primary-container text-white text-sm font-semibold hover:opacity-90 transition-opacity"
       >
         <Plus size={16} />
         {t.createGroupCta}
@@ -170,7 +170,7 @@ export function CreateGroupDialog({
           />
 
           <div className="space-y-1.5">
-            <label className="block text-xs text-brown-mid font-semibold uppercase tracking-wide">
+            <label className="block text-xs text-on-surface-variant font-semibold uppercase tracking-wide">
               {t.descriptionLabel}
             </label>
             <textarea
@@ -183,7 +183,7 @@ export function CreateGroupDialog({
           </div>
 
           <div className="space-y-2">
-            <label className="block text-xs text-brown-mid font-semibold uppercase tracking-wide">
+            <label className="block text-xs text-on-surface-variant font-semibold uppercase tracking-wide">
               {t.membersSectionTitle}
             </label>
             <div className="space-y-2">
@@ -207,7 +207,7 @@ export function CreateGroupDialog({
                     type="button"
                     onClick={() => removeRow(i)}
                     title={t.removeRow}
-                    className="shrink-0 self-start sm:self-center p-2 text-brown-mid hover:text-red-defect transition-colors"
+                    className="shrink-0 self-start sm:self-center p-2 text-on-surface-variant hover:text-error transition-colors"
                   >
                     <X size={16} />
                   </button>
@@ -217,7 +217,7 @@ export function CreateGroupDialog({
             <button
               type="button"
               onClick={addRow}
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-green-dark hover:opacity-80 transition-opacity"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary-container hover:opacity-80 transition-opacity"
             >
               <Plus size={14} /> {t.addAnotherMember}
             </button>
@@ -225,7 +225,7 @@ export function CreateGroupDialog({
 
           {candidates.length > 0 && (
             <div className="space-y-2">
-              <label className="block text-xs text-brown-mid font-semibold uppercase tracking-wide">
+              <label className="block text-xs text-on-surface-variant font-semibold uppercase tracking-wide">
                 {t.quickAddTitle}
               </label>
               <div className="flex flex-wrap gap-2">
@@ -239,8 +239,8 @@ export function CreateGroupDialog({
                       className={
                         "inline-flex items-center gap-1 px-3 py-1.5 rounded-pill text-xs font-semibold border transition-colors " +
                         (selected
-                          ? "bg-green-dark text-white border-green-dark"
-                          : "bg-white text-brown-dark border-[#D4C5A9] hover:border-green-dark")
+                          ? "bg-primary-container text-white border-primary-container"
+                          : "bg-surface-container-lowest text-on-surface border-outline-variant hover:border-primary-container")
                       }
                     >
                       {selected && <Check size={12} />}
@@ -252,18 +252,18 @@ export function CreateGroupDialog({
             </div>
           )}
 
-          {error && <p className="text-xs text-red-defect">{error}</p>}
+          {error && <p className="text-xs text-error">{error}</p>}
           {summary && (
-            <p className="text-xs text-green-dark font-semibold">
+            <p className="text-xs text-primary-container font-semibold">
               {formatTemplate(t.invitesSentSummaryTemplate, summary)}
             </p>
           )}
 
-          <div className="flex justify-end pt-2 border-t border-[#E8E0D0]">
+          <div className="flex justify-end pt-2 border-t border-outline-variant">
             <button
               type="submit"
               disabled={pending || !name.trim()}
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-pill bg-green-dark text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-pill bg-primary-container text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               {pending ? t.creating : t.createAndInvite}
             </button>

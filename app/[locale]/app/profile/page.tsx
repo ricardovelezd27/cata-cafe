@@ -1,50 +1,21 @@
 import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { ClipboardList, Users, CheckCircle2, Coffee, Plus } from "lucide-react";
+import { ClipboardList, Users, CheckCircle2, Coffee } from "lucide-react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { claimGroupMembershipsByEmail } from "@/lib/groupMembership";
-import { ProfileForm } from "./ProfileForm";
-import Link from "next/link";
 import { signOut, switchAccount } from "@/app/actions/auth";
 import { Avatar } from "@/components/ui/Avatar";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { LevelBadge } from "@/components/profile/LevelBadge";
+import { Badge, StatusPill } from "@/components/ui/Badge";
 import { calcActivityPoints, computeLevel, LEVELS } from "@/lib/gamification";
+import { ROLE_LABELS, COUNTRIES } from "@/lib/constants";
+import { sessionHref } from "@/lib/sessionRouting";
+import { ProfileForm } from "./ProfileForm";
 
 export function generateStaticParams() {
   return [{ locale: "es" }, { locale: "en" }];
-}
-
-function StatusBadge({
-  status,
-  labels,
-}: {
-  status: string;
-  labels: { draft: string; active: string; closed: string };
-}) {
-  const cfg = {
-    draft: { bg: "#F0EBE0", color: "#8B7355", label: labels.draft },
-    active: { bg: "#E8F0E8", color: "#3D5A3E", label: labels.active },
-    closed: { bg: "#EBE0E0", color: "#A83232", label: labels.closed },
-  }[status] ?? { bg: "#F0EBE0", color: "#8B7355", label: status };
-
-  return (
-    <span
-      style={{
-        fontSize: 10,
-        fontWeight: 700,
-        padding: "2px 8px",
-        borderRadius: 10,
-        background: cfg.bg,
-        color: cfg.color,
-        textTransform: "uppercase",
-        letterSpacing: "0.5px",
-      }}
-    >
-      {cfg.label}
-    </span>
-  );
 }
 
 export default async function ProfilePage({
@@ -61,40 +32,17 @@ export default async function ProfilePage({
   } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
 
-  // Link any email-only group memberships to this account before querying —
-  // covers users who already had an account when they were added by email.
-  await claimGroupMembershipsByEmail(user.id, user.email);
-
   const [
     profile,
-    ownedSessions,
-    participantRows,
     sessionsHosted,
     sessionsJoined,
     evaluationsSubmitted,
     distinctCoffees,
     percentileRows,
-    ownedGroups,
-    memberGroups,
-    myCoffees,
+    recentSessions,
+    recentCoffees,
   ] = await Promise.all([
     prisma.profile.findUnique({ where: { id: user.id } }),
-    prisma.cuppingSession.findMany({
-      where: { createdBy: user.id },
-      orderBy: { date: "desc" },
-      take: 10,
-      select: { id: true, name: true, date: true, status: true, format: true, isGroup: true },
-    }),
-    prisma.sessionParticipant.findMany({
-      where: { userId: user.id, status: "joined" },
-      include: {
-        session: {
-          select: { id: true, name: true, date: true, status: true, format: true },
-        },
-      },
-      orderBy: { joinedAt: "desc" },
-      take: 10,
-    }),
     // Activity stats + level (Phase 2). Drafts aren't directed sessions, so
     // status != 'draft' is the "hosted" count — NB live data also contains a
     // legacy status "open", which status != 'draft' correctly still includes.
@@ -122,59 +70,23 @@ export default async function ProfilePage({
         (SELECT count(*) FROM active) AS active_count,
         (SELECT count(*) FROM active a WHERE a.points < (SELECT points FROM pts WHERE id = ${user.id})) AS below_count
     `,
-    prisma.tastingGroup.findMany({
+    prisma.cuppingSession.findMany({
       where: { createdBy: user.id },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        _count: { select: { members: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.tastingGroup.findMany({
-      where: { createdBy: { not: user.id }, members: { some: { userId: user.id } } },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        _count: { select: { members: true } },
-        owner: { select: { displayName: true } },
-      },
-      orderBy: { createdAt: "desc" },
+      orderBy: { date: "desc" },
+      take: 3,
+      select: { id: true, name: true, date: true, status: true, isGroup: true, startedAt: true },
     }),
     prisma.coffee.findMany({
       where: { createdBy: user.id },
       orderBy: { updatedAt: "desc" },
-      select: {
-        id: true,
-        name: true,
-        variety: true,
-        visibility: true,
-        _count: { select: { sessionSamples: true } },
-      },
+      take: 3,
+      select: { id: true, name: true, visibility: true },
     }),
   ]);
 
   const t = await getTranslations("profile");
-  const tGroups = await getTranslations("groups");
-  const tc = await getTranslations("coffee");
-
-  // profile.groupMembers is a plain "{count} integrantes" template (not ICU
-  // plural) — interpolate it manually server-side rather than passing count
-  // through t() directly.
-  const formatGroupMembers = (count: number) => t.raw("groupMembers").replace("{count}", String(count));
-
-  const combinedGroups = [
-    ...ownedGroups.map((g) => ({ ...g, isOwned: true as const, ownerName: null as string | null })),
-    ...memberGroups.map((g) => ({ ...g, isOwned: false as const, ownerName: g.owner.displayName })),
-  ].slice(0, 10);
-
-  const statusLabels = {
-    draft: t("statusDraft"),
-    active: t("statusActive"),
-    closed: t("statusClosed"),
-  };
+  const tc = await getTranslations("common");
+  const tCoffee = await getTranslations("coffee");
 
   // Activity points + level (lib/gamification.ts is the single source of truth
   // for the weights/thresholds; this just feeds it the counts from above).
@@ -217,21 +129,43 @@ export default async function ProfilePage({
       day: "numeric",
     });
 
-  return (
-    <div className="max-w-xl space-y-8">
-      {/* Avatar + identity */}
-      <div className="flex items-center gap-4">
-        <Avatar name={profile?.displayName || user.email || "?"} size={64} />
-        <div>
-          <div className="font-serif text-xl text-green-dark font-bold">
-            {profile?.displayName || "—"}
-          </div>
-          <div className="text-sm text-brown-mid">{user.email}</div>
-        </div>
-      </div>
+  const statusLabels = {
+    draft: tc("statusDraft"),
+    active: tc("statusActive"),
+    closed: tc("statusClosed"),
+  };
 
-      {/* Level + activity stats (Phase 2) */}
-      <div>
+  const visibilityLabels: Record<string, string> = {
+    public: tCoffee("listPublic"),
+    shared: tCoffee("listShared"),
+    private: tCoffee("listPrivate"),
+  };
+
+  const roleOptions = Object.entries(ROLE_LABELS).map(([value, label]) => ({
+    value,
+    label: locale === "es" ? label.es : label.en,
+  }));
+
+  const roleLabelText = profile?.role
+    ? (ROLE_LABELS[profile.role]?.[locale as "es" | "en"] ?? profile.role)
+    : null;
+  const metaLine = [roleLabelText, profile?.country].filter(Boolean).join(" · ");
+
+  return (
+    <div className="lg:grid lg:grid-cols-[320px_1fr] lg:gap-8">
+      {/* LEFT — identity rail */}
+      <div className="space-y-6">
+        <div className="flex flex-col items-center gap-3 rounded-card border border-outline-variant bg-surface-container-lowest p-6 text-center shadow-card">
+          <Avatar name={profile?.displayName || user.email || "?"} size={64} />
+          <div>
+            <div className="font-display text-xl font-medium text-on-surface">
+              {profile?.displayName || "—"}
+            </div>
+            <div className="text-sm text-on-surface-variant">{user.email}</div>
+          </div>
+          {metaLine && <div className="text-xs text-on-surface-variant">{metaLine}</div>}
+        </div>
+
         <LevelBadge
           locale={locale as "es" | "en"}
           level={levelInfo.level}
@@ -246,8 +180,7 @@ export default async function ProfilePage({
           }}
         />
 
-        <h2 className="font-serif text-xl text-green-dark mt-6 mb-3">{t("statsTitle")}</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           <StatCard
             label={t("statMaster")}
             value={String(sessionsHosted)}
@@ -278,270 +211,128 @@ export default async function ProfilePage({
         </div>
       </div>
 
-      {/* Editable profile fields */}
-      <div>
-        <h2 className="font-serif text-2xl text-green-dark mb-4">{t("title")}</h2>
-        <ProfileForm
-          initial={{
-            displayName: profile?.displayName ?? "",
-            preferredLang: (profile?.preferredLang as "es" | "en") ?? "es",
-            bio: profile?.bio ?? "",
-          }}
-          t={{
-            displayName: t("displayName"),
-            preferredLang: t("preferredLang"),
-            bio: t("bio"),
-            save: t("save"),
-          }}
-        />
-      </div>
-
-      {/* My groups */}
-      <div>
-        <h2 className="font-serif text-xl text-green-dark mb-3">{t("myGroups")}</h2>
-        {combinedGroups.length === 0 ? (
-          <p className="text-sm text-brown-mid">{t("noGroups")}</p>
-        ) : (
-          <div className="space-y-2">
-            {combinedGroups.map((g) => (
-              <Link
-                key={g.id}
-                href={`/${locale}/app/groups/${g.id}`}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: "10px 14px",
-                  background: "#FDFBF7",
-                  border: "1px solid #E8E0D0",
-                  borderRadius: 10,
-                  textDecoration: "none",
-                  color: "inherit",
-                }}
-              >
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#3D5A3E" }}>
-                    {g.name}
-                  </div>
-                  <div style={{ fontSize: 11, color: "#8B7355", marginTop: 2 }}>
-                    {formatGroupMembers(g._count.members)}
-                    {g.ownerName && ` · ${g.ownerName}`}
-                  </div>
-                  {g.description && (
-                    <div
-                      className="line-clamp-1"
-                      style={{ fontSize: 11, color: "#A89B84", marginTop: 2 }}
-                    >
-                      {g.description}
-                    </div>
-                  )}
-                </div>
-                {!g.isOwned && (
-                  <span
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      padding: "2px 8px",
-                      borderRadius: 10,
-                      background: "#E8F0E8",
-                      color: "#3D5A3E",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      whiteSpace: "nowrap",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {tGroups("memberBadge")}
-                  </span>
-                )}
-              </Link>
-            ))}
+      {/* RIGHT column */}
+      <div className="mt-8 space-y-8 lg:mt-0">
+        {/* Settings */}
+        <section>
+          <h2 className="mb-4 font-display text-2xl text-primary-container">{t("settingsTitle")}</h2>
+          <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-6 shadow-card">
+            <ProfileForm
+              initial={{
+                displayName: profile?.displayName ?? "",
+                preferredLang: (profile?.preferredLang as "es" | "en") ?? "es",
+                bio: profile?.bio ?? "",
+                role: profile?.role ?? "cupping_pro",
+                country: profile?.country ?? "",
+              }}
+              roleOptions={roleOptions}
+              countryOptions={[...COUNTRIES]}
+              t={{
+                displayName: t("displayName"),
+                preferredLang: t("preferredLang"),
+                bio: t("bio"),
+                save: t("save"),
+                roleLabel: t("roleLabel"),
+                countryLabel: t("countryLabel"),
+                saveSuccess: t("saveSuccess"),
+                saveError: t("saveError"),
+              }}
+            />
           </div>
-        )}
-      </div>
+        </section>
 
-      {/* My coffees */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-serif text-xl text-green-dark">{t("myCoffees")}</h2>
-          <Link
-            href={`/${locale}/app/coffees/new`}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-green-dark hover:underline"
-          >
-            <Plus size={14} />
-            {t("createCoffee")}
-          </Link>
-        </div>
-        {myCoffees.length === 0 ? (
-          <p className="text-sm text-brown-mid">{t("myCoffeesEmpty")}</p>
-        ) : (
-          <div className="space-y-2">
-            {myCoffees.slice(0, 8).map((c) => {
-              const visibilityLabel =
-                c.visibility === "public"
-                  ? tc("listPublic")
-                  : c.visibility === "shared"
-                    ? tc("listShared")
-                    : tc("listPrivate");
-              const visibilityCls =
-                c.visibility === "public"
-                  ? "bg-green-dark/10 text-green-dark border-green-dark/30"
-                  : c.visibility === "shared"
-                    ? "bg-amber-warm/15 text-brown-dark border-amber-warm/40"
-                    : "bg-cream text-brown-mid border-brown-light";
+        {/* Recent sessions teaser */}
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="font-display text-xl text-primary-container">{t("recentSessions")}</h2>
+            <Link
+              href={`/${locale}/app/sessions`}
+              className="text-xs font-semibold text-primary-container hover:underline"
+            >
+              {t("viewAllSessions")}
+            </Link>
+          </div>
+          {recentSessions.length === 0 ? (
+            <p className="text-sm text-on-surface-variant">{t("noOwnedSessions")}</p>
+          ) : (
+            <div className="space-y-2">
+              {recentSessions.map((s) => (
+                <Link
+                  key={s.id}
+                  href={sessionHref(s, { locale, isOwner: true })}
+                  className="flex items-center justify-between gap-3 rounded-card border border-outline-variant bg-surface-container-lowest px-4 py-2.5 transition-colors hover:bg-surface-container-low"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold text-on-surface">{s.name}</div>
+                    <div className="mt-0.5 text-xs text-on-surface-variant">{formatDate(s.date)}</div>
+                  </div>
+                  <StatusPill status={s.status} labels={statusLabels} />
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
 
-              return (
+        {/* Recent coffees teaser */}
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="font-display text-xl text-primary-container">{t("recentCoffees")}</h2>
+            <Link
+              href={`/${locale}/app/coffees`}
+              className="text-xs font-semibold text-primary-container hover:underline"
+            >
+              {t("viewAllCoffees")}
+            </Link>
+          </div>
+          {recentCoffees.length === 0 ? (
+            <p className="text-sm text-on-surface-variant">{t("myCoffeesEmpty")}</p>
+          ) : (
+            <div className="space-y-2">
+              {recentCoffees.map((c) => (
                 <Link
                   key={c.id}
                   href={`/${locale}/app/coffees/${c.id}`}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "10px 14px",
-                    background: "#FDFBF7",
-                    border: "1px solid #E8E0D0",
-                    borderRadius: 10,
-                    textDecoration: "none",
-                    color: "inherit",
-                    gap: 12,
-                  }}
+                  className="flex items-center justify-between gap-3 rounded-card border border-outline-variant bg-surface-container-lowest px-4 py-2.5 transition-colors hover:bg-surface-container-low"
                 >
-                  <div className="min-w-0">
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#3D5A3E" }}>
-                      {c.name}
-                      {c.variety && (
-                        <span className="text-brown-mid font-normal"> · {c.variety}</span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 11, color: "#8B7355", marginTop: 2 }}>
-                      {t("coffeeSessions", { count: c._count.sessionSamples })}
-                    </div>
-                  </div>
-                  <span
-                    className={
-                      "shrink-0 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-pill border " +
-                      visibilityCls
+                  <span className="truncate text-sm font-semibold text-on-surface">{c.name}</span>
+                  <Badge
+                    tone={
+                      c.visibility === "public" ? "success" : c.visibility === "shared" ? "accent" : "neutral"
                     }
                   >
-                    {visibilityLabel}
-                  </span>
+                    {visibilityLabels[c.visibility] ?? c.visibility}
+                  </Badge>
                 </Link>
-              );
-            })}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </section>
 
-      {/* Owned sessions */}
-      <div>
-        <h2 className="font-serif text-xl text-green-dark mb-3">{t("ownedSessions")}</h2>
-        {ownedSessions.length === 0 ? (
-          <p className="text-sm text-brown-mid">{t("noOwnedSessions")}</p>
-        ) : (
-          <div className="space-y-2">
-            {ownedSessions.map((s) => (
-              <Link
-                key={s.id}
-                href={`/${locale}/app/sessions/${s.id}/results`}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "10px 14px",
-                  background: "#FDFBF7",
-                  border: "1px solid #E8E0D0",
-                  borderRadius: 10,
-                  textDecoration: "none",
-                  color: "inherit",
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#3D5A3E" }}>
-                    {s.name}
-                  </div>
-                  <div style={{ fontSize: 11, color: "#8B7355", marginTop: 2 }}>
-                    {formatDate(s.date)} · {s.format}
-                    {s.isGroup && " · Grupal"}
-                  </div>
-                </div>
-                <StatusBadge status={s.status} labels={statusLabels} />
-              </Link>
-            ))}
+        {/* Account actions — reachable on mobile via the "Perfil" tab */}
+        <section>
+          <h2 className="mb-3 font-display text-xl text-primary-container">{t("account")}</h2>
+          <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4">
+            <div className="mb-3 text-sm text-on-surface-variant">{user.email}</div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <form action={switchAccount.bind(null, locale)}>
+                <button
+                  type="submit"
+                  className="w-full rounded-pill border border-outline-variant px-4 py-2 text-sm font-semibold text-on-surface transition-colors hover:bg-surface-container sm:w-auto"
+                >
+                  {t("switchAccount")}
+                </button>
+              </form>
+              <form action={signOut}>
+                <button
+                  type="submit"
+                  className="w-full rounded-pill border border-outline-variant px-4 py-2 text-sm font-semibold text-error transition-colors hover:bg-error-container sm:w-auto"
+                >
+                  {t("logout")}
+                </button>
+              </form>
+            </div>
           </div>
-        )}
-      </div>
-
-      {/* Participated sessions */}
-      <div>
-        <h2 className="font-serif text-xl text-green-dark mb-3">{t("participatedSessions")}</h2>
-        {participantRows.length === 0 ? (
-          <p className="text-sm text-brown-mid">{t("noParticipatedSessions")}</p>
-        ) : (
-          <div className="space-y-2">
-            {participantRows.map((row) => (
-              <Link
-                key={row.sessionId}
-                href={`/${locale}/app/sessions/${row.sessionId}/results`}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "10px 14px",
-                  background: "#FDFBF7",
-                  border: "1px solid #E8E0D0",
-                  borderRadius: 10,
-                  textDecoration: "none",
-                  color: "inherit",
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#3D5A3E" }}>
-                    {row.session.name}
-                  </div>
-                  <div style={{ fontSize: 11, color: "#8B7355", marginTop: 2 }}>
-                    {formatDate(row.session.date)} · {row.session.format}
-                  </div>
-                </div>
-                <StatusBadge status={row.session.status} labels={statusLabels} />
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Account actions — reachable on mobile via the "Perfil" tab */}
-      <div>
-        <h2 className="font-serif text-xl text-green-dark mb-3">{t("account")}</h2>
-        <div
-          style={{
-            padding: "14px",
-            background: "#FDFBF7",
-            border: "1px solid #E8E0D0",
-            borderRadius: 10,
-          }}
-        >
-          <div className="text-sm text-brown-mid mb-3">{user.email}</div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <form action={switchAccount.bind(null, locale)}>
-              <button
-                type="submit"
-                className="w-full sm:w-auto px-4 py-2 rounded-pill border border-[#D4C5A9] text-sm font-semibold text-brown-dark hover:bg-[#EDE8DB] transition-colors"
-              >
-                {t("switchAccount")}
-              </button>
-            </form>
-            <form action={signOut}>
-              <button
-                type="submit"
-                className="w-full sm:w-auto px-4 py-2 rounded-pill border border-[#D4C5A9] text-sm font-semibold text-red-defect hover:bg-[#EBE0E0] transition-colors"
-              >
-                {t("logout")}
-              </button>
-            </form>
-          </div>
-        </div>
+        </section>
       </div>
     </div>
   );

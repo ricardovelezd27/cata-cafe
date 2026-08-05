@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createCoffee } from "@/app/actions/coffees";
+import { createCoffee, updateCoffee } from "@/app/actions/coffees";
 import { PROCESS_TYPES, CERTIFICATIONS } from "@/lib/constants";
 
 type Visibility = "private" | "shared" | "public";
@@ -38,6 +38,22 @@ export type CoffeeFormTranslations = {
   error: string;
 };
 
+export type CoffeeFormInitialValues = {
+  name: string;
+  country: string;
+  region: string;
+  farm: string;
+  producer: string;
+  species: string;
+  variety: string;
+  harvestYear: string;
+  processType: string;
+  altitude: string;
+  roastLevel: string;
+  certifications: string[];
+  notes: string;
+};
+
 const inputCls =
   "w-full border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary-container/25 focus:border-primary-container transition-colors";
 
@@ -49,10 +65,10 @@ function FieldLabel({
   required?: boolean;
 }) {
   return (
-    <label className="block text-[11px] font-semibold uppercase tracking-widest text-brown-mid mb-1.5">
+    <label className="block text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant mb-1.5">
       {children}
       {required && (
-        <span className="text-red-defect" aria-hidden="true">
+        <span className="text-error" aria-hidden="true">
           {" "}
           *
         </span>
@@ -65,26 +81,44 @@ export function CoffeeForm({
   locale,
   translations: t,
   countries,
+  mode = "create",
+  coffeeId,
+  initialValues,
+  submitLabel,
+  submittingLabel,
 }: {
   locale: string;
   translations: CoffeeFormTranslations;
   countries: string[];
+  /** "create" (default) posts createCoffee + shows visibility. "edit" posts updateCoffee(coffeeId, ...) and hides visibility — it has its own toggle on the detail page. */
+  mode?: "create" | "edit";
+  /** Required when mode="edit". */
+  coffeeId?: string;
+  /** Prefill values for edit mode. */
+  initialValues?: CoffeeFormInitialValues;
+  /** Overrides t.create / t.creating (edit mode uses coffee.saveChanges / coffee.savingChanges). */
+  submitLabel?: string;
+  submittingLabel?: string;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const isEdit = mode === "edit";
 
-  const [name, setName] = useState("");
-  const [country, setCountry] = useState("");
-  const [region, setRegion] = useState("");
-  const [farm, setFarm] = useState("");
-  const [producer, setProducer] = useState("");
-  const [variety, setVariety] = useState("");
-  const [harvestYear, setHarvestYear] = useState("");
-  const [processType, setProcessType] = useState("");
-  const [altitude, setAltitude] = useState("");
-  const [roastLevel, setRoastLevel] = useState("");
-  const [certifications, setCertifications] = useState<string[]>([]);
-  const [notes, setNotes] = useState("");
+  const [name, setName] = useState(initialValues?.name ?? "");
+  const [country, setCountry] = useState(initialValues?.country ?? "");
+  const [region, setRegion] = useState(initialValues?.region ?? "");
+  const [farm, setFarm] = useState(initialValues?.farm ?? "");
+  const [producer, setProducer] = useState(initialValues?.producer ?? "");
+  const [species, setSpecies] = useState(initialValues?.species ?? "");
+  const [variety, setVariety] = useState(initialValues?.variety ?? "");
+  const [harvestYear, setHarvestYear] = useState(initialValues?.harvestYear ?? "");
+  const [processType, setProcessType] = useState(initialValues?.processType ?? "");
+  const [altitude, setAltitude] = useState(initialValues?.altitude ?? "");
+  const [roastLevel, setRoastLevel] = useState(initialValues?.roastLevel ?? "");
+  const [certifications, setCertifications] = useState<string[]>(
+    initialValues?.certifications ?? [],
+  );
+  const [notes, setNotes] = useState(initialValues?.notes ?? "");
   const [visibility, setVisibility] = useState<Visibility>("private");
 
   const [errorCode, setErrorCode] = useState<string | null>(null);
@@ -105,12 +139,13 @@ export function CoffeeForm({
     }
 
     start(async () => {
-      const res = await createCoffee({
+      const fields = {
         name,
         country: country || undefined,
         region: region || undefined,
         farm: farm || undefined,
         producer: producer || undefined,
+        species: species || undefined,
         variety: variety || undefined,
         harvestYear: harvestYear || undefined,
         processType: processType || undefined,
@@ -118,9 +153,20 @@ export function CoffeeForm({
         roastLevel: roastLevel || undefined,
         certifications,
         notes: notes || undefined,
-        visibility,
-      });
+      };
 
+      if (isEdit) {
+        if (!coffeeId) return;
+        const res = await updateCoffee(coffeeId, fields);
+        if (res.ok) {
+          router.push(`/${locale}/app/coffees/${coffeeId}`);
+        } else {
+          setErrorCode(res.error);
+        }
+        return;
+      }
+
+      const res = await createCoffee({ ...fields, visibility });
       if (res.ok) {
         router.push(`/${locale}/app/coffees/${res.coffeeId}`);
       } else {
@@ -146,6 +192,9 @@ export function CoffeeForm({
     { value: "public", label: t.visibilityPublic, hint: t.visibilityPublicHint },
   ];
 
+  const resolvedSubmitLabel = submitLabel ?? t.create;
+  const resolvedSubmittingLabel = submittingLabel ?? t.creating;
+
   return (
     <form onSubmit={onSubmit} className="space-y-6">
       <datalist id="cata-coffee-form-countries">
@@ -155,7 +204,7 @@ export function CoffeeForm({
       </datalist>
 
       {/* Basic info */}
-      <div className="bg-white border border-[#E8E0D0] rounded-card p-5 space-y-4">
+      <div className="bg-surface-container-lowest border border-outline-variant rounded-card p-5 space-y-4">
         <div>
           <FieldLabel required>{t.name}</FieldLabel>
           <input
@@ -203,6 +252,15 @@ export function CoffeeForm({
               value={producer}
               onChange={(e) => setProducer(e.target.value)}
               placeholder={t.producer}
+            />
+          </div>
+          <div>
+            <FieldLabel>{t.species}</FieldLabel>
+            <input
+              className={inputCls}
+              value={species}
+              onChange={(e) => setSpecies(e.target.value)}
+              placeholder={t.species}
             />
           </div>
           <div>
@@ -260,7 +318,7 @@ export function CoffeeForm({
       </div>
 
       {/* Certifications */}
-      <div className="bg-white border border-[#E8E0D0] rounded-card p-5 space-y-3">
+      <div className="bg-surface-container-lowest border border-outline-variant rounded-card p-5 space-y-3">
         <FieldLabel>{t.certifications}</FieldLabel>
         <div className="flex flex-wrap gap-2">
           {CERTIFICATIONS.map((c) => {
@@ -272,8 +330,8 @@ export function CoffeeForm({
                 onClick={() => toggleCertification(c)}
                 className={
                   active
-                    ? "bg-green-dark text-white rounded-pill px-3.5 py-1.5 text-xs font-semibold transition-colors"
-                    : "border border-brown-light text-brown-dark rounded-pill px-3.5 py-1.5 text-xs font-medium hover:bg-cream transition-colors"
+                    ? "bg-primary-container text-on-primary rounded-pill px-3.5 py-1.5 text-xs font-semibold transition-colors"
+                    : "border border-outline-variant text-on-surface rounded-pill px-3.5 py-1.5 text-xs font-medium hover:bg-surface-container transition-colors"
                 }
               >
                 {c}
@@ -284,7 +342,7 @@ export function CoffeeForm({
       </div>
 
       {/* Notes */}
-      <div className="bg-white border border-[#E8E0D0] rounded-card p-5 space-y-1.5">
+      <div className="bg-surface-container-lowest border border-outline-variant rounded-card p-5 space-y-1.5">
         <FieldLabel>{t.notes}</FieldLabel>
         <textarea
           className={inputCls + " min-h-[88px]"}
@@ -294,46 +352,48 @@ export function CoffeeForm({
         />
       </div>
 
-      {/* Visibility */}
-      <div className="bg-white border border-[#E8E0D0] rounded-card p-5 space-y-3">
-        <FieldLabel>{t.visibilityLabel}</FieldLabel>
-        <div className="grid sm:grid-cols-3 gap-3">
-          {visibilityOptions.map((opt) => {
-            const active = visibility === opt.value;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setVisibility(opt.value)}
-                className={
-                  "text-left rounded-card border p-3.5 transition-colors " +
-                  (active
-                    ? "border-green-dark bg-green-dark/5"
-                    : "border-brown-light bg-white hover:bg-cream")
-                }
-              >
-                <div className="flex items-center gap-2">
-                  <span
-                    className={
-                      "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 " +
-                      (active ? "border-green-dark" : "border-brown-light")
-                    }
-                  >
-                    {active && <span className="h-2 w-2 rounded-full bg-green-dark" />}
-                  </span>
-                  <span className="text-sm font-semibold text-brown-dark">{opt.label}</span>
-                </div>
-                <p className="text-xs text-brown-mid mt-1.5">{opt.hint}</p>
-              </button>
-            );
-          })}
+      {/* Visibility — create only; edit has its own toggle on the detail page */}
+      {!isEdit && (
+        <div className="bg-surface-container-lowest border border-outline-variant rounded-card p-5 space-y-3">
+          <FieldLabel>{t.visibilityLabel}</FieldLabel>
+          <div className="grid sm:grid-cols-3 gap-3">
+            {visibilityOptions.map((opt) => {
+              const active = visibility === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setVisibility(opt.value)}
+                  className={
+                    "text-left rounded-card border p-3.5 transition-colors " +
+                    (active
+                      ? "border-primary-container bg-primary-fixed"
+                      : "border-outline-variant bg-surface-container-lowest hover:bg-surface-container")
+                  }
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={
+                        "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 " +
+                        (active ? "border-primary-container" : "border-outline-variant")
+                      }
+                    >
+                      {active && <span className="h-2 w-2 rounded-full bg-primary-container" />}
+                    </span>
+                    <span className="text-sm font-semibold text-on-surface">{opt.label}</span>
+                  </div>
+                  <p className="text-xs text-on-surface-variant mt-1.5">{opt.hint}</p>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Error + submit */}
       <div className="space-y-4">
         {errorText && (
-          <div className="bg-red-defect/10 text-red-defect rounded-card px-4 py-3 text-sm">
+          <div className="bg-error-container text-on-error-container rounded-card px-4 py-3 text-sm">
             {errorText}
           </div>
         )}
@@ -341,9 +401,9 @@ export function CoffeeForm({
         <button
           type="submit"
           disabled={pending}
-          className="w-full bg-green-dark text-white rounded-pill py-3.5 font-semibold hover:bg-green-dark/90 transition-colors disabled:opacity-50"
+          className="w-full bg-primary-container text-on-primary rounded-pill py-3.5 font-semibold hover:bg-primary transition-colors disabled:opacity-50"
         >
-          {pending ? t.creating : t.create}
+          {pending ? resolvedSubmittingLabel : resolvedSubmitLabel}
         </button>
       </div>
     </form>

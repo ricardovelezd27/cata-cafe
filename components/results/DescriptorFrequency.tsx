@@ -28,6 +28,7 @@ export type DescriptorTranslations = {
   participants: string;
   emptyBlock: string;
   emptyAll: string;
+  close: string;
 };
 
 const TOP_N = 5;
@@ -189,6 +190,7 @@ export function DescriptorFrequency({
         onOpenChange={(o) => !o && setOpenSampleId(null)}
         title={openSample?.label ?? ""}
         subtitle={blockLabels[activeBlock]}
+        closeLabel={t.close}
       >
         {openSample && (
           <Bars

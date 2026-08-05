@@ -30,6 +30,7 @@ const T: Record<Locale, Record<string, string>> = {
     search: "Escribe un descriptor…",
     addUnderOtherFruit: "Agregar en «Otra fruta»",
     addUnderOther: "Agregar en «Otros»",
+    close: "Cerrar",
   },
   en: {
     add: "Add descriptors",
@@ -44,6 +45,7 @@ const T: Record<Locale, Record<string, string>> = {
     search: "Type a descriptor…",
     addUnderOtherFruit: 'Add under "Other Fruit"',
     addUnderOther: 'Add under "Other"',
+    close: "Close",
   },
 };
 
@@ -462,6 +464,7 @@ export function FlavorPicker({
             ? `${t.upTo} ${maxSelect} · ${value.length}/${maxSelect}`
             : undefined
         }
+        closeLabel={t.close}
       >
         {/* Breadcrumb */}
         <nav className="flex flex-wrap items-center gap-1 text-[12px] mb-3">

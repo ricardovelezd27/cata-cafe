@@ -5,6 +5,11 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
+import {
+  requireSessionOwner,
+  requireSampleOwner,
+} from "@/lib/sessionAuth";
+import { syncCoffeeHistoryForSession } from "@/lib/coffeeHistory";
 import type { CloseEmailSummary } from "@/lib/closeEmail";
 
 // ─── Submit all draft evaluations for a session ───────────────────────────────
@@ -22,8 +27,53 @@ export async function submitAllEvaluations(sessionId: string) {
     data: { isDraft: false, submittedAt: new Date() },
   });
 
+  await maybeAutoCloseSoloSession(sessionId, user.id);
+
   revalidatePath(`/app/sessions/${sessionId}/results`);
   return { ok: true };
+}
+
+// Solo sessions have no group "maestro" close flow — before this existed they
+// stayed "draft"/"active" forever and never fed UserCoffeeHistory. A solo
+// session auto-closes when its owner has a submitted evaluation for EVERY
+// sample (partial submits keep it open so the owner can keep cupping).
+// Closing also reveals coffee-linked samples: solo blind ends at submit, and
+// syncCoffeeHistoryForSession only picks up revealed samples.
+async function maybeAutoCloseSoloSession(sessionId: string, userId: string) {
+  const session = await prisma.cuppingSession.findUnique({
+    where: { id: sessionId },
+    select: { isGroup: true, status: true, createdBy: true },
+  });
+  if (
+    !session ||
+    session.isGroup ||
+    session.createdBy !== userId ||
+    session.status === "closed"
+  ) {
+    return;
+  }
+
+  const [sampleCount, submittedCount] = await Promise.all([
+    prisma.sessionSample.count({ where: { sessionId } }),
+    prisma.evaluation.count({
+      where: {
+        sessionSample: { sessionId },
+        cupperId: userId,
+        isDraft: false,
+      },
+    }),
+  ]);
+  if (sampleCount === 0 || submittedCount < sampleCount) return;
+
+  await prisma.sessionSample.updateMany({
+    where: { sessionId, coffeeId: { not: null }, revealed: false },
+    data: { revealed: true },
+  });
+  await prisma.cuppingSession.update({
+    where: { id: sessionId },
+    data: { status: "closed" },
+  });
+  await syncCoffeeHistoryForSession(sessionId);
 }
 
 // ─── Submit a single sample's evaluation (triggers aggregate) ─────────────────
@@ -78,15 +128,7 @@ export async function submitEvaluation(evaluationId: string) {
 // ─── Start a session (maestro moves past invite screen) ───────────────────────
 export async function startSession(sessionId: string) {
   const user = await requireUser();
-
-  const session = await prisma.cuppingSession.findUnique({
-    where: { id: sessionId },
-    select: { id: true, createdBy: true },
-  });
-
-  if (!session || session.createdBy !== user.id) {
-    throw new Error("not_found_or_forbidden");
-  }
+  await requireSessionOwner(sessionId, user.id);
 
   await prisma.cuppingSession.update({
     where: { id: sessionId },
@@ -100,22 +142,14 @@ export async function startSession(sessionId: string) {
 // ─── Close a session ──────────────────────────────────────────────────────────
 export async function closeSession(sessionId: string) {
   const user = await requireUser();
-
-  const session = await prisma.cuppingSession.findUnique({
-    where: { id: sessionId },
-    select: { id: true, createdBy: true, isGroup: true },
-  });
-
-  if (!session || session.createdBy !== user.id) {
-    throw new Error("not_found_or_forbidden");
-  }
+  const session = await requireSessionOwner(sessionId, user.id);
 
   await prisma.cuppingSession.update({
     where: { id: sessionId },
     data: { status: "closed" },
   });
 
-  await syncCoffeeHistory(sessionId);
+  await syncCoffeeHistoryForSession(sessionId);
 
   // Group sessions only: email every participant their individual CVA PDF + the
   // anonymous group summary. This is best-effort and MUST NOT fail or block the
@@ -140,29 +174,14 @@ export async function closeSession(sessionId: string) {
 // ─── Reveal a sample (link coffee identity) ───────────────────────────────────
 export async function revealSample(sampleId: string, coffeeId?: string) {
   const user = await requireUser();
-
-  const sample = await prisma.sessionSample.findUnique({
-    where: { id: sampleId },
-    select: { sessionId: true },
-  });
-
-  if (!sample) throw new Error("not_found");
-
-  const session = await prisma.cuppingSession.findUnique({
-    where: { id: sample.sessionId },
-    select: { createdBy: true },
-  });
-
-  if (!session || session.createdBy !== user.id) {
-    throw new Error("not_found_or_forbidden");
-  }
+  const { sessionId } = await requireSampleOwner(sampleId, user.id);
 
   await prisma.sessionSample.update({
     where: { id: sampleId },
     data: { revealed: true, ...(coffeeId ? { coffeeId } : {}) },
   });
 
-  revalidatePath(`/app/sessions/${sample.sessionId}/results`);
+  revalidatePath(`/app/sessions/${sessionId}/results`);
   return { ok: true };
 }
 
@@ -244,15 +263,7 @@ export async function createInviteToken(
   expiresAt?: string,
 ): Promise<{ token: string }> {
   const user = await requireUser();
-
-  const session = await prisma.cuppingSession.findUnique({
-    where: { id: sessionId },
-    select: { createdBy: true },
-  });
-
-  if (!session || session.createdBy !== user.id) {
-    throw new Error("not_found_or_forbidden");
-  }
+  await requireSessionOwner(sessionId, user.id);
 
   const token = crypto.randomUUID();
 
@@ -281,14 +292,7 @@ export async function setParticipantExclusion(
   excluded: boolean,
 ) {
   const user = await requireUser();
-
-  const session = await prisma.cuppingSession.findUnique({
-    where: { id: sessionId },
-    select: { createdBy: true },
-  });
-  if (!session || session.createdBy !== user.id) {
-    throw new Error("not_found_or_forbidden");
-  }
+  await requireSessionOwner(sessionId, user.id);
 
   await prisma.sessionParticipant.update({
     where: { sessionId_userId: { sessionId, userId: participantUserId } },
@@ -321,12 +325,7 @@ export async function setParticipantExclusion(
 // Owner-initiated and rare, so the per-row trigger storm is acceptable.
 export async function refreshAggregateScores(sessionId: string) {
   const user = await requireUser();
-
-  const session = await prisma.cuppingSession.findFirst({
-    where: { id: sessionId, createdBy: user.id },
-    select: { id: true },
-  });
-  if (!session) throw new Error("not_found_or_forbidden");
+  await requireSessionOwner(sessionId, user.id);
 
   await prisma.$executeRaw`
     UPDATE evaluations e
@@ -342,74 +341,7 @@ export async function refreshAggregateScores(sessionId: string) {
   return { ok: true };
 }
 
-// ─── Sync coffee history after session close ──────────────────────────────────
-// Upserts UserCoffeeHistory for all revealed samples with submitted evaluations.
-export async function syncCoffeeHistory(sessionId: string) {
-  const user = await requireUser();
-
-  const samples = await prisma.sessionSample.findMany({
-    where: { sessionId, revealed: true, coffeeId: { not: null } },
-    include: {
-      evaluations: {
-        where: { isDraft: false },
-        select: {
-          id: true,
-          cupperId: true,
-          individualScore: true,
-          sessionSampleId: true,
-        },
-      },
-      aggregateScore: {
-        select: { communityScore: true },
-      },
-    },
-  });
-
-  const session = await prisma.cuppingSession.findUnique({
-    where: { id: sessionId },
-    select: { date: true },
-  });
-
-  const tastedAt = session?.date ?? new Date();
-  const upserts = [];
-
-  for (const sample of samples) {
-    if (!sample.coffeeId) continue;
-    const coffeeId = sample.coffeeId;
-    const communityScore = sample.aggregateScore?.communityScore ?? null;
-
-    for (const evaluation of sample.evaluations) {
-      upserts.push(
-        prisma.userCoffeeHistory.upsert({
-          where: {
-            userId_coffeeId_sessionId: {
-              userId: evaluation.cupperId,
-              coffeeId,
-              sessionId,
-            },
-          },
-          create: {
-            userId: evaluation.cupperId,
-            coffeeId,
-            evaluationId: evaluation.id,
-            sessionId,
-            individualScore: evaluation.individualScore,
-            communityScore,
-            tastedAt,
-          },
-          update: {
-            individualScore: evaluation.individualScore,
-            communityScore,
-          },
-        }),
-      );
-    }
-  }
-
-  // One transaction instead of one round-trip per evaluation. At 100 samples ×
-  // dozens of cuppers this collapses thousands of sequential upserts into a
-  // single batched call, keeping closeSession well under the action timeout.
-  if (upserts.length > 0) await prisma.$transaction(upserts);
-
-  return { ok: true };
-}
+// NOTE: the old `syncCoffeeHistory` server action moved to
+// lib/coffeeHistory.ts as syncCoffeeHistoryForSession(). It was a public HTTP
+// endpoint with no ownership check; the lib function is called internally by
+// closeSession after requireSessionOwner.

@@ -59,7 +59,7 @@ export function NotifyGroupPanel({
   if (groups.length === 0 || dismissed) return null;
 
   const inputCls =
-    "w-full px-3 py-2 border border-[#D4C5A9] rounded-input text-sm bg-white text-brown-dark focus:outline-none focus:border-green-dark";
+    "w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:outline-none focus:border-primary-container";
 
   const allSkipped =
     summary !== null &&
@@ -80,13 +80,13 @@ export function NotifyGroupPanel({
   };
 
   return (
-    <div className="p-4 bg-white border border-[#E8E0D0] rounded-card space-y-3">
+    <div className="p-4 bg-surface-container-lowest border border-outline-variant rounded-card space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-green-dark">{t.notifyGroupTitle}</p>
+        <p className="text-sm font-semibold text-primary-container">{t.notifyGroupTitle}</p>
         <button
           type="button"
           onClick={() => setDismissed(true)}
-          className="text-xs text-brown-mid hover:text-brown-dark"
+          className="text-xs text-on-surface-variant hover:text-on-surface"
         >
           {t.skip}
         </button>
@@ -125,21 +125,21 @@ export function NotifyGroupPanel({
         type="button"
         onClick={onSend}
         disabled={pending || !groupId || !subject.trim() || !message.trim()}
-        className="px-4 py-2 rounded-pill bg-green-dark text-white text-sm font-semibold disabled:opacity-50"
+        className="px-4 py-2 rounded-pill bg-primary-container text-white text-sm font-semibold disabled:opacity-50"
       >
         {pending ? t.sending : t.send}
       </button>
 
       {summary && (
-        <div className="pt-2 border-t border-[#E8E0D0] space-y-1">
-          <p className="text-xs font-semibold text-brown-dark">
+        <div className="pt-2 border-t border-outline-variant space-y-1">
+          <p className="text-xs font-semibold text-on-surface">
             {formatTemplate(t.sendSummary, {
               sent: summary.sent,
               skipped: summary.skipped,
               failed: summary.failed,
             })}
           </p>
-          {allSkipped && <p className="text-xs text-brown-mid">{t.sendSkippedNotice}</p>}
+          {allSkipped && <p className="text-xs text-on-surface-variant">{t.sendSkippedNotice}</p>}
         </div>
       )}
     </div>

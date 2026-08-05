@@ -119,6 +119,7 @@ type Translations = {
     empty: string;
     linked: string;
     unlink: string;
+    close: string;
   };
 };
 
@@ -158,9 +159,9 @@ const inputCls =
 
 /** Origin badge colors mirror CoffeePicker's own badges. */
 const originBadgeCls: Record<UsableCoffee["origin"], string> = {
-  mine: "bg-green-dark/10 text-green-dark border-green-dark/30",
-  shared: "bg-amber-warm/15 text-brown-dark border-amber-warm/40",
-  public: "bg-cream text-brown-mid border-brown-light",
+  mine: "bg-primary-container/10 text-primary-container border-primary-container/30",
+  shared: "bg-secondary/15 text-on-surface border-secondary/40",
+  public: "bg-surface-container text-on-surface-variant border-outline-variant",
 };
 
 function originBadgeLabel(origin: UsableCoffee["origin"], t: Translations): string {
@@ -207,6 +208,7 @@ export function NewSessionForm({
   groupsT,
   groups,
   usableCoffees,
+  initialGroupId,
 }: {
   locale: string;
   t: Translations;
@@ -214,6 +216,9 @@ export function NewSessionForm({
   groupsT: SessionGroupsTranslations;
   groups: NotifyGroupOption[];
   usableCoffees: UsableCoffee[];
+  /** Prefill from `?groupId=` (e.g. the group page's "create session" CTA) —
+   *  already validated server-side against the user's own groups. */
+  initialGroupId?: string;
 }) {
   const router = useRouter();
 
@@ -235,10 +240,11 @@ export function NewSessionForm({
     },
   ]);
 
-  // Group session fields
-  const [isGroup, setIsGroup] = useState(false);
+  // Group session fields — a valid ?groupId= prefill turns the toggle on and
+  // preselects the group in one step.
+  const [isGroup, setIsGroup] = useState(!!initialGroupId);
   const [closesAt, setClosesAt] = useState("");
-  const [linkedGroupId, setLinkedGroupId] = useState("");
+  const [linkedGroupId, setLinkedGroupId] = useState(initialGroupId ?? "");
   const [notifyGroup, setNotifyGroup] = useState(true);
   const [emailSummary, setEmailSummary] = useState<GroupEmailSummary | undefined>(undefined);
 
@@ -793,6 +799,7 @@ export function NewSessionForm({
             shared: t.picker.shared,
             public: t.picker.public,
             empty: t.picker.empty,
+            close: t.picker.close,
           }}
         />
 

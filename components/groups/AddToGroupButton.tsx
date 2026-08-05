@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
-import { addMemberByUserId, createGroup } from "@/app/actions/groups";
+import { addMemberByUserId, createGroupWithMembers } from "@/app/actions/groups";
 
 export type GroupOption = { id: string; name: string };
 
@@ -61,8 +61,9 @@ export function AddToGroupButton({
     setError(null);
     start(async () => {
       try {
-        const { groupId } = await createGroup({ name: trimmed });
-        await addMemberByUserId(groupId, candidateUserId);
+        const created = await createGroupWithMembers({ name: trimmed, members: [] });
+        if (!created.ok) throw new Error(created.error);
+        await addMemberByUserId(created.groupId, candidateUserId);
         setAdded(true);
         setNewName("");
         setCreating(false);
@@ -77,7 +78,7 @@ export function AddToGroupButton({
 
   if (added) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-green-dark">
+      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-container">
         <Check size={16} /> {t.added}
       </span>
     );
@@ -88,7 +89,7 @@ export function AddToGroupButton({
       <form onSubmit={handleCreateAndAdd} className="flex gap-2">
         <input
           autoFocus
-          className="flex-1 min-w-0 px-2.5 py-1.5 border border-[#D4C5A9] rounded-input text-xs bg-white text-brown-dark focus:outline-none focus:border-green-dark"
+          className="flex-1 min-w-0 px-2.5 py-1.5 border border-outline-variant rounded-input text-xs bg-surface-container-lowest text-on-surface focus:outline-none focus:border-primary-container"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder={t.namePlaceholder}
@@ -97,7 +98,7 @@ export function AddToGroupButton({
         <button
           type="submit"
           disabled={pending || !newName.trim()}
-          className="px-3 py-1.5 rounded-pill bg-green-dark text-white text-xs font-semibold disabled:opacity-50 whitespace-nowrap"
+          className="px-3 py-1.5 rounded-pill bg-primary-container text-white text-xs font-semibold disabled:opacity-50 whitespace-nowrap"
         >
           {t.create}
         </button>
@@ -111,7 +112,7 @@ export function AddToGroupButton({
         value={selected}
         onChange={(e) => handleSelect(e.target.value)}
         disabled={pending}
-        className="w-full px-3 py-2 border border-[#D4C5A9] rounded-input text-sm bg-white text-brown-dark focus:outline-none focus:border-green-dark disabled:opacity-50"
+        className="w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:outline-none focus:border-primary-container disabled:opacity-50"
       >
         <option value="" disabled>
           {t.addToGroup}
@@ -123,7 +124,7 @@ export function AddToGroupButton({
         ))}
         <option value={NEW_GROUP_VALUE}>{t.newGroupOption}</option>
       </select>
-      {error && <p className="text-xs text-red-defect">{error}</p>}
+      {error && <p className="text-xs text-error">{error}</p>}
     </div>
   );
 }

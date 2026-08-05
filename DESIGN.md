@@ -252,6 +252,43 @@ No heavy drop shadows. Depth through tonal surface layering ("stacked paper" eff
 </div>
 ```
 
+### Shared list/CRUD kit (2026-08 cohesion overhaul — `components/ui/`)
+
+These are the ONLY sanctioned implementations of their patterns. Never hand-roll
+a status pill, page header, list table, or delete confirmation again.
+
+- **`DataTable<T>`** — generic sortable/searchable/facet-filterable table.
+  Client-side `useMemo` filter → sort → paginate (no table library). Desktop
+  `<table>` at `md:`+ (header `bg-surface-container`, rows
+  `bg-surface-container-lowest` divided by `outline-variant/50`), mobile card
+  list below `md:` via `renderMobileCard`. Two empty modes: `emptyState`
+  (nothing exists — render an `EmptyState` with CTA) vs `noResults` (filters
+  matched nothing — keep the controls visible). Translations arrive as props;
+  the `showing` string uses `t.raw()` + manual `{from}/{to}/{total}` replace.
+- **`Badge` / `StatusPill` / `ScorePill`** — `Badge` tones: neutral, success
+  (primary-fixed), accent (secondary), danger (error-container), outline.
+  `StatusPill` maps session status (draft/active/closed; legacy "open" renders
+  as active) to translated labels with a leading dot. `ScorePill` applies the
+  score bands (≥85 green, 75–84 terracotta, <75 error) with `tabular-nums`.
+- **`PageHeader`** — canonical page top: optional back link, `font-display
+  text-3xl text-primary-container` title, `on-surface-variant` description,
+  right-aligned action slot (primary pill button).
+- **`EmptyState`** — centered icon-in-circle + display title + body + CTA.
+- **`ConfirmDialog`** — destructive confirmation on `ResponsiveDialog` with
+  `useTransition` pending state and inline error. Body copy must state the
+  full cascade blast radius honestly (see the deleteSession/deleteCoffee keys).
+- **`SearchInput` / `Select` / `FilterBar` / `Pagination`** — the table's
+  control set; also reusable standalone. `FilterBar` renders one `Select` per
+  facet plus a clear-filters ghost button.
+
+### Breakpoint rule
+
+| Layer | Switch point |
+|---|---|
+| Content layouts (DataTable table↔cards, profile columns) | `md:` (768px) |
+| App shell (Sidebar ↔ BottomNav/TopBar) | `lg:` (1024px) |
+| Dialogs (centered modal ↔ bottom sheet) | 640px (`ResponsiveDialog` internal) |
+
 ### `IntensitySlider`
 
 **File:** `IntensitySlider.tsx` + `IntensitySlider.module.css`

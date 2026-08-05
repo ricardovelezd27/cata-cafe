@@ -94,8 +94,8 @@ export default async function GroupsPage({
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-serif text-3xl text-green-dark font-semibold">{t("title")}</h1>
-          <p className="text-sm text-brown-mid mt-1">{t("subtitle")}</p>
+          <h1 className="font-display text-3xl text-primary-container font-semibold">{t("title")}</h1>
+          <p className="text-sm text-on-surface-variant mt-1">{t("subtitle")}</p>
         </div>
         <CreateGroupDialog
           locale={locale}
@@ -107,20 +107,20 @@ export default async function GroupsPage({
       {/* My groups */}
       <div className="space-y-4">
         {groups.length === 0 ? (
-          <p className="text-sm text-brown-mid">{t("empty")}</p>
+          <p className="text-sm text-on-surface-variant">{t("empty")}</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {groups.map((g) => (
               <Link
                 key={g.id}
                 href={`/${locale}/app/groups/${g.id}`}
-                className="block bg-white rounded-card border border-[#E8E0D0] p-5 transition-all hover:shadow-md hover:border-[#6B8F71]"
+                className="block bg-surface-container-lowest rounded-card border border-outline-variant p-5 transition-all hover:shadow-md hover:border-[#6B8F71]"
               >
-                <p className="font-semibold text-[15px] text-brown-dark truncate">{g.name}</p>
+                <p className="font-semibold text-[15px] text-on-surface truncate">{g.name}</p>
                 {g.description && (
-                  <p className="text-xs text-brown-mid mt-1 line-clamp-2">{g.description}</p>
+                  <p className="text-xs text-on-surface-variant mt-1 line-clamp-2">{g.description}</p>
                 )}
-                <p className="text-xs text-brown-mid mt-2">
+                <p className="text-xs text-on-surface-variant mt-2">
                   {g._count.members}{" "}
                   {g._count.members === 1
                     ? t("members").toLowerCase().replace(/s$/, "")
@@ -136,24 +136,24 @@ export default async function GroupsPage({
       {/* Groups where I'm a member (not owner) */}
       {memberGroups.length > 0 && (
         <div className="space-y-4">
-          <h2 className="font-serif text-xl text-green-dark">{t("memberGroupsTitle")}</h2>
+          <h2 className="font-display text-xl text-primary-container">{t("memberGroupsTitle")}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {memberGroups.map((g) => (
               <Link
                 key={g.id}
                 href={`/${locale}/app/groups/${g.id}`}
-                className="block bg-white rounded-card border border-[#E8E0D0] p-5 transition-all hover:shadow-md hover:border-[#6B8F71]"
+                className="block bg-surface-container-lowest rounded-card border border-outline-variant p-5 transition-all hover:shadow-md hover:border-[#6B8F71]"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-semibold text-[15px] text-brown-dark truncate">{g.name}</p>
-                  <span className="shrink-0 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-full bg-amber-warm/15 text-amber-warm">
+                  <p className="font-semibold text-[15px] text-on-surface truncate">{g.name}</p>
+                  <span className="shrink-0 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-full bg-secondary/15 text-secondary">
                     {t("memberBadge")}
                   </span>
                 </div>
                 {g.description && (
-                  <p className="text-xs text-brown-mid mt-1 line-clamp-2">{g.description}</p>
+                  <p className="text-xs text-on-surface-variant mt-1 line-clamp-2">{g.description}</p>
                 )}
-                <p className="text-xs text-brown-mid mt-2">
+                <p className="text-xs text-on-surface-variant mt-2">
                   {g._count.members}{" "}
                   {g._count.members === 1
                     ? t("members").toLowerCase().replace(/s$/, "")
@@ -168,9 +168,9 @@ export default async function GroupsPage({
 
       {/* Co-cuppers */}
       <div className="space-y-4">
-        <h2 className="font-serif text-xl text-green-dark">{t("coCuppersTitle")}</h2>
+        <h2 className="font-display text-xl text-primary-container">{t("coCuppersTitle")}</h2>
         {cuppers.length === 0 ? (
-          <p className="text-sm text-brown-mid">{t("noCoCuppers")}</p>
+          <p className="text-sm text-on-surface-variant">{t("noCoCuppers")}</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {cuppers.map((c) => (

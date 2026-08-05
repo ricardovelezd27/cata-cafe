@@ -59,6 +59,30 @@ export async function getCoffeesWithStats(
   });
 }
 
+/**
+ * Delete a coffee the user created. DB-level referential rules keep the rest
+ * of the platform consistent: session_samples.coffeeId is ON DELETE SET NULL
+ * (samples survive, showing only their blind label) and user_coffee_history
+ * rows cascade away for EVERY user who cupped it (migration 20260721000000).
+ */
+export async function deleteCoffee(coffeeId: string, locale: string = "es") {
+  const user = await requireUser();
+
+  const coffee = await prisma.coffee.findUnique({
+    where: { id: coffeeId },
+    select: { createdBy: true },
+  });
+
+  if (!coffee || coffee.createdBy !== user.id) {
+    throw new Error("not_found_or_forbidden");
+  }
+
+  await prisma.coffee.delete({ where: { id: coffeeId } });
+
+  revalidatePath(`/${locale}/app/coffees`);
+  return { ok: true as const };
+}
+
 // ─── Create a coffee as a standalone reusable asset ───────────────────────────
 // Returns a value instead of redirect()ing (createGroupSession pattern) so the
 // form can surface errors and router.push to the new profile on success.
@@ -110,6 +134,67 @@ export async function createCoffee(input: {
   revalidatePath("/es/app/coffees");
   revalidatePath("/en/app/coffees");
   return { ok: true, coffeeId: coffee.id };
+}
+
+// ─── Update a coffee (owner only) ─────────────────────────────────────────────
+// Whitelisted field update; visibility is deliberately NOT here — it has its
+// own action (setCoffeeVisibility) because flipping it has share/invite side
+// effects that a plain form save must not trigger accidentally.
+export async function updateCoffee(
+  coffeeId: string,
+  input: {
+    name: string;
+    country?: string;
+    region?: string;
+    farm?: string;
+    producer?: string;
+    species?: string;
+    variety?: string;
+    harvestYear?: string;
+    processType?: string;
+    altitude?: string;
+    roastLevel?: string;
+    certifications?: string[];
+    notes?: string;
+  },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await requireUser();
+
+  const coffee = await prisma.coffee.findUnique({
+    where: { id: coffeeId },
+    select: { createdBy: true },
+  });
+  if (!coffee || coffee.createdBy !== user.id) {
+    throw new Error("not_found_or_forbidden");
+  }
+
+  const name = input.name?.trim();
+  if (!name) return { ok: false, error: "name_required" };
+
+  await prisma.coffee.update({
+    where: { id: coffeeId },
+    data: {
+      name,
+      country: input.country?.trim() || null,
+      region: input.region?.trim() || null,
+      farm: input.farm?.trim() || null,
+      producer: input.producer?.trim() || null,
+      species: input.species?.trim() || null,
+      variety: input.variety?.trim() || null,
+      harvestYear: input.harvestYear?.trim() || null,
+      processType: input.processType?.trim() || null,
+      altitude: input.altitude?.trim() || null,
+      roastLevel: input.roastLevel?.trim() || null,
+      certifications: input.certifications ?? [],
+      notes: input.notes?.trim() || null,
+    },
+  });
+
+  revalidatePath("/es/app/coffees");
+  revalidatePath("/en/app/coffees");
+  revalidatePath(`/es/app/coffees/${coffeeId}`);
+  revalidatePath(`/en/app/coffees/${coffeeId}`);
+  return { ok: true };
 }
 
 // ─── Share a coffee via invite link (owner only) ──────────────────────────────

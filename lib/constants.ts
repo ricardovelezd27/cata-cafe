@@ -754,3 +754,19 @@ export const ROLE_LABELS: Record<string, { es: string; en: string }> = {
   enthusiast: { es: "Entusiasta", en: "Enthusiast" },
   cupping_pro: { es: "Catador Profesional", en: "Professional Cupper" },
 };
+
+// Single source of truth for the onboarding/profile country picker. Lives
+// here (not in components/onboarding/WelcomeModal.tsx, a "use client" file)
+// because Server Components can't safely import a plain value from a "use
+// client" module — Next's flight loader replaces every export of such a
+// module with an opaque client-reference stub, even non-component ones.
+// WelcomeModal and the profile edit form both import this same list.
+export const COUNTRIES = [
+  "Colombia", "Brasil", "México", "Guatemala", "Costa Rica", "Honduras",
+  "Perú", "Bolivia", "Ecuador", "El Salvador", "Nicaragua", "Panamá",
+  "Venezuela", "Cuba", "República Dominicana", "Etiopía", "Kenia",
+  "Ruanda", "Uganda", "Tanzania", "Yemen", "India", "Indonesia",
+  "Papúa Nueva Guinea", "Jamaica", "Estados Unidos", "España",
+  "Alemania", "Japón", "Reino Unido", "Francia", "Italia", "Australia",
+  "Otro",
+];

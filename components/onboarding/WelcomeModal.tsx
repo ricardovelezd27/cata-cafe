@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ClipboardList, Coffee, Users, ChevronRight, ChevronLeft } from "lucide-react";
 import { completeOnboarding } from "@/app/actions/profile";
+import { COUNTRIES } from "@/lib/constants";
 
 // NOTE: this list drives ONBOARDING CHOICES (values + prompt copy), a separate
 // concern from display labels shown elsewhere (profile, co-cupper cards, etc).
@@ -15,16 +16,6 @@ const ROLES = [
   { value: "producer", label: "Productor/a" },
   { value: "trader", label: "Importador/a / Exportador/a" },
   { value: "enthusiast", label: "Aficionado/a al café de especialidad" },
-];
-
-const COUNTRIES = [
-  "Colombia", "Brasil", "México", "Guatemala", "Costa Rica", "Honduras",
-  "Perú", "Bolivia", "Ecuador", "El Salvador", "Nicaragua", "Panamá",
-  "Venezuela", "Cuba", "República Dominicana", "Etiopía", "Kenia",
-  "Ruanda", "Uganda", "Tanzania", "Yemen", "India", "Indonesia",
-  "Papúa Nueva Guinea", "Jamaica", "Estados Unidos", "España",
-  "Alemania", "Japón", "Reino Unido", "Francia", "Italia", "Australia",
-  "Otro",
 ];
 
 const PATHS = [

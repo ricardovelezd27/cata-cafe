@@ -1,30 +1,30 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, Clipboard, UserCheck, Users } from "lucide-react";
+import { CheckCircle2, ChevronLeft, Clipboard, Plus, UserCheck, Users } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { getCoCupperCandidates } from "@/lib/coCuppers";
 import { claimGroupMembershipsByEmail } from "@/lib/groupMembership";
+import { sessionHref } from "@/lib/sessionRouting";
 import { StatCard } from "@/components/dashboard/StatCard";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { StatusPill } from "@/components/ui/Badge";
 import { GroupNameControls } from "@/components/groups/GroupNameControls";
 import { GroupActivityFeed, type GroupActivityEvent } from "@/components/groups/GroupActivityFeed";
 import { MemberList } from "@/components/groups/MemberList";
 import { QuickAddCoCuppers } from "@/components/groups/QuickAddCoCuppers";
 import { AddByEmailForm } from "@/components/groups/AddByEmailForm";
 import { GroupEmailComposer } from "@/components/groups/GroupEmailComposer";
+import { GroupFeed, type GroupFeedPost } from "@/components/groups/GroupFeed";
+import { PostComposer } from "@/components/groups/PostComposer";
+import { LeaveGroupButton } from "@/components/groups/LeaveGroupButton";
 
 // Auth'd page with a dynamic [id] segment: must render per-request. With
 // generateStaticParams present, prod attempts on-demand static generation and
 // the cookies() call inside createClient() 500s (dev always renders dynamic,
 // so the crash only appears in production). Same pattern as join/[token].
 export const dynamic = "force-dynamic";
-
-const SESSION_STATUS_COLORS: Record<string, string> = {
-  draft: "#C17817",
-  active: "#3D5A3E",
-  closed: "#8B7355",
-};
 
 // Never send a co-member's full email address to the client — this runs
 // server-side and only the masked string ever ends up in the rendered HTML.
@@ -36,7 +36,14 @@ function maskEmail(email: string): string {
   return `${local[0]}***@${domain}`;
 }
 
-type GroupSessionRow = { id: string; name: string; date: Date; status: string; isGroup: boolean };
+type GroupSessionRow = {
+  id: string;
+  name: string;
+  date: Date;
+  status: string;
+  isGroup: boolean;
+  startedAt: Date | null;
+};
 
 export default async function GroupDetailPage({
   params,
@@ -74,15 +81,45 @@ export default async function GroupDetailPage({
 
   const isOwner = group.createdBy === user.id;
   const t = await getTranslations("groups");
+  const tCommon = await getTranslations("common");
+
+  // Announcements feed — visible to both owner and members (read-only for
+  // members). Fetched once here so both branches below can use it.
+  const posts = await prisma.groupPost.findMany({
+    where: { groupId: id },
+    orderBy: { createdAt: "desc" },
+    include: { author: { select: { displayName: true } } },
+  });
+  const feedPosts: GroupFeedPost[] = posts.map((p) => ({
+    id: p.id,
+    title: p.title,
+    body: p.body,
+    emailSent: p.emailSent,
+    createdAt: p.createdAt.toISOString(),
+    author: { displayName: p.author.displayName },
+  }));
+  const feedT = {
+    empty: t("feed.empty"),
+    emptyMember: t("feed.emptyMember"),
+    edit: t("feed.edit"),
+    save: t("feed.save"),
+    cancel: tCommon("cancel"),
+    delete: t("feed.delete"),
+    deleteTitle: t("feed.deleteTitle"),
+    deleteBody: t("feed.deleteBody"),
+    error: t("feed.error"),
+    emailSentBadge: t("feed.emailSentBadge"),
+  };
 
   // Sessions linked to this group via the CuppingSession.groupId FK (Groups
   // v2) — real relation now, no more inferring "shared sessions" from
   // participant rows. Used by both views' "Sesiones del grupo" section, and
-  // by the owner's "shared sessions" stat below.
+  // by the owner's "shared sessions" stat below. startedAt feeds sessionHref
+  // (single source of truth for "where does clicking a session take me?").
   const groupSessions: GroupSessionRow[] = await prisma.cuppingSession.findMany({
     where: { groupId: id },
     orderBy: { date: "desc" },
-    select: { id: true, name: true, date: true, status: true, isGroup: true },
+    select: { id: true, name: true, date: true, status: true, isGroup: true, startedAt: true },
   });
 
   // Only needed for the member (non-owner) view's per-session link rule.
@@ -116,22 +153,22 @@ export default async function GroupDetailPage({
     }
   }
 
-  // Shared "Sesiones del grupo" section — link rule differs by role:
-  // owner always goes to results; a member goes to results only if they're
-  // an actual participant, else (for an active session) to the newest valid
-  // join link; otherwise the row renders with no link at all.
+  // Shared "Sesiones del grupo" section — link rule differs by role: an
+  // owner or actual participant goes to sessionHref's normal routing (waiting
+  // room / cup / results, whichever fits session state); anyone else goes to
+  // the newest valid join link for an active session, else no link at all.
   const sessionsSection = (
     <div className="space-y-3">
-      <h2 className="font-serif text-xl text-green-dark">{t("sessionsTitle")}</h2>
+      <h2 className="font-display text-2xl text-primary-container">{t("sessionsTitle")}</h2>
       {groupSessions.length === 0 ? (
-        <p className="text-sm text-brown-mid">{t("noSessions")}</p>
+        <p className="text-sm text-on-surface-variant">{t("noSessions")}</p>
       ) : (
         <ul className="grid gap-2">
           {groupSessions.map((s) => {
             const isParticipant = isOwner || participantSessionIds.has(s.id);
             const inviteToken = inviteTokenBySessionId.get(s.id);
             const href = isParticipant
-              ? `/${locale}/app/sessions/${s.id}/results`
+              ? sessionHref(s, { locale, isOwner })
               : s.status === "active" && inviteToken
                 ? `/${locale}/join/${inviteToken}`
                 : null;
@@ -139,23 +176,28 @@ export default async function GroupDetailPage({
             const content = (
               <>
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-brown-dark">{s.name}</span>
-                  <span
-                    className="text-xs px-2 py-0.5 rounded-full font-semibold ml-auto"
-                    style={{
-                      background: `${SESSION_STATUS_COLORS[s.status] ?? "#8B7355"}18`,
-                      color: SESSION_STATUS_COLORS[s.status] ?? "#8B7355",
-                      border: `1px solid ${SESSION_STATUS_COLORS[s.status] ?? "#8B7355"}40`,
-                    }}
-                  >
-                    {s.status}
+                  <span className="font-semibold text-on-surface">{s.name}</span>
+                  <span className="ml-auto">
+                    <StatusPill
+                      status={s.status}
+                      labels={{
+                        draft: tCommon("statusDraft"),
+                        active: tCommon("statusActive"),
+                        closed: tCommon("statusClosed"),
+                      }}
+                    />
                   </span>
                 </div>
-                {showJoinLabel && <p className="text-xs text-green-dark mt-1">{t("joinSessionLink")}</p>}
+                {showJoinLabel && (
+                  <p className="text-xs text-primary-container mt-1">{t("joinSessionLink")}</p>
+                )}
               </>
             );
             return (
-              <li key={s.id} className="bg-white border border-[#E8E0D0] rounded-card px-4 py-3">
+              <li
+                key={s.id}
+                className="bg-surface-container-lowest border border-outline-variant rounded-card px-4 py-3"
+              >
                 {href ? (
                   <Link href={href} className="block hover:opacity-80 transition-opacity">
                     {content}
@@ -178,31 +220,39 @@ export default async function GroupDetailPage({
       id: m.id,
       label: m.displayName || maskEmail(m.email),
     }));
+    const leaveT = {
+      cta: t("leave.cta"),
+      title: t("leave.title"),
+      body: t("leave.body"),
+      confirm: t("leave.confirm"),
+      cancel: t("leave.cancel"),
+      error: t("leave.error"),
+    };
 
     return (
       <div className="max-w-3xl space-y-8">
-        <Link
-          href={`/${locale}/app/groups`}
-          className="inline-flex items-center gap-1.5 text-sm text-brown-mid hover:text-green-dark transition-colors"
-        >
-          <ArrowLeft size={16} /> {t("backToGroups")}
-        </Link>
+        <PageHeader
+          backHref={`/${locale}/app/groups`}
+          backLabel={t("backToGroups")}
+          title={group.name}
+          description={group.description || t("noDescription")}
+        />
+        <p className="text-xs text-on-surface-variant -mt-4">
+          {t("ownerLabel")}: <span className="font-semibold text-on-surface">{group.owner.displayName}</span>
+        </p>
 
-        <div className="space-y-2">
-          <h1 className="font-serif text-3xl text-green-dark font-semibold">{group.name}</h1>
-          <p className="text-sm text-brown-mid">{group.description || t("noDescription")}</p>
-          <p className="text-xs text-brown-mid">
-            {t("ownerLabel")}: <span className="font-semibold">{group.owner.displayName}</span>
-          </p>
+        <div className="space-y-3">
+          <h2 className="font-display text-2xl text-primary-container">{t("feed.title")}</h2>
+          <GroupFeed posts={feedPosts} isOwner={false} locale={locale} t={feedT} />
         </div>
 
         <div className="space-y-3">
-          <h2 className="font-serif text-xl text-green-dark">{t("members")}</h2>
+          <h2 className="font-display text-2xl text-primary-container">{t("members")}</h2>
           <div className="space-y-2">
             {memberRows.map((m) => (
               <div
                 key={m.id}
-                className="px-4 py-3 bg-white border border-[#E8E0D0] rounded-card text-sm font-semibold text-brown-dark"
+                className="px-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-card text-sm font-semibold text-on-surface"
               >
                 {m.label}
               </div>
@@ -211,6 +261,10 @@ export default async function GroupDetailPage({
         </div>
 
         {sessionsSection}
+
+        <div className="pt-2">
+          <LeaveGroupButton groupId={group.id} locale={locale} t={leaveT} />
+        </div>
       </div>
     );
   }
@@ -248,12 +302,16 @@ export default async function GroupDetailPage({
   let events: GroupActivityEvent[] = [];
 
   if (linkedIds.length > 0) {
+    // Scoped to sessions BELONGING TO THIS GROUP (groupId), not just sessions
+    // the owner personally created — a co-owner-less group can still have
+    // sessions any member spun up and linked to it, and that activity should
+    // show up here too.
     const [evalCount, feedEvals, feedJoins] = await Promise.all([
       prisma.evaluation.count({
         where: {
           cupperId: { in: linkedIds },
           isDraft: false,
-          sessionSample: { session: { createdBy: user.id } },
+          sessionSample: { session: { groupId: id } },
         },
       }),
       prisma.evaluation.findMany({
@@ -261,7 +319,7 @@ export default async function GroupDetailPage({
           cupperId: { in: linkedIds },
           isDraft: false,
           submittedAt: { not: null },
-          sessionSample: { session: { createdBy: user.id } },
+          sessionSample: { session: { groupId: id } },
         },
         orderBy: { submittedAt: "desc" },
         take: 12,
@@ -275,7 +333,7 @@ export default async function GroupDetailPage({
         where: {
           userId: { in: linkedIds },
           status: "joined",
-          session: { createdBy: user.id },
+          session: { groupId: id },
         },
         orderBy: { joinedAt: "desc" },
         take: 12,
@@ -307,14 +365,33 @@ export default async function GroupDetailPage({
       .slice(0, 12);
   }
 
+  const composerT = {
+    composerTitle: t("feed.composerTitle"),
+    titlePlaceholder: t("feed.titlePlaceholder"),
+    bodyPlaceholder: t("feed.bodyPlaceholder"),
+    notifyByEmail: t("feed.notifyByEmail"),
+    publish: t("feed.publish"),
+    publishing: t("feed.publishing"),
+    error: t("feed.error"),
+  };
+
   return (
     <div className="max-w-3xl space-y-8">
-      <Link
-        href={`/${locale}/app/groups`}
-        className="inline-flex items-center gap-1.5 text-sm text-brown-mid hover:text-green-dark transition-colors"
-      >
-        <ArrowLeft size={16} /> {t("backToGroups")}
-      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link
+          href={`/${locale}/app/groups`}
+          className="inline-flex w-fit items-center gap-1 text-sm text-on-surface-variant transition-colors hover:text-on-surface"
+        >
+          <ChevronLeft size={16} aria-hidden />
+          {t("backToGroups")}
+        </Link>
+        <Link
+          href={`/${locale}/app/sessions/new?groupId=${id}`}
+          className="inline-flex items-center gap-1.5 rounded-pill bg-primary-container px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-primary"
+        >
+          <Plus size={16} /> {t("createSessionCta")}
+        </Link>
+      </div>
 
       <GroupNameControls
         groupId={group.id}
@@ -331,6 +408,7 @@ export default async function GroupDetailPage({
           descriptionPlaceholder: t("descriptionPlaceholder"),
           noDescription: t("noDescription"),
           errorGeneric: t("errorGeneric"),
+          cancel: tCommon("cancel"),
         }}
       />
 
@@ -363,9 +441,16 @@ export default async function GroupDetailPage({
         />
       </div>
 
+      {/* Announcements — the group's pulse, front and center right after stats */}
+      <div className="space-y-3">
+        <h2 className="font-display text-2xl text-primary-container">{t("feed.title")}</h2>
+        <PostComposer groupId={group.id} t={composerT} />
+        <GroupFeed posts={feedPosts} isOwner locale={locale} t={feedT} />
+      </div>
+
       {/* Roster */}
       <div className="space-y-3">
-        <h2 className="font-serif text-xl text-green-dark">{t("members")}</h2>
+        <h2 className="font-display text-xl text-primary-container">{t("members")}</h2>
         <MemberList
           groupId={group.id}
           members={group.members.map((m) => ({
@@ -379,6 +464,12 @@ export default async function GroupDetailPage({
             removeMember: t("removeMember"),
             confirmRemoveMember: t("confirmRemoveMember"),
             errorGeneric: t("errorGeneric"),
+            editName: t("memberEdit.editName"),
+            namePlaceholder: t("memberEdit.namePlaceholder"),
+            save: t("memberEdit.save"),
+            resend: t("memberEdit.resend"),
+            resent: t("memberEdit.resent"),
+            resendFailed: t("memberEdit.resendFailed"),
           }}
         />
       </div>
@@ -396,7 +487,7 @@ export default async function GroupDetailPage({
       {/* Add members */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-3">
-          <h3 className="text-xs text-brown-mid font-semibold uppercase tracking-wide">
+          <h3 className="text-xs text-on-surface-variant font-semibold uppercase tracking-wide">
             {t("coCuppersTitle")}
           </h3>
           <QuickAddCoCuppers
@@ -413,7 +504,7 @@ export default async function GroupDetailPage({
           />
         </div>
         <div className="space-y-3">
-          <h3 className="text-xs text-brown-mid font-semibold uppercase tracking-wide">
+          <h3 className="text-xs text-on-surface-variant font-semibold uppercase tracking-wide">
             {t("addByEmail")}
           </h3>
           <AddByEmailForm
@@ -432,7 +523,7 @@ export default async function GroupDetailPage({
 
       {/* Email composer */}
       <div className="space-y-3">
-        <h2 className="font-serif text-xl text-green-dark">{t("composeEmail")}</h2>
+        <h2 className="font-display text-xl text-primary-container">{t("composeEmail")}</h2>
         <GroupEmailComposer
           groupId={group.id}
           sessions={composerSessions}

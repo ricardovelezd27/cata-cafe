@@ -2,68 +2,56 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Clipboard, Coffee, Users, User, LogOut, Languages, BarChart3, UserCog } from "lucide-react";
+import { LogOut, Languages, UserCog } from "lucide-react";
 import { signOut, switchAccount } from "@/app/actions/auth";
-
-const NAV_ITEMS = [
-  { href: "/app", icon: Home, label: "Inicio", exact: true },
-  { href: "/app/sessions", icon: Clipboard, label: "Sesiones", exact: false },
-  { href: "/app/coffees", icon: Coffee, label: "Cafés", exact: false },
-  { href: "/app/groups", icon: Users, label: "Grupos", exact: false },
-  { href: "/app/profile", icon: User, label: "Perfil", exact: false },
-];
-
-const INSIGHTS_ITEM = { href: "/app/insights", icon: BarChart3, label: "Análisis", exact: false };
+import { NAV_ITEMS, INSIGHTS_ITEM, isActive, type NavTranslations } from "@/components/layout/navItems";
 
 export default function Sidebar({
   locale,
   showInsights = false,
+  translations,
 }: {
   locale: string;
   showInsights?: boolean;
+  translations: NavTranslations;
 }) {
   const pathname = usePathname();
   const navItems = showInsights ? [...NAV_ITEMS, INSIGHTS_ITEM] : NAV_ITEMS;
   const otherLocale = locale === "es" ? "en" : "es";
   const otherPath = pathname.replace(`/${locale}/`, `/${otherLocale}/`);
 
-  function isActive(href: string, exact: boolean) {
-    const full = `/${locale}${href}`;
-    return exact ? pathname === full : pathname.startsWith(full);
-  }
-
   return (
-    <aside className="hidden lg:flex flex-col w-60 shrink-0 bg-[#F5F0E6] border-r border-[#E8E0D0] h-full">
-      <div className="h-14 flex items-center px-5 border-b border-[#E8E0D0]">
-        <span className="font-serif text-base text-[#3D5A3E] leading-tight">
-          Cata Café Sensible
+    <aside className="hidden lg:flex flex-col w-60 shrink-0 bg-surface-container border-r border-outline-variant h-full">
+      <div className="h-14 flex items-center px-5 border-b border-outline-variant">
+        <span className="font-display text-base text-primary-container leading-tight">
+          {translations.brand.name}
         </span>
       </div>
 
       <nav className="flex-1 py-3 overflow-y-auto">
-        {navItems.map(({ href, icon: Icon, label, exact }) => {
-          const active = isActive(href, exact);
+        {navItems.map(({ href, icon: Icon, i18nKey, exact }) => {
+          const active = isActive(pathname, locale, href, exact);
           return (
             <Link
               key={href}
               href={`/${locale}${href}`}
               className={`flex items-center gap-3 px-5 py-2.5 text-sm transition-colors ${
                 active
-                  ? "border-l-[3px] border-[#3D5A3E] bg-[#E8F0E8] text-[#3D5A3E] font-semibold pl-[17px]"
-                  : "border-l-[3px] border-transparent text-brown-dark hover:bg-[#EDE8DB] pl-[17px]"
+                  ? "border-l-[3px] border-primary-container bg-primary-fixed text-primary-container font-semibold pl-[17px]"
+                  : "border-l-[3px] border-transparent text-on-surface hover:bg-surface-container-high pl-[17px]"
               }`}
             >
               <Icon size={18} strokeWidth={active ? 2.5 : 1.8} />
-              {label}
+              {translations.nav[i18nKey]}
             </Link>
           );
         })}
       </nav>
 
-      <div className="border-t border-[#E8E0D0] py-3 px-5 flex flex-col gap-1">
+      <div className="border-t border-outline-variant py-3 px-5 flex flex-col gap-1">
         <Link
           href={otherPath}
-          className="flex items-center gap-3 py-2 text-sm text-brown-mid hover:text-brown-dark transition-colors"
+          className="flex items-center gap-3 py-2 text-sm text-on-surface-variant hover:text-on-surface transition-colors"
         >
           <Languages size={18} strokeWidth={1.8} />
           {otherLocale.toUpperCase()}
@@ -71,19 +59,19 @@ export default function Sidebar({
         <form action={switchAccount.bind(null, locale)}>
           <button
             type="submit"
-            className="flex items-center gap-3 py-2 text-sm text-brown-mid hover:text-brown-dark transition-colors w-full text-left"
+            className="flex items-center gap-3 py-2 text-sm text-on-surface-variant hover:text-on-surface transition-colors w-full text-left"
           >
             <UserCog size={18} strokeWidth={1.8} />
-            Cambiar de cuenta
+            {translations.nav.switchAccount}
           </button>
         </form>
         <form action={signOut}>
           <button
             type="submit"
-            className="flex items-center gap-3 py-2 text-sm text-brown-mid hover:text-red-defect transition-colors w-full text-left"
+            className="flex items-center gap-3 py-2 text-sm text-on-surface-variant hover:text-error transition-colors w-full text-left"
           >
             <LogOut size={18} strokeWidth={1.8} />
-            Salir
+            {translations.nav.logout}
           </button>
         </form>
       </div>

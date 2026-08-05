@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
-import { deleteCoffee } from "@/app/actions/sessions";
-import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
+import { deleteCoffee } from "@/app/actions/coffees";
+import { ConfirmDialog } from "@/components/ui";
 
 export type DeleteCoffeeTranslations = {
   title: string;
@@ -28,67 +28,35 @@ export function DeleteCoffeeButton({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [error, setError] = useState(false);
-  const [pending, start] = useTransition();
 
-  const handleConfirm = () => {
-    setError(false);
-    start(async () => {
-      try {
-        await deleteCoffee(coffeeId, locale);
-        router.push(`/${locale}/app/coffees`);
-        router.refresh();
-      } catch {
-        setError(true);
-      }
-    });
+  const handleConfirm = async () => {
+    await deleteCoffee(coffeeId, locale);
+    router.push(`/${locale}/app/coffees`);
+    router.refresh();
   };
 
   return (
     <>
       <button
         type="button"
-        onClick={() => {
-          setError(false);
-          setOpen(true);
-        }}
+        onClick={() => setOpen(true)}
         className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-error transition-colors"
       >
         <Trash2 size={15} />
         {label}
       </button>
 
-      <ResponsiveDialog
+      <ConfirmDialog
         open={open}
-        onOpenChange={(next) => {
-          if (!pending) setOpen(next);
-        }}
+        onOpenChange={setOpen}
         title={t.title}
+        body={t.body}
+        confirmLabel={t.confirm}
+        cancelLabel={t.cancel}
         closeLabel={t.cancel}
-      >
-        <div className="space-y-5">
-          <p className="text-sm text-on-surface">{t.body}</p>
-          {error && <p className="text-sm text-error">{t.error}</p>}
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => setOpen(false)}
-              className="px-5 py-2.5 text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-50"
-            >
-              {t.cancel}
-            </button>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={handleConfirm}
-              className="bg-error text-white rounded-pill px-5 py-2.5 text-sm font-medium hover:opacity-90 transition-colors disabled:opacity-50"
-            >
-              {t.confirm}
-            </button>
-          </div>
-        </div>
-      </ResponsiveDialog>
+        onConfirm={handleConfirm}
+        error={t.error}
+      />
     </>
   );
 }

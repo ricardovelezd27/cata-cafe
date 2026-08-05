@@ -78,7 +78,7 @@ export function CoffeeVisibilityToggle({ coffeeId, visibility, translations }: P
   return (
     <div
       role="radiogroup"
-      className="inline-flex rounded-pill border border-brown-light overflow-hidden"
+      className="inline-flex rounded-pill border border-outline-variant overflow-hidden"
     >
       {options.map((opt, i) => {
         const active = visibility === opt.value;
@@ -92,13 +92,13 @@ export function CoffeeVisibilityToggle({ coffeeId, visibility, translations }: P
             onClick={() => handleSelect(opt.value)}
             disabled={isPending}
             className={`text-xs font-semibold px-3 py-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-              i > 0 ? "border-l border-brown-light" : ""
+              i > 0 ? "border-l border-outline-variant" : ""
             } ${
               active
-                ? "bg-green-dark text-white"
+                ? "bg-primary-container text-white"
                 : armedPublic
-                  ? "bg-amber-warm/20 text-brown-dark"
-                  : "bg-white text-brown-mid hover:bg-cream"
+                  ? "bg-secondary/20 text-on-surface"
+                  : "bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container"
             }`}
           >
             {opt.label}

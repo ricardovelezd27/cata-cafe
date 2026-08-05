@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
+import { Coffee as CoffeeIcon } from "lucide-react";
+import { DataTable, type Column, type Facet, Badge, ScorePill, EmptyState } from "@/components/ui";
 
-type CoffeeRow = {
+export type CoffeeRow = {
   id: string;
   name: string;
   country: string | null;
@@ -22,32 +24,52 @@ type CoffeeRow = {
   }>;
 };
 
-type SortField = "name" | "country" | "processType" | "variety" | "sessions" | "score" | "date";
+export type CoffeesTableTranslations = {
+  // Column headers
+  colName: string;
+  colOrigin: string;
+  colProcess: string;
+  colVariety: string;
+  colSessions: string;
+  colLastScore: string;
+  colLastDate: string;
+  // Row badges / links
+  view: string;
+  listPublic: string;
+  listPrivate: string;
+  listShared: string;
+  sharedWithMe: string;
+  adminOwnerPrefix: string;
+  // Fully-empty state (zero coffees at all)
+  noData: string;
+  // Generic table controls (DataTable / FilterBar / Pagination)
+  searchPlaceholder: string;
+  showing: string;
+  prev: string;
+  next: string;
+  clearFilters: string;
+  all: string;
+  noResults: string;
+  // Facets
+  filterProcess: string;
+  filterCountry: string;
+  filterOwnership: string;
+  ownershipMine: string;
+  ownershipShared: string;
+  ownershipPublic: string;
+};
 
 type Props = {
   coffees: CoffeeRow[];
   locale: string;
-  translations: {
-    searchPlaceholder: string;
-    colName: string;
-    colOrigin: string;
-    colProcess: string;
-    colVariety: string;
-    colSessions: string;
-    colLastScore: string;
-    colLastDate: string;
-    noData: string;
-    showing: string;
-    view: string;
-    listPublic: string;
-    listPrivate: string;
-    listShared: string;
-    sharedWithMe: string;
-    adminOwnerPrefix: string;
-  };
+  translations: CoffeesTableTranslations;
   isAdmin?: boolean;
 };
 
+// Category (data-viz-ish) colors per process type — no MD3 token equivalent
+// exists for an open-ended, data-driven category palette, so these hexes are
+// kept deliberately (see DESIGN.md "Flavor Family Colors" for the same
+// pattern). Only the *shape* (pill sizing, weight) borrows from Badge.
 const PROCESS_COLORS: Record<string, string> = {
   Lavado: "#4A90D9",
   Natural: "#E8834A",
@@ -59,50 +81,31 @@ const PROCESS_COLORS: Record<string, string> = {
   Otro: "#7A6E5F",
 };
 
-const PER_PAGE = 10;
-
+/** Hoisted to module scope — never redeclare components inside render. */
 function ProcessBadge({ type }: { type: string | null }) {
-  if (!type) return <span className="text-brown-mid text-xs">—</span>;
+  if (!type) return <span className="text-on-surface-variant text-xs">—</span>;
   const bg = PROCESS_COLORS[type] ?? "#7A6E5F";
   return (
     <span
-      style={{ background: bg, color: "#fff", padding: "2px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}
+      className="inline-flex items-center rounded-pill px-2 py-0.5 text-xs font-semibold text-white whitespace-nowrap"
+      style={{ backgroundColor: bg }}
     >
       {type}
     </span>
   );
 }
 
-function ScoreBadge({ score }: { score: number | null }) {
-  if (score == null) return <span className="text-brown-mid">—</span>;
-  const bg = score >= 85 ? "#3D5A3E" : score >= 75 ? "#C17817" : "#A83232";
-  return (
-    <span
-      style={{ background: bg, color: "#fff", padding: "2px 10px", borderRadius: 999, fontSize: 13, fontWeight: 600 }}
-    >
-      {score.toFixed(2)}
-    </span>
-  );
-}
-
-function VisibilityPill({ visibility, labels }: { visibility: string; labels: { public: string; shared: string; private: string } }) {
-  const className =
-    visibility === "public"
-      ? "bg-green-dark/10 text-green-dark border-green-dark/30"
-      : visibility === "shared"
-        ? "bg-amber-warm/15 text-brown-dark border-amber-warm/40"
-        : "bg-cream text-brown-mid border-brown-light";
-  const label =
-    visibility === "public"
-      ? labels.public
-      : visibility === "shared"
-        ? labels.shared
-        : labels.private;
-  return (
-    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${className}`}>
-      {label}
-    </span>
-  );
+/** Hoisted to module scope — never redeclare components inside render. */
+function VisibilityBadge({
+  visibility,
+  labels,
+}: {
+  visibility: string;
+  labels: { public: string; shared: string; private: string };
+}) {
+  if (visibility === "public") return <Badge tone="success">{labels.public}</Badge>;
+  if (visibility === "shared") return <Badge tone="accent">{labels.shared}</Badge>;
+  return <Badge tone="neutral">{labels.private}</Badge>;
 }
 
 function relativeDate(iso: string, locale: string): string {
@@ -117,293 +120,212 @@ function relativeDate(iso: string, locale: string): string {
   return rtf.format(Math.round(diff / 31536000), "year");
 }
 
-function SortIcon({ field, active, dir }: { field: string; active: boolean; dir: "asc" | "desc" }) {
-  if (!active) return <span className="text-brown-light ml-1 text-xs">↕</span>;
-  return <span className="text-green-dark ml-1 text-xs">{dir === "asc" ? "↑" : "↓"}</span>;
-}
-
 export default function CoffeesTable({ coffees, locale, translations: t, isAdmin = false }: Props) {
-  const [search, setSearch] = useState("");
-  const [sortField, setSortField] = useState<SortField>("name");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [page, setPage] = useState(1);
+  const visibilityLabels = { public: t.listPublic, shared: t.listShared, private: t.listPrivate };
 
-  function handleSort(field: SortField) {
-    if (field === sortField) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortField(field);
-      setSortDir("asc");
-    }
-    setPage(1);
-  }
+  const columns: Column<CoffeeRow>[] = useMemo(
+    () => [
+      {
+        key: "name",
+        label: t.colName,
+        sortable: true,
+        sortValue: (row) => row.name,
+        render: (row) => (
+          <div>
+            <span className="inline-flex items-center gap-2">
+              <Link
+                href={`/${locale}/app/coffees/${row.id}`}
+                className="font-semibold text-on-surface hover:text-primary-container"
+              >
+                {row.name}
+              </Link>
+              {(row.isMine || isAdmin) && (
+                <VisibilityBadge visibility={row.visibility} labels={visibilityLabels} />
+              )}
+              {!row.isMine && !isAdmin && row.visibility === "shared" && (
+                <Badge tone="accent">{t.sharedWithMe}</Badge>
+              )}
+            </span>
+            {row.ownerName && (
+              <span className="block text-xs text-on-surface-variant">
+                {t.adminOwnerPrefix} {row.ownerName}
+              </span>
+            )}
+          </div>
+        ),
+      },
+      {
+        key: "origin",
+        label: t.colOrigin,
+        sortable: true,
+        sortValue: (row) => row.country ?? "",
+        render: (row) =>
+          row.country ? (
+            <span>
+              {row.country}
+              {row.region && <span className="block text-xs text-on-surface-variant">{row.region}</span>}
+            </span>
+          ) : (
+            <span className="text-on-surface-variant">—</span>
+          ),
+      },
+      {
+        key: "process",
+        label: t.colProcess,
+        sortable: true,
+        sortValue: (row) => row.processType ?? "",
+        render: (row) => <ProcessBadge type={row.processType} />,
+      },
+      {
+        key: "variety",
+        label: t.colVariety,
+        sortable: true,
+        sortValue: (row) => row.variety ?? "",
+        render: (row) => row.variety ?? <span className="text-on-surface-variant">—</span>,
+      },
+      {
+        key: "sessions",
+        label: t.colSessions,
+        align: "center",
+        sortable: true,
+        sortValue: (row) => row._count.sessionSamples,
+        render: (row) => row._count.sessionSamples,
+      },
+      {
+        key: "score",
+        label: t.colLastScore,
+        sortable: true,
+        sortValue: (row) => row.coffeeHistory[0]?.individualScore ?? -1,
+        render: (row) => <ScorePill score={row.coffeeHistory[0]?.individualScore ?? null} />,
+      },
+      {
+        key: "date",
+        label: t.colLastDate,
+        sortable: true,
+        sortValue: (row) => row.coffeeHistory[0]?.tastedAt ?? "",
+        render: (row) => {
+          const latest = row.coffeeHistory[0] ?? null;
+          return (
+            <span className="whitespace-nowrap text-xs text-on-surface-variant">
+              {latest ? relativeDate(latest.tastedAt, locale) : "—"}
+            </span>
+          );
+        },
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [locale, isAdmin, t],
+  );
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    if (!q) return coffees;
-    return coffees.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        (c.country ?? "").toLowerCase().includes(q) ||
-        (c.variety ?? "").toLowerCase().includes(q) ||
-        (c.region ?? "").toLowerCase().includes(q)
-    );
-  }, [coffees, search]);
+  const facets: Facet<CoffeeRow>[] = useMemo(() => {
+    const processOptions = Array.from(
+      new Set(coffees.map((c) => c.processType).filter((v): v is string => !!v)),
+    )
+      .sort((a, b) => a.localeCompare(b, locale))
+      .map((v) => ({ value: v, label: v }));
 
-  const sorted = useMemo(() => {
-    return [...filtered].sort((a, b) => {
-      let cmp = 0;
-      switch (sortField) {
-        case "name":
-          cmp = a.name.localeCompare(b.name);
-          break;
-        case "country":
-          cmp = (a.country ?? "").localeCompare(b.country ?? "");
-          break;
-        case "processType":
-          cmp = (a.processType ?? "").localeCompare(b.processType ?? "");
-          break;
-        case "variety":
-          cmp = (a.variety ?? "").localeCompare(b.variety ?? "");
-          break;
-        case "sessions":
-          cmp = a._count.sessionSamples - b._count.sessionSamples;
-          break;
-        case "score": {
-          const sa = a.coffeeHistory[0]?.individualScore ?? -1;
-          const sb = b.coffeeHistory[0]?.individualScore ?? -1;
-          cmp = sa - sb;
-          break;
-        }
-        case "date": {
-          const da = a.coffeeHistory[0]?.tastedAt ?? "";
-          const db = b.coffeeHistory[0]?.tastedAt ?? "";
-          cmp = da.localeCompare(db);
-          break;
-        }
-      }
-      return sortDir === "asc" ? cmp : -cmp;
-    });
-  }, [filtered, sortField, sortDir]);
+    const countryOptions = Array.from(
+      new Set(coffees.map((c) => c.country).filter((v): v is string => !!v)),
+    )
+      .sort((a, b) => a.localeCompare(b, locale))
+      .map((v) => ({ value: v, label: v }));
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PER_PAGE));
-  const safePage = Math.min(page, totalPages);
-  const pageItems = sorted.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
-  const from = sorted.length === 0 ? 0 : (safePage - 1) * PER_PAGE + 1;
-  const to = Math.min(safePage * PER_PAGE, sorted.length);
-
-  const showingText = t.showing
-    .replace("{from}", String(from))
-    .replace("{to}", String(to))
-    .replace("{total}", String(sorted.length));
-
-  function Th({ field, label }: { field: SortField; label: string }) {
-    return (
-      <th
-        className="px-4 py-3 text-left text-xs font-semibold text-brown-mid uppercase tracking-wide cursor-pointer select-none whitespace-nowrap hover:text-brown-dark"
-        onClick={() => handleSort(field)}
-      >
-        {label}
-        <SortIcon field={field} active={sortField === field} dir={sortDir} />
-      </th>
-    );
-  }
+    return [
+      {
+        key: "process",
+        label: t.filterProcess,
+        options: processOptions,
+        match: (row, value) => row.processType === value,
+      },
+      {
+        key: "country",
+        label: t.filterCountry,
+        options: countryOptions,
+        match: (row, value) => row.country === value,
+      },
+      {
+        key: "ownership",
+        label: t.filterOwnership,
+        options: [
+          { value: "mine", label: t.ownershipMine },
+          { value: "shared", label: t.ownershipShared },
+          { value: "public", label: t.ownershipPublic },
+        ],
+        match: (row, value) => {
+          if (value === "mine") return row.isMine;
+          if (value === "shared") return !row.isMine && row.visibility === "shared";
+          if (value === "public") return !row.isMine && row.visibility === "public";
+          return true;
+        },
+      },
+    ];
+  }, [coffees, locale, t]);
 
   return (
-    <div className="space-y-4">
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <svg
-          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brown-mid pointer-events-none"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          viewBox="0 0 24 24"
-        >
-          <circle cx={11} cy={11} r={8} />
-          <path d="m21 21-4.35-4.35" />
-        </svg>
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          placeholder={t.searchPlaceholder}
-          className="w-full pl-9 pr-4 py-2 text-sm border border-brown-light rounded-input bg-[#FDFBF7] text-brown-dark placeholder:text-brown-mid focus:outline-none focus:border-green-dark"
-        />
-      </div>
-
-      {/* Desktop table */}
-      {pageItems.length === 0 ? (
-        <p className="text-sm text-brown-mid py-8 text-center">{t.noData}</p>
-      ) : (
-        <>
-          <div className="hidden md:block overflow-x-auto rounded-card border border-brown-light">
-            <table className="w-full text-sm">
-              <thead className="bg-[#F5F0E8] border-b border-brown-light">
-                <tr>
-                  <Th field="name" label={t.colName} />
-                  <Th field="country" label={t.colOrigin} />
-                  <Th field="processType" label={t.colProcess} />
-                  <Th field="variety" label={t.colVariety} />
-                  <Th field="sessions" label={t.colSessions} />
-                  <Th field="score" label={t.colLastScore} />
-                  <Th field="date" label={t.colLastDate} />
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-brown-light/50">
-                {pageItems.map((c) => {
-                  const latest = c.coffeeHistory[0] ?? null;
-                  return (
-                    <tr
-                      key={c.id}
-                      className="bg-[#FDFBF7] hover:bg-amber-50/40 transition-colors border-l-2 border-l-transparent hover:border-l-green-dark"
-                    >
-                      <td className="px-4 py-3">
-                        <span className="inline-flex items-center gap-2">
-                          <Link
-                            href={`/${locale}/app/coffees/${c.id}`}
-                            className="font-semibold text-brown-dark hover:text-green-dark"
-                          >
-                            {c.name}
-                          </Link>
-                          {(c.isMine || isAdmin) && (
-                            <VisibilityPill
-                              visibility={c.visibility}
-                              labels={{ public: t.listPublic, shared: t.listShared, private: t.listPrivate }}
-                            />
-                          )}
-                          {!c.isMine && !isAdmin && c.visibility === "shared" && (
-                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full border bg-amber-warm/15 text-brown-dark border-amber-warm/40">
-                              {t.sharedWithMe}
-                            </span>
-                          )}
-                        </span>
-                        {c.ownerName && (
-                          <span className="block text-xs text-brown-mid">
-                            {t.adminOwnerPrefix} {c.ownerName}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-brown-dark">
-                        {c.country ? (
-                          <span>
-                            {c.country}
-                            {c.region && (
-                              <span className="block text-xs text-brown-mid">{c.region}</span>
-                            )}
-                          </span>
-                        ) : (
-                          <span className="text-brown-mid">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <ProcessBadge type={c.processType} />
-                      </td>
-                      <td className="px-4 py-3 text-brown-dark">
-                        {c.variety ?? <span className="text-brown-mid">—</span>}
-                      </td>
-                      <td className="px-4 py-3 text-brown-dark text-center">
-                        {c._count.sessionSamples}
-                      </td>
-                      <td className="px-4 py-3">
-                        <ScoreBadge score={latest?.individualScore ?? null} />
-                      </td>
-                      <td className="px-4 py-3 text-xs text-brown-mid whitespace-nowrap">
-                        {latest ? relativeDate(latest.tastedAt, locale) : "—"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Link
-                          href={`/${locale}/app/coffees/${c.id}`}
-                          className="text-xs text-green-dark font-semibold hover:underline whitespace-nowrap"
-                        >
-                          {t.view}
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile cards */}
-          <div className="grid gap-3 md:hidden">
-            {pageItems.map((c) => {
-              const latest = c.coffeeHistory[0] ?? null;
-              return (
-                <div
-                  key={c.id}
-                  className="bg-[#FDFBF7] border border-brown-light rounded-card px-4 py-3 space-y-2"
+    <DataTable
+      rows={coffees}
+      rowKey={(row) => row.id}
+      columns={columns}
+      searchText={(row) => [row.name, row.country, row.variety, row.region]}
+      facets={facets}
+      getRowHref={(row) => `/${locale}/app/coffees/${row.id}`}
+      renderMobileCard={(row) => {
+        const latest = row.coffeeHistory[0] ?? null;
+        return (
+          <div className="space-y-2 rounded-card border border-outline-variant bg-surface-container-lowest px-4 py-3">
+            <div className="flex items-start justify-between gap-2">
+              <span className="inline-flex items-center gap-2">
+                <Link
+                  href={`/${locale}/app/coffees/${row.id}`}
+                  className="font-semibold leading-tight text-on-surface hover:text-primary-container"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="inline-flex items-center gap-2">
-                      <Link
-                        href={`/${locale}/app/coffees/${c.id}`}
-                        className="font-semibold text-brown-dark hover:text-green-dark leading-tight"
-                      >
-                        {c.name}
-                      </Link>
-                      {(c.isMine || isAdmin) && (
-                        <VisibilityPill
-                          visibility={c.visibility}
-                          labels={{ public: t.listPublic, shared: t.listShared, private: t.listPrivate }}
-                        />
-                      )}
-                      {!c.isMine && !isAdmin && c.visibility === "shared" && (
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full border bg-amber-warm/15 text-brown-dark border-amber-warm/40">
-                          {t.sharedWithMe}
-                        </span>
-                      )}
-                    </span>
-                    <ProcessBadge type={c.processType} />
-                  </div>
-                  {c.ownerName && (
-                    <div className="text-xs text-brown-mid">
-                      {t.adminOwnerPrefix} {c.ownerName}
-                    </div>
-                  )}
-                  {(c.country || c.region) && (
-                    <div className="text-xs text-brown-mid">
-                      {[c.country, c.region].filter(Boolean).join(", ")}
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between pt-1">
-                    <ScoreBadge score={latest?.individualScore ?? null} />
-                    <Link
-                      href={`/${locale}/app/coffees/${c.id}`}
-                      className="text-xs text-green-dark font-semibold hover:underline"
-                    >
-                      {t.view}
-                    </Link>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Pagination */}
-          <div className="flex items-center justify-between text-sm text-brown-mid pt-1">
-            <span>{showingText}</span>
-            <div className="flex gap-2">
-              <button
-                disabled={safePage <= 1}
-                onClick={() => setPage((p) => p - 1)}
-                className="px-3 py-1 rounded-pill border border-brown-light text-brown-dark disabled:opacity-40 hover:border-green-dark disabled:cursor-not-allowed"
+                  {row.name}
+                </Link>
+                {(row.isMine || isAdmin) && (
+                  <VisibilityBadge visibility={row.visibility} labels={visibilityLabels} />
+                )}
+                {!row.isMine && !isAdmin && row.visibility === "shared" && (
+                  <Badge tone="accent">{t.sharedWithMe}</Badge>
+                )}
+              </span>
+              <ProcessBadge type={row.processType} />
+            </div>
+            {row.ownerName && (
+              <div className="text-xs text-on-surface-variant">
+                {t.adminOwnerPrefix} {row.ownerName}
+              </div>
+            )}
+            {(row.country || row.region) && (
+              <div className="text-xs text-on-surface-variant">
+                {[row.country, row.region].filter(Boolean).join(", ")}
+              </div>
+            )}
+            <div className="flex items-center justify-between pt-1">
+              <ScorePill score={latest?.individualScore ?? null} />
+              <Link
+                href={`/${locale}/app/coffees/${row.id}`}
+                className="text-xs font-semibold text-primary-container hover:underline"
               >
-                ‹ Ant.
-              </button>
-              <button
-                disabled={safePage >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="px-3 py-1 rounded-pill border border-brown-light text-brown-dark disabled:opacity-40 hover:border-green-dark disabled:cursor-not-allowed"
-              >
-                Sig. ›
-              </button>
+                {t.view}
+              </Link>
             </div>
           </div>
-        </>
-      )}
-    </div>
+        );
+      }}
+      emptyState={
+        <EmptyState icon={<CoffeeIcon size={20} aria-hidden />} title={t.noData} />
+      }
+      noResults={t.noResults}
+      initialSort={{ key: "name", dir: "asc" }}
+      locale={locale}
+      translations={{
+        searchPlaceholder: t.searchPlaceholder,
+        showing: t.showing,
+        prev: t.prev,
+        next: t.next,
+        clearFilters: t.clearFilters,
+        all: t.all,
+      }}
+    />
   );
 }

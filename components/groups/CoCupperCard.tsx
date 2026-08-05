@@ -43,29 +43,29 @@ export function CoCupperCard({
   const roleLabel = ROLE_LABELS[cupper.role]?.es ?? cupper.role;
 
   return (
-    <div className="bg-white rounded-card border border-[#E8E0D0] p-5 flex flex-col gap-4">
+    <div className="bg-surface-container-lowest rounded-card border border-outline-variant p-5 flex flex-col gap-4">
       <div className="flex items-center gap-4">
         <Avatar name={cupper.displayName} size={56} />
         <div className="min-w-0">
-          <p className="font-semibold text-[15px] text-brown-dark truncate">
+          <p className="font-semibold text-[15px] text-on-surface truncate">
             {cupper.displayName}
           </p>
-          <span className="inline-block mt-1 px-2 py-0.5 text-xs rounded-full bg-[#F0EBE1] text-brown-mid">
+          <span className="inline-block mt-1 px-2 py-0.5 text-xs rounded-full bg-[#F0EBE1] text-on-surface-variant">
             {roleLabel}
           </span>
         </div>
       </div>
 
-      <hr className="border-[#E8E0D0]" />
+      <hr className="border-outline-variant" />
 
       <div className="flex flex-col gap-1.5">
-        <p className="text-sm text-brown-dark">
+        <p className="text-sm text-on-surface">
           <span className="font-semibold">{cupper.sessionCount}</span>{" "}
           {cupper.sessionCount === 1 ? "sesión" : "sesiones"} ·{" "}
           <span className="font-semibold">{cupper.evaluationCount}</span>{" "}
           {cupper.evaluationCount === 1 ? "cata" : "catas"}
         </p>
-        <p className="text-xs text-brown-mid">
+        <p className="text-xs text-on-surface-variant">
           Última sesión: {formatRelativeDate(cupper.lastSessionDate)} —{" "}
           <span className="italic">{cupper.lastSessionName}</span>
         </p>

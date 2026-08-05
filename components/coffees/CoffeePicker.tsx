@@ -29,13 +29,14 @@ type Props = {
     shared: string;
     public: string;
     empty: string;
+    close: string;
   };
 };
 
 const badgeCls: Record<UsableCoffee["origin"], string> = {
-  mine: "bg-green-dark/10 text-green-dark border-green-dark/30",
-  shared: "bg-amber-warm/15 text-brown-dark border-amber-warm/40",
-  public: "bg-cream text-brown-mid border-brown-light",
+  mine: "bg-primary-container/10 text-primary-container border-primary-container/30",
+  shared: "bg-secondary/15 text-on-surface border-secondary/40",
+  public: "bg-surface-container text-on-surface-variant border-outline-variant",
 };
 
 export function CoffeePicker({ open, onOpenChange, coffees, onSelect, translations: t }: Props) {
@@ -60,7 +61,7 @@ export function CoffeePicker({ open, onOpenChange, coffees, onSelect, translatio
     origin === "mine" ? t.mine : origin === "shared" ? t.shared : t.public;
 
   return (
-    <ResponsiveDialog open={open} onOpenChange={onOpenChange} title={t.title}>
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange} title={t.title} closeLabel={t.close}>
       <input
         type="text"
         autoFocus
@@ -69,12 +70,12 @@ export function CoffeePicker({ open, onOpenChange, coffees, onSelect, translatio
         placeholder={t.searchPlaceholder}
         aria-label={t.searchPlaceholder}
         autoComplete="off"
-        className="w-full rounded-pill border-[1.5px] border-brown-light/60 bg-bg px-4 py-2 text-sm text-brown-dark placeholder:text-brown-mid focus:border-green-mid focus:outline-none"
+        className="w-full rounded-pill border-[1.5px] border-outline-variant/60 bg-surface px-4 py-2 text-sm text-on-surface placeholder:text-on-surface-variant focus:border-green-mid focus:outline-none"
       />
 
       <div className="mt-3 max-h-[50vh] overflow-y-auto">
         {results.length === 0 ? (
-          <p className="py-8 text-center text-sm text-brown-mid">{t.empty}</p>
+          <p className="py-8 text-center text-sm text-on-surface-variant">{t.empty}</p>
         ) : (
           <div className="flex flex-col gap-1.5">
             {results.map((coffee) => {
@@ -86,10 +87,10 @@ export function CoffeePicker({ open, onOpenChange, coffees, onSelect, translatio
                   key={coffee.id}
                   type="button"
                   onClick={() => onSelect(coffee)}
-                  className="flex flex-col items-start gap-1 rounded-card border border-brown-light/40 px-3.5 py-2.5 text-left transition-colors hover:bg-cream"
+                  className="flex flex-col items-start gap-1 rounded-card border border-outline-variant/40 px-3.5 py-2.5 text-left transition-colors hover:bg-surface-container"
                 >
                   <div className="flex w-full items-center gap-2">
-                    <span className="font-semibold text-[13px] text-brown-dark">
+                    <span className="font-semibold text-[13px] text-on-surface">
                       {coffee.name}
                     </span>
                     <span
@@ -99,7 +100,7 @@ export function CoffeePicker({ open, onOpenChange, coffees, onSelect, translatio
                     </span>
                   </div>
                   {subtitle && (
-                    <span className="text-[12px] text-brown-mid">{subtitle}</span>
+                    <span className="text-[12px] text-on-surface-variant">{subtitle}</span>
                   )}
                 </button>
               );

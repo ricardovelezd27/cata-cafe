@@ -5,7 +5,7 @@
  */
 export function BetaBadge({ label = "Beta" }: { label?: string }) {
   return (
-    <span className="inline-flex items-center rounded-pill border border-amber-warm px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-amber-warm bg-cream">
+    <span className="inline-flex items-center rounded-pill border border-secondary px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-secondary bg-surface-container">
       {label}
     </span>
   );

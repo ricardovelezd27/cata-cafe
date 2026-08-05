@@ -99,9 +99,14 @@ cata-cafe/
 │   │   └── layout.tsx              # Locale layout (next-intl)
 │   ├── actions/                    # Server actions (all mutations live here)
 │   │   ├── auth.ts                 # signInWithMagicLink(formData, next?), signOut
-│   │   ├── sessions.ts             # createSession, createGroupSession, upsertEvaluation, upsertPhysical, upsertExtrinsic
-│   │   ├── community.ts            # submitEvaluation, closeSession, revealSample, joinViaToken, createInviteToken, syncCoffeeHistory, setParticipantExclusion
-│   │   ├── coffees.ts              # Coffee profile create/update
+│   │   ├── sessions.ts             # createSession, createGroupSession, updateSession, deleteSession,
+│   │   │                           #   addSessionSample/renameSessionSample/removeSessionSample (owner, guarded),
+│   │   │                           #   upsertEvaluation/upsertPhysical/upsertExtrinsic (member-gated), updateSampleMetadata
+│   │   ├── community.ts            # submitAllEvaluations (+ solo auto-close), closeSession, revealSample,
+│   │   │                           #   joinViaToken, createInviteToken, setParticipantExclusion, refreshAggregateScores
+│   │   ├── coffees.ts              # createCoffee, updateCoffee, deleteCoffee, visibility/sharing/invites
+│   │   ├── groups.ts               # createGroupWithMembers, updateGroup, deleteGroup, roster (add/remove/rename/resend),
+│   │   │                           #   leaveGroup (member), GroupPost feed (create/update/delete), email blasts
 │   │   ├── offline.ts              # Conflict-aware replay of offline evaluation drafts on reconnect
 │   │   ├── profile.ts              # Profile updates, completeOnboarding
 │   │   ├── waitlist.ts             # Landing-page waitlist signup
@@ -123,6 +128,11 @@ cata-cafe/
 │   ├── ui/                         # Atomic design system (replaced old per-form widgets):
 │   │   #   IntensitySlider, AffectiveBubbles, CATAPills, CupIndicators/CupToggleGrid,
 │   │   #   ScoreDisplay, MasterControls, SampleTabs, SessionShell, ResponsiveDialog, Notes…
+│   │   #   PLUS the shared list/CRUD kit (2026-08 cohesion overhaul):
+│   │   #   DataTable (sort/search/facets/pagination, desktop table + mobile cards),
+│   │   #   Badge/StatusPill/ScorePill, PageHeader, SearchInput, Select, EmptyState,
+│   │   #   Pagination, FilterBar, ConfirmDialog — ALWAYS reuse these for list pages,
+│   │   #   status/score pills, page headers, and delete confirmations.
 │   ├── results/                    # ScoreTable, SampleRadarChart, DescriptorFrequency, FlavorCloud,
 │   │   #   MyResultsSummary, IndividualResultsPanel, ScoreBreakdownPanel ("¿Cómo se calculó?")
 │   ├── landing/                    # Marketing landing sections (Hero, Pricing, Roadmap, WaitlistForm, ScrollFx…)
@@ -135,6 +145,10 @@ cata-cafe/
 ├── lib/
 │   ├── prisma.ts                   # Prisma singleton — always import from here
 │   ├── scoring.ts                  # SCA CVA formula — do not reimplement
+│   ├── sessionAuth.ts              # requireSessionOwner/Member + requireSampleOwner/Member — THE authz gate
+│   │                               #   (Prisma runs as postgres and bypasses RLS; these TS checks are the real gate)
+│   ├── sessionRouting.ts           # sessionHref() — where clicking a session goes (closed→results, etc.). Never hardcode /cup in lists.
+│   ├── coffeeHistory.ts            # syncCoffeeHistoryForSession() — plain lib fn, callers must authorize first
 │   ├── evaluation.ts               # Derived-score computation shared by live + offline paths
 │   ├── constants.ts                # All cupping reference data (FLAVOR_WHEEL, attributes, defects…)
 │   ├── descriptors.ts              # Descriptor helpers + unmapped-note resolution
@@ -201,11 +215,19 @@ All writes go through `app/actions/`. Call `revalidatePath()` after mutations to
 `descriptiveData`, `affectiveData`, and `combinedData` on the `Evaluation` model are stored as JSON (`Record<string, unknown>`). Do not flatten these into new columns — the flexible JSON structure is intentional to support dynamic attribute sets.
 
 ### Auth Pattern
-- `requireUser()` helper in every server action — throws/redirects if unauthenticated
+- `requireUser()` helper in every server action — throws/redirects if unauthenticated. That is AUTHENTICATION only.
+- **AUTHORIZATION** for session-scoped actions goes through `lib/sessionAuth.ts`: `requireSessionOwner`/`requireSessionMember` (by session id) and `requireSampleOwner`/`requireSampleMember` (by sample id — also returns the sample's real `sessionId`; never trust a client-supplied sessionId next to a sampleId). Every new session/sample mutation MUST call one of these — Prisma connects as postgres and bypasses RLS, so these TS checks are the real gate.
 - Protected layout at `app/[locale]/app/layout.tsx` redirects to login
 - Session stored in cookies via `@supabase/ssr`; refreshed by `proxy.ts` middleware on every request
 - Auth is **magic link OTP only** — there are no passwords in this system
 - `signInWithMagicLink(formData, next?)` threads `next` into `emailRedirectTo` → `/auth/callback?next=...` → callback at `app/auth/callback/route.ts` reads `?next=` and redirects there after auth. Used for invite links that require auth before joining.
+- Owner vs participant rule (product-wide): the creator of an asset (session, coffee, group) has full create/edit/delete; participants/members only take part (evaluate, read the feed, leave a group).
+
+### Session Lifecycle (see docs/flows.md for diagrams)
+- Solo: `createSession` sets `status:"active"`; `submitAllEvaluations` **auto-closes** the session once the owner has a submitted evaluation for every sample (reveals coffee-linked samples, then `syncCoffeeHistoryForSession`). Do not add a manual close path for solo.
+- Group: active → (startedAt via `startSession`) → closed via owner `closeSession` (history sync + close emails).
+- `status` values in the wild: "active" | "closed" (+ legacy "draft"/"open" rows render as neutral/active in `StatusPill`).
+- All session links in lists MUST go through `sessionHref()` (`lib/sessionRouting.ts`).
 
 ### Group Sessions Pattern
 - **`createSession`** (solo) uses `redirect()` inside — do not modify; it cannot return a value.
@@ -319,15 +341,13 @@ All cupping reference data is in `lib/constants.ts` (Spanish-labeled):
 ## Styling
 
 - **Tailwind CSS 4** — PostCSS-based, no `tailwind.config.js` safelist
-- Custom color tokens (defined in CSS globals, referenced via Tailwind):
-  - `green-dark` (#3D5A3E) — primary actions
-  - `brown-dark / brown-mid / brown-light` — typography & borders
-  - `red-defect` (#A83232) — defect highlighting
-  - `cream` — subtle backgrounds
-  - `amber-warm` — affective/secondary accents
-  - Page background: `#FDFBF7`
-- Use **Radix UI** for accessible overlays and dialogs
+- **`DESIGN.md` is the single source of truth for tokens** (MD3 role system in `app/globals.css`): `primary-container`, `surface`/`surface-container-*`, `on-surface`/`on-surface-variant`, `outline`/`outline-variant`, `secondary` (terracotta), `error`, radius tokens `rounded-card/input/pill`. **Never write hex literals in components.**
+- Legacy alias classes (`green-dark`, `brown-*`, `cream`, `amber-warm`, `red-defect`, `bg`) still resolve via a back-compat block in `globals.css` — do not use them in NEW code; prefer MD3 names.
+- Responsive breakpoint rule: **content layouts switch at `md:`** (DataTable table↔cards), **the app shell at `lg:`** (Sidebar↔BottomNav), **dialogs at 640px** (ResponsiveDialog internal media query).
+- Reuse the shared UI kit for anything list/CRUD-shaped: `DataTable`, `Badge`/`StatusPill`/`ScorePill`, `PageHeader`, `EmptyState`, `ConfirmDialog`, `SearchInput`, `Select`, `Pagination`, `FilterBar` (all in `components/ui/`).
+- Use **Radix UI** for accessible overlays and dialogs (via `ResponsiveDialog`)
 - Use **lucide-react** for all icons
+- App flows (session lifecycle, coffee sharing, group invites, app map) are diagrammed in **`docs/flows.md`** — those diagrams are normative; update them in the same PR as any flow change.
 
 ---
 
