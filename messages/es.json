@@ -30,7 +30,9 @@
     "cancel": "Cancelar",
     "edit": "Editar",
     "delete": "Eliminar",
-    "view": "Ver"
+    "view": "Ver",
+    "duplicate": "Duplicar",
+    "duplicateError": "No se pudo duplicar. Inténtalo de nuevo."
   },
   "home": {
     "heroTitle": "Cata sensorial profesional",

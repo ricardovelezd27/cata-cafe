@@ -200,6 +200,52 @@ export async function updateCoffee(
   return { ok: true };
 }
 
+// ─── Duplicate a coffee as a template ─────────────────────────────────────────
+// Anyone who can USE the coffee (owned + public + shared-with-me) can copy it;
+// the copy becomes theirs, private, with results unpublished — the same rule as
+// "I can already read this data". Caller routes to the copy's edit page.
+export async function duplicateCoffee(
+  coffeeId: string,
+  locale: string = "es",
+): Promise<{ ok: true; coffeeId: string }> {
+  const user = await requireUser();
+
+  const source = await prisma.coffee.findFirst({
+    where: { id: coffeeId, AND: [usableCoffeeWhere(user.id)] },
+    select: {
+      name: true,
+      country: true,
+      region: true,
+      farm: true,
+      producer: true,
+      species: true,
+      variety: true,
+      harvestYear: true,
+      processType: true,
+      altitude: true,
+      roastLevel: true,
+      certifications: true,
+      notes: true,
+    },
+  });
+  if (!source) throw new Error("not_found_or_forbidden");
+
+  const prefix = locale === "en" ? "Copy of" : "Copia de";
+  const copy = await prisma.coffee.create({
+    data: {
+      ...source,
+      name: `${prefix} ${source.name}`.slice(0, 120),
+      createdBy: user.id,
+      visibility: "private",
+      resultsPublished: false,
+    },
+    select: { id: true },
+  });
+
+  revalidatePath(`/${locale}/app/coffees`);
+  return { ok: true, coffeeId: copy.id };
+}
+
 // ─── Share a coffee via invite link (owner only) ──────────────────────────────
 // Generating a link on a private coffee flips it to "shared" in the same call
 // — creating a link IS the intent to share. Reuses the newest still-valid

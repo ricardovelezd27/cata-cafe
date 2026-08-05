@@ -15,6 +15,7 @@ import { PublishResultsToggle } from "@/components/coffees/PublishResultsToggle"
 import { CoffeeVisibilityToggle } from "@/components/coffees/CoffeeVisibilityToggle";
 import { CoffeeShareManager } from "@/components/coffees/CoffeeShareManager";
 import { Badge, ScorePill } from "@/components/ui";
+import { DuplicateButton } from "@/components/DuplicateButton";
 import { DeleteCoffeeButton } from "./DeleteCoffeeButton";
 
 // Auth'd page with a dynamic [id] segment: must render per-request. With
@@ -146,8 +147,8 @@ export default async function CoffeeProfilePage({
             </div>
           )}
         </div>
-        {coffee.createdBy === user.id && (
-          <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
+          {coffee.createdBy === user.id && (
             <Link
               href={`/${locale}/app/coffees/${coffee.id}/edit`}
               className="inline-flex items-center gap-1.5 rounded-pill border border-primary-container px-4 py-2 text-sm font-medium text-primary-container transition-colors hover:bg-primary-fixed"
@@ -155,6 +156,16 @@ export default async function CoffeeProfilePage({
               <Pencil size={16} aria-hidden />
               {tc("edit")}
             </Link>
+          )}
+          {/* Anyone who can use the coffee can copy it as a template */}
+          <DuplicateButton
+            kind="coffee"
+            id={coffee.id}
+            locale={locale}
+            label={tc("duplicate")}
+            errorText={tc("duplicateError")}
+          />
+          {coffee.createdBy === user.id && (
             <DeleteCoffeeButton
               coffeeId={coffee.id}
               locale={locale}
@@ -167,8 +178,8 @@ export default async function CoffeeProfilePage({
                 error: t("deleteCoffee.error"),
               }}
             />
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Visibility controls (owner only) */}

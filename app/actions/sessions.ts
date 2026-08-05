@@ -365,6 +365,79 @@ export async function deleteSession(sessionId: string, locale: string = "es") {
 // NOTE: deleteCoffee moved to app/actions/coffees.ts with the rest of the
 // coffee CRUD actions.
 
+// ─── Duplicate a session as a template (owner only) ───────────────────────────
+// Copies the shell — metadata, samples with their coffee links, group link —
+// but NEVER evaluations/participants/invites. Group sessions get a fresh owner
+// participant row + invite token (same shape createGroupSession produces).
+// closesAt is date-bound and deliberately not copied. Caller routes to /edit.
+export async function duplicateSession(
+  sessionId: string,
+  locale: string = "es",
+): Promise<{ ok: true; sessionId: string }> {
+  const user = await requireUser();
+  const session = await requireSessionOwner(sessionId, user.id);
+
+  const source = await prisma.cuppingSession.findUnique({
+    where: { id: sessionId },
+    select: {
+      name: true,
+      objective: true,
+      format: true,
+      cupsPerSample: true,
+      isGroup: true,
+      groupId: true,
+      samples: {
+        orderBy: { position: "asc" },
+        select: { label: true, position: true, coffeeId: true },
+      },
+    },
+  });
+  if (!source) throw new Error("not_found_or_forbidden");
+  void session;
+
+  // Keep the group link only if the group still exists and is still ours.
+  let groupId: string | null = null;
+  if (source.isGroup && source.groupId) {
+    const group = await prisma.tastingGroup.findUnique({
+      where: { id: source.groupId },
+      select: { createdBy: true },
+    });
+    if (group?.createdBy === user.id) groupId = source.groupId;
+  }
+
+  const prefix = locale === "en" ? "Copy of" : "Copia de";
+  const copy = await prisma.cuppingSession.create({
+    data: {
+      name: `${prefix} ${source.name}`.slice(0, 120),
+      date: new Date(),
+      objective: source.objective,
+      format: source.format,
+      cupsPerSample: source.cupsPerSample,
+      isGroup: source.isGroup,
+      status: "active",
+      createdBy: user.id,
+      groupId,
+      samples: {
+        create: source.samples.map((s) => ({
+          label: s.label,
+          position: s.position,
+          coffeeId: s.coffeeId,
+        })),
+      },
+      ...(source.isGroup
+        ? {
+            participants: { create: { userId: user.id, status: "owner" } },
+            invites: { create: { token: crypto.randomUUID(), createdBy: user.id } },
+          }
+        : {}),
+    },
+    select: { id: true },
+  });
+
+  revalidatePath(`/${locale}/app/sessions`);
+  return { ok: true, sessionId: copy.id };
+}
+
 export type UpdateSessionInput = {
   name?: string;
   date?: string;

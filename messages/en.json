@@ -30,7 +30,9 @@
     "cancel": "Cancel",
     "edit": "Edit",
     "delete": "Delete",
-    "view": "View"
+    "view": "View",
+    "duplicate": "Duplicate",
+    "duplicateError": "Couldn't duplicate. Please try again."
   },
   "home": {
     "heroTitle": "Professional sensory cupping",

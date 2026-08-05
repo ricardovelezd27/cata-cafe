@@ -18,6 +18,7 @@ import { AddByEmailForm } from "@/components/groups/AddByEmailForm";
 import { GroupEmailComposer } from "@/components/groups/GroupEmailComposer";
 import { GroupFeed, type GroupFeedPost } from "@/components/groups/GroupFeed";
 import { PostComposer } from "@/components/groups/PostComposer";
+import { DuplicateButton } from "@/components/DuplicateButton";
 import { LeaveGroupButton } from "@/components/groups/LeaveGroupButton";
 
 // Auth'd page with a dynamic [id] segment: must render per-request. With
@@ -385,12 +386,21 @@ export default async function GroupDetailPage({
           <ChevronLeft size={16} aria-hidden />
           {t("backToGroups")}
         </Link>
-        <Link
-          href={`/${locale}/app/sessions/new?groupId=${id}`}
-          className="inline-flex items-center gap-1.5 rounded-pill bg-primary-container px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-primary"
-        >
-          <Plus size={16} /> {t("createSessionCta")}
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <DuplicateButton
+            kind="group"
+            id={group.id}
+            locale={locale}
+            label={tCommon("duplicate")}
+            errorText={tCommon("duplicateError")}
+          />
+          <Link
+            href={`/${locale}/app/sessions/new?groupId=${id}`}
+            className="inline-flex items-center gap-1.5 rounded-pill bg-primary-container px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-primary"
+          >
+            <Plus size={16} /> {t("createSessionCta")}
+          </Link>
+        </div>
       </div>
 
       <GroupNameControls

@@ -1042,6 +1042,51 @@ export async function deleteGroupPost(postId: string): Promise<{ ok: true }> {
   return { ok: true };
 }
 
+// ─── Duplicate a group as a template (owner only) ─────────────────────────────
+// Copies name/description and the full roster (email/userId/displayName rows)
+// WITHOUT sending any invitation emails — members are already known people;
+// re-inviting on copy would spam them. Posts and session links are not copied.
+export async function duplicateGroup(
+  groupId: string,
+  locale: string = "es",
+): Promise<{ ok: true; groupId: string }> {
+  const user = await requireUser();
+
+  const source = await prisma.tastingGroup.findUnique({
+    where: { id: groupId },
+    select: {
+      createdBy: true,
+      name: true,
+      description: true,
+      members: { select: { email: true, userId: true, displayName: true } },
+    },
+  });
+  if (!source || source.createdBy !== user.id) {
+    throw new Error("not_found_or_forbidden");
+  }
+
+  const prefix = locale === "en" ? "Copy of" : "Copia de";
+  const copy = await prisma.tastingGroup.create({
+    data: {
+      name: `${prefix} ${source.name}`.slice(0, 80),
+      description: source.description,
+      createdBy: user.id,
+      members: {
+        create: source.members.map((m) => ({
+          email: m.email,
+          userId: m.userId,
+          displayName: m.displayName,
+        })),
+      },
+    },
+    select: { id: true },
+  });
+
+  revalidatePath("/es/app/groups");
+  revalidatePath("/en/app/groups");
+  return { ok: true, groupId: copy.id };
+}
+
 // ─── Member self-service: leave a group ───────────────────────────────────────
 // A member deletes their OWN membership row(s). The owner can never leave
 // their own group (it would orphan it) — deleting the group is their exit.

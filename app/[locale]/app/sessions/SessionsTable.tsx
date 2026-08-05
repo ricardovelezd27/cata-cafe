@@ -6,6 +6,7 @@ import { DataTable, type Column, type Facet } from "@/components/ui/DataTable";
 import { Badge, StatusPill } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DeleteSessionButton, type DeleteSessionTranslations } from "./DeleteSessionButton";
+import { DuplicateButton } from "@/components/DuplicateButton";
 
 export type SessionRow = {
   id: string;
@@ -49,6 +50,8 @@ export type SessionsTableTranslations = {
   noResults: string;
   editLabel: string;
   newSessionLabel: string;
+  duplicateLabel: string;
+  duplicateError: string;
 };
 
 function formatLabel(format: string, formats: SessionsTableTranslations["formats"]): string {
@@ -184,6 +187,14 @@ export function SessionsTable({
             >
               <Pencil size={16} />
             </Link>
+            <DuplicateButton
+              kind="session"
+              id={row.id}
+              locale={locale}
+              label={t.duplicateLabel}
+              errorText={t.duplicateError}
+              variant="icon"
+            />
             <DeleteSessionButton sessionId={row.id} locale={locale} translations={deleteTranslations} />
           </div>
         ) : null

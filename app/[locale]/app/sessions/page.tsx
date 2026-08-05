@@ -126,6 +126,8 @@ export default async function SessionsList({
     noResults: tc("noResults"),
     editLabel: tc("edit"),
     newSessionLabel: t("new"),
+    duplicateLabel: tc("duplicate"),
+    duplicateError: tc("duplicateError"),
   };
 
   return (
