@@ -51,54 +51,31 @@ export function FlavorCloud({ descriptive, allDescriptive, isGroup, locale = "es
   const totalEvaluators = allDescriptive?.length ?? 0
 
   return (
-    <div style={{ marginTop: 12 }}>
-      <div
-        style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: 10,
-          textTransform: 'uppercase',
-          letterSpacing: '0.14em',
-          color: 'var(--color-brown-mid)',
-          marginBottom: 8,
-          fontWeight: 500,
-        }}
-      >
+    <div className="mt-3">
+      <div className="mb-2 font-mono text-[10px] font-medium uppercase tracking-widest text-on-surface-variant">
         Perfil de Sabor
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      <div className="flex flex-wrap gap-1.5">
         {resolved.map((d) => {
           const isStar = d.id === starId
           return (
-            <span key={d.id} style={{ position: 'relative', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <span key={d.id} className="relative inline-flex flex-col items-center gap-0.5">
               <span
+                className={`inline-flex items-center gap-1 whitespace-nowrap rounded-pill px-2.5 py-1 font-sans text-xs leading-none text-white ${
+                  isStar ? 'font-bold' : 'font-medium'
+                }`}
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  padding: '5px 11px',
-                  borderRadius: 999,
                   backgroundColor: d.color,
-                  color: '#fff',
-                  fontSize: 12,
-                  fontWeight: isStar ? 700 : 500,
-                  fontFamily: 'var(--font-ui)',
-                  lineHeight: 1,
-                  whiteSpace: 'nowrap',
                   boxShadow: isStar ? `0 0 0 2px ${d.color}66` : undefined,
                 }}
               >
-                {isStar && <span style={{ fontSize: 10 }}>★</span>}
+                {isStar && <span className="text-[10px]" aria-hidden>★</span>}
                 {d.label}
               </span>
               {isGroup && totalEvaluators > 0 && d.count > 0 && (
                 <span
-                  style={{
-                    fontSize: 9,
-                    fontFamily: 'var(--font-mono)',
-                    color: d.color,
-                    fontWeight: 600,
-                    letterSpacing: '0.04em',
-                  }}
+                  className="font-mono text-[9px] font-semibold tracking-wide"
+                  style={{ color: d.color }}
                 >
                   {d.count}/{totalEvaluators}
                 </span>

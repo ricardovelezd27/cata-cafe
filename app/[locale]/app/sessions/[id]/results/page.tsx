@@ -2,9 +2,11 @@ import { notFound, redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { collectDescriptors, PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
+import { PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
 import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
+import { computeCupperAlignment, type CupperAlignmentRow } from "@/lib/alignment";
 import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
+import { asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { ResultsClient } from "./ResultsClient";
 
 export default async function ResultsPage({
@@ -67,10 +69,19 @@ export default async function ResultsPage({
   if (!session) notFound();
 
   const isOwner = session.createdBy === user.id;
+  // Narrowed session format — used for every format-shaped gate below.
+  // `session.format` (raw string) is still passed inside the `session` prop
+  // unchanged, since the client-side type there is a plain string.
+  const format: SessionFormat = asSessionFormat(session.format);
 
   // Block labels are needed inside the server aggregation below, so resolve the
   // translators up front.
   const tBlocks = await getTranslations("blocks");
+  // Descriptor aggregation locale + block-label resolver — shared by both the
+  // group (anonymous, cross-cupper) and solo (own-data) descriptor paths below.
+  const localeStr: "es" | "en" = locale === "en" ? "en" : "es";
+  const blockLabelFor = (blockId: string): string =>
+    tBlocks(blockId as Parameters<typeof tBlocks>[0]);
 
   const totalParticipants = session.participants.length;
   const allSubmitted = totalParticipants > 0 && submittedCupperCount >= totalParticipants;
@@ -121,15 +132,12 @@ export default async function ResultsPage({
   let descriptorFrequency: SampleBlockFreq[] | null = null;
 
   // Owner-only: per-cupper alignment with the group consensus (N15, Step 4).
-  type CupperAlignmentRow = {
-    id: string;
-    name: string;
-    excluded: boolean;
-    alignment: number; // 0..1 overlap ratio vs majority sets
-    matches: number;
-    opportunities: number;
-  };
+  // Full rows (names + ids) are exposed ONLY to the owner.
   let cupperAlignment: CupperAlignmentRow[] | null = null;
+
+  // Every viewer's OWN alignment triple — no name, no id, no other cupper's
+  // data. This is the ONLY alignment information a non-owner ever receives.
+  let myAlignment: { alignment: number; matches: number; opportunities: number } | null = null;
 
   // Per-sample group aggregate recomputed in TS from the raw evaluations,
   // INCLUDING ONLY complete ones. Overrides the trigger-stored AggregateScore so
@@ -137,10 +145,16 @@ export default async function ResultsPage({
   // sessionSampleId.
   let groupAggBySample: Map<string, GroupAggregate> | null = null;
 
+  // Ids of evaluations already visible at render time — seeds the client's
+  // realtime-badge dedup set so a later no-op UPDATE storm (owner refresh,
+  // exclusion toggle) doesn't re-badge evaluations the viewer already sees.
+  let knownEvalIds: string[] = [];
+
   if (canViewGroup && session.isGroup) {
     const evals = await prisma.evaluation.findMany({
       where: { sessionSample: { sessionId: id }, isDraft: false },
       select: {
+        id: true,
         cupperId: true,
         sessionSampleId: true,
         descriptiveData: true,
@@ -151,6 +165,8 @@ export default async function ResultsPage({
         cupper: { select: { id: true, displayName: true } },
       },
     });
+
+    knownEvalIds = evals.map((ev) => ev.id);
 
     // Recompute each sample's community aggregate, excluding master-excluded
     // cuppers and (inside computeGroupAggregate) incomplete evaluations.
@@ -168,7 +184,7 @@ export default async function ResultsPage({
           sampleId,
           computeGroupAggregate(
             list.map((ev) => ({
-              data: (session.format === "combined"
+              data: (format === "combined"
                 ? ev.combinedData
                 : ev.affectiveData) as Record<string, unknown>,
               nonUniformCups: ev.nonUniformCups,
@@ -218,27 +234,14 @@ export default async function ResultsPage({
 
     // ---- Anonymous block frequency + summaries + alignment ----
     // Descriptors live in a different JSON column per format; affective has none.
-    if (session.format !== "affective") {
-      const blobFor = (
-        ev: (typeof evals)[number]
-      ): Record<string, unknown> | null =>
-        session.format === "combined"
-          ? (ev.combinedData as Record<string, unknown>)
-          : session.format === "descriptive"
-            ? (ev.descriptiveData as Record<string, unknown>)
-            : null;
-
-      const localeStr = locale === "en" ? "en" : "es";
-      const blockLabelFor = (blockId: string): string =>
-        tBlocks(blockId as Parameters<typeof tBlocks>[0]);
-
+    if (format !== "affective") {
       // Anonymous per-sample block frequencies + statistical summaries. Extracted
       // to lib/resultsAggregation so the close-session email path computes the
       // identical numbers — this page and the emailed group summary can never
       // disagree. Returns null only for affective sessions (guarded above).
       descriptorFrequency =
         computeSampleBlockFrequencies({
-          format: session.format,
+          format,
           samples: session.samples.map((s) => ({ id: s.id, label: s.label })),
           evals: evals.map((ev) => ({
             cupperId: ev.cupperId,
@@ -251,130 +254,77 @@ export default async function ResultsPage({
           locale: localeStr,
         }) ?? null;
 
-      // ---- Owner-only cupper alignment (Step 4) ----
-      // Rebuilds its OWN selection matrix + majority sets: alignment is owner-only
-      // and must never be part of the shared (emailed) aggregation, so it stays
-      // here, separate from the anonymous frequency core above.
+      // ---- Cupper alignment (Step 4) ----
+      // Extracted to lib/alignment.ts, which must never be imported by the
+      // anonymous aggregation core — alignment carries per-cupper identity
+      // (names, ids). Computed for EVERY viewer (needed for `myAlignment`
+      // below), but the full row list is only ever assigned to the
+      // owner-only `cupperAlignment` variable.
+      const alignmentRows = computeCupperAlignment({
+        format,
+        samples: session.samples.map((s) => ({ id: s.id })),
+        evals: evals.map((ev) => ({
+          cupperId: ev.cupperId,
+          sessionSampleId: ev.sessionSampleId,
+          descriptiveData: ev.descriptiveData,
+          combinedData: ev.combinedData,
+          cupper: { displayName: ev.cupper.displayName },
+        })),
+        excludedUserIds,
+      });
+
       if (isOwner) {
-        // Per (sampleId → blockId → cupperId → Set<descriptorId>), including
-        // excluded cuppers so their (flagged) rows can be scored against the
-        // excluded-free consensus.
-        type BlockSel = Map<string, Map<string, Set<string>>>;
-        const selections = new Map<string, BlockSel>();
-        const evaluatorsPerSample = new Map<string, Set<string>>();
-        for (const s of session.samples) {
-          const bySel: BlockSel = new Map();
-          for (const block of PERCEPTUAL_BLOCKS) bySel.set(block.id, new Map());
-          selections.set(s.id, bySel);
-          evaluatorsPerSample.set(s.id, new Set());
-        }
-        for (const ev of evals) {
-          const bySel = selections.get(ev.sessionSampleId);
-          if (!bySel) continue;
-          const blob = blobFor(ev);
-          if (!blob) continue;
-          if (!excludedUserIds.has(ev.cupperId)) {
-            evaluatorsPerSample.get(ev.sessionSampleId)!.add(ev.cupperId);
-          }
-          for (const block of PERCEPTUAL_BLOCKS) {
-            const ids = collectDescriptors(blob, block.descKeys);
-            bySel.get(block.id)!.set(ev.cupperId, new Set(ids));
-          }
-        }
-
-        // Consensus (majority) sets per sample+block: descriptors picked by >= 50%
-        // of that block's INCLUDED evaluators, min 2 cuppers.
-        const majoritySets = new Map<string, Map<string, Set<string>>>();
-        for (const s of session.samples) {
-          const bySel = selections.get(s.id)!;
-          const total = evaluatorsPerSample.get(s.id)!.size;
-          const sampleMajority = new Map<string, Set<string>>();
-          for (const block of PERCEPTUAL_BLOCKS) {
-            const counts = new Map<string, number>();
-            for (const [cupperId, set] of bySel.get(block.id)!) {
-              if (excludedUserIds.has(cupperId)) continue; // consensus excludes them
-              for (const did of set) counts.set(did, (counts.get(did) ?? 0) + 1);
-            }
-            const majority = new Set(
-              [...counts.entries()]
-                .filter(([, c]) => c >= 2 && total > 0 && c / total >= 0.5)
-                .map(([did]) => did),
-            );
-            sampleMajority.set(block.id, majority);
-          }
-          majoritySets.set(s.id, sampleMajority);
-        }
-
-        // For each cupper, across all samples+blocks that HAVE a majority set,
-        // alignment = matched majority descriptors / total majority opportunities.
-        // Excluded cuppers are dropped from the consensus above but still get a
-        // (flagged) row so the owner can see them. Their selections are present in
-        // `selections` (we include every eval when building the matrix above), so
-        // they score against the excluded-free consensus.
-        const rows = new Map<
-          string,
-          { name: string; excluded: boolean; matches: number; opportunities: number }
-        >();
-        for (const ev of evals) {
-          if (!rows.has(ev.cupperId)) {
-            rows.set(ev.cupperId, {
-              name: ev.cupper.displayName,
-              excluded: excludedUserIds.has(ev.cupperId),
-              matches: 0,
-              opportunities: 0,
-            });
-          }
-        }
-
-        for (const s of session.samples) {
-          const bySel = selections.get(s.id)!;
-          const sampleMajority = majoritySets.get(s.id)!;
-          // Build per-cupper block selections INCLUDING excluded cuppers, so
-          // excluded rows can still be scored against the (excluded-free)
-          // consensus. Re-derive from raw evals for excluded cuppers.
-          for (const [cupperId, row] of rows) {
-            for (const block of PERCEPTUAL_BLOCKS) {
-              const majority = sampleMajority.get(block.id)!;
-              if (majority.size === 0) continue; // no consensus → no opportunity
-              row.opportunities += majority.size;
-              const cupperSet = bySel.get(block.id)!.get(cupperId);
-              if (cupperSet) {
-                for (const did of majority) if (cupperSet.has(did)) row.matches += 1;
-              } else if (row.excluded) {
-                // Excluded cupper's selections aren't in `bySel`; recover them.
-                const ev = evals.find(
-                  (e: (typeof evals)[number]) =>
-                    e.cupperId === cupperId && e.sessionSampleId === s.id,
-                );
-                const blob = ev ? blobFor(ev) : null;
-                if (blob) {
-                  const ids = new Set(collectDescriptors(blob, block.descKeys));
-                  for (const did of majority) if (ids.has(did)) row.matches += 1;
-                }
-              }
-            }
-          }
-        }
-
-        cupperAlignment = [...rows.entries()]
-          .map(([id, r]) => ({
-            id,
-            name: r.name,
-            excluded: r.excluded,
-            matches: r.matches,
-            opportunities: r.opportunities,
-            alignment: r.opportunities > 0 ? r.matches / r.opportunities : 0,
-          }))
-          .sort((a, b) => {
-            // Included cuppers first (by alignment desc), excluded last.
-            if (a.excluded !== b.excluded) return a.excluded ? 1 : -1;
-            return b.alignment - a.alignment;
-          });
+        cupperAlignment = alignmentRows;
       }
+
+      // Every viewer's own alignment triple — CRITICAL SECURITY INVARIANT:
+      // only these three numbers about the CURRENT user leave this scope for
+      // non-owners, never the row's id/name or any other cupper's row.
+      const myRow = alignmentRows.find((r) => r.id === user.id);
+      myAlignment = myRow
+        ? {
+            alignment: myRow.alignment,
+            matches: myRow.matches,
+            opportunities: myRow.opportunities,
+          }
+        : null;
     }
   }
 
-  const tCommunity = await getTranslations("community");
+  // ---- Solo sessions: descriptor data from the current user's own evaluations ----
+  // Group sessions get the anonymous cross-cupper aggregation above; a solo
+  // session has exactly one evaluator (the owner), so it feeds the SAME
+  // aggregation core with a single synthesized eval per sample and skips the
+  // majority-based summary sentences (skipSummaries) — a "majority of 1 of 1"
+  // sentence would read absurd for a single cupper.
+  const isSoloDescriptors = !session.isGroup;
+  if (isSoloDescriptors && format !== "affective") {
+    const soloEvals = session.samples.flatMap((s) => {
+      const ev = s.evaluations[0];
+      if (!ev) return [];
+      return [
+        {
+          cupperId: user.id,
+          sessionSampleId: s.id,
+          descriptiveData: ev.descriptiveData,
+          combinedData: ev.combinedData,
+        },
+      ];
+    });
+    descriptorFrequency =
+      computeSampleBlockFrequencies(
+        {
+          format,
+          samples: session.samples.map((s) => ({ id: s.id, label: s.label })),
+          evals: soloEvals,
+          excludedUserIds: new Set<string>(),
+          blockLabel: blockLabelFor,
+          locale: localeStr,
+        },
+        { skipSummaries: true },
+      ) ?? null;
+  }
+
   const tResults = await getTranslations("results");
   const tg = await getTranslations("group");
   const tDesc = await getTranslations("descriptors");
@@ -383,6 +333,7 @@ export default async function ResultsPage({
   const t = await getTranslations("session");
   const tc = await getTranslations("coffee");
   const ta = await getTranslations("actions");
+  const tCommon = await getTranslations("common");
 
   // Group results must not silently average incomplete data. When fewer cuppers
   // have submitted (synced) than the participant roster, surface how many are
@@ -403,6 +354,52 @@ export default async function ResultsPage({
   for (const block of PERCEPTUAL_BLOCKS) {
     blockLabels[block.id] = tBlocks(block.id as Parameters<typeof tBlocks>[0]);
   }
+  // "general" pseudo-block label — pairs with the `blocks["general"]` /
+  // `summary["general"]` entries computeSampleBlockFrequencies now always adds.
+  blockLabels.general = tBlocks("general");
+
+  const participation = session.isGroup
+    ? { submitted: submittedCupperCount, total: totalParticipants }
+    : null;
+
+  // Shared score-transparency translations ("¿Cómo se calculó?") — fed to both
+  // the Resultados chart view (SampleRadarChart) and the personal drill-down
+  // dialog (SampleDetail), so both surfaces stay in sync from one source.
+  const breakdownT = {
+    how: tResults("breakdown.how"),
+    formula: tResults("breakdown.formula"),
+    sigma: tResults("breakdown.sigma"),
+    u: tResults("breakdown.u"),
+    d: tResults("breakdown.d"),
+    values: tResults("breakdown.values"),
+    base: tResults("breakdown.base"),
+    uniformity: tResults("breakdown.uniformity"),
+    defects: tResults("breakdown.defects"),
+    raw: tResults("breakdown.raw"),
+    rounded: tResults("breakdown.rounded"),
+    finalScore: tResults("breakdown.finalScore"),
+    setupStamp: tResults("breakdown.setupStamp"),
+    cups: tResults("breakdown.cups"),
+    uniformityOn: tResults("breakdown.uniformityOn"),
+    uniformityOff: tResults("breakdown.uniformityOff"),
+    rounding025: tResults("breakdown.rounding025"),
+    roundingOff: tResults("breakdown.roundingOff"),
+    mode: tResults("breakdown.mode"),
+    modeProfessional: tResults("breakdown.modeProfessional"),
+    modeAcademic: tResults("breakdown.modeAcademic"),
+    modeFree: tResults("breakdown.modeFree"),
+    notTrackedNote: tResults("breakdown.notTrackedNote"),
+    recorded: tResults("breakdown.recorded"),
+    groupTitle: tResults("breakdown.groupTitle"),
+    groupAvgRaw: tResults("breakdown.groupAvgRaw"),
+    groupUniformity: tResults("breakdown.groupUniformity"),
+    groupDefects: tResults("breakdown.groupDefects"),
+    communityScore: tResults("breakdown.communityScore"),
+    // Template — {n}/{total} are substituted client-side (same trick as refreshNew).
+    includedNote: tResults("breakdown.includedNote", { n: "{n}", total: "{total}" }),
+    groupExplain: tResults("breakdown.groupExplain"),
+    perCup: tResults("breakdown.perCup"),
+  };
 
   const dateStr = session.date.toLocaleDateString(locale === "es" ? "es-CO" : "en-US", {
     year: "numeric",
@@ -439,7 +436,6 @@ export default async function ResultsPage({
       locale={locale}
       isOwner={isOwner}
       isGroup={session.isGroup}
-      sessionStatus={session.status}
       canViewGroup={canViewGroup}
       currentUserId={user.id}
       participationLabel={participationLabel}
@@ -449,6 +445,11 @@ export default async function ResultsPage({
       blockLabels={blockLabels}
       cupperAlignment={cupperAlignment}
       partialSyncNotice={partialSyncNotice}
+      knownEvalIds={knownEvalIds}
+      format={format}
+      myAlignment={myAlignment}
+      participation={participation}
+      isSoloDescriptors={isSoloDescriptors}
       session={{
         id: session.id,
         name: session.name,
@@ -525,6 +526,8 @@ export default async function ResultsPage({
       translations={{
         title: tResults("title"),
         backToCupping: tResults("backToCupping"),
+        viewForm: tResults("viewForm"),
+        downloadPdf: tResults("downloadPdf"),
         refresh: tResults("refresh"),
         refreshing: tResults("refreshing"),
         // Template — the live count is substituted client-side.
@@ -532,17 +535,14 @@ export default async function ResultsPage({
         radarMine: tResults("mine"),
         radarCommunity: tResults("community"),
         deltaAttribute: tResults("deltaAttribute"),
-        myResults: locale === "es" ? "Mis resultados" : "My results",
-        groupResults: locale === "es" ? "Resultados grupales" : "Group results",
-        communityScore: tCommunity("score"),
-        avgRaw: tCommunity("avgRaw"),
-        participantCount: tCommunity("participantCount", { n: 0 }).replace("0", ""),
-        radarChart: tCommunity("radarChart"),
-        myScore: tCommunity("myScore"),
-        delta: tCommunity("delta"),
-        noGroupData: tCommunity("noGroupData"),
-        reveal: tg("reveal"),
-        revealed: tg("revealed"),
+        flavorProfiles: tResults("flavorProfiles"),
+        tabResumen: tResults("tabs.resumen"),
+        tabResultados: tResults("tabs.resultados"),
+        tabDescriptores: tResults("tabs.descriptores"),
+        viewTable: tResults("views.table"),
+        viewChart: tResults("views.chart"),
+        communityPending: tResults("communityPending"),
+        ownerSection: tResults("matrix.ownerSection"),
         descViewAll: tDesc("viewAll"),
         descOf: tDesc("of"),
         descParticipants: tDesc("participants"),
@@ -554,6 +554,10 @@ export default async function ResultsPage({
         cloudScopeSample: tDesc("cloudScopeSample"),
         cloudScopeTaster: tDesc("cloudScopeTaster"),
         cloudEmpty: tDesc("cloudEmpty"),
+        filterSampleAll: tDesc("filterSampleAll"),
+        filterBlockLabel: tDesc("filterBlockLabel"),
+        soloCloudTitle: tDesc("soloCloudTitle"),
+        tasterScopeAll: tDesc("tasterScopeAll"),
         alignTitle: tAlign("title"),
         alignSubtitle: tAlign("subtitle"),
         alignExcluded: tAlign("excluded"),
@@ -573,6 +577,110 @@ export default async function ResultsPage({
         save: ta("save"),
         saving: ta("saving"),
         cancel: ta("cancel"),
+        dashboard: {
+          statSamples: tResults("dashboard.statSamples"),
+          statParticipation: tResults("dashboard.statParticipation"),
+          statAvg: tResults("dashboard.statAvg"),
+          statBest: tResults("dashboard.statBest"),
+          statAvgMine: tResults("dashboard.statAvgMine"),
+          statAvgCommunity: tResults("dashboard.statAvgCommunity"),
+          ranking: tResults("dashboard.ranking"),
+          notScored: tResults("dashboard.notScored"),
+          performance: tResults("dashboard.performance"),
+          myAvg: tResults("dashboard.myAvg"),
+          communityAvg: tResults("dashboard.communityAvg"),
+          alignmentLabel: tResults("dashboard.alignmentLabel"),
+          alignmentNote: tResults("dashboard.alignmentNote"),
+          highlights: tResults("dashboard.highlights"),
+          soloTopDescriptors: tResults("dashboard.soloTopDescriptors"),
+          viewInDescriptors: tResults("dashboard.viewInDescriptors"),
+          communityPending: tResults("communityPending"),
+        },
+        table: {
+          sample: tResults("table.sample"),
+          descriptiveSection: tResults("table.descriptiveSection"),
+          affectiveSection: tResults("table.affectiveSection"),
+          cvaScore: tResults("table.cvaScore"),
+          communityShort: tResults("table.communityShort"),
+          legendMine: tResults("table.legendMine"),
+          legendCommunity: tResults("table.legendCommunity"),
+          viewDetail: tResults("table.viewDetail"),
+          reveal: tg("reveal"),
+          revealed: tg("revealed"),
+        },
+        detail: {
+          fragrance: tResults("detail.fragrance"),
+          aroma: tResults("detail.aroma"),
+          flavor: tResults("detail.flavor"),
+          aftertaste: tResults("detail.aftertaste"),
+          acidity: tResults("detail.acidity"),
+          sweetness: tResults("detail.sweetness"),
+          mouthfeel: tResults("detail.mouthfeel"),
+          overall: tResults("detail.overall"),
+          intensity: tResults("detail.intensity"),
+          quality: tResults("detail.quality"),
+          notes: tResults("detail.notes"),
+          cvaScore: tResults("detail.cvaScore"),
+          edit: tResults("detail.edit"),
+          noData: tResults("detail.noData"),
+          nariz: tResults("detail.nariz"),
+          boca: tResults("detail.boca"),
+          gusto: tResults("detail.gusto"),
+          acidezBlock: tResults("detail.acidezBlock"),
+          dulzura: tResults("detail.dulzura"),
+          sensacionBlock: tResults("detail.sensacionBlock"),
+          descriptorSingular: tResults("detail.descriptorSingular"),
+          descriptorPlural: tResults("detail.descriptorPlural"),
+          avgQuality: tResults("detail.avgQuality"),
+          noBlockData: tResults("detail.noBlockData"),
+          myEvaluation: tResults("detail.myEvaluation"),
+          viewingAs: tResults("detail.viewingAs"),
+          editSample: tResults("detail.editSample"),
+          close: tResults("detail.close"),
+          breakdown: breakdownT,
+        },
+        breakdown: breakdownT,
+        matrix: {
+          title: tResults("matrix.matrixTitle"),
+          manageTitle: tResults("matrix.manageTitle"),
+          manageHint: tResults("matrix.manageHint"),
+          included: tResults("matrix.included"),
+          excluded: tResults("matrix.excluded"),
+          excludedTag: tResults("matrix.excludedTag"),
+          legendAmber: tResults("matrix.legendAmber"),
+          legendRed: tResults("matrix.legendRed"),
+          noScore: tResults("matrix.noScore"),
+        },
+        help: {
+          // "Cerrar" reads better than "Cancelar" for a read-only info dialog.
+          closeLabel: tCommon("close"),
+          stats: { title: tResults("help.stats.title"), body: tResults("help.stats.body") },
+          ranking: { title: tResults("help.ranking.title"), body: tResults("help.ranking.body") },
+          performance: {
+            title: tResults("help.performance.title"),
+            body: tResults("help.performance.body"),
+          },
+          highlights: {
+            title: tResults("help.highlights.title"),
+            body: tResults("help.highlights.body"),
+          },
+          tabla: { title: tResults("help.tabla.title"), body: tResults("help.tabla.body") },
+          grafico: { title: tResults("help.grafico.title"), body: tResults("help.grafico.body") },
+          porCatador: {
+            title: tResults("help.porCatador.title"),
+            body: tResults("help.porCatador.body"),
+          },
+          filtros: { title: tResults("help.filtros.title"), body: tResults("help.filtros.body") },
+          nube: { title: tResults("help.nube.title"), body: tResults("help.nube.body") },
+          frecuencia: {
+            title: tResults("help.frecuencia.title"),
+            body: tResults("help.frecuencia.body"),
+          },
+          alineacion: {
+            title: tResults("help.alineacion.title"),
+            body: tResults("help.alineacion.body"),
+          },
+        },
       }}
     />
   );

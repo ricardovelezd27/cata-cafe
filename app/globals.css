@@ -126,6 +126,11 @@
   --space-6: 32px;
   --space-7: 48px;
   --space-8: 64px;
+
+  /* ── Layout ─────────────────────────────────────────────── */
+  /* Consumed by BottomNav (components/layout/BottomNav.tsx) and the
+     results shell to size fixed bottom-nav offsets/paddings consistently. */
+  --bottom-nav-height: 60px;
 }
 
 /* ============================================================
@@ -302,6 +307,12 @@ button { font-family: inherit; cursor: pointer; }
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+/* Safe-area bottom padding (notched/gesture-nav devices) — used by
+   components/layout/BottomNav.tsx so the fixed nav clears the home indicator. */
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* ============================================================

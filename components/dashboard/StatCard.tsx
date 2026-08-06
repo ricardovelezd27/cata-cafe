@@ -20,8 +20,9 @@ export function StatCard({ label, value, subtext, accent, icon }: StatCardProps)
         {label}
       </span>
       <span
-        className="font-display text-4xl leading-none mt-1"
-        style={{ color: accent ? "#C17817" : "var(--color-brown-dark)" }}
+        className={`font-display text-4xl leading-none mt-1 tabular-nums ${
+          accent ? "text-secondary" : "text-on-surface"
+        }`}
       >
         {value}
       </span>

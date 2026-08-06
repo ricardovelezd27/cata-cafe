@@ -20,16 +20,18 @@ export default function BottomNav({
 
   return (
     <nav
-      className={`fixed bottom-0 left-0 right-0 bg-surface-container-lowest border-t border-outline-variant pb-safe ${className}`}
+      className={`fixed bottom-0 left-0 right-0 bg-surface-container-lowest pb-safe ${className}`}
     >
-      <div className="flex">
+      {/* border-t lives on the fixed-height row (border-box) so the nav's
+          total height is exactly var(--bottom-nav-height) + safe-area. */}
+      <div className="flex h-[var(--bottom-nav-height)] border-t border-outline-variant">
         {tabs.map(({ href, icon: Icon, i18nKey, exact }) => {
           const active = isActive(pathname, locale, href, exact);
           return (
             <Link
               key={href}
               href={`/${locale}${href}`}
-              className={`flex-1 flex flex-col items-center gap-1 py-2.5 text-xs transition-colors ${
+              className={`flex-1 flex flex-col items-center justify-center gap-1 text-xs transition-colors ${
                 active ? "text-primary-container" : "text-on-surface-variant"
               }`}
             >

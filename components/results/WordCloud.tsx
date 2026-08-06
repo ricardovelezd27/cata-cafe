@@ -159,7 +159,7 @@ export function WordCloud({
   }, [shown]);
 
   if (shown.length === 0) {
-    return <p className="py-2 text-sm italic text-brown-mid">{emptyLabel}</p>;
+    return <p className="py-2 text-sm italic text-on-surface-variant">{emptyLabel}</p>;
   }
 
   return (

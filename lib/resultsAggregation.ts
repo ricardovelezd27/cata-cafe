@@ -64,6 +64,16 @@ export type AggregationInput = {
   locale: Locale;
 };
 
+export type AggregationOptions = {
+  /**
+   * Skip every statistical summary sentence (every `summary[blockId]` is
+   * `null`). Used for solo sessions, where a single-evaluator "majority of 1
+   * of 1" sentence would read absurd — callers should still render the
+   * ranked descriptor lists, just without the sentence.
+   */
+  skipSummaries?: boolean;
+};
+
 /**
  * Compute the anonymous per-sample block frequencies + statistical summaries.
  *
@@ -74,13 +84,22 @@ export type AggregationInput = {
  * (for the page's descriptor UI) and the SummaryBlock[] handed to
  * `summarizeSample`, so the two views can never disagree — exactly as the page
  * did inline.
+ *
+ * `options` is additive — omitting it (every existing caller) reproduces the
+ * exact prior output, including the prior `blocks`/`summary` key sets, EXCEPT
+ * for the new `"general"` pseudo-block described below, which is always added.
+ * Callers that only ever read known block ids off `PERCEPTUAL_BLOCKS` (as both
+ * current callers do — see lib/closeEmail.ts and
+ * components/results/DescriptorFrequency.tsx) are unaffected by the new key.
  */
 export function computeSampleBlockFrequencies(
   input: AggregationInput,
+  options?: AggregationOptions,
 ): SampleBlockFreq[] | null {
   if (input.format === "affective") return null;
 
   const { evals, excludedUserIds, samples, locale } = input;
+  const skipSummaries = options?.skipSummaries ?? false;
 
   const blobFor = (ev: AggregationEval): D | null =>
     input.format === "combined"
@@ -150,9 +169,47 @@ export function computeSampleBlockFrequencies(
       });
     }
 
-    const sentences = summarizeSample(summaryBlocks, locale);
+    // ---- "general" pseudo-block ----
+    // Descriptors ranked across ALL SIX perceptual blocks, deduped PER CUPPER
+    // at the SAMPLE level: a cupper who picked the same descriptor id in
+    // several blocks/stages (e.g. "chocolate" in both fragancia and aroma, or
+    // in fragancia AND sabor) counts once here, not once per block. This is a
+    // union of the same per-block selection sets built above, so it can never
+    // disagree with them. The "gusto" block's main-taste ids are included too
+    // (they are descriptors for this purpose) — resolved via resolveMainTaste
+    // when resolveDescriptor doesn't recognize the id (the "desc"-kind blocks
+    // and the "taste"-kind block use disjoint id spaces in practice).
+    const generalCounts = new Map<string, number>();
+    for (const cupperId of evaluatorsPerSample.get(s.id)!) {
+      const union = new Set<string>();
+      for (const block of PERCEPTUAL_BLOCKS) {
+        const set = bySel.get(block.id)!.get(cupperId);
+        if (set) for (const did of set) union.add(did);
+      }
+      for (const did of union) generalCounts.set(did, (generalCounts.get(did) ?? 0) + 1);
+    }
+    const generalRanked: RankedDescriptor[] = [...generalCounts.entries()]
+      .map(([did, count]) => {
+        const info = resolveDescriptor(did, locale) ?? resolveMainTaste(did, locale);
+        return info ? { id: did, label: info.label, color: info.color, count } : null;
+      })
+      .filter((d): d is RankedDescriptor => d !== null)
+      .sort((a, b) => b.count - a.count);
+    blocksOut["general"] = generalRanked;
+    summaryBlocks.push({
+      id: "general",
+      label: input.blockLabel("general"),
+      descriptors: generalRanked.map((d) => ({ id: d.id, label: d.label, count: d.count })),
+      total,
+    });
+
     const summary: Record<string, string | null> = {};
-    for (const sent of sentences) summary[sent.blockId] = sent.text;
+    if (skipSummaries) {
+      for (const b of summaryBlocks) summary[b.id] = null;
+    } else {
+      const sentences = summarizeSample(summaryBlocks, locale);
+      for (const sent of sentences) summary[sent.blockId] = sent.text;
+    }
 
     return {
       sampleId: s.id,

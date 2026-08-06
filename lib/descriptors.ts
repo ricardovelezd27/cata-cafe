@@ -44,6 +44,25 @@ export const DESCRIPTOR_STAGES = [
 export type DescriptorStageId = (typeof DESCRIPTOR_STAGES)[number]["id"];
 
 /**
+ * Per-attribute mapping within a perceptual block, plus its bilingual display
+ * label. Ported verbatim from the private `BLOCKS` table in
+ * `components/results/MyResultsSummary.tsx` (N15 card view) so both surfaces
+ * share one source. Optional — see `PERCEPTUAL_BLOCKS` doc below.
+ *
+ * Key semantics (match the evaluation JSON blob):
+ * - `descKey` IS the full JSON key for the descriptor array (e.g. "aroma_desc").
+ * - `affKey` is the affective attribute ID; consumers append a suffix to read
+ *   values — `${affKey}_final` for the final 1–9 quality (what MyResultsSummary
+ *   renders). It is NOT itself a JSON key.
+ */
+export type PerceptualBlockAttr = {
+  id: string;
+  label: { es: string; en: string };
+  descKey?: string;
+  affKey?: string;
+};
+
+/**
  * Perceptual blocks — the results-view grouping (N15). Each block aggregates one
  * or more raw stages, deduped PER CUPPER inside the block (so a cupper who picks
  * "chocolate" in both fragancia and aroma counts once for "chocolate" in Nariz).
@@ -55,15 +74,75 @@ export type DescriptorStageId = (typeof DESCRIPTOR_STAGES)[number]["id"];
  *   CATA sets); the `"taste"` block resolves via resolveMainTaste.
  * - `attrId`   — i18n `attributes.*` fallback label; blocks with a dedicated
  *   label pass `labelKey` (resolved by the caller from the `blocks` message set).
+ * - `attrs`    — OPTIONAL per-attribute mapping (id/label/descKey/affKey), ported
+ *   from `MyResultsSummary`'s BLOCKS/LABELS tables. Additive only: existing
+ *   consumers (lib/resultsAggregation.ts, components/results/DescriptorFrequency.tsx,
+ *   the results page) never read this field.
  */
 export const PERCEPTUAL_BLOCKS = [
-  { id: "nariz",     kind: "desc",  descKeys: ["fragancia_desc", "aroma_desc"],       labelKey: "nariz" },
-  { id: "boca",      kind: "desc",  descKeys: ["sabor_desc", "sabor_residual_desc"],  labelKey: "boca" },
-  { id: "gusto",     kind: "taste", descKeys: ["gustos"],                             labelKey: "gusto" },
-  { id: "acidez",    kind: "desc",  descKeys: ["acidez_desc"],                        labelKey: "acidez" },
-  { id: "dulzura",   kind: "desc",  descKeys: ["dulzor_desc"],                        labelKey: "dulzura" },
-  { id: "sensacion", kind: "desc",  descKeys: ["sensacion_desc"],                     labelKey: "sensacion" },
-] as const;
+  {
+    id: "nariz",
+    kind: "desc",
+    descKeys: ["fragancia_desc", "aroma_desc"],
+    labelKey: "nariz",
+    attrs: [
+      { id: "fragancia", label: { es: "Fragancia", en: "Fragrance" }, descKey: "fragancia_desc", affKey: "fragancia_af" },
+      { id: "aroma",     label: { es: "Aroma",     en: "Aroma" },     descKey: "aroma_desc",     affKey: "aroma_af" },
+    ],
+  },
+  {
+    id: "boca",
+    kind: "desc",
+    descKeys: ["sabor_desc", "sabor_residual_desc"],
+    labelKey: "boca",
+    attrs: [
+      { id: "sabor",           label: { es: "Sabor",   en: "Flavor" },     descKey: "sabor_desc",           affKey: "sabor_af" },
+      { id: "sabor_residual",  label: { es: "Regusto", en: "Aftertaste" }, descKey: "sabor_residual_desc",  affKey: "sabor_residual_af" },
+    ],
+  },
+  {
+    id: "gusto",
+    kind: "taste",
+    descKeys: ["gustos"],
+    labelKey: "gusto",
+    attrs: [
+      { id: "gusto", label: { es: "Gusto predominante", en: "Predominant taste" }, descKey: "gustos" },
+    ],
+  },
+  {
+    id: "acidez",
+    kind: "desc",
+    descKeys: ["acidez_desc"],
+    labelKey: "acidez",
+    attrs: [
+      { id: "acidez", label: { es: "Acidez", en: "Acidity" }, descKey: "acidez_desc", affKey: "acidez_af" },
+    ],
+  },
+  {
+    id: "dulzura",
+    kind: "desc",
+    descKeys: ["dulzor_desc"],
+    labelKey: "dulzura",
+    attrs: [
+      { id: "dulzor", label: { es: "Dulzor", en: "Sweetness" }, descKey: "dulzor_desc", affKey: "dulzor_af" },
+    ],
+  },
+  {
+    id: "sensacion",
+    kind: "desc",
+    descKeys: ["sensacion_desc"],
+    labelKey: "sensacion",
+    attrs: [
+      { id: "sensacion", label: { es: "Sensación", en: "Mouthfeel" }, descKey: "sensacion_desc", affKey: "sensacion_af" },
+    ],
+  },
+] as const satisfies readonly {
+  id: string;
+  kind: "desc" | "taste";
+  descKeys: readonly string[];
+  labelKey: string;
+  attrs?: readonly PerceptualBlockAttr[];
+}[];
 
 export type PerceptualBlockId = (typeof PERCEPTUAL_BLOCKS)[number]["id"];
 

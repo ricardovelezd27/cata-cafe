@@ -1,5 +1,7 @@
 "use client";
 
+import { type ReactNode } from "react";
+
 /**
  * Owner-only cupper alignment panel (N15, Step 4). Shows how closely each
  * cupper's descriptor selections match the group consensus (majority sets),
@@ -12,9 +14,11 @@ export type CupperAlignmentRow = {
   id: string;
   name: string;
   excluded: boolean;
-  alignment: number; // 0..1
+  alignment: number; // 0..1, across every sample
   matches: number;
   opportunities: number;
+  /** Per-sample split of the same matches/opportunities (sums to the totals above). */
+  bySample: Record<string, { matches: number; opportunities: number }>;
 };
 
 export type AlignmentTranslations = {
@@ -24,109 +28,88 @@ export type AlignmentTranslations = {
   noData: string;
 };
 
+function barToneClass(excluded: boolean, pct: number): string {
+  if (excluded) return "bg-surface-container-high";
+  if (pct >= 75) return "bg-primary-container";
+  if (pct >= 50) return "bg-secondary";
+  return "bg-error";
+}
+
 export function CupperAlignment({
   rows,
+  sampleFilter,
   t,
+  titleAction,
 }: {
   rows: CupperAlignmentRow[];
+  /** Scope the displayed pct/bar to one sample's matches/opportunities; null/undefined = totals. */
+  sampleFilter?: string | null;
   t: AlignmentTranslations;
+  /** Optional node rendered inline after the title (e.g. an InfoHint). */
+  titleAction?: ReactNode;
 }) {
-  const hasData = rows.some((r) => r.opportunities > 0);
+  // Resolve the DISPLAYED matches/opportunities per row (either the session
+  // totals, or one sample's split), then rank by that same displayed value —
+  // a sample-scoped view can reorder rows relative to the session-wide one.
+  const displayed = rows.map((r) => {
+    const source = sampleFilter ? (r.bySample[sampleFilter] ?? { matches: 0, opportunities: 0 }) : r;
+    return {
+      ...r,
+      displayMatches: source.matches,
+      displayOpportunities: source.opportunities,
+      displayAlignment: source.opportunities > 0 ? source.matches / source.opportunities : 0,
+    };
+  });
+
+  const sorted = [...displayed].sort((a, b) => {
+    // Included cuppers first (by displayed alignment desc), excluded last.
+    if (a.excluded !== b.excluded) return a.excluded ? 1 : -1;
+    return b.displayAlignment - a.displayAlignment;
+  });
+
+  const hasData = sorted.some((r) => r.displayOpportunities > 0);
 
   return (
-    <div
-      style={{
-        background: "#fff",
-        borderRadius: 12,
-        border: "1px solid #E8E0D0",
-        padding: "16px",
-      }}
-    >
-      <div
-        style={{
-          fontFamily: "'Cormorant Garamond', Georgia, serif",
-          fontSize: 15,
-          fontWeight: 700,
-          color: "#3D5A3E",
-          marginBottom: 4,
-        }}
-      >
+    <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4">
+      <div className="mb-1 inline-flex items-center gap-1.5 font-display text-[15px] font-semibold text-primary-container">
         {t.title}
+        {titleAction}
       </div>
-      <div style={{ fontSize: 11, color: "#8B7355", marginBottom: 14, lineHeight: 1.4 }}>
+      <div className="mb-3.5 text-[11px] leading-snug text-on-surface-variant">
         {t.subtitle}
       </div>
 
       {!hasData ? (
-        <div style={{ fontSize: 12, color: "#C8C0B0", fontStyle: "italic" }}>
-          {t.noData}
-        </div>
+        <div className="text-xs italic text-on-surface-variant">{t.noData}</div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {rows.map((r) => {
-            const pct = Math.round(r.alignment * 100);
-            const barColor = r.excluded
-              ? "#C8C0B0"
-              : pct >= 75
-                ? "#3D5A3E"
-                : pct >= 50
-                  ? "#C17817"
-                  : "#A83232";
+        <div className="flex flex-col gap-2.5">
+          {sorted.map((r) => {
+            const pct = Math.round(r.displayAlignment * 100);
             return (
               <div key={r.id}>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "baseline",
-                    justifyContent: "space-between",
-                    gap: 8,
-                    marginBottom: 4,
-                  }}
-                >
+                <div className="mb-1 flex items-baseline justify-between gap-2">
                   <span
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: r.excluded ? "#B0A48F" : "#5C4A32",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
+                    className={`truncate text-sm font-semibold ${
+                      r.excluded ? "text-on-surface-variant" : "text-on-surface"
+                    }`}
                   >
                     {r.name}
                     {r.excluded && (
-                      <span style={{ color: "#B0A48F", fontWeight: 400 }}> {t.excluded}</span>
+                      <span className="font-normal text-on-surface-variant"> {t.excluded}</span>
                     )}
                   </span>
                   <span
-                    style={{
-                      fontFamily: "ui-monospace, monospace",
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color: r.excluded ? "#B0A48F" : "#5C4A32",
-                      fontVariantNumeric: "tabular-nums",
-                      flexShrink: 0,
-                    }}
+                    className={`shrink-0 font-mono text-xs font-bold tabular-nums ${
+                      r.excluded ? "text-on-surface-variant" : "text-on-surface"
+                    }`}
                   >
-                    {r.opportunities > 0 ? `${pct}%` : "—"}
+                    {r.displayOpportunities > 0 ? `${pct}%` : "—"}
                   </span>
                 </div>
-                <div
-                  style={{
-                    height: 8,
-                    borderRadius: 999,
-                    background: "#F0EBE0",
-                    overflow: "hidden",
-                  }}
-                >
+                <div className="h-2 overflow-hidden rounded-pill bg-surface-container-high">
                   <div
-                    style={{
-                      height: "100%",
-                      width: `${r.opportunities > 0 ? pct : 0}%`,
-                      background: barColor,
-                      borderRadius: 999,
-                      transition: "width 0.3s cubic-bezier(0.2,0.8,0.2,1)",
-                    }}
+                    className={`h-full rounded-pill transition-[width] duration-300 ${barToneClass(r.excluded, pct)}`}
+                    style={{ width: `${r.displayOpportunities > 0 ? pct : 0}%` }}
                   />
                 </div>
               </div>

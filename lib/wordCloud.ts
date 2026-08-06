@@ -9,6 +9,11 @@
 //     `computeSampleBlockFrequencies` (lib/resultsAggregation.ts) returns as
 //     `null` for affective sessions — callers gate the whole descriptors tab
 //     on that null check, so this function is never invoked for affective data.
+//     Its optional `blockIds` param may only ever name perceptual block ids
+//     (PERCEPTUAL_BLOCKS / ALL_BLOCK_IDS below) — every one of those ids is
+//     itself only ever populated for descriptive/combined sessions by
+//     computeSampleBlockFrequencies, so widening which blocks are merged never
+//     opens a path to affective data.
 //   - buildTasterCloud reads whatever blob the caller passes (descriptive or
 //     combined data for one participant); callers must not pass affective
 //     blobs. Do not add any other data path into either function.
@@ -17,7 +22,12 @@
 // server or client code.
 
 import type { SampleBlockFreq } from "@/lib/resultsAggregation";
-import { collectDescriptors, resolveDescriptor, FLAVOR_DESC_KEYS } from "@/lib/descriptors";
+import {
+  collectDescriptors,
+  resolveDescriptor,
+  FLAVOR_DESC_KEYS,
+  PERCEPTUAL_BLOCKS,
+} from "@/lib/descriptors";
 
 export type CloudWord = {
   id: string;
@@ -31,14 +41,22 @@ export type FlavorCloudScope = { kind: "session" } | { kind: "sample"; sampleId:
 /** The two perceptual blocks that make up "flavor" descriptors (Nariz + Boca). */
 const FLAVOR_BLOCK_IDS = ["nariz", "boca"] as const;
 
+/** Every perceptual block id (Nariz, Boca, Gusto, Acidez, Dulzura, Sensación). */
+export const ALL_BLOCK_IDS = PERCEPTUAL_BLOCKS.map((b) => b.id);
+
 /**
- * Merge the Nariz + Boca block descriptor counts (from the anonymous
- * per-sample frequency aggregation) into a single sorted word list, scoped to
- * either the whole session (every sample) or one sample.
+ * Merge the given blocks' descriptor counts (from the anonymous per-sample
+ * frequency aggregation) into a single sorted word list, scoped to either the
+ * whole session (every sample) or one sample.
+ *
+ * `blockIds` defaults to the Nariz + Boca "flavor" pair (existing callers'
+ * behavior is unchanged); pass `ALL_BLOCK_IDS` for the Descriptores tab's
+ * "general" scope, or a single block id to scope the cloud to that block.
  */
 export function buildFlavorCloud(
   freq: SampleBlockFreq[],
   scope: FlavorCloudScope,
+  blockIds: readonly string[] = FLAVOR_BLOCK_IDS,
 ): CloudWord[] {
   const samples =
     scope.kind === "session"
@@ -47,7 +65,7 @@ export function buildFlavorCloud(
 
   const merged = new Map<string, CloudWord>();
   for (const sample of samples) {
-    for (const blockId of FLAVOR_BLOCK_IDS) {
+    for (const blockId of blockIds) {
       const ranked = sample.blocks[blockId] ?? [];
       for (const d of ranked) {
         const existing = merged.get(d.id);
@@ -72,6 +90,11 @@ export function buildFlavorCloud(
  * `locale` is optional (defaults to "es") — resolveDescriptor needs it to pick
  * the right label language; buildFlavorCloud doesn't need the parameter
  * because its labels are already resolved server-side inside SampleBlockFreq.
+ *
+ * No dedicated `sampleId` param: `samples` is already one blob per sample, so
+ * callers that want to scope the taster cloud to a single sample just filter
+ * their per-sample blob array down to that one element before calling this
+ * function — cheaper than threading an id through and matching it here.
  */
 export function buildTasterCloud(
   samples: Array<Record<string, unknown>>,

@@ -76,55 +76,20 @@ export function ExtrinsicSummary({ data }: { data: Data }) {
   if (rows.length === 0) return null;
 
   return (
-    <div
-      style={{
-        marginTop: 10,
-        background: "#FDFBF7",
-        border: "1px solid #E8E0D0",
-        borderRadius: 9,
-        padding: "10px 12px",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-        <span
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            color: "#3D5A3E",
-            fontFamily: "'Cormorant Garamond', Georgia, serif",
-          }}
-        >
+    <div className="mt-2.5 rounded-input border border-outline-variant bg-surface-container-low px-3 py-2.5">
+      <div className="mb-1.5 flex items-center gap-1.5">
+        <span className="font-display text-[11px] font-bold text-primary-container">
           Datos de la muestra (extrínseco)
         </span>
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            border: "1px solid #9d4326",
-            color: "#9d4326",
-            background: "#f6ece8",
-            borderRadius: 999,
-            padding: "1px 7px",
-            fontSize: 9,
-            fontWeight: 700,
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-            fontFamily: "monospace",
-          }}
-        >
+        <span className="inline-flex items-center rounded-pill border border-secondary bg-surface-container px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-secondary">
           Beta
         </span>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <div className="flex flex-col gap-0.5">
         {rows.map((row) => (
-          <div
-            key={row.label}
-            style={{ display: "flex", gap: 6, fontSize: 11.5, lineHeight: 1.4 }}
-          >
-            <span style={{ color: "#8B7355", fontWeight: 600, flexShrink: 0 }}>
-              {row.label}:
-            </span>
-            <span style={{ color: "#5C4A32", minWidth: 0 }}>{row.value}</span>
+          <div key={row.label} className="flex gap-1.5 text-[11.5px] leading-snug">
+            <span className="shrink-0 font-semibold text-on-surface-variant">{row.label}:</span>
+            <span className="min-w-0 text-on-surface">{row.value}</span>
           </div>
         ))}
       </div>

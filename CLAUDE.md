@@ -92,7 +92,7 @@ cata-cafe/
 │   │   │       └── [id]/
 │   │   │           ├── cup/        # Main cupping interface (CupClient)
 │   │   │           ├── waiting/    # Pre-start waiting room (group/async sessions)
-│   │   │           ├── results/    # Scores & analysis (group tab for group sessions)
+│   │   │           ├── results/    # 3-tab shell — Resumen (dashboard) / Resultados (Tabla·Gráfico) / Descriptores
 │   │   │           └── print/      # PDF export
 │   │   ├── join/[token]/page.tsx   # Invite join page (outside /app/ — no auth guard)
 │   │   ├── auth/login/             # Magic link login (supports ?next= redirect)
@@ -129,12 +129,22 @@ cata-cafe/
 │   │   #   IntensitySlider, AffectiveBubbles, CATAPills, CupIndicators/CupToggleGrid,
 │   │   #   ScoreDisplay, MasterControls, SampleTabs, SessionShell, ResponsiveDialog, Notes…
 │   │   #   PLUS the shared list/CRUD kit (2026-08 cohesion overhaul):
-│   │   #   DataTable (sort/search/facets/pagination, desktop table + mobile cards),
+│   │   #   Button/ButtonLink, DataTable (sort/search/facets/pagination, desktop table + mobile cards),
 │   │   #   Badge/StatusPill/ScorePill, PageHeader, SearchInput, Select, EmptyState,
 │   │   #   Pagination, FilterBar, ConfirmDialog — ALWAYS reuse these for list pages,
 │   │   #   status/score pills, page headers, and delete confirmations.
-│   ├── results/                    # ScoreTable, SampleRadarChart, DescriptorFrequency, FlavorCloud,
-│   │   #   MyResultsSummary, IndividualResultsPanel, ScoreBreakdownPanel ("¿Cómo se calculó?")
+│   ├── results/                    # ScoreTable, SampleRadarChart, DescriptorFrequency, WordCloud, FlavorCloud,
+│   │   #   CupperAlignment, ExtrinsicSummary, chartColors (Recharts palette, MD3-derived hex),
+│   │   #   SampleDetail/SampleDetailDialog (personal per-sample drill-down),
+│   │   #   OwnerParticipantSection (owner CVA matrix + exclusion toggle),
+│   │   #   ScoreBreakdownPanel ("¿Cómo se calculó?" — typed t prop, no private LABELS dict).
+│   │   #   MyResultsSummary/IndividualResultsPanel DELETED (2026-08 results redesign);
+│   │   #   folded into ResumenTab (dashboard) + OwnerParticipantSection (owner matrix).
+│   │   # The results ROUTE (app/[locale]/app/sessions/[id]/results/) owns the 3-tab
+│   │   #   shell: ResultsClient.tsx (tabs, docked header/footer, drill-down state),
+│   │   #   ResumenTab.tsx (dashboard), DescriptoresTab.tsx (filters + cloud + frequency +
+│   │   #   alignment). The Resultados tab has no separate file — its Tabla/Gráfico
+│   │   #   sub-view is inline JSX in ResultsClient.tsx.
 │   ├── landing/                    # Marketing landing sections (Hero, Pricing, Roadmap, WaitlistForm, ScrollFx…)
 │   ├── offline/                    # OfflineBanner, SyncConflictModal, OfflineFirstLoadError
 │   ├── onboarding/                 # WelcomeModal, OnboardingWrapper (role/country capture)
@@ -344,7 +354,7 @@ All cupping reference data is in `lib/constants.ts` (Spanish-labeled):
 - **`DESIGN.md` is the single source of truth for tokens** (MD3 role system in `app/globals.css`): `primary-container`, `surface`/`surface-container-*`, `on-surface`/`on-surface-variant`, `outline`/`outline-variant`, `secondary` (terracotta), `error`, radius tokens `rounded-card/input/pill`. **Never write hex literals in components.**
 - Legacy alias classes (`green-dark`, `brown-*`, `cream`, `amber-warm`, `red-defect`, `bg`) still resolve via a back-compat block in `globals.css` — do not use them in NEW code; prefer MD3 names.
 - Responsive breakpoint rule: **content layouts switch at `md:`** (DataTable table↔cards), **the app shell at `lg:`** (Sidebar↔BottomNav), **dialogs at 640px** (ResponsiveDialog internal media query).
-- Reuse the shared UI kit for anything list/CRUD-shaped: `DataTable`, `Badge`/`StatusPill`/`ScorePill`, `PageHeader`, `EmptyState`, `ConfirmDialog`, `SearchInput`, `Select`, `Pagination`, `FilterBar` (all in `components/ui/`).
+- Reuse the shared UI kit for anything list/CRUD-shaped: `DataTable`, `Badge`/`StatusPill`/`ScorePill`, `PageHeader`, `EmptyState`, `ConfirmDialog`, `SearchInput`, `Select`, `Pagination`, `FilterBar`, plus `InfoHint` for an inline info-icon → `ResponsiveDialog` explainer (all in `components/ui/`).
 - Use **Radix UI** for accessible overlays and dialogs (via `ResponsiveDialog`)
 - Use **lucide-react** for all icons
 - App flows (session lifecycle, coffee sharing, group invites, app map) are diagrammed in **`docs/flows.md`** — those diagrams are normative; update them in the same PR as any flow change.

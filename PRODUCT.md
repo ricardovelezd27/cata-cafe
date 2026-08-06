@@ -1,6 +1,6 @@
 # Cata Café — Product Document
 
-> Last updated: 2026-06-22
+> Last updated: 2026-08-06
 
 ---
 
@@ -135,13 +135,13 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 - [x] Harvest date, producer notes
 
 ### Group Sessions
-- [x] Real-time submission tracking (Supabase Realtime)
+- [x] Real-time submission tracking (Supabase Realtime) — badges the results page's refresh button when other cuppers submit, without auto-re-rendering
 - [x] Participant management (owner / joined / invited)
 - [x] Community aggregate score (PostgreSQL trigger)
-- [x] Group results tab with comparison view
+- [x] One merged results view — mine and the community's scores render together (Tabla/Gráfico sub-views, choice persisted per-browser); there is no separate "my results / group results" toggle
 - [x] Master can exclude a participant from group aggregates (re-fires recompute)
-- [x] Master-only individual results view (per-participant breakdown)
-- [x] Session-level descriptor aggregates (CATA frequency across participants)
+- [x] Owner-only "Análisis por catador": CVA matrix with per-cupper exclusion switches, folded into the Resultados tab
+- [x] Session-level descriptor aggregates (CATA frequency across participants), sliced by one unified sample + perceptual-block filter (including a whole-profile "General" view) shared by the word cloud, frequency bars, and consensus sentences
 - [x] Async sessions (`isAsync`) with optional close date (`closesAt`)
 - [x] Configurable cups per sample (`cupsPerSample`, default 5)
 
@@ -159,7 +159,9 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 
 ### Results & Export
 - [x] Individual CVA score with formula breakdown
-- [x] Group results page with sample comparison
+- [x] Three-tab results page for every viewer — **Resumen** (session dashboard: stat row, sample ranking by community score in group sessions / own score in solo, "Mi desempeño" card comparing my average to the community average with a consensus-alignment bar, per-sample descriptor highlights), **Resultados** (mine + community merged into one Tabla/Gráfico view; owner-only "Análisis por catador" CVA matrix), **Descriptores** (one sample + perceptual-block filter driving the word cloud, frequency bars, and consensus sentences; solo descriptive/combined sessions get this tab from their own data)
+- [x] Personal per-sample drill-down dialog — opened from a ranking row, a table cell, a radar chart header, or the owner's CVA matrix; the owner additionally gets a catador switcher inside it and the sample-metadata editor (moved here from the old header chips)
+- [x] Refresh ("Actualizar") always visible to every viewer; the server recompute stays owner-only since a participant's own view is already fresh (the DB trigger restamps `computedAt` on every submission)
 - [x] Score transparency panel (`ScoreBreakdownPanel`, "¿Cómo se calculó?") — individual + community variants, reads authoritative numbers verbatim
 - [x] Coffee profile with full tasting history
 - [x] Personal history page (`/profile/history`)
@@ -234,6 +236,7 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 - [x] `FlavorPicker` — predictive typeahead over the 3-level flavor wheel (Fuse.js), replacing the browse-only `CATAPills` flavor flow
 - [x] `ScoreBreakdownPanel` — score transparency ("¿Cómo se calculó?") for individual and community scores
 - [x] Public marketing landing page (animated, bilingual) + waitlist
+- [x] Results page redesign (2026-08): collapsed to 3 tabs for every viewer (Resumen dashboard / merged Resultados / unified-filter Descriptores), removed the old "mis resultados vs. grupales" toggle and the separate master-only Individual tab, added a personal drill-down dialog with an owner catador switcher, and made the refresh control always visible
 
 ### Next — Results & Analytics
 - [ ] Multi-session coffee comparison view

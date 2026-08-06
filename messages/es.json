@@ -286,7 +286,12 @@
     "cloudScopeSession": "Sesión completa",
     "cloudScopeSample": "Por muestra",
     "cloudScopeTaster": "Por catador",
-    "cloudEmpty": "Sin descriptores aún"
+    "cloudEmpty": "Sin descriptores aún",
+    "filterSampleAll": "Todas las muestras",
+    "filterBlockLabel": "Bloque",
+    "blockGeneral": "General",
+    "soloCloudTitle": "Tu perfil de la sesión",
+    "tasterScopeAll": "Todo el grupo"
   },
   "blocks": {
     "nariz": "Nariz",
@@ -294,7 +299,8 @@
     "gusto": "Gusto predominante",
     "acidez": "Acidez",
     "dulzura": "Dulzura",
-    "sensacion": "Sensación en boca"
+    "sensacion": "Sensación en boca",
+    "general": "General"
   },
   "alignment": {
     "title": "Alineación de catadores",
@@ -405,15 +411,178 @@
   },
   "results": {
     "title": "Resultados de la Sesión",
-    "backToCupping": "← Editar evaluación",
-    "refresh": "⟳ Actualizar",
+    "backToCupping": "Editar evaluación",
+    "viewForm": "Ver formulario",
+    "downloadPdf": "Descargar PDF",
+    "refresh": "Actualizar",
     "refreshing": "Actualizando…",
-    "refreshNew": "⟳ Actualizar ({count} nuevas)",
+    "refreshNew": "Actualizar ({count} nuevas)",
     "participation": "{submitted} de {total} catadores",
     "lastUpdated": "Actualizado: {time}",
     "mine": "Mi evaluación",
     "community": "Comunidad",
-    "deltaAttribute": "Atributo"
+    "deltaAttribute": "Atributo",
+    "tabs": {
+      "resumen": "Resumen",
+      "resultados": "Resultados",
+      "descriptores": "Descriptores"
+    },
+    "views": {
+      "table": "Tabla",
+      "chart": "Gráfico"
+    },
+    "flavorProfiles": "Perfiles de Sabor",
+    "communityPending": "Los resultados grupales aparecerán cuando todos los participantes envíen sus evaluaciones o el maestro cierre la sesión.",
+    "dashboard": {
+      "statSamples": "Muestras evaluadas",
+      "statParticipation": "Participación",
+      "statAvg": "Promedio de sesión",
+      "statBest": "Mejor muestra",
+      "statAvgMine": "según tus evaluaciones",
+      "statAvgCommunity": "promedio comunitario",
+      "ranking": "Ranking de muestras",
+      "notScored": "Sin puntaje",
+      "performance": "Mi desempeño",
+      "myAvg": "Mi promedio",
+      "communityAvg": "Promedio del grupo",
+      "alignmentLabel": "Alineación con el consenso",
+      "alignmentNote": "Informativo: no afecta los puntajes.",
+      "highlights": "Descriptores destacados",
+      "soloTopDescriptors": "Tus descriptores más frecuentes",
+      "viewInDescriptors": "Ver en Descriptores"
+    },
+    "table": {
+      "sample": "Muestra",
+      "descriptiveSection": "Evaluación descriptiva",
+      "affectiveSection": "Evaluación afectiva",
+      "cvaScore": "Puntaje CVA",
+      "communityShort": "Com:",
+      "legendMine": "Mi evaluación",
+      "legendCommunity": "Comunidad",
+      "viewDetail": "Ver detalle"
+    },
+    "detail": {
+      "fragrance": "Fragancia",
+      "aroma": "Aroma",
+      "flavor": "Sabor",
+      "aftertaste": "Regusto",
+      "acidity": "Acidez",
+      "sweetness": "Dulzor",
+      "mouthfeel": "Sensación",
+      "overall": "Global",
+      "intensity": "Intensidad",
+      "quality": "Calidad",
+      "notes": "Notas",
+      "cvaScore": "Puntaje CVA",
+      "edit": "Editar",
+      "noData": "Sin evaluación registrada",
+      "nariz": "Nariz",
+      "boca": "Boca",
+      "gusto": "Gusto predominante",
+      "acidezBlock": "Acidez",
+      "dulzura": "Dulzura",
+      "sensacionBlock": "Sensación en boca",
+      "descriptorSingular": "descriptor",
+      "descriptorPlural": "descriptores",
+      "avgQuality": "Calidad prom.",
+      "noBlockData": "Sin datos",
+      "viewingAs": "Viendo evaluación de",
+      "myEvaluation": "Mi evaluación",
+      "editSample": "Editar muestra",
+      "close": "Cerrar"
+    },
+    "matrix": {
+      "matrixTitle": "Resumen de puntajes CVA",
+      "legendAmber": "> 1 DE de la media",
+      "legendRed": "≥ 2 DE (posible atípico)",
+      "noScore": "—",
+      "manageTitle": "Participantes en el cálculo grupal",
+      "manageHint": "Desactiva un catador para excluir sus datos de los promedios, descriptores y gráficos del grupo. Seguirá viendo sus propios resultados.",
+      "included": "Incluido",
+      "excluded": "Excluido",
+      "excludedTag": "(excluido)",
+      "ownerSection": "Análisis por catador"
+    },
+    "breakdown": {
+      "how": "¿Cómo se calculó?",
+      "formula": "Fórmula CVA",
+      "sigma": "Σhᵢ = suma de las 8 secciones afectivas",
+      "u": "u = tazas no uniformes",
+      "d": "d = tazas defectuosas",
+      "values": "Valores de esta evaluación",
+      "base": "Base",
+      "uniformity": "Uniformidad",
+      "defects": "Defectos",
+      "raw": "Sin redondear",
+      "rounded": "Redondeado a 0.25",
+      "finalScore": "Puntaje final",
+      "setupStamp": "Configuración",
+      "cups": "tazas",
+      "uniformityOn": "uniformidad evaluada",
+      "uniformityOff": "uniformidad no evaluada",
+      "rounding025": "redondeo a 0.25",
+      "roundingOff": "sin redondeo",
+      "mode": "Modo",
+      "modeProfessional": "Profesional",
+      "modeAcademic": "Académico",
+      "modeFree": "Libre",
+      "notTrackedNote": "Uniformidad no evaluada: se requieren ≥5 tazas. u y d quedan registradas pero no se restan.",
+      "recorded": "registradas",
+      "groupTitle": "Cómo se calculó el puntaje de la comunidad",
+      "groupAvgRaw": "Promedio base (Σ puntajes sin penalizar ÷ catadores)",
+      "groupUniformity": "Penalización uniformidad",
+      "groupDefects": "Penalización defectos",
+      "communityScore": "Puntaje de la comunidad",
+      "includedNote": "{n} de {total} evaluadores incluidos en el promedio",
+      "groupExplain": "El puntaje de la comunidad es el promedio de los puntajes base, menos penalizaciones normalizadas por taza, redondeado a 0.25.",
+      "perCup": "por taza"
+    },
+    "help": {
+      "stats": {
+        "title": "Resumen de la sesión",
+        "body": "Vista general de la sesión: cuántas muestras evaluaste, cuántos catadores enviaron su evaluación, el promedio de la sesión y la mejor muestra. En sesiones grupales el promedio usa el puntaje comunitario; en sesiones individuales, tus propios puntajes."
+      },
+      "ranking": {
+        "title": "Ranking de muestras",
+        "body": "Las muestras ordenadas de mayor a menor puntaje. En sesiones grupales se ordena por el puntaje comunitario; en sesiones individuales, por tu puntaje CVA. Toca una muestra para abrir su detalle completo."
+      },
+      "performance": {
+        "title": "Mi desempeño",
+        "body": "Compara tu promedio personal con el promedio del grupo. La alineación indica qué tanto coinciden tus descriptores con el consenso del grupo: es informativa y no afecta ningún puntaje."
+      },
+      "highlights": {
+        "title": "Descriptores destacados",
+        "body": "El perfil sensorial de cada muestra en una línea: los descriptores en los que más coincidieron los catadores. Toca para explorar todos los descriptores de esa muestra."
+      },
+      "tabla": {
+        "title": "Tabla de resultados",
+        "body": "Todas tus calificaciones por muestra: intensidades descriptivas, calificaciones afectivas (1 a 9) y el puntaje CVA. En sesiones grupales, cada atributo muestra también el promedio de la comunidad debajo de tu valor. Toca el nombre de una muestra para ver su detalle."
+      },
+      "grafico": {
+        "title": "Gráfico radar",
+        "body": "El radar compara visualmente tu evaluación (línea sólida) con el promedio de la comunidad (línea punteada) en los 8 atributos afectivos. La tabla de diferencias muestra la distancia exacta por atributo."
+      },
+      "porCatador": {
+        "title": "Análisis por catador",
+        "body": "Solo visible para el maestro de la sesión: la matriz de puntajes CVA por catador, con resaltado de valores atípicos (más de 1 o 2 desviaciones estándar de la media). Puedes excluir un catador del cálculo grupal; los puntajes se recalculan automáticamente."
+      },
+      "filtros": {
+        "title": "Filtros de descriptores",
+        "body": "Estos filtros gobiernan toda la pestaña: la nube, las barras de frecuencia y el análisis por catador. Elige una muestra específica o todas, y un bloque sensorial o la vista General, que combina los descriptores de toda la muestra."
+      },
+      "nube": {
+        "title": "Nube de sabores",
+        "body": "Los descriptores más mencionados, con mayor tamaño cuanto más catadores los eligieron. Responde al filtro de muestra y de bloque seleccionado arriba."
+      },
+      "frecuencia": {
+        "title": "Frecuencia de descriptores",
+        "body": "Cuántos catadores eligieron cada descriptor en el bloque seleccionado. Se muestran los 5 más frecuentes; en sesiones grupales solo se listan descriptores elegidos por al menos 2 catadores. Usa Ver todos para la lista completa."
+      },
+      "alineacion": {
+        "title": "Alineación de catadores",
+        "body": "Solo visible para el maestro: qué porcentaje de los descriptores de consenso del grupo eligió cada catador. Con una muestra filtrada, muestra la alineación en esa muestra específica."
+      }
+    }
   },
   "community": {
     "score": "Puntaje comunitario",

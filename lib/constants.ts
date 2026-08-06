@@ -2,6 +2,18 @@
 // Labels are in Spanish; translations happen in the UI layer via next-intl.
 
 /* ============================================================
+   NEW: Session format — narrows a raw `CuppingSession.format` string
+   (Prisma has no enum for it) into the three known variants.
+   ============================================================ */
+export type SessionFormat = "descriptive" | "affective" | "combined";
+
+export function asSessionFormat(s: string): SessionFormat {
+  if (s === "descriptive" || s === "affective" || s === "combined") return s;
+  if (process.env.NODE_ENV !== "production") console.warn(`Unknown session format "${s}" — treating as combined`);
+  return "combined";
+}
+
+/* ============================================================
    NEW: Cupping sections (SCA CVA chronological order)
    ============================================================ */
 export const CUPPING_SECTIONS = [

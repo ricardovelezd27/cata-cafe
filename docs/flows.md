@@ -168,7 +168,7 @@ flowchart TD
     subgraph SE [Sessions]
         SL[List: DataTable\nfilter status/format/role] --> CUP[/cup — evaluate/]
         SL --> ED[/edit — metadata + samples/]
-        SL --> RES[/results/]
+        SL --> RES[/"/results/ — 3-tab structure, see §5"/]
         NW[New session wizard]
     end
 
@@ -200,6 +200,64 @@ participants and members only take part.
 
 ---
 
+## 5. Results page structure
+
+`/sessions/[id]/results` is one 3-tab shell (`ResultsClient.tsx`) shown to **every**
+viewer — owner and participant alike. There is no separate participant-only or
+owner-only page; gating happens *inside* the tabs and the drill-down dialog.
+"Actualizar" (refresh) is always visible to everyone; only the owner's click also
+fires the server-side aggregate recompute; a participant's refresh is just a
+re-render, since the DB trigger already restamps `computedAt` on every submission.
+The realtime "new submissions" badge is seeded server-side (`knownEvalIds`) so a
+no-op update storm (owner recompute, exclusion toggle) never re-badges evaluations
+the viewer already saw.
+
+```mermaid
+flowchart TD
+    subgraph T1 ["Resumen — session dashboard"]
+        R1["Stat row: samples, participation, avg, best"]
+        R2["Ranking — community score in group,\nown score in solo"]
+        R3["Mi desempeño — my avg vs. community avg\n+ my consensus-alignment bar"]
+        R4["Highlights — per-sample descriptor line"]
+    end
+
+    subgraph T2 ["Resultados — one merged mine + community view"]
+        S1["Tabla / Gráfico\n(SegmentedControl, persisted via\nlocalStorage cata_results_view)"]
+        S2{"isOwner?"}
+        S3["Análisis por catador —\nCVA matrix + exclusion switches"]
+        S1 --> S2
+        S2 -- yes --> S3
+    end
+
+    subgraph T3 ["Descriptores — shown when descriptor data exists\n(solo descriptive/combined sessions use their own data)"]
+        D1["Filter row: sample\n(Todas | per-sample, PillTabs)"]
+        D2["Filter row: block\n(General | 6 perceptual blocks, PillTabs)"]
+        D3["Word cloud + frequency bars +\nconsensus sentences"]
+        D4{"isOwner?"}
+        D5["Cupper alignment panel\n(same two filters)"]
+        D1 --> D3
+        D2 --> D3
+        D3 --> D4
+        D4 -- yes --> D5
+    end
+
+    R2 -.->|open row| DET
+    S1 -.->|open table cell / radar header| DET
+    S3 -.->|open matrix cell| DET
+    R4 -.->|"ver en Descriptores"| T3
+
+    DET["Sample drill-down dialog\n(SampleDetailDialog)"]
+    DET --> DETOWNER{"isOwner?"}
+    DETOWNER -- yes --> DETX["Catador switcher +\nedit sample metadata"]
+```
+
+The "General" pseudo-block in Descriptores is not a real perceptual block: it is
+the whole-sample descriptor profile, deduped per cupper across all blocks, and
+feeds the same word cloud / frequency bars / consensus-sentence panels as any
+other block selection.
+
+---
+
 ## Maintenance checklist
 
 When you touch any of these, update the matching diagram **in the same PR**:
@@ -208,3 +266,4 @@ When you touch any of these, update the matching diagram **in the same PR**:
 - `usableCoffeeWhere`, visibility values, share/invite semantics, delete cascades → §2
 - Group membership linking, invites, posts, leave/remove → §3
 - Any new cross-section navigation or a new consumer of `UserCoffeeHistory` → §4
+- Results page tab structure, gating (owner vs. participant), or the drill-down dialog → §5

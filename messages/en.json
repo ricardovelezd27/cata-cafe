@@ -286,7 +286,12 @@
     "cloudScopeSession": "Whole session",
     "cloudScopeSample": "Per sample",
     "cloudScopeTaster": "Per taster",
-    "cloudEmpty": "No descriptors yet"
+    "cloudEmpty": "No descriptors yet",
+    "filterSampleAll": "All samples",
+    "filterBlockLabel": "Block",
+    "blockGeneral": "General",
+    "soloCloudTitle": "Your session profile",
+    "tasterScopeAll": "Whole group"
   },
   "blocks": {
     "nariz": "Nose",
@@ -294,7 +299,8 @@
     "gusto": "Predominant taste",
     "acidez": "Acidity",
     "dulzura": "Sweetness",
-    "sensacion": "Mouthfeel"
+    "sensacion": "Mouthfeel",
+    "general": "General"
   },
   "alignment": {
     "title": "Cupper alignment",
@@ -405,15 +411,178 @@
   },
   "results": {
     "title": "Session Results",
-    "backToCupping": "← Edit evaluation",
-    "refresh": "⟳ Refresh",
+    "backToCupping": "Edit evaluation",
+    "viewForm": "View form",
+    "downloadPdf": "Download PDF",
+    "refresh": "Refresh",
     "refreshing": "Refreshing…",
-    "refreshNew": "⟳ Refresh ({count} new)",
+    "refreshNew": "Refresh ({count} new)",
     "participation": "{submitted} of {total} tasters",
     "lastUpdated": "Updated: {time}",
     "mine": "My evaluation",
     "community": "Community",
-    "deltaAttribute": "Attribute"
+    "deltaAttribute": "Attribute",
+    "tabs": {
+      "resumen": "Summary",
+      "resultados": "Results",
+      "descriptores": "Descriptors"
+    },
+    "views": {
+      "table": "Table",
+      "chart": "Chart"
+    },
+    "flavorProfiles": "Flavor Profiles",
+    "communityPending": "Group results will appear once all participants submit their evaluations or the session master closes the session.",
+    "dashboard": {
+      "statSamples": "Samples evaluated",
+      "statParticipation": "Participation",
+      "statAvg": "Session average",
+      "statBest": "Best sample",
+      "statAvgMine": "based on your evaluations",
+      "statAvgCommunity": "community average",
+      "ranking": "Sample ranking",
+      "notScored": "Not scored",
+      "performance": "My performance",
+      "myAvg": "My average",
+      "communityAvg": "Group average",
+      "alignmentLabel": "Alignment with consensus",
+      "alignmentNote": "Informational: does not affect scores.",
+      "highlights": "Featured descriptors",
+      "soloTopDescriptors": "Your most frequent descriptors",
+      "viewInDescriptors": "View in Descriptors"
+    },
+    "table": {
+      "sample": "Sample",
+      "descriptiveSection": "Descriptive evaluation",
+      "affectiveSection": "Affective evaluation",
+      "cvaScore": "CVA Score",
+      "communityShort": "Comm:",
+      "legendMine": "My evaluation",
+      "legendCommunity": "Community",
+      "viewDetail": "View detail"
+    },
+    "detail": {
+      "fragrance": "Fragrance",
+      "aroma": "Aroma",
+      "flavor": "Flavor",
+      "aftertaste": "Aftertaste",
+      "acidity": "Acidity",
+      "sweetness": "Sweetness",
+      "mouthfeel": "Mouthfeel",
+      "overall": "Overall",
+      "intensity": "Intensity",
+      "quality": "Quality",
+      "notes": "Notes",
+      "cvaScore": "CVA Score",
+      "edit": "Edit",
+      "noData": "No evaluation recorded",
+      "nariz": "Nose",
+      "boca": "Mouth",
+      "gusto": "Predominant taste",
+      "acidezBlock": "Acidity",
+      "dulzura": "Sweetness",
+      "sensacionBlock": "Mouthfeel",
+      "descriptorSingular": "descriptor",
+      "descriptorPlural": "descriptors",
+      "avgQuality": "Avg. quality",
+      "noBlockData": "No data",
+      "viewingAs": "Viewing evaluation of",
+      "myEvaluation": "My evaluation",
+      "editSample": "Edit sample",
+      "close": "Close"
+    },
+    "matrix": {
+      "matrixTitle": "CVA score summary",
+      "legendAmber": "> 1 SD from mean",
+      "legendRed": "≥ 2 SD (possible outlier)",
+      "noScore": "—",
+      "manageTitle": "Participants in the group calculation",
+      "manageHint": "Turn a cupper off to exclude their data from group averages, descriptors and charts. They will still see their own results.",
+      "included": "Included",
+      "excluded": "Excluded",
+      "excludedTag": "(excluded)",
+      "ownerSection": "Analysis by cupper"
+    },
+    "breakdown": {
+      "how": "How was this calculated?",
+      "formula": "CVA formula",
+      "sigma": "Σhᵢ = sum of the 8 affective sections",
+      "u": "u = non-uniform cups",
+      "d": "d = defective cups",
+      "values": "Values for this evaluation",
+      "base": "Base",
+      "uniformity": "Uniformity",
+      "defects": "Defects",
+      "raw": "Unrounded",
+      "rounded": "Rounded to 0.25",
+      "finalScore": "Final score",
+      "setupStamp": "Setup",
+      "cups": "cups",
+      "uniformityOn": "uniformity evaluated",
+      "uniformityOff": "uniformity not evaluated",
+      "rounding025": "rounding to 0.25",
+      "roundingOff": "no rounding",
+      "mode": "Mode",
+      "modeProfessional": "Professional",
+      "modeAcademic": "Academic",
+      "modeFree": "Free",
+      "notTrackedNote": "Uniformity not evaluated: 5+ cups required. u and d are recorded but not subtracted.",
+      "recorded": "recorded",
+      "groupTitle": "How the community score was calculated",
+      "groupAvgRaw": "Base average (Σ unpenalized scores ÷ cuppers)",
+      "groupUniformity": "Uniformity penalty",
+      "groupDefects": "Defect penalty",
+      "communityScore": "Community score",
+      "includedNote": "{n} of {total} cuppers included in the average",
+      "groupExplain": "The community score is the average of the base scores, minus per-cup normalized penalties, rounded to 0.25.",
+      "perCup": "per cup"
+    },
+    "help": {
+      "stats": {
+        "title": "Session overview",
+        "body": "A quick overview of the session: how many samples you evaluated, how many cuppers submitted their evaluation, the session average, and the best sample. In group sessions the average uses the community score; in individual sessions, your own scores."
+      },
+      "ranking": {
+        "title": "Sample ranking",
+        "body": "Samples ordered from highest to lowest score. In group sessions they are ordered by the community score; in individual sessions, by your CVA score. Tap a sample to open its full detail."
+      },
+      "performance": {
+        "title": "My performance",
+        "body": "Compares your personal average with the group average. Alignment shows how closely your descriptors match the group consensus: it is informational and does not affect any score."
+      },
+      "highlights": {
+        "title": "Featured descriptors",
+        "body": "Each sample's sensory profile in one line: the descriptors cuppers agreed on most. Tap to explore all of that sample's descriptors."
+      },
+      "tabla": {
+        "title": "Results table",
+        "body": "All your ratings by sample: descriptive intensities, affective ratings (1 to 9), and the CVA score. In group sessions, each attribute also shows the community average below your value. Tap a sample's name to see its detail."
+      },
+      "grafico": {
+        "title": "Radar chart",
+        "body": "The radar chart visually compares your evaluation (solid line) with the community average (dotted line) across the 8 affective attributes. The differences table shows the exact gap per attribute."
+      },
+      "porCatador": {
+        "title": "Analysis by cupper",
+        "body": "Visible only to the session owner: the CVA score matrix by cupper, with outliers highlighted (more than 1 or 2 standard deviations from the mean). You can exclude a cupper from the group calculation; scores recalculate automatically."
+      },
+      "filtros": {
+        "title": "Descriptor filters",
+        "body": "These filters govern the whole tab: the cloud, the frequency bars, and the per-cupper analysis. Choose a specific sample or all of them, and a sensory block or the General view, which combines descriptors across the whole sample."
+      },
+      "nube": {
+        "title": "Flavor cloud",
+        "body": "The most-mentioned descriptors, shown larger the more cuppers chose them. Responds to the sample and block filters selected above."
+      },
+      "frecuencia": {
+        "title": "Descriptor frequency",
+        "body": "How many cuppers chose each descriptor in the selected block. The top 5 are shown; in group sessions only descriptors chosen by at least 2 cuppers are listed. Use View all for the full list."
+      },
+      "alineacion": {
+        "title": "Cupper alignment",
+        "body": "Visible only to the owner: what percentage of the group's consensus descriptors each cupper chose. With a sample filtered, it shows alignment within that specific sample."
+      }
+    }
   },
   "community": {
     "score": "Community score",

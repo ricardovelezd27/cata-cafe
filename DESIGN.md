@@ -1,7 +1,7 @@
 # Cata Café — Design System Reference
 
 > **Sensory Studio** — Warm Minimalist · Editorial Precision
-> Last updated: 2026-06-22
+> Last updated: 2026-08-06
 
 ---
 
@@ -101,6 +101,10 @@ Used only in `CATAPills` and flavor-family labels. Do not use elsewhere.
 | Especia | `#8b5e3c` |
 | Tostado | `#332f2a` |
 | Otro | `#5e5a55` |
+
+### Chart Color Exception (`components/results/chartColors.ts`)
+
+`components/results/` is otherwise fully tokenized (no hex literals) — `chartColors.ts` is the one sanctioned exception, mirroring the Flavor Family table above. Recharts renders raw SVG, and `stroke`/`fill` props take literal color strings, not Tailwind classes. `getChartColors()` reads the live CSS custom properties off `document.documentElement` at render time (so it tracks `app/globals.css`, dark theme included, without a rebuild) and only falls back to a baked-in hex snapshot during SSR. Keep that fallback snapshot in sync with `app/globals.css` by hand — it must never drift from the token values in this file. Never copy this pattern into ordinary HTML-side styling; it exists solely for Recharts' SVG internals.
 
 ---
 
@@ -211,24 +215,57 @@ No heavy drop shadows. Depth through tonal surface layering ("stacked paper" eff
 
 ## Component Patterns
 
-### Buttons
+### Buttons — `Button` / `ButtonLink` (`components/ui/Button.tsx`)
 
-```html
-<!-- Primary: pill, forest green -->
-<button class="bg-primary-container text-on-primary rounded-pill px-6 py-3 font-medium hover:bg-primary transition-colors">
-  Acción
-</button>
+The only sanctioned way to render an action button. Never hand-roll the class
+strings below in a page or feature component — import `Button`/`ButtonLink`.
 
-<!-- Secondary: outlined pill -->
-<button class="border border-primary-container text-primary-container rounded-pill px-6 py-3 font-medium hover:bg-primary-fixed transition-colors">
-  Secundaria
-</button>
+```tsx
+<Button variant="primary" size="md" icon={<Plus size={16} aria-hidden />}>Acción</Button>
+<Button variant="secondary" size="sm">Secundaria</Button>
+<Button variant="ghost">Cancelar</Button>
+<Button variant="accent" icon={<RefreshCw size={14} aria-hidden />}>Actualizar</Button>
+<Button variant="accentOutline">Actualizar</Button>
 
-<!-- Ghost: no border -->
-<button class="text-on-surface-variant hover:text-on-surface transition-colors">
-  Cancelar
-</button>
+{/* Anchor form — same classes, for plain links (e.g. a server-generated PDF
+    download where no client JS should ship) */}
+<ButtonLink href="/api/.../pdf" variant="primary" icon={<FileDown size={16} aria-hidden />}>
+  Descargar PDF
+</ButtonLink>
 ```
+
+Shared base: `inline-flex items-center justify-center gap-1.5 rounded-pill
+font-medium transition-colors min-h-[44px] whitespace-nowrap`.
+
+| Prop | Values | Notes |
+|---|---|---|
+| `variant` | `primary` \| `secondary` \| `ghost` \| `accent` \| `accentOutline` | see classes below |
+| `size` | `md` (default) \| `sm` | `md` = `px-5 text-sm`, `sm` = `px-3.5 text-xs` — height stays 44px at both |
+| `icon` | `ReactNode` | leading icon, sized/`aria-hidden` by the caller |
+
+| Variant | Classes | Use |
+|---|---|---|
+| `primary` | `bg-primary-container text-on-primary hover:bg-primary` | main CTA (Descargar PDF, Guardar) |
+| `secondary` | `border border-primary-container text-primary-container hover:bg-primary-fixed` | secondary action alongside a primary (Ver formulario, Editar) |
+| `ghost` | `text-on-surface-variant hover:text-on-surface` | lowest-emphasis action (Cancelar, metadata edit) |
+| `accent` | `bg-secondary text-on-secondary hover:opacity-90` | terracotta emphasis when something needs attention (e.g. "Actualizar" with new submissions pending) |
+| `accentOutline` | `border border-secondary text-secondary hover:bg-secondary-fixed` | the same action's resting/no-news state |
+
+Disabled state (native `disabled` attribute): `opacity-60 cursor-default`.
+`ButtonLink` renders an `<a>` and takes `href` — no `disabled` (anchors don't
+support it); only use it for always-available links.
+
+#### Interactive control vocabulary
+
+Three primitives look similar (pills, rounded tracks) but mean different
+things — never style one as another:
+
+- **`Button`** — performs an **action**: navigate, mutate, trigger a
+  side-effect. (Editar, Actualizar, Descargar PDF.)
+- **`PillTabs`** — **selects which content** is shown; tab semantics
+  (`role="tablist"`), open-ended item count.
+- **`SegmentedControl`** — **switches how** the same data is rendered (a
+  fixed, small set of views — e.g. exactly 2). Never wire it to a mutation.
 
 ### Input / Select
 
@@ -288,6 +325,12 @@ a status pill, page header, list table, or delete confirmation again.
 | Content layouts (DataTable table↔cards, profile columns) | `md:` (768px) |
 | App shell (Sidebar ↔ BottomNav/TopBar) | `lg:` (1024px) |
 | Dialogs (centered modal ↔ bottom sheet) | 640px (`ResponsiveDialog` internal) |
+
+### `PillTabs` / `SegmentedControl` / `InfoHint` (2026-08 results redesign — `components/ui/`)
+
+- **`PillTabs`** — a horizontally-scrollable `role="tablist"` row of individually-outlined pills (44px min hit target). Active: `bg-primary-container text-on-primary`; inactive: `border-outline-variant` outline, `on-surface-variant` text hovering to `on-surface`; disabled items sit at `opacity-45`. Takes an optional numeric `badge` chip per item (`bg-secondary`/`text-on-secondary`, or `bg-on-primary/20` when the item is active). Two densities via `size`: `"md"` (default) and `"sm"` for secondary filter rows. Used for the results page's three main tabs, the Descriptores sample/block filter rows, and the `SampleDetailDialog` catador switcher.
+- **`SegmentedControl`** — a single inline-flex pill "track" (`bg-surface-container-high`, `role="tablist"`, 4px padding) holding equal-width (`flex-1`) segments. The active segment gets its own raised pill (`bg-surface-container-lowest` + `shadow-card` + `on-surface` text); inactive segments are transparent with `on-surface-variant` text. Reserve this for a small, fixed set of mutually-exclusive views (e.g. exactly 2) — use `PillTabs` for anything open-ended. Used for the Resultados tab's Tabla/Gráfico switch, persisted per-browser via `localStorage` (`cata_results_view`).
+- **`InfoHint`** — a small inline info-icon button (`lucide-react` `Info`, `on-surface-variant`) placed next to a label or heading. Opens a `ResponsiveDialog` explainer (title + body) on tap/click — no bespoke chrome, it reuses the same modal/bottom-sheet the rest of the app uses. Content arrives as translated props (`results.help.*` keys resolved server-side) — like every client component here, it never calls `useTranslations()` itself. Use it to explain one non-obvious concept (e.g. what "alineación" measures, what the CVA matrix shows) without permanently spending layout space on the explanation.
 
 ### `IntensitySlider`
 

@@ -1,93 +1,77 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { revealSample, refreshAggregateScores } from "@/app/actions/community";
-import { ScoreTable } from "@/components/results/ScoreTable";
+import { ScoreTable, type ScoreTableTranslations } from "@/components/results/ScoreTable";
 import { SampleRadarChart } from "@/components/results/SampleRadarChart";
+import type { ScoreBreakdownTranslations } from "@/components/results/ScoreBreakdownPanel";
 import { FlavorCloud } from "@/components/results/FlavorCloud";
-import { MyResultsSummary } from "@/components/results/MyResultsSummary";
-import { WordCloud } from "@/components/results/WordCloud";
-import { buildFlavorCloud, buildTasterCloud } from "@/lib/wordCloud";
+import type { SampleBlockFreq } from "@/components/results/DescriptorFrequency";
+import type { CupperAlignmentRow } from "@/components/results/CupperAlignment";
+import { DescriptoresTab } from "./DescriptoresTab";
 import {
-  DescriptorFrequency,
-  type SampleBlockFreq,
-} from "@/components/results/DescriptorFrequency";
-import {
-  CupperAlignment,
-  type CupperAlignmentRow,
-} from "@/components/results/CupperAlignment";
-import {
-  IndividualResultsPanel,
+  OwnerParticipantSection,
   type ParticipantResult,
-} from "@/components/results/IndividualResultsPanel";
+} from "@/components/results/OwnerParticipantSection";
+import {
+  SampleDetailDialog,
+  type SampleDetailDialogTranslations,
+  type SampleDetailParticipant,
+} from "@/components/results/SampleDetailDialog";
 import {
   EditSampleMetadataForm,
   type SampleMetadataFormData,
 } from "@/components/cupping/EditSampleMetadataForm";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
+import { PillTabs, SegmentedControl, InfoHint, Button, ButtonLink } from "@/components/ui";
 import { updateSampleMetadata } from "@/app/actions/sessions";
-import { FileDown, Printer } from "lucide-react";
+import { asSessionFormat, type SessionFormat } from "@/lib/constants";
+import { ArrowLeft, FileDown, Printer, RefreshCw } from "lucide-react";
+import { ResumenTab } from "./ResumenTab";
+import type { SampleResult, ResultsHelp } from "./types";
 
-type AggregateScoreData = {
-  communityScore: number | null;
-  avgRawScore: number | null;
-  participantCount: number;
-  submittedCount: number;
-  totalCups: number;
-  totalNonUniform: number;
-  totalDefective: number;
-  uniformityPenalty: number;
-  defectPenalty: number;
-  attrAverages: Record<string, number>;
+type MatrixTranslations = {
+  title: string;
+  manageTitle: string;
+  manageHint: string;
+  included: string;
+  excluded: string;
+  excludedTag: string;
+  legendAmber: string;
+  legendRed: string;
+  noScore: string;
 };
 
-type CoffeeInfo = {
-  name: string;
-  country: string | null;
-  region: string | null;
-  producer: string | null;
-  variety: string | null;
-  altitude: string | null;
-  roastLevel: string | null;
-};
+type Tab = "resumen" | "resultados" | "descriptores";
+type ResultsView = "tabla" | "grafico";
 
-type SampleCoffee = {
-  name: string;
-  country: string;
-  region: string;
-  farm: string;
-  producer: string;
-  variety: string;
-  processType: string;
-  altitude: string;
-  roastLevel: string;
-};
+const RESULTS_VIEW_KEY = "cata_results_view";
+const RESULTS_VIEW_EVENT = "cata-results-view-change";
 
-type SampleResult = {
-  id: string;
-  label: string;
-  revealed: boolean;
-  coffee: CoffeeInfo | null;
-  masterCoffee: SampleCoffee | null;
-  descriptive: Record<string, unknown>;
-  affective: Record<string, unknown>;
-  combined: Record<string, unknown>;
-  physical: Record<string, unknown>;
-  extrinsic: Record<string, unknown>;
-  aggregateScore: AggregateScoreData | null;
-};
-
-type ViewMode = "mine" | "group";
-type DisplayView = "summary" | "table" | "radar" | "descriptors" | "individual";
+// Persisted Tabla/Gráfico choice read via an external store (same pattern as
+// DashboardIntro) so we avoid setState-in-effect and hydration flashes.
+function subscribeResultsView(cb: () => void) {
+  window.addEventListener("storage", cb);
+  window.addEventListener(RESULTS_VIEW_EVENT, cb);
+  return () => {
+    window.removeEventListener("storage", cb);
+    window.removeEventListener(RESULTS_VIEW_EVENT, cb);
+  };
+}
+function getResultsViewSnapshot(): ResultsView {
+  return localStorage.getItem(RESULTS_VIEW_KEY) === "grafico" ? "grafico" : "tabla";
+}
+function getResultsViewServerSnapshot(): ResultsView {
+  return "tabla";
+}
 
 export function ResultsClient({
   locale,
   session,
   isOwner,
   isGroup,
-  sessionStatus,
   canViewGroup,
   currentUserId,
   participationLabel,
@@ -97,6 +81,11 @@ export function ResultsClient({
   blockLabels,
   cupperAlignment,
   partialSyncNotice,
+  knownEvalIds,
+  format,
+  myAlignment,
+  participation,
+  isSoloDescriptors,
   translations,
 }: {
   locale: string;
@@ -110,7 +99,6 @@ export function ResultsClient({
   };
   isOwner: boolean;
   isGroup: boolean;
-  sessionStatus: string;
   canViewGroup: boolean;
   currentUserId: string;
   participationLabel?: string | null;
@@ -120,26 +108,37 @@ export function ResultsClient({
   blockLabels?: Record<string, string>;
   cupperAlignment?: CupperAlignmentRow[] | null;
   partialSyncNotice?: string | null;
+  knownEvalIds?: string[];
+  // Narrowed session format (mirrors session.format, typed) — feeds the
+  // Resumen dashboard's score derivation and ranking gates.
+  format?: SessionFormat;
+  // Every viewer's own alignment triple (never another cupper's row/name/id).
+  myAlignment?: { alignment: number; matches: number; opportunities: number } | null;
+  // Group-session submission progress, shown in the Resumen dashboard.
+  participation?: { submitted: number; total: number } | null;
+  // True for solo descriptive/combined sessions — the Descriptores tab (and
+  // the Resumen highlights card) feed from the current user's own data
+  // instead of the anonymous group core.
+  isSoloDescriptors?: boolean;
   translations: {
     title: string;
     backToCupping: string;
+    viewForm: string;
+    downloadPdf: string;
     refresh: string;
     refreshing: string;
     refreshNew: string;
     radarMine: string;
     radarCommunity: string;
     deltaAttribute: string;
-    myResults: string;
-    groupResults: string;
-    communityScore: string;
-    avgRaw: string;
-    participantCount: string;
-    radarChart: string;
-    myScore: string;
-    delta: string;
-    noGroupData: string;
-    reveal: string;
-    revealed: string;
+    flavorProfiles: string;
+    tabResumen: string;
+    tabResultados: string;
+    tabDescriptores: string;
+    viewTable: string;
+    viewChart: string;
+    communityPending: string;
+    ownerSection: string;
     descViewAll: string;
     descOf: string;
     descParticipants: string;
@@ -151,6 +150,10 @@ export function ResultsClient({
     cloudScopeSample: string;
     cloudScopeTaster: string;
     cloudEmpty: string;
+    filterSampleAll: string;
+    filterBlockLabel: string;
+    soloCloudTitle: string;
+    tasterScopeAll: string;
     alignTitle: string;
     alignSubtitle: string;
     alignExcluded: string;
@@ -170,19 +173,62 @@ export function ResultsClient({
     save: string;
     saving: string;
     cancel: string;
+    dashboard: {
+      statSamples: string;
+      statParticipation: string;
+      statAvg: string;
+      statBest: string;
+      statAvgMine: string;
+      statAvgCommunity: string;
+      ranking: string;
+      notScored: string;
+      performance: string;
+      myAvg: string;
+      communityAvg: string;
+      alignmentLabel: string;
+      alignmentNote: string;
+      highlights: string;
+      soloTopDescriptors: string;
+      viewInDescriptors: string;
+      communityPending: string;
+    };
+    table: ScoreTableTranslations;
+    detail: SampleDetailDialogTranslations;
+    matrix: MatrixTranslations;
+    breakdown: ScoreBreakdownTranslations;
+    help: ResultsHelp;
   };
 }) {
   const router = useRouter();
-  const [view, setView] = useState<ViewMode>("mine");
-  const [displayView, setDisplayView] = useState<DisplayView>("summary");
+  const [tab, setTab] = useState<Tab>("resumen");
+  // Sub-view of the Resultados tab, persisted across visits.
+  const resultsView = useSyncExternalStore(
+    subscribeResultsView,
+    getResultsViewSnapshot,
+    getResultsViewServerSnapshot,
+  );
+  const changeResultsView = (v: string) => {
+    try {
+      window.localStorage.setItem(RESULTS_VIEW_KEY, v === "grafico" ? "grafico" : "tabla");
+    } catch {
+      // Private mode / storage denied — the choice just won't persist.
+    }
+    window.dispatchEvent(new Event(RESULTS_VIEW_EVENT));
+  };
   const [refreshing, setRefreshing] = useState(false);
   const [newSubmissions, setNewSubmissions] = useState(0);
   const [, startTransition] = useTransition();
   const [editingSampleId, setEditingSampleId] = useState<string | null>(null);
-  // Evaluation ids already counted toward the badge. Never cleared (only the
-  // counter resets on refresh) so the no-op UPDATE storms from exclusion
-  // toggles / owner recomputes don't re-badge the same evaluations.
-  const seenEvalIds = useRef(new Set<string>());
+  // Personal drill-down dialog. participantId is non-null only when the owner
+  // opens another catador's evaluation from the CVA matrix.
+  const [detail, setDetail] = useState<{ sampleId: string; participantId: string | null } | null>(
+    null,
+  );
+  // Evaluation ids already counted toward the badge — SEEDED with the ids that
+  // were visible at page load, and never cleared (only the counter resets on
+  // refresh), so the no-op UPDATE storms from exclusion toggles / owner
+  // recomputes don't re-badge evaluations the viewer has already seen.
+  const seenEvalIds = useRef(new Set<string>(knownEvalIds));
 
   // ─── Realtime: badge the refresh button when other cuppers submit ──────────
   // Manual-refresh design is intentional (no auto re-render); this only tells
@@ -243,6 +289,10 @@ export function ResultsClient({
 
   const editingSample = session.samples.find((s) => s.id === editingSampleId) ?? null;
 
+  const detailSample = detail ? (session.samples.find((s) => s.id === detail.sampleId) ?? null) : null;
+  const detailParticipants: SampleDetailParticipant[] | null =
+    isOwner && participants && participants.length > 0 ? participants : null;
+
   const handleSaveSampleMetadata = async (data: SampleMetadataFormData) => {
     if (!editingSampleId) return;
     await updateSampleMetadata(editingSampleId, data);
@@ -261,9 +311,10 @@ export function ResultsClient({
     setRefreshing(true);
     setNewSubmissions(0);
     try {
-      // Owner-only self-healing recompute (re-fires the aggregate trigger).
-      // Non-owners skip it: aggregates are trigger-maintained and the page
-      // recomputes group data at render, so a re-render is all they need.
+      // The button is available to everyone; only the owner additionally fires
+      // the self-healing trigger recompute. Non-owners just re-render: the page
+      // recomputes group data at render and the trigger re-stamps computedAt on
+      // every submission, so a plain refresh is always fresh for them.
       if (isOwner) await refreshAggregateScores(session.id);
     } catch {
       // Swallow — the re-render below still shows the current server data.
@@ -272,511 +323,267 @@ export function ResultsClient({
     setRefreshing(false);
   };
 
-  const showGroup = view === "group" && canViewGroup;
+  // One merged view: community data renders whenever the viewer may see it —
+  // the old "Mis resultados / Resultados grupales" toggle is gone.
+  const showCommunity = canViewGroup;
   const canViewIndividual = isOwner && isGroup && !!participants?.length;
   const canViewDescriptors = !!descriptorFrequency?.length;
-  // Per-taster flavor cloud reuses the same owner-only participant matrix as
-  // the Individual tab — never a new server data path.
-  const canViewTasterCloud = isOwner && !!participants?.length;
 
-  // ─── Flavor word cloud (descriptors tab) ───────────────────────────────────
-  type CloudScope = "session" | "sample" | "taster";
-  const [cloudScope, setCloudScope] = useState<CloudScope>("session");
-  const [cloudSampleId, setCloudSampleId] = useState<string>(
-    session.samples[0]?.id ?? "",
-  );
-  const [cloudParticipantId, setCloudParticipantId] = useState<string>(
-    participants?.[0]?.id ?? "",
-  );
+  // ─── Descriptores tab filters (lifted so the Resumen dashboard can
+  // preselect a sample before switching tabs) ────────────────────────────────
+  const [descSampleId, setDescSampleId] = useState<"all" | string>("all");
+  const [descBlockId, setDescBlockId] = useState<string>("general");
 
-  const sessionCloudWords = useMemo(
-    () =>
-      descriptorFrequency && descriptorFrequency.length > 0
-        ? buildFlavorCloud(descriptorFrequency, { kind: "session" })
-        : [],
-    [descriptorFrequency],
-  );
-  const sampleCloudWords = useMemo(
-    () =>
-      descriptorFrequency && descriptorFrequency.length > 0 && cloudSampleId
-        ? buildFlavorCloud(descriptorFrequency, { kind: "sample", sampleId: cloudSampleId })
-        : [],
-    [descriptorFrequency, cloudSampleId],
-  );
-  const tasterCloudWords = useMemo(() => {
-    if (!canViewTasterCloud) return [];
-    const participant = participants!.find((p) => p.id === cloudParticipantId);
-    if (!participant) return [];
-    const blobs = participant.samples.map((s) =>
-      session.format === "descriptive" ? s.descriptive : s.combined,
-    );
-    return buildTasterCloud(blobs, locale === "en" ? "en" : "es");
-  }, [canViewTasterCloud, participants, cloudParticipantId, session.format, locale]);
+  // Defensive: fall back to the dashboard if a gated tab is selected without access.
+  const effectiveTab: Tab =
+    tab === "descriptores" && !canViewDescriptors ? "resumen" : tab;
 
-  const activeCloudWords =
-    cloudScope === "session"
-      ? sessionCloudWords
-      : cloudScope === "sample"
-        ? sampleCloudWords
-        : tasterCloudWords;
-  // Defensive: fall back to summary if a gated view is selected without access.
-  const effectiveDisplayView: DisplayView =
-    (displayView === "individual" && !canViewIndividual) ||
-    (displayView === "descriptors" && !canViewDescriptors)
-      ? "summary"
-      : displayView;
-
-  const pillStyle = (active: boolean): React.CSSProperties => ({
-    padding: "5px 14px",
-    borderRadius: 9999,
-    border: active ? "1px solid #3D5A3E" : "1px solid #E8E0D0",
-    background: active ? "#3D5A3E" : "transparent",
-    color: active ? "#FFF" : "#8B7355",
-    fontSize: 12,
-    fontWeight: active ? 700 : 400,
-    cursor: "pointer",
-    fontFamily: "inherit",
-    transition: "all 0.15s",
-  });
-
-  const segStyle = (active: boolean): React.CSSProperties => ({
-    flex: 1,
-    padding: "6px 0",
-    borderRadius: 7,
-    border: "none",
-    background: active ? "#FDFBF7" : "transparent",
-    color: active ? "#5C4A32" : "#8B7355",
-    fontSize: 12,
-    fontWeight: active ? 700 : 400,
-    cursor: "pointer",
-    fontFamily: "inherit",
-    boxShadow: active ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
-    transition: "all 0.15s",
-  });
+  const tabItems = [
+    { id: "resumen", label: translations.tabResumen },
+    { id: "resultados", label: translations.tabResultados },
+    ...(canViewDescriptors
+      ? [{ id: "descriptores", label: translations.tabDescriptores }]
+      : []),
+  ];
 
   return (
-    <div
-      className="absolute inset-0 bottom-14 lg:bottom-0 flex flex-col"
-      style={{ background: "#FDFBF7", color: "#5C4A32" }}
-    >
-      {/* Docked header */}
-      <div
-        className="shrink-0 z-[1]"
-        style={{ background: "#FDFBF7", borderBottom: "1px solid #E8E0D0" }}
-      >
-        {/* Title row */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            padding: "10px 16px",
-          }}
-        >
-          <button
-            onClick={() => router.push(`/${locale}/app/sessions/${session.id}/cup`)}
-            style={{
-              color: "#8B7355",
-              background: "transparent",
-              border: "none",
-              fontSize: 13,
-              cursor: "pointer",
-              lineHeight: 1,
-              padding: "0 2px",
-              flexShrink: 0,
-              fontFamily: "inherit",
-              letterSpacing: "0.3px",
-            }}
-          >
-            {translations.backToCupping}
-          </button>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div
-              style={{
-                fontFamily: "'Cormorant Garamond', Georgia, serif",
-                fontSize: 17,
-                fontWeight: 700,
-                color: "#3D5A3E",
-              }}
-            >
-              {translations.title}
-            </div>
-            <div
-              style={{
-                fontSize: 11,
-                color: "#8B7355",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {session.name} · {session.date}
-            </div>
+    <div className="absolute inset-0 bottom-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom,0px))] lg:bottom-0 flex flex-col bg-surface text-on-surface">
+      {/* Docked header — three stacked rows, same structure on mobile and desktop */}
+      <div className="shrink-0 z-[1] border-b border-outline-variant bg-surface">
+        {/* Row 1: title block — no controls */}
+        <div className="px-4 pt-3 pb-1">
+          <div className="font-display text-xl text-primary-container leading-tight">
+            {translations.title}
+          </div>
+          <div className="truncate text-[11px] text-on-surface-variant">
+            {session.name} · {session.date}
           </div>
         </div>
 
-        {isOwner && (
-          <div
-            style={{
-              display: "flex",
-              gap: 6,
-              overflowX: "auto",
-              padding: "0 16px 8px",
-            }}
+        {/* Row 2: actions */}
+        <div className="flex items-center gap-2 px-4 py-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            icon={<ArrowLeft size={14} aria-hidden />}
+            onClick={() => router.push(`/${locale}/app/sessions/${session.id}/cup`)}
           >
-            {session.samples.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setEditingSampleId(s.id)}
-                style={{
-                  flexShrink: 0,
-                  padding: "4px 10px",
-                  borderRadius: 9999,
-                  border: "1px solid #E8E0D0",
-                  background: "transparent",
-                  color: "#8B7355",
-                  fontSize: 11,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                ✎ {s.label}
-              </button>
-            ))}
+            {translations.backToCupping}
+          </Button>
+          <Button
+            size="sm"
+            variant={newSubmissions > 0 && !refreshing ? "accent" : "accentOutline"}
+            icon={<RefreshCw size={14} aria-hidden className={refreshing ? "animate-spin" : ""} />}
+            onClick={handleRefreshScores}
+            disabled={refreshing}
+            className="ml-auto"
+          >
+            {refreshing
+              ? translations.refreshing
+              : newSubmissions > 0
+                ? translations.refreshNew.replace("{count}", String(newSubmissions))
+                : translations.refresh}
+          </Button>
+        </div>
+
+        {/* Row 3: participation/freshness meta + main tabs */}
+        {canViewGroup && (participationLabel || lastUpdatedLabel) && (
+          <div className="flex gap-3 overflow-hidden whitespace-nowrap px-4 pb-2 text-[10px] tabular-nums text-on-surface-variant">
+            {participationLabel && <span>{participationLabel}</span>}
+            {lastUpdatedLabel && <span>{lastUpdatedLabel}</span>}
           </div>
         )}
-
-        {/* Mine / Group pills — only relevant to table/chart views */}
-        {canViewGroup && displayView !== "summary" && displayView !== "individual" && displayView !== "descriptors" && (
-          <div style={{ padding: "0 16px 8px", display: "flex", gap: 4, alignItems: "center", overflow: "hidden" }}>
-            {(["mine", "group"] as ViewMode[]).map((v) => (
-              <button key={v} onClick={() => setView(v)} style={pillStyle(view === v)}>
-                {v === "mine" ? translations.myResults : translations.groupResults}
-              </button>
-            ))}
-            <button
-              onClick={handleRefreshScores}
-              disabled={refreshing}
-              style={{
-                marginLeft: "auto",
-                padding: "5px 12px",
-                borderRadius: 9999,
-                border: "1px solid #C17817",
-                background: refreshing
-                  ? "#FEF3E2"
-                  : newSubmissions > 0
-                    ? "#C17817"
-                    : "transparent",
-                color: newSubmissions > 0 && !refreshing ? "#FFF" : "#C17817",
-                fontSize: 11,
-                fontWeight: 600,
-                cursor: refreshing ? "default" : "pointer",
-                fontFamily: "inherit",
-                flexShrink: 0,
-                transition: "background 0.2s, color 0.2s",
-              }}
-            >
-              {refreshing
-                ? translations.refreshing
-                : newSubmissions > 0
-                  ? translations.refreshNew.replace("{count}", String(newSubmissions))
-                  : translations.refresh}
-            </button>
-          </div>
-        )}
-
-        {/* Participation + freshness — muted metadata under the pill row */}
-        {canViewGroup &&
-          displayView !== "summary" &&
-          displayView !== "individual" &&
-          displayView !== "descriptors" &&
-          (participationLabel || lastUpdatedLabel) && (
-            <div
-              style={{
-                padding: "0 16px 8px",
-                display: "flex",
-                gap: 12,
-                fontSize: 10,
-                color: "#8B7355",
-                overflow: "hidden",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {participationLabel && <span>{participationLabel}</span>}
-              {lastUpdatedLabel && <span>{lastUpdatedLabel}</span>}
-            </div>
-          )}
-
-        {/* Tabla / Gráfico segmented control */}
-        <div
-          style={{
-            display: "flex",
-            margin: "0 16px 10px",
-            background: "#E8E0D0",
-            borderRadius: 9,
-            padding: 3,
-            gap: 2,
-          }}
-        >
-          {(
-            [
-              "summary",
-              "table",
-              "radar",
-              ...(canViewDescriptors ? (["descriptors"] as const) : []),
-              ...(canViewIndividual ? (["individual"] as const) : []),
-            ] as DisplayView[]
-          ).map((v) => (
-            <button key={v} onClick={() => setDisplayView(v)} style={segStyle(displayView === v)}>
-              {v === "summary"
-                ? locale === "es" ? "📝 Resumen" : "📝 Summary"
-                : v === "table"
-                ? locale === "es" ? "📋 Tabla" : "📋 Table"
-                : v === "radar"
-                ? locale === "es" ? "📡 Gráfico" : "📡 Chart"
-                : v === "descriptors"
-                ? locale === "es" ? "🌸 Descriptores" : "🌸 Descriptors"
-                : locale === "es" ? "👥 Individual" : "👥 Individual"}
-            </button>
-          ))}
+        <div className="px-4 pb-2">
+          <PillTabs
+            items={tabItems}
+            value={effectiveTab}
+            onChange={(id) => {
+              setTab(id as Tab);
+              setDetail(null);
+            }}
+            ariaLabel={translations.title}
+          />
         </div>
       </div>
 
       {/* Scrollable content region — header/footer dock outside it */}
       <div className="flex-1 min-h-0 overflow-y-auto">
-      {showGroup && partialSyncNotice && (
+      {partialSyncNotice && (
         <div
           role="status"
-          className="mx-4 mt-4 rounded-md border border-amber-warm/40 bg-amber-warm/10 px-4 py-2 font-sans text-sm text-amber-warm lg:mx-6"
+          className="mx-4 mt-4 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6"
         >
           {partialSyncNotice}
         </div>
       )}
-      {effectiveDisplayView === "individual" && canViewIndividual ? (
+      {effectiveTab === "descriptores" && canViewDescriptors ? (
         <div className="p-4 lg:p-6">
-          <IndividualResultsPanel
-            sessionId={session.id}
-            participants={participants!}
-            format={session.format}
-            cupsPerSample={session.cupsPerSample}
-            locale={locale}
-          />
-        </div>
-      ) : effectiveDisplayView === "descriptors" && canViewDescriptors ? (
-        <div className="p-4 lg:p-6 flex flex-col gap-6">
-          {descriptorFrequency && descriptorFrequency.length > 0 && (
-            <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4 flex flex-col gap-3">
-              <h3 className="font-display text-lg font-medium text-primary-container">
-                {translations.cloudTitle}
-              </h3>
-
-              {/* Scope toggle */}
-              <div
-                className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1"
-                role="tablist"
-                aria-label={translations.cloudTitle}
-              >
-                {(
-                  [
-                    "session",
-                    "sample",
-                    ...(canViewTasterCloud ? (["taster"] as const) : []),
-                  ] as CloudScope[]
-                ).map((scope) => {
-                  const active = scope === cloudScope;
-                  return (
-                    <button
-                      key={scope}
-                      type="button"
-                      role="tab"
-                      aria-selected={active}
-                      onClick={() => setCloudScope(scope)}
-                      className={`shrink-0 whitespace-nowrap rounded-pill px-3.5 py-1.5 text-sm font-medium transition-colors ${
-                        active
-                          ? "bg-primary-container text-on-primary"
-                          : "border border-outline-variant text-on-surface-variant hover:text-on-surface"
-                      }`}
-                    >
-                      {scope === "session"
-                        ? translations.cloudScopeSession
-                        : scope === "sample"
-                          ? translations.cloudScopeSample
-                          : translations.cloudScopeTaster}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Secondary picker row: sample pills (scope=sample) or participant pills (scope=taster) */}
-              {cloudScope === "sample" && (
-                <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-                  {session.samples.map((s) => {
-                    const active = s.id === cloudSampleId;
-                    return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => setCloudSampleId(s.id)}
-                        className={`shrink-0 whitespace-nowrap rounded-pill border px-3 py-1 text-xs font-medium transition-colors ${
-                          active
-                            ? "border-primary-container bg-primary-container text-on-primary"
-                            : "border-outline-variant text-on-surface-variant hover:text-on-surface"
-                        }`}
-                      >
-                        {s.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-              {cloudScope === "taster" && canViewTasterCloud && (
-                <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-                  {participants!.map((p) => {
-                    const active = p.id === cloudParticipantId;
-                    return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => setCloudParticipantId(p.id)}
-                        className={`shrink-0 whitespace-nowrap rounded-pill border px-3 py-1 text-xs font-medium transition-colors ${
-                          active
-                            ? "border-primary-container bg-primary-container text-on-primary"
-                            : "border-outline-variant text-on-surface-variant hover:text-on-surface"
-                        }`}
-                      >
-                        {p.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              <WordCloud words={activeCloudWords} emptyLabel={translations.cloudEmpty} />
-            </div>
-          )}
-          <DescriptorFrequency
-            samples={descriptorFrequency!}
+          <DescriptoresTab
+            descriptorFrequency={descriptorFrequency!}
             blockLabels={blockLabels ?? {}}
-            t={{
-              viewAll: translations.descViewAll,
-              of: translations.descOf,
-              participants: translations.descParticipants,
-              emptyBlock: translations.descEmptyBlock,
-              emptyAll: translations.descEmptyAll,
-              close: translations.cancel,
-            }}
-          />
-          {/* Owner-only cupper alignment (uses per-participant consensus data). */}
-          {isOwner && cupperAlignment && cupperAlignment.length > 0 && (
-            <CupperAlignment
-              rows={cupperAlignment}
-              t={{
-                title: translations.alignTitle,
-                subtitle: translations.alignSubtitle,
-                excluded: translations.alignExcluded,
-                noData: translations.alignNoData,
-              }}
-            />
-          )}
-        </div>
-      ) : effectiveDisplayView === "summary" ? (
-        <div className="p-4 lg:p-6">
-          <MyResultsSummary
-            samples={session.samples}
-            format={session.format}
-            cupsPerSample={session.cupsPerSample}
-            locale={locale}
-            onEdit={handleEditSample}
-          />
-        </div>
-      ) : effectiveDisplayView === "table" ? (
-        <div className="p-4 lg:p-6 flex flex-col gap-6">
-          <ScoreTable
-            samples={session.samples}
-            cupsPerSample={session.cupsPerSample}
-            format={session.format}
-            showGroup={showGroup}
+            cupperAlignment={cupperAlignment ?? null}
+            participants={isOwner ? (participants ?? null) : null}
             isOwner={isOwner}
-            onReveal={handleReveal}
+            isSoloDescriptors={isSoloDescriptors ?? false}
+            format={format ?? asSessionFormat(session.format)}
+            sampleId={descSampleId}
+            onSampleIdChange={setDescSampleId}
+            blockId={descBlockId}
+            onBlockIdChange={setDescBlockId}
+            locale={locale}
+            t={{
+              cloudTitle: translations.cloudTitle,
+              soloCloudTitle: translations.soloCloudTitle,
+              cloudEmpty: translations.cloudEmpty,
+              filterSampleAll: translations.filterSampleAll,
+              filterBlockLabel: translations.filterBlockLabel,
+              tasterScopeAll: translations.tasterScopeAll,
+              descViewAll: translations.descViewAll,
+              descOf: translations.descOf,
+              descParticipants: translations.descParticipants,
+              descEmptyBlock: translations.descEmptyBlock,
+              descEmptyAll: translations.descEmptyAll,
+              close: translations.cancel,
+              alignTitle: translations.alignTitle,
+              alignSubtitle: translations.alignSubtitle,
+              alignExcluded: translations.alignExcluded,
+              alignNoData: translations.alignNoData,
+            }}
+            help={translations.help}
           />
-          {session.samples.some((s) => Object.keys(s.descriptive).length > 0) && (
-            <div
-              style={{
-                background: "#fff",
-                borderRadius: 12,
-                border: "1px solid #E8E0D0",
-                padding: "16px",
-              }}
-            >
-              <div
-                style={{
-                  fontFamily: "'Cormorant Garamond', Georgia, serif",
-                  fontSize: 15,
-                  fontWeight: 700,
-                  color: "#3D5A3E",
-                  marginBottom: 12,
-                }}
-              >
-                Perfiles de Sabor
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                {session.samples.map((sample) => (
-                  <div key={sample.id}>
-                    <div
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: "#8B7355",
-                        letterSpacing: "0.1em",
-                        textTransform: "uppercase",
-                        marginBottom: 4,
-                      }}
-                    >
-                      {sample.label}
-                    </div>
-                    <FlavorCloud descriptive={sample.descriptive} locale={locale === "en" ? "en" : "es"} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+        </div>
+      ) : effectiveTab === "resumen" ? (
+        <div className="p-4 lg:p-6 flex flex-col gap-6">
+          <ResumenTab
+            samples={session.samples}
+            format={format ?? asSessionFormat(session.format)}
+            cupsPerSample={session.cupsPerSample}
+            isGroup={isGroup}
+            canViewGroup={canViewGroup}
+            participation={participation ?? null}
+            myAlignment={myAlignment ?? null}
+            descriptorFrequency={descriptorFrequency ?? null}
+            isSoloDescriptors={isSoloDescriptors ?? false}
+            locale={locale}
+            onOpenSample={(id) => {
+              setTab("resultados");
+              setDetail({ sampleId: id, participantId: null });
+            }}
+            onOpenDescriptors={(id) => {
+              setTab("descriptores");
+              if (id) setDescSampleId(id);
+            }}
+            t={translations.dashboard}
+            help={translations.help}
+          />
         </div>
       ) : (
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-3 p-4 lg:p-6">
-          {session.samples.map((sample) => (
-            <div key={sample.id} style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-              <SampleRadarChart
-                sample={sample}
-                format={session.format}
+        <div className="p-4 lg:p-6 flex flex-col gap-5">
+          {/* Tabla / Gráfico sub-view switch — the hint's content follows the active sub-view */}
+          <div className="flex w-full max-w-[400px] items-center justify-center gap-2 self-center">
+            <SegmentedControl
+              className="w-full max-w-[360px]"
+              items={[
+                { id: "tabla", label: translations.viewTable },
+                { id: "grafico", label: translations.viewChart },
+              ]}
+              value={resultsView}
+              onChange={changeResultsView}
+              ariaLabel={translations.tabResultados}
+            />
+            <InfoHint
+              title={translations.help[resultsView].title}
+              body={translations.help[resultsView].body}
+              closeLabel={translations.help.closeLabel}
+            />
+          </div>
+
+          {/* Community results not yet visible to this participant */}
+          {isGroup && !canViewGroup && (
+            <div className="rounded-card border border-outline-variant bg-surface-container-low px-4 py-3 text-sm text-on-surface-variant">
+              {translations.communityPending}
+            </div>
+          )}
+
+          {resultsView === "tabla" ? (
+            <>
+              <ScoreTable
+                samples={session.samples}
                 cupsPerSample={session.cupsPerSample}
-                showCommunity={showGroup}
+                format={format ?? asSessionFormat(session.format)}
+                showCommunity={showCommunity}
                 isOwner={isOwner}
                 onReveal={handleReveal}
-                locale={locale}
-                t={{
-                  mine: translations.radarMine,
-                  community: translations.radarCommunity,
-                  deltaAttribute: translations.deltaAttribute,
-                }}
+                onOpenDetail={(id) => setDetail({ sampleId: id, participantId: null })}
+                t={translations.table}
               />
-              {Object.keys(sample.descriptive).length > 0 && (
-                <div
-                  style={{
-                    background: "#fff",
-                    borderRadius: "0 0 12px 12px",
-                    border: "1px solid #E8E0D0",
-                    borderTop: "none",
-                    padding: "12px 16px 16px",
-                  }}
-                >
-                  <FlavorCloud descriptive={sample.descriptive} locale={locale === "en" ? "en" : "es"} />
+              {session.samples.some((s) => Object.keys(s.descriptive).length > 0) && (
+                <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4">
+                  <div className="mb-3 font-display text-[15px] font-medium text-primary-container">
+                    {translations.flavorProfiles}
+                  </div>
+                  <div className="flex flex-col gap-4">
+                    {session.samples.map((sample) => (
+                      <div key={sample.id}>
+                        <div className="mb-1 text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
+                          {sample.label}
+                        </div>
+                        <FlavorCloud descriptive={sample.descriptive} locale={locale === "en" ? "en" : "es"} />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
+            </>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              {session.samples.map((sample) => (
+                <div key={sample.id} className="flex flex-col">
+                  <SampleRadarChart
+                    sample={sample}
+                    format={format ?? asSessionFormat(session.format)}
+                    cupsPerSample={session.cupsPerSample}
+                    showCommunity={showCommunity}
+                    isOwner={isOwner}
+                    onReveal={handleReveal}
+                    t={{
+                      mine: translations.radarMine,
+                      community: translations.radarCommunity,
+                      deltaAttribute: translations.deltaAttribute,
+                      breakdown: translations.breakdown,
+                    }}
+                  />
+                  {Object.keys(sample.descriptive).length > 0 && (
+                    <div className="rounded-b-card border border-t-0 border-outline-variant bg-surface-container-lowest px-4 pb-4 pt-3">
+                      <FlavorCloud descriptive={sample.descriptive} locale={locale === "en" ? "en" : "es"} />
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+
+          {/* Owner-only: per-catador analysis, integrated into Resultados */}
+          {canViewIndividual && (
+            <section className="flex flex-col gap-3">
+              <h2 className="inline-flex items-center gap-1.5 font-display text-xl text-primary-container">
+                {translations.ownerSection}
+                <InfoHint
+                  title={translations.help.porCatador.title}
+                  body={translations.help.porCatador.body}
+                  closeLabel={translations.help.closeLabel}
+                />
+              </h2>
+              <OwnerParticipantSection
+                sessionId={session.id}
+                participants={participants!}
+                format={format ?? asSessionFormat(session.format)}
+                cupsPerSample={session.cupsPerSample}
+                onOpenDetail={(sampleId, participantId) => setDetail({ sampleId, participantId })}
+                t={translations.matrix}
+              />
+            </section>
+          )}
         </div>
       )}
       </div>
@@ -787,23 +594,51 @@ export function ResultsClient({
         style={{ paddingBottom: "max(12px, calc(env(safe-area-inset-bottom) + 8px))" }}
       >
         <div className="flex gap-2">
-          <button
+          <Button
+            size="md"
+            variant="secondary"
+            icon={<Printer size={16} aria-hidden />}
+            className="flex-1"
             onClick={() => router.push(`/${locale}/app/sessions/${session.id}/print`)}
-            className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-pill border border-primary-container px-4 font-ui text-sm font-medium text-primary-container transition-colors hover:bg-primary-fixed"
           >
-            <Printer size={16} aria-hidden />
-            {locale === "en" ? "View form" : "Ver formulario"}
-          </button>
+            {translations.viewForm}
+          </Button>
           {/* Server-generated CVA PDF — plain link so no @react-pdf ships to the client. */}
-          <a
+          <ButtonLink
             href={`/api/sessions/${session.id}/cva-pdf?locale=${locale}`}
-            className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-pill bg-primary-container px-4 font-ui text-sm font-medium text-on-primary no-underline transition-colors hover:bg-primary"
+            size="md"
+            variant="primary"
+            icon={<FileDown size={16} aria-hidden />}
+            className="flex-1"
           >
-            <FileDown size={16} aria-hidden />
-            {locale === "en" ? "Download PDF" : "Descargar PDF"}
-          </a>
+            {translations.downloadPdf}
+          </ButtonLink>
         </div>
       </div>
+
+      {detailSample && (
+        <SampleDetailDialog
+          open
+          onClose={() => setDetail(null)}
+          sample={detailSample}
+          isOwner={isOwner}
+          participants={detailParticipants}
+          initialParticipantId={detail?.participantId ?? null}
+          format={format ?? asSessionFormat(session.format)}
+          cupsPerSample={session.cupsPerSample}
+          locale={locale}
+          onEdit={() => handleEditSample(detailSample.id)}
+          onEditMetadata={
+            isOwner
+              ? () => {
+                  setDetail(null);
+                  setEditingSampleId(detailSample.id);
+                }
+              : undefined
+          }
+          t={translations.detail}
+        />
+      )}
 
       {isOwner && editingSample && (
         <ResponsiveDialog

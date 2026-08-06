@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
-import { PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
 
 export type RankedDescriptor = {
   id: string;
@@ -16,7 +15,7 @@ export type SampleBlockFreq = {
   sampleId: string;
   label: string;
   totalEvaluators: number;
-  /** Ranked descriptors per perceptual block id. */
+  /** Ranked descriptors per perceptual block id (plus the "general" pseudo-block). */
   blocks: Record<string, RankedDescriptor[]>;
   /** Statistical summary sentence per block id (null → render empty state). */
   summary: Record<string, string | null>;
@@ -32,10 +31,6 @@ export type DescriptorTranslations = {
 };
 
 const TOP_N = 5;
-// Bars keep a consensus threshold so the visual isn't noisy, but the block
-// itself never disappears (empty state renders instead). The statistical
-// summary above the bars uses the FULL data (all counts) via `summary`.
-const BAR_MIN_COUNT = 2;
 
 function Bars({
   descriptors,
@@ -78,64 +73,51 @@ function Bars({
   );
 }
 
+/**
+ * Per-sample descriptor bars for one perceptual block (or the "general"
+ * pseudo-block), filtered to the samples the parent's filter row selected.
+ * Block selection and sample selection both live in the parent
+ * (DescriptoresTab) so they can be shared with the word cloud and the cupper
+ * alignment panel above/below this component.
+ */
 export function DescriptorFrequency({
   samples,
+  activeBlockId,
+  visibleSampleIds,
+  minCount = 2,
   blockLabels,
   t,
 }: {
   samples: SampleBlockFreq[];
+  /** "general" or a PERCEPTUAL_BLOCKS id. */
+  activeBlockId: string;
+  /** Restrict the rendered cards to these sample ids; null/undefined = all. */
+  visibleSampleIds?: string[] | null;
+  /** Consensus threshold for the bars (not the summary sentence). Default 2. */
+  minCount?: number;
   blockLabels: Record<string, string>;
   t: DescriptorTranslations;
 }) {
-  // All perceptual blocks are ALWAYS shown, in fixed order — no block silently
-  // disappears just because data is sparse (N15, Step 1). Empty blocks render
-  // an explicit "Sin descriptores en común" state instead.
-  const blocks = PERCEPTUAL_BLOCKS;
-
-  const [blockId, setBlockId] = useState<string>(blocks[0]?.id ?? "");
   const [openSampleId, setOpenSampleId] = useState<string | null>(null);
 
-  const activeBlock = blocks.some((b) => b.id === blockId) ? blockId : blocks[0].id;
+  const visible =
+    visibleSampleIds == null
+      ? samples
+      : samples.filter((s) => visibleSampleIds.includes(s.sampleId));
 
-  const openSample = samples.find((s) => s.sampleId === openSampleId) ?? null;
-  const modalDescriptors = openSample?.blocks[activeBlock] ?? [];
+  const openSample = visible.find((s) => s.sampleId === openSampleId) ?? null;
+  const modalDescriptors = openSample?.blocks[activeBlockId] ?? [];
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Block subtabs */}
-      <div
-        className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1"
-        role="tablist"
-        aria-label="Bloques"
-      >
-        {blocks.map((block) => {
-          const active = block.id === activeBlock;
-          return (
-            <button
-              key={block.id}
-              role="tab"
-              aria-selected={active}
-              onClick={() => setBlockId(block.id)}
-              className={`shrink-0 whitespace-nowrap rounded-pill px-3.5 py-1.5 text-sm font-medium transition-colors ${
-                active
-                  ? "bg-primary-container text-on-primary"
-                  : "border border-outline-variant text-on-surface-variant hover:text-on-surface"
-              }`}
-            >
-              {blockLabels[block.id] ?? block.id}
-            </button>
-          );
-        })}
-      </div>
-
       {/* Per-sample grid for the active block */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        {samples.map((sample) => {
-          const all = sample.blocks[activeBlock] ?? [];
-          const bars = all.filter((d) => d.count >= BAR_MIN_COUNT);
+        {visible.map((sample) => {
+          const all = sample.blocks[activeBlockId] ?? [];
+          const bars = all.filter((d) => d.count >= minCount);
           const top = bars.slice(0, TOP_N);
           const hasMore = bars.length > TOP_N;
-          const summary = sample.summary[activeBlock] ?? null;
+          const summary = sample.summary[activeBlockId] ?? null;
 
           return (
             <div
@@ -189,12 +171,12 @@ export function DescriptorFrequency({
         open={openSample !== null}
         onOpenChange={(o) => !o && setOpenSampleId(null)}
         title={openSample?.label ?? ""}
-        subtitle={blockLabels[activeBlock]}
+        subtitle={blockLabels[activeBlockId]}
         closeLabel={t.close}
       >
         {openSample && (
           <Bars
-            descriptors={modalDescriptors.filter((d) => d.count >= BAR_MIN_COUNT)}
+            descriptors={modalDescriptors.filter((d) => d.count >= minCount)}
             total={openSample.totalEvaluators}
             ofLabel={t.of}
           />
