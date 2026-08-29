@@ -66,7 +66,8 @@ export function SampleDetailDialog({
   format: SessionFormat;
   cupsPerSample: number;
   locale: string;
-  onEdit: () => void;
+  // Absent in read-only contexts (super-admin god mode) — hides the edit CTA.
+  onEdit?: () => void;
   onEditMetadata?: () => void;
   t: SampleDetailDialogTranslations;
 }) {
@@ -85,7 +86,10 @@ export function SampleDetailDialog({
     setViewerId(initialViewerId);
   }
 
-  const showSwitcher = isOwner && !!participants && participants.length > 0;
+  // The participants list is only ever passed to owner-perspective viewers
+  // (owner or super-admin read view), so its presence alone gates the
+  // switcher — isOwner keeps gating the metadata-edit button below.
+  const showSwitcher = !!participants && participants.length > 0;
   const activeParticipant =
     showSwitcher && viewerId !== "me"
       ? (participants!.find((p) => p.id === viewerId) ?? null)

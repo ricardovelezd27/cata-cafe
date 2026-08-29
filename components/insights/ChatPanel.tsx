@@ -45,6 +45,13 @@ export interface ChatTranslations {
     p75: string;
   };
   origin: { year: string; production: string; myActivity: string };
+  session: {
+    candidatesTitle: string;
+    sample: string;
+    community: string;
+    average: string;
+    submitted: string;
+  };
   explorer: {
     dimensions: Record<DimensionId, string>;
     measures: Record<MeasureId, string>;

@@ -14,7 +14,10 @@ import {
   parseAltitudeMeters,
   parseHarvestYear,
 } from "./normalize";
+import { usableCoffeeWhere } from "@/lib/coffeeAccess";
+import { PLATFORM_SCOPE } from "./types";
 import type {
+  AnalyticsScope,
   Dataset,
   DimensionId,
   InsightConfig,
@@ -24,6 +27,7 @@ import type {
   PivotConfig,
   PivotResult,
 } from "./types";
+import type { Prisma } from "@/app/generated/prisma/client";
 
 type Locale = "es" | "en";
 
@@ -58,6 +62,35 @@ interface AnalyticsRow {
 
 const UNKNOWN_LABEL: Record<Locale, string> = { es: "Sin dato", en: "Unknown" };
 
+// ── Scope → Prisma where fragments ──────────────────────────────────────────
+// One helper per dataset; each returns {} for the platform scope so spreading
+// it into a where clause is always safe. The "user" semantics deliberately
+// mirror what that user can already see elsewhere in the app: a session owner
+// sees every evaluation inside their sessions (results page), a participant
+// sees their own evaluations, and coffee access follows usableCoffeeWhere.
+
+function scopedEvaluationWhere(scope: AnalyticsScope): Prisma.EvaluationWhereInput {
+  if (scope.kind === "platform") return {};
+  return {
+    OR: [
+      { cupperId: scope.userId },
+      { sessionSample: { session: { createdBy: scope.userId } } },
+    ],
+  };
+}
+
+function scopedSessionWhere(scope: AnalyticsScope): Prisma.CuppingSessionWhereInput {
+  return scope.kind === "platform" ? {} : { createdBy: scope.userId };
+}
+
+function scopedCoffeeWhere(scope: AnalyticsScope): Prisma.CoffeeWhereInput {
+  return scope.kind === "platform" ? {} : usableCoffeeWhere(scope.userId);
+}
+
+function scopedSampleWhere(scope: AnalyticsScope): Prisma.SessionSampleWhereInput {
+  return scope.kind === "platform" ? {} : { session: { createdBy: scope.userId } };
+}
+
 function dateRange(filters: InsightConfig["filters"]) {
   const gte = filters?.dateFrom ? new Date(filters.dateFrom) : undefined;
   // Make dateTo inclusive of the whole day.
@@ -78,10 +111,17 @@ function descriptorBlobFor(
   return null; // affective sessions carry no descriptors
 }
 
-async function fetchEvaluationRows(filters: InsightConfig["filters"]): Promise<AnalyticsRow[]> {
+async function fetchEvaluationRows(
+  filters: InsightConfig["filters"],
+  scope: AnalyticsScope,
+): Promise<AnalyticsRow[]> {
   const range = dateRange(filters);
   const rows = await prisma.evaluation.findMany({
-    where: { isDraft: false, ...(range ? { submittedAt: range } : {}) },
+    where: {
+      isDraft: false,
+      ...(range ? { submittedAt: range } : {}),
+      ...scopedEvaluationWhere(scope),
+    },
     select: {
       individualScore: true,
       affectiveSum: true,
@@ -128,10 +168,13 @@ async function fetchEvaluationRows(filters: InsightConfig["filters"]): Promise<A
   }));
 }
 
-async function fetchSessionRows(filters: InsightConfig["filters"]): Promise<AnalyticsRow[]> {
+async function fetchSessionRows(
+  filters: InsightConfig["filters"],
+  scope: AnalyticsScope,
+): Promise<AnalyticsRow[]> {
   const range = dateRange(filters);
   const rows = await prisma.cuppingSession.findMany({
-    where: range ? { date: range } : undefined,
+    where: { ...(range ? { date: range } : {}), ...scopedSessionWhere(scope) },
     select: { format: true, status: true, date: true },
   });
   return rows.map((r) => ({
@@ -141,10 +184,13 @@ async function fetchSessionRows(filters: InsightConfig["filters"]): Promise<Anal
   }));
 }
 
-async function fetchCoffeeRows(filters: InsightConfig["filters"]): Promise<AnalyticsRow[]> {
+async function fetchCoffeeRows(
+  filters: InsightConfig["filters"],
+  scope: AnalyticsScope,
+): Promise<AnalyticsRow[]> {
   const range = dateRange(filters);
   const rows = await prisma.coffee.findMany({
-    where: range ? { createdAt: range } : undefined,
+    where: { ...(range ? { createdAt: range } : {}), ...scopedCoffeeWhere(scope) },
     select: {
       country: true,
       region: true,
@@ -170,10 +216,13 @@ async function fetchCoffeeRows(filters: InsightConfig["filters"]): Promise<Analy
   }));
 }
 
-async function fetchSampleRows(filters: InsightConfig["filters"]): Promise<AnalyticsRow[]> {
+async function fetchSampleRows(
+  filters: InsightConfig["filters"],
+  scope: AnalyticsScope,
+): Promise<AnalyticsRow[]> {
   const range = dateRange(filters);
   const rows = await prisma.sessionSample.findMany({
-    where: range ? { session: { date: range } } : undefined,
+    where: { ...(range ? { session: { date: range } } : {}), ...scopedSampleWhere(scope) },
     select: {
       coffee: { select: { country: true, processType: true, harvestYear: true, altitude: true } },
       session: { select: { format: true, date: true } },
@@ -193,7 +242,7 @@ async function fetchSampleRows(filters: InsightConfig["filters"]): Promise<Analy
 
 const FETCHERS: Record<
   InsightConfig["dataset"],
-  (filters: InsightConfig["filters"]) => Promise<AnalyticsRow[]>
+  (filters: InsightConfig["filters"], scope: AnalyticsScope) => Promise<AnalyticsRow[]>
 > = {
   evaluations: fetchEvaluationRows,
   sessions: fetchSessionRows,
@@ -443,8 +492,9 @@ export function aggregateRows(
 export async function runInsightQuery(
   config: InsightConfig,
   locale: Locale,
+  scope: AnalyticsScope = PLATFORM_SCOPE,
 ): Promise<InsightRow[]> {
-  const rows = await FETCHERS[config.dataset](config.filters);
+  const rows = await FETCHERS[config.dataset](config.filters, scope);
   return aggregateRows(rows, config, locale);
 }
 
@@ -564,8 +614,12 @@ function orderAxisKeys(
 
 const PIVOT_TOTAL_COL = "__total__";
 
-export async function runPivotQuery(config: PivotConfig, locale: Locale): Promise<PivotResult> {
-  const rows = await FETCHERS[config.dataset](config.filters);
+export async function runPivotQuery(
+  config: PivotConfig,
+  locale: Locale,
+  scope: AnalyticsScope = PLATFORM_SCOPE,
+): Promise<PivotResult> {
+  const rows = await FETCHERS[config.dataset](config.filters, scope);
 
   // cells: rowKey -> colKey -> accumulator
   const cells = new Map<string, Map<string, PivotAccumulator>>();
@@ -750,8 +804,9 @@ export async function listDimensionValues(
   dataset: Dataset,
   dimension: DimensionId,
   locale: Locale,
+  scope: AnalyticsScope = PLATFORM_SCOPE,
 ): Promise<PivotAxisKey[]> {
-  const rows = await FETCHERS[dataset](undefined);
+  const rows = await FETCHERS[dataset](undefined, scope);
   const counts = new Map<string, { label: string; color?: string; count: number }>();
   for (const row of rows) {
     for (const ref of extractBuckets(row, dimension, locale)) {
@@ -788,13 +843,16 @@ export interface DashboardData {
   topDescriptors: InsightRow[];
 }
 
-export async function getDashboardData(locale: Locale): Promise<DashboardData> {
+export async function getDashboardData(
+  locale: Locale,
+  scope: AnalyticsScope = PLATFORM_SCOPE,
+): Promise<DashboardData> {
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const twelveMonthsAgo = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1));
 
   const insight = (cfg: Omit<InsightConfig, "chartType">) =>
-    runInsightQuery({ ...cfg, chartType: "bar" }, locale);
+    runInsightQuery({ ...cfg, chartType: "bar" }, locale, scope);
 
   const [
     coffeesRegistered,
@@ -813,35 +871,60 @@ export async function getDashboardData(locale: Locale): Promise<DashboardData> {
     scoreDistribution,
     topDescriptors,
   ] = await Promise.all([
-    prisma.coffee.count(),
+    prisma.coffee.count({ where: scopedCoffeeWhere(scope) }),
     prisma.sessionSample.findMany({
-      where: { coffeeId: { not: null } },
+      where: { coffeeId: { not: null }, ...scopedSampleWhere(scope) },
       select: { coffeeId: true },
       distinct: ["coffeeId"],
     }),
-    prisma.cuppingSession.count(),
-    prisma.cuppingSession.groupBy({ by: ["status"], _count: { _all: true } }),
-    prisma.evaluation.count({ where: { isDraft: false } }),
-    prisma.profile.count(),
+    prisma.cuppingSession.count({ where: scopedSessionWhere(scope) }),
+    prisma.cuppingSession.groupBy({
+      by: ["status"],
+      _count: { _all: true },
+      where: scopedSessionWhere(scope),
+    }),
+    prisma.evaluation.count({ where: { isDraft: false, ...scopedEvaluationWhere(scope) } }),
+    // Platform: registered profiles. Scoped: distinct cuppers this user's
+    // data actually contains (their sessions' participants + themselves).
+    scope.kind === "platform"
+      ? prisma.profile.count()
+      : prisma.evaluation
+          .findMany({
+            where: { isDraft: false, ...scopedEvaluationWhere(scope) },
+            select: { cupperId: true },
+            distinct: ["cupperId"],
+          })
+          .then((rows) => rows.length),
     prisma.evaluation.findMany({
-      where: { isDraft: false, submittedAt: { gte: thirtyDaysAgo } },
+      where: {
+        isDraft: false,
+        submittedAt: { gte: thirtyDaysAgo },
+        ...scopedEvaluationWhere(scope),
+      },
       select: { cupperId: true },
       distinct: ["cupperId"],
     }),
     prisma.evaluation.aggregate({
       _avg: { individualScore: true },
-      where: { isDraft: false, individualScore: { not: null } },
+      where: { isDraft: false, individualScore: { not: null }, ...scopedEvaluationWhere(scope) },
     }),
     prisma.aggregateScore.aggregate({
       _avg: { communityScore: true },
-      where: { communityScore: { not: null } },
+      where: {
+        communityScore: { not: null },
+        ...(scope.kind === "user" ? { sessionSample: scopedSampleWhere(scope) } : {}),
+      },
     }),
     prisma.evaluation.findMany({
-      where: { isDraft: false, submittedAt: { gte: twelveMonthsAgo } },
+      where: {
+        isDraft: false,
+        submittedAt: { gte: twelveMonthsAgo },
+        ...scopedEvaluationWhere(scope),
+      },
       select: { submittedAt: true },
     }),
     prisma.cuppingSession.findMany({
-      where: { date: { gte: twelveMonthsAgo } },
+      where: { date: { gte: twelveMonthsAgo }, ...scopedSessionWhere(scope) },
       select: { date: true },
     }),
     insight({ dataset: "samples", dimension: "coffeeCountry", measure: "count", limit: 10 }),
@@ -894,5 +977,146 @@ export async function getDashboardData(locale: Locale): Promise<DashboardData> {
     topProcesses,
     scoreDistribution,
     topDescriptors,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Session lookup for the AI chat (get_session_summary tool).
+// Aggregates and labels ONLY — never evaluation JSON, notes, or user
+// identities. lib/ai/chatTypes.ts mirrors these shapes for client code.
+
+export interface SessionCandidate {
+  id: string;
+  name: string;
+  /** YYYY-MM-DD */
+  date: string;
+  status: string;
+  format: string;
+  isGroup: boolean;
+  sampleCount: number;
+  participantCount: number;
+}
+
+export interface SessionSampleSummary {
+  label: string;
+  position: number;
+  revealed: boolean;
+  coffeeName: string | null;
+  communityScore: number | null;
+  avgRawScore: number | null;
+  submittedCount: number;
+  totalCups: number;
+  totalNonUniform: number;
+  totalDefective: number;
+}
+
+export interface SessionSummary extends SessionCandidate {
+  cupsPerSample: number;
+  /** Distinct cuppers with a submitted (non-draft) evaluation. */
+  submittedCupperCount: number;
+  samples: SessionSampleSummary[];
+}
+
+/**
+ * Resolves a cupping session by (partial, case-insensitive) name — or exactly
+ * by id — and returns either a candidate list (several matches, or none) or
+ * the full aggregated summary of the single match. Community/average figures
+ * come from the trigger-authoritative aggregate_scores rows.
+ */
+export async function getSessionSummaries(
+  nameQuery: string,
+  sessionId?: string,
+  scope: AnalyticsScope = PLATFORM_SCOPE,
+): Promise<{ candidates: SessionCandidate[] } | { summary: SessionSummary }> {
+  const select = {
+    id: true,
+    name: true,
+    date: true,
+    status: true,
+    format: true,
+    isGroup: true,
+    cupsPerSample: true,
+    _count: { select: { samples: true, participants: true } },
+  } as const;
+
+  // The scope filter applies to BOTH paths — a scoped user must not be able
+  // to fetch someone else's session by guessing its id.
+  const matches = sessionId
+    ? await prisma.cuppingSession.findMany({
+        where: { id: sessionId, ...scopedSessionWhere(scope) },
+        select,
+      })
+    : await prisma.cuppingSession.findMany({
+        where: {
+          name: { contains: nameQuery, mode: "insensitive" },
+          ...scopedSessionWhere(scope),
+        },
+        orderBy: { date: "desc" },
+        take: 5,
+        select,
+      });
+
+  const toCandidate = (s: (typeof matches)[number]): SessionCandidate => ({
+    id: s.id,
+    name: s.name,
+    date: s.date.toISOString().slice(0, 10),
+    status: s.status,
+    format: s.format,
+    isGroup: s.isGroup,
+    sampleCount: s._count.samples,
+    participantCount: s._count.participants,
+  });
+
+  if (matches.length !== 1) return { candidates: matches.map(toCandidate) };
+
+  const s = matches[0];
+  const round2 = (x: number | null | undefined) => (x == null ? null : Math.round(x * 100) / 100);
+
+  const [samples, submittedCuppers] = await Promise.all([
+    prisma.sessionSample.findMany({
+      where: { sessionId: s.id },
+      orderBy: { position: "asc" },
+      select: {
+        label: true,
+        position: true,
+        revealed: true,
+        coffee: { select: { name: true } },
+        aggregateScore: {
+          select: {
+            communityScore: true,
+            avgRawScore: true,
+            submittedCount: true,
+            totalCups: true,
+            totalNonUniform: true,
+            totalDefective: true,
+          },
+        },
+      },
+    }),
+    prisma.evaluation.findMany({
+      where: { sessionSample: { sessionId: s.id }, isDraft: false },
+      select: { cupperId: true },
+      distinct: ["cupperId"],
+    }),
+  ]);
+
+  return {
+    summary: {
+      ...toCandidate(s),
+      cupsPerSample: s.cupsPerSample,
+      submittedCupperCount: submittedCuppers.length,
+      samples: samples.map((sm) => ({
+        label: sm.label,
+        position: sm.position,
+        revealed: sm.revealed,
+        coffeeName: sm.coffee?.name ?? null,
+        communityScore: round2(sm.aggregateScore?.communityScore),
+        avgRawScore: round2(sm.aggregateScore?.avgRawScore),
+        submittedCount: sm.aggregateScore?.submittedCount ?? 0,
+        totalCups: sm.aggregateScore?.totalCups ?? 0,
+        totalNonUniform: sm.aggregateScore?.totalNonUniform ?? 0,
+        totalDefective: sm.aggregateScore?.totalDefective ?? 0,
+      })),
+    },
   };
 }

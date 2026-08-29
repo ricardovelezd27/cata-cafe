@@ -8,6 +8,8 @@ import {
   normalizeProcess,
 } from "./normalize";
 import { PROCESS_TYPES } from "@/lib/constants";
+import { PLATFORM_SCOPE } from "./types";
+import type { AnalyticsScope } from "./types";
 
 type Locale = "es" | "en";
 
@@ -83,10 +85,23 @@ interface MyEvaluationRow {
   year: number | null;
 }
 
-/** Submitted, scored evaluations with normalized coffee metadata. */
-async function fetchMyRows(): Promise<MyEvaluationRow[]> {
+/** Submitted, scored evaluations with normalized coffee metadata. Scoped
+ *  ("user") = the user's own evaluations + every evaluation inside sessions
+ *  they created — mirrors scopedEvaluationWhere in lib/analytics/queries.ts. */
+async function fetchMyRows(scope: AnalyticsScope = PLATFORM_SCOPE): Promise<MyEvaluationRow[]> {
   const rows = await prisma.evaluation.findMany({
-    where: { isDraft: false, individualScore: { not: null } },
+    where: {
+      isDraft: false,
+      individualScore: { not: null },
+      ...(scope.kind === "user"
+        ? {
+            OR: [
+              { cupperId: scope.userId },
+              { sessionSample: { session: { createdBy: scope.userId } } },
+            ],
+          }
+        : {}),
+    },
     select: {
       individualScore: true,
       submittedAt: true,
@@ -123,9 +138,10 @@ function matchesFilter(
 
 export async function getBenchmarkComparison(
   filter: BenchmarkFilter,
+  scope: AnalyticsScope = PLATFORM_SCOPE,
 ): Promise<BenchmarkComparison> {
   const [myRows, lots] = await Promise.all([
-    fetchMyRows(),
+    fetchMyRows(scope),
     prisma.benchmarkLot.findMany({
       where: {
         source: "cqi_arabica",
@@ -225,6 +241,7 @@ const ORIGIN_CONTEXT_YEARS = 30;
 export async function getOriginContext(
   countryCode: string,
   locale: Locale,
+  scope: AnalyticsScope = PLATFORM_SCOPE,
 ): Promise<OriginContext> {
   const sinceYear = new Date().getUTCFullYear() - ORIGIN_CONTEXT_YEARS;
   const [series, myRows] = await Promise.all([
@@ -238,7 +255,7 @@ export async function getOriginContext(
       orderBy: { year: "asc" },
       select: { year: true, value: true },
     }),
-    fetchMyRows(),
+    fetchMyRows(scope),
   ]);
 
   const byYear = new Map<number, { count: number; sum: number }>();

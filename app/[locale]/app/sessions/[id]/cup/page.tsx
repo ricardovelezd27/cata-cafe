@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { CupClient } from "./CupClient";
 
 export default async function CupPage({
@@ -56,7 +57,19 @@ export default async function CupPage({
     },
   });
 
-  if (!session) notFound();
+  if (!session) {
+    // Super-admin god mode is read-only: never the editable cupping form
+    // (its upserts would fail the member gate anyway) — send the admin to
+    // the results view of any session that actually exists.
+    if (isSuperAdminEmail(user.email)) {
+      const exists = await prisma.cuppingSession.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+      if (exists) redirect(`/${locale}/app/sessions/${id}/results`);
+    }
+    notFound();
+  }
 
   const isOwner = session.createdBy === user.id;
 

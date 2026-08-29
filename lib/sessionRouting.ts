@@ -11,9 +11,13 @@ export type SessionRouteInfo = {
 
 export function sessionHref(
   s: SessionRouteInfo,
-  ctx: { locale: string; isOwner: boolean },
+  ctx: { locale: string; isOwner: boolean; isAdminViewer?: boolean },
 ): string {
   const base = `/${ctx.locale}/app/sessions/${s.id}`;
+  // Super-admin viewing someone else's session (not owner, not participant):
+  // always the read-only results view — never /cup (editable form whose
+  // upserts would fail the member gate) nor /waiting (participant-only gate).
+  if (ctx.isAdminViewer) return `${base}/results`;
   // Closed → the session's "detail view" is its results.
   if (s.status === "closed") return `${base}/results`;
   // Group session not yet started: participants wait; the owner runs setup.

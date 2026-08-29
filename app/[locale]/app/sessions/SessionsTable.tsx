@@ -20,6 +20,8 @@ export type SessionRow = {
   participantsCount: number;
   groupName: string | null;
   isOwner: boolean;
+  isParticipant: boolean;
+  ownerName: string | null;
   href: string;
 };
 
@@ -42,7 +44,9 @@ export type SessionsTableTranslations = {
   filterRole: string;
   roleMine: string;
   roleParticipant: string;
+  roleOthers: string;
   participantBadge: string;
+  adminOwnerPrefix: string;
   emptyTitle: string;
   emptyBody: string;
   groupBadge: string;
@@ -69,6 +73,7 @@ export function SessionsTable({
   newSessionHref,
   translations: t,
   deleteTranslations,
+  isAdmin = false,
 }: {
   rows: SessionRow[];
   locale: string;
@@ -76,6 +81,7 @@ export function SessionsTable({
   newSessionHref: string;
   translations: SessionsTableTranslations;
   deleteTranslations: DeleteSessionTranslations;
+  isAdmin?: boolean;
 }) {
   const statusOptions = [
     ...(hasDraft ? [{ value: "draft", label: t.statuses.draft }] : []),
@@ -106,13 +112,18 @@ export function SessionsTable({
                 {row.groupName}
               </Badge>
             )}
-            {!row.isOwner && (
+            {!row.isOwner && row.isParticipant && (
               <Badge tone="outline" size="xs">
                 {t.participantBadge}
               </Badge>
             )}
           </div>
           <p className="text-xs text-on-surface-variant">{formatLabel(row.format, t.formats)}</p>
+          {row.ownerName && (
+            <p className="text-xs text-on-surface-variant">
+              {t.adminOwnerPrefix} {row.ownerName}
+            </p>
+          )}
         </div>
       ),
     },
@@ -170,8 +181,14 @@ export function SessionsTable({
       options: [
         { value: "mine", label: t.roleMine },
         { value: "participant", label: t.roleParticipant },
+        ...(isAdmin ? [{ value: "others", label: t.roleOthers }] : []),
       ],
-      match: (row, value) => (value === "mine" ? row.isOwner : !row.isOwner),
+      match: (row, value) => {
+        if (value === "mine") return row.isOwner;
+        if (value === "participant") return row.isParticipant && !row.isOwner;
+        if (value === "others") return !row.isOwner && !row.isParticipant;
+        return true;
+      },
     },
   ];
 
@@ -180,7 +197,7 @@ export function SessionsTable({
       rows={rows}
       rowKey={(row) => row.id}
       columns={columns}
-      searchText={(row) => [row.name, row.groupName]}
+      searchText={(row) => [row.name, row.groupName, row.ownerName]}
       facets={facets}
       getRowHref={(row) => row.href}
       rowActions={(row) =>
@@ -226,12 +243,17 @@ export function SessionsTable({
                     {row.groupName}
                   </Badge>
                 )}
-                {!row.isOwner && (
+                {!row.isOwner && row.isParticipant && (
                   <Badge tone="outline" size="xs">
                     {t.participantBadge}
                   </Badge>
                 )}
               </div>
+              {row.ownerName && (
+                <p className="text-xs text-on-surface-variant">
+                  {t.adminOwnerPrefix} {row.ownerName}
+                </p>
+              )}
             </div>
             {actions && <div className="flex shrink-0 items-center gap-1">{actions}</div>}
           </div>

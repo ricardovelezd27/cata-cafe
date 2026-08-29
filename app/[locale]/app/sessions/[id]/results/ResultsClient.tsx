@@ -39,6 +39,7 @@ type MatrixTranslations = {
   included: string;
   excluded: string;
   excludedTag: string;
+  legendGreen: string;
   legendAmber: string;
   legendRed: string;
   noScore: string;
@@ -71,6 +72,9 @@ export function ResultsClient({
   locale,
   session,
   isOwner,
+  isAdminViewer = false,
+  adminViewNotice = null,
+  adminOwnerName = null,
   isGroup,
   canViewGroup,
   currentUserId,
@@ -98,6 +102,13 @@ export function ResultsClient({
     samples: SampleResult[];
   };
   isOwner: boolean;
+  // Super-admin read-only view of someone else's session: owner-equivalent
+  // READS (matrix, alignment, master coffee), zero mutation affordances.
+  isAdminViewer?: boolean;
+  adminViewNotice?: string | null;
+  // Owner's display name — replaces the "Mi evaluación" pill label, since the
+  // "mine" slots hold the owner's evaluation in the admin view.
+  adminOwnerName?: string | null;
   isGroup: boolean;
   canViewGroup: boolean;
   currentUserId: string;
@@ -235,6 +246,10 @@ export function ResultsClient({
   // the viewer that pressing "Actualizar" will show something new.
   useEffect(() => {
     if (!isGroup || !canViewGroup) return;
+    // Admin god-mode runs under the admin's own JWT, and the evaluations RLS
+    // policy only exposes own/participant rows — the subscription would be a
+    // dead socket. Server renders run as postgres, so manual refresh works.
+    if (isAdminViewer) return;
 
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -281,7 +296,7 @@ export function ResultsClient({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [isGroup, canViewGroup, session.id, session.samples, currentUserId]);
+  }, [isGroup, canViewGroup, isAdminViewer, session.id, session.samples, currentUserId]);
 
   const handleEditSample = (sampleId: string) => {
     router.push(`/${locale}/app/sessions/${session.id}/cup?sample=${sampleId}`);
@@ -291,7 +306,7 @@ export function ResultsClient({
 
   const detailSample = detail ? (session.samples.find((s) => s.id === detail.sampleId) ?? null) : null;
   const detailParticipants: SampleDetailParticipant[] | null =
-    isOwner && participants && participants.length > 0 ? participants : null;
+    (isOwner || isAdminViewer) && participants && participants.length > 0 ? participants : null;
 
   const handleSaveSampleMetadata = async (data: SampleMetadataFormData) => {
     if (!editingSampleId) return;
@@ -326,7 +341,7 @@ export function ResultsClient({
   // One merged view: community data renders whenever the viewer may see it —
   // the old "Mis resultados / Resultados grupales" toggle is gone.
   const showCommunity = canViewGroup;
-  const canViewIndividual = isOwner && isGroup && !!participants?.length;
+  const canViewIndividual = (isOwner || isAdminViewer) && isGroup && !!participants?.length;
   const canViewDescriptors = !!descriptorFrequency?.length;
 
   // ─── Descriptores tab filters (lifted so the Resumen dashboard can
@@ -362,14 +377,17 @@ export function ResultsClient({
 
         {/* Row 2: actions */}
         <div className="flex items-center gap-2 px-4 py-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            icon={<ArrowLeft size={14} aria-hidden />}
-            onClick={() => router.push(`/${locale}/app/sessions/${session.id}/cup`)}
-          >
-            {translations.backToCupping}
-          </Button>
+          {/* Admin view: /cup would just bounce back here — hide the loop. */}
+          {!isAdminViewer && (
+            <Button
+              size="sm"
+              variant="secondary"
+              icon={<ArrowLeft size={14} aria-hidden />}
+              onClick={() => router.push(`/${locale}/app/sessions/${session.id}/cup`)}
+            >
+              {translations.backToCupping}
+            </Button>
+          )}
           <Button
             size="sm"
             variant={newSubmissions > 0 && !refreshing ? "accent" : "accentOutline"}
@@ -408,6 +426,14 @@ export function ResultsClient({
 
       {/* Scrollable content region — header/footer dock outside it */}
       <div className="flex-1 min-h-0 overflow-y-auto">
+      {adminViewNotice && (
+        <div
+          role="status"
+          className="mx-4 mt-4 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6"
+        >
+          {adminViewNotice}
+        </div>
+      )}
       {partialSyncNotice && (
         <div
           role="status"
@@ -422,8 +448,8 @@ export function ResultsClient({
             descriptorFrequency={descriptorFrequency!}
             blockLabels={blockLabels ?? {}}
             cupperAlignment={cupperAlignment ?? null}
-            participants={isOwner ? (participants ?? null) : null}
-            isOwner={isOwner}
+            participants={isOwner || isAdminViewer ? (participants ?? null) : null}
+            isOwner={isOwner || isAdminViewer}
             isSoloDescriptors={isSoloDescriptors ?? false}
             format={format ?? asSessionFormat(session.format)}
             sampleId={descSampleId}
@@ -579,6 +605,7 @@ export function ResultsClient({
                 participants={participants!}
                 format={format ?? asSessionFormat(session.format)}
                 cupsPerSample={session.cupsPerSample}
+                readOnly={isAdminViewer}
                 onOpenDetail={(sampleId, participantId) => setDetail({ sampleId, participantId })}
                 t={translations.matrix}
               />
@@ -627,7 +654,7 @@ export function ResultsClient({
           format={format ?? asSessionFormat(session.format)}
           cupsPerSample={session.cupsPerSample}
           locale={locale}
-          onEdit={() => handleEditSample(detailSample.id)}
+          onEdit={isAdminViewer ? undefined : () => handleEditSample(detailSample.id)}
           onEditMetadata={
             isOwner
               ? () => {
@@ -636,7 +663,13 @@ export function ResultsClient({
                 }
               : undefined
           }
-          t={translations.detail}
+          t={
+            // Admin view: the "me" slot holds the OWNER's evaluation, so the
+            // switcher pill is labeled with the owner's name instead.
+            adminOwnerName
+              ? { ...translations.detail, myEvaluation: adminOwnerName }
+              : translations.detail
+          }
         />
       )}
 

@@ -102,6 +102,7 @@
   },
   "session": {
     "list": "Sesiones",
+    "adminBadge": "Modo administrador — todas las sesiones",
     "new": "Nueva sesión",
     "name": "Nombre",
     "namePh": "Ej. Origen Etiopía — Lote 12",
@@ -173,7 +174,9 @@
       "filterRole": "Rol",
       "roleMine": "Mías",
       "roleParticipant": "Como participante",
+      "roleOthers": "De otros usuarios",
       "participantBadge": "Participante",
+      "adminOwnerPrefix": "Dueño:",
       "emptyTitle": "Aún no tienes sesiones",
       "emptyBody": "Crea tu primera sesión de cata para empezar a evaluar cafés.",
       "solo": "Individual",
@@ -411,6 +414,7 @@
   },
   "results": {
     "title": "Resultados de la Sesión",
+    "adminViewNotice": "Vista de administrador (solo lectura) — sesión de {owner}",
     "backToCupping": "Editar evaluación",
     "viewForm": "Ver formulario",
     "downloadPdf": "Descargar PDF",
@@ -493,6 +497,7 @@
     },
     "matrix": {
       "matrixTitle": "Resumen de puntajes CVA",
+      "legendGreen": "≤ 1 DE de la media (consenso)",
       "legendAmber": "> 1 DE de la media",
       "legendRed": "≥ 2 DE (posible atípico)",
       "noScore": "—",
@@ -564,7 +569,7 @@
       },
       "porCatador": {
         "title": "Análisis por catador",
-        "body": "Solo visible para el maestro de la sesión: la matriz de puntajes CVA por catador, con resaltado de valores atípicos (más de 1 o 2 desviaciones estándar de la media). Puedes excluir un catador del cálculo grupal; los puntajes se recalculan automáticamente."
+        "body": "Solo visible para el maestro de la sesión: la matriz de puntajes CVA por catador, con un semáforo de tres colores por consenso — verde dentro de 1 desviación estándar de la media de la muestra, amarillo más de 1 DE, rojo 2 o más DE (posible atípico); los catadores excluidos se muestran en gris. Puedes excluir un catador del cálculo grupal; los puntajes se recalculan automáticamente."
       },
       "filtros": {
         "title": "Filtros de descriptores",
@@ -905,7 +910,8 @@
       "explorer": "Explorador",
       "benchmark": "Benchmark",
       "chat": "Chat",
-      "access": "Acceso"
+      "access": "Acceso",
+      "users": "Usuarios"
     },
     "report": {
       "download": "Informe PDF"
@@ -1055,6 +1061,17 @@
       "toggleError": "No se pudo actualizar. Inténtalo de nuevo.",
       "empty": "No se encontraron usuarios."
     },
+    "users": {
+      "lead": "Directorio de todas las personas registradas en la plataforma, con su actividad de catación.",
+      "colName": "Nombre",
+      "colEmail": "Correo",
+      "colCountry": "País",
+      "colRole": "Rol",
+      "colSessions": "Sesiones",
+      "colCoffees": "Cafés",
+      "colJoined": "Se unió",
+      "empty": "No se encontraron usuarios."
+    },
     "benchmark": {
       "title": "Benchmark vs. CQI",
       "subtitle": "Compara tus puntajes de catación con el conjunto de datos de referencia de CQI para el mismo país, proceso o variedad.",
@@ -1127,6 +1144,13 @@
         "year": "Año",
         "production": "Producción (t)",
         "myActivity": "Mi actividad"
+      },
+      "session": {
+        "candidatesTitle": "Sesiones que coinciden",
+        "sample": "Muestra",
+        "community": "Comunitario",
+        "average": "Promedio",
+        "submitted": "Enviadas"
       },
       "overview": {
         "coffeesRegistered": "Cafés registrados",

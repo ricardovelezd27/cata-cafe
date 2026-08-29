@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
 import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
 import { computeCupperAlignment, type CupperAlignmentRow } from "@/lib/alignment";
@@ -23,20 +24,37 @@ export default async function ResultsPage({
   } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
 
+  // Super-admin god mode: read-only access to ANY session's results, rendered
+  // from the owner's perspective. The admin's identity is resolved up front so
+  // the "mine" evaluation slots below can be keyed to the owner instead.
+  const isSuperAdmin = isSuperAdminEmail(user.email);
+  const adminTarget = isSuperAdmin
+    ? await prisma.cuppingSession.findUnique({
+        where: { id },
+        select: { createdBy: true, createdByUser: { select: { displayName: true } } },
+      })
+    : null;
+  // Which cupper's evaluations fill the "mine" slots: the viewer's own, or —
+  // for an admin viewing someone else's session — the owner's.
+  const viewAsId =
+    adminTarget && adminTarget.createdBy !== user.id ? adminTarget.createdBy : user.id;
+
   const [session, submittedCupperCount] = await Promise.all([
     prisma.cuppingSession.findFirst({
-      where: {
-        id,
-        OR: [
-          { createdBy: user.id },
-          { participants: { some: { userId: user.id } } },
-        ],
-      },
+      where: isSuperAdmin
+        ? { id }
+        : {
+            id,
+            OR: [
+              { createdBy: user.id },
+              { participants: { some: { userId: user.id } } },
+            ],
+          },
       include: {
         samples: {
           orderBy: { position: "asc" },
           include: {
-            evaluations: { where: { cupperId: user.id } },
+            evaluations: { where: { cupperId: viewAsId } },
             physical: true,
             extrinsic: true,
             aggregateScore: true,
@@ -69,6 +87,14 @@ export default async function ResultsPage({
   if (!session) notFound();
 
   const isOwner = session.createdBy === user.id;
+  // Admin viewing someone else's session: owner-equivalent READ access only.
+  // Never conflated with isOwner, which keeps gating mutations (edit metadata,
+  // reveal, refreshAggregateScores) — those actions stay owner-only. Note: a
+  // super admin who is merely a PARTICIPANT of the session also gets this
+  // owner-perspective view (their own "mine" lens is traded away) — accepted.
+  const isAdminViewer = isSuperAdmin && !isOwner;
+  // Owner-perspective read gate — shared by every owner-only READ block below.
+  const ownerRead = isOwner || isAdminViewer;
   // Narrowed session format — used for every format-shaped gate below.
   // `session.format` (raw string) is still passed inside the `session` prop
   // unchanged, since the client-side type there is a plain string.
@@ -88,7 +114,7 @@ export default async function ResultsPage({
   const sessionExpired = session.closesAt ? session.closesAt < new Date() : false;
   const canViewGroup =
     session.isGroup &&
-    (isOwner || session.status === "closed" || allSubmitted || sessionExpired);
+    (ownerRead || session.status === "closed" || allSubmitted || sessionExpired);
 
   // Participants the master has excluded from group results. Used to (a) flag
   // excluded cuppers in the Individual view and (b) drop their descriptors from
@@ -197,7 +223,7 @@ export default async function ResultsPage({
     }
 
     // ---- Master-only raw participant matrix (Individual view) ----
-    if (isOwner) {
+    if (ownerRead) {
       const byCupper = new Map<
         string,
         { name: string; bySample: Map<string, (typeof evals)[number]> }
@@ -273,7 +299,7 @@ export default async function ResultsPage({
         excludedUserIds,
       });
 
-      if (isOwner) {
+      if (ownerRead) {
         cupperAlignment = alignmentRows;
       }
 
@@ -431,10 +457,20 @@ export default async function ResultsPage({
       })
     : null;
 
+  // Read-only banner for the super-admin view, interpolated server-side.
+  const adminViewNotice = isAdminViewer
+    ? tResults("adminViewNotice", {
+        owner: adminTarget?.createdByUser.displayName ?? "—",
+      })
+    : null;
+
   return (
     <ResultsClient
       locale={locale}
       isOwner={isOwner}
+      isAdminViewer={isAdminViewer}
+      adminViewNotice={adminViewNotice}
+      adminOwnerName={isAdminViewer ? (adminTarget?.createdByUser.displayName ?? null) : null}
       isGroup={session.isGroup}
       canViewGroup={canViewGroup}
       currentUserId={user.id}
@@ -501,7 +537,7 @@ export default async function ResultsPage({
             label: s.label,
             revealed: s.revealed,
             coffee: s.revealed && s.coffee ? s.coffee : null,
-            masterCoffee: isOwner
+            masterCoffee: ownerRead
               ? {
                   name: s.coffee?.name ?? "",
                   country: s.coffee?.country ?? "",
@@ -647,6 +683,7 @@ export default async function ResultsPage({
           included: tResults("matrix.included"),
           excluded: tResults("matrix.excluded"),
           excludedTag: tResults("matrix.excludedTag"),
+          legendGreen: tResults("matrix.legendGreen"),
           legendAmber: tResults("matrix.legendAmber"),
           legendRed: tResults("matrix.legendRed"),
           noScore: tResults("matrix.noScore"),

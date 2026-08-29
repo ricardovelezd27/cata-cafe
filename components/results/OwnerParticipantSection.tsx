@@ -51,15 +51,18 @@ function cvaFor(
   return typeof cva === "number" ? cva : null;
 }
 
-type CellTone = "neutral" | "amber" | "red";
+type CellTone = "neutral" | "green" | "amber" | "red";
 
-/* Cell tone → MD3 token classes. Outlier tints per DESIGN.md: bg-secondary-fixed
-   (> 1 SD) / bg-error-container (>= 2 SD). Excluded participants always render
-   with the neutral "greyed out" pairing regardless of their tone. */
+/* Cell tone → MD3 token classes. Traffic-light consensus semaphore per
+   DESIGN.md: bg-primary-fixed (green, within 1 SD of the row mean — consensus)
+   / bg-warning-container (amber, > 1 SD) / bg-error-container (red, >= 2 SD,
+   possible outlier). Excluded participants always render with the neutral
+   "greyed out" pairing regardless of their tone. */
 function toneClass(tone: CellTone, excluded: boolean): string {
   if (excluded) return "bg-surface-container-high text-on-surface-variant";
   if (tone === "red") return "bg-error-container text-on-error-container font-bold";
-  if (tone === "amber") return "bg-secondary-fixed text-secondary font-bold";
+  if (tone === "amber") return "bg-warning-container text-on-warning-container font-bold";
+  if (tone === "green") return "bg-primary-fixed text-on-primary-fixed font-semibold";
   return "text-on-surface font-semibold";
 }
 
@@ -101,6 +104,7 @@ export function OwnerParticipantSection({
   participants,
   format,
   cupsPerSample,
+  readOnly = false,
   onOpenDetail,
   t,
 }: {
@@ -108,6 +112,9 @@ export function OwnerParticipantSection({
   participants: ParticipantResult[];
   format: SessionFormat;
   cupsPerSample: number;
+  // Super-admin read view: matrix + drill-down only — the include/exclude
+  // management card is hidden (setParticipantExclusion is owner-gated).
+  readOnly?: boolean;
   onOpenDetail: (sampleId: string, participantId: string) => void;
   t: {
     title: string;
@@ -116,6 +123,7 @@ export function OwnerParticipantSection({
     included: string;
     excluded: string;
     excludedTag: string;
+    legendGreen: string;
     legendAmber: string;
     legendRed: string;
     noScore: string;
@@ -182,12 +190,13 @@ export function OwnerParticipantSection({
     const dev = Math.abs(value - mean);
     if (dev >= 2 * sd) return "red";
     if (dev >= sd) return "amber";
-    return "neutral";
+    return "green";
   };
 
   return (
     <div className="flex flex-col gap-5">
       {/* Master control: include/exclude each participant from the group calc */}
+      {!readOnly && (
       <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4">
         <div className="mb-1 font-display text-lg font-semibold text-primary-container">
           {t.manageTitle}
@@ -231,6 +240,7 @@ export function OwnerParticipantSection({
           })}
         </div>
       </div>
+      )}
 
       {/* CVA summary matrix — every cell/header is a drill-down trigger */}
       <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4">
@@ -305,7 +315,11 @@ export function OwnerParticipantSection({
         {/* Legend */}
         <div className="mt-3 flex flex-wrap gap-4">
           <span className="inline-flex items-center gap-1.5 text-[11px] text-on-surface-variant">
-            <span className="h-3 w-3 rounded-sm bg-secondary-fixed" aria-hidden />
+            <span className="h-3 w-3 rounded-sm bg-primary-fixed" aria-hidden />
+            {t.legendGreen}
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-[11px] text-on-surface-variant">
+            <span className="h-3 w-3 rounded-sm bg-warning-container" aria-hidden />
             {t.legendAmber}
           </span>
           <span className="inline-flex items-center gap-1.5 text-[11px] text-on-surface-variant">

@@ -6,6 +6,16 @@
 export const DATASETS = ["evaluations", "sessions", "coffees", "samples"] as const;
 export type Dataset = (typeof DATASETS)[number];
 
+// Data-visibility scope for analytics queries. "platform" = everything
+// (super admin); "user" = only that user's own footprint: sessions they
+// created (with every evaluation inside them), their own evaluations in
+// other people's sessions, and coffees they can use (own + public + shared).
+// Queries default to "platform" so existing insights surfaces are unchanged;
+// the AI chat is the first consumer that passes a per-user scope.
+export type AnalyticsScope = { kind: "platform" } | { kind: "user"; userId: string };
+
+export const PLATFORM_SCOPE: AnalyticsScope = { kind: "platform" };
+
 export const DIMENSIONS = [
   "coffeeCountry",
   "coffeeRegion",

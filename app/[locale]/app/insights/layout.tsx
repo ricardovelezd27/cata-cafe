@@ -36,6 +36,7 @@ export default async function InsightsLayout({
           benchmark: t("tabs.benchmark"),
           chat: t("tabs.chat"),
           access: t("tabs.access"),
+          users: t("tabs.users"),
         }}
       />
       {children}

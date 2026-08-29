@@ -77,6 +77,13 @@ export default async function InsightsChatPage({
           production: t("origin.production"),
           myActivity: t("origin.myActivity"),
         },
+        session: {
+          candidatesTitle: t("session.candidatesTitle"),
+          sample: t("session.sample"),
+          community: t("session.community"),
+          average: t("session.average"),
+          submitted: t("session.submitted"),
+        },
         explorer: {
           dimensions: record<DimensionId>(DIMENSIONS, "dimensions"),
           measures: record<MeasureId>(MEASURES, "measures"),
