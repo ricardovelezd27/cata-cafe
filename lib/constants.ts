@@ -111,7 +111,7 @@ const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
       { key: 'strawberry', es: 'Fresa',     en: 'Strawberry', syn: ['fresón', 'frutilla'] },
     ] },
     { key: 'citrus', es: 'Cítrico', en: 'Citrus Fruit', leaves: [
-      { key: 'grapefruit', es: 'Toronja', en: 'Grapefruit' },
+      { key: 'grapefruit', es: 'Pomelo',  en: 'Grapefruit', syn: ['toronja'] },
       { key: 'lemon',      es: 'Limón',   en: 'Lemon' },
       { key: 'lime',       es: 'Lima',    en: 'Lime' },
       { key: 'orange',     es: 'Naranja', en: 'Orange' },
@@ -127,30 +127,28 @@ const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
       { key: 'grape',       es: 'Uva',     en: 'Grape' },
       { key: 'peach',       es: 'Durazno', en: 'Peach', syn: ['melocotón'] },
       { key: 'pear',        es: 'Pera',    en: 'Pear' },
-      { key: 'pineapple',   es: 'Piña',    en: 'Pineapple' },
+      { key: 'pineapple',   es: 'Piña Ananas', en: 'Pineapple', syn: ['ananá', 'ananás', 'piña'] },
       { key: 'pomegranate', es: 'Granada', en: 'Pomegranate' },
     ] },
   ] },
-  // ⚠ Green/Vegetal: Kim asked for fresco/seco/cocido instead of the wheel's
-  // Beany/Green-Vegetative/Raw. The L3 distribution below is a proposed default
-  // and needs Kim's sign-off before it is considered final.
+  // Green/Vegetal: the three subgroups keep the wheel's fresco/seco/cocido split in
+  // English, but all carry the Spanish label 'Verde/Vegetal' — signed off in the
+  // 2026-08 flavor-pill naming review (cuppers name the leaf, not the subgroup).
   { key: 'green_veg', es: 'Verde/Vegetal', en: 'Green/Vegetative', color: L1_GROUP_COLOR.green_veg, subs: [
-    { key: 'fresh', es: 'Vegetal fresco', en: 'Fresh Vegetative', leaves: [
+    { key: 'fresh', es: 'Verde/Vegetal', en: 'Fresh Vegetative', leaves: [
       { key: 'fresh',       es: 'Fresco',            en: 'Fresh' },
-      { key: 'peapod',      es: 'Vaina de guisante', en: 'Peapod' },
+      { key: 'peapod',      es: 'Vaina',             en: 'Peapod', syn: ['vaina de guisante', 'guisante'] },
       { key: 'vegetative',  es: 'Vegetal',           en: 'Vegetative' },
       { key: 'dark_green',  es: 'Verde oscuro',      en: 'Dark Green' },
       { key: 'herb_like',   es: 'Herbáceo',          en: 'Herb-like' },
-      { key: 'cucumber',    es: 'Pepino',            en: 'Cucumber' },
       { key: 'under_ripe',  es: 'Inmaduro',          en: 'Under-ripe' },
     ] },
-    { key: 'dried', es: 'Vegetal seco', en: 'Dried Vegetative', leaves: [
+    { key: 'dried', es: 'Verde/Vegetal', en: 'Dried Vegetative', leaves: [
       { key: 'hay_like',     es: 'Heno',         en: 'Hay-like' },
       { key: 'beany',        es: 'Leguminoso',   en: 'Beany' },
       { key: 'raw',          es: 'Crudo',        en: 'Raw' },
-      { key: 'potato_skins', es: 'Piel de papa', en: 'Potato Skins' },
     ] },
-    { key: 'cooked', es: 'Vegetal cocido', en: 'Cooked Vegetative', leaves: [
+    { key: 'cooked', es: 'Verde/Vegetal', en: 'Cooked Vegetative', leaves: [
       { key: 'olive_oil', es: 'Aceite de oliva', en: 'Olive Oil' },
     ] },
   ] },
@@ -162,34 +160,30 @@ const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
     { key: 'nutty', es: 'Nueces', en: 'Nutty', leaves: [
       { key: 'almond',   es: 'Almendra',  en: 'Almond' },
       { key: 'hazelnut', es: 'Avellana',  en: 'Hazelnut' },
-      { key: 'nutty',    es: 'Nuez',      en: 'Nutty' },
-      { key: 'peanuts',  es: 'Cacahuate', en: 'Peanuts', syn: ['maní', 'cacahuete'] },
+      { key: 'peanuts',  es: 'Maní',      en: 'Peanuts', syn: ['cacahuate', 'cacahuete'] },
     ] },
   ] },
-  // ⚠ Spices: keep Pungent/Pepper/Spicy as subgroups (extensible, no L3 on the
-  // wheel yet) while applying Kim's Spanish labels. Needs Kim's sign-off.
-  { key: 'spice', es: 'Especiado', en: 'Spices', color: L1_GROUP_COLOR.spice, subs: [
-    { key: 'brown_spice', es: 'Especias dulces', en: 'Brown Spice', leaves: [
+  // Spices: Pungent/Pepper stay as leafless subgroups (extensible, no L3 on the wheel
+  // yet). Spanish labels signed off in the 2026-08 flavor-pill naming review, which
+  // also retired the Spicy subgroup and the self-named Brown Spice leaf.
+  { key: 'spice', es: 'Especias', en: 'Spices', color: L1_GROUP_COLOR.spice, subs: [
+    { key: 'brown_spice', es: 'Especias marrones', en: 'Brown Spice', leaves: [
       { key: 'anise',       es: 'Anís',         en: 'Anise' },
-      { key: 'brown_spice', es: 'Especia dulce', en: 'Brown Spice' },
       { key: 'cinnamon',    es: 'Canela',        en: 'Cinnamon' },
       { key: 'clove',       es: 'Clavo',         en: 'Clove' },
       { key: 'nutmeg',      es: 'Nuez moscada',  en: 'Nutmeg' },
     ] },
-    { key: 'pungent', es: 'Especias secas',     en: 'Pungent' },
-    { key: 'pepper',  es: 'Especias picantes',  en: 'Pepper' },
-    { key: 'spicy',   es: 'Especiado picante',  en: 'Spicy' },
+    { key: 'pungent', es: 'Picante',  en: 'Pungent' },
+    { key: 'pepper',  es: 'Pimienta', en: 'Pepper' },
   ] },
   { key: 'roasted', es: 'Tostado', en: 'Roasted', color: L1_GROUP_COLOR.roasted, subs: [
     { key: 'burnt', es: 'Quemado', en: 'Burnt', leaves: [
       { key: 'acrid',       es: 'Acre',        en: 'Acrid' },
       { key: 'ashy',        es: 'Ceniza',      en: 'Ashy' },
-      { key: 'brown_roast', es: 'Tueste medio', en: 'Brown-Roast' },
-      { key: 'burnt',       es: 'Quemado',     en: 'Burnt' },
-      { key: 'smoky',       es: 'Ahumado',     en: 'Smoky' },
+      { key: 'brown_roast', es: 'Marrón, tostado', en: 'Brown-Roast', syn: ['tueste medio'] },
+      { key: 'smoky',       es: 'Humo',        en: 'Smoky', syn: ['ahumado'] },
     ] },
     { key: 'cereal', es: 'Cereal', en: 'Cereal', leaves: [
-      { key: 'cereal', es: 'Cereal', en: 'Cereal' },
       { key: 'grain',  es: 'Grano',  en: 'Grain' },
       { key: 'malt',   es: 'Malta',  en: 'Malt' },
     ] },
@@ -202,13 +196,13 @@ const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
     { key: 'brown_sugar', es: 'Azúcar moreno', en: 'Brown Sugar', leaves: [
       { key: 'caramelized', es: 'Caramelizado',   en: 'Caramelized', syn: ['caramelo'] },
       { key: 'honey',       es: 'Miel',            en: 'Honey', syn: ['miel de abeja'] },
-      { key: 'maple_syrup', es: 'Sirope de arce',  en: 'Maple Syrup', syn: ['jarabe de arce', 'maple'] },
+      { key: 'maple_syrup', es: 'Jarabe de arce',  en: 'Maple Syrup', syn: ['sirope de arce', 'maple'] },
       { key: 'molasses',    es: 'Melaza',          en: 'Molasses', syn: ['melado', 'miel de caña'] },
     ] },
     { key: 'sweet_aromatics', es: 'Aromáticos dulces', en: 'Sweet Aromatics', leaves: [
       { key: 'overall_sweet', es: 'Dulce general', en: 'Overall Sweet' },
       { key: 'vanilla',       es: 'Vainilla',      en: 'Vanilla' },
-      { key: 'vanillin',      es: 'Vainillina',    en: 'Vanillin' },
+      { key: 'vanillin',      es: 'Aroma de vainilla', en: 'Vanillin', syn: ['vainillina'] },
     ] },
   ] },
   { key: 'sour_fermented', es: 'Ácido/Fermentado', en: 'Sour/Fermented', color: L1_GROUP_COLOR.sour_fermented, subs: [
@@ -216,14 +210,14 @@ const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
       { key: 'fermented', es: 'Fermentado', en: 'Fermented' },
       { key: 'overripe',  es: 'Sobremaduro', en: 'Overripe' },
       { key: 'whiskey',   es: 'Whisky',      en: 'Whiskey' },
-      { key: 'winey',     es: 'Vinoso',      en: 'Winey' },
+      { key: 'winey',     es: 'Avinado',     en: 'Winey', syn: ['vinoso'] },
     ] },
     { key: 'sour', es: 'Ácido', en: 'Sour', leaves: [
-      { key: 'acetic',         es: 'Acético',          en: 'Acetic' },
-      { key: 'butyric',        es: 'Butírico',         en: 'Butyric' },
-      { key: 'citric',         es: 'Cítrico',          en: 'Citric' },
-      { key: 'isovaleric',     es: 'Isovalérico',      en: 'Isovaleric' },
-      { key: 'malic',          es: 'Málico',           en: 'Malic' },
+      { key: 'acetic',         es: 'Ácido acético',     en: 'Acetic',     syn: ['acético'] },
+      { key: 'butyric',        es: 'Ácido butírico',    en: 'Butyric',    syn: ['butírico'] },
+      { key: 'citric',         es: 'Ácido cítrico',     en: 'Citric',     syn: ['cítrico'] },
+      { key: 'isovaleric',     es: 'Ácido isovalérico', en: 'Isovaleric', syn: ['isovalérico'] },
+      { key: 'malic',          es: 'Ácido málico',      en: 'Malic',      syn: ['málico'] },
       { key: 'sour_aromatics', es: 'Aromáticos ácidos', en: 'Sour Aromatics' },
     ] },
   ] },
@@ -234,15 +228,15 @@ const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
       { key: 'petroleum', es: 'Petróleo',  en: 'Petroleum' },
       { key: 'rubber',    es: 'Goma',      en: 'Rubber' },
       { key: 'salty',     es: 'Salado',    en: 'Salty' },
-      { key: 'skunky',    es: 'Apestoso',  en: 'Skunky' },
+      { key: 'skunky',    es: 'Zorrillo',  en: 'Skunky', syn: ['apestoso'] },
     ] },
     { key: 'papery_musty', es: 'Papel/Mohoso', en: 'Papery/Musty', leaves: [
       { key: 'animalic',     es: 'Animal',         en: 'Animalic' },
       { key: 'cardboard',    es: 'Cartón',         en: 'Cardboard' },
-      { key: 'meaty_brothy', es: 'Cárnico',        en: 'Meaty/Brothy' },
-      { key: 'moldy_damp',   es: 'Mohoso húmedo',  en: 'Moldy/Damp' },
-      { key: 'musty_dusty',  es: 'Polvoriento',    en: 'Musty/Dusty' },
-      { key: 'musty_earthy', es: 'Terroso',        en: 'Musty/Earthy' },
+      { key: 'meaty_brothy', es: 'Carne/caldo',    en: 'Meaty/Brothy', syn: ['cárnico'] },
+      { key: 'moldy_damp',   es: 'Mohoso/húmedo',  en: 'Moldy/Damp' },
+      { key: 'musty_dusty',  es: 'Rancio/polvo',   en: 'Musty/Dusty', syn: ['polvoriento'] },
+      { key: 'musty_earthy', es: 'Rancio/tierra',  en: 'Musty/Earthy', syn: ['terroso'] },
       { key: 'papery',       es: 'Papel',          en: 'Papery' },
       { key: 'phenolic',     es: 'Fenólico',       en: 'Phenolic' },
       { key: 'stale',        es: 'Rancio',         en: 'Stale' },
@@ -358,8 +352,12 @@ export function getContrastTextColor(hex: string): string {
 
 /**
  * Read-time migration for descriptor ids whose path changed in the 3-level
- * restructure. Stored evaluation JSON is never rewritten; resolveDescriptor and
- * the form loaders alias old → new ids so existing saved sessions keep working.
+ * restructure, plus nodes retired from the pickable wheel. Stored evaluation JSON is
+ * never rewritten; resolveDescriptor and the form loaders alias old → new ids so
+ * existing saved sessions keep working. A retired node aliases to its PARENT, so a
+ * historical pick still resolves, keeps its group color and keeps counting in
+ * descriptor frequency instead of vanishing (resolveDescriptor returns null for ids
+ * it cannot resolve).
  */
 export const FLAVOR_ID_MIGRATION: Record<string, string> = {
   'sweet:vanilla':            'sweet:sweet_aromatics',
@@ -367,6 +365,14 @@ export const FLAVOR_ID_MIGRATION: Record<string, string> = {
   'roasted:burned':           'roasted:burnt',
   'other:earthy':             'other:papery_musty',
   'other:wood':               'other:papery_musty',
+  // Retired in the 2026-08 flavor-pill naming review — alias to the parent node.
+  'green_veg:fresh:cucumber':      'green_veg:fresh',
+  'green_veg:dried:potato_skins':  'green_veg:dried',
+  'nutty_cocoa:nutty:nutty':       'nutty_cocoa:nutty',
+  'spice:brown_spice:brown_spice': 'spice:brown_spice',
+  'spice:spicy':                   'spice',
+  'roasted:burnt:burnt':           'roasted:burnt',
+  'roasted:cereal:cereal':         'roasted:cereal',
 }
 
 /** Apply the flavor id migration alias (returns the id unchanged if none). */
