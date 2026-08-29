@@ -57,6 +57,11 @@
   --color-error-container:    #ffdad6;
   --color-on-error-container: #93000a;
 
+  --color-warning:              #755b00;
+  --color-on-warning:           #ffffff;
+  --color-warning-container:    #f6e388;
+  --color-on-warning-container: #574600;
+
   /* ── Compatibility aliases (maps old names to new values) ─ */
   /* These keep existing Tailwind utility classes working.     */
   --color-background: var(--color-surface);
@@ -145,6 +150,8 @@
   --color-inverse-primary:      #abcfb8;
   --color-primary-fixed:        #c7ebd4;
   --color-primary-fixed-dim:    #abcfb8;
+  --color-on-primary-fixed:     #002113;
+  --color-on-primary-fixed-variant: #2d4d3c;
 
   --color-secondary:              #9d4326;
   --color-on-secondary:           #ffffff;
@@ -179,6 +186,11 @@
   --color-on-error:           #ffffff;
   --color-error-container:    #ffdad6;
   --color-on-error-container: #93000a;
+
+  --color-warning:              #755b00;
+  --color-on-warning:           #ffffff;
+  --color-warning-container:    #f6e388;
+  --color-on-warning-container: #574600;
 
   /* Compatibility aliases */
   --color-background: #fff8f6;

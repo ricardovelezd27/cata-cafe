@@ -182,6 +182,10 @@ export interface AnalyticsUser {
   country: string | null;
   analyticsAccess: boolean;
   isSuperAdmin: boolean;
+  role: string;
+  createdAt: string;
+  sessionsCount: number;
+  coffeesCount: number;
 }
 
 export async function listAnalyticsUsers(): Promise<AnalyticsUser[]> {
@@ -213,6 +217,9 @@ export async function listAnalyticsUsers(): Promise<AnalyticsUser[]> {
       displayName: true,
       country: true,
       analyticsAccess: true,
+      role: true,
+      createdAt: true,
+      _count: { select: { cuppingSessions: true, coffees: true } },
     },
     orderBy: { displayName: "asc" },
   });
@@ -226,6 +233,10 @@ export async function listAnalyticsUsers(): Promise<AnalyticsUser[]> {
       country: p.country,
       analyticsAccess: p.analyticsAccess,
       isSuperAdmin: isSuperAdminEmail(email),
+      role: p.role,
+      createdAt: p.createdAt.toISOString(),
+      sessionsCount: p._count.cuppingSessions,
+      coffeesCount: p._count.coffees,
     };
   });
 }

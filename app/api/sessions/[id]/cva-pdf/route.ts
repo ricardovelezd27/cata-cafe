@@ -8,6 +8,7 @@ import type { NextRequest } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { CvaFormDocument, type CvaDocumentProps } from "@/lib/pdf/CvaFormDocument";
 
 export const runtime = "nodejs";
@@ -29,18 +30,29 @@ export async function GET(
     return new Response("Unauthorized", { status: 401 });
   }
 
+  // Super-admin god mode (read-only): any session, rendered from the OWNER's
+  // evaluation — mirrors the results page's viewAs behavior.
+  const isSuperAdmin = isSuperAdminEmail(user.email);
+  const adminTarget = isSuperAdmin
+    ? await prisma.cuppingSession.findUnique({ where: { id }, select: { createdBy: true } })
+    : null;
+  const viewAsId =
+    adminTarget && adminTarget.createdBy !== user.id ? adminTarget.createdBy : user.id;
+
   const [session, profile] = await Promise.all([
     prisma.cuppingSession.findFirst({
-      where: {
-        id,
-        OR: [{ createdBy: user.id }, { participants: { some: { userId: user.id } } }],
-      },
+      where: isSuperAdmin
+        ? { id }
+        : {
+            id,
+            OR: [{ createdBy: user.id }, { participants: { some: { userId: user.id } } }],
+          },
       include: {
         samples: {
           orderBy: { position: "asc" },
           include: {
             coffee: { select: { name: true } },
-            evaluations: { where: { cupperId: user.id } },
+            evaluations: { where: { cupperId: viewAsId } },
             physical: true,
             extrinsic: true,
           },
@@ -48,7 +60,9 @@ export async function GET(
       },
     }),
     prisma.profile.findUnique({
-      where: { id: user.id },
+      // viewAsId, so the admin variant labels the sheet with the owner whose
+      // evaluation it actually renders.
+      where: { id: viewAsId },
       select: { displayName: true },
     }),
   ]);

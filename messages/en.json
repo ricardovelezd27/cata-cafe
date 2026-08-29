@@ -102,6 +102,7 @@
   },
   "session": {
     "list": "Sessions",
+    "adminBadge": "Admin mode — all sessions",
     "new": "New session",
     "name": "Name",
     "namePh": "e.g. Ethiopia Origin — Lot 12",
@@ -173,7 +174,9 @@
       "filterRole": "Role",
       "roleMine": "Mine",
       "roleParticipant": "As participant",
+      "roleOthers": "Other users'",
       "participantBadge": "Participant",
+      "adminOwnerPrefix": "Owner:",
       "emptyTitle": "No sessions yet",
       "emptyBody": "Create your first cupping session to start evaluating coffees.",
       "solo": "Solo",
@@ -411,6 +414,7 @@
   },
   "results": {
     "title": "Session Results",
+    "adminViewNotice": "Admin view (read-only) — session by {owner}",
     "backToCupping": "Edit evaluation",
     "viewForm": "View form",
     "downloadPdf": "Download PDF",
@@ -493,6 +497,7 @@
     },
     "matrix": {
       "matrixTitle": "CVA score summary",
+      "legendGreen": "Within 1 SD of the mean (consensus)",
       "legendAmber": "> 1 SD from mean",
       "legendRed": "≥ 2 SD (possible outlier)",
       "noScore": "—",
@@ -564,7 +569,7 @@
       },
       "porCatador": {
         "title": "Analysis by cupper",
-        "body": "Visible only to the session owner: the CVA score matrix by cupper, with outliers highlighted (more than 1 or 2 standard deviations from the mean). You can exclude a cupper from the group calculation; scores recalculate automatically."
+        "body": "Visible only to the session owner: the CVA score matrix by cupper, with a three-color consensus semaphore — green within 1 standard deviation of the sample mean, yellow more than 1 SD, red 2+ SD (possible outlier); excluded cuppers are shown in grey. You can exclude a cupper from the group calculation; scores recalculate automatically."
       },
       "filtros": {
         "title": "Descriptor filters",
@@ -905,7 +910,8 @@
       "explorer": "Explorer",
       "benchmark": "Benchmark",
       "chat": "Chat",
-      "access": "Access"
+      "access": "Access",
+      "users": "Users"
     },
     "report": {
       "download": "PDF report"
@@ -1055,6 +1061,17 @@
       "toggleError": "Could not update. Try again.",
       "empty": "No users found."
     },
+    "users": {
+      "lead": "Directory of everyone registered on the platform, with their cupping activity.",
+      "colName": "Name",
+      "colEmail": "Email",
+      "colCountry": "Country",
+      "colRole": "Role",
+      "colSessions": "Sessions",
+      "colCoffees": "Coffees",
+      "colJoined": "Joined",
+      "empty": "No users found."
+    },
     "benchmark": {
       "title": "Benchmark vs. CQI",
       "subtitle": "Compare your cupping scores against the CQI reference dataset for the same country, process, or variety.",
@@ -1127,6 +1144,13 @@
         "year": "Year",
         "production": "Production (t)",
         "myActivity": "My activity"
+      },
+      "session": {
+        "candidatesTitle": "Matching sessions",
+        "sample": "Sample",
+        "community": "Community",
+        "average": "Average",
+        "submitted": "Submitted"
       },
       "overview": {
         "coffeesRegistered": "Coffees registered",

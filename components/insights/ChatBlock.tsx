@@ -109,6 +109,41 @@ export function ChatBlock({ block, t }: ChatBlockProps) {
     );
   }
 
+  if (block.tool === "get_session_summary") {
+    const { summary, candidates } = block;
+    if (Array.isArray(candidates) && candidates.length > 0) {
+      return (
+        <div className={CARD_CLASS}>
+          <div className={CAPTION_CLASS}>{t.session.candidatesTitle}</div>
+          <ul className="flex flex-col gap-1 text-sm text-brown-dark">
+            {candidates.map((c) => (
+              <li key={c.id}>
+                {c.name} &middot; {c.date} &middot; {c.status}
+              </li>
+            ))}
+          </ul>
+        </div>
+      );
+    }
+    if (!summary || !Array.isArray(summary.samples)) return null;
+    return (
+      <div className={CARD_CLASS}>
+        <div className={CAPTION_CLASS}>
+          {summary.name} &middot; {summary.date} &middot; {summary.status}
+        </div>
+        <MiniTable
+          headers={[t.session.sample, t.session.community, t.session.average, t.session.submitted]}
+          rows={summary.samples.map((sm) => [
+            sm.coffeeName ? `${sm.label} · ${sm.coffeeName}` : sm.label,
+            formatNumber(sm.communityScore),
+            formatNumber(sm.avgRawScore),
+            formatNumber(sm.submittedCount),
+          ])}
+        />
+      </div>
+    );
+  }
+
   if (block.tool === "get_origin_context") {
     const production = block.context?.production;
     const myActivity = block.context?.myActivity;

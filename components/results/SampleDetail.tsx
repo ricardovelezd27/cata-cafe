@@ -352,22 +352,38 @@ export function SampleDetail({
                       const quality =
                         showAffective && attr.affKey ? num(data, `${attr.affKey}_final`) : null;
                       const ids = showDescriptive && attr.descKey ? idsAt(data, attr.descKey) : [];
+                      const noteKey = showDescriptive
+                        ? `${attr.id}_notas`
+                        : attr.affKey
+                          ? `${attr.affKey}_notas`
+                          : null;
+                      const note = noteKey ? ((data[noteKey] as string | undefined)?.trim() ?? "") : "";
                       return (
-                        <div key={attr.id} className={rowClass}>
-                          <span className="font-display text-sm font-semibold text-primary-container">
-                            {rowKey ? t[rowKey] : attr.label[lang]}
-                          </span>
-                          <span className="min-w-0">
-                            {showDescriptive ? (
-                              <DescriptorPills ids={ids} locale={lang} />
-                            ) : (
-                              <span className="text-xs text-on-surface-variant">—</span>
-                            )}
-                          </span>
-                          <span className="flex flex-col items-end gap-0.5">
-                            {showDescriptive && <StatChip label={t.intensity} value={intensity} />}
-                            {showAffective && <StatChip label={t.quality} value={quality} />}
-                          </span>
+                        <div key={attr.id}>
+                          <div className={rowClass}>
+                            <span className="font-display text-sm font-semibold text-primary-container">
+                              {rowKey ? t[rowKey] : attr.label[lang]}
+                            </span>
+                            <span className="min-w-0">
+                              {showDescriptive ? (
+                                <DescriptorPills ids={ids} locale={lang} />
+                              ) : (
+                                <span className="text-xs text-on-surface-variant">—</span>
+                              )}
+                            </span>
+                            <span className="flex flex-col items-end gap-0.5">
+                              {showDescriptive && <StatChip label={t.intensity} value={intensity} />}
+                              {showAffective && <StatChip label={t.quality} value={quality} />}
+                            </span>
+                          </div>
+                          {note && (
+                            <div className="pb-2 pl-[102px] text-xs text-on-surface">
+                              <span className="mr-1.5 text-[9px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                                {t.notes}
+                              </span>
+                              {note}
+                            </div>
+                          )}
                         </div>
                       );
                     })

@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { buildInviteUrl } from "@/lib/inviteUrl";
 import { PrintClient } from "./PrintClient";
 
@@ -21,13 +22,17 @@ export default async function PrintPage({
 
   const [session, profile] = await Promise.all([
     prisma.cuppingSession.findFirst({
-      where: {
-        id,
-        OR: [
-          { createdBy: user.id },
-          { participants: { some: { userId: user.id } } },
-        ],
-      },
+      // Super-admin god mode: read-only access to any session's print sheet
+      // (the invite QR below stays owner-gated).
+      where: isSuperAdminEmail(user.email)
+        ? { id }
+        : {
+            id,
+            OR: [
+              { createdBy: user.id },
+              { participants: { some: { userId: user.id } } },
+            ],
+          },
       include: {
         samples: {
           orderBy: { position: "asc" },

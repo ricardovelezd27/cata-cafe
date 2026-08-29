@@ -28,9 +28,48 @@ export interface OriginContext {
   myActivity: { year: number; evaluations: number; avgScore: number | null }[];
 }
 
+// SessionCandidate/SessionSummary mirror the shapes in
+// lib/analytics/queries.ts (`server-only`) — same convention as
+// BenchmarkComparison/OriginContext above.
+export interface SessionCandidate {
+  id: string;
+  name: string;
+  /** YYYY-MM-DD */
+  date: string;
+  status: string;
+  format: string;
+  isGroup: boolean;
+  sampleCount: number;
+  participantCount: number;
+}
+
+export interface SessionSampleSummary {
+  label: string;
+  position: number;
+  revealed: boolean;
+  coffeeName: string | null;
+  communityScore: number | null;
+  avgRawScore: number | null;
+  submittedCount: number;
+  totalCups: number;
+  totalNonUniform: number;
+  totalDefective: number;
+}
+
+export interface SessionSummary extends SessionCandidate {
+  cupsPerSample: number;
+  submittedCupperCount: number;
+  samples: SessionSampleSummary[];
+}
+
 export type AiChatBlock =
   | { tool: "run_insight"; config: InsightConfig; rows: InsightRow[] }
   | { tool: "get_dashboard_overview"; overview: Record<string, unknown> }
+  | {
+      tool: "get_session_summary";
+      summary: SessionSummary | null;
+      candidates: SessionCandidate[] | null;
+    }
   | {
       tool: "run_benchmark";
       filter: Record<string, unknown>;

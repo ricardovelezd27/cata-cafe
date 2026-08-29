@@ -57,8 +57,12 @@ All tokens are CSS custom properties in `app/globals.css`, exposed as Tailwind u
 | `--color-error` | `#ba1a1a` | `text-error`, `bg-error` | Defective cups, error states |
 | `--color-error-container` | `#ffdad6` | `bg-error-container` | Error background tint |
 | `--color-on-error-container` | `#93000a` | `text-on-error-container` | Text on error container |
+| `--color-warning` | `#755b00` | `text-warning`, `bg-warning` | Deviation/consensus warning signal — NOT for quality scoring or accents |
+| `--color-on-warning` | `#ffffff` | `text-on-warning` | Text on warning bg |
+| `--color-warning-container` | `#f6e388` | `bg-warning-container` | Deviation/consensus warning signal — NOT for quality scoring or accents |
+| `--color-on-warning-container` | `#574600` | `text-on-warning-container` | Text on warning-container |
 
-> **Terracotta rule:** `secondary` (#9d4326) replaces amber as the accent. It signals energy and emphasis, not quality scoring. For quality signals, use green (`primary-container`).
+> **Terracotta rule:** `secondary` (#9d4326) replaces amber as the accent. It signals energy and emphasis, not quality scoring. For quality signals, use green (`primary-container`). The owner CVA deviation matrix (`OwnerParticipantSection`) is a consensus signal, not a quality score — it uses `primary-fixed` (within 1 SD), `warning-container` (> 1 SD), and `error-container` (≥ 2 SD).
 
 ### Backward-Compat Aliases (legacy code)
 

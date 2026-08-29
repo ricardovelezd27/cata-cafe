@@ -13,6 +13,7 @@ import {
 } from "@/lib/ai/chatTools";
 import type { AiChatBlock, AskDataResult, ChatHistoryItem } from "@/lib/ai/chatTypes";
 import type { AiChatMessage, AiToolResponse } from "@/lib/ai/types";
+import type { AnalyticsScope } from "@/lib/analytics/types";
 
 // The "ask the data" chat agentic loop: alternates model calls with tool
 // execution (run_insight / get_dashboard_overview / run_benchmark /
@@ -66,6 +67,14 @@ export async function askDataQuestion(
   const access = await requireAiAdmin();
   const loc = asLocale(locale);
 
+  // Data-visibility scope, derived SERVER-SIDE from the resolved access —
+  // never from anything the client sent. Super admin = platform-wide;
+  // everyone else on the AI allowlist sees only their own data (their
+  // sessions, their evaluations, their usable coffees).
+  const scope: AnalyticsScope = access.isSuperAdmin
+    ? { kind: "platform" }
+    : { kind: "user", userId: access.userId };
+
   const day = new Date().toISOString().slice(0, 10);
   const usageRow = await prisma.aiChatUsage.findUnique({
     where: { userId_day: { userId: access.userId, day } },
@@ -74,6 +83,7 @@ export async function askDataQuestion(
   const limit = DAILY_QUESTION_LIMIT;
 
   if (used >= limit) {
+    console.info(`[aiChat] user=${access.userId} exit=limit_reached used=${used}/${limit}`);
     return { ok: false, error: "limit_reached", usage: { used, limit, remaining: 0 } };
   }
 
@@ -83,6 +93,12 @@ export async function askDataQuestion(
   if (!trimmedQuestion) {
     return { ok: false, error: "no_answer", usage: { used, limit, remaining: limit - used } };
   }
+
+  // Server-side trace of every question and its outcome — this loop used to
+  // fail (no_answer / provider_error) with no forensic trail at all.
+  console.info(
+    `[aiChat] user=${access.userId} scope=${scope.kind} q="${trimmedQuestion.slice(0, 120)}"`,
+  );
 
   const messages = toChatMessages(cleanHistory, trimmedQuestion);
 
@@ -98,7 +114,7 @@ export async function askDataQuestion(
     const lastTurn = i === MAX_MODEL_CALLS - 1;
     const res = await getAiProvider().chat({
       tier: "pro",
-      system: buildChatSystem(loc),
+      system: buildChatSystem(loc, scope),
       messages,
       tools: lastTurn ? undefined : TOOL_DEFS,
       maxOutputTokens: 1024,
@@ -122,13 +138,15 @@ export async function askDataQuestion(
     if (res.message.toolCalls?.length) {
       const toolResponses: AiToolResponse[] = [];
       for (const call of res.message.toolCalls) {
+        console.info(`[aiChat] tool=${call.name} args=${JSON.stringify(call.args).slice(0, 200)}`);
         try {
-          const { block, toolResponse } = await executeTool(call.name, call.args, loc);
+          const { block, toolResponse } = await executeTool(call.name, call.args, loc, scope);
           blocks.push(block);
           for (const citation of blockCitations(block)) citationSet.add(citation);
           toolResponses.push({ ...toolResponse, id: call.id });
         } catch (err) {
           const message = err instanceof Error ? err.message : "tool_error";
+          console.error(`[aiChat] tool=${call.name} error=${message}`);
           toolResponses.push({ id: call.id, name: call.name, response: { error: message } });
         }
       }
@@ -149,6 +167,9 @@ export async function askDataQuestion(
   // final outcome is a mid-loop provider_error or a no_answer — API cost was
   // actually incurred. (The `skipped`/no-API-key path already returned above.)
   if (totalModelCalls === 0) {
+    console.error(
+      `[aiChat] exit=${providerFailed ? "provider_error" : "no_answer"} calls=0 (not billed)`,
+    );
     return {
       ok: false,
       error: providerFailed ? "provider_error" : "no_answer",
@@ -176,6 +197,11 @@ export async function askDataQuestion(
 
   const newUsed = used + 1;
   const remaining = Math.max(0, limit - newUsed);
+
+  const exit = providerFailed ? "provider_error" : answer ? "answer" : "no_answer";
+  const logLine = `[aiChat] exit=${exit} calls=${totalModelCalls} promptTokens=${totalPromptTokens} outputTokens=${totalOutputTokens}`;
+  if (exit === "answer") console.info(logLine);
+  else console.error(logLine);
 
   if (providerFailed) {
     return { ok: false, error: "provider_error", usage: { used: newUsed, limit, remaining } };
