@@ -127,6 +127,7 @@ export function OwnerParticipantSection({
     legendAmber: string;
     legendRed: string;
     noScore: string;
+    sdHeader: string;
   };
 }) {
   const router = useRouter();
@@ -279,6 +280,12 @@ export function OwnerParticipantSection({
                     </th>
                   );
                 })}
+                <th
+                  className="whitespace-nowrap border-b border-outline-variant px-2.5 py-2 text-center text-[11px] font-bold text-on-surface-variant"
+                  scope="col"
+                >
+                  {t.sdHeader}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -306,6 +313,9 @@ export function OwnerParticipantSection({
                       </td>
                     );
                   })}
+                  <td className="border-b border-outline-variant/60 px-2.5 py-2 text-center text-sm tabular-nums text-on-surface-variant">
+                    {rowStats[si].count >= 2 ? rowStats[si].sd.toFixed(1) : t.noScore}
+                  </td>
                 </tr>
               ))}
             </tbody>

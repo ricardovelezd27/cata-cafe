@@ -531,6 +531,7 @@ export default async function ResultsPage({
             ? {
                 communityScore: recomputed.communityScore,
                 avgRawScore: recomputed.avgRawScore,
+                scoreSd: recomputed.scoreSd,
                 participantCount: recomputed.included,
                 submittedCount: recomputed.submitted,
                 totalCups: recomputed.totalCups,
@@ -550,6 +551,7 @@ export default async function ResultsPage({
               ? {
                   communityScore: agg.communityScore,
                   avgRawScore: agg.avgRawScore,
+                  scoreSd: null,
                   participantCount: agg.participantCount,
                   submittedCount: agg.participantCount,
                   totalCups: agg.totalCups,
@@ -660,6 +662,7 @@ export default async function ResultsPage({
           soloTopDescriptors: tResults("dashboard.soloTopDescriptors"),
           viewInDescriptors: tResults("dashboard.viewInDescriptors"),
           communityPending: tResults("communityPending"),
+          sdAria: tResults("sdAria"),
         },
         table: {
           sample: tResults("table.sample"),
@@ -717,6 +720,7 @@ export default async function ResultsPage({
           legendAmber: tResults("matrix.legendAmber"),
           legendRed: tResults("matrix.legendRed"),
           noScore: tResults("matrix.noScore"),
+          sdHeader: tResults("matrix.sdHeader"),
         },
         help: {
           // "Cerrar" reads better than "Cancelar" for a read-only info dialog.

@@ -110,6 +110,7 @@ type SampleData = {
   /** Gates origin data: an unrevealed sample must not print extrinsic fields. */
   revealed: boolean;
   coffeeName: string | null;
+  roastLevel: string | null;
   descriptive: D;
   affective: D;
   combined: D;
@@ -663,6 +664,7 @@ function SheetHeader({ sheet, t, formName }: { sheet: CvaSampleSheet; t: T; form
         <DotField label={t.date} value={h.date} />
         <DotField label={t.purpose} value={h.purpose} />
         <DotField label={t.session} value={h.sessionName} />
+        {h.roastLevel ? <DotField label={t.roastLevel} value={h.roastLevel} /> : null}
       </div>
     </div>
   );

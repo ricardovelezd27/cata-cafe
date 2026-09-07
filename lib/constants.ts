@@ -771,6 +771,15 @@ export function getRatio(ratioStr: string): number {
   return beans / defect;
 }
 
+// Shared full-defect conversion (count of a Cat.1/Cat.2 defect → its "full
+// defect" weight, per the SCA green-grading ratio table). Single source of
+// truth for PhysicalEvalForm's live totals AND the CVA PDF/print appendix
+// (lib/pdf/cvaFormData.ts) — do not reimplement this elsewhere.
+export function calcFullDefects(count: number, ratioStr: string): number {
+  if (!count || count <= 0) return 0;
+  return Math.round((count / getRatio(ratioStr)) * 100) / 100;
+}
+
 // Single source of truth for DISPLAY labels of a Profile's `role` field.
 // Covers both the onboarding role values (see components/onboarding/WelcomeModal.tsx
 // ROLES — a separate concern, drives onboarding choices, not display) and

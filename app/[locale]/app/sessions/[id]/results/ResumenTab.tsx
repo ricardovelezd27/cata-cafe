@@ -32,6 +32,7 @@ type ResumenTabTranslations = {
   soloTopDescriptors: string;
   viewInDescriptors: string;
   communityPending: string;
+  sdAria: string;
 };
 
 function average(values: number[]): number | null {
@@ -111,17 +112,25 @@ export function ResumenTab({
     return typeof score === "number" ? score : null;
   };
 
-  const rankScoreFor = (sample: SampleResult): number | null => {
-    if (format === "descriptive") return null;
+  // scoreSd is only ever attached when the displayed rank score IS the
+  // community score (never alongside the solo/"myScore" fallback) — the ±
+  // chip in the ranking list relies on that pairing.
+  const rankFor = (sample: SampleResult): { score: number | null; sd: number | null } => {
+    if (format === "descriptive") return { score: null, sd: null };
     if (isGroup && canViewGroup) {
       const community = sample.aggregateScore?.communityScore ?? null;
-      if (community !== null) return community;
+      if (community !== null) {
+        return { score: community, sd: sample.aggregateScore?.scoreSd ?? null };
+      }
     }
-    return myScoreFor(sample);
+    return { score: myScoreFor(sample), sd: null };
   };
 
   const ranked = samples
-    .map((sample, position) => ({ sample, position, score: rankScoreFor(sample) }))
+    .map((sample, position) => {
+      const { score, sd } = rankFor(sample);
+      return { sample, position, score, sd };
+    })
     .sort((a, b) => {
       if (a.score === null && b.score === null) return a.position - b.position;
       if (a.score === null) return 1;
@@ -211,7 +220,7 @@ export function ResumenTab({
             <InfoHint title={help.ranking.title} body={help.ranking.body} closeLabel={help.closeLabel} />
           </h2>
           <div className="flex flex-col gap-2">
-            {ranked.map(({ sample, score }, idx) => (
+            {ranked.map(({ sample, score, sd }, idx) => (
               <button
                 key={sample.id}
                 type="button"
@@ -230,7 +239,18 @@ export function ResumenTab({
                   )}
                 </div>
                 {score !== null ? (
-                  <ScorePill score={score} />
+                  <>
+                    <ScorePill score={score} />
+                    {sd != null && (
+                      <span
+                        className="shrink-0 text-xs text-on-surface-variant tabular-nums"
+                        title={t.sdAria}
+                        aria-label={t.sdAria}
+                      >
+                        ± {sd.toFixed(1)}
+                      </span>
+                    )}
+                  </>
                 ) : (
                   <span className="shrink-0 text-xs text-on-surface-variant">
                     {t.notScored}

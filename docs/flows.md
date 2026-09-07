@@ -73,7 +73,7 @@ anonymous account **in place** — same user id, evaluations and participations
 kept — and sends a verification link (double opt-in) through the customized
 "Change Email Address" template → `/auth/callback` (`type=email_change`) → back
 to results, where `is_anonymous` is false and the banner no longer renders.
-Never gate *joining* on an email — value before friction (see PRODUCT.md).
+Never gate *joining* on an email — valor antes que fricción (see PRODUCT.md).
 
 ```mermaid
 sequenceDiagram

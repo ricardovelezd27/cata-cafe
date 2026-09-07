@@ -18,6 +18,10 @@ import {
   AFFECTIVE_ATTRIBUTES,
   SENSORY_DEFECTS,
   SENSORY_DEFECT_LABELS,
+  CAT1_DEFECTS,
+  CAT2_DEFECTS,
+  SCREEN_SIZES,
+  calcFullDefects,
   migrateFlavorId,
   type FlavorWheelNode,
   type SensoryDefect,
@@ -573,12 +577,12 @@ const EXTRINSIC_FIELDS: { key: string; es: string }[] = [
   { key: "ext_lote_val", es: "Tamaño del lote" },
 ];
 
+// Direct fields written by PhysicalEvalForm.tsx (see phys_color / phys_humedad
+// there). The form's screen weights and defect counts are NOT flat "value"
+// fields — they're derived below in physicalDerived().
 const PHYSICAL_FIELDS: { key: string; es: string }[] = [
-  { key: "roast_level", es: "Nivel de tueste" },
-  { key: "color", es: "Color del grano" },
-  { key: "screen_size", es: "Tamaño de malla" },
-  { key: "moisture", es: "Humedad" },
-  { key: "density", es: "Densidad" },
+  { key: "phys_color", es: "Color del grano" },
+  { key: "phys_humedad", es: "Humedad (%)" },
 ];
 
 function collectLabeled(
@@ -596,6 +600,40 @@ function collectLabeled(
   return out;
 }
 
+/**
+ * Derived (non-flat) physical fields that PhysicalEvalForm.tsx computes from
+ * per-screen weights and per-defect counts rather than storing as a single
+ * value — mirrors the SAME math the live form shows (calcFullDefects, shared
+ * from lib/constants.ts; do not reimplement the Cat.1/Cat.2 ratios here).
+ */
+function physicalDerived(d: D): LabeledField[] {
+  const out: LabeledField[] = [];
+
+  // (a) Dominant screen size by weight share, e.g. "Malla 15 — 42%".
+  const weights = SCREEN_SIZES.map((size) => ({ size, g: num(d, `phys_screen_${size}_g`) ?? 0 }));
+  const totalG = weights.reduce((sum, w) => sum + w.g, 0);
+  if (totalG > 0) {
+    const top = weights.reduce((best, w) => (w.g > best.g ? w : best));
+    const pct = Math.round((top.g / totalG) * 100);
+    out.push({ label: "Malla dominante", value: `Malla ${top.size} — ${pct}%` });
+  }
+
+  // (b) Full-defect totals per category — same ratio math as
+  // PhysicalEvalForm's totalCat1/totalCat2, only printed when > 0.
+  const totalCat1 = CAT1_DEFECTS.reduce(
+    (sum, def) => sum + calcFullDefects(num(d, `phys_cat1_${def.name}_count`) ?? 0, def.ratio),
+    0
+  );
+  const totalCat2 = CAT2_DEFECTS.reduce(
+    (sum, def) => sum + calcFullDefects(num(d, `phys_cat2_${def.name}_count`) ?? 0, def.ratio),
+    0
+  );
+  if (totalCat1 > 0) out.push({ label: "Defectos Cat. 1", value: totalCat1.toFixed(1) });
+  if (totalCat2 > 0) out.push({ label: "Defectos Cat. 2", value: totalCat2.toFixed(1) });
+
+  return out;
+}
+
 // ─── Header block ───────────────────────────────────────────────────────────
 export type SheetHeader = {
   sessionName: string;
@@ -603,6 +641,7 @@ export type SheetHeader = {
   cupperName: string;
   sampleLabel: string;
   coffeeName: string | null; // only when revealed
+  roastLevel: string | null; // only when revealed — same gate as coffeeName
   cupsPerSample: number;
   purpose: string;
 };
@@ -648,6 +687,7 @@ export type CvaFormInput = {
     label: string;
     revealed: boolean;
     coffeeName: string | null;
+    roastLevel: string | null;
     descriptive: D;
     affective: D;
     combined: D;
@@ -801,6 +841,7 @@ export function buildCvaFormData(input: CvaFormInput): CvaSampleSheet {
       cupperName: input.cupperName,
       sampleLabel: input.sample.label,
       coffeeName: input.sample.revealed ? input.sample.coffeeName : null,
+      roastLevel: input.sample.revealed ? input.sample.roastLevel : null,
       cupsPerSample: input.cupsPerSample,
       purpose: input.purpose,
     },
@@ -816,7 +857,10 @@ export function buildCvaFormData(input: CvaFormInput): CvaSampleSheet {
     extrinsic: input.sample.revealed
       ? collectLabeled(input.sample.extrinsic, EXTRINSIC_FIELDS)
       : [],
-    physical: collectLabeled(input.sample.physical, PHYSICAL_FIELDS),
+    physical: [
+      ...collectLabeled(input.sample.physical, PHYSICAL_FIELDS),
+      ...physicalDerived(input.sample.physical),
+    ],
   };
 }
 

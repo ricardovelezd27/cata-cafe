@@ -51,7 +51,7 @@ export async function GET(
         samples: {
           orderBy: { position: "asc" },
           include: {
-            coffee: { select: { name: true } },
+            coffee: { select: { name: true, roastLevel: true } },
             evaluations: { where: { cupperId: viewAsId } },
             physical: true,
             extrinsic: true,
@@ -91,6 +91,7 @@ export async function GET(
         label: sample.label,
         revealed: sample.revealed,
         coffeeName: sample.coffee?.name ?? null,
+        roastLevel: sample.coffee?.roastLevel ?? null,
         descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
         affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
         combined: (ev?.combinedData as Record<string, unknown>) ?? {},

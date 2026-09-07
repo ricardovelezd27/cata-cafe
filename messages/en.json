@@ -438,6 +438,7 @@
     },
     "flavorProfiles": "Flavor Profiles",
     "communityPending": "Group results will appear once all participants submit their evaluations or the session master closes the session.",
+    "sdAria": "Standard deviation across cuppers — lower means more consensus",
     "guestCta": {
       "title": "Save your results",
       "body": "You're participating as a guest: your access lives only in this browser and is lost if you clear browsing data or switch devices. Enter your email and we'll send you a link to keep your results in a free account.",
@@ -522,6 +523,7 @@
       "legendAmber": "> 1 SD from mean",
       "legendRed": "≥ 2 SD (possible outlier)",
       "noScore": "—",
+      "sdHeader": "SD",
       "manageTitle": "Participants in the group calculation",
       "manageHint": "Turn a cupper off to exclude their data from group averages, descriptors and charts. They will still see their own results.",
       "included": "Included",
@@ -570,7 +572,7 @@
       },
       "ranking": {
         "title": "Sample ranking",
-        "body": "Samples ordered from highest to lowest score. In group sessions they are ordered by the community score; in individual sessions, by your CVA score. Tap a sample to open its full detail."
+        "body": "Samples ordered from highest to lowest score. In group sessions they are ordered by the community score; in individual sessions, by your CVA score. Tap a sample to open its full detail. The ± figure next to the community score is the standard deviation across cuppers: the lower it is, the more consensus there was on that sample."
       },
       "performance": {
         "title": "My performance",

@@ -52,7 +52,17 @@ const affective = {
   defecto_tipo: [],
 };
 
-const physical = { roast_level: "Medio claro", color: "Verde azulado", screen_size: "16/18" };
+// Defect keys interpolate the Spanish defect name verbatim (spaces and all —
+// see PHYSICAL_FIELDS' `phys_cat1_${def.name}_count` pattern in cvaFormData.ts).
+const physical = {
+  phys_color: "Verde azulado",
+  phys_humedad: "11.2",
+  phys_screen_15_g: 210,
+  phys_screen_16_g: 90,
+  phys_screen_14_g: 30,
+  "phys_cat1_Grano negro_count": 1,
+  phys_cat2_Concha_count: 2,
+};
 const extrinsic = {
   ext_pais_val: "Colombia",
   ext_region_val: "Huila",
@@ -67,6 +77,7 @@ function sample(label: string, revealed = true) {
     label,
     revealed,
     coffeeName: revealed ? `Lote ${label}` : null,
+    roastLevel: revealed ? "Medio" : null,
     descriptive,
     affective,
     combined: { ...descriptive, ...affective },

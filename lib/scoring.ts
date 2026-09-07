@@ -145,6 +145,12 @@ export interface GroupAggregate {
   included: number;
   avgRawScore: number | null;
   communityScore: number | null;
+  // Population standard deviation (÷n) of each included cupper's individual
+  // CVA total, over the same included/complete population that feeds
+  // avgRawScore/communityScore. null when fewer than 2 included evaluations.
+  // Mirrors OwnerParticipantSection's rowStats math — see that component for
+  // the client-side twin of this calculation.
+  scoreSd: number | null;
   totalNonUniform: number;
   totalDefective: number;
   totalCups: number;
@@ -170,6 +176,7 @@ export function computeGroupAggregate(
       included: 0,
       avgRawScore: null,
       communityScore: null,
+      scoreSd: null,
       totalNonUniform: 0,
       totalDefective: 0,
       totalCups: 0,
@@ -179,6 +186,23 @@ export function computeGroupAggregate(
 
   const avgRawScore =
     complete.reduce((acc, e) => acc + calcRawScore(e.data), 0) / included;
+
+  // scoreSd: population SD (÷n) of each included cupper's individual CVA
+  // total. Same population as avgRawScore/communityScore — `complete` already
+  // excludes master-excluded cuppers (filtered by the caller) and incomplete
+  // evaluations (filtered above).
+  const individualScores = complete
+    .map((e) => calcIndividualScore(e.data, cupsPerSample))
+    .filter((v): v is number => typeof v === "number");
+  let scoreSd: number | null = null;
+  if (individualScores.length >= 2) {
+    const iMean =
+      individualScores.reduce((a, b) => a + b, 0) / individualScores.length;
+    const iVariance =
+      individualScores.reduce((a, b) => a + (b - iMean) ** 2, 0) /
+      individualScores.length;
+    scoreSd = Math.round(Math.sqrt(iVariance) * 100) / 100;
+  }
 
   let totalNonUniform = 0;
   let totalDefective = 0;
@@ -211,6 +235,7 @@ export function computeGroupAggregate(
     included,
     avgRawScore: Math.round(avgRawScore * 100) / 100,
     communityScore,
+    scoreSd,
     totalNonUniform,
     totalDefective,
     totalCups,

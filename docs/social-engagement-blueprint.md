@@ -149,6 +149,7 @@ These would actively cheapen a professional tool. Treat as standing product law:
 9. **No pre-reveal social visibility.** Comments, reactions, and feed items are post-reveal/post-close, always. The blind protocol is the product's integrity.
 10. **No big-bang public launch.** A broad launch scatters signups too thinly to form any atomic network. Spend this phase perfecting the table→cohort→group loop; saturate bounded populations (one lab, one cohort, one region — the Fresno strategy).
 11. **No new infrastructure.** No Amplitude, no Stream/getstream, no queues, no fan-out tables. Plain Postgres rows in the existing Prisma/Supabase stack cover every primitive at this scale; the escape hatches are documented above.
+12. **No signup or email gates before the first delivered value.** Guests join a session with a display name only (QR join, anonymous auth) — never an email. Conversion prompts — the results-page "Guarda tus resultados" banner, any future paywall — fire only after a cata is delivered, and stay dismissible. This is *valor antes que fricción* (see PRODUCT.md), and it binds every growth and monetization surface on this roadmap, not just onboarding.
 
 ---
 

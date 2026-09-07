@@ -570,12 +570,10 @@ function SheetHeader({
   sheet,
   t,
   formName,
-  extraField,
 }: {
   sheet: CvaSampleSheet;
   t: Record<string, string>;
   formName: string;
-  extraField?: React.ReactNode;
 }) {
   const h = sheet.header;
   return (
@@ -592,7 +590,7 @@ function SheetHeader({
         <DotField label={t.date} value={h.date} />
         <DotField label={t.purpose} value={h.purpose} />
         <DotField label={t.session} value={h.sessionName} />
-        {extraField}
+        {h.roastLevel ? <DotField label={t.roastLevel} value={h.roastLevel} /> : null}
       </View>
     </View>
   );
@@ -1041,6 +1039,7 @@ export type CvaDocumentProps = {
     label: string;
     revealed: boolean;
     coffeeName: string | null;
+    roastLevel: string | null;
     descriptive: Record<string, unknown>;
     affective: Record<string, unknown>;
     combined: Record<string, unknown>;

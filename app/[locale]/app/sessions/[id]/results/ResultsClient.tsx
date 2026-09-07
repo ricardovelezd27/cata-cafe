@@ -45,6 +45,7 @@ type MatrixTranslations = {
   legendAmber: string;
   legendRed: string;
   noScore: string;
+  sdHeader: string;
 };
 
 type Tab = "resumen" | "resultados" | "descriptores";
@@ -210,6 +211,7 @@ export function ResultsClient({
       soloTopDescriptors: string;
       viewInDescriptors: string;
       communityPending: string;
+      sdAria: string;
     };
     table: ScoreTableTranslations;
     detail: SampleDetailDialogTranslations;

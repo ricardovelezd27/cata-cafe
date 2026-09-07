@@ -438,6 +438,7 @@
     },
     "flavorProfiles": "Perfiles de Sabor",
     "communityPending": "Los resultados grupales aparecerán cuando todos los participantes envíen sus evaluaciones o el maestro cierre la sesión.",
+    "sdAria": "Desviación estándar entre catadores — menor es más consenso",
     "guestCta": {
       "title": "Guarda tus resultados",
       "body": "Estás participando como invitado: tu acceso vive solo en este navegador y se pierde al borrar los datos de navegación o cambiar de dispositivo. Ingresa tu correo y te enviaremos un enlace para conservar tus resultados en una cuenta gratuita.",
@@ -522,6 +523,7 @@
       "legendAmber": "> 1 DE de la media",
       "legendRed": "≥ 2 DE (posible atípico)",
       "noScore": "—",
+      "sdHeader": "DE",
       "manageTitle": "Participantes en el cálculo grupal",
       "manageHint": "Desactiva un catador para excluir sus datos de los promedios, descriptores y gráficos del grupo. Seguirá viendo sus propios resultados.",
       "included": "Incluido",
@@ -570,7 +572,7 @@
       },
       "ranking": {
         "title": "Ranking de muestras",
-        "body": "Las muestras ordenadas de mayor a menor puntaje. En sesiones grupales se ordena por el puntaje comunitario; en sesiones individuales, por tu puntaje CVA. Toca una muestra para abrir su detalle completo."
+        "body": "Las muestras ordenadas de mayor a menor puntaje. En sesiones grupales se ordena por el puntaje comunitario; en sesiones individuales, por tu puntaje CVA. Toca una muestra para abrir su detalle completo. La cifra ± junto al puntaje comunitario es la desviación estándar entre catadores: mientras más baja, mayor consenso hubo en esa muestra."
       },
       "performance": {
         "title": "Mi desempeño",

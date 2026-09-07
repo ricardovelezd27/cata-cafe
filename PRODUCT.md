@@ -12,6 +12,8 @@ It implements the SCA CVA (Coffee Value Assessment) methodology end-to-end — f
 
 The tool exists to make rigorous, reproducible cupping sessions as frictionless as possible, so that the cupper's full attention stays on the coffee — not the software.
 
+**Standing product law: valor antes que fricción.** The app delivers value first and asks for identity, data, or money only afterwards — always dismissibly. Every gate we design, present and future, is checked against this ordering before it ships.
+
 ---
 
 ## Target Users
@@ -48,7 +50,7 @@ A cupper invited via link to join a group session. They join, evaluate their ass
 | Value | Description |
 |---|---|
 | **Protocol fidelity** | Implements the official SCA CVA formula exactly: `S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d`, rounded to nearest 0.25 |
-| **Zero friction entry** | Auto-save at 800ms debounce; no manual save required. Magic link auth — no passwords. |
+| **Valor antes que fricción** | Entry is name-only: guests join a session via QR with just a display name (anonymous auth) — no email, no password. Identity is requested only *after* value is delivered, via a dismissible "Guarda tus resultados" banner on the results page. This ordering is a standing law for every future gate too, monetization prompts included — never ask before you've given. |
 | **Group collaboration** | Real-time submission tracking via Supabase Realtime. Community aggregate scores computed by PostgreSQL trigger. |
 | **Blind integrity** | Sample labels are coded (A, B, C…); origin data is entered post-reveal only. |
 | **Full traceability** | Every evaluation links to a coffee profile with complete tasting history and community scores. |

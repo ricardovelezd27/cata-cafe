@@ -76,7 +76,7 @@ Default language is **Spanish** (the working language of much of the specialty-c
 | Value | What it means |
 |---|---|
 | **Protocol fidelity** | Implements the official SCA CVA formula exactly — no approximations. Penalties are normalized correctly across cups and participants. |
-| **Zero-friction entry** | Auto-save at every keystroke (800ms debounce). Magic-link sign-in — no passwords to manage. |
+| **Zero-friction entry** | Auto-save at every keystroke (800ms debounce). Magic-link sign-in — no passwords to manage. Guests can join a session with just a name (QR join, no email) — same law in practice: *valor antes que fricción* (see PRODUCT.md). |
 | **Works offline** | Cup in a basement lab or on a farm with no wifi. Drafts persist locally and sync — conflict-aware — on reconnect. |
 | **Real-time group calibration** | Watch submissions land live; produce one trustworthy community score the instant the session closes. |
 | **Blind integrity** | Coded labels (A, B, C…); origin revealed only post-tasting, on the leader's command. |
@@ -133,7 +133,7 @@ The app uses **magic link authentication** — no passwords.
 4. Your profile is created on first login. You can update your display name and preferred language from the **Profile** page.
 5. On your **first login**, a short onboarding welcome captures your role (Q-grader, barista, roaster, producer, trader, or enthusiast) and country, then routes you to a first action — creating a session or adding a coffee.
 
-> **Invited to a group session?** If someone sent you an invite link, open it directly. If you are not logged in yet, you will be redirected to the login page and then automatically returned to the invite after authenticating.
+> **Invited to a group session?** Open the invite link directly — no account required. If you are not logged in, the join page offers **Continuar como invitado** (just a display name, no email or password) alongside an optional sign-in link for returning users. Guests can keep their results later by adding an email from the results page.
 
 > **Cupping offline?** The evaluation interface keeps working without a connection — an offline banner appears and your scores are saved locally. When you reconnect, drafts sync automatically. If an evaluation was already submitted from another device while you were offline, a conflict dialog lets you choose what to keep.
 
@@ -252,8 +252,8 @@ Participants follow the standard cupping flow but have a restricted view — no 
 #### 1. Join via invite link
 
 1. Open the invite link shared by the session leader.
-2. If not logged in, you will be redirected to login and then back to the join page automatically.
-3. Click **Unirse a la sesión** — you are added as a participant and redirected to the cupping interface.
+2. If not logged in, the join page offers **Continuar como invitado** — enter just a display name (no email or password) — or an optional sign-in link for returning users.
+3. Click **Unirse a la sesión** — you are added as a participant and redirected to the cupping interface. Guests can keep their results later by adding an email from the results page.
 
 > You can only join once. Reopening the link after joining takes you directly to the cupping page.
 

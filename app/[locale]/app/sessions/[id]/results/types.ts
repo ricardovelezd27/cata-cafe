@@ -5,6 +5,10 @@
 export type AggregateScoreData = {
   communityScore: number | null;
   avgRawScore: number | null;
+  // Population SD (÷n) of included cuppers' individual CVA totals for this
+  // sample — null when fewer than 2 included evaluations, or when this
+  // aggregate came from the trigger-stored fallback (no TS recompute).
+  scoreSd: number | null;
   participantCount: number;
   submittedCount: number;
   totalCups: number;

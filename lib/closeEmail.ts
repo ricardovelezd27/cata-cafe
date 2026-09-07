@@ -106,7 +106,7 @@ export async function sendCloseEmails(
       samples: {
         orderBy: { position: "asc" },
         include: {
-          coffee: { select: { name: true } },
+          coffee: { select: { name: true, roastLevel: true } },
           physical: true,
           extrinsic: true,
         },
@@ -301,6 +301,7 @@ export async function sendCloseEmails(
             label: s.label,
             revealed: s.revealed,
             coffeeName: s.coffee?.name ?? null,
+            roastLevel: s.coffee?.roastLevel ?? null,
             descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
             affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
             combined: (ev?.combinedData as Record<string, unknown>) ?? {},

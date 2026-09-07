@@ -5,18 +5,12 @@ import {
   CAT2_DEFECTS,
   GREEN_COLORS,
   SCREEN_SIZES,
-  getRatio,
+  calcFullDefects,
   type DefectRow,
 } from "@/lib/constants";
 import { FormSection, BetaBadge } from "@/components/ui";
 
 type Data = Record<string, unknown>;
-
-function calcFullDefects(count: number, ratioStr: string): number {
-  if (!count || count <= 0) return 0;
-  const ratio = getRatio(ratioStr);
-  return Math.round((count / ratio) * 100) / 100;
-}
 
 interface DefectRowViewProps {
   defect: DefectRow;
