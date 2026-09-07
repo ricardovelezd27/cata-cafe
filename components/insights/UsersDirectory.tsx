@@ -1,7 +1,8 @@
 "use client";
 
+import { useMemo } from "react";
 import { Users } from "lucide-react";
-import { DataTable, type Column } from "@/components/ui/DataTable";
+import { DataTable, type Column, type Facet } from "@/components/ui/DataTable";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ROLE_LABELS } from "@/lib/constants";
@@ -26,6 +27,10 @@ export interface UsersDirectoryTranslations {
   empty: string;
   emailUnavailable: string;
   noResults: string;
+  guestBadge: string;
+  filterType: string;
+  typeRegistered: string;
+  typeGuest: string;
 }
 
 interface UsersDirectoryProps {
@@ -47,17 +52,23 @@ export function UsersDirectory({ users, locale, t }: UsersDirectoryProps) {
       label: t.colName,
       sortable: true,
       render: (row) => (
-        <span className="font-semibold text-on-surface">{row.displayName}</span>
+        <span className="inline-flex items-center gap-2">
+          <span className="font-semibold text-on-surface">{row.displayName}</span>
+          {row.isAnonymous && <Badge tone="neutral">{t.guestBadge}</Badge>}
+        </span>
       ),
     },
     {
       key: "email",
       label: t.colEmail,
-      render: (row) => (
-        <span className={row.email ? "text-on-surface" : "text-on-surface-variant italic"}>
-          {row.email ?? t.emailUnavailable}
-        </span>
-      ),
+      render: (row) =>
+        row.isAnonymous ? (
+          <span className="text-on-surface-variant">—</span>
+        ) : (
+          <span className={row.email ? "text-on-surface" : "text-on-surface-variant italic"}>
+            {row.email ?? t.emailUnavailable}
+          </span>
+        ),
     },
     {
       key: "country",
@@ -100,23 +111,50 @@ export function UsersDirectory({ users, locale, t }: UsersDirectoryProps) {
     },
   ];
 
+  const facets: Facet<AnalyticsUser>[] = useMemo(
+    () => [
+      {
+        key: "type",
+        label: t.filterType,
+        options: [
+          { value: "registered", label: t.typeRegistered },
+          { value: "guest", label: t.typeGuest },
+        ],
+        match: (row, value) => {
+          if (value === "registered") return !row.isAnonymous;
+          if (value === "guest") return row.isAnonymous;
+          return true;
+        },
+      },
+    ],
+    [t],
+  );
+
   return (
     <DataTable
       rows={users}
       rowKey={(row) => row.userId}
       columns={columns}
       searchText={(row) => [row.displayName, row.email]}
+      facets={facets}
       renderMobileCard={(row) => (
         <div className="space-y-2 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 space-y-1">
-              <p className="truncate font-semibold text-on-surface">{row.displayName}</p>
+              <div className="flex min-w-0 items-center gap-2">
+                <p className="truncate font-semibold text-on-surface">{row.displayName}</p>
+                {row.isAnonymous && <Badge tone="neutral">{t.guestBadge}</Badge>}
+              </div>
               <p
                 className={`truncate text-xs ${
-                  row.email ? "text-on-surface-variant" : "text-on-surface-variant italic"
+                  row.isAnonymous
+                    ? "text-on-surface-variant"
+                    : row.email
+                      ? "text-on-surface-variant"
+                      : "text-on-surface-variant italic"
                 }`}
               >
-                {row.email ?? t.emailUnavailable}
+                {row.isAnonymous ? "—" : (row.email ?? t.emailUnavailable)}
               </p>
             </div>
             <Badge tone="neutral">{roleLabel(row.role, locale)}</Badge>

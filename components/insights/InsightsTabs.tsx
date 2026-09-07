@@ -27,7 +27,9 @@ export function InsightsTabs({ locale, isSuperAdmin, isAiAdmin, labels }: Insigh
     { href: `${base}/benchmark`, label: labels.benchmark, exact: false },
     ...(isAiAdmin ? [{ href: `${base}/chat`, label: labels.chat, exact: false }] : []),
     ...(isSuperAdmin ? [{ href: `${base}/access`, label: labels.access, exact: false }] : []),
-    ...(isSuperAdmin ? [{ href: `${base}/users`, label: labels.users, exact: false }] : []),
+    ...(isSuperAdmin || isAiAdmin
+      ? [{ href: `${base}/users`, label: labels.users, exact: false }]
+      : []),
   ];
 
   return (

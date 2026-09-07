@@ -1081,6 +1081,7 @@
     },
     "users": {
       "lead": "Directorio de todas las personas registradas en la plataforma, con su actividad de catación.",
+      "summary": "{registered} registrados · {guests} invitados",
       "colName": "Nombre",
       "colEmail": "Correo",
       "colCountry": "País",
@@ -1088,7 +1089,11 @@
       "colSessions": "Sesiones",
       "colCoffees": "Cafés",
       "colJoined": "Se unió",
-      "empty": "No se encontraron usuarios."
+      "empty": "No se encontraron usuarios.",
+      "guestBadge": "Invitado",
+      "filterType": "Tipo",
+      "typeRegistered": "Registrado",
+      "typeGuest": "Invitado"
     },
     "benchmark": {
       "title": "Benchmark vs. CQI",

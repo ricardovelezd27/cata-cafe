@@ -2,11 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { listAllAuthUsers } from "@/lib/supabase/adminUsers";
 import {
   isSuperAdminEmail,
   requireAnalyticsAccess,
   requireSuperAdmin,
+  requireUsersDirectoryAccess,
 } from "@/lib/analytics/access";
 import {
   DATASET_DIMENSIONS,
@@ -182,33 +183,29 @@ export interface AnalyticsUser {
   country: string | null;
   analyticsAccess: boolean;
   isSuperAdmin: boolean;
+  isAnonymous: boolean;
   role: string;
   createdAt: string;
   sessionsCount: number;
   coffeesCount: number;
 }
 
+/**
+ * Shared with AI admins (the partner) — see requireUsersDirectoryAccess.
+ * Acceso (grant management) stays behind requireSuperAdmin below.
+ */
 export async function listAnalyticsUsers(): Promise<AnalyticsUser[]> {
-  await requireSuperAdmin();
+  await requireUsersDirectoryAccess();
 
   // Profile has no email column — emails live in Supabase auth. Map ids→emails
-  // via the service-role admin API; degrade to null emails if the call fails.
+  // (and flag anonymous/guest users) via the service-role admin API; degrade
+  // to null emails if the call fails.
+  const authUsers = await listAllAuthUsers();
   const emailById = new Map<string, string>();
-  try {
-    const admin = createAdminClient();
-    let page = 1;
-    const perPage = 1000;
-    for (;;) {
-      const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
-      if (error) break;
-      for (const u of data.users) {
-        if (u.email) emailById.set(u.id, u.email);
-      }
-      if (data.users.length < perPage) break;
-      page += 1;
-    }
-  } catch {
-    // Emails stay null; the UI shows displayName-only rows.
+  const anonIds = new Set<string>();
+  for (const u of authUsers) {
+    if (u.email) emailById.set(u.id, u.email);
+    if (u.isAnonymous) anonIds.add(u.id);
   }
 
   const profiles = await prisma.profile.findMany({
@@ -233,6 +230,7 @@ export async function listAnalyticsUsers(): Promise<AnalyticsUser[]> {
       country: p.country,
       analyticsAccess: p.analyticsAccess,
       isSuperAdmin: isSuperAdminEmail(email),
+      isAnonymous: anonIds.has(p.id),
       role: p.role,
       createdAt: p.createdAt.toISOString(),
       sessionsCount: p._count.cuppingSessions,

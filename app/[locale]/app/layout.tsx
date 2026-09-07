@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { isSuperAdminEmail } from "@/lib/analytics/access";
+import { isSuperAdminEmail, isAiAdminEmail } from "@/lib/analytics/access";
 import Sidebar from "@/components/layout/Sidebar";
 import TopBar from "@/components/layout/TopBar";
 import BottomNav from "@/components/layout/BottomNav";
@@ -32,7 +32,8 @@ export default async function AppLayout({
   });
 
   const showOnboarding = !profile?.onboardingCompleted;
-  const showInsights = isSuperAdminEmail(user.email) || !!profile?.analyticsAccess;
+  const showInsights =
+    isSuperAdminEmail(user.email) || isAiAdminEmail(user.email) || !!profile?.analyticsAccess;
   const initialDisplayName =
     profile?.displayName ?? user.email?.split("@")[0] ?? "";
 

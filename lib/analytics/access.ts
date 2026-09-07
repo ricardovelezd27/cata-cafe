@@ -95,3 +95,14 @@ export async function requireSuperAdmin(): Promise<AnalyticsAccess> {
   if (!access?.isSuperAdmin) throw new Error("forbidden");
   return access;
 }
+
+/**
+ * Guard for the Usuarios directory — shared with AI admins (the partner) so
+ * they can see who's on the platform, unlike Acceso (grant management),
+ * which stays super-admin-only via requireSuperAdmin above.
+ */
+export async function requireUsersDirectoryAccess(): Promise<AnalyticsAccess> {
+  const access = await getAnalyticsAccess();
+  if (!access?.isSuperAdmin && !access?.isAiAdmin) throw new Error("forbidden");
+  return access;
+}

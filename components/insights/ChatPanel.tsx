@@ -5,6 +5,7 @@ import { Loader2, MessageCircle, Send, Trash2 } from "lucide-react";
 import { askDataQuestion } from "@/app/actions/aiChat";
 import { ChatMessage } from "@/components/insights/ChatMessage";
 import { useInsightsChatStore } from "@/stores/insightsChatStore";
+import { serializeBlocksForHistory } from "@/lib/ai/chatTypes";
 import type { DimensionId, MeasureId } from "@/lib/analytics/types";
 
 // Orchestrator for the "ask the data" chat: header (title/subtitle + usage
@@ -111,7 +112,12 @@ export function ChatPanel({ locale, t }: ChatPanelProps) {
       if (m.role !== "user") continue;
       const next = messages[i + 1];
       if (next && next.role === "assistant" && !next.error) {
-        history.push({ role: "user", text: m.text }, { role: "assistant", text: next.text });
+        // Replay the assistant's data blocks (tables/charts a prior tool
+        // call produced) alongside its prose, so a follow-up question can
+        // reference figures the model itself never re-states in text.
+        const dataDigest = serializeBlocksForHistory(next.blocks);
+        const assistantText = dataDigest ? `${next.text}\n\n[datos]\n${dataDigest}` : next.text;
+        history.push({ role: "user", text: m.text }, { role: "assistant", text: assistantText });
       }
     }
 

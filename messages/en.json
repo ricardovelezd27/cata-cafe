@@ -1081,6 +1081,7 @@
     },
     "users": {
       "lead": "Directory of everyone registered on the platform, with their cupping activity.",
+      "summary": "{registered} registered · {guests} guests",
       "colName": "Name",
       "colEmail": "Email",
       "colCountry": "Country",
@@ -1088,7 +1089,11 @@
       "colSessions": "Sessions",
       "colCoffees": "Coffees",
       "colJoined": "Joined",
-      "empty": "No users found."
+      "empty": "No users found.",
+      "guestBadge": "Guest",
+      "filterType": "Type",
+      "typeRegistered": "Registered",
+      "typeGuest": "Guest"
     },
     "benchmark": {
       "title": "Benchmark vs. CQI",

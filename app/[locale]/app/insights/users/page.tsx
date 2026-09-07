@@ -17,9 +17,10 @@ export default async function InsightsUsersPage({
   setRequestLocale(locale);
 
   // The insights layout already requires analytics access; this page is
-  // additionally super-admin only (a granted colleague gets a 404 here).
+  // additionally gated to super-admin OR AI admin (the partner) — everyone
+  // else gets a 404 here. Acceso (grant management) stays super-admin-only.
   const access = await getAnalyticsAccess();
-  if (!access?.isSuperAdmin) notFound();
+  if (!access?.isSuperAdmin && !access?.isAiAdmin) notFound();
 
   const [t, tc, ta, users] = await Promise.all([
     getTranslations("insights.users"),
@@ -28,9 +29,15 @@ export default async function InsightsUsersPage({
     listAnalyticsUsers(),
   ]);
 
+  const registered = users.filter((u) => !u.isAnonymous).length;
+  const guests = users.length - registered;
+
   return (
     <div className="flex flex-col gap-4 pb-8">
       <p className="text-sm text-brown-mid">{t("lead")}</p>
+      <p className="text-sm text-on-surface-variant">
+        {t("summary", { registered, guests })}
+      </p>
       <UsersDirectory
         users={users}
         locale={locale}
@@ -53,6 +60,10 @@ export default async function InsightsUsersPage({
           empty: t("empty"),
           emailUnavailable: ta("emailUnavailable"),
           noResults: tc("noResults"),
+          guestBadge: t("guestBadge"),
+          filterType: t("filterType"),
+          typeRegistered: t("typeRegistered"),
+          typeGuest: t("typeGuest"),
         }}
       />
     </div>

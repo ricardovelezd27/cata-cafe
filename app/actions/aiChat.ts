@@ -25,7 +25,11 @@ function asLocale(locale: string): "es" | "en" {
   return locale === "en" ? "en" : "es";
 }
 
-const MAX_TEXT_LENGTH = 2000;
+// 3000 (not 2000): an assistant history item can carry a "\n\n[datos]\n..."
+// suffix appended client-side (see ChatPanel's history builder +
+// serializeBlocksForHistory, capped at 700 chars) on top of its prose — the
+// budget here must leave room for that suffix instead of slicing it away.
+const MAX_TEXT_LENGTH = 3000;
 
 function sanitizeHistory(history: unknown): ChatHistoryItem[] {
   if (!Array.isArray(history)) return [];

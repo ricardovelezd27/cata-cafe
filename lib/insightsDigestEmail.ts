@@ -8,7 +8,7 @@
 // component — uses the service-role admin client and server-only AI modules.
 
 import { prisma } from "@/lib/prisma";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { listAllAuthUsers } from "@/lib/supabase/adminUsers";
 import { sendEmail } from "@/lib/email";
 import { getSuperAdminEmail, isSuperAdminEmail } from "@/lib/analytics/access";
 import { runInsightQuery } from "@/lib/analytics/queries";
@@ -257,24 +257,12 @@ export async function sendInsightsDigest(now = new Date()): Promise<DigestSummar
   });
   const emailById = new Map<string, string>();
   let superAdminId: string | null = null;
-  try {
-    const admin = createAdminClient();
-    let page = 1;
-    const perPage = 1000;
-    for (;;) {
-      const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
-      if (error) break;
-      for (const u of data.users) {
-        if (u.email) {
-          emailById.set(u.id, u.email);
-          if (isSuperAdminEmail(u.email)) superAdminId = u.id;
-        }
-      }
-      if (data.users.length < perPage) break;
-      page += 1;
+  const authUsers = await listAllAuthUsers();
+  for (const u of authUsers) {
+    if (u.email) {
+      emailById.set(u.id, u.email);
+      if (isSuperAdminEmail(u.email)) superAdminId = u.id;
     }
-  } catch {
-    // Recipient resolution degraded; only profiles already mapped get email.
   }
 
   const targets = new Map<string, Locale>();
