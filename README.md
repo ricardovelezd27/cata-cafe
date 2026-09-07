@@ -98,7 +98,7 @@ Default language is **Spanish** (the working language of much of the specialty-c
 
 **Guided onboarding** — First-time cuppers tell us their role and country and are routed straight to a first action (create a session or add a coffee).
 
-**Coffee library & history** — Every revealed coffee gets a profile tracking each session it appeared in; each cupper gets a personal tasting history with individual and community scores.
+**Coffee library & history** — Every revealed coffee gets a profile tracking each session it appeared in; each cupper gets a personal tasting history with individual and community scores. Every coffee also gets a short, shareable 6-character code (e.g. `K7M-3FP`) shown on its profile and searchable by prefix in the coffee picker.
 
 **Mobile-ready** — A responsive cupping layout with mobile sample navigation, tuned for tablets and phones at the cupping table.
 
@@ -152,9 +152,9 @@ The session leader creates and controls all aspects of the session.
    - **Objective** (optional)
    - **Format** — Descriptive, Affective, or Combined
    - **Cups per sample** — how many cups each sample is served in (affects penalty calculations)
-   - **Samples** — add one row per coffee sample; each gets a blind label (e.g. "A", "B", "C")
+   - **Samples** — add one row per coffee sample; each gets a blind label (e.g. "A", "B", "C") and, if you like, a linked coffee — only the coffee's **name** is required, altitude and roast level can be filled in later
    - Leave **Group session** toggle off for solo use
-3. Click **Create session** — you land directly on the cupping interface.
+3. Click **Create session** — you land directly on the cupping interface. Each new coffee gets a short shareable code automatically (see [Coffee Profiles](#all-users-coffee-profiles)).
 
 #### 2. Physical evaluation (optional, pre-tasting)
 
@@ -187,7 +187,8 @@ After blind tasting, you can reveal what each sample was:
 
 1. Click **Ver resultados** from the cupping page or navigate to the session's **Results** page.
 2. See per-sample scores, SCA CVA breakdown, and attribute radar charts.
-3. Use **Print / PDF** to export a formatted certificate.
+3. As owner, you can still edit a sample's origin data from the results drill-down after the session closes — no need to reopen the cupping flow.
+4. Use **Print / PDF** to export a formatted certificate — it includes the physical-evaluation appendix (defects, screen size, color) and, once revealed, the roast level in the header.
 
 ---
 
@@ -305,7 +306,8 @@ Once the session leader closes the session, the **Results** page shows two tabs:
 
 - Navigate to **Cafés** in the top nav.
 - Lists all public coffees plus any coffees you created.
-- Click a coffee to see its **profile page**: origin details (country, region, farm, producer, variety, process, certifications) and a full tasting history showing every session it appeared in along with individual and community scores.
+- Click a coffee to see its **profile page**: a short shareable code (e.g. `K7M-3FP`, shown as a pill next to the name), origin details (country, region, farm, producer, variety, process, certifications) and a full tasting history showing every session it appeared in along with individual and community scores.
+- When picking an existing coffee (session wizard, sample editor), you can search by name or by code — typing 3+ code characters ranks exact code matches first without hiding fuzzy name results.
 
 ---
 
@@ -341,6 +343,8 @@ communityScore    = avgRawScore − uniformityPenalty − defectPenalty
 | `totalDefective` | Cups marked defective, summed across all participants |
 | `totalCups` | `cupsPerSample × participantCount` |
 | `avgRawScore` | Average of individual raw scores across all submitted evaluations |
+
+**Consensus (SD)**: the results page also shows a "± X.X" figure next to the community score — the population standard deviation of the included cuppers' individual scores, a quick read on how much the table agreed. It's display-only and computed alongside `communityScore`, never stored by the trigger.
 
 ---
 

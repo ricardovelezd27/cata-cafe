@@ -234,6 +234,20 @@ All writes go through `app/actions/`. Call `revalidatePath()` after mutations to
 - Owner vs participant rule (product-wide): the creator of an asset (session, coffee, group) has full create/edit/delete; participants/members only take part (evaluate, read the feed, leave a group).
 - **Guest → account ("claim")**: QR walk-ups are anonymous Supabase users. The results-page banner (`components/results/GuestSaveCta.tsx`) does NOT run its own auth — `startGuestClaim` mints a signed claim token (`lib/guestClaim.ts`, HMAC, 7 days) and sends the guest through the normal login page with `next=/auth/claim?token=…`; after the magic-link/Google sign-in, `app/[locale]/auth/claim/page.tsx` shows a confirmation card (name + session count — **never merges on GET**) whose button runs the `confirmGuestClaim` server action → `mergeGuestData`, which moves EVERY user-referencing row from the anonymous id to the signed-in account (new or existing) inside one transaction and deletes the anonymous user. When you add a table with a user FK, add it to `mergeGuestData` — the final `profile.delete` there fails loudly (rollback) if a Restrict FK was forgotten, but Cascade FKs would silently drop rows.
 
+### Coffee Short Codes
+- Every `Coffee` gets a unique 6-char code (`lib/coffeeCode.ts`, alphabet `A-Z2-9` minus lookalikes I/L/O/0/1; displayed hyphenated, e.g. `K7M-3FP`) stamped at every create path: `createCoffee`, the session wizard's `resolveCoffees`, `updateSampleMetadata`'s implicit create, and `duplicateCoffee`.
+- Use `withCodeRetry` (retry-on-P2002) for creates that run as their own implicit transaction. Inside an interactive `$transaction` (e.g. batch wizard creates), pre-generate codes with `generateUniqueCoffeeCodes` and retry the **whole transaction** on collision — a first P2002 aborts the surrounding Postgres transaction (25P02 on every later statement), so a per-row retry can never succeed there.
+- `CoffeePicker` ranks code-prefix hits (3+ normalized chars) first but never replaces fuzzy name results; `CoffeesTable` and the coffee detail header show the code as a formatted pill and it is searchable in both raw and hyphenated form.
+
+### Sample / Coffee Metadata Editing
+- Session creation and coffee forms only require **name** — altitude is range-checked (1–6000) only when a value is entered, and roast level is optional ("valor antes que fricción": progressive data-quality gate relaxed 2026-09).
+- `updateSampleMetadata` merges rather than overwrites: an absent key leaves that coffee field untouched, `""` clears it, and `name` is never blanked. It returns `coffeeUpdated: false` when the linked coffee isn't owned by the caller (the two callers show a dismissible notice instead of failing).
+- Post-close origin-data editing lives in `ExtrinsicEditDialog` (`components/results/`), opened from the results drill-down for the session **owner** on a **revealed** sample — it reuses `ExtrinsicForm` with its in-cupping header/disclaimer suppressed and still saves through `upsertExtrinsic`.
+
+### CVA PDF Export (`lib/pdf/`)
+- `lib/pdf/cvaFormData.ts` builds the appendix physical block from the real `phys_*` fields plus derived lines: dominant screen size by weight share ("Malla 15 — 42%") and Cat.1/Cat.2 full-defect totals via `calcFullDefects` (`lib/constants.ts` — the single source, shared with `PhysicalEvalForm` so the PDF and the live form can never drift).
+- Roast level renders in the sheet header (`DotField`) with the same reveal gate as `coffeeName` — both `null` until `sample.revealed`. Threaded through the PDF route (`app/api/sessions/[id]/cva-pdf/route.ts`), the print page, close emails, and `scripts/render-cva-preview.ts`.
+
 ### Session Lifecycle (see docs/flows.md for diagrams)
 - Solo: `createSession` sets `status:"active"`; `submitAllEvaluations` **auto-closes** the session once the owner has a submitted evaluation for every sample (reveals coffee-linked samples, then `syncCoffeeHistoryForSession`). Do not add a manual close path for solo.
 - Group: active → (startedAt via `startSession`) → closed via owner `closeSession` (history sync + close emails).
@@ -293,7 +307,7 @@ Cupping form components are fully controlled. State is lifted to `CupClient`, wh
 | `Evaluation` | A cupper's score for one sample (JSON data + computed scores, isDraft, submittedAt) |
 | `PhysicalEvaluation` | Green bean assessment for a sample (pre-reveal) |
 | `ExtrinsicData` | Origin/processing info revealed post-tasting |
-| `Coffee` | Coffee product reference data |
+| `Coffee` | Coffee product reference data; `code` — unique 6-char short code (`lib/coffeeCode.ts`), stamped at every create path |
 | `SessionParticipant` | Links a user to a group session (status: "invited"\|"joined"\|"owner"; `excludedFromResults`) |
 | `AggregateScore` | Trigger-computed community score for a sample (one per SessionSample) |
 | `UserCoffeeHistory` | Per-user record of coffees tasted with individual + community scores |
@@ -332,6 +346,9 @@ communityScore    = avgRawScore − uniformityPenalty − defectPenalty
 - TypeScript function `calcCommunityScore()` in `lib/scoring.ts` is **display-only** — trigger result is authoritative
 
 Verification: 2 participants, cupsPerSample=5, 1 uOnly cup → uniformityPenalty = 1×(10/10) = 1.0 ✓
+
+### Consensus (SD)
+`computeGroupAggregate` also returns `scoreSd` — the population standard deviation (÷n) of the included cuppers' individual CVA totals, `null` when fewer than 2 evaluations are included. Display-only, like `communityScore`; the DB trigger is untouched. Shown as a neutral "± X.X" chip next to the community `ScorePill` in the Resumen ranking, and as a "DE" column in the owner's CVA matrix (`OwnerParticipantSection`, reusing its existing `rowStats`).
 
 ---
 
@@ -405,11 +422,23 @@ NEXT_PUBLIC_SITE_URL=         # Absolute URL used in email links; defaults to lo
 DB_POOL_MAX=                  # Per-instance Postgres pool size for the pg driver adapter; default 8
 ```
 
+### Insights Access Levels (`lib/analytics/access.ts`)
+Three levels, all resolved from `getAnalyticsAccess()`:
+
+| Level | Grant | Sees |
+|---|---|---|
+| Super-admin | `ANALYTICS_SUPER_ADMIN_EMAIL` (code fallback) | Everything, incl. **Acceso** (grant management via `requireSuperAdmin`) |
+| AI admin | `ANALYTICS_AI_ADMIN_EMAILS` allowlist | `/app/insights` + the **Análisis** (AI chat) sidebar item + the **Usuarios** directory (`requireUsersDirectoryAccess` — shared with super-admin; Acceso stays super-admin-only) |
+| Flagged user | `Profile.analyticsAccess` | Base `/app/insights` only, no AI chat, no Usuarios |
+
+Emails for the Usuarios directory are resolved via `lib/supabase/adminUsers.ts` (`listAllAuthUsers`, paginated on GoTrue's `nextPage` — never the `length < perPage` heuristic, which silently truncated to page 1). Anonymous/guest accounts show an "Invitado" badge and em-dash email, with a registered-vs-guest facet and a summary count line.
+
 ### AI Narrative Pattern (`lib/ai/`)
 - Provider-agnostic seam: `getAiProvider()` in `lib/ai/index.ts` returns the Gemini impl (`lib/ai/gemini.ts`); a Claude impl would slot in there without touching callers.
 - All prompts live in `lib/ai/narratives.ts` and receive **only aggregated numbers/labels** — never raw evaluations or emails. Bump `PROMPT_VERSION` when editing a prompt (it invalidates the cache).
 - `cachedGenerate()` in `lib/ai/cache.ts` is cache-first over the `insight_narratives` table (sha256 data-hash key) — repeat views never re-bill the provider. Shared by server actions (`app/actions/ai.ts`), the report PDF route, and the digest cron.
 - AI is server-only and gated by `requireAnalyticsAccess()`; never call from client components.
+- Chat continuity: assistant turns replay a compact `[datos]` digest of that turn's tool-result blocks (`serializeBlocksForHistory` in `lib/ai/chatTypes.ts`, 700-char cap per block) so follow-up questions can reference earlier figures without re-fetching them; `MAX_TEXT_LENGTH` is 3000.
 
 ### Reference Data (`reference_series`, `benchmark_lots`)
 - Imported from vendored CSVs by `npm run import:reference` / `npm run import:benchmarks` (idempotent per source; see `scripts/data/README.md` for provenance/licenses). Refresh = re-download CSV + re-run.

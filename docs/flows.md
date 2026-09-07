@@ -118,6 +118,20 @@ flowchart LR
 Every list (sessions, dashboard, profile, group page) must use `sessionHref` —
 never hardcode `/cup`.
 
+### Sample / coffee metadata lifecycle (progressive)
+
+Creation only requires a **name** — the wizard and coffee forms range-check
+altitude only when a value is given, and roast level is optional (*valor antes
+que fricción*: name-only entry, everything else fillable later). Metadata can
+then be edited at any point in a sample's life: coffee fields + label via
+`EditSampleMetadataForm` (from the cup page and the results drill-down), and
+origin/processing data post-close via `ExtrinsicEditDialog` on the results
+drill-down (owner + revealed samples only). Both routes go through `updateSampleMetadata` /
+`upsertExtrinsic`, which **merge** rather than overwrite — an absent key
+leaves the coffee field untouched, `""` clears it, `name` is never blanked —
+and report `coffeeUpdated: false` (shown as a dismissible notice) when the
+linked coffee isn't owned by the editor.
+
 ---
 
 ## 2. Coffee visibility & sharing
@@ -149,6 +163,17 @@ owned ∪ public ∪ (shared ∧ has share row). The session wizard and
 **Delete blast radius:** `session_samples.coffeeId` → SET NULL (samples keep
 their blind label; sessions and evaluations survive), but `user_coffee_history`
 → CASCADE for **every user who ever cupped it**. The confirm dialog says so.
+
+### Coffee codes
+
+Every coffee gets a unique 6-char short code (`lib/coffeeCode.ts`) at creation —
+`createCoffee`, the session wizard (`resolveCoffees`, with whole-batch retry on
+a within-transaction collision), `updateSampleMetadata`'s implicit create, and
+`duplicateCoffee` all stamp one. It's the external identifier people quote to
+each other ("mi café es el código K7M-3FP"): shown as a pill on the coffee
+detail header and in `CoffeesTable`, and searchable in `CoffeePicker` — a
+3+ char code-prefix query ranks above fuzzy name matches but never replaces
+them.
 
 ---
 
@@ -259,7 +284,7 @@ the viewer already saw.
 flowchart TD
     subgraph T1 ["Resumen — session dashboard"]
         R1["Stat row: samples, participation, avg, best"]
-        R2["Ranking — community score in group,\nown score in solo"]
+        R2["Ranking — community score in group,\nown score in solo\n+ \"± X.X\" consensus SD chip"]
         R3["Mi desempeño — my avg vs. community avg\n+ my consensus-alignment bar"]
         R4["Highlights — per-sample descriptor line"]
     end
@@ -267,7 +292,7 @@ flowchart TD
     subgraph T2 ["Resultados — one merged mine + community view"]
         S1["Tabla / Gráfico\n(SegmentedControl, persisted via\nlocalStorage cata_results_view)"]
         S2{"isOwner?"}
-        S3["Análisis por catador —\nCVA matrix + exclusion switches"]
+        S3["Análisis por catador —\nCVA matrix + exclusion switches\n+ DE (SD) column"]
         S1 --> S2
         S2 -- yes --> S3
     end
@@ -291,7 +316,7 @@ flowchart TD
 
     DET["Sample drill-down dialog\n(SampleDetailDialog)"]
     DET --> DETOWNER{"isOwner?"}
-    DETOWNER -- yes --> DETX["Catador switcher +\nedit sample metadata"]
+    DETOWNER -- yes --> DETX["Catador switcher +\nedit sample metadata +\nedit origin data (ExtrinsicEditDialog,\nrevealed samples only)"]
 ```
 
 The "General" pseudo-block in Descriptores is not a real perceptual block: it is

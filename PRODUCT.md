@@ -1,6 +1,6 @@
 # Cata Café — Product Document
 
-> Last updated: 2026-08-06
+> Last updated: 2026-09-07
 
 ---
 
@@ -108,6 +108,7 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 - [x] Create group session with invite link
 - [x] Reusable invite link (no use limit by default)
 - [x] Add samples with coded labels and optional coffee reference
+- [x] Progressive metadata: only the coffee/sample **name** is required at creation — altitude and roast level are optional, filled in whenever convenient
 - [x] Session status lifecycle: `draft → active → closed`
 - [x] Close session (freezes evaluations)
 - [x] Reveal samples (unlocks origin data entry)
@@ -162,12 +163,13 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 ### Results & Export
 - [x] Individual CVA score with formula breakdown
 - [x] Three-tab results page for every viewer — **Resumen** (session dashboard: stat row, sample ranking by community score in group sessions / own score in solo, "Mi desempeño" card comparing my average to the community average with a consensus-alignment bar, per-sample descriptor highlights), **Resultados** (mine + community merged into one Tabla/Gráfico view; owner-only "Análisis por catador" CVA matrix), **Descriptores** (one sample + perceptual-block filter driving the word cloud, frequency bars, and consensus sentences; solo descriptive/combined sessions get this tab from their own data)
-- [x] Personal per-sample drill-down dialog — opened from a ranking row, a table cell, a radar chart header, or the owner's CVA matrix; the owner additionally gets a catador switcher inside it and the sample-metadata editor (moved here from the old header chips)
+- [x] Personal per-sample drill-down dialog — opened from a ranking row, a table cell, a radar chart header, or the owner's CVA matrix; the owner additionally gets a catador switcher, the sample-metadata editor (moved here from the old header chips), and — for revealed samples — a post-close origin-data editor
+- [x] Consensus (SD): a "± X.X" chip next to the community score in the Resumen ranking, and a "DE" column in the owner's CVA matrix — the spread of individual scores among included cuppers
 - [x] Refresh ("Actualizar") always visible to every viewer; the server recompute stays owner-only since a participant's own view is already fresh (the DB trigger restamps `computedAt` on every submission)
 - [x] Score transparency panel (`ScoreBreakdownPanel`, "¿Cómo se calculó?") — individual + community variants, reads authoritative numbers verbatim
 - [x] Coffee profile with full tasting history
 - [x] Personal history page (`/profile/history`)
-- [x] PDF certificate export (`/sessions/[id]/print`)
+- [x] PDF certificate export (`/sessions/[id]/print`) — physical-evaluation appendix with real defect/screen/color data and derived Cat.1/Cat.2 totals, roast level in the header (revealed-gated, same as the coffee name)
 
 ### Marketing / Public
 - [x] Public marketing landing page at `/[locale]` (Spanish default, `/en` secondary) — animated hero (GSAP), audience/comparison/pricing/roadmap sections
@@ -176,6 +178,7 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 ### Coffee Library
 - [x] Coffee profile pages with aggregate scores
 - [x] Public + owned coffees browse
+- [x] Unique 6-char short code per coffee (e.g. `K7M-3FP`) — a human-shareable identifier shown on the profile, the coffee list, and the picker, with code-prefix search ranked above fuzzy name matches
 - [x] `UserCoffeeHistory` — per-user record of every coffee tasted
 
 ### Auth
@@ -214,7 +217,7 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 | `Evaluation` | One cupper's score for one sample (JSON data + computed scores, isDraft) |
 | `PhysicalEvaluation` | Green bean assessment (pre-reveal) |
 | `ExtrinsicData` | Origin/processing info (post-reveal) |
-| `Coffee` | Coffee product reference data |
+| `Coffee` | Coffee product reference data; unique 6-char short `code` |
 | `SessionParticipant` | Links user to group session (owner / joined / invited); `excludedFromResults` |
 | `AggregateScore` | Trigger-computed community score (one per SessionSample) |
 | `UserCoffeeHistory` | Per-user record of coffees tasted with scores |
@@ -239,6 +242,9 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 - [x] `ScoreBreakdownPanel` — score transparency ("¿Cómo se calculó?") for individual and community scores
 - [x] Public marketing landing page (animated, bilingual) + waitlist
 - [x] Results page redesign (2026-08): collapsed to 3 tabs for every viewer (Resumen dashboard / merged Resultados / unified-filter Descriptores), removed the old "mis resultados vs. grupales" toggle and the separate master-only Individual tab, added a personal drill-down dialog with an owner catador switcher, and made the refresh control always visible
+- [x] Coffee short codes + progressive metadata (2026-09): unique 6-char coffee codes end to end (creation, search, display); session/coffee creation now needs only a name, with post-close origin-data editing added to the results drill-down
+- [x] Consensus SD + CVA PDF fixes (2026-09): a display-only standard-deviation figure alongside community scores; the exported PDF's physical-evaluation block now renders real defect/screen/color data and gates roast level on reveal like the coffee name
+- [x] Guest → account claim (2026-09): the results-page banner now routes guests through the normal login flow (magic link or Google) and merges their tasting data onto the resulting account — new or existing — instead of an in-place email swap
 
 ### Next — Results & Analytics
 - [ ] Multi-session coffee comparison view
