@@ -50,7 +50,21 @@
     "rateLimitError": "Demasiados intentos en poco tiempo. Espera unos minutos e inténtalo de nuevo.",
     "signInWithGoogle": "Continuar con Google",
     "or": "o",
-    "signOut": "Cerrar sesión"
+    "signOut": "Cerrar sesión",
+    "claimIntro": "Crea tu cuenta o inicia sesión para guardar los resultados de tu cata. Al terminar volverás a tus resultados.",
+    "claim": {
+      "title": "Vincular tus resultados",
+      "body": "¿Vincular la participación de «{name}» ({sessions, plural, =1 {1 sesión de cata} other {# sesiones de cata}}) a la cuenta {email}?",
+      "note": "Las evaluaciones y el historial de esa participación como invitado pasarán a esta cuenta. Si no reconoces ese nombre, cancela.",
+      "confirm": "Vincular a mi cuenta",
+      "confirming": "Vinculando…",
+      "cancel": "Cancelar",
+      "errorTitle": "No pudimos vincular tus resultados",
+      "errorInvalid": "El enlace no es válido. Si todavía tienes abierta la sesión de invitado en el dispositivo donde cataste, vuelve a sus resultados y pulsa «Crear cuenta y guardar» de nuevo; si ya iniciaste sesión ahí, esa participación como invitado ya no se puede vincular. Tu cuenta funciona con normalidad.",
+      "errorExpired": "El enlace caducó (dura 7 días). Si todavía tienes abierta la sesión de invitado en el dispositivo donde cataste, vuelve a sus resultados y pulsa «Crear cuenta y guardar» de nuevo. Tu cuenta funciona con normalidad.",
+      "errorAlready": "Estos resultados ya fueron vinculados a una cuenta, o la participación como invitado ya no existe.",
+      "continue": "Ir a mi cuenta"
+    }
   },
   "dashboard": {
     "title": "Tu estudio de catación",
@@ -410,7 +424,7 @@
     "guestJoining": "Entrando…",
     "orSignIn": "o inicia sesión con tu correo",
     "guestOfflineNotice": "Necesitas conexión para unirte; una vez dentro puedes catar sin internet.",
-    "guestDataNotice": "Como invitado, tu acceso queda ligado a este navegador: si borras los datos de navegación o cambias de dispositivo, perderás tu avance. Al ver tus resultados podrás guardarlos con tu correo.",
+    "guestDataNotice": "Como invitado, tu acceso queda ligado a este navegador: si borras los datos de navegación o cambias de dispositivo, perderás tu avance. Al ver tus resultados podrás guardarlos creando tu cuenta.",
     "guestError": "No se pudo entrar como invitado. Intenta con tu correo."
   },
   "results": {
@@ -441,21 +455,12 @@
     "sdAria": "Desviación estándar entre catadores — menor es más consenso",
     "guestCta": {
       "title": "Guarda tus resultados",
-      "body": "Estás participando como invitado: tu acceso vive solo en este navegador y se pierde al borrar los datos de navegación o cambiar de dispositivo. Ingresa tu correo y te enviaremos un enlace para conservar tus resultados en una cuenta gratuita.",
-      "emailLabel": "Correo electrónico",
-      "emailPlaceholder": "tu@correo.com",
-      "submit": "Enviar enlace",
-      "sending": "Enviando…",
-      "pendingTitle": "Revisa tu correo",
-      "pendingBody": "Te enviamos un enlace de confirmación a {email}. Ábrelo para vincular tus resultados a tu cuenta.",
-      "changeEmail": "Usar otro correo",
+      "body": "Estás participando como invitado: tu acceso vive solo en este navegador y se pierde al borrar los datos de navegación o cambiar de dispositivo. Crea tu cuenta gratuita (o inicia sesión si ya tienes una) y vincularemos estos resultados a ella.",
+      "cta": "Crear cuenta y guardar",
+      "ctaLoading": "Un momento…",
       "dismiss": "Ahora no",
       "offline": "Sin conexión: podrás guardar tus resultados cuando vuelvas a estar en línea.",
-      "errorGeneric": "No pudimos enviar el enlace. Inténtalo de nuevo.",
-      "errorRateLimit": "Ya pedimos un enlace hace poco. Espera unos minutos e inténtalo de nuevo.",
-      "errorEmailTaken": "Ese correo ya tiene una cuenta en Cata Café.",
-      "loginInstead": "Iniciar sesión con ese correo",
-      "loginLosesData": "al iniciar sesión con otra cuenta, los resultados de esta participación como invitado no se transfieren."
+      "error": "No pudimos iniciar el proceso. Inténtalo de nuevo."
     },
     "dashboard": {
       "statSamples": "Muestras evaluadas",

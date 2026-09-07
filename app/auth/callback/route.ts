@@ -51,8 +51,10 @@ export async function GET(request: NextRequest) {
     if (!error) return NextResponse.redirect(`${origin}${next}`);
   }
 
-  // Preserve `next` on failure so a retry still lands on the intended page.
+  // Preserve `next` on failure so a retry still lands on the intended page —
+  // and keep the guest-claim context line on the login page (lib/guestClaim.ts).
+  const intent = next.includes("/auth/claim") ? "&intent=claim" : "";
   return NextResponse.redirect(
-    `${origin}${loginPathFor(next)}?next=${encodeURIComponent(next)}&error=exchange_failed`,
+    `${origin}${loginPathFor(next)}?next=${encodeURIComponent(next)}&error=exchange_failed${intent}`,
   );
 }

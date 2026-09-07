@@ -50,7 +50,21 @@
     "rateLimitError": "Too many requests in a short time. Wait a few minutes and try again.",
     "signInWithGoogle": "Continue with Google",
     "or": "or",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "claimIntro": "Create your account or sign in to save your cupping results. You'll be taken back to your results afterwards.",
+    "claim": {
+      "title": "Link your results",
+      "body": "Link “{name}”'s participation ({sessions, plural, =1 {1 cupping session} other {# cupping sessions}}) to the account {email}?",
+      "note": "The evaluations and history from that guest participation will move to this account. If you don't recognise that name, cancel.",
+      "confirm": "Link to my account",
+      "confirming": "Linking…",
+      "cancel": "Cancel",
+      "errorTitle": "We couldn't link your results",
+      "errorInvalid": "This link isn't valid. If the guest session is still open on the device where you cupped, go back to its results and press “Create account & save” again; if you already signed in there, that guest participation can no longer be linked. Your account works normally.",
+      "errorExpired": "This link expired (it lasts 7 days). If the guest session is still open on the device where you cupped, go back to its results and press “Create account & save” again. Your account works normally.",
+      "errorAlready": "These results were already linked to an account, or the guest participation no longer exists.",
+      "continue": "Go to my account"
+    }
   },
   "dashboard": {
     "title": "Your cupping studio",
@@ -409,7 +423,7 @@
     "guestJoinButton": "Join the tasting",
     "guestJoining": "Joining…",
     "orSignIn": "or sign in with your email",
-    "guestDataNotice": "As a guest, your access is tied to this browser: clearing browsing data or switching devices means losing your progress. When you view your results you'll be able to save them with your email.",
+    "guestDataNotice": "As a guest, your access is tied to this browser: clearing browsing data or switching devices means losing your progress. When you view your results you'll be able to save them by creating your account.",
     "guestOfflineNotice": "You need a connection to join; once in, you can cup offline.",
     "guestError": "Couldn't join as guest. Try with your email."
   },
@@ -441,21 +455,12 @@
     "sdAria": "Standard deviation across cuppers — lower means more consensus",
     "guestCta": {
       "title": "Save your results",
-      "body": "You're participating as a guest: your access lives only in this browser and is lost if you clear browsing data or switch devices. Enter your email and we'll send you a link to keep your results in a free account.",
-      "emailLabel": "Email",
-      "emailPlaceholder": "you@email.com",
-      "submit": "Send link",
-      "sending": "Sending…",
-      "pendingTitle": "Check your inbox",
-      "pendingBody": "We sent a confirmation link to {email}. Open it to link your results to your account.",
-      "changeEmail": "Use another email",
+      "body": "You're participating as a guest: your access lives only in this browser and is lost if you clear browsing data or switch devices. Create your free account (or sign in if you already have one) and we'll link these results to it.",
+      "cta": "Create account & save",
+      "ctaLoading": "One moment…",
       "dismiss": "Not now",
       "offline": "Offline: you can save your results once you're back online.",
-      "errorGeneric": "We couldn't send the link. Please try again.",
-      "errorRateLimit": "We just sent a link recently. Wait a few minutes and try again.",
-      "errorEmailTaken": "That email already has a Cata Café account.",
-      "loginInstead": "Sign in with that email",
-      "loginLosesData": "signing in to another account won't transfer this guest participation's results."
+      "error": "We couldn't start the process. Please try again."
     },
     "dashboard": {
       "statSamples": "Samples evaluated",

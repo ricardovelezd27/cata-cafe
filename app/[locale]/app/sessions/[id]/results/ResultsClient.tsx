@@ -136,9 +136,9 @@ export function ResultsClient({
   // instead of the anonymous group core.
   isSoloDescriptors?: boolean;
   // Non-null only when the viewer is an anonymous guest: the "save your
-  // results" conversion banner (email capture). pendingEmail carries
-  // user.new_email when a verification is already in flight.
-  guestSave?: { pendingEmail: string | null; t: GuestSaveCtaTranslations } | null;
+  // results" banner that sends them through the normal login flow with a
+  // claim token (see lib/guestClaim.ts).
+  guestSave?: GuestSaveCtaTranslations | null;
   translations: {
     title: string;
     backToCupping: string;
@@ -476,12 +476,7 @@ export function ResultsClient({
         </div>
       )}
       {guestSave && !isAdminViewer && (
-        <GuestSaveCta
-          sessionId={session.id}
-          locale={locale}
-          pendingEmail={guestSave.pendingEmail}
-          translations={guestSave.t}
-        />
+        <GuestSaveCta sessionId={session.id} locale={locale} translations={guestSave} />
       )}
       {effectiveTab === "descriptores" && canViewDescriptors ? (
         <div className="p-4 lg:p-6">

@@ -133,7 +133,7 @@ The app uses **magic link authentication** — no passwords.
 4. Your profile is created on first login. You can update your display name and preferred language from the **Profile** page.
 5. On your **first login**, a short onboarding welcome captures your role (Q-grader, barista, roaster, producer, trader, or enthusiast) and country, then routes you to a first action — creating a session or adding a coffee.
 
-> **Invited to a group session?** Open the invite link directly — no account required. If you are not logged in, the join page offers **Continuar como invitado** (just a display name, no email or password) alongside an optional sign-in link for returning users. Guests can keep their results later by adding an email from the results page.
+> **Invited to a group session?** Open the invite link directly — no account required. If you are not logged in, the join page offers **Continuar como invitado** (just a display name, no email or password) alongside an optional sign-in link for returning users. Guests can keep their results later by creating an account from the results page (magic link or Google — the guest's tasting data is linked to the new or existing account).
 
 > **Cupping offline?** The evaluation interface keeps working without a connection — an offline banner appears and your scores are saved locally. When you reconnect, drafts sync automatically. If an evaluation was already submitted from another device while you were offline, a conflict dialog lets you choose what to keep.
 
@@ -253,7 +253,7 @@ Participants follow the standard cupping flow but have a restricted view — no 
 
 1. Open the invite link shared by the session leader.
 2. If not logged in, the join page offers **Continuar como invitado** — enter just a display name (no email or password) — or an optional sign-in link for returning users.
-3. Click **Unirse a la sesión** — you are added as a participant and redirected to the cupping interface. Guests can keep their results later by adding an email from the results page.
+3. Click **Unirse a la sesión** — you are added as a participant and redirected to the cupping interface. Guests can keep their results later by creating an account from the results page (magic link or Google — the guest's tasting data is linked to the new or existing account).
 
 > You can only join once. Reopening the link after joining takes you directly to the cupping page.
 

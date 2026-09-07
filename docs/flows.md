@@ -67,13 +67,17 @@ stateDiagram-v2
 name (`GuestJoinForm` → `supabase.auth.signInAnonymously()` →
 `completeGuestOnboarding` → `joinViaToken`). Their evaluations belong to an
 anonymous auth user (NULL email). On the **results** page an anonymous viewer
-sees a dismissible "Guarda tus resultados" banner (`GuestSaveCta`): submitting
-an email calls `supabase.auth.updateUser({ email })`, which converts the
-anonymous account **in place** — same user id, evaluations and participations
-kept — and sends a verification link (double opt-in) through the customized
-"Change Email Address" template → `/auth/callback` (`type=email_change`) → back
-to results, where `is_anonymous` is false and the banner no longer renders.
-Never gate *joining* on an email — valor antes que fricción (see PRODUCT.md).
+sees a dismissible "Guarda tus resultados" banner (`GuestSaveCta`). It reuses
+the **normal account-creation flow** rather than inventing one: `startGuestClaim`
+mints a signed 7-day claim token for the anonymous id and sends the guest to
+`/auth/login?next=/auth/claim?token=…` (magic link or Google — the same
+double-opt-in every account gets). After sign-in, `/auth/claim` shows a
+confirmation card naming the guest participation (never merges on a GET);
+confirming runs `mergeGuestData` (`lib/guestClaim.ts`) which moves every row
+the anonymous user owns — evaluations, participation, coffee history, created
+sessions… — onto the signed-in account (**new or already existing**), deletes
+the anonymous user, and returns to the results page. Never gate *joining* on an
+email — valor antes que fricción (see PRODUCT.md).
 
 ```mermaid
 sequenceDiagram
@@ -81,6 +85,8 @@ sequenceDiagram
     participant J as /join/[token]
     participant A as Supabase Auth
     participant R as /results
+    participant L as /auth/login
+    participant C as /auth/claim
 
     P->>J: scan QR — name only
     J->>A: signInAnonymously (display_name)
@@ -88,10 +94,14 @@ sequenceDiagram
     J->>P: → waiting / cup → evaluate
     P->>R: view results
     R->>P: GuestSaveCta banner (dismissible)
-    P->>A: updateUser({ email }) — same user id
-    A->>P: verification email (email_change template)
-    P->>A: opens link → /auth/callback verifyOtp
-    A-->>R: is_anonymous = false — banner gone,\naccount recoverable via magic link
+    P->>R: "Crear cuenta y guardar" → startGuestClaim mints token
+    R->>L: next=/auth/claim?token=…&back=/results
+    L->>A: magic link or Google (normal sign-up / sign-in)
+    A-->>C: /auth/callback → next → signed in as account X
+    C->>P: confirmation card — "¿Vincular «Pepe» (1 sesión) a X?"
+    P->>C: confirm (server action POST)
+    C->>C: mergeGuestData(anonymous → X), delete anonymous user
+    C-->>R: back to results as X — banner gone
 ```
 
 ### Where a session link takes you (`lib/sessionRouting.ts`)

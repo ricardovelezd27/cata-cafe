@@ -6,10 +6,10 @@ export default async function LoginPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ next?: string; email?: string }>;
+  searchParams: Promise<{ next?: string; email?: string; intent?: string }>;
 }) {
   const { locale } = await params;
-  const { next, email } = await searchParams;
+  const { next, email, intent } = await searchParams;
   setRequestLocale(locale);
   const t = await getTranslations("auth");
 
@@ -17,6 +17,13 @@ export default async function LoginPage({
     <main className="flex flex-1 items-center justify-center px-6 py-16">
       <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-card p-8 space-y-5">
         <h1 className="text-3xl text-green-dark font-serif font-semibold">{t("loginTitle")}</h1>
+        {/* Guest arriving from the results-page "save your results" banner:
+            same login flow, one line of context (see lib/guestClaim.ts). */}
+        {intent === "claim" && (
+          <p role="status" className="text-sm text-on-surface-variant">
+            {t("claimIntro")}
+          </p>
+        )}
         <LoginForm
           emailLabel={t("email")}
           sendLabel={t("sendLink")}
