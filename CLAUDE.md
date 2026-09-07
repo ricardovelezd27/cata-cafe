@@ -427,6 +427,7 @@ Changes that Prisma migrate does NOT handle must be applied manually via the **S
 - `ALTER TABLE ... REPLICA IDENTITY FULL`
 - Enable **"Allow anonymous sign-ins"** (Dashboard → Authentication → Sign In / Up) — required for the guest QR-join flow (`supabase.auth.signInAnonymously()` in `components/join/GuestJoinForm.tsx`)
 - Apply the PHASE 13 `handle_new_user()` redefinition in `prisma/sql/rls_and_triggers.sql` **before** enabling anonymous sign-ins above — otherwise an anonymous user's NULL email hard-fails the profile insert
+- Customize the **"Change Email Address" email template** (Dashboard → Authentication → Email Templates) to the token_hash format — link to `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email_change&next={{ .RedirectTo }}` — same convention as the customized Magic Link template. **Required by the guest → registered conversion banner** (`components/results/GuestSaveCta.tsx`, calls `supabase.auth.updateUser({ email })`); without it the verification link never reaches `/auth/callback`. Also confirm the "Secure email change" toggle behaves as single-confirmation for anonymous users (they have no old address to confirm from).
 
 These are all collected in `prisma/sql/rls_and_triggers.sql`. Append new blocks to that file and apply the new block manually each time.
 

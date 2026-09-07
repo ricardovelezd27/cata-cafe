@@ -20,6 +20,7 @@ import {
   type SampleDetailDialogTranslations,
   type SampleDetailParticipant,
 } from "@/components/results/SampleDetailDialog";
+import { GuestSaveCta, type GuestSaveCtaTranslations } from "@/components/results/GuestSaveCta";
 import {
   EditSampleMetadataForm,
   type SampleMetadataFormData,
@@ -90,6 +91,7 @@ export function ResultsClient({
   myAlignment,
   participation,
   isSoloDescriptors,
+  guestSave = null,
   translations,
 }: {
   locale: string;
@@ -131,6 +133,10 @@ export function ResultsClient({
   // the Resumen highlights card) feed from the current user's own data
   // instead of the anonymous group core.
   isSoloDescriptors?: boolean;
+  // Non-null only when the viewer is an anonymous guest: the "save your
+  // results" conversion banner (email capture). pendingEmail carries
+  // user.new_email when a verification is already in flight.
+  guestSave?: { pendingEmail: string | null; t: GuestSaveCtaTranslations } | null;
   translations: {
     title: string;
     backToCupping: string;
@@ -441,6 +447,14 @@ export function ResultsClient({
         >
           {partialSyncNotice}
         </div>
+      )}
+      {guestSave && !isAdminViewer && (
+        <GuestSaveCta
+          sessionId={session.id}
+          locale={locale}
+          pendingEmail={guestSave.pendingEmail}
+          translations={guestSave.t}
+        />
       )}
       {effectiveTab === "descriptores" && canViewDescriptors ? (
         <div className="p-4 lg:p-6">

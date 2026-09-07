@@ -409,7 +409,7 @@
     "guestJoining": "Entrando…",
     "orSignIn": "o inicia sesión con tu correo",
     "guestOfflineNotice": "Necesitas conexión para unirte; una vez dentro puedes catar sin internet.",
-    "guestDataNotice": "Como invitado, tu acceso queda ligado a este navegador: si borras los datos de navegación o cambias de dispositivo, perderás tu avance. Inicia sesión con tu correo para conservarlo.",
+    "guestDataNotice": "Como invitado, tu acceso queda ligado a este navegador: si borras los datos de navegación o cambias de dispositivo, perderás tu avance. Al ver tus resultados podrás guardarlos con tu correo.",
     "guestError": "No se pudo entrar como invitado. Intenta con tu correo."
   },
   "results": {
@@ -437,6 +437,24 @@
     },
     "flavorProfiles": "Perfiles de Sabor",
     "communityPending": "Los resultados grupales aparecerán cuando todos los participantes envíen sus evaluaciones o el maestro cierre la sesión.",
+    "guestCta": {
+      "title": "Guarda tus resultados",
+      "body": "Estás participando como invitado: tu acceso vive solo en este navegador y se pierde al borrar los datos de navegación o cambiar de dispositivo. Ingresa tu correo y te enviaremos un enlace para conservar tus resultados en una cuenta gratuita.",
+      "emailLabel": "Correo electrónico",
+      "emailPlaceholder": "tu@correo.com",
+      "submit": "Enviar enlace",
+      "sending": "Enviando…",
+      "pendingTitle": "Revisa tu correo",
+      "pendingBody": "Te enviamos un enlace de confirmación a {email}. Ábrelo para vincular tus resultados a tu cuenta.",
+      "changeEmail": "Usar otro correo",
+      "dismiss": "Ahora no",
+      "offline": "Sin conexión: podrás guardar tus resultados cuando vuelvas a estar en línea.",
+      "errorGeneric": "No pudimos enviar el enlace. Inténtalo de nuevo.",
+      "errorRateLimit": "Ya pedimos un enlace hace poco. Espera unos minutos e inténtalo de nuevo.",
+      "errorEmailTaken": "Ese correo ya tiene una cuenta en Cata Café.",
+      "loginInstead": "Iniciar sesión con ese correo",
+      "loginLosesData": "al iniciar sesión con otra cuenta, los resultados de esta participación como invitado no se transfieren."
+    },
     "dashboard": {
       "statSamples": "Muestras evaluadas",
       "statParticipation": "Participación",

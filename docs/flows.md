@@ -61,6 +61,39 @@ stateDiagram-v2
     closed --> [*]
 ```
 
+### Guest join & conversion (email capture)
+
+`/join/[token]` requires no account: a walk-up participant enters only a display
+name (`GuestJoinForm` → `supabase.auth.signInAnonymously()` →
+`completeGuestOnboarding` → `joinViaToken`). Their evaluations belong to an
+anonymous auth user (NULL email). On the **results** page an anonymous viewer
+sees a dismissible "Guarda tus resultados" banner (`GuestSaveCta`): submitting
+an email calls `supabase.auth.updateUser({ email })`, which converts the
+anonymous account **in place** — same user id, evaluations and participations
+kept — and sends a verification link (double opt-in) through the customized
+"Change Email Address" template → `/auth/callback` (`type=email_change`) → back
+to results, where `is_anonymous` is false and the banner no longer renders.
+Never gate *joining* on an email — value before friction (see PRODUCT.md).
+
+```mermaid
+sequenceDiagram
+    actor P as Walk-up participant
+    participant J as /join/[token]
+    participant A as Supabase Auth
+    participant R as /results
+
+    P->>J: scan QR — name only
+    J->>A: signInAnonymously (display_name)
+    A-->>J: anonymous user (NULL email)
+    J->>P: → waiting / cup → evaluate
+    P->>R: view results
+    R->>P: GuestSaveCta banner (dismissible)
+    P->>A: updateUser({ email }) — same user id
+    A->>P: verification email (email_change template)
+    P->>A: opens link → /auth/callback verifyOtp
+    A-->>R: is_anonymous = false — banner gone,\naccount recoverable via magic link
+```
+
 ### Where a session link takes you (`lib/sessionRouting.ts`)
 
 ```mermaid

@@ -360,6 +360,7 @@ export default async function ResultsPage({
   const tc = await getTranslations("coffee");
   const ta = await getTranslations("actions");
   const tCommon = await getTranslations("common");
+  const tGuestCta = await getTranslations("results.guestCta");
 
   // Group results must not silently average incomplete data. When fewer cuppers
   // have submitted (synced) than the participant roster, surface how many are
@@ -486,6 +487,33 @@ export default async function ResultsPage({
       myAlignment={myAlignment}
       participation={participation}
       isSoloDescriptors={isSoloDescriptors}
+      guestSave={
+        user.is_anonymous
+          ? {
+              // A conversion already awaiting verification survives reloads.
+              pendingEmail: user.new_email ?? null,
+              t: {
+                title: tGuestCta("title"),
+                body: tGuestCta("body"),
+                emailLabel: tGuestCta("emailLabel"),
+                emailPlaceholder: tGuestCta("emailPlaceholder"),
+                submit: tGuestCta("submit"),
+                sending: tGuestCta("sending"),
+                pendingTitle: tGuestCta("pendingTitle"),
+                // Template — the live email is substituted client-side.
+                pendingBody: tGuestCta("pendingBody", { email: "{email}" }),
+                changeEmail: tGuestCta("changeEmail"),
+                dismiss: tGuestCta("dismiss"),
+                offline: tGuestCta("offline"),
+                errorGeneric: tGuestCta("errorGeneric"),
+                errorEmailTaken: tGuestCta("errorEmailTaken"),
+                errorRateLimit: tGuestCta("errorRateLimit"),
+                loginInstead: tGuestCta("loginInstead"),
+                loginLosesData: tGuestCta("loginLosesData"),
+              },
+            }
+          : null
+      }
       session={{
         id: session.id,
         name: session.name,

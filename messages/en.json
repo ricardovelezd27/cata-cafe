@@ -408,7 +408,7 @@
     "guestJoinButton": "Join the tasting",
     "guestJoining": "Joining…",
     "orSignIn": "or sign in with your email",
-    "guestDataNotice": "As a guest, your access is tied to this browser: clearing browsing data or switching devices means losing your progress. Sign in with your email to keep it.",
+    "guestDataNotice": "As a guest, your access is tied to this browser: clearing browsing data or switching devices means losing your progress. When you view your results you'll be able to save them with your email.",
     "guestOfflineNotice": "You need a connection to join; once in, you can cup offline.",
     "guestError": "Couldn't join as guest. Try with your email."
   },
@@ -437,6 +437,24 @@
     },
     "flavorProfiles": "Flavor Profiles",
     "communityPending": "Group results will appear once all participants submit their evaluations or the session master closes the session.",
+    "guestCta": {
+      "title": "Save your results",
+      "body": "You're participating as a guest: your access lives only in this browser and is lost if you clear browsing data or switch devices. Enter your email and we'll send you a link to keep your results in a free account.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@email.com",
+      "submit": "Send link",
+      "sending": "Sending…",
+      "pendingTitle": "Check your inbox",
+      "pendingBody": "We sent a confirmation link to {email}. Open it to link your results to your account.",
+      "changeEmail": "Use another email",
+      "dismiss": "Not now",
+      "offline": "Offline: you can save your results once you're back online.",
+      "errorGeneric": "We couldn't send the link. Please try again.",
+      "errorRateLimit": "We just sent a link recently. Wait a few minutes and try again.",
+      "errorEmailTaken": "That email already has a Cata Café account.",
+      "loginInstead": "Sign in with that email",
+      "loginLosesData": "signing in to another account won't transfer this guest participation's results."
+    },
     "dashboard": {
       "statSamples": "Samples evaluated",
       "statParticipation": "Participation",
