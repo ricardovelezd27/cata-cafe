@@ -119,6 +119,7 @@
     "sampleCoffee": "Café correspondiente",
     "editSample": "Editar muestra",
     "editSampleError": "No se pudo guardar. Inténtalo de nuevo.",
+    "editSampleNotOwner": "Este café pertenece a otro catador: se guardó la etiqueta, pero no los datos del café.",
     "samples": "Cafés a evaluar",
     "samplesHelper": "Añade un café por entrada. Cada café se evaluará como una muestra independiente.",
     "addSample": "Agregar muestra",
@@ -149,7 +150,7 @@
       "errors": {
         "no_samples": "Agrega al menos una muestra para iniciar la sesión.",
         "no_coffees": "Agrega al menos un café para iniciar la sesión.",
-        "missing_coffee_fields": "Completa los datos obligatorios de cada café: nombre, variedad, país, altitud y nivel de tueste.",
+        "missing_coffee_fields": "Ponle un nombre a cada café.",
         "invalid_altitude": "La altitud debe ser un número en msnm (por ejemplo 1800).",
         "sample_without_coffee": "Cada muestra debe estar vinculada a un café.",
         "generic": "No se pudo crear la sesión. Inténtalo de nuevo.",
@@ -511,6 +512,8 @@
       "viewingAs": "Viendo evaluación de",
       "myEvaluation": "Mi evaluación",
       "editSample": "Editar muestra",
+      "editExtrinsic": "Editar datos de origen",
+      "extrinsicSaved": "Datos de origen guardados",
       "close": "Cerrar"
     },
     "matrix": {
@@ -629,6 +632,7 @@
     "list": "Cafés",
     "registered": "{count} cafés registrados",
     "searchPlaceholder": "Buscar por nombre, origen...",
+    "codeLabel": "Código",
     "colName": "Nombre",
     "colOrigin": "Origen",
     "colProcess": "Proceso",
@@ -693,7 +697,6 @@
     "saveChanges": "Guardar cambios",
     "savingChanges": "Guardando…",
     "updateError": "No se pudo guardar el café. Inténtalo de nuevo.",
-    "roastRequired": "Selecciona el nivel de tueste.",
     "filterProcess": "Proceso",
     "filterCountry": "Origen",
     "filterOwnership": "Propiedad",
@@ -742,7 +745,7 @@
     "picker": {
       "useExisting": "Usar café existente",
       "title": "Elegir café",
-      "searchPlaceholder": "Buscar por nombre, origen, variedad…",
+      "searchPlaceholder": "Buscar por nombre, origen, variedad o código…",
       "mine": "Mío",
       "shared": "Compartido",
       "public": "Público",

@@ -4,10 +4,12 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { Coffee as CoffeeIcon } from "lucide-react";
 import { DataTable, type Column, type Facet, Badge, ScorePill, EmptyState } from "@/components/ui";
+import { formatCoffeeCode } from "@/lib/coffeeCode";
 
 export type CoffeeRow = {
   id: string;
   name: string;
+  code: string | null;
   country: string | null;
   region: string | null;
   variety: string | null;
@@ -146,6 +148,11 @@ export default function CoffeesTable({ coffees, locale, translations: t, isAdmin
                 <Badge tone="accent">{t.sharedWithMe}</Badge>
               )}
             </span>
+            {row.code && (
+              <span className="block font-mono text-[11px] text-on-surface-variant">
+                {formatCoffeeCode(row.code)}
+              </span>
+            )}
             {row.ownerName && (
               <span className="block text-xs text-on-surface-variant">
                 {t.adminOwnerPrefix} {row.ownerName}
@@ -266,7 +273,14 @@ export default function CoffeesTable({ coffees, locale, translations: t, isAdmin
       rows={coffees}
       rowKey={(row) => row.id}
       columns={columns}
-      searchText={(row) => [row.name, row.country, row.variety, row.region]}
+      searchText={(row) => [
+        row.name,
+        row.country,
+        row.variety,
+        row.region,
+        row.code,
+        formatCoffeeCode(row.code),
+      ]}
       facets={facets}
       getRowHref={(row) => `/${locale}/app/coffees/${row.id}`}
       renderMobileCard={(row) => {
@@ -290,6 +304,11 @@ export default function CoffeesTable({ coffees, locale, translations: t, isAdmin
               </span>
               <ProcessBadge type={row.processType} />
             </div>
+            {row.code && (
+              <div className="font-mono text-[11px] text-on-surface-variant">
+                {formatCoffeeCode(row.code)}
+              </div>
+            )}
             {row.ownerName && (
               <div className="text-xs text-on-surface-variant">
                 {t.adminOwnerPrefix} {row.ownerName}

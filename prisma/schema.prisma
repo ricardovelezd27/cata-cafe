@@ -42,6 +42,12 @@ model Profile {
 
 model Coffee {
   id                 String    @id @default(cuid())
+  // Short human-shareable code (6 chars from A-Z/2-9 minus lookalikes, stored
+  // bare e.g. "K7M3FP", displayed "K7M-3FP") — the external identifier
+  // roasters quote to each other. Generated via lib/coffeeCode.ts at every
+  // create path; nullable until the backfill script stamps legacy rows
+  // (scripts/backfill-coffee-codes.ts).
+  code               String?   @unique
   name               String
   createdBy          String
   creator            Profile   @relation(fields: [createdBy], references: [id])

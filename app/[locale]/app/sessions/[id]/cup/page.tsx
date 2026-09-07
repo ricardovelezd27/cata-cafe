@@ -169,6 +169,7 @@ export default async function CupPage({
         process: t("actions.process"),
         editSample: t("session.editSample"),
         editSampleError: t("session.editSampleError"),
+        editSampleNotOwner: t("session.editSampleNotOwner"),
         coffeeName: t("session.coffeeName"),
         coffeeCountry: tc("country"),
         coffeeRegion: tc("region"),

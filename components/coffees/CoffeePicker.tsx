@@ -3,10 +3,12 @@
 import { useMemo, useState } from "react";
 import Fuse from "fuse.js";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
+import { formatCoffeeCode, normalizeCoffeeCodeQuery } from "@/lib/coffeeCode";
 
 export type UsableCoffee = {
   id: string;
   name: string;
+  code: string | null;
   producer: string | null;
   variety: string | null;
   altitude: string | null;
@@ -54,8 +56,20 @@ export function CoffeePicker({ open, onOpenChange, coffees, onSelect, translatio
   );
 
   const trimmed = query.trim();
-  const results =
+  // Code lookup: a query that normalizes to 3+ code chars ("K7M", "k7m-3f")
+  // is ALSO tried as a code prefix — codes never go through Fuse (a code is
+  // meaningless if "close enough" finds the wrong coffee). Code hits rank
+  // first but never REPLACE the text results: a short word like "cara" can
+  // coincidentally prefix-match a random code, and hijacking the name search
+  // would silently hide the coffees the user actually wants. A real 6-char
+  // code query still effectively wins outright — it has no fuzzy name hits.
+  const codeQ = normalizeCoffeeCodeQuery(trimmed);
+  const codeMatches =
+    codeQ.length >= 3 ? coffees.filter((c) => c.code?.startsWith(codeQ)) : [];
+  const textResults =
     trimmed.length < 2 ? coffees : fuse.search(trimmed).map((r) => r.item);
+  const codeMatchIds = new Set(codeMatches.map((c) => c.id));
+  const results = [...codeMatches, ...textResults.filter((c) => !codeMatchIds.has(c.id))];
 
   const badgeLabel = (origin: UsableCoffee["origin"]) =>
     origin === "mine" ? t.mine : origin === "shared" ? t.shared : t.public;
@@ -93,6 +107,11 @@ export function CoffeePicker({ open, onOpenChange, coffees, onSelect, translatio
                     <span className="font-semibold text-[13px] text-on-surface">
                       {coffee.name}
                     </span>
+                    {coffee.code && (
+                      <span className="shrink-0 font-mono text-[11px] text-on-surface-variant">
+                        {formatCoffeeCode(coffee.code)}
+                      </span>
+                    )}
                     <span
                       className={`ml-auto shrink-0 rounded-pill border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${badgeCls[coffee.origin]}`}
                     >

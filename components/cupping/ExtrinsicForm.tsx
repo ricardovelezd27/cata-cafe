@@ -79,9 +79,14 @@ function PillButton({ active, onClick, children }: PillButtonProps) {
 export function ExtrinsicForm({
   sampleData,
   onChange,
+  hideHeader = false,
 }: {
   sampleData: Data;
   onChange: (d: Data) => void;
+  // The results-page ExtrinsicEditDialog provides its own title and exists
+  // precisely when this data DOES apply (post-reveal), so it suppresses the
+  // in-cupping header, beta badge and "no aplica todavía" disclaimer.
+  hideHeader?: boolean;
 }) {
   const d = sampleData;
   const set = (key: string, val: unknown) => onChange({ ...d, [key]: val });
@@ -91,16 +96,20 @@ export function ExtrinsicForm({
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-1">
-        <h2 className="font-display text-lg text-brown-dark">Extrínseco</h2>
-        <BetaBadge />
-      </div>
-      <div className="text-xs text-brown-mid mb-3">
-        No aplica todavía — sección en desarrollo
-      </div>
-      <div className="text-[11px] text-brown-mid mb-4 p-3 bg-cream rounded-sm text-center italic">
-        Fase POST-CATA · Rellenar después de revelar la identidad de las muestras
-      </div>
+      {!hideHeader && (
+        <>
+          <div className="flex items-center gap-2 mb-1">
+            <h2 className="font-display text-lg text-brown-dark">Extrínseco</h2>
+            <BetaBadge />
+          </div>
+          <div className="text-xs text-brown-mid mb-3">
+            No aplica todavía — sección en desarrollo
+          </div>
+          <div className="text-[11px] text-brown-mid mb-4 p-3 bg-cream rounded-sm text-center italic">
+            Fase POST-CATA · Rellenar después de revelar la identidad de las muestras
+          </div>
+        </>
+      )}
 
       <FormSection title="Cultivo" accent>
         <CheckField id="ext_pais" label="País" checked={bool("ext_pais")} onChange={(v) => set("ext_pais", v)} />

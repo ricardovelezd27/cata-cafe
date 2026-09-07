@@ -35,7 +35,6 @@ export type CoffeeFormTranslations = {
   create: string;
   creating: string;
   nameRequired: string;
-  roastRequired: string;
   error: string;
 };
 
@@ -138,10 +137,6 @@ export function CoffeeForm({
       setErrorCode("name_required");
       return;
     }
-    if (!roastLevel.trim()) {
-      setErrorCode("roast_required");
-      return;
-    }
 
     start(async () => {
       const fields = {
@@ -183,11 +178,9 @@ export function CoffeeForm({
   const errorText =
     errorCode === "name_required"
       ? t.nameRequired
-      : errorCode === "roast_required"
-        ? t.roastRequired
-        : errorCode
-          ? t.error
-          : null;
+      : errorCode
+        ? t.error
+        : null;
 
   // Legacy coffees may hold free-text roast values from before the fixed
   // scale — keep the saved value selectable instead of silently dropping it.
@@ -324,12 +317,11 @@ export function CoffeeForm({
             />
           </div>
           <div>
-            <FieldLabel required>{t.roastLevel}</FieldLabel>
+            <FieldLabel>{t.roastLevel}</FieldLabel>
             <select
               className={inputCls + " cursor-pointer"}
               value={roastLevel}
               onChange={(e) => setRoastLevel(e.target.value)}
-              required
             >
               <option value="">—</option>
               {roastOptions.map((r) => (

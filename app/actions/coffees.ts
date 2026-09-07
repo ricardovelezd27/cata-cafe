@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
+import { withCodeRetry } from "@/lib/coffeeCode";
 import {
   isCoffeeVisibility,
   usableCoffeeWhere,
@@ -40,6 +41,7 @@ export async function getCoffeesWithStats(
     select: {
       id: true,
       name: true,
+      code: true,
       country: true,
       region: true,
       variety: true,
@@ -106,32 +108,33 @@ export async function createCoffee(input: {
 
   const name = input.name?.trim();
   if (!name) return { ok: false, error: "name_required" };
-  // Roast level is mandatory on every coffee-creation surface (2026-08-05).
-  if (!input.roastLevel?.trim()) return { ok: false, error: "roast_required" };
   if (!isCoffeeVisibility(input.visibility)) {
     return { ok: false, error: "invalid_visibility" };
   }
 
-  const coffee = await prisma.coffee.create({
-    data: {
-      name,
-      country: input.country?.trim() || null,
-      region: input.region?.trim() || null,
-      farm: input.farm?.trim() || null,
-      producer: input.producer?.trim() || null,
-      species: input.species?.trim() || null,
-      variety: input.variety?.trim() || null,
-      harvestYear: input.harvestYear?.trim() || null,
-      processType: input.processType?.trim() || null,
-      altitude: input.altitude?.trim() || null,
-      roastLevel: input.roastLevel?.trim() || null,
-      certifications: input.certifications ?? [],
-      notes: input.notes?.trim() || null,
-      createdBy: user.id,
-      visibility: input.visibility,
-    },
-    select: { id: true },
-  });
+  const coffee = await withCodeRetry((code) =>
+    prisma.coffee.create({
+      data: {
+        code,
+        name,
+        country: input.country?.trim() || null,
+        region: input.region?.trim() || null,
+        farm: input.farm?.trim() || null,
+        producer: input.producer?.trim() || null,
+        species: input.species?.trim() || null,
+        variety: input.variety?.trim() || null,
+        harvestYear: input.harvestYear?.trim() || null,
+        processType: input.processType?.trim() || null,
+        altitude: input.altitude?.trim() || null,
+        roastLevel: input.roastLevel?.trim() || null,
+        certifications: input.certifications ?? [],
+        notes: input.notes?.trim() || null,
+        createdBy: user.id,
+        visibility: input.visibility,
+      },
+      select: { id: true },
+    }),
+  );
 
   revalidatePath("/es/app/coffees");
   revalidatePath("/en/app/coffees");
@@ -172,7 +175,6 @@ export async function updateCoffee(
 
   const name = input.name?.trim();
   if (!name) return { ok: false, error: "name_required" };
-  if (!input.roastLevel?.trim()) return { ok: false, error: "roast_required" };
 
   await prisma.coffee.update({
     where: { id: coffeeId },
@@ -231,16 +233,21 @@ export async function duplicateCoffee(
   if (!source) throw new Error("not_found_or_forbidden");
 
   const prefix = locale === "en" ? "Copy of" : "Copia de";
-  const copy = await prisma.coffee.create({
-    data: {
-      ...source,
-      name: `${prefix} ${source.name}`.slice(0, 120),
-      createdBy: user.id,
-      visibility: "private",
-      resultsPublished: false,
-    },
-    select: { id: true },
-  });
+  // The copy gets its OWN short code (source.code is deliberately not in the
+  // select above — codes are per-row identifiers, never inherited).
+  const copy = await withCodeRetry((code) =>
+    prisma.coffee.create({
+      data: {
+        ...source,
+        code,
+        name: `${prefix} ${source.name}`.slice(0, 120),
+        createdBy: user.id,
+        visibility: "private",
+        resultsPublished: false,
+      },
+      select: { id: true },
+    }),
+  );
 
   revalidatePath(`/${locale}/app/coffees`);
   return { ok: true, coffeeId: copy.id };
@@ -375,6 +382,7 @@ export async function getUsableCoffees(userId: string) {
     select: {
       id: true,
       name: true,
+      code: true,
       producer: true,
       variety: true,
       altitude: true,

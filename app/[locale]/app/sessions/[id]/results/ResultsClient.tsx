@@ -25,6 +25,7 @@ import {
   EditSampleMetadataForm,
   type SampleMetadataFormData,
 } from "@/components/cupping/EditSampleMetadataForm";
+import { ExtrinsicEditDialog } from "@/components/results/ExtrinsicEditDialog";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { PillTabs, SegmentedControl, InfoHint, Button, ButtonLink } from "@/components/ui";
 import { updateSampleMetadata } from "@/app/actions/sessions";
@@ -177,6 +178,7 @@ export function ResultsClient({
     alignNoData: string;
     editSample: string;
     editSampleError: string;
+    editSampleNotOwner: string;
     sampleLabel: string;
     coffeeName: string;
     coffeeCountry: string;
@@ -236,6 +238,10 @@ export function ResultsClient({
   const [newSubmissions, setNewSubmissions] = useState(0);
   const [, startTransition] = useTransition();
   const [editingSampleId, setEditingSampleId] = useState<string | null>(null);
+  const [editingExtrinsicSampleId, setEditingExtrinsicSampleId] = useState<string | null>(null);
+  // Set after a metadata save when the linked coffee belongs to someone else
+  // — the label still saved, but the coffee record itself was skipped.
+  const [coffeeNotOwnedNotice, setCoffeeNotOwnedNotice] = useState(false);
   // Personal drill-down dialog. participantId is non-null only when the owner
   // opens another catador's evaluation from the CVA matrix.
   const [detail, setDetail] = useState<{ sampleId: string; participantId: string | null } | null>(
@@ -309,6 +315,8 @@ export function ResultsClient({
   };
 
   const editingSample = session.samples.find((s) => s.id === editingSampleId) ?? null;
+  const editingExtrinsicSample =
+    session.samples.find((s) => s.id === editingExtrinsicSampleId) ?? null;
 
   const detailSample = detail ? (session.samples.find((s) => s.id === detail.sampleId) ?? null) : null;
   const detailParticipants: SampleDetailParticipant[] | null =
@@ -316,8 +324,9 @@ export function ResultsClient({
 
   const handleSaveSampleMetadata = async (data: SampleMetadataFormData) => {
     if (!editingSampleId) return;
-    await updateSampleMetadata(editingSampleId, data);
+    const result = await updateSampleMetadata(editingSampleId, data);
     setEditingSampleId(null);
+    setCoffeeNotOwnedNotice(!result.coffeeUpdated);
     router.refresh();
   };
 
@@ -446,6 +455,22 @@ export function ResultsClient({
           className="mx-4 mt-4 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6"
         >
           {partialSyncNotice}
+        </div>
+      )}
+      {coffeeNotOwnedNotice && (
+        <div
+          role="status"
+          className="mx-4 mt-4 flex items-start gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6"
+        >
+          <span className="flex-1">{translations.editSampleNotOwner}</span>
+          <button
+            type="button"
+            onClick={() => setCoffeeNotOwnedNotice(false)}
+            aria-label={translations.detail.close}
+            className="shrink-0 font-semibold hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2"
+          >
+            <span aria-hidden>×</span>
+          </button>
         </div>
       )}
       {guestSave && !isAdminViewer && (
@@ -677,6 +702,16 @@ export function ResultsClient({
                 }
               : undefined
           }
+          onEditExtrinsic={
+            // Blind integrity: origin data is only ever editable once the
+            // sample is revealed, and the admin god-mode view stays read-only.
+            isOwner && detailSample.revealed && !isAdminViewer
+              ? () => {
+                  setDetail(null);
+                  setEditingExtrinsicSampleId(detailSample.id);
+                }
+              : undefined
+          }
           t={
             // Admin view: the "me" slot holds the OWNER's evaluation, so the
             // switcher pill is labeled with the owner's name instead.
@@ -727,6 +762,22 @@ export function ResultsClient({
             }}
           />
         </ResponsiveDialog>
+      )}
+
+      {isOwner && editingExtrinsicSample && (
+        <ExtrinsicEditDialog
+          sampleId={editingExtrinsicSample.id}
+          sampleLabel={editingExtrinsicSample.label}
+          initialData={editingExtrinsicSample.extrinsic}
+          onClose={() => setEditingExtrinsicSampleId(null)}
+          t={{
+            title: translations.detail.editExtrinsic,
+            save: translations.save,
+            saving: translations.saving,
+            cancel: translations.cancel,
+            error: translations.editSampleError,
+          }}
+        />
       )}
     </div>
   );

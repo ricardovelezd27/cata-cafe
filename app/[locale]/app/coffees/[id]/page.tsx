@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { usableCoffeeWhere, type CoffeeVisibility } from "@/lib/coffeeAccess";
 import { computeCoffeeAggregate } from "@/lib/coffeeAggregate";
+import { formatCoffeeCode } from "@/lib/coffeeCode";
 import { FLAVOR_DESC_KEYS } from "@/lib/descriptors";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { StatCard } from "@/components/dashboard/StatCard";
@@ -132,7 +133,14 @@ export default async function CoffeeProfilePage({
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl text-primary-container font-semibold">{coffee.name}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="font-display text-3xl text-primary-container font-semibold">{coffee.name}</h1>
+            {coffee.code && (
+              <span className="rounded-pill border border-outline-variant bg-surface-container px-2.5 py-0.5 font-mono text-xs text-on-surface-variant">
+                {formatCoffeeCode(coffee.code)}
+              </span>
+            )}
+          </div>
           {coffee.variety && (
             <p className="text-sm text-on-surface-variant mt-1">{coffee.variety}</p>
           )}

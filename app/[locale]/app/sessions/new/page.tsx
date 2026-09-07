@@ -156,6 +156,7 @@ export default async function NewSessionPage({
   const usableCoffees: UsableCoffee[] = usableRaw.map((c) => ({
     id: c.id,
     name: c.name,
+    code: c.code,
     producer: c.producer,
     variety: c.variety,
     altitude: c.altitude,

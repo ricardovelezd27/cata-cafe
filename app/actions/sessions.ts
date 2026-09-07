@@ -5,6 +5,11 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import {
+  withCodeRetry,
+  generateUniqueCoffeeCodes,
+  isCoffeeCodeCollision,
+} from "@/lib/coffeeCode";
+import {
   requireSessionOwner,
   requireSessionMember,
   requireSampleMember,
@@ -41,16 +46,12 @@ type SampleInput = {
   coffeeIdx?: number;
 };
 
-// Data-driven platform: a session can't be created without complete basic
-// coffee data (N-series feedback + insights data-quality push). Server-side
-// twin of the form's client validation — actions are public HTTP endpoints.
-const REQUIRED_COFFEE_FIELDS = [
-  "name",
-  "variety",
-  "country",
-  "altitude",
-  "roastLevel",
-] as const;
+// Data-quality gate relaxed 2026-09 per stakeholder decision ("valor antes
+// que fricción") — everything but the name is progressive/fill-later. Kept
+// as a loop over a (now single-element) list so a future field can be added
+// back without restructuring the caller. Server-side twin of the form's
+// client validation — actions are public HTTP endpoints.
+const REQUIRED_COFFEE_FIELDS = ["name"] as const;
 
 function validateSessionInput(
   coffees: CoffeeInput[],
@@ -66,10 +67,13 @@ function validateSessionInput(
     for (const field of REQUIRED_COFFEE_FIELDS) {
       if (!c[field]?.trim()) return "missing_coffee_fields";
     }
-    // Altitude is a plain number (msnm) — same rule as the cups input.
-    const altitude = Number(c.altitude);
-    if (!Number.isFinite(altitude) || altitude <= 0 || altitude > 6000) {
-      return "invalid_altitude";
+    // Altitude is optional now — only validated (plain number, msnm) when the
+    // caller actually supplied one; an empty/missing altitude is valid.
+    if (c.altitude?.trim()) {
+      const altitude = Number(c.altitude);
+      if (!Number.isFinite(altitude) || altitude <= 0 || altitude > 6000) {
+        return "invalid_altitude";
+      }
     }
   }
   for (const s of samples) {
@@ -108,13 +112,26 @@ async function resolveCoffees(
     if (usable.length !== existingIds.length) return "coffee_not_found";
   }
 
+  // Codes are pre-generated OUTSIDE the transaction: a per-create retry
+  // inside a Postgres transaction can never work (the first P2002 aborts the
+  // tx — every later statement fails with 25P02), so on a code collision the
+  // WHOLE batch re-runs with fresh codes instead (bounded attempts; the
+  // rolled-back attempt leaves no partial data). The array-form $transaction
+  // preserves input order for the coffeeIdx mapping and keeps batch speed.
   const toCreate = coffees.filter((c) => !c.existingCoffeeId);
-  const created =
-    toCreate.length > 0
-      ? await prisma.$transaction(
-          toCreate.map((c) =>
+  let created: { id: string }[] = [];
+  if (toCreate.length > 0) {
+    const MAX_BATCH_ATTEMPTS = 5;
+    let lastError: unknown;
+    let done = false;
+    for (let attempt = 0; attempt < MAX_BATCH_ATTEMPTS && !done; attempt++) {
+      const codes = generateUniqueCoffeeCodes(toCreate.length);
+      try {
+        created = await prisma.$transaction(
+          toCreate.map((c, i) =>
             prisma.coffee.create({
               data: {
+                code: codes[i],
                 name: c.name || "Sin nombre",
                 producer: c.producer?.trim() || null,
                 variety: c.variety?.trim() || null,
@@ -134,8 +151,15 @@ async function resolveCoffees(
               select: { id: true },
             }),
           ),
-        )
-      : [];
+        );
+        done = true;
+      } catch (err) {
+        if (!isCoffeeCodeCollision(err)) throw err;
+        lastError = err;
+      }
+    }
+    if (!done) throw lastError;
+  }
 
   let createdIdx = 0;
   return coffees.map((c) =>
@@ -644,23 +668,41 @@ export async function upsertPhysical(input: {
   return { ok: true };
 }
 
+// All fields optional: merge semantics (see updateSampleMetadata below) —
+// a key ABSENT from the input leaves that coffee field untouched, distinct
+// from an explicit "" (clear). The EditSampleMetadataForm caller still
+// submits every key every time (its own type stays fully-required), but the
+// action itself no longer assumes that.
 export type SampleMetadataInput = {
-  label: string;
-  name: string;
-  country: string;
-  region: string;
-  farm: string;
-  producer: string;
-  variety: string;
-  processType: string;
-  altitude: string;
-  roastLevel: string;
+  label?: string;
+  name?: string;
+  country?: string;
+  region?: string;
+  farm?: string;
+  producer?: string;
+  variety?: string;
+  processType?: string;
+  altitude?: string;
+  roastLevel?: string;
 };
+
+// Coffee fields (besides name) where merge semantics apply: absent key ->
+// untouched, present "" -> explicit clear to null, present non-empty -> set.
+const CLEARABLE_COFFEE_FIELDS = [
+  "country",
+  "region",
+  "farm",
+  "producer",
+  "variety",
+  "processType",
+  "altitude",
+  "roastLevel",
+] as const;
 
 export async function updateSampleMetadata(
   sampleId: string,
   input: SampleMetadataInput
-) {
+): Promise<{ ok: true; coffeeUpdated: boolean }> {
   const user = await requireUser();
 
   const sample = await prisma.sessionSample.findUnique({
@@ -676,38 +718,71 @@ export async function updateSampleMetadata(
   if (!sample) throw new Error("not_found");
   if (sample.session.createdBy !== user.id) throw new Error("forbidden");
 
-  const coffeeData = {
-    name: input.name || "Sin nombre",
-    country: input.country || null,
-    region: input.region || null,
-    farm: input.farm || null,
-    producer: input.producer || null,
-    variety: input.variety || null,
-    processType: input.processType || null,
-    altitude: input.altitude || null,
-    roastLevel: input.roastLevel || null,
-  };
+  let coffeeUpdated: boolean;
 
   if (sample.coffeeId) {
     // Samples can point at coffees the session owner merely USES (picked
     // shared/public coffees) — only the coffee's own creator may edit the
     // coffee record itself. For non-owned coffees the label update below
-    // still applies; the coffee edit is silently skipped.
+    // still applies; the coffee edit is silently skipped — surfaced to the
+    // caller via coffeeUpdated: false so the UI can show a notice instead of
+    // pretending the whole save succeeded.
     if (sample.coffee?.createdBy === user.id) {
-      await prisma.coffee.update({
-        where: { id: sample.coffeeId },
-        data: coffeeData,
-      });
+      // Merge, don't overwrite: only keys actually present in the input
+      // touch the coffee row. `undefined` (key absent) leaves the existing
+      // value alone; an explicit "" clears it to null. `name` is exempt from
+      // the clear rule — a blank/absent name never blanks the coffee's name
+      // (also why it's typed `string`, not `string | null`, unlike the rest).
+      const coffeeData: {
+        name?: string;
+      } & Partial<Record<(typeof CLEARABLE_COFFEE_FIELDS)[number], string | null>> = {};
+      if (input.name !== undefined && input.name.trim() !== "") {
+        coffeeData.name = input.name;
+      }
+      for (const field of CLEARABLE_COFFEE_FIELDS) {
+        const value = input[field];
+        if (value !== undefined) {
+          coffeeData[field] = value === "" ? null : value;
+        }
+      }
+      if (Object.keys(coffeeData).length > 0) {
+        await prisma.coffee.update({
+          where: { id: sample.coffeeId },
+          data: coffeeData,
+        });
+      }
+      coffeeUpdated = true;
+    } else {
+      coffeeUpdated = false;
     }
   } else {
-    const coffee = await prisma.coffee.create({
-      data: { ...coffeeData, createdBy: user.id, visibility: "private" },
-      select: { id: true },
-    });
+    // Implicit create: no linked coffee yet, so (unlike the merge path
+    // above) this needs a FULL object — every field not supplied defaults to
+    // null, and a missing/blank name defaults to "Sin nombre".
+    const coffee = await withCodeRetry((code) =>
+      prisma.coffee.create({
+        data: {
+          code,
+          name: input.name?.trim() ? input.name : "Sin nombre",
+          country: input.country || null,
+          region: input.region || null,
+          farm: input.farm || null,
+          producer: input.producer || null,
+          variety: input.variety || null,
+          processType: input.processType || null,
+          altitude: input.altitude || null,
+          roastLevel: input.roastLevel || null,
+          createdBy: user.id,
+          visibility: "private",
+        },
+        select: { id: true },
+      }),
+    );
     await prisma.sessionSample.update({
       where: { id: sampleId },
       data: { coffeeId: coffee.id },
     });
+    coffeeUpdated = true;
   }
 
   await prisma.sessionSample.update({
@@ -719,7 +794,7 @@ export async function updateSampleMetadata(
   revalidatePath(`/app/sessions/${sample.sessionId}/results`);
   revalidatePath(`/app/sessions/${sample.sessionId}/print`);
 
-  return { ok: true as const };
+  return { ok: true as const, coffeeUpdated };
 }
 
 export async function upsertExtrinsic(input: {

@@ -25,6 +25,7 @@ export type SampleDetailDialogTranslations = SampleDetailTranslations & {
   myEvaluation: string;
   viewingAs: string;
   editSample: string;
+  editExtrinsic: string;
   close: string;
 };
 
@@ -53,6 +54,7 @@ export function SampleDetailDialog({
   locale,
   onEdit,
   onEditMetadata,
+  onEditExtrinsic,
   t,
 }: {
   open: boolean;
@@ -69,6 +71,9 @@ export function SampleDetailDialog({
   // Absent in read-only contexts (super-admin god mode) — hides the edit CTA.
   onEdit?: () => void;
   onEditMetadata?: () => void;
+  // Absent unless the sample is revealed (blind integrity — origin data
+  // stays hidden pre-reveal) and the viewer isn't a read-only admin.
+  onEditExtrinsic?: () => void;
   t: SampleDetailDialogTranslations;
 }) {
   const initialViewerId = initialParticipantId ?? "me";
@@ -131,16 +136,31 @@ export function SampleDetailDialog({
           />
         )}
 
-        {isOwner && onEditMetadata && (
-          <Button
-            size="sm"
-            variant="ghost"
-            icon={<Pencil size={13} aria-hidden />}
-            onClick={onEditMetadata}
-            className="w-fit"
-          >
-            {t.editSample}
-          </Button>
+        {isOwner && (onEditMetadata || onEditExtrinsic) && (
+          <div className="flex flex-wrap gap-2">
+            {onEditMetadata && (
+              <Button
+                size="sm"
+                variant="ghost"
+                icon={<Pencil size={13} aria-hidden />}
+                onClick={onEditMetadata}
+                className="w-fit"
+              >
+                {t.editSample}
+              </Button>
+            )}
+            {onEditExtrinsic && (
+              <Button
+                size="sm"
+                variant="ghost"
+                icon={<Pencil size={13} aria-hidden />}
+                onClick={onEditExtrinsic}
+                className="w-fit"
+              >
+                {t.editExtrinsic}
+              </Button>
+            )}
+          </div>
         )}
 
         <SampleDetail

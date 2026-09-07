@@ -422,19 +422,18 @@ export function NewSessionForm({
     };
     for (const c of coffees) {
       if (c.existingCoffeeId) continue;
-      if (
-        !c.name.trim() ||
-        !c.variety.trim() ||
-        !c.country.trim() ||
-        !c.altitude.trim() ||
-        !c.roastLevel.trim()
-      ) {
+      // Data-quality gate relaxed 2026-09 — only the name is required now;
+      // everything else is progressive/fill-later. Mirror of the server-side
+      // rule (REQUIRED_COFFEE_FIELDS in app/actions/sessions.ts).
+      if (!c.name.trim()) {
         return fail(c.id, "missing_coffee_fields");
       }
-      // Altitude is a plain msnm number — mirror of the server-side rule.
-      const altitude = Number(c.altitude);
-      if (!Number.isFinite(altitude) || altitude <= 0 || altitude > 6000) {
-        return fail(c.id, "invalid_altitude");
+      // Altitude is a plain msnm number — only validated when supplied.
+      if (c.altitude.trim()) {
+        const altitude = Number(c.altitude);
+        if (!Number.isFinite(altitude) || altitude <= 0 || altitude > 6000) {
+          return fail(c.id, "invalid_altitude");
+        }
       }
     }
     return true;
@@ -760,7 +759,9 @@ export function NewSessionForm({
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {/* Mandatory fields — always visible */}
+                    {/* Name is the only required field (2026-09); these stay
+                        always-visible (not tucked into "more details") since
+                        they're still the fields people fill in most often. */}
                     <div className="grid grid-cols-2 gap-3">
                       <div className="col-span-2">
                         <FieldLabel required requiredText={t.newForm.required}>
@@ -776,7 +777,7 @@ export function NewSessionForm({
                       </div>
 
                       <div>
-                        <FieldLabel required requiredText={t.newForm.required}>
+                        <FieldLabel optionalText={t.newForm.optionalSuffix}>
                           {t.coffeeCountry}
                         </FieldLabel>
                         <input
@@ -784,25 +785,23 @@ export function NewSessionForm({
                           className={inputCls}
                           value={coffee.country}
                           onChange={(e) => updateCoffee(coffee.id, "country", e.target.value)}
-                          required
                           placeholder={t.coffeeCountry}
                         />
                       </div>
                       <div>
-                        <FieldLabel required requiredText={t.newForm.required}>
+                        <FieldLabel optionalText={t.newForm.optionalSuffix}>
                           {t.coffeeVariety}
                         </FieldLabel>
                         <input
                           className={inputCls}
                           value={coffee.variety}
                           onChange={(e) => updateCoffee(coffee.id, "variety", e.target.value)}
-                          required
                           placeholder={t.coffeeVariety}
                         />
                       </div>
 
                       <div>
-                        <FieldLabel required requiredText={t.newForm.required}>
+                        <FieldLabel optionalText={t.newForm.optionalSuffix}>
                           {t.coffeeAltitude}
                         </FieldLabel>
                         <div className="relative">
@@ -814,7 +813,6 @@ export function NewSessionForm({
                             className={inputCls + " pr-14"}
                             value={coffee.altitude}
                             onChange={(e) => updateCoffee(coffee.id, "altitude", e.target.value)}
-                            required
                             placeholder="1800"
                           />
                           <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-on-surface-variant pointer-events-none">
@@ -823,14 +821,13 @@ export function NewSessionForm({
                         </div>
                       </div>
                       <div>
-                        <FieldLabel required requiredText={t.newForm.required}>
+                        <FieldLabel optionalText={t.newForm.optionalSuffix}>
                           {t.coffeeRoastLevel}
                         </FieldLabel>
                         <select
                           className={inputCls + " cursor-pointer"}
                           value={coffee.roastLevel}
                           onChange={(e) => updateCoffee(coffee.id, "roastLevel", e.target.value)}
-                          required
                         >
                           <option value="">—</option>
                           {ROAST_LEVELS.map((r) => (

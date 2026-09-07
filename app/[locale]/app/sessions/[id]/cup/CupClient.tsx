@@ -155,6 +155,7 @@ export function CupClient({
     process: string;
     editSample: string;
     editSampleError: string;
+    editSampleNotOwner: string;
     coffeeName: string;
     coffeeCountry: string;
     coffeeRegion: string;
@@ -246,6 +247,9 @@ export function CupClient({
     "idle"
   );
   const [editingSample, setEditingSample] = useState(false);
+  // Set after a metadata save when the linked coffee belongs to someone else
+  // — the label still saved, but the coffee record itself was skipped.
+  const [coffeeNotOwnedNotice, setCoffeeNotOwnedNotice] = useState(false);
   const [submittedCount, setSubmittedCount] = useState(initialSubmittedCount);
   const [isGoingToResults, setIsGoingToResults] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
@@ -858,15 +862,22 @@ export function CupClient({
     : [];
 
   const handleSaveSampleMetadata = async (data: SampleMetadataFormData) => {
-    await updateSampleMetadata(current.id, data);
+    const result = await updateSampleMetadata(current.id, data);
     setSamples((prev) =>
       prev.map((s) =>
         s.id === current.id
-          ? { ...s, label: data.label, coffee: { ...data } }
+          ? {
+              ...s,
+              label: data.label,
+              // Only reflect the coffee edit locally when the server actually
+              // applied it — a non-owned coffee's data was silently skipped.
+              coffee: result.coffeeUpdated ? { ...data } : s.coffee,
+            }
           : s
       )
     );
     setEditingSample(false);
+    setCoffeeNotOwnedNotice(!result.coffeeUpdated);
   };
 
   const editSampleButton = isOwner ? (
@@ -1215,6 +1226,23 @@ export function CupClient({
             }}
           />
         </ResponsiveDialog>
+      )}
+      {coffeeNotOwnedNotice && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card border border-secondary/30 bg-secondary-container/20 font-sans text-sm text-on-surface"
+        >
+          <span className="flex-1">{translations.editSampleNotOwner}</span>
+          <button
+            type="button"
+            onClick={() => setCoffeeNotOwnedNotice(false)}
+            aria-label={translations.cancel}
+            className="shrink-0 font-semibold hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2"
+          >
+            <span aria-hidden>×</span>
+          </button>
+        </div>
       )}
       {submitBlocked && !online && (
         <div
