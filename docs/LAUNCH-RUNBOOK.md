@@ -221,3 +221,54 @@ window.
    devtools console with the same digest.
 
 ---
+
+## §5. Post-deploy smoke test (15 minutes, two accounts)
+
+**When:** after §1–§3 are done and the branches are deployed. Use two browsers (or one
+normal + one private window): **A** = organiser account, **B** = a second account you
+control. Expected results are in bold. Stop and paste me the screen + support code if
+any step differs.
+
+1. **Error screens.** Open `https://<domain>/es/esta-pagina-no-existe`.
+   **A Spanish "Página no encontrada" page with "Ir al inicio".** Open `/zz/foo`:
+   **the same page.**
+2. **Login.** In B (private window) go to `/es/auth/login?error=exchange_failed`.
+   **A red notice "El enlace ya no es válido…" above the form, cursor in the email field.**
+   Request a magic link with B's email; **the sent state shows a hint and "Usar otro
+   correo".** Open the link **twice**: the second time **lands on the login page with the
+   notice** (not a blank form).
+3. **Group session.** In A: create a **group** session (live, not async) with two coffees.
+   On step 2, copy the invite link but **do not** press "Iniciar". Go to the session
+   list, open the session. **The master panel shows "Iniciar cata".**
+4. In B: open the invite link, join. **B lands in the waiting room with a "Volver a mis
+   sesiones" link.** In A press "Iniciar cata". **Within a few seconds B is redirected to
+   the cupping screen.**
+5. In A: open the invite link yourself. **You land on the cupping screen; the session
+   does NOT appear twice in your sessions list.**
+6. In B: rate one sample, then turn off wifi/data; change a value. **The indicator turns
+   amber "Guardado en este dispositivo · pendiente de sincronizar".** Go to the sessions
+   list (still offline): **a badge "1 borradores sin sincronizar" shows at the top.**
+   Turn wifi back on: **the badge disappears within ~10 s.** Submit.
+7. In A: press "Cerrar sesión" → **a dialog, not a browser popup**. Confirm. **You land on
+   results; a line "Cata cerrada el …" and "Correos de cierre: …" appear.** Press
+   "Cerrar" again from anywhere (e.g. reload the cupping URL): **it redirects to results;
+   nothing is re-sent.** Check A's and B's inboxes: **exactly one email each with two
+   PDFs.** Open a coffee's detail page: **B's tasting appears in its history** (no manual
+   reveal was needed).
+8. In B: open the cupping URL of the closed session. **Redirected to results, no "Volver
+   a cata" button.**
+9. **Delete.** In A: delete that session. **The dialog lists the two coffees with their
+   owners and says "…evaluaciones de 1 catador…".** Confirm. In B: open **Perfil →
+   Historial**: **the coffees are still listed with a "Sesión eliminada" tag and no link.**
+10. **Cron.** Run the `curl` from §3 step 6: **`{"ok":true,…}`.**
+11. **Guest.** In a private window scan/open a fresh invite link (create another group
+    session first), join with a name only. Then try to open `/es/app/coffees`:
+    **redirected to the sessions list.**
+12. **Sign-out.** In B press "Cerrar sesión"; in the same browser open
+    `/es/app/sessions`: **login page** (never a cached sessions list).
+
+If all twelve pass, launch. If anything fails, roll back the deploy in Vercel
+(**Deployments → previous deployment → ⋯ → Promote to Production**) — the database
+changes are additive and do not need rolling back.
+
+---

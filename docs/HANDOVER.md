@@ -4,7 +4,7 @@
 > from **Next action**. Do not re-plan. The approved plan lives at
 > `~/.claude/plans/i-want-you-to-graceful-wreath.md` (summarised in the WP table below).
 
-- **status:** in-progress
+- **status:** done (code) — manual runbook steps §1–§3 and the §5 smoke test are owed by the user; WP2 flows not yet browser-verified (needs §2)
 - **last updated:** 2026-09-08
 - **worktree:** `C:\projects\cata-cafe\.claude\worktrees\app-cohesion-menu-overhaul-00a088`
 - **base:** `main` @ 172aa0b
@@ -21,7 +21,7 @@
 | WP3b Action contract + feedback + validation (E2–E5, F8) | `claude/launch-wp3b-actions` | done (build green) |
 | WP4 Observability + honest save status | `claude/launch-wp4-observability` | done (build green) |
 | WP5 Deploy hygiene + tests + guest scope | `claude/launch-wp5-deploy` | done (33 unit tests, build green) |
-| Wrap-up docs + plain-language summary | `claude/launch-docs` | in progress |
+| Wrap-up docs + plain-language summary | `claude/launch-docs` | done |
 
 ## Done
 
@@ -36,7 +36,7 @@
 
 ## Next action
 
-Docs PR: docs/CHANGELOG-launch-2026-09.md (plain language), README env table, runbook §5 post-deploy smoke test, HANDOVER status → done. Then the user applies runbooks §1–§3 and I browser-verify WP2 flows against the migrated DB.
+User: run `docs/LAUNCH-RUNBOOK.md` §1 (Supabase SQL), §2 (`npx prisma migrate deploy`), §3 (Vercel env + cron), then merge the six branches in order and run §5. Claude: once §2 is applied, browser-verify the WP2 group flow locally (plan Part E → WP2) before the merge.
 
 ## How to verify the current WP
 

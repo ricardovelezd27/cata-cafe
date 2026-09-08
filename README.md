@@ -435,6 +435,10 @@ EMAIL_FROM="Cata Café <no-reply@yourdomain.com>"
 | `DATABASE_URL` | Supabase Dashboard → Project Settings → Database → Connection pooler (Transaction mode) |
 | `RESEND_API_KEY` | Resend Dashboard → API Keys. Server-only. When unset, `lib/email.ts` degrades gracefully — sending is a no-op instead of throwing. |
 | `EMAIL_FROM` | Optional — overrides the default sender in `lib/email.ts`. Must be an address on a Resend-verified domain. |
+| `DIRECT_URL` | Supabase Dashboard → Project Settings → Database → Connection string → Direct connection. Used only by `prisma migrate` (the transaction pooler cannot run migrations). |
+| `NEXT_PUBLIC_SITE_URL` | Your production origin, no trailing slash. Used in the printed join QR, close/digest emails and canonical URLs. Defaults to `http://localhost:3000` in dev only. |
+| `GUEST_CLAIM_SECRET` | Any random 32+ byte secret. Signs the guest "save my results" links (`lib/guestClaim.ts`). |
+| `CRON_SECRET` | Any random 32+ byte secret. Vercel Cron sends it as `Authorization: Bearer` to `/api/cron/*`. |
 
 ---
 

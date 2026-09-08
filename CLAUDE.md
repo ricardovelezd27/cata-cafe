@@ -442,8 +442,16 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=    # Used by lib/supabase/admin.ts — never expose to client
 DATABASE_URL=                 # Supabase connection pooler URL
-RESEND_API_KEY=               # Server-only. Unset → lib/email.ts sending is a graceful no-op
+DIRECT_URL=                   # Non-pooler connection for `prisma migrate` (prisma.config.ts falls back to DATABASE_URL)
+RESEND_API_KEY=               # Server-only. Unset → lib/email.ts sending is a graceful no-op (dev) / boot failure (prod)
 EMAIL_FROM=                   # Optional — overrides the default sender; must be a Resend-verified domain
+```
+
+**Required in production** (`lib/env.ts`, asserted at boot by `instrumentation.ts` — a missing one fails the deploy instead of shipping localhost links or silently skipped emails): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `NEXT_PUBLIC_SITE_URL`, `GUEST_CLAIM_SECRET`, `CRON_SECRET`, `RESEND_API_KEY`. Setup steps: `docs/LAUNCH-RUNBOOK.md` §3.
+
+```
+GUEST_CLAIM_SECRET=           # HMAC key for guest "save my results" tokens (lib/guestClaim.ts); falls back to the service-role key in dev
+CRON_SECRET=                  # Vercel Cron bearer for /api/cron/insights-digest and /api/cron/close-expired-sessions
 ```
 
 Optional (features degrade gracefully to no-ops when unset):
@@ -457,8 +465,7 @@ GEMINI_MODEL_LITE=            # Model override; default gemini-3.1-flash-lite
 GEMINI_MODEL_STANDARD=        # Model override; default gemini-3.5-flash
 ANALYTICS_AI_ADMIN_EMAILS=    # lib/analytics/access.ts — comma-separated AI-chat admins; unset → super-admin only
 GEMINI_MODEL_PRO=             # Model override for the insights chat; default gemini-3.1-pro-preview (no stable 3.x pro on the API yet)
-CRON_SECRET=                  # Vercel Cron auth for /api/cron/insights-digest (Vercel env)
-NEXT_PUBLIC_SITE_URL=         # Absolute URL used in email links; defaults to localhost
+NEXT_PUBLIC_SITE_URL=         # Absolute URL used in email links + the printed join QR; defaults to localhost in dev, REQUIRED in prod
 DB_POOL_MAX=                  # Per-instance Postgres pool size for the pg driver adapter; default 8
 ```
 
