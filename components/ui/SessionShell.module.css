@@ -110,9 +110,36 @@
   animation: none;
 }
 
+.saveIndicatorPending {
+  background: var(--color-secondary-fixed-dim);
+  animation: none;
+}
+
 @keyframes savePulse {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 1; }
+}
+
+/* Persistent label shown only for the "pending" save state — unlike the bare
+   dot used for saving/saved, this state needs to be legible: it means the
+   cupper's work is sitting in this device only, not on the server yet. */
+.savePendingLabel {
+  position: absolute;
+  top: 22px;
+  right: 14px;
+  z-index: 15;
+  max-width: min(62vw, 280px);
+  padding: 2px 9px;
+  border-radius: 9999px;
+  background: var(--color-secondary-fixed);
+  color: var(--color-on-secondary-fixed);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
 }
 
 .topBar {

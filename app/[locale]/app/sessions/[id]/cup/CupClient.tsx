@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useRef, useTransition, useEffect } from "react";
+import {
+  useState,
+  useRef,
+  useTransition,
+  useEffect,
+  useSyncExternalStore,
+} from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { Coffee, Scale, FileText, BarChart3 } from "lucide-react";
@@ -64,6 +70,8 @@ import {
   setModuleStatus,
   cacheProps,
   loadSession,
+  isOfflineStorageUnavailable,
+  onOfflineStorageUnavailable,
 } from "@/lib/offline/store";
 import type { ModuleKey } from "@/lib/offline/types";
 
@@ -155,6 +163,7 @@ export function CupClient({
     submitting: string;
     submitFailed: string;
     retrySubmit: string;
+    savedLocally: string;
     prev: string;
     extrinsic: string;
     physical: string;
@@ -216,6 +225,9 @@ export function CupClient({
     leaveGuard?: {
       title: string;
       body: string;
+      // Optional for the same rehydration-fallback reason as the rest of
+      // `leaveGuard` — an offline-cached pre-upgrade prop blob won't have it.
+      bodyPending?: string;
       stay: string;
       leave: string;
     };
@@ -230,6 +242,7 @@ export function CupClient({
       conflictBody: string;
       conflictKeep: string;
       conflictReplace: string;
+      bannerStorageUnavailable: string;
     };
   };
   userEmail?: string;
@@ -255,9 +268,14 @@ export function CupClient({
   const [currentStep, setCurrentStep] = useState<CuppingStep>(stepsForFormat[0]);
   const [samples, setSamples] = useState(session.samples);
   const [activeTab, setActiveTab] = useState<CuppingTab>("cupping");
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
-    "idle"
-  );
+  const [saveStatus, setSaveStatus] = useState<
+    "idle" | "saving" | "saved" | "pending"
+  >("idle");
+  // Whether ANY module save is currently sitting only in local (IndexedDB)
+  // storage — flips true on a "pending" flush result, false once a flush
+  // reports "synced" or the reconnect replay (useOfflineSync) finishes.
+  // Drives the leave-guard's alternate copy (see leaveGuardCopy below).
+  const [hasPending, setHasPending] = useState(false);
   const [editingSample, setEditingSample] = useState(false);
   // Set after a metadata save when the linked coffee belongs to someone else
   // — the label still saved, but the coffee record itself was skipped.
@@ -311,6 +329,22 @@ export function CupClient({
   const [submitBlocked, setSubmitBlocked] = useState(false);
   const [submitError, setSubmitError] = useState(false);
   const [leaveGuardOpen, setLeaveGuardOpen] = useState(false);
+  // IndexedDB has proven unreliable (quota, Safari private mode, …) — the
+  // OfflineBanner surfaces this so the cupper knows local drafts aren't safe.
+  const storageUnavailable = useSyncExternalStore(
+    onOfflineStorageUnavailable,
+    isOfflineStorageUnavailable,
+    () => false
+  );
+
+  // A completed reconnect replay clears the "pending" save state even when no
+  // further edit triggers a new flush (e.g. the cupper just waited it out).
+  useEffect(() => {
+    // Mirrors an external hook state (useOfflineSync) into local UI state —
+    // same sanctioned pattern as cup/error.tsx; a single flip, no cascade.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (syncPhase === "synced") setHasPending(false);
+  }, [syncPhase]);
 
   // Independent 500ms debounce for durable local (IndexedDB) writes, separate
   // from the 800ms server debounce so neither blocks the other.
@@ -536,18 +570,23 @@ export function CupClient({
   const labelFor = (sampleId: string) =>
     samples.find((s) => s.id === sampleId)?.label ?? "";
 
+  // Returns "synced" when the server actually accepted the write, "pending"
+  // when the edit only landed in local (IndexedDB) storage — either because
+  // we were offline, or because the server call itself failed. Callers must
+  // not report "saved" to the user on a "pending" result: the data is safe
+  // (durable locally, replayed on reconnect) but NOT yet on the server.
   const flushSave = async (
     sampleId: string,
     key: keyof Sample,
     data: Data
-  ) => {
-    if (!isModuleKey(key)) return;
+  ): Promise<"synced" | "pending"> => {
+    if (!isModuleKey(key)) return "synced";
     const mk = key as ModuleKey;
 
     // Offline → persist locally as pending and stop. Sync-on-reconnect replays.
     if (!onlineRef.current) {
       await writeLocal(sampleId, labelFor(sampleId), mk, data);
-      return;
+      return "pending";
     }
 
     try {
@@ -566,10 +605,12 @@ export function CupClient({
       }
       // Server write landed — clear any local pending flag for this module.
       await setModuleStatus(session.id, userId, sampleId, mk, "synced");
+      return "synced";
     } catch {
       // Network/server failure → fall back to a durable local pending write so
       // the edit survives and is replayed on the next reconnect.
       await writeLocal(sampleId, labelFor(sampleId), mk, data);
+      return "pending";
     }
   };
 
@@ -622,21 +663,35 @@ export function CupClient({
 
   // Fallback mirrors messages.*.cupping.leaveGuard for props rehydrated from a
   // pre-upgrade offline cache (see the prop's comment).
-  const leaveGuardCopy =
-    translations.leaveGuard ??
-    (locale === "en"
+  const leaveGuardFallback =
+    locale === "en"
       ? {
           title: "Leave the tasting?",
           body: "Looks like you navigated back. Your progress is saved, but leaving now will interrupt the evaluation.",
+          bodyPending:
+            "Some of your progress is saved only on this device and hasn't synced yet. If you leave now, it will sync the next time you open this tasting with a connection.",
           stay: "Keep tasting",
           leave: "Leave",
         }
       : {
           title: "¿Salir de la cata?",
           body: "Parece que retrocediste en el navegador. Tu avance está guardado, pero si sales ahora dejarás la evaluación a medias.",
+          bodyPending:
+            "Parte de tu avance está guardado solo en este dispositivo y aún no se ha sincronizado. Si sales ahora, se sincronizará la próxima vez que abras esta cata con conexión.",
           stay: "Seguir catando",
           leave: "Salir",
-        });
+        };
+  const leaveGuardBase = translations.leaveGuard ?? leaveGuardFallback;
+  const leaveGuardCopy = {
+    ...leaveGuardBase,
+    // Some modules are still local-only — swap in the "not synced yet" body
+    // so the cupper understands leaving won't lose data but won't push it
+    // to the server either. Falls back to the built-in copy when a
+    // pre-upgrade rehydrated prop blob lacks the key.
+    body: hasPending
+      ? (leaveGuardBase.bodyPending ?? leaveGuardFallback.bodyPending)
+      : leaveGuardBase.body,
+  };
 
   const handleLeaveConfirm = async () => {
     setLeaveGuardOpen(false);
@@ -664,9 +719,19 @@ export function CupClient({
     setSaveStatus("saving");
     startTransition(async () => {
       try {
-        await flushSave(sampleId, key, data);
-        setSaveStatus("saved");
-        setTimeout(() => setSaveStatus("idle"), 1500);
+        const result = await flushSave(sampleId, key, data);
+        if (result === "pending") {
+          setHasPending(true);
+          // Stays "pending" until a later flush syncs, or the reconnect
+          // replay (useOfflineSync) reports syncPhase === "synced" — never
+          // auto-cleared on a timer the way "saved" is, since the data has
+          // NOT reached the server yet.
+          setSaveStatus("pending");
+        } else {
+          setHasPending(false);
+          setSaveStatus("saved");
+          setTimeout(() => setSaveStatus("idle"), 1500);
+        }
       } catch {
         setSaveStatus("idle");
       }
@@ -1229,12 +1294,14 @@ export function CupClient({
       footer={footer}
       mobileTitle={session.name}
       saveStatus={saveStatus}
+      savePendingLabel={translations.savedLocally}
     >
       <OfflineBanner
         online={online}
         syncPhase={syncPhase}
         onRetry={retrySync}
         translations={translations.offline}
+        storageUnavailable={storageUnavailable}
       />
       {isOwner && editingSample && (
         <ResponsiveDialog

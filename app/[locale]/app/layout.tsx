@@ -7,6 +7,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import TopBar from "@/components/layout/TopBar";
 import BottomNav from "@/components/layout/BottomNav";
 import OnboardingWrapper from "@/components/onboarding/OnboardingWrapper";
+import { PendingDraftsBadge } from "@/components/offline/PendingDraftsBadge";
 import type { NavTranslations } from "@/components/layout/navItems";
 import type { ReactNode } from "react";
 
@@ -39,6 +40,10 @@ export default async function AppLayout({
 
   const tNav = await getTranslations({ locale, namespace: "nav" });
   const tBrand = await getTranslations({ locale, namespace: "brand" });
+  const tOffline = await getTranslations({ locale, namespace: "offline" });
+  // Raw template ({count} is filled in client-side by PendingDraftsBadge) —
+  // t() would error on the "missing" ICU arg, same pattern as offline.conflictBody.
+  const pendingDraftsLabel = tOffline.raw("pendingDrafts") as string;
   const translations: NavTranslations = {
     nav: {
       home: tNav("home"),
@@ -61,6 +66,11 @@ export default async function AppLayout({
       <Sidebar locale={locale} showInsights={showInsights} translations={translations} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <TopBar locale={locale} translations={translations} />
+        <PendingDraftsBadge
+          userId={user.id}
+          locale={locale}
+          label={pendingDraftsLabel}
+        />
         <main className="relative flex-1 overflow-y-auto bg-surface p-4 lg:p-6 pb-20 lg:pb-6">
           {children}
         </main>

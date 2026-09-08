@@ -256,6 +256,7 @@
     "notesPh": "Observaciones adicionales...",
     "submitFailed": "No se pudo enviar la evaluación. Revisa tu conexión e inténtalo de nuevo.",
     "retrySubmit": "Reintentar envío",
+    "savedLocally": "Guardado en este dispositivo · pendiente de sincronizar",
     "noSamplesTitle": "Esta sesión no tiene muestras",
     "noSamplesBody": "Añade al menos una muestra para empezar a catar.",
     "phases": {
@@ -277,6 +278,7 @@
     "leaveGuard": {
       "title": "¿Salir de la cata?",
       "body": "Parece que retrocediste en el navegador. Tu avance está guardado, pero si sales ahora dejarás la evaluación a medias.",
+      "bodyPending": "Parte de tu avance está guardado solo en este dispositivo y aún no se ha sincronizado. Si sales ahora, se sincronizará la próxima vez que abras esta cata con conexión.",
       "stay": "Seguir catando",
       "leave": "Salir"
     },
@@ -823,7 +825,9 @@
     "conflictBody": "Tus resultados de la muestra {sample} ya se enviaron desde otro dispositivo. ¿Quieres reemplazarlos con esta versión?",
     "conflictKeep": "Mantener versión enviada",
     "conflictReplace": "Reemplazar con esta versión",
-    "partialSyncNotice": "Mostrando resultados de {included} de {total} participantes. {pending} aún no han sincronizado."
+    "partialSyncNotice": "Mostrando resultados de {included} de {total} participantes. {pending} aún no han sincronizado.",
+    "bannerStorageUnavailable": "Este navegador no permite guardar borradores sin conexión. Mantén la conexión activa mientras catas.",
+    "pendingDrafts": "{count} borradores sin sincronizar"
   },
   "landing": {
     "meta": {

@@ -189,6 +189,7 @@ export default async function CupPage({
         submitting: t("cupping.submitting"),
         submitFailed: t("cupping.submitFailed"),
         retrySubmit: t("cupping.retrySubmit"),
+        savedLocally: t("cupping.savedLocally"),
         prev: t("cupping.prev"),
         extrinsic: t("session.modules.extrinsic"),
         physical: t("session.modules.physical"),
@@ -263,6 +264,7 @@ export default async function CupPage({
         leaveGuard: {
           title: t("cupping.leaveGuard.title"),
           body: t("cupping.leaveGuard.body"),
+          bodyPending: t("cupping.leaveGuard.bodyPending"),
           stay: t("cupping.leaveGuard.stay"),
           leave: t("cupping.leaveGuard.leave"),
         },
@@ -280,6 +282,7 @@ export default async function CupPage({
           conflictBody: t.raw("offline.conflictBody") as string,
           conflictKeep: t("offline.conflictKeep"),
           conflictReplace: t("offline.conflictReplace"),
+          bannerStorageUnavailable: t("offline.bannerStorageUnavailable"),
         },
       }}
     />

@@ -23,8 +23,12 @@ interface SessionShellProps {
   footer?: ReactNode;
   /** Optional title shown next to hamburger on mobile. */
   mobileTitle?: string;
-  /** Auto-save status — drives the top-right indicator dot. */
-  saveStatus?: "idle" | "saving" | "saved";
+  /** Auto-save status — drives the top-right indicator dot. "pending" means
+   *  the last write only landed in local (IndexedDB) storage — it has not
+   *  reached the server yet. */
+  saveStatus?: "idle" | "saving" | "saved" | "pending";
+  /** Label shown next to the dot only when saveStatus === "pending". */
+  savePendingLabel?: string;
 }
 
 export function SessionShell({
@@ -38,6 +42,7 @@ export function SessionShell({
   footer,
   mobileTitle,
   saveStatus = "idle",
+  savePendingLabel,
 }: SessionShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -77,9 +82,16 @@ export function SessionShell({
       <div className={styles.main}>
         {saveStatus !== "idle" && (
           <div
-            className={`${styles.saveIndicator} ${saveStatus === "saved" ? styles.saveIndicatorSaved : ""}`}
+            className={`${styles.saveIndicator} ${
+              saveStatus === "saved" ? styles.saveIndicatorSaved : ""
+            } ${saveStatus === "pending" ? styles.saveIndicatorPending : ""}`}
             aria-hidden
           />
+        )}
+        {saveStatus === "pending" && savePendingLabel && (
+          <div className={styles.savePendingLabel} role="status" aria-live="polite">
+            {savePendingLabel}
+          </div>
         )}
         {/* Mobile-only header with hamburger */}
         <div className={styles.mobileHeader}>

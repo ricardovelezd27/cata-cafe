@@ -3,7 +3,14 @@
 // IMPORTANT: this module must never be imported by a React Server Component or
 // any server action — localforage touches IndexedDB/window. All access goes
 // through the lazy `instance()` getter which bails out (returns null) during
-// SSR, so accidental server imports degrade to no-ops instead of crashing.
+// SSR, so accidental server imports degrade to a no-op instead of crashing.
+//
+// Every exported function additionally wraps its body in try/catch: any
+// localforage call can reject (Safari private mode, quota exceeded, a user
+// wiping site data mid-session, …). A storage failure must never surface as an
+// unhandled rejection or crash a save — reads degrade to null/[] and writes
+// resolve silently, while `isOfflineStorageUnavailable()` flips true so the UI
+// can warn the cupper that local drafts are not being persisted.
 
 import localforage from "localforage";
 import type {
@@ -30,6 +37,39 @@ function instance(): LocalForage | null {
   return _instance;
 }
 
+// ─── Storage-unavailable flag ────────────────────────────────────────────
+// Flipped true the first time any localforage call throws/rejects. There is
+// no path back to false within a session — once IndexedDB has proven
+// unreliable here (quota, private mode, revoked permission), the safest
+// assumption is that it stays unreliable.
+let _unavailable = false;
+const _listeners = new Set<() => void>();
+
+function markUnavailable(context: string, err: unknown): void {
+  if (!_unavailable) {
+    _unavailable = true;
+    for (const cb of _listeners) cb();
+  }
+  // Logged once per call site is acceptable here — storage errors are rare
+  // and each one is diagnostic (which operation failed, not just "it broke").
+  console.warn(`[offline-store] ${context} failed:`, err);
+}
+
+export function isOfflineStorageUnavailable(): boolean {
+  return _unavailable;
+}
+
+// useSyncExternalStore-friendly subscribe: takes a no-arg notify callback
+// (read the new value back via isOfflineStorageUnavailable) and returns an
+// unsubscribe function. Usage:
+//   useSyncExternalStore(onOfflineStorageUnavailable, isOfflineStorageUnavailable, () => false)
+export function onOfflineStorageUnavailable(cb: () => void): () => void {
+  _listeners.add(cb);
+  return () => {
+    _listeners.delete(cb);
+  };
+}
+
 export function sessionKey(sessionId: string, userId: string): string {
   return `${SESSION_PREFIX}${sessionId}_user_${userId}`;
 }
@@ -46,34 +86,57 @@ export async function loadSession(
 ): Promise<OfflineSessionBlob | null> {
   const lf = instance();
   if (!lf) return null;
-  return (await lf.getItem<OfflineSessionBlob>(sessionKey(sessionId, userId))) ?? null;
+  try {
+    return (await lf.getItem<OfflineSessionBlob>(sessionKey(sessionId, userId))) ?? null;
+  } catch (err) {
+    markUnavailable("loadSession", err);
+    return null;
+  }
 }
 
 export async function loadByKey(key: string): Promise<OfflineSessionBlob | null> {
   const lf = instance();
   if (!lf) return null;
-  return (await lf.getItem<OfflineSessionBlob>(key)) ?? null;
+  try {
+    return (await lf.getItem<OfflineSessionBlob>(key)) ?? null;
+  } catch (err) {
+    markUnavailable("loadByKey", err);
+    return null;
+  }
 }
 
 export async function saveSession(blob: OfflineSessionBlob): Promise<void> {
   const lf = instance();
   if (!lf) return;
-  await lf.setItem(sessionKey(blob.sessionId, blob.userId), blob);
+  try {
+    await lf.setItem(sessionKey(blob.sessionId, blob.userId), blob);
+  } catch (err) {
+    markUnavailable("saveSession", err);
+  }
 }
 
 export async function removeSession(sessionId: string, userId: string): Promise<void> {
   const lf = instance();
   if (!lf) return;
-  await lf.removeItem(sessionKey(sessionId, userId));
+  try {
+    await lf.removeItem(sessionKey(sessionId, userId));
+  } catch (err) {
+    markUnavailable("removeSession", err);
+  }
 }
 
 // All session-blob keys belonging to one user (used to drive sync-on-reconnect).
 export async function listUserKeys(userId: string): Promise<string[]> {
   const lf = instance();
   if (!lf) return [];
-  const keys = await lf.keys();
-  const suffix = `_user_${userId}`;
-  return keys.filter((k) => k.startsWith(SESSION_PREFIX) && k.endsWith(suffix));
+  try {
+    const keys = await lf.keys();
+    const suffix = `_user_${userId}`;
+    return keys.filter((k) => k.startsWith(SESSION_PREFIX) && k.endsWith(suffix));
+  } catch (err) {
+    markUnavailable("listUserKeys", err);
+    return [];
+  }
 }
 
 // Read-modify-write a single module's data into the session blob, stamping it
@@ -89,22 +152,26 @@ export async function mergeModuleData(
 ): Promise<void> {
   const lf = instance();
   if (!lf) return;
-  const now = Date.now();
-  const existing = await loadSession(sessionId, userId);
-  const blob: OfflineSessionBlob = existing ?? {
-    sessionId,
-    userId,
-    updatedAt: now,
-    format: seed.format,
-    cupsPerSample: seed.cupsPerSample,
-    samples: {},
-  };
-  const sample = blob.samples[sampleId] ?? { label: sampleLabel, modules: {} };
-  sample.label = sampleLabel;
-  sample.modules[moduleKey] = { data, syncStatus: "pending", updatedAt: now };
-  blob.samples[sampleId] = sample;
-  blob.updatedAt = now;
-  await lf.setItem(sessionKey(sessionId, userId), blob);
+  try {
+    const now = Date.now();
+    const existing = await loadSession(sessionId, userId);
+    const blob: OfflineSessionBlob = existing ?? {
+      sessionId,
+      userId,
+      updatedAt: now,
+      format: seed.format,
+      cupsPerSample: seed.cupsPerSample,
+      samples: {},
+    };
+    const sample = blob.samples[sampleId] ?? { label: sampleLabel, modules: {} };
+    sample.label = sampleLabel;
+    sample.modules[moduleKey] = { data, syncStatus: "pending", updatedAt: now };
+    blob.samples[sampleId] = sample;
+    blob.updatedAt = now;
+    await lf.setItem(sessionKey(sessionId, userId), blob);
+  } catch (err) {
+    markUnavailable("mergeModuleData", err);
+  }
 }
 
 // Flip a module's syncStatus after a sync attempt resolves.
@@ -117,11 +184,15 @@ export async function setModuleStatus(
 ): Promise<void> {
   const lf = instance();
   if (!lf) return;
-  const blob = await loadSession(sessionId, userId);
-  const mod = blob?.samples[sampleId]?.modules[moduleKey];
-  if (!blob || !mod) return;
-  mod.syncStatus = status;
-  await lf.setItem(sessionKey(sessionId, userId), blob);
+  try {
+    const blob = await loadSession(sessionId, userId);
+    const mod = blob?.samples[sampleId]?.modules[moduleKey];
+    if (!blob || !mod) return;
+    mod.syncStatus = status;
+    await lf.setItem(sessionKey(sessionId, userId), blob);
+  } catch (err) {
+    markUnavailable("setModuleStatus", err);
+  }
 }
 
 // ─── Props cache (enables offline hard-refresh rebuild) ─────────────────────
@@ -133,10 +204,14 @@ export async function cacheProps(
 ): Promise<void> {
   const lf = instance();
   if (!lf) return;
-  await Promise.all([
-    lf.setItem(propsKey(sessionId, userId), props),
-    lf.setItem(LAST_USER_KEY, userId),
-  ]);
+  try {
+    await Promise.all([
+      lf.setItem(propsKey(sessionId, userId), props),
+      lf.setItem(LAST_USER_KEY, userId),
+    ]);
+  } catch (err) {
+    markUnavailable("cacheProps", err);
+  }
 }
 
 export async function loadCachedProps<T>(
@@ -145,11 +220,34 @@ export async function loadCachedProps<T>(
 ): Promise<T | null> {
   const lf = instance();
   if (!lf) return null;
-  return (await lf.getItem<T>(propsKey(sessionId, userId))) ?? null;
+  try {
+    return (await lf.getItem<T>(propsKey(sessionId, userId))) ?? null;
+  } catch (err) {
+    markUnavailable("loadCachedProps", err);
+    return null;
+  }
 }
 
 export async function getLastUser(): Promise<string | null> {
   const lf = instance();
   if (!lf) return null;
-  return (await lf.getItem<string>(LAST_USER_KEY)) ?? null;
+  try {
+    return (await lf.getItem<string>(LAST_USER_KEY)) ?? null;
+  } catch (err) {
+    markUnavailable("getLastUser", err);
+    return null;
+  }
+}
+
+/** Sign-out hook (lib/offline/deviceState.ts): drop the last-user pointer so
+ *  the cup boundary's offline rebuild can never pick up the previous user's
+ *  cached props on a shared device. User-keyed draft blobs are kept. */
+export async function forgetLastUser(): Promise<void> {
+  const lf = instance();
+  if (!lf) return;
+  try {
+    await lf.removeItem(LAST_USER_KEY);
+  } catch (err) {
+    markUnavailable("forgetLastUser", err);
+  }
 }

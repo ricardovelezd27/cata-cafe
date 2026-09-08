@@ -186,3 +186,38 @@ row was detached in the meantime — do not do that without asking.)
    deployment; `unauthorized` means the header value does not match.
 
 ---
+
+## §4. Vercel — finding a production error from a user's "support code"
+
+**When:** any time a user reports an error screen. Every error boundary shows a
+**Código de soporte** (the Next.js error digest). The server writes the same digest to the
+logs as a JSON line (`instrumentation.ts` → `lib/log.ts`), so you can go from the code a
+user pastes you to the actual failure.
+
+**One-time setup (retention):** Vercel keeps runtime logs for a short window on the Hobby
+plan (about 1 hour searchable in the UI) and 1 day on Pro. To keep them longer, open your
+project → **Settings → Log Drains → Add Log Drain** and send them to a free tier of
+Axiom, Better Stack or Logtail (any of them accepts the default JSON format; pick
+**Sources: Function** and **Format: JSON**). Without a drain you must look within that
+window.
+
+**Steps**
+
+1. Open <https://vercel.com/dashboard> → your project → the **Logs** tab (top navigation).
+2. In the search box paste the support code exactly as the user sent it, e.g. `1234567890`.
+   The matching line looks like:
+
+   ```json
+   {"level":"error","ts":"…","where":"request.action","digest":"1234567890","message":"…","routePath":"/[locale]/app/sessions/[id]/results","routeType":"action","method":"POST","locale":"es"}
+   ```
+
+3. `where` tells you what failed: `request.render` (a page), `request.action` (a button /
+   form), `request.route` (an API route such as the PDF), `request.proxy` (middleware).
+   `action.<name>` lines come from `run()` in server actions and carry `sessionId` /
+   `userId` when known.
+4. `message` is the real exception text. Paste the whole line to me and I will trace it.
+5. If nothing matches: the error happened in the browser only (no server line). Ask the
+   user which screen and what they clicked; browser-side failures also print to the
+   devtools console with the same digest.
+
+---

@@ -256,6 +256,7 @@
     "notesPh": "Additional observations...",
     "submitFailed": "Could not submit your evaluation. Check your connection and try again.",
     "retrySubmit": "Retry submit",
+    "savedLocally": "Saved on this device · waiting to sync",
     "noSamplesTitle": "This session has no samples",
     "noSamplesBody": "Add at least one sample to start cupping.",
     "phases": {
@@ -277,6 +278,7 @@
     "leaveGuard": {
       "title": "Leave the tasting?",
       "body": "Looks like you navigated back. Your progress is saved, but leaving now will interrupt the evaluation.",
+      "bodyPending": "Some of your progress is saved only on this device and hasn't synced yet. If you leave now, it will sync the next time you open this tasting with a connection.",
       "stay": "Keep tasting",
       "leave": "Leave"
     },
@@ -823,7 +825,9 @@
     "conflictBody": "Your results for sample {sample} were already submitted from another device. Do you want to replace them with this version?",
     "conflictKeep": "Keep submitted version",
     "conflictReplace": "Replace with this version",
-    "partialSyncNotice": "Showing results for {included} of {total} participants. {pending} have not yet synced."
+    "partialSyncNotice": "Showing results for {included} of {total} participants. {pending} have not yet synced.",
+    "bannerStorageUnavailable": "This browser doesn't allow saving offline drafts. Keep your connection active while cupping.",
+    "pendingDrafts": "{count} drafts not synced"
   },
   "landing": {
     "meta": {
