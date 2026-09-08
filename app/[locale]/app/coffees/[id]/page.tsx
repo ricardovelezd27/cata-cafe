@@ -86,6 +86,8 @@ export default async function CoffeeProfilePage({
       where: { userId: user.id, coffeeId: id },
       orderBy: { tastedAt: "desc" },
       include: {
+        // sessionId/session can be null — a deleted session detaches the row
+        // instead of cascading it away, leaving `snapshot` as the fallback.
         session: { select: { id: true, name: true } },
       },
     }),
@@ -548,12 +550,22 @@ export default async function CoffeeProfilePage({
                 </tr>
               </thead>
               <tbody>
-                {history.map((h, i) => (
+                {history.map((h, i) => {
+                  const snapshot = h.snapshot as { sessionName?: string } | null;
+                  const sessionName = h.session?.name ?? snapshot?.sessionName ?? "—";
+                  return (
                   <tr
                     key={h.id}
                     className={i < history.length - 1 ? "border-b border-outline-variant/50" : ""}
                   >
-                    <td className="px-4 py-2 text-on-surface">{h.session.name}</td>
+                    <td className="px-4 py-2 text-on-surface">
+                      {sessionName}
+                      {!h.session && (
+                        <span className="ml-2 rounded-pill border border-outline-variant bg-surface-container px-1.5 py-0.5 text-[10px] text-on-surface-variant">
+                          {th("sessionDeleted")}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-2 text-right">
                       <ScorePill score={h.individualScore} />
                     </td>
@@ -567,7 +579,8 @@ export default async function CoffeeProfilePage({
                       )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

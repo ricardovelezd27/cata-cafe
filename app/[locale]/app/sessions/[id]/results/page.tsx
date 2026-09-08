@@ -10,6 +10,10 @@ import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
 import { asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { ResultsClient } from "./ResultsClient";
 
+// resendCloseEmails / refreshAggregateScores run from here; give the
+// after() email fan-out room on Vercel.
+export const maxDuration = 120;
+
 export default async function ResultsPage({
   params,
 }: {
@@ -376,6 +380,50 @@ export default async function ResultsPage({
         })
       : null;
 
+  // Owner-only, closed group sessions: per-recipient close-email outcome, so
+  // the owner can see who still needs a manual resend. Skipped entirely when
+  // there are no participants (solo sessions, or a group with none yet).
+  // Formatted server-side (ICU plural needs next-intl, not a client replace).
+  type CloseEmailsSummary = { line: string; showResend: boolean };
+  let closeEmails: CloseEmailsSummary | null = null;
+  if (isOwner && session.isGroup && session.status === "closed" && totalParticipants > 0) {
+    const deliveries = await prisma.closeEmailDelivery.findMany({
+      where: { sessionId: id },
+      select: { userId: true, status: true },
+    });
+    const seenUserIds = new Set(deliveries.map((d) => d.userId));
+    let sent = 0;
+    let noEmail = 0;
+    let failed = 0;
+    for (const d of deliveries) {
+      if (d.status === "sent") sent += 1;
+      else if (d.status === "skipped") noEmail += 1;
+      else if (d.status === "failed") failed += 1;
+    }
+    const pending = session.participants.filter((p) => !seenUserIds.has(p.userId)).length;
+    const parts = [
+      sent > 0 ? tResults("closeEmails.sent", { count: sent }) : null,
+      noEmail > 0 ? tResults("closeEmails.noEmail", { count: noEmail }) : null,
+      failed > 0 ? tResults("closeEmails.failed", { count: failed }) : null,
+      pending > 0 ? tResults("closeEmails.pending", { count: pending }) : null,
+    ].filter((p): p is string => p !== null);
+    closeEmails = {
+      line: `${tResults("closeEmails.label")} ${parts.join(" · ")}`,
+      showResend: failed > 0 || pending > 0,
+    };
+  }
+
+  // Neutral one-line notice for closed group sessions — formatted server-side
+  // since next-intl's {date} placeholder is a required ICU arg.
+  const closedOnLabel =
+    session.isGroup && session.closedAt
+      ? tResults("closedOn", {
+          date: session.closedAt.toLocaleDateString(locale === "es" ? "es-CO" : "en-US", {
+            dateStyle: "medium",
+          }),
+        })
+      : null;
+
   // Block label map (es/en) keyed by block id, for the descriptor subtabs.
   const blockLabels: Record<string, string> = {};
   for (const block of PERCEPTUAL_BLOCKS) {
@@ -474,6 +522,9 @@ export default async function ResultsPage({
       adminOwnerName={isAdminViewer ? (adminTarget?.createdByUser.displayName ?? null) : null}
       isGroup={session.isGroup}
       canViewGroup={canViewGroup}
+      sessionStatus={session.status}
+      closedOnLabel={closedOnLabel}
+      closeEmails={closeEmails}
       currentUserId={user.id}
       participationLabel={participationLabel}
       lastUpdatedLabel={lastUpdatedLabel}
@@ -595,6 +646,10 @@ export default async function ResultsPage({
         viewChart: tResults("views.chart"),
         communityPending: tResults("communityPending"),
         ownerSection: tResults("matrix.ownerSection"),
+        closeEmailsResend: tResults("closeEmails.resend"),
+        closeEmailsResending: tResults("closeEmails.resending"),
+        closeEmailsResent: tResults("closeEmails.resent"),
+        closeEmailsResendError: tResults("closeEmails.resendError"),
         descViewAll: tDesc("viewAll"),
         descOf: tDesc("of"),
         descParticipants: tDesc("participants"),

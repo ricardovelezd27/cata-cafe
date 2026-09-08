@@ -133,13 +133,17 @@ model CuppingSession {
   group         TastingGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
   closesAt      DateTime?
   startedAt     DateTime?
+  // Stamped by the single close routine (lib/closeSession.ts) — owner close,
+  // solo auto-close and the daily cron all go through it. Null while active.
+  closedAt      DateTime?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  samples       SessionSample[]
-  participants  SessionParticipant[]
-  invites       SessionInvite[]
-  coffeeHistory UserCoffeeHistory[]
+  samples              SessionSample[]
+  participants         SessionParticipant[]
+  invites              SessionInvite[]
+  coffeeHistory        UserCoffeeHistory[]
+  closeEmailDeliveries CloseEmailDelivery[]
 
   @@index([createdBy])
   @@index([createdBy, status])
@@ -275,13 +279,22 @@ model UserCoffeeHistory {
   user            Profile        @relation(fields: [userId], references: [id], onDelete: Cascade)
   coffeeId        String
   coffee          Coffee         @relation(fields: [coffeeId], references: [id], onDelete: Cascade)
-  evaluationId    String
-  evaluation      Evaluation     @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
-  sessionId       String
-  session         CuppingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  // A cupper's coffee history OUTLIVES the session it came from: deleting a
+  // session detaches these rows (evaluation/session → NULL, `snapshot` filled
+  // with the cupper's OWN evaluation + session metadata) instead of cascading
+  // them away. See lib/coffeeHistory.ts detachCoffeeHistoryForSession.
+  evaluationId    String?
+  evaluation      Evaluation?    @relation(fields: [evaluationId], references: [id], onDelete: SetNull)
+  sessionId       String?
+  session         CuppingSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
   individualScore Float?
   communityScore  Float?
   tastedAt        DateTime
+  // { v: 1, sessionName, format, date, cupsPerSample, sampleLabel,
+  //   myEvaluation: { descriptive, affective, combined } } — only this
+  // cupper's own data, never other participants'.
+  snapshot        Json?
+  detachedAt      DateTime?
   createdAt       DateTime       @default(now())
 
   @@unique([userId, coffeeId, sessionId])
@@ -289,6 +302,24 @@ model UserCoffeeHistory {
   @@index([coffeeId])
   @@index([sessionId])
   @@map("user_coffee_history")
+}
+
+// One row per (session, participant) close email. Makes sendCloseEmails
+// idempotent: recipients with status "sent" are skipped on any re-run (double
+// click, cron retry, owner "resend"), and the owner can see who got their PDF.
+// status: "sent" | "skipped" (no email on file, e.g. anonymous guest) | "failed"
+model CloseEmailDelivery {
+  sessionId String
+  session   CuppingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId    String
+  status    String
+  attempts  Int            @default(1)
+  lastError String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@id([sessionId, userId])
+  @@map("close_email_deliveries")
 }
 
 model SessionInvite {

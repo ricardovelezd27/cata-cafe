@@ -3,7 +3,12 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
+import { EmptyState, ButtonLink } from "@/components/ui";
 import { CupClient } from "./CupClient";
+
+// Server actions invoked from this page (closeSession → after() email fan-out
+// with one PDF render per participant) inherit this budget on Vercel.
+export const maxDuration = 120;
 
 export default async function CupPage({
   params,
@@ -71,6 +76,11 @@ export default async function CupPage({
     notFound();
   }
 
+  // A closed session's cupping form is final — send everyone to results.
+  if (session.status === "closed") {
+    redirect(`/${locale}/app/sessions/${id}/results`);
+  }
+
   const isOwner = session.createdBy === user.id;
 
   // How many unique participants have submitted at least one evaluation
@@ -93,6 +103,24 @@ export default async function CupPage({
   const tc = await getTranslations("coffee");
   const ta = await getTranslations("actions");
 
+  if (session.samples.length === 0) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-12">
+        <EmptyState
+          title={t("cupping.noSamplesTitle")}
+          body={t("cupping.noSamplesBody")}
+          action={
+            isOwner ? (
+              <ButtonLink href={`/${locale}/app/sessions/${id}/edit`}>
+                {t("session.edit.title")}
+              </ButtonLink>
+            ) : undefined
+          }
+        />
+      </div>
+    );
+  }
+
   return (
     <CupClient
       locale={locale}
@@ -103,6 +131,8 @@ export default async function CupPage({
       userEmail={user.email ?? undefined}
       userCountry={profile?.country ?? undefined}
       sessionStatus={session.status}
+      sessionStartedAt={session.startedAt?.toISOString() ?? null}
+      sessionIsAsync={session.isAsync}
       participantCount={session.participants.length}
       submittedCount={submittedParticipantsResult.length}
       session={{
@@ -184,6 +214,10 @@ export default async function CupPage({
         submittedOf: tg("submittedOf", { count: submittedParticipantsResult.length, total: session.participants.length }),
         closeSession: tg("closeSession"),
         confirmClose: tg("confirmClose"),
+        closeSessionError: tg("closeSessionError"),
+        startSession: tg("startSession"),
+        starting: tg("starting"),
+        startSessionError: tg("startSessionError"),
         masterRole: tg("masterRole"),
         participantRole: tg("participantRole"),
         // Shell (Phase 3)

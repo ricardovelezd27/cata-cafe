@@ -6,6 +6,9 @@
 //
 // All helpers throw Error("not_found_or_forbidden") without distinguishing
 // "doesn't exist" from "not yours" — a probe must not learn which.
+//
+// Every helper also returns the session `status` so callers can run
+// assertSessionWritable() — a closed session is read-only for everyone.
 
 import { prisma } from "@/lib/prisma";
 
@@ -24,6 +27,17 @@ export type SessionAuthRow = {
   status: string;
   startedAt: Date | null;
 };
+
+/** Throws `session_closed` for a closed session. Call it right after the
+ *  requireSessionOwner / requireSessionMember / requireSampleOwner /
+ *  requireSampleMember check in EVERY mutation that writes evaluations,
+ *  samples, physical/extrinsic data or metadata. "closed = the
+ *  session's results ARE its detail view" is only true if nothing can still
+ *  change underneath them (and the aggregate trigger only re-fires on isDraft
+ *  changes, so a post-close edit would silently desync aggregate_scores). */
+export function assertSessionWritable(row: { status: string }): void {
+  if (row.status === "closed") throw new Error("session_closed");
+}
 
 /** The session's creator, or throws. Returns the session auth row so callers
  *  don't re-query for status/isGroup. */
@@ -69,13 +83,16 @@ export async function requireSessionMember(
   };
 }
 
+export type SampleAuthRow = { sessionId: string; status: string };
+
 /** Member access resolved through a sample id; returns the sample's real
- *  sessionId (never trust a client-supplied one alongside a sample id).
- *  Single round-trip — this guards the 800ms-debounced auto-save hot path. */
+ *  sessionId (never trust a client-supplied one alongside a sample id) plus
+ *  the session status for assertSessionWritable. Single round-trip — this
+ *  guards the 800ms-debounced auto-save hot path. */
 export async function requireSampleMember(
   sessionSampleId: string,
   userId: string,
-): Promise<{ sessionId: string }> {
+): Promise<SampleAuthRow> {
   const sample = await prisma.sessionSample.findUnique({
     where: { id: sessionSampleId },
     select: {
@@ -83,6 +100,7 @@ export async function requireSampleMember(
       session: {
         select: {
           createdBy: true,
+          status: true,
           participants: { where: { userId }, select: { userId: true }, take: 1 },
         },
       },
@@ -95,20 +113,24 @@ export async function requireSampleMember(
   ) {
     throw new Error("not_found_or_forbidden");
   }
-  return { sessionId: sample.sessionId };
+  return { sessionId: sample.sessionId, status: sample.session.status };
 }
 
-/** Owner access resolved through a sample id; returns the sample's sessionId. */
+/** Owner access resolved through a sample id; returns the sample's sessionId
+ *  and the session status. */
 export async function requireSampleOwner(
   sessionSampleId: string,
   userId: string,
-): Promise<{ sessionId: string }> {
+): Promise<SampleAuthRow> {
   const sample = await prisma.sessionSample.findUnique({
     where: { id: sessionSampleId },
-    select: { sessionId: true, session: { select: { createdBy: true } } },
+    select: {
+      sessionId: true,
+      session: { select: { createdBy: true, status: true } },
+    },
   });
   if (!sample || sample.session.createdBy !== userId) {
     throw new Error("not_found_or_forbidden");
   }
-  return { sessionId: sample.sessionId };
+  return { sessionId: sample.sessionId, status: sample.session.status };
 }

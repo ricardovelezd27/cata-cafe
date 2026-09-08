@@ -14,6 +14,7 @@ export function ConfirmDialog({
   onConfirm,
   destructive = true,
   error,
+  confirmDisabled = false,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -25,6 +26,8 @@ export function ConfirmDialog({
   onConfirm: () => Promise<void> | void;
   destructive?: boolean;
   error?: string | null;
+  /** Disables the confirm button — e.g. while async impact data is still loading. */
+  confirmDisabled?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const [failed, setFailed] = useState(false);
@@ -74,7 +77,7 @@ export function ConfirmDialog({
           </button>
           <button
             type="button"
-            disabled={isPending}
+            disabled={isPending || confirmDisabled}
             onClick={handleConfirm}
             className={
               destructive

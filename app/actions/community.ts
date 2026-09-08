@@ -2,20 +2,23 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import {
   requireSessionOwner,
+  requireSessionMember,
   requireSampleOwner,
+  assertSessionWritable,
 } from "@/lib/sessionAuth";
-import { syncCoffeeHistoryForSession } from "@/lib/coffeeHistory";
+import { closeSessionInternal } from "@/lib/closeSession";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
-import type { CloseEmailSummary } from "@/lib/closeEmail";
 
 // ─── Submit all draft evaluations for a session ───────────────────────────────
 export async function submitAllEvaluations(sessionId: string) {
   const user = await requireUser();
+  // Member gate + closed guard (a closed session's results are final).
+  assertSessionWritable(await requireSessionMember(sessionId, user.id));
 
   // Single batched update instead of one round-trip per draft eval. The aggregate
   // trigger is FOR EACH ROW, so it still fires once per updated evaluation.
@@ -66,15 +69,9 @@ async function maybeAutoCloseSoloSession(sessionId: string, userId: string) {
   ]);
   if (sampleCount === 0 || submittedCount < sampleCount) return;
 
-  await prisma.sessionSample.updateMany({
-    where: { sessionId, coffeeId: { not: null }, revealed: false },
-    data: { revealed: true },
-  });
-  await prisma.cuppingSession.update({
-    where: { id: sessionId },
-    data: { status: "closed" },
-  });
-  await syncCoffeeHistoryForSession(sessionId);
+  // Same routine as the owner close and the cron: reveal → history. Solo
+  // sessions never email. Idempotent, so two concurrent submits can't double-run.
+  await closeSessionInternal(sessionId, { reason: "solo_auto", emails: "skip" });
 }
 
 // ─── Submit a single sample's evaluation (triggers aggregate) ─────────────────
@@ -127,49 +124,67 @@ export async function submitEvaluation(evaluationId: string) {
 }
 
 // ─── Start a session (maestro moves past invite screen) ───────────────────────
+// Idempotent: only an active, not-yet-started session gets `startedAt`. A
+// second click (wizard step 2 AND the master panel both expose this) is a
+// no-op instead of resetting the start time.
 export async function startSession(sessionId: string) {
   const user = await requireUser();
   await requireSessionOwner(sessionId, user.id);
 
-  await prisma.cuppingSession.update({
-    where: { id: sessionId },
+  const res = await prisma.cuppingSession.updateMany({
+    where: { id: sessionId, startedAt: null, status: "active" },
     data: { startedAt: new Date() },
   });
 
-  revalidatePath(`/app/sessions/${sessionId}/cup`);
-  return { ok: true };
+  revalidatePath(`/es/app/sessions/${sessionId}/cup`);
+  revalidatePath(`/en/app/sessions/${sessionId}/cup`);
+  return { ok: true as const, started: res.count > 0 };
 }
 
 // ─── Close a session ──────────────────────────────────────────────────────────
+// Thin owner-authorized wrapper over lib/closeSession.ts (shared with the solo
+// auto-close and the daily cron). Group close emails are queued with
+// next/server after() so the click returns as soon as the status flips; their
+// per-recipient outcome lands in close_email_deliveries (shown on results).
 export async function closeSession(sessionId: string) {
   const user = await requireUser();
+  await requireSessionOwner(sessionId, user.id);
+
+  const result = await closeSessionInternal(sessionId, { reason: "owner", emails: "after" });
+
+  revalidatePath(`/es/app/sessions/${sessionId}/results`);
+  revalidatePath(`/en/app/sessions/${sessionId}/results`);
+  revalidatePath(`/es/app/sessions/${sessionId}/cup`);
+  revalidatePath(`/en/app/sessions/${sessionId}/cup`);
+  return { ok: true as const, closed: result.closed, emailsQueued: result.emailsQueued };
+}
+
+// ─── Re-send close emails to participants who did not get theirs ─────────────
+// Owner only, closed group sessions only. sendCloseEmails skips every
+// recipient already marked "sent", so this only retries failed/skipped rows.
+export async function resendCloseEmails(sessionId: string) {
+  const user = await requireUser();
   const session = await requireSessionOwner(sessionId, user.id);
+  if (!session.isGroup) return { ok: false as const, error: "not_group" };
+  if (session.status !== "closed") return { ok: false as const, error: "not_closed" };
 
-  await prisma.cuppingSession.update({
-    where: { id: sessionId },
-    data: { status: "closed" },
-  });
-
-  await syncCoffeeHistoryForSession(sessionId);
-
-  // Group sessions only: email every participant their individual CVA PDF + the
-  // anonymous group summary. This is best-effort and MUST NOT fail or block the
-  // close — isolate it entirely from the action's success path.
-  let emailSummary: CloseEmailSummary | null = null;
-  if (session.isGroup) {
+  after(async () => {
     try {
       const { sendCloseEmails } = await import("@/lib/closeEmail");
-      emailSummary = await sendCloseEmails(sessionId);
+      await sendCloseEmails(sessionId);
     } catch (err) {
-      console.warn(
-        `[closeSession] sendCloseEmails threw for session ${sessionId} (close not affected): ${err instanceof Error ? err.message : String(err)}`,
+      console.error(
+        JSON.stringify({
+          level: "error",
+          where: "resendCloseEmails",
+          sessionId,
+          message: err instanceof Error ? err.message : String(err),
+        }),
       );
     }
-  }
+  });
 
-  revalidatePath(`/app/sessions/${sessionId}/results`);
-  revalidatePath(`/app/sessions/${sessionId}/cup`);
-  return { ok: true, emailSummary };
+  return { ok: true as const };
 }
 
 // ─── Reveal a sample (link coffee identity) ───────────────────────────────────
@@ -217,6 +232,15 @@ export async function completeGuestOnboarding(name: string) {
 }
 
 // ─── Join a session via invite token ─────────────────────────────────────────
+// Rules (2026-09-08):
+//   * the OWNER opening their own link is a no-op (never demoted to "joined",
+//     never burns a use) — mirrors joinCoffeeViaToken
+//   * an existing participant re-opening the link is a no-op (no useCount burn)
+//   * a closed session's link lands existing members on results and refuses
+//     newcomers with `session_closed`
+//   * maxUses is enforced INSIDE the transaction (increment-then-check on the
+//     locked row, rolled back on overflow) so N simultaneous scans of a
+//     10-seat link cannot all get in
 export async function joinViaToken(token: string, locale: string = "es") {
   const user = await requireUser();
 
@@ -228,7 +252,9 @@ export async function joinViaToken(token: string, locale: string = "es") {
       maxUses: true,
       useCount: true,
       expiresAt: true,
-      session: { select: { startedAt: true } },
+      session: {
+        select: { startedAt: true, status: true, createdBy: true, isAsync: true },
+      },
     },
   });
 
@@ -236,37 +262,49 @@ export async function joinViaToken(token: string, locale: string = "es") {
   if (invite.expiresAt && invite.expiresAt < new Date()) {
     throw new Error("token_expired");
   }
+
+  const { sessionId, session } = invite;
+  const base = `/${locale}/app/sessions/${sessionId}`;
+  const closed = session.status === "closed";
+  const destination = closed
+    ? `${base}/results`
+    : !session.startedAt && !session.isAsync
+      ? `${base}/waiting`
+      : `${base}/cup`;
+
+  if (session.createdBy === user.id) {
+    redirect(closed ? `${base}/results` : `${base}/cup`);
+  }
+
+  const existing = await prisma.sessionParticipant.findUnique({
+    where: { sessionId_userId: { sessionId, userId: user.id } },
+    select: { userId: true },
+  });
+  if (existing) redirect(destination);
+
+  if (closed) throw new Error("session_closed");
   if (invite.maxUses !== null && invite.useCount >= invite.maxUses) {
     throw new Error("token_exhausted");
   }
 
-  const admin = createAdminClient();
-
-  // Atomically increment useCount and upsert participant
   await prisma.$transaction(async (tx) => {
-    await tx.sessionInvite.update({
+    const fresh = await tx.sessionInvite.update({
       where: { id: invite.id },
       data: { useCount: { increment: 1 } },
+      select: { useCount: true, maxUses: true },
     });
-
-    // Use admin client to bypass RLS for the participant insert
-    const { error: upsertError } = await admin.from("session_participants").upsert(
-      {
-        sessionId: invite.sessionId,
-        userId: user.id,
-        status: "joined",
-      },
-      { onConflict: "sessionId,userId" },
-    );
-    if (upsertError) throw new Error(upsertError.message);
+    // Re-check on the locked row: a concurrent redemption may have taken the
+    // last seat between the read above and this increment. Throwing rolls the
+    // increment back.
+    if (fresh.maxUses !== null && fresh.useCount > fresh.maxUses) {
+      throw new Error("token_exhausted");
+    }
+    await tx.sessionParticipant.create({
+      data: { sessionId, userId: user.id, status: "joined" },
+    });
   });
 
-  // If maestro hasn't started the session yet, send participant to waiting room
-  if (!invite.session.startedAt) {
-    redirect(`/${locale}/app/sessions/${invite.sessionId}/waiting`);
-  }
-
-  redirect(`/${locale}/app/sessions/${invite.sessionId}/cup`);
+  redirect(destination);
 }
 
 // ─── Create an invite token ───────────────────────────────────────────────────

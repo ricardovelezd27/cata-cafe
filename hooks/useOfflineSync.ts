@@ -74,7 +74,10 @@ export function useOfflineSync({
               cupsPerSample,
               force,
             });
-            return res.status;
+            // "discarded" = the session closed meanwhile; the server keeps the
+            // submitted data and this draft can't apply. Treat as synced so
+            // the pending flag clears (nothing to retry, nothing to resolve).
+            return res.status === "discarded" ? "synced" : res.status;
           }
           if (moduleKey === "physical") {
             await upsertPhysical({ sessionSampleId: sampleId, data });

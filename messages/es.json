@@ -181,7 +181,11 @@
       "body": "Se eliminará permanentemente la sesión con TODAS las evaluaciones de todos los participantes, sus datos físicos y extrínsecos, las invitaciones y el historial de catas asociado. No se puede deshacer.",
       "confirm": "Eliminar sesión",
       "cancel": "Cancelar",
-      "error": "No se pudo eliminar la sesión. Inténtalo de nuevo."
+      "error": "No se pudo eliminar la sesión. Inténtalo de nuevo.",
+      "loadingImpact": "Calculando el impacto…",
+      "coffeesIntro": "Los cafés de esta sesión y sus estadísticas pertenecen a sus propietarios y se conservan:",
+      "you": "Tú",
+      "impact": "Se eliminarán la sesión y {evaluations} evaluación(es) de {cuppers} catador(es). Cada catador conserva su historial de cafés de forma anónima, sin vínculo a esta sesión."
     },
     "table": {
       "colName": "Sesión",
@@ -245,6 +249,8 @@
     "notesPh": "Observaciones adicionales...",
     "submitFailed": "No se pudo enviar la evaluación. Revisa tu conexión e inténtalo de nuevo.",
     "retrySubmit": "Reintentar envío",
+    "noSamplesTitle": "Esta sesión no tiene muestras",
+    "noSamplesBody": "Añade al menos una muestra para empezar a catar.",
     "phases": {
       "fragrance": "Fragancia",
       "aroma": "Aroma",
@@ -281,6 +287,19 @@
       "downloadQr": "Descargar QR",
       "currentSample": "Muestra activa"
     }
+  },
+  "waiting": {
+    "title": "Bienvenido a la sesión",
+    "titleAsync": "Tu cata está lista",
+    "description": "El maestro de cata está preparando la sala. La cata comenzará cuando el maestro dé la señal. Por favor, espera aquí.",
+    "descriptionAsync": "Esta es una cata asíncrona. Puedes evaluar los cafés a tu propio ritmo — no necesitas esperar al maestro de cata.",
+    "asyncDetail": "Tu evaluación quedará registrada en el perfil de cada café y sumará a la puntuación comunitaria de esta sesión.",
+    "waiting": "Esperando al maestro",
+    "buttonLabel": "Iniciar cata",
+    "checkingLabel": "Verificando...",
+    "notStartedMsg": "Aún no ha comenzado",
+    "backToSessions": "Volver a mis sesiones",
+    "connectionLost": "Conexión en vivo perdida — comprobando cada 15 s"
   },
   "score": {
     "individual": "Puntaje individual",
@@ -409,6 +428,10 @@
     "submittedOf": "{count} de {total} enviaron",
     "closeSession": "Cerrar sesión",
     "confirmClose": "¿Cerrar la sesión? Los resultados quedarán finales.",
+    "closeSessionError": "No se pudo cerrar la sesión. Inténtalo de nuevo.",
+    "startSession": "Iniciar cata",
+    "starting": "Iniciando…",
+    "startSessionError": "No se pudo iniciar la cata. Inténtalo de nuevo.",
     "reveal": "Revelar identidad",
     "revealed": "Revelado",
     "selectCoffee": "Seleccionar café",
@@ -458,6 +481,18 @@
     "flavorProfiles": "Perfiles de Sabor",
     "communityPending": "Los resultados grupales aparecerán cuando todos los participantes envíen sus evaluaciones o el maestro cierre la sesión.",
     "sdAria": "Desviación estándar entre catadores — menor es más consenso",
+    "closedOn": "Cata cerrada el {date}",
+    "closeEmails": {
+      "label": "Correos de cierre:",
+      "sent": "{count, plural, =1 {1 enviado} other {# enviados}}",
+      "noEmail": "{count, plural, =1 {1 sin correo} other {# sin correo}}",
+      "failed": "{count, plural, =1 {1 fallido} other {# fallidos}}",
+      "pending": "{count, plural, =1 {1 pendiente} other {# pendientes}}",
+      "resend": "Reenviar",
+      "resending": "Reenviando…",
+      "resent": "Correos reenviados",
+      "resendError": "No se pudieron reenviar los correos. Inténtalo de nuevo."
+    },
     "guestCta": {
       "title": "Guarda tus resultados",
       "body": "Estás participando como invitado: tu acceso vive solo en este navegador y se pierde al borrar los datos de navegación o cambiar de dispositivo. Crea tu cuenta gratuita (o inicia sesión si ya tienes una) y vincularemos estos resultados a ella.",
@@ -637,7 +672,8 @@
     "empty": "Aún no has catado ningún café identificado.",
     "tasted": "Catado",
     "yourScore": "Tu puntaje",
-    "communityScore": "Puntaje comunitario"
+    "communityScore": "Puntaje comunitario",
+    "sessionDeleted": "Sesión eliminada"
   },
   "coffee": {
     "title": "Perfil del café",

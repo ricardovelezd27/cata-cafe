@@ -1,6 +1,6 @@
 "use client";
 
-import { Link2, X, Copy, RotateCcw, Check } from "lucide-react";
+import { Link2, X, Copy, RotateCcw, Check, Play } from "lucide-react";
 import { InviteQR } from "./InviteQR";
 import styles from "./MasterControls.module.css";
 
@@ -31,6 +31,14 @@ interface MasterControlsProps {
   onGenerate: () => void;
   onCopy: () => void;
   onResetInvite: () => void;
+  /** "Iniciar cata" / "Start tasting" */
+  startLabel?: string;
+  /** "Iniciando…" / "Starting…" */
+  startingLabel?: string;
+  /** Renders the start button before the invite block when true. */
+  showStart?: boolean;
+  isStarting?: boolean;
+  onStart?: () => void;
 }
 
 export function MasterControls({
@@ -51,6 +59,11 @@ export function MasterControls({
   onGenerate,
   onCopy,
   onResetInvite,
+  startLabel,
+  startingLabel,
+  showStart = false,
+  isStarting = false,
+  onStart,
 }: MasterControlsProps) {
   return (
     <section className={styles.wrap} aria-label={title}>
@@ -60,6 +73,17 @@ export function MasterControls({
       </div>
 
       <div className={styles.row}>
+        {showStart && (
+          <button
+            type="button"
+            onClick={onStart}
+            disabled={isStarting || sessionClosed}
+            className={`${styles.button} ${styles.start}`}
+          >
+            <Play size={14} aria-hidden />
+            {isStarting ? startingLabel : startLabel}
+          </button>
+        )}
         {!inviteLink ? (
           <button
             type="button"

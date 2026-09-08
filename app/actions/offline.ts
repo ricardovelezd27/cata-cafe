@@ -3,6 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { requireSampleMember } from "@/lib/sessionAuth";
+// NOTE: no assertSessionWritable throw here — a closed session must not burn
+// the replay's retry budget; it returns "discarded" instead (see below).
 import { computeEvaluationDerived, type EvalModuleKey } from "@/lib/evaluation";
 
 // Conflict-aware replay of an offline evaluation draft, called on reconnect.
@@ -25,11 +27,17 @@ export async function syncEvaluation(input: {
   data: Record<string, unknown>;
   cupsPerSample: number;
   force?: boolean;
-}): Promise<{ status: "synced" | "conflict" }> {
+}): Promise<{ status: "synced" | "conflict" | "discarded" }> {
   const user = await requireUser({ skipProfileUpsert: true });
   // Same authorization as the live upsertEvaluation path: session member only.
   // Also resolves the sample's real sessionId in one round-trip.
-  const { sessionId } = await requireSampleMember(input.sessionSampleId, user.id);
+  const { sessionId, status } = await requireSampleMember(input.sessionSampleId, user.id);
+
+  // The session closed while this draft was offline. Its submitted data
+  // stands; a stale local edit can no longer be applied (aggregates and
+  // history are final). Report "discarded" so the client clears the pending
+  // flag instead of retrying forever.
+  if (status === "closed") return { status: "discarded" };
 
   const existing = await prisma.evaluation.findUnique({
     where: {

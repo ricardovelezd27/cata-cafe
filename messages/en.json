@@ -181,7 +181,11 @@
       "body": "This permanently deletes the session with ALL evaluations from every participant, their physical and extrinsic data, invites, and the linked tasting history. This cannot be undone.",
       "confirm": "Delete session",
       "cancel": "Cancel",
-      "error": "Couldn't delete the session. Please try again."
+      "error": "Couldn't delete the session. Please try again.",
+      "loadingImpact": "Calculating impact…",
+      "coffeesIntro": "The coffees in this session and their stats belong to their owners and are kept:",
+      "you": "You",
+      "impact": "The session and {evaluations} evaluation(s) from {cuppers} cupper(s) will be deleted. Each cupper keeps their coffee history anonymously, unlinked from this session."
     },
     "table": {
       "colName": "Session",
@@ -245,6 +249,8 @@
     "notesPh": "Additional observations...",
     "submitFailed": "Could not submit your evaluation. Check your connection and try again.",
     "retrySubmit": "Retry submit",
+    "noSamplesTitle": "This session has no samples",
+    "noSamplesBody": "Add at least one sample to start cupping.",
     "phases": {
       "fragrance": "Fragrance",
       "aroma": "Aroma",
@@ -281,6 +287,19 @@
       "downloadQr": "Download QR",
       "currentSample": "Current sample"
     }
+  },
+  "waiting": {
+    "title": "Welcome to the session",
+    "titleAsync": "Your tasting is ready",
+    "description": "The tasting master is preparing the room. The tasting will begin when the master gives the signal. Please wait here.",
+    "descriptionAsync": "This is an asynchronous tasting. You can evaluate the coffees at your own pace — you don't need to wait for the tasting master.",
+    "asyncDetail": "Your evaluation will be recorded in each coffee's profile and count toward this session's community score.",
+    "waiting": "Waiting for the master",
+    "buttonLabel": "Start tasting",
+    "checkingLabel": "Checking...",
+    "notStartedMsg": "Hasn't started yet",
+    "backToSessions": "Back to my sessions",
+    "connectionLost": "Live connection lost — checking every 15s"
   },
   "score": {
     "individual": "Individual score",
@@ -409,6 +428,10 @@
     "submittedOf": "{count} of {total} submitted",
     "closeSession": "Close session",
     "confirmClose": "Close the session? Results will be finalized.",
+    "closeSessionError": "Could not close the session. Please try again.",
+    "startSession": "Start tasting",
+    "starting": "Starting…",
+    "startSessionError": "Could not start the tasting. Please try again.",
     "reveal": "Reveal identity",
     "revealed": "Revealed",
     "selectCoffee": "Select coffee",
@@ -458,6 +481,18 @@
     "flavorProfiles": "Flavor Profiles",
     "communityPending": "Group results will appear once all participants submit their evaluations or the session master closes the session.",
     "sdAria": "Standard deviation across cuppers — lower means more consensus",
+    "closedOn": "Tasting closed on {date}",
+    "closeEmails": {
+      "label": "Close emails:",
+      "sent": "{count, plural, =1 {1 sent} other {# sent}}",
+      "noEmail": "{count, plural, =1 {1 with no email} other {# with no email}}",
+      "failed": "{count, plural, =1 {1 failed} other {# failed}}",
+      "pending": "{count, plural, =1 {1 pending} other {# pending}}",
+      "resend": "Resend",
+      "resending": "Resending…",
+      "resent": "Emails resent",
+      "resendError": "Could not resend emails. Please try again."
+    },
     "guestCta": {
       "title": "Save your results",
       "body": "You're participating as a guest: your access lives only in this browser and is lost if you clear browsing data or switch devices. Create your free account (or sign in if you already have one) and we'll link these results to it.",
@@ -637,7 +672,8 @@
     "empty": "You haven't tasted any identified coffee yet.",
     "tasted": "Tasted",
     "yourScore": "Your score",
-    "communityScore": "Community score"
+    "communityScore": "Community score",
+    "sessionDeleted": "Session deleted"
   },
   "coffee": {
     "title": "Coffee profile",

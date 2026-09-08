@@ -14,7 +14,9 @@ import {
   requireSessionMember,
   requireSampleMember,
   requireSampleOwner,
+  assertSessionWritable,
 } from "@/lib/sessionAuth";
+import { detachCoffeeHistoryForSession } from "@/lib/coffeeHistory";
 import { computeEvaluationDerived } from "@/lib/evaluation";
 import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/groups";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
@@ -337,7 +339,11 @@ export async function upsertEvaluation(input: {
   cupsPerSample: number;
 }) {
   const user = await requireUser({ skipProfileUpsert: true });
-  const { sessionId } = await requireSampleMember(input.sessionSampleId, user.id);
+  const auth = await requireSampleMember(input.sessionSampleId, user.id);
+  // Closed sessions are read-only: a post-close edit would change raw data
+  // without re-firing the aggregate trigger (it only fires on isDraft).
+  assertSessionWritable(auth);
+  const { sessionId } = auth;
 
   const fields = computeEvaluationDerived(
     input.moduleKey,
@@ -377,13 +383,83 @@ export async function upsertEvaluation(input: {
   return { ok: true, evaluationId: result.id };
 }
 
+// What deleting a session affects — feeds the confirm dialog so the owner
+// sees (a) which coffees are involved and who OWNS them (the coffee records
+// and their statistics belong to those owners and are kept) and (b) how many
+// cuppers' evaluations go away. Owner-only.
+export type DeleteImpact = {
+  cupperCount: number;
+  evaluationCount: number;
+  coffees: { id: string; name: string; code: string | null; ownerName: string; ownedByMe: boolean }[];
+};
+
+export async function getDeleteImpact(sessionId: string): Promise<DeleteImpact> {
+  const user = await requireUser();
+  await requireSessionOwner(sessionId, user.id);
+
+  const [cuppers, evaluationCount, samples] = await Promise.all([
+    prisma.evaluation.findMany({
+      where: { sessionSample: { sessionId }, isDraft: false },
+      select: { cupperId: true },
+      distinct: ["cupperId"],
+    }),
+    prisma.evaluation.count({ where: { sessionSample: { sessionId } } }),
+    prisma.sessionSample.findMany({
+      where: { sessionId, coffeeId: { not: null } },
+      select: {
+        coffee: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            createdBy: true,
+            creator: { select: { displayName: true } },
+          },
+        },
+      },
+    }),
+  ]);
+
+  const seen = new Set<string>();
+  const coffees: DeleteImpact["coffees"] = [];
+  for (const s of samples) {
+    const c = s.coffee;
+    if (!c || seen.has(c.id)) continue;
+    seen.add(c.id);
+    coffees.push({
+      id: c.id,
+      name: c.name,
+      code: c.code,
+      ownerName: c.creator.displayName,
+      ownedByMe: c.createdBy === user.id,
+    });
+  }
+
+  return { cupperCount: cuppers.length, evaluationCount, coffees };
+}
+
+// Deleting a session removes the event and every evaluation in it, but NOT
+// the cuppers' coffee history: detachCoffeeHistoryForSession first makes sure
+// each cupper has a self-contained history row per coffee (with a snapshot of
+// their OWN evaluation), then the delete NULLs the session/evaluation FKs
+// (SetNull) instead of cascading those rows away. Coffee records are never
+// touched — they belong to their owners.
 export async function deleteSession(sessionId: string, locale: string = "es") {
   const user = await requireUser();
   await requireSessionOwner(sessionId, user.id);
 
-  await prisma.cuppingSession.delete({ where: { id: sessionId } });
+  await prisma.$transaction(
+    async (tx) => {
+      await detachCoffeeHistoryForSession(tx, sessionId);
+      await tx.cuppingSession.delete({ where: { id: sessionId } });
+    },
+    { timeout: 30_000 },
+  );
 
   revalidatePath(`/${locale}/app/sessions`);
+  revalidatePath(`/${locale}/app`);
+  revalidatePath(`/${locale}/app/profile/history`);
+  return { ok: true as const };
 }
 
 // NOTE: deleteCoffee moved to app/actions/coffees.ts with the rest of the
@@ -554,7 +630,7 @@ export async function addSessionSample(
   input: { label?: string; coffeeId?: string | null; locale?: string },
 ) {
   const user = await requireUser();
-  await requireSessionOwner(sessionId, user.id);
+  assertSessionWritable(await requireSessionOwner(sessionId, user.id));
 
   if (input.coffeeId) {
     // Same re-validation as the wizard: the coffee must be usable by the
@@ -591,7 +667,9 @@ export async function addSessionSample(
 // rewrites the linked coffee's fields and expects the full metadata input).
 export async function renameSessionSample(sampleId: string, label: string) {
   const user = await requireUser();
-  const { sessionId } = await requireSampleOwner(sampleId, user.id);
+  const auth = await requireSampleOwner(sampleId, user.id);
+  assertSessionWritable(auth);
+  const { sessionId } = auth;
 
   const trimmed = label.trim();
   if (!trimmed) return { ok: false as const, error: "invalid_label" };
@@ -658,7 +736,7 @@ export async function upsertPhysical(input: {
   data: Record<string, unknown>;
 }) {
   const user = await requireUser({ skipProfileUpsert: true });
-  await requireSampleOwner(input.sessionSampleId, user.id);
+  assertSessionWritable(await requireSampleOwner(input.sessionSampleId, user.id));
   await prisma.physicalEvaluation.upsert({
     where: { sessionSampleId: input.sessionSampleId },
     create: {
@@ -715,11 +793,12 @@ export async function updateSampleMetadata(
       sessionId: true,
       coffeeId: true,
       coffee: { select: { createdBy: true } },
-      session: { select: { createdBy: true } },
+      session: { select: { createdBy: true, status: true } },
     },
   });
-  if (!sample) throw new Error("not_found");
-  if (sample.session.createdBy !== user.id) throw new Error("forbidden");
+  if (!sample) throw new Error("not_found_or_forbidden");
+  if (sample.session.createdBy !== user.id) throw new Error("not_found_or_forbidden");
+  assertSessionWritable(sample.session);
 
   let coffeeUpdated: boolean;
 
@@ -809,7 +888,7 @@ export async function upsertExtrinsic(input: {
   data: Record<string, unknown>;
 }) {
   const user = await requireUser({ skipProfileUpsert: true });
-  await requireSampleOwner(input.sessionSampleId, user.id);
+  assertSessionWritable(await requireSampleOwner(input.sessionSampleId, user.id));
   await prisma.extrinsicData.upsert({
     where: { sessionSampleId: input.sessionSampleId },
     create: {

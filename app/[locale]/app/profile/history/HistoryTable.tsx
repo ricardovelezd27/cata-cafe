@@ -11,7 +11,9 @@ export type HistoryRow = {
   id: string;
   coffeeId: string;
   coffeeName: string;
-  sessionId: string;
+  // Null for a detached row — its session was deleted (see snapshot fallback
+  // in profile/history/page.tsx). Never linked in that case.
+  sessionId: string | null;
   sessionName: string;
   individualScore: number | null;
   communityScore: number | null;
@@ -38,6 +40,7 @@ export type HistoryTableTranslations = {
   emptyBody: string;
   newSessionLabel: string;
   noResults: string;
+  sessionDeleted: string;
 };
 
 export function HistoryTable({
@@ -73,14 +76,22 @@ export function HistoryTable({
     {
       key: "session",
       label: t.colSession,
-      render: (row) => (
-        <Link
-          href={`/${locale}/app/sessions/${row.sessionId}/results`}
-          className="text-on-surface-variant transition-colors hover:text-primary-container"
-        >
-          {row.sessionName}
-        </Link>
-      ),
+      render: (row) =>
+        row.sessionId ? (
+          <Link
+            href={`/${locale}/app/sessions/${row.sessionId}/results`}
+            className="text-on-surface-variant transition-colors hover:text-primary-container"
+          >
+            {row.sessionName}
+          </Link>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 text-on-surface-variant">
+            {row.sessionName}
+            <span className="rounded-pill border border-outline-variant bg-surface-container px-1.5 py-0.5 text-[10px]">
+              {t.sessionDeleted}
+            </span>
+          </span>
+        ),
     },
     {
       key: "date",
@@ -146,12 +157,21 @@ export function HistoryTable({
               >
                 {row.coffeeName}
               </Link>
-              <Link
-                href={`/${locale}/app/sessions/${row.sessionId}/results`}
-                className="block truncate text-xs text-on-surface-variant transition-colors hover:text-primary-container"
-              >
-                {row.sessionName}
-              </Link>
+              {row.sessionId ? (
+                <Link
+                  href={`/${locale}/app/sessions/${row.sessionId}/results`}
+                  className="block truncate text-xs text-on-surface-variant transition-colors hover:text-primary-container"
+                >
+                  {row.sessionName}
+                </Link>
+              ) : (
+                <span className="flex items-center gap-1.5 truncate text-xs text-on-surface-variant">
+                  {row.sessionName}
+                  <span className="shrink-0 rounded-pill border border-outline-variant bg-surface-container px-1.5 py-0.5 text-[10px]">
+                    {t.sessionDeleted}
+                  </span>
+                </span>
+              )}
             </div>
             <span className="shrink-0 text-xs tabular-nums text-on-surface-variant">
               {new Date(row.tastedAt).toLocaleDateString(locale)}

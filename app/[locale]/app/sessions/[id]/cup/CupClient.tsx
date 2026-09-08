@@ -20,10 +20,12 @@ import {
   type SampleMetadataFormData,
 } from "@/components/cupping/EditSampleMetadataForm";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   submitAllEvaluations,
   closeSession,
   createInviteToken,
+  startSession,
 } from "@/app/actions/community";
 import { buildInviteUrl } from "@/lib/inviteUrl";
 import {
@@ -123,6 +125,8 @@ export function CupClient({
   isOwner,
   isGroup,
   sessionStatus,
+  sessionStartedAt,
+  sessionIsAsync,
   participantCount,
   submittedCount: initialSubmittedCount,
   translations,
@@ -136,6 +140,8 @@ export function CupClient({
   isOwner: boolean;
   isGroup: boolean;
   sessionStatus: string;
+  sessionStartedAt: string | null;
+  sessionIsAsync: boolean;
   participantCount: number;
   submittedCount: number;
   userId: string;
@@ -173,6 +179,10 @@ export function CupClient({
     submittedOf: string;
     closeSession: string;
     confirmClose: string;
+    closeSessionError: string;
+    startSession: string;
+    starting: string;
+    startSessionError: string;
     masterRole: string;
     participantRole: string;
     // Shell (Phase 3)
@@ -264,6 +274,10 @@ export function CupClient({
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
+  const [startedAt, setStartedAt] = useState(sessionStartedAt);
+  const [isStarting, setIsStarting] = useState(false);
+  const [startError, setStartError] = useState(false);
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
   const [clockTime, setClockTime] = useState(() =>
     new Date().toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", second: "2-digit" })
   );
@@ -340,6 +354,8 @@ export function CupClient({
       isOwner,
       isGroup,
       sessionStatus,
+      sessionStartedAt: startedAt,
+      sessionIsAsync,
       participantCount,
       submittedCount: initialSubmittedCount,
       translations,
@@ -845,10 +861,26 @@ export function CupClient({
   };
 
   const handleCloseSession = () => {
-    if (!confirm(translations.confirmClose)) return;
+    setCloseDialogOpen(true);
+  };
+
+  const handleConfirmClose = async () => {
+    await closeSession(session.id);
+    router.push(`/${locale}/app/sessions/${session.id}/results`);
+  };
+
+  const handleStart = () => {
+    setIsStarting(true);
+    setStartError(false);
     startTransition(async () => {
-      await closeSession(session.id);
-      router.push(`/${locale}/app/sessions/${session.id}/results`);
+      try {
+        const r = await startSession(session.id);
+        if (r.ok) setStartedAt(new Date().toISOString());
+      } catch {
+        setStartError(true);
+      } finally {
+        setIsStarting(false);
+      }
     });
   };
 
@@ -896,6 +928,7 @@ export function CupClient({
   const isLastSampleOverall = isLastSampleInStep && isLastStep;
   const prevDisabled = sampleIdx === 0 && currentStep === stepsForFormat[0];
   const sessionClosed = sessionStatus === "closed";
+  const showStart = isOwner && isGroup && !sessionIsAsync && !startedAt;
 
   const hasStepFill = (sample: Sample, step: CuppingStep): boolean => {
     return STEP_ATTRIBUTES[step].some((attr) => {
@@ -1068,6 +1101,11 @@ export function CupClient({
         onGenerate={handleGenerateInvite}
         onCopy={handleCopyInvite}
         onResetInvite={() => setInviteLink(null)}
+        startLabel={translations.startSession}
+        startingLabel={translations.starting}
+        showStart={showStart}
+        isStarting={isStarting}
+        onStart={handleStart}
       />
     ) : undefined;
 
@@ -1293,6 +1331,34 @@ export function CupClient({
           </button>
         </div>
       )}
+      {startError && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-md border border-red-defect/40 bg-red-defect/10 font-sans text-sm text-red-defect"
+        >
+          <span className="flex-1">{translations.startSessionError}</span>
+          <button
+            type="button"
+            onClick={() => setStartError(false)}
+            aria-label="×"
+            className="shrink-0 font-semibold hover:opacity-80"
+          >
+            ×
+          </button>
+        </div>
+      )}
+      <ConfirmDialog
+        open={closeDialogOpen}
+        onOpenChange={setCloseDialogOpen}
+        title={translations.closeSession}
+        body={translations.confirmClose}
+        confirmLabel={translations.closeSession}
+        cancelLabel={translations.cancel}
+        closeLabel={translations.cancel}
+        onConfirm={handleConfirmClose}
+        error={translations.closeSessionError}
+      />
       <SyncConflictModal
         conflicts={conflicts}
         onResolve={resolveConflict}

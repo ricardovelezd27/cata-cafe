@@ -58,6 +58,16 @@
   outline-offset: 2px;
 }
 
+.start {
+  background: var(--color-primary-container);
+  color: var(--color-on-primary);
+  border-color: var(--color-primary-container);
+}
+
+.start:hover:not(:disabled) {
+  background: var(--color-primary);
+}
+
 .invite {
   background: transparent;
   color: var(--color-green-dark);

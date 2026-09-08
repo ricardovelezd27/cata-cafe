@@ -129,6 +129,13 @@ export default async function SessionsList({
     confirm: t("deleteSession.confirm"),
     cancel: t("deleteSession.cancel"),
     error: t("deleteSession.error"),
+    loadingImpact: t("deleteSession.loadingImpact"),
+    coffeesIntro: t("deleteSession.coffeesIntro"),
+    you: t("deleteSession.you"),
+    // Template — {evaluations}/{cuppers} are substituted client-side (same
+    // trick as refreshNew in the results page: pass the raw ICU arg back so
+    // next-intl leaves the literal placeholder in place).
+    impact: t("deleteSession.impact", { evaluations: "{evaluations}", cuppers: "{cuppers}" }),
   };
 
   const tableTranslations: SessionsTableTranslations = {

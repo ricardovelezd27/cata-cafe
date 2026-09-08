@@ -40,16 +40,21 @@ export default async function HistoryPage({
   const tScoreBand = await getTranslations("insights.explorer.dimensions");
   const tYear = await getTranslations("insights.chat.origin");
 
-  const rows: HistoryRow[] = history.map((h) => ({
-    id: h.id,
-    coffeeId: h.coffee.id,
-    coffeeName: h.coffee.name,
-    sessionId: h.session.id,
-    sessionName: h.session.name,
-    individualScore: h.individualScore,
-    communityScore: h.communityScore,
-    tastedAt: h.tastedAt.toISOString(),
-  }));
+  const rows: HistoryRow[] = history.map((h) => {
+    // A deleted session detaches this row (session → null) instead of
+    // cascading it away — `snapshot` carries the last-known session name.
+    const snapshot = h.snapshot as { sessionName?: string } | null;
+    return {
+      id: h.id,
+      coffeeId: h.coffee.id,
+      coffeeName: h.coffee.name,
+      sessionId: h.session?.id ?? null,
+      sessionName: h.session?.name ?? snapshot?.sessionName ?? "—",
+      individualScore: h.individualScore,
+      communityScore: h.communityScore,
+      tastedAt: h.tastedAt.toISOString(),
+    };
+  });
 
   const tableTranslations: HistoryTableTranslations = {
     table: {
@@ -70,6 +75,7 @@ export default async function HistoryPage({
     emptyBody: t("empty"),
     newSessionLabel: tSession("new"),
     noResults: tc("noResults"),
+    sessionDeleted: t("sessionDeleted"),
   };
 
   return (

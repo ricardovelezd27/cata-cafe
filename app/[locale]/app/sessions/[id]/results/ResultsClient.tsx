@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
-import { revealSample, refreshAggregateScores } from "@/app/actions/community";
+import { revealSample, refreshAggregateScores, resendCloseEmails } from "@/app/actions/community";
 import { ScoreTable, type ScoreTableTranslations } from "@/components/results/ScoreTable";
 import { SampleRadarChart } from "@/components/results/SampleRadarChart";
 import type { ScoreBreakdownTranslations } from "@/components/results/ScoreBreakdownPanel";
@@ -80,6 +80,9 @@ export function ResultsClient({
   adminOwnerName = null,
   isGroup,
   canViewGroup,
+  sessionStatus,
+  closedOnLabel = null,
+  closeEmails = null,
   currentUserId,
   participationLabel,
   lastUpdatedLabel,
@@ -115,6 +118,15 @@ export function ResultsClient({
   adminOwnerName?: string | null;
   isGroup: boolean;
   canViewGroup: boolean;
+  // "active" | "closed" (+ legacy "draft"/"open") — gates the backToCupping
+  // button (a closed session's cupping form is final) and the closed notice.
+  sessionStatus: string;
+  // Pre-formatted "Cata cerrada el {date}" — null unless this is a closed
+  // group session (see CLAUDE.md's product-law on closedAt).
+  closedOnLabel?: string | null;
+  // Owner-only, closed group sessions: pre-formatted close-email summary line
+  // + whether the resend action should show (failed or pending recipients).
+  closeEmails?: { line: string; showResend: boolean } | null;
   currentUserId: string;
   participationLabel?: string | null;
   lastUpdatedLabel?: string | null;
@@ -158,6 +170,10 @@ export function ResultsClient({
     viewChart: string;
     communityPending: string;
     ownerSection: string;
+    closeEmailsResend: string;
+    closeEmailsResending: string;
+    closeEmailsResent: string;
+    closeEmailsResendError: string;
     descViewAll: string;
     descOf: string;
     descParticipants: string;
@@ -239,6 +255,7 @@ export function ResultsClient({
   const [refreshing, setRefreshing] = useState(false);
   const [newSubmissions, setNewSubmissions] = useState(0);
   const [, startTransition] = useTransition();
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [editingSampleId, setEditingSampleId] = useState<string | null>(null);
   const [editingExtrinsicSampleId, setEditingExtrinsicSampleId] = useState<string | null>(null);
   // Set after a metadata save when the linked coffee belongs to someone else
@@ -355,6 +372,18 @@ export function ResultsClient({
     setRefreshing(false);
   };
 
+  const handleResendCloseEmails = () => {
+    setResendState("sending");
+    startTransition(async () => {
+      try {
+        const r = await resendCloseEmails(session.id);
+        setResendState(r.ok ? "sent" : "error");
+      } catch {
+        setResendState("error");
+      }
+    });
+  };
+
   // One merged view: community data renders whenever the viewer may see it —
   // the old "Mis resultados / Resultados grupales" toggle is gone.
   const showCommunity = canViewGroup;
@@ -394,8 +423,10 @@ export function ResultsClient({
 
         {/* Row 2: actions */}
         <div className="flex items-center gap-2 px-4 py-2">
-          {/* Admin view: /cup would just bounce back here — hide the loop. */}
-          {!isAdminViewer && (
+          {/* Admin view: /cup would just bounce back here — hide the loop.
+              A closed session's cupping form is final, so the button never
+              renders once the session is closed (for anyone). */}
+          {!isAdminViewer && sessionStatus !== "closed" && (
             <Button
               size="sm"
               variant="secondary"
@@ -420,6 +451,39 @@ export function ResultsClient({
                 : translations.refresh}
           </Button>
         </div>
+
+        {closeEmails && (
+          <div className="flex flex-wrap items-center gap-2 px-4 pb-2 text-[11px] text-on-surface-variant">
+            <span>{closeEmails.line}</span>
+            {closeEmails.showResend && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleResendCloseEmails}
+                disabled={resendState === "sending"}
+              >
+                {resendState === "sending"
+                  ? translations.closeEmailsResending
+                  : resendState === "sent"
+                    ? translations.closeEmailsResent
+                    : resendState === "error"
+                      ? translations.closeEmailsResendError
+                      : translations.closeEmailsResend}
+              </Button>
+            )}
+          </div>
+        )}
+
+        {closedOnLabel && (
+          <div className="px-4 pb-2">
+            <span
+              role="status"
+              className="inline-flex rounded-card border border-outline-variant bg-surface-container px-3 py-1 text-[11px] text-on-surface-variant"
+            >
+              {closedOnLabel}
+            </span>
+          </div>
+        )}
 
         {/* Row 3: participation/freshness meta + main tabs */}
         {canViewGroup && (participationLabel || lastUpdatedLabel) && (

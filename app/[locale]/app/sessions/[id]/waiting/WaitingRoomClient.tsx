@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createBrowserClient } from "@supabase/ssr";
 import { checkSessionStarted } from "@/app/actions/sessions";
 
@@ -24,14 +25,27 @@ export function WaitingRoomClient({
     buttonLabel: string;
     checkingLabel: string;
     notStartedMsg: string;
+    backToSessions: string;
+    connectionLost: string;
   };
 }) {
   const router = useRouter();
   const [checking, setChecking] = useState(false);
   const [notStarted, setNotStarted] = useState(false);
+  // True whenever the realtime channel is not actively SUBSCRIBED — drives the
+  // 15s polling fallback and the "connection lost" notice below.
+  const [connectionLost, setConnectionLost] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (isAsync) return;
+
+    const clearPoll = () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
 
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -56,9 +70,28 @@ export function WaitingRoomClient({
           }
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          setConnectionLost(false);
+          clearPoll();
+          return;
+        }
+        // Not (or no longer) subscribed — fall back to polling every 15s so a
+        // dropped realtime connection never strands the waiting room.
+        setConnectionLost(true);
+        if (!pollRef.current) {
+          pollRef.current = setInterval(async () => {
+            const started = await checkSessionStarted(sessionId);
+            if (started) {
+              clearPoll();
+              router.push(`/${locale}/app/sessions/${sessionId}/cup`);
+            }
+          }, 15000);
+        }
+      });
 
     return () => {
+      clearPoll();
       supabase.removeChannel(channel);
     };
   }, [sessionId, locale, router, isAsync]);
@@ -116,6 +149,12 @@ export function WaitingRoomClient({
           </div>
         )}
 
+        {!isAsync && connectionLost && (
+          <p role="status" className="text-xs text-amber-warm">
+            {translations.connectionLost}
+          </p>
+        )}
+
         <div className="space-y-2">
           <button
             onClick={handleStart}
@@ -137,6 +176,13 @@ export function WaitingRoomClient({
             <p className="text-sm text-brown-mid">{translations.notStartedMsg}</p>
           )}
         </div>
+
+        <Link
+          href={`/${locale}/app/sessions`}
+          className="inline-block text-sm text-brown-mid underline hover:text-green-dark transition-colors"
+        >
+          {translations.backToSessions}
+        </Link>
       </div>
     </main>
   );

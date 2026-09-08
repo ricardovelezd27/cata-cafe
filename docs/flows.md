@@ -17,25 +17,35 @@ manage samples (with guards), reveal, close, delete. A **participant** can only
 evaluate and view results. Deleting a session cascades **all participants'
 evaluations**, physical/extrinsic data, invites, and its tasting-history rows.
 
+### The one close routine (2026-09-08)
+
+Every path that ends a session goes through `closeSessionInternal`
+(`lib/closeSession.ts`): **idempotent** status flip (`updateMany where status
+!= closed`, stamps `closedAt`) → **reveal every coffee-linked sample** → 
+`syncCoffeeHistoryForSession` → close emails (group only). A second click, a
+concurrent call or a cron retry is a no-op — nothing is re-synced or re-sent.
+Once closed, a session is **read-only**: every mutation runs
+`assertSessionWritable` and throws `session_closed`; `/cup` redirects to
+`/results`; offline drafts for a closed session are discarded on replay.
+
 ### Solo sessions
 
 `createSession` sets `status: "active"` immediately (there is no meaningful
 "draft" for solo). The session **auto-closes** when the owner has a *submitted*
 evaluation for **every** sample (`maybeAutoCloseSoloSession` inside
-`submitAllEvaluations`, `app/actions/community.ts`): coffee-linked samples are
-revealed (solo blind ends at submit), status flips to `closed`, and
-`syncCoffeeHistoryForSession` writes `UserCoffeeHistory`.
+`submitAllEvaluations`, `app/actions/community.ts`, `emails: "skip"`).
 
 ```mermaid
 stateDiagram-v2
     [*] --> active : createSession (solo)
     active --> active : cup + auto-save drafts (800ms debounce)
     active --> active : submit with samples still pending
-    active --> closed : submitAllEvaluations — every sample submitted\n→ reveal samples → sync coffee history
+    active --> closed : submitAllEvaluations — every sample submitted\n→ closeSessionInternal (reveal → history)
     closed --> [*]
     note right of closed
         closed = the session's results ARE its detail view
-        (sessionHref routes closed sessions to /results)
+        (sessionHref routes closed sessions to /results;
+        /cup redirects; mutations throw session_closed)
     end note
 ```
 
@@ -43,22 +53,51 @@ stateDiagram-v2
 
 `createGroupSession` starts at `active`, creates the owner's participant row and
 an invite token, and (optionally) emails the linked group. Participants join via
-`/join/[token]`. For a **live** session they wait in `/waiting` until the owner
-(maestro) calls `startSession` (`startedAt` set); an **async** session
-(`closesAt` set) lets them cup immediately. Only the owner closes
-(`closeSession`) — that syncs coffee history and emails participants their CVA
-PDFs.
+`/join/[token]` (owner and existing members re-opening the link are no-ops; a
+closed session's link sends members to results and refuses newcomers; `maxUses`
+is enforced inside the transaction). For a **live** session they wait in
+`/waiting` until the owner calls `startSession` — from wizard step 2 **or** the
+master panel's "Iniciar cata" (idempotent). An **async** session (`isAsync`,
+`closesAt` set) lets them cup immediately and is closed by the **daily cron**
+(`/api/cron/close-expired-sessions`, 06:00 UTC) once `closesAt` passes, or
+earlier by the owner. Close emails are queued with `after()` and ledgered per
+recipient in `close_email_deliveries`; the owner sees sent / no-email / failed /
+pending on the results page and can "Reenviar" (only unsent recipients go out).
 
 ```mermaid
 stateDiagram-v2
     [*] --> active : createGroupSession\n(+ owner participant, + invite token,\n+ optional group notify email)
     state active {
-        [*] --> waiting : participant joins via /join/[token]
-        waiting --> cupping : owner startSession (live)\nor isAsync — no waiting
+        [*] --> waiting : participant joins via /join/[token]\n(live, not started)
+        [*] --> cupping : join (async, or already started)
+        waiting --> cupping : owner startSession\n(wizard step 2 or master panel)
         cupping --> submitted : participant submits
     }
-    active --> closed : owner closeSession\n→ sync coffee history\n→ close emails (PDF per cupper)
+    active --> closed : owner closeSession\nOR cron when closesAt < now\n→ closeSessionInternal: reveal → history\n→ close emails via after() (ledgered)
     closed --> [*]
+```
+
+### Deleting a session (2026-09-08)
+
+The owner may delete a session at any time. The confirm dialog (fed by
+`getDeleteImpact`) lists the coffees involved **with their owners** — coffee
+records and their statistics belong to those owners and are never touched — and
+states how many cuppers' evaluations will go. Inside the same transaction,
+`detachCoffeeHistoryForSession` first guarantees every cupper a
+`UserCoffeeHistory` row per coffee-linked sample they submitted (revealed or
+not) carrying a `snapshot` of **their own** evaluation + session metadata; then
+the session is deleted and the history rows' `sessionId`/`evaluationId` go
+`NULL` (`SetNull`) instead of cascading away. Profile history, coffee detail and
+the dashboard read `snapshot` for those rows and label them "Sesión eliminada".
+
+```mermaid
+flowchart LR
+    D[owner: Eliminar] --> I[getDeleteImpact\ncoffees + owners, N cuppers, M evals]
+    I --> C{confirm}
+    C -- yes --> T[transaction]
+    T --> H[detachCoffeeHistoryForSession\nsnapshot own evaluation]
+    H --> X[delete session\nevaluations cascade, history SetNull]
+    X --> P[profile / coffee pages\nread snapshot, no link]
 ```
 
 ### Guest join & conversion (email capture)
@@ -330,7 +369,7 @@ other block selection.
 
 When you touch any of these, update the matching diagram **in the same PR**:
 
-- Session status transitions or `sessionHref` rules → §1
+- Session status transitions, the close routine, delete semantics or `sessionHref` rules → §1
 - `usableCoffeeWhere`, visibility values, share/invite semantics, delete cascades → §2
 - Group membership linking, invites, posts, leave/remove → §3
 - Any new cross-section navigation or a new consumer of `UserCoffeeHistory` → §4

@@ -87,3 +87,102 @@ CREATE POLICY "profiles_select" ON profiles FOR SELECT USING (true);
 (The function revokes do not need rolling back; triggers keep working regardless.)
 
 ---
+
+## §2. Database — apply the `launch_state_machine` migration
+
+**When:** right before deploying the WP2 branch (`claude/launch-wp2-state-machine`). The app
+code on that branch reads the new columns, so deploy and migration go together: migrate
+first, deploy second (the migration is additive, so the OLD code keeps working in between).
+
+**What it does** (`prisma/migrations/20260908140000_launch_state_machine/migration.sql`):
+adds `cupping_sessions.closedAt`, creates `close_email_deliveries`, and makes
+`user_coffee_history.sessionId` / `evaluationId` nullable with `ON DELETE SET NULL` plus
+`snapshot` / `detachedAt` columns. No data is rewritten.
+
+**Steps** (from your machine, in the repo, on the WP2 branch):
+
+1. Make sure `.env.local` has `DIRECT_URL` (the non-pooler connection string — Supabase
+   Dashboard → **Project Settings → Database → Connection string → "Direct connection"**)
+   or, failing that, a `DATABASE_URL` that is NOT the pgbouncer pooler. `prisma migrate`
+   cannot run through the transaction pooler.
+2. Preview what will run (read-only):
+
+   ```bash
+   npx prisma migrate status
+   ```
+
+   Expected: one pending migration, `20260908140000_launch_state_machine`. If it lists
+   OTHER pending migrations or says the migration history has drifted, stop and paste the
+   output to me (see the memory note about checksum drift on this project).
+3. Apply it:
+
+   ```bash
+   npx prisma migrate deploy
+   ```
+
+   Expected: `1 migration applied`. Takes a few seconds; no downtime (the ALTERs take
+   brief locks on `user_coffee_history` and `cupping_sessions`).
+4. **Verify** in Supabase → SQL Editor:
+
+   ```sql
+   select column_name, is_nullable from information_schema.columns
+   where table_name = 'user_coffee_history' and column_name in ('sessionId','evaluationId','snapshot','detachedAt');
+   select count(*) from close_email_deliveries;
+   ```
+
+   Expected: `sessionId` and `evaluationId` → `YES`, `snapshot`/`detachedAt` present,
+   count `0`.
+5. Deploy the branch (merge → Vercel deploys).
+
+**Rollback:** the columns are nullable and unused by the old code, so rolling the app back
+is enough; leave the columns in place. (Dropping them would need
+`ALTER TABLE user_coffee_history ALTER COLUMN "sessionId" SET NOT NULL`, which fails if any
+row was detached in the meantime — do not do that without asking.)
+
+---
+
+## §3. Vercel — environment variables and the new cron
+
+**When:** before the first production deploy of the WP2 branch (the cron needs
+`CRON_SECRET`; the printed QR needs `NEXT_PUBLIC_SITE_URL`).
+
+1. Generate two secrets locally (any terminal):
+
+   ```bash
+   openssl rand -base64 32
+   ```
+
+   Run it twice; keep the two values for `CRON_SECRET` and `GUEST_CLAIM_SECRET`.
+2. Open <https://vercel.com/dashboard> → your **cata-cafe** project → **Settings** →
+   **Environment Variables**.
+3. Add or check each row (Environment = **Production**; also tick **Preview** for the two
+   `NEXT_PUBLIC_*` ones if you use preview deploys):
+
+   | Name | Value | Notes |
+   |---|---|---|
+   | `NEXT_PUBLIC_SITE_URL` | `https://<your-production-domain>` (no trailing slash) | Used in the printed join QR, close/digest emails, canonical URLs. Without it those links say `localhost:3000`. |
+   | `CRON_SECRET` | first generated value | Vercel sends it as `Authorization: Bearer` to both cron routes. |
+   | `GUEST_CLAIM_SECRET` | second generated value | Signs guest "save my results" links. Currently falls back to the service-role key; a dedicated secret means rotating the service key no longer invalidates outstanding claim links. |
+   | `RESEND_API_KEY` | from <https://resend.com/api-keys> | Without it every email is silently skipped. |
+   | `EMAIL_FROM` | e.g. `Cata Café <no-reply@your-domain>` | Must be a Resend-verified domain. |
+   | `ANALYTICS_SUPER_ADMIN_EMAIL` | your admin email | The code fallback is a personal Gmail — set it explicitly. |
+
+4. Click **Save** for each. Vercel only applies env changes to NEW deployments: after the
+   last one, go to **Deployments** → the latest production deployment → **⋯** →
+   **Redeploy** (keep "Use existing build cache" unticked).
+5. **Cron:** after that deploy, open **Settings → Cron Jobs**. You should see two entries:
+   `/api/cron/insights-digest` (`0 12 1 * *`) and `/api/cron/close-expired-sessions`
+   (`0 6 * * *`, i.e. 06:00 UTC daily). If the second is missing, the deploy did not pick
+   up `vercel.json` — check that the file is on the deployed commit.
+6. **Trigger the close cron once by hand** to confirm it is wired (replace the two values):
+
+   ```bash
+   curl -s -H "Authorization: Bearer <CRON_SECRET>" https://<your-production-domain>/api/cron/close-expired-sessions
+   ```
+
+   Expected JSON: `{"ok":true,"due":0,"closed":0,"results":[],"truncated":false}` (or a
+   list of sessions it closed, if any async session was already past its deadline).
+   `{"ok":false,"error":"not_configured"}` means `CRON_SECRET` is not set on that
+   deployment; `unauthorized` means the header value does not match.
+
+---

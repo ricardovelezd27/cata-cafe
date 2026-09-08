@@ -264,21 +264,34 @@ export async function sendCloseEmails(
   const nameSlug = slug(session.name);
 
   // Every participant RECEIVES email (including excluded-from-results cuppers —
-  // they still get their own PDF; the group summary is the same for everyone).
-  const recipients = session.participants;
+  // they still get their own PDF; the group summary is the same for everyone)
+  // — EXCEPT those already marked "sent" in close_email_deliveries. That ledger
+  // is what makes a re-run (double click, cron retry, owner "resend") safe.
+  const alreadySent = new Set(
+    (
+      await prisma.closeEmailDelivery.findMany({
+        where: { sessionId, status: "sent" },
+        select: { userId: true },
+      })
+    ).map((d) => d.userId),
+  );
+  const recipients = session.participants.filter((p) => !alreadySent.has(p.userId));
 
-  const results = await Promise.allSettled(
-    recipients.map(async (p) => {
+  type Outcome = { status: "sent" | "skipped" | "failed"; error?: string };
+
+  const sendOne = async (p: (typeof recipients)[number]): Promise<Outcome> => {
       // Resolve the recipient's email via the service-role admin client — the
-      // Profile model has no email column.
+      // Profile model has no email column. Anonymous guests have none: that is
+      // "skipped" (nothing to retry), not a failure.
       const { data, error } = await admin.auth.admin.getUserById(p.userId);
       const email = data?.user?.email;
-      if (error || !email) {
+      if (error) {
         console.warn(
-          `[closeEmail] could not resolve email for participant ${p.userId} in session ${sessionId}: ${error?.message ?? "no email"}`,
+          `[closeEmail] could not resolve participant ${p.userId} in session ${sessionId}: ${error.message}`,
         );
-        return { status: "failed" as const };
+        return { status: "failed", error: `lookup: ${error.message}` };
       }
+      if (!email) return { status: "skipped", error: "no_email" };
 
       const recipientLocale = resolveRecipientLocale(p.userId);
       const assets = assetsByLocale.get(recipientLocale)!;
@@ -323,16 +336,15 @@ export async function sendCloseEmails(
         ],
       });
 
-      if (result.skipped) return { status: "skipped" as const };
+      if (result.skipped) return { status: "skipped", error: "email_not_configured" };
       if (!result.ok) {
         console.warn(
           `[closeEmail] send failed for ${email} in session ${sessionId}: ${result.error}`,
         );
-        return { status: "failed" as const };
+        return { status: "failed", error: result.error };
       }
-      return { status: "sent" as const };
-    }),
-  );
+      return { status: "sent" };
+  };
 
   const summary: CloseEmailSummary = {
     attempted: recipients.length,
@@ -340,15 +352,50 @@ export async function sendCloseEmails(
     skipped: 0,
     failed: 0,
   };
-  for (const r of results) {
-    if (r.status === "rejected") {
-      summary.failed += 1;
-      console.warn(`[closeEmail] recipient task rejected: ${String(r.reason)}`);
-      continue;
+
+  // Bounded fan-out: each recipient costs one GoTrue lookup + one @react-pdf
+  // render + one Resend POST. Unbounded Promise.all on a 30-person session
+  // meant 30 concurrent PDF renders in one function invocation.
+  const CONCURRENCY = 4;
+  for (let i = 0; i < recipients.length; i += CONCURRENCY) {
+    const chunk = recipients.slice(i, i + CONCURRENCY);
+    const settled = await Promise.allSettled(chunk.map(sendOne));
+    for (let j = 0; j < chunk.length; j++) {
+      const r = settled[j];
+      const outcome: Outcome =
+        r.status === "fulfilled"
+          ? r.value
+          : { status: "failed", error: String(r.reason).slice(0, 300) };
+      if (r.status === "rejected") {
+        console.warn(`[closeEmail] recipient task rejected: ${String(r.reason)}`);
+      }
+      if (outcome.status === "sent") summary.sent += 1;
+      else if (outcome.status === "skipped") summary.skipped += 1;
+      else summary.failed += 1;
+
+      // Ledger row per recipient — never lets a bookkeeping failure sink the
+      // send loop itself.
+      try {
+        await prisma.closeEmailDelivery.upsert({
+          where: { sessionId_userId: { sessionId, userId: chunk[j].userId } },
+          create: {
+            sessionId,
+            userId: chunk[j].userId,
+            status: outcome.status,
+            lastError: outcome.error?.slice(0, 300) ?? null,
+          },
+          update: {
+            status: outcome.status,
+            attempts: { increment: 1 },
+            lastError: outcome.error?.slice(0, 300) ?? null,
+          },
+        });
+      } catch (err) {
+        console.warn(
+          `[closeEmail] could not record delivery for ${chunk[j].userId}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
     }
-    if (r.value.status === "sent") summary.sent += 1;
-    else if (r.value.status === "skipped") summary.skipped += 1;
-    else summary.failed += 1;
   }
 
   return summary;

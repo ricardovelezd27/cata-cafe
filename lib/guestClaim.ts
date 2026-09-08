@@ -185,7 +185,9 @@ export async function mergeGuestData(
       deleteIds.push(anonEvalWins(a, t) ? t.id : a.id);
     }
     if (deleteIds.length > 0) {
-      // user_coffee_history rows pointing at these evaluations cascade away.
+      // user_coffee_history rows pointing at these evaluations get
+      // evaluationId = NULL (SetNull); the per-(coffee, session) dedupe
+      // below removes the duplicate history row itself.
       await tx.evaluation.deleteMany({ where: { id: { in: deleteIds } } });
     }
     const movedEvals = await tx.evaluation.updateMany({
@@ -199,10 +201,19 @@ export async function mergeGuestData(
       select: { id: true, coffeeId: true, sessionId: true },
     });
     if (anonHistory.length > 0) {
-      const targetHistory = await tx.userCoffeeHistory.findMany({
-        where: { userId: target, sessionId: { in: anonHistory.map((h) => h.sessionId) } },
-        select: { coffeeId: true, sessionId: true },
-      });
+      // Detached rows (sessionId NULL — their session was deleted) can never
+      // collide on the (user, coffee, session) unique, so only live sessions
+      // need the dedupe lookup.
+      const liveSessionIds = anonHistory
+        .map((h) => h.sessionId)
+        .filter((s): s is string => s !== null);
+      const targetHistory =
+        liveSessionIds.length > 0
+          ? await tx.userCoffeeHistory.findMany({
+              where: { userId: target, sessionId: { in: liveSessionIds } },
+              select: { coffeeId: true, sessionId: true },
+            })
+          : [];
       const taken = new Set(targetHistory.map((h) => `${h.coffeeId}|${h.sessionId}`));
       const dupIds = anonHistory.filter((h) => taken.has(`${h.coffeeId}|${h.sessionId}`)).map((h) => h.id);
       if (dupIds.length > 0) await tx.userCoffeeHistory.deleteMany({ where: { id: { in: dupIds } } });
