@@ -2,8 +2,27 @@ import { type NextRequest, NextResponse } from "next/server";
 import createIntlMiddleware from "next-intl/middleware";
 import { createServerClient } from "@supabase/ssr";
 import { routing } from "@/i18n/routing";
+import { isGuestAllowedPath, stripLocale } from "@/lib/guestScope";
 
 const intl = createIntlMiddleware(routing);
+
+// Anonymous (QR walk-up) users may only cup / wait / see results. Everything
+// else in the shell (coffees, groups, wizard, profile) would let a throwaway
+// identity create assets. The proxy is the one place that both sees the
+// pathname and already resolved the user, so the gate lives here; server
+// layouts do not receive the pathname.
+function guestRedirect(request: NextRequest, response: NextResponse): NextResponse | null {
+  const pathname = request.nextUrl.pathname;
+  const localeMatch = /^\/(es|en)(?=\/|$)/.exec(pathname);
+  const locale = localeMatch?.[1] ?? routing.defaultLocale;
+  const inner = stripLocale(pathname);
+  if (!inner.startsWith("/app") || isGuestAllowedPath(inner)) return null;
+  const target = new URL(`/${locale}/app/sessions`, request.url);
+  const redirect = NextResponse.redirect(target);
+  // Keep any refreshed auth cookies the session refresh just set.
+  response.cookies.getAll().forEach((c) => redirect.cookies.set(c));
+  return redirect;
+}
 
 // Next.js 16 middleware (must be named `proxy` in proxy.ts). Two jobs:
 //   1. i18n routing (locale prefix / redirect) — always.
@@ -36,7 +55,13 @@ export async function proxy(request: NextRequest) {
         },
       },
     });
-    await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user?.is_anonymous) {
+      const redirect = guestRedirect(request, response);
+      if (redirect) return redirect;
+    }
   } catch (err) {
     console.error(
       JSON.stringify({

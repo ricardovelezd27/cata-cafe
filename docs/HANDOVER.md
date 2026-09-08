@@ -8,8 +8,8 @@
 - **last updated:** 2026-09-08
 - **worktree:** `C:\projects\cata-cafe\.claude\worktrees\app-cohesion-menu-overhaul-00a088`
 - **base:** `main` @ 172aa0b
-- **current branch:** `claude/launch-wp4-observability` (stacked: wp3a(+wp1) → wp2 → wp3b → wp4; merge PRs in order)
-- **current WP / step:** WP4 — observability + honest save status, step 1
+- **current branch:** `claude/launch-docs` (stacked: wp3a(+wp1) → wp2 → wp3b → wp4 → wp5 → docs; merge PRs in order)
+- **current WP / step:** Wrap-up docs (CHANGELOG plain-language summary, README env table, runbook §5 smoke test)
 
 ## Work packages (one branch/PR each, off `main`)
 
@@ -19,9 +19,9 @@
 | WP3a Boundaries + login + proxy (E1, F4, F6) | `claude/launch-wp3a-boundaries` | done (browser-verified 404 + login banner) |
 | WP2 State machine + delete redesign (D1–D3, F1–F3, F11, cron) | `claude/launch-wp2-state-machine` | done — NOT browser-verified yet: needs runbook §2 (migration) applied first |
 | WP3b Action contract + feedback + validation (E2–E5, F8) | `claude/launch-wp3b-actions` | done (build green) |
-| WP4 Observability + honest save status | `claude/launch-wp4-observability` | in progress |
-| WP5 Deploy hygiene + tests + guest scope | `claude/launch-wp5-deploy` | pending |
-| Wrap-up docs + plain-language summary | `claude/launch-docs` | pending |
+| WP4 Observability + honest save status | `claude/launch-wp4-observability` | done (build green) |
+| WP5 Deploy hygiene + tests + guest scope | `claude/launch-wp5-deploy` | done (33 unit tests, build green) |
+| Wrap-up docs + plain-language summary | `claude/launch-docs` | in progress |
 
 ## Done
 
@@ -31,13 +31,12 @@
 - [x] WP3a: ErrorPanel, global-error, [locale]/error, [locale]/app/error, localized not-found + [...rest] catch-all, root not-found, 2 loading skeletons, `errors` messages, login ?error banner + change-email + Google error, proxy try/catch, cup/error → unstable_retry with 2-attempt budget (tsc + lint clean, browser-verified)
 - [x] WP2: schema migration file (closedAt, close_email_deliveries, nullable history FKs + snapshot), assertSessionWritable everywhere, lib/closeSession.ts (idempotent, reveal, history, after() emails), delivery-ledgered + chunked close emails, resendCloseEmails, deleteSession detach+snapshot + getDeleteImpact + impact dialog, joinViaToken owner/rejoin/closed/maxUses-in-tx, startSession idempotent + master-panel button, waiting room (no date heuristic, closed redirect, i18n, polling fallback, exit link), cup closed-redirect + zero-sample EmptyState, results closed notice + email delivery line + resend, history readers accept detached rows, cron close-expired-sessions + vercel.json, runbook §2–§3, CLAUDE.md + flows.md updated (tsc + lint clean)
 - [x] WP3b: lib/actionResult + safeAction (run) + log + validate; scoring inputs derived server-side (cupsPerSample/format from session, cup arrays clamped); validation on createSession/createGroupSession (specific wizard codes), createInviteToken, completeGuestOnboarding, completeOnboarding, updateProfile; Toast/ActionFeedbackProvider + useActionFeedback mounted in [locale]/layout; 5 coffee/group actions converted to run(); 6 call sites + ResultsClient/CupClient use feedback; join pages via useActionState with links; ConfirmDialog accepts ActionResult; errors.codes copy; CLAUDE.md contract/validation/logging/boundary sections (tsc + lint + `npm run build` green)
+- [x] WP4: instrumentation.ts onRequestError + register() env assertions, honest pending save state, store try/catch + storage-unavailable banner, PendingDraftsBadge, runbook §4
+- [x] WP5: vitest + 33 tests (scoring, evaluation derivation, validate, session state, action codes, env, log redaction, guest scope), lib/env.ts, security headers, SW v2 auth exclusion, SignOutButton clears SW caches + last user, guest scope gate in proxy, CLAUDE.md sections
 
 ## Next action
 
-WP4 step 1 (Fable): root instrumentation.ts with onRequestError → lib/log (redactPath for /join|/auth). WP4 step 2 (Sonnet): CupClient flushSave returns synced|pending + amber pending state + leave-guard copy branch; lib/offline/store.ts try/catch + one-time storage-unavailable notice via OfflineBanner; PendingDraftsBadge in the app shell.
-Then WP5: lib/env.ts prod assertions, next.config headers, signOut cache clear + SW auth-path exclusion + SW_VERSION bump, vitest + tests (scoring, assertSessionWritable, classifyActionError, validate), guest scope redirect.
-
-BLOCKER for browser verification of WP2: the user must run runbook §2 (`npx prisma migrate deploy`).
+Docs PR: docs/CHANGELOG-launch-2026-09.md (plain language), README env table, runbook §5 post-deploy smoke test, HANDOVER status → done. Then the user applies runbooks §1–§3 and I browser-verify WP2 flows against the migrated DB.
 
 ## How to verify the current WP
 

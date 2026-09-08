@@ -301,6 +301,19 @@ All writes go through `app/actions/`. Call `revalidatePath()` after mutations to
 - `components/pwa/ServiceWorkerRegister.tsx` registers the SW **production-only** by default (dev + Turbopack HMR interact badly with a caching layer). To test locally anyway: `localStorage.setItem("cata_sw_dev", "1")` then hard-reload. Mounted once in the root `app/layout.tsx` (the actual HTML shell — not `app/[locale]/layout.tsx`).
 - `app/manifest.ts` + `public/icons/icon-{192,512,512-maskable}.png` make the app installable. **The current icons are placeholders** (programmatically generated flat-color + glyph) — swap in real brand icons before shipping broadly.
 
+### Save Status Honesty & Offline Storage
+- `flushSave` in `CupClient` returns `"synced" | "pending"`; the indicator shows an amber **"Guardado en este dispositivo · pendiente de sincronizar"** for `pending` (server write failed or offline) and never auto-clears it — only a later synced flush or `useOfflineSync` reporting `synced` does. The leave-guard swaps to `leaveGuard.bodyPending` while anything is pending. Never map a local-only write to the green "saved" state.
+- `lib/offline/store.ts` never rejects: every localforage call is wrapped, the first failure flips `isOfflineStorageUnavailable()` (subscribe with `onOfflineStorageUnavailable`, `useSyncExternalStore`-friendly) and `OfflineBanner` shows `offline.bannerStorageUnavailable`. `PendingDraftsBadge` (app shell) counts pending modules across all sessions so unsynced work is visible outside `/cup`.
+- Sign-out goes through `components/layout/SignOutButton.tsx`, which first runs `clearLocalDeviceState()` (`lib/offline/deviceState.ts`: drops the `cata-pages-*`/`cata-rsc-*` SW caches and the last-user pointer, keeps user-keyed drafts) — shared tablets must never serve the previous user's cached pages. Never call `signOut`/`switchAccount` from a plain `<form action>`.
+
+### Guests (anonymous users)
+- `proxy.ts` redirects `user.is_anonymous` away from anything under `/app` that is not `/app`, `/app/sessions`, or `/app/sessions/[id]/(cup|waiting|results|print)` (`lib/guestScope.ts`, unit-tested). Guests cup and see results; they never create assets under a throwaway identity.
+
+### Boot-time Env Assertions, Headers, Tests
+- `lib/env.ts` lists the variables required in production; `instrumentation.ts` `register()` throws at boot when one is missing (warns in dev). Add new required variables there AND to `docs/LAUNCH-RUNBOOK.md` §3.
+- `next.config.ts` sets Referrer-Policy / nosniff / X-Frame-Options / HSTS / Permissions-Policy. No CSP yet (landing-page third-party assets) — revisit post-launch.
+- `npm test` runs vitest over `tests/**` (pure libs only: scoring, evaluation derivation, validate, session state, action error mapping, env, log redaction, guest scope). Anything importing `lib/prisma` or `server-only` stays out of tests — keep pure rules in dependency-free modules (`lib/sessionState.ts`, `lib/actionResult.ts`) and re-export.
+
 ### Realtime (Group Sessions)
 - Use `createBrowserClient` from `@supabase/ssr` in client components.
 - Subscribe to `evaluations` table updates **without a filter string** to avoid Realtime filter length limits. Filter client-side by comparing `payload.new.session_sample_id` against a `Set` of the current session's sample IDs.

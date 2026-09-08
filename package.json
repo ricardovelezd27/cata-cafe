@@ -10,7 +10,9 @@
     "seed:test": "tsx scripts/seed-test-users.ts",
     "verify:group-average": "tsx scripts/verify-group-average.ts",
     "import:benchmarks": "tsx scripts/import-benchmark-lots.ts",
-    "import:reference": "tsx scripts/import-reference-series.ts"
+    "import:reference": "tsx scripts/import-reference-series.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@google/genai": "^2.12.0",
@@ -47,6 +49,7 @@
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.7"
   }
 }

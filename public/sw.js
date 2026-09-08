@@ -3,7 +3,7 @@
 // Bump SW_VERSION whenever a change would make old cached entries incompatible
 // (e.g. cache-key logic changes, new required exclusion rule). Bumping it
 // forces old caches to be dropped on the next activate.
-const SW_VERSION = "v1";
+const SW_VERSION = "v2"; // v2 (2026-09-08): locale-prefixed /auth/* excluded from the page cache
 const STATIC_CACHE = `cata-static-${SW_VERSION}`;
 const PAGES_CACHE = `cata-pages-${SW_VERSION}`;
 // RSC flight payloads live in their own cache so a navigation fallback can
@@ -83,8 +83,10 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname.startsWith("/api/")) return;
 
   // Auth callback (and anything under /auth/) must always hit the network:
-  // magic-link tokens are single-use and time-sensitive.
-  if (url.pathname.startsWith("/auth/")) return;
+  // magic-link tokens are single-use and time-sensitive. The login and claim
+  // pages live under a locale prefix (/es/auth/login, /en/auth/claim?token=…)
+  // and must never be served from cache either.
+  if (/^\/(?:[a-z]{2}\/)?auth\//.test(url.pathname)) return;
 
   // Dev-only paths (Turbopack/webpack HMR sockets, etc.) — never intercept.
   if (url.pathname.includes("hmr")) return;

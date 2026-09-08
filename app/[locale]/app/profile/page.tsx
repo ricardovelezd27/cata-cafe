@@ -4,7 +4,7 @@ import { ClipboardList, Users, CheckCircle2, Coffee } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { signOut, switchAccount } from "@/app/actions/auth";
+import { SignOutButton } from "@/components/layout/SignOutButton";
 import { Avatar } from "@/components/ui/Avatar";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { LevelBadge } from "@/components/profile/LevelBadge";
@@ -361,22 +361,20 @@ export default async function ProfilePage({
           <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4">
             <div className="mb-3 text-sm text-on-surface-variant">{user.email}</div>
             <div className="flex flex-col gap-2 sm:flex-row">
-              <form action={switchAccount.bind(null, locale)}>
-                <button
-                  type="submit"
-                  className="w-full rounded-pill border border-outline-variant px-4 py-2 text-sm font-semibold text-on-surface transition-colors hover:bg-surface-container sm:w-auto"
-                >
-                  {t("switchAccount")}
-                </button>
-              </form>
-              <form action={signOut}>
-                <button
-                  type="submit"
-                  className="w-full rounded-pill border border-outline-variant px-4 py-2 text-sm font-semibold text-error transition-colors hover:bg-error-container sm:w-auto"
-                >
-                  {t("logout")}
-                </button>
-              </form>
+              <SignOutButton
+                mode="switchAccount"
+                locale={locale}
+                className="w-full rounded-pill border border-outline-variant px-4 py-2 text-sm font-semibold text-on-surface transition-colors hover:bg-surface-container sm:w-auto"
+              >
+                {t("switchAccount")}
+              </SignOutButton>
+              <SignOutButton
+                mode="signOut"
+                locale={locale}
+                className="w-full rounded-pill border border-outline-variant px-4 py-2 text-sm font-semibold text-error transition-colors hover:bg-error-container sm:w-auto"
+              >
+                {t("logout")}
+              </SignOutButton>
             </div>
           </div>
         </section>

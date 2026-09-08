@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogOut, Languages, UserCog } from "lucide-react";
-import { signOut, switchAccount } from "@/app/actions/auth";
+import { SignOutButton } from "@/components/layout/SignOutButton";
 import { NAV_ITEMS, INSIGHTS_ITEM, isActive, type NavTranslations } from "@/components/layout/navItems";
 
 export default function Sidebar({
@@ -60,24 +60,22 @@ export default function Sidebar({
           <Languages size={18} strokeWidth={1.8} />
           {otherLocale.toUpperCase()}
         </Link>
-        <form action={switchAccount.bind(null, locale)}>
-          <button
-            type="submit"
-            className="flex items-center gap-3 py-2 text-sm text-on-surface-variant hover:text-on-surface transition-colors w-full text-left"
-          >
-            <UserCog size={18} strokeWidth={1.8} />
-            {translations.nav.switchAccount}
-          </button>
-        </form>
-        <form action={signOut}>
-          <button
-            type="submit"
-            className="flex items-center gap-3 py-2 text-sm text-on-surface-variant hover:text-error transition-colors w-full text-left"
-          >
-            <LogOut size={18} strokeWidth={1.8} />
-            {translations.nav.logout}
-          </button>
-        </form>
+        <SignOutButton
+          mode="switchAccount"
+          locale={locale}
+          className="flex items-center gap-3 py-2 text-sm text-on-surface-variant hover:text-on-surface transition-colors w-full text-left"
+        >
+          <UserCog size={18} strokeWidth={1.8} />
+          {translations.nav.switchAccount}
+        </SignOutButton>
+        <SignOutButton
+          mode="signOut"
+          locale={locale}
+          className="flex items-center gap-3 py-2 text-sm text-on-surface-variant hover:text-error transition-colors w-full text-left"
+        >
+          <LogOut size={18} strokeWidth={1.8} />
+          {translations.nav.logout}
+        </SignOutButton>
       </div>
     </aside>
   );
