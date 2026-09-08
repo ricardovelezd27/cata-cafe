@@ -27,7 +27,14 @@ import {
 } from "@/components/cupping/EditSampleMetadataForm";
 import { ExtrinsicEditDialog } from "@/components/results/ExtrinsicEditDialog";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
-import { PillTabs, SegmentedControl, InfoHint, Button, ButtonLink } from "@/components/ui";
+import {
+  PillTabs,
+  SegmentedControl,
+  InfoHint,
+  Button,
+  ButtonLink,
+  useActionFeedback,
+} from "@/components/ui";
 import { updateSampleMetadata } from "@/app/actions/sessions";
 import { asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { ArrowLeft, FileDown, Printer, RefreshCw } from "lucide-react";
@@ -255,6 +262,7 @@ export function ResultsClient({
   const [refreshing, setRefreshing] = useState(false);
   const [newSubmissions, setNewSubmissions] = useState(0);
   const [, startTransition] = useTransition();
+  const feedback = useActionFeedback();
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [editingSampleId, setEditingSampleId] = useState<string | null>(null);
   const [editingExtrinsicSampleId, setEditingExtrinsicSampleId] = useState<string | null>(null);
@@ -351,8 +359,12 @@ export function ResultsClient({
 
   const handleReveal = (sampleId: string) => {
     startTransition(async () => {
-      await revealSample(sampleId);
-      router.refresh();
+      try {
+        await revealSample(sampleId);
+        router.refresh();
+      } catch {
+        feedback.notifyError("unknown");
+      }
     });
   };
 
@@ -367,6 +379,7 @@ export function ResultsClient({
       if (isOwner) await refreshAggregateScores(session.id);
     } catch {
       // Swallow — the re-render below still shows the current server data.
+      feedback.notifyError("unknown");
     }
     router.refresh();
     setRefreshing(false);
@@ -378,8 +391,10 @@ export function ResultsClient({
       try {
         const r = await resendCloseEmails(session.id);
         setResendState(r.ok ? "sent" : "error");
+        if (!r.ok) feedback.notifyError("unknown");
       } catch {
         setResendState("error");
+        feedback.notifyError("unknown");
       }
     });
   };

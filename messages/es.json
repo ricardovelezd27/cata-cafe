@@ -173,7 +173,14 @@
         "invalid_altitude": "La altitud debe ser un número en msnm (por ejemplo 1800).",
         "sample_without_coffee": "Cada muestra debe estar vinculada a un café.",
         "generic": "No se pudo crear la sesión. Inténtalo de nuevo.",
-        "coffee_not_found": "Uno de los cafés seleccionados ya no está disponible. Vuelve a elegirlo."
+        "coffee_not_found": "Uno de los cafés seleccionados ya no está disponible. Vuelve a elegirlo.",
+        "invalid_name": "Ponle un nombre a la sesión (máx. 120 caracteres).",
+        "invalid_date": "La fecha no es válida.",
+        "invalid_objective": "El objetivo es demasiado largo (máx. 1000 caracteres).",
+        "invalid_format": "Elige un formato de cata válido.",
+        "invalid_cups": "Las tazas por muestra deben ser un número entre 1 y 5.",
+        "too_many_samples": "Máximo 100 muestras por sesión.",
+        "invalid_closes_at": "La fecha de cierre debe estar en el futuro."
       }
     },
     "deleteSession": {
@@ -453,7 +460,8 @@
     "orSignIn": "o inicia sesión con tu correo",
     "guestOfflineNotice": "Necesitas conexión para unirte; una vez dentro puedes catar sin internet.",
     "guestDataNotice": "Como invitado, tu acceso queda ligado a este navegador: si borras los datos de navegación o cambias de dispositivo, perderás tu avance. Al ver tus resultados podrás guardarlos creando tu cuenta.",
-    "guestError": "No se pudo entrar como invitado. Intenta con tu correo."
+    "guestError": "No se pudo entrar como invitado. Intenta con tu correo.",
+    "sessionClosed": "Esta cata ya cerró — pide al organizador el enlace de resultados."
   },
   "results": {
     "title": "Resultados de la Sesión",
@@ -1349,6 +1357,22 @@
     "support": "Código de soporte",
     "notFoundTitle": "Página no encontrada",
     "notFoundBody": "El enlace puede estar mal escrito o el contenido ya no existe.",
-    "loading": "Cargando…"
+    "loading": "Cargando…",
+    "dismiss": "Cerrar",
+    "success": "Listo",
+    "codes": {
+      "not_authenticated": "Tu sesión caducó. Vuelve a iniciar sesión.",
+      "not_found_or_forbidden": "No encontramos ese elemento o no tienes permiso.",
+      "session_closed": "Esta cata ya está cerrada; sus resultados son definitivos.",
+      "invalid_token": "Este enlace de invitación no es válido.",
+      "token_expired": "Este enlace de invitación caducó.",
+      "token_exhausted": "Este enlace de invitación ya alcanzó su número máximo de usos.",
+      "coffee_not_usable": "Ese café no está disponible para ti.",
+      "invalid_input": "Revisa los datos ingresados.",
+      "conflict": "Alguien más acaba de hacer ese cambio. Actualiza la página.",
+      "not_found": "Ese elemento ya no existe.",
+      "invalid_reference": "Uno de los elementos vinculados ya no existe.",
+      "unknown": "Algo salió mal. Inténtalo de nuevo."
+    }
   }
 }

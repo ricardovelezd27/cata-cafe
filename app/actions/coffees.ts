@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { withCodeRetry } from "@/lib/coffeeCode";
+import { run } from "@/lib/safeAction";
+import type { ActionResult } from "@/lib/actionResult";
 import {
   isCoffeeVisibility,
   usableCoffeeWhere,
@@ -210,45 +212,47 @@ export async function duplicateCoffee(
 // in app/actions/community.ts otherwise).
 export async function createCoffeeInvite(
   coffeeId: string,
-): Promise<{ token: string }> {
-  const user = await requireUser();
+): Promise<ActionResult<{ token: string }>> {
+  return run("createCoffeeInvite", async () => {
+    const user = await requireUser();
 
-  const coffee = await prisma.coffee.findUnique({
-    where: { id: coffeeId },
-    select: { createdBy: true, visibility: true },
-  });
-  if (!coffee || coffee.createdBy !== user.id) {
-    throw new Error("not_found_or_forbidden");
-  }
-
-  if (coffee.visibility === "private") {
-    await prisma.coffee.update({
+    const coffee = await prisma.coffee.findUnique({
       where: { id: coffeeId },
-      data: { visibility: "shared" },
+      select: { createdBy: true, visibility: true },
     });
-    revalidatePath(`/es/app/coffees/${coffeeId}`);
-    revalidatePath(`/en/app/coffees/${coffeeId}`);
-  }
+    if (!coffee || coffee.createdBy !== user.id) {
+      throw new Error("not_found_or_forbidden");
+    }
 
-  const existing = await prisma.coffeeInvite.findFirst({
-    where: {
-      coffeeId,
-      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-    },
-    orderBy: { createdAt: "desc" },
-  });
-  if (
-    existing &&
-    (existing.maxUses === null || existing.useCount < existing.maxUses)
-  ) {
-    return { token: existing.token };
-  }
+    if (coffee.visibility === "private") {
+      await prisma.coffee.update({
+        where: { id: coffeeId },
+        data: { visibility: "shared" },
+      });
+      revalidatePath(`/es/app/coffees/${coffeeId}`);
+      revalidatePath(`/en/app/coffees/${coffeeId}`);
+    }
 
-  const token = crypto.randomUUID();
-  await prisma.coffeeInvite.create({
-    data: { coffeeId, token, createdBy: user.id },
-  });
-  return { token };
+    const existing = await prisma.coffeeInvite.findFirst({
+      where: {
+        coffeeId,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    if (
+      existing &&
+      (existing.maxUses === null || existing.useCount < existing.maxUses)
+    ) {
+      return { token: existing.token };
+    }
+
+    const token = crypto.randomUUID();
+    await prisma.coffeeInvite.create({
+      data: { coffeeId, token, createdBy: user.id },
+    });
+    return { token };
+  }, { coffeeId });
 }
 
 // ─── Accept a coffee-share invite (any logged-in user) ────────────────────────
@@ -303,22 +307,23 @@ export async function joinCoffeeViaToken(token: string, locale: string = "es") {
 export async function revokeCoffeeShare(
   coffeeId: string,
   userId: string,
-): Promise<{ ok: true }> {
-  const user = await requireUser();
+): Promise<ActionResult<void>> {
+  return run("revokeCoffeeShare", async () => {
+    const user = await requireUser();
 
-  const coffee = await prisma.coffee.findUnique({
-    where: { id: coffeeId },
-    select: { createdBy: true },
-  });
-  if (!coffee || coffee.createdBy !== user.id) {
-    throw new Error("not_found_or_forbidden");
-  }
+    const coffee = await prisma.coffee.findUnique({
+      where: { id: coffeeId },
+      select: { createdBy: true },
+    });
+    if (!coffee || coffee.createdBy !== user.id) {
+      throw new Error("not_found_or_forbidden");
+    }
 
-  await prisma.coffeeShare.deleteMany({ where: { coffeeId, userId } });
+    await prisma.coffeeShare.deleteMany({ where: { coffeeId, userId } });
 
-  revalidatePath(`/es/app/coffees/${coffeeId}`);
-  revalidatePath(`/en/app/coffees/${coffeeId}`);
-  return { ok: true };
+    revalidatePath(`/es/app/coffees/${coffeeId}`);
+    revalidatePath(`/en/app/coffees/${coffeeId}`);
+  }, { coffeeId });
 }
 
 // ─── Publish / unpublish a coffee's community results (owner only) ────────────
@@ -328,30 +333,32 @@ export async function revokeCoffeeShare(
 export async function setCoffeeResultsPublished(
   coffeeId: string,
   published: boolean,
-): Promise<{ ok: true; resultsPublished: boolean }> {
-  const user = await requireUser();
+): Promise<ActionResult<{ resultsPublished: boolean }>> {
+  return run("setCoffeeResultsPublished", async () => {
+    const user = await requireUser();
 
-  const coffee = await prisma.coffee.findUnique({
-    where: { id: coffeeId },
-    select: { createdBy: true },
-  });
-  if (!coffee || coffee.createdBy !== user.id) {
-    throw new Error("not_found_or_forbidden");
-  }
+    const coffee = await prisma.coffee.findUnique({
+      where: { id: coffeeId },
+      select: { createdBy: true },
+    });
+    if (!coffee || coffee.createdBy !== user.id) {
+      throw new Error("not_found_or_forbidden");
+    }
 
-  await prisma.coffee.update({
-    where: { id: coffeeId },
-    data: {
-      resultsPublished: published,
-      resultsPublishedAt: published ? new Date() : null,
-    },
-  });
+    await prisma.coffee.update({
+      where: { id: coffeeId },
+      data: {
+        resultsPublished: published,
+        resultsPublishedAt: published ? new Date() : null,
+      },
+    });
 
-  revalidatePath(`/es/app/coffees/${coffeeId}`);
-  revalidatePath(`/en/app/coffees/${coffeeId}`);
-  revalidatePath("/es/app/coffees");
-  revalidatePath("/en/app/coffees");
-  return { ok: true, resultsPublished: published };
+    revalidatePath(`/es/app/coffees/${coffeeId}`);
+    revalidatePath(`/en/app/coffees/${coffeeId}`);
+    revalidatePath("/es/app/coffees");
+    revalidatePath("/en/app/coffees");
+    return { resultsPublished: published };
+  }, { coffeeId });
 }
 
 // ─── Set a coffee record's visibility tier (owner only) ───────────────────────
@@ -363,27 +370,29 @@ export async function setCoffeeResultsPublished(
 export async function setCoffeeVisibility(
   coffeeId: string,
   visibility: CoffeeVisibility,
-): Promise<{ ok: true; visibility: CoffeeVisibility }> {
-  const user = await requireUser();
-  // Public POST endpoint — never trust the caller's string.
-  if (!isCoffeeVisibility(visibility)) throw new Error("invalid_visibility");
+): Promise<ActionResult<{ visibility: CoffeeVisibility }>> {
+  return run("setCoffeeVisibility", async () => {
+    const user = await requireUser();
+    // Public POST endpoint — never trust the caller's string.
+    if (!isCoffeeVisibility(visibility)) throw new Error("invalid_input");
 
-  const coffee = await prisma.coffee.findUnique({
-    where: { id: coffeeId },
-    select: { createdBy: true },
-  });
-  if (!coffee || coffee.createdBy !== user.id) {
-    throw new Error("not_found_or_forbidden");
-  }
+    const coffee = await prisma.coffee.findUnique({
+      where: { id: coffeeId },
+      select: { createdBy: true },
+    });
+    if (!coffee || coffee.createdBy !== user.id) {
+      throw new Error("not_found_or_forbidden");
+    }
 
-  await prisma.coffee.update({
-    where: { id: coffeeId },
-    data: { visibility },
-  });
+    await prisma.coffee.update({
+      where: { id: coffeeId },
+      data: { visibility },
+    });
 
-  revalidatePath(`/es/app/coffees/${coffeeId}`);
-  revalidatePath(`/en/app/coffees/${coffeeId}`);
-  revalidatePath("/es/app/coffees");
-  revalidatePath("/en/app/coffees");
-  return { ok: true, visibility };
+    revalidatePath(`/es/app/coffees/${coffeeId}`);
+    revalidatePath(`/en/app/coffees/${coffeeId}`);
+    revalidatePath("/es/app/coffees");
+    revalidatePath("/en/app/coffees");
+    return { visibility };
+  }, { coffeeId });
 }

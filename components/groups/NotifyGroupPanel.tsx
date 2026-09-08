@@ -12,6 +12,7 @@
 
 import { useState, useTransition } from "react";
 import { sendGroupEmail, type GroupEmailSummary } from "@/app/actions/groups";
+import { useActionFeedback } from "@/components/ui";
 
 export type NotifyGroupOption = { id: string; name: string; memberCount: number };
 
@@ -49,6 +50,7 @@ export function NotifyGroupPanel({
   defaultSubject: string;
   t: NotifyGroupTranslations;
 }) {
+  const feedback = useActionFeedback();
   const [groupId, setGroupId] = useState(groups[0]?.id ?? "");
   const [subject, setSubject] = useState(defaultSubject);
   const [message, setMessage] = useState(t.inviteDefaultMessage);
@@ -69,13 +71,15 @@ export function NotifyGroupPanel({
   const onSend = () => {
     if (!groupId || !subject.trim() || !message.trim()) return;
     start(async () => {
-      const result = await sendGroupEmail({
-        groupId,
-        subject: subject.trim(),
-        message: message.trim(),
-        sessionId,
-      });
-      setSummary(result);
+      await feedback.run(
+        sendGroupEmail({
+          groupId,
+          subject: subject.trim(),
+          message: message.trim(),
+          sessionId,
+        }),
+        (data) => setSummary(data),
+      );
     });
   };
 

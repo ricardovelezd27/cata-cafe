@@ -2,6 +2,14 @@
 
 import { useState, useTransition, type ReactNode } from "react";
 import { ResponsiveDialog } from "./ResponsiveDialog";
+import type { ActionResult } from "@/lib/actionResult";
+
+// Backwards-compatible: existing callers return Promise<void> | void and keep
+// throwing on failure. Newer callers may return an ActionResult (or a
+// loosely-typed `{ ok, error }` shape) instead of throwing — when `ok` is
+// false, the dialog shows the mapped message from `errorMessages` (falling
+// back to the plain `error` prop) instead of closing.
+type ConfirmOutcome = ActionResult<unknown> | { ok: boolean; error?: string } | void;
 
 export function ConfirmDialog({
   open,
@@ -14,6 +22,7 @@ export function ConfirmDialog({
   onConfirm,
   destructive = true,
   error,
+  errorMessages,
   confirmDisabled = false,
 }: {
   open: boolean;
@@ -23,14 +32,17 @@ export function ConfirmDialog({
   confirmLabel: string;
   cancelLabel: string;
   closeLabel: string;
-  onConfirm: () => Promise<void> | void;
+  onConfirm: () => Promise<ConfirmOutcome> | ConfirmOutcome;
   destructive?: boolean;
   error?: string | null;
+  /** Maps an ActionErrorCode (or any string error code) to display copy. */
+  errorMessages?: Record<string, string>;
   /** Disables the confirm button — e.g. while async impact data is still loading. */
   confirmDisabled?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const [failed, setFailed] = useState(false);
+  const [resolvedError, setResolvedError] = useState<string | null>(null);
 
   // Clear a stale failure banner whenever the dialog transitions from
   // closed to open (but not while it stays open after a failed attempt).
@@ -39,7 +51,10 @@ export function ConfirmDialog({
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
     setPrevOpen(open);
-    if (open) setFailed(false);
+    if (open) {
+      setFailed(false);
+      setResolvedError(null);
+    }
   }
 
   const handleOpenChange = (next: boolean) => {
@@ -49,9 +64,17 @@ export function ConfirmDialog({
 
   const handleConfirm = () => {
     setFailed(false);
+    setResolvedError(null);
     startTransition(async () => {
       try {
-        await onConfirm();
+        const result = await onConfirm();
+        if (result && typeof result === "object" && "ok" in result && result.ok === false) {
+          const code = "error" in result ? result.error : undefined;
+          const mapped = code ? errorMessages?.[code] ?? errorMessages?.unknown : undefined;
+          setResolvedError(mapped ?? null);
+          setFailed(true);
+          return;
+        }
         onOpenChange(false);
       } catch {
         setFailed(true);
@@ -59,13 +82,13 @@ export function ConfirmDialog({
     });
   };
 
-  const showError = failed && !!error;
+  const showError = failed && !!(resolvedError ?? error);
 
   return (
     <ResponsiveDialog open={open} onOpenChange={handleOpenChange} title={title} closeLabel={closeLabel}>
       <div className="space-y-5">
         <div className="text-sm text-on-surface">{body}</div>
-        {showError && <p className="text-sm text-error">{error}</p>}
+        {showError && <p className="text-sm text-error">{resolvedError ?? error}</p>}
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
           <button
             type="button"

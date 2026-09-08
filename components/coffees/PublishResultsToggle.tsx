@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setCoffeeResultsPublished } from "@/app/actions/coffees";
+import { useActionFeedback } from "@/components/ui";
 
 type Props = {
   coffeeId: string;
@@ -25,6 +26,7 @@ const ARM_TIMEOUT_MS = 3000;
 // non-destructive to data, just hides the section from non-owners again.
 export function PublishResultsToggle({ coffeeId, resultsPublished, translations }: Props) {
   const router = useRouter();
+  const feedback = useActionFeedback();
   const [isPending, startTransition] = useTransition();
   const [armed, setArmed] = useState(false);
   const armTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -37,8 +39,7 @@ export function PublishResultsToggle({ coffeeId, resultsPublished, translations 
 
   function commit(next: boolean) {
     startTransition(async () => {
-      await setCoffeeResultsPublished(coffeeId, next);
-      router.refresh();
+      await feedback.run(setCoffeeResultsPublished(coffeeId, next), () => router.refresh());
     });
   }
 

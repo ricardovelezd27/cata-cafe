@@ -52,6 +52,7 @@ import {
   MasterControls,
   CanvasFooter,
   BetaBadge,
+  useActionFeedback,
   type ModuleItem,
 } from "@/components/ui";
 import { useConnectivity } from "@/hooks/useConnectivity";
@@ -235,6 +236,7 @@ export function CupClient({
   userCountry?: string;
 }) {
   const router = useRouter();
+  const feedback = useActionFeedback();
   const stepsForFormat: CuppingStep[] =
     session.format === "descriptive" ? DESCRIPTIVE_STEPS : CUPPING_STEPS;
   // Formats other than affective/descriptive render the CombinedForm, so they
@@ -848,6 +850,8 @@ export function CupClient({
       const { token } = await createInviteToken(session.id);
       const link = buildInviteUrl(window.location.origin, locale, token);
       setInviteLink(link);
+    } catch {
+      feedback.notifyError("unknown");
     } finally {
       setIsGeneratingInvite(false);
     }

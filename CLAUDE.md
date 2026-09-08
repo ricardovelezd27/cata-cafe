@@ -218,6 +218,20 @@ Pages and layouts are async RSC. Add `"use client"` only to components that use 
 ### Mutations via Server Actions
 All writes go through `app/actions/`. Call `revalidatePath()` after mutations to invalidate the Next.js cache. Never write to the database from client components directly.
 
+### Server Action Contract (2026-09 error-handling foundation)
+- A thrown error inside a server action reaches the browser as an **opaque digest** in production. So every action that a client component calls **interactively** (button, toggle, dialog, form) must return `ActionResult<T>` (`lib/actionResult.ts`: `{ ok: true, data } | { ok: false, error: ActionErrorCode }`) by wrapping its body in `run("actionName", async () => { … }, { userId, sessionId })` from `lib/safeAction.ts`. `run()` lets `redirect()`/`notFound()` through (`unstable_rethrow`), maps the known thrown codes (`not_authenticated`, `not_found_or_forbidden`, `session_closed`, `token_*`, `coffee_not_usable`, `invalid_input`) and Prisma `P2002 → conflict`, `P2025 → not_found`, `P2003 → invalid_reference`, and logs everything else as `unknown`. Keep throwing `Error("<code>")` INSIDE the body — that is the mechanism, not a smell.
+- Actions only called from server pages, or already wrapped by `ConfirmDialog`, may keep throwing. Reference conversion: `completeOnboarding` in `app/actions/profile.ts`.
+- **Client side**: never `startTransition(async () => { await action() })` bare. Use `const feedback = useActionFeedback()` (`components/ui/Toast.tsx`, provider mounted in `app/[locale]/layout.tsx`) and `feedback.run(action(...), onOk)` — it toasts the localized copy for `errors.codes.<code>` on failure. Actions that still throw are wrapped in try/catch → `feedback.notifyError("unknown")`. Plain `<form action>` pages use React 19 `useActionState` with a `(prev, formData)` action (see `components/join/*Form.tsx`).
+- Copy for every `ActionErrorCode` lives in `messages/*.json` under `errors.codes`; adding a code means adding both translations.
+
+### Validation
+- `lib/validate.ts` (`str`, `int`, `oneOf`, `isoDate`, `list`, `email`, `cupFlags`) — no zod. Every client-posted string/number/enum/date/array goes through one of these before Prisma; they throw `invalid_input` (mapped by `run()`), or the caller translates to its own code (the session wizard's `validateSessionMeta` → `session.newForm.errors.*`).
+- **Scoring inputs are never taken from the client**: `upsertEvaluation` and `syncEvaluation` read `cupsPerSample` and `format` from the session row (`requireSample*` return them) and derive the JSON column via `moduleKeyForFormat`; `computeEvaluationDerived` clamps the cup arrays with `cupFlags`. The `cupsPerSample` / `moduleKey` fields in those inputs are kept for API compatibility and ignored.
+
+### Logging
+- `lib/log.ts` (`logError` / `logWarn` / `logInfo`) writes one JSON line per event so Vercel Logs can be searched by `digest`, `action`, `sessionId`. `run()` logs unknown action failures; `instrumentation.ts` logs render/route failures with the same shape.
+- **Log**: action name, error code, digest, ids (userId/sessionId/coffeeId/groupId), the route template, locale, and `message` only for `unknown`. **Never log**: request headers/cookies, concrete `/join/*` or `/auth/*` paths (tokens — use `redactPath`), emails, display names, form bodies, evaluation payloads, AI prompts.
+
 ### Auto-Save in CupClient
 `CupClient` debounces evaluation saves at 800ms. Do not add additional `revalidatePath` calls that would trigger a full re-render on every keystroke — the debounce exists to batch writes.
 
@@ -298,9 +312,14 @@ All writes go through `app/actions/`. Call `revalidatePath()` after mutations to
 ### Form State Pattern
 Cupping form components are fully controlled. State is lifted to `CupClient`, which orchestrates sample navigation, tab switching, and auto-save. Individual forms receive data and `onChange` callbacks as props.
 
+### Error Boundaries & Not-Found
+- `components/errors/ErrorPanel.tsx` is the single error surface. Boundaries: `app/global-error.tsx` (replaces the root layout — own `<html>/<body>`, hardcoded es/en map), `app/[locale]/error.tsx`, `app/[locale]/app/error.tsx` (app shell stays mounted), `app/[locale]/app/sessions/[id]/cup/error.tsx` (offline-aware). 404: `app/[locale]/not-found.tsx` (localized) reached via the `app/[locale]/[...rest]/page.tsx` catch-all; `app/not-found.tsx` (bilingual) only for an unknown locale segment. `loading.tsx` skeletons on `/app` and `/app/sessions/[id]`.
+- Retry with **`unstable_retry()`** (re-fetches), never `reset()` (re-renders the same failed tree — the old cup boundary looped on exactly this). The cup boundary allows 2 automatic retries per 30 s, then shows a manual retry + back link.
+- Boundary components cannot receive a `translations` prop, so `app/[locale]/error.tsx` and `app/[locale]/app/error.tsx` call `useTranslations("errors")` directly — the ONE sanctioned exception to the i18n rule below (they render inside `[locale]/layout.tsx`'s `NextIntlClientProvider`).
+
 ### i18n Pattern
 - Server components: `const t = await getTranslations("section")`
-- Client components: receive translations as props (a `translations` object) — do not call `useTranslations()` inside components that are passed as children to server-rendered layouts
+- Client components: receive translations as props (a `translations` object) — do not call `useTranslations()` inside components that are passed as children to server-rendered layouts (exception: the two `error.tsx` boundaries above)
 - All reference data in `lib/constants.ts` uses Spanish labels; UI strings use the translation system
 
 ---

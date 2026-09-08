@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ClipboardList, Coffee, Users, ChevronRight, ChevronLeft } from "lucide-react";
 import { completeOnboarding } from "@/app/actions/profile";
+import { useActionFeedback } from "@/components/ui";
 import { COUNTRIES } from "@/lib/constants";
 
 // NOTE: this list drives ONBOARDING CHOICES (values + prompt copy), a separate
@@ -52,6 +53,7 @@ interface WelcomeModalProps {
 
 export default function WelcomeModal({ locale, initialDisplayName }: WelcomeModalProps) {
   const router = useRouter();
+  const feedback = useActionFeedback();
   const [isPending, startTransition] = useTransition();
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -62,12 +64,14 @@ export default function WelcomeModal({ locale, initialDisplayName }: WelcomeModa
 
   function handleSkip() {
     startTransition(async () => {
-      await completeOnboarding({
-        displayName: displayName || initialDisplayName,
-        role: role || "enthusiast",
-        country: country || "",
-      });
-      router.refresh();
+      await feedback.run(
+        completeOnboarding({
+          displayName: displayName || initialDisplayName,
+          role: role || "enthusiast",
+          country: country || "",
+        }),
+        () => router.refresh(),
+      );
     });
   }
 
@@ -76,8 +80,9 @@ export default function WelcomeModal({ locale, initialDisplayName }: WelcomeModa
     const path = PATHS.find((p) => p.id === selectedPath);
     if (!path) return;
     startTransition(async () => {
-      await completeOnboarding({ displayName, role, country });
-      router.push(`/${locale}${path.href}`);
+      await feedback.run(completeOnboarding({ displayName, role, country }), () =>
+        router.push(`/${locale}${path.href}`),
+      );
     });
   }
 

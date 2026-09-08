@@ -13,6 +13,7 @@ import {
 } from "@/lib/sessionAuth";
 import { closeSessionInternal } from "@/lib/closeSession";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
+import * as v from "@/lib/validate";
 
 // ─── Submit all draft evaluations for a session ───────────────────────────────
 export async function submitAllEvaluations(sessionId: string) {
@@ -220,7 +221,7 @@ export async function revealSample(sampleId: string, coffeeId?: string) {
 // this call — the upsert makes either ordering safe.
 export async function completeGuestOnboarding(name: string) {
   const user = await requireUser({ skipProfileUpsert: true });
-  const displayName = name.trim() || "Catador";
+  const displayName = v.str(name, "name", { max: 80, required: false }) ?? "Catador";
 
   await prisma.profile.upsert({
     where: { id: user.id },
@@ -314,7 +315,13 @@ export async function createInviteToken(
   expiresAt?: string,
 ): Promise<{ token: string }> {
   const user = await requireUser();
-  await requireSessionOwner(sessionId, user.id);
+  assertSessionWritable(await requireSessionOwner(sessionId, user.id));
+
+  // 0 / negative would mint a dead-on-arrival token; a past date a pre-expired
+  // one — both reject as invalid_input.
+  const safeMaxUses =
+    maxUses === undefined || maxUses === null ? null : v.int(maxUses, "maxUses", 1, 1000);
+  const safeExpiresAt = expiresAt ? v.isoDate(expiresAt, "expiresAt", { future: true }) : null;
 
   const token = crypto.randomUUID();
 
@@ -322,8 +329,8 @@ export async function createInviteToken(
     data: {
       sessionId,
       token,
-      maxUses: maxUses ?? null,
-      expiresAt: expiresAt ? new Date(expiresAt) : null,
+      maxUses: safeMaxUses,
+      expiresAt: safeExpiresAt,
       createdBy: user.id,
     },
   });

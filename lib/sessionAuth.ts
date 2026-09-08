@@ -83,7 +83,15 @@ export async function requireSessionMember(
   };
 }
 
-export type SampleAuthRow = { sessionId: string; status: string };
+/** Also carries the two session fields scoring must never take from the
+ *  client: `cupsPerSample` decides whether uniformity/defect penalties apply
+ *  (≥5 cups) and `format` decides which JSON column an evaluation lands in. */
+export type SampleAuthRow = {
+  sessionId: string;
+  status: string;
+  cupsPerSample: number;
+  format: string;
+};
 
 /** Member access resolved through a sample id; returns the sample's real
  *  sessionId (never trust a client-supplied one alongside a sample id) plus
@@ -101,6 +109,8 @@ export async function requireSampleMember(
         select: {
           createdBy: true,
           status: true,
+          cupsPerSample: true,
+          format: true,
           participants: { where: { userId }, select: { userId: true }, take: 1 },
         },
       },
@@ -113,7 +123,12 @@ export async function requireSampleMember(
   ) {
     throw new Error("not_found_or_forbidden");
   }
-  return { sessionId: sample.sessionId, status: sample.session.status };
+  return {
+    sessionId: sample.sessionId,
+    status: sample.session.status,
+    cupsPerSample: sample.session.cupsPerSample,
+    format: sample.session.format,
+  };
 }
 
 /** Owner access resolved through a sample id; returns the sample's sessionId
@@ -126,11 +141,18 @@ export async function requireSampleOwner(
     where: { id: sessionSampleId },
     select: {
       sessionId: true,
-      session: { select: { createdBy: true, status: true } },
+      session: {
+        select: { createdBy: true, status: true, cupsPerSample: true, format: true },
+      },
     },
   });
   if (!sample || sample.session.createdBy !== userId) {
     throw new Error("not_found_or_forbidden");
   }
-  return { sessionId: sample.sessionId, status: sample.session.status };
+  return {
+    sessionId: sample.sessionId,
+    status: sample.session.status,
+    cupsPerSample: sample.session.cupsPerSample,
+    format: sample.session.format,
+  };
 }

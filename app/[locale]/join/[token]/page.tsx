@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { joinViaToken } from "@/app/actions/community";
 import { GuestJoinForm } from "@/components/join/GuestJoinForm";
+import { JoinSessionForm } from "@/components/join/JoinSessionForm";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +21,8 @@ export default async function JoinPage({
   } = await supabase.auth.getUser();
 
   const t = await getTranslations("group");
+  const tErrors = await getTranslations("errors");
+  const tAuth = await getTranslations("auth");
 
   // Validate invite token
   const invite = await prisma.sessionInvite.findUnique({
@@ -39,6 +40,17 @@ export default async function JoinPage({
       <main className="flex flex-1 items-center justify-center px-6 py-16">
         <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-card p-8 text-center space-y-4">
           <p className="text-lg font-semibold text-red-defect">{t("invalidToken")}</p>
+          <div className="flex flex-col gap-2 text-sm">
+            <Link href={`/${locale}/app`} className="text-brown-mid underline hover:text-green-dark">
+              {tErrors("home")}
+            </Link>
+            <Link
+              href={`/${locale}/auth/login`}
+              className="text-brown-mid underline hover:text-green-dark"
+            >
+              {tAuth("loginTitle")}
+            </Link>
+          </div>
         </div>
       </main>
     );
@@ -84,8 +96,8 @@ export default async function JoinPage({
     );
   }
 
-  // Bind locale into the server action
-  const joinAction = joinViaToken.bind(null, token, locale);
+  const errorCodes = tErrors.raw("codes") as Record<string, string>;
+  const joinErrors = { ...errorCodes, session_closed: t("sessionClosed") };
 
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-16">
@@ -96,14 +108,16 @@ export default async function JoinPage({
           </h1>
           <p className="text-sm text-brown-mid mt-1">{t("joinSession")}</p>
         </div>
-        <form action={joinAction}>
-          <button
-            type="submit"
-            className="w-full py-3 rounded-pill bg-green-dark text-white font-bold hover:bg-green-mid transition"
-          >
-            {t("joinSession")}
-          </button>
-        </form>
+        <JoinSessionForm
+          token={token}
+          locale={locale}
+          translations={{
+            button: t("joinSession"),
+            pending: t("joining"),
+            errors: joinErrors,
+            home: tErrors("home"),
+          }}
+        />
       </div>
     </main>
   );

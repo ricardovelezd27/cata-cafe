@@ -71,7 +71,11 @@ export function GroupEmailComposer({
           message: message.trim(),
           sessionId: includeInvite && sessionId ? sessionId : undefined,
         });
-        setSummary(result);
+        if (result.ok) {
+          setSummary(result.data);
+        } else {
+          setError(t.errorGeneric);
+        }
       } catch {
         setError(t.errorGeneric);
       }

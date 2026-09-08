@@ -173,7 +173,14 @@
         "invalid_altitude": "Altitude must be a number in masl (e.g. 1800).",
         "sample_without_coffee": "Each sample must be linked to a coffee.",
         "generic": "Couldn't create the session. Please try again.",
-        "coffee_not_found": "One of the selected coffees is no longer available. Please pick it again."
+        "coffee_not_found": "One of the selected coffees is no longer available. Please pick it again.",
+        "invalid_name": "Give the session a name (max. 120 characters).",
+        "invalid_date": "That date isn't valid.",
+        "invalid_objective": "The objective is too long (max. 1000 characters).",
+        "invalid_format": "Choose a valid tasting format.",
+        "invalid_cups": "Cups per sample must be a number between 1 and 5.",
+        "too_many_samples": "Maximum 100 samples per session.",
+        "invalid_closes_at": "The closing date must be in the future."
       }
     },
     "deleteSession": {
@@ -453,7 +460,8 @@
     "orSignIn": "or sign in with your email",
     "guestDataNotice": "As a guest, your access is tied to this browser: clearing browsing data or switching devices means losing your progress. When you view your results you'll be able to save them by creating your account.",
     "guestOfflineNotice": "You need a connection to join; once in, you can cup offline.",
-    "guestError": "Couldn't join as guest. Try with your email."
+    "guestError": "Couldn't join as guest. Try with your email.",
+    "sessionClosed": "This tasting is already closed — ask the organizer for the results link."
   },
   "results": {
     "title": "Session Results",
@@ -1349,6 +1357,22 @@
     "support": "Support code",
     "notFoundTitle": "Page not found",
     "notFoundBody": "The link may be mistyped, or the content no longer exists.",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "dismiss": "Dismiss",
+    "success": "Done",
+    "codes": {
+      "not_authenticated": "Your session expired. Please sign in again.",
+      "not_found_or_forbidden": "We couldn't find that, or you don't have permission.",
+      "session_closed": "This tasting is already closed; its results are final.",
+      "invalid_token": "This invite link isn't valid.",
+      "token_expired": "This invite link has expired.",
+      "token_exhausted": "This invite link has reached its maximum number of uses.",
+      "coffee_not_usable": "That coffee isn't available to you.",
+      "invalid_input": "Check the information you entered.",
+      "conflict": "Someone else just made that change. Refresh the page.",
+      "not_found": "That item no longer exists.",
+      "invalid_reference": "One of the linked items no longer exists.",
+      "unknown": "Something went wrong. Please try again."
+    }
   }
 }

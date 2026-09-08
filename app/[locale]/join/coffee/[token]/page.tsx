@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { joinCoffeeViaToken } from "@/app/actions/coffees";
+import { JoinCoffeeForm } from "@/components/join/JoinCoffeeForm";
 
 // Auth'd page with an extra dynamic [token] segment: must render per-request
 // (see the documented production outage for groups/[id] and coffees/[id]).
@@ -23,6 +23,8 @@ export default async function JoinCoffeePage({
   } = await supabase.auth.getUser();
 
   const t = await getTranslations("coffee");
+  const tErrors = await getTranslations("errors");
+  const tAuth = await getTranslations("auth");
 
   const invite = await prisma.coffeeInvite.findUnique({
     where: { token },
@@ -40,6 +42,17 @@ export default async function JoinCoffeePage({
       <main className="flex flex-1 items-center justify-center px-6 py-16">
         <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-card p-8 text-center space-y-4">
           <p className="text-lg font-semibold text-red-defect">{t("share.invalidToken")}</p>
+          <div className="flex flex-col gap-2 text-sm">
+            <Link href={`/${locale}/app`} className="text-brown-mid underline hover:text-green-dark">
+              {tErrors("home")}
+            </Link>
+            <Link
+              href={`/${locale}/auth/login`}
+              className="text-brown-mid underline hover:text-green-dark"
+            >
+              {tAuth("loginTitle")}
+            </Link>
+          </div>
         </div>
       </main>
     );
@@ -67,7 +80,7 @@ export default async function JoinCoffeePage({
     );
   }
 
-  const joinAction = joinCoffeeViaToken.bind(null, token, locale);
+  const errorCodes = tErrors.raw("codes") as Record<string, string>;
 
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-16">
@@ -80,14 +93,16 @@ export default async function JoinCoffeePage({
             {t("share.joinBody", { name: invite.coffee.name })}
           </p>
         </div>
-        <form action={joinAction}>
-          <button
-            type="submit"
-            className="w-full py-3 rounded-pill bg-green-dark text-white font-bold hover:bg-green-mid transition"
-          >
-            {t("share.joinCta")}
-          </button>
-        </form>
+        <JoinCoffeeForm
+          token={token}
+          locale={locale}
+          translations={{
+            button: t("share.joinCta"),
+            pending: t("share.joinCta"),
+            errors: errorCodes,
+            home: tErrors("home"),
+          }}
+        />
       </div>
     </main>
   );

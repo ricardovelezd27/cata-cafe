@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createCoffeeInvite, revokeCoffeeShare } from "@/app/actions/coffees";
+import { useActionFeedback } from "@/components/ui";
 import { buildCoffeeInviteUrl } from "@/lib/inviteUrl";
 
 type Share = { userId: string; displayName: string };
@@ -37,6 +38,7 @@ export function CoffeeShareManager({
   translations: t,
 }: Props) {
   const router = useRouter();
+  const feedback = useActionFeedback();
   const [token, setToken] = useState<string | null>(initialToken);
   const [copied, setCopied] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
@@ -49,9 +51,10 @@ export function CoffeeShareManager({
 
   function handleGenerate() {
     startTransition(async () => {
-      const result = await createCoffeeInvite(coffeeId);
-      setToken(result.token);
-      router.refresh();
+      await feedback.run(createCoffeeInvite(coffeeId), (data) => {
+        setToken(data.token);
+        router.refresh();
+      });
     });
   }
 
@@ -65,8 +68,7 @@ export function CoffeeShareManager({
   function handleRevoke(userId: string) {
     setRevokingId(userId);
     startTransition(async () => {
-      await revokeCoffeeShare(coffeeId, userId);
-      router.refresh();
+      await feedback.run(revokeCoffeeShare(coffeeId, userId), () => router.refresh());
       setRevokingId(null);
     });
   }

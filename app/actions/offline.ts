@@ -5,7 +5,11 @@ import { requireUser } from "@/lib/auth";
 import { requireSampleMember } from "@/lib/sessionAuth";
 // NOTE: no assertSessionWritable throw here — a closed session must not burn
 // the replay's retry budget; it returns "discarded" instead (see below).
-import { computeEvaluationDerived, type EvalModuleKey } from "@/lib/evaluation";
+import {
+  computeEvaluationDerived,
+  moduleKeyForFormat,
+  type EvalModuleKey,
+} from "@/lib/evaluation";
 
 // Conflict-aware replay of an offline evaluation draft, called on reconnect.
 // Authorization stays identical to the live path: Prisma scoped by cupperId
@@ -31,7 +35,10 @@ export async function syncEvaluation(input: {
   const user = await requireUser({ skipProfileUpsert: true });
   // Same authorization as the live upsertEvaluation path: session member only.
   // Also resolves the sample's real sessionId in one round-trip.
-  const { sessionId, status } = await requireSampleMember(input.sessionSampleId, user.id);
+  const { sessionId, status, cupsPerSample, format } = await requireSampleMember(
+    input.sessionSampleId,
+    user.id,
+  );
 
   // The session closed while this draft was offline. Its submitted data
   // stands; a stale local edit can no longer be applied (aggregates and
@@ -53,11 +60,14 @@ export async function syncEvaluation(input: {
     return { status: "conflict" };
   }
 
-  const fields = computeEvaluationDerived(
-    input.moduleKey,
-    input.data,
-    input.cupsPerSample,
-  );
+  if (!input.data || typeof input.data !== "object" || Array.isArray(input.data)) {
+    throw new Error("invalid_input");
+  }
+
+  // moduleKey / cupsPerSample come from the session row, never the client —
+  // identical to the live upsertEvaluation path (input fields kept for API
+  // compatibility with queued offline blobs).
+  const fields = computeEvaluationDerived(moduleKeyForFormat(format), input.data, cupsPerSample);
 
   await prisma.evaluation.upsert({
     where: {

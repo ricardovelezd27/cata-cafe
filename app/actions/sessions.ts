@@ -17,7 +17,8 @@ import {
   assertSessionWritable,
 } from "@/lib/sessionAuth";
 import { detachCoffeeHistoryForSession } from "@/lib/coffeeHistory";
-import { computeEvaluationDerived } from "@/lib/evaluation";
+import { computeEvaluationDerived, moduleKeyForFormat } from "@/lib/evaluation";
+import * as v from "@/lib/validate";
 import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/groups";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
 
@@ -84,6 +85,75 @@ function validateSessionInput(
     }
   }
   return null;
+}
+
+const SESSION_FORMATS = ["descriptive", "affective", "combined"] as const;
+const MAX_SAMPLES = 100;
+
+// Session-level fields (name/date/format/cups/objective/closesAt) — the
+// sample/coffee rules live in validateSessionInput. Returns the wizard's
+// error code (mapped to copy in messages.session.newForm.errors) or the
+// normalized values. `new Date(input.date)` used to go straight to Prisma and
+// an unparseable date crashed the whole multi-step form.
+type SessionMeta = {
+  name: string;
+  date: Date;
+  objective: string | null;
+  format: (typeof SESSION_FORMATS)[number];
+  cupsPerSample: number;
+  closesAt: Date | null;
+};
+
+function validateSessionMeta(input: {
+  name: unknown;
+  date: unknown;
+  objective?: unknown;
+  format: unknown;
+  cupsPerSample: unknown;
+  samples: unknown;
+  closesAt?: unknown;
+}): { ok: true; meta: SessionMeta } | { ok: false; error: string } {
+  const field = (f: string, fn: () => void): string | null => {
+    try {
+      fn();
+      return null;
+    } catch {
+      return f;
+    }
+  };
+  let name = "";
+  let date = new Date(0);
+  let objective: string | null = null;
+  let format: SessionMeta["format"] = "combined";
+  let cupsPerSample = 5;
+  let closesAt: Date | null = null;
+
+  const bad =
+    field("invalid_name", () => {
+      name = v.str(input.name, "name", { max: 120 })!;
+    }) ??
+    field("invalid_date", () => {
+      date = v.isoDate(input.date, "date");
+    }) ??
+    field("invalid_objective", () => {
+      objective = v.str(input.objective, "objective", { max: 1000, required: false });
+    }) ??
+    field("invalid_format", () => {
+      format = v.oneOf(input.format, "format", SESSION_FORMATS);
+    }) ??
+    field("invalid_cups", () => {
+      cupsPerSample = v.int(input.cupsPerSample, "cupsPerSample", 1, 5);
+    }) ??
+    field("too_many_samples", () => {
+      v.list(input.samples, "samples", MAX_SAMPLES);
+    }) ??
+    field("invalid_closes_at", () => {
+      closesAt = input.closesAt
+        ? v.isoDate(input.closesAt, "closesAt", { future: true })
+        : null;
+    });
+  if (bad) return { ok: false, error: bad };
+  return { ok: true, meta: { name, date, objective, format, cupsPerSample, closesAt } };
 }
 
 // Resolves the wizard's coffee entries to database ids, index-aligned with the
@@ -183,6 +253,9 @@ export async function createSession(input: {
 
   const invalid = validateSessionInput(input.coffees ?? [], input.samples);
   if (invalid) return { ok: false, error: invalid };
+  const metaResult = validateSessionMeta(input);
+  if (!metaResult.ok) return metaResult;
+  const meta = metaResult.meta;
 
   const createdCoffees = await resolveCoffees(input.coffees ?? [], user.id);
   if (createdCoffees === "coffee_not_found") {
@@ -191,11 +264,11 @@ export async function createSession(input: {
 
   const session = await prisma.cuppingSession.create({
     data: {
-      name: input.name,
-      date: new Date(input.date),
-      objective: input.objective,
-      format: input.format,
-      cupsPerSample: input.cupsPerSample,
+      name: meta.name,
+      date: meta.date,
+      objective: meta.objective,
+      format: meta.format,
+      cupsPerSample: meta.cupsPerSample,
       // A solo session is immediately cuppable — "draft" is meaningless for it.
       // Lifecycle: active → closed (auto, when all samples are submitted; see
       // submitAllEvaluations in app/actions/community.ts).
@@ -241,6 +314,9 @@ export async function createGroupSession(input: {
 
   const invalid = validateSessionInput(input.coffees ?? [], input.samples);
   if (invalid) return { ok: false, error: invalid };
+  const metaResult = validateSessionMeta(input);
+  if (!metaResult.ok) return metaResult;
+  const meta = metaResult.meta;
 
   if (input.groupId) {
     const group = await prisma.tastingGroup.findUnique({
@@ -261,15 +337,15 @@ export async function createGroupSession(input: {
 
   const session = await prisma.cuppingSession.create({
     data: {
-      name: input.name,
-      date: new Date(input.date),
-      objective: input.objective,
-      format: input.format,
-      cupsPerSample: input.cupsPerSample,
+      name: meta.name,
+      date: meta.date,
+      objective: meta.objective,
+      format: meta.format,
+      cupsPerSample: meta.cupsPerSample,
       isGroup: true,
-      isAsync: !!input.closesAt,
+      isAsync: meta.closesAt !== null,
       status: "active",
-      closesAt: input.closesAt ? new Date(input.closesAt) : null,
+      closesAt: meta.closesAt,
       createdBy: user.id,
       groupId: input.groupId ?? null,
       samples: {
@@ -334,6 +410,9 @@ export async function upsertEvaluation(input: {
   // denormalized Evaluation.sessionId is resolved server-side from the sample
   // so a tampered sessionId can't mislabel Realtime events.
   sessionId: string;
+  // Kept for API compatibility but IGNORED — both are derived from the
+  // session row (moduleKeyForFormat / cupsPerSample) so a tampered client can
+  // neither skip the ≥5-cup penalties nor write into a column nobody reads.
   moduleKey: "descriptive" | "affective" | "combined";
   data: Record<string, unknown>;
   cupsPerSample: number;
@@ -345,10 +424,14 @@ export async function upsertEvaluation(input: {
   assertSessionWritable(auth);
   const { sessionId } = auth;
 
+  if (!input.data || typeof input.data !== "object" || Array.isArray(input.data)) {
+    throw new Error("invalid_input");
+  }
+
   const fields = computeEvaluationDerived(
-    input.moduleKey,
+    moduleKeyForFormat(auth.format),
     input.data,
-    input.cupsPerSample,
+    auth.cupsPerSample,
   );
 
   const doUpsert = () =>
