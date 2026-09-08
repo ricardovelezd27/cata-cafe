@@ -933,24 +933,32 @@ export function CupClient({
   ) as Record<string, "empty" | "partial" | "complete">;
 
   // ─── Module list ──────────────────────────────────────────────
+  // Physical (green bean) and extrinsic (reveal) data are one row per SAMPLE,
+  // authored by the session owner — the server actions are owner-gated, so
+  // participants never get these tabs (they would only see a form whose saves
+  // are rejected). Solo sessions: owner === user, nothing changes.
   const modules: ModuleItem[] = [
     {
       key: "cupping",
       label: translations.cuppingModule,
       icon: <Coffee size={16} />,
     },
-    {
-      key: "physical",
-      label: translations.physical,
-      icon: <Scale size={16} />,
-      badge: <BetaBadge />,
-    },
-    {
-      key: "extrinsic",
-      label: translations.extrinsic,
-      icon: <FileText size={16} />,
-      badge: <BetaBadge />,
-    },
+    ...(isOwner
+      ? ([
+          {
+            key: "physical",
+            label: translations.physical,
+            icon: <Scale size={16} />,
+            badge: <BetaBadge />,
+          },
+          {
+            key: "extrinsic",
+            label: translations.extrinsic,
+            icon: <FileText size={16} />,
+            badge: <BetaBadge />,
+          },
+        ] as ModuleItem[])
+      : []),
     {
       key: "results",
       label: translations.results,

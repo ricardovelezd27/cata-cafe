@@ -10,6 +10,7 @@ import {
   requireSampleOwner,
 } from "@/lib/sessionAuth";
 import { syncCoffeeHistoryForSession } from "@/lib/coffeeHistory";
+import { usableCoffeeWhere } from "@/lib/coffeeAccess";
 import type { CloseEmailSummary } from "@/lib/closeEmail";
 
 // ─── Submit all draft evaluations for a session ───────────────────────────────
@@ -175,6 +176,18 @@ export async function closeSession(sessionId: string) {
 export async function revealSample(sampleId: string, coffeeId?: string) {
   const user = await requireUser();
   const { sessionId } = await requireSampleOwner(sampleId, user.id);
+
+  // Never trust a client-supplied coffee id: re-validate it against the same
+  // usable-coffee rule the wizard and addSessionSample enforce, otherwise an
+  // owner could attach ANY user's private coffee to their sample and have its
+  // origin data rendered on results / written into coffee history.
+  if (coffeeId) {
+    const usable = await prisma.coffee.findFirst({
+      where: { id: coffeeId, ...usableCoffeeWhere(user.id) },
+      select: { id: true },
+    });
+    if (!usable) throw new Error("coffee_not_usable");
+  }
 
   await prisma.sessionSample.update({
     where: { id: sampleId },

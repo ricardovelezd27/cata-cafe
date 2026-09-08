@@ -232,6 +232,10 @@ All writes go through `app/actions/`. Call `revalidatePath()` after mutations to
 - Auth is **magic link OTP only** — there are no passwords in this system
 - `signInWithMagicLink(formData, next?)` threads `next` into `emailRedirectTo` → `/auth/callback?next=...` → callback at `app/auth/callback/route.ts` reads `?next=` and redirects there after auth. Used for invite links that require auth before joining.
 - Owner vs participant rule (product-wide): the creator of an asset (session, coffee, group) has full create/edit/delete; participants/members only take part (evaluate, read the feed, leave a group).
+- **Per-sample rows are owner-only**: `PhysicalEvaluation` and `ExtrinsicData` are one row per *sample* (not per cupper), so `upsertPhysical`/`upsertExtrinsic` use `requireSampleOwner`, the cup page and the CVA PDF route only ship `physical` to the owner and `extrinsic` to the owner or once `sample.revealed`, and `CupClient` hides those two tabs for participants. Mirrors the owner-only `phys_all`/`ext_all` RLS policies.
+- **Never trust a client-supplied coffee id**: every write that links a coffee (`resolveCoffees`, `addSessionSample`, `revealSample`) re-validates it with `usableCoffeeWhere(user.id)` (`lib/coffeeAccess.ts`).
+- **Read helpers are not server actions**: functions that take a `userId` and only read (e.g. `getCoffeesWithStats`, `getUsableCoffees` in `lib/coffees/queries.ts`) live in `lib/` with `import "server-only"`, never in `app/actions/` — every `"use server"` export is an unauthenticated public POST endpoint unless it calls `requireUser()` itself.
+- **User-id → email resolution is co-cupper-scoped**: anything that turns a UUID into an email via the service-role client (`addMemberByUserId`, `createGroupWithMembers.coCupperUserIds`) must first pass `isCoCupper` / `coCupperIdsAmong` (`lib/coCuppers.ts`); linked members' emails render masked (`maskEmail`) on the group page.
 - **Guest → account ("claim")**: QR walk-ups are anonymous Supabase users. The results-page banner (`components/results/GuestSaveCta.tsx`) does NOT run its own auth — `startGuestClaim` mints a signed claim token (`lib/guestClaim.ts`, HMAC, 7 days) and sends the guest through the normal login page with `next=/auth/claim?token=…`; after the magic-link/Google sign-in, `app/[locale]/auth/claim/page.tsx` shows a confirmation card (name + session count — **never merges on GET**) whose button runs the `confirmGuestClaim` server action → `mergeGuestData`, which moves EVERY user-referencing row from the anonymous id to the signed-in account (new or existing) inside one transaction and deletes the anonymous user. When you add a table with a user FK, add it to `mergeGuestData` — the final `profile.delete` there fails loudly (rollback) if a Restrict FK was forgotten, but Cascade FKs would silently drop rows.
 
 ### Coffee Short Codes
@@ -458,9 +462,19 @@ Changes that Prisma migrate does NOT handle must be applied manually via the **S
 - Enable **"Allow anonymous sign-ins"** (Dashboard → Authentication → Sign In / Up) — required for the guest QR-join flow (`supabase.auth.signInAnonymously()` in `components/join/GuestJoinForm.tsx`)
 - Apply the PHASE 13 `handle_new_user()` redefinition in `prisma/sql/rls_and_triggers.sql` **before** enabling anonymous sign-ins above — otherwise an anonymous user's NULL email hard-fails the profile insert
 
-These are all collected in `prisma/sql/rls_and_triggers.sql`. Append new blocks to that file and apply the new block manually each time.
+These are all collected in `prisma/sql/rls_and_triggers.sql`. Append new blocks to that file and apply the new block manually each time. Every manual step gets a click-by-click section in **`docs/LAUNCH-RUNBOOK.md`** in the same PR (PHASE 18 = runbook §1).
+
+**RLS policy rules (learned the hard way, PHASE 18):** never write `USING (true)` without a `TO authenticated` clause — a policy with no `TO` applies to the `anon` role, and the anon key is public. New helper functions get `SET search_path = public` and `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` (they are reachable via `/rest/v1/rpc/*` otherwise). Check the Supabase **Security Advisor** after every SQL change.
 
 ---
+
+## Resuming In-Progress Work
+
+If `docs/HANDOVER.md` exists with `status: in-progress`, **read it first** and continue
+from its "Next action" on the branch it names. Do not re-plan or re-audit. Update the
+ledger after every completed step and before every commit; when the user says
+"handover", finish the in-flight edit, run `npx tsc --noEmit && npm run lint`, commit a
+WIP on the WP branch, update the ledger, and stop.
 
 ## Orchestration Policy
 

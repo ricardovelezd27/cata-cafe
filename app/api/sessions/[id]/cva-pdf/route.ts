@@ -77,6 +77,11 @@ export async function GET(
     day: "numeric",
   });
 
+  // Physical + extrinsic rows are per-sample (owner-authored). A participant's
+  // sheet must not carry the maestro's green-bean assessment, nor the reveal
+  // data of a sample that is still blind.
+  const ownerView = session.createdBy === viewAsId;
+
   const props: CvaDocumentProps = {
     sessionName: session.name,
     date: dateStr,
@@ -95,8 +100,13 @@ export async function GET(
         descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
         affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
         combined: (ev?.combinedData as Record<string, unknown>) ?? {},
-        physical: (sample.physical?.data as Record<string, unknown>) ?? {},
-        extrinsic: (sample.extrinsic?.data as Record<string, unknown>) ?? {},
+        physical: ownerView
+          ? ((sample.physical?.data as Record<string, unknown>) ?? {})
+          : {},
+        extrinsic:
+          ownerView || sample.revealed
+            ? ((sample.extrinsic?.data as Record<string, unknown>) ?? {})
+            : {},
       };
     }),
   };

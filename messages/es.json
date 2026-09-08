@@ -48,6 +48,11 @@
     "sent": "Revisa tu correo. Haz clic en el enlace para entrar.",
     "error": "No pudimos enviar el enlace. Verifica el correo e inténtalo de nuevo.",
     "rateLimitError": "Demasiados intentos en poco tiempo. Espera unos minutos e inténtalo de nuevo.",
+    "linkFailedTitle": "El enlace ya no es válido",
+    "linkFailedBody": "Los enlaces de acceso caducan y solo funcionan una vez. Escribe tu correo y te enviamos uno nuevo.",
+    "changeEmail": "Usar otro correo",
+    "sentHint": "¿No llegó? Revisa spam o pide otro enlace en unos minutos.",
+    "googleError": "No pudimos iniciar sesión con Google. Inténtalo de nuevo.",
     "signInWithGoogle": "Continuar con Google",
     "or": "o",
     "signOut": "Cerrar sesión",
@@ -1299,5 +1304,15 @@
     "autoInviteToggle": "Enviar invitación al grupo al crear",
     "autoInviteSummary": "Invitación enviada a {sent} integrantes · {skipped} omitidas · {failed} fallidas",
     "joinSessionLink": "Unirme a la sesión"
+  },
+  "errors": {
+    "title": "Algo salió mal",
+    "body": "No pudimos cargar esta pantalla. Puedes reintentar o volver al inicio; tu trabajo guardado no se pierde.",
+    "retry": "Reintentar",
+    "home": "Ir al inicio",
+    "support": "Código de soporte",
+    "notFoundTitle": "Página no encontrada",
+    "notFoundBody": "El enlace puede estar mal escrito o el contenido ya no existe.",
+    "loading": "Cargando…"
   }
 }

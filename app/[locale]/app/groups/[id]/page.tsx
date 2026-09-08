@@ -465,7 +465,11 @@ export default async function GroupDetailPage({
           groupId={group.id}
           members={group.members.map((m) => ({
             id: m.id,
-            email: m.email,
+            // Linked accounts' addresses were resolved server-side from a
+            // user id (co-cupper add) — show them masked, same rule as the
+            // member view. Email-only invitees keep the address the owner
+            // typed so "resend invitation" stays verifiable.
+            email: m.userId ? maskEmail(m.email) : m.email,
             displayName: m.displayName,
             userId: m.userId,
           }))}

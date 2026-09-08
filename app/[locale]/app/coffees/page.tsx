@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
-import { getCoffeesWithStats } from "@/app/actions/coffees";
+import { getCoffeesWithStats } from "@/lib/coffees/queries";
 import { PageHeader } from "@/components/ui";
 import CoffeesTable from "@/components/coffees/CoffeesTable";
 

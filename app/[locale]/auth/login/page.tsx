@@ -6,12 +6,14 @@ export default async function LoginPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ next?: string; email?: string; intent?: string }>;
+  searchParams: Promise<{ next?: string; email?: string; intent?: string; error?: string }>;
 }) {
   const { locale } = await params;
-  const { next, email, intent } = await searchParams;
+  const { next, email, intent, error } = await searchParams;
   setRequestLocale(locale);
   const t = await getTranslations("auth");
+
+  const linkFailed = error === "exchange_failed";
 
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-16">
@@ -24,6 +26,12 @@ export default async function LoginPage({
             {t("claimIntro")}
           </p>
         )}
+        {linkFailed && (
+          <div role="alert" className="rounded-card border border-error/30 bg-error/5 p-3 text-sm">
+            <p className="font-semibold">{t("linkFailedTitle")}</p>
+            <p>{t("linkFailedBody")}</p>
+          </div>
+        )}
         <LoginForm
           emailLabel={t("email")}
           sendLabel={t("sendLink")}
@@ -34,8 +42,12 @@ export default async function LoginPage({
           googleLabel={t("signInWithGoogle")}
           orLabel={t("or")}
           subtitleLabel={t("loginSubtitle")}
+          changeEmailLabel={t("changeEmail")}
+          sentHintLabel={t("sentHint")}
+          googleErrorLabel={t("googleError")}
           next={next}
           initialEmail={email}
+          autoFocusEmail={linkFailed}
         />
       </div>
     </main>

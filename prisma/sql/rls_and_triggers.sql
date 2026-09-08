@@ -1138,3 +1138,61 @@ CREATE POLICY "group_posts_write" ON group_posts
         AND g."createdBy" = auth.uid()::text
     )
   );
+
+-- ============================================================================
+-- PHASE 18 (2026-09-08): Launch security hardening — close the anon-key reads
+-- and lock down SECURITY DEFINER functions.
+--
+-- Why: NEXT_PUBLIC_SUPABASE_ANON_KEY is public by design (it ships to every
+-- browser for Realtime). Two Phase 1/2 policies were written with USING (true)
+-- and no TO clause, so they applied to the `anon` role as well:
+--   * "invites_select" on session_invites  → every invite token on the platform
+--     was readable via /rest/v1/session_invites — anyone could walk into any
+--     group session.
+--   * "profiles_select" on profiles         → every profile row (displayName,
+--     role, country, analyticsAccess) was readable anonymously.
+-- Neither is needed by any browser code: the join page and every profile read
+-- go through Prisma (postgres role, bypasses RLS). Verified on 2026-09-08 with
+--   grep -rn '\.from("session_invites"\|\.from("profiles"' app components lib
+-- (only server-side admin-client calls exist).
+--
+-- Also per Supabase security advisors 0011 / 0028 / 0029: the helper functions
+-- had a role-mutable search_path and were EXECUTE-able by anon/authenticated
+-- via /rest/v1/rpc/*. Triggers do not need EXECUTE for the calling role at
+-- fire time (only at CREATE TRIGGER time, which runs as postgres), so revoking
+-- from the API roles is safe.
+--
+-- Apply manually via the Supabase Dashboard → SQL Editor (see
+-- docs/LAUNCH-RUNBOOK.md §1). Verify afterwards with:
+--   select policyname, roles, qual from pg_policies
+--     where tablename in ('session_invites','profiles');
+-- ============================================================================
+
+-- session_invites: drop the anonymous read. "invites_write" (FOR ALL,
+-- createdBy = auth.uid()) already lets an owner read their own invites.
+DROP POLICY IF EXISTS "invites_select" ON session_invites;
+
+-- profiles: own row only, signed-in users only (anonymous guests are also
+-- `authenticated` in Supabase, so this still lets a guest read their own row).
+DROP POLICY IF EXISTS "profiles_select" ON profiles;
+CREATE POLICY "profiles_select" ON profiles
+  FOR SELECT TO authenticated
+  USING (id = auth.uid()::text);
+
+-- Helper functions: no API-role execution, pinned search_path.
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.is_session_participant(text) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.recompute_aggregate_score() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.is_affective_complete(jsonb) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM PUBLIC, anon, authenticated;
+
+ALTER FUNCTION public.handle_new_user() SET search_path = public;
+ALTER FUNCTION public.is_session_participant(text) SET search_path = public;
+ALTER FUNCTION public.recompute_aggregate_score() SET search_path = public;
+ALTER FUNCTION public.is_affective_complete(jsonb) SET search_path = public;
+
+-- Rollback (only if something client-side turns out to need the old reads):
+--   CREATE POLICY "invites_select" ON session_invites FOR SELECT USING (true);
+--   DROP POLICY "profiles_select" ON profiles;
+--   CREATE POLICY "profiles_select" ON profiles FOR SELECT USING (true);
+-- ============================================================================

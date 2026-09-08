@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NewSessionForm } from "./NewSessionForm";
 import { COFFEE_COUNTRIES } from "@/lib/analytics/normalize";
-import { getUsableCoffees } from "@/app/actions/coffees";
+import { getUsableCoffees } from "@/lib/coffees/queries";
 import type { UsableCoffee } from "@/components/coffees/CoffeePicker";
 
 export function generateStaticParams() {

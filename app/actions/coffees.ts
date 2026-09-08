@@ -2,8 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { withCodeRetry } from "@/lib/coffeeCode";
@@ -12,54 +10,6 @@ import {
   usableCoffeeWhere,
   type CoffeeVisibility,
 } from "@/lib/coffeeAccess";
-
-// opts.all — super-admin "god mode": drops the visibility filter entirely
-// (see lib/analytics/access.ts isSuperAdminEmail, gated in the page). A single
-// select shape for both paths keeps the return type uniform; `creator` is only
-// rendered in admin mode but selecting it unconditionally is a cheap join and
-// avoids a union type at the call site.
-export async function getCoffeesWithStats(
-  userId: string,
-  opts?: { all?: boolean },
-) {
-  // God mode is re-verified HERE, never trusted from the caller: "use server"
-  // exports are independently POST-able endpoints, so an internal check is
-  // mandatory even though the page already gates (same rule as
-  // lib/analytics/access.ts documents). Non-admins asking for `all` silently
-  // get the normal filtered view.
-  let all = false;
-  if (opts?.all) {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    all = !!user && isSuperAdminEmail(user.email);
-  }
-
-  return prisma.coffee.findMany({
-    where: all ? {} : usableCoffeeWhere(userId),
-    select: {
-      id: true,
-      name: true,
-      code: true,
-      country: true,
-      region: true,
-      variety: true,
-      processType: true,
-      visibility: true,
-      createdBy: true,
-      creator: { select: { displayName: true } },
-      _count: { select: { sessionSamples: true } },
-      coffeeHistory: {
-        where: { userId },
-        orderBy: { tastedAt: "desc" },
-        take: 1,
-        select: { tastedAt: true, individualScore: true, communityScore: true },
-      },
-    },
-    orderBy: { name: "asc" },
-  });
-}
 
 /**
  * Delete a coffee the user created. DB-level referential rules keep the rest
@@ -371,32 +321,6 @@ export async function revokeCoffeeShare(
   return { ok: true };
 }
 
-// ─── Coffees the user may attach to a new session ─────────────────────────────
-// Owned + public + shared-with-me, in picker-friendly shape. Powers the
-// "Usar café existente" picker in the new-session wizard; the same
-// usableCoffeeWhere filter re-validates picked ids server-side in
-// createSession/createGroupSession (app/actions/sessions.ts).
-export async function getUsableCoffees(userId: string) {
-  return prisma.coffee.findMany({
-    where: usableCoffeeWhere(userId),
-    select: {
-      id: true,
-      name: true,
-      code: true,
-      producer: true,
-      variety: true,
-      altitude: true,
-      roastLevel: true,
-      country: true,
-      region: true,
-      processType: true,
-      createdBy: true,
-      visibility: true,
-    },
-    orderBy: { name: "asc" },
-  });
-}
-
 // ─── Publish / unpublish a coffee's community results (owner only) ────────────
 // Controls whether non-owners can see the aggregated results section (scores,
 // attribute averages, flavor cloud) on the coffee profile page. See
@@ -435,7 +359,7 @@ export async function setCoffeeResultsPublished(
 // a CoffeeShare row (granted via invite link); "public" — everyone. Controls
 // the record itself (profile page + list entry); see the access gate in
 // app/[locale]/app/coffees/[id]/page.tsx (usableCoffeeWhere) and the list
-// query in getCoffeesWithStats above.
+// query in getCoffeesWithStats (lib/coffees/queries.ts).
 export async function setCoffeeVisibility(
   coffeeId: string,
   visibility: CoffeeVisibility,

@@ -24,7 +24,7 @@ export async function signInWithGoogle(next?: string) {
     options: { redirectTo, queryParams: { prompt: "select_account" } },
   });
 
-  if (error || !data.url) return;
+  if (error || !data.url) return { ok: false as const, error: error?.message ?? "no_url" };
   redirect(data.url);
 }
 
@@ -47,7 +47,7 @@ export async function signInWithMagicLink(formData: FormData, next?: string) {
     options: { emailRedirectTo: redirectTo },
   });
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: error.code ?? error.message };
   return { ok: true };
 }
 

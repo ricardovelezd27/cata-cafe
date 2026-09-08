@@ -12,6 +12,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { sendEmail, escapeHtml } from "@/lib/email";
+import { coCupperIdsAmong, isCoCupper } from "@/lib/coCuppers";
 
 type Locale = "es" | "en";
 
@@ -155,6 +156,13 @@ export async function addMemberByUserId(
     select: { createdBy: true },
   });
   if (!group || group.createdBy !== user.id) {
+    throw new Error("not_found_or_forbidden");
+  }
+
+  // The target must be a real co-cupper of the caller. Without this, owning
+  // any group let a caller resolve ANY account's email from a harvested UUID
+  // via the service-role lookup below (platform-wide email enumeration).
+  if (!(await isCoCupper(user.id, userId))) {
     throw new Error("not_found_or_forbidden");
   }
 
@@ -360,8 +368,13 @@ export async function createGroupWithMembers(input: {
   // a stale/deleted userId shouldn't block group creation.
   const coCupperMembers: { email: string; displayName: string | null; userId: string }[] = [];
   if (input.coCupperUserIds && input.coCupperUserIds.length > 0) {
+    // Only ids that are genuinely in the caller's co-cupper network may be
+    // resolved to an email (see addMemberByUserId). Anything else is dropped
+    // silently, consistent with the stale-id handling below.
+    const allowed = await coCupperIdsAmong(user.id, input.coCupperUserIds);
     const admin = createAdminClient();
     for (const uid of input.coCupperUserIds) {
+      if (!allowed.has(uid)) continue;
       try {
         const { data, error } = await admin.auth.admin.getUserById(uid);
         const rawEmail = data?.user?.email;

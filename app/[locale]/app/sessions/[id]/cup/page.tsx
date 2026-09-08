@@ -73,17 +73,6 @@ export default async function CupPage({
 
   const isOwner = session.createdBy === user.id;
 
-  // Count submitted evaluations (non-draft) across all samples
-  // Use aggregateScore.participantCount as a proxy if available,
-  // otherwise fall back to a direct count.
-  const submittedCountResult = await prisma.evaluation.count({
-    where: {
-      sessionSample: { sessionId: id },
-      isDraft: false,
-      cupperId: user.id,
-    },
-  });
-
   // How many unique participants have submitted at least one evaluation
   const submittedParticipantsResult = await prisma.evaluation.findMany({
     where: {
@@ -133,8 +122,16 @@ export default async function CupPage({
             descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
             affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
             combined: (ev?.combinedData as Record<string, unknown>) ?? {},
-            physical: (s.physical?.data as Record<string, unknown>) ?? {},
-            extrinsic: (s.extrinsic?.data as Record<string, unknown>) ?? {},
+            // Per-sample, owner-authored rows: never ship the maestro's
+            // green-bean assessment to participants, and never ship reveal
+            // data for a sample that is still blind (S4, 2026-09-08).
+            physical: isOwner
+              ? ((s.physical?.data as Record<string, unknown>) ?? {})
+              : {},
+            extrinsic:
+              isOwner || s.revealed
+                ? ((s.extrinsic?.data as Record<string, unknown>) ?? {})
+                : {},
             revealed: s.revealed,
             coffeeId: s.coffeeId,
             coffee: isOwner

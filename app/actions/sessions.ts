@@ -650,12 +650,15 @@ export async function removeSessionSample(sampleId: string, locale: string = "es
   return { ok: true as const };
 }
 
+// Physical (green-bean) assessment is ONE row per sample, not per cupper, and
+// the RLS policy `phys_all` is owner-only — so the TS gate is owner-only too.
+// A participant must never be able to overwrite the maestro's assessment.
 export async function upsertPhysical(input: {
   sessionSampleId: string;
   data: Record<string, unknown>;
 }) {
   const user = await requireUser({ skipProfileUpsert: true });
-  await requireSampleMember(input.sessionSampleId, user.id);
+  await requireSampleOwner(input.sessionSampleId, user.id);
   await prisma.physicalEvaluation.upsert({
     where: { sessionSampleId: input.sessionSampleId },
     create: {
@@ -797,12 +800,16 @@ export async function updateSampleMetadata(
   return { ok: true as const, coffeeUpdated };
 }
 
+// Extrinsic (reveal / origin) data is ONE row per sample and stamps
+// revealedBy — owner-only, matching the `ext_all` RLS policy. Participants
+// only ever READ it, and only once the sample is revealed (cup/page.tsx,
+// cva-pdf route strip it otherwise).
 export async function upsertExtrinsic(input: {
   sessionSampleId: string;
   data: Record<string, unknown>;
 }) {
   const user = await requireUser({ skipProfileUpsert: true });
-  await requireSampleMember(input.sessionSampleId, user.id);
+  await requireSampleOwner(input.sessionSampleId, user.id);
   await prisma.extrinsicData.upsert({
     where: { sessionSampleId: input.sessionSampleId },
     create: {

@@ -48,6 +48,11 @@
     "sent": "Check your inbox and click the link to sign in.",
     "error": "We couldn't send the link. Check the email and try again.",
     "rateLimitError": "Too many requests in a short time. Wait a few minutes and try again.",
+    "linkFailedTitle": "This link is no longer valid",
+    "linkFailedBody": "Sign-in links expire and only work once. Enter your email and we'll send you a new one.",
+    "changeEmail": "Use a different email",
+    "sentHint": "Didn't get it? Check spam or request another link in a few minutes.",
+    "googleError": "We couldn't sign you in with Google. Please try again.",
     "signInWithGoogle": "Continue with Google",
     "or": "or",
     "signOut": "Sign out",
@@ -1299,5 +1304,15 @@
     "autoInviteToggle": "Send an invitation to the group on creation",
     "autoInviteSummary": "Invitation sent to {sent} members · {skipped} skipped · {failed} failed",
     "joinSessionLink": "Join the session"
+  },
+  "errors": {
+    "title": "Something went wrong",
+    "body": "We couldn't load this screen. You can retry or go back to the dashboard; your saved work isn't lost.",
+    "retry": "Try again",
+    "home": "Go to dashboard",
+    "support": "Support code",
+    "notFoundTitle": "Page not found",
+    "notFoundBody": "The link may be mistyped, or the content no longer exists.",
+    "loading": "Loading…"
   }
 }
