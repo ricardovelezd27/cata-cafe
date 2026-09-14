@@ -1196,3 +1196,27 @@ ALTER FUNCTION public.is_affective_complete(jsonb) SET search_path = public;
 --   DROP POLICY "profiles_select" ON profiles;
 --   CREATE POLICY "profiles_select" ON profiles FOR SELECT USING (true);
 -- ============================================================================
+
+-- ============================================================================
+-- PHASE 18b (2026-09-14): correction to PHASE 18 — functions referenced by RLS
+-- policies must stay EXECUTE-able by the role the policy runs as.
+--
+-- `is_session_participant(text)` is called from the sessions_select,
+-- samples_select, participants_select, evals_submitted_participant and
+-- agg_select policies. Policy expressions are evaluated AS THE QUERYING ROLE,
+-- so after PHASE 18 revoked EXECUTE from `authenticated`, every RLS-gated read
+-- by that role (Supabase Realtime subscriptions in the waiting room, cup and
+-- results screens) failed with "permission denied for function". Verified on
+-- production with `set local role authenticated; select is_session_participant(…)`.
+-- Prisma (postgres role, bypasses RLS) was never affected.
+--
+-- Rule going forward: revoke from `anon` and `PUBLIC` only; any function a
+-- policy calls keeps EXECUTE for `authenticated`. Trigger functions
+-- (handle_new_user, recompute_aggregate_score) do NOT need EXECUTE for the
+-- role that fires the trigger (verified with a rolled-back probe), but
+-- granting handle_new_user to supabase_auth_admin is harmless belt-and-braces.
+-- Apply manually via the Supabase Dashboard → SQL Editor (runbook §1b).
+-- ============================================================================
+GRANT EXECUTE ON FUNCTION public.is_session_participant(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.handle_new_user() TO supabase_auth_admin;
+-- ============================================================================

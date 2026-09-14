@@ -88,6 +88,30 @@ CREATE POLICY "profiles_select" ON profiles FOR SELECT USING (true);
 
 ---
 
+## §1b. Supabase — PHASE 18b correction (run right after §1)
+
+**Why:** §1 revoked execute on `is_session_participant` from the `authenticated` role, but
+five row-security policies call that function and policies run as the querying role.
+Without this fix, Supabase Realtime (waiting room, live "new submissions" badges) gets
+"permission denied for function". Prisma is unaffected. Same SQL editor, new query, Run:
+
+```sql
+GRANT EXECUTE ON FUNCTION public.is_session_participant(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.handle_new_user() TO supabase_auth_admin;
+```
+
+Expected: `Success. No rows returned`. Verify with a new query:
+
+```sql
+select has_function_privilege('authenticated', 'public.is_session_participant(text)', 'EXECUTE') as ok;
+```
+
+Expected: `true`. (The Security Advisor will list this one function as "callable by
+signed-in users" again — that is correct and intended: it only answers whether the caller
+belongs to a session.)
+
+---
+
 ## §2. Database — apply the `launch_state_machine` migration
 
 **When:** right before deploying the WP2 branch (`claude/launch-wp2-state-machine`). The app

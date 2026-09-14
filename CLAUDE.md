@@ -507,7 +507,7 @@ Changes that Prisma migrate does NOT handle must be applied manually via the **S
 
 These are all collected in `prisma/sql/rls_and_triggers.sql`. Append new blocks to that file and apply the new block manually each time. Every manual step gets a click-by-click section in **`docs/LAUNCH-RUNBOOK.md`** in the same PR (PHASE 18 = runbook §1).
 
-**RLS policy rules (learned the hard way, PHASE 18):** never write `USING (true)` without a `TO authenticated` clause — a policy with no `TO` applies to the `anon` role, and the anon key is public. New helper functions get `SET search_path = public` and `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` (they are reachable via `/rest/v1/rpc/*` otherwise). Check the Supabase **Security Advisor** after every SQL change.
+**RLS policy rules (learned the hard way, PHASE 18):** never write `USING (true)` without a `TO authenticated` clause — a policy with no `TO` applies to the `anon` role, and the anon key is public. New helper functions get `SET search_path = public` and `REVOKE EXECUTE … FROM PUBLIC, anon` (they are reachable via `/rest/v1/rpc/*` otherwise) — but **any function an RLS policy calls must keep EXECUTE for `authenticated`**: policy expressions run as the querying role, and revoking it broke every Realtime subscription on 2026-09-14 (PHASE 18b). Check the Supabase **Security Advisor** after every SQL change.
 
 ---
 
