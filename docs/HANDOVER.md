@@ -4,20 +4,20 @@
 > from **Next action**. Do not re-plan. The approved plan lives at
 > `~/.claude/plans/i-want-you-to-graceful-wreath.md` (summarised in the WP table below).
 
-- **status:** done (code) — runbook §1, §1b and §2 APPLIED to production 2026-09-14; §3 env vars set by the user; remaining: merge+push to main, then the §5 smoke test
-- **last updated:** 2026-09-08
+- **status:** SHIPPED — merged to `main` (172aa0b..255578c) and deployed to production 2026-09-14. Runbook §1, §1b, §2 and §3 all applied. Only the §5 smoke test remains, and it needs a real login.
+- **last updated:** 2026-09-14
 - **worktree:** `C:\projects\cata-cafe\.claude\worktrees\app-cohesion-menu-overhaul-00a088`
-- **base:** `main` @ 172aa0b
-- **current branch:** `claude/launch-docs` (stacked: wp3a(+wp1) → wp2 → wp3b → wp4 → wp5 → docs; merge PRs in order)
-- **current WP / step:** Wrap-up docs (CHANGELOG plain-language summary, README env table, runbook §5 smoke test)
+- **base:** `main` @ 172aa0b → now `main` @ 255578c (deployed)
+- **current branch:** `claude/launch-docs` (all WP branches are historical now; everything is on `main`)
+- **current WP / step:** complete. See `docs/LAUNCH-REPORT-2026-09-14.md`.
 
 ## Work packages (one branch/PR each, off `main`)
 
 | WP | Branch | Status |
 |---|---|---|
-| WP1 Security (S1–S5) | folded into `claude/launch-wp3a-boundaries` (one commit) | done — needs runbook §1 applied |
+| WP1 Security (S1–S5) | folded into `claude/launch-wp3a-boundaries` (one commit) | shipped; §1 + §1b applied to prod |
 | WP3a Boundaries + login + proxy (E1, F4, F6) | `claude/launch-wp3a-boundaries` | done (browser-verified 404 + login banner) |
-| WP2 State machine + delete redesign (D1–D3, F1–F3, F11, cron) | `claude/launch-wp2-state-machine` | done — NOT browser-verified yet: needs runbook §2 (migration) applied first |
+| WP2 State machine + delete redesign (D1–D3, F1–F3, F11, cron) | `claude/launch-wp2-state-machine` | shipped; migration applied. Authenticated flows still UNTESTED end to end (§5) |
 | WP3b Action contract + feedback + validation (E2–E5, F8) | `claude/launch-wp3b-actions` | done (build green) |
 | WP4 Observability + honest save status | `claude/launch-wp4-observability` | done (build green) |
 | WP5 Deploy hygiene + tests + guest scope | `claude/launch-wp5-deploy` | done (33 unit tests, build green) |
@@ -52,5 +52,6 @@ See plan Part E → WP1. Runbook for the manual Supabase step: `docs/LAUNCH-RUNB
 - [x] §1b PHASE 18b applied 2026-09-14 (is_session_participant EXECUTE restored for authenticated)
 - [x] §2 migration `20260908140000_launch_state_machine` applied 2026-09-14 (closedAt + close_email_deliveries + nullable history FKs + snapshot/detachedAt; 123 sessions / 1070 evaluations / 83 history rows intact; app boots clean against it)
 - [x] §3 Vercel env vars set 2026-09-14 (CRON_KEY removed, CRON_SECRET + GUEST_CLAIM_SECRET added, DATABASE_URL + SUPABASE_SERVICE_ROLE_KEY converted to Secret, NEXT_PUBLIC_SITE_URL = https://cata-cafe-opal.vercel.app interim)
-- [ ] merge + push to main (blocked: needs to run from the main checkout, not this worktree)
-- [ ] §5 post-deploy smoke test (needs real logins — cannot be done by Claude)
+- [x] merged + pushed to `main` 2026-09-14 (172aa0b..255578c); Vercel deploy verified live
+- [ ] **§5 post-deploy smoke test — STILL OWED.** Needs a real magic-link login; Claude cannot run it without writing test data into the live database. Steps 3–9 (the group session walkthrough) are the ones that matter.
+- [ ] Domain cutover to catasensible.ai when registered — runbook §6.

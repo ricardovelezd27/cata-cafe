@@ -1,10 +1,10 @@
 # Launch-readiness changes — September 2026 (plain language)
 
-This is the non-technical summary of the review and fixes done between 8 September
-and launch (1 October 2026). It says what was wrong, what changed for each kind of
-user, what you still have to do by hand, and what was deliberately left for later.
-The technical detail lives in `CLAUDE.md`, `docs/flows.md` and the commit messages on
-the six `claude/launch-*` branches.
+This is the non-technical summary of the review and fixes done between 8 and 14
+September 2026, ahead of the 1 October launch. It says what was wrong, what changed for
+each kind of user, what is still outstanding, and what was deliberately left for later.
+The technical detail lives in `CLAUDE.md`, `docs/flows.md` and the commit messages.
+For what was verified after the deploy, see `docs/LAUNCH-REPORT-2026-09-14.md`.
 
 ## What was wrong
 
@@ -80,21 +80,22 @@ The app worked, but several things would have broken the first real event:
 - Scores can no longer be inflated by a modified browser: cup counts and the format used
   for scoring are taken from the session, never from the device.
 
-## What you still have to do by hand
+## Status: shipped 2026-09-14
 
-Everything is in `docs/LAUNCH-RUNBOOK.md`, step by step with what to click and how to
-verify:
+All of this is live on production. The manual steps that were owed have been done: the
+Supabase policy fix (runbook section 1) and its correction (section 1b), the database
+migration (section 2), and the Vercel environment variables (section 3). See
+`docs/LAUNCH-REPORT-2026-09-14.md` for what was verified after the deploy, and the
+evidence behind each claim.
 
-1. **§1 Supabase SQL** — close the two open doors (5 minutes). Do this first; it is
-   independent of any deploy.
-2. **§2 Database migration** — `npx prisma migrate deploy` right before deploying the
-   session changes. Until this is done I cannot test the session flows against the real
-   database.
-3. **§3 Vercel settings** — six environment variables and a check that the new daily
-   cron appears. The app now refuses to start in production if the important ones are
-   missing, so this is not optional.
-4. **§4** — how to find an error from a user's support code (for later).
-5. **§5** — the post-deploy smoke test (15 minutes with two accounts).
+**One thing is still outstanding: the smoke test in section 5.** The authenticated
+group-session flow — create, join, start, submit, close, delete — was never run end to
+end, because it needs a real magic-link login and would have written test data into the
+live database. That is the highest-value fifteen minutes left before you run a real event.
+
+Still useful later: **section 4** explains how to trace a production error from the
+support code a user reads off the error screen. **Section 6** is the checklist for moving
+to the real domain.
 
 ## Deliberately left for after launch
 
@@ -112,7 +113,6 @@ npm run lint
 npm run build
 ```
 
-All three pass on every `claude/launch-*` branch. The branches stack in this order and
-should be merged in this order: `launch-wp3a-boundaries` (security + error screens) →
-`launch-wp2-state-machine` → `launch-wp3b-actions` → `launch-wp4-observability` →
-`launch-wp5-deploy` → `launch-docs`.
+All three pass. The work shipped as seven commits, merged to `main` on 14 September 2026
+(`172aa0b..255578c`) and deployed. The `claude/launch-*` branches are historical; the
+order they were built in is recorded in `docs/HANDOVER.md`.

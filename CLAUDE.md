@@ -503,7 +503,7 @@ Changes that Prisma migrate does NOT handle must be applied manually via the **S
 - `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`
 - `ALTER TABLE ... REPLICA IDENTITY FULL`
 - Enable **"Allow anonymous sign-ins"** (Dashboard → Authentication → Sign In / Up) — required for the guest QR-join flow (`supabase.auth.signInAnonymously()` in `components/join/GuestJoinForm.tsx`)
-- Apply the PHASE 13 `handle_new_user()` redefinition in `prisma/sql/rls_and_triggers.sql` **before** enabling anonymous sign-ins above — otherwise an anonymous user's NULL email hard-fails the profile insert
+- Apply the **PHASE 14** `handle_new_user()` redefinition in `prisma/sql/rls_and_triggers.sql` **before** enabling anonymous sign-ins above — otherwise an anonymous user's NULL email hard-fails the profile insert. (The block is labelled PHASE 14 in the file; earlier revisions of this guide called it PHASE 13.)
 
 These are all collected in `prisma/sql/rls_and_triggers.sql`. Append new blocks to that file and apply the new block manually each time. Every manual step gets a click-by-click section in **`docs/LAUNCH-RUNBOOK.md`** in the same PR (PHASE 18 = runbook §1).
 

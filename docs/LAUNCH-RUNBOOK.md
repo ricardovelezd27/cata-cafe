@@ -9,6 +9,9 @@ ones are still owed.
 
 ## §1. Supabase — apply PHASE 18 (close anonymous reads, lock helper functions)
 
+> **APPLIED to production 2026-09-14.** Kept for the record and for rebuilding an environment.
+
+
 **When:** as soon as the WP1 branch is merged and deployed (it is safe to run before the
 deploy too — no application code depends on the old policies).
 
@@ -90,6 +93,9 @@ CREATE POLICY "profiles_select" ON profiles FOR SELECT USING (true);
 
 ## §1b. Supabase — PHASE 18b correction (run right after §1)
 
+> **APPLIED to production 2026-09-14.**
+
+
 **Why:** §1 revoked execute on `is_session_participant` from the `authenticated` role, but
 five row-security policies call that function and policies run as the querying role.
 Without this fix, Supabase Realtime (waiting room, live "new submissions" badges) gets
@@ -113,6 +119,9 @@ belongs to a session.)
 ---
 
 ## §2. Database — apply the `launch_state_machine` migration
+
+> **APPLIED to production 2026-09-14.** Verified afterwards: schema changed, 123 sessions / 1070 evaluations / 83 history rows intact.
+
 
 **When:** right before deploying the WP2 branch (`claude/launch-wp2-state-machine`). The app
 code on that branch reads the new columns, so deploy and migration go together: migrate
@@ -166,6 +175,9 @@ row was detached in the meantime — do not do that without asking.)
 ---
 
 ## §3. Vercel — environment variables and the new cron
+
+> **DONE 2026-09-14.** All eight required variables are set; the deploy booting is itself the proof, since `lib/env.ts` fails the boot otherwise.
+
 
 **When:** before the first production deploy of the WP2 branch (the cron needs
 `CRON_SECRET`; the printed QR needs `NEXT_PUBLIC_SITE_URL`).
@@ -248,6 +260,9 @@ window.
 
 ## §5. Post-deploy smoke test (15 minutes, two accounts)
 
+> **STILL OWED — this is the one remaining task.** It needs a real magic-link login, so it cannot be automated.
+
+
 **When:** after §1–§3 are done and the branches are deployed. Use two browsers (or one
 normal + one private window): **A** = organiser account, **B** = a second account you
 control. Expected results are in bold. Stop and paste me the screen + support code if
@@ -294,5 +309,30 @@ any step differs.
 If all twelve pass, launch. If anything fails, roll back the deploy in Vercel
 (**Deployments → previous deployment → ⋯ → Promote to Production**) — the database
 changes are additive and do not need rolling back.
+
+---
+
+## §6. Moving to the real domain (catasensible.ai)
+
+**When:** the day the domain is registered and pointing at Vercel. Interim value in use is
+`https://cata-cafe-opal.vercel.app`, which keeps working permanently once a custom domain
+is attached, so nothing printed or emailed before the switch breaks.
+
+All five steps, or it fails quietly:
+
+1. Vercel → Settings → **Domains** → add `catasensible.ai`.
+2. Vercel → Settings → **Environment Variables** → set `NEXT_PUBLIC_SITE_URL` to
+   `https://catasensible.ai`. Use https, and no trailing slash.
+3. **Redeploy.** `NEXT_PUBLIC_*` values are baked in at build time, so editing the variable
+   alone changes nothing until a new build runs.
+4. Supabase → Authentication → **URL Configuration** → add
+   `https://catasensible.ai/auth/callback` to the redirect allow-list. Without this,
+   magic-link sign-in fails on the new domain.
+5. Re-test: a magic-link login on the new domain, and scan a freshly printed session QR.
+
+`NEXT_PUBLIC_SITE_URL` only feeds three places: the printed QR sheet
+(`app/[locale]/app/sessions/[id]/print/page.tsx`), the monthly digest email links, and
+`metadataBase`. Live in-app invite links are built from `window.location.origin`, so they
+follow whatever domain the user is actually on and are unaffected by this value.
 
 ---
