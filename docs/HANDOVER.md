@@ -4,7 +4,7 @@
 > from **Next action**. Do not re-plan. The approved plan lives at
 > `~/.claude/plans/i-want-you-to-graceful-wreath.md` (summarised in the WP table below).
 
-- **status:** done (code) — manual runbook steps §1–§3 and the §5 smoke test are owed by the user; WP2 flows not yet browser-verified (needs §2)
+- **status:** done (code) — runbook §1, §1b and §2 APPLIED to production 2026-09-14; §3 env vars set by the user; remaining: merge+push to main, then the §5 smoke test
 - **last updated:** 2026-09-08
 - **worktree:** `C:\projects\cata-cafe\.claude\worktrees\app-cohesion-menu-overhaul-00a088`
 - **base:** `main` @ 172aa0b
@@ -48,6 +48,9 @@ See plan Part E → WP1. Runbook for the manual Supabase step: `docs/LAUNCH-RUNB
 
 ## Manual steps still owed by the user
 
-- [ ] `docs/LAUNCH-RUNBOOK.md` §1 — apply PHASE 18 in the Supabase SQL editor (WP1)
-- [ ] `docs/LAUNCH-RUNBOOK.md` §2 — `npx prisma migrate deploy` for launch_state_machine (WP2) — ALSO unblocks local browser verification
-- [ ] `docs/LAUNCH-RUNBOOK.md` §3 — Vercel env vars + confirm the close-expired-sessions cron
+- [x] §1 PHASE 18 applied 2026-09-14 (verified: no anon read on invites/profiles)
+- [x] §1b PHASE 18b applied 2026-09-14 (is_session_participant EXECUTE restored for authenticated)
+- [x] §2 migration `20260908140000_launch_state_machine` applied 2026-09-14 (closedAt + close_email_deliveries + nullable history FKs + snapshot/detachedAt; 123 sessions / 1070 evaluations / 83 history rows intact; app boots clean against it)
+- [x] §3 Vercel env vars set 2026-09-14 (CRON_KEY removed, CRON_SECRET + GUEST_CLAIM_SECRET added, DATABASE_URL + SUPABASE_SERVICE_ROLE_KEY converted to Secret, NEXT_PUBLIC_SITE_URL = https://cata-cafe-opal.vercel.app interim)
+- [ ] merge + push to main (blocked: needs to run from the main checkout, not this worktree)
+- [ ] §5 post-deploy smoke test (needs real logins — cannot be done by Claude)
