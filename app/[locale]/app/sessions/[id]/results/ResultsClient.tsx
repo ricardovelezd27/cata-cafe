@@ -177,6 +177,7 @@ export function ResultsClient({
     viewChart: string;
     communityPending: string;
     ownerSection: string;
+    liveUpdatesDown: string;
     closeEmailsResend: string;
     closeEmailsResending: string;
     closeEmailsResent: string;
@@ -261,6 +262,9 @@ export function ResultsClient({
   };
   const [refreshing, setRefreshing] = useState(false);
   const [newSubmissions, setNewSubmissions] = useState(0);
+  // Realtime channel is not SUBSCRIBED — "no new submissions" may just mean
+  // "we stopped listening", so point the viewer at the refresh button (F10).
+  const [liveUpdatesDown, setLiveUpdatesDown] = useState(false);
   const [, startTransition] = useTransition();
   const feedback = useActionFeedback();
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent" | "error">("idle");
@@ -330,7 +334,11 @@ export function ResultsClient({
           }
         },
       )
-      .subscribe();
+      // A dropped channel otherwise looks exactly like "no new submissions".
+      // Flag it so the viewer knows to use Actualizar instead of waiting (F10).
+      .subscribe((status) => {
+        setLiveUpdatesDown(status !== "SUBSCRIBED");
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -466,6 +474,12 @@ export function ResultsClient({
                 : translations.refresh}
           </Button>
         </div>
+
+        {liveUpdatesDown && (
+          <p role="status" className="px-4 pb-2 text-[11px] text-secondary">
+            {translations.liveUpdatesDown}
+          </p>
+        )}
 
         {closeEmails && (
           <div className="flex flex-wrap items-center gap-2 px-4 pb-2 text-[11px] text-on-surface-variant">

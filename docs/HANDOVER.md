@@ -53,6 +53,6 @@ See plan Part E → WP1. Runbook for the manual Supabase step: `docs/LAUNCH-RUNB
 - [x] §2 migration `20260908140000_launch_state_machine` applied 2026-09-14 (closedAt + close_email_deliveries + nullable history FKs + snapshot/detachedAt; 123 sessions / 1070 evaluations / 83 history rows intact; app boots clean against it)
 - [x] §3 Vercel env vars set 2026-09-14 (CRON_KEY removed, CRON_SECRET + GUEST_CLAIM_SECRET added, DATABASE_URL + SUPABASE_SERVICE_ROLE_KEY converted to Secret, NEXT_PUBLIC_SITE_URL = https://cata-cafe-opal.vercel.app interim)
 - [x] merged + pushed to `main` 2026-09-14 (172aa0b..255578c); Vercel deploy verified live
-- [ ] **F10 (partial): realtime `.subscribe()` status callbacks were only added to WaitingRoomClient. CupClient.tsx and ResultsClient.tsx still subscribe with no status handler — a dropped channel is invisible there. Small fix, mirror the waiting-room pattern.**
+- [x] F10 completed 2026-09-14: status callbacks added to CupClient (stale-count notice in the master panel) and ResultsClient (points the viewer at Actualizar). All three subscription sites now report channel loss.
 - [ ] **§5 post-deploy smoke test — STILL OWED.** Needs a real magic-link login; Claude cannot run it without writing test data into the live database. Steps 3–9 (the group session walkthrough) are the ones that matter.
 - [ ] Domain cutover to catasensible.ai when registered — runbook §6.

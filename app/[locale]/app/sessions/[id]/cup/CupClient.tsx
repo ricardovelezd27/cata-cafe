@@ -189,6 +189,7 @@ export function CupClient({
     submittedOf: string;
     closeSession: string;
     confirmClose: string;
+    liveCountDown: string;
     closeSessionError: string;
     startSession: string;
     starting: string;
@@ -276,6 +277,9 @@ export function CupClient({
   // reports "synced" or the reconnect replay (useOfflineSync) finishes.
   // Drives the leave-guard's alternate copy (see leaveGuardCopy below).
   const [hasPending, setHasPending] = useState(false);
+  // Realtime channel for the group submitted-count is not SUBSCRIBED — the
+  // count shown in the master panel may be stale (F10).
+  const [liveCountDown, setLiveCountDown] = useState(false);
   const [editingSample, setEditingSample] = useState(false);
   // Set after a metadata save when the linked coffee belongs to someone else
   // — the label still saved, but the coffee record itself was skipped.
@@ -559,7 +563,12 @@ export function CupClient({
           }
         }
       )
-      .subscribe();
+      // Without a status callback a dropped channel is indistinguishable from
+      // "nobody has submitted yet" — the count just stops moving. Surface it
+      // so the maestro knows the number is stale rather than flat (F10).
+      .subscribe((status) => {
+        setLiveCountDown(status !== "SUBSCRIBED");
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -1155,6 +1164,7 @@ export function CupClient({
       <MasterControls
         title={translations.masterControls}
         submittedLabel={`${submittedCount} / ${participantCount}`}
+        liveDownLabel={liveCountDown ? translations.liveCountDown : undefined}
         closeLabel={translations.closeSession}
         inviteLabel={translations.invite}
         generatingLabel={translations.generating}

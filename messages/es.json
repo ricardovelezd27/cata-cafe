@@ -437,6 +437,7 @@
     "submittedOf": "{count} de {total} enviaron",
     "closeSession": "Cerrar sesión",
     "confirmClose": "¿Cerrar la sesión? Los resultados quedarán finales.",
+    "liveCountDown": "Conteo en vivo no disponible — recarga la página para ver el total actualizado.",
     "closeSessionError": "No se pudo cerrar la sesión. Inténtalo de nuevo.",
     "startSession": "Iniciar cata",
     "starting": "Iniciando…",
@@ -492,6 +493,7 @@
     "communityPending": "Los resultados grupales aparecerán cuando todos los participantes envíen sus evaluaciones o el maestro cierre la sesión.",
     "sdAria": "Desviación estándar entre catadores — menor es más consenso",
     "closedOn": "Cata cerrada el {date}",
+    "liveUpdatesDown": "Actualizaciones en vivo no disponibles — pulsa «Actualizar» para ver lo último.",
     "closeEmails": {
       "label": "Correos de cierre:",
       "sent": "{count, plural, =1 {1 enviado} other {# enviados}}",

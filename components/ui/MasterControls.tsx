@@ -9,6 +9,9 @@ interface MasterControlsProps {
   title: string;
   /** Pre-formatted "{n} de {total} enviaron" string */
   submittedLabel: string;
+  /** Shown under the count when the realtime channel is not SUBSCRIBED, so the
+   *  maestro knows the submitted total may be stale rather than simply flat. */
+  liveDownLabel?: string;
   /** "Cerrar sesión" / "Close session" */
   closeLabel: string;
   /** "Invitar participantes" / "Invite participants" */
@@ -44,6 +47,7 @@ interface MasterControlsProps {
 export function MasterControls({
   title,
   submittedLabel,
+  liveDownLabel,
   closeLabel,
   inviteLabel,
   generatingLabel,
@@ -71,6 +75,12 @@ export function MasterControls({
         <span className={styles.title}>{title}</span>
         <span className={styles.count}>{submittedLabel}</span>
       </div>
+
+      {liveDownLabel && (
+        <p role="status" className={styles.liveDown}>
+          {liveDownLabel}
+        </p>
+      )}
 
       <div className={styles.row}>
         {showStart && (

@@ -215,6 +215,7 @@ export default async function CupPage({
         submittedOf: tg("submittedOf", { count: submittedParticipantsResult.length, total: session.participants.length }),
         closeSession: tg("closeSession"),
         confirmClose: tg("confirmClose"),
+        liveCountDown: tg("liveCountDown"),
         closeSessionError: tg("closeSessionError"),
         startSession: tg("startSession"),
         starting: tg("starting"),

@@ -646,6 +646,7 @@ export default async function ResultsPage({
         viewChart: tResults("views.chart"),
         communityPending: tResults("communityPending"),
         ownerSection: tResults("matrix.ownerSection"),
+        liveUpdatesDown: tResults("liveUpdatesDown"),
         closeEmailsResend: tResults("closeEmails.resend"),
         closeEmailsResending: tResults("closeEmails.resending"),
         closeEmailsResent: tResults("closeEmails.resent"),

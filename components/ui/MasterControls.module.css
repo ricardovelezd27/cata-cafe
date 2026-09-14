@@ -158,3 +158,12 @@
 .resetBtn:hover {
   background: color-mix(in oklch, var(--color-cream) 50%, transparent);
 }
+
+/* Realtime channel not SUBSCRIBED — the submitted count may be stale. Muted,
+   not alarming: the session itself is unaffected, only the live number. */
+.liveDown {
+  margin: 0 0 0.5rem;
+  font-size: 0.6875rem;
+  line-height: 1.3;
+  color: var(--color-secondary);
+}

@@ -437,6 +437,7 @@
     "submittedOf": "{count} of {total} submitted",
     "closeSession": "Close session",
     "confirmClose": "Close the session? Results will be finalized.",
+    "liveCountDown": "Live count unavailable — reload the page to see the current total.",
     "closeSessionError": "Could not close the session. Please try again.",
     "startSession": "Start tasting",
     "starting": "Starting…",
@@ -492,6 +493,7 @@
     "communityPending": "Group results will appear once all participants submit their evaluations or the session master closes the session.",
     "sdAria": "Standard deviation across cuppers — lower means more consensus",
     "closedOn": "Tasting closed on {date}",
+    "liveUpdatesDown": "Live updates unavailable — press Refresh to see the latest.",
     "closeEmails": {
       "label": "Close emails:",
       "sent": "{count, plural, =1 {1 sent} other {# sent}}",

@@ -32,8 +32,9 @@ to 5 below account for every one of them.
 
 ## 3. Accounting against the approved plan
 
-**Summary: 25 of 27 findings fully shipped. One is partial. One shipped by a different
-mechanism than planned.** Both exceptions are described precisely rather than rounded up.
+**Summary: 26 of 27 findings fully shipped. One shipped by a different mechanism than
+planned (E2, described below).** F10 was partial when this report was first written; it
+was completed on 14 September and the row below reflects that.
 
 ### P0 — Security (5 of 5 shipped)
 
@@ -53,7 +54,7 @@ mechanism than planned.** Both exceptions are described precisely rather than ro
 | D2 | Closed sessions stayed editable; edits desynced stored scores | Shipped | `assertSessionWritable` in every session and sample mutation, cup route redirects |
 | D3 | Closing was not idempotent and never revealed, so history stayed empty | Shipped | `closeSessionInternal`, one routine shared by owner close, solo auto-close and cron |
 
-### P1 — Broken flows (11 of 12 shipped, 1 partial)
+### P1 — Broken flows (12 of 12 shipped)
 
 | ID | Finding | Status | Where it landed |
 |---|---|---|---|
@@ -66,11 +67,11 @@ mechanism than planned.** Both exceptions are described precisely rather than ro
 | F7 | Close blocked on N document renders; delivery result discarded | Shipped | Background send, per-recipient ledger, bounded fan-out, result surfaced with a resend control |
 | F8 | Invalid invite pages were dead ends with no error path | Shipped | Converted to action-state forms with distinct messages and escape links |
 | F9 | Shared devices could serve the previous user's cached pages | Shipped | Sign-out clears the page caches, service worker excludes auth routes |
-| **F10** | **Realtime channel death invisible at three subscription sites** | **Partial** | **Only the waiting room got a status callback and polling fallback. The cupping screen and the results screen still call subscribe with no status handler, so a dropped channel there remains silent.** |
+| F10 | Realtime channel death invisible at three subscription sites | Shipped | All three now pass a status callback. Waiting room polls every 15s as a fallback; the cupping screen warns the maestro the submitted count may be stale; the results screen points the viewer at the refresh button |
 | F11 | Zero-sample session crashed into a retry loop | Shipped | Empty state instead of indexing, retry budget on the boundary |
 | F12 | Anonymous guests had the run of the app | Shipped | Guests confined to session routes, enforced in middleware, unit tested |
 
-### P2 — Error-handling foundation (6 of 7 shipped, 1 by a different mechanism)
+### P2 — Error-handling foundation (6 of 7 shipped, 1 by a different mechanism than planned)
 
 | ID | Finding | Status | Where it landed |
 |---|---|---|---|
@@ -139,22 +140,19 @@ advice happened to be harmless but the reasoning was wrong, and the stored note 
 corrected.
 
 **F10 was reported as complete when it was not.** The first version of this report said
-realtime death was fixed. Only one of the three subscription sites was actually changed.
-The gap was found by checking the code against the plan rather than trusting the summary,
-which is the reason this section of the report now exists.
+realtime death was fixed. Only one of the three subscription sites had actually been
+changed. The gap was found by checking the code against the plan rather than trusting the
+summary, which is why this section exists. It was fixed the same day, and all three sites
+now report channel loss.
 
 ## 6. What remains
 
 **Before running a real event.**
 
-1. The smoke test in runbook section 5. The authenticated group-session flow, create
+The smoke test in runbook section 5. The authenticated group-session flow, create
    through join, start, submit, close and delete, was never run end to end, because it
    requires a real login and would have written test data into the live database. This is
    the largest gap and is roughly fifteen minutes.
-2. F10, the two remaining realtime subscription sites. Small, and the cupping screen is
-   where it matters most, since a cupper whose channel dies stops seeing submissions
-   appear with no indication.
-
 **When the domain is ready.** Runbook section 6, five steps. The redeploy and the
 authentication callback allow-list are the two that fail quietly if skipped.
 
