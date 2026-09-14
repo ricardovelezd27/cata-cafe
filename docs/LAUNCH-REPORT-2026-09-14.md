@@ -24,110 +24,154 @@ and the database-side findings were confirmed against the **live production data
 rather than against the SQL files, which is how the most serious issue was proven real
 rather than theoretical.
 
-## 3. What was found
+The result was an approved plan containing 27 numbered findings across four severity
+bands, six work packages, four product decisions, and an execution strategy. Sections 3
+to 5 below account for every one of them.
 
-The architecture was sound. The scoring core, coffee-code generation, offline replay,
-email degradation and the guest-claim flow were all carefully built. Problems clustered
-in three places.
+---
 
-**Security, five issues.** The most serious: two row-security policies were written with
-no role restriction, which in Supabase means they apply to the anonymous role, and the
-anonymous key ships to every browser. Any visitor could read every session invite token on
-the platform and walk into any group tasting, and could read every user profile row. Also
-found: two unauthenticated server actions exposing private coffee records, an unvalidated
-coffee identifier allowing another owner's private coffee to be attached to a sample,
-participants able to overwrite the organiser's green-bean and reveal data, and a path to
-resolve any account's email address from a user identifier.
+## 3. Accounting against the approved plan
 
-**Data loss and integrity, three issues.** Deleting a session cascade-deleted every
-participant's evaluations and their coffee history with no warning. A closed session
-remained fully editable, and post-close edits did not re-fire the aggregate trigger, so
-stored scores silently diverged from the underlying data. Closing a group session was not
-idempotent, so a second click re-sent every participant's PDF, and because it never
-revealed samples it usually wrote no coffee history at all.
+**Summary: 25 of 27 findings fully shipped. One is partial. One shipped by a different
+mechanism than planned.** Both exceptions are described precisely rather than rounded up.
 
-**Flow dead ends, six.** Live sessions could only be started from a wizard screen the
-organiser leaves immediately, stranding participants forever. Deadlines on asynchronous
-sessions were never enforced. Other issues covered invite-link handling, the waiting room,
-zero-sample sessions and the cupping error boundary, which could loop indefinitely.
+### P0 — Security (5 of 5 shipped)
 
-**Error handling.** One error boundary existed in the entire application. There was no
-404 page, no loading states, roughly 48 server actions that failed with an opaque digest
-the user interface could not interpret, no feedback mechanism, no error reporting, and no
-automated tests.
+| ID | Finding | Status | Where it landed |
+|---|---|---|---|
+| S1 | Anonymous key could read every invite token and every profile row | Shipped | `rls_and_triggers.sql` PHASE 18 + 18b, applied to production and verified by live policy inspection |
+| S2 | Two unauthenticated server actions exposed private coffee records | Shipped | Moved out of the action surface to `lib/coffees/queries.ts` with `server-only` |
+| S3 | `revealSample` accepted an unvalidated coffee id | Shipped | Re-validated against `usableCoffeeWhere` |
+| S4 | Participants could overwrite the organiser's green-bean and reveal data | Shipped | `requireSampleOwner` on both upserts, payloads stripped for non-owners, tabs hidden |
+| S5 | Any user id could be resolved to a live email address | Shipped | `isCoCupper` / `coCupperIdsAmong` gate, emails rendered masked |
 
-## 4. What was delivered
+### P0 — Data loss and integrity (3 of 3 shipped)
 
-Seven commits across six work packages.
+| ID | Finding | Status | Where it landed |
+|---|---|---|---|
+| D1 | Deleting a session erased every participant's evaluations and history | Shipped | `detachCoffeeHistoryForSession` with per-cupper snapshot, nullable FKs, `getDeleteImpact` dialog |
+| D2 | Closed sessions stayed editable; edits desynced stored scores | Shipped | `assertSessionWritable` in every session and sample mutation, cup route redirects |
+| D3 | Closing was not idempotent and never revealed, so history stayed empty | Shipped | `closeSessionInternal`, one routine shared by owner close, solo auto-close and cron |
 
-| Package | Content |
+### P1 — Broken flows (11 of 12 shipped, 1 partial)
+
+| ID | Finding | Status | Where it landed |
+|---|---|---|---|
+| F1 | No way to start a live session; waiting room had no exit | Shipped | Start control in the master panel, waiting room reworked |
+| F2 | Session deadlines were never enforced | Shipped | Daily cron at 06:00 UTC, registered and confirmed live |
+| F3 | Owner demoted by own invite link; seat count burned on re-entry | Shipped | Owner and existing member are no-ops, seat limit enforced inside the transaction |
+| F4 | Expired login link gave no explanation | Shipped | Localized notice, focus on the email field, resend affordance |
+| F5 | Printed codes and emails pointed at localhost | Shipped | Boot-time assertion plus the value set in Vercel |
+| F6 | One auth outage would 500 every page | Shipped | Middleware degrades instead of throwing |
+| F7 | Close blocked on N document renders; delivery result discarded | Shipped | Background send, per-recipient ledger, bounded fan-out, result surfaced with a resend control |
+| F8 | Invalid invite pages were dead ends with no error path | Shipped | Converted to action-state forms with distinct messages and escape links |
+| F9 | Shared devices could serve the previous user's cached pages | Shipped | Sign-out clears the page caches, service worker excludes auth routes |
+| **F10** | **Realtime channel death invisible at three subscription sites** | **Partial** | **Only the waiting room got a status callback and polling fallback. The cupping screen and the results screen still call subscribe with no status handler, so a dropped channel there remains silent.** |
+| F11 | Zero-sample session crashed into a retry loop | Shipped | Empty state instead of indexing, retry budget on the boundary |
+| F12 | Anonymous guests had the run of the app | Shipped | Guests confined to session routes, enforced in middleware, unit tested |
+
+### P2 — Error-handling foundation (6 of 7 shipped, 1 by a different mechanism)
+
+| ID | Finding | Status | Where it landed |
+|---|---|---|---|
+| E1 | One error boundary in the whole app, no 404, no loading states | Shipped | Five boundaries, localized 404 plus catch-all, two loading skeletons |
+| **E2** | **~48 actions failed with an opaque digest** | **Shipped, differs from plan** | **8 actions moved onto the result contract. The remaining interactive ones (reveal, refresh, resend, invite-link, close) are caught at their call sites and show a generic message instead of the specific one. See the note below.** |
+| E3 | No feedback primitive; bare transitions crashed the page | Shipped | Toast provider mounted at the locale layout, call sites converted |
+| E4 | Prisma not-found and foreign-key errors handled nowhere | Shipped | Mapped in `classifyActionError`, unit tested |
+| E5 | No validation layer; scoring inputs trusted from the client | Shipped | `lib/validate.ts`, and cup count and format now read from the session row |
+| E6 | No error reporting at all | Shipped | `instrumentation.ts` logs each failure keyed to the support code the user sees |
+| E7 | No tests of any kind | Shipped | 33 unit tests over scoring, validation, session rules, error mapping, guest scope |
+
+**Note on E2.** The plan called for roughly ten interactive actions to move onto the result
+contract. Eight did. The other four sit in files that were being edited concurrently, and
+were instead wrapped in try/catch at the call site. The user-visible goal is met, nothing
+crashes the page, but those four show the generic "something went wrong" message rather
+than the specific one. A closed session, for example, reports generically instead of
+saying the tasting is already closed.
+
+### Product decisions (4 of 4 implemented as approved)
+
+| Decision | Implemented |
 |---|---|
-| Security | Policy fix, owner-gating for per-sample data, coffee identifier validation, co-cupper scoping for email lookups, read helpers moved out of the server-action surface |
-| Error foundation | Shared error panel, five boundaries, localized 404, loading skeletons, login failure notice, resilient middleware |
-| Session state machine | One idempotent close routine shared by three callers, closed-means-read-only enforced everywhere, delete that preserves history, invite-link fixes, start control, daily deadline job |
-| Action contract | Result type and wrapper, validation helpers, server-derived scoring inputs, toast feedback, join forms converted |
-| Observability | Request-error logging keyed to the support code users see, honest save status, offline storage hardening, pending-draft indicator |
-| Deploy hygiene | Boot-time environment assertions, security headers, service-worker fix, cache-clearing sign-out, guest scoping, 33 unit tests |
+| Session delete keeps anonymised per-cupper history | Yes, with the coffee-ownership confirm dialog you asked for |
+| Deadlines enforced by a daily job | Yes, sharing the single close routine |
+| Log-only observability, no third-party service | Yes |
+| Start control in the master panel, waiting room kept | Yes |
 
-Roughly 5,900 lines added across 102 files.
+### P3 — deferred by the plan (12 items)
 
-## 5. What was verified after deploy
+Explicitly post-launch when you approved it. Two were completed incidentally and are no
+longer outstanding: the missing security headers, and the four database functions callable
+anonymously. The remaining ten stand, the most significant being that analytics-access
+users still read platform-wide data rather than their own.
 
-Each claim below rests on a check performed against production, not on assumption.
+---
+
+## 4. What was verified after deploy
+
+Each claim rests on a check performed against production, not on assumption.
 
 | Claim | How it was proven |
 |---|---|
 | New build is live | The five security headers now present did not exist before |
-| All eight required environment variables reached production | The deploy booted. The startup assertion fails the boot when any is missing |
+| All eight required variables reached production | The deploy booted. The startup assertion fails the boot when any is missing |
 | The scheduler secret took | Both cron routes answer 401, not the 503 returned when the secret is absent |
-| Migration applied correctly | Schema inspected directly: new column, new table, two columns made nullable, two columns added |
-| No data was harmed | 123 sessions, 1,070 evaluations and 83 history rows intact after migration |
-| Application runs against the migrated schema | Key routes exercised locally against the production database before the deploy |
-| New error surfaces render | Localized 404 and the invalid-invite card, both confirmed in a browser |
+| Migration applied correctly | Schema inspected directly: new column, new table, two made nullable, two added |
+| No data was harmed | 123 sessions, 1,070 evaluations and 83 history rows intact afterwards |
+| App runs against the migrated schema | Key routes exercised locally against the production database before deploy |
+| New error surfaces render | Localized 404 and the invalid-invite card, confirmed in a browser |
 | Policy fix holds | Live policy inspection shows no anonymous read on invites or profiles |
 
-## 6. Two mistakes made during this work
+## 5. Mistakes made during this work
 
-Recorded because both are instructive and both were caught.
+Recorded because all three are instructive, and because the last one was found only while
+writing this section.
 
 **The policy lock broke live updates.** Revoking execute permission on a helper function
 also removed it from the role that row-security policies run as, which would have silently
 broken every realtime subscription. Caught by testing the function as that role against
-production rather than trusting the change. Fixed the same day and documented as a
-standing rule: a function called by a policy must keep execute permission for signed-in
-users.
+production. Fixed the same day and written into `CLAUDE.md` as a standing rule.
 
-**A wrong diagnosis about the site URL.** A trailing slash was claimed to break the
-printed join code by dropping the locale segment. Testing both forms against production
-disproved it. The missing locale was normal behaviour, because the default language
-carries no prefix in this application. The advice given happened to be harmless, but the
-reasoning was wrong and was corrected in the record.
+**A wrong diagnosis about the site URL.** A trailing slash was claimed to break the printed
+join code by dropping the locale segment. Testing both forms disproved it: the missing
+locale is normal, because the default language carries no prefix in this application. The
+advice happened to be harmless but the reasoning was wrong, and the stored note has been
+corrected.
 
-## 7. What remains
+**F10 was reported as complete when it was not.** The first version of this report said
+realtime death was fixed. Only one of the three subscription sites was actually changed.
+The gap was found by checking the code against the plan rather than trusting the summary,
+which is the reason this section of the report now exists.
 
-**Before running a real event.** The smoke test in runbook section 5. The authenticated
-group-session flow, create through join, start, submit, close and delete, was never run
-end to end, because it requires a real login and would have written test data into the
-live database. This is the largest remaining gap and is roughly fifteen minutes of work.
+## 6. What remains
+
+**Before running a real event.**
+
+1. The smoke test in runbook section 5. The authenticated group-session flow, create
+   through join, start, submit, close and delete, was never run end to end, because it
+   requires a real login and would have written test data into the live database. This is
+   the largest gap and is roughly fifteen minutes.
+2. F10, the two remaining realtime subscription sites. Small, and the cupping screen is
+   where it matters most, since a cupper whose channel dies stops seeing submissions
+   appear with no indication.
 
 **When the domain is ready.** Runbook section 6, five steps. The redeploy and the
 authentication callback allow-list are the two that fail quietly if skipped.
 
-**After launch, not urgent.** Narrowing analytics-access users to their own data rather
-than platform-wide; an account-deletion path; an affected-user warning when deleting a
-coffee; a content security policy; converting the remaining server actions to the result
-contract; making the monthly digest job fully idempotent.
+**After launch.** The ten remaining deferred items, led by narrowing analytics-access users
+to their own data, and an account-deletion path. Optionally, finishing the E2 conversion so
+the last four actions report specific messages.
 
-## 8. Honest assessment
+## 7. Honest assessment
 
 The security holes were real and are closed. The data-loss paths were real and are closed.
-The error handling went from one boundary and silent failures to a consistent contract with
+Error handling went from one boundary and silent failures to a consistent contract with
 user-visible messages and traceable logs.
 
-The main residual risk is coverage, not correctness. The test suite covers pure logic:
-the scoring formula, validation, session rules, error mapping and guest scoping. It does
-not cover the database, the authenticated flows, or the interface, and no integration or
-end-to-end tests exist. Several of the most valuable behaviours shipped here, the close
-routine, the delete-with-snapshot path and the daily job, have been reasoned about and
-type-checked but never executed against real data with a real user. The smoke test is
-what converts that reasoning into evidence, which is why it is the top recommendation.
+The main residual risk is coverage, not correctness. The tests cover pure logic only:
+scoring, validation, session rules, error mapping, guest scoping. Nothing covers the
+database, the authenticated flows, or the interface. Several of the most valuable
+behaviours shipped here, the close routine, the delete-with-snapshot path and the daily
+job, have been reasoned about and type-checked but never executed against real data with a
+real user. The smoke test is what converts that reasoning into evidence, which is why it
+remains the top recommendation.
