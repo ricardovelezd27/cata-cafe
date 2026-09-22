@@ -345,8 +345,8 @@ Cupping form components are fully controlled. State is lifted to `CupClient`, wh
 | Model | Purpose |
 |---|---|
 | `Profile` | User account (id = Supabase user UUID); `role`, `country`, `onboardingCompleted` |
-| `CuppingSession` | A cupping event (format, date, status, isGroup, isAsync, closesAt, cupsPerSample) |
-| `SessionSample` | A coffee sample within a session (position, label, revealed, coffeeId) |
+| `CuppingSession` | A cupping event (format, date, status, isGroup, isAsync, closesAt, cupsPerSample); `referenceSampleId → SessionSample` (SetNull; display-only "Referencia", Δ via `lib/referenceDelta.ts`) |
+| `SessionSample` | A coffee sample within a session (position, label, revealed, coffeeId); `referencedBy` — back-relation from `CuppingSession.referenceSampleId` (at most one session per sample) |
 | `Evaluation` | A cupper's score for one sample (JSON data + computed scores, isDraft, submittedAt) |
 | `PhysicalEvaluation` | Green bean assessment for a sample (pre-reveal) |
 | `ExtrinsicData` | Origin/processing info revealed post-tasting |

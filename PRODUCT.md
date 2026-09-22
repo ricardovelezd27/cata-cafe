@@ -14,6 +14,8 @@ The tool exists to make rigorous, reproducible cupping sessions as frictionless 
 
 **Standing product law: valor antes que fricción.** The app delivers value first and asks for identity, data, or money only afterwards — always dismissibly. Every gate we design, present and future, is checked against this ordering before it ships.
 
+**El puntaje necesita contexto.** A CVA number alone is not a decision: the same coffee can be excellent for one objective (filter, education, calibration) and wrong for another (espresso, a buyer's target). Every score surface therefore ships with its comparison — community mean, consensus SD, and now the owner's reference sample with a signed Δ — all display-only; the CVA formula is never mutated. New features are checked against one question: does this help the user understand what they are evaluating, against what, and what the result means? Adding numbers without context is regression.
+
 ---
 
 ## Target Users
@@ -55,6 +57,7 @@ A cupper invited via link to join a group session. They join, evaluate their ass
 | **Blind integrity** | Sample labels are coded (A, B, C…); origin data is entered post-reveal only. |
 | **Full traceability** | Every evaluation links to a coffee profile with complete tasting history and community scores. |
 | **Export** | PDF certificate generation with score breakdown via `@react-pdf/renderer`. |
+| **Contexto del puntaje** | Reference sample (control) with signed Δ on every results surface and in the PDF; SD consensus chip; community vs. mine — all display-only, scoring untouched. |
 
 ---
 
@@ -245,10 +248,13 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 - [x] Coffee short codes + progressive metadata (2026-09): unique 6-char coffee codes end to end (creation, search, display); session/coffee creation now needs only a name, with post-close origin-data editing added to the results drill-down
 - [x] Consensus SD + CVA PDF fixes (2026-09): a display-only standard-deviation figure alongside community scores; the exported PDF's physical-evaluation block now renders real defect/screen/color data and gates roast level on reveal like the coffee name
 - [x] Guest → account claim (2026-09): the results-page banner now routes guests through the normal login flow (magic link or Google) and merges their tasting data onto the resulting account — new or existing — instead of an in-place email swap
+- [x] Reference sample (2026-09): owner marks one sample as "Referencia" from the wizard, edit page or master panel (live to participants); cup, waiting room, results, PDF and print show it, results add a signed Δ against it — scoring untouched. First live test: end-of-month calibration cupping.
 
 ### Next — Results & Analytics
 - [ ] Multi-session coffee comparison view
 - [ ] Export to CSV
+- [ ] Radar overlay: mine vs reference vs group mean (three polygons) — only after the reference experiment validates the concept
+- [ ] Structured objectives + methodologies per session (educational / calibration / selection / consumer / professional) — design first outside the software (docs/product/objetivos-y-metodologias.md)
 
 ### Next — Session Controls & Workflow
 - [ ] Sample order randomization per participant

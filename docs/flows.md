@@ -171,6 +171,19 @@ leaves the coffee field untouched, `""` clears it, `name` is never blanked —
 and report `coffeeUpdated: false` (shown as a dismissible notice) when the
 linked coffee isn't owned by the editor.
 
+### Reference sample (2026-09)
+
+The owner may mark exactly one sample per session as the "Referencia" (control
+sample the others are compared against) from the wizard, the sample edit page,
+or the cup page's master panel — `CuppingSession.referenceSampleId` (nullable,
+`SET NULL` on sample removal, remapped by position on `duplicateSession`) via
+the owner-only `setReferenceSample` action. It goes live to participants
+through the existing `cupping_sessions` realtime UPDATE stream — no new
+publication or RLS policy. Results and the PDF/print sheets show a
+"Referencia" badge on that sample and a display-only signed Δ against it
+(community score in group sessions, own CVA score solo) computed by
+`lib/referenceDelta.ts`; scoring itself, the DB trigger, and RLS are untouched.
+
 ---
 
 ## 2. Coffee visibility & sharing
@@ -362,6 +375,10 @@ The "General" pseudo-block in Descriptores is not a real perceptual block: it is
 the whole-sample descriptor profile, deduped per cupper across all blocks, and
 feeds the same word cloud / frequency bars / consensus-sentence panels as any
 other block selection.
+
+The owner's reference sample (if set) shows a "Referencia" badge plus a
+display-only signed Δ against every other sample's ranking row (R2) and matrix
+cell (S3), explained by the `help.referencia` InfoHint.
 
 ---
 
