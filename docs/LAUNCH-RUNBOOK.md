@@ -221,6 +221,48 @@ row was detached in the meantime — do not do that without asking.)
    `{"ok":false,"error":"not_configured"}` means `CRON_SECRET` is not set on that
    deployment; `unauthorized` means the header value does not match.
 
+### Cambio de dominio a cafesensible.ai
+
+**When:** the rebrand from Cata Café to cafesensible.ai (contact `hola@estudiodecafe.online`)
+ships share metadata (og:/twitter: tags, canonical URLs, `/opengraph-image`,
+`/robots.txt`, `/sitemap.xml`) that all depend on `NEXT_PUBLIC_SITE_URL` — this only
+takes effect once the real domain is live.
+
+1. Vercel → project → **Settings → Environment Variables** → set
+   `NEXT_PUBLIC_SITE_URL=https://cafesensible.ai` for **Production** and **Preview**.
+2. Supabase → **Authentication → URL Configuration**: add
+   `https://cafesensible.ai/auth/callback` and `https://cafesensible.ai/**` to the
+   **Redirect URLs** allow-list, and update **Site URL** to `https://cafesensible.ai`.
+   Without this, magic-link sign-in on the new domain fails.
+3. **Redeploy.** `NEXT_PUBLIC_*` values are baked in at build time, so saving the
+   variable alone changes nothing until a new build runs.
+4. Verify every URL resolved to the real host, not `localhost:3000`:
+
+   ```bash
+   curl -s https://cafesensible.ai/ | grep -E 'og:|twitter:|canonical'
+   ```
+
+   Every `content=`/`href=` value should start with `https://cafesensible.ai`. Then
+   confirm the generated image itself:
+
+   ```bash
+   curl -s -o /dev/null -w "%{http_code} %{content_type}\n" https://cafesensible.ai/es/opengraph-image
+   ```
+
+   Expected: `200 image/png` (the route is locale-prefixed on purpose — `proxy.ts`
+   excludes it from the intl middleware so the default-locale card never 307s;
+   `/en/opengraph-image` must return the same).
+5. Paste `https://cafesensible.ai/` into the
+   [LinkedIn Post Inspector](https://www.linkedin.com/post-inspector/) and share the link
+   in a WhatsApp chat to confirm the card renders with the new image, title, and domain
+   (both cache previous scrapes — use each tool's "reload"/"reinspect" option if the old
+   `Cata Café` card still shows).
+
+`NEXT_PUBLIC_SITE_URL` only feeds `metadataBase` (and therefore every relative
+og/twitter/canonical/sitemap/robots URL), the printed join QR sheet
+(`app/[locale]/app/sessions/[id]/print/page.tsx`), and the monthly digest email links.
+Live in-app invite links are built from `window.location.origin` and are unaffected.
+
 ---
 
 ## §4. Vercel — finding a production error from a user's "support code"
@@ -312,7 +354,12 @@ changes are additive and do not need rolling back.
 
 ---
 
-## §6. Moving to the real domain (catasensible.ai)
+## §6. Moving to the real domain (cafesensible.ai)
+
+> **Domain corrected 2026-09-22** — earlier drafts of this section named
+> `catasensible.ai`; the registered rebrand domain is **cafesensible.ai**. See also the
+> "Cambio de dominio a cafesensible.ai" subsection under §3 for the share-metadata
+> (og:/twitter:/canonical/opengraph-image) verification steps that go with this cutover.
 
 **When:** the day the domain is registered and pointing at Vercel. Interim value in use is
 `https://cata-cafe-opal.vercel.app`, which keeps working permanently once a custom domain
@@ -320,13 +367,13 @@ is attached, so nothing printed or emailed before the switch breaks.
 
 All five steps, or it fails quietly:
 
-1. Vercel → Settings → **Domains** → add `catasensible.ai`.
+1. Vercel → Settings → **Domains** → add `cafesensible.ai`.
 2. Vercel → Settings → **Environment Variables** → set `NEXT_PUBLIC_SITE_URL` to
-   `https://catasensible.ai`. Use https, and no trailing slash.
+   `https://cafesensible.ai`. Use https, and no trailing slash.
 3. **Redeploy.** `NEXT_PUBLIC_*` values are baked in at build time, so editing the variable
    alone changes nothing until a new build runs.
 4. Supabase → Authentication → **URL Configuration** → add
-   `https://catasensible.ai/auth/callback` to the redirect allow-list. Without this,
+   `https://cafesensible.ai/auth/callback` to the redirect allow-list. Without this,
    magic-link sign-in fails on the new domain.
 5. Re-test: a magic-link login on the new domain, and scan a freshly printed session QR.
 

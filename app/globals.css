@@ -393,8 +393,23 @@ button { font-family: inherit; cursor: pointer; }
   contain-intrinsic-size: auto 720px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .ambient-video { display: none; }
+/* Dark-stage glass recipe: shared by content cards sitting over the
+   particle canvas so the field reads through them (landing redesign). */
+.stage-card {
+  background: color-mix(in srgb, var(--color-surface) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-surface) 12%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+/* PhotoSlot placeholder (no src wired yet): faint centred mint dot grid. */
+.photo-slot-empty {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-primary-fixed) 35%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 14px 14px;
+  background-position: center;
 }
 
 /* Landing hero entrance — pure CSS so the LCP paint isn't delayed by
@@ -434,18 +449,6 @@ button { font-family: inherit; cursor: pointer; }
   .contour-path:nth-of-type(4) { animation-delay: 0.75s; }
   .contour-path:nth-of-type(5) { animation-delay: 0.85s; }
   .contour-path:nth-of-type(6) { animation-delay: 0.95s; }
-
-  /* Cupping bowls seen from above: slow ambient ripple. Composited divs. */
-  @keyframes bowl-ripple {
-    0%, 100% { transform: scale(1);    opacity: 0.55; }
-    50%      { transform: scale(1.05); opacity: 1; }
-  }
-  .bowl-set {
-    animation: bowl-ripple 9s ease-in-out infinite;
-    will-change: transform, opacity;
-  }
-  .bowl-set-2 { animation-delay: -3s; }
-  .bowl-set-3 { animation-delay: -6s; }
 
   /* Widget self-demo: invitation pulse on the slider thumb after the demo
      glide ends, and a settle pulse on the band readout. */

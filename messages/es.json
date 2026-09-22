@@ -833,20 +833,20 @@
   },
   "landing": {
     "meta": {
-      "title": "Cata — Calibra paladares y enseña el CVA con datos",
-      "description": "Plataforma profesional de cata SCA CVA para escuelas, formadores y laboratorios. Sesiones de calibración en grupo, referencia del instructor y convergencia que se ve. Registra, describe y calibra a tu equipo.",
-      "ogTitle": "Cata — Calibra paladares. Enseña el CVA con datos.",
-      "ogDescription": "Cata profesional SCA CVA para formación: sesiones de cata en grupo, referencia del instructor y métricas de desviación por alumno."
+      "title": "cafesensible.ai — Calibra el paladar de tu grupo, con datos",
+      "description": "La herramienta del Método Café Sensible: sesiones de cata en grupo sobre el protocolo SCA CVA completo, con la referencia del instructor y una convergencia que se ve. Para escuelas, formadores y facilitadores.",
+      "ogTitle": "cafesensible.ai — Tu grupo cata. La app mide cuánto coinciden.",
+      "ogDescription": "Cata SCA CVA en grupo con referencia del instructor, desviación por persona y convergencia visible, sesión a sesión."
     },
     "header": {
-      "wordmark": "Cata",
+      "wordmark": "cafesensible",
       "signIn": "Iniciar sesión",
       "cta": "Empieza gratis"
     },
     "hero": {
-      "eyebrow": "Calibración de paladar profesional · SCA CVA",
-      "title": "Calibra paladares. Enseña el CVA con datos.",
-      "subtitle": "Sesiones de cata en grupo con referencia del instructor y una convergencia que puedes ver, sobre el protocolo SCA CVA completo. Para escuelas, formadores y laboratorios de cata.",
+      "eyebrow": "La herramienta del Método Café Sensible · SCA CVA",
+      "title": "Tu grupo cata. La app mide cuánto coinciden.",
+      "subtitle": "Sesiones de cata en grupo sobre el protocolo SCA CVA completo. Cada persona puntúa a su ritmo; la app compara con tu referencia y te enseña, en vivo, cómo converge el grupo. Para escuelas, formadores y facilitadores.",
       "cta": "Calibra a tu equipo gratis →",
       "ctaNote": "Sin tarjeta. Sin contraseña. Solo tu correo."
     },
@@ -898,63 +898,79 @@
     },
     "how": {
       "eyebrow": "Cómo funciona",
-      "title": "De la taza a la calibración en tres pasos",
+      "title": "Percibir, describir, calibrar. En ese orden.",
+      "step1Kicker": "Percibe",
       "step1Title": "Cátalo",
-      "step1Desc": "Cada alumno evalúa con el protocolo CVA oficial completo. Funciona sin conexión y en sesiones de grupo.",
+      "step1Desc": "Cada persona evalúa la taza con el protocolo CVA completo, a su ritmo. Con wifi o sin él: el laboratorio no espera.",
+      "step1Caption": "Mesa de cata del método, con la app en la mano.",
+      "step2Kicker": "Nombra",
       "step2Title": "Descríbelo",
-      "step2Desc": "La cohorte registra intensidades y descriptores sensoriales, taza a taza.",
+      "step2Desc": "Intensidades y descriptores, taza a taza, hasta que el grupo habla el mismo idioma. El vocabulario se construye entre todos; nadie lo dicta.",
+      "step2Caption": "Taller en directo. Grupo real.",
+      "step3Kicker": "Mide",
       "step3Title": "Calibra",
-      "step3Desc": "Compara cada puntuación con la referencia del instructor, mide la desviación y exporta el informe PDF.",
+      "step3Desc": "Cada puntuación frente a tu referencia: quién se desvía, en qué atributo y cuánto. La convergencia deja de ser una sensación y pasa a ser un número. Y un PDF.",
       "frame1Aria": "Recreación de la pantalla de evaluación afectiva con escala de 1 a 9",
       "frame2Aria": "Recreación del selector de descriptores de sabor",
-      "frame3Aria": "Recreación de la tarjeta de puntaje con informe PDF"
+      "frame3Aria": "Recreación de la tarjeta de puntaje con informe PDF",
+      "photo2Alt": "Mesa de cata con tazas, cucharas y ruedas de sabor; una persona registra en el móvil.",
+      "photo4Alt": "Taller de cata en directo: un grupo evalúa tazas con cucharas y cuadernos."
     },
     "features": {
-      "eyebrow": "Lo que incluye",
-      "title": "Todo el protocolo, sin fricción",
+      "eyebrow": "Qué incluye",
+      "title": "Todo el protocolo. Cero fricción.",
       "item1": {
         "title": "Metodología SCA CVA",
-        "desc": "El protocolo oficial completo en sus tres formatos: descriptivo, afectivo y combinado."
+        "desc": "El protocolo oficial completo en sus tres hojas: descriptiva, afectiva y extrínseca."
       },
       "item2": {
         "title": "Puntuación transparente",
-        "desc": "Cada puntaje muestra exactamente cómo se calculó, con la fórmula a la vista."
+        "desc": "Cada puntaje enseña cómo se calculó, con la fórmula a la vista. Sin cajas negras."
       },
       "item3": {
         "title": "Descubrimiento con IA",
-        "desc": "Insights impulsados por IA que revelan patrones en los datos de tus catas."
+        "desc": "La IA saca a la luz lo que a simple vista se escapa: quién se desvía, en qué atributo y cómo evoluciona el grupo sesión a sesión."
       },
       "item4": {
         "title": "Pensado para laboratorios",
-        "desc": "Funciona por completo sin conexión y sincroniza al recuperar la señal."
+        "desc": "Funciona por completo sin conexión y sincroniza en cuanto vuelve la señal."
       },
       "item5": {
         "title": "Informes y certificados",
-        "desc": "Genera informes y certificados en PDF por sesión, listos para exportar."
+        "desc": "Informe y certificado en PDF por sesión, listos para entregar."
       },
       "item6": {
         "title": "Calibración en grupo",
-        "desc": "Sesiones en grupo contra la referencia del instructor, también de forma asíncrona: cada alumno cata a su ritmo."
-      }
+        "desc": "Sesiones en grupo contra la referencia del instructor, también en asíncrono: cada persona cata cuando puede."
+      },
+      "factsSheets": "3 hojas",
+      "factsAttrs": "8 atributos",
+      "factsRef": "1 referencia",
+      "heatmapAria": "Mapa de desviación por atributo y catador, ilustrativo"
     },
     "audience": {
       "eyebrow": "Para quién es",
       "title": "Hecho para quien forma paladares",
-      "card1Title": "Escuelas y formadores",
-      "card1Desc": "Calibra cohortes enteras contra la referencia del instructor, sigue la desviación de cada alumno sesión a sesión y entrega certificados en PDF al terminar el curso.",
-      "card2Title": "Tostadores",
-      "card2Desc": "También sirve a tu mesa de cata: alinea el criterio del equipo antes de decidir un lote.",
-      "card3Title": "Cooperativas",
-      "card3Desc": "También sirve a tu panel: mantén a tus catadores calibrados con evidencia de consistencia.",
-      "card4Title": "Importadores",
-      "card4Desc": "También sirve a tu control de calidad: cata en grupo con puntajes comparables entre catadores."
+      "card1Title": "Formadores y facilitadores",
+      "card1Desc": "Das catas y talleres y quieres que tus asistentes vean su progreso con datos, no solo con tu palabra. Calibra al grupo contra tu referencia y entrégales su evolución.",
+      "card2Title": "Escuelas",
+      "card2Desc": "Calibra cohortes enteras, sigue la desviación de cada alumno sesión a sesión y cierra el curso con certificados en PDF.",
+      "card3Title": "Tostadores",
+      "card3Desc": "Alinea el criterio de tu mesa de cata antes de decidir un lote.",
+      "card4Title": "Cooperativas",
+      "card4Desc": "Mantén a tu panel calibrado, con evidencia de consistencia.",
+      "card5Title": "Importadores",
+      "card5Desc": "Control de calidad en grupo con puntajes comparables entre catadores.",
+      "galleryCaption": "Sesiones reales del método. Grupos de varios países.",
+      "photo1Alt": "Formadores y socios del método reunidos alrededor de una mesa, con cafés y cuadernos.",
+      "photo3Alt": "Encuentro de formadores en una sala con vistas a la ciudad."
     },
     "founding": {
       "eyebrow": "Miembros fundadores",
-      "title": "Gratis para la primera cohorte fundadora",
+      "title": "Gratis para la cohorte fundadora",
       "badge": "Cohorte fundadora",
       "offer": "Gratis para los primeros 100 miembros fundadores",
-      "feature1": "Cata CVA completa en los tres formatos: descriptivo, afectivo y combinado",
+      "feature1": "Cata CVA completa en sus tres hojas: descriptiva, afectiva y extrínseca",
       "feature2": "Sesiones en grupo y calibración con referencia del instructor",
       "feature3": "Informes y certificados en PDF",
       "feature4": "Funciona sin conexión, pensado para el laboratorio",
@@ -971,9 +987,12 @@
       "error": "No pudimos guardar tu correo. Inténtalo de nuevo."
     },
     "finalCta": {
+      "kicker": "Muchos paladares. Una referencia. Un número.",
       "title": "Deja de <em>adivinar</em> si tu equipo cata igual.",
+      "sub": "Mídelo. En la próxima sesión.",
       "cta": "Calibra a tu equipo gratis →",
-      "note": "Sin contraseñas. Entra con un enlace mágico a tu correo."
+      "note": "Sin contraseñas. Entra con un enlace mágico a tu correo.",
+      "photo5Alt": "Catadores inclinados sobre las tazas durante la evaluación."
     },
     "footer": {
       "language": "Idioma",
@@ -981,8 +1000,8 @@
       "contact": "Contacto",
       "privacy": "Privacidad",
       "terms": "Términos",
-      "copyright": "© {year} Cata. Todos los derechos reservados.",
-      "madeFor": "Hecho para profesionales del café de especialidad."
+      "copyright": "© {year} cafesensible.ai. Todos los derechos reservados.",
+      "madeFor": "La herramienta del Método Café Sensible. Hecha para profesionales del café de especialidad."
     }
   },
   "insights": {

@@ -29,7 +29,7 @@ export default function WaitlistForm({
     return (
       <p
         role="status"
-        className="rounded-2xl bg-primary-fixed/40 px-4 py-3 text-sm text-primary"
+        className="stage-card rounded-2xl px-4 py-3 text-sm text-surface/80"
       >
         {labels.success}
       </p>
@@ -60,18 +60,18 @@ export default function WaitlistForm({
           name="email"
           required
           placeholder={labels.emailPlaceholder}
-          className="w-full rounded-2xl border border-outline-variant bg-surface-container-lowest px-4 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary-container"
+          className="w-full rounded-2xl border border-outline-variant bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary-container"
         />
         <button
           type="submit"
           disabled={pending}
-          className="w-full rounded-2xl bg-primary-container px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary disabled:opacity-60"
+          className="w-full rounded-2xl bg-surface px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-fixed disabled:opacity-60"
         >
           {pending ? labels.submitting : labels.button}
         </button>
       </div>
       {state.status === "error" && (
-        <p role="alert" className="text-xs text-error">
+        <p role="alert" className="text-xs text-secondary-container">
           {state.code === "invalid_email" ? labels.invalid : labels.error}
         </p>
       )}

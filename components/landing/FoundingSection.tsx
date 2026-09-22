@@ -6,8 +6,8 @@ function FeatureList({ items }: { items: string[] }) {
   return (
     <ul className="mt-5 space-y-2.5">
       {items.map((item) => (
-        <li key={item} className="flex items-start gap-2 text-sm text-on-surface-variant">
-          <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary-container" />
+        <li key={item} className="flex items-start gap-2 text-sm text-surface/80">
+          <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary-fixed" />
           {item}
         </li>
       ))}
@@ -30,25 +30,25 @@ export default async function FoundingSection({ locale }: { locale: string }) {
   };
 
   return (
-    <section className="cv-auto bg-surface">
+    <section data-fold="4" className="cv-auto relative z-10 bg-transparent">
       <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
         <div data-reveal className="text-center">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-secondary">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-secondary-container">
             {t("eyebrow")}
           </p>
-          <h2 className="mt-4 font-serif text-3xl leading-tight text-on-surface sm:text-4xl">
+          <h2 className="mt-4 font-serif text-3xl leading-tight text-surface sm:text-4xl">
             {t("title")}
           </h2>
         </div>
 
         <div
           data-reveal
-          className="mx-auto mt-12 flex max-w-xl flex-col rounded-[2rem] border-2 border-primary-container bg-surface-container-lowest p-7 sm:p-9"
+          className="stage-card mx-auto mt-12 flex max-w-xl flex-col rounded-[2rem] p-7 sm:p-9"
         >
-          <span className="w-fit rounded-full bg-secondary-fixed px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-on-secondary-container">
+          <span className="w-fit rounded-full bg-secondary-container px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-primary">
             {t("badge")}
           </span>
-          <p className="mt-5 font-serif tabular-nums text-4xl text-primary">
+          <p data-counter className="mt-5 font-serif tabular-nums text-4xl text-surface">
             {t("offer")}
           </p>
           <FeatureList
@@ -57,7 +57,7 @@ export default async function FoundingSection({ locale }: { locale: string }) {
           <div className="mt-7">
             <WaitlistForm locale={locale} labels={waitlistLabels} />
           </div>
-          <p className="mt-4 text-xs leading-relaxed text-on-surface-variant/80">
+          <p className="mt-4 text-xs leading-relaxed text-surface/70">
             {t("note")}
           </p>
         </div>

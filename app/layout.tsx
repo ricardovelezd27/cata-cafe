@@ -45,8 +45,9 @@ export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   ),
-  title: "Cata Café Sensible",
-  description: "Professional SCA CVA cupping",
+  title: "Café Sensible",
+  description:
+    "La herramienta del Método Café Sensible: cata SCA CVA en grupo con referencia del instructor y convergencia visible.",
 };
 
 export default function RootLayout({

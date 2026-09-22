@@ -110,6 +110,8 @@ Used only in `CATAPills` and flavor-family labels. Do not use elsewhere.
 
 `components/results/` is otherwise fully tokenized (no hex literals) — `chartColors.ts` is the one sanctioned exception, mirroring the Flavor Family table above. Recharts renders raw SVG, and `stroke`/`fill` props take literal color strings, not Tailwind classes. `getChartColors()` reads the live CSS custom properties off `document.documentElement` at render time (so it tracks `app/globals.css`, dark theme included, without a rebuild) and only falls back to a baked-in hex snapshot during SSR. Keep that fallback snapshot in sync with `app/globals.css` by hand — it must never drift from the token values in this file. Never copy this pattern into ordinary HTML-side styling; it exists solely for Recharts' SVG internals.
 
+The landing constellation canvas (`components/landing/journey/ConstellationCanvas.tsx`) is the second sanctioned user of the same pattern: it reads `--color-primary-fixed`, `--color-secondary-container`, `--color-surface` and the nine `--color-flavor-*` tokens at mount (resolving any CSS colour through the canvas' own parser) and keeps a fallback snapshot of the same values. Same rule: update the snapshot when the tokens change.
+
 ---
 
 ## Typography

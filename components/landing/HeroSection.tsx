@@ -16,7 +16,7 @@ export default async function HeroSection({ locale }: { locale: string }) {
   ) as Record<Cupper["key"], string>;
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-green-dark text-surface">
+    <section data-fold="0" className="relative z-10 overflow-hidden bg-transparent text-surface">
       {/* Terroir contour lines, drawn in on load (CSS, LCP-safe) */}
       <svg
         aria-hidden="true"
@@ -34,26 +34,6 @@ export default async function HeroSection({ locale }: { locale: string }) {
         </g>
       </svg>
 
-      {/* Cupping bowls from above: concentric rings, slow ambient ripple.
-          Plain divs (not SVG) so the transform animation stays composited. */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-[0.09]">
-        <div className="bowl-set absolute bottom-[4%] left-[6%] h-32 w-32">
-          <span className="absolute inset-0 rounded-full border border-primary-fixed" />
-          <span className="absolute inset-[16%] rounded-full border border-primary-fixed" />
-          <span className="absolute inset-[33%] rounded-full border border-primary-fixed" />
-        </div>
-        <div className="bowl-set bowl-set-2 absolute bottom-[10%] left-[16%] h-24 w-24">
-          <span className="absolute inset-0 rounded-full border border-primary-fixed" />
-          <span className="absolute inset-[16%] rounded-full border border-primary-fixed" />
-          <span className="absolute inset-[33%] rounded-full border border-primary-fixed" />
-        </div>
-        <div className="bowl-set bowl-set-3 absolute right-[7%] top-[8%] h-28 w-28">
-          <span className="absolute inset-0 rounded-full border border-primary-fixed" />
-          <span className="absolute inset-[16%] rounded-full border border-primary-fixed" />
-          <span className="absolute inset-[33%] rounded-full border border-primary-fixed" />
-        </div>
-      </div>
-
       <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-9 px-5 pb-16 pt-14 sm:px-8 sm:pt-20 lg:grid-cols-2 lg:gap-14 lg:pb-24">
         <div className="lg:self-center">
           <p className="hero-rise text-[11px] font-semibold uppercase tracking-[0.22em] text-green-light">
@@ -62,7 +42,9 @@ export default async function HeroSection({ locale }: { locale: string }) {
           <h1 className="hero-slide mt-4 font-serif text-4xl leading-[1.08] text-surface sm:text-5xl lg:text-6xl">
             {t("title")}
           </h1>
-          <p className="hero-rise hero-rise-1 mt-5 max-w-xl text-base leading-relaxed text-surface/80 sm:text-lg">
+          {/* Transform-only entrance: the subtitle is now the largest text block
+              on mobile (LCP candidate), so it must never start at opacity 0. */}
+          <p className="hero-slide mt-5 max-w-xl text-base leading-relaxed text-surface/80 sm:text-lg">
             {t("subtitle")}
           </p>
           <div className="hero-rise hero-rise-2 mt-8 hidden lg:block">
