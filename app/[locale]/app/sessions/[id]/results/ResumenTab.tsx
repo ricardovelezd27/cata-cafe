@@ -4,7 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { ScorePill, InfoHint, Badge } from "@/components/ui";
 import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
-import { deltasVsReference, formatSignedDelta } from "@/lib/referenceDelta";
+import { deltasVsReference, formatSignedDelta, type ScoreBasis } from "@/lib/referenceDelta";
 import type { SessionFormat } from "@/lib/constants";
 import type { SampleBlockFreq } from "@/components/results/DescriptorFrequency";
 import type { SampleResult, ResultsHelp } from "./types";
@@ -35,6 +35,7 @@ type ResumenTabTranslations = {
   communityPending: string;
   sdAria: string;
   referenceBadge: string;
+  deltaVsReference: string;
   deltaVsReferenceAria: string;
 };
 
@@ -122,21 +123,28 @@ export function ResumenTab({
   // scoreSd is only ever attached when the displayed rank score IS the
   // community score (never alongside the solo/"myScore" fallback) — the ±
   // chip in the ranking list relies on that pairing.
-  const rankFor = (sample: SampleResult): { score: number | null; sd: number | null } => {
-    if (format === "descriptive") return { score: null, sd: null };
+  const rankFor = (
+    sample: SampleResult,
+  ): { score: number | null; sd: number | null; basis: ScoreBasis | null } => {
+    if (format === "descriptive") return { score: null, sd: null, basis: null };
     if (isGroup && canViewGroup) {
       const community = sample.aggregateScore?.communityScore ?? null;
       if (community !== null) {
-        return { score: community, sd: sample.aggregateScore?.scoreSd ?? null };
+        return {
+          score: community,
+          sd: sample.aggregateScore?.scoreSd ?? null,
+          basis: "community",
+        };
       }
     }
-    return { score: myScoreFor(sample), sd: null };
+    const mine = myScoreFor(sample);
+    return { score: mine, sd: null, basis: mine === null ? null : "mine" };
   };
 
   const ranked = samples
     .map((sample, position) => {
-      const { score, sd } = rankFor(sample);
-      return { sample, position, score, sd };
+      const { score, sd, basis } = rankFor(sample);
+      return { sample, position, score, sd, basis };
     })
     .sort((a, b) => {
       if (a.score === null && b.score === null) return a.position - b.position;
@@ -150,8 +158,10 @@ export function ResumenTab({
   // (rankFor's displayed score) as the number the chip sits next to. Null
   // for the reference row itself, unscored rows, and everyone when there is
   // no reference.
+  // `basis` guards the ranking's mixed fallback (community for some rows,
+  // own score for others): a Δ is only shown between rows of the same kind.
   const refDeltas = deltasVsReference(
-    ranked.map((r) => ({ id: r.sample.id, score: r.score })),
+    ranked.map((r) => ({ id: r.sample.id, score: r.score, basis: r.basis })),
     referenceId,
   );
 
@@ -285,9 +295,9 @@ export function ResumenTab({
                       return typeof d === "number" ? (
                         <span
                           className="shrink-0 text-xs text-on-surface-variant tabular-nums"
-                          title={t.deltaVsReferenceAria}
-                          aria-label={t.deltaVsReferenceAria}
+                          title={t.deltaVsReference}
                         >
+                          <span className="sr-only">{t.deltaVsReferenceAria}: </span>
                           Δ {formatSignedDelta(d)}
                         </span>
                       ) : null;

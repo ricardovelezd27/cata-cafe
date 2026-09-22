@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type FormEvent } from "react";
+import { useRef, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
 import {
@@ -134,17 +134,21 @@ export function EditSessionForm({
     setReferenceIdState(initial.referenceSampleId);
   }
   const [, startReference] = useTransition();
+  // Sequence counter so a failed EARLIER request never rolls back a later
+  // choice (pick B, pick C, B's save fails → C must stay).
+  const referenceSeq = useRef(0);
 
   const handleReferenceChange = (value: string) => {
     const next = value || null;
     const previous = referenceId;
     if (next === previous) return;
+    const seq = ++referenceSeq.current;
     setReferenceIdState(next);
     startReference(async () => {
       const result = await feedback.run(setReferenceSample(sessionId, next), () => {
-        feedback.notifySuccess(t.referenceSaved);
+        if (seq === referenceSeq.current) feedback.notifySuccess(t.referenceSaved);
       });
-      if (!result.ok) {
+      if (!result.ok && seq === referenceSeq.current) {
         setReferenceIdState(previous);
       }
     });
@@ -388,16 +392,18 @@ export function EditSessionForm({
           <label className={labelCls}>{t.referenceTitle}</label>
           <p className="text-xs text-on-surface-variant mb-2">{t.referenceHelper}</p>
         </div>
-        <Select
-          value={referenceId ?? ""}
-          onChange={handleReferenceChange}
-          ariaLabel={t.referenceTitle}
-          className={closed ? "pointer-events-none opacity-60" : ""}
-          options={[
-            { value: "", label: t.referenceNone },
-            ...samples.map((s) => ({ value: s.id, label: s.label })),
-          ]}
-        />
+        {/* Native disabled state (keyboard + AT), not just pointer-events. */}
+        <fieldset disabled={closed} className={closed ? "opacity-60" : ""}>
+          <Select
+            value={referenceId ?? ""}
+            onChange={handleReferenceChange}
+            ariaLabel={t.referenceTitle}
+            options={[
+              { value: "", label: t.referenceNone },
+              ...samples.map((s) => ({ value: s.id, label: s.label })),
+            ]}
+          />
+        </fieldset>
       </div>
 
       <ConfirmDialog

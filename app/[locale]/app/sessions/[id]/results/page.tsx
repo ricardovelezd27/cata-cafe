@@ -713,6 +713,7 @@ export default async function ResultsPage({
           communityPending: tResults("communityPending"),
           sdAria: tResults("sdAria"),
           referenceBadge: tResults("referenceBadge"),
+          deltaVsReference: tResults("deltaVsReference"),
           deltaVsReferenceAria: tResults("deltaVsReferenceAria"),
         },
         table: {

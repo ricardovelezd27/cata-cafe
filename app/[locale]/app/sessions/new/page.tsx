@@ -87,6 +87,7 @@ export default async function NewSessionPage({
       referenceMark: t.raw("newForm.referenceMark"),
       referenceBadge: t("newForm.referenceBadge"),
       referenceNone: t("newForm.referenceNone"),
+      referenceClear: t("newForm.referenceClear"),
       errors: {
         no_samples: t("newForm.errors.no_samples"),
         no_coffees: t("newForm.errors.no_coffees"),

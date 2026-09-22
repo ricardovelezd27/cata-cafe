@@ -315,6 +315,7 @@ export function CupClient({
   const [referenceSampleId, setReferenceSampleId] = useState<string | null>(
     session.referenceSampleId ?? null,
   );
+  const referenceSeqRef = useRef(0);
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState(false);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
@@ -1000,13 +1001,16 @@ export function CupClient({
 
   // Optimistic: the select reflects the choice at once; a failed save toasts
   // the localized error (useActionFeedback) and rolls the value back.
+  // A sequence counter guarantees a failed EARLIER request never rolls back a
+  // later choice (pick B, pick C, B's save fails → C must stay).
   const handleReferenceChange = (value: string) => {
     const next = value === "" ? null : value;
     const prev = referenceSampleId;
+    const seq = ++referenceSeqRef.current;
     setReferenceSampleId(next);
     startTransition(async () => {
       const r = await feedback.run(setReferenceSample(session.id, next));
-      if (!r.ok) setReferenceSampleId(prev);
+      if (!r.ok && seq === referenceSeqRef.current) setReferenceSampleId(prev);
     });
   };
 
@@ -1026,7 +1030,10 @@ export function CupClient({
   const referenceContext = isCurrentReference ? (
     <Badge tone="accent" size="xs">{referenceBadgeLabel}</Badge>
   ) : referenceSample && translations.compareHint ? (
-    <span className="font-sans text-[11px] text-brown-mid">
+    <span
+      className="min-w-0 truncate font-sans text-[11px] text-brown-mid"
+      title={translations.compareHint.replace("{label}", referenceSample.label)}
+    >
       {translations.compareHint.replace("{label}", referenceSample.label)}
     </span>
   ) : null;
@@ -1214,12 +1221,17 @@ export function CupClient({
 
   // Mobile/tablet (<lg): horizontal sample bar + position counter, under the phases.
   const mobileSampleBar = (
-    <div className="lg:hidden flex items-center gap-3 px-4 py-1.5 border-t border-brown-light bg-bg">
-      <div className="min-w-0 flex-1">{sampleTabsBar}</div>
-      <span className="shrink-0 font-mono text-[10px] text-brown-mid tabular-nums">
-        {sampleIdx + 1}/{samples.length}
-      </span>
-      {editSampleButton}
+    <div className="lg:hidden border-t border-brown-light bg-bg">
+      <div className="flex items-center gap-3 px-4 py-1.5">
+        <div className="min-w-0 flex-1">{sampleTabsBar}</div>
+        <span className="shrink-0 font-mono text-[10px] text-brown-mid tabular-nums">
+          {sampleIdx + 1}/{samples.length}
+        </span>
+        {editSampleButton}
+      </div>
+      {referenceContext && (
+        <div className="flex items-center px-4 pb-1.5">{referenceContext}</div>
+      )}
     </div>
   );
 

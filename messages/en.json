@@ -171,6 +171,7 @@
       "referenceMark": "Mark {label} as reference",
       "referenceBadge": "Reference",
       "referenceNone": "No reference",
+      "referenceClear": "Clear reference",
       "errors": {
         "no_samples": "Add at least one sample to start the session.",
         "no_coffees": "Add at least one coffee to start the session.",
@@ -688,7 +689,7 @@
       },
       "referencia": {
         "title": "Reference sample",
-        "body": "The session master can mark one sample as the reference: a shared starting point the others are read against. The reference is cupped, scored and ranked like any other sample; it changes no score.\nWhat it adds is context: next to each sample you'll see Δ, the difference between its score and the reference's. Group sessions use the community score; solo sessions use your CVA score.\nReference, group mean and deviation are different things: the reference is the starting point the master chose; the mean is what the group perceived; the deviation (±) is how much the group spread."
+        "body": "The session master can mark one sample as the reference: a shared starting point the others are read against. The reference is cupped, scored and ranked like any other sample; it changes no score.\nWhat it adds is context: next to each sample you'll see Δ, the difference between its score and the reference's, always computed on the same kind of score you see beside it (community when visible, otherwise your own). When a sample and the reference do not share the same kind of score, no Δ is shown.\nReference, group mean and deviation are different things: the reference is the starting point the master chose; the mean is what the group perceived; the deviation (±) is how much the group spread."
       }
     }
   },

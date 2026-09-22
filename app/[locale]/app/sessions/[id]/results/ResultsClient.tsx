@@ -38,7 +38,6 @@ import {
 import { updateSampleMetadata } from "@/app/actions/sessions";
 import { asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
-import { pickDisplayedScore } from "@/lib/referenceDelta";
 import { ArrowLeft, FileDown, Printer, RefreshCw } from "lucide-react";
 import { ResumenTab } from "./ResumenTab";
 import type { SampleResult, ResultsHelp } from "./types";
@@ -243,6 +242,7 @@ export function ResultsClient({
       communityPending: string;
       sdAria: string;
       referenceBadge: string;
+      deltaVsReference: string;
       deltaVsReferenceAria: string;
     };
     table: ScoreTableTranslations;
@@ -443,10 +443,9 @@ export function ResultsClient({
     const score = calcIndividualScore(affData, session.cupsPerSample);
     return typeof score === "number" ? score : null;
   })();
-  const referenceCommunityScore = referenceSample?.aggregateScore?.communityScore ?? null;
-  const referenceScore = referenceSample
-    ? pickDisplayedScore(referenceMyScore, referenceCommunityScore, showCommunity)
-    : null;
+  // Each surface pairs bases itself (ScoreTable per row, ResumenTab via
+  // rankFor's basis, the radar own-vs-own) — never mix my score with the
+  // reference's community score in one Δ.
 
   // ─── Descriptores tab filters (lifted so the Resumen dashboard can
   // preselect a sample before switching tabs) ────────────────────────────────
@@ -714,7 +713,6 @@ export function ResultsClient({
                 onReveal={handleReveal}
                 onOpenDetail={(id) => setDetail({ sampleId: id, participantId: null })}
                 referenceId={referenceId}
-                referenceScore={referenceScore}
                 t={{
                   ...translations.table,
                   referenceBadge: translations.referenceBadge,
@@ -752,8 +750,9 @@ export function ResultsClient({
                     showCommunity={showCommunity}
                     isOwner={isOwner}
                     onReveal={handleReveal}
-                    referenceScore={referenceScore}
+                    referenceMyScore={referenceMyScore}
                     referenceBadge={translations.referenceBadge}
+                    deltaVsReference={translations.deltaVsReference}
                     deltaVsReferenceAria={translations.deltaVsReferenceAria}
                     t={{
                       mine: translations.radarMine,

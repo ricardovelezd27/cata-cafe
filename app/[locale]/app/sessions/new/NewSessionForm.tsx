@@ -125,6 +125,7 @@ type Translations = {
     referenceMark: string;
     referenceBadge: string;
     referenceNone: string;
+    referenceClear: string;
     errors: {
       no_samples: string;
       no_coffees: string;
@@ -1045,7 +1046,7 @@ export function NewSessionForm({
               onClick={() => setReferenceId(null)}
               className="text-xs font-medium text-primary-container hover:underline shrink-0"
             >
-              {t.newForm.referenceNone}
+              {t.newForm.referenceClear}
             </button>
           )}
         </div>
@@ -1053,14 +1054,17 @@ export function NewSessionForm({
         <div className="space-y-2">
           {samples.map((s) => (
             <div key={s.id} className="flex flex-wrap items-center gap-2 min-w-0">
-              <input
-                type="radio"
-                name="reference"
-                checked={referenceId === s.id}
-                onChange={() => setReferenceId(s.id)}
-                aria-label={t.newForm.referenceMark.replace("{label}", s.label.trim() || t.sampleLabel)}
-                className="h-4 w-4 shrink-0 accent-secondary cursor-pointer"
-              />
+              {/* 44px touch target around a 16px radio (mobile hit area). */}
+              <label className="flex h-11 w-9 shrink-0 cursor-pointer items-center justify-center -my-1">
+                <input
+                  type="radio"
+                  name="reference"
+                  checked={referenceId === s.id}
+                  onChange={() => setReferenceId(s.id)}
+                  aria-label={t.newForm.referenceMark.replace("{label}", s.label.trim() || t.sampleLabel)}
+                  className="h-4 w-4 accent-secondary cursor-pointer"
+                />
+              </label>
               <input
                 value={s.label}
                 onChange={(e) => updateSampleLabel(s.id, e.target.value)}

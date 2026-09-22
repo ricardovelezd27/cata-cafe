@@ -171,6 +171,7 @@
       "referenceMark": "Marcar {label} como referencia",
       "referenceBadge": "Referencia",
       "referenceNone": "Sin referencia",
+      "referenceClear": "Quitar referencia",
       "errors": {
         "no_samples": "Agrega al menos una muestra para iniciar la sesión.",
         "no_coffees": "Agrega al menos un café para iniciar la sesión.",
@@ -688,7 +689,7 @@
       },
       "referencia": {
         "title": "Muestra de referencia",
-        "body": "El maestro de cata puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La referencia se cata, se puntúa y se ordena como cualquier otra muestra; no cambia ningún puntaje.\nLo que agrega es contexto: junto a cada muestra verás Δ, la diferencia entre su puntaje y el de la referencia. En sesiones grupales se usa el puntaje comunitario; en sesiones individuales, tu puntaje CVA.\nReferencia, media del grupo y desviación son cosas distintas: la referencia es el punto de partida elegido por el maestro; la media es lo que percibió el grupo; la desviación (±) es cuánto se dispersó el grupo."
+        "body": "El maestro de cata puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La referencia se cata, se puntúa y se ordena como cualquier otra muestra; no cambia ningún puntaje.\nLo que agrega es contexto: junto a cada muestra verás Δ, la diferencia entre su puntaje y el de la referencia, calculada siempre con el mismo tipo de puntaje que ves al lado (comunitario cuando está visible; si no, el tuyo). Si una muestra y la referencia no tienen el mismo tipo de puntaje, no se muestra Δ.\nReferencia, media del grupo y desviación son cosas distintas: la referencia es el punto de partida elegido por el maestro; la media es lo que percibió el grupo; la desviación (±) es cuánto se dispersó el grupo."
       }
     }
   },

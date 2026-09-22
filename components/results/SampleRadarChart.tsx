@@ -68,11 +68,13 @@ export function SampleRadarChart({
   showCommunity,
   isOwner,
   onReveal,
-  // Pre-derived displayed score (community when visible, else mine) for the
-  // session's reference sample — see ResultsClient. null when there is no
-  // reference, or the reference itself is unscored.
-  referenceScore = null,
+  // The VIEWER'S OWN score of the reference sample (see ResultsClient). The
+  // card's headline number is always the viewer's own score, so its Δ must
+  // be own-vs-own — never the reference's community score. null when there
+  // is no reference or the viewer did not score it.
+  referenceMyScore = null,
   referenceBadge,
+  deltaVsReference,
   deltaVsReferenceAria,
   t,
 }: {
@@ -82,8 +84,9 @@ export function SampleRadarChart({
   showCommunity: boolean;
   isOwner: boolean;
   onReveal: (sampleId: string) => void;
-  referenceScore?: number | null;
+  referenceMyScore?: number | null;
   referenceBadge?: string;
+  deltaVsReference?: string;
   deltaVsReferenceAria?: string;
   t: { mine: string; community: string; deltaAttribute: string; breakdown: ScoreBreakdownTranslations };
 }) {
@@ -190,13 +193,13 @@ export function SampleRadarChart({
               >
                 {scoreNum.toFixed(2)}
               </div>
-              {!sample.isReference && referenceScore !== null && (
+              {!sample.isReference && referenceMyScore !== null && (
                 <div
                   className="mt-0.5 text-[10px] font-medium text-on-surface-variant tabular-nums"
-                  title={deltaVsReferenceAria}
-                  aria-label={deltaVsReferenceAria}
+                  title={deltaVsReference}
                 >
-                  Δ {formatSignedDelta(scoreNum - referenceScore)}
+                  <span className="sr-only">{deltaVsReferenceAria}: </span>
+                  Δ {formatSignedDelta(scoreNum - referenceMyScore)}
                 </div>
               )}
             </div>

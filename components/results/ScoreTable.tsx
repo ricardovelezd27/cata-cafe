@@ -2,7 +2,7 @@
 
 import { Check, ChevronRight, Eye } from "lucide-react";
 import { calcIndividualScore, hasAffectiveData, scoreBand } from "@/lib/scoring";
-import { deltasVsReference, formatSignedDelta, pickDisplayedScore } from "@/lib/referenceDelta";
+import { deltasVsReference, formatSignedDelta } from "@/lib/referenceDelta";
 import { AFFECTIVE_ATTRIBUTES, type SessionFormat } from "@/lib/constants";
 import { DESCRIPTOR_STAGES, PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
 import { Badge, ScorePill } from "@/components/ui/Badge";
@@ -56,7 +56,8 @@ function CvaCell({
   showCommunity,
   u,
   d,
-  delta,
+  myDelta,
+  communityDelta,
   t,
 }: {
   myScore: number | "—" | null;
@@ -64,10 +65,12 @@ function CvaCell({
   showCommunity: boolean;
   u: number;
   d: number;
-  // Δ vs. the reference sample, using the same displayed-score basis as this
-  // cell — null for the reference row itself, unscored rows, or when there
-  // is no reference sample at all.
-  delta?: number | null;
+  // Δ vs. the reference sample, each on the SAME basis as the number it sits
+  // under: `myDelta` (my score − my score of the reference) goes under the
+  // pill; `communityDelta` (community − community) rides on the community
+  // line. Null for the reference row, unscored rows, or no reference.
+  myDelta?: number | null;
+  communityDelta?: number | null;
   t: ScoreTableTranslations;
 }) {
   const scoreNum = myScore !== null && myScore !== "—" ? myScore : null;
@@ -87,18 +90,23 @@ function CvaCell({
     >
       <div className="flex flex-col items-center gap-0.5">
         <ScorePill score={scoreNum} />
+        {scoreNum !== null && typeof myDelta === "number" && (
+          <span
+            className="text-[10px] font-medium text-on-surface-variant tabular-nums"
+            title={t.deltaVsReference}
+          >
+            <span className="sr-only">{t.deltaVsReferenceAria}: </span>Δ {formatSignedDelta(myDelta)}
+          </span>
+        )}
         {scoreNum !== null && showCommunity && communityScore !== null && (
           <span className="text-[10px] font-medium text-secondary tabular-nums">
             {t.communityShort} {communityScore.toFixed(2)}
-          </span>
-        )}
-        {typeof delta === "number" && (
-          <span
-            className="text-[10px] font-medium text-on-surface-variant tabular-nums"
-            title={t.deltaVsReferenceAria}
-            aria-label={t.deltaVsReferenceAria}
-          >
-            Δ {formatSignedDelta(delta)}
+            {typeof communityDelta === "number" && (
+              <span title={t.deltaVsReference}>
+                <span className="sr-only">{t.deltaVsReferenceAria}: </span>
+                {" "}· Δ {formatSignedDelta(communityDelta)}
+              </span>
+            )}
           </span>
         )}
         {scoreNum !== null && (u > 0 || d > 0) && (
@@ -120,7 +128,6 @@ export function ScoreTable({
   onReveal,
   onOpenDetail,
   referenceId = null,
-  referenceScore = null,
   t,
 }: {
   samples: SampleResult[];
@@ -131,35 +138,41 @@ export function ScoreTable({
   onReveal: (sampleId: string) => void;
   onOpenDetail: (sampleId: string) => void;
   // Id of the owner-marked "Referencia" (control) sample, or null when none
-  // is set. referenceScore is the pre-derived displayed score for that
-  // sample (see ResultsClient) — kept alongside referenceId so the legend
-  // can gate on "a reference exists" without recomputing anything.
+  // is set — gates the Δ chips and the legend.
   referenceId?: string | null;
-  referenceScore?: number | null;
   t: ScoreTableTranslations;
 }) {
   const showDescriptive = format !== "affective";
   const showAffective = format !== "descriptive";
   const showCVA = showAffective;
 
-  // Per-row displayed score (community when visible, else mine) → one Δ map
-  // for the whole table, keyed by sample id. Mirrors CvaCell's own myScore
-  // derivation below so the Δ and the score pill it sits under always agree.
-  const refDeltas = deltasVsReference(
-    samples.map((sample) => {
-      const affData =
-        format === "affective" ? sample.affective : format === "combined" ? sample.combined : null;
-      const myScore =
-        affData && hasAffectiveData(affData) ? calcIndividualScore(affData, cupsPerSample) : null;
-      const myScoreNum = typeof myScore === "number" ? myScore : null;
-      const communityScore = sample.aggregateScore?.communityScore ?? null;
-      return {
-        id: sample.id,
-        score: pickDisplayedScore(myScoreNum, communityScore, showCommunity),
-      };
-    }),
+  // Two Δ maps, one per score basis, so each chip is the difference of the
+  // exact number it sits under (my pill vs. my score of the reference; the
+  // community line vs. the community score of the reference). Mirrors
+  // CvaCell's own myScore derivation below.
+  const rowScores = samples.map((sample) => {
+    const affData =
+      format === "affective" ? sample.affective : format === "combined" ? sample.combined : null;
+    const myScore =
+      affData && hasAffectiveData(affData) ? calcIndividualScore(affData, cupsPerSample) : null;
+    return {
+      id: sample.id,
+      mine: typeof myScore === "number" ? myScore : null,
+      community: sample.aggregateScore?.communityScore ?? null,
+    };
+  });
+  const myDeltas = deltasVsReference(
+    rowScores.map((r) => ({ id: r.id, score: r.mine })),
     referenceId,
   );
+  const communityDeltas = showCommunity
+    ? deltasVsReference(
+        rowScores.map((r) => ({ id: r.id, score: r.community })),
+        referenceId,
+      )
+    : new Map<string, number | null>();
+  const anyDelta =
+    [...myDeltas.values(), ...communityDeltas.values()].some((d) => typeof d === "number");
 
   const thBase =
     "border-b border-outline-variant/40 px-2 py-1.5 text-center text-[10px] font-bold tracking-wide whitespace-nowrap align-middle";
@@ -368,7 +381,8 @@ export function ScoreTable({
                     showCommunity={showCommunity}
                     u={u}
                     d={d}
-                    delta={refDeltas.get(sample.id) ?? null}
+                    myDelta={myDeltas.get(sample.id) ?? null}
+                    communityDelta={communityDeltas.get(sample.id) ?? null}
                     t={t}
                   />
                 )}
@@ -391,9 +405,8 @@ export function ScoreTable({
           </span>
         </div>
       )}
-      {/* Only worth explaining once the reference itself carries a real
-          score — an unscored reference never produces a Δ in any row. */}
-      {referenceScore !== null && (
+      {/* Only worth explaining once at least one Δ actually renders. */}
+      {anyDelta && (
         <p
           className={`px-3 text-[10px] text-on-surface-variant ${
             showCommunity && showAffective ? "pb-2" : "border-t border-outline-variant/40 py-2"
