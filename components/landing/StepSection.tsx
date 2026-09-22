@@ -31,7 +31,7 @@ export default async function StepSection({
       <p className="mt-4 font-serif tabular-nums text-lg text-secondary-container">
         0{step}
       </p>
-      <h3 className="mt-1 font-serif text-4xl leading-tight text-surface sm:text-5xl">
+      <h3 className="pt-1 font-serif text-4xl leading-tight text-surface sm:text-5xl">
         {t(`step${step}Title`)}
       </h3>
       <p className="mt-4 max-w-prose text-lg leading-relaxed text-surface/80">
@@ -93,7 +93,7 @@ export default async function StepSection({
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-secondary-container">
               {t("eyebrow")}
             </p>
-            <h2 className="mt-4 font-serif text-3xl leading-tight text-surface sm:text-4xl">
+            <h2 className="pt-4 font-serif text-3xl leading-tight text-surface sm:text-4xl">
               {t("title")}
             </h2>
           </div>

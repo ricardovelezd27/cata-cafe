@@ -28,7 +28,7 @@ export default async function FinalCTASection({ locale }: { locale: string }) {
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary-fixed">
           {t("kicker")}
         </p>
-        <h2 className="mt-4 font-serif text-4xl leading-[1.1] text-surface sm:text-6xl lg:text-7xl">
+        <h2 className="pt-4 font-serif text-4xl leading-[1.1] text-surface sm:text-6xl lg:text-7xl">
           {t.rich("title", {
             em: (chunks) => (
               <em className="display-italic text-primary-fixed-dim">{chunks}</em>

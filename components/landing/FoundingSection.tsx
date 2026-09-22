@@ -38,7 +38,7 @@ export default async function FoundingSection({ locale }: { locale: string }) {
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-secondary-container">
             {t("eyebrow")}
           </p>
-          <h2 className="mt-4 font-serif text-3xl leading-tight text-surface sm:text-4xl">
+          <h2 className="pt-4 font-serif text-3xl leading-tight text-surface sm:text-4xl">
             {t("title")}
           </h2>
         </div>

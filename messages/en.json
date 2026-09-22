@@ -846,9 +846,7 @@
     "hero": {
       "eyebrow": "The tool for the Café Sensible Method · SCA CVA",
       "title": "Your group cups. The app measures how much they agree.",
-      "subtitle": "Group cupping sessions on the full SCA CVA protocol. Each person scores at their own pace; the app compares against your reference and shows you, live, how the group converges. For schools, trainers and facilitators.",
-      "cta": "Calibrate your team for free →",
-      "ctaNote": "No card. No password. Just your email."
+      "subtitle": "Group cupping sessions on the full SCA CVA protocol. Each person scores at their own pace; the app compares against your reference and shows you, live, how the group converges. For schools, trainers and facilitators."
     },
     "widget": {
       "title": "Estimate the value band",

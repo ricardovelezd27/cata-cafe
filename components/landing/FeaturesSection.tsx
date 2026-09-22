@@ -75,7 +75,7 @@ export default async function FeaturesSection() {
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-secondary-container">
             {t("eyebrow")}
           </p>
-          <h2 className="mt-4 font-serif text-3xl leading-tight text-surface sm:text-4xl">
+          <h2 className="pt-4 font-serif text-3xl leading-tight text-surface sm:text-4xl">
             {t("title")}
           </h2>
         </div>
@@ -90,7 +90,7 @@ export default async function FeaturesSection() {
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface/10">
                 <Icon className="h-5 w-5 text-primary-fixed" />
               </div>
-              <h3 className="mt-4 font-serif text-lg text-surface">{title}</h3>
+              <h3 className="pt-4 font-serif text-lg text-surface">{title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-surface/80">
                 {desc}
               </p>

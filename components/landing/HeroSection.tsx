@@ -1,7 +1,5 @@
-import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import HeroFoundingCard from "./HeroFoundingCard";
-import { loginHref } from "./locale-href";
 
 export default async function HeroSection({ locale }: { locale: string }) {
   const t = await getTranslations("landing.hero");
@@ -30,37 +28,19 @@ export default async function HeroSection({ locale }: { locale: string }) {
           <p className="hero-rise text-[11px] font-semibold uppercase tracking-[0.22em] text-green-light">
             {t("eyebrow")}
           </p>
-          <h1 className="hero-slide mt-4 font-serif text-4xl leading-[1.08] text-surface sm:text-5xl lg:text-6xl">
+          {/* pt-, not mt-: the global heading reset in globals.css zeroes heading margins. */}
+          <h1 className="hero-slide pt-6 font-serif text-4xl leading-[1.08] text-surface sm:text-5xl lg:text-6xl">
             {t("title")}
           </h1>
           {/* Transform-only entrance: the subtitle is now the largest text block
               on mobile (LCP candidate), so it must never start at opacity 0. */}
-          <p className="hero-slide mt-5 max-w-xl text-base leading-relaxed text-surface/80 sm:text-lg">
+          <p className="hero-slide mt-6 max-w-xl text-base leading-relaxed text-surface/80 sm:text-lg">
             {t("subtitle")}
           </p>
-          <div className="hero-rise hero-rise-2 mt-8 hidden lg:block">
-            <Link
-              href={loginHref(locale)}
-              className="inline-block rounded-full bg-surface px-7 py-3.5 text-base font-semibold text-primary shadow-lg transition-colors hover:bg-primary-fixed"
-            >
-              {t("cta")}
-            </Link>
-            <p className="mt-3 text-xs text-surface/75">{t("ctaNote")}</p>
-          </div>
         </div>
 
-        {/* Mobile CTA above the widget so the action is visible at the fold */}
-        <div className="hero-rise hero-rise-2 text-center lg:hidden">
-          <Link
-            href={loginHref(locale)}
-            className="inline-block w-full rounded-full bg-surface px-7 py-3.5 text-base font-semibold text-primary shadow-lg transition-colors hover:bg-primary-fixed sm:w-auto"
-          >
-            {t("cta")}
-          </Link>
-          <p className="mt-3 text-xs text-surface/75">{t("ctaNote")}</p>
-        </div>
-
-        <div className="hero-slide lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-center">
+        {/* The founding card is the hero's only ask; no competing button. */}
+        <div className="hero-slide lg:self-center">
           <HeroFoundingCard locale={locale} />
         </div>
       </div>
