@@ -80,12 +80,12 @@ export default async function FeaturesSection() {
           </h2>
         </div>
 
-        <ul className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <ul className="mt-12 grid grid-cols-1 gap-6 sm:auto-rows-fr sm:grid-cols-2 lg:grid-cols-3">
           {items.map(({ Icon, title, desc, isAi }) => (
             <li
               key={title}
               data-reveal
-              className={`stage-card rounded-[1.5rem] p-6 ${isAi ? "lg:col-span-2" : ""}`}
+              className="stage-card flex flex-col rounded-[1.5rem] p-6"
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface/10">
                 <Icon className="h-5 w-5 text-primary-fixed" />

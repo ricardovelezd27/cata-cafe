@@ -2,7 +2,13 @@ import { getTranslations } from "next-intl/server";
 import Frame from "./Frame";
 
 // Stylized recreation of the affective evaluation screen (1–9 scale).
-export default async function MockFrameCVA({ ariaLabel }: { ariaLabel: string }) {
+export default async function MockFrameCVA({
+  ariaLabel,
+  translucent,
+}: {
+  ariaLabel: string;
+  translucent?: boolean;
+}) {
   const t = await getTranslations();
 
   const attrs = [
@@ -12,7 +18,7 @@ export default async function MockFrameCVA({ ariaLabel }: { ariaLabel: string })
   ];
 
   return (
-    <Frame ariaLabel={ariaLabel}>
+    <Frame ariaLabel={ariaLabel} translucent={translucent}>
       <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-on-surface-variant">
         {t("cupping.sample")} A
       </p>

@@ -15,6 +15,7 @@ export default function PhotoSlot({
   alt,
   caption,
   aspect = "4/3",
+  position = "center",
   sizes,
   className,
 }: {
@@ -22,6 +23,8 @@ export default function PhotoSlot({
   alt: string;
   caption?: string;
   aspect?: Aspect;
+  /** object-position for cropped sources (portrait originals keep faces with "top") */
+  position?: "center" | "top";
   sizes: string;
   className?: string;
   priority?: never;
@@ -37,7 +40,7 @@ export default function PhotoSlot({
             alt={alt}
             fill
             sizes={sizes}
-            className="object-cover"
+            className={position === "top" ? "object-cover object-top" : "object-cover"}
           />
         ) : (
           <div

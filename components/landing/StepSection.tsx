@@ -43,17 +43,18 @@ export default async function StepSection({
   let visual: ReactNode;
   if (step === 1) {
     visual = (
-      <div data-reveal className="relative mx-auto w-full max-w-sm lg:mx-0 lg:max-w-none">
+      <div data-reveal className="relative mx-auto w-full max-w-sm lg:mx-0 lg:max-w-none lg:pb-24 lg:pl-16">
         <PhotoSlot
           src="/landing/real/02-mesa-cata-app.jpg"
           alt={t("photo2Alt")}
           caption={t("step1Caption")}
-          aspect="3/4"
-          sizes="(min-width: 1024px) 28vw, 80vw"
-          className="w-full max-w-[400px] lg:ml-24"
+          aspect="4/3"
+          position="top"
+          sizes="(min-width: 1024px) 40vw, 90vw"
+          className="w-full"
         />
-        <div className="relative z-10 mt-6 w-full max-w-[300px] lg:absolute lg:-bottom-8 lg:-left-4 lg:mt-0">
-          <MockFrameCVA ariaLabel={t("frame1Aria")} />
+        <div className="relative z-10 mt-6 w-full max-w-[300px] lg:absolute lg:bottom-0 lg:left-0 lg:mt-0">
+          <MockFrameCVA ariaLabel={t("frame1Aria")} translucent />
         </div>
       </div>
     );
@@ -61,7 +62,7 @@ export default async function StepSection({
     visual = (
       <div
         data-reveal
-        className="relative mx-auto w-full max-w-sm lg:order-1 lg:mx-0 lg:max-w-none"
+        className="relative mx-auto w-full max-w-sm lg:order-1 lg:mx-0 lg:max-w-none lg:pb-24 lg:pr-16"
       >
         <PhotoSlot
           src="/landing/real/04-taller-grupo.jpg"
@@ -69,10 +70,10 @@ export default async function StepSection({
           caption={t("step2Caption")}
           aspect="3/2"
           sizes="(min-width: 1024px) 40vw, 90vw"
-          className="w-full lg:ml-16"
+          className="w-full"
         />
-        <div className="relative z-10 mt-6 w-full max-w-[300px] lg:absolute lg:-bottom-8 lg:-left-4 lg:mt-0">
-          <MockFrameFlavorPills ariaLabel={t("frame2Aria")} />
+        <div className="relative z-10 mt-6 w-full max-w-[300px] lg:absolute lg:bottom-0 lg:right-0 lg:mt-0">
+          <MockFrameFlavorPills ariaLabel={t("frame2Aria")} translucent />
         </div>
       </div>
     );
@@ -86,9 +87,9 @@ export default async function StepSection({
 
   return (
     <section data-fold={step} className="relative z-10 bg-transparent">
-      <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
+      <div className="mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-20">
         {step === 1 ? (
-          <div data-reveal className="mb-12 text-center sm:mb-16">
+          <div data-reveal className="mb-10 text-center sm:mb-12">
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-secondary-container">
               {t("eyebrow")}
             </p>
@@ -98,7 +99,7 @@ export default async function StepSection({
           </div>
         ) : null}
 
-        <div className="grid grid-cols-1 items-center gap-12 lg:min-h-[70vh] lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
+        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
           {copy}
           {visual}
         </div>

@@ -280,9 +280,12 @@ h1, h2, h3, h4, .font-serif {
    Re-declare the light-on-dark color utilities (landing dark sections)
    unlayered and after it so they win. */
 .text-surface { color: var(--color-surface); }
+.text-primary { color: var(--color-primary); }
+.text-primary-fixed { color: var(--color-primary-fixed); }
 .text-primary-fixed-dim { color: var(--color-primary-fixed-dim); }
 .text-green-light { color: var(--color-green-light); }
 .text-secondary-fixed { color: var(--color-secondary-fixed); }
+.text-secondary-container { color: var(--color-secondary-container); }
 
 button { font-family: inherit; cursor: pointer; }
 
