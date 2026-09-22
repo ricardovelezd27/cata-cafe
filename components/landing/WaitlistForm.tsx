@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { joinWaitlist, type WaitlistState } from "@/app/actions/waitlist";
+import { reserveFoundingSeat, type WaitlistState } from "@/app/actions/waitlist";
 
 type Labels = {
   label: string;
@@ -9,8 +9,10 @@ type Labels = {
   button: string;
   submitting: string;
   success: string;
+  sentHint: string;
   invalid: string;
   error: string;
+  rateLimit: string;
 };
 
 // onDark: glass card on the green stage. onLight: the solid cream hero card.
@@ -44,15 +46,16 @@ export default function WaitlistForm({
 }) {
   const s = STYLES[variant];
   const [state, formAction, pending] = useActionState<WaitlistState, FormData>(
-    joinWaitlist,
+    reserveFoundingSeat,
     { status: "idle" },
   );
 
   if (state.status === "ok") {
     return (
-      <p role="status" className={s.success}>
-        {labels.success}
-      </p>
+      <div role="status" className={s.success}>
+        <p className="font-semibold">{labels.success}</p>
+        <p className="mt-1 opacity-80">{labels.sentHint}</p>
+      </div>
     );
   }
 
@@ -88,7 +91,11 @@ export default function WaitlistForm({
       </div>
       {state.status === "error" && (
         <p role="alert" className={s.error}>
-          {state.code === "invalid_email" ? labels.invalid : labels.error}
+          {state.code === "invalid_email"
+            ? labels.invalid
+            : state.code === "rate_limit"
+              ? labels.rateLimit
+              : labels.error}
         </p>
       )}
     </form>

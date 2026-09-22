@@ -965,9 +965,11 @@
       "emailPlaceholder": "tu@correo.com",
       "button": "Reservar mi plaza",
       "submitting": "Enviando…",
-      "success": "Plaza reservada. Te avisaremos en cuanto abramos tu acceso fundador.",
+      "success": "Plaza reservada. Revisa tu correo: te hemos enviado el enlace para entrar.",
+      "sentHint": "Sin contraseña. Si no llega, mira en spam o pide otro enlace en unos minutos.",
       "invalid": "Introduce un correo válido.",
-      "error": "No pudimos guardar tu correo. Inténtalo de nuevo."
+      "error": "No pudimos enviar el enlace. Verifica el correo e inténtalo de nuevo.",
+      "rateLimit": "Demasiados intentos en poco tiempo. Espera unos minutos e inténtalo de nuevo."
     },
     "finalCta": {
       "kicker": "Muchos paladares. Una referencia. Un número.",

@@ -965,9 +965,11 @@
       "emailPlaceholder": "you@email.com",
       "button": "Claim my spot",
       "submitting": "Sending…",
-      "success": "Spot reserved. We'll let you know as soon as we open your founding access.",
+      "success": "Seat reserved. Check your inbox: we have sent you the link to get in.",
+      "sentHint": "No password. If it does not arrive, check spam or request another link in a few minutes.",
       "invalid": "Enter a valid email.",
-      "error": "We couldn't save your email. Please try again."
+      "error": "We could not send the link. Check the email and try again.",
+      "rateLimit": "Too many attempts in a short time. Wait a few minutes and try again."
     },
     "finalCta": {
       "kicker": "Many palates. One reference. One number.",

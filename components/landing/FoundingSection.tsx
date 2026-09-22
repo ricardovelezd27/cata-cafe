@@ -25,8 +25,10 @@ export default async function FoundingSection({ locale }: { locale: string }) {
     button: t("cta"),
     submitting: tw("submitting"),
     success: tw("success"),
+    sentHint: tw("sentHint"),
     invalid: tw("invalid"),
     error: tw("error"),
+    rateLimit: tw("rateLimit"),
   };
 
   return (
