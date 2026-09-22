@@ -382,4 +382,61 @@ All five steps, or it fails quietly:
 `metadataBase`. Live in-app invite links are built from `window.location.origin`, so they
 follow whatever domain the user is actually on and are unaffected by this value.
 
+For the fuller DNS/SSL procedure (record types, propagation checks, certificate
+verification), see `docs/prompts/S2-staging-production.md` §6 "Flujo C — Dominio
+cafesensible.ai + HTTPS".
+
+---
+
+## §7. Database — apply the `reference_sample` migration (2026-09)
+
+**When:** any time before the reference-sample code (branch
+`claude/cafe-sensible-improvements-51283e`) is merged and deployed. The migration is
+additive, so it is safe to apply before the code deploy — old code simply ignores the new
+column.
+
+**What it does** (`prisma/migrations/20260922120000_reference_sample/migration.sql`):
+adds a nullable `cupping_sessions.referenceSampleId` column, an index on it, and a
+foreign key to `session_samples` with `ON DELETE SET NULL`. No data is rewritten, no
+existing row changes.
+
+**Steps** (from your machine, in the repo, on the branch):
+
+1. Make sure `.env.local` has `DIRECT_URL` (the non-pooler connection string — Supabase
+   Dashboard → **Project Settings → Database → Connection string → "Direct connection"**)
+   or, failing that, a `DATABASE_URL` that is NOT the pgbouncer pooler. `prisma migrate`
+   cannot run through the transaction pooler.
+2. Preview what will run (read-only):
+
+   ```bash
+   npx prisma migrate status
+   ```
+
+   Expected: exactly one pending migration, `20260922120000_reference_sample`. If it
+   lists OTHER pending migrations or says the migration history has drifted, stop and
+   paste the output before continuing.
+3. Apply it:
+
+   ```bash
+   npx prisma migrate deploy
+   ```
+
+   Expected: `1 migration applied`. Takes a few seconds; no downtime (the ALTER takes a
+   brief lock on `cupping_sessions`).
+4. **Verify** in Supabase → SQL Editor:
+
+   ```sql
+   select column_name from information_schema.columns
+   where table_name = 'cupping_sessions' and column_name = 'referenceSampleId';
+   ```
+
+   Expected: one row, `referenceSampleId`.
+5. Deploy the branch (merge → Vercel deploys).
+
+**Note:** no PHASE SQL, no RLS, no Security Advisor change expected; additive and
+nullable, safe to apply before the code deploy.
+
+**Rollback:** the column is nullable and unused by the old code, so rolling the app back
+is enough; leave the column in place.
+
 ---

@@ -4,12 +4,12 @@
 > from **Next action**. Do not re-plan. The approved plan lives at
 > `~/.claude/plans/i-want-you-to-graceful-wreath.md` (summarised in the WP table below).
 
-- **status:** SHIPPED — merged to `main` (172aa0b..255578c) and deployed to production 2026-09-14. Runbook §1, §1b, §2 and §3 all applied. Only the §5 smoke test remains, and it needs a real login.
-- **last updated:** 2026-09-14
-- **worktree:** `C:\projects\cata-cafe\.claude\worktrees\app-cohesion-menu-overhaul-00a088`
+- **status:** launch work SHIPPED — merged to `main` (172aa0b..255578c) and deployed to production 2026-09-14. Runbook §1, §1b, §2 and §3 all applied. Only the §5 smoke test remains, and it needs a real login. Reference sample feature BUILT, UNMERGED — pending: migration deploy, browser walkthrough, merge.
+- **last updated:** 2026-09-23
+- **worktree:** `C:\projects\cata-cafe\.claude\worktrees\results-page-redesign-2920c2`
 - **base:** `main` @ 172aa0b → now `main` @ 255578c (deployed)
-- **current branch:** `claude/launch-docs` (all WP branches are historical now; everything is on `main`)
-- **current WP / step:** complete. See `docs/LAUNCH-REPORT-2026-09-14.md`.
+- **current branch:** `claude/cafe-sensible-improvements-51283e` (worktree `results-page-redesign-2920c2`); all launch WP branches are historical now, folded into `main`.
+- **current WP / step:** launch work complete, see `docs/LAUNCH-REPORT-2026-09-14.md`. Reference sample feature (commits `8b36b9e`/`19ef794`/`02d3e34`) built and typechecked/linted; not yet merged.
 
 ## Work packages (one branch/PR each, off `main`)
 
@@ -36,7 +36,22 @@
 
 ## Next action
 
-User: run `docs/LAUNCH-RUNBOOK.md` §1 (Supabase SQL), §2 (`npx prisma migrate deploy`), §3 (Vercel env + cron), then merge the six branches in order and run §5. Claude: once §2 is applied, browser-verify the WP2 group flow locally (plan Part E → WP2) before the merge.
+1. User: apply the reference-sample migration — `npx prisma migrate deploy` from this worktree (additive; the diff in `prisma/migrations/20260922120000_reference_sample/migration.sql` was verified by hand — see `docs/LAUNCH-RUNBOOK.md` §7).
+2. User (+ Claude if available): run the two-user walkthrough in `docs/CHANGELOG-reference-2026-09.md` → "Cómo comprobarlo".
+3. Open a PR from `claude/cafe-sensible-improvements-51283e` and merge to `main`.
+4. Then, in a **new session**, run `docs/prompts/S2-staging-production.md`.
+5. After the end-of-month calibration cupping: run `docs/prompts/S3-radar-reference-overlay.md` **only if** the reference experiment validates the concept (see `docs/product/experimento-referencia-2026-09.md` §7); `docs/prompts/S4-results-hygiene.md` can run any time.
+
+### Reference sample (2026-09-22)
+
+- [x] built
+- [x] typechecked (`npx tsc --noEmit`)
+- [x] tested
+- [x] linted (`npm run lint`)
+- [ ] migration applied
+- [ ] browser walkthrough
+- [ ] merged
+- [ ] deployed
 
 ## How to verify the current WP
 
@@ -55,4 +70,4 @@ See plan Part E → WP1. Runbook for the manual Supabase step: `docs/LAUNCH-RUNB
 - [x] merged + pushed to `main` 2026-09-14 (172aa0b..255578c); Vercel deploy verified live
 - [x] F10 completed 2026-09-14: status callbacks added to CupClient (stale-count notice in the master panel) and ResultsClient (points the viewer at Actualizar). All three subscription sites now report channel loss.
 - [ ] **§5 post-deploy smoke test — STILL OWED.** Needs a real magic-link login; Claude cannot run it without writing test data into the live database. Steps 3–9 (the group session walkthrough) are the ones that matter.
-- [ ] Domain cutover to catasensible.ai when registered — runbook §6.
+- [ ] Domain cutover to cafesensible.ai when registered — runbook §6.
