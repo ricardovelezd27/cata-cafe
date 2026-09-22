@@ -1,22 +1,11 @@
-import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import CalibrationWidget from "./CalibrationWidget";
-import { loginHref } from "./locale-href";
-import type { Cupper } from "./calibration-data";
+import HeroFoundingCard from "./HeroFoundingCard";
 
 export default async function HeroSection({ locale }: { locale: string }) {
   const t = await getTranslations("landing.hero");
-  const tw = await getTranslations("landing.calWidget");
-
-  const cuppers = Object.fromEntries(
-    (["c1", "c2", "c3", "c4", "c5"] as const).map((k) => [
-      k,
-      tw(`cuppers.${k}`),
-    ]),
-  ) as Record<Cupper["key"], string>;
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-green-dark text-surface">
+    <section data-fold="0" className="relative z-10 overflow-hidden bg-transparent text-surface">
       {/* Terroir contour lines, drawn in on load (CSS, LCP-safe) */}
       <svg
         aria-hidden="true"
@@ -34,77 +23,25 @@ export default async function HeroSection({ locale }: { locale: string }) {
         </g>
       </svg>
 
-      {/* Cupping bowls from above: concentric rings, slow ambient ripple.
-          Plain divs (not SVG) so the transform animation stays composited. */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-[0.09]">
-        <div className="bowl-set absolute bottom-[4%] left-[6%] h-32 w-32">
-          <span className="absolute inset-0 rounded-full border border-primary-fixed" />
-          <span className="absolute inset-[16%] rounded-full border border-primary-fixed" />
-          <span className="absolute inset-[33%] rounded-full border border-primary-fixed" />
-        </div>
-        <div className="bowl-set bowl-set-2 absolute bottom-[10%] left-[16%] h-24 w-24">
-          <span className="absolute inset-0 rounded-full border border-primary-fixed" />
-          <span className="absolute inset-[16%] rounded-full border border-primary-fixed" />
-          <span className="absolute inset-[33%] rounded-full border border-primary-fixed" />
-        </div>
-        <div className="bowl-set bowl-set-3 absolute right-[7%] top-[8%] h-28 w-28">
-          <span className="absolute inset-0 rounded-full border border-primary-fixed" />
-          <span className="absolute inset-[16%] rounded-full border border-primary-fixed" />
-          <span className="absolute inset-[33%] rounded-full border border-primary-fixed" />
-        </div>
-      </div>
-
       <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-9 px-5 pb-16 pt-14 sm:px-8 sm:pt-20 lg:grid-cols-2 lg:gap-14 lg:pb-24">
         <div className="lg:self-center">
           <p className="hero-rise text-[11px] font-semibold uppercase tracking-[0.22em] text-green-light">
             {t("eyebrow")}
           </p>
-          <h1 className="hero-slide mt-4 font-serif text-4xl leading-[1.08] text-surface sm:text-5xl lg:text-6xl">
+          {/* pt-, not mt-: the global heading reset in globals.css zeroes heading margins. */}
+          <h1 className="hero-slide pt-6 font-serif text-4xl leading-[1.08] text-surface sm:text-5xl lg:text-6xl">
             {t("title")}
           </h1>
-          <p className="hero-rise hero-rise-1 mt-5 max-w-xl text-base leading-relaxed text-surface/80 sm:text-lg">
+          {/* Transform-only entrance: the subtitle is now the largest text block
+              on mobile (LCP candidate), so it must never start at opacity 0. */}
+          <p className="hero-slide mt-6 max-w-xl text-base leading-relaxed text-surface/80 sm:text-lg">
             {t("subtitle")}
           </p>
-          <div className="hero-rise hero-rise-2 mt-8 hidden lg:block">
-            <Link
-              href={loginHref(locale)}
-              className="inline-block rounded-full bg-surface px-7 py-3.5 text-base font-semibold text-primary shadow-lg transition-colors hover:bg-primary-fixed"
-            >
-              {t("cta")}
-            </Link>
-            <p className="mt-3 text-xs text-surface/75">{t("ctaNote")}</p>
-          </div>
         </div>
 
-        {/* Mobile CTA above the widget so the action is visible at the fold */}
-        <div className="hero-rise hero-rise-2 text-center lg:hidden">
-          <Link
-            href={loginHref(locale)}
-            className="inline-block w-full rounded-full bg-surface px-7 py-3.5 text-base font-semibold text-primary shadow-lg transition-colors hover:bg-primary-fixed sm:w-auto"
-          >
-            {t("cta")}
-          </Link>
-          <p className="mt-3 text-xs text-surface/75">{t("ctaNote")}</p>
-        </div>
-
-        <div className="hero-slide lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-center">
-          <CalibrationWidget
-            locale={locale}
-            labels={{
-              title: tw("title"),
-              scoreLabel: tw("scoreLabel"),
-              scoreAria: tw("scoreAria", { score: "{score}" }),
-              scorePoints: tw("scorePoints"),
-              referenceLabel: tw("referenceLabel"),
-              groupLabel: tw("groupLabel"),
-              spreadLabel: tw("spreadLabel"),
-              spreadUnit: tw("spreadUnit"),
-              cvaLabel: tw("cvaLabel"),
-              cuppers,
-              source: tw("source"),
-              disclaimer: tw("disclaimer"),
-            }}
-          />
+        {/* The founding card is the hero's only ask; no competing button. */}
+        <div className="hero-slide lg:self-center">
+          <HeroFoundingCard locale={locale} />
         </div>
       </div>
     </section>

@@ -15,13 +15,15 @@ const PILLS = [
 
 export default async function MockFrameFlavorPills({
   ariaLabel,
+  translucent,
 }: {
   ariaLabel: string;
+  translucent?: boolean;
 }) {
   const t = await getTranslations();
 
   return (
-    <Frame ariaLabel={ariaLabel}>
+    <Frame ariaLabel={ariaLabel} translucent={translucent}>
       <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-on-surface-variant">
         {t("cupping.flavor")}
       </p>

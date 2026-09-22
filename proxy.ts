@@ -76,6 +76,12 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
+// `opengraph-image` is excluded so the file-convention route under [locale]
+// is served at its own URL (/es/opengraph-image): with localePrefix
+// "as-needed" the intl middleware would otherwise 307 the default-locale
+// og:image, and not every link crawler follows redirects on images.
 export const config = {
-  matcher: ["/((?!api|auth/callback|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  matcher: [
+    "/((?!api|auth/callback|_next/static|_next/image|favicon.ico|.*opengraph-image|.*\\..*).*)",
+  ],
 };

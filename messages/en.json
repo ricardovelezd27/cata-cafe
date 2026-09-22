@@ -833,42 +833,20 @@
   },
   "landing": {
     "meta": {
-      "title": "Cata — Calibrate palates and teach the CVA with data",
-      "description": "A professional SCA CVA cupping platform for schools, trainers and cupping labs. Group calibration sessions, an instructor reference and convergence you can see. Record, describe and calibrate your team.",
-      "ogTitle": "Cata — Calibrate palates. Teach the CVA with data.",
-      "ogDescription": "Professional SCA CVA cupping for training: group cupping sessions, an instructor reference and per-student deviation metrics."
+      "title": "cafesensible.ai — Calibrate your group's palate, with data",
+      "description": "The tool for the Café Sensible Method: group cupping sessions on the full SCA CVA protocol, with the instructor's reference and convergence you can see. For schools, trainers and facilitators.",
+      "ogTitle": "cafesensible.ai — Your group cups. The app measures how much they agree.",
+      "ogDescription": "Group SCA CVA cupping with an instructor reference, per-person deviation and visible convergence, session after session."
     },
     "header": {
-      "wordmark": "Cata",
+      "wordmark": "cafesensible",
       "signIn": "Sign in",
       "cta": "Start free"
     },
     "hero": {
-      "eyebrow": "Professional palate calibration · SCA CVA",
-      "title": "Calibrate palates. Teach the CVA with data.",
-      "subtitle": "Group cupping sessions with an instructor reference and convergence you can see, on the full SCA CVA protocol. For schools, trainers and cupping labs.",
-      "cta": "Calibrate your team for free →",
-      "ctaNote": "No card. No password. Just your email."
-    },
-    "calWidget": {
-      "title": "Group calibration session",
-      "scoreLabel": "Your affective score",
-      "scoreAria": "Your affective score: {score} of 9",
-      "scorePoints": "pts",
-      "referenceLabel": "Instructor reference",
-      "groupLabel": "Student group",
-      "spreadLabel": "Group spread",
-      "spreadUnit": "pts",
-      "cvaLabel": "Your CVA score",
-      "cuppers": {
-        "c1": "Lucía",
-        "c2": "Mateo",
-        "c3": "Sofía",
-        "c4": "Diego",
-        "c5": "Valentina"
-      },
-      "source": "Based on the SCA CVA 1-to-9 affective scale.",
-      "disclaimer": "Demo with illustrative data."
+      "eyebrow": "The tool for the Café Sensible Method · SCA CVA",
+      "title": "Your group cups. The app measures how much they agree.",
+      "subtitle": "Group cupping sessions on the full SCA CVA protocol. Each person scores at their own pace; the app compares against your reference and shows you, live, how the group converges. For schools, trainers and facilitators."
     },
     "widget": {
       "title": "Estimate the value band",
@@ -898,63 +876,82 @@
     },
     "how": {
       "eyebrow": "How it works",
-      "title": "From cup to calibration in three steps",
+      "title": "Perceive, describe, calibrate. In that order.",
+      "step1Kicker": "Perceive",
       "step1Title": "Cup it",
-      "step1Desc": "Every student evaluates with the full official CVA protocol. Works offline and in group sessions.",
+      "step1Desc": "Every person evaluates the cup with the full CVA protocol, at their own pace. Wifi or not: the lab doesn't wait.",
+      "step1Caption": "The method's cupping table, app in hand.",
+      "step2Kicker": "Name",
       "step2Title": "Describe it",
-      "step2Desc": "The cohort records intensities and sensory descriptors, cup by cup.",
+      "step2Desc": "Intensities and descriptors, cup by cup, until the group speaks the same language. The vocabulary is built together; no one dictates it.",
+      "step2Caption": "Live workshop. Real group.",
+      "step3Kicker": "Measure",
       "step3Title": "Calibrate",
-      "step3Desc": "Compare each score against the instructor reference, measure the deviation and export the PDF report.",
+      "step3Desc": "Every score against your reference: who deviates, on which attribute and by how much. Convergence stops being a feeling and becomes a number. And a PDF.",
       "frame1Aria": "Recreation of the affective evaluation screen with a 1-to-9 scale",
       "frame2Aria": "Recreation of the flavor descriptor selector",
-      "frame3Aria": "Recreation of the score card with PDF report"
+      "frame3Aria": "Recreation of the score card with PDF report",
+      "photo2Alt": "Cupping table with cups, spoons and flavor wheels; someone logging on their phone.",
+      "photo4Alt": "Live cupping workshop: a group evaluating cups with spoons and notebooks."
     },
     "features": {
       "eyebrow": "What's included",
-      "title": "The whole protocol, without the friction",
+      "title": "The whole protocol. Zero friction.",
       "item1": {
         "title": "SCA CVA methodology",
-        "desc": "The full official protocol across all three formats: descriptive, affective and combined."
+        "desc": "The full official protocol across its three sheets: descriptive, affective and extrinsic."
       },
       "item2": {
         "title": "Transparent scoring",
-        "desc": "Every score shows exactly how it was calculated, with the formula in the open."
+        "desc": "Every score shows exactly how it was calculated, with the formula in plain view. No black boxes."
       },
       "item3": {
         "title": "AI-powered discovery",
-        "desc": "AI-powered insights that surface patterns across your cupping data."
+        "desc": "AI surfaces what the eye misses: who deviates, on which attribute, and how the group evolves session after session."
       },
       "item4": {
         "title": "Built for labs",
-        "desc": "Works fully offline and syncs as soon as you're back online."
+        "desc": "Works fully offline and syncs the moment the signal comes back."
       },
       "item5": {
         "title": "Reports and certificates",
-        "desc": "Generate per-session PDF reports and certificates, ready to export."
+        "desc": "A PDF report and certificate per session, ready to hand over."
       },
       "item6": {
         "title": "Group calibration",
-        "desc": "Group sessions against the instructor reference, asynchronously too: each student cups on their own time."
-      }
+        "desc": "Group sessions against the instructor reference, asynchronously too: each person cups whenever they can."
+      },
+      "factsSheets": "3 sheets",
+      "factsAttrs": "8 attributes",
+      "factsRef": "1 reference",
+      "heatmapAria": "Deviation map by attribute and cupper, illustrative"
     },
     "audience": {
       "eyebrow": "Who it's for",
       "title": "Built for people who train palates",
-      "card1Title": "Schools & trainers",
-      "card1Desc": "Calibrate whole cohorts against the instructor reference, track each student's deviation session by session, and hand out PDF certificates at the end of the course.",
-      "card2Title": "Roasters",
-      "card2Desc": "Also built for your cupping table: align your team's criteria before you call a lot.",
-      "card3Title": "Cooperatives",
-      "card3Desc": "Also built for your panel: keep your cuppers calibrated with evidence of consistency.",
-      "card4Title": "Importers",
-      "card4Desc": "Also built for your QC: cup as a group with scores that compare across cuppers."
+      "card1Title": "Trainers and facilitators",
+      "card1Desc": "You run cuppings and workshops and want your attendees to see their progress in data, not just your word for it. Calibrate the group against your reference and hand them their own evolution.",
+      "card2Title": "Schools",
+      "card2Desc": "Calibrate whole cohorts, track each student's deviation session after session, and close the course with PDF certificates.",
+      "card3Title": "Roasters",
+      "card3Desc": "Align your cupping table's judgment before you call a lot.",
+      "card4Title": "Cooperatives",
+      "card4Desc": "Keep your panel calibrated, with evidence of consistency.",
+      "card5Title": "Importers",
+      "card5Desc": "Group quality control with scores that compare across cuppers.",
+      "galleryCaption": "Real sessions of the method. Groups from several countries.",
+      "photo1Alt": "Trainers and method partners gathered around a table, with coffee and notebooks.",
+      "photo3Alt": "A gathering of trainers in a room overlooking the city."
     },
     "founding": {
       "eyebrow": "Founding members",
-      "title": "Free for the first founding cohort",
+      "title": "Free for the founding cohort",
       "badge": "Founding cohort",
+      "heroLead": "Free for the first",
+      "heroCount": "100",
+      "heroUnit": "founding members",
       "offer": "Free for the first 100 founding members",
-      "feature1": "Full CVA cupping in all three formats: descriptive, affective and combined",
+      "feature1": "Full CVA cupping across its three sheets: descriptive, affective and extrinsic",
       "feature2": "Group sessions and calibration with an instructor reference",
       "feature3": "PDF reports and certificates",
       "feature4": "Works offline, built for the lab",
@@ -966,14 +963,19 @@
       "emailPlaceholder": "you@email.com",
       "button": "Claim my spot",
       "submitting": "Sending…",
-      "success": "Spot reserved. We'll let you know as soon as we open your founding access.",
+      "success": "Seat reserved. Check your inbox: we have sent you the link to get in.",
+      "sentHint": "No password. If it does not arrive, check spam or request another link in a few minutes.",
       "invalid": "Enter a valid email.",
-      "error": "We couldn't save your email. Please try again."
+      "error": "We could not send the link. Check the email and try again.",
+      "rateLimit": "Too many attempts in a short time. Wait a few minutes and try again."
     },
     "finalCta": {
+      "kicker": "Many palates. One reference. One number.",
       "title": "Stop <em>guessing</em> whether your team cups alike.",
+      "sub": "Measure it. In your next session.",
       "cta": "Calibrate your team for free →",
-      "note": "No passwords. Sign in with a magic link to your email."
+      "note": "No passwords. Sign in with a magic link to your email.",
+      "photo5Alt": "Cuppers leaning over the cups during the evaluation."
     },
     "footer": {
       "language": "Language",
@@ -981,8 +983,8 @@
       "contact": "Contact",
       "privacy": "Privacy",
       "terms": "Terms",
-      "copyright": "© {year} Cata. All rights reserved.",
-      "madeFor": "Made for specialty coffee professionals."
+      "copyright": "© {year} cafesensible.ai. All rights reserved.",
+      "madeFor": "The tool for the Café Sensible Method. Made for specialty coffee professionals."
     }
   },
   "insights": {

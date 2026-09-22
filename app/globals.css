@@ -280,9 +280,12 @@ h1, h2, h3, h4, .font-serif {
    Re-declare the light-on-dark color utilities (landing dark sections)
    unlayered and after it so they win. */
 .text-surface { color: var(--color-surface); }
+.text-primary { color: var(--color-primary); }
+.text-primary-fixed { color: var(--color-primary-fixed); }
 .text-primary-fixed-dim { color: var(--color-primary-fixed-dim); }
 .text-green-light { color: var(--color-green-light); }
 .text-secondary-fixed { color: var(--color-secondary-fixed); }
+.text-secondary-container { color: var(--color-secondary-container); }
 
 button { font-family: inherit; cursor: pointer; }
 
@@ -393,8 +396,23 @@ button { font-family: inherit; cursor: pointer; }
   contain-intrinsic-size: auto 720px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .ambient-video { display: none; }
+/* Dark-stage glass recipe: shared by content cards sitting over the
+   particle canvas so the field reads through them (landing redesign). */
+.stage-card {
+  background: color-mix(in srgb, var(--color-surface) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-surface) 12%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+/* PhotoSlot placeholder (no src wired yet): faint centred mint dot grid. */
+.photo-slot-empty {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-primary-fixed) 35%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 14px 14px;
+  background-position: center;
 }
 
 /* Landing hero entrance — pure CSS so the LCP paint isn't delayed by
@@ -435,31 +453,4 @@ button { font-family: inherit; cursor: pointer; }
   .contour-path:nth-of-type(5) { animation-delay: 0.85s; }
   .contour-path:nth-of-type(6) { animation-delay: 0.95s; }
 
-  /* Cupping bowls seen from above: slow ambient ripple. Composited divs. */
-  @keyframes bowl-ripple {
-    0%, 100% { transform: scale(1);    opacity: 0.55; }
-    50%      { transform: scale(1.05); opacity: 1; }
-  }
-  .bowl-set {
-    animation: bowl-ripple 9s ease-in-out infinite;
-    will-change: transform, opacity;
-  }
-  .bowl-set-2 { animation-delay: -3s; }
-  .bowl-set-3 { animation-delay: -6s; }
-
-  /* Widget self-demo: invitation pulse on the slider thumb after the demo
-     glide ends, and a settle pulse on the band readout. */
-  @keyframes thumb-pulse {
-    0%   { box-shadow: 0 2px 8px rgba(21, 53, 38, 0.35), 0 0 0 0 rgba(171, 207, 184, 0.9); }
-    100% { box-shadow: 0 2px 8px rgba(21, 53, 38, 0.35), 0 0 0 14px rgba(171, 207, 184, 0); }
-  }
-  .landing-range.demo-pulse::-webkit-slider-thumb { animation: thumb-pulse 1.1s ease-out 2; }
-  .landing-range.demo-pulse::-moz-range-thumb     { animation: thumb-pulse 1.1s ease-out 2; }
-
-  @keyframes band-settle {
-    0%   { transform: scale(1); }
-    35%  { transform: scale(1.025); }
-    100% { transform: scale(1); }
-  }
-  .band-settle { animation: band-settle 0.6s cubic-bezier(0.22, 1, 0.36, 1) 1; }
 }

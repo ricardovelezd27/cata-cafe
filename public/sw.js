@@ -1,4 +1,4 @@
-// Cata Café service worker — hand-rolled, no build step, no workbox/serwist.
+// Café Sensible service worker — hand-rolled, no build step, no workbox/serwist.
 //
 // Bump SW_VERSION whenever a change would make old cached entries incompatible
 // (e.g. cache-key logic changes, new required exclusion rule). Bumping it

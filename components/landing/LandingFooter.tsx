@@ -9,14 +9,14 @@ export default async function LandingFooter({ locale }: { locale: string }) {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="border-t border-primary-container/40 bg-primary text-surface/75">
+    <footer className="border-t border-surface/12 bg-primary text-surface/70">
       <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8">
         <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="font-serif text-2xl text-surface">
               {th("wordmark")}
               <span aria-hidden="true" className="text-secondary-container">
-                .
+                .ai
               </span>
             </p>
             <p className="mt-2 max-w-xs text-sm">{t("madeFor")}</p>
@@ -30,15 +30,15 @@ export default async function LandingFooter({ locale }: { locale: string }) {
               >
                 {t("signIn")}
               </Link>
-              <a href="mailto:hola@cata.cafe" className="block hover:text-surface">
+              <a href="mailto:hola@estudiodecafe.online" className="block hover:text-surface">
                 {t("contact")}
               </a>
             </div>
             <div className="space-y-2.5">
-              <a href="mailto:hola@cata.cafe?subject=Privacidad" className="block hover:text-surface">
+              <a href="mailto:hola@estudiodecafe.online?subject=Privacidad" className="block hover:text-surface">
                 {t("privacy")}
               </a>
-              <a href="mailto:hola@cata.cafe?subject=Terminos" className="block hover:text-surface">
+              <a href="mailto:hola@estudiodecafe.online?subject=Terminos" className="block hover:text-surface">
                 {t("terms")}
               </a>
             </div>

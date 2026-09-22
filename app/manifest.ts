@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Cata Café",
-    short_name: "Cata Café",
+    name: "Café Sensible",
+    short_name: "Café Sensible",
     description:
       "Plataforma profesional de catación de café bajo la metodología SCA CVA.",
     start_url: "/",

@@ -145,7 +145,10 @@ cata-cafe/
 │   │   #   ResumenTab.tsx (dashboard), DescriptoresTab.tsx (filters + cloud + frequency +
 │   │   #   alignment). The Resultados tab has no separate file — its Tabla/Gráfico
 │   │   #   sub-view is inline JSX in ResultsClient.tsx.
-│   ├── landing/                    # Marketing landing sections (Hero, Pricing, Roadmap, WaitlistForm, ScrollFx…)
+│   ├── landing/                    # Marketing landing (dark stage): Hero, StepSection ×3, Features bento,
+│   │   #   Audience, Founding, FinalCTA, PhotoSlot, WaitlistForm, ScrollFx (GSAP text reveals only)
+│   │   └── journey/                # Persistent particle canvas: formations.ts + bracket.ts (pure, tested),
+│   │       #   ConstellationCanvas (engine + governor + kill-switch), ConstellationMount (idle gate). README inside.
 │   ├── offline/                    # OfflineBanner, SyncConflictModal, OfflineFirstLoadError
 │   ├── onboarding/                 # WelcomeModal, OnboardingWrapper (role/country capture)
 │   └── layout/, dashboard/         # App shell + dashboard widgets (DashboardIntro, StatCard, FormatBadge)
