@@ -167,3 +167,23 @@
   line-height: 1.3;
   color: var(--color-secondary);
 }
+
+/* Reference-sample select (2026-09). Sits between the header and the action
+   row; the label mirrors .title so the panel reads as one block. */
+.referenceField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.referenceLabel {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-brown-mid);
+}
+
+.referenceField:has(select:disabled) { opacity: 0.5; }

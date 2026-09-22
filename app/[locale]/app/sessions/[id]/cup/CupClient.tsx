@@ -20,6 +20,7 @@ import {
   upsertExtrinsic,
   upsertPhysical,
   updateSampleMetadata,
+  setReferenceSample,
 } from "@/app/actions/sessions";
 import {
   EditSampleMetadataForm,
@@ -58,6 +59,8 @@ import {
   MasterControls,
   CanvasFooter,
   BetaBadge,
+  Badge,
+  Select,
   useActionFeedback,
   type ModuleItem,
 } from "@/components/ui";
@@ -123,6 +126,9 @@ type Session = {
   cupsPerSample: number;
   samples: Sample[];
   date: string;
+  // The owner's "Referencia" sample (display-only). Optional so a pre-upgrade
+  // offline blob rehydrated by cup/error.tsx still type-checks.
+  referenceSampleId?: string | null;
 };
 
 type CuppingTab = "cupping" | "extrinsic" | "physical";
@@ -245,6 +251,11 @@ export function CupClient({
       conflictReplace: string;
       bannerStorageUnavailable: string;
     };
+    // Reference sample (2026-09). Optional: pre-upgrade offline blobs.
+    referenceBadge?: string;
+    compareHint?: string;
+    referenceSelect?: string;
+    referenceNone?: string;
   };
   userEmail?: string;
   userCountry?: string;
@@ -299,6 +310,11 @@ export function CupClient({
   const [isCopied, setIsCopied] = useState(false);
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
   const [startedAt, setStartedAt] = useState(sessionStartedAt);
+  // Owner-chosen "Referencia" sample; updated live for participants through
+  // the cupping_sessions realtime stream below.
+  const [referenceSampleId, setReferenceSampleId] = useState<string | null>(
+    session.referenceSampleId ?? null,
+  );
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState(false);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
@@ -560,6 +576,26 @@ export function CupClient({
             | undefined;
           if (isDraft === false && sampleId && sampleIds.has(sampleId)) {
             setSubmittedCount((prev) => prev + 1);
+          }
+        }
+      )
+      // The reference sample lives on the session row, which is already in
+      // the supabase_realtime publication (Phase 7) — no extra SQL needed.
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "cupping_sessions",
+          filter: `id=eq.${session.id}`,
+        },
+        (payload) => {
+          const row = payload.new as Record<string, unknown>;
+          if ("referenceSampleId" in row || "reference_sample_id" in row) {
+            const next = (row.referenceSampleId ?? row.reference_sample_id ?? null) as
+              | string
+              | null;
+            setReferenceSampleId(next && sampleIds.has(next) ? next : null);
           }
         }
       )
@@ -962,8 +998,38 @@ export function CupClient({
     });
   };
 
+  // Optimistic: the select reflects the choice at once; a failed save toasts
+  // the localized error (useActionFeedback) and rolls the value back.
+  const handleReferenceChange = (value: string) => {
+    const next = value === "" ? null : value;
+    const prev = referenceSampleId;
+    setReferenceSampleId(next);
+    startTransition(async () => {
+      const r = await feedback.run(setReferenceSample(session.id, next));
+      if (!r.ok) setReferenceSampleId(prev);
+    });
+  };
+
   // ─── Derived state ────────────────────────────────────────────
   const current = samples[sampleIdx];
+  const referenceSample = referenceSampleId
+    ? samples.find((s) => s.id === referenceSampleId) ?? null
+    : null;
+  const isCurrentReference = referenceSample?.id === current.id;
+  const referenceBadgeLabel = translations.referenceBadge ?? "Referencia";
+  const referenceOptions = [
+    { value: "", label: translations.referenceNone ?? "Sin referencia" },
+    ...samples.map((s) => ({ value: s.id, label: s.label })),
+  ];
+  // Header line under the sample name: "· Referencia" on the reference itself,
+  // "Compara con la referencia (C)" on every other sample (participants too).
+  const referenceContext = isCurrentReference ? (
+    <Badge tone="accent" size="xs">{referenceBadgeLabel}</Badge>
+  ) : referenceSample && translations.compareHint ? (
+    <span className="font-sans text-[11px] text-brown-mid">
+      {translations.compareHint.replace("{label}", referenceSample.label)}
+    </span>
+  ) : null;
 
   // Live-recomputed on every render so a flag clears the instant the field is
   // filled in; only shown once flaggedSteps has "seen" this sample+step combo.
@@ -1122,6 +1188,11 @@ export function CupClient({
           {translations.submittedOf}
         </div>
       )}
+      {referenceSample && (
+        <div className="font-mono text-[11px] text-brown-mid mt-0.5 truncate">
+          {referenceBadgeLabel}: {referenceSample.label}
+        </div>
+      )}
     </>
   );
 
@@ -1133,7 +1204,9 @@ export function CupClient({
         id: s.id,
         label: s.label,
         filled: hasStepFill(s, currentStep),
+        reference: s.id === referenceSampleId,
       }))}
+      referenceLabel={referenceBadgeLabel}
       activeIndex={sampleIdx}
       onSelect={handleSampleSelect}
     />
@@ -1185,6 +1258,10 @@ export function CupClient({
         showStart={showStart}
         isStarting={isStarting}
         onStart={handleStart}
+        referenceLabel={translations.referenceSelect ?? "Muestra de referencia"}
+        referenceOptions={referenceOptions}
+        referenceValue={referenceSampleId ?? ""}
+        onReferenceChange={handleReferenceChange}
       />
     ) : undefined;
 
@@ -1227,6 +1304,7 @@ export function CupClient({
             />
             <div className="border-t border-brown-light pt-1.5 flex items-center gap-3">
               <div className="min-w-0 flex-1">{sampleTabsBar}</div>
+              {referenceContext}
               {editSampleButton}
             </div>
           </div>
@@ -1272,6 +1350,7 @@ export function CupClient({
           <span className="font-display text-base text-brown-dark">
             {translations.sample} {current.label}
           </span>
+          {referenceContext}
           <div className="flex-1" />
           {editSampleButton}
         </div>
@@ -1320,6 +1399,21 @@ export function CupClient({
           title={`${translations.editSample}: ${current.label}`}
           closeLabel={translations.cancel}
         >
+          {/* Solo sessions have no master panel — the reference select lives
+              here instead. Group owners use MasterControls. */}
+          {!isGroup && !sessionClosed && (
+            <label className="mb-4 block">
+              <span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.18em] text-brown-mid">
+                {translations.referenceSelect ?? "Muestra de referencia"}
+              </span>
+              <Select
+                value={referenceSampleId ?? ""}
+                onChange={handleReferenceChange}
+                options={referenceOptions}
+                ariaLabel={translations.referenceSelect ?? "Muestra de referencia"}
+              />
+            </label>
+          )}
           <EditSampleMetadataForm
             initialData={{
               label: current.label,

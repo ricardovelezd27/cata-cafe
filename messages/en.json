@@ -166,6 +166,11 @@
       "samplesTitle": "Samples",
       "samplesHelper": "Each sample is cupped separately. Edit its label and assign it a coffee.",
       "moreDetails": "More coffee details (optional)",
+      "referenceTitle": "Reference sample",
+      "referenceHelper": "Optional. Mark one sample as the reference so the others are compared against it in the results. It is cupped and scored like any other.",
+      "referenceMark": "Mark {label} as reference",
+      "referenceBadge": "Reference",
+      "referenceNone": "No reference",
       "errors": {
         "no_samples": "Add at least one sample to start the session.",
         "no_coffees": "Add at least one coffee to start the session.",
@@ -180,7 +185,8 @@
         "invalid_format": "Choose a valid tasting format.",
         "invalid_cups": "Cups per sample must be a number between 1 and 5.",
         "too_many_samples": "Maximum 100 samples per session.",
-        "invalid_closes_at": "The closing date must be in the future."
+        "invalid_closes_at": "The closing date must be in the future.",
+        "invalid_reference": "The reference sample is not valid. Pick one from the list."
       }
     },
     "deleteSession": {
@@ -228,7 +234,11 @@
       "saving": "Saving…",
       "saved": "Changes saved",
       "error": "Couldn't save the session. Please try again.",
-      "backToSessions": "Back to sessions"
+      "backToSessions": "Back to sessions",
+      "referenceTitle": "Reference sample",
+      "referenceNone": "No reference",
+      "referenceHelper": "The other samples are compared against this one in the results. It does not affect the score.",
+      "referenceSaved": "Reference updated"
     }
   },
   "cupping": {
@@ -259,6 +269,8 @@
     "savedLocally": "Saved on this device · waiting to sync",
     "noSamplesTitle": "This session has no samples",
     "noSamplesBody": "Add at least one sample to start cupping.",
+    "referenceBadge": "Reference",
+    "compareHint": "Compare against the reference ({label})",
     "phases": {
       "fragrance": "Fragrance",
       "aroma": "Aroma",
@@ -308,7 +320,8 @@
     "checkingLabel": "Checking...",
     "notStartedMsg": "Hasn't started yet",
     "backToSessions": "Back to my sessions",
-    "connectionLost": "Live connection lost — checking every 15s"
+    "connectionLost": "Live connection lost — checking every 15s",
+    "referenceLine": "Reference sample: {label}"
   },
   "score": {
     "individual": "Individual score",
@@ -464,7 +477,9 @@
     "guestDataNotice": "As a guest, your access is tied to this browser: clearing browsing data or switching devices means losing your progress. When you view your results you'll be able to save them by creating your account.",
     "guestOfflineNotice": "You need a connection to join; once in, you can cup offline.",
     "guestError": "Couldn't join as guest. Try with your email.",
-    "sessionClosed": "This tasting is already closed — ask the organizer for the results link."
+    "sessionClosed": "This tasting is already closed — ask the organizer for the results link.",
+    "referenceSelect": "Reference sample",
+    "referenceNone": "No reference"
   },
   "results": {
     "title": "Session Results",
@@ -492,6 +507,10 @@
     "flavorProfiles": "Flavor Profiles",
     "communityPending": "Group results will appear once all participants submit their evaluations or the session master closes the session.",
     "sdAria": "Standard deviation across cuppers — lower means more consensus",
+    "referenceBadge": "Reference",
+    "deltaVsReference": "Δ vs. reference",
+    "deltaVsReferenceAria": "Score difference against the reference sample; positive when this sample scored higher",
+    "referenceLegend": "Δ = difference against the reference",
     "closedOn": "Tasting closed on {date}",
     "liveUpdatesDown": "Live updates unavailable — press Refresh to see the latest.",
     "closeEmails": {
@@ -666,6 +685,10 @@
       "alineacion": {
         "title": "Cupper alignment",
         "body": "Visible only to the owner: what percentage of the group's consensus descriptors each cupper chose. With a sample filtered, it shows alignment within that specific sample."
+      },
+      "referencia": {
+        "title": "Reference sample",
+        "body": "The session master can mark one sample as the reference: a shared starting point the others are read against. The reference is cupped, scored and ranked like any other sample; it changes no score.\nWhat it adds is context: next to each sample you'll see Δ, the difference between its score and the reference's. Group sessions use the community score; solo sessions use your CVA score.\nReference, group mean and deviation are different things: the reference is the starting point the master chose; the mean is what the group perceived; the deviation (±) is how much the group spread."
       }
     }
   },

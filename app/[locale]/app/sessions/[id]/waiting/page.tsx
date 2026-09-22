@@ -33,6 +33,8 @@ export default async function WaitingPage({
       date: true,
       isAsync: true,
       status: true,
+      referenceSampleId: true,
+      samples: { select: { id: true, label: true }, orderBy: { position: "asc" } },
     },
   });
 
@@ -63,7 +65,11 @@ export default async function WaitingPage({
       sessionName={session.name}
       locale={locale}
       isAsync={isAsyncMode}
+      samples={session.samples}
+      initialReferenceSampleId={session.referenceSampleId}
       translations={{
+        // `{label}` is an ICU arg — fetched raw and replaced client-side.
+        referenceLine: t.raw("referenceLine") as string,
         title: isAsyncMode ? t("titleAsync") : t("title"),
         description: isAsyncMode ? t("descriptionAsync") : t("description"),
         asyncDetail: t("asyncDetail"),

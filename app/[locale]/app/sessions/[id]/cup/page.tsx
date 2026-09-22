@@ -141,6 +141,7 @@ export default async function CupPage({
         format: session.format,
         cupsPerSample: session.cupsPerSample,
         date: session.date.toISOString(),
+        referenceSampleId: session.referenceSampleId,
         samples: session.samples.map((s) => {
           const ev = s.evaluations[0];
           return {
@@ -222,6 +223,11 @@ export default async function CupPage({
         startSessionError: tg("startSessionError"),
         masterRole: tg("masterRole"),
         participantRole: tg("participantRole"),
+        referenceSelect: tg("referenceSelect"),
+        referenceNone: tg("referenceNone"),
+        referenceBadge: t("cupping.referenceBadge"),
+        // `{label}` is an ICU arg — fetched raw and replaced client-side.
+        compareHint: t.raw("cupping.compareHint") as string,
         // Shell (Phase 3)
         samplesHeader: t("cupping.shell.samplesHeader"),
         evaluationHeader: t("cupping.shell.evaluationHeader"),
