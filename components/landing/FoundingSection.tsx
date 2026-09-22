@@ -48,7 +48,7 @@ export default async function FoundingSection({ locale }: { locale: string }) {
           <span className="w-fit rounded-full bg-secondary-container px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-primary">
             {t("badge")}
           </span>
-          <p data-counter className="mt-5 font-serif tabular-nums text-4xl text-surface">
+          <p data-counter className="mt-8 font-serif tabular-nums text-4xl text-surface">
             {t("offer")}
           </p>
           <FeatureList

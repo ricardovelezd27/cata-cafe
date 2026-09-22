@@ -1,19 +1,10 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import CalibrationWidget from "./CalibrationWidget";
+import HeroFoundingCard from "./HeroFoundingCard";
 import { loginHref } from "./locale-href";
-import type { Cupper } from "./calibration-data";
 
 export default async function HeroSection({ locale }: { locale: string }) {
   const t = await getTranslations("landing.hero");
-  const tw = await getTranslations("landing.calWidget");
-
-  const cuppers = Object.fromEntries(
-    (["c1", "c2", "c3", "c4", "c5"] as const).map((k) => [
-      k,
-      tw(`cuppers.${k}`),
-    ]),
-  ) as Record<Cupper["key"], string>;
 
   return (
     <section data-fold="0" className="relative z-10 overflow-hidden bg-transparent text-surface">
@@ -70,23 +61,7 @@ export default async function HeroSection({ locale }: { locale: string }) {
         </div>
 
         <div className="hero-slide lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-center">
-          <CalibrationWidget
-            locale={locale}
-            labels={{
-              title: tw("title"),
-              scoreLabel: tw("scoreLabel"),
-              scoreAria: tw("scoreAria", { score: "{score}" }),
-              scorePoints: tw("scorePoints"),
-              referenceLabel: tw("referenceLabel"),
-              groupLabel: tw("groupLabel"),
-              spreadLabel: tw("spreadLabel"),
-              spreadUnit: tw("spreadUnit"),
-              cvaLabel: tw("cvaLabel"),
-              cuppers,
-              source: tw("source"),
-              disclaimer: tw("disclaimer"),
-            }}
-          />
+          <HeroFoundingCard locale={locale} />
         </div>
       </div>
     </section>

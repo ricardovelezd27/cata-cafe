@@ -850,26 +850,6 @@
       "cta": "Calibra a tu equipo gratis →",
       "ctaNote": "Sin tarjeta. Sin contraseña. Solo tu correo."
     },
-    "calWidget": {
-      "title": "Sesión de calibración en grupo",
-      "scoreLabel": "Tu puntuación afectiva",
-      "scoreAria": "Tu puntuación afectiva: {score} de 9",
-      "scorePoints": "pts",
-      "referenceLabel": "Referencia del instructor",
-      "groupLabel": "Grupo de alumnos",
-      "spreadLabel": "Dispersión del grupo",
-      "spreadUnit": "pts",
-      "cvaLabel": "Tu puntaje CVA",
-      "cuppers": {
-        "c1": "Lucía",
-        "c2": "Mateo",
-        "c3": "Sofía",
-        "c4": "Diego",
-        "c5": "Valentina"
-      },
-      "source": "Basado en la escala afectiva de 1 a 9 del SCA CVA.",
-      "disclaimer": "Demostración con datos ilustrativos."
-    },
     "widget": {
       "title": "Calcula la banda de valor",
       "scoreLabel": "Puntaje CVA",
@@ -969,6 +949,9 @@
       "eyebrow": "Miembros fundadores",
       "title": "Gratis para la cohorte fundadora",
       "badge": "Cohorte fundadora",
+      "heroLead": "Gratis para los primeros",
+      "heroCount": "100",
+      "heroUnit": "miembros fundadores",
       "offer": "Gratis para los primeros 100 miembros fundadores",
       "feature1": "Cata CVA completa en sus tres hojas: descriptiva, afectiva y extrínseca",
       "feature2": "Sesiones en grupo y calibración con referencia del instructor",

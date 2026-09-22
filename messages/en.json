@@ -850,26 +850,6 @@
       "cta": "Calibrate your team for free →",
       "ctaNote": "No card. No password. Just your email."
     },
-    "calWidget": {
-      "title": "Group calibration session",
-      "scoreLabel": "Your affective score",
-      "scoreAria": "Your affective score: {score} of 9",
-      "scorePoints": "pts",
-      "referenceLabel": "Instructor reference",
-      "groupLabel": "Student group",
-      "spreadLabel": "Group spread",
-      "spreadUnit": "pts",
-      "cvaLabel": "Your CVA score",
-      "cuppers": {
-        "c1": "Lucía",
-        "c2": "Mateo",
-        "c3": "Sofía",
-        "c4": "Diego",
-        "c5": "Valentina"
-      },
-      "source": "Based on the SCA CVA 1-to-9 affective scale.",
-      "disclaimer": "Demo with illustrative data."
-    },
     "widget": {
       "title": "Estimate the value band",
       "scoreLabel": "CVA score",
@@ -969,6 +949,9 @@
       "eyebrow": "Founding members",
       "title": "Free for the founding cohort",
       "badge": "Founding cohort",
+      "heroLead": "Free for the first",
+      "heroCount": "100",
+      "heroUnit": "founding members",
       "offer": "Free for the first 100 founding members",
       "feature1": "Full CVA cupping across its three sheets: descriptive, affective and extrinsic",
       "feature2": "Group sessions and calibration with an instructor reference",
