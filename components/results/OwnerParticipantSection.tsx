@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { calcIndividualScore } from "@/lib/scoring";
 import { setParticipantExclusion } from "@/app/actions/community";
+import { Badge } from "@/components/ui";
 import type { SessionFormat } from "@/lib/constants";
 
 type SampleResult = {
@@ -14,6 +15,7 @@ type SampleResult = {
   descriptive: Record<string, unknown>;
   affective: Record<string, unknown>;
   combined: Record<string, unknown>;
+  isReference?: boolean;
 };
 
 export type ParticipantResult = {
@@ -106,6 +108,7 @@ export function OwnerParticipantSection({
   cupsPerSample,
   readOnly = false,
   onOpenDetail,
+  referenceBadge,
   t,
 }: {
   sessionId: string;
@@ -116,6 +119,8 @@ export function OwnerParticipantSection({
   // management card is hidden (setParticipantExclusion is owner-gated).
   readOnly?: boolean;
   onOpenDetail: (sampleId: string, participantId: string) => void;
+  // Label for the badge on the reference (control) sample's row header.
+  referenceBadge?: string;
   t: {
     title: string;
     manageTitle: string;
@@ -292,7 +297,14 @@ export function OwnerParticipantSection({
               {sampleAxis.map((sample, si) => (
                 <tr key={sample.id}>
                   <td className="sticky left-0 z-10 whitespace-nowrap border-b border-outline-variant/60 bg-surface-container-lowest px-2.5 py-2 text-xs font-bold text-on-surface">
-                    {sample.label}
+                    <span className="inline-flex items-center gap-1.5">
+                      {sample.label}
+                      {sample.isReference && referenceBadge && (
+                        <Badge tone="accent" size="xs">
+                          {referenceBadge}
+                        </Badge>
+                      )}
+                    </span>
                   </td>
                   {participants.map((p, pi) => {
                     const value = matrix[si][pi];

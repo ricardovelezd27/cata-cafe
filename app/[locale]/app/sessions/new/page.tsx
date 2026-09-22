@@ -82,6 +82,11 @@ export default async function NewSessionPage({
       samplesTitle: t("newForm.samplesTitle"),
       samplesHelper: t("newForm.samplesHelper"),
       moreDetails: t("newForm.moreDetails"),
+      referenceTitle: t("newForm.referenceTitle"),
+      referenceHelper: t("newForm.referenceHelper"),
+      referenceMark: t.raw("newForm.referenceMark"),
+      referenceBadge: t("newForm.referenceBadge"),
+      referenceNone: t("newForm.referenceNone"),
       errors: {
         no_samples: t("newForm.errors.no_samples"),
         no_coffees: t("newForm.errors.no_coffees"),
@@ -90,6 +95,7 @@ export default async function NewSessionPage({
         sample_without_coffee: t("newForm.errors.sample_without_coffee"),
         generic: t("newForm.errors.generic"),
         coffee_not_found: t("newForm.errors.coffee_not_found"),
+        invalid_reference: t("newForm.errors.invalid_reference"),
       },
     },
     // coffee picker

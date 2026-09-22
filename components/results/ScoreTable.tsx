@@ -2,9 +2,10 @@
 
 import { Check, ChevronRight, Eye } from "lucide-react";
 import { calcIndividualScore, hasAffectiveData, scoreBand } from "@/lib/scoring";
+import { deltasVsReference, formatSignedDelta, pickDisplayedScore } from "@/lib/referenceDelta";
 import { AFFECTIVE_ATTRIBUTES, type SessionFormat } from "@/lib/constants";
 import { DESCRIPTOR_STAGES, PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
-import { ScorePill } from "@/components/ui/Badge";
+import { Badge, ScorePill } from "@/components/ui/Badge";
 import type { SampleResult } from "@/app/[locale]/app/sessions/[id]/results/types";
 
 export type ScoreTableTranslations = {
@@ -18,6 +19,13 @@ export type ScoreTableTranslations = {
   viewDetail: string;
   reveal: string;
   revealed: string;
+  // Reference (control) sample labels — ResultsClient merges these in from
+  // the top-level `results.*` translations (not part of page.tsx's `table`
+  // sub-object), so they stay optional here.
+  referenceBadge?: string;
+  deltaVsReference?: string;
+  deltaVsReferenceAria?: string;
+  referenceLegend?: string;
 };
 
 /**
@@ -48,6 +56,7 @@ function CvaCell({
   showCommunity,
   u,
   d,
+  delta,
   t,
 }: {
   myScore: number | "—" | null;
@@ -55,6 +64,10 @@ function CvaCell({
   showCommunity: boolean;
   u: number;
   d: number;
+  // Δ vs. the reference sample, using the same displayed-score basis as this
+  // cell — null for the reference row itself, unscored rows, or when there
+  // is no reference sample at all.
+  delta?: number | null;
   t: ScoreTableTranslations;
 }) {
   const scoreNum = myScore !== null && myScore !== "—" ? myScore : null;
@@ -79,6 +92,15 @@ function CvaCell({
             {t.communityShort} {communityScore.toFixed(2)}
           </span>
         )}
+        {typeof delta === "number" && (
+          <span
+            className="text-[10px] font-medium text-on-surface-variant tabular-nums"
+            title={t.deltaVsReferenceAria}
+            aria-label={t.deltaVsReferenceAria}
+          >
+            Δ {formatSignedDelta(delta)}
+          </span>
+        )}
         {scoreNum !== null && (u > 0 || d > 0) && (
           <span className="text-[9px] font-medium text-error tabular-nums">
             u:{u} d:{d}
@@ -97,6 +119,8 @@ export function ScoreTable({
   isOwner,
   onReveal,
   onOpenDetail,
+  referenceId = null,
+  referenceScore = null,
   t,
 }: {
   samples: SampleResult[];
@@ -106,11 +130,36 @@ export function ScoreTable({
   isOwner: boolean;
   onReveal: (sampleId: string) => void;
   onOpenDetail: (sampleId: string) => void;
+  // Id of the owner-marked "Referencia" (control) sample, or null when none
+  // is set. referenceScore is the pre-derived displayed score for that
+  // sample (see ResultsClient) — kept alongside referenceId so the legend
+  // can gate on "a reference exists" without recomputing anything.
+  referenceId?: string | null;
+  referenceScore?: number | null;
   t: ScoreTableTranslations;
 }) {
   const showDescriptive = format !== "affective";
   const showAffective = format !== "descriptive";
   const showCVA = showAffective;
+
+  // Per-row displayed score (community when visible, else mine) → one Δ map
+  // for the whole table, keyed by sample id. Mirrors CvaCell's own myScore
+  // derivation below so the Δ and the score pill it sits under always agree.
+  const refDeltas = deltasVsReference(
+    samples.map((sample) => {
+      const affData =
+        format === "affective" ? sample.affective : format === "combined" ? sample.combined : null;
+      const myScore =
+        affData && hasAffectiveData(affData) ? calcIndividualScore(affData, cupsPerSample) : null;
+      const myScoreNum = typeof myScore === "number" ? myScore : null;
+      const communityScore = sample.aggregateScore?.communityScore ?? null;
+      return {
+        id: sample.id,
+        score: pickDisplayedScore(myScoreNum, communityScore, showCommunity),
+      };
+    }),
+    referenceId,
+  );
 
   const thBase =
     "border-b border-outline-variant/40 px-2 py-1.5 text-center text-[10px] font-bold tracking-wide whitespace-nowrap align-middle";
@@ -223,8 +272,15 @@ export function ScoreTable({
                     className="flex min-h-[44px] w-full min-w-[160px] items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-surface-container-high/60 focus-visible:outline-2 focus-visible:outline-primary-container focus-visible:-outline-offset-2"
                   >
                     <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate font-display text-base font-semibold leading-tight text-primary-container">
-                        {sample.label}
+                      <span className="flex items-center gap-1.5">
+                        <span className="truncate font-display text-base font-semibold leading-tight text-primary-container">
+                          {sample.label}
+                        </span>
+                        {sample.isReference && (
+                          <Badge tone="accent" size="xs">
+                            {t.referenceBadge}
+                          </Badge>
+                        )}
                       </span>
                       {sample.revealed && sample.coffee && (
                         <span className="truncate text-[11px] text-on-surface-variant">{sample.coffee.name}</span>
@@ -312,6 +368,7 @@ export function ScoreTable({
                     showCommunity={showCommunity}
                     u={u}
                     d={d}
+                    delta={refDeltas.get(sample.id) ?? null}
                     t={t}
                   />
                 )}
@@ -333,6 +390,17 @@ export function ScoreTable({
             {t.legendCommunity}
           </span>
         </div>
+      )}
+      {/* Only worth explaining once the reference itself carries a real
+          score — an unscored reference never produces a Δ in any row. */}
+      {referenceScore !== null && (
+        <p
+          className={`px-3 text-[10px] text-on-surface-variant ${
+            showCommunity && showAffective ? "pb-2" : "border-t border-outline-variant/40 py-2"
+          }`}
+        >
+          {t.referenceLegend}
+        </p>
       )}
     </div>
   );

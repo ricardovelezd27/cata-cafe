@@ -34,6 +34,8 @@ export default async function EditSessionPage({
       },
     },
   });
+  // referenceSampleId is a scalar column on CuppingSession — included by
+  // default with findUnique (no separate select needed alongside `include`).
 
   if (!session || session.createdBy !== user.id) notFound();
 
@@ -84,6 +86,10 @@ export default async function EditSessionPage({
     saving: t("edit.saving"),
     saved: t("edit.saved"),
     error: t("edit.error"),
+    referenceTitle: t("edit.referenceTitle"),
+    referenceNone: t("edit.referenceNone"),
+    referenceHelper: t("edit.referenceHelper"),
+    referenceSaved: t("edit.referenceSaved"),
   };
 
   return (
@@ -106,6 +112,8 @@ export default async function EditSessionPage({
           cupsPerSample: session.cupsPerSample,
           isGroup: session.isGroup,
           groupId: session.groupId,
+          referenceSampleId: session.referenceSampleId,
+          closed: session.status === "closed",
         }}
         samples={session.samples.map((s) => ({
           id: s.id,

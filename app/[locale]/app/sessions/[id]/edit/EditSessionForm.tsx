@@ -8,9 +8,11 @@ import {
   addSessionSample,
   renameSessionSample,
   removeSessionSample,
+  setReferenceSample,
 } from "@/app/actions/sessions";
 import { Select } from "@/components/ui/Select";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useActionFeedback } from "@/components/ui/Toast";
 
 export type EditSessionFormTranslations = {
   name: string;
@@ -38,6 +40,10 @@ export type EditSessionFormTranslations = {
   saving: string;
   saved: string;
   error: string;
+  referenceTitle: string;
+  referenceNone: string;
+  referenceHelper: string;
+  referenceSaved: string;
 };
 
 export type EditSampleRow = { id: string; label: string; evalCount: number };
@@ -71,6 +77,8 @@ export function EditSessionForm({
     cupsPerSample: number;
     isGroup: boolean;
     groupId: string | null;
+    referenceSampleId: string | null;
+    closed: boolean;
   };
   samples: EditSampleRow[];
   groups: EditGroupOption[];
@@ -78,7 +86,9 @@ export function EditSessionForm({
   translations: EditSessionFormTranslations;
 }) {
   const router = useRouter();
+  const feedback = useActionFeedback();
   const locked = evalCount > 0;
+  const closed = initial.closed;
 
   const [name, setName] = useState(initial.name);
   const [date, setDate] = useState(initial.date);
@@ -113,6 +123,32 @@ export function EditSessionForm({
   const [addPending, startAdd] = useTransition();
 
   const [removeTarget, setRemoveTarget] = useState<EditSampleRow | null>(null);
+
+  // ── Reference sample: local mirror resynced the same way as `samples`
+  // above (adjusting state during render, not in an effect) whenever the
+  // server prop changes underneath us (e.g. a concurrent edit + refresh).
+  const [referenceId, setReferenceIdState] = useState<string | null>(initial.referenceSampleId);
+  const [prevInitialReferenceId, setPrevInitialReferenceId] = useState(initial.referenceSampleId);
+  if (initial.referenceSampleId !== prevInitialReferenceId) {
+    setPrevInitialReferenceId(initial.referenceSampleId);
+    setReferenceIdState(initial.referenceSampleId);
+  }
+  const [, startReference] = useTransition();
+
+  const handleReferenceChange = (value: string) => {
+    const next = value || null;
+    const previous = referenceId;
+    if (next === previous) return;
+    setReferenceIdState(next);
+    startReference(async () => {
+      const result = await feedback.run(setReferenceSample(sessionId, next), () => {
+        feedback.notifySuccess(t.referenceSaved);
+      });
+      if (!result.ok) {
+        setReferenceIdState(previous);
+      }
+    });
+  };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -170,6 +206,9 @@ export function EditSessionForm({
     if (!removeTarget) return;
     const result = await removeSessionSample(removeTarget.id, locale);
     if (!result.ok) throw new Error(result.error);
+    // The DB SETs NULL on the FK when the referenced sample is deleted —
+    // mirror that locally so the select doesn't keep pointing at a gone row.
+    if (removeTarget.id === referenceId) setReferenceIdState(null);
     router.refresh();
   };
 
@@ -343,6 +382,24 @@ export function EditSessionForm({
         </div>
       </div>
 
+      {/* e. Reference sample */}
+      <div className={cardCls}>
+        <div>
+          <label className={labelCls}>{t.referenceTitle}</label>
+          <p className="text-xs text-on-surface-variant mb-2">{t.referenceHelper}</p>
+        </div>
+        <Select
+          value={referenceId ?? ""}
+          onChange={handleReferenceChange}
+          ariaLabel={t.referenceTitle}
+          className={closed ? "pointer-events-none opacity-60" : ""}
+          options={[
+            { value: "", label: t.referenceNone },
+            ...samples.map((s) => ({ value: s.id, label: s.label })),
+          ]}
+        />
+      </div>
+
       <ConfirmDialog
         open={removeTarget !== null}
         onOpenChange={(o) => {
@@ -357,7 +414,7 @@ export function EditSessionForm({
         error={t.error}
       />
 
-      {/* e. Save bar */}
+      {/* f. Save bar */}
       <div className="flex flex-wrap items-center gap-4">
         <button
           type="submit"

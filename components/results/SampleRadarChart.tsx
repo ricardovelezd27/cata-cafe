@@ -19,6 +19,8 @@ import {
 import { ScoreBreakdownPanel, type ScoreBreakdownTranslations } from "@/components/results/ScoreBreakdownPanel";
 import { getChartColors } from "@/components/results/chartColors";
 import { useContainerWidth } from "@/hooks/useContainerWidth";
+import { formatSignedDelta } from "@/lib/referenceDelta";
+import { Badge } from "@/components/ui";
 
 const CHART_HEIGHT = 220;
 
@@ -56,6 +58,7 @@ type SampleResult = {
   physical: Record<string, unknown>;
   extrinsic: Record<string, unknown>;
   aggregateScore: AggregateScoreData | null;
+  isReference?: boolean;
 };
 
 export function SampleRadarChart({
@@ -65,6 +68,12 @@ export function SampleRadarChart({
   showCommunity,
   isOwner,
   onReveal,
+  // Pre-derived displayed score (community when visible, else mine) for the
+  // session's reference sample — see ResultsClient. null when there is no
+  // reference, or the reference itself is unscored.
+  referenceScore = null,
+  referenceBadge,
+  deltaVsReferenceAria,
   t,
 }: {
   sample: SampleResult;
@@ -73,6 +82,9 @@ export function SampleRadarChart({
   showCommunity: boolean;
   isOwner: boolean;
   onReveal: (sampleId: string) => void;
+  referenceScore?: number | null;
+  referenceBadge?: string;
+  deltaVsReferenceAria?: string;
   t: { mine: string; community: string; deltaAttribute: string; breakdown: ScoreBreakdownTranslations };
 }) {
   const showAffective = format !== "descriptive";
@@ -149,8 +161,15 @@ export function SampleRadarChart({
       {/* Header */}
       <div className="mb-2 flex items-start justify-between gap-3">
         <div>
-          <div className="font-display text-lg font-semibold leading-tight text-primary-container">
-            {sample.label}
+          <div className="flex items-center gap-1.5">
+            <div className="font-display text-lg font-semibold leading-tight text-primary-container">
+              {sample.label}
+            </div>
+            {sample.isReference && referenceBadge && (
+              <Badge tone="accent" size="xs">
+                {referenceBadge}
+              </Badge>
+            )}
           </div>
           {sample.revealed && sample.coffee && (
             <div className="mt-0.5 text-[11px] text-on-surface-variant">
@@ -171,6 +190,15 @@ export function SampleRadarChart({
               >
                 {scoreNum.toFixed(2)}
               </div>
+              {!sample.isReference && referenceScore !== null && (
+                <div
+                  className="mt-0.5 text-[10px] font-medium text-on-surface-variant tabular-nums"
+                  title={deltaVsReferenceAria}
+                  aria-label={deltaVsReferenceAria}
+                >
+                  Δ {formatSignedDelta(scoreNum - referenceScore)}
+                </div>
+              )}
             </div>
           )}
 

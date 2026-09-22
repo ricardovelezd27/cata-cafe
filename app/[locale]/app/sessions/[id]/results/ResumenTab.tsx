@@ -2,8 +2,9 @@
 
 import { ChevronRight } from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { ScorePill, InfoHint } from "@/components/ui";
+import { ScorePill, InfoHint, Badge } from "@/components/ui";
 import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
+import { deltasVsReference, formatSignedDelta } from "@/lib/referenceDelta";
 import type { SessionFormat } from "@/lib/constants";
 import type { SampleBlockFreq } from "@/components/results/DescriptorFrequency";
 import type { SampleResult, ResultsHelp } from "./types";
@@ -33,6 +34,8 @@ type ResumenTabTranslations = {
   viewInDescriptors: string;
   communityPending: string;
   sdAria: string;
+  referenceBadge: string;
+  deltaVsReferenceAria: string;
 };
 
 function average(values: number[]): number | null {
@@ -81,6 +84,7 @@ export function ResumenTab({
   myAlignment,
   descriptorFrequency,
   isSoloDescriptors,
+  referenceId,
   locale,
   onOpenSample,
   onOpenDescriptors,
@@ -96,6 +100,9 @@ export function ResumenTab({
   myAlignment: { alignment: number; matches: number; opportunities: number } | null;
   descriptorFrequency: SampleBlockFreq[] | null;
   isSoloDescriptors: boolean;
+  // Id of the owner-marked "Referencia" (control) sample, or null when none is
+  // set — gates the Δ chip and the reference legend/badge entirely.
+  referenceId: string | null;
   locale: string;
   onOpenSample: (sampleId: string) => void;
   onOpenDescriptors: (sampleId: string | null) => void;
@@ -138,6 +145,15 @@ export function ResumenTab({
       if (b.score !== a.score) return b.score - a.score;
       return a.position - b.position;
     });
+
+  // Δ vs. the reference (control) sample, keyed by sample id — same basis
+  // (rankFor's displayed score) as the number the chip sits next to. Null
+  // for the reference row itself, unscored rows, and everyone when there is
+  // no reference.
+  const refDeltas = deltasVsReference(
+    ranked.map((r) => ({ id: r.sample.id, score: r.score })),
+    referenceId,
+  );
 
   // ---- Stat row ----
   const evaluatedCount = samples.filter(hasAnyEvalData).length;
@@ -218,6 +234,13 @@ export function ResumenTab({
           <h2 className="inline-flex items-center gap-1.5 font-display text-xl text-primary-container">
             {t.ranking}
             <InfoHint title={help.ranking.title} body={help.ranking.body} closeLabel={help.closeLabel} />
+            {referenceId !== null && (
+              <InfoHint
+                title={help.referencia.title}
+                body={help.referencia.body}
+                closeLabel={help.closeLabel}
+              />
+            )}
           </h2>
           <div className="flex flex-col gap-2">
             {ranked.map(({ sample, score, sd }, idx) => (
@@ -231,7 +254,14 @@ export function ResumenTab({
                   {idx + 1}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium text-on-surface">{sample.label}</div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="truncate font-medium text-on-surface">{sample.label}</div>
+                    {sample.isReference && (
+                      <Badge tone="accent" size="xs">
+                        {t.referenceBadge}
+                      </Badge>
+                    )}
+                  </div>
                   {sample.revealed && sample.coffee && (
                     <div className="truncate text-xs text-on-surface-variant">
                       {sample.coffee.name}
@@ -250,6 +280,18 @@ export function ResumenTab({
                         ± {sd.toFixed(1)}
                       </span>
                     )}
+                    {(() => {
+                      const d = refDeltas.get(sample.id);
+                      return typeof d === "number" ? (
+                        <span
+                          className="shrink-0 text-xs text-on-surface-variant tabular-nums"
+                          title={t.deltaVsReferenceAria}
+                          aria-label={t.deltaVsReferenceAria}
+                        >
+                          Δ {formatSignedDelta(d)}
+                        </span>
+                      ) : null;
+                    })()}
                   </>
                 ) : (
                   <span className="shrink-0 text-xs text-on-surface-variant">

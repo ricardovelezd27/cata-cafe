@@ -240,6 +240,7 @@ export async function sendCloseEmails(
       }));
       return {
         label: s.label,
+        isReference: s.id === session.referenceSampleId,
         coffeeName: s.revealed ? (s.coffee?.name ?? null) : null,
         communityScore: agg?.communityScore ?? null,
         evaluators: f?.totalEvaluators ?? 0,
@@ -315,6 +316,7 @@ export async function sendCloseEmails(
             revealed: s.revealed,
             coffeeName: s.coffee?.name ?? null,
             roastLevel: s.coffee?.roastLevel ?? null,
+            isReference: s.id === session.referenceSampleId,
             descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
             affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
             combined: (ev?.combinedData as Record<string, unknown>) ?? {},

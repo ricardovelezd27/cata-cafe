@@ -53,6 +53,10 @@ export type SampleResult = {
   physical: Record<string, unknown>;
   extrinsic: Record<string, unknown>;
   aggregateScore: AggregateScoreData | null;
+  // True for the ONE sample the owner marked as the "Referencia" (control) —
+  // session.referenceSampleId. Display-only: scoring is untouched. See
+  // lib/referenceDelta.ts for the Δ-vs-reference helpers this feeds.
+  isReference: boolean;
 };
 
 // In-app help (InfoHint) content — one title/body pair per help topic. Shared
@@ -73,4 +77,5 @@ export type ResultsHelp = {
   nube: HelpTopic;
   frecuencia: HelpTopic;
   alineacion: HelpTopic;
+  referencia: HelpTopic;
 };

@@ -11,6 +11,7 @@ import { NotifyGroupPanel, type NotifyGroupOption, type NotifyGroupTranslations 
 import { InviteQR } from "@/components/ui/InviteQR";
 import { buildInviteUrl } from "@/lib/inviteUrl";
 import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
+import { Badge } from "@/components/ui/Badge";
 
 // Groups v2: session wizard extends NotifyGroupTranslations with the
 // step-1 "link a group" selector copy + the step-2 auto-invite success
@@ -118,6 +119,12 @@ type Translations = {
     samplesTitle: string;
     samplesHelper: string;
     moreDetails: string;
+    referenceTitle: string;
+    referenceHelper: string;
+    /** Raw ICU string (t.raw()) — contains a literal "{label}" token. */
+    referenceMark: string;
+    referenceBadge: string;
+    referenceNone: string;
     errors: {
       no_samples: string;
       no_coffees: string;
@@ -126,6 +133,7 @@ type Translations = {
       sample_without_coffee: string;
       generic: string;
       coffee_not_found: string;
+      invalid_reference?: string;
     };
   };
   picker: {
@@ -265,6 +273,10 @@ export function NewSessionForm({
     },
   ]);
 
+  // Reference sample — the SampleEntry.id (never the index) so add/remove/
+  // reorder keep the selection stable across relabelling.
+  const [referenceId, setReferenceId] = useState<string | null>(null);
+
   // Group session fields — a valid ?groupId= prefill turns the toggle on and
   // preselects the group in one step.
   const [isGroup, setIsGroup] = useState(!!initialGroupId);
@@ -380,6 +392,9 @@ export function NewSessionForm({
     }
     setCoffees(nextCoffees);
     setSamples(relabel(nextSamples, t.newForm.sampleChip));
+    if (referenceId && !nextSamples.some((s) => s.id === referenceId)) {
+      setReferenceId(null);
+    }
     if (invalidCoffeeId === id) {
       setInvalidCoffeeId(null);
       setErrorCode(null);
@@ -398,6 +413,7 @@ export function NewSessionForm({
   const removeSample = (id: string) => {
     if (samples.length <= 1) return;
     setSamples((prev) => relabel(prev.filter((s) => s.id !== id), t.newForm.sampleChip));
+    if (referenceId === id) setReferenceId(null);
   };
 
   const updateSampleLabel = (id: string, value: string) => {
@@ -455,6 +471,9 @@ export function NewSessionForm({
       label: s.label,
       coffeeIdx: idxById.get(s.coffeeId) ?? 0,
     }));
+    const referenceIdx = referenceId
+      ? ((idx) => (idx === -1 ? null : idx))(samples.findIndex((s) => s.id === referenceId))
+      : null;
 
     start(async () => {
       if (!isGroup) {
@@ -466,6 +485,7 @@ export function NewSessionForm({
           cupsPerSample,
           coffees: coffeePayload,
           samples: samplePayload,
+          referenceIdx,
           locale,
         });
         if (result) setErrorCode(result.error);
@@ -478,6 +498,7 @@ export function NewSessionForm({
           cupsPerSample,
           coffees: coffeePayload,
           samples: samplePayload,
+          referenceIdx,
           closesAt: closesAt || undefined,
           groupId: linkedGroupId || undefined,
           notifyGroup,
@@ -509,8 +530,18 @@ export function NewSessionForm({
 
   // ── Step 2: Invite link ──────────────────────────────────────────────────────
   if (step === "invite") {
+    const refSample = referenceId ? samples.find((s) => s.id === referenceId) : undefined;
     return (
       <div className="space-y-6">
+        {refSample && (
+          <p className="flex items-center gap-2 text-sm text-on-surface">
+            <Badge tone="accent" size="xs">
+              {t.newForm.referenceBadge}
+            </Badge>
+            {refSample.label}
+          </p>
+        )}
+
         <div className="bg-surface-container-low border border-outline-variant rounded-card p-5 space-y-3">
           <p className="text-sm font-semibold text-primary-container">{t.groupInviteLink}</p>
           {inviteUrl && (
@@ -1001,22 +1032,48 @@ export function NewSessionForm({
           <p className="text-xs text-on-surface-variant">{t.newForm.samplesHelper}</p>
         </div>
 
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
+              {t.newForm.referenceTitle}
+            </p>
+            <p className="text-xs text-on-surface-variant">{t.newForm.referenceHelper}</p>
+          </div>
+          {referenceId !== null && (
+            <button
+              type="button"
+              onClick={() => setReferenceId(null)}
+              className="text-xs font-medium text-primary-container hover:underline shrink-0"
+            >
+              {t.newForm.referenceNone}
+            </button>
+          )}
+        </div>
+
         <div className="space-y-2">
           {samples.map((s) => (
-            <div key={s.id} className="flex items-center gap-2">
+            <div key={s.id} className="flex flex-wrap items-center gap-2 min-w-0">
+              <input
+                type="radio"
+                name="reference"
+                checked={referenceId === s.id}
+                onChange={() => setReferenceId(s.id)}
+                aria-label={t.newForm.referenceMark.replace("{label}", s.label.trim() || t.sampleLabel)}
+                className="h-4 w-4 shrink-0 accent-secondary cursor-pointer"
+              />
               <input
                 value={s.label}
                 onChange={(e) => updateSampleLabel(s.id, e.target.value)}
                 aria-label={t.sampleLabel}
                 placeholder={t.sampleLabel}
-                className={inputCls + " flex-1"}
+                className={inputCls + " flex-1 min-w-[8rem]"}
               />
               {coffees.length > 1 && (
                 <select
                   value={s.coffeeId}
                   onChange={(e) => updateSampleCoffee(s.id, e.target.value)}
                   aria-label={t.sampleCoffee}
-                  className={inputCls + " flex-1 cursor-pointer"}
+                  className={inputCls + " flex-1 min-w-[8rem] cursor-pointer"}
                 >
                   {coffees.map((c, ci) => (
                     <option key={c.id} value={c.id}>
