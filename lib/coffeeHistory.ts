@@ -174,5 +174,17 @@ export async function detachCoffeeHistoryForSession(
       detached += res.count;
     }
   }
+
+  // Cut the FKs ourselves BEFORE the caller deletes the session. Relying on
+  // the DB's ON DELETE SET NULL fails here: the rows above were written in
+  // this same transaction, so Postgres re-checks every FK on them when the
+  // session's SET NULL action updates sessionId — and by then the cascade
+  // has already removed the evaluations, so the still-set evaluationId
+  // violates user_coffee_history_evaluationId_fkey (P2003, seen 2026-09-24
+  // on every closed session with submitted coffee-linked evaluations).
+  await db.userCoffeeHistory.updateMany({
+    where: { sessionId },
+    data: { sessionId: null, evaluationId: null },
+  });
   return { detached };
 }

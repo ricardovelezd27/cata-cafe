@@ -80,11 +80,22 @@ en vivo es la **cata de calibración de fin de mes** de Kim — ver
 Construido el 2026-09-22. `npx tsc --noEmit` y `npm run lint` pasan limpio sobre la
 rama. Pendiente:
 
-- [ ] Pendiente: aplicar la migración `20260922120000_reference_sample` en producción
-  (`npx prisma migrate deploy` — ver runbook §7).
-- [ ] Pendiente: la prueba con dos navegadores de la sección "Cómo comprobarlo" de más
-  abajo.
-- [ ] Pendiente: fusionar `claude/cafe-sensible-improvements-51283e` a `main`.
+- [x] Migración `20260922120000_reference_sample` aplicada en producción el 2026-09-24
+  (runbook §7).
+- [x] Prueba con dos usuarios hecha el 2026-09-24 (todos los pasos de "Cómo comprobarlo").
+  Salvedad: la actualización en vivo en la pantalla del participante no pudo confirmarse
+  desde el navegador de pruebas (la pestaña en segundo plano perdió la conexión); en la
+  pantalla del maestro sí se observó. Conviene comprobarlo en la cata real: si el
+  participante no ve el cambio, basta con recargar la página.
+- [ ] Pendiente: fusionar `claude/cafe-sensible-improvements-51283e` a `main` y desplegar.
+
+## Arreglo adicional encontrado en la prueba
+
+Al borrar la sesión de prueba apareció un error previo (no causado por la referencia): borrar
+una sesión cerrada con evaluaciones enviadas fallaba por una restricción de la base de datos
+en el historial de cafés. Está corregido en esta misma rama (`lib/coffeeHistory.ts`): el
+historial de cada catador se desvincula explícitamente antes de borrar la sesión, tal como
+ya prometía la función "borrar conserva el historial".
 
 ## Cómo comprobarlo
 
