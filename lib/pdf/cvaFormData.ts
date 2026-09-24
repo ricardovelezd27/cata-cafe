@@ -121,6 +121,7 @@ export const CVA_TEXT: Record<Locale, Record<string, string>> = {
     aftertasteShort: "Sabor residual",
     mouthfeelShort: "Sens. en boca",
     overallShort: "Global",
+    reference: "Referencia",
   },
   en: {
     descriptive: "Descriptive assessment",
@@ -194,6 +195,7 @@ export const CVA_TEXT: Record<Locale, Record<string, string>> = {
     aftertasteShort: "Aftertaste",
     mouthfeelShort: "Mouthfeel",
     overallShort: "Overall",
+    reference: "Reference",
   },
 };
 
@@ -644,6 +646,7 @@ export type SheetHeader = {
   roastLevel: string | null; // only when revealed — same gate as coffeeName
   cupsPerSample: number;
   purpose: string;
+  isReference: boolean;
 };
 
 // ─── The full per-sample sheet model ────────────────────────────────────────
@@ -688,6 +691,7 @@ export type CvaFormInput = {
     revealed: boolean;
     coffeeName: string | null;
     roastLevel: string | null;
+    isReference?: boolean;
     descriptive: D;
     affective: D;
     combined: D;
@@ -844,6 +848,7 @@ export function buildCvaFormData(input: CvaFormInput): CvaSampleSheet {
       roastLevel: input.sample.revealed ? input.sample.roastLevel : null,
       cupsPerSample: input.cupsPerSample,
       purpose: input.purpose,
+      isReference: input.sample.isReference ?? false,
     },
     format,
     descriptorStages,

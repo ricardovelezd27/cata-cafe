@@ -159,3 +159,17 @@
 }
 
 .activeH .position { color: var(--color-green-dark); }
+
+/* "Referencia" pill — the owner-chosen control sample, visible to everyone. */
+.reference {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-secondary);
+  background: var(--color-secondary-fixed);
+}

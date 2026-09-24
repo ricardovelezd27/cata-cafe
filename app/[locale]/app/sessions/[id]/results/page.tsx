@@ -142,6 +142,7 @@ export default async function ResultsPage({
       descriptive: Record<string, unknown>;
       affective: Record<string, unknown>;
       combined: Record<string, unknown>;
+      isReference: boolean;
     }[];
   };
   let participantResults: ParticipantResult[] | null = null;
@@ -256,6 +257,7 @@ export default async function ResultsPage({
               descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
               affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
               combined: (ev?.combinedData as Record<string, unknown>) ?? {},
+              isReference: s.id === session.referenceSampleId,
             };
           }),
         }))
@@ -623,6 +625,7 @@ export default async function ResultsPage({
             physical: (s.physical?.data as Record<string, unknown>) ?? {},
             extrinsic: s.revealed ? ((s.extrinsic?.data as Record<string, unknown>) ?? {}) : {},
             aggregateScore,
+            isReference: s.id === session.referenceSampleId,
           };
         }),
       }}
@@ -639,6 +642,10 @@ export default async function ResultsPage({
         radarCommunity: tResults("community"),
         deltaAttribute: tResults("deltaAttribute"),
         flavorProfiles: tResults("flavorProfiles"),
+        referenceBadge: tResults("referenceBadge"),
+        deltaVsReference: tResults("deltaVsReference"),
+        deltaVsReferenceAria: tResults("deltaVsReferenceAria"),
+        referenceLegend: tResults("referenceLegend"),
         tabResumen: tResults("tabs.resumen"),
         tabResultados: tResults("tabs.resultados"),
         tabDescriptores: tResults("tabs.descriptores"),
@@ -705,6 +712,9 @@ export default async function ResultsPage({
           viewInDescriptors: tResults("dashboard.viewInDescriptors"),
           communityPending: tResults("communityPending"),
           sdAria: tResults("sdAria"),
+          referenceBadge: tResults("referenceBadge"),
+          deltaVsReference: tResults("deltaVsReference"),
+          deltaVsReferenceAria: tResults("deltaVsReferenceAria"),
         },
         table: {
           sample: tResults("table.sample"),
@@ -792,6 +802,10 @@ export default async function ResultsPage({
           alineacion: {
             title: tResults("help.alineacion.title"),
             body: tResults("help.alineacion.body"),
+          },
+          referencia: {
+            title: tResults("help.referencia.title"),
+            body: tResults("help.referencia.body"),
           },
         },
       }}

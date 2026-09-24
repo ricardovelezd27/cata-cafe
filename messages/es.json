@@ -166,6 +166,12 @@
       "samplesTitle": "Muestras",
       "samplesHelper": "Cada muestra se cata por separado. Edita su etiqueta y asígnale un café.",
       "moreDetails": "Más detalles del café (opcional)",
+      "referenceTitle": "Muestra de referencia",
+      "referenceHelper": "Opcional. Marca una muestra como referencia para comparar las demás contra ella en los resultados. Se cata y se puntúa como cualquier otra.",
+      "referenceMark": "Marcar {label} como referencia",
+      "referenceBadge": "Referencia",
+      "referenceNone": "Sin referencia",
+      "referenceClear": "Quitar referencia",
       "errors": {
         "no_samples": "Agrega al menos una muestra para iniciar la sesión.",
         "no_coffees": "Agrega al menos un café para iniciar la sesión.",
@@ -180,7 +186,8 @@
         "invalid_format": "Elige un formato de cata válido.",
         "invalid_cups": "Las tazas por muestra deben ser un número entre 1 y 5.",
         "too_many_samples": "Máximo 100 muestras por sesión.",
-        "invalid_closes_at": "La fecha de cierre debe estar en el futuro."
+        "invalid_closes_at": "La fecha de cierre debe estar en el futuro.",
+        "invalid_reference": "La muestra de referencia no es válida. Elige una de la lista."
       }
     },
     "deleteSession": {
@@ -228,7 +235,11 @@
       "saving": "Guardando…",
       "saved": "Cambios guardados",
       "error": "No se pudo guardar la sesión. Inténtalo de nuevo.",
-      "backToSessions": "Volver a sesiones"
+      "backToSessions": "Volver a sesiones",
+      "referenceTitle": "Muestra de referencia",
+      "referenceNone": "Sin referencia",
+      "referenceHelper": "Las demás muestras se comparan contra esta en los resultados. No afecta el puntaje.",
+      "referenceSaved": "Referencia actualizada"
     }
   },
   "cupping": {
@@ -259,6 +270,8 @@
     "savedLocally": "Guardado en este dispositivo · pendiente de sincronizar",
     "noSamplesTitle": "Esta sesión no tiene muestras",
     "noSamplesBody": "Añade al menos una muestra para empezar a catar.",
+    "referenceBadge": "Referencia",
+    "compareHint": "Compara con la referencia ({label})",
     "phases": {
       "fragrance": "Fragancia",
       "aroma": "Aroma",
@@ -308,7 +321,8 @@
     "checkingLabel": "Verificando...",
     "notStartedMsg": "Aún no ha comenzado",
     "backToSessions": "Volver a mis sesiones",
-    "connectionLost": "Conexión en vivo perdida — comprobando cada 15 s"
+    "connectionLost": "Conexión en vivo perdida — comprobando cada 15 s",
+    "referenceLine": "Muestra de referencia: {label}"
   },
   "score": {
     "individual": "Puntaje individual",
@@ -464,7 +478,9 @@
     "guestOfflineNotice": "Necesitas conexión para unirte; una vez dentro puedes catar sin internet.",
     "guestDataNotice": "Como invitado, tu acceso queda ligado a este navegador: si borras los datos de navegación o cambias de dispositivo, perderás tu avance. Al ver tus resultados podrás guardarlos creando tu cuenta.",
     "guestError": "No se pudo entrar como invitado. Intenta con tu correo.",
-    "sessionClosed": "Esta cata ya cerró — pide al organizador el enlace de resultados."
+    "sessionClosed": "Esta cata ya cerró — pide al organizador el enlace de resultados.",
+    "referenceSelect": "Muestra de referencia",
+    "referenceNone": "Sin referencia"
   },
   "results": {
     "title": "Resultados de la Sesión",
@@ -492,6 +508,10 @@
     "flavorProfiles": "Perfiles de Sabor",
     "communityPending": "Los resultados grupales aparecerán cuando todos los participantes envíen sus evaluaciones o el maestro cierre la sesión.",
     "sdAria": "Desviación estándar entre catadores — menor es más consenso",
+    "referenceBadge": "Referencia",
+    "deltaVsReference": "Δ vs. referencia",
+    "deltaVsReferenceAria": "Diferencia de puntaje frente a la muestra de referencia; positiva si esta muestra puntuó más alto",
+    "referenceLegend": "Δ = diferencia frente a la referencia",
     "closedOn": "Cata cerrada el {date}",
     "liveUpdatesDown": "Actualizaciones en vivo no disponibles — pulsa «Actualizar» para ver lo último.",
     "closeEmails": {
@@ -666,6 +686,10 @@
       "alineacion": {
         "title": "Alineación de catadores",
         "body": "Solo visible para el maestro: qué porcentaje de los descriptores de consenso del grupo eligió cada catador. Con una muestra filtrada, muestra la alineación en esa muestra específica."
+      },
+      "referencia": {
+        "title": "Muestra de referencia",
+        "body": "El maestro de cata puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La referencia se cata, se puntúa y se ordena como cualquier otra muestra; no cambia ningún puntaje.\nLo que agrega es contexto: junto a cada muestra verás Δ, la diferencia entre su puntaje y el de la referencia, calculada siempre con el mismo tipo de puntaje que ves al lado (comunitario cuando está visible; si no, el tuyo). Si una muestra y la referencia no tienen el mismo tipo de puntaje, no se muestra Δ.\nReferencia, media del grupo y desviación son cosas distintas: la referencia es el punto de partida elegido por el maestro; la media es lo que percibió el grupo; la desviación (±) es cuánto se dispersó el grupo."
       }
     }
   },

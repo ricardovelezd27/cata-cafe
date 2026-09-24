@@ -72,12 +72,13 @@ const extrinsic = {
   ext_certs: ["Orgánico"],
 };
 
-function sample(label: string, revealed = true) {
+function sample(label: string, revealed = true, isReference = false) {
   return {
     label,
     revealed,
     coffeeName: revealed ? `Lote ${label}` : null,
     roastLevel: revealed ? "Medio" : null,
+    isReference,
     descriptive,
     affective,
     combined: { ...descriptive, ...affective },
@@ -106,7 +107,7 @@ async function main() {
       ...base,
       format,
       samples: Array.from({ length: count }, (_, i) =>
-        sample(String.fromCharCode(65 + i), i % 3 !== 2)
+        sample(String.fromCharCode(65 + i), i % 3 !== 2, i === 0)
       ),
     };
     const file = path.join(OUT, `cva-${format}.pdf`);

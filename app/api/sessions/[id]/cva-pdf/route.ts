@@ -97,6 +97,7 @@ export async function GET(
         revealed: sample.revealed,
         coffeeName: sample.coffee?.name ?? null,
         roastLevel: sample.coffee?.roastLevel ?? null,
+        isReference: sample.id === session.referenceSampleId,
         descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
         affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
         combined: (ev?.combinedData as Record<string, unknown>) ?? {},

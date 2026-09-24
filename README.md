@@ -100,6 +100,8 @@ Default language is **Spanish** (the working language of much of the specialty-c
 
 **Coffee library & history** — Every revealed coffee gets a profile tracking each session it appeared in; each cupper gets a personal tasting history with individual and community scores. Every coffee also gets a short, shareable 6-character code (e.g. `K7M-3FP`) shown on its profile and searchable by prefix in the coffee picker.
 
+**Reference sample (control) with signed Δ on results** — the session leader marks one sample as the point of comparison, and every other sample's score is shown against it — score with context.
+
 **Mobile-ready** — A responsive cupping layout with mobile sample navigation, tuned for tablets and phones at the cupping table.
 
 ---
@@ -153,6 +155,7 @@ The session leader creates and controls all aspects of the session.
    - **Format** — Descriptive, Affective, or Combined
    - **Cups per sample** — how many cups each sample is served in (affects penalty calculations)
    - **Samples** — add one row per coffee sample; each gets a blind label (e.g. "A", "B", "C") and, if you like, a linked coffee — only the coffee's **name** is required, altitude and roast level can be filled in later
+     - Optionally mark one sample as the **Referencia** (control) with a radio next to it — every other sample's results will show a Δ against it. You can change this later from the master panel or the sample edit dialog inside `/cup`.
    - Leave **Group session** toggle off for solo use
 3. Click **Create session** — you land directly on the cupping interface. Each new coffee gets a short shareable code automatically (see [Coffee Profiles](#all-users-coffee-profiles)).
 
@@ -198,7 +201,7 @@ Group sessions add invite management, real-time progress tracking, reveal contro
 
 #### 1. Create a group session
 
-1. Click **Nueva sesión** and fill in the same fields as a solo session.
+1. Click **Nueva sesión** and fill in the same fields as a solo session, including — optionally — marking one sample as the **Referencia** (control) with the radio next to it. Step 2 of the wizard shows the chosen reference label.
 2. Toggle **Sesión grupal** on.
 3. Optional group-specific settings:
    - **Asíncrona** — participants can cup at different times (no live session required)
@@ -217,6 +220,7 @@ Group sessions add invite management, real-time progress tracking, reveal contro
 On the cupping page, the **Master Controls panel** (visible only to the session leader) shows:
 
 - **X / Y submitted** — live count of how many participants have submitted their evaluation for each sample. This updates in real time as participants submit — no page refresh needed.
+- A **Muestra de referencia** selector — change which sample is the reference at any time before the session closes; participants see the change live, no reload needed.
 - Per-sample **Reveal** buttons (see step 4 below).
 - A **Close Session** button (see step 5 below).
 
@@ -266,6 +270,8 @@ Same flow as the session leader:
 2. Fill in the evaluation form (Descriptive, Affective, or Combined — set by the session leader at creation).
 3. Your work saves automatically.
 
+If the session leader marked a reference sample, its tab shows a small **Referencia** pill and every other sample shows a "Compara con la referencia (X)" hint — a reminder of what you're scoring against.
+
 #### 3. Submit your evaluation
 
 When you are satisfied with your scores for a sample:
@@ -292,6 +298,7 @@ Once the session leader closes the session, the **Results** page shows two tabs:
 - Accessible from any session card in the Dashboard or Sessions list.
 - For solo sessions: individual scores and SCA CVA breakdown only.
 - For group sessions (closed, or if you are the session leader): tab toggle for individual vs. group results.
+- If a reference sample was marked, it carries a **Referencia** badge everywhere its label appears (ranking, table, chart cards, drill-down), and every other sample shows a signed **Δ** against it, with an info icon explaining how to read it.
 - **PDF export**: click **Imprimir / PDF** to generate a formatted evaluation certificate.
 
 #### Personal tasting history
@@ -451,6 +458,8 @@ npx prisma migrate dev        # Apply all pending migrations
 npx prisma generate           # Regenerate Prisma client after schema changes
 npx prisma studio             # GUI DB explorer at localhost:5555
 ```
+
+Migration `20260922120000_reference_sample` (adds `cupping_sessions.referenceSampleId`) is additive and nullable — it needs no manual SQL step.
 
 ### Manual Supabase steps (SQL Editor)
 

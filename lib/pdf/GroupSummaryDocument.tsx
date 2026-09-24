@@ -43,6 +43,7 @@ const TEXT: Record<Locale, Record<string, string>> = {
     intro:
       "Resumen estadístico anónimo de la sesión. Los datos son agregados: no incluyen nombres de catadores.",
     none: "—",
+    reference: "Referencia",
   },
   en: {
     spec: "SCA CVA · Group summary",
@@ -58,6 +59,7 @@ const TEXT: Record<Locale, Record<string, string>> = {
     intro:
       "Anonymous statistical summary of the session. Figures are aggregated: no cupper names are included.",
     none: "—",
+    reference: "Reference",
   },
 };
 
@@ -125,6 +127,8 @@ const s = StyleSheet.create({
 /** One sample's anonymous summary: score + ordered block sentences. */
 export type GroupSummarySample = {
   label: string;
+  /** True when the session owner marked this as the reference (control) sample. */
+  isReference?: boolean;
   /** Revealed coffee name, or null when still blind. */
   coffeeName: string | null;
   /** Community score (0–100) or null when none could be computed. */
@@ -156,7 +160,10 @@ function SampleCard({
       <View style={s.sampleHead}>
         <View style={s.sampleLabelWrap}>
           <Text style={s.sampleTag}>{t.sample}</Text>
-          <Text style={s.sampleLabel}>{sample.label}</Text>
+          <Text style={s.sampleLabel}>
+            {sample.label}
+            {sample.isReference ? ` · ${t.reference}` : ""}
+          </Text>
           {sample.coffeeName ? (
             <Text style={s.coffeeName}>· {sample.coffeeName}</Text>
           ) : null}

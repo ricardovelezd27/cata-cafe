@@ -26,7 +26,7 @@ import {
 } from "@/lib/descriptors";
 import { ScoreBreakdownPanel, type ScoreBreakdownTranslations } from "@/components/results/ScoreBreakdownPanel";
 import { ExtrinsicSummary } from "@/components/results/ExtrinsicSummary";
-import { ScorePill, Button } from "@/components/ui";
+import { Badge, ScorePill, Button } from "@/components/ui";
 import type { SessionFormat } from "@/lib/constants";
 
 type Lang = "es" | "en";
@@ -226,6 +226,7 @@ export function SampleDetail({
   cupsPerSample,
   locale,
   onEdit,
+  referenceBadge = null,
   t,
 }: {
   sampleLabel: string;
@@ -238,6 +239,9 @@ export function SampleDetail({
   cupsPerSample: number;
   locale: string;
   onEdit?: () => void;
+  // Non-null only when this sample IS the session's reference (control)
+  // sample — the dialog passes `sample.isReference ? referenceBadge : null`.
+  referenceBadge?: string | null;
   t: SampleDetailTranslations;
 }) {
   const lang: Lang = locale === "en" ? "en" : "es";
@@ -276,6 +280,13 @@ export function SampleDetail({
       <div className="flex items-start justify-between gap-3 pb-2">
         <div className="min-w-0 flex-1 font-display text-lg font-medium leading-tight text-primary-container">
           {sampleLabel}
+          {referenceBadge && (
+            <span className="ml-1.5 inline-flex align-middle">
+              <Badge tone="accent" size="xs">
+                {referenceBadge}
+              </Badge>
+            </span>
+          )}
           {coffeeName && (
             <span className="font-sans text-sm font-normal text-on-surface-variant">
               {" "}

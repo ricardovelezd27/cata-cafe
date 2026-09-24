@@ -37,6 +37,7 @@ import {
 } from "@/components/ui";
 import { updateSampleMetadata } from "@/app/actions/sessions";
 import { asSessionFormat, type SessionFormat } from "@/lib/constants";
+import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
 import { ArrowLeft, FileDown, Printer, RefreshCw } from "lucide-react";
 import { ResumenTab } from "./ResumenTab";
 import type { SampleResult, ResultsHelp } from "./types";
@@ -170,6 +171,10 @@ export function ResultsClient({
     radarCommunity: string;
     deltaAttribute: string;
     flavorProfiles: string;
+    referenceBadge: string;
+    deltaVsReference: string;
+    deltaVsReferenceAria: string;
+    referenceLegend: string;
     tabResumen: string;
     tabResultados: string;
     tabDescriptores: string;
@@ -236,6 +241,9 @@ export function ResultsClient({
       viewInDescriptors: string;
       communityPending: string;
       sdAria: string;
+      referenceBadge: string;
+      deltaVsReference: string;
+      deltaVsReferenceAria: string;
     };
     table: ScoreTableTranslations;
     detail: SampleDetailDialogTranslations;
@@ -412,6 +420,32 @@ export function ResultsClient({
   const showCommunity = canViewGroup;
   const canViewIndividual = (isOwner || isAdminViewer) && isGroup && !!participants?.length;
   const canViewDescriptors = !!descriptorFrequency?.length;
+
+  // ─── Reference (control) sample — display-only Δ basis for the ranking,
+  // table, radar, matrix, and drill-down surfaces. Scoring is untouched;
+  // this only decides what a Δ chip compares against. ───────────────────────
+  const resolvedFormat = format ?? asSessionFormat(session.format);
+  const referenceId = session.samples.find((s) => s.isReference)?.id ?? null;
+  const referenceSample = referenceId
+    ? (session.samples.find((s) => s.id === referenceId) ?? null)
+    : null;
+  // Same "my score" derivation ScoreTable/ResumenTab use: pick the format's
+  // affective dataset, guard on hasAffectiveData, then calcIndividualScore.
+  const referenceMyScore = ((): number | null => {
+    if (!referenceSample) return null;
+    const affData =
+      resolvedFormat === "affective"
+        ? referenceSample.affective
+        : resolvedFormat === "combined"
+          ? referenceSample.combined
+          : null;
+    if (!affData || !hasAffectiveData(affData)) return null;
+    const score = calcIndividualScore(affData, session.cupsPerSample);
+    return typeof score === "number" ? score : null;
+  })();
+  // Each surface pairs bases itself (ScoreTable per row, ResumenTab via
+  // rankFor's basis, the radar own-vs-own) — never mix my score with the
+  // reference's community score in one Δ.
 
   // ─── Descriptores tab filters (lifted so the Resumen dashboard can
   // preselect a sample before switching tabs) ────────────────────────────────
@@ -619,6 +653,7 @@ export function ResultsClient({
             myAlignment={myAlignment ?? null}
             descriptorFrequency={descriptorFrequency ?? null}
             isSoloDescriptors={isSoloDescriptors ?? false}
+            referenceId={referenceId}
             locale={locale}
             onOpenSample={(id) => {
               setTab("resultados");
@@ -651,6 +686,13 @@ export function ResultsClient({
               body={translations.help[resultsView].body}
               closeLabel={translations.help.closeLabel}
             />
+            {referenceId !== null && (
+              <InfoHint
+                title={translations.help.referencia.title}
+                body={translations.help.referencia.body}
+                closeLabel={translations.help.closeLabel}
+              />
+            )}
           </div>
 
           {/* Community results not yet visible to this participant */}
@@ -670,7 +712,14 @@ export function ResultsClient({
                 isOwner={isOwner}
                 onReveal={handleReveal}
                 onOpenDetail={(id) => setDetail({ sampleId: id, participantId: null })}
-                t={translations.table}
+                referenceId={referenceId}
+                t={{
+                  ...translations.table,
+                  referenceBadge: translations.referenceBadge,
+                  deltaVsReference: translations.deltaVsReference,
+                  deltaVsReferenceAria: translations.deltaVsReferenceAria,
+                  referenceLegend: translations.referenceLegend,
+                }}
               />
               {session.samples.some((s) => Object.keys(s.descriptive).length > 0) && (
                 <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4">
@@ -701,6 +750,10 @@ export function ResultsClient({
                     showCommunity={showCommunity}
                     isOwner={isOwner}
                     onReveal={handleReveal}
+                    referenceMyScore={referenceMyScore}
+                    referenceBadge={translations.referenceBadge}
+                    deltaVsReference={translations.deltaVsReference}
+                    deltaVsReferenceAria={translations.deltaVsReferenceAria}
                     t={{
                       mine: translations.radarMine,
                       community: translations.radarCommunity,
@@ -736,6 +789,7 @@ export function ResultsClient({
                 cupsPerSample={session.cupsPerSample}
                 readOnly={isAdminViewer}
                 onOpenDetail={(sampleId, participantId) => setDetail({ sampleId, participantId })}
+                referenceBadge={translations.referenceBadge}
                 t={translations.matrix}
               />
             </section>
@@ -783,6 +837,7 @@ export function ResultsClient({
           format={format ?? asSessionFormat(session.format)}
           cupsPerSample={session.cupsPerSample}
           locale={locale}
+          referenceBadge={translations.referenceBadge}
           onEdit={isAdminViewer ? undefined : () => handleEditSample(detailSample.id)}
           onEditMetadata={
             isOwner

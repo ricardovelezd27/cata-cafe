@@ -7,6 +7,8 @@ export type SampleTabItem = {
   id: string;
   label: string;
   filled?: boolean;
+  /** The session's "Referencia" sample — renders a small pill after the label. */
+  reference?: boolean;
 };
 
 interface SampleTabsProps {
@@ -15,6 +17,8 @@ interface SampleTabsProps {
   onSelect: (index: number) => void;
   header?: string;
   orientation?: "vertical" | "horizontal";
+  /** Pill text for `reference` items, e.g. "Referencia". */
+  referenceLabel?: string;
 }
 
 export function SampleTabs({
@@ -23,6 +27,7 @@ export function SampleTabs({
   onSelect,
   header,
   orientation = "vertical",
+  referenceLabel = "Ref",
 }: SampleTabsProps) {
   const horizontal = orientation === "horizontal";
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -57,6 +62,9 @@ export function SampleTabs({
             >
               <span className={styles.position}>{i + 1}</span>
               <span className={styles.label}>{s.label}</span>
+              {s.reference && (
+                <span className={styles.reference}>{referenceLabel}</span>
+              )}
               {s.filled && !isActive && (
                 <span className={styles.check} aria-label="completed">
                   ✓

@@ -2,6 +2,7 @@
 
 import { Link2, X, Copy, RotateCcw, Check, Play } from "lucide-react";
 import { InviteQR } from "./InviteQR";
+import { Select } from "./Select";
 import styles from "./MasterControls.module.css";
 
 interface MasterControlsProps {
@@ -42,6 +43,13 @@ interface MasterControlsProps {
   showStart?: boolean;
   isStarting?: boolean;
   onStart?: () => void;
+  /** Reference-sample select (rendered only when options + handler are given).
+   *  "Muestra de referencia" label; options include the "Sin referencia" entry
+   *  with value "" — the caller owns the list. */
+  referenceLabel?: string;
+  referenceOptions?: { value: string; label: string }[];
+  referenceValue?: string;
+  onReferenceChange?: (value: string) => void;
 }
 
 export function MasterControls({
@@ -68,6 +76,10 @@ export function MasterControls({
   showStart = false,
   isStarting = false,
   onStart,
+  referenceLabel,
+  referenceOptions,
+  referenceValue = "",
+  onReferenceChange,
 }: MasterControlsProps) {
   return (
     <section className={styles.wrap} aria-label={title}>
@@ -80,6 +92,18 @@ export function MasterControls({
         <p role="status" className={styles.liveDown}>
           {liveDownLabel}
         </p>
+      )}
+
+      {referenceOptions && onReferenceChange && (
+        <fieldset className={styles.referenceField} disabled={sessionClosed}>
+          <span className={styles.referenceLabel}>{referenceLabel}</span>
+          <Select
+            value={referenceValue}
+            onChange={onReferenceChange}
+            options={referenceOptions}
+            ariaLabel={referenceLabel ?? "Reference sample"}
+          />
+        </fieldset>
       )}
 
       <div className={styles.row}>

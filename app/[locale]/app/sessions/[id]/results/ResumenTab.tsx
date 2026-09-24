@@ -2,8 +2,9 @@
 
 import { ChevronRight } from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { ScorePill, InfoHint } from "@/components/ui";
+import { ScorePill, InfoHint, Badge } from "@/components/ui";
 import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
+import { deltasVsReference, formatSignedDelta, type ScoreBasis } from "@/lib/referenceDelta";
 import type { SessionFormat } from "@/lib/constants";
 import type { SampleBlockFreq } from "@/components/results/DescriptorFrequency";
 import type { SampleResult, ResultsHelp } from "./types";
@@ -33,6 +34,9 @@ type ResumenTabTranslations = {
   viewInDescriptors: string;
   communityPending: string;
   sdAria: string;
+  referenceBadge: string;
+  deltaVsReference: string;
+  deltaVsReferenceAria: string;
 };
 
 function average(values: number[]): number | null {
@@ -81,6 +85,7 @@ export function ResumenTab({
   myAlignment,
   descriptorFrequency,
   isSoloDescriptors,
+  referenceId,
   locale,
   onOpenSample,
   onOpenDescriptors,
@@ -96,6 +101,9 @@ export function ResumenTab({
   myAlignment: { alignment: number; matches: number; opportunities: number } | null;
   descriptorFrequency: SampleBlockFreq[] | null;
   isSoloDescriptors: boolean;
+  // Id of the owner-marked "Referencia" (control) sample, or null when none is
+  // set — gates the Δ chip and the reference legend/badge entirely.
+  referenceId: string | null;
   locale: string;
   onOpenSample: (sampleId: string) => void;
   onOpenDescriptors: (sampleId: string | null) => void;
@@ -115,21 +123,28 @@ export function ResumenTab({
   // scoreSd is only ever attached when the displayed rank score IS the
   // community score (never alongside the solo/"myScore" fallback) — the ±
   // chip in the ranking list relies on that pairing.
-  const rankFor = (sample: SampleResult): { score: number | null; sd: number | null } => {
-    if (format === "descriptive") return { score: null, sd: null };
+  const rankFor = (
+    sample: SampleResult,
+  ): { score: number | null; sd: number | null; basis: ScoreBasis | null } => {
+    if (format === "descriptive") return { score: null, sd: null, basis: null };
     if (isGroup && canViewGroup) {
       const community = sample.aggregateScore?.communityScore ?? null;
       if (community !== null) {
-        return { score: community, sd: sample.aggregateScore?.scoreSd ?? null };
+        return {
+          score: community,
+          sd: sample.aggregateScore?.scoreSd ?? null,
+          basis: "community",
+        };
       }
     }
-    return { score: myScoreFor(sample), sd: null };
+    const mine = myScoreFor(sample);
+    return { score: mine, sd: null, basis: mine === null ? null : "mine" };
   };
 
   const ranked = samples
     .map((sample, position) => {
-      const { score, sd } = rankFor(sample);
-      return { sample, position, score, sd };
+      const { score, sd, basis } = rankFor(sample);
+      return { sample, position, score, sd, basis };
     })
     .sort((a, b) => {
       if (a.score === null && b.score === null) return a.position - b.position;
@@ -138,6 +153,17 @@ export function ResumenTab({
       if (b.score !== a.score) return b.score - a.score;
       return a.position - b.position;
     });
+
+  // Δ vs. the reference (control) sample, keyed by sample id — same basis
+  // (rankFor's displayed score) as the number the chip sits next to. Null
+  // for the reference row itself, unscored rows, and everyone when there is
+  // no reference.
+  // `basis` guards the ranking's mixed fallback (community for some rows,
+  // own score for others): a Δ is only shown between rows of the same kind.
+  const refDeltas = deltasVsReference(
+    ranked.map((r) => ({ id: r.sample.id, score: r.score, basis: r.basis })),
+    referenceId,
+  );
 
   // ---- Stat row ----
   const evaluatedCount = samples.filter(hasAnyEvalData).length;
@@ -218,6 +244,13 @@ export function ResumenTab({
           <h2 className="inline-flex items-center gap-1.5 font-display text-xl text-primary-container">
             {t.ranking}
             <InfoHint title={help.ranking.title} body={help.ranking.body} closeLabel={help.closeLabel} />
+            {referenceId !== null && (
+              <InfoHint
+                title={help.referencia.title}
+                body={help.referencia.body}
+                closeLabel={help.closeLabel}
+              />
+            )}
           </h2>
           <div className="flex flex-col gap-2">
             {ranked.map(({ sample, score, sd }, idx) => (
@@ -231,7 +264,14 @@ export function ResumenTab({
                   {idx + 1}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium text-on-surface">{sample.label}</div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="truncate font-medium text-on-surface">{sample.label}</div>
+                    {sample.isReference && (
+                      <Badge tone="accent" size="xs">
+                        {t.referenceBadge}
+                      </Badge>
+                    )}
+                  </div>
                   {sample.revealed && sample.coffee && (
                     <div className="truncate text-xs text-on-surface-variant">
                       {sample.coffee.name}
@@ -250,6 +290,18 @@ export function ResumenTab({
                         ± {sd.toFixed(1)}
                       </span>
                     )}
+                    {(() => {
+                      const d = refDeltas.get(sample.id);
+                      return typeof d === "number" ? (
+                        <span
+                          className="shrink-0 text-xs text-on-surface-variant tabular-nums"
+                          title={t.deltaVsReference}
+                        >
+                          <span className="sr-only">{t.deltaVsReferenceAria}: </span>
+                          Δ {formatSignedDelta(d)}
+                        </span>
+                      ) : null;
+                    })()}
                   </>
                 ) : (
                   <span className="shrink-0 text-xs text-on-surface-variant">

@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
+import { run } from "@/lib/safeAction";
+import type { ActionResult } from "@/lib/actionResult";
+import type { Prisma } from "@/app/generated/prisma/client";
 import {
   withCodeRetry,
   generateUniqueCoffeeCodes,
@@ -48,6 +51,45 @@ type SampleInput = {
   label: string;
   coffeeIdx?: number;
 };
+
+// ─── Reference sample helpers ────────────────────────────────────────────────
+// The reference ("Referencia") is the ONE sample the owner marks as the control
+// the others are compared against. It lives on the session
+// (CuppingSession.referenceSampleId, SetNull) and is display-only — scoring
+// never reads it.
+
+/** Validates the wizard's optional `referenceIdx` (index into `samples`).
+ *  `null`/`undefined` = no reference. Out-of-range/NaN → "invalid_reference"
+ *  (a `session.newForm.errors` key, NOT the P2003 ActionErrorCode). */
+function parseReferenceIdx(
+  raw: number | null | undefined,
+  sampleCount: number,
+): { ok: true; idx: number | null } | { ok: false; error: "invalid_reference" } {
+  if (raw === undefined || raw === null) return { ok: true, idx: null };
+  try {
+    return { ok: true, idx: v.int(raw, "referenceIdx", 0, Math.max(0, sampleCount - 1)) };
+  } catch {
+    return { ok: false, error: "invalid_reference" };
+  }
+}
+
+/** Sample ids only exist after the nested create, so the reference is stamped
+ *  in a second statement inside the same transaction. Position-based so the
+ *  same helper serves createSession, createGroupSession and duplicateSession. */
+async function applyReferenceByPosition(
+  tx: Prisma.TransactionClient,
+  sessionId: string,
+  samples: { id: string; position: number }[],
+  position: number | null,
+): Promise<void> {
+  if (position === null) return;
+  const ref = samples.find((s) => s.position === position);
+  if (!ref) return;
+  await tx.cuppingSession.update({
+    where: { id: sessionId },
+    data: { referenceSampleId: ref.id },
+  });
+}
 
 // Data-quality gate relaxed 2026-09 per stakeholder decision ("valor antes
 // que fricción") — everything but the name is progressive/fill-later. Kept
@@ -247,6 +289,8 @@ export async function createSession(input: {
   cupsPerSample: number;
   coffees?: CoffeeInput[];
   samples: SampleInput[];
+  /** Index into `samples` of the reference sample; null/absent = none. */
+  referenceIdx?: number | null;
   locale?: string;
 }): Promise<{ ok: false; error: string } | void> {
   const user = await requireUser();
@@ -256,40 +300,47 @@ export async function createSession(input: {
   const metaResult = validateSessionMeta(input);
   if (!metaResult.ok) return metaResult;
   const meta = metaResult.meta;
+  const refResult = parseReferenceIdx(input.referenceIdx, input.samples.length);
+  if (!refResult.ok) return refResult;
 
   const createdCoffees = await resolveCoffees(input.coffees ?? [], user.id);
   if (createdCoffees === "coffee_not_found") {
     return { ok: false, error: "coffee_not_found" };
   }
 
-  const session = await prisma.cuppingSession.create({
-    data: {
-      name: meta.name,
-      date: meta.date,
-      objective: meta.objective,
-      format: meta.format,
-      cupsPerSample: meta.cupsPerSample,
-      // A solo session is immediately cuppable — "draft" is meaningless for it.
-      // Lifecycle: active → closed (auto, when all samples are submitted; see
-      // submitAllEvaluations in app/actions/community.ts).
-      status: "active",
-      createdBy: user.id,
-      samples: {
-        create: input.samples.map((s, i) => ({
-          label: s.label || `Muestra ${i + 1}`,
-          position: i,
-          coffeeId:
-            typeof s.coffeeIdx === "number" && createdCoffees[s.coffeeIdx]
-              ? createdCoffees[s.coffeeIdx].id
-              : null,
-        })),
+  // redirect() stays OUTSIDE the transaction (it is implemented as a throw).
+  const sessionId = await prisma.$transaction(async (tx) => {
+    const session = await tx.cuppingSession.create({
+      data: {
+        name: meta.name,
+        date: meta.date,
+        objective: meta.objective,
+        format: meta.format,
+        cupsPerSample: meta.cupsPerSample,
+        // A solo session is immediately cuppable — "draft" is meaningless for it.
+        // Lifecycle: active → closed (auto, when all samples are submitted; see
+        // submitAllEvaluations in app/actions/community.ts).
+        status: "active",
+        createdBy: user.id,
+        samples: {
+          create: input.samples.map((s, i) => ({
+            label: s.label || `Muestra ${i + 1}`,
+            position: i,
+            coffeeId:
+              typeof s.coffeeIdx === "number" && createdCoffees[s.coffeeIdx]
+                ? createdCoffees[s.coffeeIdx].id
+                : null,
+          })),
+        },
       },
-    },
-    select: { id: true },
+      select: { id: true, samples: { select: { id: true, position: true } } },
+    });
+    await applyReferenceByPosition(tx, session.id, session.samples, refResult.idx);
+    return session.id;
   });
 
   const locale = input.locale || "es";
-  redirect(`/${locale}/app/sessions/${session.id}/cup`);
+  redirect(`/${locale}/app/sessions/${sessionId}/cup`);
 }
 
 export async function createGroupSession(input: {
@@ -306,6 +357,8 @@ export async function createGroupSession(input: {
   // invitation email to every member right after creation.
   groupId?: string;
   notifyGroup?: boolean;
+  /** Index into `samples` of the reference sample; null/absent = none. */
+  referenceIdx?: number | null;
 }): Promise<
   | { ok: true; sessionId: string; inviteToken: string; emailSummary?: GroupEmailSummary }
   | { ok: false; error: string }
@@ -317,6 +370,8 @@ export async function createGroupSession(input: {
   const metaResult = validateSessionMeta(input);
   if (!metaResult.ok) return metaResult;
   const meta = metaResult.meta;
+  const refResult = parseReferenceIdx(input.referenceIdx, input.samples.length);
+  if (!refResult.ok) return refResult;
 
   if (input.groupId) {
     const group = await prisma.tastingGroup.findUnique({
@@ -335,43 +390,47 @@ export async function createGroupSession(input: {
 
   const token = crypto.randomUUID();
 
-  const session = await prisma.cuppingSession.create({
-    data: {
-      name: meta.name,
-      date: meta.date,
-      objective: meta.objective,
-      format: meta.format,
-      cupsPerSample: meta.cupsPerSample,
-      isGroup: true,
-      isAsync: meta.closesAt !== null,
-      status: "active",
-      closesAt: meta.closesAt,
-      createdBy: user.id,
-      groupId: input.groupId ?? null,
-      samples: {
-        create: input.samples.map((s, i) => ({
-          label: s.label || `Muestra ${i + 1}`,
-          position: i,
-          coffeeId:
-            typeof s.coffeeIdx === "number" && createdCoffees[s.coffeeIdx]
-              ? createdCoffees[s.coffeeIdx].id
-              : null,
-        })),
-      },
-      participants: {
-        create: {
-          userId: user.id,
-          status: "owner",
+  const session = await prisma.$transaction(async (tx) => {
+    const created = await tx.cuppingSession.create({
+      data: {
+        name: meta.name,
+        date: meta.date,
+        objective: meta.objective,
+        format: meta.format,
+        cupsPerSample: meta.cupsPerSample,
+        isGroup: true,
+        isAsync: meta.closesAt !== null,
+        status: "active",
+        closesAt: meta.closesAt,
+        createdBy: user.id,
+        groupId: input.groupId ?? null,
+        samples: {
+          create: input.samples.map((s, i) => ({
+            label: s.label || `Muestra ${i + 1}`,
+            position: i,
+            coffeeId:
+              typeof s.coffeeIdx === "number" && createdCoffees[s.coffeeIdx]
+                ? createdCoffees[s.coffeeIdx].id
+                : null,
+          })),
+        },
+        participants: {
+          create: {
+            userId: user.id,
+            status: "owner",
+          },
+        },
+        invites: {
+          create: {
+            token,
+            createdBy: user.id,
+          },
         },
       },
-      invites: {
-        create: {
-          token,
-          createdBy: user.id,
-        },
-      },
-    },
-    select: { id: true },
+      select: { id: true, samples: { select: { id: true, position: true } } },
+    });
+    await applyReferenceByPosition(tx, created.id, created.samples, refResult.idx);
+    return { id: created.id };
   });
 
   // Best-effort — a failed/skipped auto-invite email must never fail session
@@ -569,14 +628,20 @@ export async function duplicateSession(
       cupsPerSample: true,
       isGroup: true,
       groupId: true,
+      referenceSampleId: true,
       samples: {
         orderBy: { position: "asc" },
-        select: { label: true, position: true, coffeeId: true },
+        select: { id: true, label: true, position: true, coffeeId: true },
       },
     },
   });
   if (!source) throw new Error("not_found_or_forbidden");
   void session;
+
+  // The reference travels with the template, remapped by position onto the
+  // copied sample (ids are fresh in the copy).
+  const refPosition =
+    source.samples.find((s) => s.id === source.referenceSampleId)?.position ?? null;
 
   // Keep the group link only if the group still exists and is still ours.
   let groupId: string | null = null;
@@ -589,36 +654,83 @@ export async function duplicateSession(
   }
 
   const prefix = locale === "en" ? "Copy of" : "Copia de";
-  const copy = await prisma.cuppingSession.create({
-    data: {
-      name: `${prefix} ${source.name}`.slice(0, 120),
-      date: new Date(),
-      objective: source.objective,
-      format: source.format,
-      cupsPerSample: source.cupsPerSample,
-      isGroup: source.isGroup,
-      status: "active",
-      createdBy: user.id,
-      groupId,
-      samples: {
-        create: source.samples.map((s) => ({
-          label: s.label,
-          position: s.position,
-          coffeeId: s.coffeeId,
-        })),
+  const copy = await prisma.$transaction(async (tx) => {
+    const created = await tx.cuppingSession.create({
+      data: {
+        name: `${prefix} ${source.name}`.slice(0, 120),
+        date: new Date(),
+        objective: source.objective,
+        format: source.format,
+        cupsPerSample: source.cupsPerSample,
+        isGroup: source.isGroup,
+        status: "active",
+        createdBy: user.id,
+        groupId,
+        samples: {
+          create: source.samples.map((s) => ({
+            label: s.label,
+            position: s.position,
+            coffeeId: s.coffeeId,
+          })),
+        },
+        ...(source.isGroup
+          ? {
+              participants: { create: { userId: user.id, status: "owner" } },
+              invites: { create: { token: crypto.randomUUID(), createdBy: user.id } },
+            }
+          : {}),
       },
-      ...(source.isGroup
-        ? {
-            participants: { create: { userId: user.id, status: "owner" } },
-            invites: { create: { token: crypto.randomUUID(), createdBy: user.id } },
-          }
-        : {}),
-    },
-    select: { id: true },
+      select: { id: true, samples: { select: { id: true, position: true } } },
+    });
+    await applyReferenceByPosition(tx, created.id, created.samples, refPosition);
+    return { id: created.id };
   });
 
   revalidatePath(`/${locale}/app/sessions`);
   return { ok: true, sessionId: copy.id };
+}
+
+// ─── Reference sample (owner only) ───────────────────────────────────────────
+// Marks ONE sample as the "Referencia" the others are compared against, or
+// clears it with `null`. Display-only — scoring never reads it. Called
+// interactively (wizard step 2, edit page, master panel), hence ActionResult.
+export async function setReferenceSample(
+  sessionId: string,
+  sampleId: string | null,
+): Promise<ActionResult<{ referenceSampleId: string | null }>> {
+  return run(
+    "setReferenceSample",
+    async () => {
+      const user = await requireUser();
+      assertSessionWritable(await requireSessionOwner(sessionId, user.id));
+
+      let next: string | null = null;
+      if (sampleId !== null) {
+        const id = v.str(sampleId, "sampleId", { max: 64 })!;
+        // The FK accepts ANY sample id — the session match is the real guard.
+        const sample = await prisma.sessionSample.findFirst({
+          where: { id, sessionId },
+          select: { id: true },
+        });
+        if (!sample) throw new Error("not_found_or_forbidden");
+        next = sample.id;
+      }
+
+      await prisma.cuppingSession.update({
+        where: { id: sessionId },
+        data: { referenceSampleId: next },
+      });
+
+      for (const l of ["es", "en"]) {
+        revalidatePath(`/${l}/app/sessions/${sessionId}/cup`);
+        revalidatePath(`/${l}/app/sessions/${sessionId}/results`);
+        revalidatePath(`/${l}/app/sessions/${sessionId}/edit`);
+        revalidatePath(`/${l}/app/sessions/${sessionId}/waiting`);
+      }
+      return { referenceSampleId: next };
+    },
+    { sessionId },
+  );
 }
 
 export type UpdateSessionInput = {

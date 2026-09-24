@@ -101,6 +101,7 @@ export default async function PrintPage({
             revealed: s.revealed,
             coffeeName: s.coffee?.name ?? null,
             roastLevel: s.coffee?.roastLevel ?? null,
+            isReference: s.id === session.referenceSampleId,
             descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
             affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
             combined: (ev?.combinedData as Record<string, unknown>) ?? {},

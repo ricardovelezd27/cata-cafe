@@ -55,6 +55,7 @@ export function SampleDetailDialog({
   onEdit,
   onEditMetadata,
   onEditExtrinsic,
+  referenceBadge,
   t,
 }: {
   open: boolean;
@@ -74,6 +75,9 @@ export function SampleDetailDialog({
   // Absent unless the sample is revealed (blind integrity — origin data
   // stays hidden pre-reveal) and the viewer isn't a read-only admin.
   onEditExtrinsic?: () => void;
+  // Label for the "Referencia" badge — only ever rendered when `sample` IS
+  // the session's reference (control) sample.
+  referenceBadge?: string;
   t: SampleDetailDialogTranslations;
 }) {
   const initialViewerId = initialParticipantId ?? "me";
@@ -174,6 +178,7 @@ export function SampleDetailDialog({
           cupsPerSample={cupsPerSample}
           locale={locale}
           onEdit={viewerId === "me" ? onEdit : undefined}
+          referenceBadge={sample.isReference ? referenceBadge : null}
           t={t}
         />
       </div>

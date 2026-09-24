@@ -111,6 +111,7 @@ type SampleData = {
   revealed: boolean;
   coffeeName: string | null;
   roastLevel: string | null;
+  isReference?: boolean;
   descriptive: D;
   affective: D;
   combined: D;
@@ -706,7 +707,10 @@ function SampleStrip({ sheet, t }: { sheet: CvaSampleSheet; t: T }) {
     >
       <div>
         <span style={S.stripLabel}>{t.sampleNo} </span>
-        <b style={{ fontSize: "10pt" }}>{h.sampleLabel}</b>
+        <b style={{ fontSize: "10pt" }}>
+          {h.sampleLabel}
+          {h.isReference ? ` · ${t.reference}` : ""}
+        </b>
       </div>
       {h.coffeeName ? (
         <div>
@@ -846,7 +850,10 @@ function AffectiveGridPage({
           <div style={ROW_LABEL_SM}>{t.sampleNo}</div>
           {sheets.map((sheet) => (
             <div key={sheet.header.sampleLabel} style={{ ...CELL, padding: "3pt 5pt" }}>
-              <div style={{ fontSize: "10pt", fontWeight: 700 }}>{sheet.header.sampleLabel}</div>
+              <div style={{ fontSize: "10pt", fontWeight: 700 }}>
+                {sheet.header.sampleLabel}
+                {sheet.header.isReference ? ` · ${t.reference}` : ""}
+              </div>
               {sheet.header.coffeeName && (
                 <div style={{ fontSize: "6pt", color: C.soft }}>{sheet.header.coffeeName}</div>
               )}

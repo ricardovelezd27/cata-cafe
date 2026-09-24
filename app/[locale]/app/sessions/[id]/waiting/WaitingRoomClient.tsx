@@ -11,13 +11,19 @@ export function WaitingRoomClient({
   sessionName,
   locale,
   isAsync,
+  samples,
+  initialReferenceSampleId,
   translations,
 }: {
   sessionId: string;
   sessionName: string;
   locale: string;
   isAsync: boolean;
+  samples: { id: string; label: string }[];
+  initialReferenceSampleId: string | null;
   translations: {
+    /** "Muestra de referencia: {label}" — raw ICU string, replaced here. */
+    referenceLine: string;
     title: string;
     description: string;
     asyncDetail: string;
@@ -36,6 +42,12 @@ export function WaitingRoomClient({
   // 15s polling fallback and the "connection lost" notice below.
   const [connectionLost, setConnectionLost] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // The owner may pick/change the reference while people wait — same
+  // cupping_sessions UPDATE stream that carries startedAt.
+  const [referenceSampleId, setReferenceSampleId] = useState<string | null>(
+    initialReferenceSampleId,
+  );
+  const referenceLabel = samples.find((s) => s.id === referenceSampleId)?.label ?? null;
 
   useEffect(() => {
     if (isAsync) return;
@@ -64,6 +76,11 @@ export function WaitingRoomClient({
         },
         (payload) => {
           const row = payload.new as Record<string, unknown>;
+          if ("referenceSampleId" in row || "reference_sample_id" in row) {
+            setReferenceSampleId(
+              (row.referenceSampleId ?? row.reference_sample_id ?? null) as string | null,
+            );
+          }
           // Columns are camelCase in Postgres; accept snake_case defensively.
           if (row.startedAt ?? row.started_at) {
             router.push(`/${locale}/app/sessions/${sessionId}/cup`);
@@ -130,6 +147,14 @@ export function WaitingRoomClient({
           {isAsync && (
             <p className="text-sm text-brown-mid leading-relaxed">
               {translations.asyncDetail}
+            </p>
+          )}
+          {referenceLabel && (
+            <p
+              role="status"
+              className="inline-block rounded-pill bg-secondary-fixed px-3 py-1 text-sm font-medium text-secondary"
+            >
+              {translations.referenceLine.replace("{label}", referenceLabel)}
             </p>
           )}
         </div>
