@@ -60,7 +60,9 @@ is enforced inside the transaction). For a **live** session they wait in
 master panel's "Iniciar cata" (idempotent). An **async** session (`isAsync`,
 `closesAt` set) lets them cup immediately and is closed by the **daily cron**
 (`/api/cron/close-expired-sessions`, 06:00 UTC) once `closesAt` passes, or
-earlier by the owner. Close emails are queued with `after()` and ledgered per
+earlier by the owner. `closesAt` is the END of the chosen calendar day (UTC,
+`dateOnlyEndOfDay`), so a session with closing date D is closed by the cron on
+D+1 in the early morning — never before the day the owner picked has ended. Close emails are queued with `after()` and ledgered per
 recipient in `close_email_deliveries`; the owner sees sent / no-email / failed /
 pending on the results page and can "Reenviar" (only unsent recipients go out).
 

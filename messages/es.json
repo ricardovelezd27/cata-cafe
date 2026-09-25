@@ -448,6 +448,7 @@
     "toggle": "Sesión grupal",
     "async": "Asíncrona",
     "closesAt": "Fecha de cierre",
+    "closesAtHint": "Opcional. La sesión se cierra sola en la madrugada siguiente a esta fecha y no se puede cambiar después. Para una cata en vivo que cierras tú, déjala vacía.",
     "inviteLink": "Enlace de invitación",
     "copyLink": "Copiar enlace",
     "copied": "Copiado",

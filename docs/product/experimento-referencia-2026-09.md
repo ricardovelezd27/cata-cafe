@@ -12,6 +12,25 @@
 - [ ] Decidir cómo se explicará el uso de la referencia en sala (ver §2).
 - [ ] Confirmar que el panel de resultados muestra la etiqueta **Referencia** y el Δ.
 
+### 1b. Reglas de la app para la cata en vivo (añadidas 2026-09-25, tras la reunión)
+
+- [ ] **Fecha de cierre: dejarla VACÍA.** Así la sesión es «en vivo»: sala de espera → el maestro pulsa
+  «Iniciar cata» → el maestro la cierra desde el panel cuando termine. Si se pone una fecha, la sesión
+  pasa a modo asíncrono (sin sala de espera) y se cierra sola en la madrugada siguiente a esa fecha
+  (hora UTC); si algún día se quiere una cata de varios días, poner como fecha el día SIGUIENTE al
+  último día de cata. No se puede cambiar después de crearla.
+- [ ] **Marcar la referencia en el asistente**, antes de compartir el QR. Cambiarla a mitad de cata
+  funciona, pero (a) los participantes pueden necesitar recargar para verla y (b) los puntajes que ya
+  hubieran dado a la nueva referencia no se re-fijan en 5 hasta que cada uno vuelva a guardarla.
+- [ ] Si se añade o renombra una muestra con gente ya dentro de `/cup` o de la sala de espera, pedirles
+  que recarguen la página.
+- [ ] Los invitados por QR entran sin cuenta; al final, el aviso «Guardar mis resultados» en la
+  pantalla de resultados les permite convertirla en cuenta.
+- [ ] Mini prueba la noche anterior, con dos dispositivos en producción: crear sesión grupal con
+  referencia y fecha de cierre vacía → QR desde el móvil como invitado → sala de espera → «Iniciar
+  cata» → el móvil abre primero la referencia con la calidad bloqueada en 5 → puntuar otra muestra →
+  cerrar → resultados (tarjeta ancla 79.00, Δ) → correo con PDF → borrar la sesión de prueba.
+
 ## 2. Guion de sala (2 minutos, antes de la primera fragancia)
 
 1. "La muestra ___ es la referencia. No es 'la mejor'; es el punto de partida común."

@@ -67,6 +67,7 @@ export default async function NewSessionPage({
     // group
     groupToggle: tg("toggle"),
     groupClosesAt: tg("closesAt"),
+    groupClosesAtHint: tg("closesAtHint"),
     groupInviteLink: tg("inviteLink"),
     groupCopyLink: tg("copyLink"),
     groupCopied: tg("copied"),

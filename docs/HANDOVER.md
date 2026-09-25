@@ -4,8 +4,8 @@
 > from **Next action**. Do not re-plan. The approved plan lives at
 > `~/.claude/plans/i-want-you-to-graceful-wreath.md` (summarised in the WP table below).
 
-- **status:** launch work SHIPPED — merged to `main` (172aa0b..255578c) and deployed to production 2026-09-14. Runbook §1, §1b, §2 and §3 all applied. Only the §5 smoke test remains, and it needs a real login. Reference sample feature BUILT, AUDITED, migration APPLIED and walkthrough DONE 2026-09-24 — UNMERGED; pending: PR + merge + deploy. Second iteration (reference cupped first + pinned at 5, results anchor) BUILT on branch `claude/reference-first-anchor` 2026-09-25 — typechecked and tested; browser walkthrough + PR still pending.
-- **last updated:** 2026-09-23
+- **status:** launch work SHIPPED — merged to `main` (172aa0b..255578c) and deployed to production 2026-09-14. Runbook §1, §1b, §2 and §3 all applied. Only the §5 smoke test remains, and it needs a real login. Reference sample feature MERGED to `main` 2026-09-24 (PR #19, 53f2a94). Second iteration (reference cupped first + pinned at 5, results anchor) browser-verified and MERGED 2026-09-25 (PR #20, 3a23acb). Verde/Vegetal pill fix merged 2026-09-25 (0e70fbb). Vercel deploys `main` automatically. Post-meeting batch of 2026-09-25 (close-date end-of-day, descriptive sheet without free text, results dedupe, `scripts/export-emails.ts`) on branch `claude/tasting-changes-review-5aab30`; backlog in `docs/prompts/S5-kim-2026-09-25.md`.
+- **last updated:** 2026-09-25
 - **worktree:** `C:\projects\cata-cafe\.claude\worktrees\results-page-redesign-2920c2`
 - **base:** `main` @ 172aa0b → now `main` @ 255578c (deployed)
 - **current branch:** `claude/cafe-sensible-improvements-51283e` (worktree `results-page-redesign-2920c2`); all launch WP branches are historical now, folded into `main`.
@@ -36,11 +36,10 @@
 
 ## Next action
 
-1. User: apply the reference-sample migration — `npx prisma migrate deploy` from this worktree (additive; the diff in `prisma/migrations/20260922120000_reference_sample/migration.sql` was verified by hand — see `docs/LAUNCH-RUNBOOK.md` §7).
-2. User (+ Claude if available): run the two-user walkthrough in `docs/CHANGELOG-reference-2026-09.md` → "Cómo comprobarlo".
-3. Open a PR from `claude/cafe-sensible-improvements-51283e` and merge to `main`.
-4. Then, in a **new session**, run `docs/prompts/S2-staging-production.md`.
-5. After the end-of-month calibration cupping: run `docs/prompts/S3-radar-reference-overlay.md` **only if** the reference experiment validates the concept (see `docs/product/experimento-referencia-2026-09.md` §7); `docs/prompts/S4-results-hygiene.md` can run any time.
+1. Before the 2026-09-26 cupping: confirm the Vercel deploy of `main@0e70fbb` (or the merged post-meeting batch) succeeded and run the two-device mini smoke test in `docs/product/experimento-referencia-2026-09.md` §1.
+2. Send Kim the registered-email CSV (`npx tsx scripts/export-emails.ts`, run against the production Supabase project — the file is PII, never commit it).
+3. After the cupping (Monday 2026-09-28): `docs/prompts/S5-kim-2026-09-25.md` (word cloud rework first), then `S4-results-hygiene.md`, then `S2-staging-production.md`.
+4. `docs/prompts/S3-radar-reference-overlay.md` **only if** the reference experiment validates the concept (see `docs/product/experimento-referencia-2026-09.md` §7).
 
 ### Reference sample (2026-09-22)
 
@@ -51,17 +50,17 @@
 - [x] migration applied 2026-09-24 (`npx prisma migrate deploy` by Ricardo; column verified in the SQL Editor)
 - [x] browser walkthrough 2026-09-24 (two test users via dev sign-in: wizard radio → step-2 line → waiting-room line → master-panel change persisted + owner tabs updated live → participant cup view (REF pill, compare hint) → seeded evaluations → close → results badge/Δ on ranking, table, radar, matrix + InfoHint + legend → print sheet "Muestra B · Referencia" → edit-page select saves with toast and is natively disabled on the closed session → duplicate keeps the reference → removing the reference sample clears it → test sessions deleted). Caveat: live delivery to the PARTICIPANT tab could not be proven — the browser pane suspended the background tab's network and the Supabase realtime websocket kept failing from this machine; the owner-side live update was observed once. Re-check on the real cupping or on staging.
 - [x] BUG FOUND + FIXED during the walkthrough (pre-existing, shipped 2026-09-14): `deleteSession` failed with P2003 `user_coffee_history_evaluationId_fkey` on any closed session with submitted coffee-linked evaluations — the history rows are touched inside the delete transaction, so Postgres re-checks their FKs when the session's SET NULL fires, after the evaluation cascade already ran. `detachCoffeeHistoryForSession` now nulls `sessionId`/`evaluationId` itself before the delete. Reproduced and verified against the live DB (throwaway session + the walkthrough session).
-- [ ] merged
-- [ ] deployed
+- [x] merged 2026-09-24 (PR #19, 53f2a94)
+- [x] deployed (Vercel auto-deploy of `main`)
 
 ### Reference first + pinned quality (2026-09-25)
 
 - [x] built
 - [x] typechecked (`npx tsc --noEmit`)
 - [x] tested (`tests/referenceRules.test.ts`, 89 tests total)
-- [ ] browser walkthrough
-- [ ] merged
-- [ ] deployed
+- [x] browser walkthrough 2026-09-25
+- [x] merged 2026-09-25 (PR #20, 3a23acb)
+- [x] deployed (Vercel auto-deploy of `main`) — confirm in the Vercel dashboard before the cupping
 
 ## How to verify the current WP
 
