@@ -448,6 +448,7 @@
     "toggle": "Group session",
     "async": "Asynchronous",
     "closesAt": "Closing date",
+    "closesAtHint": "Optional. The session closes by itself in the early hours after this date and it cannot be changed later. For a live tasting you close yourself, leave it empty.",
     "inviteLink": "Invite link",
     "copyLink": "Copy link",
     "copied": "Copied",

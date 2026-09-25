@@ -104,6 +104,7 @@ type Translations = {
   // group
   groupToggle: string;
   groupClosesAt: string;
+  groupClosesAtHint: string;
   groupInviteLink: string;
   groupCopyLink: string;
   groupCopied: string;
@@ -1142,8 +1143,10 @@ export function NewSessionForm({
                 type="date"
                 className={inputCls}
                 value={closesAt}
+                min={new Date().toISOString().slice(0, 10)}
                 onChange={(e) => setClosesAt(e.target.value)}
               />
+              <p className="mt-1 text-xs text-on-surface-variant">{t.groupClosesAtHint}</p>
             </div>
 
             <div>

@@ -2,7 +2,7 @@
 
 import { ChevronRight } from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { ScorePill, InfoHint, Badge } from "@/components/ui";
+import { ScorePill, InfoHint } from "@/components/ui";
 import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
 import { deltasVsReference, formatSignedDelta, type ScoreBasis } from "@/lib/referenceDelta";
 import type { SessionFormat } from "@/lib/constants";
@@ -258,13 +258,6 @@ export function ResumenTab({
           <h2 className="inline-flex items-center gap-1.5 font-display text-xl text-primary-container">
             {t.ranking}
             <InfoHint title={help.ranking.title} body={help.ranking.body} closeLabel={help.closeLabel} />
-            {referenceId !== null && (
-              <InfoHint
-                title={help.referencia.title}
-                body={help.referencia.body}
-                closeLabel={help.closeLabel}
-              />
-            )}
           </h2>
           {referenceSample && referenceRank && (
             <button
@@ -276,12 +269,7 @@ export function ResumenTab({
                 <div className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-secondary">
                   {t.anchorTitle}
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="truncate font-medium text-on-surface">{referenceSample.label}</div>
-                  <Badge tone="accent" size="xs">
-                    {t.referenceBadge}
-                  </Badge>
-                </div>
+                <div className="truncate font-medium text-on-surface">{referenceSample.label}</div>
                 {referenceSample.revealed && referenceSample.coffee && (
                   <div className="truncate text-xs text-on-surface-variant">
                     {referenceSample.coffee.name}
@@ -309,14 +297,7 @@ export function ResumenTab({
                   {idx + 1}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <div className="truncate font-medium text-on-surface">{sample.label}</div>
-                    {sample.isReference && (
-                      <Badge tone="accent" size="xs">
-                        {t.referenceBadge}
-                      </Badge>
-                    )}
-                  </div>
+                  <div className="truncate font-medium text-on-surface">{sample.label}</div>
                   {sample.revealed && sample.coffee && (
                     <div className="truncate text-xs text-on-surface-variant">
                       {sample.coffee.name}

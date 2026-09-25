@@ -87,9 +87,11 @@ rama. Pendiente:
   desde el navegador de pruebas (la pestaña en segundo plano perdió la conexión); en la
   pantalla del maestro sí se observó. Conviene comprobarlo en la cata real: si el
   participante no ve el cambio, basta con recargar la página.
-- [ ] Pendiente: fusionar `claude/cafe-sensible-improvements-51283e` a `main` y desplegar.
-- [ ] Segunda iteración construida 2026-09-25 en la rama claude/reference-first-anchor;
-  pendiente: prueba en navegador, PR y despliegue.
+- [x] Fusionado a `main` el 2026-09-24 (PR #19, `53f2a94`); Vercel despliega `main` solo.
+- [x] Segunda iteración (referencia primero + calidad fijada en 5 + tarjeta ancla) probada en
+  navegador y fusionada el 2026-09-25 (PR #20, `3a23acb`).
+- [ ] Comprobar en el panel de Vercel que el despliegue de `main` terminó bien antes de la cata
+  del 2026-09-26 y hacer la mini prueba con dos dispositivos (`docs/product/experimento-referencia-2026-09.md` §1).
 
 ## Arreglo adicional encontrado en la prueba
 

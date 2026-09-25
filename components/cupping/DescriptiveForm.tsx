@@ -13,7 +13,6 @@ import {
   IntensitySlider,
   CATAPills,
   FormSection,
-  Notes,
 } from "@/components/ui";
 import { FlavorPicker } from "@/components/cupping/FlavorPicker";
 import type { CATAOption, CATASubItem } from "@/components/ui/CATAPills";
@@ -74,7 +73,6 @@ export function DescriptiveForm({
   const set = (key: string, val: unknown) => onChange({ ...d, [key]: val });
   const num = (k: string): number | null => (d[k] as number | undefined) ?? null;
   const arr = (k: string): string[] => (d[k] as string[] | undefined) ?? [];
-  const str = (k: string): string => (d[k] as string | undefined) ?? "";
   // Qualifying notes live in a parallel `<descKey>_notes` map (node id → terms).
   const notesOf = (descKey: string): Record<string, string[]> =>
     (d[`${descKey}_notes`] as Record<string, string[]> | undefined) ?? {};
@@ -96,42 +94,35 @@ export function DescriptiveForm({
     options: CATAOption[] | null,
   ) => (
     <FormSection key={id} title={title} accent flagged={isFlagged(id)}>
-      <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-6">
-        {/* Left: intensity + descriptors */}
-        <div className="min-w-0">
-          <IntensitySlider
-            label="Intensidad"
-            value={num(`${id}_int`)}
-            onChange={(v) => set(`${id}_int`, v)}
-          />
-          <div className="mt-4">
-            {options === null ? (
-              <FlavorPicker
-                value={arr(`${id}_desc`)}
-                notes={notesOf(`${id}_desc`)}
-                onChange={setDescAndNotes(`${id}_desc`)}
-                maxSelect={STEP_CATA_MAX[id]}
-                locale={locale}
-              />
-            ) : (
-              <CATAPills
-                options={options}
-                selected={arr(`${id}_desc`)}
-                onChange={(v) => set(`${id}_desc`, v)}
-                maxSelect={STEP_CATA_MAX[id]}
-                showSubItems
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Right: notes */}
-        <div className="min-w-0 mt-5 pt-5 border-t border-brown-light lg:mt-0 lg:pt-0 lg:border-t-0 lg:border-l lg:pl-6">
-          <Notes
-            value={str(`${id}_notas`)}
-            onChange={(v) => set(`${id}_notas`, v)}
-            placeholder="Notas descriptivas..."
-          />
+      {/* Descriptive-only sheet: intensity + wheel/CATA descriptors, no free
+          text. The descriptive profile must be made of shared vocabulary
+          (flavor wheel / CATA lists); personal notes belong to the affective
+          and combined sheets (2026-09-25, Kim). Legacy `<stage>_notas` values
+          still render read-only in results (SampleDetail). */}
+      <div className="min-w-0">
+        <IntensitySlider
+          label="Intensidad"
+          value={num(`${id}_int`)}
+          onChange={(v) => set(`${id}_int`, v)}
+        />
+        <div className="mt-4">
+          {options === null ? (
+            <FlavorPicker
+              value={arr(`${id}_desc`)}
+              notes={notesOf(`${id}_desc`)}
+              onChange={setDescAndNotes(`${id}_desc`)}
+              maxSelect={STEP_CATA_MAX[id]}
+              locale={locale}
+            />
+          ) : (
+            <CATAPills
+              options={options}
+              selected={arr(`${id}_desc`)}
+              onChange={(v) => set(`${id}_desc`, v)}
+              maxSelect={STEP_CATA_MAX[id]}
+              showSubItems
+            />
+          )}
         </div>
       </div>
     </FormSection>

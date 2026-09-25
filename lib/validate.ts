@@ -62,6 +62,26 @@ export function isoDate(value: unknown, field: string, opts: { future?: boolean 
   return d;
 }
 
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** A calendar date from an `<input type="date">` (`YYYY-MM-DD`), interpreted
+ *  as the END of that day (23:59:59.999 UTC) — the way a "closing date" reads
+ *  to the person picking it. `new Date("YYYY-MM-DD")` alone would mean 00:00
+ *  UTC, i.e. the session would expire in the early hours of the chosen day.
+ *  `future: true` requires that end-of-day instant to be ahead of now, so
+ *  picking today is allowed. */
+export function dateOnlyEndOfDay(
+  value: unknown,
+  field: string,
+  opts: { future?: boolean } = {},
+): Date {
+  if (typeof value !== "string" || !DATE_ONLY_RE.test(value)) return fail(field);
+  const d = new Date(`${value}T23:59:59.999Z`);
+  if (Number.isNaN(d.getTime())) return fail(field);
+  if (opts.future && d.getTime() < Date.now() + 60_000) return fail(field);
+  return d;
+}
+
 /** Array length guard (the elements are validated by the caller). */
 export function list<T>(value: unknown, field: string, max: number, min = 0): T[] {
   if (!Array.isArray(value) || value.length < min || value.length > max) return fail(field);

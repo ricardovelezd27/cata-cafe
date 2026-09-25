@@ -191,8 +191,10 @@ function validateSessionMeta(input: {
       v.list(input.samples, "samples", MAX_SAMPLES);
     }) ??
     field("invalid_closes_at", () => {
+      // Date-only from the wizard → end of that day (UTC), so the daily cron
+      // closes the session the morning AFTER the chosen date, not before it.
       closesAt = input.closesAt
-        ? v.isoDate(input.closesAt, "closesAt", { future: true })
+        ? v.dateOnlyEndOfDay(input.closesAt, "closesAt", { future: true })
         : null;
     });
   if (bad) return { ok: false, error: bad };
