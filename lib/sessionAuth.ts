@@ -83,6 +83,9 @@ export type SampleAuthRow = {
   status: string;
   cupsPerSample: number;
   format: string;
+  // The session's "Referencia" sample, so the evaluation write paths can pin
+  // its affective ratings (lib/referenceRules.ts) without a second query.
+  referenceSampleId: string | null;
 };
 
 /** Member access resolved through a sample id; returns the sample's real
@@ -103,6 +106,7 @@ export async function requireSampleMember(
           status: true,
           cupsPerSample: true,
           format: true,
+          referenceSampleId: true,
           participants: { where: { userId }, select: { userId: true }, take: 1 },
         },
       },
@@ -120,6 +124,7 @@ export async function requireSampleMember(
     status: sample.session.status,
     cupsPerSample: sample.session.cupsPerSample,
     format: sample.session.format,
+    referenceSampleId: sample.session.referenceSampleId,
   };
 }
 
@@ -134,7 +139,7 @@ export async function requireSampleOwner(
     select: {
       sessionId: true,
       session: {
-        select: { createdBy: true, status: true, cupsPerSample: true, format: true },
+        select: { createdBy: true, status: true, cupsPerSample: true, format: true, referenceSampleId: true },
       },
     },
   });
@@ -146,5 +151,6 @@ export async function requireSampleOwner(
     status: sample.session.status,
     cupsPerSample: sample.session.cupsPerSample,
     format: sample.session.format,
+    referenceSampleId: sample.session.referenceSampleId,
   };
 }

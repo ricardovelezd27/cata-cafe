@@ -8,6 +8,7 @@ import type { NextRequest } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { orderReferenceFirst } from "@/lib/referenceRules";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { CvaFormDocument, type CvaDocumentProps } from "@/lib/pdf/CvaFormDocument";
 
@@ -90,7 +91,7 @@ export async function GET(
     cupsPerSample: session.cupsPerSample,
     format: session.format,
     locale,
-    samples: session.samples.map((sample) => {
+    samples: orderReferenceFirst(session.samples, session.referenceSampleId).map((sample) => {
       const ev = sample.evaluations[0];
       return {
         label: sample.label,

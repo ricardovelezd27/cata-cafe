@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { orderReferenceFirst } from "@/lib/referenceRules";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { buildInviteUrl } from "@/lib/inviteUrl";
 import { PrintClient } from "./PrintClient";
@@ -93,7 +94,7 @@ export default async function PrintPage({
         date: dateStr,
         objective: session.objective,
         cupperName: profile?.displayName ?? "",
-        samples: session.samples.map((s) => {
+        samples: orderReferenceFirst(session.samples, session.referenceSampleId).map((s) => {
           const ev = s.evaluations[0];
           return {
             id: s.id,

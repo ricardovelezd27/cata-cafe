@@ -228,6 +228,9 @@ export default async function CupPage({
         referenceBadge: t("cupping.referenceBadge"),
         // `{label}` is an ICU arg — fetched raw and replaced client-side.
         compareHint: t.raw("cupping.compareHint") as string,
+        referenceLocked: t("cupping.referenceLocked"),
+        referenceLockedAffective: t("cupping.referenceLockedAffective"),
+        referenceCupsLocked: t("cupping.referenceCupsLocked"),
         // Shell (Phase 3)
         samplesHeader: t("cupping.shell.samplesHeader"),
         evaluationHeader: t("cupping.shell.evaluationHeader"),

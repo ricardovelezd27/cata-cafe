@@ -184,6 +184,22 @@ publication or RLS policy. Results and the PDF/print sheets show a
 (community score in group sessions, own CVA score solo) computed by
 `lib/referenceDelta.ts`; scoring itself, the DB trigger, and RLS are untouched.
 
+**2026-09-25 — reference cupped first, pinned quality:** three rules layered on
+top of the above, all in `lib/referenceRules.ts`. **Order:** the reference is
+cupped FIRST — `orderReferenceFirst` puts it ahead of the rest (who keep their
+position order) everywhere samples are listed: cup tabs and Anterior/Siguiente,
+the waiting room, results tables/radar/owner matrix, the CVA PDF, print, and
+close emails. Changing the reference mid-session swaps the order live for
+everyone and keeps each cupper on the sample they were viewing. **Pin:** on the
+reference sample, every affective attribute is locked at 5 and the cup checks
+are cleared, so every cupper's reference score is exactly 79.00 and only the
+descriptive side stays editable (affective/combined formats only — enforced
+server-side on every save via `pinReferenceAffective`, mirrored client-side as
+a locked, explained UI). Existing scores entered before the lock are never
+rewritten. **Anchor:** results treat the reference as context, not a
+competitor — it is pulled out of the ranking, the session average and "Mejor
+muestra" into its own card above the ranking; the Δ against it is unchanged.
+
 ---
 
 ## 2. Coffee visibility & sharing
@@ -376,9 +392,11 @@ the whole-sample descriptor profile, deduped per cupper across all blocks, and
 feeds the same word cloud / frequency bars / consensus-sentence panels as any
 other block selection.
 
-The owner's reference sample (if set) shows a "Referencia" badge plus a
-display-only signed Δ against every other sample's ranking row (R2) and matrix
-cell (S3), explained by the `help.referencia` InfoHint.
+The owner's reference sample (if set), cupped first (see §1), is pulled out of
+the ranking (R2) as a standalone "Referencia (ancla)" card above it — excluded
+from the ranking, the session average and "Mejor muestra" — while every other
+sample's ranking row (R2) and matrix cell (S3) still shows a display-only
+signed Δ against it, explained by the `help.referencia` InfoHint.
 
 ---
 

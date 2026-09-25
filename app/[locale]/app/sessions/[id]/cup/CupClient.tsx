@@ -65,6 +65,7 @@ import {
   type ModuleItem,
 } from "@/components/ui";
 import { useConnectivity } from "@/hooks/useConnectivity";
+import { isPinnedModule, orderReferenceFirst, pinReferenceAffective } from "@/lib/referenceRules";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { OfflineBanner } from "@/components/offline/OfflineBanner";
 import { SyncConflictModal } from "@/components/offline/SyncConflictModal";
@@ -256,6 +257,10 @@ export function CupClient({
     compareHint?: string;
     referenceSelect?: string;
     referenceNone?: string;
+    // Reference lock (2026-09-25): quality pinned at 5, cups cleared.
+    referenceLocked?: string;
+    referenceLockedAffective?: string;
+    referenceCupsLocked?: string;
   };
   userEmail?: string;
   userCountry?: string;
@@ -273,12 +278,16 @@ export function CupClient({
         ? "descriptive"
         : "combined";
 
+  // The reference (control) sample is cupped FIRST — the room levels on the
+  // anchor before comparing (lib/referenceRules.ts). Order is re-derived
+  // whenever the owner changes the reference (see applyReferenceOrder).
+  const initialOrdered = orderReferenceFirst(session.samples, session.referenceSampleId ?? null);
   const initialSampleIdx = initialSampleId
-    ? Math.max(0, session.samples.findIndex((s) => s.id === initialSampleId))
+    ? Math.max(0, initialOrdered.findIndex((s) => s.id === initialSampleId))
     : 0;
   const [sampleIdx, setSampleIdx] = useState(initialSampleIdx);
   const [currentStep, setCurrentStep] = useState<CuppingStep>(stepsForFormat[0]);
-  const [samples, setSamples] = useState(session.samples);
+  const [samples, setSamples] = useState(initialOrdered);
   const [activeTab, setActiveTab] = useState<CuppingTab>("cupping");
   const [saveStatus, setSaveStatus] = useState<
     "idle" | "saving" | "saved" | "pending"
@@ -316,6 +325,29 @@ export function CupClient({
     session.referenceSampleId ?? null,
   );
   const referenceSeqRef = useRef(0);
+  // Latest committed samples / current sample id, for handlers that run
+  // outside the render closure (realtime events, the reference-order swap).
+  const samplesRef = useRef(samples);
+  const sampleIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    samplesRef.current = samples;
+    sampleIdRef.current = samples[sampleIdx]?.id ?? null;
+  });
+  // Moves the (new) reference to the front, restores position order for the
+  // rest, and keeps the cupper on the sample they were looking at.
+  const applyReferenceOrder = (next: string | null) => {
+    setReferenceSampleId(next);
+    const byPosition = <T extends { position: number }>(list: T[]) =>
+      [...list].sort((a, b) => a.position - b.position);
+    const currentId = sampleIdRef.current;
+    const ids = orderReferenceFirst(byPosition(samplesRef.current), next).map((s) => s.id);
+    setSamples((prev) => orderReferenceFirst(byPosition(prev), next));
+    setSampleIdx(Math.max(0, ids.indexOf(currentId ?? "")));
+  };
+  const applyReferenceOrderRef = useRef(applyReferenceOrder);
+  useEffect(() => {
+    applyReferenceOrderRef.current = applyReferenceOrder;
+  });
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState(false);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
@@ -596,7 +628,7 @@ export function CupClient({
             const next = (row.referenceSampleId ?? row.reference_sample_id ?? null) as
               | string
               | null;
-            setReferenceSampleId(next && sampleIds.has(next) ? next : null);
+            applyReferenceOrderRef.current(next && sampleIds.has(next) ? next : null);
           }
         }
       )
@@ -861,7 +893,7 @@ export function CupClient({
     // of scope, so navigating samples there must not nag about cupping fields.
     const missing =
       activeTab === "cupping"
-        ? stepMissing(samples[sampleIdx], currentStep, guardFormat)
+        ? stepMissing(viewSamples[sampleIdx], currentStep, guardFormat)
         : [];
     if (missing.length > 0) {
       setFlaggedSteps((prev) => {
@@ -920,13 +952,13 @@ export function CupClient({
   // phase and list the gaps before finalizing.
   const handleGoToResults = async () => {
     if (guard) return;
-    const gaps = sessionMissing(samples, stepsForFormat, guardFormat);
+    const gaps = sessionMissing(viewSamples, stepsForFormat, guardFormat);
     if (gaps.length > 0) {
       // Flag every sample+step combo that has a gap so revisiting any of them
       // shows the inline indicator, not just the current one.
       setFlaggedSteps((prev) => {
         const next = new Set(prev);
-        for (const sample of samples) {
+        for (const sample of viewSamples) {
           for (const step of stepsForFormat) {
             if (stepMissing(sample, step, guardFormat).length > 0) {
               next.add(`${sample.id}:${step}`);
@@ -1007,18 +1039,54 @@ export function CupClient({
     const next = value === "" ? null : value;
     const prev = referenceSampleId;
     const seq = ++referenceSeqRef.current;
-    setReferenceSampleId(next);
+    applyReferenceOrder(next);
     startTransition(async () => {
       const r = await feedback.run(setReferenceSample(session.id, next));
-      if (!r.ok && seq === referenceSeqRef.current) setReferenceSampleId(prev);
+      if (!r.ok && seq === referenceSeqRef.current) applyReferenceOrder(prev);
     });
   };
 
   // ─── Derived state ────────────────────────────────────────────
-  const current = samples[sampleIdx];
+  // The reference sample's quality is pinned at 5 and its cups cleared
+  // (lib/referenceRules.ts). `viewSamples` is what the forms, the tabs and
+  // the completeness guards see; the same pin is enforced server-side on
+  // every save, so a stale client cannot move the anchor.
+  const affectiveModuleKey: "affective" | "combined" | null =
+    session.format === "affective" ? "affective" : session.format === "descriptive" ? null : "combined";
+  const pinForReference = (s: Sample): Sample =>
+    s.id === referenceSampleId && affectiveModuleKey
+      ? {
+          ...s,
+          affective: pinReferenceAffective(s.affective, session.cupsPerSample),
+          combined: pinReferenceAffective(s.combined, session.cupsPerSample),
+        }
+      : s;
+  const viewSamples = samples.map(pinForReference);
+  const current = viewSamples[sampleIdx];
+  const isCurrentLocked = current.id === referenceSampleId && affectiveModuleKey !== null;
   const referenceSample = referenceSampleId
-    ? samples.find((s) => s.id === referenceSampleId) ?? null
+    ? viewSamples.find((s) => s.id === referenceSampleId) ?? null
     : null;
+  // The anchor must exist for everyone even when a cupper never touches the
+  // reference (nothing to score in an affective session): the first visit
+  // queues one pinned save so their 79.00 lands and Δ/community work. Only
+  // refs and timers here (no state), and never on a closed session.
+  const ensuredReferenceRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!referenceSampleId || !affectiveModuleKey) return;
+    if (sessionStatus === "closed") return;
+    const sample = samplesRef.current[sampleIdx];
+    if (!sample || sample.id !== referenceSampleId || sample.evaluationId) return;
+    if (ensuredReferenceRef.current.has(sample.id)) return;
+    ensuredReferenceRef.current.add(sample.id);
+    if (!isPinnedModule(affectiveModuleKey)) return;
+    scheduleAutoSave(
+      sample.id,
+      affectiveModuleKey,
+      pinReferenceAffective(sample[affectiveModuleKey], session.cupsPerSample),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [referenceSampleId, sampleIdx, affectiveModuleKey, sessionStatus]);
   const isCurrentReference = referenceSample?.id === current.id;
   const referenceBadgeLabel = translations.referenceBadge ?? "Referencia";
   const referenceOptions = [
@@ -1207,7 +1275,7 @@ export function CupClient({
     <SampleTabs
       orientation="horizontal"
       header={translations.samplesHeader}
-      samples={samples.map((s) => ({
+      samples={viewSamples.map((s) => ({
         id: s.id,
         label: s.label,
         filled: hasStepFill(s, currentStep),
@@ -1608,6 +1676,9 @@ export function CupClient({
             cupsPerSample={session.cupsPerSample}
             currentStep={currentStep}
             missingIds={currentMissingIds}
+            lockedAffective={isCurrentLocked}
+            lockedNote={translations.referenceLockedAffective}
+            lockedCupsNote={translations.referenceCupsLocked}
           />
         )}
         {activeTab === "cupping" &&
@@ -1620,6 +1691,9 @@ export function CupClient({
               currentStep={currentStep}
               locale={locale === "en" ? "en" : "es"}
               missingIds={currentMissingIds}
+              lockedAffective={isCurrentLocked}
+              lockedNote={translations.referenceLocked}
+              lockedCupsNote={translations.referenceCupsLocked}
             />
           )}
         {activeTab === "extrinsic" && (

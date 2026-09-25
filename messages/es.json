@@ -272,6 +272,10 @@
     "noSamplesBody": "Añade al menos una muestra para empezar a catar.",
     "referenceBadge": "Referencia",
     "compareHint": "Compara con la referencia ({label})",
+    "referenceLocked": "Muestra de referencia: la calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos y su puntaje es siempre 79.00. Describe lo que percibes; en las demás muestras puntuarás por encima o por debajo de esta.",
+    "referenceLockedAffective": "Muestra de referencia: la calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos y no hay nada que puntuar aquí. Pruébala con calma, anota lo que percibas y continúa con la siguiente muestra.",
+    "referenceCupsLocked": "Las tazas de la referencia no se marcan: su puntaje se mantiene fijo en 79.00.",
+    "referenceFirstHint": "La cata empieza por la referencia.",
     "phases": {
       "fragrance": "Fragancia",
       "aroma": "Aroma",
@@ -536,6 +540,8 @@
     },
     "dashboard": {
       "statSamples": "Muestras evaluadas",
+      "anchorTitle": "Referencia (ancla)",
+      "anchorHint": "Calidad fijada en 5 en todos los atributos · siempre 79.00 · fuera del ranking, del promedio y de la mejor muestra",
       "statParticipation": "Participación",
       "statAvg": "Promedio de sesión",
       "statBest": "Mejor muestra",
@@ -689,7 +695,7 @@
       },
       "referencia": {
         "title": "Muestra de referencia",
-        "body": "El maestro de cata puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La referencia se cata, se puntúa y se ordena como cualquier otra muestra; no cambia ningún puntaje.\nLo que agrega es contexto: junto a cada muestra verás Δ, la diferencia entre su puntaje y el de la referencia, calculada siempre con el mismo tipo de puntaje que ves al lado (comunitario cuando está visible; si no, el tuyo). Si una muestra y la referencia no tienen el mismo tipo de puntaje, no se muestra Δ.\nReferencia, media del grupo y desviación son cosas distintas: la referencia es el punto de partida elegido por el maestro; la media es lo que percibió el grupo; la desviación (±) es cuánto se dispersó el grupo."
+        "body": "El maestro de cata puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La cata empieza por ella y su calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos, así que cada catador le da siempre 79.00 y solo describe lo que percibe. No entra en el ranking, en el promedio ni en la mejor muestra: es el ancla.\nLo que agrega es contexto: junto a cada muestra verás Δ, la diferencia entre su puntaje y el de la referencia, calculada siempre con el mismo tipo de puntaje que ves al lado (comunitario cuando está visible; si no, el tuyo).\nReferencia, media del grupo y desviación son cosas distintas: la referencia es el punto de partida elegido por el maestro; la media es lo que percibió el grupo; la desviación (±) es cuánto se dispersó el grupo."
       }
     }
   },

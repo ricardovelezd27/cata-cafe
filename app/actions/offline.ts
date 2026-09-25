@@ -10,6 +10,7 @@ import {
   moduleKeyForFormat,
   type EvalModuleKey,
 } from "@/lib/evaluation";
+import { isPinnedModule, pinReferenceAffective } from "@/lib/referenceRules";
 
 // Conflict-aware replay of an offline evaluation draft, called on reconnect.
 // Authorization stays identical to the live path: Prisma scoped by cupperId
@@ -35,7 +36,7 @@ export async function syncEvaluation(input: {
   const user = await requireUser({ skipProfileUpsert: true });
   // Same authorization as the live upsertEvaluation path: session member only.
   // Also resolves the sample's real sessionId in one round-trip.
-  const { sessionId, status, cupsPerSample, format } = await requireSampleMember(
+  const { sessionId, status, cupsPerSample, format, referenceSampleId } = await requireSampleMember(
     input.sessionSampleId,
     user.id,
   );
@@ -67,7 +68,13 @@ export async function syncEvaluation(input: {
   // moduleKey / cupsPerSample come from the session row, never the client —
   // identical to the live upsertEvaluation path (input fields kept for API
   // compatibility with queued offline blobs).
-  const fields = computeEvaluationDerived(moduleKeyForFormat(format), input.data, cupsPerSample);
+  // Same reference pin as the live path (lib/referenceRules.ts).
+  const moduleKey = moduleKeyForFormat(format);
+  const data =
+    referenceSampleId === input.sessionSampleId && isPinnedModule(moduleKey)
+      ? pinReferenceAffective(input.data, cupsPerSample)
+      : input.data;
+  const fields = computeEvaluationDerived(moduleKey, data, cupsPerSample);
 
   await prisma.evaluation.upsert({
     where: {

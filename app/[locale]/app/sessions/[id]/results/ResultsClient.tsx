@@ -244,6 +244,8 @@ export function ResultsClient({
       referenceBadge: string;
       deltaVsReference: string;
       deltaVsReferenceAria: string;
+      anchorTitle: string;
+      anchorHint: string;
     };
     table: ScoreTableTranslations;
     detail: SampleDetailDialogTranslations;

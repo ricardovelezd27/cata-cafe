@@ -179,6 +179,8 @@ Before cupping, you can evaluate the green beans:
 5. Your score is **saved automatically** as you type (800ms debounce) — no manual save needed.
 6. Navigate between samples using the pill tabs at the top.
 
+> If a reference sample was marked, the tasting starts there: its quality is already fixed at 5 on every attribute (you only describe what you perceive), and results later show it as an anchor above the ranking rather than a ranked competitor.
+
 #### 4. Reveal sample identities (optional)
 
 After blind tasting, you can reveal what each sample was:
@@ -270,7 +272,7 @@ Same flow as the session leader:
 2. Fill in the evaluation form (Descriptive, Affective, or Combined — set by the session leader at creation).
 3. Your work saves automatically.
 
-If the session leader marked a reference sample, its tab shows a small **Referencia** pill and every other sample shows a "Compara con la referencia (X)" hint — a reminder of what you're scoring against.
+If the session leader marked a reference sample, the tasting starts there — its quality is already fixed at 5 on every attribute, so you only describe what you perceive — and its tab shows a small **Referencia** pill, while every other sample shows a "Compara con la referencia (X)" hint; results later show it as an anchor above the ranking, not a ranked competitor.
 
 #### 3. Submit your evaluation
 
