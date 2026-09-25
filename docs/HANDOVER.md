@@ -4,7 +4,7 @@
 > from **Next action**. Do not re-plan. The approved plan lives at
 > `~/.claude/plans/i-want-you-to-graceful-wreath.md` (summarised in the WP table below).
 
-- **status:** launch work SHIPPED — merged to `main` (172aa0b..255578c) and deployed to production 2026-09-14. Runbook §1, §1b, §2 and §3 all applied. Only the §5 smoke test remains, and it needs a real login. Reference sample feature BUILT, AUDITED, migration APPLIED and walkthrough DONE 2026-09-24 — UNMERGED; pending: PR + merge + deploy.
+- **status:** launch work SHIPPED — merged to `main` (172aa0b..255578c) and deployed to production 2026-09-14. Runbook §1, §1b, §2 and §3 all applied. Only the §5 smoke test remains, and it needs a real login. Reference sample feature BUILT, AUDITED, migration APPLIED and walkthrough DONE 2026-09-24 — UNMERGED; pending: PR + merge + deploy. Second iteration (reference cupped first + pinned at 5, results anchor) BUILT on branch `claude/reference-first-anchor` 2026-09-25 — typechecked and tested; browser walkthrough + PR still pending.
 - **last updated:** 2026-09-23
 - **worktree:** `C:\projects\cata-cafe\.claude\worktrees\results-page-redesign-2920c2`
 - **base:** `main` @ 172aa0b → now `main` @ 255578c (deployed)
@@ -51,6 +51,15 @@
 - [x] migration applied 2026-09-24 (`npx prisma migrate deploy` by Ricardo; column verified in the SQL Editor)
 - [x] browser walkthrough 2026-09-24 (two test users via dev sign-in: wizard radio → step-2 line → waiting-room line → master-panel change persisted + owner tabs updated live → participant cup view (REF pill, compare hint) → seeded evaluations → close → results badge/Δ on ranking, table, radar, matrix + InfoHint + legend → print sheet "Muestra B · Referencia" → edit-page select saves with toast and is natively disabled on the closed session → duplicate keeps the reference → removing the reference sample clears it → test sessions deleted). Caveat: live delivery to the PARTICIPANT tab could not be proven — the browser pane suspended the background tab's network and the Supabase realtime websocket kept failing from this machine; the owner-side live update was observed once. Re-check on the real cupping or on staging.
 - [x] BUG FOUND + FIXED during the walkthrough (pre-existing, shipped 2026-09-14): `deleteSession` failed with P2003 `user_coffee_history_evaluationId_fkey` on any closed session with submitted coffee-linked evaluations — the history rows are touched inside the delete transaction, so Postgres re-checks their FKs when the session's SET NULL fires, after the evaluation cascade already ran. `detachCoffeeHistoryForSession` now nulls `sessionId`/`evaluationId` itself before the delete. Reproduced and verified against the live DB (throwaway session + the walkthrough session).
+- [ ] merged
+- [ ] deployed
+
+### Reference first + pinned quality (2026-09-25)
+
+- [x] built
+- [x] typechecked (`npx tsc --noEmit`)
+- [x] tested (`tests/referenceRules.test.ts`, 89 tests total)
+- [ ] browser walkthrough
 - [ ] merged
 - [ ] deployed
 

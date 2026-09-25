@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { orderReferenceFirst } from "@/lib/referenceRules";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
 import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
@@ -89,6 +90,10 @@ export default async function ResultsPage({
   ]);
 
   if (!session) notFound();
+
+  // The reference (control) sample leads every list on this page — tables,
+  // radar cards, owner matrix — mirroring the cupping order (lib/referenceRules.ts).
+  session.samples = orderReferenceFirst(session.samples, session.referenceSampleId);
 
   const isOwner = session.createdBy === user.id;
   // Admin viewing someone else's session: owner-equivalent READ access only.
@@ -715,6 +720,8 @@ export default async function ResultsPage({
           referenceBadge: tResults("referenceBadge"),
           deltaVsReference: tResults("deltaVsReference"),
           deltaVsReferenceAria: tResults("deltaVsReferenceAria"),
+          anchorTitle: tResults("dashboard.anchorTitle"),
+          anchorHint: tResults("dashboard.anchorHint"),
         },
         table: {
           sample: tResults("table.sample"),

@@ -272,6 +272,10 @@
     "noSamplesBody": "Add at least one sample to start cupping.",
     "referenceBadge": "Reference",
     "compareHint": "Compare against the reference ({label})",
+    "referenceLocked": "Reference sample: quality is pinned at 5 (neither high nor low) on every attribute and its score is always 79.00. Describe what you perceive; you will score the other samples above or below this one.",
+    "referenceLockedAffective": "Reference sample: quality is pinned at 5 (neither high nor low) on every attribute, so there is nothing to score here. Taste it calmly, note what you perceive and move on to the next sample.",
+    "referenceCupsLocked": "Cups are not marked on the reference: its score stays fixed at 79.00.",
+    "referenceFirstHint": "The tasting starts with the reference.",
     "phases": {
       "fragrance": "Fragrance",
       "aroma": "Aroma",
@@ -536,6 +540,8 @@
     },
     "dashboard": {
       "statSamples": "Samples evaluated",
+      "anchorTitle": "Reference (anchor)",
+      "anchorHint": "Quality pinned at 5 on every attribute · always 79.00 · outside the ranking, the average and the best sample",
       "statParticipation": "Participation",
       "statAvg": "Session average",
       "statBest": "Best sample",
@@ -689,7 +695,7 @@
       },
       "referencia": {
         "title": "Reference sample",
-        "body": "The session master can mark one sample as the reference: a shared starting point the others are read against. The reference is cupped, scored and ranked like any other sample; it changes no score.\nWhat it adds is context: next to each sample you'll see Δ, the difference between its score and the reference's, always computed on the same kind of score you see beside it (community when visible, otherwise your own). When a sample and the reference do not share the same kind of score, no Δ is shown.\nReference, group mean and deviation are different things: the reference is the starting point the master chose; the mean is what the group perceived; the deviation (±) is how much the group spread."
+        "body": "The session master can mark one sample as the reference: a shared starting point the others are read against. The tasting starts with it and its quality is pinned at 5 (neither high nor low) on every attribute, so every cupper gives it 79.00 and only describes what they perceive. It sits outside the ranking, the average and the best sample: it is the anchor.\nWhat it adds is context: next to each sample you'll see Δ, the difference between its score and the reference's, always computed on the same kind of score you see beside it (community when visible, otherwise your own).\nReference, group mean and deviation are different things: the reference is the starting point the master chose; the mean is what the group perceived; the deviation (±) is how much the group spread."
       }
     }
   },

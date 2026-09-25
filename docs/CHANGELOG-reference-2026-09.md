@@ -88,6 +88,8 @@ rama. Pendiente:
   pantalla del maestro sí se observó. Conviene comprobarlo en la cata real: si el
   participante no ve el cambio, basta con recargar la página.
 - [ ] Pendiente: fusionar `claude/cafe-sensible-improvements-51283e` a `main` y desplegar.
+- [ ] Segunda iteración construida 2026-09-25 en la rama claude/reference-first-anchor;
+  pendiente: prueba en navegador, PR y despliegue.
 
 ## Arreglo adicional encontrado en la prueba
 
@@ -128,6 +130,67 @@ Comprobaciones adicionales:
 - **Quitar la muestra de referencia**: si el maestro borra la muestra marcada como
   referencia (antes de cerrar), `referenceSampleId` debe quedar en `null` — sin badge, sin
   Δ, sin error.
+
+## Segunda iteración (2026-09-25): la referencia se cata primero y queda fijada en 5
+
+Después del primer ciclo (arriba), Kim propuso un ajuste a partir de cómo se usa la
+referencia en la práctica: si su función es dar un punto de partida común, tiene que
+catarse primero, y si no se le puntúa realmente (todos la anclan en el mismo valor), no
+tiene sentido pedirle al catador que la puntúe — solo que la describa. Esta segunda
+iteración construye eso.
+
+### Qué ve el catador
+
+- **Orden**: la muestra de referencia ya no aparece donde le tocaba por posición — es
+  siempre la primera pestaña, para el maestro y para cada participante. Las demás muestras
+  mantienen su orden entre sí. Si el maestro cambia la referencia a mitad de sesión, el
+  orden se reacomoda al instante y cada catador se queda mirando la muestra que tenía
+  abierta (no salta a otra por error).
+- **Burbujas bloqueadas**: al entrar a la referencia, las ocho burbujas de calidad
+  aparecen fijas en 5 ("ni alto ni bajo") y no se pueden tocar; las casillas de tazas no
+  uniformes / defectuosas tampoco. Un aviso arriba del formulario explica por qué. Lo único
+  que se puede — y se debe — llenar es la parte descriptiva: intensidad, descriptores de
+  sabor, notas. En sesiones **afectivas** (sin parte descriptiva) el aviso dice
+  directamente que no hay nada que puntuar en esa muestra, solo catarla y anotar lo que se
+  perciba.
+- **Las demás muestras**: se puntúan exactamente como siempre — burbujas libres, tazas
+  editables.
+- Sesiones **solo descriptivas** no cambian en nada: nunca tuvieron burbujas de calidad,
+  así que no hay nada que fijar.
+
+### Qué ve el maestro (resultados)
+
+- La referencia ya no aparece dentro del ranking — sale como una tarjeta ancla
+  ("Referencia (ancla)") arriba de la lista, con su puntaje (79.00 siempre que alguien la
+  haya guardado) y sin puesto asignado.
+- Queda fuera del promedio de sesión y de "Mejor muestra" — no tiene sentido promediarla ni
+  competir con ella si su puntaje está fijado de antemano.
+- El Δ (diferencia) de cada muestra contra la referencia se calcula igual que antes y se
+  sigue mostrando junto a cada fila del ranking.
+- La tabla, el gráfico, el PDF y las hojas impresas listan la referencia primero, igual que
+  en `/cup`.
+
+### Qué NO cambia
+
+- Sesiones **solo descriptivas**: sin cambios — nunca hubo calidad que fijar.
+- La fórmula de puntaje y el trigger de PostgreSQL: intocados. El 79.00 de la referencia
+  sale de la misma fórmula que cualquier otro puntaje, solo que con todos los insumos
+  fijados en 5.
+- Evaluaciones **ya guardadas** antes de este cambio: no se reescriben. El bloqueo solo
+  aplica a partir de ahora, hacia adelante — si alguien ya había puntuado la referencia con
+  otros valores, esa evaluación queda como estaba.
+
+### Cómo comprobarlo (esta iteración)
+
+1. Crea una sesión grupal **afectiva** con al menos dos muestras y marca **B** como
+   referencia.
+2. Entra a `/cup`: debe abrir directamente en **B**, con las burbujas fijas en 5 y el
+   aviso explicando que no hay nada que puntuar — solo catar y anotar.
+3. Pasa a la siguiente muestra: las burbujas deben estar libres y editables, como siempre.
+4. Cierra la sesión.
+5. En resultados: debe verse la tarjeta "Referencia (ancla)" con 79.00, arriba del
+   ranking, y **B** no debe aparecer en la lista de puestos.
+6. En la tabla y en el PDF: **B** debe listarse primero.
 
 ## Siguiente ciclo
 

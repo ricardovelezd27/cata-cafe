@@ -21,6 +21,7 @@ import {
 } from "@/lib/sessionAuth";
 import { detachCoffeeHistoryForSession } from "@/lib/coffeeHistory";
 import { computeEvaluationDerived, moduleKeyForFormat } from "@/lib/evaluation";
+import { isPinnedModule, pinReferenceAffective } from "@/lib/referenceRules";
 import * as v from "@/lib/validate";
 import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/groups";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
@@ -487,11 +488,15 @@ export async function upsertEvaluation(input: {
     throw new Error("invalid_input");
   }
 
-  const fields = computeEvaluationDerived(
-    moduleKeyForFormat(auth.format),
-    input.data,
-    auth.cupsPerSample,
-  );
+  // The reference sample is the calibration anchor: its affective ratings
+  // are pinned to 5 and its cups cleared on EVERY save, server-side, so no
+  // client can move it (lib/referenceRules.ts). Descriptive data is untouched.
+  const moduleKey = moduleKeyForFormat(auth.format);
+  const data =
+    auth.referenceSampleId === input.sessionSampleId && isPinnedModule(moduleKey)
+      ? pinReferenceAffective(input.data, auth.cupsPerSample)
+      : input.data;
+  const fields = computeEvaluationDerived(moduleKey, data, auth.cupsPerSample);
 
   const doUpsert = () =>
     prisma.evaluation.upsert({

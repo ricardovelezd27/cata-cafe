@@ -34,6 +34,9 @@ export function AffectiveForm({
   cupsPerSample,
   currentStep,
   missingIds,
+  lockedAffective = false,
+  lockedNote,
+  lockedCupsNote,
 }: {
   sampleData: Data;
   onChange: (d: Data) => void;
@@ -41,6 +44,13 @@ export function AffectiveForm({
   currentStep: CuppingStep;
   /** affectiveIds (from lib/completeness) still missing on this step; drives the * / red flag. */
   missingIds?: string[];
+  /** Reference (control) sample: every quality bubble is pinned at 5 and the
+   *  cup checks are cleared (lib/referenceRules.ts). Only notes stay editable. */
+  lockedAffective?: boolean;
+  /** Banner explaining the lock; shown once at the top of the form. */
+  lockedNote?: string;
+  /** Replaces the cup grid on the overall step while locked. */
+  lockedCupsNote?: string;
 }) {
   const isFlagged = (id: string) => missingIds?.includes(id) ?? false;
   const d = sampleData;
@@ -55,6 +65,16 @@ export function AffectiveForm({
   const uniformityInScore = cupsPerSample >= 5;
 
   const stepAttrs = STEP_ATTRIBUTES[currentStep];
+
+  const lockedBanner =
+    lockedAffective && lockedNote ? (
+      <div
+        role="note"
+        className="mb-4 rounded-card border border-secondary/30 bg-secondary-fixed px-4 py-3 font-sans text-sm text-on-secondary-fixed-variant"
+      >
+        {lockedNote}
+      </div>
+    ) : null;
 
   // Cup state (only used in overall step)
   const nonUniformBools = getBools("tazas_no_uniformes");
@@ -99,6 +119,7 @@ export function AffectiveForm({
   if (currentStep !== "overall") {
     return (
       <div>
+        {lockedBanner}
         {stepAttrs.map((attr) => {
           const title = attr.descriptiveId
             ? STEP_DESC_LABELS[attr.descriptiveId] ?? attr.affectiveId
@@ -117,6 +138,7 @@ export function AffectiveForm({
                   <AffectiveBubbles
                     value={getNum(`${attr.affectiveId}_final`)}
                     onChange={(v) => set(`${attr.affectiveId}_final`, v)}
+                    disabled={lockedAffective}
                   />
                 </div>
 
@@ -139,10 +161,12 @@ export function AffectiveForm({
   // Overall step: impresión global + cups + score
   return (
     <div>
+      {lockedBanner}
       <FormSection title="Impresión Global" accent flagged={isFlagged("impresion_global")}>
         <AffectiveBubbles
           value={getNum("impresion_global_final")}
           onChange={(v) => set("impresion_global_final", v)}
+          disabled={lockedAffective}
         />
         <div className="mt-3">
           <Notes
@@ -153,7 +177,12 @@ export function AffectiveForm({
         </div>
       </FormSection>
 
-      {showCups && (
+      {showCups && lockedAffective && lockedCupsNote && (
+        <FormSection title="Tazas">
+          <p className="font-sans text-sm text-brown-mid">{lockedCupsNote}</p>
+        </FormSection>
+      )}
+      {showCups && !lockedAffective && (
         <FormSection title="Tazas">
           <CupToggleGrid
             cupsPerSample={cupsPerSample}

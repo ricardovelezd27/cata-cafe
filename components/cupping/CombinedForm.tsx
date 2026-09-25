@@ -88,6 +88,9 @@ export function CombinedForm({
   currentStep,
   locale = "es",
   missingIds,
+  lockedAffective = false,
+  lockedNote,
+  lockedCupsNote,
 }: {
   sampleData: Data;
   onChange: (d: Data) => void;
@@ -96,6 +99,11 @@ export function CombinedForm({
   locale?: "es" | "en";
   /** affectiveIds (from lib/completeness) still missing on this step; drives the * / red flag. */
   missingIds?: string[];
+  /** Reference (control) sample: quality bubbles pinned at 5, cups cleared
+   *  (lib/referenceRules.ts). Descriptive side and notes stay editable. */
+  lockedAffective?: boolean;
+  lockedNote?: string;
+  lockedCupsNote?: string;
 }) {
   const isFlagged = (id: string) => missingIds?.includes(id) ?? false;
   const d = sampleData;
@@ -120,6 +128,16 @@ export function CombinedForm({
 
   const showCups = cupsPerSample >= 2;
   const uniformityInScore = cupsPerSample >= 5;
+
+  const lockedBanner =
+    lockedAffective && lockedNote ? (
+      <div
+        role="note"
+        className="mb-4 rounded-card border border-secondary/30 bg-secondary-fixed px-4 py-3 font-sans text-sm text-on-secondary-fixed-variant"
+      >
+        {lockedNote}
+      </div>
+    ) : null;
 
   const nonUniformBools = getBools("tazas_no_uniformes");
   const defectiveBools = getBools("tazas_defectuosas");
@@ -163,10 +181,12 @@ export function CombinedForm({
   if (currentStep === "overall") {
     return (
       <div>
+        {lockedBanner}
         <FormSection title="Impresión Global" accent flagged={isFlagged("impresion_global")}>
           <AffectiveBubbles
             value={num("impresion_global_final")}
             onChange={(v) => set("impresion_global_final", v)}
+            disabled={lockedAffective}
           />
           <div className="mt-3">
             <Notes
@@ -177,7 +197,12 @@ export function CombinedForm({
           </div>
         </FormSection>
 
-        {showCups && (
+        {showCups && lockedAffective && lockedCupsNote && (
+          <FormSection title="Tazas">
+            <p className="font-sans text-sm text-brown-mid">{lockedCupsNote}</p>
+          </FormSection>
+        )}
+        {showCups && !lockedAffective && (
           <FormSection title="Tazas">
             <CupToggleGrid
               cupsPerSample={cupsPerSample}
@@ -218,6 +243,7 @@ export function CombinedForm({
 
   return (
     <div>
+      {lockedBanner}
       {stepAttrs.map((attr) => {
         const descId = attr.descriptiveId;
         if (!descId) return null;
@@ -273,6 +299,7 @@ export function CombinedForm({
                 <AffectiveBubbles
                   value={num(`${affId}_final`)}
                   onChange={(v) => set(`${affId}_final`, v)}
+                  disabled={lockedAffective}
                 />
 
                 <div className="mt-4">

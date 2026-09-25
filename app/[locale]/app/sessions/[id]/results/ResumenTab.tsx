@@ -37,6 +37,8 @@ type ResumenTabTranslations = {
   referenceBadge: string;
   deltaVsReference: string;
   deltaVsReferenceAria: string;
+  anchorTitle: string;
+  anchorHint: string;
 };
 
 function average(values: number[]): number | null {
@@ -141,7 +143,13 @@ export function ResumenTab({
     return { score: mine, sd: null, basis: mine === null ? null : "mine" };
   };
 
+  // The reference is the ANCHOR: pinned at 5 on every attribute (79.00 for
+  // everyone), cupped first, and kept outside the ranking, the session
+  // average and the best sample (lib/referenceRules.ts). It still feeds Δ.
+  const referenceSample = referenceId ? (samples.find((s) => s.id === referenceId) ?? null) : null;
+  const referenceRank = referenceSample ? rankFor(referenceSample) : null;
   const ranked = samples
+    .filter((sample) => sample.id !== referenceId)
     .map((sample, position) => {
       const { score, sd, basis } = rankFor(sample);
       return { sample, position, score, sd, basis };
@@ -161,7 +169,12 @@ export function ResumenTab({
   // `basis` guards the ranking's mixed fallback (community for some rows,
   // own score for others): a Δ is only shown between rows of the same kind.
   const refDeltas = deltasVsReference(
-    ranked.map((r) => ({ id: r.sample.id, score: r.score, basis: r.basis })),
+    [
+      ...ranked.map((r) => ({ id: r.sample.id, score: r.score, basis: r.basis })),
+      ...(referenceSample && referenceRank
+        ? [{ id: referenceSample.id, score: referenceRank.score, basis: referenceRank.basis }]
+        : []),
+    ],
     referenceId,
   );
 
@@ -174,9 +187,10 @@ export function ResumenTab({
   const bestEntry = ranked.find((r) => r.score !== null) ?? null;
 
   // ---- Performance card (my average vs community average) ----
-  const myScores = samples.map(myScoreFor).filter((v): v is number => v !== null);
+  const scoredSamples = samples.filter((s) => s.id !== referenceId);
+  const myScores = scoredSamples.map(myScoreFor).filter((v): v is number => v !== null);
   const myAvg = average(myScores);
-  const communityScores = samples
+  const communityScores = scoredSamples
     .map((s) => s.aggregateScore?.communityScore ?? null)
     .filter((v): v is number => v !== null);
   const communityAvg = average(communityScores);
@@ -252,6 +266,37 @@ export function ResumenTab({
               />
             )}
           </h2>
+          {referenceSample && referenceRank && (
+            <button
+              type="button"
+              onClick={() => onOpenSample(referenceSample.id)}
+              className="min-h-[44px] flex w-full items-center gap-3 rounded-card border border-secondary/40 bg-secondary-fixed/40 px-4 py-3 text-left transition-colors hover:bg-secondary-fixed"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-secondary">
+                  {t.anchorTitle}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="truncate font-medium text-on-surface">{referenceSample.label}</div>
+                  <Badge tone="accent" size="xs">
+                    {t.referenceBadge}
+                  </Badge>
+                </div>
+                {referenceSample.revealed && referenceSample.coffee && (
+                  <div className="truncate text-xs text-on-surface-variant">
+                    {referenceSample.coffee.name}
+                  </div>
+                )}
+                <div className="text-[11px] text-on-surface-variant">{t.anchorHint}</div>
+              </div>
+              {referenceRank.score !== null ? (
+                <ScorePill score={referenceRank.score} />
+              ) : (
+                <span className="shrink-0 text-xs text-on-surface-variant">{t.notScored}</span>
+              )}
+              <ChevronRight size={16} aria-hidden className="shrink-0 text-on-surface-variant" />
+            </button>
+          )}
           <div className="flex flex-col gap-2">
             {ranked.map(({ sample, score, sd }, idx) => (
               <button

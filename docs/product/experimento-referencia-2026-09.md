@@ -16,7 +16,7 @@
 
 1. "La muestra ___ es la referencia. No es 'la mejor'; es el punto de partida común."
 2. "En cada atributo: primero la referencia, después la muestra. ¿Está por encima o por debajo? ¿Cuánto?"
-3. "Puntúa como siempre. La referencia también se puntúa."
+3. "La referencia va primero y su calidad ya está fijada en 5 — no hay que puntuarla, solo describir lo que perciben. Después puntúan el resto por encima o por debajo de ella."
 4. "Al final compararemos: tu puntaje, la referencia y la media del grupo. Son tres cosas distintas."
 
 ## 3. Qué observar durante la cata (Ricardo / Kim)
@@ -29,6 +29,7 @@
 | Cambio de referencia (si ocurre) | ¿Se enteran los participantes sin avisar? ¿Confunde? | |
 | Resultados | ¿El Δ se entiende sin explicación? ¿Alguien lo confunde con la desviación (±)? | |
 | Resultados | ¿Miran primero el ranking, el Δ o la media? | |
+| Referencia primera | ¿Se entiende que su calidad está fijada y no hay que puntuarla? ¿Alguien intenta cambiar los círculos bloqueados? | |
 
 Incidencias técnicas (hora, quién, qué pasó): 
 
