@@ -131,26 +131,24 @@ const FLAVOR_WHEEL_SOURCE: RawGroup[] = [
       { key: 'pomegranate', es: 'Granada', en: 'Pomegranate' },
     ] },
   ] },
-  // Green/Vegetal: the three subgroups keep the wheel's fresco/seco/cocido split in
-  // English, but all carry the Spanish label 'Verde/Vegetal' — signed off in the
-  // 2026-08 flavor-pill naming review (cuppers name the leaf, not the subgroup).
+  // Green/Vegetal: the wheel's fresco/seco/cocido split was collapsed in the 2026-09
+  // review — ONE 'Verde/Vegetal' subgroup holds the leaves, and Leguminoso/Crudo/
+  // Aceite de oliva are leafless subgroups. Spanish sets the structure and English
+  // mirrors it exactly (same nodes, same levels) so data reads the same in both.
+  // The subgroup key stays 'fresh' so existing leaf ids never change.
   { key: 'green_veg', es: 'Verde/Vegetal', en: 'Green/Vegetative', color: L1_GROUP_COLOR.green_veg, subs: [
-    { key: 'fresh', es: 'Verde/Vegetal', en: 'Fresh Vegetative', leaves: [
+    { key: 'fresh', es: 'Verde/Vegetal', en: 'Green/Vegetative', leaves: [
       { key: 'fresh',       es: 'Fresco',            en: 'Fresh' },
       { key: 'peapod',      es: 'Vaina',             en: 'Peapod', syn: ['vaina de guisante', 'guisante'] },
       { key: 'vegetative',  es: 'Vegetal',           en: 'Vegetative' },
       { key: 'dark_green',  es: 'Verde oscuro',      en: 'Dark Green' },
       { key: 'herb_like',   es: 'Herbáceo',          en: 'Herb-like' },
       { key: 'under_ripe',  es: 'Inmaduro',          en: 'Under-ripe' },
+      { key: 'hay_like',    es: 'Heno',              en: 'Hay-like' },
     ] },
-    { key: 'dried', es: 'Verde/Vegetal', en: 'Dried Vegetative', leaves: [
-      { key: 'hay_like',     es: 'Heno',         en: 'Hay-like' },
-      { key: 'beany',        es: 'Leguminoso',   en: 'Beany' },
-      { key: 'raw',          es: 'Crudo',        en: 'Raw' },
-    ] },
-    { key: 'cooked', es: 'Verde/Vegetal', en: 'Cooked Vegetative', leaves: [
-      { key: 'olive_oil', es: 'Aceite de oliva', en: 'Olive Oil' },
-    ] },
+    { key: 'beany',     es: 'Leguminoso',      en: 'Beany' },
+    { key: 'raw',       es: 'Crudo',           en: 'Raw' },
+    { key: 'olive_oil', es: 'Aceite de oliva', en: 'Olive Oil' },
   ] },
   { key: 'nutty_cocoa', es: 'Nueces/Cacao', en: 'Nutty/Cocoa', color: L1_GROUP_COLOR.nutty_cocoa, subs: [
     { key: 'cocoa', es: 'Cacao', en: 'Cocoa', leaves: [
@@ -367,7 +365,15 @@ export const FLAVOR_ID_MIGRATION: Record<string, string> = {
   'other:wood':               'other:papery_musty',
   // Retired in the 2026-08 flavor-pill naming review — alias to the parent node.
   'green_veg:fresh:cucumber':      'green_veg:fresh',
-  'green_veg:dried:potato_skins':  'green_veg:dried',
+  'green_veg:dried:potato_skins':  'green_veg',
+  // 2026-09 Verde/Vegetal collapse — the Dried/Cooked subgroups are gone. Single-hop
+  // lookup, so every alias points straight at a live node.
+  'green_veg:dried':               'green_veg',
+  'green_veg:cooked':              'green_veg:olive_oil',
+  'green_veg:dried:hay_like':      'green_veg:fresh:hay_like',
+  'green_veg:dried:beany':         'green_veg:beany',
+  'green_veg:dried:raw':           'green_veg:raw',
+  'green_veg:cooked:olive_oil':    'green_veg:olive_oil',
   'nutty_cocoa:nutty:nutty':       'nutty_cocoa:nutty',
   'spice:brown_spice:brown_spice': 'spice:brown_spice',
   'spice:spicy':                   'spice',
