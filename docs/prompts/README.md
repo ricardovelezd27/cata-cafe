@@ -1,5 +1,7 @@
 # Prompts para sesiones separadas
 
+> La lista consolidada y priorizada de todo lo pendiente está en `docs/BACKLOG.md`; los prompts de aquí son los planes detallados de los ítems grandes.
+
 Cada archivo contiene **el prompt listo para pegar** en una sesión nueva de Claude Code **y el plan
 de implementación completo** (fases, archivos, criterios de aceptación, pasos manuales, riesgos y
 definición de hecho). Incluyen los hallazgos de la auditoría del 2026-09-22 para que la sesión no
