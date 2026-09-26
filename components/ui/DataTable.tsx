@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight } from "lucide-react";
 import { SearchInput } from "./SearchInput";
 import { FilterBar, type FacetOption } from "./FilterBar";
 import { Pagination } from "./Pagination";
+import { Button } from "./Button";
+import { pageState, pruneSelection, togglePage } from "@/lib/tableSelection";
 
 export type Column<T> = {
   key: string;
@@ -28,6 +30,93 @@ export type Facet<T> = {
   options: FacetOption[];
   match: (row: T, value: string) => boolean;
 };
+
+/** Per-row selection handle passed as the 3rd argument of renderMobileCard
+ *  (null when the table has no `selection` config). */
+export type RowSelection = {
+  selectable: boolean;
+  selected: boolean;
+  toggle: () => void;
+};
+
+/** Opt-in row selection. DataTable owns the selected-id Set (uncontrolled):
+ *  it accumulates across pages/filters, is pruned against `rows` whenever they
+ *  change (a router.refresh() after a bulk action drops the gone ids), and the
+ *  bulk-actions render prop receives `clear()` for a deterministic reset. The
+ *  header checkbox toggles the selectable rows of the CURRENT PAGE only. */
+export type SelectionConfig<T> = {
+  isSelectable: (r: T) => boolean;
+  /** Accessible name for a row's checkbox — interpolated into translations.selectRow. */
+  rowLabel: (r: T) => string;
+  /** Rendered in the toolbar above the table whenever ≥1 row is selected. */
+  renderBulkActions: (ids: string[], clear: () => void) => ReactNode;
+  translations: {
+    selectAll: string;
+    /** Contains the literal placeholder {name}. */
+    selectRow: string;
+    /** Contains the literal placeholder {count}. */
+    selectedCount: string;
+    clearSelection: string;
+  };
+};
+
+const CHECKBOX_CLASS =
+  "h-4 w-4 cursor-pointer rounded border-outline-variant accent-primary-container disabled:cursor-default disabled:opacity-40";
+
+/** Hoisted to module scope — never redeclare components inside render. Shared
+ *  with callers' mobile cards so every table's checkbox looks the same. */
+export function SelectionCheckbox({
+  checked,
+  onChange,
+  ariaLabel,
+  disabled,
+}: {
+  checked: boolean;
+  onChange: () => void;
+  ariaLabel: string;
+  disabled?: boolean;
+}) {
+  return (
+    <input
+      type="checkbox"
+      className={CHECKBOX_CLASS}
+      checked={checked}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      onChange={onChange}
+      onClick={(e) => e.stopPropagation()}
+    />
+  );
+}
+
+/** `indeterminate` is a DOM property, not an attribute — set it via a ref. */
+function HeaderCheckbox({
+  state,
+  onChange,
+  ariaLabel,
+  disabled,
+}: {
+  state: "none" | "some" | "all";
+  onChange: () => void;
+  ariaLabel: string;
+  disabled: boolean;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = state === "some";
+  }, [state]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      className={CHECKBOX_CLASS}
+      checked={state === "all"}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      onChange={onChange}
+    />
+  );
+}
 
 type SortState = { key: string; dir: "asc" | "desc" };
 
@@ -102,6 +191,7 @@ export function DataTable<T>({
   facets,
   getRowHref,
   rowActions,
+  selection,
   renderMobileCard,
   emptyState,
   noResults,
@@ -117,7 +207,9 @@ export function DataTable<T>({
   facets?: Facet<T>[];
   getRowHref?: (r: T) => string | null;
   rowActions?: (r: T) => ReactNode;
-  renderMobileCard: (r: T, actions: ReactNode | null) => ReactNode;
+  /** Opt-in checkbox selection + bulk-actions toolbar (see SelectionConfig). */
+  selection?: SelectionConfig<T>;
+  renderMobileCard: (r: T, actions: ReactNode | null, selection: RowSelection | null) => ReactNode;
   emptyState: ReactNode;
   noResults: string;
   perPage?: number;
@@ -136,6 +228,14 @@ export function DataTable<T>({
   const [facetValues, setFacetValues] = useState<Record<string, string>>({});
   const [sort, setSort] = useState<SortState | null>(initialSort ?? null);
   const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+
+  // Prune selected ids that vanished from `rows` (deleted elsewhere / after a
+  // router.refresh()). Adjusting state during render per React's guidance —
+  // pruneSelection returns the same instance when nothing changed, so this
+  // cannot loop.
+  const pruned = selection ? pruneSelection(selected, rows.map(rowKey)) : selected;
+  if (pruned !== selected) setSelected(pruned);
 
   const filtered = useMemo(() => {
     let result = rows;
@@ -224,8 +324,50 @@ export function DataTable<T>({
   const showControls = !!searchText || !!facets?.length;
   const hasTrailingColumn = !!getRowHref || !!rowActions;
 
+  // ── Selection helpers ────────────────────────────────────────────────────
+  const selectablePageIds = selection
+    ? pageItems.filter((row) => selection.isSelectable(row)).map(rowKey)
+    : [];
+  const headerState = pageState(pruned, selectablePageIds);
+  const selectedIds = [...pruned];
+  const clearSelection = () => setSelected(new Set());
+  const toggleRow = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const rowSelection = (row: T): RowSelection | null => {
+    if (!selection) return null;
+    const id = rowKey(row);
+    return {
+      selectable: selection.isSelectable(row),
+      selected: pruned.has(id),
+      toggle: () => toggleRow(id),
+    };
+  };
+
   return (
     <div className="space-y-4">
+      {selection && selectedIds.length > 0 && (
+        <div
+          role="region"
+          aria-live="polite"
+          className="flex flex-wrap items-center gap-3 rounded-card border border-outline-variant bg-surface-container-low px-4 py-2"
+        >
+          <span className="text-sm font-semibold text-on-surface">
+            {selection.translations.selectedCount.replace("{count}", String(selectedIds.length))}
+          </span>
+          <Button variant="ghost" size="sm" onClick={clearSelection}>
+            {selection.translations.clearSelection}
+          </Button>
+          <div className="ml-auto flex items-center gap-2">
+            {selection.renderBulkActions(selectedIds, clearSelection)}
+          </div>
+        </div>
+      )}
+
       {showControls && (
         <div className="flex flex-wrap items-center gap-3">
           {searchText && (
@@ -256,6 +398,16 @@ export function DataTable<T>({
             <table className="w-full text-sm">
               <thead className="border-b border-outline-variant bg-surface-container">
                 <tr>
+                  {selection && (
+                    <th scope="col" className="w-10 px-3 py-3">
+                      <HeaderCheckbox
+                        state={headerState}
+                        disabled={selectablePageIds.length === 0}
+                        ariaLabel={selection.translations.selectAll}
+                        onChange={() => setSelected((prev) => togglePage(prev, selectablePageIds))}
+                      />
+                    </th>
+                  )}
                   {columns.map((col) => {
                     const active = sort?.key === col.key;
                     const dir: "asc" | "desc" = active && sort ? sort.dir : "asc";
@@ -278,8 +430,28 @@ export function DataTable<T>({
               <tbody className="divide-y divide-outline-variant/50">
                 {pageItems.map((row) => {
                   const href = getRowHref?.(row) ?? null;
+                  const sel = rowSelection(row);
                   return (
-                    <tr key={rowKey(row)} className="bg-surface-container-lowest transition-colors hover:bg-surface-container-low">
+                    <tr
+                      key={rowKey(row)}
+                      className={`transition-colors hover:bg-surface-container-low ${
+                        sel?.selected ? "bg-primary-fixed/40" : "bg-surface-container-lowest"
+                      }`}
+                    >
+                      {sel && (
+                        <td className="w-10 px-3 py-3">
+                          {sel.selectable && (
+                            <SelectionCheckbox
+                              checked={sel.selected}
+                              onChange={sel.toggle}
+                              ariaLabel={selection!.translations.selectRow.replace(
+                                "{name}",
+                                selection!.rowLabel(row),
+                              )}
+                            />
+                          )}
+                        </td>
+                      )}
                       {columns.map((col) => {
                         const content = col.render
                           ? col.render(row)
@@ -320,7 +492,9 @@ export function DataTable<T>({
           {/* Mobile cards */}
           <div className="grid gap-3 md:hidden">
             {pageItems.map((row) => (
-              <div key={rowKey(row)}>{renderMobileCard(row, rowActions?.(row) ?? null)}</div>
+              <div key={rowKey(row)}>
+                {renderMobileCard(row, rowActions?.(row) ?? null, rowSelection(row))}
+              </div>
             ))}
           </div>
         </>

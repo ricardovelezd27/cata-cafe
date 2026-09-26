@@ -26,7 +26,8 @@ export default async function EditCoffeePage({
   } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
 
-  const coffee = await prisma.coffee.findUnique({ where: { id } });
+  // deletedAt: an anonymized coffee has no edit page (would re-identify it).
+  const coffee = await prisma.coffee.findFirst({ where: { id, deletedAt: null } });
   if (!coffee || coffee.createdBy !== user.id) notFound();
 
   const t = await getTranslations("coffee");

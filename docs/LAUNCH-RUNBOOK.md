@@ -440,3 +440,47 @@ nullable, safe to apply before the code deploy.
 is enough; leave the column in place.
 
 ---
+
+---
+
+## §8. Database — apply the `coffee_soft_delete` migration + PHASE 20 policies (2026-09)
+
+**When:** before the coffee-list-actions code (branch
+`claude/coffee-profile-consistency-fae8b3`) is deployed. Both steps are additive and
+safe to apply first — old code ignores the new column and the stricter policies only
+hide rows that do not exist yet.
+
+**What it does:**
+
+- `prisma/migrations/20260926120000_coffee_soft_delete/migration.sql` adds a nullable
+  `coffees.deletedAt` column and an index on it. No row changes.
+- `prisma/sql/rls_and_triggers.sql` **PHASE 20** re-creates `coffees_select` and
+  `coffees_write` with `"deletedAt" IS NULL`, so an anonymized coffee is invisible to
+  the anon/authenticated key. The app itself already filters through Prisma
+  (`usableCoffeeWhere`), so this is hygiene, not a functional dependency.
+
+**Steps:**
+
+1. Same `DIRECT_URL` precondition as §7.
+2. `npx prisma migrate status` — expected: exactly one pending migration,
+   `20260926120000_coffee_soft_delete`. Anything else: stop and paste the output.
+3. `npx prisma migrate deploy` — expected `1 migration applied`.
+4. Supabase → **SQL Editor** → paste the **PHASE 20** block from
+   `prisma/sql/rls_and_triggers.sql` → **Run**. Expected: `Success. No rows returned`.
+5. **Verify** in the SQL Editor:
+
+   ```sql
+   select column_name from information_schema.columns
+   where table_name = 'coffees' and column_name = 'deletedAt';
+   select policyname, qual from pg_policies where tablename = 'coffees';
+   ```
+
+   Expected: one row for the column; both `coffees_select` and `coffees_write` quals
+   start with `("deletedAt" IS NULL)`.
+6. Check the Supabase **Security Advisor** shows no new warnings.
+
+**Behaviour after deploy:** "Eliminar café" (row icon, bulk toolbar, profile page)
+anonymizes instead of deleting — name/code/farm/producer/notes/certifications are
+wiped, shares and invite links revoked, and the coffee vanishes from lists, pickers and
+its profile URL. Session results, tasting history and insights keep the row and show
+"Café eliminado" where the name was. Only the coffee's owner can trigger it.

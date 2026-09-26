@@ -11,6 +11,9 @@ export type HistoryRow = {
   id: string;
   coffeeId: string;
   coffeeName: string;
+  // True once the linked Coffee has been anonymized (soft-deleted) — the
+  // profile 404s for it, so it renders as plain text instead of a Link.
+  coffeeDeleted: boolean;
   // Null for a detached row — its session was deleted (see snapshot fallback
   // in profile/history/page.tsx). Never linked in that case.
   sessionId: string | null;
@@ -64,14 +67,17 @@ export function HistoryTable({
     {
       key: "coffee",
       label: t.colCoffee,
-      render: (row) => (
-        <Link
-          href={`/${locale}/app/coffees/${row.coffeeId}`}
-          className="font-semibold text-on-surface transition-colors hover:text-primary-container"
-        >
-          {row.coffeeName}
-        </Link>
-      ),
+      render: (row) =>
+        row.coffeeDeleted ? (
+          <span className="font-semibold text-on-surface-variant">{row.coffeeName}</span>
+        ) : (
+          <Link
+            href={`/${locale}/app/coffees/${row.coffeeId}`}
+            className="font-semibold text-on-surface transition-colors hover:text-primary-container"
+          >
+            {row.coffeeName}
+          </Link>
+        ),
     },
     {
       key: "session",
@@ -151,12 +157,18 @@ export function HistoryTable({
         <div className="space-y-2 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 space-y-0.5">
-              <Link
-                href={`/${locale}/app/coffees/${row.coffeeId}`}
-                className="block truncate font-semibold text-on-surface transition-colors hover:text-primary-container"
-              >
-                {row.coffeeName}
-              </Link>
+              {row.coffeeDeleted ? (
+                <span className="block truncate font-semibold text-on-surface-variant">
+                  {row.coffeeName}
+                </span>
+              ) : (
+                <Link
+                  href={`/${locale}/app/coffees/${row.coffeeId}`}
+                  className="block truncate font-semibold text-on-surface transition-colors hover:text-primary-container"
+                >
+                  {row.coffeeName}
+                </Link>
+              )}
               {row.sessionId ? (
                 <Link
                   href={`/${locale}/app/sessions/${row.sessionId}/results`}

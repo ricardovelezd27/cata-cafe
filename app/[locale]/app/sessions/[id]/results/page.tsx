@@ -9,6 +9,7 @@ import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
 import { computeCupperAlignment, type CupperAlignmentRow } from "@/lib/alignment";
 import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
 import { asSessionFormat, type SessionFormat } from "@/lib/constants";
+import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { ResultsClient } from "./ResultsClient";
 
 // resendCloseEmails / refreshAggregateScores run from here; give the
@@ -66,6 +67,7 @@ export default async function ResultsPage({
             coffee: {
               select: {
                 name: true,
+                deletedAt: true,
                 country: true,
                 region: true,
                 producer: true,
@@ -112,6 +114,9 @@ export default async function ResultsPage({
   // Block labels are needed inside the server aggregation below, so resolve the
   // translators up front.
   const tBlocks = await getTranslations("blocks");
+  // Fetched early — needed below by the owner-only participant matrix
+  // (coffeeDisplayName fallback) before the rest of the page's translators.
+  const tCommon = await getTranslations("common");
   // Descriptor aggregation locale + block-label resolver — shared by both the
   // group (anonymous, cross-cupper) and solo (own-data) descriptor paths below.
   const localeStr: "es" | "en" = locale === "en" ? "en" : "es";
@@ -258,7 +263,10 @@ export default async function ResultsPage({
               id: s.id,
               label: s.label,
               revealed: s.revealed,
-              coffee: s.revealed && s.coffee ? { name: s.coffee.name } : null,
+              coffee:
+                s.revealed && s.coffee
+                  ? { name: coffeeDisplayName(s.coffee, tCommon("coffeeDeleted")) }
+                  : null,
               descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
               affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
               combined: (ev?.combinedData as Record<string, unknown>) ?? {},
@@ -370,7 +378,6 @@ export default async function ResultsPage({
   const t = await getTranslations("session");
   const tc = await getTranslations("coffee");
   const ta = await getTranslations("actions");
-  const tCommon = await getTranslations("common");
   const tGuestCta = await getTranslations("results.guestCta");
 
   // Group results must not silently average incomplete data. When fewer cuppers
@@ -610,8 +617,20 @@ export default async function ResultsPage({
             id: s.id,
             label: s.label,
             revealed: s.revealed,
-            coffee: s.revealed && s.coffee ? s.coffee : null,
-            masterCoffee: ownerRead
+            coffee:
+              s.revealed && s.coffee
+                ? {
+                    name: coffeeDisplayName(s.coffee, tCommon("coffeeDeleted")),
+                    country: s.coffee.country,
+                    region: s.coffee.region,
+                    producer: s.coffee.producer,
+                    variety: s.coffee.variety,
+                    altitude: s.coffee.altitude,
+                    roastLevel: s.coffee.roastLevel,
+                  }
+                : null,
+            // Never re-identify an anonymized coffee in the owner's edit form.
+            masterCoffee: ownerRead && !s.coffee?.deletedAt
               ? {
                   name: s.coffee?.name ?? "",
                   country: s.coffee?.country ?? "",

@@ -245,7 +245,7 @@ font-medium transition-colors min-h-[44px] whitespace-nowrap`.
 
 | Prop | Values | Notes |
 |---|---|---|
-| `variant` | `primary` \| `secondary` \| `ghost` \| `accent` \| `accentOutline` | see classes below |
+| `variant` | `primary` \| `secondary` \| `ghost` \| `accent` \| `accentOutline` \| `danger` | see classes below |
 | `size` | `md` (default) \| `sm` | `md` = `px-5 text-sm`, `sm` = `px-3.5 text-xs` — height stays 44px at both |
 | `icon` | `ReactNode` | leading icon, sized/`aria-hidden` by the caller |
 
@@ -256,6 +256,7 @@ font-medium transition-colors min-h-[44px] whitespace-nowrap`.
 | `ghost` | `text-on-surface-variant hover:text-on-surface` | lowest-emphasis action (Cancelar, metadata edit) |
 | `accent` | `bg-secondary text-on-secondary hover:opacity-90` | terracotta emphasis when something needs attention (e.g. "Actualizar" with new submissions pending) |
 | `accentOutline` | `border border-secondary text-secondary hover:bg-secondary-fixed` | the same action's resting/no-news state |
+| `danger` | `border border-error text-error hover:bg-error-container` | destructive page action that opens a `ConfirmDialog` (Eliminar café, Eliminar seleccionados) |
 
 Disabled state (native `disabled` attribute): `opacity-60 cursor-default`.
 `ButtonLink` renders an `<a>` and takes `href` — no `disabled` (anchors don't
