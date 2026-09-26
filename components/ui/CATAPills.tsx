@@ -31,22 +31,22 @@ function getCounterColor(count: number, max: number): string {
 }
 
 export function CATAPills({ options, selected, onChange, maxSelect, showSubItems = false, disabled }: CATAPillsProps) {
-  // A parent with at least one selected sub doesn't count toward the limit —
-  // only the subs do. Parents with no selected subs count as 1.
+  // The limit counts DESCRIPTORS (level-1 families), not ids. Picking a sub
+  // adds detail to a descriptor already chosen — it is not another descriptor
+  // — so a family counts once however many of its subs are selected, and a
+  // sub of an already-counted family is never blocked by the limit.
   const parentSubMap = new Map<string, string[]>(
     options.map((o) => [o.id, (o.subItems ?? []).map((s) => s.id)])
   )
-  const selectedSet = new Set(selected)
-  const isCountedSelection = (id: string): boolean => {
-    const subs = parentSubMap.get(id)
-    if (subs && subs.length > 0) {
-      // It's a parent — count only if none of its subs are selected.
-      return !subs.some((sid) => selectedSet.has(sid))
-    }
-    return true
+  const subToParent = new Map<string, string>()
+  for (const o of options) {
+    for (const s of o.subItems ?? []) subToParent.set(s.id, o.id)
   }
-  const effectiveCount = selected.filter(isCountedSelection).length
+  const familyOf = (id: string): string => subToParent.get(id) ?? id
+  const countedFamilies = new Set(selected.map(familyOf))
+  const effectiveCount = countedFamilies.size
   const atLimit = maxSelect !== undefined && effectiveCount >= maxSelect
+  const isBlocked = (id: string): boolean => atLimit && !countedFamilies.has(familyOf(id))
 
   // Selected ids that exist in neither `options` nor any `subItems` are retired
   // ids from old drafts (e.g. mouthfeel:gritty). They still count toward the
@@ -74,7 +74,7 @@ export function CATAPills({ options, selected, onChange, maxSelect, showSubItems
       const subs = parentSubMap.get(id)
       const idsToRemove = subs && subs.length > 0 ? [id, ...subs] : [id]
       onChange(selected.filter((s) => !idsToRemove.includes(s)))
-    } else if (!atLimit) {
+    } else if (!isBlocked(id)) {
       onChange([...selected, id])
     }
   }
@@ -107,7 +107,7 @@ export function CATAPills({ options, selected, onChange, maxSelect, showSubItems
             <div key={opt.id} className={styles.family}>
               <button
                 type="button"
-                disabled={disabled || (!isSel && atLimit)}
+                disabled={disabled || (!isSel && isBlocked(opt.id))}
                 onClick={() => toggle(opt.id)}
                 aria-pressed={isSel}
                 className={`${styles.pill} ${isSel ? styles.selected : ''}`}
@@ -127,7 +127,7 @@ export function CATAPills({ options, selected, onChange, maxSelect, showSubItems
                 <div className={styles.subRow}>
                   {opt.subItems!.map((sub) => {
                     const isSubSel = selected.includes(sub.id)
-                    const isSubDisabled = disabled || (!isSubSel && atLimit)
+                    const isSubDisabled = disabled || (!isSubSel && isBlocked(sub.id))
                     const subColor = shadeForLevel(opt.color, 3)
                     return (
                       <button
