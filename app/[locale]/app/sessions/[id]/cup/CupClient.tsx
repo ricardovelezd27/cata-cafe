@@ -246,6 +246,10 @@ export function CupClient({
       bannerSyncFailed: string;
       retrySync: string;
       submitBlocked: string;
+      // Online-but-device-only variant (2026-09). Optional: pre-upgrade
+      // offline prop blobs lack them; the copy falls back to submitBlocked.
+      submitBlockedPending?: string;
+      retryBeforeSubmit?: string;
       conflictTitle: string;
       conflictBody: string;
       conflictKeep: string;
@@ -692,7 +696,9 @@ export function CupClient({
     }
   };
 
-  const flushPending = async () => {
+  // Returns "pending" when the flushed edit only landed locally (see flushSave)
+  // so the submit path can refuse to mark a device-only edit as sent.
+  const flushPending = async (): Promise<"synced" | "pending"> => {
     // Flush the local debounce first so navigation never leaves a stale blob.
     if (localDebounceRef.current) {
       clearTimeout(localDebounceRef.current);
@@ -710,8 +716,24 @@ export function CupClient({
     if (pendingSaveRef.current) {
       const pending = pendingSaveRef.current;
       pendingSaveRef.current = null;
-      await flushSave(pending.sampleId, pending.key, pending.data);
+      return flushSave(pending.sampleId, pending.key, pending.data);
     }
+    return "synced";
+  };
+
+  // Ground truth for "is anything of mine still device-only?" — reads the
+  // durable store instead of trusting React state, since a pagehide flush or
+  // a failed background save can mark modules pending without a re-render.
+  const countLocalPending = async (): Promise<number> => {
+    const blob = await loadSession(session.id, userId);
+    if (!blob) return 0;
+    let n = 0;
+    for (const s of Object.values(blob.samples)) {
+      for (const mod of Object.values(s.modules)) {
+        if (mod?.syncStatus === "pending") n += 1;
+      }
+    }
+    return n;
   };
 
   // ─── Back-navigation trap ─────────────────────────────────────
@@ -723,7 +745,7 @@ export function CupClient({
   // Chrome/Android swipe-nav is additionally blocked by overscroll-behavior-x
   // in globals.css; iOS edge swipes can't be blocked, so this trap is the
   // safety net there.
-  const flushPendingRef = useRef<() => Promise<void>>(async () => {});
+  const flushPendingRef = useRef<() => Promise<"synced" | "pending">>(async () => "synced");
   useEffect(() => {
     flushPendingRef.current = flushPending;
   });
@@ -936,7 +958,24 @@ export function CupClient({
     setIsGoingToResults(true);
     setSubmitError(false);
     try {
-      await flushPending();
+      // Submit flips isDraft=false on whatever the SERVER holds. If any edit is
+      // still device-only (a save that failed under load, a pagehide flush),
+      // submitting now would strand it: the later replay sees "already
+      // submitted" and turns into a conflict the cupper may never resolve.
+      // So: flush, replay the pending queue once, and refuse to submit while
+      // anything is still local — the amber notice offers a retry.
+      const flushed = await flushPending();
+      if (flushed === "pending" || hasPending || (await countLocalPending()) > 0) {
+        await retrySync();
+        if ((await countLocalPending()) > 0) {
+          setHasPending(true);
+          setSubmitBlocked(true);
+          setIsGoingToResults(false);
+          return;
+        }
+        setHasPending(false);
+      }
+      setSubmitBlocked(false);
       await submitAllEvaluations(session.id);
       // Navigate only on success — a failed submit must not strand the user on
       // the results page believing their drafts were sent. isGoingToResults
@@ -1545,13 +1584,30 @@ export function CupClient({
           </button>
         </div>
       )}
-      {submitBlocked && !online && (
+      {submitBlocked && (
         <div
           role="status"
           aria-live="polite"
           className="flex items-start gap-2 px-4 py-2 mb-3 rounded-md border border-amber-warm/40 bg-amber-warm/10 font-sans text-sm text-amber-warm"
         >
-          <span className="flex-1">{translations.offline.submitBlocked}</span>
+          <span className="flex-1">
+            {online
+              ? (translations.offline.submitBlockedPending ??
+                translations.offline.submitBlocked)
+              : translations.offline.submitBlocked}
+          </span>
+          {online && (
+            <button
+              type="button"
+              onClick={() => {
+                setSubmitBlocked(false);
+                void handleGoToResults();
+              }}
+              className="shrink-0 font-semibold underline hover:opacity-80"
+            >
+              {translations.offline.retryBeforeSubmit ?? translations.retrySubmit}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setSubmitBlocked(false)}

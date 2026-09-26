@@ -9,6 +9,7 @@ import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
 import { computeCupperAlignment, type CupperAlignmentRow } from "@/lib/alignment";
 import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
 import { asSessionFormat, type SessionFormat } from "@/lib/constants";
+import { deriveMyEvaluation, summarizeMyProgress } from "@/lib/evaluationState";
 import { ResultsClient } from "./ResultsClient";
 
 // resendCloseEmails / refreshAggregateScores run from here; give the
@@ -444,6 +445,38 @@ export default async function ResultsPage({
     ? { submitted: submittedCupperCount, total: totalParticipants }
     : null;
 
+  // The viewer's OWN evaluation state per sample. The `evaluations` include
+  // above deliberately has no isDraft filter (a cupper may open results
+  // mid-tasting), so every "my score" surface must know whether the row is a
+  // draft and whether it is complete — otherwise an unfinished row prints "—"
+  // cells with no explanation and a 5-filled placeholder score.
+  const myEvaluationBySample = new Map(
+    session.samples.map((s) => {
+      const ev = s.evaluations[0];
+      const data = (
+        format === "combined"
+          ? ev?.combinedData
+          : format === "affective"
+            ? ev?.affectiveData
+            : ev?.descriptiveData
+      ) as Record<string, unknown> | null | undefined;
+      return [
+        s.id,
+        deriveMyEvaluation(format, ev ? { isDraft: ev.isDraft, data: data ?? {} } : null),
+      ] as const;
+    }),
+  );
+  const myProgress = summarizeMyProgress([...myEvaluationBySample.values()]);
+  // Banner copy — null once everything is submitted, in the admin read-only
+  // view (the "mine" slots hold the owner's rows), or on a closed session
+  // (nothing can be finished anymore). Skipped when the viewer has not opened
+  // a single sample: that is a plain "not evaluated" state, not "in progress".
+  const hasAnyOwnRow = [...myEvaluationBySample.values()].some((m) => m.status !== "none");
+  const myDraftNotice =
+    !isAdminViewer && session.status !== "closed" && hasAnyOwnRow && !myProgress.allSubmitted
+      ? tResults("myDraftNotice", { complete: myProgress.complete, total: myProgress.total })
+      : null;
+
   // Shared score-transparency translations ("¿Cómo se calculó?") — fed to both
   // the Resultados chart view (SampleRadarChart) and the personal drill-down
   // dialog (SampleDetail), so both surfaces stay in sync from one source.
@@ -631,8 +664,22 @@ export default async function ResultsPage({
             extrinsic: s.revealed ? ((s.extrinsic?.data as Record<string, unknown>) ?? {}) : {},
             aggregateScore,
             isReference: s.id === session.referenceSampleId,
+            myEvaluation: myEvaluationBySample.get(s.id) ?? { status: "none", complete: false },
           };
         }),
+      }}
+      myDraftNotice={myDraftNotice}
+      sync={{
+        syncing: tResults("sync.syncing", { count: "{count}" }),
+        pending: tResults("sync.pending", { count: "{count}" }),
+        offline: tResults("sync.offline", { count: "{count}" }),
+        retry: tResults("sync.retry"),
+        synced: tResults("sync.synced"),
+        conflictTitle: tOffline("conflictTitle"),
+        // Raw template — `{sample}` is filled client-side by SyncConflictModal.
+        conflictBody: tOffline.raw("conflictBody") as string,
+        conflictKeep: tOffline("conflictKeep"),
+        conflictReplace: tOffline("conflictReplace"),
       }}
       translations={{
         title: tResults("title"),
@@ -659,6 +706,7 @@ export default async function ResultsPage({
         communityPending: tResults("communityPending"),
         ownerSection: tResults("matrix.ownerSection"),
         liveUpdatesDown: tResults("liveUpdatesDown"),
+        myDraftCta: tResults("myDraftCta"),
         closeEmailsResend: tResults("closeEmails.resend"),
         closeEmailsResending: tResults("closeEmails.resending"),
         closeEmailsResent: tResults("closeEmails.resent"),
@@ -734,6 +782,9 @@ export default async function ResultsPage({
           viewDetail: tResults("table.viewDetail"),
           reveal: tg("reveal"),
           revealed: tg("revealed"),
+          inProgress: tResults("table.inProgress"),
+          notEvaluated: tResults("table.notEvaluated"),
+          inProgressLegend: tResults("table.inProgressLegend"),
         },
         detail: {
           fragrance: tResults("detail.fragrance"),
@@ -758,6 +809,8 @@ export default async function ResultsPage({
           sensacionBlock: tResults("detail.sensacionBlock"),
           descriptorSingular: tResults("detail.descriptorSingular"),
           descriptorPlural: tResults("detail.descriptorPlural"),
+          inProgress: tResults("table.inProgress"),
+          notEvaluated: tResults("table.notEvaluated"),
           avgQuality: tResults("detail.avgQuality"),
           noBlockData: tResults("detail.noBlockData"),
           myEvaluation: tResults("detail.myEvaluation"),

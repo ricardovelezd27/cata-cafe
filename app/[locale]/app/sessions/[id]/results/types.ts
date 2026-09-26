@@ -2,6 +2,8 @@
 // Phase 3 drill-down components (and ResumenTab) can import the same types
 // instead of redeclaring them.
 
+import type { MyEvaluation } from "@/lib/evaluationState";
+
 export type AggregateScoreData = {
   communityScore: number | null;
   avgRawScore: number | null;
@@ -57,6 +59,11 @@ export type SampleResult = {
   // session.referenceSampleId. Display-only: scoring is untouched. See
   // lib/referenceDelta.ts for the Δ-vs-reference helpers this feeds.
   isReference: boolean;
+  // The VIEWER'S OWN evaluation state for this sample (none / draft /
+  // submitted + complete). Drives the "En curso" chip and gates every "my
+  // score" surface so an unfinished draft never prints a 5-filled score
+  // (lib/evaluationState.ts).
+  myEvaluation: MyEvaluation;
 };
 
 // In-app help (InfoHint) content — one title/body pair per help topic. Shared

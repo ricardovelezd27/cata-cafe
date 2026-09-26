@@ -19,6 +19,9 @@ import {
 
 export type SyncPhase = "idle" | "syncing" | "synced" | "failed";
 
+// Fired on window after every replay run (success or failure) — see syncAll.
+export const OFFLINE_SYNC_EVENT = "cata-offline-sync";
+
 const MAX_RETRIES = 3;
 const SYNCED_BANNER_MS = 3000;
 
@@ -164,6 +167,10 @@ export function useOfflineSync({
       }
     } finally {
       syncingRef.current = false;
+      // Let independent pending-count readers (the app-shell
+      // PendingDraftsBadge, the results-page sync pill) recount now instead of
+      // waiting for the next mount or `online` event.
+      window.dispatchEvent(new Event(OFFLINE_SYNC_EVENT));
     }
   }, [userId, replayModule]);
 

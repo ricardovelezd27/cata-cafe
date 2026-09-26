@@ -22,6 +22,11 @@ import {
 } from "@/components/results/SampleDetailDialog";
 import { GuestSaveCta, type GuestSaveCtaTranslations } from "@/components/results/GuestSaveCta";
 import {
+  SessionSyncStatus,
+  type SessionSyncStatusTranslations,
+} from "@/components/offline/SessionSyncStatus";
+import { canShowMyScore } from "@/lib/evaluationState";
+import {
   EditSampleMetadataForm,
   type SampleMetadataFormData,
 } from "@/components/cupping/EditSampleMetadataForm";
@@ -105,6 +110,8 @@ export function ResultsClient({
   participation,
   isSoloDescriptors,
   guestSave = null,
+  myDraftNotice = null,
+  sync = null,
   translations,
 }: {
   locale: string;
@@ -159,6 +166,13 @@ export function ResultsClient({
   // results" banner that sends them through the normal login flow with a
   // claim token (see lib/guestClaim.ts).
   guestSave?: GuestSaveCtaTranslations | null;
+  // Pre-formatted "your evaluation is still in progress · X of Y complete"
+  // line — non-null only while the viewer's own evaluation is unsubmitted on
+  // an open session (see page.tsx). Pairs with translations.myDraftCta.
+  myDraftNotice?: string | null;
+  // Strings for the device-pending sync pill + conflict modal. Null in the
+  // admin read-only view (nothing of the admin's is ever pending here).
+  sync?: SessionSyncStatusTranslations | null;
   translations: {
     title: string;
     backToCupping: string;
@@ -183,6 +197,7 @@ export function ResultsClient({
     communityPending: string;
     ownerSection: string;
     liveUpdatesDown: string;
+    myDraftCta: string;
     closeEmailsResend: string;
     closeEmailsResending: string;
     closeEmailsResent: string;
@@ -441,7 +456,9 @@ export function ResultsClient({
         : resolvedFormat === "combined"
           ? referenceSample.combined
           : null;
-    if (!affData || !hasAffectiveData(affData)) return null;
+    if (!affData || !hasAffectiveData(affData) || !canShowMyScore(referenceSample.myEvaluation)) {
+      return null;
+    }
     const score = calcIndividualScore(affData, session.cupsPerSample);
     return typeof score === "number" ? score : null;
   })();
@@ -578,6 +595,29 @@ export function ResultsClient({
           className="mx-4 mt-4 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6"
         >
           {adminViewNotice}
+        </div>
+      )}
+      {/* Device-pending sync pill + conflict modal (renders nothing when idle). */}
+      {sync && !isAdminViewer && (
+        <SessionSyncStatus sessionId={session.id} userId={currentUserId} translations={sync} />
+      )}
+      {/* The viewer's own evaluation is still a draft: "—" cells are unrated
+          attributes, not lost data. Offer the way back into the tasting. */}
+      {myDraftNotice && (
+        <div
+          role="status"
+          className="mx-4 mt-4 flex flex-wrap items-center gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6"
+        >
+          <span className="flex-1 min-w-[200px]">{myDraftNotice}</span>
+          {!isAdminViewer && sessionStatus !== "closed" && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => router.push(`/${locale}/app/sessions/${session.id}/cup`)}
+            >
+              {translations.myDraftCta}
+            </Button>
+          )}
         </div>
       )}
       {partialSyncNotice && (
@@ -756,6 +796,8 @@ export function ResultsClient({
                     referenceBadge={translations.referenceBadge}
                     deltaVsReference={translations.deltaVsReference}
                     deltaVsReferenceAria={translations.deltaVsReferenceAria}
+                    inProgressLabel={translations.table.inProgress}
+                    notEvaluatedLabel={translations.table.notEvaluated}
                     t={{
                       mine: translations.radarMine,
                       community: translations.radarCommunity,

@@ -179,6 +179,9 @@ export function SampleDetailDialog({
           locale={locale}
           onEdit={viewerId === "me" ? onEdit : undefined}
           referenceBadge={sample.isReference ? referenceBadge : null}
+          // Other cuppers' rows come from the submitted-only matrix query, so
+          // the own-evaluation state only applies to the "me" view.
+          myEvaluation={activeParticipant ? undefined : sample.myEvaluation}
           t={t}
         />
       </div>
