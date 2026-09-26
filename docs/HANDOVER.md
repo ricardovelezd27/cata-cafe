@@ -4,8 +4,8 @@
 > from **Next action**. Do not re-plan. The approved plan lives at
 > `~/.claude/plans/i-want-you-to-graceful-wreath.md` (summarised in the WP table below).
 
-- **status:** launch work SHIPPED — merged to `main` (172aa0b..255578c) and deployed to production 2026-09-14. Runbook §1, §1b, §2 and §3 all applied. Only the §5 smoke test remains, and it needs a real login. Reference sample feature MERGED to `main` 2026-09-24 (PR #19, 53f2a94). Second iteration (reference cupped first + pinned at 5, results anchor) browser-verified and MERGED 2026-09-25 (PR #20, 3a23acb). Verde/Vegetal pill fix merged 2026-09-25 (0e70fbb). Vercel deploys `main` automatically. Post-meeting batch of 2026-09-25 (close-date end-of-day, descriptive sheet without free text, results dedupe, `scripts/export-emails.ts`) on branch `claude/tasting-changes-review-5aab30`; backlog in `docs/prompts/S5-kim-2026-09-25.md`.
-- **last updated:** 2026-09-25
+- **status:** launch work SHIPPED — merged to `main` (172aa0b..255578c) and deployed to production 2026-09-14. Runbook §1, §1b, §2 and §3 all applied. Only the §5 smoke test remains, and it needs a real login. Reference sample feature MERGED to `main` 2026-09-24 (PR #19, 53f2a94). Second iteration (reference cupped first + pinned at 5, results anchor) browser-verified and MERGED 2026-09-25 (PR #20, 3a23acb). Verde/Vegetal pill fix merged 2026-09-25 (0e70fbb). Vercel deploys `main` automatically. Post-meeting batch of 2026-09-25 (close-date end-of-day, descriptive sheet without free text, results dedupe, `scripts/export-emails.ts`) on branch `claude/tasting-changes-review-5aab30`; backlog in `docs/prompts/S5-kim-2026-09-25.md`; merged 2026-09-25 (0fb693c). **2026-09-26: guest profile + account-gate modal + Spanish tab highlight** (PR #23, branch `claude/mobile-profile-routing-bug-0a7579`) — anonymous QR guests were bounced from Perfil/Cafés/Grupos to Sesiones by `proxy.ts`; now Perfil opens for guests, gated tabs open a "Termina de crear tu cuenta" modal, and `isActive` compares the locale-stripped path. No DB/SQL/env steps; Vercel deploys `main`. Plain-language summary: `docs/CHANGELOG-guests-2026-09.md`.
+- **last updated:** 2026-09-26
 - **worktree:** `C:\projects\cata-cafe\.claude\worktrees\results-page-redesign-2920c2`
 - **base:** `main` @ 172aa0b → now `main` @ 255578c (deployed)
 - **current branch:** `claude/cafe-sensible-improvements-51283e` (worktree `results-page-redesign-2920c2`); all launch WP branches are historical now, folded into `main`.
@@ -36,6 +36,9 @@
 
 ## Next action
 
+0. After PR #23 lands: confirm the Vercel production deploy of `main` succeeded and run the
+   2-minute guest check in `docs/CHANGELOG-guests-2026-09.md` (Perfil as a QR guest opens the
+   profile; Cafés opens the modal; the active tab highlights in Spanish).
 1. Before the 2026-09-26 cupping: confirm the Vercel deploy of `main@0e70fbb` (or the merged post-meeting batch) succeeded and run the two-device mini smoke test in `docs/product/experimento-referencia-2026-09.md` §1.
 2. Send Kim the registered-email CSV (`npx tsx scripts/export-emails.ts`, run against the production Supabase project — the file is PII, never commit it).
 3. After the cupping (Monday 2026-09-28): `docs/prompts/S5-kim-2026-09-25.md` (word cloud rework first), then `S4-results-hygiene.md`, then `S2-staging-production.md`.

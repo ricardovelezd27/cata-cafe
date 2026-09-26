@@ -1,10 +1,8 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { useRouter } from "next/navigation";
 import { UserRoundPlus, X } from "lucide-react";
-import { startGuestClaim } from "@/app/actions/guestClaim";
-import { useConnectivity } from "@/hooks/useConnectivity";
+import { useGuestClaim } from "@/hooks/useGuestClaim";
 import { Button } from "@/components/ui";
 
 const DISMISS_EVENT = "cata-guest-cta-dismiss";
@@ -55,7 +53,6 @@ export function GuestSaveCta({
   locale: string;
   translations: GuestSaveCtaTranslations;
 }) {
-  const router = useRouter();
   const dismissKey = `cata_guest_cta_dismissed_${sessionId}`;
 
   const storedDismissed = useSyncExternalStore(
@@ -73,9 +70,7 @@ export function GuestSaveCta({
   // Fallback when sessionStorage is unavailable (the event still fires but the
   // snapshot can't change): hide for this page view at least.
   const [locallyDismissed, setLocallyDismissed] = useState(false);
-  const [starting, setStarting] = useState(false);
-  const [failed, setFailed] = useState(false);
-  const { online } = useConnectivity();
+  const { start, starting, failed, online } = useGuestClaim(locale);
 
   if (storedDismissed || locallyDismissed) return null;
 
@@ -89,26 +84,7 @@ export function GuestSaveCta({
     window.dispatchEvent(new Event(DISMISS_EVENT));
   };
 
-  const handleStart = async () => {
-    if (starting || !online) return;
-    setFailed(false);
-    setStarting(true);
-    try {
-      const result = await startGuestClaim(locale, `/${locale}/app/sessions/${sessionId}/results`);
-      if (!result.ok) {
-        // not_anonymous: the viewer already converted in another tab — a
-        // refresh makes the banner disappear on its own.
-        if (result.error === "not_anonymous") router.refresh();
-        else setFailed(true);
-        setStarting(false);
-        return;
-      }
-      router.push(result.loginUrl);
-    } catch {
-      setFailed(true);
-      setStarting(false);
-    }
-  };
+  const handleStart = () => start(`/${locale}/app/sessions/${sessionId}/results`);
 
   return (
     <section

@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import { Home, Clipboard, Coffee, Users, User, BarChart3 } from "lucide-react";
+import { stripLocale } from "@/lib/guestScope";
 
 /**
  * Keys into the `nav` i18n namespace (messages/{es,en}.json) that label a
@@ -54,7 +55,11 @@ export const INSIGHTS_ITEM: NavItem = {
   i18nKey: "insights",
 };
 
-export function isActive(pathname: string, locale: string, href: string, exact = false): boolean {
-  const full = `/${locale}${href}`;
-  return exact ? pathname === full : pathname.startsWith(full);
+/** Active-state check for Sidebar / BottomNav. Compares the locale-STRIPPED
+ *  pathname: with `localePrefix: "as-needed"` the default locale (es) is served
+ *  unprefixed (`/app/profile`), while `en` keeps its prefix (`/en/app/profile`),
+ *  so comparing against `/${locale}${href}` never matched in Spanish. */
+export function isActive(pathname: string, _locale: string, href: string, exact = false): boolean {
+  const inner = stripLocale(pathname);
+  return exact ? inner === href : inner === href || inner.startsWith(`${href}/`);
 }

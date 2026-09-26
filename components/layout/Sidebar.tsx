@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { GuestGateLink } from "@/components/guest/GuestGateLink";
 import { usePathname } from "next/navigation";
 import { LogOut, Languages, UserCog } from "lucide-react";
 import { SignOutButton } from "@/components/layout/SignOutButton";
@@ -36,7 +37,7 @@ export default function Sidebar({
               {startsGroup && (
                 <hr className="my-2 mx-5 border-t border-outline-variant" />
               )}
-              <Link
+              <GuestGateLink
                 href={`/${locale}${href}`}
                 className={`flex items-center gap-3 px-5 py-2.5 text-sm transition-colors ${
                   active
@@ -46,7 +47,7 @@ export default function Sidebar({
               >
                 <Icon size={18} strokeWidth={active ? 2.5 : 1.8} />
                 {translations.nav[i18nKey]}
-              </Link>
+              </GuestGateLink>
             </div>
           );
         })}

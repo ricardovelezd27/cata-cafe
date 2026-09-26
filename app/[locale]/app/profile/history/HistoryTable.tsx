@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
+import { GuestGateLink } from "@/components/guest/GuestGateLink";
 import { Coffee } from "lucide-react";
 import { DataTable, type Column, type Facet } from "@/components/ui/DataTable";
 import { ScorePill } from "@/components/ui/Badge";
@@ -71,12 +72,12 @@ export function HistoryTable({
         row.coffeeDeleted ? (
           <span className="font-semibold text-on-surface-variant">{row.coffeeName}</span>
         ) : (
-          <Link
+          <GuestGateLink
             href={`/${locale}/app/coffees/${row.coffeeId}`}
             className="font-semibold text-on-surface transition-colors hover:text-primary-container"
           >
             {row.coffeeName}
-          </Link>
+          </GuestGateLink>
         ),
     },
     {
@@ -162,12 +163,12 @@ export function HistoryTable({
                   {row.coffeeName}
                 </span>
               ) : (
-                <Link
+                <GuestGateLink
                   href={`/${locale}/app/coffees/${row.coffeeId}`}
                   className="block truncate font-semibold text-on-surface transition-colors hover:text-primary-container"
                 >
                   {row.coffeeName}
-                </Link>
+                </GuestGateLink>
               )}
               {row.sessionId ? (
                 <Link
@@ -210,12 +211,12 @@ export function HistoryTable({
           icon={<Coffee size={20} />}
           title={t.emptyBody}
           action={
-            <Link
+            <GuestGateLink
               href={newSessionHref}
               className="inline-flex items-center rounded-pill bg-primary-container px-5 py-2.5 text-sm font-medium text-on-primary transition-colors hover:bg-primary"
             >
               {t.newSessionLabel}
-            </Link>
+            </GuestGateLink>
           }
         />
       }
