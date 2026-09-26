@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { GuestGateLink } from "@/components/guest/GuestGateLink";
 import { Coffee, Pencil } from "lucide-react";
 import { DataTable, type Column, type Facet } from "@/components/ui/DataTable";
 import { Badge, StatusPill } from "@/components/ui/Badge";
@@ -278,12 +279,12 @@ export function SessionsTable({
           title={t.emptyTitle}
           body={t.emptyBody}
           action={
-            <Link
+            <GuestGateLink
               href={newSessionHref}
               className="inline-flex items-center rounded-pill bg-primary-container px-5 py-2.5 text-sm font-medium text-on-primary transition-colors hover:bg-primary"
             >
               {t.newSessionLabel}
-            </Link>
+            </GuestGateLink>
           }
         />
       }

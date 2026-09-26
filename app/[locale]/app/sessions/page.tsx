@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { GuestGateLink } from "@/components/guest/GuestGateLink";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
@@ -194,12 +194,12 @@ export default async function SessionsList({
           )
         }
         action={
-          <Link
+          <GuestGateLink
             href={`/${locale}/app/sessions/new`}
             className="inline-flex items-center rounded-pill bg-primary-container px-5 py-2.5 text-sm font-medium text-on-primary transition-colors hover:bg-primary"
           >
             {t("new")}
-          </Link>
+          </GuestGateLink>
         }
       />
 

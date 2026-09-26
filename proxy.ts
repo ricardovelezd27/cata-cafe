@@ -2,15 +2,17 @@ import { type NextRequest, NextResponse } from "next/server";
 import createIntlMiddleware from "next-intl/middleware";
 import { createServerClient } from "@supabase/ssr";
 import { routing } from "@/i18n/routing";
-import { isGuestAllowedPath, stripLocale } from "@/lib/guestScope";
+import { GUEST_GATE_PARAM, isGuestAllowedPath, stripLocale } from "@/lib/guestScope";
 
 const intl = createIntlMiddleware(routing);
 
-// Anonymous (QR walk-up) users may only cup / wait / see results. Everything
-// else in the shell (coffees, groups, wizard, profile) would let a throwaway
-// identity create assets. The proxy is the one place that both sees the
-// pathname and already resolved the user, so the gate lives here; server
-// layouts do not receive the pathname.
+// Anonymous (QR walk-up) users may only cup / wait / see results and look at
+// their own profile. Everything else in the shell (coffees, groups, wizard,
+// insights) would let a throwaway identity create assets. The proxy is the one
+// place that both sees the pathname and already resolved the user, so the gate
+// lives here; server layouts do not receive the pathname. The redirect carries
+// ?gate=1 so the app shell (GuestGateProvider) opens the "finish creating your
+// account" modal instead of the bounce looking like a broken link.
 function guestRedirect(request: NextRequest, response: NextResponse): NextResponse | null {
   const pathname = request.nextUrl.pathname;
   const localeMatch = /^\/(es|en)(?=\/|$)/.exec(pathname);
@@ -18,6 +20,7 @@ function guestRedirect(request: NextRequest, response: NextResponse): NextRespon
   const inner = stripLocale(pathname);
   if (!inner.startsWith("/app") || isGuestAllowedPath(inner)) return null;
   const target = new URL(`/${locale}/app/sessions`, request.url);
+  target.searchParams.set(GUEST_GATE_PARAM, "1");
   const redirect = NextResponse.redirect(target);
   // Keep any refreshed auth cookies the session refresh just set.
   response.cookies.getAll().forEach((c) => redirect.cookies.set(c));

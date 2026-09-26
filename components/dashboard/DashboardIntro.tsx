@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import Link from "next/link";
+import { GuestGateLink } from "@/components/guest/GuestGateLink";
 import { X, ChevronDown, Sigma, ArrowRight, HelpCircle } from "lucide-react";
 
 export type IntroTranslations = {
@@ -158,13 +158,13 @@ export function DashboardIntro({
 
         {/* actions */}
         <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3">
-          <Link
+          <GuestGateLink
             href={newSessionHref}
             className="inline-flex items-center gap-2 rounded-input bg-primary-container px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary"
           >
             {t.ctaPrimary}
             <ArrowRight size={15} />
-          </Link>
+          </GuestGateLink>
 
           <button
             onClick={() => setShowCalc((v) => !v)}

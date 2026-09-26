@@ -8,6 +8,7 @@ import TopBar from "@/components/layout/TopBar";
 import BottomNav from "@/components/layout/BottomNav";
 import OnboardingWrapper from "@/components/onboarding/OnboardingWrapper";
 import { PendingDraftsBadge } from "@/components/offline/PendingDraftsBadge";
+import { GuestGateProvider, type GuestGateTranslations } from "@/components/guest/GuestGateProvider";
 import type { NavTranslations } from "@/components/layout/navItems";
 import type { ReactNode } from "react";
 
@@ -32,6 +33,10 @@ export default async function AppLayout({
     select: { onboardingCompleted: true, displayName: true, analyticsAccess: true },
   });
 
+  // Anonymous QR walk-up. The nav is identical for everyone; a guest tapping a
+  // gated destination gets the "finish creating your account" modal instead
+  // (GuestGateProvider / GuestGateLink), and proxy.ts stays the server gate.
+  const isGuest = user.is_anonymous === true;
   const showOnboarding = !profile?.onboardingCompleted;
   const showInsights =
     isSuperAdminEmail(user.email) || isAiAdminEmail(user.email) || !!profile?.analyticsAccess;
@@ -41,6 +46,17 @@ export default async function AppLayout({
   const tNav = await getTranslations({ locale, namespace: "nav" });
   const tBrand = await getTranslations({ locale, namespace: "brand" });
   const tOffline = await getTranslations({ locale, namespace: "offline" });
+  const tGate = await getTranslations({ locale, namespace: "guestGate" });
+  const guestGate: GuestGateTranslations = {
+    title: tGate("title"),
+    body: tGate("body"),
+    cta: tGate("cta"),
+    ctaLoading: tGate("ctaLoading"),
+    dismiss: tGate("dismiss"),
+    close: tGate("close"),
+    offline: tGate("offline"),
+    error: tGate("error"),
+  };
   // Raw template ({count} is filled in client-side by PendingDraftsBadge) —
   // t() would error on the "missing" ICU arg, same pattern as offline.conflictBody.
   const pendingDraftsLabel = tOffline.raw("pendingDrafts") as string;
@@ -62,6 +78,7 @@ export default async function AppLayout({
   };
 
   return (
+    <GuestGateProvider isGuest={isGuest} locale={locale} translations={guestGate}>
     <div className="flex h-screen overflow-hidden">
       <Sidebar locale={locale} showInsights={showInsights} translations={translations} />
       <div className="flex flex-col flex-1 overflow-hidden">
@@ -87,5 +104,6 @@ export default async function AppLayout({
         initialDisplayName={initialDisplayName}
       />
     </div>
+    </GuestGateProvider>
   );
 }

@@ -120,6 +120,16 @@ sessions… — onto the signed-in account (**new or already existing**), delete
 the anonymous user, and returns to the results page. Never gate *joining* on an
 email — valor antes que fricción (see PRODUCT.md).
 
+**Guest scope in the app shell.** A guest may open Inicio, Sesiones, their own
+session pages (cup / waiting / results / print) and **Perfil** (+ history) —
+`lib/guestScope.ts`. The nav is the SAME for everyone; tapping a gated tab or
+CTA (Cafés, Grupos, Insights, Nueva sesión, a coffee detail) as a guest opens the
+"Termina de crear tu cuenta" modal (`GuestGateProvider` / `GuestGateLink`) whose
+CTA is the claim flow above, returning to the destination they wanted. Typing a
+gated URL directly is still refused server-side by `proxy.ts`, which redirects to
+`/app/sessions?gate=1` so the same modal opens. The profile page shows an
+"Invitado" badge and a "Terminar de crear tu cuenta" button in place of the email.
+
 ```mermaid
 sequenceDiagram
     actor P as Walk-up participant

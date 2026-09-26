@@ -1402,6 +1402,19 @@
     "autoInviteSummary": "Invitación enviada a {sent} integrantes · {skipped} omitidas · {failed} fallidas",
     "joinSessionLink": "Unirme a la sesión"
   },
+  "guestGate": {
+    "title": "Termina de crear tu cuenta",
+    "body": "Como invitado solo puedes ver tu perfil y las sesiones a las que te invitaron. Crea tu cuenta gratuita (o inicia sesión si ya tienes una) para acceder a Cafés, Grupos y crear tus propias sesiones. Vincularemos tus catas a la cuenta.",
+    "cta": "Crear cuenta",
+    "ctaLoading": "Un momento…",
+    "dismiss": "Ahora no",
+    "close": "Cerrar",
+    "offline": "Sin conexión: podrás crear tu cuenta cuando vuelvas a estar en línea.",
+    "error": "No pudimos iniciar el proceso. Inténtalo de nuevo.",
+    "guestLabel": "Invitado",
+    "profileCta": "Terminar de crear tu cuenta",
+    "accountBody": "Estás participando como invitado: tu acceso vive solo en este navegador y se pierde al borrar los datos de navegación, cambiar de dispositivo o cerrar sesión. Crea tu cuenta para conservar tus catas."
+  },
   "errors": {
     "title": "Algo salió mal",
     "body": "No pudimos cargar esta pantalla. Puedes reintentar o volver al inicio; tu trabajo guardado no se pierde.",
