@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { GuestGateLink } from "@/components/guest/GuestGateLink";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS, INSIGHTS_ITEM, isActive, type NavTranslations } from "@/components/layout/navItems";
 
@@ -28,7 +28,7 @@ export default function BottomNav({
         {tabs.map(({ href, icon: Icon, i18nKey, exact }) => {
           const active = isActive(pathname, locale, href, exact);
           return (
-            <Link
+            <GuestGateLink
               key={href}
               href={`/${locale}${href}`}
               className={`flex-1 flex flex-col items-center justify-center gap-1 text-xs transition-colors ${
@@ -37,7 +37,7 @@ export default function BottomNav({
             >
               <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
               {translations.nav[i18nKey]}
-            </Link>
+            </GuestGateLink>
           );
         })}
       </div>

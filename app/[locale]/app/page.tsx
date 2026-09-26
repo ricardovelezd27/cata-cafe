@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { GuestGateLink } from "@/components/guest/GuestGateLink";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ClipboardList, Coffee, Star, ChevronRight, Clock } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -173,12 +174,12 @@ export default async function Dashboard({
           </h1>
           <p className="text-sm text-on-surface-variant mt-1">{t("subtitle")}</p>
         </div>
-        <Link
+        <GuestGateLink
           href={`/${locale}/app/sessions/new`}
           className="shrink-0 px-4 py-2 rounded-pill bg-primary-container text-white text-sm font-bold hover:bg-primary transition-colors"
         >
           {t("newSession")}
-        </Link>
+        </GuestGateLink>
       </header>
 
       {/* Why / What / How intro + scoring methodology */}
@@ -237,12 +238,12 @@ export default async function Dashboard({
         <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
           <span className="text-6xl">☕</span>
           <p className="font-display text-2xl text-primary-container">{t("emptyTitle")}</p>
-          <Link
+          <GuestGateLink
             href={`/${locale}/app/sessions/new`}
             className="mt-2 px-6 py-3 rounded-pill bg-primary-container text-white font-semibold text-sm hover:bg-primary transition-colors"
           >
             {t("emptyCta")}
-          </Link>
+          </GuestGateLink>
         </div>
       ) : (
         /* Middle row */
