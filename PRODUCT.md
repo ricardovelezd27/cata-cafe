@@ -230,6 +230,8 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 
 ## Roadmap
 
+> The consolidated, prioritised list of everything not yet built lives in `docs/BACKLOG.md` (2026-09-25). This section is the coarse map.
+
 ### Shipped (since the original Phase 3 plan)
 - [x] Evaluation UX rebuild on the `components/ui/` atomic design system
 - [x] `IntensitySlider`, `AffectiveBubbles` (replaced `AffectiveScale`), `CATAPills`
@@ -249,6 +251,7 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 - [x] Consensus SD + CVA PDF fixes (2026-09): a display-only standard-deviation figure alongside community scores; the exported PDF's physical-evaluation block now renders real defect/screen/color data and gates roast level on reveal like the coffee name
 - [x] Guest → account claim (2026-09): the results-page banner now routes guests through the normal login flow (magic link or Google) and merges their tasting data onto the resulting account — new or existing — instead of an in-place email swap
 - [x] Reference sample (2026-09): owner marks one sample as "Referencia" from the wizard, edit page or master panel (live to participants); cup, waiting room, results, PDF and print show it, results add a signed Δ against it — scoring untouched. First live test: end-of-month calibration cupping.
+- [x] QR code for invite link (wizard step 2 + printable sheet)
 - [x] Reference-first anchor (2026-09-25): the reference is now cupped FIRST (order swaps live if the owner changes it mid-session), its affective quality is pinned at 5 on every attribute with cup checks cleared (server-enforced, affective/combined formats only), and results show it as an anchor card above the ranking — excluded from the ranking, session average and "Mejor muestra" — instead of competing inside it.
 
 ### Next — Results & Analytics
@@ -259,7 +262,6 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 
 ### Next — Session Controls & Workflow
 - [ ] Sample order randomization per participant
-- [ ] QR code for invite link
 - [ ] Session templates (pre-configured sample sets)
 
 ### Later — Collaboration & Sharing
