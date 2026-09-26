@@ -519,6 +519,15 @@
     "referenceLegend": "Δ = diferencia frente a la referencia",
     "closedOn": "Cata cerrada el {date}",
     "liveUpdatesDown": "Actualizaciones en vivo no disponibles — pulsa «Actualizar» para ver lo último.",
+    "myDraftNotice": "Tu evaluación sigue en curso · {complete} de {total} muestras completas. Los valores que faltan aparecerán a medida que catas; nada se ha perdido.",
+    "myDraftCta": "Seguir catando",
+    "sync": {
+      "syncing": "Sincronizando {count} cambio(s) guardado(s) en este dispositivo…",
+      "pending": "{count} cambio(s) guardado(s) en este dispositivo · pendiente de sincronizar",
+      "offline": "Sin conexión: {count} cambio(s) se sincronizarán al reconectar.",
+      "retry": "Reintentar",
+      "synced": "Cambios sincronizados. Actualizando resultados…"
+    },
     "closeEmails": {
       "label": "Correos de cierre:",
       "sent": "{count, plural, =1 {1 enviado} other {# enviados}}",
@@ -567,7 +576,10 @@
       "communityShort": "Com:",
       "legendMine": "Mi evaluación",
       "legendCommunity": "Comunidad",
-      "viewDetail": "Ver detalle"
+      "viewDetail": "Ver detalle",
+      "inProgress": "En curso",
+      "notEvaluated": "Sin evaluar",
+      "inProgressLegend": "En curso = tu evaluación aún no se ha enviado; el puntaje aparece cuando completas los 8 atributos."
     },
     "detail": {
       "fragrance": "Fragancia",
@@ -854,6 +866,8 @@
     "firstLoadErrorTitle": "Necesitas conexión para cargar esta sesión por primera vez.",
     "firstLoadErrorRetry": "Reintentar",
     "submitBlocked": "Necesitas conexión para enviar y ver los resultados. Tus evaluaciones están guardadas y se sincronizarán automáticamente.",
+    "submitBlockedPending": "Parte de tu evaluación está guardada solo en este dispositivo y aún no llegó al servidor. Reintenta la sincronización antes de enviar.",
+    "retryBeforeSubmit": "Reintentar y enviar",
     "conflictTitle": "Evaluación ya enviada",
     "conflictBody": "Tus resultados de la muestra {sample} ya se enviaron desde otro dispositivo. ¿Quieres reemplazarlos con esta versión?",
     "conflictKeep": "Mantener versión enviada",

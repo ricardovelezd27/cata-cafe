@@ -285,6 +285,8 @@ export default async function CupPage({
           bannerSyncFailed: t("offline.bannerSyncFailed"),
           retrySync: t("offline.retrySync"),
           submitBlocked: t("offline.submitBlocked"),
+          submitBlockedPending: t("offline.submitBlockedPending"),
+          retryBeforeSubmit: t("offline.retryBeforeSubmit"),
           conflictTitle: t("offline.conflictTitle"),
           // `{sample}` is filled client-side by SyncConflictModal (only the client
           // knows which sample conflicted) — pass the RAW template, not a formatted

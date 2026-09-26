@@ -519,6 +519,15 @@
     "referenceLegend": "Δ = difference against the reference",
     "closedOn": "Tasting closed on {date}",
     "liveUpdatesDown": "Live updates unavailable — press Refresh to see the latest.",
+    "myDraftNotice": "Your evaluation is still in progress · {complete} of {total} samples complete. Missing values will appear as you cup; nothing has been lost.",
+    "myDraftCta": "Keep cupping",
+    "sync": {
+      "syncing": "Syncing {count} change(s) saved on this device…",
+      "pending": "{count} change(s) saved on this device · waiting to sync",
+      "offline": "Offline: {count} change(s) will sync when you reconnect.",
+      "retry": "Retry",
+      "synced": "Changes synced. Refreshing results…"
+    },
     "closeEmails": {
       "label": "Close emails:",
       "sent": "{count, plural, =1 {1 sent} other {# sent}}",
@@ -567,7 +576,10 @@
       "communityShort": "Comm:",
       "legendMine": "My evaluation",
       "legendCommunity": "Community",
-      "viewDetail": "View detail"
+      "viewDetail": "View detail",
+      "inProgress": "In progress",
+      "notEvaluated": "Not evaluated",
+      "inProgressLegend": "In progress = your evaluation has not been submitted yet; the score appears once all 8 attributes are rated."
     },
     "detail": {
       "fragrance": "Fragrance",
@@ -854,6 +866,8 @@
     "firstLoadErrorTitle": "You need internet to load this session for the first time.",
     "firstLoadErrorRetry": "Retry",
     "submitBlocked": "You need a connection to submit and view results. Your evaluations are saved and will sync automatically.",
+    "submitBlockedPending": "Part of your evaluation is saved only on this device and has not reached the server yet. Retry the sync before submitting.",
+    "retryBeforeSubmit": "Retry and submit",
     "conflictTitle": "Already submitted",
     "conflictBody": "Your results for sample {sample} were already submitted from another device. Do you want to replace them with this version?",
     "conflictKeep": "Keep submitted version",

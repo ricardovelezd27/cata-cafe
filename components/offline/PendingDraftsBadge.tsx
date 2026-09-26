@@ -9,6 +9,7 @@ import {
   isOfflineStorageUnavailable,
   onOfflineStorageUnavailable,
 } from "@/lib/offline/store";
+import { OFFLINE_SYNC_EVENT } from "@/hooks/useOfflineSync";
 
 // App-shell-wide indicator: counts every evaluation module across every
 // session that is still `pending` (saved locally, not yet replayed to the
@@ -62,9 +63,13 @@ export function PendingDraftsBadge({
 
     void refresh();
     window.addEventListener("online", refresh);
+    // Recount as soon as a replay run finishes (cup screen or results pill),
+    // so the badge never keeps announcing drafts that just synced.
+    window.addEventListener(OFFLINE_SYNC_EVENT, refresh);
     return () => {
       cancelled = true;
       window.removeEventListener("online", refresh);
+      window.removeEventListener(OFFLINE_SYNC_EVENT, refresh);
     };
   }, [userId]);
 

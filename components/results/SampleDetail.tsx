@@ -28,6 +28,7 @@ import { ScoreBreakdownPanel, type ScoreBreakdownTranslations } from "@/componen
 import { ExtrinsicSummary } from "@/components/results/ExtrinsicSummary";
 import { Badge, ScorePill, Button } from "@/components/ui";
 import type { SessionFormat } from "@/lib/constants";
+import { canShowMyScore, type MyEvaluation } from "@/lib/evaluationState";
 
 type Lang = "es" | "en";
 type PerceptualBlock = (typeof PERCEPTUAL_BLOCKS)[number];
@@ -60,13 +61,18 @@ export type SampleDetailTranslations = {
   avgQuality: string;
   noBlockData: string;
   breakdown: ScoreBreakdownTranslations;
+  // Own-evaluation state chip labels (2026-09). Optional: only the results
+  // page passes an evaluation state at all.
+  inProgress?: string;
+  notEvaluated?: string;
 };
 
 // Keys of SampleDetailTranslations whose value is a plain string — excludes
 // `breakdown` (a nested ScoreBreakdownTranslations object), so block/row
 // label lookups can never resolve to a non-string value.
+// `-?` keeps the optional chip labels (string | undefined) out of the union.
 type StringTKey = {
-  [K in keyof SampleDetailTranslations]: SampleDetailTranslations[K] extends string ? K : never;
+  [K in keyof SampleDetailTranslations]-?: SampleDetailTranslations[K] extends string ? K : never;
 }[keyof SampleDetailTranslations];
 
 // Perceptual-block id -> the translation key for its collapsible header. Not
@@ -227,6 +233,7 @@ export function SampleDetail({
   locale,
   onEdit,
   referenceBadge = null,
+  myEvaluation,
   t,
 }: {
   sampleLabel: string;
@@ -242,6 +249,11 @@ export function SampleDetail({
   // Non-null only when this sample IS the session's reference (control)
   // sample — the dialog passes `sample.isReference ? referenceBadge : null`.
   referenceBadge?: string | null;
+  // The viewer's OWN evaluation state for this sample — undefined when the
+  // data shown belongs to another cupper (owner matrix drill-down), which is
+  // always a submitted evaluation. Gates the CVA box so an unfinished draft
+  // never prints a 5-filled score (lib/evaluationState.ts).
+  myEvaluation?: MyEvaluation;
   t: SampleDetailTranslations;
 }) {
   const lang: Lang = locale === "en" ? "en" : "es";
@@ -269,8 +281,15 @@ export function SampleDetail({
     Array.isArray(v) ? v.length > 0 : v !== null && v !== undefined && v !== "" && v !== 0,
   );
 
-  const cva = showCVA && filled ? calcIndividualScore(data, cupsPerSample) : null;
+  const scoreAllowed = myEvaluation ? canShowMyScore(myEvaluation) : true;
+  const cva = showCVA && filled && scoreAllowed ? calcIndividualScore(data, cupsPerSample) : null;
   const cvaNum = typeof cva === "number" ? cva : null;
+  const stateChip =
+    myEvaluation?.status === "draft"
+      ? (t.inProgress ?? null)
+      : myEvaluation?.status === "none"
+        ? (t.notEvaluated ?? null)
+        : null;
   const overallScore = num(data, "impresion_global_final");
   const overallNotes = (data["impresion_global_notas"] as string | undefined)?.trim() ?? "";
 
@@ -284,6 +303,13 @@ export function SampleDetail({
             <span className="ml-1.5 inline-flex align-middle">
               <Badge tone="accent" size="xs">
                 {referenceBadge}
+              </Badge>
+            </span>
+          )}
+          {stateChip && (
+            <span className="ml-1.5 inline-flex align-middle">
+              <Badge tone={myEvaluation?.status === "draft" ? "accent" : "outline"} size="xs">
+                {stateChip}
               </Badge>
             </span>
           )}
