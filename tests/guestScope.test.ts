@@ -2,13 +2,15 @@ import { describe, expect, it } from "vitest";
 import { isGuestAllowedPath, stripLocale } from "@/lib/guestScope";
 
 describe("guest scope", () => {
-  it("lets anonymous guests cup, wait, and see results / print", () => {
+  it("lets anonymous guests cup, wait, see results / print, and their own profile", () => {
     for (const p of [
       "/app/sessions/abc/cup",
       "/app/sessions/abc/waiting",
       "/app/sessions/abc/results",
       "/app/sessions/abc/print",
       "/app/sessions",
+      "/app/profile",
+      "/app/profile/history",
       "/app",
     ]) {
       expect(isGuestAllowedPath(p)).toBe(true);
@@ -18,10 +20,11 @@ describe("guest scope", () => {
     for (const p of [
       "/app/coffees",
       "/app/coffees/new",
+      "/app/coffees/abc",
       "/app/groups",
       "/app/sessions/new",
       "/app/sessions/abc/edit",
-      "/app/profile",
+      "/app/profiles",
       "/app/insights",
     ]) {
       expect(isGuestAllowedPath(p)).toBe(false);

@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
+import { GuestGateLink } from "@/components/guest/GuestGateLink";
 import { Coffee } from "lucide-react";
 import { DataTable, type Column, type Facet } from "@/components/ui/DataTable";
 import { ScorePill } from "@/components/ui/Badge";
@@ -65,12 +66,12 @@ export function HistoryTable({
       key: "coffee",
       label: t.colCoffee,
       render: (row) => (
-        <Link
+        <GuestGateLink
           href={`/${locale}/app/coffees/${row.coffeeId}`}
           className="font-semibold text-on-surface transition-colors hover:text-primary-container"
         >
           {row.coffeeName}
-        </Link>
+        </GuestGateLink>
       ),
     },
     {
@@ -151,12 +152,12 @@ export function HistoryTable({
         <div className="space-y-2 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 space-y-0.5">
-              <Link
+              <GuestGateLink
                 href={`/${locale}/app/coffees/${row.coffeeId}`}
                 className="block truncate font-semibold text-on-surface transition-colors hover:text-primary-container"
               >
                 {row.coffeeName}
-              </Link>
+              </GuestGateLink>
               {row.sessionId ? (
                 <Link
                   href={`/${locale}/app/sessions/${row.sessionId}/results`}
@@ -198,12 +199,12 @@ export function HistoryTable({
           icon={<Coffee size={20} />}
           title={t.emptyBody}
           action={
-            <Link
+            <GuestGateLink
               href={newSessionHref}
               className="inline-flex items-center rounded-pill bg-primary-container px-5 py-2.5 text-sm font-medium text-on-primary transition-colors hover:bg-primary"
             >
               {t.newSessionLabel}
-            </Link>
+            </GuestGateLink>
           }
         />
       }

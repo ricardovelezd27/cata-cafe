@@ -1388,6 +1388,19 @@
     "autoInviteSummary": "Invitation sent to {sent} members · {skipped} skipped · {failed} failed",
     "joinSessionLink": "Join the session"
   },
+  "guestGate": {
+    "title": "Finish creating your account",
+    "body": "As a guest you can only see your profile and the sessions you were invited to. Create your free account (or sign in if you already have one) to access Coffees, Groups and create your own sessions. We'll link your cuppings to the account.",
+    "cta": "Create account",
+    "ctaLoading": "One moment…",
+    "dismiss": "Not now",
+    "close": "Close",
+    "offline": "Offline: you can create your account once you're back online.",
+    "error": "We couldn't start the process. Please try again.",
+    "guestLabel": "Guest",
+    "profileCta": "Finish creating your account",
+    "accountBody": "You're participating as a guest: your access lives only in this browser and is lost if you clear browsing data, switch devices or sign out. Create your account to keep your cuppings."
+  },
   "errors": {
     "title": "Something went wrong",
     "body": "We couldn't load this screen. You can retry or go back to the dashboard; your saved work isn't lost.",

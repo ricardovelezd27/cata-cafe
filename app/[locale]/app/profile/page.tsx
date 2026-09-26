@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ClipboardList, Users, CheckCircle2, Coffee } from "lucide-react";
 import Link from "next/link";
+import { GuestGateLink } from "@/components/guest/GuestGateLink";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { SignOutButton } from "@/components/layout/SignOutButton";
@@ -12,6 +13,7 @@ import { Badge, StatusPill } from "@/components/ui/Badge";
 import { calcActivityPoints, computeLevel, LEVELS } from "@/lib/gamification";
 import { ROLE_LABELS, COUNTRIES } from "@/lib/constants";
 import { sessionHref } from "@/lib/sessionRouting";
+import { GuestClaimButton, type GuestClaimButtonTranslations } from "@/components/guest/GuestClaimButton";
 import { EditProfileDialog } from "./EditProfileDialog";
 
 export function generateStaticParams() {
@@ -103,6 +105,20 @@ export default async function ProfilePage({
   const tc = await getTranslations("common");
   const tCoffee = await getTranslations("coffee");
   const tSession = await getTranslations("session");
+  const tGate = await getTranslations("guestGate");
+
+  // Anonymous QR walk-up: SAME page as everyone (one profile layout), but no
+  // email to show and a path to finish creating the account. Access limits
+  // live in the nav gate (GuestGateLink), not in the shape of this page.
+  const isGuest = user.is_anonymous === true;
+  const identityLine = isGuest ? tGate("guestLabel") : user.email;
+  const claimT: GuestClaimButtonTranslations = {
+    label: tGate("profileCta"),
+    loading: tGate("ctaLoading"),
+    offline: tGate("offline"),
+    error: tGate("error"),
+  };
+  const profileBack = `/${locale}/app/profile`;
 
   // Activity points + level (lib/gamification.ts is the single source of truth
   // for the weights/thresholds; this just feeds it the counts from above).
@@ -212,12 +228,27 @@ export default async function ProfilePage({
               {editDialog}
             </div>
             <div className="mt-3">
-              <div className="font-display text-2xl text-on-surface">
-                {profile?.displayName || "—"}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-display text-2xl text-on-surface">
+                  {profile?.displayName || "—"}
+                </span>
+                {isGuest && (
+                  <Badge tone="neutral" size="xs">
+                    {tGate("guestLabel")}
+                  </Badge>
+                )}
               </div>
-              <div className="text-sm text-on-surface-variant">{user.email}</div>
+              <div className="text-sm text-on-surface-variant">{identityLine}</div>
               {metaLine && (
                 <div className="mt-1 text-xs font-medium text-on-surface-variant">{metaLine}</div>
+              )}
+              {isGuest && (
+                <GuestClaimButton
+                  locale={locale}
+                  backPath={profileBack}
+                  translations={claimT}
+                  className="mt-4"
+                />
               )}
             </div>
             {profile?.bio && (
@@ -322,19 +353,19 @@ export default async function ProfilePage({
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
                   {t("recentCoffees")}
                 </h3>
-                <Link
+                <GuestGateLink
                   href={`/${locale}/app/coffees`}
                   className="text-xs font-semibold text-primary-container hover:underline"
                 >
                   {t("viewAllCoffees")}
-                </Link>
+                </GuestGateLink>
               </div>
               {recentCoffees.length === 0 ? (
                 <p className="text-sm text-on-surface-variant">{t("myCoffeesEmpty")}</p>
               ) : (
                 <div className="space-y-2">
                   {recentCoffees.map((c) => (
-                    <Link
+                    <GuestGateLink
                       key={c.id}
                       href={`/${locale}/app/coffees/${c.id}`}
                       className="flex items-center justify-between gap-3 rounded-card border border-outline-variant bg-surface px-4 py-2.5 transition-colors hover:bg-surface-container-low"
@@ -347,7 +378,7 @@ export default async function ProfilePage({
                       >
                         {visibilityLabels[c.visibility] ?? c.visibility}
                       </Badge>
-                    </Link>
+                    </GuestGateLink>
                   ))}
                 </div>
               )}
@@ -359,8 +390,20 @@ export default async function ProfilePage({
         <section>
           <h2 className="mb-3 font-display text-xl text-primary-container">{t("account")}</h2>
           <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4">
-            <div className="mb-3 text-sm text-on-surface-variant">{user.email}</div>
+            <div className="mb-3 text-sm text-on-surface-variant">{identityLine}</div>
+            {isGuest && (
+              <p className="mb-3 text-sm leading-relaxed text-on-surface">{tGate("accountBody")}</p>
+            )}
             <div className="flex flex-col gap-2 sm:flex-row">
+              {isGuest && (
+                <GuestClaimButton
+                  locale={locale}
+                  backPath={profileBack}
+                  translations={claimT}
+                  size="md"
+                  className="w-full sm:w-auto"
+                />
+              )}
               <SignOutButton
                 mode="switchAccount"
                 locale={locale}
