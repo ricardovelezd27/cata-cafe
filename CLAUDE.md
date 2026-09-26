@@ -104,7 +104,8 @@ cata-cafe/
 │   │   │                           #   upsertEvaluation/upsertPhysical/upsertExtrinsic (member-gated), updateSampleMetadata
 │   │   ├── community.ts            # submitAllEvaluations (+ solo auto-close), closeSession, revealSample,
 │   │   │                           #   joinViaToken, createInviteToken, setParticipantExclusion, refreshAggregateScores
-│   │   ├── coffees.ts              # createCoffee, updateCoffee, deleteCoffee, visibility/sharing/invites
+│   │   ├── coffees.ts              # createCoffee, updateCoffee, deleteCoffees/deleteCoffee (owner-only ANONYMIZE, never a row delete)
+│   │   │                           #   + getCoffeeDeleteImpact, visibility/sharing/invites
 │   │   ├── groups.ts               # createGroupWithMembers, updateGroup, deleteGroup, roster (add/remove/rename/resend),
 │   │   │                           #   leaveGroup (member), GroupPost feed (create/update/delete), email blasts
 │   │   ├── offline.ts              # Conflict-aware replay of offline evaluation drafts on reconnect

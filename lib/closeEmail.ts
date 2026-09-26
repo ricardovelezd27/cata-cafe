@@ -12,6 +12,7 @@
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
 import { orderReferenceFirst } from "@/lib/referenceRules";
+import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail, escapeHtml } from "@/lib/email";
 import { CvaFormDocument, type CvaDocumentProps } from "@/lib/pdf/CvaFormDocument";
@@ -107,7 +108,7 @@ export async function sendCloseEmails(
       samples: {
         orderBy: { position: "asc" },
         include: {
-          coffee: { select: { name: true, roastLevel: true } },
+          coffee: { select: { name: true, deletedAt: true, roastLevel: true } },
           physical: true,
           extrinsic: true,
         },
@@ -244,7 +245,8 @@ export async function sendCloseEmails(
       return {
         label: s.label,
         isReference: s.id === session.referenceSampleId,
-        coffeeName: s.revealed ? (s.coffee?.name ?? null) : null,
+        coffeeName:
+          s.revealed && s.coffee ? coffeeDisplayName(s.coffee, deletedCoffeeLabel(loc)) : null,
         communityScore: agg?.communityScore ?? null,
         evaluators: f?.totalEvaluators ?? 0,
         sentences,
@@ -317,7 +319,9 @@ export async function sendCloseEmails(
           return {
             label: s.label,
             revealed: s.revealed,
-            coffeeName: s.coffee?.name ?? null,
+            coffeeName: s.coffee
+              ? coffeeDisplayName(s.coffee, deletedCoffeeLabel(recipientLocale))
+              : null,
             roastLevel: s.coffee?.roastLevel ?? null,
             isReference: s.id === session.referenceSampleId,
             descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},

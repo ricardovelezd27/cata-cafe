@@ -51,6 +51,16 @@ describe("lib/validate", () => {
     );
   });
 
+  it("idList dedupes, caps and rejects non-id input", () => {
+    expect(v.idList(["a1", "b2", "a1"], "ids", 5)).toEqual(["a1", "b2"]);
+    expect(v.idList(["cmfz1abc00001", "8f4e9c2a-1b2c-4d5e-8f9a-0b1c2d3e4f5a"], "ids", 5)).toHaveLength(2);
+    expect(() => v.idList([], "ids", 5)).toThrow("invalid_input");
+    expect(() => v.idList(["a", "b", "c"], "ids", 2)).toThrow("invalid_input");
+    expect(() => v.idList(["a b"], "ids", 5)).toThrow("invalid_input");
+    expect(() => v.idList([1], "ids", 5)).toThrow("invalid_input");
+    expect(() => v.idList("a", "ids", 5)).toThrow("invalid_input");
+  });
+
   it("list guards length", () => {
     expect(v.list([1, 2], "s", 3)).toEqual([1, 2]);
     expect(() => v.list([1, 2, 3, 4], "s", 3)).toThrow("invalid_input");

@@ -94,7 +94,9 @@ export default async function ProfilePage({
       },
     }),
     prisma.coffee.findMany({
-      where: { createdBy: user.id },
+      // deletedAt: anonymizing a coffee bumps updatedAt, so without this
+      // filter a just-deleted coffee would surface first.
+      where: { createdBy: user.id, deletedAt: null },
       orderBy: { updatedAt: "desc" },
       take: 3,
       select: { id: true, name: true, visibility: true },

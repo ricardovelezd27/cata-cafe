@@ -88,6 +88,22 @@ export function list<T>(value: unknown, field: string, max: number, min = 0): T[
   return value as T[];
 }
 
+// Opaque row ids (cuid / cuid2 / uuid all fit). Rejects whitespace and
+// anything that isn't a bare token — the id is only ever used in `id IN (…)`.
+const ID_RE = /^[a-z0-9_-]{1,64}$/i;
+
+/** Non-empty, de-duplicated list of row ids, capped at `max` (after dedupe). */
+export function idList(value: unknown, field: string, max: number): string[] {
+  const raw = list<unknown>(value, field, Number.MAX_SAFE_INTEGER, 1);
+  const out = new Set<string>();
+  for (const v of raw) {
+    if (typeof v !== "string" || !ID_RE.test(v)) return fail(field);
+    out.add(v);
+  }
+  if (out.size > max) return fail(field);
+  return [...out];
+}
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function email(value: unknown, field = "email"): string {

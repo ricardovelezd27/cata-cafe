@@ -12,7 +12,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { prisma } from "@/lib/prisma";
-import { usableCoffeeWhere } from "@/lib/coffeeAccess";
+import { usableCoffeeWhere, liveCoffeeWhere } from "@/lib/coffeeAccess";
 
 // opts.all — super-admin "god mode": drops the visibility filter entirely
 // (see lib/analytics/access.ts isSuperAdminEmail, gated in the page). A single
@@ -39,7 +39,7 @@ export async function getCoffeesWithStats(
   }
 
   return prisma.coffee.findMany({
-    where: all ? {} : usableCoffeeWhere(userId),
+    where: all ? liveCoffeeWhere : usableCoffeeWhere(userId),
     select: {
       id: true,
       name: true,

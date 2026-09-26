@@ -15,6 +15,7 @@ import {
   parseHarvestYear,
 } from "./normalize";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
+import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { PLATFORM_SCOPE } from "./types";
 import type {
   AnalyticsScope,
@@ -1080,7 +1081,7 @@ export async function getSessionSummaries(
         label: true,
         position: true,
         revealed: true,
-        coffee: { select: { name: true } },
+        coffee: { select: { name: true, deletedAt: true } },
         aggregateScore: {
           select: {
             communityScore: true,
@@ -1109,7 +1110,7 @@ export async function getSessionSummaries(
         label: sm.label,
         position: sm.position,
         revealed: sm.revealed,
-        coffeeName: sm.coffee?.name ?? null,
+        coffeeName: sm.coffee ? coffeeDisplayName(sm.coffee, deletedCoffeeLabel("es")) : null,
         communityScore: round2(sm.aggregateScore?.communityScore),
         avgRawScore: round2(sm.aggregateScore?.avgRawScore),
         submittedCount: sm.aggregateScore?.submittedCount ?? 0,

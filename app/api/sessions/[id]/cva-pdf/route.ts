@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { orderReferenceFirst } from "@/lib/referenceRules";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
+import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { CvaFormDocument, type CvaDocumentProps } from "@/lib/pdf/CvaFormDocument";
 
 export const runtime = "nodejs";
@@ -52,7 +53,7 @@ export async function GET(
         samples: {
           orderBy: { position: "asc" },
           include: {
-            coffee: { select: { name: true, roastLevel: true } },
+            coffee: { select: { name: true, deletedAt: true, roastLevel: true } },
             evaluations: { where: { cupperId: viewAsId } },
             physical: true,
             extrinsic: true,
@@ -96,7 +97,9 @@ export async function GET(
       return {
         label: sample.label,
         revealed: sample.revealed,
-        coffeeName: sample.coffee?.name ?? null,
+        coffeeName: sample.coffee
+          ? coffeeDisplayName(sample.coffee, deletedCoffeeLabel(locale))
+          : null,
         roastLevel: sample.coffee?.roastLevel ?? null,
         isReference: sample.id === session.referenceSampleId,
         descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},

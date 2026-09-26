@@ -20,6 +20,7 @@ import {
   assertSessionWritable,
 } from "@/lib/sessionAuth";
 import { detachCoffeeHistoryForSession } from "@/lib/coffeeHistory";
+import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { computeEvaluationDerived, moduleKeyForFormat } from "@/lib/evaluation";
 import { isPinnedModule, pinReferenceAffective } from "@/lib/referenceRules";
 import * as v from "@/lib/validate";
@@ -560,6 +561,7 @@ export async function getDeleteImpact(sessionId: string): Promise<DeleteImpact> 
           select: {
             id: true,
             name: true,
+            deletedAt: true,
             code: true,
             createdBy: true,
             creator: { select: { displayName: true } },
@@ -577,7 +579,7 @@ export async function getDeleteImpact(sessionId: string): Promise<DeleteImpact> 
     seen.add(c.id);
     coffees.push({
       id: c.id,
-      name: c.name,
+      name: coffeeDisplayName(c, deletedCoffeeLabel("es")),
       code: c.code,
       ownerName: c.creator.displayName,
       ownedByMe: c.createdBy === user.id,
@@ -994,7 +996,7 @@ export async function updateSampleMetadata(
       id: true,
       sessionId: true,
       coffeeId: true,
-      coffee: { select: { createdBy: true } },
+      coffee: { select: { createdBy: true, deletedAt: true } },
       session: { select: { createdBy: true, status: true } },
     },
   });
@@ -1010,8 +1012,9 @@ export async function updateSampleMetadata(
     // coffee record itself. For non-owned coffees the label update below
     // still applies; the coffee edit is silently skipped — surfaced to the
     // caller via coffeeUpdated: false so the UI can show a notice instead of
-    // pretending the whole save succeeded.
-    if (sample.coffee?.createdBy === user.id) {
+    // pretending the whole save succeeded. An anonymized coffee (deletedAt)
+    // takes the same path: its identifying fields must never be rewritten.
+    if (sample.coffee?.createdBy === user.id && !sample.coffee.deletedAt) {
       // Merge, don't overwrite: only keys actually present in the input
       // touch the coffee row. `undefined` (key absent) leaves the existing
       // value alone; an explicit "" clears it to null. `name` is exempt from
