@@ -4,6 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { ScorePill, InfoHint } from "@/components/ui";
 import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
+import { canShowMyScore } from "@/lib/evaluationState";
 import { deltasVsReference, formatSignedDelta, type ScoreBasis } from "@/lib/referenceDelta";
 import type { SessionFormat } from "@/lib/constants";
 import type { SampleBlockFreq } from "@/components/results/DescriptorFrequency";
@@ -117,7 +118,8 @@ export function ResumenTab({
   const myScoreFor = (sample: SampleResult): number | null => {
     if (format === "descriptive") return null;
     const data = format === "combined" ? sample.combined : sample.affective;
-    if (!hasAffectiveData(data)) return null;
+    // An unfinished draft must never be ranked (lib/evaluationState.ts).
+    if (!hasAffectiveData(data) || !canShowMyScore(sample.myEvaluation)) return null;
     const score = calcIndividualScore(data, cupsPerSample);
     return typeof score === "number" ? score : null;
   };

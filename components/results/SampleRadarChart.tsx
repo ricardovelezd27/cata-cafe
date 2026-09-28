@@ -20,6 +20,7 @@ import { ScoreBreakdownPanel, type ScoreBreakdownTranslations } from "@/componen
 import { getChartColors } from "@/components/results/chartColors";
 import { useContainerWidth } from "@/hooks/useContainerWidth";
 import { formatSignedDelta } from "@/lib/referenceDelta";
+import { canShowMyScore, type MyEvaluation } from "@/lib/evaluationState";
 import { Badge } from "@/components/ui";
 
 const CHART_HEIGHT = 220;
@@ -59,6 +60,9 @@ type SampleResult = {
   extrinsic: Record<string, unknown>;
   aggregateScore: AggregateScoreData | null;
   isReference?: boolean;
+  // Optional so pre-existing callers (print/PDF previews) keep working; when
+  // absent the row is treated as submitted (today's behaviour).
+  myEvaluation?: MyEvaluation;
 };
 
 export function SampleRadarChart({
@@ -76,6 +80,8 @@ export function SampleRadarChart({
   referenceBadge,
   deltaVsReference,
   deltaVsReferenceAria,
+  inProgressLabel,
+  notEvaluatedLabel,
   t,
 }: {
   sample: SampleResult;
@@ -88,6 +94,9 @@ export function SampleRadarChart({
   referenceBadge?: string;
   deltaVsReference?: string;
   deltaVsReferenceAria?: string;
+  // Own-evaluation state chip labels (results page only).
+  inProgressLabel?: string;
+  notEvaluatedLabel?: string;
   t: { mine: string; community: string; deltaAttribute: string; breakdown: ScoreBreakdownTranslations };
 }) {
   const showAffective = format !== "descriptive";
@@ -101,7 +110,17 @@ export function SampleRadarChart({
       ? sample.combined
       : null;
 
-  const hasMyData = hasAffectiveData(affData);
+  // The "mine" polygon plots unset attributes at 5 (below), so an unfinished
+  // draft would draw a plausible-looking shape and score — gate both on the
+  // row's own-evaluation state, exactly like ScoreTable.
+  const myState: MyEvaluation = sample.myEvaluation ?? { status: "submitted", complete: true };
+  const hasMyData = hasAffectiveData(affData) && canShowMyScore(myState);
+  const stateChip =
+    myState.status === "draft"
+      ? (inProgressLabel ?? null)
+      : myState.status === "none"
+        ? (notEvaluatedLabel ?? null)
+        : null;
 
   const radarData = AFFECTIVE_ATTRIBUTES.map((attr) => {
     const rawVal = affData
@@ -171,6 +190,11 @@ export function SampleRadarChart({
             {sample.isReference && referenceBadge && (
               <Badge tone="accent" size="xs">
                 {referenceBadge}
+              </Badge>
+            )}
+            {stateChip && (
+              <Badge tone={myState.status === "draft" ? "accent" : "outline"} size="xs">
+                {stateChip}
               </Badge>
             )}
           </div>
@@ -255,8 +279,10 @@ export function SampleRadarChart({
         />
       )}
 
-      {/* Radar chart */}
-      {showAffective && hasMyData ? (
+      {/* Radar chart — drawn whenever there is SOMETHING to plot: the viewer's
+          own (complete) polygon and/or the community one. An unfinished draft
+          still sees the community shape, just not its own. */}
+      {showAffective && (hasMyData || hasCommunityData) ? (
         <div ref={chartRef} className="h-[220px] w-full">
           {chartWidth > 0 && (
             <RadarChart
@@ -270,17 +296,19 @@ export function SampleRadarChart({
                 dataKey="subject"
                 tick={{ fontSize: 9, fill: colors.axisText }}
               />
-              <Radar
-                name={t.mine}
-                dataKey="mine"
-                stroke={colors.mine}
-                fill={colors.mine}
-                fillOpacity={0.2}
-                dot={false}
-                isAnimationActive
-                animationDuration={600}
-                animationEasing="ease-out"
-              />
+              {hasMyData && (
+                <Radar
+                  name={t.mine}
+                  dataKey="mine"
+                  stroke={colors.mine}
+                  fill={colors.mine}
+                  fillOpacity={0.2}
+                  dot={false}
+                  isAnimationActive
+                  animationDuration={600}
+                  animationEasing="ease-out"
+                />
+              )}
               {hasCommunityData && (
                 <Radar
                   name={t.community}

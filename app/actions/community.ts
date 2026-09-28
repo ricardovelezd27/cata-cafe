@@ -34,7 +34,10 @@ export async function submitAllEvaluations(sessionId: string) {
 
   await maybeAutoCloseSoloSession(sessionId, user.id);
 
-  revalidatePath(`/app/sessions/${sessionId}/results`);
+  // Routes are locale-prefixed — the bare path matched nothing (found while
+  // auditing the 2026-09-26 "results look stale" report).
+  revalidatePath(`/es/app/sessions/${sessionId}/results`);
+  revalidatePath(`/en/app/sessions/${sessionId}/results`);
   return { ok: true };
 }
 

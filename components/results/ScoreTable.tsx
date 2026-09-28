@@ -2,6 +2,7 @@
 
 import { Check, ChevronRight, Eye } from "lucide-react";
 import { calcIndividualScore, hasAffectiveData, scoreBand } from "@/lib/scoring";
+import { canShowMyScore } from "@/lib/evaluationState";
 import { deltasVsReference, formatSignedDelta } from "@/lib/referenceDelta";
 import { AFFECTIVE_ATTRIBUTES, type SessionFormat } from "@/lib/constants";
 import { DESCRIPTOR_STAGES, PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
@@ -26,6 +27,10 @@ export type ScoreTableTranslations = {
   deltaVsReference?: string;
   deltaVsReferenceAria?: string;
   referenceLegend?: string;
+  // Own-evaluation state chips (2026-09). Optional for the same reason.
+  inProgress?: string;
+  notEvaluated?: string;
+  inProgressLegend?: string;
 };
 
 /**
@@ -150,11 +155,16 @@ export function ScoreTable({
   // exact number it sits under (my pill vs. my score of the reference; the
   // community line vs. the community score of the reference). Mirrors
   // CvaCell's own myScore derivation below.
-  const rowScores = samples.map((sample) => {
+  // "My" scores are gated by the row's own-evaluation state: an unfinished
+  // draft never scores (calcAffectiveSum would fill its gaps with 5s).
+  const myScoreOf = (sample: SampleResult): number | "—" | null => {
     const affData =
       format === "affective" ? sample.affective : format === "combined" ? sample.combined : null;
-    const myScore =
-      affData && hasAffectiveData(affData) ? calcIndividualScore(affData, cupsPerSample) : null;
+    if (!affData || !hasAffectiveData(affData) || !canShowMyScore(sample.myEvaluation)) return null;
+    return calcIndividualScore(affData, cupsPerSample);
+  };
+  const rowScores = samples.map((sample) => {
+    const myScore = myScoreOf(sample);
     return {
       id: sample.id,
       mine: typeof myScore === "number" ? myScore : null,
@@ -266,8 +276,13 @@ export function ScoreTable({
             const descData =
               format === "descriptive" ? sample.descriptive : format === "combined" ? sample.combined : null;
 
-            const score =
-              affData && hasAffectiveData(affData) ? calcIndividualScore(affData, cupsPerSample) : null;
+            const score = myScoreOf(sample);
+            const stateChip =
+              sample.myEvaluation.status === "draft"
+                ? (t.inProgress ?? null)
+                : sample.myEvaluation.status === "none"
+                  ? (t.notEvaluated ?? null)
+                  : null;
             const nonUniform = (affData?.tazas_no_uniformes as boolean[] | undefined) ?? [];
             const defective = (affData?.tazas_defectuosas as boolean[] | undefined) ?? [];
             const u = nonUniform.filter(Boolean).length;
@@ -297,6 +312,16 @@ export function ScoreTable({
                       </span>
                       {sample.revealed && sample.coffee && (
                         <span className="truncate text-[11px] text-on-surface-variant">{sample.coffee.name}</span>
+                      )}
+                      {stateChip && (
+                        <span className="mt-1 inline-flex">
+                          <Badge
+                            tone={sample.myEvaluation.status === "draft" ? "accent" : "outline"}
+                            size="xs"
+                          >
+                            {stateChip}
+                          </Badge>
+                        </span>
                       )}
                     </span>
                     <ChevronRight size={16} className="shrink-0 text-on-surface-variant" aria-hidden />
@@ -404,6 +429,16 @@ export function ScoreTable({
             {t.legendCommunity}
           </span>
         </div>
+      )}
+      {/* Explain the "En curso" chip once, only while some row still carries it. */}
+      {t.inProgressLegend && samples.some((s) => s.myEvaluation.status === "draft") && (
+        <p
+          className={`px-3 text-[10px] text-on-surface-variant ${
+            showCommunity && showAffective ? "pb-2" : "border-t border-outline-variant/40 py-2"
+          }`}
+        >
+          {t.inProgressLegend}
+        </p>
       )}
       {/* Only worth explaining once at least one Δ actually renders. */}
       {anyDelta && (
