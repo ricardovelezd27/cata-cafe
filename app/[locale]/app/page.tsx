@@ -5,6 +5,7 @@ import { ClipboardList, Coffee, Star, ChevronRight, Clock } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { sessionHref } from "@/lib/sessionRouting";
+import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { FormatBadge } from "@/components/dashboard/FormatBadge";
 import { DashboardIntro } from "@/components/dashboard/DashboardIntro";
@@ -48,6 +49,7 @@ export default async function Dashboard({
   setRequestLocale(locale);
   const t = await getTranslations("dashboard");
   const tSession = await getTranslations("session");
+  const tc = await getTranslations("common");
 
   const supabase = await createClient();
   const {
@@ -126,7 +128,7 @@ export default async function Dashboard({
           select: {
             label: true,
             revealed: true,
-            coffee: { select: { name: true } },
+            coffee: { select: { name: true, deletedAt: true } },
             session: { select: { name: true } },
           },
         },
@@ -157,7 +159,7 @@ export default async function Dashboard({
     topCoffeeIds.length > 0
       ? await prisma.coffee.findMany({
           where: { id: { in: topCoffeeIds } },
-          select: { id: true, name: true, country: true },
+          select: { id: true, name: true, country: true, deletedAt: true },
         })
       : [];
   const coffeeMap = new Map(topCoffeeDetails.map((c) => [c.id, c]));
@@ -317,7 +319,7 @@ export default async function Dashboard({
                       </span>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-on-surface text-sm truncate">
-                          {coffee?.name ?? "—"}
+                          {coffee ? coffeeDisplayName(coffee, tc("coffeeDeleted")) : "—"}
                         </p>
                         {coffee?.country && (
                           <p className="text-xs text-on-surface-variant">{coffee.country}</p>
@@ -361,7 +363,10 @@ export default async function Dashboard({
                   <span className="text-sm text-on-surface flex-1">
                     {item.sessionSample.revealed && item.sessionSample.coffee
                       ? t("activityEval", {
-                          coffee: item.sessionSample.coffee.name,
+                          coffee: coffeeDisplayName(
+                            item.sessionSample.coffee,
+                            tc("coffeeDeleted"),
+                          ),
                         })
                       : t("activityEvalSample", {
                           sample: item.sessionSample.label,

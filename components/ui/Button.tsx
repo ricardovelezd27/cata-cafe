@@ -8,7 +8,7 @@ import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "reac
  * pages. A Button always PERFORMS AN ACTION (navigate, mutate, trigger); it
  * is never a selector — see PillTabs/SegmentedControl for that role.
  */
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "accent" | "accentOutline";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "accent" | "accentOutline" | "danger";
 export type ButtonSize = "md" | "sm";
 
 const BASE =
@@ -25,6 +25,9 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   ghost: "text-on-surface-variant hover:text-on-surface",
   accent: "bg-secondary text-on-secondary hover:opacity-90",
   accentOutline: "border border-secondary text-secondary hover:bg-secondary-fixed",
+  // Destructive page-level action (Eliminar). Outline, never filled: the
+  // ConfirmDialog that follows carries the filled error button.
+  danger: "border border-error text-error hover:bg-error-container",
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

@@ -7,6 +7,7 @@ import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { getCoffeesWithStats } from "@/lib/coffees/queries";
 import { PageHeader } from "@/components/ui";
 import CoffeesTable from "@/components/coffees/CoffeesTable";
+import type { DeleteCoffeeTranslations } from "@/components/coffees/DeleteCoffeeButton";
 
 export function generateStaticParams() {
   return [{ locale: "es" }, { locale: "en" }];
@@ -80,6 +81,34 @@ export default async function CoffeesPage({
     ownershipMine: t("ownershipMine"),
     ownershipShared: t("ownershipShared"),
     ownershipPublic: t("ownershipPublic"),
+    // Row actions
+    editLabel: tc("edit"),
+    duplicateLabel: tc("duplicate"),
+    duplicateError: tc("duplicateError"),
+    // Bulk selection — raw templates; DataTable/DeleteCoffeeButton interpolate
+    // {name}/{count}/{max} client-side (t() without the arg renders the key).
+    selectAll: tc("selectAll"),
+    selectRow: tc.raw("selectRow"),
+    selectedCount: tc.raw("selectedCount"),
+    clearSelection: tc("clearSelection"),
+    bulkDelete: t("bulkDelete"),
+    tooManySelected: t.raw("tooManySelected"),
+  };
+
+  const deleteTranslations: DeleteCoffeeTranslations = {
+    title: t("deleteCoffee.title"),
+    titleMany: t.raw("deleteCoffee.titleMany"),
+    body: t("deleteCoffee.body"),
+    confirm: t("deleteCoffee.confirm"),
+    confirmMany: t.raw("deleteCoffee.confirmMany"),
+    cancel: t("deleteCoffee.cancel"),
+    error: t("deleteCoffee.error"),
+    loadingImpact: t("deleteCoffee.loadingImpact"),
+    impact: t.raw("deleteCoffee.impact"),
+    moreNames: t.raw("deleteCoffee.moreNames"),
+    success: t("deleteCoffee.success"),
+    successMany: t.raw("deleteCoffee.successMany"),
+    partial: t.raw("deleteCoffee.partial"),
   };
 
   return (
@@ -110,6 +139,7 @@ export default async function CoffeesPage({
         coffees={coffees}
         locale={locale}
         translations={translations}
+        deleteTranslations={deleteTranslations}
         isAdmin={isAdmin}
       />
     </div>

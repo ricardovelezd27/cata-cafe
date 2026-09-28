@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { orderReferenceFirst } from "@/lib/referenceRules";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { buildInviteUrl } from "@/lib/inviteUrl";
+import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { PrintClient } from "./PrintClient";
 
 export default async function PrintPage({
@@ -38,7 +39,7 @@ export default async function PrintPage({
         samples: {
           orderBy: { position: "asc" },
           include: {
-            coffee: { select: { name: true, roastLevel: true } },
+            coffee: { select: { name: true, deletedAt: true, roastLevel: true } },
             evaluations: { where: { cupperId: user.id } },
             physical: true,
             extrinsic: true,
@@ -73,6 +74,7 @@ export default async function PrintPage({
   }
 
   const tg = await getTranslations("group");
+  const tc = await getTranslations("common");
   const scanToJoinLabel = tg("scanToJoin");
 
   const dateStr = session.date.toLocaleDateString(locale === "es" ? "es-CO" : "en-US", {
@@ -100,7 +102,7 @@ export default async function PrintPage({
             id: s.id,
             label: s.label,
             revealed: s.revealed,
-            coffeeName: s.coffee?.name ?? null,
+            coffeeName: s.coffee ? coffeeDisplayName(s.coffee, tc("coffeeDeleted")) : null,
             roastLevel: s.coffee?.roastLevel ?? null,
             isReference: s.id === session.referenceSampleId,
             descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},

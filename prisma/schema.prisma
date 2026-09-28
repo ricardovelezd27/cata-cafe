@@ -73,6 +73,13 @@ model Coffee {
   // setCoffeeResultsPublished (app/actions/coffees.ts).
   resultsPublished   Boolean   @default(false)
   resultsPublishedAt DateTime?
+  // Anonymizing soft delete (2026-09-26). Set by deleteCoffees
+  // (app/actions/coffees.ts): identifying fields (name, code, farm, producer,
+  // notes, certifications) are wiped, shares/invites removed, and the row is
+  // hidden by usableCoffeeWhere. Evaluations, aggregate scores, session samples
+  // and user_coffee_history keep pointing here so tasting-derived data stays
+  // linked to the analytical attributes (country, variety, process…).
+  deletedAt          DateTime?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
@@ -83,6 +90,7 @@ model Coffee {
 
   @@index([createdBy])
   @@index([visibility])
+  @@index([deletedAt])
   @@map("coffees")
 }
 

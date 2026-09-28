@@ -2,9 +2,20 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { Coffee as CoffeeIcon } from "lucide-react";
-import { DataTable, type Column, type Facet, Badge, ScorePill, EmptyState } from "@/components/ui";
+import { Coffee as CoffeeIcon, Pencil } from "lucide-react";
+import {
+  DataTable,
+  SelectionCheckbox,
+  type Column,
+  type Facet,
+  Badge,
+  ScorePill,
+  EmptyState,
+} from "@/components/ui";
+import { DuplicateButton } from "@/components/DuplicateButton";
+import { DeleteCoffeeButton, type DeleteCoffeeTranslations } from "@/components/coffees/DeleteCoffeeButton";
 import { formatCoffeeCode } from "@/lib/coffeeCode";
+import { MAX_BULK_COFFEE_DELETE } from "@/lib/coffeeAccess";
 
 export type CoffeeRow = {
   id: string;
@@ -59,12 +70,25 @@ export type CoffeesTableTranslations = {
   ownershipMine: string;
   ownershipShared: string;
   ownershipPublic: string;
+  // Row actions (owner only)
+  editLabel: string;
+  duplicateLabel: string;
+  duplicateError: string;
+  // Bulk selection (DataTable selection toolbar)
+  selectAll: string;
+  selectRow: string;
+  selectedCount: string;
+  clearSelection: string;
+  bulkDelete: string;
+  /** Contains {max}. */
+  tooManySelected: string;
 };
 
 type Props = {
   coffees: CoffeeRow[];
   locale: string;
   translations: CoffeesTableTranslations;
+  deleteTranslations: DeleteCoffeeTranslations;
   isAdmin?: boolean;
 };
 
@@ -97,8 +121,9 @@ function ProcessBadge({ type }: { type: string | null }) {
   );
 }
 
-/** Hoisted to module scope — never redeclare components inside render. */
-function VisibilityBadge({
+/** Hoisted to module scope — never redeclare components inside render.
+ *  Exported so the coffee profile page shows the same pill. */
+export function VisibilityBadge({
   visibility,
   labels,
 }: {
@@ -122,8 +147,15 @@ function relativeDate(iso: string, locale: string): string {
   return rtf.format(Math.round(diff / 31536000), "year");
 }
 
-export default function CoffeesTable({ coffees, locale, translations: t, isAdmin = false }: Props) {
+export default function CoffeesTable({
+  coffees,
+  locale,
+  translations: t,
+  deleteTranslations,
+  isAdmin = false,
+}: Props) {
   const visibilityLabels = { public: t.listPublic, shared: t.listShared, private: t.listPrivate };
+  const nameById = useMemo(() => new Map(coffees.map((c) => [c.id, c.name])), [coffees]);
 
   const columns: Column<CoffeeRow>[] = useMemo(
     () => [
@@ -283,26 +315,95 @@ export default function CoffeesTable({ coffees, locale, translations: t, isAdmin
       ]}
       facets={facets}
       getRowHref={(row) => `/${locale}/app/coffees/${row.id}`}
-      renderMobileCard={(row) => {
+      // Only the coffee's OWNER may edit/duplicate-from-row/delete — the
+      // super-admin sees every coffee but gets no actions on others' rows.
+      rowActions={(row) =>
+        row.isMine ? (
+          <div className="flex items-center justify-end gap-1">
+            <Link
+              href={`/${locale}/app/coffees/${row.id}/edit`}
+              aria-label={t.editLabel}
+              className="inline-flex rounded-sm p-1.5 text-on-surface-variant transition-colors hover:text-primary-container"
+            >
+              <Pencil size={16} />
+            </Link>
+            <DuplicateButton
+              kind="coffee"
+              id={row.id}
+              locale={locale}
+              label={t.duplicateLabel}
+              errorText={t.duplicateError}
+              variant="icon"
+            />
+            <DeleteCoffeeButton
+              variant="icon"
+              coffeeIds={[row.id]}
+              coffeeNames={[row.name]}
+              translations={deleteTranslations}
+            />
+          </div>
+        ) : null
+      }
+      selection={{
+        isSelectable: (row) => row.isMine,
+        rowLabel: (row) => row.name,
+        translations: {
+          selectAll: t.selectAll,
+          selectRow: t.selectRow,
+          selectedCount: t.selectedCount,
+          clearSelection: t.clearSelection,
+        },
+        renderBulkActions: (ids, clear) => (
+          <DeleteCoffeeButton
+            variant="bulk"
+            coffeeIds={ids}
+            coffeeNames={ids.map((id) => nameById.get(id) ?? id)}
+            label={t.bulkDelete}
+            disabled={ids.length > MAX_BULK_COFFEE_DELETE}
+            disabledHint={t.tooManySelected.replace("{max}", String(MAX_BULK_COFFEE_DELETE))}
+            onDeleted={clear}
+            translations={deleteTranslations}
+          />
+        ),
+      }}
+      renderMobileCard={(row, actions, sel) => {
         const latest = row.coffeeHistory[0] ?? null;
         return (
-          <div className="space-y-2 rounded-card border border-outline-variant bg-surface-container-lowest px-4 py-3">
+          <div
+            className={`space-y-2 rounded-card border border-outline-variant px-4 py-3 ${
+              sel?.selected ? "bg-primary-fixed/40" : "bg-surface-container-lowest"
+            }`}
+          >
             <div className="flex items-start justify-between gap-2">
-              <span className="inline-flex items-center gap-2">
-                <Link
-                  href={`/${locale}/app/coffees/${row.id}`}
-                  className="font-semibold leading-tight text-on-surface hover:text-primary-container"
-                >
-                  {row.name}
-                </Link>
-                {(row.isMine || isAdmin) && (
-                  <VisibilityBadge visibility={row.visibility} labels={visibilityLabels} />
+              <span className="inline-flex min-w-0 items-start gap-2">
+                {sel?.selectable && (
+                  <span className="pt-0.5">
+                    <SelectionCheckbox
+                      checked={sel.selected}
+                      onChange={sel.toggle}
+                      ariaLabel={t.selectRow.replace("{name}", row.name)}
+                    />
+                  </span>
                 )}
-                {!row.isMine && !isAdmin && row.visibility === "shared" && (
-                  <Badge tone="accent">{t.sharedWithMe}</Badge>
-                )}
+                <span className="inline-flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/${locale}/app/coffees/${row.id}`}
+                    className="font-semibold leading-tight text-on-surface hover:text-primary-container"
+                  >
+                    {row.name}
+                  </Link>
+                  {(row.isMine || isAdmin) && (
+                    <VisibilityBadge visibility={row.visibility} labels={visibilityLabels} />
+                  )}
+                  {!row.isMine && !isAdmin && row.visibility === "shared" && (
+                    <Badge tone="accent">{t.sharedWithMe}</Badge>
+                  )}
+                </span>
               </span>
-              <ProcessBadge type={row.processType} />
+              <span className="flex shrink-0 items-center gap-1">
+                <ProcessBadge type={row.processType} />
+                {actions}
+              </span>
             </div>
             {row.code && (
               <div className="font-mono text-[11px] text-on-surface-variant">

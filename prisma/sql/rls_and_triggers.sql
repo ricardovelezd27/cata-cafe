@@ -1220,3 +1220,34 @@ ALTER FUNCTION public.is_affective_complete(jsonb) SET search_path = public;
 GRANT EXECUTE ON FUNCTION public.is_session_participant(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.handle_new_user() TO supabase_auth_admin;
 -- ============================================================================
+
+-- ============================================================================
+-- PHASE 20 (2026-09-26): coffee soft delete — hide anonymized coffees from
+-- direct-client reads.
+--
+-- deleteCoffees (app/actions/coffees.ts) no longer deletes the row: it wipes
+-- the identifying fields, stamps coffees."deletedAt" and removes the
+-- coffee_shares / coffee_invites rows (see lib/coffeeAnonymize.ts). Prisma
+-- (postgres role) already filters on "deletedAt" IS NULL through
+-- usableCoffeeWhere; these policies keep PostgREST/Realtime reads honest so an
+-- anonymized row is not readable (or writable back into existence) via the
+-- anon/authenticated key either. Nothing client-side reads `coffees` today.
+-- Apply manually via the Supabase Dashboard → SQL Editor (runbook §8).
+-- ============================================================================
+DROP POLICY IF EXISTS "coffees_select" ON coffees;
+CREATE POLICY "coffees_select" ON coffees
+  FOR SELECT USING (
+    "deletedAt" IS NULL
+    AND (
+      "visibility" = 'public'
+      OR "createdBy" = auth.uid()::text
+      OR ("visibility" = 'shared' AND EXISTS (
+        SELECT 1 FROM coffee_shares cs
+        WHERE cs."coffeeId" = coffees.id AND cs."userId" = auth.uid()::text))
+    )
+  );
+
+DROP POLICY IF EXISTS "coffees_write" ON coffees;
+CREATE POLICY "coffees_write" ON coffees
+  FOR ALL USING ("deletedAt" IS NULL AND "createdBy" = auth.uid()::text);
+-- ============================================================================

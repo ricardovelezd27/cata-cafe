@@ -217,7 +217,7 @@ muestra" into its own card above the ranking; the Δ against it is unchanged.
 ## 2. Coffee visibility & sharing
 
 A coffee is a reusable asset owned by its creator (producer/roaster/café). The
-owner has full CRUD (`createCoffee`, `updateCoffee`, `deleteCoffee`,
+owner has full CRUD (`createCoffee`, `updateCoffee`, `deleteCoffees` / `deleteCoffee`,
 `setCoffeeVisibility`, `setCoffeeResultsPublished`); everyone else only *uses*
 usable coffees in sessions. Two independent switches: `visibility` (who sees the
 record) and `resultsPublished` (who sees the aggregated results block).
@@ -237,12 +237,25 @@ flowchart TD
 ```
 
 `usableCoffeeWhere(userId)` (`lib/coffeeAccess.ts`) is the single read rule:
-owned ∪ public ∪ (shared ∧ has share row). The session wizard and
-`addSessionSample` both re-validate picked coffees against it server-side.
+not anonymized ∧ (owned ∪ public ∪ (shared ∧ has share row)). The session wizard
+and `addSessionSample` both re-validate picked coffees against it server-side.
 
-**Delete blast radius:** `session_samples.coffeeId` → SET NULL (samples keep
-their blind label; sessions and evaluations survive), but `user_coffee_history`
-→ CASCADE for **every user who ever cupped it**. The confirm dialog says so.
+**Delete = anonymize (2026-09-26).** `deleteCoffees(ids)` (owner only — the
+`createdBy` predicate on the `updateMany` is the gate; the super-admin cannot)
+never removes the row. It wipes the identifying fields (`name` → "", `code`,
+`farm`, `producer`, `notes` → null, `certifications` → [] —
+`ANONYMIZED_COFFEE_DATA` in `lib/coffeeAnonymize.ts`), resets visibility to
+private / results unpublished, deletes `coffee_shares` + `coffee_invites`, and
+stamps `deletedAt`. Everything derived from a tasting keeps pointing at the row:
+`session_samples`, `evaluations`, `aggregate_scores`, `user_coffee_history` —
+so insights still correlate perceived notes / quality with country, variety,
+process, altitude, harvest and roast. Display sites render
+`common.coffeeDeleted` ("Café eliminado") via `coffeeDisplayName()` because a
+live coffee never has a blank name. `getCoffeeDeleteImpact(ids)` feeds the
+confirm dialog (samples / sessions / cuppers that KEEP their data). Entry
+points: the coffee-list row trash icon, the bulk-selection toolbar
+(`DataTable` `selection` prop, ≤ `MAX_BULK_COFFEE_DELETE`) and the profile
+page — all through `components/coffees/DeleteCoffeeButton.tsx`.
 
 ### Coffee codes
 

@@ -20,8 +20,10 @@ async function main() {
   const adapter = new PrismaPg({ connectionString: dbUrl });
   const prisma = new PrismaClient({ adapter });
 
+  // Anonymized coffees (deletedAt set) have their code wiped on purpose —
+  // never stamp a new one on them.
   const missing = await prisma.coffee.findMany({
-    where: { code: null },
+    where: { code: null, deletedAt: null },
     select: { id: true, name: true },
     orderBy: { createdAt: "asc" },
   });
@@ -36,8 +38,10 @@ async function main() {
     if (done % 50 === 0) console.log(`  ...${done}/${missing.length}`);
   }
 
-  const total = await prisma.coffee.count();
-  const withCode = await prisma.coffee.count({ where: { code: { not: null } } });
+  const total = await prisma.coffee.count({ where: { deletedAt: null } });
+  const withCode = await prisma.coffee.count({
+    where: { code: { not: null }, deletedAt: null },
+  });
   console.log(`Backfilled ${done}. Coverage: ${withCode}/${total} coffees have a code.`);
   if (withCode !== total) process.exitCode = 1;
 

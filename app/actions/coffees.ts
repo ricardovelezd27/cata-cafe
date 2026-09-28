@@ -7,34 +7,134 @@ import { requireUser } from "@/lib/auth";
 import { withCodeRetry } from "@/lib/coffeeCode";
 import { run } from "@/lib/safeAction";
 import type { ActionResult } from "@/lib/actionResult";
+import { idList } from "@/lib/validate";
+import { ANONYMIZED_COFFEE_DATA } from "@/lib/coffeeAnonymize";
 import {
   isCoffeeVisibility,
   usableCoffeeWhere,
+  MAX_BULK_COFFEE_DELETE,
   type CoffeeVisibility,
 } from "@/lib/coffeeAccess";
 
-/**
- * Delete a coffee the user created. DB-level referential rules keep the rest
- * of the platform consistent: session_samples.coffeeId is ON DELETE SET NULL
- * (samples survive, showing only their blind label) and user_coffee_history
- * rows cascade away for EVERY user who cupped it (migration 20260721000000).
- */
-export async function deleteCoffee(coffeeId: string, locale: string = "es") {
-  const user = await requireUser();
+// ─── Delete (anonymize) coffees — OWNER ONLY ──────────────────────────────────
+// "Delete" never removes the row. The owner's coffee is anonymized instead:
+// identifying fields (name, code, farm, producer, notes, certifications) are
+// wiped (lib/coffeeAnonymize.ts), sharing state reset, shares + invites
+// removed and deletedAt stamped. Everything derived from a tasting keeps
+// pointing at the row — evaluations, aggregate scores, session samples,
+// user_coffee_history — so insights can still correlate perceived notes and
+// quality with the analytical attributes (country, variety, process…).
+// usableCoffeeWhere hides the row from lists/pickers/profile; display sites
+// fall back to "Café eliminado" because a live coffee never has a blank name.
+//
+// Authorization: the `createdBy: user.id` predicate on the updateMany IS the
+// gate. Nobody else — super-admin included — can anonymize a coffee.
 
-  const coffee = await prisma.coffee.findUnique({
-    where: { id: coffeeId },
-    select: { createdBy: true },
-  });
+export type DeleteCoffeesResult = { deleted: number; skipped: number };
 
-  if (!coffee || coffee.createdBy !== user.id) {
-    throw new Error("not_found_or_forbidden");
-  }
+export async function deleteCoffees(
+  coffeeIds: string[],
+): Promise<ActionResult<DeleteCoffeesResult>> {
+  return run(
+    "deleteCoffees",
+    async () => {
+      const user = await requireUser();
+      const ids = idList(coffeeIds, "coffeeIds", MAX_BULK_COFFEE_DELETE);
 
-  await prisma.coffee.delete({ where: { id: coffeeId } });
+      const deleted = await prisma.$transaction(async (tx) => {
+        const owned = await tx.coffee.findMany({
+          where: { id: { in: ids }, createdBy: user.id, deletedAt: null },
+          select: { id: true },
+        });
+        const ownedIds = owned.map((c) => c.id);
+        if (ownedIds.length === 0) return 0;
 
-  revalidatePath(`/${locale}/app/coffees`);
-  return { ok: true as const };
+        const { count } = await tx.coffee.updateMany({
+          where: { id: { in: ownedIds }, createdBy: user.id, deletedAt: null },
+          data: { ...ANONYMIZED_COFFEE_DATA, deletedAt: new Date() },
+        });
+        await tx.coffeeShare.deleteMany({ where: { coffeeId: { in: ownedIds } } });
+        await tx.coffeeInvite.deleteMany({ where: { coffeeId: { in: ownedIds } } });
+        return count;
+      });
+
+      // A tampered / stale request must never read as a silent success.
+      if (deleted === 0) throw new Error("not_found_or_forbidden");
+
+      for (const l of ["es", "en"]) {
+        revalidatePath(`/${l}/app`);
+        revalidatePath(`/${l}/app/coffees`);
+        revalidatePath(`/${l}/app/profile`);
+        revalidatePath(`/${l}/app/profile/history`);
+        for (const id of ids) revalidatePath(`/${l}/app/coffees/${id}`);
+      }
+
+      return { deleted, skipped: ids.length - deleted };
+    },
+    { coffeeId: coffeeIds?.[0] },
+  );
+}
+
+/** Single-coffee form of deleteCoffees — one code path for the profile page,
+ *  the table row and the bulk toolbar. */
+export async function deleteCoffee(
+  coffeeId: string,
+): Promise<ActionResult<DeleteCoffeesResult>> {
+  return deleteCoffees([coffeeId]);
+}
+
+/** What the confirm dialog shows BEFORE anonymizing: how much tasting data
+ *  stays linked to the coffees (it is never removed — that is the point). */
+export type CoffeeDeleteImpact = {
+  /** Owned, not-yet-deleted ids among the request — what will be anonymized. */
+  coffees: number;
+  /** Distinct sessions with at least one sample of these coffees. */
+  sessions: number;
+  /** session_samples rows that keep their evaluations and lose only the name. */
+  samples: number;
+  /** Distinct cuppers with a user_coffee_history row for these coffees. */
+  cuppers: number;
+};
+
+export async function getCoffeeDeleteImpact(
+  coffeeIds: string[],
+): Promise<ActionResult<CoffeeDeleteImpact>> {
+  return run(
+    "getCoffeeDeleteImpact",
+    async () => {
+      const user = await requireUser();
+      const ids = idList(coffeeIds, "coffeeIds", MAX_BULK_COFFEE_DELETE);
+
+      // Scoped to OWNED ids so this endpoint can never be used to probe how
+      // often someone else's coffee has been cupped.
+      const owned = await prisma.coffee.findMany({
+        where: { id: { in: ids }, createdBy: user.id, deletedAt: null },
+        select: { id: true },
+      });
+      const ownedIds = owned.map((c) => c.id);
+      if (ownedIds.length === 0) throw new Error("not_found_or_forbidden");
+
+      const [samples, sessionGroups, cupperGroups] = await Promise.all([
+        prisma.sessionSample.count({ where: { coffeeId: { in: ownedIds } } }),
+        prisma.sessionSample.groupBy({
+          by: ["sessionId"],
+          where: { coffeeId: { in: ownedIds } },
+        }),
+        prisma.userCoffeeHistory.groupBy({
+          by: ["userId"],
+          where: { coffeeId: { in: ownedIds } },
+        }),
+      ]);
+
+      return {
+        coffees: ownedIds.length,
+        sessions: sessionGroups.length,
+        samples,
+        cuppers: cupperGroups.length,
+      };
+    },
+    { coffeeId: coffeeIds?.[0] },
+  );
 }
 
 // ─── Create a coffee as a standalone reusable asset ───────────────────────────
@@ -117,8 +217,9 @@ export async function updateCoffee(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const user = await requireUser();
 
-  const coffee = await prisma.coffee.findUnique({
-    where: { id: coffeeId },
+  // deletedAt filter: an anonymized coffee must never be re-identified.
+  const coffee = await prisma.coffee.findFirst({
+    where: { id: coffeeId, deletedAt: null },
     select: { createdBy: true },
   });
   if (!coffee || coffee.createdBy !== user.id) {
@@ -216,8 +317,8 @@ export async function createCoffeeInvite(
   return run("createCoffeeInvite", async () => {
     const user = await requireUser();
 
-    const coffee = await prisma.coffee.findUnique({
-      where: { id: coffeeId },
+    const coffee = await prisma.coffee.findFirst({
+      where: { id: coffeeId, deletedAt: null },
       select: { createdBy: true, visibility: true },
     });
     if (!coffee || coffee.createdBy !== user.id) {
@@ -265,10 +366,14 @@ export async function joinCoffeeViaToken(token: string, locale: string = "es") {
 
   const invite = await prisma.coffeeInvite.findUnique({
     where: { token },
-    include: { coffee: { select: { id: true, createdBy: true, visibility: true } } },
+    include: {
+      coffee: { select: { id: true, createdBy: true, visibility: true, deletedAt: true } },
+    },
   });
 
-  if (!invite || invite.coffee.visibility === "private") {
+  // Anonymized coffees have their invites removed; the deletedAt check is
+  // belt-and-braces against a race with deleteCoffees.
+  if (!invite || invite.coffee.visibility === "private" || invite.coffee.deletedAt) {
     throw new Error("invalid_token");
   }
   if (invite.expiresAt && invite.expiresAt < new Date()) {
@@ -311,8 +416,8 @@ export async function revokeCoffeeShare(
   return run("revokeCoffeeShare", async () => {
     const user = await requireUser();
 
-    const coffee = await prisma.coffee.findUnique({
-      where: { id: coffeeId },
+    const coffee = await prisma.coffee.findFirst({
+      where: { id: coffeeId, deletedAt: null },
       select: { createdBy: true },
     });
     if (!coffee || coffee.createdBy !== user.id) {
@@ -337,8 +442,8 @@ export async function setCoffeeResultsPublished(
   return run("setCoffeeResultsPublished", async () => {
     const user = await requireUser();
 
-    const coffee = await prisma.coffee.findUnique({
-      where: { id: coffeeId },
+    const coffee = await prisma.coffee.findFirst({
+      where: { id: coffeeId, deletedAt: null },
       select: { createdBy: true },
     });
     if (!coffee || coffee.createdBy !== user.id) {
@@ -376,8 +481,9 @@ export async function setCoffeeVisibility(
     // Public POST endpoint — never trust the caller's string.
     if (!isCoffeeVisibility(visibility)) throw new Error("invalid_input");
 
-    const coffee = await prisma.coffee.findUnique({
-      where: { id: coffeeId },
+    // An anonymized coffee can never be flipped back to shared/public.
+    const coffee = await prisma.coffee.findFirst({
+      where: { id: coffeeId, deletedAt: null },
       select: { createdBy: true },
     });
     if (!coffee || coffee.createdBy !== user.id) {

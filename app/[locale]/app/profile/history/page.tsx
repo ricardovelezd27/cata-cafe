@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { HistoryTable, type HistoryRow, type HistoryTableTranslations } from "./HistoryTable";
 
 export function generateStaticParams() {
@@ -27,7 +28,7 @@ export default async function HistoryPage({
     where: { userId: user.id },
     orderBy: { tastedAt: "desc" },
     include: {
-      coffee: { select: { id: true, name: true } },
+      coffee: { select: { id: true, name: true, deletedAt: true } },
       session: { select: { id: true, name: true } },
     },
   });
@@ -47,7 +48,8 @@ export default async function HistoryPage({
     return {
       id: h.id,
       coffeeId: h.coffee.id,
-      coffeeName: h.coffee.name,
+      coffeeName: coffeeDisplayName(h.coffee, tc("coffeeDeleted")),
+      coffeeDeleted: !!h.coffee.deletedAt,
       sessionId: h.session?.id ?? null,
       sessionName: h.session?.name ?? snapshot?.sessionName ?? "—",
       individualScore: h.individualScore,
