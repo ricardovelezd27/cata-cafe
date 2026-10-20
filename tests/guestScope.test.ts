@@ -11,6 +11,8 @@ describe("guest scope", () => {
       "/app/sessions",
       "/app/profile",
       "/app/profile/history",
+      "/app/warmup",
+      "/app/warmup/brazo-lento",
       "/app",
     ]) {
       expect(isGuestAllowedPath(p)).toBe(true);
@@ -25,6 +27,7 @@ describe("guest scope", () => {
       "/app/sessions/new",
       "/app/sessions/abc/edit",
       "/app/profiles",
+      "/app/warmups",
       "/app/insights",
     ]) {
       expect(isGuestAllowedPath(p)).toBe(false);
