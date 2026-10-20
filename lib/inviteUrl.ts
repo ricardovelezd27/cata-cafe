@@ -14,3 +14,20 @@ export function buildInviteUrl(origin: string, locale: string, token: string): s
 export function buildCoffeeInviteUrl(origin: string, locale: string, token: string): string {
   return `${origin}/${locale}/join/coffee/${token}`;
 }
+
+/**
+ * Public site origin for links in emails (no trailing slash). Same source and
+ * dev fallback as the rest of the app (sitemap, robots, digest email).
+ */
+export function siteOrigin(): string {
+  return (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/+$/, "");
+}
+
+/**
+ * Login URL that lands on a session's results page after auth (the login page
+ * threads `next`; a signed-in browser passes straight through).
+ */
+export function buildResultsLoginUrl(origin: string, locale: string, sessionId: string): string {
+  const next = `/${locale}/app/sessions/${sessionId}/results`;
+  return `${origin}/${locale}/auth/login?next=${encodeURIComponent(next)}`;
+}
