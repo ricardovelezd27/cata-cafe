@@ -168,6 +168,7 @@ export default async function ResultsPage({
     label: string;
     totalEvaluators: number;
     blocks: Record<string, RankedDescriptor[]>;
+    stages?: Record<string, RankedDescriptor[]>;
     // Per-block statistical summary sentences (null text → empty state).
     summary: Record<string, string | null>;
   };
@@ -741,6 +742,7 @@ export default async function ResultsPage({
         cloudScopeSample: tDesc("cloudScopeSample"),
         cloudScopeTaster: tDesc("cloudScopeTaster"),
         cloudEmpty: tDesc("cloudEmpty"),
+        hideSingles: tDesc("hideSingles"),
         filterSampleAll: tDesc("filterSampleAll"),
         filterBlockLabel: tDesc("filterBlockLabel"),
         soloCloudTitle: tDesc("soloCloudTitle"),

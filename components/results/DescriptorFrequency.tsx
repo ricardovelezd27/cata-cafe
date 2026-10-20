@@ -17,6 +17,8 @@ export type SampleBlockFreq = {
   totalEvaluators: number;
   /** Ranked descriptors per perceptual block id (plus the "general" pseudo-block). */
   blocks: Record<string, RankedDescriptor[]>;
+  /** Per-stage ranked descriptors (fragancia, aroma, …) — feeds the word cloud. */
+  stages?: Record<string, RankedDescriptor[]>;
   /** Statistical summary sentence per block id (null → render empty state). */
   summary: Record<string, string | null>;
 };
