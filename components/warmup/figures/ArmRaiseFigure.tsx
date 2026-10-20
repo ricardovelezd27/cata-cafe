@@ -25,7 +25,7 @@ export function ArmRaiseFigure(p: FigureProps) {
       break;
     case "up-down":
       armClass = s.armUpDown;
-      armStatic = `rotate(${-160 * amp}deg)`;
+      armStatic = "rotate(0deg)"; // a round trip ends with the arm back down
       arrow = { d: ARC_UP, both: true };
       break;
     case "down":

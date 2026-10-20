@@ -200,9 +200,16 @@ export function WarmupPlayer({
   const step = phase.kind === "step" ? steps[phase.i] : null;
   const stepIndex =
     phase.kind === "step" ? phase.i : phase.kind === "pause" ? phase.next - 1 : phase.kind === "intro" ? -1 : total;
-  const figureSpec: WarmupFigureSpec = step ? step.figure : NEUTRAL[exercise.figureKind];
-  const figureDuration = step ? step.durationSec : 0;
-  const figureKey = step ? step.id : `neutral-${phase.kind}`;
+  // During the 3-s stillness between steps keep the step just finished at its
+  // END pose (static) instead of snapping to neutral, so a raised arm stays up.
+  const holdStep = phase.kind === "pause" ? (steps[phase.next - 1] ?? null) : null;
+  const figureSpec: WarmupFigureSpec = step
+    ? step.figure
+    : holdStep
+      ? holdStep.figure
+      : NEUTRAL[exercise.figureKind];
+  const figureDuration = step ? step.durationSec : holdStep ? holdStep.durationSec : 0;
+  const figureKey = step ? step.id : holdStep ? `hold-${holdStep.id}` : `neutral-${phase.kind}`;
   const variant: WarmupFigureVariant | null = step ? step.figure.variant : null;
   const paused = countdown.paused && phaseSeconds > 0;
   const figurePaused = paused || phase.kind !== "step";
@@ -233,6 +240,7 @@ export function WarmupPlayer({
               figure={figureSpec}
               durationSec={figureDuration}
               paused={figurePaused}
+              reducedMotion={holdStep ? true : undefined}
               title={step ? lw(step.text, locale) : name}
             />
           </div>
