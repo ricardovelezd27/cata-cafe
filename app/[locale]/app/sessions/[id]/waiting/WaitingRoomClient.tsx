@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createBrowserClient } from "@supabase/ssr";
 import { checkSessionStarted } from "@/app/actions/sessions";
+import { WARMUP_EXERCISES, WARMUP_SHARED, lw, warmupById } from "@/lib/warmup/exercises";
+import { WarmupPlayer, type WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
 
 export function WaitingRoomClient({
   sessionId,
@@ -13,6 +15,7 @@ export function WaitingRoomClient({
   isAsync,
   samples,
   initialReferenceSampleId,
+  warmup,
   translations,
 }: {
   sessionId: string;
@@ -21,6 +24,8 @@ export function WaitingRoomClient({
   isAsync: boolean;
   samples: { id: string; label: string }[];
   initialReferenceSampleId: string | null;
+  /** "Mientras esperas" — Movimiento Sensorial card + inline player. */
+  warmup?: { title: string; body: string; minutes: string; strings: WarmupPlayerStrings };
   translations: {
     /** "Muestra de referencia: {label}" — raw ICU string, replaced here. */
     referenceLine: string;
@@ -48,6 +53,10 @@ export function WaitingRoomClient({
     initialReferenceSampleId,
   );
   const referenceLabel = samples.find((s) => s.id === referenceSampleId)?.label ?? null;
+  // The warm-up player opens as an overlay INSIDE this component tree so the
+  // realtime startedAt → /cup redirect below keeps firing while it is open.
+  const [activeWarmupId, setActiveWarmupId] = useState<string | null>(null);
+  const activeWarmup = warmupById(activeWarmupId);
 
   useEffect(() => {
     if (isAsync) return;
@@ -208,7 +217,50 @@ export function WaitingRoomClient({
         >
           {translations.backToSessions}
         </Link>
+
+        {warmup && (
+          <section
+            aria-label={warmup.title}
+            className="rounded-card border border-outline-variant bg-surface-container-low p-5 text-left"
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
+              {lw(WARMUP_SHARED.title, locale)}
+            </p>
+            <h2 className="mt-1 font-display text-xl text-primary-container">{warmup.title}</h2>
+            <p className="mt-1 text-sm leading-relaxed text-on-surface-variant">{warmup.body}</p>
+            <ul className="mt-4 divide-y divide-outline-variant">
+              {WARMUP_EXERCISES.map((ex) => (
+                <li key={ex.id}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveWarmupId(ex.id)}
+                    className="flex w-full items-center gap-3 py-2.5 text-left transition-colors hover:text-primary-container"
+                  >
+                    <span className="font-display text-xl leading-none text-primary-fixed-dim tabular-nums w-5 shrink-0 text-right">
+                      {ex.order}
+                    </span>
+                    <span className="min-w-0 flex-1 text-sm font-medium text-on-surface">{lw(ex.name, locale)}</span>
+                    <span className="shrink-0 text-xs text-on-surface-variant tabular-nums">
+                      {warmup.minutes.replace("{min}", String(ex.durationMin))}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
+
+      {warmup && activeWarmup && (
+        <WarmupPlayer
+          key={activeWarmup.id}
+          exercise={activeWarmup}
+          locale={locale}
+          t={warmup.strings}
+          onFinish={() => setActiveWarmupId(null)}
+          onSkip={() => setActiveWarmupId(null)}
+        />
+      )}
     </main>
   );
 }

@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { WaitingRoomClient } from "./WaitingRoomClient";
+import { warmupPlayerStrings } from "@/components/warmup/playerStrings";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,7 @@ export default async function WaitingPage({
   }
 
   const t = await getTranslations("waiting");
+  const tw = await getTranslations("warmup");
 
   return (
     <WaitingRoomClient
@@ -67,6 +69,12 @@ export default async function WaitingPage({
       isAsync={isAsyncMode}
       samples={session.samples}
       initialReferenceSampleId={session.referenceSampleId}
+      warmup={{
+        title: tw("waiting.title"),
+        body: tw("waiting.body"),
+        minutes: tw.raw("waiting.minutes") as string,
+        strings: warmupPlayerStrings(tw),
+      }}
       translations={{
         // `{label}` is an ICU arg — fetched raw and replaced client-side.
         referenceLine: t.raw("referenceLine") as string,
