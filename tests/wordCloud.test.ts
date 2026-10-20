@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
-import { buildFlavorCloud, buildTasterCloud, sharedLabelKeys, ALL_BLOCK_IDS } from "@/lib/wordCloud";
+import { buildFlavorCloud, buildTasterCloud, sharedLabelKeys, ALL_BLOCK_IDS, capWords } from "@/lib/wordCloud";
 import { FLAVOR_WHEEL } from "@/lib/constants";
 
 const leaves = FLAVOR_WHEEL.filter((n) => n.level === 3);
@@ -86,5 +86,16 @@ describe("buildTasterCloud", () => {
     const words = buildTasterCloud([{ fragancia_desc: [A.id], aroma_desc: [A.id] }, { aroma_desc: [A.id] }]);
     expect(words[0].count).toBe(3);
     expect(words[0].breakdown?.find((b) => b.stageId === "aroma")?.count).toBe(2);
+  });
+});
+
+describe("capWords", () => {
+  it("keeps the top N in order", () => {
+    const w = Array.from({ length: 40 }, (_, i) => i);
+    expect(capWords(w, 30)).toHaveLength(30);
+    expect(capWords(w, 30)[0]).toBe(0);
+    expect(capWords(w, 30)[29]).toBe(29);
+    expect(capWords([1, 2], 30)).toEqual([1, 2]);
+    expect(capWords(w, 0)).toEqual([]);
   });
 });
