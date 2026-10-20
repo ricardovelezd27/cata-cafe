@@ -357,10 +357,13 @@ export function PdfPercentBars({
   rows,
   width,
   maxRows = 8,
+  valueFormat = "counts",
 }: {
   rows: PdfPercentRow[];
   width: number;
   maxRows?: number;
+  /** "counts" → "3/7 · 43%" (default); "percent" → "43%" only. */
+  valueFormat?: "counts" | "percent";
 }) {
   const visible = rows.slice(0, maxRows);
   const height = Math.max(BAR_ROW_HEIGHT, visible.length * BAR_ROW_HEIGHT);
@@ -403,7 +406,9 @@ export function PdfPercentBars({
         fill={SOFT}
         textAnchor="end"
       >
-        {`${row.count}/${row.total} · ${percentOf(row.count, row.total)}%`}
+        {valueFormat === "percent"
+          ? `${percentOf(row.count, row.total)}%`
+          : `${row.count}/${row.total} · ${percentOf(row.count, row.total)}%`}
       </SvgText>,
     ];
   });

@@ -498,6 +498,7 @@
     "backToCupping": "Edit evaluation",
     "viewForm": "View form",
     "downloadPdf": "Download PDF",
+    "downloadSummary": "My summary (PDF)",
     "refresh": "Refresh",
     "refreshing": "Refreshing…",
     "refreshNew": "Refresh ({count} new)",

@@ -25,6 +25,7 @@ export const PDF_PALETTE = {
     red: "#ba1a1a", // --color-error
     neutral: "#727973", // --color-outline
   },
+  paper: "#f6f3ec", // warm paper wash for cards / KPI tiles
   white: "#ffffff",
 } as const;
 

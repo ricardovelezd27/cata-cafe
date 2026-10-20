@@ -64,3 +64,28 @@ consume the same models (same discipline as `lib/resultsAggregation.ts`).
 ### Non-goals in A1
 No new routes, no PDF documents (A3/A4). `results/page.tsx` output must not change
 (screenshot diff before/after).
+
+## CP-A3 verification
+
+Route: `GET /api/sessions/[id]/participant-summary?locale=es|en&inline=1`
+(`app/api/sessions/[id]/participant-summary/route.ts`). Authz mirrors
+`cva-pdf` (creator or participant; super-admin renders the owner's lens) plus
+`canViewGroupResults` for group sessions. Visual check:
+`npx tsx scripts/render-participant-summary-preview.tsx <outDir> [es|en]`.
+
+Manual curl matrix (use a logged-in session cookie `-b cookies.txt`):
+
+| Case | Request | Expect |
+|---|---|---|
+| No cookie | `curl -i /api/sessions/<id>/participant-summary` | 401 `Unauthorized` |
+| Not owner/participant (non-admin) | cookie of an unrelated user | 404 `Not found` |
+| Unknown id | any id that does not exist | 404 |
+| Group, not visible yet (active, owner not viewing, not everyone submitted, `closesAt` empty/future) as a participant | participant cookie | 409, text/plain "Los resultados del grupo aún no están disponibles" (`?locale=en` → "Group results are not available yet") |
+| Group, owner or closed/all-submitted/expired | cookie | 200 `application/pdf`, `Content-Disposition: attachment; filename="resumen_<slug>.pdf"` |
+| Solo session, owner | owner cookie | 200 (community side omitted) |
+| Inline | add `&inline=1` | `Content-Disposition: inline` |
+| Locale | `&locale=en` | filename `summary_<slug>.pdf`, English copy |
+
+All responses carry `Cache-Control: no-store`. Not verified live (no login for
+the agent); the gate itself is `canViewGroupResults`, unit-tested in
+`tests/reports.test.ts`.

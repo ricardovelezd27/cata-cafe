@@ -178,6 +178,7 @@ export function ResultsClient({
     backToCupping: string;
     viewForm: string;
     downloadPdf: string;
+    downloadSummary: string;
     refresh: string;
     refreshing: string;
     refreshNew: string;
@@ -847,26 +848,44 @@ export function ResultsClient({
         className="shrink-0 border-t border-outline-variant bg-surface px-4 pt-3"
         style={{ paddingBottom: "max(12px, calc(env(safe-area-inset-bottom) + 8px))" }}
       >
-        <div className="flex gap-2">
-          <Button
-            size="md"
-            variant="secondary"
-            icon={<Printer size={16} aria-hidden />}
-            className="flex-1"
-            onClick={() => router.push(`/${locale}/app/sessions/${session.id}/print`)}
-          >
-            {translations.viewForm}
-          </Button>
-          {/* Server-generated CVA PDF — plain link so no @react-pdf ships to the client. */}
-          <ButtonLink
-            href={`/api/sessions/${session.id}/cva-pdf?locale=${locale}`}
-            size="md"
-            variant="primary"
-            icon={<FileDown size={16} aria-hidden />}
-            className="flex-1"
-          >
-            {translations.downloadPdf}
-          </ButtonLink>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="flex gap-2 sm:flex-[2]">
+            <Button
+              size="md"
+              variant="secondary"
+              icon={<Printer size={16} aria-hidden />}
+              className="flex-1"
+              onClick={() => router.push(`/${locale}/app/sessions/${session.id}/print`)}
+            >
+              {translations.viewForm}
+            </Button>
+            {/* Server-generated CVA PDF — plain link so no @react-pdf ships to the client. */}
+            <ButtonLink
+              href={`/api/sessions/${session.id}/cva-pdf?locale=${locale}`}
+              size="md"
+              variant="primary"
+              icon={<FileDown size={16} aria-hidden />}
+              className="flex-1"
+            >
+              {translations.downloadPdf}
+            </ButtonLink>
+          </div>
+          {/* Personal summary PDF — inline so iOS opens the native viewer. Group
+              sessions only once the group results are visible (the route enforces
+              the same gate with a 409). */}
+          {(!isGroup || canViewGroup) && (
+            <ButtonLink
+              href={`/api/sessions/${session.id}/participant-summary?locale=${locale}&inline=1`}
+              target="_blank"
+              rel="noopener"
+              size="md"
+              variant="secondary"
+              icon={<FileDown size={16} aria-hidden />}
+              className="w-full sm:flex-1"
+            >
+              {translations.downloadSummary}
+            </ButtonLink>
+          )}
         </div>
       </div>
 

@@ -710,6 +710,7 @@ export default async function ResultsPage({
         backToCupping: tResults("backToCupping"),
         viewForm: tResults("viewForm"),
         downloadPdf: tResults("downloadPdf"),
+        downloadSummary: tResults("downloadSummary"),
         refresh: tResults("refresh"),
         refreshing: tResults("refreshing"),
         // Template — the live count is substituted client-side.
