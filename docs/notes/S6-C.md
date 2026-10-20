@@ -20,15 +20,17 @@ Screenshots: `side-session-notes/local_a8b6fcec…/S6-C-screenshots/c1-*.jpg`.
   tablet range (640–1023) keeps the stepper + `mobileSampleBar`; desktop (`lg:`)
   keeps its top bar. The shell breakpoint stays 1024.
 - **Keyboard collapse:** `hooks/useKeyboardOpen.ts` = a text field has focus AND
-  `visualViewport.height` is ≥120px below `window.innerHeight`. `CupClient`
-  passes it as `collapsed` and the shell hides the header row + top bar
-  (phases) until blur. This is the cross-platform path — iOS Safari ignores
+  `visualViewport.height` is ≥120px below the baseline captured at mount / on
+  every focusout with no field focused (NOT `window.innerHeight`: on Android with
+  `interactiveWidget: "resizes-content"` both shrink together). `CupClient`
+  passes it as `collapsed` and the shell hides the stepper (top bar) + sample row
+  + details; the compact hamburger row stays visible until blur. This is the cross-platform path — iOS Safari ignores
   `interactiveWidget`; `app/layout.tsx` still sets
   `interactiveWidget: "resizes-content"` for Android. Do not gate the collapse on
   resize alone: Safari's toolbar show/hide and pinch-zoom also resize the visual
   viewport.
 - **Fixed shell height is `100dvh`** (with `100vh` + `inset:0` fallback).
-  `.canvas` is a flex column and `.canvasInner` is `flex: 1 0 auto` so the sticky
+  Below 1024px `.canvas` is a flex column and `.canvasInner` is `flex: 1 0 auto` (scoped to the touch media query; desktop untouched) so the sticky
   `CanvasFooter` is always at the bottom edge, even when the form is shorter than
   the viewport (that was the blank strip under the green button).
 - **`CanvasFooter` phones:** `padding-bottom: max(10px, env(safe-area-inset-bottom))`.
@@ -81,7 +83,9 @@ new reference. Closed sessions: refused (`session_closed`).
   today is valid) and `isAsync = true` — allowed on a live session that already
   started, it just gains an automatic close; `""`/`null` → `closesAt = null`,
   `isAsync = false` (owner closes manually from then on) — allowed even with
-  submitted cuppers; a past date → `invalid_closes_at`; solo → `not_group_session`.
+  submitted cuppers; a value equal to the stored date is a no-op (the form also
+  only posts a changed date) so saving other fields never fails once it has passed;
+  a past new date → `invalid_closes_at`; solo → `not_group_session`.
   The edit page disables the save button and shows `edit.sessionClosed` on a
   closed session. The wizard hint no longer says "cannot be changed later".
 

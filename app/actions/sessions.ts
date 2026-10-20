@@ -918,16 +918,19 @@ export async function addSessionSample(
   });
   const position = (max._max.position ?? -1) + 1;
 
-  const sample = await prisma.sessionSample.create({
-    data: {
-      sessionId,
-      label: input.label?.trim() || `Muestra ${position + 1}`,
-      position,
-      coffeeId: input.coffeeId ?? null,
-    },
-    select: { id: true },
+  const sample = await prisma.$transaction(async (tx) => {
+    const created = await tx.sessionSample.create({
+      data: {
+        sessionId,
+        label: input.label?.trim() || `Muestra ${position + 1}`,
+        position,
+        coffeeId: input.coffeeId ?? null,
+      },
+      select: { id: true },
+    });
+    await touchSession(tx, sessionId);
+    return created;
   });
-  await touchSession(prisma, sessionId);
 
   const locale = input.locale || "es";
   revalidatePath(`/${locale}/app/sessions/${sessionId}/cup`);
@@ -945,11 +948,13 @@ export async function renameSessionSample(sampleId: string, label: string) {
   const trimmed = label.trim();
   if (!trimmed) return { ok: false as const, error: "invalid_label" };
 
-  await prisma.sessionSample.update({
-    where: { id: sampleId },
-    data: { label: trimmed },
+  await prisma.$transaction(async (tx) => {
+    await tx.sessionSample.update({
+      where: { id: sampleId },
+      data: { label: trimmed },
+    });
+    await touchSession(tx, sessionId);
   });
-  await touchSession(prisma, sessionId);
 
   revalidatePath(`/es/app/sessions/${sessionId}/cup`);
   revalidatePath(`/en/app/sessions/${sessionId}/cup`);
@@ -1141,11 +1146,13 @@ export async function updateSampleMetadata(
     coffeeUpdated = true;
   }
 
-  await prisma.sessionSample.update({
-    where: { id: sampleId },
-    data: { label: input.label || undefined },
+  await prisma.$transaction(async (tx) => {
+    await tx.sessionSample.update({
+      where: { id: sampleId },
+      data: { label: input.label || undefined },
+    });
+    await touchSession(tx, sample.sessionId);
   });
-  await touchSession(prisma, sample.sessionId);
 
   revalidatePath(`/app/sessions/${sample.sessionId}/cup`);
   revalidatePath(`/app/sessions/${sample.sessionId}/results`);

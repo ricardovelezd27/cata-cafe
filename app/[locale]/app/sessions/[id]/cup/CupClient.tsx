@@ -911,7 +911,7 @@ export function CupClient({
   const setCurrentData = (key: keyof Sample, data: Data) => {
     const sample = samples[sampleIdx];
     setSamples((prev) =>
-      prev.map((s, i) => (i === sampleIdx ? { ...s, [key]: data } : s))
+      prev.map((s) => (s.id === sample.id ? { ...s, [key]: data } : s))
     );
     scheduleAutoSave(sample.id, key, data);
     scheduleLocalSave(sample.id, sample.label, key, data);
