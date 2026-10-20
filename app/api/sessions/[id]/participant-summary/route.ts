@@ -107,7 +107,7 @@ export async function GET(
   ]);
   const labels = {
     coffeeDeleted: deletedCoffeeLabel(locale),
-    soloTopDescriptors: tResults("soloTopDescriptors"),
+    soloTopDescriptors: tResults("dashboard.soloTopDescriptors"),
   };
 
   const source = await loadSessionReportSource(id, {
