@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { classifyActionError, isActionErrorCode } from "@/lib/actionResult";
-import { assertSessionWritable, isSessionClosed } from "@/lib/sessionState";
+import { assertSessionWritable, isSessionClosed, planClosesAtChange } from "@/lib/sessionState";
 import { missingProductionEnv } from "@/lib/env";
 import { redactPath } from "@/lib/log";
 
@@ -56,5 +56,47 @@ describe("log path redaction", () => {
     expect(redactPath("/join/coffee/abc")).toBe("/join/coffee/…");
     expect(redactPath("/auth/callback")).toBe("/auth/…");
     expect(redactPath("/es/app/sessions/xyz/results")).toBe("/es/app/sessions/xyz/results");
+  });
+});
+
+// S6 CP-C3 — editing closesAt after creation.
+describe("planClosesAtChange", () => {
+  const NOW = Date.parse("2026-10-20T12:00:00Z");
+  const group = { isGroup: true };
+
+  it("is a no-op when the field is absent", () => {
+    expect(planClosesAtChange(group, undefined, NOW)).toBeNull();
+  });
+
+  it("sets an automatic close on a live session that already started (end of day UTC, isAsync on)", () => {
+    const plan = planClosesAtChange({ ...group, startedAt: new Date(NOW - 3_600_000) } as { isGroup: boolean }, "2026-10-22", NOW);
+    expect(plan?.isAsync).toBe(true);
+    expect(plan?.closesAt?.toISOString()).toBe("2026-10-22T23:59:59.999Z");
+  });
+
+  it("accepts today (the cron closes it the next morning)", () => {
+    expect(planClosesAtChange(group, "2026-10-20", NOW)?.closesAt?.toISOString()).toBe("2026-10-20T23:59:59.999Z");
+  });
+
+  it("clears the close on an async session with cuppers → live, manual close", () => {
+    expect(planClosesAtChange(group, "", NOW)).toEqual({ closesAt: null, isAsync: false });
+    expect(planClosesAtChange(group, null, NOW)).toEqual({ closesAt: null, isAsync: false });
+  });
+
+  it("rejects a past date and malformed input", () => {
+    expect(() => planClosesAtChange(group, "2026-10-19", NOW)).toThrow("invalid_closes_at");
+    expect(() => planClosesAtChange(group, "20-10-2026", NOW)).toThrow("invalid_closes_at");
+    expect(() => planClosesAtChange(group, "2026-13-40", NOW)).toThrow("invalid_closes_at");
+  });
+
+  it("an unchanged stored date is a no-op even when it is now in the past", () => {
+    const stored = new Date("2026-10-10T23:59:59.999Z");
+    expect(planClosesAtChange({ isGroup: true, closesAt: stored }, "2026-10-10", NOW)).toBeNull();
+    expect(() => planClosesAtChange({ isGroup: true, closesAt: stored }, "2026-10-11", NOW)).toThrow("invalid_closes_at");
+  });
+
+  it("solo sessions carry no close date", () => {
+    expect(() => planClosesAtChange({ isGroup: false }, "2026-10-22", NOW)).toThrow("not_group_session");
+    expect(() => planClosesAtChange({ isGroup: false }, "", NOW)).toThrow("not_group_session");
   });
 });

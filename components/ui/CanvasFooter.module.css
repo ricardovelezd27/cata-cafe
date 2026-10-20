@@ -15,6 +15,15 @@
   border-top: 1px solid var(--color-brown-light);
 }
 
+@media (max-width: 640px) {
+  /* Phones: drop the extra 12px under the buttons; the safe-area inset alone
+     keeps them clear of the home indicator (34px on iPhone), and a 10px floor
+     covers devices that report 0 (CP-C1). */
+  .bar {
+    padding: 10px 16px max(10px, env(safe-area-inset-bottom, 0px));
+  }
+}
+
 .spacer { flex: 1; }
 
 .button {

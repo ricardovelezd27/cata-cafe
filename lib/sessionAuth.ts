@@ -18,6 +18,7 @@ const SESSION_AUTH_SELECT = {
   isGroup: true,
   status: true,
   startedAt: true,
+  closesAt: true,
 } as const;
 
 export type SessionAuthRow = {
@@ -26,6 +27,7 @@ export type SessionAuthRow = {
   isGroup: boolean;
   status: string;
   startedAt: Date | null;
+  closesAt: Date | null;
 };
 
 // Re-exported from the pure module so callers keep one import site.
@@ -72,6 +74,7 @@ export async function requireSessionMember(
     isGroup: session.isGroup,
     status: session.status,
     startedAt: session.startedAt,
+    closesAt: session.closesAt,
   };
 }
 

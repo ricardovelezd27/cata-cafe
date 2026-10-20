@@ -244,7 +244,11 @@
       "referenceTitle": "Reference sample",
       "referenceNone": "No reference",
       "referenceHelper": "The other samples are compared against this one in the results. It does not affect the score.",
-      "referenceSaved": "Reference updated"
+      "referenceSaved": "Reference updated",
+      "closesAt": "Closing date",
+      "closesAtHint": "Optional. The session closes by itself in the early hours after this date. Leave it empty for a live tasting you close yourself.",
+      "closesAtPast": "The closing date must be today or later.",
+      "sessionClosed": "This session is closed and can no longer be edited."
     }
   },
   "cupping": {
@@ -316,7 +320,8 @@
       "copied": "Copied",
       "copyImage": "Copy QR",
       "downloadQr": "Download QR",
-      "currentSample": "Current sample"
+      "currentSample": "Current sample",
+      "sessionDetails": "Session details"
     }
   },
   "waiting": {
@@ -351,16 +356,18 @@
   },
   "descriptors": {
     "viewAll": "View all",
+    "byGroup": "By wheel group",
     "of": "of",
     "participants": "participants",
     "emptyStage": "No descriptor with 2 or more selections in this stage.",
     "emptyBlock": "No shared descriptors in this block.",
-    "emptyAll": "No descriptors selected by 2 or more participants yet.",
+    "emptyAll": "No descriptors selected yet.",
     "cloudTitle": "Flavor cloud",
     "cloudScopeSession": "Whole session",
     "cloudScopeSample": "Per sample",
     "cloudScopeTaster": "Per taster",
     "cloudEmpty": "No descriptors yet",
+    "hideSingles": "Hide single-person descriptors",
     "filterSampleAll": "All samples",
     "filterBlockLabel": "Block",
     "blockGeneral": "General",
@@ -453,7 +460,7 @@
     "toggle": "Group session",
     "async": "Asynchronous",
     "closesAt": "Closing date",
-    "closesAtHint": "Optional. The session closes by itself in the early hours after this date and it cannot be changed later. For a live tasting you close yourself, leave it empty.",
+    "closesAtHint": "Optional. The session closes by itself in the early hours after this date; you can change it later from Edit session. For a live tasting you close yourself, leave it empty.",
     "inviteLink": "Invite link",
     "copyLink": "Copy link",
     "copied": "Copied",
@@ -703,7 +710,7 @@
       },
       "nube": {
         "title": "Flavor cloud",
-        "body": "The most-mentioned descriptors, shown larger the more cuppers chose them. Responds to the sample and block filters selected above."
+        "body": "Each descriptor appears once; its size adds up its mentions across every stage (fragrance 1 + aroma 1 = 2). Tap a word to see the per-stage breakdown. The bars below count cuppers per block, so they can differ on purpose. Follows the sample and block filters above."
       },
       "frecuencia": {
         "title": "Descriptor frequency",
@@ -823,6 +830,7 @@
     "updateError": "Couldn't save the coffee. Please try again.",
     "filterProcess": "Process",
     "filterCountry": "Origin",
+    "filterVariety": "Variety",
     "filterOwnership": "Ownership",
     "ownershipMine": "Mine",
     "ownershipShared": "Shared with me",
@@ -901,18 +909,20 @@
     "meta": {
       "title": "cafesensible.ai — Calibrate your group's palate, with data",
       "description": "The tool for the Café Sensible Method: group cupping sessions on the full SCA CVA protocol, with the instructor's reference and convergence you can see. For schools, trainers and facilitators.",
-      "ogTitle": "cafesensible.ai — Your group cups. The app measures how much they agree.",
+      "ogTitle": "cafesensible.ai — Your group's palate, calibrated and measured.",
       "ogDescription": "Group SCA CVA cupping with an instructor reference, per-person deviation and visible convergence, session after session."
     },
     "header": {
       "wordmark": "cafesensible",
       "signIn": "Sign in",
+      "signInShort": "Sign in",
       "cta": "Start free"
     },
     "hero": {
       "eyebrow": "The tool for the Café Sensible Method · SCA CVA",
-      "title": "Your group cups. The app measures how much they agree.",
-      "subtitle": "Group cupping sessions on the full SCA CVA protocol. Each person scores at their own pace; the app compares against your reference and shows you, live, how the group converges. For schools, trainers and facilitators."
+      "title": "Your group's palate, calibrated and measured.",
+      "subtitle": "Group cupping sessions on the full SCA CVA protocol, with the instructor's reference and convergence you can see. The tool for the Café Sensible Method, for schools, trainers and facilitators.",
+      "ctaNote": "No card. No password. Just your email."
     },
     "widget": {
       "title": "Estimate the value band",
@@ -945,15 +955,15 @@
       "title": "Perceive, describe, calibrate. In that order.",
       "step1Kicker": "Perceive",
       "step1Title": "Cup it",
-      "step1Desc": "Every person evaluates the cup with the full CVA protocol, at their own pace. Wifi or not: the lab doesn't wait.",
+      "step1Desc": "Every person evaluates the cup with the official CVA protocol, at their own pace. Works offline, group sessions included.",
       "step1Caption": "The method's cupping table, app in hand.",
       "step2Kicker": "Name",
       "step2Title": "Describe it",
-      "step2Desc": "Intensities and descriptors, cup by cup, until the group speaks the same language. The vocabulary is built together; no one dictates it.",
+      "step2Desc": "The group records intensities and descriptors, cup by cup. The vocabulary is built together.",
       "step2Caption": "Live workshop. Real group.",
       "step3Kicker": "Measure",
       "step3Title": "Calibrate",
-      "step3Desc": "Every score against your reference: who deviates, on which attribute and by how much. Convergence stops being a feeling and becomes a number. And a PDF.",
+      "step3Desc": "Compare each evaluation with the instructor's reference, measure the deviation and export the PDF report. Convergence, made visible.",
       "frame1Aria": "Recreation of the affective evaluation screen with a 1-to-9 scale",
       "frame2Aria": "Recreation of the flavor descriptor selector",
       "frame3Aria": "Recreation of the score card with PDF report",
@@ -973,7 +983,7 @@
       },
       "item3": {
         "title": "AI-powered discovery",
-        "desc": "AI surfaces what the eye misses: who deviates, on which attribute, and how the group evolves session after session."
+        "desc": "AI reveals patterns in your cuppings that the naked eye misses: who deviates, on which attribute, and how the group evolves session after session."
       },
       "item4": {
         "title": "Built for labs",
@@ -1226,7 +1236,8 @@
       "guestBadge": "Guest",
       "filterType": "Type",
       "typeRegistered": "Registered",
-      "typeGuest": "Guest"
+      "typeGuest": "Guest",
+      "exportCsv": "Export emails (CSV)"
     },
     "benchmark": {
       "title": "Benchmark vs. CQI",
@@ -1460,6 +1471,48 @@
       "not_found": "That item no longer exists.",
       "invalid_reference": "One of the linked items no longer exists.",
       "unknown": "Something went wrong. Please try again."
+    }
+  },
+  "warmup": {
+    "title": "Sensory Movement",
+    "library": {
+      "listEyebrow": "The five exercises",
+      "minutes": "{min} min",
+      "steps": "{count} steps",
+      "back": "All exercises",
+      "open": "Open exercise"
+    },
+    "dashboard": {
+      "eyebrow": "Before cupping",
+      "title": "Sensory Movement",
+      "body": "Kim's five slow movements to wake up perception before smelling and tasting. 3 to 8 minutes, seated or standing.",
+      "cta": "See the exercises"
+    },
+    "player": {
+      "start": "Start",
+      "next": "Next",
+      "prev": "Previous",
+      "pause": "Pause",
+      "resume": "Resume",
+      "skip": "Skip",
+      "finish": "Finish",
+      "close": "Close",
+      "stepOf": "Step {n} of {total}",
+      "remaining": "{n} seconds left",
+      "pauseTitle": "Pause",
+      "pauseBody": "Stay where you are. Next step in {n} s.",
+      "minutes": "{min} min",
+      "stepsCount": "{count} steps",
+      "postureLabel": "Posture",
+      "observeTitle": "Observe",
+      "closingTitle": "Closing",
+      "doneTitle": "Done",
+      "doneBody": "Back to the cupping with your senses awake.",
+      "evolutionLabel": "Progression",
+      "reducedMotionNote": "Reduced motion is on: figures show the end position and the exercise advances with “Next”.",
+      "pausedLabel": "Paused",
+      "keyboardHint": "← → to move · space to pause",
+      "intro": "Before you start"
     }
   }
 }

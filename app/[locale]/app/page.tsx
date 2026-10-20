@@ -9,6 +9,7 @@ import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { FormatBadge } from "@/components/dashboard/FormatBadge";
 import { DashboardIntro } from "@/components/dashboard/DashboardIntro";
+import { WarmupFigure } from "@/components/warmup/figures";
 
 const STATUS_STYLES: Record<string, string> = {
   draft: "text-secondary border border-secondary/50",
@@ -50,6 +51,7 @@ export default async function Dashboard({
   const t = await getTranslations("dashboard");
   const tSession = await getTranslations("session");
   const tc = await getTranslations("common");
+  const tw = await getTranslations("warmup");
 
   const supabase = await createClient();
   const {
@@ -234,6 +236,37 @@ export default async function Dashboard({
           icon={<Star size={20} />}
         />
       </div>
+
+      {/* Movimiento Sensorial — pre-cupping warm-ups (guest-reachable, plain Link) */}
+      <Link
+        href={`/${locale}/app/warmup`}
+        className="group flex items-center gap-4 rounded-card border border-outline-variant bg-surface-container-low px-5 py-4 transition-colors hover:bg-primary-fixed/40 md:gap-6"
+      >
+        <span className="hidden h-16 w-12 shrink-0 text-on-surface sm:block" aria-hidden>
+          <WarmupFigure
+            figure={{ kind: "arm-raise", variant: "slow-open", direction: "up" }}
+            durationSec={15}
+            reducedMotion
+            paused
+          />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
+            {tw("dashboard.eyebrow")}
+          </span>
+          <span className="mt-0.5 block font-display text-xl text-primary-container">
+            {tw("dashboard.title")}
+          </span>
+          <span className="mt-1 block text-sm leading-relaxed text-on-surface-variant">
+            {tw("dashboard.body")}
+          </span>
+        </span>
+        <span className="hidden shrink-0 items-center gap-1 text-sm font-semibold text-primary-container sm:inline-flex">
+          {tw("dashboard.cta")}
+          <ChevronRight size={16} className="transition-transform group-hover:translate-x-0.5" aria-hidden />
+        </span>
+        <ChevronRight size={16} className="shrink-0 text-on-surface-variant sm:hidden" aria-hidden />
+      </Link>
 
       {/* Empty state */}
       {!hasData ? (

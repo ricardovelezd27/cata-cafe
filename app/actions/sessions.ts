@@ -20,10 +20,12 @@ import {
   assertSessionWritable,
 } from "@/lib/sessionAuth";
 import { detachCoffeeHistoryForSession } from "@/lib/coffeeHistory";
+import { isSessionClosed, planClosesAtChange } from "@/lib/sessionState";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { computeEvaluationDerived, moduleKeyForFormat } from "@/lib/evaluation";
-import { isPinnedModule, pinReferenceAffective } from "@/lib/referenceRules";
+import { isPinnedModule, pinReferenceAffective, planReferenceRepin } from "@/lib/referenceRules";
 import * as v from "@/lib/validate";
+import { logInfo } from "@/lib/log";
 import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/groups";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
 
@@ -725,10 +727,38 @@ export async function setReferenceSample(
         next = sample.id;
       }
 
-      await prisma.cuppingSession.update({
-        where: { id: sessionId },
-        data: { referenceSampleId: next },
-      });
+      // Re-pin mid-session (S6 CP-C2): evaluations the cuppers already wrote
+      // for the NEW reference are rewritten to the 79.00 anchor in the same
+      // transaction as the pointer move, so no reader ever sees a reference
+      // whose stored rows disagree with the pin. `planReferenceRepin` echoes
+      // `isDraft` into SET on purpose — that is what re-fires
+      // trg_recompute_aggregate for submitted rows (UPDATE OF "isDraft").
+      // The one sanctioned server-side rewrite of a submitted evaluation.
+      let repinned = 0;
+      await prisma.$transaction(async (tx) => {
+        const session = await tx.cuppingSession.update({
+          where: { id: sessionId },
+          data: { referenceSampleId: next },
+          select: { format: true, cupsPerSample: true },
+        });
+        if (!next) return;
+        const moduleKey = moduleKeyForFormat(session.format);
+        if (!isPinnedModule(moduleKey)) return;
+        const evaluations = await tx.evaluation.findMany({
+          where: { sessionSampleId: next },
+          select: { id: true, isDraft: true, affectiveData: true, combinedData: true },
+        });
+        const plan = planReferenceRepin(evaluations, moduleKey, session.cupsPerSample);
+        for (const { id, data } of plan) {
+          await tx.evaluation.update({ where: { id }, data });
+        }
+        repinned = plan.length;
+        // One evaluation.update per cupper fires the aggregate trigger, so a
+        // big group can exceed Prisma's 5s default interactive timeout.
+      }, { timeout: 15000 });
+      if (repinned > 0) {
+        logInfo({ where: "setReferenceSample", sessionId, message: "reference_repinned", count: repinned });
+      }
 
       for (const l of ["es", "en"]) {
         revalidatePath(`/${l}/app/sessions/${sessionId}/cup`);
@@ -746,6 +776,9 @@ export type UpdateSessionInput = {
   name?: string;
   date?: string;
   objective?: string | null;
+  // Group sessions only (S6 CP-C3): "YYYY-MM-DD" sets an automatic close at
+  // the end of that day (UTC) and flips isAsync on; "" / null clears both.
+  closesAt?: string | null;
   // Only valid for group sessions; null unlinks. A solo session must not carry
   // a groupId — the group page lists sessions by groupId and members would get
   // dead links to a session they can't open.
@@ -760,6 +793,9 @@ export type UpdateSessionInput = {
 export async function updateSession(sessionId: string, input: UpdateSessionInput) {
   const user = await requireUser();
   const session = await requireSessionOwner(sessionId, user.id);
+  // Closed = read-only (S6 CP-C3). This action keeps its own `{ ok, error }`
+  // shape (not run()), so the code is returned rather than thrown.
+  if (isSessionClosed(session)) return { ok: false as const, error: "session_closed" };
 
   const data: {
     name?: string;
@@ -768,7 +804,22 @@ export async function updateSession(sessionId: string, input: UpdateSessionInput
     groupId?: string | null;
     format?: string;
     cupsPerSample?: number;
+    closesAt?: Date | null;
+    isAsync?: boolean;
   } = {};
+
+  if (input.closesAt !== undefined) {
+    try {
+      const plan = planClosesAtChange(session, input.closesAt);
+      if (plan) {
+        data.closesAt = plan.closesAt;
+        data.isAsync = plan.isAsync;
+      }
+    } catch (e) {
+      const code = e instanceof Error ? e.message : "invalid_closes_at";
+      return { ok: false as const, error: code };
+    }
+  }
 
   if (input.name !== undefined) {
     const name = input.name.trim();

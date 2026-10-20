@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Menu } from "lucide-react";
+import { ChevronDown, Menu } from "lucide-react";
 import styles from "./SessionShell.module.css";
 
 interface SessionShellProps {
@@ -23,6 +23,19 @@ interface SessionShellProps {
   footer?: ReactNode;
   /** Optional title shown next to hamburger on mobile. */
   mobileTitle?: string;
+  /** Phone-only (<640px) content rendered in the hamburger row INSTEAD of
+   *  `mobileTitle` — e.g. the sample tabs, so header + sample bar share one
+   *  compact row (CP-C1). */
+  mobileBar?: ReactNode;
+  /** Phone-only panel behind a chevron at the right of the hamburger row:
+   *  session name, role, reference context, edit button… Rendered in flow
+   *  under the row while open. Requires `mobileBar`. */
+  mobileDetails?: ReactNode;
+  /** aria-label for the chevron that toggles `mobileDetails`. */
+  mobileDetailsLabel?: string;
+  /** While true (on-screen keyboard up), the phone header row and the top bar
+   *  are hidden so the focused field gets the space. */
+  collapsed?: boolean;
   /** Auto-save status — drives the top-right indicator dot. "pending" means
    *  the last write only landed in local (IndexedDB) storage — it has not
    *  reached the server yet. */
@@ -41,13 +54,18 @@ export function SessionShell({
   children,
   footer,
   mobileTitle,
+  mobileBar,
+  mobileDetails,
+  mobileDetailsLabel,
+  collapsed = false,
   saveStatus = "idle",
   savePendingLabel,
 }: SessionShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   return (
-    <div className={styles.root}>
+    <div className={`${styles.root} ${collapsed ? styles.collapsed : ""}`}>
       {/* Mobile-only backdrop */}
       <div
         className={`${styles.backdrop ?? ""} ${drawerOpen ? styles.open : ""}`}
@@ -104,15 +122,33 @@ export function SessionShell({
           >
             <Menu size={18} aria-hidden />
           </button>
-          {mobileTitle && (
-            <span
-              className="font-display text-base text-brown-dark truncate"
-              style={{ flex: 1, minWidth: 0 }}
+          {mobileBar ? (
+            <div className={styles.mobileBarSlot}>{mobileBar}</div>
+          ) : (
+            mobileTitle && (
+              <span
+                className="font-display text-base text-brown-dark truncate"
+                style={{ flex: 1, minWidth: 0 }}
+              >
+                {mobileTitle}
+              </span>
+            )
+          )}
+          {mobileBar && mobileDetails && (
+            <button
+              type="button"
+              className={`${styles.detailsToggle} ${detailsOpen ? styles.detailsToggleOpen : ""}`}
+              onClick={() => setDetailsOpen((v) => !v)}
+              aria-label={mobileDetailsLabel ?? "Session details"}
+              aria-expanded={detailsOpen}
             >
-              {mobileTitle}
-            </span>
+              <ChevronDown size={16} aria-hidden />
+            </button>
           )}
         </div>
+        {mobileBar && mobileDetails && detailsOpen && (
+          <div className={styles.mobileDetails}>{mobileDetails}</div>
+        )}
 
         {topBar && <div className={styles.topBar}>{topBar}</div>}
 

@@ -44,6 +44,10 @@ export type EditSessionFormTranslations = {
   referenceNone: string;
   referenceHelper: string;
   referenceSaved: string;
+  closesAt: string;
+  closesAtHint: string;
+  closesAtPast: string;
+  sessionClosed: string;
 };
 
 export type EditSampleRow = { id: string; label: string; evalCount: number };
@@ -57,6 +61,13 @@ const cardCls = "bg-surface-container-lowest border border-outline-variant round
 const labelCls = "block text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant mb-1.5";
 
 const FORMAT_OPTIONS = ["descriptive", "affective", "combined"] as const;
+
+function localDateString(): string {
+  const n = new Date();
+  const m = String(n.getMonth() + 1).padStart(2, "0");
+  const d = String(n.getDate()).padStart(2, "0");
+  return `${n.getFullYear()}-${m}-${d}`;
+}
 
 export function EditSessionForm({
   locale,
@@ -78,6 +89,8 @@ export function EditSessionForm({
     isGroup: boolean;
     groupId: string | null;
     referenceSampleId: string | null;
+    /** "YYYY-MM-DD" or "" (group sessions only). */
+    closesAt: string;
     closed: boolean;
   };
   samples: EditSampleRow[];
@@ -96,6 +109,7 @@ export function EditSessionForm({
   const [format, setFormat] = useState<"descriptive" | "affective" | "combined">(initial.format);
   const [cupsInput, setCupsInput] = useState(String(initial.cupsPerSample));
   const [groupId, setGroupId] = useState(initial.groupId ?? "");
+  const [closesAt, setClosesAt] = useState(initial.closesAt);
 
   const [saved, setSaved] = useState(false);
   const [errorCode, setErrorCode] = useState<string | null>(null);
@@ -164,7 +178,14 @@ export function EditSessionForm({
         name,
         date,
         objective: objective || null,
-        ...(initial.isGroup ? { groupId: groupId || null } : {}),
+        ...(initial.isGroup
+          ? {
+              groupId: groupId || null,
+              // Only send a changed date: re-posting an unchanged one failed
+              // once the stored date had passed.
+              ...(closesAt !== initial.closesAt ? { closesAt: closesAt || null } : {}),
+            }
+          : {}),
         ...(!locked ? { format, cupsPerSample: cups } : {}),
         locale,
       });
@@ -216,7 +237,15 @@ export function EditSessionForm({
     router.refresh();
   };
 
-  const errorText = errorCode ? (errorCode === "format_locked" ? t.formatLocked : t.error) : null;
+  const errorText = errorCode
+    ? errorCode === "format_locked"
+      ? t.formatLocked
+      : errorCode === "invalid_closes_at"
+        ? t.closesAtPast
+        : errorCode === "session_closed"
+          ? t.sessionClosed
+          : t.error
+    : null;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -304,9 +333,24 @@ export function EditSessionForm({
         {locked && <p className="text-xs text-on-surface-variant">{t.formatLocked}</p>}
       </div>
 
-      {/* c. Group link (group sessions only) */}
+      {/* c. Group link + closing date (group sessions only) */}
       {initial.isGroup && (
         <div className={cardCls}>
+          <div>
+            <label className={labelCls}>{t.closesAt}</label>
+            <input
+              type="date"
+              className={inputCls}
+              value={closesAt}
+              min={localDateString()}
+              disabled={closed}
+              onChange={(e) => {
+                setClosesAt(e.target.value);
+                clearSaved();
+              }}
+            />
+            <p className="mt-1 text-xs text-on-surface-variant">{t.closesAtHint}</p>
+          </div>
           <div>
             <label className={labelCls}>{t.linkedGroup}</label>
             <Select
@@ -424,13 +468,14 @@ export function EditSessionForm({
       <div className="flex flex-wrap items-center gap-4">
         <button
           type="submit"
-          disabled={savePending}
+          disabled={savePending || closed}
           className="rounded-pill bg-primary-container px-6 py-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary disabled:opacity-50"
         >
           {savePending ? t.saving : t.save}
         </button>
         {saved && <p className="text-sm text-primary-container">{t.saved}</p>}
         {errorText && <p className="text-sm text-error">{errorText}</p>}
+        {closed && !errorText && <p className="text-sm text-on-surface-variant">{t.sessionClosed}</p>}
       </div>
     </form>
   );
