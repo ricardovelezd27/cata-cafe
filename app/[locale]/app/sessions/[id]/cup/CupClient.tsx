@@ -332,6 +332,8 @@ export function CupClient({
     session.referenceSampleId ?? null,
   );
   const referenceSeqRef = useRef(0);
+  // Sample ids whose pinned "ensure" auto-save has already been queued.
+  const ensuredReferenceRef = useRef<Set<string>>(new Set());
   // Latest committed samples / current sample id, for handlers that run
   // outside the render closure (realtime events, the reference-order swap).
   const samplesRef = useRef(samples);
@@ -344,6 +346,10 @@ export function CupClient({
   // rest, and keeps the cupper on the sample they were looking at.
   const applyReferenceOrder = (next: string | null) => {
     setReferenceSampleId(next);
+    // A reference chosen mid-session must get its pinned auto-save again on
+    // the next visit (the server re-pinned every stored row in
+    // setReferenceSample; this keeps this client's copy in step) — CP-C2.
+    if (next) ensuredReferenceRef.current.delete(next);
     const byPosition = <T extends { position: number }>(list: T[]) =>
       [...list].sort((a, b) => a.position - b.position);
     const currentId = sampleIdRef.current;
@@ -1115,13 +1121,14 @@ export function CupClient({
   // The anchor must exist for everyone even when a cupper never touches the
   // reference (nothing to score in an affective session): the first visit
   // queues one pinned save so their 79.00 lands and Δ/community work. Only
-  // refs and timers here (no state), and never on a closed session.
-  const ensuredReferenceRef = useRef<Set<string>>(new Set());
+  // refs and timers here (no state), and never on a closed session. Runs
+  // even when an evaluation already exists (reference re-chosen mid-session,
+  // CP-C2): the save is idempotent and the server pins it anyway.
   useEffect(() => {
     if (!referenceSampleId || !affectiveModuleKey) return;
     if (sessionStatus === "closed") return;
     const sample = samplesRef.current[sampleIdx];
-    if (!sample || sample.id !== referenceSampleId || sample.evaluationId) return;
+    if (!sample || sample.id !== referenceSampleId) return;
     if (ensuredReferenceRef.current.has(sample.id)) return;
     ensuredReferenceRef.current.add(sample.id);
     if (!isPinnedModule(affectiveModuleKey)) return;
