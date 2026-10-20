@@ -356,7 +356,7 @@
     "participants": "participants",
     "emptyStage": "No descriptor with 2 or more selections in this stage.",
     "emptyBlock": "No shared descriptors in this block.",
-    "emptyAll": "No descriptors selected by 2 or more participants yet.",
+    "emptyAll": "No descriptors selected yet.",
     "cloudTitle": "Flavor cloud",
     "cloudScopeSession": "Whole session",
     "cloudScopeSample": "Per sample",

@@ -191,7 +191,7 @@ export function computeSampleBlockFrequencies(
         for (const did of ids) {
           const node = flavorNodeById(did);
           if (!node) continue;
-          const groups = [...ancestorsOf(did), ...(node.level === 2 ? [node.id] : [])];
+          const groups = [...ancestorsOf(did), ...(node.level === 1 || node.level === 2 ? [node.id] : [])];
           const words = noteWords(did);
           for (const g of groups) {
             sel.groups.add(g);

@@ -45,6 +45,11 @@ export function formatBreakdown(word: CloudWord): string {
   return (word.breakdown ?? []).map((b) => `${b.label} ${b.count}`).join(" · ");
 }
 
+/** Top-`max` words (input is already count-ranked). */
+export function capWords<T>(words: readonly T[], max: number): T[] {
+  return words.slice(0, Math.max(0, max));
+}
+
 export const labelKey = (label: string) => label.trim().toLocaleLowerCase();
 
 function addBreakdown(word: CloudWord, stageId: string, label: string, count: number) {

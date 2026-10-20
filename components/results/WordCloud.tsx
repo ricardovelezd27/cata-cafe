@@ -1,7 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { formatBreakdown, type CloudWord } from "@/lib/wordCloud";
+import { capWords, formatBreakdown, type CloudWord } from "@/lib/wordCloud";
 
 const DEFAULT_MAX_WORDS = 30;
 
@@ -131,7 +131,7 @@ export function WordCloud({
   // touch has no hover, so the title tooltip alone is not enough.
   const [pinnedId, setPinnedId] = useState<string | null>(null);
 
-  const shown = useMemo(() => words.slice(0, maxWords), [words, maxWords]);
+  const shown = useMemo(() => capWords(words, maxWords), [words, maxWords]);
 
   useLayoutEffect(() => {
     const el = containerRef.current;
