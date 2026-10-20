@@ -454,7 +454,10 @@ function CataBox({
     <View style={[s.cataBox, style ?? {}]} wrap={false}>
       <Text style={s.cataTitle}>{section ? `${section} · ${title}` : title}</Text>
       <View style={[s.cataBody, aside ? { flexDirection: "row", gap: 8 } : {}]}>
-        <View style={{ flexGrow: 1, flexBasis: 0 }}>
+        {/* flexBasis: 0 only makes sense on the ROW axis (next to an aside).
+            In a column body it zeroes the height, the box collapses and the
+            rows paint over whatever follows — Kim's "letras mezcladas". */}
+        <View style={aside ? { flexGrow: 1, flexBasis: 0 } : {}}>
           <View style={s.cataCols}>
             {cols.map((col, ci) => (
               <View key={ci} style={s.cataCol}>
