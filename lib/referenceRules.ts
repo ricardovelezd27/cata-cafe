@@ -16,6 +16,7 @@
 //    is pinned there.
 
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
+import { computeEvaluationDerived } from "@/lib/evaluation";
 
 export const REFERENCE_PIN_VALUE = 5;
 
@@ -52,6 +53,46 @@ export function pinReferenceAffective(
   pinned.tazas_defectuosas = Array(cups).fill(false);
   pinned.defecto_tipo = [];
   return pinned;
+}
+
+/** Re-pin plan for a reference chosen MID-SESSION (S6 CP-C2): the rows every
+ *  cupper already wrote for the new reference must become the 79.00 anchor.
+ *  Pure — `setReferenceSample` applies the returned updates inside its
+ *  transaction. For each evaluation whose module JSON is not already pinned,
+ *  returns the full derived payload (`computeEvaluationDerived`, same as a
+ *  live save) PLUS `isDraft` echoed unchanged: `trg_recompute_aggregate` is
+ *  `AFTER INSERT OR UPDATE OF "isDraft" … WHEN NEW."isDraft" = false`, so
+ *  naming the column in SET is what makes the community score recompute for
+ *  submitted rows. This is the ONE sanctioned server-side rewrite of a
+ *  submitted evaluation. Descriptive-only sessions return []. The previous
+ *  reference is never un-pinned (its real scores were never stored). */
+export function planReferenceRepin<
+  E extends {
+    id: string;
+    isDraft: boolean;
+    affectiveData: unknown;
+    combinedData: unknown;
+  },
+>(
+  evaluations: readonly E[],
+  moduleKey: string,
+  cupsPerSample: number,
+): { id: string; data: Record<string, unknown> & { isDraft: boolean } }[] {
+  if (!isPinnedModule(moduleKey)) return [];
+  const column = moduleKey === "affective" ? "affectiveData" : "combinedData";
+  const plan: { id: string; data: Record<string, unknown> & { isDraft: boolean } }[] = [];
+  for (const ev of evaluations) {
+    const raw = ev[column];
+    const data =
+      raw && typeof raw === "object" && !Array.isArray(raw)
+        ? (raw as Record<string, unknown>)
+        : {};
+    if (isReferencePinned(data)) continue;
+    const pinned = pinReferenceAffective(data, cupsPerSample);
+    const fields = computeEvaluationDerived(moduleKey, pinned, cupsPerSample);
+    plan.push({ id: ev.id, data: { ...fields, isDraft: ev.isDraft } });
+  }
+  return plan;
 }
 
 /** True when every affective rating already sits at the pin value and no cup
