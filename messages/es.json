@@ -1472,6 +1472,19 @@
   },
   "warmup": {
     "title": "Movimiento Sensorial",
+    "library": {
+      "listEyebrow": "Los cinco ejercicios",
+      "minutes": "{min} min",
+      "steps": "{count} pasos",
+      "back": "Todos los ejercicios",
+      "open": "Abrir ejercicio"
+    },
+    "dashboard": {
+      "eyebrow": "Antes de catar",
+      "title": "Movimiento Sensorial",
+      "body": "Cinco movimientos lentos de Kim para despertar la percepción antes de oler y probar. De 3 a 8 minutos, con silla o de pie.",
+      "cta": "Ver los ejercicios"
+    },
     "player": {
       "start": "Empezar",
       "next": "Siguiente",

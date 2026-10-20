@@ -10,6 +10,8 @@ const GUEST_ALLOWED = [
   /^\/app\/sessions\/[^/]+\/(cup|waiting|results|print)(\/|$)/,
   /^\/app\/sessions\/?$/,
   /^\/app\/profile(\/|$)/,
+  // Movimiento Sensorial warm-ups: read-only library, nothing to create.
+  /^\/app\/warmup(\/|$)/,
   /^\/app\/?$/,
 ];
 
