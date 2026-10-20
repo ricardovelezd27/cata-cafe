@@ -69,6 +69,30 @@ Add a transition "owner re-picks reference (active session)" → `setReferenceSa
 realtime `cupping_sessions` UPDATE → every client re-orders tabs and locks the
 new reference. Closed sessions: refused (`session_closed`).
 
-## CP-C3 — Session hygiene (pending)
+## CP-C3 — Session hygiene (`claude/s6-c3-hygiene`)
+
+### CLAUDE.md — "Session Lifecycle", replace the `closesAt` sentence "It cannot be edited after creation"
+
+- **`closesAt` IS editable after creation (S6 CP-C3)** from `EditSessionForm`
+  (group sessions only). `updateSession` first returns `session_closed` for a
+  closed session (it keeps its own `{ ok, error }` shape, so the code is returned,
+  not thrown) and then applies `planClosesAtChange` (`lib/sessionState.ts`, pure,
+  vitest matrix): `"YYYY-MM-DD"` → END of that day UTC (same rule as the wizard,
+  today is valid) and `isAsync = true` — allowed on a live session that already
+  started, it just gains an automatic close; `""`/`null` → `closesAt = null`,
+  `isAsync = false` (owner closes manually from then on) — allowed even with
+  submitted cuppers; a past date → `invalid_closes_at`; solo → `not_group_session`.
+  The edit page disables the save button and shows `edit.sessionClosed` on a
+  closed session. The wizard hint no longer says "cannot be changed later".
+
+### docs/flows.md — §1 lifecycle
+
+Group: `closesAt` can be set/cleared while `status = active` via Edit session;
+setting it flips `isAsync` on (no waiting room / "Iniciar cata" from then on),
+clearing it flips `isAsync` off (manual close). Closed sessions refuse every
+`updateSession` with `session_closed`.
+
+Verified live on the throwaway session: set 2026-10-25 → `closesAt
+2026-10-25T23:59:59.999Z`, `isAsync true`; cleared → `null` / `false`.
 
 ## CP-C4 — Realtime for added/renamed samples (pending)

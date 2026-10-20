@@ -20,6 +20,7 @@ import {
   assertSessionWritable,
 } from "@/lib/sessionAuth";
 import { detachCoffeeHistoryForSession } from "@/lib/coffeeHistory";
+import { isSessionClosed, planClosesAtChange } from "@/lib/sessionState";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { computeEvaluationDerived, moduleKeyForFormat } from "@/lib/evaluation";
 import { isPinnedModule, pinReferenceAffective, planReferenceRepin } from "@/lib/referenceRules";
@@ -775,6 +776,9 @@ export type UpdateSessionInput = {
   name?: string;
   date?: string;
   objective?: string | null;
+  // Group sessions only (S6 CP-C3): "YYYY-MM-DD" sets an automatic close at
+  // the end of that day (UTC) and flips isAsync on; "" / null clears both.
+  closesAt?: string | null;
   // Only valid for group sessions; null unlinks. A solo session must not carry
   // a groupId — the group page lists sessions by groupId and members would get
   // dead links to a session they can't open.
@@ -789,6 +793,9 @@ export type UpdateSessionInput = {
 export async function updateSession(sessionId: string, input: UpdateSessionInput) {
   const user = await requireUser();
   const session = await requireSessionOwner(sessionId, user.id);
+  // Closed = read-only (S6 CP-C3). This action keeps its own `{ ok, error }`
+  // shape (not run()), so the code is returned rather than thrown.
+  if (isSessionClosed(session)) return { ok: false as const, error: "session_closed" };
 
   const data: {
     name?: string;
@@ -797,7 +804,22 @@ export async function updateSession(sessionId: string, input: UpdateSessionInput
     groupId?: string | null;
     format?: string;
     cupsPerSample?: number;
+    closesAt?: Date | null;
+    isAsync?: boolean;
   } = {};
+
+  if (input.closesAt !== undefined) {
+    try {
+      const plan = planClosesAtChange(session, input.closesAt);
+      if (plan) {
+        data.closesAt = plan.closesAt;
+        data.isAsync = plan.isAsync;
+      }
+    } catch (e) {
+      const code = e instanceof Error ? e.message : "invalid_closes_at";
+      return { ok: false as const, error: code };
+    }
+  }
 
   if (input.name !== undefined) {
     const name = input.name.trim();

@@ -244,7 +244,11 @@
       "referenceTitle": "Reference sample",
       "referenceNone": "No reference",
       "referenceHelper": "The other samples are compared against this one in the results. It does not affect the score.",
-      "referenceSaved": "Reference updated"
+      "referenceSaved": "Reference updated",
+      "closesAt": "Closing date",
+      "closesAtHint": "Optional. The session closes by itself in the early hours after this date. Leave it empty for a live tasting you close yourself.",
+      "closesAtPast": "The closing date must be today or later.",
+      "sessionClosed": "This session is closed and can no longer be edited."
     }
   },
   "cupping": {
@@ -456,7 +460,7 @@
     "toggle": "Group session",
     "async": "Asynchronous",
     "closesAt": "Closing date",
-    "closesAtHint": "Optional. The session closes by itself in the early hours after this date and it cannot be changed later. For a live tasting you close yourself, leave it empty.",
+    "closesAtHint": "Optional. The session closes by itself in the early hours after this date; you can change it later from Edit session. For a live tasting you close yourself, leave it empty.",
     "inviteLink": "Invite link",
     "copyLink": "Copy link",
     "copied": "Copied",

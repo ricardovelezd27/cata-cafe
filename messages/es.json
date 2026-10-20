@@ -244,7 +244,11 @@
       "referenceTitle": "Muestra de referencia",
       "referenceNone": "Sin referencia",
       "referenceHelper": "Las demás muestras se comparan contra esta en los resultados. No afecta el puntaje.",
-      "referenceSaved": "Referencia actualizada"
+      "referenceSaved": "Referencia actualizada",
+      "closesAt": "Fecha de cierre",
+      "closesAtHint": "Opcional. La sesión se cierra sola en la madrugada siguiente a esta fecha. Déjala vacía para una cata en vivo que cierras tú.",
+      "closesAtPast": "La fecha de cierre debe ser hoy o una fecha futura.",
+      "sessionClosed": "Esta sesión está cerrada y ya no se puede editar."
     }
   },
   "cupping": {
@@ -456,7 +460,7 @@
     "toggle": "Sesión grupal",
     "async": "Asíncrona",
     "closesAt": "Fecha de cierre",
-    "closesAtHint": "Opcional. La sesión se cierra sola en la madrugada siguiente a esta fecha y no se puede cambiar después. Para una cata en vivo que cierras tú, déjala vacía.",
+    "closesAtHint": "Opcional. La sesión se cierra sola en la madrugada siguiente a esta fecha; puedes cambiarla luego desde Editar sesión. Para una cata en vivo que cierras tú, déjala vacía.",
     "inviteLink": "Enlace de invitación",
     "copyLink": "Copiar enlace",
     "copied": "Copiado",
