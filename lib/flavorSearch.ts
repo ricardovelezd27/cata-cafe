@@ -252,3 +252,25 @@ export function searchFlavors(
       matchType,
     }));
 }
+
+/**
+ * Should the typeahead offer the «Agregar "palabra"…» file-under row? True when
+ * the typed word (≥3 chars) has no exact / prefix / synonym hit on a wheel node.
+ * Fuzzy-only (and token-only) results are weak guesses, so the row is offered
+ * below them rather than only when the list is empty.
+ */
+export function shouldOfferFileUnder(
+  results: FlavorMatch[],
+  query: string
+): boolean {
+  const q = norm(query);
+  if (q.length < 3) return false;
+  return !results.some((r) => {
+    if (r.matchType === "exact" || r.matchType === "prefix" || r.matchType === "synonym") {
+      return true;
+    }
+    // Inner-ring ("parent") hits are also produced by weak token/fuzzy matches;
+    // count them as real only when the label itself contains what was typed.
+    return r.matchType === "parent" && norm(r.label).includes(q);
+  });
+}
