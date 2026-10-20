@@ -96,7 +96,7 @@ export function CoffeeFichaDocument({ model, locale }: { model: CoffeeFichaModel
   const { results } = model;
 
   return (
-    <Document title={`${t.spec} · ${name}`} author="Cata Café">
+    <Document title={`${t.spec} · ${name}`} author="Café Sensible">
       <Page size="A4" style={s.page}>
         <Text style={s.spec}>{t.spec}</Text>
         <View style={s.top}>

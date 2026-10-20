@@ -170,7 +170,7 @@ export function FichaTecnicaDocument({
   const showScores = model.samples.some((x) => x.affective?.communityScore != null);
 
   return (
-    <Document title={`${t.spec} · ${sessionName}`} author="Cata Café">
+    <Document title={`${t.spec} · ${sessionName}`} author="Café Sensible">
       <Page size="A4" style={s.page}>
         <Text style={s.spec}>{t.spec}</Text>
         <Text style={s.title}>{sessionName}</Text>

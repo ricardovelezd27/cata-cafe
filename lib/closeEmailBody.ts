@@ -51,7 +51,7 @@ export function buildCloseEmailHtml(args: {
   const href = escapeHtml(args.resultsUrl);
   return `
       <div style="font-family: Arial, Helvetica, sans-serif; color:#2b241d; line-height:1.5;">
-        <h2 style="color:#3D5A3E; margin:0 0 8px;">Cata Café</h2>
+        <h2 style="color:#3D5A3E; margin:0 0 8px;">Café Sensible</h2>
         <p>${t.hello}</p>
         <p>${t.closed(escapeHtml(args.sessionName), date)}</p>
         <p style="margin:20px 0;">
