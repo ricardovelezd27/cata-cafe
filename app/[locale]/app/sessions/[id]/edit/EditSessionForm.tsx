@@ -62,6 +62,13 @@ const labelCls = "block text-[11px] font-semibold uppercase tracking-widest text
 
 const FORMAT_OPTIONS = ["descriptive", "affective", "combined"] as const;
 
+function localDateString(): string {
+  const n = new Date();
+  const m = String(n.getMonth() + 1).padStart(2, "0");
+  const d = String(n.getDate()).padStart(2, "0");
+  return `${n.getFullYear()}-${m}-${d}`;
+}
+
 export function EditSessionForm({
   locale,
   sessionId,
@@ -171,7 +178,14 @@ export function EditSessionForm({
         name,
         date,
         objective: objective || null,
-        ...(initial.isGroup ? { groupId: groupId || null, closesAt: closesAt || null } : {}),
+        ...(initial.isGroup
+          ? {
+              groupId: groupId || null,
+              // Only send a changed date: re-posting an unchanged one failed
+              // once the stored date had passed.
+              ...(closesAt !== initial.closesAt ? { closesAt: closesAt || null } : {}),
+            }
+          : {}),
         ...(!locked ? { format, cupsPerSample: cups } : {}),
         locale,
       });
@@ -328,7 +342,7 @@ export function EditSessionForm({
               type="date"
               className={inputCls}
               value={closesAt}
-              min={new Date().toISOString().slice(0, 10)}
+              min={localDateString()}
               disabled={closed}
               onChange={(e) => {
                 setClosesAt(e.target.value);

@@ -89,6 +89,12 @@ describe("planClosesAtChange", () => {
     expect(() => planClosesAtChange(group, "2026-13-40", NOW)).toThrow("invalid_closes_at");
   });
 
+  it("an unchanged stored date is a no-op even when it is now in the past", () => {
+    const stored = new Date("2026-10-10T23:59:59.999Z");
+    expect(planClosesAtChange({ isGroup: true, closesAt: stored }, "2026-10-10", NOW)).toBeNull();
+    expect(() => planClosesAtChange({ isGroup: true, closesAt: stored }, "2026-10-11", NOW)).toThrow("invalid_closes_at");
+  });
+
   it("solo sessions carry no close date", () => {
     expect(() => planClosesAtChange({ isGroup: false }, "2026-10-22", NOW)).toThrow("not_group_session");
     expect(() => planClosesAtChange({ isGroup: false }, "", NOW)).toThrow("not_group_session");
