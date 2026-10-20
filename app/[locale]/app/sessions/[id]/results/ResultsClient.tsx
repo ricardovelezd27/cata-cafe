@@ -203,6 +203,7 @@ export function ResultsClient({
     closeEmailsResent: string;
     closeEmailsResendError: string;
     descViewAll: string;
+    descByGroup: string;
     descOf: string;
     descParticipants: string;
     descEmptyStage: string;
@@ -213,6 +214,7 @@ export function ResultsClient({
     cloudScopeSample: string;
     cloudScopeTaster: string;
     cloudEmpty: string;
+    hideSingles: string;
     filterSampleAll: string;
     filterBlockLabel: string;
     soloCloudTitle: string;
@@ -666,10 +668,12 @@ export function ResultsClient({
               cloudTitle: translations.cloudTitle,
               soloCloudTitle: translations.soloCloudTitle,
               cloudEmpty: translations.cloudEmpty,
+              hideSingles: translations.hideSingles,
               filterSampleAll: translations.filterSampleAll,
               filterBlockLabel: translations.filterBlockLabel,
               tasterScopeAll: translations.tasterScopeAll,
               descViewAll: translations.descViewAll,
+              descByGroup: translations.descByGroup,
               descOf: translations.descOf,
               descParticipants: translations.descParticipants,
               descEmptyBlock: translations.descEmptyBlock,

@@ -26,6 +26,7 @@ import {
   collectDescriptors,
   resolveDescriptor,
   FLAVOR_DESC_KEYS,
+  type PerceptualBlockAttr,
   PERCEPTUAL_BLOCKS,
 } from "@/lib/descriptors";
 
@@ -33,8 +34,30 @@ export type CloudWord = {
   id: string;
   label: string;
   color: string;
+  /** Total mentions, summed over every contributing stage. */
   count: number;
+  /** Per-stage share of `count` (Fragancia 3 · Aroma 2); absent on taster clouds' legacy path. */
+  breakdown?: { stageId: string; label: string; count: number }[];
 };
+
+/** "Fragancia 3 · Aroma 2" — the caption/tooltip tail for a word's breakdown. */
+export function formatBreakdown(word: CloudWord): string {
+  return (word.breakdown ?? []).map((b) => `${b.label} ${b.count}`).join(" · ");
+}
+
+/** Top-`max` words (input is already count-ranked). */
+export function capWords<T>(words: readonly T[], max: number): T[] {
+  return words.slice(0, Math.max(0, max));
+}
+
+export const labelKey = (label: string) => label.trim().toLocaleLowerCase();
+
+function addBreakdown(word: CloudWord, stageId: string, label: string, count: number) {
+  const list = (word.breakdown ??= []);
+  const hit = list.find((b) => b.stageId === stageId);
+  if (hit) hit.count += count;
+  else list.push({ stageId, label, count });
+}
 
 export type FlavorCloudScope = { kind: "session" } | { kind: "sample"; sampleId: string };
 
@@ -57,28 +80,72 @@ export function buildFlavorCloud(
   freq: SampleBlockFreq[],
   scope: FlavorCloudScope,
   blockIds: readonly string[] = FLAVOR_BLOCK_IDS,
+  locale: "es" | "en" = "es",
 ): CloudWord[] {
   const samples =
     scope.kind === "session"
       ? freq
       : freq.filter((s) => s.sampleId === scope.sampleId);
 
+  // One word per descriptor: size = mentions summed over the selected stages
+  // (a cupper who lists "chocolate" in fragancia AND aroma counts twice).
+  // Entries whose label matches case-insensitively (e.g. a L1 "Floral" and its
+  // L2 of the same name) merge into one word.
   const merged = new Map<string, CloudWord>();
+  const add = (
+    d: { id: string; label: string; color: string; count: number },
+    stageId: string,
+    stageLabel: string,
+  ) => {
+    const key = labelKey(d.label);
+    let word = merged.get(key);
+    if (!word) {
+      word = { id: d.id, label: d.label, color: d.color, count: 0, breakdown: [] };
+      merged.set(key, word);
+    }
+    word.count += d.count;
+    addBreakdown(word, stageId, stageLabel, d.count);
+  };
+
   for (const sample of samples) {
     for (const blockId of blockIds) {
-      const ranked = sample.blocks[blockId] ?? [];
-      for (const d of ranked) {
-        const existing = merged.get(d.id);
-        if (existing) {
-          existing.count += d.count;
-        } else {
-          merged.set(d.id, { id: d.id, label: d.label, color: d.color, count: d.count });
+      const block = PERCEPTUAL_BLOCKS.find((b) => b.id === blockId);
+      const attrs = (block?.attrs ?? []).filter((a) => a.descKey);
+      if (sample.stages && attrs.length > 0) {
+        for (const attr of attrs) {
+          for (const d of sample.stages[attr.id] ?? []) add(d, attr.id, attr.label[locale]);
         }
+      } else {
+        // Older aggregation shape without stages: block-level counts only.
+        for (const d of sample.blocks[blockId] ?? []) add(d, blockId, blockId);
       }
     }
   }
 
   return [...merged.values()].sort((a, b) => b.count - a.count);
+}
+
+/**
+ * Label keys of descriptors that at least TWO different cuppers picked on the
+ * same sample, for the given block (or the "general" pseudo-block). Uses the
+ * per-cupper-deduped `blocks` counts, so one person naming a word in both
+ * fragancia and aroma — or on two samples — is still a "single person" word.
+ * Backs the "hide single-person descriptors" toggle.
+ */
+export function sharedLabelKeys(
+  freq: SampleBlockFreq[],
+  scope: FlavorCloudScope,
+  blockId: string,
+): Set<string> {
+  const samples =
+    scope.kind === "session" ? freq : freq.filter((s) => s.sampleId === scope.sampleId);
+  const keys = new Set<string>();
+  for (const sample of samples) {
+    for (const d of sample.blocks[blockId] ?? []) {
+      if (d.count > 1) keys.add(labelKey(d.label));
+    }
+  }
+  return keys;
 }
 
 /**
@@ -100,18 +167,30 @@ export function buildTasterCloud(
   samples: Array<Record<string, unknown>>,
   locale: "es" | "en" = "es",
 ): CloudWord[] {
-  const counts = new Map<string, number>();
+  // Same rule as the group cloud: mentions summed per stage, one word per
+  // descriptor, case-insensitive label merge.
+  const stageAttrs = (PERCEPTUAL_BLOCKS as readonly { attrs?: readonly PerceptualBlockAttr[] }[])
+    .flatMap((b) => b.attrs ?? [])
+    .filter(
+    (a) => a.descKey && (FLAVOR_DESC_KEYS as readonly string[]).includes(a.descKey),
+  );
+  const merged = new Map<string, CloudWord>();
   for (const blob of samples) {
-    const ids = collectDescriptors(blob, FLAVOR_DESC_KEYS);
-    for (const id of ids) counts.set(id, (counts.get(id) ?? 0) + 1);
+    for (const attr of stageAttrs) {
+      for (const id of collectDescriptors(blob, [attr.descKey!])) {
+        const info = resolveDescriptor(id, locale);
+        if (!info) continue;
+        const key = labelKey(info.label);
+        let word = merged.get(key);
+        if (!word) {
+          word = { id, label: info.label, color: info.color, count: 0, breakdown: [] };
+          merged.set(key, word);
+        }
+        word.count += 1;
+        addBreakdown(word, attr.id, attr.label[locale], 1);
+      }
+    }
   }
 
-  const words: CloudWord[] = [];
-  for (const [id, count] of counts) {
-    const info = resolveDescriptor(id, locale);
-    if (!info) continue;
-    words.push({ id, label: info.label, color: info.color, count });
-  }
-
-  return words.sort((a, b) => b.count - a.count);
+  return [...merged.values()].sort((a, b) => b.count - a.count);
 }

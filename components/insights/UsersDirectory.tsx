@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
-import { Users } from "lucide-react";
+import { useMemo, useTransition } from "react";
+import { Download, Users } from "lucide-react";
 import { DataTable, type Column, type Facet } from "@/components/ui/DataTable";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ROLE_LABELS } from "@/lib/constants";
-import type { AnalyticsUser } from "@/app/actions/analytics";
+import { exportRegisteredUsersCsv, type AnalyticsUser } from "@/app/actions/analytics";
+import { Button } from "@/components/ui/Button";
+import { useActionFeedback } from "@/components/ui/Toast";
 
 export interface UsersDirectoryTranslations {
   table: {
@@ -31,6 +33,7 @@ export interface UsersDirectoryTranslations {
   filterType: string;
   typeRegistered: string;
   typeGuest: string;
+  exportCsv: string;
 }
 
 interface UsersDirectoryProps {
@@ -46,6 +49,22 @@ function roleLabel(role: string, locale: string): string {
 }
 
 export function UsersDirectory({ users, locale, t }: UsersDirectoryProps) {
+  const feedback = useActionFeedback();
+  const [exporting, startExport] = useTransition();
+
+  function downloadCsv() {
+    startExport(async () => {
+      await feedback.run(exportRegisteredUsersCsv(), ({ csv, filename }) => {
+        const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      });
+    });
+  }
+
   const columns: Column<AnalyticsUser>[] = [
     {
       key: "displayName",
@@ -131,58 +150,66 @@ export function UsersDirectory({ users, locale, t }: UsersDirectoryProps) {
   );
 
   return (
-    <DataTable
-      rows={users}
-      rowKey={(row) => row.userId}
-      columns={columns}
-      searchText={(row) => [row.displayName, row.email]}
-      facets={facets}
-      renderMobileCard={(row) => (
-        <div className="space-y-2 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0 space-y-1">
-              <div className="flex min-w-0 items-center gap-2">
-                <p className="truncate font-semibold text-on-surface">{row.displayName}</p>
-                {row.isAnonymous && <Badge tone="neutral">{t.guestBadge}</Badge>}
-              </div>
-              <p
-                className={`truncate text-xs ${
-                  row.isAnonymous
-                    ? "text-on-surface-variant"
-                    : row.email
+    <div className="flex flex-col gap-3">
+      <div className="flex justify-end">
+        <Button type="button" variant="secondary" size="sm" onClick={downloadCsv} disabled={exporting}>
+          <Download size={16} aria-hidden />
+          {t.exportCsv}
+        </Button>
+      </div>
+      <DataTable
+        rows={users}
+        rowKey={(row) => row.userId}
+        columns={columns}
+        searchText={(row) => [row.displayName, row.email]}
+        facets={facets}
+        renderMobileCard={(row) => (
+          <div className="space-y-2 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 space-y-1">
+                <div className="flex min-w-0 items-center gap-2">
+                  <p className="truncate font-semibold text-on-surface">{row.displayName}</p>
+                  {row.isAnonymous && <Badge tone="neutral">{t.guestBadge}</Badge>}
+                </div>
+                <p
+                  className={`truncate text-xs ${
+                    row.isAnonymous
                       ? "text-on-surface-variant"
-                      : "text-on-surface-variant italic"
-                }`}
-              >
-                {row.isAnonymous ? "—" : (row.email ?? t.emailUnavailable)}
-              </p>
+                      : row.email
+                        ? "text-on-surface-variant"
+                        : "text-on-surface-variant italic"
+                  }`}
+                >
+                  {row.isAnonymous ? "—" : (row.email ?? t.emailUnavailable)}
+                </p>
+              </div>
+              <Badge tone="neutral">{roleLabel(row.role, locale)}</Badge>
             </div>
-            <Badge tone="neutral">{roleLabel(row.role, locale)}</Badge>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-on-surface-variant">
+              {row.country && <span>{row.country}</span>}
+              <span className="tabular-nums">
+                {row.sessionsCount} · {t.colSessions}
+              </span>
+              <span className="tabular-nums">
+                {row.coffeesCount} · {t.colCoffees}
+              </span>
+              <span className="tabular-nums">
+                {new Date(row.createdAt).toLocaleDateString(locale, {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-on-surface-variant">
-            {row.country && <span>{row.country}</span>}
-            <span className="tabular-nums">
-              {row.sessionsCount} · {t.colSessions}
-            </span>
-            <span className="tabular-nums">
-              {row.coffeesCount} · {t.colCoffees}
-            </span>
-            <span className="tabular-nums">
-              {new Date(row.createdAt).toLocaleDateString(locale, {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              })}
-            </span>
-          </div>
-        </div>
-      )}
-      emptyState={<EmptyState icon={<Users size={20} />} title={t.empty} />}
-      noResults={t.noResults}
-      perPage={10}
-      initialSort={{ key: "createdAt", dir: "desc" }}
-      locale={locale}
-      translations={t.table}
-    />
+        )}
+        emptyState={<EmptyState icon={<Users size={20} />} title={t.empty} />}
+        noResults={t.noResults}
+        perPage={10}
+        initialSort={{ key: "createdAt", dir: "desc" }}
+        locale={locale}
+        translations={t.table}
+      />
+    </div>
   );
 }
