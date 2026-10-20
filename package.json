@@ -11,6 +11,7 @@
     "verify:group-average": "tsx scripts/verify-group-average.ts",
     "import:benchmarks": "tsx scripts/import-benchmark-lots.ts",
     "import:reference": "tsx scripts/import-reference-series.ts",
+    "export:descriptors": "tsx scripts/export-descriptors.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -47,6 +48,7 @@
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "exceljs": "^4.4.0",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5",

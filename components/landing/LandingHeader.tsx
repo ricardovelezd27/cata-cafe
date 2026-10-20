@@ -51,9 +51,10 @@ export default async function LandingHeader({ locale }: { locale: string }) {
           </div>
           <Link
             href={localeHref(locale, "/auth/login")}
-            className="hidden text-sm font-medium text-surface/80 hover:text-surface sm:block"
+            className="text-sm font-medium text-surface/80 hover:text-surface"
           >
-            {t("signIn")}
+            <span className="sm:hidden">{t("signInShort")}</span>
+            <span className="hidden sm:inline">{t("signIn")}</span>
           </Link>
           <Link
             href={loginHref(locale)}
