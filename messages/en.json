@@ -820,6 +820,7 @@
     "updateError": "Couldn't save the coffee. Please try again.",
     "filterProcess": "Process",
     "filterCountry": "Origin",
+    "filterVariety": "Variety",
     "filterOwnership": "Ownership",
     "ownershipMine": "Mine",
     "ownershipShared": "Shared with me",
