@@ -898,18 +898,20 @@
     "meta": {
       "title": "cafesensible.ai — Calibrate your group's palate, with data",
       "description": "The tool for the Café Sensible Method: group cupping sessions on the full SCA CVA protocol, with the instructor's reference and convergence you can see. For schools, trainers and facilitators.",
-      "ogTitle": "cafesensible.ai — Your group cups. The app measures how much they agree.",
+      "ogTitle": "cafesensible.ai — Your group's palate, calibrated and measured.",
       "ogDescription": "Group SCA CVA cupping with an instructor reference, per-person deviation and visible convergence, session after session."
     },
     "header": {
       "wordmark": "cafesensible",
       "signIn": "Sign in",
+      "signInShort": "Sign in",
       "cta": "Start free"
     },
     "hero": {
       "eyebrow": "The tool for the Café Sensible Method · SCA CVA",
-      "title": "Your group cups. The app measures how much they agree.",
-      "subtitle": "Group cupping sessions on the full SCA CVA protocol. Each person scores at their own pace; the app compares against your reference and shows you, live, how the group converges. For schools, trainers and facilitators."
+      "title": "Your group's palate, calibrated and measured.",
+      "subtitle": "Group cupping sessions on the full SCA CVA protocol, with the instructor's reference and convergence you can see. The tool for the Café Sensible Method, for schools, trainers and facilitators.",
+      "ctaNote": "No card. No password. Just your email."
     },
     "widget": {
       "title": "Estimate the value band",
@@ -942,15 +944,15 @@
       "title": "Perceive, describe, calibrate. In that order.",
       "step1Kicker": "Perceive",
       "step1Title": "Cup it",
-      "step1Desc": "Every person evaluates the cup with the full CVA protocol, at their own pace. Wifi or not: the lab doesn't wait.",
+      "step1Desc": "Every person evaluates the cup with the official CVA protocol, at their own pace. Works offline, group sessions included.",
       "step1Caption": "The method's cupping table, app in hand.",
       "step2Kicker": "Name",
       "step2Title": "Describe it",
-      "step2Desc": "Intensities and descriptors, cup by cup, until the group speaks the same language. The vocabulary is built together; no one dictates it.",
+      "step2Desc": "The group records intensities and descriptors, cup by cup. The vocabulary is built together.",
       "step2Caption": "Live workshop. Real group.",
       "step3Kicker": "Measure",
       "step3Title": "Calibrate",
-      "step3Desc": "Every score against your reference: who deviates, on which attribute and by how much. Convergence stops being a feeling and becomes a number. And a PDF.",
+      "step3Desc": "Compare each evaluation with the instructor's reference, measure the deviation and export the PDF report. Convergence, made visible.",
       "frame1Aria": "Recreation of the affective evaluation screen with a 1-to-9 scale",
       "frame2Aria": "Recreation of the flavor descriptor selector",
       "frame3Aria": "Recreation of the score card with PDF report",
@@ -970,7 +972,7 @@
       },
       "item3": {
         "title": "AI-powered discovery",
-        "desc": "AI surfaces what the eye misses: who deviates, on which attribute, and how the group evolves session after session."
+        "desc": "AI reveals patterns in your cuppings that the naked eye misses: who deviates, on which attribute, and how the group evolves session after session."
       },
       "item4": {
         "title": "Built for labs",
