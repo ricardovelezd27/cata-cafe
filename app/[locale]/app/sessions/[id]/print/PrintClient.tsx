@@ -1118,6 +1118,7 @@ export function PrintClient({
     date: string;
     objective?: string | null;
     cupperName: string;
+    ownerView: boolean;
     samples: SampleData[];
   };
   inviteUrl?: string | null;
@@ -1145,6 +1146,7 @@ export function PrintClient({
       cupsPerSample: session.cupsPerSample,
       sample,
       locale: loc,
+      ownerView: session.ownerView,
     })
   );
 

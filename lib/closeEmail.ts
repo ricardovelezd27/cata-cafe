@@ -306,7 +306,9 @@ export async function sendCloseEmails(
 
       // This participant's own CVA PDF (per-cupper data, mirroring cva-pdf route).
       const own = evalsByCupper.get(p.userId);
+      const isOwnerRecipient = p.userId === session.createdBy;
       const cvaProps: CvaDocumentProps = {
+        ownerView: isOwnerRecipient,
         sessionName: session.name,
         date: assets.dateStr,
         cupperName: profile?.displayName ?? "",
@@ -327,8 +329,13 @@ export async function sendCloseEmails(
             descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
             affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
             combined: (ev?.combinedData as Record<string, unknown>) ?? {},
-            physical: (s.physical?.data as Record<string, unknown>) ?? {},
-            extrinsic: (s.extrinsic?.data as Record<string, unknown>) ?? {},
+            physical: isOwnerRecipient
+              ? ((s.physical?.data as Record<string, unknown>) ?? {})
+              : {},
+            extrinsic:
+              isOwnerRecipient || s.revealed
+                ? ((s.extrinsic?.data as Record<string, unknown>) ?? {})
+                : {},
           };
         }),
       };

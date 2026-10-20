@@ -85,6 +85,7 @@ export async function GET(
   const ownerView = session.createdBy === viewAsId;
 
   const props: CvaDocumentProps = {
+    ownerView,
     sessionName: session.name,
     date: dateStr,
     cupperName: profile?.displayName ?? "",
