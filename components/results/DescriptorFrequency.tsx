@@ -48,8 +48,16 @@ const TOP_N = 5;
 const GROUPS_N = 6;
 
 /** L1 wheel groups for the block with the typed words ("lulo") small underneath. */
-function GroupRollup({ groups, title }: { groups: RollupGroup[]; title: string }) {
-  const top = groups.filter((g) => g.level === 1).slice(0, GROUPS_N);
+function GroupRollup({
+  groups,
+  title,
+  minCount,
+}: {
+  groups: RollupGroup[];
+  title: string;
+  minCount: number;
+}) {
+  const top = groups.filter((g) => g.level === 1 && g.count >= minCount).slice(0, GROUPS_N);
   if (top.length === 0) return null;
   return (
     <div className="mt-4 border-t border-outline-variant pt-3">
@@ -211,7 +219,11 @@ export function DescriptorFrequency({
                       <ChevronRight size={15} aria-hidden />
                     </button>
                   )}
-                  <GroupRollup groups={sample.rollup?.[activeBlockId] ?? []} title={t.byGroup} />
+                  <GroupRollup
+                    groups={sample.rollup?.[activeBlockId] ?? []}
+                    title={t.byGroup}
+                    minCount={minCount}
+                  />
                 </>
               )}
             </div>
