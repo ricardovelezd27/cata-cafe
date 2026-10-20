@@ -36,6 +36,9 @@ const nextConfig: NextConfig = {
   // Keys are route globs, values resolve from the project root.
   outputFileTracingIncludes: {
     "/api/sessions/*/cva-pdf": ["./public/fonts/**/*"],
+    "/api/sessions/*/participant-summary": ["./public/fonts/**/*"],
+    "/api/sessions/*/ficha-tecnica": ["./public/fonts/**/*"],
+    "/api/coffees/*/ficha": ["./public/fonts/**/*"],
     "/api/insights/report": ["./public/fonts/**/*"],
     "/api/cron/close-expired-sessions": ["./public/fonts/**/*"],
     "/api/cron/insights-digest": ["./public/fonts/**/*"],

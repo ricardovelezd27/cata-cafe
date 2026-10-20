@@ -58,7 +58,7 @@ export async function GET(
     locale,
     labels: {
       coffeeDeleted: deletedCoffeeLabel(locale),
-      soloTopDescriptors: tResults("soloTopDescriptors"),
+      soloTopDescriptors: tResults("dashboard.soloTopDescriptors"),
     },
   });
   const teacherNotes = buildTeacherNotes(source);
