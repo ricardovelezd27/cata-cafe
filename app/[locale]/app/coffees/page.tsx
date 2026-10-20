@@ -77,6 +77,7 @@ export default async function CoffeesPage({
     // Facets
     filterProcess: t("filterProcess"),
     filterCountry: t("filterCountry"),
+    filterVariety: t("filterVariety"),
     filterOwnership: t("filterOwnership"),
     ownershipMine: t("ownershipMine"),
     ownershipShared: t("ownershipShared"),

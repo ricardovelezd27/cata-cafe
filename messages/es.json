@@ -820,6 +820,7 @@
     "updateError": "No se pudo guardar el café. Inténtalo de nuevo.",
     "filterProcess": "Proceso",
     "filterCountry": "Origen",
+    "filterVariety": "Variedad",
     "filterOwnership": "Propiedad",
     "ownershipMine": "Míos",
     "ownershipShared": "Compartidos conmigo",
@@ -898,18 +899,20 @@
     "meta": {
       "title": "cafesensible.ai — Calibra el paladar de tu grupo, con datos",
       "description": "La herramienta del Método Café Sensible: sesiones de cata en grupo sobre el protocolo SCA CVA completo, con la referencia del instructor y una convergencia que se ve. Para escuelas, formadores y facilitadores.",
-      "ogTitle": "cafesensible.ai — Tu grupo cata. La app mide cuánto coinciden.",
+      "ogTitle": "cafesensible.ai — El paladar de tu grupo, calibrado y medido.",
       "ogDescription": "Cata SCA CVA en grupo con referencia del instructor, desviación por persona y convergencia visible, sesión a sesión."
     },
     "header": {
       "wordmark": "cafesensible",
       "signIn": "Iniciar sesión",
+      "signInShort": "Entrar",
       "cta": "Empieza gratis"
     },
     "hero": {
       "eyebrow": "La herramienta del Método Café Sensible · SCA CVA",
-      "title": "Tu grupo cata. La app mide cuánto coinciden.",
-      "subtitle": "Sesiones de cata en grupo sobre el protocolo SCA CVA completo. Cada persona puntúa a su ritmo; la app compara con tu referencia y te enseña, en vivo, cómo converge el grupo. Para escuelas, formadores y facilitadores."
+      "title": "El paladar de tu grupo, calibrado y medido.",
+      "subtitle": "Sesiones de cata en grupo sobre el protocolo SCA CVA completo, con la referencia del instructor y una convergencia que puedes ver. La herramienta del Método Café Sensible, para escuelas, formadores y facilitadores.",
+      "ctaNote": "Sin tarjeta. Sin contraseña. Solo tu correo."
     },
     "widget": {
       "title": "Calcula la banda de valor",
@@ -942,15 +945,15 @@
       "title": "Percibir, describir, calibrar. En ese orden.",
       "step1Kicker": "Percibe",
       "step1Title": "Cátalo",
-      "step1Desc": "Cada persona evalúa la taza con el protocolo CVA completo, a su ritmo. Con wifi o sin él: el laboratorio no espera.",
+      "step1Desc": "Cada persona evalúa la taza con el protocolo CVA oficial, a su ritmo. Funciona sin conexión, también en sesiones de grupo.",
       "step1Caption": "Mesa de cata del método, con la app en la mano.",
       "step2Kicker": "Nombra",
       "step2Title": "Descríbelo",
-      "step2Desc": "Intensidades y descriptores, taza a taza, hasta que el grupo habla el mismo idioma. El vocabulario se construye entre todos; nadie lo dicta.",
+      "step2Desc": "El grupo registra intensidades y descriptores, taza a taza. El vocabulario se construye entre todos.",
       "step2Caption": "Taller en directo. Grupo real.",
       "step3Kicker": "Mide",
       "step3Title": "Calibra",
-      "step3Desc": "Cada puntuación frente a tu referencia: quién se desvía, en qué atributo y cuánto. La convergencia deja de ser una sensación y pasa a ser un número. Y un PDF.",
+      "step3Desc": "Compara cada evaluación con la referencia del instructor, mide la desviación y exporta el informe en PDF. La convergencia se ve.",
       "frame1Aria": "Recreación de la pantalla de evaluación afectiva con escala de 1 a 9",
       "frame2Aria": "Recreación del selector de descriptores de sabor",
       "frame3Aria": "Recreación de la tarjeta de puntaje con informe PDF",
@@ -970,7 +973,7 @@
       },
       "item3": {
         "title": "Descubrimiento con IA",
-        "desc": "La IA saca a la luz lo que a simple vista se escapa: quién se desvía, en qué atributo y cómo evoluciona el grupo sesión a sesión."
+        "desc": "La IA revela patrones en tus catas que a simple vista se escapan: quién se desvía, en qué atributo, y cómo evoluciona el grupo sesión a sesión."
       },
       "item4": {
         "title": "Pensado para laboratorios",
@@ -1223,7 +1226,8 @@
       "guestBadge": "Invitado",
       "filterType": "Tipo",
       "typeRegistered": "Registrado",
-      "typeGuest": "Invitado"
+      "typeGuest": "Invitado",
+      "exportCsv": "Exportar correos (CSV)"
     },
     "benchmark": {
       "title": "Benchmark vs. CQI",
