@@ -64,7 +64,19 @@ export function WaitingRoomClient({
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
 
-    const channel = supabase
+    // Same JWT-before-join rule as CupClient (S6 CP-C4): without it Realtime
+    // evaluates the cupping_sessions policy as `anon` and delivers nothing.
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    void (async () => {
+      const {
+        data: { session: auth },
+      } = await supabase.auth.getSession();
+      if (cancelled) return;
+      if (auth?.access_token) await supabase.realtime.setAuth(auth.access_token);
+      if (cancelled) return;
+
+    channel = supabase
       .channel(`waiting:${sessionId}`)
       .on(
         "postgres_changes",
@@ -84,7 +96,12 @@ export function WaitingRoomClient({
           // Columns are camelCase in Postgres; accept snake_case defensively.
           if (row.startedAt ?? row.started_at) {
             router.push(`/${locale}/app/sessions/${sessionId}/cup`);
+            return;
           }
+          // Sample add/rename/remove touch the session row (S6 CP-C4): the
+          // samples list and the reference line are server props here, so a
+          // refresh is all it takes.
+          router.refresh();
         },
       )
       .subscribe((status) => {
@@ -107,9 +124,12 @@ export function WaitingRoomClient({
         }
       });
 
+    })();
+
     return () => {
+      cancelled = true;
       clearPoll();
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
     };
   }, [sessionId, locale, router, isAsync]);
 
