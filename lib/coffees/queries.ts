@@ -46,6 +46,8 @@ export async function getCoffeesWithStats(
       code: true,
       country: true,
       region: true,
+      farm: true,
+      producer: true,
       variety: true,
       processType: true,
       visibility: true,

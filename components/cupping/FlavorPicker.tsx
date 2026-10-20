@@ -28,8 +28,13 @@ const T: Record<Locale, Record<string, string>> = {
     done: "Listo",
     remove: "Quitar",
     search: "Escribe un descriptor…",
-    addUnderOtherFruit: "Agregar en «Otra fruta»",
-    addUnderOther: "Agregar en «Otros»",
+    addWord: "Agregar",
+    fileUnderTitle: "¿En qué categoría va?",
+    fileUnderHint: "Toca el grupo o subgrupo donde archivar",
+    limitReached: "Máximo {n} descriptores: quita uno para archivar aquí.",
+    fileUnderOther: "Ninguna encaja — dejar en «Otros»",
+    otherNudge: "Has puesto {n} en «Otros» — ¿en qué categoría van?",
+    otherNudgeCta: "Archivar",
     close: "Cerrar",
   },
   en: {
@@ -43,8 +48,13 @@ const T: Record<Locale, Record<string, string>> = {
     done: "Done",
     remove: "Remove",
     search: "Type a descriptor…",
-    addUnderOtherFruit: 'Add under "Other Fruit"',
-    addUnderOther: 'Add under "Other"',
+    addWord: "Add",
+    fileUnderTitle: "Which category does it belong to?",
+    fileUnderHint: "Tap the group or subgroup to file it under",
+    limitReached: "Maximum {n} descriptors: remove one to file it here.",
+    fileUnderOther: 'None fits — leave under "Other"',
+    otherNudge: 'You put {n} under "Other" — which category do they go in?',
+    otherNudgeCta: "File them",
     close: "Close",
   },
 };
@@ -68,23 +78,21 @@ function pathOf(id: string | null): FlavorWheelNode[] {
   return out;
 }
 
-/** One closed-fallback row that routes the typed term into a generic node. */
-function GenericRow({
-  id,
+/** One closed-fallback row: opens the browse modal to file the typed word. */
+function FileUnderRow({
   copy,
   term,
-  rowIndex,
   active,
   onPick,
   onHover,
+  rowIndex,
 }: {
-  id: string;
   copy: string;
   term: string;
-  rowIndex: number;
   active: boolean;
-  onPick: (id: string) => void;
+  onPick: () => void;
   onHover: (i: number) => void;
+  rowIndex: number;
 }) {
   return (
     <li role="option" aria-selected={active}>
@@ -92,26 +100,18 @@ function GenericRow({
         type="button"
         onMouseDown={(e) => {
           e.preventDefault();
-          onPick(id);
+          onPick();
         }}
         onMouseEnter={() => onHover(rowIndex)}
         className={`flex w-full items-center gap-2 px-3 py-1.5 text-left ${
-          active ? "bg-cream" : ""
+          active ? "bg-surface-container-low" : ""
         }`}
       >
-        <span
-          className="size-2.5 shrink-0 rounded-full"
-          style={{ background: flavorNodeColor(id) }}
-          aria-hidden
-        />
-        <span className="text-[13px] text-brown-dark">
-          {copy}: <span className="font-medium">«{term}»</span>
+        <Plus size={13} aria-hidden className="shrink-0 text-on-surface-variant" />
+        <span className="text-[13px] text-on-surface">
+          {copy} <span className="font-medium">«{term}»</span>…
         </span>
-        <CornerDownLeft
-          size={13}
-          aria-hidden
-          className="ml-auto shrink-0 text-brown-mid"
-        />
+        <CornerDownLeft size={13} aria-hidden className="ml-auto shrink-0 text-on-surface-variant" />
       </button>
     </li>
   );
@@ -147,6 +147,11 @@ export function FlavorPicker({
   const notesMap = notes ?? {};
   const [open, setOpen] = useState(false);
   const [navId, setNavId] = useState<string | null>(null); // current parent being viewed
+  // "File under" mode: the modal is picking a category for a typed word. `from`
+  // is the generic node the word currently sits under when re-filing.
+  const [fileUnder, setFileUnder] = useState<{ word: string; from?: string } | null>(null);
+  // Set when a file-under pick was refused because the selection is at maxSelect.
+  const [limitHit, setLimitHit] = useState(false);
 
   // Predictive typeahead — a filter over the same wheel, feeding the same value.
   const [query, setQuery] = useState("");
@@ -195,14 +200,18 @@ export function FlavorPicker({
    * selected ancestors — which take their qualifying notes with them, so no
    * note bucket outlives its selected chip.
    */
-  function selectionWith(id: string): {
+  function selectionWith(
+    id: string,
+    baseValue: string[] = value,
+    baseNotes: Record<string, string[]> = notesMap
+  ): {
     nextValue: string[];
     nextNotes: Record<string, string[]>;
   } {
-    const prunedAncestors = value.filter((v) => isAncestorOf(v, id));
+    const prunedAncestors = baseValue.filter((v) => isAncestorOf(v, id));
     return {
-      nextValue: [...value.filter((v) => !isAncestorOf(v, id)), id],
-      nextNotes: notesWithout(notesMap, prunedAncestors),
+      nextValue: [...baseValue.filter((v) => !isAncestorOf(v, id)), id],
+      nextNotes: notesWithout(baseNotes, prunedAncestors),
     };
   }
 
@@ -234,7 +243,7 @@ export function FlavorPicker({
   // term into a real generic node («Otra fruta» / «Otros») as a qualifying note
   // — never a free-standing unmapped entry.
   const showGeneric = trimmed.length > 0 && results.length === 0 && notesEnabled;
-  const rowCount = results.length + (showGeneric ? 2 : 0);
+  const rowCount = results.length + (showGeneric ? 1 : 0);
   const dropdownOpen = focused && rowCount > 0;
   const clampedHi = Math.min(hi, Math.max(0, rowCount - 1));
 
@@ -265,19 +274,64 @@ export function FlavorPicker({
     inputRef.current?.focus();
   }
 
-  /** Route the unmatched typed term into a generic node with a qualifying note. */
-  function addGeneric(id: string) {
-    if (!trimmed) return;
-    if (value.includes(id)) {
-      // Node already selected: just append the term to its note bucket.
-      emit(value, notesWith(notesMap, id, trimmed));
-    } else if (!wouldExceedLimit(id)) {
-      const { nextValue, nextNotes } = selectionWith(id);
-      emit(nextValue, notesWith(nextNotes, id, trimmed));
+  /** Open the browse modal to choose where the typed word is filed. */
+  function startFileUnder(word: string, from?: string) {
+    if (!word) return;
+    setFileUnder({ word, from });
+    setLimitHit(false);
+    setNavId(null);
+    setOpen(true);
+  }
+
+  /**
+   * File `word` as a qualifying note under wheel node `id`. When re-filing out
+   * of a generic bucket (`from`), the word leaves that bucket first and an
+   * emptied bucket drops its chip, all in one atomic emission.
+   */
+  function fileWord(id: string, word: string, from?: string): boolean {
+    let baseValue = value;
+    let baseNotes = notesMap;
+    if (from) {
+      const rest = (notesMap[from] ?? []).filter((x) => !sameText(x, word));
+      if (rest.length === 0) {
+        baseNotes = notesWithout(notesMap, [from]);
+        baseValue = value.filter((v) => v !== from);
+      } else {
+        baseNotes = { ...notesMap, [from]: rest };
+      }
     }
+    if (baseValue.includes(id)) {
+      emit(baseValue, notesWith(baseNotes, id, word));
+    } else {
+      const removed = baseValue.filter((v) => isAncestorOf(v, id)).length;
+      if (maxSelect !== undefined && baseValue.length - removed >= maxSelect) return false;
+      const { nextValue, nextNotes } = selectionWith(id, baseValue, baseNotes);
+      emit(nextValue, notesWith(nextNotes, id, word));
+    }
+    return true;
+  }
+
+  /** Modal pick while in file-under mode; advances through queued words. */
+  function pickFileTarget(id: string) {
+    if (!fileUnder) return;
+    if (!fileWord(id, fileUnder.word, fileUnder.from)) {
+      setLimitHit(true); // keep the modal open and say why
+      return;
+    }
+    setLimitHit(false);
     setQuery("");
     setHi(0);
-    inputRef.current?.focus();
+    // Re-file queue: the other words still parked under a generic bucket.
+    const queue = fileUnder.from
+      ? genericWords.filter((g) => !(g.word === fileUnder.word && g.from === fileUnder.from))
+      : [];
+    if (queue.length > 0) {
+      setFileUnder({ word: queue[0].word, from: queue[0].from });
+      setNavId(null);
+    } else {
+      setFileUnder(null);
+      setOpen(false);
+    }
   }
 
   function commitRow(i: number) {
@@ -285,7 +339,7 @@ export function FlavorPicker({
       const m = results[i];
       addById(m.id, { matchType: m.matchType, typed: trimmed });
     } else if (showGeneric) {
-      addGeneric(i === results.length ? OTHER_FRUIT_ID : OTHER_ID);
+      startFileUnder(trimmed);
     }
   }
 
@@ -305,6 +359,11 @@ export function FlavorPicker({
       setQuery("");
     }
   }
+
+  // Typed words parked under the last-resort buckets («Otros» / «Otra fruta»).
+  const genericWords = [OTHER_ID, OTHER_FRUIT_ID].flatMap((from) =>
+    value.includes(from) ? (notesMap[from] ?? []).map((word) => ({ word, from })) : []
+  );
 
   const crumbs = pathOf(navId);
   const children = flavorChildren(navId);
@@ -353,6 +412,19 @@ export function FlavorPicker({
           </div>
         )}
       </div>
+
+      {genericWords.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-card bg-secondary/10 px-3 py-2 text-[12px] text-on-surface">
+          <span>{t.otherNudge.replace("{n}", String(genericWords.length))}</span>
+          <button
+            type="button"
+            onClick={() => startFileUnder(genericWords[0].word, genericWords[0].from)}
+            className="rounded-pill border border-secondary px-2.5 py-0.5 font-semibold text-secondary"
+          >
+            {t.otherNudgeCta}
+          </button>
+        </div>
+      )}
 
       {/* Predictive typeahead — type to filter the wheel; sits alongside browse */}
       <div className="relative mb-2">
@@ -417,26 +489,14 @@ export function FlavorPicker({
             ))}
 
             {showGeneric && (
-              <>
-                <GenericRow
-                  id={OTHER_FRUIT_ID}
-                  copy={t.addUnderOtherFruit}
-                  term={trimmed}
-                  rowIndex={results.length}
-                  active={clampedHi === results.length}
-                  onPick={addGeneric}
-                  onHover={setHi}
-                />
-                <GenericRow
-                  id={OTHER_ID}
-                  copy={t.addUnderOther}
-                  term={trimmed}
-                  rowIndex={results.length + 1}
-                  active={clampedHi === results.length + 1}
-                  onPick={addGeneric}
-                  onHover={setHi}
-                />
-              </>
+              <FileUnderRow
+                copy={t.addWord}
+                term={trimmed}
+                rowIndex={results.length}
+                active={clampedHi === results.length}
+                onPick={() => startFileUnder(trimmed)}
+                onHover={setHi}
+              />
             )}
           </ul>
         )}
@@ -457,15 +517,29 @@ export function FlavorPicker({
 
       <ResponsiveDialog
         open={open}
-        onOpenChange={setOpen}
-        title={t.title}
+        onOpenChange={(o) => {
+          setOpen(o);
+          if (!o) {
+            setFileUnder(null);
+            setLimitHit(false);
+          }
+        }}
+        title={fileUnder ? t.fileUnderTitle : t.title}
         subtitle={
-          maxSelect !== undefined
+          fileUnder
+            ? `«${fileUnder.word}» · ${t.fileUnderHint}`
+            : maxSelect !== undefined
             ? `${t.upTo} ${maxSelect} · ${value.length}/${maxSelect}`
             : undefined
         }
         closeLabel={t.close}
       >
+        {fileUnder && limitHit && maxSelect !== undefined && (
+          <p role="alert" className="mb-3 rounded-card bg-error-container px-3 py-2 text-[12px] text-on-error-container">
+            {t.limitReached.replace("{n}", String(maxSelect))}
+          </p>
+        )}
+
         {/* Breadcrumb */}
         <nav className="flex flex-wrap items-center gap-1 text-[12px] mb-3">
           <button
@@ -518,7 +592,11 @@ export function FlavorPicker({
                   type="button"
                   disabled={disabled}
                   onClick={() =>
-                    selectable ? toggle(node.id) : setNavId(node.id)
+                    !selectable
+                      ? setNavId(node.id)
+                      : fileUnder
+                        ? pickFileTarget(node.id)
+                        : toggle(node.id)
                   }
                   aria-pressed={selectable ? isSel : undefined}
                   className={`${pillStyles.pill} ${isSel ? pillStyles.selected : ""} flex-1 !justify-start`}
@@ -549,10 +627,24 @@ export function FlavorPicker({
           })}
         </div>
 
+        {fileUnder && (
+          <button
+            type="button"
+            onClick={() => pickFileTarget(OTHER_ID)}
+            className="mt-4 w-full rounded-pill border border-outline-variant px-4 py-2 text-[12px] text-on-surface-variant hover:text-on-surface"
+          >
+            {t.fileUnderOther}
+          </button>
+        )}
+
         <div className="mt-5 flex justify-end">
           <button
             type="button"
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              setOpen(false);
+              setFileUnder(null);
+              setLimitHit(false);
+            }}
             className="rounded-pill bg-green-dark px-5 py-2 text-[13px] font-semibold text-bg"
           >
             {t.done}
