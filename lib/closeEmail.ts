@@ -42,7 +42,7 @@ const EMAIL_TEXT: Record<Locale, { subject: (name: string) => string; body: (arg
     summaryFile: "resumen_grupal",
     body: ({ name, date }) => `
       <div style="font-family: Arial, Helvetica, sans-serif; color:#2b241d; line-height:1.5;">
-        <h2 style="color:#3D5A3E; margin:0 0 8px;">Cata Café</h2>
+        <h2 style="color:#3D5A3E; margin:0 0 8px;">Café Sensible</h2>
         <p>Hola,</p>
         <p>La sesión de catación <strong>${escapeHtml(name)}</strong>${date ? ` (${escapeHtml(date)})` : ""} se ha cerrado.</p>
         <p>Adjuntamos dos documentos:</p>
@@ -59,7 +59,7 @@ const EMAIL_TEXT: Record<Locale, { subject: (name: string) => string; body: (arg
     summaryFile: "group_summary",
     body: ({ name, date }) => `
       <div style="font-family: Arial, Helvetica, sans-serif; color:#2b241d; line-height:1.5;">
-        <h2 style="color:#3D5A3E; margin:0 0 8px;">Cata Café</h2>
+        <h2 style="color:#3D5A3E; margin:0 0 8px;">Café Sensible</h2>
         <p>Hello,</p>
         <p>The cupping session <strong>${escapeHtml(name)}</strong>${date ? ` (${escapeHtml(date)})` : ""} has been closed.</p>
         <p>Attached you'll find two documents:</p>

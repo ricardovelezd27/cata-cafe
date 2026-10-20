@@ -218,21 +218,21 @@ const GROUP_INVITE_TEXT: Record<
   }
 > = {
   es: {
-    subject: (inviter, groupName) => `${inviter} te agregó al grupo "${groupName}" en Cata Café`,
+    subject: (inviter, groupName) => `${inviter} te agregó al grupo "${groupName}" en Café Sensible`,
     greeting: "Hola,",
     intro: (inviter, groupName) => `${inviter} te agregó a su grupo de cata ${groupName}.`,
-    cta: "Unirme en Cata Café",
+    cta: "Unirme en Café Sensible",
     footer:
-      "Recibiste este correo porque un maestro de cata te añadió a su grupo en Cata Café.",
+      "Recibiste este correo porque un maestro de cata te añadió a su grupo en Café Sensible.",
   },
   en: {
     subject: (inviter, groupName) =>
-      `${inviter} added you to the group "${groupName}" on Cata Café`,
+      `${inviter} added you to the group "${groupName}" on Café Sensible`,
     greeting: "Hello,",
     intro: (inviter, groupName) => `${inviter} added you to their tasting group ${groupName}.`,
-    cta: "Join on Cata Café",
+    cta: "Join on Café Sensible",
     footer:
-      "You received this email because a tasting master added you to their group on Cata Café.",
+      "You received this email because a tasting master added you to their group on Café Sensible.",
   },
 };
 
@@ -250,7 +250,7 @@ function buildGroupInviteHtml(args: {
     : "";
   return `
     <div style="font-family: Arial, Helvetica, sans-serif; color:#2b241d; line-height:1.5;">
-      <h2 style="color:#3D5A3E; margin:0 0 8px;">Cata Café</h2>
+      <h2 style="color:#3D5A3E; margin:0 0 8px;">Café Sensible</h2>
       <p>${text.greeting}</p>
       <p>${introHtml}</p>
       ${descriptionHtml}
@@ -609,16 +609,16 @@ const GROUP_EMAIL_TEXT: Record<
   es: {
     greeting: "Hola,",
     inviteLabel: "Unirse a la sesión",
-    openAppLabel: "Abrir Cata Café",
+    openAppLabel: "Abrir Café Sensible",
     footer:
-      "Recibiste este correo porque un maestro de cata te añadió a su grupo en Cata Café.",
+      "Recibiste este correo porque un maestro de cata te añadió a su grupo en Café Sensible.",
   },
   en: {
     greeting: "Hello,",
     inviteLabel: "Join the session",
-    openAppLabel: "Open Cata Café",
+    openAppLabel: "Open Café Sensible",
     footer:
-      "You received this email because a tasting master added you to their group on Cata Café.",
+      "You received this email because a tasting master added you to their group on Café Sensible.",
   },
 };
 
@@ -637,7 +637,7 @@ function buildGroupEmailHtml(args: {
   const ctaLabel = args.inviteUrl ? text.inviteLabel : text.openAppLabel;
   return `
     <div style="font-family: Arial, Helvetica, sans-serif; color:#2b241d; line-height:1.5;">
-      <h2 style="color:#3D5A3E; margin:0 0 8px;">Cata Café</h2>
+      <h2 style="color:#3D5A3E; margin:0 0 8px;">Café Sensible</h2>
       <p>${text.greeting}</p>
       <p>${messageHtml}</p>
       <p style="margin:24px 0;"><a href="${ctaUrl}" style="background:#3D5A3E; color:#ffffff; padding:10px 20px; border-radius:6px; text-decoration:none; font-weight:600; display:inline-block;">${ctaLabel}</a></p>
@@ -799,17 +799,17 @@ const GROUP_SESSION_INVITE_TEXT: Record<
     subject: (sessionName) => `Nueva sesión de catación: ${sessionName}`,
     greeting: "Hola,",
     intro: (sessionName) =>
-      `Te invito a una sesión de catación en Cata Café: ${sessionName}. Usa el enlace para unirte.`,
+      `Te invito a una sesión de catación en Café Sensible: ${sessionName}. Usa el enlace para unirte.`,
     cta: "Unirme a la sesión",
-    footer: "Recibiste este correo porque eres integrante de un grupo de cata en Cata Café.",
+    footer: "Recibiste este correo porque eres integrante de un grupo de cata en Café Sensible.",
   },
   en: {
     subject: (sessionName) => `New cupping session: ${sessionName}`,
     greeting: "Hello,",
     intro: (sessionName) =>
-      `You're invited to a cupping session on Cata Café: ${sessionName}. Use the link to join.`,
+      `You're invited to a cupping session on Café Sensible: ${sessionName}. Use the link to join.`,
     cta: "Join the session",
-    footer: "You received this email because you're a member of a tasting group on Cata Café.",
+    footer: "You received this email because you're a member of a tasting group on Café Sensible.",
   },
 };
 
@@ -821,7 +821,7 @@ function buildGroupSessionInviteHtml(args: {
   const text = GROUP_SESSION_INVITE_TEXT[args.locale];
   return `
     <div style="font-family: Arial, Helvetica, sans-serif; color:#2b241d; line-height:1.5;">
-      <h2 style="color:#3D5A3E; margin:0 0 8px;">Cata Café</h2>
+      <h2 style="color:#3D5A3E; margin:0 0 8px;">Café Sensible</h2>
       <p>${text.greeting}</p>
       <p>${escapeHtml(text.intro(args.sessionName))}</p>
       <p style="margin:24px 0;"><a href="${args.ctaUrl}" style="background:#3D5A3E; color:#ffffff; padding:10px 20px; border-radius:6px; text-decoration:none; font-weight:600; display:inline-block;">${text.cta}</a></p>

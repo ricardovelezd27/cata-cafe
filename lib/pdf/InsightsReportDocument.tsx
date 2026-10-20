@@ -72,7 +72,7 @@ interface ReportText {
 const REPORT_TEXT: Record<Locale, ReportText> = {
   es: {
     title: "Informe de insights",
-    wordmark: "Cata Café",
+    wordmark: "Café Sensible",
     generatedLabel: "Generado",
     summary: "Resumen",
     trendHeading: "Tendencia mensual",
@@ -102,7 +102,7 @@ const REPORT_TEXT: Record<Locale, ReportText> = {
   },
   en: {
     title: "Insights report",
-    wordmark: "Cata Café",
+    wordmark: "Café Sensible",
     generatedLabel: "Generated",
     summary: "Summary",
     trendHeading: "Monthly trend",
