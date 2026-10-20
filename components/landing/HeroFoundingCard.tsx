@@ -6,6 +6,7 @@ import WaitlistForm from "./WaitlistForm";
 // founding-cohort reservation instead of the calibration demo.
 export default async function HeroFoundingCard({ locale }: { locale: string }) {
   const t = await getTranslations("landing.founding");
+  const th = await getTranslations("landing.hero");
   const tw = await getTranslations("landing.waitlist");
 
   const waitlistLabels = {
@@ -51,7 +52,8 @@ export default async function HeroFoundingCard({ locale }: { locale: string }) {
       <div className="mt-6">
         <WaitlistForm locale={locale} labels={waitlistLabels} variant="onLight" />
       </div>
-      <p className="mt-4 text-xs leading-relaxed text-on-surface-variant">{t("note")}</p>
+      <p className="mt-3 text-sm font-medium text-on-surface">{th("ctaNote")}</p>
+      <p className="mt-2 text-xs leading-relaxed text-on-surface-variant">{t("note")}</p>
     </div>
   );
 }
