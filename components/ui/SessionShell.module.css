@@ -154,11 +154,6 @@
 
 .canvas {
   flex: 1;
-  /* Column so the sticky footer is pushed to the bottom edge even when the
-     form is shorter than the viewport (otherwise it floated mid-screen with
-     a blank strip under the buttons). */
-  display: flex;
-  flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
@@ -168,11 +163,24 @@
 }
 
 .canvasInner {
-  width: 100%;
   max-width: 56rem;
   margin: 0 auto;
   padding: 32px 32px 24px;
-  flex: 1 0 auto;
+}
+
+@media (max-width: 1023px) {
+  /* Touch layouts: column so the sticky footer is pushed to the bottom edge
+     even when the form is shorter than the viewport (otherwise it floated
+     mid-screen with a blank strip under the buttons). Scoped here so desktop
+     layout is untouched. */
+  .canvas {
+    display: flex;
+    flex-direction: column;
+  }
+  .canvasInner {
+    width: 100%;
+    flex: 1 0 auto;
+  }
 }
 
 @media (max-width: 768px) {
@@ -233,12 +241,15 @@
     border-bottom: 1px solid var(--color-brown-light);
     background: var(--color-cream);
   }
-  /* Keyboard up: the field needs the pixels more than the chrome does. The
-     drawer (hamburger) comes back the moment the field blurs. */
-  .collapsed .mobileHeader,
+  /* Keyboard up: only the stepper (topBar) and sample row collapse; the compact
+     header row with the hamburger stays reachable. */
+  .collapsed .mobileBarSlot,
+  .collapsed .detailsToggle,
   .collapsed .mobileDetails {
     display: none;
   }
+  /* Keep the hamburger row, just thinner. */
+  .collapsed .mobileHeader { padding-block: 2px; }
   /* The status dot/label sit above the chevron corner, not on top of it. */
   .saveIndicator { top: 4px; right: 4px; }
   .savePendingLabel { top: 48px; right: 8px; }
