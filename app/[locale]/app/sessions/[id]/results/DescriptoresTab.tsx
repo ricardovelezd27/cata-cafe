@@ -60,6 +60,7 @@ type DescriptoresTabTranslations = {
   filterBlockLabel: string;
   tasterScopeAll: string;
   descViewAll: string;
+  descByGroup: string;
   descOf: string;
   descParticipants: string;
   descEmptyBlock: string;
@@ -243,6 +244,7 @@ export function DescriptoresTab({
           blockLabels={blockLabels}
           t={{
             viewAll: t.descViewAll,
+            byGroup: t.descByGroup,
             of: t.descOf,
             participants: t.descParticipants,
             emptyBlock: t.descEmptyBlock,

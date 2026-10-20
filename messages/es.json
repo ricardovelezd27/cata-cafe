@@ -351,6 +351,7 @@
   },
   "descriptors": {
     "viewAll": "Ver todos",
+    "byGroup": "Por grupo de la rueda",
     "of": "de",
     "participants": "catadores",
     "emptyStage": "Ningún descriptor con 2 o más selecciones en esta etapa.",

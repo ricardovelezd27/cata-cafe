@@ -11,6 +11,15 @@ export type RankedDescriptor = {
   count: number;
 };
 
+export type RollupGroup = {
+  id: string;
+  label: string;
+  color: string;
+  level: 1 | 2;
+  count: number;
+  notes: string[];
+};
+
 export type SampleBlockFreq = {
   sampleId: string;
   label: string;
@@ -19,12 +28,15 @@ export type SampleBlockFreq = {
   blocks: Record<string, RankedDescriptor[]>;
   /** Per-stage ranked descriptors (fragancia, aroma, …) — feeds the word cloud. */
   stages?: Record<string, RankedDescriptor[]>;
+  /** L1/L2 wheel roll-up per block with the typed notes filed under each group. */
+  rollup?: Record<string, RollupGroup[]>;
   /** Statistical summary sentence per block id (null → render empty state). */
   summary: Record<string, string | null>;
 };
 
 export type DescriptorTranslations = {
   viewAll: string;
+  byGroup: string;
   of: string;
   participants: string;
   emptyBlock: string;
@@ -33,6 +45,43 @@ export type DescriptorTranslations = {
 };
 
 const TOP_N = 5;
+const GROUPS_N = 6;
+
+/** L1 wheel groups for the block with the typed words ("lulo") small underneath. */
+function GroupRollup({ groups, title }: { groups: RollupGroup[]; title: string }) {
+  const top = groups.filter((g) => g.level === 1).slice(0, GROUPS_N);
+  if (top.length === 0) return null;
+  return (
+    <div className="mt-4 border-t border-outline-variant pt-3">
+      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-on-surface-variant">
+        {title}
+      </p>
+      <ul className="flex flex-col gap-1.5">
+        {top.map((g) => {
+          // Typed words filed under this group or one of its L2 subgroups.
+          const notes = [
+            ...g.notes,
+            ...groups.filter((x) => x.level === 2 && x.id.startsWith(`${g.id}:`)).flatMap((x) => x.notes),
+          ].filter((n, i, arr) => arr.findIndex((m) => m.toLowerCase() === n.toLowerCase()) === i);
+          return (
+            <li key={g.id} className="text-sm leading-snug">
+              <span className="inline-flex items-center gap-1.5 font-medium text-on-surface">
+                <span aria-hidden className="size-2 rounded-full" style={{ background: g.color }} />
+                {g.label}
+                <span className="font-mono text-xs text-on-surface-variant tabular-nums">{g.count}</span>
+              </span>
+              {notes.length > 0 && (
+                <span className="block pl-3.5 text-xs italic text-on-surface-variant">
+                  {notes.slice(0, GROUPS_N).join(", ")}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
 
 function Bars({
   descriptors,
@@ -162,6 +211,7 @@ export function DescriptorFrequency({
                       <ChevronRight size={15} aria-hidden />
                     </button>
                   )}
+                  <GroupRollup groups={sample.rollup?.[activeBlockId] ?? []} title={t.byGroup} />
                 </>
               )}
             </div>

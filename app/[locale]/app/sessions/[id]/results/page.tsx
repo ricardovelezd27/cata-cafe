@@ -163,12 +163,14 @@ export default async function ResultsPage({
   // Blocks are the perceptual grouping (Nariz / Boca / Gusto / Acidez / Dulzura
   // / Sensación); each block is deduped per cupper before counting (N15).
   type RankedDescriptor = { id: string; label: string; color: string; count: number };
+  type RollupGroup = { id: string; label: string; color: string; level: 1 | 2; count: number; notes: string[] };
   type SampleBlockFreq = {
     sampleId: string;
     label: string;
     totalEvaluators: number;
     blocks: Record<string, RankedDescriptor[]>;
     stages?: Record<string, RankedDescriptor[]>;
+    rollup?: Record<string, RollupGroup[]>;
     // Per-block statistical summary sentences (null text → empty state).
     summary: Record<string, string | null>;
   };
@@ -732,6 +734,7 @@ export default async function ResultsPage({
         closeEmailsResent: tResults("closeEmails.resent"),
         closeEmailsResendError: tResults("closeEmails.resendError"),
         descViewAll: tDesc("viewAll"),
+        descByGroup: tDesc("byGroup"),
         descOf: tDesc("of"),
         descParticipants: tDesc("participants"),
         descEmptyStage: tDesc("emptyStage"),

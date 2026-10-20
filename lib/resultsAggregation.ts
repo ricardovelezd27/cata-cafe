@@ -17,10 +17,13 @@ import {
   resolveDescriptor,
   resolveMainTaste,
   PERCEPTUAL_BLOCKS,
+  ancestorsOf,
 } from "@/lib/descriptors";
+import { flavorNodeById, flavorGroupColor } from "@/lib/constants";
 import { summarizeSample, type SummaryBlock } from "@/lib/resultsSummary";
 
 type Locale = "es" | "en";
+const ROLLUP_NOTES_CAP = 6;
 type D = Record<string, unknown>;
 
 /** One aggregated descriptor for a block, with its display color (for the UI). */
@@ -29,6 +32,18 @@ export type RankedDescriptor = {
   label: string;
   color: string;
   count: number;
+};
+
+/** A wheel group (L1 or L2) a block's descriptors roll up into. */
+export type RollupGroup = {
+  id: string;
+  label: string;
+  color: string;
+  level: 1 | 2;
+  /** Included cuppers who picked anything under this group in the block. */
+  count: number;
+  /** Typed qualifying words ("lulo") filed under the group, deduped, capped. */
+  notes: string[];
 };
 
 /** Anonymous per-sample block aggregation, matching the results page shape. */
@@ -45,6 +60,11 @@ export type SampleBlockFreq = {
    * stages, so fragancia 1 + aroma 1 = 2). Consumers that predate it ignore it.
    */
   stages?: Record<string, RankedDescriptor[]>;
+  /**
+   * blockId (+ "general") → L1/L2 wheel groups with the typed qualifying notes
+   * filed under them. Additive; only wheel nodes roll up (CATA/taste ids don't).
+   */
+  rollup?: Record<string, RollupGroup[]>;
   /** blockId → statistical summary sentence (null text → caller empty state). */
   summary: Record<string, string | null>;
 };
@@ -128,6 +148,9 @@ export function computeSampleBlockFrequencies(
   // sampleId → stageId → descriptor id → number of cuppers (per-stage, no
   // cross-stage dedupe).
   const stageCounts = new Map<string, Map<string, Map<string, number>>>();
+  // sampleId → blockId → cupperId → wheel group ids / typed notes (for the roll-up).
+  type RollSel = { groups: Set<string>; notes: Map<string, Set<string>> };
+  const rollSel = new Map<string, Map<string, Map<string, RollSel>>>();
   const evaluatorsPerSample = new Map<string, Set<string>>();
   for (const s of samples) {
     const bySel: BlockSel = new Map();
@@ -135,6 +158,7 @@ export function computeSampleBlockFrequencies(
     selections.set(s.id, bySel);
     evaluatorsPerSample.set(s.id, new Set());
     stageCounts.set(s.id, new Map());
+    rollSel.set(s.id, new Map());
   }
 
   for (const ev of evals) {
@@ -147,6 +171,38 @@ export function computeSampleBlockFrequencies(
     for (const block of PERCEPTUAL_BLOCKS) {
       const ids = collectDescriptors(blob, block.descKeys);
       bySel.get(block.id)!.set(ev.cupperId, new Set(ids));
+      if (block.kind === "desc") {
+        const byBlock = rollSel.get(ev.sessionSampleId)!;
+        let byCupper = byBlock.get(block.id);
+        if (!byCupper) byBlock.set(block.id, (byCupper = new Map()));
+        const sel: RollSel = { groups: new Set(), notes: new Map() };
+        byCupper.set(ev.cupperId, sel);
+        const noteWords = (nodeId: string): string[] => {
+          const out: string[] = [];
+          for (const key of block.descKeys) {
+            const m = blob[`${key}_notes`] as Record<string, unknown> | undefined;
+            const terms = m?.[nodeId];
+            if (Array.isArray(terms)) {
+              for (const t of terms) if (typeof t === "string" && t.trim()) out.push(t.trim());
+            }
+          }
+          return out;
+        };
+        for (const did of ids) {
+          const node = flavorNodeById(did);
+          if (!node) continue;
+          const groups = [...ancestorsOf(did), ...(node.level === 2 ? [node.id] : [])];
+          const words = noteWords(did);
+          for (const g of groups) {
+            sel.groups.add(g);
+            if (words.length > 0) {
+              const set = sel.notes.get(g) ?? new Set<string>();
+              for (const w of words) set.add(w);
+              sel.notes.set(g, set);
+            }
+          }
+        }
+      }
       for (const attr of block.attrs ?? []) {
         if (!attr.descKey) continue;
         const stageMap = stageCounts.get(ev.sessionSampleId)!;
@@ -238,6 +294,58 @@ export function computeSampleBlockFrequencies(
       }
     }
 
+    const rollupOut: Record<string, RollupGroup[]> = {};
+    const buildRollup = (sels: RollSel[]): RollupGroup[] => {
+      const counts = new Map<string, number>();
+      const notes = new Map<string, Map<string, { text: string; n: number }>>();
+      for (const sel of sels) {
+        for (const g of sel.groups) counts.set(g, (counts.get(g) ?? 0) + 1);
+        for (const [g, words] of sel.notes) {
+          const m = notes.get(g) ?? new Map<string, { text: string; n: number }>();
+          for (const w of words) {
+            const k = w.toLocaleLowerCase();
+            const cur = m.get(k);
+            m.set(k, { text: cur?.text ?? w, n: (cur?.n ?? 0) + 1 });
+          }
+          notes.set(g, m);
+        }
+      }
+      const out: RollupGroup[] = [];
+      for (const [gid, count] of counts) {
+        const node = flavorNodeById(gid);
+        if (!node) continue;
+        out.push({
+          id: gid,
+          label: locale === "en" ? node.label_en : node.label_es,
+          color: flavorGroupColor(gid),
+          level: node.level === 1 ? 1 : 2,
+          count,
+          notes: [...(notes.get(gid)?.values() ?? [])]
+            .sort((a, b) => b.n - a.n)
+            .slice(0, ROLLUP_NOTES_CAP)
+            .map((x) => x.text),
+        });
+      }
+      return out.sort((a, b) => a.level - b.level || b.count - a.count);
+    };
+    const sampleRoll = rollSel.get(s.id)!;
+    for (const [blockId, byCupper] of sampleRoll) rollupOut[blockId] = buildRollup([...byCupper.values()]);
+    // "general": per cupper, union over every block.
+    const perCupper = new Map<string, RollSel>();
+    for (const byCupper of sampleRoll.values()) {
+      for (const [cupperId, sel] of byCupper) {
+        const u = perCupper.get(cupperId) ?? { groups: new Set<string>(), notes: new Map<string, Set<string>>() };
+        for (const g of sel.groups) u.groups.add(g);
+        for (const [g, ws] of sel.notes) {
+          const set = u.notes.get(g) ?? new Set<string>();
+          for (const w of ws) set.add(w);
+          u.notes.set(g, set);
+        }
+        perCupper.set(cupperId, u);
+      }
+    }
+    rollupOut["general"] = buildRollup([...perCupper.values()]);
+
     const summary: Record<string, string | null> = {};
     if (skipSummaries) {
       for (const b of summaryBlocks) summary[b.id] = null;
@@ -252,6 +360,7 @@ export function computeSampleBlockFrequencies(
       totalEvaluators: total,
       blocks: blocksOut,
       stages: stagesOut,
+      rollup: rollupOut,
       summary,
     };
   });
