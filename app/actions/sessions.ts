@@ -752,7 +752,9 @@ export async function setReferenceSample(
           await tx.evaluation.update({ where: { id }, data });
         }
         repinned = plan.length;
-      });
+        // One evaluation.update per cupper fires the aggregate trigger, so a
+        // big group can exceed Prisma's 5s default interactive timeout.
+      }, { timeout: 15000 });
       if (repinned > 0) {
         logInfo({ where: "setReferenceSample", sessionId, message: "reference_repinned", count: repinned });
       }

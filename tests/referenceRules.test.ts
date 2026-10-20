@@ -158,6 +158,19 @@ describe("planReferenceRepin", () => {
     expect(plan.map((p) => p.id)).toEqual(["fix"]);
   });
 
+  it("all rows already pinned -> empty plan", () => {
+    const pinned = pinReferenceAffective({ fragancia_int: 4 }, 5);
+    const plan = planReferenceRepin(
+      [
+        { id: "a", isDraft: false, affectiveData: pinned, combinedData: {} },
+        { id: "b", isDraft: true, affectiveData: pinned, combinedData: {} },
+      ],
+      "affective",
+      5,
+    );
+    expect(plan).toEqual([]);
+  });
+
   it("is empty for descriptive sessions and for malformed JSON it still pins", () => {
     expect(planReferenceRepin([{ id: "d", isDraft: false, affectiveData: scored, combinedData: {} }], "descriptive", 5)).toEqual([]);
     const plan = planReferenceRepin(
