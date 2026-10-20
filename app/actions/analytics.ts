@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { listAllAuthUsers } from "@/lib/supabase/adminUsers";
+import { listAllAuthUsers, listAllAuthUsersStrict } from "@/lib/supabase/adminUsers";
 import { run } from "@/lib/safeAction";
 import { buildRegisteredUsersCsv } from "@/lib/analytics/usersCsv";
 import {
@@ -249,7 +249,10 @@ export async function listAnalyticsUsers(): Promise<AnalyticsUser[]> {
 export async function exportRegisteredUsersCsv() {
   return run("exportRegisteredUsersCsv", async () => {
     await requireUsersDirectoryAccess();
-    const { csv, count } = buildRegisteredUsersCsv(await listAllAuthUsers());
+    const { csv, count } = buildRegisteredUsersCsv(await listAllAuthUsersStrict());
+    // An empty export is never legitimate (the caller is a registered user) —
+    // treat it as a failed listing rather than handing back a header-only file.
+    if (count === 0) throw new Error("auth_list_empty");
     return { csv, count, filename: `cafesensible-users-${new Date().toISOString().slice(0, 10)}.csv` };
   });
 }
