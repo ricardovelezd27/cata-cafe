@@ -5,9 +5,9 @@ import { useEffect, useState } from "react";
 /**
  * True while the on-screen keyboard is (very likely) covering the viewport.
  *
- * Cross-platform rule, because iOS Safari ignores the `interactiveWidget`
- * viewport hint: a text field has focus AND `window.visualViewport` shrank
- * noticeably below the layout viewport. Both conditions are required — the
+ * Cross-platform rule: a text field has focus AND the visual viewport shrank
+ * noticeably below the height captured while no field was focused (works for
+ * iOS, where the viewport overlays, and Android, where the layout resizes). Both conditions are required — the
  * visual viewport also shrinks when Safari shows its toolbar and grows on
  * pinch-zoom, and neither should collapse the cupping chrome.
  *
@@ -32,14 +32,20 @@ export function useKeyboardOpen(minShrinkPx = 120): boolean {
       return el.isContentEditable;
     };
 
+    const current = () => (vv ? vv.height : window.innerHeight);
+    // Baseline = visual-viewport height while no text field is focused.
+    // Comparing against window.innerHeight fails on Android with
+    // `interactiveWidget: "resizes-content"` (both shrink together), so we
+    // compare against the last keyboard-free height instead.
+    let baseline = current();
+
     const compute = () => {
       if (!isTextTarget()) {
+        baseline = current();
         setOpen(false);
         return;
       }
-      const visual = vv ? vv.height : window.innerHeight;
-      const shrink = window.innerHeight - visual;
-      setOpen(shrink >= minShrinkPx);
+      setOpen(baseline - current() >= minShrinkPx);
     };
 
     // visualViewport fires resize for the keyboard on iOS and Android alike;
