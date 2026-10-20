@@ -34,9 +34,13 @@ export function ArmRaiseFigure(p: FigureProps) {
       arrow = { d: ARC_DOWN };
       break;
     case "rest":
-    default:
       // "Párate ahí unos segundos": the arm pauses mid-way, the body breathes.
       armStatic = "rotate(-95deg)";
+      break;
+    case "center":
+    default:
+      // Neutral (intro / pauses): arm hanging.
+      armStatic = "rotate(0deg)";
       break;
   }
 

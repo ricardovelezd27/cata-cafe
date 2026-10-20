@@ -1469,5 +1469,34 @@
       "invalid_reference": "Uno de los elementos vinculados ya no existe.",
       "unknown": "Algo salió mal. Inténtalo de nuevo."
     }
+  },
+  "warmup": {
+    "title": "Movimiento Sensorial",
+    "player": {
+      "start": "Empezar",
+      "next": "Siguiente",
+      "prev": "Anterior",
+      "pause": "Pausar",
+      "resume": "Reanudar",
+      "skip": "Saltar",
+      "finish": "Terminar",
+      "close": "Cerrar",
+      "stepOf": "Paso {n} de {total}",
+      "remaining": "Quedan {n} segundos",
+      "pauseTitle": "Pausa",
+      "pauseBody": "Quédate donde estás. Siguiente paso en {n} s.",
+      "minutes": "{min} min",
+      "stepsCount": "{count} pasos",
+      "postureLabel": "Postura",
+      "observeTitle": "Observa",
+      "closingTitle": "Cierre",
+      "doneTitle": "Listo",
+      "doneBody": "Vuelve a la cata con los sentidos despiertos.",
+      "evolutionLabel": "Evolución",
+      "reducedMotionNote": "Movimiento reducido activado: las figuras muestran la posición final y el ejercicio avanza con «Siguiente».",
+      "pausedLabel": "En pausa",
+      "keyboardHint": "← → para moverte · espacio para pausar",
+      "intro": "Antes de empezar"
+    }
   }
 }

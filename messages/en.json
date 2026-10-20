@@ -1469,5 +1469,34 @@
       "invalid_reference": "One of the linked items no longer exists.",
       "unknown": "Something went wrong. Please try again."
     }
+  },
+  "warmup": {
+    "title": "Sensory Movement",
+    "player": {
+      "start": "Start",
+      "next": "Next",
+      "prev": "Previous",
+      "pause": "Pause",
+      "resume": "Resume",
+      "skip": "Skip",
+      "finish": "Finish",
+      "close": "Close",
+      "stepOf": "Step {n} of {total}",
+      "remaining": "{n} seconds left",
+      "pauseTitle": "Pause",
+      "pauseBody": "Stay where you are. Next step in {n} s.",
+      "minutes": "{min} min",
+      "stepsCount": "{count} steps",
+      "postureLabel": "Posture",
+      "observeTitle": "Observe",
+      "closingTitle": "Closing",
+      "doneTitle": "Done",
+      "doneBody": "Back to the cupping with your senses awake.",
+      "evolutionLabel": "Progression",
+      "reducedMotionNote": "Reduced motion is on: figures show the end position and the exercise advances with “Next”.",
+      "pausedLabel": "Paused",
+      "keyboardHint": "← → to move · space to pause",
+      "intro": "Before you start"
+    }
   }
 }
