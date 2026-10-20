@@ -256,7 +256,7 @@ export function FlavorPicker({
     if (!value.includes(id) && !wouldExceedLimit(id)) {
       const { nextValue, nextNotes } = selectionWith(id);
       let withNote = nextNotes;
-      if (opts?.matchType === "parent" && opts.typed) {
+      if ((opts?.matchType === "parent" || opts?.matchType === "dictionary") && opts.typed) {
         const node = flavorNodeById(id);
         const nodeLabel = node ? label(node, locale) : "";
         if (nodeLabel && !sameText(opts.typed, nodeLabel)) {
