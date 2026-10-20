@@ -179,6 +179,7 @@ export function ResultsClient({
     viewForm: string;
     downloadPdf: string;
     downloadSummary: string;
+    downloadFicha: string;
     refresh: string;
     refreshing: string;
     refreshNew: string;
@@ -873,19 +874,35 @@ export function ResultsClient({
           {/* Personal summary PDF — inline so iOS opens the native viewer. Group
               sessions only once the group results are visible (the route enforces
               the same gate with a 409). */}
-          {(!isGroup || canViewGroup) && (
-            <ButtonLink
-              href={`/api/sessions/${session.id}/participant-summary?locale=${locale}&inline=1`}
-              target="_blank"
-              rel="noopener"
-              size="md"
-              variant="secondary"
-              icon={<FileDown size={16} aria-hidden />}
-              className="w-full sm:flex-1"
-            >
-              {translations.downloadSummary}
-            </ButtonLink>
-          )}
+          <div className="flex flex-col gap-2 sm:flex-1 sm:flex-row">
+            {(!isGroup || canViewGroup) && (
+              <ButtonLink
+                href={`/api/sessions/${session.id}/participant-summary?locale=${locale}&inline=1`}
+                target="_blank"
+                rel="noopener"
+                size="md"
+                variant="secondary"
+                icon={<FileDown size={16} aria-hidden />}
+                className="w-full sm:flex-1"
+              >
+                {translations.downloadSummary}
+              </ButtonLink>
+            )}
+            {/* Owner-tier "Ficha técnica" — the route 404s for anyone else. */}
+            {(isOwner || isAdminViewer) && (
+              <ButtonLink
+                href={`/api/sessions/${session.id}/ficha-tecnica?locale=${locale}&inline=1`}
+                target="_blank"
+                rel="noopener"
+                size="md"
+                variant="secondary"
+                icon={<FileDown size={16} aria-hidden />}
+                className="w-full sm:flex-1"
+              >
+                {translations.downloadFicha}
+              </ButtonLink>
+            )}
+          </div>
         </div>
       </div>
 

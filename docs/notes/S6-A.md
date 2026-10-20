@@ -89,3 +89,56 @@ Manual curl matrix (use a logged-in session cookie `-b cookies.txt`):
 All responses carry `Cache-Control: no-store`. Not verified live (no login for
 the agent); the gate itself is `canViewGroupResults`, unit-tested in
 `tests/reports.test.ts`.
+
+## CP-A4 verification
+
+Routes (both `runtime = "nodejs"`, `Cache-Control: no-store`, `?locale=es|en`, `?inline=1`):
+
+- `GET /api/sessions/[id]/ficha-tecnica` — OWNER-tier ficha técnica + owner appendix + teacher
+  notes (one page per cupper). Authz: 401 no user; session must be created by the user or the
+  user is super-admin (rendered as owner); **everyone else, participants included, gets 404**
+  (not 403 — no existence leak). `maxDuration = 60`. Filename `ficha_<slug>.pdf`.
+- `GET /api/coffees/[id]/ficha` — coffee-scoped ficha. Coffee must match `usableCoffeeWhere`
+  (or super-admin) and not be anonymized, else 404. Community block (cross-session
+  `computeCoffeeAggregate`) only when owner / `resultsPublished` / super-admin; private `notes`
+  only for the owner. Filename `ficha_cafe_<slug>.pdf`.
+
+Curl matrix (logged-in cookie jar `-b cookies.txt`; NOT run live — the agent has no login and the
+worktree has no `.env.local`; both routes compile and answer when env is missing only with the
+Supabase-client 500):
+
+| Case | Request | Expect |
+|---|---|---|
+| No cookie | `curl -i /api/sessions/<id>/ficha-tecnica` | 401 `Unauthorized` |
+| Participant (non-owner) | participant cookie, real session id | 404 `Not found` |
+| Unrelated user / unknown id | any | 404 |
+| Owner | owner cookie | 200 `application/pdf`, `attachment; filename="ficha_<slug>.pdf"` |
+| Super-admin | admin cookie, someone else's session | 200 |
+| Inline / locale | `&inline=1&locale=en` | `inline`, English copy |
+| Coffee, no cookie | `/api/coffees/<id>/ficha` | 401 |
+| Coffee, private & not shared / anonymized | other user | 404 |
+| Coffee, public, results unpublished, non-owner | viewer cookie | 200, PDF without the community block and without notes |
+| Coffee, owner | owner cookie | 200 with community block + notes |
+
+Visual check: `npx tsx scripts/render-ficha-preview.tsx <outDir> [es|en]` (run from the repo root).
+Fixture = 4 samples (one reference), 5 cuppers (one excluded), physical + origin data on 2
+samples → 13 pages (cover, 2 per sample except the reference, appendix, 5 teacher pages) in
+both locales; plus a 1-page coffee ficha.
+
+Implementation notes: `lib/pdf/sections/*` (Identity, Extrinsic, Green, Affective, Descriptive,
+Participation, OwnerAppendix, TeacherNotesPages + `shared.tsx` copy), `FichaTecnicaDocument`,
+`CoffeeFichaDocument`; the coffee page query was extracted to `lib/coffees/aggregateSamples.ts`
+(shared by the page and the route); `PdfPercentBars` gained optional `labelWidth`/`valueWidth`
+and `PdfBarList` an optional `fontFamily` (defaults unchanged).
+
+What Kim should check:
+1. Are the descriptors blocks (two-column bars + the consensus sentence) the right density for
+   a printed sheet, and is "Participación" (participants / submitted / included) enough?
+2. Owner appendix: the SD bands (green < 1 SD, amber >= 1 SD, red >= 2 SD) read as outlier
+   detection, not as a quality judgement — is the legend wording clear?
+3. Teacher notes: are "descriptores de consenso que no marcó" and "propios fuera del consenso"
+   useful per cupper, and is 6 ruled lines the right amount of handwriting room?
+4. Green block: defect table lists only defects with a count > 0 (counts × ratio = full
+   defects); confirm that is what a green-coffee sheet should show.
+5. English copy (EN labels for origin/physical fields are mapped from the Spanish labels in
+   `cvaFormData`) — flagged as a draft for her review.

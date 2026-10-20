@@ -82,10 +82,13 @@ export function PdfBarList({
   rows,
   width,
   maxRows = 8,
+  fontFamily,
 }: {
   rows: PdfBarListRow[];
   width: number;
   maxRows?: number;
+  /** Optional: register-font family for the labels (default keeps the built-in font). */
+  fontFamily?: string;
 }) {
   const visible = rows.slice(0, maxRows);
   const height = Math.max(BAR_ROW_HEIGHT, visible.length * BAR_ROW_HEIGHT);
@@ -102,7 +105,7 @@ export function PdfBarList({
     const label = ellipsize(row.label, BAR_LABEL_WIDTH - BAR_GAP, BAR_FONT_SIZE);
 
     return [
-      <SvgText key={`l-${i}`} x={0} y={textY} fontSize={BAR_FONT_SIZE} fill={INK}>
+      <SvgText key={`l-${i}`} x={0} y={textY} fontSize={BAR_FONT_SIZE} fontFamily={fontFamily} fill={INK}>
         {label}
       </SvgText>,
       <Rect
@@ -118,6 +121,7 @@ export function PdfBarList({
         x={width}
         y={textY}
         fontSize={BAR_FONT_SIZE}
+        fontFamily={fontFamily}
         fill={SOFT}
         textAnchor="end"
       >
@@ -358,17 +362,22 @@ export function PdfPercentBars({
   width,
   maxRows = 8,
   valueFormat = "counts",
+  labelWidth = BAR_LABEL_WIDTH,
+  valueWidth = PCT_VALUE_WIDTH,
 }: {
   rows: PdfPercentRow[];
   width: number;
   maxRows?: number;
   /** "counts" → "3/7 · 43%" (default); "percent" → "43%" only. */
   valueFormat?: "counts" | "percent";
+  /** Label / value column widths in pt (defaults keep the original layout). */
+  labelWidth?: number;
+  valueWidth?: number;
 }) {
   const visible = rows.slice(0, maxRows);
   const height = Math.max(BAR_ROW_HEIGHT, visible.length * BAR_ROW_HEIGHT);
-  const barAreaX = BAR_LABEL_WIDTH + BAR_GAP;
-  const barAreaWidth = Math.max(1, width - BAR_LABEL_WIDTH - PCT_VALUE_WIDTH - BAR_GAP * 2);
+  const barAreaX = labelWidth + BAR_GAP;
+  const barAreaWidth = Math.max(1, width - labelWidth - valueWidth - BAR_GAP * 2);
 
   const children = visible.flatMap((row, i) => {
     const rowY = i * BAR_ROW_HEIGHT;
@@ -378,7 +387,7 @@ export function PdfPercentBars({
     const barW = Math.max(BAR_MIN_WIDTH, frac * barAreaWidth);
     return [
       <SvgText key={`l-${i}`} x={0} y={textY} fontSize={BAR_FONT_SIZE} fontFamily={SANS} fill={INK}>
-        {ellipsize(row.label, BAR_LABEL_WIDTH - BAR_GAP, BAR_FONT_SIZE)}
+        {ellipsize(row.label, labelWidth - BAR_GAP, BAR_FONT_SIZE)}
       </SvgText>,
       <Rect
         key={`t-${i}`}

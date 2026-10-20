@@ -576,7 +576,7 @@ export type CupModel = {
 // ─── Extrinsic / physical labeled blocks ────────────────────────────────────
 export type LabeledField = { label: string; value: string };
 
-const EXTRINSIC_FIELDS: { key: string; es: string }[] = [
+export const EXTRINSIC_FIELDS: { key: string; es: string }[] = [
   { key: "ext_pais_val", es: "País" },
   { key: "ext_region_val", es: "Región" },
   { key: "ext_finca_val", es: "Finca/Cooperativa" },
@@ -596,12 +596,12 @@ const EXTRINSIC_FIELDS: { key: string; es: string }[] = [
 // Direct fields written by PhysicalEvalForm.tsx (see phys_color / phys_humedad
 // there). The form's screen weights and defect counts are NOT flat "value"
 // fields — they're derived below in physicalDerived().
-const PHYSICAL_FIELDS: { key: string; es: string }[] = [
+export const PHYSICAL_FIELDS: { key: string; es: string }[] = [
   { key: "phys_color", es: "Color del grano" },
   { key: "phys_humedad", es: "Humedad (%)" },
 ];
 
-function collectLabeled(
+export function collectLabeled(
   d: D,
   fields: { key: string; es: string }[]
 ): LabeledField[] {
@@ -622,7 +622,7 @@ function collectLabeled(
  * value — mirrors the SAME math the live form shows (calcFullDefects, shared
  * from lib/constants.ts; do not reimplement the Cat.1/Cat.2 ratios here).
  */
-function physicalDerived(d: D): LabeledField[] {
+export function physicalDerived(d: D): LabeledField[] {
   const out: LabeledField[] = [];
 
   // (a) Dominant screen size by weight share, e.g. "Malla 15 — 42%".
