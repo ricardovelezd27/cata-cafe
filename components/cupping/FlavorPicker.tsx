@@ -31,6 +31,7 @@ const T: Record<Locale, Record<string, string>> = {
     addWord: "Agregar",
     fileUnderTitle: "¿En qué categoría va?",
     fileUnderHint: "Toca el grupo o subgrupo donde archivar",
+    limitReached: "Máximo {n} descriptores: quita uno para archivar aquí.",
     fileUnderOther: "Ninguna encaja — dejar en «Otros»",
     otherNudge: "Has puesto {n} en «Otros» — ¿en qué categoría van?",
     otherNudgeCta: "Archivar",
@@ -50,6 +51,7 @@ const T: Record<Locale, Record<string, string>> = {
     addWord: "Add",
     fileUnderTitle: "Which category does it belong to?",
     fileUnderHint: "Tap the group or subgroup to file it under",
+    limitReached: "Maximum {n} descriptors: remove one to file it here.",
     fileUnderOther: 'None fits — leave under "Other"',
     otherNudge: 'You put {n} under "Other" — which category do they go in?',
     otherNudgeCta: "File them",
@@ -102,14 +104,14 @@ function FileUnderRow({
         }}
         onMouseEnter={() => onHover(rowIndex)}
         className={`flex w-full items-center gap-2 px-3 py-1.5 text-left ${
-          active ? "bg-cream" : ""
+          active ? "bg-surface-container-low" : ""
         }`}
       >
-        <Plus size={13} aria-hidden className="shrink-0 text-brown-mid" />
-        <span className="text-[13px] text-brown-dark">
+        <Plus size={13} aria-hidden className="shrink-0 text-on-surface-variant" />
+        <span className="text-[13px] text-on-surface">
           {copy} <span className="font-medium">«{term}»</span>…
         </span>
-        <CornerDownLeft size={13} aria-hidden className="ml-auto shrink-0 text-brown-mid" />
+        <CornerDownLeft size={13} aria-hidden className="ml-auto shrink-0 text-on-surface-variant" />
       </button>
     </li>
   );
@@ -148,6 +150,8 @@ export function FlavorPicker({
   // "File under" mode: the modal is picking a category for a typed word. `from`
   // is the generic node the word currently sits under when re-filing.
   const [fileUnder, setFileUnder] = useState<{ word: string; from?: string } | null>(null);
+  // Set when a file-under pick was refused because the selection is at maxSelect.
+  const [limitHit, setLimitHit] = useState(false);
 
   // Predictive typeahead — a filter over the same wheel, feeding the same value.
   const [query, setQuery] = useState("");
@@ -274,6 +278,7 @@ export function FlavorPicker({
   function startFileUnder(word: string, from?: string) {
     if (!word) return;
     setFileUnder({ word, from });
+    setLimitHit(false);
     setNavId(null);
     setOpen(true);
   }
@@ -309,7 +314,11 @@ export function FlavorPicker({
   /** Modal pick while in file-under mode; advances through queued words. */
   function pickFileTarget(id: string) {
     if (!fileUnder) return;
-    if (!fileWord(id, fileUnder.word, fileUnder.from)) return;
+    if (!fileWord(id, fileUnder.word, fileUnder.from)) {
+      setLimitHit(true); // keep the modal open and say why
+      return;
+    }
+    setLimitHit(false);
     setQuery("");
     setHi(0);
     // Re-file queue: the other words still parked under a generic bucket.
@@ -405,7 +414,7 @@ export function FlavorPicker({
       </div>
 
       {genericWords.length > 0 && (
-        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-card bg-secondary/10 px-3 py-2 text-[12px] text-brown-dark">
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-card bg-secondary/10 px-3 py-2 text-[12px] text-on-surface">
           <span>{t.otherNudge.replace("{n}", String(genericWords.length))}</span>
           <button
             type="button"
@@ -510,7 +519,10 @@ export function FlavorPicker({
         open={open}
         onOpenChange={(o) => {
           setOpen(o);
-          if (!o) setFileUnder(null);
+          if (!o) {
+            setFileUnder(null);
+            setLimitHit(false);
+          }
         }}
         title={fileUnder ? t.fileUnderTitle : t.title}
         subtitle={
@@ -522,6 +534,12 @@ export function FlavorPicker({
         }
         closeLabel={t.close}
       >
+        {fileUnder && limitHit && maxSelect !== undefined && (
+          <p role="alert" className="mb-3 rounded-card bg-error-container px-3 py-2 text-[12px] text-on-error-container">
+            {t.limitReached.replace("{n}", String(maxSelect))}
+          </p>
+        )}
+
         {/* Breadcrumb */}
         <nav className="flex flex-wrap items-center gap-1 text-[12px] mb-3">
           <button
@@ -613,7 +631,7 @@ export function FlavorPicker({
           <button
             type="button"
             onClick={() => pickFileTarget(OTHER_ID)}
-            className="mt-4 w-full rounded-pill border border-outline-variant px-4 py-2 text-[12px] text-brown-mid hover:text-brown-dark"
+            className="mt-4 w-full rounded-pill border border-outline-variant px-4 py-2 text-[12px] text-on-surface-variant hover:text-on-surface"
           >
             {t.fileUnderOther}
           </button>
@@ -625,6 +643,7 @@ export function FlavorPicker({
             onClick={() => {
               setOpen(false);
               setFileUnder(null);
+              setLimitHit(false);
             }}
             className="rounded-pill bg-green-dark px-5 py-2 text-[13px] font-semibold text-bg"
           >
