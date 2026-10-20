@@ -162,6 +162,7 @@ export function WarmupPlayer({
     setPhase((p) => (p.kind === "step" || p.kind === "pause" ? nextOf(p, total) : p));
   }, [reducedMotion, total]);
 
+  // userPaused resets on every phase change on purpose (each step starts running).
   const countdown = useCountdown(phaseSeconds, {
     resetKey: phaseKey,
     autoStart: phaseSeconds > 0,
@@ -172,7 +173,12 @@ export function WarmupPlayer({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      // Focus in a form field: leave every key to it (arrows move caret/options).
+      if (target && (/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) || target.isContentEditable)) return;
+      // Space/Enter on a focused button/link/etc. activates THAT control (the
+      // Pause button would otherwise toggle twice).
+      const onInteractive = !!target?.closest?.('button, a[href], [role="button"], summary, [tabindex]:not([tabindex="-1"])');
+      if (onInteractive && (e.key === " " || e.key === "Enter")) return;
       if (e.key === "ArrowRight") {
         e.preventDefault();
         goNext();
@@ -250,7 +256,12 @@ export function WarmupPlayer({
           </div>
           {/* Screen readers: whole seconds, polite, no per-tick figure churn. */}
           <p className="sr-only" aria-live="polite" aria-atomic="true">
-            {phaseSeconds > 0 ? fill(t.remaining, { n: countdown.remainingSec }) : ""}
+            {step ? lw(step.text, locale) : ""}
+          </p>
+          <p className="sr-only" aria-live="polite" aria-atomic="true">
+            {phaseSeconds > 0 && [10, 5, 3].includes(countdown.remainingSec)
+              ? fill(t.remaining, { n: countdown.remainingSec })
+              : ""}
           </p>
         </div>
 

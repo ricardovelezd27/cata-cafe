@@ -53,7 +53,7 @@ export function useCountdown(
     key: resetKey,
     remainingSec: Math.ceil(durationMs / 1000),
     userPaused: !autoStart,
-    hiddenPaused: false,
+    hiddenPaused: pauseOnHide && typeof document !== "undefined" && document.visibilityState === "hidden",
     done: durationMs === 0,
   });
   const [snap, setSnap] = useState<Snap>(fresh);
