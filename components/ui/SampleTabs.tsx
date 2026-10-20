@@ -19,6 +19,8 @@ interface SampleTabsProps {
   orientation?: "vertical" | "horizontal";
   /** Pill text for `reference` items, e.g. "Referencia". */
   referenceLabel?: string;
+  /** Keep `header` as the nav's aria-label but don't render it (phone row). */
+  hideHeader?: boolean;
 }
 
 export function SampleTabs({
@@ -28,6 +30,7 @@ export function SampleTabs({
   header,
   orientation = "vertical",
   referenceLabel = "Ref",
+  hideHeader = false,
 }: SampleTabsProps) {
   const horizontal = orientation === "horizontal";
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -82,7 +85,7 @@ export function SampleTabs({
       aria-label={header ?? "Samples"}
       className={horizontal ? styles.horizontal : undefined}
     >
-      {header && (
+      {header && !hideHeader && (
         <div className={`${styles.header} ${horizontal ? styles.headerH : ""}`}>
           {header}
         </div>

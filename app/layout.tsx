@@ -39,6 +39,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  // Android Chrome: shrink the layout viewport when the keyboard opens so the
+  // fixed cupping shell reflows above it. iOS Safari ignores this — there the
+  // visualViewport listener in hooks/useKeyboardOpen.ts does the work.
+  interactiveWidget: "resizes-content",
 };
 
 export const metadata: Metadata = {
