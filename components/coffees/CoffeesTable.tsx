@@ -16,6 +16,17 @@ import { DuplicateButton } from "@/components/DuplicateButton";
 import { DeleteCoffeeButton, type DeleteCoffeeTranslations } from "@/components/coffees/DeleteCoffeeButton";
 import { formatCoffeeCode } from "@/lib/coffeeCode";
 import { MAX_BULK_COFFEE_DELETE } from "@/lib/coffeeAccess";
+import { normKey } from "@/lib/analytics/normalize";
+
+// Variety facet: free-text varieties are grouped by accent/case-insensitive key
+// ("Caturra" and "caturra " merge)
+// and capped to the most common so the dropdown stays usable.
+const VARIETY_FACET_CAP = 20;
+
+function varietyKey(v: string | null): string | null {
+  if (!v) return null;
+  return normKey(v) || null;
+}
 
 export type CoffeeRow = {
   id: string;
@@ -23,6 +34,8 @@ export type CoffeeRow = {
   code: string | null;
   country: string | null;
   region: string | null;
+  farm: string | null;
+  producer: string | null;
   variety: string | null;
   processType: string | null;
   visibility: string; // "private" | "shared" | "public"
@@ -66,6 +79,7 @@ export type CoffeesTableTranslations = {
   // Facets
   filterProcess: string;
   filterCountry: string;
+  filterVariety: string;
   filterOwnership: string;
   ownershipMine: string;
   ownershipShared: string;
@@ -269,6 +283,27 @@ export default function CoffeesTable({
       .sort((a, b) => a.localeCompare(b, locale))
       .map((v) => ({ value: v, label: v }));
 
+    const byKey = new Map<string, { label: string; count: number; labels: Map<string, number> }>();
+    for (const c of coffees) {
+      const key = varietyKey(c.variety);
+      if (!key || !c.variety) continue;
+      const label = c.variety.trim();
+      const e = byKey.get(key) ?? { label, count: 0, labels: new Map() };
+      e.count += 1;
+      e.labels.set(label, (e.labels.get(label) ?? 0) + 1);
+      byKey.set(key, e);
+    }
+    const varietyOptions = Array.from(byKey.entries())
+      .map(([key, e]) => ({
+        value: key,
+        count: e.count,
+        label: [...e.labels.entries()].sort((a, b) => b[1] - a[1])[0][0],
+      }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, locale))
+      .slice(0, VARIETY_FACET_CAP)
+      .sort((a, b) => a.label.localeCompare(b.label, locale))
+      .map(({ value, label }) => ({ value, label }));
+
     return [
       {
         key: "process",
@@ -281,6 +316,12 @@ export default function CoffeesTable({
         label: t.filterCountry,
         options: countryOptions,
         match: (row, value) => row.country === value,
+      },
+      {
+        key: "variety",
+        label: t.filterVariety,
+        options: varietyOptions,
+        match: (row, value) => varietyKey(row.variety) === value,
       },
       {
         key: "ownership",
@@ -310,6 +351,9 @@ export default function CoffeesTable({
         row.country,
         row.variety,
         row.region,
+        row.farm,
+        row.producer,
+        row.processType,
         row.code,
         formatCoffeeCode(row.code),
       ]}
