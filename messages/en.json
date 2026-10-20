@@ -1226,7 +1226,8 @@
       "guestBadge": "Guest",
       "filterType": "Type",
       "typeRegistered": "Registered",
-      "typeGuest": "Guest"
+      "typeGuest": "Guest",
+      "exportCsv": "Export emails (CSV)"
     },
     "benchmark": {
       "title": "Benchmark vs. CQI",

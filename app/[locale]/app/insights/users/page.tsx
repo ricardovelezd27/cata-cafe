@@ -64,6 +64,7 @@ export default async function InsightsUsersPage({
           filterType: t("filterType"),
           typeRegistered: t("typeRegistered"),
           typeGuest: t("typeGuest"),
+          exportCsv: t("exportCsv"),
         }}
       />
     </div>

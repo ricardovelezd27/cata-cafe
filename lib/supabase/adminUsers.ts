@@ -19,10 +19,38 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * map ids to emails should treat a missing id as "unknown", not as a hard
  * failure.
  */
-export async function listAllAuthUsers(): Promise<
-  { id: string; email: string | null; isAnonymous: boolean }[]
-> {
-  const users: { id: string; email: string | null; isAnonymous: boolean }[] = [];
+type AuthUserRow = { id: string; email: string | null; isAnonymous: boolean; createdAt: string | null };
+
+/**
+ * Same paging as listAllAuthUsers but THROWS on any listing error, so callers
+ * that must not act on partial data (the CSV export) can tell "failed" from
+ * "empty".
+ */
+export async function listAllAuthUsersStrict(): Promise<AuthUserRow[]> {
+  const users: AuthUserRow[] = [];
+  const admin = createAdminClient();
+  const perPage = 1000;
+  let page = 1;
+  const MAX_PAGES = 50;
+  for (let i = 0; i < MAX_PAGES; i++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+    if (error) throw new Error("auth_list_failed");
+    for (const u of data.users) {
+      users.push({
+        id: u.id,
+        email: u.email ?? null,
+        isAnonymous: u.is_anonymous === true,
+        createdAt: u.created_at ?? null,
+      });
+    }
+    if (!data.nextPage) break;
+    page = data.nextPage;
+  }
+  return users;
+}
+
+export async function listAllAuthUsers(): Promise<AuthUserRow[]> {
+  const users: AuthUserRow[] = [];
   try {
     const admin = createAdminClient();
     const perPage = 1000;
@@ -32,7 +60,12 @@ export async function listAllAuthUsers(): Promise<
       const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
       if (error) break;
       for (const u of data.users) {
-        users.push({ id: u.id, email: u.email ?? null, isAnonymous: u.is_anonymous === true });
+        users.push({
+          id: u.id,
+          email: u.email ?? null,
+          isAnonymous: u.is_anonymous === true,
+          createdAt: u.created_at ?? null,
+        });
       }
       if (!data.nextPage) break;
       page = data.nextPage;
