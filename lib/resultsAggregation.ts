@@ -38,6 +38,13 @@ export type SampleBlockFreq = {
   totalEvaluators: number;
   /** blockId → descriptors ranked desc by count (each cupper counts once). */
   blocks: Record<string, RankedDescriptor[]>;
+  /**
+   * stageId (PERCEPTUAL_BLOCKS[].attrs[].id, e.g. "fragancia", "aroma") →
+   * descriptors ranked desc by the number of included cuppers who picked the
+   * id in THAT stage. Additive: not deduped across stages (the word cloud sums
+   * stages, so fragancia 1 + aroma 1 = 2). Consumers that predate it ignore it.
+   */
+  stages?: Record<string, RankedDescriptor[]>;
   /** blockId → statistical summary sentence (null text → caller empty state). */
   summary: Record<string, string | null>;
 };
@@ -118,12 +125,16 @@ export function computeSampleBlockFrequencies(
   // stages).
   type BlockSel = Map<string, Map<string, Set<string>>>;
   const selections = new Map<string, BlockSel>();
+  // sampleId → stageId → descriptor id → number of cuppers (per-stage, no
+  // cross-stage dedupe).
+  const stageCounts = new Map<string, Map<string, Map<string, number>>>();
   const evaluatorsPerSample = new Map<string, Set<string>>();
   for (const s of samples) {
     const bySel: BlockSel = new Map();
     for (const block of PERCEPTUAL_BLOCKS) bySel.set(block.id, new Map());
     selections.set(s.id, bySel);
     evaluatorsPerSample.set(s.id, new Set());
+    stageCounts.set(s.id, new Map());
   }
 
   for (const ev of evals) {
@@ -136,6 +147,15 @@ export function computeSampleBlockFrequencies(
     for (const block of PERCEPTUAL_BLOCKS) {
       const ids = collectDescriptors(blob, block.descKeys);
       bySel.get(block.id)!.set(ev.cupperId, new Set(ids));
+      for (const attr of block.attrs ?? []) {
+        if (!attr.descKey) continue;
+        const stageMap = stageCounts.get(ev.sessionSampleId)!;
+        let counts = stageMap.get(attr.id);
+        if (!counts) stageMap.set(attr.id, (counts = new Map()));
+        for (const did of collectDescriptors(blob, [attr.descKey])) {
+          counts.set(did, (counts.get(did) ?? 0) + 1);
+        }
+      }
     }
   }
 
@@ -203,6 +223,21 @@ export function computeSampleBlockFrequencies(
       total,
     });
 
+    const stagesOut: Record<string, RankedDescriptor[]> = {};
+    for (const block of PERCEPTUAL_BLOCKS) {
+      for (const attr of block.attrs ?? []) {
+        if (!attr.descKey) continue;
+        const counts = stageCounts.get(s.id)!.get(attr.id) ?? new Map<string, number>();
+        stagesOut[attr.id] = [...counts.entries()]
+          .map(([did, count]) => {
+            const info = resolveForBlock(block.kind, did);
+            return info ? { id: did, label: info.label, color: info.color, count } : null;
+          })
+          .filter((d): d is RankedDescriptor => d !== null)
+          .sort((a, b) => b.count - a.count);
+      }
+    }
+
     const summary: Record<string, string | null> = {};
     if (skipSummaries) {
       for (const b of summaryBlocks) summary[b.id] = null;
@@ -216,6 +251,7 @@ export function computeSampleBlockFrequencies(
       label: s.label,
       totalEvaluators: total,
       blocks: blocksOut,
+      stages: stagesOut,
       summary,
     };
   });

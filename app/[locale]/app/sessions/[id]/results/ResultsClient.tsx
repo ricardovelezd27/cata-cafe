@@ -213,6 +213,7 @@ export function ResultsClient({
     cloudScopeSample: string;
     cloudScopeTaster: string;
     cloudEmpty: string;
+    hideSingles: string;
     filterSampleAll: string;
     filterBlockLabel: string;
     soloCloudTitle: string;
@@ -666,6 +667,7 @@ export function ResultsClient({
               cloudTitle: translations.cloudTitle,
               soloCloudTitle: translations.soloCloudTitle,
               cloudEmpty: translations.cloudEmpty,
+              hideSingles: translations.hideSingles,
               filterSampleAll: translations.filterSampleAll,
               filterBlockLabel: translations.filterBlockLabel,
               tasterScopeAll: translations.tasterScopeAll,

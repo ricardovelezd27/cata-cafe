@@ -10,21 +10,52 @@
  * sample before switching tabs.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { PillTabs, InfoHint } from "@/components/ui";
 import { WordCloud } from "@/components/results/WordCloud";
 import { DescriptorFrequency, type SampleBlockFreq } from "@/components/results/DescriptorFrequency";
 import { CupperAlignment, type CupperAlignmentRow } from "@/components/results/CupperAlignment";
 import type { ParticipantResult } from "@/components/results/OwnerParticipantSection";
-import { buildFlavorCloud, buildTasterCloud, ALL_BLOCK_IDS, type FlavorCloudScope } from "@/lib/wordCloud";
+import {
+  buildFlavorCloud,
+  buildTasterCloud,
+  sharedLabelKeys,
+  labelKey,
+  ALL_BLOCK_IDS,
+  type FlavorCloudScope,
+} from "@/lib/wordCloud";
 import { PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
 import type { SessionFormat } from "@/lib/constants";
 import type { ResultsHelp } from "./types";
+
+// "Hide single-person descriptors" — persisted like cata_results_view (external
+// store read, no setState-in-effect). Default OFF: show every descriptor.
+const HIDE_SINGLES_KEY = "cata_results_hide_singles";
+const HIDE_SINGLES_EVENT = "cata-results-hide-singles-change";
+function subscribeHideSingles(cb: () => void) {
+  window.addEventListener("storage", cb);
+  window.addEventListener(HIDE_SINGLES_EVENT, cb);
+  return () => {
+    window.removeEventListener("storage", cb);
+    window.removeEventListener(HIDE_SINGLES_EVENT, cb);
+  };
+}
+function getHideSinglesSnapshot(): boolean {
+  try {
+    return localStorage.getItem(HIDE_SINGLES_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+function getHideSinglesServerSnapshot(): boolean {
+  return false;
+}
 
 type DescriptoresTabTranslations = {
   cloudTitle: string;
   soloCloudTitle: string;
   cloudEmpty: string;
+  hideSingles: string;
   filterSampleAll: string;
   filterBlockLabel: string;
   tasterScopeAll: string;
@@ -88,12 +119,34 @@ export function DescriptoresTab({
     ...PERCEPTUAL_BLOCKS.map((b) => ({ id: b.id, label: blockLabels[b.id] ?? b.id })),
   ];
 
+  const hideSingles = useSyncExternalStore(
+    subscribeHideSingles,
+    getHideSinglesSnapshot,
+    getHideSinglesServerSnapshot,
+  );
+  // Solo sessions have exactly one cupper, so every descriptor is "single".
+  const singlesToggleVisible = !isSoloDescriptors;
+  const hideSinglesActive = hideSingles && singlesToggleVisible;
+  const changeHideSingles = () => {
+    try {
+      window.localStorage.setItem(HIDE_SINGLES_KEY, hideSingles ? "0" : "1");
+    } catch {
+      // Storage denied — the choice just won't persist.
+    }
+    window.dispatchEvent(new Event(HIDE_SINGLES_EVENT));
+  };
+
   const groupCloudWords = useMemo(() => {
     const scope: FlavorCloudScope =
       sampleId === "all" ? { kind: "session" } : { kind: "sample", sampleId };
+    // General = every stage once (buildFlavorCloud sums stage mentions and
+    // merges same-label entries, so nothing is counted twice).
     const blockIds = blockId === "general" ? ALL_BLOCK_IDS : [blockId];
-    return buildFlavorCloud(descriptorFrequency, scope, blockIds);
-  }, [descriptorFrequency, sampleId, blockId]);
+    const words = buildFlavorCloud(descriptorFrequency, scope, blockIds, locale === "en" ? "en" : "es");
+    if (!hideSinglesActive) return words;
+    const shared = sharedLabelKeys(descriptorFrequency, scope, blockId);
+    return words.filter((w) => shared.has(labelKey(w.label)));
+  }, [descriptorFrequency, sampleId, blockId, locale, hideSinglesActive]);
 
   const tasterCloudWords = useMemo(() => {
     if (tasterId === "all" || !participants) return [];
@@ -108,7 +161,7 @@ export function DescriptoresTab({
   const activeCloudWords = tasterId === "all" ? groupCloudWords : tasterCloudWords;
 
   const visibleSampleIds = sampleId === "all" ? null : [sampleId];
-  const minCount = isSoloDescriptors ? 1 : 2;
+  const minCount = hideSinglesActive ? 2 : 1;
 
   return (
     <div className="flex flex-col gap-6">
@@ -130,6 +183,15 @@ export function DescriptoresTab({
           ariaLabel={t.filterBlockLabel}
           size="sm"
         />
+        {singlesToggleVisible && (
+          <PillTabs
+            items={[{ id: "hide", label: t.hideSingles }]}
+            value={hideSingles ? "hide" : ""}
+            onChange={changeHideSingles}
+            ariaLabel={t.hideSingles}
+            size="sm"
+          />
+        )}
       </div>
 
       {/* Word cloud */}

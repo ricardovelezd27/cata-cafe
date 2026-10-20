@@ -355,12 +355,13 @@
     "participants": "participants",
     "emptyStage": "No descriptor with 2 or more selections in this stage.",
     "emptyBlock": "No shared descriptors in this block.",
-    "emptyAll": "No descriptors selected by 2 or more participants yet.",
+    "emptyAll": "No descriptors selected yet.",
     "cloudTitle": "Flavor cloud",
     "cloudScopeSession": "Whole session",
     "cloudScopeSample": "Per sample",
     "cloudScopeTaster": "Per taster",
     "cloudEmpty": "No descriptors yet",
+    "hideSingles": "Hide single-person descriptors",
     "filterSampleAll": "All samples",
     "filterBlockLabel": "Block",
     "blockGeneral": "General",
@@ -701,7 +702,7 @@
       },
       "nube": {
         "title": "Flavor cloud",
-        "body": "The most-mentioned descriptors, shown larger the more cuppers chose them. Responds to the sample and block filters selected above."
+        "body": "Each descriptor appears once; its size adds up its mentions across every stage (fragrance 1 + aroma 1 = 2). Tap a word to see the per-stage breakdown. The bars below count cuppers per block, so they can differ on purpose. Follows the sample and block filters above."
       },
       "frecuencia": {
         "title": "Descriptor frequency",

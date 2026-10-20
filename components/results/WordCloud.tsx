@@ -1,9 +1,9 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { CloudWord } from "@/lib/wordCloud";
+import { capWords, formatBreakdown, type CloudWord } from "@/lib/wordCloud";
 
-const DEFAULT_MAX_WORDS = 45;
+const DEFAULT_MAX_WORDS = 30;
 
 /** Horizontal stretch of the placement spiral. Tuned to ~1.7:1 overall cloud
  *  aspect: rounded enough to read as a cloud, wide enough to sit in a results
@@ -127,8 +127,11 @@ export function WordCloud({
   const containerRef = useRef<HTMLDivElement>(null);
   const lastWidthRef = useRef(-1);
   const [layout, setLayout] = useState<Layout | null>(null);
+  // Tap/click pins a word and shows its per-stage breakdown as a caption —
+  // touch has no hover, so the title tooltip alone is not enough.
+  const [pinnedId, setPinnedId] = useState<string | null>(null);
 
-  const shown = useMemo(() => words.slice(0, maxWords), [words, maxWords]);
+  const shown = useMemo(() => capWords(words, maxWords), [words, maxWords]);
 
   useLayoutEffect(() => {
     const el = containerRef.current;
@@ -158,6 +161,12 @@ export function WordCloud({
     };
   }, [shown]);
 
+  const pinned = shown.find((w) => w.id === pinnedId) ?? null;
+  const describe = (w: CloudWord) => {
+    const tail = formatBreakdown(w);
+    return tail ? `${w.label} · ${w.count} — ${tail}` : `${w.label} · ${w.count}`;
+  };
+
   if (shown.length === 0) {
     return <p className="py-2 text-sm italic text-on-surface-variant">{emptyLabel}</p>;
   }
@@ -184,9 +193,13 @@ export function WordCloud({
             }}
           >
             {layout.placed.map((p) => (
-              <span
+              <button
+                type="button"
                 key={p.word.id}
-                title={`${p.word.label} (${p.word.count})`}
+                title={describe(p.word)}
+                aria-label={describe(p.word)}
+                aria-pressed={pinnedId === p.word.id}
+                onClick={() => setPinnedId((cur) => (cur === p.word.id ? null : p.word.id))}
                 style={{
                   position: "absolute",
                   left: p.cx,
@@ -197,15 +210,33 @@ export function WordCloud({
                   color: p.word.color,
                   lineHeight: 1,
                   whiteSpace: "nowrap",
-                  cursor: "default",
+                  cursor: "pointer",
+                  background: "none",
+                  border: 0,
+                  padding: 0,
+                  opacity: pinned && pinned.id !== p.word.id ? 0.45 : 1,
+                  textDecoration: pinnedId === p.word.id ? "underline" : "none",
+                  textUnderlineOffset: 3,
                 }}
               >
                 {p.word.label}
-              </span>
+              </button>
             ))}
           </div>
         )}
       </div>
+      {pinned && (
+        <p
+          role="status"
+          className="mt-2 text-center text-sm text-on-surface-variant"
+          style={{ minHeight: "1.25rem" }}
+        >
+          <span className="font-semibold" style={{ color: pinned.color }}>
+            {pinned.label} · {pinned.count}
+          </span>
+          {pinned.breakdown && pinned.breakdown.length > 0 && <> — {formatBreakdown(pinned)}</>}
+        </p>
+      )}
     </div>
   );
 }
