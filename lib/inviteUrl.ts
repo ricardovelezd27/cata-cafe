@@ -25,7 +25,8 @@ export function siteOrigin(): string {
 
 /**
  * Login URL that lands on a session's results page after auth (the login page
- * threads `next`; a signed-in browser passes straight through).
+ * threads `next`; when a non-anonymous user is already signed in, the login
+ * page redirects straight to `next` without asking for a second magic link).
  */
 export function buildResultsLoginUrl(origin: string, locale: string, sessionId: string): string {
   const next = `/${locale}/app/sessions/${sessionId}/results`;

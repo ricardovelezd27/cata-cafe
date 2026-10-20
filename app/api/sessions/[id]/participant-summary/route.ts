@@ -16,6 +16,7 @@ import { loadSessionReportSource } from "@/lib/reports/sessionReportData";
 import { buildParticipantSummary } from "@/lib/reports/participantSummary";
 import { ParticipantSummaryDocument } from "@/lib/pdf/ParticipantSummaryDocument";
 import { slug } from "@/lib/pdf/filename";
+import { logError, errorMessage } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,6 +26,25 @@ const NOT_READY = {
   es: "Los resultados del grupo aún no están disponibles",
   en: "Group results are not available yet",
 } as const;
+
+const SERVER_ERROR = {
+  es: "No se pudo generar el PDF. Inténtalo de nuevo en unos minutos.",
+  en: "The PDF could not be generated. Please try again in a few minutes.",
+} as const;
+
+function failureResponse(
+  where: string,
+  ids: { sessionId?: string; coffeeId?: string },
+  locale: "es" | "en",
+  err: unknown,
+): Response {
+  const digest = Math.random().toString(36).slice(2, 10);
+  logError({ where, code: "pdf_render_failed", digest, locale, ...ids, message: errorMessage(err) });
+  return new Response(`${SERVER_ERROR[locale]} (${digest})`, {
+    status: 500,
+    headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
+  });
+}
 
 export async function GET(
   request: NextRequest,
@@ -101,29 +121,34 @@ export async function GET(
     }
   }
 
-  const [tBlocks, tResults] = await Promise.all([
-    getTranslations({ locale, namespace: "blocks" }),
-    getTranslations({ locale, namespace: "results" }),
-  ]);
-  const labels = {
-    coffeeDeleted: deletedCoffeeLabel(locale),
-    soloTopDescriptors: tResults("dashboard.soloTopDescriptors"),
-  };
+  let buffer: Buffer;
+  try {
+    const [tBlocks, tResults] = await Promise.all([
+      getTranslations({ locale, namespace: "blocks" }),
+      getTranslations({ locale, namespace: "results" }),
+    ]);
+    const labels = {
+      coffeeDeleted: deletedCoffeeLabel(locale),
+      soloTopDescriptors: tResults("dashboard.soloTopDescriptors"),
+    };
 
-  const source = await loadSessionReportSource(id, {
-    locale,
-    blockLabel: (blockId) => tBlocks(blockId as Parameters<typeof tBlocks>[0]),
-  });
-  if (!source) return new Response("Not found", { status: 404 });
+    const source = await loadSessionReportSource(id, {
+      locale,
+      blockLabel: (blockId) => tBlocks(blockId as Parameters<typeof tBlocks>[0]),
+    });
+    if (!source) return new Response("Not found", { status: 404 });
 
-  const model = buildParticipantSummary(source, {
-    viewerId: viewAsId,
-    locale,
-    labels,
-  });
-  const buffer = await renderToBuffer(
-    ParticipantSummaryDocument({ model, locale }),
-  );
+    const model = buildParticipantSummary(source, {
+      viewerId: viewAsId,
+      locale,
+      labels,
+    });
+    buffer = await renderToBuffer(
+      ParticipantSummaryDocument({ model, locale }),
+    );
+  } catch (err) {
+    return failureResponse("participant-summary", { sessionId: id }, locale, err);
+  }
 
   const filename = `${locale === "en" ? "summary" : "resumen"}_${slug(session.name) || "sesion"}.pdf`;
   return new Response(new Uint8Array(buffer), {

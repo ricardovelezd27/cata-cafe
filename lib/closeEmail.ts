@@ -191,8 +191,12 @@ export async function sendCloseEmails(
 
       // Guard: a model failure marks THIS recipient failed, never the loop.
       if (!assets.source) return { status: "failed", error: assets.sourceError ?? "report_source" };
-      let summaryBuffer: Buffer;
+      // A participant who submitted nothing would get a mostly empty PDF: send
+      // the link-only email (ledger status is still "sent").
+      const hasSubmitted = (evalsByCupper.get(p.userId)?.size ?? 0) > 0;
+      let summaryBuffer: Buffer | null = null;
       try {
+        if (hasSubmitted) {
         const messages = isEn ? enMessages : esMessages;
         const model = buildParticipantSummary(assets.source, {
           viewerId: p.userId,
@@ -205,6 +209,7 @@ export async function sendCloseEmails(
         summaryBuffer = await renderToBuffer(
           ParticipantSummaryDocument({ model, locale: recipientLocale }),
         );
+        }
       } catch (err) {
         return {
           status: "failed",
@@ -212,9 +217,9 @@ export async function sendCloseEmails(
         };
       }
 
-      const attachments = [
-        { filename: `${isEn ? "summary" : "resumen"}_${nameSlug || "session"}.pdf`, content: summaryBuffer },
-      ];
+      const attachments: { filename: string; content: Buffer }[] = summaryBuffer
+        ? [{ filename: `${isEn ? "summary" : "resumen"}_${nameSlug || "session"}.pdf`, content: summaryBuffer }]
+        : [];
 
       if (attachCva) {
         // Legacy opt-in: also attach this participant's own CVA form.

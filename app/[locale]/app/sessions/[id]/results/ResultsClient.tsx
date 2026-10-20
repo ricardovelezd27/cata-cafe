@@ -879,7 +879,8 @@ export function ResultsClient({
               sessions only once the group results are visible (the route enforces
               the same gate with a 409). */}
           <div className="flex flex-col gap-2 sm:flex-1 sm:flex-row">
-            {(!isGroup || canViewGroup) && (
+            {(!isGroup || canViewGroup) &&
+              session.samples.some((s) => s.myEvaluation?.status === "submitted") && (
               <ButtonLink
                 href={`/api/sessions/${session.id}/participant-summary?locale=${locale}&inline=1`}
                 target="_blank"

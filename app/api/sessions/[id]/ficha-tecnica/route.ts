@@ -15,10 +15,30 @@ import { buildFichaTecnica } from "@/lib/reports/fichaTecnica";
 import { buildTeacherNotes } from "@/lib/reports/teacherNotes";
 import { FichaTecnicaDocument } from "@/lib/pdf/FichaTecnicaDocument";
 import { slug } from "@/lib/pdf/filename";
+import { logError, errorMessage } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
+
+const SERVER_ERROR = {
+  es: "No se pudo generar el PDF. Inténtalo de nuevo en unos minutos.",
+  en: "The PDF could not be generated. Please try again in a few minutes.",
+} as const;
+
+function failureResponse(
+  where: string,
+  ids: { sessionId?: string; coffeeId?: string },
+  locale: "es" | "en",
+  err: unknown,
+): Response {
+  const digest = Math.random().toString(36).slice(2, 10);
+  logError({ where, code: "pdf_render_failed", digest, locale, ...ids, message: errorMessage(err) });
+  return new Response(`${SERVER_ERROR[locale]} (${digest})`, {
+    status: 500,
+    headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
+  });
+}
 
 export async function GET(
   request: NextRequest,
@@ -42,30 +62,35 @@ export async function GET(
   });
   if (!session) return new Response("Not found", { status: 404 });
 
-  const [tBlocks, tResults] = await Promise.all([
-    getTranslations({ locale, namespace: "blocks" }),
-    getTranslations({ locale, namespace: "results" }),
-  ]);
+  let buffer: Buffer;
+  try {
+    const [tBlocks, tResults] = await Promise.all([
+      getTranslations({ locale, namespace: "blocks" }),
+      getTranslations({ locale, namespace: "results" }),
+    ]);
 
-  const source = await loadSessionReportSource(id, {
-    locale,
-    blockLabel: (blockId) => tBlocks(blockId as Parameters<typeof tBlocks>[0]),
-  });
-  if (!source) return new Response("Not found", { status: 404 });
+    const source = await loadSessionReportSource(id, {
+      locale,
+      blockLabel: (blockId) => tBlocks(blockId as Parameters<typeof tBlocks>[0]),
+    });
+    if (!source) return new Response("Not found", { status: 404 });
 
-  const model = buildFichaTecnica(source, {
-    tier: "owner",
-    locale,
-    labels: {
-      coffeeDeleted: deletedCoffeeLabel(locale),
-      soloTopDescriptors: tResults("dashboard.soloTopDescriptors"),
-    },
-  });
-  const teacherNotes = buildTeacherNotes(source);
+    const model = buildFichaTecnica(source, {
+      tier: "owner",
+      locale,
+      labels: {
+        coffeeDeleted: deletedCoffeeLabel(locale),
+        soloTopDescriptors: tResults("dashboard.soloTopDescriptors"),
+      },
+    });
+    const teacherNotes = buildTeacherNotes(source);
 
-  const buffer = await renderToBuffer(
-    FichaTecnicaDocument({ model, teacherNotes, locale }),
-  );
+    buffer = await renderToBuffer(
+      FichaTecnicaDocument({ model, teacherNotes, locale }),
+    );
+  } catch (err) {
+    return failureResponse("ficha-tecnica", { sessionId: id }, locale, err);
+  }
 
   const filename = `ficha_${slug(session.name) || "sesion"}.pdf`;
   return new Response(new Uint8Array(buffer), {
