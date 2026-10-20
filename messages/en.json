@@ -351,6 +351,7 @@
   },
   "descriptors": {
     "viewAll": "View all",
+    "byGroup": "By wheel group",
     "of": "of",
     "participants": "participants",
     "emptyStage": "No descriptor with 2 or more selections in this stage.",
