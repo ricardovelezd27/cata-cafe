@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
-import { Users } from "lucide-react";
+import { useMemo, useTransition } from "react";
+import { Download, Users } from "lucide-react";
 import { DataTable, type Column, type Facet } from "@/components/ui/DataTable";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ROLE_LABELS } from "@/lib/constants";
-import type { AnalyticsUser } from "@/app/actions/analytics";
+import { exportRegisteredUsersCsv, type AnalyticsUser } from "@/app/actions/analytics";
+import { Button } from "@/components/ui/Button";
+import { useActionFeedback } from "@/components/ui/Toast";
 
 export interface UsersDirectoryTranslations {
   table: {
@@ -31,6 +33,7 @@ export interface UsersDirectoryTranslations {
   filterType: string;
   typeRegistered: string;
   typeGuest: string;
+  exportCsv: string;
 }
 
 interface UsersDirectoryProps {
@@ -46,6 +49,22 @@ function roleLabel(role: string, locale: string): string {
 }
 
 export function UsersDirectory({ users, locale, t }: UsersDirectoryProps) {
+  const feedback = useActionFeedback();
+  const [exporting, startExport] = useTransition();
+
+  function downloadCsv() {
+    startExport(async () => {
+      await feedback.run(exportRegisteredUsersCsv(), ({ csv, filename }) => {
+        const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    });
+  }
+
   const columns: Column<AnalyticsUser>[] = [
     {
       key: "displayName",
@@ -131,6 +150,13 @@ export function UsersDirectory({ users, locale, t }: UsersDirectoryProps) {
   );
 
   return (
+    <div className="flex flex-col gap-3">
+      <div className="flex justify-end">
+        <Button type="button" variant="secondary" size="sm" onClick={downloadCsv} disabled={exporting}>
+          <Download size={16} aria-hidden />
+          {t.exportCsv}
+        </Button>
+      </div>
     <DataTable
       rows={users}
       rowKey={(row) => row.userId}
@@ -184,5 +210,6 @@ export function UsersDirectory({ users, locale, t }: UsersDirectoryProps) {
       locale={locale}
       translations={t.table}
     />
+    </div>
   );
 }

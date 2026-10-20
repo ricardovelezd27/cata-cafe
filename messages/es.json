@@ -1223,7 +1223,8 @@
       "guestBadge": "Invitado",
       "filterType": "Tipo",
       "typeRegistered": "Registrado",
-      "typeGuest": "Invitado"
+      "typeGuest": "Invitado",
+      "exportCsv": "Exportar correos (CSV)"
     },
     "benchmark": {
       "title": "Benchmark vs. CQI",

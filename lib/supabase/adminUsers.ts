@@ -20,9 +20,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * failure.
  */
 export async function listAllAuthUsers(): Promise<
-  { id: string; email: string | null; isAnonymous: boolean }[]
+  { id: string; email: string | null; isAnonymous: boolean; createdAt: string | null }[]
 > {
-  const users: { id: string; email: string | null; isAnonymous: boolean }[] = [];
+  const users: { id: string; email: string | null; isAnonymous: boolean; createdAt: string | null }[] = [];
   try {
     const admin = createAdminClient();
     const perPage = 1000;
@@ -32,7 +32,12 @@ export async function listAllAuthUsers(): Promise<
       const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
       if (error) break;
       for (const u of data.users) {
-        users.push({ id: u.id, email: u.email ?? null, isAnonymous: u.is_anonymous === true });
+        users.push({
+          id: u.id,
+          email: u.email ?? null,
+          isAnonymous: u.is_anonymous === true,
+          createdAt: u.created_at ?? null,
+        });
       }
       if (!data.nextPage) break;
       page = data.nextPage;

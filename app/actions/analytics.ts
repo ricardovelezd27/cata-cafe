@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { listAllAuthUsers } from "@/lib/supabase/adminUsers";
+import { run } from "@/lib/safeAction";
+import { buildRegisteredUsersCsv } from "@/lib/analytics/usersCsv";
 import {
   isSuperAdminEmail,
   requireAnalyticsAccess,
@@ -236,6 +238,19 @@ export async function listAnalyticsUsers(): Promise<AnalyticsUser[]> {
       sessionsCount: p._count.cuppingSessions,
       coffeesCount: p._count.coffees,
     };
+  });
+}
+
+/**
+ * CSV (`email,created_at`) of registered, non-anonymous accounts — the in-app
+ * twin of scripts/export-emails.ts. PII: returned to the caller only, never
+ * written to disk or logged.
+ */
+export async function exportRegisteredUsersCsv() {
+  return run("exportRegisteredUsersCsv", async () => {
+    await requireUsersDirectoryAccess();
+    const { csv, count } = buildRegisteredUsersCsv(await listAllAuthUsers());
+    return { csv, count, filename: `cafesensible-users-${new Date().toISOString().slice(0, 10)}.csv` };
   });
 }
 
