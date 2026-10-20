@@ -22,7 +22,10 @@ evaluations**, physical/extrinsic data, invites, and its tasting-history rows.
 Every path that ends a session goes through `closeSessionInternal`
 (`lib/closeSession.ts`): **idempotent** status flip (`updateMany where status
 != closed`, stamps `closedAt`) → **reveal every coffee-linked sample** → 
-`syncCoffeeHistoryForSession` → close emails (group only). A second click, a
+`syncCoffeeHistoryForSession` → close emails (group only: each participant gets a
+link to their results page via login `next=` plus their personal summary PDF —
+`lib/closeEmail.ts`; the full CVA form is downloaded from the results page; legacy
+attach with `CLOSE_EMAIL_ATTACH_CVA=1`; see §6). A second click, a
 concurrent call or a cron retry is a no-op — nothing is re-synced or re-sent.
 Once closed, a session is **read-only**: every mutation runs
 `assertSessionWritable` and throws `session_closed`; `/cup` redirects to
@@ -423,11 +426,41 @@ from the ranking, the session average and "Mejor muestra" — while every other
 sample's ranking row (R2) and matrix cell (S3) still shows a display-only
 signed Δ against it, explained by the `help.referencia` InfoHint.
 
+## 6. Reports & PDFs (2026-10, S6 Stream A)
+
+Every report is built from the SAME pure models the results page uses
+(`lib/reports/*`, fed by one server-only fetch `loadSessionReportSource`). The
+routes gate first; the builders strip what a tier may not see.
+
+```mermaid
+flowchart LR
+    SRC["loadSessionReportSource(sessionId)\n(server-only, NO authz inside)"]
+    SRC --> PS["buildParticipantSummary\n(viewer only: own scores + anonymous group)"]
+    SRC --> FT["buildFichaTecnica(tier)\n(owner: + green + appendix)"]
+    SRC --> TN["buildTeacherNotes\n(owner only: per-cupper identity)"]
+    PS --> R1["/api/sessions/[id]/participant-summary\nmember|owner|admin · canViewGroupResults else 409"]
+    PS --> EM["close email attachment\n(lib/closeEmail.ts, ledgered)"]
+    FT --> R2["/api/sessions/[id]/ficha-tecnica\nowner|admin · others 404"]
+    TN --> R2
+    CF["lib/coffees/aggregateSamples +\ncomputeCoffeeAggregate"] --> R3["/api/coffees/[id]/ficha\nusableCoffeeWhere · community block if\nresultsPublished || owner"]
+    CVA["buildCvaFormData(ownerView)\nphysical: owner only · extrinsic: owner || revealed"] --> R4["/api/sessions/[id]/cva-pdf\n+ /print page (HTML twin)"]
+```
+
+Tiers are entitlements, not billing: **participant** = `participant-summary`
+(never another cupper's name/id, never physical data — asserted in
+`tests/reports.test.ts`); **owner** = `ficha-tecnica` (+ teacher notes). All
+documents register fonts once (`lib/pdf/fonts.ts`) and draw charts with the
+`lib/pdf/charts.tsx` SVG primitives; `?inline=1` opens the native viewer
+(iOS) instead of downloading. New reports are PDF-only — `PrintClient.tsx`
+stays the HTML twin of the CVA form only.
+
 ---
 
 ## Maintenance checklist
 
 When you touch any of these, update the matching diagram **in the same PR**:
+
+- A report route, a `lib/reports/*` builder, or the close-email attachment policy → §6.
 
 - Session status transitions, the close routine, delete semantics or `sessionHref` rules → §1
 - `usableCoffeeWhere`, visibility values, share/invite semantics, delete cascades → §2
