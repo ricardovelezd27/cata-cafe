@@ -11,6 +11,7 @@ import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
 import { asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { deriveMyEvaluation, summarizeMyProgress } from "@/lib/evaluationState";
+import { canViewGroupResults } from "@/lib/sessionState";
 import { ResultsClient } from "./ResultsClient";
 
 // resendCloseEmails / refreshAggregateScores run from here; give the
@@ -127,9 +128,13 @@ export default async function ResultsPage({
   const totalParticipants = session.participants.length;
   const allSubmitted = totalParticipants > 0 && submittedCupperCount >= totalParticipants;
   const sessionExpired = session.closesAt ? session.closesAt < new Date() : false;
-  const canViewGroup =
-    session.isGroup &&
-    (ownerRead || session.status === "closed" || allSubmitted || sessionExpired);
+  const canViewGroup = canViewGroupResults({
+    isGroup: session.isGroup,
+    ownerRead,
+    status: session.status,
+    allSubmitted,
+    sessionExpired,
+  });
 
   // Participants the master has excluded from group results. Used to (a) flag
   // excluded cuppers in the Individual view and (b) drop their descriptors from

@@ -3,18 +3,11 @@
 import { ChevronRight } from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { ScorePill, InfoHint } from "@/components/ui";
-import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
-import { canShowMyScore } from "@/lib/evaluationState";
-import { deltasVsReference, formatSignedDelta, type ScoreBasis } from "@/lib/referenceDelta";
+import { formatSignedDelta } from "@/lib/referenceDelta";
+import { consensusLine, rankSamples, sessionStats } from "@/lib/reports/ranking";
 import type { SessionFormat } from "@/lib/constants";
 import type { SampleBlockFreq } from "@/components/results/DescriptorFrequency";
 import type { SampleResult, ResultsHelp } from "./types";
-
-// Priority order for picking the single consensus sentence to show per
-// sample in the Highlights card — mirrors the perceptual-block order used
-// throughout the Descriptores tab. "general" is deliberately excluded here:
-// it is only used as the (block-sentence) fallback, never picked first.
-const SUMMARY_PRIORITY = ["nariz", "boca", "gusto", "acidez", "dulzura", "sensacion"];
 
 type ResumenTabTranslations = {
   statSamples: string;
@@ -41,42 +34,6 @@ type ResumenTabTranslations = {
   anchorTitle: string;
   anchorHint: string;
 };
-
-function average(values: number[]): number | null {
-  if (values.length === 0) return null;
-  return values.reduce((a, b) => a + b, 0) / values.length;
-}
-
-function hasAnyEvalData(sample: SampleResult): boolean {
-  return (
-    Object.keys(sample.descriptive).length > 0 ||
-    Object.keys(sample.affective).length > 0 ||
-    Object.keys(sample.combined).length > 0
-  );
-}
-
-/** First non-null summary sentence in perceptual-block priority order, or the
- * top-3 "general" descriptor labels when every block sentence is null. `null`
- * when there is genuinely nothing to show (row should be skipped). */
-function consensusLine(
-  sample: SampleBlockFreq,
-  isSolo: boolean,
-  t: ResumenTabTranslations,
-): string | null {
-  const generalTop3 = (sample.blocks.general ?? []).slice(0, 3).map((d) => d.label);
-
-  if (isSolo) {
-    if (generalTop3.length === 0) return null;
-    return `${t.soloTopDescriptors}: ${generalTop3.join(", ")}`;
-  }
-
-  for (const blockId of SUMMARY_PRIORITY) {
-    const sentence = sample.summary[blockId];
-    if (sentence) return sentence;
-  }
-  if (generalTop3.length === 0) return null;
-  return generalTop3.join(", ");
-}
 
 export function ResumenTab({
   samples,
@@ -113,90 +70,22 @@ export function ResumenTab({
   t: ResumenTabTranslations;
   help: ResultsHelp;
 }) {
-  // Display-only score derivation — never stored. Descriptive sessions carry
-  // no scores at all.
-  const myScoreFor = (sample: SampleResult): number | null => {
-    if (format === "descriptive") return null;
-    const data = format === "combined" ? sample.combined : sample.affective;
-    // An unfinished draft must never be ranked (lib/evaluationState.ts).
-    if (!hasAffectiveData(data) || !canShowMyScore(sample.myEvaluation)) return null;
-    const score = calcIndividualScore(data, cupsPerSample);
-    return typeof score === "number" ? score : null;
-  };
-
-  // scoreSd is only ever attached when the displayed rank score IS the
-  // community score (never alongside the solo/"myScore" fallback) — the ±
-  // chip in the ranking list relies on that pairing.
-  const rankFor = (
-    sample: SampleResult,
-  ): { score: number | null; sd: number | null; basis: ScoreBasis | null } => {
-    if (format === "descriptive") return { score: null, sd: null, basis: null };
-    if (isGroup && canViewGroup) {
-      const community = sample.aggregateScore?.communityScore ?? null;
-      if (community !== null) {
-        return {
-          score: community,
-          sd: sample.aggregateScore?.scoreSd ?? null,
-          basis: "community",
-        };
-      }
-    }
-    const mine = myScoreFor(sample);
-    return { score: mine, sd: null, basis: mine === null ? null : "mine" };
-  };
-
-  // The reference is the ANCHOR: pinned at 5 on every attribute (79.00 for
-  // everyone), cupped first, and kept outside the ranking, the session
-  // average and the best sample (lib/referenceRules.ts). It still feeds Δ.
-  const referenceSample = referenceId ? (samples.find((s) => s.id === referenceId) ?? null) : null;
-  const referenceRank = referenceSample ? rankFor(referenceSample) : null;
-  const ranked = samples
-    .filter((sample) => sample.id !== referenceId)
-    .map((sample, position) => {
-      const { score, sd, basis } = rankFor(sample);
-      return { sample, position, score, sd, basis };
-    })
-    .sort((a, b) => {
-      if (a.score === null && b.score === null) return a.position - b.position;
-      if (a.score === null) return 1;
-      if (b.score === null) return -1;
-      if (b.score !== a.score) return b.score - a.score;
-      return a.position - b.position;
-    });
-
-  // Δ vs. the reference (control) sample, keyed by sample id — same basis
-  // (rankFor's displayed score) as the number the chip sits next to. Null
-  // for the reference row itself, unscored rows, and everyone when there is
-  // no reference.
-  // `basis` guards the ranking's mixed fallback (community for some rows,
-  // own score for others): a Δ is only shown between rows of the same kind.
-  const refDeltas = deltasVsReference(
-    [
-      ...ranked.map((r) => ({ id: r.sample.id, score: r.score, basis: r.basis })),
-      ...(referenceSample && referenceRank
-        ? [{ id: referenceSample.id, score: referenceRank.score, basis: referenceRank.basis }]
-        : []),
-    ],
+  // Ranking, Δ-vs-reference and stat-row numbers come from lib/reports/ranking
+  // so the results page and the PDF reports can never disagree. The reference
+  // is the ANCHOR: kept out of the ranking, the average and "best".
+  const rankCtx = { format, isGroup, canViewGroup, cupsPerSample };
+  const { referenceSample, referenceRank, ranked, refDeltas } = rankSamples(
+    samples,
     referenceId,
+    rankCtx,
   );
-
-  // ---- Stat row ----
-  const evaluatedCount = samples.filter(hasAnyEvalData).length;
-  const rankScores = ranked
-    .map((r) => r.score)
-    .filter((v): v is number => v !== null);
-  const avgScore = average(rankScores);
+  const { evaluatedCount, avgScore, myAvg, communityAvg, delta } = sessionStats(
+    samples,
+    ranked,
+    referenceId,
+    rankCtx,
+  );
   const bestEntry = ranked.find((r) => r.score !== null) ?? null;
-
-  // ---- Performance card (my average vs community average) ----
-  const scoredSamples = samples.filter((s) => s.id !== referenceId);
-  const myScores = scoredSamples.map(myScoreFor).filter((v): v is number => v !== null);
-  const myAvg = average(myScores);
-  const communityScores = scoredSamples
-    .map((s) => s.aggregateScore?.communityScore ?? null)
-    .filter((v): v is number => v !== null);
-  const communityAvg = average(communityScores);
-  const delta = myAvg !== null && communityAvg !== null ? myAvg - communityAvg : null;
 
   // Don't render an all-dashes card: performance needs at least one real average.
   const showPerformance =
