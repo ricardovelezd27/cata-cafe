@@ -51,6 +51,7 @@ import {
   type GuardItem,
 } from "@/components/cupping/EvaluationGuardModal";
 import { PhaseStepper } from "@/components/cupping/PhaseStepper";
+import { useKeyboardOpen } from "@/hooks/useKeyboardOpen";
 import { DevRoleBadge } from "@/components/dev/DevRoleBadge";
 import {
   SessionShell,
@@ -205,6 +206,8 @@ export function CupClient({
     participantRole: string;
     // Shell (Phase 3)
     samplesHeader: string;
+    /** aria-label of the phone chevron that reveals session details. */
+    sessionDetails?: string;
     evaluationHeader: string;
     phaseTitle: string;
     cuppingModule: string;
@@ -352,6 +355,9 @@ export function CupClient({
   useEffect(() => {
     applyReferenceOrderRef.current = applyReferenceOrder;
   });
+  // Phone chrome collapses (header row + phase stepper hidden) while the
+  // on-screen keyboard is up — see hooks/useKeyboardOpen.ts (CP-C1).
+  const keyboardOpen = useKeyboardOpen();
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState(false);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
@@ -1326,9 +1332,11 @@ export function CupClient({
     />
   );
 
-  // Mobile/tablet (<lg): horizontal sample bar + position counter, under the phases.
+  // Tablet (sm..lg): horizontal sample bar + position counter, under the
+  // phases. On phones (<sm) the same tabs live in the hamburger row instead
+  // (`phoneBar` below) so the chrome above the form stays ≤110px (CP-C1).
   const mobileSampleBar = (
-    <div className="lg:hidden border-t border-brown-light bg-bg">
+    <div className="hidden sm:block lg:hidden border-t border-brown-light bg-bg">
       <div className="flex items-center gap-3 px-4 py-1.5">
         <div className="min-w-0 flex-1">{sampleTabsBar}</div>
         <span className="shrink-0 font-mono text-[10px] text-brown-mid tabular-nums">
@@ -1340,6 +1348,56 @@ export function CupClient({
         <div className="flex items-center px-4 pb-1.5">{referenceContext}</div>
       )}
     </div>
+  );
+
+  // Phone (<sm): sample tabs + counter share the hamburger row. Everything
+  // that used to need its own line (session name, role, reference context,
+  // edit button) sits behind the chevron (`phoneDetails`).
+  const phoneBar = (
+    <div className="flex items-center gap-2 min-w-0">
+      <div className="min-w-0 flex-1">
+        <SampleTabs
+          orientation="horizontal"
+          header={translations.samplesHeader}
+          hideHeader
+          samples={viewSamples.map((s) => ({
+            id: s.id,
+            label: s.label,
+            filled: hasStepFill(s, currentStep),
+            reference: s.id === referenceSampleId,
+          }))}
+          referenceLabel={referenceBadgeLabel}
+          activeIndex={sampleIdx}
+          onSelect={handleSampleSelect}
+        />
+      </div>
+      <span className="shrink-0 font-mono text-[10px] text-brown-mid tabular-nums">
+        {sampleIdx + 1}/{samples.length}
+      </span>
+    </div>
+  );
+  const phoneDetails = (
+    <>
+      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-brown-mid">
+        {translations.formatLabel}
+        {isGroup ? ` · ${isOwner ? translations.masterRole : translations.participantRole}` : ""}
+      </div>
+      <div className="font-display text-lg leading-tight text-green-dark truncate">
+        {session.name}
+      </div>
+      {activeTab !== "cupping" && (
+        <div className="font-sans text-sm text-brown-dark">
+          {activeTab === "physical" ? translations.physical : translations.extrinsic}
+          {" · "}
+          {translations.sample} {current.label}
+        </div>
+      )}
+      {isGroup && (
+        <div className="font-mono text-[11px] text-brown-mid">{translations.submittedOf}</div>
+      )}
+      {referenceContext && <div className="flex items-center">{referenceContext}</div>}
+      {editSampleButton && <div className="flex items-center pt-1">{editSampleButton}</div>}
+    </>
   );
 
   const secondaryNav = (
@@ -1403,6 +1461,7 @@ export function CupClient({
       labels={translations.phaseLabels}
       onSelect={handleStepChange}
       variant="light"
+      compact
     />
   );
 
@@ -1456,9 +1515,9 @@ export function CupClient({
         <div className="hidden lg:block px-6 py-1.5 border-b border-brown-light">
           {sampleTabsBar}
         </div>
-        {/* Mobile/tablet: horizontal sample bar */}
+        {/* Tablet: horizontal sample bar (phones: hamburger row) */}
         {mobileSampleBar}
-        <div className="flex items-center gap-3 px-6 py-3">
+        <div className="hidden sm:flex items-center gap-3 px-6 py-3">
           <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-brown-mid">
             {activeTab === "physical"
               ? translations.physical
@@ -1501,6 +1560,10 @@ export function CupClient({
       topBar={topBar}
       footer={footer}
       mobileTitle={session.name}
+      mobileBar={phoneBar}
+      mobileDetails={phoneDetails}
+      mobileDetailsLabel={translations.sessionDetails}
+      collapsed={keyboardOpen}
       saveStatus={saveStatus}
       savePendingLabel={translations.savedLocally}
     >

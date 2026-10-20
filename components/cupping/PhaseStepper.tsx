@@ -10,6 +10,8 @@ interface PhaseStepperProps<T extends string> {
   onSelect: (phase: T) => void;
   variant?: "dark" | "light";
   align?: "start" | "center";
+  /** Phone chrome: shorter pills (40px) and tighter outer padding. */
+  compact?: boolean;
 }
 
 export function PhaseStepper<T extends string>({
@@ -20,6 +22,7 @@ export function PhaseStepper<T extends string>({
   onSelect,
   variant = "dark",
   align = "center",
+  compact = false,
 }: PhaseStepperProps<T>) {
   const isLight = variant === "light";
   const activeRef = useRef<HTMLButtonElement | null>(null);
@@ -36,7 +39,7 @@ export function PhaseStepper<T extends string>({
       ref={scrollRef}
       style={{
         overflowX: "auto",
-        padding: "4px 8px",
+        padding: compact ? "2px 8px" : "4px 8px",
         scrollbarWidth: "none",
       }}
     >
@@ -70,7 +73,7 @@ export function PhaseStepper<T extends string>({
               flexDirection: "column",
               alignItems: "center",
               gap: 2,
-              padding: "6px 12px",
+              padding: compact ? "4px 12px" : "6px 12px",
               borderRadius: 20,
               fontSize: 11,
               fontWeight: isActive ? 700 : 400,
@@ -86,7 +89,7 @@ export function PhaseStepper<T extends string>({
               cursor: "pointer",
               fontFamily: "inherit",
               transition: "all 0.15s",
-              minHeight: 44,
+              minHeight: compact ? 40 : 44,
               minWidth: 44,
             }}
           >
