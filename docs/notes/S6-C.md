@@ -121,14 +121,26 @@ clients already hold. Cost: every session-row change makes every connected cuppe
   realtime guards read ids from a `sampleIdsRef` fed by state, so the channel is
   not re-subscribed on every refresh. The waiting room's samples are plain props,
   so the refresh is all it needs.
-- **JWT before join (found while verifying C4):** subscribing right after
-  `createBrowserClient` sends the ANON key in the channel join; Realtime then
-  evaluates the RLS policies as `anon`, `is_session_participant` has no EXECUTE for
-  `anon` (PHASE 18, by design) and walrus logs `permission denied for function
-  is_session_participant` (seen in Supabase → Logs → Realtime, 2026-10-20 17:35Z).
-  The client still reports `SUBSCRIBED` and silently receives nothing. Both
-  realtime effects now `await supabase.auth.getSession()` + `realtime.setAuth()`
-  before `.subscribe()`. Do not "fix" this by granting the function to `anon`.
+- **Realtime channels MUST carry the user's JWT before `subscribe()` — always go
+  through `subscribeWithSessionAuth` (`lib/supabase/realtimeAuth.ts`).**
+  Subscribing right after `createBrowserClient` joins the channel with the ANON
+  key (the session token reaches the socket asynchronously); Realtime then
+  evaluates the RLS policies as `anon`, `is_session_participant` has no EXECUTE
+  for `anon` (PHASE 18, by design) and walrus logs `permission denied for function
+  is_session_participant` (Supabase → Logs → Realtime, 2026-10-20 17:35Z) while
+  the client still reports `SUBSCRIBED` and silently receives nothing. This is the
+  most likely root cause of Kim's "results appear late / had to reload". The helper
+  awaits `auth.getSession()`, calls `realtime.setAuth()`, then builds + subscribes,
+  and owns the cleanup (an effect that unmounts before the session resolves never
+  leaks a channel). All three sites use it: `CupClient`, `WaitingRoomClient`,
+  `ResultsClient` (new-submissions badge). `tests/realtimeAuth.test.ts` pins the
+  order. Never "fix" this by granting the function to `anon`.
+- **Safety net:** `CupClient` runs a documented 30s `router.refresh()` poll for
+  group sessions while online and the tab is visible (one RSC fetch per cupper per
+  30s; the reconcile effect keeps every local draft), so a silently dead channel
+  still surfaces sample add/rename/remove and the reference within 30s. The
+  waiting room already had its 15s `checkSessionStarted` poll on a non-SUBSCRIBED
+  channel; the results page keeps its manual "Actualizar" design.
 
 ### docs/flows.md — §1 / app map
 

@@ -53,6 +53,7 @@ import {
 import { PhaseStepper } from "@/components/cupping/PhaseStepper";
 import { useKeyboardOpen } from "@/hooks/useKeyboardOpen";
 import { indexAfterReconcile, reconcileSamples } from "@/lib/sampleReconcile";
+import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
 import { DevRoleBadge } from "@/components/dev/DevRoleBadge";
 import {
   SessionShell,
@@ -627,23 +628,11 @@ export function CupClient({
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    // The realtime socket must carry the USER's JWT before the channel joins
-    // (S6 CP-C4 finding): subscribing right after createBrowserClient sends
-    // the anon key, Realtime then evaluates the RLS policies as `anon`, and
-    // `is_session_participant` (no EXECUTE for anon since PHASE 18) throws
-    // "permission denied" inside walrus — the subscription reports SUBSCRIBED
-    // but never delivers a row. Visible in Supabase → Logs → Realtime.
-    let cancelled = false;
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-    void (async () => {
-      const {
-        data: { session: auth },
-      } = await supabase.auth.getSession();
-      if (cancelled) return;
-      if (auth?.access_token) await supabase.realtime.setAuth(auth.access_token);
-      if (cancelled) return;
-
-    channel = supabase
+    // JWT before join — see lib/supabase/realtimeAuth.ts (S6 CP-C4).
+    const stop = subscribeWithSessionAuth(
+      supabase,
+      () =>
+    supabase
       .channel(`session:${session.id}`)
       .on(
         "postgres_changes",
@@ -691,20 +680,30 @@ export function CupClient({
           // effect above merges the fresh samples without losing drafts.
           router.refresh();
         }
-      )
+      ),
       // Without a status callback a dropped channel is indistinguishable from
       // "nobody has submitted yet" — the count just stops moving. Surface it
       // so the maestro knows the number is stale rather than flat (F10).
-      .subscribe((status) => {
+      (status) => {
         setLiveCountDown(status !== "SUBSCRIBED");
-      });
-    })();
+      },
+    );
 
-    return () => {
-      cancelled = true;
-      if (channel) supabase.removeChannel(channel);
-    };
+    return stop;
   }, [isGroup, online, session.id, router]);
+
+  // Safety net for the realtime path above (S6 CP-C4): a group cupper whose
+  // channel is silently dead (see lib/supabase/realtimeAuth.ts) still picks up
+  // sample add/rename/remove and the reference within 30s. One RSC fetch per
+  // cupper per 30s; the reconcile effect keeps every local draft. Skipped
+  // while the tab is hidden.
+  useEffect(() => {
+    if (!isGroup || !online) return;
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") router.refresh();
+    }, 30_000);
+    return () => window.clearInterval(id);
+  }, [isGroup, online, router]);
 
   // ─── Save plumbing ────────────────────────────────────────────
   const labelFor = (sampleId: string) =>

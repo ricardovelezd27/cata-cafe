@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createBrowserClient } from "@supabase/ssr";
@@ -64,19 +65,11 @@ export function WaitingRoomClient({
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
 
-    // Same JWT-before-join rule as CupClient (S6 CP-C4): without it Realtime
-    // evaluates the cupping_sessions policy as `anon` and delivers nothing.
-    let cancelled = false;
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-    void (async () => {
-      const {
-        data: { session: auth },
-      } = await supabase.auth.getSession();
-      if (cancelled) return;
-      if (auth?.access_token) await supabase.realtime.setAuth(auth.access_token);
-      if (cancelled) return;
-
-    channel = supabase
+    // JWT before join — see lib/supabase/realtimeAuth.ts (S6 CP-C4).
+    const stop = subscribeWithSessionAuth(
+      supabase,
+      () =>
+    supabase
       .channel(`waiting:${sessionId}`)
       .on(
         "postgres_changes",
@@ -103,8 +96,8 @@ export function WaitingRoomClient({
           // refresh is all it takes.
           router.refresh();
         },
-      )
-      .subscribe((status) => {
+      ),
+      (status) => {
         if (status === "SUBSCRIBED") {
           setConnectionLost(false);
           clearPoll();
@@ -122,14 +115,12 @@ export function WaitingRoomClient({
             }
           }, 15000);
         }
-      });
-
-    })();
+      },
+    );
 
     return () => {
-      cancelled = true;
       clearPoll();
-      if (channel) supabase.removeChannel(channel);
+      stop();
     };
   }, [sessionId, locale, router, isAsync]);
 
