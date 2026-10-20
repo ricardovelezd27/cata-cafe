@@ -58,6 +58,12 @@ export interface WarmupFigure {
   readonly lead?: WarmupLead;
   /** Tiny range of motion (ex. 4 step 8: one centimetre). */
   readonly amplitude?: "normal" | "small";
+  /** Seconds held in the previous end-pose BEFORE this step's leg starts
+   *  ("Para arriba tres segundos. Baja en 15 segundos."). */
+  readonly holdBeforeSec?: number;
+  /** The step goes out, holds and comes back to neutral within its own
+   *  duration ("Lleva los ojos a la izquierda. Para. Vuelve al centro."). */
+  readonly returns?: boolean;
 }
 
 export interface WarmupStep {
@@ -246,7 +252,7 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
           en: "Hold at the top for three seconds. Lower over 15 seconds.",
         },
         durationSec: HOLD + LEG,
-        figure: { kind: "arm-raise", variant: "slow-closed", direction: "down" },
+        figure: { kind: "arm-raise", variant: "slow-closed", direction: "down", holdBeforeSec: HOLD },
       },
     ],
     observe: [
@@ -315,7 +321,7 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
           en: "Take your eyes to the left. Hold for three seconds. Return to the centre.",
         },
         durationSec: LEG + HOLD,
-        figure: { kind: "eyes", variant: "slow-closed", direction: "left" },
+        figure: { kind: "eyes", variant: "slow-closed", direction: "left", returns: true },
       },
       {
         id: "eyes-5",
@@ -324,7 +330,7 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
           en: "Take your eyes upward. Hold. Return to the centre.",
         },
         durationSec: LEG + HOLD,
-        figure: { kind: "eyes", variant: "slow-closed", direction: "up" },
+        figure: { kind: "eyes", variant: "slow-closed", direction: "up", returns: true },
       },
       {
         id: "eyes-6",
@@ -333,7 +339,7 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
           en: "Take your eyes downward. Hold. Return to the centre.",
         },
         durationSec: LEG + HOLD,
-        figure: { kind: "eyes", variant: "slow-closed", direction: "down" },
+        figure: { kind: "eyes", variant: "slow-closed", direction: "down", returns: true },
       },
       {
         id: "eyes-7",
