@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { referencesOf } from "@/lib/referenceRules";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
@@ -35,7 +36,10 @@ export default async function WaitingPage({
       isAsync: true,
       status: true,
       referenceSampleId: true,
-      samples: { select: { id: true, label: true }, orderBy: { position: "asc" } },
+      samples: {
+        select: { id: true, label: true, referenceRank: true },
+        orderBy: { position: "asc" },
+      },
     },
   });
 
@@ -68,16 +72,20 @@ export default async function WaitingPage({
       locale={locale}
       isAsync={isAsyncMode}
       samples={session.samples}
-      initialReferenceSampleId={session.referenceSampleId}
       warmup={{
         title: tw("waiting.title"),
         body: tw("waiting.body"),
         minutes: tw.raw("waiting.minutes") as string,
         strings: warmupPlayerStrings(tw),
       }}
+      initialReferenceIds={(() => {
+        const ranked = referencesOf(session.samples).map((x) => x.id);
+        return ranked.length ? ranked : session.referenceSampleId ? [session.referenceSampleId] : [];
+      })()}
       translations={{
         // `{label}` is an ICU arg — fetched raw and replaced client-side.
         referenceLine: t.raw("referenceLine") as string,
+        referencesLine: t.raw("referencesLine") as string,
         title: isAsyncMode ? t("titleAsync") : t("title"),
         description: isAsyncMode ? t("descriptionAsync") : t("description"),
         asyncDetail: t("asyncDetail"),

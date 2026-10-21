@@ -68,7 +68,13 @@ import {
   type ModuleItem,
 } from "@/components/ui";
 import { useConnectivity } from "@/hooks/useConnectivity";
-import { isPinnedModule, orderReferenceFirst, pinReferenceAffective } from "@/lib/referenceRules";
+import {
+  isPinnedModule,
+  nextReferenceOrder,
+  orderByReferenceIds,
+  pinReferenceAffective,
+  referencesOf,
+} from "@/lib/referenceRules";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { OfflineBanner } from "@/components/offline/OfflineBanner";
 import { SyncConflictModal } from "@/components/offline/SyncConflictModal";
@@ -121,6 +127,8 @@ type Sample = {
   revealed: boolean;
   coffeeId: string | null;
   coffee: SampleCoffee | null;
+  /** 1, 2, … when the sample is a reference (S6 multi-reference). */
+  referenceRank?: number | null;
 };
 
 type Session = {
@@ -270,6 +278,13 @@ export function CupClient({
     compareHint?: string;
     referenceSelect?: string;
     referenceNone?: string;
+    // Multi-reference (S6)
+    referenceActive?: string;
+    referenceAdd?: string;
+    referenceRemoveActive?: string;
+    referenceAddHint?: string;
+    referenceAddTitle?: string;
+    referenceAddConfirm?: string;
     // Reference lock (2026-09-25): quality pinned at 5, cups cleared.
     referenceLocked?: string;
     referenceLockedAffective?: string;
@@ -294,7 +309,14 @@ export function CupClient({
   // The reference (control) sample is cupped FIRST — the room levels on the
   // anchor before comparing (lib/referenceRules.ts). Order is re-derived
   // whenever the owner changes the reference (see applyReferenceOrder).
-  const initialOrdered = orderReferenceFirst(session.samples, session.referenceSampleId ?? null);
+  // Multi-reference (S6): references are cupped first, by rank (R1, R2…). A
+  // pre-upgrade offline blob has no ranks — fall back to the single pointer.
+  const initialRefIds = (() => {
+    const ranked = referencesOf(session.samples).map((x) => x.id);
+    if (ranked.length) return ranked;
+    return session.referenceSampleId ? [session.referenceSampleId] : [];
+  })();
+  const initialOrdered = orderByReferenceIds(session.samples, initialRefIds);
   const initialSampleIdx = initialSampleId
     ? Math.max(0, initialOrdered.findIndex((s) => s.id === initialSampleId))
     : 0;
@@ -334,9 +356,12 @@ export function CupClient({
   const [startedAt, setStartedAt] = useState(sessionStartedAt);
   // Owner-chosen "Referencia" sample; updated live for participants through
   // the cupping_sessions realtime stream below.
-  const [referenceSampleId, setReferenceSampleId] = useState<string | null>(
-    session.referenceSampleId ?? null,
-  );
+  // Ordered ids of the references (R1 first); the LAST is the active one —
+  // the only one pinned at 79.00 (earlier ones keep their data but unlock).
+  const [refOrder, setRefOrder] = useState<string[]>(initialRefIds);
+  const refOrderRef = useRef(refOrder);
+  const referenceSampleId = refOrder.length ? refOrder[refOrder.length - 1] : null;
+  const [pendingReference, setPendingReference] = useState<string | null>(null);
   const referenceSeqRef = useRef(0);
   // Sample ids whose pinned "ensure" auto-save has already been queued.
   const ensuredReferenceRef = useRef<Set<string>>(new Set());
@@ -350,8 +375,10 @@ export function CupClient({
   });
   // Moves the (new) reference to the front, restores position order for the
   // rest, and keeps the cupper on the sample they were looking at.
-  const applyReferenceOrder = (next: string | null) => {
-    setReferenceSampleId(next);
+  const applyRefOrder = (order: string[]) => {
+    const next = order.length ? order[order.length - 1] : null;
+    refOrderRef.current = order;
+    setRefOrder(order);
     // A reference chosen mid-session must get its pinned auto-save again on
     // the next visit (the server re-pinned every stored row in
     // setReferenceSample; this keeps this client's copy in step) — CP-C2.
@@ -359,10 +386,14 @@ export function CupClient({
     const byPosition = <T extends { position: number }>(list: T[]) =>
       [...list].sort((a, b) => a.position - b.position);
     const currentId = sampleIdRef.current;
-    const ids = orderReferenceFirst(byPosition(samplesRef.current), next).map((s) => s.id);
-    setSamples((prev) => orderReferenceFirst(byPosition(prev), next));
+    const ids = orderByReferenceIds(byPosition(samplesRef.current), order).map((s) => s.id);
+    setSamples((prev) => orderByReferenceIds(byPosition(prev), order));
     setSampleIdx(Math.max(0, ids.indexOf(currentId ?? "")));
   };
+  // The realtime stream only carries the ACTIVE pointer; the list of
+  // references is derived from it (lib/referenceRules.nextReferenceOrder).
+  const applyReferenceOrder = (next: string | null) =>
+    applyRefOrder(nextReferenceOrder(refOrderRef.current, next));
   const applyReferenceOrderRef = useRef(applyReferenceOrder);
   useEffect(() => {
     applyReferenceOrderRef.current = applyReferenceOrder;
@@ -1092,15 +1123,31 @@ export function CupClient({
   // the localized error (useActionFeedback) and rolls the value back.
   // A sequence counter guarantees a failed EARLIER request never rolls back a
   // later choice (pick B, pick C, B's save fails → C must stay).
-  const handleReferenceChange = (value: string) => {
-    const next = value === "" ? null : value;
-    const prev = referenceSampleId;
+  // References ACCUMULATE: picking a sample adds it as the next rank (and the
+  // active one); the previous reference keeps its 79.00. Once one exists the
+  // select is an action menu (value stays ""): a sample id adds, REMOVE_ACTIVE
+  // drops only the active one. Adding on top of an existing reference asks
+  // for confirmation first (the old one unlocks, the new one is pinned).
+  const REMOVE_ACTIVE = "__remove_active__";
+  const commitReference = (next: string | null) => {
+    if (next && refOrderRef.current.includes(next)) return; // already one: server no-op
+    if (!next && refOrderRef.current.length === 0) return;
+    const prevOrder = refOrderRef.current;
     const seq = ++referenceSeqRef.current;
     applyReferenceOrder(next);
     startTransition(async () => {
       const r = await feedback.run(setReferenceSample(session.id, next));
-      if (!r.ok && seq === referenceSeqRef.current) applyReferenceOrder(prev);
+      if (!r.ok && seq === referenceSeqRef.current) applyRefOrder(prevOrder);
     });
+  };
+  const handleReferenceChange = (value: string) => {
+    if (value === "") return;
+    if (value === REMOVE_ACTIVE) return commitReference(null);
+    if (refOrderRef.current.length > 0 && !refOrderRef.current.includes(value)) {
+      setPendingReference(value);
+      return;
+    }
+    commitReference(value);
   };
 
   // ─── Derived state ────────────────────────────────────────────
@@ -1145,16 +1192,41 @@ export function CupClient({
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [referenceSampleId, sampleIdx, affectiveModuleKey, sessionStatus]);
-  const isCurrentReference = referenceSample?.id === current.id;
+  const currentRefIdx = refOrder.indexOf(current.id);
+  const isCurrentReference = currentRefIdx !== -1;
   const referenceBadgeLabel = translations.referenceBadge ?? "Referencia";
-  const referenceOptions = [
-    { value: "", label: translations.referenceNone ?? "Sin referencia" },
-    ...samples.map((s) => ({ value: s.id, label: s.label })),
-  ];
+  const multiRef = refOrder.length > 1;
+  // "R1: A · R2: D (activa)" — only worth showing once there is something to tell apart.
+  const labelOf = (id: string) => samples.find((s) => s.id === id)?.label ?? "";
+  const referenceSummary = refOrder.length
+    ? refOrder
+        .map(
+          (id, i) =>
+            `R${i + 1}: ${labelOf(id)}${multiRef && i === refOrder.length - 1 ? ` (${translations.referenceActive ?? "activa"})` : ""}`,
+        )
+        .join(" · ")
+    : undefined;
+  const referenceOptions = refOrder.length
+    ? [
+        { value: "", label: translations.referenceAdd ?? "Añadir referencia…" },
+        ...samples
+          .filter((s) => !refOrder.includes(s.id))
+          .map((s) => ({ value: s.id, label: s.label })),
+        {
+          value: REMOVE_ACTIVE,
+          label: `${translations.referenceRemoveActive ?? "Quitar la referencia activa"} (R${refOrder.length})`,
+        },
+      ]
+    : [
+        { value: "", label: translations.referenceNone ?? "Sin referencia" },
+        ...samples.map((s) => ({ value: s.id, label: s.label })),
+      ];
   // Header line under the sample name: "· Referencia" on the reference itself,
   // "Compara con la referencia (C)" on every other sample (participants too).
   const referenceContext = isCurrentReference ? (
-    <Badge tone="accent" size="xs">{referenceBadgeLabel}</Badge>
+    <Badge tone="accent" size="xs">
+      {multiRef ? `${referenceBadgeLabel} ${currentRefIdx + 1}` : referenceBadgeLabel}
+    </Badge>
   ) : referenceSample && translations.compareHint ? (
     <span
       className="min-w-0 truncate font-sans text-[11px] text-brown-mid"
@@ -1323,7 +1395,7 @@ export function CupClient({
       )}
       {referenceSample && (
         <div className="font-mono text-[11px] text-brown-mid mt-0.5 truncate">
-          {referenceBadgeLabel}: {referenceSample.label}
+          {multiRef ? referenceSummary : `${referenceBadgeLabel}: ${referenceSample.label}`}
         </div>
       )}
     </>
@@ -1337,7 +1409,8 @@ export function CupClient({
         id: s.id,
         label: s.label,
         filled: hasStepFill(s, currentStep),
-        reference: s.id === referenceSampleId,
+        reference: refOrder.includes(s.id),
+        referenceTag: multiRef ? `R${refOrder.indexOf(s.id) + 1}` : undefined,
       }))}
       referenceLabel={referenceBadgeLabel}
       activeIndex={sampleIdx}
@@ -1377,7 +1450,8 @@ export function CupClient({
             id: s.id,
             label: s.label,
             filled: hasStepFill(s, currentStep),
-            reference: s.id === referenceSampleId,
+            reference: refOrder.includes(s.id),
+            referenceTag: multiRef ? `R${refOrder.indexOf(s.id) + 1}` : undefined,
           }))}
           referenceLabel={referenceBadgeLabel}
           activeIndex={sampleIdx}
@@ -1450,8 +1524,10 @@ export function CupClient({
         onStart={handleStart}
         referenceLabel={translations.referenceSelect ?? "Muestra de referencia"}
         referenceOptions={referenceOptions}
-        referenceValue={referenceSampleId ?? ""}
+        referenceValue=""
         onReferenceChange={handleReferenceChange}
+        referenceSummary={referenceSummary}
+        referenceHint={refOrder.length ? translations.referenceAddHint : undefined}
       />
     ) : undefined;
 
@@ -1605,8 +1681,13 @@ export function CupClient({
               <span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.18em] text-brown-mid">
                 {translations.referenceSelect ?? "Muestra de referencia"}
               </span>
+              {referenceSummary && (
+                <span className="mb-1 block font-sans text-xs text-on-surface-variant">
+                  {referenceSummary}
+                </span>
+              )}
               <Select
-                value={referenceSampleId ?? ""}
+                value=""
                 onChange={handleReferenceChange}
                 options={referenceOptions}
                 ariaLabel={translations.referenceSelect ?? "Muestra de referencia"}
@@ -1739,6 +1820,26 @@ export function CupClient({
           </button>
         </div>
       )}
+      <ConfirmDialog
+        open={pendingReference !== null}
+        onOpenChange={(o) => {
+          if (!o) setPendingReference(null);
+        }}
+        title={translations.referenceAddTitle ?? "Añadir referencia"}
+        body={
+          translations.referenceAddHint ??
+          "La referencia anterior conserva sus 79.00; la nueva queda fijada."
+        }
+        confirmLabel={translations.referenceAddConfirm ?? "Añadir referencia"}
+        cancelLabel={translations.cancel}
+        closeLabel={translations.cancel}
+        destructive={false}
+        onConfirm={() => {
+          const id = pendingReference;
+          setPendingReference(null);
+          if (id) commitReference(id);
+        }}
+      />
       <ConfirmDialog
         open={closeDialogOpen}
         onOpenChange={setCloseDialogOpen}

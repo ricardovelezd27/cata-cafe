@@ -121,6 +121,8 @@
     "cuppingsCount": "{count} cataciones",
     "empty": "Aún no hay sesiones. Crea la primera.",
     "newSession": "Nueva sesión",
+    "expressCta": "Catar ahora",
+    "fullWizardCta": "Nueva sesión",
     "statSamplesSubEvals": "con tu evaluación enviada",
     "activityEvalSample": "Evaluaste {sample} en {session}"
   },
@@ -195,6 +197,20 @@
         "invalid_reference": "La muestra de referencia no es válida. Elige una de la lista."
       }
     },
+    "express": {
+      "title": "Catar ahora",
+      "subtitle": "Nombre, formato, número de muestras. Listo.",
+      "back": "Sesiones",
+      "name": "Nombre de la cata",
+      "format": "Formato",
+      "samples": "Muestras",
+      "samplesHint": "Entre 1 y 20 muestras, sin café asignado. Podrás nombrarlos al final.",
+      "decrement": "Una muestra menos",
+      "increment": "Una muestra más",
+      "cta": "Catar ahora",
+      "creating": "Creando…",
+      "fullWizard": "Configurar sesión completa"
+    },
     "deleteSession": {
       "title": "Eliminar sesión",
       "body": "Se eliminará permanentemente la sesión con TODAS las evaluaciones de todos los participantes, sus datos físicos y extrínsecos, las invitaciones y el historial de catas asociado. No se puede deshacer.",
@@ -243,7 +259,7 @@
       "backToSessions": "Volver a sesiones",
       "referenceTitle": "Muestra de referencia",
       "referenceNone": "Sin referencia",
-      "referenceHelper": "Las demás muestras se comparan contra esta en los resultados. No afecta el puntaje.",
+      "referenceHelper": "Las demás muestras se comparan contra esta en los resultados. No afecta el puntaje. Si eliges otra, se añade como Referencia 2: la anterior conserva sus 79.00 y la nueva queda fijada.",
       "referenceSaved": "Referencia actualizada",
       "closesAt": "Fecha de cierre",
       "closesAtHint": "Opcional. La sesión se cierra sola en la madrugada siguiente a esta fecha. Déjala vacía para una cata en vivo que cierras tú.",
@@ -336,7 +352,8 @@
     "notStartedMsg": "Aún no ha comenzado",
     "backToSessions": "Volver a mis sesiones",
     "connectionLost": "Conexión en vivo perdida — comprobando cada 15 s",
-    "referenceLine": "Muestra de referencia: {label}"
+    "referenceLine": "Muestra de referencia: {label}",
+    "referencesLine": "Referencias: {list}"
   },
   "score": {
     "individual": "Puntaje individual",
@@ -497,7 +514,13 @@
     "guestError": "No se pudo entrar como invitado. Intenta con tu correo.",
     "sessionClosed": "Esta cata ya cerró — pide al organizador el enlace de resultados.",
     "referenceSelect": "Muestra de referencia",
-    "referenceNone": "Sin referencia"
+    "referenceNone": "Sin referencia",
+    "referenceActive": "activa",
+    "referenceAdd": "Añadir referencia…",
+    "referenceRemoveActive": "Quitar la referencia activa",
+    "referenceAddHint": "La referencia anterior conserva sus 79.00; la nueva queda fijada.",
+    "referenceAddTitle": "Añadir referencia",
+    "referenceAddConfirm": "Añadir referencia"
   },
   "results": {
     "title": "Resultados de la Sesión",
@@ -528,6 +551,8 @@
     "referenceBadge": "Referencia",
     "deltaVsReference": "Δ vs. referencia",
     "deltaVsReferenceAria": "Diferencia de puntaje frente a la muestra de referencia; positiva si esta muestra puntuó más alto",
+    "referenceN": "Referencia {n}",
+    "compareWith": "Comparar con",
     "referenceLegend": "Δ = diferencia frente a la referencia",
     "closedOn": "Cata cerrada el {date}",
     "liveUpdatesDown": "Actualizaciones en vivo no disponibles — pulsa «Actualizar» para ver lo último.",

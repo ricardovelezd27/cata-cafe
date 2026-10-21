@@ -8,7 +8,7 @@ import type { NextRequest } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { orderReferenceFirst } from "@/lib/referenceRules";
+import { orderReferencesFirst } from "@/lib/referenceRules";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { CvaFormDocument, type CvaDocumentProps } from "@/lib/pdf/CvaFormDocument";
@@ -92,7 +92,7 @@ export async function GET(
     cupsPerSample: session.cupsPerSample,
     format: session.format,
     locale,
-    samples: orderReferenceFirst(session.samples, session.referenceSampleId).map((sample) => {
+    samples: orderReferencesFirst(session.samples).map((sample) => {
       const ev = sample.evaluations[0];
       return {
         label: sample.label,
@@ -101,7 +101,8 @@ export async function GET(
           ? coffeeDisplayName(sample.coffee, deletedCoffeeLabel(locale))
           : null,
         roastLevel: sample.coffee?.roastLevel ?? null,
-        isReference: sample.id === session.referenceSampleId,
+        isReference: sample.referenceRank != null,
+        referenceRank: sample.referenceRank ?? null,
         descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
         affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
         combined: (ev?.combinedData as Record<string, unknown>) ?? {},

@@ -50,6 +50,10 @@ interface MasterControlsProps {
   referenceOptions?: { value: string; label: string }[];
   referenceValue?: string;
   onReferenceChange?: (value: string) => void;
+  /** "R1: A · R2: D (activa)" — current references, shown above the select. */
+  referenceSummary?: string;
+  /** Notice shown under the select once a reference exists (the new one pins, the old keeps its 79.00). */
+  referenceHint?: string;
 }
 
 export function MasterControls({
@@ -80,6 +84,8 @@ export function MasterControls({
   referenceOptions,
   referenceValue = "",
   onReferenceChange,
+  referenceSummary,
+  referenceHint,
 }: MasterControlsProps) {
   return (
     <section className={styles.wrap} aria-label={title}>
@@ -97,12 +103,14 @@ export function MasterControls({
       {referenceOptions && onReferenceChange && (
         <fieldset className={styles.referenceField} disabled={sessionClosed}>
           <span className={styles.referenceLabel}>{referenceLabel}</span>
+          {referenceSummary && <span className={styles.referenceSummary}>{referenceSummary}</span>}
           <Select
             value={referenceValue}
             onChange={onReferenceChange}
             options={referenceOptions}
             ariaLabel={referenceLabel ?? "Reference sample"}
           />
+          {referenceHint && <span className={styles.referenceSummary}>{referenceHint}</span>}
         </fieldset>
       )}
 
