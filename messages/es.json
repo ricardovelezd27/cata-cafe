@@ -1510,6 +1510,33 @@
       "pausedLabel": "En pausa",
       "keyboardHint": "← → para moverte · espacio para pausar",
       "intro": "Antes de empezar"
+    },
+    "v2": {
+      "arriveEyebrow": "Llega",
+      "arriveCue": "Pies en el suelo. Hombros sueltos. Una respiración.",
+      "arriveReady": "Cuando quieras",
+      "optionsTitle": "A tu manera",
+      "soundLabel": "Sonido y vibración",
+      "muteLabel": "Silenciar",
+      "unmuteLabel": "Activar sonido",
+      "accessibleLabel": "Accesible: mostrar los segundos",
+      "largeTextLabel": "Texto grande",
+      "stillLabel": "Quieto, solo atiende",
+      "stillHelp": "Sin movimiento y sin avance automático: atiendes a tu cuerpo y pasas tú al siguiente paso.",
+      "cueTurn": "Mitad del recorrido. Ahora vuelve, igual de lento.",
+      "cueHold": "Sigue, a tu ritmo.",
+      "cueClose": "Quédate quieto, sin hacer nada. Solo siente.",
+      "holdCue": "Quédate en la posición neutral. Solo siente.",
+      "stepFallbackNext": "A continuación",
+      "reflectEyebrow": "Un momento",
+      "reflectTitle": "Dos preguntas, sin prisa",
+      "reflectLead": "Opcional. Lo que escribas se guarda solo en este dispositivo: no se envía ni se mezcla con tus catas.",
+      "answerLabel": "Tu respuesta (opcional)",
+      "save": "Guardar en el dispositivo",
+      "omit": "Omitir",
+      "savedNote": "Guardado en este dispositivo.",
+      "noticedTitle": "Lo que pudiste notar",
+      "ringLabel": "Progreso del paso"
     }
   }
 }

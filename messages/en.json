@@ -1510,6 +1510,33 @@
       "pausedLabel": "Paused",
       "keyboardHint": "← → to move · space to pause",
       "intro": "Before you start"
+    },
+    "v2": {
+      "arriveEyebrow": "Arrive",
+      "arriveCue": "Feet on the floor. Shoulders loose. One breath.",
+      "arriveReady": "Whenever you're ready",
+      "optionsTitle": "Your way",
+      "soundLabel": "Sound and vibration",
+      "muteLabel": "Mute",
+      "unmuteLabel": "Turn sound on",
+      "accessibleLabel": "Accessible: show the seconds",
+      "largeTextLabel": "Large text",
+      "stillLabel": "Stay still, just attend",
+      "stillHelp": "No movement and no automatic advance: you attend to your body and move to the next step yourself.",
+      "cueTurn": "Halfway. Now come back, just as slowly.",
+      "cueHold": "Carry on, at your own pace.",
+      "cueClose": "Stay still, doing nothing. Just feel.",
+      "holdCue": "Stay in the neutral position. Just feel.",
+      "stepFallbackNext": "Up next",
+      "reflectEyebrow": "A moment",
+      "reflectTitle": "Two questions, no hurry",
+      "reflectLead": "Optional. What you write stays on this device only: it is never sent or mixed with your cuppings.",
+      "answerLabel": "Your answer (optional)",
+      "save": "Save on this device",
+      "omit": "Skip",
+      "savedNote": "Saved on this device.",
+      "noticedTitle": "What you may have noticed",
+      "ringLabel": "Step progress"
     }
   }
 }
