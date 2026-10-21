@@ -52,6 +52,7 @@ export function ArmRaiseFigure(p: FigureProps) {
       posture="standing"
       eyes={eyesOf(p)}
       lead={p.lead}
+      moving={p.highlight === false ? undefined : "arm-r"}
       title={p.title}
       paused={p.paused}
       className={p.className}

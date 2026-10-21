@@ -28,9 +28,15 @@
 }
 
 .fillSurface { fill: var(--color-surface-container-lowest); }
+
+/* v2 silhouette: moving segment = secondary at full opacity, rest = 40 %. */
+.partRest { opacity: 0.4; transition: opacity var(--transition-fast); }
+.partMoving { color: var(--color-secondary); opacity: 1; transition: opacity var(--transition-fast); }
+.groundShadow { fill: var(--color-on-surface); opacity: 0.07; }
+.tick { opacity: 0.55; }
 .fillInk { fill: currentColor; }
 .ghost { opacity: 0.38; }
-.chair { color: var(--color-outline); stroke-width: 2.2; }
+.chair { color: var(--color-outline); }
 
 /* Pivots (viewBox user units — transform-box: view-box) */
 .armR { transform-box: view-box; transform-origin: 146px 112px; }

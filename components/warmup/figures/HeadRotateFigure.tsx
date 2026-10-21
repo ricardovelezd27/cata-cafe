@@ -41,6 +41,7 @@ export function HeadRotateFigure(p: FigureProps) {
       posture="seated"
       eyes={eyesOf(p)}
       lead={p.lead}
+      moving={p.highlight === false ? undefined : "head"}
       title={p.title}
       paused={p.paused}
       className={p.className}
