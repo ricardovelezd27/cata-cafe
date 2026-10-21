@@ -121,6 +121,8 @@
     "cuppingsCount": "{count} cuppings",
     "empty": "No sessions yet. Create your first.",
     "newSession": "New session",
+    "expressCta": "Cup now",
+    "fullWizardCta": "New session",
     "statSamplesSubEvals": "with your evaluation submitted",
     "activityEvalSample": "You evaluated {sample} in {session}"
   },
@@ -195,6 +197,20 @@
         "invalid_reference": "The reference sample is not valid. Pick one from the list."
       }
     },
+    "express": {
+      "title": "Cup now",
+      "subtitle": "Name, format, how many samples. Done.",
+      "back": "Sessions",
+      "name": "Cupping name",
+      "format": "Format",
+      "samples": "Samples",
+      "samplesHint": "Between 1 and 20 samples, no coffee attached. You can name them at the end.",
+      "decrement": "One sample fewer",
+      "increment": "One sample more",
+      "cta": "Cup now",
+      "creating": "Creating…",
+      "fullWizard": "Set up a full session"
+    },
     "deleteSession": {
       "title": "Delete session",
       "body": "This permanently deletes the session with ALL evaluations from every participant, their physical and extrinsic data, invites, and the linked tasting history. This cannot be undone.",
@@ -243,8 +259,12 @@
       "backToSessions": "Back to sessions",
       "referenceTitle": "Reference sample",
       "referenceNone": "No reference",
-      "referenceHelper": "The other samples are compared against this one in the results. It does not affect the score.",
-      "referenceSaved": "Reference updated"
+      "referenceHelper": "The other samples are compared against this one in the results. It does not affect the score. Picking another adds it as Reference 2: the previous one keeps its 79.00 and the new one is pinned.",
+      "referenceSaved": "Reference updated",
+      "closesAt": "Closing date",
+      "closesAtHint": "Optional. The session closes by itself in the early hours after this date. Leave it empty for a live tasting you close yourself.",
+      "closesAtPast": "The closing date must be today or later.",
+      "sessionClosed": "This session is closed and can no longer be edited."
     }
   },
   "cupping": {
@@ -316,7 +336,8 @@
       "copied": "Copied",
       "copyImage": "Copy QR",
       "downloadQr": "Download QR",
-      "currentSample": "Current sample"
+      "currentSample": "Current sample",
+      "sessionDetails": "Session details"
     }
   },
   "waiting": {
@@ -331,7 +352,8 @@
     "notStartedMsg": "Hasn't started yet",
     "backToSessions": "Back to my sessions",
     "connectionLost": "Live connection lost — checking every 15s",
-    "referenceLine": "Reference sample: {label}"
+    "referenceLine": "Reference sample: {label}",
+    "referencesLine": "References: {list}"
   },
   "score": {
     "individual": "Individual score",
@@ -351,16 +373,18 @@
   },
   "descriptors": {
     "viewAll": "View all",
+    "byGroup": "By wheel group",
     "of": "of",
     "participants": "participants",
     "emptyStage": "No descriptor with 2 or more selections in this stage.",
     "emptyBlock": "No shared descriptors in this block.",
-    "emptyAll": "No descriptors selected by 2 or more participants yet.",
+    "emptyAll": "No descriptors selected yet.",
     "cloudTitle": "Flavor cloud",
     "cloudScopeSession": "Whole session",
     "cloudScopeSample": "Per sample",
     "cloudScopeTaster": "Per taster",
     "cloudEmpty": "No descriptors yet",
+    "hideSingles": "Hide single-person descriptors",
     "filterSampleAll": "All samples",
     "filterBlockLabel": "Block",
     "blockGeneral": "General",
@@ -453,7 +477,7 @@
     "toggle": "Group session",
     "async": "Asynchronous",
     "closesAt": "Closing date",
-    "closesAtHint": "Optional. The session closes by itself in the early hours after this date and it cannot be changed later. For a live tasting you close yourself, leave it empty.",
+    "closesAtHint": "Optional. The session closes by itself in the early hours after this date; you can change it later from Edit session. For a live tasting you close yourself, leave it empty.",
     "inviteLink": "Invite link",
     "copyLink": "Copy link",
     "copied": "Copied",
@@ -490,7 +514,13 @@
     "guestError": "Couldn't join as guest. Try with your email.",
     "sessionClosed": "This tasting is already closed — ask the organizer for the results link.",
     "referenceSelect": "Reference sample",
-    "referenceNone": "No reference"
+    "referenceNone": "No reference",
+    "referenceActive": "active",
+    "referenceAdd": "Add reference…",
+    "referenceRemoveActive": "Remove the active reference",
+    "referenceAddHint": "The previous reference keeps its 79.00; the new one is pinned.",
+    "referenceAddTitle": "Add reference",
+    "referenceAddConfirm": "Add reference"
   },
   "results": {
     "title": "Session Results",
@@ -498,6 +528,8 @@
     "backToCupping": "Edit evaluation",
     "viewForm": "View form",
     "downloadPdf": "Download PDF",
+    "downloadSummary": "My summary (PDF)",
+    "downloadFicha": "Technical sheet (PDF)",
     "refresh": "Refresh",
     "refreshing": "Refreshing…",
     "refreshNew": "Refresh ({count} new)",
@@ -521,6 +553,8 @@
     "referenceBadge": "Reference",
     "deltaVsReference": "Δ vs. reference",
     "deltaVsReferenceAria": "Score difference against the reference sample; positive when this sample scored higher",
+    "referenceN": "Reference {n}",
+    "compareWith": "Compare against",
     "referenceLegend": "Δ = difference against the reference",
     "closedOn": "Tasting closed on {date}",
     "liveUpdatesDown": "Live updates unavailable — press Refresh to see the latest.",
@@ -701,7 +735,7 @@
       },
       "nube": {
         "title": "Flavor cloud",
-        "body": "The most-mentioned descriptors, shown larger the more cuppers chose them. Responds to the sample and block filters selected above."
+        "body": "Each descriptor appears once; its size adds up its mentions across every stage (fragrance 1 + aroma 1 = 2). Tap a word to see the per-stage breakdown. The bars below count cuppers per block, so they can differ on purpose. Follows the sample and block filters above."
       },
       "frecuencia": {
         "title": "Descriptor frequency",
@@ -774,6 +808,7 @@
     "sensoryTitle": "Sensory profile",
     "activityTitle": "Activity",
     "detailsTitle": "Details",
+    "downloadFicha": "Download sheet (PDF)",
     "bulkDelete": "Delete selected",
     "tooManySelected": "You can delete up to {max} coffees at a time.",
     "published": "Results public",
@@ -1502,6 +1537,80 @@
       "not_found": "That item no longer exists.",
       "invalid_reference": "One of the linked items no longer exists.",
       "unknown": "Something went wrong. Please try again."
+    }
+  },
+  "warmup": {
+    "title": "Sensory Movement",
+    "library": {
+      "listEyebrow": "The five exercises",
+      "minutes": "{min} min",
+      "steps": "{count} steps",
+      "back": "All exercises",
+      "open": "Open exercise"
+    },
+    "dashboard": {
+      "eyebrow": "Before cupping",
+      "title": "Sensory Movement",
+      "body": "Kim's five slow movements to wake up perception before smelling and tasting. 3 to 8 minutes, seated or standing.",
+      "cta": "See the exercises"
+    },
+    "waiting": {
+      "title": "While you wait",
+      "body": "A slow movement prepares the senses. Pick an exercise; if the cupping starts, we take you to the table.",
+      "minutes": "{min} min"
+    },
+    "player": {
+      "start": "Start",
+      "next": "Next",
+      "prev": "Previous",
+      "pause": "Pause",
+      "resume": "Resume",
+      "skip": "Skip",
+      "finish": "Finish",
+      "close": "Close",
+      "stepOf": "Step {n} of {total}",
+      "remaining": "{n} seconds left",
+      "pauseTitle": "Pause",
+      "pauseBody": "Stay where you are. Next step in {n} s.",
+      "minutes": "{min} min",
+      "stepsCount": "{count} steps",
+      "postureLabel": "Posture",
+      "observeTitle": "Observe",
+      "closingTitle": "Closing",
+      "doneTitle": "Done",
+      "doneBody": "Back to the cupping with your senses awake.",
+      "evolutionLabel": "Progression",
+      "reducedMotionNote": "Reduced motion is on: figures show the end position and the exercise advances with “Next”.",
+      "pausedLabel": "Paused",
+      "keyboardHint": "← → to move · space to pause",
+      "intro": "Before you start"
+    },
+    "v2": {
+      "arriveEyebrow": "Arrive",
+      "arriveCue": "Feet on the floor. Shoulders loose. One breath.",
+      "arriveReady": "Whenever you're ready",
+      "optionsTitle": "Your way",
+      "soundLabel": "Sound and vibration",
+      "muteLabel": "Mute",
+      "unmuteLabel": "Turn sound on",
+      "accessibleLabel": "Accessible: show the seconds",
+      "largeTextLabel": "Large text",
+      "stillLabel": "Stay still, just attend",
+      "stillHelp": "No movement and no automatic advance: you attend to your body and move to the next step yourself.",
+      "cueTurn": "Halfway. Now come back, just as slowly.",
+      "cueHold": "Carry on, at your own pace.",
+      "cueClose": "Stay still, doing nothing. Just feel.",
+      "holdCue": "Stay in the neutral position. Just feel.",
+      "stepFallbackNext": "Up next",
+      "reflectEyebrow": "A moment",
+      "reflectTitle": "Two questions, no hurry",
+      "reflectLead": "Optional. What you write stays on this device only: it is never sent or mixed with your cuppings.",
+      "answerLabel": "Your answer (optional)",
+      "save": "Save on this device",
+      "omit": "Skip",
+      "savedNote": "Saved on this device.",
+      "noticedTitle": "What you may have noticed",
+      "ringLabel": "Step progress"
     }
   }
 }

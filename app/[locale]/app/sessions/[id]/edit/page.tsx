@@ -90,6 +90,10 @@ export default async function EditSessionPage({
     referenceNone: t("edit.referenceNone"),
     referenceHelper: t("edit.referenceHelper"),
     referenceSaved: t("edit.referenceSaved"),
+    closesAt: t("edit.closesAt"),
+    closesAtHint: t("edit.closesAtHint"),
+    closesAtPast: t("edit.closesAtPast"),
+    sessionClosed: t("edit.sessionClosed"),
   };
 
   return (
@@ -113,6 +117,9 @@ export default async function EditSessionPage({
           isGroup: session.isGroup,
           groupId: session.groupId,
           referenceSampleId: session.referenceSampleId,
+          // Stored as END of day UTC (23:59:59.999Z), so the date part is the
+          // day the owner picked.
+          closesAt: session.closesAt ? session.closesAt.toISOString().slice(0, 10) : "",
           closed: session.status === "closed",
         }}
         samples={session.samples.map((s) => ({

@@ -22,7 +22,10 @@ evaluations**, physical/extrinsic data, invites, and its tasting-history rows.
 Every path that ends a session goes through `closeSessionInternal`
 (`lib/closeSession.ts`): **idempotent** status flip (`updateMany where status
 != closed`, stamps `closedAt`) → **reveal every coffee-linked sample** → 
-`syncCoffeeHistoryForSession` → close emails (group only). A second click, a
+`syncCoffeeHistoryForSession` → close emails (group only: each participant gets a
+link to their results page via login `next=` plus their personal summary PDF —
+`lib/closeEmail.ts`; the full CVA form is downloaded from the results page; legacy
+attach with `CLOSE_EMAIL_ATTACH_CVA=1`; see §6). A second click, a
 concurrent call or a cron retry is a no-op — nothing is re-synced or re-sent.
 Once closed, a session is **read-only**: every mutation runs
 `assertSessionWritable` and throws `session_closed`; `/cup` redirects to
@@ -35,9 +38,20 @@ Once closed, a session is **read-only**: every mutation runs
 evaluation for **every** sample (`maybeAutoCloseSoloSession` inside
 `submitAllEvaluations`, `app/actions/community.ts`, `emails: "skip"`).
 
+**Express — "Catar ahora" (2026-10).** `createExpressSession` (`app/actions/sessions.ts`,
+`run()` → `ActionResult`) creates the same active solo session from a phone in
+three taps — name → format → sample count (1–20, rules in `lib/expressSession.ts`)
+— with `cupsPerSample: 1` and every sample **coffee-less** (`coffeeId: null`,
+labels "Muestra A…"). The full wizard's `validateSessionInput` is untouched and
+still requires a coffee per sample. Entry points: dashboard header + empty state
+and the sessions list header, all `GuestGateLink` (`/app/sessions/express` is
+outside the guest scope, so proxy and link agree). Lifecycle afterwards is
+identical to any solo session (auto-close on submit-all).
+
 ```mermaid
 stateDiagram-v2
     [*] --> active : createSession (solo)
+    [*] --> active : createExpressSession (solo, coffee-less samples)
     active --> active : cup + auto-save drafts (800ms debounce)
     active --> active : submit with samples still pending
     active --> closed : submitAllEvaluations — every sample submitted\n→ closeSessionInternal (reveal → history)
@@ -212,6 +226,22 @@ rewritten. **Anchor:** results treat the reference as context, not a
 competitor — it is pulled out of the ranking, the session average and "Mejor
 muestra" into its own card above the ranking; the Δ against it is unchanged.
 
+**2026-10 — multiple references (Referencia 1 / 2):** references ACCUMULATE
+instead of replacing. `SessionSample.referenceRank` (1, 2, 3 — unique per
+session, max 3) records the order they were named; `referenceSampleId` stays
+the ACTIVE one (highest rank), so ordering, pin, realtime and the default Δ keep
+working. `setReferenceSample(sessionId, sampleId)` on a sample that is not yet a
+reference gives it `max+1` and makes it active (re-pinning its stored rows to
+79.00); naming an existing reference is a no-op; `null` removes only the active
+one and the previous becomes active again. Only the ACTIVE reference is pinned
+— earlier ones keep the pinned data their cuppers saved but unlock, so a cupper
+can change that note. All references are cupped first by rank
+(`orderReferencesFirst`), are anchors in results (excluded from ranking,
+average and "Mejor muestra") and the "Comparar con: Referencia 1 · Referencia 2"
+selector (client state, `localStorage` `cata_results_ref`, active by default)
+chooses the Δ basis. Tabs show R1/R2, PDFs/print/close emails "· Referencia N".
+Scoring, the trigger and `AggregateScore` never read any of this.
+
 ---
 
 ## 2. Coffee visibility & sharing
@@ -325,12 +355,15 @@ and posts.
 flowchart TD
     D[Dashboard] -->|recent sessions via sessionHref| SE
     D -->|nueva sesión| NW
+    D -->|catar ahora| EX
 
     subgraph SE [Sessions]
         SL[List: DataTable\nfilter status/format/role] --> CUP[/cup — evaluate/]
         SL --> ED[/edit — metadata + samples/]
         SL --> RES[/"/results/ — 3-tab structure, see §5"/]
         NW[New session wizard]
+        EX[Express: name · format · N
+coffee-less samples] -->|createExpressSession| CUP
     end
 
     subgraph CO [Coffees]
@@ -423,11 +456,41 @@ from the ranking, the session average and "Mejor muestra" — while every other
 sample's ranking row (R2) and matrix cell (S3) still shows a display-only
 signed Δ against it, explained by the `help.referencia` InfoHint.
 
+## 6. Reports & PDFs (2026-10, S6 Stream A)
+
+Every report is built from the SAME pure models the results page uses
+(`lib/reports/*`, fed by one server-only fetch `loadSessionReportSource`). The
+routes gate first; the builders strip what a tier may not see.
+
+```mermaid
+flowchart LR
+    SRC["loadSessionReportSource(sessionId)\n(server-only, NO authz inside)"]
+    SRC --> PS["buildParticipantSummary\n(viewer only: own scores + anonymous group)"]
+    SRC --> FT["buildFichaTecnica(tier)\n(owner: + green + appendix)"]
+    SRC --> TN["buildTeacherNotes\n(owner only: per-cupper identity)"]
+    PS --> R1["/api/sessions/[id]/participant-summary\nmember|owner|admin · canViewGroupResults else 409"]
+    PS --> EM["close email attachment\n(lib/closeEmail.ts, ledgered)"]
+    FT --> R2["/api/sessions/[id]/ficha-tecnica\nowner|admin · others 404"]
+    TN --> R2
+    CF["lib/coffees/aggregateSamples +\ncomputeCoffeeAggregate"] --> R3["/api/coffees/[id]/ficha\nusableCoffeeWhere · community block if\nresultsPublished || owner"]
+    CVA["buildCvaFormData(ownerView)\nphysical: owner only · extrinsic: owner || revealed"] --> R4["/api/sessions/[id]/cva-pdf\n+ /print page (HTML twin)"]
+```
+
+Tiers are entitlements, not billing: **participant** = `participant-summary`
+(never another cupper's name/id, never physical data — asserted in
+`tests/reports.test.ts`); **owner** = `ficha-tecnica` (+ teacher notes). All
+documents register fonts once (`lib/pdf/fonts.ts`) and draw charts with the
+`lib/pdf/charts.tsx` SVG primitives; `?inline=1` opens the native viewer
+(iOS) instead of downloading. New reports are PDF-only — `PrintClient.tsx`
+stays the HTML twin of the CVA form only.
+
 ---
 
 ## Maintenance checklist
 
 When you touch any of these, update the matching diagram **in the same PR**:
+
+- A report route, a `lib/reports/*` builder, or the close-email attachment policy → §6.
 
 - Session status transitions, the close routine, delete semantics or `sessionHref` rules → §1
 - `usableCoffeeWhere`, visibility values, share/invite semantics, delete cascades → §2

@@ -7,6 +7,8 @@ import {
   useEffect,
   useSyncExternalStore,
 } from "react";
+import { WarmupMoment } from "@/components/session-moments/WarmupMoment";
+import type { WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { Coffee, Scale, FileText, BarChart3 } from "lucide-react";
@@ -51,6 +53,9 @@ import {
   type GuardItem,
 } from "@/components/cupping/EvaluationGuardModal";
 import { PhaseStepper } from "@/components/cupping/PhaseStepper";
+import { useKeyboardOpen } from "@/hooks/useKeyboardOpen";
+import { indexAfterReconcile, reconcileSamples } from "@/lib/sampleReconcile";
+import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
 import { DevRoleBadge } from "@/components/dev/DevRoleBadge";
 import {
   SessionShell,
@@ -65,7 +70,13 @@ import {
   type ModuleItem,
 } from "@/components/ui";
 import { useConnectivity } from "@/hooks/useConnectivity";
-import { isPinnedModule, orderReferenceFirst, pinReferenceAffective } from "@/lib/referenceRules";
+import {
+  isPinnedModule,
+  nextReferenceOrder,
+  orderByReferenceIds,
+  pinReferenceAffective,
+  referencesOf,
+} from "@/lib/referenceRules";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { OfflineBanner } from "@/components/offline/OfflineBanner";
 import { SyncConflictModal } from "@/components/offline/SyncConflictModal";
@@ -118,6 +129,8 @@ type Sample = {
   revealed: boolean;
   coffeeId: string | null;
   coffee: SampleCoffee | null;
+  /** 1, 2, … when the sample is a reference (S6 multi-reference). */
+  referenceRank?: number | null;
 };
 
 type Session = {
@@ -149,10 +162,14 @@ export function CupClient({
   userEmail,
   userCountry,
   userId,
+  warmup,
 }: {
   locale: string;
   initialSampleId?: string;
   session: Session;
+  /** Optional pre-cupping warm-up (CuppingSession.warmupExerciseId) — shown
+   *  once per session per device by the session-moment overlay. */
+  warmup?: { exerciseId: string | null; strings: WarmupPlayerStrings };
   isOwner: boolean;
   isGroup: boolean;
   sessionStatus: string;
@@ -205,6 +222,8 @@ export function CupClient({
     participantRole: string;
     // Shell (Phase 3)
     samplesHeader: string;
+    /** aria-label of the phone chevron that reveals session details. */
+    sessionDetails?: string;
     evaluationHeader: string;
     phaseTitle: string;
     cuppingModule: string;
@@ -261,6 +280,13 @@ export function CupClient({
     compareHint?: string;
     referenceSelect?: string;
     referenceNone?: string;
+    // Multi-reference (S6)
+    referenceActive?: string;
+    referenceAdd?: string;
+    referenceRemoveActive?: string;
+    referenceAddHint?: string;
+    referenceAddTitle?: string;
+    referenceAddConfirm?: string;
     // Reference lock (2026-09-25): quality pinned at 5, cups cleared.
     referenceLocked?: string;
     referenceLockedAffective?: string;
@@ -285,7 +311,14 @@ export function CupClient({
   // The reference (control) sample is cupped FIRST — the room levels on the
   // anchor before comparing (lib/referenceRules.ts). Order is re-derived
   // whenever the owner changes the reference (see applyReferenceOrder).
-  const initialOrdered = orderReferenceFirst(session.samples, session.referenceSampleId ?? null);
+  // Multi-reference (S6): references are cupped first, by rank (R1, R2…). A
+  // pre-upgrade offline blob has no ranks — fall back to the single pointer.
+  const initialRefIds = (() => {
+    const ranked = referencesOf(session.samples).map((x) => x.id);
+    if (ranked.length) return ranked;
+    return session.referenceSampleId ? [session.referenceSampleId] : [];
+  })();
+  const initialOrdered = orderByReferenceIds(session.samples, initialRefIds);
   const initialSampleIdx = initialSampleId
     ? Math.max(0, initialOrdered.findIndex((s) => s.id === initialSampleId))
     : 0;
@@ -325,33 +358,74 @@ export function CupClient({
   const [startedAt, setStartedAt] = useState(sessionStartedAt);
   // Owner-chosen "Referencia" sample; updated live for participants through
   // the cupping_sessions realtime stream below.
-  const [referenceSampleId, setReferenceSampleId] = useState<string | null>(
-    session.referenceSampleId ?? null,
-  );
+  // Ordered ids of the references (R1 first); the LAST is the active one —
+  // the only one pinned at 79.00 (earlier ones keep their data but unlock).
+  const [refOrder, setRefOrder] = useState<string[]>(initialRefIds);
+  const refOrderRef = useRef(refOrder);
+  const referenceSampleId = refOrder.length ? refOrder[refOrder.length - 1] : null;
+  const [pendingReference, setPendingReference] = useState<string | null>(null);
   const referenceSeqRef = useRef(0);
+  // Sample ids whose pinned "ensure" auto-save has already been queued.
+  const ensuredReferenceRef = useRef<Set<string>>(new Set());
   // Latest committed samples / current sample id, for handlers that run
   // outside the render closure (realtime events, the reference-order swap).
   const samplesRef = useRef(samples);
   const sampleIdRef = useRef<string | null>(null);
+  // Known sample ids for the realtime guards — from STATE, not the server
+  // prop, so a sample added mid-session is known without re-subscribing.
+  const sampleIdsRef = useRef<Set<string>>(new Set(samples.map((s) => s.id)));
   useEffect(() => {
     samplesRef.current = samples;
     sampleIdRef.current = samples[sampleIdx]?.id ?? null;
+    sampleIdsRef.current = new Set(samples.map((s) => s.id));
   });
+
+  // Reconcile with a refreshed server prop (S6 CP-C4): the owner adding,
+  // renaming or removing a sample mid-session touches the session row, the
+  // cupping_sessions subscription below calls router.refresh(), and this
+  // merge applies the server's sample METADATA while keeping every local
+  // evaluation draft (lib/sampleReconcile.ts). The server's referenceSampleId
+  // is the truth after a refresh — it may point at a sample this client only
+  // learns about now. Skipped on mount (state already equals the prop).
+  const serverSamplesRef = useRef(session.samples);
+  useEffect(() => {
+    if (serverSamplesRef.current === session.samples) return;
+    serverSamplesRef.current = session.samples;
+    const reference = session.referenceSampleId ?? null;
+    const next = reconcileSamples(samplesRef.current, session.samples, reference);
+    const idx = indexAfterReconcile(next, sampleIdRef.current, samplesRef.current.findIndex((s) => s.id === sampleIdRef.current));
+    setSamples(next);
+    setSampleIdx(idx);
+    setReferenceSampleId(reference);
+  }, [session.samples, session.referenceSampleId]);
   // Moves the (new) reference to the front, restores position order for the
   // rest, and keeps the cupper on the sample they were looking at.
-  const applyReferenceOrder = (next: string | null) => {
-    setReferenceSampleId(next);
+  const applyRefOrder = (order: string[]) => {
+    const next = order.length ? order[order.length - 1] : null;
+    refOrderRef.current = order;
+    setRefOrder(order);
+    // A reference chosen mid-session must get its pinned auto-save again on
+    // the next visit (the server re-pinned every stored row in
+    // setReferenceSample; this keeps this client's copy in step) — CP-C2.
+    if (next) ensuredReferenceRef.current.delete(next);
     const byPosition = <T extends { position: number }>(list: T[]) =>
       [...list].sort((a, b) => a.position - b.position);
     const currentId = sampleIdRef.current;
-    const ids = orderReferenceFirst(byPosition(samplesRef.current), next).map((s) => s.id);
-    setSamples((prev) => orderReferenceFirst(byPosition(prev), next));
+    const ids = orderByReferenceIds(byPosition(samplesRef.current), order).map((s) => s.id);
+    setSamples((prev) => orderByReferenceIds(byPosition(prev), order));
     setSampleIdx(Math.max(0, ids.indexOf(currentId ?? "")));
   };
+  // The realtime stream only carries the ACTIVE pointer; the list of
+  // references is derived from it (lib/referenceRules.nextReferenceOrder).
+  const applyReferenceOrder = (next: string | null) =>
+    applyRefOrder(nextReferenceOrder(refOrderRef.current, next));
   const applyReferenceOrderRef = useRef(applyReferenceOrder);
   useEffect(() => {
     applyReferenceOrderRef.current = applyReferenceOrder;
   });
+  // Phone chrome collapses (header row + phase stepper hidden) while the
+  // on-screen keyboard is up — see hooks/useKeyboardOpen.ts (CP-C1).
+  const keyboardOpen = useKeyboardOpen();
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState(false);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
@@ -591,9 +665,11 @@ export function CupClient({
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    const sampleIds = new Set(session.samples.map((s) => s.id));
-
-    const channel = supabase
+    // JWT before join — see lib/supabase/realtimeAuth.ts (S6 CP-C4).
+    const stop = subscribeWithSessionAuth(
+      supabase,
+      () =>
+    supabase
       .channel(`session:${session.id}`)
       .on(
         "postgres_changes",
@@ -611,7 +687,7 @@ export function CupClient({
           const sampleId = (row.sessionSampleId ?? row.session_sample_id) as
             | string
             | undefined;
-          if (isDraft === false && sampleId && sampleIds.has(sampleId)) {
+          if (isDraft === false && sampleId && sampleIdsRef.current.has(sampleId)) {
             setSubmittedCount((prev) => prev + 1);
           }
         }
@@ -632,21 +708,39 @@ export function CupClient({
             const next = (row.referenceSampleId ?? row.reference_sample_id ?? null) as
               | string
               | null;
-            applyReferenceOrderRef.current(next && sampleIds.has(next) ? next : null);
+            applyReferenceOrderRef.current(
+              next && sampleIdsRef.current.has(next) ? next : null,
+            );
           }
+          // Any session-row change (sample add/rename/remove touch updatedAt;
+          // start/close/reference) → re-fetch the server page; the reconcile
+          // effect above merges the fresh samples without losing drafts.
+          router.refresh();
         }
-      )
+      ),
       // Without a status callback a dropped channel is indistinguishable from
       // "nobody has submitted yet" — the count just stops moving. Surface it
       // so the maestro knows the number is stale rather than flat (F10).
-      .subscribe((status) => {
+      (status) => {
         setLiveCountDown(status !== "SUBSCRIBED");
-      });
+      },
+    );
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [isGroup, online, session.id, session.samples]);
+    return stop;
+  }, [isGroup, online, session.id, router]);
+
+  // Safety net for the realtime path above (S6 CP-C4): a group cupper whose
+  // channel is silently dead (see lib/supabase/realtimeAuth.ts) still picks up
+  // sample add/rename/remove and the reference within 30s. One RSC fetch per
+  // cupper per 30s; the reconcile effect keeps every local draft. Skipped
+  // while the tab is hidden.
+  useEffect(() => {
+    if (!isGroup || !online) return;
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") router.refresh();
+    }, 30_000);
+    return () => window.clearInterval(id);
+  }, [isGroup, online, router]);
 
   // ─── Save plumbing ────────────────────────────────────────────
   const labelFor = (sampleId: string) =>
@@ -854,7 +948,7 @@ export function CupClient({
   const setCurrentData = (key: keyof Sample, data: Data) => {
     const sample = samples[sampleIdx];
     setSamples((prev) =>
-      prev.map((s, i) => (i === sampleIdx ? { ...s, [key]: data } : s))
+      prev.map((s) => (s.id === sample.id ? { ...s, [key]: data } : s))
     );
     scheduleAutoSave(sample.id, key, data);
     scheduleLocalSave(sample.id, sample.label, key, data);
@@ -1074,15 +1168,31 @@ export function CupClient({
   // the localized error (useActionFeedback) and rolls the value back.
   // A sequence counter guarantees a failed EARLIER request never rolls back a
   // later choice (pick B, pick C, B's save fails → C must stay).
-  const handleReferenceChange = (value: string) => {
-    const next = value === "" ? null : value;
-    const prev = referenceSampleId;
+  // References ACCUMULATE: picking a sample adds it as the next rank (and the
+  // active one); the previous reference keeps its 79.00. Once one exists the
+  // select is an action menu (value stays ""): a sample id adds, REMOVE_ACTIVE
+  // drops only the active one. Adding on top of an existing reference asks
+  // for confirmation first (the old one unlocks, the new one is pinned).
+  const REMOVE_ACTIVE = "__remove_active__";
+  const commitReference = (next: string | null) => {
+    if (next && refOrderRef.current.includes(next)) return; // already one: server no-op
+    if (!next && refOrderRef.current.length === 0) return;
+    const prevOrder = refOrderRef.current;
     const seq = ++referenceSeqRef.current;
     applyReferenceOrder(next);
     startTransition(async () => {
       const r = await feedback.run(setReferenceSample(session.id, next));
-      if (!r.ok && seq === referenceSeqRef.current) applyReferenceOrder(prev);
+      if (!r.ok && seq === referenceSeqRef.current) applyRefOrder(prevOrder);
     });
+  };
+  const handleReferenceChange = (value: string) => {
+    if (value === "") return;
+    if (value === REMOVE_ACTIVE) return commitReference(null);
+    if (refOrderRef.current.length > 0 && !refOrderRef.current.includes(value)) {
+      setPendingReference(value);
+      return;
+    }
+    commitReference(value);
   };
 
   // ─── Derived state ────────────────────────────────────────────
@@ -1109,13 +1219,14 @@ export function CupClient({
   // The anchor must exist for everyone even when a cupper never touches the
   // reference (nothing to score in an affective session): the first visit
   // queues one pinned save so their 79.00 lands and Δ/community work. Only
-  // refs and timers here (no state), and never on a closed session.
-  const ensuredReferenceRef = useRef<Set<string>>(new Set());
+  // refs and timers here (no state), and never on a closed session. Runs
+  // even when an evaluation already exists (reference re-chosen mid-session,
+  // CP-C2): the save is idempotent and the server pins it anyway.
   useEffect(() => {
     if (!referenceSampleId || !affectiveModuleKey) return;
     if (sessionStatus === "closed") return;
     const sample = samplesRef.current[sampleIdx];
-    if (!sample || sample.id !== referenceSampleId || sample.evaluationId) return;
+    if (!sample || sample.id !== referenceSampleId) return;
     if (ensuredReferenceRef.current.has(sample.id)) return;
     ensuredReferenceRef.current.add(sample.id);
     if (!isPinnedModule(affectiveModuleKey)) return;
@@ -1126,16 +1237,41 @@ export function CupClient({
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [referenceSampleId, sampleIdx, affectiveModuleKey, sessionStatus]);
-  const isCurrentReference = referenceSample?.id === current.id;
+  const currentRefIdx = refOrder.indexOf(current.id);
+  const isCurrentReference = currentRefIdx !== -1;
   const referenceBadgeLabel = translations.referenceBadge ?? "Referencia";
-  const referenceOptions = [
-    { value: "", label: translations.referenceNone ?? "Sin referencia" },
-    ...samples.map((s) => ({ value: s.id, label: s.label })),
-  ];
+  const multiRef = refOrder.length > 1;
+  // "R1: A · R2: D (activa)" — only worth showing once there is something to tell apart.
+  const labelOf = (id: string) => samples.find((s) => s.id === id)?.label ?? "";
+  const referenceSummary = refOrder.length
+    ? refOrder
+        .map(
+          (id, i) =>
+            `R${i + 1}: ${labelOf(id)}${multiRef && i === refOrder.length - 1 ? ` (${translations.referenceActive ?? "activa"})` : ""}`,
+        )
+        .join(" · ")
+    : undefined;
+  const referenceOptions = refOrder.length
+    ? [
+        { value: "", label: translations.referenceAdd ?? "Añadir referencia…" },
+        ...samples
+          .filter((s) => !refOrder.includes(s.id))
+          .map((s) => ({ value: s.id, label: s.label })),
+        {
+          value: REMOVE_ACTIVE,
+          label: `${translations.referenceRemoveActive ?? "Quitar la referencia activa"} (R${refOrder.length})`,
+        },
+      ]
+    : [
+        { value: "", label: translations.referenceNone ?? "Sin referencia" },
+        ...samples.map((s) => ({ value: s.id, label: s.label })),
+      ];
   // Header line under the sample name: "· Referencia" on the reference itself,
   // "Compara con la referencia (C)" on every other sample (participants too).
   const referenceContext = isCurrentReference ? (
-    <Badge tone="accent" size="xs">{referenceBadgeLabel}</Badge>
+    <Badge tone="accent" size="xs">
+      {multiRef ? `${referenceBadgeLabel} ${currentRefIdx + 1}` : referenceBadgeLabel}
+    </Badge>
   ) : referenceSample && translations.compareHint ? (
     <span
       className="min-w-0 truncate font-sans text-[11px] text-brown-mid"
@@ -1304,7 +1440,7 @@ export function CupClient({
       )}
       {referenceSample && (
         <div className="font-mono text-[11px] text-brown-mid mt-0.5 truncate">
-          {referenceBadgeLabel}: {referenceSample.label}
+          {multiRef ? referenceSummary : `${referenceBadgeLabel}: ${referenceSample.label}`}
         </div>
       )}
     </>
@@ -1318,7 +1454,8 @@ export function CupClient({
         id: s.id,
         label: s.label,
         filled: hasStepFill(s, currentStep),
-        reference: s.id === referenceSampleId,
+        reference: refOrder.includes(s.id),
+        referenceTag: multiRef ? `R${refOrder.indexOf(s.id) + 1}` : undefined,
       }))}
       referenceLabel={referenceBadgeLabel}
       activeIndex={sampleIdx}
@@ -1326,9 +1463,11 @@ export function CupClient({
     />
   );
 
-  // Mobile/tablet (<lg): horizontal sample bar + position counter, under the phases.
+  // Tablet (sm..lg): horizontal sample bar + position counter, under the
+  // phases. On phones (<sm) the same tabs live in the hamburger row instead
+  // (`phoneBar` below) so the chrome above the form stays ≤110px (CP-C1).
   const mobileSampleBar = (
-    <div className="lg:hidden border-t border-brown-light bg-bg">
+    <div className="hidden sm:block lg:hidden border-t border-brown-light bg-bg">
       <div className="flex items-center gap-3 px-4 py-1.5">
         <div className="min-w-0 flex-1">{sampleTabsBar}</div>
         <span className="shrink-0 font-mono text-[10px] text-brown-mid tabular-nums">
@@ -1340,6 +1479,57 @@ export function CupClient({
         <div className="flex items-center px-4 pb-1.5">{referenceContext}</div>
       )}
     </div>
+  );
+
+  // Phone (<sm): sample tabs + counter share the hamburger row. Everything
+  // that used to need its own line (session name, role, reference context,
+  // edit button) sits behind the chevron (`phoneDetails`).
+  const phoneBar = (
+    <div className="flex items-center gap-2 min-w-0">
+      <div className="min-w-0 flex-1">
+        <SampleTabs
+          orientation="horizontal"
+          header={translations.samplesHeader}
+          hideHeader
+          samples={viewSamples.map((s) => ({
+            id: s.id,
+            label: s.label,
+            filled: hasStepFill(s, currentStep),
+            reference: refOrder.includes(s.id),
+            referenceTag: multiRef ? `R${refOrder.indexOf(s.id) + 1}` : undefined,
+          }))}
+          referenceLabel={referenceBadgeLabel}
+          activeIndex={sampleIdx}
+          onSelect={handleSampleSelect}
+        />
+      </div>
+      <span className="shrink-0 font-mono text-[10px] text-brown-mid tabular-nums">
+        {sampleIdx + 1}/{samples.length}
+      </span>
+    </div>
+  );
+  const phoneDetails = (
+    <>
+      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-brown-mid">
+        {translations.formatLabel}
+        {isGroup ? ` · ${isOwner ? translations.masterRole : translations.participantRole}` : ""}
+      </div>
+      <div className="font-display text-lg leading-tight text-green-dark truncate">
+        {session.name}
+      </div>
+      {activeTab !== "cupping" && (
+        <div className="font-sans text-sm text-brown-dark">
+          {activeTab === "physical" ? translations.physical : translations.extrinsic}
+          {" · "}
+          {translations.sample} {current.label}
+        </div>
+      )}
+      {isGroup && (
+        <div className="font-mono text-[11px] text-brown-mid">{translations.submittedOf}</div>
+      )}
+      {referenceContext && <div className="flex items-center">{referenceContext}</div>}
+      {editSampleButton && <div className="flex items-center pt-1">{editSampleButton}</div>}
+    </>
   );
 
   const secondaryNav = (
@@ -1379,8 +1569,10 @@ export function CupClient({
         onStart={handleStart}
         referenceLabel={translations.referenceSelect ?? "Muestra de referencia"}
         referenceOptions={referenceOptions}
-        referenceValue={referenceSampleId ?? ""}
+        referenceValue=""
         onReferenceChange={handleReferenceChange}
+        referenceSummary={referenceSummary}
+        referenceHint={refOrder.length ? translations.referenceAddHint : undefined}
       />
     ) : undefined;
 
@@ -1403,6 +1595,7 @@ export function CupClient({
       labels={translations.phaseLabels}
       onSelect={handleStepChange}
       variant="light"
+      compact
     />
   );
 
@@ -1456,9 +1649,9 @@ export function CupClient({
         <div className="hidden lg:block px-6 py-1.5 border-b border-brown-light">
           {sampleTabsBar}
         </div>
-        {/* Mobile/tablet: horizontal sample bar */}
+        {/* Tablet: horizontal sample bar (phones: hamburger row) */}
         {mobileSampleBar}
-        <div className="flex items-center gap-3 px-6 py-3">
+        <div className="hidden sm:flex items-center gap-3 px-6 py-3">
           <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-brown-mid">
             {activeTab === "physical"
               ? translations.physical
@@ -1492,7 +1685,11 @@ export function CupClient({
   );
 
   // ─── Render ───────────────────────────────────────────────────
+  // The session-moment overlay is a SIBLING of SessionShell (never inside
+  // its top bar): it stacks above the shell, is skippable, and renders
+  // static content so it works offline.
   return (
+    <>
     <SessionShell
       identity={identity}
       secondaryNav={secondaryNav}
@@ -1501,6 +1698,10 @@ export function CupClient({
       topBar={topBar}
       footer={footer}
       mobileTitle={session.name}
+      mobileBar={phoneBar}
+      mobileDetails={phoneDetails}
+      mobileDetailsLabel={translations.sessionDetails}
+      collapsed={keyboardOpen}
       saveStatus={saveStatus}
       savePendingLabel={translations.savedLocally}
     >
@@ -1525,8 +1726,13 @@ export function CupClient({
               <span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.18em] text-brown-mid">
                 {translations.referenceSelect ?? "Muestra de referencia"}
               </span>
+              {referenceSummary && (
+                <span className="mb-1 block font-sans text-xs text-on-surface-variant">
+                  {referenceSummary}
+                </span>
+              )}
               <Select
-                value={referenceSampleId ?? ""}
+                value=""
                 onChange={handleReferenceChange}
                 options={referenceOptions}
                 ariaLabel={translations.referenceSelect ?? "Muestra de referencia"}
@@ -1660,6 +1866,26 @@ export function CupClient({
         </div>
       )}
       <ConfirmDialog
+        open={pendingReference !== null}
+        onOpenChange={(o) => {
+          if (!o) setPendingReference(null);
+        }}
+        title={translations.referenceAddTitle ?? "Añadir referencia"}
+        body={
+          translations.referenceAddHint ??
+          "La referencia anterior conserva sus 79.00; la nueva queda fijada."
+        }
+        confirmLabel={translations.referenceAddConfirm ?? "Añadir referencia"}
+        cancelLabel={translations.cancel}
+        closeLabel={translations.cancel}
+        destructive={false}
+        onConfirm={() => {
+          const id = pendingReference;
+          setPendingReference(null);
+          if (id) commitReference(id);
+        }}
+      />
+      <ConfirmDialog
         open={closeDialogOpen}
         onOpenChange={setCloseDialogOpen}
         title={translations.closeSession}
@@ -1768,5 +1994,15 @@ export function CupClient({
 
       <DevRoleBadge email={userEmail} />
     </SessionShell>
+    {warmup && (
+      <WarmupMoment
+        sessionId={session.id}
+        locale={locale}
+        exerciseId={warmup.exerciseId}
+        enabled={sessionStatus !== "closed"}
+        strings={warmup.strings}
+      />
+    )}
+    </>
   );
 }

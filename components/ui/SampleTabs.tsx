@@ -9,6 +9,8 @@ export type SampleTabItem = {
   filled?: boolean;
   /** The session's "Referencia" sample — renders a small pill after the label. */
   reference?: boolean;
+  /** "R1"/"R2" — replaces `referenceLabel` when a session has several references. */
+  referenceTag?: string;
 };
 
 interface SampleTabsProps {
@@ -19,6 +21,8 @@ interface SampleTabsProps {
   orientation?: "vertical" | "horizontal";
   /** Pill text for `reference` items, e.g. "Referencia". */
   referenceLabel?: string;
+  /** Keep `header` as the nav's aria-label but don't render it (phone row). */
+  hideHeader?: boolean;
 }
 
 export function SampleTabs({
@@ -28,6 +32,7 @@ export function SampleTabs({
   header,
   orientation = "vertical",
   referenceLabel = "Ref",
+  hideHeader = false,
 }: SampleTabsProps) {
   const horizontal = orientation === "horizontal";
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -63,7 +68,7 @@ export function SampleTabs({
               <span className={styles.position}>{i + 1}</span>
               <span className={styles.label}>{s.label}</span>
               {s.reference && (
-                <span className={styles.reference}>{referenceLabel}</span>
+                <span className={styles.reference}>{s.referenceTag ?? referenceLabel}</span>
               )}
               {s.filled && !isActive && (
                 <span className={styles.check} aria-label="completed">
@@ -82,7 +87,7 @@ export function SampleTabs({
       aria-label={header ?? "Samples"}
       className={horizontal ? styles.horizontal : undefined}
     >
-      {header && (
+      {header && !hideHeader && (
         <div className={`${styles.header} ${horizontal ? styles.headerH : ""}`}>
           {header}
         </div>

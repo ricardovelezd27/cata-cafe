@@ -298,3 +298,20 @@ export function collectDescriptors(
   }
   return Array.from(seen);
 }
+
+/**
+ * Ancestors of a flavor-wheel node, root first, EXCLUDING the node itself:
+ * an L3 leaf → [L1, L2], an L2 → [L1], an L1 or an id that is not on the wheel
+ * (CATA sets, main tastes, junk) → []. Retired/legacy ids are migrated first.
+ * Same upward walk as the L1/L2 resolution in `buildFlavorGroups`
+ * (lib/pdf/cvaFormData.ts), exposed for the results roll-up.
+ */
+export function ancestorsOf(id: string): string[] {
+  let node = flavorNodeById(migrateFlavorId(normalizeDescriptorId(id).id));
+  const chain: string[] = [];
+  while (node && node.parentId) {
+    chain.unshift(node.parentId);
+    node = flavorNodeById(node.parentId);
+  }
+  return chain;
+}

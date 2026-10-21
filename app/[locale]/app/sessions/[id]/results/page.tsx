@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { orderReferenceFirst } from "@/lib/referenceRules";
+import { orderReferencesFirst } from "@/lib/referenceRules";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
 import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
@@ -11,6 +11,7 @@ import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
 import { asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { deriveMyEvaluation, summarizeMyProgress } from "@/lib/evaluationState";
+import { canViewGroupResults } from "@/lib/sessionState";
 import { ResultsClient } from "./ResultsClient";
 
 // resendCloseEmails / refreshAggregateScores run from here; give the
@@ -96,7 +97,7 @@ export default async function ResultsPage({
 
   // The reference (control) sample leads every list on this page — tables,
   // radar cards, owner matrix — mirroring the cupping order (lib/referenceRules.ts).
-  session.samples = orderReferenceFirst(session.samples, session.referenceSampleId);
+  session.samples = orderReferencesFirst(session.samples);
 
   const isOwner = session.createdBy === user.id;
   // Admin viewing someone else's session: owner-equivalent READ access only.
@@ -127,9 +128,13 @@ export default async function ResultsPage({
   const totalParticipants = session.participants.length;
   const allSubmitted = totalParticipants > 0 && submittedCupperCount >= totalParticipants;
   const sessionExpired = session.closesAt ? session.closesAt < new Date() : false;
-  const canViewGroup =
-    session.isGroup &&
-    (ownerRead || session.status === "closed" || allSubmitted || sessionExpired);
+  const canViewGroup = canViewGroupResults({
+    isGroup: session.isGroup,
+    ownerRead,
+    status: session.status,
+    allSubmitted,
+    sessionExpired,
+  });
 
   // Participants the master has excluded from group results. Used to (a) flag
   // excluded cuppers in the Individual view and (b) drop their descriptors from
@@ -154,6 +159,7 @@ export default async function ResultsPage({
       affective: Record<string, unknown>;
       combined: Record<string, unknown>;
       isReference: boolean;
+      referenceRank: number | null;
     }[];
   };
   let participantResults: ParticipantResult[] | null = null;
@@ -163,11 +169,14 @@ export default async function ResultsPage({
   // Blocks are the perceptual grouping (Nariz / Boca / Gusto / Acidez / Dulzura
   // / Sensación); each block is deduped per cupper before counting (N15).
   type RankedDescriptor = { id: string; label: string; color: string; count: number };
+  type RollupGroup = { id: string; label: string; color: string; level: 1 | 2; count: number; notes: string[] };
   type SampleBlockFreq = {
     sampleId: string;
     label: string;
     totalEvaluators: number;
     blocks: Record<string, RankedDescriptor[]>;
+    stages?: Record<string, RankedDescriptor[]>;
+    rollup?: Record<string, RollupGroup[]>;
     // Per-block statistical summary sentences (null text → empty state).
     summary: Record<string, string | null>;
   };
@@ -271,7 +280,8 @@ export default async function ResultsPage({
               descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
               affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
               combined: (ev?.combinedData as Record<string, unknown>) ?? {},
-              isReference: s.id === session.referenceSampleId,
+              isReference: s.referenceRank != null,
+              referenceRank: s.referenceRank ?? null,
             };
           }),
         }))
@@ -682,7 +692,8 @@ export default async function ResultsPage({
             physical: (s.physical?.data as Record<string, unknown>) ?? {},
             extrinsic: s.revealed ? ((s.extrinsic?.data as Record<string, unknown>) ?? {}) : {},
             aggregateScore,
-            isReference: s.id === session.referenceSampleId,
+            isReference: s.referenceRank != null,
+            referenceRank: s.referenceRank ?? null,
             myEvaluation: myEvaluationBySample.get(s.id) ?? { status: "none", complete: false },
           };
         }),
@@ -705,6 +716,8 @@ export default async function ResultsPage({
         backToCupping: tResults("backToCupping"),
         viewForm: tResults("viewForm"),
         downloadPdf: tResults("downloadPdf"),
+        downloadSummary: tResults("downloadSummary"),
+        downloadFicha: tResults("downloadFicha"),
         refresh: tResults("refresh"),
         refreshing: tResults("refreshing"),
         // Template — the live count is substituted client-side.
@@ -714,6 +727,9 @@ export default async function ResultsPage({
         deltaAttribute: tResults("deltaAttribute"),
         flavorProfiles: tResults("flavorProfiles"),
         referenceBadge: tResults("referenceBadge"),
+        // `{n}` is an ICU arg — fetched raw and replaced client-side.
+        referenceN: tResults.raw("referenceN") as string,
+        compareWith: tResults("compareWith"),
         deltaVsReference: tResults("deltaVsReference"),
         deltaVsReferenceAria: tResults("deltaVsReferenceAria"),
         referenceLegend: tResults("referenceLegend"),
@@ -731,6 +747,7 @@ export default async function ResultsPage({
         closeEmailsResent: tResults("closeEmails.resent"),
         closeEmailsResendError: tResults("closeEmails.resendError"),
         descViewAll: tDesc("viewAll"),
+        descByGroup: tDesc("byGroup"),
         descOf: tDesc("of"),
         descParticipants: tDesc("participants"),
         descEmptyStage: tDesc("emptyStage"),
@@ -741,6 +758,7 @@ export default async function ResultsPage({
         cloudScopeSample: tDesc("cloudScopeSample"),
         cloudScopeTaster: tDesc("cloudScopeTaster"),
         cloudEmpty: tDesc("cloudEmpty"),
+        hideSingles: tDesc("hideSingles"),
         filterSampleAll: tDesc("filterSampleAll"),
         filterBlockLabel: tDesc("filterBlockLabel"),
         soloCloudTitle: tDesc("soloCloudTitle"),

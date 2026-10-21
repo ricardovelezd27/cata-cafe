@@ -9,6 +9,7 @@ import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { FormatBadge } from "@/components/dashboard/FormatBadge";
 import { DashboardIntro } from "@/components/dashboard/DashboardIntro";
+import { WarmupFigure } from "@/components/warmup/figures";
 
 const STATUS_STYLES: Record<string, string> = {
   draft: "text-secondary border border-secondary/50",
@@ -50,6 +51,7 @@ export default async function Dashboard({
   const t = await getTranslations("dashboard");
   const tSession = await getTranslations("session");
   const tc = await getTranslations("common");
+  const tw = await getTranslations("warmup");
 
   const supabase = await createClient();
   const {
@@ -169,19 +171,27 @@ export default async function Dashboard({
   return (
     <div className="space-y-8">
       {/* Header */}
-      <header className="flex items-start justify-between gap-4">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="font-display text-3xl text-primary-container leading-tight">
             {t("welcome", { name: profile?.displayName ?? "" })}
           </h1>
           <p className="text-sm text-on-surface-variant mt-1">{t("subtitle")}</p>
         </div>
-        <GuestGateLink
-          href={`/${locale}/app/sessions/new`}
-          className="shrink-0 px-4 py-2 rounded-pill bg-primary-container text-white text-sm font-bold hover:bg-primary transition-colors"
-        >
-          {t("newSession")}
-        </GuestGateLink>
+        <div className="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+          <GuestGateLink
+            href={`/${locale}/app/sessions/express`}
+            className="px-4 py-2 rounded-pill bg-primary-container text-white text-sm font-bold hover:bg-primary transition-colors text-center"
+          >
+            {t("expressCta")}
+          </GuestGateLink>
+          <GuestGateLink
+            href={`/${locale}/app/sessions/new`}
+            className="px-4 py-2 rounded-pill border border-primary-container text-primary-container text-sm font-semibold hover:bg-primary-fixed transition-colors text-center"
+          >
+            {t("fullWizardCta")}
+          </GuestGateLink>
+        </div>
       </header>
 
       {/* Why / What / How intro + scoring methodology */}
@@ -235,14 +245,51 @@ export default async function Dashboard({
         />
       </div>
 
+      {/* Movimiento Sensorial — pre-cupping warm-ups (guest-reachable, plain Link) */}
+      <Link
+        href={`/${locale}/app/warmup`}
+        className="group flex items-center gap-4 rounded-card border border-outline-variant bg-surface-container-low px-5 py-4 transition-colors hover:bg-primary-fixed/40 md:gap-6"
+      >
+        <span className="hidden h-16 w-12 shrink-0 text-on-surface sm:block" aria-hidden>
+          <WarmupFigure
+            figure={{ kind: "arm-raise", variant: "slow-open", direction: "up" }}
+            durationSec={15}
+            reducedMotion
+            paused
+          />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
+            {tw("dashboard.eyebrow")}
+          </span>
+          <span className="mt-0.5 block font-display text-xl text-primary-container">
+            {tw("dashboard.title")}
+          </span>
+          <span className="mt-1 block text-sm leading-relaxed text-on-surface-variant">
+            {tw("dashboard.body")}
+          </span>
+        </span>
+        <span className="hidden shrink-0 items-center gap-1 text-sm font-semibold text-primary-container sm:inline-flex">
+          {tw("dashboard.cta")}
+          <ChevronRight size={16} className="transition-transform group-hover:translate-x-0.5" aria-hidden />
+        </span>
+        <ChevronRight size={16} className="shrink-0 text-on-surface-variant sm:hidden" aria-hidden />
+      </Link>
+
       {/* Empty state */}
       {!hasData ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
           <span className="text-6xl">☕</span>
           <p className="font-display text-2xl text-primary-container">{t("emptyTitle")}</p>
           <GuestGateLink
-            href={`/${locale}/app/sessions/new`}
+            href={`/${locale}/app/sessions/express`}
             className="mt-2 px-6 py-3 rounded-pill bg-primary-container text-white font-semibold text-sm hover:bg-primary transition-colors"
+          >
+            {t("expressCta")}
+          </GuestGateLink>
+          <GuestGateLink
+            href={`/${locale}/app/sessions/new`}
+            className="px-6 py-3 rounded-pill border border-primary-container text-primary-container font-semibold text-sm hover:bg-primary-fixed transition-colors"
           >
             {t("emptyCta")}
           </GuestGateLink>

@@ -20,8 +20,7 @@
 //
 // NEVER import this (or @react-pdf/renderer) from a client component. It is
 // consumed only by the GET route (app/api/sessions/[id]/cva-pdf/route.ts) and
-// lib/closeEmail.ts. Built-in Helvetica/Times handle Spanish accents, so no
-// font files ship.
+// lib/closeEmail.ts. Fonts: lib/pdf/fonts.ts registers the bundled TTFs in public/fonts.
 
 import {
   Document,
@@ -29,8 +28,10 @@ import {
   View,
   Text,
   StyleSheet,
-  Font,
+  Svg,
+  Polygon,
 } from "@react-pdf/renderer";
+import { registerPdfFonts, SANS, SERIF } from "./fonts";
 import {
   buildCvaFormData,
   CVA_TEXT,
@@ -43,10 +44,7 @@ import {
   type Locale,
 } from "./cvaFormData";
 
-// Disable mid-word hyphenation document-wide: react-pdf's default breaker
-// splits words like "GLOBAL" into "GLOB-AL" in narrow columns. Paper forms wrap
-// at spaces only.
-Font.registerHyphenationCallback((word) => [word]);
+registerPdfFonts();
 
 // ─── Palette — paper-form austerity ─────────────────────────────────────────
 const INK = "#111111";
@@ -59,15 +57,13 @@ const WHITE = "#FFFFFF";
 
 // Section names echo the official form's serif face (and DESIGN.md's editorial
 // Newsreader voice); everything else is the grotesque.
-const SERIF = "Times-Roman";
-const SERIF_BOLD = "Times-Bold";
 
 const s = StyleSheet.create({
   page: {
     paddingTop: 20,
     paddingBottom: 34,
     paddingHorizontal: 22,
-    fontFamily: "Helvetica",
+    fontFamily: SANS,
     fontSize: 7,
     color: INK,
     lineHeight: 1.2,
@@ -77,7 +73,7 @@ const s = StyleSheet.create({
   header: { borderBottom: `1.5pt solid ${RULE}`, paddingBottom: 4, marginBottom: 6 },
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   wordmark: { fontSize: 6.5, letterSpacing: 1.6, color: SOFT, textTransform: "uppercase" },
-  formName: { fontSize: 14, fontFamily: SERIF_BOLD, color: INK, marginTop: 1 },
+  formName: { fontSize: 14, fontFamily: SERIF, fontWeight: 700, color: INK, marginTop: 1 },
   brand: { fontSize: 6.5, letterSpacing: 1.4, color: SOFT, textTransform: "uppercase" },
   fieldGrid: { flexDirection: "row", gap: 10, marginTop: 5 },
   field: { flexGrow: 1, flexBasis: 0 },
@@ -131,7 +127,7 @@ const s = StyleSheet.create({
   cataBox: { border: `0.75pt solid ${RULE}`, marginBottom: 4 },
   cataTitle: {
     fontSize: 5.5,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: SANS, fontWeight: 700,
     letterSpacing: 1.1,
     textTransform: "uppercase",
     backgroundColor: CREAM,
@@ -143,7 +139,7 @@ const s = StyleSheet.create({
   cataCols: { flexDirection: "row", gap: 8 },
   cataCol: { flexGrow: 1, flexBasis: 0 },
   cataRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", marginBottom: 1 },
-  cataGroupLabel: { fontSize: 6.5, fontFamily: "Helvetica-Bold", textTransform: "uppercase" },
+  cataGroupLabel: { fontSize: 6.5, fontFamily: SANS, fontWeight: 700, textTransform: "uppercase" },
   cataSubLabel: { fontSize: 6, color: INK },
   paren: { fontSize: 6, color: SOFT },
 
@@ -162,7 +158,7 @@ const s = StyleSheet.create({
   },
   legendTitle: {
     fontSize: 5.5,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: SANS, fontWeight: 700,
     letterSpacing: 1.1,
     textTransform: "uppercase",
     marginRight: 6,
@@ -216,7 +212,7 @@ const s = StyleSheet.create({
     justifyContent: "center",
     marginRight: 2,
   },
-  bubbleText: { fontSize: 6, fontFamily: "Helvetica-Bold" },
+  bubbleText: { fontSize: 6, fontFamily: SANS, fontWeight: 700 },
   finalBox: {
     marginLeft: 4,
     border: `0.9pt solid ${INK}`,
@@ -226,7 +222,7 @@ const s = StyleSheet.create({
     minWidth: 21,
   },
   finalLabel: { fontSize: 4, letterSpacing: 0.9, color: SOFT },
-  finalValue: { fontSize: 8.5, fontFamily: "Helvetica-Bold" },
+  finalValue: { fontSize: 8.5, fontFamily: SANS, fontWeight: 700 },
   affNotes: { fontSize: 5.5, color: SOFT, fontStyle: "italic", marginTop: 1 },
 
   cupRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap" },
@@ -234,13 +230,13 @@ const s = StyleSheet.create({
   cupNum: { fontSize: 4.5, color: SOFT, marginBottom: 0.5 },
   cupBox: { width: 9, height: 9, border: `0.6pt solid ${INK}`, borderRadius: 0.5 },
 
-  scoreValue: { fontSize: 15, fontFamily: "Helvetica-Bold" },
+  scoreValue: { fontSize: 15, fontFamily: SANS, fontWeight: 700 },
   scoreFormula: { fontSize: 4.5, color: SOFT, fontStyle: "italic", marginTop: 0.5 },
 
   // ── Part banners / meta ──
   partBanner: {
     fontSize: 6,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: SANS, fontWeight: 700,
     letterSpacing: 1.3,
     textTransform: "uppercase",
     borderBottom: `1pt solid ${RULE}`,
@@ -272,7 +268,7 @@ function CheckBox({ checked, size = 6, color = INK }: { checked: boolean; size?:
       }}
     >
       {checked ? (
-        <Text style={{ color: WHITE, fontSize: size - 1.5, fontFamily: "Helvetica-Bold", lineHeight: 1 }}>
+        <Text style={{ color: WHITE, fontSize: size - 1.5, fontFamily: SANS, fontWeight: 700, lineHeight: 1 }}>
           x
         </Text>
       ) : null}
@@ -351,18 +347,15 @@ function IntensityRow({
             </Text>
           ))}
           {pct !== null ? (
-            <Text
-              style={{
-                position: "absolute",
-                left: `${pct - 1.4}%`,
-                top: axisTop - 7.5,
-                fontSize: 7,
-                fontFamily: "Helvetica-Bold",
-                color: INK,
-              }}
+            // Vector marker: the bundled fonts have no ▼ glyph.
+            <Svg
+              width={7}
+              height={5}
+              viewBox="0 0 7 5"
+              style={{ position: "absolute", left: `${pct}%`, marginLeft: -3.5, top: axisTop - 5.5 }}
             >
-              {"▼"}
-            </Text>
+              <Polygon points="0,0 7,0 3.5,5" fill={INK} />
+            </Svg>
           ) : null}
         </View>
       </View>
@@ -461,7 +454,10 @@ function CataBox({
     <View style={[s.cataBox, style ?? {}]} wrap={false}>
       <Text style={s.cataTitle}>{section ? `${section} · ${title}` : title}</Text>
       <View style={[s.cataBody, aside ? { flexDirection: "row", gap: 8 } : {}]}>
-        <View style={{ flexGrow: 1, flexBasis: 0 }}>
+        {/* flexBasis: 0 only makes sense on the ROW axis (next to an aside).
+            In a column body it zeroes the height, the box collapses and the
+            rows paint over whatever follows — Kim's "letras mezcladas". */}
+        <View style={aside ? { flexGrow: 1, flexBasis: 0 } : {}}>
           <View style={s.cataCols}>
             {cols.map((col, ci) => (
               <View key={ci} style={s.cataCol}>
@@ -555,7 +551,7 @@ function ScoreCell({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, stri
       <Text style={s.scoreValue}>{sheet.scoreState === "complete" ? sheet.score : t.none}</Text>
       {sheet.scoreState === "complete" ? (
         <Text style={s.scoreFormula}>
-          {"Σ"}h={sheet.breakdown.affectiveSum} · u={sheet.breakdown.u} · d={sheet.breakdown.d}
+          {t.sumH}={sheet.breakdown.affectiveSum} · u={sheet.breakdown.u} · d={sheet.breakdown.d}
         </Text>
       ) : sheet.scoreState === "partial" ? (
         <Text style={s.scoreFormula}>{t.incomplete}</Text>
@@ -614,9 +610,9 @@ function SampleStrip({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, st
     <View style={s.sampleStrip}>
       <Text>
         <Text style={s.stripLabel}>{t.sampleNo} </Text>
-        <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold" }}>
+        <Text style={{ fontSize: 10, fontFamily: SANS, fontWeight: 700 }}>
           {h.sampleLabel}
-          {h.isReference ? ` · ${t.reference}` : ""}
+          {h.isReference ? ` · ${t.reference}${h.referenceRank ? ` ${h.referenceRank}` : ""}` : ""}
         </Text>
       </Text>
       {h.coffeeName ? (
@@ -711,9 +707,9 @@ function AffectiveGridPage({
           </View>
           {sheets.map((sheet) => (
             <View key={sheet.header.sampleLabel} style={s.sampleCellHead}>
-              <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold" }}>
+              <Text style={{ fontSize: 10, fontFamily: SANS, fontWeight: 700 }}>
                 {sheet.header.sampleLabel}
-                {sheet.header.isReference ? ` · ${t.reference}` : ""}
+                {sheet.header.isReference ? ` · ${t.reference}${sheet.header.referenceRank ? ` ${sheet.header.referenceRank}` : ""}` : ""}
               </Text>
               {sheet.header.coffeeName ? (
                 <Text style={{ fontSize: 6, color: SOFT }}>{sheet.header.coffeeName}</Text>
@@ -1034,6 +1030,8 @@ function MetaAppendix({
 // ─── Document ───────────────────────────────────────────────────────────────
 
 export type CvaDocumentProps = {
+  /** Session owner? Gates physical/extrinsic data inside buildCvaFormData. */
+  ownerView: boolean;
   sessionName: string;
   date: string;
   cupperName: string;
@@ -1047,6 +1045,7 @@ export type CvaDocumentProps = {
     coffeeName: string | null;
     roastLevel: string | null;
     isReference?: boolean;
+    referenceRank?: number | null;
     descriptive: Record<string, unknown>;
     affective: Record<string, unknown>;
     combined: Record<string, unknown>;
@@ -1073,6 +1072,7 @@ export function CvaFormDocument(props: CvaDocumentProps) {
       cupsPerSample: props.cupsPerSample,
       sample,
       locale: props.locale,
+      ownerView: props.ownerView,
     };
     return buildCvaFormData(input);
   });

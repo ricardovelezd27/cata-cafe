@@ -201,6 +201,7 @@ row was detached in the meantime — do not do that without asking.)
    | `GUEST_CLAIM_SECRET` | second generated value | Signs guest "save my results" links. Currently falls back to the service-role key; a dedicated secret means rotating the service key no longer invalidates outstanding claim links. |
    | `RESEND_API_KEY` | from <https://resend.com/api-keys> | Without it every email is silently skipped. |
    | `EMAIL_FROM` | e.g. `Cata Café <no-reply@your-domain>` | Must be a Resend-verified domain. |
+   | `CLOSE_EMAIL_ATTACH_CVA` | *(optional)* `1` | Legacy: also attach each participant's CVA form PDF to the close email. Default (unset) = link to results + personal summary PDF only. |
    | `ANALYTICS_SUPER_ADMIN_EMAIL` | your admin email | The code fallback is a personal Gmail — set it explicitly. |
 
 4. Click **Save** for each. Vercel only applies env changes to NEW deployments: after the

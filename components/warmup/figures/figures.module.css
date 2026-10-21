@@ -1,0 +1,191 @@
+/* Warm-up figures — motion lives here, geometry in Mannequin.tsx.
+ *
+ * Timing is driven by custom properties the figure components set on the
+ * <svg> root:
+ *   --warmup-duration   total animation time for the step (e.g. 15s / 33s)
+ *   --warmup-delay      hold in the previous pose before the leg starts
+ *   --warmup-iterations 1 (slow legs) or 2 ("un par de veces", fast)
+ *   --warmup-ease       linear (slow — constant speed IS the exercise) or
+ *                       ease-in-out (fast, natural)
+ *   --warmup-amp        amplitude factor (1 normal, 0.18 "un centímetro")
+ *
+ * Each animation runs ONCE and holds its end pose (fill-mode both); the
+ * player remounts the figure per step so a new step restarts from neutral.
+ * Round trips put the 3 s hold between 45.45 % and 54.55 % (15 + 3 + 15 s).
+ */
+
+.svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  color: var(--color-on-surface);
+  --warmup-duration: 15s;
+  --warmup-delay: 0s;
+  --warmup-iterations: 1;
+  --warmup-ease: linear;
+  --warmup-amp: 1;
+  overflow: visible;
+}
+
+.fillSurface { fill: var(--color-surface-container-lowest); }
+
+/* v2 silhouette: moving segment = secondary at full opacity, rest = 40 %. */
+.partRest { opacity: 0.4; transition: opacity var(--transition-fast); }
+.partMoving { color: var(--color-secondary); opacity: 1; transition: opacity var(--transition-fast); }
+.groundShadow { fill: var(--color-on-surface); opacity: 0.07; }
+.tick { opacity: 0.55; }
+.fillInk { fill: currentColor; }
+.ghost { opacity: 0.38; }
+.chair { color: var(--color-outline); }
+
+/* Pivots (viewBox user units — transform-box: view-box) */
+.armR { transform-box: view-box; transform-origin: 146px 112px; }
+.upperFront { transform-box: view-box; transform-origin: 120px 206px; }
+.upperSide { transform-box: view-box; transform-origin: 118px 206px; }
+.torso { transform-box: view-box; transform-origin: 120px 206px; }
+.face, .pupils { transform-box: view-box; transform-origin: 120px 60px; }
+
+/* One class per movable part switches the animation on. */
+.anim {
+  animation-duration: var(--warmup-duration);
+  animation-delay: var(--warmup-delay);
+  animation-iteration-count: var(--warmup-iterations);
+  animation-timing-function: var(--warmup-ease);
+  animation-fill-mode: both;
+  animation-play-state: running;
+}
+.paused .anim,
+.paused .lead,
+.paused .breathe { animation-play-state: paused; }
+
+/* ───────── Arm (lateral raise, pivot at the shoulder) ───────── */
+@keyframes armUp {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(calc(-160deg * var(--warmup-amp))); }
+}
+@keyframes armDown {
+  from { transform: rotate(calc(-160deg * var(--warmup-amp))); }
+  to   { transform: rotate(0deg); }
+}
+@keyframes armUpDown {
+  0%   { transform: rotate(0deg); }
+  50%  { transform: rotate(calc(-160deg * var(--warmup-amp))); }
+  100% { transform: rotate(0deg); }
+}
+.armUp { animation-name: armUp; }
+.armDown { animation-name: armDown; }
+.armUpDown { animation-name: armUpDown; }
+
+/* ───────── Eyes (pupils slide inside the lids) ───────── */
+@keyframes eyesRight { from { transform: translate(0, 0); } to { transform: translate(calc(4.5px * var(--warmup-amp)), 0); } }
+@keyframes eyesLeftReturn {
+  0%     { transform: translate(0, 0); }
+  45.45% { transform: translate(calc(-4.5px * var(--warmup-amp)), 0); }
+  54.55% { transform: translate(calc(-4.5px * var(--warmup-amp)), 0); }
+  100%   { transform: translate(0, 0); }
+}
+@keyframes eyesUpReturn {
+  0%     { transform: translate(0, 0); }
+  45.45% { transform: translate(0, calc(-3.2px * var(--warmup-amp))); }
+  54.55% { transform: translate(0, calc(-3.2px * var(--warmup-amp))); }
+  100%   { transform: translate(0, 0); }
+}
+@keyframes eyesDownReturn {
+  0%     { transform: translate(0, 0); }
+  45.45% { transform: translate(0, calc(3.2px * var(--warmup-amp))); }
+  54.55% { transform: translate(0, calc(3.2px * var(--warmup-amp))); }
+  100%   { transform: translate(0, 0); }
+}
+@keyframes eyesCenterFromRight { from { transform: translate(calc(4.5px * var(--warmup-amp)), 0); } to { transform: translate(0, 0); } }
+.eyesRight { animation-name: eyesRight; }
+.eyesLeft { animation-name: eyesLeftReturn; }
+.eyesUp { animation-name: eyesUpReturn; }
+.eyesDown { animation-name: eyesDownReturn; }
+.eyesCenter { animation-name: eyesCenterFromRight; }
+
+/* ───────── Head turn (front view: features slide, ears stay) ───────── */
+@keyframes headRightLeft {
+  0%     { transform: translateX(0); }
+  45.45% { transform: translateX(calc(13px * var(--warmup-amp))); }
+  54.55% { transform: translateX(calc(13px * var(--warmup-amp))); }
+  100%   { transform: translateX(calc(-13px * var(--warmup-amp))); }
+}
+@keyframes headFast {
+  0%   { transform: translateX(0); }
+  25%  { transform: translateX(calc(13px * var(--warmup-amp))); }
+  50%  { transform: translateX(0); }
+  75%  { transform: translateX(calc(-13px * var(--warmup-amp))); }
+  100% { transform: translateX(0); }
+}
+@keyframes headCenterFromLeft { from { transform: translateX(calc(-13px * var(--warmup-amp))); } to { transform: translateX(0); } }
+.headRightLeft { animation-name: headRightLeft; }
+.headFast { animation-name: headFast; }
+.headCenter { animation-name: headCenterFromLeft; }
+
+/* ───────── Trunk forward / back (side view, pivot at the hips) ───────── */
+@keyframes trunkForwardBack {
+  0%     { transform: rotate(0deg); }
+  45.45% { transform: rotate(calc(16deg * var(--warmup-amp))); }
+  54.55% { transform: rotate(calc(16deg * var(--warmup-amp))); }
+  100%   { transform: rotate(0deg); }
+}
+@keyframes trunkForwardBackFast {
+  0%   { transform: rotate(0deg); }
+  50%  { transform: rotate(calc(16deg * var(--warmup-amp))); }
+  100% { transform: rotate(0deg); }
+}
+.trunkForwardBack { animation-name: trunkForwardBack; }
+.trunkForwardBackFast { animation-name: trunkForwardBackFast; }
+
+/* ───────── Trunk side to side (front view, pure translation) ───────── */
+@keyframes trunkRightLeft {
+  0%     { transform: translateX(0); }
+  45.45% { transform: translateX(calc(22px * var(--warmup-amp))); }
+  54.55% { transform: translateX(calc(22px * var(--warmup-amp))); }
+  100%   { transform: translateX(calc(-22px * var(--warmup-amp))); }
+}
+@keyframes trunkFast {
+  0%   { transform: translateX(0); }
+  25%  { transform: translateX(calc(22px * var(--warmup-amp))); }
+  50%  { transform: translateX(0); }
+  75%  { transform: translateX(calc(-22px * var(--warmup-amp))); }
+  100% { transform: translateX(0); }
+}
+@keyframes trunkCenterFromLeft { from { transform: translateX(calc(-22px * var(--warmup-amp))); } to { transform: translateX(0); } }
+.trunkRightLeft { animation-name: trunkRightLeft; }
+.trunkFast { animation-name: trunkFast; }
+.trunkCenter { animation-name: trunkCenterFromLeft; }
+
+/* ───────── Stillness: a slow breath so "rest" never looks frozen ───────── */
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.012, 1.02); }
+}
+.breathe { animation: breathe 4.2s ease-in-out infinite; }
+
+/* ───────── Lead markers ("punto de arranque") ───────── */
+@keyframes leadPulse {
+  0%, 100% { opacity: 0.55; transform: scale(0.92); }
+  50%      { opacity: 1;    transform: scale(1.08); }
+}
+.lead {
+  color: var(--color-secondary);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: leadPulse 1.6s ease-in-out infinite;
+}
+.leadRing { stroke: currentColor; stroke-width: 1.6; fill: none; opacity: 0.7; }
+.leadDot { fill: currentColor; }
+
+/* ───────── Arrows ───────── */
+.arrow {
+  color: var(--color-secondary);
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+}
+.arrowHead { stroke: currentColor; stroke-width: 1.6; fill: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .anim, .breathe, .lead { animation: none; }
+}
