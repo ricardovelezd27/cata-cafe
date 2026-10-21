@@ -12,6 +12,7 @@
  * integrates it.
  */
 
+import { referenceBadgeText } from "@/lib/referenceRules";
 import { useState } from "react";
 import { Pencil } from "lucide-react";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
@@ -56,6 +57,7 @@ export function SampleDetailDialog({
   onEditMetadata,
   onEditExtrinsic,
   referenceBadge,
+  referenceCount = 1,
   t,
 }: {
   open: boolean;
@@ -78,6 +80,8 @@ export function SampleDetailDialog({
   // Label for the "Referencia" badge — only ever rendered when `sample` IS
   // the session's reference (control) sample.
   referenceBadge?: string;
+  /** Number of references in the session — numbers the badge when > 1. */
+  referenceCount?: number;
   t: SampleDetailDialogTranslations;
 }) {
   const initialViewerId = initialParticipantId ?? "me";
@@ -178,7 +182,11 @@ export function SampleDetailDialog({
           cupsPerSample={cupsPerSample}
           locale={locale}
           onEdit={viewerId === "me" ? onEdit : undefined}
-          referenceBadge={sample.isReference ? referenceBadge : null}
+          referenceBadge={
+            sample.isReference && referenceBadge
+              ? referenceBadgeText(referenceBadge, sample.referenceRank, referenceCount)
+              : null
+          }
           // Other cuppers' rows come from the submitted-only matrix query, so
           // the own-evaluation state only applies to the "me" view.
           myEvaluation={activeParticipant ? undefined : sample.myEvaluation}

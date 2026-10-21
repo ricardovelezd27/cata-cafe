@@ -320,7 +320,7 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
           es: "Lleva los ojos a la izquierda. Para tres segundos. Vuelve al centro.",
           en: "Take your eyes to the left. Hold for three seconds. Return to the centre.",
         },
-        durationSec: LEG + HOLD,
+        durationSec: ROUND_TRIP,
         figure: { kind: "eyes", variant: "slow-closed", direction: "left", returns: true },
       },
       {
@@ -329,7 +329,7 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
           es: "Lleva los ojos hacia arriba. Para. Vuelve al centro.",
           en: "Take your eyes upward. Hold. Return to the centre.",
         },
-        durationSec: LEG + HOLD,
+        durationSec: ROUND_TRIP,
         figure: { kind: "eyes", variant: "slow-closed", direction: "up", returns: true },
       },
       {
@@ -338,7 +338,7 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
           es: "Lleva los ojos hacia abajo. Para. Vuelve al centro.",
           en: "Take your eyes downward. Hold. Return to the centre.",
         },
-        durationSec: LEG + HOLD,
+        durationSec: ROUND_TRIP,
         figure: { kind: "eyes", variant: "slow-closed", direction: "down", returns: true },
       },
       {

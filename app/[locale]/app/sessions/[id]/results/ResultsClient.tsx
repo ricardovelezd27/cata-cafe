@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
+import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
 import { revealSample, refreshAggregateScores, resendCloseEmails } from "@/app/actions/community";
 import { ScoreTable, type ScoreTableTranslations } from "@/components/results/ScoreTable";
 import { SampleRadarChart } from "@/components/results/SampleRadarChart";
@@ -26,6 +27,11 @@ import {
   type SessionSyncStatusTranslations,
 } from "@/components/offline/SessionSyncStatus";
 import { canShowMyScore } from "@/lib/evaluationState";
+import {
+  referenceBadgeText,
+  referencesOf,
+  resolveCompareReference,
+} from "@/lib/referenceRules";
 import {
   EditSampleMetadataForm,
   type SampleMetadataFormData,
@@ -82,6 +88,29 @@ function getResultsViewSnapshot(): ResultsView {
 }
 function getResultsViewServerSnapshot(): ResultsView {
   return "tabla";
+}
+
+// "Comparar con" pick (S6 multi-reference): which reference the Δ chips use.
+// Same external-store pattern; "" = nothing chosen → the active reference.
+const COMPARE_REF_KEY = "cata_results_ref";
+const COMPARE_REF_EVENT = "cata:results-ref";
+function subscribeCompareRef(cb: () => void) {
+  window.addEventListener("storage", cb);
+  window.addEventListener(COMPARE_REF_EVENT, cb);
+  return () => {
+    window.removeEventListener("storage", cb);
+    window.removeEventListener(COMPARE_REF_EVENT, cb);
+  };
+}
+function getCompareRefSnapshot(): string {
+  try {
+    return localStorage.getItem(COMPARE_REF_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+function getCompareRefServerSnapshot(): string {
+  return "";
 }
 
 export function ResultsClient({
@@ -186,6 +215,9 @@ export function ResultsClient({
     deltaAttribute: string;
     flavorProfiles: string;
     referenceBadge: string;
+    /** "Referencia {n}" — raw ICU string, `{n}` replaced here. */
+    referenceN: string;
+    compareWith: string;
     deltaVsReference: string;
     deltaVsReferenceAria: string;
     referenceLegend: string;
@@ -287,6 +319,19 @@ export function ResultsClient({
     }
     window.dispatchEvent(new Event(RESULTS_VIEW_EVENT));
   };
+  const compareChoice = useSyncExternalStore(
+    subscribeCompareRef,
+    getCompareRefSnapshot,
+    getCompareRefServerSnapshot,
+  );
+  const changeCompareRef = (id: string) => {
+    try {
+      window.localStorage.setItem(COMPARE_REF_KEY, id);
+    } catch {
+      // Storage denied — the pick just won't persist.
+    }
+    window.dispatchEvent(new Event(COMPARE_REF_EVENT));
+  };
   const [refreshing, setRefreshing] = useState(false);
   const [newSubmissions, setNewSubmissions] = useState(0);
   // Realtime channel is not SUBSCRIBED — "no new submissions" may just mean
@@ -328,7 +373,11 @@ export function ResultsClient({
 
     const sampleIds = new Set(session.samples.map((s) => s.id));
 
-    const channel = supabase
+    // JWT before join — see lib/supabase/realtimeAuth.ts (S6 CP-C4).
+    const stop = subscribeWithSessionAuth(
+      supabase,
+      () =>
+    supabase
       .channel(`results:${session.id}`)
       .on(
         "postgres_changes",
@@ -360,16 +409,15 @@ export function ResultsClient({
             setNewSubmissions((n) => n + 1);
           }
         },
-      )
+      ),
       // A dropped channel otherwise looks exactly like "no new submissions".
       // Flag it so the viewer knows to use Actualizar instead of waiting (F10).
-      .subscribe((status) => {
+      (status) => {
         setLiveUpdatesDown(status !== "SUBSCRIBED");
-      });
+      },
+    );
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return stop;
   }, [isGroup, canViewGroup, isAdminViewer, session.id, session.samples, currentUserId]);
 
   const handleEditSample = (sampleId: string) => {
@@ -444,7 +492,12 @@ export function ResultsClient({
   // table, radar, matrix, and drill-down surfaces. Scoring is untouched;
   // this only decides what a Δ chip compares against. ───────────────────────
   const resolvedFormat = format ?? asSessionFormat(session.format);
-  const referenceId = session.samples.find((s) => s.isReference)?.id ?? null;
+  // Multi-reference (S6): every reference is an anchor; `referenceId` is the one
+  // the Δ chips compare against — the viewer's pick, the ACTIVE one by default.
+  const references = referencesOf(session.samples);
+  const referenceId = resolveCompareReference(session.samples, compareChoice);
+  const badgeFor = (s: { referenceRank?: number | null }) =>
+    referenceBadgeText(translations.referenceBadge, s.referenceRank, references.length);
   const referenceSample = referenceId
     ? (session.samples.find((s) => s.id === referenceId) ?? null)
     : null;
@@ -476,6 +529,25 @@ export function ResultsClient({
   // Defensive: fall back to the dashboard if a gated tab is selected without access.
   const effectiveTab: Tab =
     tab === "descriptores" && !canViewDescriptors ? "resumen" : tab;
+
+  // "Comparar con: Referencia 1 · Referencia 2" — only when there are several.
+  const compareSelector =
+    references.length > 1 ? (
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-medium text-on-surface-variant">
+          {translations.compareWith}
+        </span>
+        <SegmentedControl
+          items={references.map((r) => ({
+            id: r.id,
+            label: translations.referenceN.replace("{n}", String(r.referenceRank ?? "")),
+          }))}
+          value={referenceId ?? references[references.length - 1].id}
+          onChange={changeCompareRef}
+          ariaLabel={translations.compareWith}
+        />
+      </div>
+    ) : null;
 
   const tabItems = [
     { id: "resumen", label: translations.tabResumen },
@@ -689,6 +761,7 @@ export function ResultsClient({
         </div>
       ) : effectiveTab === "resumen" ? (
         <div className="p-4 lg:p-6 flex flex-col gap-6">
+          {references.length > 1 && compareSelector}
           <ResumenTab
             samples={session.samples}
             format={format ?? asSessionFormat(session.format)}
@@ -715,6 +788,7 @@ export function ResultsClient({
         </div>
       ) : (
         <div className="p-4 lg:p-6 flex flex-col gap-5">
+          {references.length > 1 && compareSelector}
           {/* Tabla / Gráfico sub-view switch — the hint's content follows the active sub-view */}
           <div className="flex w-full max-w-[400px] items-center justify-center gap-2 self-center">
             <SegmentedControl
@@ -796,8 +870,8 @@ export function ResultsClient({
                     showCommunity={showCommunity}
                     isOwner={isOwner}
                     onReveal={handleReveal}
-                    referenceMyScore={referenceMyScore}
-                    referenceBadge={translations.referenceBadge}
+                    referenceMyScore={sample.id === referenceId ? null : referenceMyScore}
+                    referenceBadge={badgeFor(sample)}
                     deltaVsReference={translations.deltaVsReference}
                     deltaVsReferenceAria={translations.deltaVsReferenceAria}
                     inProgressLabel={translations.table.inProgress}
@@ -886,6 +960,7 @@ export function ResultsClient({
           cupsPerSample={session.cupsPerSample}
           locale={locale}
           referenceBadge={translations.referenceBadge}
+          referenceCount={references.length}
           onEdit={isAdminViewer ? undefined : () => handleEditSample(detailSample.id)}
           onEditMetadata={
             isOwner

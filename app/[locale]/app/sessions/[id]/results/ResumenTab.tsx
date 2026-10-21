@@ -148,10 +148,16 @@ export function ResumenTab({
   // The reference is the ANCHOR: pinned at 5 on every attribute (79.00 for
   // everyone), cupped first, and kept outside the ranking, the session
   // average and the best sample (lib/referenceRules.ts). It still feeds Δ.
-  const referenceSample = referenceId ? (samples.find((s) => s.id === referenceId) ?? null) : null;
-  const referenceRank = referenceSample ? rankFor(referenceSample) : null;
+  // Multi-reference (S6): EVERY reference is an anchor (outside the ranking,
+  // the average and the best sample); `referenceId` is only the one the Δ chips
+  // compare against (the "Comparar con" pick, active by default).
+  const anchors = samples
+    .filter((s) => s.referenceRank != null)
+    .sort((a, b) => (a.referenceRank ?? 0) - (b.referenceRank ?? 0))
+    .map((sample) => ({ sample, rank: rankFor(sample) }));
+  const multiAnchor = anchors.length > 1;
   const ranked = samples
-    .filter((sample) => sample.id !== referenceId)
+    .filter((sample) => sample.referenceRank == null)
     .map((sample, position) => {
       const { score, sd, basis } = rankFor(sample);
       return { sample, position, score, sd, basis };
@@ -173,9 +179,11 @@ export function ResumenTab({
   const refDeltas = deltasVsReference(
     [
       ...ranked.map((r) => ({ id: r.sample.id, score: r.score, basis: r.basis })),
-      ...(referenceSample && referenceRank
-        ? [{ id: referenceSample.id, score: referenceRank.score, basis: referenceRank.basis }]
-        : []),
+      ...anchors.map(({ sample, rank }) => ({
+        id: sample.id,
+        score: rank.score,
+        basis: rank.basis,
+      })),
     ],
     referenceId,
   );
@@ -189,7 +197,7 @@ export function ResumenTab({
   const bestEntry = ranked.find((r) => r.score !== null) ?? null;
 
   // ---- Performance card (my average vs community average) ----
-  const scoredSamples = samples.filter((s) => s.id !== referenceId);
+  const scoredSamples = samples.filter((s) => s.referenceRank == null);
   const myScores = scoredSamples.map(myScoreFor).filter((v): v is number => v !== null);
   const myAvg = average(myScores);
   const communityScores = scoredSamples
@@ -261,15 +269,16 @@ export function ResumenTab({
             {t.ranking}
             <InfoHint title={help.ranking.title} body={help.ranking.body} closeLabel={help.closeLabel} />
           </h2>
-          {referenceSample && referenceRank && (
+          {anchors.map(({ sample: referenceSample, rank: referenceRank }) => (
             <button
+              key={referenceSample.id}
               type="button"
               onClick={() => onOpenSample(referenceSample.id)}
               className="min-h-[44px] flex w-full items-center gap-3 rounded-card border border-secondary/40 bg-secondary-fixed/40 px-4 py-3 text-left transition-colors hover:bg-secondary-fixed"
             >
               <div className="min-w-0 flex-1">
                 <div className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-secondary">
-                  {t.anchorTitle}
+                  {multiAnchor ? `${t.anchorTitle} ${referenceSample.referenceRank}` : t.anchorTitle}
                 </div>
                 <div className="truncate font-medium text-on-surface">{referenceSample.label}</div>
                 {referenceSample.revealed && referenceSample.coffee && (
@@ -286,7 +295,7 @@ export function ResumenTab({
               )}
               <ChevronRight size={16} aria-hidden className="shrink-0 text-on-surface-variant" />
             </button>
-          )}
+          ))}
           <div className="flex flex-col gap-2">
             {ranked.map(({ sample, score, sd }, idx) => (
               <button

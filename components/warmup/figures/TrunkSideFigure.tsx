@@ -41,6 +41,7 @@ export function TrunkSideFigure(p: FigureProps) {
       posture="seated"
       eyes={eyesOf(p)}
       lead={p.lead}
+      moving={p.highlight === false ? undefined : "upper"}
       title={p.title}
       paused={p.paused}
       className={p.className}

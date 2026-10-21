@@ -259,7 +259,7 @@
       "backToSessions": "Volver a sesiones",
       "referenceTitle": "Muestra de referencia",
       "referenceNone": "Sin referencia",
-      "referenceHelper": "Las demás muestras se comparan contra esta en los resultados. No afecta el puntaje.",
+      "referenceHelper": "Las demás muestras se comparan contra esta en los resultados. No afecta el puntaje. Si eliges otra, se añade como Referencia 2: la anterior conserva sus 79.00 y la nueva queda fijada.",
       "referenceSaved": "Referencia actualizada",
       "closesAt": "Fecha de cierre",
       "closesAtHint": "Opcional. La sesión se cierra sola en la madrugada siguiente a esta fecha. Déjala vacía para una cata en vivo que cierras tú.",
@@ -361,7 +361,8 @@
     "notStartedMsg": "Aún no ha comenzado",
     "backToSessions": "Volver a mis sesiones",
     "connectionLost": "Conexión en vivo perdida — comprobando cada 15 s",
-    "referenceLine": "Muestra de referencia: {label}"
+    "referenceLine": "Muestra de referencia: {label}",
+    "referencesLine": "Referencias: {list}"
   },
   "score": {
     "individual": "Puntaje individual",
@@ -522,7 +523,13 @@
     "guestError": "No se pudo entrar como invitado. Intenta con tu correo.",
     "sessionClosed": "Esta cata ya cerró — pide al organizador el enlace de resultados.",
     "referenceSelect": "Muestra de referencia",
-    "referenceNone": "Sin referencia"
+    "referenceNone": "Sin referencia",
+    "referenceActive": "activa",
+    "referenceAdd": "Añadir referencia…",
+    "referenceRemoveActive": "Quitar la referencia activa",
+    "referenceAddHint": "La referencia anterior conserva sus 79.00; la nueva queda fijada.",
+    "referenceAddTitle": "Añadir referencia",
+    "referenceAddConfirm": "Añadir referencia"
   },
   "results": {
     "title": "Resultados de la Sesión",
@@ -553,6 +560,8 @@
     "referenceBadge": "Referencia",
     "deltaVsReference": "Δ vs. referencia",
     "deltaVsReferenceAria": "Diferencia de puntaje frente a la muestra de referencia; positiva si esta muestra puntuó más alto",
+    "referenceN": "Referencia {n}",
+    "compareWith": "Comparar con",
     "referenceLegend": "Δ = diferencia frente a la referencia",
     "closedOn": "Cata cerrada el {date}",
     "liveUpdatesDown": "Actualizaciones en vivo no disponibles — pulsa «Actualizar» para ver lo último.",
@@ -1510,6 +1519,11 @@
       "body": "Cinco movimientos lentos de Kim para despertar la percepción antes de oler y probar. De 3 a 8 minutos, con silla o de pie.",
       "cta": "Ver los ejercicios"
     },
+    "waiting": {
+      "title": "Mientras esperas",
+      "body": "Un movimiento lento prepara los sentidos. Elige un ejercicio; si la cata empieza, te llevamos a la mesa.",
+      "minutes": "{min} min"
+    },
     "player": {
       "start": "Empezar",
       "next": "Siguiente",
@@ -1535,6 +1549,33 @@
       "pausedLabel": "En pausa",
       "keyboardHint": "← → para moverte · espacio para pausar",
       "intro": "Antes de empezar"
+    },
+    "v2": {
+      "arriveEyebrow": "Llega",
+      "arriveCue": "Pies en el suelo. Hombros sueltos. Una respiración.",
+      "arriveReady": "Cuando quieras",
+      "optionsTitle": "A tu manera",
+      "soundLabel": "Sonido y vibración",
+      "muteLabel": "Silenciar",
+      "unmuteLabel": "Activar sonido",
+      "accessibleLabel": "Accesible: mostrar los segundos",
+      "largeTextLabel": "Texto grande",
+      "stillLabel": "Quieto, solo atiende",
+      "stillHelp": "Sin movimiento y sin avance automático: atiendes a tu cuerpo y pasas tú al siguiente paso.",
+      "cueTurn": "Mitad del recorrido. Ahora vuelve, igual de lento.",
+      "cueHold": "Sigue, a tu ritmo.",
+      "cueClose": "Quédate quieto, sin hacer nada. Solo siente.",
+      "holdCue": "Quédate en la posición neutral. Solo siente.",
+      "stepFallbackNext": "A continuación",
+      "reflectEyebrow": "Un momento",
+      "reflectTitle": "Dos preguntas, sin prisa",
+      "reflectLead": "Opcional. Lo que escribas se guarda solo en este dispositivo: no se envía ni se mezcla con tus catas.",
+      "answerLabel": "Tu respuesta (opcional)",
+      "save": "Guardar en el dispositivo",
+      "omit": "Omitir",
+      "savedNote": "Guardado en este dispositivo.",
+      "noticedTitle": "Lo que pudiste notar",
+      "ringLabel": "Progreso del paso"
     }
   }
 }

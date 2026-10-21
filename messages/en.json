@@ -259,7 +259,7 @@
       "backToSessions": "Back to sessions",
       "referenceTitle": "Reference sample",
       "referenceNone": "No reference",
-      "referenceHelper": "The other samples are compared against this one in the results. It does not affect the score.",
+      "referenceHelper": "The other samples are compared against this one in the results. It does not affect the score. Picking another adds it as Reference 2: the previous one keeps its 79.00 and the new one is pinned.",
       "referenceSaved": "Reference updated",
       "closesAt": "Closing date",
       "closesAtHint": "Optional. The session closes by itself in the early hours after this date. Leave it empty for a live tasting you close yourself.",
@@ -361,7 +361,8 @@
     "notStartedMsg": "Hasn't started yet",
     "backToSessions": "Back to my sessions",
     "connectionLost": "Live connection lost — checking every 15s",
-    "referenceLine": "Reference sample: {label}"
+    "referenceLine": "Reference sample: {label}",
+    "referencesLine": "References: {list}"
   },
   "score": {
     "individual": "Individual score",
@@ -522,7 +523,13 @@
     "guestError": "Couldn't join as guest. Try with your email.",
     "sessionClosed": "This tasting is already closed — ask the organizer for the results link.",
     "referenceSelect": "Reference sample",
-    "referenceNone": "No reference"
+    "referenceNone": "No reference",
+    "referenceActive": "active",
+    "referenceAdd": "Add reference…",
+    "referenceRemoveActive": "Remove the active reference",
+    "referenceAddHint": "The previous reference keeps its 79.00; the new one is pinned.",
+    "referenceAddTitle": "Add reference",
+    "referenceAddConfirm": "Add reference"
   },
   "results": {
     "title": "Session Results",
@@ -553,6 +560,8 @@
     "referenceBadge": "Reference",
     "deltaVsReference": "Δ vs. reference",
     "deltaVsReferenceAria": "Score difference against the reference sample; positive when this sample scored higher",
+    "referenceN": "Reference {n}",
+    "compareWith": "Compare against",
     "referenceLegend": "Δ = difference against the reference",
     "closedOn": "Tasting closed on {date}",
     "liveUpdatesDown": "Live updates unavailable — press Refresh to see the latest.",
@@ -1510,6 +1519,11 @@
       "body": "Kim's five slow movements to wake up perception before smelling and tasting. 3 to 8 minutes, seated or standing.",
       "cta": "See the exercises"
     },
+    "waiting": {
+      "title": "While you wait",
+      "body": "A slow movement prepares the senses. Pick an exercise; if the cupping starts, we take you to the table.",
+      "minutes": "{min} min"
+    },
     "player": {
       "start": "Start",
       "next": "Next",
@@ -1535,6 +1549,33 @@
       "pausedLabel": "Paused",
       "keyboardHint": "← → to move · space to pause",
       "intro": "Before you start"
+    },
+    "v2": {
+      "arriveEyebrow": "Arrive",
+      "arriveCue": "Feet on the floor. Shoulders loose. One breath.",
+      "arriveReady": "Whenever you're ready",
+      "optionsTitle": "Your way",
+      "soundLabel": "Sound and vibration",
+      "muteLabel": "Mute",
+      "unmuteLabel": "Turn sound on",
+      "accessibleLabel": "Accessible: show the seconds",
+      "largeTextLabel": "Large text",
+      "stillLabel": "Stay still, just attend",
+      "stillHelp": "No movement and no automatic advance: you attend to your body and move to the next step yourself.",
+      "cueTurn": "Halfway. Now come back, just as slowly.",
+      "cueHold": "Carry on, at your own pace.",
+      "cueClose": "Stay still, doing nothing. Just feel.",
+      "holdCue": "Stay in the neutral position. Just feel.",
+      "stepFallbackNext": "Up next",
+      "reflectEyebrow": "A moment",
+      "reflectTitle": "Two questions, no hurry",
+      "reflectLead": "Optional. What you write stays on this device only: it is never sent or mixed with your cuppings.",
+      "answerLabel": "Your answer (optional)",
+      "save": "Save on this device",
+      "omit": "Skip",
+      "savedNote": "Saved on this device.",
+      "noticedTitle": "What you may have noticed",
+      "ringLabel": "Step progress"
     }
   }
 }
