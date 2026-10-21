@@ -182,3 +182,15 @@ describe("planReferenceRepin", () => {
     expect(plan[0].data.individualScore).toBe(79);
   });
 });
+
+describe("pinReferenceAffective keeps the quick note", () => {
+  it("spreads unknown keys such as nota_express through the pin", () => {
+    const pinned = pinReferenceAffective(
+      { fragancia_af_final: 8, nota_express: "referencia limpia", tazas_defectuosas: [true] },
+      1,
+    );
+    expect(pinned.nota_express).toBe("referencia limpia");
+    expect(pinned.fragancia_af_final).toBe(REFERENCE_PIN_VALUE);
+    expect(pinned.tazas_defectuosas).toEqual([false]);
+  });
+});

@@ -301,6 +301,15 @@
     "referenceLockedAffective": "Muestra de referencia: la calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos y no hay nada que puntuar aquí. Pruébala con calma, anota lo que percibas y continúa con la siguiente muestra.",
     "referenceCupsLocked": "Las tazas de la referencia no se marcan: su puntaje se mantiene fijo en 79.00.",
     "referenceFirstHint": "La cata empieza por la referencia.",
+    "expressNotes": {
+      "title": "Notas rápidas",
+      "body": "Una impresión libre por muestra. Opcional: puedes enviar sin escribir nada.",
+      "placeholder": "¿Qué te dejó esta taza? Aromas, sabores, sensaciones…",
+      "optional": "Opcional",
+      "open": "Notas rápidas →",
+      "back": "Volver a la cata",
+      "submit": "Enviar y ver resultados"
+    },
     "phases": {
       "fragrance": "Fragancia",
       "aroma": "Aroma",

@@ -301,6 +301,15 @@
     "referenceLockedAffective": "Reference sample: quality is pinned at 5 (neither high nor low) on every attribute, so there is nothing to score here. Taste it calmly, note what you perceive and move on to the next sample.",
     "referenceCupsLocked": "Cups are not marked on the reference: its score stays fixed at 79.00.",
     "referenceFirstHint": "The tasting starts with the reference.",
+    "expressNotes": {
+      "title": "Quick notes",
+      "body": "One free-text impression per sample. Optional — you can submit without writing anything.",
+      "placeholder": "What did this cup leave you? Aromas, flavors, sensations…",
+      "optional": "Optional",
+      "open": "Quick notes →",
+      "back": "Back to cupping",
+      "submit": "Submit and see results"
+    },
     "phases": {
       "fragrance": "Fragrance",
       "aroma": "Aroma",
