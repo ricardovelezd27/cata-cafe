@@ -63,6 +63,9 @@ export type SampleResult = {
   // session.referenceSampleId. Display-only: scoring is untouched. See
   // lib/referenceDelta.ts for the Δ-vs-reference helpers this feeds.
   isReference: boolean;
+  // 1, 2, … in the order the owner named the references (S6 multi-reference);
+  // null for a normal sample. `isReference` is derived from it.
+  referenceRank: number | null;
   // The VIEWER'S OWN evaluation state for this sample (none / draft /
   // submitted + complete). Drives the "En curso" chip and gates every "my
   // score" surface so an unfinished draft never prints a 5-filled score

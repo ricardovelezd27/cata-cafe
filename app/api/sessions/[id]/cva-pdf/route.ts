@@ -8,9 +8,10 @@ import type { NextRequest } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { orderReferenceFirst } from "@/lib/referenceRules";
+import { orderReferencesFirst } from "@/lib/referenceRules";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
+import { slug } from "@/lib/pdf/filename";
 import { CvaFormDocument, type CvaDocumentProps } from "@/lib/pdf/CvaFormDocument";
 
 export const runtime = "nodejs";
@@ -85,6 +86,7 @@ export async function GET(
   const ownerView = session.createdBy === viewAsId;
 
   const props: CvaDocumentProps = {
+    ownerView,
     sessionName: session.name,
     date: dateStr,
     cupperName: profile?.displayName ?? "",
@@ -92,7 +94,7 @@ export async function GET(
     cupsPerSample: session.cupsPerSample,
     format: session.format,
     locale,
-    samples: orderReferenceFirst(session.samples, session.referenceSampleId).map((sample) => {
+    samples: orderReferencesFirst(session.samples).map((sample) => {
       const ev = sample.evaluations[0];
       return {
         label: sample.label,
@@ -101,7 +103,8 @@ export async function GET(
           ? coffeeDisplayName(sample.coffee, deletedCoffeeLabel(locale))
           : null,
         roastLevel: sample.coffee?.roastLevel ?? null,
-        isReference: sample.id === session.referenceSampleId,
+        isReference: sample.referenceRank != null,
+        referenceRank: sample.referenceRank ?? null,
         descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
         affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
         combined: (ev?.combinedData as Record<string, unknown>) ?? {},
@@ -132,16 +135,4 @@ export async function GET(
       "Cache-Control": "no-store",
     },
   });
-}
-
-/** ASCII-safe filename fragment (Content-Disposition filenames choke on accents). */
-function slug(input: string): string {
-  // NFD splits accented letters into base + combining mark; the alnum filter
-  // then drops the marks, so "Café" → "cafe" without a fragile combining-range.
-  return input
-    .normalize("NFD")
-    .replace(/[^a-zA-Z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0, 60)
-    .toLowerCase();
 }

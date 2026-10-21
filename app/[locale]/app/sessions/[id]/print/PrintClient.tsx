@@ -112,6 +112,7 @@ type SampleData = {
   coffeeName: string | null;
   roastLevel: string | null;
   isReference?: boolean;
+  referenceRank?: number | null;
   descriptive: D;
   affective: D;
   combined: D;
@@ -658,7 +659,7 @@ function SheetHeader({ sheet, t, formName }: { sheet: CvaSampleSheet; t: T; form
           <div style={S.wordmark}>SCA {t.methodology}</div>
           <div style={S.formName}>{formName}</div>
         </div>
-        <div style={{ ...S.wordmark, letterSpacing: "1.4pt" }}>Cata Café</div>
+        <div style={{ ...S.wordmark, letterSpacing: "1.4pt" }}>Café Sensible</div>
       </div>
       <div style={{ display: "flex", gap: "10pt", marginTop: "5pt" }}>
         <DotField label={t.name} value={h.cupperName} />
@@ -709,7 +710,7 @@ function SampleStrip({ sheet, t }: { sheet: CvaSampleSheet; t: T }) {
         <span style={S.stripLabel}>{t.sampleNo} </span>
         <b style={{ fontSize: "10pt" }}>
           {h.sampleLabel}
-          {h.isReference ? ` · ${t.reference}` : ""}
+          {h.isReference ? ` · ${t.reference}${h.referenceRank ? ` ${h.referenceRank}` : ""}` : ""}
         </b>
       </div>
       {h.coffeeName ? (
@@ -852,7 +853,7 @@ function AffectiveGridPage({
             <div key={sheet.header.sampleLabel} style={{ ...CELL, padding: "3pt 5pt" }}>
               <div style={{ fontSize: "10pt", fontWeight: 700 }}>
                 {sheet.header.sampleLabel}
-                {sheet.header.isReference ? ` · ${t.reference}` : ""}
+                {sheet.header.isReference ? ` · ${t.reference}${sheet.header.referenceRank ? ` ${sheet.header.referenceRank}` : ""}` : ""}
               </div>
               {sheet.header.coffeeName && (
                 <div style={{ fontSize: "6pt", color: C.soft }}>{sheet.header.coffeeName}</div>
@@ -1141,6 +1142,7 @@ export function PrintClient({
     date: string;
     objective?: string | null;
     cupperName: string;
+    ownerView: boolean;
     samples: SampleData[];
   };
   inviteUrl?: string | null;
@@ -1168,6 +1170,7 @@ export function PrintClient({
       cupsPerSample: session.cupsPerSample,
       sample,
       locale: loc,
+      ownerView: session.ownerView,
     })
   );
 

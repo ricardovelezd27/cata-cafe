@@ -9,6 +9,8 @@ export type SampleTabItem = {
   filled?: boolean;
   /** The session's "Referencia" sample — renders a small pill after the label. */
   reference?: boolean;
+  /** "R1"/"R2" — replaces `referenceLabel` when a session has several references. */
+  referenceTag?: string;
 };
 
 interface SampleTabsProps {
@@ -66,7 +68,7 @@ export function SampleTabs({
               <span className={styles.position}>{i + 1}</span>
               <span className={styles.label}>{s.label}</span>
               {s.reference && (
-                <span className={styles.reference}>{referenceLabel}</span>
+                <span className={styles.reference}>{s.referenceTag ?? referenceLabel}</span>
               )}
               {s.filled && !isActive && (
                 <span className={styles.check} aria-label="completed">

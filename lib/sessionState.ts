@@ -18,6 +18,24 @@ export function isSessionClosed(row: { status: string }): boolean {
   return row.status === "closed";
 }
 
+/** Whether group-level (community) results may be shown to this viewer:
+ *  group sessions only, and then to the owner (or admin viewer) at any time,
+ *  otherwise once the session is closed, every participant has submitted, or
+ *  its `closesAt` has passed. Single source for results/page.tsx and the
+ *  report routes (lib/reports/*) so a PDF can never reveal what the page hides. */
+export function canViewGroupResults(input: {
+  isGroup: boolean;
+  ownerRead: boolean;
+  status: string;
+  allSubmitted: boolean;
+  sessionExpired: boolean;
+}): boolean {
+  return (
+    input.isGroup &&
+    (input.ownerRead || input.status === "closed" || input.allSubmitted || input.sessionExpired)
+  );
+}
+
 /** Editing `closesAt` after creation (S6 CP-C3 / S5 item 9). Pure; the
  *  action translates the thrown codes to its own error shape.
  *

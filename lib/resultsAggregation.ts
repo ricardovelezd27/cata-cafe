@@ -18,8 +18,9 @@ import {
   resolveMainTaste,
   PERCEPTUAL_BLOCKS,
   ancestorsOf,
+  normalizeDescriptorId,
 } from "@/lib/descriptors";
-import { flavorNodeById, flavorGroupColor } from "@/lib/constants";
+import { flavorNodeById, flavorGroupColor, migrateFlavorId } from "@/lib/constants";
 import { summarizeSample, type SummaryBlock } from "@/lib/resultsSummary";
 
 type Locale = "es" | "en";
@@ -189,7 +190,7 @@ export function computeSampleBlockFrequencies(
           return out;
         };
         for (const did of ids) {
-          const node = flavorNodeById(did);
+          const node = flavorNodeById(migrateFlavorId(normalizeDescriptorId(did).id));
           if (!node) continue;
           const groups = [...ancestorsOf(did), ...(node.level === 1 || node.level === 2 ? [node.id] : [])];
           const words = noteWords(did);
