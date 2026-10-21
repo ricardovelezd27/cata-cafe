@@ -151,6 +151,10 @@ model CuppingSession {
   // is the second CuppingSession ↔ SessionSample link (the first is samples).
   referenceSampleId String?
   referenceSample   SessionSample? @relation("SessionReferenceSample", fields: [referenceSampleId], references: [id], onDelete: SetNull)
+  // Optional pre-cupping warm-up ("Movimiento Sensorial"): a code constant
+  // from lib/warmup/exercises.ts WARMUP_IDS, validated with oneOf() in the
+  // session actions. Flow/display only — scoring and aggregates never read it.
+  warmupExerciseId String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

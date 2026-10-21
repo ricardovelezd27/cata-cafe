@@ -23,6 +23,7 @@ export default async function NewSessionPage({
   const t = await getTranslations("session");
   const tc = await getTranslations("coffee");
   const tg = await getTranslations("group");
+  const tw = await getTranslations("warmup");
   const ta = await getTranslations("actions");
   const tgroups = await getTranslations("groups");
   const tCommon = await getTranslations("common");
@@ -64,6 +65,13 @@ export default async function NewSessionPage({
     sampleLabel: t("sampleLabel"),
     sampleCoffee: t("sampleCoffee"),
     start: t("start"),
+    // warm-up
+    warmup: {
+      toggle: tw("wizard.toggle"),
+      label: tw("wizard.label"),
+      hint: tw("wizard.hint"),
+      minutes: tw.raw("wizard.minutes") as string,
+    },
     // group
     groupToggle: tg("toggle"),
     groupClosesAt: tg("closesAt"),

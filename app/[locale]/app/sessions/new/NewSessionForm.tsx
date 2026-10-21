@@ -12,6 +12,8 @@ import { InviteQR } from "@/components/ui/InviteQR";
 import { buildInviteUrl } from "@/lib/inviteUrl";
 import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { Badge } from "@/components/ui/Badge";
+import { Select } from "@/components/ui/Select";
+import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 
 // Groups v2: session wizard extends NotifyGroupTranslations with the
 // step-1 "link a group" selector copy + the step-2 auto-invite success
@@ -101,6 +103,8 @@ type Translations = {
   sampleLabel: string;
   sampleCoffee: string;
   start: string;
+  // warm-up (Movimiento Sensorial)
+  warmup: { toggle: string; label: string; hint: string; minutes: string };
   // group
   groupToggle: string;
   groupClosesAt: string;
@@ -264,6 +268,10 @@ export function NewSessionForm({
   const [format, setFormat] = useState<"descriptive" | "affective" | "combined">("combined");
   const [cupsPerSample, setCupsPerSample] = useState(2);
   const [cupsInput, setCupsInput] = useState("2");
+
+  // Optional pre-cupping warm-up (CuppingSession.warmupExerciseId).
+  const [warmupOn, setWarmupOn] = useState(false);
+  const [warmupId, setWarmupId] = useState<WarmupId>(WARMUP_EXERCISES[0].id);
 
   const [coffees, setCoffees] = useState<CoffeeEntry[]>(() => [{ ...EMPTY_COFFEE, id: newId() }]);
   const [samples, setSamples] = useState<SampleEntry[]>(() => [
@@ -488,6 +496,7 @@ export function NewSessionForm({
           coffees: coffeePayload,
           samples: samplePayload,
           referenceIdx,
+          warmupExerciseId: warmupOn ? warmupId : null,
           locale,
         });
         if (result) setErrorCode(result.error);
@@ -501,6 +510,7 @@ export function NewSessionForm({
           coffees: coffeePayload,
           samples: samplePayload,
           referenceIdx,
+          warmupExerciseId: warmupOn ? warmupId : null,
           closesAt: closesAt || undefined,
           groupId: linkedGroupId || undefined,
           notifyGroup,
@@ -698,6 +708,45 @@ export function NewSessionForm({
               {opt.l}
             </button>
           ))}
+        </div>
+
+        {/* Optional pre-cupping warm-up (same switch pattern as the group toggle) */}
+        <div className="mt-5 space-y-3">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={warmupOn}
+              onClick={() => setWarmupOn((v) => !v)}
+              className={
+                "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors " +
+                (warmupOn ? "bg-primary-container" : "bg-outline-variant")
+              }
+            >
+              <span
+                className={
+                  "inline-block h-5 w-5 transform rounded-full bg-surface-container-lowest shadow-card transition-transform " +
+                  (warmupOn ? "translate-x-5" : "translate-x-0.5")
+                }
+              />
+            </button>
+            <span className="text-sm text-on-surface font-medium">{t.warmup.toggle}</span>
+          </div>
+          {warmupOn && (
+            <div className="bg-surface-container-low rounded-card p-4 space-y-2">
+              <FieldLabel>{t.warmup.label}</FieldLabel>
+              <Select
+                value={warmupId}
+                onChange={(v) => setWarmupId(v as WarmupId)}
+                ariaLabel={t.warmup.label}
+                options={WARMUP_EXERCISES.map((ex) => ({
+                  value: ex.id,
+                  label: `${ex.order}. ${lw(ex.name, locale)} · ${t.warmup.minutes.replace("{min}", String(ex.durationMin))}`,
+                }))}
+              />
+              <p className="text-xs text-on-surface-variant">{t.warmup.hint}</p>
+            </div>
+          )}
         </div>
       </div>
 

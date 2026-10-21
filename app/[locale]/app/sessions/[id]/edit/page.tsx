@@ -56,8 +56,15 @@ export default async function EditSessionPage({
 
   const t = await getTranslations("session");
   const tc = await getTranslations("common");
+  const tw = await getTranslations("warmup");
 
   const translations: EditSessionFormTranslations = {
+    warmup: {
+      toggle: tw("wizard.toggle"),
+      label: tw("wizard.label"),
+      hint: tw("wizard.hint"),
+      minutes: tw.raw("wizard.minutes") as string,
+    },
     name: t("name"),
     namePh: t("namePh"),
     date: t("date"),
@@ -120,6 +127,7 @@ export default async function EditSessionPage({
           // Stored as END of day UTC (23:59:59.999Z), so the date part is the
           // day the owner picked.
           closesAt: session.closesAt ? session.closesAt.toISOString().slice(0, 10) : "",
+          warmupExerciseId: session.warmupExerciseId,
           closed: session.status === "closed",
         }}
         samples={session.samples.map((s) => ({
