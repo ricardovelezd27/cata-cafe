@@ -9,6 +9,7 @@ interface NotesProps {
   rows?: number;
   /** Accessible label, hidden visually. */
   ariaLabel?: string;
+  maxLength?: number;
 }
 
 export function Notes({
@@ -17,6 +18,7 @@ export function Notes({
   placeholder = "Notas...",
   rows = 2,
   ariaLabel,
+  maxLength,
 }: NotesProps) {
   return (
     <textarea
@@ -25,6 +27,7 @@ export function Notes({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={rows}
+      maxLength={maxLength}
       aria-label={ariaLabel ?? placeholder}
     />
   );

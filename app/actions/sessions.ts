@@ -23,8 +23,17 @@ import { detachCoffeeHistoryForSession } from "@/lib/coffeeHistory";
 import { isSessionClosed, planClosesAtChange } from "@/lib/sessionState";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { computeEvaluationDerived, moduleKeyForFormat } from "@/lib/evaluation";
-import { isPinnedModule, pinReferenceAffective, planReferenceRepin } from "@/lib/referenceRules";
+import {
+  activeReferenceId,
+  compactReferenceRanks,
+  isPinnedModule,
+  pinReferenceAffective,
+  planAddReference,
+  planReferenceRepin,
+  planRemoveActive,
+} from "@/lib/referenceRules";
 import * as v from "@/lib/validate";
+import { expressSampleLabel, validateExpressInput } from "@/lib/expressSession";
 import { logInfo } from "@/lib/log";
 import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/groups";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
@@ -89,6 +98,7 @@ async function applyReferenceByPosition(
   if (position === null) return;
   const ref = samples.find((s) => s.position === position);
   if (!ref) return;
+  await tx.sessionSample.update({ where: { id: ref.id }, data: { referenceRank: 1 } });
   await tx.cuppingSession.update({
     where: { id: sessionId },
     data: { referenceSampleId: ref.id },
@@ -347,6 +357,59 @@ export async function createSession(input: {
 
   const locale = input.locale || "es";
   redirect(`/${locale}/app/sessions/${sessionId}/cup`);
+}
+
+// ─── "Catar ahora" — express solo session ────────────────────────────────────
+// Three taps from a phone: name → format → sample count → /cup. A separate
+// action rather than a flag on createSession because that one `redirect()`s
+// (cannot return a value) and speaks the wizard's own error codes; this one
+// is called interactively, so it returns ActionResult through run().
+// Samples are created WITHOUT a coffee (coffeeId null) — the owner can name
+// a coffee on them after the session closes (see updateSampleMetadata) so
+// express sessions still feed UserCoffeeHistory. `validateSessionInput` is
+// untouched: the full wizard keeps requiring a coffee per sample. Rules and
+// labels: lib/expressSession.ts (pure, unit-tested).
+export async function createExpressSession(input: {
+  name: string;
+  format: string;
+  sampleCount: number;
+  locale?: string;
+}): Promise<ActionResult<{ sessionId: string }>> {
+  return run("createExpressSession", async () => {
+    const user = await requireUser();
+    // Guests (anonymous QR walk-ups) never create assets — proxy.ts already
+    // keeps them off /app/sessions/express; this closes the direct-POST path.
+    if (user.is_anonymous) throw new Error("not_found_or_forbidden");
+
+    const parsed = validateExpressInput(input);
+    const locale = input.locale === "en" ? "en" : "es";
+
+    const session = await prisma.cuppingSession.create({
+      data: {
+        name: parsed.name,
+        date: new Date(),
+        format: parsed.format,
+        // One cup per sample: the express flow is a quick impression, not a
+        // uniformity/defect protocol (penalties only apply at ≥5 cups anyway).
+        cupsPerSample: 1,
+        status: "active",
+        isGroup: false,
+        createdBy: user.id,
+        samples: {
+          create: Array.from({ length: parsed.sampleCount }, (_, i) => ({
+            label: expressSampleLabel(i, locale),
+            position: i,
+            coffeeId: null,
+          })),
+        },
+      },
+      select: { id: true },
+    });
+
+    revalidatePath(`/${locale}/app/sessions`);
+    revalidatePath(`/${locale}/app`);
+    return { sessionId: session.id };
+  });
 }
 
 export async function createGroupSession(input: {
@@ -702,8 +765,12 @@ export async function duplicateSession(
 }
 
 // ─── Reference sample (owner only) ───────────────────────────────────────────
-// Marks ONE sample as the "Referencia" the others are compared against, or
-// clears it with `null`. Display-only — scoring never reads it. Called
+// References ACCUMULATE (S6 multi-reference): naming a sample that is not yet
+// a reference gives it `referenceRank = max + 1` (max 3) and makes it the
+// ACTIVE one (`referenceSampleId`); earlier references keep their pinned
+// 79.00 data but unlock. Naming an existing reference is a no-op. `null`
+// removes ONLY the active reference and the previous one becomes active
+// again. Display-only — scoring never reads any of this. Called
 // interactively (wizard step 2, edit page, master panel), hence ActionResult.
 export async function setReferenceSample(
   sessionId: string,
@@ -715,7 +782,7 @@ export async function setReferenceSample(
       const user = await requireUser();
       assertSessionWritable(await requireSessionOwner(sessionId, user.id));
 
-      let next: string | null = null;
+      let targetId: string | null = null;
       if (sampleId !== null) {
         const id = v.str(sampleId, "sampleId", { max: 64 })!;
         // The FK accepts ANY sample id — the session match is the real guard.
@@ -724,28 +791,58 @@ export async function setReferenceSample(
           select: { id: true },
         });
         if (!sample) throw new Error("not_found_or_forbidden");
-        next = sample.id;
+        targetId = sample.id;
       }
 
       // Re-pin mid-session (S6 CP-C2): evaluations the cuppers already wrote
-      // for the NEW reference are rewritten to the 79.00 anchor in the same
-      // transaction as the pointer move, so no reader ever sees a reference
-      // whose stored rows disagree with the pin. `planReferenceRepin` echoes
-      // `isDraft` into SET on purpose — that is what re-fires
+      // for the NEW active reference are rewritten to the 79.00 anchor in the
+      // same transaction as the pointer move, so no reader ever sees a
+      // reference whose stored rows disagree with the pin. `planReferenceRepin`
+      // echoes `isDraft` into SET on purpose — that is what re-fires
       // trg_recompute_aggregate for submitted rows (UPDATE OF "isDraft").
       // The one sanctioned server-side rewrite of a submitted evaluation.
+      // Earlier references are never touched (they keep their pinned rows).
       let repinned = 0;
+      let active: string | null = null;
       await prisma.$transaction(async (tx) => {
+        // Read the ranks inside the transaction so two owners' tabs cannot
+        // both pick the same next rank (the unique key is the backstop).
+        const rows = await tx.sessionSample.findMany({
+          where: { sessionId },
+          select: { id: true, referenceRank: true },
+        });
+        let repinTarget: string | null = null;
+        if (targetId === null) {
+          const plan = planRemoveActive(rows);
+          if (plan.removeId) {
+            await tx.sessionSample.update({
+              where: { id: plan.removeId },
+              data: { referenceRank: null },
+            });
+          }
+          active = plan.activeId;
+        } else {
+          const plan = planAddReference(rows, targetId);
+          if (plan.kind === "full") throw new Error("invalid_input");
+          if (plan.kind === "add") {
+            await tx.sessionSample.update({
+              where: { id: targetId },
+              data: { referenceRank: plan.rank },
+            });
+            repinTarget = targetId;
+          }
+          active = plan.activeId;
+        }
         const session = await tx.cuppingSession.update({
           where: { id: sessionId },
-          data: { referenceSampleId: next },
+          data: { referenceSampleId: active },
           select: { format: true, cupsPerSample: true },
         });
-        if (!next) return;
+        if (!repinTarget) return;
         const moduleKey = moduleKeyForFormat(session.format);
         if (!isPinnedModule(moduleKey)) return;
         const evaluations = await tx.evaluation.findMany({
-          where: { sessionSampleId: next },
+          where: { sessionSampleId: repinTarget },
           select: { id: true, isDraft: true, affectiveData: true, combinedData: true },
         });
         const plan = planReferenceRepin(evaluations, moduleKey, session.cupsPerSample);
@@ -766,7 +863,7 @@ export async function setReferenceSample(
         revalidatePath(`/${l}/app/sessions/${sessionId}/edit`);
         revalidatePath(`/${l}/app/sessions/${sessionId}/waiting`);
       }
-      return { referenceSampleId: next };
+      return { referenceSampleId: active };
     },
     { sessionId },
   );
@@ -880,6 +977,21 @@ export async function updateSession(sessionId: string, input: UpdateSessionInput
   return { ok: true as const };
 }
 
+// Sample add/rename/remove write to session_samples, which is NOT in the
+// supabase_realtime publication. Touching the session row's updatedAt makes
+// the existing `cupping_sessions` UPDATE subscription (CupClient, waiting
+// room) fire, and those clients router.refresh() + reconcile (S6 CP-C4,
+// option (a) — no new publication table, no SQL). Keep it next to the write
+// (same transaction when there is one).
+type SessionToucher = { cuppingSession: { update: typeof prisma.cuppingSession.update } };
+async function touchSession(db: SessionToucher, sessionId: string): Promise<void> {
+  await db.cuppingSession.update({
+    where: { id: sessionId },
+    data: { updatedAt: new Date() },
+    select: { id: true },
+  });
+}
+
 export async function addSessionSample(
   sessionId: string,
   input: { label?: string; coffeeId?: string | null; locale?: string },
@@ -903,14 +1015,18 @@ export async function addSessionSample(
   });
   const position = (max._max.position ?? -1) + 1;
 
-  const sample = await prisma.sessionSample.create({
-    data: {
-      sessionId,
-      label: input.label?.trim() || `Muestra ${position + 1}`,
-      position,
-      coffeeId: input.coffeeId ?? null,
-    },
-    select: { id: true },
+  const sample = await prisma.$transaction(async (tx) => {
+    const created = await tx.sessionSample.create({
+      data: {
+        sessionId,
+        label: input.label?.trim() || `Muestra ${position + 1}`,
+        position,
+        coffeeId: input.coffeeId ?? null,
+      },
+      select: { id: true },
+    });
+    await touchSession(tx, sessionId);
+    return created;
   });
 
   const locale = input.locale || "es";
@@ -929,9 +1045,12 @@ export async function renameSessionSample(sampleId: string, label: string) {
   const trimmed = label.trim();
   if (!trimmed) return { ok: false as const, error: "invalid_label" };
 
-  await prisma.sessionSample.update({
-    where: { id: sampleId },
-    data: { label: trimmed },
+  await prisma.$transaction(async (tx) => {
+    await tx.sessionSample.update({
+      where: { id: sampleId },
+      data: { label: trimmed },
+    });
+    await touchSession(tx, sessionId);
   });
 
   revalidatePath(`/es/app/sessions/${sessionId}/cup`);
@@ -962,6 +1081,19 @@ export async function removeSessionSample(sampleId: string, locale: string = "es
 
   await prisma.$transaction(async (tx) => {
     await tx.sessionSample.delete({ where: { id: sampleId } });
+    // A removed reference leaves a gap in the ranks and (SetNull) may have
+    // cleared the pointer: renumber 1..n and re-aim at the highest rank.
+    const refRows = await tx.sessionSample.findMany({
+      where: { sessionId: sample.sessionId, referenceRank: { not: null } },
+      select: { id: true, referenceRank: true },
+    });
+    for (const { id, rank } of compactReferenceRanks(refRows)) {
+      await tx.sessionSample.update({ where: { id }, data: { referenceRank: rank } });
+    }
+    await tx.cuppingSession.update({
+      where: { id: sample.sessionId },
+      data: { referenceSampleId: activeReferenceId(refRows) },
+    });
     // Re-pack positions ascending so the (sessionId, position) unique key
     // stays dense; each shifted row lands on a slot vacated one step earlier.
     const rest = await tx.sessionSample.findMany({
@@ -977,6 +1109,7 @@ export async function removeSessionSample(sampleId: string, locale: string = "es
         });
       }
     }
+    await touchSession(tx, sample.sessionId);
   });
 
   revalidatePath(`/${locale}/app/sessions/${sample.sessionId}/cup`);
@@ -1034,6 +1167,14 @@ const CLEARABLE_COFFEE_FIELDS = [
   "altitude",
   "roastLevel",
 ] as const;
+
+/** True when the input carries at least one non-blank coffee field (name or
+ *  any clearable field). A label-only save on a coffee-less sample must not
+ *  mint a coffee. */
+function hasAnyCoffeeField(input: SampleMetadataInput): boolean {
+  if (input.name?.trim()) return true;
+  return CLEARABLE_COFFEE_FIELDS.some((f) => (input[f] ?? "").trim() !== "");
+}
 
 export async function updateSampleMetadata(
   sampleId: string,
@@ -1093,6 +1234,13 @@ export async function updateSampleMetadata(
     } else {
       coffeeUpdated = false;
     }
+  } else if (!hasAnyCoffeeField(input)) {
+    // Coffee-less sample (express sessions create them on purpose) and the
+    // caller only touched the label: nothing to create. Minting a private
+    // "Sin nombre" coffee here used to be the trap — every label rename on
+    // such a sample left a ghost coffee in the owner's library. Not a refused
+    // edit, so the "coffee not owned" notice must NOT show.
+    coffeeUpdated = true;
   } else {
     // Implicit create: no linked coffee yet, so (unlike the merge path
     // above) this needs a FULL object — every field not supplied defaults to
@@ -1123,9 +1271,12 @@ export async function updateSampleMetadata(
     coffeeUpdated = true;
   }
 
-  await prisma.sessionSample.update({
-    where: { id: sampleId },
-    data: { label: input.label || undefined },
+  await prisma.$transaction(async (tx) => {
+    await tx.sessionSample.update({
+      where: { id: sampleId },
+      data: { label: input.label || undefined },
+    });
+    await touchSession(tx, sample.sessionId);
   });
 
   revalidatePath(`/app/sessions/${sample.sessionId}/cup`);

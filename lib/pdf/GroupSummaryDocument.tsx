@@ -6,8 +6,8 @@
 //
 // NEVER import this (or @react-pdf/renderer) from a client component. It is built
 // server-side from lib/closeEmail.ts and the throwaway render script. Styling
-// mirrors CvaFormDocument's paper-form austerity (built-in Helvetica handles
-// Spanish accents — no font files).
+// mirrors CvaFormDocument's paper-form austerity (bundled Hanken Grotesk /
+// Newsreader via lib/pdf/fonts.ts).
 
 import {
   Document,
@@ -15,10 +15,10 @@ import {
   View,
   Text,
   StyleSheet,
-  Font,
 } from "@react-pdf/renderer";
+import { registerPdfFonts, SANS } from "./fonts";
 
-Font.registerHyphenationCallback((word) => [word]);
+registerPdfFonts();
 
 const INK = "#111111";
 const RULE = "#000000";
@@ -68,7 +68,7 @@ const s = StyleSheet.create({
     paddingTop: 30,
     paddingBottom: 32,
     paddingHorizontal: 34,
-    fontFamily: "Helvetica",
+    fontFamily: SANS,
     fontSize: 9,
     color: INK,
     lineHeight: 1.35,
@@ -80,11 +80,11 @@ const s = StyleSheet.create({
     alignItems: "flex-end",
   },
   spec: { fontSize: 7, letterSpacing: 1, color: SOFT, textTransform: "uppercase" },
-  title: { fontSize: 16, fontFamily: "Helvetica-Bold", color: INK },
+  title: { fontSize: 16, fontFamily: SANS, fontWeight: 700, color: INK },
   metaRow: { flexDirection: "row", marginTop: 6, gap: 14 },
   metaCell: {},
   metaLabel: { fontSize: 6.5, letterSpacing: 1, color: SOFT, textTransform: "uppercase" },
-  metaValue: { fontSize: 10, fontFamily: "Helvetica-Bold", marginTop: 1 },
+  metaValue: { fontSize: 10, fontFamily: SANS, fontWeight: 700, marginTop: 1 },
   intro: { fontSize: 7.5, color: SOFT, fontStyle: "italic", marginBottom: 10 },
 
   sampleBlock: { border: `0.75pt solid ${RULE}`, marginBottom: 9 },
@@ -99,11 +99,11 @@ const s = StyleSheet.create({
   },
   sampleLabelWrap: { flexDirection: "row", alignItems: "baseline", gap: 6 },
   sampleTag: { fontSize: 6.5, letterSpacing: 1, color: SOFT, textTransform: "uppercase" },
-  sampleLabel: { fontSize: 12, fontFamily: "Helvetica-Bold" },
+  sampleLabel: { fontSize: 12, fontFamily: SANS, fontWeight: 700 },
   coffeeName: { fontSize: 9, color: SOFT },
   scoreWrap: { alignItems: "flex-end" },
   scoreLabel: { fontSize: 5.5, letterSpacing: 1, color: SOFT, textTransform: "uppercase" },
-  scoreValue: { fontSize: 15, fontFamily: "Helvetica-Bold" },
+  scoreValue: { fontSize: 15, fontFamily: SANS, fontWeight: 700 },
   scoreMeta: { fontSize: 6, color: SOFT },
   noScore: { fontSize: 8, color: SOFT, fontStyle: "italic" },
 
@@ -129,6 +129,8 @@ export type GroupSummarySample = {
   label: string;
   /** True when the session owner marked this as the reference (control) sample. */
   isReference?: boolean;
+  /** 1, 2, … (S6 multi-reference). */
+  referenceRank?: number | null;
   /** Revealed coffee name, or null when still blind. */
   coffeeName: string | null;
   /** Community score (0–100) or null when none could be computed. */
@@ -162,7 +164,7 @@ function SampleCard({
           <Text style={s.sampleTag}>{t.sample}</Text>
           <Text style={s.sampleLabel}>
             {sample.label}
-            {sample.isReference ? ` · ${t.reference}` : ""}
+            {sample.isReference ? ` · ${t.reference}${sample.referenceRank ? ` ${sample.referenceRank}` : ""}` : ""}
           </Text>
           {sample.coffeeName ? (
             <Text style={s.coffeeName}>· {sample.coffeeName}</Text>
@@ -201,7 +203,7 @@ function SampleCard({
 export function GroupSummaryDocument(props: GroupSummaryProps) {
   const t = TEXT[props.locale];
   return (
-    <Document title={`${t.spec} · ${props.sessionName}`} author="Cata Café">
+    <Document title={`${t.spec} · ${props.sessionName}`} author="Café Sensible">
       <Page size="A4" style={s.page}>
         <View style={s.headerBox}>
           <View style={s.headerTopRow}>
@@ -233,7 +235,7 @@ export function GroupSummaryDocument(props: GroupSummaryProps) {
         ))}
 
         <Text style={s.footer} fixed>
-          Cata Café · {t.spec}
+          Café Sensible · {t.spec}
         </Text>
       </Page>
     </Document>

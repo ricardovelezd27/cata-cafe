@@ -1,8 +1,10 @@
 "use client";
 
+import { referenceBadgeText } from "@/lib/referenceRules";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { calcIndividualScore } from "@/lib/scoring";
+import { rowStats, bandFor } from "@/lib/reports/cupperStats";
 import { setParticipantExclusion } from "@/app/actions/community";
 import { Badge } from "@/components/ui";
 import type { SessionFormat } from "@/lib/constants";
@@ -16,6 +18,7 @@ type SampleResult = {
   affective: Record<string, unknown>;
   combined: Record<string, unknown>;
   isReference?: boolean;
+  referenceRank?: number | null;
 };
 
 export type ParticipantResult = {
@@ -178,26 +181,15 @@ export function OwnerParticipantSection({
 
   // Per-row mean + population SD over the INCLUDED numeric values only — outlier
   // detection should reflect the same population the group score uses.
-  const rowStats = matrix.map((row) => {
-    const nums = row.filter(
-      (v, pi): v is number => v !== null && !isExcluded(participants[pi])
-    );
-    if (nums.length < 2) return { mean: 0, sd: 0, count: nums.length };
-    const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
-    const variance =
-      nums.reduce((a, b) => a + (b - mean) ** 2, 0) / nums.length;
-    return { mean, sd: Math.sqrt(variance), count: nums.length };
-  });
+  const rowStatsList = matrix.map((row) =>
+    rowStats(
+      row,
+      participants.map((p) => !isExcluded(p)),
+    ),
+  );
 
-  const toneFor = (value: number | null, rowIdx: number): CellTone => {
-    if (value === null) return "neutral";
-    const { sd, mean, count } = rowStats[rowIdx];
-    if (count < 2 || sd === 0) return "neutral";
-    const dev = Math.abs(value - mean);
-    if (dev >= 2 * sd) return "red";
-    if (dev >= sd) return "amber";
-    return "green";
-  };
+  const toneFor = (value: number | null, rowIdx: number): CellTone =>
+    bandFor(value, rowStatsList[rowIdx]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -301,7 +293,11 @@ export function OwnerParticipantSection({
                       {sample.label}
                       {sample.isReference && referenceBadge && (
                         <Badge tone="accent" size="xs">
-                          {referenceBadge}
+                          {referenceBadgeText(
+                            referenceBadge,
+                            sample.referenceRank,
+                            sampleAxis.filter((x) => x.isReference).length,
+                          )}
                         </Badge>
                       )}
                     </span>
@@ -326,7 +322,7 @@ export function OwnerParticipantSection({
                     );
                   })}
                   <td className="border-b border-outline-variant/60 px-2.5 py-2 text-center text-sm tabular-nums text-on-surface-variant">
-                    {rowStats[si].count >= 2 ? rowStats[si].sd.toFixed(1) : t.noScore}
+                    {rowStatsList[si].count >= 2 ? rowStatsList[si].sd.toFixed(1) : t.noScore}
                   </td>
                 </tr>
               ))}

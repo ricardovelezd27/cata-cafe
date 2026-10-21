@@ -73,3 +73,24 @@ describe("rollup of L1 picks and notes", () => {
     expect(f[0].rollup!.nariz.find((x) => x.id === l1.id)?.count).toBe(1);
   });
 });
+
+describe("rollup of legacy ids", () => {
+  it("rolls retired ids up through their migrated node", () => {
+    const f = computeSampleBlockFrequencies({
+      format: "descriptive",
+      samples: [{ id: "s1", label: "S1" }],
+      evals: [
+        {
+          cupperId: "u1",
+          sessionSampleId: "s1",
+          descriptiveData: { aroma_desc: ["green_veg:dried"] },
+          combinedData: null,
+        },
+      ],
+      excludedUserIds: new Set(),
+      blockLabel: (id) => id,
+      locale: "es",
+    })!;
+    expect(f[0].rollup!.nariz.find((x) => x.id === "green_veg")?.count).toBe(1);
+  });
+});

@@ -40,3 +40,29 @@ describe("computeEvaluationDerived (server-side derivation)", () => {
     expect(computeEvaluationDerived("descriptive", neutral, 5).rawScore).toBeNull();
   });
 });
+
+describe("nota_express (quick note) travels inside the module JSON", () => {
+  const NOTE = "floral, té negro, final largo";
+  it.each([
+    ["descriptive", "descriptiveData"],
+    ["affective", "affectiveData"],
+    ["combined", "combinedData"],
+  ] as const)("lands in the %s column and survives derivation", (format, column) => {
+    const derived = computeEvaluationDerived(
+      moduleKeyForFormat(format),
+      { ...neutral, nota_express: NOTE },
+      1,
+    ) as Record<string, unknown>;
+    const stored = derived[column] as Record<string, unknown>;
+    expect(stored.nota_express).toBe(NOTE);
+    // It is a key, never a column: nothing else on the row carries it.
+    expect("nota_express" in derived).toBe(false);
+  });
+
+  it("does not change the derived scores", () => {
+    const a = computeEvaluationDerived("affective", neutral, 1);
+    const b = computeEvaluationDerived("affective", { ...neutral, nota_express: NOTE }, 1);
+    expect(b.individualScore).toBe(a.individualScore);
+    expect(b.affectiveSum).toBe(a.affectiveSum);
+  });
+});

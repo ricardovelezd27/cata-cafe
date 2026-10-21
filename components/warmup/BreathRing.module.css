@@ -1,0 +1,64 @@
+/* Breathing progress ring — replaces the big countdown numeral.
+ *
+ * The arc is a conic-gradient whose sweep angle (--ring-p) is animated
+ * linearly over the phase duration, so progress is smooth (not one jump per
+ * second) and the player can pause it with animation-play-state. Browsers
+ * without @property get the whole-second angle via an inline --ring-p.
+ * The wrapper "breathes" on a slow 6 s cycle (inhale 3 s / exhale 3 s).
+ */
+@property --ring-p {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.ring {
+  --ring-w: 7px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: calc(min(100cqw, 100cqh) * 0.92);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: breath 6s ease-in-out infinite;
+  transition: box-shadow 600ms ease;
+}
+.ring.glow {
+  box-shadow:
+    0 0 28px 4px color-mix(in oklch, var(--color-secondary) 38%, transparent),
+    inset 0 0 22px 2px color-mix(in oklch, var(--color-secondary) 16%, transparent);
+}
+.ring.paused { animation-play-state: paused; }
+
+.track,
+.arc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--ring-w)), var(--color-on-surface) calc(100% - var(--ring-w) + 1px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - var(--ring-w)), var(--color-on-surface) calc(100% - var(--ring-w) + 1px));
+}
+.track { background: var(--color-outline-variant); opacity: 0.7; }
+.arc {
+  background: conic-gradient(from 0deg, var(--color-primary-container) 0deg var(--ring-p), transparent var(--ring-p) 360deg);
+}
+.arcSmooth {
+  animation: sweep var(--ring-dur, 15s) linear both;
+  animation-play-state: running;
+}
+.arcSmooth.paused { animation-play-state: paused; }
+
+@keyframes sweep {
+  from { --ring-p: 0deg; }
+  to   { --ring-p: 360deg; }
+}
+@keyframes breath {
+  0%, 100% { transform: scale(0.965); }
+  50%      { transform: scale(1.035); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring { animation: none; }
+}

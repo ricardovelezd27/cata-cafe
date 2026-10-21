@@ -32,7 +32,7 @@ const descriptive = {
   acidez_desc: ["acidity:bright", "acidity:citric"],
   dulzor_desc: ["sweetness:brown_sugar", "sweetness:honey"],
   sensacion_desc: ["mouthfeel:smooth", "mouthfeel:silky"],
-  fragancia_notas: "Muy expresiva en seco.",
+  fragancia_notas: "Muy expresiva en seco. Σ ▼ ñ ü ç 🍋",
   acidez_notas: "Cítrica, jugosa, sostenida.",
 };
 
@@ -76,14 +76,16 @@ function sample(label: string, revealed = true, isReference = false) {
   return {
     label,
     revealed,
-    coffeeName: revealed ? `Lote ${label}` : null,
+    coffeeName: revealed ? `Café Año ${label} Ñandú 🍋` : null,
     roastLevel: revealed ? "Medio" : null,
     isReference,
     descriptive,
     affective,
     combined: { ...descriptive, ...affective },
     physical,
-    extrinsic,
+    // Keep the pre-ownerView fixture shape (blind samples carry no origin data)
+    // so page counts stay comparable: ownerView=true would otherwise print it.
+    extrinsic: revealed ? extrinsic : {},
   };
 }
 
@@ -94,6 +96,7 @@ const base = {
   purpose: "Pre-embarque",
   cupsPerSample: 5,
   locale: "es" as const,
+  ownerView: true,
 };
 
 async function main() {

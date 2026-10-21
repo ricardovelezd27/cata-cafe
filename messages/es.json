@@ -121,6 +121,8 @@
     "cuppingsCount": "{count} cataciones",
     "empty": "Aún no hay sesiones. Crea la primera.",
     "newSession": "Nueva sesión",
+    "expressCta": "Catar ahora",
+    "fullWizardCta": "Nueva sesión",
     "statSamplesSubEvals": "con tu evaluación enviada",
     "activityEvalSample": "Evaluaste {sample} en {session}"
   },
@@ -195,6 +197,20 @@
         "invalid_reference": "La muestra de referencia no es válida. Elige una de la lista."
       }
     },
+    "express": {
+      "title": "Catar ahora",
+      "subtitle": "Nombre, formato, número de muestras. Listo.",
+      "back": "Sesiones",
+      "name": "Nombre de la cata",
+      "format": "Formato",
+      "samples": "Muestras",
+      "samplesHint": "Entre 1 y 20 muestras, sin café asignado. Podrás nombrarlos al final.",
+      "decrement": "Una muestra menos",
+      "increment": "Una muestra más",
+      "cta": "Catar ahora",
+      "creating": "Creando…",
+      "fullWizard": "Configurar sesión completa"
+    },
     "deleteSession": {
       "title": "Eliminar sesión",
       "body": "Se eliminará permanentemente la sesión con TODAS las evaluaciones de todos los participantes, sus datos físicos y extrínsecos, las invitaciones y el historial de catas asociado. No se puede deshacer.",
@@ -243,7 +259,7 @@
       "backToSessions": "Volver a sesiones",
       "referenceTitle": "Muestra de referencia",
       "referenceNone": "Sin referencia",
-      "referenceHelper": "Las demás muestras se comparan contra esta en los resultados. No afecta el puntaje.",
+      "referenceHelper": "Las demás muestras se comparan contra esta en los resultados. No afecta el puntaje. Si eliges otra, se añade como Referencia 2: la anterior conserva sus 79.00 y la nueva queda fijada.",
       "referenceSaved": "Referencia actualizada",
       "closesAt": "Fecha de cierre",
       "closesAtHint": "Opcional. La sesión se cierra sola en la madrugada siguiente a esta fecha. Déjala vacía para una cata en vivo que cierras tú.",
@@ -285,6 +301,15 @@
     "referenceLockedAffective": "Muestra de referencia: la calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos y no hay nada que puntuar aquí. Pruébala con calma, anota lo que percibas y continúa con la siguiente muestra.",
     "referenceCupsLocked": "Las tazas de la referencia no se marcan: su puntaje se mantiene fijo en 79.00.",
     "referenceFirstHint": "La cata empieza por la referencia.",
+    "expressNotes": {
+      "title": "Notas rápidas",
+      "body": "Una impresión libre por muestra. Opcional: puedes enviar sin escribir nada.",
+      "placeholder": "¿Qué te dejó esta taza? Aromas, sabores, sensaciones…",
+      "optional": "Opcional",
+      "open": "Notas rápidas →",
+      "back": "Volver a la cata",
+      "submit": "Enviar y ver resultados"
+    },
     "phases": {
       "fragrance": "Fragancia",
       "aroma": "Aroma",
@@ -336,7 +361,8 @@
     "notStartedMsg": "Aún no ha comenzado",
     "backToSessions": "Volver a mis sesiones",
     "connectionLost": "Conexión en vivo perdida — comprobando cada 15 s",
-    "referenceLine": "Muestra de referencia: {label}"
+    "referenceLine": "Muestra de referencia: {label}",
+    "referencesLine": "Referencias: {list}"
   },
   "score": {
     "individual": "Puntaje individual",
@@ -497,7 +523,13 @@
     "guestError": "No se pudo entrar como invitado. Intenta con tu correo.",
     "sessionClosed": "Esta cata ya cerró — pide al organizador el enlace de resultados.",
     "referenceSelect": "Muestra de referencia",
-    "referenceNone": "Sin referencia"
+    "referenceNone": "Sin referencia",
+    "referenceActive": "activa",
+    "referenceAdd": "Añadir referencia…",
+    "referenceRemoveActive": "Quitar la referencia activa",
+    "referenceAddHint": "La referencia anterior conserva sus 79.00; la nueva queda fijada.",
+    "referenceAddTitle": "Añadir referencia",
+    "referenceAddConfirm": "Añadir referencia"
   },
   "results": {
     "title": "Resultados de la Sesión",
@@ -505,6 +537,8 @@
     "backToCupping": "Editar evaluación",
     "viewForm": "Ver formulario",
     "downloadPdf": "Descargar PDF",
+    "downloadSummary": "Mi resumen (PDF)",
+    "downloadFicha": "Ficha técnica (PDF)",
     "refresh": "Actualizar",
     "refreshing": "Actualizando…",
     "refreshNew": "Actualizar ({count} nuevas)",
@@ -528,6 +562,8 @@
     "referenceBadge": "Referencia",
     "deltaVsReference": "Δ vs. referencia",
     "deltaVsReferenceAria": "Diferencia de puntaje frente a la muestra de referencia; positiva si esta muestra puntuó más alto",
+    "referenceN": "Referencia {n}",
+    "compareWith": "Comparar con",
     "referenceLegend": "Δ = diferencia frente a la referencia",
     "closedOn": "Cata cerrada el {date}",
     "liveUpdatesDown": "Actualizaciones en vivo no disponibles — pulsa «Actualizar» para ver lo último.",
@@ -781,6 +817,7 @@
     "sensoryTitle": "Perfil sensorial",
     "activityTitle": "Actividad",
     "detailsTitle": "Ficha técnica",
+    "downloadFicha": "Descargar ficha (PDF)",
     "bulkDelete": "Eliminar seleccionados",
     "tooManySelected": "Puedes eliminar hasta {max} cafés a la vez.",
     "published": "Resultados públicos",
@@ -901,6 +938,47 @@
     "partialSyncNotice": "Mostrando resultados de {included} de {total} participantes. {pending} aún no han sincronizado.",
     "bannerStorageUnavailable": "Este navegador no permite guardar borradores sin conexión. Mantén la conexión activa mientras catas.",
     "pendingDrafts": "{count} borradores sin sincronizar"
+  },
+  "onboarding": {
+    "welcomeTitle": "Bienvenido a Café Sensible",
+    "welcomeTagline": "La plataforma profesional para evaluadores SCA CVA",
+    "welcomeBody": "Evaluación descriptiva, afectiva y extrínseca siguiendo el protocolo CVA 2024.",
+    "start": "Comenzar",
+    "skip": "Omitir introducción",
+    "aboutYou": "Cuéntanos sobre ti",
+    "fullName": "Nombre completo",
+    "namePlaceholder": "Tu nombre",
+    "role": "Rol",
+    "selectRole": "Selecciona tu rol",
+    "country": "País",
+    "selectCountry": "Selecciona tu país",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "whereToStart": "¿Por dónde empezar?",
+    "saving": "Guardando…",
+    "goTo": "Ir a {label}",
+    "roles": {
+      "q_grader": "Catador/a Certificado/a Q",
+      "barista": "Barista",
+      "roaster": "Tostador/a",
+      "producer": "Productor/a",
+      "trader": "Importador/a / Exportador/a",
+      "enthusiast": "Aficionado/a al café de especialidad"
+    },
+    "paths": {
+      "session": {
+        "label": "Crear mi primera sesión CVA",
+        "description": "Inicia una evaluación descriptiva o afectiva"
+      },
+      "coffee": {
+        "label": "Añadir un café a mi biblioteca",
+        "description": "Registra un café y sus atributos extrínsecos"
+      },
+      "join": {
+        "label": "Unirme a una sesión",
+        "description": "Tengo un código de invitación"
+      }
+    }
   },
   "landing": {
     "meta": {
@@ -1485,6 +1563,11 @@
       "body": "Cinco movimientos lentos de Kim para despertar la percepción antes de oler y probar. De 3 a 8 minutos, con silla o de pie.",
       "cta": "Ver los ejercicios"
     },
+    "waiting": {
+      "title": "Mientras esperas",
+      "body": "Un movimiento lento prepara los sentidos. Elige un ejercicio; si la cata empieza, te llevamos a la mesa.",
+      "minutes": "{min} min"
+    },
     "player": {
       "start": "Empezar",
       "next": "Siguiente",
@@ -1510,6 +1593,33 @@
       "pausedLabel": "En pausa",
       "keyboardHint": "← → para moverte · espacio para pausar",
       "intro": "Antes de empezar"
+    },
+    "v2": {
+      "arriveEyebrow": "Llega",
+      "arriveCue": "Pies en el suelo. Hombros sueltos. Una respiración.",
+      "arriveReady": "Cuando quieras",
+      "optionsTitle": "A tu manera",
+      "soundLabel": "Sonido y vibración",
+      "muteLabel": "Silenciar",
+      "unmuteLabel": "Activar sonido",
+      "accessibleLabel": "Accesible: mostrar los segundos",
+      "largeTextLabel": "Texto grande",
+      "stillLabel": "Quieto, solo atiende",
+      "stillHelp": "Sin movimiento y sin avance automático: atiendes a tu cuerpo y pasas tú al siguiente paso.",
+      "cueTurn": "Mitad del recorrido. Ahora vuelve, igual de lento.",
+      "cueHold": "Sigue, a tu ritmo.",
+      "cueClose": "Quédate quieto, sin hacer nada. Solo siente.",
+      "holdCue": "Quédate en la posición neutral. Solo siente.",
+      "stepFallbackNext": "A continuación",
+      "reflectEyebrow": "Un momento",
+      "reflectTitle": "Dos preguntas, sin prisa",
+      "reflectLead": "Opcional. Lo que escribas se guarda solo en este dispositivo: no se envía ni se mezcla con tus catas.",
+      "answerLabel": "Tu respuesta (opcional)",
+      "save": "Guardar en el dispositivo",
+      "omit": "Omitir",
+      "savedNote": "Guardado en este dispositivo.",
+      "noticedTitle": "Lo que pudiste notar",
+      "ringLabel": "Progreso del paso"
     }
   }
 }

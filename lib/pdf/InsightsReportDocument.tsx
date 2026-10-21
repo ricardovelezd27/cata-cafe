@@ -5,20 +5,21 @@
 // next-intl — the admin-only insights area has no locale-routed page for this
 // report, so all strings live in the bilingual REPORT_TEXT record below
 // (pattern: EMAIL_TEXT in lib/closeEmail.ts). Styling mirrors
-// GroupSummaryDocument/CvaFormDocument's paper-form austerity (built-in
-// Helvetica handles Spanish accents — no font files).
+// GroupSummaryDocument/CvaFormDocument's paper-form austerity (bundled
+// Hanken Grotesk via lib/pdf/fonts.ts).
 //
 // NEVER import this (or @react-pdf/renderer) from a client component.
 
 import type { ReactNode } from "react";
-import { Document, Page, View, Text, StyleSheet, Font } from "@react-pdf/renderer";
+import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
+import { registerPdfFonts, SANS } from "./fonts";
 import type { DashboardData } from "@/lib/analytics/queries";
 import type { InsightRow } from "@/lib/analytics/types";
 import type { NarrativeContent } from "@/lib/ai/narratives";
 import type { BenchmarkComparison } from "@/lib/analytics/benchmarks";
 import { PdfBarList, PdfTrendLine } from "./charts";
 
-Font.registerHyphenationCallback((word) => [word]);
+registerPdfFonts();
 
 // ─── Palette — matches GroupSummaryDocument/CvaFormDocument ────────────────
 const INK = "#111111";
@@ -72,7 +73,7 @@ interface ReportText {
 const REPORT_TEXT: Record<Locale, ReportText> = {
   es: {
     title: "Informe de insights",
-    wordmark: "Cata Café",
+    wordmark: "Café Sensible",
     generatedLabel: "Generado",
     summary: "Resumen",
     trendHeading: "Tendencia mensual",
@@ -102,7 +103,7 @@ const REPORT_TEXT: Record<Locale, ReportText> = {
   },
   en: {
     title: "Insights report",
-    wordmark: "Cata Café",
+    wordmark: "Café Sensible",
     generatedLabel: "Generated",
     summary: "Summary",
     trendHeading: "Monthly trend",
@@ -136,7 +137,7 @@ const s = StyleSheet.create({
     paddingTop: 30,
     paddingBottom: 34,
     paddingHorizontal: PAGE_PADDING_X,
-    fontFamily: "Helvetica",
+    fontFamily: SANS,
     fontSize: 9,
     color: INK,
     lineHeight: 1.35,
@@ -149,15 +150,15 @@ const s = StyleSheet.create({
     alignItems: "flex-end",
   },
   spec: { fontSize: 7, letterSpacing: 1, color: SOFT, textTransform: "uppercase" },
-  title: { fontSize: 17, fontFamily: "Helvetica-Bold", color: INK },
-  wordmark: { fontSize: 10, fontFamily: "Helvetica-Bold", color: GREEN },
+  title: { fontSize: 17, fontFamily: SANS, fontWeight: 700, color: INK },
+  wordmark: { fontSize: 10, fontFamily: SANS, fontWeight: 700, color: GREEN },
   metaRow: { flexDirection: "row", marginTop: 5, gap: 14 },
   metaLabel: { fontSize: 6.5, letterSpacing: 1, color: SOFT, textTransform: "uppercase" },
-  metaValue: { fontSize: 9.5, fontFamily: "Helvetica-Bold", marginTop: 1 },
+  metaValue: { fontSize: 9.5, fontFamily: SANS, fontWeight: 700, marginTop: 1 },
 
   sectionHead: {
     fontSize: 8.5,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: SANS, fontWeight: 700,
     color: INK,
     textTransform: "uppercase",
     letterSpacing: 0.6,
@@ -177,7 +178,7 @@ const s = StyleSheet.create({
     borderBottom: `0.5pt solid ${HAIR}`,
   },
   kpiLabel: { fontSize: 6, letterSpacing: 0.4, color: SOFT, textTransform: "uppercase" },
-  kpiValue: { fontSize: 13, fontFamily: "Helvetica-Bold", color: INK, marginTop: 2 },
+  kpiValue: { fontSize: 13, fontFamily: SANS, fontWeight: 700, color: INK, marginTop: 2 },
 
   section: { marginBottom: 10 },
 
@@ -187,7 +188,7 @@ const s = StyleSheet.create({
     padding: 8,
     marginBottom: 10,
   },
-  narrativeHeadline: { fontSize: 10.5, fontFamily: "Helvetica-Bold", marginBottom: 4 },
+  narrativeHeadline: { fontSize: 10.5, fontFamily: SANS, fontWeight: 700, marginBottom: 4 },
   narrativeBody: { fontSize: 8.5, color: INK, marginBottom: 3 },
   highlightRow: { flexDirection: "row", alignItems: "flex-start", gap: 5, marginBottom: 2.5 },
   highlightDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: GREEN, marginTop: 3.5 },

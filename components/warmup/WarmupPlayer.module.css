@@ -1,12 +1,12 @@
-/* Warm-up player layout.
+/* Warm-up player layout (v2, "quiet screen").
  *
- * Mobile (< 768px): a fixed, full-height stack — figure on top (≈42 % of
- * the dynamic viewport), text in the middle (scrolls), controls docked at the
- * bottom with the same gesture-zone padding rule as CanvasFooter.
- * Desktop (md:+): two columns inside a 1100px max width — figure sticky on
- * the left, steps on the right. `.inline` (library page) drops the fixed
- * positioning at md:+ so the player sits inside the page; below md: it is
- * always full-screen (a bottom sheet would crop the figure).
+ * Mobile (< 768px): a fixed 100dvh stack with safe-area padding. The figure
+ * stage takes ~45 % of the viewport (breathing ring centred behind a line
+ * silhouette), ONE large cue line sits in the middle, controls are docked at
+ * the bottom with the same gesture-zone padding rule as CanvasFooter.
+ * Desktop (md:+): two columns inside a 1100px max width, figure sticky on
+ * the left, text on the right. `.inline` (library page) drops the fixed
+ * positioning at md:+; below md it is always full-screen.
  */
 
 .root {
@@ -31,76 +31,62 @@
 }
 
 .figureCol {
-  flex: 0 0 42dvh;
+  position: relative;
+  flex: 0 0 45dvh;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 10px 20px 0;
+  padding: 12px 24px 8px;
   background: var(--color-surface-container-low);
   border-bottom: 1px solid var(--color-outline-variant);
+  transition: flex-basis 400ms ease;
+}
+/* Quiet screens give the text room (and the keyboard). */
+.root[data-phase="intro"] .figureCol,
+.root[data-phase="reflect"] .figureCol,
+.root[data-phase="done"] .figureCol {
+  flex-basis: 24dvh;
+}
+
+/* container-type: size lets the ring size itself from the stage (cqw/cqh). */
+.stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  container-type: size;
 }
 
 .figureBox {
-  flex: 1 1 auto;
-  min-height: 0;
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 6% 0;
+  transition: opacity 700ms ease;
 }
 .figureBox > svg { max-height: 100%; max-width: 100%; }
+/* Eyes-closed variant: the whole figure recedes; the ring glows instead. */
+.figureBox.dim { opacity: 0.6; }
 
-.timerRow {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 4px 2px 10px;
-}
-
-.timer {
+/* Seconds appear only for reduced-motion / "Accesible". */
+.numeral {
+  flex: 0 0 auto;
+  text-align: center;
   font-family: var(--font-display);
-  font-size: 40px;
-  line-height: 1;
+  font-size: 28px;
+  line-height: 1.1;
   font-variant-numeric: tabular-nums;
   color: var(--color-on-surface);
-  min-width: 2.2ch;
+  padding-top: 4px;
 }
-.timer small {
+.numeral small {
   font-family: var(--font-ui);
   font-size: 13px;
   font-weight: 500;
   color: var(--color-on-surface-variant);
   margin-left: 4px;
 }
-
-.stage {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-on-surface-variant);
-  text-align: right;
-}
-
-.bar {
-  height: 3px;
-  background: var(--color-outline-variant);
-  border-radius: 2px;
-  overflow: hidden;
-}
-.barFill {
-  height: 100%;
-  background: var(--color-primary-container);
-  transform-origin: left center;
-  transform: scaleX(1);
-  animation-name: shrink;
-  animation-timing-function: linear;
-  animation-fill-mode: both;
-  animation-duration: var(--countdown, 15s);
-  animation-play-state: running;
-}
-.barFill.paused { animation-play-state: paused; }
-@keyframes shrink { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 
 .textCol {
   flex: 1 1 auto;
@@ -123,6 +109,7 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--color-on-surface-variant);
+  margin: 0 0 6px;
 }
 
 .dots { display: flex; gap: 5px; align-items: center; }
@@ -143,6 +130,14 @@
   padding: 12px 20px 20px;
   -webkit-overflow-scrolling: touch;
 }
+/* Step / pause / arrive / closing: one cue line, vertically centred. */
+.bodyCentered {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+  padding-bottom: 12px;
+}
 
 .title {
   font-family: var(--font-display);
@@ -152,14 +147,33 @@
   margin: 0 0 8px;
 }
 
-.stepText {
+/* THE cue: the step text, Newsreader, large. */
+.cue {
   font-family: var(--font-display);
-  font-size: clamp(20px, 5vw, 26px);
-  line-height: 1.3;
+  font-size: clamp(24px, 6.4vw, 32px);
+  line-height: 1.28;
   color: var(--color-on-surface);
-  margin: 4px 0 12px;
-  text-wrap: pretty;
+  margin: 0 auto;
+  max-width: 24ch;
+  text-wrap: balance;
 }
+.cueMuted { color: var(--color-on-surface-variant); }
+.fadeIn { animation: cueIn 700ms ease both; }
+@keyframes cueIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* Whispered "observa" prompts: one at a time, fading in. The slot is
+   reserved so the cue never jumps when a prompt appears. */
+.whisperSlot {
+  min-height: 3.6em;
+  margin: 18px auto 0;
+  max-width: 30ch;
+  font-size: 15px;
+  line-height: 1.5;
+  font-style: italic;
+  color: var(--color-on-surface-variant);
+}
+.whisper { display: inline-block; animation: whisperIn 1400ms ease both; }
+@keyframes whisperIn { from { opacity: 0; } to { opacity: 1; } }
 
 .lead { font-size: 15px; line-height: 1.55; color: var(--color-on-surface); margin: 0 0 12px; }
 .muted { font-size: 13px; line-height: 1.5; color: var(--color-on-surface-variant); margin: 0; }
@@ -173,7 +187,7 @@
   margin: 16px 0 4px;
 }
 
-.list { margin: 0; padding-left: 18px; font-size: 15px; line-height: 1.55; }
+.list { margin: 0; padding-left: 18px; list-style: disc; font-size: 15px; line-height: 1.55; }
 .list li + li { margin-top: 6px; }
 
 .evolution { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
@@ -185,11 +199,6 @@
   border: 1px solid var(--color-outline-variant);
   color: var(--color-on-surface-variant);
   background: var(--color-surface-container-lowest);
-}
-.chip.active {
-  border-color: var(--color-primary-container);
-  color: var(--color-primary-container);
-  background: var(--color-primary-fixed);
 }
 
 .safety {
@@ -203,34 +212,93 @@
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
-.pauseCard {
+/* Options (intro): sound, accessible numerals, large text, stay still. */
+.options { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.switchRow {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 14px 0 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 2px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--color-outline-variant);
+  font: inherit;
+  text-align: left;
+  color: var(--color-on-surface);
+  cursor: pointer;
 }
+.switchRow:focus-visible { outline: 2px solid var(--color-primary-container); outline-offset: 2px; }
+.switchText { display: flex; flex-direction: column; gap: 2px; }
+.switchLabel { font-size: 14px; font-weight: 500; }
+.switchHint { font-size: 12px; line-height: 1.4; color: var(--color-on-surface-variant); }
+.switchTrack {
+  flex: 0 0 auto;
+  position: relative;
+  width: 40px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--color-outline-variant);
+  transition: background-color var(--transition-fast);
+}
+.switchOn { background: var(--color-primary-container); }
+.switchThumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--color-surface-container-lowest);
+  transition: transform var(--transition-fast);
+}
+.switchOn .switchThumb { transform: translateX(16px); }
 
+/* Reflection */
+.reflect { display: flex; flex-direction: column; gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 8px; }
 .question {
   font-family: var(--font-display);
   font-size: 22px;
   line-height: 1.3;
-  margin: 10px 0 0;
+  margin: 6px 0 0;
 }
+.textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 84px;
+  padding: 12px 14px;
+  font: inherit;
+  font-size: 16px; /* no iOS zoom-on-focus */
+  line-height: 1.5;
+  color: var(--color-on-surface);
+  background: var(--color-surface-container-lowest);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-input);
+}
+.textarea:focus-visible { outline: 2px solid var(--color-primary-container); outline-offset: 1px; }
+.reflectActions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding-top: 4px; }
+.savedNote { font-size: 13px; color: var(--color-primary-container); margin: 0 0 4px; }
 
 .controls {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   /* Keep the buttons clear of the browser/OS gesture zone at the bottom edge
-     (home indicator, Chrome bottom toolbar) — same rule as CanvasFooter. */
-  padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
+     (home indicator, Chrome bottom toolbar), same rule as CanvasFooter. */
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
   background: color-mix(in oklch, var(--color-surface) 92%, transparent);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border-top: 1px solid var(--color-outline-variant);
 }
 .spacer { flex: 1; }
+/* Mobile keeps Pause / Siguiente / Saltar / mute; "Anterior" is md:+ and
+   the left-arrow key. */
+.prevBtn { display: none; }
 
 .iconBtn {
   display: inline-flex;
@@ -247,15 +315,36 @@
 }
 .iconBtn:hover:not(:disabled) { background: var(--color-surface-container); }
 .iconBtn:disabled { opacity: 0.4; cursor: default; }
-.iconBtn:focus-visible, .ghostBtn:focus-visible {
+.iconBtn:focus-visible, .ghostBtn:focus-visible, .primaryBtn:focus-visible {
   outline: 2px solid var(--color-primary-container);
   outline-offset: 2px;
 }
+
+.primaryBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 18px;
+  white-space: nowrap;
+  border: none;
+  border-radius: 999px;
+  background: var(--color-primary-container);
+  color: var(--color-on-primary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+.primaryBtn:hover { background: var(--color-primary); }
 
 .ghostBtn {
   background: none;
   border: none;
   padding: 8px 10px;
+  min-height: 44px;
   font: inherit;
   font-size: 13px;
   font-weight: 500;
@@ -267,6 +356,19 @@
 
 .kbd { display: none; }
 
+/* Large-text mode */
+.large .cue { font-size: clamp(30px, 8.4vw, 42px); }
+.large .whisperSlot { font-size: 19px; }
+.large .lead, .large .list, .large .switchLabel { font-size: 18px; }
+.large .muted, .large .switchHint, .large .safety { font-size: 16px; }
+.large .question { font-size: 26px; }
+.large .numeral { font-size: 36px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fadeIn, .whisper { animation: none; }
+  .figureCol, .figureBox { transition: none; }
+}
+
 @media (min-width: 768px) {
   .inner {
     flex-direction: row;
@@ -276,19 +378,26 @@
     padding: 24px 32px;
     gap: 32px;
   }
-  .figureCol {
+  .figureCol,
+  .root[data-phase="intro"] .figureCol,
+  .root[data-phase="reflect"] .figureCol,
+  .root[data-phase="done"] .figureCol {
     flex: 0 0 44%;
     position: sticky;
     top: 24px;
     align-self: stretch;
     border-radius: var(--radius-card);
     border: 1px solid var(--color-outline-variant);
-    padding: 20px 24px 0;
+    padding: 24px;
   }
-  .timer { font-size: 56px; }
+  .numeral { font-size: 40px; }
   .textCol { flex: 1 1 auto; }
   .topbar { padding: 0 0 4px; }
   .body { padding: 12px 0 20px; }
+  .bodyCentered { text-align: left; }
+  .cue { margin: 0; font-size: clamp(28px, 2.6vw, 36px); max-width: 22ch; }
+  .whisperSlot { margin-left: 0; }
+  .prevBtn { display: inline-flex; }
   .controls {
     border-top: 1px solid var(--color-outline-variant);
     padding: 14px 0 0;

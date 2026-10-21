@@ -1,5 +1,6 @@
 "use client";
 
+import { referenceBadgeText } from "@/lib/referenceRules";
 import { Check, ChevronRight, Eye } from "lucide-react";
 import { calcIndividualScore, hasAffectiveData, scoreBand } from "@/lib/scoring";
 import { canShowMyScore } from "@/lib/evaluationState";
@@ -306,7 +307,11 @@ export function ScoreTable({
                         </span>
                         {sample.isReference && (
                           <Badge tone="accent" size="xs">
-                            {t.referenceBadge}
+                            {referenceBadgeText(
+                              t.referenceBadge ?? "",
+                              sample.referenceRank,
+                              samples.filter((x) => x.isReference).length,
+                            )}
                           </Badge>
                         )}
                       </span>

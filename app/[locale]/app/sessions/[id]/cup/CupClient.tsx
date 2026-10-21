@@ -7,6 +7,8 @@ import {
   useEffect,
   useSyncExternalStore,
 } from "react";
+import { WarmupMoment } from "@/components/session-moments/WarmupMoment";
+import type { WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { Coffee, Scale, FileText, BarChart3 } from "lucide-react";
@@ -51,7 +53,12 @@ import {
   type GuardItem,
 } from "@/components/cupping/EvaluationGuardModal";
 import { PhaseStepper } from "@/components/cupping/PhaseStepper";
+import { ExpressNotesStep } from "@/components/cupping/ExpressNotesStep";
+import { EXPRESS_NOTE_KEY, EXPRESS_NOTE_MAX } from "@/lib/expressSession";
+import { moduleKeyForFormat } from "@/lib/evaluation";
 import { useKeyboardOpen } from "@/hooks/useKeyboardOpen";
+import { indexAfterReconcile, reconcileSamples } from "@/lib/sampleReconcile";
+import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
 import { DevRoleBadge } from "@/components/dev/DevRoleBadge";
 import {
   SessionShell,
@@ -66,7 +73,13 @@ import {
   type ModuleItem,
 } from "@/components/ui";
 import { useConnectivity } from "@/hooks/useConnectivity";
-import { isPinnedModule, orderReferenceFirst, pinReferenceAffective } from "@/lib/referenceRules";
+import {
+  isPinnedModule,
+  nextReferenceOrder,
+  orderByReferenceIds,
+  pinReferenceAffective,
+  referencesOf,
+} from "@/lib/referenceRules";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { OfflineBanner } from "@/components/offline/OfflineBanner";
 import { SyncConflictModal } from "@/components/offline/SyncConflictModal";
@@ -119,6 +132,8 @@ type Sample = {
   revealed: boolean;
   coffeeId: string | null;
   coffee: SampleCoffee | null;
+  /** 1, 2, … when the sample is a reference (S6 multi-reference). */
+  referenceRank?: number | null;
 };
 
 type Session = {
@@ -150,10 +165,14 @@ export function CupClient({
   userEmail,
   userCountry,
   userId,
+  warmup,
 }: {
   locale: string;
   initialSampleId?: string;
   session: Session;
+  /** Optional pre-cupping warm-up (CuppingSession.warmupExerciseId) — shown
+   *  once per session per device by the session-moment overlay. */
+  warmup?: { exerciseId: string | null; strings: WarmupPlayerStrings };
   isOwner: boolean;
   isGroup: boolean;
   sessionStatus: string;
@@ -264,10 +283,28 @@ export function CupClient({
     compareHint?: string;
     referenceSelect?: string;
     referenceNone?: string;
+    // Multi-reference (S6)
+    referenceActive?: string;
+    referenceAdd?: string;
+    referenceRemoveActive?: string;
+    referenceAddHint?: string;
+    referenceAddTitle?: string;
+    referenceAddConfirm?: string;
     // Reference lock (2026-09-25): quality pinned at 5, cups cleared.
     referenceLocked?: string;
     referenceLockedAffective?: string;
     referenceCupsLocked?: string;
+    // "Notas rápidas" end step (2026-10, WP-B). Optional with inline
+    // fallbacks: the cup error boundary rehydrates an older cached prop blob.
+    expressNotes?: {
+      title: string;
+      body: string;
+      placeholder: string;
+      optional: string;
+      open: string;
+      back: string;
+      submit: string;
+    };
   };
   userEmail?: string;
   userCountry?: string;
@@ -288,7 +325,14 @@ export function CupClient({
   // The reference (control) sample is cupped FIRST — the room levels on the
   // anchor before comparing (lib/referenceRules.ts). Order is re-derived
   // whenever the owner changes the reference (see applyReferenceOrder).
-  const initialOrdered = orderReferenceFirst(session.samples, session.referenceSampleId ?? null);
+  // Multi-reference (S6): references are cupped first, by rank (R1, R2…). A
+  // pre-upgrade offline blob has no ranks — fall back to the single pointer.
+  const initialRefIds = (() => {
+    const ranked = referencesOf(session.samples).map((x) => x.id);
+    if (ranked.length) return ranked;
+    return session.referenceSampleId ? [session.referenceSampleId] : [];
+  })();
+  const initialOrdered = orderByReferenceIds(session.samples, initialRefIds);
   const initialSampleIdx = initialSampleId
     ? Math.max(0, initialOrdered.findIndex((s) => s.id === initialSampleId))
     : 0;
@@ -296,6 +340,13 @@ export function CupClient({
   const [currentStep, setCurrentStep] = useState<CuppingStep>(stepsForFormat[0]);
   const [samples, setSamples] = useState(initialOrdered);
   const [activeTab, setActiveTab] = useState<CuppingTab>("cupping");
+  // "Notas rápidas": the free-text end step shown after the last sample of
+  // the last phase and before every submit path. A boolean, NOT a
+  // CuppingStep — STEP_ATTRIBUTES, PhaseStepper and completeness never see it.
+  const [notesStage, setNotesStage] = useState(false);
+  // The note lives inside the format's module JSON under EXPRESS_NOTE_KEY, so
+  // it rides the existing auto-save / offline / submit plumbing untouched.
+  const notesModuleKey = moduleKeyForFormat(session.format);
   const [saveStatus, setSaveStatus] = useState<
     "idle" | "saving" | "saved" | "pending"
   >("idle");
@@ -328,9 +379,12 @@ export function CupClient({
   const [startedAt, setStartedAt] = useState(sessionStartedAt);
   // Owner-chosen "Referencia" sample; updated live for participants through
   // the cupping_sessions realtime stream below.
-  const [referenceSampleId, setReferenceSampleId] = useState<string | null>(
-    session.referenceSampleId ?? null,
-  );
+  // Ordered ids of the references (R1 first); the LAST is the active one —
+  // the only one pinned at 79.00 (earlier ones keep their data but unlock).
+  const [refOrder, setRefOrder] = useState<string[]>(initialRefIds);
+  const refOrderRef = useRef(refOrder);
+  const referenceSampleId = refOrder.length ? refOrder[refOrder.length - 1] : null;
+  const [pendingReference, setPendingReference] = useState<string | null>(null);
   const referenceSeqRef = useRef(0);
   // Sample ids whose pinned "ensure" auto-save has already been queued.
   const ensuredReferenceRef = useRef<Set<string>>(new Set());
@@ -338,14 +392,49 @@ export function CupClient({
   // outside the render closure (realtime events, the reference-order swap).
   const samplesRef = useRef(samples);
   const sampleIdRef = useRef<string | null>(null);
+  // Known sample ids for the realtime guards — from STATE, not the server
+  // prop, so a sample added mid-session is known without re-subscribing.
+  const sampleIdsRef = useRef<Set<string>>(new Set(samples.map((s) => s.id)));
   useEffect(() => {
     samplesRef.current = samples;
     sampleIdRef.current = samples[sampleIdx]?.id ?? null;
+    sampleIdsRef.current = new Set(samples.map((s) => s.id));
   });
+
+  // Reconcile with a refreshed server prop (S6 CP-C4): the owner adding,
+  // renaming or removing a sample mid-session touches the session row, the
+  // cupping_sessions subscription below calls router.refresh(), and this
+  // merge applies the server's sample METADATA while keeping every local
+  // evaluation draft (lib/sampleReconcile.ts). The server's referenceSampleId
+  // is the truth after a refresh — it may point at a sample this client only
+  // learns about now. Skipped on mount (state already equals the prop).
+  const serverSamplesRef = useRef(session.samples);
+  useEffect(() => {
+    if (serverSamplesRef.current === session.samples) return;
+    serverSamplesRef.current = session.samples;
+    // Multi-reference: the server's ranks are the truth (R1, R2…); a row
+    // without ranks falls back to the single pointer, like initialRefIds.
+    const ranked = referencesOf(session.samples).map((x) => x.id);
+    const refIds = ranked.length
+      ? ranked
+      : session.referenceSampleId
+        ? [session.referenceSampleId]
+        : [];
+    const active = refIds.length ? refIds[refIds.length - 1] : null;
+    const merged = reconcileSamples(samplesRef.current, session.samples, active);
+    const next = orderByReferenceIds(merged, refIds);
+    const idx = indexAfterReconcile(next, sampleIdRef.current, samplesRef.current.findIndex((s) => s.id === sampleIdRef.current));
+    setSamples(next);
+    setSampleIdx(idx);
+    refOrderRef.current = refIds;
+    setRefOrder(refIds);
+  }, [session.samples, session.referenceSampleId]);
   // Moves the (new) reference to the front, restores position order for the
   // rest, and keeps the cupper on the sample they were looking at.
-  const applyReferenceOrder = (next: string | null) => {
-    setReferenceSampleId(next);
+  const applyRefOrder = (order: string[]) => {
+    const next = order.length ? order[order.length - 1] : null;
+    refOrderRef.current = order;
+    setRefOrder(order);
     // A reference chosen mid-session must get its pinned auto-save again on
     // the next visit (the server re-pinned every stored row in
     // setReferenceSample; this keeps this client's copy in step) — CP-C2.
@@ -353,10 +442,14 @@ export function CupClient({
     const byPosition = <T extends { position: number }>(list: T[]) =>
       [...list].sort((a, b) => a.position - b.position);
     const currentId = sampleIdRef.current;
-    const ids = orderReferenceFirst(byPosition(samplesRef.current), next).map((s) => s.id);
-    setSamples((prev) => orderReferenceFirst(byPosition(prev), next));
+    const ids = orderByReferenceIds(byPosition(samplesRef.current), order).map((s) => s.id);
+    setSamples((prev) => orderByReferenceIds(byPosition(prev), order));
     setSampleIdx(Math.max(0, ids.indexOf(currentId ?? "")));
   };
+  // The realtime stream only carries the ACTIVE pointer; the list of
+  // references is derived from it (lib/referenceRules.nextReferenceOrder).
+  const applyReferenceOrder = (next: string | null) =>
+    applyRefOrder(nextReferenceOrder(refOrderRef.current, next));
   const applyReferenceOrderRef = useRef(applyReferenceOrder);
   useEffect(() => {
     applyReferenceOrderRef.current = applyReferenceOrder;
@@ -411,8 +504,13 @@ export function CupClient({
   useEffect(() => {
     // Mirrors an external hook state (useOfflineSync) into local UI state —
     // same sanctioned pattern as cup/error.tsx; a single flip, no cascade.
+    if (syncPhase !== "synced") return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (syncPhase === "synced") setHasPending(false);
+    setHasPending(false);
+    // The amber "saved on this device · pending" pill is the other half of
+    // that state — a successful replay is exactly the "synced" signal the
+    // save-status contract (CLAUDE.md) says may clear it.
+    setSaveStatus((s) => (s === "pending" ? "idle" : s));
   }, [syncPhase]);
 
   // Independent 500ms debounce for durable local (IndexedDB) writes, separate
@@ -603,9 +701,11 @@ export function CupClient({
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    const sampleIds = new Set(session.samples.map((s) => s.id));
-
-    const channel = supabase
+    // JWT before join — see lib/supabase/realtimeAuth.ts (S6 CP-C4).
+    const stop = subscribeWithSessionAuth(
+      supabase,
+      () =>
+    supabase
       .channel(`session:${session.id}`)
       .on(
         "postgres_changes",
@@ -623,7 +723,7 @@ export function CupClient({
           const sampleId = (row.sessionSampleId ?? row.session_sample_id) as
             | string
             | undefined;
-          if (isDraft === false && sampleId && sampleIds.has(sampleId)) {
+          if (isDraft === false && sampleId && sampleIdsRef.current.has(sampleId)) {
             setSubmittedCount((prev) => prev + 1);
           }
         }
@@ -644,21 +744,39 @@ export function CupClient({
             const next = (row.referenceSampleId ?? row.reference_sample_id ?? null) as
               | string
               | null;
-            applyReferenceOrderRef.current(next && sampleIds.has(next) ? next : null);
+            applyReferenceOrderRef.current(
+              next && sampleIdsRef.current.has(next) ? next : null,
+            );
           }
+          // Any session-row change (sample add/rename/remove touch updatedAt;
+          // start/close/reference) → re-fetch the server page; the reconcile
+          // effect above merges the fresh samples without losing drafts.
+          router.refresh();
         }
-      )
+      ),
       // Without a status callback a dropped channel is indistinguishable from
       // "nobody has submitted yet" — the count just stops moving. Surface it
       // so the maestro knows the number is stale rather than flat (F10).
-      .subscribe((status) => {
+      (status) => {
         setLiveCountDown(status !== "SUBSCRIBED");
-      });
+      },
+    );
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [isGroup, online, session.id, session.samples]);
+    return stop;
+  }, [isGroup, online, session.id, router]);
+
+  // Safety net for the realtime path above (S6 CP-C4): a group cupper whose
+  // channel is silently dead (see lib/supabase/realtimeAuth.ts) still picks up
+  // sample add/rename/remove and the reference within 30s. One RSC fetch per
+  // cupper per 30s; the reconcile effect keeps every local draft. Skipped
+  // while the tab is hidden.
+  useEffect(() => {
+    if (!isGroup || !online) return;
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") router.refresh();
+    }, 30_000);
+    return () => window.clearInterval(id);
+  }, [isGroup, online, router]);
 
   // ─── Save plumbing ────────────────────────────────────────────
   const labelFor = (sampleId: string) =>
@@ -819,6 +937,14 @@ export function CupClient({
   ) => {
     if (!isModuleKey(key)) return;
     if (localDebounceRef.current) clearTimeout(localDebounceRef.current);
+    // ONE pending slot: an edit to a different sample (the notes stage edits
+    // several on one screen) must not silently drop the previous sample's
+    // unflushed write — mirror it to the store now, then take the slot.
+    const prev = localPendingRef.current;
+    if (prev && (prev.sampleId !== sampleId || prev.key !== key)) {
+      localPendingRef.current = null;
+      void writeLocal(prev.sampleId, prev.label, prev.key, prev.data);
+    }
     localPendingRef.current = { sampleId, label, key: key as ModuleKey, data };
     localDebounceRef.current = setTimeout(() => {
       const p = localPendingRef.current;
@@ -856,6 +982,15 @@ export function CupClient({
     data: Data
   ) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    // Same single-slot rule as scheduleLocalSave: a save queued for sample A
+    // is flushed right away when sample B takes the slot, so typing notes on
+    // two samples within 800 ms never loses A's edit. Batching per sample
+    // stays at 800 ms.
+    const prev = pendingSaveRef.current;
+    if (prev && (prev.sampleId !== sampleId || prev.key !== key)) {
+      pendingSaveRef.current = null;
+      persist(prev.sampleId, prev.key, prev.data);
+    }
     pendingSaveRef.current = { sampleId, key, data };
     debounceRef.current = setTimeout(() => {
       persist(sampleId, key, data);
@@ -863,13 +998,29 @@ export function CupClient({
     }, 800);
   };
 
-  const setCurrentData = (key: keyof Sample, data: Data) => {
-    const sample = samples[sampleIdx];
+  // Writes one module of ANY sample (by index into `samples`) and queues the
+  // server + local saves for it. The forms edit the current sample through
+  // setCurrentData; the notes stage edits every sample on one screen.
+  const setSampleData = (idx: number, key: keyof Sample, data: Data) => {
+    const sample = samples[idx];
+    if (!sample) return;
     setSamples((prev) =>
-      prev.map((s, i) => (i === sampleIdx ? { ...s, [key]: data } : s))
+      prev.map((s) => (s.id === sample.id ? { ...s, [key]: data } : s))
     );
     scheduleAutoSave(sample.id, key, data);
     scheduleLocalSave(sample.id, sample.label, key, data);
+  };
+
+  const setCurrentData = (key: keyof Sample, data: Data) =>
+    setSampleData(sampleIdx, key, data);
+
+  // Notes stage: merge the free text into the format's module JSON so the
+  // scores already in that object are preserved (and vice versa).
+  const setSampleNote = (sampleId: string, text: string) => {
+    const idx = samples.findIndex((s) => s.id === sampleId);
+    if (idx < 0) return;
+    const existing = samples[idx][notesModuleKey];
+    setSampleData(idx, notesModuleKey, { ...existing, [EXPRESS_NOTE_KEY]: text });
   };
 
   // ─── Navigation ───────────────────────────────────────────────
@@ -882,17 +1033,34 @@ export function CupClient({
   };
 
   const handleStepChange = async (step: CuppingStep, resetSample = false) => {
-    if (step === currentStep) return;
+    if (step === currentStep && !notesStage) return;
     await flushPending();
+    setNotesStage(false);
     setCurrentStep(step);
     if (resetSample) setSampleIdx(0);
     scrollCanvasToTop();
   };
 
   const handleSampleSelect = async (i: number) => {
-    if (i === sampleIdx) return;
+    if (i === sampleIdx && !notesStage) return;
     await flushPending();
+    setNotesStage(false);
     setSampleIdx(i);
+    scrollCanvasToTop();
+  };
+
+  // "Notas rápidas": every path to submit passes through here first (footer on
+  // the last sample, the Results module tap). Skippable — the stage's own
+  // next button is the real submit (handleGoToResults, guard untouched).
+  const openNotesStage = async () => {
+    await flushPending();
+    setNotesStage(true);
+    scrollCanvasToTop();
+  };
+
+  const closeNotesStage = async () => {
+    await flushPending();
+    setNotesStage(false);
     scrollCanvasToTop();
   };
 
@@ -1086,15 +1254,31 @@ export function CupClient({
   // the localized error (useActionFeedback) and rolls the value back.
   // A sequence counter guarantees a failed EARLIER request never rolls back a
   // later choice (pick B, pick C, B's save fails → C must stay).
-  const handleReferenceChange = (value: string) => {
-    const next = value === "" ? null : value;
-    const prev = referenceSampleId;
+  // References ACCUMULATE: picking a sample adds it as the next rank (and the
+  // active one); the previous reference keeps its 79.00. Once one exists the
+  // select is an action menu (value stays ""): a sample id adds, REMOVE_ACTIVE
+  // drops only the active one. Adding on top of an existing reference asks
+  // for confirmation first (the old one unlocks, the new one is pinned).
+  const REMOVE_ACTIVE = "__remove_active__";
+  const commitReference = (next: string | null) => {
+    if (next && refOrderRef.current.includes(next)) return; // already one: server no-op
+    if (!next && refOrderRef.current.length === 0) return;
+    const prevOrder = refOrderRef.current;
     const seq = ++referenceSeqRef.current;
     applyReferenceOrder(next);
     startTransition(async () => {
       const r = await feedback.run(setReferenceSample(session.id, next));
-      if (!r.ok && seq === referenceSeqRef.current) applyReferenceOrder(prev);
+      if (!r.ok && seq === referenceSeqRef.current) applyRefOrder(prevOrder);
     });
+  };
+  const handleReferenceChange = (value: string) => {
+    if (value === "") return;
+    if (value === REMOVE_ACTIVE) return commitReference(null);
+    if (refOrderRef.current.length > 0 && !refOrderRef.current.includes(value)) {
+      setPendingReference(value);
+      return;
+    }
+    commitReference(value);
   };
 
   // ─── Derived state ────────────────────────────────────────────
@@ -1139,16 +1323,41 @@ export function CupClient({
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [referenceSampleId, sampleIdx, affectiveModuleKey, sessionStatus]);
-  const isCurrentReference = referenceSample?.id === current.id;
+  const currentRefIdx = refOrder.indexOf(current.id);
+  const isCurrentReference = currentRefIdx !== -1;
   const referenceBadgeLabel = translations.referenceBadge ?? "Referencia";
-  const referenceOptions = [
-    { value: "", label: translations.referenceNone ?? "Sin referencia" },
-    ...samples.map((s) => ({ value: s.id, label: s.label })),
-  ];
+  const multiRef = refOrder.length > 1;
+  // "R1: A · R2: D (activa)" — only worth showing once there is something to tell apart.
+  const labelOf = (id: string) => samples.find((s) => s.id === id)?.label ?? "";
+  const referenceSummary = refOrder.length
+    ? refOrder
+        .map(
+          (id, i) =>
+            `R${i + 1}: ${labelOf(id)}${multiRef && i === refOrder.length - 1 ? ` (${translations.referenceActive ?? "activa"})` : ""}`,
+        )
+        .join(" · ")
+    : undefined;
+  const referenceOptions = refOrder.length
+    ? [
+        { value: "", label: translations.referenceAdd ?? "Añadir referencia…" },
+        ...samples
+          .filter((s) => !refOrder.includes(s.id))
+          .map((s) => ({ value: s.id, label: s.label })),
+        {
+          value: REMOVE_ACTIVE,
+          label: `${translations.referenceRemoveActive ?? "Quitar la referencia activa"} (R${refOrder.length})`,
+        },
+      ]
+    : [
+        { value: "", label: translations.referenceNone ?? "Sin referencia" },
+        ...samples.map((s) => ({ value: s.id, label: s.label })),
+      ];
   // Header line under the sample name: "· Referencia" on the reference itself,
   // "Compara con la referencia (C)" on every other sample (participants too).
   const referenceContext = isCurrentReference ? (
-    <Badge tone="accent" size="xs">{referenceBadgeLabel}</Badge>
+    <Badge tone="accent" size="xs">
+      {multiRef ? `${referenceBadgeLabel} ${currentRefIdx + 1}` : referenceBadgeLabel}
+    </Badge>
   ) : referenceSample && translations.compareHint ? (
     <span
       className="min-w-0 truncate font-sans text-[11px] text-brown-mid"
@@ -1274,10 +1483,14 @@ export function CupClient({
 
   const handleModuleSelect = async (key: string) => {
     if (key === "results") {
-      await handleGoToResults();
+      // Submit always goes through the notes stage; from inside it, the tap
+      // is the submit itself.
+      if (notesStage) await handleGoToResults();
+      else await openNotesStage();
       return;
     }
     if (key !== "cupping" && key !== "extrinsic" && key !== "physical") return;
+    if (notesStage) await closeNotesStage();
     setActiveTab(key);
     scrollCanvasToTop();
   };
@@ -1287,15 +1500,40 @@ export function CupClient({
     isLastSampleInStep && !isLastStep
       ? stepsForFormat[stepsForFormat.indexOf(currentStep) + 1]
       : null;
-  const nextLabel = isLastSampleOverall
-    ? translations.viewResults
+  // Inline fallbacks for the notes-stage copy (pre-upgrade cached prop blobs).
+  const expressNotesCopy = translations.expressNotes ?? (locale === "en"
+    ? {
+        title: "Quick notes",
+        body: "One free-text impression per sample. Optional — you can submit without writing anything.",
+        placeholder: "What did this cup leave you? Aromas, flavors, sensations…",
+        optional: "Optional",
+        open: "Quick notes →",
+        back: "Back to cupping",
+        submit: "Submit and see results",
+      }
+    : {
+        title: "Notas rápidas",
+        body: "Una impresión libre por muestra. Opcional: puedes enviar sin escribir nada.",
+        placeholder: "¿Qué te dejó esta taza? Aromas, sabores, sensaciones…",
+        optional: "Opcional",
+        open: "Notas rápidas →",
+        back: "Volver a la cata",
+        submit: "Enviar y ver resultados",
+      });
+
+  const nextLabel = notesStage
+    ? expressNotesCopy.submit
+    : isLastSampleOverall
+    ? expressNotesCopy.open
     : nextStep
     ? `${translations.nextPhase} → ${translations.phaseLabels[nextStep]}`
     : translations.nextSample;
 
   const nextVariant: "next-sample" | "next-phase" | "view-results" =
-    isLastSampleOverall
+    notesStage
       ? "view-results"
+      : isLastSampleOverall
+      ? "next-phase"
       : isLastSampleInStep && !isLastStep
       ? "next-phase"
       : "next-sample";
@@ -1317,7 +1555,7 @@ export function CupClient({
       )}
       {referenceSample && (
         <div className="font-mono text-[11px] text-brown-mid mt-0.5 truncate">
-          {referenceBadgeLabel}: {referenceSample.label}
+          {multiRef ? referenceSummary : `${referenceBadgeLabel}: ${referenceSample.label}`}
         </div>
       )}
     </>
@@ -1331,7 +1569,8 @@ export function CupClient({
         id: s.id,
         label: s.label,
         filled: hasStepFill(s, currentStep),
-        reference: s.id === referenceSampleId,
+        reference: refOrder.includes(s.id),
+        referenceTag: multiRef ? `R${refOrder.indexOf(s.id) + 1}` : undefined,
       }))}
       referenceLabel={referenceBadgeLabel}
       activeIndex={sampleIdx}
@@ -1371,7 +1610,8 @@ export function CupClient({
             id: s.id,
             label: s.label,
             filled: hasStepFill(s, currentStep),
-            reference: s.id === referenceSampleId,
+            reference: refOrder.includes(s.id),
+            referenceTag: multiRef ? `R${refOrder.indexOf(s.id) + 1}` : undefined,
           }))}
           referenceLabel={referenceBadgeLabel}
           activeIndex={sampleIdx}
@@ -1444,8 +1684,10 @@ export function CupClient({
         onStart={handleStart}
         referenceLabel={translations.referenceSelect ?? "Muestra de referencia"}
         referenceOptions={referenceOptions}
-        referenceValue={referenceSampleId ?? ""}
+        referenceValue=""
         onReferenceChange={handleReferenceChange}
+        referenceSummary={referenceSummary}
+        referenceHint={refOrder.length ? translations.referenceAddHint : undefined}
       />
     ) : undefined;
 
@@ -1472,8 +1714,26 @@ export function CupClient({
     />
   );
 
-  const topBar =
-    activeTab === "cupping" ? (
+  // Notes stage: no stepper, no sample tabs — one compact title line (the
+  // samples are all on screen). Desktop keeps the clock column for continuity.
+  const notesTopBar = (
+    <div className="flex items-center gap-3 px-4 py-2 sm:px-6">
+      <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-brown-mid">
+        {expressNotesCopy.title}
+      </span>
+      <span className="text-brown-light">·</span>
+      <span className="font-display text-base text-brown-dark truncate">
+        {session.name}
+      </span>
+      <span className="ml-auto shrink-0 font-mono text-[10px] text-brown-mid tabular-nums">
+        {samples.length} {translations.samplesHeader.toLowerCase()}
+      </span>
+    </div>
+  );
+
+  const topBar = notesStage ? (
+    notesTopBar
+  ) : activeTab === "cupping" ? (
       <>
         {/* Desktop: phases + samples (left) / session info (right) */}
         <div className="hidden lg:grid grid-cols-[1fr_auto] items-start gap-x-8 px-6 py-2">
@@ -1545,20 +1805,30 @@ export function CupClient({
   // ─── Footer ───────────────────────────────────────────────────
   const footer = (
     <CanvasFooter
-      onPrev={handlePrev}
-      onNext={isLastSampleOverall ? handleGoToResults : handleNextSample}
-      prevLabel={translations.prev}
+      onPrev={notesStage ? closeNotesStage : handlePrev}
+      onNext={
+        notesStage
+          ? handleGoToResults
+          : isLastSampleOverall
+          ? openNotesStage
+          : handleNextSample
+      }
+      prevLabel={notesStage ? expressNotesCopy.back : translations.prev}
       nextLabel={
         isNavigating || isGoingToResults ? translations.submitting : nextLabel
       }
-      prevDisabled={prevDisabled || isNavigating}
+      prevDisabled={(!notesStage && prevDisabled) || isNavigating}
       nextDisabled={isNavigating || isGoingToResults}
       nextVariant={nextVariant}
     />
   );
 
   // ─── Render ───────────────────────────────────────────────────
+  // The session-moment overlay is a SIBLING of SessionShell (never inside
+  // its top bar): it stacks above the shell, is skippable, and renders
+  // static content so it works offline.
   return (
+    <>
     <SessionShell
       identity={identity}
       secondaryNav={secondaryNav}
@@ -1566,8 +1836,8 @@ export function CupClient({
       exitLink={exitLink}
       topBar={topBar}
       footer={footer}
-      mobileTitle={session.name}
-      mobileBar={phoneBar}
+      mobileTitle={notesStage ? expressNotesCopy.title : session.name}
+      mobileBar={notesStage ? undefined : phoneBar}
       mobileDetails={phoneDetails}
       mobileDetailsLabel={translations.sessionDetails}
       collapsed={keyboardOpen}
@@ -1595,8 +1865,13 @@ export function CupClient({
               <span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.18em] text-brown-mid">
                 {translations.referenceSelect ?? "Muestra de referencia"}
               </span>
+              {referenceSummary && (
+                <span className="mb-1 block font-sans text-xs text-on-surface-variant">
+                  {referenceSummary}
+                </span>
+              )}
               <Select
-                value={referenceSampleId ?? ""}
+                value=""
                 onChange={handleReferenceChange}
                 options={referenceOptions}
                 ariaLabel={translations.referenceSelect ?? "Muestra de referencia"}
@@ -1730,6 +2005,26 @@ export function CupClient({
         </div>
       )}
       <ConfirmDialog
+        open={pendingReference !== null}
+        onOpenChange={(o) => {
+          if (!o) setPendingReference(null);
+        }}
+        title={translations.referenceAddTitle ?? "Añadir referencia"}
+        body={
+          translations.referenceAddHint ??
+          "La referencia anterior conserva sus 79.00; la nueva queda fijada."
+        }
+        confirmLabel={translations.referenceAddConfirm ?? "Añadir referencia"}
+        cancelLabel={translations.cancel}
+        closeLabel={translations.cancel}
+        destructive={false}
+        onConfirm={() => {
+          const id = pendingReference;
+          setPendingReference(null);
+          if (id) commitReference(id);
+        }}
+      />
+      <ConfirmDialog
         open={closeDialogOpen}
         onOpenChange={setCloseDialogOpen}
         title={translations.closeSession}
@@ -1785,6 +2080,31 @@ export function CupClient({
               : translations.guard.continueAnyway,
         }}
       />
+      {notesStage && (
+        <ExpressNotesStep
+          samples={viewSamples.map((s) => ({
+            id: s.id,
+            label: s.label,
+            isReference: s.id === referenceSampleId,
+          }))}
+          values={Object.fromEntries(
+            samples.map((s) => {
+              const v = s[notesModuleKey][EXPRESS_NOTE_KEY];
+              return [s.id, typeof v === "string" ? v : ""];
+            }),
+          )}
+          onChange={setSampleNote}
+          maxLength={EXPRESS_NOTE_MAX}
+          translations={{
+            title: expressNotesCopy.title,
+            body: expressNotesCopy.body,
+            placeholder: expressNotesCopy.placeholder,
+            optional: expressNotesCopy.optional,
+            referenceBadge: referenceBadgeLabel,
+          }}
+        />
+      )}
+      {!notesStage && (
       <div key={`${activeTab}-${currentStep}-${current.id}`}>
         {activeTab === "cupping" && session.format === "descriptive" && (
           <DescriptiveForm
@@ -1835,8 +2155,19 @@ export function CupClient({
           />
         )}
       </div>
+      )}
 
       <DevRoleBadge email={userEmail} />
     </SessionShell>
+    {warmup && (
+      <WarmupMoment
+        sessionId={session.id}
+        locale={locale}
+        exerciseId={warmup.exerciseId}
+        enabled={sessionStatus !== "closed"}
+        strings={warmup.strings}
+      />
+    )}
+    </>
   );
 }

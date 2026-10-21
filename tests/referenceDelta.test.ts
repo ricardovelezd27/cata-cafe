@@ -99,3 +99,29 @@ describe("pickDisplayedScore / pickDisplayed", () => {
     expect(pickDisplayed(null, null, true)).toEqual({ score: null, basis: null });
   });
 });
+
+describe("Δ vs the chosen reference (multi-reference)", () => {
+  const rows = [
+    { id: "r1", score: 80, basis: "mine" as const },
+    { id: "r2", score: 82, basis: "mine" as const },
+    { id: "x", score: 85, basis: "mine" as const },
+  ];
+
+  it("the same row gets a different Δ depending on which reference is picked", () => {
+    expect(deltasVsReference(rows, "r1").get("x")).toBe(5);
+    expect(deltasVsReference(rows, "r2").get("x")).toBe(3);
+  });
+
+  it("a reference compared with the other reference gets a Δ; with itself, null", () => {
+    expect(deltasVsReference(rows, "r1").get("r2")).toBe(2);
+    expect(deltasVsReference(rows, "r1").get("r1")).toBeNull();
+  });
+
+  it("never mixes bases for the chosen reference", () => {
+    const mixed = [
+      { id: "r1", score: 80, basis: "community" as const },
+      { id: "x", score: 85, basis: "mine" as const },
+    ];
+    expect(deltasVsReference(mixed, "r1").get("x")).toBeNull();
+  });
+});

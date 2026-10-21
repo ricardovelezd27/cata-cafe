@@ -1,7 +1,8 @@
-// Server-only. On group-session close, emails every participant:
-//   1. their OWN individual CVA-form PDF (lib/pdf/CvaFormDocument), and
-//   2. one shared, ANONYMOUS group-summary PDF (lib/pdf/GroupSummaryDocument),
-//      built from the same aggregation the results page uses.
+// Server-only. On group-session close, emails every participant a link back to
+// the results page plus ONE small attachment: their personal summary PDF
+// (lib/pdf/ParticipantSummaryDocument, model from lib/reports). The legacy
+// per-recipient CVA form PDF is attached only when CLOSE_EMAIL_ATTACH_CVA=1;
+// the anonymous group-summary PDF is retired.
 //
 // Called by closeSession (app/actions/community.ts) AFTER the status update and
 // syncCoffeeHistory. Email work must NEVER fail or block the close: the caller
@@ -11,18 +12,18 @@
 
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
-import { orderReferenceFirst } from "@/lib/referenceRules";
+import { orderReferencesFirst } from "@/lib/referenceRules";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendEmail, escapeHtml } from "@/lib/email";
+import { sendEmail } from "@/lib/email";
 import { CvaFormDocument, type CvaDocumentProps } from "@/lib/pdf/CvaFormDocument";
-import {
-  GroupSummaryDocument,
-  type GroupSummarySample,
-} from "@/lib/pdf/GroupSummaryDocument";
-import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
-import { computeGroupAggregate } from "@/lib/scoring";
-import { PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
+import { ParticipantSummaryDocument } from "@/lib/pdf/ParticipantSummaryDocument";
+import { slug } from "@/lib/pdf/filename";
+import type { SessionReportSource } from "@/lib/reports/types";
+import { loadSessionReportSource } from "@/lib/reports/sessionReportData";
+import { buildParticipantSummary } from "@/lib/reports/participantSummary";
+import { buildCloseEmailHtml, closeEmailSubject } from "@/lib/closeEmailBody";
+import { buildResultsLoginUrl, siteOrigin } from "@/lib/inviteUrl";
 import esMessages from "@/messages/es.json";
 import enMessages from "@/messages/en.json";
 
@@ -34,53 +35,6 @@ export type CloseEmailSummary = {
   skipped: number;
   failed: number;
 };
-
-const EMAIL_TEXT: Record<Locale, { subject: (name: string) => string; body: (args: { name: string; date: string }) => string; individualFile: string; summaryFile: string }> = {
-  es: {
-    subject: (name) => `Resultados — ${name}`,
-    individualFile: "formulario",
-    summaryFile: "resumen_grupal",
-    body: ({ name, date }) => `
-      <div style="font-family: Arial, Helvetica, sans-serif; color:#2b241d; line-height:1.5;">
-        <h2 style="color:#3D5A3E; margin:0 0 8px;">Cata Café</h2>
-        <p>Hola,</p>
-        <p>La sesión de catación <strong>${escapeHtml(name)}</strong>${date ? ` (${escapeHtml(date)})` : ""} se ha cerrado.</p>
-        <p>Adjuntamos dos documentos:</p>
-        <ul>
-          <li><strong>Tu formulario CVA individual</strong> — tu propia evaluación de las muestras.</li>
-          <li><strong>Resumen grupal</strong> — un resumen estadístico anónimo de la sesión.</li>
-        </ul>
-        <p style="color:#7a7168; font-size:13px;">Gracias por participar.</p>
-      </div>`,
-  },
-  en: {
-    subject: (name) => `Results — ${name}`,
-    individualFile: "form",
-    summaryFile: "group_summary",
-    body: ({ name, date }) => `
-      <div style="font-family: Arial, Helvetica, sans-serif; color:#2b241d; line-height:1.5;">
-        <h2 style="color:#3D5A3E; margin:0 0 8px;">Cata Café</h2>
-        <p>Hello,</p>
-        <p>The cupping session <strong>${escapeHtml(name)}</strong>${date ? ` (${escapeHtml(date)})` : ""} has been closed.</p>
-        <p>Attached you'll find two documents:</p>
-        <ul>
-          <li><strong>Your individual CVA form</strong> — your own evaluation of the samples.</li>
-          <li><strong>Group summary</strong> — an anonymous statistical summary of the session.</li>
-        </ul>
-        <p style="color:#7a7168; font-size:13px;">Thank you for taking part.</p>
-      </div>`,
-  },
-};
-
-/** ASCII-safe filename fragment (mirrors the cva-pdf route's slug). */
-function slug(input: string): string {
-  return input
-    .normalize("NFD")
-    .replace(/[^a-zA-Z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0, 60)
-    .toLowerCase();
-}
 
 /**
  * Send the close emails for a group session. Returns a summary of how many
@@ -119,7 +73,7 @@ export async function sendCloseEmails(
 
   if (!session || !session.isGroup) return empty;
   // Reference first in every emailed sheet/summary (lib/referenceRules.ts).
-  session.samples = orderReferenceFirst(session.samples, session.referenceSampleId);
+  session.samples = orderReferencesFirst(session.samples);
 
   // Every submitted evaluation for the session (used for both the group
   // aggregation and each participant's own CVA PDF).
@@ -135,39 +89,6 @@ export async function sendCloseEmails(
       defectiveCups: true,
     },
   });
-
-  const excludedUserIds = new Set(
-    session.participants.filter((p) => p.excludedFromResults).map((p) => p.userId),
-  );
-
-  // ── Per-sample community score (complete-only, excluded-free) — same as page ──
-  // Locale-independent — computed once regardless of how many locales the
-  // recipients need.
-  const aggBySample = new Map<string, ReturnType<typeof computeGroupAggregate>>();
-  {
-    const bySample = new Map<string, (typeof evals)[number][]>();
-    for (const ev of evals) {
-      if (excludedUserIds.has(ev.cupperId)) continue;
-      const list = bySample.get(ev.sessionSampleId);
-      if (list) list.push(ev);
-      else bySample.set(ev.sessionSampleId, [ev]);
-    }
-    for (const [sampleId, list] of bySample) {
-      aggBySample.set(
-        sampleId,
-        computeGroupAggregate(
-          list.map((ev) => ({
-            data: (session.format === "combined"
-              ? ev.combinedData
-              : ev.affectiveData) as Record<string, unknown>,
-            nonUniformCups: ev.nonUniformCups,
-            defectiveCups: ev.defectiveCups,
-          })),
-          session.cupsPerSample,
-        ),
-      );
-    }
-  }
 
   const evalsByCupper = new Map<string, Map<string, (typeof evals)[number]>>();
   for (const ev of evals) {
@@ -198,15 +119,15 @@ export async function sendCloseEmails(
     return locale; // Profile row missing entirely — fall back to the default param.
   }
 
+  // ── Per-locale assets: date string + the participant-summary report source.
+  // The source (one DB read each) is shared by every recipient of that locale —
+  // at most 2 loads (es/en) however many participants there are. ──
   const localesNeeded = new Set<Locale>(
     session.participants.map((p) => resolveRecipientLocale(p.userId)),
   );
-
-  // ── Per-locale assets (date string, anonymous block sentences, group-summary
-  // PDF) — memoized so each locale (es/en, at most 2) is only built once no
-  // matter how many recipients share it. ──
-  type LocaleAssets = { dateStr: string; summaryBuffer: Buffer };
+  type LocaleAssets = { dateStr: string; source: SessionReportSource | null; sourceError?: string };
   const assetsByLocale = new Map<Locale, LocaleAssets>();
+  const attachCva = process.env.CLOSE_EMAIL_ATTACH_CVA === "1";
 
   for (const loc of localesNeeded) {
     const dateStr = session.date.toLocaleDateString(loc === "es" ? "es-CO" : "en-US", {
@@ -214,63 +135,27 @@ export async function sendCloseEmails(
       month: "long",
       day: "numeric",
     });
-
     const messages = loc === "en" ? enMessages : esMessages;
     const blockLabels = messages.blocks as Record<string, string>;
-    const blockLabel = (blockId: string) => blockLabels[blockId] ?? blockId;
-
-    const freq = computeSampleBlockFrequencies({
-      format: session.format,
-      samples: session.samples.map((s) => ({ id: s.id, label: s.label })),
-      evals: evals.map((ev) => ({
-        cupperId: ev.cupperId,
-        sessionSampleId: ev.sessionSampleId,
-        descriptiveData: ev.descriptiveData,
-        combinedData: ev.combinedData,
-      })),
-      excludedUserIds,
-      blockLabel,
-      locale: loc,
-    });
-    const freqBySample = new Map(freq?.map((f) => [f.sampleId, f]) ?? []);
-
-    const summarySamples: GroupSummarySample[] = session.samples.map((s) => {
-      const agg = aggBySample.get(s.id);
-      const f = freqBySample.get(s.id);
-      // Sentences in canonical block order; drop nulls at render time.
-      const sentences = PERCEPTUAL_BLOCKS.map((b) => ({
-        blockId: b.id,
-        text: f?.summary[b.id] ?? null,
-      }));
-      return {
-        label: s.label,
-        isReference: s.id === session.referenceSampleId,
-        coffeeName:
-          s.revealed && s.coffee ? coffeeDisplayName(s.coffee, deletedCoffeeLabel(loc)) : null,
-        communityScore: agg?.communityScore ?? null,
-        evaluators: f?.totalEvaluators ?? 0,
-        sentences,
-      };
-    });
-
-    const summaryBuffer = await renderToBuffer(
-      GroupSummaryDocument({
-        sessionName: session.name,
-        date: dateStr,
-        participantCount: session.participants.length,
+    let source: SessionReportSource | null = null;
+    let sourceError: string | undefined;
+    try {
+      source = await loadSessionReportSource(sessionId, {
         locale: loc,
-        samples: summarySamples,
-      }),
-    );
-
-    assetsByLocale.set(loc, { dateStr, summaryBuffer });
+        blockLabel: (blockId) => blockLabels[blockId] ?? blockId,
+      });
+      if (!source) sourceError = "report_source_missing";
+    } catch (err) {
+      sourceError = `report_source: ${err instanceof Error ? err.message : String(err)}`.slice(0, 300);
+    }
+    assetsByLocale.set(loc, { dateStr, source, sourceError });
   }
 
   const admin = createAdminClient();
   const nameSlug = slug(session.name);
 
   // Every participant RECEIVES email (including excluded-from-results cuppers —
-  // they still get their own PDF; the group summary is the same for everyone)
+  // they still get their own summary)
   // — EXCEPT those already marked "sent" in close_email_deliveries. That ledger
   // is what makes a re-run (double click, cron retry, owner "resend") safe.
   const alreadySent = new Set(
@@ -301,54 +186,100 @@ export async function sendCloseEmails(
 
       const recipientLocale = resolveRecipientLocale(p.userId);
       const assets = assetsByLocale.get(recipientLocale)!;
-      const text = EMAIL_TEXT[recipientLocale];
       const profile = profileById.get(p.userId);
+      const isEn = recipientLocale === "en";
 
-      // This participant's own CVA PDF (per-cupper data, mirroring cva-pdf route).
-      const own = evalsByCupper.get(p.userId);
-      const cvaProps: CvaDocumentProps = {
-        sessionName: session.name,
-        date: assets.dateStr,
-        cupperName: profile?.displayName ?? "",
-        purpose: session.objective ?? "",
-        cupsPerSample: session.cupsPerSample,
-        format: session.format,
-        locale: recipientLocale,
-        samples: session.samples.map((s) => {
-          const ev = own?.get(s.id);
-          return {
-            label: s.label,
-            revealed: s.revealed,
-            coffeeName: s.coffee
-              ? coffeeDisplayName(s.coffee, deletedCoffeeLabel(recipientLocale))
-              : null,
-            roastLevel: s.coffee?.roastLevel ?? null,
-            isReference: s.id === session.referenceSampleId,
-            descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
-            affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
-            combined: (ev?.combinedData as Record<string, unknown>) ?? {},
-            physical: (s.physical?.data as Record<string, unknown>) ?? {},
-            extrinsic: (s.extrinsic?.data as Record<string, unknown>) ?? {},
-          };
-        }),
-      };
+      // Guard: a model failure marks THIS recipient failed, never the loop.
+      if (!assets.source) return { status: "failed", error: assets.sourceError ?? "report_source" };
+      // A participant who submitted nothing would get a mostly empty PDF: send
+      // the link-only email (ledger status is still "sent").
+      const hasSubmitted = (evalsByCupper.get(p.userId)?.size ?? 0) > 0;
+      let summaryBuffer: Buffer | null = null;
+      try {
+        if (hasSubmitted) {
+        const messages = isEn ? enMessages : esMessages;
+        const model = buildParticipantSummary(assets.source, {
+          viewerId: p.userId,
+          locale: recipientLocale,
+          labels: {
+            coffeeDeleted: deletedCoffeeLabel(recipientLocale),
+            soloTopDescriptors: messages.results.dashboard.soloTopDescriptors,
+          },
+        });
+        summaryBuffer = await renderToBuffer(
+          ParticipantSummaryDocument({ model, locale: recipientLocale }),
+        );
+        }
+      } catch (err) {
+        return {
+          status: "failed",
+          error: `summary: ${err instanceof Error ? err.message : String(err)}`.slice(0, 300),
+        };
+      }
 
-      const cvaBuffer = await renderToBuffer(CvaFormDocument(cvaProps));
+      const attachments: { filename: string; content: Buffer }[] = summaryBuffer
+        ? [{ filename: `${isEn ? "summary" : "resumen"}_${nameSlug || "session"}.pdf`, content: summaryBuffer }]
+        : [];
+
+      if (attachCva) {
+        // Legacy opt-in: also attach this participant's own CVA form.
+        const own = evalsByCupper.get(p.userId);
+        const isOwnerRecipient = p.userId === session.createdBy;
+        const cvaProps: CvaDocumentProps = {
+          ownerView: isOwnerRecipient,
+          sessionName: session.name,
+          date: assets.dateStr,
+          cupperName: profile?.displayName ?? "",
+          purpose: session.objective ?? "",
+          cupsPerSample: session.cupsPerSample,
+          format: session.format,
+          locale: recipientLocale,
+          samples: session.samples.map((s) => {
+            const ev = own?.get(s.id);
+            return {
+              label: s.label,
+              revealed: s.revealed,
+              coffeeName: s.coffee
+                ? coffeeDisplayName(s.coffee, deletedCoffeeLabel(recipientLocale))
+                : null,
+              roastLevel: s.coffee?.roastLevel ?? null,
+              isReference: s.id === session.referenceSampleId,
+              descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
+              affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
+              combined: (ev?.combinedData as Record<string, unknown>) ?? {},
+              physical: isOwnerRecipient
+                ? ((s.physical?.data as Record<string, unknown>) ?? {})
+                : {},
+              extrinsic:
+                isOwnerRecipient || s.revealed
+                  ? ((s.extrinsic?.data as Record<string, unknown>) ?? {})
+                  : {},
+            };
+          }),
+        };
+        const cvaBuffer = await renderToBuffer(CvaFormDocument(cvaProps));
+        attachments.push({
+          filename: `cva_${isEn ? "form" : "formulario"}_${nameSlug || "session"}.pdf`,
+          content: cvaBuffer,
+        });
+      }
 
       const result = await sendEmail({
         to: email,
-        subject: text.subject(session.name),
-        html: text.body({ name: session.name, date: assets.dateStr }),
-        attachments: [
-          { filename: `cva_${text.individualFile}_${nameSlug}.pdf`, content: cvaBuffer },
-          { filename: `${text.summaryFile}_${nameSlug}.pdf`, content: assets.summaryBuffer },
-        ],
+        subject: closeEmailSubject(recipientLocale, session.name),
+        html: buildCloseEmailHtml({
+          locale: recipientLocale,
+          sessionName: session.name,
+          dateStr: assets.dateStr,
+          resultsUrl: buildResultsLoginUrl(siteOrigin(), recipientLocale, sessionId),
+        }),
+        attachments,
       });
 
       if (result.skipped) return { status: "skipped", error: "email_not_configured" };
       if (!result.ok) {
         console.warn(
-          `[closeEmail] send failed for ${email} in session ${sessionId}: ${result.error}`,
+          `[closeEmail] send failed for participant ${p.userId} in session ${sessionId}: ${result.error}`,
         );
         return { status: "failed", error: result.error };
       }

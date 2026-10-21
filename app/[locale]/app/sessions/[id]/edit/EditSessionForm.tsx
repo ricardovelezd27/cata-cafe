@@ -62,11 +62,10 @@ const labelCls = "block text-[11px] font-semibold uppercase tracking-widest text
 
 const FORMAT_OPTIONS = ["descriptive", "affective", "combined"] as const;
 
-function localDateString(): string {
-  const n = new Date();
-  const m = String(n.getMonth() + 1).padStart(2, "0");
-  const d = String(n.getDate()).padStart(2, "0");
-  return `${n.getFullYear()}-${m}-${d}`;
+/** UTC calendar date, same rule as the wizard and `planClosesAtChange` (the
+ *  server closes at END of the chosen day in UTC), so both forms agree. */
+function utcDateString(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 export function EditSessionForm({
@@ -162,6 +161,11 @@ export function EditSessionForm({
       const result = await feedback.run(setReferenceSample(sessionId, next), () => {
         if (seq === referenceSeq.current) feedback.notifySuccess(t.referenceSaved);
       });
+      // Naming an existing reference is a server no-op — show what the
+      // server kept as the active one (references accumulate, S6).
+      if (result.ok && seq === referenceSeq.current) {
+        setReferenceIdState(result.data.referenceSampleId);
+      }
       if (!result.ok && seq === referenceSeq.current) {
         setReferenceIdState(previous);
       }
@@ -342,7 +346,7 @@ export function EditSessionForm({
               type="date"
               className={inputCls}
               value={closesAt}
-              min={localDateString()}
+              min={utcDateString()}
               disabled={closed}
               onChange={(e) => {
                 setClosesAt(e.target.value);

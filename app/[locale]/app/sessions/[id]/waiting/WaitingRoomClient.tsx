@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createBrowserClient } from "@supabase/ssr";
 import { checkSessionStarted } from "@/app/actions/sessions";
+import { nextReferenceOrder } from "@/lib/referenceRules";
+import { WARMUP_EXERCISES, WARMUP_SHARED, lw, warmupById } from "@/lib/warmup/exercises";
+import { WarmupPlayer, type WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
 
 export function WaitingRoomClient({
   sessionId,
@@ -12,7 +16,8 @@ export function WaitingRoomClient({
   locale,
   isAsync,
   samples,
-  initialReferenceSampleId,
+  warmup,
+  initialReferenceIds,
   translations,
 }: {
   sessionId: string;
@@ -20,10 +25,15 @@ export function WaitingRoomClient({
   locale: string;
   isAsync: boolean;
   samples: { id: string; label: string }[];
-  initialReferenceSampleId: string | null;
+  /** "Mientras esperas" — Movimiento Sensorial card + inline player. */
+  warmup?: { title: string; body: string; minutes: string; strings: WarmupPlayerStrings };
+  /** Ids of the references in rank order (R1 first); the last is the active one. */
+  initialReferenceIds: string[];
   translations: {
     /** "Muestra de referencia: {label}" — raw ICU string, replaced here. */
     referenceLine: string;
+    /** "Referencias: {list}" — raw ICU string, replaced here. */
+    referencesLine: string;
     title: string;
     description: string;
     asyncDetail: string;
@@ -44,10 +54,20 @@ export function WaitingRoomClient({
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // The owner may pick/change the reference while people wait — same
   // cupping_sessions UPDATE stream that carries startedAt.
-  const [referenceSampleId, setReferenceSampleId] = useState<string | null>(
-    initialReferenceSampleId,
-  );
-  const referenceLabel = samples.find((s) => s.id === referenceSampleId)?.label ?? null;
+  const [refOrder, setRefOrder] = useState<string[]>(initialReferenceIds);
+  const labelOf = (id: string) => samples.find((s) => s.id === id)?.label ?? "";
+  const referenceLine = !refOrder.length
+    ? null
+    : refOrder.length === 1
+      ? translations.referenceLine.replace("{label}", labelOf(refOrder[0]))
+      : translations.referencesLine.replace(
+          "{list}",
+          refOrder.map((id, i) => `${labelOf(id)} (R${i + 1})`).join(" · "),
+        );
+  // The warm-up player opens as an overlay INSIDE this component tree so the
+  // realtime startedAt → /cup redirect below keeps firing while it is open.
+  const [activeWarmupId, setActiveWarmupId] = useState<string | null>(null);
+  const activeWarmup = warmupById(activeWarmupId);
 
   useEffect(() => {
     if (isAsync) return;
@@ -64,7 +84,11 @@ export function WaitingRoomClient({
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
 
-    const channel = supabase
+    // JWT before join — see lib/supabase/realtimeAuth.ts (S6 CP-C4).
+    const stop = subscribeWithSessionAuth(
+      supabase,
+      () =>
+    supabase
       .channel(`waiting:${sessionId}`)
       .on(
         "postgres_changes",
@@ -77,17 +101,23 @@ export function WaitingRoomClient({
         (payload) => {
           const row = payload.new as Record<string, unknown>;
           if ("referenceSampleId" in row || "reference_sample_id" in row) {
-            setReferenceSampleId(
-              (row.referenceSampleId ?? row.reference_sample_id ?? null) as string | null,
-            );
+            const next = (row.referenceSampleId ?? row.reference_sample_id ?? null) as
+              | string
+              | null;
+            setRefOrder((prev) => nextReferenceOrder(prev, next));
           }
           // Columns are camelCase in Postgres; accept snake_case defensively.
           if (row.startedAt ?? row.started_at) {
             router.push(`/${locale}/app/sessions/${sessionId}/cup`);
+            return;
           }
+          // Sample add/rename/remove touch the session row (S6 CP-C4): the
+          // samples list and the reference line are server props here, so a
+          // refresh is all it takes.
+          router.refresh();
         },
-      )
-      .subscribe((status) => {
+      ),
+      (status) => {
         if (status === "SUBSCRIBED") {
           setConnectionLost(false);
           clearPoll();
@@ -105,11 +135,12 @@ export function WaitingRoomClient({
             }
           }, 15000);
         }
-      });
+      },
+    );
 
     return () => {
       clearPoll();
-      supabase.removeChannel(channel);
+      stop();
     };
   }, [sessionId, locale, router, isAsync]);
 
@@ -149,12 +180,12 @@ export function WaitingRoomClient({
               {translations.asyncDetail}
             </p>
           )}
-          {referenceLabel && (
+          {referenceLine && (
             <p
               role="status"
               className="inline-block rounded-pill bg-secondary-fixed px-3 py-1 text-sm font-medium text-secondary"
             >
-              {translations.referenceLine.replace("{label}", referenceLabel)}
+              {referenceLine}
             </p>
           )}
         </div>
@@ -208,7 +239,50 @@ export function WaitingRoomClient({
         >
           {translations.backToSessions}
         </Link>
+
+        {warmup && (
+          <section
+            aria-label={warmup.title}
+            className="rounded-card border border-outline-variant bg-surface-container-low p-5 text-left"
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
+              {lw(WARMUP_SHARED.title, locale)}
+            </p>
+            <h2 className="mt-1 font-display text-xl text-primary-container">{warmup.title}</h2>
+            <p className="mt-1 text-sm leading-relaxed text-on-surface-variant">{warmup.body}</p>
+            <ul className="mt-4 divide-y divide-outline-variant">
+              {WARMUP_EXERCISES.map((ex) => (
+                <li key={ex.id}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveWarmupId(ex.id)}
+                    className="flex w-full items-center gap-3 py-2.5 text-left transition-colors hover:text-primary-container"
+                  >
+                    <span className="font-display text-xl leading-none text-primary-fixed-dim tabular-nums w-5 shrink-0 text-right">
+                      {ex.order}
+                    </span>
+                    <span className="min-w-0 flex-1 text-sm font-medium text-on-surface">{lw(ex.name, locale)}</span>
+                    <span className="shrink-0 text-xs text-on-surface-variant tabular-nums">
+                      {warmup.minutes.replace("{min}", String(ex.durationMin))}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
+
+      {warmup && activeWarmup && (
+        <WarmupPlayer
+          key={activeWarmup.id}
+          exercise={activeWarmup}
+          locale={locale}
+          t={warmup.strings}
+          onFinish={() => setActiveWarmupId(null)}
+          onSkip={() => setActiveWarmupId(null)}
+        />
+      )}
     </main>
   );
 }
