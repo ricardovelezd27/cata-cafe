@@ -37,6 +37,7 @@ import { expressSampleLabel, validateExpressInput } from "@/lib/expressSession";
 import { logInfo } from "@/lib/log";
 import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/groups";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
+import { WARMUP_IDS, type WarmupId } from "@/lib/warmup/exercises";
 
 // Mirrors the standalone CoffeeForm's field set — wizard-created coffees land
 // in the SAME coffees table with the same shape (no wizard-only subset).
@@ -158,7 +159,15 @@ type SessionMeta = {
   format: (typeof SESSION_FORMATS)[number];
   cupsPerSample: number;
   closesAt: Date | null;
+  warmupExerciseId: WarmupId | null;
 };
+
+/** Optional pre-cupping warm-up: "" / null / undefined → none; anything else
+ *  must be one of WARMUP_IDS (throws invalid_input). */
+function parseWarmupId(value: unknown, field = "warmupExerciseId"): WarmupId | null {
+  if (value === null || value === undefined || value === "") return null;
+  return v.oneOf(value, field, WARMUP_IDS);
+}
 
 function validateSessionMeta(input: {
   name: unknown;
@@ -168,6 +177,7 @@ function validateSessionMeta(input: {
   cupsPerSample: unknown;
   samples: unknown;
   closesAt?: unknown;
+  warmupExerciseId?: unknown;
 }): { ok: true; meta: SessionMeta } | { ok: false; error: string } {
   const field = (f: string, fn: () => void): string | null => {
     try {
@@ -183,6 +193,7 @@ function validateSessionMeta(input: {
   let format: SessionMeta["format"] = "combined";
   let cupsPerSample = 5;
   let closesAt: Date | null = null;
+  let warmupExerciseId: WarmupId | null = null;
 
   const bad =
     field("invalid_name", () => {
@@ -209,9 +220,15 @@ function validateSessionMeta(input: {
       closesAt = input.closesAt
         ? v.dateOnlyEndOfDay(input.closesAt, "closesAt", { future: true })
         : null;
+    }) ??
+    field("invalid_warmup", () => {
+      warmupExerciseId = parseWarmupId(input.warmupExerciseId);
     });
   if (bad) return { ok: false, error: bad };
-  return { ok: true, meta: { name, date, objective, format, cupsPerSample, closesAt } };
+  return {
+    ok: true,
+    meta: { name, date, objective, format, cupsPerSample, closesAt, warmupExerciseId },
+  };
 }
 
 // Resolves the wizard's coffee entries to database ids, index-aligned with the
@@ -307,6 +324,8 @@ export async function createSession(input: {
   samples: SampleInput[];
   /** Index into `samples` of the reference sample; null/absent = none. */
   referenceIdx?: number | null;
+  /** Optional pre-cupping warm-up (WARMUP_IDS); null/absent = none. */
+  warmupExerciseId?: string | null;
   locale?: string;
 }): Promise<{ ok: false; error: string } | void> {
   const user = await requireUser();
@@ -338,6 +357,7 @@ export async function createSession(input: {
         // submitAllEvaluations in app/actions/community.ts).
         status: "active",
         createdBy: user.id,
+        warmupExerciseId: meta.warmupExerciseId,
         samples: {
           create: input.samples.map((s, i) => ({
             label: s.label || `Muestra ${i + 1}`,
@@ -428,6 +448,8 @@ export async function createGroupSession(input: {
   notifyGroup?: boolean;
   /** Index into `samples` of the reference sample; null/absent = none. */
   referenceIdx?: number | null;
+  /** Optional pre-cupping warm-up (WARMUP_IDS); null/absent = none. */
+  warmupExerciseId?: string | null;
 }): Promise<
   | { ok: true; sessionId: string; inviteToken: string; emailSummary?: GroupEmailSummary }
   | { ok: false; error: string }
@@ -473,6 +495,7 @@ export async function createGroupSession(input: {
         closesAt: meta.closesAt,
         createdBy: user.id,
         groupId: input.groupId ?? null,
+        warmupExerciseId: meta.warmupExerciseId,
         samples: {
           create: input.samples.map((s, i) => ({
             label: s.label || `Muestra ${i + 1}`,
@@ -703,6 +726,7 @@ export async function duplicateSession(
       isGroup: true,
       groupId: true,
       referenceSampleId: true,
+      warmupExerciseId: true,
       samples: {
         orderBy: { position: "asc" },
         select: { id: true, label: true, position: true, coffeeId: true },
@@ -740,6 +764,7 @@ export async function duplicateSession(
         status: "active",
         createdBy: user.id,
         groupId,
+        warmupExerciseId: source.warmupExerciseId,
         samples: {
           create: source.samples.map((s) => ({
             label: s.label,
@@ -884,6 +909,8 @@ export type UpdateSessionInput = {
   // derived from them); the server rejects regardless of what the form shows.
   format?: "descriptive" | "affective" | "combined";
   cupsPerSample?: number;
+  /** Optional pre-cupping warm-up (WARMUP_IDS); null clears it. */
+  warmupExerciseId?: string | null;
   locale?: string;
 };
 
@@ -903,6 +930,7 @@ export async function updateSession(sessionId: string, input: UpdateSessionInput
     cupsPerSample?: number;
     closesAt?: Date | null;
     isAsync?: boolean;
+    warmupExerciseId?: string | null;
   } = {};
 
   if (input.closesAt !== undefined) {
@@ -930,6 +958,13 @@ export async function updateSession(sessionId: string, input: UpdateSessionInput
   }
   if (input.objective !== undefined) {
     data.objective = input.objective?.trim() || null;
+  }
+  if (input.warmupExerciseId !== undefined) {
+    try {
+      data.warmupExerciseId = parseWarmupId(input.warmupExerciseId);
+    } catch {
+      return { ok: false as const, error: "invalid_warmup" };
+    }
   }
 
   if (input.groupId !== undefined) {

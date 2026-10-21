@@ -1515,6 +1515,13 @@
       "body": "A slow movement prepares the senses. Pick an exercise; if the cupping starts, we take you to the table.",
       "minutes": "{min} min"
     },
+    "wizard": {
+      "toggle": "Start with a sensory movement",
+      "label": "Exercise",
+      "hint": "Before the first sample, each cupper sees the exercise once (skippable, works offline).",
+      "minutes": "{min} min",
+      "none": "No warm-up"
+    },
     "player": {
       "start": "Start",
       "next": "Next",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   hasSeenMoment,
   markMomentSeen,
@@ -63,23 +63,62 @@ export function SessionMomentOverlay({
   label: string;
   children: ReactNode;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Initial focus on the first control + Tab trap while open; restores focus
+  // to the previously focused element on close.
   useEffect(() => {
     if (!open) return;
+    const root = ref.current;
+    const prev = document.activeElement as HTMLElement | null;
+    const focusables = () =>
+      Array.from(
+        root?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      );
+    (focusables()[0] ?? root)?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onDismiss();
+      if (e.key === "Escape") {
+        onDismiss();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const items = focusables();
+      if (items.length === 0) {
+        e.preventDefault();
+        root?.focus();
+        return;
+      }
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || !root?.contains(active))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (active === last || !root?.contains(active))) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      prev?.focus?.();
+    };
   }, [open, onDismiss]);
 
   if (!open) return null;
   return (
     <div
-      role="region"
+      ref={ref}
+      role="dialog"
+      aria-modal="true"
+      tabIndex={-1}
       aria-label={label}
       data-session-moment
       // Above SessionShell (z-40) and its sidebar, below ResponsiveDialog (200).
-      className="fixed inset-0 z-[60] bg-surface"
+      className="fixed inset-0 z-[60] bg-surface outline-none"
     >
       {children}
     </div>

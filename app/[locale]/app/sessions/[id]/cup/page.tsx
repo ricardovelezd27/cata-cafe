@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { warmupPlayerStrings } from "@/components/warmup/playerStrings";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
@@ -102,6 +103,7 @@ export default async function CupPage({
   const tg = await getTranslations("group");
   const tc = await getTranslations("coffee");
   const ta = await getTranslations("actions");
+  const tw = await getTranslations("warmup");
 
   if (session.samples.length === 0) {
     return (
@@ -133,6 +135,7 @@ export default async function CupPage({
       sessionStatus={session.status}
       sessionStartedAt={session.startedAt?.toISOString() ?? null}
       sessionIsAsync={session.isAsync}
+      warmup={{ exerciseId: session.warmupExerciseId, strings: warmupPlayerStrings(tw) }}
       participantCount={session.participants.length}
       submittedCount={submittedParticipantsResult.length}
       session={{

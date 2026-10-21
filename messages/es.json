@@ -1515,6 +1515,13 @@
       "body": "Un movimiento lento prepara los sentidos. Elige un ejercicio; si la cata empieza, te llevamos a la mesa.",
       "minutes": "{min} min"
     },
+    "wizard": {
+      "toggle": "Empezar con un movimiento sensorial",
+      "label": "Ejercicio",
+      "hint": "Antes de la primera muestra, cada catador verá el ejercicio una vez (se puede saltar y funciona sin conexión).",
+      "minutes": "{min} min",
+      "none": "Sin ejercicio previo"
+    },
     "player": {
       "start": "Empezar",
       "next": "Siguiente",

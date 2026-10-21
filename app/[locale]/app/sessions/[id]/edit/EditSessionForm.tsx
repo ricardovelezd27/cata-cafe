@@ -11,6 +11,7 @@ import {
   setReferenceSample,
 } from "@/app/actions/sessions";
 import { Select } from "@/components/ui/Select";
+import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useActionFeedback } from "@/components/ui/Toast";
 
@@ -48,6 +49,7 @@ export type EditSessionFormTranslations = {
   closesAtHint: string;
   closesAtPast: string;
   sessionClosed: string;
+  warmup: { toggle: string; label: string; hint: string; minutes: string };
 };
 
 export type EditSampleRow = { id: string; label: string; evalCount: number };
@@ -91,6 +93,7 @@ export function EditSessionForm({
     referenceSampleId: string | null;
     /** "YYYY-MM-DD" or "" (group sessions only). */
     closesAt: string;
+    warmupExerciseId: string | null;
     closed: boolean;
   };
   samples: EditSampleRow[];
@@ -110,6 +113,10 @@ export function EditSessionForm({
   const [cupsInput, setCupsInput] = useState(String(initial.cupsPerSample));
   const [groupId, setGroupId] = useState(initial.groupId ?? "");
   const [closesAt, setClosesAt] = useState(initial.closesAt);
+  const [warmupOn, setWarmupOn] = useState(initial.warmupExerciseId !== null);
+  const [warmupId, setWarmupId] = useState<WarmupId>(
+    (initial.warmupExerciseId as WarmupId | null) ?? WARMUP_EXERCISES[0].id,
+  );
 
   const [saved, setSaved] = useState(false);
   const [errorCode, setErrorCode] = useState<string | null>(null);
@@ -192,6 +199,10 @@ export function EditSessionForm({
             }
           : {}),
         ...(!locked ? { format, cupsPerSample: cups } : {}),
+        // Only send a changed warm-up (same pattern as closesAt).
+        ...((warmupOn ? warmupId : null) !== initial.warmupExerciseId
+          ? { warmupExerciseId: warmupOn ? warmupId : null }
+          : {}),
         locale,
       });
       if (result.ok) {
@@ -336,6 +347,51 @@ export function EditSessionForm({
           />
         </div>
         {locked && <p className="text-xs text-on-surface-variant">{t.formatLocked}</p>}
+
+        {/* Optional pre-cupping warm-up (same switch pattern as the wizard) */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={warmupOn}
+              disabled={closed}
+              onClick={() => {
+                setWarmupOn((v) => !v);
+                clearSaved();
+              }}
+              className={
+                "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 " +
+                (warmupOn ? "bg-primary-container" : "bg-outline-variant")
+              }
+            >
+              <span
+                className={
+                  "inline-block h-5 w-5 transform rounded-full bg-surface-container-lowest shadow-card transition-transform " +
+                  (warmupOn ? "translate-x-5" : "translate-x-0.5")
+                }
+              />
+            </button>
+            <span className="text-sm text-on-surface font-medium">{t.warmup.toggle}</span>
+          </div>
+          {warmupOn && (
+            <div className="space-y-2">
+              <Select
+                value={warmupId}
+                onChange={(v) => {
+                  setWarmupId(v as WarmupId);
+                  clearSaved();
+                }}
+                ariaLabel={t.warmup.label}
+                options={WARMUP_EXERCISES.map((ex) => ({
+                  value: ex.id,
+                  label: `${ex.order}. ${lw(ex.name, locale)} · ${t.warmup.minutes.replace("{min}", String(ex.durationMin))}`,
+                }))}
+              />
+              <p className="text-xs text-on-surface-variant">{t.warmup.hint}</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* c. Group link + closing date (group sessions only) */}
