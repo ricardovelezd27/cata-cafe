@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createBrowserClient } from "@supabase/ssr";
 import { checkSessionStarted } from "@/app/actions/sessions";
+import { nextReferenceOrder } from "@/lib/referenceRules";
 
 export function WaitingRoomClient({
   sessionId,
@@ -12,7 +13,7 @@ export function WaitingRoomClient({
   locale,
   isAsync,
   samples,
-  initialReferenceSampleId,
+  initialReferenceIds,
   translations,
 }: {
   sessionId: string;
@@ -20,10 +21,13 @@ export function WaitingRoomClient({
   locale: string;
   isAsync: boolean;
   samples: { id: string; label: string }[];
-  initialReferenceSampleId: string | null;
+  /** Ids of the references in rank order (R1 first); the last is the active one. */
+  initialReferenceIds: string[];
   translations: {
     /** "Muestra de referencia: {label}" — raw ICU string, replaced here. */
     referenceLine: string;
+    /** "Referencias: {list}" — raw ICU string, replaced here. */
+    referencesLine: string;
     title: string;
     description: string;
     asyncDetail: string;
@@ -44,10 +48,16 @@ export function WaitingRoomClient({
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // The owner may pick/change the reference while people wait — same
   // cupping_sessions UPDATE stream that carries startedAt.
-  const [referenceSampleId, setReferenceSampleId] = useState<string | null>(
-    initialReferenceSampleId,
-  );
-  const referenceLabel = samples.find((s) => s.id === referenceSampleId)?.label ?? null;
+  const [refOrder, setRefOrder] = useState<string[]>(initialReferenceIds);
+  const labelOf = (id: string) => samples.find((s) => s.id === id)?.label ?? "";
+  const referenceLine = !refOrder.length
+    ? null
+    : refOrder.length === 1
+      ? translations.referenceLine.replace("{label}", labelOf(refOrder[0]))
+      : translations.referencesLine.replace(
+          "{list}",
+          refOrder.map((id, i) => `${labelOf(id)} (R${i + 1})`).join(" · "),
+        );
 
   useEffect(() => {
     if (isAsync) return;
@@ -77,9 +87,10 @@ export function WaitingRoomClient({
         (payload) => {
           const row = payload.new as Record<string, unknown>;
           if ("referenceSampleId" in row || "reference_sample_id" in row) {
-            setReferenceSampleId(
-              (row.referenceSampleId ?? row.reference_sample_id ?? null) as string | null,
-            );
+            const next = (row.referenceSampleId ?? row.reference_sample_id ?? null) as
+              | string
+              | null;
+            setRefOrder((prev) => nextReferenceOrder(prev, next));
           }
           // Columns are camelCase in Postgres; accept snake_case defensively.
           if (row.startedAt ?? row.started_at) {
@@ -149,12 +160,12 @@ export function WaitingRoomClient({
               {translations.asyncDetail}
             </p>
           )}
-          {referenceLabel && (
+          {referenceLine && (
             <p
               role="status"
               className="inline-block rounded-pill bg-secondary-fixed px-3 py-1 text-sm font-medium text-secondary"
             >
-              {translations.referenceLine.replace("{label}", referenceLabel)}
+              {referenceLine}
             </p>
           )}
         </div>

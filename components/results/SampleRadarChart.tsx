@@ -217,7 +217,7 @@ export function SampleRadarChart({
               >
                 {scoreNum.toFixed(2)}
               </div>
-              {!sample.isReference && referenceMyScore !== null && (
+              {referenceMyScore !== null && (
                 <div
                   className="mt-0.5 text-[10px] font-medium text-on-surface-variant tabular-nums"
                   title={deltaVsReference}
