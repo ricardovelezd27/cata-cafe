@@ -7,6 +7,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import TopBar from "@/components/layout/TopBar";
 import BottomNav from "@/components/layout/BottomNav";
 import OnboardingWrapper from "@/components/onboarding/OnboardingWrapper";
+import type { WelcomeModalTranslations } from "@/components/onboarding/WelcomeModal";
 import { PendingDraftsBadge } from "@/components/offline/PendingDraftsBadge";
 import { GuestGateProvider, type GuestGateTranslations } from "@/components/guest/GuestGateProvider";
 import type { NavTranslations } from "@/components/layout/navItems";
@@ -45,6 +46,39 @@ export default async function AppLayout({
 
   const tNav = await getTranslations({ locale, namespace: "nav" });
   const tBrand = await getTranslations({ locale, namespace: "brand" });
+  const tOnb = await getTranslations({ locale, namespace: "onboarding" });
+  const onboardingTranslations: WelcomeModalTranslations = {
+    welcomeTitle: tOnb("welcomeTitle"),
+    welcomeTagline: tOnb("welcomeTagline"),
+    welcomeBody: tOnb("welcomeBody"),
+    start: tOnb("start"),
+    skip: tOnb("skip"),
+    aboutYou: tOnb("aboutYou"),
+    fullName: tOnb("fullName"),
+    namePlaceholder: tOnb("namePlaceholder"),
+    role: tOnb("role"),
+    selectRole: tOnb("selectRole"),
+    country: tOnb("country"),
+    selectCountry: tOnb("selectCountry"),
+    back: tOnb("back"),
+    next: tOnb("next"),
+    whereToStart: tOnb("whereToStart"),
+    saving: tOnb("saving"),
+    goTo: tOnb.raw("goTo"),
+    roles: {
+      q_grader: tOnb("roles.q_grader"),
+      barista: tOnb("roles.barista"),
+      roaster: tOnb("roles.roaster"),
+      producer: tOnb("roles.producer"),
+      trader: tOnb("roles.trader"),
+      enthusiast: tOnb("roles.enthusiast"),
+    },
+    paths: {
+      session: { label: tOnb("paths.session.label"), description: tOnb("paths.session.description") },
+      coffee: { label: tOnb("paths.coffee.label"), description: tOnb("paths.coffee.description") },
+      join: { label: tOnb("paths.join.label"), description: tOnb("paths.join.description") },
+    },
+  };
   const tOffline = await getTranslations({ locale, namespace: "offline" });
   const tGate = await getTranslations({ locale, namespace: "guestGate" });
   const guestGate: GuestGateTranslations = {
@@ -102,6 +136,7 @@ export default async function AppLayout({
         showOnboarding={showOnboarding}
         locale={locale}
         initialDisplayName={initialDisplayName}
+        translations={onboardingTranslations}
       />
     </div>
     </GuestGateProvider>

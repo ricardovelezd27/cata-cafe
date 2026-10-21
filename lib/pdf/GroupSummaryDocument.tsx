@@ -203,7 +203,7 @@ function SampleCard({
 export function GroupSummaryDocument(props: GroupSummaryProps) {
   const t = TEXT[props.locale];
   return (
-    <Document title={`${t.spec} · ${props.sessionName}`} author="Cata Café">
+    <Document title={`${t.spec} · ${props.sessionName}`} author="Café Sensible">
       <Page size="A4" style={s.page}>
         <View style={s.headerBox}>
           <View style={s.headerTopRow}>
@@ -235,7 +235,7 @@ export function GroupSummaryDocument(props: GroupSummaryProps) {
         ))}
 
         <Text style={s.footer} fixed>
-          Cata Café · {t.spec}
+          Café Sensible · {t.spec}
         </Text>
       </Page>
     </Document>

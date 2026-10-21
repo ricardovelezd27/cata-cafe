@@ -579,7 +579,7 @@ function SheetHeader({
           <Text style={s.wordmark}>SCA {t.methodology}</Text>
           <Text style={s.formName}>{formName}</Text>
         </View>
-        <Text style={s.brand}>Cata Café</Text>
+        <Text style={s.brand}>Café Sensible</Text>
       </View>
       <View style={s.fieldGrid}>
         <DotField label={t.name} value={h.cupperName} />
@@ -1081,7 +1081,7 @@ export function CvaFormDocument(props: CvaDocumentProps) {
 
   if (sheets.length === 0) {
     return (
-      <Document title={title} author="Cata Café">
+      <Document title={title} author="Café Sensible">
         <Page size="A4" style={s.page}>
           <Text style={s.formName}>{props.sessionName}</Text>
           <Text style={{ marginTop: 20, color: SOFT }}>{t.none}</Text>
@@ -1095,7 +1095,7 @@ export function CvaFormDocument(props: CvaDocumentProps) {
   // Affective — landscape, samples as columns, three per page.
   if (format === "affective") {
     return (
-      <Document title={title} author="Cata Café">
+      <Document title={title} author="Café Sensible">
         {chunk(sheets, 3).map((group, i) => (
           <AffectiveGridPage key={i} sheets={group} t={t} formName={t.formAffective} />
         ))}
@@ -1107,7 +1107,7 @@ export function CvaFormDocument(props: CvaDocumentProps) {
   // Combined — landscape, one sample per page, extrinsic on the appendix.
   if (format === "combined") {
     return (
-      <Document title={title} author="Cata Café">
+      <Document title={title} author="Café Sensible">
         {sheets.map((sheet, i) => (
           <CombinedPage key={i} sheet={sheet} t={t} />
         ))}
@@ -1118,7 +1118,7 @@ export function CvaFormDocument(props: CvaDocumentProps) {
 
   // Descriptive — portrait, two samples per page.
   return (
-    <Document title={title} author="Cata Café">
+    <Document title={title} author="Café Sensible">
       {chunk(sheets, 2).map((pair, i) => (
         <Page key={i} size="A4" style={s.page}>
           <SheetHeader sheet={pair[0]} t={t} formName={t.formDescriptive} />

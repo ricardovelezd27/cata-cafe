@@ -939,6 +939,47 @@
     "bannerStorageUnavailable": "Este navegador no permite guardar borradores sin conexión. Mantén la conexión activa mientras catas.",
     "pendingDrafts": "{count} borradores sin sincronizar"
   },
+  "onboarding": {
+    "welcomeTitle": "Bienvenido a Café Sensible",
+    "welcomeTagline": "La plataforma profesional para evaluadores SCA CVA",
+    "welcomeBody": "Evaluación descriptiva, afectiva y extrínseca siguiendo el protocolo CVA 2024.",
+    "start": "Comenzar",
+    "skip": "Omitir introducción",
+    "aboutYou": "Cuéntanos sobre ti",
+    "fullName": "Nombre completo",
+    "namePlaceholder": "Tu nombre",
+    "role": "Rol",
+    "selectRole": "Selecciona tu rol",
+    "country": "País",
+    "selectCountry": "Selecciona tu país",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "whereToStart": "¿Por dónde empezar?",
+    "saving": "Guardando…",
+    "goTo": "Ir a {label}",
+    "roles": {
+      "q_grader": "Catador/a Certificado/a Q",
+      "barista": "Barista",
+      "roaster": "Tostador/a",
+      "producer": "Productor/a",
+      "trader": "Importador/a / Exportador/a",
+      "enthusiast": "Aficionado/a al café de especialidad"
+    },
+    "paths": {
+      "session": {
+        "label": "Crear mi primera sesión CVA",
+        "description": "Inicia una evaluación descriptiva o afectiva"
+      },
+      "coffee": {
+        "label": "Añadir un café a mi biblioteca",
+        "description": "Registra un café y sus atributos extrínsecos"
+      },
+      "join": {
+        "label": "Unirme a una sesión",
+        "description": "Tengo un código de invitación"
+      }
+    }
+  },
   "landing": {
     "meta": {
       "title": "cafesensible.ai — Calibra el paladar de tu grupo, con datos",

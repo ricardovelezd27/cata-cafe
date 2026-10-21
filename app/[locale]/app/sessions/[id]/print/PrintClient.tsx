@@ -659,7 +659,7 @@ function SheetHeader({ sheet, t, formName }: { sheet: CvaSampleSheet; t: T; form
           <div style={S.wordmark}>SCA {t.methodology}</div>
           <div style={S.formName}>{formName}</div>
         </div>
-        <div style={{ ...S.wordmark, letterSpacing: "1.4pt" }}>Cata Café</div>
+        <div style={{ ...S.wordmark, letterSpacing: "1.4pt" }}>Café Sensible</div>
       </div>
       <div style={{ display: "flex", gap: "10pt", marginTop: "5pt" }}>
         <DotField label={t.name} value={h.cupperName} />

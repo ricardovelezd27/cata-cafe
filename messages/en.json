@@ -939,6 +939,47 @@
     "bannerStorageUnavailable": "This browser doesn't allow saving offline drafts. Keep your connection active while cupping.",
     "pendingDrafts": "{count} drafts not synced"
   },
+  "onboarding": {
+    "welcomeTitle": "Welcome to Café Sensible",
+    "welcomeTagline": "The professional platform for SCA CVA evaluators",
+    "welcomeBody": "Descriptive, affective and extrinsic evaluation following the CVA 2024 protocol.",
+    "start": "Get started",
+    "skip": "Skip introduction",
+    "aboutYou": "Tell us about yourself",
+    "fullName": "Full name",
+    "namePlaceholder": "Your name",
+    "role": "Role",
+    "selectRole": "Select your role",
+    "country": "Country",
+    "selectCountry": "Select your country",
+    "back": "Back",
+    "next": "Next",
+    "whereToStart": "Where to start?",
+    "saving": "Saving…",
+    "goTo": "Go to {label}",
+    "roles": {
+      "q_grader": "Q Grader",
+      "barista": "Barista",
+      "roaster": "Roaster",
+      "producer": "Producer",
+      "trader": "Importer / Exporter",
+      "enthusiast": "Specialty coffee enthusiast"
+    },
+    "paths": {
+      "session": {
+        "label": "Create my first CVA session",
+        "description": "Start a descriptive or affective evaluation"
+      },
+      "coffee": {
+        "label": "Add a coffee to my library",
+        "description": "Register a coffee and its extrinsic attributes"
+      },
+      "join": {
+        "label": "Join a session",
+        "description": "I have an invitation code"
+      }
+    }
+  },
   "landing": {
     "meta": {
       "title": "cafesensible.ai — Calibrate your group's palate, with data",

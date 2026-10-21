@@ -43,7 +43,7 @@ const EMAIL_TEXT: Record<
   }
 > = {
   es: {
-    subject: (period) => `Cata Café — Resumen de insights ${period}`,
+    subject: (period) => `Café Sensible — Resumen de insights ${period}`,
     kpis: {
       evaluations: "Evaluaciones enviadas",
       sessions: "Sesiones",
@@ -56,7 +56,7 @@ const EMAIL_TEXT: Record<
     aiDisclaimer: "Resumen generado con IA a partir de datos agregados — puede contener errores.",
   },
   en: {
-    subject: (period) => `Cata Café — Insights digest ${period}`,
+    subject: (period) => `Café Sensible — Insights digest ${period}`,
     kpis: {
       evaluations: "Evaluations submitted",
       sessions: "Sessions",
@@ -199,7 +199,7 @@ function digestHtml(
 
   return `
   <div style="font-family: Arial, Helvetica, sans-serif; color:#2b241d; line-height:1.5; max-width:560px;">
-    <h2 style="color:#3D5A3E; margin:0 0 4px;">Cata Café</h2>
+    <h2 style="color:#3D5A3E; margin:0 0 4px;">Café Sensible</h2>
     <p style="color:#7a7168; margin:0 0 16px;">${escapeHtml(EMAIL_TEXT[locale].subject(inputs.period))}</p>
     <table style="border-collapse:collapse; width:100%;">
       ${kpiRow(t.kpis.evaluations, String(inputs.evaluations.current), deltaBadge(inputs.evaluations.current, inputs.evaluations.previous))}

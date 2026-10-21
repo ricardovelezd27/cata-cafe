@@ -7,41 +7,41 @@ import { completeOnboarding } from "@/app/actions/profile";
 import { useActionFeedback } from "@/components/ui";
 import { COUNTRIES } from "@/lib/constants";
 
-// NOTE: this list drives ONBOARDING CHOICES (values + prompt copy), a separate
+// NOTE: these lists drive ONBOARDING CHOICES (values + prompt copy), a separate
 // concern from display labels shown elsewhere (profile, co-cupper cards, etc).
 // For display labels of a Profile's `role` field, see lib/constants.ts ROLE_LABELS.
-const ROLES = [
-  { value: "q_grader", label: "Catador/a Certificado/a Q" },
-  { value: "barista", label: "Barista" },
-  { value: "roaster", label: "Tostador/a" },
-  { value: "producer", label: "Productor/a" },
-  { value: "trader", label: "Importador/a / Exportador/a" },
-  { value: "enthusiast", label: "Aficionado/a al café de especialidad" },
-];
+// Copy arrives through `translations` (messages `onboarding`): client components
+// do not call useTranslations (CLAUDE.md i18n rule).
+const ROLE_VALUES = ["q_grader", "barista", "roaster", "producer", "trader", "enthusiast"] as const;
 
-const PATHS = [
-  {
-    id: "session",
-    label: "Crear mi primera sesión CVA",
-    description: "Inicia una evaluación descriptiva o afectiva",
-    icon: ClipboardList,
-    href: "/app/sessions/new",
-  },
-  {
-    id: "coffee",
-    label: "Añadir un café a mi biblioteca",
-    description: "Registra un café y sus atributos extrínsecos",
-    icon: Coffee,
-    href: "/app/coffees",
-  },
-  {
-    id: "join",
-    label: "Unirme a una sesión",
-    description: "Tengo un código de invitación",
-    icon: Users,
-    href: "/app/sessions",
-  },
-];
+const PATH_DEFS = [
+  { id: "session", icon: ClipboardList, href: "/app/sessions/new" },
+  { id: "coffee", icon: Coffee, href: "/app/coffees" },
+  { id: "join", icon: Users, href: "/app/sessions" },
+] as const;
+
+export interface WelcomeModalTranslations {
+  welcomeTitle: string;
+  welcomeTagline: string;
+  welcomeBody: string;
+  start: string;
+  skip: string;
+  aboutYou: string;
+  fullName: string;
+  namePlaceholder: string;
+  role: string;
+  selectRole: string;
+  country: string;
+  selectCountry: string;
+  back: string;
+  next: string;
+  whereToStart: string;
+  saving: string;
+  /** Raw ICU template with a {label} placeholder, replaced client-side. */
+  goTo: string;
+  roles: Record<(typeof ROLE_VALUES)[number], string>;
+  paths: Record<(typeof PATH_DEFS)[number]["id"], { label: string; description: string }>;
+}
 
 const inputClass =
   "w-full border border-outline-variant rounded-input px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/60 bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary-container/25 focus:border-primary-container transition-colors";
@@ -49,9 +49,12 @@ const inputClass =
 interface WelcomeModalProps {
   locale: string;
   initialDisplayName: string;
+  translations: WelcomeModalTranslations;
 }
 
-export default function WelcomeModal({ locale, initialDisplayName }: WelcomeModalProps) {
+export default function WelcomeModal({ locale, initialDisplayName, translations: t }: WelcomeModalProps) {
+  const PATHS = PATH_DEFS.map((p) => ({ ...p, ...t.paths[p.id] }));
+  const ROLES = ROLE_VALUES.map((value) => ({ value, label: t.roles[value] }));
   const router = useRouter();
   const feedback = useActionFeedback();
   const [isPending, startTransition] = useTransition();
@@ -92,19 +95,19 @@ export default function WelcomeModal({ locale, initialDisplayName }: WelcomeModa
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-inverse-surface/60">
       <div className="bg-surface-container-lowest rounded-card shadow-card-lg w-full max-w-[480px] overflow-hidden">
 
-        {/* Step 1 — Bienvenida */}
+        {/* Step 1 — Welcome */}
         {step === 1 && (
           <div className="p-8 flex flex-col items-center text-center gap-5">
             <span className="text-5xl">☕</span>
             <div className="space-y-2">
               <h1 className="font-display text-[28px] font-medium leading-tight text-primary-container">
-                Bienvenido a Cata Café Sensible
+                {t.welcomeTitle}
               </h1>
               <p className="text-sm font-medium text-on-surface">
-                La plataforma profesional para evaluadores SCA CVA
+                {t.welcomeTagline}
               </p>
               <p className="text-sm text-on-surface-variant">
-                Evaluación descriptiva, afectiva y extrínseca siguiendo el protocolo CVA 2024.
+                {t.welcomeBody}
               </p>
             </div>
 
@@ -114,49 +117,49 @@ export default function WelcomeModal({ locale, initialDisplayName }: WelcomeModa
               onClick={() => setStep(2)}
               className="w-full bg-primary-container text-on-primary rounded-pill py-3 font-medium flex items-center justify-center gap-2 hover:bg-primary transition-colors"
             >
-              Comenzar <ChevronRight className="w-4 h-4" />
+              {t.start} <ChevronRight className="w-4 h-4" />
             </button>
             <button
               onClick={handleSkip}
               disabled={isPending}
               className="text-sm text-on-surface-variant hover:text-on-surface transition-colors"
             >
-              Omitir introducción
+              {t.skip}
             </button>
           </div>
         )}
 
-        {/* Step 2 — Tu perfil */}
+        {/* Step 2 — Profile */}
         {step === 2 && (
           <div className="p-8 flex flex-col gap-5">
             <h2 className="font-display text-2xl font-medium text-primary-container">
-              Cuéntanos sobre ti
+              {t.aboutYou}
             </h2>
 
             <div className="space-y-4">
               <label className="block">
                 <span className="text-sm font-medium text-on-surface mb-1 block">
-                  Nombre completo
+                  {t.fullName}
                 </span>
                 <input
                   type="text"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Tu nombre"
+                  placeholder={t.namePlaceholder}
                   className={inputClass}
                 />
               </label>
 
               <label className="block">
                 <span className="text-sm font-medium text-on-surface mb-1 block">
-                  Rol
+                  {t.role}
                 </span>
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
                   className={inputClass}
                 >
-                  <option value="" disabled>Selecciona tu rol</option>
+                  <option value="" disabled>{t.selectRole}</option>
                   {ROLES.map((r) => (
                     <option key={r.value} value={r.value}>{r.label}</option>
                   ))}
@@ -165,14 +168,14 @@ export default function WelcomeModal({ locale, initialDisplayName }: WelcomeModa
 
               <label className="block">
                 <span className="text-sm font-medium text-on-surface mb-1 block">
-                  País
+                  {t.country}
                 </span>
                 <select
                   value={country}
                   onChange={(e) => setCountry(e.target.value)}
                   className={inputClass}
                 >
-                  <option value="" disabled>Selecciona tu país</option>
+                  <option value="" disabled>{t.selectCountry}</option>
                   {COUNTRIES.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
@@ -187,24 +190,24 @@ export default function WelcomeModal({ locale, initialDisplayName }: WelcomeModa
                 onClick={() => setStep(1)}
                 className="flex items-center gap-1 px-4 py-3 text-sm text-on-surface border border-outline-variant rounded-pill hover:bg-surface-container transition-colors"
               >
-                <ChevronLeft className="w-4 h-4" /> Atrás
+                <ChevronLeft className="w-4 h-4" /> {t.back}
               </button>
               <button
                 onClick={() => setStep(3)}
                 disabled={!displayName || !role || !country}
                 className="flex-1 bg-primary-container text-on-primary rounded-pill py-3 font-medium flex items-center justify-center gap-2 hover:bg-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Siguiente <ChevronRight className="w-4 h-4" />
+                {t.next} <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>
         )}
 
-        {/* Step 3 — Primer paso */}
+        {/* Step 3 — First step */}
         {step === 3 && (
           <div className="p-8 flex flex-col gap-5">
             <h2 className="font-display text-2xl font-medium text-primary-container">
-              ¿Por dónde empezar?
+              {t.whereToStart}
             </h2>
 
             <div className="space-y-3">
@@ -248,14 +251,14 @@ export default function WelcomeModal({ locale, initialDisplayName }: WelcomeModa
                 onClick={() => setStep(2)}
                 className="flex items-center gap-1 px-4 py-3 text-sm text-on-surface border border-outline-variant rounded-pill hover:bg-surface-container transition-colors"
               >
-                <ChevronLeft className="w-4 h-4" /> Atrás
+                <ChevronLeft className="w-4 h-4" /> {t.back}
               </button>
               <button
                 onClick={handleFinish}
                 disabled={!selectedPath || isPending}
                 className="flex-1 bg-primary-container text-on-primary rounded-pill py-3 font-medium flex items-center justify-center gap-2 hover:bg-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {isPending ? "Guardando…" : `Ir a ${selectedPathLabel}`}
+                {isPending ? t.saving : t.goTo.replace("{label}", selectedPathLabel)}
                 {!isPending && <ChevronRight className="w-4 h-4" />}
               </button>
             </div>
