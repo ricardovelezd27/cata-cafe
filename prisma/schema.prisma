@@ -176,6 +176,9 @@ model SessionSample {
   position  Int
   label     String
   revealed  Boolean        @default(false)
+  // Multi-reference (S6): null = not a reference; 1, 2, 3 = order named. referenceSampleId
+  // on the session always points at the ACTIVE one (highest rank). Display-only.
+  referenceRank Int?
   createdAt DateTime       @default(now())
 
   evaluations    Evaluation[]
@@ -187,6 +190,7 @@ model SessionSample {
   referencedBy   CuppingSession[]    @relation("SessionReferenceSample")
 
   @@unique([sessionId, position])
+  @@unique([sessionId, referenceRank])
   @@index([coffeeId])
   @@map("session_samples")
 }

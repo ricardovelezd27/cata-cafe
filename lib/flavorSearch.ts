@@ -6,6 +6,7 @@ import {
   type FlavorWheelNode,
   type FlavorLevel,
 } from "@/lib/constants";
+import { lookupSynonym, lookupSynonymPrefix } from "@/lib/flavorSynonyms";
 
 /**
  * Predictive search over the flavor wheel (N2). A flat index is built once from
@@ -15,7 +16,15 @@ import {
  * the typeahead is a filter over the same wheel the modal browses, not a new flow.
  */
 
-export type FlavorMatchType = "exact" | "prefix" | "synonym" | "fuzzy" | "parent";
+export type FlavorMatchType =
+  | "exact"
+  | "prefix"
+  | "synonym"
+  | "fuzzy"
+  | "parent"
+  // Curated regional/process term (lib/flavorSynonyms.ts) that files under this
+  // node; callers keep the typed word as a qualifying note.
+  | "dictionary";
 
 export type FlavorMatch = {
   /** Full colon-path id, e.g. "fruity:berry:raspberry" — stored as-is. */
@@ -209,6 +218,23 @@ export function searchFlavors(
         e.level < 3 && m.matchType !== "synonym" ? "parent" : m.matchType;
       consider(e, m.rank + levelBias(e.level), matchType);
     }
+  }
+
+  // Curated dictionary (lulo → …, pitahaya → …): the strongest signal there is —
+  // a human decided where the word files. Whole phrase first, then each token
+  // of a multi-word query ("jugo de lulo"), then prefixes of 3+ chars.
+  const byId = new Map(INDEX.map((e) => [e.id, e]));
+  const dictHit = (id: string | undefined, rank: number) => {
+    const e = id ? byId.get(id) : undefined;
+    if (e) consider(e, rank, "dictionary");
+  };
+  dictHit(lookupSynonym(q), -1);
+  const qTokensForDict = tokens(q);
+  if (qTokensForDict.length > 1) {
+    for (const tk of qTokensForDict) dictHit(lookupSynonym(tk), -0.5);
+  }
+  if (q.length >= 3) {
+    for (const id of lookupSynonymPrefix(q)) dictHit(id, 2.6);
   }
 
   // Token-level matches: multi-word queries whose whole tokens overlap a node's

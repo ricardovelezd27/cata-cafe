@@ -121,6 +121,8 @@
     "cuppingsCount": "{count} cuppings",
     "empty": "No sessions yet. Create your first.",
     "newSession": "New session",
+    "expressCta": "Cup now",
+    "fullWizardCta": "New session",
     "statSamplesSubEvals": "with your evaluation submitted",
     "activityEvalSample": "You evaluated {sample} in {session}"
   },
@@ -195,6 +197,20 @@
         "invalid_reference": "The reference sample is not valid. Pick one from the list."
       }
     },
+    "express": {
+      "title": "Cup now",
+      "subtitle": "Name, format, how many samples. Done.",
+      "back": "Sessions",
+      "name": "Cupping name",
+      "format": "Format",
+      "samples": "Samples",
+      "samplesHint": "Between 1 and 20 samples, no coffee attached. You can name them at the end.",
+      "decrement": "One sample fewer",
+      "increment": "One sample more",
+      "cta": "Cup now",
+      "creating": "Creating…",
+      "fullWizard": "Set up a full session"
+    },
     "deleteSession": {
       "title": "Delete session",
       "body": "This permanently deletes the session with ALL evaluations from every participant, their physical and extrinsic data, invites, and the linked tasting history. This cannot be undone.",
@@ -243,7 +259,7 @@
       "backToSessions": "Back to sessions",
       "referenceTitle": "Reference sample",
       "referenceNone": "No reference",
-      "referenceHelper": "The other samples are compared against this one in the results. It does not affect the score.",
+      "referenceHelper": "The other samples are compared against this one in the results. It does not affect the score. Picking another adds it as Reference 2: the previous one keeps its 79.00 and the new one is pinned.",
       "referenceSaved": "Reference updated",
       "closesAt": "Closing date",
       "closesAtHint": "Optional. The session closes by itself in the early hours after this date. Leave it empty for a live tasting you close yourself.",
@@ -336,7 +352,8 @@
     "notStartedMsg": "Hasn't started yet",
     "backToSessions": "Back to my sessions",
     "connectionLost": "Live connection lost — checking every 15s",
-    "referenceLine": "Reference sample: {label}"
+    "referenceLine": "Reference sample: {label}",
+    "referencesLine": "References: {list}"
   },
   "score": {
     "individual": "Individual score",
@@ -497,7 +514,13 @@
     "guestError": "Couldn't join as guest. Try with your email.",
     "sessionClosed": "This tasting is already closed — ask the organizer for the results link.",
     "referenceSelect": "Reference sample",
-    "referenceNone": "No reference"
+    "referenceNone": "No reference",
+    "referenceActive": "active",
+    "referenceAdd": "Add reference…",
+    "referenceRemoveActive": "Remove the active reference",
+    "referenceAddHint": "The previous reference keeps its 79.00; the new one is pinned.",
+    "referenceAddTitle": "Add reference",
+    "referenceAddConfirm": "Add reference"
   },
   "results": {
     "title": "Session Results",
@@ -528,6 +551,8 @@
     "referenceBadge": "Reference",
     "deltaVsReference": "Δ vs. reference",
     "deltaVsReferenceAria": "Score difference against the reference sample; positive when this sample scored higher",
+    "referenceN": "Reference {n}",
+    "compareWith": "Compare against",
     "referenceLegend": "Δ = difference against the reference",
     "closedOn": "Tasting closed on {date}",
     "liveUpdatesDown": "Live updates unavailable — press Refresh to see the latest.",
@@ -1484,6 +1509,11 @@
       "title": "Sensory Movement",
       "body": "Kim's five slow movements to wake up perception before smelling and tasting. 3 to 8 minutes, seated or standing.",
       "cta": "See the exercises"
+    },
+    "waiting": {
+      "title": "While you wait",
+      "body": "A slow movement prepares the senses. Pick an exercise; if the cupping starts, we take you to the table.",
+      "minutes": "{min} min"
     },
     "player": {
       "start": "Start",

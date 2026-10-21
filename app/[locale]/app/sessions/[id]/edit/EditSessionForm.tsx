@@ -161,6 +161,11 @@ export function EditSessionForm({
       const result = await feedback.run(setReferenceSample(sessionId, next), () => {
         if (seq === referenceSeq.current) feedback.notifySuccess(t.referenceSaved);
       });
+      // Naming an existing reference is a server no-op — show what the
+      // server kept as the active one (references accumulate, S6).
+      if (result.ok && seq === referenceSeq.current) {
+        setReferenceIdState(result.data.referenceSampleId);
+      }
       if (!result.ok && seq === referenceSeq.current) {
         setReferenceIdState(previous);
       }
