@@ -121,6 +121,8 @@
     "cuppingsCount": "{count} cuppings",
     "empty": "No sessions yet. Create your first.",
     "newSession": "New session",
+    "expressCta": "Cup now",
+    "fullWizardCta": "New session",
     "statSamplesSubEvals": "with your evaluation submitted",
     "activityEvalSample": "You evaluated {sample} in {session}"
   },
@@ -194,6 +196,20 @@
         "invalid_closes_at": "The closing date must be in the future.",
         "invalid_reference": "The reference sample is not valid. Pick one from the list."
       }
+    },
+    "express": {
+      "title": "Cup now",
+      "subtitle": "Name, format, how many samples. Done.",
+      "back": "Sessions",
+      "name": "Cupping name",
+      "format": "Format",
+      "samples": "Samples",
+      "samplesHint": "Between 1 and 20 samples, no coffee attached. You can name them at the end.",
+      "decrement": "One sample fewer",
+      "increment": "One sample more",
+      "cta": "Cup now",
+      "creating": "Creating…",
+      "fullWizard": "Set up a full session"
     },
     "deleteSession": {
       "title": "Delete session",
