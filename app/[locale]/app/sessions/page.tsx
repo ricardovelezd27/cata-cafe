@@ -194,12 +194,20 @@ export default async function SessionsList({
           )
         }
         action={
-          <GuestGateLink
-            href={`/${locale}/app/sessions/new`}
-            className="inline-flex items-center rounded-pill bg-primary-container px-5 py-2.5 text-sm font-medium text-on-primary transition-colors hover:bg-primary"
-          >
-            {t("new")}
-          </GuestGateLink>
+          <div className="flex flex-wrap gap-2">
+            <GuestGateLink
+              href={`/${locale}/app/sessions/express`}
+              className="inline-flex items-center rounded-pill bg-primary-container px-5 py-2.5 text-sm font-medium text-on-primary transition-colors hover:bg-primary"
+            >
+              {t("express.cta")}
+            </GuestGateLink>
+            <GuestGateLink
+              href={`/${locale}/app/sessions/new`}
+              className="inline-flex items-center rounded-pill border border-primary-container px-5 py-2.5 text-sm font-medium text-primary-container transition-colors hover:bg-primary-fixed"
+            >
+              {t("new")}
+            </GuestGateLink>
+          </div>
         }
       />
 

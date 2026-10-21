@@ -25,6 +25,7 @@ import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { computeEvaluationDerived, moduleKeyForFormat } from "@/lib/evaluation";
 import { isPinnedModule, pinReferenceAffective, planReferenceRepin } from "@/lib/referenceRules";
 import * as v from "@/lib/validate";
+import { expressSampleLabel, validateExpressInput } from "@/lib/expressSession";
 import { logInfo } from "@/lib/log";
 import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/groups";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
@@ -347,6 +348,59 @@ export async function createSession(input: {
 
   const locale = input.locale || "es";
   redirect(`/${locale}/app/sessions/${sessionId}/cup`);
+}
+
+// ─── "Catar ahora" — express solo session ────────────────────────────────────
+// Three taps from a phone: name → format → sample count → /cup. A separate
+// action rather than a flag on createSession because that one `redirect()`s
+// (cannot return a value) and speaks the wizard's own error codes; this one
+// is called interactively, so it returns ActionResult through run().
+// Samples are created WITHOUT a coffee (coffeeId null) — the owner can name
+// a coffee on them after the session closes (see updateSampleMetadata) so
+// express sessions still feed UserCoffeeHistory. `validateSessionInput` is
+// untouched: the full wizard keeps requiring a coffee per sample. Rules and
+// labels: lib/expressSession.ts (pure, unit-tested).
+export async function createExpressSession(input: {
+  name: string;
+  format: string;
+  sampleCount: number;
+  locale?: string;
+}): Promise<ActionResult<{ sessionId: string }>> {
+  return run("createExpressSession", async () => {
+    const user = await requireUser();
+    // Guests (anonymous QR walk-ups) never create assets — proxy.ts already
+    // keeps them off /app/sessions/express; this closes the direct-POST path.
+    if (user.is_anonymous) throw new Error("not_found_or_forbidden");
+
+    const parsed = validateExpressInput(input);
+    const locale = input.locale === "en" ? "en" : "es";
+
+    const session = await prisma.cuppingSession.create({
+      data: {
+        name: parsed.name,
+        date: new Date(),
+        format: parsed.format,
+        // One cup per sample: the express flow is a quick impression, not a
+        // uniformity/defect protocol (penalties only apply at ≥5 cups anyway).
+        cupsPerSample: 1,
+        status: "active",
+        isGroup: false,
+        createdBy: user.id,
+        samples: {
+          create: Array.from({ length: parsed.sampleCount }, (_, i) => ({
+            label: expressSampleLabel(i, locale),
+            position: i,
+            coffeeId: null,
+          })),
+        },
+      },
+      select: { id: true },
+    });
+
+    revalidatePath(`/${locale}/app/sessions`);
+    revalidatePath(`/${locale}/app`);
+    return { sessionId: session.id };
+  });
 }
 
 export async function createGroupSession(input: {
@@ -1035,6 +1089,14 @@ const CLEARABLE_COFFEE_FIELDS = [
   "roastLevel",
 ] as const;
 
+/** True when the input carries at least one non-blank coffee field (name or
+ *  any clearable field). A label-only save on a coffee-less sample must not
+ *  mint a coffee. */
+function hasAnyCoffeeField(input: SampleMetadataInput): boolean {
+  if (input.name?.trim()) return true;
+  return CLEARABLE_COFFEE_FIELDS.some((f) => (input[f] ?? "").trim() !== "");
+}
+
 export async function updateSampleMetadata(
   sampleId: string,
   input: SampleMetadataInput
@@ -1093,6 +1155,13 @@ export async function updateSampleMetadata(
     } else {
       coffeeUpdated = false;
     }
+  } else if (!hasAnyCoffeeField(input)) {
+    // Coffee-less sample (express sessions create them on purpose) and the
+    // caller only touched the label: nothing to create. Minting a private
+    // "Sin nombre" coffee here used to be the trap — every label rename on
+    // such a sample left a ghost coffee in the owner's library. Not a refused
+    // edit, so the "coffee not owned" notice must NOT show.
+    coffeeUpdated = true;
   } else {
     // Implicit create: no linked coffee yet, so (unlike the merge path
     // above) this needs a FULL object — every field not supplied defaults to

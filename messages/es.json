@@ -121,6 +121,8 @@
     "cuppingsCount": "{count} cataciones",
     "empty": "Aún no hay sesiones. Crea la primera.",
     "newSession": "Nueva sesión",
+    "expressCta": "Catar ahora",
+    "fullWizardCta": "Nueva sesión",
     "statSamplesSubEvals": "con tu evaluación enviada",
     "activityEvalSample": "Evaluaste {sample} en {session}"
   },
@@ -194,6 +196,20 @@
         "invalid_closes_at": "La fecha de cierre debe estar en el futuro.",
         "invalid_reference": "La muestra de referencia no es válida. Elige una de la lista."
       }
+    },
+    "express": {
+      "title": "Catar ahora",
+      "subtitle": "Nombre, formato, número de muestras. Listo.",
+      "back": "Sesiones",
+      "name": "Nombre de la cata",
+      "format": "Formato",
+      "samples": "Muestras",
+      "samplesHint": "Entre 1 y 20 muestras, sin café asignado. Podrás nombrarlos al final.",
+      "decrement": "Una muestra menos",
+      "increment": "Una muestra más",
+      "cta": "Catar ahora",
+      "creating": "Creando…",
+      "fullWizard": "Configurar sesión completa"
     },
     "deleteSession": {
       "title": "Eliminar sesión",

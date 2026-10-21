@@ -35,9 +35,20 @@ Once closed, a session is **read-only**: every mutation runs
 evaluation for **every** sample (`maybeAutoCloseSoloSession` inside
 `submitAllEvaluations`, `app/actions/community.ts`, `emails: "skip"`).
 
+**Express — "Catar ahora" (2026-10).** `createExpressSession` (`app/actions/sessions.ts`,
+`run()` → `ActionResult`) creates the same active solo session from a phone in
+three taps — name → format → sample count (1–20, rules in `lib/expressSession.ts`)
+— with `cupsPerSample: 1` and every sample **coffee-less** (`coffeeId: null`,
+labels "Muestra A…"). The full wizard's `validateSessionInput` is untouched and
+still requires a coffee per sample. Entry points: dashboard header + empty state
+and the sessions list header, all `GuestGateLink` (`/app/sessions/express` is
+outside the guest scope, so proxy and link agree). Lifecycle afterwards is
+identical to any solo session (auto-close on submit-all).
+
 ```mermaid
 stateDiagram-v2
     [*] --> active : createSession (solo)
+    [*] --> active : createExpressSession (solo, coffee-less samples)
     active --> active : cup + auto-save drafts (800ms debounce)
     active --> active : submit with samples still pending
     active --> closed : submitAllEvaluations — every sample submitted\n→ closeSessionInternal (reveal → history)
@@ -325,12 +336,15 @@ and posts.
 flowchart TD
     D[Dashboard] -->|recent sessions via sessionHref| SE
     D -->|nueva sesión| NW
+    D -->|catar ahora| EX
 
     subgraph SE [Sessions]
         SL[List: DataTable\nfilter status/format/role] --> CUP[/cup — evaluate/]
         SL --> ED[/edit — metadata + samples/]
         SL --> RES[/"/results/ — 3-tab structure, see §5"/]
         NW[New session wizard]
+        EX[Express: name · format · N
+coffee-less samples] -->|createExpressSession| CUP
     end
 
     subgraph CO [Coffees]
