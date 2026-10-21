@@ -9,6 +9,11 @@
 // on the build machine's env as well — Vercel injects Production env vars
 // into the build, which is what we want.
 
+// Optional (NOT asserted, no new required var):
+//   CLOSE_EMAIL_ATTACH_CVA=1  legacy close-email behaviour — also attach each
+//                             participant's own CVA form PDF next to the
+//                             personal summary PDF (default: summary only).
+//
 export const REQUIRED_IN_PRODUCTION = [
   "NEXT_PUBLIC_SUPABASE_URL",
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",

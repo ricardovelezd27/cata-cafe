@@ -412,12 +412,22 @@ export function CupClient({
   useEffect(() => {
     if (serverSamplesRef.current === session.samples) return;
     serverSamplesRef.current = session.samples;
-    const reference = session.referenceSampleId ?? null;
-    const next = reconcileSamples(samplesRef.current, session.samples, reference);
+    // Multi-reference: the server's ranks are the truth (R1, R2…); a row
+    // without ranks falls back to the single pointer, like initialRefIds.
+    const ranked = referencesOf(session.samples).map((x) => x.id);
+    const refIds = ranked.length
+      ? ranked
+      : session.referenceSampleId
+        ? [session.referenceSampleId]
+        : [];
+    const active = refIds.length ? refIds[refIds.length - 1] : null;
+    const merged = reconcileSamples(samplesRef.current, session.samples, active);
+    const next = orderByReferenceIds(merged, refIds);
     const idx = indexAfterReconcile(next, sampleIdRef.current, samplesRef.current.findIndex((s) => s.id === sampleIdRef.current));
     setSamples(next);
     setSampleIdx(idx);
-    setReferenceSampleId(reference);
+    refOrderRef.current = refIds;
+    setRefOrder(refIds);
   }, [session.samples, session.referenceSampleId]);
   // Moves the (new) reference to the front, restores position order for the
   // rest, and keeps the cupper on the sample they were looking at.
