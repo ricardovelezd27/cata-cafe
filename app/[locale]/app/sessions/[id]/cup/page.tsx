@@ -238,6 +238,16 @@ export default async function CupPage({
         referenceLocked: t("cupping.referenceLocked"),
         referenceLockedAffective: t("cupping.referenceLockedAffective"),
         referenceCupsLocked: t("cupping.referenceCupsLocked"),
+        // "Notas rápidas" end step (WP-B). CupClient has inline fallbacks.
+        expressNotes: {
+          title: t("cupping.expressNotes.title"),
+          body: t("cupping.expressNotes.body"),
+          placeholder: t("cupping.expressNotes.placeholder"),
+          optional: t("cupping.expressNotes.optional"),
+          open: t("cupping.expressNotes.open"),
+          back: t("cupping.expressNotes.back"),
+          submit: t("cupping.expressNotes.submit"),
+        },
         // Shell (Phase 3)
         samplesHeader: t("cupping.shell.samplesHeader"),
         sessionDetails: t("cupping.shell.sessionDetails"),

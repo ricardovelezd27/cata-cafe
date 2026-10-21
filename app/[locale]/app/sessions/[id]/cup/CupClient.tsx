@@ -53,6 +53,9 @@ import {
   type GuardItem,
 } from "@/components/cupping/EvaluationGuardModal";
 import { PhaseStepper } from "@/components/cupping/PhaseStepper";
+import { ExpressNotesStep } from "@/components/cupping/ExpressNotesStep";
+import { EXPRESS_NOTE_KEY, EXPRESS_NOTE_MAX } from "@/lib/expressSession";
+import { moduleKeyForFormat } from "@/lib/evaluation";
 import { useKeyboardOpen } from "@/hooks/useKeyboardOpen";
 import { indexAfterReconcile, reconcileSamples } from "@/lib/sampleReconcile";
 import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
@@ -291,6 +294,17 @@ export function CupClient({
     referenceLocked?: string;
     referenceLockedAffective?: string;
     referenceCupsLocked?: string;
+    // "Notas rápidas" end step (2026-10, WP-B). Optional with inline
+    // fallbacks: the cup error boundary rehydrates an older cached prop blob.
+    expressNotes?: {
+      title: string;
+      body: string;
+      placeholder: string;
+      optional: string;
+      open: string;
+      back: string;
+      submit: string;
+    };
   };
   userEmail?: string;
   userCountry?: string;
@@ -326,6 +340,13 @@ export function CupClient({
   const [currentStep, setCurrentStep] = useState<CuppingStep>(stepsForFormat[0]);
   const [samples, setSamples] = useState(initialOrdered);
   const [activeTab, setActiveTab] = useState<CuppingTab>("cupping");
+  // "Notas rápidas": the free-text end step shown after the last sample of
+  // the last phase and before every submit path. A boolean, NOT a
+  // CuppingStep — STEP_ATTRIBUTES, PhaseStepper and completeness never see it.
+  const [notesStage, setNotesStage] = useState(false);
+  // The note lives inside the format's module JSON under EXPRESS_NOTE_KEY, so
+  // it rides the existing auto-save / offline / submit plumbing untouched.
+  const notesModuleKey = moduleKeyForFormat(session.format);
   const [saveStatus, setSaveStatus] = useState<
     "idle" | "saving" | "saved" | "pending"
   >("idle");
@@ -483,8 +504,13 @@ export function CupClient({
   useEffect(() => {
     // Mirrors an external hook state (useOfflineSync) into local UI state —
     // same sanctioned pattern as cup/error.tsx; a single flip, no cascade.
+    if (syncPhase !== "synced") return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (syncPhase === "synced") setHasPending(false);
+    setHasPending(false);
+    // The amber "saved on this device · pending" pill is the other half of
+    // that state — a successful replay is exactly the "synced" signal the
+    // save-status contract (CLAUDE.md) says may clear it.
+    setSaveStatus((s) => (s === "pending" ? "idle" : s));
   }, [syncPhase]);
 
   // Independent 500ms debounce for durable local (IndexedDB) writes, separate
@@ -911,6 +937,14 @@ export function CupClient({
   ) => {
     if (!isModuleKey(key)) return;
     if (localDebounceRef.current) clearTimeout(localDebounceRef.current);
+    // ONE pending slot: an edit to a different sample (the notes stage edits
+    // several on one screen) must not silently drop the previous sample's
+    // unflushed write — mirror it to the store now, then take the slot.
+    const prev = localPendingRef.current;
+    if (prev && (prev.sampleId !== sampleId || prev.key !== key)) {
+      localPendingRef.current = null;
+      void writeLocal(prev.sampleId, prev.label, prev.key, prev.data);
+    }
     localPendingRef.current = { sampleId, label, key: key as ModuleKey, data };
     localDebounceRef.current = setTimeout(() => {
       const p = localPendingRef.current;
@@ -948,6 +982,15 @@ export function CupClient({
     data: Data
   ) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    // Same single-slot rule as scheduleLocalSave: a save queued for sample A
+    // is flushed right away when sample B takes the slot, so typing notes on
+    // two samples within 800 ms never loses A's edit. Batching per sample
+    // stays at 800 ms.
+    const prev = pendingSaveRef.current;
+    if (prev && (prev.sampleId !== sampleId || prev.key !== key)) {
+      pendingSaveRef.current = null;
+      persist(prev.sampleId, prev.key, prev.data);
+    }
     pendingSaveRef.current = { sampleId, key, data };
     debounceRef.current = setTimeout(() => {
       persist(sampleId, key, data);
@@ -955,13 +998,29 @@ export function CupClient({
     }, 800);
   };
 
-  const setCurrentData = (key: keyof Sample, data: Data) => {
-    const sample = samples[sampleIdx];
+  // Writes one module of ANY sample (by index into `samples`) and queues the
+  // server + local saves for it. The forms edit the current sample through
+  // setCurrentData; the notes stage edits every sample on one screen.
+  const setSampleData = (idx: number, key: keyof Sample, data: Data) => {
+    const sample = samples[idx];
+    if (!sample) return;
     setSamples((prev) =>
       prev.map((s) => (s.id === sample.id ? { ...s, [key]: data } : s))
     );
     scheduleAutoSave(sample.id, key, data);
     scheduleLocalSave(sample.id, sample.label, key, data);
+  };
+
+  const setCurrentData = (key: keyof Sample, data: Data) =>
+    setSampleData(sampleIdx, key, data);
+
+  // Notes stage: merge the free text into the format's module JSON so the
+  // scores already in that object are preserved (and vice versa).
+  const setSampleNote = (sampleId: string, text: string) => {
+    const idx = samples.findIndex((s) => s.id === sampleId);
+    if (idx < 0) return;
+    const existing = samples[idx][notesModuleKey];
+    setSampleData(idx, notesModuleKey, { ...existing, [EXPRESS_NOTE_KEY]: text });
   };
 
   // ─── Navigation ───────────────────────────────────────────────
@@ -974,17 +1033,34 @@ export function CupClient({
   };
 
   const handleStepChange = async (step: CuppingStep, resetSample = false) => {
-    if (step === currentStep) return;
+    if (step === currentStep && !notesStage) return;
     await flushPending();
+    setNotesStage(false);
     setCurrentStep(step);
     if (resetSample) setSampleIdx(0);
     scrollCanvasToTop();
   };
 
   const handleSampleSelect = async (i: number) => {
-    if (i === sampleIdx) return;
+    if (i === sampleIdx && !notesStage) return;
     await flushPending();
+    setNotesStage(false);
     setSampleIdx(i);
+    scrollCanvasToTop();
+  };
+
+  // "Notas rápidas": every path to submit passes through here first (footer on
+  // the last sample, the Results module tap). Skippable — the stage's own
+  // next button is the real submit (handleGoToResults, guard untouched).
+  const openNotesStage = async () => {
+    await flushPending();
+    setNotesStage(true);
+    scrollCanvasToTop();
+  };
+
+  const closeNotesStage = async () => {
+    await flushPending();
+    setNotesStage(false);
     scrollCanvasToTop();
   };
 
@@ -1407,10 +1483,14 @@ export function CupClient({
 
   const handleModuleSelect = async (key: string) => {
     if (key === "results") {
-      await handleGoToResults();
+      // Submit always goes through the notes stage; from inside it, the tap
+      // is the submit itself.
+      if (notesStage) await handleGoToResults();
+      else await openNotesStage();
       return;
     }
     if (key !== "cupping" && key !== "extrinsic" && key !== "physical") return;
+    if (notesStage) await closeNotesStage();
     setActiveTab(key);
     scrollCanvasToTop();
   };
@@ -1420,15 +1500,40 @@ export function CupClient({
     isLastSampleInStep && !isLastStep
       ? stepsForFormat[stepsForFormat.indexOf(currentStep) + 1]
       : null;
-  const nextLabel = isLastSampleOverall
-    ? translations.viewResults
+  // Inline fallbacks for the notes-stage copy (pre-upgrade cached prop blobs).
+  const expressNotesCopy = translations.expressNotes ?? (locale === "en"
+    ? {
+        title: "Quick notes",
+        body: "One free-text impression per sample. Optional — you can submit without writing anything.",
+        placeholder: "What did this cup leave you? Aromas, flavors, sensations…",
+        optional: "Optional",
+        open: "Quick notes →",
+        back: "Back to cupping",
+        submit: "Submit and see results",
+      }
+    : {
+        title: "Notas rápidas",
+        body: "Una impresión libre por muestra. Opcional: puedes enviar sin escribir nada.",
+        placeholder: "¿Qué te dejó esta taza? Aromas, sabores, sensaciones…",
+        optional: "Opcional",
+        open: "Notas rápidas →",
+        back: "Volver a la cata",
+        submit: "Enviar y ver resultados",
+      });
+
+  const nextLabel = notesStage
+    ? expressNotesCopy.submit
+    : isLastSampleOverall
+    ? expressNotesCopy.open
     : nextStep
     ? `${translations.nextPhase} → ${translations.phaseLabels[nextStep]}`
     : translations.nextSample;
 
   const nextVariant: "next-sample" | "next-phase" | "view-results" =
-    isLastSampleOverall
+    notesStage
       ? "view-results"
+      : isLastSampleOverall
+      ? "next-phase"
       : isLastSampleInStep && !isLastStep
       ? "next-phase"
       : "next-sample";
@@ -1609,8 +1714,26 @@ export function CupClient({
     />
   );
 
-  const topBar =
-    activeTab === "cupping" ? (
+  // Notes stage: no stepper, no sample tabs — one compact title line (the
+  // samples are all on screen). Desktop keeps the clock column for continuity.
+  const notesTopBar = (
+    <div className="flex items-center gap-3 px-4 py-2 sm:px-6">
+      <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-brown-mid">
+        {expressNotesCopy.title}
+      </span>
+      <span className="text-brown-light">·</span>
+      <span className="font-display text-base text-brown-dark truncate">
+        {session.name}
+      </span>
+      <span className="ml-auto shrink-0 font-mono text-[10px] text-brown-mid tabular-nums">
+        {samples.length} {translations.samplesHeader.toLowerCase()}
+      </span>
+    </div>
+  );
+
+  const topBar = notesStage ? (
+    notesTopBar
+  ) : activeTab === "cupping" ? (
       <>
         {/* Desktop: phases + samples (left) / session info (right) */}
         <div className="hidden lg:grid grid-cols-[1fr_auto] items-start gap-x-8 px-6 py-2">
@@ -1682,13 +1805,19 @@ export function CupClient({
   // ─── Footer ───────────────────────────────────────────────────
   const footer = (
     <CanvasFooter
-      onPrev={handlePrev}
-      onNext={isLastSampleOverall ? handleGoToResults : handleNextSample}
-      prevLabel={translations.prev}
+      onPrev={notesStage ? closeNotesStage : handlePrev}
+      onNext={
+        notesStage
+          ? handleGoToResults
+          : isLastSampleOverall
+          ? openNotesStage
+          : handleNextSample
+      }
+      prevLabel={notesStage ? expressNotesCopy.back : translations.prev}
       nextLabel={
         isNavigating || isGoingToResults ? translations.submitting : nextLabel
       }
-      prevDisabled={prevDisabled || isNavigating}
+      prevDisabled={(!notesStage && prevDisabled) || isNavigating}
       nextDisabled={isNavigating || isGoingToResults}
       nextVariant={nextVariant}
     />
@@ -1707,8 +1836,8 @@ export function CupClient({
       exitLink={exitLink}
       topBar={topBar}
       footer={footer}
-      mobileTitle={session.name}
-      mobileBar={phoneBar}
+      mobileTitle={notesStage ? expressNotesCopy.title : session.name}
+      mobileBar={notesStage ? undefined : phoneBar}
       mobileDetails={phoneDetails}
       mobileDetailsLabel={translations.sessionDetails}
       collapsed={keyboardOpen}
@@ -1951,6 +2080,31 @@ export function CupClient({
               : translations.guard.continueAnyway,
         }}
       />
+      {notesStage && (
+        <ExpressNotesStep
+          samples={viewSamples.map((s) => ({
+            id: s.id,
+            label: s.label,
+            isReference: s.id === referenceSampleId,
+          }))}
+          values={Object.fromEntries(
+            samples.map((s) => {
+              const v = s[notesModuleKey][EXPRESS_NOTE_KEY];
+              return [s.id, typeof v === "string" ? v : ""];
+            }),
+          )}
+          onChange={setSampleNote}
+          maxLength={EXPRESS_NOTE_MAX}
+          translations={{
+            title: expressNotesCopy.title,
+            body: expressNotesCopy.body,
+            placeholder: expressNotesCopy.placeholder,
+            optional: expressNotesCopy.optional,
+            referenceBadge: referenceBadgeLabel,
+          }}
+        />
+      )}
+      {!notesStage && (
       <div key={`${activeTab}-${currentStep}-${current.id}`}>
         {activeTab === "cupping" && session.format === "descriptive" && (
           <DescriptiveForm
@@ -2001,6 +2155,7 @@ export function CupClient({
           />
         )}
       </div>
+      )}
 
       <DevRoleBadge email={userEmail} />
     </SessionShell>
