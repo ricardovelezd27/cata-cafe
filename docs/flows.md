@@ -223,6 +223,22 @@ rewritten. **Anchor:** results treat the reference as context, not a
 competitor — it is pulled out of the ranking, the session average and "Mejor
 muestra" into its own card above the ranking; the Δ against it is unchanged.
 
+**2026-10 — multiple references (Referencia 1 / 2):** references ACCUMULATE
+instead of replacing. `SessionSample.referenceRank` (1, 2, 3 — unique per
+session, max 3) records the order they were named; `referenceSampleId` stays
+the ACTIVE one (highest rank), so ordering, pin, realtime and the default Δ keep
+working. `setReferenceSample(sessionId, sampleId)` on a sample that is not yet a
+reference gives it `max+1` and makes it active (re-pinning its stored rows to
+79.00); naming an existing reference is a no-op; `null` removes only the active
+one and the previous becomes active again. Only the ACTIVE reference is pinned
+— earlier ones keep the pinned data their cuppers saved but unlock, so a cupper
+can change that note. All references are cupped first by rank
+(`orderReferencesFirst`), are anchors in results (excluded from ranking,
+average and "Mejor muestra") and the "Comparar con: Referencia 1 · Referencia 2"
+selector (client state, `localStorage` `cata_results_ref`, active by default)
+chooses the Δ basis. Tabs show R1/R2, PDFs/print/close emails "· Referencia N".
+Scoring, the trigger and `AggregateScore` never read any of this.
+
 ---
 
 ## 2. Coffee visibility & sharing
