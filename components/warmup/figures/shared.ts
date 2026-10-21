@@ -10,6 +10,9 @@ export interface FigureProps extends Omit<WarmupFigureSpec, "kind"> {
   reducedMotion?: boolean;
   title?: string;
   className?: string;
+  /** Draw the moving segment in the secondary token (default true). The
+   *  player turns it off for neutral / waiting screens where nothing moves. */
+  highlight?: boolean;
 }
 
 const SMALL_AMP = 0.18;

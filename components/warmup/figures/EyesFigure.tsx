@@ -53,6 +53,7 @@ export function EyesFigure(p: FigureProps) {
       eyes={eyesOf(p)}
       zoom="face"
       lead={p.lead}
+      moving={p.highlight === false ? undefined : "pupils"}
       title={p.title}
       paused={p.paused}
       className={p.className}

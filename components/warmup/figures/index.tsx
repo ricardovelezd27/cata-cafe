@@ -20,6 +20,7 @@ export interface WarmupFigureProps {
   reducedMotion?: boolean;
   title?: string;
   className?: string;
+  highlight?: boolean;
 }
 
 /**
