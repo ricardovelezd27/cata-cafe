@@ -661,6 +661,8 @@ export type SheetHeader = {
   cupsPerSample: number;
   purpose: string;
   isReference: boolean;
+  /** 1, 2, … when the sample is a reference (S6 multi-reference). */
+  referenceRank?: number | null;
 };
 
 // ─── The full per-sample sheet model ────────────────────────────────────────
@@ -712,6 +714,7 @@ export type CvaFormInput = {
     coffeeName: string | null;
     roastLevel: string | null;
     isReference?: boolean;
+    referenceRank?: number | null;
     descriptive: D;
     affective: D;
     combined: D;
@@ -873,6 +876,7 @@ export function buildCvaFormData(input: CvaFormInput): CvaSampleSheet {
       cupsPerSample: input.cupsPerSample,
       purpose: sanitizePdfText(input.purpose),
       isReference: input.sample.isReference ?? false,
+      referenceRank: input.sample.referenceRank ?? null,
     },
     format,
     descriptorStages,

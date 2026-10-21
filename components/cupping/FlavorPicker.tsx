@@ -11,7 +11,7 @@ import {
   type FlavorWheelNode,
 } from "@/lib/constants";
 import { resolveDescriptor } from "@/lib/descriptors";
-import { searchFlavors, norm, type FlavorMatchType } from "@/lib/flavorSearch";
+import { searchFlavors, shouldOfferFileUnder, norm, type FlavorMatchType } from "@/lib/flavorSearch";
 import pillStyles from "@/components/ui/CATAPills.module.css";
 
 type Locale = "es" | "en";
@@ -197,8 +197,8 @@ export function FlavorPicker({
 
   /**
    * Pure: next (value, notes) after selecting `id`. A deeper pick replaces any
-   * selected ancestors — which take their qualifying notes with them, so no
-   * note bucket outlives its selected chip.
+   * selected ancestors; their qualifying notes MOVE onto the new node (merged,
+   * deduped) so words filed under a parent are not lost.
    */
   function selectionWith(
     id: string,
@@ -209,9 +209,13 @@ export function FlavorPicker({
     nextNotes: Record<string, string[]>;
   } {
     const prunedAncestors = baseValue.filter((v) => isAncestorOf(v, id));
+    let nextNotes = notesWithout(baseNotes, prunedAncestors);
+    for (const a of prunedAncestors) {
+      for (const w of baseNotes[a] ?? []) nextNotes = notesWith(nextNotes, id, w);
+    }
     return {
       nextValue: [...baseValue.filter((v) => !isAncestorOf(v, id)), id],
-      nextNotes: notesWithout(baseNotes, prunedAncestors),
+      nextNotes,
     };
   }
 
@@ -242,7 +246,7 @@ export function FlavorPicker({
   // Closed fallback: when nothing matches the wheel, offer to route the typed
   // term into a real generic node («Otra fruta» / «Otros») as a qualifying note
   // — never a free-standing unmapped entry.
-  const showGeneric = trimmed.length > 0 && results.length === 0 && notesEnabled;
+  const showGeneric = notesEnabled && shouldOfferFileUnder(results, trimmed);
   const rowCount = results.length + (showGeneric ? 1 : 0);
   const dropdownOpen = focused && rowCount > 0;
   const clampedHi = Math.min(hi, Math.max(0, rowCount - 1));
@@ -260,7 +264,7 @@ export function FlavorPicker({
     if (!value.includes(id) && !wouldExceedLimit(id)) {
       const { nextValue, nextNotes } = selectionWith(id);
       let withNote = nextNotes;
-      if (opts?.matchType === "parent" && opts.typed) {
+      if ((opts?.matchType === "parent" || opts?.matchType === "dictionary") && opts.typed) {
         const node = flavorNodeById(id);
         const nodeLabel = node ? label(node, locale) : "";
         if (nodeLabel && !sameText(opts.typed, nodeLabel)) {
@@ -584,7 +588,9 @@ export function FlavorPicker({
             const selectable = node.level >= 2; // L1 groups are navigation-only
             const isSel = value.includes(node.id);
             const color = flavorNodeColor(node.id);
-            const disabled = selectable && !isSel && wouldExceedLimit(node.id);
+            // In file-under mode a pick may be a move (frees a slot); never pre-disable,
+            // pickFileTarget refuses a genuine add and shows the limit message.
+            const disabled = !fileUnder && selectable && !isSel && wouldExceedLimit(node.id);
 
             return (
               <div key={node.id} className="flex items-center gap-2">

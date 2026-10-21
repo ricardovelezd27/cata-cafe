@@ -129,6 +129,8 @@ export type GroupSummarySample = {
   label: string;
   /** True when the session owner marked this as the reference (control) sample. */
   isReference?: boolean;
+  /** 1, 2, … (S6 multi-reference). */
+  referenceRank?: number | null;
   /** Revealed coffee name, or null when still blind. */
   coffeeName: string | null;
   /** Community score (0–100) or null when none could be computed. */
@@ -162,7 +164,7 @@ function SampleCard({
           <Text style={s.sampleTag}>{t.sample}</Text>
           <Text style={s.sampleLabel}>
             {sample.label}
-            {sample.isReference ? ` · ${t.reference}` : ""}
+            {sample.isReference ? ` · ${t.reference}${sample.referenceRank ? ` ${sample.referenceRank}` : ""}` : ""}
           </Text>
           {sample.coffeeName ? (
             <Text style={s.coffeeName}>· {sample.coffeeName}</Text>

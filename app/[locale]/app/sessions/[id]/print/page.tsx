@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { orderReferenceFirst } from "@/lib/referenceRules";
+import { orderReferencesFirst } from "@/lib/referenceRules";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { buildInviteUrl } from "@/lib/inviteUrl";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
@@ -97,7 +97,7 @@ export default async function PrintPage({
         objective: session.objective,
         cupperName: profile?.displayName ?? "",
         ownerView: isOwner,
-        samples: orderReferenceFirst(session.samples, session.referenceSampleId).map((s) => {
+        samples: orderReferencesFirst(session.samples).map((s) => {
           const ev = s.evaluations[0];
           return {
             id: s.id,
@@ -105,7 +105,8 @@ export default async function PrintPage({
             revealed: s.revealed,
             coffeeName: s.coffee ? coffeeDisplayName(s.coffee, tc("coffeeDeleted")) : null,
             roastLevel: s.coffee?.roastLevel ?? null,
-            isReference: s.id === session.referenceSampleId,
+            isReference: s.referenceRank != null,
+            referenceRank: s.referenceRank ?? null,
             descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
             affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
             combined: (ev?.combinedData as Record<string, unknown>) ?? {},

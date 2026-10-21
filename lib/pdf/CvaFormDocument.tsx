@@ -612,7 +612,7 @@ function SampleStrip({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, st
         <Text style={s.stripLabel}>{t.sampleNo} </Text>
         <Text style={{ fontSize: 10, fontFamily: SANS, fontWeight: 700 }}>
           {h.sampleLabel}
-          {h.isReference ? ` · ${t.reference}` : ""}
+          {h.isReference ? ` · ${t.reference}${h.referenceRank ? ` ${h.referenceRank}` : ""}` : ""}
         </Text>
       </Text>
       {h.coffeeName ? (
@@ -709,7 +709,7 @@ function AffectiveGridPage({
             <View key={sheet.header.sampleLabel} style={s.sampleCellHead}>
               <Text style={{ fontSize: 10, fontFamily: SANS, fontWeight: 700 }}>
                 {sheet.header.sampleLabel}
-                {sheet.header.isReference ? ` · ${t.reference}` : ""}
+                {sheet.header.isReference ? ` · ${t.reference}${sheet.header.referenceRank ? ` ${sheet.header.referenceRank}` : ""}` : ""}
               </Text>
               {sheet.header.coffeeName ? (
                 <Text style={{ fontSize: 6, color: SOFT }}>{sheet.header.coffeeName}</Text>
@@ -1045,6 +1045,7 @@ export type CvaDocumentProps = {
     coffeeName: string | null;
     roastLevel: string | null;
     isReference?: boolean;
+    referenceRank?: number | null;
     descriptive: Record<string, unknown>;
     affective: Record<string, unknown>;
     combined: Record<string, unknown>;

@@ -51,7 +51,10 @@ export type ReportSample = {
   label: string;
   position: number;
   revealed: boolean;
+  /** True for every reference (R1, R2…). */
   isReference: boolean;
+  /** Multi-reference rank (1 = R1); null for regular samples. */
+  referenceRank?: number | null;
   coffee: ReportCoffee | null;
   /** Green-bean assessment (per sample, OWNER-ONLY downstream). */
   physical: Record<string, unknown>;
@@ -83,7 +86,7 @@ export type ReportSession = {
 export type SessionReportSource = {
   session: ReportSession;
   ownerName: string;
-  /** Display order: reference first (orderReferenceFirst), then position. */
+  /** Display order: references first by rank (orderReferencesFirst), then position. */
   samples: ReportSample[];
   participants: ReportParticipant[];
   /** ALL submitted (isDraft=false) evaluations, every cupper. */

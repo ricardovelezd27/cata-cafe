@@ -8,7 +8,7 @@ import "server-only";
 // the pure builders in this folder strip what each tier may not see.
 
 import { prisma } from "@/lib/prisma";
-import { orderReferenceFirst } from "@/lib/referenceRules";
+import { activeReferenceId, orderReferencesFirst } from "@/lib/referenceRules";
 import { asSessionFormat } from "@/lib/constants";
 import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
 import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
@@ -114,7 +114,10 @@ export async function loadSessionReportSource(
     defectiveCups: ev.defectiveCups,
   }));
 
-  const samples = orderReferenceFirst(session.samples, session.referenceSampleId);
+  const samples = orderReferencesFirst(session.samples);
+  // Multi-reference (S6): the active reference is the highest-ranked one; fall
+  // back to the legacy column for rows written before referenceRank existed.
+  const referenceSampleId = activeReferenceId(session.samples) ?? session.referenceSampleId;
 
   // Community aggregate per sample — same recompute as results/page.tsx:
   // excluded cuppers removed, incomplete evaluations dropped inside.
@@ -179,7 +182,7 @@ export async function loadSessionReportSource(
       isGroup: session.isGroup,
       status: session.status,
       createdBy: session.createdBy,
-      referenceSampleId: session.referenceSampleId,
+      referenceSampleId,
       closedAt: session.closedAt,
     },
     ownerName: session.createdByUser.displayName,
@@ -188,7 +191,8 @@ export async function loadSessionReportSource(
       label: s.label,
       position: s.position,
       revealed: s.revealed,
-      isReference: s.id === session.referenceSampleId,
+      isReference: typeof s.referenceRank === "number" || s.id === referenceSampleId,
+      referenceRank: s.referenceRank ?? null,
       coffee: s.coffee,
       physical: asObj(s.physical?.data),
       extrinsic: asObj(s.extrinsic?.data),

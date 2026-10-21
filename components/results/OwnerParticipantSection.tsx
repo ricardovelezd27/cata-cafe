@@ -1,5 +1,6 @@
 "use client";
 
+import { referenceBadgeText } from "@/lib/referenceRules";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { calcIndividualScore } from "@/lib/scoring";
@@ -17,6 +18,7 @@ type SampleResult = {
   affective: Record<string, unknown>;
   combined: Record<string, unknown>;
   isReference?: boolean;
+  referenceRank?: number | null;
 };
 
 export type ParticipantResult = {
@@ -291,7 +293,11 @@ export function OwnerParticipantSection({
                       {sample.label}
                       {sample.isReference && referenceBadge && (
                         <Badge tone="accent" size="xs">
-                          {referenceBadge}
+                          {referenceBadgeText(
+                            referenceBadge,
+                            sample.referenceRank,
+                            sampleAxis.filter((x) => x.isReference).length,
+                          )}
                         </Badge>
                       )}
                     </span>

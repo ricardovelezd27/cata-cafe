@@ -74,7 +74,7 @@ export function ResumenTab({
   // so the results page and the PDF reports can never disagree. The reference
   // is the ANCHOR: kept out of the ranking, the average and "best".
   const rankCtx = { format, isGroup, canViewGroup, cupsPerSample };
-  const { referenceSample, referenceRank, ranked, refDeltas } = rankSamples(
+  const { anchors, multiAnchor, ranked, refDeltas } = rankSamples(
     samples,
     referenceId,
     rankCtx,
@@ -150,15 +150,16 @@ export function ResumenTab({
             {t.ranking}
             <InfoHint title={help.ranking.title} body={help.ranking.body} closeLabel={help.closeLabel} />
           </h2>
-          {referenceSample && referenceRank && (
+          {anchors.map(({ sample: referenceSample, rank: referenceRank }) => (
             <button
+              key={referenceSample.id}
               type="button"
               onClick={() => onOpenSample(referenceSample.id)}
               className="min-h-[44px] flex w-full items-center gap-3 rounded-card border border-secondary/40 bg-secondary-fixed/40 px-4 py-3 text-left transition-colors hover:bg-secondary-fixed"
             >
               <div className="min-w-0 flex-1">
                 <div className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-secondary">
-                  {t.anchorTitle}
+                  {multiAnchor ? `${t.anchorTitle} ${referenceSample.referenceRank}` : t.anchorTitle}
                 </div>
                 <div className="truncate font-medium text-on-surface">{referenceSample.label}</div>
                 {referenceSample.revealed && referenceSample.coffee && (
@@ -175,7 +176,7 @@ export function ResumenTab({
               )}
               <ChevronRight size={16} aria-hidden className="shrink-0 text-on-surface-variant" />
             </button>
-          )}
+          ))}
           <div className="flex flex-col gap-2">
             {ranked.map(({ sample, score, sd }, idx) => (
               <button

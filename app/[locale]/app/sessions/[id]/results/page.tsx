@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { orderReferenceFirst } from "@/lib/referenceRules";
+import { orderReferencesFirst } from "@/lib/referenceRules";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
 import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
@@ -97,7 +97,7 @@ export default async function ResultsPage({
 
   // The reference (control) sample leads every list on this page — tables,
   // radar cards, owner matrix — mirroring the cupping order (lib/referenceRules.ts).
-  session.samples = orderReferenceFirst(session.samples, session.referenceSampleId);
+  session.samples = orderReferencesFirst(session.samples);
 
   const isOwner = session.createdBy === user.id;
   // Admin viewing someone else's session: owner-equivalent READ access only.
@@ -159,6 +159,7 @@ export default async function ResultsPage({
       affective: Record<string, unknown>;
       combined: Record<string, unknown>;
       isReference: boolean;
+      referenceRank: number | null;
     }[];
   };
   let participantResults: ParticipantResult[] | null = null;
@@ -279,7 +280,8 @@ export default async function ResultsPage({
               descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
               affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
               combined: (ev?.combinedData as Record<string, unknown>) ?? {},
-              isReference: s.id === session.referenceSampleId,
+              isReference: s.referenceRank != null,
+              referenceRank: s.referenceRank ?? null,
             };
           }),
         }))
@@ -690,7 +692,8 @@ export default async function ResultsPage({
             physical: (s.physical?.data as Record<string, unknown>) ?? {},
             extrinsic: s.revealed ? ((s.extrinsic?.data as Record<string, unknown>) ?? {}) : {},
             aggregateScore,
-            isReference: s.id === session.referenceSampleId,
+            isReference: s.referenceRank != null,
+            referenceRank: s.referenceRank ?? null,
             myEvaluation: myEvaluationBySample.get(s.id) ?? { status: "none", complete: false },
           };
         }),
@@ -724,6 +727,9 @@ export default async function ResultsPage({
         deltaAttribute: tResults("deltaAttribute"),
         flavorProfiles: tResults("flavorProfiles"),
         referenceBadge: tResults("referenceBadge"),
+        // `{n}` is an ICU arg — fetched raw and replaced client-side.
+        referenceN: tResults.raw("referenceN") as string,
+        compareWith: tResults("compareWith"),
         deltaVsReference: tResults("deltaVsReference"),
         deltaVsReferenceAria: tResults("deltaVsReferenceAria"),
         referenceLegend: tResults("referenceLegend"),

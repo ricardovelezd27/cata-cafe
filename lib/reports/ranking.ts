@@ -17,6 +17,8 @@ export type RankableSample = {
   combined: Record<string, unknown>;
   aggregateScore: { communityScore: number | null; scoreSd: number | null } | null;
   myEvaluation: MyEvaluation;
+  /** Multi-reference (S6): R1, R2… or null/undefined for a regular sample. */
+  referenceRank?: number | null;
 };
 
 export type RankContext = {
@@ -91,26 +93,52 @@ export type RankedEntry<S> = {
   basis: ScoreBasis | null;
 };
 
+export type AnchorEntry<S> = { sample: S; rank: RankValue };
+
 export type RankingResult<S> = {
+  /** The ACTIVE reference (the Δ chips compare against it), or null. */
   referenceSample: S | null;
   referenceRank: RankValue | null;
+  /** EVERY reference, R1 first — all of them are anchors (outside the ranking). */
+  anchors: AnchorEntry<S>[];
+  multiAnchor: boolean;
+  anchorIds: Set<string>;
   ranked: RankedEntry<S>[];
   /** Δ vs the reference keyed by sample id (null when not applicable). */
   refDeltas: Map<string, number | null>;
 };
 
-/** The reference is the ANCHOR: kept outside the ranking, the session average
- *  and the best sample (lib/referenceRules.ts) but still feeds Δ. Everyone
+/** Every reference is an ANCHOR: kept outside the ranking, the session average
+ *  and the best sample (lib/referenceRules.ts) but still feeds Δ. `referenceId`
+ *  is the ACTIVE reference the Δ chips compare against (defaults to the
+ *  highest-ranked one); when no sample carries a `referenceRank` (legacy
+ *  single-reference data) the sample with that id is the only anchor. Everyone
  *  else sorts by score desc (unscored last), ties by original position. */
+export function anchorsOf<S extends RankableSample>(samples: S[], referenceId: string | null): S[] {
+  const ranked = samples
+    .filter((s) => typeof s.referenceRank === "number")
+    .sort((a, b) => (a.referenceRank as number) - (b.referenceRank as number));
+  if (ranked.length) return ranked;
+  const legacy = referenceId ? samples.find((s) => s.id === referenceId) : undefined;
+  return legacy ? [legacy] : [];
+}
+
 export function rankSamples<S extends RankableSample>(
   samples: S[],
   referenceId: string | null,
   ctx: RankContext,
 ): RankingResult<S> {
-  const referenceSample = referenceId ? (samples.find((s) => s.id === referenceId) ?? null) : null;
+  const anchorSamples = anchorsOf(samples, referenceId);
+  const anchorIds = new Set(anchorSamples.map((s) => s.id));
+  const activeId =
+    referenceId && anchorIds.has(referenceId)
+      ? referenceId
+      : (anchorSamples[anchorSamples.length - 1]?.id ?? null);
+  const referenceSample = activeId ? (samples.find((s) => s.id === activeId) ?? null) : null;
   const referenceRank = referenceSample ? rankFor(referenceSample, ctx) : null;
+  const anchors = anchorSamples.map((sample) => ({ sample, rank: rankFor(sample, ctx) }));
   const ranked = samples
-    .filter((sample) => sample.id !== referenceId)
+    .filter((sample) => !anchorIds.has(sample.id))
     .map((sample, position) => {
       const { score, sd, basis } = rankFor(sample, ctx);
       return { sample, position, score, sd, basis };
@@ -126,14 +154,20 @@ export function rankSamples<S extends RankableSample>(
   const refDeltas = deltasVsReference(
     [
       ...ranked.map((r) => ({ id: r.sample.id, score: r.score, basis: r.basis })),
-      ...(referenceSample && referenceRank
-        ? [{ id: referenceSample.id, score: referenceRank.score, basis: referenceRank.basis }]
-        : []),
+      ...anchors.map((a) => ({ id: a.sample.id, score: a.rank.score, basis: a.rank.basis })),
     ],
-    referenceId,
+    activeId,
   );
 
-  return { referenceSample, referenceRank, ranked, refDeltas };
+  return {
+    referenceSample,
+    referenceRank,
+    anchors,
+    multiAnchor: anchors.length > 1,
+    anchorIds,
+    ranked,
+    refDeltas,
+  };
 }
 
 export type SessionStats = {
@@ -146,7 +180,7 @@ export type SessionStats = {
   delta: number | null;
 };
 
-/** Stat row + performance card numbers (reference excluded from every average). */
+/** Stat row + performance card numbers (every reference/anchor excluded from every average). */
 export function sessionStats<S extends RankableSample>(
   samples: S[],
   ranked: RankedEntry<S>[],
@@ -158,7 +192,8 @@ export function sessionStats<S extends RankableSample>(
   const avgScore = average(rankScores);
   const bestEntry = ranked.find((r) => r.score !== null) ?? null;
 
-  const scoredSamples = samples.filter((s) => s.id !== referenceId);
+  const anchorIds = new Set(anchorsOf(samples, referenceId).map((s) => s.id));
+  const scoredSamples = samples.filter((s) => !anchorIds.has(s.id));
   const myScores = scoredSamples
     .map((s) => myScoreFor(s, ctx.format, ctx.cupsPerSample))
     .filter((v): v is number => v !== null);

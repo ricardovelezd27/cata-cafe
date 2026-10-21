@@ -12,7 +12,7 @@
 
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
-import { orderReferenceFirst } from "@/lib/referenceRules";
+import { orderReferencesFirst } from "@/lib/referenceRules";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email";
@@ -73,7 +73,7 @@ export async function sendCloseEmails(
 
   if (!session || !session.isGroup) return empty;
   // Reference first in every emailed sheet/summary (lib/referenceRules.ts).
-  session.samples = orderReferenceFirst(session.samples, session.referenceSampleId);
+  session.samples = orderReferencesFirst(session.samples);
 
   // Every submitted evaluation for the session (used for both the group
   // aggregation and each participant's own CVA PDF).

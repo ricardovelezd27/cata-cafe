@@ -108,6 +108,7 @@ export function buildParticipantSummary(
     return {
       sid: s.id,
       id: s.id,
+      referenceRank: s.referenceRank ?? null,
       descriptive: ev?.descriptiveData ?? {},
       affective: ev?.affectiveData ?? {},
       combined: ev?.combinedData ?? {},
@@ -125,7 +126,7 @@ export function buildParticipantSummary(
     canViewGroup: true,
     cupsPerSample: session.cupsPerSample,
   };
-  const { referenceRank, ranked, refDeltas } = rankSamples(
+  const { anchors, ranked, refDeltas } = rankSamples(
     rankables,
     session.referenceSampleId,
     ctx,
@@ -207,10 +208,9 @@ export function buildParticipantSummary(
     };
   };
 
+  // Every reference first (R1, R2…), then the ranking.
   const samples: ParticipantSummarySample[] = [];
-  if (referenceRank) {
-    samples.push(build({ id: session.referenceSampleId! }, referenceRank.score, referenceRank.sd));
-  }
+  for (const a of anchors) samples.push(build(a.sample, a.rank.score, a.rank.sd));
   for (const r of ranked) samples.push(build(r.sample, r.score, r.sd));
 
   const myRow = src.alignmentRows.find((r) => r.id === opts.viewerId);
@@ -227,8 +227,8 @@ export function buildParticipantSummary(
       format,
       cupsPerSample: session.cupsPerSample,
       participants: src.participants.length,
-      referenceLabel: session.referenceSampleId
-        ? (sampleById.get(session.referenceSampleId)?.label ?? null)
+      referenceLabel: anchors.length
+        ? anchors.map((a) => sampleById.get(a.sample.id)?.label ?? "").filter(Boolean).join(" · ")
         : null,
     },
     kpis: {

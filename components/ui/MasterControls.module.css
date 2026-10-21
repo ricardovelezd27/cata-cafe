@@ -187,3 +187,9 @@
 }
 
 .referenceField:has(select:disabled) { opacity: 0.5; }
+
+.referenceSummary {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--color-on-surface-variant);
+}
