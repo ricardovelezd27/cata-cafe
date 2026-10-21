@@ -26,6 +26,7 @@ import {
 } from "@/lib/descriptors";
 import { ScoreBreakdownPanel, type ScoreBreakdownTranslations } from "@/components/results/ScoreBreakdownPanel";
 import { ExtrinsicSummary } from "@/components/results/ExtrinsicSummary";
+import { EXPRESS_NOTE_KEY } from "@/lib/expressSession";
 import { Badge, ScorePill, Button } from "@/components/ui";
 import type { SessionFormat } from "@/lib/constants";
 import { canShowMyScore, type MyEvaluation } from "@/lib/evaluationState";
@@ -64,6 +65,7 @@ export type SampleDetailTranslations = {
   // Own-evaluation state chip labels (2026-09). Optional: only the results
   // page passes an evaluation state at all.
   inProgress?: string;
+  expressNotes?: string;
   notEvaluated?: string;
 };
 
@@ -277,9 +279,11 @@ export function SampleDetail({
   const data =
     format === "affective" ? affective : format === "descriptive" ? descriptive : combined;
 
-  const filled = Object.values(data).some((v) =>
-    Array.isArray(v) ? v.length > 0 : v !== null && v !== undefined && v !== "" && v !== 0,
-  );
+  const filled = Object.entries(data)
+    .filter(([k]) => k !== EXPRESS_NOTE_KEY)
+    .some(([, v]) =>
+      Array.isArray(v) ? v.length > 0 : v !== null && v !== undefined && v !== "" && v !== 0,
+    );
 
   const scoreAllowed = myEvaluation ? canShowMyScore(myEvaluation) : true;
   const cva = showCVA && filled && scoreAllowed ? calcIndividualScore(data, cupsPerSample) : null;
@@ -292,6 +296,7 @@ export function SampleDetail({
         : null;
   const overallScore = num(data, "impresion_global_final");
   const overallNotes = (data["impresion_global_notas"] as string | undefined)?.trim() ?? "";
+  const expressNote = (data[EXPRESS_NOTE_KEY] as string | undefined)?.trim() ?? "";
 
   return (
     <div className="flex flex-col gap-1">
@@ -335,6 +340,15 @@ export function SampleDetail({
 
       {/* Extrinsic data (origin/process/trade) — self-guards when empty */}
       <ExtrinsicSummary data={extrinsic} />
+
+      {expressNote && (
+        <div className="mt-2 rounded-card border border-outline-variant bg-surface-container-low px-3 py-2">
+          <div className="text-[9px] font-semibold uppercase tracking-wider text-on-surface-variant">
+            {t.expressNotes ?? "Notas rápidas"}
+          </div>
+          <div className="whitespace-pre-wrap text-sm text-on-surface">{expressNote}</div>
+        </div>
+      )}
 
       {!filled ? (
         <div className="py-2 text-xs text-on-surface-variant">{t.noData}</div>

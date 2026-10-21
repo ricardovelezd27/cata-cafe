@@ -665,6 +665,7 @@ export default async function ResultsPage({
                     roastLevel: s.coffee.roastLevel,
                   }
                 : null,
+            hasCoffee: s.coffeeId !== null,
             // Never re-identify an anonymized coffee in the owner's edit form.
             masterCoffee: ownerRead && !s.coffee?.deletedAt
               ? {
@@ -841,6 +842,8 @@ export default async function ResultsPage({
           viewingAs: tResults("detail.viewingAs"),
           editSample: tResults("detail.editSample"),
           editExtrinsic: tResults("detail.editExtrinsic"),
+          expressNotes: tResults("detail.expressNotes"),
+          assignCoffee: tResults("detail.assignCoffee"),
           close: tResults("detail.close"),
           breakdown: breakdownT,
         },

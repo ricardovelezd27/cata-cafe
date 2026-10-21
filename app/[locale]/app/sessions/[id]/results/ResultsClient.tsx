@@ -888,7 +888,20 @@ export function ResultsClient({
           referenceBadge={translations.referenceBadge}
           onEdit={isAdminViewer ? undefined : () => handleEditSample(detailSample.id)}
           onEditMetadata={
-            isOwner
+            // Closed = read-only: the metadata dialog's save throws
+            // session_closed once the session closed, so the button goes away.
+            isOwner && sessionStatus !== "closed"
+              ? () => {
+                  setDetail(null);
+                  setEditingSampleId(detailSample.id);
+                }
+              : undefined
+          }
+          onAssignCoffee={
+            // Post-close coffee naming (WP-B): a coffee-less sample (express
+            // sessions) may get its coffee AFTER the close — the one write
+            // updateSampleMetadata allows on a closed session, owner only.
+            isOwner && !isAdminViewer && sessionStatus === "closed" && !detailSample.hasCoffee
               ? () => {
                   setDetail(null);
                   setEditingSampleId(detailSample.id);
@@ -919,7 +932,11 @@ export function ResultsClient({
         <ResponsiveDialog
           open
           onOpenChange={() => setEditingSampleId(null)}
-          title={`${translations.editSample}: ${editingSample.label}`}
+          title={`${
+            sessionStatus === "closed" && !editingSample.hasCoffee
+              ? translations.detail.assignCoffee
+              : translations.editSample
+          }: ${editingSample.label}`}
           closeLabel={translations.cancel}
         >
           <EditSampleMetadataForm

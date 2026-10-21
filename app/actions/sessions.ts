@@ -19,7 +19,10 @@ import {
   requireSampleOwner,
   assertSessionWritable,
 } from "@/lib/sessionAuth";
-import { detachCoffeeHistoryForSession } from "@/lib/coffeeHistory";
+import {
+  detachCoffeeHistoryForSession,
+  syncCoffeeHistoryForSession,
+} from "@/lib/coffeeHistory";
 import { isSessionClosed, planClosesAtChange } from "@/lib/sessionState";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { computeEvaluationDerived, moduleKeyForFormat } from "@/lib/evaluation";
@@ -1115,7 +1118,17 @@ export async function updateSampleMetadata(
   });
   if (!sample) throw new Error("not_found_or_forbidden");
   if (sample.session.createdBy !== user.id) throw new Error("not_found_or_forbidden");
-  assertSessionWritable(sample.session);
+
+  // Post-close coffee naming — the SECOND sanctioned post-close write (the
+  // first is ExtrinsicEditDialog → upsertExtrinsic). Express sessions create
+  // their samples without a coffee; the owner may name one AFTER the session
+  // closed so the cupping still feeds UserCoffeeHistory. Allowed only when:
+  // owner (checked above) AND the sample has no coffee yet AND the call
+  // actually names a coffee. Anything else on a closed session stays
+  // read-only (session_closed), including label-only renames.
+  const postCloseNaming =
+    isSessionClosed(sample.session) && sample.coffeeId === null && hasAnyCoffeeField(input);
+  if (!postCloseNaming) assertSessionWritable(sample.session);
 
   let coffeeUpdated: boolean;
 
@@ -1187,15 +1200,25 @@ export async function updateSampleMetadata(
     );
     await prisma.sessionSample.update({
       where: { id: sampleId },
-      data: { coffeeId: coffee.id },
+      // Named after the close: the close routine revealed every coffee-linked
+      // sample, so this one is revealed on the spot (nothing is blind any more).
+      data: { coffeeId: coffee.id, ...(postCloseNaming ? { revealed: true } : {}) },
     });
     coffeeUpdated = true;
   }
 
-  await prisma.sessionSample.update({
-    where: { id: sampleId },
-    data: { label: input.label || undefined },
-  });
+  if (!postCloseNaming) {
+    await prisma.sessionSample.update({
+      where: { id: sampleId },
+      data: { label: input.label || undefined },
+    });
+  } else {
+    // The session already closed without a history row for this sample (no
+    // coffee at close time) — same idempotent sync the close routine runs.
+    await syncCoffeeHistoryForSession(sample.sessionId);
+    revalidatePath(`/app/profile/history`);
+    revalidatePath(`/app/coffees`);
+  }
 
   revalidatePath(`/app/sessions/${sample.sessionId}/cup`);
   revalidatePath(`/app/sessions/${sample.sessionId}/results`);

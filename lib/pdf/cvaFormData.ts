@@ -27,6 +27,7 @@ import {
   type SensoryDefect,
 } from "@/lib/constants";
 import { resolveDescriptor, normalizeDescriptorId, legacyDescriptorFamily } from "@/lib/descriptors";
+import { EXPRESS_NOTE_KEY } from "@/lib/expressSession";
 import { calcIndividualBreakdown, isAffectiveComplete } from "@/lib/scoring";
 
 export type Locale = "es" | "en";
@@ -73,6 +74,7 @@ export const CVA_TEXT: Record<Locale, Record<string, string>> = {
     high: "Alto",
     basicTastes: "Gustos básicos",
     notes: "Notas",
+    expressNotes: "Notas rápidas",
     partDescriptive: "Parte 1 — Descriptiva",
     partAffective: "Parte 2 — Afectiva (1–9)",
     uniformity: "Uniformidad",
@@ -149,6 +151,7 @@ export const CVA_TEXT: Record<Locale, Record<string, string>> = {
     high: "High",
     basicTastes: "Basic tastes",
     notes: "Notes",
+    expressNotes: "Quick notes",
     partDescriptive: "Part 1 — Descriptive",
     partAffective: "Part 2 — Affective (1–9)",
     uniformity: "Uniformity",
@@ -660,6 +663,8 @@ export type CvaSampleSheet = {
   affectiveRows: AffectiveRow[]; // affective + combined
   cups: CupModel;
   score: number | "—";
+  /** Free-text "Notas rápidas" typed at the end of the cupping ("" when none). */
+  expressNotes: string;
   /**
    * Whether the affective evaluation is scoreable. calcAffectiveSum silently
    * substitutes a neutral 5 for every missing attribute, so a total printed
@@ -838,6 +843,12 @@ export function buildCvaFormData(input: CvaFormInput): CvaSampleSheet {
     }
   }
 
+  const noteSource = format === "descriptive" ? desc : aff;
+  const expressNotes =
+    typeof noteSource[EXPRESS_NOTE_KEY] === "string"
+      ? (noteSource[EXPRESS_NOTE_KEY] as string).trim()
+      : "";
+
   return {
     header: {
       sessionName: input.sessionName,
@@ -857,6 +868,7 @@ export function buildCvaFormData(input: CvaFormInput): CvaSampleSheet {
     affectiveRows,
     cups,
     score,
+    expressNotes,
     scoreState,
     breakdown,
     extrinsic: input.sample.revealed

@@ -33,6 +33,7 @@ const descriptive = {
   dulzor_desc: ["sweetness:brown_sugar", "sweetness:honey"],
   sensacion_desc: ["mouthfeel:smooth", "mouthfeel:silky"],
   fragancia_notas: "Muy expresiva en seco.",
+  nota_express: "Taza limpia, mucho cuerpo; la recomendaría para espresso.",
   acidez_notas: "Cítrica, jugosa, sostenida.",
 };
 
@@ -47,6 +48,7 @@ const affective = {
   impresion_global_final: 8,
   fragancia_af_notas: "Prototípica del origen.",
   impresion_global_notas: "Taza limpia y equilibrada.",
+  nota_express: "Taza limpia, mucho cuerpo; la recomendaría para espresso.",
   tazas_no_uniformes: [false, true, false, false, false],
   tazas_defectuosas: [false, false, false, false, false],
   defecto_tipo: [],

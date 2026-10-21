@@ -194,6 +194,17 @@ leaves the coffee field untouched, `""` clears it, `name` is never blanked —
 and report `coffeeUpdated: false` (shown as a dismissible notice) when the
 linked coffee isn't owned by the editor.
 
+**Post-close coffee naming (2026-10, express sessions).** A coffee-less sample
+(`coffeeId: null` — every express sample starts like this) may get its coffee
+**after** the session closed: the results drill-down shows the owner "Asignar
+café", which opens the same metadata dialog; `updateSampleMetadata` allows the
+call on a closed session only when the caller is the owner, the sample has no
+coffee and the input carries a coffee field (a label-only rename still throws
+`session_closed`). It creates the private coffee, links it, sets `revealed:
+true` and re-runs `syncCoffeeHistoryForSession` so the cupper's history row
+appears. This is the second sanctioned post-close write (the first is
+`ExtrinsicEditDialog` → `upsertExtrinsic`).
+
 ### Reference sample (2026-09)
 
 The owner may mark exactly one sample per session as the "Referencia" (control
