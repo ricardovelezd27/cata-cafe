@@ -55,9 +55,8 @@ export type CupperAlignmentInput = {
  * sessions (they carry no descriptors) — same guard as
  * `computeSampleBlockFrequencies`.
  */
-export function computeCupperAlignment(input: CupperAlignmentInput): CupperAlignmentRow[] {
+function buildConsensus(input: CupperAlignmentInput) {
   const { format, samples, evals, excludedUserIds } = input;
-  if (format === "affective") return [];
 
   const blobFor = (ev: AlignmentEval): Record<string, unknown> | null =>
     format === "combined"
@@ -114,6 +113,33 @@ export function computeCupperAlignment(input: CupperAlignmentInput): CupperAlign
     }
     majoritySets.set(s.id, sampleMajority);
   }
+
+  return { blobFor, selections, majoritySets };
+}
+
+/**
+ * Majority (consensus) descriptor ids per sample + perceptual block — the same
+ * sets `computeCupperAlignment` scores against (>= 50% of included evaluators,
+ * min 2 cuppers, excluded cuppers dropped). Anonymous: ids only. Empty object
+ * for affective sessions. Consumed by lib/reports/teacherNotes.ts.
+ */
+export function computeMajoritySets(
+  input: CupperAlignmentInput,
+): Record<string, Record<string, string[]>> {
+  if (input.format === "affective") return {};
+  const { majoritySets } = buildConsensus(input);
+  const out: Record<string, Record<string, string[]>> = {};
+  for (const [sampleId, byBlock] of majoritySets) {
+    out[sampleId] = {};
+    for (const [blockId, set] of byBlock) out[sampleId][blockId] = [...set];
+  }
+  return out;
+}
+
+export function computeCupperAlignment(input: CupperAlignmentInput): CupperAlignmentRow[] {
+  const { format, samples, evals, excludedUserIds } = input;
+  if (format === "affective") return [];
+  const { blobFor, selections, majoritySets } = buildConsensus(input);
 
   // For each cupper, across all samples+blocks that HAVE a majority set,
   // alignment = matched majority descriptors / total majority opportunities.

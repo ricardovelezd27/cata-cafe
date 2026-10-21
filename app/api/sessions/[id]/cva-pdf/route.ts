@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { orderReferencesFirst } from "@/lib/referenceRules";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
+import { slug } from "@/lib/pdf/filename";
 import { CvaFormDocument, type CvaDocumentProps } from "@/lib/pdf/CvaFormDocument";
 
 export const runtime = "nodejs";
@@ -85,6 +86,7 @@ export async function GET(
   const ownerView = session.createdBy === viewAsId;
 
   const props: CvaDocumentProps = {
+    ownerView,
     sessionName: session.name,
     date: dateStr,
     cupperName: profile?.displayName ?? "",
@@ -133,16 +135,4 @@ export async function GET(
       "Cache-Control": "no-store",
     },
   });
-}
-
-/** ASCII-safe filename fragment (Content-Disposition filenames choke on accents). */
-function slug(input: string): string {
-  // NFD splits accented letters into base + combining mark; the alnum filter
-  // then drops the marks, so "Café" → "cafe" without a fragile combining-range.
-  return input
-    .normalize("NFD")
-    .replace(/[^a-zA-Z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0, 60)
-    .toLowerCase();
 }

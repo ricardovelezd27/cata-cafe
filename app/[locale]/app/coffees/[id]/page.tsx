@@ -6,6 +6,7 @@ import {
   Users,
   Star,
   Pencil,
+  FileDown,
   Coffee as CoffeeIcon,
 } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -14,6 +15,7 @@ import { prisma } from "@/lib/prisma";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { usableCoffeeWhere, type CoffeeVisibility } from "@/lib/coffeeAccess";
 import { computeCoffeeAggregate } from "@/lib/coffeeAggregate";
+import { loadCoffeeAggregateSamples } from "@/lib/coffees/aggregateSamples";
 import { formatCoffeeCode } from "@/lib/coffeeCode";
 import { FLAVOR_DESC_KEYS } from "@/lib/descriptors";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
@@ -112,26 +114,7 @@ export default async function CoffeeProfilePage({
         session: { select: { id: true, name: true } },
       },
     }),
-    prisma.sessionSample.findMany({
-      where: { coffeeId: id },
-      select: {
-        id: true,
-        sessionId: true,
-        session: { select: { id: true, name: true, date: true } },
-        aggregateScore: {
-          select: { communityScore: true, participantCount: true, attrAverages: true },
-        },
-        evaluations: {
-          where: { isDraft: false },
-          select: {
-            descriptiveData: true,
-            combinedData: true,
-            individualScore: true,
-            submittedAt: true,
-          },
-        },
-      },
-    }),
+    loadCoffeeAggregateSamples(id),
   ]);
 
   // Visibility rule: results (counts, scores, attr averages, flavor cloud) are
@@ -522,7 +505,19 @@ export default async function CoffeeProfilePage({
 
         {/* Ficha técnica */}
         <section>
-          <h2 className="mb-3 font-display text-xl text-primary-container">{t("detailsTitle")}</h2>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-display text-xl text-primary-container">{t("detailsTitle")}</h2>
+            <ButtonLink
+              href={`/api/coffees/${coffee.id}/ficha?locale=${locale}&inline=1`}
+              target="_blank"
+              rel="noopener"
+              variant="secondary"
+              size="sm"
+              icon={<FileDown size={15} aria-hidden />}
+            >
+              {t("downloadFicha")}
+            </ButtonLink>
+          </div>
           <div className="grid grid-cols-2 gap-4 rounded-card border border-outline-variant bg-surface-container-lowest p-5 sm:grid-cols-3 lg:grid-cols-4">
             {filledFields.map((f) => (
               <div key={f.label}>

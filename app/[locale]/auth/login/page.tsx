@@ -1,4 +1,7 @@
+import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { createClient } from "@/lib/supabase/server";
+import { safeNext } from "@/lib/safeNext";
 import { LoginForm } from "./LoginForm";
 
 export default async function LoginPage({
@@ -11,6 +14,19 @@ export default async function LoginPage({
   const { locale } = await params;
   const { next, email, intent, error } = await searchParams;
   setRequestLocale(locale);
+
+  // Already signed in (registered, not an anonymous guest) and heading to a
+  // safe same-origin path: skip the form. Guests keep seeing it so the
+  // guest-claim flow (?intent=claim) still sends them through a real login.
+  const target = safeNext(next);
+  if (target) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user && !user.is_anonymous) redirect(target);
+  }
+
   const t = await getTranslations("auth");
 
   const linkFailed = error === "exchange_failed";
