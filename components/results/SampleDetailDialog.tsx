@@ -14,7 +14,7 @@
 
 import { referenceBadgeText } from "@/lib/referenceRules";
 import { useState } from "react";
-import { Pencil } from "lucide-react";
+import { Coffee, Pencil } from "lucide-react";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { PillTabs, Button, type PillTabItem } from "@/components/ui";
 import { SampleDetail, type SampleDetailTranslations } from "@/components/results/SampleDetail";
@@ -27,6 +27,7 @@ export type SampleDetailDialogTranslations = SampleDetailTranslations & {
   viewingAs: string;
   editSample: string;
   editExtrinsic: string;
+  assignCoffee: string;
   close: string;
 };
 
@@ -56,6 +57,7 @@ export function SampleDetailDialog({
   onEdit,
   onEditMetadata,
   onEditExtrinsic,
+  onAssignCoffee,
   referenceBadge,
   referenceCount = 1,
   t,
@@ -77,6 +79,8 @@ export function SampleDetailDialog({
   // Absent unless the sample is revealed (blind integrity — origin data
   // stays hidden pre-reveal) and the viewer isn't a read-only admin.
   onEditExtrinsic?: () => void;
+  // Owner-only: link a coffee to a coffee-less (express) sample.
+  onAssignCoffee?: () => void;
   // Label for the "Referencia" badge — only ever rendered when `sample` IS
   // the session's reference (control) sample.
   referenceBadge?: string;
@@ -144,8 +148,19 @@ export function SampleDetailDialog({
           />
         )}
 
-        {isOwner && (onEditMetadata || onEditExtrinsic) && (
+        {isOwner && (onEditMetadata || onEditExtrinsic || onAssignCoffee) && (
           <div className="flex flex-wrap gap-2">
+            {onAssignCoffee && (
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={<Coffee size={13} aria-hidden />}
+                onClick={onAssignCoffee}
+                className="w-fit"
+              >
+                {t.assignCoffee}
+              </Button>
+            )}
             {onEditMetadata && (
               <Button
                 size="sm"

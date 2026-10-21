@@ -49,6 +49,10 @@ export type SampleResult = {
   revealed: boolean;
   coffee: CoffeeInfo | null;
   masterCoffee: SampleCoffee | null;
+  // Whether a coffee row is linked at all — masterCoffee is a (blank) object
+  // even for coffee-less samples, so it cannot answer this. Express sessions
+  // create coffee-less samples; the owner may name one post-close.
+  hasCoffee: boolean;
   descriptive: Record<string, unknown>;
   affective: Record<string, unknown>;
   combined: Record<string, unknown>;

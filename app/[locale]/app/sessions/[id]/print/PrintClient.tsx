@@ -903,6 +903,16 @@ function AffectiveGridPage({
             [t.defectiveCups, (sh: CvaSampleSheet) => <CupBoxes marks={sh.cups.defective} color={C.red} />],
             [t.defectIfAny, (sh: CvaSampleSheet) => <DefectTypes sheet={sh} />],
             [t.score, (sh: CvaSampleSheet) => <ScoreCell sheet={sh} t={t} />],
+            ...(sheets.some((sh) => sh.expressNotes)
+              ? [
+                  [
+                    t.expressNotes,
+                    (sh: CvaSampleSheet) => (
+                      <div style={{ fontSize: "6.5pt", whiteSpace: "pre-wrap" }}>{sh.expressNotes}</div>
+                    ),
+                  ],
+                ]
+              : []),
           ] as [string, (sh: CvaSampleSheet) => React.ReactNode][]
         ).map(([label, render], i, all) => (
           <div
@@ -1078,7 +1088,12 @@ function MetaBlock({ title, fields }: { title: string; fields: { label: string; 
 }
 
 function MetaAppendix({ sheets, t, formName }: { sheets: CvaSampleSheet[]; t: T; formName: string }) {
-  const withData = sheets.filter((sh) => sh.physical.length + sh.extrinsic.length > 0);
+  // Affective sheets already carry the note in the score band; descriptive and
+  // combined pages are at official density, so their note lives here.
+  const noteOf = (sh: CvaSampleSheet) => (sh.format === "affective" ? "" : sh.expressNotes);
+  const withData = sheets.filter(
+    (sh) => sh.physical.length + sh.extrinsic.length > 0 || noteOf(sh) !== "",
+  );
   if (withData.length === 0) return null;
   return (
     <section className="sca-page">
@@ -1089,6 +1104,14 @@ function MetaAppendix({ sheets, t, formName }: { sheets: CvaSampleSheet[]; t: T;
           <SampleStrip sheet={sheet} t={t} />
           <MetaBlock title={t.physical} fields={sheet.physical} />
           <MetaBlock title={t.extrinsic} fields={sheet.extrinsic} />
+          {noteOf(sheet) && (
+            <div style={{ border: `0.75pt solid ${C.rule}`, marginBottom: "4pt" }}>
+              <div style={S.cataTitle}>{t.expressNotes}</div>
+              <div style={{ padding: "3pt 5pt", fontSize: "7pt", whiteSpace: "pre-wrap" }}>
+                {noteOf(sheet)}
+              </div>
+            </div>
+          )}
         </div>
       ))}
       <SheetFooter t={t} />

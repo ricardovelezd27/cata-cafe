@@ -795,6 +795,16 @@ function CupBand({
       render: (sheet) => <ScoreCell sheet={sheet} t={t} />,
     },
   ];
+  // Only when at least one column carries a free-text note — keeps the band
+  // (and the page count) unchanged for sessions without "Notas rápidas".
+  if (sheets.some((sh) => sh.expressNotes)) {
+    rows.push({
+      key: "express",
+      label: t.expressNotes,
+      render: (sheet) =>
+        sheet.expressNotes ? <Text style={{ fontSize: 6.5 }}>{sheet.expressNotes}</Text> : null,
+    });
+  }
 
   return (
     <>
@@ -1009,7 +1019,12 @@ function MetaAppendix({
   t: Record<string, string>;
   formName: string;
 }) {
-  const withData = sheets.filter((sh) => sh.physical.length + sh.extrinsic.length > 0);
+  // Affective sheets already carry the note in the score band; descriptive and
+  // combined pages are at official density, so their note lives here.
+  const noteOf = (sh: CvaSampleSheet) => (sh.format === "affective" ? "" : sh.expressNotes);
+  const withData = sheets.filter(
+    (sh) => sh.physical.length + sh.extrinsic.length > 0 || noteOf(sh) !== "",
+  );
   if (withData.length === 0) return null;
   return (
     <Page size="A4" style={s.page}>
@@ -1020,6 +1035,14 @@ function MetaAppendix({
           <SampleStrip sheet={sheet} t={t} />
           <MetaBlock title={t.physical} fields={sheet.physical} />
           <MetaBlock title={t.extrinsic} fields={sheet.extrinsic} />
+          {noteOf(sheet) ? (
+            <View style={s.cataBox} wrap={false}>
+              <Text style={s.cataTitle}>{t.expressNotes}</Text>
+              <View style={s.cataBody}>
+                <Text style={{ fontSize: 7 }}>{noteOf(sheet)}</Text>
+              </View>
+            </View>
+          ) : null}
         </View>
       ))}
       <SheetFooter t={t} />

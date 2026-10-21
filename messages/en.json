@@ -658,6 +658,8 @@
       "myEvaluation": "My evaluation",
       "editSample": "Edit sample",
       "editExtrinsic": "Edit origin data",
+      "expressNotes": "Quick notes",
+      "assignCoffee": "Assign coffee",
       "extrinsicSaved": "Origin data saved",
       "close": "Close"
     },
