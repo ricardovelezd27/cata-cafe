@@ -1510,6 +1510,11 @@
       "body": "Kim's five slow movements to wake up perception before smelling and tasting. 3 to 8 minutes, seated or standing.",
       "cta": "See the exercises"
     },
+    "waiting": {
+      "title": "While you wait",
+      "body": "A slow movement prepares the senses. Pick an exercise; if the cupping starts, we take you to the table.",
+      "minutes": "{min} min"
+    },
     "player": {
       "start": "Start",
       "next": "Next",

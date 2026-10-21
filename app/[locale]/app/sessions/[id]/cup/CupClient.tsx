@@ -7,6 +7,8 @@ import {
   useEffect,
   useSyncExternalStore,
 } from "react";
+import { WarmupMoment } from "@/components/session-moments/WarmupMoment";
+import type { WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { Coffee, Scale, FileText, BarChart3 } from "lucide-react";
@@ -158,10 +160,14 @@ export function CupClient({
   userEmail,
   userCountry,
   userId,
+  warmup,
 }: {
   locale: string;
   initialSampleId?: string;
   session: Session;
+  /** Optional pre-cupping warm-up (CuppingSession.warmupExerciseId) — shown
+   *  once per session per device by the session-moment overlay. */
+  warmup?: { exerciseId: string | null; strings: WarmupPlayerStrings };
   isOwner: boolean;
   isGroup: boolean;
   sessionStatus: string;
@@ -1634,7 +1640,11 @@ export function CupClient({
   );
 
   // ─── Render ───────────────────────────────────────────────────
+  // The session-moment overlay is a SIBLING of SessionShell (never inside
+  // its top bar): it stacks above the shell, is skippable, and renders
+  // static content so it works offline.
   return (
+    <>
     <SessionShell
       identity={identity}
       secondaryNav={secondaryNav}
@@ -1939,5 +1949,15 @@ export function CupClient({
 
       <DevRoleBadge email={userEmail} />
     </SessionShell>
+    {warmup && (
+      <WarmupMoment
+        sessionId={session.id}
+        locale={locale}
+        exerciseId={warmup.exerciseId}
+        enabled={sessionStatus !== "closed"}
+        strings={warmup.strings}
+      />
+    )}
+    </>
   );
 }
