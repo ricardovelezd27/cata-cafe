@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
+import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
 import { revealSample, refreshAggregateScores, resendCloseEmails } from "@/app/actions/community";
 import { ScoreTable, type ScoreTableTranslations } from "@/components/results/ScoreTable";
 import { SampleRadarChart } from "@/components/results/SampleRadarChart";
@@ -372,7 +373,11 @@ export function ResultsClient({
 
     const sampleIds = new Set(session.samples.map((s) => s.id));
 
-    const channel = supabase
+    // JWT before join — see lib/supabase/realtimeAuth.ts (S6 CP-C4).
+    const stop = subscribeWithSessionAuth(
+      supabase,
+      () =>
+    supabase
       .channel(`results:${session.id}`)
       .on(
         "postgres_changes",
@@ -404,16 +409,15 @@ export function ResultsClient({
             setNewSubmissions((n) => n + 1);
           }
         },
-      )
+      ),
       // A dropped channel otherwise looks exactly like "no new submissions".
       // Flag it so the viewer knows to use Actualizar instead of waiting (F10).
-      .subscribe((status) => {
+      (status) => {
         setLiveUpdatesDown(status !== "SUBSCRIBED");
-      });
+      },
+    );
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return stop;
   }, [isGroup, canViewGroup, isAdminViewer, session.id, session.samples, currentUserId]);
 
   const handleEditSample = (sampleId: string) => {

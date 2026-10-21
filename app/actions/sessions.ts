@@ -977,6 +977,21 @@ export async function updateSession(sessionId: string, input: UpdateSessionInput
   return { ok: true as const };
 }
 
+// Sample add/rename/remove write to session_samples, which is NOT in the
+// supabase_realtime publication. Touching the session row's updatedAt makes
+// the existing `cupping_sessions` UPDATE subscription (CupClient, waiting
+// room) fire, and those clients router.refresh() + reconcile (S6 CP-C4,
+// option (a) — no new publication table, no SQL). Keep it next to the write
+// (same transaction when there is one).
+type SessionToucher = { cuppingSession: { update: typeof prisma.cuppingSession.update } };
+async function touchSession(db: SessionToucher, sessionId: string): Promise<void> {
+  await db.cuppingSession.update({
+    where: { id: sessionId },
+    data: { updatedAt: new Date() },
+    select: { id: true },
+  });
+}
+
 export async function addSessionSample(
   sessionId: string,
   input: { label?: string; coffeeId?: string | null; locale?: string },
@@ -1000,14 +1015,18 @@ export async function addSessionSample(
   });
   const position = (max._max.position ?? -1) + 1;
 
-  const sample = await prisma.sessionSample.create({
-    data: {
-      sessionId,
-      label: input.label?.trim() || `Muestra ${position + 1}`,
-      position,
-      coffeeId: input.coffeeId ?? null,
-    },
-    select: { id: true },
+  const sample = await prisma.$transaction(async (tx) => {
+    const created = await tx.sessionSample.create({
+      data: {
+        sessionId,
+        label: input.label?.trim() || `Muestra ${position + 1}`,
+        position,
+        coffeeId: input.coffeeId ?? null,
+      },
+      select: { id: true },
+    });
+    await touchSession(tx, sessionId);
+    return created;
   });
 
   const locale = input.locale || "es";
@@ -1026,9 +1045,12 @@ export async function renameSessionSample(sampleId: string, label: string) {
   const trimmed = label.trim();
   if (!trimmed) return { ok: false as const, error: "invalid_label" };
 
-  await prisma.sessionSample.update({
-    where: { id: sampleId },
-    data: { label: trimmed },
+  await prisma.$transaction(async (tx) => {
+    await tx.sessionSample.update({
+      where: { id: sampleId },
+      data: { label: trimmed },
+    });
+    await touchSession(tx, sessionId);
   });
 
   revalidatePath(`/es/app/sessions/${sessionId}/cup`);
@@ -1087,6 +1109,7 @@ export async function removeSessionSample(sampleId: string, locale: string = "es
         });
       }
     }
+    await touchSession(tx, sample.sessionId);
   });
 
   revalidatePath(`/${locale}/app/sessions/${sample.sessionId}/cup`);
@@ -1248,9 +1271,12 @@ export async function updateSampleMetadata(
     coffeeUpdated = true;
   }
 
-  await prisma.sessionSample.update({
-    where: { id: sampleId },
-    data: { label: input.label || undefined },
+  await prisma.$transaction(async (tx) => {
+    await tx.sessionSample.update({
+      where: { id: sampleId },
+      data: { label: input.label || undefined },
+    });
+    await touchSession(tx, sample.sessionId);
   });
 
   revalidatePath(`/app/sessions/${sample.sessionId}/cup`);

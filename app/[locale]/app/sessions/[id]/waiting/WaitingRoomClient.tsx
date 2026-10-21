@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createBrowserClient } from "@supabase/ssr";
@@ -83,7 +84,11 @@ export function WaitingRoomClient({
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
 
-    const channel = supabase
+    // JWT before join — see lib/supabase/realtimeAuth.ts (S6 CP-C4).
+    const stop = subscribeWithSessionAuth(
+      supabase,
+      () =>
+    supabase
       .channel(`waiting:${sessionId}`)
       .on(
         "postgres_changes",
@@ -104,10 +109,15 @@ export function WaitingRoomClient({
           // Columns are camelCase in Postgres; accept snake_case defensively.
           if (row.startedAt ?? row.started_at) {
             router.push(`/${locale}/app/sessions/${sessionId}/cup`);
+            return;
           }
+          // Sample add/rename/remove touch the session row (S6 CP-C4): the
+          // samples list and the reference line are server props here, so a
+          // refresh is all it takes.
+          router.refresh();
         },
-      )
-      .subscribe((status) => {
+      ),
+      (status) => {
         if (status === "SUBSCRIBED") {
           setConnectionLost(false);
           clearPoll();
@@ -125,11 +135,12 @@ export function WaitingRoomClient({
             }
           }, 15000);
         }
-      });
+      },
+    );
 
     return () => {
       clearPoll();
-      supabase.removeChannel(channel);
+      stop();
     };
   }, [sessionId, locale, router, isAsync]);
 

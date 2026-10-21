@@ -54,6 +54,8 @@ import {
 } from "@/components/cupping/EvaluationGuardModal";
 import { PhaseStepper } from "@/components/cupping/PhaseStepper";
 import { useKeyboardOpen } from "@/hooks/useKeyboardOpen";
+import { indexAfterReconcile, reconcileSamples } from "@/lib/sampleReconcile";
+import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
 import { DevRoleBadge } from "@/components/dev/DevRoleBadge";
 import {
   SessionShell,
@@ -369,10 +371,33 @@ export function CupClient({
   // outside the render closure (realtime events, the reference-order swap).
   const samplesRef = useRef(samples);
   const sampleIdRef = useRef<string | null>(null);
+  // Known sample ids for the realtime guards — from STATE, not the server
+  // prop, so a sample added mid-session is known without re-subscribing.
+  const sampleIdsRef = useRef<Set<string>>(new Set(samples.map((s) => s.id)));
   useEffect(() => {
     samplesRef.current = samples;
     sampleIdRef.current = samples[sampleIdx]?.id ?? null;
+    sampleIdsRef.current = new Set(samples.map((s) => s.id));
   });
+
+  // Reconcile with a refreshed server prop (S6 CP-C4): the owner adding,
+  // renaming or removing a sample mid-session touches the session row, the
+  // cupping_sessions subscription below calls router.refresh(), and this
+  // merge applies the server's sample METADATA while keeping every local
+  // evaluation draft (lib/sampleReconcile.ts). The server's referenceSampleId
+  // is the truth after a refresh — it may point at a sample this client only
+  // learns about now. Skipped on mount (state already equals the prop).
+  const serverSamplesRef = useRef(session.samples);
+  useEffect(() => {
+    if (serverSamplesRef.current === session.samples) return;
+    serverSamplesRef.current = session.samples;
+    const reference = session.referenceSampleId ?? null;
+    const next = reconcileSamples(samplesRef.current, session.samples, reference);
+    const idx = indexAfterReconcile(next, sampleIdRef.current, samplesRef.current.findIndex((s) => s.id === sampleIdRef.current));
+    setSamples(next);
+    setSampleIdx(idx);
+    setReferenceSampleId(reference);
+  }, [session.samples, session.referenceSampleId]);
   // Moves the (new) reference to the front, restores position order for the
   // rest, and keeps the cupper on the sample they were looking at.
   const applyRefOrder = (order: string[]) => {
@@ -640,9 +665,11 @@ export function CupClient({
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    const sampleIds = new Set(session.samples.map((s) => s.id));
-
-    const channel = supabase
+    // JWT before join — see lib/supabase/realtimeAuth.ts (S6 CP-C4).
+    const stop = subscribeWithSessionAuth(
+      supabase,
+      () =>
+    supabase
       .channel(`session:${session.id}`)
       .on(
         "postgres_changes",
@@ -660,7 +687,7 @@ export function CupClient({
           const sampleId = (row.sessionSampleId ?? row.session_sample_id) as
             | string
             | undefined;
-          if (isDraft === false && sampleId && sampleIds.has(sampleId)) {
+          if (isDraft === false && sampleId && sampleIdsRef.current.has(sampleId)) {
             setSubmittedCount((prev) => prev + 1);
           }
         }
@@ -681,21 +708,39 @@ export function CupClient({
             const next = (row.referenceSampleId ?? row.reference_sample_id ?? null) as
               | string
               | null;
-            applyReferenceOrderRef.current(next && sampleIds.has(next) ? next : null);
+            applyReferenceOrderRef.current(
+              next && sampleIdsRef.current.has(next) ? next : null,
+            );
           }
+          // Any session-row change (sample add/rename/remove touch updatedAt;
+          // start/close/reference) → re-fetch the server page; the reconcile
+          // effect above merges the fresh samples without losing drafts.
+          router.refresh();
         }
-      )
+      ),
       // Without a status callback a dropped channel is indistinguishable from
       // "nobody has submitted yet" — the count just stops moving. Surface it
       // so the maestro knows the number is stale rather than flat (F10).
-      .subscribe((status) => {
+      (status) => {
         setLiveCountDown(status !== "SUBSCRIBED");
-      });
+      },
+    );
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [isGroup, online, session.id, session.samples]);
+    return stop;
+  }, [isGroup, online, session.id, router]);
+
+  // Safety net for the realtime path above (S6 CP-C4): a group cupper whose
+  // channel is silently dead (see lib/supabase/realtimeAuth.ts) still picks up
+  // sample add/rename/remove and the reference within 30s. One RSC fetch per
+  // cupper per 30s; the reconcile effect keeps every local draft. Skipped
+  // while the tab is hidden.
+  useEffect(() => {
+    if (!isGroup || !online) return;
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") router.refresh();
+    }, 30_000);
+    return () => window.clearInterval(id);
+  }, [isGroup, online, router]);
 
   // ─── Save plumbing ────────────────────────────────────────────
   const labelFor = (sampleId: string) =>
@@ -903,7 +948,7 @@ export function CupClient({
   const setCurrentData = (key: keyof Sample, data: Data) => {
     const sample = samples[sampleIdx];
     setSamples((prev) =>
-      prev.map((s, i) => (i === sampleIdx ? { ...s, [key]: data } : s))
+      prev.map((s) => (s.id === sample.id ? { ...s, [key]: data } : s))
     );
     scheduleAutoSave(sample.id, key, data);
     scheduleLocalSave(sample.id, sample.label, key, data);
