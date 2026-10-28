@@ -1399,3 +1399,33 @@ export async function checkSessionStarted(sessionId: string): Promise<boolean> {
     return false;
   }
 }
+
+/** Waiting-room poller for the synced warm-up (S6 warm-up v3 PR3). Kept
+ *  SEPARATE from `checkSessionStarted` on purpose: service-worker-cached
+ *  bundles still call that one and `if (started)` on an object is always
+ *  true. `serverNow` lets the client measure clock skew. Null (never throws)
+ *  for a signed-out or non-member poller. */
+export async function getWaitingState(sessionId: string): Promise<{
+  startedAt: string | null;
+  warmupStartedAt: string | null;
+  warmupExerciseId: string | null;
+  serverNow: string;
+} | null> {
+  try {
+    const user = await requireUser({ skipProfileUpsert: true });
+    await requireSessionMember(sessionId, user.id);
+    const row = await prisma.cuppingSession.findUnique({
+      where: { id: sessionId },
+      select: { startedAt: true, warmupStartedAt: true, warmupExerciseId: true },
+    });
+    if (!row) return null;
+    return {
+      startedAt: row.startedAt?.toISOString() ?? null,
+      warmupStartedAt: row.warmupStartedAt?.toISOString() ?? null,
+      warmupExerciseId: row.warmupExerciseId,
+      serverNow: new Date().toISOString(),
+    };
+  } catch {
+    return null;
+  }
+}

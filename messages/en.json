@@ -534,7 +534,16 @@
     "referenceRemoveActive": "Remove the active reference",
     "referenceAddHint": "The previous reference keeps its 79.00; the new one is pinned.",
     "referenceAddTitle": "Add reference",
-    "referenceAddConfirm": "Add reference"
+    "referenceAddConfirm": "Add reference",
+    "warmupStart": "Sensory movement · Start with the group",
+    "warmupStop": "Stop",
+    "warmupReopen": "Back to the exercise",
+    "warmupTimeLeft": "{time} left",
+    "warmupRunning": "Running",
+    "warmupConfirmStartTitle": "The group is still in the exercise",
+    "warmupConfirmStart": "The group is still in the exercise ({time} left). Start anyway?",
+    "warmupConfirmStartYes": "Start anyway",
+    "warmupStartError": "The exercise couldn't be started."
   },
   "results": {
     "title": "Session Results",
@@ -1679,6 +1688,14 @@
       "save": "Save on this device",
       "omit": "Skip",
       "savedNote": "Saved on this device."
+    },
+    "synced": {
+      "listen": "Close your eyes and listen",
+      "stopped": "The host stopped the exercise",
+      "soundToggle": "Sound on this phone",
+      "missed": "The group is almost done; you can do it on your own.",
+      "inProgress": "In progress · step {n} of {total}",
+      "join": "Join"
     }
   }
 }

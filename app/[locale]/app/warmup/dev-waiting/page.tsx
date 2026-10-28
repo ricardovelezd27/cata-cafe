@@ -34,6 +34,16 @@ export default async function DevWaitingPage({
       initialReferenceIds={[]}
       warmup={{
         chosenId: chosen?.id ?? null,
+        warmupStartedAt: null,
+        serverNow: new Date().toISOString(),
+        synced: {
+          listen: tw("synced.listen"),
+          stopped: tw("synced.stopped"),
+          soundToggle: tw("synced.soundToggle"),
+          missed: tw("synced.missed"),
+          inProgress: tw.raw("synced.inProgress") as string,
+          join: tw("synced.join"),
+        },
         title: tw("waiting.title"),
         body: tw("waiting.body"),
         minutes: tw.raw("waiting.minutes") as string,
