@@ -1,0 +1,109 @@
+/* Segmented step progress (components/warmup/StepProgress.tsx).
+ * Fills are scaleX(var(--p)) written per frame by the player; nothing here
+ * transitions width, so the bar never fights the player's clock. */
+
+.root {
+  width: min(100%, 320px);
+  margin-inline: auto;
+}
+@media (min-width: 768px) {
+  .root { width: 360px; max-width: 100%; }
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 12px; /* room for the 6 px dots; tracks are centred */
+  transition: opacity 300ms ease;
+}
+.paused .bar { opacity: 0.55; }
+
+.track {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 12px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklch, var(--color-outline-variant) 60%, transparent);
+}
+
+.fill {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-pill);
+  background: var(--wu-fill, var(--color-primary-container));
+  transform: scaleX(var(--p, 0));
+  transform-origin: left center;
+  will-change: transform;
+}
+
+/* Turn halo at the fill head; fired by the player with data-fire="1". */
+.halo {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--p, 1) * 100%);
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  background: var(--wu-fill, var(--color-primary-container));
+  opacity: 0;
+  pointer-events: none;
+}
+.halo[data-fire="1"] { animation: halo 700ms ease-out forwards; }
+
+@keyframes halo {
+  from { opacity: 0.25; transform: scale(1); }
+  to   { opacity: 0;    transform: scale(2.2); }
+}
+
+.hold {
+  flex: 0 0 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 6px;
+}
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: color-mix(in oklch, var(--color-outline-variant) 60%, transparent);
+  transition: background-color 200ms ease;
+}
+.dot[data-lit="1"] { background: var(--wu-move, var(--color-secondary)); }
+
+.labelRow {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: 10px;
+  min-height: 1.4em;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1.4;
+  color: var(--color-on-surface-variant);
+}
+.labelRow.withSeconds { justify-content: space-between; }
+.dusk .labelRow { color: color-mix(in oklch, var(--wu-ink) 85%, transparent); }
+
+.label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.seconds {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .halo[data-fire="1"] { animation: none; }
+  .bar, .dot { transition: none; }
+}

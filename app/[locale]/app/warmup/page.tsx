@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { WARMUP_EXERCISES, WARMUP_SHARED, lw } from "@/lib/warmup/exercises";
 import { WarmupFigure } from "@/components/warmup/figures";
+import { previewSpec } from "@/lib/warmup/preview";
 
 // Library of Kim's five sensory warm-ups. Sole dynamic segment is [locale]
 // → static params are fine here (the per-exercise page is NOT static).
@@ -53,7 +54,6 @@ export default async function WarmupLibraryPage({
         </p>
         <ol className="divide-y divide-outline-variant border-y border-outline-variant">
           {WARMUP_EXERCISES.map((ex) => {
-            const thumb = ex.steps.find((s) => s.figure.variant === "slow-open") ?? ex.steps[1] ?? ex.steps[0];
             return (
               <li key={ex.id}>
                 <Link
@@ -63,8 +63,11 @@ export default async function WarmupLibraryPage({
                   <span className="font-display text-4xl leading-none text-primary-fixed-dim tabular-nums w-10 shrink-0 text-right md:text-5xl md:w-14">
                     {ex.order}
                   </span>
-                  <span className="h-20 w-16 shrink-0 text-on-surface md:h-24 md:w-20" aria-hidden>
-                    <WarmupFigure figure={thumb.figure} durationSec={thumb.durationSec} reducedMotion paused />
+                  <span
+                    className="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-card md:h-[88px] md:w-[88px]"
+                    aria-hidden
+                  >
+                    <WarmupFigure {...previewSpec(ex)} frame="tile" />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block font-display text-xl text-primary-container md:text-2xl">

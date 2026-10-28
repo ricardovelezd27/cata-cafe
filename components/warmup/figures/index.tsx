@@ -1,37 +1,25 @@
 "use client";
 
-import type { WarmupFigure as WarmupFigureSpec } from "@/lib/warmup/exercises";
-import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { ArmRaiseFigure } from "./ArmRaiseFigure";
 import { EyesFigure } from "./EyesFigure";
+import { FaceFigure } from "./FaceFigure";
 import { HeadRotateFigure } from "./HeadRotateFigure";
 import { TrunkForwardBackFigure } from "./TrunkForwardBackFigure";
 import { TrunkSideFigure } from "./TrunkSideFigure";
-import type { FigureProps } from "./shared";
+import type { WarmupFigureProps } from "./shared";
 
-export type { FigureProps } from "./shared";
-export { ArmRaiseFigure, EyesFigure, HeadRotateFigure, TrunkForwardBackFigure, TrunkSideFigure };
-
-export interface WarmupFigureProps {
-  figure: WarmupFigureSpec;
-  durationSec: number;
-  paused?: boolean;
-  /** Force static (dev review) — otherwise follows prefers-reduced-motion. */
-  reducedMotion?: boolean;
-  title?: string;
-  className?: string;
-  highlight?: boolean;
-}
+export type { FigureProps, WarmupFigureProps } from "./shared";
+export { THUMB_VIEWBOX } from "./shared";
+export { ArmRaiseFigure, EyesFigure, FaceFigure, HeadRotateFigure, TrunkForwardBackFigure, TrunkSideFigure };
 
 /**
- * Dispatcher: content descriptor → the figure for its kind. The player
- * remounts it per step (key on the step id) so every animation starts from
- * neutral. Reduced motion → static end-pose + arrow (no animation).
+ * Dispatcher: kind → figure. Figures do NOT animate. Either:
+ *  - pass `pose` for a static render (tiles, dev gallery), or
+ *  - omit it and write `transform` attributes on the `[data-part]` groups
+ *    yourself every frame (the player, via poses.partTransforms + `ref`).
+ * `path` draws the current leg's dotted trajectory.
  */
-export function WarmupFigure({ figure, reducedMotion, ...rest }: WarmupFigureProps) {
-  const prefersReduced = useReducedMotion();
-  const { kind, ...spec } = figure;
-  const props: FigureProps = { ...spec, ...rest, reducedMotion: reducedMotion ?? prefersReduced };
+export function WarmupFigure({ kind, ...props }: WarmupFigureProps) {
   switch (kind) {
     case "arm-raise":
       return <ArmRaiseFigure {...props} />;

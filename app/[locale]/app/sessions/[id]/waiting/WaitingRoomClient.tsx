@@ -280,7 +280,8 @@ export function WaitingRoomClient({
           locale={locale}
           t={warmup.strings}
           onFinish={() => setActiveWarmupId(null)}
-          onSkip={() => setActiveWarmupId(null)}
+          onExit={() => setActiveWarmupId(null)}
+          mode="session"
         />
       )}
     </main>

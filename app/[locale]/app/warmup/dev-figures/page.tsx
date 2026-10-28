@@ -2,8 +2,8 @@ import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { FigureGallery } from "./FigureGallery";
 
-// Dev-only review board: every warm-up figure kind × the three evolution
-// variants, with replay / pause / reduced-motion toggles. 404 in production.
+// Dev-only review board: every warm-up figure kind with pose sliders, eyes,
+// lead and tile/stage framing (figures are static now). 404 in production.
 export const dynamic = "force-dynamic";
 
 export default async function DevFiguresPage({

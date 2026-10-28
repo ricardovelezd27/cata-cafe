@@ -1,195 +1,314 @@
-/* Warm-up player layout (v2, "quiet screen").
+/* Warm-up player v3 — one column at every width.
  *
- * Mobile (< 768px): a fixed 100dvh stack with safe-area padding. The figure
- * stage takes ~45 % of the viewport (breathing ring centred behind a line
- * silhouette), ONE large cue line sits in the middle, controls are docked at
- * the bottom with the same gesture-zone padding rule as CanvasFooter.
- * Desktop (md:+): two columns inside a 1100px max width, figure sticky on
- * the left, text on the right. `.inline` (library page) drops the fixed
- * positioning at md:+; below md it is always full-screen.
+ * Phone (< 768px): fixed 100dvh stack — top bar 48px · stage 46dvh · bar ·
+ * cue (flex-centred) · footer. Desktop: the same column centred at ≤ 760px.
+ * `.inline` (library route) drops the fixed positioning at md:+.
+ *
+ * Stage variables (`--wu-*`) feed the figure, the bar and the bubble; the
+ * `[data-dusk]` set swaps them for the eyes-closed legs (1.2 s ease). Fills
+ * are opaque color-mix, never opacity, so overlapping body parts show no
+ * seams. No hex literals: tokens from app/globals.css only.
  */
 
 .root {
+  --wu-bg: color-mix(in oklch, var(--color-secondary-fixed) 30%, var(--color-surface));
+  --wu-bg-far: var(--color-surface);
+  --wu-body: color-mix(in oklch, var(--color-on-surface) 20%, var(--color-surface));
+  --wu-chair: var(--color-surface-container-highest);
+  --wu-move: var(--color-secondary);
+  --wu-fill: var(--color-primary-container);
+  --wu-track: color-mix(in oklch, var(--color-outline-variant) 60%, transparent);
+  --wu-ink: var(--color-on-surface);
+  --wu-muted: var(--color-on-surface-variant);
   position: fixed;
   inset: 0;
   z-index: 60;
   display: flex;
   flex-direction: column;
   height: 100dvh;
-  background: var(--color-surface);
-  color: var(--color-on-surface);
-  font-family: var(--font-ui);
-}
-
-.inner {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
-  width: 100%;
   padding-top: env(safe-area-inset-top, 0px);
+  background: radial-gradient(circle at 50% 38%, var(--wu-bg) 0%, var(--wu-bg-far) 68%);
+  color: var(--wu-ink);
+  font-family: var(--font-ui);
+  transition: background 1200ms ease, color 1200ms ease;
+}
+.root[data-dusk="1"] {
+  --wu-bg: color-mix(in oklch, var(--color-inverse-surface) 94%, var(--color-primary));
+  --wu-bg-far: color-mix(in oklch, var(--color-inverse-surface) 96%, var(--color-primary));
+  --wu-body: color-mix(in oklch, var(--color-inverse-on-surface) 18%, var(--wu-bg));
+  --wu-chair: color-mix(in oklch, var(--color-inverse-on-surface) 10%, var(--wu-bg));
+  --wu-move: var(--color-secondary-fixed-dim);
+  --wu-fill: var(--color-primary-fixed-dim);
+  --wu-track: color-mix(in oklch, var(--color-inverse-on-surface) 20%, transparent);
+  --wu-ink: var(--color-inverse-on-surface);
+  --wu-muted: color-mix(in oklch, var(--color-inverse-on-surface) 70%, transparent);
 }
 
-.figureCol {
-  position: relative;
-  flex: 0 0 45dvh;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  padding: 12px 24px 8px;
-  background: var(--color-surface-container-low);
-  border-bottom: 1px solid var(--color-outline-variant);
-  transition: flex-basis 400ms ease;
+/* ── Top bar: never hides ── */
+.topbar {
+  flex: 0 0 48px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 8px;
+  transition: opacity 400ms ease;
 }
-/* Quiet screens give the text room (and the keyboard). */
-.root[data-phase="intro"] .figureCol,
-.root[data-phase="reflect"] .figureCol,
-.root[data-phase="done"] .figureCol {
-  flex-basis: 24dvh;
+.root[data-dusk="1"] .topbar { opacity: 0.6; }
+.eyebrow {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--wu-muted);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.exitBtn,
+.iconGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 10px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--wu-muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  justify-self: start;
+}
+.iconGhost { justify-self: end; justify-content: center; }
+.exitBtn:hover,
+.iconGhost:hover { color: var(--wu-ink); background: color-mix(in oklch, var(--wu-ink) 8%, transparent); }
+.exitBtn:focus-visible,
+.iconGhost:focus-visible,
+.chevBtn:focus-visible,
+.playBtn:focus-visible,
+.ghostBtn:focus-visible,
+.primaryBtn:focus-visible,
+.switchRow:focus-visible,
+.exitGo:focus-visible {
+  outline: 2px solid var(--wu-fill);
+  outline-offset: 2px;
 }
 
-/* container-type: size lets the ring size itself from the stage (cqw/cqh). */
+/* ── Stage ── */
 .stage {
   position: relative;
-  flex: 1 1 auto;
+  flex: 0 0 46dvh;
   min-height: 0;
   container-type: size;
-}
-
-.figureBox {
-  position: absolute;
-  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6% 0;
-  transition: opacity 700ms ease;
+  transition: flex-basis 400ms ease;
 }
-.figureBox > svg { max-height: 100%; max-width: 100%; }
-/* Eyes-closed variant: the whole figure recedes; the ring glows instead. */
-.figureBox.dim { opacity: 0.6; }
-
-/* Seconds appear only for reduced-motion / "Accesible". */
-.numeral {
-  flex: 0 0 auto;
-  text-align: center;
-  font-family: var(--font-display);
-  font-size: 28px;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-on-surface);
-  padding-top: 4px;
-}
-.numeral small {
-  font-family: var(--font-ui);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-on-surface-variant);
-  margin-left: 4px;
-}
-
-.textCol {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.topbar {
+.root[data-phase="intro"] .stage,
+.root[data-phase="reflect"] .stage,
+.root[data-phase="done"] .stage { flex-basis: 24dvh; }
+.figureBox {
+  position: absolute;
+  inset: 4% 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 20px 0;
+  justify-content: center;
+  transition: opacity 700ms ease;
 }
+.figureBox > svg { max-height: 100%; max-width: 100%; height: 100%; background: none; }
+/* Closing: the neutral figure recedes. */
+.figureQuiet { opacity: 0.55; }
+.stageDim .figureBox { opacity: 0.85; }
 
-.eyebrow {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-on-surface-variant);
-  margin: 0 0 6px;
-}
-
-.dots { display: flex; gap: 5px; align-items: center; }
-.dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--color-outline-variant);
-  transition: background-color var(--transition-fast), transform var(--transition-fast);
-}
-.dot.done { background: var(--color-primary-fixed-dim); }
-.dot.current { background: var(--color-primary-container); transform: scale(1.35); }
-
+/* ── Body (cue) ── */
 .body {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 12px 20px 20px;
+  padding: 12px 20px 16px;
   -webkit-overflow-scrolling: touch;
 }
-/* Step / pause / arrive / closing: one cue line, vertically centred. */
-.bodyCentered {
+.bodyRun {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
   text-align: center;
-  padding-bottom: 12px;
+  overflow: hidden;
 }
 
-.title {
-  font-family: var(--font-display);
-  font-size: clamp(26px, 6vw, 36px);
-  line-height: 1.1;
-  color: var(--color-primary-container);
-  margin: 0 0 8px;
-}
-
-/* THE cue: the step text, Newsreader, large. */
 .cue {
   font-family: var(--font-display);
-  font-size: clamp(24px, 6.4vw, 32px);
+  font-size: clamp(24px, 6.4vw, 28px);
   line-height: 1.28;
-  color: var(--color-on-surface);
+  color: var(--wu-ink);
   margin: 0 auto;
   max-width: 24ch;
   text-wrap: balance;
 }
-.cueMuted { color: var(--color-on-surface-variant); }
-.fadeIn { animation: cueIn 700ms ease both; }
+.root[data-dusk="1"] .cue { font-size: clamp(16px, 4.6vw, 20px); opacity: 0.7; }
+/* Dusk + movement: the cue settles to a 55 % floor after 4 s (chime carries it). */
+.root[data-dusk="1"] .cueMoving { animation: cueDim 1000ms ease 4000ms both; }
+@keyframes cueDim { from { opacity: 0.7; } to { opacity: 0.55; } }
+.fadeIn { animation: cueIn 400ms ease both; }
+.root[data-dusk="1"] .cueMoving.fadeIn { animation: cueIn 400ms ease both, cueDim 1000ms ease 4000ms both; }
 @keyframes cueIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
-/* Whispered "observa" prompts: one at a time, fading in. The slot is
-   reserved so the cue never jumps when a prompt appears. */
+.chromeCue {
+  margin: 10px 0 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--wu-muted);
+  animation: chromeIn 300ms ease both, chromeOut 600ms ease 3200ms both;
+}
+@keyframes chromeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes chromeOut { from { opacity: 1; } to { opacity: 0; } }
+
+/* Whispers / secondary text: one at a time, slot reserved so the cue never jumps. */
 .whisperSlot {
-  min-height: 3.6em;
-  margin: 18px auto 0;
-  max-width: 30ch;
+  min-height: 3.2em;
+  margin: 14px auto 0;
+  max-width: 32ch;
   font-size: 15px;
   line-height: 1.5;
-  font-style: italic;
-  color: var(--color-on-surface-variant);
+  color: var(--wu-muted);
 }
-.whisper { display: inline-block; animation: whisperIn 1400ms ease both; }
+.whisper { display: inline-block; font-style: italic; animation: whisperIn 1400ms ease both; }
+.secondary { display: inline-block; animation: whisperIn 700ms ease both; }
 @keyframes whisperIn { from { opacity: 0; } to { opacity: 1; } }
 
-.lead { font-size: 15px; line-height: 1.55; color: var(--color-on-surface); margin: 0 0 12px; }
-.muted { font-size: 13px; line-height: 1.5; color: var(--color-on-surface-variant); margin: 0; }
+/* ── Footer ── */
+.controls {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 10px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+  transition: opacity 400ms ease, transform 400ms ease;
+}
+.root[data-chrome-hidden="1"] .controls { opacity: 0; transform: translateY(8px); pointer-events: none; }
+.chevBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--wu-muted);
+  cursor: pointer;
+}
+.chevBtn:hover:not(:disabled) { color: var(--wu-ink); background: color-mix(in oklch, var(--wu-ink) 8%, transparent); }
+.chevBtn:disabled { opacity: 0.35; cursor: default; }
+.playBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border: none;
+  border-radius: 999px;
+  background: var(--wu-fill);
+  color: var(--color-on-primary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+.playBtn:hover { transform: scale(1.04); }
+.startBtn { width: 100%; max-width: 420px; min-height: 48px; font-size: 15px; }
 
+.primaryBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 20px;
+  white-space: nowrap;
+  border: none;
+  border-radius: 999px;
+  background: var(--wu-fill);
+  color: var(--color-on-primary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+.primaryBtn:hover { background: var(--color-primary); }
+.bodyRun .primaryBtn { margin-top: 20px; }
+.ghostBtn {
+  background: none;
+  border: none;
+  padding: 8px 10px;
+  min-height: 44px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--wu-muted);
+  cursor: pointer;
+  border-radius: 999px;
+}
+.ghostBtn:hover { color: var(--wu-ink); }
+
+/* ── "La cata empezó" docked bar ── */
+.exitBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px));
+  background: var(--color-surface-container-highest);
+  color: var(--color-on-surface);
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+  animation: barUp 300ms ease both;
+}
+@keyframes barUp { from { transform: translateY(100%); } to { transform: none; } }
+.exitDot { width: 8px; height: 8px; border-radius: 999px; background: var(--color-primary-container); flex: 0 0 auto; }
+.exitText { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
+.exitTitle { font-size: 14px; font-weight: 600; }
+.exitSub { font-size: 12px; color: var(--color-on-surface-variant); font-variant-numeric: tabular-nums; }
+.exitGo {
+  background: none;
+  border: none;
+  min-height: 44px;
+  padding: 0 8px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-primary-container);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* ── Intro / reflect / done text ── */
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(26px, 6vw, 32px);
+  line-height: 1.1;
+  color: var(--color-primary-container);
+  margin: 0 0 8px;
+}
+.lead { font-size: 15px; line-height: 1.55; color: var(--wu-ink); margin: 0 0 12px; }
+.muted { font-size: 13px; line-height: 1.5; color: var(--wu-muted); margin: 0; }
+.note { margin-top: 12px; }
+.kbd { display: none; }
 .kicker {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-on-surface-variant);
+  color: var(--wu-muted);
   margin: 16px 0 4px;
 }
-
+.sequence { margin: 0; font-size: 13px; line-height: 1.5; color: var(--wu-ink); }
 .list { margin: 0; padding-left: 18px; list-style: disc; font-size: 15px; line-height: 1.55; }
 .list li + li { margin-top: 6px; }
-
 .evolution { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
 .chip {
   font-size: 12px;
@@ -197,10 +316,9 @@
   padding: 4px 10px;
   border-radius: 999px;
   border: 1px solid var(--color-outline-variant);
-  color: var(--color-on-surface-variant);
+  color: var(--wu-muted);
   background: var(--color-surface-container-lowest);
 }
-
 .safety {
   margin-top: 16px;
   padding: 10px 12px;
@@ -212,8 +330,10 @@
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
-/* Options (intro): sound, accessible numerals, large text, stay still. */
+/* Options */
 .options { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.demoRow { display: flex; flex-direction: column; gap: 2px; padding: 4px 0 8px; border-bottom: 1px solid var(--color-outline-variant); }
+.demoRow .ghostBtn { align-self: flex-start; padding-left: 0; }
 .switchRow {
   display: flex;
   align-items: center;
@@ -227,13 +347,12 @@
   border-bottom: 1px solid var(--color-outline-variant);
   font: inherit;
   text-align: left;
-  color: var(--color-on-surface);
+  color: var(--wu-ink);
   cursor: pointer;
 }
-.switchRow:focus-visible { outline: 2px solid var(--color-primary-container); outline-offset: 2px; }
 .switchText { display: flex; flex-direction: column; gap: 2px; }
 .switchLabel { font-size: 14px; font-weight: 500; }
-.switchHint { font-size: 12px; line-height: 1.4; color: var(--color-on-surface-variant); }
+.switchHint { font-size: 12px; line-height: 1.4; color: var(--wu-muted); }
 .switchTrack {
   flex: 0 0 auto;
   position: relative;
@@ -259,19 +378,14 @@
 /* Reflection */
 .reflect { display: flex; flex-direction: column; gap: 14px; }
 .field { display: flex; flex-direction: column; gap: 8px; }
-.question {
-  font-family: var(--font-display);
-  font-size: 22px;
-  line-height: 1.3;
-  margin: 6px 0 0;
-}
+.question { font-family: var(--font-display); font-size: 22px; line-height: 1.3; margin: 6px 0 0; }
 .textarea {
   width: 100%;
   resize: vertical;
   min-height: 84px;
   padding: 12px 14px;
   font: inherit;
-  font-size: 16px; /* no iOS zoom-on-focus */
+  font-size: 16px;
   line-height: 1.5;
   color: var(--color-on-surface);
   background: var(--color-surface-container-lowest);
@@ -279,142 +393,51 @@
   border-radius: var(--radius-input);
 }
 .textarea:focus-visible { outline: 2px solid var(--color-primary-container); outline-offset: 1px; }
-.reflectActions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding-top: 4px; }
+.reflectActions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding-top: 12px; }
 .savedNote { font-size: 13px; color: var(--color-primary-container); margin: 0 0 4px; }
 
-.controls {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  /* Keep the buttons clear of the browser/OS gesture zone at the bottom edge
-     (home indicator, Chrome bottom toolbar), same rule as CanvasFooter. */
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
-  background: color-mix(in oklch, var(--color-surface) 92%, transparent);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border-top: 1px solid var(--color-outline-variant);
-}
-.spacer { flex: 1; }
-/* Mobile keeps Pause / Siguiente / Saltar / mute; "Anterior" is md:+ and
-   the left-arrow key. */
-.prevBtn { display: none; }
-
-.iconBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 999px;
-  border: 1px solid var(--color-outline-variant);
-  background: var(--color-surface-container-lowest);
-  color: var(--color-on-surface);
-  cursor: pointer;
-  transition: background-color var(--transition-fast), border-color var(--transition-fast);
-}
-.iconBtn:hover:not(:disabled) { background: var(--color-surface-container); }
-.iconBtn:disabled { opacity: 0.4; cursor: default; }
-.iconBtn:focus-visible, .ghostBtn:focus-visible, .primaryBtn:focus-visible {
-  outline: 2px solid var(--color-primary-container);
-  outline-offset: 2px;
-}
-
-.primaryBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 0 18px;
-  white-space: nowrap;
-  border: none;
-  border-radius: 999px;
-  background: var(--color-primary-container);
-  color: var(--color-on-primary);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color var(--transition-fast);
-}
-.primaryBtn:hover { background: var(--color-primary); }
-
-.ghostBtn {
-  background: none;
-  border: none;
-  padding: 8px 10px;
-  min-height: 44px;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-on-surface-variant);
-  cursor: pointer;
-  border-radius: 999px;
-}
-.ghostBtn:hover { color: var(--color-on-surface); }
-
-.kbd { display: none; }
-
 /* Large-text mode */
-.large .cue { font-size: clamp(30px, 8.4vw, 42px); }
+.large .cue { font-size: clamp(30px, 8.4vw, 40px); }
+.large .root[data-dusk="1"] .cue { font-size: 22px; }
 .large .whisperSlot { font-size: 19px; }
-.large .lead, .large .list, .large .switchLabel { font-size: 18px; }
+.large .lead, .large .list, .large .switchLabel, .large .sequence { font-size: 18px; }
 .large .muted, .large .switchHint, .large .safety { font-size: 16px; }
 .large .question { font-size: 26px; }
-.large .numeral { font-size: 36px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .fadeIn, .whisper { animation: none; }
-  .figureCol, .figureBox { transition: none; }
+  .fadeIn, .whisper, .secondary, .chromeCue, .exitBar { animation: none; }
+  .root, .stage, .figureBox, .controls, .topbar { transition: none; }
+  .root[data-dusk="1"] .cueMoving { animation: none; opacity: 0.7; }
 }
 
 @media (min-width: 768px) {
-  .inner {
-    flex-direction: row;
-    justify-content: center;
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 24px 32px;
-    gap: 32px;
+  .root {
+    padding-left: max(0px, calc((100% - 760px) / 2));
+    padding-right: max(0px, calc((100% - 760px) / 2));
   }
-  .figureCol,
-  .root[data-phase="intro"] .figureCol,
-  .root[data-phase="reflect"] .figureCol,
-  .root[data-phase="done"] .figureCol {
-    flex: 0 0 44%;
-    position: sticky;
-    top: 24px;
-    align-self: stretch;
-    border-radius: var(--radius-card);
-    border: 1px solid var(--color-outline-variant);
-    padding: 24px;
-  }
-  .numeral { font-size: 40px; }
-  .textCol { flex: 1 1 auto; }
-  .topbar { padding: 0 0 4px; }
-  .body { padding: 12px 0 20px; }
-  .bodyCentered { text-align: left; }
-  .cue { margin: 0; font-size: clamp(28px, 2.6vw, 36px); max-width: 22ch; }
-  .whisperSlot { margin-left: 0; }
-  .prevBtn { display: inline-flex; }
-  .controls {
-    border-top: 1px solid var(--color-outline-variant);
-    padding: 14px 0 0;
-    background: none;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
-  .kbd { display: inline; font-size: 12px; color: var(--color-on-surface-variant); }
+  .topbar { padding: 0 4px; }
+  .stage { flex-basis: 400px; }
+  .root[data-phase="intro"] .stage,
+  .root[data-phase="reflect"] .stage,
+  .root[data-phase="done"] .stage { flex-basis: 220px; }
+  .cue { font-size: 34px; line-height: 1.25; max-width: 28ch; }
+  .root[data-dusk="1"] .cue { font-size: 22px; }
+  .body { padding: 12px 24px 20px; }
+  .kbd { display: block; margin-top: 12px; }
 
   .inline.root {
     position: relative;
     inset: auto;
     z-index: auto;
     height: auto;
-    min-height: 620px;
+    min-height: 640px;
+    padding-left: 0;
+    padding-right: 0;
+    max-width: 760px;
+    margin: 0 auto;
     border: 1px solid var(--color-outline-variant);
     border-radius: var(--radius-card);
-    background: var(--color-surface-container-lowest);
+    overflow: hidden;
   }
+  .inline .stage { flex-basis: 360px; }
 }
