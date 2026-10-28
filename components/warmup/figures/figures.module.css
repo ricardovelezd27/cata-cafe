@@ -1,191 +1,106 @@
-/* Warm-up figures — motion lives here, geometry in Mannequin.tsx.
+/* Warm-up figures — soft filled silhouette, NO motion here.
  *
- * Timing is driven by custom properties the figure components set on the
- * <svg> root:
- *   --warmup-duration   total animation time for the step (e.g. 15s / 33s)
- *   --warmup-delay      hold in the previous pose before the leg starts
- *   --warmup-iterations 1 (slow legs) or 2 ("un par de veces", fast)
- *   --warmup-ease       linear (slow — constant speed IS the exercise) or
- *                       ease-in-out (fast, natural)
- *   --warmup-amp        amplitude factor (1 normal, 0.18 "un centímetro")
+ * The player writes SVG `transform` ATTRIBUTES on the [data-part] groups each
+ * frame (lib/warmup/poses.ts owns the pivots). Never add a CSS transform,
+ * transform-origin or transform-box to these groups: it would compound with
+ * the attribute pivot.
  *
- * Each animation runs ONCE and holds its end pose (fill-mode both); the
- * player remounts the figure per step so a new step restarts from neutral.
- * Round trips put the 3 s hold between 45.45 % and 54.55 % (15 + 3 + 15 s).
+ * Stage variables (the player overrides them on its root for dusk); the
+ * defaults below make tiles look right outside the player. All body fills are
+ * opaque color-mix — never `opacity` on body parts (overlap seams).
  */
 
 .svg {
   display: block;
   width: 100%;
   height: 100%;
-  color: var(--color-on-surface);
-  --warmup-duration: 15s;
-  --warmup-delay: 0s;
-  --warmup-iterations: 1;
-  --warmup-ease: linear;
-  --warmup-amp: 1;
-  overflow: visible;
+  overflow: hidden;
+  /* Internal copies with defaults: a custom property declared on the element
+     would shadow the player's inherited --wu-* (dusk), so the defaults live
+     under --fig-* and every rule below reads those. */
+  --fig-bg: var(--wu-bg, color-mix(in oklch, var(--color-secondary-fixed) 30%, var(--color-surface)));
+  --fig-body: var(--wu-body, color-mix(in oklch, var(--color-on-surface) 20%, var(--color-surface)));
+  --fig-chair: var(--wu-chair, var(--color-surface-container-highest));
+  --fig-move: var(--wu-move, var(--color-secondary));
+  --fig-ink: var(--wu-ink, var(--color-on-surface));
+  --part: var(--fig-body);
 }
 
-.fillSurface { fill: var(--color-surface-container-lowest); }
+/* Library / dashboard tiles paint their own stage background. */
+.svg[data-frame="tile"] {
+  background: var(--fig-bg);
+}
 
-/* v2 silhouette: moving segment = secondary at full opacity, rest = 40 %. */
-.partRest { opacity: 0.4; transition: opacity var(--transition-fast); }
-.partMoving { color: var(--color-secondary); opacity: 1; transition: opacity var(--transition-fast); }
-.groundShadow { fill: var(--color-on-surface); opacity: 0.07; }
-.tick { opacity: 0.55; }
-.fillInk { fill: currentColor; }
-.ghost { opacity: 0.38; }
-.chair { color: var(--color-outline); }
+/* ───────── Tones: each part group sets --part, leaves read it ───────── */
+.rest { --part: var(--fig-body); }
+.move { --part: var(--fig-move); }
+/* The whole trunk moving would be a heavy block: soften it. */
+.moveSoft { --part: color-mix(in oklch, var(--fig-move) 70%, var(--fig-bg)); }
 
-/* Pivots (viewBox user units — transform-box: view-box) */
-.armR { transform-box: view-box; transform-origin: 146px 112px; }
-.upperFront { transform-box: view-box; transform-origin: 120px 206px; }
-.upperSide { transform-box: view-box; transform-origin: 118px 206px; }
-.torso { transform-box: view-box; transform-origin: 120px 206px; }
-.face, .pupils { transform-box: view-box; transform-origin: 120px 60px; }
-
-/* One class per movable part switches the animation on. */
-.anim {
-  animation-duration: var(--warmup-duration);
-  animation-delay: var(--warmup-delay);
-  animation-iteration-count: var(--warmup-iterations);
-  animation-timing-function: var(--warmup-ease);
-  animation-fill-mode: both;
-  animation-play-state: running;
-}
-.paused .anim,
-.paused .lead,
-.paused .breathe { animation-play-state: paused; }
-
-/* ───────── Arm (lateral raise, pivot at the shoulder) ───────── */
-@keyframes armUp {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(calc(-160deg * var(--warmup-amp))); }
-}
-@keyframes armDown {
-  from { transform: rotate(calc(-160deg * var(--warmup-amp))); }
-  to   { transform: rotate(0deg); }
-}
-@keyframes armUpDown {
-  0%   { transform: rotate(0deg); }
-  50%  { transform: rotate(calc(-160deg * var(--warmup-amp))); }
-  100% { transform: rotate(0deg); }
-}
-.armUp { animation-name: armUp; }
-.armDown { animation-name: armDown; }
-.armUpDown { animation-name: armUpDown; }
-
-/* ───────── Eyes (pupils slide inside the lids) ───────── */
-@keyframes eyesRight { from { transform: translate(0, 0); } to { transform: translate(calc(4.5px * var(--warmup-amp)), 0); } }
-@keyframes eyesLeftReturn {
-  0%     { transform: translate(0, 0); }
-  45.45% { transform: translate(calc(-4.5px * var(--warmup-amp)), 0); }
-  54.55% { transform: translate(calc(-4.5px * var(--warmup-amp)), 0); }
-  100%   { transform: translate(0, 0); }
-}
-@keyframes eyesUpReturn {
-  0%     { transform: translate(0, 0); }
-  45.45% { transform: translate(0, calc(-3.2px * var(--warmup-amp))); }
-  54.55% { transform: translate(0, calc(-3.2px * var(--warmup-amp))); }
-  100%   { transform: translate(0, 0); }
-}
-@keyframes eyesDownReturn {
-  0%     { transform: translate(0, 0); }
-  45.45% { transform: translate(0, calc(3.2px * var(--warmup-amp))); }
-  54.55% { transform: translate(0, calc(3.2px * var(--warmup-amp))); }
-  100%   { transform: translate(0, 0); }
-}
-@keyframes eyesCenterFromRight { from { transform: translate(calc(4.5px * var(--warmup-amp)), 0); } to { transform: translate(0, 0); } }
-.eyesRight { animation-name: eyesRight; }
-.eyesLeft { animation-name: eyesLeftReturn; }
-.eyesUp { animation-name: eyesUpReturn; }
-.eyesDown { animation-name: eyesDownReturn; }
-.eyesCenter { animation-name: eyesCenterFromRight; }
-
-/* ───────── Head turn (front view: features slide, ears stay) ───────── */
-@keyframes headRightLeft {
-  0%     { transform: translateX(0); }
-  45.45% { transform: translateX(calc(13px * var(--warmup-amp))); }
-  54.55% { transform: translateX(calc(13px * var(--warmup-amp))); }
-  100%   { transform: translateX(calc(-13px * var(--warmup-amp))); }
-}
-@keyframes headFast {
-  0%   { transform: translateX(0); }
-  25%  { transform: translateX(calc(13px * var(--warmup-amp))); }
-  50%  { transform: translateX(0); }
-  75%  { transform: translateX(calc(-13px * var(--warmup-amp))); }
-  100% { transform: translateX(0); }
-}
-@keyframes headCenterFromLeft { from { transform: translateX(calc(-13px * var(--warmup-amp))); } to { transform: translateX(0); } }
-.headRightLeft { animation-name: headRightLeft; }
-.headFast { animation-name: headFast; }
-.headCenter { animation-name: headCenterFromLeft; }
-
-/* ───────── Trunk forward / back (side view, pivot at the hips) ───────── */
-@keyframes trunkForwardBack {
-  0%     { transform: rotate(0deg); }
-  45.45% { transform: rotate(calc(16deg * var(--warmup-amp))); }
-  54.55% { transform: rotate(calc(16deg * var(--warmup-amp))); }
-  100%   { transform: rotate(0deg); }
-}
-@keyframes trunkForwardBackFast {
-  0%   { transform: rotate(0deg); }
-  50%  { transform: rotate(calc(16deg * var(--warmup-amp))); }
-  100% { transform: rotate(0deg); }
-}
-.trunkForwardBack { animation-name: trunkForwardBack; }
-.trunkForwardBackFast { animation-name: trunkForwardBackFast; }
-
-/* ───────── Trunk side to side (front view, pure translation) ───────── */
-@keyframes trunkRightLeft {
-  0%     { transform: translateX(0); }
-  45.45% { transform: translateX(calc(22px * var(--warmup-amp))); }
-  54.55% { transform: translateX(calc(22px * var(--warmup-amp))); }
-  100%   { transform: translateX(calc(-22px * var(--warmup-amp))); }
-}
-@keyframes trunkFast {
-  0%   { transform: translateX(0); }
-  25%  { transform: translateX(calc(22px * var(--warmup-amp))); }
-  50%  { transform: translateX(0); }
-  75%  { transform: translateX(calc(-22px * var(--warmup-amp))); }
-  100% { transform: translateX(0); }
-}
-@keyframes trunkCenterFromLeft { from { transform: translateX(calc(-22px * var(--warmup-amp))); } to { transform: translateX(0); } }
-.trunkRightLeft { animation-name: trunkRightLeft; }
-.trunkFast { animation-name: trunkFast; }
-.trunkCenter { animation-name: trunkCenterFromLeft; }
-
-/* ───────── Stillness: a slow breath so "rest" never looks frozen ───────── */
-@keyframes breathe {
-  0%, 100% { transform: scale(1); }
-  50%      { transform: scale(1.012, 1.02); }
-}
-.breathe { animation: breathe 4.2s ease-in-out infinite; }
-
-/* ───────── Lead markers ("punto de arranque") ───────── */
-@keyframes leadPulse {
-  0%, 100% { opacity: 0.55; transform: scale(0.92); }
-  50%      { opacity: 1;    transform: scale(1.08); }
-}
-.lead {
-  color: var(--color-secondary);
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: leadPulse 1.6s ease-in-out infinite;
-}
-.leadRing { stroke: currentColor; stroke-width: 1.6; fill: none; opacity: 0.7; }
-.leadDot { fill: currentColor; }
-
-/* ───────── Arrows ───────── */
-.arrow {
-  color: var(--color-secondary);
-  stroke: currentColor;
-  stroke-width: 2;
+.fill { fill: var(--part); stroke: none; }
+.line {
   fill: none;
+  stroke: var(--part);
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
-.arrowHead { stroke: currentColor; stroke-width: 1.6; fill: none; }
+.chair { fill: var(--fig-chair); stroke: none; }
+.haloStop { stop-color: var(--fig-ink); }
+
+/* Features (eyes, nose) — opaque mixes over whatever the head is painted. */
+.nose { fill: color-mix(in oklch, var(--fig-ink) 12%, var(--part)); stroke: none; }
+.eyeDot { fill: color-mix(in oklch, var(--fig-ink) 55%, var(--part)); stroke: none; }
+.eyeLine {
+  fill: none;
+  stroke: color-mix(in oklch, var(--fig-ink) 55%, var(--part));
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* FaceFigure pupil glow + gaze guide rails. */
+.glowStop { stop-color: var(--fig-move); }
+.glowStopRest { stop-color: color-mix(in oklch, var(--fig-ink) 55%, var(--fig-body)); }
+.gazeGuide { fill: color-mix(in oklch, var(--fig-ink) 15%, transparent); stroke: none; }
+
+/* ───────── Trajectory (dots of the current leg) ───────── */
+.svg [data-traj] [data-traj-dot] {
+  fill: color-mix(in oklch, var(--fig-move) 25%, transparent);
+  stroke: none;
+}
+.svg [data-traj] [data-traj-dot][data-passed="1"] {
+  fill: color-mix(in oklch, var(--fig-move) 70%, transparent);
+}
+.svg [data-traj] [data-traj-dest] {
+  fill: none;
+  stroke: color-mix(in oklch, var(--fig-move) 70%, transparent);
+  stroke-width: 1.5;
+}
+.svg [data-traj] [data-traj-dest][data-reached="1"] {
+  fill: var(--fig-move);
+  stroke: var(--fig-move);
+}
+.svg[data-frame="tile"] [data-traj] [data-traj-dest] { stroke-width: 3; }
+
+/* ───────── Lead dot ("punto de arranque") — static, one-shot glow ───────── */
+.leadDot {
+  fill: var(--color-secondary-container);
+  stroke: var(--fig-bg);
+  stroke-width: 1.5;
+}
+.leadHalo {
+  fill: var(--color-secondary-container);
+  stroke: none;
+  opacity: 0;
+}
+@keyframes leadGlow {
+  from { r: 4.5px; opacity: 0.35; }
+  to   { r: 11px;  opacity: 0; }
+}
+.svg [data-lead][data-glow="1"] .leadHalo {
+  animation: leadGlow 600ms ease-out 1 both;
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .anim, .breathe, .lead { animation: none; }
+  .svg [data-lead] circle { animation: none; }
 }

@@ -33,7 +33,7 @@ export function WarmupExerciseRoute({
         <ChevronLeft size={16} aria-hidden />
         {backLabel}
       </Link>
-      <WarmupPlayer exercise={exercise} locale={locale} t={strings} inline onFinish={leave} onSkip={leave} />
+      <WarmupPlayer exercise={exercise} locale={locale} t={strings} inline mode="library" onFinish={leave} onExit={leave} />
     </div>
   );
 }

@@ -1,275 +1,282 @@
-import type { CSSProperties, ReactNode } from "react";
-import type { WarmupLead } from "@/lib/warmup/exercises";
+import { useId, type Ref } from "react";
+import type { WarmupFigureKind, WarmupLead } from "@/lib/warmup/exercises";
+import type { PartTransforms } from "@/lib/warmup/poses";
+import type { Pose } from "@/lib/warmup/timelineTypes";
+import { Trajectory } from "./Trajectory";
 import s from "./figures.module.css";
+import { THUMB_VIEWBOX, cx, svgId } from "./shared";
 
 /**
- * Shared line-art mannequin for the warm-up figures. One SVG, two views:
+ * Soft filled silhouette shared by the four full-body warm-up figures.
  *
- *  - "front": the figure faces the viewer. MIRROR semantics — "derecha" in
- *    Kim's instructions moves toward the VIEWER's right, like a mirror in a
- *    movement studio. (Anatomically the figure's right is the viewer's left,
- *    but a front-facing diagram that moves "the other way" reads as wrong.)
- *  - "side": profile, facing right = forward (for the trunk forward/back).
+ *  - "front": faces the viewer. MIRROR semantics — "derecha" moves toward
+ *    the VIEWER's right, like a mirror in a movement studio.
+ *  - "side": profile facing right = forward (trunk forward/back).
  *
- * Every movable group carries a `data-part` so the figures can target it
- * with a CSS-module animation class (via `partClass`) or an inline static
- * transform (reduced motion). Strokes use `currentColor`; fills use design
- * tokens — no hex literals.
+ * No outlines: every part is an opaque fill (or a round-capped stroke of the
+ * same tone). Moving groups carry `data-part`; the player writes their SVG
+ * `transform` ATTRIBUTE per frame (pivots in lib/warmup/poses.ts GEO). A
+ * static `transforms` record does the same at render time for tiles.
  *
- * viewBox is 0 0 240 320 user units. Pivots used by figures.module.css:
- *   front arm-r shoulder (146,112) · front upper hips (120,206)
- *   side  upper hips (118,206)
+ * viewBox 0 0 240 320. Pivots: arm-r (146,112) · side upper (118,206).
  */
 
-export type MannequinPart =
-  | "head"
-  | "face"
-  | "pupils"
-  | "torso"
-  | "arm-l"
-  | "arm-r"
-  | "upper"
-  | "chair"
-  | "legs";
-
 export type MannequinView = "front" | "side";
+export type MovingPart = "arm-r" | "head" | "upper";
+type Part = "head" | "neck" | "torso" | "arm-l" | "arm-r" | "legs";
+export type LeadHost = "face" | "head" | "upper" | "arm-r";
+
+export interface LeadDot {
+  host: LeadHost;
+  x: number;
+  y: number;
+}
 
 export const MANNEQUIN_VIEWBOX = "0 0 240 320";
-/** Close-up on the head for the eyes exercise. */
-export const MANNEQUIN_FACE_VIEWBOX = "78 26 84 66";
+
+const UPPER_PARTS = new Set<Part>(["head", "neck", "torso", "arm-l", "arm-r"]);
 
 export interface MannequinProps {
+  kind: WarmupFigureKind;
   view: MannequinView;
   posture: "seated" | "standing";
   eyes: "open" | "closed";
-  /** Crop to the face (eyes exercise). */
-  zoom?: "face";
-  /** Body part that initiates the movement — gets a pulsing marker. */
-  lead?: WarmupLead;
-  /** The segment that moves in this step: secondary token at full opacity,
-   *  the rest of the silhouette at 40 %. */
-  moving?: MannequinPart;
-  /** Per-part className (CSS-module animation classes). */
-  partClass?: Partial<Record<MannequinPart, string>>;
-  /** Per-part inline style (static end-pose under reduced motion). */
-  partStyle?: Partial<Record<MannequinPart, CSSProperties>>;
-  /** Root className + style (CSS custom properties for timing). */
-  className?: string;
-  style?: CSSProperties;
-  /** Overlays drawn above the figure (arrows). Same user units. */
-  children?: ReactNode;
+  frame: "stage" | "tile";
+  /** Part drawn in --wu-move (undefined = nothing highlighted). */
+  moving?: MovingPart;
+  /** Static transform attributes per data-part (poses.partTransforms). */
+  transforms: PartTransforms;
+  leads: LeadDot[];
+  path?: { from: Pose; to: Pose; progress?: number } | null;
   title?: string;
-  paused?: boolean;
+  className?: string;
+  ref?: Ref<SVGSVGElement>;
 }
 
-const STROKE = 2.6;
-// The face crop magnifies ~3x; thinner strokes keep the same visual weight.
-const STROKE_ZOOM = 1.1;
-
 export function Mannequin({
+  kind,
   view,
   posture,
   eyes,
-  zoom,
-  lead,
+  frame,
   moving,
-  partClass = {},
-  partStyle = {},
-  className,
-  style,
-  children,
+  transforms,
+  leads,
+  path,
   title,
-  paused,
+  className,
+  ref,
 }: MannequinProps) {
+  const haloId = svgId(useId(), "wu-halo");
   const seated = posture === "seated";
-  const leadPoints = leadMarkers(view, lead);
-  // v2 silhouette: one stroke weight, no face. The MOVING segment is drawn in
-  // the secondary token at full opacity, everything else at 40 %. Opacity sits
-  // on the leaf groups (never on `upper`) so a highlighted child is not
-  // dimmed by a dimmed ancestor.
-  const isMoving = (p: MannequinPart) =>
-    moving === p || (moving === "upper" && (p === "torso" || p === "head" || p === "arm-l" || p === "arm-r"));
-  const cls = (p: MannequinPart, ...extra: Array<string | undefined>) =>
-    [partClass[p], ...extra, isMoving(p) ? s.partMoving : s.partRest].filter(Boolean).join(" ");
-  const sty = (p: MannequinPart) => partStyle[p];
+  const front = view === "front";
+  const tile = frame === "tile";
+
+  const tone = (p: Part): string => {
+    if (!moving) return s.rest;
+    if (moving === "upper" && UPPER_PARTS.has(p)) return s.moveSoft;
+    return p === moving ? s.move : s.rest;
+  };
+  const leadsIn = (host: LeadHost) =>
+    leads
+      .filter((l) => l.host === host)
+      .map((l, i) => (
+        <g key={`${host}-${i}`} data-lead="">
+          <circle className={s.leadHalo} cx={l.x} cy={l.y} r={4.5} />
+          <circle className={s.leadDot} cx={l.x} cy={l.y} r={4.5} />
+        </g>
+      ));
 
   return (
     <svg
-      viewBox={zoom === "face" ? MANNEQUIN_FACE_VIEWBOX : MANNEQUIN_VIEWBOX}
-      className={[s.svg, paused ? s.paused : "", className ?? ""].join(" ")}
-      style={style}
+      ref={ref}
+      viewBox={tile ? THUMB_VIEWBOX[posture] : MANNEQUIN_VIEWBOX}
+      className={cx(s.svg, className)}
       role="img"
       aria-label={title}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={zoom === "face" ? STROKE_ZOOM : STROKE}
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      data-kind={kind}
+      data-eyes={eyes}
+      data-frame={frame}
     >
       {title ? <title>{title}</title> : null}
+      <defs>
+        <radialGradient id={haloId}>
+          <stop offset="0" className={s.haloStop} stopOpacity={0.08} />
+          <stop offset="1" className={s.haloStop} stopOpacity={0} />
+        </radialGradient>
+      </defs>
 
-      {/* Soft ground shadow: weight, not decoration */}
-      {zoom !== "face" && (
-        <ellipse
-          cx={view === "front" ? 120 : 130}
-          cy={seated ? 300 : 304}
-          rx={view === "front" ? 56 : 70}
-          ry="5"
-          className={s.groundShadow}
-          stroke="none"
-        />
-      )}
+      {/* Floor halo: weight, not decoration */}
+      <ellipse cx={front ? 120 : 130} cy={302} rx={front ? 80 : 90} ry={8} fill={`url(#${haloId})`} />
 
-      {/* Chair (behind the body) */}
+      {/* Chair — one solid tone behind the body */}
       {seated && (
-        <g data-part="chair" className={[s.chair, cls("chair")].join(" ")} style={sty("chair")}>
-          {view === "front" ? (
+        <g data-part="chair" className={s.chair}>
+          {front ? (
             <>
-              <path d="M74 209 H166" />
-              <path d="M80 214 L78 298 M160 214 L162 298" />
+              <rect x={70} y={204} width={100} height={10} rx={5} />
+              <rect x={78} y={208} width={6} height={90} rx={3} />
+              <rect x={156} y={208} width={6} height={90} rx={3} />
             </>
           ) : (
             <>
-              <path d="M66 206 H152" />
-              <path d="M72 206 V104 Q72 98 78 98 H86" />
-              <path d="M76 206 L74 298 M146 206 L148 298" />
+              <rect x={66} y={104} width={10} height={106} rx={5} />
+              <rect x={64} y={206} width={92} height={10} rx={5} />
+              <rect x={70} y={210} width={6} height={88} rx={3} />
+              <rect x={144} y={210} width={6} height={88} rx={3} />
             </>
           )}
         </g>
       )}
 
       {/* Legs (static) */}
-      <g data-part="legs" className={cls("legs")} style={sty("legs")}>
-        {view === "front" ? (
-          seated ? (
-            <>
-              <path d="M104 206 V214 L102 292 M136 206 V214 L138 292" />
-              <path d="M92 292 H112 M128 292 H148" />
-            </>
-          ) : (
-            <>
-              <path d="M106 206 L102 300 M134 206 L138 300" />
-              <path d="M92 300 H110 M130 300 H148" />
-            </>
-          )
+      <g data-part="legs" className={tone("legs")}>
+        {front ? (
+          <path
+            className={s.line}
+            strokeWidth={16}
+            d={seated ? "M104 206 L102 292 M136 206 L138 292" : "M108 204 L104 296 M132 204 L136 296"}
+          />
         ) : (
-          <path d="M118 206 H168 Q176 206 176 214 V292 H196" />
+          <>
+            <path className={s.line} strokeWidth={16} d="M120 204 H170 M172 206 V290" />
+            <path className={s.line} strokeWidth={12} d="M172 292 H190" />
+          </>
         )}
       </g>
 
       {/* Upper body — moves as a block for the trunk exercises */}
-      <g
-        data-part="upper"
-        className={[view === "front" ? s.upperFront : s.upperSide, partClass.upper ?? ""].join(" ")}
-        style={sty("upper")}
-      >
-        {view === "front" ? (
-          <>
-            {/* left arm (viewer's left) */}
-            <g data-part="arm-l" className={cls("arm-l")} style={sty("arm-l")}>
-              {seated ? <path d="M94 114 L98 200" /> : <path d="M94 114 L82 198" />}
-            </g>
-            {/* right arm (viewer's right) — pivot at the shoulder (146,112) */}
-            <g data-part="arm-r" className={cls("arm-r", s.armR)} style={sty("arm-r")}>
-              {seated ? <path d="M146 114 L142 200" /> : <path d="M146 114 L158 198" />}
-            </g>
-            <g data-part="torso" className={cls("torso", s.torso)} style={sty("torso")}>
-              <rect x="90" y="104" width="60" height="102" rx="30" />
-            </g>
-            <g className={isMoving("head") ? s.partMoving : s.partRest}>
-              <path d="M120 86 V104" />
-            </g>
-            <g data-part="head" className={cls("head")} style={sty("head")}>
-              <circle cx="120" cy="60" r="26" />
-              {/* No face. A single orientation tick slides to suggest a turn;
-                  only the eyes close-up draws lids / gaze. */}
-              <g data-part="face" className={[s.face, partClass.face ?? ""].join(" ")} style={sty("face")}>
-                {zoom === "face" ? (
-                  eyes === "open" ? (
-                    <g data-part="pupils" className={[s.pupils, partClass.pupils ?? ""].join(" ")} style={sty("pupils")}>
-                      <circle cx="110" cy="57" r="2.8" className={s.fillInk} stroke="none" />
-                      <circle cx="130" cy="57" r="2.8" className={s.fillInk} stroke="none" />
-                    </g>
-                  ) : (
-                    <>
-                      {/* ghost pupils under the lids: where the gaze goes */}
-                      <g data-part="pupils" className={[s.pupils, s.ghost, partClass.pupils ?? ""].join(" ")} style={sty("pupils")}>
-                        <circle cx="110" cy="58" r="2.8" className={s.fillInk} stroke="none" />
-                        <circle cx="130" cy="58" r="2.8" className={s.fillInk} stroke="none" />
-                      </g>
-                      <path d="M104 57 Q110 62 116 57 M124 57 Q130 62 136 57" />
-                    </>
-                  )
+      <g data-part="upper" transform={transforms.upper}>
+        {front && (
+          <g data-part="arm-l" className={tone("arm-l")}>
+            {seated ? (
+              <>
+                <path className={s.line} strokeWidth={14} d="M94 114 L98 200" />
+                <circle className={s.fill} cx={98} cy={200} r={7.5} />
+              </>
+            ) : (
+              <>
+                <path className={s.line} strokeWidth={14} d="M94 114 L82 198" />
+                <circle className={s.fill} cx={82} cy={198} r={7.5} />
+              </>
+            )}
+          </g>
+        )}
+
+        <g data-part="torso" transform={transforms.torso} className={tone("torso")}>
+          {front ? (
+            <path
+              className={s.fill}
+              d="M92 116 Q92 102 106 102 H134 Q148 102 148 116 L142 196 Q142 208 130 208 H110 Q98 208 98 196Z"
+            />
+          ) : (
+            <rect className={s.fill} x={100} y={102} width={40} height={106} rx={20} />
+          )}
+        </g>
+
+        <g className={tone("neck")}>
+          <path className={s.line} strokeWidth={12} d={front ? "M120 80 V102" : "M121 80 V102"} />
+        </g>
+
+        <g data-part="head" className={tone("head")}>
+          {front && (
+            <>
+              {/* Ears stay put when the head turns; only the features slide. */}
+              <ellipse className={s.fill} cx={96} cy={60} rx={4} ry={7} />
+              <ellipse className={s.fill} cx={144} cy={60} rx={4} ry={7} />
+            </>
+          )}
+          <circle className={s.fill} cx={front ? 120 : 122} cy={58} r={24} />
+          {!front && <path className={s.fill} d="M145 52 Q153 58 145 64Z" />}
+
+          <g data-part="face" transform={transforms.face}>
+            {front ? (
+              <>
+                {eyes === "closed" ? (
+                  <path className={s.eyeLine} d="M106 55 Q111 59 116 55 M124 55 Q129 59 134 55" />
                 ) : (
                   <>
-                    <g data-part="pupils" className={[s.pupils, partClass.pupils ?? ""].join(" ")} style={sty("pupils")} />
-                    <path d="M120 54 V66" className={s.tick} />
+                    <circle className={s.eyeDot} cx={111} cy={56} r={1.9} />
+                    <circle className={s.eyeDot} cx={129} cy={56} r={1.9} />
                   </>
                 )}
-              </g>
-            </g>
-          </>
-        ) : (
-          <>
-            <g data-part="arm-r" className={cls("arm-r")} style={sty("arm-r")}>
-              <path d="M118 116 L150 190" />
-            </g>
-            <g data-part="torso" className={cls("torso", s.torso)} style={sty("torso")}>
-              <rect x="100" y="104" width="38" height="104" rx="19" />
-            </g>
-            <g className={isMoving("head") ? s.partMoving : s.partRest}>
-              <path d="M121 86 V104" />
-            </g>
-            <g data-part="head" className={cls("head")} style={sty("head")}>
-              <circle cx="122" cy="60" r="26" />
-              <g data-part="face" className={partClass.face} style={sty("face")}>
-                <path d="M146 60 H152" className={s.tick} />
-              </g>
-            </g>
-          </>
-        )}
+                <ellipse className={s.nose} cx={120} cy={66} rx={3} ry={4.5} />
+              </>
+            ) : eyes === "closed" ? (
+              <path className={s.eyeLine} d="M131 54 Q135 57 139 54" />
+            ) : (
+              <circle className={s.eyeDot} cx={135} cy={55} r={1.9} />
+            )}
+            {leadsIn("face")}
+          </g>
+          {leadsIn("head")}
+        </g>
+
+        <g data-part="arm-r" transform={transforms["arm-r"]} className={tone("arm-r")}>
+          {front ? (
+            seated ? (
+              <>
+                <path className={s.line} strokeWidth={14} d="M146 114 L142 200" />
+                <circle className={s.fill} cx={142} cy={200} r={7.5} />
+              </>
+            ) : (
+              <>
+                <path className={s.line} strokeWidth={14} d="M146 114 L158 198" />
+                <circle className={s.fill} cx={158} cy={198} r={7.5} />
+              </>
+            )
+          ) : (
+            <>
+              <path className={s.line} strokeWidth={14} d="M118 116 L150 190" />
+              <circle className={s.fill} cx={150} cy={190} r={7.5} />
+            </>
+          )}
+          {leadsIn("arm-r")}
+        </g>
+
+        {leadsIn("upper")}
       </g>
 
-      {/* Lead ("punto de arranque") markers */}
-      {leadPoints.map(([x, y], i) => (
-        <g key={i} className={s.lead} style={{ animationDelay: `${i * 0.2}s` }}>
-          <circle cx={x} cy={y} r="9" className={s.leadRing} />
-          <circle cx={x} cy={y} r="3.2" className={s.leadDot} stroke="none" />
-        </g>
-      ))}
-
-      {children}
+      {path && (
+        <Trajectory
+          kind={kind}
+          from={path.from}
+          to={path.to}
+          progress={path.progress}
+          // Tiles shrink ~5x: bigger, sparser dots so the route still reads.
+          dotR={tile ? 4 : 1.6}
+          destR={tile ? 10 : 6}
+          spacing={tile ? 16 : undefined}
+        />
+      )}
     </svg>
   );
 }
 
-function leadMarkers(view: MannequinView, lead?: WarmupLead): Array<[number, number]> {
+/** Where the lead dot(s) sit and which group carries them, so they move with
+ *  the part that leads. `headOnly` (head-rotate): "all" = the whole head
+ *  (nose + both ears), not shoulders/hips that do not move. */
+export function leadDots(view: MannequinView, lead: WarmupLead | undefined, headOnly = false): LeadDot[] {
   if (!lead) return [];
-  const front: Record<WarmupLead, Array<[number, number]>> = {
-    head: [[120, 34]],
-    nose: [[120, 66]],
-    ear: [[150, 60]],
-    shoulders: [[150, 110]],
-    pelvis: [[120, 206]],
-    hip: [[146, 204]],
-    all: [
-      [120, 34],
-      [150, 110],
-      [146, 204],
-    ],
-  };
-  const side: Record<WarmupLead, Array<[number, number]>> = {
-    head: [[122, 32]],
-    nose: [[150, 64]],
-    ear: [[116, 60]],
-    shoulders: [[118, 108]],
-    pelvis: [[118, 204]],
-    hip: [[118, 204]],
-    all: [
-      [122, 32],
-      [118, 108],
-      [118, 204],
-    ],
-  };
-  return (view === "front" ? front : side)[lead];
+  const front = view === "front";
+  const P: Record<Exclude<WarmupLead, "all">, LeadDot> = front
+    ? {
+        head: { host: "head", x: 120, y: 34 },
+        nose: { host: "face", x: 120, y: 66 },
+        ear: { host: "head", x: 144, y: 60 },
+        shoulders: { host: "upper", x: 146, y: 110 },
+        pelvis: { host: "upper", x: 120, y: 204 },
+        hip: { host: "upper", x: 144, y: 202 },
+      }
+    : {
+        head: { host: "head", x: 122, y: 34 },
+        nose: { host: "face", x: 151, y: 58 },
+        ear: { host: "head", x: 118, y: 58 },
+        shoulders: { host: "upper", x: 120, y: 108 },
+        pelvis: { host: "upper", x: 120, y: 204 },
+        hip: { host: "upper", x: 120, y: 204 },
+      };
+  if (lead !== "all") return [P[lead]];
+  if (headOnly) return [P.nose, { host: "head", x: 96, y: 60 }, P.ear];
+  return [P.head, P.shoulders, front ? P.hip : P.pelvis];
 }

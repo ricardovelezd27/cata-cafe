@@ -72,7 +72,22 @@ export interface WarmupStep {
   /** Seconds the player counts down for this step (Kim's 15 s legs + holds). */
   readonly durationSec: number;
   readonly figure: WarmupFigure;
+  /** Fast "un par de veces" cycles for fast-open steps. Default (handled by the
+   *  timeline): 1 for `up-down`, otherwise 2. */
+  readonly reps?: number;
+  /** Seconds of stillness ("primero la intención") before each leg of the step. */
+  readonly leadInSec?: number;
+  /** This step's text is shown under the PREVIOUS step's text at that second of
+   *  the previous step, and this step gets no read beat of its own. */
+  readonly readDuringPrevAtSec?: number;
 }
+
+/** Where an "observe" prompt is shown during the run: under a step's text
+ *  (`atSec` counts from that step's first movement segment) or in the closing /
+ *  done slot. */
+export type ObserveSlot =
+  | { readonly step: string; readonly atSec: number }
+  | { readonly slot: "closing" | "done"; readonly atSec?: number };
 
 export type WarmupPosture = "seated" | "standing";
 
@@ -85,11 +100,13 @@ export interface WarmupExercise {
   readonly posture: WarmupPosture;
   readonly postureText: Localized;
   /** Kim's approximate total minutes (includes breathing room; the sum of
-   *  step durations is shorter — see tests/warmup.test.ts). */
+   *  step durations is shorter). */
   readonly durationMin: number;
   readonly figureKind: WarmupFigureKind;
   readonly steps: readonly WarmupStep[];
   readonly observe: readonly Localized[];
+  /** One entry per `observe` item (same length): where it is shown; null = not shown. */
+  readonly observeAt: readonly (ObserveSlot | null)[];
   /** The same two closing questions in all five (WARMUP_SHARED.closing). */
   readonly closing: readonly [Localized, Localized];
 }
@@ -103,8 +120,15 @@ export const WARMUP_IDS = [
 ] as const;
 export type WarmupId = (typeof WARMUP_IDS)[number];
 
-/** Seconds of stillness between steps in the player. */
-export const WARMUP_STEP_PAUSE_SEC = 3;
+/** Read beat before each step: seconds of stillness while the step text is read
+ *  = clamp(baseSec + perWordSec * words, minSec, maxSec). */
+export const READ_BEAT = { baseSec: 3, perWordSec: 0.25, minSec: 4, maxSec: 12 } as const;
+/** Seconds of arrival (posture + breath) before the first step. */
+export const WARMUP_ARRIVE_SEC = 40;
+/** Seconds of the bridge to the cupping table after the closing. */
+export const WARMUP_BRIDGE_SEC = 5;
+/** Fast lead-in before a fast-open cycle starts, in ms. */
+export const WARMUP_FAST_LEAD_IN_MS = 400;
 /** Seconds held in the neutral position before the closing questions. */
 export const WARMUP_CLOSING_HOLD_SEC = 30;
 /** Kim's unit of slowness: one leg of a movement. */
@@ -207,6 +231,7 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
           en: "Raise your arm quickly, the way you normally would. Lower it.",
         },
         durationSec: 8,
+        reps: 1, // v3 (council 2026-10-28): one raise-and-lower, not two
         figure: { kind: "arm-raise", variant: "fast-open", direction: "up-down" },
       },
       {
@@ -225,6 +250,7 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
           en: "If at some point you notice a slight resistance, stop there for a few seconds. That is your support point: the body readjusts on its own.",
         },
         durationSec: 10,
+        readDuringPrevAtSec: 5, // v3 (council 2026-10-28): read while the arm rises, where the resistance appears
         figure: { kind: "arm-raise", variant: "slow-open", direction: "rest" },
       },
       {
@@ -269,6 +295,7 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
         en: "What changes between the first raise and the last.",
       },
     ],
+    observeAt: [{ step: "arm-raise-4", atSec: 9 }, { step: "arm-raise-5", atSec: 9 }, { slot: "closing", atSec: 8 }], // v3 (council 2026-10-28)
     closing: CLOSING,
   },
 
@@ -305,14 +332,14 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
           es: "Mueve solo los ojos, muy lento, hacia la derecha. No vayas más lejos de lo que el cuerpo permite. Para tres segundos.",
           en: "Move only your eyes, very slowly, to the right. Don't go further than the body allows. Hold for three seconds.",
         },
-        durationSec: LEG + HOLD,
+        durationSec: 15, // v3 (council 2026-10-28): was LEG + HOLD; the 3 s hold is inside the 15 s
         figure: { kind: "eyes", variant: "slow-closed", direction: "right" },
       },
       {
         id: "eyes-3",
         text: { es: "Vuelve al centro.", en: "Return to the centre." },
-        durationSec: 10,
-        figure: { kind: "eyes", variant: "slow-closed", direction: "center" },
+        durationSec: 13, // v3 (council 2026-10-28): 10 s return + 3 s hold before it; pending Kim
+        figure: { kind: "eyes", variant: "slow-closed", direction: "center", holdBeforeSec: HOLD },
       },
       {
         id: "eyes-4",
@@ -361,6 +388,7 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
         en: "What changes when you stop looking outward.",
       },
     ],
+    observeAt: [null, { step: "eyes-7", atSec: 12 }], // v3 (council 2026-10-28)
     closing: CLOSING,
   },
 
@@ -422,7 +450,7 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
           en: "Now change the starting point. Turn right imagining that your nose pulls to the right and the back of your skull goes to the left. 15 seconds. Return the same way to the other side.",
         },
         durationSec: ROUND_TRIP,
-        figure: { kind: "head-rotate", variant: "slow-closed", direction: "right-left", lead: "nose" },
+        figure: { kind: "head-rotate", variant: "slow-closed", direction: "right-left", lead: "nose", returns: true }, // v3 (council 2026-10-28): return to centre
       },
       {
         id: "head-rotate-6",
@@ -431,7 +459,7 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
           en: "Another starting point: the left ear moves forward and the right ear back. The head turns right. 15 seconds. Return the same way to the other side.",
         },
         durationSec: ROUND_TRIP,
-        figure: { kind: "head-rotate", variant: "slow-closed", direction: "right-left", lead: "ear" },
+        figure: { kind: "head-rotate", variant: "slow-closed", direction: "right-left", lead: "ear", returns: true }, // v3 (council 2026-10-28): return to centre
       },
       {
         id: "head-rotate-7",
@@ -459,6 +487,7 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
         en: "Whether on the last turn you reach a little further than on the first, without forcing.",
       },
     ],
+    observeAt: [{ step: "head-rotate-3", atSec: 9 }, { step: "head-rotate-7", atSec: 9 }], // v3 (council 2026-10-28)
     closing: CLOSING,
   },
 
@@ -544,6 +573,7 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
           en: "Last leg: move only one centimetre forward over 15 seconds. First the intention, then the movement. Return the same way.",
         },
         durationSec: ROUND_TRIP,
+        leadInSec: 3, // v3 (council 2026-10-28): "primero la intención" — 3 s of stillness before each leg
         figure: {
           kind: "trunk-forward-back",
           variant: "slow-closed",
@@ -566,6 +596,7 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
         en: "In step 8: even if you move one centimetre, the sense of travel is much greater.",
       },
     ],
+    observeAt: [{ step: "trunk-forward-back-3", atSec: 9 }, { slot: "done" }, { step: "trunk-forward-back-8", atSec: 10 }], // v3 (council 2026-10-28)
     closing: CLOSING,
   },
 
@@ -621,7 +652,7 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
           en: "Change the starting point: the right ear starts and takes the whole trunk to the right. Hold. Return starting with the left ear.",
         },
         durationSec: ROUND_TRIP,
-        figure: { kind: "trunk-side", variant: "slow-closed", direction: "right-left", lead: "ear" },
+        figure: { kind: "trunk-side", variant: "slow-closed", direction: "right-left", lead: "ear", returns: true }, // v3 (council 2026-10-28): return to centre
       },
       {
         id: "trunk-side-5",
@@ -630,7 +661,7 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
           en: "Now the right shoulder starts. Hold. Return with the left shoulder.",
         },
         durationSec: ROUND_TRIP,
-        figure: { kind: "trunk-side", variant: "slow-closed", direction: "right-left", lead: "shoulders" },
+        figure: { kind: "trunk-side", variant: "slow-closed", direction: "right-left", lead: "shoulders", returns: true }, // v3 (council 2026-10-28): return to centre
       },
       {
         id: "trunk-side-6",
@@ -639,7 +670,7 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
           en: "Now the right hip starts. Hold. Return with the left hip.",
         },
         durationSec: ROUND_TRIP,
-        figure: { kind: "trunk-side", variant: "slow-closed", direction: "right-left", lead: "hip" },
+        figure: { kind: "trunk-side", variant: "slow-closed", direction: "right-left", lead: "hip", returns: true }, // v3 (council 2026-10-28): return to centre
       },
       {
         id: "trunk-side-7",
@@ -674,6 +705,7 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
         en: "If you feel warmth in your hands: that is normal, circulation is opening up.",
       },
     ],
+    observeAt: [{ step: "trunk-side-4", atSec: 9 }, { step: "trunk-side-2", atSec: 22 }, { slot: "closing", atSec: 8 }], // v3 (council 2026-10-28)
     closing: CLOSING,
   },
 ];
@@ -695,15 +727,6 @@ export function warmupBySlug(slug: string | null | undefined): WarmupExercise | 
 
 export function isWarmupId(value: unknown): value is WarmupId {
   return typeof value === "string" && (WARMUP_IDS as readonly string[]).includes(value);
-}
-
-/** Seconds the player will actually run for an exercise: every step, the
- *  3 s pause between steps, and the 30 s neutral hold before the closing
- *  questions. Kim's `durationMin` is a looser, human estimate. */
-export function warmupPlayerSeconds(ex: WarmupExercise): number {
-  const steps = ex.steps.reduce((acc, s) => acc + s.durationSec, 0);
-  const pauses = Math.max(0, ex.steps.length - 1) * WARMUP_STEP_PAUSE_SEC;
-  return steps + pauses + WARMUP_CLOSING_HOLD_SEC;
 }
 
 /** Pick one locale out of a Localized string (unknown locales fall back to es). */

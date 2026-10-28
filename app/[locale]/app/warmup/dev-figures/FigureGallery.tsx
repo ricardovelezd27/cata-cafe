@@ -6,34 +6,28 @@ import {
   WARMUP_EXERCISES,
   WARMUP_SHARED,
   lw,
-  type WarmupFigure as WarmupFigureSpec,
-  type WarmupFigureVariant,
+  type WarmupExercise,
+  type WarmupLead,
 } from "@/lib/warmup/exercises";
+import { neutralPose } from "@/lib/warmup/preview";
 import { WarmupFigure } from "@/components/warmup/figures";
 
-const VARIANTS: WarmupFigureVariant[] = ["fast-open", "slow-open", "slow-closed"];
+const LEADS: Array<WarmupLead | ""> = ["", "head", "nose", "ear", "shoulders", "pelvis", "hip", "all"];
+/** Kinds whose `a` runs 0..1 (one-sided); the others are symmetric -1..1. */
+const ONE_SIDED = new Set(["arm-raise", "trunk-forward-back"]);
 
-/** Representative descriptor per kind × variant (first matching step). */
-function pick(kind: string, variant: WarmupFigureVariant): { figure: WarmupFigureSpec; durationSec: number; label: string } {
-  const ex = WARMUP_EXERCISES.find((e) => e.figureKind === kind)!;
-  const step =
-    ex.steps.find((s) => s.figure.variant === variant && s.figure.direction !== "rest") ??
-    ex.steps.find((s) => s.figure.variant === variant);
-  if (step) return { figure: step.figure, durationSec: step.durationSec, label: step.id };
-  // The eyes exercise has no open-eyes steps; synthesise one for review.
-  const base = ex.steps[1] ?? ex.steps[0];
-  return { figure: { ...base.figure, variant }, durationSec: base.durationSec, label: `${base.id} (synthetic)` };
-}
+const btn =
+  "rounded-pill border border-outline-variant bg-surface-container-lowest px-3 py-1.5 text-xs font-medium text-on-surface hover:bg-surface-container";
 
+/**
+ * Dev review board for the static figure layer: one card per kind with a pose
+ * slider (a, and b for the eyes), eyes toggle, lead select and the
+ * trajectory from neutral to +1. Figures no longer animate on their own —
+ * the player drives them — so there is no speed / replay / pause here.
+ */
 export function FigureGallery({ locale }: { locale: string }) {
-  const [epoch, setEpoch] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const [reduced, setReduced] = useState(false);
-  const [speed, setSpeed] = useState(1);
-  const [stepsMode, setStepsMode] = useState(false);
-
-  const btn =
-    "rounded-pill border border-outline-variant bg-surface-container-lowest px-3 py-1.5 text-xs font-medium text-on-surface hover:bg-surface-container";
+  const [tile, setTile] = useState(false);
+  const [highlight, setHighlight] = useState(true);
 
   return (
     <div className="space-y-8">
@@ -46,110 +40,115 @@ export function FigureGallery({ locale }: { locale: string }) {
             {lw(WARMUP_SHARED.title, locale)} — figuras
           </h1>
           <p className="mt-1 text-sm text-on-surface-variant">
-            EN: {WARMUP_EN_STATUS}. Speed ×{speed}. Mirror semantics: “derecha” = viewer&apos;s right.
+            EN: {WARMUP_EN_STATUS}. Mirror semantics: “derecha” = viewer&apos;s right.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" className={btn} onClick={() => setEpoch((e) => e + 1)}>
-            Replay
+          <button type="button" className={btn} aria-pressed={tile} onClick={() => setTile((v) => !v)}>
+            Frame: {tile ? "tile" : "stage"}
           </button>
-          <button type="button" className={btn} aria-pressed={paused} onClick={() => setPaused((v) => !v)}>
-            {paused ? "Resume" : "Pause"}
+          <button type="button" className={btn} aria-pressed={highlight} onClick={() => setHighlight((v) => !v)}>
+            Highlight: {highlight ? "on" : "off"}
           </button>
-          <button type="button" className={btn} aria-pressed={reduced} onClick={() => setReduced((v) => !v)}>
-            Reduced motion: {reduced ? "on" : "off"}
-          </button>
-          <button type="button" className={btn} aria-pressed={stepsMode} onClick={() => setStepsMode((v) => !v)}>
-            {stepsMode ? "Kinds × variants" : "Every step"}
+        </div>
+      </header>
+
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        {WARMUP_EXERCISES.map((ex) => (
+          <GalleryCard key={ex.id} ex={ex} locale={locale} tile={tile} highlight={highlight} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GalleryCard({
+  ex,
+  locale,
+  tile,
+  highlight,
+}: {
+  ex: WarmupExercise;
+  locale: string;
+  tile: boolean;
+  highlight: boolean;
+}) {
+  const kind = ex.figureKind;
+  const isEyes = kind === "eyes";
+  const [a, setA] = useState(0);
+  const [b, setB] = useState(0);
+  const [closed, setClosed] = useState(isEyes);
+  const [lead, setLead] = useState<WarmupLead | "">("");
+
+  const minA = ONE_SIDED.has(kind) ? 0 : -1;
+  const pose = isEyes ? { a, b } : { a };
+  const peak = isEyes ? { a: 1, b: 0 } : { a: 1 };
+  const progress = Math.max(0, Math.min(1, a));
+
+  return (
+    <figure className="rounded-card border border-outline-variant bg-surface-container-lowest p-4">
+      <div className={tile ? "mx-auto h-[88px] w-[88px] overflow-hidden rounded-card" : "aspect-[3/4] max-h-[320px] w-full"}>
+        <WarmupFigure
+          kind={kind}
+          eyes={closed ? "closed" : "open"}
+          lead={lead || undefined}
+          highlight={highlight}
+          pose={pose}
+          path={{ from: neutralPose(kind), to: peak, progress }}
+          frame={tile ? "tile" : "stage"}
+          title={lw(ex.name, locale)}
+        />
+      </div>
+      <figcaption className="mt-3 space-y-2 text-xs text-on-surface-variant">
+        <span className="block font-semibold text-on-surface">
+          {ex.order}. {lw(ex.name, locale)} · {kind}
+        </span>
+        <label className="flex items-center gap-2">
+          <span className="w-4">a</span>
+          <input
+            type="range"
+            min={minA}
+            max={1}
+            step={0.01}
+            value={a}
+            onChange={(e) => setA(Number(e.target.value))}
+            className="flex-1"
+          />
+          <span className="w-10 text-right tabular-nums">{a.toFixed(2)}</span>
+        </label>
+        {isEyes && (
+          <label className="flex items-center gap-2">
+            <span className="w-4">b</span>
+            <input
+              type="range"
+              min={-1}
+              max={1}
+              step={0.01}
+              value={b}
+              onChange={(e) => setB(Number(e.target.value))}
+              className="flex-1"
+            />
+            <span className="w-10 text-right tabular-nums">{b.toFixed(2)}</span>
+          </label>
+        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" className={btn} aria-pressed={closed} onClick={() => setClosed((v) => !v)}>
+            Eyes: {closed ? "closed" : "open"}
           </button>
           <select
             className={btn}
-            value={speed}
-            onChange={(e) => {
-              setSpeed(Number(e.target.value));
-              setEpoch((v) => v + 1);
-            }}
-            aria-label="speed"
+            value={lead}
+            onChange={(e) => setLead(e.target.value as WarmupLead | "")}
+            aria-label="lead"
           >
-            {[1, 3, 10].map((s) => (
-              <option key={s} value={s}>
-                ×{s}
+            {LEADS.map((l) => (
+              <option key={l || "none"} value={l}>
+                lead: {l || "none"}
               </option>
             ))}
           </select>
         </div>
-      </header>
-
-      {!stepsMode ? (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          {WARMUP_EXERCISES.map((ex) =>
-            VARIANTS.map((variant) => {
-              const { figure, durationSec, label } = pick(ex.figureKind, variant);
-              return (
-                <figure
-                  key={`${ex.id}-${variant}-${epoch}`}
-                  className="rounded-card border border-outline-variant bg-surface-container-lowest p-4"
-                >
-                  <div className="aspect-[3/4] max-h-[320px] w-full">
-                    <WarmupFigure
-                      figure={figure}
-                      durationSec={durationSec / speed}
-                      paused={paused}
-                      reducedMotion={reduced}
-                      title={`${lw(ex.name, locale)} · ${lw(WARMUP_SHARED.evolution.stages[variant], locale)}`}
-                    />
-                  </div>
-                  <figcaption className="mt-3 text-xs text-on-surface-variant">
-                    <span className="font-semibold text-on-surface">
-                      {ex.order}. {lw(ex.name, locale)}
-                    </span>{" "}
-                    · {lw(WARMUP_SHARED.evolution.stages[variant], locale)} · {label} · {durationSec}s
-                    {figure.direction ? ` · ${figure.direction}` : ""}
-                    {figure.lead ? ` · lead:${figure.lead}` : ""}
-                  </figcaption>
-                </figure>
-              );
-            }),
-          )}
-        </div>
-      ) : (
-        <div className="space-y-10">
-          {WARMUP_EXERCISES.map((ex) => (
-            <section key={ex.id} className="space-y-3">
-              <h2 className="font-display text-xl text-primary-container">
-                {ex.order}. {lw(ex.name, locale)}
-              </h2>
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                {ex.steps.map((step, i) => (
-                  <figure
-                    key={`${step.id}-${epoch}`}
-                    className="rounded-card border border-outline-variant bg-surface-container-lowest p-3"
-                  >
-                    <div className="aspect-[3/4] w-full">
-                      <WarmupFigure
-                        figure={step.figure}
-                        durationSec={step.durationSec / speed}
-                        paused={paused}
-                        reducedMotion={reduced}
-                      />
-                    </div>
-                    <figcaption className="mt-2 text-[11px] leading-snug text-on-surface-variant">
-                      <span className="font-semibold text-on-surface">{i + 1}.</span>{" "}
-                      {lw(step.text, locale)}
-                      <br />
-                      <span className="tabular-nums">
-                        {step.durationSec}s · {step.figure.variant}
-                        {step.figure.direction ? ` · ${step.figure.direction}` : ""}
-                        {step.figure.lead ? ` · ${step.figure.lead}` : ""}
-                      </span>
-                    </figcaption>
-                  </figure>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      )}
-    </div>
+      </figcaption>
+    </figure>
   );
 }

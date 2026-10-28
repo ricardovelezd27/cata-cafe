@@ -30,7 +30,7 @@ export function WarmupMoment({ sessionId, locale, exerciseId, enabled = true, st
   if (!exercise) return null;
   return (
     <SessionMomentOverlay open={open} onDismiss={dismiss} label={lw(exercise.name, locale)}>
-      <WarmupPlayer exercise={exercise} locale={locale} t={strings} onFinish={dismiss} onSkip={dismiss} />
+      <WarmupPlayer exercise={exercise} locale={locale} t={strings} mode="session" onFinish={dismiss} onExit={dismiss} />
     </SessionMomentOverlay>
   );
 }

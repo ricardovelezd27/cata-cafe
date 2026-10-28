@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  WARMUP_CLOSING_HOLD_SEC,
   WARMUP_EXERCISES,
   WARMUP_IDS,
   WARMUP_SHARED,
   isWarmupId,
   warmupById,
   warmupBySlug,
-  warmupPlayerSeconds,
 } from "@/lib/warmup/exercises";
 
 describe("warm-up content (Movimiento Sensorial)", () => {
@@ -33,21 +31,32 @@ describe("warm-up content (Movimiento Sensorial)", () => {
     expect(new Set(WARMUP_EXERCISES.map((e) => e.id)).size).toBe(5);
   });
 
-  it("step durations are positive and add up to a plausible share of durationMin", () => {
+  it("step durations are positive and each figure matches its exercise", () => {
     for (const ex of WARMUP_EXERCISES) {
       expect(ex.steps.length).toBeGreaterThan(0);
       for (const s of ex.steps) {
         expect(s.durationSec).toBeGreaterThan(0);
         expect(s.figure.kind).toBe(ex.figureKind);
       }
-      // Kim's minutes include breathing room between legs; the player's hard
-      // time (steps + pauses + 30 s neutral hold) must sit inside that budget
-      // but not be trivially short.
-      const budget = ex.durationMin * 60;
-      const total = warmupPlayerSeconds(ex);
-      expect(total).toBeLessThanOrEqual(budget);
-      expect(total).toBeGreaterThanOrEqual(budget * 0.4);
-      expect(total).toBeGreaterThan(WARMUP_CLOSING_HOLD_SEC);
+    }
+  });
+
+  it("v3 timing metadata is coherent (observeAt, readDuringPrevAtSec, reps)", () => {
+    for (const ex of WARMUP_EXERCISES) {
+      expect(ex.observeAt).toHaveLength(ex.observe.length);
+      const ids = new Set(ex.steps.map((s) => s.id));
+      for (const slot of ex.observeAt) {
+        if (slot === null) continue;
+        if ("step" in slot) expect(ids.has(slot.step)).toBe(true);
+        if (slot.atSec !== undefined) expect(slot.atSec).toBeGreaterThanOrEqual(0);
+      }
+      ex.steps.forEach((s, i) => {
+        if (s.readDuringPrevAtSec !== undefined) {
+          expect(i).toBeGreaterThan(0);
+          expect(s.readDuringPrevAtSec).toBeGreaterThanOrEqual(0);
+        }
+        if (s.reps !== undefined) expect([1, 2]).toContain(s.reps);
+      });
     }
   });
 

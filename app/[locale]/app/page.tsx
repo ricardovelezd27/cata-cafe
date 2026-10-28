@@ -250,12 +250,13 @@ export default async function Dashboard({
         href={`/${locale}/app/warmup`}
         className="group flex items-center gap-4 rounded-card border border-outline-variant bg-surface-container-low px-5 py-4 transition-colors hover:bg-primary-fixed/40 md:gap-6"
       >
-        <span className="hidden h-16 w-12 shrink-0 text-on-surface sm:block" aria-hidden>
+        <span className="hidden h-16 w-16 shrink-0 overflow-hidden rounded-card sm:block" aria-hidden>
           <WarmupFigure
-            figure={{ kind: "arm-raise", variant: "slow-open", direction: "up" }}
-            durationSec={15}
-            reducedMotion
-            paused
+            kind="arm-raise"
+            eyes="open"
+            pose={{ a: 0.75 }}
+            path={{ from: { a: 0 }, to: { a: 1 }, progress: 0.75 }}
+            frame="tile"
           />
         </span>
         <span className="min-w-0 flex-1">
