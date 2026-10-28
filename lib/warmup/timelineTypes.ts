@@ -86,6 +86,14 @@ export interface CuePoint {
   readonly segIdx: number;
 }
 
+/** A continuous hum (soft drone) window: from the step's first movement
+ *  segment to the step end — "campana → hum → tic → instructions". */
+export interface HumWindow {
+  readonly fromMs: number;
+  readonly toMs: number;
+  readonly stepIdx: number;
+}
+
 export interface WhisperSlot {
   readonly observeIdx: number;
   readonly fromMs: number;
@@ -115,6 +123,7 @@ export interface ExerciseTimeline {
   /** Session mode only. */
   readonly bridgeAt: number | null;
   readonly cues: readonly CuePoint[];
+  readonly hums: readonly HumWindow[];
   readonly whispers: readonly WhisperSlot[];
   readonly secondaryTexts: readonly SecondaryText[];
   /** "Deja que la respiración vaya sola." shows during this step's read beat. */
