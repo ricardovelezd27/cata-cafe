@@ -86,12 +86,28 @@ stateDiagram-v2
     state active {
         [*] --> waiting : participant joins via /join/[token]\n(live, not started)
         [*] --> cupping : join (async, or already started)
+        waiting --> waiting : warm-up (chosen exercise, skippable)
         waiting --> cupping : owner startSession\n(wizard step 2 or master panel)
         cupping --> submitted : participant submits
     }
     active --> closed : owner closeSession\nOR cron when closesAt < now\n→ closeSessionInternal: reveal → history\n→ close emails via after() (ledgered)
     closed --> [*]
 ```
+
+#### Warm-up (Movimiento Sensorial, 2026-10)
+
+`warmupExerciseId` is optional and can only be changed while the session has not
+started and has no evaluations (`updateSession` throws `warmup_locked` after
+that). The waiting room puts the chosen exercise first ("Tu maestro eligió");
+finishing or skipping it marks it seen per (session, user, exercise) in
+localStorage (`cata_moment_warmup_<sessionId>_<userId>` = exercise id). If
+`startedAt` arrives during the exercise, a docked bar offers "Ir a la mesa" and
+the room moves on at the next segment boundary, or after 30 s at most. On
+`/cup` the overlay shows once, only to a cupper with no evaluation yet, and
+never to the master of a live group session. A live session that has not started
+redirects participants from `/cup` to `/waiting`. (Stage 2, next PR: the master
+runs the exercise for the whole group — `startWarmup` writes `warmupStartedAt`
+and the waiting rooms open it in sync.)
 
 ### Deleting a session (2026-09-08)
 
@@ -397,6 +413,10 @@ coffee-less samples] -->|createExpressSession| CUP
     UCH --> HI
     UCH --> D
 ```
+
+`/app/warmup` ("Movimiento sensorial") is also a desktop sidebar item under
+Sesiones (`hideOnMobile`, so the BottomNav keeps its five tabs); on phones it is
+reached from the dashboard card and the link at the top of the Sesiones page.
 
 **The rule that keeps it cohesive:** assets (coffees, groups) are created once
 and reused across sessions; sessions produce history; history feeds every

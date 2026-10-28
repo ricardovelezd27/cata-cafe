@@ -13,7 +13,8 @@
     "signin": "Sign in",
     "groups": "Groups",
     "insights": "Insights",
-    "switchAccount": "Switch account"
+    "switchAccount": "Switch account",
+    "warmup": "Sensory movement"
   },
   "common": {
     "searchPlaceholder": "Search…",
@@ -195,7 +196,10 @@
         "too_many_samples": "Maximum 100 samples per session.",
         "invalid_closes_at": "The closing date must be in the future.",
         "invalid_reference": "The reference sample is not valid. Pick one from the list."
-      }
+      },
+      "goToPanel": "Go to the panel",
+      "startNow": "Start the cupping now",
+      "goToPanelHint": "From the panel you can run the sensory movement with the group and start the cupping once everyone is in the room."
     },
     "express": {
       "title": "Cup now",
@@ -264,7 +268,8 @@
       "closesAt": "Closing date",
       "closesAtHint": "Optional. The session closes by itself in the early hours after this date. Leave it empty for a live tasting you close yourself.",
       "closesAtPast": "The closing date must be today or later.",
-      "sessionClosed": "This session is closed and can no longer be edited."
+      "sessionClosed": "This session is closed and can no longer be edited.",
+      "warmupLocked": "The exercise can't be changed once the cupping has started."
     }
   },
   "cupping": {
@@ -1557,7 +1562,10 @@
       "minutes": "{min} min",
       "steps": "{count} steps",
       "back": "All exercises",
-      "open": "Open exercise"
+      "open": "Open exercise",
+      "mobileLink": "Sensory movement",
+      "count": "5 exercises",
+      "eyesClosed": "Eyes closed"
     },
     "dashboard": {
       "eyebrow": "Before cupping",
@@ -1568,7 +1576,15 @@
     "waiting": {
       "title": "While you wait",
       "body": "A slow movement prepares the senses. Pick an exercise; if the cupping starts, we take you to the table.",
-      "minutes": "{min} min"
+      "minutes": "{min} min",
+      "hero": "Your host chose",
+      "heroStart": "Start",
+      "heroDone": "Done",
+      "heroRepeat": "Repeat",
+      "others": "Other exercises",
+      "startedTitle": "The cupping has started",
+      "leavingIn": "Taking you there in {time}",
+      "eyesClosed": "Eyes closed"
     },
     "wizard": {
       "toggle": "Start with a sensory movement",

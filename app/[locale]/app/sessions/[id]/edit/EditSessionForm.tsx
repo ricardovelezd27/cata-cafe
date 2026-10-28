@@ -49,6 +49,7 @@ export type EditSessionFormTranslations = {
   closesAtHint: string;
   closesAtPast: string;
   sessionClosed: string;
+  warmupLocked: string;
   warmup: { toggle: string; label: string; hint: string; minutes: string };
 };
 
@@ -93,6 +94,8 @@ export function EditSessionForm({
     /** "YYYY-MM-DD" or "" (group sessions only). */
     closesAt: string;
     warmupExerciseId: string | null;
+    /** The cupping started: the warm-up can no longer change (warmup_locked). */
+    started: boolean;
     closed: boolean;
   };
   samples: EditSampleRow[];
@@ -114,8 +117,10 @@ export function EditSessionForm({
   const [closesAt, setClosesAt] = useState(initial.closesAt);
   const [warmupOn, setWarmupOn] = useState(initial.warmupExerciseId !== null);
   const [warmupId, setWarmupId] = useState<WarmupId>(
-    (initial.warmupExerciseId as WarmupId | null) ?? WARMUP_EXERCISES[0].id,
+    (initial.warmupExerciseId as WarmupId | null) ?? "eyes",
   );
+  // Locked once the cupping started or anyone has evaluated (server rule).
+  const warmupLocked = closed || initial.started || locked;
 
   const [saved, setSaved] = useState(false);
   const [errorCode, setErrorCode] = useState<string | null>(null);
@@ -259,7 +264,9 @@ export function EditSessionForm({
         ? t.closesAtPast
         : errorCode === "session_closed"
           ? t.sessionClosed
-          : t.error
+          : errorCode === "warmup_locked"
+            ? t.warmupLocked
+            : t.error
     : null;
 
   return (
@@ -354,7 +361,7 @@ export function EditSessionForm({
               type="button"
               role="switch"
               aria-checked={warmupOn}
-              disabled={closed}
+              disabled={warmupLocked}
               onClick={() => {
                 setWarmupOn((v) => !v);
                 clearSaved();
@@ -375,6 +382,7 @@ export function EditSessionForm({
           </div>
           {warmupOn && (
             <div className="space-y-2">
+              <fieldset disabled={warmupLocked} className="contents">
               <Select
                 value={warmupId}
                 onChange={(v) => {
@@ -382,12 +390,13 @@ export function EditSessionForm({
                   clearSaved();
                 }}
                 ariaLabel={t.warmup.label}
-                options={WARMUP_EXERCISES.map((ex) => ({
+                options={WARMUP_EXERCISES.filter((ex) => ex.order <= 3 || ex.id === warmupId).map((ex) => ({
                   value: ex.id,
                   label: `${ex.order}. ${lw(ex.name, locale)} · ${t.warmup.minutes.replace("{min}", String(ex.durationMin))}`,
                 }))}
               />
-              <p className="text-xs text-on-surface-variant">{t.warmup.hint}</p>
+              </fieldset>
+              <p className="text-xs text-on-surface-variant">{warmupLocked ? t.warmupLocked : t.warmup.hint}</p>
             </div>
           )}
         </div>

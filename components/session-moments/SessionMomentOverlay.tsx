@@ -14,51 +14,54 @@ import {
  * (warm-up interstitial today; materials checklist / reveal moment later).
  *
  * Rules the shell enforces so every provider inherits them:
- *  - shows at most once per (kind, session) per device — `useSessionMoment`
- *    owns the localStorage seen-set (`cata_moment_<kind>_<sessionId>`);
+ *  - shows at most once per (kind, session, user, value) per device —
+ *    `useSessionMoment` owns the seen-set (`lib/sessionMoments.ts`);
  *  - never opens during SSR / before hydration (server snapshot = "seen");
- *  - always skippable (Escape + the provider's own buttons);
+ *  - always skippable: the PROVIDER's content owns Escape (the warm-up
+ *    player does) — the shell only traps Tab and restores focus;
  *  - renders offline: providers must only use static content already in the
  *    bundle — the shell never fetches, never touches flushSave/useOfflineSync.
  */
 export function useSessionMoment({
   kind,
   sessionId,
+  userId,
+  value,
   when,
 }: {
   kind: SessionMomentKind;
   sessionId: string;
-  /** Provider predicate — e.g. "the session has a warm-up configured and
-   *  is still active". */
+  userId: string;
+  /** What is being shown (the warm-up exercise id): a different value re-arms. */
+  value: string;
+  /** Provider predicate — e.g. the overlay gate result. */
   when: boolean;
 }): { open: boolean; dismiss: () => void } {
   // Seen-set read through useSyncExternalStore: the SERVER snapshot says
   // "seen" so SSR/hydration never renders the layer open; the client
-  // snapshot reads localStorage; markMomentSeen notifies subscribers.
+  // snapshot reads the storage tiers; markMomentSeen notifies subscribers.
   const seen = useSyncExternalStore(
     subscribeMoments,
-    () => hasSeenMoment(kind, sessionId),
+    () => hasSeenMoment(kind, sessionId, userId, value),
     () => true,
   );
-  // Local dismissal in case storage is blocked (seen would stay false).
+  // Local dismissal in case every storage tier is blocked.
   const [dismissed, setDismissed] = useState(false);
 
   const dismiss = useCallback(() => {
-    markMomentSeen(kind, sessionId);
+    markMomentSeen(kind, sessionId, userId, value);
     setDismissed(true);
-  }, [kind, sessionId]);
+  }, [kind, sessionId, userId, value]);
 
   return { open: when && !seen && !dismissed, dismiss };
 }
 
 export function SessionMomentOverlay({
   open,
-  onDismiss,
   label,
   children,
 }: {
   open: boolean;
-  onDismiss: () => void;
   /** Accessible name for the layer. */
   label: string;
   children: ReactNode;
@@ -79,10 +82,6 @@ export function SessionMomentOverlay({
       );
     (focusables()[0] ?? root)?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onDismiss();
-        return;
-      }
       if (e.key !== "Tab") return;
       const items = focusables();
       if (items.length === 0) {
@@ -106,7 +105,7 @@ export function SessionMomentOverlay({
       window.removeEventListener("keydown", onKey);
       prev?.focus?.();
     };
-  }, [open, onDismiss]);
+  }, [open]);
 
   if (!open) return null;
   return (

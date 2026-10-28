@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, EyeOff } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { WARMUP_EXERCISES, WARMUP_SHARED, lw } from "@/lib/warmup/exercises";
@@ -58,16 +58,23 @@ export default async function WarmupLibraryPage({
               <li key={ex.id}>
                 <Link
                   href={`/${locale}/app/warmup/${ex.slug}`}
-                  className="group flex items-center gap-4 py-4 transition-colors hover:bg-surface-container-low md:gap-8 md:py-5"
+                  className="group grid grid-cols-[28px_72px_1fr_20px] items-center gap-3 py-4 transition-colors hover:bg-surface-container-low md:grid-cols-[32px_88px_1fr_20px] md:gap-5 md:py-5"
                 >
-                  <span className="font-display text-4xl leading-none text-primary-fixed-dim tabular-nums w-10 shrink-0 text-right md:text-5xl md:w-14">
-                    {ex.order}
-                  </span>
                   <span
-                    className="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-card md:h-[88px] md:w-[88px]"
+                    className="font-display text-[28px] leading-none text-primary-fixed-dim tabular-nums text-right md:text-[32px]"
                     aria-hidden
                   >
-                    <WarmupFigure {...previewSpec(ex)} frame="tile" />
+                    {ex.order}
+                  </span>
+                  <span className="relative block h-[72px] w-[72px] md:h-[88px] md:w-[88px]">
+                    <span className="block h-full w-full overflow-hidden rounded-card" aria-hidden>
+                      <WarmupFigure {...previewSpec(ex)} frame="tile" />
+                    </span>
+                    {ex.figureKind === "eyes" && (
+                      <span className="absolute bottom-1.5 right-1.5 grid h-5 w-5 place-items-center rounded-full bg-surface/80">
+                        <EyeOff size={12} aria-label={t("library.eyesClosed")} role="img" />
+                      </span>
+                    )}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block font-display text-xl text-primary-container md:text-2xl">
