@@ -34,6 +34,7 @@ import { rampFracFor, sineWave, softLinear, upDownWave } from "./easing";
 import type {
   CuePoint,
   ExerciseTimeline,
+  HumWindow,
   Pose,
   SecondaryText,
   Segment,
@@ -248,6 +249,10 @@ export function buildExerciseTimeline(ex: WarmupExercise, opts: { mode: Timeline
     cues.push({ atMs: totalMs, kind: "doble", segIdx: closingIdx });
   }
 
+  // Hum: from each step's first non-read segment (lead-in / leg / rest) to
+  // its end, so the drone carries the whole movement and stops with the tic.
+  const hums: HumWindow[] = ex.steps.map((_, i) => ({ fromMs: stepFirstMove[i], toMs: stepEnd[i], stepIdx: i }));
+
   const whispers: WhisperSlot[] = [];
   const doneObserveIdx: number[] = [];
   ex.observeAt.forEach((slot, observeIdx) => {
@@ -289,6 +294,7 @@ export function buildExerciseTimeline(ex: WarmupExercise, opts: { mode: Timeline
     closingAt,
     bridgeAt,
     cues,
+    hums,
     whispers,
     secondaryTexts,
     breathHintStepIdx,

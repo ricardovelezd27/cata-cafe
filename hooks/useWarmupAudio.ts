@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { useLocalFlag } from "@/hooks/useLocalFlag";
-import { VIBRATION, cueDurationMs, renderCue } from "@/lib/warmup/sounds";
-import type { CueKind, CuePoint } from "@/lib/warmup/timelineTypes";
+import { VIBRATION, cueDurationMs, renderCue, renderHum } from "@/lib/warmup/sounds";
+import type { CueKind, CuePoint, HumWindow } from "@/lib/warmup/timelineTypes";
 
 /**
  * Sound channel of the warm-up player (v3). Eyes are closed for half the
@@ -40,8 +40,9 @@ export interface WarmupAudio {
   voiceAvailable: boolean;
   /** Call synchronously inside a user gesture. */
   unlock(): void;
-  /** cancel(), then schedule every cue with atMs >= elapsedMs - 50. */
-  schedule(cues: readonly CuePoint[], elapsedMs: number): void;
+  /** cancel(), then schedule every cue with atMs >= elapsedMs - 50 and the
+   *  hum windows that have not ended (lib/warmup/sounds.ts renderHum). */
+  schedule(cues: readonly CuePoint[], elapsedMs: number, hums?: readonly HumWindow[]): void;
   cancel(): void;
   /** Immediate single cue (intro "Escucha" demo). */
   playDemo(kind: CueKind): void;
@@ -226,7 +227,7 @@ export function useWarmupAudio(locale?: string): WarmupAudio {
   }, []);
 
   const schedule = useCallback(
-    (cues: readonly CuePoint[], elapsedMs: number) => {
+    (cues: readonly CuePoint[], elapsedMs: number, hums: readonly HumWindow[] = []) => {
       cancel();
       const due = cues.filter((c) => c.atMs >= elapsedMs - 50);
       for (const cue of due) {
@@ -242,6 +243,12 @@ export function useWarmupAudio(locale?: string): WarmupAudio {
       busRef.current = bus;
       const now = c.currentTime;
       for (const cue of due) renderCue(c, cue.kind, now + (cue.atMs - elapsedMs) / 1000, bus);
+      // The hum follows the movement windows; a window already running when
+      // we (re)schedule starts at once (renderHum clamps to currentTime).
+      for (const h of hums) {
+        if (h.toMs <= elapsedMs) continue;
+        renderHum(c, now + (h.fromMs - elapsedMs) / 1000, now + (h.toMs - elapsedMs) / 1000, bus);
+      }
     },
     [cancel, freshBus],
   );
@@ -295,6 +302,7 @@ export function useWarmupAudio(locale?: string): WarmupAudio {
       timer = window.setTimeout(done, Math.max(4000, text.length * 160));
       speechDone.current.add(done);
       try {
+        s.cancel(); // never queue behind a stuck utterance
         const u = new SpeechSynthesisUtterance(text);
         u.lang = speechLang(loc);
         u.voice = v;
