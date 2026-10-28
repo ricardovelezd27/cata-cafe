@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ChevronLeft, ChevronRight, Pause, Play, Volume2, VolumeX, X } from "lucide-react";
+import { Armchair, ChevronDown, ChevronLeft, ChevronRight, Pause, Play, Settings2, ShieldCheck, Volume2, VolumeX, X } from "lucide-react";
 import { WARMUP_SHARED, lw, type WarmupExercise } from "@/lib/warmup/exercises";
 import { buildExerciseTimeline, poseInSegment, segmentAt, sequenceMap, stepSegments } from "@/lib/warmup/timeline";
 import { arrivePhaseAt, halo as haloAt } from "@/lib/warmup/breath";
@@ -53,7 +53,6 @@ const MOVING = new Set<Segment["kind"]>(["out", "back", "cross", "reps"]);
 const fill = (tpl: string, vars: Record<string, string | number>) =>
   Object.entries(vars).reduce((acc, [k, v]) => acc.replaceAll(`{${k}}`, String(v)), tpl);
 const CHROME_HIDE_MS = 4000;
-const VOICE_TAIL_MS = 500;
 
 export function WarmupPlayer({
   exercise,
@@ -364,7 +363,7 @@ export function WarmupPlayer({
 
   // ── Audio schedule follows the clock ─────────────────────────────────
   useEffect(() => {
-    if (running) audio.schedule(tl.cues, elapsedMs());
+    if (running) audio.schedule(tl.cues, elapsedMs(), tl.hums);
     else audio.cancel();
   }, [running, runId, audio, tl, elapsedMs]);
   useEffect(() => () => audio.cancel(), [audio]);
@@ -385,40 +384,21 @@ export function WarmupPlayer({
     },
     [still, synced, tl],
   );
-  // Voice: read the step aloud during its read beat and hold the clock there
-  // until the voice finishes (+ a short tail). Library / session only.
-  const voiceStopRef = useRef<number | null>(null);
+  // Manual ("Quieto") mode: stop at the end of every step.
   useEffect(() => {
     if (phase !== "run") return;
-    const quieto = stopForQuieto(segIdx);
-    const voiceStop = voiceStopRef.current;
-    const stops = [quieto, voiceStop].filter((x): x is number => x !== null);
-    setClockStopAt(stops.length ? Math.min(...stops) : null);
+    setClockStopAt(stopForQuieto(segIdx));
   }, [phase, segIdx, stopForQuieto, setClockStopAt]);
 
+  // Voice (opt-in): read the step aloud during its read beat, NON-blocking.
+  // The clock never waits for speech — a silent or stuck engine must not
+  // stall the run — and leaving the read beat cuts the utterance so the
+  // campana is heard alone.
   useEffect(() => {
     if (phase !== "run" || !audio.voice || !audio.voiceAvailable || synced) return;
     if (seg.kind !== "read" || !step) return;
-    const readEnd = seg.t0Ms + seg.durMs;
-    voiceStopRef.current = readEnd;
-    clock.setStopAt(Math.min(readEnd, stopForQuieto(segIdx) ?? Infinity));
-    let cancelled = false;
-    void audio.speak(lw(step.text, locale), locale).then(() => {
-      if (cancelled) return;
-      voiceStopRef.current = null;
-      const resume = () => {
-        if (cancelled) return;
-        const q = stopForQuieto(segIdx);
-        clock.setStopAt(q);
-        if (clock.elapsedMs() >= readEnd - 1 && !clock.running) clock.play();
-      };
-      setTimeout(resume, VOICE_TAIL_MS);
-    });
-    return () => {
-      cancelled = true;
-      voiceStopRef.current = null;
-      audio.cancelSpeech();
-    };
+    void audio.speak(lw(step.text, locale), locale);
+    return () => audio.cancelSpeech();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, segIdx, audio.voice, audio.voiceAvailable]);
 
@@ -910,62 +890,118 @@ function IntroScreen({
   reducedMotion: boolean;
   wakeDenied: boolean;
 }) {
+  const [settingsOpen, setSettingsOpen] = useState(false);
   return (
-    <>
-      <h1 className={s.title}>{lw(exercise.name, locale)}</h1>
-      <p className={s.lead}>{lw(exercise.purpose, locale)}</p>
-      <p className={s.muted}>
-        {fill(t.minutes, { min: exercise.durationMin })} · {fill(t.stepsCount, { count: total })} ·{" "}
-        {lw(WARMUP_SHARED.posture[exercise.posture], locale)}
-      </p>
-      <p className={s.kicker}>{t.postureLabel}</p>
-      <p className={s.lead}>{lw(exercise.postureText, locale)}</p>
-      <p className={s.kicker}>{t.sequenceLabel}</p>
-      <p className={s.sequence}>{sequence.join(" · ")}</p>
-      <p className={s.kicker}>{t.evolutionLabel}</p>
-      <div className={s.evolution}>
-        {evolution.map((e) => (
-          <span key={e} className={s.chip}>
-            {e}
-          </span>
-        ))}
-      </div>
-      <p className={s.safety}>
-        <strong>{lw(WARMUP_SHARED.safety.title, locale)}.</strong> {lw(WARMUP_SHARED.safety.text, locale)}
-      </p>
-      <p className={s.kicker}>{t.optionsTitle}</p>
-      <div className={s.options}>
-        <Switch label={t.soundLabel} checked={!audio.muted} onChange={(on) => {
-          audio.unlock();
-          audio.setMuted(!on);
-        }} />
-        <div className={s.demoRow}>
-          <button
-            type="button"
-            className={s.ghostBtn}
-            onClick={() => {
-              audio.unlock();
-              audio.playDemo("campana");
-              setTimeout(() => audio.playDemo("tic"), 1400);
-              setTimeout(() => audio.playDemo("cuenco"), 2600);
-              setTimeout(() => audio.playDemo("doble"), 5200);
-            }}
-          >
-            {t.soundDemo}
-          </button>
-          <span className={s.switchHint}>{t.soundDemoCaptions}</span>
+    <div className={s.intro}>
+      <header className={s.introHead}>
+        <div className={s.pills} aria-hidden>
+          <span className={s.pill}>{fill(t.minutes, { min: exercise.durationMin })}</span>
+          <span className={s.pill}>{fill(t.stepsCount, { count: total })}</span>
+          <span className={s.pill}>{lw(WARMUP_SHARED.posture[exercise.posture], locale)}</span>
         </div>
-        {audio.voiceAvailable && (
-          <Switch label={t.voiceToggle} hint={t.voiceHint} checked={audio.voice} onChange={audio.setVoice} />
-        )}
-        <Switch label={t.accessibleLabel} checked={accessible} onChange={setAccessible} />
-        <Switch label={t.largeTextLabel} checked={largeText} onChange={setLargeText} />
-        <Switch label={t.stillLabel} hint={t.stillHelp} checked={still} onChange={setStill} />
+        <h1 className={s.title}>{lw(exercise.name, locale)}</h1>
+        <p className={s.lead}>{lw(exercise.purpose, locale)}</p>
+      </header>
+
+      {/* The route in one glance: numbered beads, one per step. */}
+      <section aria-label={t.sequenceLabel}>
+        <p className={s.kicker}>{t.sequenceLabel}</p>
+        <ol className={s.seq}>
+          {sequence.map((label, i) => (
+            <li key={`${i}-${label}`} className={s.seqItem}>
+              <span className={s.seqDot}>{i + 1}</span>
+              <span className={s.seqLabel}>{label}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <div className={s.cards}>
+        <section className={s.card}>
+          <Armchair size={18} className={s.cardIcon} aria-hidden />
+          <div>
+            <p className={s.cardTitle}>{t.postureLabel}</p>
+            <p className={s.cardBody}>{lw(exercise.postureText, locale)}</p>
+          </div>
+        </section>
+        <section className={[s.card, s.cardSafety].join(" ")}>
+          <ShieldCheck size={18} className={s.cardIcon} aria-hidden />
+          <div>
+            <p className={s.cardTitle}>{lw(WARMUP_SHARED.safety.title, locale)}</p>
+            <p className={s.cardBody}>{lw(WARMUP_SHARED.safety.text, locale)}</p>
+          </div>
+        </section>
       </div>
+
+      {/* Kim's evolution: fast with eyes open → slow → slow with eyes closed. */}
+      <section aria-label={t.evolutionLabel}>
+        <p className={s.kicker}>{t.evolutionLabel}</p>
+        <ol className={s.stages}>
+          {evolution.map((e, i) => (
+            <li key={e} className={s.stage}>
+              <span className={[s.stageDot, i === 2 ? s.stageDotClosed : ""].join(" ")} aria-hidden />
+              <span className={s.stageLabel}>{e}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      {/* Settings fold away: the screen stays about the exercise. */}
+      <section className={s.settings}>
+        <button
+          type="button"
+          className={s.settingsToggle}
+          aria-expanded={settingsOpen}
+          onClick={() => setSettingsOpen((v) => !v)}
+        >
+          <Settings2 size={16} aria-hidden />
+          <span className={s.settingsTitle}>{t.optionsTitle}</span>
+          <span className={s.settingsSummary}>
+            {audio.muted ? t.muteLabel : t.soundLabel}
+            {audio.voice && audio.voiceAvailable ? ` · ${t.voiceToggle}` : ""}
+            {still ? ` · ${t.stillLabel}` : ""}
+          </span>
+          <ChevronDown size={16} className={settingsOpen ? s.chevOpen : ""} aria-hidden />
+        </button>
+        {settingsOpen && (
+          <div className={s.options}>
+            <Switch
+              label={t.soundLabel}
+              checked={!audio.muted}
+              onChange={(on) => {
+                audio.unlock();
+                audio.setMuted(!on);
+              }}
+            />
+            <div className={s.demoRow}>
+              <button
+                type="button"
+                className={s.ghostBtn}
+                onClick={() => {
+                  audio.unlock();
+                  audio.playDemo("campana");
+                  setTimeout(() => audio.playDemo("tic"), 1400);
+                  setTimeout(() => audio.playDemo("cuenco"), 2600);
+                  setTimeout(() => audio.playDemo("doble"), 5200);
+                }}
+              >
+                <Volume2 size={14} aria-hidden /> {t.soundDemo}
+              </button>
+              <span className={s.switchHint}>{t.soundDemoCaptions}</span>
+            </div>
+            {audio.voiceAvailable && (
+              <Switch label={t.voiceToggle} hint={t.voiceHint} checked={audio.voice} onChange={audio.setVoice} />
+            )}
+            <Switch label={t.accessibleLabel} checked={accessible} onChange={setAccessible} />
+            <Switch label={t.largeTextLabel} checked={largeText} onChange={setLargeText} />
+            <Switch label={t.stillLabel} hint={t.stillHelp} checked={still} onChange={setStill} />
+            <p className={[s.muted, s.kbd].join(" ")}>{t.keyboardHint}</p>
+          </div>
+        )}
+      </section>
       {reducedMotion && <p className={[s.muted, s.note].join(" ")}>{t.reducedMotionNote}</p>}
       {wakeDenied && <p className={[s.muted, s.note].join(" ")}>{t.wakeLockNote}</p>}
-      <p className={[s.muted, s.kbd].join(" ")}>{t.keyboardHint}</p>
-    </>
+    </div>
   );
 }
 

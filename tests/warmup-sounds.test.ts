@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RECIPES, VIBRATION, cueDurationMs, renderCue } from "@/lib/warmup/sounds";
+import { HUM, RECIPES, VIBRATION, cueDurationMs, renderCue, renderHum } from "@/lib/warmup/sounds";
 import type { CueKind } from "@/lib/warmup/timelineTypes";
 
 type Event = { op: "set" | "linear" | "exp" | "target"; value: number; time: number };
@@ -208,5 +208,40 @@ describe("warm-up cue synthesis", () => {
       expect(VIBRATION[kind]).toBeDefined();
     }
     expect(VIBRATION).toEqual({ campana: 30, tic: [12, 60, 12], cuenco: 40, doble: [30, 120, 30] });
+  });
+});
+
+describe("renderHum (continuous drone under a movement)", () => {
+  it("builds four partials + LFO through a lowpass into an envelope that fades in and out inside the window", () => {
+    const ctx = new FakeContext();
+    const bus = ctx.createGain();
+    ctx.nodes = [];
+    renderHum(ctx as unknown as BaseAudioContext, 2, 17, bus as unknown as GainNode);
+    expect(ctx.count("osc")).toBe(HUM.partials.length + 1); // + LFO
+    expect(ctx.count("biquad")).toBe(1);
+    // Every source stops just after the window.
+    for (const src of ctx.sources()) {
+      expect(src.startAt).toBe(2);
+      expect(src.stopAt).toBeCloseTo(17.05, 5);
+    }
+    // Envelope: 0 at 2 → peak by 3.5 → peak until 15.8 → 0 at 17.
+    const env = ctx.gains().find((g) => g.gain.events.some((e) => e.op === "linear" && e.value === HUM.peak))!;
+    const ev = env.gain.events;
+    expect(ev[0]).toEqual({ op: "set", value: 0, time: 2 });
+    expect(ev[1]).toEqual({ op: "linear", value: HUM.peak, time: 3.5 });
+    expect(ev[2]).toEqual({ op: "set", value: HUM.peak, time: 15.8 });
+    expect(ev[3]).toEqual({ op: "linear", value: 0, time: 17 });
+  });
+  it("shortens the fades for short windows, skips windows in the past, and never throws", () => {
+    const ctx = new FakeContext();
+    ctx.currentTime = 5;
+    const bus = ctx.createGain();
+    ctx.nodes = [];
+    renderHum(ctx as unknown as BaseAudioContext, 1, 5.2, bus as unknown as GainNode); // 0.2 s left → skipped
+    expect(ctx.nodes).toHaveLength(0);
+    renderHum(ctx as unknown as BaseAudioContext, 1, 6.5, bus as unknown as GainNode); // clamps start to now
+    const env = ctx.gains().find((g) => g.gain.events.some((e) => e.op === "linear" && e.value === HUM.peak))!;
+    expect(env.gain.events[1].time).toBeCloseTo(5.5, 5); // fade-in = len/3
+    expect(() => renderHum({ currentTime: 0 } as unknown as BaseAudioContext, 0, 10, {} as unknown as GainNode)).not.toThrow();
   });
 });

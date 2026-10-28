@@ -175,6 +175,88 @@ function renderStrike(ctx: BaseAudioContext, s: StrikeRecipe, when: number, bus:
   }
 }
 
+// ── Hum ─────────────────────────────────────────────────────────────────
+// A soft, continuous drone that carries each movement with the eyes closed:
+// campana → hum → tic → (silence) instructions. Two detuned sines an octave
+// apart plus a quiet fifth, low-passed, with a slow breath-like swell. Level
+// is deliberately far below the cues so they still read as events.
+
+export interface HumRecipe {
+  readonly partials: readonly { readonly freq: number; readonly amp: number; readonly wave: OscillatorType }[];
+  readonly lowpassHz: number;
+  /** Steady level of the hum's gain node. */
+  readonly peak: number;
+  readonly fadeInMs: number;
+  readonly fadeOutMs: number;
+  /** Slow amplitude swell: ±depth around peak at this rate. */
+  readonly swell: { readonly hz: number; readonly depth: number };
+}
+
+export const HUM: HumRecipe = {
+  partials: [
+    { freq: 110, amp: 1, wave: "sine" },
+    { freq: 110.7, amp: 0.6, wave: "sine" }, // slow beating against 110 Hz
+    { freq: 220, amp: 0.35, wave: "triangle" },
+    { freq: 165, amp: 0.18, wave: "sine" }, // the fifth, barely there
+  ],
+  lowpassHz: 520,
+  peak: 0.045,
+  fadeInMs: 1500,
+  fadeOutMs: 1200,
+  swell: { hz: 0.12, depth: 0.012 },
+};
+
+/**
+ * Schedule a hum from `fromS` to `toS` (context seconds) into `bus`. Windows
+ * shorter than the fades are shortened proportionally; a window already in
+ * the past is skipped. Never throws.
+ */
+export function renderHum(ctx: BaseAudioContext, fromS: number, toS: number, bus: AudioNode, recipe: HumRecipe = HUM): void {
+  try {
+    const start = Math.max(fromS, ctx.currentTime);
+    if (toS - start < 0.3) return;
+    const len = toS - start;
+    const fadeIn = Math.min(recipe.fadeInMs / 1000, len / 3);
+    const fadeOut = Math.min(recipe.fadeOutMs / 1000, len / 3);
+
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.setValueAtTime(recipe.lowpassHz, start);
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0, start);
+    env.gain.linearRampToValueAtTime(recipe.peak, start + fadeIn);
+    env.gain.setValueAtTime(recipe.peak, toS - fadeOut);
+    env.gain.linearRampToValueAtTime(0, toS);
+    lp.connect(env);
+    env.connect(bus);
+
+    // Breath-like swell: an LFO modulating the envelope gain around `peak`.
+    const lfo = ctx.createOscillator();
+    lfo.type = "sine";
+    lfo.frequency.setValueAtTime(recipe.swell.hz, start);
+    const depth = ctx.createGain();
+    depth.gain.setValueAtTime(recipe.swell.depth, start);
+    lfo.connect(depth);
+    depth.connect(env.gain);
+    lfo.start(start);
+    lfo.stop(toS + STOP_PAD_S);
+
+    for (const p of recipe.partials) {
+      const osc = ctx.createOscillator();
+      osc.type = p.wave;
+      osc.frequency.setValueAtTime(p.freq, start);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(p.amp, start);
+      osc.connect(g);
+      g.connect(lp);
+      osc.start(start);
+      osc.stop(toS + STOP_PAD_S);
+    }
+  } catch {
+    /* audio is best-effort */
+  }
+}
+
 /**
  * Schedule one cue at context time `when` (seconds) into `bus`. Times in the
  * past are clamped to `ctx.currentTime`. Never throws: an audio failure must

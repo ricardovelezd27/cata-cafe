@@ -281,3 +281,31 @@ describe("lookups", () => {
     expect(sequenceMap(ex3, "es", labels as never)).toEqual(["FAST", "RIGHT", "CENTER", "RIGHT", "CENTER"]);
   });
 });
+
+describe("hum windows (campana → hum → tic → instructions)", () => {
+  it("one window per step, from its first non-read segment to its end, never overlapping a read beat", () => {
+    for (const ex of WARMUP_EXERCISES) {
+      const tl = buildExerciseTimeline(ex, { mode: "library" });
+      expect(tl.hums).toHaveLength(ex.steps.length);
+      tl.hums.forEach((h, i) => {
+        expect(h.stepIdx).toBe(i);
+        expect(h.toMs).toBe(tl.stepEnd[i]);
+        // The hum starts with the campana: the first lead-in / leg / reps /
+        // rest of the step — after the read beat, its silent amplitude cross
+        // and a folded hold ("Para arriba tres segundos" = the PARA dots).
+        const own = tl.segments.filter((sg) => sg.stepIdx === i);
+        const readLike = (sg: Segment) => sg.kind === "read" || (sg.kind === "cross" && sg.label === "upNext");
+        let k = 0;
+        while (k < own.length && (readLike(own[k]) || own[k].kind === "hold")) k++;
+        expect(h.fromMs).toBe(own[k].t0Ms);
+        expect(["lead-in", "out", "rest", "reps", "cross"]).toContain(own[k].kind);
+        const reads = tl.segments.filter((sg) => sg.kind === "read");
+        for (const r of reads) expect(r.t0Ms >= h.toMs || r.t0Ms + r.durMs <= h.fromMs).toBe(true);
+      });
+    }
+  });
+  it("ex 1: the first hum starts with the fast lead-in at 45750 and ends at 53750", () => {
+    const tl = buildExerciseTimeline(ex1, { mode: "library" });
+    expect(tl.hums[0]).toEqual({ fromMs: 45750, toMs: 53750, stepIdx: 0 });
+  });
+});
