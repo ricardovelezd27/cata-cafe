@@ -102,6 +102,7 @@ export default async function AppLayout({
       groups: tNav("groups"),
       profile: tNav("profile"),
       insights: tNav("insights"),
+      warmup: tNav("warmup"),
       switchAccount: tNav("switchAccount"),
       logout: tNav("logout"),
     },

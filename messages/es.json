@@ -13,7 +13,8 @@
     "signin": "Iniciar sesión",
     "groups": "Grupos",
     "insights": "Análisis",
-    "switchAccount": "Cambiar de cuenta"
+    "switchAccount": "Cambiar de cuenta",
+    "warmup": "Movimiento sensorial"
   },
   "common": {
     "searchPlaceholder": "Buscar…",
@@ -195,7 +196,10 @@
         "too_many_samples": "Máximo 100 muestras por sesión.",
         "invalid_closes_at": "La fecha de cierre debe estar en el futuro.",
         "invalid_reference": "La muestra de referencia no es válida. Elige una de la lista."
-      }
+      },
+      "goToPanel": "Ir al panel",
+      "startNow": "Iniciar cata ahora",
+      "goToPanelHint": "Desde el panel puedes lanzar el movimiento sensorial con el grupo y empezar la cata cuando todos estén en la sala."
     },
     "express": {
       "title": "Catar ahora",
@@ -264,7 +268,8 @@
       "closesAt": "Fecha de cierre",
       "closesAtHint": "Opcional. La sesión se cierra sola en la madrugada siguiente a esta fecha. Déjala vacía para una cata en vivo que cierras tú.",
       "closesAtPast": "La fecha de cierre debe ser hoy o una fecha futura.",
-      "sessionClosed": "Esta sesión está cerrada y ya no se puede editar."
+      "sessionClosed": "Esta sesión está cerrada y ya no se puede editar.",
+      "warmupLocked": "El ejercicio no se puede cambiar una vez iniciada la cata."
     }
   },
   "cupping": {
@@ -1557,7 +1562,10 @@
       "minutes": "{min} min",
       "steps": "{count} pasos",
       "back": "Todos los ejercicios",
-      "open": "Abrir ejercicio"
+      "open": "Abrir ejercicio",
+      "mobileLink": "Movimiento sensorial",
+      "count": "5 ejercicios",
+      "eyesClosed": "Ojos cerrados"
     },
     "dashboard": {
       "eyebrow": "Antes de catar",
@@ -1568,7 +1576,15 @@
     "waiting": {
       "title": "Mientras esperas",
       "body": "Un movimiento lento prepara los sentidos. Elige un ejercicio; si la cata empieza, te llevamos a la mesa.",
-      "minutes": "{min} min"
+      "minutes": "{min} min",
+      "hero": "Tu maestro eligió",
+      "heroStart": "Empezar",
+      "heroDone": "Hecho",
+      "heroRepeat": "Repetir",
+      "others": "Otros ejercicios",
+      "startedTitle": "La cata empezó",
+      "leavingIn": "Te llevamos en {time}",
+      "eyesClosed": "Ojos cerrados"
     },
     "wizard": {
       "toggle": "Empezar con un movimiento sensorial",

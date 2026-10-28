@@ -36,6 +36,7 @@ export default async function WaitingPage({
       isAsync: true,
       status: true,
       referenceSampleId: true,
+      warmupExerciseId: true,
       samples: {
         select: { id: true, label: true, referenceRank: true },
         orderBy: { position: "asc" },
@@ -70,12 +71,22 @@ export default async function WaitingPage({
       sessionId={session.id}
       sessionName={session.name}
       locale={locale}
+      userId={user.id}
       isAsync={isAsyncMode}
       samples={session.samples}
       warmup={{
+        chosenId: session.warmupExerciseId,
         title: tw("waiting.title"),
         body: tw("waiting.body"),
         minutes: tw.raw("waiting.minutes") as string,
+        hero: tw("waiting.hero"),
+        heroStart: tw("waiting.heroStart"),
+        heroDone: tw("waiting.heroDone"),
+        heroRepeat: tw("waiting.heroRepeat"),
+        others: tw("waiting.others"),
+        startedTitle: tw("waiting.startedTitle"),
+        leavingIn: tw.raw("waiting.leavingIn") as string,
+        eyesClosed: tw("waiting.eyesClosed"),
         strings: warmupPlayerStrings(tw),
       }}
       initialReferenceIds={(() => {

@@ -84,6 +84,17 @@ export default async function CupPage({
 
   const isOwner = session.createdBy === user.id;
 
+  // A live group session that has not started keeps participants in the
+  // waiting room (Back / typed URL) — same rule as sessionHref() and the
+  // invite join (S6 warm-up v3, flow gap 10).
+  if (session.isGroup && !session.isAsync && !session.startedAt && !isOwner) {
+    redirect(`/${locale}/app/sessions/${id}/waiting`);
+  }
+
+  // The warm-up overlay only shows before the cupper's first evaluation:
+  // the per-cupper evaluations are already loaded above.
+  const hasOwnEvaluation = session.samples.some((s) => s.evaluations.length > 0);
+
   // How many unique participants have submitted at least one evaluation
   const submittedParticipantsResult = await prisma.evaluation.findMany({
     where: {
@@ -135,7 +146,7 @@ export default async function CupPage({
       sessionStatus={session.status}
       sessionStartedAt={session.startedAt?.toISOString() ?? null}
       sessionIsAsync={session.isAsync}
-      warmup={{ exerciseId: session.warmupExerciseId, strings: warmupPlayerStrings(tw) }}
+      warmup={{ exerciseId: session.warmupExerciseId, hasOwnEvaluation, strings: warmupPlayerStrings(tw) }}
       participantCount={session.participants.length}
       submittedCount={submittedParticipantsResult.length}
       session={{

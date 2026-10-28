@@ -16,7 +16,7 @@ export default function BottomNav({
   translations: NavTranslations;
 }) {
   const pathname = usePathname();
-  const tabs = showInsights ? [...NAV_ITEMS, INSIGHTS_ITEM] : NAV_ITEMS;
+  const tabs = (showInsights ? [...NAV_ITEMS, INSIGHTS_ITEM] : NAV_ITEMS).filter((i) => !i.hideOnMobile);
 
   return (
     <nav

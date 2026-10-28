@@ -28,4 +28,12 @@ export async function clearLocalDeviceState(): Promise<void> {
   } catch {
     // the store may be unavailable in this browser
   }
+  try {
+    // Session-moment seen-set (warm-up "shown once"): per user, but a shared
+    // tablet must not carry one cupper's moments into the next sign-in.
+    const { clearMomentsForDevice } = await import("@/lib/sessionMoments");
+    clearMomentsForDevice();
+  } catch {
+    // best effort
+  }
 }

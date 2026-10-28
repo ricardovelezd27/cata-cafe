@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useActionFeedback } from "@/components/ui/Toast";
 import { Trash2, X, ChevronDown } from "lucide-react";
 import { PROCESS_TYPES, CERTIFICATIONS, ROAST_LEVELS } from "@/lib/constants";
 import { createSession, createGroupSession } from "@/app/actions/sessions";
@@ -126,6 +127,9 @@ type Translations = {
     moreDetails: string;
     referenceTitle: string;
     referenceHelper: string;
+    goToPanel: string;
+    goToPanelHint: string;
+    startNow: string;
     /** Raw ICU string (t.raw()) — contains a literal "{label}" token. */
     referenceMark: string;
     referenceBadge: string;
@@ -260,6 +264,7 @@ export function NewSessionForm({
   initialGroupId?: string;
 }) {
   const router = useRouter();
+  const feedback = useActionFeedback();
 
   // Session basics
   const [name, setName] = useState("");
@@ -271,7 +276,9 @@ export function NewSessionForm({
 
   // Optional pre-cupping warm-up (CuppingSession.warmupExerciseId).
   const [warmupOn, setWarmupOn] = useState(false);
-  const [warmupId, setWarmupId] = useState<WarmupId>(WARMUP_EXERCISES[0].id);
+  // Default "Los ojos" ("Antes de oler"); exercises 4–5 need a firm chair and
+  // the back off the backrest, so the wizard offers 1–3 (the library has all).
+  const [warmupId, setWarmupId] = useState<WarmupId>("eyes");
 
   const [coffees, setCoffees] = useState<CoffeeEntry[]>(() => [{ ...EMPTY_COFFEE, id: newId() }]);
   const [samples, setSamples] = useState<SampleEntry[]>(() => [
@@ -602,19 +609,37 @@ export function NewSessionForm({
           t={groupsT}
         />
 
+        {/* Primary = go to the master panel WITHOUT starting: the room may
+            still be arriving, and the warm-up runs from the panel (v3). */}
         <button
           type="button"
           disabled={pending}
-          onClick={() => {
-            start(async () => {
-              await startSession(sessionId);
-              router.push(`/${locale}/app/sessions/${sessionId}/cup`);
-            });
-          }}
+          onClick={() => router.push(`/${locale}/app/sessions/${sessionId}/cup`)}
           className="w-full bg-primary-container text-on-primary rounded-pill py-3.5 font-medium hover:bg-primary transition-colors disabled:opacity-50"
         >
-          {t.groupStartCupping}
+          {t.newForm.goToPanel}
         </button>
+        <p className="text-xs text-on-surface-variant text-center">{t.newForm.goToPanelHint}</p>
+        {!closesAt && (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => {
+              start(async () => {
+                try {
+                  await startSession(sessionId);
+                } catch {
+                  feedback.notifyError("unknown");
+                  return;
+                }
+                router.push(`/${locale}/app/sessions/${sessionId}/cup`);
+              });
+            }}
+            className="w-full rounded-pill py-2.5 text-sm font-medium text-primary-container hover:bg-primary-fixed transition-colors disabled:opacity-50"
+          >
+            {t.newForm.startNow}
+          </button>
+        )}
       </div>
     );
   }
@@ -739,7 +764,7 @@ export function NewSessionForm({
                 value={warmupId}
                 onChange={(v) => setWarmupId(v as WarmupId)}
                 ariaLabel={t.warmup.label}
-                options={WARMUP_EXERCISES.map((ex) => ({
+                options={WARMUP_EXERCISES.filter((ex) => ex.order <= 3).map((ex) => ({
                   value: ex.id,
                   label: `${ex.order}. ${lw(ex.name, locale)} · ${t.warmup.minutes.replace("{min}", String(ex.durationMin))}`,
                 }))}
