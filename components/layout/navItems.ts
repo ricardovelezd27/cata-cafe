@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Home, Clipboard, Coffee, Users, User, BarChart3 } from "lucide-react";
+import { Home, Clipboard, Coffee, Users, User, BarChart3, PersonStanding } from "lucide-react";
 import { stripLocale } from "@/lib/guestScope";
 
 /**
@@ -7,7 +7,7 @@ import { stripLocale } from "@/lib/guestScope";
  * primary nav destination. Kept separate from the full `nav` namespace
  * (which also has logout/signin/switchAccount — non-item strings).
  */
-export type NavItemKey = "home" | "sessions" | "coffees" | "groups" | "profile" | "insights";
+export type NavItemKey = "home" | "sessions" | "coffees" | "groups" | "profile" | "insights" | "warmup";
 
 export interface NavItem {
   href: string;
@@ -17,6 +17,9 @@ export interface NavItem {
   /** Renders a visual divider ABOVE this item in the Sidebar — separates the
    *  personal group (Inicio, Perfil) from the work group (Sesiones, Cafés, Grupos). */
   startsGroup?: boolean;
+  /** BottomNav has room for five tabs; this item is reached on phones from the
+   *  dashboard card and the Sesiones page link. */
+  hideOnMobile?: boolean;
 }
 
 /** Shared translations shape passed down from app/[locale]/app/layout.tsx (server) to
@@ -29,6 +32,7 @@ export interface NavTranslations {
     groups: string;
     profile: string;
     insights: string;
+    warmup: string;
     switchAccount: string;
     logout: string;
   };
@@ -44,6 +48,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/app", icon: Home, i18nKey: "home", exact: true },
   { href: "/app/profile", icon: User, i18nKey: "profile" },
   { href: "/app/sessions", icon: Clipboard, i18nKey: "sessions", startsGroup: true },
+  { href: "/app/warmup", icon: PersonStanding, i18nKey: "warmup", hideOnMobile: true },
   { href: "/app/coffees", icon: Coffee, i18nKey: "coffees" },
   { href: "/app/groups", icon: Users, i18nKey: "groups" },
 ];

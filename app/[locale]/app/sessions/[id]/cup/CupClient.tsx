@@ -171,8 +171,9 @@ export function CupClient({
   initialSampleId?: string;
   session: Session;
   /** Optional pre-cupping warm-up (CuppingSession.warmupExerciseId) — shown
-   *  once per session per device by the session-moment overlay. */
-  warmup?: { exerciseId: string | null; strings: WarmupPlayerStrings };
+   *  once per (session, user, exercise) per device by the session-moment
+   *  overlay; gate in lib/warmup/overlayGate.ts, frozen at mount. */
+  warmup?: { exerciseId: string | null; hasOwnEvaluation: boolean; strings: WarmupPlayerStrings };
   isOwner: boolean;
   isGroup: boolean;
   sessionStatus: string;
@@ -2162,8 +2163,13 @@ export function CupClient({
     {warmup && (
       <WarmupMoment
         sessionId={session.id}
+        userId={userId}
         locale={locale}
         exerciseId={warmup.exerciseId}
+        hasOwnEvaluation={warmup.hasOwnEvaluation}
+        isOwner={isOwner}
+        isGroup={isGroup}
+        isAsync={sessionIsAsync}
         enabled={sessionStatus !== "closed"}
         strings={warmup.strings}
       />

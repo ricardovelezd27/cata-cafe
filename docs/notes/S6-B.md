@@ -1,5 +1,16 @@
 # S6 Stream B — Movimiento Sensorial warm-ups (notes for the lead's docs PR)
 
+## v3 (2026-10-28)
+
+- Player rewritten around `lib/warmup/timeline.ts` + `hooks/useRunClock.ts`: one pure timeline, one clock (no per-phase countdowns, CSS keyframes or GSAP).
+- Figures are static soft silhouettes; motion is attribute transforms on `[data-part]` groups (`lib/warmup/poses.ts`) written by the player's rAF loop.
+- `StepProgress` (segmented bar, hold dots) + `BreathBubble` (only on "Llega") replace the ring.
+- Four-cue audio (campana / tic / cuenco / doble), pre-scheduled on the AudioContext clock.
+- Modes: `library`, `session`, `synced`.
+- Per-user seen-set in localStorage (`cata_moment_warmup_<sessionId>_<userId>`); the waiting room honours the owner's pick ("Tu maestro eligió").
+- Docked "Ir a la mesa" bar when the session starts mid-exercise.
+- Nav: "Movimiento sensorial" sidebar item under Sesiones (`hideOnMobile`) + phone link on the Sesiones page.
+
 Status 2026-10-20: CP-B1…B6 implemented as stacked PRs (#26 → #33 → #40 → #41 → #44 → B6).
 B7 (reveal moment) waits for Stream A. Migration for B6 is **created, not applied**.
 
@@ -13,13 +24,13 @@ B7 (reveal moment) waits for Stream A. Migration for B6 is **created, not applie
   end: `player`, `library`, `dashboard`, `waiting`, `wizard`). Step timing is literal (15 s legs,
   3 s holds; `WARMUP_LEG_SEC`, `WARMUP_HOLD_SEC`, `WARMUP_STEP_PAUSE_SEC`, `WARMUP_CLOSING_HOLD_SEC`);
   `tests/warmup.test.ts` guards the structure.
-- **Figures** (`components/warmup/figures/`): one shared line-art `<Mannequin>` SVG (front/side
+- *(Superseded by v3, 2026-10-28: static soft silhouettes with attribute transforms.)* **Figures** (`components/warmup/figures/`): one shared line-art `<Mannequin>` SVG (front/side
   views, `data-part` groups, strokes via `currentColor`/tokens — never hex) + `<Arrow>`; one
   figure per `WarmupFigureKind`; motion is CSS-module keyframes over `--warmup-duration` /
   `--warmup-delay` / `--warmup-iterations` / `--warmup-amp`, one iteration, remounted per step.
   **Mirror semantics**: "derecha" moves toward the viewer's right. `hooks/useReducedMotion.ts`
   → static end-pose + arrow, no auto-advance. No GSAP.
-- **Player** (`components/warmup/WarmupPlayer.tsx`): `intro → step(i) → pause(3 s) → … →
+- *(Superseded by v3, 2026-10-28: one timeline + one clock, see above.)* **Player** (`components/warmup/WarmupPlayer.tsx`): `intro → step(i) → pause(3 s) → … →
   observe → closing (30 s) → done`; `hooks/useCountdown.ts` measures with `Date.now()` deltas,
   pauses on `visibilitychange`, re-renders only on whole seconds. Mobile = fixed full-screen
   stack (figure ≈42 dvh, docked controls with the CanvasFooter gesture padding); md:+ = two

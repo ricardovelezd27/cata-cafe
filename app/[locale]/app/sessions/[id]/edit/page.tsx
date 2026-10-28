@@ -101,6 +101,7 @@ export default async function EditSessionPage({
     closesAtHint: t("edit.closesAtHint"),
     closesAtPast: t("edit.closesAtPast"),
     sessionClosed: t("edit.sessionClosed"),
+    warmupLocked: t("edit.warmupLocked"),
   };
 
   return (
@@ -128,6 +129,7 @@ export default async function EditSessionPage({
           // day the owner picked.
           closesAt: session.closesAt ? session.closesAt.toISOString().slice(0, 10) : "",
           warmupExerciseId: session.warmupExerciseId,
+          started: session.startedAt !== null,
           closed: session.status === "closed",
         }}
         samples={session.samples.map((s) => ({

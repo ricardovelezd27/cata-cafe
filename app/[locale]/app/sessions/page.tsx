@@ -1,4 +1,5 @@
 import { GuestGateLink } from "@/components/guest/GuestGateLink";
+import { ChevronRight, PersonStanding } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
@@ -17,6 +18,7 @@ export default async function SessionsList({
   setRequestLocale(locale);
   const t = await getTranslations("session");
   const tc = await getTranslations("common");
+  const tw = await getTranslations("warmup");
 
   const supabase = await createClient();
   const {
@@ -210,6 +212,17 @@ export default async function SessionsList({
           </div>
         }
       />
+
+      {/* Phones have no sidebar: the warm-up library is reached from here. */}
+      <GuestGateLink
+        href={`/${locale}/app/warmup`}
+        className="lg:hidden flex items-center gap-3 rounded-card bg-surface-container-low px-4 py-3 text-sm font-medium text-on-surface hover:bg-surface-container"
+      >
+        <PersonStanding size={18} aria-hidden />
+        {tw("library.mobileLink")}
+        <span className="ml-auto text-xs text-on-surface-variant">{tw("library.count")}</span>
+        <ChevronRight size={16} className="text-on-surface-variant" aria-hidden />
+      </GuestGateLink>
 
       <SessionsTable
         rows={rows}

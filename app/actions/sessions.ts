@@ -963,10 +963,26 @@ export async function updateSession(sessionId: string, input: UpdateSessionInput
     data.objective = input.objective?.trim() || null;
   }
   if (input.warmupExerciseId !== undefined) {
+    let next: WarmupId | null;
     try {
-      data.warmupExerciseId = parseWarmupId(input.warmupExerciseId);
+      next = parseWarmupId(input.warmupExerciseId);
     } catch {
       return { ok: false as const, error: "invalid_warmup" };
+    }
+    // Locked once the cupping started or anyone has evaluated: changing it
+    // would re-arm the overlay mid-cupping for everyone (S6 warm-up v3).
+    const current = await prisma.cuppingSession.findUnique({
+      where: { id: sessionId },
+      select: {
+        warmupExerciseId: true,
+        samples: { where: { evaluations: { some: {} } }, select: { id: true }, take: 1 },
+      },
+    });
+    if (next !== (current?.warmupExerciseId ?? null)) {
+      if (session.startedAt || (current?.samples.length ?? 0) > 0) {
+        return { ok: false as const, error: "warmup_locked" };
+      }
+      data.warmupExerciseId = next;
     }
   }
 
