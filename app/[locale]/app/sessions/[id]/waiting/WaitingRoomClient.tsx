@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronDown, EyeOff } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
-import { checkSessionStarted } from "@/app/actions/sessions";
+import { checkSessionStarted, getWaitingState } from "@/app/actions/sessions";
+import { isMissed, parseDbTimestamp, runLengthMs, seekFor, skewMs, warmupSyncReducer, type SyncState } from "@/lib/warmup/syncedRun";
 import { nextReferenceOrder } from "@/lib/referenceRules";
 import { WARMUP_EXERCISES, WARMUP_SHARED, lw, warmupById, type WarmupExercise } from "@/lib/warmup/exercises";
 import { hasSeenMoment, markMomentSeen, subscribeMoments } from "@/lib/sessionMoments";
@@ -18,6 +19,19 @@ import { WarmupFigure } from "@/components/warmup/figures";
 export interface WaitingWarmupProps {
   /** CuppingSession.warmupExerciseId — the master's pick, or null. */
   chosenId: string | null;
+  /** Synced run already in progress when the page loaded (ISO), or null. */
+  warmupStartedAt: string | null;
+  /** Server clock at render (ISO) — client skew = server − client. */
+  serverNow: string;
+  synced: {
+    listen: string;
+    stopped: string;
+    soundToggle: string;
+    missed: string;
+    /** "En curso · paso {n} de {total}" (shown as its first words) */
+    inProgress: string;
+    join: string;
+  };
   title: string;
   body: string;
   /** "{min} min" */
@@ -102,10 +116,66 @@ export function WaitingRoomClient({
     () => (chosen ? hasSeenMoment("warmup", sessionId, userId, chosen.id) : false),
     () => false,
   );
-  const [othersOpen, setOthersOpen] = useState(false);
   // "La cata empezó" while the player runs: the player leaves at the next
   // segment boundary or the cap, then we route.
   const [exitRequest, setExitRequest] = useState<{ deadlineMs: number; label: string; leavingIn: string } | null>(null);
+  const [othersOpen, setOthersOpen] = useState(false);
+  // ── Synced run (the master pressed "Empezar con el grupo") ───────────
+  const skewRef = useRef(0);
+  useEffect(() => {
+    const serverNow = parseDbTimestamp(warmup?.serverNow);
+    skewRef.current = serverNow === null ? 0 : skewMs(serverNow, Date.now());
+  }, [warmup?.serverNow]);
+  const runMs = runLengthMs(chosen?.id);
+  const [synced, setSynced] = useState<{ startedAtMs: number; seekMs: number } | null>(null);
+  const [syncedMissed, setSyncedMissed] = useState(false);
+  const [syncedNote, setSyncedNote] = useState<string | null>(null);
+  const [syncedRunning, setSyncedRunning] = useState(false);
+  const syncRef = useRef<SyncState>({ lastStartedAt: null });
+  const openSynced = useCallback(
+    (startedAtMs: number, live: boolean) => {
+      if (!chosen || runMs <= 0) return;
+      const now = Date.now();
+      const skew = skewRef.current;
+      if (isMissed(startedAtMs, now, skew, runMs)) {
+        setSyncedMissed(true);
+        setSyncedRunning(false);
+        return;
+      }
+      setSyncedNote(null);
+      setSyncedMissed(false);
+      setSyncedRunning(true);
+      setSynced({ startedAtMs, seekMs: seekFor(startedAtMs, now, skew, { live }) });
+      setActiveWarmupId(chosen.id);
+    },
+    [chosen, runMs],
+  );
+  const applySyncRow = useCallback(
+    (row: Record<string, unknown>, live: boolean) => {
+      const r = warmupSyncReducer(syncRef.current, row);
+      syncRef.current = r.state;
+      if (r.action.type === "open") openSynced(r.action.startedAtMs, live);
+      else if (r.action.type === "stopped") {
+        setSynced(null);
+        setSyncedRunning(false);
+        setActiveWarmupId(null);
+        setExitRequest(null);
+        setSyncedNote(warmup?.synced.stopped ?? null);
+      }
+    },
+    [openSynced, warmup?.synced.stopped],
+  );
+  const applySyncRef = useRef(applySyncRow);
+  useEffect(() => {
+    applySyncRef.current = applySyncRow;
+  });
+  // A run already in progress at page load (reload / late join): seek by the clocks.
+  const initialSyncDone = useRef(false);
+  useEffect(() => {
+    if (initialSyncDone.current || !warmup?.warmupStartedAt) return;
+    initialSyncDone.current = true;
+    applySyncRef.current({ warmupStartedAt: warmup.warmupStartedAt }, false);
+  }, [warmup?.warmupStartedAt]);
   const startedRef = useRef(false);
   const activeRef = useRef<string | null>(null);
   useEffect(() => {
@@ -124,6 +194,7 @@ export function WaitingRoomClient({
     }
     setActiveWarmupId(null);
     setExitRequest(null);
+    setSynced(null);
     if (startedRef.current) goToCup();
   }, [chosen, sessionId, userId, goToCup]);
 
@@ -198,6 +269,8 @@ export function WaitingRoomClient({
                 onStartedRef.current();
                 return;
               }
+              // Synced warm-up: edge-detected on warmupStartedAt (full-row payloads).
+              applySyncRef.current(row, true);
               // Sample add/rename/remove touch the session row (S6 CP-C4): the
               // samples list and the reference line are server props here, so a
               // refresh is all it takes.
@@ -215,11 +288,14 @@ export function WaitingRoomClient({
         setConnectionLost(true);
         if (!pollRef.current) {
           pollRef.current = setInterval(async () => {
-            const started = await checkSessionStarted(sessionId);
-            if (started) {
+            const state = await getWaitingState(sessionId);
+            if (!state) return;
+            if (state.startedAt) {
               clearPoll();
               onStartedRef.current();
+              return;
             }
+            applySyncRef.current({ warmupStartedAt: state.warmupStartedAt }, false);
           }, 15000);
         }
       },
@@ -343,7 +419,13 @@ export function WaitingRoomClient({
                 locale={locale}
                 warmup={warmup}
                 seen={chosenSeen}
+                running={syncedRunning && !synced}
+                note={syncedMissed ? warmup.synced.missed : syncedNote}
                 onStart={() => setActiveWarmupId(chosen.id)}
+                onJoin={() => {
+                  const at = syncRef.current.lastStartedAt;
+                  if (at !== null) openSynced(at, false);
+                }}
               />
             ) : (
               <>
@@ -386,7 +468,9 @@ export function WaitingRoomClient({
           exercise={activeWarmup}
           locale={locale}
           t={warmup.strings}
-          mode="session"
+          mode={synced ? "synced" : "session"}
+          seekToMs={synced?.seekMs}
+          soundDefault={synced ? false : undefined}
           exitRequest={exitRequest}
           onFinish={closePlayer}
           onExit={closePlayer}
@@ -401,13 +485,20 @@ function HeroCard({
   locale,
   warmup,
   seen,
+  running,
+  note,
   onStart,
+  onJoin,
 }: {
   exercise: WarmupExercise;
   locale: string;
   warmup: WaitingWarmupProps;
   seen: boolean;
+  /** The master's synced run is in progress and the player is closed here. */
+  running: boolean;
+  note: string | null;
   onStart: () => void;
+  onJoin: () => void;
 }) {
   const closedEyes = exercise.figureKind === "eyes";
   return (
@@ -431,7 +522,21 @@ function HeroCard({
           </span>
         </span>
       </div>
+      {note && (
+        <p role="status" className="mt-3 text-sm text-on-surface-variant">
+          {note}
+        </p>
+      )}
       <div className="mt-4 flex items-center gap-3">
+        {running && (
+          <button
+            type="button"
+            onClick={onJoin}
+            className="min-h-11 flex-1 rounded-pill bg-secondary px-5 text-sm font-medium text-on-secondary hover:opacity-90 sm:flex-none"
+          >
+            {warmup.synced.inProgress.split(" ·")[0]} · {warmup.synced.join}
+          </button>
+        )}
         <button
           type="button"
           onClick={onStart}

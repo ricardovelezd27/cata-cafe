@@ -155,6 +155,11 @@ model CuppingSession {
   // from lib/warmup/exercises.ts WARMUP_IDS, validated with oneOf() in the
   // session actions. Flow/display only — scoring and aggregates never read it.
   warmupExerciseId String?
+  /// Master-led synced warm-up run (S6 warm-up v3 PR3): set by `startWarmup`
+  /// (t0 of the player timeline = start of "Llega"), cleared by `stopWarmup`.
+  /// TIMESTAMPTZ so the realtime payload carries its offset. Never read by
+  /// scoring, aggregates or the trigger. Not copied by duplicateSession.
+  warmupStartedAt DateTime? @db.Timestamptz(3)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

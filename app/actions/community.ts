@@ -14,6 +14,9 @@ import {
 import { closeSessionInternal } from "@/lib/closeSession";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
 import * as v from "@/lib/validate";
+import { runLengthMs } from "@/lib/warmup/syncedRun";
+import { run } from "@/lib/safeAction";
+import type { ActionResult } from "@/lib/actionResult";
 
 // ─── Submit all draft evaluations for a session ───────────────────────────────
 export async function submitAllEvaluations(sessionId: string) {
@@ -143,6 +146,79 @@ export async function startSession(sessionId: string) {
   revalidatePath(`/es/app/sessions/${sessionId}/cup`);
   revalidatePath(`/en/app/sessions/${sessionId}/cup`);
   return { ok: true as const, started: res.count > 0 };
+}
+
+// ─── Synced warm-up run (S6 warm-up v3 PR3) ───────────────────────────────────
+// The master starts the configured exercise for the whole room: one UPDATE on
+// cupping_sessions (already in the realtime publication) carries
+// warmupStartedAt to every waiting room, which opens the player seeked to
+// now − warmupStartedAt. Idempotent: a second click while a run is in
+// progress returns the existing timestamp; a finished run can be restarted.
+export async function startWarmup(
+  sessionId: string,
+): Promise<ActionResult<{ warmupStartedAt: string; serverNow: string }>> {
+  return run(
+    "startWarmup",
+    async () => {
+      const user = await requireUser();
+      const session = await requireSessionOwner(sessionId, user.id);
+      assertSessionWritable(session);
+      const row = await prisma.cuppingSession.findUnique({
+        where: { id: sessionId },
+        select: { isGroup: true, isAsync: true, status: true, startedAt: true, warmupExerciseId: true, warmupStartedAt: true },
+      });
+      if (!row || !row.isGroup || row.isAsync || row.status !== "active" || row.startedAt || !row.warmupExerciseId) {
+        throw new Error("invalid_input");
+      }
+      const runMs = runLengthMs(row.warmupExerciseId);
+      const now = new Date();
+      const res = await prisma.cuppingSession.updateMany({
+        where: {
+          id: sessionId,
+          isGroup: true,
+          isAsync: false,
+          status: "active",
+          startedAt: null,
+          warmupExerciseId: { not: null },
+          OR: [{ warmupStartedAt: null }, { warmupStartedAt: { lt: new Date(now.getTime() - runMs) } }],
+        },
+        data: { warmupStartedAt: now },
+      });
+      let startedAt = now;
+      if (res.count === 0) {
+        // A run is in progress (double click / second device): join it.
+        const current = await prisma.cuppingSession.findUnique({
+          where: { id: sessionId },
+          select: { warmupStartedAt: true },
+        });
+        if (!current?.warmupStartedAt) throw new Error("invalid_input");
+        startedAt = current.warmupStartedAt;
+      }
+      revalidatePath(`/es/app/sessions/${sessionId}/waiting`);
+      revalidatePath(`/en/app/sessions/${sessionId}/waiting`);
+      return { warmupStartedAt: startedAt.toISOString(), serverNow: new Date().toISOString() };
+    },
+    { sessionId },
+  );
+}
+
+export async function stopWarmup(sessionId: string): Promise<ActionResult<{ stopped: boolean }>> {
+  return run(
+    "stopWarmup",
+    async () => {
+      const user = await requireUser();
+      const session = await requireSessionOwner(sessionId, user.id);
+      assertSessionWritable(session);
+      const res = await prisma.cuppingSession.updateMany({
+        where: { id: sessionId, startedAt: null, warmupStartedAt: { not: null } },
+        data: { warmupStartedAt: null },
+      });
+      revalidatePath(`/es/app/sessions/${sessionId}/waiting`);
+      revalidatePath(`/en/app/sessions/${sessionId}/waiting`);
+      return { stopped: res.count > 0 };
+    },
+    { sessionId },
+  );
 }
 
 // ─── Close a session ──────────────────────────────────────────────────────────

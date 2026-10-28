@@ -146,7 +146,25 @@ export default async function CupPage({
       sessionStatus={session.status}
       sessionStartedAt={session.startedAt?.toISOString() ?? null}
       sessionIsAsync={session.isAsync}
-      warmup={{ exerciseId: session.warmupExerciseId, hasOwnEvaluation, strings: warmupPlayerStrings(tw) }}
+      warmup={{
+        exerciseId: session.warmupExerciseId,
+        hasOwnEvaluation,
+        warmupStartedAt: session.warmupStartedAt?.toISOString() ?? null,
+        serverNow: new Date().toISOString(),
+        strings: warmupPlayerStrings(tw),
+        master: {
+          startLabel: tg("warmupStart"),
+          stopLabel: tg("warmupStop"),
+          reopenLabel: tg("warmupReopen"),
+          runningLabel: tg("warmupRunning"),
+          timeLeft: tg.raw("warmupTimeLeft") as string,
+          confirmTitle: tg("warmupConfirmStartTitle"),
+          confirmBody: tg.raw("warmupConfirmStart") as string,
+          confirmYes: tg("warmupConfirmStartYes"),
+          startError: tg("warmupStartError"),
+          minutes: tw.raw("library.minutes") as string,
+        },
+      }}
       participantCount={session.participants.length}
       submittedCount={submittedParticipantsResult.length}
       session={{

@@ -8,7 +8,10 @@ import {
   useSyncExternalStore,
 } from "react";
 import { WarmupMoment } from "@/components/session-moments/WarmupMoment";
-import type { WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
+import { SessionMomentOverlay } from "@/components/session-moments/SessionMomentOverlay";
+import { WarmupPlayer, type WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
+import { lw, warmupById } from "@/lib/warmup/exercises";
+import { formatTimeLeft, isRunning as isWarmupRunning, parseDbTimestamp, runLengthMs, seekFor, skewMs, timeLeftMs } from "@/lib/warmup/syncedRun";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { Coffee, Scale, FileText, BarChart3 } from "lucide-react";
@@ -35,6 +38,8 @@ import {
   closeSession,
   createInviteToken,
   startSession,
+  startWarmup,
+  stopWarmup,
 } from "@/app/actions/community";
 import { buildInviteUrl } from "@/lib/inviteUrl";
 import {
@@ -173,7 +178,27 @@ export function CupClient({
   /** Optional pre-cupping warm-up (CuppingSession.warmupExerciseId) — shown
    *  once per (session, user, exercise) per device by the session-moment
    *  overlay; gate in lib/warmup/overlayGate.ts, frozen at mount. */
-  warmup?: { exerciseId: string | null; hasOwnEvaluation: boolean; strings: WarmupPlayerStrings };
+  warmup?: {
+    exerciseId: string | null;
+    hasOwnEvaluation: boolean;
+    /** Synced run in progress at render (ISO) — master panel state. */
+    warmupStartedAt: string | null;
+    serverNow: string;
+    strings: WarmupPlayerStrings;
+    /** Master-panel strings (group.warmup*). `{time}` placeholders are raw. */
+    master: {
+      startLabel: string;
+      stopLabel: string;
+      reopenLabel: string;
+      runningLabel: string;
+      timeLeft: string;
+      confirmTitle: string;
+      confirmBody: string;
+      confirmYes: string;
+      startError: string;
+      minutes: string;
+    };
+  };
   isOwner: boolean;
   isGroup: boolean;
   sessionStatus: string;
@@ -459,6 +484,75 @@ export function CupClient({
   // on-screen keyboard is up — see hooks/useKeyboardOpen.ts (CP-C1).
   const keyboardOpen = useKeyboardOpen();
   const [isStarting, setIsStarting] = useState(false);
+
+  // ── Synced warm-up run (master side, S6 warm-up v3 PR3) ──────────────
+  // The master's own device plays WITH sound; followers' waiting rooms open
+  // the same run from the cupping_sessions UPDATE. `warmupRun` mirrors the
+  // server timestamp (+ clock skew) so the panel can show time left and the
+  // "Iniciar cata" button can ask before cutting the exercise short.
+  const warmupExercise = warmupById(warmup?.exerciseId);
+  const warmupRunMs = runLengthMs(warmup?.exerciseId);
+  const [warmupStartedAtMs, setWarmupStartedAtMs] = useState<number | null>(() =>
+    parseDbTimestamp(warmup?.warmupStartedAt),
+  );
+  // Clock skew (server − client) lives in a ref written from effects and
+  // handlers only; `warmupServerNow` is the server-adjusted clock, ticked
+  // once a second while a run exists (0 until the first tick).
+  const warmupSkewRef = useRef(0);
+  useEffect(() => {
+    const serverNow = parseDbTimestamp(warmup?.serverNow);
+    if (serverNow !== null) warmupSkewRef.current = skewMs(serverNow, Date.now());
+  }, [warmup?.serverNow]);
+  const [warmupPending, setWarmupPending] = useState(false);
+  const [masterPlayer, setMasterPlayer] = useState<{ seekMs: number } | null>(null);
+  const [confirmStartOpen, setConfirmStartOpen] = useState(false);
+  const [warmupServerNow, setWarmupServerNow] = useState(0);
+  const warmupRunning = warmupServerNow > 0 && isWarmupRunning(warmupStartedAtMs, warmupServerNow, 0, warmupRunMs);
+  useEffect(() => {
+    if (warmupStartedAtMs === null) return;
+    const tick = () => setWarmupServerNow(Date.now() + warmupSkewRef.current);
+    const first = setTimeout(tick, 0);
+    const id = setInterval(tick, 1000);
+    return () => {
+      clearTimeout(first);
+      clearInterval(id);
+    };
+  }, [warmupStartedAtMs]);
+  const warmupTimeLeft =
+    warmupRunning && warmupStartedAtMs !== null
+      ? formatTimeLeft(timeLeftMs(warmupStartedAtMs, warmupServerNow, 0, warmupRunMs))
+      : null;
+
+  const handleWarmupStart = () => {
+    if (warmupPending) return;
+    setWarmupPending(true);
+    feedback.run(
+      startWarmup(session.id).finally(() => setWarmupPending(false)),
+      (d) => {
+        const startedAtMs = parseDbTimestamp(d.warmupStartedAt) ?? Date.now();
+        const serverNow = parseDbTimestamp(d.serverNow);
+        if (serverNow !== null) warmupSkewRef.current = skewMs(serverNow, Date.now());
+        setWarmupStartedAtMs(startedAtMs);
+        setMasterPlayer({ seekMs: seekFor(startedAtMs, Date.now(), warmupSkewRef.current, { live: true }) });
+      },
+    );
+  };
+  const handleWarmupStop = () => {
+    if (warmupPending) return;
+    setWarmupPending(true);
+    feedback.run(
+      stopWarmup(session.id).finally(() => setWarmupPending(false)),
+      () => {
+        setWarmupStartedAtMs(null);
+        setMasterPlayer(null);
+      },
+    );
+  };
+  const handleWarmupReopen = () => {
+    if (warmupStartedAtMs === null || warmupServerNow === 0) return;
+    // warmupServerNow is already server-adjusted (ticked every second).
+    setMasterPlayer({ seekMs: seekFor(warmupStartedAtMs, warmupServerNow, 0, { live: false }) });
+  };
   const [startError, setStartError] = useState(false);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
   const [clockTime, setClockTime] = useState(() =>
@@ -1236,7 +1330,8 @@ export function CupClient({
     router.push(`/${locale}/app/sessions/${session.id}/results`);
   };
 
-  const handleStart = () => {
+  const startNow = () => {
+    setMasterPlayer(null);
     setIsStarting(true);
     setStartError(false);
     startTransition(async () => {
@@ -1249,6 +1344,13 @@ export function CupClient({
         setIsStarting(false);
       }
     });
+  };
+  const handleStart = () => {
+    if (warmupRunning) {
+      setConfirmStartOpen(true);
+      return;
+    }
+    startNow();
   };
 
   // Optimistic: the select reflects the choice at once; a failed save toasts
@@ -1689,6 +1791,23 @@ export function CupClient({
         onReferenceChange={handleReferenceChange}
         referenceSummary={referenceSummary}
         referenceHint={refOrder.length ? translations.referenceAddHint : undefined}
+        warmup={
+          warmup && warmupExercise
+            ? {
+                exerciseLabel: `${lw(warmupExercise.name, locale)} · ${warmup.master.minutes.replace("{min}", String(warmupExercise.durationMin))}`,
+                startLabel: warmup.master.startLabel,
+                stopLabel: warmup.master.stopLabel,
+                reopenLabel: warmup.master.reopenLabel,
+                runningLabel: warmup.master.runningLabel,
+                timeLeft: warmupTimeLeft ? warmup.master.timeLeft.replace("{time}", warmupTimeLeft) : null,
+                running: warmupRunning,
+                pending: warmupPending,
+                onStart: handleWarmupStart,
+                onStop: handleWarmupStop,
+                onReopen: handleWarmupReopen,
+              }
+            : undefined
+        }
       />
     ) : undefined;
 
@@ -2160,6 +2279,36 @@ export function CupClient({
 
       <DevRoleBadge email={userEmail} />
     </SessionShell>
+    {warmup && warmupExercise && masterPlayer && (
+      <SessionMomentOverlay open label={lw(warmupExercise.name, locale)}>
+        <WarmupPlayer
+          exercise={warmupExercise}
+          locale={locale}
+          t={warmup.strings}
+          mode="synced"
+          seekToMs={masterPlayer.seekMs}
+          soundDefault
+          onFinish={() => setMasterPlayer(null)}
+          onExit={() => setMasterPlayer(null)}
+        />
+      </SessionMomentOverlay>
+    )}
+    {warmup && (
+      <ConfirmDialog
+        open={confirmStartOpen}
+        onOpenChange={setConfirmStartOpen}
+        title={warmup.master.confirmTitle}
+        body={warmup.master.confirmBody.replace("{time}", warmupTimeLeft ?? "0:00")}
+        confirmLabel={warmup.master.confirmYes}
+        cancelLabel={translations.cancel}
+        closeLabel={translations.cancel}
+        destructive={false}
+        onConfirm={() => {
+          setConfirmStartOpen(false);
+          startNow();
+        }}
+      />
+    )}
     {warmup && (
       <WarmupMoment
         sessionId={session.id}
