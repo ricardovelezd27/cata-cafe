@@ -37,6 +37,7 @@ export default async function WaitingPage({
       status: true,
       referenceSampleId: true,
       warmupExerciseId: true,
+      warmupStartedAt: true,
       samples: {
         select: { id: true, label: true, referenceRank: true },
         orderBy: { position: "asc" },
@@ -76,6 +77,16 @@ export default async function WaitingPage({
       samples={session.samples}
       warmup={{
         chosenId: session.warmupExerciseId,
+        warmupStartedAt: session.warmupStartedAt?.toISOString() ?? null,
+        serverNow: new Date().toISOString(),
+        synced: {
+          listen: tw("synced.listen"),
+          stopped: tw("synced.stopped"),
+          soundToggle: tw("synced.soundToggle"),
+          missed: tw("synced.missed"),
+          inProgress: tw.raw("synced.inProgress") as string,
+          join: tw("synced.join"),
+        },
         title: tw("waiting.title"),
         body: tw("waiting.body"),
         minutes: tw.raw("waiting.minutes") as string,

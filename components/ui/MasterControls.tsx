@@ -1,6 +1,6 @@
 "use client";
 
-import { Link2, X, Copy, RotateCcw, Check, Play } from "lucide-react";
+import { Link2, X, Copy, RotateCcw, Check, Play, PersonStanding, Square } from "lucide-react";
 import { InviteQR } from "./InviteQR";
 import { Select } from "./Select";
 import styles from "./MasterControls.module.css";
@@ -54,6 +54,23 @@ interface MasterControlsProps {
   referenceSummary?: string;
   /** Notice shown under the select once a reference exists (the new one pins, the old keeps its 79.00). */
   referenceHint?: string;
+  /** Synced warm-up run (S6 warm-up v3 PR3) — rendered only before the
+   *  cupping starts and when the session has an exercise configured. */
+  warmup?: {
+    /** "Los ojos · 5 min" */
+    exerciseLabel: string;
+    startLabel: string;
+    stopLabel: string;
+    reopenLabel: string;
+    runningLabel: string;
+    /** Pre-formatted "Quedan 3:12" (null when not running). */
+    timeLeft: string | null;
+    running: boolean;
+    pending: boolean;
+    onStart: () => void;
+    onStop: () => void;
+    onReopen: () => void;
+  };
 }
 
 export function MasterControls({
@@ -86,6 +103,7 @@ export function MasterControls({
   onReferenceChange,
   referenceSummary,
   referenceHint,
+  warmup,
 }: MasterControlsProps) {
   return (
     <section className={styles.wrap} aria-label={title}>
@@ -111,6 +129,45 @@ export function MasterControls({
             ariaLabel={referenceLabel ?? "Reference sample"}
           />
           {referenceHint && <span className={styles.referenceSummary}>{referenceHint}</span>}
+        </fieldset>
+      )}
+
+      {showStart && warmup && (
+        <fieldset className={styles.referenceField} disabled={sessionClosed} data-warmup-sync>
+          <span className={styles.referenceLabel}>{warmup.exerciseLabel}</span>
+          {warmup.running ? (
+            <>
+              <span className={styles.referenceSummary} role="status">
+                {warmup.runningLabel}
+                {warmup.timeLeft ? ` · ${warmup.timeLeft}` : ""}
+              </span>
+              <div className={styles.row}>
+                <button type="button" onClick={warmup.onReopen} className={`${styles.button} ${styles.invite}`}>
+                  <PersonStanding size={14} aria-hidden />
+                  {warmup.reopenLabel}
+                </button>
+                <button
+                  type="button"
+                  onClick={warmup.onStop}
+                  disabled={warmup.pending}
+                  className={`${styles.button} ${styles.close}`}
+                >
+                  <Square size={14} aria-hidden />
+                  {warmup.stopLabel}
+                </button>
+              </div>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={warmup.onStart}
+              disabled={warmup.pending}
+              className={`${styles.button} ${styles.invite}`}
+            >
+              <PersonStanding size={14} aria-hidden />
+              {warmup.startLabel}
+            </button>
+          )}
         </fieldset>
       )}
 
