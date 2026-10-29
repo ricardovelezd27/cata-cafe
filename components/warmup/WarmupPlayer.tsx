@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Armchair, ChevronDown, ChevronLeft, ChevronRight, Pause, Play, Settings2, ShieldCheck, Volume2, VolumeX, X } from "lucide-react";
 import { WARMUP_SHARED, lw, type WarmupExercise } from "@/lib/warmup/exercises";
 import { buildExerciseTimeline, poseInSegment, segmentAt, sequenceMap, stepSegments } from "@/lib/warmup/timeline";
@@ -8,7 +9,7 @@ import { arrivePhaseAt, halo as haloAt } from "@/lib/warmup/breath";
 import { partTransforms, passedDots, torsoBreathTransform } from "@/lib/warmup/poses";
 import { previewSpec } from "@/lib/warmup/preview";
 import { saveReflection } from "@/lib/warmup/reflections";
-import type { Pose, Segment } from "@/lib/warmup/timelineTypes";
+import type { NarrationSource, Pose, Segment } from "@/lib/warmup/timelineTypes";
 import { useRunClock } from "@/hooks/useRunClock";
 import { useWarmupAudio } from "@/hooks/useWarmupAudio";
 import { useWakeLock } from "@/hooks/useWakeLock";
@@ -16,7 +17,7 @@ import { useLocalFlag } from "@/hooks/useLocalFlag";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { WarmupFigure } from "@/components/warmup/figures";
 import { StepProgress } from "./StepProgress";
-import { BreathBubble } from "./BreathBubble";
+import { BreathField, type BreathFieldHandle } from "./BreathField";
 import type { WarmupPlayerStrings } from "./playerStrings";
 import s from "./WarmupPlayer.module.css";
 
@@ -53,6 +54,7 @@ const MOVING = new Set<Segment["kind"]>(["out", "back", "cross", "reps"]);
 const fill = (tpl: string, vars: Record<string, string | number>) =>
   Object.entries(vars).reduce((acc, [k, v]) => acc.replaceAll(`{${k}}`, String(v)), tpl);
 const CHROME_HIDE_MS = 4000;
+const subscribeNoop = () => () => {};
 
 export function WarmupPlayer({
   exercise,
@@ -158,7 +160,9 @@ export function WarmupPlayer({
   // ── DOM refs the loop writes to ───────────────────────────────────────
   const svgRef = useRef<SVGSVGElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
-  const bubbleRef = useRef<HTMLDivElement>(null);
+  const fieldRef = useRef<BreathFieldHandle>(null);
+  /** Index of the next narration to speak (reset on every schedule). */
+  const narrCursor = useRef(0);
   const lastWrite = useRef<Record<string, string>>({});
   const lastSegRef = useRef(segIdx);
   const lastFrameAt = useRef(0);
@@ -208,45 +212,22 @@ export function WarmupPlayer({
         }
       }
 
-      // Bar.
-      if (bar && sg.stepIdx >= 0 && stepSegs.first >= 0) {
-        const localIdx = i - stepSegs.first;
-        const fillEl = bar.querySelector<HTMLElement>(`[data-seg-fill="${localIdx}"]`);
-        if (fillEl) {
-          const p = sg.kind === "read" || sg.kind === "lead-in" ? 0 : u;
-          fillEl.style.setProperty("--p", p.toFixed(4));
-        }
-        if (sg.kind === "hold") {
-          const lit = Math.min(3, Math.floor(local / 1000) + 1);
-          for (let k = 0; k < 3; k++) {
-            const dot = bar.querySelector<HTMLElement>(`[data-hold-dot="${localIdx}-${k}"]`);
-            if (!dot) continue;
-            const want = k < lit ? "1" : null;
-            if ((dot.getAttribute("data-lit") ?? null) !== want) {
-              if (want) dot.setAttribute("data-lit", "1");
-              else dot.removeAttribute("data-lit");
-            }
-          }
-        }
-      } else if (bar && sg.stepIdx < 0 && sg.kind !== "arrive") {
-        bar.querySelector<HTMLElement>('[data-seg-fill="0"]')?.style.setProperty("--p", u.toFixed(4));
+      // Bar: one fill for the whole run.
+      if (bar) {
+        const p = tl.totalMs > 0 ? Math.min(1, Math.max(0, elapsed / tl.totalMs)) : 0;
+        bar.querySelector<HTMLElement>("[data-bar-fill]")?.style.setProperty("--p", p.toFixed(4));
+        bar.querySelector<HTMLElement>("[data-halo]")?.style.setProperty("--p", p.toFixed(4));
       }
 
-      // Bubble (arrive).
-      if (sg.kind === "arrive" && bubbleRef.current) {
+      // Breathing field (arrive).
+      if (sg.kind === "arrive" && fieldRef.current) {
         const ap = arrivePhaseAt(elapsed);
-        const root = bubbleRef.current;
-        if (ap.phase === "breath" && ap.breath) {
-          root.style.setProperty("--scale", ap.breath.scale.toFixed(4));
-          root.style.setProperty("--halo", haloAt(elapsed - 6000).toFixed(3));
-        } else {
-          root.style.setProperty("--scale", "0.62");
-          root.style.setProperty("--halo", "0.25");
-        }
+        if (ap.phase === "breath" && ap.breath) fieldRef.current.draw(ap.breath.scale, haloAt(elapsed - 6000), elapsed);
+        else fieldRef.current.draw(0.62, 0.25, elapsed);
       }
       return { i, u, local, sg };
     },
-    [tl, reducedMotion, stepSegs, pathSeg],
+    [tl, reducedMotion, pathSeg],
   );
 
   // Segment-level reactions (edge-detected by the loop and by the layout paint).
@@ -255,9 +236,8 @@ export function WarmupPlayer({
       const prev = tl.segments[prevIdx];
       const next = tl.segments[nextIdx];
       // Turn halo + lead glow.
-      if (barRef.current && prev && MOVING.has(prev.kind) && prev.stepIdx === next.stepIdx) {
-        const localPrev = prevIdx - stepSegs.first;
-        const h = barRef.current.querySelector<HTMLElement>(`[data-halo="${localPrev}"]`);
+      if (barRef.current && prev && MOVING.has(prev.kind)) {
+        const h = barRef.current.querySelector<HTMLElement>("[data-halo]");
         if (h) {
           h.setAttribute("data-fire", "1");
           setTimeout(() => h.removeAttribute("data-fire"), 800);
@@ -274,8 +254,47 @@ export function WarmupPlayer({
       setSegIdx(nextIdx);
       setChromeHidden(false);
     },
-    [tl, stepSegs.first],
+    [tl],
   );
+
+  // ── Voice: every segment is narrated (lib/warmup/timeline.ts narrations) ──
+  // Resolved here because step texts live in the exercise and the rest in
+  // the chrome strings. Read through a ref so the loop never re-subscribes.
+  const narrationText = useCallback(
+    (src: NarrationSource): string => {
+      switch (src.kind) {
+        case "step":
+          return lw(steps[src.stepIdx].text, locale);
+        case "label":
+          return t.labels[src.label];
+        case "chrome":
+          return src.cue === "stop" ? t.cueStop : src.cue === "return" ? t.cueReturn : t.cueOtherSide;
+        case "arrive":
+          return src.phase === "notice" ? t.arriveNotice : exercise.posture === "standing" ? t.arrivePostureStanding : t.arrivePosture;
+        case "breath":
+          return src.dir === "in" ? (src.first ? t.breathInFirst : t.breathIn) : src.first ? t.breathOutFirst : t.breathOut;
+        case "closing":
+          return t.closingStill;
+        case "closingOpen":
+          return t.closingOpen;
+        case "bridge":
+          return t.bridge;
+      }
+    },
+    [steps, locale, t, exercise.posture],
+  );
+  const voiceOn = phase === "run" && audio.voice && audio.voiceAvailable && !synced;
+  const narrateRef = useRef<(elapsed: number) => void>(() => {});
+  useEffect(() => {
+    narrateRef.current = (elapsed: number) => {
+      const list = tl.narrations;
+      while (narrCursor.current < list.length && list[narrCursor.current].atMs <= elapsed) {
+        const n = list[narrCursor.current++];
+        if (!voiceOn) continue;
+        void audio.speak(narrationText(n.source), locale, { interrupt: n.interrupt });
+      }
+    };
+  }, [tl, voiceOn, audio, narrationText, locale]);
 
   // ── The loop: runs only while the clock runs ──────────────────────────
   useEffect(() => {
@@ -297,6 +316,7 @@ export function WarmupPlayer({
         lastSegRef.current = i;
         onSegmentChange(prevIdx, i);
       }
+      narrateRef.current(elapsed);
       const fastSeg = sg.kind === "reps" || sg.kind === "arrive";
       if (fastSeg || nowMs - lastFrameAt.current >= 33) {
         lastFrameAt.current = nowMs;
@@ -363,8 +383,16 @@ export function WarmupPlayer({
 
   // ── Audio schedule follows the clock ─────────────────────────────────
   useEffect(() => {
-    if (running) audio.schedule(tl.cues, elapsedMs(), tl.hums);
-    else audio.cancel();
+    if (running) {
+      const elapsed = elapsedMs();
+      audio.schedule(tl.cues, elapsed, tl.hums);
+      // Lines at or just after the seek point play; earlier ones are skipped.
+      narrCursor.current = tl.narrations.findIndex((n) => n.atMs >= elapsed - 50);
+      if (narrCursor.current < 0) narrCursor.current = tl.narrations.length;
+    } else {
+      audio.cancel();
+      audio.cancelSpeech();
+    }
   }, [running, runId, audio, tl, elapsedMs]);
   useEffect(() => () => audio.cancel(), [audio]);
 
@@ -389,18 +417,6 @@ export function WarmupPlayer({
     if (phase !== "run") return;
     setClockStopAt(stopForQuieto(segIdx));
   }, [phase, segIdx, stopForQuieto, setClockStopAt]);
-
-  // Voice (opt-in): read the step aloud during its read beat, NON-blocking.
-  // The clock never waits for speech — a silent or stuck engine must not
-  // stall the run — and leaving the read beat cuts the utterance so the
-  // campana is heard alone.
-  useEffect(() => {
-    if (phase !== "run" || !audio.voice || !audio.voiceAvailable || synced) return;
-    if (seg.kind !== "read" || !step) return;
-    void audio.speak(lw(step.text, locale), locale);
-    return () => audio.cancelSpeech();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, segIdx, audio.voice, audio.voiceAvailable]);
 
   // ── Navigation ────────────────────────────────────────────────────────
   const start = useCallback(() => {
@@ -609,6 +625,11 @@ export function WarmupPlayer({
   };
 
   const figurePath = pathSeg ? { from: pathSeg.seg.from, to: pathSeg.seg.to, progress: pathSeg.reached ? 1 : 0 } : null;
+  // Eyes-closed dusk darkens the WHOLE screen, not just the player: on
+  // desktop the inline player sits inside the app shell, so a fixed veil is
+  // portalled to <body> under the player (which rises above it in dusk).
+  const mounted = useSyncExternalStore(subscribeNoop, () => true, () => false);
+  const veilHost = mounted ? document.body : null;
   const showFigure = phase === "run" ? !isArrive && !isBridge : true;
   const stageDim = phase !== "run" || isClosing;
 
@@ -651,7 +672,7 @@ export function WarmupPlayer({
       {/* ── Stage ── */}
       <div className={[s.stage, stageDim ? s.stageDim : ""].join(" ")}>
         {phase === "run" && isArrive && (
-          <BreathBubble ref={bubbleRef} phase={arriveLabel.phase} label={arriveLabel.text} dusk={dusk} />
+          <BreathField ref={fieldRef} phase={arriveLabel.phase} label={arriveLabel.text} dusk={dusk} reduced={reducedMotion} />
         )}
         {showFigure && (
           <div className={[s.figureBox, isClosing ? s.figureQuiet : ""].join(" ")}>
@@ -674,12 +695,10 @@ export function WarmupPlayer({
       </div>
 
       {/* ── Progress ── */}
-      {phase === "run" && !isArrive && (
+      {phase === "run" && (
         <StepProgress
           ref={barRef}
-          segments={stepSegs.segments}
-          activeIdx={segIdx - stepSegs.first}
-          labels={labels}
+          label={isArrive ? t.arriveEyebrow : labels[seg.label]}
           holdLabel={barLabel}
           paused={paused}
           seconds={accessible || reducedMotion ? secLeft : null}
@@ -711,7 +730,9 @@ export function WarmupPlayer({
 
         {phase === "run" && (
           <>
-            <p key={`${segIdx}-cue`} className={[s.cue, moving && dusk ? s.cueMoving : "", s.fadeIn].join(" ")}>
+            {/* Keyed by TEXT, not segment: the line only fades when it changes,
+                so a read → hold → leg chain never re-animates the same words. */}
+            <p key={`cue:${cueText}`} className={[s.cue, moving && dusk ? s.cueMoving : "", s.fadeIn].join(" ")}>
               {cueText}
             </p>
             {chromeCue && !paused && (
@@ -837,6 +858,8 @@ export function WarmupPlayer({
           </button>
         </footer>
       )}
+
+      {veilHost && createPortal(<div className={s.duskVeil} data-on={dusk ? "1" : undefined} aria-hidden />, veilHost)}
 
       {/* ── "La cata empezó" docked bar ── */}
       {exitRequest && phase === "run" && (

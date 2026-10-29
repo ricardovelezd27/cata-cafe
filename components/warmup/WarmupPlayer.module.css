@@ -44,6 +44,18 @@
   --wu-muted: color-mix(in oklch, var(--color-inverse-on-surface) 70%, transparent);
 }
 
+/* ── Dusk veil: the rest of the app darkens with the eyes ── */
+.duskVeil {
+  position: fixed;
+  inset: 0;
+  z-index: 59;
+  background: color-mix(in oklch, var(--color-inverse-surface) 96%, var(--color-primary));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1200ms ease;
+}
+.duskVeil[data-on="1"] { opacity: 0.94; }
+
 /* ── Top bar: never hides ── */
 .topbar {
   flex: 0 0 48px;
@@ -154,9 +166,11 @@
 /* Dusk + movement: the cue settles to a 55 % floor after 4 s (chime carries it). */
 .root[data-dusk="1"] .cueMoving { animation: cueDim 1000ms ease 4000ms both; }
 @keyframes cueDim { from { opacity: 0.7; } to { opacity: 0.55; } }
-.fadeIn { animation: cueIn 400ms ease both; }
-.root[data-dusk="1"] .cueMoving.fadeIn { animation: cueIn 400ms ease both, cueDim 1000ms ease 4000ms both; }
+.fadeIn { animation: cueIn 700ms ease both; }
+.root[data-dusk="1"] .cueMoving.fadeIn { animation: cueIn 700ms ease both, cueDim 1000ms ease 4000ms both; }
 @keyframes cueIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+/* Moving-part tint and dusk recolour glide instead of snapping. */
+.figureBox :global([data-part]) { transition: fill 700ms ease, stroke 700ms ease; }
 
 .chromeCue {
   margin: 10px 0 0;
@@ -525,6 +539,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .fadeIn, .whisper, .secondary, .chromeCue, .exitBar { animation: none; }
+  .duskVeil { transition: none; }
   .root, .stage, .figureBox, .controls, .topbar { transition: none; }
   .root[data-dusk="1"] .cueMoving { animation: none; opacity: 0.7; }
 }
@@ -548,6 +563,13 @@
     position: relative;
     inset: auto;
     z-index: auto;
+    transition: background 1200ms ease, color 1200ms ease, border-color 1200ms ease;
+  }
+  .inline.root[data-dusk="1"] {
+    z-index: 60; /* above the veil */
+    border-color: transparent;
+  }
+  .inline.root {
     height: auto;
     min-height: 640px;
     padding-left: 0;

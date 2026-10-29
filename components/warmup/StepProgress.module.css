@@ -1,5 +1,5 @@
-/* Segmented step progress (components/warmup/StepProgress.tsx).
- * Fills are scaleX(var(--p)) written per frame by the player; nothing here
+/* One-bar run progress (components/warmup/StepProgress.tsx).
+ * The fill is scaleX(var(--p)) written per frame by the player; nothing here
  * transitions width, so the bar never fights the player's clock. */
 
 .root {
@@ -10,23 +10,14 @@
   .root { width: 360px; max-width: 100%; }
 }
 
-.bar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 12px; /* room for the 6 px dots; tracks are centred */
-  transition: opacity 300ms ease;
-}
-.paused .bar { opacity: 0.55; }
-
 .track {
   position: relative;
-  flex: 1 1 0;
-  min-width: 12px;
   height: 4px;
   border-radius: var(--radius-pill);
-  background: color-mix(in oklch, var(--color-outline-variant) 60%, transparent);
+  background: var(--wu-track, color-mix(in oklch, var(--color-outline-variant) 60%, transparent));
+  transition: opacity 300ms ease;
 }
+.paused .track { opacity: 0.55; }
 
 .fill {
   position: absolute;
@@ -42,7 +33,7 @@
 .halo {
   position: absolute;
   top: 50%;
-  left: calc(var(--p, 1) * 100%);
+  left: calc(var(--p, 0) * 100%);
   width: 12px;
   height: 12px;
   margin: -6px 0 0 -6px;
@@ -57,22 +48,6 @@
   from { opacity: 0.25; transform: scale(1); }
   to   { opacity: 0;    transform: scale(2.2); }
 }
-
-.hold {
-  flex: 0 0 30px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 6px;
-}
-.dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: color-mix(in oklch, var(--color-outline-variant) 60%, transparent);
-  transition: background-color 200ms ease;
-}
-.dot[data-lit="1"] { background: var(--wu-move, var(--color-secondary)); }
 
 .labelRow {
   display: flex;
@@ -91,12 +66,23 @@
 .labelRow.withSeconds { justify-content: space-between; }
 .dusk .labelRow { color: color-mix(in oklch, var(--wu-ink) 85%, transparent); }
 
+.labelBox {
+  position: relative;
+  display: grid;
+  min-width: 0;
+}
 .label {
+  grid-area: 1 / 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.in  { animation: labelIn 500ms ease-out both; }
+.out { animation: labelOut 400ms ease-out both; }
+@keyframes labelIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes labelOut { from { opacity: 1; } to { opacity: 0; } }
+
 .seconds {
   flex: none;
   font-variant-numeric: tabular-nums;
@@ -105,5 +91,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .halo[data-fire="1"] { animation: none; }
-  .bar, .dot { transition: none; }
+  .track { transition: none; }
+  .in, .out { animation: none; }
+  .out { display: none; }
 }

@@ -1,4 +1,4 @@
-// Breath curve for the warm-up bubble (components/warmup/BreathBubble.tsx)
+// Breath curve for the warm-up breathing field (components/warmup/BreathField.tsx)
 // and the "Llega" (arrive) plan. Pure — the player calls these per frame and
 // writes the results as CSS custom properties (--scale, --halo).
 

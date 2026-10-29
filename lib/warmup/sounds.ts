@@ -5,7 +5,7 @@
 //   campana — step start / turn      tic   — light tick (reps, hold end)
 //   cuenco  — long bowl (arrive/closing)   doble — two strikes (step change)
 
-import type { CueKind } from "./timelineTypes";
+import type { CueKind, HumContour } from "./timelineTypes";
 
 /** One sine/triangle partial: frequency, relative amplitude, decay length. */
 export interface PartialSpec {
@@ -176,13 +176,22 @@ function renderStrike(ctx: BaseAudioContext, s: StrikeRecipe, when: number, bus:
 }
 
 // ── Hum ─────────────────────────────────────────────────────────────────
-// A soft, continuous drone that carries each movement with the eyes closed:
-// campana → hum → tic → (silence) instructions. Two detuned sines an octave
-// apart plus a quiet fifth, low-passed, with a slow breath-like swell. Level
-// is deliberately far below the cues so they still read as events.
+// The drone that carries each movement with the eyes closed:
+// campana → hum → tic. Not a flat tone: a low fundamental doubled left/right
+// with a small offset (a binaural-style beat on headphones, a slow throb on
+// speakers), two soft overtones, a breath-slow swell, a hint of vibrato and
+// a PITCH CONTOUR that follows the movement — it climbs a fourth on the way
+// out, falls on the way back, undulates under the fast reps, and rises and
+// falls with each inhale/exhale of the arrival. Level stays far below the
+// cues so they still read as events.
 
 export interface HumRecipe {
-  readonly partials: readonly { readonly freq: number; readonly amp: number; readonly wave: OscillatorType }[];
+  /** Fundamental, Hz. 132 Hz sits near the "Om" 136 Hz relaxation drones. */
+  readonly baseHz: number;
+  /** Overtones as ratios of the fundamental (the fundamental itself is 1). */
+  readonly partials: readonly { readonly ratio: number; readonly amp: number; readonly wave: OscillatorType }[];
+  /** Left/right offset of the fundamental, Hz (theta-band beat). */
+  readonly binauralHz: number;
   readonly lowpassHz: number;
   /** Steady level of the hum's gain node. */
   readonly peak: number;
@@ -190,34 +199,101 @@ export interface HumRecipe {
   readonly fadeOutMs: number;
   /** Slow amplitude swell: ±depth around peak at this rate. */
   readonly swell: { readonly hz: number; readonly depth: number };
+  /** Gentle vibrato on every partial: ±depth (as a ratio) at this rate. */
+  readonly vibrato: { readonly hz: number; readonly depth: number };
+  /** Semitones travelled by "rise" / "fall", the ± span of "wave", and the
+   *  span of one breath. */
+  readonly span: { readonly leg: number; readonly wave: number; readonly breath: number };
+  /** Breath timing of the arrival window (contour "breath"). */
+  readonly breath: { readonly inMs: number; readonly outMs: number };
 }
 
 export const HUM: HumRecipe = {
+  baseHz: 132,
   partials: [
-    { freq: 110, amp: 1, wave: "sine" },
-    { freq: 110.7, amp: 0.6, wave: "sine" }, // slow beating against 110 Hz
-    { freq: 220, amp: 0.35, wave: "triangle" },
-    { freq: 165, amp: 0.18, wave: "sine" }, // the fifth, barely there
+    { ratio: 1, amp: 1, wave: "sine" },
+    { ratio: 2, amp: 0.28, wave: "triangle" },
+    { ratio: 1.5, amp: 0.14, wave: "sine" }, // the fifth, barely there
+    { ratio: 3, amp: 0.06, wave: "sine" }, // shimmer
   ],
-  lowpassHz: 520,
-  peak: 0.045,
+  binauralHz: 6,
+  lowpassHz: 640,
+  peak: 0.05,
   fadeInMs: 1500,
   fadeOutMs: 1200,
-  swell: { hz: 0.12, depth: 0.012 },
+  swell: { hz: 0.1, depth: 0.012 },
+  vibrato: { hz: 0.18, depth: 0.006 },
+  span: { leg: 5, wave: 3, breath: 3 },
+  breath: { inMs: 4000, outMs: 6000 },
 };
 
+const semis = (n: number) => Math.pow(2, n / 12);
+
 /**
- * Schedule a hum from `fromS` to `toS` (context seconds) into `bus`. Windows
- * shorter than the fades are shortened proportionally; a window already in
- * the past is skipped. Never throws.
+ * Pitch automation for one partial over [start, toS]: the contour as
+ * exponential ramps (musically even), starting and ending on `base` so
+ * consecutive windows never jump in pitch.
  */
-export function renderHum(ctx: BaseAudioContext, fromS: number, toS: number, bus: AudioNode, recipe: HumRecipe = HUM): void {
+function contourRamps(param: AudioParam, base: number, start: number, toS: number, contour: HumContour, r: HumRecipe) {
+  const len = toS - start;
+  param.setValueAtTime(base, start);
+  switch (contour) {
+    case "rise":
+    case "fall": {
+      const k = contour === "rise" ? semis(r.span.leg) : semis(-r.span.leg);
+      param.setValueAtTime(base, start + len * 0.08);
+      param.exponentialRampToValueAtTime(base * k, start + len * 0.92);
+      return;
+    }
+    case "wave": {
+      // Up, down past the base, back: one undulation per ~2.4 s.
+      const period = 2.4;
+      let t = start;
+      while (t + period <= toS + 1e-6) {
+        param.exponentialRampToValueAtTime(base * semis(r.span.wave), t + period * 0.25);
+        param.exponentialRampToValueAtTime(base * semis(-r.span.wave), t + period * 0.75);
+        param.exponentialRampToValueAtTime(base, t + period);
+        t += period;
+      }
+      if (t < toS) param.exponentialRampToValueAtTime(base, toS);
+      return;
+    }
+    case "breath": {
+      const inS = r.breath.inMs / 1000;
+      const outS = r.breath.outMs / 1000;
+      let t = start;
+      while (t + inS + outS <= toS + 1e-6) {
+        param.exponentialRampToValueAtTime(base * semis(r.span.breath), t + inS);
+        param.exponentialRampToValueAtTime(base, t + inS + outS);
+        t += inS + outS;
+      }
+      return;
+    }
+    case "flat":
+      return;
+  }
+}
+
+/**
+ * Schedule a hum from `fromS` to `toS` (context seconds) into `bus` with a
+ * pitch `contour`. Windows shorter than the fades are shortened
+ * proportionally; a window already in the past is skipped. Never throws.
+ */
+export function renderHum(
+  ctx: BaseAudioContext,
+  fromS: number,
+  toS: number,
+  bus: AudioNode,
+  contour: HumContour = "flat",
+  recipe: HumRecipe = HUM,
+): void {
   try {
     const start = Math.max(fromS, ctx.currentTime);
     if (toS - start < 0.3) return;
     const len = toS - start;
     const fadeIn = Math.min(recipe.fadeInMs / 1000, len / 3);
     const fadeOut = Math.min(recipe.fadeOutMs / 1000, len / 3);
+    const stopAt = toS + STOP_PAD_S;
 
     const lp = ctx.createBiquadFilter();
     lp.type = "lowpass";
@@ -231,26 +307,57 @@ export function renderHum(ctx: BaseAudioContext, fromS: number, toS: number, bus
     env.connect(bus);
 
     // Breath-like swell: an LFO modulating the envelope gain around `peak`.
-    const lfo = ctx.createOscillator();
-    lfo.type = "sine";
-    lfo.frequency.setValueAtTime(recipe.swell.hz, start);
-    const depth = ctx.createGain();
-    depth.gain.setValueAtTime(recipe.swell.depth, start);
-    lfo.connect(depth);
-    depth.connect(env.gain);
-    lfo.start(start);
-    lfo.stop(toS + STOP_PAD_S);
+    const swell = ctx.createOscillator();
+    swell.type = "sine";
+    swell.frequency.setValueAtTime(recipe.swell.hz, start);
+    const swellDepth = ctx.createGain();
+    swellDepth.gain.setValueAtTime(recipe.swell.depth, start);
+    swell.connect(swellDepth);
+    swellDepth.connect(env.gain);
+    swell.start(start);
+    swell.stop(stopAt);
+
+    // Vibrato: one LFO, fanned to every partial's frequency scaled by its pitch.
+    const vib = ctx.createOscillator();
+    vib.type = "sine";
+    vib.frequency.setValueAtTime(recipe.vibrato.hz, start);
+    vib.start(start);
+    vib.stop(stopAt);
+
+    // Stereo: the fundamental is doubled left/right `binauralHz` apart when
+    // the context can pan; otherwise the pair is simply mixed (a slow beat).
+    const canPan = typeof (ctx as BaseAudioContext & { createStereoPanner?: unknown }).createStereoPanner === "function";
+    const voice = (hz: number, amp: number, wave: OscillatorType, pan: number | null) => {
+      const osc = ctx.createOscillator();
+      osc.type = wave;
+      contourRamps(osc.frequency, hz, start, toS, contour, recipe);
+      const vibDepth = ctx.createGain();
+      vibDepth.gain.setValueAtTime(hz * recipe.vibrato.depth, start);
+      vib.connect(vibDepth);
+      vibDepth.connect(osc.frequency);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(amp, start);
+      osc.connect(g);
+      if (pan !== null && canPan) {
+        const p = ctx.createStereoPanner();
+        p.pan.setValueAtTime(pan, start);
+        g.connect(p);
+        p.connect(lp);
+      } else {
+        g.connect(lp);
+      }
+      osc.start(start);
+      osc.stop(stopAt);
+    };
 
     for (const p of recipe.partials) {
-      const osc = ctx.createOscillator();
-      osc.type = p.wave;
-      osc.frequency.setValueAtTime(p.freq, start);
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(p.amp, start);
-      osc.connect(g);
-      g.connect(lp);
-      osc.start(start);
-      osc.stop(toS + STOP_PAD_S);
+      const hz = recipe.baseHz * p.ratio;
+      if (p.ratio === 1) {
+        voice(hz, p.amp * 0.62, p.wave, -0.6);
+        voice(hz + recipe.binauralHz, p.amp * 0.62, p.wave, 0.6);
+      } else {
+        voice(hz, p.amp, p.wave, null);
+      }
     }
   } catch {
     /* audio is best-effort */

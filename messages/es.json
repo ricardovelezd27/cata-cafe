@@ -1601,7 +1601,7 @@
       "optionsTitle": "A tu manera",
       "soundLabel": "Sonido y vibración",
       "voiceToggle": "Leer en voz alta",
-      "voiceHint": "Usa la voz del dispositivo y lee cada paso antes de empezarlo.",
+      "voiceHint": "La voz del dispositivo lee en voz alta cada paso y cada indicación, para que puedas mantener los ojos cerrados.",
       "accessibleLabel": "Accesible: mostrar los segundos",
       "largeTextLabel": "Texto grande",
       "stillLabel": "Quieto, solo atiende",
@@ -1628,8 +1628,8 @@
       "unmuteLabel": "Activar sonido",
       "remaining": "Quedan {n} segundos",
       "cueStop": "Para.",
-      "cueReturn": "Ahora vuelve, igual de lento.",
-      "cueOtherSide": "Ahora hacia el otro lado.",
+      "cueReturn": "Y ahora vuelve, igual de lento.",
+      "cueOtherSide": "Y ahora hacia el otro lado.",
       "breathOnItsOwn": "Deja que la respiración vaya sola.",
       "goToTable": "Ir a la mesa",
       "doneTitle": "Listo",
@@ -1656,21 +1656,21 @@
       "bridge": "A la mesa"
     },
     "arrive": {
-      "posture": "Pies en el suelo. Manos sobre las piernas. Hombros sueltos.",
-      "postureStanding": "Pies en el suelo. El brazo cuelga suelto.",
-      "notice": "No hay nada que hacer bien. Solo notar."
+      "posture": "Vamos a empezar respirando. Pies en el suelo, manos sobre las piernas, hombros sueltos.",
+      "postureStanding": "Vamos a empezar respirando. Pies en el suelo, el brazo cuelga suelto.",
+      "notice": "Bien. No hay nada que hacer bien, solo notar. Empezamos."
     },
     "breath": {
-      "inFirst": "Toma aire por la nariz…",
+      "inFirst": "Toma aire por la nariz, con el sonido…",
       "outFirst": "…y suéltalo despacio.",
       "in": "Toma aire",
-      "out": "Suelta"
+      "out": "Suéltalo"
     },
     "closing": {
-      "still": "Quieto. Nota lo que queda del movimiento.",
-      "open": "Abre los ojos despacio, cuando quieras."
+      "still": "Bien. Quédate quieto, en una posición neutral. Nota lo que queda del movimiento.",
+      "open": "Y ahora, cuando quieras, abre los ojos despacio."
     },
-    "bridge": "Lleva esta atención a la taza. Primero sientes, después describes.",
+    "bridge": "Ahora lleva esta atención a la taza. Primero sientes, después describes.",
     "reflect": {
       "eyebrow": "Un momento",
       "title": "Dos preguntas, sin prisa",

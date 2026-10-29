@@ -2,9 +2,13 @@
 // Café Sensible, pilar 3: Sensibilidad). Long structured content lives here as
 // typed TS (per the S6 i18n rule); only chrome strings go to messages/*.json.
 //
-// Source of truth for the Spanish text: Kim's "Movimiento_Sensorial_Ejercicios_
-// App.md" (2026-10). The ENGLISH column is a DRAFT translation written by the
-// implementation team and flagged for Kim's review — see WARMUP_EN_STATUS.
+// Source: Kim's "Movimiento_Sensorial_Ejercicios_App.md" (2026-10). On
+// 2026-10-29 the step texts were rewritten in a conversational guide voice at
+// Ricardo's request, because they are now also read aloud by text-to-speech
+// while the cupper has their eyes closed. Kim's verbatim originals are in git
+// history at commit 2c7ae35; both columns (ES and EN) await Kim's review. The
+// ENGLISH column is still a DRAFT by the implementation team — see
+// WARMUP_EN_STATUS.
 //
 // Pure module (no React, no Prisma) so tests/warmup.test.ts can import it and
 // so the figures/player can consume it on both server and client.
@@ -227,8 +231,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "arm-raise-1",
         text: {
-          es: "Sube el brazo hacia arriba rápido, como lo harías normalmente. Bájalo.",
-          en: "Raise your arm quickly, the way you normally would. Lower it.",
+          es: "Empezamos con el brazo. Primero, para conocer el camino, súbelo rápido, como lo harías normalmente. Y bájalo.",
+          en: "We begin with the arm. First, to learn the path, raise it quickly, the way you normally would. And lower it.",
         },
         durationSec: 8,
         reps: 1, // v3 (council 2026-10-28): one raise-and-lower, not two
@@ -237,8 +241,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "arm-raise-2",
         text: {
-          es: "Ahora súbelo lento, con los ojos abiertos: tarda 15 segundos desde abajo hasta arriba.",
-          en: "Now raise it slowly, eyes open: take 15 seconds from bottom to top.",
+          es: "Ahora lo mismo, pero lento. Con los ojos abiertos, sube el brazo en 15 segundos, desde abajo hasta arriba.",
+          en: "Now the same, but slowly. With your eyes open, raise your arm over 15 seconds, from bottom to top.",
         },
         durationSec: LEG,
         figure: { kind: "arm-raise", variant: "slow-open", direction: "up" },
@@ -246,8 +250,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "arm-raise-3",
         text: {
-          es: "Si en algún punto notas una pequeña resistencia, párate ahí unos segundos. Ese es tu punto de apoyo: el cuerpo se reajusta solo.",
-          en: "If at some point you notice a slight resistance, stop there for a few seconds. That is your support point: the body readjusts on its own.",
+          es: "Si en algún punto notas una pequeña resistencia, párate ahí unos segundos. Ese es tu punto de apoyo. El cuerpo se reajusta solo.",
+          en: "If at some point you notice a slight resistance, stop there for a few seconds. That is your support point. The body readjusts on its own.",
         },
         durationSec: 10,
         readDuringPrevAtSec: 5, // v3 (council 2026-10-28): read while the arm rises, where the resistance appears
@@ -256,8 +260,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "arm-raise-4",
         text: {
-          es: "Baja el brazo en 15 segundos, con los ojos abiertos.",
-          en: "Lower your arm over 15 seconds, eyes open.",
+          es: "Bien. Ahora baja el brazo, también en 15 segundos, con los ojos abiertos.",
+          en: "Good. Now lower your arm, also over 15 seconds, with your eyes open.",
         },
         durationSec: LEG,
         figure: { kind: "arm-raise", variant: "slow-open", direction: "down" },
@@ -265,8 +269,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "arm-raise-5",
         text: {
-          es: "Cierra los ojos. Sube el brazo en 15 segundos.",
-          en: "Close your eyes. Raise your arm over 15 seconds.",
+          es: "Cierra los ojos. Esta vez, sin mirar, sube el brazo otra vez hacia arriba, en 15 segundos.",
+          en: "Close your eyes. This time, without looking, raise your arm up again, over 15 seconds.",
         },
         durationSec: LEG,
         figure: { kind: "arm-raise", variant: "slow-closed", direction: "up" },
@@ -274,8 +278,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "arm-raise-6",
         text: {
-          es: "Para arriba tres segundos. Baja en 15 segundos.",
-          en: "Hold at the top for three seconds. Lower over 15 seconds.",
+          es: "Para ahí, arriba, tres segundos. Ahora baja despacio, de vuelta al costado, en 15 segundos.",
+          en: "Hold there, at the top, for three seconds. Now lower it slowly, back to your side, over 15 seconds.",
         },
         durationSec: HOLD + LEG,
         figure: { kind: "arm-raise", variant: "slow-closed", direction: "down", holdBeforeSec: HOLD },
@@ -320,8 +324,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "eyes-1",
         text: {
-          es: "Con los ojos cerrados, siente tus cuatro apoyos: pies en el suelo, nalgas en la silla, espalda en el respaldo, manos en las piernas.",
-          en: "With your eyes closed, feel your four supports: feet on the floor, seat on the chair, back on the backrest, hands on your thighs.",
+          es: "Vamos a trabajar con la mirada. Cierra los ojos. Siente tus cuatro apoyos: pies en el suelo, nalgas en la silla, espalda en el respaldo, manos en las piernas.",
+          en: "Let's work with the gaze. Close your eyes. Feel your four supports: feet on the floor, seat on the chair, back on the backrest, hands on your thighs.",
         },
         durationSec: 20,
         figure: { kind: "eyes", variant: "slow-closed", direction: "rest" },
@@ -329,23 +333,26 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "eyes-2",
         text: {
-          es: "Mueve solo los ojos, muy lento, hacia la derecha. No vayas más lejos de lo que el cuerpo permite. Para tres segundos.",
-          en: "Move only your eyes, very slowly, to the right. Don't go further than the body allows. Hold for three seconds.",
+          es: "Ahora, sin mover la cabeza, lleva solo los ojos hacia la derecha, muy lento. No vayas más lejos de lo que el cuerpo permite. Para tres segundos.",
+          en: "Now, without moving your head, take only your eyes to the right, very slowly. Don't go further than the body allows. Hold for three seconds.",
         },
         durationSec: 15, // v3 (council 2026-10-28): was LEG + HOLD; the 3 s hold is inside the 15 s
         figure: { kind: "eyes", variant: "slow-closed", direction: "right" },
       },
       {
         id: "eyes-3",
-        text: { es: "Vuelve al centro.", en: "Return to the centre." },
+        text: {
+          es: "Bien. Vuelve al centro, despacio.",
+          en: "Good. Come back to the centre, slowly.",
+        },
         durationSec: 13, // v3 (council 2026-10-28): 10 s return + 3 s hold before it; pending Kim
         figure: { kind: "eyes", variant: "slow-closed", direction: "center", holdBeforeSec: HOLD },
       },
       {
         id: "eyes-4",
         text: {
-          es: "Lleva los ojos a la izquierda. Para tres segundos. Vuelve al centro.",
-          en: "Take your eyes to the left. Hold for three seconds. Return to the centre.",
+          es: "Ahora hacia el otro lado. Lleva los ojos a la izquierda. Para tres segundos. Y vuelve al centro.",
+          en: "Now to the other side. Take your eyes to the left. Hold for three seconds. And come back to the centre.",
         },
         durationSec: ROUND_TRIP,
         figure: { kind: "eyes", variant: "slow-closed", direction: "left", returns: true },
@@ -353,8 +360,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "eyes-5",
         text: {
-          es: "Lleva los ojos hacia arriba. Para. Vuelve al centro.",
-          en: "Take your eyes upward. Hold. Return to the centre.",
+          es: "Esta vez, lleva los ojos hacia arriba. Para. Y vuelve al centro.",
+          en: "This time, take your eyes upward. Hold. And come back to the centre.",
         },
         durationSec: ROUND_TRIP,
         figure: { kind: "eyes", variant: "slow-closed", direction: "up", returns: true },
@@ -362,8 +369,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "eyes-6",
         text: {
-          es: "Lleva los ojos hacia abajo. Para. Vuelve al centro.",
-          en: "Take your eyes downward. Hold. Return to the centre.",
+          es: "Y ahora hacia abajo. Lleva los ojos abajo, despacio. Para. Vuelve al centro.",
+          en: "And now downward. Take your eyes down, slowly. Hold. Come back to the centre.",
         },
         durationSec: ROUND_TRIP,
         figure: { kind: "eyes", variant: "slow-closed", direction: "down", returns: true },
@@ -371,8 +378,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "eyes-7",
         text: {
-          es: "Deja los ojos descansar. Mira “hacia atrás”, hacia dentro de ti.",
-          en: "Let your eyes rest. Look “backwards”, inside yourself.",
+          es: "Bien. Deja los ojos descansar. Mira “hacia atrás”, hacia dentro de ti.",
+          en: "Good. Let your eyes rest. Look “backwards”, inside yourself.",
         },
         durationSec: 30,
         figure: { kind: "eyes", variant: "slow-closed", direction: "rest" },
@@ -413,8 +420,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "head-rotate-1",
         text: {
-          es: "Con los ojos abiertos, gira la cabeza a la derecha y a la izquierda un par de veces a velocidad normal. Los ojos siguen el horizonte.",
-          en: "With eyes open, turn your head right and left a couple of times at normal speed. Your eyes follow the horizon.",
+          es: "Empezamos con la cabeza. Con los ojos abiertos, gírala a la derecha y a la izquierda. Un par de veces, a velocidad normal. Los ojos siguen el horizonte.",
+          en: "We begin with the head. With your eyes open, turn it right and left. A couple of times, at normal speed. Your eyes follow the horizon.",
         },
         durationSec: 12,
         figure: { kind: "head-rotate", variant: "fast-open", direction: "right-left" },
@@ -422,8 +429,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "head-rotate-2",
         text: {
-          es: "Repite más lento, con los ojos abiertos: 15 segundos hacia la derecha, para tres segundos, 15 segundos hacia la izquierda.",
-          en: "Repeat more slowly, eyes open: 15 seconds to the right, hold three seconds, 15 seconds to the left.",
+          es: "Ahora lo mismo, pero lento, con los ojos abiertos. 15 segundos hacia la derecha. Para tres segundos. Y 15 segundos hacia la izquierda.",
+          en: "Now the same, but slowly, with your eyes open. 15 seconds to the right. Hold for three seconds. And 15 seconds to the left.",
         },
         durationSec: ROUND_TRIP,
         figure: { kind: "head-rotate", variant: "slow-open", direction: "right-left" },
@@ -431,23 +438,26 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "head-rotate-3",
         text: {
-          es: "Cierra los ojos. Mismo giro, 15 segundos por lado.",
-          en: "Close your eyes. Same turn, 15 seconds per side.",
+          es: "Cierra los ojos. Mismo giro, ahora sin mirar: 15 segundos hacia la derecha, 15 hacia la izquierda.",
+          en: "Close your eyes. Same turn, now without looking: 15 seconds to the right, 15 to the left.",
         },
         durationSec: ROUND_TRIP,
         figure: { kind: "head-rotate", variant: "slow-closed", direction: "right-left" },
       },
       {
         id: "head-rotate-4",
-        text: { es: "Vuelve al centro en 7 segundos.", en: "Return to the centre over 7 seconds." },
+        text: {
+          es: "Bien. Vuelve al centro en 7 segundos.",
+          en: "Good. Come back to the centre over 7 seconds.",
+        },
         durationSec: 7,
         figure: { kind: "head-rotate", variant: "slow-closed", direction: "center" },
       },
       {
         id: "head-rotate-5",
         text: {
-          es: "Ahora cambia el punto de arranque. Gira a la derecha imaginando que la nariz tira hacia la derecha y la parte de atrás del cráneo va hacia la izquierda. 15 segundos. Vuelve igual hacia el otro lado.",
-          en: "Now change the starting point. Turn right imagining that your nose pulls to the right and the back of your skull goes to the left. 15 seconds. Return the same way to the other side.",
+          es: "Ahora cambia el punto de arranque. Gira a la derecha, como si la nariz tirara hacia allí. La parte de atrás del cráneo va a la izquierda. 15 segundos, y vuelve igual.",
+          en: "Now change the starting point. Turn right, as if your nose were pulling that way. The back of your skull goes to the left. 15 seconds, and return the same way.",
         },
         durationSec: ROUND_TRIP,
         figure: { kind: "head-rotate", variant: "slow-closed", direction: "right-left", lead: "nose", returns: true }, // v3 (council 2026-10-28): return to centre
@@ -455,8 +465,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "head-rotate-6",
         text: {
-          es: "Otro punto de arranque: la oreja izquierda va hacia delante y la derecha hacia atrás. La cabeza gira a la derecha. 15 segundos. Vuelve igual hacia el otro lado.",
-          en: "Another starting point: the left ear moves forward and the right ear back. The head turns right. 15 seconds. Return the same way to the other side.",
+          es: "Otro punto de arranque. La oreja izquierda va hacia delante, y la derecha hacia atrás. Así la cabeza gira a la derecha. 15 segundos, y vuelve igual.",
+          en: "Another starting point. The left ear moves forward, and the right ear back. So the head turns right. 15 seconds, and return the same way.",
         },
         durationSec: ROUND_TRIP,
         figure: { kind: "head-rotate", variant: "slow-closed", direction: "right-left", lead: "ear", returns: true }, // v3 (council 2026-10-28): return to centre
@@ -464,15 +474,18 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "head-rotate-7",
         text: {
-          es: "Último giro sin poner atención en ningún punto: todo a la vez, de forma global. Un lado y el otro.",
-          en: "Last turn without attention on any one point: everything at once, globally. One side and the other.",
+          es: "Último giro, sin poner atención en ningún punto. Todo a la vez, de forma global. Hacia la derecha y hacia la izquierda.",
+          en: "Last turn, without attention on any one point. Everything at once, globally. To the right and to the left.",
         },
         durationSec: ROUND_TRIP,
         figure: { kind: "head-rotate", variant: "slow-closed", direction: "right-left", lead: "all" },
       },
       {
         id: "head-rotate-8",
-        text: { es: "Vuelve al centro.", en: "Return to the centre." },
+        text: {
+          es: "Y vuelve al centro, despacio.",
+          en: "And come back to the centre, slowly.",
+        },
         durationSec: 7,
         figure: { kind: "head-rotate", variant: "slow-closed", direction: "center" },
       },
@@ -512,8 +525,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "trunk-forward-back-1",
         text: {
-          es: "Con los ojos abiertos, ve hacia delante y vuelve al centro un par de veces, rápido, para conocer el camino.",
-          en: "With eyes open, go forward and back to the centre a couple of times, fast, to learn the path.",
+          es: "Empezamos con el tronco, hacia delante y atrás. Con los ojos abiertos, ve hacia delante y vuelve al centro. Un par de veces, rápido, para conocer el camino.",
+          en: "We begin with the trunk, forward and back. With your eyes open, go forward and come back to the centre. A couple of times, fast, to learn the path.",
         },
         durationSec: 12,
         figure: { kind: "trunk-forward-back", variant: "fast-open", direction: "forward-back" },
@@ -521,8 +534,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "trunk-forward-back-2",
         text: {
-          es: "Repite lento, con los ojos abiertos: 15 segundos hacia delante, para tres segundos, 15 segundos de vuelta.",
-          en: "Repeat slowly, eyes open: 15 seconds forward, hold three seconds, 15 seconds back.",
+          es: "Ahora lo mismo, pero lento, con los ojos abiertos. 15 segundos hacia delante. Para tres segundos. Y 15 segundos de vuelta.",
+          en: "Now the same, but slowly, with your eyes open. 15 seconds forward. Hold for three seconds. And 15 seconds back.",
         },
         durationSec: ROUND_TRIP,
         figure: { kind: "trunk-forward-back", variant: "slow-open", direction: "forward-back" },
@@ -530,8 +543,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "trunk-forward-back-3",
         text: {
-          es: "Cierra los ojos. Mismo movimiento, 15 segundos por trayecto.",
-          en: "Close your eyes. Same movement, 15 seconds per leg.",
+          es: "Cierra los ojos. Mismo movimiento, sin mirar: 15 segundos hacia delante, 15 de vuelta al centro.",
+          en: "Close your eyes. Same movement, without looking: 15 seconds forward, 15 back to the centre.",
         },
         durationSec: ROUND_TRIP,
         figure: { kind: "trunk-forward-back", variant: "slow-closed", direction: "forward-back" },
@@ -539,29 +552,35 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "trunk-forward-back-4",
         text: {
-          es: "Cambia el punto de arranque: la cabeza inicia y guía el movimiento hacia delante. Para. Vuelve.",
-          en: "Change the starting point: the head starts and guides the movement forward. Hold. Return.",
+          es: "Ahora cambia el punto de arranque. La cabeza inicia y guía el movimiento hacia delante. Para. Y vuelve.",
+          en: "Now change the starting point. The head starts and guides the movement forward. Hold. And come back.",
         },
         durationSec: ROUND_TRIP,
         figure: { kind: "trunk-forward-back", variant: "slow-closed", direction: "forward-back", lead: "head" },
       },
       {
         id: "trunk-forward-back-5",
-        text: { es: "Ahora inician los hombros. Para. Vuelve.", en: "Now the shoulders start. Hold. Return." },
+        text: {
+          es: "Esta vez inician los hombros. Hacia delante, despacio. Para. Y vuelve.",
+          en: "This time the shoulders start. Forward, slowly. Hold. And come back.",
+        },
         durationSec: ROUND_TRIP,
         figure: { kind: "trunk-forward-back", variant: "slow-closed", direction: "forward-back", lead: "shoulders" },
       },
       {
         id: "trunk-forward-back-6",
-        text: { es: "Ahora inicia la pelvis. Para. Vuelve.", en: "Now the pelvis starts. Hold. Return." },
+        text: {
+          es: "Ahora inicia la pelvis. Hacia delante. Para. Y vuelve.",
+          en: "Now the pelvis starts. Forward. Hold. And come back.",
+        },
         durationSec: ROUND_TRIP,
         figure: { kind: "trunk-forward-back", variant: "slow-closed", direction: "forward-back", lead: "pelvis" },
       },
       {
         id: "trunk-forward-back-7",
         text: {
-          es: "Ahora los tres a la vez: cabeza, hombros y pelvis salen juntos. Para. Vuelve.",
-          en: "Now all three at once: head, shoulders and pelvis set off together. Hold. Return.",
+          es: "Y ahora los tres a la vez. Cabeza, hombros y pelvis salen juntos hacia delante. Para. Vuelve.",
+          en: "And now all three at once. Head, shoulders and pelvis set off forward together. Hold. Come back.",
         },
         durationSec: ROUND_TRIP,
         figure: { kind: "trunk-forward-back", variant: "slow-closed", direction: "forward-back", lead: "all" },
@@ -569,8 +588,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "trunk-forward-back-8",
         text: {
-          es: "Último trayecto: muévete solo un centímetro hacia delante en 15 segundos. Primero la intención, después el movimiento. Vuelve igual.",
-          en: "Last leg: move only one centimetre forward over 15 seconds. First the intention, then the movement. Return the same way.",
+          es: "Último trayecto. Muévete solo un centímetro hacia delante, en 15 segundos. Primero la intención, después el movimiento. Vuelve igual.",
+          en: "Last leg. Move only one centimetre forward, over 15 seconds. First the intention, then the movement. Return the same way.",
         },
         durationSec: ROUND_TRIP,
         leadInSec: 3, // v3 (council 2026-10-28): "primero la intención" — 3 s of stillness before each leg
@@ -621,8 +640,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "trunk-side-1",
         text: {
-          es: "Con los ojos abiertos, pasa el peso de un lado al otro un par de veces, rápido, para conocer el camino.",
-          en: "With eyes open, shift your weight from one side to the other a couple of times, fast, to learn the path.",
+          es: "Empezamos de lado a lado. Con los ojos abiertos, pasa el peso de un lado al otro. Un par de veces, rápido, para conocer el camino.",
+          en: "We begin side to side. With your eyes open, shift your weight from one side to the other. A couple of times, fast, to learn the path.",
         },
         durationSec: 12,
         figure: { kind: "trunk-side", variant: "fast-open", direction: "right-left" },
@@ -630,8 +649,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "trunk-side-2",
         text: {
-          es: "Repite lento, con los ojos abiertos: 15 segundos a la derecha, para tres segundos, 15 segundos hasta la izquierda pasando por el centro.",
-          en: "Repeat slowly, eyes open: 15 seconds to the right, hold three seconds, 15 seconds to the left passing through the centre.",
+          es: "Ahora lo mismo, pero lento, con los ojos abiertos. 15 segundos a la derecha. Para tres segundos. Y 15 segundos hasta la izquierda, pasando por el centro.",
+          en: "Now the same, but slowly, with your eyes open. 15 seconds to the right. Hold for three seconds. And 15 seconds to the left, passing through the centre.",
         },
         durationSec: ROUND_TRIP,
         figure: { kind: "trunk-side", variant: "slow-open", direction: "right-left" },
@@ -639,8 +658,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "trunk-side-3",
         text: {
-          es: "Cierra los ojos. Mismo movimiento, muy poco recorrido, 15 segundos por trayecto.",
-          en: "Close your eyes. Same movement, very little travel, 15 seconds per leg.",
+          es: "Cierra los ojos. Mismo movimiento, con muy poco recorrido. 15 segundos a la derecha, 15 a la izquierda.",
+          en: "Close your eyes. Same movement, with very little travel. 15 seconds to the right, 15 to the left.",
         },
         durationSec: ROUND_TRIP,
         figure: { kind: "trunk-side", variant: "slow-closed", direction: "right-left", amplitude: "small" },
@@ -648,8 +667,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "trunk-side-4",
         text: {
-          es: "Cambia el punto de arranque: la oreja derecha inicia y lleva todo el tronco a la derecha. Para. Vuelve iniciando con la oreja izquierda.",
-          en: "Change the starting point: the right ear starts and takes the whole trunk to the right. Hold. Return starting with the left ear.",
+          es: "Ahora cambia el punto de arranque. La oreja derecha inicia y lleva todo el tronco a la derecha. Para. Vuelve iniciando con la oreja izquierda.",
+          en: "Now change the starting point. The right ear starts and takes the whole trunk to the right. Hold. Return starting with the left ear.",
         },
         durationSec: ROUND_TRIP,
         figure: { kind: "trunk-side", variant: "slow-closed", direction: "right-left", lead: "ear", returns: true }, // v3 (council 2026-10-28): return to centre
@@ -657,8 +676,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "trunk-side-5",
         text: {
-          es: "Ahora inicia el hombro derecho. Para. Vuelve con el hombro izquierdo.",
-          en: "Now the right shoulder starts. Hold. Return with the left shoulder.",
+          es: "Esta vez inicia el hombro derecho, hacia la derecha. Para. Vuelve con el hombro izquierdo.",
+          en: "This time the right shoulder starts, to the right. Hold. Return with the left shoulder.",
         },
         durationSec: ROUND_TRIP,
         figure: { kind: "trunk-side", variant: "slow-closed", direction: "right-left", lead: "shoulders", returns: true }, // v3 (council 2026-10-28): return to centre
@@ -666,8 +685,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "trunk-side-6",
         text: {
-          es: "Ahora inicia la cadera derecha. Para. Vuelve con la cadera izquierda.",
-          en: "Now the right hip starts. Hold. Return with the left hip.",
+          es: "Ahora inicia la cadera derecha, hacia la derecha. Para. Vuelve con la cadera izquierda.",
+          en: "Now the right hip starts, to the right. Hold. Return with the left hip.",
         },
         durationSec: ROUND_TRIP,
         figure: { kind: "trunk-side", variant: "slow-closed", direction: "right-left", lead: "hip", returns: true }, // v3 (council 2026-10-28): return to centre
@@ -675,8 +694,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "trunk-side-7",
         text: {
-          es: "Último trayecto global, sin atención en ningún punto: todo a la vez, un lado y el otro.",
-          en: "Last global leg, without attention on any one point: everything at once, one side and the other.",
+          es: "Último trayecto, global, sin atención en ningún punto. Todo a la vez: hacia la derecha y hacia la izquierda.",
+          en: "Last leg, global, without attention on any one point. Everything at once: to the right and to the left.",
         },
         durationSec: ROUND_TRIP,
         figure: { kind: "trunk-side", variant: "slow-closed", direction: "right-left", lead: "all" },
@@ -684,8 +703,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
       {
         id: "trunk-side-8",
         text: {
-          es: "Vuelve al centro cuando sientas el peso repartido entre los dos isquiones.",
-          en: "Return to the centre when you feel the weight shared between both sit bones.",
+          es: "Bien. Vuelve al centro cuando sientas el peso repartido entre los dos isquiones.",
+          en: "Good. Come back to the centre when you feel the weight shared between both sit bones.",
         },
         durationSec: 10,
         figure: { kind: "trunk-side", variant: "slow-closed", direction: "center" },

@@ -15,7 +15,13 @@
 //    then stillness for the rest of the step.
 //  - Sounds: campana at the start of every movement (lead-in when present),
 //    tic at the end of every movement, cuenco at closing start, doble at
-//    closing end. Whispers/secondary texts/breath hint are timed here too.
+//    closing end. The arrival breaths are a movement too: campana → hum → tic.
+//    Every movement unit carries ONE hum window with a pitch contour (out =
+//    rise, back = fall, reps = wave, rest = flat, breaths = breath).
+//  - Voice: `narrations` covers EVERY segment — step texts on their read beat,
+//    a direction word at each leg start, the chrome line on holds/returns,
+//    the arrival / breath / closing / bridge lines — so the run can be
+//    followed with the eyes closed. Whispers/secondary texts are timed too.
 
 import {
   READ_BEAT,
@@ -32,9 +38,12 @@ import {
 import { ARRIVE_PLAN } from "./breath";
 import { rampFracFor, sineWave, softLinear, upDownWave } from "./easing";
 import type {
+  ChromeCue,
   CuePoint,
   ExerciseTimeline,
+  HumContour,
   HumWindow,
+  NarrationPoint,
   Pose,
   SecondaryText,
   Segment,
@@ -47,6 +56,12 @@ export const SMALL_AMPLITUDE = 0.18;
 export const WHISPER_MS = 8000;
 /** Silent continuity cross when the amplitude changes between steps. */
 export const AMPLITUDE_CROSS_MS = 3000;
+/** A step text is never on screen for less than this before its hold/leg
+ *  (a 1 s flash before "Para" read as a jump). */
+export const MIN_PLAIN_READ_MS = 3000;
+/** "Abre los ojos" is spoken this long before the closing ends (the doble
+ *  campana then confirms it). */
+export const CLOSING_OPEN_LEAD_MS = 4000;
 const LEG_MS = WARMUP_LEG_SEC * 1000;
 const HOLD_MS = WARMUP_HOLD_SEC * 1000;
 
@@ -131,8 +146,8 @@ export function buildExerciseTimeline(ex: WarmupExercise, opts: { mode: Timeline
 
   // ── Llega ────────────────────────────────────────────────────────────
   push({ kind: "arrive", stepIdx: -1, durMs: ARRIVE_PLAN.postureMs, from: neutral, to: neutral, ease: "none", label: "arrive", arrivePhase: "posture" });
-  push({ kind: "arrive", stepIdx: -1, durMs: ARRIVE_PLAN.cycles * (ARRIVE_PLAN.inMs + ARRIVE_PLAN.outMs), from: neutral, to: neutral, ease: "none", label: "arrive", arrivePhase: "breath" });
-  push({ kind: "arrive", stepIdx: -1, durMs: ARRIVE_PLAN.noticeMs, from: neutral, to: neutral, ease: "none", label: "arrive", arrivePhase: "notice" });
+  push({ kind: "arrive", stepIdx: -1, durMs: ARRIVE_PLAN.cycles * (ARRIVE_PLAN.inMs + ARRIVE_PLAN.outMs), from: neutral, to: neutral, ease: "none", label: "arrive", arrivePhase: "breath", cueAtStart: "campana" });
+  push({ kind: "arrive", stepIdx: -1, durMs: ARRIVE_PLAN.noticeMs, from: neutral, to: neutral, ease: "none", label: "arrive", arrivePhase: "notice", cueAtStart: "tic" });
   const arriveMs = t;
   if (arriveMs !== WARMUP_ARRIVE_SEC * 1000) throw new Error("ARRIVE_PLAN must total WARMUP_ARRIVE_SEC");
 
@@ -159,7 +174,11 @@ export function buildExerciseTimeline(ex: WarmupExercise, opts: { mode: Timeline
     let readMs = Math.max(readBeatMs(step), holdMs);
     const needsAmpCross = !isNeutral(cur) && !fast && kind !== "eyes" && amp < Math.abs(cur.a);
     if (needsAmpCross) readMs += AMPLITUDE_CROSS_MS;
-    const plainRead = readMs - holdMs - (needsAmpCross ? AMPLITUDE_CROSS_MS : 0);
+    let plainRead = readMs - holdMs - (needsAmpCross ? AMPLITUDE_CROSS_MS : 0);
+    if (readBeatMs(step) > 0 && plainRead < MIN_PLAIN_READ_MS) {
+      readMs += MIN_PLAIN_READ_MS - plainRead;
+      plainRead = MIN_PLAIN_READ_MS;
+    }
     if (plainRead > 0) {
       push({ kind: "read", stepIdx: i, durMs: plainRead, from: cur, to: cur, ease: "none", label: "upNext", cueAtStart: ticIf() });
       prevMoved = false;
@@ -249,9 +268,99 @@ export function buildExerciseTimeline(ex: WarmupExercise, opts: { mode: Timeline
     cues.push({ atMs: totalMs, kind: "doble", segIdx: closingIdx });
   }
 
-  // Hum: from each step's first non-read segment (lead-in / leg / rest) to
-  // its end, so the drone carries the whole movement and stops with the tic.
-  const hums: HumWindow[] = ex.steps.map((_, i) => ({ fromMs: stepFirstMove[i], toMs: stepEnd[i], stepIdx: i }));
+  // Hum: one window per movement unit (lead-in + leg, reps, rest, a return
+  // cross), from its campana to its tic; holds and read beats stay silent so
+  // the cues still read as events. The arrival breaths get a breath window.
+  const hums: HumWindow[] = [];
+  segs.forEach((sg, idx) => {
+    if (sg.kind === "arrive") {
+      if (sg.arrivePhase === "breath") hums.push({ fromMs: sg.t0Ms, toMs: sg.t0Ms + sg.durMs, stepIdx: -1, contour: "breath" });
+      return;
+    }
+    // Pitch follows the DIRECTION word, not the segment kind: up / right /
+    // forward climb, down / left / back / centre fall ("Baja" is an `out`
+    // leg for the arm but must sound like a descent).
+    let contour: HumContour | null = null;
+    if (sg.kind === "reps") contour = "wave";
+    else if (sg.kind === "rest") contour = "flat";
+    else if (sg.kind === "out" || sg.kind === "back" || (sg.kind === "cross" && sg.label !== "upNext")) {
+      contour = sg.label === "up" || sg.label === "right" || sg.label === "forward" ? "rise" : "fall";
+    }
+    if (!contour) return;
+    const prev = segs[idx - 1];
+    const fromMs = prev && prev.kind === "lead-in" && prev.stepIdx === sg.stepIdx ? prev.t0Ms : sg.t0Ms;
+    hums.push({ fromMs, toMs: sg.t0Ms + sg.durMs, stepIdx: sg.stepIdx, contour });
+  });
+
+  // Voice: every segment gets a line. Step texts interrupt (a new step is a
+  // new instruction); the short leg / hold / return lines queue behind
+  // whatever is still being read so nothing is cut mid-sentence.
+  const narrations: NarrationPoint[] = [];
+  const say = (atMs: number, segIdx: number, source: NarrationPoint["source"], interrupt = false) =>
+    narrations.push({ atMs, segIdx, source, interrupt });
+  const readSpoken = new Set<number>();
+  segs.forEach((sg, idx) => {
+    switch (sg.kind) {
+      case "arrive":
+        if (sg.arrivePhase === "posture") say(sg.t0Ms, idx, { kind: "arrive", phase: "posture" }, true);
+        else if (sg.arrivePhase === "notice") say(sg.t0Ms, idx, { kind: "arrive", phase: "notice" }, true);
+        else {
+          const cycleMs = ARRIVE_PLAN.inMs + ARRIVE_PLAN.outMs;
+          for (let c = 0; c < ARRIVE_PLAN.cycles; c++) {
+            // Queued, never cutting the posture line that may still be read.
+            say(sg.t0Ms + c * cycleMs, idx, { kind: "breath", dir: "in", first: c === 0 });
+            say(sg.t0Ms + c * cycleMs + ARRIVE_PLAN.inMs, idx, { kind: "breath", dir: "out", first: c === 0 });
+          }
+        }
+        return;
+      case "read":
+        if (!readSpoken.has(sg.stepIdx)) {
+          readSpoken.add(sg.stepIdx);
+          say(sg.t0Ms, idx, { kind: "step", stepIdx: sg.stepIdx }, true);
+        }
+        return;
+      case "hold":
+        say(sg.t0Ms, idx, sg.chromeCue ? { kind: "chrome", cue: sg.chromeCue } : { kind: "label", label: "hold" });
+        return;
+      case "lead-in": {
+        // The leg after the lead-in owns the word; say it at the campana.
+        const next = segs[idx + 1];
+        const cue: ChromeCue | undefined = next?.chromeCue;
+        say(sg.t0Ms, idx, cue ? { kind: "chrome", cue } : { kind: "label", label: next?.label ?? sg.label });
+        return;
+      }
+      case "out":
+      case "back":
+      case "reps":
+      case "rest":
+      case "still":
+      case "cross": {
+        if (sg.kind === "cross" && sg.label === "upNext") return; // silent continuity
+        const prev = segs[idx - 1];
+        if (prev && prev.kind === "lead-in" && prev.stepIdx === sg.stepIdx) return; // already said
+        say(sg.t0Ms, idx, sg.chromeCue ? { kind: "chrome", cue: sg.chromeCue } : { kind: "label", label: sg.label });
+        return;
+      }
+      case "closing":
+        say(sg.t0Ms, idx, { kind: "closing" }, true);
+        if (opts.mode !== "session") say(sg.t0Ms + sg.durMs - CLOSING_OPEN_LEAD_MS, idx, { kind: "closingOpen" }, true);
+        return;
+      case "bridge":
+        say(sg.t0Ms, idx, { kind: "closingOpen" }, true);
+        say(sg.t0Ms, idx, { kind: "bridge" });
+        return;
+    }
+  });
+  // Steps read during the previous step (no read beat of their own) are
+  // spoken when their text appears on screen.
+  ex.steps.forEach((step, i) => {
+    if (step.readDuringPrevAtSec == null || i === 0 || readSpoken.has(i)) return;
+    const atMs = stepFirstMove[i - 1] + step.readDuringPrevAtSec * 1000;
+    let segIdx = 0;
+    while (segIdx + 1 < segs.length && segs[segIdx + 1].t0Ms <= atMs) segIdx++;
+    say(atMs, segIdx, { kind: "step", stepIdx: i });
+  });
+  narrations.sort((a, b) => a.atMs - b.atMs);
 
   const whispers: WhisperSlot[] = [];
   const doneObserveIdx: number[] = [];
@@ -295,6 +404,7 @@ export function buildExerciseTimeline(ex: WarmupExercise, opts: { mode: Timeline
     bridgeAt,
     cues,
     hums,
+    narrations,
     whispers,
     secondaryTexts,
     breathHintStepIdx,

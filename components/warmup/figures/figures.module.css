@@ -47,7 +47,7 @@
 .chair { fill: var(--fig-chair); stroke: none; }
 .haloStop { stop-color: var(--fig-ink); }
 
-/* Features (eyes, nose) — opaque mixes over whatever the head is painted. */
+/* Features (eyes, nose, mouth, hair) — opaque mixes over whatever the head is painted. */
 .nose { fill: color-mix(in oklch, var(--fig-ink) 12%, var(--part)); stroke: none; }
 .eyeDot { fill: color-mix(in oklch, var(--fig-ink) 55%, var(--part)); stroke: none; }
 .eyeLine {
@@ -56,6 +56,47 @@
   stroke-width: 1.6;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.noseLine {
+  fill: none;
+  stroke: color-mix(in oklch, var(--fig-ink) 35%, var(--part));
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+/* stroke-width comes from the element (Mannequin 1.4, FaceFigure 2.2). */
+.mouth {
+  fill: none;
+  stroke: color-mix(in oklch, var(--fig-ink) 45%, var(--part));
+  stroke-linecap: round;
+}
+.hair { fill: color-mix(in oklch, var(--fig-ink) 18%, var(--part)); stroke: none; }
+
+/* Barista apron - sits under the torso tone, never the highlight colour.
+   --apron-tone is declared on the apron group itself so it resolves against
+   the --part inherited from the torso group (rest / move / moveSoft). */
+.apron {
+  --apron-tone: color-mix(in oklch, var(--color-secondary) 55%, var(--part));
+  fill: var(--apron-tone);
+  stroke: none;
+}
+/* While the torso is the highlighted part, the apron becomes a deeper shade
+   of that highlight so the moving block still reads as one unit. */
+.move .apron,
+.moveSoft .apron {
+  --apron-tone: color-mix(in oklch, var(--fig-ink) 20%, var(--part));
+}
+.apronLine {
+  fill: none;
+  stroke: var(--apron-tone);
+  stroke-linecap: round;
+}
+.logo { fill: color-mix(in oklch, var(--color-surface-container-lowest) 70%, var(--fig-body)); stroke: none; }
+.logoCrease {
+  fill: none;
+  stroke: var(--apron-tone);
+  stroke-width: 1.1;
+  stroke-linecap: round;
 }
 
 /* FaceFigure pupil glow + gaze guide rails. */

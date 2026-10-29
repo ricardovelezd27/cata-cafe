@@ -28,9 +28,9 @@ function rows(tl: ExerciseTimeline, fromIdx = 0, count = Infinity): Row[] {
 
 describe("read beat", () => {
   it("clamps 3 + 0.25 × max(es, en) words to [4, 12] s", () => {
-    expect(readBeatMs(ex1.steps[0])).toBe(5750); // 11 words
+    expect(readBeatMs(ex1.steps[0])).toBe(8250); // 21 words (es, conversational copy 2026-10-29)
     expect(readBeatMs(ex1.steps[2])).toBe(0); // readDuringPrevAtSec
-    expect(readBeatMs(ex3.steps[0])).toBe(9500); // 26 words (es)
+    expect(readBeatMs(ex3.steps[0])).toBe(10000); // 28 words (es)
     const long = { ...ex1.steps[0], text: { es: "a ".repeat(60), en: "a" } };
     expect(readBeatMs(long)).toBe(12000);
     const short = { ...ex1.steps[0], text: { es: "a", en: "a" } };
@@ -44,38 +44,38 @@ describe("golden fixture A — ex 1 El brazo lento (library)", () => {
     expect(tl.arriveMs).toBe(40000);
     expect(rows(tl, 0, 3)).toEqual([
       ["arrive", 0, 6000, 0, 0, "arrive"],
-      ["arrive", 6000, 30000, 0, 0, "arrive"],
-      ["arrive", 36000, 4000, 0, 0, "arrive"],
+      ["arrive", 6000, 30000, 0, 0, "arrive", "campana"], // the breaths are a movement: campana → hum → tic
+      ["arrive", 36000, 4000, 0, 0, "arrive", "tic"],
     ]);
   });
   it("matches the animator's step rows (with s3's read beat folded into s2)", () => {
     expect(rows(tl, 3)).toEqual([
-      ["read", 40000, 5750, 0, 0, "upNext"],
-      ["lead-in", 45750, 400, 0, 0, "fast", "campana"],
-      ["reps", 46150, 2100, 0, 0, "fast"],
-      ["still", 48250, 5500, 0, 0, "still", "tic"],
-      ["read", 53750, 6500, 0, 0, "upNext"],
-      ["out", 60250, 15000, 0, 1, "up", "campana"],
-      ["rest", 75250, 10000, 1, 1, "still", "tic"], // s3: no read beat (shown during s2 at 5 s)
-      ["read", 85250, 5500, 1, 1, "upNext"],
-      ["out", 90750, 15000, 1, 0, "down", "campana"],
-      ["read", 105750, 5250, 0, 0, "upNext", "tic"],
-      ["out", 111000, 15000, 0, 1, "up", "campana"],
-      ["read", 126000, 2750, 1, 1, "upNext", "tic"],
-      ["hold", 128750, 3000, 1, 1, "hold"],
-      ["out", 131750, 15000, 1, 0, "down", "campana"],
-      ["closing", 146750, 30000, 0, 0, "closing", "cuenco"],
+      ["read", 40000, 8250, 0, 0, "upNext"],
+      ["lead-in", 48250, 400, 0, 0, "fast", "campana"],
+      ["reps", 48650, 2100, 0, 0, "fast"],
+      ["still", 50750, 5500, 0, 0, "still", "tic"],
+      ["read", 56250, 7750, 0, 0, "upNext"],
+      ["out", 64000, 15000, 0, 1, "up", "campana"],
+      ["rest", 79000, 10000, 1, 1, "still", "tic"], // s3: no read beat (shown during s2 at 5 s)
+      ["read", 89000, 6250, 1, 1, "upNext"],
+      ["out", 95250, 15000, 1, 0, "down", "campana"],
+      ["read", 110250, 7250, 0, 0, "upNext", "tic"],
+      ["out", 117500, 15000, 0, 1, "up", "campana"],
+      ["read", 132500, 4750, 1, 1, "upNext", "tic"],
+      ["hold", 137250, 3000, 1, 1, "hold"],
+      ["out", 140250, 15000, 1, 0, "down", "campana"],
+      ["closing", 155250, 30000, 0, 0, "closing", "cuenco"],
     ]);
-    expect(tl.totalMs).toBe(176750);
-    expect(tl.cues.at(-1)).toEqual({ atMs: 176750, kind: "doble", segIdx: tl.segments.length - 1 });
+    expect(tl.totalMs).toBe(185250);
+    expect(tl.cues.at(-1)).toEqual({ atMs: 185250, kind: "doble", segIdx: tl.segments.length - 1 });
   });
   it("shows s3's text during s2 from 5 s until s3 starts", () => {
-    expect(tl.secondaryTexts).toEqual([{ stepIdx: 2, fromMs: 65250, untilMs: 75250 }]);
+    expect(tl.secondaryTexts).toEqual([{ stepIdx: 2, fromMs: 69000, untilMs: 79000 }]);
   });
   it("session mode appends the 5 s bridge with the doble campana", () => {
     const s = buildExerciseTimeline(ex1, { mode: "session" });
-    expect(s.bridgeAt).toBe(176750);
-    expect(s.totalMs).toBe(181750);
+    expect(s.bridgeAt).toBe(185250);
+    expect(s.totalMs).toBe(190250);
     expect(s.segments.at(-1)).toMatchObject({ kind: "bridge", cueAtStart: "doble" });
     expect(s.cues.filter((c) => c.kind === "doble")).toHaveLength(1);
   });
@@ -85,20 +85,20 @@ describe("golden fixture B — ex 3 La cabeza, steps 1–4", () => {
   const tl = buildExerciseTimeline(ex3, { mode: "library" });
   it("goes extreme to extreme and starts each step where the previous ended", () => {
     expect(rows(tl, 3, 14)).toEqual([
-      ["read", 40000, 9500, 0, 0, "upNext"],
-      ["lead-in", 49500, 400, 0, 0, "fast", "campana"],
-      ["reps", 49900, 4800, 0, 0, "fast"],
-      ["still", 54700, 6800, 0, 0, "still", "tic"],
-      ["read", 61500, 8000, 0, 0, "upNext"],
-      ["out", 69500, 15000, 0, 1, "right", "campana"],
-      ["hold", 84500, 3000, 1, 1, "hold", "tic"],
-      ["back", 87500, 15000, 1, -1, "left", "campana"],
-      ["read", 102500, 5250, -1, -1, "upNext", "tic"],
-      ["out", 107750, 15000, -1, 1, "right", "campana"],
-      ["hold", 122750, 3000, 1, 1, "hold", "tic"],
-      ["back", 125750, 15000, 1, -1, "left", "campana"],
-      ["read", 140750, 4750, -1, -1, "upNext", "tic"],
-      ["cross", 145500, 7000, -1, 0, "center", "campana"],
+      ["read", 40000, 10000, 0, 0, "upNext"],
+      ["lead-in", 50000, 400, 0, 0, "fast", "campana"],
+      ["reps", 50400, 4800, 0, 0, "fast"],
+      ["still", 55200, 6800, 0, 0, "still", "tic"],
+      ["read", 62000, 9000, 0, 0, "upNext"],
+      ["out", 71000, 15000, 0, 1, "right", "campana"],
+      ["hold", 86000, 3000, 1, 1, "hold", "tic"],
+      ["back", 89000, 15000, 1, -1, "left", "campana"],
+      ["read", 104000, 7250, -1, -1, "upNext", "tic"],
+      ["out", 111250, 15000, -1, 1, "right", "campana"],
+      ["hold", 126250, 3000, 1, 1, "hold", "tic"],
+      ["back", 129250, 15000, 1, -1, "left", "campana"],
+      ["read", 144250, 5250, -1, -1, "upNext", "tic"],
+      ["cross", 149500, 7000, -1, 0, "center", "campana"],
     ]);
   });
   it("steps 5–6 (returns) come back to centre with the 'return' chrome cue", () => {
@@ -142,7 +142,9 @@ describe("timeline invariants (all five exercises, both modes)", () => {
         for (let i = 1; i < tl.cues.length; i++) expect(tl.cues[i].atMs).toBeGreaterThanOrEqual(tl.cues[i - 1].atMs);
         const moving = tl.segments.filter((s) => ["out", "back", "reps"].includes(s.kind) || (s.kind === "cross" && s.label !== "upNext"));
         const campanas = tl.cues.filter((c) => c.kind === "campana").length;
-        expect(campanas).toBe(moving.length);
+        expect(campanas).toBe(moving.length + 1); // + the arrival breaths
+        expect(tl.segments[1]).toMatchObject({ arrivePhase: "breath", cueAtStart: "campana" });
+        expect(tl.segments[2]).toMatchObject({ arrivePhase: "notice", cueAtStart: "tic" });
         expect(tl.segments.find((s) => s.kind === "closing")?.cueAtStart).toBe("cuenco");
         expect(tl.cues.filter((c) => c.kind === "doble")).toHaveLength(1);
       });
@@ -168,23 +170,23 @@ describe("timeline invariants (all five exercises, both modes)", () => {
       [
         [
           "arm-raise",
-          176750,
+          185250,
         ],
         [
           "eyes",
-          288250,
+          297000,
         ],
         [
           "head-rotate",
-          322750,
+          326500,
         ],
         [
           "trunk-forward-back",
-          364000,
+          372250,
         ],
         [
           "trunk-side",
-          350250,
+          357500,
         ],
       ]
     `);
@@ -225,16 +227,16 @@ describe("ex 4 step 8 lead-ins and ex 2 eyes", () => {
     expect(s8[2].cueAtStart).toBeUndefined();
     expect(s8[2].to.a).toBeCloseTo(0.18);
   });
-  it("ojos: eyes-2 is a plain 15 s leg, eyes-3 folds its hold into a 1 s read + 3 s PARA", () => {
+  it("ojos: eyes-2 is a plain 15 s leg, eyes-3 folds its hold into a read of at least 3 s + 3 s PARA", () => {
     const tl = buildExerciseTimeline(warmupById("eyes")!, { mode: "library" });
     const s2 = tl.segments.filter((s) => s.stepIdx === 1);
     expect(s2.map((s) => [s.kind, s.durMs])).toEqual([
-      ["read", 8500],
+      ["read", 9750],
       ["out", 15000],
     ]);
     const s3 = tl.segments.filter((s) => s.stepIdx === 2);
     expect(s3.map((s) => [s.kind, s.durMs, s.cueAtStart ?? null])).toEqual([
-      ["read", 1000, "tic"],
+      ["read", 3000, "tic"], // MIN_PLAIN_READ_MS: the text never flashes for 1 s
       ["hold", 3000, null],
       ["cross", 10000, "campana"],
     ]);
@@ -248,13 +250,13 @@ describe("lookups", () => {
   const tl = buildExerciseTimeline(ex1, { mode: "library" });
   it("segmentAt / poseAt / remaining", () => {
     expect(segmentAt(tl, -5)).toEqual({ i: 0, u: 0 });
-    expect(segmentAt(tl, 60250 + 7500)).toEqual({ i: 8, u: 0.5 });
-    expect(poseAt(tl, 60250).a).toBeCloseTo(0, 3);
-    expect(poseAt(tl, 60250 + 7500).a).toBeCloseTo(0.5, 2);
-    expect(poseAt(tl, 75250).a).toBeCloseTo(1, 3);
-    expect(poseAt(tl, 80000).a).toBe(1); // rest holds the top
+    expect(segmentAt(tl, 64000 + 7500)).toEqual({ i: 8, u: 0.5 });
+    expect(poseAt(tl, 64000).a).toBeCloseTo(0, 3);
+    expect(poseAt(tl, 64000 + 7500).a).toBeCloseTo(0.5, 2);
+    expect(poseAt(tl, 79000).a).toBeCloseTo(1, 3);
+    expect(poseAt(tl, 84000).a).toBe(1); // rest holds the top
     expect(segmentAt(tl, 10_000_000).i).toBe(tl.segments.length - 1);
-    expect(segmentRemainingSec(tl, 60250 + 7500)).toBe(8);
+    expect(segmentRemainingSec(tl, 64000 + 7500)).toBe(8);
   });
   it("reps return to the start pose and peak mid-cycle", () => {
     const reps = tl.segments.find((s) => s.kind === "reps")!;
@@ -269,9 +271,9 @@ describe("lookups", () => {
     expect(stepSegments(tl, 1).segments.map((s) => s.arrivePhase)).toEqual(["posture", "breath", "notice"]);
   });
   it("whispers are timed from the first movement segment", () => {
-    // observeAt[0] = arm-raise-4 @ 9 s → out starts at 90750
-    expect(tl.whispers[0]).toEqual({ observeIdx: 0, fromMs: 99750, untilMs: 105750 });
-    expect(tl.whispers.at(-1)).toEqual({ observeIdx: 2, fromMs: 146750 + 8000, untilMs: 146750 + 16000 });
+    // observeAt[0] = arm-raise-4 @ 9 s → out starts at 95250
+    expect(tl.whispers[0]).toEqual({ observeIdx: 0, fromMs: 104250, untilMs: 110250 });
+    expect(tl.whispers.at(-1)).toEqual({ observeIdx: 2, fromMs: 155250 + 8000, untilMs: 155250 + 16000 });
     expect(tl.breathHintStepIdx).toBe(1);
   });
   it("sequenceMap collapses repeated directions", () => {
@@ -282,30 +284,104 @@ describe("lookups", () => {
   });
 });
 
-describe("hum windows (campana → hum → tic → instructions)", () => {
-  it("one window per step, from its first non-read segment to its end, never overlapping a read beat", () => {
+describe("hum windows (campana → hum → tic, one per movement unit)", () => {
+  const MOVING = new Set<Segment["kind"]>(["out", "back", "reps", "rest"]);
+  it("one window per leg / reps / rest / return cross, from its campana to its tic, plus the arrival breaths", () => {
     for (const ex of WARMUP_EXERCISES) {
       const tl = buildExerciseTimeline(ex, { mode: "library" });
-      expect(tl.hums).toHaveLength(ex.steps.length);
-      tl.hums.forEach((h, i) => {
-        expect(h.stepIdx).toBe(i);
-        expect(h.toMs).toBe(tl.stepEnd[i]);
-        // The hum starts with the campana: the first lead-in / leg / reps /
-        // rest of the step — after the read beat, its silent amplitude cross
-        // and a folded hold ("Para arriba tres segundos" = the PARA dots).
-        const own = tl.segments.filter((sg) => sg.stepIdx === i);
-        const readLike = (sg: Segment) => sg.kind === "read" || (sg.kind === "cross" && sg.label === "upNext");
-        let k = 0;
-        while (k < own.length && (readLike(own[k]) || own[k].kind === "hold")) k++;
-        expect(h.fromMs).toBe(own[k].t0Ms);
-        expect(["lead-in", "out", "rest", "reps", "cross"]).toContain(own[k].kind);
-        const reads = tl.segments.filter((sg) => sg.kind === "read");
-        for (const r of reads) expect(r.t0Ms >= h.toMs || r.t0Ms + r.durMs <= h.fromMs).toBe(true);
+      const units = tl.segments.filter((sg) => MOVING.has(sg.kind) || (sg.kind === "cross" && sg.label !== "upNext"));
+      expect(tl.hums).toHaveLength(units.length + 1);
+      expect(tl.hums[0]).toEqual({ fromMs: 6000, toMs: 36000, stepIdx: -1, contour: "breath" });
+      tl.hums.slice(1).forEach((h, k) => {
+        const u = units[k];
+        const i = tl.segments.indexOf(u);
+        const prev = tl.segments[i - 1];
+        const leadIn = prev.kind === "lead-in" && prev.stepIdx === u.stepIdx;
+        expect(h).toEqual({
+          fromMs: leadIn ? prev.t0Ms : u.t0Ms,
+          toMs: u.t0Ms + u.durMs,
+          stepIdx: u.stepIdx,
+          contour: u.kind === "reps" ? "wave" : u.kind === "rest" ? "flat" : ["up", "right", "forward"].includes(u.label) ? "rise" : "fall",
+        });
+        // A leg's hum starts on its campana (or the lead-in's); a rest just follows the tic.
+        if (u.kind !== "rest") expect((leadIn ? prev : u).cueAtStart).toBe("campana");
+        // … and never overlaps a read beat or a hold.
+        for (const r of tl.segments.filter((sg) => sg.kind === "read" || sg.kind === "hold")) {
+          expect(r.t0Ms >= h.toMs || r.t0Ms + r.durMs <= h.fromMs).toBe(true);
+        }
       });
     }
   });
-  it("ex 1: the first hum starts with the fast lead-in at 45750 and ends at 53750", () => {
+  it("ex 1: the fast reps hum from the lead-in at 48250 to the tic at 50750; the slow raise rises for 15 s", () => {
     const tl = buildExerciseTimeline(ex1, { mode: "library" });
-    expect(tl.hums[0]).toEqual({ fromMs: 45750, toMs: 53750, stepIdx: 0 });
+    expect(tl.hums[1]).toEqual({ fromMs: 48250, toMs: 50750, stepIdx: 0, contour: "wave" });
+    expect(tl.hums[2]).toEqual({ fromMs: 64000, toMs: 79000, stepIdx: 1, contour: "rise" });
+    expect(tl.hums.at(-1)).toEqual({ fromMs: 140250, toMs: 155250, stepIdx: 5, contour: "fall" });
+  });
+});
+
+describe("narrations (every segment is spoken)", () => {
+  const SILENT = (tl: ExerciseTimeline, i: number) => {
+    const sg = tl.segments[i];
+    const prev = tl.segments[i - 1];
+    if (sg.kind === "cross" && sg.label === "upNext") return true; // silent continuity cross
+    if (prev && prev.kind === "lead-in" && prev.stepIdx === sg.stepIdx) return true; // said at the lead-in
+    if (sg.kind === "read") return tl.segments.findIndex((x) => x.kind === "read" && x.stepIdx === sg.stepIdx) !== i;
+    return false;
+  };
+  for (const ex of WARMUP_EXERCISES) {
+    for (const mode of ["library", "session"] as const) {
+      it(`${ex.id} / ${mode}: every audible segment has a line at its start, in time order`, () => {
+        const tl = buildExerciseTimeline(ex, { mode });
+        for (let i = 1; i < tl.narrations.length; i++) expect(tl.narrations[i].atMs).toBeGreaterThanOrEqual(tl.narrations[i - 1].atMs);
+        tl.segments.forEach((sg, i) => {
+          if (SILENT(tl, i)) return;
+          expect(tl.narrations.some((n) => n.segIdx === i && n.atMs === sg.t0Ms), `${sg.kind}@${sg.t0Ms}`).toBe(true);
+        });
+        // Every step text is spoken exactly once; steps read during the
+        // previous step are spoken when their text appears (queued).
+        ex.steps.forEach((step, si) => {
+          const spoken = tl.narrations.filter((n) => n.source.kind === "step" && n.source.stepIdx === si);
+          expect(spoken, step.id).toHaveLength(1);
+          if (step.readDuringPrevAtSec != null) {
+            const sec = tl.secondaryTexts.find((x) => x.stepIdx === si)!;
+            expect(spoken[0].atMs).toBe(sec.fromMs);
+            expect(spoken[0].interrupt).toBe(false);
+          } else expect(spoken[0].interrupt).toBe(true);
+        });
+        // Closing: its line at the start; "abre los ojos" 4 s before the end
+        // (library) or at the bridge (session), followed by the bridge line.
+        const closing = tl.segments.find((sg) => sg.kind === "closing")!;
+        expect(tl.narrations.some((n) => n.source.kind === "closing" && n.atMs === closing.t0Ms)).toBe(true);
+        const open = tl.narrations.find((n) => n.source.kind === "closingOpen")!;
+        if (mode === "library") expect(open.atMs).toBe(closing.t0Ms + closing.durMs - 4000);
+        else {
+          expect(open.atMs).toBe(tl.bridgeAt);
+          expect(tl.narrations.at(-1)?.source).toEqual({ kind: "bridge" });
+        }
+      });
+    }
+  }
+  it("ex 1 opens with the posture line, three breaths in/out, the notice, then step 1", () => {
+    const tl = buildExerciseTimeline(ex1, { mode: "library" });
+    const brief = (n: (typeof tl.narrations)[number]) => [n.atMs, n.source.kind, "dir" in n.source ? n.source.dir : "label" in n.source ? n.source.label : ""];
+    expect(tl.narrations.slice(0, 10).map(brief)).toEqual([
+      [0, "arrive", ""],
+      [6000, "breath", "in"],
+      [10000, "breath", "out"],
+      [16000, "breath", "in"],
+      [20000, "breath", "out"],
+      [26000, "breath", "in"],
+      [30000, "breath", "out"],
+      [36000, "arrive", ""],
+      [40000, "step", ""],
+      [48250, "label", "fast"],
+    ]);
+    // A hold with a chrome cue speaks the cue ("Para."), a return leg its line.
+    const tl3 = buildExerciseTimeline(ex3, { mode: "library" });
+    const hold = tl3.segments.findIndex((sg) => sg.kind === "hold");
+    expect(tl3.narrations.find((n) => n.segIdx === hold)?.source).toEqual({ kind: "chrome", cue: "stop" });
+    const back = tl3.segments.findIndex((sg) => sg.kind === "back");
+    expect(tl3.narrations.find((n) => n.segIdx === back)?.source).toEqual({ kind: "chrome", cue: "otherSide" });
   });
 });

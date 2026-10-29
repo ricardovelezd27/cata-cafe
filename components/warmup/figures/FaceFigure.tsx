@@ -52,7 +52,13 @@ export function FaceFigure({ eyes, highlight = true, pose, path, frame = "stage"
         <rect className={s.fill} x={84} y={128} width={32} height={30} rx={12} />
         <ellipse className={s.fill} cx={48} cy={86} rx={7} ry={12} />
         <ellipse className={s.fill} cx={152} cy={86} rx={7} ry={12} />
+        <circle className={s.hair} cx={100} cy={27} r={9} />
         <ellipse className={s.fill} cx={100} cy={86} rx={52} ry={62} />
+        {/* Hair cap with a soft side-parted fringe (matches the Mannequin). */}
+        <path
+          className={s.hair}
+          d="M51.4 58 A54 64 0 0 1 148.6 58 C142 45 126 39.5 108 40 C86 41 62 46 51.4 58Z"
+        />
 
         <g clipPath={`url(#${clipId})`}>
           <g data-part="pupils" transform={transforms.pupils}>
@@ -68,6 +74,7 @@ export function FaceFigure({ eyes, highlight = true, pose, path, frame = "stage"
         )}
 
         <path className={s.nose} d="M100 93 Q104 102 100 111 Q96 102 100 93Z" />
+        <path className={s.mouth} strokeWidth={2.2} d="M91 123 Q100 129.5 109 123" />
       </g>
 
       {path && (

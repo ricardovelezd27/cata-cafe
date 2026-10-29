@@ -71,6 +71,8 @@ export function Mannequin({
   const seated = posture === "seated";
   const front = view === "front";
   const tile = frame === "tile";
+  /** Fine apron details (ties, straps, logo) vanish below ~1 px in tiles. */
+  const detail = !tile;
 
   const tone = (p: Part): string => {
     if (!moving) return s.rest;
@@ -165,12 +167,35 @@ export function Mannequin({
 
         <g data-part="torso" transform={transforms.torso} className={tone("torso")}>
           {front ? (
-            <path
-              className={s.fill}
-              d="M92 116 Q92 102 106 102 H134 Q148 102 148 116 L142 196 Q142 208 130 208 H110 Q98 208 98 196Z"
-            />
+            <>
+              <path
+                className={s.fill}
+                d="M92 116 Q92 102 106 102 H134 Q148 102 148 116 L142 196 Q142 208 130 208 H110 Q98 208 98 196Z"
+              />
+              {/* Barista apron: waist tie, neck straps (tucked under the neck
+                  cap), bib widening to a skirt, coffee-bean mark on the bib. */}
+              <g className={s.apron}>
+                {detail && <path className={s.apronLine} strokeWidth={2.4} d="M96.5 150 H143.5" />}
+                {detail && <path className={s.apronLine} strokeWidth={1.8} d="M110.5 118 L116 104 M129.5 118 L124 104" />}
+                <path d="M111 117 H129 Q132 117 132.2 120 L133.5 150 L139 193 Q139.6 199 133.5 199 H106.5 Q100.4 199 101 193 L106.5 150 L107.8 120 Q108 117 111 117Z" />
+                {detail && (
+                  <g transform="rotate(18 120 132)">
+                    <ellipse className={s.logo} cx={120} cy={132} rx={4} ry={5.5} />
+                    <path className={s.logoCrease} d="M120.9 127.4 C118.4 129.6 122.2 134 119.3 136.6" />
+                  </g>
+                )}
+              </g>
+            </>
           ) : (
-            <rect className={s.fill} x={100} y={102} width={40} height={106} rx={20} />
+            <>
+              <rect className={s.fill} x={100} y={102} width={40} height={106} rx={20} />
+              {/* Apron in profile: a strip down the front of the torso. */}
+              <g className={s.apron}>
+                {detail && <path className={s.apronLine} strokeWidth={2.2} d="M102 150 H130" />}
+                {detail && <path className={s.apronLine} strokeWidth={1.8} d="M133.5 118 L125.5 104" />}
+                <path d="M132 117 H138.5 Q141.6 117 141.7 121 L142.4 188 Q142.4 198 132 199 H125 Q127.5 160 132 117Z" />
+              </g>
+            </>
           )}
         </g>
 
@@ -179,15 +204,32 @@ export function Mannequin({
         </g>
 
         <g data-part="head" className={tone("head")}>
-          {front && (
+          {front ? (
             <>
-              {/* Ears stay put when the head turns; only the features slide. */}
+              {/* Ears and hair stay put when the head turns; only the features slide. */}
               <ellipse className={s.fill} cx={96} cy={60} rx={4} ry={7} />
               <ellipse className={s.fill} cx={144} cy={60} rx={4} ry={7} />
+              <circle className={s.hair} cx={120} cy={33} r={6} />
+              <circle className={s.fill} cx={120} cy={58} r={24} />
+              {/* Hair cap with a soft side-parted fringe. */}
+              <path
+                className={s.hair}
+                d="M95.7 52 A25 25 0 0 1 144.3 52 C141 44.5 133 40.5 123 41 C110 41.5 99.5 44.5 95.7 52Z"
+              />
+            </>
+          ) : (
+            <>
+              {/* Low bun at the back of the head. */}
+              <circle className={s.hair} cx={97} cy={50} r={7} />
+              <circle className={s.fill} cx={122} cy={58} r={24} />
+              <path
+                className={s.hair}
+                d="M98 64 A25 25 0 0 1 140.5 41 Q127 42 116 48 Q108 53 106 68 Q101 68 98 64Z"
+              />
+              <ellipse className={s.nose} cx={116} cy={59} rx={3.2} ry={5} />
+              <path className={s.fill} d="M145 52.5 Q153 59 145.5 62.5Z" />
             </>
           )}
-          <circle className={s.fill} cx={front ? 120 : 122} cy={58} r={24} />
-          {!front && <path className={s.fill} d="M145 52 Q153 58 145 64Z" />}
 
           <g data-part="face" transform={transforms.face}>
             {front ? (
@@ -200,12 +242,18 @@ export function Mannequin({
                     <circle className={s.eyeDot} cx={129} cy={56} r={1.9} />
                   </>
                 )}
-                <ellipse className={s.nose} cx={120} cy={66} rx={3} ry={4.5} />
+                <path className={s.noseLine} d="M120.2 60.5 Q117.8 64.4 120.6 65.8" />
+                <path className={s.mouth} strokeWidth={1.4} d="M116 71 Q120 74 124 71" />
               </>
-            ) : eyes === "closed" ? (
-              <path className={s.eyeLine} d="M131 54 Q135 57 139 54" />
             ) : (
-              <circle className={s.eyeDot} cx={135} cy={55} r={1.9} />
+              <>
+                {eyes === "closed" ? (
+                  <path className={s.eyeLine} d="M131 54 Q135 57 139 54" />
+                ) : (
+                  <circle className={s.eyeDot} cx={135} cy={55} r={1.9} />
+                )}
+                <path className={s.mouth} strokeWidth={1.4} d="M137.5 70 Q140 72 142 70.4" />
+              </>
             )}
             {leadsIn("face")}
           </g>

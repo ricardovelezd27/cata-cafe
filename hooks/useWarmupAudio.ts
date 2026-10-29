@@ -47,8 +47,10 @@ export interface WarmupAudio {
   /** Immediate single cue (intro "Escucha" demo). */
   playDemo(kind: CueKind): void;
   vibrate(pattern: number | number[]): void;
-  /** Resolves on end / error / cancel (and on a length-based safety timeout). */
-  speak(text: string, locale: string): Promise<void>;
+  /** Resolves on end / error / cancel (and on a length-based safety timeout).
+   *  `interrupt` (default true) cuts whatever is still being read; false
+   *  queues the line behind it (short leg / hold cues). */
+  speak(text: string, locale: string, opts?: { interrupt?: boolean }): Promise<void>;
   cancelSpeech(): void;
   /** iOS "interrupted" context (call, Siri, other audio app) — treat as a pause. */
   interrupted: boolean;
@@ -247,7 +249,7 @@ export function useWarmupAudio(locale?: string): WarmupAudio {
       // we (re)schedule starts at once (renderHum clamps to currentTime).
       for (const h of hums) {
         if (h.toMs <= elapsedMs) continue;
-        renderHum(c, now + (h.fromMs - elapsedMs) / 1000, now + (h.toMs - elapsedMs) / 1000, bus);
+        renderHum(c, now + (h.fromMs - elapsedMs) / 1000, now + (h.toMs - elapsedMs) / 1000, bus, h.contour);
       }
     },
     [cancel, freshBus],
@@ -283,7 +285,7 @@ export function useWarmupAudio(locale?: string): WarmupAudio {
     pending.forEach((done) => done());
   }, []);
 
-  const speak = useCallback((text: string, loc: string): Promise<void> => {
+  const speak = useCallback((text: string, loc: string, opts?: { interrupt?: boolean }): Promise<void> => {
     const s = synth();
     if (!voiceRef.current || mutedRef.current || !s || !text.trim()) return Promise.resolve();
     const v = pickVoice(loc);
@@ -302,7 +304,9 @@ export function useWarmupAudio(locale?: string): WarmupAudio {
       timer = window.setTimeout(done, Math.max(4000, text.length * 160));
       speechDone.current.add(done);
       try {
-        s.cancel(); // never queue behind a stuck utterance
+        // Instructions never queue behind a stuck utterance; the short cues
+        // ("Para", "Sube") wait their turn so a sentence is not cut.
+        if (opts?.interrupt !== false) s.cancel();
         const u = new SpeechSynthesisUtterance(text);
         u.lang = speechLang(loc);
         u.voice = v;

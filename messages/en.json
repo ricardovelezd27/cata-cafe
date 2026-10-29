@@ -1601,7 +1601,7 @@
       "optionsTitle": "Your way",
       "soundLabel": "Sound and vibration",
       "voiceToggle": "Read aloud",
-      "voiceHint": "Uses your device's voice to read each step before it starts.",
+      "voiceHint": "Your device's voice reads every step and cue aloud, so you can keep your eyes closed.",
       "accessibleLabel": "Accessible: show the seconds",
       "largeTextLabel": "Large text",
       "stillLabel": "Stay still, just attend",
@@ -1627,9 +1627,9 @@
       "muteLabel": "Mute",
       "unmuteLabel": "Turn sound on",
       "remaining": "{n} seconds left",
-      "cueStop": "Stop.",
-      "cueReturn": "Now come back, just as slowly.",
-      "cueOtherSide": "Now to the other side.",
+      "cueStop": "Hold.",
+      "cueReturn": "And now come back, just as slowly.",
+      "cueOtherSide": "And now to the other side.",
       "breathOnItsOwn": "Let your breathing go on its own.",
       "goToTable": "Go to the table",
       "doneTitle": "Done",
@@ -1656,21 +1656,21 @@
       "bridge": "To the table"
     },
     "arrive": {
-      "posture": "Feet on the floor. Hands on your thighs. Shoulders loose.",
-      "postureStanding": "Feet on the floor. Let your arm hang loose.",
-      "notice": "There's nothing to get right. Just notice."
+      "posture": "Let's begin by breathing. Feet on the floor, hands on your thighs, shoulders loose.",
+      "postureStanding": "Let's begin by breathing. Feet on the floor, your arm hanging loose.",
+      "notice": "Good. There's nothing to get right, just notice. Let's begin."
     },
     "breath": {
-      "inFirst": "Breathe in through your nose…",
+      "inFirst": "Breathe in through your nose, with the sound…",
       "outFirst": "…and let it out slowly.",
-      "in": "In",
-      "out": "Out"
+      "in": "Breathe in",
+      "out": "Breathe out"
     },
     "closing": {
-      "still": "Stay still. Notice what the movement leaves behind.",
-      "open": "Open your eyes slowly, whenever you're ready."
+      "still": "Good. Stay still, in a neutral position. Notice what the movement leaves behind.",
+      "open": "And now, whenever you're ready, open your eyes slowly."
     },
-    "bridge": "Take this attention to the cup. First you feel, then you describe.",
+    "bridge": "Now take this attention to the cup. First you feel, then you describe.",
     "reflect": {
       "eyebrow": "A moment",
       "title": "Two questions, no hurry",

@@ -86,12 +86,41 @@ export interface CuePoint {
   readonly segIdx: number;
 }
 
-/** A continuous hum (soft drone) window: from the step's first movement
- *  segment to the step end — "campana → hum → tic → instructions". */
+/** Pitch contour of a hum window (lib/warmup/sounds.ts renderHum):
+ *  rise = the leg goes out (pitch climbs a few semitones), fall = it comes
+ *  back, wave = fast reps, flat = stillness, breath = the arrival breaths
+ *  (rises on each inhale, falls on each exhale). */
+export type HumContour = "rise" | "fall" | "wave" | "flat" | "breath";
+
+/** A continuous hum (soft drone) window under ONE movement unit —
+ *  "campana → hum → tic": from the lead-in / leg start to the leg end. The
+ *  arrival breaths get one window too (stepIdx −1, contour "breath"). */
 export interface HumWindow {
   readonly fromMs: number;
   readonly toMs: number;
   readonly stepIdx: number;
+  readonly contour: HumContour;
+}
+
+/** What the voice says at a point of the run (resolved to text by the
+ *  player: step texts come from the exercise, the rest from the chrome
+ *  strings). `interrupt` cuts whatever is still being read; otherwise the
+ *  line queues behind it. */
+export type NarrationSource =
+  | { readonly kind: "step"; readonly stepIdx: number }
+  | { readonly kind: "label"; readonly label: SegmentLabel }
+  | { readonly kind: "chrome"; readonly cue: ChromeCue }
+  | { readonly kind: "arrive"; readonly phase: "posture" | "notice" }
+  | { readonly kind: "breath"; readonly dir: "in" | "out"; readonly first: boolean }
+  | { readonly kind: "closing" }
+  | { readonly kind: "closingOpen" }
+  | { readonly kind: "bridge" };
+
+export interface NarrationPoint {
+  readonly atMs: number;
+  readonly segIdx: number;
+  readonly source: NarrationSource;
+  readonly interrupt: boolean;
 }
 
 export interface WhisperSlot {
@@ -124,6 +153,8 @@ export interface ExerciseTimeline {
   readonly bridgeAt: number | null;
   readonly cues: readonly CuePoint[];
   readonly hums: readonly HumWindow[];
+  /** Everything the voice reads, in time order (every segment is covered). */
+  readonly narrations: readonly NarrationPoint[];
   readonly whispers: readonly WhisperSlot[];
   readonly secondaryTexts: readonly SecondaryText[];
   /** "Deja que la respiración vaya sola." shows during this step's read beat. */

@@ -211,15 +211,15 @@ describe("warm-up cue synthesis", () => {
   });
 });
 
-describe("renderHum (continuous drone under a movement)", () => {
-  it("builds four partials + LFO through a lowpass into an envelope that fades in and out inside the window", () => {
+describe("renderHum (the drone under a movement)", () => {
+  it("builds the doubled fundamental + overtones + swell and vibrato LFOs through a lowpass into an envelope that fades inside the window", () => {
     const ctx = new FakeContext();
     const bus = ctx.createGain();
     ctx.nodes = [];
     renderHum(ctx as unknown as BaseAudioContext, 2, 17, bus as unknown as GainNode);
-    expect(ctx.count("osc")).toBe(HUM.partials.length + 1); // + LFO
+    // fundamental L + R, three overtones, swell LFO, vibrato LFO
+    expect(ctx.count("osc")).toBe(HUM.partials.length + 1 + 2);
     expect(ctx.count("biquad")).toBe(1);
-    // Every source stops just after the window.
     for (const src of ctx.sources()) {
       expect(src.startAt).toBe(2);
       expect(src.stopAt).toBeCloseTo(17.05, 5);
@@ -231,6 +231,40 @@ describe("renderHum (continuous drone under a movement)", () => {
     expect(ev[1]).toEqual({ op: "linear", value: HUM.peak, time: 3.5 });
     expect(ev[2]).toEqual({ op: "set", value: HUM.peak, time: 15.8 });
     expect(ev[3]).toEqual({ op: "linear", value: 0, time: 17 });
+    // Binaural pair: the fundamental and the fundamental + 6 Hz, plus the octave.
+    const bases = ctx
+      .sources()
+      .filter((s) => s.kind === "osc")
+      .map((s) => s.frequency.events[0]?.value)
+      .filter((v): v is number => v != null && v >= 100);
+    expect(bases).toContain(HUM.baseHz);
+    expect(bases).toContain(HUM.baseHz + HUM.binauralHz);
+    expect(bases).toContain(HUM.baseHz * 2);
+  });
+  it("follows the movement in pitch: rise climbs, fall drops, breath rises on each inhale, wave undulates", () => {
+    const fund = (contour: Parameters<typeof renderHum>[4]) => {
+      const ctx = new FakeContext();
+      const bus = ctx.createGain();
+      ctx.nodes = [];
+      renderHum(ctx as unknown as BaseAudioContext, 0, 10, bus as unknown as GainNode, contour);
+      return ctx.sources().find((s) => s.kind === "osc" && s.frequency.events[0]?.value === HUM.baseHz)!.frequency.events;
+    };
+    const k = Math.pow(2, HUM.span.leg / 12);
+    expect(fund("rise")).toEqual([
+      { op: "set", value: HUM.baseHz, time: 0 },
+      { op: "set", value: HUM.baseHz, time: expect.closeTo(0.8) as number },
+      { op: "exp", value: expect.closeTo(HUM.baseHz * k) as number, time: expect.closeTo(9.2) as number },
+    ]);
+    expect(fund("fall")[2].value).toBeCloseTo(HUM.baseHz / k);
+    expect(fund("flat")).toEqual([{ op: "set", value: HUM.baseHz, time: 0 }]);
+    const breath = fund("breath"); // one 4 s in / 6 s out cycle fits in 10 s
+    expect(breath.slice(1)).toEqual([
+      { op: "exp", value: expect.closeTo(HUM.baseHz * Math.pow(2, HUM.span.breath / 12)) as number, time: 4 },
+      { op: "exp", value: HUM.baseHz, time: 10 },
+    ]);
+    const wave = fund("wave");
+    expect(wave.length).toBeGreaterThan(6);
+    expect(wave.at(-1)).toEqual({ op: "exp", value: HUM.baseHz, time: expect.closeTo(10) as number });
   });
   it("shortens the fades for short windows, skips windows in the past, and never throws", () => {
     const ctx = new FakeContext();
