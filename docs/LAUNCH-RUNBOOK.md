@@ -485,3 +485,81 @@ anonymizes instead of deleting — name/code/farm/producer/notes/certifications 
 wiped, shares and invite links revoked, and the coffee vanishes from lists, pickers and
 its profile URL. Session results, tasting history and insights keep the row and show
 "Café eliminado" where the name was. Only the coffee's owner can trigger it.
+
+---
+
+## §9. Database — apply the `session_warmup_started_at` migration (2026-10, S6 warm-up v3 PR3)
+
+**When:** BEFORE the deploy that contains the synced master-led warm-up (branch
+`claude/s6-warmup-v3-pr3`). Unlike §7 this ordering is mandatory: the regenerated Prisma
+client selects `cupping_sessions."warmupStartedAt"` on every session read, so deploying
+the code first makes every page that loads a session (cup, waiting, results, lists)
+return 500 until the column exists. Applying the migration first is safe — the old code
+simply ignores the new column.
+
+**What it does** (`prisma/migrations/20261028120000_session_warmup_started_at/migration.sql`):
+
+```sql
+ALTER TABLE "cupping_sessions" ADD COLUMN "warmupStartedAt" TIMESTAMPTZ(3);
+```
+
+One nullable column, no default, no index, no data rewritten. It holds the instant the
+master pressed "Empezar con el grupo" (the t0 of the warm-up timeline); `NULL` means no
+run in progress. Brief lock on `cupping_sessions`, no downtime.
+
+**Steps** (from your machine, in the repo root, with the production `DIRECT_URL` in
+`.env.local` — same precondition as §7: the direct connection, not the pgbouncer pooler):
+
+1. Preview (read-only):
+
+   ```bash
+   npx prisma migrate status
+   ```
+
+   Expected: exactly one pending migration, `20261028120000_session_warmup_started_at`.
+   Anything else pending or a drift message: stop and paste the output.
+2. Apply it:
+
+   ```bash
+   npx prisma migrate deploy
+   ```
+
+   Expected: `1 migration applied`.
+3. **Verify** — `npx prisma migrate status` now reports the database schema is up to
+   date, and in Supabase → SQL Editor:
+
+   ```sql
+   SELECT column_name FROM information_schema.columns
+   WHERE table_name = 'cupping_sessions' AND column_name = 'warmupStartedAt';
+   ```
+
+   Expected: one row, `warmupStartedAt`.
+4. Deploy the branch (merge → Vercel deploys).
+
+**No RLS / publication step.** `cupping_sessions` is already in the `supabase_realtime`
+publication (the waiting room and cup page subscribe to its UPDATEs) and the existing
+row policies cover the new column. No PHASE SQL, nothing to check in the Security
+Advisor.
+
+**Ignore the `startedAt` drift.** `prisma migrate diff` (and `migrate dev`) also reports a
+pre-existing difference on `cupping_sessions."startedAt"` (`SET DATA TYPE TIMESTAMP(3)`).
+That is NOT part of this migration and must not be applied or "fixed" here — leave it
+alone.
+
+**2-minute manual check after deploy** (two devices or a normal + a private window):
+
+1. Create a fresh **group** session (live, no closing date) with a warm-up exercise
+   chosen; copy the invite link.
+2. As a participant, open the invite and sit in the waiting room.
+3. As the master (owner), open `/cup` and press **Movimiento sensorial · Empezar con el
+   grupo**. The participant's player must open, seeked to the same moment, within ~1 s
+   (or within 15 s via the polling fallback if realtime is down). The participant is
+   muted by default; the master's device plays the sound.
+4. Press **Detener** on the master panel: the participant's player closes with "El maestro
+   detuvo el ejercicio".
+5. Start the run again, then press **Iniciar cata** mid-run: the confirm "El grupo está en
+   el ejercicio (quedan m:ss). ¿Iniciar igual?" must appear. Confirming starts the cupping
+   and the participants move on to `/cup`.
+
+**Rollback:** the column is nullable and unused by the old code — roll the app back and
+leave the column in place.

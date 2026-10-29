@@ -87,6 +87,7 @@ stateDiagram-v2
         [*] --> waiting : participant joins via /join/[token]\n(live, not started)
         [*] --> cupping : join (async, or already started)
         waiting --> waiting : warm-up (chosen exercise, skippable)
+        waiting --> waiting : master startWarmup\n(synced run, warmupStartedAt)
         waiting --> cupping : owner startSession\n(wizard step 2 or master panel)
         cupping --> submitted : participant submits
     }
@@ -105,9 +106,34 @@ localStorage (`cata_moment_warmup_<sessionId>_<userId>` = exercise id). If
 the room moves on at the next segment boundary, or after 30 s at most. On
 `/cup` the overlay shows once, only to a cupper with no evaluation yet, and
 never to the master of a live group session. A live session that has not started
-redirects participants from `/cup` to `/waiting`. (Stage 2, next PR: the master
-runs the exercise for the whole group — `startWarmup` writes `warmupStartedAt`
-and the waiting rooms open it in sync.)
+redirects participants from `/cup` to `/waiting`.
+
+**Synced run (PR3).** Before the cupping starts, the master panel offers
+"Empezar con el grupo" when the session has an exercise. `startWarmup` (owner
+only, `assertSessionWritable`) stamps `cupping_sessions."warmupStartedAt"` — the
+t0 of the timeline, i.e. the start of "Llega" (the intro is not timed). It only
+takes effect for a live (`isGroup`, not `isAsync`), active, not-yet-started
+session with an exercise, and is idempotent: a second click joins the run in
+progress instead of restarting it (a run older than the exercise length counts
+as finished). The master's own device plays the exercise with sound as an
+overlay on `/cup`, seeked, and the panel shows "En curso · Quedan m:ss",
+"Volver al ejercicio" and "Detener" (`stopWarmup` sets the column back to
+`NULL` while `startedAt` is still null). Waiting rooms receive the value on the
+existing `waiting:<id>` realtime channel (edge-detected, because full-row
+payloads re-deliver the same value on unrelated updates) and open the player in
+`synced` mode seeked to `now − warmupStartedAt`: live events clamp the offset to
+at most 2 s, reloads and polls use the server clock (`serverNow`) to cancel
+device skew. **Sound is off by default for participants** — the master's device
+is the one sounding device in the room; a participant can unmute from the
+player's top bar. With fewer than 20 s left the run counts as "missed" and the
+exercise is offered solo instead; `warmupStartedAt` going back to `NULL` after a
+value shows "El maestro detuvo el ejercicio". As a fallback for a dead realtime
+channel the waiting room polls `getWaitingState` every 15 s (`startedAt`,
+`warmupStartedAt`, `warmupExerciseId`, `serverNow`); the older boolean
+`checkSessionStarted` is kept unchanged on purpose. Pressing "Iniciar cata"
+while a run is in progress asks "El grupo está en el ejercicio (quedan m:ss).
+¿Iniciar igual?" before calling `startSession`. The seek/skew/missed arithmetic
+lives only in `lib/warmup/syncedRun.ts`.
 
 ### Deleting a session (2026-09-08)
 

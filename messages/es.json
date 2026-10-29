@@ -534,7 +534,16 @@
     "referenceRemoveActive": "Quitar la referencia activa",
     "referenceAddHint": "La referencia anterior conserva sus 79.00; la nueva queda fijada.",
     "referenceAddTitle": "Añadir referencia",
-    "referenceAddConfirm": "Añadir referencia"
+    "referenceAddConfirm": "Añadir referencia",
+    "warmupStart": "Movimiento sensorial · Empezar con el grupo",
+    "warmupStop": "Detener",
+    "warmupReopen": "Volver al ejercicio",
+    "warmupTimeLeft": "Quedan {time}",
+    "warmupRunning": "En curso",
+    "warmupConfirmStartTitle": "El grupo está en el ejercicio",
+    "warmupConfirmStart": "El grupo está en el ejercicio (quedan {time}). ¿Iniciar igual?",
+    "warmupConfirmStartYes": "Iniciar igual",
+    "warmupStartError": "No se pudo empezar el ejercicio."
   },
   "results": {
     "title": "Resultados de la Sesión",
@@ -1679,6 +1688,14 @@
       "save": "Guardar en el dispositivo",
       "omit": "Omitir",
       "savedNote": "Guardado en este dispositivo."
+    },
+    "synced": {
+      "listen": "Cierra los ojos y escucha",
+      "stopped": "El maestro detuvo el ejercicio",
+      "soundToggle": "Sonido en este teléfono",
+      "missed": "El grupo ya casi termina; puedes hacerlo por tu cuenta.",
+      "inProgress": "En curso · paso {n} de {total}",
+      "join": "Unirme"
     }
   }
 }
