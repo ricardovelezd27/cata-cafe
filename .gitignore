@@ -46,7 +46,8 @@ next-env.d.ts
 graphify-out/
 
 # claude code internals
-.claude/
+.claude/*
+!.claude/agents/
 
 # git worktrees (local dev isolation)
 /.worktrees/

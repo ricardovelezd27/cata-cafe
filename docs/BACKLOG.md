@@ -5,6 +5,12 @@
 > Verde/Vegetal · reunión Kim 2026-09-25), de `docs/prompts/S2–S5`, `docs/HANDOVER.md`, `PRODUCT.md`
 > y la memoria de proyecto. Si un ítem no está aquí, o ya está en `main` o se descartó explícitamente.
 > Actualizar este archivo en el mismo PR que cierra un ítem.
+>
+> **2026-11-06 — auditoría independiente de flujos.** 157 hallazgos verificados (11 P1) en
+> `docs/audits/flows-2026-11/00-REPORT.md`; la remediación está planificada como la serie
+> `docs/prompts/S8-flows/` (15 prompts, 01–03 sin compuertas) y 45 preguntas para Kim en
+> `docs/product/kim-flows-2026-11/`. Los ítems de abajo que S8 absorbe: T6 (S8-11), T8 (S8-10 B2),
+> T9 (S8-05 C7), T12 (S8-07 E2), T13 (S8-07), T22 (S8-01), T25 parcial (S8-03, S8-07, S8-11).
 
 ## 0. Ya en `main` (para no volver a planificarlo)
 
