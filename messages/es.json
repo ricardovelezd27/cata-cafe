@@ -556,6 +556,7 @@
     "refresh": "Actualizar",
     "refreshing": "Actualizando…",
     "refreshNew": "Actualizar ({count} nuevas)",
+    "refreshNewGeneric": "Hay novedades · Actualizar",
     "participation": "{submitted} de {total} catadores",
     "lastUpdated": "Actualizado: {time}",
     "mine": "Mi evaluación",

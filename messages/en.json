@@ -556,6 +556,7 @@
     "refresh": "Refresh",
     "refreshing": "Refreshing…",
     "refreshNew": "Refresh ({count} new)",
+    "refreshNewGeneric": "New updates · Refresh",
     "participation": "{submitted} of {total} tasters",
     "lastUpdated": "Updated: {time}",
     "mine": "My evaluation",

@@ -123,6 +123,7 @@ export function ResultsClient({
   isGroup,
   canViewGroup,
   sessionStatus,
+  cuppingOpen,
   closedOnLabel = null,
   closeEmails = null,
   currentUserId,
@@ -165,6 +166,9 @@ export function ResultsClient({
   // "active" | "closed" (+ legacy "draft"/"open") — gates the backToCupping
   // button (a closed session's cupping form is final) and the closed notice.
   sessionStatus: string;
+  // False once the session is closed OR its closesAt passed (server clock):
+  // gates "Volver a catar", since /cup redirects back here from that instant.
+  cuppingOpen: boolean;
   // Pre-formatted "Cata cerrada el {date}" — null unless this is a closed
   // group session (see CLAUDE.md's product-law on closedAt).
   closedOnLabel?: string | null;
@@ -212,6 +216,7 @@ export function ResultsClient({
     refresh: string;
     refreshing: string;
     refreshNew: string;
+    refreshNewGeneric: string;
     radarMine: string;
     radarCommunity: string;
     deltaAttribute: string;
@@ -336,6 +341,9 @@ export function ResultsClient({
   };
   const [refreshing, setRefreshing] = useState(false);
   const [newSubmissions, setNewSubmissions] = useState(0);
+  // Non-owners no longer receive peers' evaluation rows over Realtime (RLS,
+  // S8-01): they only learn that the session row changed, so the chip is generic.
+  const [hasGenericUpdates, setHasGenericUpdates] = useState(false);
   // Realtime channel is not SUBSCRIBED — "no new submissions" may just mean
   // "we stopped listening", so point the viewer at the refresh button (F10).
   const [liveUpdatesDown, setLiveUpdatesDown] = useState(false);
@@ -358,11 +366,18 @@ export function ResultsClient({
   // recomputes don't re-badge evaluations the viewer has already seen.
   const seenEvalIds = useRef(new Set<string>(knownEvalIds));
 
-  // ─── Realtime: badge the refresh button when other cuppers submit ──────────
+  // ─── Realtime: badge the refresh button when something new is available ───
   // Manual-refresh design is intentional (no auto re-render); this only tells
-  // the viewer that pressing "Actualizar" will show something new.
+  // the viewer that pressing "Actualizar" will show something new. The owner
+  // reads submitted evaluation rows (evals_select_owner) and counts them;
+  // everyone else listens to the session row, which submitAllEvaluations
+  // touches once when group results become visible. Mounted for non-owners
+  // BEFORE results are visible so the hidden -> visible flip is announced.
   useEffect(() => {
-    if (!isGroup || !canViewGroup) return;
+    if (!isGroup) return;
+    // The owner always sees group data, so canViewGroup only gates the owner
+    // listener if it were ever false; non-owners listen from the start.
+    if (isOwner && !canViewGroup) return;
     // Admin god-mode runs under the admin's own JWT, and the evaluations RLS
     // policy only exposes own/participant rows — the subscription would be a
     // dead socket. Server renders run as postgres, so manual refresh works.
@@ -379,7 +394,8 @@ export function ResultsClient({
     const stop = subscribeWithSessionAuth(
       supabase,
       () =>
-    supabase
+    isOwner
+      ? supabase
       .channel(`results:${session.id}`)
       .on(
         "postgres_changes",
@@ -411,7 +427,19 @@ export function ResultsClient({
             setNewSubmissions((n) => n + 1);
           }
         },
-      ),
+      )
+      : supabase
+          .channel(`results:${session.id}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "UPDATE",
+              schema: "public",
+              table: "cupping_sessions",
+              filter: `id=eq.${session.id}`,
+            },
+            () => setHasGenericUpdates(true),
+          ),
       // A dropped channel otherwise looks exactly like "no new submissions".
       // Flag it so the viewer knows to use Actualizar instead of waiting (F10).
       (status) => {
@@ -420,7 +448,7 @@ export function ResultsClient({
     );
 
     return stop;
-  }, [isGroup, canViewGroup, isAdminViewer, session.id, session.samples, currentUserId]);
+  }, [isGroup, canViewGroup, isOwner, isAdminViewer, session.id, session.samples, currentUserId]);
 
   const handleEditSample = (sampleId: string) => {
     router.push(`/${locale}/app/sessions/${session.id}/cup?sample=${sampleId}`);
@@ -451,6 +479,7 @@ export function ResultsClient({
   const handleRefreshScores = async () => {
     setRefreshing(true);
     setNewSubmissions(0);
+    setHasGenericUpdates(false);
     try {
       // The button is available to everyone; only the owner additionally fires
       // the self-healing trigger recompute. Non-owners just re-render: the page
@@ -573,7 +602,7 @@ export function ResultsClient({
           {/* Admin view: /cup would just bounce back here — hide the loop.
               A closed session's cupping form is final, so the button never
               renders once the session is closed (for anyone). */}
-          {!isAdminViewer && sessionStatus !== "closed" && (
+          {!isAdminViewer && cuppingOpen && (
             <Button
               size="sm"
               variant="secondary"
@@ -585,7 +614,7 @@ export function ResultsClient({
           )}
           <Button
             size="sm"
-            variant={newSubmissions > 0 && !refreshing ? "accent" : "accentOutline"}
+            variant={(newSubmissions > 0 || hasGenericUpdates) && !refreshing ? "accent" : "accentOutline"}
             icon={<RefreshCw size={14} aria-hidden className={refreshing ? "animate-spin" : ""} />}
             onClick={handleRefreshScores}
             disabled={refreshing}
@@ -595,7 +624,9 @@ export function ResultsClient({
               ? translations.refreshing
               : newSubmissions > 0
                 ? translations.refreshNew.replace("{count}", String(newSubmissions))
-                : translations.refresh}
+                : hasGenericUpdates
+                  ? translations.refreshNewGeneric
+                  : translations.refresh}
           </Button>
         </div>
 
@@ -680,7 +711,7 @@ export function ResultsClient({
           className="mx-4 mt-4 flex flex-wrap items-center gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6"
         >
           <span className="flex-1 min-w-[200px]">{myDraftNotice}</span>
-          {!isAdminViewer && sessionStatus !== "closed" && (
+          {!isAdminViewer && cuppingOpen && (
             <Button
               size="sm"
               variant="secondary"
