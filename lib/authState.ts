@@ -27,9 +27,10 @@ export function classifyAuthResult(input: {
   if (error.name === "AuthRetryableFetchError") return "unreachable";
   const status = error.status;
   if (typeof status === "number") {
-    // 0 = no response at all; 5xx = the service is down. 4xx = the token is
-    // bad or the user is gone: signed out for our purposes.
-    if (status === 0 || status >= 500) return "unreachable";
+    // 0 = no response at all; 5xx = the service is down; 408 (timeout) and
+    // 429 (rate limited) are transient too. Other 4xx = the token is bad or
+    // the user is gone: signed out for our purposes.
+    if (status === 0 || status === 408 || status === 429 || status >= 500) return "unreachable";
     if (status >= 400) return "none";
   }
   // Anything we cannot place (no status, unknown name): do not claim the

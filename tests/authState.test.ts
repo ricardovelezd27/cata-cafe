@@ -16,6 +16,12 @@ describe("classifyAuthResult", () => {
     expect(classifyAuthResult({ user: null, error: { name: "AuthApiError", status: 401 } })).toBe("none");
     expect(classifyAuthResult({ user: null, error: { name: "AuthApiError", status: 403 } })).toBe("none");
   });
+  it("timeouts and rate limits (408, 429) are unreachable, never signed out", () => {
+    expect(classifyAuthResult({ user: null, error: { name: "AuthApiError", status: 408 } })).toBe("unreachable");
+    expect(classifyAuthResult({ user: null, error: { name: "AuthApiError", status: 429 } })).toBe("unreachable");
+    expect(classifyAuthResult({ user: null, error: { name: "AuthApiError", status: 404 } })).toBe("none");
+    expect(classifyAuthResult({ user: null, error: { name: "AuthApiError", status: 422 } })).toBe("none");
+  });
   it("network failures and 5xx are unreachable, never signed out", () => {
     expect(classifyAuthResult({ user: null, error: { name: "AuthRetryableFetchError", status: 0 } })).toBe("unreachable");
     expect(classifyAuthResult({ user: null, error: { name: "AuthApiError", status: 503 } })).toBe("unreachable");
