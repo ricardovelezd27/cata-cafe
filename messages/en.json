@@ -647,6 +647,7 @@
     "closeUnsentOne": "1 cupper has complete notes that are still unsent. If you close now, they will not be counted.",
     "closeUnsentMany": "{count} cuppers have complete notes that are still unsent. If you close now, they will not be counted.",
     "closeUnsentNone": "Nobody has complete notes waiting to be sent.",
+    "closeNotFinalized": "The session is closed. Some final steps (reveals, history) will be retried automatically.",
     "closeImpactLoading": "Checking for unsent notes…",
     "deadlineOpen": "Closes {when}",
     "deadlineSoon": "Closing soon: {when}",

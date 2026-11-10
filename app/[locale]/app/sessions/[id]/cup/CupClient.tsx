@@ -286,6 +286,7 @@ export function CupClient({
     closeUnsentOne: string;
     closeUnsentMany: string;
     closeUnsentNone: string;
+    closeNotFinalized?: string;
     closeImpactLoading: string;
     startSession: string;
     starting: string;
@@ -1557,7 +1558,9 @@ export function CupClient({
   };
 
   const handleConfirmClose = async () => {
-    await closeSession(session.id);
+    const r = await closeSession(session.id);
+    // Non-blocking: the toast outlives the navigation below.
+    if (!r.finalized && translations.closeNotFinalized) feedback.notifySuccess(translations.closeNotFinalized);
     router.push(`/${locale}/app/sessions/${session.id}/results`);
   };
 

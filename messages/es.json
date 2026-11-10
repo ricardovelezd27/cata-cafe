@@ -647,6 +647,7 @@
     "closeUnsentOne": "1 catador tiene notas completas sin enviar. Si cierras ahora, no se contarán.",
     "closeUnsentMany": "{count} catadores tienen notas completas sin enviar. Si cierras ahora, no se contarán.",
     "closeUnsentNone": "Nadie tiene notas completas sin enviar.",
+    "closeNotFinalized": "La sesión se cerró. Algunos pasos finales (revelar cafés, historial) se reintentarán automáticamente.",
     "closeImpactLoading": "Revisando notas sin enviar…",
     "deadlineOpen": "Cierra el {when}",
     "deadlineSoon": "Cierra pronto: {when}",

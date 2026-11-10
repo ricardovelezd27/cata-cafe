@@ -295,6 +295,7 @@ export default async function CupPage({
         closeUnsentOne: tg("closeUnsentOne"),
         closeUnsentMany: tg.raw("closeUnsentMany") as string,
         closeUnsentNone: tg("closeUnsentNone"),
+        closeNotFinalized: tg("closeNotFinalized"),
         closeImpactLoading: tg("closeImpactLoading"),
         startSession: tg("startSession"),
         starting: tg("starting"),

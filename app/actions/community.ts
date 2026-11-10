@@ -439,7 +439,13 @@ export async function closeSession(sessionId: string) {
   revalidatePath(`/en/app/sessions/${sessionId}/results`);
   revalidatePath(`/es/app/sessions/${sessionId}/cup`);
   revalidatePath(`/en/app/sessions/${sessionId}/cup`);
-  return { ok: true as const, closed: result.closed, emailsQueued: result.emailsQueued };
+  return {
+    ok: true as const,
+    closed: result.closed,
+    emailsQueued: result.emailsQueued,
+    // false: a post-close step failed and the repair pass will retry it.
+    finalized: result.finalized !== false,
+  };
 }
 
 // ─── Re-send close emails to participants who did not get theirs ─────────────
