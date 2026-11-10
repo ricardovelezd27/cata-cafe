@@ -42,7 +42,9 @@ function backoffDelay(attempt: number): number {
 // CupClient and SessionSyncStatus both mount this hook, and the per-instance
 // ref could not stop two instances replaying the same module at once. One lock
 // for the whole page (S8-09, F-offline-2).
-let replayRunning = false;
+// A late caller awaits the pass in flight instead of silently returning, so a
+// manual "Enviar" or a sign-out guard recount never reads a half-done queue.
+let inflight: Promise<void> | null = null;
 
 type ReplayResult = ReplayOutcome | "offline";
 
@@ -155,10 +157,8 @@ export function useOfflineSync({
     );
   }, [userId]);
 
-  const syncAll = useCallback(
-    async (manual = false) => {
-      if (replayRunning || !onlineRef.current) return;
-      replayRunning = true;
+  const runPass = useCallback(
+    async (manual: boolean) => {
       const myRun = ++runRef.current;
       setSyncPhase("syncing");
 
@@ -226,7 +226,6 @@ export function useOfflineSync({
         }
         await scheduleNext(skippedStale);
       } finally {
-        replayRunning = false;
         // Let independent pending-count readers (the app-shell
         // PendingDraftsBadge, the results-page sync pill) recount now instead of
         // waiting for the next mount or `online` event.
@@ -234,6 +233,26 @@ export function useOfflineSync({
       }
     },
     [userId, replayModule, rebuildConflicts, scheduleNext],
+  );
+
+  // One replay at a time across every hook instance. A late caller waits for the
+  // pass in flight; a manual one then runs its own (it revives `failed` modules).
+  const syncAll = useCallback(
+    async (manual = false) => {
+      if (!onlineRef.current) return;
+      while (inflight) {
+        await inflight.catch(() => {});
+        if (!manual || !onlineRef.current) return;
+      }
+      const pass = runPass(manual);
+      inflight = pass;
+      try {
+        await pass;
+      } finally {
+        if (inflight === pass) inflight = null;
+      }
+    },
+    [runPass],
   );
 
   useEffect(() => {
