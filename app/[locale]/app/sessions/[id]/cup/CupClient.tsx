@@ -6,12 +6,13 @@ import {
   useTransition,
   useEffect,
   useSyncExternalStore,
+  useCallback,
 } from "react";
 import { WarmupMoment } from "@/components/session-moments/WarmupMoment";
 import { SessionMomentOverlay } from "@/components/session-moments/SessionMomentOverlay";
 import { WarmupPlayer, type WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
 import { lw, warmupById } from "@/lib/warmup/exercises";
-import { formatTimeLeft, isRunning as isWarmupRunning, parseDbTimestamp, runLengthMs, seekFor, skewMs, timeLeftMs } from "@/lib/warmup/syncedRun";
+import { formatTimeLeft, isRunning as isWarmupRunning, parseDbTimestamp, resyncPositionMs, runLengthMs, seekFor, skewMs, timeLeftMs } from "@/lib/warmup/syncedRun";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { Coffee, Scale, FileText, BarChart3 } from "lucide-react";
@@ -503,6 +504,10 @@ export function CupClient({
     const serverNow = parseDbTimestamp(warmup?.serverNow);
     if (serverNow !== null) warmupSkewRef.current = skewMs(serverNow, Date.now());
   }, [warmup?.serverNow]);
+  const warmupResyncMs = useCallback(
+    () => (warmupStartedAtMs === null ? null : resyncPositionMs(warmupStartedAtMs, Date.now(), warmupSkewRef.current)),
+    [warmupStartedAtMs],
+  );
   const [warmupPending, setWarmupPending] = useState(false);
   const [masterPlayer, setMasterPlayer] = useState<{ seekMs: number } | null>(null);
   const [confirmStartOpen, setConfirmStartOpen] = useState(false);
@@ -2308,6 +2313,7 @@ export function CupClient({
           mode="synced"
           seekToMs={masterPlayer.seekMs}
           soundDefault
+          resyncPositionMs={warmupResyncMs}
           onFinish={() => setMasterPlayer(null)}
           onExit={() => setMasterPlayer(null)}
         />

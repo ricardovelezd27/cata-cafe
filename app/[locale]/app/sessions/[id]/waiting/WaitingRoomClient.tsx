@@ -7,7 +7,7 @@ import Link from "next/link";
 import { ChevronDown, EyeOff } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
 import { checkSessionStarted, getWaitingState } from "@/app/actions/sessions";
-import { isMissed, parseDbTimestamp, runLengthMs, seekFor, skewMs, warmupSyncReducer, type SyncState } from "@/lib/warmup/syncedRun";
+import { isMissed, parseDbTimestamp, resyncPositionMs, runLengthMs, seekFor, skewMs, warmupSyncReducer, type SyncState } from "@/lib/warmup/syncedRun";
 import { nextReferenceOrder } from "@/lib/referenceRules";
 import { WARMUP_EXERCISES, WARMUP_SHARED, lw, warmupById, type WarmupExercise } from "@/lib/warmup/exercises";
 import { hasSeenMoment, markMomentSeen, subscribeMoments } from "@/lib/sessionMoments";
@@ -132,6 +132,11 @@ export function WaitingRoomClient({
   const [syncedNote, setSyncedNote] = useState<string | null>(null);
   const [syncedRunning, setSyncedRunning] = useState(false);
   const syncRef = useRef<SyncState>({ lastStartedAt: null });
+  const syncedStartedAtMs = synced?.startedAtMs ?? null;
+  const syncedResyncMs = useCallback(
+    () => (syncedStartedAtMs === null ? null : resyncPositionMs(syncedStartedAtMs, Date.now(), skewRef.current)),
+    [syncedStartedAtMs],
+  );
   const openSynced = useCallback(
     (startedAtMs: number, live: boolean) => {
       if (!chosen || runMs <= 0) return;
@@ -471,6 +476,7 @@ export function WaitingRoomClient({
           mode={synced ? "synced" : "session"}
           seekToMs={synced?.seekMs}
           soundDefault={synced ? false : undefined}
+          resyncPositionMs={synced ? syncedResyncMs : undefined}
           exitRequest={exitRequest}
           onFinish={closePlayer}
           onExit={closePlayer}

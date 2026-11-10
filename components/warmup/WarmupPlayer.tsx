@@ -10,6 +10,7 @@ import { partTransforms, passedDots, torsoBreathTransform } from "@/lib/warmup/p
 import { previewSpec } from "@/lib/warmup/preview";
 import { saveReflection } from "@/lib/warmup/reflections";
 import { RESUME_WAIT_MS, audioResumeDecision } from "@/lib/warmup/audioResume";
+import { shouldResync } from "@/lib/warmup/syncedRun";
 import type { NarrationSource, Pose, Segment } from "@/lib/warmup/timelineTypes";
 import { useRunClock } from "@/hooks/useRunClock";
 import { useWarmupAudio } from "@/hooks/useWarmupAudio";
@@ -46,6 +47,10 @@ export interface WarmupPlayerProps {
   /** "La cata empezó": show the docked bar, leave at the end of the leg or
    *  when `deadlineMs` (wall clock, Date.now()) passes. */
   exitRequest?: { deadlineMs: number; label: string; leavingIn: string } | null;
+  /** Synced runs only: where the run SHOULD be now (ms from t0, server-skew
+   *  adjusted), or null when unknown. Called when the page returns from the
+   *  background; the player seeks only past RESYNC_DRIFT_MS. */
+  resyncPositionMs?: () => number | null;
   className?: string;
 }
 
@@ -68,6 +73,7 @@ export function WarmupPlayer({
   seekToMs,
   soundDefault,
   exitRequest = null,
+  resyncPositionMs,
   className,
 }: WarmupPlayerProps) {
   const reducedMotion = useReducedMotion();
@@ -436,13 +442,39 @@ export function WarmupPlayer({
       window.removeEventListener("pageshow", check);
     };
   }, [phase, checkContext, clockPause]);
+  // ── Synced follower: re-seek after the page was away (S8-13 F-2) ───────
+  const resyncRef = useRef(resyncPositionMs);
+  useEffect(() => {
+    resyncRef.current = resyncPositionMs;
+  }, [resyncPositionMs]);
+  const clockSeekFn = clock.seek;
+  const clockElapsed = clock.elapsedMs;
+  useEffect(() => {
+    if (!synced || phase !== "run") return;
+    const back = () => {
+      if (document.visibilityState !== "visible" || !guardRef.current.active) return;
+      const target = resyncRef.current?.() ?? null;
+      if (target !== null && shouldResync(clockElapsed(), target)) clockSeekFn(target, { play: true });
+    };
+    document.addEventListener("visibilitychange", back);
+    window.addEventListener("pageshow", back);
+    return () => {
+      document.removeEventListener("visibilitychange", back);
+      window.removeEventListener("pageshow", back);
+    };
+  }, [synced, phase, clockElapsed, clockSeekFn]);
+
   const clockToggle = clock.toggle;
   // Play / pause through here: the click is the gesture that can wake audio.
+  // A synced follower that was paused (resume prompt) rejoins the host's
+  // position instead of continuing from where it stopped.
   const togglePlay = useCallback(() => {
     setResumePrompt(false);
     audio.unlock();
-    clockToggle();
-  }, [audio, clockToggle]);
+    const target = synced ? (resyncRef.current?.() ?? null) : null;
+    if (target !== null && paused) clockSeekFn(target, { play: true });
+    else clockToggle();
+  }, [audio, clockToggle, clockSeekFn, synced, paused]);
 
   // ── Manual ("Quieto") mode: stop at the end of every step ─────────────
   const stopForQuieto = useCallback(
@@ -801,6 +833,7 @@ export function WarmupPlayer({
             <p className="sr-only" aria-live="polite" aria-atomic="true">
               {liveCue}
             </p>
+            {synced && wake.denied && <p className={[s.muted, s.note].join(" ")}>{t.wakeLockNote}</p>}
             {showResumePrompt && (
               <button type="button" className={s.primaryBtn} onClick={togglePlay}>
                 {t.tapToResume}
