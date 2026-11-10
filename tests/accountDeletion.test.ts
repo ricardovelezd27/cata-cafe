@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import {
   deleteConfirmationWord,
   exactEmailMatches,
+  exceedsDeletionBound,
+  MAX_SESSIONS_TO_DELETE,
   impactOf,
   isDeleteConfirmed,
   planAccountDeletion,
@@ -197,7 +199,35 @@ describe("planAccountDeletion", () => {
       groupsKept: 1,
       evaluationsAnonymized: 2,
       protected: false,
+      tooLarge: false,
     });
+  });
+
+  it("refuses up front above MAX_SESSIONS_TO_DELETE own sessions to delete", () => {
+    const solo = (n: number) =>
+      Array.from({ length: n }, (_, i) => ({
+        id: `s${i}`,
+        isGroup: false,
+        status: "closed",
+        otherCupperEvaluations: 0,
+        otherJoinedParticipants: 0,
+      }));
+    const atBound = planAccountDeletion(fixture({ ownedSessions: solo(MAX_SESSIONS_TO_DELETE) }));
+    const over = planAccountDeletion(fixture({ ownedSessions: solo(MAX_SESSIONS_TO_DELETE + 1) }));
+    expect(exceedsDeletionBound(atBound)).toBe(false);
+    expect(exceedsDeletionBound(over)).toBe(true);
+    expect(impactOf(over).tooLarge).toBe(true);
+
+    const src = readFileSync(join(process.cwd(), "lib", "accountDeletion", "deleteAccount.ts"), "utf8");
+    const refuse = src.indexOf('throw new Error("account_too_large")');
+    expect(refuse).toBeGreaterThan(-1);
+    // Refused before the first write (closing the kept sessions).
+    expect(refuse).toBeLessThan(src.indexOf("closeSessionInternal(sessionId"));
+    expect(src).toContain("timeout: 120_000");
+    const page = readFileSync(join(process.cwd(), "app", "[locale]", "app", "profile", "page.tsx"), "utf8");
+    const m = page.match(/export const maxDuration = (\d+);/);
+    expect(m).not.toBeNull();
+    expect(Number(m![1])).toBeGreaterThan(120);
   });
 });
 

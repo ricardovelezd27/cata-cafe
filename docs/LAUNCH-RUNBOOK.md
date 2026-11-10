@@ -1109,6 +1109,23 @@ with the user id; the person's data is already gone and they are signed out):
 2. Supabase Dashboard → Authentication → Users → search the id → **Delete user**.
 3. Nothing else: the profile row no longer exists. Do NOT recreate it.
 
+**Bound: more than 300 own sessions to delete (`MAX_SESSIONS_TO_DELETE`).** The deletion is ONE
+transaction (timeout 120 s; the profile page exports `maxDuration = 300`) and every session it
+deletes detaches coffee history first, so above 300 the app refuses up front: the dialog says the
+account has too many sessions and to write to support, and the action returns
+`account_too_large` before anything is written. Manual path, for the owner only, never from a
+local dev server pointed at production:
+
+1. Confirm the request comes from the account's own mailbox (as in §16).
+2. Ask a developer to reduce the count first: delete the person's oldest SOLO sessions in batches
+   through the normal `deleteSession` path (it detaches history the same way), never with raw SQL,
+   until fewer than 300 own sessions would be deleted.
+3. The person then deletes the account from Perfil → Eliminar cuenta as usual.
+
+**If the transaction fails** (timeout, conflict, any error): nothing is deleted and the person
+can retry, BUT the shared sessions the pre-step closed stay closed (closing is not part of the
+transaction and is not undone).
+
 **Lost mailbox (E4 option c):** unchanged, see §16.
 
 **Rollback:** reverting the deploy removes the button. Deletions already done cannot be undone

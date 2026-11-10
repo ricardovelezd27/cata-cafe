@@ -27,6 +27,7 @@ export const ACTION_ERROR_CODES = [
   "email_exists", // requestEmailChange: that address already has an account (S8-07)
   "already_claimed", // confirmGuestClaim: the guest account is gone or no longer anonymous (S8-07)
   "account_protected", // deleteAccount: the super-admin account cannot be deleted from the app (S8-19)
+  "account_too_large", // deleteAccount: more own sessions than one transaction may delete (S8-19, runbook §24)
   "conflict", // Prisma P2002 — unique constraint
   "not_found", // Prisma P2025 — row vanished (concurrent delete)
   "invalid_reference", // Prisma P2003 — FK target vanished

@@ -6,7 +6,12 @@ import { closeSessionInternal } from "@/lib/closeSession";
 import { detachCoffeeHistoryForSession } from "@/lib/coffeeHistory";
 import { anonymizeOwnedCoffees } from "@/lib/coffees/anonymize";
 import { loadDeletionFixture } from "@/lib/accountDeletion/load";
-import { exactEmailMatches, planAccountDeletion, plansEqual } from "@/lib/accountDeletion/plan";
+import {
+  exactEmailMatches,
+  exceedsDeletionBound,
+  planAccountDeletion,
+  plansEqual,
+} from "@/lib/accountDeletion/plan";
 import { deletedProfileId, DELETED_PROFILE_STORED_NAME } from "@/lib/accountDeletion/deletedProfile";
 import { errorMessage, logError, logInfo, logWarn } from "@/lib/log";
 
@@ -40,7 +45,13 @@ export type DeleteAccountOutcome = {
   sessionsKept: number;
 };
 
-const TX_OPTIONS = { maxWait: 5_000, timeout: 30_000 } as const;
+// ONE transaction on purpose (atomicity over speed). Every deleted session
+// runs detachCoffeeHistoryForSession serially, so the timeout is generous and
+// the number of sessions is bounded up front (MAX_SESSIONS_TO_DELETE, refused
+// with `account_too_large`). The hosting page (app/[locale]/app/profile)
+// exports maxDuration = 300 so the function outlives the transaction.
+// maxWait: how long to wait for a pool connection before giving up.
+const TX_OPTIONS = { maxWait: 15_000, timeout: 120_000 } as const;
 
 export async function deleteAccountData(user: {
   id: string;
@@ -50,6 +61,9 @@ export async function deleteAccountData(user: {
   const userId = user.id;
   const plan = planAccountDeletion(await loadDeletionFixture(user));
   if (!plan.ok) throw new Error("account_protected");
+  // Before anything is written (no session is closed yet): too many sessions
+  // for one transaction. Runbook §24 has the manual path.
+  if (exceedsDeletionBound(plan)) throw new Error("account_too_large");
 
   // ── 2. Close kept live sessions first (outside the tx: it has its own
   //    writes, aggregate refire and history sync, and is idempotent). ──────

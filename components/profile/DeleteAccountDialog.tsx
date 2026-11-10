@@ -27,6 +27,8 @@ export type DeleteAccountStrings = {
   protectedBody: string;
   /** Shown after a `conflict`: something changed while deleting; nothing was deleted. */
   changed: string;
+  /** Shown instead of the form when the plan exceeds MAX_SESSIONS_TO_DELETE. */
+  tooLargeBody: string;
   /** Raw template with a literal "{word}". */
   typeLabel: string;
   word: string;
@@ -142,6 +144,8 @@ export function DeleteAccountDialog({
           </p>
         ) : impact.protected ? (
           <p className="text-sm leading-relaxed text-on-surface">{t.protectedBody}</p>
+        ) : impact.tooLarge ? (
+          <p className="text-sm leading-relaxed text-on-surface">{t.tooLargeBody}</p>
         ) : (
           <form
             className="space-y-4"

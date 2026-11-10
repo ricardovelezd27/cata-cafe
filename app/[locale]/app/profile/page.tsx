@@ -16,7 +16,12 @@ import { GuestClaimButton, type GuestClaimButtonTranslations } from "@/component
 import { EditProfileDialog } from "./EditProfileDialog";
 import { ChangeEmailDialog } from "@/components/profile/ChangeEmailDialog";
 import { DeleteAccountDialog } from "@/components/profile/DeleteAccountDialog";
-import { deleteConfirmationWord } from "@/lib/accountDeletion/plan";
+import { deleteConfirmationWord, MAX_SESSIONS_TO_DELETE } from "@/lib/accountDeletion/plan";
+
+// The "Eliminar cuenta" dialog posts deleteAccount from this page: its one
+// transaction may run up to 120 s (lib/accountDeletion/deleteAccount.ts),
+// after closing kept sessions and before deleting the auth user.
+export const maxDuration = 300;
 
 export function generateStaticParams() {
   return [{ locale: "es" }, { locale: "en" }];
@@ -477,6 +482,10 @@ export default async function ProfilePage({
                   irreversible: t("deleteAccount.irreversible"),
                   protectedBody: t("deleteAccount.protectedBody"),
                   changed: t("deleteAccount.changed"),
+                  tooLargeBody: (t.raw("deleteAccount.tooLargeBody") as string).replace(
+                    "{max}",
+                    String(MAX_SESSIONS_TO_DELETE),
+                  ),
                   typeLabel: t.raw("deleteAccount.typeLabel") as string,
                   word: deleteConfirmationWord(locale),
                   submit: t("deleteAccount.submit"),

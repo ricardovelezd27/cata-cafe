@@ -179,6 +179,18 @@ export function exactEmailMatches<R extends { email: string }>(
   return rows.filter((r) => typeof r.email === "string" && normalizeEmail(r.email) === target);
 }
 
+/**
+ * The most own sessions one deletion may delete. Each runs
+ * detachCoffeeHistoryForSession inside ONE transaction (timeout 120 s in
+ * deleteAccount.ts); above this the app refuses up front with
+ * `account_too_large` and runbook §24 describes the manual path.
+ */
+export const MAX_SESSIONS_TO_DELETE = 300;
+
+export function exceedsDeletionBound(plan: DeletionPlan): boolean {
+  return plan.ok && plan.deleteSessionIds.length > MAX_SESSIONS_TO_DELETE;
+}
+
 /** The counts the confirm dialog shows (no ids leave the server). */
 export type AccountDeletionImpact = {
   sessionsDeleted: number;
@@ -189,6 +201,8 @@ export type AccountDeletionImpact = {
   evaluationsAnonymized: number;
   /** The super-admin account cannot be deleted from the app. */
   protected: boolean;
+  /** More than MAX_SESSIONS_TO_DELETE: refused, manual path (runbook §24). */
+  tooLarge: boolean;
 };
 
 export function impactOf(plan: DeletionPlan): AccountDeletionImpact {
@@ -201,6 +215,7 @@ export function impactOf(plan: DeletionPlan): AccountDeletionImpact {
       groupsKept: 0,
       evaluationsAnonymized: 0,
       protected: true,
+      tooLarge: false,
     };
   }
   return {
@@ -211,6 +226,7 @@ export function impactOf(plan: DeletionPlan): AccountDeletionImpact {
     groupsKept: plan.keepGroupIds.length,
     evaluationsAnonymized: plan.evaluationsAnonymized,
     protected: false,
+    tooLarge: exceedsDeletionBound(plan),
   };
 }
 
