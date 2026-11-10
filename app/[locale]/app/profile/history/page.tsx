@@ -4,6 +4,7 @@ import { requireAppUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
+import { historyDisplay, type HistorySnapshotLike } from "@/lib/historyDisplay";
 import { HistoryTable, type HistoryRow, type HistoryTableTranslations } from "./HistoryTable";
 
 export function generateStaticParams() {
@@ -40,14 +41,27 @@ export default async function HistoryPage({
   const rows: HistoryRow[] = history.map((h) => {
     // A deleted session detaches this row (session → null) instead of
     // cascading it away — `snapshot` carries the last-known session name.
-    const snapshot = h.snapshot as { sessionName?: string; cupsPerSample?: number } | null;
+    const snapshot = h.snapshot as HistorySnapshotLike;
+    const d = historyDisplay({
+      coffeeId: h.coffeeId,
+      coffee: h.coffee,
+      session: h.session,
+      snapshot,
+    });
     return {
       id: h.id,
-      coffeeId: h.coffee.id,
-      coffeeName: coffeeDisplayName(h.coffee, tc("coffeeDeleted")),
-      coffeeDeleted: !!h.coffee.deletedAt,
-      sessionId: h.session?.id ?? null,
-      sessionName: h.session?.name ?? snapshot?.sessionName ?? "—",
+      // Label-only rows (S8-16) name no coffee: sample label + localized reason.
+      coffeeId: d.linksToCoffee ? d.coffeeId : null,
+      coffeeName:
+        d.kind === "label_only"
+          ? d.labelReason === "unrevealed"
+            ? t("coffeeUnrevealed")
+            : t("noCoffeeAssigned")
+          : coffeeDisplayName(h.coffee!, tc("coffeeDeleted")),
+      sampleLabel: d.kind === "label_only" ? d.sampleLabel : null,
+      coffeeDeleted: d.coffeeDeleted,
+      sessionId: d.sessionId,
+      sessionName: d.sessionName ?? "—",
       individualScore: h.individualScore,
       communityScore: h.communityScore,
       quickImpression: isQuickImpression(historyCupsPerSample(h.session, snapshot)),

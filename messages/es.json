@@ -949,7 +949,9 @@
     "yourScore": "Tu puntaje",
     "communityScore": "Puntaje comunitario",
     "sessionDeleted": "Sesión eliminada",
-    "quickImpression": "Impresión rápida"
+    "quickImpression": "Impresión rápida",
+    "noCoffeeAssigned": "Sin café asignado",
+    "coffeeUnrevealed": "Café sin revelar"
   },
   "coffee": {
     "title": "Perfil del café",

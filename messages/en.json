@@ -949,7 +949,9 @@
     "yourScore": "Your score",
     "communityScore": "Community score",
     "sessionDeleted": "Session deleted",
-    "quickImpression": "Quick impression"
+    "quickImpression": "Quick impression",
+    "noCoffeeAssigned": "No coffee assigned",
+    "coffeeUnrevealed": "Coffee not revealed"
   },
   "coffee": {
     "title": "Coffee profile",

@@ -145,7 +145,7 @@ export async function mergeGuestData(
     // ── Coffee history (unique per user+coffee+session) ────────────────────
     const anonHistory = await tx.userCoffeeHistory.findMany({
       where: { userId: anon },
-      select: { id: true, coffeeId: true, sessionId: true },
+      select: { id: true, coffeeId: true, sessionId: true, evaluationId: true },
     });
     if (anonHistory.length > 0) {
       // Detached rows (sessionId NULL — their session was deleted) can never
@@ -162,7 +162,18 @@ export async function mergeGuestData(
             })
           : [];
       const taken = new Set(targetHistory.map((h) => `${h.coffeeId}|${h.sessionId}`));
-      const dupIds = anonHistory.filter((h) => taken.has(`${h.coffeeId}|${h.sessionId}`)).map((h) => h.id);
+      // Label-only rows (coffeeId NULL, S8-16) are per-sample, not per-coffee:
+      // the (coffee, session) key would wrongly collapse every sample of a
+      // session. Their identity is the evaluation. A live one whose evaluation
+      // is gone (the conflict loop above deleted it → SetNull) is the losing
+      // side of a conflict, so the target's row for that sample stands.
+      const dupIds = anonHistory
+        .filter((h) =>
+          h.coffeeId === null
+            ? h.sessionId !== null && h.evaluationId === null
+            : taken.has(`${h.coffeeId}|${h.sessionId}`),
+        )
+        .map((h) => h.id);
       if (dupIds.length > 0) await tx.userCoffeeHistory.deleteMany({ where: { id: { in: dupIds } } });
       await tx.userCoffeeHistory.updateMany({ where: { userId: anon }, data: { userId: target } });
     }

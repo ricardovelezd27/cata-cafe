@@ -10,19 +10,67 @@ import { historyCommunityScore } from "@/lib/historyRules";
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
+type LabelRowInput = {
+  userId: string;
+  evaluationId: string;
+  sessionId: string;
+  individualScore: number | null;
+  tastedAt: Date;
+  snapshot: Prisma.InputJsonValue;
+};
+
+/**
+ * Find-or-create the LABEL-ONLY (coffeeId NULL) history row of one evaluation.
+ * The (userId, coffeeId, sessionId) unique does not dedupe NULL coffeeIds, so
+ * the row is keyed on its evaluation instead: one submitted evaluation = one
+ * (cupper, sample) pair = at most one label-only row. Sequential, so it is safe
+ * inside the delete transaction and idempotent on re-run. Callers are
+ * single-flight (close is an idempotent updateMany; assign/delete are owner
+ * actions), so no DB-level partial unique index is needed.
+ */
+async function ensureLabelRows(db: Db, rows: LabelRowInput[]): Promise<number> {
+  if (rows.length === 0) return 0;
+  const existing = await db.userCoffeeHistory.findMany({
+    where: { coffeeId: null, evaluationId: { in: rows.map((r) => r.evaluationId) } },
+    select: { id: true, evaluationId: true },
+  });
+  const byEval = new Map(existing.map((e) => [e.evaluationId, e.id]));
+  for (const r of rows) {
+    const id = byEval.get(r.evaluationId);
+    if (id) {
+      await db.userCoffeeHistory.update({
+        where: { id },
+        data: { individualScore: r.individualScore, snapshot: r.snapshot },
+      });
+    } else {
+      await db.userCoffeeHistory.create({
+        data: {
+          userId: r.userId,
+          coffeeId: null,
+          evaluationId: r.evaluationId,
+          sessionId: r.sessionId,
+          individualScore: r.individualScore,
+          communityScore: null,
+          tastedAt: r.tastedAt,
+          snapshot: r.snapshot,
+        },
+      });
+    }
+  }
+  return rows.length;
+}
+
 /** Upserts UserCoffeeHistory for every revealed, coffee-linked sample with
- *  submitted evaluations in the session. Idempotent — safe to re-run.
+ *  submitted evaluations in the session, plus a label-only (coffeeId NULL) row
+ *  for every submitted evaluation on a coffee-LESS sample (F-express-2).
+ *  When a coffee-less sample later gets a coffee, its label-only rows are
+ *  REPLACED by the normal coffee row (deleted in the same batch). Idempotent.
  */
 export async function syncCoffeeHistoryForSession(
   sessionId: string,
   opts: { db?: Db } = {},
 ) {
   const db = opts.db ?? prisma;
-  // TODO(S8-10): F-express-2 — closed coffee-less (express) samples leave no
-  // history row because UserCoffeeHistory.coffeeId is required (Cascade FK to
-  // Coffee). Showing them as "Sin café asignado" needs a schema change
-  // (nullable coffeeId or a per-sample row) and a migration, which this pass
-  // does not build; assigning a coffee later already creates the row.
   const samples = await db.sessionSample.findMany({
     where: {
       sessionId,
@@ -52,6 +100,17 @@ export async function syncCoffeeHistoryForSession(
 
   const tastedAt = session?.date ?? new Date();
   const upserts = [];
+
+  // Assignment replaces: drop the label-only rows of evaluations whose sample
+  // now has a (revealed) coffee, BEFORE the coffee rows are upserted.
+  const linkedEvalIds = samples.flatMap((sm) => sm.evaluations.map((e) => e.id));
+  if (linkedEvalIds.length > 0) {
+    upserts.push(
+      db.userCoffeeHistory.deleteMany({
+        where: { coffeeId: null, evaluationId: { in: linkedEvalIds } },
+      }),
+    );
+  }
 
   for (const sample of samples) {
     if (!sample.coffeeId) continue;
@@ -99,7 +158,30 @@ export async function syncCoffeeHistoryForSession(
     }
   }
 
-  return { ok: true, rows: upserts.length };
+  // Coffee-less samples: one label-only row per submitted evaluation.
+  const lessSamples = await db.sessionSample.findMany({
+    where: { sessionId, coffeeId: null },
+    select: {
+      label: true,
+      evaluations: {
+        where: { isDraft: false },
+        select: { id: true, cupperId: true, individualScore: true },
+      },
+    },
+  });
+  const labelRows: LabelRowInput[] = lessSamples.flatMap((sm) =>
+    sm.evaluations.map((e) => ({
+      userId: e.cupperId,
+      evaluationId: e.id,
+      sessionId,
+      individualScore: e.individualScore,
+      tastedAt,
+      snapshot: { v: 1, sampleLabel: sm.label } as unknown as Prisma.InputJsonValue,
+    })),
+  );
+  const labelCount = await ensureLabelRows(db, labelRows);
+
+  return { ok: true, rows: upserts.length + labelCount };
 }
 
 export type HistorySnapshot = {
@@ -109,6 +191,8 @@ export type HistorySnapshot = {
   date: string;
   cupsPerSample: number;
   sampleLabel: string;
+  /** Label-only row of a never-revealed sample (S8-16). Carries NO coffee field. */
+  unrevealed?: true;
   /** Only THIS cupper's own module data — never another participant's. */
   myEvaluation: {
     descriptive: unknown;
@@ -136,9 +220,73 @@ export async function detachCoffeeHistoryForSession(
   });
   if (!session) return { detached: 0 };
 
-  // TODO(S8-02 D8): label-only history rows for unrevealed samples need nullable
-  // coffeeId — waits for Kim's answer D8. Until then unrevealed samples are skipped.
   await syncCoffeeHistoryForSession(sessionId, { db });
+
+  const now = new Date();
+  let detached = 0;
+  const snapshotOf = (
+    label: string,
+    ev: { descriptiveData: unknown; affectiveData: unknown; combinedData: unknown },
+    unrevealed: boolean,
+  ): Prisma.InputJsonValue => {
+    const snap: HistorySnapshot = {
+      v: 1,
+      sessionName: session.name,
+      format: session.format,
+      date: session.date.toISOString(),
+      cupsPerSample: session.cupsPerSample,
+      sampleLabel: label,
+      ...(unrevealed ? { unrevealed: true as const } : {}),
+      myEvaluation: {
+        descriptive: ev.descriptiveData,
+        affective: ev.affectiveData,
+        combined: ev.combinedData,
+      },
+    };
+    return snap as unknown as Prisma.InputJsonValue;
+  };
+
+  // Label-only rows (S8-16). A coffee-LESS sample already got its row from the
+  // sync above; here it gets the full own-evaluation snapshot. A never-revealed
+  // coffee-linked sample (D8) gets a row with coffeeId NULL: only the sample
+  // label, the session metadata and the cupper's OWN evaluation — the select
+  // below deliberately never reads the coffee, so nothing can leak into it.
+  const labelSamples = await db.sessionSample.findMany({
+    where: { sessionId, OR: [{ coffeeId: null }, { revealed: false }] },
+    select: {
+      label: true,
+      coffeeId: true,
+      evaluations: {
+        where: { isDraft: false },
+        select: {
+          id: true,
+          cupperId: true,
+          individualScore: true,
+          descriptiveData: true,
+          affectiveData: true,
+          combinedData: true,
+        },
+      },
+    },
+  });
+  const labelRows: LabelRowInput[] = labelSamples.flatMap((sm) =>
+    sm.evaluations.map((ev) => ({
+      userId: ev.cupperId,
+      evaluationId: ev.id,
+      sessionId,
+      individualScore: ev.individualScore,
+      tastedAt: session.date,
+      snapshot: snapshotOf(sm.label, ev, sm.coffeeId !== null),
+    })),
+  );
+  await ensureLabelRows(db, labelRows);
+  if (labelRows.length > 0) {
+    const res = await db.userCoffeeHistory.updateMany({
+      where: { coffeeId: null, evaluationId: { in: labelRows.map((r) => r.evaluationId) } },
+      data: { detachedAt: now },
+    });
+    detached += res.count;
+  }
 
   const samples = await db.sessionSample.findMany({
     where: { sessionId, coffeeId: { not: null }, revealed: true },
@@ -157,8 +305,6 @@ export async function detachCoffeeHistoryForSession(
     },
   });
 
-  const now = new Date();
-  let detached = 0;
   for (const sample of samples) {
     if (!sample.coffeeId) continue;
     for (const ev of sample.evaluations) {
