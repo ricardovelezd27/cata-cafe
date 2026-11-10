@@ -56,15 +56,22 @@ describe("sanitizeAffectiveRatings / computeEvaluationDerived bounds (B-01)", ()
     expect(sanitizeAffectiveRatings(d)).toEqual(d);
   });
 
-  it("an all-9 sheet is the ceiling of the individual score, whatever the client sends", () => {
-    const max = computeEvaluationDerived("affective", all(9), 5).individualScore;
+  it("a hostile 9999 rating derives exactly the same result as a 9 (S8-27)", () => {
+    // Mid-range base so the final score is not already clamped at 100: without
+    // the sanitizer the raw score blows up (6637.56 in the old code) and the
+    // stored module keeps 9999.
     const hostile = computeEvaluationDerived(
       "affective",
-      { ...all(9), sabor_af_final: 9999, aroma_af_final: 1e9 },
+      { ...all(5), sabor_af_final: 9999, aroma_af_final: 1e9 },
       5,
-    ).individualScore;
-    expect(max).toBe(100);
-    expect(hostile).toBe(max);
+    );
+    const capped = computeEvaluationDerived(
+      "affective",
+      { ...all(5), sabor_af_final: 9, aroma_af_final: 9 },
+      5,
+    );
+    expect(hostile).toEqual(capped);
+    expect(hostile.individualScore).toBeLessThan(100);
   });
 
   it("a string rating no longer reaches the stored module", () => {
