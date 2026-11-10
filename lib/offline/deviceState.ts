@@ -46,6 +46,14 @@ export async function clearLocalDeviceState(): Promise<void> {
   if (typeof window === "undefined") return;
   await purgePageCaches();
   try {
+    // A pending guest-claim hand-over must not outlive the sign-out.
+    const { CLAIM_ANON_KEY, CLAIM_DONE_KEY } = await import("@/lib/offline/claimMarker");
+    window.localStorage.removeItem(CLAIM_ANON_KEY);
+    window.localStorage.removeItem(CLAIM_DONE_KEY);
+  } catch {
+    // best effort
+  }
+  try {
     const { forgetLastUser } = await import("@/lib/offline/store");
     await forgetLastUser();
   } catch {

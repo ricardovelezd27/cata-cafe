@@ -15,7 +15,7 @@ import { useConnectivity } from "@/hooks/useConnectivity";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { OFFLINE_SYNC_EVENT } from "@/hooks/useOfflineSync";
 import { countDeviceOnly, rekeyUserBlobs } from "@/lib/offline/store";
-import { CLAIM_ANON_KEY } from "@/lib/offline/claimMarker";
+import { CLAIM_ANON_KEY, CLAIM_DONE_KEY, decideClaimRekey } from "@/lib/offline/claimMarker";
 import { purgeCachesOnUserChange } from "@/lib/offline/deviceState";
 
 export type UnsyncedGuardTranslations = {
@@ -87,20 +87,31 @@ export function UnsyncedGuardProvider({
   // Guest claim finished: move the anonymous id's drafts to the new account.
   useEffect(() => {
     if (isGuest) return;
-    let anonId: string | null = null;
+    let startedRaw: string | null = null;
+    let doneRaw: string | null = null;
     try {
-      anonId = window.localStorage.getItem(CLAIM_ANON_KEY);
+      startedRaw = window.localStorage.getItem(CLAIM_ANON_KEY);
+      doneRaw = window.localStorage.getItem(CLAIM_DONE_KEY);
     } catch {
       return;
     }
-    if (!anonId || anonId === userId) return;
-    void (async () => {
-      await rekeyUserBlobs(anonId, userId);
+    const decision = decideClaimRekey({ startedRaw, doneRaw, userId, now: Date.now() });
+    const clearMarkers = () => {
       try {
         window.localStorage.removeItem(CLAIM_ANON_KEY);
+        window.localStorage.removeItem(CLAIM_DONE_KEY);
       } catch {
         // best effort
       }
+    };
+    if (!decision.rekeyFrom) {
+      if (decision.clear) clearMarkers();
+      return;
+    }
+    const anonId = decision.rekeyFrom;
+    void (async () => {
+      await rekeyUserBlobs(anonId, userId);
+      clearMarkers();
       window.dispatchEvent(new Event(OFFLINE_SYNC_EVENT));
       void retryRef.current();
     })();

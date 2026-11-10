@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { startGuestClaim } from "@/app/actions/guestClaim";
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { useUnsyncedGuard } from "@/components/offline/UnsyncedGuardProvider";
-import { CLAIM_ANON_KEY } from "@/lib/offline/claimMarker";
+import { CLAIM_ANON_KEY, serializeStarted } from "@/lib/offline/claimMarker";
 
 /**
  * Step 1 of the guest → account flow from the client's side, shared by every
@@ -43,11 +43,12 @@ export function useGuestClaim(locale: string) {
           return;
         }
         // confirmGuestClaim ends in a server redirect, so the client cannot
-        // re-key after the merge. Remember the anonymous id; the app shell
-        // re-keys the drafts on the next mount under the new account.
+        // re-key after the merge. Remember the anonymous id (with a timestamp);
+        // the app shell re-keys the drafts only after /auth/claim wrote the
+        // completion marker for the signed-in account (claimMarker.ts).
         if (guard) {
           try {
-            window.localStorage.setItem(CLAIM_ANON_KEY, guard.userId);
+            window.localStorage.setItem(CLAIM_ANON_KEY, serializeStarted(guard.userId));
           } catch {
             // private mode: the pre-claim guard above already warned
           }
