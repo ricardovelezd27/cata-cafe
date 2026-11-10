@@ -138,6 +138,11 @@ export default async function SessionsList({
     // trick as refreshNew in the results page: pass the raw ICU arg back so
     // next-intl leaves the literal placeholder in place).
     impact: t("deleteSession.impact", { evaluations: "{evaluations}", cuppers: "{cuppers}" }),
+    detail: t("deleteSession.detail", {
+      submitted: "{submitted}",
+      drafts: "{drafts}",
+      participants: "{participants}",
+    }),
   };
 
   const tableTranslations: SessionsTableTranslations = {

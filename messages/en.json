@@ -234,7 +234,8 @@
       "loadingImpact": "Calculating impact…",
       "coffeesIntro": "The coffees in this session and their stats belong to their owners and are kept:",
       "you": "You",
-      "impact": "The session and {evaluations} evaluation(s) from {cuppers} cupper(s) will be deleted. Each cupper keeps their coffee history anonymously, unlinked from this session."
+      "impact": "The session and {evaluations} evaluation(s) from {cuppers} cupper(s) will be deleted. Each cupper keeps their coffee history anonymously, unlinked from this session.",
+      "detail": "Submitted evaluations: {submitted} · drafts: {drafts} · participants who joined: {participants}."
     },
     "table": {
       "colName": "Session",

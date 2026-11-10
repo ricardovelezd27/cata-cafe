@@ -234,7 +234,8 @@
       "loadingImpact": "Calculando el impacto…",
       "coffeesIntro": "Los cafés de esta sesión y sus estadísticas pertenecen a sus propietarios y se conservan:",
       "you": "Tú",
-      "impact": "Se eliminarán la sesión y {evaluations} evaluación(es) de {cuppers} catador(es). Cada catador conserva su historial de cafés de forma anónima, sin vínculo a esta sesión."
+      "impact": "Se eliminarán la sesión y {evaluations} evaluación(es) de {cuppers} catador(es). Cada catador conserva su historial de cafés de forma anónima, sin vínculo a esta sesión.",
+      "detail": "Evaluaciones enviadas: {submitted} · borradores: {drafts} · participantes que se unieron: {participants}."
     },
     "table": {
       "colName": "Sesión",

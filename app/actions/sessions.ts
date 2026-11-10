@@ -42,6 +42,7 @@ import { checkWizardBounds } from "@/lib/coffeeInputBounds";
 import { CERTIFICATIONS } from "@/lib/constants";
 import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/groups";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
+import { splitEvaluationCounts } from "@/lib/deleteImpact";
 import { planAssignCoffee } from "@/lib/assignCoffee";
 import { pruneUnreferencedCoffees } from "@/lib/wizardCoffees";
 import { WARMUP_IDS, type WarmupId } from "@/lib/warmup/exercises";
@@ -708,6 +709,11 @@ export async function upsertEvaluation(input: {
 export type DeleteImpact = {
   cupperCount: number;
   evaluationCount: number;
+  /** Submitted vs draft split of `evaluationCount`. */
+  submittedCount: number;
+  draftCount: number;
+  /** Members who joined (the owner is not counted). */
+  participantCount: number;
   coffees: { id: string; name: string; code: string | null; ownerName: string; ownedByMe: boolean }[];
 };
 
@@ -715,13 +721,15 @@ export async function getDeleteImpact(sessionId: string): Promise<DeleteImpact> 
   const user = await requireUser();
   await requireSessionOwner(sessionId, user.id);
 
-  const [cuppers, evaluationCount, samples] = await Promise.all([
+  const [cuppers, evaluationCount, submittedTotal, participantCount, samples] = await Promise.all([
     prisma.evaluation.findMany({
       where: { sessionSample: { sessionId }, isDraft: false },
       select: { cupperId: true },
       distinct: ["cupperId"],
     }),
     prisma.evaluation.count({ where: { sessionSample: { sessionId } } }),
+    prisma.evaluation.count({ where: { sessionSample: { sessionId }, isDraft: false } }),
+    prisma.sessionParticipant.count({ where: { sessionId, status: "joined" } }),
     prisma.sessionSample.findMany({
       where: { sessionId, coffeeId: { not: null } },
       select: {
@@ -754,7 +762,15 @@ export async function getDeleteImpact(sessionId: string): Promise<DeleteImpact> 
     });
   }
 
-  return { cupperCount: cuppers.length, evaluationCount, coffees };
+  const { submittedCount, draftCount } = splitEvaluationCounts(evaluationCount, submittedTotal);
+  return {
+    cupperCount: cuppers.length,
+    evaluationCount,
+    submittedCount,
+    draftCount,
+    participantCount,
+    coffees,
+  };
 }
 
 // Deleting a session removes the event and every evaluation in it, but NOT
