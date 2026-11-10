@@ -77,7 +77,7 @@
       "useOther": "Use another account",
       "skip": "Don't link",
       "skipTitle": "Are you sure you don't want to link?",
-      "skipBody": "If you don't link, that guest participation will not move to this account: its results stay visible only on the device where you cupped, and are lost if you sign out or clear browser data. The link lasts 7 days.",
+      "skipBody": "If you don't link, that guest participation will not move to this account: its results stay under the guest identity and will not be visible from this account. You can still link them from this same link within 7 days.",
       "skipConfirm": "Yes, don't link",
       "skipBack": "Go back",
       "retryTitle": "We couldn't finish linking",

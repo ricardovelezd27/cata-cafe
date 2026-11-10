@@ -77,7 +77,7 @@
       "useOther": "Usar otra cuenta",
       "skip": "No vincular",
       "skipTitle": "¿Seguro que no quieres vincular?",
-      "skipBody": "Si no vinculas, esa participación como invitado no pasará a esta cuenta: sus resultados solo seguirán visibles en el dispositivo donde cataste, y se pierden si cierras sesión o borras los datos del navegador. El enlace dura 7 días.",
+      "skipBody": "Si no vinculas, esa participación como invitado no pasará a esta cuenta: sus resultados quedarán bajo la identidad de invitado y no se verán desde esta cuenta. Solo podrás vincularlos desde este mismo enlace durante 7 días.",
       "skipConfirm": "Sí, no vincular",
       "skipBack": "Volver",
       "retryTitle": "No pudimos terminar de vincular",
