@@ -14,6 +14,7 @@ export const ACTION_ERROR_CODES = [
   "not_found_or_forbidden",
   "session_closed",
   "session_not_started",
+  "entries_closed", // owner closed new entries (S8-11)
   "invalid_token",
   "token_expired",
   "token_exhausted",

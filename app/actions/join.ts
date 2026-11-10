@@ -39,3 +39,12 @@ export async function joinCoffeeForm(
     await joinCoffeeViaToken(token, locale);
   });
 }
+
+/** Programmatic (non-form) twin of joinSessionForm for GuestJoinForm: the guest
+ *  signs in anonymously on the client, then this joins and redirects. Failures
+ *  come back as an ActionResult instead of an opaque production digest. */
+export async function joinSessionAsGuest(token: string, locale: string): Promise<ActionResult<void>> {
+  return run("joinSessionAsGuest", async () => {
+    await joinViaToken(token, locale);
+  });
+}

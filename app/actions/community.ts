@@ -13,6 +13,8 @@ import {
   assertSessionStarted,
   isSessionExpired,
 } from "@/lib/sessionAuth";
+import { evaluateJoin } from "@/lib/joinRules";
+import { sessionHref } from "@/lib/sessionRouting";
 import { closeSessionInternal } from "@/lib/closeSession";
 import * as v from "@/lib/validate";
 import { runLengthMs } from "@/lib/warmup/syncedRun";
@@ -358,39 +360,54 @@ export async function joinViaToken(token: string, locale: string = "es") {
       maxUses: true,
       useCount: true,
       expiresAt: true,
+      active: true,
       session: {
-        select: { startedAt: true, status: true, closesAt: true, createdBy: true, isAsync: true },
+        select: {
+          id: true,
+          startedAt: true,
+          status: true,
+          closesAt: true,
+          createdBy: true,
+          isAsync: true,
+          isGroup: true,
+          entriesLocked: true,
+        },
       },
     },
   });
 
   if (!invite) throw new Error("invalid_token");
-  if (invite.expiresAt && invite.expiresAt < new Date()) {
-    throw new Error("token_expired");
-  }
-
   const { sessionId, session } = invite;
-  const base = `/${locale}/app/sessions/${sessionId}`;
-  const closed = isSessionExpired(session, new Date());
-  const destination = closed
-    ? `${base}/results`
-    : !session.startedAt && !session.isAsync
-      ? `${base}/waiting`
-      : `${base}/cup`;
-
-  if (session.createdBy === user.id) {
-    redirect(closed ? `${base}/results` : `${base}/cup`);
-  }
+  // Only group sessions have a join flow (a solo link must not mint members).
+  if (!session.isGroup) throw new Error("invalid_input");
 
   const existing = await prisma.sessionParticipant.findUnique({
     where: { sessionId_userId: { sessionId, userId: user.id } },
     select: { userId: true },
   });
-  if (existing) redirect(destination);
 
-  if (closed) throw new Error("session_closed");
-  if (invite.maxUses !== null && invite.useCount >= invite.maxUses) {
-    throw new Error("token_exhausted");
+  // The same pure rule the /join page renders (lib/joinRules.ts): owner and
+  // members go straight in even with a dead link; newcomers are refused by
+  // closed > entries closed > revoked/expired > exhausted.
+  const decision = evaluateJoin(
+    { invite, session, viewer: { userId: user.id, isMember: !!existing } },
+    locale,
+  );
+  switch (decision.kind) {
+    case "redirect":
+      redirect(decision.href);
+    case "closed":
+      throw new Error("session_closed");
+    case "expired":
+      throw new Error("token_expired");
+    case "exhausted":
+      throw new Error("token_exhausted");
+    case "entries_closed":
+      throw new Error("entries_closed");
+    case "invalid":
+      throw new Error("invalid_token");
+    case "ok":
+      break;
   }
 
   await prisma.$transaction(async (tx) => {
@@ -410,7 +427,8 @@ export async function joinViaToken(token: string, locale: string = "es") {
     });
   });
 
-  redirect(destination);
+  // A latecomer joins a started session: same destination as everyone else.
+  redirect(sessionHref(session, { locale, isOwner: false }));
 }
 
 // ─── Create an invite token ───────────────────────────────────────────────────

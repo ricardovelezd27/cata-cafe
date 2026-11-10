@@ -555,7 +555,29 @@
     "warmupConfirmStartTitle": "El grupo está en el ejercicio",
     "warmupConfirmStart": "El grupo está en el ejercicio (quedan {time}). ¿Iniciar igual?",
     "warmupConfirmStartYes": "Iniciar igual",
-    "warmupStartError": "No se pudo empezar el ejercicio."
+    "warmupStartError": "No se pudo empezar el ejercicio.",
+    "joinClosedTitle": "Esta cata ya cerró",
+    "joinClosedBody": "Ya no se aceptan catadores. Pide al organizador el enlace de resultados.",
+    "joinExpiredTitle": "Este enlace ya no sirve",
+    "joinExpiredBody": "El organizador lo reemplazó o caducó. Pídele el enlace o el QR más reciente.",
+    "joinExhaustedTitle": "Ya no quedan lugares",
+    "joinExhaustedBody": "Este enlace alcanzó su número máximo de usos. Pídele al organizador que amplíe los lugares.",
+    "joinEntriesClosedTitle": "El organizador cerró las entradas",
+    "joinEntriesClosedBody": "Esta cata ya no recibe catadores nuevos. Si ya eras parte, inicia sesión con tu cuenta.",
+    "joinInvalidTitle": "Enlace no válido",
+    "joinInvalidBody": "No encontramos esta cata. Revisa que el enlace esté completo o pide uno nuevo.",
+    "joinLateNote": "Esta cata ya empezó. Puedes catar todas las muestras.",
+    "joinHome": "Ir al inicio",
+    "inviteRegenerate": "Regenerar enlace",
+    "inviteRegenerateTitle": "¿Regenerar el enlace?",
+    "inviteRegenerateBody": "El enlace y el QR actuales dejarán de funcionar. Quienes ya entraron siguen dentro.",
+    "inviteRegenerateConfirm": "Regenerar",
+    "inviteRegenerateError": "No se pudo regenerar el enlace.",
+    "inviteError": "No se pudo obtener el enlace de invitación.",
+    "entriesClose": "Cerrar entradas",
+    "entriesOpen": "Reabrir entradas",
+    "entriesClosedNote": "Entradas cerradas: solo entran quienes ya eran parte.",
+    "entriesError": "No se pudo cambiar las entradas."
   },
   "results": {
     "title": "Resultados de la Sesión",
@@ -1587,7 +1609,8 @@
       "not_found": "Ese elemento ya no existe.",
       "invalid_reference": "Uno de los elementos vinculados ya no existe.",
       "rate_limited": "Demasiados envíos en poco tiempo. Espera un momento e inténtalo de nuevo.",
-      "unknown": "Algo salió mal. Inténtalo de nuevo."
+      "unknown": "Algo salió mal. Inténtalo de nuevo.",
+      "entries_closed": "El organizador cerró las entradas de esta cata."
     }
   },
   "warmup": {

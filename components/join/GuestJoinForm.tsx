@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { completeGuestOnboarding, joinViaToken } from "@/app/actions/community";
+import { completeGuestOnboarding } from "@/app/actions/community";
+import { joinSessionAsGuest } from "@/app/actions/join";
 
 interface GuestJoinFormProps {
   token: string;
@@ -14,6 +15,8 @@ interface GuestJoinFormProps {
     offlineNotice: string;
     dataNotice: string;
     error: string;
+    /** errors.codes copy, keyed by ActionErrorCode */
+    codes: Record<string, string>;
   };
 }
 
@@ -27,14 +30,14 @@ interface GuestJoinFormProps {
 export function GuestJoinForm({ token, locale, translations }: GuestJoinFormProps) {
   const [name, setName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed || isSubmitting) return;
 
-    setError(false);
+    setError(null);
     setIsSubmitting(true);
     try {
       const supabase = createClient();
@@ -42,21 +45,25 @@ export function GuestJoinForm({ token, locale, translations }: GuestJoinFormProp
         options: { data: { display_name: trimmed } },
       });
       if (signInError) {
-        setError(true);
+        setError(translations.error);
         setIsSubmitting(false);
         return;
       }
 
       await completeGuestOnboarding(trimmed);
-      // joinViaToken redirects server-side on success (throws NEXT_REDIRECT
-      // internally) — Next handles the navigation, so we must not swallow it.
-      await joinViaToken(token, locale);
+      // The join redirects server-side on success (NEXT_REDIRECT, handled by
+      // Next — never swallow it); a refusal comes back as an ActionResult.
+      const result = await joinSessionAsGuest(token, locale);
+      if (!result.ok) {
+        setError(translations.codes[result.error] ?? translations.error);
+        setIsSubmitting(false);
+      }
     } catch (err) {
       const digest = (err as { digest?: string } | undefined)?.digest;
       if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) {
         throw err;
       }
-      setError(true);
+      setError(translations.error);
       setIsSubmitting(false);
     }
   };
@@ -79,7 +86,7 @@ export function GuestJoinForm({ token, locale, translations }: GuestJoinFormProp
       >
         {isSubmitting ? translations.joining : translations.joinButton}
       </button>
-      {error && <p className="text-sm text-red-defect">{translations.error}</p>}
+      {error && <p className="text-sm text-red-defect">{error}</p>}
       <p className="text-xs text-brown-mid">{translations.offlineNotice}</p>
       <p className="text-xs text-brown-mid">{translations.dataNotice}</p>
     </form>

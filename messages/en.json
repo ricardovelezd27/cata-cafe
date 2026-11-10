@@ -555,7 +555,29 @@
     "warmupConfirmStartTitle": "The group is still in the exercise",
     "warmupConfirmStart": "The group is still in the exercise ({time} left). Start anyway?",
     "warmupConfirmStartYes": "Start anyway",
-    "warmupStartError": "The exercise couldn't be started."
+    "warmupStartError": "The exercise couldn't be started.",
+    "joinClosedTitle": "This tasting has closed",
+    "joinClosedBody": "It no longer accepts cuppers. Ask the organizer for the results link.",
+    "joinExpiredTitle": "This link no longer works",
+    "joinExpiredBody": "The organizer replaced it or it expired. Ask for the latest link or QR.",
+    "joinExhaustedTitle": "No seats left",
+    "joinExhaustedBody": "This link reached its maximum number of uses. Ask the organizer to raise the limit.",
+    "joinEntriesClosedTitle": "The organizer closed entries",
+    "joinEntriesClosedBody": "This tasting no longer takes new cuppers. If you were already part of it, sign in with your account.",
+    "joinInvalidTitle": "Invalid link",
+    "joinInvalidBody": "We could not find this tasting. Check the link is complete or ask for a new one.",
+    "joinLateNote": "This tasting has already started. You can cup all the samples.",
+    "joinHome": "Go to home",
+    "inviteRegenerate": "Regenerate link",
+    "inviteRegenerateTitle": "Regenerate the link?",
+    "inviteRegenerateBody": "The current link and QR will stop working. People who already joined stay in.",
+    "inviteRegenerateConfirm": "Regenerate",
+    "inviteRegenerateError": "Could not regenerate the link.",
+    "inviteError": "Could not get the invite link.",
+    "entriesClose": "Close entries",
+    "entriesOpen": "Reopen entries",
+    "entriesClosedNote": "Entries closed: only people who were already part can enter.",
+    "entriesError": "Could not change entries."
   },
   "results": {
     "title": "Session Results",
@@ -1587,7 +1609,8 @@
       "not_found": "That item no longer exists.",
       "invalid_reference": "One of the linked items no longer exists.",
       "rate_limited": "Too many sends in a short time. Wait a moment and try again.",
-      "unknown": "Something went wrong. Please try again."
+      "unknown": "Something went wrong. Please try again.",
+      "entries_closed": "The organizer closed entries for this tasting."
     }
   },
   "warmup": {

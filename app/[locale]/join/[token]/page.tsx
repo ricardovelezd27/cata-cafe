@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { GuestJoinForm } from "@/components/join/GuestJoinForm";
+import { evaluateJoin } from "@/lib/joinRules";
 import { JoinSessionForm } from "@/components/join/JoinSessionForm";
 
 export const dynamic = "force-dynamic";
@@ -24,25 +26,64 @@ export default async function JoinPage({
   const tErrors = await getTranslations("errors");
   const tAuth = await getTranslations("auth");
 
-  // Validate invite token
+  // Same pure decision joinViaToken enforces (lib/joinRules.ts).
   const invite = await prisma.sessionInvite.findUnique({
     where: { token },
-    include: { session: { select: { id: true, name: true } } },
+    select: {
+      active: true,
+      expiresAt: true,
+      maxUses: true,
+      useCount: true,
+      session: {
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          closesAt: true,
+          startedAt: true,
+          isGroup: true,
+          isAsync: true,
+          createdBy: true,
+          entriesLocked: true,
+        },
+      },
+    },
   });
 
-  const isValid =
-    invite &&
-    (!invite.expiresAt || invite.expiresAt > new Date()) &&
-    (invite.maxUses === null || invite.useCount < invite.maxUses);
+  const isMember =
+    user && invite
+      ? !!(await prisma.sessionParticipant.findUnique({
+          where: { sessionId_userId: { sessionId: invite.session.id, userId: user.id } },
+          select: { userId: true },
+        }))
+      : false;
 
-  if (!isValid) {
+  const decision = evaluateJoin(
+    { invite, session: invite?.session ?? null, viewer: { userId: user?.id ?? null, isMember } },
+    locale,
+  );
+
+  if (decision.kind === "redirect") redirect(decision.href);
+
+  // Refused states: a distinct message each, and NO anonymous sign-in is
+  // ever offered (the form below only renders for "ok").
+  if (decision.kind !== "ok" || !invite) {
+    const kind = decision.kind === "ok" ? "invalid" : decision.kind;
+    const copy = {
+      closed: [t("joinClosedTitle"), t("joinClosedBody")],
+      expired: [t("joinExpiredTitle"), t("joinExpiredBody")],
+      exhausted: [t("joinExhaustedTitle"), t("joinExhaustedBody")],
+      entries_closed: [t("joinEntriesClosedTitle"), t("joinEntriesClosedBody")],
+      invalid: [t("joinInvalidTitle"), t("joinInvalidBody")],
+    }[kind];
     return (
       <main className="flex flex-1 items-center justify-center px-6 py-16">
         <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-card p-8 text-center space-y-4">
-          <p className="text-lg font-semibold text-red-defect">{t("invalidToken")}</p>
+          <p className="text-lg font-semibold text-red-defect">{copy[0]}</p>
+          <p className="text-sm text-brown-mid">{copy[1]}</p>
           <div className="flex flex-col gap-2 text-sm">
             <Link href={`/${locale}/app`} className="text-brown-mid underline hover:text-green-dark">
-              {tErrors("home")}
+              {t("joinHome")}
             </Link>
             <Link
               href={`/${locale}/auth/login`}
@@ -56,6 +97,10 @@ export default async function JoinPage({
     );
   }
 
+  const lateNote = decision.late ? (
+    <p className="text-sm text-green-dark font-medium">{t("joinLateNote")}</p>
+  ) : null;
+
   // Valid token, no user yet: offer guest (anonymous) join instead of forcing
   // login. Email login is still available as a subtle fallback below.
   if (!user) {
@@ -68,6 +113,7 @@ export default async function JoinPage({
               {invite.session.name}
             </h1>
             <p className="text-sm text-brown-mid mt-1">{t("joinSession")}</p>
+            {lateNote}
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-brown-mid mb-2">
@@ -83,6 +129,7 @@ export default async function JoinPage({
                 offlineNotice: t("guestOfflineNotice"),
                 dataNotice: t("guestDataNotice"),
                 error: t("guestError"),
+                codes: tErrors.raw("codes") as Record<string, string>,
               }}
             />
           </div>
@@ -107,6 +154,7 @@ export default async function JoinPage({
             {invite.session.name}
           </h1>
           <p className="text-sm text-brown-mid mt-1">{t("joinSession")}</p>
+          {lateNote}
         </div>
         <JoinSessionForm
           token={token}
