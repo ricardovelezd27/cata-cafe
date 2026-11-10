@@ -9,10 +9,11 @@ export async function getLatestInvite(sessionId: string): Promise<{ token: strin
   const invite = await prisma.sessionInvite.findFirst({
     where: {
       sessionId,
+      active: true,
       OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
     },
     orderBy: { createdAt: "desc" },
-    select: { token: true, expiresAt: true, maxUses: true, useCount: true },
+    select: { token: true, expiresAt: true, maxUses: true, useCount: true, active: true },
   });
   return invite && isInviteUsable(invite) ? { token: invite.token } : null;
 }
