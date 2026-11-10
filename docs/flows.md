@@ -106,7 +106,7 @@ stateDiagram-v2
     active --> active : cup + auto-save drafts (800ms debounce)
     active --> active : submit with samples still pending
     active --> closed : submitAllEvaluations — every sample submitted\n→ closeSessionInternal (reveal → history)
-    active --> closed : finishSoloSession ("Terminar cata")\nsubmit complete drafts, drop unopened samples\n→ closeSessionInternal
+    active --> closed : finishSoloSession (Terminar cata)\nsubmit complete drafts, drop unopened samples\n→ closeSessionInternal
     closed --> [*]
     note right of closed
         closed = the session's results ARE its detail view
