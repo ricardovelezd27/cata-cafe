@@ -389,6 +389,17 @@ true` and re-runs `syncCoffeeHistoryForSession` so the cupper's history row
 appears. This is the second sanctioned post-close write (the first is
 `ExtrinsicEditDialog` → `upsertExtrinsic`, owner + revealed sample, S8-12).
 
+**Third sanctioned post-close write: account deletion (S8-19).** `deleteAccount`
+rewrites the deleted person's rows in CLOSED sessions without going through
+`assertSessionWritable`: their `Evaluation.cupperId`, `SessionParticipant.userId`
+(with `excludedFromResults` and its trail), `PhysicalEvaluation.evaluatedBy`,
+`ExtrinsicData.revealedBy` and `CuppingSession.createdBy` move to the deletion's
+own placeholder profile (`deleted_<random>`). No score, flag or count changes,
+and the aggregate trigger does not re-fire (`isDraft` is not in the SET). Live
+group sessions the person owned and that are kept for others are first closed
+through `closeSessionInternal` (reason `owner_deleted`, emails skipped). See
+"Account deletion" in the S8-07 section below.
+
 ### Reference sample (2026-09)
 
 The owner may mark exactly one sample per session as the "Referencia" (control
@@ -477,7 +488,27 @@ flowchart TD
 - **Sign-out**: `signOut(locale, scope)` / `switchAccount(locale, next?)` return `ActionResult<{ next }>`; the client clears `cata-pages-*`/`cata-rsc-*`, the last-user pointer and the seen-set only after the server confirmed. Default scope is `local` (this device); `global` is the explicit "Salir en todos los dispositivos". A guest always sees the loss warning first (`GuestGateProvider.leave` carries the copy). Unsynced-draft warning is S8-09.
 - **Claim hardening**: `lib/guestClaimToken.ts` is the pure half (token, `safeClaimBack`, `anonEvalWins`). `confirmGuestClaim` returns an ActionResult: `invalid_token` / `token_expired` / `not_found` (already linked) go to the page's final cards, anything else shows a RETRY card (the merge is one transaction, safe to repeat). `mergeGuestData` separates `lookup_failed` (auth service blip, retry) from `not_anonymous` (final), runs with a 30 s transaction timeout, and re-fires the aggregate trigger only for samples where an evaluation was deleted by a conflict and sessions where an exclusion flag was merged. The card offers "Usar otra cuenta" (signs out this device and returns to the same claim) and "No vincular" (behind a warning) instead of "Cancelar".
 - **7-day claim token (F-guest-9, accepted risk)**: it is a bearer token in the guest's own URL/email. Anyone holding it who signs in can only reach a confirmation card naming the guest and counts; nothing merges on a GET, and the merge refuses a source that is no longer anonymous. TTL stays 7 days so a re-sent magic link still redeems.
-- **User columns**: `lib/accountDeletion/manifest.ts` lists every `Profile` FK and bare user column (`CloseEmailDelivery.userId`, `AiChatUsage.userId`, `OutboundEmailEvent.actorKey` = `u_<id>`, waitlist by email) with its merge rule and its INTENDED deletion rule. `tests/profileRelations.test.ts` fails on an unlisted relation and checks the merge source for each listed table. `deleteAccount` is not built (tombstone design, E3/E4 owner choices); when it is, it is a NEW sanctioned write on closed sessions and §1 must say so.
+- **User columns**: `lib/accountDeletion/manifest.ts` lists every `Profile` FK and bare user column (`CloseEmailDelivery.userId`, `AiChatUsage.userId`, `OutboundEmailEvent.actorKey` = `u_<id>`, waitlist by email) with its merge rule and its deletion rule. `tests/profileRelations.test.ts` fails on an unlisted relation, checks the merge source for each listed table, and checks `lib/accountDeletion/deleteAccount.ts` for a matching statement per deletion rule.
+- **Account deletion (S8-19, F-cuenta-1; E3 (a), E4 (a))**: Perfil → Cuenta → "Eliminar cuenta", for everyone including guests. The dialog loads counts (`getMyAccountDeletionImpact`, self only) and needs the typed word (`ELIMINAR` / `DELETE`, re-checked on the server). The super-admin account is refused (`account_protected`).
+
+```mermaid
+flowchart TD
+  D[Eliminar cuenta: counts + typed word] --> P[planAccountDeletion - pure]
+  P -- super-admin --> R[account_protected]
+  P --> C[closeSessionInternal owner_deleted, emails skipped, for kept live group sessions]
+  C --> T[ONE transaction, 30 s]
+  T --> T1[create placeholder deleted_random]
+  T1 --> T2[own solo / nobody-else sessions: detach history + delete]
+  T2 --> T3[kept sessions, participations + exclusion, evaluations, physical/extrinsic, coffees anonymized, kept groups, posts -> placeholder]
+  T3 --> T4[erase history, shares, invites, insights, AI usage, email ledgers, member rows, waitlist]
+  T4 --> T5[profile.delete LAST, uncaught: a forgotten FK rolls back]
+  T5 --> A[after commit: delete auth user, 3 attempts; orphan logged, runbook 24]
+  A --> L[sign out, clear device caches + this user's drafts, land on / or /en]
+```
+
+  - One placeholder PER deletion (never a shared tombstone: `Evaluation` is unique on sample + cupper). It has no auth user, can never sign in and is skipped by close and reminder emails. Names render "Cuenta eliminada" / "Deleted account" (`profileDisplayName`, `lib/accountDeletion/deletedProfile.ts`) in results, reports, the sessions list and group pages; the Users directory and platform counts hide placeholders.
+  - What others see: closed results unchanged, the person's column/row under "Cuenta eliminada". A kept group stays readable to its members but nobody can manage it (`TODO(E3-Kim)`: ownership transfer).
+  - Coffees the person created are anonymized exactly like "Eliminar café" (`anonymizeOwnedCoffees`), never deleted.
 - **Guest join**: `checkJoinable(token)` (`lib/joinability.ts`, same rule as the `/join` page and `joinViaToken`) runs before `signInAnonymously`; a closed link shows its own state to a visitor with no session (a signed-in participant still reaches results through `joinViaToken`); a retry reuses the anonymous user the earlier try created.
 - **Email change**: registered users only (`requestEmailChange`), mails a confirmation through `/auth/confirm` (type `email_change`) back to `/app/profile`; the profile shows `new_email` as pending until it is confirmed.
 

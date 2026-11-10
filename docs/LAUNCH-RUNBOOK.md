@@ -907,8 +907,7 @@ who they are by a second channel, then in Supabase Dashboard → Authentication 
 user's email to the new address. The profile and all history stay attached because they hang off
 the user id, not the address. Never create a second account and "move" data by hand.
 
-**Not in this release:** account deletion (`deleteAccount`). The manifest and its test are in;
-the destructive action waits on the tombstone design and the E3/E4 answers.
+**Account deletion** (`deleteAccount`) shipped later, in S8-19: see §24.
 
 ---
 
@@ -1071,3 +1070,46 @@ detail shows "Origen editado el …"; on an unrevealed sample the button is abse
 
 **Rollback:** the columns are nullable; code rolled back ignores them. Do not drop them while
 the new code is deployed.
+
+---
+
+## §24. Account deletion: verify on a throwaway account, clean an orphaned auth user (2026-11, S8-19)
+
+No migration, no SQL phase, no new environment variable. Nothing to apply before the deploy.
+`deleteAccount` creates its own placeholder profile (`deleted_<random>`) inside its transaction,
+so there is no fixed tombstone row to insert.
+
+**Never test this against production with a real account.** `.env.local` points at
+production: do not run `deleteAccount` from a local dev server with it. Verify only in a
+NON-production environment (a Supabase branch or a separate project with its own
+`DATABASE_URL`, seeded with throwaway accounts), or, if no such environment exists yet, wait.
+
+**Verification on a throwaway account (non-production only, ~10 minutes):**
+
+1. Create throwaway account A (email) and B (email) and one guest G (QR join).
+2. As A: create a solo session and finish it; create a group session, have B and G join and
+   submit; exclude G from the results (owner matrix). Create a coffee and a tasting group with B
+   as a member; post once. Leave a second group session live (not closed) with B's submission.
+3. As A: Perfil → Cuenta → **Eliminar cuenta**. The dialog lists the counts (1 session deleted,
+   2 kept, evaluations anonymized, 1 coffee anonymized, 1 group kept). Type `ELIMINAR`
+   (`DELETE` in English) and confirm. You land on the landing page, signed out.
+4. As B: both group sessions are CLOSED and still show results; A's column/row reads
+   "Cuenta eliminada"; the community scores are exactly what they were before step 3; G is still
+   excluded. The group is still listed for B with owner "Cuenta eliminada"; A's post reads
+   "Cuenta eliminada". The coffee in the session shows "Café eliminado".
+5. Supabase Dashboard → Authentication → Users: A is gone. Sign up again with A's email: a fresh,
+   empty account is created.
+6. As G (guest): Perfil → Eliminar cuenta works too.
+7. With the super-admin account: the dialog says the account cannot be deleted from the app.
+
+**If the auth user could not be deleted** (the action logs `deleteAccount.authUserOrphaned`
+with the user id; the person's data is already gone and they are signed out):
+
+1. Vercel Logs → search `deleteAccount.authUserOrphaned` → copy the `userId`.
+2. Supabase Dashboard → Authentication → Users → search the id → **Delete user**.
+3. Nothing else: the profile row no longer exists. Do NOT recreate it.
+
+**Lost mailbox (E4 option c):** unchanged, see §16.
+
+**Rollback:** reverting the deploy removes the button. Deletions already done cannot be undone
+(by design).
