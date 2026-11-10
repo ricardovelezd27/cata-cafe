@@ -267,3 +267,20 @@ export function planFinish(samples: FinishSampleInput[]): FinishPlan {
   const canFinish = hasReference ? nonReferenceScored > 0 : scoredCount > 0;
   return { submitIds, removeIds, keptPartialIds, scoredCount, canFinish };
 }
+
+/** S8-21: the results page repairs a SOLO owner's closed-but-unfinalized
+ *  session on render (no grace: no emails, and the owner is looking at it).
+ *  Group sessions are left to the cron because phase 2 sends email. */
+export function soloRepairOwedOnView(
+  row: {
+    status: string;
+    isGroup: boolean;
+    createdBy: string;
+    closedAt: Date | null;
+    closeFinalizedAt: Date | null;
+  },
+  viewerId: string,
+): boolean {
+  if (row.isGroup || row.createdBy !== viewerId) return false;
+  return needsFinalize(row, Date.now(), 0);
+}

@@ -16,6 +16,9 @@ import { resultsUpdatedAfterClose } from "@/lib/exclusionReasons";
 import { gateSampleForViewer, communityHidden } from "@/lib/reports/sampleGate";
 import { getUsableCoffees } from "@/lib/coffees/queries";
 import type { UsableCoffee } from "@/components/coffees/CoffeePicker";
+import { closeSessionInternal } from "@/lib/closeSession";
+import { soloRepairOwedOnView } from "@/lib/closeRules";
+import { errorMessage, logError } from "@/lib/log";
 import { ResultsClient } from "./ResultsClient";
 
 // resendCloseEmails / refreshAggregateScores run from here; give the
@@ -49,6 +52,21 @@ export default async function ResultsPage({
   // for an admin viewing someone else's session — the owner's.
   const viewAsId =
     adminTarget && adminTarget.createdBy !== user.id ? adminTarget.createdBy : user.id;
+
+  // S8-21: a SOLO owner whose session closed but never finalized (reveal +
+  // coffee history) gets the repair now instead of waiting for the daily cron.
+  // Same zero-grace path as the solo resubmit; a failure only logs.
+  try {
+    const closeRow = await prisma.cuppingSession.findUnique({
+      where: { id },
+      select: { status: true, isGroup: true, createdBy: true, closedAt: true, closeFinalizedAt: true },
+    });
+    if (closeRow && soloRepairOwedOnView(closeRow, user.id)) {
+      await closeSessionInternal(id, { reason: "repair", emails: "skip", repairGraceMs: 0 });
+    }
+  } catch (err) {
+    logError({ where: "results.soloRepair", sessionId: id, message: errorMessage(err) });
+  }
 
   const [session, submittedCupperCount] = await Promise.all([
     prisma.cuppingSession.findFirst({

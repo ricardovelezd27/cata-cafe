@@ -159,3 +159,24 @@ describe("planFinish (F-express-1, F-solo-3)", () => {
     expect(withOther.canFinish).toBe(true);
   });
 });
+
+import { soloRepairOwedOnView } from "@/lib/closeRules";
+
+describe("soloRepairOwedOnView (S8-21)", () => {
+  const base = {
+    status: "closed",
+    isGroup: false,
+    createdBy: "u1",
+    closedAt: new Date(),
+    closeFinalizedAt: null,
+  };
+  it("owes a repair to the solo owner of a closed, unfinalized session", () => {
+    expect(soloRepairOwedOnView(base, "u1")).toBe(true);
+  });
+  it("never for group sessions, other viewers, finalized or active sessions", () => {
+    expect(soloRepairOwedOnView({ ...base, isGroup: true }, "u1")).toBe(false);
+    expect(soloRepairOwedOnView(base, "u2")).toBe(false);
+    expect(soloRepairOwedOnView({ ...base, closeFinalizedAt: new Date() }, "u1")).toBe(false);
+    expect(soloRepairOwedOnView({ ...base, status: "active" }, "u1")).toBe(false);
+  });
+});
