@@ -1675,6 +1675,11 @@
       "deleteBody": "The announcement will be removed for every member. This cannot be undone.",
       "error": "Couldn't publish the announcement. Please try again."
     },
+    "emailOptOut": {
+      "badge": "Unsubscribed from emails",
+      "note": "You unsubscribed from this group's emails. You still see the group, its announcements and its sessions here in the app.",
+      "resume": "Receive emails from this group again"
+    },
     "leave": {
       "cta": "Leave group",
       "title": "Leave group",

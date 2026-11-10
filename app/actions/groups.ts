@@ -1179,6 +1179,27 @@ export async function leaveGroup(groupId: string): Promise<{ ok: true }> {
   return { ok: true };
 }
 
+// ─── Member self-service: stop / resume this group's emails (S8-20) ──────────
+// The signed-in MEMBER (never the owner on someone's behalf) flips the opt-out
+// on their own row(s). The public unsubscribe route can only switch mail OFF;
+// this is the way back ON, and the owner re-adding the address cannot do it.
+export async function setGroupEmailOptOut(
+  groupId: string,
+  optOut: boolean,
+): Promise<ActionResult<void>> {
+  return run("setGroupEmailOptOut", async () => {
+    const user = await requireRegisteredUser();
+    const res = await prisma.tastingGroupMember.updateMany({
+      where: { groupId, userId: user.id },
+      data: { emailOptOutAt: optOut ? new Date() : null },
+    });
+    if (res.count === 0) throw new Error("not_found_or_forbidden");
+    revalidatePath(`/es/app/groups/${groupId}`);
+    revalidatePath(`/en/app/groups/${groupId}`);
+    return;
+  }, { groupId });
+}
+
 // ─── Edit a member's display name (owner only) ────────────────────────────────
 export async function updateMemberDisplayName(
   groupId: string,

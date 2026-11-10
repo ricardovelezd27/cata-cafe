@@ -1675,6 +1675,11 @@
       "deleteBody": "El anuncio se eliminará para todos los miembros. Esta acción no se puede deshacer.",
       "error": "No se pudo publicar el anuncio. Inténtalo de nuevo."
     },
+    "emailOptOut": {
+      "badge": "Se dio de baja de los correos",
+      "note": "Te diste de baja de los correos de este grupo. Sigues viendo el grupo, sus anuncios y sus sesiones aquí en la app.",
+      "resume": "Volver a recibir correos de este grupo"
+    },
     "leave": {
       "cta": "Salir del grupo",
       "title": "Salir del grupo",

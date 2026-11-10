@@ -9,6 +9,7 @@ import {
   unsubscribeUrl,
   withUnsubscribeFooter,
 } from "@/lib/groupUnsubscribe";
+import { confirmPage, invalidPage, localeFromAcceptLanguage } from "@/lib/groupUnsubscribePage";
 
 const S = "test-secret";
 const G = "cmgroup123";
@@ -63,5 +64,18 @@ describe("unsubscribe link, headers and footer", () => {
     const out = withUnsubscribeFooter("<div><p>hola</p></div>", "es", url);
     expect(out).toBe(`<div><p>hola</p>${unsubscribeFooterHtml("es", url)}</div>`);
     expect(withUnsubscribeFooter("plain", "es", url).endsWith("</p>")).toBe(true);
+  });
+});
+
+describe("unsubscribe pages", () => {
+  it("escapes the group name and posts back with the token", () => {
+    const html = confirmPage("es", '<script>"x"</script>', "g.m");
+    expect(html).not.toContain("<script>");
+    expect(html).toContain('action="/api/groups/unsubscribe?token=g.m"');
+  });
+  it("picks the language from Accept-Language, es by default", () => {
+    expect(localeFromAcceptLanguage("en-US,en;q=0.9")).toBe("en");
+    expect(localeFromAcceptLanguage(null)).toBe("es");
+    expect(invalidPage("en")).toContain("not valid");
   });
 });

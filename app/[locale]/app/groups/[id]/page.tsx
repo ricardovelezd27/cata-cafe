@@ -21,6 +21,7 @@ import { GroupFeed, type GroupFeedPost } from "@/components/groups/GroupFeed";
 import { PostComposer } from "@/components/groups/PostComposer";
 import { DuplicateButton } from "@/components/DuplicateButton";
 import { LeaveGroupButton } from "@/components/groups/LeaveGroupButton";
+import { GroupEmailOptOutNotice } from "@/components/groups/GroupEmailOptOutNotice";
 
 // Auth'd page with a dynamic [id] segment: must render per-request. With
 // generateStaticParams present, prod attempts on-demand static generation and
@@ -209,6 +210,7 @@ export default async function GroupDetailPage({
     // TODO(D7): roster visibility is (a) every member sees names (the Kim default,
     // built). If Kim answers (b) teacher-chosen names or (c) teacher-only, add a
     // roster setting here in a follow-up PR; nothing in this PR changes it.
+    const myMemberRow = group.members.find((m) => m.userId === user.id);
     const memberRows = group.members.map((m) => ({
       id: m.id,
       label: memberLabel(m),
@@ -254,6 +256,13 @@ export default async function GroupDetailPage({
         </div>
 
         {sessionsSection}
+
+        {myMemberRow?.emailOptOutAt && (
+          <GroupEmailOptOutNotice
+            groupId={group.id}
+            t={{ note: t("emailOptOut.note"), resume: t("emailOptOut.resume") }}
+          />
+        )}
 
         <div className="pt-2">
           <LeaveGroupButton groupId={group.id} locale={locale} t={leaveT} />
@@ -468,9 +477,11 @@ export default async function GroupDetailPage({
             email: m.userId ? maskEmail(m.email) : m.email,
             displayName: m.displayName,
             userId: m.userId,
+            emailOptedOut: !!m.emailOptOutAt,
           }))}
           t={{
             unregistered: t("unregistered"),
+            emailOptedOut: t("emailOptOut.badge"),
             removeMember: t("removeMember"),
             removeTitle: t("memberEdit.removeTitle"),
             removeBodyNamed: t.raw("memberEdit.removeBodyNamed") as string,
