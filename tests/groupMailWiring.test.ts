@@ -1,12 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { confirmPage } from "@/lib/groupUnsubscribePage";
 import {
   decorateGroupMail,
   isWellFormedUnsubscribeToken,
   mintUnsubscribeToken,
   unsubscribeUrl,
 } from "@/lib/groupUnsubscribe";
+
+describe("confirm page escaping", () => {
+  it("escapes quotes and angle brackets in the group name", () => {
+    const html = confirmPage("en", `A"B'<script>&`, "tok");
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&quot;");
+    expect(html).toContain("&#39;");
+    expect(html).toContain("&lt;script&gt;&amp;");
+  });
+});
 
 describe("isWellFormedUnsubscribeToken", () => {
   const gid = "cmabcdefghij0123456789klm"; // 25 chars, cuid shape
