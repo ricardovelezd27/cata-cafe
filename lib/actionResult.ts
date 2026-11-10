@@ -36,6 +36,12 @@ export type ActionResult<T = void> =
   | { ok: true; data: T }
   | { ok: false; error: ActionErrorCode };
 
+/** The caller lost (or never had) access. Background/auto-run actions toast
+ *  only for these, so a half-typed filter that fails validation stays quiet. */
+export function isAccessError(code: ActionErrorCode): boolean {
+  return code === "not_authenticated" || code === "not_found_or_forbidden";
+}
+
 export function isActionErrorCode(value: unknown): value is ActionErrorCode {
   return (
     typeof value === "string" &&

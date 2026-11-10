@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { useContainerWidth } from "@/hooks/useContainerWidth";
 import { runOriginContext } from "@/app/actions/analytics";
+import { useActionFeedback } from "@/components/ui/Toast";
 import type { OriginContext } from "@/lib/analytics/benchmarks";
 
 const CHART_HEIGHT = 280;
@@ -64,14 +65,14 @@ export function OriginContextPanel({
   const [countryCode, setCountryCode] = useState(initialCountryCode ?? "");
   const [context, setContext] = useState<OriginContext | null>(initialContext);
   const [isPending, startTransition] = useTransition();
+  const feedback = useActionFeedback();
   const { ref, width } = useContainerWidth();
 
   function onCountryChange(next: string) {
     setCountryCode(next);
     startTransition(async () => {
-      const result = await runOriginContext(next, locale);
       // On error, keep showing the last-good context rather than blanking it.
-      if (result.ok) setContext(result.context);
+      await feedback.run(runOriginContext(next, locale), (data) => setContext(data));
     });
   }
 

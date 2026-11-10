@@ -12,6 +12,8 @@ import type {
   MeasureId,
 } from "@/lib/analytics/types";
 import { runInsight } from "@/app/actions/analytics";
+import { useActionFeedback } from "@/components/ui/Toast";
+import { isAccessError } from "@/lib/actionResult";
 import { InsightChart } from "@/components/insights/InsightChart";
 import { AiSummaryPanel, type AiSummaryTranslations } from "@/components/insights/AiSummaryPanel";
 
@@ -58,6 +60,7 @@ export function ExplorerBuilder({ locale, t, loadedConfig, loadKey, onConfigChan
   const [rows, setRows] = useState<InsightRow[] | null>(null);
   const [error, setError] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const { notifyError } = useActionFeedback();
 
   const validDimensions = DATASET_DIMENSIONS[dataset];
   const validMeasures = DATASET_MEASURES[dataset];
@@ -98,17 +101,18 @@ export function ExplorerBuilder({ locale, t, loadedConfig, loadKey, onConfigChan
       startTransition(async () => {
         const result = await runInsight(config, locale);
         if (result.ok) {
-          setRows(result.rows);
+          setRows(result.data);
           setError(false);
         } else {
           setError(true);
+          if (isAccessError(result.error)) notifyError(result.error);
         }
       });
     }, 400);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [buildConfig, locale, onConfigChange]);
+  }, [buildConfig, locale, onConfigChange, notifyError]);
 
   // Applies a saved config pushed down by the workspace. Keyed on loadKey
   // (not loadedConfig identity) so re-opening the same saved item retriggers.

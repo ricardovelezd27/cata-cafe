@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { listAllAuthUsers, listAllAuthUsersStrict } from "@/lib/supabase/adminUsers";
 import { run } from "@/lib/safeAction";
+import type { ActionResult } from "@/lib/actionResult";
+import { loadSavedInsights, type SavedInsightRow } from "@/lib/analytics/savedInsights";
 import { buildRegisteredUsersCsv } from "@/lib/analytics/usersCsv";
 import {
   isSuperAdminEmail,
@@ -45,139 +47,134 @@ function asLocale(locale: string): "es" | "en" {
   return locale === "en" ? "en" : "es";
 }
 
+// Interactive insight actions return ActionResult via run() (S8-14,
+// F-insights-7): a revoked analytics user pressing "Guardar" used to hit an
+// opaque thrown `forbidden` (error boundary); now it maps to
+// `not_found_or_forbidden` and the client shows the localized toast. Invalid
+// input throws `invalid_input` inside the body (mapped by run()).
+
 export async function runInsight(
   rawConfig: unknown,
   locale: string,
-): Promise<{ ok: true; rows: InsightRow[] } | { ok: false; error: string }> {
-  const scope = scopeFor(await requireAnalyticsAccess());
-  let config: InsightConfig;
-  try {
-    config = parseInsightConfig(rawConfig);
-  } catch {
-    return { ok: false, error: "invalid_config" };
-  }
-  const rows = await runInsightQuery(config, asLocale(locale), scope);
-  return { ok: true, rows };
+): Promise<ActionResult<InsightRow[]>> {
+  return run("runInsight", async () => {
+    const scope = scopeFor(await requireAnalyticsAccess());
+    let config: InsightConfig;
+    try {
+      config = parseInsightConfig(rawConfig);
+    } catch {
+      throw new Error("invalid_input");
+    }
+    return runInsightQuery(config, asLocale(locale), scope);
+  });
 }
 
 export async function runPivot(
   rawConfig: unknown,
   locale: string,
-): Promise<{ ok: true; result: PivotResult } | { ok: false; error: string }> {
-  const scope = scopeFor(await requireAnalyticsAccess());
-  let config: PivotConfig;
-  try {
-    config = parsePivotConfig(rawConfig);
-  } catch {
-    return { ok: false, error: "invalid_pivot" };
-  }
-  const result = await runPivotQuery(config, asLocale(locale), scope);
-  return { ok: true, result };
+): Promise<ActionResult<PivotResult>> {
+  return run("runPivot", async () => {
+    const scope = scopeFor(await requireAnalyticsAccess());
+    let config: PivotConfig;
+    try {
+      config = parsePivotConfig(rawConfig);
+    } catch {
+      throw new Error("invalid_input");
+    }
+    return runPivotQuery(config, asLocale(locale), scope);
+  });
 }
 
 export async function listPivotDimensionValues(
   dataset: string,
   dimension: string,
   locale: string,
-): Promise<{ ok: true; values: PivotAxisKey[] } | { ok: false; error: string }> {
-  const scope = scopeFor(await requireAnalyticsAccess());
-  if (!DATASETS.includes(dataset as Dataset)) {
-    return { ok: false, error: "invalid_dimension" };
-  }
-  const ds = dataset as Dataset;
-  if (!DATASET_DIMENSIONS[ds].includes(dimension as DimensionId)) {
-    return { ok: false, error: "invalid_dimension" };
-  }
-  const values = await listDimensionValues(ds, dimension as DimensionId, asLocale(locale), scope);
-  return { ok: true, values };
+): Promise<ActionResult<PivotAxisKey[]>> {
+  return run("listPivotDimensionValues", async () => {
+    const scope = scopeFor(await requireAnalyticsAccess());
+    if (!DATASETS.includes(dataset as Dataset)) throw new Error("invalid_input");
+    const ds = dataset as Dataset;
+    if (!DATASET_DIMENSIONS[ds].includes(dimension as DimensionId)) {
+      throw new Error("invalid_input");
+    }
+    return listDimensionValues(ds, dimension as DimensionId, asLocale(locale), scope);
+  });
 }
 
 export async function saveInsight(
   name: string,
   rawConfig: unknown,
-): Promise<{ ok: boolean; id?: string; error?: string }> {
-  const access = await requireAnalyticsAccess();
-  const trimmed = name.trim();
-  if (trimmed.length < 1 || trimmed.length > 80) {
-    return { ok: false, error: "invalid_name" };
-  }
-  const pivotLike = isPivotConfigLike(rawConfig);
-  let config: InsightConfig | PivotConfig;
-  try {
-    config = pivotLike ? parsePivotConfig(rawConfig) : parseInsightConfig(rawConfig);
-  } catch {
-    return { ok: false, error: pivotLike ? "invalid_pivot" : "invalid_config" };
-  }
-  const created = await prisma.savedInsight.create({
-    data: {
-      name: trimmed,
-      config: config as unknown as Prisma.InputJsonValue,
-      createdBy: access.userId,
-    },
+): Promise<ActionResult<{ id: string }>> {
+  return run("saveInsight", async () => {
+    const access = await requireAnalyticsAccess();
+    const trimmed = typeof name === "string" ? name.trim() : "";
+    if (trimmed.length < 1 || trimmed.length > 80) throw new Error("invalid_input");
+    const pivotLike = isPivotConfigLike(rawConfig);
+    let config: InsightConfig | PivotConfig;
+    try {
+      config = pivotLike ? parsePivotConfig(rawConfig) : parseInsightConfig(rawConfig);
+    } catch {
+      throw new Error("invalid_input");
+    }
+    const created = await prisma.savedInsight.create({
+      data: {
+        name: trimmed,
+        config: config as unknown as Prisma.InputJsonValue,
+        createdBy: access.userId,
+      },
+    });
+    return { id: created.id };
   });
-  return { ok: true, id: created.id };
 }
 
-export async function listSavedInsights(): Promise<
-  Array<{ id: string; name: string; config: unknown; createdAt: string; isMine: boolean }>
-> {
-  const access = await requireAnalyticsAccess();
-  const insights = await prisma.savedInsight.findMany({
-    orderBy: { createdAt: "desc" },
-    select: { id: true, name: true, config: true, createdAt: true, createdBy: true },
-  });
-  return insights.map((i) => ({
-    id: i.id,
-    name: i.name,
-    config: i.config,
-    createdAt: i.createdAt.toISOString(),
-    isMine: i.createdBy === access.userId,
-  }));
+export async function listSavedInsights(): Promise<ActionResult<SavedInsightRow[]>> {
+  return run("listSavedInsights", () => loadSavedInsights());
 }
 
-export async function deleteSavedInsight(
-  id: string,
-): Promise<{ ok: boolean; error?: string }> {
-  const access = await requireAnalyticsAccess();
-  const insight = await prisma.savedInsight.findUnique({
-    where: { id },
-    select: { createdBy: true },
+export async function deleteSavedInsight(id: string): Promise<ActionResult<void>> {
+  return run("deleteSavedInsight", async () => {
+    const access = await requireAnalyticsAccess();
+    const insight = await prisma.savedInsight.findUnique({
+      where: { id },
+      select: { createdBy: true },
+    });
+    if (!insight) throw new Error("not_found");
+    if (insight.createdBy !== access.userId && !access.isSuperAdmin) {
+      throw new Error("not_found_or_forbidden");
+    }
+    await prisma.savedInsight.delete({ where: { id } });
   });
-  if (!insight) return { ok: false, error: "not_found" };
-  if (insight.createdBy !== access.userId && !access.isSuperAdmin) {
-    return { ok: false, error: "forbidden" };
-  }
-  await prisma.savedInsight.delete({ where: { id } });
-  return { ok: true };
 }
 
 export async function runBenchmark(
   rawFilter: unknown,
-): Promise<{ ok: true; comparison: BenchmarkComparison } | { ok: false; error: string }> {
-  const scope = scopeFor(await requireAnalyticsAccess());
-  let filter: BenchmarkFilter;
-  try {
-    filter = parseBenchmarkFilter(rawFilter);
-  } catch {
-    return { ok: false, error: "invalid_filter" };
-  }
-  const comparison = await getBenchmarkComparison(filter, scope);
-  return { ok: true, comparison };
+): Promise<ActionResult<BenchmarkComparison>> {
+  return run("runBenchmark", async () => {
+    const scope = scopeFor(await requireAnalyticsAccess());
+    let filter: BenchmarkFilter;
+    try {
+      filter = parseBenchmarkFilter(rawFilter);
+    } catch {
+      throw new Error("invalid_input");
+    }
+    return getBenchmarkComparison(filter, scope);
+  });
 }
 
 export async function runOriginContext(
   countryCode: unknown,
   locale: string,
-): Promise<{ ok: true; context: OriginContext } | { ok: false; error: string }> {
-  const scope = scopeFor(await requireAnalyticsAccess());
-  if (
-    typeof countryCode !== "string" ||
-    !COFFEE_COUNTRIES.some((c) => c.iso2 === countryCode)
-  ) {
-    return { ok: false, error: "invalid_country" };
-  }
-  const context = await getOriginContext(countryCode, asLocale(locale), scope);
-  return { ok: true, context };
+): Promise<ActionResult<OriginContext>> {
+  return run("runOriginContext", async () => {
+    const scope = scopeFor(await requireAnalyticsAccess());
+    if (
+      typeof countryCode !== "string" ||
+      !COFFEE_COUNTRIES.some((c) => c.iso2 === countryCode)
+    ) {
+      throw new Error("invalid_input");
+    }
+    return getOriginContext(countryCode, asLocale(locale), scope);
+  });
 }
 
 export interface AnalyticsUser {

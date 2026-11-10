@@ -5,6 +5,7 @@ import { Save, Share2, Trash2, FolderOpen } from "lucide-react";
 import { isPivotConfigLike } from "@/lib/analytics/types";
 import type { InsightConfig, PivotConfig } from "@/lib/analytics/types";
 import { deleteSavedInsight, listSavedInsights, saveInsight } from "@/app/actions/analytics";
+import { useActionFeedback } from "@/components/ui/Toast";
 import { ExplorerBuilder, type ExplorerTranslations } from "@/components/insights/ExplorerBuilder";
 import { PivotBuilder, type PivotTranslations } from "@/components/insights/PivotBuilder";
 import {
@@ -97,6 +98,7 @@ export function ExplorerWorkspace({
 
   const [saved, setSaved] = useState<SavedInsightItem[]>(initialSaved);
   const [saveOpen, setSaveOpen] = useState(false);
+  const feedback = useActionFeedback();
   const [saveName, setSaveName] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -107,12 +109,11 @@ export function ExplorerWorkspace({
     if (!configRef.current) return;
     setSaving(true);
     try {
-      const result = await saveInsight(saveName, configRef.current);
-      if (result.ok) {
+      await feedback.run(saveInsight(saveName, configRef.current), async () => {
         setSaveOpen(false);
         setSaveName("");
-        setSaved(await listSavedInsights());
-      }
+        await feedback.run(listSavedInsights(), (rows) => setSaved(rows));
+      });
     } finally {
       setSaving(false);
     }
@@ -131,8 +132,9 @@ export function ExplorerWorkspace({
   }
 
   async function handleDelete(id: string) {
-    const result = await deleteSavedInsight(id);
-    if (result.ok) setSaved((prev) => prev.filter((s) => s.id !== id));
+    await feedback.run(deleteSavedInsight(id), () =>
+      setSaved((prev) => prev.filter((s) => s.id !== id)),
+    );
   }
 
   function openShare() {

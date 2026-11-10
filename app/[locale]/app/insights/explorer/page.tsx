@@ -1,5 +1,5 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { listSavedInsights } from "@/app/actions/analytics";
+import { loadSavedInsights } from "@/lib/analytics/savedInsights";
 import { citationLines } from "@/lib/analytics/referenceSources";
 import { ExplorerWorkspace } from "@/components/insights/ExplorerWorkspace";
 import type {
@@ -29,7 +29,7 @@ export default async function InsightsExplorerPage({
     getTranslations("insights.ai"),
     getTranslations("insights.share"),
     getTranslations("insights.charts"),
-    listSavedInsights(),
+    loadSavedInsights(),
   ]);
 
   // Bulk-build option-label records; the dynamic keys defeat next-intl's

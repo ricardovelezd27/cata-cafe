@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
-import { ACTION_ERROR_CODES, classifyActionError, isActionErrorCode } from "@/lib/actionResult";
+import { ACTION_ERROR_CODES, classifyActionError, isAccessError, isActionErrorCode } from "@/lib/actionResult";
 import { assertSessionWritable, isSessionClosed, planClosesAtChange } from "@/lib/sessionState";
 import { missingProductionEnv } from "@/lib/env";
 import { redactPath } from "@/lib/log";
@@ -39,6 +39,11 @@ describe("classifyActionError", () => {
     expect(classifyActionError(new Error("group_full"))).toBe("group_full");
     expect(classifyActionError(new Error("invalid_email"))).toBe("invalid_email");
     expect(isActionErrorCode("offline")).toBe(true);
+  });
+  it("a revoked analytics user (thrown forbidden) classifies as an access error", () => {
+    const code = classifyActionError(new Error("forbidden"));
+    expect(isAccessError(code)).toBe(true);
+    expect(isAccessError("invalid_input")).toBe(false);
   });
   it("every code has es and en toast copy", () => {
     for (const lang of ["es", "en"]) {

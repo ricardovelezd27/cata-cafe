@@ -121,10 +121,10 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
     startDataTransition(async () => {
       if (isPivotConfigLike(config)) {
         const result = await runPivot(config, locale);
-        setPivotResult(result.ok ? result.result : emptyPivotResult((config as PivotConfig).measure));
+        setPivotResult(result.ok ? result.data : emptyPivotResult((config as PivotConfig).measure));
       } else {
         const result = await runInsight(config, locale);
-        setRows(result.ok ? result.rows : []);
+        setRows(result.ok ? result.data : []);
       }
     });
   }, [config, locale]);
