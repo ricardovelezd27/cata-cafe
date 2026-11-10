@@ -595,6 +595,8 @@ async function createGroupSessionBody(input: {
   let emailSummary: GroupEmailSummary | undefined;
   let emailBlocked: "rate_limited" | undefined;
   if (input.groupId && input.notifyGroup !== false) {
+    // TODO(C8): live sessions notify from startSession (spec default b);
+    // undecided with Kim, so the email still goes out at creation for now.
     try {
       const notified = await notifyGroupOfSession({
         groupId: input.groupId,

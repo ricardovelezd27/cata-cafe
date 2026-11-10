@@ -19,6 +19,7 @@ import { trustedRequestOrigin } from "@/lib/requestOrigin";
 import { coCupperIdsAmong, isCoCupper } from "@/lib/coCuppers";
 import { run } from "@/lib/safeAction";
 import { resolveOrCreateSessionInvite } from "@/lib/invites";
+import { groupSessionInviteUrl } from "@/lib/inviteUrl";
 import type { ActionResult } from "@/lib/actionResult";
 
 type Locale = "es" | "en";
@@ -716,11 +717,14 @@ export async function sendGroupEmail(input: {
     if (input.sessionId) {
       const session = await prisma.cuppingSession.findUnique({
         where: { id: input.sessionId },
-        select: { id: true, createdBy: true },
+        select: { id: true, createdBy: true, status: true, isGroup: true },
       });
       if (!session || session.createdBy !== user.id) {
         throw new Error("not_found_or_forbidden");
       }
+      // Only an ACTIVE group session has a join link worth emailing (a solo or
+      // closed one would hand out a dead or meaningless link).
+      if (!session.isGroup || session.status !== "active") throw new Error("invalid_input");
       inviteToken = await resolveOrCreateSessionInvite(session.id, user.id);
     }
 
@@ -750,7 +754,15 @@ export async function sendGroupEmail(input: {
       const recipientLocale: Locale = m.userId
         ? localeByUserId.get(m.userId) ?? senderLocale
         : senderLocale;
-      const inviteUrl = inviteToken ? `${origin}/${recipientLocale}/join/${inviteToken}` : null;
+      const inviteUrl = inviteToken
+        ? groupSessionInviteUrl({
+            linked: !!m.userId,
+            token: inviteToken,
+            locale: recipientLocale,
+            origin,
+            email: emails.get(m.id) ?? m.email,
+          })
+        : null;
       return {
         memberId: m.id,
         label: memberLabel(m),
@@ -887,11 +899,12 @@ export async function notifyGroupOfSession(input: {
 
     const session = await prisma.cuppingSession.findUnique({
       where: { id: input.sessionId },
-      select: { id: true, createdBy: true, name: true },
+      select: { id: true, createdBy: true, name: true, status: true, isGroup: true },
     });
     if (!session || session.createdBy !== user.id) {
       throw new Error("not_found_or_forbidden");
     }
+    if (!session.isGroup || session.status !== "active") throw new Error("invalid_input");
 
     const inviteToken = await resolveOrCreateSessionInvite(session.id, user.id);
 
@@ -916,11 +929,13 @@ export async function notifyGroupOfSession(input: {
         ? localeByUserId.get(m.userId) ?? senderLocale
         : senderLocale;
 
-      const ctaUrl = m.userId
-        ? `${origin}/${recipientLocale}/join/${inviteToken}`
-        : `${origin}/${recipientLocale}/auth/login?email=${encodeURIComponent(
-            email,
-          )}&next=${encodeURIComponent(`/${recipientLocale}/join/${inviteToken}`)}`;
+      const ctaUrl = groupSessionInviteUrl({
+        linked: !!m.userId,
+        token: inviteToken,
+        locale: recipientLocale,
+        origin,
+        email,
+      });
 
       return {
         memberId: m.id,
