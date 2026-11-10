@@ -54,6 +54,14 @@ export function blocksSubmit(status: SyncStatus): boolean {
   return status === "pending";
 }
 
+/** Whether a stored module is what the cupper should see (and edit) in the form
+ *  on mount: the local draft is newer than the server copy for `pending` and for
+ *  `failed` (retries exhausted but still recoverable). Conflicts are the modal's
+ *  job; closed/orphaned drafts are read-only in the notes panel. */
+export function hydratesForm(status: SyncStatus): boolean {
+  return status === "pending" || status === "failed";
+}
+
 export function statusForOutcome(
   outcome: ReplayOutcome,
   attempts: number,

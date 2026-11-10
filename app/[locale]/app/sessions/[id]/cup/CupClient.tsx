@@ -8,7 +8,7 @@ import {
   useCallback,
   useSyncExternalStore,
 } from "react";
-import { blocksSubmit, isTerminal } from "@/lib/offline/status";
+import { blocksSubmit, hydratesForm, isTerminal } from "@/lib/offline/status";
 import { warmupForCache } from "@/lib/warmup/offlineCache";
 import { WarmupMoment } from "@/components/session-moments/WarmupMoment";
 import { SessionMomentOverlay } from "@/components/session-moments/SessionMomentOverlay";
@@ -758,7 +758,7 @@ export function CupClient({
             if (local) {
               for (const [mk, mod] of Object.entries(local.modules)) {
                 // Conflicts are the SyncConflictModal's job — don't pre-apply them.
-                if (!mod || mod.syncStatus !== "pending" || !isModuleKey(mk))
+                if (!mod || !hydratesForm(mod.syncStatus) || !isModuleKey(mk))
                   continue;
                 next = { ...next, [mk]: mod.data };
               }

@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   MAX_AUTO_ATTEMPTS,
   applyOutcome,
+  ALL_STATUSES,
   blocksSubmit,
+  hydratesForm,
   isTerminal,
   isUnsynced,
   reviveFailed,
@@ -70,5 +72,20 @@ describe("applyOutcome", () => {
     expect(reviveFailed(failed)).toMatchObject({ syncStatus: "pending", attempts: 0 });
     const ok = mod();
     expect(reviveFailed(ok)).toBe(ok);
+  });
+});
+
+describe("hydratesForm", () => {
+  it("hydrates pending and failed drafts only, for every status", () => {
+    const expected: Record<string, boolean> = {
+      pending: true,
+      failed: true,
+      synced: false,
+      conflict: false,
+      closed_unsent: false,
+      orphaned: false,
+    };
+    expect(Object.keys(expected).sort()).toEqual([...ALL_STATUSES].sort());
+    for (const s of ALL_STATUSES) expect(hydratesForm(s)).toBe(expected[s]);
   });
 });
