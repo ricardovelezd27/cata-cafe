@@ -160,7 +160,7 @@ describe("planFinish (F-express-1, F-solo-3)", () => {
   });
 });
 
-import { soloRepairOwedOnView } from "@/lib/closeRules";
+import { ON_VIEW_REPAIR_GRACE_MS, soloRepairOwedOnView } from "@/lib/closeRules";
 
 describe("soloRepairOwedOnView (S8-21)", () => {
   const base = {
@@ -171,7 +171,17 @@ describe("soloRepairOwedOnView (S8-21)", () => {
     closeFinalizedAt: null,
   };
   it("owes a repair to the solo owner of a closed, unfinalized session", () => {
-    expect(soloRepairOwedOnView(base, "u1")).toBe(true);
+    const now = Date.now();
+    const closedAgo = (ms: number) => ({ ...base, closedAt: new Date(now - ms) });
+    expect(soloRepairOwedOnView(closedAgo(25_000), "u1", ON_VIEW_REPAIR_GRACE_MS, now)).toBe(true);
+  });
+  it("respects the grace so it never overlaps a close in flight", () => {
+    const now = Date.now();
+    const closedAgo = (ms: number) => ({ ...base, closedAt: new Date(now - ms) });
+    expect(soloRepairOwedOnView(closedAgo(5_000), "u1", ON_VIEW_REPAIR_GRACE_MS, now)).toBe(false);
+    expect(soloRepairOwedOnView(closedAgo(19_999), "u1", ON_VIEW_REPAIR_GRACE_MS, now)).toBe(false);
+    expect(soloRepairOwedOnView(closedAgo(20_000), "u1", ON_VIEW_REPAIR_GRACE_MS, now)).toBe(true);
+    expect(ON_VIEW_REPAIR_GRACE_MS).toBe(20_000);
   });
   it("never for group sessions, other viewers, finalized or active sessions", () => {
     expect(soloRepairOwedOnView({ ...base, isGroup: true }, "u1")).toBe(false);

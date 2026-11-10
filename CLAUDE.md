@@ -304,7 +304,7 @@ All writes go through `app/actions/`. Call `revalidatePath()` after mutations to
 
 ### S8-21 loose ends
 - Master-panel re-pin asks (`ConfirmDialog`, `session.edit.repinBody`) when the chosen sample already has evaluations (`evalCountBySample`, owner-only prop from `cup/page.tsx`); `confirmRepin: true` is sent only after the owner confirms.
-- The results page repairs a SOLO owner's closed-but-unfinalized session once per render (`soloRepairOwedOnView`, zero grace, failure only logs); group sessions stay with the cron (emails). `closeSession` returns `finalized`; `false` shows a non-blocking notice.
+- The results page repairs a SOLO owner's closed-but-unfinalized session once per render (`soloRepairOwedOnView`, 20 s grace `ON_VIEW_REPAIR_GRACE_MS` so it never overlaps a close in flight, failure only logs); group sessions stay with the cron (emails). `closeSession` returns `finalized`; `false` shows a non-blocking notice.
 - `tests/registeredOnlyActions.test.ts` is inverted for `sessions.ts` and `community.ts`: every export needs `requireRegisteredUser(` or an entry in `GUEST_ALLOWED` / `OWNER_ONLY` with a reason. `results` sends `hasCoffee` only to owner/admin or for revealed samples.
 
 ### Group Sessions Pattern

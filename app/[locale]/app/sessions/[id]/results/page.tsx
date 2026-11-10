@@ -17,7 +17,7 @@ import { gateSampleForViewer, communityHidden } from "@/lib/reports/sampleGate";
 import { getUsableCoffees } from "@/lib/coffees/queries";
 import type { UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { closeSessionInternal } from "@/lib/closeSession";
-import { soloRepairOwedOnView } from "@/lib/closeRules";
+import { ON_VIEW_REPAIR_GRACE_MS, soloRepairOwedOnView } from "@/lib/closeRules";
 import { errorMessage, logError } from "@/lib/log";
 import { ResultsClient } from "./ResultsClient";
 
@@ -55,14 +55,15 @@ export default async function ResultsPage({
 
   // S8-21: a SOLO owner whose session closed but never finalized (reveal +
   // coffee history) gets the repair now instead of waiting for the daily cron.
-  // Same zero-grace path as the solo resubmit; a failure only logs.
+  // The 20 s grace keeps it from overlapping a close still in flight; a failure
+  // only logs.
   try {
     const closeRow = await prisma.cuppingSession.findUnique({
       where: { id },
       select: { status: true, isGroup: true, createdBy: true, closedAt: true, closeFinalizedAt: true },
     });
     if (closeRow && soloRepairOwedOnView(closeRow, user.id)) {
-      await closeSessionInternal(id, { reason: "repair", emails: "skip", repairGraceMs: 0 });
+      await closeSessionInternal(id, { reason: "repair", emails: "skip", repairGraceMs: ON_VIEW_REPAIR_GRACE_MS });
     }
   } catch (err) {
     logError({ where: "results.soloRepair", sessionId: id, message: errorMessage(err) });

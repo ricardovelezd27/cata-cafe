@@ -268,8 +268,14 @@ export function planFinish(samples: FinishSampleInput[]): FinishPlan {
   return { submitIds, removeIds, keptPartialIds, scoredCount, canFinish };
 }
 
+/** Grace for the results-page on-view repair. Short (no emails, the owner is
+ *  looking at it) but non-zero: with zero grace, opening or refreshing /results
+ *  while the normal close is still in its second phase ran finalize concurrently
+ *  with it, and a session whose finalize keeps failing retried on every view. */
+export const ON_VIEW_REPAIR_GRACE_MS = 20_000;
+
 /** S8-21: the results page repairs a SOLO owner's closed-but-unfinalized
- *  session on render (no grace: no emails, and the owner is looking at it).
+ *  session on render once `graceMs` has passed since the close.
  *  Group sessions are left to the cron because phase 2 sends email. */
 export function soloRepairOwedOnView(
   row: {
@@ -280,7 +286,9 @@ export function soloRepairOwedOnView(
     closeFinalizedAt: Date | null;
   },
   viewerId: string,
+  graceMs: number = ON_VIEW_REPAIR_GRACE_MS,
+  now: number = Date.now(),
 ): boolean {
   if (row.isGroup || row.createdBy !== viewerId) return false;
-  return needsFinalize(row, Date.now(), 0);
+  return needsFinalize(row, now, graceMs);
 }
