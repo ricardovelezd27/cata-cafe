@@ -356,6 +356,27 @@ flowchart TD
 - Language: `signInWithMagicLink(formData, next, locale)` sends `preferred_lang` (new accounts only) and defaults `next` to `/{locale}/app`; `signOut(locale)` lands on `/` or `/en`; the ES/EN switch keeps page, query and hash (`lib/localeSwitch.ts`).
 - The welcome dialog mounts only on `/app` itself and never for guests; closing it (X, Esc, skip) calls `dismissOnboarding`, which sets only `onboardingCompleted`.
 
+### Account lifecycle and guest safety (2026-11, S8-07)
+
+```mermaid
+flowchart TD
+  S[Salir / Cambiar de cuenta / Salir en todos] --> G{guest or everywhere?}
+  G -- registered, this device --> A[signOut scope local]
+  G -- guest --> W[loss warning: Guardar mis resultados - or - Salir de todos modos]
+  G -- everywhere --> X[confirm -> signOut scope global]
+  W -- save --> CL[normal claim flow]
+  W -- leave --> A
+  A -- ok --> D[clear device caches -> navigate]
+  A -- offline or error --> T[toast, nothing cleared]
+```
+
+- **Sign-out**: `signOut(locale, scope)` / `switchAccount(locale, next?)` return `ActionResult<{ next }>`; the client clears `cata-pages-*`/`cata-rsc-*`, the last-user pointer and the seen-set only after the server confirmed. Default scope is `local` (this device); `global` is the explicit "Salir en todos los dispositivos". A guest always sees the loss warning first (`GuestGateProvider.leave` carries the copy). Unsynced-draft warning is S8-09.
+- **Claim hardening**: `lib/guestClaimToken.ts` is the pure half (token, `safeClaimBack`, `anonEvalWins`). `confirmGuestClaim` returns an ActionResult: `invalid_token` / `token_expired` / `not_found` (already linked) go to the page's final cards, anything else shows a RETRY card (the merge is one transaction, safe to repeat). `mergeGuestData` separates `lookup_failed` (auth service blip, retry) from `not_anonymous` (final), runs with a 30 s transaction timeout, and re-fires the aggregate trigger only for samples where an evaluation was deleted by a conflict and sessions where an exclusion flag was merged. The card offers "Usar otra cuenta" (signs out this device and returns to the same claim) and "No vincular" (behind a warning) instead of "Cancelar".
+- **7-day claim token (F-guest-9, accepted risk)**: it is a bearer token in the guest's own URL/email. Anyone holding it who signs in can only reach a confirmation card naming the guest and counts; nothing merges on a GET, and the merge refuses a source that is no longer anonymous. TTL stays 7 days so a re-sent magic link still redeems.
+- **User columns**: `lib/accountDeletion/manifest.ts` lists every `Profile` FK and bare user column (`CloseEmailDelivery.userId`, `AiChatUsage.userId`, `OutboundEmailEvent.actorKey` = `u_<id>`, waitlist by email) with its merge rule and its INTENDED deletion rule. `tests/profileRelations.test.ts` fails on an unlisted relation and checks the merge source for each listed table. `deleteAccount` is not built (tombstone design, E3/E4 owner choices); when it is, it is a NEW sanctioned write on closed sessions and §1 must say so.
+- **Guest join**: `checkJoinable(token)` (`lib/joinability.ts`, same rule as the `/join` page and `joinViaToken`) runs before `signInAnonymously`; a closed link shows its own state to a visitor with no session (a signed-in participant still reaches results through `joinViaToken`); a retry reuses the anonymous user the earlier try created.
+- **Email change**: registered users only (`requestEmailChange`), mails a confirmation through `/auth/confirm` (type `email_change`) back to `/app/profile`; the profile shows `new_email` as pending until it is confirmed.
+
 ## 2. Coffee visibility & sharing
 
 A coffee is a reusable asset owned by its creator (producer/roaster/café). The

@@ -753,3 +753,29 @@ address: the email is in English and the link goes to `/en/auth/confirm`.
 
 **Rollback:** paste the previous templates back (copy them before step 4). The code keeps
 accepting both link shapes.
+
+## §16. Supabase — account settings and guest capacity (2026-11, S8-07)
+
+No migration, no SQL, no new env variable. Two dashboard settings, one rehearsal.
+
+1. Authentication → **Sign In / Providers → Email**: turn on **Secure email change** (the change
+   needs a click from the old and the new mailbox, so a hijacked session cannot silently move the
+   account). The **Change Email Address** template was pasted in §15; the link lands on
+   `/auth/confirm` and returns to `/app/profile`.
+2. Authentication → **Rate Limits → Anonymous sign-ins**: this is a per-IP hourly cap. A room
+   where 40 people share one Wi-Fi shows up as ONE IP. Set it to at least 2x the largest
+   expected room per hour (for a 50-person tasting, 100 or more). Confirm "Allow anonymous
+   sign-ins" is on (CLAUDE.md, Supabase Manual Steps).
+3. **Rehearsal before a big event** (5 minutes): from one network, open the QR link in 40
+   fresh private windows in sequence and join each time. All 40 must reach the waiting room or
+   `/cup`. If the 41st fails with the "mucha gente está entrando" message, the limit is too low.
+   Fallback during an event: people join with their email (magic link or 6-digit code).
+
+**Manual path for a lost mailbox (E4 option c, Ricardo only; `TODO(E4-Kim)`):** a person who
+can no longer open their old address and cannot use "Cambiar correo" writes to support. Verify
+who they are by a second channel, then in Supabase Dashboard → Authentication → Users edit the
+user's email to the new address. The profile and all history stay attached because they hang off
+the user id, not the address. Never create a second account and "move" data by hand.
+
+**Not in this release:** account deletion (`deleteAccount`). The manifest and its test are in;
+the destructive action waits on the tombstone design and the E3/E4 answers.
