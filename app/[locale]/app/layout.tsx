@@ -7,6 +7,7 @@ import TopBar from "@/components/layout/TopBar";
 import BottomNav from "@/components/layout/BottomNav";
 import OnboardingWrapper from "@/components/onboarding/OnboardingWrapper";
 import type { WelcomeModalTranslations } from "@/components/onboarding/WelcomeModal";
+import { LegacyStorageCleanup } from "@/components/layout/LegacyStorageCleanup";
 import { PendingDraftsBadge } from "@/components/offline/PendingDraftsBadge";
 import type { UnsyncedNotesTranslations } from "@/components/offline/UnsyncedNotesPanel";
 import {
@@ -143,6 +144,7 @@ export default async function AppLayout({
       <Sidebar locale={locale} showInsights={showInsights} translations={translations} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <TopBar locale={locale} translations={translations} />
+        <LegacyStorageCleanup />
         <PendingDraftsBadge
           userId={user.id}
           locale={locale}
