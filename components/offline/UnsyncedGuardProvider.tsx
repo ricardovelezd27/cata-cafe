@@ -14,7 +14,7 @@ import { ConfirmDialog } from "@/components/ui";
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { OFFLINE_SYNC_EVENT } from "@/hooks/useOfflineSync";
-import { countDeviceOnly, rekeyUserBlobs } from "@/lib/offline/store";
+import { countWarnable, rekeyUserBlobs } from "@/lib/offline/store";
 import { CLAIM_ANON_KEY, CLAIM_DONE_KEY, decideClaimRekey } from "@/lib/offline/claimMarker";
 import { purgeCachesOnUserChange } from "@/lib/offline/deviceState";
 
@@ -119,12 +119,12 @@ export function UnsyncedGuardProvider({
 
   const confirmLeave = useCallback(
     async (kind: GuardKind): Promise<boolean> => {
-      let count = await countDeviceOnly(userId);
+      let count = await countWarnable(userId);
       if (count === 0) return true;
       // Online: try to push the queue first; only warn about what is left.
       if (onlineRef.current) {
         await retryRef.current();
-        count = await countDeviceOnly(userId);
+        count = await countWarnable(userId);
         if (count === 0) return true;
       }
       return new Promise<boolean>((resolve) => {

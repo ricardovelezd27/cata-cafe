@@ -11,7 +11,7 @@ import {
   setModuleStatus,
 } from "@/lib/offline/store";
 import type { EvalModuleKey } from "@/lib/evaluation";
-import { moduleToSend, type ReplayOutcome } from "@/lib/offline/status";
+import { moduleToSend, phaseAfterPass, type ReplayOutcome } from "@/lib/offline/status";
 import {
   EVALUATION_MODULES,
   type Data,
@@ -168,6 +168,7 @@ export function useOfflineSync({
 
       let anyRetry = false;
       let skippedStale = false;
+      let anyWaiting = false;
 
       try {
         if (manual) await reviveFailedModules(userId);
@@ -215,7 +216,8 @@ export function useOfflineSync({
               // Edited while the request was in flight: the newer edit stays
               // pending and goes out on a quick follow-up run.
               if (!applied) skippedStale = true;
-              else if (result === "retry" || result === "waiting") anyRetry = true;
+              else if (result === "retry") anyRetry = true;
+              else if (result === "waiting") anyWaiting = true;
             }
           }
         }
@@ -230,8 +232,9 @@ export function useOfflineSync({
         );
 
         if (runRef.current === myRun) {
-          setSyncPhase(anyRetry || stuck ? "failed" : "synced");
-          if (!anyRetry && !stuck) {
+          const phase = phaseAfterPass({ anyRetry, stuck, anyWaiting });
+          setSyncPhase(phase);
+          if (phase === "synced") {
             setTimeout(() => {
               if (runRef.current === myRun) setSyncPhase("idle");
             }, SYNCED_BANNER_MS);

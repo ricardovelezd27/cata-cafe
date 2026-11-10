@@ -26,6 +26,7 @@ import {
   countStatuses,
   deviceOnlyCount,
   isTerminal,
+  warnableCount,
   rekeyBlob,
   reviveFailed,
   type ReplayOutcome,
@@ -317,6 +318,11 @@ export async function countUserStatuses(userId: string): Promise<StatusCounts> {
 /** How many modules exist only on this device (everything not `synced`). */
 export async function countDeviceOnly(userId: string): Promise<number> {
   return deviceOnlyCount(await countUserStatuses(userId));
+}
+
+/** What the sign-out / claim dialog warns about (S8-23, C-05b). */
+export async function countWarnable(userId: string): Promise<number> {
+  return warnableCount(await loadUserBlobs(userId));
 }
 
 /** Manual retry: `failed` modules go back into the queue with a clean slate. */

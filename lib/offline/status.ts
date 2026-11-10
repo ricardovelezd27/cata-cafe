@@ -110,6 +110,14 @@ export function applyOutcome(
   opts: { ifUpdatedAt?: number; now?: number } = {},
 ): OfflineModuleData | null {
   if (opts.ifUpdatedAt !== undefined && mod.updatedAt !== opts.ifUpdatedAt) return null;
+  // S8-23 (C-05c): a failed send of a module whose next timed attempt is not yet
+  // due (a pass triggered by returning to the tab, not by the schedule) is not a
+  // consumed attempt; otherwise five app switches on a captive portal park the
+  // draft as `failed`. TODO(S8-23): confirm with the owner that "not due" is the
+  // right reading of "nothing was attempted".
+  if (outcome === "retry" && mod.nextAttemptAt !== undefined && mod.nextAttemptAt > (opts.now ?? Date.now())) {
+    return mod;
+  }
   const { status, attempts } = statusForOutcome(outcome, mod.attempts ?? 0);
   const next: OfflineModuleData = { ...mod, syncStatus: status, attempts };
   delete next.waiting;
@@ -122,6 +130,40 @@ export function applyOutcome(
     delete next.nextAttemptAt;
   }
   return next;
+}
+
+/** S8-23 (C-05a): the banner phase after a pass. A module only `waiting` for the
+ *  live session to start is not a failure: it reads as neutral (idle; the
+ *  per-session indicator shows the pending copy), never "sync failed". */
+export function phaseAfterPass(o: {
+  anyRetry: boolean;
+  stuck: boolean;
+  anyWaiting: boolean;
+}): "failed" | "synced" | "idle" {
+  if (o.anyRetry || o.stuck) return "failed";
+  if (o.anyWaiting) return "idle";
+  return "synced";
+}
+
+/** Terminal orphaned notes older than this stop counting for the sign-out warning. */
+export const ORPHAN_WARN_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** S8-23 (C-05b): modules whose loss the sign-out / claim dialog should warn
+ *  about: everything unsynced, except orphaned notes older than 30 days (the
+ *  person has had a month to read them; removing one in the panel already drops
+ *  it from the store). */
+export function warnableCount(blobs: Iterable<OfflineSessionBlob>, now: number = Date.now()): number {
+  let n = 0;
+  for (const blob of blobs) {
+    for (const sample of Object.values(blob.samples)) {
+      for (const mod of Object.values(sample.modules)) {
+        if (!mod || !isUnsynced(mod.syncStatus)) continue;
+        if (mod.syncStatus === "orphaned" && now - mod.updatedAt > ORPHAN_WARN_MAX_AGE_MS) continue;
+        n += 1;
+      }
+    }
+  }
+  return n;
 }
 
 /** S8-23 (C-01/C-02): what a replay pass should send for one module, decided
