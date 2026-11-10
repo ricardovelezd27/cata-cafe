@@ -1600,7 +1600,7 @@
     },
     "waiting": {
       "title": "While you wait",
-      "body": "A slow movement prepares the senses. Pick an exercise; if the cupping starts, we take you to the table.",
+      "body": "A slow movement helps you settle before cupping. Pick an exercise; if the cupping starts, we take you to the table.",
       "minutes": "{min} min",
       "hero": "Your host chose",
       "heroStart": "Start",
@@ -1658,7 +1658,7 @@
       "breathOnItsOwn": "Let your breathing go on its own.",
       "goToTable": "Go to the table",
       "doneTitle": "Done",
-      "doneBody": "Back to the cupping with your senses awake.",
+      "doneBody": "Back to the cupping, settled.",
       "noticedTitle": "What you may have noticed",
       "repeat": "Repeat",
       "backToList": "Back to the exercises",

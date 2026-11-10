@@ -1600,7 +1600,7 @@
     },
     "waiting": {
       "title": "Mientras esperas",
-      "body": "Un movimiento lento prepara los sentidos. Elige un ejercicio; si la cata empieza, te llevamos a la mesa.",
+      "body": "Un movimiento lento te ayuda a asentarte antes de catar. Elige un ejercicio; si la cata empieza, te llevamos a la mesa.",
       "minutes": "{min} min",
       "hero": "Tu maestro eligió",
       "heroStart": "Empezar",
@@ -1658,7 +1658,7 @@
       "breathOnItsOwn": "Deja que la respiración vaya sola.",
       "goToTable": "Ir a la mesa",
       "doneTitle": "Listo",
-      "doneBody": "Vuelve a la cata con los sentidos despiertos.",
+      "doneBody": "Vuelve a la cata con calma.",
       "noticedTitle": "Lo que pudiste notar",
       "repeat": "Repetir",
       "backToList": "Volver a los ejercicios",
