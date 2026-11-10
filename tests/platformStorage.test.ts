@@ -30,6 +30,29 @@ describe("requestPersistentStorage", () => {
       (await requestPersistentStorage({ persist: async () => { throw new Error("x"); }, ls: memLs(), now: () => 1 }))?.outcome,
     ).toBe("error");
   });
+  it("asks again after 24 h when denied, not before", async () => {
+    const ls = memLs();
+    let calls = 0;
+    let t = 1000;
+    const env = { persist: async () => (calls++, calls >= 2), ls, now: () => t };
+    expect((await requestPersistentStorage(env))?.outcome).toBe("denied");
+    t = 1000 + 24 * 60 * 60 * 1000 - 1;
+    expect((await requestPersistentStorage(env))?.outcome).toBe("denied");
+    expect(calls).toBe(1);
+    t = 1000 + 24 * 60 * 60 * 1000;
+    expect(await requestPersistentStorage(env)).toEqual({ outcome: "granted", at: t });
+    expect(calls).toBe(2);
+  });
+  it("never asks again once granted", async () => {
+    const ls = memLs();
+    let calls = 0;
+    let t = 0;
+    const env = { persist: async () => (calls++, true), ls, now: () => t };
+    await requestPersistentStorage(env);
+    t = 100 * 24 * 60 * 60 * 1000;
+    await requestPersistentStorage(env);
+    expect(calls).toBe(1);
+  });
   it("survives a missing or throwing localStorage", async () => {
     const bad = { getItem: () => { throw new Error("blocked"); }, setItem: () => { throw new Error("blocked"); } };
     expect((await requestPersistentStorage({ persist: async () => true, ls: bad, now: () => 5 }))?.outcome).toBe("granted");

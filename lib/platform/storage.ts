@@ -10,6 +10,7 @@
 // native shell replaces IndexedDB here; this module stays the seam.
 
 export const PERSIST_KEY = "cata_storage_persist";
+export const PERSIST_RETRY_MS = 24 * 60 * 60 * 1000;
 export const STALE_DRAFT_MS = 3 * 24 * 60 * 60 * 1000;
 
 export type PersistOutcome = "granted" | "denied" | "unsupported" | "error";
@@ -53,7 +54,11 @@ export async function requestPersistentStorage(
   env: PersistEnv = defaultEnv(),
 ): Promise<PersistState | null> {
   const existing = getPersistState(env);
-  if (existing) return existing;
+  const nowFn = env.now ?? Date.now;
+  if (existing) {
+    const final = existing.outcome === "granted" || existing.outcome === "unsupported";
+    if (final || nowFn() - existing.at < PERSIST_RETRY_MS) return existing;
+  }
   if (inFlight) return null;
   inFlight = true;
   try {
