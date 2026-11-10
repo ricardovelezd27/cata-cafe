@@ -30,7 +30,7 @@ export function SignOutButton({
     startTransition(async () => {
       await clearLocalDeviceState();
       if (mode === "switchAccount") await switchAccount(locale);
-      else await signOut();
+      else await signOut(locale);
     });
   };
 

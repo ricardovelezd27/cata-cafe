@@ -1,6 +1,8 @@
 import { getTranslations } from "next-intl/server";
 import { Check } from "lucide-react";
 import WaitlistForm from "./WaitlistForm";
+import { emailSentCopy } from "@/components/auth/authCopy";
+import { supportMailto } from "@/lib/siteContact";
 
 function FeatureList({ items }: { items: string[] }) {
   return (
@@ -18,6 +20,7 @@ function FeatureList({ items }: { items: string[] }) {
 export default async function FoundingSection({ locale }: { locale: string }) {
   const t = await getTranslations("landing.founding");
   const tw = await getTranslations("landing.waitlist");
+  const ta = await getTranslations("auth");
 
   const waitlistLabels = {
     label: tw("label"),
@@ -29,6 +32,8 @@ export default async function FoundingSection({ locale }: { locale: string }) {
     invalid: tw("invalid"),
     error: tw("error"),
     rateLimit: tw("rateLimit"),
+    sent: emailSentCopy(ta),
+    supportHref: supportMailto(),
   };
 
   return (

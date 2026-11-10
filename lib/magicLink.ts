@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { reserveEmailBudget } from "@/lib/emailBudget";
 import { trustedRequestOrigin } from "@/lib/requestOrigin";
 import { parseClientIp } from "@/lib/requestIp";
-import { safeNextPath } from "@/lib/trustedOrigin";
+import { safeNext } from "@/lib/safeNext";
+import { mapAuthError, type AuthErrorKey } from "@/lib/authErrors";
 
 // The ONE place a sign-in link is requested (S8-03, F-entrar-6): the login
 // form (signInWithMagicLink) and the founding-seat signup (reserveFoundingSeat)
@@ -14,9 +15,11 @@ import { safeNextPath } from "@/lib/trustedOrigin";
 
 export type MagicLinkResult =
   | { ok: true }
-  | { ok: false; error: string; retryAfterMs?: number };
+  | { ok: false; error: AuthErrorKey; retryAfterMs?: number };
 
-const DEFAULT_NEXT = "/es/app";
+export function defaultNextFor(locale: string | undefined): string {
+  return locale === "en" ? "/en/app" : "/es/app";
+}
 
 /**
  * @param beforeSend runs after the budget check passes and before the link is
@@ -25,13 +28,14 @@ const DEFAULT_NEXT = "/es/app";
  */
 export async function sendMagicLink(
   rawEmail: string,
-  next: string | undefined,
+  opts: { next?: string; locale?: string },
   beforeSend?: () => Promise<void>,
 ): Promise<MagicLinkResult> {
   const email = rawEmail.trim();
-  if (!email) return { ok: false, error: "missing_email" };
+  if (!email) return { ok: false, error: "invalid_email" };
   if (email.length > 254) return { ok: false, error: "invalid_email" };
 
+  const locale = opts.locale === "en" ? "en" : "es";
   const h = await headers();
   const ip = parseClientIp(h.get("x-forwarded-for"));
   const budget = await reserveEmailBudget({ kind: "magic_link", ip, email });
@@ -47,14 +51,20 @@ export async function sendMagicLink(
   // flow is stateless, so it works even when the email link opens in a
   // different browser or an in-app webview (where PKCE code exchange fails).
   const origin = await trustedRequestOrigin();
-  const redirectTo = `${origin}${safeNextPath(next, DEFAULT_NEXT)}`;
+  const redirectTo = `${origin}${safeNext(opts.next, { fallback: defaultNextFor(locale) })}`;
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: redirectTo },
+    options: {
+      emailRedirectTo: redirectTo,
+      // Becomes profiles.preferredLang through handle_new_user() and picks the
+      // language of the email templates. Supabase only applies `data` when the
+      // user is CREATED: an existing account keeps the language it already has.
+      data: { preferred_lang: locale },
+    },
   });
 
-  if (error) return { ok: false, error: error.code ?? error.message };
+  if (error) return { ok: false, error: mapAuthError(error.code ?? error.message) };
   return { ok: true };
 }

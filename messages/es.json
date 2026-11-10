@@ -75,6 +75,37 @@
       "errorExpired": "El enlace caducó (dura 7 días). Si todavía tienes abierta la sesión de invitado en el dispositivo donde cataste, vuelve a sus resultados y pulsa «Crear cuenta y guardar» de nuevo. Tu cuenta funciona con normalidad.",
       "errorAlready": "Estos resultados ya fueron vinculados a una cuenta, o la participación como invitado ya no existe.",
       "continue": "Ir a mi cuenta"
+    },
+    "errors": {
+      "rate_limited": "Demasiados intentos en poco tiempo. Espera un minuto e inténtalo de nuevo.",
+      "invalid_email": "Revisa el correo: no parece una dirección válida.",
+      "code_invalid": "El código o el enlace no es válido, ya se usó o caducó. Revisa los 6 dígitos o pide uno nuevo.",
+      "link_failed": "No pudimos completar el acceso con ese enlace. Pide uno nuevo.",
+      "cancelled": "Cancelaste el acceso con Google. Puedes intentarlo de nuevo o entrar con tu correo.",
+      "unreachable": "No pudimos conectar con el servicio de acceso. Revisa tu conexión e inténtalo de nuevo.",
+      "unknown": "Algo salió mal al entrar. Inténtalo de nuevo."
+    },
+    "sentState": {
+      "title": "Revisa tu correo",
+      "body": "Enviamos un enlace y un código de 6 dígitos a {email}. Usa lo que te quede más a mano.",
+      "codeLabel": "Código de 6 dígitos",
+      "codeHint": "Cópialo del mismo correo. Sirve si el enlace no abre o se abrió en otro navegador.",
+      "codeSubmit": "Entrar con el código",
+      "codeSubmitting": "Verificando…",
+      "resend": "Reenviar correo",
+      "resendIn": "Reenviar en {seconds} s",
+      "resent": "Enviamos un correo nuevo. Los anteriores dejan de servir.",
+      "changeEmail": "Usar otro correo",
+      "support": "¿Problemas para entrar? Escríbenos"
+    },
+    "confirm": {
+      "title": "Confirma tu acceso",
+      "body": "Pulsa «Entrar» para terminar de iniciar sesión. Lo pedimos para que los filtros de seguridad del correo no gasten tu enlace.",
+      "button": "Entrar",
+      "working": "Entrando…",
+      "failedTitle": "Este enlace ya no sirve",
+      "failedBody": "Los enlaces de acceso funcionan una sola vez y caducan. Pide uno nuevo y entra con el enlace o con el código de 6 dígitos.",
+      "newLink": "Pedir un enlace nuevo"
     }
   },
   "dashboard": {

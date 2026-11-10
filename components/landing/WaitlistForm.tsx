@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { reserveFoundingSeat, type WaitlistState } from "@/app/actions/waitlist";
+import { EmailSentState, type EmailSentLabels } from "@/components/auth/EmailSentState";
 
 type Labels = {
   label: string;
@@ -13,6 +14,9 @@ type Labels = {
   invalid: string;
   error: string;
   rateLimit: string;
+  /** Sent state shared with the login form (code entry, resend, support). */
+  sent: EmailSentLabels;
+  supportHref: string;
 };
 
 // onDark: glass card on the green stage. onLight: the solid cream hero card.
@@ -49,8 +53,37 @@ export default function WaitlistForm({
     reserveFoundingSeat,
     { status: "idle" },
   );
+  // "Use another email" hides the sent state until the next submit replaces `state`.
+  const [dismissed, setDismissed] = useState<WaitlistState | null>(null);
 
-  if (state.status === "ok") {
+  if (state.status === "ok" && state.email && state !== dismissed) {
+    const address = state.email;
+    return (
+      <EmailSentState
+        email={address}
+        locale={locale}
+        labels={labels.sent}
+        supportHref={labels.supportHref}
+        tone={variant === "onDark" ? "dark" : "light"}
+        onChangeEmail={() => setDismissed(state)}
+        onResend={async () => {
+          const fd = new FormData();
+          fd.set("email", address);
+          fd.set("locale", locale);
+          fd.set("company", "");
+          const r = await reserveFoundingSeat({ status: "idle" }, fd);
+          if (r.status === "ok") return { ok: true };
+          return {
+            ok: false,
+            error: r.status === "error" && r.code === "rate_limit" ? "rate_limited" : "unknown",
+            retryAfterMs: r.status === "error" ? r.retryAfterMs : undefined,
+          };
+        }}
+      />
+    );
+  }
+
+  if (state.status === "ok" && !state.email) {
     return (
       <div role="status" className={s.success}>
         <p className="font-semibold">{labels.success}</p>
@@ -82,6 +115,7 @@ export default function WaitlistForm({
           type="email"
           name="email"
           required
+          defaultValue={dismissed?.status === "ok" ? dismissed.email : undefined}
           placeholder={labels.emailPlaceholder}
           className={s.input}
         />

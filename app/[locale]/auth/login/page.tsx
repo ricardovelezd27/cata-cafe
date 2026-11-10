@@ -2,6 +2,9 @@ import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { safeNext } from "@/lib/safeNext";
+import { loginErrorFromParam } from "@/lib/authErrors";
+import { supportMailto } from "@/lib/siteContact";
+import { authErrorCopy, emailSentCopy } from "@/components/auth/authCopy";
 import { LoginForm } from "./LoginForm";
 
 export default async function LoginPage({
@@ -29,7 +32,8 @@ export default async function LoginPage({
 
   const t = await getTranslations("auth");
 
-  const linkFailed = error === "exchange_failed";
+  const errorKey = loginErrorFromParam(error);
+  const linkFailed = errorKey === "link_failed";
 
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-16">
@@ -52,17 +56,16 @@ export default async function LoginPage({
           emailLabel={t("email")}
           sendLabel={t("sendLink")}
           sendingLabel={t("sending")}
-          sentLabel={t("sent")}
-          errorLabel={t("error")}
-          rateLimitErrorLabel={t("rateLimitError")}
           googleLabel={t("signInWithGoogle")}
           orLabel={t("or")}
           subtitleLabel={t("loginSubtitle")}
-          changeEmailLabel={t("changeEmail")}
-          sentHintLabel={t("sentHint")}
-          googleErrorLabel={t("googleError")}
+          sentLabels={emailSentCopy(t)}
+          errors={authErrorCopy(t)}
+          supportHref={supportMailto()}
+          locale={locale}
           next={next}
           initialEmail={email}
+          initialError={linkFailed ? null : errorKey}
           autoFocusEmail={linkFailed}
         />
       </div>

@@ -6,8 +6,8 @@ import { logWarn } from "@/lib/log";
 
 export type WaitlistState =
   | { status: "idle" }
-  | { status: "ok" }
-  | { status: "error"; code: "invalid_email" | "server" | "rate_limit" };
+  | { status: "ok"; email?: string }
+  | { status: "error"; code: "invalid_email" | "server" | "rate_limit"; retryAfterMs?: number };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -30,10 +30,10 @@ export async function reserveFoundingSeat(
     return { status: "error", code: "invalid_email" };
   }
 
-  const next = locale === "es" ? "/app" : "/en/app";
   // One reservation per signup: the budget is checked first, the entry is
-  // recorded only if the send is allowed, then the link goes out.
-  const sent = await sendMagicLink(email, next, async () => {
+  // recorded only if the send is allowed, then the link goes out. The default
+  // destination (/{locale}/app) comes from the locale.
+  const sent = await sendMagicLink(email, { locale }, async () => {
     try {
       await prisma.waitlistEntry.create({ data: { email, locale } });
     } catch (e) {
@@ -46,11 +46,9 @@ export async function reserveFoundingSeat(
   if (!sent.ok) {
     return {
       status: "error",
-      code:
-        sent.error === "over_email_send_rate_limit" || sent.error === "rate_limited"
-          ? "rate_limit"
-          : "server",
+      code: sent.error === "rate_limited" ? "rate_limit" : "server",
+      ...(sent.retryAfterMs ? { retryAfterMs: sent.retryAfterMs } : {}),
     };
   }
-  return { status: "ok" };
+  return { status: "ok", email };
 }
