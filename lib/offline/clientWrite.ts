@@ -34,6 +34,14 @@ export function sanitizeClientTs(raw: unknown, now: number = Date.now()): number
  * runs fast can then never harden a row beyond "now", so a later honest write
  * (other device, or the same device after its clock is corrected) is not
  * mistaken for a stale one. Undefined when the stamp is absent/unusable.
+ *
+ * BY DESIGN (S8 audit C-02, accepted): this clamp bounds how far a fast clock
+ * can lock out later writes, but it does not make ordering exact. Two tabs or
+ * devices still order by arrival when both stamps clamp to the server's "now"
+ * (and tests/clientWrite pins that the hole exists). Closing it needs a
+ * server-assigned version column (a migration) and is deliberately not done:
+ * the client never sends a stale payload on its own path (C-01), and a
+ * cupper normally evaluates from one device.
  */
 export function effectiveClientTs(clientTs: unknown, now: number = Date.now()): number | undefined {
   const ts = sanitizeClientTs(clientTs, now);
