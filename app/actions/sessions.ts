@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser, requireRegisteredUser } from "@/lib/auth";
 import { run } from "@/lib/safeAction";
+import { notifyFlagAfterGroupChange } from "@/lib/groupNotify";
 import type { ActionResult } from "@/lib/actionResult";
 import type { Prisma } from "@/app/generated/prisma/client";
 import {
@@ -1122,6 +1123,7 @@ async function updateSessionBody(
     date?: Date;
     objective?: string | null;
     groupId?: string | null;
+    notifyGroupAtStart?: boolean;
     format?: string;
     cupsPerSample?: number;
     closesAt?: Date | null;
@@ -1219,6 +1221,16 @@ async function updateSessionBody(
       }
       data.groupId = input.groupId;
     }
+    // S8-17: the "notify the group at start" tick was made for the group the
+    // owner picked at creation. If the group changes (or is removed) the start
+    // email must not go to a different group the owner never ticked it for;
+    // they can notify from the group page. An unchanged re-post keeps the flag.
+    const storedGroup = await prisma.cuppingSession.findUnique({
+      where: { id: sessionId },
+      select: { groupId: true },
+    });
+    const flag = notifyFlagAfterGroupChange(storedGroup?.groupId ?? null, data.groupId ?? null);
+    if (flag !== undefined) data.notifyGroupAtStart = flag;
   }
 
   if (input.format !== undefined || input.cupsPerSample !== undefined) {

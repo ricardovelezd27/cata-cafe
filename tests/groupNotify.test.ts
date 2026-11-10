@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { noticeOutcome, shouldNotifyAtCreate, shouldNotifyAtStart } from "@/lib/groupNotify";
+import { notifyFlagAfterGroupChange, noticeOutcome, shouldNotifyAtCreate, shouldNotifyAtStart } from "@/lib/groupNotify";
 
 const base = { isGroup: true, isAsync: false, hasGroup: true, alreadyNotified: false };
 const startBase = { ...base, notifyGroupAtStart: true, startFlipped: true };
@@ -49,5 +49,17 @@ describe("shouldNotifyAtCreate", () => {
   it("not when already notified or unlinked", () => {
     expect(shouldNotifyAtCreate({ ...base, isAsync: true, alreadyNotified: true })).toBe(false);
     expect(shouldNotifyAtCreate({ ...base, isAsync: true, hasGroup: false })).toBe(false);
+  });
+});
+
+describe("notifyFlagAfterGroupChange", () => {
+  it("changing or removing the group clears the flag", () => {
+    expect(notifyFlagAfterGroupChange("A", "B")).toBe(false);
+    expect(notifyFlagAfterGroupChange("A", null)).toBe(false);
+    expect(notifyFlagAfterGroupChange(null, "B")).toBe(false);
+  });
+  it("an unchanged group leaves the flag alone", () => {
+    expect(notifyFlagAfterGroupChange("A", "A")).toBeUndefined();
+    expect(notifyFlagAfterGroupChange(null, null)).toBeUndefined();
   });
 });

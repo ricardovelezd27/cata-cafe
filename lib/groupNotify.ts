@@ -49,3 +49,12 @@ export function noticeOutcome(summary: { sent: number; failed: number }): Notice
 export function shouldNotifyAtCreate(i: NotifyRuleInput): boolean {
   return i.isGroup && i.isAsync && i.hasGroup && !i.alreadyNotified;
 }
+
+/** `updateSession` group edit: a tick made for group A must never email group B.
+ *  Returns the new flag, or `undefined` to leave it untouched (same group). */
+export function notifyFlagAfterGroupChange(
+  storedGroupId: string | null,
+  nextGroupId: string | null,
+): false | undefined {
+  return storedGroupId === nextGroupId ? undefined : false;
+}
