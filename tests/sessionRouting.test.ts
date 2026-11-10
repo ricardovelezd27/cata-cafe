@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { sessionHref } from "@/lib/sessionRouting";
 
 const NOW = new Date("2026-11-10T12:00:00.000Z");
-const base = { id: "s1", status: "active", isGroup: true, startedAt: new Date("2026-11-10T10:00:00Z") };
+const base = { id: "s1", status: "active", isGroup: true, isAsync: false, startedAt: new Date("2026-11-10T10:00:00Z") };
 const past = new Date(NOW.getTime() - 1);
 const future = new Date(NOW.getTime() + 60_000);
 
@@ -41,5 +41,20 @@ describe("sessionHref", () => {
     expect(
       sessionHref({ ...base, closesAt: past.toISOString() }, { locale: "es", isOwner: true }, NOW),
     ).toBe("/es/app/sessions/s1/results");
+  });
+
+  it("S8-11 T3 matrix: unstarted async goes to /cup, unstarted live to /waiting", () => {
+    const unstarted = { ...base, startedAt: null, closesAt: future };
+    for (const isOwner of [true, false]) {
+      expect(sessionHref({ ...unstarted, isAsync: true }, { locale: "es", isOwner }, NOW)).toBe(
+        "/es/app/sessions/s1/cup",
+      );
+    }
+    expect(sessionHref({ ...unstarted, isAsync: false }, { locale: "es", isOwner: false }, NOW)).toBe(
+      "/es/app/sessions/s1/waiting",
+    );
+    expect(sessionHref({ ...unstarted, isAsync: false }, { locale: "es", isOwner: true }, NOW)).toBe(
+      "/es/app/sessions/s1/cup",
+    );
   });
 });

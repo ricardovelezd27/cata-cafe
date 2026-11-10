@@ -34,6 +34,7 @@ type GroupSessionRow = {
   date: Date;
   status: string;
   isGroup: boolean;
+  isAsync: boolean;
   startedAt: Date | null;
   closesAt: Date | null;
 };
@@ -112,7 +113,7 @@ export default async function GroupDetailPage({
   const groupSessions: GroupSessionRow[] = await prisma.cuppingSession.findMany({
     where: { groupId: id },
     orderBy: { date: "desc" },
-    select: { id: true, name: true, date: true, status: true, isGroup: true, startedAt: true, closesAt: true },
+    select: { id: true, name: true, date: true, status: true, isGroup: true, isAsync: true, startedAt: true, closesAt: true },
   });
 
   // Only needed for the member (non-owner) view's per-session link rule.

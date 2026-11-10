@@ -89,6 +89,7 @@ export default async function ProfilePage({
         date: true,
         status: true,
         isGroup: true,
+        isAsync: true,
         startedAt: true,
         closesAt: true,
         createdBy: true,
