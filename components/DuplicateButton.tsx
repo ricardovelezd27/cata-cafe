@@ -6,6 +6,7 @@ import { Copy } from "lucide-react";
 import { duplicateSession } from "@/app/actions/sessions";
 import { duplicateCoffee } from "@/app/actions/coffees";
 import { duplicateGroup } from "@/app/actions/groups";
+import { useActionFeedback } from "@/components/ui/Toast";
 
 /** "Use as template" — duplicates a session/coffee/group and lands the user on
  *  the copy's edit surface. One component for all three so the affordance looks
@@ -17,6 +18,7 @@ export function DuplicateButton({
   locale,
   label,
   errorText,
+  droppedText,
   variant = "pill",
 }: {
   kind: "session" | "coffee" | "group";
@@ -24,9 +26,12 @@ export function DuplicateButton({
   locale: string;
   label: string;
   errorText: string;
+  /** Raw template with a `{count}` placeholder (session kind only). */
+  droppedText?: string;
   variant?: "icon" | "pill";
 }) {
   const router = useRouter();
+  const feedback = useActionFeedback();
   const [pending, start] = useTransition();
   const [failed, setFailed] = useState(false);
 
@@ -36,10 +41,23 @@ export function DuplicateButton({
       try {
         if (kind === "session") {
           const res = await duplicateSession(id, locale);
+          // Samples whose coffee the caller can no longer use became
+          // coffee-less: say so. The provider lives in the locale layout, so
+          // the toast survives the navigation below. The ICU `{count}` string
+          // arrives raw and is replaced here (calling t() without the arg
+          // would render the key).
+          if (res.droppedCoffees > 0 && droppedText) {
+            feedback.notifySuccess(droppedText.replace("{count}", String(res.droppedCoffees)));
+          }
           router.push(`/${locale}/app/sessions/${res.sessionId}/edit`);
         } else if (kind === "coffee") {
           const res = await duplicateCoffee(id, locale);
-          router.push(`/${locale}/app/coffees/${res.coffeeId}/edit`);
+          if (!res.ok) {
+            // run() returns the failure instead of throwing (S8-10 T12).
+            setFailed(true);
+            return;
+          }
+          router.push(`/${locale}/app/coffees/${res.data.coffeeId}/edit`);
         } else {
           const res = await duplicateGroup(id, locale);
           router.push(`/${locale}/app/groups/${res.groupId}`);

@@ -35,6 +35,21 @@ export function assertModuleBounds(data: Record<string, unknown>): void {
   }
 }
 
+/** Offline-replay wrapper: returns the derived fields, or `null` when the
+ *  payload is rejected with `invalid_input`. Any other error propagates. */
+export function tryComputeEvaluationDerived(
+  moduleKey: EvalModuleKey,
+  data: Record<string, unknown>,
+  cupsPerSample: number,
+): ReturnType<typeof computeEvaluationDerived> | null {
+  try {
+    return computeEvaluationDerived(moduleKey, data, cupsPerSample);
+  } catch (e) {
+    if (e instanceof Error && e.message === "invalid_input") return null;
+    throw e;
+  }
+}
+
 // Single source of truth for the Evaluation row shape derived from a module's
 // JSON data. Shared by `upsertEvaluation` (live autosave) and `syncEvaluation`
 // (offline replay) so both compute scores and flatten defect/uniformity arrays

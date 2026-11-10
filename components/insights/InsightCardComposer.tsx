@@ -21,6 +21,7 @@ import { InsightChart } from "@/components/insights/InsightChart";
 import { PivotTable } from "@/components/insights/PivotTable";
 import { PivotChart } from "@/components/insights/PivotChart";
 import { useContainerWidth } from "@/hooks/useContainerWidth";
+import { downloadFile } from "@/lib/platform/files";
 
 export interface ShareComposerTranslations {
   headline: string;
@@ -157,10 +158,7 @@ export function InsightCardComposer({ locale, config, citationLines, t }: Insigh
         width: CARD_WIDTH,
         height: CARD_HEIGHT,
       });
-      const link = document.createElement("a");
-      link.download = "cata-cafe-insight.png";
-      link.href = dataUrl;
-      link.click();
+      downloadFile({ url: dataUrl, filename: "cata-cafe-insight.png", mime: "image/png" });
     } catch {
       setExportError(true);
     } finally {

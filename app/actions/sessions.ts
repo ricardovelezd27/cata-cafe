@@ -24,11 +24,11 @@ import {
   syncCoffeeHistoryForSession,
 } from "@/lib/coffeeHistory";
 import { isSessionClosed, isSessionExpired, planClosesAtChange } from "@/lib/sessionState";
+import { endOfDayInZone, normalizeZone } from "@/lib/closeRules";
+import { removeSamplesInTx } from "@/lib/sampleRemoval";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { computeEvaluationDerived, moduleKeyForFormat } from "@/lib/evaluation";
 import {
-  activeReferenceId,
-  compactReferenceRanks,
   isPinnedModule,
   pinReferenceAffective,
   planAddReference,
@@ -42,6 +42,9 @@ import { checkWizardBounds } from "@/lib/coffeeInputBounds";
 import { CERTIFICATIONS } from "@/lib/constants";
 import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/groups";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
+import { splitEvaluationCounts } from "@/lib/deleteImpact";
+import { planAssignCoffee } from "@/lib/assignCoffee";
+import { pruneUnreferencedCoffees } from "@/lib/wizardCoffees";
 import { WARMUP_IDS, type WarmupId } from "@/lib/warmup/exercises";
 import { safeLocale } from "@/lib/safeLocale";
 import {
@@ -53,6 +56,7 @@ import {
   MAX_SESSION_SAMPLES,
   defaultSampleLabel,
 } from "@/lib/sessionEdit";
+import { submittedRefireArgs } from "@/lib/aggregateRefire";
 
 // Mirrors the standalone CoffeeForm's field set — wizard-created coffees land
 // in the SAME coffees table with the same shape (no wizard-only subset).
@@ -178,6 +182,8 @@ type SessionMeta = {
   format: (typeof SESSION_FORMATS)[number];
   cupsPerSample: number;
   closesAt: Date | null;
+  /** Owner's IANA zone when `closesAt` was set (null = UTC). */
+  closesAtZone: string | null;
   warmupExerciseId: WarmupId | null;
 };
 
@@ -196,6 +202,7 @@ function validateSessionMeta(input: {
   cupsPerSample: unknown;
   samples: unknown;
   closesAt?: unknown;
+  closesAtZone?: unknown;
   warmupExerciseId?: unknown;
 }): { ok: true; meta: SessionMeta } | { ok: false; error: string } {
   const field = (f: string, fn: () => void): string | null => {
@@ -212,6 +219,7 @@ function validateSessionMeta(input: {
   let format: SessionMeta["format"] = "combined";
   let cupsPerSample = 5;
   let closesAt: Date | null = null;
+  const closesAtZone = input.closesAt ? normalizeZone(input.closesAtZone) : null;
   let warmupExerciseId: WarmupId | null = null;
 
   const bad =
@@ -234,11 +242,14 @@ function validateSessionMeta(input: {
       v.list(input.samples, "samples", MAX_SAMPLES);
     }) ??
     field("invalid_closes_at", () => {
-      // Date-only from the wizard → end of that day (UTC), so the daily cron
-      // closes the session the morning AFTER the chosen date, not before it.
-      closesAt = input.closesAt
-        ? v.dateOnlyEndOfDay(input.closesAt, "closesAt", { future: true })
-        : null;
+      // Date-only from the wizard → END of that day in the owner's zone (UTC
+      // when the form sent none), so writes stop at the owner's midnight and
+      // the daily cron closes the session after it, never before.
+      if (input.closesAt) {
+        const d = endOfDayInZone(input.closesAt, closesAtZone);
+        if (d.getTime() < Date.now() + 60_000) throw new Error("invalid_closes_at");
+        closesAt = d;
+      }
     }) ??
     field("invalid_warmup", () => {
       warmupExerciseId = parseWarmupId(input.warmupExerciseId);
@@ -246,7 +257,7 @@ function validateSessionMeta(input: {
   if (bad) return { ok: false, error: bad };
   return {
     ok: true,
-    meta: { name, date, objective, format, cupsPerSample, closesAt, warmupExerciseId },
+    meta: { name, date, objective, format, cupsPerSample, closesAt, closesAtZone, warmupExerciseId },
   };
 }
 
@@ -369,6 +380,9 @@ async function createSessionBody(input: {
 }): Promise<{ ok: false; error: string } | void> {
   const user = await requireRegisteredUser();
 
+  // Cards no sample references are never created (S8-10 T4, F-crear-sesion-9).
+  input = { ...input, ...pruneUnreferencedCoffees(input.coffees ?? [], input.samples) };
+
   const invalid = validateSessionInput(input.coffees ?? [], input.samples);
   if (invalid) return { ok: false, error: invalid };
   const metaResult = validateSessionMeta(input);
@@ -489,6 +503,7 @@ export async function createGroupSession(input: {
   coffees?: CoffeeInput[];
   samples: SampleInput[];
   closesAt?: string;
+  closesAtZone?: string;
   groupId?: string;
   notifyGroup?: boolean;
   referenceIdx?: number | null;
@@ -509,6 +524,8 @@ async function createGroupSessionBody(input: {
   coffees?: CoffeeInput[];
   samples: SampleInput[];
   closesAt?: string;
+  /** IANA zone of the owner's browser, so "end of the day" is THEIR day. */
+  closesAtZone?: string;
   // Groups v2: optionally link the session to one of the owner's standing
   // tasting groups. When set, notifyGroup (default true) fires a best-effort
   // invitation email to every member right after creation.
@@ -520,6 +537,9 @@ async function createGroupSessionBody(input: {
   warmupExerciseId?: string | null;
 }): Promise<GroupSessionResult> {
   const user = await requireRegisteredUser();
+
+  // Cards no sample references are never created (S8-10 T4, F-crear-sesion-9).
+  input = { ...input, ...pruneUnreferencedCoffees(input.coffees ?? [], input.samples) };
 
   const invalid = validateSessionInput(input.coffees ?? [], input.samples);
   if (invalid) return { ok: false, error: invalid };
@@ -558,6 +578,7 @@ async function createGroupSessionBody(input: {
         isAsync: meta.closesAt !== null,
         status: "active",
         closesAt: meta.closesAt,
+        closesAtZone: meta.closesAtZone,
         createdBy: user.id,
         groupId: input.groupId ?? null,
         warmupExerciseId: meta.warmupExerciseId,
@@ -692,6 +713,13 @@ export async function upsertEvaluation(input: {
     result = await doUpsert();
   }
 
+  // S8-04 (F-solo-2): an edit of an ALREADY SUBMITTED row must re-fire the
+  // aggregate trigger (it only fires when "isDraft" is in the SET list). This
+  // guarded write matches only submitted rows, so a draft save (the 800 ms hot
+  // path) fires nothing; `fields` never carries isDraft, so a draft is never
+  // submitted by accident. See lib/aggregateRefire.ts.
+  await prisma.evaluation.updateMany(submittedRefireArgs(result.id));
+
   return { ok: true, evaluationId: result.id };
 }
 
@@ -702,6 +730,11 @@ export async function upsertEvaluation(input: {
 export type DeleteImpact = {
   cupperCount: number;
   evaluationCount: number;
+  /** Submitted vs draft split of `evaluationCount`. */
+  submittedCount: number;
+  draftCount: number;
+  /** Members who joined (the owner is not counted). */
+  participantCount: number;
   coffees: { id: string; name: string; code: string | null; ownerName: string; ownedByMe: boolean }[];
 };
 
@@ -709,13 +742,15 @@ export async function getDeleteImpact(sessionId: string): Promise<DeleteImpact> 
   const user = await requireUser();
   await requireSessionOwner(sessionId, user.id);
 
-  const [cuppers, evaluationCount, samples] = await Promise.all([
+  const [cuppers, evaluationCount, submittedTotal, participantCount, samples] = await Promise.all([
     prisma.evaluation.findMany({
       where: { sessionSample: { sessionId }, isDraft: false },
       select: { cupperId: true },
       distinct: ["cupperId"],
     }),
     prisma.evaluation.count({ where: { sessionSample: { sessionId } } }),
+    prisma.evaluation.count({ where: { sessionSample: { sessionId }, isDraft: false } }),
+    prisma.sessionParticipant.count({ where: { sessionId, status: "joined" } }),
     prisma.sessionSample.findMany({
       where: { sessionId, coffeeId: { not: null } },
       select: {
@@ -748,7 +783,15 @@ export async function getDeleteImpact(sessionId: string): Promise<DeleteImpact> 
     });
   }
 
-  return { cupperCount: cuppers.length, evaluationCount, coffees };
+  const { submittedCount, draftCount } = splitEvaluationCounts(evaluationCount, submittedTotal);
+  return {
+    cupperCount: cuppers.length,
+    evaluationCount,
+    submittedCount,
+    draftCount,
+    participantCount,
+    coffees,
+  };
 }
 
 // Deleting a session removes the event and every evaluation in it, but NOT
@@ -1014,6 +1057,8 @@ export type UpdateSessionInput = {
   // Group sessions only (S6 CP-C3): "YYYY-MM-DD" sets an automatic close at
   // the end of that day (UTC) and flips isAsync on; "" / null clears both.
   closesAt?: string | null;
+  /** IANA zone of the owner's browser; sent together with a changed closesAt. */
+  closesAtZone?: string | null;
   // Only valid for group sessions; null unlinks. A solo session must not carry
   // a groupId — the group page lists sessions by groupId and members would get
   // dead links to a session they can't open.
@@ -1057,15 +1102,28 @@ async function updateSessionBody(
     format?: string;
     cupsPerSample?: number;
     closesAt?: Date | null;
+    closesAtZone?: string | null;
     isAsync?: boolean;
     warmupExerciseId?: string | null;
   } = {};
 
   if (input.closesAt !== undefined) {
     try {
-      const plan = planClosesAtChange(session, input.closesAt);
+      // The stored zone decides whether an unchanged day is a no-op (legacy
+      // rows are UTC); the posted zone decides what a NEW day means.
+      const stored = await prisma.cuppingSession.findUnique({
+        where: { id: sessionId },
+        select: { closesAt: true, closesAtZone: true },
+      });
+      const plan = planClosesAtChange(
+        { isGroup: session.isGroup, closesAt: stored?.closesAt ?? null, closesAtZone: stored?.closesAtZone ?? null },
+        input.closesAt,
+        Date.now(),
+        input.closesAtZone,
+      );
       if (plan) {
         data.closesAt = plan.closesAt;
+        data.closesAtZone = plan.closesAtZone;
         data.isAsync = plan.isAsync;
       }
     } catch (e) {
@@ -1324,6 +1382,12 @@ export async function removeSessionSample(sampleId: string, locale: string = "es
   // transaction so a first evaluation landing between the check and the delete
   // cannot be cascaded away (S8-10 T5; F-sesiones-3, race half).
   const refused = await prisma.$transaction(async (tx) => {
+    // READ COMMITTED does not stop a cupper's first auto-save from committing
+    // between the counts and the delete. Row-lock the sample first: the
+    // FK key-share lock that an evaluation/physical/extrinsic INSERT takes on
+    // its parent conflicts with FOR UPDATE, so a concurrent insert either
+    // lands before the lock (and is counted) or waits until we are done.
+    await tx.$queryRaw`SELECT id FROM session_samples WHERE id = ${sampleId} FOR UPDATE`;
     const [evaluations, physical, extrinsic] = await Promise.all([
       tx.evaluation.count({ where: { sessionSampleId: sampleId } }),
       tx.physicalEvaluation.count({ where: { sessionSampleId: sampleId } }),
@@ -1331,35 +1395,9 @@ export async function removeSessionSample(sampleId: string, locale: string = "es
     ]);
     if (evaluations > 0) return "sample_has_evaluations" as const;
     if (physical > 0 || extrinsic > 0) return "sample_has_data" as const;
-    await tx.sessionSample.delete({ where: { id: sampleId } });
-    // A removed reference leaves a gap in the ranks and (SetNull) may have
-    // cleared the pointer: renumber 1..n and re-aim at the highest rank.
-    const refRows = await tx.sessionSample.findMany({
-      where: { sessionId: sample.sessionId, referenceRank: { not: null } },
-      select: { id: true, referenceRank: true },
-    });
-    for (const { id, rank } of compactReferenceRanks(refRows)) {
-      await tx.sessionSample.update({ where: { id }, data: { referenceRank: rank } });
-    }
-    await tx.cuppingSession.update({
-      where: { id: sample.sessionId },
-      data: { referenceSampleId: activeReferenceId(refRows) },
-    });
-    // Re-pack positions ascending so the (sessionId, position) unique key
-    // stays dense; each shifted row lands on a slot vacated one step earlier.
-    const rest = await tx.sessionSample.findMany({
-      where: { sessionId: sample.sessionId },
-      orderBy: { position: "asc" },
-      select: { id: true, position: true },
-    });
-    for (let i = 0; i < rest.length; i++) {
-      if (rest[i].position !== i) {
-        await tx.sessionSample.update({
-          where: { id: rest[i].id },
-          data: { position: i },
-        });
-      }
-    }
+    // Delete + reference-rank compaction + position re-pack (lib/sampleRemoval.ts,
+    // shared with the solo "Terminar cata" finish, S8-05).
+    await removeSamplesInTx(tx, sample.sessionId, [sampleId]);
     await touchSession(tx, sample.sessionId);
     return null;
   });
@@ -1534,12 +1572,16 @@ export async function updateSampleMetadata(
             },
             select: { id: true },
           });
-          await tx.sessionSample.update({
-            where: { id: sampleId },
+          // Guarded link: a concurrent call that already linked a coffee makes
+          // count 0 -> conflict, rolling back this tx (incl. the coffee create).
+          // `conflict` is not a code collision, so the retry loop rethrows it.
+          const linked = await tx.sessionSample.updateMany({
+            where: { id: sampleId, coffeeId: null },
             // Named after the close: the close routine revealed every coffee-linked
             // sample, so this one is revealed on the spot (nothing is blind any more).
             data: { coffeeId: coffee.id, ...(postCloseNaming ? { revealed: true } : {}) },
           });
+          if (linked.count === 0) throw new Error("conflict");
         });
         break;
       } catch (err) {
@@ -1570,6 +1612,64 @@ export async function updateSampleMetadata(
   revalidatePath(`/app/sessions/${sample.sessionId}/print`);
 
   return { ok: true as const, coffeeUpdated };
+}
+
+/**
+ * "Asignar café" on a coffee-less sample (S8-10 T10, F-express-3). Returns an
+ * ActionResult so the results dialog can toast instead of crashing: either
+ * links an EXISTING coffee the caller may use (usableCoffeeWhere, else
+ * `coffee_not_usable`) or creates one and links it in one transaction (the
+ * create half is updateSampleMetadata's). Owner only; refuses a sample that
+ * already has a coffee (`conflict`). The post-close sanction is unchanged:
+ * on a closed session the sample is revealed and history is re-synced.
+ */
+export async function assignSampleCoffee(
+  sampleId: string,
+  input: Parameters<typeof planAssignCoffee>[0],
+): Promise<ActionResult<{ linked: boolean }>> {
+  return run("assignSampleCoffee", async () => {
+    const user = await requireRegisteredUser();
+    const plan = planAssignCoffee(input);
+    const sample = await requireSampleOwner(sampleId, user.id);
+    // Open sessions follow the normal write guard; a closed one is allowed
+    // here ONLY because the sample is coffee-less (checked below).
+    if (!isSessionClosed(sample)) assertSessionWritable(sample);
+
+    const current = await prisma.sessionSample.findUnique({
+      where: { id: sampleId },
+      select: { coffeeId: true },
+    });
+    if (!current) throw new Error("not_found_or_forbidden");
+    if (current.coffeeId) throw new Error("conflict");
+
+    if (plan.mode === "create") {
+      await updateSampleMetadata(sampleId, plan.fields);
+      return { linked: false };
+    }
+
+    const coffee = await prisma.coffee.findFirst({
+      where: { id: plan.coffeeId, ...usableCoffeeWhere(user.id) },
+      select: { id: true },
+    });
+    if (!coffee) throw new Error("coffee_not_usable");
+
+    const closed = isSessionClosed(sample);
+    const res = await prisma.sessionSample.updateMany({
+      where: { id: sampleId, coffeeId: null },
+      data: { coffeeId: coffee.id, ...(closed ? { revealed: true } : {}) },
+    });
+    if (res.count === 0) throw new Error("conflict");
+
+    if (closed) {
+      await syncCoffeeHistoryForSession(sample.sessionId);
+      revalidatePath(`/app/profile/history`);
+      revalidatePath(`/app/coffees`);
+    }
+    revalidatePath(`/app/sessions/${sample.sessionId}/cup`);
+    revalidatePath(`/app/sessions/${sample.sessionId}/results`);
+    revalidatePath(`/app/sessions/${sample.sessionId}/print`);
+    return { linked: true };
+  });
 }
 
 // Extrinsic (reveal / origin) data is ONE row per sample and stamps

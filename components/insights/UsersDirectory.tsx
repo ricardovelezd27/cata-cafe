@@ -10,6 +10,8 @@ import { ROLE_LABELS } from "@/lib/constants";
 import { exportRegisteredUsersCsv, type AnalyticsUser } from "@/app/actions/analytics";
 import { Button } from "@/components/ui/Button";
 import { useActionFeedback } from "@/components/ui/Toast";
+import { downloadFile } from "@/lib/platform/files";
+import { useIsNativeShell } from "@/hooks/useIsNativeShell";
 
 export interface UsersDirectoryTranslations {
   table: {
@@ -60,16 +62,12 @@ export function UsersDirectory({ users, locale, t, canExport, canRevealEmails }:
   const shown = (email: string) => (canRevealEmails && reveal ? email : maskEmail(email));
   const feedback = useActionFeedback();
   const [exporting, startExport] = useTransition();
+  const inShell = useIsNativeShell();
 
   function downloadCsv() {
     startExport(async () => {
       await feedback.run(exportRegisteredUsersCsv(), ({ csv, filename }) => {
-        const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        downloadFile({ text: csv, filename, mime: "text/csv;charset=utf-8" });
       });
     });
   }
@@ -173,7 +171,8 @@ export function UsersDirectory({ users, locale, t, canExport, canRevealEmails }:
           {reveal ? t.hideEmails : t.showEmails}
         </Button>
         )}
-        {canExport && (
+        {/* TODO(native): CSV hidden in the shell until downloadFile has a Filesystem+Share branch. */}
+        {canExport && !inShell && (
           <Button type="button" variant="secondary" size="sm" onClick={downloadCsv} disabled={exporting}>
             <Download size={16} aria-hidden />
             {t.exportCsv}

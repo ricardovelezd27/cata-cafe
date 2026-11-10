@@ -8,6 +8,9 @@ import { trustedRequestOrigin } from "@/lib/requestOrigin";
 import { safeNext } from "@/lib/safeNext";
 import { mapAuthError, type AuthErrorKey } from "@/lib/authErrors";
 import { run } from "@/lib/safeAction";
+import { loginHref } from "@/lib/authRedirect";
+import { isRegisteredUser } from "@/lib/guestScope";
+import * as v from "@/lib/validate";
 import type { ActionResult } from "@/lib/actionResult";
 
 const CONFIRM_TYPES: readonly EmailOtpType[] = [
@@ -28,6 +31,8 @@ export async function signInWithGoogle(next?: string, locale?: string) {
   const dest = safeNext(next, { fallback: defaultNextFor(localeOf(locale)) });
   const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(dest)}`;
 
+  // TODO(native): in the Capacitor shell pass skipBrowserRedirect: true, open data.url
+  // with openExternal() (lib/platform/external.ts) and return via appUrlOpen -> routeFromUrl().
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
@@ -102,18 +107,86 @@ function authCodeFor(error: { code?: string; message?: string }): "invalid_token
   return "unknown";
 }
 
-export async function signOut(locale?: string) {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-  redirect(localeOf(locale) === "en" ? "/en" : "/");
+export type SignOutScope = "local" | "global";
+
+/**
+ * Ends THIS device's session by default (S8-07, F-cuenta-2): the old call used
+ * Supabase's default (global) scope and signed the person out everywhere.
+ * `scope: "global"` is the explicit "sign out on all devices" option.
+ *
+ * Returns the landing path instead of redirecting (F-cuenta-7): the client
+ * wipes this device's caches only AFTER the server confirmed, so an offline
+ * tap leaves the session and the cached pages intact.
+ */
+export async function signOut(
+  locale?: string,
+  scope: SignOutScope = "local",
+): Promise<ActionResult<{ next: string }>> {
+  return run("signOut", async () => {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.signOut({ scope: scope === "global" ? "global" : "local" });
+    if (error) throw new Error("unknown");
+    return { next: localeOf(locale) === "en" ? "/en" : "/" };
+  });
 }
 
-// Signs out and lands on the login screen (instead of the marketing page
-// that plain signOut redirects to), so the user can immediately authenticate
-// as a different account. Combined with prompt=select_account above, this
-// forces Google's account chooser to appear on mobile.
-export async function switchAccount(locale: string) {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-  redirect(`/${locale}/auth/login`);
+/**
+ * Signs out THIS device and lands on the login screen so the person can
+ * authenticate as someone else (combined with prompt=select_account this
+ * forces Google's account chooser on mobile). `next` (a validated in-app path)
+ * rides along, which the guest-claim card uses for "Usar otra cuenta".
+ */
+export async function switchAccount(
+  locale: string,
+  next?: string,
+): Promise<ActionResult<{ next: string }>> {
+  return run("switchAccount", async () => {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.signOut({ scope: "local" });
+    if (error) throw new Error("unknown");
+    const href = loginHref(localeOf(locale), next);
+    // The claim chain marks its login with intent=claim (login copy).
+    const claiming = href.includes("?next=") && decodeURIComponent(href).includes("/auth/claim");
+    return { next: claiming ? `${href}&intent=claim` : href };
+  });
 }
+
+/**
+ * Starts an email change (S8-07, F-cuenta-5). Registered users only: a guest
+ * has no address to change. Supabase mails a confirmation link (to both
+ * addresses when "Secure email change" is on); it returns through
+ * /auth/confirm (type=email_change) to the profile. The address stays the old
+ * one until confirmed, and the profile page shows the pending one.
+ */
+export async function requestEmailChange(
+  email: string,
+  locale?: string,
+): Promise<ActionResult<{ pending: string }>> {
+  return run("requestEmailChange", async () => {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("not_authenticated");
+    if (!isRegisteredUser(user)) throw new Error("not_found_or_forbidden");
+
+    const address = v.email(email);
+    if (address === (user.email ?? "").toLowerCase()) throw new Error("invalid_input");
+
+    const loc = localeOf(locale);
+    const origin = await trustedRequestOrigin();
+    const { error } = await supabase.auth.updateUser(
+      { email: address },
+      { emailRedirectTo: `${origin}/${loc}/app/profile` },
+    );
+    if (error) {
+      if (error.code === "email_exists") throw new Error("email_exists");
+      if (error.code === "over_email_send_rate_limit" || error.status === 429) {
+        throw new Error("rate_limited");
+      }
+      throw new Error("unknown");
+    }
+    return { pending: address };
+  });
+}
+

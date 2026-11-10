@@ -36,7 +36,7 @@ export function useSessionMoment({
   value: string;
   /** Provider predicate — e.g. the overlay gate result. */
   when: boolean;
-}): { open: boolean; dismiss: () => void } {
+}): { open: boolean; dismiss: () => void; close: () => void } {
   // Seen-set read through useSyncExternalStore: the SERVER snapshot says
   // "seen" so SSR/hydration never renders the layer open; the client
   // snapshot reads the storage tiers; markMomentSeen notifies subscribers.
@@ -53,7 +53,10 @@ export function useSessionMoment({
     setDismissed(true);
   }, [kind, sessionId, userId, value]);
 
-  return { open: when && !seen && !dismissed, dismiss };
+  // Close for now WITHOUT marking seen (an early stray skip): a reload shows it again.
+  const close = useCallback(() => setDismissed(true), []);
+
+  return { open: when && !seen && !dismissed, dismiss, close };
 }
 
 export function SessionMomentOverlay({

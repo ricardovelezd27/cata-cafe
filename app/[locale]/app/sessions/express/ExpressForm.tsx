@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Minus, Plus } from "lucide-react";
 import { Button, PageHeader, useActionFeedback } from "@/components/ui";
 import { createExpressSession } from "@/app/actions/sessions";
+import { useConnectivity } from "@/hooks/useConnectivity";
 import {
-  EXPRESS_DEFAULT_FORMAT,
   EXPRESS_DEFAULT_SAMPLES,
   EXPRESS_FORMATS,
   EXPRESS_MAX_SAMPLES,
@@ -15,6 +15,12 @@ import {
   clampSampleCount,
   type ExpressFormat,
 } from "@/lib/expressSession";
+import {
+  EXPRESS_FIRST_RUN_FORMAT,
+  LAST_FORMAT_KEY,
+  parseLastFormat,
+  wizardHandoffQuery,
+} from "@/lib/sessionDefaults";
 
 export type ExpressFormTranslations = {
   title: string;
@@ -32,6 +38,9 @@ export type ExpressFormTranslations = {
   cta: string;
   creating: string;
   fullWizard: string;
+  nameRequired: string;
+  /** Shown (and submit disabled) while the connectivity probe says offline. */
+  offline: string;
 };
 
 const inputClass =
@@ -53,9 +62,25 @@ export function ExpressForm({
   const router = useRouter();
   const feedback = useActionFeedback();
   const [pending, startTransition] = useTransition();
+  // Shared connectivity probe (not navigator.onLine): creating a session needs
+  // the server, so offline the submit is disabled and every value is kept.
+  // TODO(E5): queued creation while offline awaits Kim (E5); detection only.
+  const { online } = useConnectivity();
 
   const [name, setName] = useState(defaultName);
-  const [format, setFormat] = useState<ExpressFormat>(EXPRESS_DEFAULT_FORMAT);
+  const [format, setFormat] = useState<ExpressFormat>(EXPRESS_FIRST_RUN_FORMAT);
+  const [nameError, setNameError] = useState(false);
+
+  // Remembered last format (per device; shared with the full wizard).
+  useEffect(() => {
+    try {
+      const last = parseLastFormat(window.localStorage.getItem(LAST_FORMAT_KEY));
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (last) setFormat(last);
+    } catch {
+      // storage blocked: keep the first-run default
+    }
+  }, []);
   const [sampleCount, setSampleCount] = useState(EXPRESS_DEFAULT_SAMPLES);
 
   const formatLabels: Record<ExpressFormat, string> = {
@@ -64,7 +89,18 @@ export function ExpressForm({
     combined: t.formatCombined,
   };
 
-  function submit() {
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) {
+      setNameError(true);
+      document.getElementById("express-name")?.focus();
+      return;
+    }
+    try {
+      window.localStorage.setItem(LAST_FORMAT_KEY, format);
+    } catch {
+      // non-fatal
+    }
     startTransition(async () => {
       await feedback.run(
         createExpressSession({ name: name.trim(), format, sampleCount, locale }),
@@ -74,7 +110,7 @@ export function ExpressForm({
   }
 
   return (
-    <div className="max-w-md mx-auto space-y-6">
+    <form onSubmit={submit} noValidate className="max-w-md mx-auto space-y-6">
       <PageHeader
         title={t.title}
         description={t.subtitle}
@@ -91,9 +127,20 @@ export function ExpressForm({
           type="text"
           value={name}
           maxLength={EXPRESS_NAME_MAX}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => {
+            setName(e.target.value);
+            if (nameError) setNameError(false);
+          }}
+          enterKeyHint="go"
+          aria-invalid={nameError}
+          aria-describedby={nameError ? "express-name-error" : undefined}
           className={inputClass}
         />
+        {nameError && (
+          <p id="express-name-error" role="alert" className="text-sm text-error">
+            {t.nameRequired}
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -165,21 +212,26 @@ export function ExpressForm({
       </div>
 
       <div className="space-y-3">
+        {!online && (
+          <p role="status" className="text-center text-sm text-error">
+            {t.offline}
+          </p>
+        )}
         <Button
           variant="primary"
           className="w-full min-h-[48px]"
-          disabled={pending || !name.trim()}
-          onClick={submit}
+          type="submit"
+          disabled={pending || !online}
         >
           {pending ? t.creating : t.cta}
         </Button>
         <Link
-          href={`/${locale}/app/sessions/new`}
+          href={`/${locale}/app/sessions/new${wizardHandoffQuery({ name, format, sampleCount })}`}
           className="text-sm text-on-surface-variant underline-offset-4 hover:underline text-center block"
         >
           {t.fullWizard}
         </Link>
       </div>
-    </div>
+    </form>
   );
 }

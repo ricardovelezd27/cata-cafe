@@ -140,10 +140,18 @@ model CuppingSession {
   groupId       String?
   group         TastingGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
   closesAt      DateTime?
+  /// IANA zone of the owner when `closesAt` was set (S8-05): "end of the day
+  /// the owner picked" in THEIR zone. Null = UTC (legacy rows).
+  closesAtZone  String?
   startedAt     DateTime?
   // Stamped by the single close routine (lib/closeSession.ts) — owner close,
   // solo auto-close and the daily cron all go through it. Null while active.
   closedAt      DateTime?
+  /// Stamped when phase 2 of the close (reveal, aggregate refire, coffee
+  /// history, close emails) finished. Null on a closed row = a repair is owed
+  /// (lib/closeSession.ts finalizeClosedSession, cron repair pass). Backfilled
+  /// to closedAt for sessions that were already closed. Never read by scoring.
+  closeFinalizedAt DateTime? @db.Timestamptz(3)
   // The ONE sample the owner marks as "Referencia" (control sample the others
   // are compared against). Display-only: scoring and ranking never read it;
   // results show a client-side Δ against it (lib/referenceDelta.ts). SetNull
@@ -172,6 +180,7 @@ model CuppingSession {
   invites              SessionInvite[]
   coffeeHistory        UserCoffeeHistory[]
   closeEmailDeliveries CloseEmailDelivery[]
+  reminderDeliveries   SessionReminderDelivery[]
 
   @@index([createdBy])
   @@index([createdBy, status])
@@ -356,6 +365,22 @@ model CloseEmailDelivery {
 
   @@id([sessionId, userId])
   @@map("close_email_deliveries")
+}
+
+/// One row per session x recipient x reminder kind (S8-05): "deadline_24h" to
+/// members with unsent work, "live_idle" to the owner of a forgotten live
+/// session. System mail with its own ledger (never the user email budget).
+/// userId is a plain String with NO Profile FK, same as CloseEmailDelivery, so
+/// mergeGuestData has nothing to move (guests have no email, so no rows).
+model SessionReminderDelivery {
+  sessionId String
+  session   CuppingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId    String
+  kind      String
+  sentAt    DateTime       @default(now())
+
+  @@id([sessionId, userId, kind])
+  @@map("session_reminder_deliveries")
 }
 
 model SessionInvite {

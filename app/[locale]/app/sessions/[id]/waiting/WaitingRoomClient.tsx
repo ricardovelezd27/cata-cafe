@@ -3,16 +3,17 @@
 import { nextPollDelayMs } from "@/lib/waitingPoll";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
+import { useForegroundResume } from "@/hooks/useForegroundResume";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronDown, EyeOff } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
 import { checkSessionStarted, getWaitingState } from "@/app/actions/sessions";
-import { isMissed, parseDbTimestamp, runLengthMs, seekFor, skewMs, warmupSyncReducer, type SyncState } from "@/lib/warmup/syncedRun";
+import { isMissed, parseDbTimestamp, resyncPositionMs, runLengthMs, seekFor, skewMs, warmupSyncReducer, type SyncState } from "@/lib/warmup/syncedRun";
 import { nextReferenceOrder } from "@/lib/referenceRules";
 import { WARMUP_EXERCISES, WARMUP_SHARED, lw, warmupById, type WarmupExercise } from "@/lib/warmup/exercises";
 import { hasSeenMoment, markMomentSeen, subscribeMoments } from "@/lib/sessionMoments";
-import { START_EXIT_CAP_MS, onCuppingStarted } from "@/lib/warmup/overlayGate";
+import { START_EXIT_CAP_MS, exitMarksSeen, onCuppingStarted } from "@/lib/warmup/overlayGate";
 import { previewSpec } from "@/lib/warmup/preview";
 import { WarmupPlayer, type WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
 import { WarmupFigure } from "@/components/warmup/figures";
@@ -92,6 +93,8 @@ export function WaitingRoomClient({
   // True whenever the realtime channel is not actively SUBSCRIBED — drives the
   // 15s polling fallback and the "connection lost" notice below.
   const [connectionLost, setConnectionLost] = useState(false);
+  // Bumped on foreground resume so the realtime effect below re-runs (S8-15).
+  const [resumeKey, setResumeKey] = useState(0);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // The owner may pick/change the reference while people wait — same
   // cupping_sessions UPDATE stream that carries startedAt.
@@ -133,6 +136,11 @@ export function WaitingRoomClient({
   const [syncedNote, setSyncedNote] = useState<string | null>(null);
   const [syncedRunning, setSyncedRunning] = useState(false);
   const syncRef = useRef<SyncState>({ lastStartedAt: null });
+  const syncedStartedAtMs = synced?.startedAtMs ?? null;
+  const syncedResyncMs = useCallback(
+    () => (syncedStartedAtMs === null ? null : resyncPositionMs(syncedStartedAtMs, Date.now(), skewRef.current)),
+    [syncedStartedAtMs],
+  );
   const openSynced = useCallback(
     (startedAtMs: number, live: boolean) => {
       if (!chosen || runMs <= 0) return;
@@ -187,10 +195,11 @@ export function WaitingRoomClient({
     router.push(`/${locale}/app/sessions/${sessionId}/cup`);
   }, [router, locale, sessionId]);
 
-  const closePlayer = useCallback(() => {
+  const closePlayer = useCallback((markSeen: boolean) => {
     const id = activeRef.current;
-    if (id && chosen && id === chosen.id) {
-      // Finishing OR skipping the master's pick counts (never nag twice).
+    if (markSeen && id && chosen && id === chosen.id) {
+      // Finishing, or skipping after 20 s of the run, counts (never nag
+      // twice); an early stray skip leaves it unseen (S8-13 F-6).
       markMomentSeen("warmup", sessionId, userId, chosen.id);
     }
     setActiveWarmupId(null);
@@ -216,6 +225,23 @@ export function WaitingRoomClient({
   const onStartedRef = useRef(onStarted);
   useEffect(() => {
     onStartedRef.current = onStarted;
+  });
+
+  // Foreground resume (S8-15): a phone that slept has a dead socket and may have
+  // missed the start. Recreate the channel (via resumeKey) and re-seed from the
+  // server — same read the 15 s polling fallback uses.
+  useForegroundResume(() => {
+    if (isAsync) return;
+    setResumeKey((k) => k + 1);
+    void (async () => {
+      const state = await getWaitingState(sessionId);
+      if (!state) return;
+      if (state.startedAt) {
+        onStartedRef.current();
+        return;
+      }
+      applySyncRef.current({ warmupStartedAt: state.warmupStartedAt }, false);
+    })();
   });
 
   // Back closes the player, not the page (push a history entry when it opens).
@@ -338,7 +364,7 @@ export function WaitingRoomClient({
       clearPoll();
       stop();
     };
-  }, [sessionId, router, isAsync]);
+  }, [sessionId, router, isAsync, resumeKey]);
 
   const handleStart = async () => {
     if (isAsync) {
@@ -504,9 +530,10 @@ export function WaitingRoomClient({
           mode={synced ? "synced" : "session"}
           seekToMs={synced?.seekMs}
           soundDefault={synced ? false : undefined}
+          resyncPositionMs={synced ? syncedResyncMs : undefined}
           exitRequest={exitRequest}
-          onFinish={closePlayer}
-          onExit={closePlayer}
+          onFinish={() => closePlayer(true)}
+          onExit={(info) => closePlayer(exitMarksSeen(info))}
         />
       )}
     </main>

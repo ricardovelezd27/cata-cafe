@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { computeEvaluationDerived, moduleKeyForFormat } from "@/lib/evaluation";
+import {
+  computeEvaluationDerived,
+  moduleKeyForFormat,
+  tryComputeEvaluationDerived,
+} from "@/lib/evaluation";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 
 const neutral = Object.fromEntries(AFFECTIVE_ATTRIBUTES.map((a) => [`${a.id}_final`, 5]));
@@ -83,5 +87,16 @@ describe("module bounds (S8-10 T11)", () => {
     expect(() =>
       computeEvaluationDerived("affective", { ...neutral, nota_express: "x".repeat(500) }, 1),
     ).not.toThrow();
+  });
+});
+
+describe("tryComputeEvaluationDerived (offline replay)", () => {
+  it("returns null for an out-of-bounds payload instead of throwing", () => {
+    expect(
+      tryComputeEvaluationDerived("affective", { ...neutral, nota_express: "x".repeat(100_000) }, 1),
+    ).toBeNull();
+  });
+  it("returns the derived fields for a valid payload", () => {
+    expect(tryComputeEvaluationDerived("affective", neutral, 1)).not.toBeNull();
   });
 });

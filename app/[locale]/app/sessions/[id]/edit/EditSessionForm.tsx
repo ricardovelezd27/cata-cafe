@@ -14,7 +14,7 @@ import { Select } from "@/components/ui/Select";
 import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useActionFeedback } from "@/components/ui/Toast";
-import { localDateISO } from "@/lib/localDate";
+import { browserZone, dateInZone } from "@/lib/closeRules";
 
 export type EditSessionFormTranslations = {
   name: string;
@@ -49,6 +49,7 @@ export type EditSessionFormTranslations = {
   closesAt: string;
   closesAtHint: string;
   closesAtPast: string;
+  closesAtLiveNotice: string;
   sessionClosed: string;
   warmupLocked: string;
   repinTitle: string;
@@ -70,12 +71,6 @@ const cardCls = "bg-surface-container-lowest border border-outline-variant round
 const labelCls = "block text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant mb-1.5";
 
 const FORMAT_OPTIONS = ["descriptive", "affective", "combined"] as const;
-
-/** Local calendar date (the wizard uses the same helper). The server closes at
- *  END of the chosen day in UTC; `min` must not reject the local "today". */
-function utcDateString(): string {
-  return localDateISO();
-}
 
 export function EditSessionForm({
   locale,
@@ -123,6 +118,8 @@ export function EditSessionForm({
   const [cupsInput, setCupsInput] = useState(String(initial.cupsPerSample));
   const [groupId, setGroupId] = useState(initial.groupId ?? "");
   const [closesAt, setClosesAt] = useState(initial.closesAt);
+  // Today in the owner's own zone (see the date input below).
+  const [todayMin] = useState(() => dateInZone(Date.now(), browserZone()));
   const [warmupOn, setWarmupOn] = useState(initial.warmupExerciseId !== null);
   const [warmupId, setWarmupId] = useState<WarmupId>(
     (initial.warmupExerciseId as WarmupId | null) ?? "eyes",
@@ -221,7 +218,9 @@ export function EditSessionForm({
               groupId: groupId || null,
               // Only send a changed date: re-posting an unchanged one failed
               // once the stored date had passed.
-              ...(closesAt !== initial.closesAt ? { closesAt: closesAt || null } : {}),
+              ...(closesAt !== initial.closesAt
+                ? { closesAt: closesAt || null, closesAtZone: closesAt ? browserZone() : null }
+                : {}),
             }
           : {}),
         ...(!locked && (format !== initial.format || cups !== initial.cupsPerSample)
@@ -288,7 +287,9 @@ export function EditSessionForm({
       // physical/origin data) after this page loaded. Refresh so the trash
       // button disables, and let the dialog show its error line.
       router.refresh();
-      throw new Error(result.error);
+      // Returned, not thrown: ConfirmDialog maps the code via errorMessages
+      // (a thrown error would only show the generic line).
+      return result;
     }
     // The DB SETs NULL on the FK when the referenced sample is deleted —
     // mirror that locally so the select doesn't keep pointing at a gone row.
@@ -457,7 +458,8 @@ export function EditSessionForm({
               type="date"
               className={inputCls}
               value={closesAt}
-              min={utcDateString()}
+              suppressHydrationWarning
+              min={todayMin}
               disabled={closed}
               onChange={(e) => {
                 setClosesAt(e.target.value);
@@ -465,6 +467,10 @@ export function EditSessionForm({
               }}
             />
             <p className="mt-1 text-xs text-on-surface-variant">{t.closesAtHint}</p>
+            {/* F-sesiones-12: a date turns a live cupping into a self-paced one. */}
+            {!closed && !initial.started && !initial.closesAt && closesAt && (
+              <p className="mt-1 text-xs font-medium text-secondary">{t.closesAtLiveNotice}</p>
+            )}
           </div>
           <div>
             <label className={labelCls}>{t.linkedGroup}</label>
@@ -593,6 +599,11 @@ export function EditSessionForm({
         cancelLabel={t.cancel}
         closeLabel={t.close}
         onConfirm={handleRemoveConfirm}
+        errorMessages={{
+          sample_has_data: t.sampleHasData,
+          sample_has_evaluations: t.sampleHasEvals,
+          session_closed: t.sessionClosed,
+        }}
         error={t.error}
       />
 

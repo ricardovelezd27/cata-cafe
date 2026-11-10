@@ -1,32 +1,33 @@
-// Local-only reflection notes for the warm-up closing questions. Written to
-// localStorage `cata_warmup_reflections_<exerciseId>`; never sent anywhere and
-// never joined with CVA / evaluation data.
+// The warm-up closing questions are a quiet pause: nothing is written
+// anywhere (S8-13, F-movimiento-sensorial-5, default (b)). Older builds saved
+// the answers to localStorage `cata_warmup_reflections_<exerciseId>` WITHOUT a
+// user id, where nothing could read them back and sign-out left them behind
+// on shared tablets. This module only knows how to purge those legacy keys.
+// TODO(Kim F2): if she wants per-cupper notes (answer a), key them by user id,
+// show them on the exercise page and clear them on sign-out.
 
-export const reflectionsKey = (exerciseId: string) => `cata_warmup_reflections_${exerciseId}`;
+export const LEGACY_REFLECTIONS_PREFIX = "cata_warmup_reflections_";
 
-export interface WarmupReflection {
-  /** ISO timestamp. */
-  at: string;
-  /** Answers to the two closing questions, in order (either may be empty). */
-  answers: [string, string];
+/** Minimal Storage shape so the purge is testable without a DOM. */
+export interface KeyedStorage {
+  readonly length: number;
+  key(index: number): string | null;
+  removeItem(key: string): void;
 }
 
-const MAX_ENTRIES = 50;
-
-/** Appends one entry. Returns false when there was nothing to save or the
- *  browser refused the write (private mode / quota). */
-export function saveReflection(exerciseId: string, answers: [string, string]): boolean {
-  const clean: [string, string] = [answers[0].trim().slice(0, 2000), answers[1].trim().slice(0, 2000)];
-  if (!clean[0] && !clean[1]) return false;
+/** Removes every legacy reflections key. Returns how many were removed.
+ *  Never throws (private mode / blocked storage → 0). */
+export function purgeLegacyReflections(storage: KeyedStorage | null | undefined): number {
+  if (!storage) return 0;
   try {
-    const key = reflectionsKey(exerciseId);
-    const raw = window.localStorage.getItem(key);
-    const prev: WarmupReflection[] = raw ? JSON.parse(raw) : [];
-    const list = Array.isArray(prev) ? prev : [];
-    list.push({ at: new Date().toISOString(), answers: clean });
-    window.localStorage.setItem(key, JSON.stringify(list.slice(-MAX_ENTRIES)));
-    return true;
+    const doomed: string[] = [];
+    for (let i = 0; i < storage.length; i++) {
+      const k = storage.key(i);
+      if (k && k.startsWith(LEGACY_REFLECTIONS_PREFIX)) doomed.push(k);
+    }
+    for (const k of doomed) storage.removeItem(k);
+    return doomed.length;
   } catch {
-    return false;
+    return 0;
   }
 }

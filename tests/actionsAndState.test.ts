@@ -30,6 +30,10 @@ describe("classifyActionError", () => {
     expect(classifyActionError(new Error("forbidden"))).toBe("not_found_or_forbidden");
     expect(classifyActionError(new Error("not_found"))).toBe("not_found");
   });
+  it("keeps the guest-claim 'already linked' code distinct from a rolled-back P2025", () => {
+    expect(classifyActionError(new Error("already_claimed"))).toBe("already_claimed");
+    expect(classifyActionError({ code: "P2025" })).not.toBe("already_claimed");
+  });
   it("maps Prisma known-request codes", () => {
     expect(classifyActionError({ code: "P2002" })).toBe("conflict");
     expect(classifyActionError({ code: "P2025" })).toBe("not_found");
@@ -106,8 +110,8 @@ describe("planClosesAtChange", () => {
   });
 
   it("clears the close on an async session with cuppers → live, manual close", () => {
-    expect(planClosesAtChange(group, "", NOW)).toEqual({ closesAt: null, isAsync: false });
-    expect(planClosesAtChange(group, null, NOW)).toEqual({ closesAt: null, isAsync: false });
+    expect(planClosesAtChange(group, "", NOW)).toEqual({ closesAt: null, closesAtZone: null, isAsync: false });
+    expect(planClosesAtChange(group, null, NOW)).toEqual({ closesAt: null, closesAtZone: null, isAsync: false });
   });
 
   it("rejects a past date and malformed input", () => {

@@ -98,6 +98,12 @@ export async function dismissOnboarding() {
   });
 }
 
+/**
+ * The profile form's save (S8-07, F-cuenta-8). Returns an ActionResult through
+ * run() — a thrown error used to reach the browser as an opaque digest and the
+ * form could only say "error". Syncs the auth `display_name` like
+ * completeOnboarding does (the magic-link email greeting reads it).
+ */
 export async function updateProfile(input: {
   displayName: string;
   preferredLang: "es" | "en";
@@ -107,41 +113,57 @@ export async function updateProfile(input: {
   /** Free text, trimmed to 56 chars. Empty/absent clears the field to null. */
   country?: string | null;
 }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("not_authenticated");
+  return run("updateProfile", async () => {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("not_authenticated");
 
-  const displayName =
-    v.str(input.displayName, "displayName", { max: 80, required: false }) ??
-    user.email?.split("@")[0] ??
-    "Catador";
-  const preferredLang = v.oneOf(input.preferredLang, "preferredLang", ["es", "en"] as const);
-  const bio = v.str(input.bio, "bio", { max: 1000, required: false }) ?? "";
-  const role = safeRole(input.role);
-  const country =
-    input.country === undefined
-      ? undefined
-      : v.str(input.country, "country", { max: 56, required: false });
+    const displayName =
+      v.str(input.displayName, "displayName", { max: 80, required: false }) ??
+      user.email?.split("@")[0] ??
+      "Catador";
+    const preferredLang = v.oneOf(input.preferredLang, "preferredLang", ["es", "en"] as const);
+    const bio = v.str(input.bio, "bio", { max: 1000, required: false }) ?? "";
+    const role = safeRole(input.role);
+    const country =
+      input.country === undefined
+        ? undefined
+        : v.str(input.country, "country", { max: 56, required: false });
 
-  await prisma.profile.upsert({
-    where: { id: user.id },
-    create: {
-      id: user.id,
-      displayName,
-      preferredLang,
-      bio,
-      ...(role !== undefined ? { role } : {}),
-      ...(country !== undefined ? { country } : {}),
-    },
-    update: {
-      displayName,
-      preferredLang,
-      bio,
-      ...(role !== undefined ? { role } : {}),
-      ...(country !== undefined ? { country } : {}),
-    },
+    await prisma.profile.upsert({
+      where: { id: user.id },
+      create: {
+        id: user.id,
+        displayName,
+        preferredLang,
+        bio,
+        ...(role !== undefined ? { role } : {}),
+        ...(country !== undefined ? { country } : {}),
+      },
+      update: {
+        displayName,
+        preferredLang,
+        bio,
+        ...(role !== undefined ? { role } : {}),
+        ...(country !== undefined ? { country } : {}),
+      },
+    });
+
+    try {
+      await supabase.auth.updateUser({ data: { display_name: displayName } });
+    } catch (err) {
+      // Non-critical: the Profile row is the source of truth for the name.
+      logWarn({
+        where: "updateProfile.updateUser",
+        userId: user.id,
+        message: errorMessage(err),
+      });
+    }
+
+    revalidatePath(`/${preferredLang}/app/profile`);
+    return { ok: true as const };
   });
-
-  revalidatePath(`/${preferredLang}/app/profile`);
-  return { ok: true };
 }
+

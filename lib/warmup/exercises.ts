@@ -162,8 +162,8 @@ export const WARMUP_SHARED = {
     en: "Café Sensible Method · Pillar 3: Sensitivity",
   },
   intro: {
-    es: "Cinco ejercicios para despertar la percepción antes de catar. El orden recomendado es del 1 al 5: el primero es la puerta de entrada. Cada uno se puede hacer solo.",
-    en: "Five exercises to wake up perception before cupping. The recommended order is 1 to 5: the first one is the way in. Each can be done on its own.",
+    es: "Cinco ejercicios para asentarte antes de catar. El orden recomendado es del 1 al 5: el primero es la puerta de entrada. Cada uno se puede hacer solo.",
+    en: "Five exercises to settle in before cupping. The recommended order is 1 to 5: the first one is the way in. Each can be done on its own.",
   },
   safety: {
     title: { es: "Regla de seguridad", en: "Safety rule" },
@@ -217,8 +217,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
     order: 1,
     name: { es: "El brazo lento", en: "The slow arm" },
     purpose: {
-      es: "Entender en dos minutos qué es un movimiento sensorial y por qué la lentitud abre la percepción.",
-      en: "Understand in two minutes what a sensory movement is and why slowness opens up perception.",
+      es: "Entender en dos minutos qué es un movimiento sensorial y por qué ir despacio te ayuda a asentarte.",
+      en: "Understand in two minutes what a sensory movement is and why going slowly helps you settle.",
     },
     posture: "standing",
     postureText: {

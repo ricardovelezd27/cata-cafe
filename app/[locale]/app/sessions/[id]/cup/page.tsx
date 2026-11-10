@@ -78,7 +78,7 @@ export default async function CupPage({
   // A closed (or past-deadline) session's cupping form is final — send
   // everyone to results at the same instant results open.
   if (isSessionExpired(session)) {
-    redirect(`/${locale}/app/sessions/${id}/results`);
+    redirect(`/${locale}/app/sessions/${id}/results?closed=1`);
   }
 
   const isOwner = session.createdBy === user.id;
@@ -160,6 +160,7 @@ export default async function CupPage({
       sessionStatus={session.status}
       sessionStartedAt={session.startedAt?.toISOString() ?? null}
       sessionIsAsync={session.isAsync}
+      sessionEntriesLocked={session.entriesLocked}
       warmup={{
         exerciseId: session.warmupExerciseId,
         hasOwnEvaluation,
@@ -191,6 +192,8 @@ export default async function CupPage({
         cupsPerSample: session.cupsPerSample,
         date: session.date.toISOString(),
         referenceSampleId: session.referenceSampleId,
+        closesAt: session.closesAt?.toISOString() ?? null,
+        closesAtZone: session.closesAtZone,
         samples: session.samples.map((s) => {
           const ev = s.evaluations[0];
           return {
@@ -269,6 +272,18 @@ export default async function CupPage({
         confirmClose: tg("confirmClose"),
         liveCountDown: tg("liveCountDown"),
         closeSessionError: tg("closeSessionError"),
+        deadline: {
+          open: tg.raw("deadlineOpen") as string,
+          soon: tg.raw("deadlineSoon") as string,
+          passed: tg.raw("deadlinePassed") as string,
+          local: tg.raw("deadlineLocal") as string,
+        },
+        // Raw: "{count}" is replaced client-side (a bare t() would need the arg).
+        closeRule: tg("closeRule"),
+        closeUnsentOne: tg("closeUnsentOne"),
+        closeUnsentMany: tg.raw("closeUnsentMany") as string,
+        closeUnsentNone: tg("closeUnsentNone"),
+        closeImpactLoading: tg("closeImpactLoading"),
         startSession: tg("startSession"),
         starting: tg("starting"),
         startSessionError: tg("startSessionError"),
@@ -345,6 +360,9 @@ export default async function CupPage({
           review: t("cupping.guard.review"),
           continueAnyway: t("cupping.guard.continueAnyway"),
           submitAnyway: t("cupping.guard.submitAnyway"),
+          outcomeCloses: t("cupping.guard.outcomeCloses"),
+          outcomeStays: t.raw("cupping.guard.outcomeStays") as string,
+          finishWith: t.raw("cupping.guard.finishWith") as string,
         },
         leaveGuard: {
           title: t("cupping.leaveGuard.title"),
@@ -370,6 +388,9 @@ export default async function CupPage({
           conflictKeep: t("offline.conflictKeep"),
           conflictReplace: t("offline.conflictReplace"),
           bannerStorageUnavailable: t("offline.bannerStorageUnavailable"),
+          // Raw templates: "{seconds}" / "{count}" are filled client-side.
+          bannerNextAttempt: t.raw("offline.bannerNextAttempt") as string,
+          terminalNotice: t.raw("offline.terminalNotice") as string,
         },
       }}
     />

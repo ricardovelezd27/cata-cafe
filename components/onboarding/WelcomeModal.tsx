@@ -95,8 +95,15 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
   return (
     <ResponsiveDialog
       open={open}
+      // Escape / outside tap only dismiss on the welcome step; from step 2 on
+      // they are ignored so a typed name/role/country is never discarded by
+      // accident. The X (below) and "skip" always dismiss.
       onOpenChange={(next) => {
-        if (!next) handleDismiss();
+        if (!next && step === 1) handleDismiss();
+      }}
+      onCloseButtonClick={(e) => {
+        e.preventDefault();
+        handleDismiss();
       }}
       title={dialogTitle}
       closeLabel={t.close}

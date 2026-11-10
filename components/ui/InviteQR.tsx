@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { toBlob, toPng } from "html-to-image";
 import { Copy, Download, Check } from "lucide-react";
+import { downloadFile } from "@/lib/platform/files";
 
 interface InviteQRProps {
   /** The full URL encoded into the QR code (e.g. from buildInviteUrl). */
@@ -39,10 +40,7 @@ export function InviteQR({ url, size = 176, labels }: InviteQRProps) {
         pixelRatio: 3,
         backgroundColor: "#FFFFFF",
       });
-      const link = document.createElement("a");
-      link.download = "invitacion-cata.png";
-      link.href = dataUrl;
-      link.click();
+      downloadFile({ url: dataUrl, filename: "invitacion-cata.png", mime: "image/png" });
     } catch {
       // Best-effort — nothing else to do if PNG generation fails outright.
     }

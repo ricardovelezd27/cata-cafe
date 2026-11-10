@@ -95,3 +95,23 @@ export function warmupSyncReducer(state: SyncState, row: Record<string, unknown>
   if (next === state.lastStartedAt) return { state, action: { type: "none" } };
   return { state: { lastStartedAt: next }, action: { type: "open", startedAtMs: next } };
 }
+
+// ── Re-sync after the page was away (S8-13 F-movimiento-sensorial-2) ──────
+// A locked / backgrounded phone can freeze the performance clock the run
+// clock is built on, so a synced follower drifts from the host. On return
+// the caller computes where the run SHOULD be and the player seeks only when
+// the gap is audible.
+
+/** Gap (ms) above which a returning follower re-seeks; below it the clock is
+ *  left alone so a re-seek never fights normal jitter. */
+export const RESYNC_DRIFT_MS = 1500;
+
+/** Where a synced run should be now (trusts the clocks, never negative). */
+export function resyncPositionMs(warmupStartedAtMs: number, clientNowMs: number, skew: number): number {
+  return Math.max(0, clientNowMs + skew - warmupStartedAtMs);
+}
+
+/** True when the local run position is far enough from the target to re-seek. */
+export function shouldResync(localMs: number, targetMs: number): boolean {
+  return Math.abs(localMs - targetMs) > RESYNC_DRIFT_MS;
+}

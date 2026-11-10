@@ -8,7 +8,9 @@ import { buildExerciseTimeline, poseInSegment, segmentAt, sequenceMap, stepSegme
 import { arrivePhaseAt, halo as haloAt } from "@/lib/warmup/breath";
 import { partTransforms, passedDots, torsoBreathTransform } from "@/lib/warmup/poses";
 import { previewSpec } from "@/lib/warmup/preview";
-import { saveReflection } from "@/lib/warmup/reflections";
+import { RESUME_WAIT_MS, audioResumeDecision } from "@/lib/warmup/audioResume";
+import { shouldResync } from "@/lib/warmup/syncedRun";
+import { skipNeedsConfirm, type WarmupExitInfo } from "@/lib/warmup/overlayGate";
 import type { NarrationSource, Pose, Segment } from "@/lib/warmup/timelineTypes";
 import { useRunClock } from "@/hooks/useRunClock";
 import { useWarmupAudio } from "@/hooks/useWarmupAudio";
@@ -35,7 +37,7 @@ export interface WarmupPlayerProps {
   /** Final screen's button / end of the bridge. */
   onFinish?: () => void;
   /** × "Saltar ejercicio" / "Cerrar" / Escape — the person leaves early. */
-  onExit?: () => void;
+  onExit?: (info?: WarmupExitInfo) => void;
   /** md:+ only: render inside the page instead of fixed full-screen. */
   inline?: boolean;
   /** Synced run: skip the intro and start the clock at this elapsed ms. */
@@ -45,6 +47,10 @@ export interface WarmupPlayerProps {
   /** "La cata empezó": show the docked bar, leave at the end of the leg or
    *  when `deadlineMs` (wall clock, Date.now()) passes. */
   exitRequest?: { deadlineMs: number; label: string; leavingIn: string } | null;
+  /** Synced runs only: where the run SHOULD be now (ms from t0, server-skew
+   *  adjusted), or null when unknown. Called when the page returns from the
+   *  background; the player seeks only past RESYNC_DRIFT_MS. */
+  resyncPositionMs?: () => number | null;
   className?: string;
 }
 
@@ -67,6 +73,7 @@ export function WarmupPlayer({
   seekToMs,
   soundDefault,
   exitRequest = null,
+  resyncPositionMs,
   className,
 }: WarmupPlayerProps) {
   const reducedMotion = useReducedMotion();
@@ -87,8 +94,6 @@ export function WarmupPlayer({
 
   const [phase, setPhase] = useState<Phase>(seekToMs != null ? "run" : "intro");
   const [runKey, setRunKey] = useState(0);
-  const [answers, setAnswers] = useState<[string, string]>(["", ""]);
-  const [saved, setSaved] = useState(false);
 
   // ── Clock ─────────────────────────────────────────────────────────────
   const clock = useRunClock(tl.totalMs, {
@@ -401,6 +406,78 @@ export function WarmupPlayer({
     if (audio.interrupted && running) clock.pause();
   }, [audio.interrupted, running, clock]);
 
+  // ── Silent-after-lock guard (S8-13 F-3) ───────────────────────────────
+  // After a lock / call the clock may resume while the AudioContext stays
+  // suspended (resume() needs a gesture on iOS). On return we try to resume,
+  // wait ~300 ms, and only if it is STILL not running (and the sound is on)
+  // do we pause the run and ask for one tap. The tap is the gesture.
+  const [resumePrompt, setResumePrompt] = useState(false);
+  const showResumePrompt = resumePrompt && paused;
+  // Any way of resuming (Space, Prev/Next, button) ends the prompt, so a later
+  // ordinary pause never shows "Toca para reanudar" again. Adjusted during
+  // render (React-sanctioned) rather than in an effect.
+  if (resumePrompt && !paused) setResumePrompt(false);
+  const guardRef = useRef({ muted: audio.muted, active: false, interrupted: audio.interrupted });
+  useEffect(() => {
+    guardRef.current = { muted: audio.muted, active: phase === "run" && !clock.userPaused && !clock.done, interrupted: audio.interrupted };
+  }, [audio.muted, audio.interrupted, phase, clock.userPaused, clock.done]);
+  const { checkContext } = audio;
+  const clockPause = clock.pause;
+  useEffect(() => {
+    if (phase !== "run") return;
+    let cancelled = false;
+    const check = async () => {
+      if (document.visibilityState !== "visible") return;
+      const ctxState = await checkContext(RESUME_WAIT_MS);
+      if (cancelled) return;
+      const g = guardRef.current;
+      if (audioResumeDecision({ ctxState, muted: g.muted, running: g.active, interrupted: g.interrupted }) === "prompt") {
+        clockPause();
+        setResumePrompt(true);
+      }
+    };
+    document.addEventListener("visibilitychange", check);
+    window.addEventListener("pageshow", check);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", check);
+      window.removeEventListener("pageshow", check);
+    };
+  }, [phase, checkContext, clockPause]);
+  // ── Synced follower: re-seek after the page was away (S8-13 F-2) ───────
+  const resyncRef = useRef(resyncPositionMs);
+  useEffect(() => {
+    resyncRef.current = resyncPositionMs;
+  }, [resyncPositionMs]);
+  const clockSeekFn = clock.seek;
+  const clockElapsed = clock.elapsedMs;
+  useEffect(() => {
+    if (!synced || phase !== "run") return;
+    const back = () => {
+      if (document.visibilityState !== "visible" || !guardRef.current.active) return;
+      const target = resyncRef.current?.() ?? null;
+      if (target !== null && shouldResync(clockElapsed(), target)) clockSeekFn(target, { play: true });
+    };
+    document.addEventListener("visibilitychange", back);
+    window.addEventListener("pageshow", back);
+    return () => {
+      document.removeEventListener("visibilitychange", back);
+      window.removeEventListener("pageshow", back);
+    };
+  }, [synced, phase, clockElapsed, clockSeekFn]);
+
+  const clockToggle = clock.toggle;
+  // Play / pause through here: the click is the gesture that can wake audio.
+  // A synced follower that was paused (resume prompt) rejoins the host's
+  // position instead of continuing from where it stopped.
+  const togglePlay = useCallback(() => {
+    setResumePrompt(false);
+    audio.unlock();
+    const target = synced ? (resyncRef.current?.() ?? null) : null;
+    if (target !== null && paused) clockSeekFn(target, { play: true });
+    else clockToggle();
+  }, [audio, clockToggle, clockSeekFn, synced, paused]);
+
   // ── Manual ("Quieto") mode: stop at the end of every step ─────────────
   const stopForQuieto = useCallback(
     (idx: number) => {
@@ -466,11 +543,32 @@ export function WarmupPlayer({
     clock.seek(sg.kind === "bridge" ? tl.closingAt : tl.stepStart[total - 1], { play: true });
   }, [phase, tl, segIdx, clock, synced, total]);
 
+  // Leaving early (S8-13 F-6): the host decides what "seen" means from
+  // `{ completed, elapsedMs }`. A skip that WOULD count as seen (past 20 s in
+  // a session) asks for a second tap first; an early stray tap just leaves.
+  const [confirmSkip, setConfirmSkip] = useState(false);
+  useEffect(() => {
+    if (!confirmSkip) return;
+    const id = setTimeout(() => setConfirmSkip(false), 4000);
+    return () => clearTimeout(id);
+  }, [confirmSkip]);
+  const exitInfo = useCallback(
+    (): WarmupExitInfo => ({
+      completed: phase === "reflect" || phase === "done" || clock.done,
+      elapsedMs: phase === "run" ? clock.elapsedMs() : phase === "intro" ? 0 : tl.totalMs,
+    }),
+    [phase, clock, tl.totalMs],
+  );
   const exit = useCallback(() => {
+    const info = exitInfo();
+    if (sessionLike && phase === "run" && skipNeedsConfirm(info) && !confirmSkip) {
+      setConfirmSkip(true);
+      return;
+    }
     audio.cancel();
     audio.cancelSpeech();
-    onExit?.();
-  }, [audio, onExit]);
+    onExit?.(info);
+  }, [audio, onExit, exitInfo, sessionLike, phase, confirmSkip]);
 
   // Keyboard.
   useEffect(() => {
@@ -506,6 +604,20 @@ export function WarmupPlayer({
     setChromeHidden(false);
     setChromeEpoch((n) => n + 1);
   }, []);
+  // Eyes-closed (dusk) legs hide the footer, so the first tap on the stage
+  // is a PAUSE (short haptic + the footer and "Pausado" come back), not just
+  // a reveal. Taps on real controls are left to the controls.
+  const clockPauseNow = clock.pause;
+  const onRootPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (dusk && chromeHidden && running && !(e.target as HTMLElement).closest?.("button, a, input, textarea, select")) {
+        clockPauseNow();
+        audio.vibrate(30);
+      }
+      revealChrome();
+    },
+    [dusk, chromeHidden, running, clockPauseNow, audio, revealChrome],
+  );
   useEffect(() => {
     if (!slowLeg) return;
     const id = setTimeout(() => setChromeHidden(true), CHROME_HIDE_MS);
@@ -614,15 +726,7 @@ export function WarmupPlayer({
   const sequence = useMemo(() => sequenceMap(exercise, locale, labels), [exercise, locale, labels]);
   const preview = useMemo(() => previewSpec(exercise), [exercise]);
 
-  const submitReflection = (keep: boolean) => {
-    if (keep) setSaved(saveReflection(exercise.id, answers));
-    setPhase("done");
-  };
-  const repeat = () => {
-    setAnswers(["", ""]);
-    setSaved(false);
-    setPhase("intro");
-  };
+  const repeat = () => setPhase("intro");
 
   const figurePath = pathSeg ? { from: pathSeg.seg.from, to: pathSeg.seg.to, progress: pathSeg.reached ? 1 : 0 } : null;
   // Eyes-closed dusk darkens the WHOLE screen, not just the player: on
@@ -641,15 +745,20 @@ export function WarmupPlayer({
       data-dusk={dusk ? "1" : undefined}
       data-chrome-hidden={chromeHidden ? "1" : undefined}
       data-mode={mode}
-      onPointerDown={revealChrome}
+      onPointerDown={onRootPointerDown}
       onPointerMove={chromeHidden ? revealChrome : undefined}
     >
       {/* ── Top bar: the single exit, never hides ── */}
       <header className={s.topbar}>
         {onExit ? (
-          <button type="button" className={s.exitBtn} onClick={exit} aria-label={sessionLike ? t.skipExercise : t.close}>
+          <button
+            type="button"
+            className={s.exitBtn}
+            onClick={exit}
+            aria-label={confirmSkip ? t.skipConfirm : sessionLike ? t.skipExercise : t.close}
+          >
             <X size={20} aria-hidden />
-            {sessionLike && <span>{t.skipExercise}</span>}
+            {sessionLike && <span>{confirmSkip ? t.skipConfirm : t.skipExercise}</span>}
           </button>
         ) : (
           <span />
@@ -758,6 +867,12 @@ export function WarmupPlayer({
             <p className="sr-only" aria-live="polite" aria-atomic="true">
               {liveCue}
             </p>
+            {synced && wake.denied && <p className={[s.muted, s.note].join(" ")}>{t.wakeLockNote}</p>}
+            {showResumePrompt && (
+              <button type="button" className={s.primaryBtn} onClick={togglePlay}>
+                {t.tapToResume}
+              </button>
+            )}
             {isBridge && (
               <button type="button" className={s.primaryBtn} onClick={onFinish ?? exit}>
                 {t.goToTable}
@@ -771,33 +886,19 @@ export function WarmupPlayer({
             className={s.reflect}
             onSubmit={(e) => {
               e.preventDefault();
-              submitReflection(true);
+              setPhase("done");
             }}
           >
             <h2 className={s.title}>{t.reflectTitle}</h2>
             <p className={s.muted}>{t.reflectLead}</p>
             {exercise.closing.map((q, i) => (
               <div key={i} className={s.field}>
-                <label className={s.question} htmlFor={`warmup-reflect-${i}`}>
-                  {lw(q, locale)}
-                </label>
-                <textarea
-                  id={`warmup-reflect-${i}`}
-                  className={s.textarea}
-                  rows={3}
-                  maxLength={2000}
-                  value={answers[i]}
-                  placeholder={t.answerLabel}
-                  onChange={(e) => setAnswers((a) => (i === 0 ? [e.target.value, a[1]] : [a[0], e.target.value]))}
-                />
+                <p className={s.question}>{lw(q, locale)}</p>
               </div>
             ))}
             <div className={s.reflectActions}>
-              <button type="button" className={s.ghostBtn} onClick={() => submitReflection(false)}>
-                {t.omit}
-              </button>
               <button type="submit" className={s.primaryBtn}>
-                {t.save}
+                {t.reflectContinue}
               </button>
             </div>
           </form>
@@ -807,7 +908,6 @@ export function WarmupPlayer({
           <>
             <h2 className={s.title}>{t.doneTitle}</h2>
             <p className={s.lead}>{t.doneBody}</p>
-            {saved && <p className={s.savedNote}>{t.savedNote}</p>}
             {tl.doneObserveIdx.length > 0 && (
               <>
                 <p className={s.kicker}>{t.noticedTitle}</p>
@@ -822,7 +922,7 @@ export function WarmupPlayer({
               <button type="button" className={s.ghostBtn} onClick={repeat}>
                 {t.repeat}
               </button>
-              <button type="button" className={s.primaryBtn} onClick={onFinish ?? onExit}>
+              <button type="button" className={s.primaryBtn} onClick={() => (onFinish ? onFinish() : onExit?.({ completed: true, elapsedMs: tl.totalMs }))}>
                 {onFinish ? t.backToList : t.finish}
               </button>
             </div>
@@ -847,7 +947,7 @@ export function WarmupPlayer({
           <button
             type="button"
             className={s.playBtn}
-            onClick={clock.toggle}
+            onClick={togglePlay}
             aria-label={paused ? t.resume : t.pause}
             aria-pressed={paused}
           >

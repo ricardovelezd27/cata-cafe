@@ -277,49 +277,51 @@ async function updateCoffeeBody(
 export async function duplicateCoffee(
   coffeeId: string,
   locale: string = "es",
-): Promise<{ ok: true; coffeeId: string }> {
-  const user = await requireRegisteredUser();
+): Promise<ActionResult<{ coffeeId: string }>> {
+  return run("duplicateCoffee", async () => {
+    const user = await requireRegisteredUser();
 
-  const source = await prisma.coffee.findFirst({
-    where: { id: coffeeId, AND: [usableCoffeeWhere(user.id)] },
-    select: {
-      name: true,
-      country: true,
-      region: true,
-      farm: true,
-      producer: true,
-      species: true,
-      variety: true,
-      harvestYear: true,
-      processType: true,
-      altitude: true,
-      roastLevel: true,
-      certifications: true,
-      // notes are deliberately NOT selected or copied: they are the owner's
-      // private text (S8-02 F-cafes-3, see duplicableFields).
-    },
-  });
-  if (!source) throw new Error("not_found_or_forbidden");
-
-  const prefix = locale === "en" ? "Copy of" : "Copia de";
-  // The copy gets its OWN short code (source.code is deliberately not in the
-  // select above — codes are per-row identifiers, never inherited).
-  const copy = await withCodeRetry((code) =>
-    prisma.coffee.create({
-      data: {
-        ...duplicableFields(source),
-        code,
-        name: `${prefix} ${source.name}`.slice(0, 120),
-        createdBy: user.id,
-        visibility: "private",
-        resultsPublished: false,
+    const source = await prisma.coffee.findFirst({
+      where: { id: coffeeId, AND: [usableCoffeeWhere(user.id)] },
+      select: {
+        name: true,
+        country: true,
+        region: true,
+        farm: true,
+        producer: true,
+        species: true,
+        variety: true,
+        harvestYear: true,
+        processType: true,
+        altitude: true,
+        roastLevel: true,
+        certifications: true,
+        // notes are deliberately NOT selected or copied: they are the owner's
+        // private text (S8-02 F-cafes-3, see duplicableFields).
       },
-      select: { id: true },
-    }),
-  );
+    });
+    if (!source) throw new Error("not_found_or_forbidden");
 
-  revalidatePath(`/${locale}/app/coffees`);
-  return { ok: true, coffeeId: copy.id };
+    const prefix = locale === "en" ? "Copy of" : "Copia de";
+    // The copy gets its OWN short code (source.code is deliberately not in the
+    // select above — codes are per-row identifiers, never inherited).
+    const copy = await withCodeRetry((code) =>
+      prisma.coffee.create({
+        data: {
+          ...duplicableFields(source),
+          code,
+          name: `${prefix} ${source.name}`.slice(0, 120),
+          createdBy: user.id,
+          visibility: "private",
+          resultsPublished: false,
+        },
+        select: { id: true },
+      }),
+    );
+
+    revalidatePath(`/${locale}/app/coffees`);
+    return { coffeeId: copy.id };
+  });
 }
 
 // ─── Share a coffee via invite link (owner only) ──────────────────────────────
