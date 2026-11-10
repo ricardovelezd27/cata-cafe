@@ -393,8 +393,10 @@ export async function mergeGuestData(
   // history row still carried the deleted evaluation's score and a stale
   // community score. Re-sync history for every closed session whose
   // evaluations changed, so it reflects the surviving evaluation and the
-  // refired aggregate. After commit; a failure is logged, never thrown (the
-  // merge itself succeeded and the close repair pass re-syncs history too).
+  // refired aggregate. After commit; a failure is only logged, never thrown
+  // (the merge itself succeeded). Nothing retries it: the close repair pass
+  // skips sessions that are already finalized, so a failure here leaves the
+  // history row stale until something else re-syncs that session.
   for (const sessionId of outcome.closedRefireSessionIds) {
     try {
       await syncCoffeeHistoryForSession(sessionId);
