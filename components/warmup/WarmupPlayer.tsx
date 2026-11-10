@@ -413,6 +413,10 @@ export function WarmupPlayer({
   // do we pause the run and ask for one tap. The tap is the gesture.
   const [resumePrompt, setResumePrompt] = useState(false);
   const showResumePrompt = resumePrompt && paused;
+  // Any way of resuming (Space, Prev/Next, button) ends the prompt, so a later
+  // ordinary pause never shows "Toca para reanudar" again. Adjusted during
+  // render (React-sanctioned) rather than in an effect.
+  if (resumePrompt && !paused) setResumePrompt(false);
   const guardRef = useRef({ muted: audio.muted, active: false, interrupted: audio.interrupted });
   useEffect(() => {
     guardRef.current = { muted: audio.muted, active: phase === "run" && !clock.userPaused && !clock.done, interrupted: audio.interrupted };
