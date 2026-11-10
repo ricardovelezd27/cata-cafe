@@ -26,6 +26,24 @@ export async function submitAllEvaluations(sessionId: string) {
   // Member gate + closed/expired guard (a closed session's results are final)
   // + not-started guard (a participant cannot write before the master starts).
   const auth = await requireSessionMember(sessionId, user.id);
+
+  // F-solo-1: a solo close that threw after the flip leaves the session closed
+  // but not finalized. Resubmitting must repair it (phase 2 of the close), not
+  // fail with session_closed. A finalized session still falls through to the
+  // guard below.
+  if (auth.status === "closed" && !auth.isGroup && auth.createdBy === user.id) {
+    const repair = await closeSessionInternal(sessionId, {
+      reason: "solo_auto",
+      emails: "skip",
+      repairGraceMs: 0,
+    });
+    if (repair.repaired) {
+      revalidatePath(`/es/app/sessions/${sessionId}/results`);
+      revalidatePath(`/en/app/sessions/${sessionId}/results`);
+      return { ok: true };
+    }
+  }
+
   assertSessionWritable(auth);
   assertSessionStarted({ ...auth, isOwner: auth.createdBy === user.id });
 

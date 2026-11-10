@@ -89,13 +89,6 @@ export function needsFinalize(
   return now - row.closedAt.getTime() >= graceMs;
 }
 
-/** Phase 2 runs when this call flipped the session, or when an earlier call
- *  flipped it and never stamped closeFinalizedAt. A finalized session is a
- *  no-op (nothing re-emailed, no second history sync). */
-export function shouldFinalize(flipped: boolean, closeFinalizedAt: Date | null): boolean {
-  return flipped || closeFinalizedAt === null;
-}
-
 // ─── Deadline in the owner's zone (F-grupal-asincrona-4) ─────────────────────
 
 const ZONE_RE = /^[A-Za-z][A-Za-z0-9_+-]*(\/[A-Za-z0-9_+-]+){0,2}$/;
