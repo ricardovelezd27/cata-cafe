@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
   // S8-08 F-insights-1: only the super-admin report is platform-wide.
   const scope = scopeFor(access);
 
-  const [data, benchmark]= await Promise.all([
+  const [data, benchmark] = await Promise.all([
     getDashboardData(locale, scope),
     getBenchmarkComparison({}, scope),
   ]);
