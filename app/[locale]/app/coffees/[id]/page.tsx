@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 import { requireAppUser } from "@/lib/auth";
 import Link from "next/link";
 import {
@@ -564,7 +565,7 @@ export default async function CoffeeProfilePage({
                   visibility={coffee.visibility as CoffeeVisibility}
                   previousShares={shares.map((s) => ({
                     userId: s.userId,
-                    displayName: s.user.displayName,
+                    displayName: profileDisplayName({ id: s.userId, displayName: s.user.displayName }, locale),
                   }))}
                   translations={{
                     recordPublic: t("recordPublic"),
@@ -607,7 +608,10 @@ export default async function CoffeeProfilePage({
                   locale={locale}
                   initialToken={shareInitialToken}
                   initialExpiresAt={shareInitialToken ? (invite?.expiresAt?.toISOString() ?? null) : null}
-                  shares={shares.map((s) => ({ userId: s.userId, displayName: s.user.displayName }))}
+                  shares={shares.map((s) => ({
+                    userId: s.userId,
+                    displayName: profileDisplayName({ id: s.userId, displayName: s.user.displayName }, locale),
+                  }))}
                   translations={{
                     title: t("share.title"),
                     generateLink: t("share.generateLink"),

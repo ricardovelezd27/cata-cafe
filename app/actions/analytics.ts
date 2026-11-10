@@ -41,6 +41,7 @@ import {
   type OriginContext,
 } from "@/lib/analytics/benchmarks";
 import { COFFEE_COUNTRIES } from "@/lib/analytics/normalize";
+import { DELETED_PROFILE_PREFIX } from "@/lib/accountDeletion/deletedProfile";
 import type { Prisma } from "@/app/generated/prisma/client";
 
 function asLocale(locale: string): "es" | "en" {
@@ -212,6 +213,9 @@ export async function listAnalyticsUsers(): Promise<AnalyticsUser[]> {
   }
 
   const profiles = await prisma.profile.findMany({
+    // Deleted-account placeholders (S8-19) are not users: hidden here and in
+    // the counts built from this list.
+    where: { NOT: { id: { startsWith: DELETED_PROFILE_PREFIX } } },
     select: {
       id: true,
       displayName: true,

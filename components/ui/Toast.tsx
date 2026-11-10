@@ -41,6 +41,8 @@ export type ActionFeedbackTranslations = Record<string, string>;
 type ActionFeedbackContextValue = {
   notifySuccess: (message: string) => void;
   notifyError: (code: ActionErrorCode | string) => void;
+  /** Already-localized, non-blocking notice (action succeeded with a caveat). */
+  notifyWarning: (message: string) => void;
   run: <T>(
     promise: Promise<ActionResult<T>>,
     onOk?: (data: T) => void | Promise<void>,
@@ -91,6 +93,8 @@ export function ActionFeedbackProvider({
 
   const notifySuccess = useCallback((message: string) => push("success", message), [push]);
 
+  const notifyWarning = useCallback((message: string) => push("error", message), [push]);
+
   const notifyError = useCallback(
     (code: ActionErrorCode | string) => {
       const key = isActionErrorCode(code) ? code : "unknown";
@@ -134,7 +138,7 @@ export function ActionFeedbackProvider({
   );
 
   return (
-    <ActionFeedbackContext.Provider value={{ notifySuccess, notifyError, run }}>
+    <ActionFeedbackContext.Provider value={{ notifySuccess, notifyError, notifyWarning, run }}>
       {children}
       <div
         role="status"

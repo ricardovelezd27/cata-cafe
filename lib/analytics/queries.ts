@@ -16,6 +16,7 @@ import {
 } from "./normalize";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
+import { DELETED_PROFILE_PREFIX, isDeletedProfileId } from "@/lib/accountDeletion/deletedProfile";
 import { PLATFORM_SCOPE } from "./types";
 import { anonymizeCuppers } from "./cupperPrivacy";
 import type {
@@ -906,14 +907,16 @@ export async function getDashboardData(
     // Platform: registered profiles. Scoped: distinct cuppers this user's
     // data actually contains (their sessions' participants + themselves).
     scope.kind === "platform"
-      ? prisma.profile.count()
+      ? prisma.profile.count({ where: { NOT: { id: { startsWith: DELETED_PROFILE_PREFIX } } } })
       : prisma.evaluation
           .findMany({
             where: { isDraft: false, ...scopedEvaluationWhere(scope) },
             select: { cupperId: true },
             distinct: ["cupperId"],
           })
-          .then((rows) => rows.length),
+          // People, not placeholders of deleted accounts (S8-19); their
+          // evaluations still count in every score statistic.
+          .then((rows) => rows.filter((r) => !isDeletedProfileId(r.cupperId)).length),
     prisma.evaluation.findMany({
       where: {
         isDraft: false,
@@ -988,7 +991,8 @@ export async function getDashboardData(
     sessionsByStatus,
     evaluationsSubmitted,
     totalUsers,
-    activeCuppers30d: activeCupperIds.length,
+    // People (S8-19): a deleted account's placeholder is not an active cupper.
+    activeCuppers30d: activeCupperIds.filter((r) => !isDeletedProfileId(r.cupperId)).length,
     avgIndividualScore: round2(avgIndividual._avg.individualScore),
     avgCommunityScore: round2(avgCommunity._avg.communityScore),
     monthlyTrend,

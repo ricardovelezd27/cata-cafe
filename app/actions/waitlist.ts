@@ -53,8 +53,8 @@ export async function reserveFoundingSeat(
           locale,
           source,
           // F-landing-1: the consent record, null until the notice is actually
-          // shown (LEGAL_PAGES_PUBLISHED). TODO(S8-07): deleteAccount must
-          // delete this row by email (+ test) once deleteAccount exists.
+          // shown (LEGAL_PAGES_PUBLISHED). deleteAccount removes this row by
+          // the lowercased email (S8-19; tests/accountDeletion.test.ts).
           ...consentStamp(LEGAL_PAGES_PUBLISHED, CONSENT_NOTICE_VERSION),
         },
       });

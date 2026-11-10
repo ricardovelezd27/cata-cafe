@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { sessionHref } from "@/lib/sessionRouting";
+import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 import { SessionsTable, type SessionRow, type SessionsTableTranslations } from "./SessionsTable";
 import type { DeleteSessionTranslations } from "./DeleteSessionButton";
 
@@ -61,7 +62,7 @@ export default async function SessionsList({
         groupName: s.group?.name ?? null,
         isOwner,
         isParticipant,
-        ownerName: isOwner ? null : s.createdByUser.displayName,
+        ownerName: isOwner ? null : profileDisplayName({ id: s.createdBy, displayName: s.createdByUser.displayName }, locale),
         href: sessionHref(s, { locale, isOwner, isAdminViewer: !isOwner && !isParticipant }),
       };
     });

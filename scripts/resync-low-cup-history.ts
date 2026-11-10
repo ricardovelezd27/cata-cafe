@@ -31,7 +31,8 @@ async function main() {
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: dbUrl }) });
 
   const rows = await prisma.userCoffeeHistory.findMany({
-    where: { sessionId: { not: null } },
+    // coffeeId NOT NULL: label-only rows (S8-16) never carry a community score.
+    where: { sessionId: { not: null }, coffeeId: { not: null } },
     select: {
       id: true,
       sessionId: true,

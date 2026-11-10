@@ -38,6 +38,8 @@ const ALL_REGISTERED_FILES = ["coffees.ts", "groups.ts"];
 const GUEST_KEEPS: Record<string, string[]> = {
   "sessions.ts": ["upsertEvaluation", "checkSessionStarted", "getWaitingState"],
   "community.ts": ["joinViaToken", "completeGuestOnboarding", "submitAllEvaluations"],
+  // S8-19: a guest may delete their own account (spec S8-07, Apple 5.1.1(v)).
+  "account.ts": ["deleteAccount", "getMyAccountDeletionImpact"],
 };
 
 describe("registered-only server actions", () => {

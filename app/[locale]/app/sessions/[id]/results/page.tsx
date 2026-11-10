@@ -3,6 +3,7 @@ import { requireAppUser } from "@/lib/auth";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
 import { orderReferencesFirst } from "@/lib/referenceRules";
+import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
 import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
@@ -287,7 +288,7 @@ export default async function ResultsPage({
                 where: { id: { in: excluderIds } },
                 select: { id: true, displayName: true },
               })
-            ).map((p) => [p.id, p.displayName] as [string, string])
+            ).map((p) => [p.id, profileDisplayName(p, localeStr)] as [string, string])
           : [],
       );
       const trailByUser = new Map(
@@ -315,7 +316,7 @@ export default async function ResultsPage({
       for (const ev of evals) {
         let entry = byCupper.get(ev.cupperId);
         if (!entry) {
-          entry = { name: ev.cupper.displayName, bySample: new Map() };
+          entry = { name: profileDisplayName(ev.cupper, localeStr), bySample: new Map() };
           byCupper.set(ev.cupperId, entry);
         }
         entry.bySample.set(ev.sessionSampleId, ev);
@@ -384,7 +385,7 @@ export default async function ResultsPage({
           sessionSampleId: ev.sessionSampleId,
           descriptiveData: ev.descriptiveData,
           combinedData: ev.combinedData,
-          cupper: { displayName: ev.cupper.displayName },
+          cupper: { displayName: profileDisplayName(ev.cupper, localeStr) },
         })),
         excludedUserIds,
       });
@@ -666,7 +667,7 @@ export default async function ResultsPage({
   // Read-only banner for the super-admin view, interpolated server-side.
   const adminViewNotice = isAdminViewer
     ? tResults("adminViewNotice", {
-        owner: adminTarget?.createdByUser.displayName ?? "—",
+        owner: adminTarget ? profileDisplayName({ id: adminTarget.createdBy, displayName: adminTarget.createdByUser.displayName }, localeStr, "—") : "—",
       })
     : null;
 
@@ -697,7 +698,7 @@ export default async function ResultsPage({
       isOwner={isOwner}
       isAdminViewer={isAdminViewer}
       adminViewNotice={adminViewNotice}
-      adminOwnerName={isAdminViewer ? (adminTarget?.createdByUser.displayName ?? null) : null}
+      adminOwnerName={isAdminViewer && adminTarget ? profileDisplayName({ id: adminTarget.createdBy, displayName: adminTarget.createdByUser.displayName }, localeStr) : null}
       isGroup={session.isGroup}
       canViewGroup={canViewGroup}
       cuppingOpen={!sessionOver}

@@ -15,6 +15,13 @@ import { sessionHref } from "@/lib/sessionRouting";
 import { GuestClaimButton, type GuestClaimButtonTranslations } from "@/components/guest/GuestClaimButton";
 import { EditProfileDialog } from "./EditProfileDialog";
 import { ChangeEmailDialog } from "@/components/profile/ChangeEmailDialog";
+import { DeleteAccountDialog } from "@/components/profile/DeleteAccountDialog";
+import { deleteConfirmationWord, MAX_SESSIONS_TO_DELETE } from "@/lib/accountDeletion/plan";
+
+// The "Eliminar cuenta" dialog posts deleteAccount from this page: its one
+// transaction may run up to 120 s (lib/accountDeletion/deleteAccount.ts),
+// after closing kept sessions and before deleting the auth user.
+export const maxDuration = 300;
 
 export function generateStaticParams() {
   return [{ locale: "es" }, { locale: "en" }];
@@ -48,7 +55,12 @@ export default async function ProfilePage({
     prisma.sessionParticipant.count({ where: { userId: user.id, status: "joined" } }),
     prisma.evaluation.count({ where: { cupperId: user.id, isDraft: false } }),
     prisma.userCoffeeHistory
-      .findMany({ where: { userId: user.id }, select: { coffeeId: true }, distinct: ["coffeeId"] })
+      // coffeeId NOT NULL: label-only rows (S8-16) are not "a coffee tasted".
+      .findMany({
+        where: { userId: user.id, coffeeId: { not: null } },
+        select: { coffeeId: true },
+        distinct: ["coffeeId"],
+      })
       .then((rows) => rows.length),
     // Percentile rank among ACTIVE cuppers, computed in one CTE-based query so we
     // don't have to pull every profile's counts into TS. The per-profile point
@@ -63,7 +75,7 @@ export default async function ProfilePage({
         LEFT JOIN (SELECT "cupperId" AS id, count(*) AS cnt FROM evaluations WHERE "isDraft" = false GROUP BY 1) e ON e.id = p.id
         LEFT JOIN (SELECT "userId" AS id, count(*) AS cnt FROM session_participants WHERE status = 'joined' GROUP BY 1) j ON j.id = p.id
         LEFT JOIN (SELECT "createdBy" AS id, count(*) AS cnt FROM cupping_sessions WHERE status <> 'draft' GROUP BY 1) m ON m.id = p.id
-      ), active AS (SELECT * FROM pts WHERE points > 0)
+      ), active AS (SELECT * FROM pts WHERE points > 0 AND left(id, 8) <> 'deleted_')
       SELECT
         (SELECT count(*) FROM active) AS active_count,
         (SELECT count(*) FROM active a WHERE a.points < (SELECT points FROM pts WHERE id = ${user.id})) AS below_count
@@ -452,6 +464,41 @@ export default async function ProfilePage({
               >
                 {t("logoutEverywhere")}
               </SignOutButton>
+            </div>
+            {/* Danger zone (S8-19, F-cuenta-1): everyone, guests included. */}
+            <div className="mt-4 border-t border-outline-variant pt-4">
+              <DeleteAccountDialog
+                locale={locale}
+                className="w-full sm:w-auto"
+                strings={{
+                  open: t("deleteAccount.open"),
+                  title: t("deleteAccount.title"),
+                  intro: t("deleteAccount.intro"),
+                  loading: t("deleteAccount.loading"),
+                  impactSessionsDeleted: t.raw("deleteAccount.impactSessionsDeleted") as string,
+                  impactSessionsKept: t.raw("deleteAccount.impactSessionsKept") as string,
+                  impactEvaluations: t.raw("deleteAccount.impactEvaluations") as string,
+                  impactCoffees: t.raw("deleteAccount.impactCoffees") as string,
+                  impactGroupsKept: t.raw("deleteAccount.impactGroupsKept") as string,
+                  impactGroupsDeleted: t.raw("deleteAccount.impactGroupsDeleted") as string,
+                  impactNothing: t("deleteAccount.impactNothing"),
+                  keepScores: t("deleteAccount.keepScores"),
+                  keepCoffees: t("deleteAccount.keepCoffees"),
+                  irreversible: t("deleteAccount.irreversible"),
+                  protectedBody: t("deleteAccount.protectedBody"),
+                  changed: t("deleteAccount.changed"),
+                  tooLargeBody: (t.raw("deleteAccount.tooLargeBody") as string).replace(
+                    "{max}",
+                    String(MAX_SESSIONS_TO_DELETE),
+                  ),
+                  typeLabel: t.raw("deleteAccount.typeLabel") as string,
+                  word: deleteConfirmationWord(locale),
+                  submit: t("deleteAccount.submit"),
+                  deleting: t("deleteAccount.deleting"),
+                  cancel: t("deleteAccount.cancel"),
+                  close: tc("close"),
+                }}
+              />
             </div>
           </div>
         </section>

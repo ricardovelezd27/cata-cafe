@@ -8,6 +8,7 @@ import path from "node:path";
 const WRAPPED: Record<string, string[]> = {
   "coffees.ts": ["duplicateCoffee", "createCoffee", "updateCoffee"],
   "sessions.ts": ["assignSampleCoffee", "createExpressSession"],
+  "account.ts": ["deleteAccount", "getMyAccountDeletionImpact"],
 };
 
 function bodyOf(source: string, name: string): string {

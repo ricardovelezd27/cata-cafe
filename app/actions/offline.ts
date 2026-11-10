@@ -15,6 +15,8 @@ import {
   type EvalModuleKey,
 } from "@/lib/evaluation";
 import { isPinnedModule, pinReferenceAffective } from "@/lib/referenceRules";
+import { writeEvaluationOrdered } from "@/lib/evaluationWrite";
+import { logInfo } from "@/lib/log";
 import { replayOverExisting, submittedRefireArgs } from "@/lib/aggregateRefire";
 
 // Conflict-aware replay of an offline evaluation draft, called on reconnect.
@@ -58,6 +60,8 @@ type EvaluationReplayInput = {
   data: Record<string, unknown>;
   cupsPerSample: number;
   force?: boolean;
+  // S8-18: ms epoch of the draft's last edit (OfflineModuleData.updatedAt). Optional.
+  clientTs?: number;
 };
 
 // Shared body of syncEvaluation / replayEvaluation. NOT exported: every export
@@ -129,22 +133,26 @@ async function replayEvaluationCore(input: EvaluationReplayInput): Promise<Repla
   const fields = tryComputeEvaluationDerived(moduleKey, data, cupsPerSample);
   if (!fields) return "rejected";
 
-  const saved = await prisma.evaluation.upsert({
-    where: {
-      sessionSampleId_cupperId: {
-        sessionSampleId: input.sessionSampleId,
-        cupperId: user.id,
-      },
-    },
-    create: {
-      sessionSampleId: input.sessionSampleId,
-      sessionId,
-      cupperId: user.id,
-      ...fields,
-    },
-    update: { sessionId, ...fields },
-    select: { id: true },
+  const saved = await writeEvaluationOrdered(prisma, {
+    sessionSampleId: input.sessionSampleId,
+    sessionId,
+    cupperId: user.id,
+    fields,
+    clientTs: input.clientTs,
   });
+
+  // S8-18 (F-offline-2): a newer write already won. The server holds newer data
+  // than this draft, so the answer is "synced" (the client's own `ifUpdatedAt`
+  // guard keeps a newer LOCAL edit pending). Nothing changed: no re-fire.
+  if (!saved.applied) {
+    logInfo({
+      where: "replayEvaluation.staleClientWrite",
+      userId: user.id,
+      sessionId,
+      evaluationId: saved.id,
+    });
+    return "synced";
+  }
 
   // S8-04 (F-offline-7): re-fire the aggregate trigger when the row replaced
   // was already submitted (matches nothing for a draft). Idempotent, so a

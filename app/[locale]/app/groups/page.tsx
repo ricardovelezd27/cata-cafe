@@ -3,6 +3,7 @@ import { requireAppUser } from "@/lib/auth";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
 import { getCoCupperCandidates } from "@/lib/coCuppers";
+import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 import { claimGroupMembershipsByEmail } from "@/lib/groupMembership";
 import { CreateGroupDialog } from "@/components/groups/CreateGroupDialog";
 import { CoCupperCard } from "@/components/groups/CoCupperCard";
@@ -154,7 +155,7 @@ export default async function GroupsPage({
                   {g._count.members === 1
                     ? t("members").toLowerCase().replace(/s$/, "")
                     : t("members").toLowerCase()}{" "}
-                  · {g.owner.displayName}
+                  · {profileDisplayName({ id: g.createdBy, displayName: g.owner.displayName }, locale)}
                 </p>
               </Link>
             ))}
