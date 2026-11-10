@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { getGuestClaimSummary, safeClaimBack, verifyGuestClaimToken } from "@/lib/guestClaim";
+import { getGuestClaimSummary } from "@/lib/guestClaim";
+import { safeClaimBack, verifyGuestClaimToken } from "@/lib/guestClaimToken";
 import { confirmGuestClaim } from "@/app/actions/guestClaim";
 import { ButtonLink } from "@/components/ui";
 import { ClaimConfirmButton } from "@/components/auth/ClaimConfirmButton";

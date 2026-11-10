@@ -2,12 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import {
-  mergeGuestData,
-  mintGuestClaimToken,
-  safeClaimBack,
-  verifyGuestClaimToken,
-} from "@/lib/guestClaim";
+import { mergeGuestData } from "@/lib/guestClaim";
+import { mintGuestClaimToken, safeClaimBack, verifyGuestClaimToken } from "@/lib/guestClaimToken";
 
 function asLocale(locale: string): "es" | "en" {
   return locale === "en" ? "en" : "es";
