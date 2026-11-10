@@ -1,6 +1,13 @@
 "use client";
 
 import {
+  applySubmitEvent,
+  computeSubmitProgress,
+  seedSubmitMap,
+  type SubmitMap,
+  type SubmittedRow,
+} from "@/lib/submitProgress";
+import {
   useState,
   useRef,
   useTransition,
@@ -156,6 +163,10 @@ type Session = {
 
 type CuppingTab = "cupping" | "extrinsic" | "physical";
 
+// Stable defaults: a fresh [] per render would re-trigger the re-seed effect.
+const NO_ROWS: SubmittedRow[] = [];
+const NO_IDS: string[] = [];
+
 export function CupClient({
   locale,
   initialSampleId,
@@ -168,6 +179,8 @@ export function CupClient({
   sessionEntriesLocked = false,
   participantCount,
   submittedCount: initialSubmittedCount,
+  submittedRows = NO_ROWS,
+  eligibleCupperIds = NO_IDS,
   translations,
   userEmail,
   userCountry,
@@ -210,6 +223,9 @@ export function CupClient({
   sessionEntriesLocked?: boolean;
   participantCount: number;
   submittedCount: number;
+  /** Owner only: submitted evaluation rows + the cuppers who count (S8-11 T1). */
+  submittedRows?: SubmittedRow[];
+  eligibleCupperIds?: string[];
   userId: string;
   translations: {
     sample: string;
@@ -244,6 +260,8 @@ export function CupClient({
     individual: string;
     masterControls: string;
     submittedOf: string;
+    /** Raw "{count} de {total} enviaron todo" (optional: offline blobs). */
+    submittedTemplate?: string;
     closeSession: string;
     confirmClose: string;
     liveCountDown: string;
@@ -400,7 +418,23 @@ export function CupClient({
   // Set after a metadata save when the linked coffee belongs to someone else
   // — the label still saved, but the coffee record itself was skipped.
   const [coffeeNotOwnedNotice, setCoffeeNotOwnedNotice] = useState(false);
-  const [submittedCount, setSubmittedCount] = useState(initialSubmittedCount);
+  // Owner's counter: Map<cupperId, submitted sampleIds>, re-seeded from the
+  // server rows on every refresh (30 s poll, SUBSCRIBED, visibility) — never
+  // a `+1` per realtime event.
+  const [submitMap, setSubmitMap] = useState<SubmitMap>(() => seedSubmitMap(submittedRows));
+  const [seededFrom, setSeededFrom] = useState(submittedRows);
+  if (seededFrom !== submittedRows) {
+    // Adjust state during render when the server rows prop changed (refresh).
+    setSeededFrom(submittedRows);
+    setSubmitMap(seedSubmitMap(submittedRows));
+  }
+  const submitProgress = computeSubmitProgress(
+    submitMap,
+    samples.map((s) => s.id),
+    eligibleCupperIds,
+  );
+  const submittedCount = isOwner ? submitProgress.done : initialSubmittedCount;
+  const submittedTotal = isOwner ? submitProgress.total : participantCount;
   const [isGoingToResults, setIsGoingToResults] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const [guard, setGuard] = useState<{
@@ -847,8 +881,14 @@ export function CupClient({
               const sampleId = (row.sessionSampleId ?? row.session_sample_id) as
                 | string
                 | undefined;
-              if (isDraft === false && sampleId && sampleIdsRef.current.has(sampleId)) {
-                setSubmittedCount((prev) => prev + 1);
+              const cupperId = (row.cupperId ?? row.cupper_id) as string | undefined;
+              if (
+                typeof isDraft === "boolean" &&
+                cupperId &&
+                sampleId &&
+                sampleIdsRef.current.has(sampleId)
+              ) {
+                setSubmitMap((prev) => applySubmitEvent(prev, { cupperId, sampleId, isDraft }));
               }
             },
           );
@@ -886,6 +926,8 @@ export function CupClient({
       // so the maestro knows the number is stale rather than flat (F10).
       (status) => {
         setLiveCountDown(status !== "SUBSCRIBED");
+        // Events missed while the socket was down: re-seed from the server.
+        if (status === "SUBSCRIBED" && isOwner) router.refresh();
       },
     );
 
@@ -894,6 +936,17 @@ export function CupClient({
       stopSubscription();
     };
   }, [isGroup, isOwner, online, session.id, router]);
+
+  // Owner coming back to the tab (phone unlocked, tab switch): re-seed the
+  // counter from the server instead of trusting a socket that may have slept.
+  useEffect(() => {
+    if (!isGroup || !isOwner) return;
+    const onVisible = () => {
+      if (document.visibilityState === "visible") router.refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [isGroup, isOwner, router]);
 
   // Safety net for the realtime path above (S6 CP-C4): a group cupper whose
   // channel is silently dead (see lib/supabase/realtimeAuth.ts) still picks up
@@ -1704,6 +1757,12 @@ export function CupClient({
       : "next-sample";
 
   // ─── Sidebar slot content ─────────────────────────────────────
+  const ownerSubmittedText =
+    isOwner && translations.submittedTemplate
+      ? translations.submittedTemplate
+          .replace("{count}", String(submittedCount))
+          .replace("{total}", String(submittedTotal))
+      : translations.submittedOf;
   const identity = (
     <>
       <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-brown-mid">
@@ -1715,7 +1774,7 @@ export function CupClient({
       </div>
       {isGroup && (
         <div className="font-mono text-[11px] text-brown-mid mt-0.5">
-          {translations.submittedOf}
+          {ownerSubmittedText}
         </div>
       )}
       {referenceSample && (
@@ -1805,7 +1864,7 @@ export function CupClient({
         </div>
       )}
       {isGroup && (
-        <div className="font-mono text-[11px] text-brown-mid">{translations.submittedOf}</div>
+        <div className="font-mono text-[11px] text-brown-mid">{ownerSubmittedText}</div>
       )}
       {referenceContext && <div className="flex items-center">{referenceContext}</div>}
       {editSampleButton && <div className="flex items-center pt-1">{editSampleButton}</div>}
@@ -1825,7 +1884,13 @@ export function CupClient({
     isOwner && isGroup ? (
       <MasterControls
         title={translations.masterControls}
-        submittedLabel={`${submittedCount} / ${participantCount}`}
+        submittedLabel={
+          translations.submittedTemplate
+            ? translations.submittedTemplate
+                .replace("{count}", String(submittedCount))
+                .replace("{total}", String(submittedTotal))
+            : `${submittedCount} / ${submittedTotal}`
+        }
         liveDownLabel={liveCountDown ? translations.liveCountDown : undefined}
         closeLabel={translations.closeSession}
         inviteLabel={translations.invite}

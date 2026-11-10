@@ -1,3 +1,4 @@
+import { computeSubmitProgress, seedSubmitMap } from "@/lib/submitProgress";
 import { notFound, redirect } from "next/navigation";
 import { warmupPlayerStrings } from "@/components/warmup/playerStrings";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -60,7 +61,7 @@ export default async function CupPage({
           },
         },
       },
-      participants: { select: { userId: true, status: true } },
+      participants: { select: { userId: true, status: true, excludedFromResults: true } },
     },
   });
 
@@ -97,15 +98,30 @@ export default async function CupPage({
   // the per-cupper evaluations are already loaded above.
   const hasOwnEvaluation = session.samples.some((s) => s.evaluations.length > 0);
 
-  // How many unique participants have submitted at least one evaluation
-  const submittedParticipantsResult = await prisma.evaluation.findMany({
-    where: {
-      sessionSample: { sessionId: id },
-      isDraft: false,
-    },
-    select: { cupperId: true },
-    distinct: ["cupperId"],
-  });
+  // Honest "enviados" (S8-11 T1): eligible cuppers (joined or owner, not
+  // excluded, owner always included) that submitted EVERY sample — not "at
+  // least one evaluation over every participant row".
+  const eligibleCupperIds = Array.from(
+    new Set([
+      session.createdBy,
+      ...session.participants
+        .filter((p) => (p.status === "joined" || p.status === "owner") && !p.excludedFromResults)
+        .map((p) => p.userId),
+    ]),
+  );
+  const submittedRows = session.isGroup
+    ? (
+        await prisma.evaluation.findMany({
+          where: { sessionSample: { sessionId: id }, isDraft: false },
+          select: { cupperId: true, sessionSampleId: true },
+        })
+      ).map((r) => ({ cupperId: r.cupperId, sampleId: r.sessionSampleId }))
+    : [];
+  const submittedProgress = computeSubmitProgress(
+    seedSubmitMap(submittedRows),
+    session.samples.map((s) => s.id),
+    eligibleCupperIds,
+  );
 
   const profile = await prisma.profile.findUnique({
     where: { id: user.id },
@@ -168,7 +184,10 @@ export default async function CupPage({
         },
       }}
       participantCount={session.participants.length}
-      submittedCount={submittedParticipantsResult.length}
+      submittedCount={submittedProgress.done}
+      // Only the owner sees peers' rows (RLS) and renders the live counter.
+      submittedRows={isOwner ? submittedRows : []}
+      eligibleCupperIds={isOwner ? eligibleCupperIds : []}
       session={{
         id: session.id,
         name: session.name,
@@ -248,7 +267,8 @@ export default async function CupPage({
         cancel: ta("cancel"),
         individual: t("score.individual"),
         masterControls: tg("masterControls"),
-        submittedOf: tg("submittedOf", { count: submittedParticipantsResult.length, total: session.participants.length }),
+        submittedOf: tg("submittedOf", { count: submittedProgress.done, total: submittedProgress.total }),
+        submittedTemplate: tg.raw("submittedOf") as string,
         closeSession: tg("closeSession"),
         confirmClose: tg("confirmClose"),
         liveCountDown: tg("liveCountDown"),

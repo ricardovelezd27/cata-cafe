@@ -507,7 +507,7 @@
     "copyLink": "Copiar enlace",
     "copied": "Copiado",
     "participants": "Participantes",
-    "submittedOf": "{count} de {total} enviaron",
+    "submittedOf": "{count} de {total} enviaron todo",
     "closeSession": "Cerrar sesión",
     "confirmClose": "¿Cerrar la sesión? Los resultados quedarán finales.",
     "liveCountDown": "Conteo en vivo no disponible — recarga la página para ver el total actualizado.",
