@@ -173,7 +173,7 @@ export async function askDataQuestion(
     historyTurns: cleanHistory.length,
   });
 
-  const messages = toChatMessages(cleanHistory, trimmedQuestion);
+  let messages: AiChatMessage[] = [];
 
   const blocks: AiChatBlock[] = [];
   const citationSet = new Set<string>();
@@ -184,6 +184,8 @@ export async function askDataQuestion(
   let providerFailed = false;
 
   try {
+    // Inside the try so a throw here releases the reserved slot (catch below).
+    messages = toChatMessages(cleanHistory, trimmedQuestion);
     for (let i = 0; i < MAX_MODEL_CALLS; i++) {
       const lastTurn = i === MAX_MODEL_CALLS - 1;
       const res = await getAiProvider().chat({
@@ -280,16 +282,19 @@ export async function askDataQuestion(
 
   // The question itself was counted when the slot was reserved; only the
   // cost counters are added here.
-  await prisma.aiChatUsage.update({
+  const usageAfter = await prisma.aiChatUsage.update({
     where: usageKey,
     data: {
       modelCalls: { increment: totalModelCalls },
       promptTokens: { increment: totalPromptTokens },
       outputTokens: { increment: totalOutputTokens },
     },
+    select: { questionCount: true },
   });
 
-  const newUsed = Math.min(limit, used + 1);
+  // Read back AFTER the reservation, so parallel questions report the real
+  // count rather than the stale one read before the slot was reserved.
+  const newUsed = Math.min(limit, usageAfter.questionCount);
   const remaining = Math.max(0, limit - newUsed);
 
   const exit = providerFailed ? "provider_error" : answer ? "answer" : "no_answer";
