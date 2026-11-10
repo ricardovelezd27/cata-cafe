@@ -48,6 +48,7 @@ A cupper or owner leaves the results page by one of four plain links in the dock
 - **Confidence** — verified-in-code.
 - **Kim?** — yes: K-informes-1.
 - **Invariant check** — The anonymity invariant (`tests/reports.test.ts`) is unaffected; counts only.
+- **Fixed in S8-12** (PR #TBD) — participant summary shows "n de N incluidos" per sample, says when the viewer's own evaluation is excluded (no reason, no peer identity) and carries the generation stamp.
 
 ### F-informes-4 · PDF delivery has no WebView path (print dialog, attachment link) · severity: P2 · status: new
 
@@ -68,6 +69,7 @@ A cupper or owner leaves the results page by one of four plain links in the dock
 - **Confidence** — verified-in-code.
 - **Kim?** — no.
 - **Invariant check** — none touched.
+- **Fixed in S8-12** (PR #TBD) — `cva-pdf` has `maxDuration = 60`, try/catch with a logged digest (`lib/pdf/routeFailure.ts`) and `?inline=1`.
 
 ### F-informes-6 · The close email's legacy CVA attachment loses multi-reference labels · severity: P3 · status: new
 
@@ -78,6 +80,7 @@ A cupper or owner leaves the results page by one of four plain links in the dock
 - **Confidence** — verified-in-code.
 - **Kim?** — no.
 - **Invariant check** — Reference rules (display-only) untouched.
+- **Fixed in S8-12** (PR #TBD) — the legacy CVA attachment in the close email passes `referenceRank`, so R1/R2/R3 labels survive.
 
 ### F-informes-7 · PDFs set no document language, radar values may lack a text twin, and there is no raw export · severity: P3 · status: new
 
@@ -88,6 +91,7 @@ A cupper or owner leaves the results page by one of four plain links in the dock
 - **Confidence** — inferred-from-spec for the radar table; needs-runtime-check with an accessibility checker.
 - **Kim?** — yes: K-informes-2.
 - **Invariant check** — An owner CSV must follow the ficha-técnica owner gate.
+- **Fixed in S8-12** (PR #TBD) — `Document language` set, radar values printed as text in the participant summary (ficha already lists the eight means), owner CSV at `/api/sessions/[id]/results-csv`. TODO(Kim-D5) left.
 
 ## 4. Keep — works well
 

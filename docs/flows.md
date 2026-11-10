@@ -52,11 +52,17 @@ discarded.
 
 **Written list after close** (everything else throws `session_closed`; enforced by
 `tests/useServerExports.test.ts`): `upsertExtrinsic` via `ExtrinsicEditDialog`
-(owner, revealed sample), `updateSampleMetadata` naming a coffee-less sample
-(owner), and, pending the S8-12 decision, the owner's `setParticipantExclusion` and
-`refreshAggregateScores`. `closeSession`, `startSession`, `resendCloseEmails`,
-`deleteSession` and `duplicateSession` are lifecycle actions, idempotent or allowed
-on a closed session by design.
+(owner AND a revealed sample, otherwise `session_closed`; stamps
+`extrinsic_data.edited_at` and returns `ActionResult`), `updateSampleMetadata` naming
+a coffee-less sample (owner), and, decided in S8-12, the owner's
+`setParticipantExclusion` (reason / author / time stamped on `session_participants`,
+returns `ActionResult`, refreshes `UserCoffeeHistory` when the session is closed) and
+the idempotent `refreshAggregateScores`. After such a change the results page shows
+"Resultados actualizados el <fecha>" to every viewer and the PDFs carry the same line.
+`closeSession`, `startSession`, `resendCloseEmails`, `deleteSession` and
+`duplicateSession` are lifecycle actions, idempotent or allowed on a closed session
+by design. **TODO(Kim-D1/D2):** both extensions are the spec defaults and stay
+reversible (hide the button, drop the allow-list).
 
 **The database says the same (PHASE 21).** The browser key is SELECT-only on the
 session tables: no `INSERT/UPDATE/DELETE` for `anon`/`authenticated`, a participant
@@ -283,7 +289,7 @@ coffee and the input carries a coffee field (a label-only rename still throws
 `session_closed`). It creates the private coffee, links it, sets `revealed:
 true` and re-runs `syncCoffeeHistoryForSession` so the cupper's history row
 appears. This is the second sanctioned post-close write (the first is
-`ExtrinsicEditDialog` → `upsertExtrinsic`).
+`ExtrinsicEditDialog` → `upsertExtrinsic`, owner + revealed sample, S8-12).
 
 ### Reference sample (2026-09)
 
@@ -345,7 +351,7 @@ flowchart TD
     subgraph states [visibility]
         P[private] -- "createCoffeeInvite()\n(link mints ⇒ intent to share)" --> S[shared]
         S -- setCoffeeVisibility --> PUB[public]
-        S -- "setCoffeeVisibility(private)\nshare rows stay but go INERT" --> P
+        S -- "setCoffeeVisibility(private)\ninvites DELETED · share rows stay but go INERT" --> P
         PUB -- setCoffeeVisibility --> S
     end
     S -- "join link /join/coffee/[token]" --> CS[CoffeeShare row\n(per user)]
@@ -353,6 +359,14 @@ flowchart TD
     PUB --> U2[usable by everyone]
     P --> U3[usable by owner only]
 ```
+
+**Invite links (S8-12).** New links expire after 30 days (`lib/coffeeInvite.ts`; the
+owner sees the date next to the link). `rotateCoffeeInvite` deletes every previous
+invite and mints a fresh one — the old URL reads "invalid"; the revoke confirmation
+offers it (default on) so a revoked person cannot reopen the old URL. `maxUses` is
+enforced inside the join transaction. Going private deletes the invites; returning
+to shared/public lists the people who still hold an inert share row and lets the
+owner keep or clear them first (`setCoffeeVisibility(id, v, clearShares)`).
 
 `usableCoffeeWhere(userId)` (`lib/coffeeAccess.ts`) is the single read rule:
 not anonymized ∧ (owned ∪ public ∪ (shared ∧ has share row)). The session wizard
@@ -571,6 +585,21 @@ from the ranking, the session average and "Mejor muestra" — while every other
 sample's ranking row (R2) and matrix cell (S3) still shows a display-only
 signed Δ against it, explained by the `help.referencia` InfoHint.
 
+### Ranking honesty & n of N (S8-12)
+
+Display rules for community numbers live in `lib/reports/ranking.ts`
+(`RANKING_POLICY`, TODO(Kim-D3): min n 3, "indicativo" below 5, gap 0.5 × the larger
+sample SD). Equal displayed scores share a rank (1, 1, 3); a community score built from
+fewer than 3 cuppers has no SD and is never "mejor muestra"; neighbours closer than the
+gap threshold read "sin diferencia clara". Every community number says **"n de N
+incluidos"**: n = complete evaluations of non-excluded cuppers, N = every submitted
+evaluation (excluded ones too, computed separately from `submittedCount`). Resumen, the
+radar card, the score breakdown, the owner matrix, the participant summary and the ficha
+read the same output. The owner matrix shows who excluded whom, when and why
+(`ExclusionDialog`, fixed reason list in `lib/exclusionReasons.ts`). Display-only:
+scoring, `computeGroupAggregate`, the SQL trigger and `AggregateScore` never read any of
+this.
+
 ## 6. Reports & PDFs (2026-10, S6 Stream A)
 
 Every report is built from the SAME pure models the results page uses
@@ -598,6 +627,18 @@ documents register fonts once (`lib/pdf/fonts.ts`) and draw charts with the
 `lib/pdf/charts.tsx` SVG primitives; `?inline=1` opens the native viewer
 (iOS) instead of downloading. New reports are PDF-only — `PrintClient.tsx`
 stays the HTML twin of the CVA form only.
+
+**Report stamp & export (S8-12).** Every PDF carries `ReportStamp`
+(`lib/pdf/sections/ReportStamp.tsx`, text in the pure `lib/pdf/stampText.ts`): server date
+and time in UTC, language, the n-of-N inclusion line, "Resultados actualizados el …" /
+"Origen editado el …" when something changed after close, the viewer's own exclusion
+(participant summary: no reason, no peer identity) and "BORRADOR" for unsent drafts (the
+CVA form repeats it in every page footer). `Document language` is set on all six
+documents, filenames end in `_YYYYMMDD`, the participant summary prints the eight radar
+values as text, and `cva-pdf` has `maxDuration`, try/catch and a logged digest. The owner
+also gets `/api/sessions/[id]/results-csv` (one row per cupper × sample, UTF-8 BOM,
+`csvCell` from `lib/csv.ts`; coffee name only once revealed; `?codes=1` swaps names for
+codes; participants get 404).
 
 **Blind-leak gates (S8-02)** — data the UI hides must not be serialized either,
 each gate is a pure, tested helper shared by every consumer:

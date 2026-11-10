@@ -27,6 +27,7 @@ export async function GET(
   const { id } = await params;
   const localeParam = request.nextUrl.searchParams.get("locale");
   const locale: "es" | "en" = localeParam === "en" ? "en" : "es";
+  const inline = request.nextUrl.searchParams.get("inline") === "1";
 
   const supabase = await createClient();
   const {
@@ -134,7 +135,7 @@ export async function GET(
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${filename}"`,
       "Cache-Control": "no-store",
     },
   });
