@@ -1472,7 +1472,7 @@ export async function removeSessionSample(sampleId: string, locale: string = "es
     if (physical > 0 || extrinsic > 0) return "sample_has_data" as const;
     // Delete + reference-rank compaction + position re-pack (lib/sampleRemoval.ts,
     // shared with the solo "Terminar cata" finish, S8-05).
-    await removeSamplesInTx(tx, sample.sessionId, [sampleId]);
+    await removeSamplesInTx(tx, sample.sessionId, [sampleId], { onReactivate: "refuse" });
     await touchSession(tx, sample.sessionId);
     return null;
   }).catch((e: unknown) => {

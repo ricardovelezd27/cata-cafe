@@ -28,6 +28,7 @@ export async function removeSamplesInTx(
   tx: Prisma.TransactionClient,
   sessionId: string,
   sampleIds: string[],
+  opts: { onReactivate: "refuse" | "ignore" },
 ): Promise<void> {
   if (sampleIds.length === 0) return;
   const refsBefore = await tx.sessionSample.findMany({
@@ -54,7 +55,7 @@ export async function removeSamplesInTx(
   // 79.00 anchor, pinning it would silently overwrite cuppers' work: refuse
   // (the whole transaction rolls back) and let the owner change the reference
   // first, which asks for confirmation.
-  if (activeAfter && activeAfter !== activeBefore) {
+  if (opts.onReactivate === "refuse" && activeAfter && activeAfter !== activeBefore) {
     const evs = await tx.evaluation.findMany({
       where: { sessionSampleId: activeAfter },
       select: { id: true, isDraft: true, affectiveData: true, combinedData: true },

@@ -280,7 +280,7 @@ export async function finishSoloSession(
             },
             select: { id: true },
           });
-          await removeSamplesInTx(tx, sessionId, safe.map((x) => x.id));
+          await removeSamplesInTx(tx, sessionId, safe.map((x) => x.id), { onReactivate: "ignore" });
           return safe.length;
         });
       }
