@@ -38,6 +38,16 @@ describe("results bookkeeping", () => {
       recipientsStillToSend(["a@x.co", "b@x.co"], { "a@x.co": "sent", "b@x.co": "failed" }),
     ).toEqual(["b@x.co"]);
   });
+  it("a takeover after a partially recorded loop skips only the recorded sent recipients", () => {
+    const targets = ["a@x.co", "b@x.co", "c@x.co"];
+    // The run died after recording a's send: b and c still go out, a does not.
+    const afterFirst = mergeResults({}, [{ email: "a@x.co", ok: true }]);
+    expect(recipientsStillToSend(targets, afterFirst)).toEqual(["b@x.co", "c@x.co"]);
+    // Incremental per-recipient merges accumulate and never lose earlier sends.
+    const afterSecond = mergeResults(afterFirst, [{ email: "b@x.co", ok: false }]);
+    expect(afterSecond).toEqual({ "a@x.co": "sent", "b@x.co": "failed" });
+    expect(recipientsStillToSend(targets, afterSecond)).toEqual(["b@x.co", "c@x.co"]);
+  });
   it("merging never downgrades a sent recipient", () => {
     const merged = mergeResults({ "a@x.co": "sent" }, [
       { email: "a@x.co", ok: false },

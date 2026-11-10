@@ -335,23 +335,29 @@ async function runClaimedDigest(args: {
 
   const siteUrl = siteOrigin();
   const toSend = recipientsStillToSend([...targets.keys()], previous);
-  const settled = await Promise.allSettled(
-    toSend.map(async (email) => {
-      const locale = targets.get(email) ?? "es";
+  // Send one at a time and persist each outcome right away: if the function
+  // dies mid-loop, a stale takeover reads these results and skips recipients
+  // that already got the email instead of sending it twice.
+  let merged = previous;
+  for (const email of toSend) {
+    const locale = targets.get(email) ?? "es";
+    let ok = false;
+    try {
       const r = await sendEmail({
         to: email,
         subject: EMAIL_TEXT[locale].subject(period),
         html: digestHtml(locale, inputs, narratives[locale], siteUrl),
       });
-      return { email, ok: r.ok };
-    }),
-  );
-  const merged = mergeResults(
-    previous,
-    settled.map((r, i) =>
-      r.status === "fulfilled" ? r.value : { email: toSend[i], ok: false },
-    ),
-  );
+      ok = r.ok;
+    } catch {
+      ok = false;
+    }
+    merged = mergeResults(merged, [{ email, ok }]);
+    await prisma.digestRun.update({
+      where: { id: claimId },
+      data: { results: merged },
+    });
+  }
   const sent = countSent(merged);
   const failed = targets.size - sent;
 
