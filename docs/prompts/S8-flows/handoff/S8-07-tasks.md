@@ -1,0 +1,39 @@
+S8-07 PLANNER REPORT (checked against origin/claude/s8-03-guest-guard-email-impl; read-only)
+
+1. BUILDABLE NOW (ordered)
+T1. Pure lib/guestClaimToken.ts: move mint/verify/safeClaimBack out of lib/guestClaim.ts (it imports server-only and prisma). Extract `anonEvalWins` as a pure function. Add vitest for tamper, expiry, replay and eval-wins. Closes F-guest-8 (tests).
+T2. lib/accountDeletion/manifest.ts, listing every Profile relation and bare user column with a rule. tests/profileRelations.test.ts parses schema.prisma and fails on an unlisted relation. Also assert by source text that mergeGuestData touches each manifest table (the test cannot import prisma). Closes F-cuenta-1 guard and F-guest-8.
+T3. mergeGuestData: fold AiChatUsage and the OutboundEmailEvent actorKey `u_<id>` into the manifest. Both are bare-userId tables, and the second is new from S8-03. Wrap the claim in run() with a retry card, split `lookup_failed` from `already`, show the evaluation count on the card, and set a transaction timeout. Limit the aggregate re-fire to conflicted samples. Write the 7-day TTL risk in docs/flows.md. F-guest-8, F-guest-9, F-guest-6.
+T4. updateProfile moves to run() and syncs display_name (completeOnboarding is the reference). ProfileForm gets label/for ties and a live status. F-cuenta-8.
+T5. signOut(locale, scope='local'), plus a "sign out everywhere" option (scope 'global') in the Cuenta card. The redirect honours the locale. SignOutButton calls the action first and clears device state only on success. Offline shows "Necesitas conexión" through useActionFeedback. F-cuenta-2, F-cuenta-7.
+T6. Sign-out and switch-account guard, using the E1 default (c). A guest sees a loss warning with useGuestClaim "Guardar mis resultados" as the primary action. A user with pending drafts sees the PendingDraftsBadge count. F-cuenta-6, F-guest-4 (sign-out half).
+T7. Claim card: replace "Cancelar" with "Usar otra cuenta" and "No vincular" (with a warning). F-guest-4.
+T8. Guest join: a `checkJoinable(token)` run() action called before signInAnonymously. It checks session status closed plus a race re-check of invite, expiry and seats. Error codes map to localized copy, a rate-limit error gets its own message, and an existing anonymous user is reused. Runbook text for the anonymous-limit setting and the 40-join check. F-guest-3, F-guest-2.
+T9. requestEmailChange: requireRegisteredUser, updateUser({email}, {emailRedirectTo}), pending address shown, `email_exists` localized. F-cuenta-5.
+T10. deleteAccount (E3 (a) and E4 (a) defaults, see facts 1-5), the delete UI, and the flows.md §1 update. These are only partly buildable, because the tombstone design needs the architect's call (fact 1). Buildable once that is chosen. F-cuenta-1.
+
+2. GATED
+E1: the default (c) is given, so T6, T7 and T8 are buildable. Leave `// TODO(E1-Kim): confirm own-phone vs shared tablet, "¿Eres X?" copy` in code.
+E3: only (a) is built. Leave `TODO(E3-Kim)` in the manifest, with the alternatives in docs.
+E4: (a) self-service is built. The manual path (c) goes in the runbook as Ricardo's procedure. `TODO(E4-Kim)`.
+Spec-level named TODO: do not build the in-place updateUser/linkIdentity upgrade (`TODO(guest-inplace-upgrade)`). Also owner-gated: whether deletion erases or anonymizes evaluations (spec §7 says anonymize by default).
+
+3. FACTS FOR THE ARCHITECT
+1. A single fixed tombstone breaks on `@@unique([sessionSampleId, cupperId])` (schema Evaluation). Two deleted users who both rated the same sample both become the tombstone and collide. Reassigning only works if each deletion gets its own tombstone profile (fixed-prefix id, one per deletion, no migration needed). Or make cupperId nullable (large blast radius). The spec's one fixed-id migration row does not work as written.
+2. Trigger exclusion: the trigger excludes an evaluation only if a session_participants row with excluded_from_results exists. SessionParticipant cascades on profile delete. A previously excluded cupper whose evaluations are reassigned would silently become INCLUDED on the next recompute. Rule: delete the evaluations of an excluded user. Also, reassigning cupperId does not re-fire the trigger (it only fires on INSERT or UPDATE OF isDraft), so stored aggregates stay stable. Good for the spec.
+3. Seven restrict relations confirmed (schema lines 53, 118, 136, 212, 249, 264, 366, unchanged on the batch branch). But cascades also destroy data: TastingGroup (owner cascade, which would delete groups with other members), GroupPost authored in others' groups, SavedInsight, CoffeeShare, UserCoffeeHistory. TastingGroupMember keeps the email with userId set to null (PII). The manifest needs an explicit rule per relation, and the spec only covers some.
+4. Active group sessions moved to the tombstone have no owner who can close them. Run closeSessionInternal(emails:"skip") first, or the sessions stay open forever. Solo and empty-group deletion should reuse the deleteSession path (detachCoffeeHistoryForSession).
+5. The profiles table has no FK to auth.users. The only link is the handle_new_user trigger. So deleteUser does not cascade, and there is a Profile-first, auth-after ordering with a retry (matches the spec).
+6. S8-03 added OutboundEmailEvent (`actorKey` is `u_<userId>`, no FK) and says mergeGuestData is untouched. It is a bare-user table the manifest must list (erase on delete).
+7. /auth/confirm does not exist (S8-06 not built). /auth/callback already handles token_hash plus type, so email_change works through it today (the audit says so too). Two designs: (A) use /auth/callback now; (B) wait for S8-06's confirm page (scanner-safe). Both give the same user result. Pick A with a `TODO(S8-06)` to switch.
+8. Join page already checks invite, expiry and seats at render (`join/[token]/page.tsx` 33-36). The gaps are session closed, the race between render and click, and the generic catch (`GuestJoinForm.tsx` 54-61). F-guest-3 is partly mitigated, so scope T8 to those gaps.
+9. A signed-in anonymous visitor already skips GuestJoinForm and sees JoinSessionForm. "Entrar como X / No soy X" means changing that branch (T7 and E1 depend on it).
+10. Runbook numbering: README reserves §10 to §14 for other prompts and S8-07 gets none. Batch 1 has §11, and §10 is missing in the file headings. Take the next free number at merge time.
+11. updateProfile has no ActionResult callers wired yet. Converting it to run() changes its client call sites (ProfileForm, EditProfileDialog).
+
+4. FILES TOUCHED
+lib/guestClaim.ts, lib/guestClaimToken.ts (new), lib/accountDeletion/manifest.ts (new), tests/guestClaimToken.test.ts, tests/profileRelations.test.ts, tests/accountDeletion.test.ts, app/actions/auth.ts, app/actions/guestClaim.ts, app/actions/profile.ts, app/actions/account.ts (new), app/actions/community.ts (checkJoinable or joinViaToken), components/layout/SignOutButton.tsx, components/join/GuestJoinForm.tsx, app/[locale]/join/[token]/page.tsx, app/[locale]/auth/claim/page.tsx, components/auth/ClaimConfirmButton.tsx, app/[locale]/app/profile/page.tsx, ProfileForm.tsx, EditProfileDialog.tsx, lib/offline/deviceState.ts, lib/actionResult.ts (new codes), messages/es.json, messages/en.json, docs/flows.md, docs/LAUNCH-RUNBOOK.md, 02-cuenta.md and 03-invitado-qr-claim.md audit lines.
+Needs: one Prisma migration (tombstone row or per-deletion approach, T10 only), no SQL phase, one runbook section (anonymous limit, Secure email change, migrate deploy, E4 manual path).
+
+5. SIZE
+M for T1 to T9 (no migration, no SQL). T10 adds L-size work and the migration, and waits on fact 1. Worth a PR: yes, ship T1 to T9 as the PR and keep T10 as a follow-up or stacked commit once the tombstone design is decided.
