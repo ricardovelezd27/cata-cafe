@@ -21,6 +21,7 @@ import { run } from "@/lib/safeAction";
 import { isSessionExpired } from "@/lib/sessionState";
 import { resolveOrCreateSessionInvite } from "@/lib/invites";
 import { groupSessionInviteUrl } from "@/lib/inviteUrl";
+import { keepNoticeStamp } from "@/lib/groupNotify";
 import type { ActionResult } from "@/lib/actionResult";
 
 type Locale = "es" | "en";
@@ -918,6 +919,18 @@ export async function notifyGroupOfSession(input: {
     // session actually belongs to, never an arbitrary group of the caller.
     if (session.groupId !== input.groupId) throw new Error("invalid_input");
 
+    // S8-28 D-09: claim the "already told the group" stamp HERE, atomically, so
+    // a direct POST cannot repeat the notice (the callers used to stamp
+    // around this action, which only guarded their own paths). The claim is
+    // released below unless the send reached someone (keepNoticeStamp).
+    const claim = await prisma.cuppingSession.updateMany({
+      where: { id: session.id, groupNotifiedAt: null },
+      data: { groupNotifiedAt: new Date() },
+    });
+    if (claim.count !== 1) throw new Error("invalid_input");
+
+    let summary: GroupEmailSummary | null = null;
+    try {
     const inviteToken = await resolveOrCreateSessionInvite(session.id, user.id);
 
     const members = await prisma.tastingGroupMember.findMany({
@@ -972,7 +985,16 @@ export async function notifyGroupOfSession(input: {
       jobs,
     });
     if (!outcome.ok) throw new Error(outcome.error);
-    return toSummary(outcome.results, broadcastId);
+    summary = toSummary(outcome.results, broadcastId);
+    return summary;
+    } finally {
+      if (!keepNoticeStamp(summary)) {
+        await prisma.cuppingSession.updateMany({
+          where: { id: session.id },
+          data: { groupNotifiedAt: null },
+        });
+      }
+    }
   }, { groupId: input.groupId, sessionId: input.sessionId });
 }
 

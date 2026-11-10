@@ -644,11 +644,8 @@ async function createGroupSessionBody(input: {
         sessionId: session.id,
       });
       if (notified.ok) {
+        // notifyGroupOfSession stamps groupNotifiedAt itself (S8-28 D-09).
         emailSummary = notified.data;
-        await prisma.cuppingSession.update({
-          where: { id: session.id },
-          data: { groupNotifiedAt: new Date() },
-        });
       } else if (notified.error === "rate_limited") emailBlocked = "rate_limited";
     } catch (err) {
       logWarn({

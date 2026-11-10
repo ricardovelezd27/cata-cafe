@@ -359,25 +359,17 @@ async function notifyGroupAtStart(
     ) {
       return undefined;
     }
-    // Claim the stamp first so two concurrent starts cannot both send.
-    const claim = await prisma.cuppingSession.updateMany({
-      where: { id: sessionId, groupNotifiedAt: null },
-      data: { groupNotifiedAt: new Date() },
-    });
-    if (claim.count !== 1) return undefined;
-
+    // notifyGroupOfSession claims the stamp atomically (two concurrent starts
+    // cannot both send; the loser gets invalid_input) and releases it itself
+    // when nothing went out (S8-28 D-09).
     const res = await notifyGroupOfSession({ groupId: s.groupId, sessionId });
     if (res.ok) {
       // `ok` is true even when every recipient failed: the summary decides.
-      const outcome = noticeOutcome(res.data);
-      if (outcome !== "failed") return outcome; // "sent" | "partial" keep the stamp
+      return noticeOutcome(res.data);
     }
-    // Nothing went out: release the claim so the owner can resend.
-    await prisma.cuppingSession.updateMany({
-      where: { id: sessionId },
-      data: { groupNotifiedAt: null },
-    });
-    return !res.ok && res.error === "rate_limited" ? "rate_limited" : "failed";
+    // invalid_input = another start already claimed the stamp: nothing to say.
+    if (res.error === "invalid_input") return undefined;
+    return res.error === "rate_limited" ? "rate_limited" : "failed";
   } catch (err) {
     logWarn({
       where: "startSession",
@@ -385,14 +377,6 @@ async function notifyGroupAtStart(
       sessionId,
       code: (err as { code?: string })?.code ?? "unknown",
     });
-    try {
-      await prisma.cuppingSession.updateMany({
-        where: { id: sessionId },
-        data: { groupNotifiedAt: null },
-      });
-    } catch {
-      // best effort
-    }
     return "failed";
   }
 }

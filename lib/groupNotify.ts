@@ -47,6 +47,15 @@ export function noticeOutcome(summary: { sent: number; failed: number; skipped?:
   return "sent";
 }
 
+/** S8-28 D-09: `notifyGroupOfSession` claims `groupNotifiedAt` itself (so a
+ *  direct call cannot repeat the notice) and calls this to decide, after the
+ *  send, whether the claim stays. A send that threw/was refused (`null`) or
+ *  reached nobody ("failed") releases it so the owner can resend; "sent" and
+ *  "partial" keep it (partial retries from the group page). */
+export function keepNoticeStamp(summary: { sent: number; failed: number; skipped?: number } | null): boolean {
+  return summary !== null && noticeOutcome(summary) !== "failed";
+}
+
 /** Async group session linked to a group: send at creation. */
 export function shouldNotifyAtCreate(i: NotifyRuleInput): boolean {
   return i.isGroup && i.isAsync && i.hasGroup && !i.alreadyNotified;
