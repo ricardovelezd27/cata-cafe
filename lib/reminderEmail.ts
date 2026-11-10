@@ -140,12 +140,21 @@ export async function sendLiveIdleReminders(batch: number): Promise<ReminderSumm
   });
   const summary: ReminderSummary = { sessions: 0, sent: 0, skipped: 0, failed: 0, truncated: candidates.length === batch };
   if (candidates.length === 0) return summary;
-  const last = await prisma.evaluation.groupBy({
-    by: ["sessionId"],
+  // Last activity through the sample relation: Evaluation.sessionId is nullable
+  // and only healed on update, so legacy rows would make a busy session look idle.
+  const samples = await prisma.sessionSample.findMany({
     where: { sessionId: { in: candidates.map((c) => c.id) } },
-    _max: { updatedAt: true },
+    select: {
+      sessionId: true,
+      evaluations: { orderBy: { updatedAt: "desc" }, take: 1, select: { updatedAt: true } },
+    },
   });
-  const lastBySession = new Map(last.map((l) => [l.sessionId, l._max.updatedAt]));
+  const lastBySession = new Map<string, Date>();
+  for (const smp of samples) {
+    const u = smp.evaluations[0]?.updatedAt;
+    const cur = lastBySession.get(smp.sessionId);
+    if (u && (!cur || u > cur)) lastBySession.set(smp.sessionId, u);
+  }
   for (const s of candidates) {
     if (!isLiveIdle(s, lastBySession.get(s.id) ?? null)) continue;
     summary.sessions += 1;
