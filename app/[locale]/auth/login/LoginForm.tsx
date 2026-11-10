@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { signInWithMagicLink, signInWithGoogle } from "@/app/actions/auth";
 import type { AuthErrorKey } from "@/lib/authErrors";
+import { useInAppBrowser } from "@/hooks/useInAppBrowser";
 import { EmailSentState, type EmailSentLabels } from "@/components/auth/EmailSentState";
 
 export function LoginForm({
@@ -10,6 +11,7 @@ export function LoginForm({
   sendLabel,
   sendingLabel,
   googleLabel,
+  inAppLabels,
   orLabel,
   subtitleLabel,
   sentLabels,
@@ -21,6 +23,7 @@ export function LoginForm({
   initialError,
   autoFocusEmail,
 }: {
+  inAppLabels: { hint: string; copy: string; copied: string };
   emailLabel: string;
   sendLabel: string;
   sendingLabel: string;
@@ -42,6 +45,17 @@ export function LoginForm({
   const [isPending, startTransition] = useTransition();
   const [sentEmail, setSentEmail] = useState("");
   const lastSent = useRef("");
+  const inApp = useInAppBrowser();
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  async function copyPageLink() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setLinkCopied(true);
+    } catch {
+      // Clipboard blocked in some webviews — the hint text still explains the way out.
+    }
+  }
 
   async function send(address: string) {
     const fd = new FormData();
@@ -98,6 +112,18 @@ export function LoginForm({
 
   return (
     <div className="space-y-4">
+      {inApp ? (
+        <div className="rounded-card border border-[#D4C5A9] bg-white p-3 text-sm text-brown-dark space-y-2">
+          <p>{inAppLabels.hint}</p>
+          <button
+            type="button"
+            onClick={copyPageLink}
+            className="rounded-pill border border-green-mid px-3.5 py-2 text-xs font-semibold text-green-dark hover:bg-green-light/25 transition-colors"
+          >
+            {linkCopied ? inAppLabels.copied : inAppLabels.copy}
+          </button>
+        </div>
+      ) : (
       <button
         type="button"
         onClick={onGoogleClick}
@@ -112,6 +138,7 @@ export function LoginForm({
         </svg>
         {googleLabel}
       </button>
+      )}
 
       <div className="flex items-center gap-3">
         <div className="flex-1 h-px bg-[#D4C5A9]" />

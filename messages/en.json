@@ -106,7 +106,10 @@
       "failedTitle": "This link no longer works",
       "failedBody": "Sign-in links work once and expire. Request a new one and sign in with the link or the 6-digit code.",
       "newLink": "Request a new link"
-    }
+    },
+    "inAppBrowserHint": "Google sign-in does not work inside this app. Use your email, or open this page in your browser (Safari or Chrome) to sign in with Google.",
+    "inAppCopyLink": "Copy link",
+    "inAppLinkCopied": "Link copied"
   },
   "dashboard": {
     "title": "Your cupping studio",

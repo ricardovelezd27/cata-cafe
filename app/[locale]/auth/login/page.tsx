@@ -57,6 +57,11 @@ export default async function LoginPage({
           sendLabel={t("sendLink")}
           sendingLabel={t("sending")}
           googleLabel={t("signInWithGoogle")}
+          inAppLabels={{
+            hint: t("inAppBrowserHint"),
+            copy: t("inAppCopyLink"),
+            copied: t("inAppLinkCopied"),
+          }}
           orLabel={t("or")}
           subtitleLabel={t("loginSubtitle")}
           sentLabels={emailSentCopy(t)}

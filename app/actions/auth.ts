@@ -28,6 +28,8 @@ export async function signInWithGoogle(next?: string, locale?: string) {
   const dest = safeNext(next, { fallback: defaultNextFor(localeOf(locale)) });
   const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(dest)}`;
 
+  // TODO(native): in the Capacitor shell pass skipBrowserRedirect: true, open data.url
+  // with openExternal() (lib/platform/external.ts) and return via appUrlOpen -> routeFromUrl().
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",

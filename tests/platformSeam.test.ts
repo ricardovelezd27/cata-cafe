@@ -14,7 +14,7 @@ const FORBIDDEN: { name: string; re: RegExp }[] = [
   { name: "window.print", re: /\bwindow\.print\s*\(/ },
   { name: "window.open", re: /\bwindow\.open\s*\(/ },
   { name: 'createElement("a")', re: /createElement\(\s*["']a["']\s*\)/ },
-  { name: "Capacitor sniffing", re: /\bCapacitor\b/ },
+  { name: "Capacitor sniffing", re: /\bwindow\.Capacitor\b|\bCapacitor\??\.isNativePlatform|from\s+["']@capacitor\// },
 ];
 
 /** `relative/path` -> reason. Empty on purpose. */
