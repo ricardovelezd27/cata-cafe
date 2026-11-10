@@ -483,6 +483,8 @@ export function ResultsClient({
   // crashing, and success says what happened (S8-10 T10, F-express-3).
   const isAssigning = sessionStatus === "closed" && !!editingSample && !editingSample.hasCoffee;
 
+  const assignPendingRef = useRef(false);
+
   const finishAssign = () => {
     setEditingSampleId(null);
     setPickingCoffee(false);
@@ -491,9 +493,14 @@ export function ResultsClient({
   };
 
   const handlePickCoffee = async (picked: UsableCoffee) => {
-    if (!editingSampleId) return;
+    if (!editingSampleId || assignPendingRef.current) return;
+    assignPendingRef.current = true;
     setPickingCoffee(false);
-    await feedback.run(assignSampleCoffee(editingSampleId, { coffeeId: picked.id }), finishAssign);
+    try {
+      await feedback.run(assignSampleCoffee(editingSampleId, { coffeeId: picked.id }), finishAssign);
+    } finally {
+      assignPendingRef.current = false;
+    }
   };
 
   const handleSaveSampleMetadata = async (data: SampleMetadataFormData) => {
