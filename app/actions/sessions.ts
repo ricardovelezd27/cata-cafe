@@ -62,6 +62,7 @@ import {
   defaultSampleLabel,
 } from "@/lib/sessionEdit";
 import { submittedRefireArgs } from "@/lib/aggregateRefire";
+import { writeEvaluationOrdered } from "@/lib/evaluationWrite";
 
 // Mirrors the standalone CoffeeForm's field set — wizard-created coffees land
 // in the SAME coffees table with the same shape (no wizard-only subset).
@@ -666,6 +667,10 @@ export async function upsertEvaluation(input: {
   moduleKey: "descriptive" | "affective" | "combined";
   data: Record<string, unknown>;
   cupsPerSample: number;
+  // S8-18: ms epoch of the cupper's edit on the device. OPTIONAL (cached bundles
+  // omit it and behave exactly as before); a write older than the row's newest
+  // accepted one is ignored server-side. Invalid values count as absent.
+  clientTs?: number;
 }) {
   const user = await requireUser({ skipProfileUpsert: true });
   const auth = await requireSampleMember(input.sessionSampleId, user.id);
@@ -690,24 +695,15 @@ export async function upsertEvaluation(input: {
   const fields = computeEvaluationDerived(moduleKey, data, auth.cupsPerSample);
 
   const doUpsert = () =>
-    prisma.evaluation.upsert({
-      where: {
-        sessionSampleId_cupperId: {
-          sessionSampleId: input.sessionSampleId,
-          cupperId: user.id,
-        },
-      },
-      create: {
-        sessionSampleId: input.sessionSampleId,
-        sessionId,
-        cupperId: user.id,
-        ...fields,
-      },
-      update: { sessionId, ...fields },
-      select: { id: true },
+    writeEvaluationOrdered({
+      sessionSampleId: input.sessionSampleId,
+      sessionId,
+      cupperId: user.id,
+      fields,
+      clientTs: input.clientTs,
     });
 
-  let result: { id: string };
+  let result: { id: string; applied: boolean };
   try {
     result = await doUpsert();
   } catch (e) {
@@ -716,6 +712,18 @@ export async function upsertEvaluation(input: {
     // retry lands on the update path.
     if (!isP2002(e)) throw e;
     result = await doUpsert();
+  }
+
+  // S8-18: a newer write already won (lib/evaluationWrite.ts). Nothing changed,
+  // so there is nothing to re-fire; the caller still sees a success.
+  if (!result.applied) {
+    logInfo({
+      where: "upsertEvaluation.staleClientWrite",
+      userId: user.id,
+      sessionId,
+      evaluationId: result.id,
+    });
+    return { ok: true, evaluationId: result.id };
   }
 
   // S8-04 (F-solo-2): an edit of an ALREADY SUBMITTED row must re-fire the

@@ -8,7 +8,55 @@ import {
   RETRY_BASE_MS,
   RETRY_MAX_MS,
 } from "@/lib/offline/status";
+import {
+  CLIENT_TS_MAX_FUTURE_MS,
+  sanitizeClientTs,
+  shouldApplyClientWrite,
+} from "@/lib/offline/clientWrite";
 import type { OfflineModuleData, OfflineSessionBlob } from "@/lib/offline/types";
+
+describe("server-side ordering of client writes (S8-18, F-offline-2)", () => {
+  const now = 1_700_000_000_000;
+  const last = new Date(now - 10_000);
+
+  it("applies when the write carries no timestamp (cached bundles)", () => {
+    expect(shouldApplyClientWrite(last, undefined, now)).toBe(true);
+    expect(shouldApplyClientWrite(last, null, now)).toBe(true);
+  });
+
+  it("applies over a row that never recorded one", () => {
+    expect(shouldApplyClientWrite(null, now - 1, now)).toBe(true);
+    expect(shouldApplyClientWrite(undefined, now - 1, now)).toBe(true);
+  });
+
+  it("ignores a strictly older write", () => {
+    expect(shouldApplyClientWrite(last, now - 10_001, now)).toBe(false);
+  });
+
+  it("applies an equal write (idempotent resend) and a newer one", () => {
+    expect(shouldApplyClientWrite(last, now - 10_000, now)).toBe(true);
+    expect(shouldApplyClientWrite(last, now - 5_000, now)).toBe(true);
+  });
+
+  it("treats a far-future timestamp as absent, not as the newest write", () => {
+    const far = now + CLIENT_TS_MAX_FUTURE_MS + 1;
+    expect(sanitizeClientTs(far, now)).toBeUndefined();
+    expect(shouldApplyClientWrite(last, far, now)).toBe(true);
+    expect(sanitizeClientTs(now + CLIENT_TS_MAX_FUTURE_MS, now)).toBe(now + CLIENT_TS_MAX_FUTURE_MS);
+  });
+
+  it("treats NaN, Infinity, fractions, negatives and non-numbers as absent", () => {
+    for (const bad of [NaN, Infinity, -Infinity, 1.5, -5, 0, "123", {}, []]) {
+      expect(sanitizeClientTs(bad, now)).toBeUndefined();
+      expect(shouldApplyClientWrite(last, bad, now)).toBe(true);
+    }
+  });
+
+  it("accepts a Date or a number for the stored value", () => {
+    expect(shouldApplyClientWrite(now - 10_000, now - 10_001, now)).toBe(false);
+    expect(shouldApplyClientWrite(NaN, now - 1, now)).toBe(true);
+  });
+});
 
 const mod = (over: Partial<OfflineModuleData> = {}): OfflineModuleData => ({
   data: {},

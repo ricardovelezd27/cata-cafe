@@ -1071,3 +1071,39 @@ detail shows "Origen editado el …"; on an unrevealed sample the button is abse
 
 **Rollback:** the columns are nullable; code rolled back ignores them. Do not drop them while
 the new code is deployed.
+
+---
+
+## §23. Database — apply the `evaluation_last_client_write` migration (2026-11, S8-18)
+
+> Numbering: §21–§22 are reserved for sibling S8 follow-ups; this section keeps §23 so the
+> branches merge mechanically.
+
+**What it does:** adds ONE nullable column, `evaluations."lastClientWriteAt" timestamptz(3)`, no
+default, no index, no foreign key, no policy change. It records the newest client edit time accepted
+for an evaluation so an older offline replay cannot overwrite a newer save. Scoring, the aggregate
+trigger and `aggregate_scores` never read it.
+
+**Order matters:** run it BEFORE the deploy. The new code writes the column; without it every
+evaluation save with a client timestamp fails.
+
+1. On your machine, with `.env.local` pointing at the project (it is production):
+   ```bash
+   npx prisma migrate deploy
+   ```
+   Expected: `1 migration found … 20261111160000_evaluation_last_client_write … applied`.
+2. **Verify** — Supabase SQL Editor:
+   ```sql
+   SELECT column_name, data_type FROM information_schema.columns
+   WHERE table_name = 'evaluations' AND column_name = 'lastClientWriteAt';
+   ```
+   Expected: one row, `timestamp with time zone`.
+3. Deploy the branch. No SQL PHASE, no environment variable.
+
+**Smoke test (3 minutes, two tabs, same cupper):** in tab A go offline (devtools), edit a sample,
+note the amber pending pill; in tab B (online) edit the same field to another value and wait for the
+green saved state; bring tab A online. Tab B's value must remain after the replay and tab A's pill
+clears. Vercel Logs shows one `replayEvaluation.staleClientWrite` line.
+
+**Rollback:** the column is nullable; code rolled back ignores it. Do not drop it while the new
+code is deployed.

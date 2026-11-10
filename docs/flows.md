@@ -887,6 +887,14 @@ stateDiagram-v2
   the results pill and the guard provider never replay at once.
 - The replay result is applied only if the module's `updatedAt` still equals the one sent
   (`applyOutcome`, `lib/offline/status.ts`): an edit made mid-flight stays `pending`.
+- Ordering is also enforced on the server (S8-18): every evaluation write (live `upsertEvaluation`,
+  `replayEvaluation`, legacy `syncEvaluation`) may carry `clientTs` (ms epoch of the edit on the
+  device; a live save uses the dispatch time, a replay the module's `updatedAt`). The row keeps the
+  newest accepted one in `Evaluation.lastClientWriteAt`; a strictly OLDER write is ignored in one
+  conditional `UPDATE` (no extra round trip), answers as success / `synced`, and logs one
+  `staleClientWrite` line (ids only). A missing, malformed or > 5 min future `clientTs` counts as
+  absent (old cached bundles behave as before). Scoring, the trigger and `AggregateScore` never read
+  the column; cross-device clock skew is accepted (same user, same sample).
 - Only `pending` blocks the final submit. `failed`, `closed_unsent` and `orphaned` never do; the
   cup screen names them in a notice and the app-shell badge opens "Notas sin sincronizar"
   (read, copy, confirmed discard; nothing is deleted automatically).

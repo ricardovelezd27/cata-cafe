@@ -1082,6 +1082,8 @@ export function CupClient({
           moduleKey: key,
           data,
           cupsPerSample: session.cupsPerSample,
+          // S8-18: edit time, so the server drops this write if a newer one landed first.
+          clientTs: Date.now(),
         });
       } else if (key === "extrinsic") {
         const saved = await upsertExtrinsic({ sessionSampleId: sampleId, data });

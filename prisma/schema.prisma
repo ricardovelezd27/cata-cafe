@@ -244,6 +244,9 @@ model Evaluation {
   isDraft     Boolean   @default(true)
   submittedAt DateTime?
   updatedAt   DateTime  @updatedAt
+  // S8-18: newest client edit time accepted for this row (ordering only; never
+  // read by scoring, the trigger or AggregateScore).
+  lastClientWriteAt DateTime? @db.Timestamptz(3)
 
   coffeeHistory UserCoffeeHistory[]
 
