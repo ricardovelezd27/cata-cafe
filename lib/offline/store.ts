@@ -192,6 +192,10 @@ export async function setModuleStatus(
   sampleId: string,
   moduleKey: ModuleKey,
   status: SyncStatus,
+  // `ifData`: only flip when the stored draft still equals the data that was
+  // just sent. A newer local edit (the 500 ms local debounce is independent of
+  // the server save) must stay `pending` (F-offline-2).
+  opts: { ifData?: Data } = {},
 ): Promise<void> {
   const lf = instance();
   if (!lf) return;
@@ -199,7 +203,12 @@ export async function setModuleStatus(
     const blob = await loadSession(sessionId, userId);
     const mod = blob?.samples[sampleId]?.modules[moduleKey];
     if (!blob || !mod) return;
+    if (opts.ifData && JSON.stringify(opts.ifData) !== JSON.stringify(mod.data)) return;
     mod.syncStatus = status;
+    if (status === "synced") {
+      mod.attempts = 0;
+      delete mod.nextAttemptAt;
+    }
     await lf.setItem(sessionKey(sessionId, userId), blob);
   } catch (err) {
     markUnavailable("setModuleStatus", err);

@@ -208,9 +208,17 @@ export function useOfflineSync({
         }
         await rebuildConflicts();
 
+        // A module parked as `failed` (5 attempts) is not retried on a timer, so
+        // the banner must keep offering the manual retry instead of "synced".
+        const stuck = (await loadUserBlobs(userId)).some((b) =>
+          Object.values(b.samples).some((s) =>
+            Object.values(s.modules).some((m) => m?.syncStatus === "failed"),
+          ),
+        );
+
         if (runRef.current === myRun) {
-          setSyncPhase(anyRetry ? "failed" : "synced");
-          if (!anyRetry) {
+          setSyncPhase(anyRetry || stuck ? "failed" : "synced");
+          if (!anyRetry && !stuck) {
             setTimeout(() => {
               if (runRef.current === myRun) setSyncPhase("idle");
             }, SYNCED_BANNER_MS);

@@ -54,8 +54,8 @@ export function SessionSyncStatus({
     if (blob) {
       for (const sample of Object.values(blob.samples)) {
         for (const mod of Object.values(sample.modules)) {
-          if (mod?.syncStatus === "pending") count += 1;
-          else if (mod?.syncStatus === "closed_unsent") closedCount += 1;
+          if (mod?.syncStatus === "pending" || mod?.syncStatus === "failed") count += 1;
+          else if (mod?.syncStatus === "closed_unsent" || mod?.syncStatus === "orphaned") closedCount += 1;
         }
       }
     }
