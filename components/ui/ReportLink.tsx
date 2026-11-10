@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Button, ButtonLink, type ButtonSize, type ButtonVariant } from "@/components/ui/Button";
-import { useConnectivity } from "@/hooks/useConnectivity";
+import { useBrowserOnline } from "@/hooks/useBrowserOnline";
 import { useIsNativeShell } from "@/hooks/useIsNativeShell";
 import { openReport } from "@/lib/platform/openReport";
 
@@ -39,7 +39,7 @@ export function ReportLink({
   newTab,
   children,
 }: ReportLinkProps) {
-  const { online } = useConnectivity();
+  const online = useBrowserOnline();
   const inShell = useIsNativeShell();
 
   if (!online) {
