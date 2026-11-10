@@ -1562,12 +1562,16 @@ export async function updateSampleMetadata(
             },
             select: { id: true },
           });
-          await tx.sessionSample.update({
-            where: { id: sampleId },
+          // Guarded link: a concurrent call that already linked a coffee makes
+          // count 0 -> conflict, rolling back this tx (incl. the coffee create).
+          // `conflict` is not a code collision, so the retry loop rethrows it.
+          const linked = await tx.sessionSample.updateMany({
+            where: { id: sampleId, coffeeId: null },
             // Named after the close: the close routine revealed every coffee-linked
             // sample, so this one is revealed on the spot (nothing is blind any more).
             data: { coffeeId: coffee.id, ...(postCloseNaming ? { revealed: true } : {}) },
           });
+          if (linked.count === 0) throw new Error("conflict");
         });
         break;
       } catch (err) {
@@ -1614,7 +1618,7 @@ export async function assignSampleCoffee(
   input: Parameters<typeof planAssignCoffee>[0],
 ): Promise<ActionResult<{ linked: boolean }>> {
   return run("assignSampleCoffee", async () => {
-    const user = await requireUser();
+    const user = await requireRegisteredUser();
     const plan = planAssignCoffee(input);
     const sample = await requireSampleOwner(sampleId, user.id);
     // Open sessions follow the normal write guard; a closed one is allowed
