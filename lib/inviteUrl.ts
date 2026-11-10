@@ -45,11 +45,9 @@ export function groupSessionInviteUrl(args: {
   token: string;
   locale: string;
   origin: string;
-  /** Prefills the login form for an unlinked recipient. */
-  email?: string;
 }): string {
   const join = `/${args.locale}/join/${args.token}`;
   if (args.linked) return `${args.origin}${join}`;
-  const email = args.email ? `email=${encodeURIComponent(args.email)}&` : "";
-  return `${args.origin}/${args.locale}/auth/login?${email}next=${encodeURIComponent(join)}`;
+  // No email in the URL (S8-14, F-grupos-8): addresses must not travel in links.
+  return `${args.origin}/${args.locale}/auth/login?next=${encodeURIComponent(join)}`;
 }

@@ -254,9 +254,10 @@ async function sendGroupInvitationEmails(args: {
       ? localeByUserId.get(r.userId) ?? args.senderLocale
       : args.senderLocale;
 
-    const ctaUrl = `${args.origin}/${recipientLocale}/auth/login?email=${encodeURIComponent(
-      r.email,
-    )}&next=${encodeURIComponent(`/${recipientLocale}/app/groups/${args.group.id}`)}`;
+    // No address in the URL (S8-14, F-grupos-8).
+    const ctaUrl = `${args.origin}/${recipientLocale}/auth/login?next=${encodeURIComponent(
+      `/${recipientLocale}/app/groups/${args.group.id}`,
+    )}`;
 
     return {
       memberId: r.memberId,
@@ -760,7 +761,6 @@ export async function sendGroupEmail(input: {
             token: inviteToken,
             locale: recipientLocale,
             origin,
-            email: emails.get(m.id) ?? m.email,
           })
         : null;
       return {
@@ -934,7 +934,6 @@ export async function notifyGroupOfSession(input: {
         token: inviteToken,
         locale: recipientLocale,
         origin,
-        email,
       });
 
       return {
