@@ -18,6 +18,7 @@ import { prisma } from "@/lib/prisma";
 import { closeSessionInternal } from "@/lib/closeSession";
 import { FINALIZE_GRACE_MS } from "@/lib/closeRules";
 import { errorMessage, logError, logWarn } from "@/lib/log";
+import { purgeEmailLedger } from "@/lib/emailBudget";
 import { sendDeadlineReminders, sendLiveIdleReminders } from "@/lib/reminderEmail";
 
 export const runtime = "nodejs";
@@ -111,8 +112,18 @@ export async function GET(request: Request) {
     reminders = { error: message };
   }
 
+  // Housekeeping (S8-28 A-03): the throttle/attempt ledger grows with every
+  // login attempt; drop rows older than the longest rule window. Never fails the run.
+  let ledgerPurged = 0;
+  try {
+    ledgerPurged = await purgeEmailLedger();
+  } catch (err) {
+    logError({ where: "cron.purgeEmailLedger", message: errorMessage(err) });
+  }
+
   return NextResponse.json({
     ok: true,
+    ledgerPurged,
     due: due.length,
     closed: results.filter((r) => r.closed).length,
     results,

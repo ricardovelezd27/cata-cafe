@@ -11,6 +11,8 @@ import {
   CODE_VERIFY_PER_TARGET,
   MAGIC_LINK_PER_ADDRESS,
   MAGIC_LINK_PER_IP,
+  MAGIC_LINK_PER_USER,
+  ledgerPurgeCutoff,
   MAX_WINDOW_MS,
   decideAll,
   groupRecipientRule,
@@ -37,6 +39,9 @@ export type EmailBudgetRequest =
        *  IP rule is then skipped, never collapsed into one shared bucket. */
       ip: string | null;
       email: string;
+      /** Signed-in requester (S8-28 A-04): adds a per-account bucket so one
+       *  account cannot fan links out to many addresses. Absent = anonymous. */
+      userId?: string | null;
     }
   | {
       /** One ATTEMPT to redeem a sign-in code / link token (S8-22 A-03). */
@@ -81,11 +86,24 @@ export async function reserveEmailBudget(
         rule: MAGIC_LINK_PER_IP,
       });
     }
+    const userKey = req.userId ? actorKeyForUser(req.userId) : null;
+    if (userKey) {
+      checks.push({
+        events: await eventsFor({ kind: { in: ["magic_link_user"] }, actorKey: userKey }, now),
+        rule: MAGIC_LINK_PER_USER,
+      });
+    }
     const decision = decideAll(checks, { recipients: 1 }, now);
     if (!decision.allowed) return decision;
     await prisma.outboundEmailEvent.create({
       data: { kind: "magic_link", actorKey, targetKey, recipients: 1 },
     });
+    // Separate kind so the address/IP counts above are never double-counted.
+    if (userKey) {
+      await prisma.outboundEmailEvent.create({
+        data: { kind: "magic_link_user", actorKey: userKey, targetKey: null, recipients: 1 },
+      });
+    }
     return decision;
   }
 
@@ -135,4 +153,13 @@ export async function reserveEmailBudget(
     data: { kind: req.kind, actorKey, targetKey: null, recipients: req.recipients },
   });
   return decision;
+}
+
+/** S8-28 A-03: drops ledger rows no rule can see any more. Bounded work per
+ *  call (rows are ~1 per login attempt); called from the daily cron. */
+export async function purgeEmailLedger(now: number = Date.now()): Promise<number> {
+  const r = await prisma.outboundEmailEvent.deleteMany({
+    where: { createdAt: { lt: new Date(ledgerPurgeCutoff(now)) } },
+  });
+  return r.count;
 }

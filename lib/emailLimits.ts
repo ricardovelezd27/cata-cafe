@@ -47,6 +47,12 @@ export const MAGIC_LINK_PER_ADDRESS: ThrottleRule = { windowMs: 15 * MINUTE, max
 // have locked the room out).
 export const MAGIC_LINK_PER_IP: ThrottleRule = { windowMs: 15 * MINUTE, maxEvents: 60 };
 
+// Per signed-in account (S8-28 A-04): the address and IP rules above do not
+// stop ONE account (a guest claiming, or a registered user) from asking for
+// links to many different addresses. 10 / 15 min is far above any honest use
+// (a person retypes their own address) and well under the IP tripwire.
+export const MAGIC_LINK_PER_USER: ThrottleRule = { windowMs: 15 * MINUTE, maxEvents: 10 };
+
 // ── Code / link verification (S8-22 A-03) ───────────────────────────────────
 // These count ATTEMPTS (every call reserves one, right or wrong), not failures:
 // the reservation is made BEFORE Supabase is called, so a brute force of the
@@ -68,6 +74,13 @@ export const NEW_ACCOUNT_AGE_MS = DAY;
 
 /** The longest window any rule looks back; the ledger query uses it. */
 export const MAX_WINDOW_MS = DAY;
+
+/** Ledger rows older than this can never affect a decision (S8-28 A-03). One
+ *  extra hour of slack over the longest window covers clock skew between
+ *  instances; the purge deletes strictly older rows. */
+export function ledgerPurgeCutoff(now: number): number {
+  return now - MAX_WINDOW_MS - HOUR;
+}
 
 /** The per-day recipient rule for an account created at `accountCreatedAt`. */
 export function groupRecipientRule(accountCreatedAt: number | null, now: number): ThrottleRule {

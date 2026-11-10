@@ -8,6 +8,8 @@ import {
   GROUP_RECIPIENTS_PER_DAY_NEW_ACCOUNT,
   MAGIC_LINK_PER_ADDRESS,
   MAGIC_LINK_PER_IP,
+  MAGIC_LINK_PER_USER,
+  ledgerPurgeCutoff,
   MAX_WINDOW_MS,
   NEW_ACCOUNT_AGE_MS,
   type ThrottleRule,
@@ -195,5 +197,20 @@ describe("limit constants", () => {
     expect(GROUP_RECIPIENTS_PER_DAY_NEW_ACCOUNT).toEqual({ windowMs: DAY, maxRecipients: 40 });
     expect(NEW_ACCOUNT_AGE_MS).toBe(DAY);
     expect(MAX_WINDOW_MS).toBe(DAY);
+  });
+});
+
+describe("S8-28 A-03/A-04", () => {
+  it("ledgerPurgeCutoff is older than every rule window, so a purge never changes a decision", () => {
+    const cutoff = ledgerPurgeCutoff(NOW);
+    expect(cutoff).toBeLessThan(NOW - MAX_WINDOW_MS);
+    expect(NOW - cutoff).toBeLessThanOrEqual(MAX_WINDOW_MS + 2 * HOUR);
+  });
+
+  it("MAGIC_LINK_PER_USER refuses the 11th link in 15 minutes from one account", () => {
+    const ten = Array.from({ length: 10 }, (_, i) => ev((i + 1) * 10_000));
+    expect(decideThrottle(ten.slice(0, 9), MAGIC_LINK_PER_USER, one, NOW)).toEqual({ allowed: true });
+    expect(decideThrottle(ten, MAGIC_LINK_PER_USER, one, NOW).allowed).toBe(false);
+    expect(decideThrottle([ev(16 * MIN), ...ten.slice(0, 5)], MAGIC_LINK_PER_USER, one, NOW)).toEqual({ allowed: true });
   });
 });

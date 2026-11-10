@@ -38,7 +38,13 @@ export async function sendMagicLink(
   const locale = opts.locale === "en" ? "en" : "es";
   const h = await headers();
   const ip = parseClientIp(h.get("x-forwarded-for"));
-  const budget = await reserveEmailBudget({ kind: "magic_link", ip, email });
+  const supabase = await createClient();
+  // Only used to key the per-account bucket (S8-28 A-04); no session = anonymous.
+  const userId = await supabase.auth
+    .getUser()
+    .then((r) => r.data.user?.id ?? null)
+    .catch(() => null);
+  const budget = await reserveEmailBudget({ kind: "magic_link", ip, email, userId });
   if (!budget.allowed) {
     return { ok: false, error: "rate_limited", retryAfterMs: budget.retryAfterMs };
   }
@@ -54,7 +60,6 @@ export async function sendMagicLink(
   const origin = await trustedRequestOrigin();
   const redirectTo = `${origin}${safeNext(opts.next, { fallback: defaultNextFor(locale) })}`;
 
-  const supabase = await createClient();
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
