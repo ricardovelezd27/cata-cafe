@@ -26,3 +26,26 @@ export function resultsUpdatedAfterClose(
   }
   return latest;
 }
+
+/** The sessionParticipant fields to write for an exclusion toggle. Excluding
+ *  stamps who/when/why (a valid reason is required); restoring clears all
+ *  three so no stale trail survives. Pure so the rule is pinned by tests. */
+export function exclusionData(input: {
+  excluded: boolean;
+  reason?: unknown;
+  userId: string;
+  now: Date;
+}):
+  | { excludedFromResults: true; excludedAt: Date; excludedBy: string; exclusionReason: ExclusionReason }
+  | { excludedFromResults: false; excludedAt: null; excludedBy: null; exclusionReason: null } {
+  if (!input.excluded) {
+    return { excludedFromResults: false, excludedAt: null, excludedBy: null, exclusionReason: null };
+  }
+  if (!isExclusionReason(input.reason)) throw new Error("invalid_input");
+  return {
+    excludedFromResults: true,
+    excludedAt: input.now,
+    excludedBy: input.userId,
+    exclusionReason: input.reason,
+  };
+}

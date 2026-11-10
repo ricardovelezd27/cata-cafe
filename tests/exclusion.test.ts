@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   EXCLUSION_REASONS,
+  exclusionData,
   isExclusionReason,
   resultsUpdatedAfterClose,
 } from "@/lib/exclusionReasons";
@@ -45,5 +46,29 @@ describe("extrinsicWriteAllowed (S8-12, F-resultados-4)", () => {
   it("after the close only a revealed sample can be corrected", () => {
     expect(extrinsicWriteAllowed({ over: true, revealed: true })).toBe(true);
     expect(extrinsicWriteAllowed({ over: true, revealed: false })).toBe(false);
+  });
+});
+
+describe("exclusionData (S8-12 review)", () => {
+  const now = new Date("2026-11-05T12:00:00Z");
+  it("stamps who/when/why when excluding", () => {
+    expect(exclusionData({ excluded: true, reason: "protocol", userId: "u1", now })).toEqual({
+      excludedFromResults: true,
+      excludedAt: now,
+      excludedBy: "u1",
+      exclusionReason: "protocol",
+    });
+  });
+  it("requires a valid reason to exclude", () => {
+    expect(() => exclusionData({ excluded: true, userId: "u1", now })).toThrow("invalid_input");
+    expect(() => exclusionData({ excluded: true, reason: "because", userId: "u1", now })).toThrow();
+  });
+  it("clears all three trail fields when restoring, ignoring any reason", () => {
+    expect(exclusionData({ excluded: false, reason: "protocol", userId: "u1", now })).toEqual({
+      excludedFromResults: false,
+      excludedAt: null,
+      excludedBy: null,
+      exclusionReason: null,
+    });
   });
 });

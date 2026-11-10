@@ -19,7 +19,7 @@ import { runLengthMs } from "@/lib/warmup/syncedRun";
 import { run } from "@/lib/safeAction";
 import { logWarn } from "@/lib/log";
 import { syncCoffeeHistoryForSession } from "@/lib/coffeeHistory";
-import { EXCLUSION_REASONS } from "@/lib/exclusionReasons";
+import { EXCLUSION_REASONS, exclusionData } from "@/lib/exclusionReasons";
 import type { ActionResult } from "@/lib/actionResult";
 
 // ─── Submit all draft evaluations for a session ───────────────────────────────
@@ -449,19 +449,12 @@ export async function setParticipantExclusion(
 
       await prisma.sessionParticipant.update({
         where: { sessionId_userId: { sessionId, userId: target } },
-        data: nextExcluded
-          ? {
-              excludedFromResults: true,
-              excludedAt: new Date(),
-              excludedBy: user.id,
-              exclusionReason: nextReason,
-            }
-          : {
-              excludedFromResults: false,
-              excludedAt: null,
-              excludedBy: null,
-              exclusionReason: null,
-            },
+        data: exclusionData({
+          excluded: nextExcluded,
+          reason: nextReason,
+          userId: user.id,
+          now: new Date(),
+        }),
       });
 
       // Re-fire trg_recompute_aggregate for the whole session. Touching "isDraft"

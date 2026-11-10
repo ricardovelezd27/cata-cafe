@@ -89,4 +89,11 @@ describe("server actions: closed / expired sessions are read-only", () => {
       expect(source).not.toMatch(/export async function (submitSampleEvaluation|submitEvaluation)\b/);
     }
   });
+
+  it("upsertExtrinsic enforces the post-close allow-list (extrinsicWriteAllowed)", () => {
+    const source = fs.readFileSync(path.join(ACTIONS_DIR, "sessions.ts"), "utf8");
+    const fn = exportsOf(source).find((e) => e.name === "upsertExtrinsic");
+    expect(fn, "upsertExtrinsic export not found").toBeDefined();
+    expect(fn!.body).toMatch(/\bextrinsicWriteAllowed\s*\(/);
+  });
 });
