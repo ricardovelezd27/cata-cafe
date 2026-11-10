@@ -34,7 +34,23 @@ import { replayOverExisting, submittedRefireArgs } from "@/lib/aggregateRefire";
 // profile read the STORED aggregate (aggregate_scores, trigger-written), so
 // replacing a submitted row ends with a guarded no-op write on "isDraft" that
 // re-fires the trigger (S8-04, F-offline-7; lib/aggregateRefire.ts).
-export type ReplayStatus = "synced" | "conflict" | "closed" | "pending";
+//
+// S8-09: two more RETURNED statuses so a permanent failure is visible instead of
+// retried forever (F-offline-4, F-sesiones-5): "gone" = the sample/session no
+// longer exists for this user (deleted, removed, membership lost; the auth
+// helpers throw one code for both, so they cannot be told apart) and "rejected"
+// = the payload is not an object. The client parks both as `orphaned`.
+export type ReplayStatus = "synced" | "conflict" | "closed" | "pending" | "gone" | "rejected";
+
+type OwnerReplayStatus = "synced" | "closed" | "gone" | "rejected";
+
+function isGone(err: unknown): boolean {
+  return err instanceof Error && err.message === "not_found_or_forbidden";
+}
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return !!v && typeof v === "object" && !Array.isArray(v);
+}
 
 type EvaluationReplayInput = {
   sessionSampleId: string;
@@ -51,7 +67,13 @@ async function replayEvaluationCore(input: EvaluationReplayInput): Promise<Repla
   const user = await requireUser({ skipProfileUpsert: true });
   // Same authorization as the live upsertEvaluation path: session member only.
   // Also resolves the sample's real sessionId in one round-trip.
-  const auth = await requireSampleMember(input.sessionSampleId, user.id);
+  let auth: Awaited<ReturnType<typeof requireSampleMember>>;
+  try {
+    auth = await requireSampleMember(input.sessionSampleId, user.id);
+  } catch (err) {
+    if (isGone(err)) return "gone";
+    throw err; // anything else is transient: the client retries
+  }
   const { sessionId, cupsPerSample, format, referenceSampleId } = auth;
 
   // The session closed (or its `closesAt` passed) while this draft was offline. Its submitted data
@@ -89,9 +111,7 @@ async function replayEvaluationCore(input: EvaluationReplayInput): Promise<Repla
     return "conflict";
   }
 
-  if (!input.data || typeof input.data !== "object" || Array.isArray(input.data)) {
-    throw new Error("invalid_input");
-  }
+  if (!isPlainObject(input.data)) return "rejected";
 
   // moduleKey / cupsPerSample come from the session row, never the client —
   // identical to the live upsertEvaluation path (input fields kept for API
@@ -135,6 +155,10 @@ export async function syncEvaluation(
   input: EvaluationReplayInput,
 ): Promise<{ status: "synced" | "conflict" | "discarded" | "pending" }> {
   const status = await replayEvaluationCore(input);
+  // Cached bundles only know synced|conflict|discarded|pending and retry on a
+  // throw, so the new permanent outcomes surface as the codes they used to.
+  if (status === "gone") throw new Error("not_found_or_forbidden");
+  if (status === "rejected") throw new Error("invalid_input");
   return { status: status === "closed" ? "discarded" : status };
 }
 
@@ -152,10 +176,17 @@ export async function replayEvaluation(
 export async function replayPhysical(input: {
   sessionSampleId: string;
   data: Record<string, unknown>;
-}): Promise<{ status: "synced" | "closed" }> {
+}): Promise<{ status: OwnerReplayStatus }> {
   const user = await requireUser({ skipProfileUpsert: true });
-  const auth = await requireSampleOwner(input.sessionSampleId, user.id);
+  let auth: Awaited<ReturnType<typeof requireSampleOwner>>;
+  try {
+    auth = await requireSampleOwner(input.sessionSampleId, user.id);
+  } catch (err) {
+    if (isGone(err)) return { status: "gone" };
+    throw err;
+  }
   if (isSessionExpired(auth)) return { status: "closed" };
+  if (!isPlainObject(input.data)) return { status: "rejected" };
   await prisma.physicalEvaluation.upsert({
     where: { sessionSampleId: input.sessionSampleId },
     create: {
@@ -172,10 +203,17 @@ export async function replayPhysical(input: {
 export async function replayExtrinsic(input: {
   sessionSampleId: string;
   data: Record<string, unknown>;
-}): Promise<{ status: "synced" | "closed" }> {
+}): Promise<{ status: OwnerReplayStatus }> {
   const user = await requireUser({ skipProfileUpsert: true });
-  const auth = await requireSampleOwner(input.sessionSampleId, user.id);
+  let auth: Awaited<ReturnType<typeof requireSampleOwner>>;
+  try {
+    auth = await requireSampleOwner(input.sessionSampleId, user.id);
+  } catch (err) {
+    if (isGone(err)) return { status: "gone" };
+    throw err;
+  }
   if (isSessionExpired(auth)) return { status: "closed" };
+  if (!isPlainObject(input.data)) return { status: "rejected" };
   await prisma.extrinsicData.upsert({
     where: { sessionSampleId: input.sessionSampleId },
     create: {
