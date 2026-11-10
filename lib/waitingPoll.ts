@@ -27,8 +27,11 @@ export function createPollChain(opts: {
   const clearTimer = opts.clearTimer ?? ((id) => clearTimeout(id));
   let running = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
+  // Bumped on every start(): a tick still in flight from an earlier run must
+  // not re-arm once stop() + start() happened meanwhile (two chains, S8-27).
+  let generation = 0;
 
-  const arm = () => {
+  const arm = (gen: number) => {
     timer = setTimer(() => {
       timer = null;
       void (async () => {
@@ -37,7 +40,7 @@ export function createPollChain(opts: {
         } catch {
           // A rejected tick (offline) is not the end of the chain.
         } finally {
-          if (running) arm();
+          if (running && gen === generation) arm(gen);
         }
       })();
     }, delayMs());
@@ -47,7 +50,7 @@ export function createPollChain(opts: {
     start() {
       if (running) return;
       running = true;
-      arm();
+      arm(++generation);
     },
     stop() {
       running = false;

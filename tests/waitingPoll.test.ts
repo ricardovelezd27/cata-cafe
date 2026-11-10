@@ -49,4 +49,23 @@ describe("createPollChain (S8-23, C-03)", () => {
     expect(tick).toHaveBeenCalledTimes(2);
     chain.stop();
   });
+
+  it("stop + start while a tick is in flight leaves exactly one chain (S8-27)", async () => {
+    const releases: (() => void)[] = [];
+    const tick = vi.fn(() => new Promise<void>((r) => releases.push(r)));
+    const chain = createPollChain({ tick, delayMs: () => 1_000 });
+    chain.start();
+    await vi.advanceTimersByTimeAsync(1_000); // tick #1 in flight
+    chain.stop();
+    chain.start(); // new run, new timer
+    releases[0](); // the old tick settles now: must NOT re-arm
+    await vi.advanceTimersByTimeAsync(0);
+    tick.mockClear();
+    releases.length = 0;
+    // Resolve every later tick immediately so only the timers are counted.
+    tick.mockImplementation(() => Promise.resolve());
+    await vi.advanceTimersByTimeAsync(4_000);
+    expect(tick).toHaveBeenCalledTimes(4);
+    chain.stop();
+  });
 });
