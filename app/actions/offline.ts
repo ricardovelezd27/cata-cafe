@@ -7,7 +7,7 @@ import { isSessionExpired } from "@/lib/sessionState";
 // NOTE: no assertSessionWritable throw here — a closed or expired session must
 // not burn the replay's retry budget; it returns "discarded" instead (see below).
 import {
-  computeEvaluationDerived,
+  tryComputeEvaluationDerived,
   moduleKeyForFormat,
   type EvalModuleKey,
 } from "@/lib/evaluation";
@@ -80,7 +80,12 @@ export async function syncEvaluation(input: {
     referenceSampleId === input.sessionSampleId && isPinnedModule(moduleKey)
       ? pinReferenceAffective(input.data, cupsPerSample)
       : input.data;
-  const fields = computeEvaluationDerived(moduleKey, data, cupsPerSample);
+  // syncEvaluation is not under run(), so a thrown invalid_input would make
+  // useOfflineSync retry MAX_RETRIES times and leave the draft pending
+  // forever. Out-of-bounds data is reachable only with a tampered or legacy
+  // blob and can never become valid: report the non-retryable "discarded".
+  const fields = tryComputeEvaluationDerived(moduleKey, data, cupsPerSample);
+  if (!fields) return { status: "discarded" };
 
   await prisma.evaluation.upsert({
     where: {
