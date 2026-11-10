@@ -1,0 +1,468 @@
+diff --git a/app/[locale]/app/sessions/[id]/print/page.tsx b/app/[locale]/app/sessions/[id]/print/page.tsx
+index 2a8bba2..edd7a18 100644
+--- a/app/[locale]/app/sessions/[id]/print/page.tsx
++++ b/app/[locale]/app/sessions/[id]/print/page.tsx
+@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
+ import { orderReferencesFirst } from "@/lib/referenceRules";
+ import { isSuperAdminEmail } from "@/lib/analytics/access";
+ import { buildInviteUrl } from "@/lib/inviteUrl";
+-import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
++import { sheetSampleIdentity, sheetSampleRecords } from "@/lib/pdf/sheetSource";
+ import { PrintClient } from "./PrintClient";
+ 
+ export default async function PrintPage({
+@@ -22,11 +22,19 @@ export default async function PrintPage({
+   } = await supabase.auth.getUser();
+   if (!user) redirect(`/${locale}/auth/login`);
+ 
++  // Super-admin god mode (read-only): any session, rendered from the OWNER's
++  // evaluation — same lens as the cva-pdf route. The invite QR below stays
++  // gated on the REAL owner.
++  const isSuperAdmin = isSuperAdminEmail(user.email);
++  const adminTarget = isSuperAdmin
++    ? await prisma.cuppingSession.findUnique({ where: { id }, select: { createdBy: true } })
++    : null;
++  const viewAsId =
++    adminTarget && adminTarget.createdBy !== user.id ? adminTarget.createdBy : user.id;
++
+   const [session, profile] = await Promise.all([
+     prisma.cuppingSession.findFirst({
+-      // Super-admin god mode: read-only access to any session's print sheet
+-      // (the invite QR below stays owner-gated).
+-      where: isSuperAdminEmail(user.email)
++      where: isSuperAdmin
+         ? { id }
+         : {
+             id,
+@@ -40,19 +48,21 @@ export default async function PrintPage({
+           orderBy: { position: "asc" },
+           include: {
+             coffee: { select: { name: true, deletedAt: true, roastLevel: true } },
+-            evaluations: { where: { cupperId: user.id } },
++            evaluations: { where: { cupperId: viewAsId } },
+             physical: true,
+             extrinsic: true,
+           },
+         },
+       },
+     }),
+-    prisma.profile.findUnique({ where: { id: user.id }, select: { displayName: true } }),
++    prisma.profile.findUnique({ where: { id: viewAsId }, select: { displayName: true } }),
+   ]);
+ 
+   if (!session) notFound();
+ 
+   const isOwner = session.createdBy === user.id;
++  // Sheet lens: whose evaluation (and owner-only data) the sheet renders.
++  const ownerView = session.createdBy === viewAsId;
+ 
+   // Only the owner of a group session gets a join QR on the print sheet, and
+   // only if a valid invite already exists — this page never mints one.
+@@ -96,25 +106,20 @@ export default async function PrintPage({
+         date: dateStr,
+         objective: session.objective,
+         cupperName: profile?.displayName ?? "",
+-        ownerView: isOwner,
++        ownerView,
+         samples: orderReferencesFirst(session.samples).map((s) => {
+           const ev = s.evaluations[0];
+           return {
+             id: s.id,
+             label: s.label,
+             revealed: s.revealed,
+-            coffeeName: s.coffee ? coffeeDisplayName(s.coffee, tc("coffeeDeleted")) : null,
+-            roastLevel: s.coffee?.roastLevel ?? null,
++            ...sheetSampleIdentity(s, tc("coffeeDeleted")),
+             isReference: s.referenceRank != null,
+             referenceRank: s.referenceRank ?? null,
+             descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
+             affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
+             combined: (ev?.combinedData as Record<string, unknown>) ?? {},
+-            physical: isOwner ? ((s.physical?.data as Record<string, unknown>) ?? {}) : {},
+-            extrinsic:
+-              isOwner || s.revealed
+-                ? ((s.extrinsic?.data as Record<string, unknown>) ?? {})
+-                : {},
++            ...sheetSampleRecords(s, ownerView),
+           };
+         }),
+       }}
+diff --git a/app/[locale]/app/sessions/[id]/results/page.tsx b/app/[locale]/app/sessions/[id]/results/page.tsx
+index d359034..41f7da6 100644
+--- a/app/[locale]/app/sessions/[id]/results/page.tsx
++++ b/app/[locale]/app/sessions/[id]/results/page.tsx
+@@ -12,6 +12,7 @@ import { asSessionFormat, type SessionFormat } from "@/lib/constants";
+ import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
+ import { deriveMyEvaluation, summarizeMyProgress } from "@/lib/evaluationState";
+ import { canViewGroupResults } from "@/lib/sessionState";
++import { gateSampleForViewer, communityHidden } from "@/lib/reports/sampleGate";
+ import { ResultsClient } from "./ResultsClient";
+ 
+ // resendCloseEmails / refreshAggregateScores run from here; give the
+@@ -542,7 +543,8 @@ export default async function ResultsPage({
+   // Freshness: the trigger stamps computedAt on every recompute, so the newest
+   // computedAt across samples is "when community data last changed".
+   let lastComputedAt: Date | null = null;
+-  for (const s of session.samples) {
++  const hideCommunity = communityHidden({ ownerRead, isGroup: session.isGroup, canViewGroup });
++  for (const s of hideCommunity ? [] : session.samples) {
+     const at = s.aggregateScore?.computedAt ?? null;
+     if (at && (!lastComputedAt || at > lastComputedAt)) lastComputedAt = at;
+   }
+@@ -656,6 +658,15 @@ export default async function ResultsPage({
+                   attrAverages: (agg.attrAverages as Record<string, number>) ?? {},
+                 }
+               : null;
++          // Server-side viewer gate: physical sheet owner-only, community
++          // numbers withheld while a group session's results are hidden.
++          const gated = gateSampleForViewer(
++            {
++              physical: (s.physical?.data as Record<string, unknown>) ?? {},
++              aggregateScore,
++            },
++            { ownerRead, isGroup: session.isGroup, canViewGroup },
++          );
+           return {
+             id: s.id,
+             label: s.label,
+@@ -690,9 +701,9 @@ export default async function ResultsPage({
+             descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
+             affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
+             combined: (ev?.combinedData as Record<string, unknown>) ?? {},
+-            physical: (s.physical?.data as Record<string, unknown>) ?? {},
++            physical: gated.physical,
+             extrinsic: s.revealed ? ((s.extrinsic?.data as Record<string, unknown>) ?? {}) : {},
+-            aggregateScore,
++            aggregateScore: gated.aggregateScore,
+             isReference: s.referenceRank != null,
+             referenceRank: s.referenceRank ?? null,
+             myEvaluation: myEvaluationBySample.get(s.id) ?? { status: "none", complete: false },
+diff --git a/app/api/sessions/[id]/cva-pdf/route.ts b/app/api/sessions/[id]/cva-pdf/route.ts
+index 653b483..d5a1a76 100644
+--- a/app/api/sessions/[id]/cva-pdf/route.ts
++++ b/app/api/sessions/[id]/cva-pdf/route.ts
+@@ -10,7 +10,8 @@ import { createClient } from "@/lib/supabase/server";
+ import { prisma } from "@/lib/prisma";
+ import { orderReferencesFirst } from "@/lib/referenceRules";
+ import { isSuperAdminEmail } from "@/lib/analytics/access";
+-import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
++import { deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
++import { sheetSampleIdentity, sheetSampleRecords } from "@/lib/pdf/sheetSource";
+ import { slug } from "@/lib/pdf/filename";
+ import { CvaFormDocument, type CvaDocumentProps } from "@/lib/pdf/CvaFormDocument";
+ 
+@@ -99,22 +100,13 @@ export async function GET(
+       return {
+         label: sample.label,
+         revealed: sample.revealed,
+-        coffeeName: sample.coffee
+-          ? coffeeDisplayName(sample.coffee, deletedCoffeeLabel(locale))
+-          : null,
+-        roastLevel: sample.coffee?.roastLevel ?? null,
++        ...sheetSampleIdentity(sample, deletedCoffeeLabel(locale)),
+         isReference: sample.referenceRank != null,
+         referenceRank: sample.referenceRank ?? null,
+         descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
+         affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
+         combined: (ev?.combinedData as Record<string, unknown>) ?? {},
+-        physical: ownerView
+-          ? ((sample.physical?.data as Record<string, unknown>) ?? {})
+-          : {},
+-        extrinsic:
+-          ownerView || sample.revealed
+-            ? ((sample.extrinsic?.data as Record<string, unknown>) ?? {})
+-            : {},
++        ...sheetSampleRecords(sample, ownerView),
+       };
+     }),
+   };
+diff --git a/lib/closeEmail.ts b/lib/closeEmail.ts
+index 8b6ca7c..c812aa8 100644
+--- a/lib/closeEmail.ts
++++ b/lib/closeEmail.ts
+@@ -13,7 +13,8 @@
+ import { renderToBuffer } from "@react-pdf/renderer";
+ import { prisma } from "@/lib/prisma";
+ import { orderReferencesFirst } from "@/lib/referenceRules";
+-import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
++import { deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
++import { sheetSampleIdentity, sheetSampleRecords } from "@/lib/pdf/sheetSource";
+ import { createAdminClient } from "@/lib/supabase/admin";
+ import { sendEmail } from "@/lib/email";
+ import { CvaFormDocument, type CvaDocumentProps } from "@/lib/pdf/CvaFormDocument";
+@@ -239,21 +240,12 @@ export async function sendCloseEmails(
+             return {
+               label: s.label,
+               revealed: s.revealed,
+-              coffeeName: s.coffee
+-                ? coffeeDisplayName(s.coffee, deletedCoffeeLabel(recipientLocale))
+-                : null,
+-              roastLevel: s.coffee?.roastLevel ?? null,
++              ...sheetSampleIdentity(s, deletedCoffeeLabel(recipientLocale)),
+               isReference: s.id === session.referenceSampleId,
+               descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
+               affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
+               combined: (ev?.combinedData as Record<string, unknown>) ?? {},
+-              physical: isOwnerRecipient
+-                ? ((s.physical?.data as Record<string, unknown>) ?? {})
+-                : {},
+-              extrinsic:
+-                isOwnerRecipient || s.revealed
+-                  ? ((s.extrinsic?.data as Record<string, unknown>) ?? {})
+-                  : {},
++              ...sheetSampleRecords(s, isOwnerRecipient),
+             };
+           }),
+         };
+diff --git a/tests/reports.test.ts b/tests/reports.test.ts
+index c85e492..18d8192 100644
+--- a/tests/reports.test.ts
++++ b/tests/reports.test.ts
+@@ -4,6 +4,7 @@ import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
+ import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
+ import { computeCupperAlignment, computeMajoritySets } from "@/lib/alignment";
+ import { canViewGroupResults } from "@/lib/sessionState";
++import { gateSampleForViewer, communityHidden } from "@/lib/reports/sampleGate";
+ import { NO_EVALUATION } from "@/lib/evaluationState";
+ import { rankSamples, sessionStats, consensusLine, type RankableSample } from "@/lib/reports/ranking";
+ import { rowStats, bandFor } from "@/lib/reports/cupperStats";
+@@ -465,3 +466,60 @@ describe("computeMajoritySets", () => {
+     ).toEqual({});
+   });
+ });
++
++describe("gateSampleForViewer (S8-02 F-resultados-2)", () => {
++  const input = { physical: { phys_color: "green" }, aggregateScore: { communityScore: 85 } };
++  const open = { status: "active", allSubmitted: false, sessionExpired: false };
++
++  it("participant of a hidden group session gets no physical and no aggregate", () => {
++    const ctx = {
++      ownerRead: false,
++      isGroup: true,
++      canViewGroup: canViewGroupResults({ isGroup: true, ownerRead: false, ...open }),
++    };
++    expect(communityHidden(ctx)).toBe(true);
++    expect(gateSampleForViewer(input, ctx)).toEqual({ physical: {}, aggregateScore: null });
++  });
++  it("owner and admin lens are unchanged", () => {
++    const ctx = {
++      ownerRead: true,
++      isGroup: true,
++      canViewGroup: canViewGroupResults({ isGroup: true, ownerRead: true, ...open }),
++    };
++    expect(communityHidden(ctx)).toBe(false);
++    expect(gateSampleForViewer(input, ctx)).toEqual(input);
++  });
++  it("solo owner keeps the trigger-row aggregate", () => {
++    const ctx = { ownerRead: true, isGroup: false, canViewGroup: false };
++    expect(gateSampleForViewer(input, ctx)).toEqual(input);
++  });
++  it("participant of a closed group session sees the aggregate but never physical", () => {
++    const ctx = {
++      ownerRead: false,
++      isGroup: true,
++      canViewGroup: canViewGroupResults({
++        isGroup: true,
++        ownerRead: false,
++        status: "closed",
++        allSubmitted: false,
++        sessionExpired: false,
++      }),
++    };
++    expect(gateSampleForViewer(input, ctx)).toEqual({
++      physical: {},
++      aggregateScore: input.aggregateScore,
++    });
++  });
++  it("owner of a group session can always view, so owner + hidden is unreachable", () => {
++    for (const status of ["active", "closed", "draft"]) {
++      expect(
++        canViewGroupResults({ isGroup: true, ownerRead: true, status, allSubmitted: false, sessionExpired: false }),
++      ).toBe(true);
++    }
++  });
++  it("does not mutate its input", () => {
++    const copy = structuredClone(input);
++    gateSampleForViewer(input, { ownerRead: false, isGroup: true, canViewGroup: false });
++    expect(input).toEqual(copy);
++  });
++});
+diff --git a/lib/pdf/sheetSource.ts b/lib/pdf/sheetSource.ts
+new file mode 100644
+index 0000000..a5f0e39
+--- /dev/null
++++ b/lib/pdf/sheetSource.ts
+@@ -0,0 +1,56 @@
++// Single data-source gate for the CVA sheet (print page, cva-pdf route, close
++// email). The builder (cvaFormData.ts) already hides a blind coffee at paint
++// time; this moves the same rule to the data source so the serialized payload
++// of /print never carries the name/roast of an unrevealed sample (S8-02,
++// F-informes-1). The owner is NOT exempt: identical to the builder.
++//
++// Pure module (only imports another pure module) so vitest can load it.
++
++import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
++
++export interface SheetSampleSource {
++  revealed: boolean;
++  coffee: {
++    name: string;
++    deletedAt?: Date | string | null;
++    roastLevel?: string | null;
++  } | null;
++}
++
++export interface SheetSampleIdentity {
++  coffeeName: string | null;
++  roastLevel: string | null;
++}
++
++/** Name + roast of the coffee, only when the sample is revealed. `deletedLabel`
++ *  is the localized "Café eliminado". */
++export function sheetSampleIdentity(
++  sample: SheetSampleSource,
++  deletedLabel: string,
++): SheetSampleIdentity {
++  if (!sample.revealed || !sample.coffee) return { coffeeName: null, roastLevel: null };
++  return {
++    coffeeName: coffeeDisplayName(sample.coffee, deletedLabel),
++    roastLevel: sample.coffee.roastLevel ?? null,
++  };
++}
++
++/** Per-sample owner-authored records: physical only for the owner view,
++ *  extrinsic for the owner view or once the sample is revealed. */
++export function sheetSampleRecords(
++  sample: {
++    revealed: boolean;
++    physical: { data: unknown } | null | undefined;
++    extrinsic: { data: unknown } | null | undefined;
++  },
++  ownerView: boolean,
++): { physical: Record<string, unknown>; extrinsic: Record<string, unknown> } {
++  const asRecord = (v: unknown): Record<string, unknown> =>
++    typeof v === "object" && v !== null && !Array.isArray(v)
++      ? (v as Record<string, unknown>)
++      : {};
++  return {
++    physical: ownerView ? asRecord(sample.physical?.data) : {},
++    extrinsic: ownerView || sample.revealed ? asRecord(sample.extrinsic?.data) : {},
++  };
++}
+diff --git a/lib/reports/sampleGate.ts b/lib/reports/sampleGate.ts
+new file mode 100644
+index 0000000..5dcc950
+--- /dev/null
++++ b/lib/reports/sampleGate.ts
+@@ -0,0 +1,29 @@
++// Viewer gate for the per-sample payload of the results page (S8-02,
++// F-resultados-2). The UI already hid these two things; this stops the server
++// from serializing them in the first place:
++//  - `physical` (green-bean sheet) is per-sample and owner-authored: owner /
++//    super-admin lens only.
++//  - the community aggregate of a GROUP session while results are hidden
++//    (canViewGroupResults false). Solo sessions keep the trigger-row fallback.
++// Pure module: no scoring maths, nothing imported.
++
++export interface SampleGateContext {
++  ownerRead: boolean;
++  isGroup: boolean;
++  canViewGroup: boolean;
++}
++
++/** True when a group session's community numbers must not leave the server. */
++export function communityHidden(ctx: SampleGateContext): boolean {
++  return ctx.isGroup && !ctx.canViewGroup;
++}
++
++export function gateSampleForViewer<A>(
++  input: { physical: Record<string, unknown>; aggregateScore: A | null },
++  ctx: SampleGateContext,
++): { physical: Record<string, unknown>; aggregateScore: A | null } {
++  return {
++    physical: ctx.ownerRead ? input.physical : {},
++    aggregateScore: communityHidden(ctx) ? null : input.aggregateScore,
++  };
++}
+diff --git a/tests/sheetSource.test.ts b/tests/sheetSource.test.ts
+new file mode 100644
+index 0000000..db098a4
+--- /dev/null
++++ b/tests/sheetSource.test.ts
+@@ -0,0 +1,76 @@
++import { describe, it, expect } from "vitest";
++import { sheetSampleIdentity, sheetSampleRecords } from "@/lib/pdf/sheetSource";
++
++const coffee = { name: "Geisha", roastLevel: "Light", deletedAt: null };
++
++describe("sheetSampleIdentity", () => {
++  it("hides name and roast while unrevealed", () => {
++    expect(sheetSampleIdentity({ revealed: false, coffee }, "X")).toEqual({
++      coffeeName: null,
++      roastLevel: null,
++    });
++  });
++  it("shows them once revealed", () => {
++    expect(sheetSampleIdentity({ revealed: true, coffee }, "X")).toEqual({
++      coffeeName: "Geisha",
++      roastLevel: "Light",
++    });
++  });
++  it("revealed without a coffee gives nulls", () => {
++    expect(sheetSampleIdentity({ revealed: true, coffee: null }, "X")).toEqual({
++      coffeeName: null,
++      roastLevel: null,
++    });
++  });
++  it("revealed anonymized coffee shows the deleted label and keeps roast", () => {
++    const r = sheetSampleIdentity(
++      { revealed: true, coffee: { name: "", deletedAt: new Date(), roastLevel: "Dark" } },
++      "Café eliminado",
++    );
++    expect(r).toEqual({ coffeeName: "Café eliminado", roastLevel: "Dark" });
++  });
++  it("unrevealed anonymized coffee shows nothing, not even the label", () => {
++    const r = sheetSampleIdentity(
++      { revealed: false, coffee: { name: "", deletedAt: new Date(), roastLevel: "Dark" } },
++      "Café eliminado",
++    );
++    expect(r).toEqual({ coffeeName: null, roastLevel: null });
++  });
++  it("blank name falls back to the label", () => {
++    expect(
++      sheetSampleIdentity({ revealed: true, coffee: { name: "" } }, "Fallback").coffeeName,
++    ).toBe("Fallback");
++  });
++  it("undefined roast becomes null", () => {
++    expect(sheetSampleIdentity({ revealed: true, coffee: { name: "A" } }, "X").roastLevel).toBeNull();
++  });
++});
++
++describe("sheetSampleRecords", () => {
++  const phys = { data: { phys_color: "green" } };
++  const ext = { data: { farm: "La Loma" } };
++  it("participant gets no physical and no extrinsic before reveal", () => {
++    expect(sheetSampleRecords({ revealed: false, physical: phys, extrinsic: ext }, false)).toEqual({
++      physical: {},
++      extrinsic: {},
++    });
++  });
++  it("participant gets extrinsic once revealed, never physical", () => {
++    expect(sheetSampleRecords({ revealed: true, physical: phys, extrinsic: ext }, false)).toEqual({
++      physical: {},
++      extrinsic: ext.data,
++    });
++  });
++  it("owner gets both, extrinsic even pre-reveal", () => {
++    expect(sheetSampleRecords({ revealed: false, physical: phys, extrinsic: ext }, true)).toEqual({
++      physical: phys.data,
++      extrinsic: ext.data,
++    });
++  });
++  it("null rows give empty records", () => {
++    expect(sheetSampleRecords({ revealed: true, physical: null, extrinsic: undefined }, true)).toEqual({
++      physical: {},
++      extrinsic: {},
++    });
++  });
++});
