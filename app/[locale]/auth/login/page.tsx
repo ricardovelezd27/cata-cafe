@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
@@ -5,6 +6,8 @@ import { safeNext } from "@/lib/safeNext";
 import { loginErrorFromParam } from "@/lib/authErrors";
 import { supportMailto } from "@/lib/siteContact";
 import { authErrorCopy, emailSentCopy } from "@/components/auth/authCopy";
+import { LEGAL_PAGES_PUBLISHED } from "@/lib/legal/config";
+import { localeHref } from "@/components/landing/locale-href";
 import { LoginForm } from "./LoginForm";
 
 export default async function LoginPage({
@@ -31,6 +34,7 @@ export default async function LoginPage({
   }
 
   const t = await getTranslations("auth");
+  const tl = await getTranslations("landing.footer");
 
   const errorKey = loginErrorFromParam(error);
   const linkFailed = errorKey === "link_failed";
@@ -73,6 +77,18 @@ export default async function LoginPage({
           initialError={linkFailed ? null : errorKey}
           autoFocusEmail={linkFailed}
         />
+        {/* F-landing-1: hidden until the owner publishes the final text. */}
+        {LEGAL_PAGES_PUBLISHED && (
+          <p className="text-xs text-on-surface-variant">
+            <Link href={localeHref(locale, "/privacidad")} className="underline underline-offset-2">
+              {tl("privacy")}
+            </Link>
+            {" · "}
+            <Link href={localeHref(locale, "/terminos")} className="underline underline-offset-2">
+              {tl("terms")}
+            </Link>
+          </p>
+        )}
       </div>
     </main>
   );

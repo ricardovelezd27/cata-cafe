@@ -21,10 +21,13 @@ export const maxDuration = 120;
 
 export default async function ResultsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
+  searchParams: Promise<{ closed?: string }>;
 }) {
   const { locale, id } = await params;
+  const { closed: closedParam } = await searchParams;
   setRequestLocale(locale);
 
   const user = await requireAppUser(locale, `/${locale}/app/sessions/${id}/results`);
@@ -116,6 +119,7 @@ export default async function ResultsPage({
   // Fetched early — needed below by the owner-only participant matrix
   // (coffeeDisplayName fallback) before the rest of the page's translators.
   const tCommon = await getTranslations("common");
+  const tErrors = await getTranslations("errors");
   // Descriptor aggregation locale + block-label resolver — shared by both the
   // group (anonymous, cross-cupper) and solo (own-data) descriptor paths below.
   const localeStr: "es" | "en" = locale === "en" ? "en" : "es";
@@ -493,6 +497,24 @@ export default async function ResultsPage({
       ? tResults("myDraftNotice", { complete: myProgress.complete, total: myProgress.total })
       : null;
 
+  // F-grupal-2 / F-grupal-asincrona-1: a cupper who was cupping when the
+  // session closed (or whose deadline passed) learns, in one persistent line,
+  // whether their unsent notes counted. Under the default draft policy
+  // (lib/closeRules.ts DRAFT_AT_CLOSE = "exclude") complete drafts are left
+  // out. `?closed=1` is set by the /cup redirect and adds the plain statement
+  // even when nothing was left unsent.
+  const myUnsentComplete = [...myEvaluationBySample.values()].filter(
+    (m) => m.status === "draft" && m.complete,
+  ).length;
+  const closedNotice =
+    !isAdminViewer && sessionOver
+      ? myUnsentComplete > 0
+        ? tResults("closedUnsentNotice", { count: myUnsentComplete })
+        : closedParam === "1"
+          ? tResults("closedNotice")
+          : null
+      : null;
+
   // Shared score-transparency translations ("¿Cómo se calculó?") — fed to both
   // the Resultados chart view (SampleRadarChart) and the personal drill-down
   // dialog (SampleDetail), so both surfaces stay in sync from one source.
@@ -710,12 +732,30 @@ export default async function ResultsPage({
         }),
       }}
       myDraftNotice={myDraftNotice}
+      closedNotice={closedNotice}
+      finish={
+        !isAdminViewer && !session.isGroup && isOwner && !sessionOver
+          ? {
+              button: tResults("finish.button"),
+              title: tResults("finish.title"),
+              body: tResults("finish.body"),
+              submitLine: tResults.raw("finish.submitLine") as string,
+              removeLine: tResults.raw("finish.removeLine") as string,
+              keepLine: tResults.raw("finish.keepLine") as string,
+              confirm: tResults("finish.confirm"),
+              cancel: tResults("finish.cancel"),
+              close: tResults("finish.cancel"),
+              errors: tErrors.raw("codes") as Record<string, string>,
+            }
+          : null
+      }
       sync={{
         syncing: tResults("sync.syncing", { count: "{count}" }),
         pending: tResults("sync.pending", { count: "{count}" }),
         offline: tResults("sync.offline", { count: "{count}" }),
         retry: tResults("sync.retry"),
         synced: tResults("sync.synced"),
+        closedUnsent: tResults("sync.closedUnsent", { count: "{count}" }),
         conflictTitle: tOffline("conflictTitle"),
         // Raw template — `{sample}` is filled client-side by SyncConflictModal.
         conflictBody: tOffline.raw("conflictBody") as string,

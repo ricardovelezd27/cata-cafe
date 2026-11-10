@@ -1,13 +1,10 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import {
-  mergeGuestData,
-  mintGuestClaimToken,
-  safeClaimBack,
-  verifyGuestClaimToken,
-} from "@/lib/guestClaim";
+import { mergeGuestData } from "@/lib/guestClaim";
+import { mintGuestClaimToken, safeClaimBack, verifyGuestClaimToken } from "@/lib/guestClaimToken";
+import { run } from "@/lib/safeAction";
+import type { ActionResult } from "@/lib/actionResult";
 
 function asLocale(locale: string): "es" | "en" {
   return locale === "en" ? "en" : "es";
@@ -46,29 +43,44 @@ export async function startGuestClaim(
 }
 
 /**
- * Step 3: the confirmation card's submit. A server action (POST, Origin-
+ * Step 3: the confirmation card's button. A server action (POST, Origin-
  * checked by Next) — the merge is never triggered by a GET, so a cross-site
  * link can't pollute a signed-in account; the user must be signed in with a
- * real account, and the token must still verify. Redirects on every outcome.
+ * real account, and the token must still verify.
+ *
+ * Returns an ActionResult (S8-07, F-guest-8) instead of redirecting on every
+ * outcome: the card maps `invalid_token` / `token_expired` / `already_claimed`
+ * to its final states and shows a RETRY card for anything
+ * else (`unknown` covers a failed auth lookup and a rolled-back merge), which
+ * is safe to repeat because the merge is one transaction.
  */
-export async function confirmGuestClaim(locale: string, token: string, back: string): Promise<void> {
+export async function confirmGuestClaim(
+  locale: string,
+  token: string,
+  back: string,
+): Promise<ActionResult<{ next: string }>> {
   const loc = asLocale(locale);
   const safeBack = safeClaimBack(loc, back);
+  return run("confirmGuestClaim", async () => {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user || user.is_anonymous) throw new Error("not_authenticated");
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user || user.is_anonymous) {
-    redirect(`/${loc}/auth/login?next=${encodeURIComponent(claimPath(loc, token, safeBack))}&intent=claim`);
-  }
+    const verified = verifyGuestClaimToken(String(token ?? ""));
+    if (!verified) throw new Error("invalid_token");
+    if (verified.expired) throw new Error("token_expired");
 
-  const verified = verifyGuestClaimToken(token);
-  if (!verified) redirect(claimPath(loc, token, safeBack, "invalid"));
-  if (verified.expired) redirect(claimPath(loc, token, safeBack, "expired"));
-
-  const result = await mergeGuestData(verified.anonymousUserId, user.id, verified.issuedAt);
-  if (!result.ok) redirect(claimPath(loc, token, safeBack, "already"));
-
-  redirect(safeBack);
+    const result = await mergeGuestData(verified.anonymousUserId, user.id, verified.issuedAt);
+    if (!result.ok) {
+      if (result.error === "lookup_failed") throw new Error("unknown");
+      if (result.error === "same_user") throw new Error("invalid_input");
+      // result.error === "not_anonymous": the one deliberate final outcome.
+      // A P2025 rolled back inside the merge surfaces as `not_found` and is
+      // retryable, so it must stay distinct from this code.
+      throw new Error("already_claimed");
+    }
+    return { next: safeBack };
+  });
 }

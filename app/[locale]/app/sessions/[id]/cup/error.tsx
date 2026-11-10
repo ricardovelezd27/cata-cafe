@@ -5,7 +5,8 @@ import { useParams } from "next/navigation";
 import { CupClient } from "./CupClient";
 import { OfflineFirstLoadError } from "@/components/offline/OfflineFirstLoadError";
 import { ErrorPanel } from "@/components/errors/ErrorPanel";
-import { loadCachedProps, getLastUser } from "@/lib/offline/store";
+import { loadCachedProps, loadSession, getLastUser } from "@/lib/offline/store";
+import { warmupFromCache, type CachedWarmup } from "@/lib/warmup/offlineCache";
 
 type CupClientProps = ComponentProps<typeof CupClient>;
 
@@ -122,7 +123,25 @@ export default function CupError({
     if (userId) {
       const cached = await loadCachedProps<CupClientProps>(id, userId);
       if (cached && cached.userId === userId) {
-        setState({ phase: "cached", props: cached });
+        // Rebuild the warm-up from its static cache (F-movimiento-sensorial-4):
+        // the seen-set gate runs as online; a cupper with local work counts as
+        // returning; no synced run is ever resumed.
+        const blob = await loadSession(id, userId);
+        const hasLocalWork =
+          !!blob && Object.values(blob.samples).some((s) => Object.keys(s.modules).length > 0);
+        const cachedWarmup = (cached as unknown as {
+          warmup?: CachedWarmup<NonNullable<CupClientProps["warmup"]>> | null;
+        }).warmup;
+        setState({
+          phase: "cached",
+          props: {
+            ...cached,
+            warmup: warmupFromCache(cachedWarmup, {
+              hasLocalWork,
+              nowIso: new Date().toISOString(),
+            }),
+          },
+        });
         return;
       }
     }

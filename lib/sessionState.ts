@@ -1,7 +1,7 @@
 // Pure session-state rules — no Prisma, no Next imports — so they can be
 // unit-tested and reused from lib/sessionAuth.ts.
 
-import { dateOnlyEndOfDay } from "@/lib/validate";
+import { dateInZone, endOfDayInZone, normalizeZone } from "@/lib/closeRules";
 
 type ExpiryRow = { status: string; closesAt?: Date | string | null };
 
@@ -69,39 +69,43 @@ export function canViewGroupResults(input: {
   );
 }
 
-/** Editing `closesAt` after creation (S6 CP-C3 / S5 item 9). Pure; the
- *  action translates the thrown codes to its own error shape.
+/** Editing `closesAt` after creation (S6 CP-C3 / S5 item 9; zone-aware since
+ *  S8-05). Pure; the action translates the thrown codes to its own error shape.
  *
- *  - A value equal to the stored date is also a no-op (saving other fields
- *    must not fail once the stored date has passed).
  *  - `undefined` → no change.
- *  - `""` / `null` → clear: `closesAt = null`, `isAsync = false` (the owner
- *    closes manually from then on — a live cupping). Allowed even when
- *    cuppers already submitted.
- *  - `"YYYY-MM-DD"` → END of that day in UTC (same `dateOnlyEndOfDay` rule as
- *    the wizard: picking today is valid, the cron closes it on D+1 ~06:00
- *    UTC) and `isAsync = true`. Allowed on a live session that already
- *    started — it simply gains an automatic close. A past date throws
+ *  - `""` / `null` → clear: `closesAt = null`, `closesAtZone = null`,
+ *    `isAsync = false` (the owner closes manually from then on — a live
+ *    cupping). Allowed even when cuppers already submitted.
+ *  - `"YYYY-MM-DD"` → END of that day in the owner's IANA `zone` (UTC when the
+ *    zone is missing or unknown, the pre-S8-05 behaviour) and `isAsync = true`.
+ *    Picking today is valid until 23:59 local. A past date throws
  *    `invalid_closes_at`.
+ *  - A value equal to the stored date, read back in the STORED zone (UTC for
+ *    legacy rows), is a no-op, so saving other fields never fails once the
+ *    stored date has passed.
  *  - Only group sessions carry a close date (`not_group_session`); a closed
- *    session is refused upstream by `assertSessionWritable`. */
+ *    session is refused upstream by `assertSessionWritable`.
+ *  // TODO(S8-05/C7): separating `isAsync` from `closesAt` (a live cupping
+ *  // that also has a deadline) is Kim's call; today a date means self-paced. */
 export function planClosesAtChange(
-  session: { isGroup: boolean; closesAt?: Date | null },
+  session: { isGroup: boolean; closesAt?: Date | null; closesAtZone?: string | null },
   input: string | null | undefined,
   now: number = Date.now(),
-): { closesAt: Date | null; isAsync: boolean } | null {
+  zone?: string | null,
+): { closesAt: Date | null; closesAtZone: string | null; isAsync: boolean } | null {
   if (input === undefined) return null;
   if (!session.isGroup) throw new Error("not_group_session");
-  if (input === null || input === "") return { closesAt: null, isAsync: false };
+  if (input === null || input === "") return { closesAt: null, closesAtZone: null, isAsync: false };
   // Unchanged value -> no-op, so saving an unrelated field never trips over a
   // stored date that has since slipped into the past.
-  if (session.closesAt && input === session.closesAt.toISOString().slice(0, 10)) return null;
+  if (session.closesAt && input === dateInZone(session.closesAt, session.closesAtZone)) return null;
+  const useZone = normalizeZone(zone);
   let d: Date;
   try {
-    d = dateOnlyEndOfDay(input, "closesAt");
+    d = endOfDayInZone(input, useZone);
   } catch {
     throw new Error("invalid_closes_at");
   }
   if (d.getTime() < now + 60_000) throw new Error("invalid_closes_at");
-  return { closesAt: d, isAsync: true };
+  return { closesAt: d, closesAtZone: useZone, isAsync: true };
 }

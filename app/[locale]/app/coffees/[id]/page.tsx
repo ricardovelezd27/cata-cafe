@@ -31,6 +31,7 @@ import {
 } from "@/components/coffees/DeleteCoffeeButton";
 import { Badge, ButtonLink, ScorePill } from "@/components/ui";
 import { ReportLink } from "@/components/ui/ReportLink";
+import { historyCupsPerSample, isQuickImpression } from "@/lib/historyRules";
 import { DuplicateButton } from "@/components/DuplicateButton";
 
 // Auth'd page with a dynamic [id] segment: must render per-request. With
@@ -108,7 +109,7 @@ export default async function CoffeeProfilePage({
       include: {
         // sessionId/session can be null — a deleted session detaches the row
         // instead of cascading it away, leaving `snapshot` as the fallback.
-        session: { select: { id: true, name: true } },
+        session: { select: { id: true, name: true, cupsPerSample: true } },
       },
     }),
     loadCoffeeAggregateSamples(id, { userId: user.id, isAdmin }),
@@ -449,7 +450,8 @@ export default async function CoffeeProfilePage({
               ) : (
                 <div className="space-y-2">
                   {history.map((h) => {
-                    const snapshot = h.snapshot as { sessionName?: string } | null;
+                    const snapshot = h.snapshot as { sessionName?: string; cupsPerSample?: number } | null;
+                    const quick = isQuickImpression(historyCupsPerSample(h.session, snapshot));
                     const sessionName = h.session?.name ?? snapshot?.sessionName ?? "—";
                     return (
                       <div key={h.id} className={LIST_ROW}>
@@ -474,6 +476,11 @@ export default async function CoffeeProfilePage({
                               {th("yourScore")}
                             </span>
                             <ScorePill score={h.individualScore} />
+                            {quick && (
+                              <Badge tone="outline" size="xs">
+                                {th("quickImpression")}
+                              </Badge>
+                            )}
                           </span>
                           <span className="flex flex-col items-end gap-0.5">
                             <span className="text-[10px] uppercase tracking-wide text-on-surface-variant">

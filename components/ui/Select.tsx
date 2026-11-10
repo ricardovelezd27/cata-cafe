@@ -8,16 +8,20 @@ export function Select({
   options,
   ariaLabel,
   className = "",
+  id,
 }: {
   value: string;
   onChange: (v: string) => void;
   options: { value: string; label: string }[];
   ariaLabel: string;
   className?: string;
+  /** Lets a visible <label htmlFor> point at the control. */
+  id?: string;
 }) {
   return (
     <div className={`relative ${className}`}>
       <select
+        id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-label={ariaLabel}

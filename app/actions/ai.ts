@@ -1,6 +1,7 @@
 "use server";
 
 import { requireAnalyticsAccess } from "@/lib/analytics/access";
+import { scopeFor } from "@/lib/analytics/scope";
 import { getDashboardData, runInsightQuery, runPivotQuery } from "@/lib/analytics/queries";
 import { isPivotConfigLike, parseInsightConfig, parsePivotConfig } from "@/lib/analytics/types";
 import type { InsightConfig, PivotConfig } from "@/lib/analytics/types";
@@ -29,9 +30,10 @@ export async function generateDashboardNarrative(
   locale: string,
   force = false,
 ): Promise<CachedAiResult<NarrativeContent>> {
-  await requireAnalyticsAccess();
+  const access = await requireAnalyticsAccess();
+  const scope = scopeFor(access);
   const loc = asLocale(locale);
-  const data = await getDashboardData(loc);
+  const data = await getDashboardData(loc, scope);
   const inputs = dashboardNarrativeInputs(data);
   return cachedGenerate<NarrativeContent>(
     "dashboard",
@@ -47,7 +49,8 @@ export async function generateInsightNarrative(
   locale: string,
   force = false,
 ): Promise<CachedAiResult<NarrativeContent>> {
-  await requireAnalyticsAccess();
+  const access = await requireAnalyticsAccess();
+  const scope = scopeFor(access);
   const loc = asLocale(locale);
   let config: InsightConfig;
   try {
@@ -55,7 +58,7 @@ export async function generateInsightNarrative(
   } catch {
     return { ok: false, error: "invalid_config" };
   }
-  const rows = await runInsightQuery(config, loc);
+  const rows = await runInsightQuery(config, loc, scope);
   if (rows.length === 0) return { ok: false, error: "no_data" };
   const inputs = insightNarrativeInputs(config, rows);
   return cachedGenerate<NarrativeContent>(
@@ -72,7 +75,8 @@ export async function generateLinkedInDraft(
   headline: string | null,
   force = false,
 ): Promise<CachedAiResult<LinkedInContent>> {
-  await requireAnalyticsAccess();
+  const access = await requireAnalyticsAccess();
+  const scope = scopeFor(access);
   const cleanHeadline = headline?.trim().slice(0, 140) || null;
 
   if (isPivotConfigLike(rawConfig)) {
@@ -83,7 +87,7 @@ export async function generateLinkedInDraft(
       return { ok: false, error: "invalid_config" };
     }
     // Locale-independent (the draft contains both languages); hash under "es".
-    const result = await runPivotQuery(config, "es");
+    const result = await runPivotQuery(config, "es", scope);
     if (result.rowKeys.length === 0) return { ok: false, error: "no_data" };
     const inputs = { ...pivotNarrativeInputs(config, result), headline: cleanHeadline };
     return cachedGenerate<LinkedInContent>(
@@ -102,7 +106,7 @@ export async function generateLinkedInDraft(
     return { ok: false, error: "invalid_config" };
   }
   // Locale-independent (the draft contains both languages); hash under "es".
-  const rows = await runInsightQuery(config, "es");
+  const rows = await runInsightQuery(config, "es", scope);
   if (rows.length === 0) return { ok: false, error: "no_data" };
   const inputs = { ...insightNarrativeInputs(config, rows), headline: cleanHeadline };
   return cachedGenerate<LinkedInContent>(

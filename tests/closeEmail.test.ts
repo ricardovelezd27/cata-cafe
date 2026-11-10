@@ -19,4 +19,13 @@ describe("close email body", () => {
     expect(html).toContain("View my results");
     expect(closeEmailSubject("en", "A")).toBe("Results — A");
   });
+  it("always states the unsent-notes rule, and names the cupper's own unsent work only when there was some", () => {
+    const base = { locale: "es" as const, sessionName: "S", dateStr: "", resultsUrl: url };
+    const plain = buildCloseEmailHtml(base);
+    expect(plain).toContain("no cuentan en los resultados");
+    expect(plain).not.toContain("Tenías notas completas sin enviar");
+    const mine = buildCloseEmailHtml({ ...base, hadUnsent: true });
+    expect(mine).toContain("Tenías notas completas sin enviar");
+    expect(buildCloseEmailHtml({ ...base, locale: "en", hadUnsent: true })).toContain("still unsent");
+  });
 });

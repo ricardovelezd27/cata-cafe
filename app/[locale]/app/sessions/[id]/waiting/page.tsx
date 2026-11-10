@@ -5,6 +5,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
 import { isSessionExpired } from "@/lib/sessionState";
 import { WaitingRoomClient } from "./WaitingRoomClient";
+import { DeadlineBanner } from "@/components/session/DeadlineBanner";
 import { warmupPlayerStrings } from "@/components/warmup/playerStrings";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +34,7 @@ export default async function WaitingPage({
       isAsync: true,
       status: true,
       closesAt: true,
+      closesAtZone: true,
       referenceSampleId: true,
       warmupExerciseId: true,
       warmupStartedAt: true,
@@ -64,8 +66,25 @@ export default async function WaitingPage({
 
   const t = await getTranslations("waiting");
   const tw = await getTranslations("warmup");
+  const tg = await getTranslations("group");
 
   return (
+    <>
+    {session.closesAt && (
+      <div className="mx-auto w-full max-w-2xl px-4 pt-4">
+        <DeadlineBanner
+          closesAt={session.closesAt.toISOString()}
+          zone={session.closesAtZone}
+          locale={locale}
+          translations={{
+            open: tg.raw("deadlineOpen") as string,
+            soon: tg.raw("deadlineSoon") as string,
+            passed: tg.raw("deadlinePassed") as string,
+            local: tg.raw("deadlineLocal") as string,
+          }}
+        />
+      </div>
+    )}
     <WaitingRoomClient
       sessionId={session.id}
       sessionName={session.name}
@@ -117,5 +136,6 @@ export default async function WaitingPage({
         connectionLost: t("connectionLost"),
       }}
     />
+    </>
   );
 }
