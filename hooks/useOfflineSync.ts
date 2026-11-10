@@ -80,6 +80,9 @@ export function useOfflineSync({
             // "discarded" = the session closed meanwhile; the server keeps the
             // submitted data and this draft can't apply. Treat as synced so
             // the pending flag clears (nothing to retry, nothing to resolve).
+            // "pending" = the master has not started this live session yet; the
+            // draft stays on the device and is retried on the next sync.
+            if (res.status === "pending") return "failed";
             return res.status === "discarded" ? "synced" : res.status;
           }
           if (moduleKey === "physical") {
