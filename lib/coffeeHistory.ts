@@ -6,7 +6,7 @@
 
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/app/generated/prisma/client";
-import { historyCommunityScore, orphanLabelRowWhere } from "@/lib/historyRules";
+import { historyCommunityScore, orphanLabelRowWhere, partitionLabelRows } from "@/lib/historyRules";
 import { buildLabelSnapshot, type HistorySnapshot } from "@/lib/historySnapshot";
 
 export type { HistorySnapshot };
@@ -25,11 +25,13 @@ type LabelRowInput = {
 /**
  * Find-or-create the LABEL-ONLY (coffeeId NULL) history row of one evaluation.
  * The (userId, coffeeId, sessionId) unique does not dedupe NULL coffeeIds, so
- * the row is keyed on its evaluation instead: one submitted evaluation = one
- * (cupper, sample) pair = at most one label-only row. Sequential, so it is safe
- * inside the delete transaction and idempotent on re-run. Callers are
- * single-flight (close is an idempotent updateMany; assign/delete are owner
- * actions), so no DB-level partial unique index is needed.
+ * the row is keyed on its evaluation: one submitted evaluation = one
+ * (cupper, sample) pair = at most one label-only row. The database enforces it
+ * with the partial unique index user_coffee_history_label_row_evaluation_key
+ * (migration only). Callers are NOT single-flight (close, cron repair,
+ * exclusion on a closed session and assign-coffee can overlap), so the insert
+ * is createMany({ skipDuplicates }) (ON CONFLICT DO NOTHING): a lost race is a
+ * no-op instead of a P2002 that would abort an enclosing transaction.
  */
 async function ensureLabelRows(db: Db, rows: LabelRowInput[]): Promise<number> {
   if (rows.length === 0) return 0;
@@ -38,27 +40,27 @@ async function ensureLabelRows(db: Db, rows: LabelRowInput[]): Promise<number> {
     select: { id: true, evaluationId: true },
   });
   const byEval = new Map(existing.map((e) => [e.evaluationId, e.id]));
-  for (const r of rows) {
-    const id = byEval.get(r.evaluationId);
-    if (id) {
-      await db.userCoffeeHistory.update({
-        where: { id },
-        data: { individualScore: r.individualScore, snapshot: r.snapshot },
-      });
-    } else {
-      await db.userCoffeeHistory.create({
-        data: {
-          userId: r.userId,
-          coffeeId: null,
-          evaluationId: r.evaluationId,
-          sessionId: r.sessionId,
-          individualScore: r.individualScore,
-          communityScore: null,
-          tastedAt: r.tastedAt,
-          snapshot: r.snapshot,
-        },
-      });
-    }
+  const { toInsert, toUpdate } = partitionLabelRows(rows, new Set(byEval.keys() as Iterable<string>));
+  if (toInsert.length > 0) {
+    await db.userCoffeeHistory.createMany({
+      data: toInsert.map((r) => ({
+        userId: r.userId,
+        coffeeId: null,
+        evaluationId: r.evaluationId,
+        sessionId: r.sessionId,
+        individualScore: r.individualScore,
+        communityScore: null,
+        tastedAt: r.tastedAt,
+        snapshot: r.snapshot,
+      })),
+      skipDuplicates: true,
+    });
+  }
+  for (const r of toUpdate) {
+    await db.userCoffeeHistory.update({
+      where: { id: byEval.get(r.evaluationId)! },
+      data: { individualScore: r.individualScore, snapshot: r.snapshot },
+    });
   }
   return rows.length;
 }

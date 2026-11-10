@@ -354,6 +354,11 @@ model UserCoffeeHistory {
   detachedAt      DateTime?
   createdAt       DateTime       @default(now())
 
+  // NOTE (S8-16): a PARTIAL unique index exists only in the migration
+  // 20261111140000_history_coffee_optional — Prisma cannot express it:
+  //   user_coffee_history_label_row_evaluation_key ON ("evaluationId")
+  //   WHERE "coffeeId" IS NULL AND "evaluationId" IS NOT NULL
+  // `prisma migrate dev` may propose dropping it. Never accept.
   @@unique([userId, coffeeId, sessionId])
   @@index([userId])
   @@index([coffeeId])

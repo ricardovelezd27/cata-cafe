@@ -7,3 +7,11 @@
 -- NULLs as distinct, so it does NOT dedupe label-only rows; lib/coffeeHistory.ts
 -- keys those rows on the existing evaluationId and finds-or-creates them.
 ALTER TABLE "user_coffee_history" ALTER COLUMN "coffeeId" DROP NOT NULL;
+
+-- One label-only row per evaluation, enforced by the database: the writer is not
+-- single-flight (close, cron repair, exclusion on a closed session and
+-- assign-coffee can overlap). Prisma's schema cannot express a partial index, so
+-- it lives ONLY here; `prisma migrate dev` may propose dropping it. Never accept.
+CREATE UNIQUE INDEX "user_coffee_history_label_row_evaluation_key"
+  ON "user_coffee_history" ("evaluationId")
+  WHERE "coffeeId" IS NULL AND "evaluationId" IS NOT NULL;

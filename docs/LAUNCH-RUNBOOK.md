@@ -1095,6 +1095,10 @@ without the migration those closes would fail at the history step.
    Expected: `YES`.
 3. Deploy the branch. No SQL PHASE, no environment variable.
 
+The same migration creates a partial unique index, `user_coffee_history_label_row_evaluation_key`
+(one label-only row per evaluation). Prisma's schema cannot express it, so `prisma migrate dev`
+may propose dropping this index; never accept.
+
 **Smoke test (3 minutes):** run a "Catar ahora" session with one sample and no coffee, submit
 → it closes; Perfil → Historial shows a row "Muestra A · Sin café asignado" that links to the
 session results and not to a coffee page. Assign a coffee to that sample from the results

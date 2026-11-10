@@ -48,3 +48,19 @@ export function orphanLabelRowWhere(sessionId: string): {
 } {
   return { sessionId, coffeeId: null, evaluationId: null };
 }
+
+/**
+ * S8-16: split label rows into those that already exist (update) and those to
+ * insert. The insert goes through createMany({ skipDuplicates }) (ON CONFLICT
+ * DO NOTHING) so a concurrent writer hitting the partial unique index on
+ * evaluationId cannot abort the surrounding Postgres transaction.
+ */
+export function partitionLabelRows<T extends { evaluationId: string }>(
+  rows: T[],
+  existingEvaluationIds: Set<string>,
+): { toInsert: T[]; toUpdate: T[] } {
+  const toInsert: T[] = [];
+  const toUpdate: T[] = [];
+  for (const r of rows) (existingEvaluationIds.has(r.evaluationId) ? toUpdate : toInsert).push(r);
+  return { toInsert, toUpdate };
+}
