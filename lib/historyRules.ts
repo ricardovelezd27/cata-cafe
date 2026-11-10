@@ -33,3 +33,18 @@ export function historyCupsPerSample(
 export function isQuickImpression(cupsPerSample: number | null | undefined): boolean {
   return typeof cupsPerSample === "number" && cupsPerSample < MIN_CUPS_FOR_PENALTIES;
 }
+
+/**
+ * S8-16: label-only rows (coffeeId NULL) of a LIVE session whose evaluation no
+ * longer exists (cupper removed / evaluation deleted → SetNull) describe
+ * nothing and are never refreshed, so the sync drops them. Rows whose SESSION
+ * was deleted (sessionId NULL, the D8 case) are kept: the session id in this
+ * filter is required, so they can never match.
+ */
+export function orphanLabelRowWhere(sessionId: string): {
+  sessionId: string;
+  coffeeId: null;
+  evaluationId: null;
+} {
+  return { sessionId, coffeeId: null, evaluationId: null };
+}

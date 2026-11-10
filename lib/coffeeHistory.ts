@@ -6,7 +6,7 @@
 
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/app/generated/prisma/client";
-import { historyCommunityScore } from "@/lib/historyRules";
+import { historyCommunityScore, orphanLabelRowWhere } from "@/lib/historyRules";
 import { buildLabelSnapshot, type HistorySnapshot } from "@/lib/historySnapshot";
 
 export type { HistorySnapshot };
@@ -103,6 +103,9 @@ export async function syncCoffeeHistoryForSession(
 
   const tastedAt = session?.date ?? new Date();
   const upserts = [];
+
+  // Label-only rows whose evaluation is gone (session still live) are stale.
+  upserts.push(db.userCoffeeHistory.deleteMany({ where: orphanLabelRowWhere(sessionId) }));
 
   // Assignment replaces: drop the label-only rows of evaluations whose sample
   // now has a (revealed) coffee, BEFORE the coffee rows are upserted.
