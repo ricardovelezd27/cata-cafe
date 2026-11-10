@@ -5,7 +5,7 @@ import Link from "next/link";
 import { GuestGateLink } from "@/components/guest/GuestGateLink";
 import { Coffee } from "lucide-react";
 import { DataTable, type Column, type Facet } from "@/components/ui/DataTable";
-import { ScorePill } from "@/components/ui/Badge";
+import { Badge, ScorePill } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 export type HistoryRow = {
@@ -21,6 +21,8 @@ export type HistoryRow = {
   sessionName: string;
   individualScore: number | null;
   communityScore: number | null;
+  /** Session ran with fewer cups than the protocol gate (display-only tag). */
+  quickImpression: boolean;
   /** ISO date string — serializable across the server/client boundary. */
   tastedAt: string;
 };
@@ -45,6 +47,7 @@ export type HistoryTableTranslations = {
   newSessionLabel: string;
   noResults: string;
   sessionDeleted: string;
+  quickImpression: string;
 };
 
 export function HistoryTable({
@@ -113,7 +116,12 @@ export function HistoryTable({
       key: "individualScore",
       label: t.yourScore,
       align: "right",
-      render: (row) => <ScorePill score={row.individualScore} />,
+      render: (row) => (
+        <span className="inline-flex items-center justify-end gap-1.5">
+          {row.quickImpression && <Badge tone="outline" size="xs">{t.quickImpression}</Badge>}
+          <ScorePill score={row.individualScore} />
+        </span>
+      ),
     },
     {
       key: "communityScore",
@@ -196,6 +204,7 @@ export function HistoryTable({
                 {t.yourScore}
               </div>
               <ScorePill score={row.individualScore} />
+              {row.quickImpression && <Badge tone="outline" size="xs">{t.quickImpression}</Badge>}
             </div>
             <div className="space-y-0.5">
               <div className="text-[10px] font-semibold uppercase tracking-wide text-on-surface-variant">

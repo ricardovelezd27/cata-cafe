@@ -4,6 +4,8 @@ import {
   getOriginContext,
   listBenchmarkSlices,
 } from "@/lib/analytics/benchmarks";
+import { requireAnalyticsAccess } from "@/lib/analytics/access";
+import { scopeFor } from "@/lib/analytics/scope";
 import { citationLines } from "@/lib/analytics/referenceSources";
 import { BenchmarkPanel } from "@/components/insights/BenchmarkPanel";
 import { OriginContextPanel } from "@/components/insights/OriginContextPanel";
@@ -22,16 +24,17 @@ export default async function InsightsBenchmarkPage({
   setRequestLocale(locale);
   const loc = locale === "en" ? "en" : "es";
 
+  const scope = scopeFor(await requireAnalyticsAccess());
   const [t, originT, slices, comparison] = await Promise.all([
     getTranslations("insights.benchmark"),
     getTranslations("insights.origin"),
     listBenchmarkSlices(loc),
-    getBenchmarkComparison({}),
+    getBenchmarkComparison({}, scope),
   ]);
 
   const initialCountryCode = slices.countries.length > 0 ? slices.countries[0].iso2 : null;
   const initialContext = initialCountryCode
-    ? await getOriginContext(initialCountryCode, loc)
+    ? await getOriginContext(initialCountryCode, loc, scope)
     : null;
 
   return (

@@ -1,6 +1,7 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
+import { requireAppUser } from "@/lib/auth";
+import { dateInZone } from "@/lib/closeRules";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EditSessionForm, type EditSessionFormTranslations } from "./EditSessionForm";
@@ -19,11 +20,7 @@ export default async function EditSessionPage({
   const { locale, id } = await params;
   setRequestLocale(locale);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/${locale}/auth/login`);
+  const user = await requireAppUser(locale, `/${locale}/app/sessions/${id}/edit`);
 
   const session = await prisma.cuppingSession.findUnique({
     where: { id },
@@ -57,6 +54,7 @@ export default async function EditSessionPage({
   const t = await getTranslations("session");
   const tc = await getTranslations("common");
   const tw = await getTranslations("warmup");
+  const tg = await getTranslations("group");
 
   const translations: EditSessionFormTranslations = {
     warmup: {
@@ -100,8 +98,13 @@ export default async function EditSessionPage({
     closesAt: t("edit.closesAt"),
     closesAtHint: t("edit.closesAtHint"),
     closesAtPast: t("edit.closesAtPast"),
+    closesAtLiveNotice: tg("closesAtLiveNotice"),
     sessionClosed: t("edit.sessionClosed"),
     warmupLocked: t("edit.warmupLocked"),
+    repinTitle: t("edit.repinTitle"),
+    repinBody: t.raw("edit.repinBody") as string,
+    sampleHasData: t("edit.sampleHasData"),
+    formatLockedStarted: t("edit.formatLockedStarted"),
   };
 
   return (
@@ -125,9 +128,9 @@ export default async function EditSessionPage({
           isGroup: session.isGroup,
           groupId: session.groupId,
           referenceSampleId: session.referenceSampleId,
-          // Stored as END of day UTC (23:59:59.999Z), so the date part is the
-          // day the owner picked.
-          closesAt: session.closesAt ? session.closesAt.toISOString().slice(0, 10) : "",
+          // Stored as the END of the day the owner picked IN THEIR ZONE, so the
+          // read-back uses that zone (null = UTC for legacy rows).
+          closesAt: session.closesAt ? dateInZone(session.closesAt, session.closesAtZone) : "",
           warmupExerciseId: session.warmupExerciseId,
           started: session.startedAt !== null,
           closed: session.status === "closed",

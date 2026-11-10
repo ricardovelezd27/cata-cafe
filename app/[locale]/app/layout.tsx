@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
 import { setRequestLocale, getTranslations } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireAppUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isSuperAdminEmail, isAiAdminEmail } from "@/lib/analytics/access";
 import Sidebar from "@/components/layout/Sidebar";
@@ -9,6 +8,11 @@ import BottomNav from "@/components/layout/BottomNav";
 import OnboardingWrapper from "@/components/onboarding/OnboardingWrapper";
 import type { WelcomeModalTranslations } from "@/components/onboarding/WelcomeModal";
 import { PendingDraftsBadge } from "@/components/offline/PendingDraftsBadge";
+import type { UnsyncedNotesTranslations } from "@/components/offline/UnsyncedNotesPanel";
+import {
+  UnsyncedGuardProvider,
+  type UnsyncedGuardTranslations,
+} from "@/components/offline/UnsyncedGuardProvider";
 import { GuestGateProvider, type GuestGateTranslations } from "@/components/guest/GuestGateProvider";
 import type { NavTranslations } from "@/components/layout/navItems";
 import type { ReactNode } from "react";
@@ -23,11 +27,10 @@ export default async function AppLayout({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/${locale}/auth/login`);
+  // Backstop only: proxy.ts already redirected a signed-out request WITH its
+  // `next`. A layout cannot see the path, so a miss here lands on /app after
+  // login; the pages below carry their own exact `next`.
+  const user = await requireAppUser(locale, `/${locale}/app`);
 
   const profile = await prisma.profile.findUnique({
     where: { id: user.id },
@@ -38,7 +41,9 @@ export default async function AppLayout({
   // gated destination gets the "finish creating your account" modal instead
   // (GuestGateProvider / GuestGateLink), and proxy.ts stays the server gate.
   const isGuest = user.is_anonymous === true;
-  const showOnboarding = !profile?.onboardingCompleted;
+  // Guests never see the welcome dialog: they are mid-cupping, and the claim
+  // flow carries their name over (F-guest-7).
+  const showOnboarding = !isGuest && !profile?.onboardingCompleted;
   const showInsights =
     isSuperAdminEmail(user.email) || isAiAdminEmail(user.email) || !!profile?.analyticsAccess;
   const initialDisplayName =
@@ -64,6 +69,7 @@ export default async function AppLayout({
     next: tOnb("next"),
     whereToStart: tOnb("whereToStart"),
     saving: tOnb("saving"),
+    close: tOnb("close"),
     goTo: tOnb.raw("goTo"),
     roles: {
       q_grader: tOnb("roles.q_grader"),
@@ -90,10 +96,28 @@ export default async function AppLayout({
     close: tGate("close"),
     offline: tGate("offline"),
     error: tGate("error"),
+    leave: {
+      close: tGate("close"),
+      cancel: tGate("leaveCancel"),
+      guestTitle: tGate("leaveGuestTitle"),
+      guestBody: tGate("leaveGuestBody"),
+      save: tGate("leaveSave"),
+      saving: tGate("ctaLoading"),
+      saveError: tGate("error"),
+      offline: tGate("offline"),
+      leaveAnyway: tGate("leaveAnyway"),
+      everywhereTitle: tGate("leaveEverywhereTitle"),
+      everywhereBody: tGate("leaveEverywhereBody"),
+      everywhereConfirm: tGate("leaveEverywhereConfirm"),
+    },
   };
   // Raw template ({count} is filled in client-side by PendingDraftsBadge) —
   // t() would error on the "missing" ICU arg, same pattern as offline.conflictBody.
   const pendingDraftsLabel = tOffline.raw("pendingDrafts") as string;
+  const unsyncedNotesLabel = tOffline.raw("unsyncedNotes") as string;
+  const conflictDraftsLabel = tOffline.raw("conflictDrafts") as string;
+  const notesPanel = tOffline.raw("panel") as UnsyncedNotesTranslations;
+  const guardCopy = tOffline.raw("guard") as UnsyncedGuardTranslations;
   const translations: NavTranslations = {
     nav: {
       home: tNav("home"),
@@ -113,6 +137,7 @@ export default async function AppLayout({
   };
 
   return (
+    <UnsyncedGuardProvider userId={user.id} isGuest={isGuest} translations={guardCopy}>
     <GuestGateProvider isGuest={isGuest} locale={locale} translations={guestGate}>
     <div className="flex h-screen overflow-hidden">
       <Sidebar locale={locale} showInsights={showInsights} translations={translations} />
@@ -122,6 +147,10 @@ export default async function AppLayout({
           userId={user.id}
           locale={locale}
           label={pendingDraftsLabel}
+          notesLabel={unsyncedNotesLabel}
+          conflictLabel={conflictDraftsLabel}
+          panelTranslations={notesPanel}
+          staleLabel={tOffline("staleDrafts")}
         />
         <main className="relative flex-1 overflow-y-auto bg-surface p-4 lg:p-6 pb-20 lg:pb-6">
           {children}
@@ -141,5 +170,6 @@ export default async function AppLayout({
       />
     </div>
     </GuestGateProvider>
+    </UnsyncedGuardProvider>
   );
 }

@@ -19,6 +19,8 @@ A registered user opens `/app/sessions/express` from the dashboard, the Sesiones
 
 ### F-express-1 · A solo express session with fewer cupped samples than created never closes · severity: P2 · status: new
 
+**Fixed in S8-05** (draft PR, branch `claude/s8-05-close-lifecycle-impl`): `finishSoloSession` ("Terminar cata") on the guard dialog and the results banner submits complete drafts, removes only unopened samples and closes through `closeSessionInternal` (Kim C2 default a).
+
 - **Problem** — `maybeAutoCloseSoloSession` closes only when `submittedCount >= sampleCount` (`app/actions/community.ts:77`: `if (sampleCount === 0 || submittedCount < sampleCount) return;`). Express defaults to 6 samples (`lib/expressSession.ts:18`). The submit guard lets the cupper "submit anyway" with gaps (`CupClient.tsx` `handleGuardConfirm`, ~line 1296). Solo has no manual close (`ownerControls` renders only for `isOwner && isGroup`, `CupClient.tsx:1763`) and the cron only closes sessions with `closesAt` (`app/api/cron/close-expired-sessions/route.ts:29`), which express never sets. The session stays `active`, `sessionHref` keeps sending the user to `/cup`, and history and reveal never happen. The only exit is Edit → delete the untouched samples (`removeSessionSample` refuses samples that already have evaluations, `sessions.ts:1132`).
 - **Implication** — Someone who planned 6 and tasted 4 sees a permanent "X of Y" notice and an eternal active session. The casual quick-notes user is the one least likely to find the Edit page. Trust and completeness suffer.
 - **Fix** — When a solo cupper submits with some samples never opened, offer on the same guard dialog "Terminar con las N que catié": remove the unopened (evaluation-less) samples, then run the normal auto-close. Acceptance: (1) 6 created, 4 submitted, choosing it closes the session and lands on results with 4 samples; (2) samples with any evaluation are never removed; (3) group sessions never see the option; (4) the close goes through `closeSessionInternal` only. **Size:** M.
@@ -38,6 +40,7 @@ A registered user opens `/app/sessions/express` from the dashboard, the Sesiones
 - **Invariant check** — none touched (read-only query; `UserCoffeeHistory` semantics unchanged).
 
 ### F-express-3 · "Asignar café" can only mint a new coffee, non-atomically and with weak failure handling · severity: P2 · status: confirms-board(«Asignar café» sólo puede crear un café nuevo desde texto libre)
+**Partly fixed in S8-10** (PR pending): coffee create + link is one transaction with whole-transaction retry on a code collision (T10 server half). The CoffeePicker UI and linking an existing coffee are NOT built.
 
 - **Problem** — `updateSampleMetadata`'s implicit create (`sessions.ts:1308-1330`) runs `withCodeRetry(coffee.create)` and then a separate `sessionSample.update`; it accepts no existing coffee id, and `CoffeePicker` is used only by `NewSessionForm`. `addSessionSample` already accepts a validated `coffeeId` (`sessions.ts:1056`) but the edit form never sends one (`EditSessionForm.tsx:242`). The results caller has no try/catch (`ResultsClient.tsx:439-442`) and the action throws instead of returning `ActionResult`. Revalidation uses bare paths (`sessions.ts:1352-1359`, including `revalidatePath('/app/profile/history')`), which the codebase has already found match nothing (comment at `community.ts:40`).
 - **Implication** — Owners who already catalogued the coffee get a duplicate private coffee with another code, and history and scores attach to the duplicate. A failure between the two writes leaves an orphan coffee; a thrown error shows the opaque production digest.
@@ -49,6 +52,8 @@ A registered user opens `/app/sessions/express` from the dashboard, the Sesiones
 
 ### F-express-4 · A one-cup score looks identical to a full CVA score once a coffee is assigned · severity: P2 · status: new
 
+**Fixed in S8-04** (draft PR, branch `claude/s8-04-scoring-impl`): history and the coffee profile show an "Impresión rápida" tag when the session ran with fewer than 5 cups (display-only, no score changes; TODO(A3) ships as option b).
+
 - **Problem** — Express forces `cupsPerSample: 1` (`sessions.ts:411`), so no uniformity or defect check applies and the score carries no penalties (`computeEvaluationDerived(…, cupsPerSample)`, `lib/evaluation.ts:57`). After "Asignar café" the sync copies `individualScore` into `UserCoffeeHistory` (`lib/coffeeHistory.ts:71`); `HistoryRow` carries no cup count (`history/page.tsx:48-58`), so the row sits beside 5-cup scores.
 - **Implication** — A quick impression can sit at the top of a professional ranking or in a coffee's average with no signal that it is a different kind of number. The scoring itself is correct; the comparability is not communicated.
 - **Fix** — Show a small "impresión rápida" tag on scores from sessions below the CVA cup count wherever they appear next to others (history, coffee profile, results ranking), without changing the number. Acceptance: the tag shows for `cupsPerSample < 5` in those three places; PDFs only if Kim agrees; no score value changes. **Size:** M.
@@ -58,6 +63,7 @@ A registered user opens `/app/sessions/express` from the dashboard, the Sesiones
 - **Invariant check** — `lib/scoring.ts` and the trigger untouched; the tag is display-only.
 
 ### F-express-5 · The server never bounds `nota_express` or the module JSON · severity: P3 · status: confirms-board(El JSON de evaluación no tiene límites de tamaño en el servidor)
+**Fixed in S8-10** (PR pending): `assertModuleBounds` in `computeEvaluationDerived` rejects a note over 500 chars and a module over 64k chars with `invalid_input`, live and offline (T11).
 
 - **Problem** — `computeEvaluationDerived` spreads `...data` untouched (`lib/evaluation.ts:48-53`); `upsertEvaluation` and offline `syncEvaluation` only check "is an object" (`sessions.ts:581-583`, `offline.ts:64-66`). `EXPRESS_NOTE_MAX` is used only by the textarea (`ExpressNotesStep.tsx:5`).
 - **Implication** — A tampered client stores an arbitrarily long note that is printed in results and the PDF. Robustness only.
@@ -88,6 +94,7 @@ A registered user opens `/app/sessions/express` from the dashboard, the Sesiones
 - **Invariant check** — none touched.
 
 ### F-express-8 · "Añadir muestra" is Spanish-only and uncapped · severity: P3 · status: new
+**Fixed in S8-10** (PR pending): `addSessionSample` uses the locale label helper, the 100-sample cap and an in-transaction position with retry (T6).
 
 - **Problem** — `addSessionSample` falls back to `` `Muestra ${position + 1}` `` regardless of locale (`sessions.ts:1076`) and has no 20-sample cap (`:1066-1070`), unlike express (`lib/expressSession.ts:17`, labels "Muestra A…").
 - **Implication** — An English user adding a sample gets "Muestra 7" next to "Sample A", and the naming style flips from letters to numbers.

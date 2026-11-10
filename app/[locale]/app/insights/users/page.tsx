@@ -41,6 +41,8 @@ export default async function InsightsUsersPage({
       <UsersDirectory
         users={users}
         locale={locale}
+        canExport={access.isSuperAdmin}
+        canRevealEmails={access.isSuperAdmin}
         t={{
           table: {
             searchPlaceholder: tc("searchPlaceholder"),
@@ -65,6 +67,8 @@ export default async function InsightsUsersPage({
           typeRegistered: t("typeRegistered"),
           typeGuest: t("typeGuest"),
           exportCsv: t("exportCsv"),
+          showEmails: t("showEmails"),
+          hideEmails: t("hideEmails"),
         }}
       />
     </div>

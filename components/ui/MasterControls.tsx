@@ -1,6 +1,6 @@
 "use client";
 
-import { Link2, X, Copy, RotateCcw, Check, Play, PersonStanding, Square } from "lucide-react";
+import { Link2, X, Copy, RotateCcw, Check, Play, PersonStanding, Square, DoorClosed, DoorOpen } from "lucide-react";
 import { InviteQR } from "./InviteQR";
 import { Select } from "./Select";
 import styles from "./MasterControls.module.css";
@@ -35,6 +35,20 @@ interface MasterControlsProps {
   onGenerate: () => void;
   onCopy: () => void;
   onResetInvite: () => void;
+  /** "Regenerar enlace": when given, replaces the bare reset icon; the caller
+   *  owns the confirm dialog (it revokes the current link and QR). */
+  regenerateLabel?: string;
+  onRegenerate?: () => void;
+  /** Close/reopen new entries (S8-11 C4). Rendered only when given. */
+  entries?: {
+    locked: boolean;
+    closeLabel: string;
+    openLabel: string;
+    /** Shown while locked. */
+    note: string;
+    pending: boolean;
+    onToggle: () => void;
+  };
   /** "Iniciar cata" / "Start tasting" */
   startLabel?: string;
   /** "Iniciando…" / "Starting…" */
@@ -92,6 +106,9 @@ export function MasterControls({
   onGenerate,
   onCopy,
   onResetInvite,
+  regenerateLabel,
+  onRegenerate,
+  entries,
   startLabel,
   startingLabel,
   showStart = false,
@@ -129,6 +146,26 @@ export function MasterControls({
             ariaLabel={referenceLabel ?? "Reference sample"}
           />
           {referenceHint && <span className={styles.referenceSummary}>{referenceHint}</span>}
+        </fieldset>
+      )}
+
+      {entries && (
+        <fieldset className={styles.referenceField} disabled={sessionClosed}>
+          {entries.locked && (
+            <span className={styles.referenceSummary} role="status">
+              {entries.note}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={entries.onToggle}
+            disabled={entries.pending}
+            aria-pressed={entries.locked}
+            className={`${styles.button} ${styles.invite}`}
+          >
+            {entries.locked ? <DoorOpen size={14} aria-hidden /> : <DoorClosed size={14} aria-hidden />}
+            {entries.locked ? entries.openLabel : entries.closeLabel}
+          </button>
         </fieldset>
       )}
 
@@ -216,14 +253,25 @@ export function MasterControls({
                   </>
                 )}
               </button>
-              <button
-                type="button"
-                onClick={onResetInvite}
-                className={`${styles.iconBtn} ${styles.resetBtn}`}
-                aria-label="Reset invite link"
-              >
-                <RotateCcw size={12} aria-hidden />
-              </button>
+              {onRegenerate ? (
+                <button
+                  type="button"
+                  onClick={onRegenerate}
+                  disabled={sessionClosed}
+                  className={`${styles.iconBtn} ${styles.resetBtn}`}
+                >
+                  <RotateCcw size={12} aria-hidden /> {regenerateLabel}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onResetInvite}
+                  className={`${styles.iconBtn} ${styles.resetBtn}`}
+                  aria-label="Reset invite link"
+                >
+                  <RotateCcw size={12} aria-hidden />
+                </button>
+              )}
             </div>
             <div className={styles.qrSlot}>
               <InviteQR

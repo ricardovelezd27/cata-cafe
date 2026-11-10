@@ -1,6 +1,6 @@
-import { redirect } from "next/navigation";
+import { historyCupsPerSample, isQuickImpression } from "@/lib/historyRules";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireAppUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
@@ -18,18 +18,14 @@ export default async function HistoryPage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/${locale}/auth/login`);
+  const user = await requireAppUser(locale, `/${locale}/app/profile/history`);
 
   const history = await prisma.userCoffeeHistory.findMany({
     where: { userId: user.id },
     orderBy: { tastedAt: "desc" },
     include: {
       coffee: { select: { id: true, name: true, deletedAt: true } },
-      session: { select: { id: true, name: true } },
+      session: { select: { id: true, name: true, cupsPerSample: true } },
     },
   });
 
@@ -44,7 +40,7 @@ export default async function HistoryPage({
   const rows: HistoryRow[] = history.map((h) => {
     // A deleted session detaches this row (session → null) instead of
     // cascading it away — `snapshot` carries the last-known session name.
-    const snapshot = h.snapshot as { sessionName?: string } | null;
+    const snapshot = h.snapshot as { sessionName?: string; cupsPerSample?: number } | null;
     return {
       id: h.id,
       coffeeId: h.coffee.id,
@@ -54,6 +50,7 @@ export default async function HistoryPage({
       sessionName: h.session?.name ?? snapshot?.sessionName ?? "—",
       individualScore: h.individualScore,
       communityScore: h.communityScore,
+      quickImpression: isQuickImpression(historyCupsPerSample(h.session, snapshot)),
       tastedAt: h.tastedAt.toISOString(),
     };
   });
@@ -78,6 +75,7 @@ export default async function HistoryPage({
     newSessionLabel: tSession("new"),
     noResults: tc("noResults"),
     sessionDeleted: t("sessionDeleted"),
+    quickImpression: t("quickImpression"),
   };
 
   return (

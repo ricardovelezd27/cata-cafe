@@ -32,3 +32,24 @@ export function buildResultsLoginUrl(origin: string, locale: string, sessionId: 
   const next = `/${locale}/app/sessions/${sessionId}/results`;
   return `${origin}/${locale}/auth/login?next=${encodeURIComponent(next)}`;
 }
+
+/**
+ * Where a group email sends a recipient to join a session (S8-11 T7,
+ * F-grupos-6). A LINKED member (already has an account) goes straight to the
+ * join page; an unlinked (email-only) recipient goes through login with the
+ * join as `next`, which steers them toward email signup (so handle_new_user
+ * links them) instead of dropping them on the anonymous guest-join CTA.
+ */
+export function groupSessionInviteUrl(args: {
+  linked: boolean;
+  token: string;
+  locale: string;
+  origin: string;
+  /** Prefills the login form for an unlinked recipient. */
+  email?: string;
+}): string {
+  const join = `/${args.locale}/join/${args.token}`;
+  if (args.linked) return `${args.origin}${join}`;
+  const email = args.email ? `email=${encodeURIComponent(args.email)}&` : "";
+  return `${args.origin}/${args.locale}/auth/login?${email}next=${encodeURIComponent(join)}`;
+}

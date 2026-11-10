@@ -1,6 +1,6 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
+import { requireAppUser } from "@/lib/auth";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { COFFEE_COUNTRIES } from "@/lib/analytics/normalize";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -20,11 +20,7 @@ export default async function EditCoffeePage({
   const { locale, id } = await params;
   setRequestLocale(locale);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/${locale}/auth/login`);
+  const user = await requireAppUser(locale, `/${locale}/app/coffees/${id}/edit`);
 
   // deletedAt: an anonymized coffee has no edit page (would re-identify it).
   const coffee = await prisma.coffee.findFirst({ where: { id, deletedAt: null } });
@@ -64,6 +60,7 @@ export default async function EditCoffeePage({
     nameRequired: t("newPage.nameRequired"),
     // edit-specific failure copy (create flow uses newPage.error instead)
     error: t("updateError"),
+    conflict: t("newPage.conflict"),
   };
 
   const countries = COFFEE_COUNTRIES.map((c) => (locale === "en" ? c.nameEn : c.nameEs));
@@ -97,6 +94,7 @@ export default async function EditCoffeePage({
           certifications: coffee.certifications,
           notes: coffee.notes ?? "",
         }}
+        expectedUpdatedAt={coffee.updatedAt.toISOString()}
         submitLabel={t("saveChanges")}
         submittingLabel={t("savingChanges")}
       />

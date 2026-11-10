@@ -34,6 +34,8 @@ The board's spec is partly stale. Its waiting-room requirement ("does not mark s
 
 ### F-movimiento-sensorial-2 · A synced run never surfaces wake-lock failure and never re-syncs after the phone sleeps · severity: P2 · status: new
 
+**Partly fixed in S8-15 (PR #…): the waiting room recreates its channel and re-reads getWaitingState on foreground resume (hooks/useForegroundResume). The synced-run re-seek and the wake-lock-lost note stay with S8-13.**
+
 - **Problem** — A synced player opens straight in `run` (`WarmupPlayer.tsx:88`, `useState(seekToMs != null ? "run" : "intro")`), so the only place that tells the person to keep the screen on (`wakeDenied` → `t.wakeLockNote`, `:1026`) is never shown to followers or to the master. `useWakeLock` reports `denied` (`hooks/useWakeLock.ts:215`) but nothing reads it during a run. In synced mode the clock does not pause on hide (`pauseOnHide: !synced`, `WarmupPlayer.tsx:97`) and the single seek happens once (`seekedRef`, `:109-114`). If the screen locks (battery saver, iOS < 16.4, power button) the follower's `performance.now()` clock and the host's wall-clock timeline can diverge, and no re-seek happens on `visibilitychange`.
 - **Implication** — The cohort that follows a group exercise with eyes closed gets no warning, may find the phone dark mid-run, and may come back several seconds behind the room, with cues out of step.
 - **Fix** — In synced mode show a small persistent "pantalla encendida / puede apagarse" state when the lock is denied or dropped. On return to visible, recompute position from `warmupStartedAt` plus skew and re-seek (or leave via the existing "missed" path if under 20 s remain). **Acceptance:** (1) with wake lock unsupported the synced player shows the note; (2) locking for 10 s and unlocking lands within about 1 s of the host's position; (3) library and session behaviour are unchanged. **Size:** M.
@@ -55,6 +57,8 @@ The board's spec is partly stale. Its waiting-room requirement ("does not mark s
 - **Fixed in S8-13 (PR pending)** — `audioResumeDecision` + `checkContext`; paused player with "Toca para reanudar" when audio stays suspended after ~300 ms; never when muted.
 
 ### F-movimiento-sensorial-4 · The offline-rebuilt `/cup` drops the warm-up · severity: P3 · status: confirms-board(Pantalla /cup reconstruida offline sin el calentamiento)
+
+**Fixed in S8-09** (draft PR, branch `claude/s8-09-offline-impl`): `cacheProps` stores the static warm-up (never `warmupStartedAt`/`serverNow`); `cup/error.tsx` rebuilds it, treating a cupper with local drafts as returning.
 
 - **Problem** — `cacheProps` writes the props payload on each online mount (`CupClient.tsx:648-663`). The list has `locale, session, isOwner, …, userId` but no `warmup`. `cup/error.tsx:123-141` rebuilds `CupClient` from that cache, so `warmup` is `undefined` and `WarmupMoment` never renders (`CupClient.tsx:2312`). Re-read on this branch: the gap is still present.
 - **Implication** — After an offline hard refresh the configured exercise silently never appears. Minor for the cupper, and untested.

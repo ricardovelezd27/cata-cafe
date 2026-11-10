@@ -56,6 +56,8 @@ A teacher or lab lead (the owner) creates a standing roster of cuppers by email 
 
 ### F-grupos-4 · Adding someone by email makes them a member without their consent · severity: P2 · status: new
 
+**Not fixed in S8-11** (owner decision): changes the rule "being added is membership"; left for Ricardo.
+
 - **Problem** — A row created by `addMemberByEmail` or `createGroupWithMembers` is linked to the account that owns that address on its next page visit. `claimGroupMembershipsByEmail` runs `updateMany({ where: { userId: null, email }, data: { userId } })` (`lib/groupMembership.ts:16-19`) with no accept step. The person then sees the group name, description, roster and any session join links (`page.tsx:130-155`). The only exit is `leaveGroup` (:1115), which does not stop the owner re-adding them. `duplicateGroup` (:1071-1105) also copies members into a new group without telling them.
 - **Implication** — Anyone can attach another person to a group with an arbitrary name and description, a harassment and phishing surface that rides on the same email list as F-grupos-1. Legitimate use is also affected, because a teacher's students who left cannot stay out. Trust and security.
 - **Fix** — Treat a first link as an invitation. The group appears for the invitee with "Aceptar / Rechazar", and rejecting hides it. The owner sees "pendiente" and cannot see a rejected invitee's account state. A person who rejected is not silently re-linked by a later add or by `duplicateGroup`. **Acceptance:** an existing-account invitee does not see roster or join links until they accept; a rejection survives a re-add; the owner roster shows pending versus joined. **Size:** M (needs a status column; the spec states "being added is membership", so this changes that rule).
@@ -77,6 +79,8 @@ A teacher or lab lead (the owner) creates a standing roster of cuppers by email 
 - **Invariant check** — none touched.
 
 ### F-grupos-6 · The session invite in a group email sends people to the guest path, and its target is unchecked · severity: P2 · status: new
+
+**Fixed in S8-11** (PR pending): `groupSessionInviteUrl` sends linked members straight to `/join/[token]` and unlinked recipients through login with the join as `next`; `sendGroupEmail` and `notifyGroupOfSession` reject sessions that are not active group sessions of the caller with `invalid_input` (T7). The C8 timing question stays open: `TODO(C8)`.
 
 - **Problem** — `notifyGroupOfSession` deliberately routes unlinked members through login "so handle_new_user links them" (comments at :782-786; URL at :904-908). `sendGroupEmail` with a session sends every member, linked or not, straight to `/join/<token>` (:742). That page offers "continue as guest" as the primary action and login as a "subtle fallback" (`app/[locale]/join/[token]/page.tsx:59-90`). The server also accepts any owned session: it checks only `createdBy` (:678-684), not `isGroup` or `status`. `joinViaToken` has no `isGroup` check either (`app/actions/community.ts:324-388`). The composer filters to draft/active group sessions only in the UI (`page.tsx:277`).
 - **Implication** — A student with no account who follows the group email cups as an anonymous guest, so the session does not show in their account until they run the claim flow, and the group page cannot attribute the work to them. An owner who targets a closed or solo session sends a link that fails or enrolls people in a solo session.

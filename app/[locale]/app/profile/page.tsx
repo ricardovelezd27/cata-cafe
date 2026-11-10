@@ -1,9 +1,8 @@
-import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { requireAppUser } from "@/lib/auth";
 import { ClipboardList, Users, CheckCircle2, Coffee } from "lucide-react";
 import Link from "next/link";
 import { GuestGateLink } from "@/components/guest/GuestGateLink";
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { SignOutButton } from "@/components/layout/SignOutButton";
 import { Avatar } from "@/components/ui/Avatar";
@@ -15,6 +14,7 @@ import { ROLE_LABELS, COUNTRIES } from "@/lib/constants";
 import { sessionHref } from "@/lib/sessionRouting";
 import { GuestClaimButton, type GuestClaimButtonTranslations } from "@/components/guest/GuestClaimButton";
 import { EditProfileDialog } from "./EditProfileDialog";
+import { ChangeEmailDialog } from "@/components/profile/ChangeEmailDialog";
 
 export function generateStaticParams() {
   return [{ locale: "es" }, { locale: "en" }];
@@ -28,11 +28,7 @@ export default async function ProfilePage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/${locale}/auth/login`);
+  const user = await requireAppUser(locale, `/${locale}/app/profile`);
 
   const [
     profile,
@@ -89,6 +85,7 @@ export default async function ProfilePage({
         date: true,
         status: true,
         isGroup: true,
+        isAsync: true,
         startedAt: true,
         closesAt: true,
         createdBy: true,
@@ -115,6 +112,9 @@ export default async function ProfilePage({
   // live in the nav gate (GuestGateLink), not in the shape of this page.
   const isGuest = user.is_anonymous === true;
   const identityLine = isGuest ? tGate("guestLabel") : user.email;
+  // Supabase keeps the old address until the confirmation link is opened;
+  // `new_email` is the pending one (S8-07, F-cuenta-5).
+  const pendingEmail = !isGuest && user.new_email ? user.new_email : null;
   const claimT: GuestClaimButtonTranslations = {
     label: tGate("profileCta"),
     loading: tGate("ctaLoading"),
@@ -209,6 +209,7 @@ export default async function ProfilePage({
           countryLabel: t("countryLabel"),
           saveSuccess: t("saveSuccess"),
           saveError: t("saveError"),
+          saving: t("saving"),
         },
       }}
     />
@@ -394,6 +395,11 @@ export default async function ProfilePage({
           <h2 className="mb-3 font-display text-xl text-primary-container">{t("account")}</h2>
           <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4">
             <div className="mb-3 text-sm text-on-surface-variant">{identityLine}</div>
+            {pendingEmail && (
+              <p role="status" className="mb-3 text-sm text-on-surface">
+                {t("changeEmailPending", { email: pendingEmail })}
+              </p>
+            )}
             {isGuest && (
               <p className="mb-3 text-sm leading-relaxed text-on-surface">{tGate("accountBody")}</p>
             )}
@@ -420,6 +426,31 @@ export default async function ProfilePage({
                 className="w-full rounded-pill border border-outline-variant px-4 py-2 text-sm font-semibold text-error transition-colors hover:bg-error-container sm:w-auto"
               >
                 {t("logout")}
+              </SignOutButton>
+            </div>
+            {/* Less common account actions sit below the everyday ones. */}
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+              {!isGuest && (
+                <ChangeEmailDialog
+                  locale={locale}
+                  strings={{
+                    open: t("changeEmail"),
+                    title: t("changeEmailTitle"),
+                    body: t("changeEmailBody"),
+                    label: t("changeEmailLabel"),
+                    submit: t("changeEmailSubmit"),
+                    sending: t("changeEmailSending"),
+                    sent: t.raw("changeEmailSent") as string,
+                    close: tc("close"),
+                  }}
+                />
+              )}
+              <SignOutButton
+                mode="signOutEverywhere"
+                locale={locale}
+                className="w-full rounded-pill border border-outline-variant px-4 py-2 text-sm font-semibold text-on-surface-variant transition-colors hover:bg-surface-container sm:w-auto"
+              >
+                {t("logoutEverywhere")}
               </SignOutButton>
             </div>
           </div>

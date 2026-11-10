@@ -1,0 +1,21 @@
+<!-- Supabase -> Authentication -> Email Templates -> "Confirm signup".
+     Subject: Confirma tu cuenta de Café Sensible · Confirm your Café Sensible account
+     Same shape as the magic link, type=signup. -->
+{{ $en := false }}{{ if .Data }}{{ if eq .Data.preferred_lang "en" }}{{ $en = true }}{{ end }}{{ end }}
+<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#1f2a24">
+  {{ if $en }}
+  <h2 style="margin:0 0 12px">Confirm your account</h2>
+  <p>Press the button to confirm your email and sign in. The link works once.</p>
+  <p><a href="{{ .SiteURL }}/en/auth/confirm?token_hash={{ .TokenHash }}&type=signup&next={{ .RedirectTo }}"
+        style="display:inline-block;background:#1f4d3a;color:#fff;padding:12px 22px;border-radius:999px;text-decoration:none">Confirm</a></p>
+  <p>Or type this code on the sign-in screen:</p>
+  <p style="font-size:28px;letter-spacing:6px;font-weight:bold">{{ .Token }}</p>
+  {{ else }}
+  <h2 style="margin:0 0 12px">Confirma tu cuenta</h2>
+  <p>Pulsa el botón para confirmar tu correo y entrar. El enlace funciona una sola vez.</p>
+  <p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup&next={{ .RedirectTo }}"
+        style="display:inline-block;background:#1f4d3a;color:#fff;padding:12px 22px;border-radius:999px;text-decoration:none">Confirmar</a></p>
+  <p>O escribe este código en la pantalla de acceso:</p>
+  <p style="font-size:28px;letter-spacing:6px;font-weight:bold">{{ .Token }}</p>
+  {{ end }}
+</div>

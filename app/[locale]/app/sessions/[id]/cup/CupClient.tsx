@@ -1,13 +1,22 @@
 "use client";
 
 import {
+  applySubmitEvent,
+  computeSubmitProgress,
+  seedSubmitMap,
+  type SubmitMap,
+  type SubmittedRow,
+} from "@/lib/submitProgress";
+import {
   useState,
   useRef,
   useTransition,
   useEffect,
-  useSyncExternalStore,
   useCallback,
+  useSyncExternalStore,
 } from "react";
+import { blocksSubmit, hydratesForm, isTerminal } from "@/lib/offline/status";
+import { warmupForCache } from "@/lib/warmup/offlineCache";
 import { WarmupMoment } from "@/components/session-moments/WarmupMoment";
 import { SessionMomentOverlay } from "@/components/session-moments/SessionMomentOverlay";
 import { WarmupPlayer, type WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
@@ -34,10 +43,15 @@ import {
 } from "@/components/cupping/EditSampleMetadataForm";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { isEvaluationComplete as isEvaluationCompleteForScore } from "@/lib/evaluationState";
+import { DeadlineBanner, type DeadlineBannerTranslations } from "@/components/session/DeadlineBanner";
 import {
   submitAllEvaluations,
   closeSession,
+  finishSoloSession,
+  getCloseImpact,
   createInviteToken,
+  setEntriesLocked,
   startSession,
   startWarmup,
   stopWarmup,
@@ -79,6 +93,7 @@ import {
   type ModuleItem,
 } from "@/components/ui";
 import { useConnectivity } from "@/hooks/useConnectivity";
+import { useForegroundResume } from "@/hooks/useForegroundResume";
 import {
   isPinnedModule,
   nextReferenceOrder,
@@ -152,9 +167,16 @@ type Session = {
   // The owner's "Referencia" sample (display-only). Optional so a pre-upgrade
   // offline blob rehydrated by cup/error.tsx still type-checks.
   referenceSampleId?: string | null;
+  /** ISO closing date + the owner's IANA zone (deadline banner). */
+  closesAt?: string | null;
+  closesAtZone?: string | null;
 };
 
 type CuppingTab = "cupping" | "extrinsic" | "physical";
+
+// Stable defaults: a fresh [] per render would re-trigger the re-seed effect.
+const NO_ROWS: SubmittedRow[] = [];
+const NO_IDS: string[] = [];
 
 export function CupClient({
   locale,
@@ -165,8 +187,11 @@ export function CupClient({
   sessionStatus,
   sessionStartedAt,
   sessionIsAsync,
+  sessionEntriesLocked = false,
   participantCount,
   submittedCount: initialSubmittedCount,
+  submittedRows = NO_ROWS,
+  eligibleCupperIds = NO_IDS,
   translations,
   userEmail,
   userCountry,
@@ -205,8 +230,13 @@ export function CupClient({
   sessionStatus: string;
   sessionStartedAt: string | null;
   sessionIsAsync: boolean;
+  /** Owner closed new entries (S8-11 C4). Optional: offline prop blobs. */
+  sessionEntriesLocked?: boolean;
   participantCount: number;
   submittedCount: number;
+  /** Owner only: submitted evaluation rows + the cuppers who count (S8-11 T1). */
+  submittedRows?: SubmittedRow[];
+  eligibleCupperIds?: string[];
   userId: string;
   translations: {
     sample: string;
@@ -241,10 +271,18 @@ export function CupClient({
     individual: string;
     masterControls: string;
     submittedOf: string;
+    /** Raw "{count} de {total} enviaron todo" (optional: offline blobs). */
+    submittedTemplate?: string;
     closeSession: string;
     confirmClose: string;
     liveCountDown: string;
     closeSessionError: string;
+    deadline: DeadlineBannerTranslations;
+    closeRule: string;
+    closeUnsentOne: string;
+    closeUnsentMany: string;
+    closeUnsentNone: string;
+    closeImpactLoading: string;
     startSession: string;
     starting: string;
     startSessionError: string;
@@ -275,6 +313,10 @@ export function CupClient({
       review: string;
       continueAnyway: string;
       submitAnyway: string;
+      // Optional: a pre-upgrade IndexedDB props cache may predate them.
+      outcomeCloses?: string;
+      outcomeStays?: string;
+      finishWith?: string;
     };
     // Optional: props can be rehydrated from a pre-upgrade IndexedDB cache
     // (cup/error.tsx offline rebuild) that predates this key — CupClient
@@ -304,6 +346,10 @@ export function CupClient({
       conflictKeep: string;
       conflictReplace: string;
       bannerStorageUnavailable: string;
+      // S8-09. Optional: pre-upgrade offline prop blobs lack them.
+      bannerNextAttempt?: string;
+      /** RAW template with "{count}". */
+      terminalNotice?: string;
     };
     // Reference sample (2026-09). Optional: pre-upgrade offline blobs.
     referenceBadge?: string;
@@ -317,6 +363,14 @@ export function CupClient({
     referenceAddHint?: string;
     referenceAddTitle?: string;
     referenceAddConfirm?: string;
+    // Invite control + late joiners (S8-11). Optional: offline prop blobs.
+    inviteRegenerate?: string;
+    inviteRegenerateTitle?: string;
+    inviteRegenerateBody?: string;
+    inviteRegenerateConfirm?: string;
+    entriesClose?: string;
+    entriesOpen?: string;
+    entriesClosedNote?: string;
     // Reference lock (2026-09-25): quality pinned at 5, cups cleared.
     referenceLocked?: string;
     referenceLockedAffective?: string;
@@ -382,6 +436,30 @@ export function CupClient({
   // reports "synced" or the reconnect replay (useOfflineSync) finishes.
   // Drives the leave-guard's alternate copy (see leaveGuardCopy below).
   const [hasPending, setHasPending] = useState(false);
+  // Modules of this session parked for good (closed_unsent, orphaned, failed):
+  // they never block the submit and are named in a persistent notice (S8-09).
+  const [terminalCount, setTerminalCount] = useState(0);
+  // Ground truth for the indicator: derive "anything still device-only?" from
+  // the durable store after every flush instead of trusting one synced save
+  // (F-solo-5: sample B synced must not clear sample A's amber state). Resolves
+  // the number of modules still waiting to sync.
+  const refreshLocalState = useCallback(async (): Promise<number> => {
+    const blob = await loadSession(session.id, userId);
+    let pending = 0;
+    let terminal = 0;
+    if (blob) {
+      for (const s of Object.values(blob.samples)) {
+        for (const mod of Object.values(s.modules)) {
+          if (!mod) continue;
+          if (blocksSubmit(mod.syncStatus)) pending += 1;
+          else if (isTerminal(mod.syncStatus)) terminal += 1;
+        }
+      }
+    }
+    setHasPending(pending > 0);
+    setTerminalCount(terminal);
+    return pending;
+  }, [session.id, userId]);
   // Realtime channel for the group submitted-count is not SUBSCRIBED — the
   // count shown in the master panel may be stale (F10).
   const [liveCountDown, setLiveCountDown] = useState(false);
@@ -389,7 +467,23 @@ export function CupClient({
   // Set after a metadata save when the linked coffee belongs to someone else
   // — the label still saved, but the coffee record itself was skipped.
   const [coffeeNotOwnedNotice, setCoffeeNotOwnedNotice] = useState(false);
-  const [submittedCount, setSubmittedCount] = useState(initialSubmittedCount);
+  // Owner's counter: Map<cupperId, submitted sampleIds>, re-seeded from the
+  // server rows on every refresh (30 s poll, SUBSCRIBED, visibility) — never
+  // a `+1` per realtime event.
+  const [submitMap, setSubmitMap] = useState<SubmitMap>(() => seedSubmitMap(submittedRows));
+  const [seededFrom, setSeededFrom] = useState(submittedRows);
+  if (seededFrom !== submittedRows) {
+    // Adjust state during render when the server rows prop changed (refresh).
+    setSeededFrom(submittedRows);
+    setSubmitMap(seedSubmitMap(submittedRows));
+  }
+  const submitProgress = computeSubmitProgress(
+    submitMap,
+    samples.map((s) => s.id),
+    eligibleCupperIds,
+  );
+  const submittedCount = isOwner ? submitProgress.done : initialSubmittedCount;
+  const submittedTotal = isOwner ? submitProgress.total : participantCount;
   const [isGoingToResults, setIsGoingToResults] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const [guard, setGuard] = useState<{
@@ -403,6 +497,15 @@ export function CupClient({
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
+  const [regenerateOpen, setRegenerateOpen] = useState(false);
+  const [entriesLocked, setEntriesLockedState] = useState(sessionEntriesLocked);
+  const [entriesPending, setEntriesPending] = useState(false);
+  // Follow the server value when router.refresh() delivers a fresh one.
+  const [seenEntriesLocked, setSeenEntriesLocked] = useState(sessionEntriesLocked);
+  if (seenEntriesLocked !== sessionEntriesLocked) {
+    setSeenEntriesLocked(sessionEntriesLocked);
+    setEntriesLockedState(sessionEntriesLocked);
+  }
   const [startedAt, setStartedAt] = useState(sessionStartedAt);
   // Owner-chosen "Referencia" sample; updated live for participants through
   // the cupping_sessions realtime stream below.
@@ -560,6 +663,11 @@ export function CupClient({
   };
   const [startError, setStartError] = useState(false);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
+  // F-grupal-2: how many cuppers hold complete notes that were never sent.
+  // undefined = loading, null = could not be read (the rule sentence still shows).
+  const [closeImpact, setCloseImpact] = useState<{ unsentCuppers: number } | null | undefined>(
+    undefined,
+  );
   const [clockTime, setClockTime] = useState(() =>
     new Date().toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", second: "2-digit" })
   );
@@ -579,12 +687,16 @@ export function CupClient({
   } | null>(null);
 
   // ─── Offline support ──────────────────────────────────────────
-  const { online } = useConnectivity();
+  const { online, recheck } = useConnectivity();
+  // Bumped on foreground resume so the realtime effect re-runs and rebuilds the
+  // channel through subscribeWithSessionAuth (S8-15). Never saves: the pagehide
+  // flush stays the only writer.
+  const [resumeKey, setResumeKey] = useState(0);
   const onlineRef = useRef(online);
   useEffect(() => {
     onlineRef.current = online;
   }, [online]);
-  const { syncPhase, conflicts, resolveConflict, retrySync } = useOfflineSync({
+  const { syncPhase, conflicts, resolveConflict, retrySync, nextRetryAt } = useOfflineSync({
     userId,
     online,
   });
@@ -602,16 +714,22 @@ export function CupClient({
   // A completed reconnect replay clears the "pending" save state even when no
   // further edit triggers a new flush (e.g. the cupper just waited it out).
   useEffect(() => {
-    // Mirrors an external hook state (useOfflineSync) into local UI state —
-    // same sanctioned pattern as cup/error.tsx; a single flip, no cascade.
-    if (syncPhase !== "synced") return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setHasPending(false);
-    // The amber "saved on this device · pending" pill is the other half of
-    // that state — a successful replay is exactly the "synced" signal the
-    // save-status contract (CLAUDE.md) says may clear it.
-    setSaveStatus((s) => (s === "pending" ? "idle" : s));
-  }, [syncPhase]);
+    // A replay run ended (any phase but "syncing"): recount from the durable
+    // store. The amber "saved on this device · pending" pill clears only when
+    // NOTHING is waiting any more, not on the first synced module.
+    if (syncPhase === "syncing" || syncPhase === "idle") return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mirrors durable storage into UI state
+    void refreshLocalState().then((pending) => {
+      if (pending === 0) setSaveStatus((s) => (s === "pending" ? "idle" : s));
+    });
+  }, [syncPhase, refreshLocalState]);
+
+  // First paint after a (re)load: terminal notes from an earlier visit show
+  // immediately, even offline.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mirrors durable storage into UI state
+    void refreshLocalState();
+  }, [refreshLocalState]);
 
   // Independent 500ms debounce for durable local (IndexedDB) writes, separate
   // from the 800ms server debounce so neither blocks the other.
@@ -665,6 +783,9 @@ export function CupClient({
       userEmail,
       userCountry,
       userId,
+      // Static warm-up only (exercise id + copy): the offline rebuild runs the
+      // same seen-set logic as online. The synced-run clock is never cached.
+      warmup: warmupForCache(warmup),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [online]);
@@ -701,7 +822,7 @@ export function CupClient({
             if (local) {
               for (const [mk, mod] of Object.entries(local.modules)) {
                 // Conflicts are the SyncConflictModal's job — don't pre-apply them.
-                if (!mod || mod.syncStatus !== "pending" || !isModuleKey(mk))
+                if (!mod || !hydratesForm(mod.syncStatus) || !isModuleKey(mk))
                   continue;
                 next = { ...next, [mk]: mod.data };
               }
@@ -792,6 +913,16 @@ export function CupClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.id, userId]);
 
+  // Foreground resume: re-probe connectivity, rebuild the group channel and
+  // refetch the server page (the reconcile effect merges fresh samples without
+  // touching local drafts).
+  useForegroundResume(() => {
+    void recheck();
+    if (!isGroup) return;
+    setResumeKey((k) => k + 1);
+    router.refresh();
+  });
+
   // ─── Realtime subscription for group sessions ─────────────────
   useEffect(() => {
     if (!isGroup || !online) return;
@@ -837,8 +968,14 @@ export function CupClient({
               const sampleId = (row.sessionSampleId ?? row.session_sample_id) as
                 | string
                 | undefined;
-              if (isDraft === false && sampleId && sampleIdsRef.current.has(sampleId)) {
-                setSubmittedCount((prev) => prev + 1);
+              const cupperId = (row.cupperId ?? row.cupper_id) as string | undefined;
+              if (
+                typeof isDraft === "boolean" &&
+                cupperId &&
+                sampleId &&
+                sampleIdsRef.current.has(sampleId)
+              ) {
+                setSubmitMap((prev) => applySubmitEvent(prev, { cupperId, sampleId, isDraft }));
               }
             },
           );
@@ -864,6 +1001,9 @@ export function CupClient({
               next && sampleIdsRef.current.has(next) ? next : null,
             );
           }
+          if (typeof row.entriesLocked === "boolean") {
+            setEntriesLockedState(row.entriesLocked);
+          }
           // Any session-row change (sample add/rename/remove touch updatedAt;
           // start/close/reference) → re-fetch the server page; the reconcile
           // effect above merges the fresh samples without losing drafts.
@@ -876,6 +1016,8 @@ export function CupClient({
       // so the maestro knows the number is stale rather than flat (F10).
       (status) => {
         setLiveCountDown(status !== "SUBSCRIBED");
+        // Events missed while the socket was down: re-seed from the server.
+        if (status === "SUBSCRIBED" && isOwner) router.refresh();
       },
     );
 
@@ -883,7 +1025,18 @@ export function CupClient({
       if (refreshTimer) clearTimeout(refreshTimer);
       stopSubscription();
     };
-  }, [isGroup, isOwner, online, session.id, router]);
+  }, [isGroup, isOwner, online, session.id, router, resumeKey]);
+
+  // Owner coming back to the tab (phone unlocked, tab switch): re-seed the
+  // counter from the server instead of trusting a socket that may have slept.
+  useEffect(() => {
+    if (!isGroup || !isOwner) return;
+    const onVisible = () => {
+      if (document.visibilityState === "visible") router.refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [isGroup, isOwner, router]);
 
   // Safety net for the realtime path above (S6 CP-C4): a group cupper whose
   // channel is silently dead (see lib/supabase/realtimeAuth.ts) still picks up
@@ -936,7 +1089,9 @@ export function CupClient({
         await upsertPhysical({ sessionSampleId: sampleId, data });
       }
       // Server write landed — clear any local pending flag for this module.
-      await setModuleStatus(session.id, userId, sampleId, mk, "synced");
+      // Only when the stored draft is still exactly what was sent: a newer
+      // local edit (the 500 ms local debounce is independent) stays pending.
+      await setModuleStatus(session.id, userId, sampleId, mk, "synced", { ifData: data });
       return "synced";
     } catch {
       // Network/server failure → fall back to a durable local pending write so
@@ -980,7 +1135,7 @@ export function CupClient({
     let n = 0;
     for (const s of Object.values(blob.samples)) {
       for (const mod of Object.values(s.modules)) {
-        if (mod?.syncStatus === "pending") n += 1;
+        if (mod && blocksSubmit(mod.syncStatus)) n += 1;
       }
     }
     return n;
@@ -1078,15 +1233,15 @@ export function CupClient({
     startTransition(async () => {
       try {
         const result = await flushSave(sampleId, key, data);
-        if (result === "pending") {
+        // Derived from the store, not from this one save (F-solo-5).
+        const stillPending = await refreshLocalState();
+        if (result === "pending" || stillPending > 0) {
+          // Stays "pending" until every waiting module syncs (a later flush or
+          // the reconnect replay) -- never auto-cleared on a timer the way
+          // "saved" is, since the data has NOT reached the server yet.
           setHasPending(true);
-          // Stays "pending" until a later flush syncs, or the reconnect
-          // replay (useOfflineSync) reports syncPhase === "synced" — never
-          // auto-cleared on a timer the way "saved" is, since the data has
-          // NOT reached the server yet.
           setSaveStatus("pending");
         } else {
-          setHasPending(false);
           setSaveStatus("saved");
           setTimeout(() => setSaveStatus("idle"), 1500);
         }
@@ -1246,7 +1401,7 @@ export function CupClient({
     scrollCanvasToTop();
   };
 
-  const doGoToResults = async () => {
+  const doGoToResults = async (mode: "submit" | "finish" = "submit") => {
     // Final submit + results require connectivity. Offline, we keep the drafts
     // saved locally (they sync on reconnect) and surface a notice instead of
     // queuing an irreversible submit the user can't verify.
@@ -1276,7 +1431,24 @@ export function CupClient({
         setHasPending(false);
       }
       setSubmitBlocked(false);
-      await submitAllEvaluations(session.id);
+      if (mode === "finish") {
+        // Solo "Terminar cata": submit the complete ones, drop the unopened,
+        // close (lib/closeRules.ts planFinish; community.ts finishSoloSession).
+        const r = await finishSoloSession(session.id);
+        if (!r.ok) {
+          feedback.notifyError(r.error);
+          setIsGoingToResults(false);
+          return;
+        }
+      } else {
+        const submitted = await submitAllEvaluations(session.id);
+        if (!submitted.ok) {
+          // Returned (not thrown) since S8-10: same failure path as before.
+          setSubmitError(true);
+          setIsGoingToResults(false);
+          return;
+        }
+      }
       // Navigate only on success — a failed submit must not strand the user on
       // the results page believing their drafts were sent. isGoingToResults
       // stays true so the button remains disabled during navigation.
@@ -1326,16 +1498,34 @@ export function CupClient({
   };
 
   // ─── Invite link / close session ──────────────────────────────
+  // Idempotent on the server: a second "Invitar" returns the SAME link.
   const handleGenerateInvite = async () => {
     setIsGeneratingInvite(true);
     try {
-      const { token } = await createInviteToken(session.id);
-      const link = buildInviteUrl(window.location.origin, locale, token);
-      setInviteLink(link);
-    } catch {
-      feedback.notifyError("unknown");
+      await feedback.run(createInviteToken(session.id), ({ token }) => {
+        setInviteLink(buildInviteUrl(window.location.origin, locale, token));
+      });
     } finally {
       setIsGeneratingInvite(false);
+    }
+  };
+
+  // Revokes the current link and QR (they read as expired on /join).
+  const handleRegenerateInvite = async () => {
+    await feedback.run(createInviteToken(session.id, undefined, undefined, true), ({ token }) => {
+      setInviteLink(buildInviteUrl(window.location.origin, locale, token));
+      setIsCopied(false);
+    });
+  };
+
+  const handleToggleEntries = async () => {
+    setEntriesPending(true);
+    try {
+      await feedback.run(setEntriesLocked(session.id, !entriesLocked), (d) =>
+        setEntriesLockedState(d.entriesLocked),
+      );
+    } finally {
+      setEntriesPending(false);
     }
   };
 
@@ -1347,7 +1537,11 @@ export function CupClient({
   };
 
   const handleCloseSession = () => {
+    setCloseImpact(undefined);
     setCloseDialogOpen(true);
+    getCloseImpact(session.id)
+      .then((r) => setCloseImpact({ unsentCuppers: r.unsentCuppers }))
+      .catch(() => setCloseImpact(null));
   };
 
   const handleConfirmClose = async () => {
@@ -1395,7 +1589,10 @@ export function CupClient({
     const seq = ++referenceSeqRef.current;
     applyReferenceOrder(next);
     startTransition(async () => {
-      const r = await feedback.run(setReferenceSample(session.id, next));
+      // TODO(S8-10): the master panel does not yet show the "N cuppers' notes
+      // will be replaced" confirm that the edit form has (B2 default); until
+      // then it keeps the S6 mid-session re-pin behaviour.
+      const r = await feedback.run(setReferenceSample(session.id, next, true));
       if (!r.ok && seq === referenceSeqRef.current) applyRefOrder(prevOrder);
     });
   };
@@ -1560,6 +1757,35 @@ export function CupClient({
     });
   };
 
+  // Solo only (F-express-1 / F-solo-3): what "send anyway" will do, stated
+  // before the click, and a way to finish with the samples actually cupped.
+  const isSoloOwner = !isGroup && isOwner;
+  const unopenedCount = viewSamples.filter(
+    (s) => !CUPPING_STEPS.some((st) => hasStepFill(s, st)),
+  ).length;
+  const scoredCount = viewSamples.filter((s) => {
+    if (!s.isDraft && s.evaluationId) return true;
+    const data =
+      guardFormat === "combined" ? s.combined : guardFormat === "affective" ? s.affective : s.descriptive;
+    return isEvaluationCompleteForScore(guardFormat, data);
+  }).length;
+  const guardOutcome =
+    isSoloOwner && guard?.kind === "submit"
+      ? unopenedCount === 0
+        ? (translations.guard.outcomeCloses ?? null)
+        : (translations.guard.outcomeStays?.replace("{n}", String(unopenedCount)) ?? null)
+      : null;
+  const guardSecondary =
+    isSoloOwner && guard?.kind === "submit" && scoredCount > 0 && translations.guard.finishWith
+      ? {
+          label: translations.guard.finishWith.replace("{n}", String(scoredCount)),
+          onClick: () => {
+            setGuard(null);
+            void doGoToResults("finish");
+          },
+        }
+      : null;
+
   const getStepStatus = (
     step: CuppingStep
   ): "empty" | "partial" | "complete" => {
@@ -1667,6 +1893,12 @@ export function CupClient({
       : "next-sample";
 
   // ─── Sidebar slot content ─────────────────────────────────────
+  const ownerSubmittedText =
+    isOwner && translations.submittedTemplate
+      ? translations.submittedTemplate
+          .replace("{count}", String(submittedCount))
+          .replace("{total}", String(submittedTotal))
+      : translations.submittedOf;
   const identity = (
     <>
       <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-brown-mid">
@@ -1678,7 +1910,7 @@ export function CupClient({
       </div>
       {isGroup && (
         <div className="font-mono text-[11px] text-brown-mid mt-0.5">
-          {translations.submittedOf}
+          {ownerSubmittedText}
         </div>
       )}
       {referenceSample && (
@@ -1768,7 +2000,7 @@ export function CupClient({
         </div>
       )}
       {isGroup && (
-        <div className="font-mono text-[11px] text-brown-mid">{translations.submittedOf}</div>
+        <div className="font-mono text-[11px] text-brown-mid">{ownerSubmittedText}</div>
       )}
       {referenceContext && <div className="flex items-center">{referenceContext}</div>}
       {editSampleButton && <div className="flex items-center pt-1">{editSampleButton}</div>}
@@ -1788,7 +2020,13 @@ export function CupClient({
     isOwner && isGroup ? (
       <MasterControls
         title={translations.masterControls}
-        submittedLabel={`${submittedCount} / ${participantCount}`}
+        submittedLabel={
+          translations.submittedTemplate
+            ? translations.submittedTemplate
+                .replace("{count}", String(submittedCount))
+                .replace("{total}", String(submittedTotal))
+            : `${submittedCount} / ${submittedTotal}`
+        }
         liveDownLabel={liveCountDown ? translations.liveCountDown : undefined}
         closeLabel={translations.closeSession}
         inviteLabel={translations.invite}
@@ -1805,6 +2043,20 @@ export function CupClient({
         onGenerate={handleGenerateInvite}
         onCopy={handleCopyInvite}
         onResetInvite={() => setInviteLink(null)}
+        regenerateLabel={translations.inviteRegenerate}
+        onRegenerate={translations.inviteRegenerate ? () => setRegenerateOpen(true) : undefined}
+        entries={
+          translations.entriesClose && translations.entriesOpen && translations.entriesClosedNote
+            ? {
+                locked: entriesLocked,
+                closeLabel: translations.entriesClose,
+                openLabel: translations.entriesOpen,
+                note: translations.entriesClosedNote,
+                pending: entriesPending,
+                onToggle: handleToggleEntries,
+              }
+            : undefined
+        }
         startLabel={translations.startSession}
         startingLabel={translations.starting}
         showStart={showStart}
@@ -1995,7 +2247,26 @@ export function CupClient({
         onRetry={retrySync}
         translations={translations.offline}
         storageUnavailable={storageUnavailable}
+        nextRetryAt={nextRetryAt}
       />
+      {terminalCount > 0 && translations.offline.terminalNotice && (
+        <div
+          role="status"
+          className="mx-4 mb-3 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6"
+        >
+          {translations.offline.terminalNotice.replace("{count}", String(terminalCount))}
+        </div>
+      )}
+      {session.closesAt && !sessionClosed && (
+        <div className="mx-4 mt-3 lg:mx-6">
+          <DeadlineBanner
+            closesAt={session.closesAt}
+            zone={session.closesAtZone ?? null}
+            locale={locale}
+            translations={translations.deadline}
+          />
+        </div>
+      )}
       {isOwner && editingSample && (
         <ResponsiveDialog
           open={editingSample}
@@ -2170,10 +2441,40 @@ export function CupClient({
         }}
       />
       <ConfirmDialog
+        open={regenerateOpen}
+        onOpenChange={setRegenerateOpen}
+        title={translations.inviteRegenerateTitle ?? "¿Regenerar el enlace?"}
+        body={
+          translations.inviteRegenerateBody ??
+          "El enlace y el QR actuales dejarán de funcionar. Quienes ya entraron siguen dentro."
+        }
+        confirmLabel={translations.inviteRegenerateConfirm ?? "Regenerar"}
+        cancelLabel={translations.cancel}
+        closeLabel={translations.cancel}
+        destructive={false}
+        onConfirm={handleRegenerateInvite}
+      />
+      <ConfirmDialog
         open={closeDialogOpen}
         onOpenChange={setCloseDialogOpen}
         title={translations.closeSession}
-        body={translations.confirmClose}
+        body={
+          <div className="space-y-2">
+            <p>{translations.confirmClose}</p>
+            <p>{translations.closeRule}</p>
+            {closeImpact === undefined ? (
+              <p className="text-on-surface-variant">{translations.closeImpactLoading}</p>
+            ) : closeImpact === null ? null : closeImpact.unsentCuppers === 0 ? (
+              <p className="text-on-surface-variant">{translations.closeUnsentNone}</p>
+            ) : (
+              <p className="font-medium text-secondary">
+                {closeImpact.unsentCuppers === 1
+                  ? translations.closeUnsentOne
+                  : translations.closeUnsentMany.replace("{count}", String(closeImpact.unsentCuppers))}
+              </p>
+            )}
+          </div>
+        }
         confirmLabel={translations.closeSession}
         cancelLabel={translations.cancel}
         closeLabel={translations.cancel}
@@ -2215,6 +2516,8 @@ export function CupClient({
             : translations.guard.nextBody
         }
         items={guard?.items ?? []}
+        outcome={guardOutcome}
+        secondary={guardSecondary}
         onCancel={() => setGuard(null)}
         onConfirm={handleGuardConfirm}
         translations={{

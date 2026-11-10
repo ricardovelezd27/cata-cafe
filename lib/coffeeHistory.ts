@@ -6,6 +6,7 @@
 
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/app/generated/prisma/client";
+import { historyCommunityScore } from "@/lib/historyRules";
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
@@ -17,6 +18,11 @@ export async function syncCoffeeHistoryForSession(
   opts: { db?: Db } = {},
 ) {
   const db = opts.db ?? prisma;
+  // TODO(S8-10): F-express-2 — closed coffee-less (express) samples leave no
+  // history row because UserCoffeeHistory.coffeeId is required (Cascade FK to
+  // Coffee). Showing them as "Sin café asignado" needs a schema change
+  // (nullable coffeeId or a per-sample row) and a migration, which this pass
+  // does not build; assigning a coffee later already creates the row.
   const samples = await db.sessionSample.findMany({
     where: {
       sessionId,
@@ -34,7 +40,7 @@ export async function syncCoffeeHistoryForSession(
         },
       },
       aggregateScore: {
-        select: { communityScore: true },
+        select: { communityScore: true, participantCount: true },
       },
     },
   });
@@ -50,7 +56,8 @@ export async function syncCoffeeHistoryForSession(
   for (const sample of samples) {
     if (!sample.coffeeId) continue;
     const coffeeId = sample.coffeeId;
-    const communityScore = sample.aggregateScore?.communityScore ?? null;
+    // S8-04: null unless a real included evaluation exists (lib/historyRules.ts).
+    const communityScore = historyCommunityScore(sample.aggregateScore);
 
     for (const evaluation of sample.evaluations) {
       upserts.push(

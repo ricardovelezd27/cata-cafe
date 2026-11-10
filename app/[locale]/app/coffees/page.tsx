@@ -1,8 +1,7 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
+import { requireAppUser } from "@/lib/auth";
 import { Plus } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { getCoffeesWithStats } from "@/lib/coffees/queries";
 import { PageHeader } from "@/components/ui";
@@ -21,11 +20,7 @@ export default async function CoffeesPage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/${locale}/auth/login`);
+  const user = await requireAppUser(locale, `/${locale}/app/coffees`);
 
   const t = await getTranslations("coffee");
   const tc = await getTranslations("common");

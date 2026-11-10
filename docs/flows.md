@@ -23,19 +23,57 @@ evaluations**, physical/extrinsic data, invites, and its tasting-history rows.
 by a direct POST (`proxy.ts` only gates pages). Guests keep `requireUser()` for
 join, evaluate, submit, waiting room, offline replay and claim.
 
+**Create and edit robustness (S8-10):**
+- The wizard actions run under `run()` (design b): validation keeps its
+  `{ ok:false, error:<wizard code> }` shape, a thrown failure (expired auth, DB)
+  becomes `{ ok:false, error:<ActionErrorCode> }`, so the form stays mounted with
+  its state. `redirect()` still passes through. After a group create the address
+  bar moves to the owner-only `sessions/[id]/invite` route (404 for anyone else),
+  which re-reads the latest usable invite, so a reload keeps the link.
+- Edit: format/cups freeze at `startedAt` OR the first evaluation (C6 default);
+  only values that differ from the stored session count as a change. Removing a
+  sample counts evaluations, physical and origin data INSIDE the delete
+  transaction. Marking a rated sample as reference needs `confirmRepin`
+  (B2 default: replace, warn first). `addSessionSample` takes its position inside
+  the transaction and retries on a collision.
+- Duplicate copies every `referenceRank` (B8 default: all); a coffee the caller
+  can no longer use becomes a coffee-less sample.
+- `submitAllEvaluations` returns `ActionResult<{ closed, submitted }>`; a second
+  submit after the solo auto-close is the final state, not an error. The module
+  JSON is bounded in `computeEvaluationDerived` (note 500, module 64k).
+- Naming a coffee on a coffee-less sample creates and links it in one transaction.
+
 ### The one close routine (2026-09-08)
 
 Every path that ends a session goes through `closeSessionInternal`
-(`lib/closeSession.ts`): **idempotent** status flip (`updateMany where status
-!= closed`, stamps `closedAt`) → **reveal every coffee-linked sample** → 
-`syncCoffeeHistoryForSession` → close emails (group only: each participant gets a
+(`lib/closeSession.ts`), in **two phases** (S8-05). Phase 1 is the **idempotent**
+status flip (`updateMany where status != closed`, stamps `closedAt`). Phase 2,
+`finalizeClosedSession`, is **reveal every coffee-linked sample** -> refire the
+aggregate trigger -> `syncCoffeeHistoryForSession` -> close emails (group only) ->
+stamp `closeFinalizedAt`. A failed phase-2 step is logged at error level
+(`closeSession.finalize`) and leaves the stamp null, so the work is owed: the
+solo owner's resubmit, an owner close (after 5 minutes) or the daily cron's
+repair pass runs phase 2 again (every step is idempotent, the email ledger skips
+sent recipients). A finalized session is a no-op. Close emails (each participant gets a
 link to their results page via login `next=` plus their personal summary PDF —
 `lib/closeEmail.ts`; the full CVA form is downloaded from the results page; legacy
 attach with `CLOSE_EMAIL_ATTACH_CVA=1`; see §6). A second click, a
 concurrent call or a cron retry is a no-op — nothing is re-synced or re-sent.
 Once closed, a session is **read-only**: every mutation runs
 `assertSessionWritable` and throws `session_closed`; `/cup` redirects to
-`/results`; offline drafts for a closed session are discarded on replay.
+`/results`; offline drafts for a closed session are NOT replayed and NOT shown
+as synced: `replayEvaluation` / `replayPhysical` / `replayExtrinsic` answer
+`closed`, the device keeps the module as `closed_unsent` (badge + notice) and the
+results page tells the cupper whether their unsent notes counted.
+
+**Unsent work at close (Kim C1, default b).** Complete drafts that were never sent
+are left OUT of the results (`DRAFT_AT_CLOSE = "exclude"`, `lib/closeRules.ts`);
+they stay in the database. The owner's close dialog shows how many cuppers hold
+such notes (`getCloseImpact`) and states the rule; the close email repeats the
+rule and tells each affected cupper. A 24 h reminder (`deadline_24h`) goes to them
+before an async deadline. `promote_complete` (submit complete drafts at close) is
+implemented as a constant only: off. // TODO(S8-05/C1-d): the owner "accept late
+contribution" action is a post-close write and awaits Kim.
 
 **Expiry rule (S8-01).** A session is also read-only once its `closesAt` has
 passed (`isSessionExpired`, strict `<`, server clock) even though `status` stays
@@ -88,6 +126,7 @@ stateDiagram-v2
     active --> active : cup + auto-save drafts (800ms debounce)
     active --> active : submit with samples still pending
     active --> closed : submitAllEvaluations — every sample submitted\n→ closeSessionInternal (reveal → history)
+    active --> closed : finishSoloSession (Terminar cata)\nsubmit complete drafts, drop unopened samples\n→ closeSessionInternal
     closed --> [*]
     note right of closed
         closed = the session's results ARE its detail view
@@ -96,20 +135,59 @@ stateDiagram-v2
     end note
 ```
 
+**Manual finish (S8-05, the one bend of "no manual close for solo").** A solo or
+express session with fewer cupped than created samples never auto-closes.
+`finishSoloSession` (owner, solo only) submits the owner's COMPLETE drafts
+(`lib/closeRules.ts planFinish`, same completeness as the results page), removes
+only samples with no evaluation at all (`lib/sampleRemoval.ts`, shared with
+`removeSessionSample`: reference ranks and positions are repaired), keeps partial
+drafts without a score (Kim C2 default a; no editing after closing) and then calls
+`closeSessionInternal`. Surfaces: the submit-guard dialog ("Terminar con las N que
+catié", with the outcome stated beforehand) and a "Terminar cata" button on the
+results banner. Group sessions never see it.
+
 ### Group sessions (live and async)
 
 `createGroupSession` starts at `active`, creates the owner's participant row and
 an invite token, and (optionally) emails the linked group. Participants join via
 `/join/[token]` (owner and existing members re-opening the link are no-ops; a
 closed session's link sends members to results and refuses newcomers; `maxUses`
-is enforced inside the transaction). For a **live** session they wait in
+is enforced inside the transaction). The page and `joinViaToken` share one pure
+rule, `evaluateJoin` (`lib/joinRules.ts`, S8-11): owner/member → straight in via
+`sessionHref` (even with a dead link) · a newcomer to a closed session → "cerró"
+(NO anonymous sign-in is attempted) · `entriesLocked` → "entradas cerradas" ·
+revoked or expired link → "ya no sirve" · `maxUses` reached → "sin lugares" ·
+unknown token or a solo session → "no válido"; each state has its own es/en
+copy, and a latecomer on a started session is told they can cup every sample.
+The owner's master panel keeps ONE link: "Invitar" returns the newest active,
+unexpired invite (`createInviteToken` is idempotent), "Regenerar enlace"
+(confirm) sets `SessionInvite.active = false` on every earlier token and mints a
+new one in one transaction, and the print QR reads the same active invite. The
+panel also toggles `CuppingSession.entriesLocked` (`setEntriesLocked`, owner):
+newcomers get `entries_closed`, members re-enter; the flag is gating only and
+never read by scoring. The "N de M enviaron todo" counter counts eligible
+cuppers (joined or owner, not excluded) with a submitted evaluation for EVERY
+sample (`lib/submitProgress.ts`); the client holds a `Map<cupperId, sampleIds>`
+re-seeded from the server on every refresh, SUBSCRIBED and visibility change.
+The waiting room refetches `getWaitingState` on SUBSCRIBED, visibility,
+`pageshow` and `online`, and its fallback poll runs every 15 s ± 3 s. For a **live** session they wait in
 `/waiting` until the owner calls `startSession` — from wizard step 2 **or** the
 master panel's "Iniciar cata" (idempotent). An **async** session (`isAsync`,
 `closesAt` set) lets them cup immediately and is closed by the **daily cron**
 (`/api/cron/close-expired-sessions`, 06:00 UTC) once `closesAt` passes, or
-earlier by the owner. `closesAt` is the END of the chosen calendar day (UTC,
-`dateOnlyEndOfDay`), so a session with closing date D is closed by the cron on
-D+1 in the early morning — never before the day the owner picked has ended. From
+earlier by the owner. `closesAt` is the END of the chosen calendar day **in the
+owner's IANA zone** (`closesAtZone`, posted from the form's browser;
+`endOfDayInZone`, `lib/closeRules.ts`; a null zone is UTC, the legacy rule), so
+writes stop at the owner's midnight and the cron closes the session on D+1 in the
+early morning — never before the day the owner picked has ended. Everyone who can
+open the session sees the date (`DeadlineBanner`: join confirmation, waiting
+screen, cup header, session list) in the owner's zone with the viewer's local time
+beside it when they differ, stronger in the last 24 h. The cron also sends the
+`deadline_24h` reminder and, for a forgotten live session, one `live_idle`
+reminder to its owner (never a close); both are ledgered in
+`session_reminder_deliveries`. Setting a date on an unstarted live session turns it
+self-paced (no waiting room, no "Iniciar cata"), which the forms say before saving
+(// TODO(S8-05/C7): separating `isAsync` from `closesAt` awaits Kim). From
 `closesAt` on, though, the session is already read-only and its group results are
 visible (expiry rule, §1 above): the cron only flips `status` and sends the emails. Close emails are queued with `after()` and ledgered per
 recipient in `close_email_deliveries`; the owner sees sent / no-email / failed /
@@ -214,7 +292,8 @@ flowchart LR
 
 `/join/[token]` requires no account: a walk-up participant enters only a display
 name (`GuestJoinForm` → `supabase.auth.signInAnonymously()` →
-`completeGuestOnboarding` → `joinViaToken`). Their evaluations belong to an
+`completeGuestOnboarding` → `joinSessionAsGuest` (an `ActionResult` wrapper over
+`joinViaToken`)). The form is only rendered for a link `evaluateJoin` admits. Their evaluations belong to an
 anonymous auth user (NULL email). On the **results** page an anonymous viewer
 sees a dismissible "Guarda tus resultados" banner (`GuestSaveCta`). It reuses
 the **normal account-creation flow** rather than inventing one: `startGuestClaim`
@@ -269,13 +348,15 @@ sequenceDiagram
 flowchart LR
     A[Session row clicked] --> B{closed OR closesAt passed?}
     B -- yes --> R[/sessions/id/results/]
-    B -- no --> C{group && !startedAt\n&& viewer is not owner?}
+    B -- no --> C{live group (not async) && !startedAt\n&& viewer is not owner?}
     C -- yes --> W[/sessions/id/waiting/]
     C -- no --> K[/sessions/id/cup/]
 ```
 
 Every list (sessions, dashboard, profile, group page) must use `sessionHref` —
-never hardcode `/cup`. Its input must include `closesAt` (the type requires it).
+never hardcode `/cup`. Its input must include `closesAt` and `isAsync` (the type
+requires both): an unstarted **async** session has no waiting room, so it goes
+straight to `/cup` (S8-11).
 
 ### Sample / coffee metadata lifecycle (progressive)
 
@@ -349,6 +430,51 @@ Scoring, the trigger and `AggregateScore` never read any of this.
 
 ---
 
+### Sign-in, deep links and the confirm page (2026-11, S8-06)
+
+```mermaid
+flowchart TD
+  A[Signed-out visit to /app/**] --> P{proxy.ts getUser}
+  P -- none --> L[/login?next=path+search/]
+  P -- unreachable --> PG[page backstop throws -> retry panel]
+  P -- user or guest --> OK[page renders]
+  L --> M[Link email or 6-digit code]
+  M -- link --> C[/auth/confirm page, GET touches nothing/]
+  C -- button POST --> V[confirmEmailToken -> verifyOtp]
+  M -- code --> V2[verifyEmailCode -> verifyOtp type email]
+  V --> N[safeNext destination]
+  V2 --> N
+  OLD[old /auth/callback?token_hash] --> C
+  G[Google code] --> CB[/auth/callback exchange/] --> N
+```
+
+- One `next` validator (`lib/safeNext.ts`): same-site path or same-origin absolute URL; rejects `//x`, `/\x`, `@`, encoded slashes and `/auth/{callback,confirm,login}` (loops). `/auth/claim` is allowed (guest claim chain).
+- `lib/authState.ts` classifies `user | none | unreachable`; anonymous guests are `user`. Only `none` redirects to login; a down auth service shows the error boundary's retry panel.
+- A GET never consumes a token. The guest-claim chain is unchanged: login `next=/auth/claim?...` -> confirm -> claim page (login-then-confirm, never a merge on GET).
+- Language: `signInWithMagicLink(formData, next, locale)` sends `preferred_lang` (new accounts only) and defaults `next` to `/{locale}/app`; `signOut(locale)` lands on `/` or `/en`; the ES/EN switch keeps page, query and hash (`lib/localeSwitch.ts`).
+- The welcome dialog mounts only on `/app` itself and never for guests; closing it (X, Esc, skip) calls `dismissOnboarding`, which sets only `onboardingCompleted`.
+
+### Account lifecycle and guest safety (2026-11, S8-07)
+
+```mermaid
+flowchart TD
+  S[Salir / Cambiar de cuenta / Salir en todos] --> G{guest or everywhere?}
+  G -- registered, this device --> A[signOut scope local]
+  G -- guest --> W[loss warning: Guardar mis resultados - or - Salir de todos modos]
+  G -- everywhere --> X[confirm -> signOut scope global]
+  W -- save --> CL[normal claim flow]
+  W -- leave --> A
+  A -- ok --> D[clear device caches -> navigate]
+  A -- offline or error --> T[toast, nothing cleared]
+```
+
+- **Sign-out**: `signOut(locale, scope)` / `switchAccount(locale, next?)` return `ActionResult<{ next }>`; the client clears `cata-pages-*`/`cata-rsc-*`, the last-user pointer and the seen-set only after the server confirmed. Default scope is `local` (this device); `global` is the explicit "Salir en todos los dispositivos". A guest always sees the loss warning first (`GuestGateProvider.leave` carries the copy). Unsynced-draft warning is S8-09.
+- **Claim hardening**: `lib/guestClaimToken.ts` is the pure half (token, `safeClaimBack`, `anonEvalWins`). `confirmGuestClaim` returns an ActionResult: `invalid_token` / `token_expired` / `not_found` (already linked) go to the page's final cards, anything else shows a RETRY card (the merge is one transaction, safe to repeat). `mergeGuestData` separates `lookup_failed` (auth service blip, retry) from `not_anonymous` (final), runs with a 30 s transaction timeout, and re-fires the aggregate trigger only for samples where an evaluation was deleted by a conflict and sessions where an exclusion flag was merged. The card offers "Usar otra cuenta" (signs out this device and returns to the same claim) and "No vincular" (behind a warning) instead of "Cancelar".
+- **7-day claim token (F-guest-9, accepted risk)**: it is a bearer token in the guest's own URL/email. Anyone holding it who signs in can only reach a confirmation card naming the guest and counts; nothing merges on a GET, and the merge refuses a source that is no longer anonymous. TTL stays 7 days so a re-sent magic link still redeems.
+- **User columns**: `lib/accountDeletion/manifest.ts` lists every `Profile` FK and bare user column (`CloseEmailDelivery.userId`, `AiChatUsage.userId`, `OutboundEmailEvent.actorKey` = `u_<id>`, waitlist by email) with its merge rule and its INTENDED deletion rule. `tests/profileRelations.test.ts` fails on an unlisted relation and checks the merge source for each listed table. `deleteAccount` is not built (tombstone design, E3/E4 owner choices); when it is, it is a NEW sanctioned write on closed sessions and §1 must say so.
+- **Guest join**: `checkJoinable(token)` (`lib/joinability.ts`, same rule as the `/join` page and `joinViaToken`) runs before `signInAnonymously`; a closed link shows its own state to a visitor with no session (a signed-in participant still reaches results through `joinViaToken`); a retry reuses the anonymous user the earlier try created.
+- **Email change**: registered users only (`requestEmailChange`), mails a confirmation through `/auth/confirm` (type `email_change`) back to `/app/profile`; the profile shows `new_email` as pending until it is confirmed.
+
 ## 2. Coffee visibility & sharing
 
 A coffee is a reusable asset owned by its creator (producer/roaster/café). The
@@ -415,6 +541,11 @@ people who already had an account when invited).
 Owner: full CRUD + roster management + announcements + email blasts. Member:
 read the group (feed, roster, sessions) and **leave** (`leaveGroup`). There are
 no co-admins; being added *is* membership (no pending state).
+Group emails that carry a session link (`sendGroupEmail`, `notifyGroupOfSession`)
+build it with `groupSessionInviteUrl` (`lib/inviteUrl.ts`): a linked member goes
+straight to `/join/[token]`, an unlinked recipient through `/auth/login` with the
+join as `next`; both reject a session that is not an active group session of the
+caller (`invalid_input`).
 
 ```mermaid
 sequenceDiagram
@@ -518,6 +649,8 @@ coffee-less samples] -->|createExpressSession| CUP
 `/app/warmup` ("Movimiento sensorial") is also a desktop sidebar item under
 Sesiones (`hideOnMobile`, so the BottomNav keeps its five tabs); on phones it is
 reached from the dashboard card and the link at the top of the Sesiones page.
+
+**Native-shell seam (S8-15).** Anything a WebView treats differently from a browser — printing, `window.open`, blob/anchor downloads, sharing, opening the system browser, shell sniffing — goes through `lib/platform/` (`printPage`, `downloadFile`/`shareFile`, `openReport`, `openExternal`, `isNativeShell`). Report links (`ReportLink`) are plain anchors on the web and disabled offline. Cup, waiting room and results re-attach realtime and refetch on foreground resume (`useForegroundResume`). Deep links map through `routeFromUrl` (`/join`, `/auth/claim`, `/app`). No Capacitor dependency exists yet; native branches are TODO stubs. Device checklist: `docs/native/device-checklist.md`.
 
 **The rule that keeps it cohesive:** assets (coffees, groups) are created once
 and reused across sessions; sessions produce history; history feeds every
@@ -642,6 +775,61 @@ each gate is a pure, tested helper shared by every consumer:
 
 ---
 
+### Insights scope, audit trail and legal switch (2026-11, S8-08)
+
+```mermaid
+flowchart TD
+  A[Insights action / page / report / chat / digest] --> S{scopeFor access}
+  S -- super-admin --> P[platform scope]
+  S -- AI admin or flagged user --> U[user scope: own sessions + own evaluations]
+  P --> C[cupper labels: Catador N, under 3 evaluations hidden]
+  U --> N[cupper names only for sessions the caller owns]
+  D[Users directory / CSV / grants] --> L[audit line where=audit, ids + counts]
+  D --> M[emails masked, Mostrar toggle; CSV super-admin only]
+  W[Waitlist form] --> R[row: source, consentAt, consentNoticeVersion]
+  W --> Q{LEGAL_PAGES_PUBLISHED}
+  Q -- false --> X[notice line + footer/login links hidden; pages direct-visit only, Borrador, noindex]
+  Q -- true --> Y[notice line + links shown]
+```
+
+## 7. Offline drafts and replay (S8-09)
+
+```mermaid
+stateDiagram-v2
+  [*] --> pending: edit saved on the device
+  pending --> synced: replay ok
+  pending --> conflict: server holds a submitted row (group)
+  pending --> closed_unsent: session closed or expired
+  pending --> orphaned: sample or session gone for this user
+  pending --> pending: replay failed, retry in 15 s doubling to 5 min
+  pending --> failed: 5 failed runs
+  failed --> pending: cupper taps Reintentar
+  conflict --> synced: keep submitted, or replace and replay
+  closed_unsent --> [*]: cupper discards after reading or copying
+  orphaned --> [*]: cupper discards after reading or copying
+```
+
+- Replay runs on the online edge, on resume (tab visible, `pageshow`, via `hooks/useResume.ts`),
+  once on an online mount and on the retry schedule. One module-level lock means the cup screen,
+  the results pill and the guard provider never replay at once.
+- The replay result is applied only if the module's `updatedAt` still equals the one sent
+  (`applyOutcome`, `lib/offline/status.ts`): an edit made mid-flight stays `pending`.
+- Only `pending` blocks the final submit. `failed`, `closed_unsent` and `orphaned` never do; the
+  cup screen names them in a notice and the app-shell badge opens "Notas sin sincronizar"
+  (read, copy, confirmed discard; nothing is deleted automatically).
+- `conflict` is rebuilt from the stored blobs, so it survives a reload.
+- Sign-out and the guest claim ask first when anything exists only on the device
+  (`UnsyncedGuardProvider`). The claim stores the anonymous id in `cata_claim_anon`; the next app
+  mount under the signed-in account re-keys the blobs (`rekeyUserBlobs`).
+- Replay actions return `synced | conflict | closed | pending | gone | rejected` and never throw
+  for those; `syncEvaluation` keeps its legacy contract for cached bundles.
+- Service worker v3: static cache capped at 120 entries, `/app/insights` and `/app/profile`
+  never cached, page caches purged when the signed-in id differs from the last one.
+- TODO(C1): sending a `closed_unsent` note to the session owner is a post-close write and waits
+  for Kim. TODO(E5): creating a session offline waits for Kim; only detection and the message ship.
+
+---
+
 ## Maintenance checklist
 
 When you touch any of these, update the matching diagram **in the same PR**:
@@ -652,4 +840,24 @@ When you touch any of these, update the matching diagram **in the same PR**:
 - `usableCoffeeWhere`, visibility values, share/invite semantics, delete cascades → §2
 - Group membership linking, invites, posts, leave/remove → §3
 - Any new cross-section navigation or a new consumer of `UserCoffeeHistory` → §4
+- Analytics scope, admin audit/masking, legal pages switch or waitlist consent fields → the S8-08 diagram above
 - Results page tab structure, gating (owner vs. participant), or the drill-down dialog → §5
+
+## Scoring below five cups (S8-04)
+
+```mermaid
+flowchart TD
+  A[Cupper submits or edits an evaluation] --> B{cupsPerSample >= 5?}
+  B -- yes --> C[Flags count: -2 per non-uniform, -4 per defective cup individually; 10/total and 30/total per cup in the community score]
+  B -- no --> D[Flags are stored but ignored: score comes from the 8 attributes only]
+  C --> E[Trigger trg_recompute_aggregate writes aggregate_scores]
+  D --> E
+  F[Edit of an already submitted row] -->|guarded isDraft write| E
+  G[closeSessionInternal] -->|refireAggregates| E
+  E --> H[syncCoffeeHistoryForSession]
+  H --> I{participantCount > 0?}
+  I -- yes --> J[history communityScore = stored score]
+  I -- no --> K[history communityScore = null, shown as a dash]
+```
+
+The same `penaltiesApply` rule feeds the individual score, the group aggregate shown on results and the trigger, so a coffee never shows two scores. Sessions under five cups carry an "Impresión rápida" tag in history and on the coffee profile.

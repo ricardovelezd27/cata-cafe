@@ -1,7 +1,9 @@
 "use client";
 
+import { nextPollDelayMs } from "@/lib/waitingPoll";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
+import { useForegroundResume } from "@/hooks/useForegroundResume";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronDown, EyeOff } from "lucide-react";
@@ -91,7 +93,9 @@ export function WaitingRoomClient({
   // True whenever the realtime channel is not actively SUBSCRIBED — drives the
   // 15s polling fallback and the "connection lost" notice below.
   const [connectionLost, setConnectionLost] = useState(false);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Bumped on foreground resume so the realtime effect below re-runs (S8-15).
+  const [resumeKey, setResumeKey] = useState(0);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // The owner may pick/change the reference while people wait — same
   // cupping_sessions UPDATE stream that carries startedAt.
   const [refOrder, setRefOrder] = useState<string[]>(initialReferenceIds);
@@ -223,6 +227,23 @@ export function WaitingRoomClient({
     onStartedRef.current = onStarted;
   });
 
+  // Foreground resume (S8-15): a phone that slept has a dead socket and may have
+  // missed the start. Recreate the channel (via resumeKey) and re-seed from the
+  // server — same read the 15 s polling fallback uses.
+  useForegroundResume(() => {
+    if (isAsync) return;
+    setResumeKey((k) => k + 1);
+    void (async () => {
+      const state = await getWaitingState(sessionId);
+      if (!state) return;
+      if (state.startedAt) {
+        onStartedRef.current();
+        return;
+      }
+      applySyncRef.current({ warmupStartedAt: state.warmupStartedAt }, false);
+    })();
+  });
+
   // Back closes the player, not the page (push a history entry when it opens).
   useEffect(() => {
     if (!activeWarmupId) return;
@@ -240,9 +261,26 @@ export function WaitingRoomClient({
 
     const clearPoll = () => {
       if (pollRef.current) {
-        clearInterval(pollRef.current);
+        clearTimeout(pollRef.current);
         pollRef.current = null;
       }
+    };
+
+    // One refetch, same handling as the live handler: started -> leave the
+    // room; otherwise (re)apply the synced warm-up run. checkSessionStarted
+    // stays boolean on purpose (service-worker-cached bundles call it).
+    const refetchState = async () => {
+      if (startedRef.current) return;
+      const state = await getWaitingState(sessionId);
+      if (!state) return;
+      const serverNow = parseDbTimestamp(state.serverNow);
+      if (serverNow !== null) skewRef.current = skewMs(serverNow, Date.now());
+      if (state.startedAt) {
+        clearPoll();
+        onStartedRef.current();
+        return;
+      }
+      applySyncRef.current({ warmupStartedAt: state.warmupStartedAt }, false);
     };
 
     const supabase = createBrowserClient(
@@ -287,31 +325,46 @@ export function WaitingRoomClient({
         if (status === "SUBSCRIBED") {
           setConnectionLost(false);
           clearPoll();
+          // Anything that happened while the socket was (re)connecting —
+          // the start included — is only in the row, not in a missed event.
+          void refetchState();
           return;
         }
-        // Not (or no longer) subscribed — fall back to polling every 15s so a
-        // dropped realtime connection never strands the waiting room.
+        // Not (or no longer) subscribed — fall back to polling (15 s +/- 3 s)
+        // so a dropped realtime connection never strands the waiting room.
         setConnectionLost(true);
         if (!pollRef.current) {
-          pollRef.current = setInterval(async () => {
-            const state = await getWaitingState(sessionId);
-            if (!state) return;
-            if (state.startedAt) {
-              clearPoll();
-              onStartedRef.current();
-              return;
-            }
-            applySyncRef.current({ warmupStartedAt: state.warmupStartedAt }, false);
-          }, 15000);
+          const tick = () => {
+            pollRef.current = setTimeout(async () => {
+              await refetchState();
+              // refetchState clears the poll once started; otherwise go on.
+              if (pollRef.current !== null) tick();
+            }, nextPollDelayMs());
+          };
+          tick();
         }
       },
     );
 
+    // Resume (phone unlocked, tab restored from the back-forward cache,
+    // network back): a locked phone's socket is silent, so ask the server.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refetchState();
+    };
+    const onPageShow = () => void refetchState();
+    const onOnline = () => void refetchState();
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("pageshow", onPageShow);
+    window.addEventListener("online", onOnline);
+
     return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pageshow", onPageShow);
+      window.removeEventListener("online", onOnline);
       clearPoll();
       stop();
     };
-  }, [sessionId, router, isAsync]);
+  }, [sessionId, router, isAsync, resumeKey]);
 
   const handleStart = async () => {
     if (isAsync) {

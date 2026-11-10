@@ -18,6 +18,9 @@ import { memberLabel } from "@/lib/maskEmail";
 import { trustedRequestOrigin } from "@/lib/requestOrigin";
 import { coCupperIdsAmong, isCoCupper } from "@/lib/coCuppers";
 import { run } from "@/lib/safeAction";
+import { isSessionExpired } from "@/lib/sessionState";
+import { resolveOrCreateSessionInvite } from "@/lib/invites";
+import { groupSessionInviteUrl } from "@/lib/inviteUrl";
 import type { ActionResult } from "@/lib/actionResult";
 
 type Locale = "es" | "en";
@@ -26,34 +29,6 @@ const MAX_GROUP_MEMBERS = 200;
 
 // Same email shape check used by the landing-page waitlist (app/actions/waitlist.ts).
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-// Finds a still-valid SessionInvite for a session, or mints a fresh one.
-// Extracted from sendGroupEmail so notifyGroupOfSession can reuse the exact
-// same token-resolution rules. Callers must independently verify session
-// ownership BEFORE calling this — it does no auth checks of its own.
-async function resolveOrCreateSessionInvite(
-  sessionId: string,
-  createdBy: string,
-): Promise<string> {
-  const now = new Date();
-  const candidateInvites = await prisma.sessionInvite.findMany({
-    where: { sessionId },
-    orderBy: { createdAt: "desc" },
-    select: { token: true, maxUses: true, useCount: true, expiresAt: true },
-  });
-  const validInvite = candidateInvites.find(
-    (inv) =>
-      (!inv.expiresAt || inv.expiresAt > now) &&
-      (inv.maxUses === null || inv.useCount < inv.maxUses),
-  );
-  if (validInvite) return validInvite.token;
-
-  const token = crypto.randomUUID();
-  await prisma.sessionInvite.create({
-    data: { sessionId, token, maxUses: null, expiresAt: null, createdBy },
-  });
-  return token;
-}
 
 // NOTE: the old name-only `createGroup` action was removed — every creation
 // path now goes through createGroupWithMembers (empty roster is fine).
@@ -743,11 +718,14 @@ export async function sendGroupEmail(input: {
     if (input.sessionId) {
       const session = await prisma.cuppingSession.findUnique({
         where: { id: input.sessionId },
-        select: { id: true, createdBy: true },
+        select: { id: true, createdBy: true, status: true, closesAt: true, isGroup: true },
       });
       if (!session || session.createdBy !== user.id) {
         throw new Error("not_found_or_forbidden");
       }
+      // Only an ACTIVE group session has a join link worth emailing (a solo or
+      // closed one would hand out a dead or meaningless link).
+      if (!session.isGroup || session.status !== "active" || isSessionExpired(session)) throw new Error("invalid_input");
       inviteToken = await resolveOrCreateSessionInvite(session.id, user.id);
     }
 
@@ -777,7 +755,15 @@ export async function sendGroupEmail(input: {
       const recipientLocale: Locale = m.userId
         ? localeByUserId.get(m.userId) ?? senderLocale
         : senderLocale;
-      const inviteUrl = inviteToken ? `${origin}/${recipientLocale}/join/${inviteToken}` : null;
+      const inviteUrl = inviteToken
+        ? groupSessionInviteUrl({
+            linked: !!m.userId,
+            token: inviteToken,
+            locale: recipientLocale,
+            origin,
+            email: emails.get(m.id) ?? m.email,
+          })
+        : null;
       return {
         memberId: m.id,
         label: memberLabel(m),
@@ -914,11 +900,12 @@ export async function notifyGroupOfSession(input: {
 
     const session = await prisma.cuppingSession.findUnique({
       where: { id: input.sessionId },
-      select: { id: true, createdBy: true, name: true },
+      select: { id: true, createdBy: true, name: true, status: true, closesAt: true, isGroup: true },
     });
     if (!session || session.createdBy !== user.id) {
       throw new Error("not_found_or_forbidden");
     }
+    if (!session.isGroup || session.status !== "active" || isSessionExpired(session)) throw new Error("invalid_input");
 
     const inviteToken = await resolveOrCreateSessionInvite(session.id, user.id);
 
@@ -943,11 +930,13 @@ export async function notifyGroupOfSession(input: {
         ? localeByUserId.get(m.userId) ?? senderLocale
         : senderLocale;
 
-      const ctaUrl = m.userId
-        ? `${origin}/${recipientLocale}/join/${inviteToken}`
-        : `${origin}/${recipientLocale}/auth/login?email=${encodeURIComponent(
-            email,
-          )}&next=${encodeURIComponent(`/${recipientLocale}/join/${inviteToken}`)}`;
+      const ctaUrl = groupSessionInviteUrl({
+        linked: !!m.userId,
+        token: inviteToken,
+        locale: recipientLocale,
+        origin,
+        email,
+      });
 
       return {
         memberId: m.id,

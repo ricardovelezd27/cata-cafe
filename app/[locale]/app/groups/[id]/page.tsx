@@ -1,8 +1,8 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
+import { requireAppUser } from "@/lib/auth";
 import Link from "next/link";
 import { CheckCircle2, ChevronLeft, Clipboard, Plus, UserCheck, Users } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { maskEmail, memberLabel } from "@/lib/maskEmail";
 import { getCoCupperCandidates } from "@/lib/coCuppers";
@@ -34,6 +34,7 @@ type GroupSessionRow = {
   date: Date;
   status: string;
   isGroup: boolean;
+  isAsync: boolean;
   startedAt: Date | null;
   closesAt: Date | null;
 };
@@ -46,11 +47,7 @@ export default async function GroupDetailPage({
   const { locale, id } = await params;
   setRequestLocale(locale);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/${locale}/auth/login`);
+  const user = await requireAppUser(locale, `/${locale}/app/groups/${id}`);
 
   // Link any email-only memberships to this account first — an invitee who
   // already had an account (signup trigger never fired) would otherwise fail
@@ -112,7 +109,7 @@ export default async function GroupDetailPage({
   const groupSessions: GroupSessionRow[] = await prisma.cuppingSession.findMany({
     where: { groupId: id },
     orderBy: { date: "desc" },
-    select: { id: true, name: true, date: true, status: true, isGroup: true, startedAt: true, closesAt: true },
+    select: { id: true, name: true, date: true, status: true, isGroup: true, isAsync: true, startedAt: true, closesAt: true },
   });
 
   // Only needed for the member (non-owner) view's per-session link rule.
@@ -127,7 +124,7 @@ export default async function GroupDetailPage({
         select: { sessionId: true },
       }),
       prisma.sessionInvite.findMany({
-        where: { sessionId: { in: sessionIds } },
+        where: { sessionId: { in: sessionIds }, active: true },
         orderBy: { createdAt: "desc" },
         select: { sessionId: true, token: true, maxUses: true, useCount: true, expiresAt: true },
       }),
