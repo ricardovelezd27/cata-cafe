@@ -38,7 +38,8 @@
     "delete": "Eliminar",
     "view": "Ver",
     "duplicate": "Duplicar",
-    "duplicateError": "No se pudo duplicar. Inténtalo de nuevo."
+    "duplicateError": "No se pudo duplicar. Inténtalo de nuevo.",
+    "duplicateDropped": "Sesión duplicada. Cafés que ya no puedes usar y se quitaron de sus muestras: {count}."
   },
   "home": {
     "heroTitle": "Cata sensorial profesional",

@@ -182,6 +182,7 @@ export default async function SessionsList({
     newSessionLabel: t("new"),
     duplicateLabel: tc("duplicate"),
     duplicateError: tc("duplicateError"),
+    duplicateDropped: tc.raw("duplicateDropped") as string,
   };
 
   return (

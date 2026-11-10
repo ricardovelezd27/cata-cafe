@@ -58,6 +58,7 @@ export type SessionsTableTranslations = {
   newSessionLabel: string;
   duplicateLabel: string;
   duplicateError: string;
+  duplicateDropped: string;
 };
 
 function formatLabel(format: string, formats: SessionsTableTranslations["formats"]): string {
@@ -217,6 +218,7 @@ export function SessionsTable({
               locale={locale}
               label={t.duplicateLabel}
               errorText={t.duplicateError}
+              droppedText={t.duplicateDropped}
               variant="icon"
             />
             <DeleteSessionButton sessionId={row.id} locale={locale} translations={deleteTranslations} />
