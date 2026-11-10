@@ -20,6 +20,7 @@ describe("classifyActionError", () => {
   it("passes known codes through", () => {
     expect(classifyActionError(new Error("not_found_or_forbidden"))).toBe("not_found_or_forbidden");
     expect(classifyActionError(new Error("session_closed"))).toBe("session_closed");
+    expect(classifyActionError(new Error("session_not_started"))).toBe("session_not_started");
     expect(classifyActionError(new Error("token_expired"))).toBe("token_expired");
   });
   it("maps the legacy forbidden throw; a legacy not_found is already a real code", () => {

@@ -556,6 +556,7 @@
     "refresh": "Actualizar",
     "refreshing": "Actualizando…",
     "refreshNew": "Actualizar ({count} nuevas)",
+    "refreshNewGeneric": "Hay novedades · Actualizar",
     "participation": "{submitted} de {total} catadores",
     "lastUpdated": "Actualizado: {time}",
     "mine": "Mi evaluación",
@@ -1553,6 +1554,7 @@
     "codes": {
       "not_authenticated": "Tu sesión caducó. Vuelve a iniciar sesión.",
       "not_found_or_forbidden": "No encontramos ese elemento o no tienes permiso.",
+      "session_not_started": "La cata aún no empezó. Espera a que el maestro la inicie.",
       "session_closed": "Esta cata ya está cerrada; sus resultados son definitivos.",
       "invalid_token": "Este enlace de invitación no es válido.",
       "token_expired": "Este enlace de invitación caducó.",

@@ -10,9 +10,10 @@ import {
   requireSessionMember,
   requireSampleOwner,
   assertSessionWritable,
+  assertSessionStarted,
+  isSessionExpired,
 } from "@/lib/sessionAuth";
 import { closeSessionInternal } from "@/lib/closeSession";
-import { usableCoffeeWhere } from "@/lib/coffeeAccess";
 import * as v from "@/lib/validate";
 import { runLengthMs } from "@/lib/warmup/syncedRun";
 import { run } from "@/lib/safeAction";
@@ -21,19 +22,52 @@ import type { ActionResult } from "@/lib/actionResult";
 // ─── Submit all draft evaluations for a session ───────────────────────────────
 export async function submitAllEvaluations(sessionId: string) {
   const user = await requireUser();
-  // Member gate + closed guard (a closed session's results are final).
-  assertSessionWritable(await requireSessionMember(sessionId, user.id));
+  // Member gate + closed/expired guard (a closed session's results are final)
+  // + not-started guard (a participant cannot write before the master starts).
+  const auth = await requireSessionMember(sessionId, user.id);
+  assertSessionWritable(auth);
+  assertSessionStarted({ ...auth, isOwner: auth.createdBy === user.id });
+
+  // Did this cupper already have a submitted evaluation? Needed to detect the
+  // submit that flips group results to visible (see touchOnResultsVisible).
+  const hadSubmittedBefore = auth.isGroup
+    ? (await prisma.evaluation.count({
+        where: { cupperId: user.id, isDraft: false, sessionSample: { sessionId } },
+      })) > 0
+    : true;
 
   // Single batched update instead of one round-trip per draft eval. The aggregate
   // trigger is FOR EACH ROW, so it still fires once per updated evaluation.
-  await prisma.evaluation.updateMany({
+  // The write is conditional on the session still being open (F-grupal-6): a
+  // close or a passed `closesAt` that lands between the guard above and this
+  // statement cannot be raced past.
+  const now = new Date();
+  const res = await prisma.evaluation.updateMany({
     where: {
       isDraft: true,
       cupperId: user.id,
-      sessionSample: { sessionId },
+      sessionSample: {
+        sessionId,
+        session: {
+          status: { not: "closed" },
+          OR: [{ closesAt: null }, { closesAt: { gte: now } }],
+        },
+      },
     },
-    data: { isDraft: false, submittedAt: new Date() },
+    data: { isDraft: false, submittedAt: now },
   });
+
+  if (res.count === 0) {
+    // Zero rows is normal (double click, nothing left in draft). Only a session
+    // that closed or expired meanwhile is an error.
+    const fresh = await prisma.cuppingSession.findUnique({
+      where: { id: sessionId },
+      select: { status: true, closesAt: true },
+    });
+    if (!fresh || isSessionExpired(fresh)) throw new Error("session_closed");
+  } else if (auth.isGroup) {
+    await touchOnResultsVisible(sessionId, hadSubmittedBefore);
+  }
 
   await maybeAutoCloseSoloSession(sessionId, user.id);
 
@@ -42,6 +76,31 @@ export async function submitAllEvaluations(sessionId: string) {
   revalidatePath(`/es/app/sessions/${sessionId}/results`);
   revalidatePath(`/en/app/sessions/${sessionId}/results`);
   return { ok: true };
+}
+
+// Group results become visible to participants when every participant row has
+// a submitted cupper (canViewGroupResults.allSubmitted). Non-owners no longer
+// receive peers' evaluation rows over Realtime (S8-01), so the session row is
+// touched ONCE, on the submit that flips that rule, and the existing
+// `cupping_sessions` UPDATE subscription tells the open results screens.
+// One bump per visibility flip: no hot row, no refresh storm.
+async function touchOnResultsVisible(sessionId: string, hadSubmittedBefore: boolean) {
+  const [participantCount, submittedCuppers] = await Promise.all([
+    prisma.sessionParticipant.count({ where: { sessionId } }),
+    prisma.evaluation.groupBy({
+      by: ["cupperId"],
+      where: { isDraft: false, sessionSample: { sessionId } },
+    }),
+  ]);
+  const after = submittedCuppers.length;
+  const before = hadSubmittedBefore ? after : after - 1;
+  if (participantCount > 0 && after >= participantCount && before < participantCount) {
+    await prisma.cuppingSession.update({
+      where: { id: sessionId },
+      data: { updatedAt: new Date() },
+      select: { id: true },
+    });
+  }
 }
 
 // Solo sessions have no group "maestro" close flow — before this existed they
@@ -79,55 +138,6 @@ async function maybeAutoCloseSoloSession(sessionId: string, userId: string) {
   // Same routine as the owner close and the cron: reveal → history. Solo
   // sessions never email. Idempotent, so two concurrent submits can't double-run.
   await closeSessionInternal(sessionId, { reason: "solo_auto", emails: "skip" });
-}
-
-// ─── Submit a single sample's evaluation (triggers aggregate) ─────────────────
-export async function submitSampleEvaluation(sessionSampleId: string) {
-  const user = await requireUser();
-
-  const evaluation = await prisma.evaluation.findUnique({
-    where: {
-      sessionSampleId_cupperId: {
-        sessionSampleId,
-        cupperId: user.id,
-      },
-    },
-    select: { id: true, isDraft: true, sessionSample: { select: { sessionId: true } } },
-  });
-
-  if (!evaluation || !evaluation.isDraft) return { ok: true };
-
-  await prisma.evaluation.update({
-    where: { id: evaluation.id },
-    data: { isDraft: false, submittedAt: new Date() },
-  });
-
-  revalidatePath(`/app/sessions/${evaluation.sessionSample.sessionId}/results`);
-  return { ok: true };
-}
-
-// ─── Submit an evaluation (set isDraft=false) ─────────────────────────────────
-export async function submitEvaluation(evaluationId: string) {
-  const user = await requireUser();
-
-  const evaluation = await prisma.evaluation.findUnique({
-    where: { id: evaluationId },
-    select: { id: true, cupperId: true, sessionSample: { select: { sessionId: true } } },
-  });
-
-  if (!evaluation || evaluation.cupperId !== user.id) {
-    throw new Error("not_found_or_forbidden");
-  }
-
-  await prisma.evaluation.update({
-    where: { id: evaluationId },
-    data: { isDraft: false, submittedAt: new Date() },
-  });
-
-  revalidatePath(
-    `/app/sessions/${evaluation.sessionSample.sessionId}/results`,
-  );
-  return { ok: true };
 }
 
 // ─── Start a session (maestro moves past invite screen) ───────────────────────
@@ -267,30 +277,22 @@ export async function resendCloseEmails(sessionId: string) {
   return { ok: true as const };
 }
 
-// ─── Reveal a sample (link coffee identity) ───────────────────────────────────
-export async function revealSample(sampleId: string, coffeeId?: string) {
-  const user = await requireUser();
-  const { sessionId } = await requireSampleOwner(sampleId, user.id);
+// ─── Reveal a sample (show its already-linked coffee identity) ────────────────
+// Never takes a coffee id: linking a coffee after the fact goes through
+// updateSampleMetadata. Closed/expired sessions are read-only (F-sesiones-2).
+export async function revealSample(sampleId: string): Promise<ActionResult> {
+  return run("revealSample", async () => {
+    const user = await requireUser();
+    const auth = await requireSampleOwner(sampleId, user.id);
+    assertSessionWritable(auth);
 
-  // Never trust a client-supplied coffee id: re-validate it against the same
-  // usable-coffee rule the wizard and addSessionSample enforce, otherwise an
-  // owner could attach ANY user's private coffee to their sample and have its
-  // origin data rendered on results / written into coffee history.
-  if (coffeeId) {
-    const usable = await prisma.coffee.findFirst({
-      where: { id: coffeeId, ...usableCoffeeWhere(user.id) },
-      select: { id: true },
+    await prisma.sessionSample.update({
+      where: { id: sampleId },
+      data: { revealed: true },
     });
-    if (!usable) throw new Error("coffee_not_usable");
-  }
 
-  await prisma.sessionSample.update({
-    where: { id: sampleId },
-    data: { revealed: true, ...(coffeeId ? { coffeeId } : {}) },
+    revalidatePath(`/app/sessions/${auth.sessionId}/results`);
   });
-
-  revalidatePath(`/app/sessions/${sessionId}/results`);
-  return { ok: true };
 }
 
 // ─── Complete onboarding for a guest (anonymous) user ────────────────────────
@@ -333,7 +335,7 @@ export async function joinViaToken(token: string, locale: string = "es") {
       useCount: true,
       expiresAt: true,
       session: {
-        select: { startedAt: true, status: true, createdBy: true, isAsync: true },
+        select: { startedAt: true, status: true, closesAt: true, createdBy: true, isAsync: true },
       },
     },
   });
@@ -345,7 +347,7 @@ export async function joinViaToken(token: string, locale: string = "es") {
 
   const { sessionId, session } = invite;
   const base = `/${locale}/app/sessions/${sessionId}`;
-  const closed = session.status === "closed";
+  const closed = isSessionExpired(session, new Date());
   const destination = closed
     ? `${base}/results`
     : !session.startedAt && !session.isAsync

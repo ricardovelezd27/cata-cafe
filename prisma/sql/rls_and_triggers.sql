@@ -1251,3 +1251,295 @@ DROP POLICY IF EXISTS "coffees_write" ON coffees;
 CREATE POLICY "coffees_write" ON coffees
   FOR ALL USING ("deletedAt" IS NULL AND "createdBy" = auth.uid()::text);
 -- ============================================================================
+
+-- ============================================================================
+-- PHASE 21 (2026-11-10): closed / expired means read-only IN SQL TOO, and a
+-- participant can no longer read a peer's submitted rows through the API.
+-- Spec: docs/prompts/S8-flows/S8-01-rls-closed-readonly.md (F-sesiones-1,
+-- F-resultados-1, F-sesiones-13/14/15). Apply via runbook §10 — SQL FIRST,
+-- then deploy the app. The Supabase project is production.
+--
+-- Why: NEXT_PUBLIC_SUPABASE_ANON_KEY is public and every signed-in user
+-- (guests included) holds an `authenticated` JWT. The Phase 1/2 policies were
+-- written for a browser that talked to PostgREST directly, which this app
+-- stopped doing long ago (every write is a server action running through
+-- Prisma as `postgres`, which bypasses RLS). What is left is only attack
+-- surface that bypasses lib/sessionAuth.ts:
+--   * evals_own (FOR ALL, no membership test, no closed test): any user could
+--     INSERT/UPDATE/DELETE evaluations for ANY sample, before or after close.
+--   * sessions_write / samples_write / participants_write: the owner could
+--     PATCH `status`, samples or the roster directly, past the closed guard.
+--   * phys_all / ext_all: same, for the owner-only per-sample tables.
+--   * evals_submitted_participant + agg_select: a participant could read every
+--     peer's submitted evaluation (names via cupperId, raw scores) and the
+--     hidden community score while results were not yet visible.
+--   * samples_select exposes session_samples."coffeeId" (blind coding): a
+--     participant could read which coffee an unrevealed sample is.
+--   * invites_write (FOR ALL, no session check): any user could mint an invite
+--     for ANY session id and redeem it (F-sesiones-14).
+--   * profiles_update (no column limit): a user could set their own
+--     "analyticsAccess" and open Insights (F-sesiones-15).
+-- Exploitability of these over PostgREST was read from the policies, not
+-- demonstrated against production.
+--
+-- Verified 2026-11-10 that NO browser code reads or writes these tables:
+--   grep -rnE '\.(from|rpc)\(\s*["'"'"'`]' app components hooks lib scripts
+--   → no matches. Browser supabase-js is used only for signInAnonymously and
+--   three Realtime clients (CupClient, ResultsClient, WaitingRoomClient). Those
+--   subscribe to `evaluations` (owner only after this phase) and
+--   `cupping_sessions`; neither the SELECT policies nor the publication change.
+--   `session_samples` and `aggregate_scores` are NOT in supabase_realtime.
+--
+-- What it does (see the statements; all inside one transaction):
+--   1. Two helpers, is_session_owner() and can_view_group_results() (the SQL
+--      twin of canViewGroupResults in lib/sessionState.ts: keep them in step).
+--      SECURITY DEFINER, pinned search_path, EXECUTE revoked from PUBLIC/anon and
+--      kept for `authenticated` (PHASE 18b rule: policy helpers run as the
+--      querying role).
+--   2. evaluations: own rows + owner's submitted rows, SELECT only.
+--   3. aggregate_scores: owner always; participant only once group results are
+--      visible (strict `closesAt < now`, the same boundary as isSessionExpired).
+--   4. Write policies dropped on the seven session tables + session_invites +
+--      profiles; INSERT/UPDATE/DELETE/TRUNCATE revoked from anon/authenticated.
+--      Prisma (postgres) and SECURITY DEFINER triggers are unaffected.
+--   5. session_samples."coffeeId" hidden by column privileges for everyone over
+--      the API (nothing in the browser reads it). RULE: a future column added to
+--      session_samples needs `GRANT SELECT ("col") ... TO authenticated` here,
+--      or API reads of it fail.
+--
+-- Not built (architect decision): a `touch_session_on_submit` trigger. The app
+-- touches cupping_sessions."updatedAt" once, in submitAllEvaluations, on the
+-- submit that makes group results visible.
+--
+-- Pre-flight (read-only; run first, expect what is noted):
+--   -- column list must still be exactly the GRANT below (+ "coffeeId"):
+--   select column_name from information_schema.columns
+--     where table_schema='public' and table_name='session_samples' order by 1;
+--     -- expect: coffeeId, createdAt, id, label, position, referenceRank, revealed, sessionId
+--   -- live group sessions that never recorded a start would block participants
+--   -- (assertSessionStarted); list them and decide before deploying the app:
+--   select id, name from cupping_sessions
+--     where "isGroup" and not "isAsync" and status = 'active' and "startedAt" is null;
+--   -- current table privileges (Supabase default: all to anon+authenticated):
+--   select table_name, grantee, privilege_type from information_schema.role_table_grants
+--     where table_schema='public' and table_name in ('evaluations','session_samples')
+--       and grantee in ('anon','authenticated') order by 1,2,3;
+--
+-- Dry run: prisma/sql/dry-runs/phase21_dry_run.sql. It is ONE DO statement, so
+-- nothing can be applied and no transaction can be left open. Replace its three
+-- placeholders (participant uuid, owner uuid, session id) and run it: it ends in
+-- an intentional error whose message lists every check with its expected value.
+--
+-- After applying: Supabase Dashboard → Advisors → Security (no new findings),
+-- and open one group session as owner + participant to confirm the waiting
+-- room, cup and results screens still update (Realtime delivers).
+-- Rollback: the commented block at the end of this phase.
+-- ============================================================================
+BEGIN;
+
+-- Helpers. Policies run as the querying role, so both keep EXECUTE for
+-- `authenticated` (PHASE 18b rule) and lose it for PUBLIC and anon.
+CREATE OR REPLACE FUNCTION public.is_session_owner(p_session_id text)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM cupping_sessions
+    WHERE id = p_session_id AND "createdBy" = auth.uid()::text
+  );
+$$;
+
+-- SQL twin of canViewGroupResults (lib/sessionState.ts). Keep the two in step.
+-- "closesAt" is TIMESTAMP(3) holding UTC, hence now() AT TIME ZONE 'utc'.
+CREATE OR REPLACE FUNCTION public.can_view_group_results(p_session_id text)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM cupping_sessions cs
+    WHERE cs.id = p_session_id
+      AND cs."isGroup"
+      AND (
+        cs."createdBy" = auth.uid()::text
+        OR cs.status = 'closed'
+        OR (cs."closesAt" IS NOT NULL AND cs."closesAt" < (now() AT TIME ZONE 'utc'))
+        OR (
+          (SELECT count(*) FROM session_participants sp WHERE sp."sessionId" = cs.id) > 0
+          AND (
+            SELECT count(DISTINCT e."cupperId")
+            FROM evaluations e
+            JOIN session_samples ss ON ss.id = e."sessionSampleId"
+            WHERE ss."sessionId" = cs.id AND e."isDraft" = false
+          ) >= (SELECT count(*) FROM session_participants sp WHERE sp."sessionId" = cs.id)
+        )
+      )
+  );
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.is_session_owner(text) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.can_view_group_results(text) FROM PUBLIC, anon;
+GRANT  EXECUTE ON FUNCTION public.is_session_owner(text) TO authenticated;
+GRANT  EXECUTE ON FUNCTION public.can_view_group_results(text) TO authenticated;
+
+-- evaluations: a cupper reads their own rows; the session owner reads
+-- submitted rows (live "submitted" counter). Nobody reads a peer's row.
+DROP POLICY IF EXISTS "evals_own" ON evaluations;
+DROP POLICY IF EXISTS "evals_submitted_participant" ON evaluations;
+DROP POLICY IF EXISTS "evals_select_own" ON evaluations;
+DROP POLICY IF EXISTS "evals_select_owner" ON evaluations;
+CREATE POLICY "evals_select_own" ON evaluations
+  FOR SELECT TO authenticated
+  USING ("cupperId" = auth.uid()::text);
+CREATE POLICY "evals_select_owner" ON evaluations
+  FOR SELECT TO authenticated
+  USING (
+    "isDraft" = false
+    AND is_session_owner(COALESCE(
+      "sessionId",
+      (SELECT ss."sessionId" FROM session_samples ss WHERE ss.id = "sessionSampleId")
+    ))
+  );
+
+-- aggregate_scores: owner always; a participant only once group results are visible.
+DROP POLICY IF EXISTS "agg_select" ON aggregate_scores;
+CREATE POLICY "agg_select" ON aggregate_scores
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM session_samples ss
+      WHERE ss.id = aggregate_scores."sessionSampleId"
+        AND (
+          is_session_owner(ss."sessionId")
+          OR (is_session_participant(ss."sessionId") AND can_view_group_results(ss."sessionId"))
+        )
+    )
+  );
+
+-- Write policies go: every write is a server action through Prisma (postgres).
+-- The SELECT policies stay (Realtime evaluates them).
+DROP POLICY IF EXISTS "sessions_write" ON cupping_sessions;
+DROP POLICY IF EXISTS "samples_write" ON session_samples;
+DROP POLICY IF EXISTS "participants_write" ON session_participants;
+
+DROP POLICY IF EXISTS "phys_all" ON physical_evaluations;
+DROP POLICY IF EXISTS "phys_select" ON physical_evaluations;
+CREATE POLICY "phys_select" ON physical_evaluations
+  FOR SELECT TO authenticated
+  USING ("evaluatedBy" = auth.uid()::text);
+
+DROP POLICY IF EXISTS "ext_all" ON extrinsic_data;
+DROP POLICY IF EXISTS "ext_select" ON extrinsic_data;
+CREATE POLICY "ext_select" ON extrinsic_data
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM session_samples ss
+      JOIN cupping_sessions cs ON cs.id = ss."sessionId"
+      WHERE ss.id = extrinsic_data."sessionSampleId"
+        AND cs."createdBy" = auth.uid()::text
+    )
+  );
+
+-- session_invites (F-sesiones-14): the FOR ALL policy let any signed-in user
+-- mint an invite for any session. Owner keeps reading their own invites.
+DROP POLICY IF EXISTS "invites_write" ON session_invites;
+DROP POLICY IF EXISTS "invites_select_own" ON session_invites;
+CREATE POLICY "invites_select_own" ON session_invites
+  FOR SELECT TO authenticated
+  USING ("createdBy" = auth.uid()::text);
+
+-- profiles (F-sesiones-15): the UPDATE policy had no column limit, so a user
+-- could set their own "analyticsAccess". Every profile write is server-side
+-- (requireUser upserts through Prisma; handle_new_user is SECURITY DEFINER),
+-- so profiles_insert is not needed either.
+DROP POLICY IF EXISTS "profiles_update" ON profiles;
+DROP POLICY IF EXISTS "profiles_insert" ON profiles;
+
+-- Belt and braces: no API role can write these tables whatever a future
+-- policy says. Prisma (postgres) and SECURITY DEFINER triggers are unaffected.
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON
+  evaluations, aggregate_scores, cupping_sessions, session_samples,
+  session_participants, physical_evaluations, extrinsic_data,
+  session_invites, profiles
+FROM anon, authenticated;
+
+-- Blind coding (F-sesiones-13): participants could read the coffee id of an
+-- unrevealed sample. Column privileges are per role, so the column is hidden
+-- from the API for everyone; the app reads it through Prisma.
+-- RULE: a new column on session_samples needs a GRANT SELECT (col) here, or
+-- API reads of it fail. List every column of the table except "coffeeId".
+REVOKE SELECT ON session_samples FROM anon, authenticated;
+GRANT SELECT (id, "sessionId", position, label, revealed, "referenceRank", "createdAt")
+  ON session_samples TO authenticated;
+
+COMMIT;
+
+-- Rollback (restores the policies and grants exactly as they were before this
+-- phase; run it in one transaction):
+--   BEGIN;
+--   GRANT INSERT, UPDATE, DELETE, TRUNCATE ON
+--     evaluations, aggregate_scores, cupping_sessions, session_samples,
+--     session_participants, physical_evaluations, extrinsic_data,
+--     session_invites, profiles
+--   TO anon, authenticated;
+--   GRANT SELECT ON session_samples TO anon, authenticated;
+--   DROP POLICY IF EXISTS "evals_select_own" ON evaluations;
+--   DROP POLICY IF EXISTS "evals_select_owner" ON evaluations;
+--   CREATE POLICY "evals_own" ON evaluations
+--     FOR ALL USING ("cupperId" = auth.uid()::text);
+--   CREATE POLICY "evals_submitted_participant" ON evaluations
+--     FOR SELECT USING (
+--       "isDraft" = false
+--       AND is_session_participant((
+--         SELECT ss."sessionId" FROM session_samples ss
+--         WHERE ss.id = "sessionSampleId"
+--       ))
+--     );
+--   DROP POLICY IF EXISTS "agg_select" ON aggregate_scores;
+--   CREATE POLICY "agg_select" ON aggregate_scores
+--     FOR SELECT USING (
+--       is_session_participant((
+--         SELECT ss."sessionId" FROM session_samples ss
+--         WHERE ss.id = aggregate_scores."sessionSampleId"
+--       ))
+--     );
+--   CREATE POLICY "sessions_write" ON cupping_sessions
+--     FOR ALL USING ("createdBy" = auth.uid()::text);
+--   CREATE POLICY "samples_write" ON session_samples
+--     FOR ALL USING (
+--       EXISTS (
+--         SELECT 1 FROM cupping_sessions
+--         WHERE id = session_samples."sessionId"
+--           AND "createdBy" = auth.uid()::text
+--       )
+--     );
+--   CREATE POLICY "participants_write" ON session_participants
+--     FOR ALL USING (
+--       EXISTS (
+--         SELECT 1 FROM cupping_sessions
+--         WHERE id = session_participants."sessionId"
+--           AND "createdBy" = auth.uid()::text
+--       )
+--     );
+--   DROP POLICY IF EXISTS "phys_select" ON physical_evaluations;
+--   CREATE POLICY "phys_all" ON physical_evaluations
+--     FOR ALL USING ("evaluatedBy" = auth.uid()::text);
+--   DROP POLICY IF EXISTS "ext_select" ON extrinsic_data;
+--   CREATE POLICY "ext_all" ON extrinsic_data
+--     FOR ALL USING (
+--       EXISTS (
+--         SELECT 1 FROM session_samples ss
+--         JOIN cupping_sessions cs ON cs.id = ss."sessionId"
+--         WHERE ss.id = extrinsic_data."sessionSampleId"
+--           AND cs."createdBy" = auth.uid()::text
+--       )
+--     );
+--   DROP POLICY IF EXISTS "invites_select_own" ON session_invites;
+--   CREATE POLICY "invites_write" ON session_invites
+--     FOR ALL USING ("createdBy" = auth.uid()::text);
+--   CREATE POLICY "profiles_update" ON profiles
+--     FOR UPDATE USING (id = auth.uid()::text);
+--   CREATE POLICY "profiles_insert" ON profiles
+--     FOR INSERT WITH CHECK (id = auth.uid()::text);
+--   -- the two helpers are harmless to keep; to drop them, first drop the
+--   -- policies above that call them (already done), then:
+--   --   DROP FUNCTION public.is_session_owner(text);
+--   --   DROP FUNCTION public.can_view_group_results(text);
+--   COMMIT;
+-- ============================================================================

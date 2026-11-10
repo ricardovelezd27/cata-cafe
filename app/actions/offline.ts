@@ -3,8 +3,9 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { requireSampleMember } from "@/lib/sessionAuth";
-// NOTE: no assertSessionWritable throw here — a closed session must not burn
-// the replay's retry budget; it returns "discarded" instead (see below).
+import { isSessionExpired } from "@/lib/sessionState";
+// NOTE: no assertSessionWritable throw here — a closed or expired session must
+// not burn the replay's retry budget; it returns "discarded" instead (see below).
 import {
   computeEvaluationDerived,
   moduleKeyForFormat,
@@ -32,20 +33,25 @@ export async function syncEvaluation(input: {
   data: Record<string, unknown>;
   cupsPerSample: number;
   force?: boolean;
-}): Promise<{ status: "synced" | "conflict" | "discarded" }> {
+}): Promise<{ status: "synced" | "conflict" | "discarded" | "pending" }> {
   const user = await requireUser({ skipProfileUpsert: true });
   // Same authorization as the live upsertEvaluation path: session member only.
   // Also resolves the sample's real sessionId in one round-trip.
-  const { sessionId, status, cupsPerSample, format, referenceSampleId } = await requireSampleMember(
-    input.sessionSampleId,
-    user.id,
-  );
+  const auth = await requireSampleMember(input.sessionSampleId, user.id);
+  const { sessionId, cupsPerSample, format, referenceSampleId } = auth;
 
-  // The session closed while this draft was offline. Its submitted data
+  // The session closed (or its `closesAt` passed) while this draft was offline. Its submitted data
   // stands; a stale local edit can no longer be applied (aggregates and
   // history are final). Report "discarded" so the client clears the pending
   // flag instead of retrying forever.
-  if (status === "closed") return { status: "discarded" };
+  if (isSessionExpired(auth)) return { status: "discarded" };
+
+  // A participant's draft written before the master started a live session
+  // (the cup screen normally prevents it): keep it pending on the device, never
+  // discard it. The hook maps "pending" to a failed replay without retries.
+  if (auth.isGroup && !auth.isAsync && !auth.startedAt && !auth.isOwner) {
+    return { status: "pending" };
+  }
 
   const existing = await prisma.evaluation.findUnique({
     where: {

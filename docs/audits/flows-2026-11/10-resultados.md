@@ -18,6 +18,8 @@ After a cupping, owner, participants, guests and the super-admin lens all land o
 
 ### F-resultados-1 · A participant can read other cuppers' evaluations, hidden community scores and the coffee through the public key · severity: P1 · status: confirms-board(Con la clave pública un participante lee evaluaciones ajenas y el café)
 
+- **Status** — Fixed in S8-01 (PR #68): PHASE 21 SQL (owner applies, runbook §10) limits `evaluations` to own rows plus the owner's submitted rows and hides `aggregate_scores` until group results are visible; non-owners get a generic refresh chip instead of peers' rows over Realtime.
+
 - **Problem** — `prisma/sql/rls_and_triggers.sql:134` creates `evals_submitted_participant` (`FOR SELECT USING ("isDraft" = false AND is_session_participant(...))`), and `:156` creates `agg_select` with only `is_session_participant(...)`. No later block drops or narrows them; PHASE 18b only re-grants EXECUTE on the helper. So any signed-in participant (guests included) can query the REST endpoint with their own JWT and get every submitted evaluation of the session (`cupperId`, raw data, `nota_express`) and `aggregate_scores` while the page shows "communityPending". `ResultsClient.tsx:379-414` also subscribes to raw `evaluations` UPDATE rows, so the app itself relies on that access.
 - **Implication** — Security and trust. A cupper can see peers' scores before committing (anchoring), the owner's blind cupping is undone, and identities are linked to scores. It affects every group session, but only someone who opens dev tools will notice.
 - **Fix** — Participants can read only their own evaluation rows. `aggregate_scores` is readable by non-owners only under the same condition as `canViewGroupResults` (closed, all submitted, or `closesAt` passed). The results "nuevos envíos" badge listens to a source with no per-cupper data. **Acceptance:** with a participant JWT, `select * from evaluations` returns only own rows; `aggregate_scores` returns nothing while the community is hidden; owner and closed-session reads still work; the realtime badge still fires. **Size:** M (SQL plus runbook section, applied manually).
@@ -38,6 +40,8 @@ After a cupping, owner, participants, guests and the super-admin lens all land o
 - **Invariant check** — Restores "owner-only physical/extrinsic" and page/PDF parity; does not touch scoring.
 
 ### F-resultados-3 · Two forgotten server actions let a cupper submit an evaluation after the session is closed · severity: P2 · status: new
+
+- **Status** — Fixed in S8-01 (PR #68): `submitSampleEvaluation` and `submitEvaluation` deleted, guarded by `tests/useServerExports.test.ts`.
 
 - **Problem** — `app/actions/community.ts:85-103` (`submitSampleEvaluation`) and `:110-125` (`submitEvaluation`) are exported `"use server"` functions with no `requireSession*`/`assertSessionWritable`, no `run()` wrapper, and no caller anywhere in `app/`, `components/`, `hooks/` or `lib/`. They flip the caller's own draft to `isDraft: false`. Unlike `submitAllEvaluations` (`:24-26`, guarded), they work on a closed session, and the flip re-fires `trg_recompute_aggregate`.
 - **Implication** — Scoring correctness and trust. A participant who left a draft at close can add it afterwards with a hand-made POST. The community score and ranking change after the close emails went out. A normal user cannot reach this, so it is rare, but it breaks "closed = read-only".
