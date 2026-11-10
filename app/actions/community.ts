@@ -415,11 +415,19 @@ export async function joinViaToken(token: string, locale: string = "es") {
     const fresh = await tx.sessionInvite.update({
       where: { id: invite.id },
       data: { useCount: { increment: 1 } },
-      select: { useCount: true, maxUses: true },
+      select: {
+        useCount: true,
+        maxUses: true,
+        active: true,
+        session: { select: { entriesLocked: true } },
+      },
     });
     // Re-check on the locked row: a concurrent redemption may have taken the
-    // last seat between the read above and this increment. Throwing rolls the
-    // increment back.
+    // last seat, the owner may have regenerated the link or closed entries
+    // between the read above and this increment. Throwing rolls the
+    // increment back. (Only newcomers reach here; members/owner redirected.)
+    if (!fresh.active) throw new Error("token_expired");
+    if (fresh.session.entriesLocked) throw new Error("entries_closed");
     if (fresh.maxUses !== null && fresh.useCount > fresh.maxUses) {
       throw new Error("token_exhausted");
     }
