@@ -572,12 +572,9 @@
     "inviteRegenerateTitle": "¿Regenerar el enlace?",
     "inviteRegenerateBody": "El enlace y el QR actuales dejarán de funcionar. Quienes ya entraron siguen dentro.",
     "inviteRegenerateConfirm": "Regenerar",
-    "inviteRegenerateError": "No se pudo regenerar el enlace.",
-    "inviteError": "No se pudo obtener el enlace de invitación.",
     "entriesClose": "Cerrar entradas",
     "entriesOpen": "Reabrir entradas",
-    "entriesClosedNote": "Entradas cerradas: solo entran quienes ya eran parte.",
-    "entriesError": "No se pudo cambiar las entradas."
+    "entriesClosedNote": "Entradas cerradas: solo entran quienes ya eran parte."
   },
   "results": {
     "title": "Resultados de la Sesión",

@@ -572,12 +572,9 @@
     "inviteRegenerateTitle": "Regenerate the link?",
     "inviteRegenerateBody": "The current link and QR will stop working. People who already joined stay in.",
     "inviteRegenerateConfirm": "Regenerate",
-    "inviteRegenerateError": "Could not regenerate the link.",
-    "inviteError": "Could not get the invite link.",
     "entriesClose": "Close entries",
     "entriesOpen": "Reopen entries",
-    "entriesClosedNote": "Entries closed: only people who were already part can enter.",
-    "entriesError": "Could not change entries."
+    "entriesClosedNote": "Entries closed: only people who were already part can enter."
   },
   "results": {
     "title": "Session Results",
