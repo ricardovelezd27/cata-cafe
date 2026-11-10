@@ -551,7 +551,7 @@
       "intro": "Esto es lo que pasará con lo que hay en tu cuenta:",
       "loading": "Revisando tu cuenta…",
       "impactSessionsDeleted": "Se eliminan {n} sesiones que solo tenían tus datos.",
-      "impactSessionsKept": "Se conservan {n} sesiones con datos de otros catadores, cerradas y sin tu nombre.",
+      "impactSessionsKept": "Se conservan {n} sesiones a las que se unieron o en las que evaluaron otros catadores, cerradas y sin tu nombre.",
       "impactEvaluations": "{n} evaluaciones tuyas quedan anónimas en las sesiones donde participaste.",
       "impactCoffees": "Se anonimizan {n} cafés que creaste.",
       "impactGroupsKept": "{n} grupos con otros miembros siguen existiendo sin tu nombre; nadie podrá administrarlos.",

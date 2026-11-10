@@ -17,6 +17,10 @@ export type OwnedSessionFact = {
   status: string;
   /** Evaluations (drafts included) by anyone other than the person. */
   otherCupperEvaluations: number;
+  /** Participant rows of OTHER people who joined (status not "invited":
+   *  "joined", "owner" or anything unexpected). Invited-only rows do not
+   *  count: nobody has taken part yet. */
+  otherJoinedParticipants: number;
 };
 
 export type ParticipationFact = {
@@ -74,9 +78,13 @@ export type DeletionPlan =
     };
 
 /** A session is the person's alone (and is deleted) when it is solo, or a
- *  group session where nobody else has written an evaluation. */
+ *  group session where nobody else has written an evaluation AND nobody else
+ *  has joined (a waiting room or an async session open for joins has people
+ *  in it before anyone evaluates; their rows would cascade away unannounced).
+ *  Otherwise it is kept for them: closed first, then reassigned. */
 export function isOwnSessionDeletable(s: OwnedSessionFact): boolean {
-  return !s.isGroup || s.otherCupperEvaluations === 0;
+  if (!s.isGroup) return true;
+  return s.otherCupperEvaluations === 0 && s.otherJoinedParticipants === 0;
 }
 
 export function planAccountDeletion(f: DeletionFixture): DeletionPlan {

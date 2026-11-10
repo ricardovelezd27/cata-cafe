@@ -57,6 +57,18 @@ export async function loadDeletionFixture(
     }
   }
 
+  // Other people who JOINED the person's sessions (status "joined"/"owner";
+  // anything but "invited" counts, so an unexpected value keeps the session).
+  const joinedBySession = new Map<string, number>();
+  if (ownedIds.length > 0) {
+    const joined = await db.sessionParticipant.groupBy({
+      by: ["sessionId"],
+      where: { sessionId: { in: ownedIds }, userId: { not: userId }, status: { not: "invited" } },
+      _count: { _all: true },
+    });
+    for (const j of joined) joinedBySession.set(j.sessionId, j._count._all);
+  }
+
   // Members that are someone else: linked to another id, or pending by an
   // address that is not the person's own.
   const groupIds = ownedGroups.map((g) => g.id);
@@ -83,6 +95,7 @@ export async function loadDeletionFixture(
       isGroup: s.isGroup,
       status: s.status,
       otherCupperEvaluations: othersBySession.get(s.id) ?? 0,
+      otherJoinedParticipants: joinedBySession.get(s.id) ?? 0,
     })),
     participations,
     evaluationSessionIds: evaluations.map((e) => e.sessionSample.sessionId),

@@ -76,12 +76,15 @@ export async function deleteAccountData(user: {
       const others = await tx.evaluation.count({
         where: { sessionSample: { sessionId }, cupperId: { not: userId } },
       });
+      const joined = await tx.sessionParticipant.count({
+        where: { sessionId, userId: { not: userId }, status: { not: "invited" } },
+      });
       const row = await tx.cuppingSession.findFirst({
         where: { id: sessionId, createdBy: userId },
         select: { isGroup: true },
       });
       if (!row) continue; // already gone
-      if (row.isGroup && others > 0) throw new Error("conflict");
+      if (row.isGroup && (others > 0 || joined > 0)) throw new Error("conflict");
       // The deleteSession path: history detached first, same transaction.
       await detachCoffeeHistoryForSession(tx, sessionId);
       await tx.cuppingSession.delete({ where: { id: sessionId } });

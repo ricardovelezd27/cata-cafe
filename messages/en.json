@@ -551,7 +551,7 @@
       "intro": "This is what will happen to what is in your account:",
       "loading": "Checking your account…",
       "impactSessionsDeleted": "{n} sessions that only held your data are deleted.",
-      "impactSessionsKept": "{n} sessions with other cuppers' data are kept, closed and without your name.",
+      "impactSessionsKept": "{n} sessions other cuppers joined or evaluated in are kept, closed and without your name.",
       "impactEvaluations": "{n} of your evaluations stay, anonymized, in the sessions you took part in.",
       "impactCoffees": "{n} coffees you created are anonymized.",
       "impactGroupsKept": "{n} groups with other members stay without your name; nobody will be able to manage them.",

@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   deleteConfirmationWord,
@@ -44,7 +46,7 @@ describe("planAccountDeletion", () => {
   it("deletes a solo session (and the evaluations in it)", () => {
     const p = okPlan(
       fixture({
-        ownedSessions: [{ id: "solo", isGroup: false, status: "closed", otherCupperEvaluations: 0 }],
+        ownedSessions: [{ id: "solo", isGroup: false, status: "closed", otherCupperEvaluations: 0, otherJoinedParticipants: 0 }],
         participations: [{ sessionId: "solo", excludedFromResults: false }],
         evaluationSessionIds: ["solo", "solo"],
       }),
@@ -57,22 +59,55 @@ describe("planAccountDeletion", () => {
     expect(p.evaluationsAnonymized).toBe(0);
   });
 
-  it("deletes a group session nobody else evaluated in", () => {
+  it("deletes a group session nobody else evaluated in or joined (invited-only rows do not count)", () => {
     const p = okPlan(
       fixture({
-        ownedSessions: [{ id: "g0", isGroup: true, status: "active", otherCupperEvaluations: 0 }],
+        ownedSessions: [{ id: "g0", isGroup: true, status: "active", otherCupperEvaluations: 0, otherJoinedParticipants: 0 }],
       }),
     );
     expect(p.deleteSessionIds).toEqual(["g0"]);
     expect(p.closeBeforeDelete).toEqual([]);
   });
 
+  it("keeps a group session others JOINED but nobody evaluated yet, closing it first", () => {
+    const p = okPlan(
+      fixture({
+        ownedSessions: [
+          { id: "waiting", isGroup: true, status: "active", otherCupperEvaluations: 0, otherJoinedParticipants: 2 },
+        ],
+      }),
+    );
+    expect(p.deleteSessionIds).toEqual([]);
+    expect(p.keepSessionIds).toEqual(["waiting"]);
+    expect(p.closeBeforeDelete).toEqual(["waiting"]);
+    expect(impactOf(p).sessionsKept).toBe(1);
+  });
+
+  it("the loader counts other participants except invited-only rows", () => {
+    const src = readFileSync(join(process.cwd(), "lib", "accountDeletion", "load.ts"), "utf8");
+    expect(src).toMatch(
+      /sessionParticipant\.groupBy\(\{[\s\S]*?userId: \{ not: userId \}, status: \{ not: "invited" \}/,
+    );
+  });
+
+  it("deletes a solo session regardless of the participant counts", () => {
+    const p = okPlan(
+      fixture({
+        ownedSessions: [
+          { id: "solo", isGroup: false, status: "active", otherCupperEvaluations: 0, otherJoinedParticipants: 0 },
+        ],
+      }),
+    );
+    expect(p.deleteSessionIds).toEqual(["solo"]);
+    expect(p.keepSessionIds).toEqual([]);
+  });
+
   it("keeps a shared session, closes it first when live, and reassigns the owner's rows", () => {
     const p = okPlan(
       fixture({
         ownedSessions: [
-          { id: "live", isGroup: true, status: "active", otherCupperEvaluations: 3 },
-          { id: "done", isGroup: true, status: "closed", otherCupperEvaluations: 5 },
+          { id: "live", isGroup: true, status: "active", otherCupperEvaluations: 3, otherJoinedParticipants: 0 },
+          { id: "done", isGroup: true, status: "closed", otherCupperEvaluations: 5, otherJoinedParticipants: 0 },
         ],
         participations: [
           { sessionId: "live", excludedFromResults: false },
@@ -145,8 +180,8 @@ describe("planAccountDeletion", () => {
     const p = planAccountDeletion(
       fixture({
         ownedSessions: [
-          { id: "a", isGroup: false, status: "closed", otherCupperEvaluations: 0 },
-          { id: "b", isGroup: true, status: "closed", otherCupperEvaluations: 2 },
+          { id: "a", isGroup: false, status: "closed", otherCupperEvaluations: 0, otherJoinedParticipants: 0 },
+          { id: "b", isGroup: true, status: "closed", otherCupperEvaluations: 2, otherJoinedParticipants: 0 },
         ],
         ownedGroups: [{ id: "g", otherMembers: 1 }],
         liveOwnedCoffees: 3,
