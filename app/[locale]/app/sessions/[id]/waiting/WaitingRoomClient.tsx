@@ -1,5 +1,6 @@
 "use client";
 
+import { nextPollDelayMs } from "@/lib/waitingPoll";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
 import { useRouter } from "next/navigation";
@@ -91,7 +92,7 @@ export function WaitingRoomClient({
   // True whenever the realtime channel is not actively SUBSCRIBED — drives the
   // 15s polling fallback and the "connection lost" notice below.
   const [connectionLost, setConnectionLost] = useState(false);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // The owner may pick/change the reference while people wait — same
   // cupping_sessions UPDATE stream that carries startedAt.
   const [refOrder, setRefOrder] = useState<string[]>(initialReferenceIds);
@@ -234,9 +235,26 @@ export function WaitingRoomClient({
 
     const clearPoll = () => {
       if (pollRef.current) {
-        clearInterval(pollRef.current);
+        clearTimeout(pollRef.current);
         pollRef.current = null;
       }
+    };
+
+    // One refetch, same handling as the live handler: started -> leave the
+    // room; otherwise (re)apply the synced warm-up run. checkSessionStarted
+    // stays boolean on purpose (service-worker-cached bundles call it).
+    const refetchState = async () => {
+      if (startedRef.current) return;
+      const state = await getWaitingState(sessionId);
+      if (!state) return;
+      const serverNow = parseDbTimestamp(state.serverNow);
+      if (serverNow !== null) skewRef.current = skewMs(serverNow, Date.now());
+      if (state.startedAt) {
+        clearPoll();
+        onStartedRef.current();
+        return;
+      }
+      applySyncRef.current({ warmupStartedAt: state.warmupStartedAt }, false);
     };
 
     const supabase = createBrowserClient(
@@ -281,27 +299,42 @@ export function WaitingRoomClient({
         if (status === "SUBSCRIBED") {
           setConnectionLost(false);
           clearPoll();
+          // Anything that happened while the socket was (re)connecting —
+          // the start included — is only in the row, not in a missed event.
+          void refetchState();
           return;
         }
-        // Not (or no longer) subscribed — fall back to polling every 15s so a
-        // dropped realtime connection never strands the waiting room.
+        // Not (or no longer) subscribed — fall back to polling (15 s +/- 3 s)
+        // so a dropped realtime connection never strands the waiting room.
         setConnectionLost(true);
         if (!pollRef.current) {
-          pollRef.current = setInterval(async () => {
-            const state = await getWaitingState(sessionId);
-            if (!state) return;
-            if (state.startedAt) {
-              clearPoll();
-              onStartedRef.current();
-              return;
-            }
-            applySyncRef.current({ warmupStartedAt: state.warmupStartedAt }, false);
-          }, 15000);
+          const tick = () => {
+            pollRef.current = setTimeout(async () => {
+              await refetchState();
+              // refetchState clears the poll once started; otherwise go on.
+              if (pollRef.current !== null) tick();
+            }, nextPollDelayMs());
+          };
+          tick();
         }
       },
     );
 
+    // Resume (phone unlocked, tab restored from the back-forward cache,
+    // network back): a locked phone's socket is silent, so ask the server.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refetchState();
+    };
+    const onPageShow = () => void refetchState();
+    const onOnline = () => void refetchState();
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("pageshow", onPageShow);
+    window.addEventListener("online", onOnline);
+
     return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pageshow", onPageShow);
+      window.removeEventListener("online", onOnline);
       clearPoll();
       stop();
     };
