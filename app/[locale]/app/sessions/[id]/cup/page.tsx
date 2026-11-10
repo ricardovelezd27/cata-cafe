@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { EmptyState, ButtonLink } from "@/components/ui";
+import { isSessionExpired } from "@/lib/sessionState";
 import { CupClient } from "./CupClient";
 
 // Server actions invoked from this page (closeSession → after() email fan-out
@@ -77,8 +78,9 @@ export default async function CupPage({
     notFound();
   }
 
-  // A closed session's cupping form is final — send everyone to results.
-  if (session.status === "closed") {
+  // A closed (or past-deadline) session's cupping form is final — send
+  // everyone to results at the same instant results open.
+  if (isSessionExpired(session)) {
     redirect(`/${locale}/app/sessions/${id}/results`);
   }
 

@@ -3,6 +3,7 @@ import { referencesOf } from "@/lib/referenceRules";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { isSessionExpired } from "@/lib/sessionState";
 import { WaitingRoomClient } from "./WaitingRoomClient";
 import { warmupPlayerStrings } from "@/components/warmup/playerStrings";
 
@@ -35,6 +36,7 @@ export default async function WaitingPage({
       date: true,
       isAsync: true,
       status: true,
+      closesAt: true,
       referenceSampleId: true,
       warmupExerciseId: true,
       warmupStartedAt: true,
@@ -53,7 +55,7 @@ export default async function WaitingPage({
   }
 
   // A closed session has nothing left to wait for — send everyone to results.
-  if (session.status === "closed") {
+  if (isSessionExpired(session)) {
     redirect(`/${locale}/app/sessions/${id}/results`);
   }
 
