@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/auth";
+import { requireRegisteredUser } from "@/lib/auth";
 import { withCodeRetry } from "@/lib/coffeeCode";
 import { run } from "@/lib/safeAction";
 import type { ActionResult } from "@/lib/actionResult";
@@ -38,7 +38,7 @@ export async function deleteCoffees(
   return run(
     "deleteCoffees",
     async () => {
-      const user = await requireUser();
+      const user = await requireRegisteredUser();
       const ids = idList(coffeeIds, "coffeeIds", MAX_BULK_COFFEE_DELETE);
 
       const deleted = await prisma.$transaction(async (tx) => {
@@ -102,7 +102,7 @@ export async function getCoffeeDeleteImpact(
   return run(
     "getCoffeeDeleteImpact",
     async () => {
-      const user = await requireUser();
+      const user = await requireRegisteredUser();
       const ids = idList(coffeeIds, "coffeeIds", MAX_BULK_COFFEE_DELETE);
 
       // Scoped to OWNED ids so this endpoint can never be used to probe how
@@ -156,7 +156,7 @@ export async function createCoffee(input: {
   notes?: string;
   visibility: CoffeeVisibility;
 }): Promise<{ ok: true; coffeeId: string } | { ok: false; error: string }> {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
 
   const name = input.name?.trim();
   if (!name) return { ok: false, error: "name_required" };
@@ -215,7 +215,7 @@ export async function updateCoffee(
     notes?: string;
   },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
 
   // deletedAt filter: an anonymized coffee must never be re-identified.
   const coffee = await prisma.coffee.findFirst({
@@ -263,7 +263,7 @@ export async function duplicateCoffee(
   coffeeId: string,
   locale: string = "es",
 ): Promise<{ ok: true; coffeeId: string }> {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
 
   const source = await prisma.coffee.findFirst({
     where: { id: coffeeId, AND: [usableCoffeeWhere(user.id)] },
@@ -315,7 +315,7 @@ export async function createCoffeeInvite(
   coffeeId: string,
 ): Promise<ActionResult<{ token: string }>> {
   return run("createCoffeeInvite", async () => {
-    const user = await requireUser();
+    const user = await requireRegisteredUser();
 
     const coffee = await prisma.coffee.findFirst({
       where: { id: coffeeId, deletedAt: null },
@@ -362,7 +362,7 @@ export async function createCoffeeInvite(
 // rls_and_triggers.sql PHASE 16). A private coffee rejects its outstanding
 // tokens: flipping to private instantly kills every link.
 export async function joinCoffeeViaToken(token: string, locale: string = "es") {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
 
   const invite = await prisma.coffeeInvite.findUnique({
     where: { token },
@@ -414,7 +414,7 @@ export async function revokeCoffeeShare(
   userId: string,
 ): Promise<ActionResult<void>> {
   return run("revokeCoffeeShare", async () => {
-    const user = await requireUser();
+    const user = await requireRegisteredUser();
 
     const coffee = await prisma.coffee.findFirst({
       where: { id: coffeeId, deletedAt: null },
@@ -440,7 +440,7 @@ export async function setCoffeeResultsPublished(
   published: boolean,
 ): Promise<ActionResult<{ resultsPublished: boolean }>> {
   return run("setCoffeeResultsPublished", async () => {
-    const user = await requireUser();
+    const user = await requireRegisteredUser();
 
     const coffee = await prisma.coffee.findFirst({
       where: { id: coffeeId, deletedAt: null },
@@ -477,7 +477,7 @@ export async function setCoffeeVisibility(
   visibility: CoffeeVisibility,
 ): Promise<ActionResult<{ visibility: CoffeeVisibility }>> {
   return run("setCoffeeVisibility", async () => {
-    const user = await requireUser();
+    const user = await requireRegisteredUser();
     // Public POST endpoint — never trust the caller's string.
     if (!isCoffeeVisibility(visibility)) throw new Error("invalid_input");
 

@@ -27,3 +27,14 @@ export function stripLocale(pathname: string): string {
 /** Query param the proxy appends when it bounces a guest off a gated page so
  *  the app shell can open the "finish creating your account" modal. */
 export const GUEST_GATE_PARAM = "gate";
+
+/** A real account, as opposed to an anonymous QR walk-up. Structural type so
+ *  it is testable without Supabase. Guests may cup, wait, see results and
+ *  claim; everything that creates an asset or sends email is registered-only
+ *  (requireRegisteredUser in lib/auth.ts). proxy.ts only gates PAGES, and a
+ *  server action is a public POST endpoint, so the action must check too. */
+export function isRegisteredUser(
+  user: { is_anonymous?: boolean } | null | undefined,
+): boolean {
+  return !!user && user.is_anonymous !== true;
+}

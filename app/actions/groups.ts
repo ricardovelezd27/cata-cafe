@@ -10,7 +10,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/auth";
+import { requireRegisteredUser } from "@/lib/auth";
 import { sendEmail, escapeHtml } from "@/lib/email";
 import { coCupperIdsAmong, isCoCupper } from "@/lib/coCuppers";
 import { run } from "@/lib/safeAction";
@@ -87,7 +87,7 @@ export async function updateGroup(
   groupId: string,
   input: { name?: string; description?: string | null },
 ): Promise<{ ok: true }> {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
 
   const group = await prisma.tastingGroup.findUnique({
     where: { id: groupId },
@@ -123,7 +123,7 @@ export async function updateGroup(
 
 // ─── Delete a tasting group (owner only) — members cascade ────────────────────
 export async function deleteGroup(groupId: string): Promise<{ ok: true }> {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
 
   const group = await prisma.tastingGroup.findUnique({
     where: { id: groupId },
@@ -151,7 +151,7 @@ export async function addMemberByUserId(
   groupId: string,
   userId: string,
 ): Promise<{ ok: true; memberId: string }> {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
 
   const group = await prisma.tastingGroup.findUnique({
     where: { id: groupId },
@@ -350,7 +350,7 @@ export async function createGroupWithMembers(input: {
   | { ok: true; groupId: string; memberCount: number; emailSummary: GroupEmailSummary | null }
   | { ok: false; error: "invalid_name" | "invalid_description" | "invalid_email" | "group_full" | "generic" }
 > {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
 
   const name = input.name.trim();
   if (name.length < 1 || name.length > 80) return { ok: false, error: "invalid_name" };
@@ -488,7 +488,7 @@ export async function addMemberByEmail(
   displayName?: string,
   options?: { sendInvite?: boolean },
 ): Promise<{ ok: true; memberId: string; emailStatus?: "sent" | "skipped" | "failed" }> {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
 
   const group = await prisma.tastingGroup.findUnique({
     where: { id: groupId },
@@ -562,7 +562,7 @@ export async function addMemberByEmail(
 
 // ─── Remove a member (owner only) ──────────────────────────────────────────────
 export async function removeMember(groupId: string, memberId: string): Promise<{ ok: true }> {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
 
   const group = await prisma.tastingGroup.findUnique({
     where: { id: groupId },
@@ -653,7 +653,7 @@ export async function sendGroupEmail(input: {
   memberIds?: string[];
 }): Promise<ActionResult<GroupEmailSummary>> {
   return run("sendGroupEmail", async () => {
-    const user = await requireUser();
+    const user = await requireRegisteredUser();
 
     const group = await prisma.tastingGroup.findUnique({
       where: { id: input.groupId },
@@ -833,7 +833,7 @@ export async function notifyGroupOfSession(input: {
   groupId: string;
   sessionId: string;
 }): Promise<GroupEmailSummary> {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
 
   // Both the group AND the session must independently belong to this user —
   // same rationale as sendGroupEmail: never trust a sessionId passed
@@ -960,7 +960,7 @@ export async function createGroupPost(input: {
   | { ok: true; postId: string; emailSummary?: GroupEmailSummary }
   | { ok: false; error: "body_required" | "body_too_long" | "title_too_long" }
 > {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
 
   const group = await prisma.tastingGroup.findUnique({
     where: { id: input.groupId },
@@ -1016,7 +1016,7 @@ export async function updateGroupPost(
   postId: string,
   input: { title?: string | null; body?: string },
 ): Promise<{ ok: true } | { ok: false; error: "body_required" | "body_too_long" | "title_too_long" }> {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
 
   const post = await prisma.groupPost.findUnique({
     where: { id: postId },
@@ -1047,7 +1047,7 @@ export async function updateGroupPost(
 }
 
 export async function deleteGroupPost(postId: string): Promise<{ ok: true }> {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
 
   const post = await prisma.groupPost.findUnique({
     where: { id: postId },
@@ -1072,7 +1072,7 @@ export async function duplicateGroup(
   groupId: string,
   locale: string = "es",
 ): Promise<{ ok: true; groupId: string }> {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
 
   const source = await prisma.tastingGroup.findUnique({
     where: { id: groupId },
@@ -1113,7 +1113,7 @@ export async function duplicateGroup(
 // A member deletes their OWN membership row(s). The owner can never leave
 // their own group (it would orphan it) — deleting the group is their exit.
 export async function leaveGroup(groupId: string): Promise<{ ok: true }> {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
 
   const group = await prisma.tastingGroup.findUnique({
     where: { id: groupId },
@@ -1140,7 +1140,7 @@ export async function updateMemberDisplayName(
   memberId: string,
   displayName: string,
 ): Promise<{ ok: true }> {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
 
   const group = await prisma.tastingGroup.findUnique({
     where: { id: groupId },
@@ -1179,7 +1179,7 @@ export async function resendInvitation(
   groupId: string,
   memberId: string,
 ): Promise<{ ok: true; emailStatus: "sent" | "skipped" | "failed" }> {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
 
   const group = await prisma.tastingGroup.findUnique({
     where: { id: groupId },

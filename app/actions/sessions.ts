@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/auth";
+import { requireUser, requireRegisteredUser } from "@/lib/auth";
 import { run } from "@/lib/safeAction";
 import type { ActionResult } from "@/lib/actionResult";
 import type { Prisma } from "@/app/generated/prisma/client";
@@ -331,7 +331,7 @@ export async function createSession(input: {
   warmupExerciseId?: string | null;
   locale?: string;
 }): Promise<{ ok: false; error: string } | void> {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
 
   const invalid = validateSessionInput(input.coffees ?? [], input.samples);
   if (invalid) return { ok: false, error: invalid };
@@ -399,10 +399,8 @@ export async function createExpressSession(input: {
   locale?: string;
 }): Promise<ActionResult<{ sessionId: string }>> {
   return run("createExpressSession", async () => {
-    const user = await requireUser();
-    // Guests (anonymous QR walk-ups) never create assets — proxy.ts already
-    // keeps them off /app/sessions/express; this closes the direct-POST path.
-    if (user.is_anonymous) throw new Error("not_found_or_forbidden");
+    // Guests (anonymous QR walk-ups) never create assets — registered-only.
+    const user = await requireRegisteredUser();
 
     const parsed = validateExpressInput(input);
     const locale = input.locale === "en" ? "en" : "es";
@@ -457,7 +455,7 @@ export async function createGroupSession(input: {
   | { ok: true; sessionId: string; inviteToken: string; emailSummary?: GroupEmailSummary }
   | { ok: false; error: string }
 > {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
 
   const invalid = validateSessionInput(input.coffees ?? [], input.samples);
   if (invalid) return { ok: false, error: invalid };
@@ -716,7 +714,7 @@ export async function duplicateSession(
   sessionId: string,
   locale: string = "es",
 ): Promise<{ ok: true; sessionId: string }> {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
   const session = await requireSessionOwner(sessionId, user.id);
 
   const source = await prisma.cuppingSession.findUnique({

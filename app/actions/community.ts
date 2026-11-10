@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/auth";
+import { requireUser, requireRegisteredUser } from "@/lib/auth";
 import {
   requireSessionOwner,
   requireSessionMember,
@@ -393,7 +393,7 @@ export async function createInviteToken(
   maxUses?: number,
   expiresAt?: string,
 ): Promise<{ token: string }> {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
   assertSessionWritable(await requireSessionOwner(sessionId, user.id));
 
   // 0 / negative would mint a dead-on-arrival token; a past date a pre-expired

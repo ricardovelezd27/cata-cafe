@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { isGuestAllowedPath, stripLocale } from "@/lib/guestScope";
+import { isGuestAllowedPath, isRegisteredUser, stripLocale } from "@/lib/guestScope";
+
+describe("isRegisteredUser", () => {
+  it("is false for anonymous users and for no user", () => {
+    expect(isRegisteredUser({ is_anonymous: true })).toBe(false);
+    expect(isRegisteredUser(null)).toBe(false);
+    expect(isRegisteredUser(undefined)).toBe(false);
+  });
+  it("is true for real accounts, whether the flag is false or absent", () => {
+    expect(isRegisteredUser({ is_anonymous: false })).toBe(true);
+    expect(isRegisteredUser({})).toBe(true);
+  });
+});
 
 describe("guest scope", () => {
   it("lets anonymous guests cup, wait, see results / print, and their own profile", () => {

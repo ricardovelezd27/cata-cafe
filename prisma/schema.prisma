@@ -465,6 +465,10 @@ model TastingGroup {
   description String?
   createdBy   String
   owner       Profile  @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  // Idempotency key posted by the create-group dialog (S8-03): a replayed
+  // submit returns this group instead of creating a second one and re-sending
+  // the invitations.
+  clientKey   String?  @unique
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -507,10 +511,49 @@ model TastingGroupMember {
   displayName String?
   createdAt   DateTime     @default(now())
 
+  emailDeliveries GroupEmailDelivery[]
+
   @@unique([groupId, email])
   @@index([groupId])
   @@index([userId])
   @@map("tasting_group_members")
+}
+
+// One row per RESERVED outbound email (S8-03). lib/emailBudget.ts counts these
+// to throttle magic links and group mail before anything is sent. No user FK
+// on purpose (mergeGuestData is untouched): actorKey is "u_<userId>" or an
+// HMAC of the request IP, targetKey an HMAC of the lowercased address. Never a
+// raw IP or address. RLS on, no policies (server-only via Prisma).
+model OutboundEmailEvent {
+  id         String   @id @default(cuid())
+  kind       String // "magic_link" | "group_broadcast" | "group_invite"
+  actorKey   String?
+  targetKey  String?
+  recipients Int      @default(1)
+  createdAt  DateTime @default(now())
+
+  @@index([kind, actorKey, createdAt])
+  @@index([kind, targetKey, createdAt])
+  @@map("outbound_email_events")
+}
+
+// Per-recipient ledger of one group broadcast (S8-03), the close-email
+// ledger's shape: "retry failed" resends only rows that are not "sent", and no
+// recipient gets the same broadcast twice. lastError holds a code, never the
+// provider's response body. RLS on, no policies.
+model GroupEmailDelivery {
+  broadcastId String
+  memberId    String
+  member      TastingGroupMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  status      String // "sent" | "skipped" | "failed"
+  attempts    Int                @default(1)
+  lastError   String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@id([broadcastId, memberId])
+  @@index([memberId])
+  @@map("group_email_deliveries")
 }
 
 // Per-user daily AI-chat cost governor. One row per (user, UTC day); written
