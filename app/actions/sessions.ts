@@ -1476,7 +1476,7 @@ export async function updateSampleMetadata(
   sampleId: string,
   input: SampleMetadataInput
 ): Promise<{ ok: true; coffeeUpdated: boolean }> {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
 
   const sample = await prisma.sessionSample.findUnique({
     where: { id: sampleId },

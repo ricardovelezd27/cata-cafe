@@ -302,6 +302,11 @@ All writes go through `app/actions/`. Call `revalidatePath()` after mutations to
 - All session links in lists MUST go through `sessionHref()` (`lib/sessionRouting.ts`).
 - **Cron routes** (`app/api/cron/*`): `runtime = "nodejs"`, `dynamic = "force-dynamic"`, `maxDuration`, 503 when `CRON_SECRET` is unset, 401 on a bad `Authorization: Bearer`, bounded batch per run, JSON summary. Register in `vercel.json` and document the manual check in `docs/LAUNCH-RUNBOOK.md`.
 
+### S8-21 loose ends
+- Master-panel re-pin asks (`ConfirmDialog`, `session.edit.repinBody`) when the chosen sample already has evaluations (`evalCountBySample`, owner-only prop from `cup/page.tsx`); `confirmRepin: true` is sent only after the owner confirms.
+- The results page repairs a SOLO owner's closed-but-unfinalized session once per render (`soloRepairOwedOnView`, zero grace, failure only logs); group sessions stay with the cron (emails). `closeSession` returns `finalized`; `false` shows a non-blocking notice.
+- `tests/registeredOnlyActions.test.ts` is inverted for `sessions.ts` and `community.ts`: every export needs `requireRegisteredUser(` or an entry in `GUEST_ALLOWED` / `OWNER_ONLY` with a reason. `results` sends `hasCoffee` only to owner/admin or for revealed samples.
+
 ### Group Sessions Pattern
 - **`createSession`** (solo) uses `redirect()` inside — do not modify; it cannot return a value.
 - **`createGroupSession`** is a separate action that returns `{ sessionId, inviteToken }` without redirecting, enabling the two-step wizard (Step 2 shows invite link).
