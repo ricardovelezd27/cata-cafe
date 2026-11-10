@@ -84,7 +84,12 @@ function subscribeResultsView(cb: () => void) {
   };
 }
 function getResultsViewSnapshot(): ResultsView {
-  return localStorage.getItem(RESULTS_VIEW_KEY) === "grafico" ? "grafico" : "tabla";
+  // Private mode / blocked storage can throw on read (F-resultados-10).
+  try {
+    return localStorage.getItem(RESULTS_VIEW_KEY) === "grafico" ? "grafico" : "tabla";
+  } catch {
+    return "tabla";
+  }
 }
 function getResultsViewServerSnapshot(): ResultsView {
   return "tabla";
@@ -220,6 +225,14 @@ export function ResultsClient({
     radarMine: string;
     radarCommunity: string;
     deltaAttribute: string;
+    radar: {
+      score: string;
+      reveal: string;
+      communityScore: string;
+      includedLine: string;
+      noAffective: string;
+      requiresAffective: string;
+    };
     flavorProfiles: string;
     referenceBadge: string;
     /** "Referencia {n}" — raw ICU string, `{n}` replaced here. */
@@ -302,6 +315,11 @@ export function ResultsClient({
       deltaVsReferenceAria: string;
       anchorTitle: string;
       anchorHint: string;
+      includedOf: string;
+      rankIndicative: string;
+      rankNoClearGap: string;
+      basisMine: string;
+      fewNote: string;
     };
     table: ScoreTableTranslations;
     detail: SampleDetailDialogTranslations;
@@ -904,11 +922,13 @@ export function ResultsClient({
                     deltaVsReferenceAria={translations.deltaVsReferenceAria}
                     inProgressLabel={translations.table.inProgress}
                     notEvaluatedLabel={translations.table.notEvaluated}
+                    sessionClosed={sessionStatus === "closed"}
                     t={{
                       mine: translations.radarMine,
                       community: translations.radarCommunity,
                       deltaAttribute: translations.deltaAttribute,
                       breakdown: translations.breakdown,
+                      radar: translations.radar,
                     }}
                   />
                   {Object.keys(sample.descriptive).length > 0 && (
@@ -1024,7 +1044,13 @@ export function ResultsClient({
           locale={locale}
           referenceBadge={translations.referenceBadge}
           referenceCount={references.length}
-          onEdit={isAdminViewer ? undefined : () => handleEditSample(detailSample.id)}
+          // Closed = read-only: /cup redirects a closed session to results, so
+          // "Editar" would be a dead button (F-resultados-10).
+          onEdit={
+            isAdminViewer || sessionStatus === "closed"
+              ? undefined
+              : () => handleEditSample(detailSample.id)
+          }
           onEditMetadata={
             // Closed = read-only: the metadata dialog's save throws
             // session_closed once the session closed, so the button goes away.

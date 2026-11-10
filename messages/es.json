@@ -632,7 +632,12 @@
       "alignmentNote": "Informativo: no afecta los puntajes.",
       "highlights": "Descriptores destacados",
       "soloTopDescriptors": "Tus descriptores más frecuentes",
-      "viewInDescriptors": "Ver en Descriptores"
+      "viewInDescriptors": "Ver en Descriptores",
+      "includedOf": "{n} de {total} incluidos",
+      "rankIndicative": "indicativo",
+      "rankNoClearGap": "sin diferencia clara",
+      "basisMine": "tu puntaje",
+      "fewNote": "Con menos de 3 catadores el puntaje es indicativo: no se muestra dispersión ni se elige mejor muestra."
     },
     "table": {
       "sample": "Muestra",
@@ -778,6 +783,14 @@
         "title": "Muestra de referencia",
         "body": "El maestro de cata puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La cata empieza por ella y su calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos, así que cada catador le da siempre 79.00 y solo describe lo que percibe. No entra en el ranking, en el promedio ni en la mejor muestra: es el ancla.\nLo que agrega es contexto: junto a cada muestra verás Δ, la diferencia entre su puntaje y el de la referencia, calculada siempre con el mismo tipo de puntaje que ves al lado (comunitario cuando está visible; si no, el tuyo).\nReferencia, media del grupo y desviación son cosas distintas: la referencia es el punto de partida elegido por el maestro; la media es lo que percibió el grupo; la desviación (±) es cuánto se dispersó el grupo."
       }
+    },
+    "radar": {
+      "score": "PUNTAJE CVA",
+      "reveal": "Revelar",
+      "communityScore": "Puntuación comunidad",
+      "includedLine": "{n} de {total} evaluadores incluidos en el promedio",
+      "noAffective": "Sin datos afectivos registrados",
+      "requiresAffective": "El gráfico radar requiere datos afectivos (formato afectivo o combinado)"
     }
   },
   "community": {

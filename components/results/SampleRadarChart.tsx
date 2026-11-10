@@ -30,6 +30,8 @@ type AggregateScoreData = {
   avgRawScore: number | null;
   participantCount: number;
   submittedCount: number;
+  /** N of "n de N": every submitted evaluation, excluded cuppers included. */
+  totalSubmitted?: number;
   totalCups: number;
   totalNonUniform: number;
   totalDefective: number;
@@ -82,6 +84,7 @@ export function SampleRadarChart({
   deltaVsReferenceAria,
   inProgressLabel,
   notEvaluatedLabel,
+  sessionClosed = false,
   t,
 }: {
   sample: SampleResult;
@@ -97,7 +100,23 @@ export function SampleRadarChart({
   // Own-evaluation state chip labels (results page only).
   inProgressLabel?: string;
   notEvaluatedLabel?: string;
-  t: { mine: string; community: string; deltaAttribute: string; breakdown: ScoreBreakdownTranslations };
+  /** Closed sessions are read-only: no "Revelar" (the close already revealed every coffee). */
+  sessionClosed?: boolean;
+  t: {
+    mine: string;
+    community: string;
+    deltaAttribute: string;
+    breakdown: ScoreBreakdownTranslations;
+    /** Radar card copy (results.radar.*); `includedLine` is a raw {n}/{total} template. */
+    radar: {
+      score: string;
+      reveal: string;
+      communityScore: string;
+      includedLine: string;
+      noAffective: string;
+      requiresAffective: string;
+    };
+  };
 }) {
   const showAffective = format !== "descriptive";
   const { ref: chartRef, width: chartWidth } = useContainerWidth();
@@ -210,7 +229,7 @@ export function SampleRadarChart({
           {scoreNum !== null && (
             <div className="text-right">
               <div className="mb-0.5 text-[9px] font-semibold uppercase tracking-wide text-on-surface-variant">
-                PUNTAJE CVA
+                {t.radar.score}
               </div>
               <div
                 className={`font-display text-2xl font-semibold leading-none tabular-nums ${scoreColorClass}`}
@@ -229,13 +248,13 @@ export function SampleRadarChart({
             </div>
           )}
 
-          {isOwner && !sample.revealed && (
+          {isOwner && !sample.revealed && !sessionClosed && (
             <button
               type="button"
               onClick={() => onReveal(sample.id)}
               className="min-h-[44px] shrink-0 rounded-pill border border-primary-container px-4 text-xs font-semibold text-primary-container transition-colors hover:bg-primary-fixed"
             >
-              Revelar
+              {t.radar.reveal}
             </button>
           )}
         </div>
@@ -255,15 +274,20 @@ export function SampleRadarChart({
       {showCommunity && sample.aggregateScore?.communityScore != null && (
         <div className="mb-2 mt-2 flex flex-wrap gap-4 rounded-input bg-surface-container-low px-3 py-1.5 text-xs">
           <span className="text-on-surface-variant">
-            Puntuación comunidad:{" "}
+            {t.radar.communityScore}:{" "}
             <span className="font-semibold text-secondary">
               {sample.aggregateScore.communityScore.toFixed(2)}
             </span>
           </span>
           <span className="text-on-surface-variant">
-            {sample.aggregateScore.participantCount} de{" "}
-            {sample.aggregateScore.submittedCount} evaluadores incluidos en el
-            promedio
+            {t.radar.includedLine
+              .replace("{n}", String(sample.aggregateScore.participantCount))
+              .replace(
+                "{total}",
+                String(
+                  sample.aggregateScore.totalSubmitted ?? sample.aggregateScore.submittedCount,
+                ),
+              )}
           </span>
         </div>
       )}
@@ -338,7 +362,7 @@ export function SampleRadarChart({
         </div>
       ) : showAffective ? (
         <div className="py-8 text-center text-xs text-on-surface-variant">
-          Sin datos afectivos registrados
+          {t.radar.noAffective}
         </div>
       ) : null}
 
@@ -381,7 +405,7 @@ export function SampleRadarChart({
 
       {!showAffective && (
         <div className="py-8 text-center text-xs text-on-surface-variant">
-          El gráfico radar requiere datos afectivos (formato afectivo o combinado)
+          {t.radar.requiresAffective}
         </div>
       )}
     </div>

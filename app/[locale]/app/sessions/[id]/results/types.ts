@@ -13,6 +13,9 @@ export type AggregateScoreData = {
   scoreSd: number | null;
   participantCount: number;
   submittedCount: number;
+  // N of "n de N incluidos": every SUBMITTED evaluation of the sample, excluded
+  // cuppers and incomplete ones included (S8-12). Display-only.
+  totalSubmitted: number;
   totalCups: number;
   totalNonUniform: number;
   totalDefective: number;

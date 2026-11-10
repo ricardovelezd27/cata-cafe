@@ -31,7 +31,9 @@ export default async function ResultsPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect(`/${locale}/auth/login`);
+  if (!user) {
+    redirect(`/${locale}/auth/login?next=${encodeURIComponent(`/${locale}/app/sessions/${id}/results`)}`);
+  }
 
   // Super-admin god mode: read-only access to ANY session's results, rendered
   // from the owner's perspective. The admin's identity is resolved up front so
@@ -198,6 +200,7 @@ export default async function ResultsPage({
   // incomplete/empty submissions don't skew the community average. Keyed by
   // sessionSampleId.
   let groupAggBySample: Map<string, GroupAggregate> | null = null;
+  const submittedAllBySample = new Map<string, number>();
 
   // Ids of evaluations already visible at render time — seeds the client's
   // realtime-badge dedup set so a later no-op UPDATE storm (owner refresh,
@@ -225,6 +228,13 @@ export default async function ResultsPage({
     // Recompute each sample's community aggregate, excluding master-excluded
     // cuppers and (inside computeGroupAggregate) incomplete evaluations.
     groupAggBySample = new Map<string, GroupAggregate>();
+    // N for "n de N incluidos": submitted evaluations BEFORE the exclusion filter.
+    for (const ev of evals) {
+      submittedAllBySample.set(
+        ev.sessionSampleId,
+        (submittedAllBySample.get(ev.sessionSampleId) ?? 0) + 1,
+      );
+    }
     {
       const bySample = new Map<string, (typeof evals)[number][]>();
       for (const ev of evals) {
@@ -633,6 +643,7 @@ export default async function ResultsPage({
                 scoreSd: recomputed.scoreSd,
                 participantCount: recomputed.included,
                 submittedCount: recomputed.submitted,
+                totalSubmitted: submittedAllBySample.get(s.id) ?? recomputed.submitted,
                 totalCups: recomputed.totalCups,
                 totalNonUniform: recomputed.totalNonUniform,
                 totalDefective: recomputed.totalDefective,
@@ -653,6 +664,7 @@ export default async function ResultsPage({
                   scoreSd: null,
                   participantCount: agg.participantCount,
                   submittedCount: agg.participantCount,
+                  totalSubmitted: agg.participantCount,
                   totalCups: agg.totalCups,
                   totalNonUniform: agg.totalNonUniform,
                   totalDefective: agg.totalDefective,
@@ -741,6 +753,15 @@ export default async function ResultsPage({
         radarMine: tResults("mine"),
         radarCommunity: tResults("community"),
         deltaAttribute: tResults("deltaAttribute"),
+        radar: {
+          score: tResults("radar.score"),
+          reveal: tResults("radar.reveal"),
+          communityScore: tResults("radar.communityScore"),
+          // {n}/{total} are substituted client-side.
+          includedLine: tResults.raw("radar.includedLine") as string,
+          noAffective: tResults("radar.noAffective"),
+          requiresAffective: tResults("radar.requiresAffective"),
+        },
         flavorProfiles: tResults("flavorProfiles"),
         referenceBadge: tResults("referenceBadge"),
         // `{n}` is an ICU arg — fetched raw and replaced client-side.
@@ -823,6 +844,12 @@ export default async function ResultsPage({
           deltaVsReferenceAria: tResults("deltaVsReferenceAria"),
           anchorTitle: tResults("dashboard.anchorTitle"),
           anchorHint: tResults("dashboard.anchorHint"),
+          // Templates / ICU args: fetched raw, filled client-side.
+          includedOf: tResults.raw("dashboard.includedOf") as string,
+          rankIndicative: tResults("dashboard.rankIndicative"),
+          rankNoClearGap: tResults("dashboard.rankNoClearGap"),
+          basisMine: tResults("dashboard.basisMine"),
+          fewNote: tResults("dashboard.fewNote"),
         },
         table: {
           sample: tResults("table.sample"),

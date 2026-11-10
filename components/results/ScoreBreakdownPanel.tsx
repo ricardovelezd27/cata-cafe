@@ -22,6 +22,7 @@ type AggregateScoreData = {
   avgRawScore: number | null;
   participantCount: number;
   submittedCount: number;
+  totalSubmitted?: number;
   totalCups: number;
   totalNonUniform: number;
   totalDefective: number;
@@ -260,7 +261,7 @@ function renderGroup(
       <div className="mt-2 text-[10px] leading-relaxed text-on-surface-variant">
         {t.includedNote
           .replace("{n}", String(g.participantCount))
-          .replace("{total}", String(g.submittedCount))}
+          .replace("{total}", String(g.totalSubmitted ?? g.submittedCount))}
       </div>
 
       <SetupStamp setup={setup} t={t} />
