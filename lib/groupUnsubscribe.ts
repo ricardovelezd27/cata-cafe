@@ -44,6 +44,18 @@ export function parseUnsubscribeToken(token: string): { groupId: string; mac: st
   return { groupId, mac };
 }
 
+// Prisma cuid() ids (25 chars, "c" + 24 base36) and a base64url SHA-256 MAC
+// (43 chars, no padding). Checked by the route BEFORE any database query.
+const GROUP_ID_RE = /^c[a-z0-9]{24}$/;
+const MAC_RE = /^[A-Za-z0-9_-]{43}$/;
+
+/** True only for a token shaped like one we mint. Pure; no secret needed. */
+export function isWellFormedUnsubscribeToken(token: unknown): token is string {
+  if (typeof token !== "string" || token.length > 200) return false;
+  const parts = token.split(".");
+  return parts.length === 2 && GROUP_ID_RE.test(parts[0]) && MAC_RE.test(parts[1]);
+}
+
 function safeEqual(a: string, b: string): boolean {
   const x = Buffer.from(a);
   const y = Buffer.from(b);

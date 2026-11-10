@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { addressesForToken, parseUnsubscribeToken } from "@/lib/groupUnsubscribe";
+import { addressesForToken, isWellFormedUnsubscribeToken, parseUnsubscribeToken } from "@/lib/groupUnsubscribe";
 import {
   confirmPage,
   donePage,
@@ -28,8 +28,10 @@ function html(body: string, status: number): Response {
 
 /** The member rows (of the token's group) the token belongs to. */
 async function resolve(token: string | null) {
-  const parsed = token ? parseUnsubscribeToken(token) : null;
-  if (!token || !parsed) return null;
+  // Shape check first: nothing attacker-chosen reaches the database unverified.
+  if (!isWellFormedUnsubscribeToken(token)) return null;
+  const parsed = parseUnsubscribeToken(token);
+  if (!parsed) return null;
   const members = await prisma.tastingGroupMember.findMany({
     where: { groupId: parsed.groupId },
     select: { id: true, email: true, group: { select: { name: true } } },

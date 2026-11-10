@@ -1,7 +1,33 @@
 import { describe, expect, it } from "vitest";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
-import { decorateGroupMail, unsubscribeUrl } from "@/lib/groupUnsubscribe";
+import {
+  decorateGroupMail,
+  isWellFormedUnsubscribeToken,
+  mintUnsubscribeToken,
+  unsubscribeUrl,
+} from "@/lib/groupUnsubscribe";
+
+describe("isWellFormedUnsubscribeToken", () => {
+  const gid = "cmabcdefghij0123456789klm"; // 25 chars, cuid shape
+  const good = mintUnsubscribeToken(gid, "a@b.co", "s");
+  const mac = good.split(".")[1];
+  it("accepts a minted token", () => {
+    expect(gid).toHaveLength(25);
+    expect(isWellFormedUnsubscribeToken(good)).toBe(true);
+  });
+  it("rejects wrong lengths, bad characters, empty and extra segments", () => {
+    expect(isWellFormedUnsubscribeToken(`${gid}.${mac.slice(1)}`)).toBe(false);
+    expect(isWellFormedUnsubscribeToken(`${gid}.${mac}a`)).toBe(false);
+    expect(isWellFormedUnsubscribeToken(`${gid.slice(1)}.${mac}`)).toBe(false);
+    expect(isWellFormedUnsubscribeToken(`${gid}.${mac.slice(1)}+`)).toBe(false);
+    expect(isWellFormedUnsubscribeToken(`${gid.toUpperCase()}.${mac}`)).toBe(false);
+    expect(isWellFormedUnsubscribeToken("")).toBe(false);
+    expect(isWellFormedUnsubscribeToken(null)).toBe(false);
+    expect(isWellFormedUnsubscribeToken(`${good}.x`)).toBe(false);
+    expect(isWellFormedUnsubscribeToken(`${gid}${mac}`)).toBe(false);
+  });
+});
 
 describe("decorateGroupMail", () => {
   const url = unsubscribeUrl("https://cata.example", "g.mac");
