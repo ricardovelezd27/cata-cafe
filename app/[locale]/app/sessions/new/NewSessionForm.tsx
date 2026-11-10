@@ -13,6 +13,7 @@ import { InviteQR } from "@/components/ui/InviteQR";
 import { buildInviteUrl } from "@/lib/inviteUrl";
 import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { Badge } from "@/components/ui/Badge";
+import { localDateISO } from "@/lib/localDate";
 import { Select } from "@/components/ui/Select";
 import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 
@@ -261,7 +262,7 @@ export function NewSessionForm({
 
   // Session basics
   const [name, setName] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(localDateISO());
   const [objective, setObjective] = useState("");
   const [format, setFormat] = useState<"descriptive" | "affective" | "combined">("combined");
   const [cupsPerSample, setCupsPerSample] = useState(2);
@@ -678,7 +679,7 @@ export function NewSessionForm({
           <div>
             <FieldLabel>{t.date}</FieldLabel>
             <input
-              type="date"
+              type="date" suppressHydrationWarning
               className={inputCls}
               value={date}
               onChange={(e) => setDate(e.target.value)}
@@ -1228,10 +1229,10 @@ export function NewSessionForm({
             <div>
               <FieldLabel>{t.groupClosesAt}</FieldLabel>
               <input
-                type="date"
+                type="date" suppressHydrationWarning
                 className={inputCls}
                 value={closesAt}
-                min={new Date().toISOString().slice(0, 10)}
+                min={localDateISO()}
                 onChange={(e) => setClosesAt(e.target.value)}
               />
               <p className="mt-1 text-xs text-on-surface-variant">{t.groupClosesAtHint}</p>

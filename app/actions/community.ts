@@ -20,11 +20,31 @@ import { run } from "@/lib/safeAction";
 import type { ActionResult } from "@/lib/actionResult";
 
 // ─── Submit all draft evaluations for a session ───────────────────────────────
-export async function submitAllEvaluations(sessionId: string) {
+// S8-10 T11 (F-solo-6): interactive, so ActionResult. A second submit after the
+// solo auto-close used to throw `session_closed`; now a cupper who already has
+// submitted work gets `{ closed: true, submitted: 0 }` — the final state — and
+// only someone with nothing submitted sees the error.
+export async function submitAllEvaluations(
+  sessionId: string,
+): Promise<ActionResult<{ closed: boolean; submitted: number }>> {
+  return run("submitAllEvaluations", () => submitAllEvaluationsBody(sessionId), { sessionId });
+}
+
+async function submitAllEvaluationsBody(
+  sessionId: string,
+): Promise<{ closed: boolean; submitted: number }> {
   const user = await requireUser();
   // Member gate + closed/expired guard (a closed session's results are final)
   // + not-started guard (a participant cannot write before the master starts).
   const auth = await requireSessionMember(sessionId, user.id);
+  if (isSessionExpired(auth)) {
+    // Double submit after the (solo) auto-close: already final for a cupper
+    // who has submitted work. Someone with nothing submitted still errors.
+    const done = await prisma.evaluation.count({
+      where: { cupperId: user.id, isDraft: false, sessionSample: { sessionId } },
+    });
+    if (done > 0) return { closed: true, submitted: 0 };
+  }
   assertSessionWritable(auth);
   assertSessionStarted({ ...auth, isOwner: auth.createdBy === user.id });
 
@@ -75,7 +95,11 @@ export async function submitAllEvaluations(sessionId: string) {
   // auditing the 2026-09-26 "results look stale" report).
   revalidatePath(`/es/app/sessions/${sessionId}/results`);
   revalidatePath(`/en/app/sessions/${sessionId}/results`);
-  return { ok: true };
+  const finalRow = await prisma.cuppingSession.findUnique({
+    where: { id: sessionId },
+    select: { status: true },
+  });
+  return { closed: finalRow?.status === "closed", submitted: res.count };
 }
 
 // Group results become visible to participants when every participant row has

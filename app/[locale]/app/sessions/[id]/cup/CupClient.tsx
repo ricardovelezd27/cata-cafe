@@ -1271,7 +1271,13 @@ export function CupClient({
         setHasPending(false);
       }
       setSubmitBlocked(false);
-      await submitAllEvaluations(session.id);
+      const submitted = await submitAllEvaluations(session.id);
+      if (!submitted.ok) {
+        // Returned (not thrown) since S8-10: same failure path as before.
+        setSubmitError(true);
+        setIsGoingToResults(false);
+        return;
+      }
       // Navigate only on success — a failed submit must not strand the user on
       // the results page believing their drafts were sent. isGoingToResults
       // stays true so the button remains disabled during navigation.

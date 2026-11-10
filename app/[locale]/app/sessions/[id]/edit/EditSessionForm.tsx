@@ -14,6 +14,7 @@ import { Select } from "@/components/ui/Select";
 import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useActionFeedback } from "@/components/ui/Toast";
+import { localDateISO } from "@/lib/localDate";
 
 export type EditSessionFormTranslations = {
   name: string;
@@ -70,10 +71,10 @@ const labelCls = "block text-[11px] font-semibold uppercase tracking-widest text
 
 const FORMAT_OPTIONS = ["descriptive", "affective", "combined"] as const;
 
-/** UTC calendar date, same rule as the wizard and `planClosesAtChange` (the
- *  server closes at END of the chosen day in UTC), so both forms agree. */
+/** Local calendar date (the wizard uses the same helper). The server closes at
+ *  END of the chosen day in UTC; `min` must not reject the local "today". */
 function utcDateString(): string {
-  return new Date().toISOString().slice(0, 10);
+  return localDateISO();
 }
 
 export function EditSessionForm({

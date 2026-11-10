@@ -66,3 +66,22 @@ describe("nota_express (quick note) travels inside the module JSON", () => {
     expect(b.affectiveSum).toBe(a.affectiveSum);
   });
 });
+
+describe("module bounds (S8-10 T11)", () => {
+  it("rejects an over-long express note and an oversized module", () => {
+    expect(() =>
+      computeEvaluationDerived("affective", { ...neutral, nota_express: "x".repeat(501) }, 1),
+    ).toThrow("invalid_input");
+    expect(() =>
+      computeEvaluationDerived("affective", { ...neutral, nota_express: 42 }, 1),
+    ).toThrow("invalid_input");
+    expect(() =>
+      computeEvaluationDerived("affective", { ...neutral, filler: "y".repeat(70_000) }, 1),
+    ).toThrow("invalid_input");
+  });
+  it("accepts a note at the cap", () => {
+    expect(() =>
+      computeEvaluationDerived("affective", { ...neutral, nota_express: "x".repeat(500) }, 1),
+    ).not.toThrow();
+  });
+});

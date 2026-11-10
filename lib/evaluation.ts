@@ -1,6 +1,7 @@
 import { calcAffectiveSum, calcIndividualScore, calcRawScore } from "@/lib/scoring";
 import { asSessionFormat } from "@/lib/constants";
 import { cupFlags } from "@/lib/validate";
+import { EXPRESS_NOTE_KEY, EXPRESS_NOTE_MAX } from "@/lib/expressSession";
 
 export type EvalModuleKey = "descriptive" | "affective" | "combined";
 
@@ -12,6 +13,26 @@ export type EvalModuleKey = "descriptive" | "affective" | "combined";
 export function moduleKeyForFormat(format: string): EvalModuleKey {
   const f = asSessionFormat(format);
   return f === "descriptive" ? "descriptive" : f === "affective" ? "affective" : "combined";
+}
+
+/** Largest serialized module JSON one evaluation may carry. A real form is a
+ *  few KB; this only stops a tampered client from storing megabytes. */
+export const MAX_MODULE_JSON_CHARS = 64_000;
+
+/** Bounds on the free-form parts of a module (S8-10 T11, F-express-5): the
+ *  express note is capped at EXPRESS_NOTE_MAX and the whole serialized module
+ *  at MAX_MODULE_JSON_CHARS. Throws Error("invalid_input") — live autosave and
+ *  the offline replay share this, so both reject the same payloads. */
+export function assertModuleBounds(data: Record<string, unknown>): void {
+  const note = data[EXPRESS_NOTE_KEY];
+  if (note !== undefined && note !== null) {
+    if (typeof note !== "string" || note.length > EXPRESS_NOTE_MAX) {
+      throw new Error("invalid_input");
+    }
+  }
+  if (JSON.stringify(data).length > MAX_MODULE_JSON_CHARS) {
+    throw new Error("invalid_input");
+  }
 }
 
 // Single source of truth for the Evaluation row shape derived from a module's
@@ -34,6 +55,8 @@ export function computeEvaluationDerived(
       : moduleKey === "affective"
         ? "affectiveData"
         : "combinedData";
+
+  assertModuleBounds(data);
 
   // Clamp the cup arrays to the session's cup count before anything reads
   // them: an over-long or non-boolean array would either crash the Boolean[]
