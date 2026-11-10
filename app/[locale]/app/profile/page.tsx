@@ -55,7 +55,12 @@ export default async function ProfilePage({
     prisma.sessionParticipant.count({ where: { userId: user.id, status: "joined" } }),
     prisma.evaluation.count({ where: { cupperId: user.id, isDraft: false } }),
     prisma.userCoffeeHistory
-      .findMany({ where: { userId: user.id }, select: { coffeeId: true }, distinct: ["coffeeId"] })
+      // coffeeId NOT NULL: label-only rows (S8-16) are not "a coffee tasted".
+      .findMany({
+        where: { userId: user.id, coffeeId: { not: null } },
+        select: { coffeeId: true },
+        distinct: ["coffeeId"],
+      })
       .then((rows) => rows.length),
     // Percentile rank among ACTIVE cuppers, computed in one CTE-based query so we
     // don't have to pull every profile's counts into TS. The per-profile point

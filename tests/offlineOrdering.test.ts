@@ -8,7 +8,79 @@ import {
   RETRY_BASE_MS,
   RETRY_MAX_MS,
 } from "@/lib/offline/status";
+import {
+  CLIENT_TS_MAX_FUTURE_MS,
+  effectiveClientTs,
+  sanitizeClientTs,
+  shouldApplyClientWrite,
+} from "@/lib/offline/clientWrite";
 import type { OfflineModuleData, OfflineSessionBlob } from "@/lib/offline/types";
+
+describe("server-side ordering of client writes (S8-18, F-offline-2)", () => {
+  const now = 1_700_000_000_000;
+  const last = new Date(now - 10_000);
+
+  it("applies when the write carries no timestamp (cached bundles)", () => {
+    expect(shouldApplyClientWrite(last, undefined, now)).toBe(true);
+    expect(shouldApplyClientWrite(last, null, now)).toBe(true);
+  });
+
+  it("applies over a row that never recorded one", () => {
+    expect(shouldApplyClientWrite(null, now - 1, now)).toBe(true);
+    expect(shouldApplyClientWrite(undefined, now - 1, now)).toBe(true);
+  });
+
+  it("ignores a strictly older write", () => {
+    expect(shouldApplyClientWrite(last, now - 10_001, now)).toBe(false);
+  });
+
+  it("applies an equal write (idempotent resend) and a newer one", () => {
+    expect(shouldApplyClientWrite(last, now - 10_000, now)).toBe(true);
+    expect(shouldApplyClientWrite(last, now - 5_000, now)).toBe(true);
+  });
+
+  it("treats a far-future timestamp as absent, not as the newest write", () => {
+    const far = now + CLIENT_TS_MAX_FUTURE_MS + 1;
+    expect(sanitizeClientTs(far, now)).toBeUndefined();
+    expect(shouldApplyClientWrite(last, far, now)).toBe(true);
+    expect(sanitizeClientTs(now + CLIENT_TS_MAX_FUTURE_MS, now)).toBe(now + CLIENT_TS_MAX_FUTURE_MS);
+  });
+
+  it("treats NaN, Infinity, fractions, negatives and non-numbers as absent", () => {
+    for (const bad of [NaN, Infinity, -Infinity, 1.5, -5, 0, "123", {}, []]) {
+      expect(sanitizeClientTs(bad, now)).toBeUndefined();
+      expect(shouldApplyClientWrite(last, bad, now)).toBe(true);
+    }
+  });
+
+  it("accepts a Date or a number for the stored value", () => {
+    expect(shouldApplyClientWrite(now - 10_000, now - 10_001, now)).toBe(false);
+    expect(shouldApplyClientWrite(NaN, now - 1, now)).toBe(true);
+  });
+});
+
+describe("client stamp clamp to the server clock (S8-18 review)", () => {
+  const now = 1_700_000_000_000;
+
+  it("stores a slightly-future stamp as now", () => {
+    expect(effectiveClientTs(now + 4 * 60_000, now)).toBe(now);
+    expect(effectiveClientTs(now - 5_000, now)).toBe(now - 5_000);
+    expect(effectiveClientTs(now + CLIENT_TS_MAX_FUTURE_MS + 1, now)).toBeUndefined();
+    expect(effectiveClientTs("x", now)).toBeUndefined();
+  });
+
+  it("a fast clock does not make a later honest write look stale", () => {
+    // Write A: device clock 4 min fast, stored clamped to server now.
+    const stored = effectiveClientTs(now + 4 * 60_000, now)!;
+    // Write B: honest clock, 1 s later.
+    expect(shouldApplyClientWrite(stored, now + 1_000, now + 1_000)).toBe(true);
+  });
+
+  it("equal stamps still apply", () => {
+    expect(shouldApplyClientWrite(now, now, now)).toBe(true);
+    expect(shouldApplyClientWrite(now, now + 60_000, now)).toBe(true);
+  });
+});
 
 const mod = (over: Partial<OfflineModuleData> = {}): OfflineModuleData => ({
   data: {},

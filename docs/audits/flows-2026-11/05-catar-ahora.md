@@ -30,6 +30,7 @@ A registered user opens `/app/sessions/express` from the dashboard, the Sesiones
 - **Invariant check** — "No manual close path for solo": the close stays automatic (prune, then reuse auto-close); `closeSessionInternal` remains the only writer of `closed`; record the pruning in `docs/flows.md` §1.
 
 ### F-express-2 · Express cuppings leave no trace in history, and the empty state points to the wizard · severity: P2 · status: confirms-board(Las catas exprés no aparecen en el historial)
+**Fixed in S8-16** — closed coffee-less samples leave a label-only history row (`coffeeId` NULL, "Sin café asignado"), replaced when a coffee is assigned. The empty-state CTA is not part of this change.
 
 - **Problem** — `profile/history/page.tsx:27` reads only `userCoffeeHistory`; `syncCoffeeHistoryForSession` skips coffee-less samples (`lib/coffeeHistory.ts:24`: `coffeeId: { not: null }`). The empty-state action is a `GuestGateLink` to `/sessions/new` (`HistoryTable.tsx:209-221`), the wizard that requires coffees, not "Catar ahora".
 - **Implication** — A user whose whole practice is express sees an empty history and no scores, and is nudged toward the heavy flow. The data exists (submitted evaluations) but is invisible. Trust and retention.
