@@ -150,19 +150,31 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
   SELECT count(*) INTO v_n
     FROM pg_default_acl d
     CROSS JOIN LATERAL aclexplode(d.defaclacl) a
+    JOIN pg_namespace n ON n.oid = d.defaclnamespace AND n.nspname = 'public'
     JOIN pg_roles g ON g.oid = a.grantee AND g.rolname IN ('anon', 'authenticated')
    WHERE d.defaclrole = 'postgres'::regrole
      AND d.defaclobjtype = 'r'
      AND a.privilege_type IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE');
-  v_out := v_out || format(E'\n 4a postgres default write privileges for anon/authenticated on new tables (expect 0): %s', v_n);
+  v_out := v_out || format(E'\n 4a postgres default write privileges for anon/authenticated on new tables in schema public (expect 0): %s', v_n);
   SELECT string_agg(DISTINCT d.defaclrole::regrole::text, ', ') INTO v_names
     FROM pg_default_acl d
     CROSS JOIN LATERAL aclexplode(d.defaclacl) a
+    JOIN pg_namespace n ON n.oid = d.defaclnamespace AND n.nspname = 'public'
     JOIN pg_roles g ON g.oid = a.grantee AND g.rolname IN ('anon', 'authenticated')
    WHERE d.defaclrole <> 'postgres'::regrole
      AND d.defaclobjtype = 'r'
      AND a.privilege_type IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE');
-  v_out := v_out || format(E'\n 4b other roles whose new tables still grant writes to the API roles (informational, not changed by PHASE 24): %s', COALESCE(v_names, 'none'));
+  v_out := v_out || format(E'\n 4b other roles whose new tables in schema public still grant writes to the API roles (informational, not changed by PHASE 24): %s', COALESCE(v_names, 'none'));
+  SELECT string_agg(DISTINCT d.defaclnamespace::regnamespace::text, ', ') INTO v_names
+    FROM pg_default_acl d
+    CROSS JOIN LATERAL aclexplode(d.defaclacl) a
+    JOIN pg_roles g ON g.oid = a.grantee AND g.rolname IN ('anon', 'authenticated')
+   WHERE d.defaclrole = 'postgres'::regrole
+     AND d.defaclobjtype = 'r'
+     AND d.defaclnamespace <> 'public'::regnamespace
+     AND a.privilege_type IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE');
+  v_out := v_out || format(E'
+ 4c other schemas where postgres still grants default writes to the API roles (informational; PHASE 24 only covers public): %s', COALESCE(v_names, 'none'));
 
   RAISE EXCEPTION E'PHASE 24 DRY RUN: NOTHING WAS APPLIED (this error is the expected result). Compare each line with its expectation:%', v_out;
 END

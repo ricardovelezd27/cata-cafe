@@ -1525,6 +1525,8 @@ the production project** (there is only one).
   `public`, and changes the default privileges of `postgres` so a table created by a future
   migration is born read-only for them. **Future rule:** a table the browser must write
   needs an explicit `GRANT … TO authenticated` (and a policy) in its own SQL phase.
+  Only schema `public` is covered: Supabase's `storage` schema keeps its own defaults and is
+  out of scope (dry run 4a counts `public` only; 4c lists other schemas, informational).
 - Ends with a self-check: if any write policy or API-role write privilege is left, the whole
   block aborts and nothing is applied.
 
