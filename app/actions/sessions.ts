@@ -63,7 +63,6 @@ import {
   MAX_SESSION_SAMPLES,
   defaultSampleLabel,
 } from "@/lib/sessionEdit";
-import { submittedRefireArgs } from "@/lib/aggregateRefire";
 import { writeEvaluationOrdered } from "@/lib/evaluationWrite";
 
 // Mirrors the standalone CoffeeForm's field set — wizard-created coffees land
@@ -745,13 +744,9 @@ export async function upsertEvaluation(input: {
     return { ok: true, evaluationId: result.id };
   }
 
-  // S8-04 (F-solo-2): an edit of an ALREADY SUBMITTED row must re-fire the
-  // aggregate trigger (it only fires when "isDraft" is in the SET list). This
-  // guarded write matches only submitted rows, so a draft save (the 800 ms hot
-  // path) fires nothing; `fields` never carries isDraft, so a draft is never
-  // submitted by accident. See lib/aggregateRefire.ts.
-  await prisma.evaluation.updateMany(submittedRefireArgs(result.id));
-
+  // S8-04 (F-solo-2): the re-fire of an already submitted row happens INSIDE
+  // writeEvaluationOrdered, in the same transaction as the data write
+  // (S8-22 B-01); a draft save (the 800 ms hot path) stays one statement.
   return { ok: true, evaluationId: result.id };
 }
 
