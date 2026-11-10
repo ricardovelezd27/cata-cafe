@@ -125,6 +125,16 @@ their outputs directly.
    `git log origin/claude/s8-26-coffee-policy-recursion-impl` and `gh pr list`. If the branch is
    missing, redo it (the exact SQL is in the transcript and repeated here).
 
+**Update 2026-11-11 (later):** item 2 is DONE — PR #93, branch
+`claude/s8-26-coffee-policy-recursion-impl` (commit `b11432f`, 1,155 tests). The PHASE 24 dry run was
+re-run in production from that branch: every check matches its expectation except probe 4a, which
+reported 8 because the probe counted Supabase's `storage` schema too. A separate self-rolling-back
+probe confirmed the PHASE 24 statement is right (`public` default ACL for `anon`/`authenticated` goes
+`arwdDxtm` → `rxtm`). A small fix to the probe was dispatched to the same branch (commit message
+"S8-26: PHASE 24 dry-run default-privilege probe counts schema public only"); check that it landed,
+otherwise redo it. **PHASE 24 is ready to apply.** Item 1 (verification) was still running.
+The chain tip is now `claude/s8-26-coffee-policy-recursion-impl` (26th and last branch).
+
 ## 6. Decisions on record
 
 - Kim has answered nothing. Everything built on a Kim default carries `TODO(<answer id>)`.
