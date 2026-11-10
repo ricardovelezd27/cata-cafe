@@ -206,6 +206,9 @@ export default async function GroupDetailPage({
   if (!isOwner) {
     // ── Member (read-only) view — no stats, add-member forms, composer, or
     //    activity feed; only displayName or a masked email is ever shown. ──
+    // TODO(D7): roster visibility is (a) every member sees names (the Kim default,
+    // built). If Kim answers (b) teacher-chosen names or (c) teacher-only, add a
+    // roster setting here in a follow-up PR; nothing in this PR changes it.
     const memberRows = group.members.map((m) => ({
       id: m.id,
       label: memberLabel(m),
