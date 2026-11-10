@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { sendMagicLink } from "@/lib/magicLink";
 import { logWarn } from "@/lib/log";
 import { waitlistSource } from "@/lib/waitlistSource";
-import { CONSENT_NOTICE_VERSION } from "@/lib/legal/config";
+import { CONSENT_NOTICE_VERSION, LEGAL_PAGES_PUBLISHED } from "@/lib/legal/config";
+import { consentStamp } from "@/lib/legal/consent";
 
 export type WaitlistState =
   | { status: "idle" }
@@ -46,10 +47,10 @@ export async function reserveFoundingSeat(
           email,
           locale,
           source,
-          // F-landing-1: the consent record. TODO(S8-07): deleteAccount must
+          // F-landing-1: the consent record, null until the notice is actually
+          // shown (LEGAL_PAGES_PUBLISHED). TODO(S8-07): deleteAccount must
           // delete this row by email (+ test) once deleteAccount exists.
-          consentAt: new Date(),
-          consentNoticeVersion: CONSENT_NOTICE_VERSION,
+          ...consentStamp(LEGAL_PAGES_PUBLISHED, CONSENT_NOTICE_VERSION),
         },
       });
     } catch (e) {

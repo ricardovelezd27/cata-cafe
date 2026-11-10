@@ -762,7 +762,7 @@ No SQL phase. One additive migration, one env variable, one code switch.
 
 **1. Migration (before the deploy).** From the right checkout:
 `npx prisma migrate deploy` applies `20261111100000_waitlist_consent` (two nullable
-columns on `waitlist_entries`: `consentAt`, `consentNoticeVersion`). Old rows stay null.
+columns on `waitlist_entries`: `consentAt`, `consentNoticeVersion`). Old rows stay null; new rows stay null too until the legal pages are published, so these columns record consent only from that moment.
 RLS stays on with no policies; nothing else to do.
 
 **2. Env.** Set `ANALYTICS_SUPER_ADMIN_EMAIL` in Vercel Production to the address that
@@ -784,7 +784,7 @@ until a job exists, delete old rows by hand when asked. Account deletion should 
 row too (TODO in S8-07).
 
 **Verify:** insert one waitlist entry from the hero form on a preview and check
-`consentAt`, `consentNoticeVersion = 'draft-0'` and `source = 'hero'` on the row; open
+`source = 'hero'` and BOTH `consentAt` and `consentNoticeVersion` null (legal pages unpublished, no notice shown, no consent recorded; they are stamped only after the flag is true); open
 `/?src=chile` and submit the founding form: `source = 'founding:chile'`. Log in as an AI admin:
 the Users page shows masked emails (masked in the payload itself), no reveal toggle and no CSV button; Vercel Logs search `"where":"audit"`.
 
