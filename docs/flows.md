@@ -142,8 +142,8 @@ The owner may delete a session at any time. The confirm dialog (fed by
 records and their statistics belong to those owners and are never touched — and
 states how many cuppers' evaluations will go. Inside the same transaction,
 `detachCoffeeHistoryForSession` first guarantees every cupper a
-`UserCoffeeHistory` row per coffee-linked sample they submitted (revealed or
-not) carrying a `snapshot` of **their own** evaluation + session metadata; then
+`UserCoffeeHistory` row per **revealed** coffee-linked sample they submitted (a
+never-revealed blind sample is skipped, so the coffee name never leaks, S8-02; label-only rows await Kim D8) carrying a `snapshot` of **their own** evaluation + session metadata; then
 the session is deleted and the history rows' `sessionId`/`evaluationId` go
 `NULL` (`SetNull`) instead of cascading away. Profile history, coffee detail and
 the dashboard read `snapshot` for those rows and label them "Sesión eliminada".
@@ -529,7 +529,7 @@ flowchart LR
     PS --> EM["close email attachment\n(lib/closeEmail.ts, ledgered)"]
     FT --> R2["/api/sessions/[id]/ficha-tecnica\nowner|admin · others 404"]
     TN --> R2
-    CF["lib/coffees/aggregateSamples +\ncomputeCoffeeAggregate"] --> R3["/api/coffees/[id]/ficha\nusableCoffeeWhere · community block if\nresultsPublished || owner"]
+    CF["loadCoffeeAggregateSamples(viewer) →\nfilterCoffeeSamples (closed + revealed,\nno excluded cuppers) → computeCoffeeAggregate"] --> R3["/api/coffees/[id]/ficha\nusableCoffeeWhere · community block if\nresultsPublished || owner"]
     CVA["buildCvaFormData(ownerView)\nphysical: owner only · extrinsic: owner || revealed"] --> R4["/api/sessions/[id]/cva-pdf\n+ /print page (HTML twin)"]
 ```
 
@@ -540,6 +540,30 @@ documents register fonts once (`lib/pdf/fonts.ts`) and draw charts with the
 `lib/pdf/charts.tsx` SVG primitives; `?inline=1` opens the native viewer
 (iOS) instead of downloading. New reports are PDF-only — `PrintClient.tsx`
 stays the HTML twin of the CVA form only.
+
+**Blind-leak gates (S8-02)** — data the UI hides must not be serialized either,
+each gate is a pure, tested helper shared by every consumer:
+
+- `sheetSampleIdentity` / `sheetSampleRecords` (`lib/pdf/sheetSource.ts`): coffee
+  name + roast only once the sample is `revealed` (owner not exempt); physical
+  owner-view only, extrinsic owner-view or revealed. Used by `/print`, `cva-pdf`
+  and the close email. `/print` for a super-admin renders the OWNER's sheet
+  (same `viewAsId` lens as cva-pdf); the invite QR stays on the real owner.
+- `gateSampleForViewer` (`lib/reports/sampleGate.ts`): results payload ships
+  `physical` only on the owner/admin lens and no `aggregateScore` while a group
+  session's community results are hidden.
+- `filterCoffeeSamples` (`lib/coffees/filterCoffeeSamples.ts`) behind
+  `loadCoffeeAggregateSamples(coffeeId, viewer)`: the coffee profile and the
+  Ficha count **closed + revealed** samples only (D6 a; a coffee used only in
+  open sessions shows no results until close), drop `excludedFromResults`
+  cuppers before counting, and expose session name/date only for sessions the
+  viewer owns or joined (admin: all). Other sessions still feed the anonymous
+  totals. "Recent tastings" = the viewer's own evaluations plus every evaluation
+  of sessions they own.
+- Coffee `notes` render for the owner/super-admin only; `duplicableFields`
+  (`lib/coffeeDuplicate.ts`) is the allow-list a duplicate copies from.
+- D8 (cancelled blind session): unrevealed samples get no history row; label-only
+  rows ("Muestra B", nullable `coffeeId`) wait for Kim's answer.
 
 ---
 

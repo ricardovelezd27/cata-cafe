@@ -27,6 +27,7 @@ After a cupping, owner, participants, guests and the super-admin lens all land o
 - **Invariant check** — Touches the RLS rules (never `USING (true)` without `TO authenticated`; keep EXECUTE on helpers used by policies). The new SQL twin of `canViewGroupResults` must be kept in sync.
 
 ### F-resultados-2 · The results page ships physical data and pre-release community scores to every viewer · severity: P1 · status: confirms-board(El payload incluye la hoja física del dueño…, El payload lleva el puntaje comunitario…)
+**Fixed in S8-02 (PR #PRNUM)** — results payload gated by `gateSampleForViewer` (physical owner-only, community withheld while hidden).
 
 - **Problem** — `results/page.tsx:693` sends `physical: (s.physical?.data …) ?? {}` with no `ownerRead` condition, although `cup/page.tsx` and `cva-pdf/route.ts:111` gate it. Lines `:644-658` fall back to the trigger row `agg` (`communityScore`, `attrAverages`, penalties) whenever `groupAggBySample` is null, which is exactly the case when `canViewGroup` is false. The UI hides both (`physical` is not read anywhere under `results/` or `components/results/`), but the RSC payload carries them.
 - **Implication** — Security and scoring leak, same audience as F-1 but needing no key: view-source is enough. Contradicts CLAUDE.md ("the cup page and the CVA PDF route only ship `physical` to the owner").

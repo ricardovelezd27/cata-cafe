@@ -110,6 +110,7 @@ The owner manages a session from the sessions list (edit, duplicate, delete icon
 - **Native** — n/a. **Confidence** — `verified-in-code`. **Kim?** — no. **Invariant check** — validation and ActionResult contract.
 
 ### F-sesiones-11 · Deleting an open blind session reveals the coffee names in each cupper's history · severity: P3 · status: confirms-board(Borrar una cata ciega abierta revela el café en el historial)
+**Fixed in S8-02 (PR #PRNUM)** — `detachCoffeeHistoryForSession` skips never-revealed samples (commit 1; label-only rows await Kim D8).
 
 - **Problem** — `lib/coffeeHistory.ts:133` calls `syncCoffeeHistoryForSession(sessionId, { includeUnrevealed: true, db })`, so rows for never-revealed samples are created and kept with a snapshot.
 - **Implication** — A blind cupping the owner cancels teaches participants what was on the table. Cupping protocol: blind identity is the point of the exercise.
