@@ -9,6 +9,7 @@ import { run } from "@/lib/safeAction";
 import type { ActionResult } from "@/lib/actionResult";
 import { idList } from "@/lib/validate";
 import { ANONYMIZED_COFFEE_DATA } from "@/lib/coffeeAnonymize";
+import { duplicableFields } from "@/lib/coffeeDuplicate";
 import {
   isCoffeeVisibility,
   usableCoffeeWhere,
@@ -280,7 +281,8 @@ export async function duplicateCoffee(
       altitude: true,
       roastLevel: true,
       certifications: true,
-      notes: true,
+      // notes are deliberately NOT selected or copied: they are the owner's
+      // private text (S8-02 F-cafes-3, see duplicableFields).
     },
   });
   if (!source) throw new Error("not_found_or_forbidden");
@@ -291,7 +293,7 @@ export async function duplicateCoffee(
   const copy = await withCodeRetry((code) =>
     prisma.coffee.create({
       data: {
-        ...source,
+        ...duplicableFields(source),
         code,
         name: `${prefix} ${source.name}`.slice(0, 120),
         createdBy: user.id,
