@@ -30,6 +30,7 @@ export default async function NewSessionPage({
   const tw = await getTranslations("warmup");
   const ta = await getTranslations("actions");
   const tgroups = await getTranslations("groups");
+  const tgroup = await getTranslations("group");
   const tCommon = await getTranslations("common");
 
   const translations = {
@@ -148,6 +149,8 @@ export default async function NewSessionPage({
     autoInviteAsync: tgroups("autoInviteAsync"),
     autoInviteSummary: tgroups.raw("autoInviteSummary"),
     autoInviteRateLimited: tgroups("autoInviteRateLimited"),
+    startGroupNoticeFailed: tgroup("startGroupNoticeFailed"),
+    startGroupNoticePartial: tgroup("startGroupNoticePartial"),
   };
 
   const supabase = await createClient();

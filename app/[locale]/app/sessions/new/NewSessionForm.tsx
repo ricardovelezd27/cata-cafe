@@ -46,6 +46,9 @@ type SessionGroupsTranslations = NotifyGroupTranslations & {
   autoInviteSummary: string;
   // Shown when the group invitation was held back by the email limits.
   autoInviteRateLimited: string;
+  // S8-17: non-blocking owner notices when the start-time group email failed.
+  startGroupNoticeFailed: string;
+  startGroupNoticePartial: string;
 };
 
 // Same tiny interpolation helper as components/groups/NotifyGroupPanel.tsx.
@@ -836,9 +839,14 @@ export function NewSessionForm({
             onClick={() => {
               start(async () => {
                 try {
-                  // TODO(S8-17): surface `groupNotice` (rate_limited/failed) here;
-                  // today the owner only sees that notice when starting from /cup.
-                  await startSession(sessionId);
+                  const r = await startSession(sessionId);
+                  // The session started either way; the toast provider lives in
+                  // the locale layout, so the notice survives the navigation below.
+                  if (r.groupNotice === "rate_limited" || r.groupNotice === "failed") {
+                    feedback.notifyWarning(groupsT.startGroupNoticeFailed);
+                  } else if (r.groupNotice === "partial") {
+                    feedback.notifyWarning(groupsT.startGroupNoticePartial);
+                  }
                 } catch {
                   feedback.notifyError("unknown");
                   return;
