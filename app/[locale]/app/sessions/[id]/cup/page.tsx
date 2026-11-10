@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
+import { requireAppUser } from "@/lib/auth";
 import { warmupPlayerStrings } from "@/components/warmup/playerStrings";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { EmptyState, ButtonLink } from "@/components/ui";
@@ -23,11 +23,7 @@ export default async function CupPage({
   const { sample: initialSampleId } = await searchParams;
   setRequestLocale(locale);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/${locale}/auth/login`);
+  const user = await requireAppUser(locale, `/${locale}/app/sessions/${id}/cup`);
 
   const session = await prisma.cuppingSession.findFirst({
     where: {

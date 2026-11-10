@@ -1,4 +1,5 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
+import { requireAppUser } from "@/lib/auth";
 import Link from "next/link";
 import {
   ClipboardList,
@@ -10,7 +11,6 @@ import {
   Coffee as CoffeeIcon,
 } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { usableCoffeeWhere, type CoffeeVisibility } from "@/lib/coffeeAccess";
@@ -56,11 +56,7 @@ export default async function CoffeeProfilePage({
   const { locale, id } = await params;
   setRequestLocale(locale);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/${locale}/auth/login`);
+  const user = await requireAppUser(locale, `/${locale}/app/coffees/${id}`);
 
   const t = await getTranslations("coffee");
   const th = await getTranslations("history");
