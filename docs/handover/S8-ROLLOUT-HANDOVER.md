@@ -188,3 +188,12 @@ The chain tip is now `claude/s8-26-coffee-policy-recursion-impl` (26th and last 
 - The only database is production. Sessions never run `prisma migrate`, seeds or the dev server
   against it.
 - Auto-fix events for these PRs have all been Vercel bot status comments; no action needed.
+
+## Update 2026-11-11 (after the Opus verification)
+
+- **Verification report**: `docs/audits/s8-implementation-audit-2026-11/E-verification.md`. Verdict: conditionally safe to release. All three High findings resolved. Partly resolved and left for the next cycle: A-03, A-04, B-03, C-02, C-04, D-09.
+- **S8-27** (`claude/s8-27-verification-fixes-impl`, stacked on #93) is being built: removing the active reference now needs the owner's confirmation before another cupper's ratings are overwritten (new issue 1 + B-05), waiting-room poll generation token, two weak tests, one false comment. When it lands it is the new chain tip. Review it before merging.
+- **PHASE 23 dry run in production: PASSED** (2026-11-11, file sha256 `fd063875…34ac6`). 352 aggregate rows, 332 under five cups; **54 community scores change** when the recompute runs (all upward, examples: 81 → 84.25, 79.75 → 84.75, 77.25 → 85.25); 0 rows with five or more cups change; `search_path=public` kept. Step 1 (the function) is safe to apply; step 2 (the recompute) stays on HOLD until Kim is told that 54 past scores go up by as much as 8 points.
+- **Stored ratings check (read-only): clean.** 8,822 rating values in 1,227 evaluations; 0 non-numeric, 0 out of 1–9, 0 non-integer. The B-01 sanitizer cannot change any existing score.
+- **Flowmap**: cards `k-s8-22` … `k-s8-26` added (status doing). Nothing is marked merged because nothing is merged.
+- Reading results in the SQL editor when the pane is hidden: the grid renders empty cells; wrap a read-only query in a `DO` block that ends in `RAISE EXCEPTION '…%', v` and read the error text. Long scripts: gzip + base64, decompress in the page with `DecompressionStream`, compare SHA-256.
