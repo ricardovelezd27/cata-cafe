@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { syncEvaluation } from "@/app/actions/offline";
 import { upsertPhysical, upsertExtrinsic } from "@/app/actions/sessions";
+import { replayOutcomeFromResult } from "@/lib/offline/replayOutcome";
 import {
   listUserKeys,
   loadByKey,
@@ -88,7 +89,10 @@ export function useOfflineSync({
           if (moduleKey === "physical") {
             await upsertPhysical({ sessionSampleId: sampleId, data });
           } else {
-            await upsertExtrinsic({ sessionSampleId: sampleId, data });
+            const r = await upsertExtrinsic({ sessionSampleId: sampleId, data });
+            // ActionResult: a refused replay must not clear the pending flag.
+            // session_closed is non-retryable (see replayOutcomeFromResult).
+            if (replayOutcomeFromResult(r) === "retry" && !r.ok) throw new Error(r.error);
           }
           return "synced";
         } catch {
