@@ -561,6 +561,7 @@
       "keepCoffees": "Coffees you created stay without their identifying data (name, farm, producer, notes).",
       "irreversible": "This cannot be undone.",
       "protectedBody": "This account administers the platform and cannot be deleted from the app.",
+      "changed": "Something changed in your account while we were deleting it (for example, someone joined one of your sessions). Nothing was deleted (shared sessions that were already closed stay closed). Check the updated summary and confirm again.",
       "typeLabel": "Type {word} to confirm",
       "submit": "Delete my account",
       "deleting": "Deleting…",

@@ -6,7 +6,7 @@ import { closeSessionInternal } from "@/lib/closeSession";
 import { detachCoffeeHistoryForSession } from "@/lib/coffeeHistory";
 import { anonymizeOwnedCoffees } from "@/lib/coffees/anonymize";
 import { loadDeletionFixture } from "@/lib/accountDeletion/load";
-import { exactEmailMatches, planAccountDeletion } from "@/lib/accountDeletion/plan";
+import { exactEmailMatches, planAccountDeletion, plansEqual } from "@/lib/accountDeletion/plan";
 import { deletedProfileId, DELETED_PROFILE_STORED_NAME } from "@/lib/accountDeletion/deletedProfile";
 import { errorMessage, logError, logInfo, logWarn } from "@/lib/log";
 
@@ -69,31 +69,31 @@ export async function deleteAccountData(user: {
       },
     });
 
+    // ── Re-plan under the transaction. The steps before it (closing kept
+    //    sessions) acted on `plan`; if anything moved since (a session
+    //    created, someone joined or evaluated, a member added), refuse and
+    //    roll back rather than delete someone's work or move a live session.
+    //    The client says "something changed, try again" (`conflict`). ───────
+    const inner = planAccountDeletion(await loadDeletionFixture(user, tx));
+    if (!inner.ok || !plansEqual(plan, inner) || inner.closeBeforeDelete.length > 0) {
+      throw new Error("conflict");
+    }
+
     // ── CuppingSession.createdBy: delete-if-solo-else-tombstone ────────────
-    for (const sessionId of plan.deleteSessionIds) {
-      // Re-check under the transaction: someone may have evaluated since the
-      // plan was read. Refuse rather than delete their work; a retry re-plans.
-      const others = await tx.evaluation.count({
-        where: { sessionSample: { sessionId }, cupperId: { not: userId } },
-      });
-      const joined = await tx.sessionParticipant.count({
-        where: { sessionId, userId: { not: userId }, status: { not: "invited" } },
-      });
-      const row = await tx.cuppingSession.findFirst({
-        where: { id: sessionId, createdBy: userId },
-        select: { isGroup: true },
-      });
-      if (!row) continue; // already gone
-      if (row.isGroup && (others > 0 || joined > 0)) throw new Error("conflict");
+    for (const sessionId of inner.deleteSessionIds) {
       // The deleteSession path: history detached first, same transaction.
       await detachCoffeeHistoryForSession(tx, sessionId);
       await tx.cuppingSession.delete({ where: { id: sessionId } });
     }
-    // Every session still owned is one kept for others (closed in step 2).
-    await tx.cuppingSession.updateMany({
-      where: { createdBy: userId },
-      data: { createdBy: placeholderId },
-    });
+    // The kept sessions (closed in step 2) move to the placeholder. Only the
+    // planned ids: a session created after the re-plan stays on the real id
+    // and the final profile.delete fails on its FK, rolling everything back.
+    if (inner.keepSessionIds.length > 0) {
+      await tx.cuppingSession.updateMany({
+        where: { createdBy: userId, id: { in: inner.keepSessionIds } },
+        data: { createdBy: placeholderId },
+      });
+    }
 
     // ── SessionParticipant.userId: reassign WITH excludedFromResults and its
     //    trail, so the trigger keeps excluding an excluded cupper and the
@@ -141,9 +141,9 @@ export async function deleteAccountData(user: {
     await tx.sessionInvite.deleteMany({ where: { createdBy: userId } });
 
     // ── TastingGroup.createdBy: delete-if-solo-else-tombstone ──────────────
-    if (plan.deleteGroupIds.length > 0) {
+    if (inner.deleteGroupIds.length > 0) {
       await tx.tastingGroup.deleteMany({
-        where: { id: { in: plan.deleteGroupIds }, createdBy: userId },
+        where: { id: { in: inner.deleteGroupIds }, createdBy: userId },
       });
     }
     // TODO(E3-Kim): transfer ownership. Until then a kept group stays

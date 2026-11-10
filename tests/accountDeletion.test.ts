@@ -7,6 +7,7 @@ import {
   impactOf,
   isDeleteConfirmed,
   planAccountDeletion,
+  plansEqual,
   type DeletionFixture,
 } from "@/lib/accountDeletion/plan";
 import {
@@ -197,6 +198,64 @@ describe("planAccountDeletion", () => {
       evaluationsAnonymized: 2,
       protected: false,
     });
+  });
+});
+
+describe("plansEqual (re-plan inside the transaction)", () => {
+  const base = fixture({
+    ownedSessions: [
+      { id: "a", isGroup: false, status: "closed", otherCupperEvaluations: 0, otherJoinedParticipants: 0 },
+      { id: "b", isGroup: true, status: "closed", otherCupperEvaluations: 2, otherJoinedParticipants: 2 },
+    ],
+    ownedGroups: [
+      { id: "g1", otherMembers: 0 },
+      { id: "g2", otherMembers: 3 },
+    ],
+  });
+
+  it("same ids in any order are equal", () => {
+    const reordered = fixture({
+      ...base,
+      ownedSessions: [...base.ownedSessions].reverse(),
+      ownedGroups: [...base.ownedGroups].reverse(),
+    });
+    expect(plansEqual(planAccountDeletion(base), planAccountDeletion(reordered))).toBe(true);
+  });
+
+  it("a session created after the first read differs", () => {
+    const later = fixture({
+      ...base,
+      ownedSessions: [
+        ...base.ownedSessions,
+        { id: "new", isGroup: true, status: "active", otherCupperEvaluations: 0, otherJoinedParticipants: 1 },
+      ],
+    });
+    expect(plansEqual(planAccountDeletion(base), planAccountDeletion(later))).toBe(false);
+  });
+
+  it("someone joining a to-be-deleted group session differs (deleted -> kept)", () => {
+    const g = fixture({
+      ownedSessions: [
+        { id: "w", isGroup: true, status: "active", otherCupperEvaluations: 0, otherJoinedParticipants: 0 },
+      ],
+    });
+    const joined = fixture({
+      ownedSessions: [
+        { id: "w", isGroup: true, status: "active", otherCupperEvaluations: 0, otherJoinedParticipants: 1 },
+      ],
+    });
+    expect(plansEqual(planAccountDeletion(g), planAccountDeletion(joined))).toBe(false);
+  });
+
+  it("a member added to an empty group differs (deleted -> kept)", () => {
+    const grown = fixture({ ...base, ownedGroups: [{ id: "g1", otherMembers: 1 }, base.ownedGroups[1]] });
+    expect(plansEqual(planAccountDeletion(base), planAccountDeletion(grown))).toBe(false);
+  });
+
+  it("deleteAccount re-plans inside the transaction and throws conflict on a difference", () => {
+    const src = readFileSync(join(process.cwd(), "lib", "accountDeletion", "deleteAccount.ts"), "utf8");
+    expect(src).toContain("planAccountDeletion(await loadDeletionFixture(user, tx))");
+    expect(src).toMatch(/!plansEqual\(plan, inner\)[\s\S]{0,80}throw new Error\("conflict"\)/);
   });
 });
 

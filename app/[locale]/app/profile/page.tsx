@@ -476,6 +476,7 @@ export default async function ProfilePage({
                   keepCoffees: t("deleteAccount.keepCoffees"),
                   irreversible: t("deleteAccount.irreversible"),
                   protectedBody: t("deleteAccount.protectedBody"),
+                  changed: t("deleteAccount.changed"),
                   typeLabel: t.raw("deleteAccount.typeLabel") as string,
                   word: deleteConfirmationWord(locale),
                   submit: t("deleteAccount.submit"),

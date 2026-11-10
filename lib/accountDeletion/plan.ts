@@ -132,6 +132,30 @@ export function planAccountDeletion(f: DeletionFixture): DeletionPlan {
   };
 }
 
+function sameIds(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) return false;
+  const x = [...a].sort();
+  const y = [...b].sort();
+  return x.every((v, i) => v === y[i]);
+}
+
+/**
+ * deleteAccount reads the plan BEFORE its transaction (to close kept sessions)
+ * and again INSIDE it. Anything that moved in between (a session created, a
+ * cupper who joined, a group member added) shows up as a different id set;
+ * the transaction then throws `conflict` and rolls back, and the person
+ * retries against the fresh plan. Order inside each list does not matter.
+ */
+export function plansEqual(a: DeletionPlan, b: DeletionPlan): boolean {
+  if (!a.ok || !b.ok) return a.ok === b.ok;
+  return (
+    sameIds(a.deleteSessionIds, b.deleteSessionIds) &&
+    sameIds(a.keepSessionIds, b.keepSessionIds) &&
+    sameIds(a.deleteGroupIds, b.deleteGroupIds) &&
+    sameIds(a.keepGroupIds, b.keepGroupIds)
+  );
+}
+
 /** Normalized form an address is compared in: trimmed, lowercased. */
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();

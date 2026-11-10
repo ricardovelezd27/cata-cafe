@@ -25,6 +25,8 @@ export type DeleteAccountStrings = {
   keepCoffees: string;
   irreversible: string;
   protectedBody: string;
+  /** Shown after a `conflict`: something changed while deleting; nothing was deleted. */
+  changed: string;
   /** Raw template with a literal "{word}". */
   typeLabel: string;
   word: string;
@@ -52,6 +54,7 @@ export function DeleteAccountDialog({
   const [open, setOpen] = useState(false);
   const [impact, setImpact] = useState<AccountDeletionImpact | null>(null);
   const [typed, setTyped] = useState("");
+  const [changed, setChanged] = useState(false);
   const [loading, startLoading] = useTransition();
   const [pending, startDelete] = useTransition();
   const feedback = useActionFeedback();
@@ -59,6 +62,7 @@ export function DeleteAccountDialog({
 
   const openDialog = () => {
     setTyped("");
+    setChanged(false);
     setImpact(null);
     setOpen(true);
     startLoading(async () => {
@@ -72,17 +76,37 @@ export function DeleteAccountDialog({
 
   const submit = () => {
     if (!confirmed) return;
+    setChanged(false);
     startDelete(async () => {
-      await feedback.run(deleteAccount(typed, locale), async (data) => {
-        await clearLocalDeviceState();
-        try {
-          const { removeUserDrafts } = await import("@/lib/offline/store");
-          await removeUserDrafts(data.userId);
-        } catch {
-          // the store may be unavailable in this browser
+      let result: Awaited<ReturnType<typeof deleteAccount>>;
+      try {
+        result = await deleteAccount(typed, locale);
+      } catch {
+        feedback.notifyError("unknown");
+        return;
+      }
+      if (!result.ok) {
+        if (result.error === "conflict") {
+          // Something moved while deleting (a session, a join): nothing was
+          // deleted. Show the fresh counts and let the person confirm again.
+          setChanged(true);
+          setTyped("");
+          const fresh = await getMyAccountDeletionImpact();
+          if (fresh.ok) setImpact(fresh.data);
+        } else {
+          feedback.notifyError(result.error);
         }
-        window.location.assign(data.next);
-      });
+        return;
+      }
+      const data = result.data;
+      await clearLocalDeviceState();
+      try {
+        const { removeUserDrafts } = await import("@/lib/offline/store");
+        await removeUserDrafts(data.userId);
+      } catch {
+        // the store may be unavailable in this browser
+      }
+      window.location.assign(data.next);
     });
   };
 
@@ -126,6 +150,11 @@ export function DeleteAccountDialog({
               submit();
             }}
           >
+            {changed && (
+              <p role="alert" className="rounded-card border border-error/40 bg-error/5 p-3 text-sm leading-relaxed text-on-surface">
+                {t.changed}
+              </p>
+            )}
             <p className="text-sm leading-relaxed text-on-surface">{t.intro}</p>
             <ul className="list-disc space-y-1 pl-5 text-sm text-on-surface">
               {lines.length > 0 ? lines.map((l) => <li key={l}>{l}</li>) : <li>{t.impactNothing}</li>}

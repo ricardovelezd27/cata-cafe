@@ -561,6 +561,7 @@
       "keepCoffees": "Los cafés que creaste se quedan sin sus datos identificativos (nombre, finca, productor, notas).",
       "irreversible": "Esto no se puede deshacer.",
       "protectedBody": "Esta cuenta administra la plataforma y no se puede eliminar desde la app.",
+      "changed": "Algo cambió en tu cuenta mientras la eliminábamos (por ejemplo, alguien se unió a una de tus sesiones). No se eliminó nada (las sesiones compartidas que ya se cerraron siguen cerradas). Revisa el resumen actualizado y vuelve a confirmar.",
       "typeLabel": "Escribe {word} para confirmar",
       "submit": "Eliminar mi cuenta",
       "deleting": "Eliminando…",
