@@ -198,7 +198,11 @@
         "invalid_coffee": "Revisa los datos de los cafés: algún campo es demasiado largo o no es válido.",
         "invalid_label": "El nombre de una muestra es demasiado largo (máx. 120 caracteres).",
         "invalid_closes_at": "La fecha de cierre debe estar en el futuro.",
-        "invalid_reference": "La muestra de referencia no es válida. Elige una de la lista."
+        "invalid_reference": "La muestra de referencia no es válida. Elige una de la lista.",
+        "invalid_warmup": "El ejercicio de calentamiento no es válido. Elige uno de la lista.",
+        "not_found_or_forbidden": "No tienes permiso para esto o ya no existe. Revisa el grupo elegido.",
+        "not_authenticated": "Tu sesión expiró. Vuelve a iniciar sesión; lo que escribiste sigue aquí.",
+        "unknown": "No se pudo crear la sesión. Lo que escribiste sigue aquí; inténtalo de nuevo."
       },
       "goToPanel": "Ir al panel",
       "startNow": "Iniciar cata ahora",

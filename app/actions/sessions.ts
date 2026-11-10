@@ -44,6 +44,7 @@ import { CERTIFICATIONS } from "@/lib/constants";
 import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/groups";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
 import { WARMUP_IDS, type WarmupId } from "@/lib/warmup/exercises";
+import { safeLocale } from "@/lib/safeLocale";
 
 // Mirrors the standalone CoffeeForm's field set — wizard-created coffees land
 // in the SAME coffees table with the same shape (no wizard-only subset).
@@ -338,6 +339,26 @@ export async function createSession(input: {
   warmupExerciseId?: string | null;
   locale?: string;
 }): Promise<{ ok: false; error: string } | void> {
+  // S8-10 T1, design (b): wizard validation codes keep the `{ ok:false, error }`
+  // shape; run() only catches what is THROWN (guest, DB, expired session) so
+  // the form stays mounted and the client can show copy. redirect() passes
+  // through run() untouched.
+  const result = await run("createSession", () => createSessionBody(input));
+  return result.ok ? result.data : { ok: false, error: result.error };
+}
+
+async function createSessionBody(input: {
+  name: string;
+  date: string;
+  objective?: string;
+  format: "descriptive" | "affective" | "combined";
+  cupsPerSample: number;
+  coffees?: CoffeeInput[];
+  samples: SampleInput[];
+  referenceIdx?: number | null;
+  warmupExerciseId?: string | null;
+  locale?: string;
+}): Promise<{ ok: false; error: string } | void> {
   const user = await requireRegisteredUser();
 
   const invalid = validateSessionInput(input.coffees ?? [], input.samples);
@@ -385,8 +406,9 @@ export async function createSession(input: {
     return session.id;
   });
 
-  const locale = input.locale || "es";
-  redirect(`/${locale}/app/sessions/${sessionId}/cup`);
+  // The locale reaches a redirect URL: whitelist it (`//evil.test` would be a
+  // protocol-relative redirect).
+  redirect(`/${safeLocale(input.locale)}/app/sessions/${sessionId}/cup`);
 }
 
 // ─── "Catar ahora" — express solo session ────────────────────────────────────
@@ -440,7 +462,37 @@ export async function createExpressSession(input: {
   });
 }
 
+type GroupSessionResult =
+  | {
+      ok: true;
+      sessionId: string;
+      inviteToken: string;
+      emailSummary?: GroupEmailSummary;
+      emailBlocked?: "rate_limited";
+    }
+  | { ok: false; error: string };
+
 export async function createGroupSession(input: {
+  name: string;
+  date: string;
+  objective?: string;
+  format: "descriptive" | "affective" | "combined";
+  cupsPerSample: number;
+  coffees?: CoffeeInput[];
+  samples: SampleInput[];
+  closesAt?: string;
+  groupId?: string;
+  notifyGroup?: boolean;
+  referenceIdx?: number | null;
+  warmupExerciseId?: string | null;
+}): Promise<GroupSessionResult> {
+  // S8-10 T1 (design b): thrown failures become `{ ok:false, error }` so the
+  // wizard stays mounted with its state; validation codes pass through.
+  const result = await run("createGroupSession", () => createGroupSessionBody(input));
+  return result.ok ? result.data : { ok: false, error: result.error };
+}
+
+async function createGroupSessionBody(input: {
   name: string;
   date: string;
   objective?: string;
@@ -458,16 +510,7 @@ export async function createGroupSession(input: {
   referenceIdx?: number | null;
   /** Optional pre-cupping warm-up (WARMUP_IDS); null/absent = none. */
   warmupExerciseId?: string | null;
-}): Promise<
-  | {
-      ok: true;
-      sessionId: string;
-      inviteToken: string;
-      emailSummary?: GroupEmailSummary;
-      emailBlocked?: "rate_limited";
-    }
-  | { ok: false; error: string }
-> {
+}): Promise<GroupSessionResult> {
   const user = await requireRegisteredUser();
 
   const invalid = validateSessionInput(input.coffees ?? [], input.samples);

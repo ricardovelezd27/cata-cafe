@@ -100,16 +100,9 @@ export default async function NewSessionPage({
       referenceBadge: t("newForm.referenceBadge"),
       referenceNone: t("newForm.referenceNone"),
       referenceClear: t("newForm.referenceClear"),
-      errors: {
-        no_samples: t("newForm.errors.no_samples"),
-        no_coffees: t("newForm.errors.no_coffees"),
-        missing_coffee_fields: t("newForm.errors.missing_coffee_fields"),
-        invalid_altitude: t("newForm.errors.invalid_altitude"),
-        sample_without_coffee: t("newForm.errors.sample_without_coffee"),
-        generic: t("newForm.errors.generic"),
-        coffee_not_found: t("newForm.errors.coffee_not_found"),
-        invalid_reference: t("newForm.errors.invalid_reference"),
-      },
+      // The WHOLE table: every code the validators can return needs copy
+      // (S8-10 T2; tests/sessionErrorsCopy.test.ts enumerates them).
+      errors: t.raw("newForm.errors") as Record<string, string> & { generic: string },
     },
     // coffee picker
     picker: {

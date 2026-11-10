@@ -137,16 +137,7 @@ type Translations = {
     referenceBadge: string;
     referenceNone: string;
     referenceClear: string;
-    errors: {
-      no_samples: string;
-      no_coffees: string;
-      missing_coffee_fields: string;
-      invalid_altitude: string;
-      sample_without_coffee: string;
-      generic: string;
-      coffee_not_found: string;
-      invalid_reference?: string;
-    };
+    errors: Record<string, string> & { generic: string };
   };
   picker: {
     useExisting: string;
@@ -496,6 +487,9 @@ export function NewSessionForm({
       : null;
 
     start(async () => {
+      // A network drop / opaque server failure must never unmount the form:
+      // every field stays in state and the strip shows copy (S8-10 T1).
+      try {
       if (!isGroup) {
         const result = await createSession({
           name,
@@ -534,6 +528,13 @@ export function NewSessionForm({
         } else {
           setErrorCode(result.error);
         }
+      }
+      } catch (err) {
+        // Successful solo create navigates via redirect(); never treat that
+        // control-flow throw as a failure.
+        const digest = (err as { digest?: unknown } | null)?.digest;
+        if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) throw err;
+        setErrorCode("unknown");
       }
     });
   };

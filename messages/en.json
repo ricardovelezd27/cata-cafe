@@ -198,7 +198,11 @@
         "invalid_coffee": "Check the coffee details: a field is too long or not valid.",
         "invalid_label": "A sample name is too long (max 120 characters).",
         "invalid_closes_at": "The closing date must be in the future.",
-        "invalid_reference": "The reference sample is not valid. Pick one from the list."
+        "invalid_reference": "The reference sample is not valid. Pick one from the list.",
+        "invalid_warmup": "That warm-up exercise is not valid. Pick one from the list.",
+        "not_found_or_forbidden": "You don't have access to this or it no longer exists. Check the chosen group.",
+        "not_authenticated": "Your session expired. Sign in again; what you typed is still here.",
+        "unknown": "Couldn't create the session. What you typed is still here; please try again."
       },
       "goToPanel": "Go to the panel",
       "startNow": "Start the cupping now",
