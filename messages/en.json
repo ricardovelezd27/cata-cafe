@@ -1701,11 +1701,8 @@
     "reflect": {
       "eyebrow": "A moment",
       "title": "Two questions, no hurry",
-      "lead": "Optional. What you write stays on this device only: it is never sent or mixed with your cuppings.",
-      "answerLabel": "Your answer (optional)",
-      "save": "Save on this device",
-      "omit": "Skip",
-      "savedNote": "Saved on this device."
+      "lead": "Nothing to write: just take a moment with these two questions.",
+      "continue": "Continue"
     },
     "synced": {
       "listen": "Close your eyes and listen",

@@ -70,10 +70,7 @@ export interface WarmupPlayerStrings {
   reflectEyebrow: string;
   reflectTitle: string;
   reflectLead: string;
-  answerLabel: string;
-  save: string;
-  omit: string;
-  savedNote: string;
+  reflectContinue: string;
   doneTitle: string;
   doneBody: string;
   noticedTitle: string;
@@ -159,10 +156,7 @@ export function warmupPlayerStrings(t: T): WarmupPlayerStrings {
     reflectEyebrow: t("reflect.eyebrow"),
     reflectTitle: t("reflect.title"),
     reflectLead: t("reflect.lead"),
-    answerLabel: t("reflect.answerLabel"),
-    save: t("reflect.save"),
-    omit: t("reflect.omit"),
-    savedNote: t("reflect.savedNote"),
+    reflectContinue: t("reflect.continue"),
     doneTitle: t("player.doneTitle"),
     doneBody: t("player.doneBody"),
     noticedTitle: t("player.noticedTitle"),

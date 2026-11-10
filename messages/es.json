@@ -1701,11 +1701,8 @@
     "reflect": {
       "eyebrow": "Un momento",
       "title": "Dos preguntas, sin prisa",
-      "lead": "Opcional. Lo que escribas se guarda solo en este dispositivo: no se envía ni se mezcla con tus catas.",
-      "answerLabel": "Tu respuesta (opcional)",
-      "save": "Guardar en el dispositivo",
-      "omit": "Omitir",
-      "savedNote": "Guardado en este dispositivo."
+      "lead": "Sin escribir nada: solo tómate un momento con estas dos preguntas.",
+      "continue": "Continuar"
     },
     "synced": {
       "listen": "Cierra los ojos y escucha",

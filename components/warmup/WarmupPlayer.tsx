@@ -8,7 +8,6 @@ import { buildExerciseTimeline, poseInSegment, segmentAt, sequenceMap, stepSegme
 import { arrivePhaseAt, halo as haloAt } from "@/lib/warmup/breath";
 import { partTransforms, passedDots, torsoBreathTransform } from "@/lib/warmup/poses";
 import { previewSpec } from "@/lib/warmup/preview";
-import { saveReflection } from "@/lib/warmup/reflections";
 import { RESUME_WAIT_MS, audioResumeDecision } from "@/lib/warmup/audioResume";
 import { shouldResync } from "@/lib/warmup/syncedRun";
 import { skipNeedsConfirm, type WarmupExitInfo } from "@/lib/warmup/overlayGate";
@@ -95,8 +94,6 @@ export function WarmupPlayer({
 
   const [phase, setPhase] = useState<Phase>(seekToMs != null ? "run" : "intro");
   const [runKey, setRunKey] = useState(0);
-  const [answers, setAnswers] = useState<[string, string]>(["", ""]);
-  const [saved, setSaved] = useState(false);
 
   // ── Clock ─────────────────────────────────────────────────────────────
   const clock = useRunClock(tl.totalMs, {
@@ -725,15 +722,7 @@ export function WarmupPlayer({
   const sequence = useMemo(() => sequenceMap(exercise, locale, labels), [exercise, locale, labels]);
   const preview = useMemo(() => previewSpec(exercise), [exercise]);
 
-  const submitReflection = (keep: boolean) => {
-    if (keep) setSaved(saveReflection(exercise.id, answers));
-    setPhase("done");
-  };
-  const repeat = () => {
-    setAnswers(["", ""]);
-    setSaved(false);
-    setPhase("intro");
-  };
+  const repeat = () => setPhase("intro");
 
   const figurePath = pathSeg ? { from: pathSeg.seg.from, to: pathSeg.seg.to, progress: pathSeg.reached ? 1 : 0 } : null;
   // Eyes-closed dusk darkens the WHOLE screen, not just the player: on
@@ -893,33 +882,19 @@ export function WarmupPlayer({
             className={s.reflect}
             onSubmit={(e) => {
               e.preventDefault();
-              submitReflection(true);
+              setPhase("done");
             }}
           >
             <h2 className={s.title}>{t.reflectTitle}</h2>
             <p className={s.muted}>{t.reflectLead}</p>
             {exercise.closing.map((q, i) => (
               <div key={i} className={s.field}>
-                <label className={s.question} htmlFor={`warmup-reflect-${i}`}>
-                  {lw(q, locale)}
-                </label>
-                <textarea
-                  id={`warmup-reflect-${i}`}
-                  className={s.textarea}
-                  rows={3}
-                  maxLength={2000}
-                  value={answers[i]}
-                  placeholder={t.answerLabel}
-                  onChange={(e) => setAnswers((a) => (i === 0 ? [e.target.value, a[1]] : [a[0], e.target.value]))}
-                />
+                <p className={s.question}>{lw(q, locale)}</p>
               </div>
             ))}
             <div className={s.reflectActions}>
-              <button type="button" className={s.ghostBtn} onClick={() => submitReflection(false)}>
-                {t.omit}
-              </button>
               <button type="submit" className={s.primaryBtn}>
-                {t.save}
+                {t.reflectContinue}
               </button>
             </div>
           </form>
@@ -929,7 +904,6 @@ export function WarmupPlayer({
           <>
             <h2 className={s.title}>{t.doneTitle}</h2>
             <p className={s.lead}>{t.doneBody}</p>
-            {saved && <p className={s.savedNote}>{t.savedNote}</p>}
             {tl.doneObserveIdx.length > 0 && (
               <>
                 <p className={s.kicker}>{t.noticedTitle}</p>

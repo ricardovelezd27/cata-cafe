@@ -36,4 +36,11 @@ export async function clearLocalDeviceState(): Promise<void> {
   } catch {
     // best effort
   }
+  try {
+    // Legacy unkeyed warm-up reflection notes (no longer written, S8-13).
+    const { purgeLegacyReflections } = await import("@/lib/warmup/reflections");
+    purgeLegacyReflections(window.localStorage);
+  } catch {
+    // best effort
+  }
 }
