@@ -1,5 +1,22 @@
 import { MIN_CUPS_FOR_PENALTIES } from "@/lib/scoring";
 
+/**
+ * S8-28 B-03: the fields a coffee-history upsert refreshes on an existing row.
+ * `evaluationId` is included so a row whose link was SetNull (a guest merge
+ * deleted the original evaluation) is re-linked to the surviving evaluation
+ * instead of staying NULL.
+ */
+export function coffeeHistoryRefresh(
+  evaluation: { id: string; individualScore: number | null },
+  communityScore: number | null,
+): { evaluationId: string; individualScore: number | null; communityScore: number | null } {
+  return {
+    evaluationId: evaluation.id,
+    individualScore: evaluation.individualScore,
+    communityScore,
+  };
+}
+
 // S8-04 (F-solo-4, F-express-4). Pure rules for what the per-user coffee
 // history shows. Dependency-free (tests import it).
 

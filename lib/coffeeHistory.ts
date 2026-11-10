@@ -6,7 +6,7 @@
 
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/app/generated/prisma/client";
-import { historyCommunityScore, orphanLabelRowWhere, partitionLabelRows } from "@/lib/historyRules";
+import { coffeeHistoryRefresh, historyCommunityScore, orphanLabelRowWhere, partitionLabelRows } from "@/lib/historyRules";
 import { buildLabelSnapshot, type HistorySnapshot } from "@/lib/historySnapshot";
 
 export type { HistorySnapshot };
@@ -145,10 +145,7 @@ export async function syncCoffeeHistoryForSession(
             communityScore,
             tastedAt,
           },
-          update: {
-            individualScore: evaluation.individualScore,
-            communityScore,
-          },
+          update: coffeeHistoryRefresh(evaluation, communityScore),
         }),
       );
     }
