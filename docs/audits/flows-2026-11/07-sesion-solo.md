@@ -19,6 +19,8 @@ The owner of a solo session (wizard or express; always `status: "active"` from c
 
 ### F-solo-1 · A close that fails after the status flip cannot be retried · severity: P2 · status: confirms-board(El sync de historial lanza después del flip a «closed»)
 
+**Fixed in S8-05** (draft PR, branch `claude/s8-05-close-lifecycle-impl`): two-phase close with `closeFinalizedAt`; resubmit by the solo owner and the cron repair pass retry phase 2; failures log `closeSession.finalize`.
+
 - **Problem** — `closeSessionInternal` flips to `closed` first (`lib/closeSession.ts:39-42`), then reveals and syncs history (`:55-60`). If either throws, the session is already closed. For solo the retry path is worse than the board says: the cupper sees `submitError` and presses submit again, but `submitAllEvaluations` starts with `assertSessionWritable(await requireSessionMember(...))` (`community.ts:25`), which now throws `session_closed` before reaching `closeSessionInternal`. A reload goes to `/results` (`cup/page.tsx:80-81`; line corrected in verification). Nothing re-runs `syncCoffeeHistoryForSession`, and the cron only selects `status: "active"` (`close-expired-sessions/route.ts:29`).
 - **Implication** — Results work (they read live evaluations) but the coffee never reaches the cupper's profile, coffee page or dashboard numbers. Silent and permanent: robustness plus trust.
 - **Fix** — Make close recoverable: either flip, reveal and history sync commit together, or a "closed but history missing" session is detected and the sync re-run (idempotent upserts) on the next close call, results open or a reconciliation pass. A repeat close on a fully synced session stays a no-op. **Acceptance:** (1) force the sync to fail once after the flip, then submit again or open results: history rows exist and status stays closed; (2) repeat close on a healthy session writes nothing new; (3) group sessions and the cron get the same repair. **Size:** M.
@@ -40,6 +42,8 @@ The owner of a solo session (wizard or express; always `status: "active"` from c
 - **Invariant check** — the trigger stays authoritative; scoring inputs stay server-derived.
 
 ### F-solo-3 · "Continuar de todos modos" turns a half-filled cupping into either an irreversible close or a silent non-close · severity: P2 · status: new
+
+**Fixed in S8-05** (draft PR, branch `claude/s8-05-close-lifecycle-impl`): the guard dialog states beforehand whether sending closes the session or leaves it open and offers "Terminar con las N que catié"; the results banner offers "Terminar cata".
 
 - **Problem** — The submit guard lists gaps but lets the cupper continue (`CupClient.tsx:1267-1300`). `submitAllEvaluations` has no completeness check and submits every draft row (`community.ts:29-36`). Case A: every sample has a row (even with blank quality) so `submittedCount >= sampleCount` (`:77`) and the session closes, reveals and writes history; there is no reopen. Case B: a sample was never touched, so it has no row, `:77` returns early, the session stays active, and the client still navigates to results (`CupClient.tsx:1258`) without saying nothing closed.
 - **Implication** — In A the cupper loses the chance to finish a sample after tapping through a warning; in B they believe the cupping is done while the coffee is missing from their history. Same click, two unexplained outcomes.

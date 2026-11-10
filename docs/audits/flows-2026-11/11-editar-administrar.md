@@ -127,6 +127,8 @@ The owner manages a session from the sessions list (edit, duplicate, delete icon
 
 ### F-sesiones-12 · Adding a closing date silently turns a live cupping into an asynchronous one · severity: P3 · status: new
 
+**Fixed in S8-05** (draft PR, branch `claude/s8-05-close-lifecycle-impl`): both forms show the consequence ("pasa a tu ritmo, sin sala de espera ni Iniciar cata") next to the date. TODO(S8-05/C7) separation of `isAsync` from `closesAt` not built.
+
 - **Problem** — `planClosesAtChange` returns `isAsync: true` for any date (`lib/sessionState.ts:~104`) and the form saves it with other fields. Async removes the waiting room and "Iniciar cata" for non-owners (`cup/page.tsx:90`, `community.ts:351`) and `startWarmup` refuses async sessions (:170), while the edit form still offers a warm-up toggle. The hint (`closesAtHint`) says only that the session closes by itself.
 - **Implication** — A teacher who adds a safety close date to a planned live cupping loses the synchronized start and shared warm-up with no warning.
 - **Fix** — State the consequence next to the date field and when saving an unstarted live session ("pasará a cata a tu ritmo, sin sala de espera"). **Acceptance:** setting a date on an unstarted live session shows the notice before Guardar. **Size:** S.

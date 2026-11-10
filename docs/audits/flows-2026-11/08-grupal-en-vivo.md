@@ -31,6 +31,8 @@ The owner creates a group session (`createGroupSession`), shares `/join/[token]`
 
 ### F-grupal-2 · Cerrar deja fuera los borradores sin enviar y nadie lo sabe · severity: P2 · status: confirms-board(Cerrar con borradores sin enviar: no cuentan y nadie avisa)
 
+**Fixed in S8-05** (draft PR, branch `claude/s8-05-close-lifecycle-impl`): the close dialog counts cuppers with complete unsent notes and states the rule (`getCloseImpact`); the close email repeats it and tells each affected cupper. Default policy `DRAFT_AT_CLOSE = "exclude"` (Kim C1 b); TODO(S8-05/C1-d) accept-late action not built.
+
 - **Problem** — The close dialog says only «¿Cerrar la sesión? Los resultados quedarán finales.» (`messages/es.json:501`). `closeSessionInternal` never looks at drafts, and history sync reads only `isDraft: false` (`lib/coffeeHistory.ts:28`). After close every write throws `session_closed`, so a participant still typing is moved to results by the page redirect (`cup/page.tsx:80-81`; line corrected in verification) and the offline replay discards their pending draft silently (CLAUDE.md, closed = read-only). The cron has the same blind spot for async sessions.
 - **Implication** — Data loss in the most common live moment: the owner closes while two people are on the last sample. Their notes vanish from results, history and the email, and they get no explanation.
 - **Fix** — Before the owner confirms, show how many cuppers have unsent work. Apply one decided rule at close (see K-grupal-1), and tell a participant who is moved to results that their unsent notes were or were not counted. **Acceptance:** the dialog shows the draft count; the rule is stated in the dialog and in the close email; a participant redirected at close sees one explanatory notice. **Size:** M.
@@ -94,6 +96,8 @@ The owner creates a group session (`createGroupSession`), shares `/join/[token]`
 - **Invariant check** — Offline replay must keep returning "pending", not "discarded", so the cupper loses nothing.
 
 ### F-grupal-8 · Una sesión en vivo olvidada nunca se cierra ni avisa · severity: P3 · status: confirms-board(⚑ sesión en vivo sin fecha de cierre)
+
+**Fixed in S8-05** (draft PR, branch `claude/s8-05-close-lifecycle-impl`): one `live_idle` owner reminder after 12 h of inactivity from the cron, ledgered, never closes (Kim C3 default a).
 
 - **Problem** — The cron selects only `status: "active", closesAt: { lt: now }` (`close-expired-sessions/route.ts:29`); a live session has no `closesAt` and stays active indefinitely. Nothing reminds the owner.
 - **Implication** — Provisional results for participants, no coffee history and no email until the owner returns. Nothing is lost while the session stays open, so this is friction, not data loss. Sharpening: a reminder to the owner is safer than an auto-close, which would run into F-grupal-2.

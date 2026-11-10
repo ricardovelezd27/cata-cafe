@@ -768,3 +768,37 @@ past session with fewer than 5 cups per sample and a flagged cup, once. Those sc
 
 **Rollback:** re-create the previous function body (kept verbatim in the PHASE 23 comment)
 and re-run step 4, then step 5. Nothing is deleted: the cup flags stay in the evaluations.
+
+---
+
+## §13. Database: apply the `close_lifecycle` migration (2026-11, S8-05)
+
+What it is for: the closing date keeps the owner's time zone, a closed session records
+whether its second phase (history, emails) finished so a failed close can be repaired, and
+reminder emails get their own ledger. Additive only; no Supabase SQL. Prisma migrations are
+NOT applied by the deploy: run it yourself, **before** the deploy, from the checkout that
+contains `prisma/migrations/20261111090000_close_lifecycle/`.
+
+**Steps**
+
+1. From that checkout (with `.env.local` or `DIRECT_URL` pointing at the production
+   database; there is only one): `npx prisma migrate deploy`. It must report exactly one
+   migration applied, `20261111090000_close_lifecycle`.
+2. **Check** (Supabase SQL editor, read-only):
+
+   ```sql
+   select count(*) filter (where status = 'closed' and "closeFinalizedAt" is null) as owed,
+          count(*) filter (where status = 'closed') as closed
+   from cupping_sessions;
+   ```
+
+   `owed` must be `0` right after the migration (history was backfilled to finalized).
+3. Deploy. The next daily cron (06:00 UTC) now also runs the repair and reminder passes inside
+   `close-expired-sessions`; there is no new cron entry. In the JSON response look for
+   `repair` and `reminders`.
+4. **After the deploy:** a session whose close emails or history failed shows up as `owed` in
+   the query above after 5 minutes; the next cron run repairs it. Vercel logs: search
+   `closeSession.finalize` (error level) for the step that failed.
+
+**Rollback:** the deploy can be reverted freely (the columns are nullable and unused by old
+code). Dropping the columns/table is not needed.
