@@ -55,6 +55,18 @@ describe("planBroadcast", () => {
     expect(plan.toSend).toEqual([]);
     expect(plan.isRetry).toBe(false);
   });
+  it("drops opted-out members before the send list (S8-20)", () => {
+    const plan = planBroadcast([r("a"), r("b"), r("c")], [{ memberId: "c", status: "sent" }], new Set(["b", "c"]));
+    expect(plan.toSend.map((x) => x.memberId)).toEqual(["a"]);
+    expect(plan.optedOut.map((x) => x.memberId)).toEqual(["b"]);
+    expect(plan.alreadySent.map((x) => x.memberId)).toEqual(["c"]);
+  });
+  it("a retry of only opted-out members sends nothing and is not a retry", () => {
+    const plan = planBroadcast([r("a")], [{ memberId: "a", status: "skipped" }], new Set(["a"]));
+    expect(plan.toSend).toEqual([]);
+    expect(plan.optedOut).toHaveLength(1);
+    expect(plan.isRetry).toBe(false);
+  });
   it("not a retry with an empty ledger", () => {
     expect(planBroadcast([r("a")], []).isRetry).toBe(false);
   });

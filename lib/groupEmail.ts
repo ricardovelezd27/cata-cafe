@@ -4,6 +4,13 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { reserveEmailBudget } from "@/lib/emailBudget";
 import { logWarn } from "@/lib/log";
+import { siteOrigin } from "@/lib/inviteUrl";
+import {
+  mintUnsubscribeToken,
+  unsubscribeHeaders,
+  unsubscribeUrl,
+  withUnsubscribeFooter,
+} from "@/lib/groupUnsubscribe";
 import {
   SEND_CONCURRENCY,
   idempotencyKeyFor,
@@ -27,6 +34,11 @@ export type GroupMailJob = {
   label: string;
   /** Live destination address. Stays inside this module. */
   email: string;
+  /** The member row's STORED address: the unsubscribe token is minted over it
+   *  (a linked member's live address can differ from it). */
+  memberEmail: string;
+  /** Recipient language for the unsubscribe footer. */
+  locale: "es" | "en";
   subject: string;
   html: string;
 };
@@ -39,11 +51,9 @@ export type GroupMailOutcome =
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-// TODO(owner): per-group unsubscribe (F-grupos-8). Needs a signed one-click
-// route (RFC 8058), an opt-out column on tasting_group_members and the
-// List-Unsubscribe headers on the three templates; the skip belongs in this
-// delivery step. Not built in S8-14: a new public endpoint and the opt-out
-// semantics are an owner decision.
+// Per-group unsubscribe (S8-20, F-grupos-8): every mail carries a footer link
+// and the RFC 8058 List-Unsubscribe headers, and members with emailOptOutAt
+// set are dropped in the plan step (before the budget) and ledgered as skipped.
 export async function deliverGroupMail(args: {
   userId: string;
   groupId: string;
@@ -59,7 +69,11 @@ export async function deliverGroupMail(args: {
     where: { broadcastId, memberId: { in: jobs.map((j) => j.memberId) } },
     select: { memberId: true, status: true, attempts: true },
   });
-  const plan = planBroadcast(jobs, ledger);
+  const optOuts = await prisma.tastingGroupMember.findMany({
+    where: { groupId, id: { in: jobs.map((j) => j.memberId) }, emailOptOutAt: { not: null } },
+    select: { id: true },
+  });
+  const plan = planBroadcast(jobs, ledger, new Set(optOuts.map((m) => m.id)));
   const prior = new Map(ledger.map((r) => [r.memberId, r.attempts]));
 
   const byMember = new Map<string, GroupEmailResult>();
@@ -67,7 +81,21 @@ export async function deliverGroupMail(args: {
     byMember.set(j.memberId, { memberId: j.memberId, label: j.label, status: "sent" });
   }
 
+  for (const j of plan.optedOut) {
+    byMember.set(j.memberId, { memberId: j.memberId, label: j.label, status: "skipped" });
+    try {
+      await prisma.groupEmailDelivery.upsert({
+        where: { broadcastId_memberId: { broadcastId, memberId: j.memberId } },
+        create: { broadcastId, memberId: j.memberId, status: "skipped", attempts: 0, lastError: "opted_out" },
+        update: { status: "skipped", lastError: "opted_out" },
+      });
+    } catch {
+      logWarn({ where: "deliverGroupMail", message: "ledger_write_failed", groupId, broadcastId });
+    }
+  }
+
   if (plan.toSend.length > 0) {
+    const origin = siteOrigin();
     // A pure retry (every remaining recipient already has a ledger row for
     // this broadcast) takes no second broadcast slot, but its recipients
     // count. Any recipient new to the ledger makes it a fresh broadcast, so
@@ -87,6 +115,7 @@ export async function deliverGroupMail(args: {
       await Promise.all(
         chunk.map(async (job) => {
           const key = idempotencyKeyFor(broadcastId, job.memberId, prior.get(job.memberId) ?? 0);
+          const unsubUrl = unsubscribeUrl(origin, mintUnsubscribeToken(groupId, job.memberEmail));
           const outcome = await sendWithRetry(
             () =>
               sendEmail({

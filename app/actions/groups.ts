@@ -268,6 +268,8 @@ async function sendGroupInvitationEmails(args: {
       memberId: r.memberId,
       label: memberLabel(r),
       email: r.email,
+      memberEmail: r.email,
+      locale: recipientLocale,
       subject: GROUP_INVITE_TEXT[recipientLocale].subject(args.inviterName, args.group.name),
       html: buildGroupInviteHtml({
         inviterName: args.inviterName,
@@ -772,6 +774,8 @@ export async function sendGroupEmail(input: {
         memberId: m.id,
         label: memberLabel(m),
         email: emails.get(m.id) ?? m.email,
+        memberEmail: m.email,
+        locale: recipientLocale,
         subject,
         html: buildGroupEmailHtml({ message, inviteUrl, locale: recipientLocale, origin }),
       };
@@ -945,6 +949,8 @@ export async function notifyGroupOfSession(input: {
         memberId: m.id,
         label: memberLabel(m),
         email,
+        memberEmail: m.email,
+        locale: recipientLocale,
         subject: GROUP_SESSION_INVITE_TEXT[recipientLocale].subject(session.name),
         html: buildGroupSessionInviteHtml({
           sessionName: session.name,

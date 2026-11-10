@@ -560,6 +560,9 @@ model TastingGroupMember {
   user        Profile?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   displayName String?
   createdAt   DateTime     @default(now())
+  // Set when the member unsubscribes from this group's emails (S8-20,
+  // F-grupos-8). The owner re-adding the address (an upsert) never touches it.
+  emailOptOutAt DateTime? @db.Timestamptz(3)
 
   emailDeliveries GroupEmailDelivery[]
 

@@ -44,19 +44,27 @@ export function backoffMs(
 export function planBroadcast<T extends { memberId: string }>(
   recipients: readonly T[],
   ledger: readonly LedgerRow[],
-): { toSend: T[]; alreadySent: T[]; isRetry: boolean } {
+  /** Members who unsubscribed from this group's mail (S8-20). Dropped from
+   *  `toSend` BEFORE the budget is reserved, so they cost the sender nothing
+   *  and "retry failed" never reaches them. A member who already got this
+   *  broadcast stays `alreadySent`. */
+  optedOut: ReadonlySet<string> = new Set(),
+): { toSend: T[]; alreadySent: T[]; optedOut: T[]; isRetry: boolean } {
   const sent = new Set(ledger.filter((r) => r.status === "sent").map((r) => r.memberId));
   const seen = new Set<string>();
   const toSend: T[] = [];
   const alreadySent: T[] = [];
+  const dropped: T[] = [];
   for (const r of recipients) {
     if (seen.has(r.memberId)) continue; // never twice per broadcast
     seen.add(r.memberId);
-    (sent.has(r.memberId) ? alreadySent : toSend).push(r);
+    if (sent.has(r.memberId)) alreadySent.push(r);
+    else if (optedOut.has(r.memberId)) dropped.push(r);
+    else toSend.push(r);
   }
   const known = new Set(ledger.map((r) => r.memberId));
   const isRetry = toSend.length > 0 && toSend.every((r) => known.has(r.memberId));
-  return { toSend, alreadySent, isRetry };
+  return { toSend, alreadySent, optedOut: dropped, isRetry };
 }
 
 export function summarize<R extends { status: DeliveryStatus }>(
