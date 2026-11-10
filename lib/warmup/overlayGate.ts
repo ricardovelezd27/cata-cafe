@@ -30,6 +30,9 @@ export interface OverlayGateInput {
  *  - otherwise (solo owner, async owner,
  *    any participant)                       → true
  */
+// TODO(Kim F1): optional discreet entry after start / always-show (answers b, c).
+// TODO(Kim F4): short version, repeat-step on interruption (resume = today's pause/resume).
+// TODO(Kim F5): substitutable movements; group free-run mode.
 export function shouldShowWarmupOverlay(i: OverlayGateInput): boolean {
   if (!isWarmupId(i.exerciseId)) return false;
   if (i.seenValue === i.exerciseId) return false;

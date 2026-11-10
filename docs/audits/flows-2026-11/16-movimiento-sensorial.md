@@ -30,6 +30,7 @@ The board's spec is partly stale. Its waiting-room requirement ("does not mark s
 - **Confidence** — verified-in-code (gate and wiring); the live-group experience needs two phones.
 - **Kim?** — yes, K-movimiento-sensorial-1.
 - **Invariant check** — none touched (the warm-up is display-only; scoring, authz and the close routine are unaffected).
+- **Fixed in S8-13 (PR pending)** — `startedAt` in the gate, live group after start never opens the overlay (`tests/warmup-overlayGate.test.ts`). Kim F1 answers b/c left as TODO(Kim F1).
 
 ### F-movimiento-sensorial-2 · A synced run never surfaces wake-lock failure and never re-syncs after the phone sleeps · severity: P2 · status: new
 
@@ -40,6 +41,7 @@ The board's spec is partly stale. Its waiting-room requirement ("does not mark s
 - **Confidence** — needs-runtime-check (two phones: lock one for 10 s, compare cues).
 - **Kim?** — no.
 - **Invariant check** — none touched (never read `warmupStartedAt` from scoring; the math stays in `lib/warmup/syncedRun.ts`).
+- **Fixed in S8-13 (PR pending)** — persistent wake-lock note in synced runs; re-seek on visibility/pageshow past 1.5 s drift (`resyncPositionMs`, `shouldResync`).
 
 ### F-movimiento-sensorial-3 · After a lock or interruption the exercise can continue silently with eyes closed · severity: P2 · status: new
 
@@ -50,6 +52,7 @@ The board's spec is partly stale. Its waiting-room requirement ("does not mark s
 - **Confidence** — needs-runtime-check (iOS Safari and Android Chrome: lock 15 s mid-run, confirm audio state on return).
 - **Kim?** — no.
 - **Invariant check** — none touched.
+- **Fixed in S8-13 (PR pending)** — `audioResumeDecision` + `checkContext`; paused player with "Toca para reanudar" when audio stays suspended after ~300 ms; never when muted.
 
 ### F-movimiento-sensorial-4 · The offline-rebuilt `/cup` drops the warm-up · severity: P3 · status: confirms-board(Pantalla /cup reconstruida offline sin el calentamiento)
 
@@ -70,6 +73,7 @@ The board's spec is partly stale. Its waiting-room requirement ("does not mark s
 - **Confidence** — verified-in-code.
 - **Kim?** — yes, K-movimiento-sensorial-2.
 - **Invariant check** — none touched (data stays local, never joined with evaluations).
+- **Fixed in S8-13 (PR pending)** — reflections no longer written, savedNote removed, legacy `cata_warmup_reflections_*` purged on sign-out. Kim F2 answer a left as TODO(Kim F2).
 
 ### F-movimiento-sensorial-6 · Eyes-closed runs hide the pause control, and a stray skip is permanent · severity: P3 · status: new
 
@@ -80,6 +84,7 @@ The board's spec is partly stale. Its waiting-room requirement ("does not mark s
 - **Confidence** — inferred-from-code (needs a phone to feel the double tap).
 - **Kim?** — no.
 - **Invariant check** — none touched.
+- **Fixed in S8-13 (PR pending)** — first tap in a dusk leg pauses; `onExit({ completed, elapsedMs })`; skip before 20 s leaves it unseen, later skip asks a second tap.
 
 ### F-movimiento-sensorial-7 · Copy promises benefits the evidence does not support · severity: P3 · status: new
 
@@ -90,6 +95,7 @@ The board's spec is partly stale. Its waiting-room requirement ("does not mark s
 - **Confidence** — verified-in-code.
 - **Kim?** — yes, K-movimiento-sensorial-3.
 - **Invariant check** — none touched.
+- **Fixed in S8-13 (PR pending)** — dashboard body, done body, exercise purpose and library intro reworded to settling (es+en). Kim F3 answers b/c left open.
 
 ### F-movimiento-sensorial-8 · A tampered or retired warm-up id returns a generic error · severity: P3 · status: confirms-board(Id de calentamiento manipulado o retirado)
 

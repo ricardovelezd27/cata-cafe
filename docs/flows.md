@@ -170,6 +170,23 @@ while a run is in progress asks "El grupo está en el ejercicio (quedan m:ss).
 ¿Iniciar igual?" before calling `startSession`. The seek/skew/missed arithmetic
 lives only in `lib/warmup/syncedRun.ts`.
 
+**Resilience (S8-13, 2026-11).** The `/cup` gate (`lib/warmup/overlayGate.ts`) also
+takes `startedAt`: once a LIVE group session has started, nobody gets the
+interstitial between the cups (participants and late joiners alike); solo and
+async keep today's behaviour. If the phone comes back from a lock or call with
+the `AudioContext` still not running (after a ~300 ms resume attempt) and the
+sound is on, the player pauses and shows "Toca para reanudar" — the tap is the
+gesture that wakes audio (`lib/warmup/audioResume.ts`; never when muted). A
+synced follower that shows no wake lock keeps a persistent note during the run,
+and on return from the background re-seeks to the host's position when it
+drifted more than 1.5 s (`resyncPositionMs` from the caller, `shouldResync` in
+`syncedRun.ts`). In eyes-closed legs the first tap on the stage pauses (haptic +
+footer back). Leaving early (`onExit({ completed, elapsedMs })`) marks the
+exercise seen only when completed or after 20 s of run (`exitMarksSeen`); a skip
+past 20 s asks "Toca otra vez para saltar". The two closing questions are a
+quiet pause: nothing is written, and sign-out purges legacy
+`cata_warmup_reflections_*` keys.
+
 ### Deleting a session (2026-09-08)
 
 The owner may delete a session at any time. The confirm dialog (fed by
