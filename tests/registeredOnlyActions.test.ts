@@ -26,7 +26,7 @@ function exportsOf(src: string): string[] {
   return [...src.matchAll(/^export async function (\w+)/gm)].map((m) => m[1]);
 }
 
-// sessions.ts and community.ts (S8-21): EVERY export must either call
+// sessions.ts, community.ts (S8-21) and account.ts (S8-19): EVERY export must either call
 // requireRegisteredUser( or be listed below with the reason it is allowed to
 // keep requireUser(). A new creator/sender is therefore guarded by default.
 //
@@ -42,6 +42,12 @@ const GUEST_ALLOWED: Record<string, Record<string, string>> = {
     submitAllEvaluations: "member submit; guests submit their evaluations",
     joinViaToken: "invite join, the entry point for guests",
     completeGuestOnboarding: "guest onboarding after a QR join",
+  },
+  // S8-19: both exports act on the signed-in user's OWN account only, never
+  // an id from the client.
+  "account.ts": {
+    deleteAccount: "a guest may delete their own account (spec S8-07, Apple 5.1.1(v))",
+    getMyAccountDeletionImpact: "counts for that same self-delete dialog; guests see it too",
   },
 };
 
@@ -65,7 +71,7 @@ const OWNER_ONLY: Record<string, string[]> = {
 const ALL_REGISTERED_FILES = ["coffees.ts", "groups.ts"];
 
 describe("registered-only server actions", () => {
-  for (const file of ["sessions.ts", "community.ts"]) {
+  for (const file of ["sessions.ts", "community.ts", "account.ts"]) {
     const src = read(file);
     const allowed = GUEST_ALLOWED[file] ?? {};
     const ownerOnly = OWNER_ONLY[file] ?? [];

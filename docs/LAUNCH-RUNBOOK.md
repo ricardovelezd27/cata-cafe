@@ -907,8 +907,7 @@ who they are by a second channel, then in Supabase Dashboard → Authentication 
 user's email to the new address. The profile and all history stay attached because they hang off
 the user id, not the address. Never create a second account and "move" data by hand.
 
-**Not in this release:** account deletion (`deleteAccount`). The manifest and its test are in;
-the destructive action waits on the tombstone design and the E3/E4 answers.
+**Account deletion** (`deleteAccount`) shipped later, in S8-19: see §24.
 
 ---
 
@@ -1071,3 +1070,198 @@ detail shows "Origen editado el …"; on an unrevealed sample the button is abse
 
 **Rollback:** the columns are nullable; code rolled back ignores them. Do not drop them while
 the new code is deployed.
+
+---
+
+## §21. Database — apply the `history_coffee_optional` migration (2026-11, S8-16)
+
+**What it does:** `user_coffee_history."coffeeId"` stops being NOT NULL. The foreign key to
+`coffees` (ON DELETE CASCADE) and every index stay. Nothing is backfilled: label-only rows
+(no coffee) are written from now on, never retroactively.
+
+**Order matters:** run it BEFORE the deploy. The new code inserts rows with a NULL `coffeeId`
+when an express/coffee-less session closes or a never-revealed sample's session is deleted;
+without the migration those closes would fail at the history step.
+
+1. On your machine, with `.env.local` pointing at the project (it is production):
+   ```bash
+   npx prisma migrate deploy
+   ```
+   Expected: `1 migration found … 20261111140000_history_coffee_optional … applied`.
+2. **Verify** — Supabase SQL Editor:
+   ```sql
+   SELECT is_nullable FROM information_schema.columns
+   WHERE table_name = 'user_coffee_history' AND column_name = 'coffeeId';
+   ```
+   Expected: `YES`.
+3. Deploy the branch. No SQL PHASE, no environment variable.
+
+The same migration creates a partial unique index, `user_coffee_history_label_row_evaluation_key`
+(one label-only row per evaluation). Prisma's schema cannot express it, so `prisma migrate dev`
+may propose dropping this index; never accept.
+
+**Smoke test (3 minutes):** run a "Catar ahora" session with one sample and no coffee, submit
+→ it closes; Perfil → Historial shows a row "Muestra A · Sin café asignado" that links to the
+session results and not to a coffee page. Assign a coffee to that sample from the results
+drill-down: the row becomes the normal coffee row (no duplicate). Delete an open session that
+has a never-revealed coffee-linked sample with a submitted evaluation: your history shows the
+sample label with "Café sin revelar" and no coffee name.
+
+**Rollback:** do NOT roll the code back below this migration once label-only rows exist (old
+code dereferences `coffee.id` and would crash the history page). Do not re-add NOT NULL while
+rows with a NULL `coffeeId` exist; delete them first
+(`DELETE FROM user_coffee_history WHERE "coffeeId" IS NULL;`).
+
+## §22. Database — apply the `session_notify_group_at_start` migration (2026-11, S8-17)
+
+**What it does:** adds two columns to `cupping_sessions`: `notifyGroupAtStart` (BOOLEAN NOT NULL
+DEFAULT false) and `groupNotifiedAt` (nullable TIMESTAMPTZ). No foreign keys, no policy change.
+
+**Order matters:** run it BEFORE the deploy; the new code selects these columns.
+
+1. On your machine, with `.env.local` pointing at the project (it is production):
+   ```bash
+   npx prisma migrate deploy
+   ```
+   Expected: `20261111150000_session_notify_group_at_start … applied`.
+2. **Verify** — Supabase SQL Editor:
+   ```sql
+   SELECT column_name FROM information_schema.columns
+   WHERE table_name = 'cupping_sessions' AND column_name IN ('notifyGroupAtStart','groupNotifiedAt');
+   ```
+   Expected: two rows.
+3. Deploy the branch. No SQL PHASE, no environment variable.
+
+**Smoke test:** create a LIVE group session linked to a group with the notify box ticked: no email
+at creation. Press "Iniciar cata": the members get one email; pressing start again sends nothing.
+An async session (with a closing date) still emails at creation.
+
+**Rollback:** the columns are additive; rolled-back code ignores them (live sessions would then
+email at creation again).
+
+## §23. Database — apply the `evaluation_last_client_write` migration (2026-11, S8-18)
+
+> Numbering: §21–§22 are reserved for sibling S8 follow-ups; this section keeps §23 so the
+> branches merge mechanically.
+
+**What it does:** adds ONE nullable column, `evaluations."lastClientWriteAt" timestamptz(3)`, no
+default, no index, no foreign key, no policy change. It records the newest client edit time accepted
+for an evaluation so an older offline replay cannot overwrite a newer save. Scoring, the aggregate
+trigger and `aggregate_scores` never read it.
+
+**Order matters:** run it BEFORE the deploy. The new code writes the column; without it every
+evaluation save with a client timestamp fails.
+
+1. On your machine, with `.env.local` pointing at the project (it is production):
+   ```bash
+   npx prisma migrate deploy
+   ```
+   Expected: `1 migration found … 20261111160000_evaluation_last_client_write … applied`.
+2. **Verify** — Supabase SQL Editor:
+   ```sql
+   SELECT column_name, data_type FROM information_schema.columns
+   WHERE table_name = 'evaluations' AND column_name = 'lastClientWriteAt';
+   ```
+   Expected: one row, `timestamp with time zone`.
+3. Deploy the branch. No SQL PHASE, no environment variable.
+
+**Smoke test (3 minutes, two tabs, same cupper):** in tab A go offline (devtools), edit a sample,
+note the amber pending pill; in tab B (online) edit the same field to another value and wait for the
+green saved state; bring tab A online. Tab B's value must remain after the replay and tab A's pill
+clears. Vercel Logs shows one `replayEvaluation.staleClientWrite` line.
+
+**Rollback:** the column is nullable; code rolled back ignores it. Do not drop it while the new
+code is deployed.
+
+## §24. Account deletion: verify on a throwaway account, clean an orphaned auth user (2026-11, S8-19)
+
+No migration, no SQL phase, no new environment variable. Nothing to apply before the deploy.
+`deleteAccount` creates its own placeholder profile (`deleted_<random>`) inside its transaction,
+so there is no fixed tombstone row to insert.
+
+**Never test this against production with a real account.** `.env.local` points at
+production: do not run `deleteAccount` from a local dev server with it. Verify only in a
+NON-production environment (a Supabase branch or a separate project with its own
+`DATABASE_URL`, seeded with throwaway accounts), or, if no such environment exists yet, wait.
+
+**Verification on a throwaway account (non-production only, ~10 minutes):**
+
+1. Create throwaway account A (email) and B (email) and one guest G (QR join).
+2. As A: create a solo session and finish it; create a group session, have B and G join and
+   submit; exclude G from the results (owner matrix). Create a coffee and a tasting group with B
+   as a member; post once. Leave a second group session live (not closed) with B's submission.
+3. As A: Perfil → Cuenta → **Eliminar cuenta**. The dialog lists the counts (1 session deleted,
+   2 kept, evaluations anonymized, 1 coffee anonymized, 1 group kept). Type `ELIMINAR`
+   (`DELETE` in English) and confirm. You land on the landing page, signed out.
+4. As B: both group sessions are CLOSED and still show results; A's column/row reads
+   "Cuenta eliminada"; the community scores are exactly what they were before step 3; G is still
+   excluded. The group is still listed for B with owner "Cuenta eliminada"; A's post reads
+   "Cuenta eliminada". The coffee in the session shows "Café eliminado".
+5. Supabase Dashboard → Authentication → Users: A is gone. Sign up again with A's email: a fresh,
+   empty account is created.
+6. As G (guest): Perfil → Eliminar cuenta works too.
+7. With the super-admin account: the dialog says the account cannot be deleted from the app.
+
+**If the auth user could not be deleted** (the action logs `deleteAccount.authUserOrphaned`
+with the user id; the person's data is already gone and they are signed out):
+
+1. Vercel Logs → search `deleteAccount.authUserOrphaned` → copy the `userId`.
+2. Supabase Dashboard → Authentication → Users → search the id → **Delete user**.
+3. Nothing else: the profile row no longer exists. Do NOT recreate it.
+
+**Bound: more than 300 own sessions to delete (`MAX_SESSIONS_TO_DELETE`).** The deletion is ONE
+transaction (timeout 120 s; the profile page exports `maxDuration = 300`) and every session it
+deletes detaches coffee history first, so above 300 the app refuses up front: the dialog says the
+account has too many sessions and to write to support, and the action returns
+`account_too_large` before anything is written. Manual path, for the owner only, never from a
+local dev server pointed at production:
+
+1. Confirm the request comes from the account's own mailbox (as in §16).
+2. Ask a developer to reduce the count first: delete the person's oldest SOLO sessions in batches
+   through the normal `deleteSession` path (it detaches history the same way), never with raw SQL,
+   until fewer than 300 own sessions would be deleted.
+3. The person then deletes the account from Perfil → Eliminar cuenta as usual.
+
+**If the transaction fails** (timeout, conflict, any error): nothing is deleted and the person
+can retry, BUT the shared sessions the pre-step closed stay closed (closing is not part of the
+transaction and is not undone).
+
+**Lost mailbox (E4 option c):** unchanged, see §16.
+
+**Rollback:** reverting the deploy removes the button. Deletions already done cannot be undone
+(by design).
+
+## §25. Database — apply the `group_member_email_opt_out` migration (2026-11, S8-20)
+
+> Numbering: §21–§24 belong to the other S8 follow-ups and land in series order; this section
+> keeps its reserved number so the chained branches merge mechanically.
+
+**What it does:** adds one NULLABLE column, no default, no foreign key, no policy change:
+`tasting_group_members."emailOptOutAt"` (TIMESTAMPTZ), set when a member unsubscribes from a
+group's emails.
+
+**Order matters:** run it BEFORE the deploy. The sender now reads this column on every group
+mail; without it group email fails.
+
+1. On your machine, with `.env.local` pointing at the project (it is production):
+   ```bash
+   npx prisma migrate deploy
+   ```
+   Expected: `1 migration found … 20261111170000_group_member_email_opt_out … applied`.
+2. **Verify** — Supabase SQL Editor:
+   ```sql
+   SELECT column_name, data_type FROM information_schema.columns
+   WHERE table_name = 'tasting_group_members' AND column_name = 'emailOptOutAt';
+   ```
+   Expected: one row, `timestamp with time zone`.
+3. Deploy the branch. No SQL PHASE, no new environment variable (the token uses
+   `GUEST_CLAIM_SECRET`; `NEXT_PUBLIC_SITE_URL` builds the link and is already required).
+
+**Smoke test (3 minutes):** send a group announcement email to a test address; the mail has a
+"Darte de baja…" footer link (and your mail client shows its own Unsubscribe control). Open it →
+confirm page → "Darme de baja" → "Listo". Send another announcement: the result shows that
+member as skipped and the owner roster shows "Se dio de baja de los correos". Sign in as that
+member → group page shows the notice → "Volver a recibir correos de este grupo" clears it.
+
+**Rollback:** the column is nullable; code rolled back ignores it. Do not drop it while the new
+code is deployed.

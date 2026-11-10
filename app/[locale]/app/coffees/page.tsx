@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { getCoffeesWithStats } from "@/lib/coffees/queries";
+import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 import { PageHeader } from "@/components/ui";
 import CoffeesTable from "@/components/coffees/CoffeesTable";
 import type { DeleteCoffeeTranslations } from "@/components/coffees/DeleteCoffeeButton";
@@ -33,7 +34,10 @@ export default async function CoffeesPage({
     // every owner's displayName to every browser would leak data the UI hides.
     const { creator, ...rest } = c;
     const isMine = c.createdBy === user.id;
-    const ownerName = isAdmin && !isMine ? creator?.displayName ?? null : null;
+    const ownerName =
+      isAdmin && !isMine && creator
+        ? profileDisplayName({ id: c.createdBy, displayName: creator.displayName }, locale) || null
+        : null;
     return {
       ...rest,
       isMine,

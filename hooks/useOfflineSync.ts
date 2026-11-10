@@ -80,6 +80,8 @@ export function useOfflineSync({
       data: Data,
       cupsPerSample: number,
       force: boolean,
+      // S8-18: the draft's last edit time, so the server can order this replay.
+      clientTs?: number,
     ): Promise<ReplayResult> => {
       for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         if (!onlineRef.current) return "offline";
@@ -91,6 +93,7 @@ export function useOfflineSync({
               data,
               cupsPerSample,
               force,
+              clientTs,
             });
             // "pending" = the master has not started this live session yet; the
             // draft stays pending without burning an attempt (no fast retry).
@@ -186,6 +189,7 @@ export function useOfflineSync({
                 mod.data,
                 blob.cupsPerSample,
                 false,
+                sentAt,
               );
               if (result === "offline") {
                 anyRetry = true;
@@ -274,6 +278,7 @@ export function useOfflineSync({
             mod.data,
             conflict.cupsPerSample,
             true,
+            mod.updatedAt,
           );
           if (result === "offline" || result === "retry" || result === "waiting" || result === "conflict") return; // keep it for a later retry
           await applyReplayOutcome(

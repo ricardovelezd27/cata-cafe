@@ -546,7 +546,30 @@
     "changeEmailSubmit": "Send link",
     "changeEmailSending": "Sending…",
     "changeEmailSent": "We sent a confirmation link to {email}. Open it to finish the change.",
-    "changeEmailPending": "Change pending to {email}: confirm from that inbox."
+    "changeEmailPending": "Change pending to {email}: confirm from that inbox.",
+    "deleteAccount": {
+      "open": "Delete account",
+      "title": "Delete your account",
+      "intro": "This is what will happen to what is in your account:",
+      "loading": "Checking your account…",
+      "impactSessionsDeleted": "{n} sessions that only held your data are deleted.",
+      "impactSessionsKept": "{n} sessions other cuppers joined or evaluated in are kept, closed and without your name.",
+      "impactEvaluations": "{n} of your evaluations stay, anonymized, in the sessions you took part in.",
+      "impactCoffees": "{n} coffees you created are anonymized.",
+      "impactGroupsKept": "{n} groups with other members stay without your name; nobody will be able to manage them.",
+      "impactGroupsDeleted": "{n} groups with no other members are deleted.",
+      "impactNothing": "Your profile, your history and your sign-in.",
+      "keepScores": "Your anonymized scores stay in the sessions you took part in, so other people's results do not change.",
+      "keepCoffees": "Coffees you created stay without their identifying data (name, farm, producer, notes).",
+      "irreversible": "This cannot be undone.",
+      "protectedBody": "This account administers the platform and cannot be deleted from the app.",
+      "tooLargeBody": "You have more than {max} sessions of your own that would be deleted, too many to do from the app in one go. Write to support and we will delete the account for you.",
+      "changed": "Something changed in your account while we were deleting it (for example, someone joined one of your sessions). Nothing was deleted (shared sessions that were already closed stay closed). Check the updated summary and confirm again.",
+      "typeLabel": "Type {word} to confirm",
+      "submit": "Delete my account",
+      "deleting": "Deleting…",
+      "cancel": "Cancel"
+    }
   },
   "actions": {
     "save": "Save",
@@ -580,6 +603,8 @@
     "startSession": "Start tasting",
     "starting": "Starting…",
     "startSessionError": "Could not start the tasting. Please try again.",
+    "startGroupNoticeFailed": "The tasting started, but we could not email the group. You can resend the notice from the group page.",
+    "startGroupNoticePartial": "The tasting started. The notice reached part of the group; retry the failed ones from the group page.",
     "reveal": "Reveal identity",
     "revealed": "Revealed",
     "selectCoffee": "Select coffee",
@@ -952,7 +977,9 @@
     "yourScore": "Your score",
     "communityScore": "Community score",
     "sessionDeleted": "Session deleted",
-    "quickImpression": "Quick impression"
+    "quickImpression": "Quick impression",
+    "noCoffeeAssigned": "No coffee assigned",
+    "coffeeUnrevealed": "Coffee not revealed"
   },
   "coffee": {
     "title": "Coffee profile",
@@ -1678,6 +1705,11 @@
       "deleteBody": "The announcement will be removed for every member. This cannot be undone.",
       "error": "Couldn't publish the announcement. Please try again."
     },
+    "emailOptOut": {
+      "badge": "Unsubscribed from emails",
+      "note": "You unsubscribed from this group's emails. You still see the group, its announcements and its sessions here in the app.",
+      "resume": "Receive emails from this group again"
+    },
     "leave": {
       "cta": "Leave group",
       "title": "Leave group",
@@ -1763,7 +1795,8 @@
     "saveDetails": "Save details",
     "linkGroupLabel": "Link to a group",
     "noGroupOption": "No group",
-    "autoInviteToggle": "Send an invitation to the group on creation",
+    "autoInviteLive": "Email the group when you start the tasting",
+    "autoInviteAsync": "Email the group when the session is created",
     "autoInviteSummary": "Invitation sent to {sent} members · {skipped} skipped · {failed} failed",
     "joinSessionLink": "Join the session"
   },
@@ -1819,7 +1852,9 @@
       "group_full": "This group already has 200 members, the maximum.",
       "invalid_email": "That email address doesn't look valid. Check it and try again.",
       "offline": "You need a connection to do this. Try again once you are back online.",
-      "email_exists": "That email already has an account."
+      "email_exists": "That email already has an account.",
+      "account_protected": "This account administers the platform and cannot be deleted from the app.",
+      "account_too_large": "Your account has too many sessions to delete it from the app. Write to support and we will delete it for you; nothing was deleted."
     }
   },
   "warmup": {

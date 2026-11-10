@@ -83,6 +83,27 @@ export function anonEvalWins(anonRow: ClaimEvalRow, targetRow: ClaimEvalRow): bo
   return a > b;
 }
 
+/** Conflict resolution for one merge: for each (guest, account) pair on the same
+ * sample, which evaluation is deleted, and which of those belong to the ACCOUNT.
+ * The account's label-only history rows for the latter must be dropped too
+ * (S8-16): the guest's label row is moved over, so keeping both would leave the
+ * account with two label rows for one sample. */
+export function resolveEvalConflicts(
+  pairs: { anon: ClaimEvalRow; target: ClaimEvalRow }[],
+): { deleteIds: string[]; accountLoserIds: string[] } {
+  const deleteIds: string[] = [];
+  const accountLoserIds: string[] = [];
+  for (const { anon, target } of pairs) {
+    if (anonEvalWins(anon, target)) {
+      deleteIds.push(target.id);
+      accountLoserIds.push(target.id);
+    } else {
+      deleteIds.push(anon.id);
+    }
+  }
+  return { deleteIds, accountLoserIds };
+}
+
 export type RefireInput = {
   guestExcluded: boolean;
   guestHadRow: boolean;

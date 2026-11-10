@@ -23,6 +23,8 @@ export type SendEmailArgs = {
   /** Sent as the Resend `Idempotency-Key` header so a retried request cannot
    *  deliver twice. Unset → no header (closeEmail / digest are unchanged). */
   idempotencyKey?: string;
+  /** Extra message headers (e.g. List-Unsubscribe), passed to Resend's `headers`. */
+  headers?: Record<string, string>;
 };
 
 /** Coarse failure class, so callers can decide to retry without ever reading
@@ -62,7 +64,8 @@ export function escapeHtml(input: string): string {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 /** Default sender; override with EMAIL_FROM. Must be a Resend-verified domain. */
@@ -92,6 +95,7 @@ export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
     subject: args.subject,
     html: args.html,
   };
+  if (args.headers && Object.keys(args.headers).length > 0) payload.headers = args.headers;
   if (args.attachments && args.attachments.length > 0) {
     payload.attachments = args.attachments.map((a) => ({
       filename: a.filename,

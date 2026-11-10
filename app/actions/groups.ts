@@ -268,6 +268,8 @@ async function sendGroupInvitationEmails(args: {
       memberId: r.memberId,
       label: memberLabel(r),
       email: r.email,
+      memberEmail: r.email,
+      locale: recipientLocale,
       subject: GROUP_INVITE_TEXT[recipientLocale].subject(args.inviterName, args.group.name),
       html: buildGroupInviteHtml({
         inviterName: args.inviterName,
@@ -772,6 +774,8 @@ export async function sendGroupEmail(input: {
         memberId: m.id,
         label: memberLabel(m),
         email: emails.get(m.id) ?? m.email,
+        memberEmail: m.email,
+        locale: recipientLocale,
         subject,
         html: buildGroupEmailHtml({ message, inviteUrl, locale: recipientLocale, origin }),
       };
@@ -945,6 +949,8 @@ export async function notifyGroupOfSession(input: {
         memberId: m.id,
         label: memberLabel(m),
         email,
+        memberEmail: m.email,
+        locale: recipientLocale,
         subject: GROUP_SESSION_INVITE_TEXT[recipientLocale].subject(session.name),
         html: buildGroupSessionInviteHtml({
           sessionName: session.name,
@@ -1171,6 +1177,27 @@ export async function leaveGroup(groupId: string): Promise<{ ok: true }> {
   revalidatePath(`/es/app/groups/${groupId}`);
   revalidatePath(`/en/app/groups/${groupId}`);
   return { ok: true };
+}
+
+// ─── Member self-service: stop / resume this group's emails (S8-20) ──────────
+// The signed-in MEMBER (never the owner on someone's behalf) flips the opt-out
+// on their own row(s). The public unsubscribe route can only switch mail OFF;
+// this is the way back ON, and the owner re-adding the address cannot do it.
+export async function setGroupEmailOptOut(
+  groupId: string,
+  optOut: boolean,
+): Promise<ActionResult<void>> {
+  return run("setGroupEmailOptOut", async () => {
+    const user = await requireRegisteredUser();
+    const res = await prisma.tastingGroupMember.updateMany({
+      where: { groupId, userId: user.id },
+      data: { emailOptOutAt: optOut ? new Date() : null },
+    });
+    if (res.count === 0) throw new Error("not_found_or_forbidden");
+    revalidatePath(`/es/app/groups/${groupId}`);
+    revalidatePath(`/en/app/groups/${groupId}`);
+    return;
+  }, { groupId });
 }
 
 // ─── Edit a member's display name (owner only) ────────────────────────────────

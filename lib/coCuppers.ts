@@ -5,6 +5,7 @@
 // truth — the page consumes this with no visual change.
 
 import { prisma } from "@/lib/prisma";
+import { DELETED_PROFILE_PREFIX, isDeletedProfileId } from "@/lib/accountDeletion/deletedProfile";
 
 export interface CoCupperCandidate {
   userId: string;
@@ -42,7 +43,13 @@ export async function getCoCupperCandidates(
   const rows =
     sessionIds.length > 0
       ? await prisma.sessionParticipant.findMany({
-          where: { sessionId: { in: sessionIds }, userId: { not: userId } },
+          // A deleted account's placeholder (`deleted_<random>`, S8-19) is not
+          // a person: it can never be picked and has no auth user to look up.
+          where: {
+            sessionId: { in: sessionIds },
+            userId: { not: userId },
+            NOT: { userId: { startsWith: DELETED_PROFILE_PREFIX } },
+          },
           include: {
             user: { select: { id: true, displayName: true, role: true } },
             session: { select: { name: true, date: true } },
@@ -107,7 +114,11 @@ export async function coCupperIdsAmong(
   viewerId: string,
   candidateIds: readonly string[],
 ): Promise<Set<string>> {
-  const ids = [...new Set(candidateIds)].filter((id) => id && id !== viewerId);
+  // Placeholders of deleted accounts are never co-cuppers (S8-19): the
+  // callers would otherwise ask the auth admin API for a user that never existed.
+  const ids = [...new Set(candidateIds)].filter(
+    (id) => id && id !== viewerId && !isDeletedProfileId(id),
+  );
   if (ids.length === 0) return new Set();
 
   const rows = await prisma.sessionParticipant.findMany({

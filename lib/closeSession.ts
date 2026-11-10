@@ -27,7 +27,9 @@ import { refireAggregates } from "@/lib/aggregates";
 import { FINALIZE_GRACE_MS, needsFinalize } from "@/lib/closeRules";
 import { errorMessage, logError, logInfo } from "@/lib/log";
 
-export type CloseReason = "owner" | "solo_auto" | "solo_finish" | "cron" | "repair";
+/** `owner_deleted`: deleteAccount closes the live group sessions it keeps for
+ *  the other cuppers, so none stays open with nobody able to close it (S8-19). */
+export type CloseReason = "owner" | "solo_auto" | "solo_finish" | "cron" | "repair" | "owner_deleted";
 
 export type CloseResult = {
   /** false when the session was already closed (no-op, nothing re-sent). */

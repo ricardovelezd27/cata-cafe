@@ -15,6 +15,7 @@ import { prisma } from "@/lib/prisma";
 import { isEvaluationComplete } from "@/lib/closeRules";
 import { orderReferencesFirst } from "@/lib/referenceRules";
 import { deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
+import { isDeletedProfileId } from "@/lib/accountDeletion/deletedProfile";
 import { sheetSampleIdentity, sheetSampleRecords } from "@/lib/pdf/sheetSource";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email";
@@ -191,7 +192,9 @@ export async function sendCloseEmails(
   const sendOne = async (p: (typeof recipients)[number]): Promise<Outcome> => {
       // Resolve the recipient's email via the service-role admin client — the
       // Profile model has no email column. Anonymous guests have none: that is
-      // "skipped" (nothing to retry), not a failure.
+      // "skipped" (nothing to retry), not a failure. A deleted account's
+      // placeholder (S8-19) has no auth user at all: skipped, never looked up.
+      if (isDeletedProfileId(p.userId)) return { status: "skipped", error: "deleted_account" };
       const { data, error } = await admin.auth.admin.getUserById(p.userId);
       const email = data?.user?.email;
       if (error) {

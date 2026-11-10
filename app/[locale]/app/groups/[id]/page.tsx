@@ -21,6 +21,8 @@ import { GroupFeed, type GroupFeedPost } from "@/components/groups/GroupFeed";
 import { PostComposer } from "@/components/groups/PostComposer";
 import { DuplicateButton } from "@/components/DuplicateButton";
 import { LeaveGroupButton } from "@/components/groups/LeaveGroupButton";
+import { GroupEmailOptOutNotice } from "@/components/groups/GroupEmailOptOutNotice";
+import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 
 // Auth'd page with a dynamic [id] segment: must render per-request. With
 // generateStaticParams present, prod attempts on-demand static generation and
@@ -86,7 +88,7 @@ export default async function GroupDetailPage({
     body: p.body,
     emailSent: p.emailSent,
     createdAt: p.createdAt.toISOString(),
-    author: { displayName: p.author.displayName },
+    author: { displayName: profileDisplayName({ id: p.authorId, displayName: p.author.displayName }, locale) },
   }));
   const feedT = {
     empty: t("feed.empty"),
@@ -209,6 +211,7 @@ export default async function GroupDetailPage({
     // TODO(D7): roster visibility is (a) every member sees names (the Kim default,
     // built). If Kim answers (b) teacher-chosen names or (c) teacher-only, add a
     // roster setting here in a follow-up PR; nothing in this PR changes it.
+    const myMemberRow = group.members.find((m) => m.userId === user.id);
     const memberRows = group.members.map((m) => ({
       id: m.id,
       label: memberLabel(m),
@@ -231,7 +234,7 @@ export default async function GroupDetailPage({
           description={group.description || t("noDescription")}
         />
         <p className="text-xs text-on-surface-variant -mt-4">
-          {t("ownerLabel")}: <span className="font-semibold text-on-surface">{group.owner.displayName}</span>
+          {t("ownerLabel")}: <span className="font-semibold text-on-surface">{profileDisplayName({ id: group.createdBy, displayName: group.owner.displayName }, locale)}</span>
         </p>
 
         <div className="space-y-3">
@@ -254,6 +257,13 @@ export default async function GroupDetailPage({
         </div>
 
         {sessionsSection}
+
+        {myMemberRow?.emailOptOutAt && (
+          <GroupEmailOptOutNotice
+            groupId={group.id}
+            t={{ note: t("emailOptOut.note"), resume: t("emailOptOut.resume") }}
+          />
+        )}
 
         <div className="pt-2">
           <LeaveGroupButton groupId={group.id} locale={locale} t={leaveT} />
@@ -468,9 +478,11 @@ export default async function GroupDetailPage({
             email: m.userId ? maskEmail(m.email) : m.email,
             displayName: m.displayName,
             userId: m.userId,
+            emailOptedOut: !!m.emailOptOutAt,
           }))}
           t={{
             unregistered: t("unregistered"),
+            emailOptedOut: t("emailOptOut.badge"),
             removeMember: t("removeMember"),
             removeTitle: t("memberEdit.removeTitle"),
             removeBodyNamed: t.raw("memberEdit.removeBodyNamed") as string,

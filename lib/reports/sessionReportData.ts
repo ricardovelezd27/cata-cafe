@@ -14,6 +14,7 @@ import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
 import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
 import { computeCupperAlignment, computeMajoritySets } from "@/lib/alignment";
 import { resultsUpdatedAfterClose } from "@/lib/exclusionReasons";
+import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 import type { ReportLocale, SessionReportSource } from "./types";
 
 export type { SessionReportSource } from "./types";
@@ -97,7 +98,7 @@ export async function loadSessionReportSource(
 
   const participants = session.participants.map((p) => ({
     userId: p.userId,
-    displayName: p.user.displayName,
+    displayName: profileDisplayName({ id: p.userId, displayName: p.user.displayName }, locale),
     status: p.status,
     excluded: p.excludedFromResults,
     exclusionReason: p.exclusionReason,
@@ -109,7 +110,7 @@ export async function loadSessionReportSource(
   const evals = evalRows.map((ev) => ({
     id: ev.id,
     cupperId: ev.cupperId,
-    displayName: ev.cupper.displayName,
+    displayName: profileDisplayName({ id: ev.cupperId, displayName: ev.cupper.displayName }, locale),
     sessionSampleId: ev.sessionSampleId,
     descriptiveData: asObj(ev.descriptiveData),
     affectiveData: asObj(ev.affectiveData),
@@ -213,7 +214,7 @@ export async function loadSessionReportSource(
       referenceSampleId,
       closedAt: session.closedAt,
     },
-    ownerName: session.createdByUser.displayName,
+    ownerName: profileDisplayName({ id: session.createdBy, displayName: session.createdByUser.displayName }, locale),
     samples: samples.map((s) => ({
       id: s.id,
       label: s.label,

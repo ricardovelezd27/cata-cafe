@@ -10,7 +10,7 @@ import type { ActionResult } from "@/lib/actionResult";
 import { idList } from "@/lib/validate";
 import { normalizeCoffeeFields, isStaleCoffeeEdit } from "@/lib/coffeeInputBounds";
 import { CERTIFICATIONS } from "@/lib/constants";
-import { ANONYMIZED_COFFEE_DATA } from "@/lib/coffeeAnonymize";
+import { anonymizeOwnedCoffees } from "@/lib/coffees/anonymize";
 import { duplicableFields } from "@/lib/coffeeDuplicate";
 import { coffeeInviteExpiry, isCoffeeInviteUsable } from "@/lib/coffeeInvite";
 import {
@@ -45,22 +45,8 @@ export async function deleteCoffees(
       const user = await requireRegisteredUser();
       const ids = idList(coffeeIds, "coffeeIds", MAX_BULK_COFFEE_DELETE);
 
-      const deleted = await prisma.$transaction(async (tx) => {
-        const owned = await tx.coffee.findMany({
-          where: { id: { in: ids }, createdBy: user.id, deletedAt: null },
-          select: { id: true },
-        });
-        const ownedIds = owned.map((c) => c.id);
-        if (ownedIds.length === 0) return 0;
-
-        const { count } = await tx.coffee.updateMany({
-          where: { id: { in: ownedIds }, createdBy: user.id, deletedAt: null },
-          data: { ...ANONYMIZED_COFFEE_DATA, deletedAt: new Date() },
-        });
-        await tx.coffeeShare.deleteMany({ where: { coffeeId: { in: ownedIds } } });
-        await tx.coffeeInvite.deleteMany({ where: { coffeeId: { in: ownedIds } } });
-        return count;
-      });
+      // Same routine deleteAccount uses for every coffee the person owns.
+      const deleted = await prisma.$transaction((tx) => anonymizeOwnedCoffees(tx, user.id, ids));
 
       // A tampered / stale request must never read as a silent success.
       if (deleted === 0) throw new Error("not_found_or_forbidden");

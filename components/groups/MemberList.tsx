@@ -6,12 +6,15 @@ import { Trash2, Pencil, Check, X, Send } from "lucide-react";
 import { removeMember, updateMemberDisplayName, resendInvitation } from "@/app/actions/groups";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useActionFeedback } from "@/components/ui/Toast";
+import { Badge } from "@/components/ui/Badge";
 
 type Member = {
   id: string;
   email: string;
   displayName: string | null;
   userId: string | null;
+  /** The member unsubscribed from this group's emails (S8-20). */
+  emailOptedOut?: boolean;
 };
 
 export function MemberList({
@@ -23,6 +26,7 @@ export function MemberList({
   members: Member[];
   t: {
     unregistered: string;
+    emailOptedOut: string;
     removeMember: string;
     /** ConfirmDialog title. */
     removeTitle: string;
@@ -163,6 +167,11 @@ export function MemberList({
             )}
             {!isEditing && (
               <div className="flex items-center gap-2 shrink-0">
+                {m.emailOptedOut && (
+                  <Badge tone="neutral" size="xs">
+                    {t.emailOptedOut}
+                  </Badge>
+                )}
                 {!m.userId && (
                   <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-full bg-secondary/15 text-secondary">
                     {t.unregistered}
