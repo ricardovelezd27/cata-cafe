@@ -11,7 +11,8 @@
 -- exist"): stop and report it; nothing was applied either way.
 --
 -- The statements between the two marker comments must stay identical to PHASE 24
--- in prisma/sql/rls_and_triggers.sql (tests/phase24Sql.test.ts checks it).
+-- in prisma/sql/rls_and_triggers.sql (tests/phase24Sql.test.ts checks it); the only
+-- difference is the function body quote tag ($fn$ here, $$ there).
 --
 -- Replace the ONE placeholder in DECLARE (see docs/LAUNCH-RUNBOOK.md §26).
 -- NEVER add BEGIN / COMMIT around this file.
@@ -59,7 +60,25 @@ DROP POLICY IF EXISTS "coffees_write" ON coffees;
 --    ALTER POLICY fails (and the whole transaction rolls back) if one of them
 --    does not exist: that is drift, stop and report it.
 ALTER POLICY "coffees_select" ON coffees TO authenticated;
-ALTER POLICY "coffee_shares_select" ON coffee_shares TO authenticated;
+-- Break the coffees <-> coffee_shares policy loop (42P17 since PHASE 16):
+-- coffee_shares_select asked `coffees` (whose policy asks coffee_shares back).
+-- A SECURITY DEFINER helper answers "is this caller the coffee's owner?"
+-- without going through the coffees policy. PHASE 18b rule: it keeps EXECUTE
+-- for `authenticated` (policies run as the querying role).
+CREATE OR REPLACE FUNCTION public.is_coffee_owner(p_coffee_id text)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $fn$
+  SELECT EXISTS (
+    SELECT 1 FROM coffees
+    WHERE id = p_coffee_id AND "createdBy" = auth.uid()::text
+  );
+$fn$;
+REVOKE EXECUTE ON FUNCTION public.is_coffee_owner(text) FROM PUBLIC, anon;
+GRANT  EXECUTE ON FUNCTION public.is_coffee_owner(text) TO authenticated;
+
+DROP POLICY IF EXISTS "coffee_shares_select" ON coffee_shares;
+CREATE POLICY "coffee_shares_select" ON coffee_shares
+  FOR SELECT TO authenticated
+  USING ("userId" = auth.uid()::text OR is_coffee_owner("coffeeId"));
 ALTER POLICY "group_posts_select" ON group_posts TO authenticated;
 ALTER POLICY "sessions_select" ON cupping_sessions TO authenticated;
 ALTER POLICY "samples_select" ON session_samples TO authenticated;
@@ -92,9 +111,12 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
     FROM pg_policies WHERE schemaname = 'public' AND roles <> '{authenticated}'::name[];
   v_out := v_out || format(E'\n 1d policies in public not TO authenticated (expect 0): %s %s', v_n, COALESCE(v_names, ''));
   SELECT count(*) INTO v_n FROM pg_policies WHERE schemaname = 'public';
-  v_out := v_out || format(E'\n 1e policies in public (expect 16 = the 18 of pre-flight (a) - 5 write + 3 read twins): %s', v_n);
+  v_out := v_out || format(E'\n 1e policies in public (expect 16 = the 18 of pre-flight (a) - 5 write + 3 read twins; the recreated coffee_shares_select is a swap): %s', v_n);
   v_out := v_out || format(E'\n 1f is_session_participant executable by authenticated (expect t): %s',
     has_function_privilege('authenticated', 'public.is_session_participant(text)', 'EXECUTE'));
+  v_out := v_out || format(E'\n 1g is_coffee_owner executable by authenticated / anon (expect t f): %s %s',
+    has_function_privilege('authenticated', 'public.is_coffee_owner(text)', 'EXECUTE'),
+    has_function_privilege('anon', 'public.is_coffee_owner(text)', 'EXECUTE'));
 
   -- 2. tasting_group_members cannot be written by the API roles (checked, never provoked)
   v_out := v_out || format(E'\n 2a authenticated may INSERT tasting_group_members (expect f): %s',
@@ -120,6 +142,8 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
   v_out := v_out || format(E'\n 3c owner sees %s own history rows (expect their count, usually > 0)', v_n);
   SELECT count(*) INTO v_n FROM cupping_sessions;
   v_out := v_out || format(E'\n 3d owner sees %s sessions they own or joined (expect > 0 if they have any)', v_n);
+  SELECT count(*) INTO v_n FROM coffee_shares;
+  v_out := v_out || format(E'\n 3e owner reads coffee_shares without error: %s', v_n);
   RESET ROLE;
 
   -- 4. Default privileges: future tables are born read-only for the API roles

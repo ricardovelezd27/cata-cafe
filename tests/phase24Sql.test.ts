@@ -54,6 +54,13 @@ function finalPolicies(sql: string): Map<string, Policy> {
   return policies;
 }
 
+/** Text after ON coffee_shares of the (last) coffee_shares_select CREATE POLICY in executable SQL. */
+function coffeeSharesUsing(exec: string): string {
+  const m = /CREATE POLICY "coffee_shares_select" ON coffee_shares(.*?);/.exec(exec);
+  expect(m).not.toBeNull();
+  return m![1];
+}
+
 const phase24 = SQL.slice(SQL.indexOf("-- PHASE 24"));
 
 describe("PHASE 24: API roles read-only (rls_and_triggers.sql replayed in order)", () => {
@@ -91,7 +98,21 @@ describe("PHASE 24: API roles read-only (rls_and_triggers.sql replayed in order)
       /ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLES FROM anon, authenticated;/,
     );
     // Out of scope by design: SELECT grants, sequences, functions, service_role.
-    expect(exec).not.toMatch(/ON ALL SEQUENCES|ON ALL FUNCTIONS|service_role|GRANT /i);
+    // The only GRANT is EXECUTE on is_coffee_owner (checked below).
+    expect(exec).not.toMatch(/ON ALL SEQUENCES|ON ALL FUNCTIONS|service_role/i);
+    expect([...exec.matchAll(/GRANT\s+(\w+)/gi)].map((m) => m[1].toUpperCase())).toEqual(["EXECUTE"]);
+  });
+
+  it("breaks the coffees <-> coffee_shares recursion with a SECURITY DEFINER helper", () => {
+    const exec = stripComments(phase24).replace(/\s+/g, " ");
+    expect(exec).toMatch(
+      /CREATE OR REPLACE FUNCTION public\.is_coffee_owner\(p_coffee_id text\) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS \$\$/,
+    );
+    expect(exec).toMatch(/REVOKE EXECUTE ON FUNCTION public\.is_coffee_owner\(text\) FROM PUBLIC, anon;/);
+    expect(exec).toMatch(/GRANT EXECUTE ON FUNCTION public\.is_coffee_owner\(text\) TO authenticated;/);
+    expect(coffeeSharesUsing(exec)).toContain("is_coffee_owner");
+    expect(coffeeSharesUsing(exec)).not.toMatch(/\bcoffees\b/);
+    expect(exec).not.toMatch(/ALTER POLICY "coffee_shares_select"/);
   });
 });
 
@@ -104,10 +125,23 @@ describe("phase24_dry_run.sql", () => {
     return s.slice(s.indexOf("\n", a) + 1, s.lastIndexOf("\n", b)).trim();
   };
 
-  it("runs exactly the PHASE 24 statements", () => {
-    expect(block(DRY, ">>> PHASE 24 statements", "<<< end of PHASE 24 statements")).toBe(
+  it("runs exactly the PHASE 24 statements (function quote tag aside)", () => {
+    // Inside the dry run's $dry$ body the function is quoted $fn$ ... $fn$.
+    expect(block(DRY, ">>> PHASE 24 statements", "<<< end of PHASE 24 statements").replaceAll("$fn$", () => "$$")).toBe(
       block(phase24, ">>> PHASE 24 statements", "<<< end of PHASE 24 statements"),
     );
+  });
+
+  it("carries the same is_coffee_owner function and coffee_shares_select policy", () => {
+    const exec = stripComments(DRY).replace(/\s+/g, " ");
+    expect(exec).toMatch(
+      /CREATE OR REPLACE FUNCTION public\.is_coffee_owner\(p_coffee_id text\) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS \$fn\$/,
+    );
+    expect(exec).toMatch(/REVOKE EXECUTE ON FUNCTION public\.is_coffee_owner\(text\) FROM PUBLIC, anon;/);
+    expect(exec).toMatch(/GRANT EXECUTE ON FUNCTION public\.is_coffee_owner\(text\) TO authenticated;/);
+    expect(coffeeSharesUsing(exec)).not.toMatch(/\bcoffees\b/);
+    expect(exec).toContain("1g is_coffee_owner executable by authenticated / anon (expect t f)");
+    expect(exec).toContain("3e owner reads coffee_shares without error");
   });
 
   it("is one DO statement that can only end in an exception", () => {

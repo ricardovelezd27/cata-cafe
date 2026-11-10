@@ -702,7 +702,8 @@ to `/auth/confirm`, which only exists after the deploy.
 
 6. **PHASE 24 (§26): pre-flight, dry run, apply.** No dependency on the code (the app writes
    nothing through the API roles), so it can go before the deploy and closes the group-member
-   mail hole sooner. Save the pre-flight (b) output: it is the rollback.
+   mail hole sooner. Save the pre-flight (b) output: it is the rollback. This phase also fixes
+   the `coffees`/`coffee_shares` policy recursion (42P17) with a new helper, `is_coffee_owner`.
 
 7. **Environment (Vercel → Production).**
    - `ACCOUNT_DELETION_ENABLED`: leave **unset** (the account-deletion entry point stays off) until
@@ -1514,7 +1515,12 @@ the production project** (there is only one).
 - Re-targets the six SELECT policies that had no role (`coffees_select`,
   `coffee_shares_select`, `group_posts_select`, `sessions_select`, `samples_select`,
   `participants_select`) to `authenticated`. The public key can no longer list public coffees
-  with their owner ids.
+  with their owner ids. (`coffee_shares_select` is recreated instead of re-targeted, next line.)
+- Breaks a policy recursion found by the 2026-11-10 production dry run: since PHASE 16
+  `coffees_select` and `coffee_shares_select` read each other's tables, so any select on either
+  as `authenticated` failed with `42P17`. The new SECURITY DEFINER helper `is_coffee_owner(text)`
+  (EXECUTE for `authenticated` only) lets `coffee_shares_select` skip the `coffees` policy.
+  Dry run lines 1g (`t f`) and 3e (a count, no error) check it; 1e stays 16.
 - Revokes `INSERT/UPDATE/DELETE/TRUNCATE` from `anon` and `authenticated` on **every** table in
   `public`, and changes the default privileges of `postgres` so a table created by a future
   migration is born read-only for them. **Future rule:** a table the browser must write

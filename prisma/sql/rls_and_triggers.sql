@@ -1906,14 +1906,25 @@ $$;
 --      (group_posts_select has the identical USING; coffees_select includes
 --      "createdBy" = auth.uid() AND "deletedAt" IS NULL), so nothing is added.
 --   2. Every remaining SELECT policy without a role (coffees_select,
---      coffee_shares_select, group_posts_select, sessions_select,
---      samples_select, participants_select) is re-targeted TO authenticated
+--      group_posts_select, sessions_select, samples_select,
+--      participants_select) is re-targeted TO authenticated
 --      with ALTER POLICY, which keeps the USING expression byte for byte. For
 --      `anon` they returned nothing anyway (auth.uid() is NULL), except
 --      coffees_select, which let the public key read every public coffee with
 --      its "createdBy" (the uuid harvest the attack above starts from).
---      No policy calls a new helper; is_session_participant keeps EXECUTE for
---      authenticated (PHASE 18b rule) and is not touched here.
+--      coffee_shares_select is not ALTERed but recreated (see "Recursion" below).
+--      is_session_participant keeps EXECUTE for authenticated (PHASE 18b rule)
+--      and is not touched here. Functions added by this phase: one,
+--      is_coffee_owner(text) (SECURITY DEFINER, EXECUTE for authenticated only).
+--      Recursion (found by the 2026-11-10 production dry run): since PHASE 16
+--      coffees_select reads coffee_shares and coffee_shares_select reads coffees,
+--      so ANY select on either table as `authenticated` failed with 42P17
+--      "infinite recursion detected in policy". The app never saw it (Prisma
+--      runs as postgres) but a policy that errors is not a policy and the dry
+--      run's probes could not run. coffee_shares_select now asks is_coffee_owner(),
+--      which reads coffees as its owner (RLS bypassed), so the loop is broken
+--      with the same visible rows. Policies after the phase: 16 (18 before,
+--      minus 5 write policies, plus 3 read twins; the recreated one is a swap).
 --   3. Belt and braces, schema-wide: INSERT/UPDATE/DELETE/TRUNCATE revoked from
 --      anon and authenticated on EVERY table in public, and the default
 --      privileges of `postgres` (the role Prisma migrations create tables as)
@@ -2022,7 +2033,25 @@ DROP POLICY IF EXISTS "coffees_write" ON coffees;
 --    ALTER POLICY fails (and the whole transaction rolls back) if one of them
 --    does not exist: that is drift, stop and report it.
 ALTER POLICY "coffees_select" ON coffees TO authenticated;
-ALTER POLICY "coffee_shares_select" ON coffee_shares TO authenticated;
+-- Break the coffees <-> coffee_shares policy loop (42P17 since PHASE 16):
+-- coffee_shares_select asked `coffees` (whose policy asks coffee_shares back).
+-- A SECURITY DEFINER helper answers "is this caller the coffee's owner?"
+-- without going through the coffees policy. PHASE 18b rule: it keeps EXECUTE
+-- for `authenticated` (policies run as the querying role).
+CREATE OR REPLACE FUNCTION public.is_coffee_owner(p_coffee_id text)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM coffees
+    WHERE id = p_coffee_id AND "createdBy" = auth.uid()::text
+  );
+$$;
+REVOKE EXECUTE ON FUNCTION public.is_coffee_owner(text) FROM PUBLIC, anon;
+GRANT  EXECUTE ON FUNCTION public.is_coffee_owner(text) TO authenticated;
+
+DROP POLICY IF EXISTS "coffee_shares_select" ON coffee_shares;
+CREATE POLICY "coffee_shares_select" ON coffee_shares
+  FOR SELECT TO authenticated
+  USING ("userId" = auth.uid()::text OR is_coffee_owner("coffeeId"));
 ALTER POLICY "group_posts_select" ON group_posts TO authenticated;
 ALTER POLICY "sessions_select" ON cupping_sessions TO authenticated;
 ALTER POLICY "samples_select" ON session_samples TO authenticated;
@@ -2077,7 +2106,10 @@ COMMIT;
 --   ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
 --     GRANT INSERT, UPDATE, DELETE, TRUNCATE ON TABLES TO anon, authenticated;
 --   ALTER POLICY "coffees_select" ON coffees TO public;
---   ALTER POLICY "coffee_shares_select" ON coffee_shares TO public;
+--   DROP POLICY IF EXISTS "coffee_shares_select" ON coffee_shares;
+--   CREATE POLICY "coffee_shares_select" ON coffee_shares
+--     FOR SELECT USING ("userId" = auth.uid()::text OR EXISTS (SELECT 1 FROM coffees c WHERE c.id = coffee_shares."coffeeId" AND c."createdBy" = auth.uid()::text));
+--   DROP FUNCTION IF EXISTS public.is_coffee_owner(text);
 --   ALTER POLICY "group_posts_select" ON group_posts TO public;
 --   ALTER POLICY "sessions_select" ON cupping_sessions TO public;
 --   ALTER POLICY "samples_select" ON session_samples TO public;
