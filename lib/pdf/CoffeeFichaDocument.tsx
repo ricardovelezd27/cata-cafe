@@ -12,6 +12,7 @@ import { CVA_TEXT } from "./cvaFormData";
 import { PdfScoreBand } from "./charts";
 import { sanitizePdfText } from "./text";
 import { IdentityBlock } from "./sections/IdentityBlock";
+import { ReportStamp } from "./sections/ReportStamp";
 import { ExtrinsicBlock } from "./sections/ExtrinsicBlock";
 import { AffectiveBlock } from "./sections/AffectiveBlock";
 import { BlockTitle, C, PAGE_PAD, st, type Locale } from "./sections/shared";
@@ -96,9 +97,10 @@ export function CoffeeFichaDocument({ model, locale }: { model: CoffeeFichaModel
   const { results } = model;
 
   return (
-    <Document title={`${t.spec} · ${name}`} author="Café Sensible">
+    <Document title={`${t.spec} · ${name}`} author="Café Sensible" language={locale}>
       <Page size="A4" style={s.page}>
         <Text style={s.spec}>{t.spec}</Text>
+        <ReportStamp locale={locale} />
         <View style={s.top}>
           <View wrap={false}>
             <IdentityBlock identity={model.identity} locale={locale} tag={t.coffee} showBlindNote={false} />

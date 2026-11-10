@@ -114,6 +114,7 @@ export type SectionCopy = {
   communityScore: string;
   sd: string;
   includedOf: (inc: number, sub: number) => string;
+  indicative: string;
   noAffective: string;
   attrMeans: string;
   penalties: string;
@@ -178,6 +179,7 @@ export const SECTION_TEXT: Record<Locale, SectionCopy> = {
     communityScore: "Puntaje comunitario",
     sd: "desv. estándar",
     includedOf: (i, s) => `Incluidos ${i} de ${s} catadores`,
+    indicative: "indicativo",
     noAffective: "Aún no hay evaluaciones suficientes para un puntaje comunitario.",
     attrMeans: "Promedio por atributo",
     penalties: "Penalizaciones",
@@ -272,6 +274,7 @@ export const SECTION_TEXT: Record<Locale, SectionCopy> = {
     communityScore: "Community score",
     sd: "std. deviation",
     includedOf: (i, s) => `${i} of ${s} cuppers included`,
+    indicative: "indicative",
     noAffective: "Not enough evaluations yet for a community score.",
     attrMeans: "Mean per attribute",
     penalties: "Penalties",

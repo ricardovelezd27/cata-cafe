@@ -459,6 +459,46 @@ describe("buildParticipantSummary — anonymity invariant", () => {
   });
 });
 
+describe("participant summary and ficha — n of N (S8-12)", () => {
+  it("N counts every submitted evaluation of the sample, excluded cuppers included", () => {
+    const src = fixture();
+    const model = buildParticipantSummary(
+      { ...src, excludedUserIds: [CUPPERS.C.id] },
+      { viewerId: CUPPERS.B.id, locale: "es", labels },
+    );
+    const s2 = model.samples.find((s) => s.label === "Muestra 2")!;
+    const submitted = src.evals.filter((e) => e.sessionSampleId === "s-2").length;
+    expect(s2.inclusion?.total).toBe(submitted);
+    expect(s2.inclusion?.included).toBe(src.groupAggBySample["s-2"].included);
+    expect(model.header.viewerExcluded).toBe(false);
+  });
+
+  it("tells a cupper their own evaluation was excluded, with no reason or peer identity", () => {
+    const src = fixture();
+    const model = buildParticipantSummary(
+      { ...src, excludedUserIds: [CUPPERS.B.id] },
+      { viewerId: CUPPERS.B.id, locale: "es", labels },
+    );
+    expect(model.header.viewerExcluded).toBe(true);
+    const json = JSON.stringify(model);
+    expect(json).not.toContain(CUPPERS.A.name);
+    expect(json).not.toContain("exclusionReason");
+  });
+
+  it("ficha: N is all submitted evaluations and a thin panel is indicative with no SD", () => {
+    const src = fixture();
+    const m = buildFichaTecnica(src, { tier: "participant", locale: "es", labels });
+    for (const s of m.samples) {
+      if (!s.affective) continue;
+      expect(s.affective.submitted).toBe(s.participation.submitted);
+      if (s.affective.included < RANKING_POLICY.minN) expect(s.affective.sd).toBeNull();
+      expect(s.affective.indicative).toBe(
+        s.affective.communityScore != null && s.affective.included < RANKING_POLICY.indicativeBelow,
+      );
+    }
+  });
+});
+
 describe("buildFichaTecnica", () => {
   const src = fixture();
 

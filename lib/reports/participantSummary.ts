@@ -71,6 +71,10 @@ export type ParticipantSummaryModel = {
     /** The viewer's OWN evaluation was left out of the group numbers (S8-12). No
      *  reason, no peer identity. */
     viewerExcluded: boolean;
+    /** Report-stamp disclosure (S8-12): group inclusion and post-close changes. */
+    inclusion: { included: number; total: number } | null;
+    resultsUpdatedAt: Date | null;
+    originEditedAt: Date | null;
   };
   kpis: {
     myAvg: number | null;
@@ -271,6 +275,9 @@ export function buildParticipantSummary(
       cupsPerSample: session.cupsPerSample,
       participants: src.participants.length,
       viewerExcluded: src.excludedUserIds.includes(opts.viewerId),
+      inclusion: src.stamp?.inclusion ?? null,
+      resultsUpdatedAt: src.stamp?.resultsUpdatedAt ?? null,
+      originEditedAt: src.stamp?.originEditedAt ?? null,
       referenceLabel: anchors.length
         ? anchors.map((a) => sampleById.get(a.sample.id)?.label ?? "").filter(Boolean).join(" · ")
         : null,

@@ -31,6 +31,7 @@ import {
   Svg,
   Polygon,
 } from "@react-pdf/renderer";
+import { buildStampLine } from "./stampText";
 import { registerPdfFonts, SANS, SERIF } from "./fonts";
 import {
   buildCvaFormData,
@@ -595,7 +596,10 @@ function SheetHeader({
 function SheetFooter({ t }: { t: Record<string, string> }) {
   return (
     <View style={s.footer} fixed>
-      <Text style={s.footerText}>{t.attribution}</Text>
+      <Text style={s.footerText}>
+        {t.attribution}
+        {t.stampLine ? `\n${t.stampLine}` : ""}
+      </Text>
       <Text
         style={s.footerPage}
         render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`}
@@ -1062,6 +1066,10 @@ export type CvaDocumentProps = {
   cupsPerSample: number;
   format: string;
   locale: Locale;
+  /** The sheet shows at least one UNSENT (draft) evaluation: stamp it "Borrador". */
+  draft?: boolean;
+  /** Defaults to the server clock at render time. */
+  generatedAt?: Date;
   samples: {
     label: string;
     revealed: boolean;
@@ -1084,7 +1092,16 @@ function chunk<T>(xs: T[], size: number): T[][] {
 }
 
 export function CvaFormDocument(props: CvaDocumentProps) {
-  const t = CVA_TEXT[props.locale];
+  // The footer repeats on every page, so the generation stamp (server clock,
+  // language, draft marker) travels inside `t` as one extra string.
+  const t: Record<string, string> = {
+    ...CVA_TEXT[props.locale],
+    stampLine: buildStampLine({
+      locale: props.locale,
+      generatedAt: props.generatedAt ?? new Date(),
+      draft: props.draft,
+    }),
+  };
   const sheets: CvaSampleSheet[] = props.samples.map((sample) => {
     const input: CvaFormInput = {
       format: props.format,
@@ -1104,7 +1121,7 @@ export function CvaFormDocument(props: CvaDocumentProps) {
 
   if (sheets.length === 0) {
     return (
-      <Document title={title} author="Café Sensible">
+      <Document title={title} author="Café Sensible" language={props.locale}>
         <Page size="A4" style={s.page}>
           <Text style={s.formName}>{props.sessionName}</Text>
           <Text style={{ marginTop: 20, color: SOFT }}>{t.none}</Text>
@@ -1118,7 +1135,7 @@ export function CvaFormDocument(props: CvaDocumentProps) {
   // Affective — landscape, samples as columns, three per page.
   if (format === "affective") {
     return (
-      <Document title={title} author="Café Sensible">
+      <Document title={title} author="Café Sensible" language={props.locale}>
         {chunk(sheets, 3).map((group, i) => (
           <AffectiveGridPage key={i} sheets={group} t={t} formName={t.formAffective} />
         ))}
@@ -1130,7 +1147,7 @@ export function CvaFormDocument(props: CvaDocumentProps) {
   // Combined — landscape, one sample per page, extrinsic on the appendix.
   if (format === "combined") {
     return (
-      <Document title={title} author="Café Sensible">
+      <Document title={title} author="Café Sensible" language={props.locale}>
         {sheets.map((sheet, i) => (
           <CombinedPage key={i} sheet={sheet} t={t} />
         ))}
@@ -1141,7 +1158,7 @@ export function CvaFormDocument(props: CvaDocumentProps) {
 
   // Descriptive — portrait, two samples per page.
   return (
-    <Document title={title} author="Café Sensible">
+    <Document title={title} author="Café Sensible" language={props.locale}>
       {chunk(sheets, 2).map((pair, i) => (
         <Page key={i} size="A4" style={s.page}>
           <SheetHeader sheet={pair[0]} t={t} formName={t.formDescriptive} />

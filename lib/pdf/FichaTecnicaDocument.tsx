@@ -25,6 +25,7 @@ import { DescriptiveBlock } from "./sections/DescriptiveBlock";
 import { ParticipationBlock } from "./sections/ParticipationBlock";
 import { OwnerAppendix } from "./sections/OwnerAppendix";
 import { TeacherNotesPages } from "./sections/TeacherNotesPages";
+import { ReportStamp } from "./sections/ReportStamp";
 import { C, PAGE_PAD, SECTION_TEXT, fmt, st, type Locale } from "./sections/shared";
 
 registerPdfFonts();
@@ -170,7 +171,7 @@ export function FichaTecnicaDocument({
   const showScores = model.samples.some((x) => x.affective?.communityScore != null);
 
   return (
-    <Document title={`${t.spec} · ${sessionName}`} author="Café Sensible">
+    <Document title={`${t.spec} · ${sessionName}`} author="Café Sensible" language={locale}>
       <Page size="A4" style={s.page}>
         <Text style={s.spec}>{t.spec}</Text>
         <Text style={s.title}>{sessionName}</Text>
@@ -190,6 +191,12 @@ export function FichaTecnicaDocument({
             </Text>
           </View>
         ) : null}
+        <ReportStamp
+          locale={locale}
+          inclusion={header.inclusion}
+          resultsUpdatedAt={header.resultsUpdatedAt}
+          originEditedAt={header.originEditedAt}
+        />
         <View style={s.rule} />
 
         <Text style={st.blockTitle}>{t.overview}</Text>

@@ -169,6 +169,9 @@ const model: ParticipantSummaryModel = {
     cupsPerSample: 5,
     participants: 9,
     viewerExcluded: false,
+    inclusion: null,
+    resultsUpdatedAt: null,
+    originEditedAt: null,
     referenceLabel: "A",
   },
   kpis: {

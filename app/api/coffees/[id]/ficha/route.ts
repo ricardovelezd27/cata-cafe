@@ -14,7 +14,7 @@ import { computeCoffeeAggregate } from "@/lib/coffeeAggregate";
 import { loadCoffeeAggregateSamples } from "@/lib/coffees/aggregateSamples";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { CoffeeFichaDocument, type CoffeeFichaModel } from "@/lib/pdf/CoffeeFichaDocument";
-import { slug } from "@/lib/pdf/filename";
+import { slug, dateSlug } from "@/lib/pdf/filename";
 import { logError, errorMessage } from "@/lib/log";
 
 export const runtime = "nodejs";
@@ -129,7 +129,7 @@ export async function GET(
     return failureResponse("coffee-ficha", { coffeeId: id }, locale, err);
   }
 
-  const filename = `ficha_cafe_${slug(coffee.name) || "cafe"}.pdf`;
+  const filename = `ficha_cafe_${slug(coffee.name) || "cafe"}_${dateSlug()}.pdf`;
   return new Response(new Uint8Array(buffer), {
     status: 200,
     headers: {

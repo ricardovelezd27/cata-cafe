@@ -19,7 +19,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email";
 import { CvaFormDocument, type CvaDocumentProps } from "@/lib/pdf/CvaFormDocument";
 import { ParticipantSummaryDocument } from "@/lib/pdf/ParticipantSummaryDocument";
-import { slug } from "@/lib/pdf/filename";
+import { slug, dateSlug } from "@/lib/pdf/filename";
 import type { SessionReportSource } from "@/lib/reports/types";
 import { loadSessionReportSource } from "@/lib/reports/sessionReportData";
 import { buildParticipantSummary } from "@/lib/reports/participantSummary";
@@ -219,7 +219,7 @@ export async function sendCloseEmails(
       }
 
       const attachments: { filename: string; content: Buffer }[] = summaryBuffer
-        ? [{ filename: `${isEn ? "summary" : "resumen"}_${nameSlug || "session"}.pdf`, content: summaryBuffer }]
+        ? [{ filename: `${isEn ? "summary" : "resumen"}_${nameSlug || "session"}_${dateSlug()}.pdf`, content: summaryBuffer }]
         : [];
 
       if (attachCva) {
@@ -241,7 +241,10 @@ export async function sendCloseEmails(
               label: s.label,
               revealed: s.revealed,
               ...sheetSampleIdentity(s, deletedCoffeeLabel(recipientLocale)),
-              isReference: s.id === session.referenceSampleId,
+              // Multi-reference (S6): keep R1/R2/R3 labels in the emailed sheet
+              // (S8-12, F-informes-6); the legacy pointer covers pre-rank rows.
+              isReference: s.referenceRank != null || s.id === session.referenceSampleId,
+              referenceRank: s.referenceRank ?? null,
               descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
               affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
               combined: (ev?.combinedData as Record<string, unknown>) ?? {},
@@ -251,7 +254,7 @@ export async function sendCloseEmails(
         };
         const cvaBuffer = await renderToBuffer(CvaFormDocument(cvaProps));
         attachments.push({
-          filename: `cva_${isEn ? "form" : "formulario"}_${nameSlug || "session"}.pdf`,
+          filename: `cva_${isEn ? "form" : "formulario"}_${nameSlug || "session"}_${dateSlug()}.pdf`,
           content: cvaBuffer,
         });
       }

@@ -15,7 +15,7 @@ import { canViewGroupResults, isSessionExpired } from "@/lib/sessionState";
 import { loadSessionReportSource } from "@/lib/reports/sessionReportData";
 import { buildParticipantSummary } from "@/lib/reports/participantSummary";
 import { ParticipantSummaryDocument } from "@/lib/pdf/ParticipantSummaryDocument";
-import { slug } from "@/lib/pdf/filename";
+import { slug, dateSlug } from "@/lib/pdf/filename";
 import { logError, errorMessage } from "@/lib/log";
 
 export const runtime = "nodejs";
@@ -148,7 +148,7 @@ export async function GET(
     return failureResponse("participant-summary", { sessionId: id }, locale, err);
   }
 
-  const filename = `${locale === "en" ? "summary" : "resumen"}_${slug(session.name) || "sesion"}.pdf`;
+  const filename = `${locale === "en" ? "summary" : "resumen"}_${slug(session.name) || "sesion"}_${dateSlug()}.pdf`;
   return new Response(new Uint8Array(buffer), {
     status: 200,
     headers: {

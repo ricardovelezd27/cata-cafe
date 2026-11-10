@@ -13,7 +13,7 @@ import { DESCRIPTOR_STAGES } from "@/lib/descriptors";
 import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { bandFor, rowStats, type Band, type RowStats } from "./cupperStats";
-import { consensusLine } from "./ranking";
+import { consensusLine, RANKING_POLICY } from "./ranking";
 import {
   blobForFormat,
   type ReportCoffee,
@@ -47,8 +47,12 @@ export type FichaIdentity = {
 export type FichaAffective = {
   communityScore: number | null;
   sd: number | null;
+  /** n: complete evaluations of non-excluded cuppers behind the community score. */
   included: number;
+  /** N: EVERY submitted evaluation of the sample, excluded cuppers included (S8-12). */
   submitted: number;
+  /** n is below RANKING_POLICY.indicativeBelow: the number is only indicative. */
+  indicative?: boolean;
   /** AFFECTIVE_ATTRIBUTES order; value null when no data. */
   attrAverages: { id: string; label: string; value: number | null }[];
   uniformityPenalty: number;
@@ -105,6 +109,10 @@ export type FichaTecnicaModel = {
     objective: string | null;
     isGroup: boolean;
     participants: number;
+    /** Report-stamp disclosure (S8-12). */
+    inclusion: { included: number; total: number } | null;
+    resultsUpdatedAt: Date | null;
+    originEditedAt: Date | null;
   };
   samples: FichaSample[];
   /** Present ONLY for tier "owner". */
@@ -154,11 +162,15 @@ export function buildFichaTecnica(
 
     let affective: FichaAffective | null = null;
     if (format !== "descriptive") {
+      const n = agg?.included ?? 0;
       affective = {
         communityScore: agg?.communityScore ?? null,
-        sd: agg?.scoreSd ?? null,
-        included: agg?.included ?? 0,
-        submitted: agg?.submitted ?? 0,
+        // Too few cuppers for a meaningful spread (RANKING_POLICY, TODO(Kim-D3)).
+        sd: n >= RANKING_POLICY.minN ? (agg?.scoreSd ?? null) : null,
+        included: n,
+        // N = every submitted evaluation incl. excluded cuppers ("n de N incluidos").
+        submitted: sampleEvals.length,
+        indicative: agg?.communityScore != null && n < RANKING_POLICY.indicativeBelow,
         attrAverages: AFFECTIVE_ATTRIBUTES.map((a) => ({
           id: a.id,
           label: a.label,
@@ -227,6 +239,9 @@ export function buildFichaTecnica(
       objective: session.objective,
       isGroup: session.isGroup,
       participants: totalParticipants,
+      inclusion: src.stamp?.inclusion ?? null,
+      resultsUpdatedAt: src.stamp?.resultsUpdatedAt ?? null,
+      originEditedAt: src.stamp?.originEditedAt ?? null,
     },
     samples,
   };

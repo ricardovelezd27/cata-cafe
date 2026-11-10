@@ -12,11 +12,13 @@ import { orderReferencesFirst } from "@/lib/referenceRules";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { sheetSampleIdentity, sheetSampleRecords } from "@/lib/pdf/sheetSource";
-import { slug } from "@/lib/pdf/filename";
+import { slug, dateSlug } from "@/lib/pdf/filename";
+import { pdfFailureResponse } from "@/lib/pdf/routeFailure";
 import { CvaFormDocument, type CvaDocumentProps } from "@/lib/pdf/CvaFormDocument";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export async function GET(
   request: NextRequest,
@@ -86,7 +88,11 @@ export async function GET(
   // data of a sample that is still blind.
   const ownerView = session.createdBy === viewAsId;
 
+  // Any of the viewer's evaluations still unsent: the sheet is stamped "Borrador".
+  const hasDraft = session.samples.some((sample) => sample.evaluations[0]?.isDraft === true);
+
   const props: CvaDocumentProps = {
+    draft: hasDraft,
     ownerView,
     sessionName: session.name,
     date: dateStr,
@@ -111,13 +117,18 @@ export async function GET(
     }),
   };
 
-  const buffer = await renderToBuffer(CvaFormDocument(props));
+  let buffer: Buffer;
+  try {
+    buffer = await renderToBuffer(CvaFormDocument(props));
+  } catch (err) {
+    return pdfFailureResponse("cva-pdf", { sessionId: id }, locale, err);
+  }
 
   const firstLabel = session.samples[0]?.label ?? "";
   const lastLabel = session.samples[session.samples.length - 1]?.label ?? "";
   const range =
     session.samples.length <= 1 ? firstLabel : `${firstLabel}-${lastLabel}`;
-  const filename = `cva_${slug(session.name)}${range ? `_${slug(range)}` : ""}.pdf`;
+  const filename = `cva_${slug(session.name)}${range ? `_${slug(range)}` : ""}_${dateSlug()}.pdf`;
 
   return new Response(new Uint8Array(buffer), {
     status: 200,

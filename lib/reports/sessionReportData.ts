@@ -13,6 +13,7 @@ import { asSessionFormat } from "@/lib/constants";
 import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
 import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
 import { computeCupperAlignment, computeMajoritySets } from "@/lib/alignment";
+import { resultsUpdatedAfterClose } from "@/lib/exclusionReasons";
 import type { ReportLocale, SessionReportSource } from "./types";
 
 export type { SessionReportSource } from "./types";
@@ -66,6 +67,7 @@ export async function loadSessionReportSource(
             userId: true,
             status: true,
             excludedFromResults: true,
+            excludedAt: true,
             user: { select: { displayName: true } },
           },
         },
@@ -171,7 +173,31 @@ export async function loadSessionReportSource(
   const alignmentRows = computeCupperAlignment(alignmentInput);
   const majoritySets = computeMajoritySets(alignmentInput);
 
+  // Disclosure for the report stamp (S8-12): who the group numbers rest on and
+  // whether anything changed after the close.
+  const submittedCuppers = new Set(evals.map((e) => e.cupperId));
+  const includedCuppers = [...submittedCuppers].filter((id) => !excludedUserIds.has(id)).length;
+  let originEditedAt: Date | null = null;
+  for (const s of session.samples) {
+    const at = s.revealed ? (s.extrinsic?.editedAt ?? null) : null;
+    if (at && (!originEditedAt || at > originEditedAt)) originEditedAt = at;
+  }
+  const stamp = {
+    inclusion: session.isGroup
+      ? { included: includedCuppers, total: submittedCuppers.size }
+      : null,
+    resultsUpdatedAt:
+      session.isGroup && session.status === "closed"
+        ? resultsUpdatedAfterClose(
+            session.closedAt,
+            session.participants.map((p) => p.excludedAt),
+          )
+        : null,
+    originEditedAt,
+  };
+
   return {
+    stamp,
     session: {
       id: session.id,
       name: session.name,

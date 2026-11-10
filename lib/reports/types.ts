@@ -83,7 +83,19 @@ export type ReportSession = {
   closedAt: Date | null;
 };
 
+/** What a report must disclose about how its numbers came to be (S8-12). */
+export type ReportStampInfo = {
+  /** Group sessions: cuppers included in the group numbers / cuppers who submitted. */
+  inclusion: { included: number; total: number } | null;
+  /** Group results changed after the session closed (an exclusion/restore). */
+  resultsUpdatedAt: Date | null;
+  /** Latest post-close origin correction on a REVEALED sample. */
+  originEditedAt: Date | null;
+};
+
 export type SessionReportSource = {
+  /** Optional so hand-built fixtures keep compiling; the loader always sets it. */
+  stamp?: ReportStampInfo;
   session: ReportSession;
   ownerName: string;
   /** Display order: references first by rank (orderReferencesFirst), then position. */
