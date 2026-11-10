@@ -825,3 +825,43 @@ on `/join`. Close entries in the master panel: a new scan is refused with a clea
 message, an existing participant re-enters.
 
 **Rollback:** code revert is enough (the columns are harmless when unread).
+
+---
+
+## §19. Database — apply the `digest_run_status` migration (2026-11, S8-14)
+
+**When:** BEFORE the deploy that contains S8-14. The regenerated Prisma client selects
+`digest_runs."status"` and `"results"` on every digest read and the monthly cron
+(`/api/cron/insights-digest`, `0 12 1 * *`) now claims the month with a `running` row.
+Deploying the code first makes the cron fail with a missing-column error.
+
+**What it does** (`prisma/migrations/20261111120000_digest_run_status/migration.sql`):
+
+```sql
+ALTER TABLE "digest_runs" ADD COLUMN "results" JSONB,
+ADD COLUMN "status" TEXT NOT NULL DEFAULT 'done';
+```
+
+One nullable column and one column with a constant default. Existing rows become
+`done` (they were complete runs). No index, no backfill, no SQL PHASE, no RLS change.
+
+**Steps** (repo root, production `DIRECT_URL` in `.env.local`, same precondition as §9):
+
+1. `npx prisma migrate status` — expected: exactly one pending migration,
+   `20261111120000_digest_run_status` (plus any earlier S8 migration you have not applied
+   yet; apply those first, in order). Anything unexpected: stop and paste the output.
+2. `npx prisma migrate deploy`.
+3. Deploy the code.
+4. Confirm `NEXT_PUBLIC_SITE_URL` exists in Vercel for Production AND Preview (the digest
+   link and every group email use it; Preview falls back to localhost without it).
+
+**Verify:** `/es/app/insights/access` (super-admin) shows a "Resumen mensual por correo"
+card. To test the cron manually:
+`curl -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/cron/insights-digest`.
+With `RESEND_API_KEY` set it answers `sent: 1`; the second call answers `alreadyRan: true`.
+With the key unset it answers `sent: 0` and the month stays retryable (no row is kept).
+A `running` row older than 30 minutes (a crashed run) is taken over by the next call.
+
+**Rollback:** code revert is enough (the columns are harmless when unread). If a `running`
+row blocks a month you want to resend, delete it in the SQL editor:
+`DELETE FROM digest_runs WHERE status = 'running';`.

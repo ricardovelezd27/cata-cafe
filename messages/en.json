@@ -1382,7 +1382,11 @@
       "superAdmin": "Super admin",
       "emailUnavailable": "email unavailable",
       "toggleError": "Could not update. Try again.",
-      "empty": "No users found."
+      "empty": "No users found.",
+      "digestTitle": "Monthly email digest",
+      "digestLast": "Last run: period {period} · {sent} of {recipients} delivered.",
+      "digestRunning": "In progress: period {period}.",
+      "digestNone": "No digest has been sent yet."
     },
     "users": {
       "lead": "Directory of everyone registered on the platform, with their cupping activity.",

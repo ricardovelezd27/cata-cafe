@@ -448,6 +448,11 @@ model DigestRun {
   recipients Int
   sent       Int
   aiSkipped  Boolean  @default(false)
+  // S8-14: the period is CLAIMED first as "running", then marked "done" after
+  // the sends. Rows from before this column are complete runs, hence the default.
+  status     String   @default("done")
+  // Per-recipient outcome { "<email>": "sent" | "failed" } (lib/digestClaim.ts).
+  results    Json?
   createdAt  DateTime @default(now())
 
   @@map("digest_runs")

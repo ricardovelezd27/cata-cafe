@@ -2,8 +2,12 @@
 // analytics user (analyticsAccess=true plus the super-admin). Called by the
 // cron route app/api/cron/insights-digest/route.ts.
 //
-// Idempotent: one DigestRun row per period; a second run for the same period
-// is a no-op. Per-recipient failures are isolated with Promise.allSettled
+// Claim-first (S8-14, F-insights-3): the period is claimed as a `running`
+// DigestRun row BEFORE anything is sent (the unique period is the lock), then
+// marked `done` with per-recipient results. A concurrent or repeated call sees
+// the claim and does nothing; a run that sent nothing releases the month; a
+// crashed `running` claim is taken over after 30 minutes (lib/digestClaim.ts).
+// Per-recipient failures are isolated with Promise.allSettled
 // (pattern cloned from lib/closeEmail.ts). NEVER import from a client
 // component — uses the service-role admin client and server-only AI modules.
 
@@ -13,6 +17,17 @@ import { sendEmail } from "@/lib/email";
 import { getSuperAdminEmail, isSuperAdminEmail } from "@/lib/analytics/access";
 import { runInsightQuery } from "@/lib/analytics/queries";
 import { cachedGenerate } from "@/lib/ai/cache";
+import { siteOrigin } from "@/lib/inviteUrl";
+import {
+  classifyExistingRun,
+  countSent,
+  digestInsightsUrl,
+  mergeResults,
+  parseResults,
+  recipientsStillToSend,
+  shouldReleasePeriod,
+  type DigestResults,
+} from "@/lib/digestClaim";
 import {
   buildDigestRequest,
   type DigestInputs,
@@ -25,6 +40,8 @@ export type DigestSummary = {
   ok: boolean;
   period: string;
   alreadyRan?: boolean;
+  /** Another invocation holds the period right now (alreadyRan is also true). */
+  inProgress?: boolean;
   recipients: number;
   sent: number;
   failed: number;
@@ -209,7 +226,7 @@ function digestHtml(
     </table>
     ${narrativeBlock}
     <p style="margin:20px 0 0;">
-      <a href="${siteUrl}/es/app/insights" style="color:#3D5A3E; font-weight:bold;">${t.openInsights} →</a>
+      <a href="${digestInsightsUrl(siteUrl, locale)}" style="color:#3D5A3E; font-weight:bold;">${t.openInsights} →</a>
     </p>
   </div>`;
 }
@@ -221,19 +238,60 @@ function digestHtml(
 export async function sendInsightsDigest(now = new Date()): Promise<DigestSummary> {
   const period = previousPeriod(periodOf(now));
 
-  const existing = await prisma.digestRun.findUnique({ where: { period } });
-  if (existing) {
-    return {
-      ok: true,
-      period,
-      alreadyRan: true,
-      recipients: existing.recipients,
-      sent: existing.sent,
-      failed: 0,
-      aiSkipped: existing.aiSkipped,
-    };
+  // 1. Claim the period. The unique `period` makes this atomic: of two
+  //    simultaneous invocations exactly one create succeeds.
+  let previous: DigestResults = {};
+  let claimId: string;
+  try {
+    const claim = await prisma.digestRun.create({
+      data: { period, recipients: 0, sent: 0, status: "running" },
+      select: { id: true },
+    });
+    claimId = claim.id;
+  } catch (err) {
+    if ((err as { code?: string } | null)?.code !== "P2002") throw err;
+    const existing = await prisma.digestRun.findUnique({ where: { period } });
+    if (!existing) {
+      // Released between our create and our read: let the next tick retry.
+      return { ok: true, period, alreadyRan: true, inProgress: true, recipients: 0, sent: 0, failed: 0, aiSkipped: false };
+    }
+    const state = classifyExistingRun(existing, now);
+    if (state !== "stale") {
+      return {
+        ok: true,
+        period,
+        alreadyRan: true,
+        inProgress: state === "running",
+        recipients: existing.recipients,
+        sent: existing.sent,
+        failed: 0,
+        aiSkipped: existing.aiSkipped,
+      };
+    }
+    // Stale takeover: only one invocation wins this conditional update.
+    const takeover = await prisma.digestRun.updateMany({
+      where: { id: existing.id, status: "running", createdAt: existing.createdAt },
+      data: { createdAt: now },
+    });
+    if (takeover.count === 0) {
+      return { ok: true, period, alreadyRan: true, inProgress: true, recipients: existing.recipients, sent: existing.sent, failed: 0, aiSkipped: existing.aiSkipped };
+    }
+    claimId = existing.id;
+    previous = parseResults(existing.results);
   }
 
+  // A throw here leaves the claim `running`: the cron reports 500, and the
+  // stale-takeover window (30 min) lets the next invocation retry the month
+  // without risking a double send from a delete-and-resend race.
+  return runClaimedDigest({ period, claimId, previous });
+}
+
+async function runClaimedDigest(args: {
+  period: string;
+  claimId: string;
+  previous: DigestResults;
+}): Promise<DigestSummary> {
+  const { period, claimId, previous } = args;
   const inputs = await buildDigestInputs(period);
 
   // One cached standard-tier narrative per locale; digest still sends without AI.
@@ -275,22 +333,47 @@ export async function sendInsightsDigest(now = new Date()): Promise<DigestSummar
     targets.set(superEmail, superLocale);
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-  const results = await Promise.allSettled(
-    [...targets.entries()].map(([email, locale]) =>
-      sendEmail({
+  const siteUrl = siteOrigin();
+  const toSend = recipientsStillToSend([...targets.keys()], previous);
+  const settled = await Promise.allSettled(
+    toSend.map(async (email) => {
+      const locale = targets.get(email) ?? "es";
+      const r = await sendEmail({
         to: email,
         subject: EMAIL_TEXT[locale].subject(period),
         html: digestHtml(locale, inputs, narratives[locale], siteUrl),
-      }),
+      });
+      return { email, ok: r.ok };
+    }),
+  );
+  const merged = mergeResults(
+    previous,
+    settled.map((r, i) =>
+      r.status === "fulfilled" ? r.value : { email: toSend[i], ok: false },
     ),
   );
-  const sent = results.filter((r) => r.status === "fulfilled" && r.value.ok).length;
-  const failed = results.length - sent;
+  const sent = countSent(merged);
+  const failed = targets.size - sent;
 
-  await prisma.digestRun.create({
-    data: { period, recipients: targets.size, sent, aiSkipped },
+  // Nothing went out (e.g. RESEND_API_KEY unset, provider down): release the
+  // month instead of recording a run that never happened.
+  if (shouldReleasePeriod(merged)) {
+    await prisma.digestRun.deleteMany({ where: { id: claimId, status: "running" } });
+    return { ok: true, period, recipients: targets.size, sent: 0, failed, aiSkipped };
+  }
+
+  await prisma.digestRun.update({
+    where: { id: claimId },
+    data: { status: "done", recipients: targets.size, sent, aiSkipped, results: merged },
   });
 
   return { ok: true, period, recipients: targets.size, sent, failed, aiSkipped };
+}
+
+/** Last recorded digest run, for the Acceso page. Read-only. */
+export async function getLastDigestRun() {
+  return prisma.digestRun.findFirst({
+    orderBy: { createdAt: "desc" },
+    select: { period: true, status: true, recipients: true, sent: true, aiSkipped: true, createdAt: true },
+  });
 }

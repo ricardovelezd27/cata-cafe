@@ -1382,7 +1382,11 @@
       "superAdmin": "Superadmin",
       "emailUnavailable": "correo no disponible",
       "toggleError": "No se pudo actualizar. Inténtalo de nuevo.",
-      "empty": "No se encontraron usuarios."
+      "empty": "No se encontraron usuarios.",
+      "digestTitle": "Resumen mensual por correo",
+      "digestLast": "Último envío: período {period} · {sent} de {recipients} entregados.",
+      "digestRunning": "En curso: período {period}.",
+      "digestNone": "Aún no se ha enviado ningún resumen."
     },
     "users": {
       "lead": "Directorio de todas las personas registradas en la plataforma, con su actividad de catación.",
