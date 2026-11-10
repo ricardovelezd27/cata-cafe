@@ -3,15 +3,48 @@
 
 import { dateOnlyEndOfDay } from "@/lib/validate";
 
-/** Throws `session_closed` for a closed session. Call it right after the
+type ExpiryRow = { status: string; closesAt?: Date | string | null };
+
+function toMs(v: Date | string | number): number {
+  return typeof v === "number" ? v : typeof v === "string" ? Date.parse(v) : v.getTime();
+}
+
+/** A session stops accepting work when it is closed OR its `closesAt` has
+ *  passed (strict `<`, the same boundary as the results page and the cron).
+ *  `status` is still flipped only by closeSessionInternal: an expired session
+ *  stays "active" until the cron or the owner closes it, but it is already
+ *  read-only and its group results are already visible. Server clock only:
+ *  client components never compute this. */
+export function isSessionExpired(row: ExpiryRow, now: Date | number = Date.now()): boolean {
+  if (row.status === "closed") return true;
+  if (row.closesAt == null) return false;
+  return toMs(row.closesAt) < toMs(now);
+}
+
+/** Throws `session_closed` for a closed or expired session. Call it right after the
  *  requireSessionOwner / requireSessionMember / requireSampleOwner /
  *  requireSampleMember check in EVERY mutation that writes evaluations,
  *  samples, physical/extrinsic data or metadata. "closed = the session's
  *  results ARE its detail view" is only true if nothing can still change
  *  underneath them (and the aggregate trigger only re-fires on isDraft
- *  changes, so a post-close edit would silently desync aggregate_scores). */
-export function assertSessionWritable(row: { status: string }): void {
-  if (row.status === "closed") throw new Error("session_closed");
+ *  changes, so a post-close edit would silently desync aggregate_scores).
+ *  A row without `closesAt` is judged on status alone, which is what the two
+ *  post-close writes rely on. */
+export function assertSessionWritable(row: ExpiryRow, now: Date | number = Date.now()): void {
+  if (isSessionExpired(row, now)) throw new Error("session_closed");
+}
+
+/** A participant cannot write before the master starts a live group session.
+ *  Owner, async and solo sessions are never blocked. */
+export function assertSessionStarted(row: {
+  isGroup: boolean;
+  isAsync: boolean;
+  startedAt: Date | string | null;
+  isOwner: boolean;
+}): void {
+  if (row.isGroup && !row.isAsync && !row.startedAt && !row.isOwner) {
+    throw new Error("session_not_started");
+  }
 }
 
 export function isSessionClosed(row: { status: string }): boolean {
