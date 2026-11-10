@@ -3,6 +3,8 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useActionFeedback } from "@/components/ui/Toast";
+import { useConnectivity } from "@/hooks/useConnectivity";
+import { isNetworkFailure } from "@/lib/actionResult";
 import { Trash2, X, ChevronDown } from "lucide-react";
 import { PROCESS_TYPES, CERTIFICATIONS, ROAST_LEVELS } from "@/lib/constants";
 import { MIN_CUPS_FOR_PENALTIES } from "@/lib/scoring";
@@ -149,6 +151,7 @@ type Translations = {
       invalid_altitude: string;
       sample_without_coffee: string;
       generic: string;
+      offline?: string;
       coffee_not_found: string;
       invalid_reference?: string;
     };
@@ -275,6 +278,9 @@ export function NewSessionForm({
 }) {
   const router = useRouter();
   const feedback = useActionFeedback();
+  // Shared connectivity probe: creating a session needs the server. Offline the
+  // submit is disabled and every field keeps its value (S8-09, F-04-3).
+  const { online } = useConnectivity();
 
   // Session basics
   const [name, setName] = useState("");
@@ -508,6 +514,7 @@ export function NewSessionForm({
       : null;
 
     start(async () => {
+      try {
       if (!isGroup) {
         const result = await createSession({
           name,
@@ -547,6 +554,12 @@ export function NewSessionForm({
         } else {
           setErrorCode(result.error);
         }
+      }
+      } catch (err) {
+        // A redirect() is not a failure; anything else is a dropped request.
+        const digest = (err as { digest?: unknown } | null)?.digest;
+        if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) throw err;
+        setErrorCode(isNetworkFailure(err, navigator.onLine) ? "offline" : "generic");
       }
     });
   };
@@ -1302,9 +1315,15 @@ export function NewSessionForm({
           </div>
         )}
 
+        {!online && t.newForm.errors.offline && (
+          <p role="status" className="text-center text-sm text-error">
+            {t.newForm.errors.offline}
+          </p>
+        )}
+
         <button
           type="submit"
-          disabled={pending}
+          disabled={pending || !online}
           className="w-full bg-primary-container text-on-primary rounded-pill py-3.5 font-medium hover:bg-primary transition-colors disabled:opacity-50"
         >
           {t.start}

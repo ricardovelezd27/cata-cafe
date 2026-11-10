@@ -187,6 +187,7 @@
         "invalid_altitude": "Altitude must be a number in masl (e.g. 1800).",
         "sample_without_coffee": "Each sample must be linked to a coffee.",
         "generic": "Couldn't create the session. Please try again.",
+        "offline": "No connection: you need internet to create the session. Your input is still here.",
         "coffee_not_found": "One of the selected coffees is no longer available. Please pick it again.",
         "invalid_name": "Give the session a name (max. 120 characters).",
         "invalid_date": "That date isn't valid.",
@@ -217,7 +218,8 @@
       "increment": "One sample more",
       "cta": "Cup now",
       "creating": "Creating…",
-      "fullWizard": "Set up a full session"
+      "fullWizard": "Set up a full session",
+      "offline": "No connection: you need internet to create the session."
     },
     "deleteSession": {
       "title": "Delete session",
@@ -1637,6 +1639,7 @@
       "not_found": "That item no longer exists.",
       "invalid_reference": "One of the linked items no longer exists.",
       "rate_limited": "Too many sends in a short time. Wait a moment and try again.",
+      "offline": "No connection: this needs internet. Your input is still here; try again when you are back online.",
       "unknown": "Something went wrong. Please try again."
     }
   },

@@ -416,6 +416,18 @@ export async function getLastUser(): Promise<string | null> {
   }
 }
 
+/** Record who is signed in on this device (the app shell calls it on mount so
+ *  a user change can be detected even if the cup screen was never opened). */
+export async function rememberUser(userId: string): Promise<void> {
+  const lf = instance();
+  if (!lf) return;
+  try {
+    await lf.setItem(LAST_USER_KEY, userId);
+  } catch (err) {
+    markUnavailable("rememberUser", err);
+  }
+}
+
 /** Sign-out hook (lib/offline/deviceState.ts): drop the last-user pointer so
  *  the cup boundary's offline rebuild can never pick up the previous user's
  *  cached props on a shared device. User-keyed draft blobs are kept. */

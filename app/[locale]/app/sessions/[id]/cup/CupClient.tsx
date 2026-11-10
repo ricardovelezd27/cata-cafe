@@ -9,6 +9,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { blocksSubmit, isTerminal } from "@/lib/offline/status";
+import { warmupForCache } from "@/lib/warmup/offlineCache";
 import { WarmupMoment } from "@/components/session-moments/WarmupMoment";
 import { SessionMomentOverlay } from "@/components/session-moments/SessionMomentOverlay";
 import { WarmupPlayer, type WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
@@ -718,6 +719,9 @@ export function CupClient({
       userEmail,
       userCountry,
       userId,
+      // Static warm-up only (exercise id + copy): the offline rebuild runs the
+      // same seen-set logic as online. The synced-run clock is never cached.
+      warmup: warmupForCache(warmup),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [online]);

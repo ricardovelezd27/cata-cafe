@@ -187,6 +187,7 @@
         "invalid_altitude": "La altitud debe ser un número en msnm (por ejemplo 1800).",
         "sample_without_coffee": "Cada muestra debe estar vinculada a un café.",
         "generic": "No se pudo crear la sesión. Inténtalo de nuevo.",
+        "offline": "Sin conexión: se necesita internet para crear la sesión. Tus datos siguen aquí.",
         "coffee_not_found": "Uno de los cafés seleccionados ya no está disponible. Vuelve a elegirlo.",
         "invalid_name": "Ponle un nombre a la sesión (máx. 120 caracteres).",
         "invalid_date": "La fecha no es válida.",
@@ -217,7 +218,8 @@
       "increment": "Una muestra más",
       "cta": "Catar ahora",
       "creating": "Creando…",
-      "fullWizard": "Configurar sesión completa"
+      "fullWizard": "Configurar sesión completa",
+      "offline": "Sin conexión: se necesita internet para crear la sesión."
     },
     "deleteSession": {
       "title": "Eliminar sesión",
@@ -1637,6 +1639,7 @@
       "not_found": "Ese elemento ya no existe.",
       "invalid_reference": "Uno de los elementos vinculados ya no existe.",
       "rate_limited": "Demasiados envíos en poco tiempo. Espera un momento e inténtalo de nuevo.",
+      "offline": "Sin conexión: se necesita internet para esto. Tus datos siguen aquí; inténtalo de nuevo al reconectar.",
       "unknown": "Algo salió mal. Inténtalo de nuevo."
     }
   },

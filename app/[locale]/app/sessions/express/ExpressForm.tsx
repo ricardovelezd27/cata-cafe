@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Minus, Plus } from "lucide-react";
 import { Button, PageHeader, useActionFeedback } from "@/components/ui";
 import { createExpressSession } from "@/app/actions/sessions";
+import { useConnectivity } from "@/hooks/useConnectivity";
 import {
   EXPRESS_DEFAULT_FORMAT,
   EXPRESS_DEFAULT_SAMPLES,
@@ -32,6 +33,8 @@ export type ExpressFormTranslations = {
   cta: string;
   creating: string;
   fullWizard: string;
+  /** Shown (and submit disabled) while the connectivity probe says offline. */
+  offline: string;
 };
 
 const inputClass =
@@ -53,6 +56,10 @@ export function ExpressForm({
   const router = useRouter();
   const feedback = useActionFeedback();
   const [pending, startTransition] = useTransition();
+  // Shared connectivity probe (not navigator.onLine): creating a session needs
+  // the server, so offline the submit is disabled and every value is kept.
+  // TODO(E5): queued creation while offline awaits Kim (E5); detection only.
+  const { online } = useConnectivity();
 
   const [name, setName] = useState(defaultName);
   const [format, setFormat] = useState<ExpressFormat>(EXPRESS_DEFAULT_FORMAT);
@@ -165,10 +172,15 @@ export function ExpressForm({
       </div>
 
       <div className="space-y-3">
+        {!online && (
+          <p role="status" className="text-center text-sm text-error">
+            {t.offline}
+          </p>
+        )}
         <Button
           variant="primary"
           className="w-full min-h-[48px]"
-          disabled={pending || !name.trim()}
+          disabled={pending || !online || !name.trim()}
           onClick={submit}
         >
           {pending ? t.creating : t.cta}

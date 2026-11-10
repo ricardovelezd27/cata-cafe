@@ -16,6 +16,7 @@ import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { OFFLINE_SYNC_EVENT } from "@/hooks/useOfflineSync";
 import { countDeviceOnly, rekeyUserBlobs } from "@/lib/offline/store";
 import { CLAIM_ANON_KEY } from "@/lib/offline/claimMarker";
+import { purgeCachesOnUserChange } from "@/lib/offline/deviceState";
 
 export type UnsyncedGuardTranslations = {
   signOutTitle: string;
@@ -76,6 +77,12 @@ export function UnsyncedGuardProvider({
 
   const [dialog, setDialog] = useState<{ kind: GuardKind; count: number } | null>(null);
   const resolverRef = useRef<((go: boolean) => void) | null>(null);
+
+  // Shared tablet: a different user than the one this device last served means
+  // the old cached pages must go before they can be shown offline (F-offline-9).
+  useEffect(() => {
+    void purgeCachesOnUserChange(userId);
+  }, [userId]);
 
   // Guest claim finished: move the anonymous id's drafts to the new account.
   useEffect(() => {

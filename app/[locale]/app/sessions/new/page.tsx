@@ -109,6 +109,7 @@ export default async function NewSessionPage({
         invalid_altitude: t("newForm.errors.invalid_altitude"),
         sample_without_coffee: t("newForm.errors.sample_without_coffee"),
         generic: t("newForm.errors.generic"),
+        offline: t("newForm.errors.offline"),
         coffee_not_found: t("newForm.errors.coffee_not_found"),
         invalid_reference: t("newForm.errors.invalid_reference"),
       },
