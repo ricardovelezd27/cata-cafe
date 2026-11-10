@@ -10,6 +10,7 @@ import {
 } from "@/lib/offline/status";
 import {
   CLIENT_TS_MAX_FUTURE_MS,
+  effectiveClientTs,
   sanitizeClientTs,
   shouldApplyClientWrite,
 } from "@/lib/offline/clientWrite";
@@ -55,6 +56,29 @@ describe("server-side ordering of client writes (S8-18, F-offline-2)", () => {
   it("accepts a Date or a number for the stored value", () => {
     expect(shouldApplyClientWrite(now - 10_000, now - 10_001, now)).toBe(false);
     expect(shouldApplyClientWrite(NaN, now - 1, now)).toBe(true);
+  });
+});
+
+describe("client stamp clamp to the server clock (S8-18 review)", () => {
+  const now = 1_700_000_000_000;
+
+  it("stores a slightly-future stamp as now", () => {
+    expect(effectiveClientTs(now + 4 * 60_000, now)).toBe(now);
+    expect(effectiveClientTs(now - 5_000, now)).toBe(now - 5_000);
+    expect(effectiveClientTs(now + CLIENT_TS_MAX_FUTURE_MS + 1, now)).toBeUndefined();
+    expect(effectiveClientTs("x", now)).toBeUndefined();
+  });
+
+  it("a fast clock does not make a later honest write look stale", () => {
+    // Write A: device clock 4 min fast, stored clamped to server now.
+    const stored = effectiveClientTs(now + 4 * 60_000, now)!;
+    // Write B: honest clock, 1 s later.
+    expect(shouldApplyClientWrite(stored, now + 1_000, now + 1_000)).toBe(true);
+  });
+
+  it("equal stamps still apply", () => {
+    expect(shouldApplyClientWrite(now, now, now)).toBe(true);
+    expect(shouldApplyClientWrite(now, now + 60_000, now)).toBe(true);
   });
 });
 

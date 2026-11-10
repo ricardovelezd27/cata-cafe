@@ -29,6 +29,18 @@ export function sanitizeClientTs(raw: unknown, now: number = Date.now()): number
 }
 
 /**
+ * The timestamp a write is compared and stored with: the sanitized client
+ * stamp clamped to the server clock (`min(clientTs, now)`). A client clock that
+ * runs fast can then never harden a row beyond "now", so a later honest write
+ * (other device, or the same device after its clock is corrected) is not
+ * mistaken for a stale one. Undefined when the stamp is absent/unusable.
+ */
+export function effectiveClientTs(clientTs: unknown, now: number = Date.now()): number | undefined {
+  const ts = sanitizeClientTs(clientTs, now);
+  return ts === undefined ? undefined : Math.min(ts, now);
+}
+
+/**
  * Whether a write stamped `clientTs` may be applied over a row whose newest
  * accepted write is `lastClientWriteAt`. Absent on either side applies (legacy
  * bundles and legacy rows keep today's behaviour); equal applies (a re-sent
@@ -39,7 +51,7 @@ export function shouldApplyClientWrite(
   clientTs: unknown,
   now: number = Date.now(),
 ): boolean {
-  const ts = sanitizeClientTs(clientTs, now);
+  const ts = effectiveClientTs(clientTs, now);
   if (ts === undefined) return true;
   if (lastClientWriteAt === null || lastClientWriteAt === undefined) return true;
   const last = lastClientWriteAt instanceof Date ? lastClientWriteAt.getTime() : lastClientWriteAt;

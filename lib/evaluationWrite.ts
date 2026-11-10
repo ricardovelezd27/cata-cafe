@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { sanitizeClientTs } from "@/lib/offline/clientWrite";
+import { effectiveClientTs } from "@/lib/offline/clientWrite";
 import type { tryComputeEvaluationDerived } from "@/lib/evaluation";
 
 // S8-18: the ONE write of an evaluation's content, shared by the live
@@ -28,7 +28,7 @@ export async function writeEvaluationOrdered(input: {
 }): Promise<{ id: string; applied: boolean }> {
   const { sessionSampleId, sessionId, cupperId, fields } = input;
   const key = { sessionSampleId_cupperId: { sessionSampleId, cupperId } };
-  const ts = sanitizeClientTs(input.clientTs);
+  const ts = effectiveClientTs(input.clientTs, Date.now());
 
   if (ts === undefined) {
     const row = await prisma.evaluation.upsert({
