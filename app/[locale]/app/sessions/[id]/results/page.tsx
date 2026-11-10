@@ -824,7 +824,10 @@ export default async function ResultsPage({
                     roastLevel: s.coffee.roastLevel,
                   }
                 : null,
-            hasCoffee: s.coffeeId !== null,
+            // S8-21: an unrevealed sample's coffee link is blind data; only the
+            // owner/admin (or a revealed sample) learns whether one exists. Every
+            // consumer in ResultsClient is also owner-gated.
+            hasCoffee: ownerRead || s.revealed ? s.coffeeId !== null : false,
             // Never re-identify an anonymized coffee in the owner's edit form.
             masterCoffee: ownerRead && !s.coffee?.deletedAt
               ? {

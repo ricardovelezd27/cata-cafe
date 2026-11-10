@@ -120,7 +120,8 @@ export async function GET(
         ext_certs: coffee.certifications,
       },
       // Private owner text: never printed for other viewers (the profile page omits it too).
-      notes: isOwner ? coffee.notes : null,
+      // Same rule as the coffee page: owner or super-admin (S8-21).
+      notes: isOwner || isAdmin ? coffee.notes : null,
       results,
     };
 

@@ -53,7 +53,8 @@ export type SampleResult = {
   coffee: CoffeeInfo | null;
   masterCoffee: SampleCoffee | null;
   // Whether a coffee row is linked at all — masterCoffee is a (blank) object
-  // even for coffee-less samples, so it cannot answer this. Express sessions
+  // even for coffee-less samples, so it cannot answer this. Sent as false to
+  // non-owner viewers of an unrevealed sample (blind). Express sessions
   // create coffee-less samples; the owner may name one post-close.
   hasCoffee: boolean;
   descriptive: Record<string, unknown>;
