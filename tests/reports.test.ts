@@ -6,7 +6,13 @@ import { computeCupperAlignment, computeMajoritySets } from "@/lib/alignment";
 import { canViewGroupResults } from "@/lib/sessionState";
 import { gateSampleForViewer, communityHidden } from "@/lib/reports/sampleGate";
 import { NO_EVALUATION } from "@/lib/evaluationState";
-import { rankSamples, sessionStats, consensusLine, type RankableSample } from "@/lib/reports/ranking";
+import {
+  rankSamples,
+  sessionStats,
+  consensusLine,
+  RANKING_POLICY,
+  type RankableSample,
+} from "@/lib/reports/ranking";
 import { rowStats, bandFor } from "@/lib/reports/cupperStats";
 import { buildParticipantSummary } from "@/lib/reports/participantSummary";
 import { buildFichaTecnica } from "@/lib/reports/fichaTecnica";
@@ -46,14 +52,22 @@ describe("canViewGroupResults", () => {
 function rs(
   id: string,
   community: number | null,
-  opts: { sd?: number | null } = {},
+  opts: { sd?: number | null; n?: number; total?: number } = {},
 ): RankableSample {
   return {
     id,
     descriptive: {},
     affective: {},
     combined: {},
-    aggregateScore: community === null ? null : { communityScore: community, scoreSd: opts.sd ?? null },
+    aggregateScore:
+      community === null
+        ? null
+        : {
+            communityScore: community,
+            scoreSd: opts.sd ?? null,
+            participantCount: opts.n,
+            totalSubmitted: opts.total,
+          },
     myEvaluation: NO_EVALUATION,
   };
 }
@@ -94,6 +108,62 @@ describe("rankSamples", () => {
   it("descriptive sessions carry no scores", () => {
     const { ranked } = rankSamples([rs("a", 84)], null, { ...groupCtx, format: "descriptive" });
     expect(ranked[0].score).toBeNull();
+  });
+});
+
+describe("rankSamples — ranking honesty (S8-12, F-resultados-6)", () => {
+  it("equal displayed scores share a rank (1, 1, 3)", () => {
+    const samples = [rs("a", 85, { n: 6 }), rs("b", 85, { n: 6 }), rs("c", 80, { n: 6 })];
+    const { ranked } = rankSamples(samples, null, groupCtx);
+    expect(ranked.map((r) => r.rank)).toEqual([1, 1, 3]);
+  });
+
+  it("unscored rows carry no rank", () => {
+    const { ranked } = rankSamples([rs("a", 85, { n: 6 }), rs("b", null)], null, groupCtx);
+    expect(ranked.map((r) => r.rank)).toEqual([1, null]);
+  });
+
+  it("n below the minimum is suppressed: no SD and never 'best'", () => {
+    const samples = [rs("a", 90, { n: 1, sd: 2 }), rs("b", 80, { n: 4, sd: 1 })];
+    const { ranked } = rankSamples(samples, null, groupCtx);
+    expect(ranked[0].sample.id).toBe("a");
+    expect(ranked[0].suppressed).toBe(true);
+    expect(ranked[0].sd).toBeNull();
+    const st = sessionStats(samples, ranked, null, groupCtx);
+    expect(st.bestSampleId).toBe("b");
+  });
+
+  it("n = 3 and 4 are indicative, n = 5 is normal", () => {
+    const samples = [rs("a", 90, { n: 3 }), rs("b", 88, { n: 4 }), rs("c", 86, { n: 5 })];
+    const { ranked } = rankSamples(samples, null, groupCtx);
+    expect(ranked.map((r) => [r.indicative, r.suppressed])).toEqual([
+      [true, false],
+      [true, false],
+      [false, false],
+    ]);
+    expect(RANKING_POLICY.minN).toBe(3);
+  });
+
+  it("flags neighbours closer than half the larger sample SD", () => {
+    // population sd 2, n 5 -> sample sd ~2.236 -> threshold ~1.118
+    const samples = [
+      rs("a", 85, { n: 5, sd: 2 }),
+      rs("b", 84.5, { n: 5, sd: 2 }),
+      rs("c", 80, { n: 5, sd: 2 }),
+    ];
+    const { ranked } = rankSamples(samples, null, groupCtx);
+    expect(ranked.map((r) => r.noClearGap)).toEqual([true, true, false]);
+  });
+
+  it("never flags a gap without an SD, and never on the 'mine' basis", () => {
+    const { ranked } = rankSamples([rs("a", 85, { n: 5 }), rs("b", 85, { n: 5 })], null, groupCtx);
+    expect(ranked.every((r) => !r.noClearGap)).toBe(true);
+  });
+
+  it("carries n of N for the displayed community score", () => {
+    const { ranked } = rankSamples([rs("a", 85, { n: 4, total: 6 })], null, groupCtx);
+    expect(ranked[0].n).toBe(4);
+    expect(ranked[0].total).toBe(6);
   });
 });
 
