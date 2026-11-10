@@ -123,6 +123,7 @@ export default async function AppLayout({
           userId={user.id}
           locale={locale}
           label={pendingDraftsLabel}
+          staleLabel={tOffline("staleDrafts")}
         />
         <main className="relative flex-1 overflow-y-auto bg-surface p-4 lg:p-6 pb-20 lg:pb-6">
           {children}

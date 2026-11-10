@@ -13,6 +13,7 @@
 // can warn the cupper that local drafts are not being persisted.
 
 import localforage from "localforage";
+import { requestPersistentStorage } from "@/lib/platform/storage";
 import type {
   Data,
   ModuleKey,
@@ -112,7 +113,11 @@ export async function saveSession(blob: OfflineSessionBlob): Promise<void> {
     await lf.setItem(sessionKey(blob.sessionId, blob.userId), blob);
   } catch (err) {
     markUnavailable("saveSession", err);
+    return;
   }
+  // First successful local save: ask the browser once to keep this storage
+  // (recorded in localStorage; later calls are no-ops). Never blocks or throws.
+  void requestPersistentStorage().catch(() => {});
 }
 
 export async function removeSession(sessionId: string, userId: string): Promise<void> {

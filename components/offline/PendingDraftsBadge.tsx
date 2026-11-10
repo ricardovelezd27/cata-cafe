@@ -10,6 +10,8 @@ import {
   onOfflineStorageUnavailable,
 } from "@/lib/offline/store";
 import { OFFLINE_SYNC_EVENT } from "@/hooks/useOfflineSync";
+import { isStandalone } from "@/lib/platform/env";
+import { getPersistState, shouldWarnStaleDraft } from "@/lib/platform/storage";
 
 // App-shell-wide indicator: counts every evaluation module across every
 // session that is still `pending` (saved locally, not yet replayed to the
@@ -21,14 +23,18 @@ export function PendingDraftsBadge({
   userId,
   locale,
   label,
+  staleLabel,
 }: {
   userId: string;
   locale: string;
   /** Raw translation template containing the literal "{count}" placeholder. */
   label: string;
+  /** Shown when the oldest unsynced draft is over 3 days old and the app is not installed. */
+  staleLabel?: string;
 }) {
   const [count, setCount] = useState(0);
   const [firstSessionId, setFirstSessionId] = useState<string | null>(null);
+  const [stale, setStale] = useState(false);
 
   const storageUnavailable = useSyncExternalStore(
     onOfflineStorageUnavailable,
@@ -43,6 +49,7 @@ export function PendingDraftsBadge({
       const keys = await listUserKeys(userId);
       let total = 0;
       let first: string | null = null;
+      let oldest: number | null = null;
       for (const key of keys) {
         const blob = await loadByKey(key);
         if (!blob) continue;
@@ -50,6 +57,9 @@ export function PendingDraftsBadge({
           for (const mod of Object.values(sample.modules)) {
             if (mod?.syncStatus === "pending") {
               total += 1;
+              if (typeof mod.updatedAt === "number" && (oldest === null || mod.updatedAt < oldest)) {
+                oldest = mod.updatedAt;
+              }
               if (!first) first = blob.sessionId;
             }
           }
@@ -58,6 +68,14 @@ export function PendingDraftsBadge({
       if (!cancelled) {
         setCount(total);
         setFirstSessionId(first);
+        setStale(
+          shouldWarnStaleDraft({
+            oldestPendingAt: oldest,
+            now: Date.now(),
+            standalone: isStandalone(),
+            persist: getPersistState(),
+          }),
+        );
       }
     };
 
@@ -89,6 +107,11 @@ export function PendingDraftsBadge({
         </Link>
       ) : (
         pill
+      )}
+      {stale && staleLabel && (
+        <p role="status" className="mt-1 max-w-prose text-xs text-on-surface-variant">
+          {staleLabel}
+        </p>
       )}
     </div>
   );
