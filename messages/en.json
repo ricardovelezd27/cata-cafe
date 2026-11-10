@@ -918,7 +918,8 @@
       "create": "Create coffee",
       "creating": "Creating…",
       "nameRequired": "Name is required.",
-      "error": "The coffee could not be created. Please try again."
+      "error": "The coffee could not be created. Please try again.",
+      "conflict": "This coffee changed somewhere else since you opened it. Reload the page to see the latest version before saving."
     },
     "share": {
       "title": "Share coffee",

@@ -64,6 +64,7 @@ export default async function EditCoffeePage({
     nameRequired: t("newPage.nameRequired"),
     // edit-specific failure copy (create flow uses newPage.error instead)
     error: t("updateError"),
+    conflict: t("newPage.conflict"),
   };
 
   const countries = COFFEE_COUNTRIES.map((c) => (locale === "en" ? c.nameEn : c.nameEs));
@@ -97,6 +98,7 @@ export default async function EditCoffeePage({
           certifications: coffee.certifications,
           notes: coffee.notes ?? "",
         }}
+        expectedUpdatedAt={coffee.updatedAt.toISOString()}
         submitLabel={t("saveChanges")}
         submittingLabel={t("savingChanges")}
       />

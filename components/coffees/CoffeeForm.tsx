@@ -36,6 +36,7 @@ export type CoffeeFormTranslations = {
   creating: string;
   nameRequired: string;
   error: string;
+  conflict?: string;
 };
 
 export type CoffeeFormInitialValues = {
@@ -86,6 +87,7 @@ export function CoffeeForm({
   initialValues,
   submitLabel,
   submittingLabel,
+  expectedUpdatedAt,
 }: {
   locale: string;
   translations: CoffeeFormTranslations;
@@ -99,6 +101,8 @@ export function CoffeeForm({
   /** Overrides t.create / t.creating (edit mode uses coffee.saveChanges / coffee.savingChanges). */
   submitLabel?: string;
   submittingLabel?: string;
+  /** Edit mode: ISO updatedAt the page loaded with (optimistic concurrency). */
+  expectedUpdatedAt?: string;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -139,6 +143,8 @@ export function CoffeeForm({
     }
 
     start(async () => {
+      // A network drop must not unmount the form or clear what was typed.
+      try {
       const fields = {
         name,
         country: country || undefined,
@@ -157,7 +163,7 @@ export function CoffeeForm({
 
       if (isEdit) {
         if (!coffeeId) return;
-        const res = await updateCoffee(coffeeId, fields);
+        const res = await updateCoffee(coffeeId, { ...fields, expectedUpdatedAt });
         if (res.ok) {
           router.push(`/${locale}/app/coffees/${coffeeId}`);
         } else {
@@ -172,15 +178,20 @@ export function CoffeeForm({
       } else {
         setErrorCode(res.error);
       }
+      } catch {
+        setErrorCode("unknown");
+      }
     });
   };
 
   const errorText =
     errorCode === "name_required"
       ? t.nameRequired
-      : errorCode
-        ? t.error
-        : null;
+      : errorCode === "conflict" && t.conflict
+        ? t.conflict
+        : errorCode
+          ? t.error
+          : null;
 
   // Legacy coffees may hold free-text roast values from before the fixed
   // scale — keep the saved value selectable instead of silently dropping it.

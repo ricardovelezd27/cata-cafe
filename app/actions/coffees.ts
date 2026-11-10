@@ -8,7 +8,7 @@ import { withCodeRetry } from "@/lib/coffeeCode";
 import { run } from "@/lib/safeAction";
 import type { ActionResult } from "@/lib/actionResult";
 import { idList } from "@/lib/validate";
-import { normalizeCoffeeFields } from "@/lib/coffeeInputBounds";
+import { normalizeCoffeeFields, isStaleCoffeeEdit } from "@/lib/coffeeInputBounds";
 import { CERTIFICATIONS } from "@/lib/constants";
 import { ANONYMIZED_COFFEE_DATA } from "@/lib/coffeeAnonymize";
 import { duplicableFields } from "@/lib/coffeeDuplicate";
@@ -159,6 +159,28 @@ export async function createCoffee(input: {
   notes?: string;
   visibility: CoffeeVisibility;
 }): Promise<{ ok: true; coffeeId: string } | { ok: false; error: string }> {
+  // S8-10 T12 (design b): validation codes keep their shape; a THROW (expired
+  // auth, DB) becomes `{ ok:false, error }` so CoffeeForm keeps its values.
+  const result = await run("createCoffee", () => createCoffeeBody(input));
+  return result.ok ? result.data : { ok: false, error: result.error };
+}
+
+async function createCoffeeBody(input: {
+  name: string;
+  country?: string;
+  region?: string;
+  farm?: string;
+  producer?: string;
+  species?: string;
+  variety?: string;
+  harvestYear?: string;
+  processType?: string;
+  altitude?: string;
+  roastLevel?: string;
+  certifications?: string[];
+  notes?: string;
+  visibility: CoffeeVisibility;
+}): Promise<{ ok: true; coffeeId: string } | { ok: false; error: string }> {
   const user = await requireRegisteredUser();
 
   const fields = normalizeCoffeeFields(input, "create", CERTIFICATIONS);
@@ -204,17 +226,32 @@ export async function updateCoffee(
     roastLevel?: string;
     certifications?: string[];
     notes?: string;
+    /** ISO `updatedAt` the form loaded with. When it no longer matches, the
+     *  coffee changed elsewhere (another tab, a session rename): refuse with
+     *  `conflict` instead of silently overwriting it (F-cafes-9). */
+    expectedUpdatedAt?: string;
   },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const result = await run("updateCoffee", () => updateCoffeeBody(coffeeId, input), { coffeeId });
+  return result.ok ? result.data : { ok: false, error: result.error };
+}
+
+async function updateCoffeeBody(
+  coffeeId: string,
+  input: Parameters<typeof updateCoffee>[1],
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const user = await requireRegisteredUser();
 
   // deletedAt filter: an anonymized coffee must never be re-identified.
   const coffee = await prisma.coffee.findFirst({
     where: { id: coffeeId, deletedAt: null },
-    select: { createdBy: true },
+    select: { createdBy: true, updatedAt: true },
   });
   if (!coffee || coffee.createdBy !== user.id) {
     throw new Error("not_found_or_forbidden");
+  }
+  if (isStaleCoffeeEdit(coffee.updatedAt, input.expectedUpdatedAt)) {
+    return { ok: false, error: "conflict" };
   }
 
   // Unknown certifications are dropped (not rejected) so a legacy coffee stays editable.

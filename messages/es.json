@@ -918,7 +918,8 @@
       "create": "Crear café",
       "creating": "Creando…",
       "nameRequired": "El nombre es obligatorio.",
-      "error": "No se pudo crear el café. Inténtalo de nuevo."
+      "error": "No se pudo crear el café. Inténtalo de nuevo.",
+      "conflict": "Este café cambió en otro lugar desde que lo abriste. Recarga la página para ver la última versión antes de guardar."
     },
     "share": {
       "title": "Compartir café",
