@@ -30,6 +30,7 @@ import {
   type ReplayOutcome,
   type StatusCounts,
 } from "./status";
+import { createKeyedQueue } from "./serialize";
 
 const SESSION_PREFIX = "cata_session_";
 const PROPS_PREFIX = "cata_props_";
@@ -80,6 +81,12 @@ export function onOfflineStorageUnavailable(cb: () => void): () => void {
     _listeners.delete(cb);
   };
 }
+
+// ─── Write serialisation ─────────────────────────────────────────────────
+// Every read-modify-write on a session blob runs through one promise chain per
+// storage key, so a debounced mergeModuleData can never land between another
+// operation's load and its write-back (S8-09). The chain never rejects.
+const serialize = createKeyedQueue();
 
 export function sessionKey(sessionId: string, userId: string): string {
   return `${SESSION_PREFIX}${sessionId}_user_${userId}`;
@@ -163,6 +170,7 @@ export async function mergeModuleData(
 ): Promise<void> {
   const lf = instance();
   if (!lf) return;
+  await serialize(sessionKey(sessionId, userId), async () => {
   try {
     const now = Date.now();
     const existing = await loadSession(sessionId, userId);
@@ -183,6 +191,7 @@ export async function mergeModuleData(
   } catch (err) {
     markUnavailable("mergeModuleData", err);
   }
+  });
 }
 
 // Flip a module's syncStatus after a sync attempt resolves.
@@ -199,6 +208,7 @@ export async function setModuleStatus(
 ): Promise<void> {
   const lf = instance();
   if (!lf) return;
+  await serialize(sessionKey(sessionId, userId), async () => {
   try {
     const blob = await loadSession(sessionId, userId);
     const mod = blob?.samples[sampleId]?.modules[moduleKey];
@@ -213,6 +223,7 @@ export async function setModuleStatus(
   } catch (err) {
     markUnavailable("setModuleStatus", err);
   }
+  });
 }
 
 // Apply a replay outcome to one module. `ifUpdatedAt` is the `updatedAt` of the
@@ -230,6 +241,7 @@ export async function applyReplayOutcome(
 ): Promise<boolean> {
   const lf = instance();
   if (!lf) return false;
+  return serialize(sessionKey(sessionId, userId), async () => {
   try {
     const blob = await loadSession(sessionId, userId);
     const mod = blob?.samples[sampleId]?.modules[moduleKey];
@@ -243,6 +255,7 @@ export async function applyReplayOutcome(
     markUnavailable("applyReplayOutcome", err);
     return false;
   }
+  });
 }
 
 // All of one user's blobs (small: one per session they cupped on this device).
@@ -271,17 +284,22 @@ export async function reviveFailedModules(userId: string): Promise<void> {
   const lf = instance();
   if (!lf) return;
   try {
-    for (const blob of await loadUserBlobs(userId)) {
-      let changed = false;
-      for (const sample of Object.values(blob.samples)) {
-        for (const [key, mod] of Object.entries(sample.modules) as [ModuleKey, OfflineModuleData][]) {
-          if (mod.syncStatus === "failed") {
-            sample.modules[key] = reviveFailed(mod);
-            changed = true;
+    for (const listed of await loadUserBlobs(userId)) {
+      await serialize(sessionKey(listed.sessionId, listed.userId), async () => {
+        // Reload inside the chain: the listed copy may be stale by now.
+        const blob = await loadSession(listed.sessionId, listed.userId);
+        if (!blob) return;
+        let changed = false;
+        for (const sample of Object.values(blob.samples)) {
+          for (const [key, mod] of Object.entries(sample.modules) as [ModuleKey, OfflineModuleData][]) {
+            if (mod.syncStatus === "failed") {
+              sample.modules[key] = reviveFailed(mod);
+              changed = true;
+            }
           }
         }
-      }
-      if (changed) await lf.setItem(sessionKey(blob.sessionId, blob.userId), blob);
+        if (changed) await lf.setItem(sessionKey(blob.sessionId, blob.userId), blob);
+      });
     }
   } catch (err) {
     markUnavailable("reviveFailedModules", err);
@@ -332,6 +350,7 @@ export async function removeModule(
 ): Promise<void> {
   const lf = instance();
   if (!lf) return;
+  await serialize(sessionKey(sessionId, userId), async () => {
   try {
     const blob = await loadSession(sessionId, userId);
     const sample = blob?.samples[sampleId];
@@ -346,6 +365,7 @@ export async function removeModule(
   } catch (err) {
     markUnavailable("removeModule", err);
   }
+  });
 }
 
 /** Guest claim (F-guest-5): move every blob (and cached props) of `fromUserId`
@@ -355,16 +375,23 @@ export async function rekeyUserBlobs(fromUserId: string, toUserId: string): Prom
   if (!lf || fromUserId === toUserId) return 0;
   let moved = 0;
   try {
-    for (const blob of await loadUserBlobs(fromUserId)) {
-      const target = await loadSession(blob.sessionId, toUserId);
-      await lf.setItem(sessionKey(blob.sessionId, toUserId), rekeyBlob(blob, toUserId, target));
-      await lf.removeItem(sessionKey(blob.sessionId, fromUserId));
-      const props = await lf.getItem<Record<string, unknown>>(propsKey(blob.sessionId, fromUserId));
-      if (props) {
-        await lf.setItem(propsKey(blob.sessionId, toUserId), { ...props, userId: toUserId });
-        await lf.removeItem(propsKey(blob.sessionId, fromUserId));
-      }
-      moved += 1;
+    for (const listed of await loadUserBlobs(fromUserId)) {
+      // Both keys are read-modify-written: chain on each (nested, fixed order).
+      await serialize(sessionKey(listed.sessionId, fromUserId), () =>
+        serialize(sessionKey(listed.sessionId, toUserId), async () => {
+          const blob = await loadSession(listed.sessionId, fromUserId);
+          if (!blob) return;
+          const target = await loadSession(blob.sessionId, toUserId);
+          await lf.setItem(sessionKey(blob.sessionId, toUserId), rekeyBlob(blob, toUserId, target));
+          await lf.removeItem(sessionKey(blob.sessionId, fromUserId));
+          const props = await lf.getItem<Record<string, unknown>>(propsKey(blob.sessionId, fromUserId));
+          if (props) {
+            await lf.setItem(propsKey(blob.sessionId, toUserId), { ...props, userId: toUserId });
+            await lf.removeItem(propsKey(blob.sessionId, fromUserId));
+          }
+          moved += 1;
+        }),
+      );
     }
   } catch (err) {
     markUnavailable("rekeyUserBlobs", err);
