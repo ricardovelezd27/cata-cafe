@@ -753,3 +753,40 @@ address: the email is in English and the link goes to `/en/auth/confirm`.
 
 **Rollback:** paste the previous templates back (copy them before step 4). The code keeps
 accepting both link shapes.
+
+---
+
+## §17. Database + env + legal switch (2026-11, S8-08)
+
+No SQL phase. One additive migration, one env variable, one code switch.
+
+**1. Migration (before the deploy).** From the right checkout:
+`npx prisma migrate deploy` applies `20261111100000_waitlist_consent` (two nullable
+columns on `waitlist_entries`: `consentAt`, `consentNoticeVersion`). Old rows stay null.
+RLS stays on with no policies; nothing else to do.
+
+**2. Env.** Set `ANALYTICS_SUPER_ADMIN_EMAIL` in Vercel Production to the address that
+should be super-admin. It is NOT boot-fatal: until it is set, the code falls back to the
+built-in address and the boot logs one `env` warning. After this PR only the super-admin
+sees platform-wide insights, the platform report PDF, the digest and the email CSV export;
+AI admins and flagged users see their own data.
+
+**3. Legal pages (owner).** `/privacidad` and `/terminos` already render draft text with a
+"Borrador" banner and `noindex`, but nothing links to them. To publish: paste the final
+text (es, en) into `lib/legal/privacy.ts` and `lib/legal/terms.ts`, bump
+`CONSENT_NOTICE_VERSION` in `lib/legal/config.ts`, flip `LEGAL_PAGES_PUBLISHED` to `true`
+and deploy. That turns on the footer links, the login-page links and the notice line under
+both waitlist forms.
+
+**4. Retention (decision, no job).** Proposal: keep a waitlist email at most 12 months when
+no account exists for it (`WAITLIST_RETENTION_MONTHS`). Nothing deletes rows automatically;
+until a job exists, delete old rows by hand when asked. Account deletion should remove the
+row too (TODO in S8-07).
+
+**Verify:** insert one waitlist entry from the hero form on a preview and check
+`consentAt`, `consentNoticeVersion = 'draft-0'` and `source = 'hero'` on the row; open
+`/?src=chile` and submit the founding form: `source = 'founding:chile'`. Log in as an AI admin:
+the Users page shows masked emails and no CSV button; Vercel Logs search `"where":"audit"`.
+
+**Rollback:** the columns are nullable and unused by older code; no rollback needed. To give AI
+admins the platform view again change `scopeFor` in `lib/analytics/scope.ts`.

@@ -649,6 +649,23 @@ each gate is a pure, tested helper shared by every consumer:
 
 ---
 
+### Insights scope, audit trail and legal switch (2026-11, S8-08)
+
+```mermaid
+flowchart TD
+  A[Insights action / page / report / chat / digest] --> S{scopeFor access}
+  S -- super-admin --> P[platform scope]
+  S -- AI admin or flagged user --> U[user scope: own sessions + own evaluations]
+  P --> C[cupper labels: Catador N, under 3 evaluations hidden]
+  U --> N[cupper names only for sessions the caller owns]
+  D[Users directory / CSV / grants] --> L[audit line where=audit, ids + counts]
+  D --> M[emails masked, Mostrar toggle; CSV super-admin only]
+  W[Waitlist form] --> R[row: source, consentAt, consentNoticeVersion]
+  W --> Q{LEGAL_PAGES_PUBLISHED}
+  Q -- false --> X[notice line + footer/login links hidden; pages direct-visit only, Borrador, noindex]
+  Q -- true --> Y[notice line + links shown]
+```
+
 ## Maintenance checklist
 
 When you touch any of these, update the matching diagram **in the same PR**:
@@ -659,4 +676,5 @@ When you touch any of these, update the matching diagram **in the same PR**:
 - `usableCoffeeWhere`, visibility values, share/invite semantics, delete cascades → §2
 - Group membership linking, invites, posts, leave/remove → §3
 - Any new cross-section navigation or a new consumer of `UserCoffeeHistory` → §4
+- Analytics scope, admin audit/masking, legal pages switch or waitlist consent fields → the S8-08 diagram above
 - Results page tab structure, gating (owner vs. participant), or the drill-down dialog → §5
