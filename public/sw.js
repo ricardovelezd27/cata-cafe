@@ -10,8 +10,11 @@ const PAGES_CACHE = `cata-pages-${SW_VERSION}`;
 // never serve one where an HTML document is expected.
 const RSC_CACHE = `cata-rsc-${SW_VERSION}`;
 const MAX_PAGES_ENTRIES = 60;
-// Hashed /_next/static assets pile up across deployments; keep the newest.
-const MAX_STATIC_ENTRIES = 120;
+// Hashed /_next/static assets pile up across deployments; keep the most
+// recently used. S8-28 C-04: 120 was below one SPA session's worth of route
+// chunks + images, so the core chunks fetched once at boot could be evicted
+// before the user went offline. 400 small hashed files is a few MB at most.
+const MAX_STATIC_ENTRIES = 400;
 
 self.addEventListener("install", () => {
   self.skipWaiting();
