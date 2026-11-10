@@ -8,7 +8,6 @@ import { run } from "@/lib/safeAction";
 import type { ActionResult } from "@/lib/actionResult";
 import type { Prisma } from "@/app/generated/prisma/client";
 import {
-  withCodeRetry,
   generateUniqueCoffeeCodes,
   isCoffeeCodeCollision,
 } from "@/lib/coffeeCode";
@@ -1507,31 +1506,44 @@ export async function updateSampleMetadata(
     // Implicit create: no linked coffee yet, so (unlike the merge path
     // above) this needs a FULL object — every field not supplied defaults to
     // null, and a missing/blank name defaults to "Sin nombre".
-    const coffee = await withCodeRetry((code) =>
-      prisma.coffee.create({
-        data: {
-          code,
-          name: input.name?.trim() ? input.name : "Sin nombre",
-          country: input.country || null,
-          region: input.region || null,
-          farm: input.farm || null,
-          producer: input.producer || null,
-          variety: input.variety || null,
-          processType: input.processType || null,
-          altitude: input.altitude || null,
-          roastLevel: input.roastLevel || null,
-          createdBy: user.id,
-          visibility: "private",
-        },
-        select: { id: true },
-      }),
-    );
-    await prisma.sessionSample.update({
-      where: { id: sampleId },
-      // Named after the close: the close routine revealed every coffee-linked
-      // sample, so this one is revealed on the spot (nothing is blind any more).
-      data: { coffeeId: coffee.id, ...(postCloseNaming ? { revealed: true } : {}) },
-    });
+    // Create + link in ONE transaction (S8-10 T10, F-express-3): a failed link
+    // used to leave an orphan coffee that the next try duplicated. A code
+    // collision aborts the surrounding Postgres tx (25P02), so the WHOLE
+    // transaction is retried with a fresh pre-generated code.
+    let attempts = 0;
+    for (;;) {
+      const [code] = generateUniqueCoffeeCodes(1);
+      try {
+        await prisma.$transaction(async (tx) => {
+          const coffee = await tx.coffee.create({
+            data: {
+              code,
+              name: input.name?.trim() ? input.name : "Sin nombre",
+              country: input.country || null,
+              region: input.region || null,
+              farm: input.farm || null,
+              producer: input.producer || null,
+              variety: input.variety || null,
+              processType: input.processType || null,
+              altitude: input.altitude || null,
+              roastLevel: input.roastLevel || null,
+              createdBy: user.id,
+              visibility: "private",
+            },
+            select: { id: true },
+          });
+          await tx.sessionSample.update({
+            where: { id: sampleId },
+            // Named after the close: the close routine revealed every coffee-linked
+            // sample, so this one is revealed on the spot (nothing is blind any more).
+            data: { coffeeId: coffee.id, ...(postCloseNaming ? { revealed: true } : {}) },
+          });
+        });
+        break;
+      } catch (err) {
+        if (!isCoffeeCodeCollision(err) || ++attempts >= 5) throw err;
+      }
+    }
     coffeeUpdated = true;
   }
 

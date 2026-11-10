@@ -526,6 +526,18 @@ export function NewSessionForm({
           setEmailSummary(result.emailSummary);
           setInviteBlocked(result.emailBlocked === "rate_limited");
           setStep("invite");
+          // Step 2 used to live only in memory: a reload lost the link. Point
+          // the address bar at the owner-only invite route so a reload (or a
+          // shared URL) re-reads the token from the database (S8-10 T3).
+          try {
+            window.history.replaceState(
+              null,
+              "",
+              `/${locale}/app/sessions/${result.sessionId}/invite`,
+            );
+          } catch {
+            // Non-fatal: the in-memory step still works.
+          }
         } else {
           setErrorCode(result.error);
         }

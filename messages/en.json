@@ -528,6 +528,7 @@
     "participantRole": "Participant Cupper",
     "copyImage": "Copy QR",
     "downloadQr": "Download QR",
+    "inviteMissing": "This tasting has no active invite link. Generate one from the tasting panel.",
     "scanToJoin": "Scan to join the tasting",
     "continueAsGuest": "Continue as guest",
     "guestNamePlaceholder": "Your name",

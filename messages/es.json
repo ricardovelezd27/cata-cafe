@@ -528,6 +528,7 @@
     "participantRole": "Catador Participante",
     "copyImage": "Copiar QR",
     "downloadQr": "Descargar QR",
+    "inviteMissing": "Esta cata no tiene un enlace de invitación activo. Genera uno desde el panel de la cata.",
     "scanToJoin": "Escanea para unirte a la cata",
     "continueAsGuest": "Continuar como invitado",
     "guestNamePlaceholder": "Tu nombre",
