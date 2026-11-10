@@ -3,6 +3,7 @@
 import { useTransition, type ReactNode } from "react";
 import { signOut, switchAccount } from "@/app/actions/auth";
 import { clearLocalDeviceState } from "@/lib/offline/deviceState";
+import { useUnsyncedGuard } from "@/components/offline/UnsyncedGuardProvider";
 
 /**
  * Sign-out / switch-account control. Before the server action clears the
@@ -25,9 +26,13 @@ export function SignOutButton({
   children: ReactNode;
 }) {
   const [pending, startTransition] = useTransition();
+  const guard = useUnsyncedGuard();
 
   const onClick = () => {
     startTransition(async () => {
+      // Drafts that exist only on this device: sync first, else warn (S8-09,
+      // F-offline-5). They stay on disk either way; the cupper just knows.
+      if (guard && !(await guard.confirmLeave("signOut"))) return;
       await clearLocalDeviceState();
       if (mode === "switchAccount") await switchAccount(locale);
       else await signOut(locale);

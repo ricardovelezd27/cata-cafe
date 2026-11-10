@@ -1,5 +1,6 @@
 "use client";
 
+import { penaltiesApply } from "@/lib/scoring";
 import {
   AFFECTIVE_ATTRIBUTES,
   STEP_ATTRIBUTES,
@@ -62,7 +63,7 @@ export function AffectiveForm({
     (d[k] as boolean[] | undefined) ?? Array(cupsPerSample).fill(false);
 
   const showCups = cupsPerSample >= 2;
-  const uniformityInScore = cupsPerSample >= 5;
+  const uniformityInScore = penaltiesApply(cupsPerSample);
 
   const stepAttrs = STEP_ATTRIBUTES[currentStep];
 

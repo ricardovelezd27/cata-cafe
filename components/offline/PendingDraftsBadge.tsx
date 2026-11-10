@@ -10,25 +10,44 @@ import {
   onOfflineStorageUnavailable,
 } from "@/lib/offline/store";
 import { OFFLINE_SYNC_EVENT } from "@/hooks/useOfflineSync";
+import {
+  UnsyncedNotesPanel,
+  type UnsyncedNotesTranslations,
+} from "@/components/offline/UnsyncedNotesPanel";
 
 // App-shell-wide indicator: counts every evaluation module across every
-// session that is still `pending` (saved locally, not yet replayed to the
-// server) for the current user. Independent of the cup screen — a cupper who
-// closed the tab mid-tasting still sees this on the dashboard, coffees list,
-// etc. Renders nothing when there is nothing pending or when IndexedDB has
-// already proven unavailable in this browser (nothing to report).
+// session that is still on this device only, for the current user. Independent
+// of the cup screen — a cupper who closed the tab mid-tasting still sees this
+// on the dashboard, coffees list, etc. Three tones (S8-09):
+//   - pending / failed: waiting to sync (accent); link to the cup screen
+//   - conflict: needs the cupper's decision (danger)
+//   - terminal (closed_unsent, orphaned): can never sync; opens the
+//     "Notas sin sincronizar" panel (accent when only closed, danger otherwise)
+// Renders nothing when there is nothing to report or when IndexedDB has already
+// proven unavailable in this browser.
 export function PendingDraftsBadge({
   userId,
   locale,
   label,
+  notesLabel,
+  conflictLabel,
+  panelTranslations,
 }: {
   userId: string;
   locale: string;
   /** Raw translation template containing the literal "{count}" placeholder. */
   label: string;
+  /** Raw template with "{count}": terminal notes (closed session, deleted
+   *  sample), opens the panel. */
+  notesLabel: string;
+  /** Raw template with "{count}": conflicts waiting for a decision. */
+  conflictLabel: string;
+  panelTranslations: UnsyncedNotesTranslations;
 }) {
-  const [count, setCount] = useState(0);
+  const [counts, setCounts] = useState({ waiting: 0, conflict: 0, terminal: 0, severe: 0 });
   const [firstSessionId, setFirstSessionId] = useState<string | null>(null);
+  const [firstConflictSessionId, setFirstConflictSessionId] = useState<string | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
 
   const storageUnavailable = useSyncExternalStore(
     onOfflineStorageUnavailable,
@@ -41,23 +60,46 @@ export function PendingDraftsBadge({
 
     const refresh = async () => {
       const keys = await listUserKeys(userId);
-      let total = 0;
+      const next = { waiting: 0, conflict: 0, terminal: 0, severe: 0 };
       let first: string | null = null;
+      let firstConflict: string | null = null;
       for (const key of keys) {
         const blob = await loadByKey(key);
         if (!blob) continue;
         for (const sample of Object.values(blob.samples)) {
           for (const mod of Object.values(sample.modules)) {
-            if (mod?.syncStatus === "pending") {
-              total += 1;
-              if (!first) first = blob.sessionId;
+            switch (mod?.syncStatus) {
+              case "pending":
+                next.waiting += 1;
+                if (!first) first = blob.sessionId;
+                break;
+              case "failed":
+                // Stuck after repeated attempts: counts as waiting (manual
+                // retry lives in the banner) but is also a terminal note.
+                next.terminal += 1;
+                next.severe += 1;
+                break;
+              case "conflict":
+                next.conflict += 1;
+                if (!firstConflict) firstConflict = blob.sessionId;
+                break;
+              case "closed_unsent":
+                next.terminal += 1;
+                break;
+              case "orphaned":
+                next.terminal += 1;
+                next.severe += 1;
+                break;
+              default:
+                break;
             }
           }
         }
       }
       if (!cancelled) {
-        setCount(total);
+        setCounts(next);
         setFirstSessionId(first);
+        setFirstConflictSessionId(firstConflict);
       }
     };
 
@@ -73,22 +115,64 @@ export function PendingDraftsBadge({
     };
   }, [userId]);
 
-  if (count === 0 || storageUnavailable) return null;
+  if (
+    (counts.waiting === 0 && counts.conflict === 0 && counts.terminal === 0) ||
+    storageUnavailable
+  ) {
+    return null;
+  }
 
-  const text = label.replace("{count}", String(count));
-  const pill = <Badge tone="accent">{text}</Badge>;
+  const linkClass =
+    "inline-flex focus-visible:outline-2 focus-visible:outline-offset-2 rounded-pill";
+  const waitingPill = (
+    <Badge tone="accent">{label.replace("{count}", String(counts.waiting))}</Badge>
+  );
 
   return (
-    <div className="px-4 lg:px-6 pt-2">
-      {firstSessionId ? (
-        <Link
-          href={`/${locale}/app/sessions/${firstSessionId}/cup`}
-          className="inline-flex focus-visible:outline-2 focus-visible:outline-offset-2 rounded-pill"
-        >
-          {pill}
-        </Link>
-      ) : (
-        pill
+    <div className="flex flex-wrap gap-2 px-4 lg:px-6 pt-2">
+      {counts.waiting > 0 &&
+        (firstSessionId ? (
+          <Link href={`/${locale}/app/sessions/${firstSessionId}/cup`} className={linkClass}>
+            {waitingPill}
+          </Link>
+        ) : (
+          waitingPill
+        ))}
+      {counts.conflict > 0 &&
+        (() => {
+          const pill = (
+            <Badge tone="danger">
+              {conflictLabel.replace("{count}", String(counts.conflict))}
+            </Badge>
+          );
+          return firstConflictSessionId ? (
+            <Link href={`/${locale}/app/sessions/${firstConflictSessionId}/cup`} className={linkClass}>
+              {pill}
+            </Link>
+          ) : (
+            pill
+          );
+        })()}
+      {counts.terminal > 0 && (
+        <>
+          <button
+            type="button"
+            onClick={() => setPanelOpen(true)}
+            className={linkClass}
+            aria-haspopup="dialog"
+          >
+            <Badge tone={counts.severe > 0 ? "danger" : "accent"}>
+              {notesLabel.replace("{count}", String(counts.terminal))}
+            </Badge>
+          </button>
+          <UnsyncedNotesPanel
+            open={panelOpen}
+            onOpenChange={setPanelOpen}
+            userId={userId}
+            locale={locale}
+            translations={panelTranslations}
+          />
+        </>
       )}
     </div>
   );

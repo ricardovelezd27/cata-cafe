@@ -60,6 +60,8 @@ A walk-up opens `/join/[token]`, types a name, and `GuestJoinForm` calls `signIn
 
 ### F-guest-5 · Borradores sin sincronizar se pierden al reclamar · severity: P2 · status: confirms-board(Borradores sin sincronizar del invitado se pierden al reclamar)
 
+**Fixed in S8-09** (draft PR, branch `claude/s8-09-offline-impl`): the claim asks first when the guest holds unsynced work, and stores the anonymous id (`cata_claim_anon`); on the next app mount under the new account the drafts are re-keyed (`rekeyUserBlobs`) and replay there. Drafts in another browser are covered only by the pre-claim question.
+
 - **Problem** — `useGuestClaim.start` only checks `online` (`hooks/useGuestClaim.ts:21-43`). Drafts live under `cata_session_<sid>_user_<anonId>` (`lib/offline/store.ts:73-74`) and `useOfflineSync` replays only `listUserKeys(userId)` (`hooks/useOfflineSync.ts:110-137`), so once the merge deletes the anonymous id nothing ever replays them.
 - **Implication** — Data loss. A guest who cupped with weak signal sees the amber "pendiente de sincronizar" state, taps "Guarda tus resultados", and the unsynced modules are gone while the claim card reports success.
 - **Fix** — Before minting the token, count pending modules for the anonymous id, trigger a sync and wait; if some stay pending, offer "Seguir y perder estos" or "Esperar". **Acceptance:** with one pending module and connectivity restored, the claim proceeds only after it syncs; with persistent failure the user is told how many sheets are at risk. **Size:** M.

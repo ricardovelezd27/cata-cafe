@@ -99,7 +99,12 @@ export default async function ClaimPage({
           <ButtonLink href={home} variant="secondary" size="sm">
             {t("cancel")}
           </ButtonLink>
-          <ClaimConfirmButton label={t("confirm")} pendingLabel={t("confirming")} />
+          <ClaimConfirmButton
+            label={t("confirm")}
+            pendingLabel={t("confirming")}
+            anonId={verified!.anonymousUserId}
+            accountId={user.id}
+          />
         </form>
       </div>
     </main>
