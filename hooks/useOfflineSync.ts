@@ -93,8 +93,8 @@ export function useOfflineSync({
               force,
             });
             // "pending" = the master has not started this live session yet; the
-            // draft stays on the device and is retried later.
-            return res.status === "pending" ? "retry" : res.status;
+            // draft stays pending without burning an attempt (no fast retry).
+            return res.status === "pending" ? "waiting" : res.status;
           }
           const res =
             moduleKey === "physical"
@@ -142,7 +142,7 @@ export function useOfflineSync({
       for (const blob of await loadUserBlobs(userId)) {
         for (const sample of Object.values(blob.samples)) {
           for (const mod of Object.values(sample.modules)) {
-            if (mod?.syncStatus !== "pending") continue;
+            if (mod?.syncStatus !== "pending" || mod.waiting) continue;
             const at = mod.nextAttemptAt ?? Date.now() + 15_000;
             if (due === null || at < due) due = at;
           }
@@ -202,7 +202,7 @@ export function useOfflineSync({
               // Edited while the request was in flight: the newer edit stays
               // pending and goes out on a quick follow-up run.
               if (!applied) skippedStale = true;
-              else if (result === "retry") anyRetry = true;
+              else if (result === "retry" || result === "waiting") anyRetry = true;
             }
           }
         }
@@ -275,7 +275,7 @@ export function useOfflineSync({
             conflict.cupsPerSample,
             true,
           );
-          if (result === "offline" || result === "retry" || result === "conflict") return; // keep it for a later retry
+          if (result === "offline" || result === "retry" || result === "waiting" || result === "conflict") return; // keep it for a later retry
           await applyReplayOutcome(
             conflict.sessionId,
             conflict.userId,

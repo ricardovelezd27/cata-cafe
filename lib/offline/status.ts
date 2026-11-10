@@ -19,15 +19,18 @@ export const MAX_AUTO_ATTEMPTS = 5;
 export const RETRY_BASE_MS = 15_000;
 export const RETRY_MAX_MS = 5 * 60_000;
 
-/** What one replay of one module came back with. `retry` = a thrown error, a
- *  network failure, or a "pending" answer (live session not started yet). */
+/** What one replay of one module came back with. `retry` = a thrown error or a
+ *  network failure (counts an attempt). `waiting` = the "pending" answer (live
+ *  group session the master has not started): stays pending, no attempt burnt,
+ *  no timed retry; it goes out on the next resume / online / manual sync. */
 export type ReplayOutcome =
   | "synced"
   | "conflict"
   | "closed"
   | "gone"
   | "rejected"
-  | "retry";
+  | "retry"
+  | "waiting";
 
 export const ALL_STATUSES: SyncStatus[] = [
   "pending",
@@ -78,6 +81,8 @@ export function statusForOutcome(
     case "gone":
     case "rejected":
       return { status: "orphaned", attempts: 0 };
+    case "waiting":
+      return { status: "pending", attempts };
     case "retry": {
       const next = attempts + 1;
       return { status: next >= MAX_AUTO_ATTEMPTS ? "failed" : "pending", attempts: next };
@@ -107,7 +112,11 @@ export function applyOutcome(
   if (opts.ifUpdatedAt !== undefined && mod.updatedAt !== opts.ifUpdatedAt) return null;
   const { status, attempts } = statusForOutcome(outcome, mod.attempts ?? 0);
   const next: OfflineModuleData = { ...mod, syncStatus: status, attempts };
-  if (status === "pending") {
+  delete next.waiting;
+  if (outcome === "waiting") {
+    next.waiting = true;
+    delete next.nextAttemptAt;
+  } else if (status === "pending") {
     next.nextAttemptAt = (opts.now ?? Date.now()) + retryDelayMs(attempts);
   } else {
     delete next.nextAttemptAt;

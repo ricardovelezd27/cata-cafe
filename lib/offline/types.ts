@@ -45,6 +45,8 @@ export type OfflineModuleData = {
   attempts?: number;
   /** When the next automatic attempt is due (epoch ms, S8-09). */
   nextAttemptAt?: number;
+  /** Replay answered "pending" (live session not started): no timed retry (S8-09). */
+  waiting?: boolean;
 };
 
 export type OfflineSampleData = {

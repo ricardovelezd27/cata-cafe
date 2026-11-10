@@ -38,6 +38,24 @@ describe("statusForOutcome", () => {
   });
 });
 
+describe("waiting outcome (live session not started)", () => {
+  it("stays pending and never burns an attempt", () => {
+    expect(statusForOutcome("waiting", 0)).toEqual({ status: "pending", attempts: 0 });
+    expect(statusForOutcome("waiting", MAX_AUTO_ATTEMPTS - 1)).toEqual({
+      status: "pending",
+      attempts: MAX_AUTO_ATTEMPTS - 1,
+    });
+  });
+  it("schedules no timed retry and is cleared by the next real outcome", () => {
+    const w = applyOutcome(mod({ attempts: 2, nextAttemptAt: 5 }), "waiting", { now: 1000 });
+    expect(w).toMatchObject({ syncStatus: "pending", attempts: 2, waiting: true });
+    expect(w?.nextAttemptAt).toBeUndefined();
+    const again = applyOutcome(w!, "retry", { now: 1000 });
+    expect(again?.waiting).toBeUndefined();
+    expect(again?.nextAttemptAt).toBeGreaterThan(1000);
+  });
+});
+
 describe("status predicates", () => {
   it("pending and failed block submit; terminal, conflict and synced never do", () => {
     const expected = {
