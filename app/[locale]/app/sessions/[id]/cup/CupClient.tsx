@@ -1039,7 +1039,7 @@ export function CupClient({
     let n = 0;
     for (const s of Object.values(blob.samples)) {
       for (const mod of Object.values(s.modules)) {
-        if (mod?.syncStatus === "pending") n += 1;
+        if (mod && blocksSubmit(mod.syncStatus)) n += 1;
       }
     }
     return n;

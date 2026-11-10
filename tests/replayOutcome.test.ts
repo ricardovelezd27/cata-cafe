@@ -39,11 +39,16 @@ describe("statusForOutcome", () => {
 });
 
 describe("status predicates", () => {
-  it("only pending blocks submit; terminal statuses never do", () => {
-    expect(blocksSubmit("pending")).toBe(true);
-    for (const s of ["failed", "orphaned", "closed_unsent", "conflict", "synced"] as const) {
-      expect(blocksSubmit(s)).toBe(false);
-    }
+  it("pending and failed block submit; terminal, conflict and synced never do", () => {
+    const expected = {
+      pending: true,
+      failed: true,
+      synced: false,
+      conflict: false,
+      closed_unsent: false,
+      orphaned: false,
+    } as const;
+    for (const s of ALL_STATUSES) expect(blocksSubmit(s)).toBe(expected[s]);
   });
   it("terminal and unsynced sets", () => {
     expect(isTerminal("failed")).toBe(true);

@@ -48,10 +48,12 @@ export function isUnsynced(status: SyncStatus): boolean {
   return status !== "synced";
 }
 
-/** Only a live `pending` module blocks the final submit: terminal ones can
- *  never reach the server and must not hold the cupper hostage (F-offline-4). */
+/** A `pending` module, or a `failed` one (retries exhausted but the cupper can
+ *  still send it by hand), blocks the final submit. Truly terminal statuses
+ *  (closed_unsent, orphaned) and `conflict` (the modal's job) never do, so they
+ *  cannot hold the cupper hostage (F-offline-4). */
 export function blocksSubmit(status: SyncStatus): boolean {
-  return status === "pending";
+  return status === "pending" || status === "failed";
 }
 
 /** Whether a stored module is what the cupper should see (and edit) in the form
