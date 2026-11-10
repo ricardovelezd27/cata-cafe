@@ -517,6 +517,19 @@ one sender, `deliverGroupMail` (`lib/groupEmail.ts`):
    recipient count. `createGroupWithMembers` takes a `clientKey` so a replayed
    submit returns the stored group and sends nothing.
 
+**Group actions and roster visibility (S8-14).** The interactive roster/post actions
+(`updateGroup`, `addMemberByEmail`, `addMemberByUserId`, `removeMember`,
+`updateMemberDisplayName`, `resendInvitation`, `createGroupPost`) return
+`ActionResult` via `run()`; the dialogs toast the localized `errors.codes` copy
+(`group_full` at 200 members, `invalid_email`, and `offline` when the request
+never reached the server). Removing a member asks through `ConfirmDialog` and names
+the person. No outbound group link carries the recipient's address
+(`/auth/login?next=...` only). A member sees the roster as name, else `j***` for a
+linked account, else `j***@domain` for an email-only invitee (`memberLabel`); the
+owner's roster shows the typed address (linked accounts masked). Roster visibility
+beyond that is Kim's D7 (default: every member sees names). Per-group unsubscribe is
+NOT built yet (owner decision).
+
 Sign-in links use the same ledger (`magic_link`): 3 per address and 60 per IP per
 15 min, reserved once per send by `sendMagicLink` (`lib/magicLink.ts`), used by
 the login form and the founding-seat signup.
@@ -694,6 +707,25 @@ each gate is a pure, tested helper shared by every consumer:
   rows ("Muestra B", nullable `coffeeId`) wait for Kim's answer.
 
 ---
+
+### Digest claim and chat quota (2026-11, S8-14)
+
+```mermaid
+flowchart TD
+  C[Cron: 1st of the month] --> K{create digest_runs row\nstatus=running, unique period}
+  K -- unique violation --> E{existing row}
+  E -- done or running < 30 min --> N[return alreadyRan]
+  E -- running >= 30 min --> T[takeover: conditional update] --> S
+  K -- created --> S[build, send to recipients without a sent result]
+  S --> Z{any sent?}
+  Z -- no, e.g. no email key --> R[delete row: month stays retryable]
+  Z -- yes --> D[status=done + per-recipient results]
+  Q[Insights chat question] --> V[reserve slot: increment where count < limit]
+  V -- 0 rows --> L[limit_reached]
+  V -- 1 row --> M[model loop]
+  M -- no successful model call --> F[release slot]
+  M -- at least one call --> B[add cost counters; slot stays used]
+```
 
 ### Insights scope, audit trail and legal switch (2026-11, S8-08)
 

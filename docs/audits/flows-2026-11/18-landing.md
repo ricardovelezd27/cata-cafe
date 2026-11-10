@@ -67,6 +67,8 @@ A visitor reads the dark marketing page (`app/[locale]/page.tsx`) and types an e
 
 ### F-landing-5 · "100 plazas" is fixed text; the 101st person gets the same "Plaza reservada" · severity: P3 · status: confirms-board(«Plaza reservada» sin control del cupo de 100)
 
+**Fixed in S8-14 (copy half): `FOUNDING_SEATS` in `lib/landing/founding.ts` feeds the hero counter and the offer line; the success text no longer promises a reserved seat. STILL OPEN by design: enforcing the cap is the owner's call (`TODO(S8-14)` in `app/actions/waitlist.ts`)**
+
 - **Problem** — `heroCount` is the literal "100" (`messages/es.json:1118`, shown at `components/landing/HeroFoundingCard.tsx:38`) and `offer` repeats "primeros 100" (`components/landing/FoundingSection.tsx:54`). `reserveFoundingSeat` never counts rows (`waitlist.ts:34` is a bare `create`), and nothing implements the promise to warn "cuando se agoten" (`es.json:1126`).
 - **Implication** — Trust: the scarcity claim cannot be honoured or corrected, and "Plaza reservada" is a promise to someone who may be 300th. Low frequency now; matters once the page is shared at an event.
 - **Fix** — Take the board's default: reword success to "Te enviamos el enlace; quedas en la lista fundadora" and derive the number from one shared constant. Enforcing the cap is Ricardo's product decision. **Acceptance:** one named constant feeds both copy and action; a duplicate email never takes a second place; the link is sent in every case. **Size:** S.

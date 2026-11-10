@@ -43,6 +43,8 @@ Insights is an admin area under `/app/insights`. `getAnalyticsAccess` (`lib/anal
 
 ### F-insights-3 · Monthly digest: concurrency, silent failures, no last-success signal, wrong-language link · severity: P3 · status: confirms-board(El digest no es idempotente: comprueba, envía y luego registra)
 
+**Fixed in S8-14: `sendInsightsDigest` claims the period as a `running` `digest_runs` row first (unique period = the lock), records per-recipient results, marks it `done`, releases the month when nothing was sent, takes over a `running` claim after 30 minutes (`lib/digestClaim.ts`, `tests/digestClaim.test.ts`); the link uses the recipient's locale; the Acceso page shows the last run. Needs the `digest_run_status` migration (runbook §19)**
+
 - **Problem** — `sendInsightsDigest` does `findUnique` (`lib/insightsDigestEmail.ts:224`), sends to all (`:286-`) and only then `digestRun.create` (`:299`), with no failure check. Two overlapping calls both pass the check and double-send; a timeout after sending (`maxDuration = 60`, `route.ts:11`, two AI calls plus N emails) leaves no row, so a retry re-sends everyone; if every send fails a row is still created, so the month is never retried. `period` is `@unique` (`schema.prisma:440`) but only used after the fact. No heartbeat is exposed. Separately, the "open insights" link is hard-coded `/es/app/insights` (`:212`) even for English recipients.
 - **Implication** — Robustness. Duplicate emails to admins, or a month silently lost with no signal; English recipients land on the Spanish UI.
 - **Fix** — Claim the period first (insert as "running"; a unique violation means already running or ran), record per-recipient outcomes, let a re-run send only to recipients without a "sent" result, leave a fully failed run retryable, show last run and counts on an admin page, and use the recipient locale in the link. **Acceptance:** two simultaneous calls send each recipient at most once; a run with no email key leaves the period retryable; the English email links to `/en/...`. **Size:** M.
@@ -77,6 +79,8 @@ Insights is an admin area under `/app/insights`. `getAnalyticsAccess` (`lib/anal
 
 ### F-insights-6 · Daily chat quota is read, then incremented much later · severity: P3 · status: new
 
+**Fixed in S8-14: `askDataQuestion` reserves the slot before the model loop with a conditional increment (`questionCount < limit`) and releases it when no model call succeeded (`lib/ai/chatQuota.ts`, `tests/chatQuota.test.ts`)**
+
 - **Problem** — `findUnique` reads `used` (`app/actions/aiChat.ts:83-87`), the model loop runs (up to `MAX_MODEL_CALLS`, "pro" tier), and only afterwards `upsert … increment` (`:184-200`). Parallel calls all see `used < limit`.
 - **Implication** — Cost robustness: the 25/day cap (`lib/ai/chatTools.ts:30`) can be exceeded by concurrent submissions (double click, two tabs).
 - **Fix** — Reserve a slot atomically before calling the model and refund it on a pre-call failure, keeping the "not billed if no call succeeded" rule. **Acceptance:** 30 parallel calls produce at most 25 model runs; a provider failure before any success restores the slot. **Size:** S.
@@ -86,6 +90,8 @@ Insights is an admin area under `/app/insights`. `getAnalyticsAccess` (`lib/anal
 - **Invariant check** — none touched.
 
 ### F-insights-7 · Interactive insight actions throw an opaque "forbidden" instead of returning a result · severity: P3 · status: new
+
+**Fixed in S8-14: `runInsight`, `runPivot`, `listPivotDimensionValues`, `saveInsight`, `listSavedInsights`, `deleteSavedInsight`, `runBenchmark` and `runOriginContext` return `ActionResult` via `run()`; the callers use `useActionFeedback`; the explorer page reads through `lib/analytics/savedInsights.ts`**
 
 - **Problem** — `runInsight`, `runPivot`, `saveInsight`, `deleteSavedInsight` and others are called from client components but are not wrapped in `run()`; the guards `throw new Error("forbidden")` (`lib/analytics/access.ts:81,88,95,106`) and a Prisma failure in `saveInsight` (`analytics.ts:109`) propagates. In production the client sees only a digest. `exportRegisteredUsersCsv` already follows the contract (`analytics.ts:250`).
 - **Implication** — A revoked admin or a transient DB error shows a generic error panel rather than a localized message.
