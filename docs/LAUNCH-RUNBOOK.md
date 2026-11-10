@@ -721,3 +721,46 @@ create button yields one group.
 
 **Rollback:** the objects are additive; code rolled back ignores them. Do not drop the
 tables while the new code is deployed.
+
+---
+
+## §20. Database — apply the `exclusion_audit_extrinsic_edited` migration (2026-11, S8-12)
+
+> Numbering: §12–§19 belong to S8-04…S8-14 and land in series order; this section keeps its
+> reserved number so the chained branches merge mechanically.
+
+**What it does:** adds four NULLABLE columns, no defaults, no foreign keys, no policy change.
+
+| Column | Meaning |
+|---|---|
+| `session_participants.excluded_at` | when the owner excluded the cupper from the group results |
+| `session_participants.excluded_by` | who (plain user id, deliberately without a foreign key) |
+| `session_participants.exclusion_reason` | `sample_error`, `protocol`, `calibration` or `other` |
+| `extrinsic_data.edited_at` | when the owner corrected origin data after the session closed |
+
+**Order matters:** run it BEFORE the deploy. The new code selects these columns; without them
+the results page fails to load.
+
+1. On your machine, with `.env.local` pointing at the project (it is production):
+   ```bash
+   npx prisma migrate deploy
+   ```
+   Expected: `1 migration found … 20261111130000_exclusion_audit_extrinsic_edited … applied`.
+2. **Verify** — Supabase SQL Editor:
+   ```sql
+   SELECT table_name, column_name FROM information_schema.columns
+   WHERE (table_name = 'session_participants' AND column_name IN ('excluded_at','excluded_by','exclusion_reason'))
+      OR (table_name = 'extrinsic_data' AND column_name = 'edited_at')
+   ORDER BY 1, 2;
+   ```
+   Expected: four rows.
+3. Deploy the branch (merge → Vercel deploys). No SQL PHASE, no environment variable.
+
+**Smoke test (3 minutes, owner of a group session):** exclude a cupper in the owner matrix →
+a dialog asks for the reason → after confirming, the management card shows "Excluido por … el …
+· motivo". On a CLOSED session do the same: the yellow "Resultados actualizados el …" banner
+appears for every viewer. On a closed session open a revealed sample → Editar origen → save: the
+detail shows "Origen editado el …"; on an unrevealed sample the button is absent.
+
+**Rollback:** the columns are nullable; code rolled back ignores them. Do not drop them while
+the new code is deployed.

@@ -12,6 +12,7 @@ import { asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { deriveMyEvaluation, summarizeMyProgress } from "@/lib/evaluationState";
 import { canViewGroupResults, isSessionExpired } from "@/lib/sessionState";
+import { resultsUpdatedAfterClose } from "@/lib/exclusionReasons";
 import { gateSampleForViewer, communityHidden } from "@/lib/reports/sampleGate";
 import { ResultsClient } from "./ResultsClient";
 
@@ -85,7 +86,15 @@ export default async function ResultsPage({
             },
           },
         },
-        participants: { select: { userId: true, excludedFromResults: true } },
+        participants: {
+          select: {
+            userId: true,
+            excludedFromResults: true,
+            excludedAt: true,
+            excludedBy: true,
+            exclusionReason: true,
+          },
+        },
       },
     }),
     prisma.evaluation
@@ -262,6 +271,43 @@ export default async function ResultsPage({
 
     // ---- Master-only raw participant matrix (Individual view) ----
     if (ownerRead) {
+      // Who excluded whom (S8-12): the author is always the session owner, but
+      // the column holds a plain id, so resolve names with one tiny lookup.
+      const excluderIds = [
+        ...new Set(
+          session.participants
+            .map((p) => p.excludedBy)
+            .filter((x): x is string => typeof x === "string"),
+        ),
+      ];
+      const excluderNames = new Map<string, string>(
+        excluderIds.length
+          ? (
+              await prisma.profile.findMany({
+                where: { id: { in: excluderIds } },
+                select: { id: true, displayName: true },
+              })
+            ).map((p) => [p.id, p.displayName] as [string, string])
+          : [],
+      );
+      const trailByUser = new Map(
+        session.participants
+          .filter((p) => p.excludedFromResults)
+          .map((p) => [
+            p.userId,
+            {
+              at: p.excludedAt
+                ? p.excludedAt.toLocaleDateString(locale === "es" ? "es-CO" : "en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })
+                : null,
+              by: p.excludedBy ? (excluderNames.get(p.excludedBy) ?? null) : null,
+              reason: p.exclusionReason ?? null,
+            },
+          ]),
+      );
       const byCupper = new Map<
         string,
         { name: string; bySample: Map<string, (typeof evals)[number]> }
@@ -280,6 +326,7 @@ export default async function ResultsPage({
           id: cupperId,
           name: entry.name,
           excluded: excludedUserIds.has(cupperId),
+          trail: trailByUser.get(cupperId) ?? null,
           samples: session.samples.map((s) => {
             const ev = entry.bySample.get(s.id);
             return {
@@ -560,6 +607,26 @@ export default async function ResultsPage({
     const at = s.aggregateScore?.computedAt ?? null;
     if (at && (!lastComputedAt || at > lastComputedAt)) lastComputedAt = at;
   }
+  // Group results that changed AFTER the close (an owner exclusion/restore, a
+  // recompute): say so, so an emailed summary or an old tab is not trusted blindly.
+  const updatedAfterClose =
+    session.isGroup && session.status === "closed" && !hideCommunity
+      ? resultsUpdatedAfterClose(session.closedAt, [
+          lastComputedAt,
+          ...session.participants.map((p) => p.excludedAt),
+        ])
+      : null;
+  const updatedAfterCloseLabel = updatedAfterClose
+    ? tResults("updatedAfterClose", {
+        date: updatedAfterClose.toLocaleString(locale === "es" ? "es-CO" : "en-US", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      })
+    : null;
   const participationLabel = session.isGroup
     ? tResults("participation", {
         submitted: submittedCupperCount,
@@ -596,6 +663,7 @@ export default async function ResultsPage({
       sessionStatus={session.status}
       cuppingOpen={!sessionOver}
       closedOnLabel={closedOnLabel}
+      updatedAfterCloseLabel={updatedAfterCloseLabel}
       closeEmails={closeEmails}
       currentUserId={user.id}
       participationLabel={participationLabel}
@@ -718,6 +786,17 @@ export default async function ResultsPage({
             combined: (ev?.combinedData as Record<string, unknown>) ?? {},
             physical: gated.physical,
             extrinsic: s.revealed ? ((s.extrinsic?.data as Record<string, unknown>) ?? {}) : {},
+            // "Origen editado el <fecha>" — only when the owner corrected origin
+            // data after the session closed (S8-12).
+            extrinsicEditedLabel:
+              s.revealed && s.extrinsic?.editedAt
+                ? tResults("originEditedAt", {
+                    date: s.extrinsic.editedAt.toLocaleDateString(
+                      locale === "es" ? "es-CO" : "en-US",
+                      { day: "numeric", month: "short", year: "numeric" },
+                    ),
+                  })
+                : null,
             aggregateScore: gated.aggregateScore,
             isReference: s.referenceRank != null,
             referenceRank: s.referenceRank ?? null,
@@ -915,6 +994,23 @@ export default async function ResultsPage({
           legendRed: tResults("matrix.legendRed"),
           noScore: tResults("matrix.noScore"),
           sdHeader: tResults("matrix.sdHeader"),
+          // ICU args: fetched raw and filled client-side.
+          includedCount: tResults.raw("matrix.includedCount") as string,
+          excludeDialogTitle: tResults("matrix.excludeDialogTitle"),
+          excludeDialogBody: tResults("matrix.excludeDialogBody"),
+          excludeReasonLabel: tResults("matrix.excludeReasonLabel"),
+          excludeConfirm: tResults("matrix.excludeConfirm"),
+          dialogCancel: tResults("matrix.dialogCancel"),
+          dialogClose: tResults("matrix.dialogClose"),
+          excludedTrail: tResults.raw("matrix.excludedTrail") as string,
+          excludedToast: tResults("matrix.excludedToast"),
+          restoredToast: tResults("matrix.restoredToast"),
+          reasons: {
+            sample_error: tResults("matrix.exclusionReasons.sample_error"),
+            protocol: tResults("matrix.exclusionReasons.protocol"),
+            calibration: tResults("matrix.exclusionReasons.calibration"),
+            other: tResults("matrix.exclusionReasons.other"),
+          },
         },
         help: {
           // "Cerrar" reads better than "Cancelar" for a read-only info dialog.

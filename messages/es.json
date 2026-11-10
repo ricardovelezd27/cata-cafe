@@ -698,7 +698,23 @@
       "included": "Incluido",
       "excluded": "Excluido",
       "excludedTag": "(excluido)",
-      "ownerSection": "Análisis por catador"
+      "ownerSection": "Análisis por catador",
+      "includedCount": "{n} de {total} catadores incluidos en los resultados",
+      "excludeDialogTitle": "Excluir del grupo",
+      "excludeDialogBody": "Sus evaluaciones dejan de contar en el promedio del grupo, la dispersión y los gráficos. El catador sigue viendo sus propios resultados. Queda registrado quién lo excluyó, cuándo y por qué.",
+      "excludeReasonLabel": "Motivo",
+      "excludeConfirm": "Excluir",
+      "dialogCancel": "Cancelar",
+      "dialogClose": "Cerrar",
+      "exclusionReasons": {
+        "sample_error": "Error de muestra",
+        "protocol": "No siguió el protocolo",
+        "calibration": "Calibración distinta",
+        "other": "Otro motivo"
+      },
+      "excludedTrail": "Excluido por {who} el {date} · {reason}",
+      "excludedToast": "Catador excluido de los resultados",
+      "restoredToast": "Catador incluido de nuevo en los resultados"
     },
     "breakdown": {
       "how": "¿Cómo se calculó?",
@@ -791,7 +807,9 @@
       "includedLine": "{n} de {total} evaluadores incluidos en el promedio",
       "noAffective": "Sin datos afectivos registrados",
       "requiresAffective": "El gráfico radar requiere datos afectivos (formato afectivo o combinado)"
-    }
+    },
+    "updatedAfterClose": "Resultados actualizados el {date}, después del cierre.",
+    "originEditedAt": "Origen editado el {date}"
   },
   "community": {
     "score": "Puntaje comunitario",

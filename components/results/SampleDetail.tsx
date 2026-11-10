@@ -230,6 +230,7 @@ export function SampleDetail({
   affective,
   combined,
   extrinsic,
+  extrinsicNote = null,
   format,
   cupsPerSample,
   locale,
@@ -244,6 +245,8 @@ export function SampleDetail({
   affective: Record<string, unknown>;
   combined: Record<string, unknown>;
   extrinsic: Record<string, unknown>;
+  /** "Origen editado el <fecha>" — shown under the origin data when set. */
+  extrinsicNote?: string | null;
   format: SessionFormat;
   cupsPerSample: number;
   locale: string;
@@ -340,6 +343,9 @@ export function SampleDetail({
 
       {/* Extrinsic data (origin/process/trade) — self-guards when empty */}
       <ExtrinsicSummary data={extrinsic} />
+      {extrinsicNote && (
+        <p className="mt-1 text-[11px] text-on-surface-variant">{extrinsicNote}</p>
+      )}
 
       {expressNote && (
         <div className="mt-2 rounded-card border border-outline-variant bg-surface-container-low px-3 py-2">

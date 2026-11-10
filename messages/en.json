@@ -698,7 +698,23 @@
       "included": "Included",
       "excluded": "Excluded",
       "excludedTag": "(excluded)",
-      "ownerSection": "Analysis by cupper"
+      "ownerSection": "Analysis by cupper",
+      "includedCount": "{n} of {total} cuppers included in the results",
+      "excludeDialogTitle": "Exclude from the group",
+      "excludeDialogBody": "Their evaluations stop counting in the group average, the spread and the charts. The cupper still sees their own results. Who excluded them, when and why is recorded.",
+      "excludeReasonLabel": "Reason",
+      "excludeConfirm": "Exclude",
+      "dialogCancel": "Cancel",
+      "dialogClose": "Close",
+      "exclusionReasons": {
+        "sample_error": "Sample error",
+        "protocol": "Did not follow the protocol",
+        "calibration": "Different calibration",
+        "other": "Other reason"
+      },
+      "excludedTrail": "Excluded by {who} on {date} · {reason}",
+      "excludedToast": "Cupper excluded from the results",
+      "restoredToast": "Cupper included in the results again"
     },
     "breakdown": {
       "how": "How was this calculated?",
@@ -791,7 +807,9 @@
       "includedLine": "{n} of {total} cuppers included in the average",
       "noAffective": "No affective data recorded",
       "requiresAffective": "The radar chart needs affective data (affective or combined format)"
-    }
+    },
+    "updatedAfterClose": "Results updated on {date}, after the session closed.",
+    "originEditedAt": "Origin edited on {date}"
   },
   "community": {
     "score": "Community score",

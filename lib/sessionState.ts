@@ -34,6 +34,14 @@ export function assertSessionWritable(row: ExpiryRow, now: Date | number = Date.
   if (isSessionExpired(row, now)) throw new Error("session_closed");
 }
 
+/** Origin (extrinsic) data is the one thing besides coffee naming the owner may
+ *  still correct once a session is over (S8-12, F-resultados-4): only on a
+ *  REVEALED sample, so blind integrity holds and an unrevealed sample stays
+ *  read-only like everything else. Open sessions are unaffected. Pure. */
+export function extrinsicWriteAllowed(input: { over: boolean; revealed: boolean }): boolean {
+  return !input.over || input.revealed;
+}
+
 /** A participant cannot write before the master starts a live group session.
  *  Owner, async and solo sessions are never blocked. */
 export function assertSessionStarted(row: {

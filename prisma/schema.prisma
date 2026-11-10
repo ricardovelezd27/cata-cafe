@@ -263,6 +263,9 @@ model ExtrinsicData {
   revealedBy      String?
   revealedByUser  Profile?      @relation(fields: [revealedBy], references: [id])
   revealedAt      DateTime?
+  // S8-12: set when the owner corrects origin data AFTER the session closed, so
+  // reports can say "Origen editado el <fecha>". Null = never edited post-close.
+  editedAt        DateTime?     @map("edited_at") @db.Timestamptz(3)
 
   @@index([revealedBy])
   @@map("extrinsic_data")
@@ -278,6 +281,12 @@ model SessionParticipant {
   // frequency and charts. Authoritative for the aggregate trigger (see
   // prisma/sql/rls_and_triggers.sql Phase 4). The participant still sees their own results.
   excludedFromResults Boolean        @default(false) @map("excluded_from_results")
+  // S8-12 exclusion trail: who/when/why. Stamped by setParticipantExclusion,
+  // cleared on restore. excludedBy is a plain user id with NO foreign key (so
+  // mergeGuestData / account deletion never have to touch it). Display-only.
+  excludedAt          DateTime?      @map("excluded_at") @db.Timestamptz(3)
+  excludedBy          String?        @map("excluded_by")
+  exclusionReason     String?        @map("exclusion_reason") // sample_error | protocol | calibration | other
   joinedAt            DateTime       @default(now())
 
   @@id([sessionId, userId])

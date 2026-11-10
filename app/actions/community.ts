@@ -17,6 +17,9 @@ import { closeSessionInternal } from "@/lib/closeSession";
 import * as v from "@/lib/validate";
 import { runLengthMs } from "@/lib/warmup/syncedRun";
 import { run } from "@/lib/safeAction";
+import { logWarn } from "@/lib/log";
+import { syncCoffeeHistoryForSession } from "@/lib/coffeeHistory";
+import { EXCLUSION_REASONS } from "@/lib/exclusionReasons";
 import type { ActionResult } from "@/lib/actionResult";
 
 // ─── Submit all draft evaluations for a session ───────────────────────────────
@@ -429,30 +432,71 @@ export async function setParticipantExclusion(
   sessionId: string,
   participantUserId: string,
   excluded: boolean,
-) {
-  const user = await requireUser();
-  await requireSessionOwner(sessionId, user.id);
+  reason?: string,
+): Promise<ActionResult<{ excluded: boolean }>> {
+  return run(
+    "setParticipantExclusion",
+    async () => {
+      const user = await requireUser();
+      // Owner only. Deliberately NOT behind assertSessionWritable: excluding (or
+      // restoring) a cupper after the close is a sanctioned post-close write
+      // (S8-12, F-resultados-5). It is stamped with author/time/reason so the
+      // change is traceable, and the results page says "actualizados el".
+      const auth = await requireSessionOwner(sessionId, user.id);
+      const nextExcluded = excluded === true;
+      const nextReason = nextExcluded ? v.oneOf(reason, "reason", EXCLUSION_REASONS) : null;
+      const target = v.str(participantUserId, "participantUserId", { max: 64 }) as string;
 
-  await prisma.sessionParticipant.update({
-    where: { sessionId_userId: { sessionId, userId: participantUserId } },
-    data: { excludedFromResults: excluded },
-  });
+      await prisma.sessionParticipant.update({
+        where: { sessionId_userId: { sessionId, userId: target } },
+        data: nextExcluded
+          ? {
+              excludedFromResults: true,
+              excludedAt: new Date(),
+              excludedBy: user.id,
+              exclusionReason: nextReason,
+            }
+          : {
+              excludedFromResults: false,
+              excludedAt: null,
+              excludedBy: null,
+              exclusionReason: null,
+            },
+      });
 
-  // Re-fire trg_recompute_aggregate for the whole session. Touching "isDraft"
-  // (even to its current value) satisfies `AFTER UPDATE OF "isDraft"`; the
-  // WHEN (NEW."isDraft" = false) clause keeps it to submitted evaluations.
-  await prisma.$executeRaw`
-    UPDATE evaluations e
-    SET "isDraft" = e."isDraft"
-    FROM session_samples ss
-    WHERE e."sessionSampleId" = ss.id
-      AND ss."sessionId" = ${sessionId}
-      AND e."isDraft" = false
-  `;
+      // Re-fire trg_recompute_aggregate for the whole session. Touching "isDraft"
+      // (even to its current value) satisfies `AFTER UPDATE OF "isDraft"`; the
+      // WHEN (NEW."isDraft" = false) clause keeps it to submitted evaluations.
+      await prisma.$executeRaw`
+        UPDATE evaluations e
+        SET "isDraft" = e."isDraft"
+        FROM session_samples ss
+        WHERE e."sessionSampleId" = ss.id
+          AND ss."sessionId" = ${sessionId}
+          AND e."isDraft" = false
+      `;
 
-  revalidatePath(`/es/app/sessions/${sessionId}/results`);
-  revalidatePath(`/en/app/sessions/${sessionId}/results`);
-  return { ok: true, excluded };
+      // A closed session already wrote each cupper's coffee history with the
+      // community score of the day; refresh it so the profile does not keep the
+      // pre-exclusion number. Best effort: the exclusion itself is committed.
+      if (auth.status === "closed") {
+        try {
+          await syncCoffeeHistoryForSession(sessionId);
+        } catch (err) {
+          logWarn({
+            where: "setParticipantExclusion.history_sync_failed",
+            sessionId,
+            message: err instanceof Error ? err.message : "unknown",
+          });
+        }
+      }
+
+      revalidatePath(`/es/app/sessions/${sessionId}/results`);
+      revalidatePath(`/en/app/sessions/${sessionId}/results`);
+      return { excluded: nextExcluded };
+    },
+    { sessionId },
+  );
 }
 
 // ─── Recompute aggregate scores for all samples in a session (owner only) ────

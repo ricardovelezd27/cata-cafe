@@ -926,7 +926,9 @@ export function CupClient({
           cupsPerSample: session.cupsPerSample,
         });
       } else if (key === "extrinsic") {
-        await upsertExtrinsic({ sessionSampleId: sampleId, data });
+        const saved = await upsertExtrinsic({ sessionSampleId: sampleId, data });
+        // ActionResult: a refused write must fall to the local-pending path below.
+        if (!saved.ok) throw new Error(saved.error);
       } else if (key === "physical") {
         await upsertPhysical({ sessionSampleId: sampleId, data });
       }

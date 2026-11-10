@@ -30,10 +30,10 @@ const ALLOWLIST: Record<string, string> = {
   "community.ts#startSession": "idempotent updateMany guarded by status/startedAt",
   // Replay answers "discarded" instead of throwing (see offline.ts)
   "offline.ts#syncEvaluation": "returns { status: 'discarded' } so the retry budget is not burned",
-  // Owner actions on results that stay open after close until S8-12 decides
-  "community.ts#setParticipantExclusion": "S8-12 decides whether exclusion after close stays",
-  "community.ts#refreshAggregateScores": "S8-12 decides; recompute is idempotent",
-};
+  // Owner actions on results that stay open after close (decided in S8-12)
+  "community.ts#setParticipantExclusion":
+    "sanctioned post-close write (S8-12): owner only, stamped with author/time/reason",
+  "community.ts#refreshAggregateScores": "owner recompute is idempotent and display-only (S8-12)",};
 
 function exportsOf(source: string): { name: string; body: string }[] {
   const re = /^export async function (\w+)\s*\(/gm;

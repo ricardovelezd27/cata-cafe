@@ -24,7 +24,12 @@ import {
   detachCoffeeHistoryForSession,
   syncCoffeeHistoryForSession,
 } from "@/lib/coffeeHistory";
-import { isSessionClosed, isSessionExpired, planClosesAtChange } from "@/lib/sessionState";
+import {
+  extrinsicWriteAllowed,
+  isSessionClosed,
+  isSessionExpired,
+  planClosesAtChange,
+} from "@/lib/sessionState";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { computeEvaluationDerived, moduleKeyForFormat } from "@/lib/evaluation";
 import {
@@ -1265,7 +1270,7 @@ export async function updateSampleMetadata(
   if (sample.session.createdBy !== user.id) throw new Error("not_found_or_forbidden");
 
   // Post-close coffee naming — the SECOND sanctioned post-close write (the
-  // first is ExtrinsicEditDialog → upsertExtrinsic). Express sessions create
+  // first is upsertExtrinsic on a revealed sample, via ExtrinsicEditDialog). Express sessions create
   // their samples without a coffee; the owner may name one AFTER the session
   // closed so the cupping still feeds UserCoffeeHistory. Allowed only when:
   // owner (checked above) AND the sample has no coffee yet AND the call
@@ -1379,27 +1384,54 @@ export async function updateSampleMetadata(
 // revealedBy — owner-only, matching the `ext_all` RLS policy. Participants
 // only ever READ it, and only once the sample is revealed (cup/page.tsx,
 // cva-pdf route strip it otherwise).
+//
+// POST-CLOSE WRITE (S8-12, F-resultados-4): the FIRST sanctioned write on a
+// closed/expired session (the second is updateSampleMetadata naming a
+// coffee-less sample). Allowed only for the owner AND a REVEALED sample
+// (extrinsicWriteAllowed), otherwise `session_closed`. Such a write stamps
+// `editedAt` so reports can say "Origen editado el <fecha>".
+// TODO(Kim-D1): if Kim refuses origin edits after close, hide the button in
+// results and drop this allow-list (the server guard then throws again).
 export async function upsertExtrinsic(input: {
   sessionSampleId: string;
   data: Record<string, unknown>;
-}) {
-  const user = await requireUser({ skipProfileUpsert: true });
-  assertSessionWritable(await requireSampleOwner(input.sessionSampleId, user.id));
-  await prisma.extrinsicData.upsert({
-    where: { sessionSampleId: input.sessionSampleId },
-    create: {
-      sessionSampleId: input.sessionSampleId,
-      data: input.data as never,
-      revealedBy: user.id,
-      revealedAt: new Date(),
-    },
-    update: {
-      data: input.data as never,
-      revealedBy: user.id,
-      revealedAt: new Date(),
-    },
+}): Promise<ActionResult<{ edited: boolean }>> {
+  return run("upsertExtrinsic", async () => {
+    const user = await requireUser({ skipProfileUpsert: true });
+    const auth = await requireSampleOwner(input.sessionSampleId, user.id);
+    const over = isSessionExpired(auth);
+    if (over) {
+      const sample = await prisma.sessionSample.findUnique({
+        where: { id: input.sessionSampleId },
+        select: { revealed: true },
+      });
+      if (!extrinsicWriteAllowed({ over, revealed: sample?.revealed === true })) {
+        throw new Error("session_closed");
+      }
+    }
+    const editedAt = over ? new Date() : null;
+    await prisma.extrinsicData.upsert({
+      where: { sessionSampleId: input.sessionSampleId },
+      create: {
+        sessionSampleId: input.sessionSampleId,
+        data: input.data as never,
+        revealedBy: user.id,
+        revealedAt: new Date(),
+        ...(editedAt ? { editedAt } : {}),
+      },
+      update: {
+        data: input.data as never,
+        revealedBy: user.id,
+        revealedAt: new Date(),
+        ...(editedAt ? { editedAt } : {}),
+      },
+    });
+    if (over) {
+      revalidatePath(`/es/app/sessions/${auth.sessionId}/results`);
+      revalidatePath(`/en/app/sessions/${auth.sessionId}/results`);
+    }
+    return { edited: over };
   });
-  return { ok: true };
 }
 
 // Boolean poller for the waiting room. Returns false (never throws) so a

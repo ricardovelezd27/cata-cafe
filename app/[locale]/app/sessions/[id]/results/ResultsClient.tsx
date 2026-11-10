@@ -65,6 +65,17 @@ type MatrixTranslations = {
   legendRed: string;
   noScore: string;
   sdHeader: string;
+  includedCount: string;
+  excludeDialogTitle: string;
+  excludeDialogBody: string;
+  excludeReasonLabel: string;
+  excludeConfirm: string;
+  dialogCancel: string;
+  dialogClose: string;
+  excludedTrail: string;
+  excludedToast: string;
+  restoredToast: string;
+  reasons: Record<string, string>;
 };
 
 type Tab = "resumen" | "resultados" | "descriptores";
@@ -130,6 +141,7 @@ export function ResultsClient({
   sessionStatus,
   cuppingOpen,
   closedOnLabel = null,
+  updatedAfterCloseLabel = null,
   closeEmails = null,
   currentUserId,
   participationLabel,
@@ -177,6 +189,9 @@ export function ResultsClient({
   // Pre-formatted "Cata cerrada el {date}" — null unless this is a closed
   // group session (see CLAUDE.md's product-law on closedAt).
   closedOnLabel?: string | null;
+  // "Resultados actualizados el <fecha>" — set only when group results changed
+  // after the close (S8-12).
+  updatedAfterCloseLabel?: string | null;
   // Owner-only, closed group sessions: pre-formatted close-email summary line
   // + whether the resend action should show (failed or pending recipients).
   closeEmails?: { line: string; showResend: boolean } | null;
@@ -688,6 +703,17 @@ export function ResultsClient({
         )}
 
         {/* Row 3: participation/freshness meta + main tabs */}
+        {updatedAfterCloseLabel && (
+          <div className="px-4 pb-2">
+            <span
+              role="status"
+              className="inline-flex rounded-card border border-secondary/40 bg-secondary-fixed/40 px-3 py-1 text-[11px] text-on-surface"
+            >
+              {updatedAfterCloseLabel}
+            </span>
+          </div>
+        )}
+
         {canViewGroup && (participationLabel || lastUpdatedLabel) && (
           <div className="flex gap-3 overflow-hidden whitespace-nowrap px-4 pb-2 text-[10px] tabular-nums text-on-surface-variant">
             {participationLabel && <span>{participationLabel}</span>}
@@ -1149,7 +1175,6 @@ export function ResultsClient({
             save: translations.save,
             saving: translations.saving,
             cancel: translations.cancel,
-            error: translations.editSampleError,
           }}
         />
       )}

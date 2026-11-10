@@ -61,6 +61,8 @@ export type SampleResult = {
   combined: Record<string, unknown>;
   physical: Record<string, unknown>;
   extrinsic: Record<string, unknown>;
+  // Pre-formatted "Origen editado el <fecha>" (S8-12); null when never edited post-close.
+  extrinsicEditedLabel?: string | null;
   aggregateScore: AggregateScoreData | null;
   // True for the ONE sample the owner marked as the "Referencia" (control) —
   // session.referenceSampleId. Display-only: scoring is untouched. See
