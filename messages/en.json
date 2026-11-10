@@ -552,7 +552,12 @@
     "closeUnsentOne": "1 cupper has complete notes that are still unsent. If you close now, they will not be counted.",
     "closeUnsentMany": "{count} cuppers have complete notes that are still unsent. If you close now, they will not be counted.",
     "closeUnsentNone": "Nobody has complete notes waiting to be sent.",
-    "closeImpactLoading": "Checking for unsent notes…"
+    "closeImpactLoading": "Checking for unsent notes…",
+    "deadlineOpen": "Closes {when}",
+    "deadlineSoon": "Closing soon: {when}",
+    "deadlinePassed": "The deadline has passed: {when}",
+    "deadlineLocal": "{local} your time",
+    "closesAtLiveNotice": "With a closing date the cupping becomes self-paced: no waiting room and no \"Start cupping\" button."
   },
   "results": {
     "title": "Session Results",

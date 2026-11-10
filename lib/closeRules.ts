@@ -154,6 +154,16 @@ export function dateInZone(instant: Date | number, zone: string | null | undefin
   return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
+/** The IANA zone of the browser running this code (client only; on the server
+ *  it is the server's zone). undefined when the runtime cannot say. */
+export function browserZone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export type DeadlineState = "none" | "open" | "soon" | "passed";
 export const DEADLINE_SOON_MS = 24 * 3_600_000;
 

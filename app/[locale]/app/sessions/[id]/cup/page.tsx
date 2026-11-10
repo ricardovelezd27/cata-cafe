@@ -176,6 +176,8 @@ export default async function CupPage({
         cupsPerSample: session.cupsPerSample,
         date: session.date.toISOString(),
         referenceSampleId: session.referenceSampleId,
+        closesAt: session.closesAt?.toISOString() ?? null,
+        closesAtZone: session.closesAtZone,
         samples: session.samples.map((s) => {
           const ev = s.evaluations[0];
           return {
@@ -253,6 +255,12 @@ export default async function CupPage({
         confirmClose: tg("confirmClose"),
         liveCountDown: tg("liveCountDown"),
         closeSessionError: tg("closeSessionError"),
+        deadline: {
+          open: tg.raw("deadlineOpen") as string,
+          soon: tg.raw("deadlineSoon") as string,
+          passed: tg.raw("deadlinePassed") as string,
+          local: tg.raw("deadlineLocal") as string,
+        },
         // Raw: "{count}" is replaced client-side (a bare t() would need the arg).
         closeRule: tg("closeRule"),
         closeUnsentOne: tg("closeUnsentOne"),

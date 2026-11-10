@@ -25,6 +25,7 @@ import {
   syncCoffeeHistoryForSession,
 } from "@/lib/coffeeHistory";
 import { isSessionClosed, isSessionExpired, planClosesAtChange } from "@/lib/sessionState";
+import { endOfDayInZone, normalizeZone } from "@/lib/closeRules";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { computeEvaluationDerived, moduleKeyForFormat } from "@/lib/evaluation";
 import {
@@ -170,6 +171,8 @@ type SessionMeta = {
   format: (typeof SESSION_FORMATS)[number];
   cupsPerSample: number;
   closesAt: Date | null;
+  /** Owner's IANA zone when `closesAt` was set (null = UTC). */
+  closesAtZone: string | null;
   warmupExerciseId: WarmupId | null;
 };
 
@@ -188,6 +191,7 @@ function validateSessionMeta(input: {
   cupsPerSample: unknown;
   samples: unknown;
   closesAt?: unknown;
+  closesAtZone?: unknown;
   warmupExerciseId?: unknown;
 }): { ok: true; meta: SessionMeta } | { ok: false; error: string } {
   const field = (f: string, fn: () => void): string | null => {
@@ -204,6 +208,7 @@ function validateSessionMeta(input: {
   let format: SessionMeta["format"] = "combined";
   let cupsPerSample = 5;
   let closesAt: Date | null = null;
+  const closesAtZone = input.closesAt ? normalizeZone(input.closesAtZone) : null;
   let warmupExerciseId: WarmupId | null = null;
 
   const bad =
@@ -226,11 +231,14 @@ function validateSessionMeta(input: {
       v.list(input.samples, "samples", MAX_SAMPLES);
     }) ??
     field("invalid_closes_at", () => {
-      // Date-only from the wizard → end of that day (UTC), so the daily cron
-      // closes the session the morning AFTER the chosen date, not before it.
-      closesAt = input.closesAt
-        ? v.dateOnlyEndOfDay(input.closesAt, "closesAt", { future: true })
-        : null;
+      // Date-only from the wizard → END of that day in the owner's zone (UTC
+      // when the form sent none), so writes stop at the owner's midnight and
+      // the daily cron closes the session after it, never before.
+      if (input.closesAt) {
+        const d = endOfDayInZone(input.closesAt, closesAtZone);
+        if (d.getTime() < Date.now() + 60_000) throw new Error("invalid_closes_at");
+        closesAt = d;
+      }
     }) ??
     field("invalid_warmup", () => {
       warmupExerciseId = parseWarmupId(input.warmupExerciseId);
@@ -238,7 +246,7 @@ function validateSessionMeta(input: {
   if (bad) return { ok: false, error: bad };
   return {
     ok: true,
-    meta: { name, date, objective, format, cupsPerSample, closesAt, warmupExerciseId },
+    meta: { name, date, objective, format, cupsPerSample, closesAt, closesAtZone, warmupExerciseId },
   };
 }
 
@@ -450,6 +458,8 @@ export async function createGroupSession(input: {
   coffees?: CoffeeInput[];
   samples: SampleInput[];
   closesAt?: string;
+  /** IANA zone of the owner's browser, so "end of the day" is THEIR day. */
+  closesAtZone?: string;
   // Groups v2: optionally link the session to one of the owner's standing
   // tasting groups. When set, notifyGroup (default true) fires a best-effort
   // invitation email to every member right after creation.
@@ -508,6 +518,7 @@ export async function createGroupSession(input: {
         isAsync: meta.closesAt !== null,
         status: "active",
         closesAt: meta.closesAt,
+        closesAtZone: meta.closesAtZone,
         createdBy: user.id,
         groupId: input.groupId ?? null,
         warmupExerciseId: meta.warmupExerciseId,
@@ -930,6 +941,8 @@ export type UpdateSessionInput = {
   // Group sessions only (S6 CP-C3): "YYYY-MM-DD" sets an automatic close at
   // the end of that day (UTC) and flips isAsync on; "" / null clears both.
   closesAt?: string | null;
+  /** IANA zone of the owner's browser; sent together with a changed closesAt. */
+  closesAtZone?: string | null;
   // Only valid for group sessions; null unlinks. A solo session must not carry
   // a groupId — the group page lists sessions by groupId and members would get
   // dead links to a session they can't open.
@@ -958,15 +971,28 @@ export async function updateSession(sessionId: string, input: UpdateSessionInput
     format?: string;
     cupsPerSample?: number;
     closesAt?: Date | null;
+    closesAtZone?: string | null;
     isAsync?: boolean;
     warmupExerciseId?: string | null;
   } = {};
 
   if (input.closesAt !== undefined) {
     try {
-      const plan = planClosesAtChange(session, input.closesAt);
+      // The stored zone decides whether an unchanged day is a no-op (legacy
+      // rows are UTC); the posted zone decides what a NEW day means.
+      const stored = await prisma.cuppingSession.findUnique({
+        where: { id: sessionId },
+        select: { closesAt: true, closesAtZone: true },
+      });
+      const plan = planClosesAtChange(
+        { isGroup: session.isGroup, closesAt: stored?.closesAt ?? null, closesAtZone: stored?.closesAtZone ?? null },
+        input.closesAt,
+        Date.now(),
+        input.closesAtZone,
+      );
       if (plan) {
         data.closesAt = plan.closesAt;
+        data.closesAtZone = plan.closesAtZone;
         data.isAsync = plan.isAsync;
       }
     } catch (e) {

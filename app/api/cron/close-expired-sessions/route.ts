@@ -9,12 +9,16 @@
 //   1. close      active sessions whose closesAt has passed
 //   2. repair     closed sessions whose phase 2 never finished (S8-05: a close
 //                 that threw after the flip is retried here, not lost)
+//   3. reminders  deadline_24h (members with complete unsent notes) and
+//                 live_idle (owner of a forgotten live session). Ledgered in
+//                 session_reminder_deliveries; NEVER closes a session.
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { closeSessionInternal } from "@/lib/closeSession";
 import { FINALIZE_GRACE_MS } from "@/lib/closeRules";
 import { errorMessage, logError, logWarn } from "@/lib/log";
+import { sendDeadlineReminders, sendLiveIdleReminders } from "@/lib/reminderEmail";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -78,6 +82,19 @@ export async function GET(request: Request) {
   const repairTruncated = owed.length === BATCH;
   if (repairTruncated) logWarn({ where: "cron.repairClose", message: "batch full, more repairs owed", batch: BATCH });
 
+  // Pass 3: reminders. A failure here must never fail the closes above.
+  let reminders: { deadline?: unknown; liveIdle?: unknown; error?: string } = {};
+  try {
+    reminders = {
+      deadline: await sendDeadlineReminders(BATCH),
+      liveIdle: await sendLiveIdleReminders(BATCH),
+    };
+  } catch (err) {
+    const message = errorMessage(err);
+    logError({ where: "cron.reminders", message });
+    reminders = { error: message };
+  }
+
   return NextResponse.json({
     ok: true,
     due: due.length,
@@ -86,6 +103,7 @@ export async function GET(request: Request) {
     // More than BATCH due means the next run (or a manual re-trigger) picks
     // up the rest — bounded per invocation on purpose.
     truncated,
+    reminders,
     repair: { owed: owed.length, finalized: repairs.filter((r) => r.finalized).length, results: repairs, truncated: repairTruncated },
   });
 }

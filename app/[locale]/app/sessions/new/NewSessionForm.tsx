@@ -15,6 +15,7 @@ import { buildInviteUrl } from "@/lib/inviteUrl";
 import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { Badge } from "@/components/ui/Badge";
 import { Select } from "@/components/ui/Select";
+import { browserZone, dateInZone } from "@/lib/closeRules";
 import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 
 // Groups v2: session wizard extends NotifyGroupTranslations with the
@@ -113,6 +114,8 @@ type Translations = {
   groupToggle: string;
   groupClosesAt: string;
   groupClosesAtHint: string;
+  /** Consequence of picking a closing date on a live cupping (F-sesiones-12). */
+  groupClosesAtLiveNotice: string;
   groupInviteLink: string;
   groupCopyLink: string;
   groupCopied: string;
@@ -307,6 +310,8 @@ export function NewSessionForm({
   // preselects the group in one step.
   const [isGroup, setIsGroup] = useState(!!initialGroupId);
   const [closesAt, setClosesAt] = useState("");
+  // Today in the owner's own zone (see the date input below).
+  const [todayMin] = useState(() => dateInZone(Date.now(), browserZone()));
   const [linkedGroupId, setLinkedGroupId] = useState(initialGroupId ?? "");
   const [notifyGroup, setNotifyGroup] = useState(true);
   const [emailSummary, setEmailSummary] = useState<GroupEmailSummary | undefined>(undefined);
@@ -529,6 +534,7 @@ export function NewSessionForm({
           referenceIdx,
           warmupExerciseId: warmupOn ? warmupId : null,
           closesAt: closesAt || undefined,
+          closesAtZone: closesAt ? browserZone() : undefined,
           groupId: linkedGroupId || undefined,
           notifyGroup,
         });
@@ -1243,10 +1249,16 @@ export function NewSessionForm({
                 type="date"
                 className={inputCls}
                 value={closesAt}
-                min={new Date().toISOString().slice(0, 10)}
+                // "Today" in the owner's own zone; the server render is UTC,
+                // so the attribute may differ at hydration.
+                suppressHydrationWarning
+                min={todayMin}
                 onChange={(e) => setClosesAt(e.target.value)}
               />
               <p className="mt-1 text-xs text-on-surface-variant">{t.groupClosesAtHint}</p>
+              {closesAt && (
+                <p className="mt-1 text-xs font-medium text-secondary">{t.groupClosesAtLiveNotice}</p>
+              )}
             </div>
 
             <div>

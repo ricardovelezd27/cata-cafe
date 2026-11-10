@@ -33,6 +33,7 @@ import {
 } from "@/components/cupping/EditSampleMetadataForm";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { DeadlineBanner, type DeadlineBannerTranslations } from "@/components/session/DeadlineBanner";
 import {
   submitAllEvaluations,
   closeSession,
@@ -152,6 +153,9 @@ type Session = {
   // The owner's "Referencia" sample (display-only). Optional so a pre-upgrade
   // offline blob rehydrated by cup/error.tsx still type-checks.
   referenceSampleId?: string | null;
+  /** ISO closing date + the owner's IANA zone (deadline banner). */
+  closesAt?: string | null;
+  closesAtZone?: string | null;
 };
 
 type CuppingTab = "cupping" | "extrinsic" | "physical";
@@ -245,6 +249,7 @@ export function CupClient({
     confirmClose: string;
     liveCountDown: string;
     closeSessionError: string;
+    deadline: DeadlineBannerTranslations;
     closeRule: string;
     closeUnsentOne: string;
     closeUnsentMany: string;
@@ -2006,6 +2011,16 @@ export function CupClient({
         translations={translations.offline}
         storageUnavailable={storageUnavailable}
       />
+      {session.closesAt && !sessionClosed && (
+        <div className="mx-4 mt-3 lg:mx-6">
+          <DeadlineBanner
+            closesAt={session.closesAt}
+            zone={session.closesAtZone ?? null}
+            locale={locale}
+            translations={translations.deadline}
+          />
+        </div>
+      )}
       {isOwner && editingSample && (
         <ResponsiveDialog
           open={editingSample}
