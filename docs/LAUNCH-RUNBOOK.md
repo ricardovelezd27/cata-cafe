@@ -1071,3 +1071,38 @@ detail shows "Origen editado el …"; on an unrevealed sample the button is abse
 
 **Rollback:** the columns are nullable; code rolled back ignores them. Do not drop them while
 the new code is deployed.
+
+## §21. Database — apply the `history_coffee_optional` migration (2026-11, S8-16)
+
+**What it does:** `user_coffee_history."coffeeId"` stops being NOT NULL. The foreign key to
+`coffees` (ON DELETE CASCADE) and every index stay. Nothing is backfilled: label-only rows
+(no coffee) are written from now on, never retroactively.
+
+**Order matters:** run it BEFORE the deploy. The new code inserts rows with a NULL `coffeeId`
+when an express/coffee-less session closes or a never-revealed sample's session is deleted;
+without the migration those closes would fail at the history step.
+
+1. On your machine, with `.env.local` pointing at the project (it is production):
+   ```bash
+   npx prisma migrate deploy
+   ```
+   Expected: `1 migration found … 20261111140000_history_coffee_optional … applied`.
+2. **Verify** — Supabase SQL Editor:
+   ```sql
+   SELECT is_nullable FROM information_schema.columns
+   WHERE table_name = 'user_coffee_history' AND column_name = 'coffeeId';
+   ```
+   Expected: `YES`.
+3. Deploy the branch. No SQL PHASE, no environment variable.
+
+**Smoke test (3 minutes):** run a "Catar ahora" session with one sample and no coffee, submit
+→ it closes; Perfil → Historial shows a row "Muestra A · Sin café asignado" that links to the
+session results and not to a coffee page. Assign a coffee to that sample from the results
+drill-down: the row becomes the normal coffee row (no duplicate). Delete an open session that
+has a never-revealed coffee-linked sample with a submitted evaluation: your history shows the
+sample label with "Café sin revelar" and no coffee name.
+
+**Rollback:** do NOT roll the code back below this migration once label-only rows exist (old
+code dereferences `coffee.id` and would crash the history page). Do not re-add NOT NULL while
+rows with a NULL `coffeeId` exist; delete them first
+(`DELETE FROM user_coffee_history WHERE "coffeeId" IS NULL;`).

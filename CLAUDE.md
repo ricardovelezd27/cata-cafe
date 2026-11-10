@@ -403,7 +403,7 @@ Cupping form components are fully controlled. State is lifted to `CupClient`, wh
 | `Coffee` | Coffee product reference data; `code` — unique 6-char short code (`lib/coffeeCode.ts`), stamped at every create path |
 | `SessionParticipant` | Links a user to a group session (status: "invited"\|"joined"\|"owner"; `excludedFromResults`) |
 | `AggregateScore` | Trigger-computed community score for a sample (one per SessionSample) |
-| `UserCoffeeHistory` | Per-user record of coffees tasted with individual + community scores |
+| `UserCoffeeHistory` | Per-user record of coffees tasted with individual + community scores. `coffeeId` is NULLABLE (S8-16): a NULL row is LABEL-ONLY (coffee-less sample, or a never-revealed sample whose session was deleted), keyed on `evaluationId` by `ensureLabelRows` (the unique does not dedupe NULLs), replaced by the coffee row on assign, built for display by `lib/historyDisplay.ts` (`historyDisplay`, `isCoffeeRow`). Every reader must handle `coffee: null`, never link such a row to a coffee page and exclude it from "coffees tasted"; its snapshot never carries coffee fields. |
 | `SessionInvite` | Invite token for joining a group session (maxUses, expiresAt) |
 
 **Cascade deletes:** Deleting a `SessionSample` cascades to `Evaluation`, `PhysicalEvaluation`, `ExtrinsicData`, and `AggregateScore`. Deleting a `CuppingSession` cascades to `SessionParticipant` and `SessionInvite`.

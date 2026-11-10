@@ -279,7 +279,7 @@ records and their statistics belong to those owners and are never touched — an
 states how many cuppers' evaluations will go. Inside the same transaction,
 `detachCoffeeHistoryForSession` first guarantees every cupper a
 `UserCoffeeHistory` row per **revealed** coffee-linked sample they submitted (a
-never-revealed blind sample is skipped, so the coffee name never leaks, S8-02; label-only rows await Kim D8) carrying a `snapshot` of **their own** evaluation + session metadata; then
+never-revealed blind sample instead gets a **label-only row**, `coffeeId` NULL: sample label + the cupper's own evaluation, never the coffee, S8-02/S8-16) carrying a `snapshot` of **their own** evaluation + session metadata; then
 the session is deleted and the history rows' `sessionId`/`evaluationId` go
 `NULL` (`SetNull`) instead of cascading away. Profile history, coffee detail and
 the dashboard read `snapshot` for those rows and label them "Sesión eliminada".
@@ -386,7 +386,11 @@ call on a closed session only when the caller is the owner, the sample has no
 coffee and the input carries a coffee field (a label-only rename still throws
 `session_closed`). It creates the private coffee, links it, sets `revealed:
 true` and re-runs `syncCoffeeHistoryForSession` so the cupper's history row
-appears. This is the second sanctioned post-close write (the first is
+appears. From the moment a session closes, each submitted evaluation on a
+coffee-less sample already has a **label-only** history row (`coffeeId` NULL,
+shown as "Sin café asignado", links to the session results, never to a coffee
+page, not counted as a coffee tasted); assigning the coffee REPLACES it with the
+normal coffee row (S8-16). This is the second sanctioned post-close write (the first is
 `ExtrinsicEditDialog` → `upsertExtrinsic`, owner + revealed sample, S8-12).
 
 ### Reference sample (2026-09)
