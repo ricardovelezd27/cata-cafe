@@ -10,14 +10,16 @@
  *    calls (`tx.<delegate>.`), and tests/profileRelations.test.ts asserts that
  *    text exists in the merge, so a forgotten table fails the build instead
  *    of silently dropping rows when the guest's Profile is deleted.
- *  - `onDelete`: the INTENDED rule for account deletion. deleteAccount is NOT
- *    built (architect decision, S8-07 #1: destructive, needs a tombstone design
- *    and owner choices). These rules are the contract it will implement.
+ *  - `onDelete`: the rule deleteAccount (lib/accountDeletion/deleteAccount.ts,
+ *    S8-19) implements. tests/profileRelations.test.ts asserts a matching
+ *    statement exists there: `tx.<delegate>.deleteMany` for "erase",
+ *    `tx.<delegate>.updateMany` for "reassign-tombstone", and both a delete and
+ *    an updateMany for "delete-if-solo-else-tombstone".
  *
  * tests/profileRelations.test.ts parses prisma/schema.prisma and fails on any
  * relation or listed bare column that is missing here (or stale here). When
- * you add a table with a user FK: add it to the schema, to this list, and to
- * mergeGuestData, in the same change.
+ * you add a table with a user FK: add it to the schema, to this list, to
+ * mergeGuestData AND to deleteAccount, in the same change.
  */
 
 export type MergeRule =
@@ -31,12 +33,11 @@ export type MergeRule =
 export type DeleteRule =
   /** Row goes with the account. */
   | "erase"
-  /** Row stays, authorship moves to a deletion tombstone profile (anonymized). */
+  /** Row stays, authorship moves to the deletion's own placeholder profile
+   *  `deleted_<random>` (lib/accountDeletion/deletedProfile.ts). */
   | "reassign-tombstone"
   /** Solo / empty assets are deleted; those with other people go to the tombstone. */
   | "delete-if-solo-else-tombstone"
-  /** FK is SET NULL by the database; free-text PII on the same row is wiped. */
-  | "set-null-and-wipe-pii"
   /** Not tied to the user (kept as is). */
   | "keep";
 
@@ -50,17 +51,21 @@ export type ManifestEntry = {
   onDelete: DeleteRule;
   /** Short why, shown to the next reader. */
   note: string;
+  /** Prisma delegate deleteAccount uses when the merge rule names none. */
+  deleteDelegate?: string;
 };
 
-// TODO(E3/E4-owner): deleteAccount — every `onDelete` below is the intended
-// rule, not an implemented one. E3: others keep results without the
-// organizer's name (default (a)); E4: self-service plus a manual path for a
-// lost mailbox. Open design points the builder must settle first: one
-// tombstone per deletion (Evaluation is unique on [sessionSampleId, cupperId],
-// so a single shared tombstone collides when two deleted users rated the same
-// sample); delete the evaluations of an excluded cupper instead of reassigning
-// them (the trigger only excludes through a SessionParticipant row, which
-// cascades away); close live group sessions with closeSessionInternal first.
+/** The Prisma delegate deleteAccount touches for this entry. */
+export function deletionDelegate(e: ManifestEntry): string | null {
+  if (e.deleteDelegate) return e.deleteDelegate;
+  return e.merge.kind === "not-applicable" ? null : e.merge.delegate;
+}
+
+// E3 default (a): others keep their results without the person's name; E4 (a):
+// self-service deletion. TODO(E3-Kim): every "reassign-tombstone" and
+// "delete-if-solo-else-tombstone" rule changes if Kim prefers erasure or an
+// ownership transfer. TODO(E4-Kim): the manual lost-mailbox path stays in the
+// runbook (§16).
 export const PROFILE_MANIFEST: readonly ManifestEntry[] = [
   // ── Relations that RESTRICT account deletion today ──────────────────────
   {
@@ -93,7 +98,7 @@ export const PROFILE_MANIFEST: readonly ManifestEntry[] = [
     kind: "relation",
     merge: { kind: "move", delegate: "evaluation" },
     onDelete: "reassign-tombstone",
-    note: "Anonymized, not erased, so community scores and SD do not move (spec 7); excluded cuppers' rows are deleted.",
+    note: "Anonymized, not erased, so community scores and SD do not move (spec 7). An excluded cupper stays excluded: their participant row moves with its flag.",
   },
   {
     model: "PhysicalEvaluation",
@@ -133,8 +138,8 @@ export const PROFILE_MANIFEST: readonly ManifestEntry[] = [
     field: "userId",
     kind: "relation",
     merge: { kind: "move", delegate: "sessionParticipant" },
-    onDelete: "erase",
-    note: "Participation rows; the trigger reads excludedFromResults off them.",
+    onDelete: "reassign-tombstone",
+    note: "Moved WITH excludedFromResults and its trail: the trigger reads the flag off the row, and the participant count must not change.",
   },
   {
     model: "UserCoffeeHistory",
@@ -168,14 +173,14 @@ export const PROFILE_MANIFEST: readonly ManifestEntry[] = [
     onDelete: "reassign-tombstone",
     note: "Posts in other people's groups survive without the author's name.",
   },
-  // ── SET NULL ────────────────────────────────────────────────────────────
+  // ── SET NULL in the database ────────────────────────────────────────────
   {
     model: "TastingGroupMember",
     field: "userId",
     kind: "relation",
     merge: { kind: "move", delegate: "tastingGroupMember" },
-    onDelete: "set-null-and-wipe-pii",
-    note: "The FK nulls itself but the member row keeps the email: wipe it.",
+    onDelete: "erase",
+    note: "The FK would null itself but the row keeps the email: the person's member rows (by id or by address) are deleted.",
   },
   // ── Bare user columns (no foreign key) ──────────────────────────────────
   {
@@ -218,6 +223,7 @@ export const PROFILE_MANIFEST: readonly ManifestEntry[] = [
     merge: { kind: "not-applicable", reason: "keyed by email, a guest has none" },
     onDelete: "erase",
     note: "Removed by email on deletion.",
+    deleteDelegate: "waitlistEntry",
   },
 ];
 
