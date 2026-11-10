@@ -43,6 +43,7 @@ import { CERTIFICATIONS } from "@/lib/constants";
 import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/groups";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
 import { planAssignCoffee } from "@/lib/assignCoffee";
+import { pruneUnreferencedCoffees } from "@/lib/wizardCoffees";
 import { WARMUP_IDS, type WarmupId } from "@/lib/warmup/exercises";
 import { safeLocale } from "@/lib/safeLocale";
 import {
@@ -370,6 +371,9 @@ async function createSessionBody(input: {
 }): Promise<{ ok: false; error: string } | void> {
   const user = await requireRegisteredUser();
 
+  // Cards no sample references are never created (S8-10 T4, F-crear-sesion-9).
+  input = { ...input, ...pruneUnreferencedCoffees(input.coffees ?? [], input.samples) };
+
   const invalid = validateSessionInput(input.coffees ?? [], input.samples);
   if (invalid) return { ok: false, error: invalid };
   const metaResult = validateSessionMeta(input);
@@ -521,6 +525,9 @@ async function createGroupSessionBody(input: {
   warmupExerciseId?: string | null;
 }): Promise<GroupSessionResult> {
   const user = await requireRegisteredUser();
+
+  // Cards no sample references are never created (S8-10 T4, F-crear-sesion-9).
+  input = { ...input, ...pruneUnreferencedCoffees(input.coffees ?? [], input.samples) };
 
   const invalid = validateSessionInput(input.coffees ?? [], input.samples);
   if (invalid) return { ok: false, error: invalid };

@@ -207,7 +207,8 @@
       },
       "goToPanel": "Go to the panel",
       "startNow": "Start the cupping now",
-      "goToPanelHint": "From the panel you can run the sensory movement with the group and start the cupping once everyone is in the room."
+      "goToPanelHint": "From the panel you can run the sensory movement with the group and start the cupping once everyone is in the room.",
+      "startGroup": "Create cupping and get the link"
     },
     "express": {
       "title": "Cup now",
@@ -955,7 +956,8 @@
       "empty": "No coffees found.",
       "linked": "Linked coffee",
       "unlink": "Unlink"
-    }
+    },
+    "tasteThis": "Taste this coffee"
   },
   "offline": {
     "bannerOffline": "You're offline. Your evaluations are being saved locally.",

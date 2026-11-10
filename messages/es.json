@@ -207,7 +207,8 @@
       },
       "goToPanel": "Ir al panel",
       "startNow": "Iniciar cata ahora",
-      "goToPanelHint": "Desde el panel puedes lanzar el movimiento sensorial con el grupo y empezar la cata cuando todos estén en la sala."
+      "goToPanelHint": "Desde el panel puedes lanzar el movimiento sensorial con el grupo y empezar la cata cuando todos estén en la sala.",
+      "startGroup": "Crear cata y obtener enlace"
     },
     "express": {
       "title": "Catar ahora",
@@ -955,7 +956,8 @@
       "empty": "No se encontraron cafés.",
       "linked": "Café vinculado",
       "unlink": "Desvincular"
-    }
+    },
+    "tasteThis": "Catar este café"
   },
   "offline": {
     "bannerOffline": "Sin conexión. Tus evaluaciones se guardan localmente.",

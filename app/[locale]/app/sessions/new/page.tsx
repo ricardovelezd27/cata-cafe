@@ -16,7 +16,7 @@ export default async function NewSessionPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ groupId?: string; name?: string; format?: string; n?: string }>;
+  searchParams: Promise<{ groupId?: string; coffeeId?: string; name?: string; format?: string; n?: string }>;
 }) {
   const { locale } = await params;
   const sp = await searchParams;
@@ -100,6 +100,7 @@ export default async function NewSessionPage({
       goToPanel: t("newForm.goToPanel"),
       goToPanelHint: t("newForm.goToPanelHint"),
       startNow: t("newForm.startNow"),
+      startGroup: t("newForm.startGroup"),
       referenceMark: t.raw("newForm.referenceMark"),
       referenceBadge: t("newForm.referenceBadge"),
       referenceNone: t("newForm.referenceNone"),
@@ -185,6 +186,11 @@ export default async function NewSessionPage({
     origin: c.createdBy === user!.id ? "mine" : c.visibility === "public" ? "public" : "shared",
   }));
 
+  // ?coffeeId=<id> ("Catar este café"): honored only when the coffee is in the
+  // set this user may use — usableCoffeeWhere ran inside getUsableCoffees —
+  // so a foreign or anonymized id is silently ignored.
+  const initialCoffee = usableCoffees.find((c) => c.id === sp.coffeeId) ?? null;
+
   return (
     <div className="max-w-2xl">
       <h1 className="font-display text-3xl text-primary-container mb-6">{translations.title}</h1>
@@ -198,6 +204,7 @@ export default async function NewSessionPage({
         initialGroupId={initialGroupId}
         handoff={handoff}
         userId={user?.id ?? null}
+        initialCoffee={initialCoffee}
       />
     </div>
   );

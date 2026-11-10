@@ -214,6 +214,15 @@ export default async function CoffeeProfilePage({
                 </div>
               </div>
               <div className="flex flex-wrap justify-end gap-2">
+                {/* Opens the session wizard with this coffee already linked
+                    (validated server-side with usableCoffeeWhere). */}
+                <ButtonLink
+                  href={`/${locale}/app/sessions/new?coffeeId=${coffee.id}`}
+                  variant="primary"
+                  size="sm"
+                >
+                  {tc("tasteThis")}
+                </ButtonLink>
                 {isOwner && (
                   <ButtonLink
                     href={`/${locale}/app/coffees/${coffee.id}/edit`}

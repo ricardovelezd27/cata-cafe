@@ -145,6 +145,7 @@ type Translations = {
     goToPanel: string;
     goToPanelHint: string;
     startNow: string;
+    startGroup: string;
     /** Raw ICU string (t.raw()) — contains a literal "{label}" token. */
     referenceMark: string;
     referenceBadge: string;
@@ -197,6 +198,30 @@ const EMPTY_COFFEE: CoffeeInput = {
   certifications: [],
   notes: "",
 };
+
+/** A coffee card linked to an existing usable coffee. Linked entries never
+ *  submit field data (the server resolves by existingCoffeeId) — the
+ *  create-only extras are reset. */
+function linkedEntry(base: CoffeeEntry, picked: UsableCoffee): CoffeeEntry {
+  return {
+    ...base,
+    name: picked.name,
+    producer: picked.producer ?? "",
+    variety: picked.variety ?? "",
+    altitude: picked.altitude ?? "",
+    roastLevel: picked.roastLevel ?? "",
+    country: picked.country ?? "",
+    region: picked.region ?? "",
+    farm: "",
+    species: "",
+    harvestYear: "",
+    processType: picked.processType ?? "",
+    certifications: [],
+    notes: "",
+    existingCoffeeId: picked.id,
+    linkedOrigin: picked.origin,
+  };
+}
 
 /** Recomputes A, B, C… labels by list position; leaves user-edited labels untouched. */
 function relabel(samples: SampleEntry[], chip: string): SampleEntry[] {
@@ -260,6 +285,7 @@ export function NewSessionForm({
   initialGroupId,
   handoff,
   userId,
+  initialCoffee,
 }: {
   locale: string;
   t: Translations;
@@ -274,6 +300,8 @@ export function NewSessionForm({
   handoff?: WizardHandoff;
   /** Keys the localStorage draft; null disables drafts. */
   userId?: string | null;
+  /** "Catar este café": a coffee the server already checked with usableCoffeeWhere. */
+  initialCoffee?: UsableCoffee | null;
 }) {
   const router = useRouter();
   const feedback = useActionFeedback();
@@ -307,7 +335,10 @@ export function NewSessionForm({
   // the back off the backrest, so the wizard offers 1–3 (the library has all).
   const [warmupId, setWarmupId] = useState<WarmupId>("eyes");
 
-  const [coffees, setCoffees] = useState<CoffeeEntry[]>(() => [{ ...EMPTY_COFFEE, id: newId() }]);
+  const [coffees, setCoffees] = useState<CoffeeEntry[]>(() => {
+    const blank: CoffeeEntry = { ...EMPTY_COFFEE, id: newId() };
+    return [initialCoffee ? linkedEntry(blank, initialCoffee) : blank];
+  });
   const [samples, setSamples] = useState<SampleEntry[]>(() =>
     // N sample chips from the express handoff (default 1); coffees stay required.
     Array.from({ length: handoff?.sampleCount ?? 1 }, (_, i) => ({
@@ -366,7 +397,7 @@ export function NewSessionForm({
   // wins over an old draft.
   useEffect(() => {
     const prefilled =
-      !!initialGroupId || !!handoff?.name || !!handoff?.format || !!handoff?.sampleCount;
+      !!initialGroupId || !!initialCoffee || !!handoff?.name || !!handoff?.format || !!handoff?.sampleCount;
     if (draftKey && !prefilled) {
       try {
         const d = parseDraft(window.localStorage.getItem(draftKey));
@@ -481,32 +512,7 @@ export function NewSessionForm({
   };
 
   const applyExistingCoffee = (id: string, picked: UsableCoffee) => {
-    setCoffees((prev) =>
-      prev.map((c) =>
-        c.id === id
-          ? {
-              ...c,
-              name: picked.name,
-              producer: picked.producer ?? "",
-              variety: picked.variety ?? "",
-              altitude: picked.altitude ?? "",
-              roastLevel: picked.roastLevel ?? "",
-              country: picked.country ?? "",
-              region: picked.region ?? "",
-              // Linked entries never submit field data (the server resolves by
-              // existingCoffeeId) — reset the create-only extras.
-              farm: "",
-              species: "",
-              harvestYear: "",
-              processType: picked.processType ?? "",
-              certifications: [],
-              notes: "",
-              existingCoffeeId: picked.id,
-              linkedOrigin: picked.origin,
-            }
-          : c
-      )
-    );
+    setCoffees((prev) => prev.map((c) => (c.id === id ? linkedEntry(c, picked) : c)));
     if (invalidCoffeeId === id) {
       setInvalidCoffeeId(null);
       setErrorCode(null);
@@ -587,7 +593,10 @@ export function NewSessionForm({
       cardRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "center" });
       return false;
     };
+    // Cards no sample uses are dropped server-side, so they cannot block the submit.
+    const referenced = new Set(samples.map((s) => s.coffeeId));
     for (const c of coffees) {
+      if (!referenced.has(c.id)) continue;
       if (c.existingCoffeeId) continue;
       // Data-quality gate relaxed 2026-09 — only the name is required now;
       // everything else is progressive/fill-later. Mirror of the server-side
@@ -850,6 +859,8 @@ export function NewSessionForm({
             <FieldLabel>{t.cups}</FieldLabel>
             <input
               type="number"
+              inputMode="numeric"
+              enterKeyHint="next"
               min={1}
               max={5}
               className={inputCls}
@@ -1445,7 +1456,7 @@ export function NewSessionForm({
           disabled={pending}
           className="w-full bg-primary-container text-on-primary rounded-pill py-3.5 font-medium hover:bg-primary transition-colors disabled:opacity-50"
         >
-          {t.start}
+          {isGroup ? t.newForm.startGroup : t.start}
         </button>
       </div>
     </form>
