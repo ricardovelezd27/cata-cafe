@@ -7,6 +7,8 @@ import {
   type ThrottleDecision,
   type ThrottleRule,
   GROUP_BROADCASTS_PER_HOUR,
+  CODE_VERIFY_PER_IP,
+  CODE_VERIFY_PER_TARGET,
   MAGIC_LINK_PER_ADDRESS,
   MAGIC_LINK_PER_IP,
   MAX_WINDOW_MS,
@@ -35,6 +37,13 @@ export type EmailBudgetRequest =
        *  IP rule is then skipped, never collapsed into one shared bucket. */
       ip: string | null;
       email: string;
+    }
+  | {
+      /** One ATTEMPT to redeem a sign-in code / link token (S8-22 A-03). */
+      kind: "code_verify";
+      ip: string | null;
+      /** The address, or a string derived from the link token (never raw). */
+      subject: string;
     }
   | {
       kind: "group_broadcast" | "group_invite";
@@ -76,6 +85,29 @@ export async function reserveEmailBudget(
     if (!decision.allowed) return decision;
     await prisma.outboundEmailEvent.create({
       data: { kind: "magic_link", actorKey, targetKey, recipients: 1 },
+    });
+    return decision;
+  }
+
+  if (req.kind === "code_verify") {
+    const targetKey = targetKeyForEmail(req.subject);
+    const actorKey = req.ip ? actorKeyForIp(req.ip) : null;
+    const checks: Array<{ events: EmailEvent[]; rule: ThrottleRule }> = [
+      {
+        events: await eventsFor({ kind: { in: ["code_verify"] }, targetKey }, now),
+        rule: CODE_VERIFY_PER_TARGET,
+      },
+    ];
+    if (actorKey) {
+      checks.push({
+        events: await eventsFor({ kind: { in: ["code_verify"] }, actorKey }, now),
+        rule: CODE_VERIFY_PER_IP,
+      });
+    }
+    const decision = decideAll(checks, { recipients: 0 }, now);
+    if (!decision.allowed) return decision;
+    await prisma.outboundEmailEvent.create({
+      data: { kind: "code_verify", actorKey, targetKey, recipients: 0 },
     });
     return decision;
   }

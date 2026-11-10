@@ -102,18 +102,24 @@ export function normalizeZone(zone: unknown): string | null {
 
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+const DTF_CACHE = new Map<string, Intl.DateTimeFormat>();
+
 function partsInZone(ms: number, zone: string): { y: number; m: number; d: number; asUtc: number } {
   const base = Math.floor(ms / 1000) * 1000;
-  const dtf = new Intl.DateTimeFormat("en-US", {
-    timeZone: zone,
-    hourCycle: "h23",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
+  let dtf = DTF_CACHE.get(zone);
+  if (!dtf) {
+    dtf = new Intl.DateTimeFormat("en-US", {
+      timeZone: zone,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+    DTF_CACHE.set(zone, dtf);
+  }
   const get: Record<string, number> = {};
   for (const p of dtf.formatToParts(new Date(base))) {
     if (p.type !== "literal") get[p.type] = Number(p.value);
@@ -137,9 +143,38 @@ export function endOfDayInZone(value: unknown, zone: string | null | undefined):
   if (zone === null || zone === undefined || zone === "") return new Date(utcGuess);
   if (!isValidTimeZone(zone)) throw new Error("invalid_input");
   if (zone === "UTC") return new Date(utcGuess);
-  let t = utcGuess - offsetMs(utcGuess, zone);
-  t = utcGuess - offsetMs(t, zone);
-  return new Date(t);
+  // B-06 / D-07 (S8-22): the two-pass offset correction picked the FIRST
+  // 23:59:59.999 on a day whose clocks fall back at midnight (America/Santiago
+  // 2026-04-04). Find the first instant of the NEXT local day instead and step
+  // back 1 ms. The local date never goes backwards as the instant grows, so a
+  // binary search over whole seconds is exact; the window covers every real
+  // offset (-12h..+14h) around the next day's UTC midnight.
+  const next = new Date(Date.UTC(
+    Number(value.slice(0, 4)),
+    Number(value.slice(5, 7)) - 1,
+    Number(value.slice(8, 10)) + 1,
+  ));
+  const nextValue = next.toISOString().slice(0, 10);
+  const midnightUtc = next.getTime();
+  // Fast path (every ordinary day): the two-pass offset estimate of the next
+  // local midnight, accepted only if it really is the FIRST second of that day.
+  let guess = midnightUtc - offsetMs(midnightUtc, zone);
+  guess = midnightUtc - offsetMs(guess, zone);
+  const guessSec = Math.floor(guess / 1000);
+  if (
+    dateInZone(guessSec * 1000, zone) === nextValue &&
+    dateInZone((guessSec - 1) * 1000, zone) !== nextValue
+  ) {
+    return new Date(guessSec * 1000 - 1);
+  }
+  let lo = Math.floor((midnightUtc - 15 * 3_600_000) / 1000); // local date <= value
+  let hi = Math.floor((midnightUtc + 13 * 3_600_000) / 1000); // local date >= nextValue
+  while (hi - lo > 1) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (dateInZone(mid * 1000, zone) >= nextValue) hi = mid;
+    else lo = mid;
+  }
+  return new Date(hi * 1000 - 1);
 }
 
 /** The calendar day (YYYY-MM-DD) that `instant` falls on in `zone`; null zone

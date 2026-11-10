@@ -95,13 +95,16 @@ export function planAddReference(
 export function planRemoveActive(samples: readonly RankedSample[]): {
   removeId: string | null;
   activeId: string | null;
+  /** B-05 (S8-22): the previous reference was UNLOCKED while a later one was
+   *  active, so its stored ratings may have drifted off 79.00. It is active
+   *  and pinned again, so it must be re-pinned (planReferenceRepin) in the
+   *  same transaction. Always equal to `activeId`. */
+  repinId: string | null;
 } {
   const refs = referencesOf(samples);
-  if (refs.length === 0) return { removeId: null, activeId: null };
-  return {
-    removeId: refs[refs.length - 1].id,
-    activeId: refs.length > 1 ? refs[refs.length - 2].id : null,
-  };
+  if (refs.length === 0) return { removeId: null, activeId: null, repinId: null };
+  const activeId = refs.length > 1 ? refs[refs.length - 2].id : null;
+  return { removeId: refs[refs.length - 1].id, activeId, repinId: activeId };
 }
 
 /** Dense renumbering (1..n by current rank) after a reference sample row is

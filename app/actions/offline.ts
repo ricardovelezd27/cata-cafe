@@ -17,7 +17,7 @@ import {
 import { isPinnedModule, pinReferenceAffective } from "@/lib/referenceRules";
 import { writeEvaluationOrdered } from "@/lib/evaluationWrite";
 import { logInfo } from "@/lib/log";
-import { replayOverExisting, submittedRefireArgs } from "@/lib/aggregateRefire";
+import { replayOverExisting } from "@/lib/aggregateRefire";
 
 // Conflict-aware replay of an offline evaluation draft, called on reconnect.
 // Authorization stays identical to the live path: Prisma scoped by cupperId
@@ -154,10 +154,8 @@ async function replayEvaluationCore(input: EvaluationReplayInput): Promise<Repla
     return "synced";
   }
 
-  // S8-04 (F-offline-7): re-fire the aggregate trigger when the row replaced
-  // was already submitted (matches nothing for a draft). Idempotent, so a
-  // replay delivered twice after a WebView resume is harmless.
-  await prisma.evaluation.updateMany(submittedRefireArgs(saved.id));
+  // S8-04 (F-offline-7): the re-fire for a replaced submitted row runs inside
+  // writeEvaluationOrdered, atomically with the data write (S8-22 B-01).
 
   return "synced";
 }

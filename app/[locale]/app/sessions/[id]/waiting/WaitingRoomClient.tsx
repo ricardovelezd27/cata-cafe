@@ -1,6 +1,6 @@
 "use client";
 
-import { nextPollDelayMs } from "@/lib/waitingPoll";
+import { createPollChain } from "@/lib/waitingPoll";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
 import { useForegroundResume } from "@/hooks/useForegroundResume";
@@ -95,7 +95,6 @@ export function WaitingRoomClient({
   const [connectionLost, setConnectionLost] = useState(false);
   // Bumped on foreground resume so the realtime effect below re-runs (S8-15).
   const [resumeKey, setResumeKey] = useState(0);
-  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // The owner may pick/change the reference while people wait — same
   // cupping_sessions UPDATE stream that carries startedAt.
   const [refOrder, setRefOrder] = useState<string[]>(initialReferenceIds);
@@ -257,12 +256,10 @@ export function WaitingRoomClient({
   useEffect(() => {
     if (isAsync) return;
 
-    const clearPoll = () => {
-      if (pollRef.current) {
-        clearTimeout(pollRef.current);
-        pollRef.current = null;
-      }
-    };
+    // Fallback poll (S8-23 C-03: survives a rejected tick; see lib/waitingPoll).
+    // refetchState stops it once the session started.
+    const poll = createPollChain({ tick: () => refetchState() });
+    const clearPoll = () => poll.stop();
 
     // One refetch, same handling as the live handler: started -> leave the
     // room; otherwise (re)apply the synced warm-up run. checkSessionStarted
@@ -333,16 +330,7 @@ export function WaitingRoomClient({
         // Not (or no longer) subscribed — fall back to polling (15 s +/- 3 s)
         // so a dropped realtime connection never strands the waiting room.
         setConnectionLost(true);
-        if (!pollRef.current) {
-          const tick = () => {
-            pollRef.current = setTimeout(async () => {
-              await refetchState();
-              // refetchState clears the poll once started; otherwise go on.
-              if (pollRef.current !== null) tick();
-            }, nextPollDelayMs());
-          };
-          tick();
-        }
+        poll.start();
       },
     );
 
@@ -359,8 +347,14 @@ export function WaitingRoomClient({
       return;
     }
     setChecking(true);
-    const started = await checkSessionStarted(sessionId);
-    setChecking(false);
+    let started = false;
+    try {
+      started = await checkSessionStarted(sessionId);
+    } catch {
+      // Network failure: treat as "not started yet"; the button must re-enable.
+    } finally {
+      setChecking(false);
+    }
     if (started) {
       onStarted();
     } else {

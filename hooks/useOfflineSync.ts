@@ -4,13 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { replayEvaluation, replayPhysical, replayExtrinsic } from "@/app/actions/offline";
 import {
   applyReplayOutcome,
+  loadModuleSerialized,
   loadSession,
   loadUserBlobs,
   reviveFailedModules,
   setModuleStatus,
 } from "@/lib/offline/store";
 import type { EvalModuleKey } from "@/lib/evaluation";
-import type { ReplayOutcome } from "@/lib/offline/status";
+import { moduleToSend, phaseAfterPass, type ReplayOutcome } from "@/lib/offline/status";
 import {
   EVALUATION_MODULES,
   type Data,
@@ -167,6 +168,7 @@ export function useOfflineSync({
 
       let anyRetry = false;
       let skippedStale = false;
+      let anyWaiting = false;
 
       try {
         if (manual) await reviveFailedModules(userId);
@@ -182,11 +184,19 @@ export function useOfflineSync({
               const mod = sample.modules[moduleKey];
               if (!mod || mod.syncStatus !== "pending") continue;
 
-              const sentAt = mod.updatedAt;
+              // C-01/C-02: `mod` is the pass-start snapshot. Re-read it now and
+              // send what is stored NOW, or nothing if a live save already
+              // delivered it, so an older draft can never land after a newer one.
+              const fresh = moduleToSend(
+                await loadModuleSerialized(blob.sessionId, blob.userId, sampleId, moduleKey),
+                mod,
+              );
+              if (!fresh) continue;
+              const sentAt = fresh.updatedAt;
               const result = await replayModule(
                 sampleId,
                 moduleKey,
-                mod.data,
+                fresh.data,
                 blob.cupsPerSample,
                 false,
                 sentAt,
@@ -206,7 +216,8 @@ export function useOfflineSync({
               // Edited while the request was in flight: the newer edit stays
               // pending and goes out on a quick follow-up run.
               if (!applied) skippedStale = true;
-              else if (result === "retry" || result === "waiting") anyRetry = true;
+              else if (result === "retry") anyRetry = true;
+              else if (result === "waiting") anyWaiting = true;
             }
           }
         }
@@ -221,8 +232,9 @@ export function useOfflineSync({
         );
 
         if (runRef.current === myRun) {
-          setSyncPhase(anyRetry || stuck ? "failed" : "synced");
-          if (!anyRetry && !stuck) {
+          const phase = phaseAfterPass({ anyRetry, stuck, anyWaiting });
+          setSyncPhase(phase);
+          if (phase === "synced") {
             setTimeout(() => {
               if (runRef.current === myRun) setSyncPhase("idle");
             }, SYNCED_BANNER_MS);

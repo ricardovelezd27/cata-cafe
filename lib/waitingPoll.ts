@@ -10,3 +10,50 @@ export function nextPollDelayMs(rand: number = Math.random()): number {
   const offset = Math.round((rand * 2 - 1) * WAITING_POLL_JITTER_MS);
   return WAITING_POLL_BASE_MS + offset;
 }
+
+/** S8-23 (C-03): the fallback poll as a self-re-arming chain that survives a
+ *  rejected tick. A server-action call rejects when the network is down, which
+ *  is exactly when the socket is down too, so a failed tick must not end the
+ *  chain. `stop()` is final until the next `start()`: a tick that is in flight
+ *  when it is called does not schedule another. */
+export function createPollChain(opts: {
+  tick: () => Promise<unknown>;
+  delayMs?: () => number;
+  setTimer?: (fn: () => void, ms: number) => ReturnType<typeof setTimeout>;
+  clearTimer?: (id: ReturnType<typeof setTimeout>) => void;
+}) {
+  const delayMs = opts.delayMs ?? (() => nextPollDelayMs());
+  const setTimer = opts.setTimer ?? ((fn, ms) => setTimeout(fn, ms));
+  const clearTimer = opts.clearTimer ?? ((id) => clearTimeout(id));
+  let running = false;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  const arm = () => {
+    timer = setTimer(() => {
+      timer = null;
+      void (async () => {
+        try {
+          await opts.tick();
+        } catch {
+          // A rejected tick (offline) is not the end of the chain.
+        } finally {
+          if (running) arm();
+        }
+      })();
+    }, delayMs());
+  };
+
+  return {
+    start() {
+      if (running) return;
+      running = true;
+      arm();
+    },
+    stop() {
+      running = false;
+      if (timer !== null) clearTimer(timer);
+      timer = null;
+    },
+    isRunning: () => running,
+  };
+}

@@ -707,7 +707,8 @@ to `/auth/confirm`, which only exists after the deploy.
 7. **Environment (Vercel → Production).**
    - `ACCOUNT_DELETION_ENABLED`: leave **unset** (the account-deletion entry point stays off) until
      §24 has been run on a non-production environment and signed off. (The flag arrives with the
-     audit's "server rules" change, A-01; if that change is not in the deployed commit, account
+     audit's "server rules" change, S8-22 / A-01, which is in the chained S8 tip; only the exact
+     value `1` turns deletion on. If that change is not in the deployed commit, account
      deletion is NOT gated: hold the deploy or accept it knowingly.)
    - `ANALYTICS_SUPER_ADMIN_EMAIL`: recommended, set it to the super-admin address (§17; not
      boot-fatal, the code falls back to a built-in address and logs a warning).
@@ -717,8 +718,9 @@ to `/auth/confirm`, which only exists after the deploy.
 
 ### Deploy
 
-8. **Merge → Vercel deploys.** Outside a live tasting: the service worker goes to v3 and every
-   device rebuilds its caches once (§14).
+8. **Merge → Vercel deploys.** Outside a live tasting: the service worker goes to v4 (S8-09 took it
+   to v3, S8-23 to v4; one release, so devices jump straight to v4) and every device rebuilds
+   its caches once (§14).
 
 ### After the deploy
 
@@ -1042,6 +1044,14 @@ replay retries by itself, and the service worker stops serving stale or other us
   `cata_claim_anon`).
 - Shared tablet: user A signs out, B signs in, go offline: A's pages are not served.
 
+**S8-23 follow-up (service worker v4):** the static cache cap (120) is now least-recently-used:
+a cache hit re-puts the entry so the running build's core chunks are not evicted first. The
+cache-key logic changed, so `SW_VERSION` went `v3` to `v4`; the same one-time cache drop as
+above applies on the first visit after that deploy (deploy outside a live tasting). Device
+check: browse landing, app and several sessions (more than 120 distinct static files), go
+offline and hard-reload a visited page: it must still boot. Check Cache Storage shows
+`cata-*-v4` only.
+
 **Not in this PR (owned by S8-15):** `navigator.storage.persist()` and the 3-day stale-draft
 warning.
 
@@ -1052,6 +1062,13 @@ code as unknown statuses and simply never replay, so keep them readable by not d
 ---
 
 ## §15. Supabase — paste the sign-in email templates (2026-11, S8-06)
+
+**Review Supabase Auth rate limits (S8-22 A-03, migration-free).** The app now counts code and
+link verification ATTEMPTS itself (10 per address and 120 per IP per 15 minutes, kind
+`code_verify` in `outbound_email_events`), but the server-side calls reach GoTrue from Vercel's
+egress IPs, so GoTrue's per-IP buckets are shared by every user. Dashboard → Authentication →
+**Rate Limits**: check "Token verifications" and "Sign-ups and sign-ins" are sized for your
+largest room (50 people within a few minutes), not just "Emails sent".
 
 No migration, no SQL. The sign-in link now opens `/auth/confirm` (a button press consumes
 the token, so mail scanners cannot burn it) and the email also carries a 6-digit code.
@@ -1380,7 +1397,12 @@ code is deployed.
 
 ## §24. Account deletion: verify on a throwaway account, clean an orphaned auth user (2026-11, S8-19)
 
-No migration, no SQL phase, no new environment variable. Nothing to apply before the deploy.
+No migration and no SQL phase. **Account deletion ships DISABLED (S8-22 A-01).** The one
+environment variable is `ACCOUNT_DELETION_ENABLED`: **leave it unset until the
+throwaway-account rehearsal below has passed** in a non-production environment. While it is
+unset (or anything other than `1`) the profile page does not show "Eliminar cuenta" and both
+`deleteAccount` and the impact read refuse with `not_found_or_forbidden`. Set it to `1` in
+Vercel (Production) only after the rehearsal, then redeploy. Nothing else to apply before the deploy.
 `deleteAccount` creates its own placeholder profile (`deleted_<random>`) inside its transaction,
 so there is no fixed tombstone row to insert.
 

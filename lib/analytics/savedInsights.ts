@@ -2,6 +2,7 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { requireAnalyticsAccess } from "@/lib/analytics/access";
+import { savedInsightsWhere } from "@/lib/analytics/savedInsightsScope";
 
 export type SavedInsightRow = {
   id: string;
@@ -21,6 +22,7 @@ export type SavedInsightRow = {
 export async function loadSavedInsights(): Promise<SavedInsightRow[]> {
   const access = await requireAnalyticsAccess();
   const insights = await prisma.savedInsight.findMany({
+    where: savedInsightsWhere(access),
     orderBy: { createdAt: "desc" },
     select: { id: true, name: true, config: true, createdAt: true, createdBy: true },
   });

@@ -376,3 +376,27 @@ export function consensusLine(
   if (generalTop3.length === 0) return null;
   return generalTop3.join(", ");
 }
+
+/**
+ * B-07 (S8-22): the community block for a sample whose submitted evaluations
+ * ALL belong to excluded cuppers. There is nothing to average: no score, n = 0,
+ * and N still counts every submitted evaluation ("0 de N incluidos"). Used
+ * INSTEAD of falling back to the stored trigger row, whose COALESCE(avg, 0)
+ * would read as a real community score of 0.
+ */
+export function noIncludedAggregate(totalSubmitted: number) {
+  return {
+    communityScore: null as number | null,
+    avgRawScore: 0,
+    scoreSd: null as number | null,
+    participantCount: 0,
+    submittedCount: 0,
+    totalSubmitted,
+    totalCups: 0,
+    totalNonUniform: 0,
+    totalDefective: 0,
+    uniformityPenalty: 0,
+    defectPenalty: 0,
+    attrAverages: {} as Record<string, number>,
+  };
+}

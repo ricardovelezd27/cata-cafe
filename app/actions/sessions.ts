@@ -63,7 +63,6 @@ import {
   MAX_SESSION_SAMPLES,
   defaultSampleLabel,
 } from "@/lib/sessionEdit";
-import { submittedRefireArgs } from "@/lib/aggregateRefire";
 import { writeEvaluationOrdered } from "@/lib/evaluationWrite";
 
 // Mirrors the standalone CoffeeForm's field set — wizard-created coffees land
@@ -745,13 +744,9 @@ export async function upsertEvaluation(input: {
     return { ok: true, evaluationId: result.id };
   }
 
-  // S8-04 (F-solo-2): an edit of an ALREADY SUBMITTED row must re-fire the
-  // aggregate trigger (it only fires when "isDraft" is in the SET list). This
-  // guarded write matches only submitted rows, so a draft save (the 800 ms hot
-  // path) fires nothing; `fields` never carries isDraft, so a draft is never
-  // submitted by accident. See lib/aggregateRefire.ts.
-  await prisma.evaluation.updateMany(submittedRefireArgs(result.id));
-
+  // S8-04 (F-solo-2): the re-fire of an already submitted row happens INSIDE
+  // writeEvaluationOrdered, in the same transaction as the data write
+  // (S8-22 B-01); a draft save (the 800 ms hot path) stays one statement.
   return { ok: true, evaluationId: result.id };
 }
 
@@ -1020,6 +1015,11 @@ export async function setReferenceSample(
             });
           }
           active = plan.activeId;
+          // B-05: the earlier reference is the pinned anchor again; rewrite
+          // its stored rows to 79.00 like the forward path does.
+          // TODO(S8-22): no owner confirmation here (removal has no confirm
+          // UI today); the forward path asks first via confirmRepin.
+          repinTarget = plan.repinId;
         } else {
           const plan = planAddReference(rows, targetId);
           if (plan.kind === "full") throw new Error("invalid_input");
@@ -1137,6 +1137,7 @@ async function updateSessionBody(
     closesAt?: Date | null;
     closesAtZone?: string | null;
     isAsync?: boolean;
+    startedAt?: Date;
     warmupExerciseId?: string | null;
   } = {};
 
@@ -1146,10 +1147,21 @@ async function updateSessionBody(
       // rows are UTC); the posted zone decides what a NEW day means.
       const stored = await prisma.cuppingSession.findUnique({
         where: { id: sessionId },
-        select: { closesAt: true, closesAtZone: true },
+        select: {
+          closesAt: true,
+          closesAtZone: true,
+          startedAt: true,
+          samples: { where: { evaluations: { some: {} } }, select: { id: true }, take: 1 },
+        },
       });
       const plan = planClosesAtChange(
-        { isGroup: session.isGroup, closesAt: stored?.closesAt ?? null, closesAtZone: stored?.closesAtZone ?? null },
+        {
+          isGroup: session.isGroup,
+          closesAt: stored?.closesAt ?? null,
+          closesAtZone: stored?.closesAtZone ?? null,
+          startedAt: stored?.startedAt ?? null,
+          hasActivity: (stored?.samples.length ?? 0) > 0,
+        },
         input.closesAt,
         Date.now(),
         input.closesAtZone,
@@ -1158,6 +1170,7 @@ async function updateSessionBody(
         data.closesAt = plan.closesAt;
         data.closesAtZone = plan.closesAtZone;
         data.isAsync = plan.isAsync;
+        if (plan.startedAt) data.startedAt = plan.startedAt;
       }
     } catch (e) {
       const code = e instanceof Error ? e.message : "invalid_closes_at";
@@ -1523,7 +1536,9 @@ export async function updateSampleMetadata(
       sessionId: true,
       coffeeId: true,
       coffee: { select: { createdBy: true, deletedAt: true } },
-      session: { select: { createdBy: true, status: true } },
+      // closesAt: assertSessionWritable is expiry-aware (S8-22 A-05), so a
+      // label edit stops at the deadline, not at the next 06:00 UTC cron.
+      session: { select: { createdBy: true, status: true, closesAt: true } },
     },
   });
   if (!sample) throw new Error("not_found_or_forbidden");
