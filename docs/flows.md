@@ -526,6 +526,8 @@ coffee-less samples] -->|createExpressSession| CUP
 Sesiones (`hideOnMobile`, so the BottomNav keeps its five tabs); on phones it is
 reached from the dashboard card and the link at the top of the Sesiones page.
 
+**Native-shell seam (S8-15).** Anything a WebView treats differently from a browser — printing, `window.open`, blob/anchor downloads, sharing, opening the system browser, shell sniffing — goes through `lib/platform/` (`printPage`, `downloadFile`/`shareFile`, `openReport`, `openExternal`, `isNativeShell`). Report links (`ReportLink`) are plain anchors on the web and disabled offline. Cup, waiting room and results re-attach realtime and refetch on foreground resume (`useForegroundResume`). Deep links map through `routeFromUrl` (`/join`, `/auth/claim`, `/app`). No Capacitor dependency exists yet; native branches are TODO stubs. Device checklist: `docs/native/device-checklist.md`.
+
 **The rule that keeps it cohesive:** assets (coffees, groups) are created once
 and reused across sessions; sessions produce history; history feeds every
 profile/coffee/dashboard number. Owners create/edit/delete what they own —

@@ -104,6 +104,8 @@ A person arrives at `/auth/login` from the landing, an invite page, the claim ba
 
 ### F-entrar-8 · Google button is a dead end in in-app browsers and has no system-browser route · severity: P3 · status: new
 
+**Fixed in S8-15 (PR #…): detectInAppBrowser (Instagram, Facebook, WhatsApp, Line, TikTok) swaps the Google button for an "open in your browser" hint with copy-link; email stays available. Native OAuth return path is a TODO in app/actions/auth.ts.**
+
 **NOT fixed in S8-06: the in-app-browser hint is owned by S8-15 (lib/platform/inAppBrowser.ts).**
 
 - **Problem** — `signInWithGoogle` redirects the current view (`auth.ts:22-28`); the app has no user-agent or platform detection (grep found none outside `robots.ts`). Invites travel by WhatsApp and Instagram, whose in-app browsers Google refuses (`disallowed_useragent`); the failure happens on Google's page, so our `googleError` copy never shows.

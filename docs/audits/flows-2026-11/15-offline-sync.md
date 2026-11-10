@@ -88,6 +88,8 @@ A cupper edits a sample; `CupClient.flushSave` (`CupClient.tsx:885`) writes to t
 
 ### F-offline-8 · Almacenamiento sin garantías y caché estática sin límite · severity: P2 · status: confirms-board(Pedir almacenamiento persistente; La caché estática del SW crece sin límite entre despliegues)
 
+**Partly fixed in S8-15 (PR #…): navigator.storage.persist() after the first successful draft save (outcome in localStorage cata_storage_persist) and a stale-draft warning (> 3 days, not installed) in PendingDraftsBadge. The static-cache cap and SW_VERSION bump stay with S8-09.**
+
 - **Problem** — No `navigator.storage.persist()` anywhere in `app/`, `components/`, `hooks/`, `lib/` (grep empty). The static cache is cache-first and unbounded (`public/sw.js:95-108`; only pages/RSC are trimmed, `:122`); `SW_VERSION = "v2"` (`:6`) changes only by hand. `skipWaiting()` on install (`:15`) plus `clients.claim()` swaps the worker under an open tasting. The storage banner flips only after a call has already failed (`store.ts:48-56`).
 - **Implication** — Robustness: unsynced drafts sit beside a cache that grows each deploy, in an origin the browser may evict (Safari's 7-day rule for non-installed tabs). Nothing warns a cupper holding days of unsent work.
 - **Fix** — Request persistence once on first authenticated load and record the answer; cap static entries by count and drop old build chunks; warn on pending work older than a few days when not installed. **Acceptance:** persist outcome recorded; cache size stays bounded across two deployments; the stale-pending warning appears. **Size:** M.

@@ -89,6 +89,8 @@ Insights is an admin area under `/app/insights`. `getAnalyticsAccess` (`lib/anal
 
 ### F-insights-8 · CSV export relies on a blob link click, which a WebView will not save · severity: P3 · status: new
 
+**Fixed in S8-15 (PR #…): the users CSV goes through downloadFile; the export button is hidden inside a native shell until the Filesystem+Share branch exists (TODO(native)).**
+
 - **Problem** — `components/insights/UsersDirectory.tsx:55-65` builds a `Blob`, an `<a download>` and calls `a.click()`.
 - **Implication** — Native-readiness: iOS WKWebView ignores the `download` attribute and a Capacitor shell needs a Filesystem/Share plugin. The brief also recommends export be desktop-only.
 - **Fix** — Hide the export in the native shell (or send it through the native share sheet), unchanged on desktop web. **Acceptance:** in the shell the button is absent or opens the share sheet with the file; desktop unchanged. **Size:** S.
