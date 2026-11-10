@@ -66,18 +66,27 @@ describe("account-deletion manifest vs schema.prisma", () => {
     }
   });
 
-  it("every user-keyed bare column named like a user id is accounted for", () => {
-    // A model with a plain `userId String` and no Profile relation is a bare
-    // table; it must be in the manifest (CloseEmailDelivery, AiChatUsage).
-    const bare: string[] = [];
+  it("every column named like a known user-id column is accounted for", () => {
+    // The user-id column names the manifest already uses (userId, createdBy,
+    // cupperId, evaluatedBy, revealedBy, authorId, excludedBy, actorKey…).
+    // Any String column with one of these names, in any model, with or
+    // without a Profile relation, must be in the manifest: a new
+    // `excludedBy`-style bare column cannot slip past.
+    const names = new Set(
+      PROFILE_MANIFEST.filter((e) => e.field !== "email").map((e) => e.field),
+    );
+    expect(names.size).toBeGreaterThanOrEqual(8);
+    const found: string[] = [];
     for (const [name, body] of MODELS) {
       if (name === "Profile") continue;
-      const hasUserId = /^\s*userId\s+String\??\s*$/m.test(body);
-      const hasRelation = relations.includes(manifestKey(name, "userId"));
-      if (hasUserId && !hasRelation) bare.push(manifestKey(name, "userId"));
+      for (const line of body.split("\n")) {
+        const m = line.match(/^\s*(\w+)\s+String\??(\s|$)/);
+        if (m && names.has(m[1])) found.push(manifestKey(name, m[1]));
+      }
     }
-    const missing = bare.filter((k) => !entries.has(k));
-    expect(missing).toEqual([]);
+    expect(found).toContain("SessionParticipant.excludedBy");
+    const missing = found.filter((k) => !entries.has(k));
+    expect(missing, `Add to lib/accountDeletion/manifest.ts: ${missing.join(", ")}`).toEqual([]);
   });
 });
 
@@ -108,22 +117,75 @@ const deleteSource = readFileSync(
   "utf8",
 );
 
+/** Every `tx.<delegate>.<method>({ … });` statement, with its where text. */
+function statements(delegate: string, methods: string[]): { method: string; where: string }[] {
+  const re = new RegExp(`tx\\.${delegate}\\.(${methods.join("|")})\\((\\{[\\s\\S]*?\\})\\);`, "g");
+  return [...deleteSource.matchAll(re)].map((m) => {
+    const body = m[2];
+    const w = body.indexOf("where:");
+    const d = body.indexOf("data:");
+    return { method: m[1], where: w < 0 ? "" : body.slice(w, d > w ? d : undefined) };
+  });
+}
+
+/** The where filters by the user: `<field>: userId` (or `u_${userId}`). */
+function filtersByUser(where: string, field: string): boolean {
+  if (new RegExp(`\\b${field}\\s*:\\s*(userId\\b|\`u_\\$\\{userId\\}\`)`).test(where)) return true;
+  // Shorthand `{ userId }` when the column is literally userId.
+  return field === "userId" && /[{,]\s*userId\s*[,}]/.test(where);
+}
+
+/** Id-list deletes the test accepts instead of a user filter, by model: the
+ *  variable must be one deleteAccount builds from the user's own rows. */
+const ID_LIST_VARS: Record<string, string[]> = {
+  CuppingSession: ["sessionId"], // loop over inner.deleteSessionIds
+  TastingGroupMember: ["memberIds"], // exactEmailMatches over the user's address
+  WaitlistEntry: ["waitlistIds"], // exactEmailMatches over the user's address
+};
+
+function filtersByIdList(where: string, model: string): boolean {
+  return (ID_LIST_VARS[model] ?? []).some((v) =>
+    new RegExp(`\\bid\\s*:\\s*(\\{\\s*in\\s*:\\s*${v}\\s*\\}|${v}\\b)`).test(where),
+  );
+}
+
 describe("deleteAccount covers the manifest", () => {
   for (const e of PROFILE_MANIFEST) {
     if (e.onDelete === "keep") continue;
     const delegate = deletionDelegate(e);
-    it(`${e.model}.${e.field} (${e.onDelete}) has a statement in deleteAccount`, () => {
+    it(`${e.model}.${e.field} (${e.onDelete}) has a user-filtered statement in deleteAccount`, () => {
       expect(delegate, `${e.model} needs a delegate (merge rule or deleteDelegate)`).not.toBeNull();
+      const ok = (s: { where: string }) =>
+        filtersByUser(s.where, e.field) || filtersByIdList(s.where, e.model);
       if (e.onDelete === "erase") {
-        expect(deleteSource).toContain(`tx.${delegate}.deleteMany(`);
+        const st = statements(delegate!, ["deleteMany"]);
+        expect(st.some(ok), `tx.${delegate}.deleteMany filtered by ${e.field}`).toBe(true);
       } else if (e.onDelete === "reassign-tombstone") {
-        expect(deleteSource).toContain(`tx.${delegate}.updateMany(`);
+        const st = statements(delegate!, ["updateMany"]);
+        expect(st.some((s) => filtersByUser(s.where, e.field)), `tx.${delegate}.updateMany by ${e.field}`).toBe(
+          true,
+        );
       } else if (e.onDelete === "delete-if-solo-else-tombstone") {
-        expect(deleteSource).toMatch(new RegExp(`tx\\.${delegate}\\.delete(Many)?\\(`));
-        expect(deleteSource).toContain(`tx.${delegate}.updateMany(`);
+        const del = statements(delegate!, ["delete", "deleteMany"]);
+        expect(del.some(ok), `tx.${delegate}.delete(Many) by ${e.field} or a planned id`).toBe(true);
+        const upd = statements(delegate!, ["updateMany"]);
+        expect(upd.some((s) => filtersByUser(s.where, e.field)), `tx.${delegate}.updateMany by ${e.field}`).toBe(
+          true,
+        );
       }
     });
   }
+
+  it("the statement scanner rejects a statement that lost its user filter", () => {
+    expect(filtersByUser("where: { cupperId: userId }", "cupperId")).toBe(true);
+    expect(filtersByUser("where: { actorKey: `u_${userId}` }", "actorKey")).toBe(true);
+    expect(filtersByUser("where: { userId } }", "userId")).toBe(true);
+    expect(filtersByUser("where: { userId } }", "createdBy")).toBe(false);
+    expect(filtersByUser("where: {}", "cupperId")).toBe(false);
+    expect(filtersByUser("where: { cupperId: placeholderId }", "cupperId")).toBe(false);
+    expect(filtersByIdList("where: { id: { in: memberIds } }", "TastingGroupMember")).toBe(true);
+    expect(filtersByIdList("where: { id: { in: someIds } }", "TastingGroupMember")).toBe(false);
+  });
 
   it("reassigns to a fresh placeholder, never a shared tombstone", () => {
     expect(deleteSource).toContain("deletedProfileId(randomUUID())");

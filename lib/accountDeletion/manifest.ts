@@ -12,7 +12,9 @@
  *    of silently dropping rows when the guest's Profile is deleted.
  *  - `onDelete`: the rule deleteAccount (lib/accountDeletion/deleteAccount.ts,
  *    S8-19) implements. tests/profileRelations.test.ts asserts a matching
- *    statement exists there: `tx.<delegate>.deleteMany` for "erase",
+ *    statement exists there WHOSE `where` FILTERS BY THIS ENTRY'S FIELD and the
+ *    user (`<field>: userId`), or, for id-list deletes, by a named id list the
+ *    test knows: `tx.<delegate>.deleteMany` for "erase",
  *    `tx.<delegate>.updateMany` for "reassign-tombstone", and both a delete and
  *    an updateMany for "delete-if-solo-else-tombstone".
  *
@@ -206,6 +208,18 @@ export const PROFILE_MANIFEST: readonly ManifestEntry[] = [
     merge: { kind: "move", delegate: "aiChatUsage" },
     onDelete: "erase",
     note: "Unique on [userId, day]: the merge sums into the target's row for the same day.",
+  },
+  {
+    model: "SessionParticipant",
+    field: "excludedBy",
+    kind: "bare",
+    merge: {
+      kind: "not-applicable",
+      reason: "a guest owns no session, so it never excludes anyone; moved rows keep the value as is",
+    },
+    onDelete: "reassign-tombstone",
+    note: "S8-12 exclusion trail on kept rows: who excluded the cupper now reads as the placeholder.",
+    deleteDelegate: "sessionParticipant",
   },
   {
     model: "OutboundEmailEvent",
