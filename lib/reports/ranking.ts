@@ -302,10 +302,15 @@ export function sessionStats<S extends RankableSample>(
   ctx: RankContext,
 ): SessionStats {
   const evaluatedCount = samples.filter(hasAnyEvalData).length;
-  const rankScores = ranked.map((r) => r.score).filter((v): v is number => v !== null);
+  // ONE policy for every aggregate: a community number built from fewer than
+  // RANKING_POLICY.minN cuppers is excluded from the average, the community
+  // average, Δ and "best" alike (F-resultados-6).
+  const suppressedIds = new Set(ranked.filter((r) => r.suppressed).map((r) => r.sample.id));
+  const rankScores = ranked
+    .filter((r) => !r.suppressed)
+    .map((r) => r.score)
+    .filter((v): v is number => v !== null);
   const avgScore = average(rankScores);
-  // A community number built from fewer than RANKING_POLICY.minN cuppers is
-  // never crowned "best" (F-resultados-6).
   const bestEntry = ranked.find((r) => r.score !== null && !r.suppressed) ?? null;
 
   const anchorIds = new Set(anchorsOf(samples, referenceId).map((s) => s.id));
@@ -314,11 +319,18 @@ export function sessionStats<S extends RankableSample>(
     .map((s) => myScoreFor(s, ctx.format, ctx.cupsPerSample))
     .filter((v): v is number => v !== null);
   const myAvg = average(myScores);
-  const communityScores = scoredSamples
+  const trusted = scoredSamples.filter((s) => !suppressedIds.has(s.id));
+  const communityScores = trusted
     .map((s) => s.aggregateScore?.communityScore ?? null)
     .filter((v): v is number => v !== null);
   const communityAvg = average(communityScores);
-  const delta = myAvg !== null && communityAvg !== null ? myAvg - communityAvg : null;
+  // Δ compares like with like: the same trusted samples on both sides.
+  const myTrustedAvg = average(
+    trusted
+      .map((s) => myScoreFor(s, ctx.format, ctx.cupsPerSample))
+      .filter((v): v is number => v !== null),
+  );
+  const delta = myTrustedAvg !== null && communityAvg !== null ? myTrustedAvg - communityAvg : null;
 
   return {
     evaluatedCount,

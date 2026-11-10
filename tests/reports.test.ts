@@ -135,6 +135,37 @@ describe("rankSamples — ranking honesty (S8-12, F-resultados-6)", () => {
     expect(st.bestSampleId).toBe("b");
   });
 
+  it("sessionStats: a suppressed sample is out of avg, communityAvg, delta and best alike", () => {
+    const mine = {
+      myEvaluation: { status: "submitted" as const, complete: true },
+      combined: Object.fromEntries(
+        [
+          "fragancia_af",
+          "aroma_af",
+          "sabor_af",
+          "sabor_residual_af",
+          "acidez_af",
+          "dulzor_af",
+          "sensacion_af",
+          "impresion_global",
+        ].map((id) => [`${id}_final`, 8]),
+      ),
+    };
+    const samples = [
+      { ...rs("a", 90, { n: 1 }), ...mine },
+      { ...rs("b", 80, { n: 4 }), ...mine },
+      { ...rs("c", 82, { n: 5 }), ...mine },
+    ];
+    const { ranked } = rankSamples(samples, null, groupCtx);
+    expect(ranked.find((r) => r.sample.id === "a")?.suppressed).toBe(true);
+    const st = sessionStats(samples, ranked, null, groupCtx);
+    expect(st.bestSampleId).toBe("c");
+    expect(st.avgScore).toBeCloseTo(81);
+    expect(st.communityAvg).toBeCloseTo(81);
+    expect(st.myAvg).not.toBeNull();
+    expect(st.delta).toBeCloseTo(st.myAvg! - 81);
+  });
+
   it("n = 3 and 4 are indicative, n = 5 is normal", () => {
     const samples = [rs("a", 90, { n: 3 }), rs("b", 88, { n: 4 }), rs("c", 86, { n: 5 })];
     const { ranked } = rankSamples(samples, null, groupCtx);
