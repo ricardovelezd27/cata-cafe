@@ -177,7 +177,7 @@
     "objective": "Objetivo",
     "objectivePh": "¿Qué quieres aprender con esta sesión?",
     "format": "Formato",
-    "cups": "Tazas por café",
+    "cups": "Tazas por muestra",
     "coffees": "Cafés a evaluar",
     "coffeeName": "Nombre del café",
     "producerRoaster": "Productor / Tostador",
@@ -227,6 +227,7 @@
         "invalid_altitude": "La altitud debe ser un número en msnm (por ejemplo 1800).",
         "sample_without_coffee": "Cada muestra debe estar vinculada a un café.",
         "generic": "No se pudo crear la sesión. Inténtalo de nuevo.",
+        "offline": "Sin conexión: se necesita internet para crear la sesión. Tus datos siguen aquí.",
         "coffee_not_found": "Uno de los cafés seleccionados ya no está disponible. Vuelve a elegirlo.",
         "invalid_name": "Ponle un nombre a la sesión (máx. 120 caracteres).",
         "invalid_date": "La fecha no es válida.",
@@ -242,7 +243,8 @@
       },
       "goToPanel": "Ir al panel",
       "startNow": "Iniciar cata ahora",
-      "goToPanelHint": "Desde el panel puedes lanzar el movimiento sensorial con el grupo y empezar la cata cuando todos estén en la sala."
+      "goToPanelHint": "Desde el panel puedes lanzar el movimiento sensorial con el grupo y empezar la cata cuando todos estén en la sala.",
+      "cupsHint": "Con menos de 5 tazas no se descuentan uniformidad ni defectos: la muestra puntúa solo por sus atributos."
     },
     "express": {
       "title": "Catar ahora",
@@ -256,7 +258,8 @@
       "increment": "Una muestra más",
       "cta": "Catar ahora",
       "creating": "Creando…",
-      "fullWizard": "Configurar sesión completa"
+      "fullWizard": "Configurar sesión completa",
+      "offline": "Sin conexión: se necesita internet para crear la sesión."
     },
     "deleteSession": {
       "title": "Eliminar sesión",
@@ -372,7 +375,10 @@
       "submitBody": "Estas muestras tienen secciones sin completar. Al enviar, el puntaje se calcula sin ellas.",
       "review": "Revisar",
       "continueAnyway": "Continuar de todos modos",
-      "submitAnyway": "Enviar de todos modos"
+      "submitAnyway": "Enviar de todos modos",
+      "outcomeCloses": "Al enviar, la cata se cierra y ya no se podrá editar.",
+      "outcomeStays": "La cata seguirá abierta: te faltan {n} muestras por abrir. Si terminas con las que catiste, esas muestras se quitan y la cata se cierra.",
+      "finishWith": "Terminar con las {n} que catié"
     },
     "leaveGuard": {
       "title": "¿Salir de la cata?",
@@ -597,7 +603,17 @@
     "warmupConfirmStart": "El grupo está en el ejercicio (quedan {time}). ¿Iniciar igual?",
     "warmupConfirmStartYes": "Iniciar igual",
     "warmupStartError": "No se pudo empezar el ejercicio.",
-    "guestRateLimited": "Mucha gente está entrando desde esta red a la vez. Espera un minuto y vuelve a intentarlo, o entra con tu correo."
+    "guestRateLimited": "Mucha gente está entrando desde esta red a la vez. Espera un minuto y vuelve a intentarlo, o entra con tu correo.",
+    "closeRule": "Las notas completas que sigan sin enviar al cerrar quedan fuera de los resultados.",
+    "closeUnsentOne": "1 catador tiene notas completas sin enviar. Si cierras ahora, no se contarán.",
+    "closeUnsentMany": "{count} catadores tienen notas completas sin enviar. Si cierras ahora, no se contarán.",
+    "closeUnsentNone": "Nadie tiene notas completas sin enviar.",
+    "closeImpactLoading": "Revisando notas sin enviar…",
+    "deadlineOpen": "Cierra el {when}",
+    "deadlineSoon": "Cierra pronto: {when}",
+    "deadlinePassed": "El plazo terminó: {when}",
+    "deadlineLocal": "{local} en tu hora",
+    "closesAtLiveNotice": "Con fecha de cierre la cata pasa a tu ritmo: sin sala de espera ni «Iniciar cata»."
   },
   "results": {
     "title": "Resultados de la Sesión",
@@ -643,7 +659,8 @@
       "pending": "{count} cambio(s) guardado(s) en este dispositivo · pendiente de sincronizar",
       "offline": "Sin conexión: {count} cambio(s) se sincronizarán al reconectar.",
       "retry": "Reintentar",
-      "synced": "Cambios sincronizados. Actualizando resultados…"
+      "synced": "Cambios sincronizados. Actualizando resultados…",
+      "closedUnsent": "{count} cambio(s) guardado(s) en este dispositivo no se enviaron porque la cata ya estaba cerrada. No cuentan en los resultados."
     },
     "closeEmails": {
       "label": "Correos de cierre:",
@@ -829,7 +846,10 @@
         "title": "Muestra de referencia",
         "body": "El maestro de cata puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La cata empieza por ella y su calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos, así que cada catador le da siempre 79.00 y solo describe lo que percibe. No entra en el ranking, en el promedio ni en la mejor muestra: es el ancla.\nLo que agrega es contexto: junto a cada muestra verás Δ, la diferencia entre su puntaje y el de la referencia, calculada siempre con el mismo tipo de puntaje que ves al lado (comunitario cuando está visible; si no, el tuyo).\nReferencia, media del grupo y desviación son cosas distintas: la referencia es el punto de partida elegido por el maestro; la media es lo que percibió el grupo; la desviación (±) es cuánto se dispersó el grupo."
       }
-    }
+    },
+    "closedUnsentNotice": "Tenías {count, plural, one {# muestra completa} other {# muestras completas}} sin enviar cuando se cerró la cata. No cuentan en los resultados.",
+    "closedNotice": "La cata se cerró. Lo que enviaste cuenta en los resultados; lo que quedó sin enviar, no.",
+    "finish": {"button": "Terminar cata", "title": "¿Terminar la cata?", "body": "Esto cierra la cata y ya no se podrá editar.", "submitLine": "Se enviarán {n} muestras completas.", "removeLine": "Se quitarán {n} muestras que nunca abriste.", "keepLine": "{n} muestras incompletas quedarán sin puntaje.", "confirm": "Terminar cata", "cancel": "Seguir catando"}
   },
   "community": {
     "score": "Puntaje comunitario",
@@ -847,7 +867,8 @@
     "tasted": "Catado",
     "yourScore": "Tu puntaje",
     "communityScore": "Puntaje comunitario",
-    "sessionDeleted": "Sesión eliminada"
+    "sessionDeleted": "Sesión eliminada",
+    "quickImpression": "Impresión rápida"
   },
   "coffee": {
     "title": "Perfil del café",
@@ -1009,7 +1030,48 @@
     "conflictReplace": "Reemplazar con esta versión",
     "partialSyncNotice": "Mostrando resultados de {included} de {total} participantes. {pending} aún no han sincronizado.",
     "bannerStorageUnavailable": "Este navegador no permite guardar borradores sin conexión. Mantén la conexión activa mientras catas.",
-    "pendingDrafts": "{count} borradores sin sincronizar"
+    "pendingDrafts": "{count} borradores sin sincronizar",
+    "closedUnsentDrafts": "{count} borradores sin enviar: la cata ya estaba cerrada",
+    "unsyncedNotes": "{count} notas sin sincronizar",
+    "conflictDrafts": "{count} cambios esperan tu decisión",
+    "bannerNextAttempt": "Próximo intento en {seconds} s.",
+    "terminalNotice": "{count} nota(s) de esta cata no se pudieron enviar y siguen guardadas en este dispositivo. Revísalas en «Notas sin sincronizar».",
+    "panel": {
+      "title": "Notas sin sincronizar",
+      "intro": "Estas notas quedaron solo en este dispositivo. Puedes leerlas y copiarlas; nada se borra hasta que lo confirmes.",
+      "empty": "No hay notas sin sincronizar.",
+      "statusClosed": "La cata ya estaba cerrada",
+      "statusOrphaned": "La cata o la muestra ya no existe",
+      "statusFailed": "No se pudo enviar",
+      "view": "Ver",
+      "hide": "Ocultar",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "discard": "Descartar",
+      "discardTitle": "¿Descartar esta nota?",
+      "discardBody": "Se borrará de este dispositivo y no se puede recuperar.",
+      "discardConfirm": "Descartar nota",
+      "cancel": "Cancelar",
+      "close": "Cerrar",
+      "openSession": "Ver resultados",
+      "moduleDescriptive": "Descriptiva",
+      "moduleAffective": "Afectiva",
+      "moduleCombined": "Combinada",
+      "modulePhysical": "Física",
+      "moduleExtrinsic": "Origen",
+      "savedAt": "Guardada {date}"
+    },
+    "guard": {
+      "signOutTitle": "Hay cambios solo en este dispositivo",
+      "signOutBody": "{count} cambios no han llegado al servidor. Si cierras sesión se quedan guardados aquí y se enviarán cuando vuelvas a entrar con esta cuenta.",
+      "signOutCancel": "Cancelar",
+      "signOutLeave": "Salir de todos modos",
+      "claimTitle": "Hay cambios sin enviar",
+      "claimBody": "{count} cambios de este invitado no han llegado al servidor. Espera a que se envíen antes de crear la cuenta; si sigues ahora podrían perderse.",
+      "claimCancel": "Esperar",
+      "claimLeave": "Seguir y perder estos",
+      "close": "Cerrar"
+    }
   },
   "onboarding": {
     "welcomeTitle": "Bienvenido a Café Sensible",

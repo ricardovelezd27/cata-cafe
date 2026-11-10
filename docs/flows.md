@@ -26,16 +26,34 @@ join, evaluate, submit, waiting room, offline replay and claim.
 ### The one close routine (2026-09-08)
 
 Every path that ends a session goes through `closeSessionInternal`
-(`lib/closeSession.ts`): **idempotent** status flip (`updateMany where status
-!= closed`, stamps `closedAt`) → **reveal every coffee-linked sample** → 
-`syncCoffeeHistoryForSession` → close emails (group only: each participant gets a
+(`lib/closeSession.ts`), in **two phases** (S8-05). Phase 1 is the **idempotent**
+status flip (`updateMany where status != closed`, stamps `closedAt`). Phase 2,
+`finalizeClosedSession`, is **reveal every coffee-linked sample** -> refire the
+aggregate trigger -> `syncCoffeeHistoryForSession` -> close emails (group only) ->
+stamp `closeFinalizedAt`. A failed phase-2 step is logged at error level
+(`closeSession.finalize`) and leaves the stamp null, so the work is owed: the
+solo owner's resubmit, an owner close (after 5 minutes) or the daily cron's
+repair pass runs phase 2 again (every step is idempotent, the email ledger skips
+sent recipients). A finalized session is a no-op. Close emails (each participant gets a
 link to their results page via login `next=` plus their personal summary PDF —
 `lib/closeEmail.ts`; the full CVA form is downloaded from the results page; legacy
 attach with `CLOSE_EMAIL_ATTACH_CVA=1`; see §6). A second click, a
 concurrent call or a cron retry is a no-op — nothing is re-synced or re-sent.
 Once closed, a session is **read-only**: every mutation runs
 `assertSessionWritable` and throws `session_closed`; `/cup` redirects to
-`/results`; offline drafts for a closed session are discarded on replay.
+`/results`; offline drafts for a closed session are NOT replayed and NOT shown
+as synced: `replayEvaluation` / `replayPhysical` / `replayExtrinsic` answer
+`closed`, the device keeps the module as `closed_unsent` (badge + notice) and the
+results page tells the cupper whether their unsent notes counted.
+
+**Unsent work at close (Kim C1, default b).** Complete drafts that were never sent
+are left OUT of the results (`DRAFT_AT_CLOSE = "exclude"`, `lib/closeRules.ts`);
+they stay in the database. The owner's close dialog shows how many cuppers hold
+such notes (`getCloseImpact`) and states the rule; the close email repeats the
+rule and tells each affected cupper. A 24 h reminder (`deadline_24h`) goes to them
+before an async deadline. `promote_complete` (submit complete drafts at close) is
+implemented as a constant only: off. // TODO(S8-05/C1-d): the owner "accept late
+contribution" action is a post-close write and awaits Kim.
 
 **Expiry rule (S8-01).** A session is also read-only once its `closesAt` has
 passed (`isSessionExpired`, strict `<`, server clock) even though `status` stays
@@ -88,6 +106,7 @@ stateDiagram-v2
     active --> active : cup + auto-save drafts (800ms debounce)
     active --> active : submit with samples still pending
     active --> closed : submitAllEvaluations — every sample submitted\n→ closeSessionInternal (reveal → history)
+    active --> closed : finishSoloSession (Terminar cata)\nsubmit complete drafts, drop unopened samples\n→ closeSessionInternal
     closed --> [*]
     note right of closed
         closed = the session's results ARE its detail view
@@ -95,6 +114,17 @@ stateDiagram-v2
         /cup redirects; mutations throw session_closed)
     end note
 ```
+
+**Manual finish (S8-05, the one bend of "no manual close for solo").** A solo or
+express session with fewer cupped than created samples never auto-closes.
+`finishSoloSession` (owner, solo only) submits the owner's COMPLETE drafts
+(`lib/closeRules.ts planFinish`, same completeness as the results page), removes
+only samples with no evaluation at all (`lib/sampleRemoval.ts`, shared with
+`removeSessionSample`: reference ranks and positions are repaired), keeps partial
+drafts without a score (Kim C2 default a; no editing after closing) and then calls
+`closeSessionInternal`. Surfaces: the submit-guard dialog ("Terminar con las N que
+catié", with the outcome stated beforehand) and a "Terminar cata" button on the
+results banner. Group sessions never see it.
 
 ### Group sessions (live and async)
 
@@ -107,9 +137,19 @@ is enforced inside the transaction). For a **live** session they wait in
 master panel's "Iniciar cata" (idempotent). An **async** session (`isAsync`,
 `closesAt` set) lets them cup immediately and is closed by the **daily cron**
 (`/api/cron/close-expired-sessions`, 06:00 UTC) once `closesAt` passes, or
-earlier by the owner. `closesAt` is the END of the chosen calendar day (UTC,
-`dateOnlyEndOfDay`), so a session with closing date D is closed by the cron on
-D+1 in the early morning — never before the day the owner picked has ended. From
+earlier by the owner. `closesAt` is the END of the chosen calendar day **in the
+owner's IANA zone** (`closesAtZone`, posted from the form's browser;
+`endOfDayInZone`, `lib/closeRules.ts`; a null zone is UTC, the legacy rule), so
+writes stop at the owner's midnight and the cron closes the session on D+1 in the
+early morning — never before the day the owner picked has ended. Everyone who can
+open the session sees the date (`DeadlineBanner`: join confirmation, waiting
+screen, cup header, session list) in the owner's zone with the viewer's local time
+beside it when they differ, stronger in the last 24 h. The cron also sends the
+`deadline_24h` reminder and, for a forgotten live session, one `live_idle`
+reminder to its owner (never a close); both are ledgered in
+`session_reminder_deliveries`. Setting a date on an unstarted live session turns it
+self-paced (no waiting room, no "Iniciar cata"), which the forms say before saving
+(// TODO(S8-05/C7): separating `isAsync` from `closesAt` awaits Kim). From
 `closesAt` on, though, the session is already read-only and its group results are
 visible (expiry rule, §1 above): the cron only flips `status` and sends the emails. Close emails are queued with `after()` and ledgered per
 recipient in `close_email_deliveries`; the owner sees sent / no-email / failed /
@@ -670,6 +710,44 @@ each gate is a pure, tested helper shared by every consumer:
 
 ---
 
+## 7. Offline drafts and replay (S8-09)
+
+```mermaid
+stateDiagram-v2
+  [*] --> pending: edit saved on the device
+  pending --> synced: replay ok
+  pending --> conflict: server holds a submitted row (group)
+  pending --> closed_unsent: session closed or expired
+  pending --> orphaned: sample or session gone for this user
+  pending --> pending: replay failed, retry in 15 s doubling to 5 min
+  pending --> failed: 5 failed runs
+  failed --> pending: cupper taps Reintentar
+  conflict --> synced: keep submitted, or replace and replay
+  closed_unsent --> [*]: cupper discards after reading or copying
+  orphaned --> [*]: cupper discards after reading or copying
+```
+
+- Replay runs on the online edge, on resume (tab visible, `pageshow`, via `hooks/useResume.ts`),
+  once on an online mount and on the retry schedule. One module-level lock means the cup screen,
+  the results pill and the guard provider never replay at once.
+- The replay result is applied only if the module's `updatedAt` still equals the one sent
+  (`applyOutcome`, `lib/offline/status.ts`): an edit made mid-flight stays `pending`.
+- Only `pending` blocks the final submit. `failed`, `closed_unsent` and `orphaned` never do; the
+  cup screen names them in a notice and the app-shell badge opens "Notas sin sincronizar"
+  (read, copy, confirmed discard; nothing is deleted automatically).
+- `conflict` is rebuilt from the stored blobs, so it survives a reload.
+- Sign-out and the guest claim ask first when anything exists only on the device
+  (`UnsyncedGuardProvider`). The claim stores the anonymous id in `cata_claim_anon`; the next app
+  mount under the signed-in account re-keys the blobs (`rekeyUserBlobs`).
+- Replay actions return `synced | conflict | closed | pending | gone | rejected` and never throw
+  for those; `syncEvaluation` keeps its legacy contract for cached bundles.
+- Service worker v3: static cache capped at 120 entries, `/app/insights` and `/app/profile`
+  never cached, page caches purged when the signed-in id differs from the last one.
+- TODO(C1): sending a `closed_unsent` note to the session owner is a post-close write and waits
+  for Kim. TODO(E5): creating a session offline waits for Kim; only detection and the message ship.
+
+---
+
 ## Maintenance checklist
 
 When you touch any of these, update the matching diagram **in the same PR**:
@@ -681,3 +759,22 @@ When you touch any of these, update the matching diagram **in the same PR**:
 - Group membership linking, invites, posts, leave/remove → §3
 - Any new cross-section navigation or a new consumer of `UserCoffeeHistory` → §4
 - Results page tab structure, gating (owner vs. participant), or the drill-down dialog → §5
+
+## Scoring below five cups (S8-04)
+
+```mermaid
+flowchart TD
+  A[Cupper submits or edits an evaluation] --> B{cupsPerSample >= 5?}
+  B -- yes --> C[Flags count: -2 per non-uniform, -4 per defective cup individually; 10/total and 30/total per cup in the community score]
+  B -- no --> D[Flags are stored but ignored: score comes from the 8 attributes only]
+  C --> E[Trigger trg_recompute_aggregate writes aggregate_scores]
+  D --> E
+  F[Edit of an already submitted row] -->|guarded isDraft write| E
+  G[closeSessionInternal] -->|refireAggregates| E
+  E --> H[syncCoffeeHistoryForSession]
+  H --> I{participantCount > 0?}
+  I -- yes --> J[history communityScore = stored score]
+  I -- no --> K[history communityScore = null, shown as a dash]
+```
+
+The same `penaltiesApply` rule feeds the individual score, the group aggregate shown on results and the trigger, so a coffee never shows two scores. Sessions under five cups carry an "Impresión rápida" tag in history and on the coffee profile.

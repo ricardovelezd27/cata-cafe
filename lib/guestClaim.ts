@@ -281,6 +281,9 @@ export async function mergeGuestData(
     // A guest has no address, so every row is "skipped": the account must not
     // inherit a ledger that would suppress its own close email.
     await tx.closeEmailDelivery.deleteMany({ where: { userId: anon } });
+    // Same for the deadline-reminder ledger (S8-05): the guest's rows only say
+    // "no address", and keeping them would stop the account being reminded.
+    await tx.sessionReminderDelivery.deleteMany({ where: { userId: anon } });
 
     // ── Profile ────────────────────────────────────────────────────────────
     // A brand-new account (created by this very sign-in, i.e. after the claim

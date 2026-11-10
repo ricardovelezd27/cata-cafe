@@ -20,7 +20,7 @@ export const ACTION_ERROR_CODES = [
   "coffee_not_usable",
   "invalid_input",
   "rate_limited", // lib/emailBudget.ts refused a send (S8-03)
-  "offline", // client-only: the device has no connection (S8-07, sign-out needs the server)
+  "offline", // client-side only: no connection / the request never reached the server (S8-09; S8-07 sign-out needs the server)
   "email_exists", // requestEmailChange: that address already has an account (S8-07)
   "already_claimed", // confirmGuestClaim: the guest account is gone or no longer anonymous (S8-07)
   "conflict", // Prisma P2002 — unique constraint
@@ -62,4 +62,14 @@ export function classifyActionError(err: unknown): ActionErrorCode {
   const code = (err as { code?: unknown } | null)?.code;
   if (typeof code === "string" && code in PRISMA_CODE_MAP) return PRISMA_CODE_MAP[code];
   return "unknown";
+}
+
+/** Client-side: did this failure happen because the request never reached the
+ *  server (no signal, dropped connection)? Used to show the specific `offline`
+ *  copy instead of a generic `unknown` toast (S8-09, F-04-3). Pure: pass the
+ *  navigator's `onLine` flag in. */
+export function isNetworkFailure(err: unknown, navigatorOnLine?: boolean): boolean {
+  if (navigatorOnLine === false) return true;
+  if (err instanceof TypeError) return /fetch|network|load failed/i.test(err.message);
+  return false;
 }

@@ -177,7 +177,7 @@
     "objective": "Objective",
     "objectivePh": "What do you want to learn from this session?",
     "format": "Format",
-    "cups": "Cups per coffee",
+    "cups": "Cups per sample",
     "coffees": "Coffees to evaluate",
     "coffeeName": "Coffee name",
     "producerRoaster": "Producer / Roaster",
@@ -227,6 +227,7 @@
         "invalid_altitude": "Altitude must be a number in masl (e.g. 1800).",
         "sample_without_coffee": "Each sample must be linked to a coffee.",
         "generic": "Couldn't create the session. Please try again.",
+        "offline": "No connection: you need internet to create the session. Your input is still here.",
         "coffee_not_found": "One of the selected coffees is no longer available. Please pick it again.",
         "invalid_name": "Give the session a name (max. 120 characters).",
         "invalid_date": "That date isn't valid.",
@@ -242,7 +243,8 @@
       },
       "goToPanel": "Go to the panel",
       "startNow": "Start the cupping now",
-      "goToPanelHint": "From the panel you can run the sensory movement with the group and start the cupping once everyone is in the room."
+      "goToPanelHint": "From the panel you can run the sensory movement with the group and start the cupping once everyone is in the room.",
+      "cupsHint": "With fewer than 5 cups, uniformity and defects are not deducted: the sample is scored on its attributes only."
     },
     "express": {
       "title": "Cup now",
@@ -256,7 +258,8 @@
       "increment": "One sample more",
       "cta": "Cup now",
       "creating": "Creating…",
-      "fullWizard": "Set up a full session"
+      "fullWizard": "Set up a full session",
+      "offline": "No connection: you need internet to create the session."
     },
     "deleteSession": {
       "title": "Delete session",
@@ -372,7 +375,10 @@
       "submitBody": "These samples have unfinished sections. Once submitted, the score is calculated without them.",
       "review": "Review",
       "continueAnyway": "Continue anyway",
-      "submitAnyway": "Submit anyway"
+      "submitAnyway": "Submit anyway",
+      "outcomeCloses": "Sending closes the session and it can no longer be edited.",
+      "outcomeStays": "The session will stay open: {n} samples are still unopened. If you finish with the ones you cupped, those samples are removed and the session closes.",
+      "finishWith": "Finish with the {n} I cupped"
     },
     "leaveGuard": {
       "title": "Leave the tasting?",
@@ -597,7 +603,17 @@
     "warmupConfirmStart": "The group is still in the exercise ({time} left). Start anyway?",
     "warmupConfirmStartYes": "Start anyway",
     "warmupStartError": "The exercise couldn't be started.",
-    "guestRateLimited": "A lot of people are joining from this network at once. Wait a minute and try again, or sign in with your email."
+    "guestRateLimited": "A lot of people are joining from this network at once. Wait a minute and try again, or sign in with your email.",
+    "closeRule": "Complete notes that are still unsent when the session closes are left out of the results.",
+    "closeUnsentOne": "1 cupper has complete notes that are still unsent. If you close now, they will not be counted.",
+    "closeUnsentMany": "{count} cuppers have complete notes that are still unsent. If you close now, they will not be counted.",
+    "closeUnsentNone": "Nobody has complete notes waiting to be sent.",
+    "closeImpactLoading": "Checking for unsent notes…",
+    "deadlineOpen": "Closes {when}",
+    "deadlineSoon": "Closing soon: {when}",
+    "deadlinePassed": "The deadline has passed: {when}",
+    "deadlineLocal": "{local} your time",
+    "closesAtLiveNotice": "With a closing date the cupping becomes self-paced: no waiting room and no \"Start cupping\" button."
   },
   "results": {
     "title": "Session Results",
@@ -643,7 +659,8 @@
       "pending": "{count} change(s) saved on this device · waiting to sync",
       "offline": "Offline: {count} change(s) will sync when you reconnect.",
       "retry": "Retry",
-      "synced": "Changes synced. Refreshing results…"
+      "synced": "Changes synced. Refreshing results…",
+      "closedUnsent": "{count} change(s) saved on this device were not sent because the session was already closed. They do not count in the results."
     },
     "closeEmails": {
       "label": "Close emails:",
@@ -829,7 +846,10 @@
         "title": "Reference sample",
         "body": "The session master can mark one sample as the reference: a shared starting point the others are read against. The tasting starts with it and its quality is pinned at 5 (neither high nor low) on every attribute, so every cupper gives it 79.00 and only describes what they perceive. It sits outside the ranking, the average and the best sample: it is the anchor.\nWhat it adds is context: next to each sample you'll see Δ, the difference between its score and the reference's, always computed on the same kind of score you see beside it (community when visible, otherwise your own).\nReference, group mean and deviation are different things: the reference is the starting point the master chose; the mean is what the group perceived; the deviation (±) is how much the group spread."
       }
-    }
+    },
+    "closedUnsentNotice": "You had {count, plural, one {# complete sample} other {# complete samples}} unsent when the session closed. They do not count in the results.",
+    "closedNotice": "The session closed. What you sent counts in the results; anything left unsent does not.",
+    "finish": {"button": "Finish cupping", "title": "Finish the cupping?", "body": "This closes the session and it can no longer be edited.", "submitLine": "{n} complete samples will be sent.", "removeLine": "{n} samples you never opened will be removed.", "keepLine": "{n} incomplete samples will stay without a score.", "confirm": "Finish cupping", "cancel": "Keep cupping"}
   },
   "community": {
     "score": "Community score",
@@ -847,7 +867,8 @@
     "tasted": "Tasted",
     "yourScore": "Your score",
     "communityScore": "Community score",
-    "sessionDeleted": "Session deleted"
+    "sessionDeleted": "Session deleted",
+    "quickImpression": "Quick impression"
   },
   "coffee": {
     "title": "Coffee profile",
@@ -1009,7 +1030,48 @@
     "conflictReplace": "Replace with this version",
     "partialSyncNotice": "Showing results for {included} of {total} participants. {pending} have not yet synced.",
     "bannerStorageUnavailable": "This browser doesn't allow saving offline drafts. Keep your connection active while cupping.",
-    "pendingDrafts": "{count} drafts not synced"
+    "pendingDrafts": "{count} drafts not synced",
+    "closedUnsentDrafts": "{count} drafts not sent: the session was already closed",
+    "unsyncedNotes": "{count} unsynced notes",
+    "conflictDrafts": "{count} changes need your decision",
+    "bannerNextAttempt": "Next attempt in {seconds} s.",
+    "terminalNotice": "{count} note(s) from this session could not be sent and are still saved on this device. Review them under \"Unsynced notes\".",
+    "panel": {
+      "title": "Unsynced notes",
+      "intro": "These notes exist only on this device. You can read and copy them; nothing is deleted until you confirm.",
+      "empty": "There are no unsynced notes.",
+      "statusClosed": "The session was already closed",
+      "statusOrphaned": "The session or sample no longer exists",
+      "statusFailed": "Could not be sent",
+      "view": "View",
+      "hide": "Hide",
+      "copy": "Copy",
+      "copied": "Copied",
+      "discard": "Discard",
+      "discardTitle": "Discard this note?",
+      "discardBody": "It will be deleted from this device and cannot be recovered.",
+      "discardConfirm": "Discard note",
+      "cancel": "Cancel",
+      "close": "Close",
+      "openSession": "View results",
+      "moduleDescriptive": "Descriptive",
+      "moduleAffective": "Affective",
+      "moduleCombined": "Combined",
+      "modulePhysical": "Physical",
+      "moduleExtrinsic": "Origin",
+      "savedAt": "Saved {date}"
+    },
+    "guard": {
+      "signOutTitle": "Some changes exist only on this device",
+      "signOutBody": "{count} changes have not reached the server. If you sign out they stay saved here and are sent when you sign back in with this account.",
+      "signOutCancel": "Cancel",
+      "signOutLeave": "Sign out anyway",
+      "claimTitle": "Some changes have not been sent",
+      "claimBody": "{count} changes from this guest have not reached the server. Wait for them to send before creating the account; if you continue now they could be lost.",
+      "claimCancel": "Wait",
+      "claimLeave": "Continue and lose these",
+      "close": "Close"
+    }
   },
   "onboarding": {
     "welcomeTitle": "Welcome to Café Sensible",

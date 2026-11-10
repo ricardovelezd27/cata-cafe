@@ -14,6 +14,7 @@ import { Select } from "@/components/ui/Select";
 import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useActionFeedback } from "@/components/ui/Toast";
+import { browserZone, dateInZone } from "@/lib/closeRules";
 
 export type EditSessionFormTranslations = {
   name: string;
@@ -48,6 +49,7 @@ export type EditSessionFormTranslations = {
   closesAt: string;
   closesAtHint: string;
   closesAtPast: string;
+  closesAtLiveNotice: string;
   sessionClosed: string;
   warmupLocked: string;
   warmup: { toggle: string; label: string; hint: string; minutes: string };
@@ -65,11 +67,6 @@ const labelCls = "block text-[11px] font-semibold uppercase tracking-widest text
 
 const FORMAT_OPTIONS = ["descriptive", "affective", "combined"] as const;
 
-/** UTC calendar date, same rule as the wizard and `planClosesAtChange` (the
- *  server closes at END of the chosen day in UTC), so both forms agree. */
-function utcDateString(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export function EditSessionForm({
   locale,
@@ -115,6 +112,8 @@ export function EditSessionForm({
   const [cupsInput, setCupsInput] = useState(String(initial.cupsPerSample));
   const [groupId, setGroupId] = useState(initial.groupId ?? "");
   const [closesAt, setClosesAt] = useState(initial.closesAt);
+  // Today in the owner's own zone (see the date input below).
+  const [todayMin] = useState(() => dateInZone(Date.now(), browserZone()));
   const [warmupOn, setWarmupOn] = useState(initial.warmupExerciseId !== null);
   const [warmupId, setWarmupId] = useState<WarmupId>(
     (initial.warmupExerciseId as WarmupId | null) ?? "eyes",
@@ -199,7 +198,9 @@ export function EditSessionForm({
               groupId: groupId || null,
               // Only send a changed date: re-posting an unchanged one failed
               // once the stored date had passed.
-              ...(closesAt !== initial.closesAt ? { closesAt: closesAt || null } : {}),
+              ...(closesAt !== initial.closesAt
+                ? { closesAt: closesAt || null, closesAtZone: closesAt ? browserZone() : null }
+                : {}),
             }
           : {}),
         ...(!locked ? { format, cupsPerSample: cups } : {}),
@@ -411,7 +412,8 @@ export function EditSessionForm({
               type="date"
               className={inputCls}
               value={closesAt}
-              min={utcDateString()}
+              suppressHydrationWarning
+              min={todayMin}
               disabled={closed}
               onChange={(e) => {
                 setClosesAt(e.target.value);
@@ -419,6 +421,10 @@ export function EditSessionForm({
               }}
             />
             <p className="mt-1 text-xs text-on-surface-variant">{t.closesAtHint}</p>
+            {/* F-sesiones-12: a date turns a live cupping into a self-paced one. */}
+            {!closed && !initial.started && !initial.closesAt && closesAt && (
+              <p className="mt-1 text-xs font-medium text-secondary">{t.closesAtLiveNotice}</p>
+            )}
           </div>
           <div>
             <label className={labelCls}>{t.linkedGroup}</label>

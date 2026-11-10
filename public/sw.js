@@ -3,13 +3,15 @@
 // Bump SW_VERSION whenever a change would make old cached entries incompatible
 // (e.g. cache-key logic changes, new required exclusion rule). Bumping it
 // forces old caches to be dropped on the next activate.
-const SW_VERSION = "v2"; // v2 (2026-09-08): locale-prefixed /auth/* excluded from the page cache
+const SW_VERSION = "v3"; // v3 (2026-11, S8-09): static cache capped, insights/profile never cached (v2: locale-prefixed /auth/* excluded)
 const STATIC_CACHE = `cata-static-${SW_VERSION}`;
 const PAGES_CACHE = `cata-pages-${SW_VERSION}`;
 // RSC flight payloads live in their own cache so a navigation fallback can
 // never serve one where an HTML document is expected.
 const RSC_CACHE = `cata-rsc-${SW_VERSION}`;
 const MAX_PAGES_ENTRIES = 60;
+// Hashed /_next/static assets pile up across deployments; keep the newest.
+const MAX_STATIC_ENTRIES = 120;
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -101,12 +103,18 @@ self.addEventListener("fetch", (event) => {
         const response = await fetch(request);
         if (response.status === 200 && response.type === "basic") {
           cache.put(request, response.clone());
+          event.waitUntil(trimCache(STATIC_CACHE, MAX_STATIC_ENTRIES));
         }
         return response;
       })(),
     );
     return;
   }
+
+  // Per-user admin/account pages are never cached: on a shared tablet the next
+  // person could be served the previous user's insights or profile after a
+  // network blip (S8-09, F-offline-9). Plain network, like any other pass-through.
+  if (/^\/(?:[a-z]{2}\/)?app\/(?:insights|profile)(?:\/|$)/.test(url.pathname)) return;
 
   // 2. Navigations + RSC data fetches: network-first, falling back to cache
   // so a reload/navigation while offline still renders the last-seen page.

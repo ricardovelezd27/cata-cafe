@@ -19,6 +19,7 @@ export default async function SessionsList({
   const t = await getTranslations("session");
   const tc = await getTranslations("common");
   const tw = await getTranslations("warmup");
+  const tg = await getTranslations("group");
 
   const supabase = await createClient();
   const {
@@ -55,6 +56,8 @@ export default async function SessionsList({
         isGroup: s.isGroup,
         samplesCount: s.samples.length,
         participantsCount: s.participants.length,
+        closesAt: s.closesAt?.toISOString() ?? null,
+        closesAtZone: s.closesAtZone,
         groupName: s.group?.name ?? null,
         isOwner,
         isParticipant,
@@ -99,6 +102,8 @@ export default async function SessionsList({
         isGroup: s.isGroup,
         samplesCount: s.samples.length,
         participantsCount: s.participants.length,
+        closesAt: s.closesAt?.toISOString() ?? null,
+        closesAtZone: s.closesAtZone,
         groupName: s.group?.name ?? null,
         isOwner: true,
         isParticipant: false,
@@ -114,6 +119,8 @@ export default async function SessionsList({
         isGroup: s.isGroup,
         samplesCount: s.samples.length,
         participantsCount: s.participants.length,
+        closesAt: s.closesAt?.toISOString() ?? null,
+        closesAtZone: s.closesAtZone,
         groupName: null,
         isOwner: false,
         isParticipant: true,
@@ -182,6 +189,12 @@ export default async function SessionsList({
     newSessionLabel: t("new"),
     duplicateLabel: tc("duplicate"),
     duplicateError: tc("duplicateError"),
+    deadline: {
+      open: tg.raw("deadlineOpen") as string,
+      soon: tg.raw("deadlineSoon") as string,
+      passed: tg.raw("deadlinePassed") as string,
+      local: tg.raw("deadlineLocal") as string,
+    },
   };
 
   return (

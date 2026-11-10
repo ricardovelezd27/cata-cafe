@@ -92,6 +92,8 @@ export default async function ClaimPage({
           back={safeBack}
           home={home}
           claimUrl={claimUrl}
+          anonId={verified!.anonymousUserId}
+          accountId={user.id}
           strings={{
             title: t("title"),
             body: t("body", {

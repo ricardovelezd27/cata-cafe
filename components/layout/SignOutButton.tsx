@@ -6,6 +6,7 @@ import { signOut, switchAccount } from "@/app/actions/auth";
 import { clearLocalDeviceState } from "@/lib/offline/deviceState";
 import { stripLocale } from "@/lib/guestScope";
 import { useGuestGate, type GuestLeaveTranslations } from "@/components/guest/GuestGateProvider";
+import { useUnsyncedGuard } from "@/components/offline/UnsyncedGuardProvider";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { Button } from "@/components/ui/Button";
 import { useActionFeedback } from "@/components/ui/Toast";
@@ -45,6 +46,7 @@ export function SignOutButton({
   const feedback = useActionFeedback();
   const { isGuest, leave: t } = useGuestGate();
   const pathname = usePathname();
+  const guard = useUnsyncedGuard();
 
   const needsConfirm = isGuest || mode === "signOutEverywhere";
 
@@ -54,6 +56,13 @@ export function SignOutButton({
       return;
     }
     startTransition(async () => {
+      // Drafts that exist only on this device: sync first, else warn (S8-09,
+      // F-offline-5). They stay on disk either way; the cupper just knows.
+      // Runs after the guest / everywhere confirmation and before the server.
+      if (guard) {
+        setConfirmOpen(false);
+        if (!(await guard.confirmLeave("signOut"))) return;
+      }
       const promise =
         mode === "switchAccount"
           ? switchAccount(locale)

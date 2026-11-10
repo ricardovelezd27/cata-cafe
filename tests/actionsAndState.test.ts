@@ -86,8 +86,8 @@ describe("planClosesAtChange", () => {
   });
 
   it("clears the close on an async session with cuppers → live, manual close", () => {
-    expect(planClosesAtChange(group, "", NOW)).toEqual({ closesAt: null, isAsync: false });
-    expect(planClosesAtChange(group, null, NOW)).toEqual({ closesAt: null, isAsync: false });
+    expect(planClosesAtChange(group, "", NOW)).toEqual({ closesAt: null, closesAtZone: null, isAsync: false });
+    expect(planClosesAtChange(group, null, NOW)).toEqual({ closesAt: null, closesAtZone: null, isAsync: false });
   });
 
   it("rejects a past date and malformed input", () => {

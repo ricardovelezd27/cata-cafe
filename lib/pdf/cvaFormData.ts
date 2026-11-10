@@ -29,7 +29,7 @@ import {
 import { resolveDescriptor, normalizeDescriptorId, legacyDescriptorFamily } from "@/lib/descriptors";
 import { EXPRESS_NOTE_KEY } from "@/lib/expressSession";
 import { sanitizePdfText } from "@/lib/pdf/text";
-import { calcIndividualBreakdown, isAffectiveComplete } from "@/lib/scoring";
+import { calcIndividualBreakdown, isAffectiveComplete, penaltiesApply as penaltiesApplyRule } from "@/lib/scoring";
 
 export type Locale = "es" | "en";
 type D = Record<string, unknown>;
@@ -826,7 +826,7 @@ export function buildCvaFormData(input: CvaFormInput): CvaSampleSheet {
   const nonUniform = bools(cupSource, "tazas_no_uniformes", cupsPerSample);
   const defective = bools(cupSource, "tazas_defectuosas", cupsPerSample);
   const defectTipoRaw = arr(cupSource, "defecto_tipo");
-  const penaltiesApply = input.cupsPerSample >= 5;
+  const penaltiesApply = penaltiesApplyRule(input.cupsPerSample);
   const cups: CupModel = {
     cupsPerSample,
     penaltiesApply,

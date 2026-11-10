@@ -187,6 +187,14 @@ export const PROFILE_MANIFEST: readonly ManifestEntry[] = [
     note: "Ledger of close emails; a guest's rows are 'skipped' (no address), so the account must not inherit them.",
   },
   {
+    model: "SessionReminderDelivery",
+    field: "userId",
+    kind: "bare",
+    merge: { kind: "erase", delegate: "sessionReminderDelivery" },
+    onDelete: "erase",
+    note: "Ledger of deadline reminders (S8-05); a guest's rows are 'skipped' (no address), so the account must not inherit them.",
+  },
+  {
     model: "AiChatUsage",
     field: "userId",
     kind: "bare",

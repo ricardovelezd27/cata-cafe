@@ -8,6 +8,7 @@ import { Button, ButtonLink } from "@/components/ui";
 import { useActionFeedback } from "@/components/ui/Toast";
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { clearLocalDeviceState } from "@/lib/offline/deviceState";
+import { CLAIM_DONE_KEY, serializeDone } from "@/lib/offline/claimMarker";
 import type { ActionErrorCode } from "@/lib/actionResult";
 
 export type ClaimCardStrings = {
@@ -42,6 +43,8 @@ export function ClaimCard({
   back,
   home,
   claimUrl,
+  anonId,
+  accountId,
   strings: t,
 }: {
   locale: "es" | "en";
@@ -50,6 +53,10 @@ export function ClaimCard({
   home: string;
   /** This page's own URL (token + back): where "Usar otra cuenta" returns to. */
   claimUrl: string;
+  /** The guest id the claim token names (S8-09 claim completion marker). */
+  anonId: string;
+  /** The signed-in account that is confirming the merge. */
+  accountId: string;
   strings: ClaimCardStrings;
 }) {
   const router = useRouter();
@@ -70,6 +77,14 @@ export function ClaimCard({
       try {
         const result = await confirmGuestClaim(locale, token, back);
         if (result.ok) {
+          // S8-09: record who completed which claim so UnsyncedGuardProvider
+          // re-keys the guest's offline drafts to THIS account and no other
+          // (lib/offline/claimMarker.ts). Written only once the merge succeeded.
+          try {
+            window.localStorage.setItem(CLAIM_DONE_KEY, serializeDone(anonId, accountId));
+          } catch {
+            // private mode: the drafts stay under the guest id on this device
+          }
           router.replace(result.data.next);
           router.refresh();
           return;

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { joinBlock } from "@/lib/joinability";
 import { GuestJoinForm } from "@/components/join/GuestJoinForm";
 import { JoinSessionForm } from "@/components/join/JoinSessionForm";
+import { DeadlineBanner } from "@/components/session/DeadlineBanner";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,9 @@ export default async function JoinPage({
   // Validate invite token
   const invite = await prisma.sessionInvite.findUnique({
     where: { token },
-    include: { session: { select: { id: true, name: true, status: true, closesAt: true } } },
+    include: {
+      session: { select: { id: true, name: true, status: true, closesAt: true, closesAtZone: true } },
+    },
   });
 
   // Same rule as checkJoinable and joinViaToken (lib/joinability.ts). A CLOSED
@@ -37,6 +40,21 @@ export default async function JoinPage({
   // closed state (S8-07, F-guest-3).
   const block = joinBlock(invite, invite?.session);
   const closedForVisitor = block === "session_closed" && !user;
+
+  // F-grupal-asincrona-3: the closing date is visible before committing to join.
+  const deadline = invite ? (
+    <DeadlineBanner
+      closesAt={invite.session.closesAt?.toISOString() ?? null}
+      zone={invite.session.closesAtZone}
+      locale={locale}
+      translations={{
+        open: t.raw("deadlineOpen") as string,
+        soon: t.raw("deadlineSoon") as string,
+        passed: t.raw("deadlinePassed") as string,
+        local: t.raw("deadlineLocal") as string,
+      }}
+    />
+  ) : null;
 
   if (closedForVisitor && invite) {
     return (
@@ -93,6 +111,7 @@ export default async function JoinPage({
             </h1>
             <p className="text-sm text-brown-mid mt-1">{t("joinSession")}</p>
           </div>
+          {deadline}
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-brown-mid mb-2">
               {t("continueAsGuest")}
@@ -140,6 +159,7 @@ export default async function JoinPage({
           </h1>
           <p className="text-sm text-brown-mid mt-1">{t("joinSession")}</p>
         </div>
+        {deadline}
         <JoinSessionForm
           token={token}
           locale={locale}

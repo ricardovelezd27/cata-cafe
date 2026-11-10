@@ -724,6 +724,134 @@ tables while the new code is deployed.
 
 ---
 
+## §12. Supabase — apply PHASE 23 (one score below five cups, 2026-11, S8-04)
+
+**When:** any time after the deploy; the new app is correct without it for what users SEE
+(group results already ignored deductions under 5 cups), but the STORED score used by the
+coffee history and profile only changes once this is applied. No Prisma migration. Apply in the
+Supabase **SQL editor of the production project** (there is only one).
+
+**Tell Kim first.** The recompute (step 4) changes the stored community score of every
+past session with fewer than 5 cups per sample and a flagged cup, once. Those scores go UP
+(deductions disappear). Sessions with 5 or more cups never move.
+
+**Steps**
+
+1. **Pre-flight** (read-only). The live function must still be the PHASE 11 body:
+
+   ```sql
+   select pg_get_functiondef('public.recompute_aggregate_score()'::regprocedure);
+   ```
+
+   It must contain `IF v_total_cups > 0 THEN` and not `v_cups_per_sample >= 5`. If it differs, stop.
+2. **Dry run** (changes nothing): paste all of `prisma/sql/dry-runs/phase23_dry_run.sql` and run it.
+   It ends with a red error starting `PHASE 23 DRY RUN: NOTHING WAS APPLIED`; that error is the
+   expected result. Line 3 must say `0` (no row with 5 or more cups changes) and line 4 must show `{search_path=public}`. Line 2 is how many
+   past aggregates will change. Any other error: stop and report it.
+3. **STEP 1:** run the `CREATE OR REPLACE FUNCTION recompute_aggregate_score()` block of PHASE 23
+   in `prisma/sql/rls_and_triggers.sql`. Nothing stored changes yet.
+4. **STEP 2 (recompute):** run `UPDATE evaluations SET "isDraft" = "isDraft" WHERE "isDraft" = false;`
+   (idempotent; a second run changes nothing).
+5. **History:** from the checkout you choose, `npx tsx scripts/resync-low-cup-history.ts` (dry run:
+   prints the rows that would change), then `npx tsx scripts/resync-low-cup-history.ts --apply`.
+6. **Check:** pick one session with fewer than 5 cups and a flagged cup:
+
+   ```sql
+   select a."avgRawScore", a."communityScore" from aggregate_scores a
+   join session_samples ss on ss.id = a."sessionSampleId"
+   where ss."sessionId" = '<session id>';
+   ```
+
+   Before step 4 `communityScore` is below `avgRawScore`; after it equals `avgRawScore` rounded to
+   0.25. The results page, the coffee profile and the history now show the same number.
+   Also confirm the PHASE 18 `search_path` pin survived STEP 1:
+
+   ```sql
+   select proconfig from pg_proc where proname = 'recompute_aggregate_score';  -- expect {search_path=public}
+   ```
+
+   Then Security Advisor: no new findings expected.
+
+**Rollback:** re-create the previous function body (kept verbatim in the PHASE 23 comment)
+and re-run step 4, then step 5. Nothing is deleted: the cup flags stay in the evaluations.
+
+---
+
+## §13. Database: apply the `close_lifecycle` migration (2026-11, S8-05)
+
+What it is for: the closing date keeps the owner's time zone, a closed session records
+whether its second phase (history, emails) finished so a failed close can be repaired, and
+reminder emails get their own ledger. Additive only; no Supabase SQL. Prisma migrations are
+NOT applied by the deploy: run it yourself, **before** the deploy, from the checkout that
+contains `prisma/migrations/20261111090000_close_lifecycle/`.
+
+**Steps**
+
+1. From that checkout (with `.env.local` or `DIRECT_URL` pointing at the production
+   database; there is only one): `npx prisma migrate deploy`. It must report exactly one
+   migration applied, `20261111090000_close_lifecycle`.
+2. **Check** (Supabase SQL editor, read-only):
+
+   ```sql
+   select count(*) filter (where status = 'closed' and "closeFinalizedAt" is null) as owed,
+          count(*) filter (where status = 'closed') as closed
+   from cupping_sessions;
+   ```
+
+   `owed` must be `0` right after the migration (history was backfilled to finalized).
+3. Deploy. The next daily cron (06:00 UTC) now also runs the repair and reminder passes inside
+   `close-expired-sessions`; there is no new cron entry. In the JSON response look for
+   `repair` and `reminders`.
+4. **After the deploy:** a session whose close emails or history failed shows up as `owed` in
+   the query above after 5 minutes; the next cron run repairs it. Vercel logs: search
+   `closeSession.finalize` (error level) for the step that failed.
+
+**Rollback:** the deploy can be reverted freely (the columns are nullable and unused by old
+code). Dropping the columns/table is not needed.
+
+---
+
+## §14. Offline sync hardening, service worker v3 (2026-11, S8-09)
+
+What it is for: offline drafts get explicit end states (nothing is dropped silently), the
+replay retries by itself, and the service worker stops serving stale or other users' pages.
+**No migration and no Supabase SQL.** The one thing to know before deploying:
+
+- `public/sw.js` goes from `v2` to `v3`. On the first visit after the deploy every
+  browser drops its old `cata-static-*`, `cata-pages-*` and `cata-rsc-*` caches once and
+  rebuilds them. Expect one slower first load per device and, for a cupper who is OFFLINE
+  at that moment with an uncached page, the "need connection" screen. Deploy outside a live
+  tasting. Drafts in IndexedDB are not touched.
+
+**Steps**
+
+1. Deploy. Nothing to run.
+2. **Check** on a phone after the deploy: DevTools or Safari Web Inspector, Application,
+   Cache Storage shows only `cata-*-v3` caches; `/app/insights` and `/app/profile` are not
+   in `cata-pages-v3`.
+
+**Device checks (physical iPhone and a low-end Android; audit 15 section 5)**
+
+- Lock the phone mid-cupping with a pending draft, unlock: the replay runs without a tap.
+- Turn the server off (or airplane mode on a resumed tab), watch "Próximo intento en N s";
+  after 5 failed attempts the module is parked and "Reintentar sincronización" appears.
+- Delete a session from a second device while the first holds a draft, reconnect: the draft
+  appears under "Notas sin sincronizar", no endless retry.
+- Sign out with a pending draft: the warning dialog names the count.
+- A guest with a pending draft taps "Guardar mis resultados": the dialog names the count;
+  after signing in, the draft replays under the new account (the marker is localStorage
+  `cata_claim_anon`).
+- Shared tablet: user A signs out, B signs in, go offline: A's pages are not served.
+
+**Not in this PR (owned by S8-15):** `navigator.storage.persist()` and the 3-day stale-draft
+warning.
+
+**Rollback:** revert the deploy. Reverting `sw.js` to `v2` evicts the v3 caches again on the
+next activate; blobs written with the new statuses (`failed`, `orphaned`) are read by old
+code as unknown statuses and simply never replay, so keep them readable by not deleting them.
+
+---
+
 ## §15. Supabase — paste the sign-in email templates (2026-11, S8-06)
 
 No migration, no SQL. The sign-in link now opens `/auth/confirm` (a button press consumes
