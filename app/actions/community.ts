@@ -323,10 +323,7 @@ export async function startSession(sessionId: string) {
   // only when THIS call flipped the row (count === 1), so a double click or the
   // second entry point never sends twice. A failed/limited send never blocks
   // the start: it is reported as `groupNotice` for a non-blocking owner notice.
-  let groupNotice: "sent" | "rate_limited" | "failed" | undefined;
-  if (res.count === 1) {
-    groupNotice = await notifyGroupAtStart(sessionId);
-  }
+  const groupNotice = await notifyGroupAtStart(sessionId, res.count === 1);
 
   revalidatePath(`/es/app/sessions/${sessionId}/cup`);
   revalidatePath(`/en/app/sessions/${sessionId}/cup`);
@@ -335,6 +332,7 @@ export async function startSession(sessionId: string) {
 
 async function notifyGroupAtStart(
   sessionId: string,
+  startFlipped: boolean,
 ): Promise<"sent" | "rate_limited" | "failed" | undefined> {
   try {
     const s = await prisma.cuppingSession.findUnique({
@@ -349,13 +347,14 @@ async function notifyGroupAtStart(
     });
     if (
       !s ||
-      !s.notifyGroupAtStart ||
       !s.groupId ||
       !shouldNotifyAtStart({
         isGroup: s.isGroup,
         isAsync: s.isAsync,
         hasGroup: true,
+        notifyGroupAtStart: s.notifyGroupAtStart,
         alreadyNotified: s.groupNotifiedAt !== null,
+        startFlipped,
       })
     ) {
       return undefined;

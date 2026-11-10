@@ -14,9 +14,24 @@ export type NotifyRuleInput = {
   alreadyNotified: boolean;
 };
 
-/** Live group session linked to a group: send from `startSession`. */
-export function shouldNotifyAtStart(i: NotifyRuleInput): boolean {
-  return i.isGroup && !i.isAsync && i.hasGroup && !i.alreadyNotified;
+export type NotifyAtStartInput = NotifyRuleInput & {
+  /** The owner ticked "notify the group" when creating the session. False for
+   *  sessions created before the column existed and after a group change. */
+  notifyGroupAtStart: boolean;
+  /** THIS call flipped `startedAt` (a second start call must not send). */
+  startFlipped: boolean;
+};
+
+/** Live group session linked to a group: send from `startSession`. ONE rule. */
+export function shouldNotifyAtStart(i: NotifyAtStartInput): boolean {
+  return (
+    i.isGroup &&
+    !i.isAsync &&
+    i.hasGroup &&
+    i.notifyGroupAtStart &&
+    !i.alreadyNotified &&
+    i.startFlipped
+  );
 }
 
 /** Async group session linked to a group: send at creation. */
