@@ -266,6 +266,13 @@ export default async function CupPage({
         referenceAddHint: tg("referenceAddHint"),
         referenceAddTitle: tg("referenceAddTitle"),
         referenceAddConfirm: tg("referenceAddConfirm"),
+        inviteRegenerate: tg("inviteRegenerate"),
+        inviteRegenerateTitle: tg("inviteRegenerateTitle"),
+        inviteRegenerateBody: tg("inviteRegenerateBody"),
+        inviteRegenerateConfirm: tg("inviteRegenerateConfirm"),
+        entriesClose: tg("entriesClose"),
+        entriesOpen: tg("entriesOpen"),
+        entriesClosedNote: tg("entriesClosedNote"),
         referenceBadge: t("cupping.referenceBadge"),
         // `{label}` is an ICU arg — fetched raw and replaced client-side.
         compareHint: t.raw("cupping.compareHint") as string,

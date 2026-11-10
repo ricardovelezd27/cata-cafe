@@ -28,7 +28,7 @@ function exportsOf(src: string): string[] {
 
 const REGISTERED: Record<string, string[]> = {
   "sessions.ts": ["createSession", "createExpressSession", "createGroupSession", "duplicateSession"],
-  "community.ts": ["createInviteToken"],
+  "community.ts": ["createInviteToken", "setEntriesLocked"],
 };
 
 // coffees.ts and groups.ts: EVERY export is registered-only, so a new export

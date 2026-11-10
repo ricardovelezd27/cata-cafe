@@ -18,6 +18,7 @@ import { memberLabel } from "@/lib/maskEmail";
 import { trustedRequestOrigin } from "@/lib/requestOrigin";
 import { coCupperIdsAmong, isCoCupper } from "@/lib/coCuppers";
 import { run } from "@/lib/safeAction";
+import { resolveOrCreateSessionInvite } from "@/lib/invites";
 import type { ActionResult } from "@/lib/actionResult";
 
 type Locale = "es" | "en";
@@ -26,34 +27,6 @@ const MAX_GROUP_MEMBERS = 200;
 
 // Same email shape check used by the landing-page waitlist (app/actions/waitlist.ts).
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-// Finds a still-valid SessionInvite for a session, or mints a fresh one.
-// Extracted from sendGroupEmail so notifyGroupOfSession can reuse the exact
-// same token-resolution rules. Callers must independently verify session
-// ownership BEFORE calling this — it does no auth checks of its own.
-async function resolveOrCreateSessionInvite(
-  sessionId: string,
-  createdBy: string,
-): Promise<string> {
-  const now = new Date();
-  const candidateInvites = await prisma.sessionInvite.findMany({
-    where: { sessionId },
-    orderBy: { createdAt: "desc" },
-    select: { token: true, maxUses: true, useCount: true, expiresAt: true },
-  });
-  const validInvite = candidateInvites.find(
-    (inv) =>
-      (!inv.expiresAt || inv.expiresAt > now) &&
-      (inv.maxUses === null || inv.useCount < inv.maxUses),
-  );
-  if (validInvite) return validInvite.token;
-
-  const token = crypto.randomUUID();
-  await prisma.sessionInvite.create({
-    data: { sessionId, token, maxUses: null, expiresAt: null, createdBy },
-  });
-  return token;
-}
 
 // NOTE: the old name-only `createGroup` action was removed — every creation
 // path now goes through createGroupWithMembers (empty roster is fine).

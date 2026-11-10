@@ -128,7 +128,7 @@ export default async function GroupDetailPage({
         select: { sessionId: true },
       }),
       prisma.sessionInvite.findMany({
-        where: { sessionId: { in: sessionIds } },
+        where: { sessionId: { in: sessionIds }, active: true },
         orderBy: { createdAt: "desc" },
         select: { sessionId: true, token: true, maxUses: true, useCount: true, expiresAt: true },
       }),

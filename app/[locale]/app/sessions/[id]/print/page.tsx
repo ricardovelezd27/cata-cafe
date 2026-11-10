@@ -1,3 +1,4 @@
+import { getLatestInvite } from "@/lib/invites";
 import { notFound, redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
@@ -68,16 +69,10 @@ export default async function PrintPage({
   // only if a valid invite already exists — this page never mints one.
   let inviteUrl: string | null = null;
   if (session.isGroup && isOwner) {
-    const invite = await prisma.sessionInvite.findFirst({
-      where: {
-        sessionId: session.id,
-        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-      },
-      orderBy: { createdAt: "desc" },
-    });
-    const isUsable =
-      invite && (invite.maxUses === null || invite.useCount < invite.maxUses);
-    if (isUsable) {
+    // Newest ACTIVE, unexpired invite with seats left (S8-11: a regenerated
+    // link's QR must not print the revoked token).
+    const invite = await getLatestInvite(session.id);
+    if (invite) {
       const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
       inviteUrl = buildInviteUrl(siteOrigin, locale, invite.token);
     }

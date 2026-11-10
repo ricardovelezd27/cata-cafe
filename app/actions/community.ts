@@ -14,6 +14,7 @@ import {
   isSessionExpired,
 } from "@/lib/sessionAuth";
 import { evaluateJoin } from "@/lib/joinRules";
+import { regenerateSessionInvite, resolveOrCreateSessionInvite } from "@/lib/invites";
 import { sessionHref } from "@/lib/sessionRouting";
 import { closeSessionInternal } from "@/lib/closeSession";
 import * as v from "@/lib/validate";
@@ -432,33 +433,73 @@ export async function joinViaToken(token: string, locale: string = "es") {
 }
 
 // ─── Create an invite token ───────────────────────────────────────────────────
+// Idempotent (S8-11 T5): opening "Invitar" twice shows ONE link — the newest
+// active, unexpired invite with seats left, minted only when none exists.
+// `regenerate: true` revokes every earlier token (`active = false`, they read
+// as expired on /join) and mints a new one in one transaction. Explicit
+// `maxUses` / `expiresAt` are a deliberate new link, so they mint as before.
 export async function createInviteToken(
   sessionId: string,
   maxUses?: number,
   expiresAt?: string,
-): Promise<{ token: string }> {
-  const user = await requireRegisteredUser();
-  assertSessionWritable(await requireSessionOwner(sessionId, user.id));
+  regenerate?: boolean,
+): Promise<ActionResult<{ token: string }>> {
+  return run(
+    "createInviteToken",
+    async () => {
+      const user = await requireRegisteredUser();
+      assertSessionWritable(await requireSessionOwner(sessionId, user.id));
 
-  // 0 / negative would mint a dead-on-arrival token; a past date a pre-expired
-  // one — both reject as invalid_input.
-  const safeMaxUses =
-    maxUses === undefined || maxUses === null ? null : v.int(maxUses, "maxUses", 1, 1000);
-  const safeExpiresAt = expiresAt ? v.isoDate(expiresAt, "expiresAt", { future: true }) : null;
+      // 0 / negative would mint a dead-on-arrival token; a past date a
+      // pre-expired one — both reject as invalid_input.
+      const safeMaxUses =
+        maxUses === undefined || maxUses === null ? null : v.int(maxUses, "maxUses", 1, 1000);
+      const safeExpiresAt = expiresAt ? v.isoDate(expiresAt, "expiresAt", { future: true }) : null;
 
-  const token = crypto.randomUUID();
-
-  await prisma.sessionInvite.create({
-    data: {
-      sessionId,
-      token,
-      maxUses: safeMaxUses,
-      expiresAt: safeExpiresAt,
-      createdBy: user.id,
+      if (regenerate === true) {
+        const token = await regenerateSessionInvite(sessionId, user.id, {
+          maxUses: safeMaxUses,
+          expiresAt: safeExpiresAt,
+        });
+        return { token };
+      }
+      if (safeMaxUses === null && safeExpiresAt === null) {
+        return { token: await resolveOrCreateSessionInvite(sessionId, user.id) };
+      }
+      const token = crypto.randomUUID();
+      await prisma.sessionInvite.create({
+        data: { sessionId, token, maxUses: safeMaxUses, expiresAt: safeExpiresAt, createdBy: user.id },
+      });
+      return { token };
     },
-  });
+    { sessionId },
+  );
+}
 
-  return { token };
+// ─── Close / reopen new entries (owner only, S8-11 T6 / C4 default a) ────────
+// `entriesLocked` only gates NEWCOMERS in joinViaToken (`entries_closed`);
+// members re-enter. Display/gating state: never read by scoring, the
+// aggregate trigger or AggregateScore.
+export async function setEntriesLocked(
+  sessionId: string,
+  locked: boolean,
+): Promise<ActionResult<{ entriesLocked: boolean }>> {
+  return run(
+    "setEntriesLocked",
+    async () => {
+      if (typeof locked !== "boolean") throw new Error("invalid_input");
+      const user = await requireRegisteredUser();
+      assertSessionWritable(await requireSessionOwner(sessionId, user.id));
+      // Only group sessions have entries to close.
+      const { count } = await prisma.cuppingSession.updateMany({
+        where: { id: sessionId, isGroup: true },
+        data: { entriesLocked: locked },
+      });
+      if (count === 0) throw new Error("invalid_input");
+      return { entriesLocked: locked };
+    },
+    { sessionId },
+  );
 }
 
 // ─── Exclude / re-include a participant from group results (owner only) ──────

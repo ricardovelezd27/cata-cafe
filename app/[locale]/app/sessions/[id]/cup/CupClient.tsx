@@ -37,6 +37,7 @@ import {
   submitAllEvaluations,
   closeSession,
   createInviteToken,
+  setEntriesLocked,
   startSession,
   startWarmup,
   stopWarmup,
@@ -164,6 +165,7 @@ export function CupClient({
   sessionStatus,
   sessionStartedAt,
   sessionIsAsync,
+  sessionEntriesLocked = false,
   participantCount,
   submittedCount: initialSubmittedCount,
   translations,
@@ -204,6 +206,8 @@ export function CupClient({
   sessionStatus: string;
   sessionStartedAt: string | null;
   sessionIsAsync: boolean;
+  /** Owner closed new entries (S8-11 C4). Optional: offline prop blobs. */
+  sessionEntriesLocked?: boolean;
   participantCount: number;
   submittedCount: number;
   userId: string;
@@ -316,6 +320,14 @@ export function CupClient({
     referenceAddHint?: string;
     referenceAddTitle?: string;
     referenceAddConfirm?: string;
+    // Invite control + late joiners (S8-11). Optional: offline prop blobs.
+    inviteRegenerate?: string;
+    inviteRegenerateTitle?: string;
+    inviteRegenerateBody?: string;
+    inviteRegenerateConfirm?: string;
+    entriesClose?: string;
+    entriesOpen?: string;
+    entriesClosedNote?: string;
     // Reference lock (2026-09-25): quality pinned at 5, cups cleared.
     referenceLocked?: string;
     referenceLockedAffective?: string;
@@ -402,6 +414,9 @@ export function CupClient({
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
+  const [regenerateOpen, setRegenerateOpen] = useState(false);
+  const [entriesLocked, setEntriesLockedState] = useState(sessionEntriesLocked);
+  const [entriesPending, setEntriesPending] = useState(false);
   const [startedAt, setStartedAt] = useState(sessionStartedAt);
   // Owner-chosen "Referencia" sample; updated live for participants through
   // the cupping_sessions realtime stream below.
@@ -1327,16 +1342,34 @@ export function CupClient({
   };
 
   // ─── Invite link / close session ──────────────────────────────
+  // Idempotent on the server: a second "Invitar" returns the SAME link.
   const handleGenerateInvite = async () => {
     setIsGeneratingInvite(true);
     try {
-      const { token } = await createInviteToken(session.id);
-      const link = buildInviteUrl(window.location.origin, locale, token);
-      setInviteLink(link);
-    } catch {
-      feedback.notifyError("unknown");
+      await feedback.run(createInviteToken(session.id), ({ token }) => {
+        setInviteLink(buildInviteUrl(window.location.origin, locale, token));
+      });
     } finally {
       setIsGeneratingInvite(false);
+    }
+  };
+
+  // Revokes the current link and QR (they read as expired on /join).
+  const handleRegenerateInvite = async () => {
+    await feedback.run(createInviteToken(session.id, undefined, undefined, true), ({ token }) => {
+      setInviteLink(buildInviteUrl(window.location.origin, locale, token));
+      setIsCopied(false);
+    });
+  };
+
+  const handleToggleEntries = async () => {
+    setEntriesPending(true);
+    try {
+      await feedback.run(setEntriesLocked(session.id, !entriesLocked), (d) =>
+        setEntriesLockedState(d.entriesLocked),
+      );
+    } finally {
+      setEntriesPending(false);
     }
   };
 
@@ -1809,6 +1842,20 @@ export function CupClient({
         onGenerate={handleGenerateInvite}
         onCopy={handleCopyInvite}
         onResetInvite={() => setInviteLink(null)}
+        regenerateLabel={translations.inviteRegenerate}
+        onRegenerate={translations.inviteRegenerate ? () => setRegenerateOpen(true) : undefined}
+        entries={
+          translations.entriesClose && translations.entriesOpen && translations.entriesClosedNote
+            ? {
+                locked: entriesLocked,
+                closeLabel: translations.entriesClose,
+                openLabel: translations.entriesOpen,
+                note: translations.entriesClosedNote,
+                pending: entriesPending,
+                onToggle: handleToggleEntries,
+              }
+            : undefined
+        }
         startLabel={translations.startSession}
         startingLabel={translations.starting}
         showStart={showStart}
@@ -2172,6 +2219,20 @@ export function CupClient({
           setPendingReference(null);
           if (id) commitReference(id);
         }}
+      />
+      <ConfirmDialog
+        open={regenerateOpen}
+        onOpenChange={setRegenerateOpen}
+        title={translations.inviteRegenerateTitle ?? "¿Regenerar el enlace?"}
+        body={
+          translations.inviteRegenerateBody ??
+          "El enlace y el QR actuales dejarán de funcionar. Quienes ya entraron siguen dentro."
+        }
+        confirmLabel={translations.inviteRegenerateConfirm ?? "Regenerar"}
+        cancelLabel={translations.cancel}
+        closeLabel={translations.cancel}
+        destructive={false}
+        onConfirm={handleRegenerateInvite}
       />
       <ConfirmDialog
         open={closeDialogOpen}
