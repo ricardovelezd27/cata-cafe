@@ -1365,7 +1365,9 @@
       "filterType": "Type",
       "typeRegistered": "Registered",
       "typeGuest": "Guest",
-      "exportCsv": "Export emails (CSV)"
+      "exportCsv": "Export emails (CSV)",
+      "showEmails": "Show emails",
+      "hideEmails": "Hide emails"
     },
     "benchmark": {
       "title": "Benchmark vs. CQI",

@@ -1,3 +1,5 @@
+import { logWarn } from "@/lib/log";
+
 // Production environment assertions. Called once at server start from
 // instrumentation.ts register(). A missing value here would not crash the
 // app — it would quietly do the wrong thing (a printed QR pointing at
@@ -31,7 +33,30 @@ export function missingProductionEnv(env: EnvLike = process.env): string[] {
   return REQUIRED_IN_PRODUCTION.filter((name) => !env[name] || env[name]!.trim() === "");
 }
 
+// Variables that SHOULD be set in production but must not stop the boot: the
+// code has a safe fallback. S8-08 F-insights-5: the super-admin address falls
+// back to a hard-coded Gmail in lib/analytics/access.ts. Setting it removes
+// that hidden dependency; the boot logs one warning until it is set.
+// TODO(owner): set ANALYTICS_SUPER_ADMIN_EMAIL in Vercel Production, then move
+// it to REQUIRED_IN_PRODUCTION and drop the fallback.
+export const RECOMMENDED_IN_PRODUCTION = ["ANALYTICS_SUPER_ADMIN_EMAIL"] as const;
+
+export function missingRecommendedEnv(env: EnvLike = process.env): string[] {
+  return RECOMMENDED_IN_PRODUCTION.filter((name) => !env[name] || env[name]!.trim() === "");
+}
+
+export function warnRecommendedEnv(env: EnvLike = process.env): void {
+  if (env.NODE_ENV !== "production") return;
+  const missing = missingRecommendedEnv(env);
+  if (missing.length === 0) return;
+  logWarn({
+    where: "env",
+    message: `recommended environment variables not set: ${missing.join(", ")} — see docs/LAUNCH-RUNBOOK.md §17`,
+  });
+}
+
 export function assertProductionEnv(env: EnvLike = process.env): void {
+  warnRecommendedEnv(env);
   const missing = missingProductionEnv(env);
   if (missing.length === 0) return;
   const message = `[env] missing required environment variables: ${missing.join(", ")} — see docs/LAUNCH-RUNBOOK.md §3`;

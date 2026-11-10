@@ -8,6 +8,7 @@
 import type { NextRequest } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { getAnalyticsAccess } from "@/lib/analytics/access";
+import { scopeFor } from "@/lib/analytics/scope";
 import { getDashboardData } from "@/lib/analytics/queries";
 import { getBenchmarkComparison } from "@/lib/analytics/benchmarks";
 import { citationLines } from "@/lib/analytics/referenceSources";
@@ -36,9 +37,12 @@ export async function GET(request: NextRequest) {
     return new Response("Not found", { status: 404 });
   }
 
-  const [data, benchmark] = await Promise.all([
-    getDashboardData(locale),
-    getBenchmarkComparison({}),
+  // S8-08 F-insights-1: only the super-admin report is platform-wide.
+  const scope = scopeFor(access);
+
+  const [data, benchmark]= await Promise.all([
+    getDashboardData(locale, scope),
+    getBenchmarkComparison({}, scope),
   ]);
 
   // A narrative-provider failure must never break the report: catch both the

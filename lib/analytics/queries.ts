@@ -17,6 +17,7 @@ import {
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { PLATFORM_SCOPE } from "./types";
+import { anonymizeCuppers } from "./cupperPrivacy";
 import type {
   AnalyticsScope,
   Dataset,
@@ -54,6 +55,8 @@ interface AnalyticsRow {
   sessionStatus?: string | null;
   cupperId?: string;
   cupperName?: string;
+  /** Platform scope: too few evaluations to show this cupper as a bucket. */
+  cupperSuppressed?: boolean;
   individualScore?: number | null;
   affectiveSum?: number | null;
   communityScore?: number | null;
@@ -148,7 +151,7 @@ async function fetchEvaluationRows(
       },
     },
   });
-  return rows.map((r) => ({
+  const mapped: AnalyticsRow[] = rows.map((r) => ({
     date: r.submittedAt,
     coffeeCountry: r.sessionSample.coffee?.country,
     coffeeRegion: r.sessionSample.coffee?.region,
@@ -167,6 +170,8 @@ async function fetchEvaluationRows(
       r.combinedData,
     ),
   }));
+  // S8-08 F-insights-1: platform scope never carries a display name.
+  return anonymizeCuppers(mapped, scope);
 }
 
 async function fetchSessionRows(
@@ -327,7 +332,7 @@ function extractBuckets(
       if (!row.date) return [];
       return [{ key: monthKey(row.date), label: monthLabel(monthKey(row.date), locale) }];
     case "cupper":
-      if (!row.cupperId) return [];
+      if (!row.cupperId || row.cupperSuppressed) return [];
       return [{ key: row.cupperId, label: row.cupperName ?? row.cupperId }];
     case "scoreBucket": {
       const s = row.individualScore;

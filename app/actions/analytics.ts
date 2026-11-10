@@ -27,6 +27,8 @@ import type {
   PivotConfig,
   PivotResult,
 } from "@/lib/analytics/types";
+import { scopeFor } from "@/lib/analytics/scope";
+import { auditLog } from "@/lib/analytics/audit";
 import { listDimensionValues, runInsightQuery, runPivotQuery } from "@/lib/analytics/queries";
 import {
   getBenchmarkComparison,
@@ -47,14 +49,14 @@ export async function runInsight(
   rawConfig: unknown,
   locale: string,
 ): Promise<{ ok: true; rows: InsightRow[] } | { ok: false; error: string }> {
-  await requireAnalyticsAccess();
+  const scope = scopeFor(await requireAnalyticsAccess());
   let config: InsightConfig;
   try {
     config = parseInsightConfig(rawConfig);
   } catch {
     return { ok: false, error: "invalid_config" };
   }
-  const rows = await runInsightQuery(config, asLocale(locale));
+  const rows = await runInsightQuery(config, asLocale(locale), scope);
   return { ok: true, rows };
 }
 
@@ -62,14 +64,14 @@ export async function runPivot(
   rawConfig: unknown,
   locale: string,
 ): Promise<{ ok: true; result: PivotResult } | { ok: false; error: string }> {
-  await requireAnalyticsAccess();
+  const scope = scopeFor(await requireAnalyticsAccess());
   let config: PivotConfig;
   try {
     config = parsePivotConfig(rawConfig);
   } catch {
     return { ok: false, error: "invalid_pivot" };
   }
-  const result = await runPivotQuery(config, asLocale(locale));
+  const result = await runPivotQuery(config, asLocale(locale), scope);
   return { ok: true, result };
 }
 
@@ -78,7 +80,7 @@ export async function listPivotDimensionValues(
   dimension: string,
   locale: string,
 ): Promise<{ ok: true; values: PivotAxisKey[] } | { ok: false; error: string }> {
-  await requireAnalyticsAccess();
+  const scope = scopeFor(await requireAnalyticsAccess());
   if (!DATASETS.includes(dataset as Dataset)) {
     return { ok: false, error: "invalid_dimension" };
   }
@@ -86,7 +88,7 @@ export async function listPivotDimensionValues(
   if (!DATASET_DIMENSIONS[ds].includes(dimension as DimensionId)) {
     return { ok: false, error: "invalid_dimension" };
   }
-  const values = await listDimensionValues(ds, dimension as DimensionId, asLocale(locale));
+  const values = await listDimensionValues(ds, dimension as DimensionId, asLocale(locale), scope);
   return { ok: true, values };
 }
 
@@ -152,14 +154,14 @@ export async function deleteSavedInsight(
 export async function runBenchmark(
   rawFilter: unknown,
 ): Promise<{ ok: true; comparison: BenchmarkComparison } | { ok: false; error: string }> {
-  await requireAnalyticsAccess();
+  const scope = scopeFor(await requireAnalyticsAccess());
   let filter: BenchmarkFilter;
   try {
     filter = parseBenchmarkFilter(rawFilter);
   } catch {
     return { ok: false, error: "invalid_filter" };
   }
-  const comparison = await getBenchmarkComparison(filter);
+  const comparison = await getBenchmarkComparison(filter, scope);
   return { ok: true, comparison };
 }
 
@@ -167,14 +169,14 @@ export async function runOriginContext(
   countryCode: unknown,
   locale: string,
 ): Promise<{ ok: true; context: OriginContext } | { ok: false; error: string }> {
-  await requireAnalyticsAccess();
+  const scope = scopeFor(await requireAnalyticsAccess());
   if (
     typeof countryCode !== "string" ||
     !COFFEE_COUNTRIES.some((c) => c.iso2 === countryCode)
   ) {
     return { ok: false, error: "invalid_country" };
   }
-  const context = await getOriginContext(countryCode, asLocale(locale));
+  const context = await getOriginContext(countryCode, asLocale(locale), scope);
   return { ok: true, context };
 }
 
@@ -197,7 +199,9 @@ export interface AnalyticsUser {
  * Acceso (grant management) stays behind requireSuperAdmin below.
  */
 export async function listAnalyticsUsers(): Promise<AnalyticsUser[]> {
-  await requireUsersDirectoryAccess();
+  const access = await requireUsersDirectoryAccess();
+  // NOTE: the co-cupper rule (lib/coCuppers.ts) intentionally does NOT apply to
+  // this admin directory; the audit line below is the accountability for it.
 
   // Profile has no email column — emails live in Supabase auth. Map ids→emails
   // (and flag anonymous/guest users) via the service-role admin API; degrade
@@ -222,6 +226,8 @@ export async function listAnalyticsUsers(): Promise<AnalyticsUser[]> {
     },
     orderBy: { displayName: "asc" },
   });
+
+  auditLog("listAnalyticsUsers", access.userId, { count: profiles.length });
 
   return profiles.map((p) => {
     const email = emailById.get(p.id) ?? null;
@@ -248,11 +254,14 @@ export async function listAnalyticsUsers(): Promise<AnalyticsUser[]> {
  */
 export async function exportRegisteredUsersCsv() {
   return run("exportRegisteredUsersCsv", async () => {
-    await requireUsersDirectoryAccess();
+    // S8-08 F-insights-2: the full email list is super-admin only (AI admins
+    // could export it before). Ricardo confirms; widen here if not.
+    const access = await requireSuperAdmin();
     const { csv, count } = buildRegisteredUsersCsv(await listAllAuthUsersStrict());
     // An empty export is never legitimate (the caller is a registered user) —
     // treat it as a failed listing rather than handing back a header-only file.
     if (count === 0) throw new Error("auth_list_empty");
+    auditLog("exportRegisteredUsersCsv", access.userId, { count });
     return { csv, count, filename: `cafesensible-users-${new Date().toISOString().slice(0, 10)}.csv` };
   });
 }
@@ -268,6 +277,9 @@ export async function setAnalyticsAccess(
   await prisma.profile.update({
     where: { id: userId },
     data: { analyticsAccess: enabled },
+  });
+  auditLog(enabled ? "grantAnalyticsAccess" : "revokeAnalyticsAccess", access.userId, {
+    targetId: userId,
   });
 
   // Layout-wide so the target user's Sidebar/BottomNav pick up the flag.

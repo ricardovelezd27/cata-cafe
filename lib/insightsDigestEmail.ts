@@ -250,26 +250,18 @@ export async function sendInsightsDigest(now = new Date()): Promise<DigestSummar
     else if (result.skipped) aiSkipped = true;
   }
 
-  // Recipients: analyticsAccess profiles + the super-admin, locale-aware.
-  const profiles = await prisma.profile.findMany({
-    where: { analyticsAccess: true },
-    select: { id: true, preferredLang: true },
-  });
-  const emailById = new Map<string, string>();
+  // Recipient: the super-admin, locale-aware.
   let superAdminId: string | null = null;
   const authUsers = await listAllAuthUsers();
   for (const u of authUsers) {
-    if (u.email) {
-      emailById.set(u.id, u.email);
-      if (isSuperAdminEmail(u.email)) superAdminId = u.id;
-    }
+    if (u.email && isSuperAdminEmail(u.email)) superAdminId = u.id;
   }
 
+  // S8-08 F-insights-1: the digest carries PLATFORM-wide KPIs, so it goes to
+  // the super-admin only. Flagged analytics users used to receive it too;
+  // they now get nothing rather than another user's numbers.
+  // TODO(S8-08): per-recipient user-scoped digests, if Ricardo wants them.
   const targets = new Map<string, Locale>();
-  for (const p of profiles) {
-    const email = emailById.get(p.id);
-    if (email) targets.set(email, p.preferredLang === "en" ? "en" : "es");
-  }
   const superEmail = getSuperAdminEmail();
   if (!targets.has(superEmail)) {
     let superLocale: Locale = "es";
