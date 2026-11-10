@@ -34,6 +34,29 @@ export function assertSessionWritable(row: ExpiryRow, now: Date | number = Date.
   if (isSessionExpired(row, now)) throw new Error("session_closed");
 }
 
+/** `updateSampleMetadata`'s write gate (S8-28 A-05: extracted from the action,
+ *  behaviour unchanged). The SECOND sanctioned post-close write: naming a
+ *  coffee on a CLOSED, coffee-less sample. Everything else, including a
+ *  label-only edit on a closed session, goes through assertSessionWritable
+ *  (which also stops an expired-but-not-yet-closed session). Throws
+ *  `session_closed`. Pure. */
+export function isPostCloseNaming(
+  session: ExpiryRow,
+  sample: { coffeeId: string | null },
+  namesCoffee: boolean,
+): boolean {
+  return isSessionClosed(session) && sample.coffeeId === null && namesCoffee;
+}
+
+export function assertSampleMetadataWritable(
+  session: ExpiryRow,
+  sample: { coffeeId: string | null },
+  namesCoffee: boolean,
+  now: Date | number = Date.now(),
+): void {
+  if (!isPostCloseNaming(session, sample, namesCoffee)) assertSessionWritable(session, now);
+}
+
 /** Origin (extrinsic) data is the one thing besides coffee naming the owner may
  *  still correct once a session is over (S8-12, F-resultados-4): only on a
  *  REVEALED sample, so blind integrity holds and an unrevealed sample stays

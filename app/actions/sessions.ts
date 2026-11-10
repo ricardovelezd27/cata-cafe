@@ -20,6 +20,7 @@ import {
   assertSessionWritable,
   assertSessionStarted,
 } from "@/lib/sessionAuth";
+import { assertSampleMetadataWritable, isPostCloseNaming } from "@/lib/sessionState";
 import {
   detachCoffeeHistoryForSession,
   syncCoffeeHistoryForSession,
@@ -1572,9 +1573,8 @@ export async function updateSampleMetadata(
   // owner (checked above) AND the sample has no coffee yet AND the call
   // actually names a coffee. Anything else on a closed session stays
   // read-only (session_closed), including label-only renames.
-  const postCloseNaming =
-    isSessionClosed(sample.session) && sample.coffeeId === null && hasAnyCoffeeField(input);
-  if (!postCloseNaming) assertSessionWritable(sample.session);
+  const postCloseNaming = isPostCloseNaming(sample.session, sample, hasAnyCoffeeField(input));
+  assertSampleMetadataWritable(sample.session, sample, hasAnyCoffeeField(input));
 
   let coffeeUpdated: boolean;
 
