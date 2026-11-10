@@ -1561,6 +1561,7 @@
       "conflict": "Alguien más acaba de hacer ese cambio. Actualiza la página.",
       "not_found": "Ese elemento ya no existe.",
       "invalid_reference": "Uno de los elementos vinculados ya no existe.",
+      "rate_limited": "Demasiados envíos en poco tiempo. Espera un momento e inténtalo de nuevo.",
       "unknown": "Algo salió mal. Inténtalo de nuevo."
     }
   },

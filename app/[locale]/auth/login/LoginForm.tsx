@@ -52,6 +52,7 @@ export function LoginForm({
         setStatus("sent");
       } else if (
         result.error === "over_email_send_rate_limit" ||
+        result.error === "rate_limited" ||
         result.error?.toLowerCase().includes("rate limit")
       ) {
         setStatus("rate_limit");

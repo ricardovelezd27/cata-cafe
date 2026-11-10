@@ -1561,6 +1561,7 @@
       "conflict": "Someone else just made that change. Refresh the page.",
       "not_found": "That item no longer exists.",
       "invalid_reference": "One of the linked items no longer exists.",
+      "rate_limited": "Too many sends in a short time. Wait a moment and try again.",
       "unknown": "Something went wrong. Please try again."
     }
   },

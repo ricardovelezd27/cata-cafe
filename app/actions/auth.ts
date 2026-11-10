@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { sendMagicLink } from "@/lib/magicLink";
 
 async function getOrigin() {
   const h = await headers();
@@ -29,26 +30,7 @@ export async function signInWithGoogle(next?: string) {
 }
 
 export async function signInWithMagicLink(formData: FormData, next?: string) {
-  const email = String(formData.get("email") || "").trim();
-  if (!email) return { ok: false, error: "missing_email" };
-
-  const origin = await getOrigin();
-
-  // Point at the FINAL destination (not /auth/callback). The Supabase "Magic
-  // Link" email template appends this as `next` via {{ .RedirectTo }}, and
-  // /auth/callback verifies the token_hash then redirects here. This token_hash
-  // flow is stateless, so it works even when the email link opens in a
-  // different browser or an in-app webview (where PKCE code exchange fails).
-  const redirectTo = next ? `${origin}${next}` : `${origin}/es/app`;
-
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: redirectTo },
-  });
-
-  if (error) return { ok: false, error: error.code ?? error.message };
-  return { ok: true };
+  return sendMagicLink(String(formData.get("email") || ""), next);
 }
 
 export async function signOut() {

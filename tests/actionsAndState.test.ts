@@ -21,6 +21,8 @@ describe("classifyActionError", () => {
     expect(classifyActionError(new Error("not_found_or_forbidden"))).toBe("not_found_or_forbidden");
     expect(classifyActionError(new Error("session_closed"))).toBe("session_closed");
     expect(classifyActionError(new Error("token_expired"))).toBe("token_expired");
+    expect(classifyActionError(new Error("rate_limited"))).toBe("rate_limited");
+    expect(isActionErrorCode("rate_limited")).toBe(true);
   });
   it("maps the legacy forbidden throw; a legacy not_found is already a real code", () => {
     expect(classifyActionError(new Error("forbidden"))).toBe("not_found_or_forbidden");

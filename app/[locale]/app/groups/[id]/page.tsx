@@ -4,6 +4,7 @@ import { CheckCircle2, ChevronLeft, Clipboard, Plus, UserCheck, Users } from "lu
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { maskEmail } from "@/lib/maskEmail";
 import { getCoCupperCandidates } from "@/lib/coCuppers";
 import { claimGroupMembershipsByEmail } from "@/lib/groupMembership";
 import { sessionHref } from "@/lib/sessionRouting";
@@ -26,16 +27,6 @@ import { LeaveGroupButton } from "@/components/groups/LeaveGroupButton";
 // the cookies() call inside createClient() 500s (dev always renders dynamic,
 // so the crash only appears in production). Same pattern as join/[token].
 export const dynamic = "force-dynamic";
-
-// Never send a co-member's full email address to the client — this runs
-// server-side and only the masked string ever ends up in the rendered HTML.
-function maskEmail(email: string): string {
-  const at = email.indexOf("@");
-  if (at <= 0) return email;
-  const local = email.slice(0, at);
-  const domain = email.slice(at + 1);
-  return `${local[0]}***@${domain}`;
-}
 
 type GroupSessionRow = {
   id: string;
@@ -296,7 +287,7 @@ export default async function GroupDetailPage({
   const nameByUserId = new Map(
     group.members
       .filter((m): m is typeof m & { userId: string } => !!m.userId)
-      .map((m) => [m.userId, m.displayName ?? m.email]),
+      .map((m) => [m.userId, m.displayName ?? maskEmail(m.email)]),
   );
 
   let groupEvalCount = 0;
