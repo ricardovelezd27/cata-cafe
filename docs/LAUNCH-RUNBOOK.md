@@ -746,7 +746,7 @@ past session with fewer than 5 cups per sample and a flagged cup, once. Those sc
    It must contain `IF v_total_cups > 0 THEN` and not `v_cups_per_sample >= 5`. If it differs, stop.
 2. **Dry run** (changes nothing): paste all of `prisma/sql/dry-runs/phase23_dry_run.sql` and run it.
    It ends with a red error starting `PHASE 23 DRY RUN: NOTHING WAS APPLIED`; that error is the
-   expected result. Line 3 must say `0` (no row with 5 or more cups changes). Line 2 is how many
+   expected result. Line 3 must say `0` (no row with 5 or more cups changes) and line 4 must show `{search_path=public}`. Line 2 is how many
    past aggregates will change. Any other error: stop and report it.
 3. **STEP 1:** run the `CREATE OR REPLACE FUNCTION recompute_aggregate_score()` block of PHASE 23
    in `prisma/sql/rls_and_triggers.sql`. Nothing stored changes yet.
@@ -764,6 +764,12 @@ past session with fewer than 5 cups per sample and a flagged cup, once. Those sc
 
    Before step 4 `communityScore` is below `avgRawScore`; after it equals `avgRawScore` rounded to
    0.25. The results page, the coffee profile and the history now show the same number.
+   Also confirm the PHASE 18 `search_path` pin survived STEP 1:
+
+   ```sql
+   select proconfig from pg_proc where proname = 'recompute_aggregate_score';  -- expect {search_path=public}
+   ```
+
    Then Security Advisor: no new findings expected.
 
 **Rollback:** re-create the previous function body (kept verbatim in the PHASE 23 comment)
