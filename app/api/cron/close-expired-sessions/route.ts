@@ -26,6 +26,16 @@ export const maxDuration = 300;
 
 const BATCH = 25;
 
+/** Moves a session whose repair did not finish to the back of the queue (the
+ *  pass orders by updatedAt asc) without a migration. Never throws. */
+async function requeueRepair(id: string) {
+  try {
+    await prisma.cuppingSession.update({ where: { id }, data: { updatedAt: new Date() }, select: { id: true } });
+  } catch (err) {
+    logError({ where: "cron.repairClose", sessionId: id, message: errorMessage(err) });
+  }
+}
+
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) {
@@ -65,20 +75,26 @@ export async function GET(request: Request) {
       closedAt: { lt: new Date(Date.now() - FINALIZE_GRACE_MS) },
     },
     select: { id: true },
-    orderBy: { closedAt: "asc" },
+    // updatedAt, not closedAt: a session whose finalize keeps failing is bumped
+    // below so it rotates to the back instead of starving newer ones forever.
+    orderBy: { updatedAt: "asc" },
     take: BATCH,
   });
   const repairs: { id: string; finalized: boolean; error?: string }[] = [];
   for (const s of owed) {
     try {
       const r = await closeSessionInternal(s.id, { reason: "repair", emails: "await" });
-      repairs.push({ id: s.id, finalized: r.finalized === true });
+      const finalized = r.finalized === true;
+      repairs.push({ id: s.id, finalized });
+      if (!finalized) await requeueRepair(s.id);
     } catch (err) {
       const message = errorMessage(err);
       logError({ where: "cron.repairClose", sessionId: s.id, message });
       repairs.push({ id: s.id, finalized: false, error: message });
+      await requeueRepair(s.id);
     }
   }
+  const stillUnfinalized = repairs.filter((r) => !r.finalized).length;
   const repairTruncated = owed.length === BATCH;
   if (repairTruncated) logWarn({ where: "cron.repairClose", message: "batch full, more repairs owed", batch: BATCH });
 
@@ -104,6 +120,6 @@ export async function GET(request: Request) {
     // up the rest — bounded per invocation on purpose.
     truncated,
     reminders,
-    repair: { owed: owed.length, finalized: repairs.filter((r) => r.finalized).length, results: repairs, truncated: repairTruncated },
+    repair: { owed: owed.length, stillUnfinalized, finalized: repairs.filter((r) => r.finalized).length, results: repairs, truncated: repairTruncated },
   });
 }
