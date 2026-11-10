@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { orderReferencesFirst } from "@/lib/referenceRules";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
+import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 import { sheetSampleIdentity, sheetSampleRecords } from "@/lib/pdf/sheetSource";
 import { slug, dateSlug } from "@/lib/pdf/filename";
 import { pdfFailureResponse } from "@/lib/pdf/routeFailure";
@@ -98,7 +99,7 @@ export async function GET(
     ownerView,
     sessionName: session.name,
     date: dateStr,
-    cupperName: profile?.displayName ?? "",
+    cupperName: profileDisplayName(profile ? { id: viewAsId, displayName: profile.displayName } : null, locale),
     purpose: session.objective ?? "",
     cupsPerSample: session.cupsPerSample,
     format: session.format,

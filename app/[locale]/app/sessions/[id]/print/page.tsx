@@ -7,6 +7,7 @@ import { orderReferencesFirst } from "@/lib/referenceRules";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { buildInviteUrl } from "@/lib/inviteUrl";
 import { sheetSampleIdentity, sheetSampleRecords } from "@/lib/pdf/sheetSource";
+import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 import { PrintClient } from "./PrintClient";
 
 export default async function PrintPage({
@@ -96,7 +97,7 @@ export default async function PrintPage({
         cupsPerSample: session.cupsPerSample,
         date: dateStr,
         objective: session.objective,
-        cupperName: profile?.displayName ?? "",
+        cupperName: profileDisplayName(profile ? { id: viewAsId, displayName: profile.displayName } : null, locale),
         ownerView,
         samples: orderReferencesFirst(session.samples).map((s) => {
           const ev = s.evaluations[0];

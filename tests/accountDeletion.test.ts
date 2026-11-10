@@ -231,6 +231,34 @@ describe("planAccountDeletion", () => {
   });
 });
 
+describe("placeholders never surface as people", () => {
+  const read = (...p: string[]) => readFileSync(join(process.cwd(), ...p), "utf8");
+
+  it("co-cupper candidates and the co-cupper gate drop deleted_* ids", () => {
+    const src = read("lib", "coCuppers.ts");
+    expect(src).toContain("NOT: { userId: { startsWith: DELETED_PROFILE_PREFIX } }");
+    expect(src).toContain("!isDeletedProfileId(id)");
+  });
+
+  it("people counts in insights skip placeholders", () => {
+    const src = read("lib", "analytics", "queries.ts");
+    expect(src).toContain("rows.filter((r) => !isDeletedProfileId(r.cupperId)).length");
+    expect(src).toContain("activeCupperIds.filter((r) => !isDeletedProfileId(r.cupperId)).length");
+  });
+
+  it("owner / share / sheet names go through profileDisplayName", () => {
+    for (const p of [
+      ["app", "[locale]", "app", "groups", "page.tsx"],
+      ["app", "[locale]", "app", "coffees", "page.tsx"],
+      ["app", "[locale]", "app", "coffees", "[id]", "page.tsx"],
+      ["app", "[locale]", "app", "sessions", "[id]", "print", "page.tsx"],
+      ["app", "api", "sessions", "[id]", "cva-pdf", "route.ts"],
+    ]) {
+      expect(read(...p), p.join("/")).toContain("profileDisplayName(");
+    }
+  });
+});
+
 describe("plansEqual (re-plan inside the transaction)", () => {
   const base = fixture({
     ownedSessions: [
