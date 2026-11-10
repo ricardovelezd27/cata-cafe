@@ -721,3 +721,35 @@ create button yields one group.
 
 **Rollback:** the objects are additive; code rolled back ignores them. Do not drop the
 tables while the new code is deployed.
+
+---
+
+## §15. Supabase — paste the sign-in email templates (2026-11, S8-06)
+
+No migration, no SQL. The sign-in link now opens `/auth/confirm` (a button press consumes
+the token, so mail scanners cannot burn it) and the email also carries a 6-digit code.
+
+**Order matters: deploy first, paste second.** Templates pasted before the deploy link to a
+page that does not exist yet. Links from emails sent with the old template keep working
+(`/auth/callback` redirects them to `/auth/confirm`).
+
+1. Merge and let Vercel deploy.
+2. Supabase Dashboard → Authentication → **Sign In / Providers → Email**: confirm
+   **OTP length = 6**. Leave "OTP expiry" as it is; the copy never states a number.
+3. Authentication → **URL Configuration**: the redirect allow-list must cover the site
+   origin with a wildcard (`https://cafesensible.ai/**`), which includes `/auth/confirm` and
+   `/en/auth/confirm`.
+4. Authentication → **Email Templates**: paste, with the subject given at the top of each file
+   - **Magic Link** ← `docs/auth/email-templates/magic-link.html`
+   - **Confirm signup** ← `docs/auth/email-templates/confirm-signup.html`
+   - **Change Email Address** ← `docs/auth/email-templates/change-email.html`
+5. TODO(owner): confirm `hola@estudiodecafe.online` (`lib/siteContact.ts`) is the address people
+   should write to when sign-in fails; it appears on the login screen and the "sent" state.
+
+**Smoke test (3 minutes):** request a link; before opening it, `curl` the link URL (a bare
+GET) — the page loads and the token is untouched. Then enter the 6-digit code from the same
+email on the login screen: you are signed in. Repeat from `/en/auth/login` with a new
+address: the email is in English and the link goes to `/en/auth/confirm`.
+
+**Rollback:** paste the previous templates back (copy them before step 4). The code keeps
+accepting both link shapes.

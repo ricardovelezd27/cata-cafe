@@ -47,9 +47,10 @@ export async function sendMagicLink(
 
   // Point at the FINAL destination (not /auth/callback). The Supabase "Magic
   // Link" email template appends this as `next` via {{ .RedirectTo }}, and
-  // /auth/callback verifies the token_hash then redirects here. This token_hash
-  // flow is stateless, so it works even when the email link opens in a
-  // different browser or an in-app webview (where PKCE code exchange fails).
+  // /auth/confirm shows a button whose action verifies the token_hash and lands
+  // here (a bare GET never consumes it). The token_hash flow is stateless, so
+  // it works even when the email link opens in a different browser or an in-app
+  // webview (where PKCE code exchange fails); the 6-digit code is the other way in.
   const origin = await trustedRequestOrigin();
   const redirectTo = `${origin}${safeNext(opts.next, { fallback: defaultNextFor(locale) })}`;
 

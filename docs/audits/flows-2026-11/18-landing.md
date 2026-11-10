@@ -41,6 +41,8 @@ A visitor reads the dark marketing page (`app/[locale]/page.tsx`) and types an e
 
 ### F-landing-3 · Magic link is consumed by the first GET, so a mail scanner can burn it · severity: P2 · status: new
 
+**Fixed in S8-06: same /auth/confirm change as F-entrar-1.**
+
 - **Problem** — The email link goes straight to `/auth/callback?token_hash=…`, and the route verifies the token on the GET itself (`app/auth/callback/route.ts:42-44`, `supabase.auth.verifyOtp`). There is no intermediate page that needs a human click. The stateless token-hash flow is deliberate (comment at `app/actions/auth.ts:37-41`: works across browsers and in-app webviews), but any prefetch (corporate or university scanner, link preview) uses the single-use token.
 - **Implication** — Blocked flow for exactly the target users: labs, schools and companies with mail scanners. The visitor lands on the login page with "El enlace no funcionó" (`app/[locale]/auth/login/page.tsx:45`) right after being told "Plaza reservada", and must start again.
 - **Fix** — Make the email link open a page on our domain with an "Entrar" button; the button performs `verifyOtp`. Keep the stateless token-hash approach. On failure, offer "pedir otro enlace" with the email prefilled. **Acceptance:** a plain GET of the link (curl) does not consume the token; clicking the button signs in and lands on `next`; opening the link in a second browser still works; the failure screen offers a one-tap resend. **Size:** M.
@@ -50,6 +52,8 @@ A visitor reads the dark marketing page (`app/[locale]/page.tsx`) and types an e
 - **Invariant check** — none touched (the guest-claim `next=/auth/claim?token=` must keep working through the same page).
 
 ### F-landing-4 · After "Plaza reservada" the visitor is stuck: no address shown, no resend, no change-email · severity: P2 · status: new
+
+**Fixed in S8-06: the founding-seat form shows the address, the code field and a resend (EmailSentState).**
 
 - **Problem** — On success the form is replaced by a static panel (`components/landing/WaitlistForm.tsx:53-60`). It does not show the address the link went to and offers no resend or typo fix; the only way back is a page reload. The hint says "pide otro enlace en unos minutos" (`messages/es.json:1134`) but gives no control to do so. The login form, by contrast, has a "cambiar correo" button and hint (`app/[locale]/auth/login/LoginForm.tsx:75-89`). The headline "Plaza reservada" also shows even when the waitlist insert failed silently (`waitlist.ts:39`).
 - **Implication** — Typos (common on phones) look like success: the person waits for a mail that never comes, believing a seat is held. Repeated reloads then hit the rate limit.
@@ -80,6 +84,8 @@ A visitor reads the dark marketing page (`app/[locale]/page.tsx`) and types an e
 - **Invariant check** — none touched.
 
 ### F-landing-7 · Rate-limit mapping on the landing is narrower than on the login · severity: P3 · status: new
+
+**Fixed in S8-06: landing and login share lib/authErrors.ts and the sendMagicLink result.**
 
 - **Problem** — The landing maps only `over_email_send_rate_limit` to the friendly message (`waitlist.ts:49`); every other failure shows "No pudimos enviar el enlace. Verifica el correo…" (`messages/es.json:1136`). The login form also accepts any message containing "rate limit" (`LoginForm.tsx:54-56`).
 - **Implication** — A visitor throttled by a different limit is told their email is wrong and retries, making it worse.

@@ -332,6 +332,30 @@ Scoring, the trigger and `AggregateScore` never read any of this.
 
 ---
 
+### Sign-in, deep links and the confirm page (2026-11, S8-06)
+
+```mermaid
+flowchart TD
+  A[Signed-out visit to /app/**] --> P{proxy.ts getUser}
+  P -- none --> L[/login?next=path+search/]
+  P -- unreachable --> PG[page backstop throws -> retry panel]
+  P -- user or guest --> OK[page renders]
+  L --> M[Link email or 6-digit code]
+  M -- link --> C[/auth/confirm page, GET touches nothing/]
+  C -- button POST --> V[confirmEmailToken -> verifyOtp]
+  M -- code --> V2[verifyEmailCode -> verifyOtp type email]
+  V --> N[safeNext destination]
+  V2 --> N
+  OLD[old /auth/callback?token_hash] --> C
+  G[Google code] --> CB[/auth/callback exchange/] --> N
+```
+
+- One `next` validator (`lib/safeNext.ts`): same-site path or same-origin absolute URL; rejects `//x`, `/\x`, `@`, encoded slashes and `/auth/{callback,confirm,login}` (loops). `/auth/claim` is allowed (guest claim chain).
+- `lib/authState.ts` classifies `user | none | unreachable`; anonymous guests are `user`. Only `none` redirects to login; a down auth service shows the error boundary's retry panel.
+- A GET never consumes a token. The guest-claim chain is unchanged: login `next=/auth/claim?...` -> confirm -> claim page (login-then-confirm, never a merge on GET).
+- Language: `signInWithMagicLink(formData, next, locale)` sends `preferred_lang` (new accounts only) and defaults `next` to `/{locale}/app`; `signOut(locale)` lands on `/` or `/en`; the ES/EN switch keeps page, query and hash (`lib/localeSwitch.ts`).
+- The welcome dialog mounts only on `/app` itself and never for guests; closing it (X, Esc, skip) calls `dismissOnboarding`, which sets only `onboardingCompleted`.
+
 ## 2. Coffee visibility & sharing
 
 A coffee is a reusable asset owned by its creator (producer/roaster/café). The

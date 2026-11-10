@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ConfirmClient } from "./ConfirmClient";
 import { loginHref } from "@/lib/authRedirect";
 import { safeNext } from "@/lib/safeNext";
+import { trustedRequestOrigin } from "@/lib/requestOrigin";
 
 // Reads the token from the URL on every request; nothing here is cacheable.
 export const dynamic = "force-dynamic";
@@ -28,7 +29,9 @@ export default async function ConfirmPage({
 
   const loc = locale === "en" ? "en" : "es";
   const valid = !!tokenHash && !!type && TYPES.includes(type);
-  const dest = safeNext(next, { fallback: `/${loc}/app` });
+  // Templates pass {{ .RedirectTo }}, an ABSOLUTE url on our own origin.
+  const origin = await trustedRequestOrigin();
+  const dest = safeNext(next, { origin, fallback: `/${loc}/app` });
 
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-16">

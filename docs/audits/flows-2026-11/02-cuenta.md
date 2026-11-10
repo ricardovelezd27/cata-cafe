@@ -40,6 +40,8 @@ A registered user or QR guest opens `/app/profile` (page; "Cuenta" card at `app/
 
 ### F-cuenta-3 · The ES/EN link does nothing from Spanish routes · severity: P2 · status: confirms-board(El selector de idioma no funciona desde rutas en español)
 
+**Fixed in S8-06: lib/localeSwitch.ts, used by Sidebar and TopBar.**
+
 - **Problem** — `otherPath = pathname.replace(`/${locale}/`, `/${otherLocale}/`)` in `components/layout/Sidebar.tsx:22` and `components/layout/TopBar.tsx:16`. With `localePrefix: "as-needed"` (`i18n/routing.ts:7`) the Spanish URL is `/app/profile` and contains no `/es/`, so the link points at the current page; from `/en/...` it works. Query and hash are dropped. The repo already has the right helper (`stripLocale`, `lib/guestScope.ts:23`).
 - **Implication** — The default-locale majority cannot reach English from the shell; a visible control looks broken. Trust, friction.
 - **Fix** — Build the target from the locale-stripped path, keep search and hash, prefix `/en` for English only. **Acceptance:** `/app/profile` → EN opens `/en/app/profile`; `/en/app/profile` → ES opens `/app/profile`; a `?gate=1` query survives. **Size:** S.
@@ -49,6 +51,8 @@ A registered user or QR guest opens `/app/profile` (page; "Cuenta" card at `app/
 - **Invariant check** — none touched.
 
 ### F-cuenta-4 · "Idioma preferido" is never captured at sign-up and does not change the interface · severity: P2 · status: new (extends board "«Idioma preferido» no cambia la interfaz")
+
+**Fixed in S8-06: language captured at sign-up; the profile field is relabelled "Idioma de los correos".**
 
 - **Problem** — The board says the initial value comes from the signup locale. It does not: nothing writes `preferred_lang` into auth metadata (no match in `app/`, `lib/`, `components/`; `signInWithOtp` sends only `emailRedirectTo`, `app/actions/auth.ts:45-48` (line corrected in verification)), so `handle_new_user` always falls back to `'es'` (`prisma/sql/rls_and_triggers.sql:73`). Group emails and invitations read that column (`app/actions/groups.ts:285,450,538,704`). The profile field (`ProfileForm.tsx:120-133`) reads as the interface language, but saving only revalidates `/${preferredLang}/app/profile` (`app/actions/profile.ts:119`) and the UI stays put.
 - **Implication** — Every English-speaking user receives Spanish group emails until they find and set the field, and then sees no effect, so they think it failed. Trust.
