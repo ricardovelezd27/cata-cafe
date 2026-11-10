@@ -50,6 +50,11 @@ export type EditSessionFormTranslations = {
   closesAtPast: string;
   sessionClosed: string;
   warmupLocked: string;
+  repinTitle: string;
+  /** Raw ICU string (t.raw()) — contains a literal "{n}" token. */
+  repinBody: string;
+  sampleHasData: string;
+  formatLockedStarted: string;
   warmup: { toggle: string; label: string; hint: string; minutes: string };
 };
 
@@ -105,7 +110,9 @@ export function EditSessionForm({
 }) {
   const router = useRouter();
   const feedback = useActionFeedback();
-  const locked = evalCount > 0;
+  // Format/cups freeze at "Iniciar cata" as well as at the first evaluation
+  // (C6 default; the server enforces the same rule via isFormatLocked).
+  const locked = evalCount > 0 || initial.started;
   const closed = initial.closed;
 
   const [name, setName] = useState(initial.name);
@@ -163,14 +170,28 @@ export function EditSessionForm({
   // choice (pick B, pick C, B's save fails → C must stay).
   const referenceSeq = useRef(0);
 
+  // B2 default: a sample cuppers already rated asks before its notes are
+  // replaced by the 79.00 anchor. Cancel leaves the select untouched.
+  const [repinTarget, setRepinTarget] = useState<EditSampleRow | null>(null);
+
   const handleReferenceChange = (value: string) => {
     const next = value || null;
+    if (next === referenceId) return;
+    const target = next ? samples.find((s) => s.id === next) : undefined;
+    if (target && target.evalCount > 0) {
+      setRepinTarget(target);
+      return;
+    }
+    commitReference(next, false);
+  };
+
+  const commitReference = (next: string | null, confirmRepin: boolean) => {
     const previous = referenceId;
     if (next === previous) return;
     const seq = ++referenceSeq.current;
     setReferenceIdState(next);
     startReference(async () => {
-      const result = await feedback.run(setReferenceSample(sessionId, next), () => {
+      const result = await feedback.run(setReferenceSample(sessionId, next, confirmRepin), () => {
         if (seq === referenceSeq.current) feedback.notifySuccess(t.referenceSaved);
       });
       // Naming an existing reference is a server no-op — show what the
@@ -202,7 +223,9 @@ export function EditSessionForm({
               ...(closesAt !== initial.closesAt ? { closesAt: closesAt || null } : {}),
             }
           : {}),
-        ...(!locked ? { format, cupsPerSample: cups } : {}),
+        ...(!locked && (format !== initial.format || cups !== initial.cupsPerSample)
+          ? { format, cupsPerSample: cups }
+          : {}),
         // Only send a changed warm-up (same pattern as closesAt).
         ...((warmupOn ? warmupId : null) !== initial.warmupExerciseId
           ? { warmupExerciseId: warmupOn ? warmupId : null }
@@ -232,17 +255,26 @@ export function EditSessionForm({
       if (result.ok) {
         setSamples((prev) => prev.map((s) => (s.id === row.id ? { ...s, label: value } : s)));
         router.refresh();
+      } else {
+        // Never fail silently: the input would otherwise keep a label the
+        // server never saved.
+        feedback.notifyError(result.error);
+        router.refresh();
       }
     });
   };
 
   const handleAddSample = () => {
+    // Enter held down / double click must not add two samples.
+    if (addPending) return;
     const label = newSampleLabel.trim();
     startAdd(async () => {
       const result = await addSessionSample(sessionId, { label: label || undefined, locale });
       if (result.ok) {
         setNewSampleLabel("");
         router.refresh();
+      } else {
+        feedback.notifyError(result.error);
       }
     });
   };
@@ -250,7 +282,13 @@ export function EditSessionForm({
   const handleRemoveConfirm = async () => {
     if (!removeTarget) return;
     const result = await removeSessionSample(removeTarget.id, locale);
-    if (!result.ok) throw new Error(result.error);
+    if (!result.ok) {
+      // The race half of F-sesiones-3: the sample gained evaluations (or
+      // physical/origin data) after this page loaded. Refresh so the trash
+      // button disables, and let the dialog show its error line.
+      router.refresh();
+      throw new Error(result.error);
+    }
     // The DB SETs NULL on the FK when the referenced sample is deleted —
     // mirror that locally so the select doesn't keep pointing at a gone row.
     if (removeTarget.id === referenceId) setReferenceIdState(null);
@@ -270,7 +308,10 @@ export function EditSessionForm({
     : null;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit}>
+      {/* A closed session is read-only: ONE disabled fieldset covers every
+          control (S8-10 T6, F-sesiones-9) instead of per-field flags. */}
+      <fieldset disabled={closed} className="m-0 min-w-0 space-y-6 border-0 p-0">
       {/* a. Metadata */}
       <div className={cardCls}>
         <div>
@@ -352,7 +393,11 @@ export function EditSessionForm({
             }}
           />
         </div>
-        {locked && <p className="text-xs text-on-surface-variant">{t.formatLocked}</p>}
+        {locked && (
+          <p className="text-xs text-on-surface-variant">
+            {initial.started ? t.formatLockedStarted : t.formatLocked}
+          </p>
+        )}
 
         {/* Optional pre-cupping warm-up (same switch pattern as the wizard) */}
         <div className="space-y-3">
@@ -520,6 +565,23 @@ export function EditSessionForm({
       </div>
 
       <ConfirmDialog
+        open={repinTarget !== null}
+        onOpenChange={(o) => {
+          if (!o) setRepinTarget(null);
+        }}
+        title={t.repinTitle}
+        body={t.repinBody.replace("{n}", String(repinTarget?.evalCount ?? 0))}
+        confirmLabel={t.save}
+        cancelLabel={t.cancel}
+        closeLabel={t.close}
+        onConfirm={async () => {
+          if (repinTarget) commitReference(repinTarget.id, true);
+          setRepinTarget(null);
+        }}
+        error={t.error}
+      />
+
+      <ConfirmDialog
         open={removeTarget !== null}
         onOpenChange={(o) => {
           if (!o) setRemoveTarget(null);
@@ -546,6 +608,7 @@ export function EditSessionForm({
         {errorText && <p className="text-sm text-error">{errorText}</p>}
         {closed && !errorText && <p className="text-sm text-on-surface-variant">{t.sessionClosed}</p>}
       </div>
+      </fieldset>
     </form>
   );
 }

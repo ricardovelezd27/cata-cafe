@@ -102,6 +102,10 @@ export default async function EditSessionPage({
     closesAtPast: t("edit.closesAtPast"),
     sessionClosed: t("edit.sessionClosed"),
     warmupLocked: t("edit.warmupLocked"),
+    repinTitle: t("edit.repinTitle"),
+    repinBody: t.raw("edit.repinBody") as string,
+    sampleHasData: t("edit.sampleHasData"),
+    formatLockedStarted: t("edit.formatLockedStarted"),
   };
 
   return (

@@ -53,20 +53,28 @@ export function DuplicateButton({
 
   if (variant === "icon") {
     return (
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={pending}
-        aria-label={label}
-        title={failed ? errorText : label}
-        className={`inline-flex rounded-sm p-1.5 transition-colors disabled:opacity-40 ${
-          failed
-            ? "text-error"
-            : "text-on-surface-variant hover:text-primary-container"
-        }`}
-      >
-        <Copy size={16} />
-      </button>
+      <span className="inline-flex flex-col items-start">
+        <button
+          type="button"
+          onClick={handleClick}
+          disabled={pending}
+          aria-label={label}
+          title={failed ? errorText : label}
+          className={`inline-flex rounded-sm p-1.5 transition-colors disabled:opacity-40 ${
+            failed
+              ? "text-error"
+              : "text-on-surface-variant hover:text-primary-container"
+          }`}
+        >
+          <Copy size={16} />
+        </button>
+        {/* Visible, not just a tooltip (S8-10 T8, F-sesiones-8). */}
+        {failed && (
+          <span role="alert" className="text-xs text-error">
+            {errorText}
+          </span>
+        )}
+      </span>
     );
   }
 

@@ -45,6 +45,15 @@ import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/grou
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
 import { WARMUP_IDS, type WarmupId } from "@/lib/warmup/exercises";
 import { safeLocale } from "@/lib/safeLocale";
+import {
+  changedFormatCups,
+  isFormatLocked,
+  nextSamplePosition,
+  planDuplicateSamples,
+  repinNeedsConfirm,
+  MAX_SESSION_SAMPLES,
+  defaultSampleLabel,
+} from "@/lib/sessionEdit";
 
 // Mirrors the standalone CoffeeForm's field set — wizard-created coffees land
 // in the SAME coffees table with the same shape (no wizard-only subset).
@@ -776,7 +785,7 @@ export async function deleteSession(sessionId: string, locale: string = "es") {
 export async function duplicateSession(
   sessionId: string,
   locale: string = "es",
-): Promise<{ ok: true; sessionId: string }> {
+): Promise<{ ok: true; sessionId: string; droppedCoffees: number }> {
   const user = await requireRegisteredUser();
   const session = await requireSessionOwner(sessionId, user.id);
 
@@ -793,17 +802,31 @@ export async function duplicateSession(
       warmupExerciseId: true,
       samples: {
         orderBy: { position: "asc" },
-        select: { id: true, label: true, position: true, coffeeId: true },
+        select: { id: true, label: true, position: true, coffeeId: true, referenceRank: true },
       },
     },
   });
   if (!source) throw new Error("not_found_or_forbidden");
   void session;
 
-  // The reference travels with the template, remapped by position onto the
-  // copied sample (ids are fresh in the copy).
+  // Every reference travels with the template (B8 default (a): all ranks),
+  // remapped by position; the active one is the source's pointer. Coffees the
+  // caller can no longer use (anonymized since, unshared) are NOT copied: the
+  // sample stays, coffee-less, with its label (F-sesiones-8).
+  // TODO(B8): Kim may prefer copying only the active reference.
   const refPosition =
     source.samples.find((s) => s.id === source.referenceSampleId)?.position ?? null;
+  const linkedIds = [
+    ...new Set(source.samples.map((s) => s.coffeeId).filter((id): id is string => id !== null)),
+  ];
+  const usable =
+    linkedIds.length === 0
+      ? []
+      : await prisma.coffee.findMany({
+          where: { id: { in: linkedIds }, AND: [usableCoffeeWhere(user.id)] },
+          select: { id: true },
+        });
+  const plan = planDuplicateSamples(source.samples, new Set(usable.map((c) => c.id)));
 
   // Keep the group link only if the group still exists and is still ours.
   let groupId: string | null = null;
@@ -830,10 +853,11 @@ export async function duplicateSession(
         groupId,
         warmupExerciseId: source.warmupExerciseId,
         samples: {
-          create: source.samples.map((s) => ({
+          create: plan.samples.map((s) => ({
             label: s.label,
             position: s.position,
             coffeeId: s.coffeeId,
+            referenceRank: s.referenceRank,
           })),
         },
         ...(source.isGroup
@@ -845,12 +869,21 @@ export async function duplicateSession(
       },
       select: { id: true, samples: { select: { id: true, position: true } } },
     });
-    await applyReferenceByPosition(tx, created.id, created.samples, refPosition);
+    // Ranks were copied with the samples; only the active pointer needs the
+    // fresh sample id (found by position).
+    const activeCopy =
+      refPosition === null ? undefined : created.samples.find((s) => s.position === refPosition);
+    if (activeCopy) {
+      await tx.cuppingSession.update({
+        where: { id: created.id },
+        data: { referenceSampleId: activeCopy.id },
+      });
+    }
     return { id: created.id };
   });
 
-  revalidatePath(`/${locale}/app/sessions`);
-  return { ok: true, sessionId: copy.id };
+  revalidatePath(`/${safeLocale(locale)}/app/sessions`);
+  return { ok: true, sessionId: copy.id, droppedCoffees: plan.droppedCoffees };
 }
 
 // ─── Reference sample (owner only) ───────────────────────────────────────────
@@ -864,6 +897,7 @@ export async function duplicateSession(
 export async function setReferenceSample(
   sessionId: string,
   sampleId: string | null,
+  confirmRepin: boolean = false,
 ): Promise<ActionResult<{ referenceSampleId: string | null }>> {
   return run(
     "setReferenceSample",
@@ -914,6 +948,20 @@ export async function setReferenceSample(
           const plan = planAddReference(rows, targetId);
           if (plan.kind === "full") throw new Error("invalid_input");
           if (plan.kind === "add") {
+            // B2 default (a): replacing cuppers' saved ratings with the 79.00
+            // anchor is allowed, but only after the owner confirmed it. The
+            // count is read in this transaction so it cannot go stale.
+            // TODO(B2-b): Kim may prefer keeping the originals aside.
+            const existing = await tx.evaluation.count({ where: { sessionSampleId: targetId } });
+            if (
+              repinNeedsConfirm({
+                isAlreadyReference: false,
+                evaluationCount: existing,
+                confirmRepin,
+              })
+            ) {
+              throw new Error("conflict");
+            }
             await tx.sessionSample.update({
               where: { id: targetId },
               data: { referenceRank: plan.rank },
@@ -978,7 +1026,22 @@ export type UpdateSessionInput = {
   locale?: string;
 };
 
-export async function updateSession(sessionId: string, input: UpdateSessionInput) {
+type UpdateSessionResult = { ok: true } | { ok: false; error: string };
+
+export async function updateSession(
+  sessionId: string,
+  input: UpdateSessionInput,
+): Promise<UpdateSessionResult> {
+  // S8-10 T6: a thrown failure (expired auth, DB) becomes `{ ok:false, error }`
+  // instead of an opaque digest; the specific codes below keep their shape.
+  const result = await run("updateSession", () => updateSessionBody(sessionId, input), { sessionId });
+  return result.ok ? result.data : { ok: false, error: result.error };
+}
+
+async function updateSessionBody(
+  sessionId: string,
+  input: UpdateSessionInput,
+): Promise<UpdateSessionResult> {
   const user = await requireUser();
   const session = await requireSessionOwner(sessionId, user.id);
   // Closed = read-only (S6 CP-C3). This action keeps its own `{ ok, error }`
@@ -1010,18 +1073,31 @@ export async function updateSession(sessionId: string, input: UpdateSessionInput
     }
   }
 
+  // lib/validate on every client-posted value (S8-10 T6): same bounds and
+  // codes as the wizard's validateSessionMeta.
   if (input.name !== undefined) {
-    const name = input.name.trim();
-    if (!name) return { ok: false as const, error: "invalid_name" };
-    data.name = name;
+    try {
+      data.name = v.str(input.name, "name", { max: 120 })!;
+    } catch {
+      return { ok: false as const, error: "invalid_name" };
+    }
   }
   if (input.date !== undefined) {
-    const d = new Date(input.date);
-    if (Number.isNaN(d.getTime())) return { ok: false as const, error: "invalid_date" };
-    data.date = d;
+    try {
+      data.date = v.isoDate(input.date, "date");
+    } catch {
+      return { ok: false as const, error: "invalid_date" };
+    }
   }
   if (input.objective !== undefined) {
-    data.objective = input.objective?.trim() || null;
+    try {
+      data.objective =
+        input.objective === null
+          ? null
+          : v.str(input.objective, "objective", { max: 1000, required: false });
+    } catch {
+      return { ok: false as const, error: "invalid_objective" };
+    }
   }
   if (input.warmupExerciseId !== undefined) {
     let next: WarmupId | null;
@@ -1064,20 +1140,39 @@ export async function updateSession(sessionId: string, input: UpdateSessionInput
   }
 
   if (input.format !== undefined || input.cupsPerSample !== undefined) {
-    const evalCount = await prisma.evaluation.count({
-      where: { sessionSample: { sessionId } },
-    });
-    if (evalCount > 0) return { ok: false as const, error: "format_locked" };
-    if (input.format !== undefined) data.format = input.format;
-    if (input.cupsPerSample !== undefined) {
-      if (
-        !Number.isInteger(input.cupsPerSample) ||
-        input.cupsPerSample < 1 ||
-        input.cupsPerSample > 5
-      ) {
-        return { ok: false as const, error: "invalid_cups" };
+    let format: string | undefined;
+    let cups: number | undefined;
+    try {
+      if (input.format !== undefined) format = v.oneOf(input.format, "format", SESSION_FORMATS);
+    } catch {
+      return { ok: false as const, error: "invalid_format" };
+    }
+    try {
+      if (input.cupsPerSample !== undefined) {
+        cups = v.int(input.cupsPerSample, "cupsPerSample", 1, 5);
       }
-      data.cupsPerSample = input.cupsPerSample;
+    } catch {
+      return { ok: false as const, error: "invalid_cups" };
+    }
+    // Only what actually differs counts as a change: the form re-posts the
+    // stored format/cups, and a harmless rename must not hit the lock.
+    const stored = await prisma.cuppingSession.findUnique({
+      where: { id: sessionId },
+      select: { format: true, cupsPerSample: true },
+    });
+    const changed = changedFormatCups(stored ?? { format: "", cupsPerSample: 0 }, {
+      format,
+      cupsPerSample: cups,
+    });
+    if (changed.format !== undefined || changed.cupsPerSample !== undefined) {
+      const evalCount = await prisma.evaluation.count({
+        where: { sessionSample: { sessionId } },
+      });
+      if (isFormatLocked(session.startedAt, evalCount)) {
+        return { ok: false as const, error: "format_locked" };
+      }
+      if (changed.format !== undefined) data.format = changed.format;
+      if (changed.cupsPerSample !== undefined) data.cupsPerSample = changed.cupsPerSample;
     }
   }
 
@@ -1085,7 +1180,7 @@ export async function updateSession(sessionId: string, input: UpdateSessionInput
     await prisma.cuppingSession.update({ where: { id: sessionId }, data });
   }
 
-  const locale = input.locale || "es";
+  const locale = safeLocale(input.locale);
   revalidatePath(`/${locale}/app/sessions`);
   revalidatePath(`/${locale}/app/sessions/${sessionId}/cup`);
   revalidatePath(`/${locale}/app/sessions/${sessionId}/results`);
@@ -1107,12 +1202,32 @@ async function touchSession(db: SessionToucher, sessionId: string): Promise<void
   });
 }
 
+type AddSampleResult = { ok: true; sampleId: string } | { ok: false; error: string };
+
 export async function addSessionSample(
   sessionId: string,
   input: { label?: string; coffeeId?: string | null; locale?: string },
-) {
+): Promise<AddSampleResult> {
+  const result = await run("addSessionSample", () => addSessionSampleBody(sessionId, input), {
+    sessionId,
+  });
+  return result.ok ? result.data : { ok: false, error: result.error };
+}
+
+async function addSessionSampleBody(
+  sessionId: string,
+  input: { label?: string; coffeeId?: string | null; locale?: string },
+): Promise<AddSampleResult> {
   const user = await requireUser();
   assertSessionWritable(await requireSessionOwner(sessionId, user.id));
+  const locale = safeLocale(input.locale);
+
+  let label: string | null;
+  try {
+    label = v.str(input.label, "label", { max: 120, required: false });
+  } catch {
+    return { ok: false, error: "invalid_label" };
+  }
 
   if (input.coffeeId) {
     // Same re-validation as the wizard: the coffee must be usable by the
@@ -1121,32 +1236,45 @@ export async function addSessionSample(
       where: { id: input.coffeeId, AND: [usableCoffeeWhere(user.id)] },
       select: { id: true },
     });
-    if (!usable) return { ok: false as const, error: "coffee_not_found" };
+    if (!usable) return { ok: false, error: "coffee_not_found" };
   }
 
-  const max = await prisma.sessionSample.aggregate({
-    where: { sessionId },
-    _max: { position: true },
-  });
-  const position = (max._max.position ?? -1) + 1;
+  // The position is computed INSIDE the transaction and a unique-key collision
+  // (two owner tabs adding at once) retries with a fresh max (S8-10 T6).
+  let sample: { id: string } | null = null;
+  for (let attempt = 0; attempt < 3 && !sample; attempt++) {
+    try {
+      sample = await prisma.$transaction(async (tx) => {
+        const count = await tx.sessionSample.count({ where: { sessionId } });
+        if (count >= MAX_SESSION_SAMPLES) throw new Error("too_many_samples");
+        const max = await tx.sessionSample.aggregate({
+          where: { sessionId },
+          _max: { position: true },
+        });
+        const position = nextSamplePosition(max._max.position);
+        const created = await tx.sessionSample.create({
+          data: {
+            sessionId,
+            label: label ?? defaultSampleLabel(position, locale),
+            position,
+            coffeeId: input.coffeeId ?? null,
+          },
+          select: { id: true },
+        });
+        await touchSession(tx, sessionId);
+        return created;
+      });
+    } catch (e) {
+      if (e instanceof Error && e.message === "too_many_samples") {
+        return { ok: false, error: "too_many_samples" };
+      }
+      if (!isP2002(e) || attempt === 2) throw e;
+    }
+  }
+  if (!sample) throw new Error("conflict");
 
-  const sample = await prisma.$transaction(async (tx) => {
-    const created = await tx.sessionSample.create({
-      data: {
-        sessionId,
-        label: input.label?.trim() || `Muestra ${position + 1}`,
-        position,
-        coffeeId: input.coffeeId ?? null,
-      },
-      select: { id: true },
-    });
-    await touchSession(tx, sessionId);
-    return created;
-  });
-
-  const locale = input.locale || "es";
   revalidatePath(`/${locale}/app/sessions/${sessionId}/cup`);
-  return { ok: true as const, sampleId: sample.id };
+  return { ok: true, sampleId: sample.id };
 }
 
 // Label-only rename. Deliberately separate from updateSampleMetadata (which
@@ -1157,8 +1285,12 @@ export async function renameSessionSample(sampleId: string, label: string) {
   assertSessionWritable(auth);
   const { sessionId } = auth;
 
-  const trimmed = label.trim();
-  if (!trimmed) return { ok: false as const, error: "invalid_label" };
+  let trimmed: string;
+  try {
+    trimmed = v.str(label, "label", { max: 120 })!;
+  } catch {
+    return { ok: false as const, error: "invalid_label" };
+  }
 
   await prisma.$transaction(async (tx) => {
     await tx.sessionSample.update({
@@ -1182,16 +1314,22 @@ export async function removeSessionSample(sampleId: string, locale: string = "es
   if (isSessionExpired(auth)) return { ok: false as const, error: "session_closed" };
   const sample = await prisma.sessionSample.findUnique({
     where: { id: sampleId },
-    select: { id: true, sessionId: true, _count: { select: { evaluations: true } } },
+    select: { id: true, sessionId: true },
   });
   if (!sample) throw new Error("not_found_or_forbidden");
-  // A sample with ANY cupper's evaluation is load-bearing data — refuse.
-  // (Deleting would cascade evaluations/physical/extrinsic/aggregate rows.)
-  if (sample._count.evaluations > 0) {
-    return { ok: false as const, error: "sample_has_evaluations" };
-  }
 
-  await prisma.$transaction(async (tx) => {
+  // A sample with ANY cupper's evaluation, physical or origin data is
+  // load-bearing (deleting cascades all of it). The count is taken INSIDE the
+  // transaction so a first evaluation landing between the check and the delete
+  // cannot be cascaded away (S8-10 T5; F-sesiones-3, race half).
+  const refused = await prisma.$transaction(async (tx) => {
+    const [evaluations, physical, extrinsic] = await Promise.all([
+      tx.evaluation.count({ where: { sessionSampleId: sampleId } }),
+      tx.physicalEvaluation.count({ where: { sessionSampleId: sampleId } }),
+      tx.extrinsicData.count({ where: { sessionSampleId: sampleId } }),
+    ]);
+    if (evaluations > 0) return "sample_has_evaluations" as const;
+    if (physical > 0 || extrinsic > 0) return "sample_has_data" as const;
     await tx.sessionSample.delete({ where: { id: sampleId } });
     // A removed reference leaves a gap in the ranks and (SetNull) may have
     // cleared the pointer: renumber 1..n and re-aim at the highest rank.
@@ -1222,9 +1360,11 @@ export async function removeSessionSample(sampleId: string, locale: string = "es
       }
     }
     await touchSession(tx, sample.sessionId);
+    return null;
   });
+  if (refused) return { ok: false as const, error: refused };
 
-  revalidatePath(`/${locale}/app/sessions/${sample.sessionId}/cup`);
+  revalidatePath(`/${safeLocale(locale)}/app/sessions/${sample.sessionId}/cup`);
   return { ok: true as const };
 }
 

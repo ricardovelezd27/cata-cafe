@@ -276,7 +276,11 @@
       "closesAtHint": "Opcional. La sesión se cierra sola en la madrugada siguiente a esta fecha. Déjala vacía para una cata en vivo que cierras tú.",
       "closesAtPast": "La fecha de cierre debe ser hoy o una fecha futura.",
       "sessionClosed": "Esta sesión está cerrada y ya no se puede editar.",
-      "warmupLocked": "El ejercicio no se puede cambiar una vez iniciada la cata."
+      "warmupLocked": "El ejercicio no se puede cambiar una vez iniciada la cata.",
+      "repinTitle": "¿Fijar esta muestra como referencia?",
+      "repinBody": "{n} catadores ya evaluaron esta muestra. Al marcarla como referencia, sus notas de calidad se reemplazan por el ancla de 79.00. No se puede deshacer.",
+      "sampleHasData": "Tiene datos físicos o de origen — no se puede eliminar",
+      "formatLockedStarted": "El formato y las tazas por muestra se bloquean cuando la cata ya empezó o tiene evaluaciones."
     }
   },
   "cupping": {

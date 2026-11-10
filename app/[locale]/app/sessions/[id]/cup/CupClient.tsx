@@ -1390,7 +1390,10 @@ export function CupClient({
     const seq = ++referenceSeqRef.current;
     applyReferenceOrder(next);
     startTransition(async () => {
-      const r = await feedback.run(setReferenceSample(session.id, next));
+      // TODO(S8-10): the master panel does not yet show the "N cuppers' notes
+      // will be replaced" confirm that the edit form has (B2 default); until
+      // then it keeps the S6 mid-session re-pin behaviour.
+      const r = await feedback.run(setReferenceSample(session.id, next, true));
       if (!r.ok && seq === referenceSeqRef.current) applyRefOrder(prevOrder);
     });
   };
