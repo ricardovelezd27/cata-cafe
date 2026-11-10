@@ -288,7 +288,9 @@ export function EditSessionForm({
       // physical/origin data) after this page loaded. Refresh so the trash
       // button disables, and let the dialog show its error line.
       router.refresh();
-      throw new Error(result.error);
+      // Returned, not thrown: ConfirmDialog maps the code via errorMessages
+      // (a thrown error would only show the generic line).
+      return result;
     }
     // The DB SETs NULL on the FK when the referenced sample is deleted —
     // mirror that locally so the select doesn't keep pointing at a gone row.
@@ -593,6 +595,11 @@ export function EditSessionForm({
         cancelLabel={t.cancel}
         closeLabel={t.close}
         onConfirm={handleRemoveConfirm}
+        errorMessages={{
+          sample_has_data: t.sampleHasData,
+          sample_has_evaluations: t.sampleHasEvals,
+          session_closed: t.sessionClosed,
+        }}
         error={t.error}
       />
 
