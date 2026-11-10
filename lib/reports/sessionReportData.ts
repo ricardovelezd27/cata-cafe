@@ -68,6 +68,7 @@ export async function loadSessionReportSource(
             status: true,
             excludedFromResults: true,
             excludedAt: true,
+            exclusionReason: true,
             user: { select: { displayName: true } },
           },
         },
@@ -99,6 +100,7 @@ export async function loadSessionReportSource(
     displayName: p.user.displayName,
     status: p.status,
     excluded: p.excludedFromResults,
+    exclusionReason: p.exclusionReason,
   }));
   const excludedUserIds =
     options.excludedUserIds ??

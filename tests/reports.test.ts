@@ -16,6 +16,8 @@ import {
 import { rowStats, bandFor } from "@/lib/reports/cupperStats";
 import { buildParticipantSummary } from "@/lib/reports/participantSummary";
 import { buildFichaTecnica } from "@/lib/reports/fichaTecnica";
+import { buildResultsCsv } from "@/lib/reports/resultsCsv";
+import { csvCell } from "@/lib/csv";
 import { buildTeacherNotes } from "@/lib/reports/teacherNotes";
 import type { ReportEvalRow, SessionReportSource } from "@/lib/reports/types";
 
@@ -631,5 +633,54 @@ describe("gateSampleForViewer (S8-02 F-resultados-2)", () => {
     const copy = structuredClone(input);
     gateSampleForViewer(input, { ownerRead: false, isGroup: true, canViewGroup: false });
     expect(input).toEqual(copy);
+  });
+});
+
+describe("buildResultsCsv / csvCell (S8-12, F-informes-7)", () => {
+  const src = fixture();
+  const out = buildResultsCsv(src, { locale: "es", coffeeDeleted: "Café eliminado" });
+
+  it("starts with a UTF-8 BOM and one row per submitted evaluation", () => {
+    expect(out.csv.charCodeAt(0)).toBe(0xfeff);
+    const lines = out.csv.trim().split("\n");
+    expect(lines).toHaveLength(src.evals.length + 1);
+    expect(out.rows).toBe(src.evals.length);
+    expect(lines[0]).toContain("puntaje_cva");
+  });
+
+  it("never prints the coffee of a blind sample", () => {
+    expect(out.csv).not.toContain("CAFE-CIEGO-SECRETO");
+    expect(out.csv).toContain("Finca Revelada");
+  });
+
+  it("names by default and codes on request", () => {
+    expect(out.csv).toContain(CUPPERS.A.name);
+    const coded = buildResultsCsv(src, { locale: "en", coffeeDeleted: "x", codes: true });
+    expect(coded.csv).not.toContain(CUPPERS.A.name);
+    expect(coded.csv).toContain("Muestra REF");
+    expect(coded.csv.split("\n").some((l) => l.startsWith("C1,"))).toBe(true);
+    expect(coded.csv.split("\n")[0]).toContain("cva_score");
+  });
+
+  it("flags excluded cuppers with their reason", () => {
+    const withExclusion = buildResultsCsv(
+      {
+        ...src,
+        excludedUserIds: [CUPPERS.C.id],
+        participants: src.participants.map((p) =>
+          p.userId === CUPPERS.C.id ? { ...p, excluded: true, exclusionReason: "protocol" } : p,
+        ),
+      },
+      { locale: "es", coffeeDeleted: "x" },
+    );
+    const cLines = withExclusion.csv.split("\n").filter((l) => l.startsWith(CUPPERS.C.name));
+    expect(cLines.length).toBeGreaterThan(0);
+    expect(cLines.every((l) => l.includes(",si,protocol,"))).toBe(true);
+  });
+
+  it("neutralises formula injection and quotes awkward cells", () => {
+    expect(csvCell("=SUM(A1)")).toBe("'=SUM(A1)");
+    expect(csvCell('a,"b"')).toBe('"a,""b"""');
+    expect(csvCell("plain")).toBe("plain");
   });
 });

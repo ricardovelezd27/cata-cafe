@@ -824,6 +824,7 @@ export default async function ResultsPage({
         downloadPdf: tResults("downloadPdf"),
         downloadSummary: tResults("downloadSummary"),
         downloadFicha: tResults("downloadFicha"),
+        downloadCsv: tResults("downloadCsv"),
         refresh: tResults("refresh"),
         refreshing: tResults("refreshing"),
         // Template — the live count is substituted client-side.

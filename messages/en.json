@@ -809,7 +809,8 @@
       "requiresAffective": "The radar chart needs affective data (affective or combined format)"
     },
     "updatedAfterClose": "Results updated on {date}, after the session closed.",
-    "originEditedAt": "Origin edited on {date}"
+    "originEditedAt": "Origin edited on {date}",
+    "downloadCsv": "Data per cupper (CSV)"
   },
   "community": {
     "score": "Community score",

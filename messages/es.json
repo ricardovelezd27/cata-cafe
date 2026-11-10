@@ -809,7 +809,8 @@
       "requiresAffective": "El gráfico radar requiere datos afectivos (formato afectivo o combinado)"
     },
     "updatedAfterClose": "Resultados actualizados el {date}, después del cierre.",
-    "originEditedAt": "Origen editado el {date}"
+    "originEditedAt": "Origen editado el {date}",
+    "downloadCsv": "Datos por catador (CSV)"
   },
   "community": {
     "score": "Puntaje comunitario",

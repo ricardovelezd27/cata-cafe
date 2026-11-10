@@ -67,6 +67,8 @@ export type ReportParticipant = {
   displayName: string;
   status: string;
   excluded: boolean;
+  /** Why the owner excluded this cupper (lib/exclusionReasons.ts); owner exports only. */
+  exclusionReason?: string | null;
 };
 
 export type ReportSession = {

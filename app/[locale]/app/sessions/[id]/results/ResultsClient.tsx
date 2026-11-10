@@ -233,6 +233,7 @@ export function ResultsClient({
     downloadPdf: string;
     downloadSummary: string;
     downloadFicha: string;
+    downloadCsv: string;
     refresh: string;
     refreshing: string;
     refreshNew: string;
@@ -1051,6 +1052,18 @@ export function ResultsClient({
                 className="w-full sm:flex-1"
               >
                 {translations.downloadFicha}
+              </ButtonLink>
+            )}
+            {/* Owner raw data (CSV) — a plain URL; the route 404s for anyone else. */}
+            {(isOwner || isAdminViewer) && (
+              <ButtonLink
+                href={`/api/sessions/${session.id}/results-csv?locale=${locale}`}
+                size="md"
+                variant="secondary"
+                icon={<FileDown size={16} aria-hidden />}
+                className="w-full sm:flex-1"
+              >
+                {translations.downloadCsv}
               </ButtonLink>
             )}
           </div>
