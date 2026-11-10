@@ -1071,3 +1071,38 @@ detail shows "Origen editado el …"; on an unrevealed sample the button is abse
 
 **Rollback:** the columns are nullable; code rolled back ignores them. Do not drop them while
 the new code is deployed.
+
+## §25. Database — apply the `group_member_email_opt_out` migration (2026-11, S8-20)
+
+> Numbering: §21–§24 belong to the other S8 follow-ups and land in series order; this section
+> keeps its reserved number so the chained branches merge mechanically.
+
+**What it does:** adds one NULLABLE column, no default, no foreign key, no policy change:
+`tasting_group_members."emailOptOutAt"` (TIMESTAMPTZ), set when a member unsubscribes from a
+group's emails.
+
+**Order matters:** run it BEFORE the deploy. The sender now reads this column on every group
+mail; without it group email fails.
+
+1. On your machine, with `.env.local` pointing at the project (it is production):
+   ```bash
+   npx prisma migrate deploy
+   ```
+   Expected: `1 migration found … 20261111170000_group_member_email_opt_out … applied`.
+2. **Verify** — Supabase SQL Editor:
+   ```sql
+   SELECT column_name, data_type FROM information_schema.columns
+   WHERE table_name = 'tasting_group_members' AND column_name = 'emailOptOutAt';
+   ```
+   Expected: one row, `timestamp with time zone`.
+3. Deploy the branch. No SQL PHASE, no new environment variable (the token uses
+   `GUEST_CLAIM_SECRET`; `NEXT_PUBLIC_SITE_URL` builds the link and is already required).
+
+**Smoke test (3 minutes):** send a group announcement email to a test address; the mail has a
+"Darte de baja…" footer link (and your mail client shows its own Unsubscribe control). Open it →
+confirm page → "Darme de baja" → "Listo". Send another announcement: the result shows that
+member as skipped and the owner roster shows "Se dio de baja de los correos". Sign in as that
+member → group page shows the notice → "Volver a recibir correos de este grupo" clears it.
+
+**Rollback:** the column is nullable; code rolled back ignores it. Do not drop it while the new
+code is deployed.

@@ -619,8 +619,13 @@ the person. No outbound group link carries the recipient's address
 (`/auth/login?next=...` only). A member sees the roster as name, else `j***` for a
 linked account, else `j***@domain` for an email-only invitee (`memberLabel`); the
 owner's roster shows the typed address (linked accounts masked). Roster visibility
-beyond that is Kim's D7 (default: every member sees names). Per-group unsubscribe is
-NOT built yet (owner decision).
+beyond that is Kim's D7 (default: every member sees names). Per-group unsubscribe (S8-20): every group mail carries a footer link and
+`List-Unsubscribe` / `List-Unsubscribe-Post` headers over a signed token
+(`lib/groupUnsubscribe.ts`, group + HMAC of the stored address, no expiry);
+`/api/groups/unsubscribe` (public) sets `tasting_group_members.emailOptOutAt`;
+`deliverGroupMail` drops opted-out members in the plan step, before the budget, as
+`skipped` (`opted_out`). Only the member clears it (group page, `setGroupEmailOptOut`);
+the owner re-adding the address (an upsert) does not. The owner roster shows a badge.
 
 Sign-in links use the same ledger (`magic_link`): 3 per address and 60 per IP per
 15 min, reserved once per send by `sendMagicLink` (`lib/magicLink.ts`), used by
