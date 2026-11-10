@@ -23,6 +23,26 @@ evaluations**, physical/extrinsic data, invites, and its tasting-history rows.
 by a direct POST (`proxy.ts` only gates pages). Guests keep `requireUser()` for
 join, evaluate, submit, waiting room, offline replay and claim.
 
+**Create and edit robustness (S8-10):**
+- The wizard actions run under `run()` (design b): validation keeps its
+  `{ ok:false, error:<wizard code> }` shape, a thrown failure (expired auth, DB)
+  becomes `{ ok:false, error:<ActionErrorCode> }`, so the form stays mounted with
+  its state. `redirect()` still passes through. After a group create the address
+  bar moves to the owner-only `sessions/[id]/invite` route (404 for anyone else),
+  which re-reads the latest usable invite, so a reload keeps the link.
+- Edit: format/cups freeze at `startedAt` OR the first evaluation (C6 default);
+  only values that differ from the stored session count as a change. Removing a
+  sample counts evaluations, physical and origin data INSIDE the delete
+  transaction. Marking a rated sample as reference needs `confirmRepin`
+  (B2 default: replace, warn first). `addSessionSample` takes its position inside
+  the transaction and retries on a collision.
+- Duplicate copies every `referenceRank` (B8 default: all); a coffee the caller
+  can no longer use becomes a coffee-less sample.
+- `submitAllEvaluations` returns `ActionResult<{ closed, submitted }>`; a second
+  submit after the solo auto-close is the final state, not an error. The module
+  JSON is bounded in `computeEvaluationDerived` (note 500, module 64k).
+- Naming a coffee on a coffee-less sample creates and links it in one transaction.
+
 ### The one close routine (2026-09-08)
 
 Every path that ends a session goes through `closeSessionInternal`

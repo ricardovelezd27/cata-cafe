@@ -68,6 +68,7 @@ The owner of a solo session (wizard or express; always `status: "active"` from c
 - **Invariant check** — enforces the "never green for a device-only write" rule.
 
 ### F-solo-6 · `submitAllEvaluations` throws instead of returning a result, so a double submit reads as a failure · severity: P3 · status: new
+**Fixed in S8-10** (PR pending): `submitAllEvaluations` returns `ActionResult<{ closed, submitted }>`; a second submit after the solo auto-close is the final state (T11).
 
 - **Problem** — The action has bare throw paths (`community.ts:22-25`) though it is called interactively; the client catch shows a generic `submitError` (`CupClient.tsx:1259-1262`). Submitting from two tabs or devices, or tapping twice after a slow response, makes the second call throw `session_closed` even though the first succeeded. Live-collab P1 asks a repeat to report the final state.
 - **Implication** — An error message on a cupping that is closed and saved. Confusing, not lossy.

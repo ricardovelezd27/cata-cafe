@@ -34,6 +34,7 @@
 - **Invariant check** — Guest scope: this fix completes it.
 
 ### F-04-2 · A failed or interrupted wizard loses everything the owner typed · severity: P2 · status: new
+**Fixed in S8-10** (PR pending): createSession / createGroupSession run under `run()`; a throw returns `{ ok:false }` and the wizard keeps every field (T1). Wizard draft in localStorage NOT built (see PR body).
 
 - **Problem** — `createSession`/`createGroupSession` are not wrapped in `run()`; they return plain `{ok:false,error}` or throw. `NewSessionForm.tsx:495-520` awaits them inside `start(async …)` with no try/catch and no `useActionFeedback`, so a thrown error (pool timeout, unknown Prisma error) reaches the error boundary and the form state is gone. Separately, all state is `useState` (`:268-300`) with no draft, no `beforeunload`, no history guard: a phone back swipe or refresh drops the coffee cards. `createSession` also redirects to `` `/${input.locale || "es"}/…` `` (`:381`) without whitelisting the locale, unlike express (`:408`).
 - **Implication** — Whoever is preparing six coffees at the table and hits a transient failure retypes every card. This breaks the Server Action Contract for an interactive action. Trust and robustness.
@@ -64,6 +65,7 @@
 - **Invariant check** — Scoring inputs stay server-derived; this only changes the default and the copy.
 
 ### F-04-5 · Duplicar arrastra de más y de menos · severity: P3 · status: confirms-board(Duplicar re-enlaza cafés que ya no se pueden usar) + confirms-board(⚑ Duplicar conserva sólo la referencia activa)
+**Fixed in S8-10** (PR pending): duplicate copies every reference rank and turns unusable coffees into coffee-less samples; failure text is visible (T8). B8 default (all ranks), `TODO(B8)`.
 
 - **Problem** — `duplicateSession` copies `coffeeId` as is (`app/actions/sessions.ts:775`) without `usableCoffeeWhere`, and selects only `referenceSampleId` (`:731`), stamping `referenceRank: 1` (`:105`). A source with R1+R2 copies R2 as R1 and the earlier reference becomes an ordinary sample. Sharpening the ⚑: the dropped reference is the one cupped first in the source. `DuplicateButton` shows a failure only through `title` (`components/DuplicateButton.tsx:61`), invisible on touch.
 - **Implication** — A template silently differs from its source; a copy can link an anonymized coffee and write history against it at close.
@@ -84,6 +86,7 @@
 - **Invariant check** — Guest scope: keep `GuestGateLink` on every new entry.
 
 ### F-04-7 · Dates are UTC, so evening cuppings in the Americas get tomorrow · severity: P3 · status: new
+**Fixed in S8-10** (PR pending): `localDateISO()` replaces the UTC date in the wizard and edit form (T4).
 
 - **Problem** — The wizard date defaults to `new Date().toISOString().slice(0,10)` (`NewSessionForm.tsx:271`) and the closing-date `min` uses the same (`:1220`); the express name is built on the server (`express/page.tsx:18`, `defaultExpressName(new Date())`).
 - **Implication** — At 21:00 in Chile the session is dated the next day, the closing picker refuses "today", and the express name can carry the server's date.

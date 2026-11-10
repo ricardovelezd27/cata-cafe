@@ -38,6 +38,7 @@ A registered user opens `/app/sessions/express` from the dashboard, the Sesiones
 - **Invariant check** — none touched (read-only query; `UserCoffeeHistory` semantics unchanged).
 
 ### F-express-3 · "Asignar café" can only mint a new coffee, non-atomically and with weak failure handling · severity: P2 · status: confirms-board(«Asignar café» sólo puede crear un café nuevo desde texto libre)
+**Partly fixed in S8-10** (PR pending): coffee create + link is one transaction with whole-transaction retry on a code collision (T10 server half). The CoffeePicker UI and linking an existing coffee are NOT built.
 
 - **Problem** — `updateSampleMetadata`'s implicit create (`sessions.ts:1308-1330`) runs `withCodeRetry(coffee.create)` and then a separate `sessionSample.update`; it accepts no existing coffee id, and `CoffeePicker` is used only by `NewSessionForm`. `addSessionSample` already accepts a validated `coffeeId` (`sessions.ts:1056`) but the edit form never sends one (`EditSessionForm.tsx:242`). The results caller has no try/catch (`ResultsClient.tsx:439-442`) and the action throws instead of returning `ActionResult`. Revalidation uses bare paths (`sessions.ts:1352-1359`, including `revalidatePath('/app/profile/history')`), which the codebase has already found match nothing (comment at `community.ts:40`).
 - **Implication** — Owners who already catalogued the coffee get a duplicate private coffee with another code, and history and scores attach to the duplicate. A failure between the two writes leaves an orphan coffee; a thrown error shows the opaque production digest.
@@ -58,6 +59,7 @@ A registered user opens `/app/sessions/express` from the dashboard, the Sesiones
 - **Invariant check** — `lib/scoring.ts` and the trigger untouched; the tag is display-only.
 
 ### F-express-5 · The server never bounds `nota_express` or the module JSON · severity: P3 · status: confirms-board(El JSON de evaluación no tiene límites de tamaño en el servidor)
+**Fixed in S8-10** (PR pending): `assertModuleBounds` in `computeEvaluationDerived` rejects a note over 500 chars and a module over 64k chars with `invalid_input`, live and offline (T11).
 
 - **Problem** — `computeEvaluationDerived` spreads `...data` untouched (`lib/evaluation.ts:48-53`); `upsertEvaluation` and offline `syncEvaluation` only check "is an object" (`sessions.ts:581-583`, `offline.ts:64-66`). `EXPRESS_NOTE_MAX` is used only by the textarea (`ExpressNotesStep.tsx:5`).
 - **Implication** — A tampered client stores an arbitrarily long note that is printed in results and the PDF. Robustness only.
@@ -88,6 +90,7 @@ A registered user opens `/app/sessions/express` from the dashboard, the Sesiones
 - **Invariant check** — none touched.
 
 ### F-express-8 · "Añadir muestra" is Spanish-only and uncapped · severity: P3 · status: new
+**Fixed in S8-10** (PR pending): `addSessionSample` uses the locale label helper, the 100-sample cap and an in-transaction position with retry (T6).
 
 - **Problem** — `addSessionSample` falls back to `` `Muestra ${position + 1}` `` regardless of locale (`sessions.ts:1076`) and has no 20-sample cap (`:1066-1070`), unlike express (`lib/expressSession.ts:17`, labels "Muestra A…").
 - **Implication** — An English user adding a sample gets "Muestra 7" next to "Sample A", and the naming style flips from letters to numbers.
