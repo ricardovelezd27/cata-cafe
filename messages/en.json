@@ -278,6 +278,8 @@
       "cancel": "Cancel",
       "error": "Couldn't delete the session. Please try again.",
       "loadingImpact": "Calculating impact…",
+      "impactFailed": "Couldn't calculate the impact of deleting this session.",
+      "retry": "Try again",
       "coffeesIntro": "The coffees in this session and their stats belong to their owners and are kept:",
       "you": "You",
       "impact": "The session and {evaluations} evaluation(s) from {cuppers} cupper(s) will be deleted. Each cupper keeps their coffee history anonymously, unlinked from this session.",

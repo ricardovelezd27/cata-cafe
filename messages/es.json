@@ -278,6 +278,8 @@
       "cancel": "Cancelar",
       "error": "No se pudo eliminar la sesión. Inténtalo de nuevo.",
       "loadingImpact": "Calculando el impacto…",
+      "impactFailed": "No se pudo calcular el impacto de eliminar esta sesión.",
+      "retry": "Reintentar",
       "coffeesIntro": "Los cafés de esta sesión y sus estadísticas pertenecen a sus propietarios y se conservan:",
       "you": "Tú",
       "impact": "Se eliminarán la sesión y {evaluations} evaluación(es) de {cuppers} catador(es). Cada catador conserva su historial de cafés de forma anónima, sin vínculo a esta sesión.",

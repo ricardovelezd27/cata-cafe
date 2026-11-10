@@ -139,6 +139,8 @@ export default async function SessionsList({
     cancel: t("deleteSession.cancel"),
     error: t("deleteSession.error"),
     loadingImpact: t("deleteSession.loadingImpact"),
+    impactFailed: t("deleteSession.impactFailed"),
+    retry: t("deleteSession.retry"),
     coffeesIntro: t("deleteSession.coffeesIntro"),
     you: t("deleteSession.you"),
     // Template — {evaluations}/{cuppers} are substituted client-side (same
