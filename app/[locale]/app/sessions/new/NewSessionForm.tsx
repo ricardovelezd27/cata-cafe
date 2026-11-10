@@ -3,8 +3,11 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useActionFeedback } from "@/components/ui/Toast";
+import { useConnectivity } from "@/hooks/useConnectivity";
+import { isNetworkFailure } from "@/lib/actionResult";
 import { Trash2, X, ChevronDown } from "lucide-react";
 import { PROCESS_TYPES, CERTIFICATIONS, ROAST_LEVELS } from "@/lib/constants";
+import { MIN_CUPS_FOR_PENALTIES } from "@/lib/scoring";
 import { createSession, createGroupSession } from "@/app/actions/sessions";
 import { startSession } from "@/app/actions/community";
 import type { GroupEmailSummary } from "@/app/actions/groups";
@@ -27,6 +30,7 @@ import {
   type WizardHandoff,
 } from "@/lib/sessionDefaults";
 import { Select } from "@/components/ui/Select";
+import { browserZone, dateInZone } from "@/lib/closeRules";
 import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 
 // Groups v2: session wizard extends NotifyGroupTranslations with the
@@ -125,6 +129,8 @@ type Translations = {
   groupToggle: string;
   groupClosesAt: string;
   groupClosesAtHint: string;
+  /** Consequence of picking a closing date on a live cupping (F-sesiones-12). */
+  groupClosesAtLiveNotice: string;
   groupInviteLink: string;
   groupCopyLink: string;
   groupCopied: string;
@@ -148,10 +154,12 @@ type Translations = {
     startGroup: string;
     /** Raw ICU string (t.raw()) — contains a literal "{label}" token. */
     referenceMark: string;
+    cupsHint: string;
     referenceBadge: string;
     referenceNone: string;
     referenceClear: string;
-    errors: Record<string, string> & { generic: string };
+    /** Whole newForm.errors table (S8-10); includes `offline` (S8-09). */
+    errors: Record<string, string> & { generic: string; offline?: string };
   };
   picker: {
     useExisting: string;
@@ -182,6 +190,9 @@ const sampleLetter = (i: number) => {
 
 /** Stable id for coffees/samples so React keys and card refs survive add/remove. */
 const newId = () => crypto.randomUUID();
+
+/** TODO(A2): one-line constant for the cups the wizard proposes. */
+const DEFAULT_CUPS_PER_SAMPLE = 5;
 
 const EMPTY_COFFEE: CoffeeInput = {
   name: "",
@@ -305,6 +316,9 @@ export function NewSessionForm({
 }) {
   const router = useRouter();
   const feedback = useActionFeedback();
+  // Shared connectivity probe: creating a session needs the server. Offline the
+  // submit is disabled and every field keeps its value (S8-09, F-04-3).
+  const { online } = useConnectivity();
 
   // Session basics
   const [name, setName] = useState(handoff?.name ?? "");
@@ -326,8 +340,10 @@ export function NewSessionForm({
       // storage blocked: keep the default
     }
   }, [handoff?.format]);
-  const [cupsPerSample, setCupsPerSample] = useState(2);
-  const [cupsInput, setCupsInput] = useState("2");
+  // TODO(A2): Kim has not answered what the app should propose. Default 5 for
+  // affective/combined (the CVA protocol; deductions only exist from 5 cups).
+  const [cupsPerSample, setCupsPerSample] = useState(DEFAULT_CUPS_PER_SAMPLE);
+  const [cupsInput, setCupsInput] = useState(String(DEFAULT_CUPS_PER_SAMPLE));
 
   // Optional pre-cupping warm-up (CuppingSession.warmupExerciseId).
   const [warmupOn, setWarmupOn] = useState(false);
@@ -357,6 +373,8 @@ export function NewSessionForm({
   // preselects the group in one step.
   const [isGroup, setIsGroup] = useState(!!initialGroupId);
   const [closesAt, setClosesAt] = useState("");
+  // Today in the owner's own zone (see the date input below).
+  const [todayMin] = useState(() => dateInZone(Date.now(), browserZone()));
   const [linkedGroupId, setLinkedGroupId] = useState(initialGroupId ?? "");
   const [notifyGroup, setNotifyGroup] = useState(true);
   const [emailSummary, setEmailSummary] = useState<GroupEmailSummary | undefined>(undefined);
@@ -673,6 +691,7 @@ export function NewSessionForm({
           referenceIdx,
           warmupExerciseId: warmupOn ? warmupId : null,
           closesAt: closesAt || undefined,
+          closesAtZone: closesAt ? browserZone() : undefined,
           groupId: linkedGroupId || undefined,
           notifyGroup,
         });
@@ -707,7 +726,9 @@ export function NewSessionForm({
           clearDraft();
           throw err;
         }
-        setErrorCode("unknown");
+        // A dropped request gets the offline copy (S8-09); anything else falls
+        // back to the generic line (S8-10).
+        setErrorCode(isNetworkFailure(err, navigator.onLine) ? "offline" : "unknown");
       }
     });
   };
@@ -847,7 +868,7 @@ export function NewSessionForm({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className={format === "descriptive" ? "grid grid-cols-1 gap-3" : "grid grid-cols-2 gap-3"}>
           <div>
             <FieldLabel>{t.date}</FieldLabel>
             <input
@@ -857,6 +878,7 @@ export function NewSessionForm({
               onChange={(e) => setDate(e.target.value)}
             />
           </div>
+          {format !== "descriptive" && (
           <div>
             <FieldLabel>{t.cups}</FieldLabel>
             <input
@@ -877,13 +899,17 @@ export function NewSessionForm({
               }}
               onBlur={() => {
                 const n = parseInt(cupsInput, 10);
-                const clamped = Number.isNaN(n) ? 2 : Math.min(5, Math.max(1, n));
+                const clamped = Number.isNaN(n) ? DEFAULT_CUPS_PER_SAMPLE : Math.min(5, Math.max(1, n));
                 setCupsPerSample(clamped);
                 setCupsInput(String(clamped));
               }}
             />
           </div>
+          )}
         </div>
+        {format !== "descriptive" && cupsPerSample < MIN_CUPS_FOR_PENALTIES && (
+          <p className="-mt-2 text-xs text-on-surface-variant">{t.newForm.cupsHint}</p>
+        )}
 
         <div>
           <FieldLabel>{t.objective}</FieldLabel>
@@ -1403,13 +1429,19 @@ export function NewSessionForm({
             <div>
               <FieldLabel>{t.groupClosesAt}</FieldLabel>
               <input
-                type="date" suppressHydrationWarning
+                type="date"
                 className={inputCls}
                 value={closesAt}
-                min={localDateISO()}
+                // "Today" in the owner's own zone; the server render is UTC,
+                // so the attribute may differ at hydration.
+                suppressHydrationWarning
+                min={todayMin}
                 onChange={(e) => setClosesAt(e.target.value)}
               />
               <p className="mt-1 text-xs text-on-surface-variant">{t.groupClosesAtHint}</p>
+              {closesAt && (
+                <p className="mt-1 text-xs font-medium text-secondary">{t.groupClosesAtLiveNotice}</p>
+              )}
             </div>
 
             <div>
@@ -1453,9 +1485,15 @@ export function NewSessionForm({
           </div>
         )}
 
+        {!online && t.newForm.errors.offline && (
+          <p role="status" className="text-center text-sm text-error">
+            {t.newForm.errors.offline}
+          </p>
+        )}
+
         <button
           type="submit"
-          disabled={pending}
+          disabled={pending || !online}
           className="w-full bg-primary-container text-on-primary rounded-pill py-3.5 font-medium hover:bg-primary transition-colors disabled:opacity-50"
         >
           {isGroup ? t.newForm.startGroup : t.start}

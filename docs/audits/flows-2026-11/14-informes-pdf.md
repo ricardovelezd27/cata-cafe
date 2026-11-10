@@ -51,6 +51,8 @@ A cupper or owner leaves the results page by one of four plain links in the dock
 
 ### F-informes-4 · PDF delivery has no WebView path (print dialog, attachment link) · severity: P2 · status: new
 
+**Fixed in S8-15 (PR #…): lib/platform/ seam (printPage, downloadFile, openReport, ReportLink); cva-pdf honours ?inline=1. Native branches are TODO stubs; device rows pending in docs/native/device-checklist.md.**
+
 - **Problem** — `PrintClient.tsx:1225,1270` offer only `window.print()`. The CVA download is a plain link answered with `Content-Disposition: attachment` (`cva-pdf/route.ts:134`) and the route ignores `?inline=1`, unlike the newer routes (`participant-summary/route.ts:56,158`). Summary and ficha open with `target="_blank"` (`ResultsClient.tsx:963,974`).
 - **Implication** — Native-readiness: in a Capacitor WebView, `window.print()`, `target=_blank` and attachment downloads often do nothing, so a roaster on an iPhone app taps and nothing happens. Offline is also silent, since the render needs a connection.
 - **Fix** — One shared "open or share this PDF" action: fetch the bytes, then use the native share/save sheet in the shell and a new tab on the web, with a clear "needs a connection" state offline. Make cva-pdf honour `?inline=1`. **Acceptance:** (1) all four documents open or save from the shell on iOS and Android; (2) offline shows a message; (3) web behaviour unchanged. **Size:** M.

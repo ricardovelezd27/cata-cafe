@@ -1,6 +1,34 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { classifyAuthResult } from "@/lib/authState";
+import { loginHref } from "@/lib/authRedirect";
 import { prisma } from "@/lib/prisma";
 import { isRegisteredUser } from "@/lib/guestScope";
+
+/** Signed in / signed out / auth service unreachable (lib/authState.ts). */
+export async function getAuthUser() {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.getUser();
+    const state = classifyAuthResult({ user: data?.user ?? null, error });
+    if (state === "user" && data?.user) return { state, user: data.user } as const;
+    return { state: state === "user" ? "none" : state } as const;
+  } catch {
+    return { state: "unreachable" } as const;
+  }
+}
+
+/** The page-level auth backstop (the proxy redirects signed-out requests
+ *  first). Signed out -> login that returns to `nextPath` (F-entrar-3). The
+ *  auth service being down THROWS so the route's error boundary shows the
+ *  retry panel instead of a login page (F-entrar-2). Anonymous guests count
+ *  as users here; proxy.ts and the pages still gate what they may open. */
+export async function requireAppUser(locale: string, nextPath: string) {
+  const auth = await getAuthUser();
+  if (auth.state === "user") return auth.user;
+  if (auth.state === "none") redirect(loginHref(locale, nextPath));
+  throw new Error("auth_unreachable");
+}
 
 export async function requireUser(opts?: { skipProfileUpsert?: boolean }) {
   const supabase = await createClient();

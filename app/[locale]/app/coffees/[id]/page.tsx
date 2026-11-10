@@ -1,4 +1,5 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
+import { requireAppUser } from "@/lib/auth";
 import Link from "next/link";
 import {
   ClipboardList,
@@ -10,7 +11,6 @@ import {
   Coffee as CoffeeIcon,
 } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { usableCoffeeWhere, type CoffeeVisibility } from "@/lib/coffeeAccess";
@@ -30,6 +30,8 @@ import {
   type DeleteCoffeeTranslations,
 } from "@/components/coffees/DeleteCoffeeButton";
 import { Badge, ButtonLink, ScorePill } from "@/components/ui";
+import { ReportLink } from "@/components/ui/ReportLink";
+import { historyCupsPerSample, isQuickImpression } from "@/lib/historyRules";
 import { DuplicateButton } from "@/components/DuplicateButton";
 
 // Auth'd page with a dynamic [id] segment: must render per-request. With
@@ -56,11 +58,7 @@ export default async function CoffeeProfilePage({
   const { locale, id } = await params;
   setRequestLocale(locale);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/${locale}/auth/login`);
+  const user = await requireAppUser(locale, `/${locale}/app/coffees/${id}`);
 
   const t = await getTranslations("coffee");
   const th = await getTranslations("history");
@@ -111,7 +109,7 @@ export default async function CoffeeProfilePage({
       include: {
         // sessionId/session can be null — a deleted session detaches the row
         // instead of cascading it away, leaving `snapshot` as the fallback.
-        session: { select: { id: true, name: true } },
+        session: { select: { id: true, name: true, cupsPerSample: true } },
       },
     }),
     loadCoffeeAggregateSamples(id, { userId: user.id, isAdmin }),
@@ -461,7 +459,8 @@ export default async function CoffeeProfilePage({
               ) : (
                 <div className="space-y-2">
                   {history.map((h) => {
-                    const snapshot = h.snapshot as { sessionName?: string } | null;
+                    const snapshot = h.snapshot as { sessionName?: string; cupsPerSample?: number } | null;
+                    const quick = isQuickImpression(historyCupsPerSample(h.session, snapshot));
                     const sessionName = h.session?.name ?? snapshot?.sessionName ?? "—";
                     return (
                       <div key={h.id} className={LIST_ROW}>
@@ -486,6 +485,11 @@ export default async function CoffeeProfilePage({
                               {th("yourScore")}
                             </span>
                             <ScorePill score={h.individualScore} />
+                            {quick && (
+                              <Badge tone="outline" size="xs">
+                                {th("quickImpression")}
+                              </Badge>
+                            )}
                           </span>
                           <span className="flex flex-col items-end gap-0.5">
                             <span className="text-[10px] uppercase tracking-wide text-on-surface-variant">
@@ -507,16 +511,17 @@ export default async function CoffeeProfilePage({
         <section>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-display text-xl text-primary-container">{t("detailsTitle")}</h2>
-            <ButtonLink
+            <ReportLink
               href={`/api/coffees/${coffee.id}/ficha?locale=${locale}&inline=1`}
-              target="_blank"
-              rel="noopener"
+              filename={`ficha-${coffee.id}.pdf`}
+              offlineLabel={t("needsConnection")}
+              newTab
               variant="secondary"
               size="sm"
               icon={<FileDown size={15} aria-hidden />}
             >
               {t("downloadFicha")}
-            </ButtonLink>
+            </ReportLink>
           </div>
           <div className="grid grid-cols-2 gap-4 rounded-card border border-outline-variant bg-surface-container-lowest p-5 sm:grid-cols-3 lg:grid-cols-4">
             {filledFields.map((f) => (

@@ -14,6 +14,7 @@ import {
   calcIndividualBreakdown,
   calcIndividualScore,
   hasAffectiveData,
+  penaltiesApply,
   scoreBand,
 } from "@/lib/scoring";
 import { ScoreBreakdownPanel, type ScoreBreakdownTranslations } from "@/components/results/ScoreBreakdownPanel";
@@ -174,7 +175,7 @@ export function SampleRadarChart({
 
   const setup = {
     cupsPerSample,
-    uniformityTracked: cupsPerSample >= 5,
+    uniformityTracked: penaltiesApply(cupsPerSample),
     roundingEnforced: true,
   };
 

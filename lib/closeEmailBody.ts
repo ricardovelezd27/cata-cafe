@@ -14,6 +14,8 @@ const TEXT: Record<
     cta: string;
     attached: string;
     thanks: string;
+    rule: string;
+    unsentMine: string;
   }
 > = {
   es: {
@@ -24,6 +26,9 @@ const TEXT: Record<
     attached:
       "Adjuntamos tu resumen personal en PDF. Puedes descargar el formulario CVA completo desde la página de resultados.",
     thanks: "Gracias por participar.",
+    rule: "Las notas que seguían sin enviar al cerrar la sesión no cuentan en los resultados.",
+    unsentMine:
+      "Tenías notas completas sin enviar cuando se cerró la sesión, así que no se contaron en los resultados.",
   },
   en: {
     subject: (name) => `Results — ${name}`,
@@ -33,6 +38,9 @@ const TEXT: Record<
     attached:
       "Your personal summary PDF is attached. You can download the full CVA form from the results page.",
     thanks: "Thank you for taking part.",
+    rule: "Notes that were still unsent when the session closed are not counted in the results.",
+    unsentMine:
+      "You had complete notes that were still unsent when the session closed, so they were not counted in the results.",
   },
 };
 
@@ -45,6 +53,8 @@ export function buildCloseEmailHtml(args: {
   sessionName: string;
   dateStr: string;
   resultsUrl: string;
+  /** This recipient had complete drafts that never got sent (C1 default b). */
+  hadUnsent?: boolean;
 }): string {
   const t = TEXT[args.locale];
   const date = args.dateStr ? ` (${escapeHtml(args.dateStr)})` : "";
@@ -58,6 +68,8 @@ export function buildCloseEmailHtml(args: {
           <a href="${href}" style="display:inline-block; background:#3D5A3E; color:#ffffff; text-decoration:none; font-weight:bold; padding:12px 24px; border-radius:8px;">${t.cta}</a>
         </p>
         <p>${t.attached}</p>
+        ${args.hadUnsent ? `<p style="color:#7a4a1f;"><strong>${t.unsentMine}</strong></p>` : ""}
+        <p style="color:#7a7168; font-size:13px;">${t.rule}</p>
         <p style="color:#7a7168; font-size:13px;">${t.thanks}</p>
       </div>`;
 }

@@ -19,6 +19,8 @@ Insights is an admin area under `/app/insights`. `getAnalyticsAccess` (`lib/anal
 
 ### F-insights-1 · Flagged users and AI admins see platform-wide data, including each cupper by name · severity: P1 · status: confirms-board(El nivel con flag ve datos de toda la plataforma, incluso por catador)
 
+**Fixed in S8-08: lib/analytics/scope.ts scopeFor (only the super-admin sees the platform) applied to the actions, pages, report PDF, chat and digest; platform cupper labels are a stable Catador N and cuppers under 3 evaluations are suppressed (D4 default c, TODO(D4)).**
+
 - **Problem** — `runInsight`, `runPivot` and `listPivotDimensionValues` only call `requireAnalyticsAccess()` and then query with no scope (`app/actions/analytics.ts:50,57,65,72,81,89`), so the query functions fall back to `scope: AnalyticsScope = PLATFORM_SCOPE` (`lib/analytics/queries.ts:496,621,808`). The `cupper` dimension returns `{ key: row.cupperId, label: row.cupperName ?? row.cupperId }` (`queries.ts:329-331`). The dashboard page, the PDF report route and the AI summary action also call `getDashboardData(locale)` with the default platform scope (`insights/page.tsx:36`, `api/insights/report/route.ts:40`, `app/actions/ai.ts:34`). Only the chat derives scope from the level (`app/actions/aiChat.ts:78-80`: super-admin platform, everyone else own data). So the same AI admin sees own data in the chat but the whole platform in the explorer. The model is inverted.
 - **Implication** — Security and trust. Any user the super-admin flags (the flag exists to give a teacher "the base insights") can pivot every cupper's name and scores across all sessions, including blind tastings owned by others. The monthly digest also mails platform totals to every flagged profile.
 - **Fix** — One server-side helper derives the scope from the resolved access (platform only for the super-admin, own sessions and evaluations for all others) and every insight entry point uses it: the three actions, dashboard page, report route, dashboard AI narrative and digest recipients (platform KPIs only for the super-admin). The `cupper` dimension is offered and returned only in platform scope, and small platform groups (<3 cuppers) are suppressed. **Acceptance:** a flagged user pivoting by cupper sees only cuppers from sessions they own; `listPivotDimensionValues('evaluations','cupper')` returns only that network; the report PDF for a flagged user contains only their numbers; a unit test covers the helper for the three levels. **Size:** M.
@@ -28,6 +30,8 @@ Insights is an admin area under `/app/insights`. `getAnalyticsAccess` (`lib/anal
 - **Invariant check** — Strengthens authz-at-the-server (Prisma bypasses RLS, so TS is the gate). Display-only; scoring and `AggregateScore` untouched.
 
 ### F-insights-2 · No audit trail for privileged actions (email export, directory, access grants) · severity: P2 · status: new
+
+**Fixed in S8-08: audit lines (where=audit) for CSV export, grant/revoke and directory load, ids and counts only; emails masked by default with a Mostrar toggle; CSV export is super-admin only.**
 
 - **Problem** — `exportRegisteredUsersCsv` returns every registered email to the browser (`app/actions/analytics.ts:249-258`) with only a comment saying it is "never written to disk or logged"; `setAnalyticsAccess` flips a flag with a plain `prisma.profile.update` (`:268`); `listAnalyticsUsers` returns every email unmasked (`:200-228`). None calls `logInfo`/`logWarn` (`lib/log.ts`) with actor and target. The directory and CSV are open to every AI admin (`requireUsersDirectoryAccess`, `access.ts:104-108`), not only the super-admin.
 - **Implication** — Security/trust. After a leak or a mistaken grant nobody can tell who exported the list or when access was granted or revoked. The export is an uncontrolled copy of all customer emails (brief P11).
@@ -49,6 +53,8 @@ Insights is an admin area under `/app/insights`. `getAnalyticsAccess` (`lib/anal
 
 ### F-insights-4 · Chat writes the question text and tool arguments to the logs · severity: P3 · status: confirms-board(El chat de IA escribe el texto de la pregunta en los logs)
 
+**Fixed in S8-08: aiChat.ts logs through logInfo/logError with action, user id, scope kind, tool name and counts; no question or argument text.**
+
 - **Problem** — `console.info(\`[aiChat] user=… q="${trimmedQuestion.slice(0, 120)}"\`)` (`app/actions/aiChat.ts:103-105`) and `args=${JSON.stringify(call.args).slice(0, 200)}` (`:145`), using raw `console.*` instead of `lib/log.ts`. CLAUDE.md says never log AI prompts.
 - **Implication** — Privacy/trust; admin questions may name coffees, farms or people and sit in Vercel Logs.
 - **Fix** — Log through `logInfo` with action, user id, scope kind, tool name, call and token counts, outcome; no question or argument text. **Acceptance:** no log line from this file contains question or argument content. **Size:** S.
@@ -58,6 +64,8 @@ Insights is an admin area under `/app/insights`. `getAnalyticsAccess` (`lib/anal
 - **Invariant check** — aligns with the Logging rule.
 
 ### F-insights-5 · The super-admin address is a personal Gmail fallback in code and is not asserted at boot · severity: P3 · status: confirms-board(El super-admin por defecto es un correo personal fijo en el código)
+
+**Fixed in S8-08: PARTIAL: boot logs one warning in production when ANALYTICS_SUPER_ADMIN_EMAIL is unset (not boot-fatal, by decision); the code fallback stays until the owner sets the variable (TODO(owner)).**
 
 - **Problem** — `process.env.ANALYTICS_SUPER_ADMIN_EMAIL ?? "ricardo.velez88@gmail.com"` (`lib/analytics/access.ts:11-13`) applies in production too; `REQUIRED_IN_PRODUCTION` (`lib/env.ts:17-26`) does not list it, and the runbook only says "set it explicitly" (`docs/LAUNCH-RUNBOOK.md:205`). The AI-admin list also silently defaults to that one address (`access.ts:30`).
 - **Implication** — Security hygiene: a missing variable keeps the top privilege on a fixed address with no warning; changing the owner needs a code change.
@@ -88,6 +96,8 @@ Insights is an admin area under `/app/insights`. `getAnalyticsAccess` (`lib/anal
 - **Invariant check** — brings the code in line with the ActionResult contract.
 
 ### F-insights-8 · CSV export relies on a blob link click, which a WebView will not save · severity: P3 · status: new
+
+**Fixed in S8-15 (PR #…): the users CSV goes through downloadFile; the export button is hidden inside a native shell until the Filesystem+Share branch exists (TODO(native)).**
 
 - **Problem** — `components/insights/UsersDirectory.tsx:55-65` builds a `Blob`, an `<a download>` and calls `a.click()`.
 - **Implication** — Native-readiness: iOS WKWebView ignores the `download` attribute and a Capacitor shell needs a Filesystem/Share plugin. The brief also recommends export be desktop-only.

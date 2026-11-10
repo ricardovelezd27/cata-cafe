@@ -34,6 +34,7 @@ export default async function ExpressSessionPage({
     creating: t("express.creating"),
     fullWizard: t("express.fullWizard"),
     nameRequired: t("express.nameRequired"),
+    offline: t("express.offline"),
   };
 
   return (

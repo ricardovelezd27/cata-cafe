@@ -8,6 +8,7 @@ import { Badge, StatusPill } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DeleteSessionButton, type DeleteSessionTranslations } from "./DeleteSessionButton";
 import { DuplicateButton } from "@/components/DuplicateButton";
+import { DeadlineBanner, type DeadlineBannerTranslations } from "@/components/session/DeadlineBanner";
 
 export type SessionRow = {
   id: string;
@@ -24,6 +25,9 @@ export type SessionRow = {
   isParticipant: boolean;
   ownerName: string | null;
   href: string;
+  /** ISO closing date + owner's zone, for the deadline line (S8-05). */
+  closesAt: string | null;
+  closesAtZone: string | null;
 };
 
 export type SessionsTableTranslations = {
@@ -59,6 +63,7 @@ export type SessionsTableTranslations = {
   duplicateLabel: string;
   duplicateError: string;
   duplicateDropped: string;
+  deadline: DeadlineBannerTranslations;
 };
 
 function formatLabel(format: string, formats: SessionsTableTranslations["formats"]): string {
@@ -121,6 +126,11 @@ export function SessionsTable({
             )}
           </div>
           <p className="text-xs text-on-surface-variant">{formatLabel(row.format, t.formats)}</p>
+          {row.closesAt && row.status !== "closed" && (
+            <p className="text-xs">
+              <DeadlineBanner closesAt={row.closesAt} zone={row.closesAtZone} locale={locale} translations={t.deadline} compact />
+            </p>
+          )}
           {row.ownerName && (
             <p className="text-xs text-on-surface-variant">
               {t.adminOwnerPrefix} {row.ownerName}
@@ -263,6 +273,9 @@ export function SessionsTable({
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-on-surface-variant">
             <span className="tabular-nums">{new Date(row.date).toLocaleDateString(locale)}</span>
             <span>{formatLabel(row.format, t.formats)}</span>
+            {row.closesAt && row.status !== "closed" && (
+              <DeadlineBanner closesAt={row.closesAt} zone={row.closesAtZone} locale={locale} translations={t.deadline} compact />
+            )}
             <span className="tabular-nums">
               {row.samplesCount} · {t.colSamples}
             </span>

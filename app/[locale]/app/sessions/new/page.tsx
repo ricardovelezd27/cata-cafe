@@ -80,6 +80,7 @@ export default async function NewSessionPage({
     groupToggle: tg("toggle"),
     groupClosesAt: tg("closesAt"),
     groupClosesAtHint: tg("closesAtHint"),
+    groupClosesAtLiveNotice: tg("closesAtLiveNotice"),
     groupInviteLink: tg("inviteLink"),
     groupCopyLink: tg("copyLink"),
     groupCopied: tg("copied"),
@@ -102,11 +103,13 @@ export default async function NewSessionPage({
       startNow: t("newForm.startNow"),
       startGroup: t("newForm.startGroup"),
       referenceMark: t.raw("newForm.referenceMark"),
+      cupsHint: t("newForm.cupsHint"),
       referenceBadge: t("newForm.referenceBadge"),
       referenceNone: t("newForm.referenceNone"),
       referenceClear: t("newForm.referenceClear"),
       // The WHOLE table: every code the validators can return needs copy
-      // (S8-10 T2; tests/sessionErrorsCopy.test.ts enumerates them).
+      // (S8-10 T2; tests/sessionErrorsCopy.test.ts enumerates them). Includes
+      // S8-09's `offline` and S8-05's codes.
       errors: t.raw("newForm.errors") as Record<string, string> & { generic: string },
     },
     // coffee picker

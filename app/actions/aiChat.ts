@@ -2,6 +2,8 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireAiAdmin } from "@/lib/analytics/access";
+import { scopeFor } from "@/lib/analytics/scope";
+import { logError, logInfo } from "@/lib/log";
 import { getAiProvider } from "@/lib/ai";
 import {
   DAILY_QUESTION_LIMIT,
@@ -75,9 +77,7 @@ export async function askDataQuestion(
   // never from anything the client sent. Super admin = platform-wide;
   // everyone else on the AI allowlist sees only their own data (their
   // sessions, their evaluations, their usable coffees).
-  const scope: AnalyticsScope = access.isSuperAdmin
-    ? { kind: "platform" }
-    : { kind: "user", userId: access.userId };
+  const scope: AnalyticsScope = scopeFor(access);
 
   const day = new Date().toISOString().slice(0, 10);
   const usageRow = await prisma.aiChatUsage.findUnique({
@@ -87,7 +87,15 @@ export async function askDataQuestion(
   const limit = DAILY_QUESTION_LIMIT;
 
   if (used >= limit) {
-    console.info(`[aiChat] user=${access.userId} exit=limit_reached used=${used}/${limit}`);
+    logInfo({
+      where: "aiChat",
+      action: "askDataQuestion",
+      userId: access.userId,
+      scope: scope.kind,
+      exit: "limit_reached",
+      used,
+      limit,
+    });
     return { ok: false, error: "limit_reached", usage: { used, limit, remaining: 0 } };
   }
 
@@ -98,11 +106,17 @@ export async function askDataQuestion(
     return { ok: false, error: "no_answer", usage: { used, limit, remaining: limit - used } };
   }
 
-  // Server-side trace of every question and its outcome — this loop used to
-  // fail (no_answer / provider_error) with no forensic trail at all.
-  console.info(
-    `[aiChat] user=${access.userId} scope=${scope.kind} q="${trimmedQuestion.slice(0, 120)}"`,
-  );
+  // Server-side trace of every question's outcome — this loop used to fail
+  // (no_answer / provider_error) with no forensic trail at all. S8-08
+  // F-insights-4: the question text and tool arguments are NEVER logged.
+  logInfo({
+    where: "aiChat",
+    action: "askDataQuestion",
+    userId: access.userId,
+    scope: scope.kind,
+    exit: "asked",
+    historyTurns: cleanHistory.length,
+  });
 
   const messages = toChatMessages(cleanHistory, trimmedQuestion);
 
@@ -142,7 +156,13 @@ export async function askDataQuestion(
     if (res.message.toolCalls?.length) {
       const toolResponses: AiToolResponse[] = [];
       for (const call of res.message.toolCalls) {
-        console.info(`[aiChat] tool=${call.name} args=${JSON.stringify(call.args).slice(0, 200)}`);
+        logInfo({
+          where: "aiChat",
+          action: "tool",
+          userId: access.userId,
+          scope: scope.kind,
+          tool: call.name,
+        });
         try {
           const { block, toolResponse } = await executeTool(call.name, call.args, loc, scope);
           blocks.push(block);
@@ -150,7 +170,15 @@ export async function askDataQuestion(
           toolResponses.push({ ...toolResponse, id: call.id });
         } catch (err) {
           const message = err instanceof Error ? err.message : "tool_error";
-          console.error(`[aiChat] tool=${call.name} error=${message}`);
+          // The error message can echo tool arguments; log only its class.
+          logError({
+            where: "aiChat",
+            action: "tool",
+            userId: access.userId,
+            scope: scope.kind,
+            tool: call.name,
+            code: err instanceof Error ? err.name : "unknown",
+          });
           toolResponses.push({ id: call.id, name: call.name, response: { error: message } });
         }
       }
@@ -171,9 +199,15 @@ export async function askDataQuestion(
   // final outcome is a mid-loop provider_error or a no_answer — API cost was
   // actually incurred. (The `skipped`/no-API-key path already returned above.)
   if (totalModelCalls === 0) {
-    console.error(
-      `[aiChat] exit=${providerFailed ? "provider_error" : "no_answer"} calls=0 (not billed)`,
-    );
+    logError({
+      where: "aiChat",
+      action: "askDataQuestion",
+      userId: access.userId,
+      scope: scope.kind,
+      exit: providerFailed ? "provider_error" : "no_answer",
+      calls: 0,
+      billed: false,
+    });
     return {
       ok: false,
       error: providerFailed ? "provider_error" : "no_answer",
@@ -203,9 +237,18 @@ export async function askDataQuestion(
   const remaining = Math.max(0, limit - newUsed);
 
   const exit = providerFailed ? "provider_error" : answer ? "answer" : "no_answer";
-  const logLine = `[aiChat] exit=${exit} calls=${totalModelCalls} promptTokens=${totalPromptTokens} outputTokens=${totalOutputTokens}`;
-  if (exit === "answer") console.info(logLine);
-  else console.error(logLine);
+  const outcome = {
+    where: "aiChat",
+    action: "askDataQuestion",
+    userId: access.userId,
+    scope: scope.kind,
+    exit,
+    calls: totalModelCalls,
+    promptTokens: totalPromptTokens,
+    outputTokens: totalOutputTokens,
+  };
+  if (exit === "answer") logInfo(outcome);
+  else logError(outcome);
 
   if (providerFailed) {
     return { ok: false, error: "provider_error", usage: { used: newUsed, limit, remaining } };

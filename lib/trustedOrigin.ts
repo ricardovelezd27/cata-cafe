@@ -1,3 +1,5 @@
+import { safeNext } from "@/lib/safeNext";
+
 // Which origin a magic link may point back to (S8-03, F-entrar-6).
 //
 // The `Origin` / `Host` request headers are attacker-influenced: a forged one
@@ -56,10 +58,8 @@ export function pickTrustedOrigin(input: TrustedOriginInput): string {
   return site;
 }
 
-/** A same-site path: starts with one "/" and is not protocol-relative ("//host")
- *  or a backslash trick. Anything else falls back to the default destination. */
+/** A same-site path; delegates to the one validator (lib/safeNext.ts).
+ *  Anything else falls back to the default destination. */
 export function safeNextPath(next: string | undefined | null, fallback: string): string {
-  if (typeof next !== "string") return fallback;
-  if (!next.startsWith("/") || next.startsWith("//") || next.includes("\\")) return fallback;
-  return next;
+  return safeNext(next, { fallback });
 }

@@ -17,6 +17,7 @@
 
 import { QRCodeSVG } from "qrcode.react";
 import { ArrowLeft, Printer } from "lucide-react";
+import { printPage } from "@/lib/platform/print";
 import {
   buildCvaFormData,
   CVA_TEXT,
@@ -1222,7 +1223,7 @@ export function PrintClient({
         </div>
         <div className="flex w-full max-w-[320px] flex-col gap-2">
           <button
-            onClick={() => window.print()}
+            onClick={() => printPage()}
             className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-pill bg-primary-container px-4 font-ui text-sm font-medium text-on-primary transition-colors hover:bg-primary"
           >
             <Printer size={16} aria-hidden />
@@ -1267,7 +1268,7 @@ export function PrintClient({
           {formatLabel} · A4 · Ctrl+P / Cmd+P → &quot;Guardar como PDF&quot;
         </span>
         <button
-          onClick={() => window.print()}
+          onClick={() => printPage()}
           className="flex items-center gap-1.5 rounded-pill bg-white px-4 py-1.5 font-ui text-xs font-medium text-primary-container transition-colors hover:bg-surface-container"
         >
           <Printer size={14} aria-hidden />
