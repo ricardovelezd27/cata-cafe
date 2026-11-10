@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { localeHref } from "./locale-href";
+import { supportMailto } from "@/lib/siteContact";
+import { LEGAL_PAGES_PUBLISHED } from "@/lib/legal/config";
 
 export default async function LandingFooter({ locale }: { locale: string }) {
   const t = await getTranslations("landing.footer");
@@ -30,17 +32,32 @@ export default async function LandingFooter({ locale }: { locale: string }) {
               >
                 {t("signIn")}
               </Link>
-              <a href="mailto:hola@estudiodecafe.online" className="block hover:text-surface">
+              <a href={supportMailto()} className="block hover:text-surface">
                 {t("contact")}
               </a>
             </div>
             <div className="space-y-2.5">
-              <a href="mailto:hola@estudiodecafe.online?subject=Privacidad" className="block hover:text-surface">
-                {t("privacy")}
-              </a>
-              <a href="mailto:hola@estudiodecafe.online?subject=Terminos" className="block hover:text-surface">
-                {t("terms")}
-              </a>
+              {/* Until the owner publishes the final text (lib/legal/config.ts)
+                  the footer keeps its mailto links. */}
+              {LEGAL_PAGES_PUBLISHED ? (
+                <>
+                  <Link href={localeHref(locale, "/privacidad")} className="block hover:text-surface">
+                    {t("privacy")}
+                  </Link>
+                  <Link href={localeHref(locale, "/terminos")} className="block hover:text-surface">
+                    {t("terms")}
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <a href={supportMailto("Privacidad")} className="block hover:text-surface">
+                    {t("privacy")}
+                  </a>
+                  <a href={supportMailto("Terminos")} className="block hover:text-surface">
+                    {t("terms")}
+                  </a>
+                </>
+              )}
             </div>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-surface/75">

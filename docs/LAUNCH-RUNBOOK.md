@@ -722,6 +722,77 @@ create button yields one group.
 **Rollback:** the objects are additive; code rolled back ignores them. Do not drop the
 tables while the new code is deployed.
 
+---
+
+## §15. Supabase — paste the sign-in email templates (2026-11, S8-06)
+
+No migration, no SQL. The sign-in link now opens `/auth/confirm` (a button press consumes
+the token, so mail scanners cannot burn it) and the email also carries a 6-digit code.
+
+**Order matters: deploy first, paste second.** Templates pasted before the deploy link to a
+page that does not exist yet. Links from emails sent with the old template keep working
+(`/auth/callback` redirects them to `/auth/confirm`).
+
+1. Merge and let Vercel deploy.
+2. Supabase Dashboard → Authentication → **Sign In / Providers → Email**: confirm
+   **OTP length = 6**. Leave "OTP expiry" as it is; the copy never states a number.
+3. Authentication → **URL Configuration**: the redirect allow-list must cover the site
+   origin with a wildcard (`https://cafesensible.ai/**`), which includes `/auth/confirm` and
+   `/en/auth/confirm`.
+4. Authentication → **Email Templates**: paste, with the subject given at the top of each file
+   - **Magic Link** ← `docs/auth/email-templates/magic-link.html`
+   - **Confirm signup** ← `docs/auth/email-templates/confirm-signup.html`
+   - **Change Email Address** ← `docs/auth/email-templates/change-email.html`
+5. TODO(owner): confirm `hola@estudiodecafe.online` (`lib/siteContact.ts`) is the address people
+   should write to when sign-in fails; it appears on the login screen and the "sent" state.
+
+**Smoke test (3 minutes):** request a link; before opening it, `curl` the link URL (a bare
+GET) — the page loads and the token is untouched. Then enter the 6-digit code from the same
+email on the login screen: you are signed in. Repeat from `/en/auth/login` with a new
+address: the email is in English and the link goes to `/en/auth/confirm`.
+
+**Rollback:** paste the previous templates back (copy them before step 4). The code keeps
+accepting both link shapes.
+
+---
+
+## §17. Database + env + legal switch (2026-11, S8-08)
+
+No SQL phase. One additive migration, one env variable, one code switch.
+
+**1. Migration (before the deploy).** From the right checkout:
+`npx prisma migrate deploy` applies `20261111100000_waitlist_consent` (two nullable
+columns on `waitlist_entries`: `consentAt`, `consentNoticeVersion`). Old rows stay null; new rows stay null too until the legal pages are published, so these columns record consent only from that moment.
+RLS stays on with no policies; nothing else to do.
+
+**2. Env.** Set `ANALYTICS_SUPER_ADMIN_EMAIL` in Vercel Production to the address that
+should be super-admin. It is NOT boot-fatal: until it is set, the code falls back to the
+built-in address and the boot logs one `env` warning. After this PR only the super-admin
+sees platform-wide insights, the platform report PDF, the digest and the email CSV export;
+AI admins and flagged users see their own data.
+
+**3. Legal pages (owner).** `/privacidad` and `/terminos` already render draft text with a
+"Borrador" banner and `noindex`, but nothing links to them. To publish: paste the final
+text (es, en) into `lib/legal/privacy.ts` and `lib/legal/terms.ts`, bump
+`CONSENT_NOTICE_VERSION` in `lib/legal/config.ts`, flip `LEGAL_PAGES_PUBLISHED` to `true`
+and deploy. That turns on the footer links, the login-page links and the notice line under
+both waitlist forms.
+
+**4. Retention (decision, no job).** Proposal: keep a waitlist email at most 12 months when
+no account exists for it (`WAITLIST_RETENTION_MONTHS`). Nothing deletes rows automatically;
+until a job exists, delete old rows by hand when asked. Account deletion should remove the
+row too (TODO in S8-07).
+
+**Verify:** insert one waitlist entry from the hero form on a preview and check
+`source = 'hero'` and BOTH `consentAt` and `consentNoticeVersion` null (legal pages unpublished, no notice shown, no consent recorded; they are stamped only after the flag is true); open
+`/?src=chile` and submit the founding form: `source = 'founding:chile'`. Log in as an AI admin:
+the Users page shows masked emails (masked in the payload itself), no reveal toggle and no CSV button; Vercel Logs search `"where":"audit"`.
+
+**Rollback:** the columns are nullable and unused by older code; no rollback needed. To give AI
+admins the platform view again change `scopeFor` in `lib/analytics/scope.ts`.
+
+---
+
 ## §18. Database — apply the `invite_active_entries_locked` migration (2026-11, S8-11)
 
 **When:** BEFORE the deploy that contains S8-11 (live group robustness). The regenerated

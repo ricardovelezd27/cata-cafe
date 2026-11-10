@@ -460,6 +460,10 @@ model WaitlistEntry {
   locale    String   @default("es")
   source    String   @default("landing")
   createdAt DateTime @default(now())
+  // S8-08: when and under which notice the person typed their address.
+  // Null on rows created before the consent record existed.
+  consentAt            DateTime?
+  consentNoticeVersion String?
 
   @@map("waitlist_entries")
 }

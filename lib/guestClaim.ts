@@ -291,7 +291,10 @@ export async function mergeGuestData(
     if (targetProfile && targetProfile.createdAt >= claimIssuedAt && anonProfile?.displayName) {
       await tx.profile.update({
         where: { id: target },
-        data: { displayName: anonProfile.displayName },
+        // The name came from the guest, so the welcome modal has nothing left
+        // to ask: the post-claim landing must not be replaced by it (S8-06,
+        // F-guest-7).
+        data: { displayName: anonProfile.displayName, onboardingCompleted: true },
       });
     }
     if (anonProfile) {

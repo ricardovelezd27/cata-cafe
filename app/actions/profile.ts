@@ -72,6 +72,32 @@ export async function completeOnboarding(data: {
   });
 }
 
+/**
+ * Closing the welcome dialog (X, Esc, "skip") marks onboarding done and writes
+ * NOTHING else (S8-06, F-entrar-4): the old skip stamped role "enthusiast" on
+ * people who never chose it. Role and country can still be set on the profile.
+ */
+export async function dismissOnboarding() {
+  return run("dismissOnboarding", async () => {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("not_authenticated");
+    await prisma.profile.upsert({
+      where: { id: user.id },
+      create: {
+        id: user.id,
+        displayName: user.email?.split("@")[0] ?? "Catador",
+        onboardingCompleted: true,
+      },
+      update: { onboardingCompleted: true },
+    });
+    revalidatePath("/", "layout");
+    return { ok: true as const };
+  });
+}
+
 export async function updateProfile(input: {
   displayName: string;
   preferredLang: "es" | "en";

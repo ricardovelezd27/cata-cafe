@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
 import { setRequestLocale, getTranslations } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireAppUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isSuperAdminEmail, isAiAdminEmail } from "@/lib/analytics/access";
 import Sidebar from "@/components/layout/Sidebar";
@@ -23,11 +22,10 @@ export default async function AppLayout({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/${locale}/auth/login`);
+  // Backstop only: proxy.ts already redirected a signed-out request WITH its
+  // `next`. A layout cannot see the path, so a miss here lands on /app after
+  // login; the pages below carry their own exact `next`.
+  const user = await requireAppUser(locale, `/${locale}/app`);
 
   const profile = await prisma.profile.findUnique({
     where: { id: user.id },
@@ -38,7 +36,9 @@ export default async function AppLayout({
   // gated destination gets the "finish creating your account" modal instead
   // (GuestGateProvider / GuestGateLink), and proxy.ts stays the server gate.
   const isGuest = user.is_anonymous === true;
-  const showOnboarding = !profile?.onboardingCompleted;
+  // Guests never see the welcome dialog: they are mid-cupping, and the claim
+  // flow carries their name over (F-guest-7).
+  const showOnboarding = !isGuest && !profile?.onboardingCompleted;
   const showInsights =
     isSuperAdminEmail(user.email) || isAiAdminEmail(user.email) || !!profile?.analyticsAccess;
   const initialDisplayName =
@@ -64,6 +64,7 @@ export default async function AppLayout({
     next: tOnb("next"),
     whereToStart: tOnb("whereToStart"),
     saving: tOnb("saving"),
+    close: tOnb("close"),
     goTo: tOnb.raw("goTo"),
     roles: {
       q_grader: tOnb("roles.q_grader"),

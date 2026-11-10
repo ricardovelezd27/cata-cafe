@@ -80,6 +80,8 @@ A walk-up opens `/join/[token]`, types a name, and `GuestJoinForm` calls `signIn
 
 ### F-guest-7 · El WelcomeModal compite con el destino (resultados o cata) del recién llegado · severity: P3 · status: confirms-board(El WelcomeModal tapa los resultados recién vinculados), sharpened
 
+**Fixed in S8-06: no welcome dialog for guests; mergeGuestData sets onboardingCompleted when the guest's name carries over.**
+
 - **Problem** — A new account (via claim, or via login with `next=/join/<token>`) has `onboardingCompleted=false`, and the app layout renders the modal over whatever page it lands on (`app/[locale]/app/layout.tsx:41,135-140`). Step 1 has a one-tap "Omitir" that stays on the page (`components/onboarding/WelcomeModal.tsx:68-79,123-127`), contrary to the board's "cannot be closed", but finishing steps 2–3 pushes to `/app/sessions/new` or similar (`WelcomeModal.tsx:82-90`), dropping the original destination. Skipping also stamps role `enthusiast` (`WelcomeModal.tsx:72`).
 - **Implication** — Friction for a latecomer to a live cupping, and a silent role guess that skews analytics for professionals.
 - **Fix** — When the merge carries the guest's name into a new account, mark onboarding complete; otherwise never replace the pending destination, and leave role empty on skip. **Acceptance:** claim with a new email lands on results with no modal; finishing the modal from `/cup` stays on `/cup`. **Size:** S.

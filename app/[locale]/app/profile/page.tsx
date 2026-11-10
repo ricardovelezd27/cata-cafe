@@ -1,9 +1,8 @@
-import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { requireAppUser } from "@/lib/auth";
 import { ClipboardList, Users, CheckCircle2, Coffee } from "lucide-react";
 import Link from "next/link";
 import { GuestGateLink } from "@/components/guest/GuestGateLink";
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { SignOutButton } from "@/components/layout/SignOutButton";
 import { Avatar } from "@/components/ui/Avatar";
@@ -28,11 +27,7 @@ export default async function ProfilePage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/${locale}/auth/login`);
+  const user = await requireAppUser(locale, `/${locale}/app/profile`);
 
   const [
     profile,

@@ -1,7 +1,6 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
+import { requireAppUser } from "@/lib/auth";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { getCoCupperCandidates } from "@/lib/coCuppers";
 import { claimGroupMembershipsByEmail } from "@/lib/groupMembership";
@@ -20,11 +19,7 @@ export default async function GroupsPage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/${locale}/auth/login`);
+  const user = await requireAppUser(locale, `/${locale}/app/groups`);
 
   // Link any email-only memberships to this account before querying — covers
   // users who already had an account when they were added by email (the

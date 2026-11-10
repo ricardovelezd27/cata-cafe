@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
+import { requireAppUser } from "@/lib/auth";
 import { referencesOf } from "@/lib/referenceRules";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { isSessionExpired } from "@/lib/sessionState";
 import { WaitingRoomClient } from "./WaitingRoomClient";
@@ -17,11 +17,7 @@ export default async function WaitingPage({
   const { locale, id } = await params;
   setRequestLocale(locale);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/${locale}/auth/login`);
+  const user = await requireAppUser(locale, `/${locale}/app/sessions/${id}/waiting`);
 
   const session = await prisma.cuppingSession.findFirst({
     where: {

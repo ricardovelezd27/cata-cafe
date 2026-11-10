@@ -373,6 +373,30 @@ Scoring, the trigger and `AggregateScore` never read any of this.
 
 ---
 
+### Sign-in, deep links and the confirm page (2026-11, S8-06)
+
+```mermaid
+flowchart TD
+  A[Signed-out visit to /app/**] --> P{proxy.ts getUser}
+  P -- none --> L[/login?next=path+search/]
+  P -- unreachable --> PG[page backstop throws -> retry panel]
+  P -- user or guest --> OK[page renders]
+  L --> M[Link email or 6-digit code]
+  M -- link --> C[/auth/confirm page, GET touches nothing/]
+  C -- button POST --> V[confirmEmailToken -> verifyOtp]
+  M -- code --> V2[verifyEmailCode -> verifyOtp type email]
+  V --> N[safeNext destination]
+  V2 --> N
+  OLD[old /auth/callback?token_hash] --> C
+  G[Google code] --> CB[/auth/callback exchange/] --> N
+```
+
+- One `next` validator (`lib/safeNext.ts`): same-site path or same-origin absolute URL; rejects `//x`, `/\x`, `@`, encoded slashes and `/auth/{callback,confirm,login}` (loops). `/auth/claim` is allowed (guest claim chain).
+- `lib/authState.ts` classifies `user | none | unreachable`; anonymous guests are `user`. Only `none` redirects to login; a down auth service shows the error boundary's retry panel.
+- A GET never consumes a token. The guest-claim chain is unchanged: login `next=/auth/claim?...` -> confirm -> claim page (login-then-confirm, never a merge on GET).
+- Language: `signInWithMagicLink(formData, next, locale)` sends `preferred_lang` (new accounts only) and defaults `next` to `/{locale}/app`; `signOut(locale)` lands on `/` or `/en`; the ES/EN switch keeps page, query and hash (`lib/localeSwitch.ts`).
+- The welcome dialog mounts only on `/app` itself and never for guests; closing it (X, Esc, skip) calls `dismissOnboarding`, which sets only `onboardingCompleted`.
+
 ## 2. Coffee visibility & sharing
 
 A coffee is a reusable asset owned by its creator (producer/roaster/café). The
@@ -671,6 +695,23 @@ each gate is a pure, tested helper shared by every consumer:
 
 ---
 
+### Insights scope, audit trail and legal switch (2026-11, S8-08)
+
+```mermaid
+flowchart TD
+  A[Insights action / page / report / chat / digest] --> S{scopeFor access}
+  S -- super-admin --> P[platform scope]
+  S -- AI admin or flagged user --> U[user scope: own sessions + own evaluations]
+  P --> C[cupper labels: Catador N, under 3 evaluations hidden]
+  U --> N[cupper names only for sessions the caller owns]
+  D[Users directory / CSV / grants] --> L[audit line where=audit, ids + counts]
+  D --> M[emails masked, Mostrar toggle; CSV super-admin only]
+  W[Waitlist form] --> R[row: source, consentAt, consentNoticeVersion]
+  W --> Q{LEGAL_PAGES_PUBLISHED}
+  Q -- false --> X[notice line + footer/login links hidden; pages direct-visit only, Borrador, noindex]
+  Q -- true --> Y[notice line + links shown]
+```
+
 ## Maintenance checklist
 
 When you touch any of these, update the matching diagram **in the same PR**:
@@ -681,4 +722,5 @@ When you touch any of these, update the matching diagram **in the same PR**:
 - `usableCoffeeWhere`, visibility values, share/invite semantics, delete cascades → §2
 - Group membership linking, invites, posts, leave/remove → §3
 - Any new cross-section navigation or a new consumer of `UserCoffeeHistory` → §4
+- Analytics scope, admin audit/masking, legal pages switch or waitlist consent fields → the S8-08 diagram above
 - Results page tab structure, gating (owner vs. participant), or the drill-down dialog → §5

@@ -75,6 +75,37 @@
       "errorExpired": "This link expired (it lasts 7 days). If the guest session is still open on the device where you cupped, go back to its results and press “Create account & save” again. Your account works normally.",
       "errorAlready": "These results were already linked to an account, or the guest participation no longer exists.",
       "continue": "Go to my account"
+    },
+    "errors": {
+      "rate_limited": "Too many attempts in a short time. Wait a minute and try again.",
+      "invalid_email": "Check the email: it does not look like a valid address.",
+      "code_invalid": "The code or link is not valid, was already used, or expired. Check the 6 digits or request a new one.",
+      "link_failed": "We could not complete sign-in with that link. Request a new one.",
+      "cancelled": "You cancelled the Google sign-in. You can try again or sign in with your email.",
+      "unreachable": "We could not reach the sign-in service. Check your connection and try again.",
+      "unknown": "Something went wrong while signing in. Please try again."
+    },
+    "sentState": {
+      "title": "Check your email",
+      "body": "We sent a link and a 6-digit code to {email}. Use whichever is closer to hand.",
+      "codeLabel": "6-digit code",
+      "codeHint": "Copy it from the same email. It works if the link does not open or opened in another browser.",
+      "codeSubmit": "Sign in with the code",
+      "codeSubmitting": "Verifying…",
+      "resend": "Resend email",
+      "resendIn": "Resend in {seconds} s",
+      "resent": "We sent a new email. The earlier ones stop working.",
+      "changeEmail": "Use another email",
+      "support": "Trouble signing in? Write to us"
+    },
+    "confirm": {
+      "title": "Confirm your sign-in",
+      "body": "Press “Sign in” to finish signing in. We ask so that email security filters do not use up your link.",
+      "button": "Sign in",
+      "working": "Signing in…",
+      "failedTitle": "This link no longer works",
+      "failedBody": "Sign-in links work once and expire. Request a new one and sign in with the link or the 6-digit code.",
+      "newLink": "Request a new link"
     }
   },
   "dashboard": {
@@ -438,7 +469,7 @@
   "profile": {
     "title": "Profile",
     "displayName": "Display name",
-    "preferredLang": "Preferred language",
+    "preferredLang": "Email language",
     "bio": "Bio",
     "save": "Save",
     "ownedSessions": "My sessions as master",
@@ -1009,6 +1040,7 @@
     "next": "Next",
     "whereToStart": "Where to start?",
     "saving": "Saving…",
+    "close": "Close",
     "goTo": "Go to {label}",
     "roles": {
       "q_grader": "Q Grader",
@@ -1171,7 +1203,9 @@
       "sentHint": "No password. If it does not arrive, check spam or request another link in a few minutes.",
       "invalid": "Enter a valid email.",
       "error": "We could not send the link. Check the email and try again.",
-      "rateLimit": "Too many attempts in a short time. Wait a few minutes and try again."
+      "rateLimit": "Too many attempts in a short time. Wait a few minutes and try again.",
+      "notice": "We store your email to send you access and tell you about founding seats.",
+      "noticeLink": "Privacy policy"
     },
     "finalCta": {
       "kicker": "Many palates. One reference. One number.",
@@ -1365,7 +1399,9 @@
       "filterType": "Type",
       "typeRegistered": "Registered",
       "typeGuest": "Guest",
-      "exportCsv": "Export emails (CSV)"
+      "exportCsv": "Export emails (CSV)",
+      "showEmails": "Show emails",
+      "hideEmails": "Hide emails"
     },
     "benchmark": {
       "title": "Benchmark vs. CQI",
@@ -1746,5 +1782,10 @@
       "inProgress": "In progress · step {n} of {total}",
       "join": "Join"
     }
+  },
+  "legal": {
+    "draftTitle": "Draft",
+    "draftBody": "This text is a draft and not yet the final version. It is not legal advice.",
+    "back": "Back to home"
   }
 }

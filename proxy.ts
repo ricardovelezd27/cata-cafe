@@ -4,7 +4,10 @@ import { createServerClient } from "@supabase/ssr";
 import { routing } from "@/i18n/routing";
 import { GUEST_GATE_PARAM, isGuestAllowedPath, stripLocale } from "@/lib/guestScope";
 
-const intl = createIntlMiddleware(routing);
+import { classifyAuthResult } from "@/lib/authState";
+import { signedOutRedirect } from "@/lib/authRedirect";
+
+const intl =createIntlMiddleware(routing);
 
 // Anonymous (QR walk-up) users may only cup / wait / see results and look at
 // their own profile. Everything else in the shell (coffees, groups, wizard,
@@ -60,10 +63,22 @@ export async function proxy(request: NextRequest) {
     });
     const {
       data: { user },
+      error: authError,
     } = await supabase.auth.getUser();
     if (user?.is_anonymous) {
+      // The guest branch stays FIRST (S8-06 invariant): guests are users.
       const redirect = guestRedirect(request, response);
       if (redirect) return redirect;
+    } else if (classifyAuthResult({ user, error: authError }) === "none") {
+      // Signed out under /app: go to login and come back (F-entrar-3). An
+      // "unreachable" auth service falls through: the page backstop throws
+      // to the retry panel instead of dropping the person on a login form.
+      const target = signedOutRedirect(request.nextUrl.pathname, request.nextUrl.search);
+      if (target) {
+        const redirect = NextResponse.redirect(new URL(target, request.url));
+        response.cookies.getAll().forEach((c) => redirect.cookies.set(c));
+        return redirect;
+      }
     }
   } catch (err) {
     console.error(
