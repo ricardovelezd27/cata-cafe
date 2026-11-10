@@ -843,6 +843,14 @@ replay retries by itself, and the service worker stops serving stale or other us
   `cata_claim_anon`).
 - Shared tablet: user A signs out, B signs in, go offline: A's pages are not served.
 
+**S8-23 follow-up (service worker v4):** the static cache cap (120) is now least-recently-used:
+a cache hit re-puts the entry so the running build's core chunks are not evicted first. The
+cache-key logic changed, so `SW_VERSION` went `v3` to `v4`; the same one-time cache drop as
+above applies on the first visit after that deploy (deploy outside a live tasting). Device
+check: browse landing, app and several sessions (more than 120 distinct static files), go
+offline and hard-reload a visited page: it must still boot. Check Cache Storage shows
+`cata-*-v4` only.
+
 **Not in this PR (owned by S8-15):** `navigator.storage.persist()` and the 3-day stale-draft
 warning.
 
