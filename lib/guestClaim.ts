@@ -2,6 +2,8 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { needsAggregateRefire, resolveEvalConflicts } from "@/lib/guestClaimToken";
+import { syncCoffeeHistoryForSession } from "@/lib/coffeeHistory";
+import { logError } from "@/lib/log";
 
 /**
  * Guest → account "claim": ties a walk-up guest's tasting data to the account
@@ -370,8 +372,40 @@ export async function mergeGuestData(
       if (submitted === 0) await tx.aggregateScore.deleteMany({ where: { sessionSampleId: sampleId } });
     }
 
-    return { movedEvaluations: movedEvals.count, movedSessions: movedSessions.count };
+    // B-03 (S8-22): CLOSED sessions whose evaluations were re-resolved need
+    // their history re-synced after the commit (below).
+    const closedRefire =
+      refireSessions.size > 0
+        ? await tx.cuppingSession.findMany({
+            where: { id: { in: [...refireSessions] }, status: "closed" },
+            select: { id: true },
+          })
+        : [];
+
+    return {
+      movedEvaluations: movedEvals.count,
+      movedSessions: movedSessions.count,
+      closedRefireSessionIds: closedRefire.map((r) => r.id),
+    };
   }, MERGE_TX_OPTIONS);
+
+  // B-03 (S8-22): when the guest's evaluation won a conflict, the account's
+  // history row still carried the deleted evaluation's score and a stale
+  // community score. Re-sync history for every closed session whose
+  // evaluations changed, so it reflects the surviving evaluation and the
+  // refired aggregate. After commit; a failure is logged, never thrown (the
+  // merge itself succeeded and the close repair pass re-syncs history too).
+  for (const sessionId of outcome.closedRefireSessionIds) {
+    try {
+      await syncCoffeeHistoryForSession(sessionId);
+    } catch (e) {
+      logError({
+        where: "mergeGuestData.syncHistory",
+        sessionId,
+        message: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
 
   // Best effort — the profile and every row are already gone/moved; a
   // lingering auth user with no data is harmless.
