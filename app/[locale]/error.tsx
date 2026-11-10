@@ -11,10 +11,10 @@ import { ErrorPanel } from "@/components/errors/ErrorPanel";
 
 export default function LocaleError({
   error,
-  unstable_retry,
+  retry,
 }: {
   error: Error & { digest?: string };
-  unstable_retry: () => void;
+  retry: () => void;
 }) {
   const t = useTranslations("errors");
   const params = useParams<{ locale?: string }>();
@@ -30,7 +30,7 @@ export default function LocaleError({
         title={t("title")}
         body={t("body")}
         retryLabel={t("retry")}
-        onRetry={unstable_retry}
+        onRetry={retry}
         homeLabel={t("home")}
         homeHref={`/${locale}/app`}
         supportLabel={t("support")}

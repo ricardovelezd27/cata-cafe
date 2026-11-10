@@ -14,7 +14,7 @@ Default language: Spanish (`es`). Secondary: English (`en`).
 ## Critical Warnings
 
 ### Next.js 16 — Breaking Changes
-This project runs **Next.js 16.2.4**, which contains breaking API changes from 14/15. Before writing any Next.js-specific code (routing, layouts, middleware, server actions, caching), read the relevant guide in `node_modules/next/dist/docs/`. Do not assume any Next.js behavior from training data.
+This project runs **Next.js 16.4.6**, which contains breaking API changes from 14/15. Before writing any Next.js-specific code (routing, layouts, middleware, server actions, caching), read the relevant guide in `node_modules/next/dist/docs/`. Do not assume any Next.js behavior from training data.
 
 ### Next.js 16 — Middleware File Name Is `proxy.ts` (NOT `middleware.ts`)
 **Confirmed via build error:** Next.js 16 uses `proxy.ts` at the project root as the middleware file. The function must be exported as `proxy` (not `middleware`). If you create `middleware.ts`, the build will error: *"Both middleware file './middleware.ts' and proxy file './proxy.ts' are detected. Please use './proxy.ts' only."* The build output shows `ƒ Proxy (Middleware)` when correctly configured.
@@ -49,14 +49,14 @@ This project uses **Tailwind CSS v4** (PostCSS-based). There is no `tailwind.con
 
 | Layer | Library | Version |
 |---|---|---|
-| Framework | Next.js App Router | 16.2.4 |
+| Framework | Next.js App Router | 16.4.6 |
 | UI Runtime | React + React DOM | 19.2.4 |
 | Language | TypeScript | 5 (strict) |
 | ORM | Prisma + PrismaPg adapter | 7.7.0 |
 | Database | PostgreSQL (via Supabase) | — |
 | Auth | Supabase Auth (magic link OTP) | 2.104.0 |
 | SSR Auth | @supabase/ssr | 0.10.2 |
-| i18n | next-intl | 4.9.1 |
+| i18n | next-intl | 4.14.10 |
 | Styling | Tailwind CSS 4 + PostCSS | 4 |
 | Client State | Zustand | 5.0.12 |
 | Charts | Recharts | 3.8.1 |
@@ -389,7 +389,7 @@ Cupping form components are fully controlled. State is lifted to `CupClient`, wh
 
 ### Error Boundaries & Not-Found
 - `components/errors/ErrorPanel.tsx` is the single error surface. Boundaries: `app/global-error.tsx` (replaces the root layout — own `<html>/<body>`, hardcoded es/en map), `app/[locale]/error.tsx`, `app/[locale]/app/error.tsx` (app shell stays mounted), `app/[locale]/app/sessions/[id]/cup/error.tsx` (offline-aware). 404: `app/[locale]/not-found.tsx` (localized) reached via the `app/[locale]/[...rest]/page.tsx` catch-all; `app/not-found.tsx` (bilingual) only for an unknown locale segment. `loading.tsx` skeletons on `/app` and `/app/sessions/[id]`.
-- Retry with **`unstable_retry()`** (re-fetches), never `reset()` (re-renders the same failed tree — the old cup boundary looped on exactly this). The cup boundary allows 2 automatic retries per 30 s, then shows a manual retry + back link.
+- Retry with **`retry()`** (re-fetches; the boundary prop was `unstable_retry` until Next 16.3 made it stable as `retry`, and 16.4 no longer passes the old name), never `reset()` (re-renders the same failed tree — the old cup boundary looped on exactly this). The cup boundary allows 2 automatic retries per 30 s, then shows a manual retry + back link.
 - Boundary components cannot receive a `translations` prop, so `app/[locale]/error.tsx` and `app/[locale]/app/error.tsx` call `useTranslations("errors")` directly — the ONE sanctioned exception to the i18n rule below (they render inside `[locale]/layout.tsx`'s `NextIntlClientProvider`).
 
 ### i18n Pattern

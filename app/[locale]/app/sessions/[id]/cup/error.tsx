@@ -72,19 +72,19 @@ function takeAutoRetry(key: string): boolean {
 // Error boundary for the cupping route. The page is a Server Component, so a
 // cold load / hard refresh while offline throws during the server fetch and
 // lands here. Three outcomes:
-//   * online, budget left  → unstable_retry() re-fetches the page (NOT reset():
+//   * online, budget left  → retry() re-fetches the page (NOT reset():
 //     reset() only re-renders the same failed tree and loops — see Next's
-//     error.md, "unstable_retry" vs "reset")
+//     error.md, "retry" vs "reset")
 //   * online, budget spent → a real server-side error; show a retry + back panel
 //   * offline              → rebuild from the cached props payload if this
 //     session was loaded on this device before, else the first-load screen
 export default function CupError({
   error,
-  unstable_retry,
+  retry,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
-  unstable_retry: () => void;
+  retry: () => void;
 }) {
   const params = useParams();
   const id = String(params?.id ?? "");
@@ -110,7 +110,7 @@ export default function CupError({
       // A digest means the server rendered and threw (auth, data, bug) — a
       // re-fetch can still help once (transient DB hiccup), but not forever.
       if (!auto || takeAutoRetry(id)) {
-        unstable_retry();
+        retry();
         return;
       }
       setState({ phase: "failed" });
