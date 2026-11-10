@@ -9,6 +9,8 @@ import { ROLE_LABELS } from "@/lib/constants";
 import { exportRegisteredUsersCsv, type AnalyticsUser } from "@/app/actions/analytics";
 import { Button } from "@/components/ui/Button";
 import { useActionFeedback } from "@/components/ui/Toast";
+import { downloadFile } from "@/lib/platform/files";
+import { useIsNativeShell } from "@/hooks/useIsNativeShell";
 
 export interface UsersDirectoryTranslations {
   table: {
@@ -51,16 +53,12 @@ function roleLabel(role: string, locale: string): string {
 export function UsersDirectory({ users, locale, t }: UsersDirectoryProps) {
   const feedback = useActionFeedback();
   const [exporting, startExport] = useTransition();
+  const inShell = useIsNativeShell();
 
   function downloadCsv() {
     startExport(async () => {
       await feedback.run(exportRegisteredUsersCsv(), ({ csv, filename }) => {
-        const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        downloadFile({ text: csv, filename, mime: "text/csv;charset=utf-8" });
       });
     });
   }
@@ -151,12 +149,15 @@ export function UsersDirectory({ users, locale, t }: UsersDirectoryProps) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex justify-end">
-        <Button type="button" variant="secondary" size="sm" onClick={downloadCsv} disabled={exporting}>
-          <Download size={16} aria-hidden />
-          {t.exportCsv}
-        </Button>
-      </div>
+      {/* TODO(native): hidden in the shell until downloadFile has a Filesystem+Share branch. */}
+      {!inShell && (
+        <div className="flex justify-end">
+          <Button type="button" variant="secondary" size="sm" onClick={downloadCsv} disabled={exporting}>
+            <Download size={16} aria-hidden />
+            {t.exportCsv}
+          </Button>
+        </div>
+      )}
       <DataTable
         rows={users}
         rowKey={(row) => row.userId}

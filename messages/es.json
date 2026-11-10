@@ -809,7 +809,8 @@
         "title": "Muestra de referencia",
         "body": "El maestro de cata puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La cata empieza por ella y su calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos, así que cada catador le da siempre 79.00 y solo describe lo que percibe. No entra en el ranking, en el promedio ni en la mejor muestra: es el ancla.\nLo que agrega es contexto: junto a cada muestra verás Δ, la diferencia entre su puntaje y el de la referencia, calculada siempre con el mismo tipo de puntaje que ves al lado (comunitario cuando está visible; si no, el tuyo).\nReferencia, media del grupo y desviación son cosas distintas: la referencia es el punto de partida elegido por el maestro; la media es lo que percibió el grupo; la desviación (±) es cuánto se dispersó el grupo."
       }
-    }
+    },
+    "needsConnection": "Necesita conexión"
   },
   "community": {
     "score": "Puntaje comunitario",
@@ -970,7 +971,8 @@
       "empty": "No se encontraron cafés.",
       "linked": "Café vinculado",
       "unlink": "Desvincular"
-    }
+    },
+    "needsConnection": "Necesita conexión"
   },
   "offline": {
     "bannerOffline": "Sin conexión. Tus evaluaciones se guardan localmente.",

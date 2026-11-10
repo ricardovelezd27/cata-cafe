@@ -43,9 +43,9 @@ import {
   SegmentedControl,
   InfoHint,
   Button,
-  ButtonLink,
   useActionFeedback,
 } from "@/components/ui";
+import { ReportLink } from "@/components/ui/ReportLink";
 import { updateSampleMetadata } from "@/app/actions/sessions";
 import { asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
@@ -213,6 +213,7 @@ export function ResultsClient({
     downloadPdf: string;
     downloadSummary: string;
     downloadFicha: string;
+    needsConnection: string;
     refresh: string;
     refreshing: string;
     refreshNew: string;
@@ -965,15 +966,17 @@ export function ResultsClient({
               {translations.viewForm}
             </Button>
             {/* Server-generated CVA PDF — plain link so no @react-pdf ships to the client. */}
-            <ButtonLink
+            <ReportLink
               href={`/api/sessions/${session.id}/cva-pdf?locale=${locale}`}
+              filename={`cva-${session.id}.pdf`}
+              offlineLabel={translations.needsConnection}
               size="md"
               variant="primary"
               icon={<FileDown size={16} aria-hidden />}
               className="flex-1"
             >
               {translations.downloadPdf}
-            </ButtonLink>
+            </ReportLink>
           </div>
           {/* Personal summary PDF — inline so iOS opens the native viewer. Group
               sessions only once the group results are visible (the route enforces
@@ -981,31 +984,33 @@ export function ResultsClient({
           <div className="flex flex-col gap-2 sm:flex-1 sm:flex-row">
             {(!isGroup || canViewGroup) &&
               session.samples.some((s) => s.myEvaluation?.status === "submitted") && (
-              <ButtonLink
+              <ReportLink
                 href={`/api/sessions/${session.id}/participant-summary?locale=${locale}&inline=1`}
-                target="_blank"
-                rel="noopener"
+                filename={`resumen-${session.id}.pdf`}
+                offlineLabel={translations.needsConnection}
+                newTab
                 size="md"
                 variant="secondary"
                 icon={<FileDown size={16} aria-hidden />}
                 className="w-full sm:flex-1"
               >
                 {translations.downloadSummary}
-              </ButtonLink>
+              </ReportLink>
             )}
             {/* Owner-tier "Ficha técnica" — the route 404s for anyone else. */}
             {(isOwner || isAdminViewer) && (
-              <ButtonLink
+              <ReportLink
                 href={`/api/sessions/${session.id}/ficha-tecnica?locale=${locale}&inline=1`}
-                target="_blank"
-                rel="noopener"
+                filename={`ficha-${session.id}.pdf`}
+                offlineLabel={translations.needsConnection}
+                newTab
                 size="md"
                 variant="secondary"
                 icon={<FileDown size={16} aria-hidden />}
                 className="w-full sm:flex-1"
               >
                 {translations.downloadFicha}
-              </ButtonLink>
+              </ReportLink>
             )}
           </div>
         </div>

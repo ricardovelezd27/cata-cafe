@@ -30,6 +30,7 @@ import {
   type DeleteCoffeeTranslations,
 } from "@/components/coffees/DeleteCoffeeButton";
 import { Badge, ButtonLink, ScorePill } from "@/components/ui";
+import { ReportLink } from "@/components/ui/ReportLink";
 import { DuplicateButton } from "@/components/DuplicateButton";
 
 // Auth'd page with a dynamic [id] segment: must render per-request. With
@@ -494,16 +495,17 @@ export default async function CoffeeProfilePage({
         <section>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-display text-xl text-primary-container">{t("detailsTitle")}</h2>
-            <ButtonLink
+            <ReportLink
               href={`/api/coffees/${coffee.id}/ficha?locale=${locale}&inline=1`}
-              target="_blank"
-              rel="noopener"
+              filename={`ficha-${coffee.id}.pdf`}
+              offlineLabel={t("needsConnection")}
+              newTab
               variant="secondary"
               size="sm"
               icon={<FileDown size={15} aria-hidden />}
             >
               {t("downloadFicha")}
-            </ButtonLink>
+            </ReportLink>
           </div>
           <div className="grid grid-cols-2 gap-4 rounded-card border border-outline-variant bg-surface-container-lowest p-5 sm:grid-cols-3 lg:grid-cols-4">
             {filledFields.map((f) => (
