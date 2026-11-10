@@ -61,6 +61,8 @@ An owner opens `/sessions/new` and fills one long form in `NewSessionForm.tsx` (
 
 ### F-crear-sesion-5 · Two cups by default, and the consequence is never shown · severity: P2 · status: new
 
+**Fixed in S8-04** (draft PR, branch `claude/s8-04-scoring-impl`): same change as F-04-4 (this finding owns the field); the hint states the consequence.
+
 - **Problem** — The wizard starts at `useState(2)` cups with format combinado (`NewSessionForm.tsx:274`); the label is only "Tazas por café" (`es.json` `session.cups`), and uniformity/defect deductions apply only at 5 cups or more (`lib/scoring.ts:209`). Express is fixed at 1 cup.
 - **Implication** — A teacher running a normal five-cup session who skims past the pre-filled 2 gets scores with no deductions and no warning; sessions with different cups are not comparable and nobody learns why. A silent default becomes data (P9; cupping P7).
 - **Fix** — Show a one-line hint under the field when cups is 1–4 ("con menos de 5 tazas no se descuentan uniformidad ni defectos"), and set the default per Kim. **Acceptance:** hint appears for 1–4 and disappears at 5, in es and en; default as decided. **Size:** S.

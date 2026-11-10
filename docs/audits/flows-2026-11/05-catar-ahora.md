@@ -49,6 +49,8 @@ A registered user opens `/app/sessions/express` from the dashboard, the Sesiones
 
 ### F-express-4 · A one-cup score looks identical to a full CVA score once a coffee is assigned · severity: P2 · status: new
 
+**Fixed in S8-04** (draft PR, branch `claude/s8-04-scoring-impl`): history and the coffee profile show an "Impresión rápida" tag when the session ran with fewer than 5 cups (display-only, no score changes; TODO(A3) ships as option b).
+
 - **Problem** — Express forces `cupsPerSample: 1` (`sessions.ts:411`), so no uniformity or defect check applies and the score carries no penalties (`computeEvaluationDerived(…, cupsPerSample)`, `lib/evaluation.ts:57`). After "Asignar café" the sync copies `individualScore` into `UserCoffeeHistory` (`lib/coffeeHistory.ts:71`); `HistoryRow` carries no cup count (`history/page.tsx:48-58`), so the row sits beside 5-cup scores.
 - **Implication** — A quick impression can sit at the top of a professional ranking or in a coffee's average with no signal that it is a different kind of number. The scoring itself is correct; the comparability is not communicated.
 - **Fix** — Show a small "impresión rápida" tag on scores from sessions below the CVA cup count wherever they appear next to others (history, coffee profile, results ranking), without changing the number. Acceptance: the tag shows for `cupsPerSample < 5` in those three places; PDFs only if Kim agrees; no score value changes. **Size:** M.

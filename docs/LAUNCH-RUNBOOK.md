@@ -721,3 +721,50 @@ create button yields one group.
 
 **Rollback:** the objects are additive; code rolled back ignores them. Do not drop the
 tables while the new code is deployed.
+
+---
+
+## §12. Supabase — apply PHASE 23 (one score below five cups, 2026-11, S8-04)
+
+**When:** any time after the deploy; the new app is correct without it for what users SEE
+(group results already ignored deductions under 5 cups), but the STORED score used by the
+coffee history and profile only changes once this is applied. No Prisma migration. Apply in the
+Supabase **SQL editor of the production project** (there is only one).
+
+**Tell Kim first.** The recompute (step 4) changes the stored community score of every
+past session with fewer than 5 cups per sample and a flagged cup, once. Those scores go UP
+(deductions disappear). Sessions with 5 or more cups never move.
+
+**Steps**
+
+1. **Pre-flight** (read-only). The live function must still be the PHASE 11 body:
+
+   ```sql
+   select pg_get_functiondef('public.recompute_aggregate_score()'::regprocedure);
+   ```
+
+   It must contain `IF v_total_cups > 0 THEN` and not `v_cups_per_sample >= 5`. If it differs, stop.
+2. **Dry run** (changes nothing): paste all of `prisma/sql/dry-runs/phase23_dry_run.sql` and run it.
+   It ends with a red error starting `PHASE 23 DRY RUN: NOTHING WAS APPLIED`; that error is the
+   expected result. Line 3 must say `0` (no row with 5 or more cups changes). Line 2 is how many
+   past aggregates will change. Any other error: stop and report it.
+3. **STEP 1:** run the `CREATE OR REPLACE FUNCTION recompute_aggregate_score()` block of PHASE 23
+   in `prisma/sql/rls_and_triggers.sql`. Nothing stored changes yet.
+4. **STEP 2 (recompute):** run `UPDATE evaluations SET "isDraft" = "isDraft" WHERE "isDraft" = false;`
+   (idempotent; a second run changes nothing).
+5. **History:** from the checkout you choose, `npx tsx scripts/resync-low-cup-history.ts` (dry run:
+   prints the rows that would change), then `npx tsx scripts/resync-low-cup-history.ts --apply`.
+6. **Check:** pick one session with fewer than 5 cups and a flagged cup:
+
+   ```sql
+   select a."avgRawScore", a."communityScore" from aggregate_scores a
+   join session_samples ss on ss.id = a."sessionSampleId"
+   where ss."sessionId" = '<session id>';
+   ```
+
+   Before step 4 `communityScore` is below `avgRawScore`; after it equals `avgRawScore` rounded to
+   0.25. The results page, the coffee profile and the history now show the same number.
+   Then Security Advisor: no new findings expected.
+
+**Rollback:** re-create the previous function body (kept verbatim in the PHASE 23 comment)
+and re-run step 4, then step 5. Nothing is deleted: the cup flags stay in the evaluations.

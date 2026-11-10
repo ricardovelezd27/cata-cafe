@@ -137,7 +137,7 @@
     "objective": "Objective",
     "objectivePh": "What do you want to learn from this session?",
     "format": "Format",
-    "cups": "Cups per coffee",
+    "cups": "Cups per sample",
     "coffees": "Coffees to evaluate",
     "coffeeName": "Coffee name",
     "producerRoaster": "Producer / Roaster",
@@ -202,7 +202,8 @@
       },
       "goToPanel": "Go to the panel",
       "startNow": "Start the cupping now",
-      "goToPanelHint": "From the panel you can run the sensory movement with the group and start the cupping once everyone is in the room."
+      "goToPanelHint": "From the panel you can run the sensory movement with the group and start the cupping once everyone is in the room.",
+      "cupsHint": "With fewer than 5 cups, uniformity and defects are not deducted: the sample is scored on its attributes only."
     },
     "express": {
       "title": "Cup now",
@@ -796,7 +797,8 @@
     "tasted": "Tasted",
     "yourScore": "Your score",
     "communityScore": "Community score",
-    "sessionDeleted": "Session deleted"
+    "sessionDeleted": "Session deleted",
+    "quickImpression": "Quick impression"
   },
   "coffee": {
     "title": "Coffee profile",

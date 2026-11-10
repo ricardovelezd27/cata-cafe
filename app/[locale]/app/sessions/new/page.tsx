@@ -97,6 +97,7 @@ export default async function NewSessionPage({
       goToPanelHint: t("newForm.goToPanelHint"),
       startNow: t("newForm.startNow"),
       referenceMark: t.raw("newForm.referenceMark"),
+      cupsHint: t("newForm.cupsHint"),
       referenceBadge: t("newForm.referenceBadge"),
       referenceNone: t("newForm.referenceNone"),
       referenceClear: t("newForm.referenceClear"),

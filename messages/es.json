@@ -137,7 +137,7 @@
     "objective": "Objetivo",
     "objectivePh": "¿Qué quieres aprender con esta sesión?",
     "format": "Formato",
-    "cups": "Tazas por café",
+    "cups": "Tazas por muestra",
     "coffees": "Cafés a evaluar",
     "coffeeName": "Nombre del café",
     "producerRoaster": "Productor / Tostador",
@@ -202,7 +202,8 @@
       },
       "goToPanel": "Ir al panel",
       "startNow": "Iniciar cata ahora",
-      "goToPanelHint": "Desde el panel puedes lanzar el movimiento sensorial con el grupo y empezar la cata cuando todos estén en la sala."
+      "goToPanelHint": "Desde el panel puedes lanzar el movimiento sensorial con el grupo y empezar la cata cuando todos estén en la sala.",
+      "cupsHint": "Con menos de 5 tazas no se descuentan uniformidad ni defectos: la muestra puntúa solo por sus atributos."
     },
     "express": {
       "title": "Catar ahora",
@@ -796,7 +797,8 @@
     "tasted": "Catado",
     "yourScore": "Tu puntaje",
     "communityScore": "Puntaje comunitario",
-    "sessionDeleted": "Sesión eliminada"
+    "sessionDeleted": "Sesión eliminada",
+    "quickImpression": "Impresión rápida"
   },
   "coffee": {
     "title": "Perfil del café",

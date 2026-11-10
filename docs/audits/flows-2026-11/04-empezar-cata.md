@@ -55,6 +55,8 @@
 
 ### F-04-4 · The wizard defaults to 2 cups, and CVA penalties exist only at 5 · severity: P2 · status: new
 
+**Fixed in S8-04** (draft PR, branch `claude/s8-04-scoring-impl`): wizard proposes 5 cups, label "Tazas por muestra", numeric keyboard, one-line hint below 5, field hidden for descriptive (TODO(A2) constant `DEFAULT_CUPS_PER_SAMPLE`).
+
 - **Problem** — `NewSessionForm.tsx:274` starts at 2 cups for a combined format, while score penalties only count with 5 cups per sample (CLAUDE.md scoring; `cupping-protocol` P7). The field is labelled «Tazas por café» (`messages/es.json:140`) though it is per sample, and for descriptive it is asked but unused. It is a native `type="number"` spinner (`:676`).
 - **Implication** — A professional running the five-cup protocol who leaves the default gets scores with no uniformity/defect deduction, silently different from the SCA calculator. Scoring expectation, not a code bug.
 - **Fix** — Decide the default with Kim; show a one-line hint under the field when the value is below 5 ("las penalizaciones por taza solo se aplican con 5"); rename the label to «Tazas por muestra»; hide the field for descriptive. **Acceptance:** hint visible below 5, label per sample, field absent for descriptive, numeric keyboard (`inputMode="numeric"`). **Size:** S.

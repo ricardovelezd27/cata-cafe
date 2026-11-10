@@ -420,6 +420,9 @@ communityScore    = avgRawScore − uniformityPenalty − defectPenalty
 
 Verification: 2 participants, cupsPerSample=5, 1 uOnly cup → uniformityPenalty = 1×(10/10) = 1.0 ✓
 
+### One score below five cups (S8-04)
+Uniformity and defect deductions exist ONLY from `MIN_CUPS_FOR_PENALTIES = 5` cups per sample, everywhere: `penaltiesApply()` in `lib/scoring.ts` gates `calcIndividualBreakdown`, `computeGroupAggregate` and `calcCommunityScore`, and PHASE 23 re-issues `recompute_aggregate_score()` with `IF v_cups_per_sample >= 5 AND v_total_cups > 0`. The flags stay in the arrays below 5 cups and are ignored (`CupToggleGrid` keeps its "not scored" note). `tests/scoringConsistency.test.ts` ports the SQL arithmetic and must stay equal to the TypeScript side; change both in one commit. A submitted evaluation edited later (`upsertEvaluation`, `syncEvaluation`) ends with `updateMany(submittedRefireArgs(id))` (`lib/aggregateRefire.ts`) so the trigger re-fires; `closeSessionInternal` calls `refireAggregates` (`lib/aggregates.ts`) before the history sync. History: `communityScore` is null without an included evaluation, and sessions under 5 cups carry an "Impresión rápida" tag (`lib/historyRules.ts`). Open: TODO(A1) proportional deductions are NOT built.
+
 ### Consensus (SD)
 `computeGroupAggregate` also returns `scoreSd` — the population standard deviation (÷n) of the included cuppers' individual CVA totals, `null` when fewer than 2 evaluations are included. Display-only, like `communityScore`; the DB trigger is untouched. Shown as a neutral "± X.X" chip next to the community `ScorePill` in the Resumen ranking, and as a "DE" column in the owner's CVA matrix (`OwnerParticipantSection`, reusing its existing `rowStats`).
 

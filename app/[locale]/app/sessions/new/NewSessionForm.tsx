@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useActionFeedback } from "@/components/ui/Toast";
 import { Trash2, X, ChevronDown } from "lucide-react";
 import { PROCESS_TYPES, CERTIFICATIONS, ROAST_LEVELS } from "@/lib/constants";
+import { MIN_CUPS_FOR_PENALTIES } from "@/lib/scoring";
 import { createSession, createGroupSession } from "@/app/actions/sessions";
 import { startSession } from "@/app/actions/community";
 import type { GroupEmailSummary } from "@/app/actions/groups";
@@ -134,6 +135,7 @@ type Translations = {
     startNow: string;
     /** Raw ICU string (t.raw()) — contains a literal "{label}" token. */
     referenceMark: string;
+    cupsHint: string;
     referenceBadge: string;
     referenceNone: string;
     referenceClear: string;
@@ -177,6 +179,9 @@ const sampleLetter = (i: number) => {
 
 /** Stable id for coffees/samples so React keys and card refs survive add/remove. */
 const newId = () => crypto.randomUUID();
+
+/** TODO(A2): one-line constant for the cups the wizard proposes. */
+const DEFAULT_CUPS_PER_SAMPLE = 5;
 
 const EMPTY_COFFEE: CoffeeInput = {
   name: "",
@@ -273,8 +278,10 @@ export function NewSessionForm({
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [objective, setObjective] = useState("");
   const [format, setFormat] = useState<"descriptive" | "affective" | "combined">("combined");
-  const [cupsPerSample, setCupsPerSample] = useState(2);
-  const [cupsInput, setCupsInput] = useState("2");
+  // TODO(A2): Kim has not answered what the app should propose. Default 5 for
+  // affective/combined (the CVA protocol; deductions only exist from 5 cups).
+  const [cupsPerSample, setCupsPerSample] = useState(DEFAULT_CUPS_PER_SAMPLE);
+  const [cupsInput, setCupsInput] = useState(String(DEFAULT_CUPS_PER_SAMPLE));
 
   // Optional pre-cupping warm-up (CuppingSession.warmupExerciseId).
   const [warmupOn, setWarmupOn] = useState(false);
@@ -673,7 +680,7 @@ export function NewSessionForm({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className={format === "descriptive" ? "grid grid-cols-1 gap-3" : "grid grid-cols-2 gap-3"}>
           <div>
             <FieldLabel>{t.date}</FieldLabel>
             <input
@@ -683,10 +690,12 @@ export function NewSessionForm({
               onChange={(e) => setDate(e.target.value)}
             />
           </div>
+          {format !== "descriptive" && (
           <div>
             <FieldLabel>{t.cups}</FieldLabel>
             <input
               type="number"
+              inputMode="numeric"
               min={1}
               max={5}
               className={inputCls}
@@ -701,13 +710,17 @@ export function NewSessionForm({
               }}
               onBlur={() => {
                 const n = parseInt(cupsInput, 10);
-                const clamped = Number.isNaN(n) ? 2 : Math.min(5, Math.max(1, n));
+                const clamped = Number.isNaN(n) ? DEFAULT_CUPS_PER_SAMPLE : Math.min(5, Math.max(1, n));
                 setCupsPerSample(clamped);
                 setCupsInput(String(clamped));
               }}
             />
           </div>
+          )}
         </div>
+        {format !== "descriptive" && cupsPerSample < MIN_CUPS_FOR_PENALTIES && (
+          <p className="-mt-2 text-xs text-on-surface-variant">{t.newForm.cupsHint}</p>
+        )}
 
         <div>
           <FieldLabel>{t.objective}</FieldLabel>

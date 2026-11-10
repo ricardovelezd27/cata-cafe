@@ -636,3 +636,22 @@ When you touch any of these, update the matching diagram **in the same PR**:
 - Group membership linking, invites, posts, leave/remove → §3
 - Any new cross-section navigation or a new consumer of `UserCoffeeHistory` → §4
 - Results page tab structure, gating (owner vs. participant), or the drill-down dialog → §5
+
+## Scoring below five cups (S8-04)
+
+```mermaid
+flowchart TD
+  A[Cupper submits or edits an evaluation] --> B{cupsPerSample >= 5?}
+  B -- yes --> C[Flags count: -2 per non-uniform, -4 per defective cup individually; 10/total and 30/total per cup in the community score]
+  B -- no --> D[Flags are stored but ignored: score comes from the 8 attributes only]
+  C --> E[Trigger trg_recompute_aggregate writes aggregate_scores]
+  D --> E
+  F[Edit of an already submitted row] -->|guarded isDraft write| E
+  G[closeSessionInternal] -->|refireAggregates| E
+  E --> H[syncCoffeeHistoryForSession]
+  H --> I{participantCount > 0?}
+  I -- yes --> J[history communityScore = stored score]
+  I -- no --> K[history communityScore = null, shown as a dash]
+```
+
+The same `penaltiesApply` rule feeds the individual score, the group aggregate shown on results and the trigger, so a coffee never shows two scores. Sessions under five cups carry an "Impresión rápida" tag in history and on the coffee profile.
