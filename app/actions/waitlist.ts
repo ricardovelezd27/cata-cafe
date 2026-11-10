@@ -3,6 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { sendMagicLink } from "@/lib/magicLink";
 import { logWarn } from "@/lib/log";
+import { waitlistSource } from "@/lib/waitlistSource";
+import { CONSENT_NOTICE_VERSION } from "@/lib/legal/config";
 
 export type WaitlistState =
   | { status: "idle" }
@@ -30,12 +32,26 @@ export async function reserveFoundingSeat(
     return { status: "error", code: "invalid_email" };
   }
 
+  // F-landing-6: cohort source, validated server-side (allowlisted variant +
+  // sanitized tag), never a raw client string.
+  const source = waitlistSource(formData.get("variant"), formData.get("src"));
+
   // One reservation per signup: the budget is checked first, the entry is
   // recorded only if the send is allowed, then the link goes out. The default
   // destination (/{locale}/app) comes from the locale.
   const sent = await sendMagicLink(email, { locale }, async () => {
     try {
-      await prisma.waitlistEntry.create({ data: { email, locale } });
+      await prisma.waitlistEntry.create({
+        data: {
+          email,
+          locale,
+          source,
+          // F-landing-1: the consent record. TODO(S8-07): deleteAccount must
+          // delete this row by email (+ test) once deleteAccount exists.
+          consentAt: new Date(),
+          consentNoticeVersion: CONSENT_NOTICE_VERSION,
+        },
+      });
     } catch (e) {
       const code =
         typeof e === "object" && e !== null && "code" in e ? (e as { code: string }).code : "";

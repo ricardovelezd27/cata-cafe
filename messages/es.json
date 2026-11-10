@@ -1171,7 +1171,9 @@
       "sentHint": "Sin contraseña. Si no llega, mira en spam o pide otro enlace en unos minutos.",
       "invalid": "Introduce un correo válido.",
       "error": "No pudimos enviar el enlace. Verifica el correo e inténtalo de nuevo.",
-      "rateLimit": "Demasiados intentos en poco tiempo. Espera unos minutos e inténtalo de nuevo."
+      "rateLimit": "Demasiados intentos en poco tiempo. Espera unos minutos e inténtalo de nuevo.",
+      "notice": "Guardamos tu correo para enviarte el acceso y avisarte de las plazas fundadoras.",
+      "noticeLink": "Política de privacidad"
     },
     "finalCta": {
       "kicker": "Muchos paladares. Una referencia. Un número.",
@@ -1747,5 +1749,10 @@
       "inProgress": "En curso · paso {n} de {total}",
       "join": "Unirme"
     }
+  },
+  "legal": {
+    "draftTitle": "Borrador",
+    "draftBody": "Este texto es un borrador y todavía no es la versión final. No lo tomes como asesoramiento legal.",
+    "back": "Volver al inicio"
   }
 }

@@ -1171,7 +1171,9 @@
       "sentHint": "No password. If it does not arrive, check spam or request another link in a few minutes.",
       "invalid": "Enter a valid email.",
       "error": "We could not send the link. Check the email and try again.",
-      "rateLimit": "Too many attempts in a short time. Wait a few minutes and try again."
+      "rateLimit": "Too many attempts in a short time. Wait a few minutes and try again.",
+      "notice": "We store your email to send you access and tell you about founding seats.",
+      "noticeLink": "Privacy policy"
     },
     "finalCta": {
       "kicker": "Many palates. One reference. One number.",
@@ -1747,5 +1749,10 @@
       "inProgress": "In progress · step {n} of {total}",
       "join": "Join"
     }
+  },
+  "legal": {
+    "draftTitle": "Draft",
+    "draftBody": "This text is a draft and not yet the final version. It is not legal advice.",
+    "back": "Back to home"
   }
 }
