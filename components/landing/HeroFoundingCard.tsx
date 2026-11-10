@@ -5,6 +5,7 @@ import { emailSentCopy } from "@/components/auth/authCopy";
 import { supportMailto } from "@/lib/siteContact";
 import { LEGAL_PAGES_PUBLISHED } from "@/lib/legal/config";
 import { localeHref } from "./locale-href";
+import { FOUNDING_SEATS } from "@/lib/landing/founding";
 
 // The hero's "instrument": the one solid cream card on the dark stage, now the
 // founding-cohort reservation instead of the calibration demo.
@@ -47,7 +48,7 @@ export default async function HeroFoundingCard({ locale }: { locale: string }) {
           data-counter
           className="font-serif tabular-nums leading-none text-[72px] text-primary sm:text-[88px]"
         >
-          {t("heroCount")}
+          {FOUNDING_SEATS}
         </span>
         <span className="font-serif text-xl text-on-surface sm:text-2xl">{t("heroUnit")}</span>
       </p>

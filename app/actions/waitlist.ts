@@ -16,8 +16,13 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * Founding-seat reservation = the account itself. Records the founding-cohort
- * entry (so "the first 100" stays countable) and sends the magic link that
+ * entry (so the founding cohort stays countable) and sends the magic link that
  * creates / signs in the account, landing on /app.
+ *
+ * F-landing-5: the cohort size lives in lib/landing/founding.ts (copy only).
+ * This action never counts rows and never refuses a signup because the cohort
+ * is "full"; a duplicate email is idempotent (P2002 below).
+ * TODO(S8-14): enforcing the cap (what the 101st person sees) is the owner's call.
  */
 export async function reserveFoundingSeat(
   _prev: WaitlistState,

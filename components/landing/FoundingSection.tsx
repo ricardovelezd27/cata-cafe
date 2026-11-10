@@ -5,6 +5,7 @@ import { emailSentCopy } from "@/components/auth/authCopy";
 import { supportMailto } from "@/lib/siteContact";
 import { LEGAL_PAGES_PUBLISHED } from "@/lib/legal/config";
 import { localeHref } from "./locale-href";
+import { FOUNDING_SEATS } from "@/lib/landing/founding";
 
 function FeatureList({ items }: { items: string[] }) {
   return (
@@ -63,7 +64,7 @@ export default async function FoundingSection({ locale }: { locale: string }) {
             {t("badge")}
           </span>
           <p data-counter className="mt-8 font-serif tabular-nums text-4xl text-surface">
-            {t("offer")}
+            {t("offer", { count: FOUNDING_SEATS })}
           </p>
           <FeatureList
             items={[t("feature1"), t("feature2"), t("feature3"), t("feature4")]}
