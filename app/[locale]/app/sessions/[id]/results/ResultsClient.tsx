@@ -444,12 +444,7 @@ export function ResultsClient({
 
   const handleReveal = (sampleId: string) => {
     startTransition(async () => {
-      try {
-        await revealSample(sampleId);
-        router.refresh();
-      } catch {
-        feedback.notifyError("unknown");
-      }
+      await feedback.run(revealSample(sampleId), () => router.refresh());
     });
   };
 
