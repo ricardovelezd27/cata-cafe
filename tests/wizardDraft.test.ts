@@ -3,6 +3,7 @@ import {
   WIZARD_DRAFT_MAX_AGE_MS,
   clearWizardDrafts,
   isDraftDirty,
+  isDraftDirtyFrom,
   parseDraft,
   serializeDraft,
   wizardDraftKey,
@@ -56,6 +57,26 @@ describe("wizardDraft", () => {
         { id: "s2", label: "B", coffeeId: "c1", auto: true },
       ] })),
     ).toBe(true);
+  });
+
+  it("a prefilled but untouched form is not dirty relative to its initial state", () => {
+    const initial = base({
+      name: "",
+      coffees: [coffee({ id: "p1", name: "Geisha", existingCoffeeId: "db1", linkedOrigin: "mine" })],
+      samples: [{ id: "ps1", label: "Muestra A", coffeeId: "p1", auto: true }],
+    });
+    // Fresh random ids on re-render must not matter; content does.
+    expect(isDraftDirty(initial)).toBe(true);
+    expect(isDraftDirtyFrom(initial, initial)).toBe(false);
+    expect(isDraftDirtyFrom(initial, structuredClone(initial))).toBe(false);
+    expect(isDraftDirtyFrom({ ...initial, name: "Mi cata" }, initial)).toBe(true);
+    expect(
+      isDraftDirtyFrom({ ...initial, coffees: [{ ...initial.coffees[0], country: "Perú" }] }, initial),
+    ).toBe(true);
+    // An empty initial form behaves like the old rule.
+    const empty = base({ name: "" });
+    expect(isDraftDirtyFrom(empty, empty)).toBe(false);
+    expect(isDraftDirtyFrom(base({ name: "x" }), empty)).toBe(true);
   });
 
   it("clearWizardDrafts removes every draft and nothing else", () => {

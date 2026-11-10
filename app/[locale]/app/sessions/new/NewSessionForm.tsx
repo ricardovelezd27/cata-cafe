@@ -15,7 +15,7 @@ import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePick
 import { Badge } from "@/components/ui/Badge";
 import { localDateISO } from "@/lib/localDate";
 import {
-  isDraftDirty,
+  isDraftDirtyFrom,
   parseDraft,
   serializeDraft,
   wizardDraftKey,
@@ -431,7 +431,9 @@ export function NewSessionForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const dirty = isDraftDirty({ name, objective, coffees, samples });
+  // Captured on the first render: the prefilled-but-untouched form is pristine.
+  const [initialShape] = useState(() => ({ name, objective, coffees, samples }));
+  const dirty = isDraftDirtyFrom({ name, objective, coffees, samples }, initialShape);
 
   // Save (debounced) while there is something worth keeping; drop it when the
   // form is back to pristine. The date is intentionally not stored.

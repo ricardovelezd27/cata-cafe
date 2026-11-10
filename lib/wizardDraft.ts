@@ -76,6 +76,29 @@ export function isDraftDirty(d: Pick<WizardDraft, "name" | "objective" | "coffee
   );
 }
 
+type DirtyShape = Pick<WizardDraft, "name" | "objective" | "coffees" | "samples">;
+
+/** Content signature ignoring random ids (coffees are referenced by index). */
+function contentSignature(d: DirtyShape): string {
+  const idx = new Map(d.coffees.map((c, i) => [c.id, i]));
+  return JSON.stringify({
+    n: d.name.trim(),
+    o: d.objective.trim(),
+    c: d.coffees.map(({ id: _id, ...rest }) => rest),
+    s: d.samples.map((s) => [s.label, idx.get(s.coffeeId) ?? -1]),
+  });
+}
+
+/**
+ * Dirty relative to the form's INITIAL state on this mount (which may already
+ * carry a prefill such as ?coffeeId= or the express handoff): an untouched
+ * prefilled form is not dirty, so it neither prompts on unload nor overwrites
+ * an older saved draft.
+ */
+export function isDraftDirtyFrom(current: DirtyShape, initial: DirtyShape): boolean {
+  return isDraftDirty(current) && contentSignature(current) !== contentSignature(initial);
+}
+
 export function serializeDraft(d: Omit<WizardDraft, "v" | "savedAt">, now: number = Date.now()): string {
   return JSON.stringify({ ...d, v: WIZARD_DRAFT_VERSION, savedAt: now });
 }
