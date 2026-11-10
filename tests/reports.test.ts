@@ -4,6 +4,7 @@ import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
 import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
 import { computeCupperAlignment, computeMajoritySets } from "@/lib/alignment";
 import { canViewGroupResults } from "@/lib/sessionState";
+import { gateSampleForViewer, communityHidden } from "@/lib/reports/sampleGate";
 import { NO_EVALUATION } from "@/lib/evaluationState";
 import { rankSamples, sessionStats, consensusLine, type RankableSample } from "@/lib/reports/ranking";
 import { rowStats, bandFor } from "@/lib/reports/cupperStats";
@@ -463,5 +464,62 @@ describe("computeMajoritySets", () => {
         excludedUserIds: new Set(),
       }),
     ).toEqual({});
+  });
+});
+
+describe("gateSampleForViewer (S8-02 F-resultados-2)", () => {
+  const input = { physical: { phys_color: "green" }, aggregateScore: { communityScore: 85 } };
+  const open = { status: "active", allSubmitted: false, sessionExpired: false };
+
+  it("participant of a hidden group session gets no physical and no aggregate", () => {
+    const ctx = {
+      ownerRead: false,
+      isGroup: true,
+      canViewGroup: canViewGroupResults({ isGroup: true, ownerRead: false, ...open }),
+    };
+    expect(communityHidden(ctx)).toBe(true);
+    expect(gateSampleForViewer(input, ctx)).toEqual({ physical: {}, aggregateScore: null });
+  });
+  it("owner and admin lens are unchanged", () => {
+    const ctx = {
+      ownerRead: true,
+      isGroup: true,
+      canViewGroup: canViewGroupResults({ isGroup: true, ownerRead: true, ...open }),
+    };
+    expect(communityHidden(ctx)).toBe(false);
+    expect(gateSampleForViewer(input, ctx)).toEqual(input);
+  });
+  it("solo owner keeps the trigger-row aggregate", () => {
+    const ctx = { ownerRead: true, isGroup: false, canViewGroup: false };
+    expect(gateSampleForViewer(input, ctx)).toEqual(input);
+  });
+  it("participant of a closed group session sees the aggregate but never physical", () => {
+    const ctx = {
+      ownerRead: false,
+      isGroup: true,
+      canViewGroup: canViewGroupResults({
+        isGroup: true,
+        ownerRead: false,
+        status: "closed",
+        allSubmitted: false,
+        sessionExpired: false,
+      }),
+    };
+    expect(gateSampleForViewer(input, ctx)).toEqual({
+      physical: {},
+      aggregateScore: input.aggregateScore,
+    });
+  });
+  it("owner of a group session can always view, so owner + hidden is unreachable", () => {
+    for (const status of ["active", "closed", "draft"]) {
+      expect(
+        canViewGroupResults({ isGroup: true, ownerRead: true, status, allSubmitted: false, sessionExpired: false }),
+      ).toBe(true);
+    }
+  });
+  it("does not mutate its input", () => {
+    const copy = structuredClone(input);
+    gateSampleForViewer(input, { ownerRead: false, isGroup: true, canViewGroup: false });
+    expect(input).toEqual(copy);
   });
 });
