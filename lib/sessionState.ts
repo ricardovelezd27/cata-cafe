@@ -96,14 +96,34 @@ export function canViewGroupResults(input: {
  *  // TODO(S8-05/C7): separating `isAsync` from `closesAt` (a live cupping
  *  // that also has a deadline) is Kim's call; today a date means self-paced. */
 export function planClosesAtChange(
-  session: { isGroup: boolean; closesAt?: Date | null; closesAtZone?: string | null },
+  session: {
+    isGroup: boolean;
+    closesAt?: Date | null;
+    closesAtZone?: string | null;
+    startedAt?: Date | null;
+    /** True when any cupper has an evaluation on the session. */
+    hasActivity?: boolean;
+  },
   input: string | null | undefined,
   now: number = Date.now(),
   zone?: string | null,
-): { closesAt: Date | null; closesAtZone: string | null; isAsync: boolean } | null {
+): { closesAt: Date | null; closesAtZone: string | null; isAsync: boolean; startedAt?: Date } | null {
   if (input === undefined) return null;
   if (!session.isGroup) throw new Error("not_group_session");
-  if (input === null || input === "") return { closesAt: null, closesAtZone: null, isAsync: false };
+  if (input === null || input === "") {
+    // B-02 (S8-22): a self-paced session never gets `startedAt`. Turning it
+    // live (isAsync=false) with startedAt null would lock every participant out
+    // (`session_not_started`). When it is NOT a fresh unstarted session (any
+    // activity), it counts as started from now. A fresh one stays unstarted:
+    // the owner starts it from the waiting room as usual.
+    const mustStart = !session.startedAt && session.hasActivity === true;
+    return {
+      closesAt: null,
+      closesAtZone: null,
+      isAsync: false,
+      ...(mustStart ? { startedAt: new Date(now) } : {}),
+    };
+  }
   // Unchanged value -> no-op, so saving an unrelated field never trips over a
   // stored date that has since slipped into the past.
   if (session.closesAt && input === dateInZone(session.closesAt, session.closesAtZone)) return null;

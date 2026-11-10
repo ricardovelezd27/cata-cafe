@@ -1132,6 +1132,7 @@ async function updateSessionBody(
     closesAt?: Date | null;
     closesAtZone?: string | null;
     isAsync?: boolean;
+    startedAt?: Date;
     warmupExerciseId?: string | null;
   } = {};
 
@@ -1141,10 +1142,21 @@ async function updateSessionBody(
       // rows are UTC); the posted zone decides what a NEW day means.
       const stored = await prisma.cuppingSession.findUnique({
         where: { id: sessionId },
-        select: { closesAt: true, closesAtZone: true },
+        select: {
+          closesAt: true,
+          closesAtZone: true,
+          startedAt: true,
+          samples: { where: { evaluations: { some: {} } }, select: { id: true }, take: 1 },
+        },
       });
       const plan = planClosesAtChange(
-        { isGroup: session.isGroup, closesAt: stored?.closesAt ?? null, closesAtZone: stored?.closesAtZone ?? null },
+        {
+          isGroup: session.isGroup,
+          closesAt: stored?.closesAt ?? null,
+          closesAtZone: stored?.closesAtZone ?? null,
+          startedAt: stored?.startedAt ?? null,
+          hasActivity: (stored?.samples.length ?? 0) > 0,
+        },
         input.closesAt,
         Date.now(),
         input.closesAtZone,
@@ -1153,6 +1165,7 @@ async function updateSessionBody(
         data.closesAt = plan.closesAt;
         data.closesAtZone = plan.closesAtZone;
         data.isAsync = plan.isAsync;
+        if (plan.startedAt) data.startedAt = plan.startedAt;
       }
     } catch (e) {
       const code = e instanceof Error ? e.message : "invalid_closes_at";
