@@ -138,7 +138,6 @@ export function ResultsClient({
   adminOwnerName = null,
   isGroup,
   canViewGroup,
-  sessionStatus,
   cuppingOpen,
   closedOnLabel = null,
   updatedAfterCloseLabel = null,
@@ -180,9 +179,6 @@ export function ResultsClient({
   adminOwnerName?: string | null;
   isGroup: boolean;
   canViewGroup: boolean;
-  // "active" | "closed" (+ legacy "draft"/"open") — gates the backToCupping
-  // button (a closed session's cupping form is final) and the closed notice.
-  sessionStatus: string;
   // False once the session is closed OR its closesAt passed (server clock):
   // gates "Volver a catar", since /cup redirects back here from that instant.
   cuppingOpen: boolean;
@@ -949,7 +945,7 @@ export function ResultsClient({
                     deltaVsReferenceAria={translations.deltaVsReferenceAria}
                     inProgressLabel={translations.table.inProgress}
                     notEvaluatedLabel={translations.table.notEvaluated}
-                    sessionClosed={sessionStatus === "closed"}
+                    sessionClosed={!cuppingOpen}
                     t={{
                       mine: translations.radarMine,
                       community: translations.radarCommunity,
@@ -1086,14 +1082,14 @@ export function ResultsClient({
           // Closed = read-only: /cup redirects a closed session to results, so
           // "Editar" would be a dead button (F-resultados-10).
           onEdit={
-            isAdminViewer || sessionStatus === "closed"
+            isAdminViewer || !cuppingOpen
               ? undefined
               : () => handleEditSample(detailSample.id)
           }
           onEditMetadata={
             // Closed = read-only: the metadata dialog's save throws
             // session_closed once the session closed, so the button goes away.
-            isOwner && sessionStatus !== "closed"
+            isOwner && cuppingOpen
               ? () => {
                   setDetail(null);
                   setEditingSampleId(detailSample.id);
@@ -1104,7 +1100,7 @@ export function ResultsClient({
             // Post-close coffee naming (WP-B): a coffee-less sample (express
             // sessions) may get its coffee AFTER the close — the one write
             // updateSampleMetadata allows on a closed session, owner only.
-            isOwner && !isAdminViewer && sessionStatus === "closed" && !detailSample.hasCoffee
+            isOwner && !isAdminViewer && !cuppingOpen && !detailSample.hasCoffee
               ? () => {
                   setDetail(null);
                   setEditingSampleId(detailSample.id);
@@ -1136,7 +1132,7 @@ export function ResultsClient({
           open
           onOpenChange={() => setEditingSampleId(null)}
           title={`${
-            sessionStatus === "closed" && !editingSample.hasCoffee
+            !cuppingOpen && !editingSample.hasCoffee
               ? translations.detail.assignCoffee
               : translations.editSample
           }: ${editingSample.label}`}

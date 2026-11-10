@@ -660,7 +660,6 @@ export default async function ResultsPage({
       adminOwnerName={isAdminViewer ? (adminTarget?.createdByUser.displayName ?? null) : null}
       isGroup={session.isGroup}
       canViewGroup={canViewGroup}
-      sessionStatus={session.status}
       cuppingOpen={!sessionOver}
       closedOnLabel={closedOnLabel}
       updatedAfterCloseLabel={updatedAfterCloseLabel}
