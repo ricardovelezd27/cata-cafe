@@ -31,13 +31,14 @@ import {
   planClosesAtChange,
 } from "@/lib/sessionState";
 import { endOfDayInZone, normalizeZone } from "@/lib/closeRules";
-import { removeSamplesInTx } from "@/lib/sampleRemoval";
+import { REFERENCE_REPIN_REQUIRED, removeSamplesInTx } from "@/lib/sampleRemoval";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { computeEvaluationDerived, moduleKeyForFormat } from "@/lib/evaluation";
 import {
   isPinnedModule,
   pinReferenceAffective,
   planAddReference,
+  countRepinOverwrites,
   planReferenceRepin,
   planRemoveActive,
 } from "@/lib/referenceRules";
@@ -1016,9 +1017,25 @@ export async function setReferenceSample(
           }
           active = plan.activeId;
           // B-05: the earlier reference is the pinned anchor again; rewrite
-          // its stored rows to 79.00 like the forward path does.
-          // TODO(S8-22): no owner confirmation here (removal has no confirm
-          // UI today); the forward path asks first via confirmRepin.
+          // its stored rows to 79.00 like the forward path does, but (S8-27)
+          // only after the owner confirmed when that would overwrite ratings
+          // cuppers already saved (rows already at the anchor need nothing).
+          if (plan.repinId) {
+            const sess = await tx.cuppingSession.findUniqueOrThrow({
+              where: { id: sessionId },
+              select: { format: true, cupsPerSample: true },
+            });
+            const evs = await tx.evaluation.findMany({
+              where: { sessionSampleId: plan.repinId },
+              select: { id: true, isDraft: true, affectiveData: true, combinedData: true },
+            });
+            const overwrites = countRepinOverwrites(
+              evs,
+              moduleKeyForFormat(sess.format),
+              sess.cupsPerSample,
+            );
+            if (overwrites > 0 && !confirmRepin) throw new Error("conflict");
+          }
           repinTarget = plan.repinId;
         } else {
           const plan = planAddReference(rows, targetId);
@@ -1438,6 +1455,8 @@ export async function removeSessionSample(sampleId: string, locale: string = "es
   // transaction so a first evaluation landing between the check and the delete
   // cannot be cascaded away (S8-10 T5; F-sesiones-3, race half).
   const refused = await prisma.$transaction(async (tx) => {
+    // (S8-27: removeSamplesInTx may throw REFERENCE_REPIN_REQUIRED; the
+    // transaction rolls back and the catch below turns it into a code.)
     // READ COMMITTED does not stop a cupper's first auto-save from committing
     // between the counts and the delete. Row-lock the sample first: the
     // FK key-share lock that an evaluation/physical/extrinsic INSERT takes on
@@ -1456,6 +1475,11 @@ export async function removeSessionSample(sampleId: string, locale: string = "es
     await removeSamplesInTx(tx, sample.sessionId, [sampleId]);
     await touchSession(tx, sample.sessionId);
     return null;
+  }).catch((e: unknown) => {
+    if (e instanceof Error && e.message === REFERENCE_REPIN_REQUIRED) {
+      return "reference_repin_required" as const;
+    }
+    throw e;
   });
   if (refused) return { ok: false as const, error: refused };
 

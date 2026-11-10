@@ -104,6 +104,10 @@ export default async function EditSessionPage({
     repinTitle: t("edit.repinTitle"),
     repinBody: t.raw("edit.repinBody") as string,
     sampleHasData: t("edit.sampleHasData"),
+    removeRepinTitle: t("edit.removeRepinTitle"),
+    removeRepinBody: t.raw("edit.removeRepinBody") as string,
+    removeRepinConfirm: t("edit.removeRepinConfirm"),
+    referenceRepinBlocked: t("edit.referenceRepinBlocked"),
     formatLockedStarted: t("edit.formatLockedStarted"),
   };
 
@@ -139,6 +143,7 @@ export default async function EditSessionPage({
           id: s.id,
           label: s.label,
           evalCount: s._count.evaluations,
+          referenceRank: s.referenceRank,
         }))}
         groups={groups}
         evalCount={evalCount}

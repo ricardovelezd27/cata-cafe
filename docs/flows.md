@@ -453,7 +453,11 @@ the edit form, first asks for confirmation with the evaluation count when the
 sample is rated, and sends `confirmRepin: true` only after the owner confirms); `null` removes only the active
 one and the previous becomes active again. Only the ACTIVE reference is pinned
 — earlier ones keep the pinned data their cuppers saved but unlock, so a cupper
-can change that note. All references are cupped first by rank
+can change that note. When an earlier one becomes active again it is pinned
+again, but only if that would rewrite stored ratings: `null` then needs
+`confirmRepin` (owner confirms in a dialog naming the sample and the count),
+and removing the active reference's SAMPLE is refused
+(`reference_repin_required`, "change the reference first") (S8-27). All references are cupped first by rank
 (`orderReferencesFirst`), are anchors in results (excluded from ranking,
 average and "Mejor muestra") and the "Comparar con: Referencia 1 · Referencia 2"
 selector (client state, `localStorage` `cata_results_ref`, active by default)

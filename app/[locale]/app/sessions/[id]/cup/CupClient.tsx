@@ -373,6 +373,10 @@ export function CupClient({
     referenceRepinTitle?: string;
     /** `{n}` placeholder, replaced client-side. */
     referenceRepinBody?: string;
+    /** S8-27: removing the active reference re-pins the earlier one. `{label}` + `{n}`. */
+    referenceRemoveRepinTitle?: string;
+    referenceRemoveRepinBody?: string;
+    referenceRemoveRepinConfirm?: string;
     // Invite control + late joiners (S8-11). Optional: offline prop blobs.
     inviteRegenerate?: string;
     inviteRegenerateTitle?: string;
@@ -528,6 +532,7 @@ export function CupClient({
   // Re-pin of a sample cuppers already rated: asks before their notes are
   // replaced by the 79.00 anchor, then sends confirmRepin (S8-21 #1).
   const [repinTarget, setRepinTarget] = useState<string | null>(null);
+  const [removeRepin, setRemoveRepin] = useState<{ label: string; n: number } | null>(null);
   const referenceSeqRef = useRef(0);
   // Sample ids whose pinned "ensure" auto-save has already been queued.
   const ensuredReferenceRef = useRef<Set<string>>(new Set());
@@ -1613,6 +1618,17 @@ export function CupClient({
       setRepinTarget(next);
       return;
     }
+    // S8-27: dropping the active reference re-pins the earlier one; when
+    // cuppers already rated it, ask first (the server refuses otherwise).
+    if (!next && !confirmRepin) {
+      const order = refOrderRef.current;
+      const prevId = order.length > 1 ? order[order.length - 2] : null;
+      const n = prevId ? (evalCountBySample[prevId] ?? 0) : 0;
+      if (prevId && n > 0) {
+        setRemoveRepin({ label: samplesRef.current.find((s) => s.id === prevId)?.label ?? "", n });
+        return;
+      }
+    }
     const prevOrder = refOrderRef.current;
     const seq = ++referenceSeqRef.current;
     applyReferenceOrder(next);
@@ -2502,6 +2518,26 @@ export function CupClient({
           const id = repinTarget;
           setRepinTarget(null);
           if (id) commitReference(id, true);
+        }}
+      />
+      <ConfirmDialog
+        open={removeRepin !== null}
+        onOpenChange={(o) => {
+          if (!o) setRemoveRepin(null);
+        }}
+        title={translations.referenceRemoveRepinTitle ?? "¿Quitar la referencia activa?"}
+        body={(
+          translations.referenceRemoveRepinBody ??
+          "Al quitarla, {label} vuelve a ser la referencia y {n} catadores verán sus notas de calidad reemplazadas por el ancla de 79.00. No se puede deshacer."
+        )
+          .replace("{label}", removeRepin?.label ?? "")
+          .replace("{n}", String(removeRepin?.n ?? 0))}
+        confirmLabel={translations.referenceRemoveRepinConfirm ?? "Quitar referencia"}
+        cancelLabel={translations.cancel}
+        closeLabel={translations.cancel}
+        onConfirm={() => {
+          setRemoveRepin(null);
+          commitReference(null, true);
         }}
       />
       <ConfirmDialog

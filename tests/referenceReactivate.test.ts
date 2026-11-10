@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { planReferenceRepin, planRemoveActive, REFERENCE_PIN_VALUE } from "@/lib/referenceRules";
+import {
+  countRepinOverwrites,
+  planReferenceRepin,
+  planRemoveActive,
+  REFERENCE_PIN_VALUE,
+} from "@/lib/referenceRules";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 
 // S8-22 B-05: dropping the active reference re-pins the earlier one.
@@ -31,6 +36,39 @@ describe("re-activated earlier reference (B-05)", () => {
     );
     expect(plan.map((p) => p.id)).toEqual(["e1"]);
     expect(plan[0].data.individualScore).toBe(79);
+  });
+
+  // S8-27: the confirmation rule. Re-activation needs the owner's OK exactly
+  // when pinning again would rewrite at least one stored evaluation.
+  it("countRepinOverwrites: 0 when nothing is stored or everything is already pinned", () => {
+    const pinned = Object.fromEntries(AFFECTIVE_ATTRIBUTES.map((a) => [`${a.id}_final`, REFERENCE_PIN_VALUE]));
+    expect(countRepinOverwrites([], "affective", 5)).toBe(0);
+    expect(
+      countRepinOverwrites([{ id: "e", isDraft: false, affectiveData: pinned, combinedData: {} }], "affective", 5),
+    ).toBe(0);
+  });
+
+  it("countRepinOverwrites counts only the drifted rows (draft or submitted)", () => {
+    const drifted = Object.fromEntries(AFFECTIVE_ATTRIBUTES.map((a) => [`${a.id}_final`, 8]));
+    const pinned = Object.fromEntries(AFFECTIVE_ATTRIBUTES.map((a) => [`${a.id}_final`, REFERENCE_PIN_VALUE]));
+    expect(
+      countRepinOverwrites(
+        [
+          { id: "a", isDraft: false, affectiveData: drifted, combinedData: {} },
+          { id: "b", isDraft: true, affectiveData: drifted, combinedData: {} },
+          { id: "c", isDraft: false, affectiveData: pinned, combinedData: {} },
+        ],
+        "affective",
+        5,
+      ),
+    ).toBe(2);
+  });
+
+  it("countRepinOverwrites is 0 for descriptive sessions (nothing is pinned)", () => {
+    const drifted = Object.fromEntries(AFFECTIVE_ATTRIBUTES.map((a) => [`${a.id}_final`, 8]));
+    expect(
+      countRepinOverwrites([{ id: "a", isDraft: false, affectiveData: drifted, combinedData: {} }], "descriptive", 5),
+    ).toBe(0);
   });
 
   it("setReferenceSample(null) sets the re-pin target from the plan", () => {

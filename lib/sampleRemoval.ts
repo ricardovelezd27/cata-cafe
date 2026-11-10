@@ -7,7 +7,16 @@ import "server-only";
 // to delete (never one that holds an evaluation: the delete would cascade it).
 
 import type { Prisma } from "@/app/generated/prisma/client";
-import { activeReferenceId, compactReferenceRanks } from "@/lib/referenceRules";
+import { moduleKeyForFormat } from "@/lib/evaluation";
+import {
+  activeReferenceId,
+  compactReferenceRanks,
+  countRepinOverwrites,
+} from "@/lib/referenceRules";
+
+/** Thrown (rolling the transaction back) when removing samples would
+ *  re-activate an earlier reference whose ratings must be overwritten. */
+export const REFERENCE_REPIN_REQUIRED = "reference_repin_required";
 
 /** Deletes `sampleIds` (all must belong to `sessionId`), then repairs what the
  *  deletion leaves behind, inside the caller's transaction:
@@ -21,6 +30,11 @@ export async function removeSamplesInTx(
   sampleIds: string[],
 ): Promise<void> {
   if (sampleIds.length === 0) return;
+  const refsBefore = await tx.sessionSample.findMany({
+    where: { sessionId, referenceRank: { not: null } },
+    select: { id: true, referenceRank: true },
+  });
+  const activeBefore = activeReferenceId(refsBefore);
   await tx.sessionSample.deleteMany({ where: { id: { in: sampleIds }, sessionId } });
   const refRows = await tx.sessionSample.findMany({
     where: { sessionId, referenceRank: { not: null } },
@@ -29,10 +43,26 @@ export async function removeSamplesInTx(
   for (const { id, rank } of compactReferenceRanks(refRows)) {
     await tx.sessionSample.update({ where: { id }, data: { referenceRank: rank } });
   }
-  await tx.cuppingSession.update({
+  const activeAfter = activeReferenceId(refRows);
+  const session = await tx.cuppingSession.update({
     where: { id: sessionId },
-    data: { referenceSampleId: activeReferenceId(refRows) },
+    data: { referenceSampleId: activeAfter },
+    select: { format: true, cupsPerSample: true },
   });
+  // S8-27: removing the active reference's sample re-activates an EARLIER
+  // reference, which is pinned again. If its stored ratings drifted off the
+  // 79.00 anchor, pinning it would silently overwrite cuppers' work: refuse
+  // (the whole transaction rolls back) and let the owner change the reference
+  // first, which asks for confirmation.
+  if (activeAfter && activeAfter !== activeBefore) {
+    const evs = await tx.evaluation.findMany({
+      where: { sessionSampleId: activeAfter },
+      select: { id: true, isDraft: true, affectiveData: true, combinedData: true },
+    });
+    if (countRepinOverwrites(evs, moduleKeyForFormat(session.format), session.cupsPerSample) > 0) {
+      throw new Error(REFERENCE_REPIN_REQUIRED);
+    }
+  }
   // Each shifted row lands on a slot vacated one step earlier.
   const rest = await tx.sessionSample.findMany({
     where: { sessionId },

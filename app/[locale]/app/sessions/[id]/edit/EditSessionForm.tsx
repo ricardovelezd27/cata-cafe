@@ -15,6 +15,7 @@ import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useActionFeedback } from "@/components/ui/Toast";
 import { browserZone, dateInZone } from "@/lib/closeRules";
+import { planRemoveActive } from "@/lib/referenceRules";
 
 export type EditSessionFormTranslations = {
   name: string;
@@ -56,11 +57,21 @@ export type EditSessionFormTranslations = {
   /** Raw ICU string (t.raw()) — contains a literal "{n}" token. */
   repinBody: string;
   sampleHasData: string;
+  removeRepinTitle: string;
+  /** Raw ICU string (t.raw()) with literal "{label}" and "{n}" tokens. */
+  removeRepinBody: string;
+  removeRepinConfirm: string;
+  referenceRepinBlocked: string;
   formatLockedStarted: string;
   warmup: { toggle: string; label: string; hint: string; minutes: string };
 };
 
-export type EditSampleRow = { id: string; label: string; evalCount: number };
+export type EditSampleRow = {
+  id: string;
+  label: string;
+  evalCount: number;
+  referenceRank: number | null;
+};
 export type EditGroupOption = { id: string; name: string };
 
 const inputCls =
@@ -172,9 +183,22 @@ export function EditSessionForm({
   // replaced by the 79.00 anchor. Cancel leaves the select untouched.
   const [repinTarget, setRepinTarget] = useState<EditSampleRow | null>(null);
 
+  // S8-27: dropping the active reference re-pins the EARLIER one, which may
+  // overwrite its cuppers' ratings; ask first when it has evaluations (the
+  // server refuses without confirmRepin when it would really rewrite them).
+  const [removeRepinTarget, setRemoveRepinTarget] = useState<EditSampleRow | null>(null);
+
   const handleReferenceChange = (value: string) => {
     const next = value || null;
     if (next === referenceId) return;
+    if (next === null) {
+      const prevId = planRemoveActive(samples).repinId;
+      const prev = prevId ? samples.find((s) => s.id === prevId) : undefined;
+      if (prev && prev.evalCount > 0) {
+        setRemoveRepinTarget(prev);
+        return;
+      }
+    }
     const target = next ? samples.find((s) => s.id === next) : undefined;
     if (target && target.evalCount > 0) {
       setRepinTarget(target);
@@ -589,6 +613,25 @@ export function EditSessionForm({
       />
 
       <ConfirmDialog
+        open={removeRepinTarget !== null}
+        onOpenChange={(o) => {
+          if (!o) setRemoveRepinTarget(null);
+        }}
+        title={t.removeRepinTitle}
+        body={t.removeRepinBody
+          .replace("{label}", removeRepinTarget?.label ?? "")
+          .replace("{n}", String(removeRepinTarget?.evalCount ?? 0))}
+        confirmLabel={t.removeRepinConfirm}
+        cancelLabel={t.cancel}
+        closeLabel={t.close}
+        onConfirm={async () => {
+          commitReference(null, true);
+          setRemoveRepinTarget(null);
+        }}
+        error={t.error}
+      />
+
+      <ConfirmDialog
         open={removeTarget !== null}
         onOpenChange={(o) => {
           if (!o) setRemoveTarget(null);
@@ -602,6 +645,7 @@ export function EditSessionForm({
         errorMessages={{
           sample_has_data: t.sampleHasData,
           sample_has_evaluations: t.sampleHasEvals,
+          reference_repin_required: t.referenceRepinBlocked,
           session_closed: t.sessionClosed,
         }}
         error={t.error}

@@ -332,6 +332,10 @@
       "repinTitle": "Set this sample as the reference?",
       "repinBody": "{n} cuppers already rated this sample. Marking it as the reference replaces their quality ratings with the 79.00 anchor. This cannot be undone.",
       "sampleHasData": "Has physical or origin data — cannot be removed",
+      "removeRepinTitle": "Remove the active reference?",
+      "removeRepinBody": "Removing it makes {label} the reference again, and {n} cuppers will have their quality ratings replaced by the 79.00 anchor. This cannot be undone.",
+      "removeRepinConfirm": "Remove reference",
+      "referenceRepinBlocked": "Removing this sample would reactivate an earlier reference and replace its cuppers' ratings. Change the reference first.",
       "formatLockedStarted": "Format and cups per sample lock once the cupping has started or has evaluations."
     }
   },

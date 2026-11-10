@@ -203,6 +203,18 @@ export function planReferenceRepin<
   return plan;
 }
 
+/** S8-27: how many stored evaluations a re-pin would actually REWRITE (those
+ *  not already at the 79.00 anchor). Decides whether re-activating an earlier
+ *  reference (removing the active one, or removing its sample) needs the
+ *  owner's confirmation: 0 means pinning it again changes nothing. */
+export function countRepinOverwrites(
+  evaluations: Parameters<typeof planReferenceRepin>[0],
+  moduleKey: string,
+  cupsPerSample: number,
+): number {
+  return planReferenceRepin(evaluations, moduleKey, cupsPerSample).length;
+}
+
 /** True when every affective rating already sits at the pin value and no cup
  *  is marked — i.e. `pinReferenceAffective` would be a no-op. */
 export function isReferencePinned(data: Record<string, unknown>): boolean {
