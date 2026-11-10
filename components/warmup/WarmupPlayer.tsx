@@ -11,6 +11,7 @@ import { previewSpec } from "@/lib/warmup/preview";
 import { saveReflection } from "@/lib/warmup/reflections";
 import { RESUME_WAIT_MS, audioResumeDecision } from "@/lib/warmup/audioResume";
 import { shouldResync } from "@/lib/warmup/syncedRun";
+import { skipNeedsConfirm, type WarmupExitInfo } from "@/lib/warmup/overlayGate";
 import type { NarrationSource, Pose, Segment } from "@/lib/warmup/timelineTypes";
 import { useRunClock } from "@/hooks/useRunClock";
 import { useWarmupAudio } from "@/hooks/useWarmupAudio";
@@ -37,7 +38,7 @@ export interface WarmupPlayerProps {
   /** Final screen's button / end of the bridge. */
   onFinish?: () => void;
   /** × "Saltar ejercicio" / "Cerrar" / Escape — the person leaves early. */
-  onExit?: () => void;
+  onExit?: (info?: WarmupExitInfo) => void;
   /** md:+ only: render inside the page instead of fixed full-screen. */
   inline?: boolean;
   /** Synced run: skip the intro and start the clock at this elapsed ms. */
@@ -541,11 +542,32 @@ export function WarmupPlayer({
     clock.seek(sg.kind === "bridge" ? tl.closingAt : tl.stepStart[total - 1], { play: true });
   }, [phase, tl, segIdx, clock, synced, total]);
 
+  // Leaving early (S8-13 F-6): the host decides what "seen" means from
+  // `{ completed, elapsedMs }`. A skip that WOULD count as seen (past 20 s in
+  // a session) asks for a second tap first; an early stray tap just leaves.
+  const [confirmSkip, setConfirmSkip] = useState(false);
+  useEffect(() => {
+    if (!confirmSkip) return;
+    const id = setTimeout(() => setConfirmSkip(false), 4000);
+    return () => clearTimeout(id);
+  }, [confirmSkip]);
+  const exitInfo = useCallback(
+    (): WarmupExitInfo => ({
+      completed: phase === "reflect" || phase === "done" || clock.done,
+      elapsedMs: phase === "run" ? clock.elapsedMs() : phase === "intro" ? 0 : tl.totalMs,
+    }),
+    [phase, clock, tl.totalMs],
+  );
   const exit = useCallback(() => {
+    const info = exitInfo();
+    if (sessionLike && phase === "run" && skipNeedsConfirm(info) && !confirmSkip) {
+      setConfirmSkip(true);
+      return;
+    }
     audio.cancel();
     audio.cancelSpeech();
-    onExit?.();
-  }, [audio, onExit]);
+    onExit?.(info);
+  }, [audio, onExit, exitInfo, sessionLike, phase, confirmSkip]);
 
   // Keyboard.
   useEffect(() => {
@@ -581,6 +603,20 @@ export function WarmupPlayer({
     setChromeHidden(false);
     setChromeEpoch((n) => n + 1);
   }, []);
+  // Eyes-closed (dusk) legs hide the footer, so the first tap on the stage
+  // is a PAUSE (short haptic + the footer and "Pausado" come back), not just
+  // a reveal. Taps on real controls are left to the controls.
+  const clockPauseNow = clock.pause;
+  const onRootPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (dusk && chromeHidden && running && !(e.target as HTMLElement).closest?.("button, a, input, textarea, select")) {
+        clockPauseNow();
+        audio.vibrate(30);
+      }
+      revealChrome();
+    },
+    [dusk, chromeHidden, running, clockPauseNow, audio, revealChrome],
+  );
   useEffect(() => {
     if (!slowLeg) return;
     const id = setTimeout(() => setChromeHidden(true), CHROME_HIDE_MS);
@@ -716,15 +752,20 @@ export function WarmupPlayer({
       data-dusk={dusk ? "1" : undefined}
       data-chrome-hidden={chromeHidden ? "1" : undefined}
       data-mode={mode}
-      onPointerDown={revealChrome}
+      onPointerDown={onRootPointerDown}
       onPointerMove={chromeHidden ? revealChrome : undefined}
     >
       {/* ── Top bar: the single exit, never hides ── */}
       <header className={s.topbar}>
         {onExit ? (
-          <button type="button" className={s.exitBtn} onClick={exit} aria-label={sessionLike ? t.skipExercise : t.close}>
+          <button
+            type="button"
+            className={s.exitBtn}
+            onClick={exit}
+            aria-label={confirmSkip ? t.skipConfirm : sessionLike ? t.skipExercise : t.close}
+          >
             <X size={20} aria-hidden />
-            {sessionLike && <span>{t.skipExercise}</span>}
+            {sessionLike && <span>{confirmSkip ? t.skipConfirm : t.skipExercise}</span>}
           </button>
         ) : (
           <span />
@@ -903,7 +944,7 @@ export function WarmupPlayer({
               <button type="button" className={s.ghostBtn} onClick={repeat}>
                 {t.repeat}
               </button>
-              <button type="button" className={s.primaryBtn} onClick={onFinish ?? onExit}>
+              <button type="button" className={s.primaryBtn} onClick={() => (onFinish ? onFinish() : onExit?.({ completed: true, elapsedMs: tl.totalMs }))}>
                 {onFinish ? t.backToList : t.finish}
               </button>
             </div>

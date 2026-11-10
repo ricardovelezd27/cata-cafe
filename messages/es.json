@@ -1663,7 +1663,8 @@
       "repeat": "Repetir",
       "backToList": "Volver a los ejercicios",
       "finish": "Terminar",
-      "tapToResume": "Toca para reanudar"
+      "tapToResume": "Toca para reanudar",
+      "skipConfirm": "Toca otra vez para saltar"
     },
     "label": {
       "up": "Sube",

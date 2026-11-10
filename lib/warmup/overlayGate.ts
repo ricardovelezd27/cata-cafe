@@ -51,3 +51,31 @@ export type StartArrival = "push" | "bar";
 export function onCuppingStarted(playerState: "closed" | "intro" | "run" | "ended"): StartArrival {
   return playerState === "run" ? "bar" : "push";
 }
+
+// ── Leaving the player early (S8-13 F-movimiento-sensorial-6) ────────────
+
+/** A skip before this much run time does NOT mark the exercise seen, so a
+ *  stray tap on the × never silences it for the whole session. */
+export const SKIP_SEEN_AFTER_MS = 20_000;
+
+/** What the player tells its host when it is left (× / Skip / Escape). */
+export interface WarmupExitInfo {
+  /** The exercise ran to its end (reflect / done reached). */
+  completed: boolean;
+  /** Run time reached, in ms (0 from the intro). */
+  elapsedMs: number;
+}
+
+/** Host rule: mark the (session, user, exercise) seen only when it was
+ *  completed or the person was at least SKIP_SEEN_AFTER_MS in. No info
+ *  (legacy caller) keeps the old behaviour: seen. */
+export function exitMarksSeen(info?: WarmupExitInfo | null): boolean {
+  if (!info) return true;
+  return info.completed || info.elapsedMs >= SKIP_SEEN_AFTER_MS;
+}
+
+/** Player rule: a skip that WOULD mark the exercise seen asks for a second
+ *  tap first (an early stray tap just leaves it unseen, no question). */
+export function skipNeedsConfirm(info: WarmupExitInfo): boolean {
+  return !info.completed && info.elapsedMs >= SKIP_SEEN_AFTER_MS;
+}

@@ -11,7 +11,7 @@ import { isMissed, parseDbTimestamp, resyncPositionMs, runLengthMs, seekFor, ske
 import { nextReferenceOrder } from "@/lib/referenceRules";
 import { WARMUP_EXERCISES, WARMUP_SHARED, lw, warmupById, type WarmupExercise } from "@/lib/warmup/exercises";
 import { hasSeenMoment, markMomentSeen, subscribeMoments } from "@/lib/sessionMoments";
-import { START_EXIT_CAP_MS, onCuppingStarted } from "@/lib/warmup/overlayGate";
+import { START_EXIT_CAP_MS, exitMarksSeen, onCuppingStarted } from "@/lib/warmup/overlayGate";
 import { previewSpec } from "@/lib/warmup/preview";
 import { WarmupPlayer, type WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
 import { WarmupFigure } from "@/components/warmup/figures";
@@ -191,10 +191,11 @@ export function WaitingRoomClient({
     router.push(`/${locale}/app/sessions/${sessionId}/cup`);
   }, [router, locale, sessionId]);
 
-  const closePlayer = useCallback(() => {
+  const closePlayer = useCallback((markSeen: boolean) => {
     const id = activeRef.current;
-    if (id && chosen && id === chosen.id) {
-      // Finishing OR skipping the master's pick counts (never nag twice).
+    if (markSeen && id && chosen && id === chosen.id) {
+      // Finishing, or skipping after 20 s of the run, counts (never nag
+      // twice); an early stray skip leaves it unseen (S8-13 F-6).
       markMomentSeen("warmup", sessionId, userId, chosen.id);
     }
     setActiveWarmupId(null);
@@ -478,8 +479,8 @@ export function WaitingRoomClient({
           soundDefault={synced ? false : undefined}
           resyncPositionMs={synced ? syncedResyncMs : undefined}
           exitRequest={exitRequest}
-          onFinish={closePlayer}
-          onExit={closePlayer}
+          onFinish={() => closePlayer(true)}
+          onExit={(info) => closePlayer(exitMarksSeen(info))}
         />
       )}
     </main>

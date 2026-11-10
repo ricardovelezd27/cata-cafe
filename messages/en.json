@@ -1663,7 +1663,8 @@
       "repeat": "Repeat",
       "backToList": "Back to the exercises",
       "finish": "Finish",
-      "tapToResume": "Tap to resume"
+      "tapToResume": "Tap to resume",
+      "skipConfirm": "Tap again to skip"
     },
     "label": {
       "up": "Up",

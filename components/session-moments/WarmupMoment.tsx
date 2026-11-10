@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { warmupById, lw } from "@/lib/warmup/exercises";
 import { seenMomentValue } from "@/lib/sessionMoments";
-import { shouldShowWarmupOverlay } from "@/lib/warmup/overlayGate";
+import { exitMarksSeen, shouldShowWarmupOverlay } from "@/lib/warmup/overlayGate";
 import { WarmupPlayer, type WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
 import { SessionMomentOverlay, useSessionMoment } from "./SessionMomentOverlay";
 
@@ -65,7 +65,7 @@ export function WarmupMoment({
     return { id, show };
   });
   const exercise = warmupById(frozen.id);
-  const { open, dismiss } = useSessionMoment({
+  const { open, dismiss, close } = useSessionMoment({
     kind: "warmup",
     sessionId,
     userId,
@@ -75,7 +75,7 @@ export function WarmupMoment({
   if (!exercise) return null;
   return (
     <SessionMomentOverlay open={open} label={lw(exercise.name, locale)}>
-      <WarmupPlayer exercise={exercise} locale={locale} t={strings} mode="session" onFinish={dismiss} onExit={dismiss} />
+      <WarmupPlayer exercise={exercise} locale={locale} t={strings} mode="session" onFinish={dismiss} onExit={(info) => (exitMarksSeen(info) ? dismiss() : close())} />
     </SessionMomentOverlay>
   );
 }
