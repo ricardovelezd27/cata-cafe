@@ -692,7 +692,9 @@
       "expressNotes": "Notas rápidas",
       "assignCoffee": "Asignar café",
       "extrinsicSaved": "Datos de origen guardados",
-      "close": "Cerrar"
+      "close": "Cerrar",
+      "assignPick": "Elegir un café existente",
+      "assignedToast": "Café asignado a la muestra"
     },
     "matrix": {
       "matrixTitle": "Resumen de puntajes CVA",

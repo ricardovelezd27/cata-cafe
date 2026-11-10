@@ -42,6 +42,7 @@ import { checkWizardBounds } from "@/lib/coffeeInputBounds";
 import { CERTIFICATIONS } from "@/lib/constants";
 import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/groups";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
+import { planAssignCoffee } from "@/lib/assignCoffee";
 import { WARMUP_IDS, type WarmupId } from "@/lib/warmup/exercises";
 import { safeLocale } from "@/lib/safeLocale";
 import {
@@ -1574,6 +1575,64 @@ export async function updateSampleMetadata(
   revalidatePath(`/app/sessions/${sample.sessionId}/print`);
 
   return { ok: true as const, coffeeUpdated };
+}
+
+/**
+ * "Asignar café" on a coffee-less sample (S8-10 T10, F-express-3). Returns an
+ * ActionResult so the results dialog can toast instead of crashing: either
+ * links an EXISTING coffee the caller may use (usableCoffeeWhere, else
+ * `coffee_not_usable`) or creates one and links it in one transaction (the
+ * create half is updateSampleMetadata's). Owner only; refuses a sample that
+ * already has a coffee (`conflict`). The post-close sanction is unchanged:
+ * on a closed session the sample is revealed and history is re-synced.
+ */
+export async function assignSampleCoffee(
+  sampleId: string,
+  input: Parameters<typeof planAssignCoffee>[0],
+): Promise<ActionResult<{ linked: boolean }>> {
+  return run("assignSampleCoffee", async () => {
+    const user = await requireUser();
+    const plan = planAssignCoffee(input);
+    const sample = await requireSampleOwner(sampleId, user.id);
+    // Open sessions follow the normal write guard; a closed one is allowed
+    // here ONLY because the sample is coffee-less (checked below).
+    if (!isSessionClosed(sample)) assertSessionWritable(sample);
+
+    const current = await prisma.sessionSample.findUnique({
+      where: { id: sampleId },
+      select: { coffeeId: true },
+    });
+    if (!current) throw new Error("not_found_or_forbidden");
+    if (current.coffeeId) throw new Error("conflict");
+
+    if (plan.mode === "create") {
+      await updateSampleMetadata(sampleId, plan.fields);
+      return { linked: false };
+    }
+
+    const coffee = await prisma.coffee.findFirst({
+      where: { id: plan.coffeeId, ...usableCoffeeWhere(user.id) },
+      select: { id: true },
+    });
+    if (!coffee) throw new Error("coffee_not_usable");
+
+    const closed = isSessionClosed(sample);
+    const res = await prisma.sessionSample.updateMany({
+      where: { id: sampleId, coffeeId: null },
+      data: { coffeeId: coffee.id, ...(closed ? { revealed: true } : {}) },
+    });
+    if (res.count === 0) throw new Error("conflict");
+
+    if (closed) {
+      await syncCoffeeHistoryForSession(sample.sessionId);
+      revalidatePath(`/app/profile/history`);
+      revalidatePath(`/app/coffees`);
+    }
+    revalidatePath(`/app/sessions/${sample.sessionId}/cup`);
+    revalidatePath(`/app/sessions/${sample.sessionId}/results`);
+    revalidatePath(`/app/sessions/${sample.sessionId}/print`);
+    return { linked: true };
+  });
 }
 
 // Extrinsic (reveal / origin) data is ONE row per sample and stamps

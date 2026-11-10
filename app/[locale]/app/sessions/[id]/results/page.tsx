@@ -13,6 +13,8 @@ import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { deriveMyEvaluation, summarizeMyProgress } from "@/lib/evaluationState";
 import { canViewGroupResults, isSessionExpired } from "@/lib/sessionState";
 import { gateSampleForViewer, communityHidden } from "@/lib/reports/sampleGate";
+import { getUsableCoffees } from "@/lib/coffees/queries";
+import type { UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { ResultsClient } from "./ResultsClient";
 
 // resendCloseEmails / refreshAggregateScores run from here; give the
@@ -574,9 +576,30 @@ export default async function ResultsPage({
       })
     : null;
 
+  // "Asignar café": only the owner of a CLOSED session with coffee-less
+  // samples can pick an existing coffee, so only then ship the list.
+  const needsCoffeePicker =
+    isOwner && !isAdminViewer && session.status === "closed" && session.samples.some((s) => s.coffeeId === null);
+  const usableCoffees: UsableCoffee[] = needsCoffeePicker
+    ? (await getUsableCoffees(user.id)).map((c) => ({
+        id: c.id,
+        name: c.name,
+        code: c.code,
+        producer: c.producer,
+        variety: c.variety,
+        altitude: c.altitude,
+        roastLevel: c.roastLevel,
+        country: c.country,
+        region: c.region,
+        processType: c.processType,
+        origin: c.createdBy === user.id ? "mine" : c.visibility === "public" ? "public" : "shared",
+      }))
+    : [];
+
   return (
     <ResultsClient
       locale={locale}
+      usableCoffees={usableCoffees}
       isOwner={isOwner}
       isAdminViewer={isAdminViewer}
       adminViewNotice={adminViewNotice}
@@ -785,6 +808,17 @@ export default async function ResultsPage({
         alignNoData: tAlign("noData"),
         editSample: t("editSample"),
         editSampleError: t("editSampleError"),
+        assignPick: tResults("detail.assignPick"),
+        assignedToast: tResults("detail.assignedToast"),
+        coffeePicker: {
+          title: tc("picker.title"),
+          searchPlaceholder: tc("picker.searchPlaceholder"),
+          mine: tc("picker.mine"),
+          shared: tc("picker.shared"),
+          public: tc("picker.public"),
+          empty: tc("picker.empty"),
+          close: tCommon("close"),
+        },
         editSampleNotOwner: t("editSampleNotOwner"),
         sampleLabel: t("sampleLabel"),
         coffeeName: t("coffeeName"),

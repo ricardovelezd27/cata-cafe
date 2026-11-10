@@ -46,7 +46,8 @@ import {
   ButtonLink,
   useActionFeedback,
 } from "@/components/ui";
-import { updateSampleMetadata } from "@/app/actions/sessions";
+import { assignSampleCoffee, updateSampleMetadata } from "@/app/actions/sessions";
+import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
 import { ArrowLeft, FileDown, Printer, RefreshCw } from "lucide-react";
@@ -115,6 +116,7 @@ function getCompareRefServerSnapshot(): string {
 
 export function ResultsClient({
   locale,
+  usableCoffees = [],
   session,
   isOwner,
   isAdminViewer = false,
@@ -206,6 +208,8 @@ export function ResultsClient({
   // Strings for the device-pending sync pill + conflict modal. Null in the
   // admin read-only view (nothing of the admin's is ever pending here).
   sync?: SessionSyncStatusTranslations | null;
+  /** Coffees the owner may link in "Asignar café" (empty unless needed). */
+  usableCoffees?: UsableCoffee[];
   translations: {
     title: string;
     backToCupping: string;
@@ -264,6 +268,17 @@ export function ResultsClient({
     alignNoData: string;
     editSample: string;
     editSampleError: string;
+    assignPick: string;
+    assignedToast: string;
+    coffeePicker: {
+      title: string;
+      searchPlaceholder: string;
+      mine: string;
+      shared: string;
+      public: string;
+      empty: string;
+      close: string;
+    };
     editSampleNotOwner: string;
     sampleLabel: string;
     coffeeName: string;
@@ -351,6 +366,7 @@ export function ResultsClient({
   const feedback = useActionFeedback();
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [editingSampleId, setEditingSampleId] = useState<string | null>(null);
+  const [pickingCoffee, setPickingCoffee] = useState(false);
   const [editingExtrinsicSampleId, setEditingExtrinsicSampleId] = useState<string | null>(null);
   // Set after a metadata save when the linked coffee belongs to someone else
   // — the label still saved, but the coffee record itself was skipped.
@@ -462,8 +478,35 @@ export function ResultsClient({
   const detailParticipants: SampleDetailParticipant[] | null =
     (isOwner || isAdminViewer) && participants && participants.length > 0 ? participants : null;
 
+  // "Asignar café" (closed session, coffee-less sample): goes through
+  // assignSampleCoffee so failures toast the localized code instead of
+  // crashing, and success says what happened (S8-10 T10, F-express-3).
+  const isAssigning = sessionStatus === "closed" && !!editingSample && !editingSample.hasCoffee;
+
+  const finishAssign = () => {
+    setEditingSampleId(null);
+    setPickingCoffee(false);
+    feedback.notifySuccess(translations.assignedToast);
+    router.refresh();
+  };
+
+  const handlePickCoffee = async (picked: UsableCoffee) => {
+    if (!editingSampleId) return;
+    setPickingCoffee(false);
+    await feedback.run(assignSampleCoffee(editingSampleId, { coffeeId: picked.id }), finishAssign);
+  };
+
   const handleSaveSampleMetadata = async (data: SampleMetadataFormData) => {
     if (!editingSampleId) return;
+    if (isAssigning) {
+      const res = await feedback.run(
+        assignSampleCoffee(editingSampleId, { fields: data }),
+        finishAssign,
+      );
+      // Keep the dialog (and the typed values) open on failure.
+      if (!res.ok) throw new Error(res.error);
+      return;
+    }
     const result = await updateSampleMetadata(editingSampleId, data);
     setEditingSampleId(null);
     setCoffeeNotOwnedNotice(!result.coffeeUpdated);
@@ -1077,6 +1120,15 @@ export function ResultsClient({
           }: ${editingSample.label}`}
           closeLabel={translations.cancel}
         >
+          {isAssigning && usableCoffees.length > 0 && (
+            <Button
+              variant="secondary"
+              className="w-full mb-4"
+              onClick={() => setPickingCoffee(true)}
+            >
+              {translations.assignPick}
+            </Button>
+          )}
           <EditSampleMetadataForm
             initialData={{
               label: editingSample.label,
@@ -1110,6 +1162,16 @@ export function ResultsClient({
             }}
           />
         </ResponsiveDialog>
+      )}
+
+      {isOwner && isAssigning && (
+        <CoffeePicker
+          open={pickingCoffee}
+          onOpenChange={setPickingCoffee}
+          coffees={usableCoffees}
+          onSelect={handlePickCoffee}
+          translations={translations.coffeePicker}
+        />
       )}
 
       {isOwner && editingExtrinsicSample && (
