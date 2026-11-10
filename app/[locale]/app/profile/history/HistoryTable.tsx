@@ -10,8 +10,11 @@ import { EmptyState } from "@/components/ui/EmptyState";
 
 export type HistoryRow = {
   id: string;
-  coffeeId: string;
+  // Null for a label-only row (S8-16): never linked to a coffee page.
+  coffeeId: string | null;
   coffeeName: string;
+  // Sample label of a label-only row ("Muestra A"); null for coffee rows.
+  sampleLabel: string | null;
   // True once the linked Coffee has been anonymized (soft-deleted) — the
   // profile 404s for it, so it renders as plain text instead of a Link.
   coffeeDeleted: boolean;
@@ -50,6 +53,19 @@ export type HistoryTableTranslations = {
   quickImpression: string;
 };
 
+// Label-only row (S8-16): the sample label plus why no coffee is named. Plain
+// text, never a link to a coffee page.
+function CoffeeLabelOnly({ row }: { row: HistoryRow }) {
+  return (
+    <span className="flex min-w-0 flex-col">
+      {row.sampleLabel && (
+        <span className="truncate font-semibold text-on-surface">{row.sampleLabel}</span>
+      )}
+      <span className="truncate text-xs italic text-on-surface-variant">{row.coffeeName}</span>
+    </span>
+  );
+}
+
 export function HistoryTable({
   rows,
   locale,
@@ -72,7 +88,9 @@ export function HistoryTable({
       key: "coffee",
       label: t.colCoffee,
       render: (row) =>
-        row.coffeeDeleted ? (
+        row.coffeeId === null ? (
+          <CoffeeLabelOnly row={row} />
+        ) : row.coffeeDeleted ? (
           <span className="font-semibold text-on-surface-variant">{row.coffeeName}</span>
         ) : (
           <GuestGateLink
@@ -160,13 +178,15 @@ export function HistoryTable({
       rows={rows}
       rowKey={(row) => row.id}
       columns={columns}
-      searchText={(row) => [row.coffeeName, row.sessionName]}
+      searchText={(row) => [row.coffeeName, row.sampleLabel ?? "", row.sessionName]}
       facets={facets}
       renderMobileCard={(row) => (
         <div className="space-y-2 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 space-y-0.5">
-              {row.coffeeDeleted ? (
+              {row.coffeeId === null ? (
+                <CoffeeLabelOnly row={row} />
+              ) : row.coffeeDeleted ? (
                 <span className="block truncate font-semibold text-on-surface-variant">
                   {row.coffeeName}
                 </span>

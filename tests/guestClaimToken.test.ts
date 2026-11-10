@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import {
   CLAIM_TTL_MS,
   anonEvalWins,
+  resolveEvalConflicts,
   needsAggregateRefire,
   mintGuestClaimToken,
   safeClaimBack,
@@ -158,5 +159,26 @@ describe("needsAggregateRefire", () => {
                 }),
               ).toBe(movedChanged || ownChanged);
             }
+  });
+});
+
+describe("resolveEvalConflicts", () => {
+  const r = (id: string, over: Partial<ClaimEvalRow> = {}): ClaimEvalRow => ({
+    id,
+    sessionSampleId: "s",
+    isDraft: false,
+    submittedAt: new Date(T0),
+    updatedAt: new Date(T0),
+    ...over,
+  });
+  it("guest wins: account evaluation is deleted and flagged for label-row drop", () => {
+    const out = resolveEvalConflicts([{ anon: r("g", { submittedAt: new Date(T0 + 9) }), target: r("a") }]);
+    expect(out.deleteIds).toEqual(["a"]);
+    expect(out.accountLoserIds).toEqual(["a"]);
+  });
+  it("account wins: guest evaluation deleted, account label row untouched", () => {
+    const out = resolveEvalConflicts([{ anon: r("g"), target: r("a") }]);
+    expect(out.deleteIds).toEqual(["g"]);
+    expect(out.accountLoserIds).toEqual([]);
   });
 });
