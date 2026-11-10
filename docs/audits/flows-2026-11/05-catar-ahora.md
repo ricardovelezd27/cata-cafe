@@ -19,6 +19,8 @@ A registered user opens `/app/sessions/express` from the dashboard, the Sesiones
 
 ### F-express-1 · A solo express session with fewer cupped samples than created never closes · severity: P2 · status: new
 
+**Fixed in S8-05** (draft PR, branch `claude/s8-05-close-lifecycle-impl`): `finishSoloSession` ("Terminar cata") on the guard dialog and the results banner submits complete drafts, removes only unopened samples and closes through `closeSessionInternal` (Kim C2 default a).
+
 - **Problem** — `maybeAutoCloseSoloSession` closes only when `submittedCount >= sampleCount` (`app/actions/community.ts:77`: `if (sampleCount === 0 || submittedCount < sampleCount) return;`). Express defaults to 6 samples (`lib/expressSession.ts:18`). The submit guard lets the cupper "submit anyway" with gaps (`CupClient.tsx` `handleGuardConfirm`, ~line 1296). Solo has no manual close (`ownerControls` renders only for `isOwner && isGroup`, `CupClient.tsx:1763`) and the cron only closes sessions with `closesAt` (`app/api/cron/close-expired-sessions/route.ts:29`), which express never sets. The session stays `active`, `sessionHref` keeps sending the user to `/cup`, and history and reveal never happen. The only exit is Edit → delete the untouched samples (`removeSessionSample` refuses samples that already have evaluations, `sessions.ts:1132`).
 - **Implication** — Someone who planned 6 and tasted 4 sees a permanent "X of Y" notice and an eternal active session. The casual quick-notes user is the one least likely to find the Edit page. Trust and completeness suffer.
 - **Fix** — When a solo cupper submits with some samples never opened, offer on the same guard dialog "Terminar con las N que catié": remove the unopened (evaluation-less) samples, then run the normal auto-close. Acceptance: (1) 6 created, 4 submitted, choosing it closes the session and lands on results with 4 samples; (2) samples with any evaluation are never removed; (3) group sessions never see the option; (4) the close goes through `closeSessionInternal` only. **Size:** M.
@@ -48,6 +50,8 @@ A registered user opens `/app/sessions/express` from the dashboard, the Sesiones
 - **Invariant check** — never trust a client coffee id (`usableCoffeeWhere`); closed = read-only: this stays the second sanctioned post-close write (owner, coffee-less sample only); the `ActionResult` contract is part of the fix.
 
 ### F-express-4 · A one-cup score looks identical to a full CVA score once a coffee is assigned · severity: P2 · status: new
+
+**Fixed in S8-04** (draft PR, branch `claude/s8-04-scoring-impl`): history and the coffee profile show an "Impresión rápida" tag when the session ran with fewer than 5 cups (display-only, no score changes; TODO(A3) ships as option b).
 
 - **Problem** — Express forces `cupsPerSample: 1` (`sessions.ts:411`), so no uniformity or defect check applies and the score carries no penalties (`computeEvaluationDerived(…, cupsPerSample)`, `lib/evaluation.ts:57`). After "Asignar café" the sync copies `individualScore` into `UserCoffeeHistory` (`lib/coffeeHistory.ts:71`); `HistoryRow` carries no cup count (`history/page.tsx:48-58`), so the row sits beside 5-cup scores.
 - **Implication** — A quick impression can sit at the top of a professional ranking or in a coffee's average with no signal that it is a different kind of number. The scoring itself is correct; the comparability is not communicated.

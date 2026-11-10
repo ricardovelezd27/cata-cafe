@@ -53,6 +53,8 @@ The board's spec is partly stale. Its waiting-room requirement ("does not mark s
 
 ### F-movimiento-sensorial-4 · The offline-rebuilt `/cup` drops the warm-up · severity: P3 · status: confirms-board(Pantalla /cup reconstruida offline sin el calentamiento)
 
+**Fixed in S8-09** (draft PR, branch `claude/s8-09-offline-impl`): `cacheProps` stores the static warm-up (never `warmupStartedAt`/`serverNow`); `cup/error.tsx` rebuilds it, treating a cupper with local drafts as returning.
+
 - **Problem** — `cacheProps` writes the props payload on each online mount (`CupClient.tsx:648-663`). The list has `locale, session, isOwner, …, userId` but no `warmup`. `cup/error.tsx:123-141` rebuilds `CupClient` from that cache, so `warmup` is `undefined` and `WarmupMoment` never renders (`CupClient.tsx:2312`). Re-read on this branch: the gap is still present.
 - **Implication** — After an offline hard refresh the configured exercise silently never appears. Minor for the cupper, and untested.
 - **Fix** — Cache `warmup.exerciseId` (strings are bundled static data and can be rebuilt on the client) so the offline rebuild honours the seen-set exactly like online. **Acceptance:** an unseen exercise opens after an offline hard refresh; a seen or absent one does not; the master and synced fields stay absent offline. **Size:** S.

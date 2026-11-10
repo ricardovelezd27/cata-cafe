@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { WifiOff, RefreshCw, CheckCircle2, AlertTriangle } from "lucide-react";
 import type { SyncPhase } from "@/hooks/useOfflineSync";
 
@@ -10,6 +11,8 @@ export type OfflineBannerTranslations = {
   bannerSyncFailed: string;
   retrySync: string;
   bannerStorageUnavailable: string;
+  /** RAW template with "{seconds}" (optional: older cached props lack it). */
+  bannerNextAttempt?: string;
 };
 
 // Persistent connectivity banner shown at the top of the cupping canvas.
@@ -20,16 +23,28 @@ export function OfflineBanner({
   onRetry,
   translations: t,
   storageUnavailable = false,
+  nextRetryAt = null,
 }: {
   online: boolean;
   syncPhase: SyncPhase;
   onRetry: () => void;
   translations: OfflineBannerTranslations;
+  /** Epoch ms of the next automatic attempt (useOfflineSync), shown as a
+   *  countdown next to the failed-sync message. */
+  nextRetryAt?: number | null;
   /** IndexedDB has proven unreliable in this browser (quota, private mode…) —
    *  takes priority over every connectivity state: if local drafts can't be
    *  saved at all, telling the cupper "saved locally" would be misleading. */
   storageUnavailable?: boolean;
 }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!nextRetryAt) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [nextRetryAt]);
+  const secondsLeft = nextRetryAt ? Math.max(0, Math.ceil((nextRetryAt - now) / 1000)) : null;
+
   let tone: "offline" | "info" | "success" | "warn" | null = null;
   let message = "";
   let icon = null;
@@ -54,6 +69,9 @@ export function OfflineBanner({
   } else if (syncPhase === "failed") {
     tone = "warn";
     message = t.bannerSyncFailed;
+    if (secondsLeft !== null && t.bannerNextAttempt) {
+      message = `${message} ${t.bannerNextAttempt.replace("{seconds}", String(secondsLeft))}`;
+    }
     icon = <AlertTriangle size={15} aria-hidden />;
     showRetry = true;
   }

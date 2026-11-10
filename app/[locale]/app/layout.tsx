@@ -8,6 +8,11 @@ import BottomNav from "@/components/layout/BottomNav";
 import OnboardingWrapper from "@/components/onboarding/OnboardingWrapper";
 import type { WelcomeModalTranslations } from "@/components/onboarding/WelcomeModal";
 import { PendingDraftsBadge } from "@/components/offline/PendingDraftsBadge";
+import type { UnsyncedNotesTranslations } from "@/components/offline/UnsyncedNotesPanel";
+import {
+  UnsyncedGuardProvider,
+  type UnsyncedGuardTranslations,
+} from "@/components/offline/UnsyncedGuardProvider";
 import { GuestGateProvider, type GuestGateTranslations } from "@/components/guest/GuestGateProvider";
 import type { NavTranslations } from "@/components/layout/navItems";
 import type { ReactNode } from "react";
@@ -91,10 +96,28 @@ export default async function AppLayout({
     close: tGate("close"),
     offline: tGate("offline"),
     error: tGate("error"),
+    leave: {
+      close: tGate("close"),
+      cancel: tGate("leaveCancel"),
+      guestTitle: tGate("leaveGuestTitle"),
+      guestBody: tGate("leaveGuestBody"),
+      save: tGate("leaveSave"),
+      saving: tGate("ctaLoading"),
+      saveError: tGate("error"),
+      offline: tGate("offline"),
+      leaveAnyway: tGate("leaveAnyway"),
+      everywhereTitle: tGate("leaveEverywhereTitle"),
+      everywhereBody: tGate("leaveEverywhereBody"),
+      everywhereConfirm: tGate("leaveEverywhereConfirm"),
+    },
   };
   // Raw template ({count} is filled in client-side by PendingDraftsBadge) —
   // t() would error on the "missing" ICU arg, same pattern as offline.conflictBody.
   const pendingDraftsLabel = tOffline.raw("pendingDrafts") as string;
+  const unsyncedNotesLabel = tOffline.raw("unsyncedNotes") as string;
+  const conflictDraftsLabel = tOffline.raw("conflictDrafts") as string;
+  const notesPanel = tOffline.raw("panel") as UnsyncedNotesTranslations;
+  const guardCopy = tOffline.raw("guard") as UnsyncedGuardTranslations;
   const translations: NavTranslations = {
     nav: {
       home: tNav("home"),
@@ -114,6 +137,7 @@ export default async function AppLayout({
   };
 
   return (
+    <UnsyncedGuardProvider userId={user.id} isGuest={isGuest} translations={guardCopy}>
     <GuestGateProvider isGuest={isGuest} locale={locale} translations={guestGate}>
     <div className="flex h-screen overflow-hidden">
       <Sidebar locale={locale} showInsights={showInsights} translations={translations} />
@@ -123,6 +147,9 @@ export default async function AppLayout({
           userId={user.id}
           locale={locale}
           label={pendingDraftsLabel}
+          notesLabel={unsyncedNotesLabel}
+          conflictLabel={conflictDraftsLabel}
+          panelTranslations={notesPanel}
         />
         <main className="relative flex-1 overflow-y-auto bg-surface p-4 lg:p-6 pb-20 lg:pb-6">
           {children}
@@ -142,5 +169,6 @@ export default async function AppLayout({
       />
     </div>
     </GuestGateProvider>
+    </UnsyncedGuardProvider>
   );
 }

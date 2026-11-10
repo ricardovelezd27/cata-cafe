@@ -17,6 +17,23 @@ import { Button } from "@/components/ui/Button";
 import { useGuestClaim } from "@/hooks/useGuestClaim";
 import { GUEST_GATE_PARAM, stripLocale } from "@/lib/guestScope";
 
+/** Copy for the sign-out / switch-account warnings (S8-07), carried by this
+ *  provider so the sidebar's SignOutButtons need no extra props. */
+export type GuestLeaveTranslations = {
+  close: string;
+  cancel: string;
+  guestTitle: string;
+  guestBody: string;
+  save: string;
+  saving: string;
+  saveError: string;
+  offline: string;
+  leaveAnyway: string;
+  everywhereTitle: string;
+  everywhereBody: string;
+  everywhereConfirm: string;
+};
+
 export type GuestGateTranslations = {
   title: string;
   body: string;
@@ -26,10 +43,12 @@ export type GuestGateTranslations = {
   close: string;
   offline: string;
   error: string;
+  leave: GuestLeaveTranslations;
 };
 
 type GuestGateContextValue = {
   isGuest: boolean;
+  leave: GuestLeaveTranslations | null;
   /** Opens the "finish creating your account" modal. `backPath` is where the
    *  claim flow returns the (now registered) user — normally the gated
    *  destination they tried to open. No-op for registered users. */
@@ -38,6 +57,7 @@ type GuestGateContextValue = {
 
 const GuestGateContext = createContext<GuestGateContextValue>({
   isGuest: false,
+  leave: null,
   openGate: () => {},
 });
 
@@ -98,7 +118,8 @@ export function GuestGateProvider({
   );
   const openFromQuery = useCallback(() => openGate(), [openGate]);
 
-  const value = useMemo(() => ({ isGuest, openGate }), [isGuest, openGate]);
+  const leave = t.leave;
+  const value = useMemo(() => ({ isGuest, leave, openGate }), [isGuest, leave, openGate]);
 
   // safeClaimBack() only accepts `/${locale}/app/...`; with localePrefix
   // "as-needed" the Spanish pathname may arrive unprefixed, so normalize.

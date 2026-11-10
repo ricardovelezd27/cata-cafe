@@ -19,6 +19,8 @@ The owner of a solo session (wizard or express; always `status: "active"` from c
 
 ### F-solo-1 · A close that fails after the status flip cannot be retried · severity: P2 · status: confirms-board(El sync de historial lanza después del flip a «closed»)
 
+**Fixed in S8-05** (draft PR, branch `claude/s8-05-close-lifecycle-impl`): two-phase close with `closeFinalizedAt`; resubmit by the solo owner and the cron repair pass retry phase 2; failures log `closeSession.finalize`.
+
 - **Problem** — `closeSessionInternal` flips to `closed` first (`lib/closeSession.ts:39-42`), then reveals and syncs history (`:55-60`). If either throws, the session is already closed. For solo the retry path is worse than the board says: the cupper sees `submitError` and presses submit again, but `submitAllEvaluations` starts with `assertSessionWritable(await requireSessionMember(...))` (`community.ts:25`), which now throws `session_closed` before reaching `closeSessionInternal`. A reload goes to `/results` (`cup/page.tsx:80-81`; line corrected in verification). Nothing re-runs `syncCoffeeHistoryForSession`, and the cron only selects `status: "active"` (`close-expired-sessions/route.ts:29`).
 - **Implication** — Results work (they read live evaluations) but the coffee never reaches the cupper's profile, coffee page or dashboard numbers. Silent and permanent: robustness plus trust.
 - **Fix** — Make close recoverable: either flip, reveal and history sync commit together, or a "closed but history missing" session is detected and the sync re-run (idempotent upserts) on the next close call, results open or a reconciliation pass. A repeat close on a fully synced session stays a no-op. **Acceptance:** (1) force the sync to fail once after the flip, then submit again or open results: history rows exist and status stays closed; (2) repeat close on a healthy session writes nothing new; (3) group sessions and the cron get the same repair. **Size:** M.
@@ -28,6 +30,8 @@ The owner of a solo session (wizard or express; always `status: "active"` from c
 - **Invariant check** — brushes "one close routine" and "closed = read-only": the repair lives inside `closeSessionInternal`, so there is still no second writer of `status: "closed"`.
 
 ### F-solo-2 · Editing a submitted evaluation leaves the aggregate, and then the history score, stale · severity: P2 · status: confirms-board(Editar una evaluación ya enviada no recalcula el agregado)
+
+**Fixed in S8-04** (draft PR, branch `claude/s8-04-scoring-impl`): a guarded `isDraft` write after the upsert re-fires the trigger only for submitted rows; `closeSessionInternal` also re-fires through `lib/aggregates.ts` before the history sync.
 
 - **Problem** — The trigger is `AFTER INSERT OR UPDATE OF "isDraft"` (`prisma/sql/rls_and_triggers.sql:264-268`). `upsertEvaluation`'s update path writes `update: { sessionId, ...fields }` (`app/actions/sessions.ts:609`), never `isDraft`, so a save on a submitted row does not refire it. Solo route: submit a partial set, land on results with the session still active, press "Volver a catar" (rendered while not closed, `ResultsClient.tsx:581`), edit sample A (already submitted), submit the rest. The final `updateMany` only touches `isDraft: true` rows (`community.ts:29-36`), so A's aggregate is never recomputed, yet `syncCoffeeHistoryForSession` stores `aggregateScore.communityScore` (`coffeeHistory.ts:54`) beside the fresh `individualScore`. The offline path answers `conflict` for the same edit (`offline.ts:60-62`).
 - **Implication** — Two different scores for one cupping in history and on the coffee page, when for a solo session they must be identical. Scoring correctness plus trust.
@@ -39,6 +43,8 @@ The owner of a solo session (wizard or express; always `status: "active"` from c
 
 ### F-solo-3 · "Continuar de todos modos" turns a half-filled cupping into either an irreversible close or a silent non-close · severity: P2 · status: new
 
+**Fixed in S8-05** (draft PR, branch `claude/s8-05-close-lifecycle-impl`): the guard dialog states beforehand whether sending closes the session or leaves it open and offers "Terminar con las N que catié"; the results banner offers "Terminar cata".
+
 - **Problem** — The submit guard lists gaps but lets the cupper continue (`CupClient.tsx:1267-1300`). `submitAllEvaluations` has no completeness check and submits every draft row (`community.ts:29-36`). Case A: every sample has a row (even with blank quality) so `submittedCount >= sampleCount` (`:77`) and the session closes, reveals and writes history; there is no reopen. Case B: a sample was never touched, so it has no row, `:77` returns early, the session stays active, and the client still navigates to results (`CupClient.tsx:1258`) without saying nothing closed.
 - **Implication** — In A the cupper loses the chance to finish a sample after tapping through a warning; in B they believe the cupping is done while the coffee is missing from their history. Same click, two unexplained outcomes.
 - **Fix** — State the outcome before submit ("esto cierra la cata y ya no se podrá editar") versus what remains open; after a non-closing submit, show on results an open-session notice "faltan N muestras · seguir catando" linking to `/cup`. **Acceptance:** guard copy differs for will-close and will-stay-open; case B results page shows the notice; case A needs an explicit irreversibility confirmation. **Size:** S.
@@ -49,6 +55,8 @@ The owner of a solo session (wizard or express; always `status: "active"` from c
 
 ### F-solo-4 · Incomplete and descriptive-only solo sessions store a community score of 0.00 in history · severity: P3 · status: new
 
+**Fixed in S8-04** (draft PR, branch `claude/s8-04-scoring-impl`): `lib/historyRules.ts` stores `communityScore = null` unless the aggregate has `participantCount > 0`; past rows follow `scripts/resync-low-cup-history.ts --apply`.
+
 - **Problem** — The trigger writes an aggregate row for any submitted evaluation; with no "affective complete" evaluation the average is null and the score becomes `GREATEST(0, … COALESCE(v_avg_raw,0) …)` = 0 (`rls_and_triggers.sql:776`; `is_affective_complete` at `:544-555`). A descriptive-only session reads `combinedData`, which is empty, so it is always 0. `syncCoffeeHistoryForSession` copies `aggregateScore?.communityScore ?? null` (`coffeeHistory.ts:54`), so 0 is stored, and `ScorePill` shows "—" only for `null` (`components/ui/Badge.tsx:82`).
 - **Implication** — Profile history and coffee pages can show "0.00" in the lowest colour band for a cupping that never had a quality score. Trust.
 - **Fix** — History keeps no community score when no complete evaluation contributed or the format has no quality rating. **Acceptance:** close a descriptive-only solo session: stored `communityScore` is null and the pill shows "—". **Size:** S.
@@ -58,6 +66,8 @@ The owner of a solo session (wizard or express; always `status: "active"` from c
 - **Invariant check** — trigger stays authoritative; only what history copies changes.
 
 ### F-solo-5 · A good save of one sample clears the amber "pendiente" while another sample is still device-only · severity: P3 · status: confirms-board(Un guardado correcto de otra muestra borra el aviso ámbar)
+
+**Fixed in S8-09** (draft PR, branch `claude/s8-09-offline-impl`): the amber pending state and `hasPending` are derived from the store after every flush; one synced sample no longer clears another sample that is still device-only.
 
 - **Problem** — `persist` calls `setHasPending(false)` and `setSaveStatus("saved")` on any synced flush (`CupClient.tsx:1063-1066`) instead of reading the durable count (`countLocalPending`, `:952-962`).
 - **Implication** — Pending sample A looks saved once B syncs, and the leave guard shows its plain body, so the cupper can walk away believing everything is on the server. Final submit stays protected (`:1243-1250`). Trust, mild data-loss risk.

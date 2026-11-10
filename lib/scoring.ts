@@ -86,6 +86,17 @@ export function scoreBand(score: number): 'green' | 'amber' | 'red' {
 
 export type EvalData = Record<string, unknown>;
 
+// S8-04 (F-grupal-1): uniformity / defect deductions exist ONLY from this many
+// cups per sample, in every code path (individual, group aggregate, community
+// display) AND in the SQL trigger (PHASE 23). One definition, one gate.
+// TODO(A1): Kim's answer to A1 is pending. This is option (a) "never deduct
+// below 5 cups"; option (c) proportional deductions is NOT built.
+export const MIN_CUPS_FOR_PENALTIES = 5;
+
+export function penaltiesApply(cupsPerSample: number): boolean {
+  return Number.isFinite(cupsPerSample) && cupsPerSample >= MIN_CUPS_FOR_PENALTIES;
+}
+
 export function calcAffectiveSum(data: EvalData): {
   sum: number;
   filled: number;
@@ -206,7 +217,7 @@ export function computeGroupAggregate(
 
   let totalNonUniform = 0;
   let totalDefective = 0;
-  if (cupsPerSample >= 5) {
+  if (penaltiesApply(cupsPerSample)) {
     for (const e of complete) {
       totalNonUniform += (e.nonUniformCups ?? []).filter(Boolean).length;
       totalDefective += (e.defectiveCups ?? []).filter(Boolean).length;
@@ -219,6 +230,7 @@ export function computeGroupAggregate(
     totalNonUniform,
     totalDefective,
     totalCups,
+    cupsPerSample,
   });
 
   const attrAverages: Record<string, number> = {};
@@ -273,7 +285,7 @@ export function calcIndividualBreakdown(
   const affectiveTerm = 0.65625 * affectiveSum;
   const base = affectiveTerm + 52.75;
 
-  const uniformityTracked = cupsPerSample >= 5;
+  const uniformityTracked = penaltiesApply(cupsPerSample);
   let u = 0;
   let d = 0;
   if (uniformityTracked) {
@@ -325,9 +337,16 @@ export function calcCommunityScore(params: {
   totalNonUniform: number;
   totalDefective: number;
   totalCups: number;
+  // S8-04: when given, deductions only apply from MIN_CUPS_FOR_PENALTIES cups
+  // (mirrors the trigger's `v_cups_per_sample >= 5`). Omitted = the caller
+  // already passes gated totals.
+  cupsPerSample?: number;
 }): number {
-  const { avgRawScore, totalNonUniform, totalDefective, totalCups } = params;
+  const { avgRawScore, totalCups, cupsPerSample } = params;
   if (!avgRawScore || totalCups === 0) return 0;
+  const gated = cupsPerSample === undefined || penaltiesApply(cupsPerSample);
+  const totalNonUniform = gated ? params.totalNonUniform : 0;
+  const totalDefective = gated ? params.totalDefective : 0;
   const up = totalNonUniform * (10 / totalCups);
   const dp = totalDefective * (30 / totalCups);
   // Round the final community score to the nearest 0.25, matching the DB trigger.

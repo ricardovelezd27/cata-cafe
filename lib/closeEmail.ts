@@ -12,6 +12,7 @@
 
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
+import { isEvaluationComplete } from "@/lib/closeRules";
 import { orderReferencesFirst } from "@/lib/referenceRules";
 import { deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { sheetSampleIdentity, sheetSampleRecords } from "@/lib/pdf/sheetSource";
@@ -90,6 +91,22 @@ export async function sendCloseEmails(
       defectiveCups: true,
     },
   });
+
+  // C1 default (b): complete drafts that never got sent are left out; tell
+  // each of those cuppers in their own close email (lib/closeRules.ts).
+  const unsentDrafts = await prisma.evaluation.findMany({
+    where: { sessionSample: { sessionId }, isDraft: true },
+    select: {
+      cupperId: true,
+      isDraft: true,
+      descriptiveData: true,
+      affectiveData: true,
+      combinedData: true,
+    },
+  });
+  const cuppersWithUnsent = new Set(
+    unsentDrafts.filter((d) => isEvaluationComplete(d, session.format)).map((d) => d.cupperId),
+  );
 
   const evalsByCupper = new Map<string, Map<string, (typeof evals)[number]>>();
   for (const ev of evals) {
@@ -264,6 +281,7 @@ export async function sendCloseEmails(
           sessionName: session.name,
           dateStr: assets.dateStr,
           resultsUrl: buildResultsLoginUrl(siteOrigin(), recipientLocale, sessionId),
+          hadUnsent: cuppersWithUnsent.has(p.userId),
         }),
         attachments,
       });
