@@ -103,7 +103,7 @@ self.addEventListener("fetch", (event) => {
         const response = await fetch(request);
         if (response.status === 200 && response.type === "basic") {
           cache.put(request, response.clone());
-          trimCache(STATIC_CACHE, MAX_STATIC_ENTRIES);
+          event.waitUntil(trimCache(STATIC_CACHE, MAX_STATIC_ENTRIES));
         }
         return response;
       })(),
