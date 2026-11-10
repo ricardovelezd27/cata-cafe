@@ -164,6 +164,7 @@ export default async function CupPage({
       sessionStatus={session.status}
       sessionStartedAt={session.startedAt?.toISOString() ?? null}
       sessionIsAsync={session.isAsync}
+      sessionEntriesLocked={session.entriesLocked}
       warmup={{
         exerciseId: session.warmupExerciseId,
         hasOwnEvaluation,

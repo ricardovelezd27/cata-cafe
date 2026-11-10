@@ -451,6 +451,12 @@ export function CupClient({
   const [regenerateOpen, setRegenerateOpen] = useState(false);
   const [entriesLocked, setEntriesLockedState] = useState(sessionEntriesLocked);
   const [entriesPending, setEntriesPending] = useState(false);
+  // Follow the server value when router.refresh() delivers a fresh one.
+  const [seenEntriesLocked, setSeenEntriesLocked] = useState(sessionEntriesLocked);
+  if (seenEntriesLocked !== sessionEntriesLocked) {
+    setSeenEntriesLocked(sessionEntriesLocked);
+    setEntriesLockedState(sessionEntriesLocked);
+  }
   const [startedAt, setStartedAt] = useState(sessionStartedAt);
   // Owner-chosen "Referencia" sample; updated live for participants through
   // the cupping_sessions realtime stream below.
@@ -913,6 +919,9 @@ export function CupClient({
             applyReferenceOrderRef.current(
               next && sampleIdsRef.current.has(next) ? next : null,
             );
+          }
+          if (typeof row.entriesLocked === "boolean") {
+            setEntriesLockedState(row.entriesLocked);
           }
           // Any session-row change (sample add/rename/remove touch updatedAt;
           // start/close/reference) → re-fetch the server page; the reconcile
