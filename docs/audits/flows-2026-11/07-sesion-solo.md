@@ -18,6 +18,7 @@ The owner of a solo session (wizard or express; always `status: "active"` from c
 ## 3. Findings
 
 ### F-solo-1 · A close that fails after the status flip cannot be retried · severity: P2 · status: confirms-board(El sync de historial lanza después del flip a «closed»)
+**Also fixed in S8-21** — a solo owner opening `/results` repairs a closed, unfinalized session on view (20 s grace, `emails: "skip"`), and `closeSession` returns `finalized` so the owner is told when post-close steps will be retried.
 
 **Fixed in S8-05** (draft PR, branch `claude/s8-05-close-lifecycle-impl`): two-phase close with `closeFinalizedAt`; resubmit by the solo owner and the cron repair pass retry phase 2; failures log `closeSession.finalize`.
 

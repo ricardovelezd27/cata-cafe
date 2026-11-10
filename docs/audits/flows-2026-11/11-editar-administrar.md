@@ -54,6 +54,7 @@ The owner manages a session from the sessions list (edit, duplicate, delete icon
 - **Invariant check** — brings it under closed = read-only and `lib/sessionAuth.ts`.
 
 ### F-sesiones-4 · The delete dialog never says "permanent", and its impact line is incomplete · severity: P2 · status: new (board's "getDeleteImpact falla" is one sub-case)
+**Also fixed in S8-21** — a failed impact load shows a localized error with Reintentar; Eliminar stays disabled until it loaded.
 
 - **Problem** — `DeleteSessionButton.tsx` declares `body: string` in its translations but never renders it: `dialogBody` (:56–83) shows only the coffee list and the `impact` sentence. The es copy that says "permanentemente… datos físicos y extrínsecos, invitaciones… No se puede deshacer" (`messages/es.json` `deleteSession.body`) is dead. `getDeleteImpact` counts `cupperCount` from submitted evaluations only (`sessions.ts:~620`) but `evaluationCount` includes drafts, and it ignores participants who joined and have not evaluated and whether the session is live. If the call fails the body shows "calculando…" forever (:40–50, board P3).
 - **Implication** — Trust and data loss. A teacher can wipe a running group cupping, dropping every participant's work and drafts, from one icon tap, after reading only a count. "12 evaluaciones de 2 catadores" can contradict the real number of people hit. No undo exists.
@@ -76,6 +77,7 @@ The owner manages a session from the sessions list (edit, duplicate, delete icon
 - **Invariant check** — offline store stays client-only; the action keeps the same authorization as the live path and returns a status, not a throw.
 
 ### F-sesiones-6 · Marking a rated sample as reference silently overwrites every cupper's ratings · severity: P2 · status: new
+**Also fixed in S8-21** — the cup-page master panel now asks (ConfirmDialog with the evaluation count) before re-pinning a rated sample; `confirmRepin: true` only after confirm.
 **Fixed in S8-10** (PR pending): `setReferenceSample(…, confirmRepin)` returns `conflict` for a rated, not-yet-reference sample; the edit form confirms with the cupper count and reverts on cancel (T7). B2 default, `TODO(B2-b)`. The cup-page master panel still re-pins without the prompt (`TODO(S8-10)`).
 
 - **Problem** — `setReferenceSample` (`sessions.ts:~808–860`) re-pins the new active reference in the same transaction: `planReferenceRepin` rewrites each existing evaluation to 5 on all attributes and clears cup marks (`lib/referenceRules.ts:174–200`), without keeping the original. The edit form only shows "Referencia actualizada" (`referenceSaved`); the helper text explains the 79.00 anchor but not that already-entered ratings are replaced. Removing the reference later does not restore them (the pin applies only going forward, per CLAUDE.md).
@@ -145,6 +147,7 @@ The owner manages a session from the sessions list (edit, duplicate, delete icon
 - **Invariant check** — `closesAt` semantics (UTC end of day) unchanged.
 
 ### F-sesiones-13 · A participant can read the coffee id of an unrevealed sample through the public key · severity: P2 · status: new (found in S8-01 review)
+**Also hardened in S8-21** — `hasCoffee` in the results payload is sent only to the owner/super-admin or for revealed samples.
 
 - **Problem** — `samples_select` exposed `session_samples."coffeeId"` to every participant over PostgREST: a blind-coding leak the page never shows.
 - **Fix** — Fixed in S8-01 (PR #68): PHASE 21 hides the column from the API roles (column privileges), the app reads it through Prisma. Rule: a new `session_samples` column needs a column `GRANT SELECT` in a new SQL phase.

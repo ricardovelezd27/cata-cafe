@@ -59,6 +59,12 @@ link to their results page via login `next=` plus their personal summary PDF —
 `lib/closeEmail.ts`; the full CVA form is downloaded from the results page; legacy
 attach with `CLOSE_EMAIL_ATTACH_CVA=1`; see §6). A second click, a
 concurrent call or a cron retry is a no-op — nothing is re-synced or re-sent.
+S8-21: `closeSession` returns `finalized`; when it is false (post-close steps
+failed and will be retried) the owner gets a non-blocking notice. A **solo**
+owner who opens `/results` of a closed-but-unfinalized session repairs it on view
+(`soloRepairOwedOnView`, 20 s grace `ON_VIEW_REPAIR_GRACE_MS` so it never overlaps
+a close in flight; goes through `closeSessionInternal` with `emails: "skip"`,
+failure only logs); group sessions stay with the cron because phase 2 sends email.
 Once closed, a session is **read-only**: every mutation runs
 `assertSessionWritable` and throws `session_closed`; `/cup` redirects to
 `/results`; offline drafts for a closed session are NOT replayed and NOT shown
@@ -176,7 +182,10 @@ cuppers (joined or owner, not excluded) with a submitted evaluation for EVERY
 sample (`lib/submitProgress.ts`); the client holds a `Map<cupperId, sampleIds>`
 re-seeded from the server on every refresh, SUBSCRIBED and visibility change.
 The waiting room refetches `getWaitingState` on SUBSCRIBED, visibility,
-`pageshow` and `online`, and its fallback poll runs every 15 s ± 3 s. For a **live** session they wait in
+`pageshow` and `online`, and its fallback poll runs every 15 s ± 3 s (S8-21: one
+foreground-resume path — the shared `useForegroundResume` hook, with its opt-in
+`pageshow`, bumps `resumeKey` and calls the same refetch; the waiting room has no
+listeners of its own). For a **live** session they wait in
 `/waiting` until the owner calls `startSession` — from wizard step 2 **or** the
 master panel's "Iniciar cata" (idempotent). An **async** session (`isAsync`,
 `closesAt` set) lets them cup immediately and is closed by the **daily cron**
@@ -424,7 +433,9 @@ session, max 3) records the order they were named; `referenceSampleId` stays
 the ACTIVE one (highest rank), so ordering, pin, realtime and the default Δ keep
 working. `setReferenceSample(sessionId, sampleId)` on a sample that is not yet a
 reference gives it `max+1` and makes it active (re-pinning its stored rows to
-79.00); naming an existing reference is a no-op; `null` removes only the active
+79.00); naming an existing reference is a no-op (S8-21: the cup-page master panel, like
+the edit form, first asks for confirmation with the evaluation count when the
+sample is rated, and sends `confirmRepin: true` only after the owner confirms); `null` removes only the active
 one and the previous becomes active again. Only the ACTIVE reference is pinned
 — earlier ones keep the pinned data their cuppers saved but unlock, so a cupper
 can change that note. All references are cupped first by rank
@@ -691,6 +702,9 @@ participants and members only take part.
 `/sessions/[id]/results` is one 3-tab shell (`ResultsClient.tsx`) shown to **every**
 viewer — owner and participant alike. There is no separate participant-only or
 owner-only page; gating happens *inside* the tabs and the drill-down dialog.
+S8-21: `hasCoffee` in the results payload is sent only to the owner/super-admin or
+for a revealed sample, so a participant cannot tell whether an unrevealed (blind)
+sample has a coffee linked; every consumer of the flag is owner-gated.
 "Actualizar" (refresh) is always visible to everyone; only the owner's click also
 fires the server-side aggregate recompute; a participant's refresh is just a
 re-render, since the DB trigger already restamps `computedAt` on every submission.

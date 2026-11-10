@@ -69,6 +69,7 @@ The board's spec is partly stale. Its waiting-room requirement ("does not mark s
 - **Invariant check** — the offline store stays client-only; no authz change.
 
 ### F-movimiento-sensorial-5 · Reflection notes are saved but unreadable, shared across users and survive sign-out · severity: P3 · status: confirms-board(Las reflexiones se guardan pero no se pueden ver ni son por usuario)
+**Also fixed in S8-21** — the legacy `cata_warmup_reflections_*` keys are purged on app-shell mount, not only on sign-out.
 
 - **Problem** — `saveReflection` writes `cata_warmup_reflections_<exerciseId>` with no user id (`lib/warmup/reflections.ts:5,18-31`). Nothing reads the list (a repo search finds only that file). `clearLocalDeviceState` removes `cata_moment_*` keys but not these (`lib/offline/deviceState.ts:33-39`). The reflect step promises "Guardado en este dispositivo" (`messages/es.json`, `warmup.reflect.savedNote`).
 - **Implication** — On a shared tablet the next cupper's notes append to the previous person's, and "saved" has no way back to the text. A trust and privacy leak, not data loss.

@@ -66,6 +66,7 @@ The owner creates a group session (`createGroupSession`), shares `/join/[token]`
 - **Invariant check** — none touched.
 
 ### F-grupal-5 · La sala de espera no se recupera tras bloquear el teléfono · severity: P2 · status: new
+**Also fixed in S8-21** — the waiting room has one foreground-resume path (shared `useForegroundResume` with `pageshow`).
 
 **Fixed in S8-11** (PR pending): one `refetchState()` over `getWaitingState` on SUBSCRIBED, visibilitychange, pageshow and online; fallback poll 15 s +/- 3 s (T2).
 

@@ -40,6 +40,7 @@ A coffee is a reusable record owned by its creator (`createdBy`), with a 6-chara
 - **Invariant check** — scoring never from the client, trigger authoritative: the fix filters inputs and does not reimplement `lib/scoring.ts`.
 
 ### F-cafes-3 · Owner's private notes are shown to every viewer and copied by Duplicate · severity: P2 · status: new
+**Also fixed in S8-21** — the Ficha PDF prints the owner notes only for the owner or super-admin, like the page.
 **Fixed in S8-02 (PR #67)** — notes render for owner/super-admin only; `duplicableFields` allow-list drops them from duplicates.
 
 - **Problem** — the Ficha route says "Private owner text: never printed for other viewers (the profile page omits it too)" (`ficha/route.ts:122-123`), but the profile prints `coffee.notes` for anyone who can open the coffee (`page.tsx:274-278`, no `isOwner` guard). `duplicateCoffee` also selects and copies `notes` of a foreign coffee (coffees.ts:282, 296-300). Anonymize treats notes as identifying (`coffeeAnonymize.ts:45`).
