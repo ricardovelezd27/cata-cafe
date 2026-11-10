@@ -1,5 +1,4 @@
 import "server-only";
-import { prisma } from "@/lib/prisma";
 import { effectiveClientTs } from "@/lib/offline/clientWrite";
 import type { tryComputeEvaluationDerived } from "@/lib/evaluation";
 
@@ -19,7 +18,17 @@ function isCode(e: unknown, code: string): boolean {
   return typeof e === "object" && e !== null && (e as { code?: unknown }).code === code;
 }
 
-export async function writeEvaluationOrdered(input: {
+/** The slice of the Prisma client this module uses (callers pass the singleton). */
+export interface EvaluationWriteDb {
+  evaluation: {
+    upsert(args: Record<string, unknown>): Promise<{ id: string }>;
+    update(args: Record<string, unknown>): Promise<{ id: string }>;
+    create(args: Record<string, unknown>): Promise<{ id: string }>;
+    findUnique(args: Record<string, unknown>): Promise<{ id: string } | null>;
+  };
+}
+
+export async function writeEvaluationOrdered(prisma: EvaluationWriteDb, input: {
   sessionSampleId: string;
   sessionId: string;
   cupperId: string;

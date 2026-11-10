@@ -695,7 +695,7 @@ export async function upsertEvaluation(input: {
   const fields = computeEvaluationDerived(moduleKey, data, auth.cupsPerSample);
 
   const doUpsert = () =>
-    writeEvaluationOrdered({
+    writeEvaluationOrdered(prisma, {
       sessionSampleId: input.sessionSampleId,
       sessionId,
       cupperId: user.id,

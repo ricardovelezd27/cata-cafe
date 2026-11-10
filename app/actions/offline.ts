@@ -133,7 +133,7 @@ async function replayEvaluationCore(input: EvaluationReplayInput): Promise<Repla
   const fields = tryComputeEvaluationDerived(moduleKey, data, cupsPerSample);
   if (!fields) return "rejected";
 
-  const saved = await writeEvaluationOrdered({
+  const saved = await writeEvaluationOrdered(prisma, {
     sessionSampleId: input.sessionSampleId,
     sessionId,
     cupperId: user.id,
