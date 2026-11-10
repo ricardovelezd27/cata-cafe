@@ -61,6 +61,8 @@ An owner turns on "sesión grupal" in the wizard and picks a closing date; `vali
 
 ### F-grupal-asincrona-5 · Unstarted async sessions go to a waiting room from the list, to `/cup` from the link · severity: P3 · status: confirms-board(Sesión asíncrona sin iniciar enrutada a la sala de espera)
 
+**Fixed in S8-11** (PR pending): `SessionRouteInfo.isAsync` is required; an unstarted async session routes to `/cup`, a live one to `/waiting`; matrix in `tests/sessionRouting.test.ts` (T3).
+
 - **Problem** — `sessionHref` has no `isAsync` input and routes any unstarted group session for a non-owner to `/waiting` (`lib/sessionRouting.ts:24`; line corrected in verification `if (s.isGroup && !s.startedAt && !ctx.isOwner)`), while `joinViaToken` and `cup/page.tsx:90` exempt async (`community.ts:351`). Because async sessions are never started (section 1), this is every async session, not the edge case the board describes. The waiting page then shows an extra entry button (`WaitingRoomClient.tsx:311-313`).
 - **Implication** — Friction and an inconsistent first impression: the same session opens differently from the link and from the list.
 - **Fix** — Add `isAsync` to the routing input; async goes to `/cup`, `/waiting` stays for live unstarted sessions. **Acceptance:** list, dashboard, profile and group page land on `/cup` for async; live unstarted still waits; vitest matrix over (isGroup, isAsync, startedAt, isOwner). **Size:** S.

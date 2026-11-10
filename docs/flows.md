@@ -122,7 +122,25 @@ stateDiagram-v2
 an invite token, and (optionally) emails the linked group. Participants join via
 `/join/[token]` (owner and existing members re-opening the link are no-ops; a
 closed session's link sends members to results and refuses newcomers; `maxUses`
-is enforced inside the transaction). For a **live** session they wait in
+is enforced inside the transaction). The page and `joinViaToken` share one pure
+rule, `evaluateJoin` (`lib/joinRules.ts`, S8-11): owner/member → straight in via
+`sessionHref` (even with a dead link) · a newcomer to a closed session → "cerró"
+(NO anonymous sign-in is attempted) · `entriesLocked` → "entradas cerradas" ·
+revoked or expired link → "ya no sirve" · `maxUses` reached → "sin lugares" ·
+unknown token or a solo session → "no válido"; each state has its own es/en
+copy, and a latecomer on a started session is told they can cup every sample.
+The owner's master panel keeps ONE link: "Invitar" returns the newest active,
+unexpired invite (`createInviteToken` is idempotent), "Regenerar enlace"
+(confirm) sets `SessionInvite.active = false` on every earlier token and mints a
+new one in one transaction, and the print QR reads the same active invite. The
+panel also toggles `CuppingSession.entriesLocked` (`setEntriesLocked`, owner):
+newcomers get `entries_closed`, members re-enter; the flag is gating only and
+never read by scoring. The "N de M enviaron todo" counter counts eligible
+cuppers (joined or owner, not excluded) with a submitted evaluation for EVERY
+sample (`lib/submitProgress.ts`); the client holds a `Map<cupperId, sampleIds>`
+re-seeded from the server on every refresh, SUBSCRIBED and visibility change.
+The waiting room refetches `getWaitingState` on SUBSCRIBED, visibility,
+`pageshow` and `online`, and its fallback poll runs every 15 s ± 3 s. For a **live** session they wait in
 `/waiting` until the owner calls `startSession` — from wizard step 2 **or** the
 master panel's "Iniciar cata" (idempotent). An **async** session (`isAsync`,
 `closesAt` set) lets them cup immediately and is closed by the **daily cron**
@@ -217,7 +235,8 @@ flowchart LR
 
 `/join/[token]` requires no account: a walk-up participant enters only a display
 name (`GuestJoinForm` → `supabase.auth.signInAnonymously()` →
-`completeGuestOnboarding` → `joinViaToken`). Their evaluations belong to an
+`completeGuestOnboarding` → `joinSessionAsGuest` (an `ActionResult` wrapper over
+`joinViaToken`)). The form is only rendered for a link `evaluateJoin` admits. Their evaluations belong to an
 anonymous auth user (NULL email). On the **results** page an anonymous viewer
 sees a dismissible "Guarda tus resultados" banner (`GuestSaveCta`). It reuses
 the **normal account-creation flow** rather than inventing one: `startGuestClaim`
@@ -272,13 +291,15 @@ sequenceDiagram
 flowchart LR
     A[Session row clicked] --> B{closed OR closesAt passed?}
     B -- yes --> R[/sessions/id/results/]
-    B -- no --> C{group && !startedAt\n&& viewer is not owner?}
+    B -- no --> C{live group (not async) && !startedAt\n&& viewer is not owner?}
     C -- yes --> W[/sessions/id/waiting/]
     C -- no --> K[/sessions/id/cup/]
 ```
 
 Every list (sessions, dashboard, profile, group page) must use `sessionHref` —
-never hardcode `/cup`. Its input must include `closesAt` (the type requires it).
+never hardcode `/cup`. Its input must include `closesAt` and `isAsync` (the type
+requires both): an unstarted **async** session has no waiting room, so it goes
+straight to `/cup` (S8-11).
 
 ### Sample / coffee metadata lifecycle (progressive)
 
@@ -418,6 +439,11 @@ people who already had an account when invited).
 Owner: full CRUD + roster management + announcements + email blasts. Member:
 read the group (feed, roster, sessions) and **leave** (`leaveGroup`). There are
 no co-admins; being added *is* membership (no pending state).
+Group emails that carry a session link (`sendGroupEmail`, `notifyGroupOfSession`)
+build it with `groupSessionInviteUrl` (`lib/inviteUrl.ts`): a linked member goes
+straight to `/join/[token]`, an unlinked recipient through `/auth/login` with the
+join as `next`; both reject a session that is not an active group session of the
+caller (`invalid_input`).
 
 ```mermaid
 sequenceDiagram
