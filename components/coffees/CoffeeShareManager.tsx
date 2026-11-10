@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createCoffeeInvite, revokeCoffeeShare } from "@/app/actions/coffees";
+import { createCoffeeInvite, revokeCoffeeShare, rotateCoffeeInvite } from "@/app/actions/coffees";
 import { useActionFeedback } from "@/components/ui";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { buildCoffeeInviteUrl } from "@/lib/inviteUrl";
 
 type Share = { userId: string; displayName: string };
@@ -12,6 +13,8 @@ type Props = {
   coffeeId: string;
   locale: string;
   initialToken: string | null;
+  /** ISO expiry of the current link; null for a legacy link that never expires. */
+  initialExpiresAt?: string | null;
   shares: Share[];
   translations: {
     title: string;
@@ -23,8 +26,32 @@ type Props = {
     noShares: string;
     revoke: string;
     linkHint: string;
+    /** "El enlace vence el {date}" — raw template. */
+    expiresOn: string;
+    noExpiry: string;
+    rotate: string;
+    rotateTitle: string;
+    rotateBody: string;
+    rotateConfirm: string;
+    revokeTitle: string;
+    /** "{name} perderá el acceso…" — raw template. */
+    revokeBody: string;
+    revokeAlsoRotate: string;
+    revokeConfirm: string;
+    dialogCancel: string;
+    dialogClose: string;
   };
 };
+
+// Deterministic on server and client (UTC) so the expiry never flickers on hydration.
+function formatExpiry(iso: string, locale: string): string {
+  return new Date(iso).toLocaleDateString(locale === "en" ? "en-US" : "es-CO", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
 
 // Owner-only card content on the coffee profile page: generate/copy a share
 // link and manage who currently holds access. Mirrors the invite-link step of
@@ -34,15 +61,21 @@ export function CoffeeShareManager({
   coffeeId,
   locale,
   initialToken,
+  initialExpiresAt = null,
   shares,
   translations: t,
 }: Props) {
   const router = useRouter();
   const feedback = useActionFeedback();
   const [token, setToken] = useState<string | null>(initialToken);
+  const [expiresAt, setExpiresAt] = useState<string | null>(initialExpiresAt);
   const [copied, setCopied] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [askRotate, setAskRotate] = useState(false);
+  const [askRevoke, setAskRevoke] = useState<Share | null>(null);
+  // Default ON: a revoke that leaves the link alive is the bug being fixed.
+  const [alsoRotate, setAlsoRotate] = useState(true);
 
   const inviteUrl =
     token && typeof window !== "undefined"
@@ -53,6 +86,7 @@ export function CoffeeShareManager({
     startTransition(async () => {
       await feedback.run(createCoffeeInvite(coffeeId), (data) => {
         setToken(data.token);
+        setExpiresAt(data.expiresAt);
         router.refresh();
       });
     });
@@ -65,12 +99,34 @@ export function CoffeeShareManager({
     setTimeout(() => setCopied(false), 2000);
   }
 
-  function handleRevoke(userId: string) {
-    setRevokingId(userId);
-    startTransition(async () => {
-      await feedback.run(revokeCoffeeShare(coffeeId, userId), () => router.refresh());
-      setRevokingId(null);
+  async function confirmRotate() {
+    const res = await feedback.run(rotateCoffeeInvite(coffeeId), (data) => {
+      setToken(data.token);
+      setExpiresAt(data.expiresAt);
+      router.refresh();
     });
+    return res.ok ? undefined : res;
+  }
+
+  async function confirmRevoke() {
+    if (!askRevoke) return { ok: false };
+    const target = askRevoke;
+    setRevokingId(target.userId);
+    try {
+      const res = await feedback.run(
+        revokeCoffeeShare(coffeeId, target.userId, alsoRotate),
+        (fresh) => {
+          if (fresh) {
+            setToken(fresh.token);
+            setExpiresAt(fresh.expiresAt);
+          }
+          router.refresh();
+        },
+      );
+      return res.ok ? undefined : res;
+    } finally {
+      setRevokingId(null);
+    }
   }
 
   return (
@@ -92,6 +148,13 @@ export function CoffeeShareManager({
           >
             {copied ? t.copied : t.copyLink}
           </button>
+          <button
+            type="button"
+            onClick={() => setAskRotate(true)}
+            className="rounded-pill border border-outline-variant text-xs font-semibold px-3 py-1.5 hover:bg-surface-container whitespace-nowrap"
+          >
+            {t.rotate}
+          </button>
         </div>
       ) : (
         <button
@@ -102,6 +165,12 @@ export function CoffeeShareManager({
         >
           {isPending ? t.generating : t.generateLink}
         </button>
+      )}
+
+      {token && (
+        <p className="text-xs text-on-surface-variant">
+          {expiresAt ? t.expiresOn.replace("{date}", formatExpiry(expiresAt, locale)) : t.noExpiry}
+        </p>
       )}
 
       <div className="space-y-2">
@@ -121,7 +190,10 @@ export function CoffeeShareManager({
                 <button
                   type="button"
                   disabled={isPending && revokingId === s.userId}
-                  onClick={() => handleRevoke(s.userId)}
+                  onClick={() => {
+                    setAlsoRotate(true);
+                    setAskRevoke(s);
+                  }}
                   className="rounded-pill border border-outline-variant text-xs font-semibold px-3 py-1.5 hover:bg-surface-container disabled:opacity-60"
                 >
                   {t.revoke}
@@ -133,6 +205,43 @@ export function CoffeeShareManager({
       </div>
 
       <p className="text-xs text-on-surface-variant">{t.linkHint}</p>
+
+      <ConfirmDialog
+        open={askRotate}
+        onOpenChange={setAskRotate}
+        title={t.rotateTitle}
+        body={t.rotateBody}
+        confirmLabel={t.rotateConfirm}
+        cancelLabel={t.dialogCancel}
+        closeLabel={t.dialogClose}
+        destructive={false}
+        onConfirm={confirmRotate}
+      />
+      <ConfirmDialog
+        open={askRevoke !== null}
+        onOpenChange={(o) => {
+          if (!o) setAskRevoke(null);
+        }}
+        title={t.revokeTitle}
+        body={
+          <div className="space-y-3">
+            <p>{t.revokeBody.replace("{name}", askRevoke?.displayName ?? "")}</p>
+            <label className="flex cursor-pointer items-start gap-2 text-sm text-on-surface">
+              <input
+                type="checkbox"
+                checked={alsoRotate}
+                onChange={(e) => setAlsoRotate(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-primary-container"
+              />
+              <span>{t.revokeAlsoRotate}</span>
+            </label>
+          </div>
+        }
+        confirmLabel={t.revokeConfirm}
+        cancelLabel={t.dialogCancel}
+        closeLabel={t.dialogClose}
+        onConfirm={confirmRevoke}
+      />
     </div>
   );
 }

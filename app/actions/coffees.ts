@@ -12,6 +12,7 @@ import { normalizeCoffeeFields } from "@/lib/coffeeInputBounds";
 import { CERTIFICATIONS } from "@/lib/constants";
 import { ANONYMIZED_COFFEE_DATA } from "@/lib/coffeeAnonymize";
 import { duplicableFields } from "@/lib/coffeeDuplicate";
+import { coffeeInviteExpiry, isCoffeeInviteUsable } from "@/lib/coffeeInvite";
 import {
   isCoffeeVisibility,
   usableCoffeeWhere,
@@ -289,10 +290,11 @@ export async function duplicateCoffee(
 // Generating a link on a private coffee flips it to "shared" in the same call
 // — creating a link IS the intent to share. Reuses the newest still-valid
 // invite so repeated clicks don't mint token litter (mirrors createInviteToken
-// in app/actions/community.ts otherwise).
+// in app/actions/community.ts otherwise). New invites expire after
+// COFFEE_INVITE_TTL_DAYS (S8-12, F-cafes-4); the owner sees the date.
 export async function createCoffeeInvite(
   coffeeId: string,
-): Promise<ActionResult<{ token: string }>> {
+): Promise<ActionResult<{ token: string; expiresAt: string | null }>> {
   return run("createCoffeeInvite", async () => {
     const user = await requireRegisteredUser();
 
@@ -320,18 +322,53 @@ export async function createCoffeeInvite(
       },
       orderBy: { createdAt: "desc" },
     });
-    if (
-      existing &&
-      (existing.maxUses === null || existing.useCount < existing.maxUses)
-    ) {
-      return { token: existing.token };
+    if (existing && isCoffeeInviteUsable(existing)) {
+      return { token: existing.token, expiresAt: existing.expiresAt?.toISOString() ?? null };
     }
 
     const token = crypto.randomUUID();
+    const expiresAt = coffeeInviteExpiry();
     await prisma.coffeeInvite.create({
-      data: { coffeeId, token, createdBy: user.id },
+      data: { coffeeId, token, createdBy: user.id, expiresAt },
     });
-    return { token };
+    return { token, expiresAt: expiresAt.toISOString() };
+  }, { coffeeId });
+}
+
+// ─── Rotate the invite link (owner only) ──────────────────────────────────────
+// Deletes EVERY previous invite of the coffee (the old URL then reads "invalid")
+// and mints a fresh one with a 30-day expiry (S8-12, F-cafes-4). Offered next
+// to the link and inside the revoke confirmation. People who already joined keep
+// their share row; revoking them is a separate action.
+async function rotateInvite(
+  coffeeId: string,
+  userId: string,
+): Promise<{ token: string; expiresAt: string }> {
+  const token = crypto.randomUUID();
+  const expiresAt = coffeeInviteExpiry();
+  await prisma.$transaction([
+    prisma.coffeeInvite.deleteMany({ where: { coffeeId } }),
+    prisma.coffeeInvite.create({ data: { coffeeId, token, createdBy: userId, expiresAt } }),
+  ]);
+  return { token, expiresAt: expiresAt.toISOString() };
+}
+
+export async function rotateCoffeeInvite(
+  coffeeId: string,
+): Promise<ActionResult<{ token: string; expiresAt: string }>> {
+  return run("rotateCoffeeInvite", async () => {
+    const user = await requireRegisteredUser();
+    const coffee = await prisma.coffee.findFirst({
+      where: { id: coffeeId, deletedAt: null },
+      select: { createdBy: true },
+    });
+    if (!coffee || coffee.createdBy !== user.id) {
+      throw new Error("not_found_or_forbidden");
+    }
+    const fresh = await rotateInvite(coffeeId, user.id);
+    revalidatePath(`/es/app/coffees/${coffeeId}`);
+    revalidatePath(`/en/app/coffees/${coffeeId}`);
+    return fresh;
   }, { coffeeId });
 }
 
@@ -373,10 +410,17 @@ export async function joinCoffeeViaToken(token: string, locale: string = "es") {
       });
       if (already) return; // re-opening the link is a no-op, not a "use"
       await tx.coffeeShare.create({ data: { coffeeId, userId: user.id } });
-      await tx.coffeeInvite.update({
+      // maxUses is enforced INSIDE the transaction (increment on the locked
+      // row, then check, throw to roll back the share) so simultaneous opens
+      // cannot overshoot the seat count — same pattern as session invites.
+      const bumped = await tx.coffeeInvite.update({
         where: { id: invite.id },
         data: { useCount: { increment: 1 } },
+        select: { useCount: true, maxUses: true },
       });
+      if (bumped.maxUses !== null && bumped.useCount > bumped.maxUses) {
+        throw new Error("token_exhausted");
+      }
     });
     revalidatePath(`/es/app/coffees/${coffeeId}`);
     revalidatePath(`/en/app/coffees/${coffeeId}`);
@@ -388,10 +432,15 @@ export async function joinCoffeeViaToken(token: string, locale: string = "es") {
 }
 
 // ─── Revoke a person's access to a shared coffee (owner only) ─────────────────
+// Removing the share row alone leaves the invite alive: the person could reopen
+// the old URL and regain access. `rotate: true` (the default in the confirmation
+// dialog) also replaces the link so the old URL reads "invalid" (S8-12,
+// F-cafes-4). Returns the fresh token when it rotated.
 export async function revokeCoffeeShare(
   coffeeId: string,
   userId: string,
-): Promise<ActionResult<void>> {
+  rotate: boolean = false,
+): Promise<ActionResult<{ token: string; expiresAt: string } | null>> {
   return run("revokeCoffeeShare", async () => {
     const user = await requireRegisteredUser();
 
@@ -404,9 +453,11 @@ export async function revokeCoffeeShare(
     }
 
     await prisma.coffeeShare.deleteMany({ where: { coffeeId, userId } });
+    const fresh = rotate === true ? await rotateInvite(coffeeId, user.id) : null;
 
     revalidatePath(`/es/app/coffees/${coffeeId}`);
     revalidatePath(`/en/app/coffees/${coffeeId}`);
+    return fresh;
   }, { coffeeId });
 }
 
@@ -451,9 +502,16 @@ export async function setCoffeeResultsPublished(
 // the record itself (profile page + list entry); see the access gate in
 // app/[locale]/app/coffees/[id]/page.tsx (usableCoffeeWhere) and the list
 // query in getCoffeesWithStats (lib/coffees/queries.ts).
+//
+// S8-12 (F-cafes-5): going PRIVATE deletes the coffee's invites, so links never
+// come back to life on a later round trip (shares stay as inert rows — no RLS
+// change). Returning to shared/public can pass `clearShares: true` to drop the
+// people who held access before; the UI lists them first and lets the owner
+// choose to keep or clear.
 export async function setCoffeeVisibility(
   coffeeId: string,
   visibility: CoffeeVisibility,
+  clearShares: boolean = false,
 ): Promise<ActionResult<{ visibility: CoffeeVisibility }>> {
   return run("setCoffeeVisibility", async () => {
     const user = await requireRegisteredUser();
@@ -469,10 +527,15 @@ export async function setCoffeeVisibility(
       throw new Error("not_found_or_forbidden");
     }
 
-    await prisma.coffee.update({
-      where: { id: coffeeId },
-      data: { visibility },
-    });
+    await prisma.$transaction([
+      prisma.coffee.update({ where: { id: coffeeId }, data: { visibility } }),
+      ...(visibility === "private"
+        ? [prisma.coffeeInvite.deleteMany({ where: { coffeeId } })]
+        : []),
+      ...(visibility !== "private" && clearShares === true
+        ? [prisma.coffeeShare.deleteMany({ where: { coffeeId } })]
+        : []),
+    ]);
 
     revalidatePath(`/es/app/coffees/${coffeeId}`);
     revalidatePath(`/en/app/coffees/${coffeeId}`);

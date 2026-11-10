@@ -548,11 +548,23 @@ export default async function CoffeeProfilePage({
                 <CoffeeVisibilityToggle
                   coffeeId={coffee.id}
                   visibility={coffee.visibility as CoffeeVisibility}
+                  previousShares={shares.map((s) => ({
+                    userId: s.userId,
+                    displayName: s.user.displayName,
+                  }))}
                   translations={{
                     recordPublic: t("recordPublic"),
                     recordPrivate: t("recordPrivate"),
                     recordShared: t("recordShared"),
                     confirmMakePublic: t("confirmMakePublic"),
+                    returnTitle: t("share.returnTitle"),
+                    returnBody: t("share.returnBody"),
+                    returnKeep: t("share.returnKeep"),
+                    returnClear: t("share.returnClear"),
+                    returnConfirm: t("share.returnConfirm"),
+                    returnLinksNote: t("share.returnLinksNote"),
+                    dialogCancel: t("share.dialogCancel"),
+                    dialogClose: t("share.dialogClose"),
                   }}
                 />
                 <p className="text-xs text-on-surface-variant">{t("recordHint")}</p>
@@ -580,6 +592,7 @@ export default async function CoffeeProfilePage({
                   coffeeId={coffee.id}
                   locale={locale}
                   initialToken={shareInitialToken}
+                  initialExpiresAt={shareInitialToken ? (invite?.expiresAt?.toISOString() ?? null) : null}
                   shares={shares.map((s) => ({ userId: s.userId, displayName: s.user.displayName }))}
                   translations={{
                     title: t("share.title"),
@@ -591,6 +604,19 @@ export default async function CoffeeProfilePage({
                     noShares: t("share.noShares"),
                     revoke: t("share.revoke"),
                     linkHint: t("share.linkHint"),
+                    // Templates: filled client-side.
+                    expiresOn: t.raw("share.expiresOn") as string,
+                    noExpiry: t("share.noExpiry"),
+                    rotate: t("share.rotate"),
+                    rotateTitle: t("share.rotateTitle"),
+                    rotateBody: t("share.rotateBody"),
+                    rotateConfirm: t("share.rotateConfirm"),
+                    revokeTitle: t("share.revokeTitle"),
+                    revokeBody: t.raw("share.revokeBody") as string,
+                    revokeAlsoRotate: t("share.revokeAlsoRotate"),
+                    revokeConfirm: t("share.revokeConfirm"),
+                    dialogCancel: t("share.dialogCancel"),
+                    dialogClose: t("share.dialogClose"),
                   }}
                 />
               </div>
