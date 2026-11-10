@@ -220,7 +220,7 @@ export default async function CoffeeProfilePage({
                   variant="primary"
                   size="sm"
                 >
-                  {tc("tasteThis")}
+                  {t("tasteThis")}
                 </ButtonLink>
                 {isOwner && (
                   <ButtonLink
