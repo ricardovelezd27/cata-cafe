@@ -30,6 +30,7 @@ export function MemberList({
     resend: string;
     resent: string;
     resendFailed: string;
+    resendRateLimited: string;
   };
 }) {
   const router = useRouter();
@@ -37,7 +38,9 @@ export function MemberList({
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
-  const [resendStatus, setResendStatus] = useState<Record<string, "sent" | "skipped" | "failed">>({});
+  const [resendStatus, setResendStatus] = useState<
+    Record<string, "sent" | "skipped" | "failed" | "rate_limited">
+  >({});
   const [, start] = useTransition();
 
   const onRemove = (memberId: string) => {
@@ -146,6 +149,11 @@ export function MemberList({
                 {m.displayName && <p className="text-xs text-on-surface-variant truncate">{m.email}</p>}
                 {status === "sent" && <p className="text-xs text-primary-container">{t.resent}</p>}
                 {status === "failed" && <p className="text-xs text-error">{t.resendFailed}</p>}
+                {status === "rate_limited" && (
+                  <p className="text-xs text-secondary" role="status">
+                    {t.resendRateLimited}
+                  </p>
+                )}
               </div>
             )}
             {!isEditing && (

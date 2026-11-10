@@ -136,6 +136,7 @@ export default async function NewSessionPage({
     sending: tgroups("sending"),
     sendSummary: tgroups.raw("sendSummary"),
     sendSkippedNotice: tgroups("sendSkippedNotice"),
+    sendRateLimited: tgroups("sendRateLimited"),
     skip: tgroups("skip"),
     inviteDefaultMessage: tgroups("inviteDefaultMessage"),
     // Groups v2: session wizard's "link a group" step-1 selector + step-2
@@ -144,6 +145,7 @@ export default async function NewSessionPage({
     noGroupOption: tgroups("noGroupOption"),
     autoInviteToggle: tgroups("autoInviteToggle"),
     autoInviteSummary: tgroups.raw("autoInviteSummary"),
+    autoInviteRateLimited: tgroups("autoInviteRateLimited"),
   };
 
   const supabase = await createClient();

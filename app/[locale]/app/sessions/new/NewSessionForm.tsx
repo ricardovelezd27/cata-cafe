@@ -26,6 +26,8 @@ type SessionGroupsTranslations = NotifyGroupTranslations & {
   autoInviteToggle: string;
   // Raw ICU template — interpolated locally via formatTemplate, not t().
   autoInviteSummary: string;
+  // Shown when the group invitation was held back by the email limits.
+  autoInviteRateLimited: string;
 };
 
 // Same tiny interpolation helper as components/groups/NotifyGroupPanel.tsx.
@@ -301,6 +303,7 @@ export function NewSessionForm({
   const [linkedGroupId, setLinkedGroupId] = useState(initialGroupId ?? "");
   const [notifyGroup, setNotifyGroup] = useState(true);
   const [emailSummary, setEmailSummary] = useState<GroupEmailSummary | undefined>(undefined);
+  const [inviteBlocked, setInviteBlocked] = useState(false);
 
   // Client-side validation state
   const [invalidCoffeeId, setInvalidCoffeeId] = useState<string | null>(null);
@@ -526,6 +529,7 @@ export function NewSessionForm({
           setSessionId(result.sessionId);
           setInviteToken(result.inviteToken);
           setEmailSummary(result.emailSummary);
+          setInviteBlocked(result.emailBlocked === "rate_limited");
           setStep("invite");
         } else {
           setErrorCode(result.error);
@@ -591,6 +595,15 @@ export function NewSessionForm({
             </button>
           </div>
         </div>
+
+        {inviteBlocked && (
+          <div
+            role="status"
+            className="bg-secondary/10 border border-secondary/40 rounded-card px-4 py-3 text-sm text-secondary font-medium"
+          >
+            {groupsT.autoInviteRateLimited}
+          </div>
+        )}
 
         {emailSummary && (
           <div className="bg-primary-fixed border border-primary-container/40 rounded-card px-4 py-3 text-sm text-primary-container font-medium">

@@ -2,8 +2,9 @@
 
 // Owner-only announcement composer. Publishes via createGroupPost, which
 // (best-effort) reuses the group email-blast machinery when notifyByEmail is
-// on — a failed send never blocks the post itself, so this component only
-// ever needs to handle the { ok: false } validation branch.
+// on — a failed or throttled send never blocks the post itself. The email is
+// opt-in (unticked by default, S8-03 F-grupos-2) and the checkbox says how many
+// people it will reach; after publishing, the outcome is shown inline.
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -18,14 +19,37 @@ export type PostComposerTranslations = {
   publish: string;
   publishing: string;
   error: string;
+  /** Raw template with {count}: "Se enviará un correo a {count} integrantes". */
+  notifyRecipientsTemplate: string;
+  notifyNone: string;
+  /** Raw template with {sent}/{skipped}/{failed}. */
+  sendSummaryTemplate: string;
+  sendRateLimited: string;
 };
 
-export function PostComposer({ groupId, t }: { groupId: string; t: PostComposerTranslations }) {
+// next-intl gotcha: a {placeholder} message must be interpolated locally from
+// the RAW template (t.raw) — calling t() without the arg renders the raw key.
+function formatTemplate(template: string, vars: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (match, key: string) =>
+    Object.prototype.hasOwnProperty.call(vars, key) ? String(vars[key]) : match,
+  );
+}
+
+export function PostComposer({
+  groupId,
+  recipientCount,
+  t,
+}: {
+  groupId: string;
+  recipientCount: number;
+  t: PostComposerTranslations;
+}) {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [notifyByEmail, setNotifyByEmail] = useState(true);
+  const [notifyByEmail, setNotifyByEmail] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ text: string; tone: "ok" | "warn" } | null>(null);
   const [pending, start] = useTransition();
 
   const inputCls =
@@ -36,6 +60,7 @@ export function PostComposer({ groupId, t }: { groupId: string; t: PostComposerT
     const trimmedBody = body.trim();
     if (!trimmedBody) return;
     setError(null);
+    setNotice(null);
     start(async () => {
       try {
         const result = await createGroupPost({
@@ -50,6 +75,18 @@ export function PostComposer({ groupId, t }: { groupId: string; t: PostComposerT
         }
         setTitle("");
         setBody("");
+        if (result.emailBlocked === "rate_limited") {
+          setNotice({ text: t.sendRateLimited, tone: "warn" });
+        } else if (result.emailSummary) {
+          setNotice({
+            text: formatTemplate(t.sendSummaryTemplate, {
+              sent: result.emailSummary.sent,
+              skipped: result.emailSummary.skipped,
+              failed: result.emailSummary.failed,
+            }),
+            tone: result.emailSummary.failed > 0 ? "warn" : "ok",
+          });
+        }
         router.refresh();
       } catch {
         setError(t.error);
@@ -78,17 +115,36 @@ export function PostComposer({ groupId, t }: { groupId: string; t: PostComposerT
         maxLength={5000}
         required
       />
-      <label className="flex items-center gap-2.5 text-sm text-on-surface cursor-pointer">
+      <label className="flex items-start gap-2.5 text-sm text-on-surface cursor-pointer">
         <input
           type="checkbox"
           checked={notifyByEmail}
           onChange={(e) => setNotifyByEmail(e.target.checked)}
-          className="h-4 w-4 rounded accent-primary-container cursor-pointer"
+          className="mt-0.5 h-4 w-4 rounded accent-primary-container cursor-pointer"
         />
-        {t.notifyByEmail}
+        <span>
+          {t.notifyByEmail}
+          <span className="block text-xs text-on-surface-variant">
+            {recipientCount > 0
+              ? formatTemplate(t.notifyRecipientsTemplate, { count: recipientCount })
+              : t.notifyNone}
+          </span>
+        </span>
       </label>
 
-      {error && <p className="text-xs text-error">{error}</p>}
+      {error && (
+        <p className="text-xs text-error" role="alert">
+          {error}
+        </p>
+      )}
+      {notice && (
+        <p
+          role="status"
+          className={`text-xs ${notice.tone === "warn" ? "text-secondary" : "text-on-surface-variant"}`}
+        >
+          {notice.text}
+        </p>
+      )}
 
       <button
         type="submit"

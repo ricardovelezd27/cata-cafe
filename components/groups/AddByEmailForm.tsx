@@ -5,15 +5,17 @@ import { useRouter } from "next/navigation";
 import { Check, Clock, X, type LucideIcon } from "lucide-react";
 import { addMemberByEmail } from "@/app/actions/groups";
 
-type EmailStatus = "sent" | "skipped" | "failed";
+type EmailStatus = "sent" | "skipped" | "failed" | "rate_limited";
 
 // Icon + color coding, same convention as GroupEmailComposer's per-recipient
-// status rows — only "sent" and "skipped" have accompanying copy (there's no
-// dedicated translation key for "failed"; the amber icon alone conveys it).
+// status rows — "sent", "skipped" and "rate_limited" have accompanying copy
+// (there's no dedicated translation key for "failed"; the amber icon alone
+// conveys it).
 const STATUS_STYLE: Record<EmailStatus, { icon: LucideIcon; className: string }> = {
   sent: { icon: Check, className: "text-primary-container" },
   skipped: { icon: Clock, className: "text-secondary" },
   failed: { icon: X, className: "text-secondary" },
+  rate_limited: { icon: Clock, className: "text-secondary" },
 };
 
 export function AddByEmailForm({
@@ -27,6 +29,7 @@ export function AddByEmailForm({
     addMember: string;
     added: string;
     sendSkippedNotice: string;
+    inviteRateLimited: string;
     errorGeneric: string;
   };
 }) {
@@ -91,6 +94,7 @@ export function AddByEmailForm({
           <StatusIcon size={14} />
           {status === "sent" && t.added}
           {status === "skipped" && t.sendSkippedNotice}
+          {status === "rate_limited" && t.inviteRateLimited}
         </div>
       )}
     </form>

@@ -11,7 +11,11 @@ import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { prisma } from "@/lib/prisma";
 import { requireRegisteredUser } from "@/lib/auth";
-import { sendEmail, escapeHtml } from "@/lib/email";
+import { escapeHtml } from "@/lib/email";
+import { deliverGroupMail, type GroupEmailResult, type GroupMailJob } from "@/lib/groupEmail";
+import { isBroadcastId, summarize } from "@/lib/groupEmailPlan";
+import { logWarn } from "@/lib/log";
+import { maskEmail } from "@/lib/maskEmail";
 import { coCupperIdsAmong, isCoCupper } from "@/lib/coCuppers";
 import { run } from "@/lib/safeAction";
 import type { ActionResult } from "@/lib/actionResult";
@@ -29,23 +33,6 @@ async function getOrigin() {
     h.get("origin") ||
     `${h.get("x-forwarded-proto") || "http"}://${h.get("host") || "localhost:3000"}`
   );
-}
-
-// Runs `fn` over `items` in sequential batches of `size`, Promise.allSettled
-// within each batch — cheap fan-out rate-limit protection for bulk email
-// sends so we never fire hundreds of Resend requests in one tick.
-async function runChunked<T, R>(
-  items: T[],
-  size: number,
-  fn: (item: T) => Promise<R>,
-): Promise<PromiseSettledResult<R>[]> {
-  const results: PromiseSettledResult<R>[] = [];
-  for (let i = 0; i < items.length; i += size) {
-    const chunk = items.slice(i, i + size);
-    const chunkResults = await Promise.allSettled(chunk.map(fn));
-    results.push(...chunkResults);
-  }
-  return results;
 }
 
 // Finds a still-valid SessionInvite for a session, or mints a fresh one.
@@ -262,15 +249,26 @@ function buildGroupInviteHtml(args: {
 // Sends a "join the group" invitation to each recipient. Locale is resolved
 // per recipient: linked members (userId set) use their own preferredLang
 // (batch-fetched); unlinked (email-only) recipients fall back to the
-// sender's locale. Callers do their own auth/ownership checks — this is a
-// pure best-effort send helper, never throws for per-recipient failures.
+// sender's locale. Callers do their own auth/ownership checks. Goes through
+// the one group sender (lib/groupEmail.ts): budgeted as `group_invite`,
+// ledgered, retried; a refusal comes back as `rate_limited`, never a throw.
+type InvitationOutcome =
+  | { ok: true; summary: GroupEmailSummary }
+  | { ok: false; error: "rate_limited" };
+
 async function sendGroupInvitationEmails(args: {
   group: { id: string; name: string; description: string | null };
+  inviterId: string;
   inviterName: string;
-  recipients: { email: string; userId: string | null; displayName?: string | null }[];
+  recipients: {
+    memberId: string;
+    email: string;
+    userId: string | null;
+    displayName?: string | null;
+  }[];
   origin: string;
   senderLocale: Locale;
-}): Promise<GroupEmailSummary> {
+}): Promise<InvitationOutcome> {
   const linkedUserIds = [
     ...new Set(args.recipients.map((r) => r.userId).filter((id): id is string => !!id)),
   ];
@@ -285,7 +283,7 @@ async function sendGroupInvitationEmails(args: {
     linkedProfiles.map((p) => [p.id, p.preferredLang === "en" ? "en" : "es"]),
   );
 
-  const prepared = args.recipients.map((r) => {
+  const jobs: GroupMailJob[] = args.recipients.map((r) => {
     const recipientLocale: Locale = r.userId
       ? localeByUserId.get(r.userId) ?? args.senderLocale
       : args.senderLocale;
@@ -294,63 +292,78 @@ async function sendGroupInvitationEmails(args: {
       r.email,
     )}&next=${encodeURIComponent(`/${recipientLocale}/app/groups/${args.group.id}`)}`;
 
-    const subject = GROUP_INVITE_TEXT[recipientLocale].subject(args.inviterName, args.group.name);
-    const html = buildGroupInviteHtml({
-      inviterName: args.inviterName,
-      groupName: args.group.name,
-      description: args.group.description,
-      ctaUrl,
-      locale: recipientLocale,
-    });
-
-    return { email: r.email, subject, html };
+    return {
+      memberId: r.memberId,
+      label: r.displayName || maskEmail(r.email),
+      email: r.email,
+      subject: GROUP_INVITE_TEXT[recipientLocale].subject(args.inviterName, args.group.name),
+      html: buildGroupInviteHtml({
+        inviterName: args.inviterName,
+        groupName: args.group.name,
+        description: args.group.description,
+        ctaUrl,
+        locale: recipientLocale,
+      }),
+    };
   });
 
-  const sendOutcomes = await runChunked(prepared, 20, (job) =>
-    sendEmail({ to: job.email, subject: job.subject, html: job.html }),
-  );
-
-  const results: GroupEmailResult[] = sendOutcomes.map((outcome, i) => {
-    const email = prepared[i].email;
-    if (outcome.status === "rejected") {
-      console.warn(
-        `[sendGroupInvitationEmails] send rejected for ${email}: ${String(outcome.reason)}`,
-      );
-      return { email, status: "failed" as const };
-    }
-    if (outcome.value.skipped) return { email, status: "skipped" as const };
-    if (!outcome.value.ok) {
-      console.warn(`[sendGroupInvitationEmails] send failed for ${email}: ${outcome.value.error}`);
-      return { email, status: "failed" as const };
-    }
-    return { email, status: "sent" as const };
+  const broadcastId = crypto.randomUUID();
+  const outcome = await deliverGroupMail({
+    userId: args.inviterId,
+    groupId: args.group.id,
+    kind: "group_invite",
+    broadcastId,
+    jobs,
   });
-
-  return {
-    attempted: args.recipients.length,
-    sent: results.filter((r) => r.status === "sent").length,
-    skipped: results.filter((r) => r.status === "skipped").length,
-    failed: results.filter((r) => r.status === "failed").length,
-    results,
-  };
+  if (!outcome.ok) return { ok: false, error: "rate_limited" };
+  return { ok: true, summary: toSummary(outcome.results, broadcastId) };
 }
 
 // ─── Create a group with an initial member roster in one go ───────────────────
 // Single atomic nested create (name + description + members all land in one
 // prisma.tastingGroup.create). Invitation emails are best-effort and fired
 // AFTER the create succeeds, only to members who aren't yet linked to an
-// account — a failed/skipped send never fails the action.
+// account — a failed/skipped/throttled send never fails the action (a
+// throttled one reports `emailBlocked: "rate_limited"`). `clientKey` is the
+// dialog's idempotency key: a replayed submit returns the stored group and
+// sends nothing.
 export async function createGroupWithMembers(input: {
   name: string;
   description?: string;
   members: { email: string; displayName?: string }[];
   coCupperUserIds?: string[];
   locale?: Locale;
+  clientKey?: string;
 }): Promise<
-  | { ok: true; groupId: string; memberCount: number; emailSummary: GroupEmailSummary | null }
-  | { ok: false; error: "invalid_name" | "invalid_description" | "invalid_email" | "group_full" | "generic" }
+  | {
+      ok: true;
+      groupId: string;
+      memberCount: number;
+      emailSummary: GroupEmailSummary | null;
+      emailBlocked?: "rate_limited";
+    }
+  | {
+      ok: false;
+      error:
+        | "invalid_name"
+        | "invalid_description"
+        | "invalid_email"
+        | "invalid_input"
+        | "group_full"
+        | "generic";
+    }
 > {
   const user = await requireRegisteredUser();
+
+  const clientKey = input.clientKey;
+  if (clientKey !== undefined && !isBroadcastId(clientKey)) {
+    return { ok: false, error: "invalid_input" };
+  }
+  if (clientKey) {
+    const replay = await findGroupReplay(clientKey, user.id);
+    if (replay === "foreign") return { ok: false, error: "invalid_input" };
+    if (replay) return { ok: true, ...replay, emailSummary: null };
+  }
 
   const name = input.name.trim();
   if (name.length < 1 || name.length > 80) return { ok: false, error: "invalid_name" };
@@ -412,12 +425,14 @@ export async function createGroupWithMembers(input: {
   if (allMembers.length > MAX_GROUP_MEMBERS) return { ok: false, error: "group_full" };
 
   let groupId: string;
+  let createdMembers: { id: string; email: string }[];
   try {
     const group = await prisma.tastingGroup.create({
       data: {
         name,
         description,
         createdBy: user.id,
+        clientKey: clientKey ?? null,
         members: {
           create: allMembers.map((m) => ({
             email: m.email,
@@ -426,17 +441,28 @@ export async function createGroupWithMembers(input: {
           })),
         },
       },
-      select: { id: true },
+      select: { id: true, members: { select: { id: true, email: true } } },
     });
     groupId = group.id;
+    createdMembers = group.members;
   } catch (e) {
-    console.warn(
-      `[createGroupWithMembers] create failed: ${e instanceof Error ? e.message : String(e)}`,
-    );
+    // A unique violation on clientKey is a concurrent replay of this submit.
+    if (clientKey && (e as { code?: string })?.code === "P2002") {
+      const replay = await findGroupReplay(clientKey, user.id);
+      if (replay && replay !== "foreign") return { ok: true, ...replay, emailSummary: null };
+    }
+    logWarn({
+      where: "createGroupWithMembers",
+      message: "create_failed",
+      userId: user.id,
+      code: (e as { code?: string })?.code ?? "unknown",
+    });
     return { ok: false, error: "generic" };
   }
 
   let emailSummary: GroupEmailSummary | null = null;
+  let emailBlocked: "rate_limited" | undefined;
+  const memberIdByEmail = new Map(createdMembers.map((m) => [m.email, m.id]));
   const unlinkedRecipients = allMembers.filter((m) => !m.userId);
   if (unlinkedRecipients.length > 0) {
     try {
@@ -451,28 +477,50 @@ export async function createGroupWithMembers(input: {
             ? "en"
             : "es";
       const origin = await getOrigin();
-      emailSummary = await sendGroupInvitationEmails({
+      const sent = await sendGroupInvitationEmails({
         group: { id: groupId, name, description },
+        inviterId: user.id,
         inviterName: inviterProfile?.displayName ?? "",
-        recipients: unlinkedRecipients.map((m) => ({
-          email: m.email,
-          userId: null,
-          displayName: m.displayName,
-        })),
+        recipients: unlinkedRecipients.flatMap((m) => {
+          const memberId = memberIdByEmail.get(m.email);
+          return memberId
+            ? [{ memberId, email: m.email, userId: null, displayName: m.displayName }]
+            : [];
+        }),
         origin,
         senderLocale,
       });
+      if (sent.ok) emailSummary = sent.summary;
+      else emailBlocked = sent.error;
     } catch (e) {
-      console.warn(
-        `[createGroupWithMembers] invitation emails threw: ${e instanceof Error ? e.message : String(e)}`,
-      );
+      logWarn({
+        where: "createGroupWithMembers",
+        message: "invitation_emails_threw",
+        groupId,
+        code: (e as { code?: string })?.code ?? "unknown",
+      });
     }
   }
 
   revalidatePath("/es/app/groups");
   revalidatePath("/en/app/groups");
 
-  return { ok: true, groupId, memberCount: allMembers.length, emailSummary };
+  return { ok: true, groupId, memberCount: allMembers.length, emailSummary, emailBlocked };
+}
+
+// The stored group of an already-processed create-group submit. "foreign" when
+// the key belongs to someone else (never reveal their group).
+async function findGroupReplay(
+  clientKey: string,
+  userId: string,
+): Promise<{ groupId: string; memberCount: number } | "foreign" | null> {
+  const existing = await prisma.tastingGroup.findUnique({
+    where: { clientKey },
+    select: { id: true, createdBy: true, _count: { select: { members: true } } },
+  });
+  if (!existing) return null;
+  if (existing.createdBy !== userId) return "foreign";
+  return { groupId: existing.id, memberCount: existing._count.members };
 }
 
 // ─── Add a member by plain email (owner only) ──────────────────────────────────
@@ -487,7 +535,11 @@ export async function addMemberByEmail(
   email: string,
   displayName?: string,
   options?: { sendInvite?: boolean },
-): Promise<{ ok: true; memberId: string; emailStatus?: "sent" | "skipped" | "failed" }> {
+): Promise<{
+  ok: true;
+  memberId: string;
+  emailStatus?: "sent" | "skipped" | "failed" | "rate_limited";
+}> {
   const user = await requireRegisteredUser();
 
   const group = await prisma.tastingGroup.findUnique({
@@ -527,7 +579,7 @@ export async function addMemberByEmail(
   });
 
   const sendInvite = options?.sendInvite !== false;
-  let emailStatus: "sent" | "skipped" | "failed" | undefined;
+  let emailStatus: "sent" | "skipped" | "failed" | "rate_limited" | undefined;
 
   if (sendInvite && member.userId === null) {
     try {
@@ -537,20 +589,29 @@ export async function addMemberByEmail(
       });
       const senderLocale: Locale = inviterProfile?.preferredLang === "en" ? "en" : "es";
       const origin = await getOrigin();
-      const summary = await sendGroupInvitationEmails({
+      const sent = await sendGroupInvitationEmails({
         group: { id: groupId, name: group.name, description: group.description },
+        inviterId: user.id,
         inviterName: inviterProfile?.displayName ?? "",
         recipients: [
-          { email: normalizedEmail, userId: null, displayName: trimmedDisplayName || null },
+          {
+            memberId: member.id,
+            email: normalizedEmail,
+            userId: null,
+            displayName: trimmedDisplayName || null,
+          },
         ],
         origin,
         senderLocale,
       });
-      emailStatus = summary.results[0]?.status ?? "failed";
+      emailStatus = sent.ok ? (sent.summary.results[0]?.status ?? "failed") : sent.error;
     } catch (e) {
-      console.warn(
-        `[addMemberByEmail] invitation email threw: ${e instanceof Error ? e.message : String(e)}`,
-      );
+      logWarn({
+        where: "addMemberByEmail",
+        message: "invitation_email_threw",
+        groupId,
+        code: (e as { code?: string })?.code ?? "unknown",
+      });
       emailStatus = "failed";
     }
   }
@@ -589,18 +650,22 @@ export async function removeMember(groupId: string, memberId: string): Promise<{
 
 // ─── Send an email blast to a group (owner only) ───────────────────────────────
 
-export type GroupEmailResult = {
-  email: string;
-  status: "sent" | "skipped" | "failed";
-};
+export type { GroupEmailResult };
 
 export type GroupEmailSummary = {
   attempted: number;
   sent: number;
   skipped: number;
   failed: number;
+  /** One row per recipient, labelled by name or masked address. */
   results: GroupEmailResult[];
+  /** Echo of the broadcast id, for "Reintentar fallidos". */
+  broadcastId?: string;
 };
+
+function toSummary(results: GroupEmailResult[], broadcastId: string): GroupEmailSummary {
+  return { ...summarize(results), broadcastId };
+}
 
 const GROUP_EMAIL_TEXT: Record<
   Locale,
@@ -645,12 +710,16 @@ function buildGroupEmailHtml(args: {
     </div>`;
 }
 
+// `broadcastId` is minted by the composer per message and re-sent with the
+// same subject/message to "Reintentar fallidos": the ledger then knows who
+// already got it and only the rest are sent (a retry takes no broadcast slot).
 export async function sendGroupEmail(input: {
   groupId: string;
   subject: string;
   message: string;
   sessionId?: string;
   memberIds?: string[];
+  broadcastId?: string;
 }): Promise<ActionResult<GroupEmailSummary>> {
   return run("sendGroupEmail", async () => {
     const user = await requireRegisteredUser();
@@ -668,6 +737,11 @@ export async function sendGroupEmail(input: {
 
     const message = input.message.trim();
     if (message.length < 1 || message.length > 5000) throw new Error("invalid_input");
+
+    if (input.broadcastId !== undefined && !isBroadcastId(input.broadcastId)) {
+      throw new Error("invalid_input");
+    }
+    const broadcastId = input.broadcastId ?? crypto.randomUUID();
 
     // Resolve (or create) an invite link for the session, independently
     // re-verifying ownership — never trust a sessionId passed alongside a group
@@ -691,7 +765,7 @@ export async function sendGroupEmail(input: {
         groupId: input.groupId,
         ...(input.memberIds ? { id: { in: input.memberIds } } : {}),
       },
-      select: { id: true, email: true, userId: true },
+      select: { id: true, email: true, userId: true, displayName: true },
     });
     if (input.memberIds && members.length !== input.memberIds.length) {
       throw new Error("invalid_input");
@@ -703,79 +777,78 @@ export async function sendGroupEmail(input: {
     });
     const senderLocale: Locale = senderProfile?.preferredLang === "en" ? "en" : "es";
 
-    // Batch-fetch recipient locale for every linked member in one query.
-    const linkedUserIds = [
-      ...new Set(members.map((m) => m.userId).filter((id): id is string => !!id)),
-    ];
-    const linkedProfiles =
-      linkedUserIds.length > 0
-        ? await prisma.profile.findMany({
-            where: { id: { in: linkedUserIds } },
-            select: { id: true, preferredLang: true },
-          })
-        : [];
-    const localeByUserId = new Map<string, Locale>(
-      linkedProfiles.map((p) => [p.id, p.preferredLang === "en" ? "en" : "es"]),
-    );
-
+    const localeByUserId = await localesOfLinkedMembers(members);
     const origin = await getOrigin();
-    const admin = createAdminClient();
+    const emails = await liveEmails(members);
 
-    // Resolve live email + build the per-recipient (locale-varying) html.
-    const prepared = await Promise.all(
-      members.map(async (m) => {
-        let email = m.email;
-        if (m.userId) {
-          try {
-            const { data, error } = await admin.auth.admin.getUserById(m.userId);
-            const liveEmail = data?.user?.email;
-            if (!error && liveEmail) email = liveEmail;
-          } catch {
-            // Fall back to the stored snapshot email below.
-          }
-        }
-
-        const recipientLocale: Locale = m.userId
-          ? localeByUserId.get(m.userId) ?? senderLocale
-          : senderLocale;
-
-        const inviteUrl = inviteToken ? `${origin}/${recipientLocale}/join/${inviteToken}` : null;
-        const html = buildGroupEmailHtml({ message, inviteUrl, locale: recipientLocale, origin });
-
-        return { email, html };
-      }),
-    );
-
-    const sendOutcomes = await runChunked(prepared, 20, (job) =>
-      sendEmail({ to: job.email, subject, html: job.html }),
-    );
-
-    const results: GroupEmailResult[] = sendOutcomes.map((outcome, i) => {
-      const email = prepared[i].email;
-      if (outcome.status === "rejected") {
-        console.warn(`[sendGroupEmail] send rejected for ${email}: ${String(outcome.reason)}`);
-        return { email, status: "failed" as const };
-      }
-      if (outcome.value.skipped) return { email, status: "skipped" as const };
-      if (!outcome.value.ok) {
-        console.warn(`[sendGroupEmail] send failed for ${email}: ${outcome.value.error}`);
-        return { email, status: "failed" as const };
-      }
-      return { email, status: "sent" as const };
+    const jobs: GroupMailJob[] = members.map((m) => {
+      const recipientLocale: Locale = m.userId
+        ? localeByUserId.get(m.userId) ?? senderLocale
+        : senderLocale;
+      const inviteUrl = inviteToken ? `${origin}/${recipientLocale}/join/${inviteToken}` : null;
+      return {
+        memberId: m.id,
+        label: m.displayName || maskEmail(m.email),
+        email: emails.get(m.id) ?? m.email,
+        subject,
+        html: buildGroupEmailHtml({ message, inviteUrl, locale: recipientLocale, origin }),
+      };
     });
 
-    const summary: GroupEmailSummary = {
-      attempted: members.length,
-      sent: results.filter((r) => r.status === "sent").length,
-      skipped: results.filter((r) => r.status === "skipped").length,
-      failed: results.filter((r) => r.status === "failed").length,
-      results,
-    };
+    const outcome = await deliverGroupMail({
+      userId: user.id,
+      groupId: input.groupId,
+      kind: "group_broadcast",
+      broadcastId,
+      jobs,
+    });
+    if (!outcome.ok) throw new Error(outcome.error);
 
     revalidatePath(`/es/app/groups/${input.groupId}`);
     revalidatePath(`/en/app/groups/${input.groupId}`);
-    return summary;
+    return toSummary(outcome.results, broadcastId);
   }, { groupId: input.groupId });
+}
+
+// Recipient language for every linked member, in one query.
+async function localesOfLinkedMembers(
+  members: { userId: string | null }[],
+): Promise<Map<string, Locale>> {
+  const linkedUserIds = [
+    ...new Set(members.map((m) => m.userId).filter((id): id is string => !!id)),
+  ];
+  const linkedProfiles =
+    linkedUserIds.length > 0
+      ? await prisma.profile.findMany({
+          where: { id: { in: linkedUserIds } },
+          select: { id: true, preferredLang: true },
+        })
+      : [];
+  return new Map<string, Locale>(
+    linkedProfiles.map((p) => [p.id, p.preferredLang === "en" ? "en" : "es"]),
+  );
+}
+
+// The live address of each linked member (the account's current email wins
+// over the stored snapshot). Stays server-side: only labels reach the client.
+async function liveEmails(
+  members: { id: string; userId: string | null }[],
+): Promise<Map<string, string>> {
+  const admin = createAdminClient();
+  const out = new Map<string, string>();
+  await Promise.all(
+    members.map(async (m) => {
+      if (!m.userId) return;
+      try {
+        const { data, error } = await admin.auth.admin.getUserById(m.userId);
+        const liveEmail = data?.user?.email;
+        if (!error && liveEmail) out.set(m.id, liveEmail);
+      } catch {
+        // Fall back to the stored snapshot email.
+      }
+    }),
+  );
+  return out;
 }
 
 // ─── Notify a group that a new session was created (owner only) ───────────────
@@ -832,71 +905,48 @@ function buildGroupSessionInviteHtml(args: {
 export async function notifyGroupOfSession(input: {
   groupId: string;
   sessionId: string;
-}): Promise<GroupEmailSummary> {
-  const user = await requireRegisteredUser();
+}): Promise<ActionResult<GroupEmailSummary>> {
+  return run("notifyGroupOfSession", async () => {
+    const user = await requireRegisteredUser();
 
-  // Both the group AND the session must independently belong to this user —
-  // same rationale as sendGroupEmail: never trust a sessionId passed
-  // alongside a group the caller happens to own.
-  const group = await prisma.tastingGroup.findUnique({
-    where: { id: input.groupId },
-    select: { createdBy: true },
-  });
-  if (!group || group.createdBy !== user.id) {
-    throw new Error("not_found_or_forbidden");
-  }
+    // Both the group AND the session must independently belong to this user —
+    // same rationale as sendGroupEmail: never trust a sessionId passed
+    // alongside a group the caller happens to own.
+    const group = await prisma.tastingGroup.findUnique({
+      where: { id: input.groupId },
+      select: { createdBy: true },
+    });
+    if (!group || group.createdBy !== user.id) {
+      throw new Error("not_found_or_forbidden");
+    }
 
-  const session = await prisma.cuppingSession.findUnique({
-    where: { id: input.sessionId },
-    select: { id: true, createdBy: true, name: true },
-  });
-  if (!session || session.createdBy !== user.id) {
-    throw new Error("not_found_or_forbidden");
-  }
+    const session = await prisma.cuppingSession.findUnique({
+      where: { id: input.sessionId },
+      select: { id: true, createdBy: true, name: true },
+    });
+    if (!session || session.createdBy !== user.id) {
+      throw new Error("not_found_or_forbidden");
+    }
 
-  const inviteToken = await resolveOrCreateSessionInvite(session.id, user.id);
+    const inviteToken = await resolveOrCreateSessionInvite(session.id, user.id);
 
-  const members = await prisma.tastingGroupMember.findMany({
-    where: { groupId: input.groupId },
-    select: { id: true, email: true, userId: true },
-  });
+    const members = await prisma.tastingGroupMember.findMany({
+      where: { groupId: input.groupId },
+      select: { id: true, email: true, userId: true, displayName: true },
+    });
 
-  const senderProfile = await prisma.profile.findUnique({
-    where: { id: user.id },
-    select: { preferredLang: true },
-  });
-  const senderLocale: Locale = senderProfile?.preferredLang === "en" ? "en" : "es";
+    const senderProfile = await prisma.profile.findUnique({
+      where: { id: user.id },
+      select: { preferredLang: true },
+    });
+    const senderLocale: Locale = senderProfile?.preferredLang === "en" ? "en" : "es";
 
-  const linkedUserIds = [
-    ...new Set(members.map((m) => m.userId).filter((id): id is string => !!id)),
-  ];
-  const linkedProfiles =
-    linkedUserIds.length > 0
-      ? await prisma.profile.findMany({
-          where: { id: { in: linkedUserIds } },
-          select: { id: true, preferredLang: true },
-        })
-      : [];
-  const localeByUserId = new Map<string, Locale>(
-    linkedProfiles.map((p) => [p.id, p.preferredLang === "en" ? "en" : "es"]),
-  );
+    const localeByUserId = await localesOfLinkedMembers(members);
+    const origin = await getOrigin();
+    const emails = await liveEmails(members);
 
-  const origin = await getOrigin();
-  const admin = createAdminClient();
-
-  const prepared = await Promise.all(
-    members.map(async (m) => {
-      let email = m.email;
-      if (m.userId) {
-        try {
-          const { data, error } = await admin.auth.admin.getUserById(m.userId);
-          const liveEmail = data?.user?.email;
-          if (!error && liveEmail) email = liveEmail;
-        } catch {
-          // Fall back to the stored snapshot email below.
-        }
-      }
-
+    const jobs: GroupMailJob[] = members.map((m) => {
+      const email = emails.get(m.id) ?? m.email;
       const recipientLocale: Locale = m.userId
         ? localeByUserId.get(m.userId) ?? senderLocale
         : senderLocale;
@@ -907,42 +957,30 @@ export async function notifyGroupOfSession(input: {
             email,
           )}&next=${encodeURIComponent(`/${recipientLocale}/join/${inviteToken}`)}`;
 
-      const html = buildGroupSessionInviteHtml({
-        sessionName: session.name,
-        ctaUrl,
-        locale: recipientLocale,
-      });
-      const subject = GROUP_SESSION_INVITE_TEXT[recipientLocale].subject(session.name);
+      return {
+        memberId: m.id,
+        label: m.displayName || maskEmail(m.email),
+        email,
+        subject: GROUP_SESSION_INVITE_TEXT[recipientLocale].subject(session.name),
+        html: buildGroupSessionInviteHtml({
+          sessionName: session.name,
+          ctaUrl,
+          locale: recipientLocale,
+        }),
+      };
+    });
 
-      return { email, subject, html };
-    }),
-  );
-
-  const sendOutcomes = await runChunked(prepared, 20, (job) =>
-    sendEmail({ to: job.email, subject: job.subject, html: job.html }),
-  );
-
-  const results: GroupEmailResult[] = sendOutcomes.map((outcome, i) => {
-    const email = prepared[i].email;
-    if (outcome.status === "rejected") {
-      console.warn(`[notifyGroupOfSession] send rejected for ${email}: ${String(outcome.reason)}`);
-      return { email, status: "failed" as const };
-    }
-    if (outcome.value.skipped) return { email, status: "skipped" as const };
-    if (!outcome.value.ok) {
-      console.warn(`[notifyGroupOfSession] send failed for ${email}: ${outcome.value.error}`);
-      return { email, status: "failed" as const };
-    }
-    return { email, status: "sent" as const };
-  });
-
-  return {
-    attempted: members.length,
-    sent: results.filter((r) => r.status === "sent").length,
-    skipped: results.filter((r) => r.status === "skipped").length,
-    failed: results.filter((r) => r.status === "failed").length,
-    results,
-  };
+    const broadcastId = crypto.randomUUID();
+    const outcome = await deliverGroupMail({
+      userId: user.id,
+      groupId: input.groupId,
+      kind: "group_broadcast",
+      broadcastId,
+      jobs,
+    });
+    if (!outcome.ok) throw new Error(outcome.error);
+    return toSummary(outcome.results, broadcastId);
+  }, { groupId: input.groupId, sessionId: input.sessionId });
 }
 
 // ═══ Announcements feed (GroupPost) ═══════════════════════════════════════════
@@ -957,7 +995,12 @@ export async function createGroupPost(input: {
   body: string;
   notifyByEmail?: boolean;
 }): Promise<
-  | { ok: true; postId: string; emailSummary?: GroupEmailSummary }
+  | {
+      ok: true;
+      postId: string;
+      emailSummary?: GroupEmailSummary;
+      emailBlocked?: "rate_limited";
+    }
   | { ok: false; error: "body_required" | "body_too_long" | "title_too_long" }
 > {
   const user = await requireRegisteredUser();
@@ -981,7 +1024,9 @@ export async function createGroupPost(input: {
     select: { id: true },
   });
 
+  // The post is already saved: a throttled or failed blast never fails it.
   let emailSummary: GroupEmailSummary | undefined;
+  let emailBlocked: "rate_limited" | undefined;
   if (input.notifyByEmail) {
     try {
       const result = await sendGroupEmail({
@@ -997,19 +1042,29 @@ export async function createGroupPost(input: {
             data: { emailSent: true },
           });
         }
+      } else if (result.error === "rate_limited") {
+        emailBlocked = "rate_limited";
       } else {
-        console.warn(`[createGroupPost] notify email failed for post ${post.id}: ${result.error}`);
+        logWarn({
+          where: "createGroupPost",
+          message: "notify_email_failed",
+          groupId: input.groupId,
+          code: result.error,
+        });
       }
     } catch (e) {
-      console.warn(
-        `[createGroupPost] notify email threw for post ${post.id}: ${e instanceof Error ? e.message : String(e)}`,
-      );
+      logWarn({
+        where: "createGroupPost",
+        message: "notify_email_threw",
+        groupId: input.groupId,
+        code: (e as { code?: string })?.code ?? "unknown",
+      });
     }
   }
 
   revalidatePath(`/es/app/groups/${input.groupId}`);
   revalidatePath(`/en/app/groups/${input.groupId}`);
-  return { ok: true, postId: post.id, emailSummary };
+  return { ok: true, postId: post.id, emailSummary, emailBlocked };
 }
 
 export async function updateGroupPost(
@@ -1178,7 +1233,7 @@ export async function updateMemberDisplayName(
 export async function resendInvitation(
   groupId: string,
   memberId: string,
-): Promise<{ ok: true; emailStatus: "sent" | "skipped" | "failed" }> {
+): Promise<{ ok: true; emailStatus: "sent" | "skipped" | "failed" | "rate_limited" }> {
   const user = await requireRegisteredUser();
 
   const group = await prisma.tastingGroup.findUnique({
@@ -1205,20 +1260,27 @@ export async function resendInvitation(
     });
     const senderLocale: Locale = inviterProfile?.preferredLang === "en" ? "en" : "es";
     const origin = await getOrigin();
-    const summary = await sendGroupInvitationEmails({
+    const sent = await sendGroupInvitationEmails({
       group: { id: groupId, name: group.name, description: group.description },
+      inviterId: user.id,
       inviterName: inviterProfile?.displayName ?? "",
       recipients: [
-        { email: member.email, userId: null, displayName: member.displayName },
+        { memberId, email: member.email, userId: null, displayName: member.displayName },
       ],
       origin,
       senderLocale,
     });
-    return { ok: true, emailStatus: summary.results[0]?.status ?? "failed" };
+    return {
+      ok: true,
+      emailStatus: sent.ok ? (sent.summary.results[0]?.status ?? "failed") : sent.error,
+    };
   } catch (e) {
-    console.warn(
-      `[resendInvitation] invitation email threw: ${e instanceof Error ? e.message : String(e)}`,
-    );
+    logWarn({
+      where: "resendInvitation",
+      message: "invitation_email_threw",
+      groupId,
+      code: (e as { code?: string })?.code ?? "unknown",
+    });
     return { ok: true, emailStatus: "failed" };
   }
 }

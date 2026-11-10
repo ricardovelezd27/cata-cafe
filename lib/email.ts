@@ -20,14 +20,39 @@ export type SendEmailArgs = {
   subject: string;
   html: string;
   attachments?: EmailAttachment[];
+  /** Sent as the Resend `Idempotency-Key` header so a retried request cannot
+   *  deliver twice. Unset → no header (closeEmail / digest are unchanged). */
+  idempotencyKey?: string;
 };
+
+/** Coarse failure class, so callers can decide to retry without ever reading
+ *  the provider response body (which can echo an address). */
+export type SendEmailErrorCode = "resend_429" | "resend_5xx" | "resend_4xx" | "network";
 
 export type SendEmailResult = {
   ok: boolean;
   /** true when sending was skipped because email is not configured. */
   skipped?: boolean;
   error?: string;
+  /** HTTP status of a failed Resend call. */
+  status?: number;
+  /** Parsed `Retry-After` of a failed call, in ms. */
+  retryAfterMs?: number;
+  code?: SendEmailErrorCode;
 };
+
+/** Failure class for an HTTP status. */
+export function classifyResendStatus(status: number): SendEmailErrorCode {
+  if (status === 429) return "resend_429";
+  return status >= 500 ? "resend_5xx" : "resend_4xx";
+}
+
+/** `Retry-After` (delta-seconds) → ms; undefined when absent or not a number. */
+export function parseRetryAfterMs(header: string | null | undefined): number | undefined {
+  if (!header) return undefined;
+  const seconds = Number(header);
+  return Number.isFinite(seconds) && seconds >= 0 ? Math.round(seconds * 1000) : undefined;
+}
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
@@ -74,13 +99,16 @@ export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
     }));
   }
 
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${apiKey}`,
+    "Content-Type": "application/json",
+  };
+  if (args.idempotencyKey) headers["Idempotency-Key"] = args.idempotencyKey;
+
   try {
     const res = await fetch(RESEND_ENDPOINT, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify(payload),
     });
 
@@ -89,6 +117,9 @@ export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
       return {
         ok: false,
         error: `Resend responded ${res.status}: ${body.slice(0, 500)}`,
+        status: res.status,
+        retryAfterMs: parseRetryAfterMs(res.headers.get("retry-after")),
+        code: classifyResendStatus(res.status),
       };
     }
 
@@ -97,6 +128,7 @@ export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
     return {
       ok: false,
       error: err instanceof Error ? err.message : String(err),
+      code: "network",
     };
   }
 }

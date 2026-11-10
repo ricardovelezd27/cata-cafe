@@ -365,6 +365,10 @@ export default async function GroupDetailPage({
     publish: t("feed.publish"),
     publishing: t("feed.publishing"),
     error: t("feed.error"),
+    notifyRecipientsTemplate: t.raw("feed.notifyRecipients") as string,
+    notifyNone: t("feed.notifyNone"),
+    sendSummaryTemplate: t.raw("sendSummary") as string,
+    sendRateLimited: t("sendRateLimited"),
   };
 
   return (
@@ -445,7 +449,7 @@ export default async function GroupDetailPage({
       {/* Announcements — the group's pulse, front and center right after stats */}
       <div className="space-y-3">
         <h2 className="font-display text-2xl text-primary-container">{t("feed.title")}</h2>
-        <PostComposer groupId={group.id} t={composerT} />
+        <PostComposer groupId={group.id} recipientCount={group.members.length} t={composerT} />
         <GroupFeed posts={feedPosts} isOwner locale={locale} t={feedT} />
       </div>
 
@@ -475,6 +479,7 @@ export default async function GroupDetailPage({
             resend: t("memberEdit.resend"),
             resent: t("memberEdit.resent"),
             resendFailed: t("memberEdit.resendFailed"),
+            resendRateLimited: t("memberEdit.resendRateLimited"),
           }}
         />
       </div>
@@ -520,6 +525,7 @@ export default async function GroupDetailPage({
               addMember: t("addMember"),
               added: t("added"),
               sendSkippedNotice: t("sendSkippedNotice"),
+              inviteRateLimited: t("invitesRateLimitedShort"),
               errorGeneric: t("errorGeneric"),
             }}
           />
@@ -542,6 +548,9 @@ export default async function GroupDetailPage({
             sendSummaryTemplate: t.raw("sendSummary"),
             sendSkippedNotice: t("sendSkippedNotice"),
             errorGeneric: t("errorGeneric"),
+            rateLimited: t("sendRateLimited"),
+            retryFailed: t("retryFailed"),
+            retrying: t("retrying"),
           }}
         />
       </div>

@@ -85,6 +85,7 @@ export default async function GroupsPage({
     createAndInvite: t("createAndInvite"),
     creating: t("creating"),
     invitesSentSummaryTemplate: t.raw("invitesSentSummary") as string,
+    invitesRateLimited: t("invitesRateLimited"),
     errorGeneric: t("errorGeneric"),
     closeLabel: tActions("cancel"),
   };

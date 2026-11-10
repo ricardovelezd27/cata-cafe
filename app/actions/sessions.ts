@@ -37,7 +37,7 @@ import {
 } from "@/lib/referenceRules";
 import * as v from "@/lib/validate";
 import { expressSampleLabel, validateExpressInput } from "@/lib/expressSession";
-import { logInfo } from "@/lib/log";
+import { logInfo, logWarn } from "@/lib/log";
 import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/groups";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
 import { WARMUP_IDS, type WarmupId } from "@/lib/warmup/exercises";
@@ -452,7 +452,13 @@ export async function createGroupSession(input: {
   /** Optional pre-cupping warm-up (WARMUP_IDS); null/absent = none. */
   warmupExerciseId?: string | null;
 }): Promise<
-  | { ok: true; sessionId: string; inviteToken: string; emailSummary?: GroupEmailSummary }
+  | {
+      ok: true;
+      sessionId: string;
+      inviteToken: string;
+      emailSummary?: GroupEmailSummary;
+      emailBlocked?: "rate_limited";
+    }
   | { ok: false; error: string }
 > {
   const user = await requireRegisteredUser();
@@ -529,20 +535,26 @@ export async function createGroupSession(input: {
   // Best-effort — a failed/skipped auto-invite email must never fail session
   // creation itself.
   let emailSummary: GroupEmailSummary | undefined;
+  let emailBlocked: "rate_limited" | undefined;
   if (input.groupId && input.notifyGroup !== false) {
     try {
-      emailSummary = await notifyGroupOfSession({
+      const notified = await notifyGroupOfSession({
         groupId: input.groupId,
         sessionId: session.id,
       });
+      if (notified.ok) emailSummary = notified.data;
+      else if (notified.error === "rate_limited") emailBlocked = "rate_limited";
     } catch (err) {
-      console.warn(
-        `[createGroupSession] notifyGroupOfSession threw for session ${session.id}: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      logWarn({
+        where: "createGroupSession",
+        message: "notify_group_threw",
+        sessionId: session.id,
+        code: (err as { code?: string })?.code ?? "unknown",
+      });
     }
   }
 
-  return { ok: true, sessionId: session.id, inviteToken: token, emailSummary };
+  return { ok: true, sessionId: session.id, inviteToken: token, emailSummary, emailBlocked };
 }
 
 // Prisma unique-constraint violation (duck-typed like app/actions/waitlist.ts —

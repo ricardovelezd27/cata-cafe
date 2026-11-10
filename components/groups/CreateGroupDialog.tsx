@@ -6,7 +6,7 @@
 // CreateGroupForm — group creation and the initial invite blast now happen
 // in one atomic call to createGroupWithMembers.
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X, Check } from "lucide-react";
 import { createGroupWithMembers } from "@/app/actions/groups";
@@ -33,6 +33,7 @@ export type CreateGroupTranslations = {
   // Raw ICU template ({sent}/{failed}) — see next-intl placeholder gotcha in
   // project memory: interpolated locally with formatTemplate, never via t().
   invitesSentSummaryTemplate: string;
+  invitesRateLimited: string;
   errorGeneric: string;
   closeLabel: string;
 };
@@ -63,7 +64,16 @@ export function CreateGroupDialog({
   const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<{ sent: number; failed: number } | null>(null);
+  const [blocked, setBlocked] = useState(false);
+  // True from a successful create until the navigation lands: the submit
+  // button and the close affordances stay locked, so a second tap cannot
+  // create (and email) a second group.
+  const [navigating, setNavigating] = useState(false);
   const [pending, start] = useTransition();
+  // Idempotency key of THIS dialog session: a replayed submit (double tap,
+  // retry after a lost response) returns the stored group instead of making
+  // another one. A fresh key on every reset.
+  const clientKeyRef = useRef<string | null>(null);
 
   const reset = () => {
     setName("");
@@ -72,10 +82,13 @@ export function CreateGroupDialog({
     setSelectedCandidates(new Set());
     setError(null);
     setSummary(null);
+    setBlocked(false);
+    setNavigating(false);
+    clientKeyRef.current = null;
   };
 
   const handleOpenChange = (next: boolean) => {
-    if (pending) return;
+    if (pending || navigating) return;
     setOpen(next);
     if (!next) reset();
   };
@@ -100,6 +113,7 @@ export function CreateGroupDialog({
     e.preventDefault();
     const trimmedName = name.trim();
     if (!trimmedName) return;
+    if (navigating) return;
     setError(null);
 
     // Client-side validation: skip fully empty rows, basic email regex for
@@ -116,6 +130,9 @@ export function CreateGroupDialog({
       members.push({ email: rowEmail, displayName: rowName || undefined });
     }
 
+    clientKeyRef.current ??= crypto.randomUUID();
+    const clientKey = clientKeyRef.current;
+
     start(async () => {
       try {
         const result = await createGroupWithMembers({
@@ -124,12 +141,19 @@ export function CreateGroupDialog({
           members,
           coCupperUserIds: [...selectedCandidates],
           locale: locale === "en" ? "en" : "es",
+          clientKey,
         });
         if (!result.ok) {
           setError(t.errorGeneric);
           return;
         }
-        if (result.emailSummary) {
+        setNavigating(true);
+        if (result.emailBlocked === "rate_limited") {
+          setBlocked(true);
+          setTimeout(() => {
+            router.push(`/${locale}/app/groups/${result.groupId}`);
+          }, 2600);
+        } else if (result.emailSummary) {
           setSummary({ sent: result.emailSummary.sent, failed: result.emailSummary.failed });
           setTimeout(() => {
             router.push(`/${locale}/app/groups/${result.groupId}`);
@@ -252,7 +276,16 @@ export function CreateGroupDialog({
             </div>
           )}
 
-          {error && <p className="text-xs text-error">{error}</p>}
+          {error && (
+            <p className="text-xs text-error" role="alert">
+              {error}
+            </p>
+          )}
+          {blocked && (
+            <p className="text-xs text-secondary font-semibold" role="status">
+              {t.invitesRateLimited}
+            </p>
+          )}
           {summary && (
             <p className="text-xs text-primary-container font-semibold">
               {formatTemplate(t.invitesSentSummaryTemplate, summary)}
@@ -262,7 +295,7 @@ export function CreateGroupDialog({
           <div className="flex justify-end pt-2 border-t border-outline-variant">
             <button
               type="submit"
-              disabled={pending || !name.trim()}
+              disabled={pending || navigating || !name.trim()}
               className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-pill bg-primary-container text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               {pending ? t.creating : t.createAndInvite}
