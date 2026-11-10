@@ -80,6 +80,8 @@ export interface WarmupPlayerStrings {
   repeat: string;
   backToList: string;
   finish: string;
+  /** Shown when the sound went silent after a lock / call (S8-13). */
+  tapToResume: string;
 }
 
 const LABEL_KEYS: SegmentLabel[] = [
@@ -165,5 +167,6 @@ export function warmupPlayerStrings(t: T): WarmupPlayerStrings {
     repeat: t("player.repeat"),
     backToList: t("player.backToList"),
     finish: t("player.finish"),
+    tapToResume: t("player.tapToResume"),
   };
 }

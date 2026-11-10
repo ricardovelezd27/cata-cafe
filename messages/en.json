@@ -1662,7 +1662,8 @@
       "noticedTitle": "What you may have noticed",
       "repeat": "Repeat",
       "backToList": "Back to the exercises",
-      "finish": "Finish"
+      "finish": "Finish",
+      "tapToResume": "Tap to resume"
     },
     "label": {
       "up": "Up",

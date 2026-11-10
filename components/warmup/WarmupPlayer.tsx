@@ -9,6 +9,7 @@ import { arrivePhaseAt, halo as haloAt } from "@/lib/warmup/breath";
 import { partTransforms, passedDots, torsoBreathTransform } from "@/lib/warmup/poses";
 import { previewSpec } from "@/lib/warmup/preview";
 import { saveReflection } from "@/lib/warmup/reflections";
+import { RESUME_WAIT_MS, audioResumeDecision } from "@/lib/warmup/audioResume";
 import type { NarrationSource, Pose, Segment } from "@/lib/warmup/timelineTypes";
 import { useRunClock } from "@/hooks/useRunClock";
 import { useWarmupAudio } from "@/hooks/useWarmupAudio";
@@ -401,6 +402,48 @@ export function WarmupPlayer({
     if (audio.interrupted && running) clock.pause();
   }, [audio.interrupted, running, clock]);
 
+  // ── Silent-after-lock guard (S8-13 F-3) ───────────────────────────────
+  // After a lock / call the clock may resume while the AudioContext stays
+  // suspended (resume() needs a gesture on iOS). On return we try to resume,
+  // wait ~300 ms, and only if it is STILL not running (and the sound is on)
+  // do we pause the run and ask for one tap. The tap is the gesture.
+  const [resumePrompt, setResumePrompt] = useState(false);
+  const showResumePrompt = resumePrompt && paused;
+  const guardRef = useRef({ muted: audio.muted, active: false, interrupted: audio.interrupted });
+  useEffect(() => {
+    guardRef.current = { muted: audio.muted, active: phase === "run" && !clock.userPaused && !clock.done, interrupted: audio.interrupted };
+  }, [audio.muted, audio.interrupted, phase, clock.userPaused, clock.done]);
+  const { checkContext } = audio;
+  const clockPause = clock.pause;
+  useEffect(() => {
+    if (phase !== "run") return;
+    let cancelled = false;
+    const check = async () => {
+      if (document.visibilityState !== "visible") return;
+      const ctxState = await checkContext(RESUME_WAIT_MS);
+      if (cancelled) return;
+      const g = guardRef.current;
+      if (audioResumeDecision({ ctxState, muted: g.muted, running: g.active, interrupted: g.interrupted }) === "prompt") {
+        clockPause();
+        setResumePrompt(true);
+      }
+    };
+    document.addEventListener("visibilitychange", check);
+    window.addEventListener("pageshow", check);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", check);
+      window.removeEventListener("pageshow", check);
+    };
+  }, [phase, checkContext, clockPause]);
+  const clockToggle = clock.toggle;
+  // Play / pause through here: the click is the gesture that can wake audio.
+  const togglePlay = useCallback(() => {
+    setResumePrompt(false);
+    audio.unlock();
+    clockToggle();
+  }, [audio, clockToggle]);
+
   // ── Manual ("Quieto") mode: stop at the end of every step ─────────────
   const stopForQuieto = useCallback(
     (idx: number) => {
@@ -758,6 +801,11 @@ export function WarmupPlayer({
             <p className="sr-only" aria-live="polite" aria-atomic="true">
               {liveCue}
             </p>
+            {showResumePrompt && (
+              <button type="button" className={s.primaryBtn} onClick={togglePlay}>
+                {t.tapToResume}
+              </button>
+            )}
             {isBridge && (
               <button type="button" className={s.primaryBtn} onClick={onFinish ?? exit}>
                 {t.goToTable}
@@ -847,7 +895,7 @@ export function WarmupPlayer({
           <button
             type="button"
             className={s.playBtn}
-            onClick={clock.toggle}
+            onClick={togglePlay}
             aria-label={paused ? t.resume : t.pause}
             aria-pressed={paused}
           >

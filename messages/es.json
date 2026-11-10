@@ -1662,7 +1662,8 @@
       "noticedTitle": "Lo que pudiste notar",
       "repeat": "Repetir",
       "backToList": "Volver a los ejercicios",
-      "finish": "Terminar"
+      "finish": "Terminar",
+      "tapToResume": "Toca para reanudar"
     },
     "label": {
       "up": "Sube",

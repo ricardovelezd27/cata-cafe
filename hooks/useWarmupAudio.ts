@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { useLocalFlag } from "@/hooks/useLocalFlag";
+import type { AudioCtxState } from "@/lib/warmup/audioResume";
 import { VIBRATION, cueDurationMs, renderCue, renderHum } from "@/lib/warmup/sounds";
 import type { CueKind, CuePoint, HumWindow } from "@/lib/warmup/timelineTypes";
 
@@ -54,6 +55,10 @@ export interface WarmupAudio {
   cancelSpeech(): void;
   /** iOS "interrupted" context (call, Siri, other audio app) — treat as a pause. */
   interrupted: boolean;
+  /** Try to resume the existing context (never creates one); resolves with
+   *  its state once it settled or after `waitMs` (iOS may never settle the
+   *  promise outside a gesture). "none" when no context exists yet. */
+  checkContext(waitMs?: number): Promise<AudioCtxState>;
 }
 
 // ── AudioContext singleton ─────────────────────────────────────────────────
@@ -255,6 +260,20 @@ export function useWarmupAudio(locale?: string): WarmupAudio {
     [cancel, freshBus],
   );
 
+  const checkContext = useCallback(async (waitMs = 300): Promise<AudioCtxState> => {
+    const c = getCtx(false);
+    if (!c) return "none";
+    if (c.state !== "running" && c.state !== "closed") {
+      try {
+        await Promise.race([c.resume().catch(() => {}), new Promise<void>((r) => window.setTimeout(r, waitMs))]);
+      } catch {
+        /* resume unavailable */
+      }
+    }
+    const st = c.state as string;
+    return st === "running" || st === "suspended" || st === "interrupted" || st === "closed" ? st : "suspended";
+  }, []);
+
   const playDemo = useCallback(
     (kind: CueKind) => {
       unlock();
@@ -371,7 +390,8 @@ export function useWarmupAudio(locale?: string): WarmupAudio {
       speak,
       cancelSpeech,
       interrupted,
+      checkContext,
     }),
-    [muted, setMuted, voice, setVoice, voiceAvailable, unlock, schedule, cancel, playDemo, speak, cancelSpeech, interrupted],
+    [muted, setMuted, voice, setVoice, voiceAvailable, unlock, schedule, cancel, playDemo, speak, cancelSpeech, interrupted, checkContext],
   );
 }
