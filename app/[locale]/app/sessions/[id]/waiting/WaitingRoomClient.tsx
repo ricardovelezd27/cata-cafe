@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
+import { useForegroundResume } from "@/hooks/useForegroundResume";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronDown, EyeOff } from "lucide-react";
@@ -91,6 +92,8 @@ export function WaitingRoomClient({
   // True whenever the realtime channel is not actively SUBSCRIBED — drives the
   // 15s polling fallback and the "connection lost" notice below.
   const [connectionLost, setConnectionLost] = useState(false);
+  // Bumped on foreground resume so the realtime effect below re-runs (S8-15).
+  const [resumeKey, setResumeKey] = useState(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // The owner may pick/change the reference while people wait — same
   // cupping_sessions UPDATE stream that carries startedAt.
@@ -217,6 +220,23 @@ export function WaitingRoomClient({
     onStartedRef.current = onStarted;
   });
 
+  // Foreground resume (S8-15): a phone that slept has a dead socket and may have
+  // missed the start. Recreate the channel (via resumeKey) and re-seed from the
+  // server — same read the 15 s polling fallback uses.
+  useForegroundResume(() => {
+    if (isAsync) return;
+    setResumeKey((k) => k + 1);
+    void (async () => {
+      const state = await getWaitingState(sessionId);
+      if (!state) return;
+      if (state.startedAt) {
+        onStartedRef.current();
+        return;
+      }
+      applySyncRef.current({ warmupStartedAt: state.warmupStartedAt }, false);
+    })();
+  });
+
   // Back closes the player, not the page (push a history entry when it opens).
   useEffect(() => {
     if (!activeWarmupId) return;
@@ -305,7 +325,7 @@ export function WaitingRoomClient({
       clearPoll();
       stop();
     };
-  }, [sessionId, router, isAsync]);
+  }, [sessionId, router, isAsync, resumeKey]);
 
   const handleStart = async () => {
     if (isAsync) {

@@ -78,6 +78,7 @@ import {
   type ModuleItem,
 } from "@/components/ui";
 import { useConnectivity } from "@/hooks/useConnectivity";
+import { useForegroundResume } from "@/hooks/useForegroundResume";
 import {
   isPinnedModule,
   nextReferenceOrder,
@@ -574,7 +575,11 @@ export function CupClient({
   } | null>(null);
 
   // ─── Offline support ──────────────────────────────────────────
-  const { online } = useConnectivity();
+  const { online, recheck } = useConnectivity();
+  // Bumped on foreground resume so the realtime effect re-runs and rebuilds the
+  // channel through subscribeWithSessionAuth (S8-15). Never saves: the pagehide
+  // flush stays the only writer.
+  const [resumeKey, setResumeKey] = useState(0);
   const onlineRef = useRef(online);
   useEffect(() => {
     onlineRef.current = online;
@@ -787,6 +792,16 @@ export function CupClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.id, userId]);
 
+  // Foreground resume: re-probe connectivity, rebuild the group channel and
+  // refetch the server page (the reconcile effect merges fresh samples without
+  // touching local drafts).
+  useForegroundResume(() => {
+    void recheck();
+    if (!isGroup) return;
+    setResumeKey((k) => k + 1);
+    router.refresh();
+  });
+
   // ─── Realtime subscription for group sessions ─────────────────
   useEffect(() => {
     if (!isGroup || !online) return;
@@ -878,7 +893,7 @@ export function CupClient({
       if (refreshTimer) clearTimeout(refreshTimer);
       stopSubscription();
     };
-  }, [isGroup, isOwner, online, session.id, router]);
+  }, [isGroup, isOwner, online, session.id, router, resumeKey]);
 
   // Safety net for the realtime path above (S6 CP-C4): a group cupper whose
   // channel is silently dead (see lib/supabase/realtimeAuth.ts) still picks up

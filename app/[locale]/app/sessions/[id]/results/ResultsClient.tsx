@@ -46,6 +46,7 @@ import {
   useActionFeedback,
 } from "@/components/ui";
 import { ReportLink } from "@/components/ui/ReportLink";
+import { useForegroundResume } from "@/hooks/useForegroundResume";
 import { updateSampleMetadata } from "@/app/actions/sessions";
 import { asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
@@ -366,6 +367,17 @@ export function ResultsClient({
   // refresh), so the no-op UPDATE storms from exclusion toggles / owner
   // recomputes don't re-badge evaluations the viewer has already seen.
   const seenEvalIds = useRef(new Set<string>(knownEvalIds));
+  // Bumped on foreground resume so the realtime effect below re-runs (S8-15).
+  const [resumeKey, setResumeKey] = useState(0);
+  // A phone that slept has a dead socket and stale numbers: recreate the channel
+  // and re-fetch the server render once. Pending badges are now moot.
+  useForegroundResume(() => {
+    if (isAdminViewer) return;
+    setResumeKey((k) => k + 1);
+    setNewSubmissions(0);
+    setHasGenericUpdates(false);
+    router.refresh();
+  });
 
   // ─── Realtime: badge the refresh button when something new is available ───
   // Manual-refresh design is intentional (no auto re-render); this only tells
@@ -449,7 +461,7 @@ export function ResultsClient({
     );
 
     return stop;
-  }, [isGroup, canViewGroup, isOwner, isAdminViewer, session.id, session.samples, currentUserId]);
+  }, [isGroup, canViewGroup, isOwner, isAdminViewer, session.id, session.samples, currentUserId, resumeKey]);
 
   const handleEditSample = (sampleId: string) => {
     router.push(`/${locale}/app/sessions/${session.id}/cup?sample=${sampleId}`);
