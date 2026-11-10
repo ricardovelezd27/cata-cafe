@@ -1583,13 +1583,15 @@ ALTER TABLE group_email_deliveries ENABLE ROW LEVEL SECURITY;
 --           cup, exactly once; it is idempotent (a second run changes nothing).
 --           Tell Kim BEFORE running it.
 --
+-- Post-apply check (STEP 1 must keep the PHASE 18 pin; CREATE OR REPLACE resets function config):
+--   select proconfig from pg_proc where proname = 'recompute_aggregate_score';  -- expect {search_path=public}
 -- Verify: pick a session with cupsPerSample < 5 and a flagged cup; before STEP 2
 -- its aggregate_scores."communityScore" is below "avgRawScore", after it equals
 -- "avgRawScore" rounded to 0.25. Sessions with cupsPerSample >= 5 never move.
 -- ============================================================================
 -- STEP 1
 CREATE OR REPLACE FUNCTION recompute_aggregate_score()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_session_id         text;
   v_cups_per_sample    int;
@@ -1729,7 +1731,7 @@ $$;
 -- ROLLBACK: re-create the previous function body (verbatim below) and re-run
 -- STEP 2. The scores of sessions under 5 cups then go back to the old values.
 --   CREATE OR REPLACE FUNCTION recompute_aggregate_score()
---   RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$
+--   RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 --   DECLARE
 --     v_session_id         text;
 --     v_cups_per_sample    int;
