@@ -6,7 +6,7 @@ import { closeSessionInternal } from "@/lib/closeSession";
 import { detachCoffeeHistoryForSession } from "@/lib/coffeeHistory";
 import { anonymizeOwnedCoffees } from "@/lib/coffees/anonymize";
 import { loadDeletionFixture } from "@/lib/accountDeletion/load";
-import { planAccountDeletion } from "@/lib/accountDeletion/plan";
+import { exactEmailMatches, planAccountDeletion } from "@/lib/accountDeletion/plan";
 import { deletedProfileId, DELETED_PROFILE_STORED_NAME } from "@/lib/accountDeletion/deletedProfile";
 import { errorMessage, logError, logInfo, logWarn } from "@/lib/log";
 
@@ -156,11 +156,20 @@ export async function deleteAccountData(user: {
     });
     // TastingGroupMember: the FK would null itself but the row keeps the
     // email; their memberships go entirely (GroupEmailDelivery cascades).
-    await tx.tastingGroupMember.deleteMany({
-      where: plan.waitlistEmail
-        ? { OR: [{ userId }, { email: { equals: plan.waitlistEmail, mode: "insensitive" } }] }
-        : { userId },
-    });
+    // Linked rows by id; pending rows by address, matched EXACTLY in JS
+    // (exactEmailMatches): the database's case-insensitive match may be an
+    // ILIKE, where `_`/`%` would hit another person's row in another group.
+    await tx.tastingGroupMember.deleteMany({ where: { userId } });
+    if (plan.waitlistEmail) {
+      const memberCandidates = await tx.tastingGroupMember.findMany({
+        where: { email: { equals: plan.waitlistEmail, mode: "insensitive" } },
+        select: { id: true, email: true },
+      });
+      const memberIds = exactEmailMatches(memberCandidates, plan.waitlistEmail).map((m) => m.id);
+      if (memberIds.length > 0) {
+        await tx.tastingGroupMember.deleteMany({ where: { id: { in: memberIds } } });
+      }
+    }
 
     // ── Erase ─────────────────────────────────────────────────────────────
     await tx.userCoffeeHistory.deleteMany({ where: { userId } });
@@ -169,8 +178,17 @@ export async function deleteAccountData(user: {
     await tx.outboundEmailEvent.deleteMany({ where: { actorKey: `u_${userId}` } });
     await tx.closeEmailDelivery.deleteMany({ where: { userId } });
     await tx.sessionReminderDelivery.deleteMany({ where: { userId } });
+    // Waitlist row: same exact-match discipline (a row stored before the
+    // lowercase rule would be missed by a plain `=`; a wildcard must never hit).
     if (plan.waitlistEmail) {
-      await tx.waitlistEntry.deleteMany({ where: { email: plan.waitlistEmail } });
+      const waitlistCandidates = await tx.waitlistEntry.findMany({
+        where: { email: { equals: plan.waitlistEmail, mode: "insensitive" } },
+        select: { id: true, email: true },
+      });
+      const waitlistIds = exactEmailMatches(waitlistCandidates, plan.waitlistEmail).map((w) => w.id);
+      if (waitlistIds.length > 0) {
+        await tx.waitlistEntry.deleteMany({ where: { id: { in: waitlistIds } } });
+      }
     }
 
     // ── Last: the profile itself. NOT caught: a Restrict FK this function

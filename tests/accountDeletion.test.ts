@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   deleteConfirmationWord,
+  exactEmailMatches,
   impactOf,
   isDeleteConfirmed,
   planAccountDeletion,
@@ -161,6 +162,36 @@ describe("planAccountDeletion", () => {
       evaluationsAnonymized: 2,
       protected: false,
     });
+  });
+});
+
+describe("exactEmailMatches (no ILIKE wildcards)", () => {
+  const rows = [
+    { id: "1", email: "john_doe@x.com" },
+    { id: "2", email: "johnXdoe@x.com" },
+    { id: "3", email: "  JOHN_DOE@X.COM " },
+    { id: "4", email: "ana%b@x.com" },
+    { id: "5", email: "anaZZb@x.com" },
+    { id: "6", email: "ana@x.com" },
+  ];
+
+  it("`_` is a literal, not a one-character wildcard", () => {
+    expect(exactEmailMatches(rows, "John_Doe@x.com").map((r) => r.id)).toEqual(["1", "3"]);
+  });
+
+  it("`%` is a literal, not a many-character wildcard", () => {
+    expect(exactEmailMatches(rows, "ana%b@x.com").map((r) => r.id)).toEqual(["4"]);
+    expect(exactEmailMatches(rows, "ana%@x.com")).toEqual([]);
+  });
+
+  it("matches case- and whitespace-insensitively, never a prefix or substring", () => {
+    expect(exactEmailMatches(rows, " ANA@X.COM").map((r) => r.id)).toEqual(["6"]);
+    expect(exactEmailMatches(rows, "na@x.com")).toEqual([]);
+  });
+
+  it("no address matches nothing", () => {
+    expect(exactEmailMatches(rows, null)).toEqual([]);
+    expect(exactEmailMatches(rows, "   ")).toEqual([]);
   });
 });
 

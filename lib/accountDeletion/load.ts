@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/app/generated/prisma/client";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import {
+  exactEmailMatches,
   impactOf,
   planAccountDeletion,
   type AccountDeletionImpact,
@@ -66,7 +67,7 @@ export async function loadDeletionFixture(
       select: { groupId: true, userId: true, email: true },
     });
     for (const m of members) {
-      const isSelf = m.userId === userId || (!m.userId && !!email && m.email.toLowerCase() === email);
+      const isSelf = m.userId === userId || (!m.userId && exactEmailMatches([m], email).length > 0);
       if (isSelf) continue;
       otherMembersByGroup.set(m.groupId, (otherMembersByGroup.get(m.groupId) ?? 0) + 1);
     }

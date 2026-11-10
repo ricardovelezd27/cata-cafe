@@ -148,8 +148,17 @@ describe("deleteAccount covers the manifest", () => {
     expect(evalUpdate![0]).not.toContain("isDraft");
   });
 
-  it("removes the waitlist row by email (S8-08 TODO)", () => {
-    expect(deleteSource).toMatch(/tx\.waitlistEntry\.deleteMany\(\{ where: \{ email: plan\.waitlistEmail \} \}\)/);
+  it("removes the waitlist row by email (S8-08 TODO), matched exactly in JS", () => {
+    expect(deleteSource).toMatch(/exactEmailMatches\(waitlistCandidates, plan\.waitlistEmail\)/);
+    expect(deleteSource).toMatch(/tx\.waitlistEntry\.deleteMany\(\{ where: \{ id: \{ in: waitlistIds \} \} \}\)/);
+  });
+
+  it("never deletes by a database email match (ILIKE wildcards)", () => {
+    // Every `email:` filter in the file is a candidate SELECT, never a delete.
+    for (const m of deleteSource.matchAll(/tx\.(\w+)\.(deleteMany|updateMany)\(\{[\s\S]*?\}\);/g)) {
+      expect(m[0], m[0]).not.toMatch(/\bemail\s*:/);
+    }
+    expect(deleteSource).toMatch(/exactEmailMatches\(memberCandidates, plan\.waitlistEmail\)/);
   });
 
   it("deletes the profile LAST and never catches it", () => {

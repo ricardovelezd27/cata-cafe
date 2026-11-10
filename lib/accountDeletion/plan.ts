@@ -120,8 +120,31 @@ export function planAccountDeletion(f: DeletionFixture): DeletionPlan {
     deleteGroupIds,
     keepGroupIds,
     coffeesAnonymized: f.liveOwnedCoffees,
-    waitlistEmail: f.email ? f.email.trim().toLowerCase() : null,
+    waitlistEmail: f.email ? normalizeEmail(f.email) : null,
   };
+}
+
+/** Normalized form an address is compared in: trimmed, lowercased. */
+export function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+/**
+ * The rows whose address IS the person's, compared exactly in JS. Every
+ * by-email delete in deleteAccount first selects candidates with a
+ * case-insensitive filter and then keeps only these: a database
+ * case-insensitive match may compile to ILIKE, where `_` and `%` in an address
+ * are wildcards (`john_doe@x.com` would also match `johnXdoe@x.com`), and a
+ * wildcard hit there deletes ANOTHER person's row.
+ */
+export function exactEmailMatches<R extends { email: string }>(
+  rows: readonly R[],
+  email: string | null | undefined,
+): R[] {
+  if (!email) return [];
+  const target = normalizeEmail(email);
+  if (target.length === 0) return [];
+  return rows.filter((r) => typeof r.email === "string" && normalizeEmail(r.email) === target);
 }
 
 /** The counts the confirm dialog shows (no ids leave the server). */
