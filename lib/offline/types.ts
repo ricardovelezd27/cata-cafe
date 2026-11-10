@@ -24,12 +24,27 @@ export const EVALUATION_MODULES: ModuleKey[] = [
 // this module reached the server. The draft stays on the device, read-only,
 // counted by the pending badge and named in a persistent notice; it is never
 // replayed and never deleted without the cupper's say-so.
-export type SyncStatus = "pending" | "synced" | "conflict" | "closed_unsent";
+//
+// S8-09 widens the machine (lib/offline/status.ts owns the transitions):
+//   failed   : replay kept failing (5 automatic attempts); the cupper retries by hand
+//   orphaned : the sample or session no longer exists for this user (deleted
+//              session, removed sample, lost membership); kept readable
+export type SyncStatus =
+  | "pending"
+  | "synced"
+  | "conflict"
+  | "failed"
+  | "closed_unsent"
+  | "orphaned";
 
 export type OfflineModuleData = {
   data: Data;
   syncStatus: SyncStatus;
   updatedAt: number;
+  /** Consecutive failed replay runs (S8-09). Absent = 0. */
+  attempts?: number;
+  /** When the next automatic attempt is due (epoch ms, S8-09). */
+  nextAttemptAt?: number;
 };
 
 export type OfflineSampleData = {
