@@ -13,6 +13,8 @@ export interface OverlayGateInput {
   isOwner: boolean;
   isGroup: boolean;
   isAsync: boolean;
+  /** The live cupping has started (CuppingSession.startedAt is set). */
+  startedAt: boolean;
 }
 
 /**
@@ -22,6 +24,9 @@ export interface OverlayGateInput {
  *  - has an evaluation already             → false (returning mid-cupping)
  *  - owner of a LIVE group session         → false (the master runs it with the
  *                                            group from the panel — Stage 2)
+ *  - LIVE group session already started  → false (S8-13 F-1: the water is on;
+ *                                            nobody gets a 3-7 min interstitial
+ *                                            between the cups, late joiners included)
  *  - otherwise (solo owner, async owner,
  *    any participant)                       → true
  */
@@ -30,6 +35,7 @@ export function shouldShowWarmupOverlay(i: OverlayGateInput): boolean {
   if (i.seenValue === i.exerciseId) return false;
   if (i.hasOwnEvaluation) return false;
   if (i.isOwner && i.isGroup && !i.isAsync) return false;
+  if (i.isGroup && !i.isAsync && i.startedAt) return false;
   return true;
 }
 

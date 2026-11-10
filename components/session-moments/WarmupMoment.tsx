@@ -18,6 +18,8 @@ export interface WarmupMomentProps {
   isOwner: boolean;
   isGroup: boolean;
   isAsync: boolean;
+  /** The live cupping already started (frozen at mount with the rest of the gate). */
+  startedAt?: boolean;
   /** Extra gate from the host (e.g. session not closed). */
   enabled?: boolean;
   strings: WarmupPlayerStrings;
@@ -43,6 +45,7 @@ export function WarmupMoment({
   isOwner,
   isGroup,
   isAsync,
+  startedAt = false,
   enabled = true,
   strings,
 }: WarmupMomentProps) {
@@ -57,6 +60,7 @@ export function WarmupMoment({
         isOwner,
         isGroup,
         isAsync,
+        startedAt,
       });
     return { id, show };
   });

@@ -2339,6 +2339,7 @@ export function CupClient({
         isOwner={isOwner}
         isGroup={isGroup}
         isAsync={sessionIsAsync}
+        startedAt={!!startedAt}
         enabled={sessionStatus !== "closed"}
         strings={warmup.strings}
       />

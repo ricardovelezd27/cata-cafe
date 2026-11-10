@@ -8,6 +8,7 @@ const base = {
   isOwner: false,
   isGroup: true,
   isAsync: false,
+  startedAt: false,
 };
 
 describe("shouldShowWarmupOverlay", () => {
@@ -21,6 +22,10 @@ describe("shouldShowWarmupOverlay", () => {
     ["owner of an async group session", { isOwner: true, isAsync: true }, true],
     ["solo owner", { isOwner: true, isGroup: false }, true],
     ["live participant", {}, true],
+    ["live participant after Iniciar cata", { startedAt: true }, false],
+    ["live late joiner after start", { startedAt: true, hasOwnEvaluation: false }, false],
+    ["async participant, startedAt set", { isAsync: true, startedAt: true }, true],
+    ["solo, startedAt set", { isGroup: false, startedAt: true }, true],
     ["async participant", { isAsync: true }, true],
   ])("%s", (_name, patch, expected) => {
     expect(shouldShowWarmupOverlay({ ...base, ...patch })).toBe(expected);
