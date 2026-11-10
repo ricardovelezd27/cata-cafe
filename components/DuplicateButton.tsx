@@ -52,7 +52,12 @@ export function DuplicateButton({
           router.push(`/${locale}/app/sessions/${res.sessionId}/edit`);
         } else if (kind === "coffee") {
           const res = await duplicateCoffee(id, locale);
-          router.push(`/${locale}/app/coffees/${res.coffeeId}/edit`);
+          if (!res.ok) {
+            // run() returns the failure instead of throwing (S8-10 T12).
+            setFailed(true);
+            return;
+          }
+          router.push(`/${locale}/app/coffees/${res.data.coffeeId}/edit`);
         } else {
           const res = await duplicateGroup(id, locale);
           router.push(`/${locale}/app/groups/${res.groupId}`);
