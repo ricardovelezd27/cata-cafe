@@ -611,10 +611,11 @@ export default async function ResultsPage({
   // recompute): say so, so an emailed summary or an old tab is not trusted blindly.
   const updatedAfterClose =
     session.isGroup && session.status === "closed" && !hideCommunity
-      ? resultsUpdatedAfterClose(session.closedAt, [
-          lastComputedAt,
-          ...session.participants.map((p) => p.excludedAt),
-        ])
+      ? resultsUpdatedAfterClose(
+          session.closedAt,
+          session.participants.map((p) => p.excludedAt),
+          [lastComputedAt],
+        )
       : null;
   const updatedAfterCloseLabel = updatedAfterClose
     ? tResults("updatedAfterClose", {

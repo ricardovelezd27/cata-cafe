@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   EXCLUSION_REASONS,
   exclusionData,
+  CLOSE_RECOMPUTE_GRACE_MS,
   isExclusionReason,
   resultsUpdatedAfterClose,
 } from "@/lib/exclusionReasons";
@@ -70,5 +71,28 @@ describe("exclusionData (S8-12 review)", () => {
       excludedBy: null,
       exclusionReason: null,
     });
+  });
+});
+
+describe("resultsUpdatedAfterClose grace for aggregate recomputes (S8-12 review)", () => {
+  const closed = new Date("2026-11-01T10:00:00Z");
+  const at = (ms: number) => new Date(closed.getTime() + ms);
+
+  it("ignores a computedAt within the grace window (the close's own recompute)", () => {
+    expect(resultsUpdatedAfterClose(closed, [], [at(5_000)])).toBeNull();
+    expect(resultsUpdatedAfterClose(closed, [], [at(CLOSE_RECOMPUTE_GRACE_MS)])).toBeNull();
+  });
+  it("counts a computedAt more than 10 minutes after the close", () => {
+    const late = at(CLOSE_RECOMPUTE_GRACE_MS + 1);
+    expect(resultsUpdatedAfterClose(closed, [], [late])).toEqual(late);
+  });
+  it("an excludedAt after the close always counts, even seconds later", () => {
+    const ex = at(1_000);
+    expect(resultsUpdatedAfterClose(closed, [ex], [at(5_000)])).toEqual(ex);
+  });
+  it("returns the latest of both kinds", () => {
+    const ex = at(2_000);
+    const late = at(CLOSE_RECOMPUTE_GRACE_MS + 60_000);
+    expect(resultsUpdatedAfterClose(closed, [ex], [late])).toEqual(late);
   });
 });

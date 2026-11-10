@@ -11,19 +11,32 @@ export function isExclusionReason(value: unknown): value is ExclusionReason {
   return typeof value === "string" && (EXCLUSION_REASONS as readonly string[]).includes(value);
 }
 
-/** The latest of `stamps` that is strictly after `closedAt`; null when the
- *  session is open or nothing changed after the close. Drives the "Resultados
- *  actualizados el <fecha>" banner and the matching PDF line. */
+/** The close routine itself recomputes aggregates right after stamping
+ *  `closedAt` (S8-04), so an aggregate `computedAt` a few seconds past the
+ *  close is part of closing, not a later change. Only a recompute more than
+ *  this long after the close counts as "updated after close". */
+export const CLOSE_RECOMPUTE_GRACE_MS = 10 * 60 * 1000;
+
+/** The latest change strictly after `closedAt`; null when the session is open
+ *  or nothing changed after the close. Drives the "Resultados actualizados el
+ *  <fecha>" banner and the matching PDF line.
+ *  - `stamps` (e.g. a participant's `excludedAt`) always count once after the close.
+ *  - `computedStamps` (aggregate `computedAt`) count only when MORE than
+ *    CLOSE_RECOMPUTE_GRACE_MS after the close. */
 export function resultsUpdatedAfterClose(
   closedAt: Date | null | undefined,
   stamps: (Date | null | undefined)[],
+  computedStamps: (Date | null | undefined)[] = [],
 ): Date | null {
   if (!closedAt) return null;
+  const closed = closedAt.getTime();
   let latest: Date | null = null;
-  for (const s of stamps) {
-    if (!s || s.getTime() <= closedAt.getTime()) continue;
+  const consider = (s: Date | null | undefined, floor: number) => {
+    if (!s || s.getTime() <= floor) return;
     if (!latest || s.getTime() > latest.getTime()) latest = s;
-  }
+  };
+  for (const s of stamps) consider(s, closed);
+  for (const s of computedStamps) consider(s, closed + CLOSE_RECOMPUTE_GRACE_MS);
   return latest;
 }
 
