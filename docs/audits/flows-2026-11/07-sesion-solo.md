@@ -29,6 +29,8 @@ The owner of a solo session (wizard or express; always `status: "active"` from c
 
 ### F-solo-2 · Editing a submitted evaluation leaves the aggregate, and then the history score, stale · severity: P2 · status: confirms-board(Editar una evaluación ya enviada no recalcula el agregado)
 
+**Fixed in S8-04** (draft PR, branch `claude/s8-04-scoring-impl`): a guarded `isDraft` write after the upsert re-fires the trigger only for submitted rows; `closeSessionInternal` also re-fires through `lib/aggregates.ts` before the history sync.
+
 - **Problem** — The trigger is `AFTER INSERT OR UPDATE OF "isDraft"` (`prisma/sql/rls_and_triggers.sql:264-268`). `upsertEvaluation`'s update path writes `update: { sessionId, ...fields }` (`app/actions/sessions.ts:609`), never `isDraft`, so a save on a submitted row does not refire it. Solo route: submit a partial set, land on results with the session still active, press "Volver a catar" (rendered while not closed, `ResultsClient.tsx:581`), edit sample A (already submitted), submit the rest. The final `updateMany` only touches `isDraft: true` rows (`community.ts:29-36`), so A's aggregate is never recomputed, yet `syncCoffeeHistoryForSession` stores `aggregateScore.communityScore` (`coffeeHistory.ts:54`) beside the fresh `individualScore`. The offline path answers `conflict` for the same edit (`offline.ts:60-62`).
 - **Implication** — Two different scores for one cupping in history and on the coffee page, when for a solo session they must be identical. Scoring correctness plus trust.
 - **Fix** — One rule for both write paths: an edit of a submitted row refreshes the aggregate; close recomputes aggregates before writing history; the owner's own offline edit applies instead of conflicting. Draft saves do not fire it. **Acceptance:** edit after partial submit, then close: history `communityScore` equals `individualScore` for solo; offline replay of the same edit stores the same values; draft saves add no trigger cost. **Size:** M.
@@ -48,6 +50,8 @@ The owner of a solo session (wizard or express; always `status: "active"` from c
 - **Invariant check** — none touched (solo auto-close rule unchanged; messaging only). Option (b) in K-solo-1 would bend "partial submit keeps the session active" only in wording, not in logic.
 
 ### F-solo-4 · Incomplete and descriptive-only solo sessions store a community score of 0.00 in history · severity: P3 · status: new
+
+**Fixed in S8-04** (draft PR, branch `claude/s8-04-scoring-impl`): `lib/historyRules.ts` stores `communityScore = null` unless the aggregate has `participantCount > 0`; past rows follow `scripts/resync-low-cup-history.ts --apply`.
 
 - **Problem** — The trigger writes an aggregate row for any submitted evaluation; with no "affective complete" evaluation the average is null and the score becomes `GREATEST(0, … COALESCE(v_avg_raw,0) …)` = 0 (`rls_and_triggers.sql:776`; `is_affective_complete` at `:544-555`). A descriptive-only session reads `combinedData`, which is empty, so it is always 0. `syncCoffeeHistoryForSession` copies `aggregateScore?.communityScore ?? null` (`coffeeHistory.ts:54`), so 0 is stored, and `ScorePill` shows "—" only for `null` (`components/ui/Badge.tsx:82`).
 - **Implication** — Profile history and coffee pages can show "0.00" in the lowest colour band for a cupping that never had a quality score. Trust.

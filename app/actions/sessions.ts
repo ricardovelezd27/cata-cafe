@@ -44,6 +44,7 @@ import { CERTIFICATIONS } from "@/lib/constants";
 import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/groups";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
 import { WARMUP_IDS, type WarmupId } from "@/lib/warmup/exercises";
+import { submittedRefireArgs } from "@/lib/aggregateRefire";
 
 // Mirrors the standalone CoffeeForm's field set — wizard-created coffees land
 // in the SAME coffees table with the same shape (no wizard-only subset).
@@ -638,6 +639,13 @@ export async function upsertEvaluation(input: {
     if (!isP2002(e)) throw e;
     result = await doUpsert();
   }
+
+  // S8-04 (F-solo-2): an edit of an ALREADY SUBMITTED row must re-fire the
+  // aggregate trigger (it only fires when "isDraft" is in the SET list). This
+  // guarded write matches only submitted rows, so a draft save (the 800 ms hot
+  // path) fires nothing; `fields` never carries isDraft, so a draft is never
+  // submitted by accident. See lib/aggregateRefire.ts.
+  await prisma.evaluation.updateMany(submittedRefireArgs(result.id));
 
   return { ok: true, evaluationId: result.id };
 }

@@ -6,6 +6,7 @@
 
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/app/generated/prisma/client";
+import { historyCommunityScore } from "@/lib/historyRules";
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
@@ -34,7 +35,7 @@ export async function syncCoffeeHistoryForSession(
         },
       },
       aggregateScore: {
-        select: { communityScore: true },
+        select: { communityScore: true, participantCount: true },
       },
     },
   });
@@ -50,7 +51,8 @@ export async function syncCoffeeHistoryForSession(
   for (const sample of samples) {
     if (!sample.coffeeId) continue;
     const coffeeId = sample.coffeeId;
-    const communityScore = sample.aggregateScore?.communityScore ?? null;
+    // S8-04: null unless a real included evaluation exists (lib/historyRules.ts).
+    const communityScore = historyCommunityScore(sample.aggregateScore);
 
     for (const evaluation of sample.evaluations) {
       upserts.push(

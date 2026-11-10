@@ -78,6 +78,8 @@ A cupper edits a sample; `CupClient.flushSave` (`CupClient.tsx:885`) writes to t
 
 ### F-offline-7 · «Reemplazar con mi versión» deja el puntaje de comunidad viejo · severity: P2 · status: confirms-board(«Reemplazar con mi versión» no recalcula el puntaje de comunidad)
 
+**Fixed in S8-04** (draft PR, branch `claude/s8-04-scoring-impl`): `syncEvaluation` ends with the same guarded refire; a solo replay over the owner's own submitted row applies instead of returning `conflict`.
+
 - **Problem** — A forced replay updates a submitted row without touching `isDraft` (`offline.ts:79-94`; the comment at `:26-28` says results recompute from raw rows). The trigger fires only `AFTER INSERT OR UPDATE OF "isDraft"` (`prisma/sql/rls_and_triggers.sql:264-268`), while the coffee profile and ficha read the stored aggregate (`lib/coffees/aggregateSamples.ts:18-20`).
 - **Implication** — Scoring correctness on a rare path: the stored community score differs from the evaluations behind it. P2 rather than P1 because it needs a conflict plus an explicit "replace".
 - **Fix** — After a forced replace, re-fire the aggregate for that sample (the same no-op `isDraft` update used by `refreshAggregateScores` and the claim merge) and correct the code comment. **Acceptance:** replace on a submitted evaluation makes `AggregateScore` match the evaluations. **Size:** S.

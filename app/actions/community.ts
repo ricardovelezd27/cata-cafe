@@ -18,6 +18,7 @@ import * as v from "@/lib/validate";
 import { runLengthMs } from "@/lib/warmup/syncedRun";
 import { run } from "@/lib/safeAction";
 import type { ActionResult } from "@/lib/actionResult";
+import { refireAggregates } from "@/lib/aggregates";
 
 // ─── Submit all draft evaluations for a session ───────────────────────────────
 export async function submitAllEvaluations(sessionId: string) {
@@ -466,14 +467,9 @@ export async function refreshAggregateScores(sessionId: string) {
   const user = await requireUser();
   await requireSessionOwner(sessionId, user.id);
 
-  await prisma.$executeRaw`
-    UPDATE evaluations e
-    SET "isDraft" = e."isDraft"
-    FROM session_samples ss
-    WHERE e."sessionSampleId" = ss.id
-      AND ss."sessionId" = ${sessionId}
-      AND e."isDraft" = false
-  `;
+  // S8-04: the refire itself lives in lib/aggregates.ts (shared with the close
+  // routine); this action is only the owner-gated wrapper.
+  await refireAggregates(sessionId);
 
   revalidatePath(`/es/app/sessions/${sessionId}/results`);
   revalidatePath(`/en/app/sessions/${sessionId}/results`);

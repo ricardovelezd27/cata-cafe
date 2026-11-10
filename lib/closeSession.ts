@@ -12,6 +12,7 @@ import "server-only";
 import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { syncCoffeeHistoryForSession } from "@/lib/coffeeHistory";
+import { refireAggregates } from "@/lib/aggregates";
 
 export type CloseReason = "owner" | "solo_auto" | "cron";
 
@@ -56,6 +57,23 @@ export async function closeSessionInternal(
     where: { sessionId, coffeeId: { not: null }, revealed: false },
     data: { revealed: true },
   });
+
+  // S8-04 (F-solo-2): history copies the STORED aggregate, so make sure it is
+  // current before reading it (an edit after submit used to leave it stale).
+  // Best effort: a failed refire must not stop the close/history/emails.
+  try {
+    await refireAggregates(sessionId);
+  } catch (err) {
+    console.error(
+      JSON.stringify({
+        level: "error",
+        where: "closeSession.refireAggregates",
+        reason: opts.reason,
+        sessionId,
+        message: err instanceof Error ? err.message : String(err),
+      }),
+    );
+  }
 
   await syncCoffeeHistoryForSession(sessionId);
 

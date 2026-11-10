@@ -12,6 +12,7 @@ import {
   type EvalModuleKey,
 } from "@/lib/evaluation";
 import { isPinnedModule, pinReferenceAffective } from "@/lib/referenceRules";
+import { replayOverExisting, submittedRefireArgs } from "@/lib/aggregateRefire";
 
 // Conflict-aware replay of an offline evaluation draft, called on reconnect.
 // Authorization stays identical to the live path: Prisma scoped by cupperId
@@ -21,12 +22,15 @@ import { isPinnedModule, pinReferenceAffective } from "@/lib/referenceRules";
 //   - no existing row            → create (defaults isDraft=true)      → synced
 //   - existing isDraft=true      → local wins; overwrite data + scores → synced
 //   - existing isDraft=false     → already submitted elsewhere:
-//        !force                  → write nothing                       → conflict
+//        !force, group           → write nothing                       → conflict
 //         force                  → overwrite content, keep submitted   → synced
+//        solo (owner's own row)  → overwrite content, keep submitted   → synced
 //
-// `isDraft`/`submittedAt` are never modified here. The results view recomputes
-// group aggregates from raw evaluations, so a forced content replace is
-// reflected without re-running the submit trigger.
+// `isDraft`/`submittedAt` are never mutated to a different value here. The
+// results view recomputes from raw evaluations, but history and the coffee
+// profile read the STORED aggregate (aggregate_scores, trigger-written), so
+// replacing a submitted row ends with a guarded no-op write on "isDraft" that
+// re-fires the trigger (S8-04, F-offline-7; lib/aggregateRefire.ts).
 export async function syncEvaluation(input: {
   sessionSampleId: string;
   moduleKey: EvalModuleKey;
@@ -63,7 +67,15 @@ export async function syncEvaluation(input: {
     select: { id: true, isDraft: true },
   });
 
-  if (existing && existing.isDraft === false && !input.force) {
+  // Group: a submitted row is a conflict unless forced. Solo: one person, no
+  // one else's data, so replaying over the owner's own submitted row applies.
+  if (
+    replayOverExisting({
+      existingIsDraft: existing ? existing.isDraft : null,
+      force: input.force === true,
+      isGroup: auth.isGroup,
+    }) === "conflict"
+  ) {
     return { status: "conflict" };
   }
 
@@ -82,7 +94,7 @@ export async function syncEvaluation(input: {
       : input.data;
   const fields = computeEvaluationDerived(moduleKey, data, cupsPerSample);
 
-  await prisma.evaluation.upsert({
+  const saved = await prisma.evaluation.upsert({
     where: {
       sessionSampleId_cupperId: {
         sessionSampleId: input.sessionSampleId,
@@ -98,6 +110,11 @@ export async function syncEvaluation(input: {
     update: { sessionId, ...fields },
     select: { id: true },
   });
+
+  // S8-04 (F-offline-7): re-fire the aggregate trigger when the row replaced
+  // was already submitted (matches nothing for a draft). Idempotent, so a
+  // replay delivered twice after a WebView resume is harmless.
+  await prisma.evaluation.updateMany(submittedRefireArgs(saved.id));
 
   return { status: "synced" };
 }
