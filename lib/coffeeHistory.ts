@@ -7,6 +7,9 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/app/generated/prisma/client";
 import { historyCommunityScore } from "@/lib/historyRules";
+import { buildLabelSnapshot, type HistorySnapshot } from "@/lib/historySnapshot";
+
+export type { HistorySnapshot };
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
@@ -184,23 +187,6 @@ export async function syncCoffeeHistoryForSession(
   return { ok: true, rows: upserts.length + labelCount };
 }
 
-export type HistorySnapshot = {
-  v: 1;
-  sessionName: string;
-  format: string;
-  date: string;
-  cupsPerSample: number;
-  sampleLabel: string;
-  /** Label-only row of a never-revealed sample (S8-16). Carries NO coffee field. */
-  unrevealed?: true;
-  /** Only THIS cupper's own module data — never another participant's. */
-  myEvaluation: {
-    descriptive: unknown;
-    affective: unknown;
-    combined: unknown;
-  };
-};
-
 /**
  * Before a session is deleted: make sure every cupper keeps a self-contained
  * coffee-history row for every REVEALED coffee-linked sample they submitted
@@ -224,28 +210,6 @@ export async function detachCoffeeHistoryForSession(
 
   const now = new Date();
   let detached = 0;
-  const snapshotOf = (
-    label: string,
-    ev: { descriptiveData: unknown; affectiveData: unknown; combinedData: unknown },
-    unrevealed: boolean,
-  ): Prisma.InputJsonValue => {
-    const snap: HistorySnapshot = {
-      v: 1,
-      sessionName: session.name,
-      format: session.format,
-      date: session.date.toISOString(),
-      cupsPerSample: session.cupsPerSample,
-      sampleLabel: label,
-      ...(unrevealed ? { unrevealed: true as const } : {}),
-      myEvaluation: {
-        descriptive: ev.descriptiveData,
-        affective: ev.affectiveData,
-        combined: ev.combinedData,
-      },
-    };
-    return snap as unknown as Prisma.InputJsonValue;
-  };
-
   // Label-only rows (S8-16). A coffee-LESS sample already got its row from the
   // sync above; here it gets the full own-evaluation snapshot. A never-revealed
   // coffee-linked sample (D8) gets a row with coffeeId NULL: only the sample
@@ -276,7 +240,7 @@ export async function detachCoffeeHistoryForSession(
       sessionId,
       individualScore: ev.individualScore,
       tastedAt: session.date,
-      snapshot: snapshotOf(sm.label, ev, sm.coffeeId !== null),
+      snapshot: buildLabelSnapshot(session, sm, ev, sm.coffeeId !== null) as unknown as Prisma.InputJsonValue,
     })),
   );
   await ensureLabelRows(db, labelRows);
