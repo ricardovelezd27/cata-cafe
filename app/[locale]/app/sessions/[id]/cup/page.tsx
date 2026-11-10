@@ -253,6 +253,12 @@ export default async function CupPage({
         confirmClose: tg("confirmClose"),
         liveCountDown: tg("liveCountDown"),
         closeSessionError: tg("closeSessionError"),
+        // Raw: "{count}" is replaced client-side (a bare t() would need the arg).
+        closeRule: tg("closeRule"),
+        closeUnsentOne: tg("closeUnsentOne"),
+        closeUnsentMany: tg.raw("closeUnsentMany") as string,
+        closeUnsentNone: tg("closeUnsentNone"),
+        closeImpactLoading: tg("closeImpactLoading"),
         startSession: tg("startSession"),
         starting: tg("starting"),
         startSessionError: tg("startSessionError"),

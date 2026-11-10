@@ -19,6 +19,7 @@ import { runLengthMs } from "@/lib/warmup/syncedRun";
 import { run } from "@/lib/safeAction";
 import type { ActionResult } from "@/lib/actionResult";
 import { refireAggregates } from "@/lib/aggregates";
+import { countUnsentComplete } from "@/lib/closeRules";
 
 // ─── Submit all draft evaluations for a session ───────────────────────────────
 export async function submitAllEvaluations(sessionId: string) {
@@ -248,6 +249,35 @@ export async function stopWarmup(sessionId: string): Promise<ActionResult<{ stop
     },
     { sessionId },
   );
+}
+
+// ─── What closing now would leave out (F-grupal-2) ────────────────────────────
+// Owner-only read for the close dialog: how many cuppers hold COMPLETE drafts
+// that were never sent. Under the default draft policy (lib/closeRules.ts
+// DRAFT_AT_CLOSE = "exclude") those do not count once the session closes.
+// Counts only; no names, no evaluation content.
+export async function getCloseImpact(
+  sessionId: string,
+): Promise<{ unsentCuppers: number; unsentEvaluations: number }> {
+  const user = await requireUser();
+  await requireSessionOwner(sessionId, user.id);
+  const session = await prisma.cuppingSession.findUnique({
+    where: { id: sessionId },
+    select: { format: true },
+  });
+  if (!session) return { unsentCuppers: 0, unsentEvaluations: 0 };
+  const drafts = await prisma.evaluation.findMany({
+    where: { sessionSample: { sessionId }, isDraft: true },
+    select: {
+      cupperId: true,
+      isDraft: true,
+      descriptiveData: true,
+      affectiveData: true,
+      combinedData: true,
+    },
+  });
+  const c = countUnsentComplete(drafts, session.format);
+  return { unsentCuppers: c.cuppers, unsentEvaluations: c.evaluations };
 }
 
 // ─── Close a session ──────────────────────────────────────────────────────────

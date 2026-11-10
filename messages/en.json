@@ -547,7 +547,12 @@
     "warmupConfirmStartTitle": "The group is still in the exercise",
     "warmupConfirmStart": "The group is still in the exercise ({time} left). Start anyway?",
     "warmupConfirmStartYes": "Start anyway",
-    "warmupStartError": "The exercise couldn't be started."
+    "warmupStartError": "The exercise couldn't be started.",
+    "closeRule": "Complete notes that are still unsent when the session closes are left out of the results.",
+    "closeUnsentOne": "1 cupper has complete notes that are still unsent. If you close now, they will not be counted.",
+    "closeUnsentMany": "{count} cuppers have complete notes that are still unsent. If you close now, they will not be counted.",
+    "closeUnsentNone": "Nobody has complete notes waiting to be sent.",
+    "closeImpactLoading": "Checking for unsent notes…"
   },
   "results": {
     "title": "Session Results",

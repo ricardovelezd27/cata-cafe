@@ -547,7 +547,12 @@
     "warmupConfirmStartTitle": "El grupo está en el ejercicio",
     "warmupConfirmStart": "El grupo está en el ejercicio (quedan {time}). ¿Iniciar igual?",
     "warmupConfirmStartYes": "Iniciar igual",
-    "warmupStartError": "No se pudo empezar el ejercicio."
+    "warmupStartError": "No se pudo empezar el ejercicio.",
+    "closeRule": "Las notas completas que sigan sin enviar al cerrar quedan fuera de los resultados.",
+    "closeUnsentOne": "1 catador tiene notas completas sin enviar. Si cierras ahora, no se contarán.",
+    "closeUnsentMany": "{count} catadores tienen notas completas sin enviar. Si cierras ahora, no se contarán.",
+    "closeUnsentNone": "Nadie tiene notas completas sin enviar.",
+    "closeImpactLoading": "Revisando notas sin enviar…"
   },
   "results": {
     "title": "Resultados de la Sesión",

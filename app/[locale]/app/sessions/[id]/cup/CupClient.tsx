@@ -36,6 +36,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   submitAllEvaluations,
   closeSession,
+  getCloseImpact,
   createInviteToken,
   startSession,
   startWarmup,
@@ -244,6 +245,11 @@ export function CupClient({
     confirmClose: string;
     liveCountDown: string;
     closeSessionError: string;
+    closeRule: string;
+    closeUnsentOne: string;
+    closeUnsentMany: string;
+    closeUnsentNone: string;
+    closeImpactLoading: string;
     startSession: string;
     starting: string;
     startSessionError: string;
@@ -555,6 +561,11 @@ export function CupClient({
   };
   const [startError, setStartError] = useState(false);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
+  // F-grupal-2: how many cuppers hold complete notes that were never sent.
+  // undefined = loading, null = could not be read (the rule sentence still shows).
+  const [closeImpact, setCloseImpact] = useState<{ unsentCuppers: number } | null | undefined>(
+    undefined,
+  );
   const [clockTime, setClockTime] = useState(() =>
     new Date().toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", second: "2-digit" })
   );
@@ -1342,7 +1353,11 @@ export function CupClient({
   };
 
   const handleCloseSession = () => {
+    setCloseImpact(undefined);
     setCloseDialogOpen(true);
+    getCloseImpact(session.id)
+      .then((r) => setCloseImpact({ unsentCuppers: r.unsentCuppers }))
+      .catch(() => setCloseImpact(null));
   };
 
   const handleConfirmClose = async () => {
@@ -2168,7 +2183,23 @@ export function CupClient({
         open={closeDialogOpen}
         onOpenChange={setCloseDialogOpen}
         title={translations.closeSession}
-        body={translations.confirmClose}
+        body={
+          <div className="space-y-2">
+            <p>{translations.confirmClose}</p>
+            <p>{translations.closeRule}</p>
+            {closeImpact === undefined ? (
+              <p className="text-on-surface-variant">{translations.closeImpactLoading}</p>
+            ) : closeImpact === null ? null : closeImpact.unsentCuppers === 0 ? (
+              <p className="text-on-surface-variant">{translations.closeUnsentNone}</p>
+            ) : (
+              <p className="font-medium text-secondary">
+                {closeImpact.unsentCuppers === 1
+                  ? translations.closeUnsentOne
+                  : translations.closeUnsentMany.replace("{count}", String(closeImpact.unsentCuppers))}
+              </p>
+            )}
+          </div>
+        }
         confirmLabel={translations.closeSession}
         cancelLabel={translations.cancel}
         closeLabel={translations.cancel}
