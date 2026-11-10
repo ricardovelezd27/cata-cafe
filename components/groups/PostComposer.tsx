@@ -50,7 +50,6 @@ export function PostComposer({
   const [body, setBody] = useState("");
   const [notifyByEmail, setNotifyByEmail] = useState(false);
   const feedback = useActionFeedback();
-  const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ text: string; tone: "ok" | "warn" } | null>(null);
   const [pending, start] = useTransition();
 
@@ -61,7 +60,6 @@ export function PostComposer({
     e.preventDefault();
     const trimmedBody = body.trim();
     if (!trimmedBody) return;
-    setError(null);
     setNotice(null);
     start(async () => {
       await feedback.run(
@@ -130,11 +128,6 @@ export function PostComposer({
         </span>
       </label>
 
-      {error && (
-        <p className="text-xs text-error" role="alert">
-          {error}
-        </p>
-      )}
       {notice && (
         <p
           role="status"
