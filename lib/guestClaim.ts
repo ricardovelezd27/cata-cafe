@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { anonEvalWins } from "@/lib/guestClaimToken";
+import { anonEvalWins, needsAggregateRefire } from "@/lib/guestClaimToken";
 
 /**
  * Guest → account "claim": ties a walk-up guest's tasting data to the account
@@ -172,15 +172,38 @@ export async function mergeGuestData(
       where: { userId: anon },
       select: { sessionId: true, status: true, excludedFromResults: true },
     });
+    const anonEvalSessions = new Set(anonEvals.map((e) => e.sessionSample.sessionId));
     const targetParts = await tx.sessionParticipant.findMany({
-      where: { userId: target, sessionId: { in: anonParts.map((p) => p.sessionId) } },
+      where: {
+        userId: target,
+        sessionId: { in: [...new Set([...anonParts.map((p) => p.sessionId), ...anonEvalSessions])] },
+      },
       select: { sessionId: true, excludedFromResults: true },
     });
     const targetPartBySession = new Map(targetParts.map((p) => [p.sessionId, p]));
+    const anonPartBySession = new Map(anonParts.map((p) => [p.sessionId, p]));
+    // Moved guest evaluations change who the trigger counts whenever the
+    // surviving exclusion flag differs from the one they were counted under,
+    // including a guest with no participant row (or a non-excluded one) whose
+    // evaluations land on an EXCLUDED account.
+    for (const sessionId of new Set([...anonPartBySession.keys(), ...anonEvalSessions])) {
+      const g = anonPartBySession.get(sessionId);
+      const t = targetPartBySession.get(sessionId);
+      if (
+        needsAggregateRefire({
+          guestExcluded: g?.excludedFromResults ?? false,
+          guestHadRow: !!g,
+          accountExcluded: t?.excludedFromResults ?? false,
+          accountHadRow: !!t,
+          guestHasEvaluations: anonEvalSessions.has(sessionId),
+        })
+      ) {
+        refireSessions.add(sessionId);
+      }
+    }
     for (const p of anonParts) {
       const existing = targetPartBySession.get(p.sessionId);
       if (!existing) continue;
-      if (p.excludedFromResults && !existing.excludedFromResults) refireSessions.add(p.sessionId);
       // Both identities joined the same session: keep the target's row, but
       // an "owner" status must follow the session (createdBy moves below) and
       // an exclusion the master applied to EITHER identity must survive —

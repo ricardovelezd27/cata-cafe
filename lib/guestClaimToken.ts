@@ -82,3 +82,27 @@ export function anonEvalWins(anonRow: ClaimEvalRow, targetRow: ClaimEvalRow): bo
   const b = (targetRow.submittedAt ?? targetRow.updatedAt).getTime();
   return a > b;
 }
+
+export type RefireInput = {
+  guestExcluded: boolean;
+  guestHadRow: boolean;
+  accountExcluded: boolean;
+  accountHadRow: boolean;
+  guestHasEvaluations: boolean;
+};
+
+/** Whether a session's stored aggregate must be re-fired after a merge. The
+ * surviving account row carries the OR of both exclusion flags. Moved guest
+ * evaluations were counted under the guest's flag (false with no row) and now
+ * sit under the surviving flag; the account's own evaluations were counted
+ * under the account's flag and now sit under it too. Any change in who the
+ * trigger counts needs a re-fire. */
+export function needsAggregateRefire(i: RefireInput): boolean {
+  const guestFlag = i.guestHadRow && i.guestExcluded;
+  const accountFlag = i.accountHadRow && i.accountExcluded;
+  const surviving = guestFlag || accountFlag;
+  if (i.guestHasEvaluations && surviving !== guestFlag) return true;
+  // Pre-existing rule: both identities had rows and the guest's exclusion
+  // flipped the account's own flag.
+  return i.accountHadRow && i.guestHadRow && surviving !== accountFlag;
+}

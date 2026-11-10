@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import {
   CLAIM_TTL_MS,
   anonEvalWins,
+  needsAggregateRefire,
   mintGuestClaimToken,
   safeClaimBack,
   verifyGuestClaimToken,
@@ -99,5 +100,63 @@ describe("anonEvalWins", () => {
     const d = (t: number) => row({ isDraft: true, submittedAt: null, updatedAt: new Date(t) });
     expect(anonEvalWins(d(T0 + 1), d(T0))).toBe(true);
     expect(anonEvalWins(d(T0), d(T0 + 1))).toBe(false);
+  });
+});
+
+describe("needsAggregateRefire", () => {
+  const base = {
+    guestExcluded: false,
+    guestHadRow: false,
+    accountExcluded: false,
+    accountHadRow: false,
+    guestHasEvaluations: false,
+  };
+  it("re-fires when guest evaluations land on an excluded account (guest no row / not excluded)", () => {
+    expect(
+      needsAggregateRefire({ ...base, accountHadRow: true, accountExcluded: true, guestHasEvaluations: true }),
+    ).toBe(true);
+    expect(
+      needsAggregateRefire({
+        ...base,
+        guestHadRow: true,
+        accountHadRow: true,
+        accountExcluded: true,
+        guestHasEvaluations: true,
+      }),
+    ).toBe(true);
+  });
+  it("re-fires when the guest was excluded and the account was not", () => {
+    expect(
+      needsAggregateRefire({ ...base, guestHadRow: true, guestExcluded: true, accountHadRow: true }),
+    ).toBe(true);
+    expect(
+      needsAggregateRefire({ ...base, guestHadRow: true, guestExcluded: true, guestHasEvaluations: true }),
+    ).toBe(false); // flag moves with the row, evaluations counted under it already
+  });
+  it("does nothing without evaluations on an excluded account", () => {
+    expect(needsAggregateRefire({ ...base, accountHadRow: true, accountExcluded: true })).toBe(false);
+  });
+  it("matches an oracle across every combination", () => {
+    const bools = [false, true];
+    for (const guestExcluded of bools)
+      for (const guestHadRow of bools)
+        for (const accountExcluded of bools)
+          for (const accountHadRow of bools)
+            for (const guestHasEvaluations of bools) {
+              if (!guestHadRow && guestExcluded) continue; // impossible
+              if (!accountHadRow && accountExcluded) continue;
+              const surviving = (guestHadRow && guestExcluded) || (accountHadRow && accountExcluded);
+              const movedChanged = guestHasEvaluations && surviving !== (guestHadRow && guestExcluded);
+              const ownChanged = accountHadRow && guestHadRow && surviving !== accountExcluded;
+              expect(
+                needsAggregateRefire({
+                  guestExcluded,
+                  guestHadRow,
+                  accountExcluded,
+                  accountHadRow,
+                  guestHasEvaluations,
+                }),
+              ).toBe(movedChanged || ownChanged);
+            }
   });
 });
