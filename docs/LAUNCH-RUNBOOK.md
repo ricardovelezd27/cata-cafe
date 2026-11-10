@@ -563,3 +563,82 @@ alone.
 
 **Rollback:** the column is nullable and unused by the old code — roll the app back and
 leave the column in place.
+
+---
+
+## §10. Supabase — apply PHASE 21 (closed / expired = read-only in SQL, 2026-11, S8-01)
+
+**When:** SQL FIRST, deploy second. PHASE 21 is safe against the old app (nothing the old
+app does through Prisma/`postgres` is affected, and its participant Realtime binding on
+`evaluations` simply stops receiving rows), but the new app expects it: non-owners now
+learn about new results from the `cupping_sessions` channel only. Apply in the Supabase
+**SQL editor of the production project** (there is only one). No Prisma migration.
+
+**What it does** (`prisma/sql/rls_and_triggers.sql`, block `PHASE 21`, read its header):
+
+- Browser key becomes **SELECT-only** on `evaluations`, `aggregate_scores`,
+  `cupping_sessions`, `session_samples`, `session_participants`, `physical_evaluations`,
+  `extrinsic_data`, `session_invites` and `profiles` (`INSERT/UPDATE/DELETE/TRUNCATE`
+  revoked from `anon` and `authenticated`; the write policies are dropped). Every write
+  already goes through a server action as `postgres`.
+- A participant reads only their own `evaluations`; the owner also reads submitted rows
+  of their sessions. `aggregate_scores` is hidden from participants until group results
+  are visible (new helpers `is_session_owner`, `can_view_group_results`).
+- `session_samples."coffeeId"` is no longer readable over the API for anyone (blind
+  coding). **Future rule:** a new column on `session_samples` needs a
+  `GRANT SELECT ("col") ON session_samples TO authenticated` in a new SQL phase, or API
+  reads of it fail (Prisma is unaffected).
+- Closes two adjacent holes: any user could mint an invite for any session
+  (`session_invites`) and set their own `analyticsAccess` (`profiles`).
+
+**Steps**
+
+1. **Pre-flight** (SQL editor, read-only), from the header of the block:
+
+   ```sql
+   -- must list exactly: coffeeId, createdAt, id, label, position, referenceRank, revealed, sessionId
+   select column_name from information_schema.columns
+   where table_schema='public' and table_name='session_samples' order by 1;
+
+   -- live group sessions that never recorded a start. After the deploy a
+   -- participant cannot save evaluations in these (session_not_started):
+   select id, name from cupping_sessions
+   where "isGroup" and not "isAsync" and status = 'active' and "startedAt" is null;
+   ```
+
+   If the column list differs, add the missing columns to the `GRANT SELECT (...)` line
+   before running. If the second query returns rows, ask each owner to press "Iniciar
+   cata" (or close the session) before you deploy the app.
+2. **Dry run.** Paste the whole `PHASE 21` block, replace its last `COMMIT;` with the
+   probes listed in the header comment, end with `ROLLBACK;`, and run. Expected: own
+   evaluations only; `aggregate_scores` empty while hidden; `update evaluations`,
+   `insert into session_invites` and `update profiles` fail with *permission denied*;
+   `select "coffeeId" from session_samples` fails; `select id, label from session_samples`
+   works; `has_function_privilege` is `true` for `authenticated` and `false` for `anon` on
+   `is_session_owner`, `can_view_group_results` and `is_session_participant`.
+3. **Apply.** Run the block as written (`BEGIN … COMMIT`). Expected: `Success. No rows
+   returned`.
+4. **Verify** in the SQL Editor:
+
+   ```sql
+   select tablename, policyname, cmd, roles from pg_policies
+   where tablename in ('evaluations','aggregate_scores','cupping_sessions','session_samples',
+     'session_participants','physical_evaluations','extrinsic_data','session_invites','profiles')
+   order by 1,2;
+   ```
+
+   Expected: no `ALL` policy and no `INSERT`/`UPDATE`/`DELETE` policy left on these tables.
+   Then check Supabase **Advisors → Security** shows no new warnings.
+5. **Deploy** the app (PR `S8-01`). Smoke test with two accounts (owner + participant,
+   an active group session): the waiting room, cup and results screens still update live;
+   after the participant submits, the owner's "enviados" counter moves; a participant on
+   the results page sees "Hay novedades · Actualizar" when results become visible.
+
+**Behaviour change to expect:** `closesAt` is now a **write cutoff**. After the chosen
+day ends (UTC), saving, submitting and joining are refused (`session_closed`) and `/cup`
+redirects to results at the same instant they open, even though the session stays
+`active` until the daily cron closes it (~06:00 UTC next day). Drafts not submitted by then
+are not counted. The warning to cuppers and the late-contribution rule are S8-05.
+
+**Rollback:** the commented block at the end of PHASE 21 restores the old policies and
+grants exactly; run it in one transaction. The app keeps working under either state.

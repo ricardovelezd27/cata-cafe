@@ -31,6 +31,33 @@ Once closed, a session is **read-only**: every mutation runs
 `assertSessionWritable` and throws `session_closed`; `/cup` redirects to
 `/results`; offline drafts for a closed session are discarded on replay.
 
+**Expiry rule (S8-01).** A session is also read-only once its `closesAt` has
+passed (`isSessionExpired`, strict `<`, server clock) even though `status` stays
+`active` until the daily cron or the owner closes it: `assertSessionWritable`,
+`joinViaToken` (newcomers), the `/cup` and `/waiting` redirects, `sessionHref`,
+the offline replay and the results page all use the same helper, so writing stops
+at the instant group results open. `submitAllEvaluations` flips drafts with a
+conditional `updateMany` (open sessions only), so a close racing a submit cannot
+be written past. `updateSession` is the one exception: it stays status-only so the
+owner can still move a passed deadline. A participant cannot write to a live
+group session before the master starts it (`assertSessionStarted`,
+`session_not_started`); offline replay keeps such a draft pending, never
+discarded.
+
+**Written list after close** (everything else throws `session_closed`; enforced by
+`tests/useServerExports.test.ts`): `upsertExtrinsic` via `ExtrinsicEditDialog`
+(owner, revealed sample), `updateSampleMetadata` naming a coffee-less sample
+(owner), and, pending the S8-12 decision, the owner's `setParticipantExclusion` and
+`refreshAggregateScores`. `closeSession`, `startSession`, `resendCloseEmails`,
+`deleteSession` and `duplicateSession` are lifecycle actions, idempotent or allowed
+on a closed session by design.
+
+**The database says the same (PHASE 21).** The browser key is SELECT-only on the
+session tables: no `INSERT/UPDATE/DELETE` for `anon`/`authenticated`, a participant
+reads only their own `evaluations` (the owner also reads submitted rows), and
+`aggregate_scores` stays hidden from participants until `can_view_group_results`.
+Writes happen only in server actions (Prisma as `postgres`).
+
 ### Solo sessions
 
 `createSession` sets `status: "active"` immediately (there is no meaningful
@@ -76,7 +103,9 @@ master panel's "Iniciar cata" (idempotent). An **async** session (`isAsync`,
 (`/api/cron/close-expired-sessions`, 06:00 UTC) once `closesAt` passes, or
 earlier by the owner. `closesAt` is the END of the chosen calendar day (UTC,
 `dateOnlyEndOfDay`), so a session with closing date D is closed by the cron on
-D+1 in the early morning — never before the day the owner picked has ended. Close emails are queued with `after()` and ledgered per
+D+1 in the early morning — never before the day the owner picked has ended. From
+`closesAt` on, though, the session is already read-only and its group results are
+visible (expiry rule, §1 above): the cron only flips `status` and sends the emails. Close emails are queued with `after()` and ledgered per
 recipient in `close_email_deliveries`; the owner sees sent / no-email / failed /
 pending on the results page and can "Reenviar" (only unsent recipients go out).
 
@@ -215,7 +244,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    A[Session row clicked] --> B{status == closed?}
+    A[Session row clicked] --> B{closed OR closesAt passed?}
     B -- yes --> R[/sessions/id/results/]
     B -- no --> C{group && !startedAt\n&& viewer is not owner?}
     C -- yes --> W[/sessions/id/waiting/]
@@ -223,7 +252,7 @@ flowchart LR
 ```
 
 Every list (sessions, dashboard, profile, group page) must use `sessionHref` —
-never hardcode `/cup`.
+never hardcode `/cup`. Its input must include `closesAt` (the type requires it).
 
 ### Sample / coffee metadata lifecycle (progressive)
 
