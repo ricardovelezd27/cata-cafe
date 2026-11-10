@@ -858,10 +858,11 @@
     "adminOwnerPrefix": "Dueño:",
     "recentTastingsTitle": "Catas recientes",
     "recentTastingsEmpty": "Sin catas recientes.",
+    "sessionsOthersNote": "Las sesiones de este café son de otros catadores; sus nombres no se muestran, pero sus resultados cuentan en los totales.",
     "deleteCoffee": {
       "title": "Eliminar café",
       "titleMany": "Eliminar {count} cafés",
-      "body": "Se borran los datos que identifican el café (nombre, código, finca, productor, notas y certificaciones) y deja de aparecer en tu lista y en las sesiones. Los datos de cata —puntajes, notas percibidas, origen, variedad y proceso— se conservan de forma anónima para las estadísticas. Esta acción no se puede deshacer.",
+      "body": "Se borran los datos que identifican el café (nombre, código, finca, productor, notas y certificaciones) y deja de aparecer en tu lista y en las sesiones. Los datos de cata —puntajes, notas percibidas, origen, variedad y proceso— se conservan de forma anónima para las estadísticas. Las fichas de origen de las muestras de sesiones pasadas (finca, productor) y las etiquetas de muestra no se modifican. Esta acción no se puede deshacer.",
       "confirm": "Eliminar café",
       "confirmMany": "Eliminar {count} cafés",
       "cancel": "Cancelar",

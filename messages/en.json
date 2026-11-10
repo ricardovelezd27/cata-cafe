@@ -858,10 +858,11 @@
     "adminOwnerPrefix": "Owner:",
     "recentTastingsTitle": "Recent cuppings",
     "recentTastingsEmpty": "No recent cuppings yet.",
+    "sessionsOthersNote": "This coffee's sessions belong to other cuppers; their names are not shown, but their results count in the totals.",
     "deleteCoffee": {
       "title": "Delete coffee",
       "titleMany": "Delete {count} coffees",
-      "body": "The data that identifies the coffee (name, code, farm, producer, notes and certifications) is erased and it disappears from your list and from sessions. Tasting data — scores, perceived notes, origin, variety and process — is kept anonymously for statistics. This cannot be undone.",
+      "body": "The data that identifies the coffee (name, code, farm, producer, notes and certifications) is erased and it disappears from your list and from sessions. Tasting data — scores, perceived notes, origin, variety and process — is kept anonymously for statistics. Origin sheets of past session samples (farm, producer) and sample labels are not changed. This cannot be undone.",
       "confirm": "Delete coffee",
       "confirmMany": "Delete {count} coffees",
       "cancel": "Cancel",

@@ -114,7 +114,7 @@ export default async function CoffeeProfilePage({
         session: { select: { id: true, name: true } },
       },
     }),
-    loadCoffeeAggregateSamples(id),
+    loadCoffeeAggregateSamples(id, { userId: user.id, isAdmin }),
   ]);
 
   // Visibility rule: results (counts, scores, attr averages, flavor cloud) are
@@ -271,7 +271,7 @@ export default async function CoffeeProfilePage({
               </div>
             </div>
 
-            {coffee.notes && (
+            {coffee.notes && (isOwner || isAdmin) && (
               <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-on-surface">
                 {coffee.notes}
               </p>
@@ -381,39 +381,30 @@ export default async function CoffeeProfilePage({
               <section>
                 <h3 className={`mb-2 ${SUB_H3}`}>{t("sessionsListTitle")}</h3>
                 {aggregate.sessionRows.length === 0 ? (
-                  <p className="text-sm text-on-surface-variant">{t("noResults")}</p>
+                  <p className="text-sm text-on-surface-variant">
+                    {aggregate.sessionsCount > 0 ? t("sessionsOthersNote") : t("noResults")}
+                  </p>
                 ) : (
                   <div className="space-y-2">
-                    {aggregate.sessionRows.map((row, i) => {
-                      const inner = (
-                        <>
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-semibold text-on-surface">
-                              {row.sessionName}
-                            </div>
-                            <div className="mt-0.5 text-xs text-on-surface-variant">
-                              {formatDate(row.sessionDate)}
-                            </div>
+                    {aggregate.sessionRows.map((row, i) => (
+                      // Only sessions the viewer owns or joined reach this list
+                      // (filterCoffeeSamples), so every row can open its results.
+                      <Link
+                        key={`${row.sessionId}-${i}`}
+                        href={`/${locale}/app/sessions/${row.sessionId}/results`}
+                        className={`${LIST_ROW} transition-colors hover:bg-surface-container-low`}
+                      >
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold text-on-surface">
+                            {row.sessionName}
                           </div>
-                          <ScorePill score={row.communityScore} />
-                        </>
-                      );
-                      // Session results are the owner's to open; others only
-                      // see the appearance + community score.
-                      return isOwner ? (
-                        <Link
-                          key={`${row.sessionId}-${i}`}
-                          href={`/${locale}/app/sessions/${row.sessionId}/results`}
-                          className={`${LIST_ROW} transition-colors hover:bg-surface-container-low`}
-                        >
-                          {inner}
-                        </Link>
-                      ) : (
-                        <div key={`${row.sessionId}-${i}`} className={LIST_ROW}>
-                          {inner}
+                          <div className="mt-0.5 text-xs text-on-surface-variant">
+                            {formatDate(row.sessionDate)}
+                          </div>
                         </div>
-                      );
-                    })}
+                        <ScorePill score={row.communityScore} />
+                      </Link>
+                    ))}
                   </div>
                 )}
               </section>

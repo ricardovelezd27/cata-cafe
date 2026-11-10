@@ -19,12 +19,15 @@ export interface CoffeeAggregateEvaluationInput {
   combinedData: unknown;
   individualScore: number | null;
   submittedAt?: Date | null;
+  /** Individual score may be listed to this viewer (own evaluation, or a session they own). Absent = not listable. */
+  visibleIndividually?: boolean;
 }
 
 export interface CoffeeAggregateSampleInput {
   id: string;
   sessionId: string;
-  session: { id: string; name: string; date: Date };
+  /** name/date are null when the viewer neither owns nor joined the session: the row still feeds the anonymous totals but is never listed. */
+  session: { id: string; name: string | null; date: Date | null };
   aggregateScore: {
     communityScore: number | null;
     participantCount: number;
@@ -95,7 +98,7 @@ export function computeCoffeeAggregate(
           ? ev.combinedData
           : null;
       if (blob) allDescriptive.push(blob);
-      if (ev.submittedAt) {
+      if (ev.submittedAt && ev.visibleIndividually && sample.session.name !== null) {
         recentEvaluations.push({
           sessionId: sample.sessionId,
           sessionName: sample.session.name,
@@ -169,12 +172,18 @@ export function computeCoffeeAggregate(
   }
 
   const sessionRows: CoffeeSessionRow[] = samples
-    .map((s) => ({
-      sessionId: s.sessionId,
-      sessionName: s.session.name,
-      sessionDate: s.session.date,
-      communityScore: s.aggregateScore?.communityScore ?? null,
-    }))
+    .flatMap((s) =>
+      s.session.name === null || s.session.date === null
+        ? []
+        : [
+            {
+              sessionId: s.sessionId,
+              sessionName: s.session.name,
+              sessionDate: s.session.date,
+              communityScore: s.aggregateScore?.communityScore ?? null,
+            },
+          ],
+    )
     .sort((a, b) => b.sessionDate.getTime() - a.sessionDate.getTime());
 
   return {
