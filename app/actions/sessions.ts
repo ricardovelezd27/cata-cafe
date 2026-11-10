@@ -1531,7 +1531,9 @@ export async function updateSampleMetadata(
       sessionId: true,
       coffeeId: true,
       coffee: { select: { createdBy: true, deletedAt: true } },
-      session: { select: { createdBy: true, status: true } },
+      // closesAt: assertSessionWritable is expiry-aware (S8-22 A-05), so a
+      // label edit stops at the deadline, not at the next 06:00 UTC cron.
+      session: { select: { createdBy: true, status: true, closesAt: true } },
     },
   });
   if (!sample) throw new Error("not_found_or_forbidden");
