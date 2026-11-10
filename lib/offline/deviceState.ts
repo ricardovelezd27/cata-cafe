@@ -36,4 +36,11 @@ export async function clearLocalDeviceState(): Promise<void> {
   } catch {
     // best effort
   }
+  try {
+    // Unsent session-wizard drafts (S8-10 T3): per user, same shared-tablet rule.
+    const { clearWizardDrafts } = await import("@/lib/wizardDraft");
+    clearWizardDrafts(window.localStorage);
+  } catch {
+    // best effort
+  }
 }

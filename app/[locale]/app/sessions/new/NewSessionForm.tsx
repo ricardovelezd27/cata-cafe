@@ -15,6 +15,12 @@ import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePick
 import { Badge } from "@/components/ui/Badge";
 import { localDateISO } from "@/lib/localDate";
 import {
+  isDraftDirty,
+  parseDraft,
+  serializeDraft,
+  wizardDraftKey,
+} from "@/lib/wizardDraft";
+import {
   LAST_FORMAT_KEY,
   WIZARD_DEFAULT_FORMAT,
   parseLastFormat,
@@ -253,6 +259,7 @@ export function NewSessionForm({
   usableCoffees,
   initialGroupId,
   handoff,
+  userId,
 }: {
   locale: string;
   t: Translations;
@@ -265,6 +272,8 @@ export function NewSessionForm({
   initialGroupId?: string;
   /** Prefill carried from the express form (already validated server-side). */
   handoff?: WizardHandoff;
+  /** Keys the localStorage draft; null disables drafts. */
+  userId?: string | null;
 }) {
   const router = useRouter();
   const feedback = useActionFeedback();
@@ -337,6 +346,111 @@ export function NewSessionForm({
   const [copied, setCopied] = useState(false);
 
   const [pending, start] = useTransition();
+
+  // ── Draft (S8-10 T3): per-user localStorage copy of the unsent form ─────────
+  const draftKey = userId ? wizardDraftKey(userId) : null;
+  const draftReady = useRef(false);
+  const leaving = useRef(false);
+
+  const clearDraft = () => {
+    leaving.current = true;
+    if (!draftKey) return;
+    try {
+      window.localStorage.removeItem(draftKey);
+    } catch {
+      // storage blocked: nothing to clear
+    }
+  };
+
+  // Restore once on mount. An explicit prefill (?groupId= / express handoff)
+  // wins over an old draft.
+  useEffect(() => {
+    const prefilled =
+      !!initialGroupId || !!handoff?.name || !!handoff?.format || !!handoff?.sampleCount;
+    if (draftKey && !prefilled) {
+      try {
+        const d = parseDraft(window.localStorage.getItem(draftKey));
+        if (d) {
+          /* eslint-disable react-hooks/set-state-in-effect */
+          setName(d.name);
+          setObjective(d.objective);
+          setFormat(d.format);
+          setCupsPerSample(d.cupsPerSample);
+          setCupsInput(String(d.cupsPerSample));
+          setWarmupOn(d.warmupOn);
+          if (WARMUP_EXERCISES.some((ex) => ex.id === d.warmupId)) {
+            setWarmupId(d.warmupId as WarmupId);
+          }
+          setCoffees(d.coffees);
+          setSamples(d.samples);
+          setReferenceId(
+            d.referenceId && d.samples.some((x) => x.id === d.referenceId) ? d.referenceId : null,
+          );
+          setIsGroup(d.isGroup);
+          setClosesAt(d.closesAt);
+          setLinkedGroupId(d.linkedGroupId);
+          setNotifyGroup(d.notifyGroup);
+          /* eslint-enable react-hooks/set-state-in-effect */
+        }
+      } catch {
+        // storage blocked or corrupt: start clean
+      }
+    }
+    draftReady.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const dirty = isDraftDirty({ name, objective, coffees, samples });
+
+  // Save (debounced) while there is something worth keeping; drop it when the
+  // form is back to pristine. The date is intentionally not stored.
+  useEffect(() => {
+    if (!draftKey || !draftReady.current || step !== "form" || leaving.current) return;
+    const timer = setTimeout(() => {
+      try {
+        if (dirty) {
+          window.localStorage.setItem(
+            draftKey,
+            serializeDraft({
+              name,
+              objective,
+              format,
+              cupsPerSample,
+              warmupOn,
+              warmupId,
+              coffees,
+              samples,
+              referenceId,
+              isGroup,
+              closesAt,
+              linkedGroupId,
+              notifyGroup,
+            }),
+          );
+        } else {
+          window.localStorage.removeItem(draftKey);
+        }
+      } catch {
+        // quota / blocked: the form still works
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [
+    draftKey, step, dirty, name, objective, format, cupsPerSample, warmupOn, warmupId,
+    coffees, samples, referenceId, isGroup, closesAt, linkedGroupId, notifyGroup,
+  ]);
+
+  // Leaving the tab with an unsent form: ask first (the draft also survives).
+  useEffect(() => {
+    if (!dirty || step !== "form") return;
+    const guard = (e: BeforeUnloadEvent) => {
+      if (leaving.current) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", guard);
+    return () => window.removeEventListener("beforeunload", guard);
+  }, [dirty, step]);
 
   // ── Coffee + sample helpers ────────────────────────────────────────────────
   const updateCoffee = (
@@ -552,6 +666,7 @@ export function NewSessionForm({
           notifyGroup,
         });
         if (result.ok) {
+          clearDraft();
           setSessionId(result.sessionId);
           setInviteToken(result.inviteToken);
           setEmailSummary(result.emailSummary);
@@ -577,7 +692,10 @@ export function NewSessionForm({
         // Successful solo create navigates via redirect(); never treat that
         // control-flow throw as a failure.
         const digest = (err as { digest?: unknown } | null)?.digest;
-        if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) throw err;
+        if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) {
+          clearDraft();
+          throw err;
+        }
         setErrorCode("unknown");
       }
     });

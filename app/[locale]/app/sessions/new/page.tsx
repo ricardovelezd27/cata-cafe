@@ -197,6 +197,7 @@ export default async function NewSessionPage({
         usableCoffees={usableCoffees}
         initialGroupId={initialGroupId}
         handoff={handoff}
+        userId={user?.id ?? null}
       />
     </div>
   );
