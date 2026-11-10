@@ -81,7 +81,7 @@ export default async function CupPage({
   // A closed (or past-deadline) session's cupping form is final — send
   // everyone to results at the same instant results open.
   if (isSessionExpired(session)) {
-    redirect(`/${locale}/app/sessions/${id}/results`);
+    redirect(`/${locale}/app/sessions/${id}/results?closed=1`);
   }
 
   const isOwner = session.createdBy === user.id;

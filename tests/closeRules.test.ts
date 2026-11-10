@@ -9,13 +9,11 @@ import {
   LIVE_IDLE_MS,
   planFinish,
 } from "@/lib/closeRules";
-import { CUPPING_STEPS, STEP_ATTRIBUTES } from "@/lib/constants";
+import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 
 function completeAffective(): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  for (const step of CUPPING_STEPS) {
-    for (const a of STEP_ATTRIBUTES[step]) out[`${a.affectiveId}_final`] = 6;
-  }
+  for (const a of AFFECTIVE_ATTRIBUTES) out[`${a.id}_final`] = 6;
   return out;
 }
 
@@ -36,7 +34,7 @@ describe("DRAFT_AT_CLOSE", () => {
 describe("isEvaluationComplete / countUnsentComplete", () => {
   it("a full affective row is complete, a partial or empty one is not", () => {
     expect(isEvaluationComplete(row("a", true, completeAffective()), "affective")).toBe(true);
-    expect(isEvaluationComplete(row("a", true, { fragancia_af_final: 5 }), "affective")).toBe(false);
+    expect(isEvaluationComplete(row("a", true, { [`${AFFECTIVE_ATTRIBUTES[0].id}_final`]: 5 }), "affective")).toBe(false);
     expect(isEvaluationComplete(row("a", true, null), "affective")).toBe(false);
   });
 
@@ -45,7 +43,7 @@ describe("isEvaluationComplete / countUnsentComplete", () => {
     const rows = [
       row("a", true, full),
       row("a", true, full),
-      row("b", true, { fragancia_af_final: 5 }),
+      row("b", true, { [`${AFFECTIVE_ATTRIBUTES[0].id}_final`]: 5 }),
       row("c", false, full),
       row("d", true, full),
     ];

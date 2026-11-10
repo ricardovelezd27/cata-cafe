@@ -598,7 +598,8 @@
       "pending": "{count} change(s) saved on this device · waiting to sync",
       "offline": "Offline: {count} change(s) will sync when you reconnect.",
       "retry": "Retry",
-      "synced": "Changes synced. Refreshing results…"
+      "synced": "Changes synced. Refreshing results…",
+      "closedUnsent": "{count} change(s) saved on this device were not sent because the session was already closed. They do not count in the results."
     },
     "closeEmails": {
       "label": "Close emails:",
@@ -784,7 +785,9 @@
         "title": "Reference sample",
         "body": "The session master can mark one sample as the reference: a shared starting point the others are read against. The tasting starts with it and its quality is pinned at 5 (neither high nor low) on every attribute, so every cupper gives it 79.00 and only describes what they perceive. It sits outside the ranking, the average and the best sample: it is the anchor.\nWhat it adds is context: next to each sample you'll see Δ, the difference between its score and the reference's, always computed on the same kind of score you see beside it (community when visible, otherwise your own).\nReference, group mean and deviation are different things: the reference is the starting point the master chose; the mean is what the group perceived; the deviation (±) is how much the group spread."
       }
-    }
+    },
+    "closedUnsentNotice": "You had {count, plural, one {# complete sample} other {# complete samples}} unsent when the session closed. They do not count in the results.",
+    "closedNotice": "The session closed. What you sent counts in the results; anything left unsent does not."
   },
   "community": {
     "score": "Community score",
@@ -965,7 +968,8 @@
     "conflictReplace": "Replace with this version",
     "partialSyncNotice": "Showing results for {included} of {total} participants. {pending} have not yet synced.",
     "bannerStorageUnavailable": "This browser doesn't allow saving offline drafts. Keep your connection active while cupping.",
-    "pendingDrafts": "{count} drafts not synced"
+    "pendingDrafts": "{count} drafts not synced",
+    "closedUnsentDrafts": "{count} drafts not sent: the session was already closed"
   },
   "onboarding": {
     "welcomeTitle": "Welcome to Café Sensible",

@@ -3,8 +3,8 @@
 // finalizeClose.test.ts) and shared by the close routine, the cron, the
 // dialogs and the forms.
 
-import { CUPPING_STEPS, DESCRIPTIVE_STEPS } from "@/lib/constants";
-import { sessionMissing, type CuppingFormat } from "@/lib/completeness";
+import { isEvaluationComplete as isScoreComplete } from "@/lib/evaluationState";
+import type { SessionFormat } from "@/lib/constants";
 
 // ─── Draft policy at close (Kim C1) ──────────────────────────────────────────
 
@@ -30,25 +30,14 @@ function asData(v: unknown): Record<string, unknown> {
   return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
 }
 
-/** Same completeness the cup screen's submit guard applies, on a stored row. */
+/** "Complete" in the same sense as the results page and the group aggregate
+ *  (lib/evaluationState.ts): every score the format needs is present, so a
+ *  draft that passes would have counted had it been sent. */
 export function isEvaluationComplete(row: EvaluationRowLike, format: string): boolean {
-  const f: CuppingFormat =
+  const f: SessionFormat =
     format === "descriptive" || format === "affective" ? format : "combined";
-  const steps = f === "descriptive" ? DESCRIPTIVE_STEPS : CUPPING_STEPS;
-  return (
-    sessionMissing(
-      [
-        {
-          label: "",
-          affective: asData(row.affectiveData),
-          descriptive: asData(row.descriptiveData),
-          combined: asData(row.combinedData),
-        },
-      ],
-      steps,
-      f,
-    ).length === 0
-  );
+  const data = f === "descriptive" ? row.descriptiveData : f === "affective" ? row.affectiveData : row.combinedData;
+  return isScoreComplete(f, asData(data));
 }
 
 export type UnsentCount = {

@@ -598,7 +598,8 @@
       "pending": "{count} cambio(s) guardado(s) en este dispositivo · pendiente de sincronizar",
       "offline": "Sin conexión: {count} cambio(s) se sincronizarán al reconectar.",
       "retry": "Reintentar",
-      "synced": "Cambios sincronizados. Actualizando resultados…"
+      "synced": "Cambios sincronizados. Actualizando resultados…",
+      "closedUnsent": "{count} cambio(s) guardado(s) en este dispositivo no se enviaron porque la cata ya estaba cerrada. No cuentan en los resultados."
     },
     "closeEmails": {
       "label": "Correos de cierre:",
@@ -784,7 +785,9 @@
         "title": "Muestra de referencia",
         "body": "El maestro de cata puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La cata empieza por ella y su calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos, así que cada catador le da siempre 79.00 y solo describe lo que percibe. No entra en el ranking, en el promedio ni en la mejor muestra: es el ancla.\nLo que agrega es contexto: junto a cada muestra verás Δ, la diferencia entre su puntaje y el de la referencia, calculada siempre con el mismo tipo de puntaje que ves al lado (comunitario cuando está visible; si no, el tuyo).\nReferencia, media del grupo y desviación son cosas distintas: la referencia es el punto de partida elegido por el maestro; la media es lo que percibió el grupo; la desviación (±) es cuánto se dispersó el grupo."
       }
-    }
+    },
+    "closedUnsentNotice": "Tenías {count, plural, one {# muestra completa} other {# muestras completas}} sin enviar cuando se cerró la cata. No cuentan en los resultados.",
+    "closedNotice": "La cata se cerró. Lo que enviaste cuenta en los resultados; lo que quedó sin enviar, no."
   },
   "community": {
     "score": "Puntaje comunitario",
@@ -965,7 +968,8 @@
     "conflictReplace": "Reemplazar con esta versión",
     "partialSyncNotice": "Mostrando resultados de {included} de {total} participantes. {pending} aún no han sincronizado.",
     "bannerStorageUnavailable": "Este navegador no permite guardar borradores sin conexión. Mantén la conexión activa mientras catas.",
-    "pendingDrafts": "{count} borradores sin sincronizar"
+    "pendingDrafts": "{count} borradores sin sincronizar",
+    "closedUnsentDrafts": "{count} borradores sin enviar: la cata ya estaba cerrada"
   },
   "onboarding": {
     "welcomeTitle": "Bienvenido a Café Sensible",

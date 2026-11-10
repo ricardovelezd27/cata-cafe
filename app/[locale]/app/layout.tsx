@@ -94,6 +94,7 @@ export default async function AppLayout({
   // Raw template ({count} is filled in client-side by PendingDraftsBadge) —
   // t() would error on the "missing" ICU arg, same pattern as offline.conflictBody.
   const pendingDraftsLabel = tOffline.raw("pendingDrafts") as string;
+  const closedDraftsLabel = tOffline.raw("closedUnsentDrafts") as string;
   const translations: NavTranslations = {
     nav: {
       home: tNav("home"),
@@ -122,6 +123,7 @@ export default async function AppLayout({
           userId={user.id}
           locale={locale}
           label={pendingDraftsLabel}
+          closedLabel={closedDraftsLabel}
         />
         <main className="relative flex-1 overflow-y-auto bg-surface p-4 lg:p-6 pb-20 lg:pb-6">
           {children}

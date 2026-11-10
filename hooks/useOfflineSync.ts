@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { syncEvaluation } from "@/app/actions/offline";
-import { upsertPhysical, upsertExtrinsic } from "@/app/actions/sessions";
+import { replayEvaluation, replayPhysical, replayExtrinsic } from "@/app/actions/offline";
 import {
   listUserKeys,
   loadByKey,
@@ -34,7 +33,7 @@ function backoffDelay(attempt: number): number {
   return Math.max(0, base + jitter);
 }
 
-type ReplayResult = "synced" | "conflict" | "failed";
+type ReplayResult = "synced" | "conflict" | "closed" | "failed";
 
 // Drives sync-on-reconnect for the current user. On every offline→online edge
 // (and once on an online mount, to flush anything left from a prior session) it
@@ -70,27 +69,26 @@ export function useOfflineSync({
         if (!onlineRef.current) return "failed";
         try {
           if (EVALUATION_MODULES.includes(moduleKey)) {
-            const res = await syncEvaluation({
+            const res = await replayEvaluation({
               sessionSampleId: sampleId,
               moduleKey: moduleKey as EvalModuleKey,
               data,
               cupsPerSample,
               force,
             });
-            // "discarded" = the session closed meanwhile; the server keeps the
-            // submitted data and this draft can't apply. Treat as synced so
-            // the pending flag clears (nothing to retry, nothing to resolve).
+            // "closed" = the session closed (or its deadline passed) while this
+            // draft was offline: nothing was written, and it must NOT look
+            // synced (F-offline-1) -- the caller keeps it as closed_unsent.
             // "pending" = the master has not started this live session yet; the
             // draft stays on the device and is retried on the next sync.
             if (res.status === "pending") return "failed";
-            return res.status === "discarded" ? "synced" : res.status;
+            return res.status;
           }
-          if (moduleKey === "physical") {
-            await upsertPhysical({ sessionSampleId: sampleId, data });
-          } else {
-            await upsertExtrinsic({ sessionSampleId: sampleId, data });
-          }
-          return "synced";
+          const res =
+            moduleKey === "physical"
+              ? await replayPhysical({ sessionSampleId: sampleId, data })
+              : await replayExtrinsic({ sessionSampleId: sampleId, data });
+          return res.status;
         } catch {
           if (attempt < MAX_RETRIES) await wait(backoffDelay(attempt));
         }
@@ -133,6 +131,8 @@ export function useOfflineSync({
             );
             if (result === "synced") {
               await setModuleStatus(blob.sessionId, blob.userId, sampleId, moduleKey, "synced");
+            } else if (result === "closed") {
+              await setModuleStatus(blob.sessionId, blob.userId, sampleId, moduleKey, "closed_unsent");
             } else if (result === "conflict") {
               await setModuleStatus(blob.sessionId, blob.userId, sampleId, moduleKey, "conflict");
               collected.push({

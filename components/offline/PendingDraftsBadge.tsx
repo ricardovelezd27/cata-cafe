@@ -21,14 +21,20 @@ export function PendingDraftsBadge({
   userId,
   locale,
   label,
+  closedLabel,
 }: {
   userId: string;
   locale: string;
   /** Raw translation template containing the literal "{count}" placeholder. */
   label: string;
+  /** Raw template with "{count}": drafts kept on the device because their
+   *  session closed before they reached the server (S8-05). */
+  closedLabel?: string;
 }) {
   const [count, setCount] = useState(0);
   const [firstSessionId, setFirstSessionId] = useState<string | null>(null);
+  const [closedCount, setClosedCount] = useState(0);
+  const [firstClosedSessionId, setFirstClosedSessionId] = useState<string | null>(null);
 
   const storageUnavailable = useSyncExternalStore(
     onOfflineStorageUnavailable,
@@ -43,6 +49,8 @@ export function PendingDraftsBadge({
       const keys = await listUserKeys(userId);
       let total = 0;
       let first: string | null = null;
+      let closedTotal = 0;
+      let firstClosed: string | null = null;
       for (const key of keys) {
         const blob = await loadByKey(key);
         if (!blob) continue;
@@ -51,6 +59,9 @@ export function PendingDraftsBadge({
             if (mod?.syncStatus === "pending") {
               total += 1;
               if (!first) first = blob.sessionId;
+            } else if (mod?.syncStatus === "closed_unsent") {
+              closedTotal += 1;
+              if (!firstClosed) firstClosed = blob.sessionId;
             }
           }
         }
@@ -58,6 +69,8 @@ export function PendingDraftsBadge({
       if (!cancelled) {
         setCount(total);
         setFirstSessionId(first);
+        setClosedCount(closedTotal);
+        setFirstClosedSessionId(firstClosed);
       }
     };
 
@@ -73,23 +86,38 @@ export function PendingDraftsBadge({
     };
   }, [userId]);
 
-  if (count === 0 || storageUnavailable) return null;
+  if ((count === 0 && closedCount === 0) || storageUnavailable) return null;
 
   const text = label.replace("{count}", String(count));
   const pill = <Badge tone="accent">{text}</Badge>;
+  const closedPill =
+    closedCount > 0 && closedLabel ? (
+      <Badge tone="accent">{closedLabel.replace("{count}", String(closedCount))}</Badge>
+    ) : null;
+  const linkClass =
+    "inline-flex focus-visible:outline-2 focus-visible:outline-offset-2 rounded-pill";
 
   return (
-    <div className="px-4 lg:px-6 pt-2">
-      {firstSessionId ? (
-        <Link
-          href={`/${locale}/app/sessions/${firstSessionId}/cup`}
-          className="inline-flex focus-visible:outline-2 focus-visible:outline-offset-2 rounded-pill"
-        >
-          {pill}
-        </Link>
-      ) : (
-        pill
-      )}
+    <div className="flex flex-wrap gap-2 px-4 lg:px-6 pt-2">
+      {count > 0 &&
+        (firstSessionId ? (
+          <Link href={`/${locale}/app/sessions/${firstSessionId}/cup`} className={linkClass}>
+            {pill}
+          </Link>
+        ) : (
+          pill
+        ))}
+      {closedPill &&
+        (firstClosedSessionId ? (
+          <Link
+            href={`/${locale}/app/sessions/${firstClosedSessionId}/results?closed=1`}
+            className={linkClass}
+          >
+            {closedPill}
+          </Link>
+        ) : (
+          closedPill
+        ))}
     </div>
   );
 }

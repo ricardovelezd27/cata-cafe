@@ -2,10 +2,13 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
-import { requireSampleMember } from "@/lib/sessionAuth";
+import { requireSampleMember, requireSampleOwner } from "@/lib/sessionAuth";
 import { isSessionExpired } from "@/lib/sessionState";
 // NOTE: no assertSessionWritable throw here — a closed or expired session must
-// not burn the replay's retry budget; it returns "discarded" instead (see below).
+// not burn the replay's retry budget. Replay answers with a status instead:
+// `replay*` return "closed" (the client keeps the draft as `closed_unsent` and
+// says so); the legacy `syncEvaluation` keeps returning "discarded" because
+// service-worker-cached bundles still map it to "synced" (S8-05, F-offline-1).
 import {
   computeEvaluationDerived,
   moduleKeyForFormat,
@@ -31,13 +34,20 @@ import { replayOverExisting, submittedRefireArgs } from "@/lib/aggregateRefire";
 // profile read the STORED aggregate (aggregate_scores, trigger-written), so
 // replacing a submitted row ends with a guarded no-op write on "isDraft" that
 // re-fires the trigger (S8-04, F-offline-7; lib/aggregateRefire.ts).
-export async function syncEvaluation(input: {
+export type ReplayStatus = "synced" | "conflict" | "closed" | "pending";
+
+type EvaluationReplayInput = {
   sessionSampleId: string;
   moduleKey: EvalModuleKey;
   data: Record<string, unknown>;
   cupsPerSample: number;
   force?: boolean;
-}): Promise<{ status: "synced" | "conflict" | "discarded" | "pending" }> {
+};
+
+// Shared body of syncEvaluation / replayEvaluation. NOT exported: every export
+// of a "use server" file is a public endpoint. Authorization is identical to
+// the live path (requireSampleMember below).
+async function replayEvaluationCore(input: EvaluationReplayInput): Promise<ReplayStatus> {
   const user = await requireUser({ skipProfileUpsert: true });
   // Same authorization as the live upsertEvaluation path: session member only.
   // Also resolves the sample's real sessionId in one round-trip.
@@ -46,15 +56,15 @@ export async function syncEvaluation(input: {
 
   // The session closed (or its `closesAt` passed) while this draft was offline. Its submitted data
   // stands; a stale local edit can no longer be applied (aggregates and
-  // history are final). Report "discarded" so the client clears the pending
-  // flag instead of retrying forever.
-  if (isSessionExpired(auth)) return { status: "discarded" };
+  // history are final). Report "closed" so the client stops retrying AND keeps
+  // the draft visible as unsent, instead of showing it as synced.
+  if (isSessionExpired(auth)) return "closed";
 
   // A participant's draft written before the master started a live session
   // (the cup screen normally prevents it): keep it pending on the device, never
   // discard it. The hook maps "pending" to a failed replay without retries.
   if (auth.isGroup && !auth.isAsync && !auth.startedAt && !auth.isOwner) {
-    return { status: "pending" };
+    return "pending";
   }
 
   const existing = await prisma.evaluation.findUnique({
@@ -76,7 +86,7 @@ export async function syncEvaluation(input: {
       isGroup: auth.isGroup,
     }) === "conflict"
   ) {
-    return { status: "conflict" };
+    return "conflict";
   }
 
   if (!input.data || typeof input.data !== "object" || Array.isArray(input.data)) {
@@ -116,5 +126,69 @@ export async function syncEvaluation(input: {
   // replay delivered twice after a WebView resume is harmless.
   await prisma.evaluation.updateMany(submittedRefireArgs(saved.id));
 
+  return "synced";
+}
+
+/** Legacy contract kept for cached client bundles: a closed or expired session
+ *  answers "discarded". New code calls replayEvaluation. */
+export async function syncEvaluation(
+  input: EvaluationReplayInput,
+): Promise<{ status: "synced" | "conflict" | "discarded" | "pending" }> {
+  const status = await replayEvaluationCore(input);
+  return { status: status === "closed" ? "discarded" : status };
+}
+
+/** Offline replay of an evaluation module. A closed or expired session returns
+ *  "closed" and writes nothing; the client keeps the draft (`closed_unsent`)
+ *  and tells the cupper, instead of showing it as synced. */
+export async function replayEvaluation(
+  input: EvaluationReplayInput,
+): Promise<{ status: ReplayStatus }> {
+  return { status: await replayEvaluationCore(input) };
+}
+
+/** Owner-only physical module replay. Returns a status instead of throwing for
+ *  a closed session (a thrown code reaches the browser as an opaque digest). */
+export async function replayPhysical(input: {
+  sessionSampleId: string;
+  data: Record<string, unknown>;
+}): Promise<{ status: "synced" | "closed" }> {
+  const user = await requireUser({ skipProfileUpsert: true });
+  const auth = await requireSampleOwner(input.sessionSampleId, user.id);
+  if (isSessionExpired(auth)) return { status: "closed" };
+  await prisma.physicalEvaluation.upsert({
+    where: { sessionSampleId: input.sessionSampleId },
+    create: {
+      sessionSampleId: input.sessionSampleId,
+      evaluatedBy: user.id,
+      data: input.data as never,
+    },
+    update: { data: input.data as never },
+  });
+  return { status: "synced" };
+}
+
+/** Owner-only extrinsic module replay; same contract as replayPhysical. */
+export async function replayExtrinsic(input: {
+  sessionSampleId: string;
+  data: Record<string, unknown>;
+}): Promise<{ status: "synced" | "closed" }> {
+  const user = await requireUser({ skipProfileUpsert: true });
+  const auth = await requireSampleOwner(input.sessionSampleId, user.id);
+  if (isSessionExpired(auth)) return { status: "closed" };
+  await prisma.extrinsicData.upsert({
+    where: { sessionSampleId: input.sessionSampleId },
+    create: {
+      sessionSampleId: input.sessionSampleId,
+      data: input.data as never,
+      revealedBy: user.id,
+      revealedAt: new Date(),
+    },
+    update: {
+      data: input.data as never,
+      revealedBy: user.id,
+      revealedAt: new Date(),
+    },
+  });
   return { status: "synced" };
 }

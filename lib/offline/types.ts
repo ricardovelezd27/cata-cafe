@@ -20,7 +20,11 @@ export const EVALUATION_MODULES: ModuleKey[] = [
   "combined",
 ];
 
-export type SyncStatus = "pending" | "synced" | "conflict";
+// "closed_unsent" (S8-05): the session closed (or its deadline passed) before
+// this module reached the server. The draft stays on the device, read-only,
+// counted by the pending badge and named in a persistent notice; it is never
+// replayed and never deleted without the cupper's say-so.
+export type SyncStatus = "pending" | "synced" | "conflict" | "closed_unsent";
 
 export type OfflineModuleData = {
   data: Data;

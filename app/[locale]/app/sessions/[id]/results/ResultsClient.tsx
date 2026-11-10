@@ -141,6 +141,7 @@ export function ResultsClient({
   isSoloDescriptors,
   guestSave = null,
   myDraftNotice = null,
+  closedNotice = null,
   sync = null,
   translations,
 }: {
@@ -203,6 +204,8 @@ export function ResultsClient({
   // line — non-null only while the viewer's own evaluation is unsubmitted on
   // an open session (see page.tsx). Pairs with translations.myDraftCta.
   myDraftNotice?: string | null;
+  // Closed-session line for the viewer: did their unsent notes count? (S8-05)
+  closedNotice?: string | null;
   // Strings for the device-pending sync pill + conflict modal. Null in the
   // admin read-only view (nothing of the admin's is ever pending here).
   sync?: SessionSyncStatusTranslations | null;
@@ -705,6 +708,14 @@ export function ResultsClient({
       )}
       {/* The viewer's own evaluation is still a draft: "—" cells are unrated
           attributes, not lost data. Offer the way back into the tasting. */}
+      {closedNotice && (
+        <div
+          role="status"
+          className="mx-4 mt-4 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6"
+        >
+          {closedNotice}
+        </div>
+      )}
       {myDraftNotice && (
         <div
           role="status"

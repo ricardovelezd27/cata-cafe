@@ -16,6 +16,9 @@ export type SessionSyncStatusTranslations = SyncConflictTranslations & {
   offline: string;
   retry: string;
   synced: string;
+  /** RAW template with "{count}": drafts kept on the device because the
+   *  session was already closed (S8-05). */
+  closedUnsent?: string;
 };
 
 // Results-page twin of the cup screen's OfflineBanner: shows a live pill ONLY
@@ -38,6 +41,7 @@ export function SessionSyncStatus({
   const { online } = useConnectivity();
   const { syncPhase, conflicts, resolveConflict, retrySync } = useOfflineSync({ userId, online });
   const [pendingCount, setPendingCount] = useState(0);
+  const [closedUnsentCount, setClosedUnsentCount] = useState(0);
   // Show the green "synced" line only for a replay that actually pushed
   // something — the hook reports "synced" after every no-op run too.
   const [justSynced, setJustSynced] = useState(false);
@@ -46,14 +50,17 @@ export function SessionSyncStatus({
   const rescan = useCallback(async () => {
     const blob = await loadSession(sessionId, userId);
     let count = 0;
+    let closedCount = 0;
     if (blob) {
       for (const sample of Object.values(blob.samples)) {
         for (const mod of Object.values(sample.modules)) {
           if (mod?.syncStatus === "pending") count += 1;
+          else if (mod?.syncStatus === "closed_unsent") closedCount += 1;
         }
       }
     }
     setPendingCount(count);
+    setClosedUnsentCount(closedCount);
     if (count > 0) hadPendingRef.current = true;
   }, [sessionId, userId]);
 
@@ -93,6 +100,13 @@ export function SessionSyncStatus({
     };
   } else if (pendingCount > 0) {
     line = { tone: "warn", icon: <CloudOff size={14} aria-hidden />, text: fill(t.pending), retry: true };
+  } else if (closedUnsentCount > 0 && t.closedUnsent) {
+    line = {
+      tone: "warn",
+      icon: <CloudOff size={14} aria-hidden />,
+      text: t.closedUnsent.replace("{count}", String(closedUnsentCount)),
+      retry: false,
+    };
   } else if (justSynced) {
     line = { tone: "success", icon: <CheckCircle2 size={14} aria-hidden />, text: t.synced, retry: false };
   }
