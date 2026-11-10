@@ -578,6 +578,7 @@
     "startSession": "Iniciar cata",
     "starting": "Iniciando…",
     "startSessionError": "No se pudo iniciar la cata. Inténtalo de nuevo.",
+    "startGroupNoticeFailed": "La cata empezó, pero no pudimos avisar al grupo por correo. Puedes reenviar el aviso desde la página del grupo.",
     "reveal": "Revelar identidad",
     "revealed": "Revelado",
     "selectCoffee": "Seleccionar café",
@@ -1760,7 +1761,8 @@
     "saveDetails": "Guardar detalles",
     "linkGroupLabel": "Vincular a un grupo",
     "noGroupOption": "Sin grupo",
-    "autoInviteToggle": "Enviar invitación al grupo al crear",
+    "autoInviteLive": "Avisar al grupo por correo cuando inicies la cata",
+    "autoInviteAsync": "Avisar al grupo por correo al crear la sesión",
     "autoInviteSummary": "Invitación enviada a {sent} integrantes · {skipped} omitidas · {failed} fallidas",
     "joinSessionLink": "Unirme a la sesión"
   },

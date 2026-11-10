@@ -287,6 +287,7 @@ export default async function CupPage({
         startSession: tg("startSession"),
         starting: tg("starting"),
         startSessionError: tg("startSessionError"),
+        startGroupNoticeFailed: tg("startGroupNoticeFailed"),
         masterRole: tg("masterRole"),
         participantRole: tg("participantRole"),
         referenceSelect: tg("referenceSelect"),

@@ -1071,3 +1071,31 @@ detail shows "Origen editado el …"; on an unrevealed sample the button is abse
 
 **Rollback:** the columns are nullable; code rolled back ignores them. Do not drop them while
 the new code is deployed.
+
+
+## §22. Database — apply the `session_notify_group_at_start` migration (2026-11, S8-17)
+
+**What it does:** adds two columns to `cupping_sessions`: `notifyGroupAtStart` (BOOLEAN NOT NULL
+DEFAULT false) and `groupNotifiedAt` (nullable TIMESTAMPTZ). No foreign keys, no policy change.
+
+**Order matters:** run it BEFORE the deploy; the new code selects these columns.
+
+1. On your machine, with `.env.local` pointing at the project (it is production):
+   ```bash
+   npx prisma migrate deploy
+   ```
+   Expected: `20261111150000_session_notify_group_at_start … applied`.
+2. **Verify** — Supabase SQL Editor:
+   ```sql
+   SELECT column_name FROM information_schema.columns
+   WHERE table_name = 'cupping_sessions' AND column_name IN ('notifyGroupAtStart','groupNotifiedAt');
+   ```
+   Expected: two rows.
+3. Deploy the branch. No SQL PHASE, no environment variable.
+
+**Smoke test:** create a LIVE group session linked to a group with the notify box ticked: no email
+at creation. Press "Iniciar cata": the members get one email; pressing start again sends nothing.
+An async session (with a closing date) still emails at creation.
+
+**Rollback:** the columns are additive; rolled-back code ignores them (live sessions would then
+email at creation again).

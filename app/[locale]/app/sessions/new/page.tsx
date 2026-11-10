@@ -144,7 +144,8 @@ export default async function NewSessionPage({
     // auto-invite success strip.
     linkGroupLabel: tgroups("linkGroupLabel"),
     noGroupOption: tgroups("noGroupOption"),
-    autoInviteToggle: tgroups("autoInviteToggle"),
+    autoInviteLive: tgroups("autoInviteLive"),
+    autoInviteAsync: tgroups("autoInviteAsync"),
     autoInviteSummary: tgroups.raw("autoInviteSummary"),
     autoInviteRateLimited: tgroups("autoInviteRateLimited"),
   };

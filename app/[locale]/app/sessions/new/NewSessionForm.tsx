@@ -40,7 +40,8 @@ import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 type SessionGroupsTranslations = NotifyGroupTranslations & {
   linkGroupLabel: string;
   noGroupOption: string;
-  autoInviteToggle: string;
+  autoInviteLive: string;
+  autoInviteAsync: string;
   // Raw ICU template — interpolated locally via formatTemplate, not t().
   autoInviteSummary: string;
   // Shown when the group invitation was held back by the email limits.
@@ -835,6 +836,8 @@ export function NewSessionForm({
             onClick={() => {
               start(async () => {
                 try {
+                  // TODO(S8-17): surface `groupNotice` (rate_limited/failed) here;
+                  // today the owner only sees that notice when starting from /cup.
                   await startSession(sessionId);
                 } catch {
                   feedback.notifyError("unknown");
@@ -1468,7 +1471,7 @@ export function NewSessionForm({
                   onChange={(e) => setNotifyGroup(e.target.checked)}
                   className="h-4 w-4 rounded accent-primary-container cursor-pointer"
                 />
-                {groupsT.autoInviteToggle}
+                {closesAt ? groupsT.autoInviteAsync : groupsT.autoInviteLive}
               </label>
             )}
           </div>

@@ -578,6 +578,7 @@
     "startSession": "Start tasting",
     "starting": "Starting…",
     "startSessionError": "Could not start the tasting. Please try again.",
+    "startGroupNoticeFailed": "The tasting started, but we could not email the group. You can resend the notice from the group page.",
     "reveal": "Reveal identity",
     "revealed": "Revealed",
     "selectCoffee": "Select coffee",
@@ -1760,7 +1761,8 @@
     "saveDetails": "Save details",
     "linkGroupLabel": "Link to a group",
     "noGroupOption": "No group",
-    "autoInviteToggle": "Send an invitation to the group on creation",
+    "autoInviteLive": "Email the group when you start the tasting",
+    "autoInviteAsync": "Email the group when the session is created",
     "autoInviteSummary": "Invitation sent to {sent} members · {skipped} skipped · {failed} failed",
     "joinSessionLink": "Join the session"
   },

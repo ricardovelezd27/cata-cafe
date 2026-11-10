@@ -46,6 +46,7 @@ import { logInfo, logWarn } from "@/lib/log";
 import { checkWizardBounds } from "@/lib/coffeeInputBounds";
 import { CERTIFICATIONS } from "@/lib/constants";
 import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/groups";
+import { shouldNotifyAtCreate } from "@/lib/groupNotify";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
 import { splitEvaluationCounts } from "@/lib/deleteImpact";
 import { planAssignCoffee } from "@/lib/assignCoffee";
@@ -586,6 +587,9 @@ async function createGroupSessionBody(input: {
         closesAtZone: meta.closesAtZone,
         createdBy: user.id,
         groupId: input.groupId ?? null,
+        // S8-17: a LIVE session owes the group email at start (startSession).
+        notifyGroupAtStart:
+          !!input.groupId && input.notifyGroup !== false && meta.closesAt === null,
         warmupExerciseId: meta.warmupExerciseId,
         samples: {
           create: input.samples.map((s, i) => ({
@@ -620,16 +624,30 @@ async function createGroupSessionBody(input: {
   // creation itself.
   let emailSummary: GroupEmailSummary | undefined;
   let emailBlocked: "rate_limited" | undefined;
-  if (input.groupId && input.notifyGroup !== false) {
-    // TODO(C8): live sessions notify from startSession (spec default b);
-    // undecided with Kim, so the email still goes out at creation for now.
+  // Only ASYNC sessions notify at creation; live ones notify from
+  // `startSession` (S8-17, C8 default b — see lib/groupNotify.ts).
+  if (
+    input.groupId &&
+    input.notifyGroup !== false &&
+    shouldNotifyAtCreate({
+      isGroup: true,
+      isAsync: meta.closesAt !== null,
+      hasGroup: true,
+      alreadyNotified: false,
+    })
+  ) {
     try {
       const notified = await notifyGroupOfSession({
         groupId: input.groupId,
         sessionId: session.id,
       });
-      if (notified.ok) emailSummary = notified.data;
-      else if (notified.error === "rate_limited") emailBlocked = "rate_limited";
+      if (notified.ok) {
+        emailSummary = notified.data;
+        await prisma.cuppingSession.update({
+          where: { id: session.id },
+          data: { groupNotifiedAt: new Date() },
+        });
+      } else if (notified.error === "rate_limited") emailBlocked = "rate_limited";
     } catch (err) {
       logWarn({
         where: "createGroupSession",

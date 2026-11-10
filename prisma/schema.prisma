@@ -172,6 +172,13 @@ model CuppingSession {
   /// refused with `entries_closed`; existing members re-enter. Display/gating
   /// only: never read by scoring, aggregates or the trigger.
   entriesLocked Boolean @default(false)
+  /// S8-17 (C8): live group session linked to a tasting group whose owner
+  /// asked to notify it; the email goes out from `startSession`. The group
+  /// itself is `groupId`. Flow only: never read by scoring or the trigger.
+  notifyGroupAtStart Boolean @default(false)
+  /// Idempotence stamp of the group "new session" email (claimed before the
+  /// send, cleared when the send fails). Not copied by duplicateSession.
+  groupNotifiedAt DateTime? @db.Timestamptz(3)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

@@ -19,6 +19,8 @@ import { sessionHref } from "@/lib/sessionRouting";
 import { closeSessionInternal } from "@/lib/closeSession";
 import * as v from "@/lib/validate";
 import { runLengthMs } from "@/lib/warmup/syncedRun";
+import { shouldNotifyAtStart } from "@/lib/groupNotify";
+import { notifyGroupOfSession } from "@/app/actions/groups";
 import { run } from "@/lib/safeAction";
 import { logWarn } from "@/lib/log";
 import { syncCoffeeHistoryForSession } from "@/lib/coffeeHistory";
@@ -317,9 +319,79 @@ export async function startSession(sessionId: string) {
     data: { startedAt: new Date() },
   });
 
+  // S8-17 (C8): the group "new session" email goes out HERE for live sessions,
+  // only when THIS call flipped the row (count === 1), so a double click or the
+  // second entry point never sends twice. A failed/limited send never blocks
+  // the start: it is reported as `groupNotice` for a non-blocking owner notice.
+  let groupNotice: "sent" | "rate_limited" | "failed" | undefined;
+  if (res.count === 1) {
+    groupNotice = await notifyGroupAtStart(sessionId);
+  }
+
   revalidatePath(`/es/app/sessions/${sessionId}/cup`);
   revalidatePath(`/en/app/sessions/${sessionId}/cup`);
-  return { ok: true as const, started: res.count > 0 };
+  return { ok: true as const, started: res.count > 0, groupNotice };
+}
+
+async function notifyGroupAtStart(
+  sessionId: string,
+): Promise<"sent" | "rate_limited" | "failed" | undefined> {
+  try {
+    const s = await prisma.cuppingSession.findUnique({
+      where: { id: sessionId },
+      select: {
+        isGroup: true,
+        isAsync: true,
+        groupId: true,
+        notifyGroupAtStart: true,
+        groupNotifiedAt: true,
+      },
+    });
+    if (
+      !s ||
+      !s.notifyGroupAtStart ||
+      !s.groupId ||
+      !shouldNotifyAtStart({
+        isGroup: s.isGroup,
+        isAsync: s.isAsync,
+        hasGroup: true,
+        alreadyNotified: s.groupNotifiedAt !== null,
+      })
+    ) {
+      return undefined;
+    }
+    // Claim the stamp first so two concurrent starts cannot both send.
+    const claim = await prisma.cuppingSession.updateMany({
+      where: { id: sessionId, groupNotifiedAt: null },
+      data: { groupNotifiedAt: new Date() },
+    });
+    if (claim.count !== 1) return undefined;
+
+    const res = await notifyGroupOfSession({ groupId: s.groupId, sessionId });
+    if (res.ok) return "sent";
+    // Release the claim so the owner can resend from the group page.
+    await prisma.cuppingSession.updateMany({
+      where: { id: sessionId },
+      data: { groupNotifiedAt: null },
+    });
+    return res.error === "rate_limited" ? "rate_limited" : "failed";
+  } catch (err) {
+    logWarn({
+      where: "startSession",
+      message: "notify_group_at_start_threw",
+      sessionId,
+      code: (err as { code?: string })?.code ?? "unknown",
+    });
+    try {
+      await prisma.cuppingSession.updateMany({
+        where: { id: sessionId },
+        data: { groupNotifiedAt: null },
+      });
+    } catch {
+      // best effort
+    }
+    return "failed";
+  }
 }
 
 // ─── Synced warm-up run (S6 warm-up v3 PR3) ───────────────────────────────────

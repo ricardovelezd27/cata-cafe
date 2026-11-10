@@ -561,6 +561,16 @@ straight to `/join/[token]`, an unlinked recipient through `/auth/login` with th
 join as `next`; both reject a session that is not an active group session of the
 caller (`invalid_input`).
 
+**When the group is told (S8-17, C8):** a LIVE group session (no closing date)
+notifies its linked tasting group when the owner starts it: `startSession` sends
+the notice only when its own `updateMany` flipped the row, claims
+`CuppingSession.groupNotifiedAt` first (so wizard step 2 + master panel + double
+click never double-send) and clears it when the send fails (rate-limited or
+error), so the owner can resend from the group page. A failed notice never blocks
+the start; the cup page shows a non-blocking notice. ASYNC sessions (never
+"started") still notify at creation. `CuppingSession.notifyGroupAtStart` records
+the owner's choice; the group is `groupId`. Rules: `lib/groupNotify.ts`.
+
 ```mermaid
 sequenceDiagram
     actor O as Owner
