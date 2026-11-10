@@ -45,6 +45,8 @@ interface UsersDirectoryProps {
   t: UsersDirectoryTranslations;
   /** CSV export is super-admin only (S8-08). */
   canExport: boolean;
+  /** Only the super-admin receives raw addresses; others get them masked from the server. */
+  canRevealEmails: boolean;
 }
 
 function roleLabel(role: string, locale: string): string {
@@ -53,9 +55,9 @@ function roleLabel(role: string, locale: string): string {
   return entry[locale === "en" ? "en" : "es"];
 }
 
-export function UsersDirectory({ users, locale, t, canExport }: UsersDirectoryProps) {
+export function UsersDirectory({ users, locale, t, canExport, canRevealEmails }: UsersDirectoryProps) {
   const [reveal, setReveal] = useState(false);
-  const shown = (email: string) => (reveal ? email : maskEmail(email));
+  const shown = (email: string) => (canRevealEmails && reveal ? email : maskEmail(email));
   const feedback = useActionFeedback();
   const [exporting, startExport] = useTransition();
 
@@ -159,6 +161,7 @@ export function UsersDirectory({ users, locale, t, canExport }: UsersDirectoryPr
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap justify-end gap-2">
+        {canRevealEmails && (
         <Button
           type="button"
           variant="secondary"
@@ -169,6 +172,7 @@ export function UsersDirectory({ users, locale, t, canExport }: UsersDirectoryPr
           {reveal ? <EyeOff size={16} aria-hidden /> : <Eye size={16} aria-hidden />}
           {reveal ? t.hideEmails : t.showEmails}
         </Button>
+        )}
         {canExport && (
           <Button type="button" variant="secondary" size="sm" onClick={downloadCsv} disabled={exporting}>
             <Download size={16} aria-hidden />
@@ -180,7 +184,7 @@ export function UsersDirectory({ users, locale, t, canExport }: UsersDirectoryPr
         rows={users}
         rowKey={(row) => row.userId}
         columns={columns}
-        searchText={(row) => [row.displayName, reveal ? row.email : null]}
+        searchText={(row) => [row.displayName, row.email ? shown(row.email) : null]}
         facets={facets}
         renderMobileCard={(row) => (
           <div className="space-y-2 rounded-card border border-outline-variant bg-surface-container-lowest p-4">

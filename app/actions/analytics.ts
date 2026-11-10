@@ -27,7 +27,7 @@ import type {
   PivotConfig,
   PivotResult,
 } from "@/lib/analytics/types";
-import { scopeFor } from "@/lib/analytics/scope";
+import { directoryEmail, scopeFor } from "@/lib/analytics/scope";
 import { auditLog } from "@/lib/analytics/audit";
 import { listDimensionValues, runInsightQuery, runPivotQuery } from "@/lib/analytics/queries";
 import {
@@ -234,7 +234,7 @@ export async function listAnalyticsUsers(): Promise<AnalyticsUser[]> {
     return {
       userId: p.id,
       displayName: p.displayName,
-      email,
+      email: directoryEmail(email, access.isSuperAdmin),
       country: p.country,
       analyticsAccess: p.analyticsAccess,
       isSuperAdmin: isSuperAdminEmail(email),

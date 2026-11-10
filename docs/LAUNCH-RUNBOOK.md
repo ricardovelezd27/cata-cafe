@@ -786,7 +786,7 @@ row too (TODO in S8-07).
 **Verify:** insert one waitlist entry from the hero form on a preview and check
 `consentAt`, `consentNoticeVersion = 'draft-0'` and `source = 'hero'` on the row; open
 `/?src=chile` and submit the founding form: `source = 'founding:chile'`. Log in as an AI admin:
-the Users page shows masked emails and no CSV button; Vercel Logs search `"where":"audit"`.
+the Users page shows masked emails (masked in the payload itself), no reveal toggle and no CSV button; Vercel Logs search `"where":"audit"`.
 
 **Rollback:** the columns are nullable and unused by older code; no rollback needed. To give AI
 admins the platform view again change `scopeFor` in `lib/analytics/scope.ts`.

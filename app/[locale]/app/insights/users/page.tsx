@@ -42,6 +42,7 @@ export default async function InsightsUsersPage({
         users={users}
         locale={locale}
         canExport={access.isSuperAdmin}
+        canRevealEmails={access.isSuperAdmin}
         t={{
           table: {
             searchPlaceholder: tc("searchPlaceholder"),
