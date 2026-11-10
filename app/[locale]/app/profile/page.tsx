@@ -15,6 +15,7 @@ import { sessionHref } from "@/lib/sessionRouting";
 import { GuestClaimButton, type GuestClaimButtonTranslations } from "@/components/guest/GuestClaimButton";
 import { EditProfileDialog } from "./EditProfileDialog";
 import { ChangeEmailDialog } from "@/components/profile/ChangeEmailDialog";
+import { isAccountDeletionEnabled } from "@/lib/features";
 import { DeleteAccountDialog } from "@/components/profile/DeleteAccountDialog";
 import { deleteConfirmationWord, MAX_SESSIONS_TO_DELETE } from "@/lib/accountDeletion/plan";
 
@@ -465,41 +466,44 @@ export default async function ProfilePage({
                 {t("logoutEverywhere")}
               </SignOutButton>
             </div>
-            {/* Danger zone (S8-19, F-cuenta-1): everyone, guests included. */}
-            <div className="mt-4 border-t border-outline-variant pt-4">
-              <DeleteAccountDialog
-                locale={locale}
-                className="w-full sm:w-auto"
-                strings={{
-                  open: t("deleteAccount.open"),
-                  title: t("deleteAccount.title"),
-                  intro: t("deleteAccount.intro"),
-                  loading: t("deleteAccount.loading"),
-                  impactSessionsDeleted: t.raw("deleteAccount.impactSessionsDeleted") as string,
-                  impactSessionsKept: t.raw("deleteAccount.impactSessionsKept") as string,
-                  impactEvaluations: t.raw("deleteAccount.impactEvaluations") as string,
-                  impactCoffees: t.raw("deleteAccount.impactCoffees") as string,
-                  impactGroupsKept: t.raw("deleteAccount.impactGroupsKept") as string,
-                  impactGroupsDeleted: t.raw("deleteAccount.impactGroupsDeleted") as string,
-                  impactNothing: t("deleteAccount.impactNothing"),
-                  keepScores: t("deleteAccount.keepScores"),
-                  keepCoffees: t("deleteAccount.keepCoffees"),
-                  irreversible: t("deleteAccount.irreversible"),
-                  protectedBody: t("deleteAccount.protectedBody"),
-                  changed: t("deleteAccount.changed"),
-                  tooLargeBody: (t.raw("deleteAccount.tooLargeBody") as string).replace(
-                    "{max}",
-                    String(MAX_SESSIONS_TO_DELETE),
-                  ),
-                  typeLabel: t.raw("deleteAccount.typeLabel") as string,
-                  word: deleteConfirmationWord(locale),
-                  submit: t("deleteAccount.submit"),
-                  deleting: t("deleteAccount.deleting"),
-                  cancel: t("deleteAccount.cancel"),
-                  close: tc("close"),
-                }}
-              />
-            </div>
+            {/* Danger zone (S8-19, F-cuenta-1): everyone, guests included. Hidden
+                until ACCOUNT_DELETION_ENABLED=1 (S8-22 A-01, runbook §24). */}
+            {isAccountDeletionEnabled() && (
+              <div className="mt-4 border-t border-outline-variant pt-4">
+                <DeleteAccountDialog
+                  locale={locale}
+                  className="w-full sm:w-auto"
+                  strings={{
+                    open: t("deleteAccount.open"),
+                    title: t("deleteAccount.title"),
+                    intro: t("deleteAccount.intro"),
+                    loading: t("deleteAccount.loading"),
+                    impactSessionsDeleted: t.raw("deleteAccount.impactSessionsDeleted") as string,
+                    impactSessionsKept: t.raw("deleteAccount.impactSessionsKept") as string,
+                    impactEvaluations: t.raw("deleteAccount.impactEvaluations") as string,
+                    impactCoffees: t.raw("deleteAccount.impactCoffees") as string,
+                    impactGroupsKept: t.raw("deleteAccount.impactGroupsKept") as string,
+                    impactGroupsDeleted: t.raw("deleteAccount.impactGroupsDeleted") as string,
+                    impactNothing: t("deleteAccount.impactNothing"),
+                    keepScores: t("deleteAccount.keepScores"),
+                    keepCoffees: t("deleteAccount.keepCoffees"),
+                    irreversible: t("deleteAccount.irreversible"),
+                    protectedBody: t("deleteAccount.protectedBody"),
+                    changed: t("deleteAccount.changed"),
+                    tooLargeBody: (t.raw("deleteAccount.tooLargeBody") as string).replace(
+                      "{max}",
+                      String(MAX_SESSIONS_TO_DELETE),
+                    ),
+                    typeLabel: t.raw("deleteAccount.typeLabel") as string,
+                    word: deleteConfirmationWord(locale),
+                    submit: t("deleteAccount.submit"),
+                    deleting: t("deleteAccount.deleting"),
+                    cancel: t("deleteAccount.cancel"),
+                    close: tc("close"),
+                  }}
+                />
+              </div>
+            )}
           </div>
         </section>
       </div>

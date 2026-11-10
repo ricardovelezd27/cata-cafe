@@ -273,9 +273,9 @@ describe("planAddReference / planRemoveActive", () => {
   });
 
   it("removing clears only the active; the previous one is active again", () => {
-    expect(planRemoveActive(ranked(1, 2, null))).toEqual({ removeId: "b", activeId: "a" });
-    expect(planRemoveActive(ranked(null, 1, null))).toEqual({ removeId: "b", activeId: null });
-    expect(planRemoveActive(ranked(null, null))).toEqual({ removeId: null, activeId: null });
+    expect(planRemoveActive(ranked(1, 2, null))).toEqual({ removeId: "b", activeId: "a", repinId: "a" });
+    expect(planRemoveActive(ranked(null, 1, null))).toEqual({ removeId: "b", activeId: null, repinId: null });
+    expect(planRemoveActive(ranked(null, null))).toEqual({ removeId: null, activeId: null, repinId: null });
   });
 
   it("compacts ranks to 1..n after a reference row is deleted", () => {

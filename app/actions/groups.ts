@@ -908,12 +908,15 @@ export async function notifyGroupOfSession(input: {
 
     const session = await prisma.cuppingSession.findUnique({
       where: { id: input.sessionId },
-      select: { id: true, createdBy: true, name: true, status: true, closesAt: true, isGroup: true },
+      select: { id: true, createdBy: true, name: true, status: true, closesAt: true, isGroup: true, groupId: true },
     });
     if (!session || session.createdBy !== user.id) {
       throw new Error("not_found_or_forbidden");
     }
     if (!session.isGroup || session.status !== "active" || isSessionExpired(session)) throw new Error("invalid_input");
+    // D-09 (S8-22): as a public action it must only notify the group the
+    // session actually belongs to, never an arbitrary group of the caller.
+    if (session.groupId !== input.groupId) throw new Error("invalid_input");
 
     const inviteToken = await resolveOrCreateSessionInvite(session.id, user.id);
 

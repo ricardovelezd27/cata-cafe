@@ -1,6 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { createHash } from "node:crypto";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { sendMagicLink, defaultNextFor, type MagicLinkResult } from "@/lib/magicLink";
@@ -8,6 +10,8 @@ import { trustedRequestOrigin } from "@/lib/requestOrigin";
 import { safeNext } from "@/lib/safeNext";
 import { mapAuthError, type AuthErrorKey } from "@/lib/authErrors";
 import { run } from "@/lib/safeAction";
+import { reserveEmailBudget } from "@/lib/emailBudget";
+import { parseClientIp } from "@/lib/requestIp";
 import { loginHref } from "@/lib/authRedirect";
 import { isRegisteredUser } from "@/lib/guestScope";
 import * as v from "@/lib/validate";
@@ -20,6 +24,19 @@ const CONFIRM_TYPES: readonly EmailOtpType[] = [
   "email_change",
   "recovery",
 ];
+
+/** Request IP for the email/attempt ledger, or null when unknown. */
+async function requestIp(): Promise<string | null> {
+  const h = await headers();
+  return parseClientIp(h.get("x-forwarded-for"));
+}
+
+/** S8-22 A-03/A-04: reserve BEFORE Supabase is called; a refusal is
+ *  `rate_limited` (the retry-after value is not part of ActionResult). */
+async function reserveOrThrow(req: Parameters<typeof reserveEmailBudget>[0]): Promise<void> {
+  const budget = await reserveEmailBudget(req);
+  if (!budget.allowed) throw new Error("rate_limited");
+}
 
 function localeOf(value: string | undefined): "es" | "en" {
   return value === "en" ? "en" : "es";
@@ -69,6 +86,8 @@ export async function verifyEmailCode(
     const token = String(code ?? "").replace(/\s+/g, "");
     const address = String(email ?? "").trim();
     if (!/^\d{6}$/.test(token) || !address || address.length > 254) throw new Error("invalid_input");
+    // A-03: count the ATTEMPT (per address and per IP) before asking Supabase.
+    await reserveOrThrow({ kind: "code_verify", ip: await requestIp(), subject: address });
     const supabase = await createClient();
     const { error } = await supabase.auth.verifyOtp({ email: address, token, type: "email" });
     if (error) throw new Error(authCodeFor(error));
@@ -92,6 +111,12 @@ export async function confirmEmailToken(
     if (!hash || hash.length > 512 || !CONFIRM_TYPES.includes(type as EmailOtpType)) {
       throw new Error("invalid_input");
     }
+    // A-03: no address here, so the target bucket is a hash of the token.
+    await reserveOrThrow({
+      kind: "code_verify",
+      ip: await requestIp(),
+      subject: `token:${createHash("sha256").update(hash).digest("hex")}`,
+    });
     const supabase = await createClient();
     const { error } = await supabase.auth.verifyOtp({ type: type as EmailOtpType, token_hash: hash });
     if (error) throw new Error(authCodeFor(error));
@@ -172,6 +197,10 @@ export async function requestEmailChange(
 
     const address = v.email(email);
     if (address === (user.email ?? "").toLowerCase()) throw new Error("invalid_input");
+
+    // A-04: Supabase mails the NEW address from our sender; spend one
+    // magic_link-style send (per target address and per IP) before it does.
+    await reserveOrThrow({ kind: "magic_link", ip: await requestIp(), email: address });
 
     const loc = localeOf(locale);
     const origin = await trustedRequestOrigin();

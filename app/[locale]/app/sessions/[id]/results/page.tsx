@@ -20,6 +20,7 @@ import type { UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { closeSessionInternal } from "@/lib/closeSession";
 import { ON_VIEW_REPAIR_GRACE_MS, soloRepairOwedOnView } from "@/lib/closeRules";
 import { errorMessage, logError } from "@/lib/log";
+import { noIncludedAggregate } from "@/lib/reports/ranking";
 import { ResultsClient } from "./ResultsClient";
 
 // resendCloseEmails / refreshAggregateScores run from here; give the
@@ -785,7 +786,11 @@ export default async function ResultsPage({
                     : 0,
                 attrAverages: recomputed.attrAverages,
               }
-            : agg
+            : groupAggBySample && (submittedAllBySample.get(s.id) ?? 0) > 0
+              ? // B-07: every submitted evaluation is excluded -> n = 0, no score
+                // (never the trigger row's COALESCE(avg, 0) = 0).
+                noIncludedAggregate(submittedAllBySample.get(s.id) ?? 0)
+              : agg
               ? {
                   communityScore: agg.communityScore,
                   avgRawScore: agg.avgRawScore,

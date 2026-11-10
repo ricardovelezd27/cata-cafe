@@ -532,6 +532,7 @@ ANALYTICS_AI_ADMIN_EMAILS=    # lib/analytics/access.ts — comma-separated AI-c
 GEMINI_MODEL_PRO=             # Model override for the insights chat; default gemini-3.1-pro-preview (no stable 3.x pro on the API yet)
 NEXT_PUBLIC_SITE_URL=         # Absolute URL used in email links + the printed join QR; defaults to localhost in dev, REQUIRED in prod
 CLOSE_EMAIL_ATTACH_CVA=       # "1" → close emails also attach each participant's CVA form PDF (legacy); default = results link + personal summary PDF only
+ACCOUNT_DELETION_ENABLED=     # "1" → enables "Eliminar cuenta" (lib/features.ts); default OFF until the runbook §24 rehearsal passes
 DB_POOL_MAX=                  # Per-instance Postgres pool size for the pg driver adapter; default 8
 ```
 
