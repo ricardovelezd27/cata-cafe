@@ -70,3 +70,33 @@ export function evaluateJoin(
   }
   return { kind: "ok", late: session.startedAt !== null };
 }
+
+export type JoinRefusalCode =
+  | "session_closed"
+  | "token_expired"
+  | "token_exhausted"
+  | "entries_closed"
+  | "invalid_token";
+
+/**
+ * The error code a refused newcomer gets — the same codes joinViaToken throws.
+ * `null` = not a refusal ("ok", or "redirect" for an owner/member).
+ * A revoked link (`invite.active === false`) reads as `token_expired`.
+ */
+export function joinRefusalCode(decision: JoinDecision): JoinRefusalCode | null {
+  switch (decision.kind) {
+    case "closed":
+      return "session_closed";
+    case "expired":
+      return "token_expired";
+    case "exhausted":
+      return "token_exhausted";
+    case "entries_closed":
+      return "entries_closed";
+    case "invalid":
+      return "invalid_token";
+    case "ok":
+    case "redirect":
+      return null;
+  }
+}

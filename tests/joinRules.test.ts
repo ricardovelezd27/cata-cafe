@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluateJoin, type JoinInvite, type JoinSession } from "@/lib/joinRules";
+import { evaluateJoin, joinRefusalCode, type JoinInvite, type JoinSession } from "@/lib/joinRules";
 
 const NOW = new Date("2026-11-10T12:00:00.000Z");
 const future = new Date(NOW.getTime() + 3_600_000);
@@ -92,5 +92,26 @@ describe("evaluateJoin", () => {
   });
   it("a solo-session link is invalid even for its owner", () => {
     expect(ev({ session: { isGroup: false }, viewer: { userId: "owner", isMember: false } }).kind).toBe("invalid");
+  });
+});
+
+// checkJoinable (app/actions/join.ts) answers a guest with these codes BEFORE
+// an anonymous user is created; they must match what joinViaToken throws.
+describe("joinRefusalCode", () => {
+  it("entries closed is refused before a guest is minted", () => {
+    expect(joinRefusalCode(ev({ session: { entriesLocked: true } }))).toBe("entries_closed");
+  });
+  it("a revoked link reads as expired", () => {
+    expect(joinRefusalCode(ev({ invite: { active: false } }))).toBe("token_expired");
+  });
+  it("maps the other refusals to joinViaToken's codes", () => {
+    expect(joinRefusalCode(ev({ session: { status: "closed" } }))).toBe("session_closed");
+    expect(joinRefusalCode(ev({ invite: { expiresAt: past } }))).toBe("token_expired");
+    expect(joinRefusalCode(ev({ invite: { maxUses: 1, useCount: 1 } }))).toBe("token_exhausted");
+    expect(joinRefusalCode(ev({ invite: null }))).toBe("invalid_token");
+  });
+  it("an admissible link is not a refusal", () => {
+    expect(joinRefusalCode(ev({}))).toBeNull();
+    expect(joinRefusalCode(ev({ viewer: member }))).toBeNull();
   });
 });

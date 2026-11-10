@@ -2,9 +2,9 @@ import { isSessionExpired } from "./sessionState";
 
 /**
  * Can this invite still be used to join? (S8-07, F-guest-3.) One pure rule
- * shared by the /join page (render), `checkJoinable` (the guest form's check
- * BEFORE it creates an anonymous user) and mirrored by `joinViaToken`'s own
- * checks, so a closed link, an expired link and a full session read the same
+ * kept for its tests; the /join page, `checkJoinable` and `joinViaToken` now
+ * all decide with `evaluateJoin` (lib/joinRules.ts, S8-11), which also knows
+ * `entriesLocked` and a revoked invite. Originally shared so a closed link, an expired link and a full session read the same
  * everywhere. Order matches joinViaToken: unknown, expired, closed, full.
  *
  * Dependency-free (no Prisma, no server-only) so vitest covers it.

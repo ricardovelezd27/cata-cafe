@@ -11,14 +11,15 @@ import { joinViaToken } from "@/app/actions/community";
 import { joinCoffeeViaToken } from "@/app/actions/coffees";
 import { run } from "@/lib/safeAction";
 import { prisma } from "@/lib/prisma";
-import { joinBlock } from "@/lib/joinability";
+import { evaluateJoin, joinRefusalCode } from "@/lib/joinRules";
 import type { ActionResult } from "@/lib/actionResult";
 
 export type JoinFormState = ActionResult<void> | null;
 
 /**
  * Called by the guest form BEFORE it creates an anonymous user (S8-07,
- * F-guest-3): a closed, expired, unknown or full link answers with its own
+ * F-guest-3): a closed, expired, revoked, unknown or full link, or a session
+ * whose entries are closed (S8-11), answers with its own
  * code instead of leaving an orphan anonymous account behind. Needs no
  * sign-in on purpose (the guest has none yet) and returns nothing but the
  * verdict, which the /join page already shows to anyone holding the link.
@@ -32,14 +33,34 @@ export async function checkJoinable(token: string): Promise<ActionResult<{ joina
     const invite = await prisma.sessionInvite.findUnique({
       where: { token: raw },
       select: {
+        active: true,
         expiresAt: true,
         maxUses: true,
         useCount: true,
-        session: { select: { status: true, closesAt: true } },
+        session: {
+          select: {
+            id: true,
+            status: true,
+            closesAt: true,
+            startedAt: true,
+            isGroup: true,
+            isAsync: true,
+            createdBy: true,
+            entriesLocked: true,
+          },
+        },
       },
     });
-    const block = joinBlock(invite, invite?.session);
-    if (block) throw new Error(block);
+    // The same pure rule as the /join page and joinViaToken (lib/joinRules.ts),
+    // so entries closed and a revoked link are refused here too, BEFORE the
+    // guest form mints an anonymous user. The caller has no account yet, so
+    // it is always judged as a newcomer.
+    const decision = evaluateJoin(
+      { invite, session: invite?.session ?? null, viewer: { userId: null, isMember: false } },
+      "es",
+    );
+    const refusal = joinRefusalCode(decision);
+    if (refusal) throw new Error(refusal);
     return { joinable: true as const };
   });
 }
