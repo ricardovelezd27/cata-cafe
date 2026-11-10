@@ -227,22 +227,20 @@ export function WaitingRoomClient({
     onStartedRef.current = onStarted;
   });
 
-  // Foreground resume (S8-15): a phone that slept has a dead socket and may have
-  // missed the start. Recreate the channel (via resumeKey) and re-seed from the
-  // server — same read the 15 s polling fallback uses.
-  useForegroundResume(() => {
-    if (isAsync) return;
-    setResumeKey((k) => k + 1);
-    void (async () => {
-      const state = await getWaitingState(sessionId);
-      if (!state) return;
-      if (state.startedAt) {
-        onStartedRef.current();
-        return;
-      }
-      applySyncRef.current({ warmupStartedAt: state.warmupStartedAt }, false);
-    })();
-  });
+  // ONE foreground-resume path (S8-15 hook, S8-21 merge of S8-11's listeners):
+  // a phone that slept has a dead socket and may have missed the start. Return
+  // to the tab, bfcache pageshow and online all (a) recreate the channel via
+  // resumeKey and (b) re-seed from the server right away through the same
+  // refetch the SUBSCRIBED handler and the polling fallback use.
+  const refetchRef = useRef<(() => Promise<void>) | null>(null);
+  useForegroundResume(
+    () => {
+      if (isAsync) return;
+      setResumeKey((k) => k + 1);
+      void refetchRef.current?.();
+    },
+    { minHiddenMs: 0, pageshow: true },
+  );
 
   // Back closes the player, not the page (push a history entry when it opens).
   useEffect(() => {
@@ -282,6 +280,8 @@ export function WaitingRoomClient({
       }
       applySyncRef.current({ warmupStartedAt: state.warmupStartedAt }, false);
     };
+
+    refetchRef.current = refetchState;
 
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -346,21 +346,8 @@ export function WaitingRoomClient({
       },
     );
 
-    // Resume (phone unlocked, tab restored from the back-forward cache,
-    // network back): a locked phone's socket is silent, so ask the server.
-    const onVisible = () => {
-      if (document.visibilityState === "visible") void refetchState();
-    };
-    const onPageShow = () => void refetchState();
-    const onOnline = () => void refetchState();
-    document.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("pageshow", onPageShow);
-    window.addEventListener("online", onOnline);
-
     return () => {
-      document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("pageshow", onPageShow);
-      window.removeEventListener("online", onOnline);
+      refetchRef.current = null;
       clearPoll();
       stop();
     };

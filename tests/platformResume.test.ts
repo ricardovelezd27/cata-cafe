@@ -46,4 +46,12 @@ describe("createResumeGate", () => {
     c.advance(10_000);
     expect(g.visible()).toBe("visible");
   });
+  it("pageshow fires a visible resume and dedupes against a burst", () => {
+    const c = clock();
+    const g = createResumeGate({ now: c.now });
+    expect(g.pageshow()).toBe("visible");
+    expect(g.online()).toBeNull();
+    c.advance(1500);
+    expect(g.pageshow()).toBe("visible");
+  });
 });

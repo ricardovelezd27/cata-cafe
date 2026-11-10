@@ -15,6 +15,8 @@ export type ResumeGate = {
   hidden(): void;
   visible(): ResumeReason | null;
   online(): ResumeReason | null;
+  /** Page restored from the back-forward cache (pageshow, persisted). */
+  pageshow(): ResumeReason | null;
 };
 
 export function createResumeGate(opts: {
@@ -47,6 +49,10 @@ export function createResumeGate(opts: {
     },
     online() {
       return fire("online");
+    },
+    pageshow() {
+      hiddenAt = null;
+      return fire("visible");
     },
   };
 }
