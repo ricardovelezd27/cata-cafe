@@ -70,7 +70,7 @@ export async function GET(
 
     let results: CoffeeFichaModel["results"] = null;
     if (showResults) {
-      const aggregate = computeCoffeeAggregate(await loadCoffeeAggregateSamples(id));
+      const aggregate = computeCoffeeAggregate(await loadCoffeeAggregateSamples(id, { userId: user.id, isAdmin }));
       results = {
         sessionsCount: aggregate.sessionsCount,
         evaluationsCount: aggregate.evaluationsCount,

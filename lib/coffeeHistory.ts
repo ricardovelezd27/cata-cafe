@@ -11,18 +11,17 @@ type Db = Prisma.TransactionClient | typeof prisma;
 
 /** Upserts UserCoffeeHistory for every revealed, coffee-linked sample with
  *  submitted evaluations in the session. Idempotent — safe to re-run.
- *  `includeUnrevealed` is used by the delete path only: once the session is
- *  gone, blindness is moot and the cupper should still keep the coffee. */
+ */
 export async function syncCoffeeHistoryForSession(
   sessionId: string,
-  opts: { includeUnrevealed?: boolean; db?: Db } = {},
+  opts: { db?: Db } = {},
 ) {
   const db = opts.db ?? prisma;
   const samples = await db.sessionSample.findMany({
     where: {
       sessionId,
       coffeeId: { not: null },
-      ...(opts.includeUnrevealed ? {} : { revealed: true }),
+      revealed: true,
     },
     include: {
       evaluations: {
@@ -113,8 +112,9 @@ export type HistorySnapshot = {
 
 /**
  * Before a session is deleted: make sure every cupper keeps a self-contained
- * coffee-history row for every coffee-linked sample they submitted (revealed
- * or not), and stamp it with a snapshot of their OWN evaluation + the session
+ * coffee-history row for every REVEALED coffee-linked sample they submitted
+ * (a never-revealed sample stays blind: deleting an open blind session must not
+ * leak the coffee name into cuppers' history, S8-02 F-sesiones-11), and stamp it with a snapshot of their OWN evaluation + the session
  * metadata. The session/evaluation FKs then go NULL on delete (SetNull) and
  * the profile / coffee-detail pages read `snapshot` instead of the relation.
  * Must run inside the same transaction as the delete.
@@ -129,11 +129,12 @@ export async function detachCoffeeHistoryForSession(
   });
   if (!session) return { detached: 0 };
 
-  // Ensure rows exist for everything submitted (incl. unrevealed samples).
-  await syncCoffeeHistoryForSession(sessionId, { includeUnrevealed: true, db });
+  // TODO(S8-02 D8): label-only history rows for unrevealed samples need nullable
+  // coffeeId — waits for Kim's answer D8. Until then unrevealed samples are skipped.
+  await syncCoffeeHistoryForSession(sessionId, { db });
 
   const samples = await db.sessionSample.findMany({
-    where: { sessionId, coffeeId: { not: null } },
+    where: { sessionId, coffeeId: { not: null }, revealed: true },
     select: {
       coffeeId: true,
       label: true,

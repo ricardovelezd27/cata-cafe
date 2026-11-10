@@ -11,7 +11,8 @@ import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
 import { asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { deriveMyEvaluation, summarizeMyProgress } from "@/lib/evaluationState";
-import { canViewGroupResults } from "@/lib/sessionState";
+import { canViewGroupResults, isSessionExpired } from "@/lib/sessionState";
+import { gateSampleForViewer, communityHidden } from "@/lib/reports/sampleGate";
 import { ResultsClient } from "./ResultsClient";
 
 // resendCloseEmails / refreshAggregateScores run from here; give the
@@ -127,7 +128,9 @@ export default async function ResultsPage({
 
   const totalParticipants = session.participants.length;
   const allSubmitted = totalParticipants > 0 && submittedCupperCount >= totalParticipants;
-  const sessionExpired = session.closesAt ? session.closesAt < new Date() : false;
+  const sessionExpired = isSessionExpired({ status: "active", closesAt: session.closesAt });
+  // Closed OR past its deadline: no more cupping, no more drafts to finish.
+  const sessionOver = isSessionExpired(session);
   const canViewGroup = canViewGroupResults({
     isGroup: session.isGroup,
     ownerRead,
@@ -490,7 +493,7 @@ export default async function ResultsPage({
   // a single sample: that is a plain "not evaluated" state, not "in progress".
   const hasAnyOwnRow = [...myEvaluationBySample.values()].some((m) => m.status !== "none");
   const myDraftNotice =
-    !isAdminViewer && session.status !== "closed" && hasAnyOwnRow && !myProgress.allSubmitted
+    !isAdminViewer && !sessionOver && hasAnyOwnRow && !myProgress.allSubmitted
       ? tResults("myDraftNotice", { complete: myProgress.complete, total: myProgress.total })
       : null;
 
@@ -542,7 +545,8 @@ export default async function ResultsPage({
   // Freshness: the trigger stamps computedAt on every recompute, so the newest
   // computedAt across samples is "when community data last changed".
   let lastComputedAt: Date | null = null;
-  for (const s of session.samples) {
+  const hideCommunity = communityHidden({ ownerRead, isGroup: session.isGroup, canViewGroup });
+  for (const s of hideCommunity ? [] : session.samples) {
     const at = s.aggregateScore?.computedAt ?? null;
     if (at && (!lastComputedAt || at > lastComputedAt)) lastComputedAt = at;
   }
@@ -580,6 +584,7 @@ export default async function ResultsPage({
       isGroup={session.isGroup}
       canViewGroup={canViewGroup}
       sessionStatus={session.status}
+      cuppingOpen={!sessionOver}
       closedOnLabel={closedOnLabel}
       closeEmails={closeEmails}
       currentUserId={user.id}
@@ -656,6 +661,15 @@ export default async function ResultsPage({
                   attrAverages: (agg.attrAverages as Record<string, number>) ?? {},
                 }
               : null;
+          // Server-side viewer gate: physical sheet owner-only, community
+          // numbers withheld while a group session's results are hidden.
+          const gated = gateSampleForViewer(
+            {
+              physical: (s.physical?.data as Record<string, unknown>) ?? {},
+              aggregateScore,
+            },
+            { ownerRead, isGroup: session.isGroup, canViewGroup },
+          );
           return {
             id: s.id,
             label: s.label,
@@ -690,9 +704,9 @@ export default async function ResultsPage({
             descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
             affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
             combined: (ev?.combinedData as Record<string, unknown>) ?? {},
-            physical: (s.physical?.data as Record<string, unknown>) ?? {},
+            physical: gated.physical,
             extrinsic: s.revealed ? ((s.extrinsic?.data as Record<string, unknown>) ?? {}) : {},
-            aggregateScore,
+            aggregateScore: gated.aggregateScore,
             isReference: s.referenceRank != null,
             referenceRank: s.referenceRank ?? null,
             myEvaluation: myEvaluationBySample.get(s.id) ?? { status: "none", complete: false },
@@ -723,6 +737,7 @@ export default async function ResultsPage({
         refreshing: tResults("refreshing"),
         // Template — the live count is substituted client-side.
         refreshNew: tResults("refreshNew", { count: "{count}" }),
+        refreshNewGeneric: tResults("refreshNewGeneric"),
         radarMine: tResults("mine"),
         radarCommunity: tResults("community"),
         deltaAttribute: tResults("deltaAttribute"),

@@ -796,33 +796,49 @@ export function CupClient({
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
+    // Trailing 2 s debounce for the server re-fetch: a burst of session-row
+    // touches (sample edits, start, reference) becomes ONE router.refresh().
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRefresh = () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => {
+        refreshTimer = null;
+        router.refresh();
+      }, 2000);
+    };
+
     // JWT before join — see lib/supabase/realtimeAuth.ts (S6 CP-C4).
-    const stop = subscribeWithSessionAuth(
+    const stopSubscription = subscribeWithSessionAuth(
       supabase,
-      () =>
-    supabase
-      .channel(`session:${session.id}`)
-      .on(
-        "postgres_changes",
-        // Server-side sessionId filter narrows the stream; sampleIds/isDraft guards stay client-side.
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "evaluations",
-          filter: `sessionId=eq.${session.id}`,
-        },
-        (payload) => {
-          const row = payload.new as Record<string, unknown>;
-          // Columns are camelCase in Postgres; accept snake_case defensively.
-          const isDraft = (row.isDraft ?? row.is_draft) as boolean | undefined;
-          const sampleId = (row.sessionSampleId ?? row.session_sample_id) as
-            | string
-            | undefined;
-          if (isDraft === false && sampleId && sampleIdsRef.current.has(sampleId)) {
-            setSubmittedCount((prev) => prev + 1);
-          }
+      () => {
+        const channel = supabase.channel(`session:${session.id}`);
+        // The submitted counter is rendered only in the owner's master panel
+        // and RLS (S8-01) exposes peers' evaluation rows to the owner alone,
+        // so a participant's binding would be a dead socket.
+        if (isOwner) {
+          channel.on(
+            "postgres_changes",
+            // Server-side sessionId filter narrows the stream; sampleIds/isDraft guards stay client-side.
+            {
+              event: "UPDATE",
+              schema: "public",
+              table: "evaluations",
+              filter: `sessionId=eq.${session.id}`,
+            },
+            (payload) => {
+              const row = payload.new as Record<string, unknown>;
+              // Columns are camelCase in Postgres; accept snake_case defensively.
+              const isDraft = (row.isDraft ?? row.is_draft) as boolean | undefined;
+              const sampleId = (row.sessionSampleId ?? row.session_sample_id) as
+                | string
+                | undefined;
+              if (isDraft === false && sampleId && sampleIdsRef.current.has(sampleId)) {
+                setSubmittedCount((prev) => prev + 1);
+              }
+            },
+          );
         }
-      )
+        return channel
       // The reference sample lives on the session row, which is already in
       // the supabase_realtime publication (Phase 7) — no extra SQL needed.
       .on(
@@ -846,9 +862,10 @@ export function CupClient({
           // Any session-row change (sample add/rename/remove touch updatedAt;
           // start/close/reference) → re-fetch the server page; the reconcile
           // effect above merges the fresh samples without losing drafts.
-          router.refresh();
+          scheduleRefresh();
         }
-      ),
+      );
+      },
       // Without a status callback a dropped channel is indistinguishable from
       // "nobody has submitted yet" — the count just stops moving. Surface it
       // so the maestro knows the number is stale rather than flat (F10).
@@ -857,8 +874,11 @@ export function CupClient({
       },
     );
 
-    return stop;
-  }, [isGroup, online, session.id, router]);
+    return () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      stopSubscription();
+    };
+  }, [isGroup, isOwner, online, session.id, router]);
 
   // Safety net for the realtime path above (S6 CP-C4): a group cupper whose
   // channel is silently dead (see lib/supabase/realtimeAuth.ts) still picks up

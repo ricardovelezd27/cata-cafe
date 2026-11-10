@@ -18,12 +18,13 @@ import {
   requireSampleMember,
   requireSampleOwner,
   assertSessionWritable,
+  assertSessionStarted,
 } from "@/lib/sessionAuth";
 import {
   detachCoffeeHistoryForSession,
   syncCoffeeHistoryForSession,
 } from "@/lib/coffeeHistory";
-import { isSessionClosed, planClosesAtChange } from "@/lib/sessionState";
+import { isSessionClosed, isSessionExpired, planClosesAtChange } from "@/lib/sessionState";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { computeEvaluationDerived, moduleKeyForFormat } from "@/lib/evaluation";
 import {
@@ -592,6 +593,7 @@ export async function upsertEvaluation(input: {
   // Closed sessions are read-only: a post-close edit would change raw data
   // without re-firing the aggregate trigger (it only fires on isDraft).
   assertSessionWritable(auth);
+  assertSessionStarted(auth);
   const { sessionId } = auth;
 
   if (!input.data || typeof input.data !== "object" || Array.isArray(input.data)) {
@@ -1131,18 +1133,15 @@ export async function renameSessionSample(sampleId: string, label: string) {
 export async function removeSessionSample(sampleId: string, locale: string = "es") {
   const user = await requireUser();
 
+  // Owner gate + closed/expired guard (F-sesiones-3, closed half). A closed
+  // session returns a code instead of throwing so the client can show copy.
+  const auth = await requireSampleOwner(sampleId, user.id);
+  if (isSessionExpired(auth)) return { ok: false as const, error: "session_closed" };
   const sample = await prisma.sessionSample.findUnique({
     where: { id: sampleId },
-    select: {
-      id: true,
-      sessionId: true,
-      session: { select: { createdBy: true } },
-      _count: { select: { evaluations: true } },
-    },
+    select: { id: true, sessionId: true, _count: { select: { evaluations: true } } },
   });
-  if (!sample || sample.session.createdBy !== user.id) {
-    throw new Error("not_found_or_forbidden");
-  }
+  if (!sample) throw new Error("not_found_or_forbidden");
   // A sample with ANY cupper's evaluation is load-bearing data — refuse.
   // (Deleting would cascade evaluations/physical/extrinsic/aggregate rows.)
   if (sample._count.evaluations > 0) {

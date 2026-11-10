@@ -13,6 +13,7 @@ export const ACTION_ERROR_CODES = [
   "not_authenticated",
   "not_found_or_forbidden",
   "session_closed",
+  "session_not_started",
   "invalid_token",
   "token_expired",
   "token_exhausted",

@@ -69,6 +69,8 @@ The owner creates a group session (`createGroupSession`), shares `/join/[token]`
 
 ### F-grupal-6 · Un envío puede llegar después del cierre y hay endpoints sin guarda · severity: P2 · status: confirms-board(Envíos que llegan después del cierre)
 
+- **Status** — Fixed in S8-01 (PR #68): the two dead exports are gone and `submitAllEvaluations` flips drafts with an `updateMany` conditional on the session being open.
+
 - **Problem** — `submitAllEvaluations` checks `assertSessionWritable` first (`community.ts:25`) and then runs an `updateMany` with no status condition (`community.ts:29-36`), so a submit racing a close can land after the flip. Two more exported actions, `submitSampleEvaluation` (`community.ts:85`) and `submitEvaluation` (`community.ts:110`), have no closed guard at all and no caller in `app/`, `components/`, `lib/` or `hooks/` (grep). Each is a public endpoint that flips `isDraft` and re-fires the aggregate trigger. The board rates this P3; I raise it to P2 because it breaks the closed = read-only rule.
 - **Implication** — Trust and closed = read-only: after the owner shares final results, a participant can still change the community score, and the history row is not written for that late submit.
 - **Fix** — Make the submit itself conditional on an open session, and delete the two unused actions. **Acceptance:** a submit sent after close changes nothing and returns `session_closed`; the two actions no longer exist; a submit racing a close either lands before close and appears in history, or is refused. **Size:** S.
@@ -78,6 +80,8 @@ The owner creates a group session (`createGroupSession`), shares `/join/[token]`
 - **Invariant check** — Restores closed = read-only; one close routine untouched.
 
 ### F-grupal-7 · El inicio no se exige en el servidor para evaluar o enviar · severity: P3 · status: confirms-board(Un participante abre /cup de una sesión en vivo sin iniciar)
+
+- **Status** — Fixed in S8-01 (PR #68): `assertSessionStarted` in `upsertEvaluation`, `submitAllEvaluations` and the offline replay (`session_not_started`; the replay keeps the draft pending).
 
 - **Problem** — The UI half is fixed: a non-owner is redirected to `/waiting` (`cup/page.tsx:51`). `upsertEvaluation` (`sessions.ts:561-593`) and `submitAllEvaluations` still never read `startedAt`, although `requireSessionMember` already returns it (`lib/sessionAuth.ts:76`).
 - **Implication** — Low in practice: only a stale tab or a hand-built request writes before the start. The owner's simultaneous-start control is client-enforced only.

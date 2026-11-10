@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { orderReferencesFirst } from "@/lib/referenceRules";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { buildInviteUrl } from "@/lib/inviteUrl";
-import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
+import { sheetSampleIdentity, sheetSampleRecords } from "@/lib/pdf/sheetSource";
 import { PrintClient } from "./PrintClient";
 
 export default async function PrintPage({
@@ -22,11 +22,19 @@ export default async function PrintPage({
   } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
 
+  // Super-admin god mode (read-only): any session, rendered from the OWNER's
+  // evaluation — same lens as the cva-pdf route. The invite QR below stays
+  // gated on the REAL owner.
+  const isSuperAdmin = isSuperAdminEmail(user.email);
+  const adminTarget = isSuperAdmin
+    ? await prisma.cuppingSession.findUnique({ where: { id }, select: { createdBy: true } })
+    : null;
+  const viewAsId =
+    adminTarget && adminTarget.createdBy !== user.id ? adminTarget.createdBy : user.id;
+
   const [session, profile] = await Promise.all([
     prisma.cuppingSession.findFirst({
-      // Super-admin god mode: read-only access to any session's print sheet
-      // (the invite QR below stays owner-gated).
-      where: isSuperAdminEmail(user.email)
+      where: isSuperAdmin
         ? { id }
         : {
             id,
@@ -40,19 +48,21 @@ export default async function PrintPage({
           orderBy: { position: "asc" },
           include: {
             coffee: { select: { name: true, deletedAt: true, roastLevel: true } },
-            evaluations: { where: { cupperId: user.id } },
+            evaluations: { where: { cupperId: viewAsId } },
             physical: true,
             extrinsic: true,
           },
         },
       },
     }),
-    prisma.profile.findUnique({ where: { id: user.id }, select: { displayName: true } }),
+    prisma.profile.findUnique({ where: { id: viewAsId }, select: { displayName: true } }),
   ]);
 
   if (!session) notFound();
 
   const isOwner = session.createdBy === user.id;
+  // Sheet lens: whose evaluation (and owner-only data) the sheet renders.
+  const ownerView = session.createdBy === viewAsId;
 
   // Only the owner of a group session gets a join QR on the print sheet, and
   // only if a valid invite already exists — this page never mints one.
@@ -96,25 +106,20 @@ export default async function PrintPage({
         date: dateStr,
         objective: session.objective,
         cupperName: profile?.displayName ?? "",
-        ownerView: isOwner,
+        ownerView,
         samples: orderReferencesFirst(session.samples).map((s) => {
           const ev = s.evaluations[0];
           return {
             id: s.id,
             label: s.label,
             revealed: s.revealed,
-            coffeeName: s.coffee ? coffeeDisplayName(s.coffee, tc("coffeeDeleted")) : null,
-            roastLevel: s.coffee?.roastLevel ?? null,
+            ...sheetSampleIdentity(s, tc("coffeeDeleted")),
             isReference: s.referenceRank != null,
             referenceRank: s.referenceRank ?? null,
             descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
             affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
             combined: (ev?.combinedData as Record<string, unknown>) ?? {},
-            physical: isOwner ? ((s.physical?.data as Record<string, unknown>) ?? {}) : {},
-            extrinsic:
-              isOwner || s.revealed
-                ? ((s.extrinsic?.data as Record<string, unknown>) ?? {})
-                : {},
+            ...sheetSampleRecords(s, ownerView),
           };
         }),
       }}

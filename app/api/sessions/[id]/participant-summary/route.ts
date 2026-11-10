@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
-import { canViewGroupResults } from "@/lib/sessionState";
+import { canViewGroupResults, isSessionExpired } from "@/lib/sessionState";
 import { loadSessionReportSource } from "@/lib/reports/sessionReportData";
 import { buildParticipantSummary } from "@/lib/reports/participantSummary";
 import { ParticipantSummaryDocument } from "@/lib/pdf/ParticipantSummaryDocument";
@@ -100,9 +100,7 @@ export async function GET(
       .then((rows) => rows.length);
     const total = session.participants.length;
     const allSubmitted = total > 0 && submittedCuppers >= total;
-    const sessionExpired = session.closesAt
-      ? session.closesAt < new Date()
-      : false;
+    const sessionExpired = isSessionExpired({ status: "active", closesAt: session.closesAt });
     const canView = canViewGroupResults({
       isGroup: true,
       ownerRead,

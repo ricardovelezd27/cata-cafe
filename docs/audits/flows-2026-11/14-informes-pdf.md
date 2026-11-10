@@ -18,6 +18,7 @@ A cupper or owner leaves the results page by one of four plain links in the dock
 ## 3. Findings
 
 ### F-informes-1 · /print serializes coffee name and roast of blind samples to participants · severity: P1 · status: confirms-board(La hoja imprimible envía el nombre del café antes de revelar)
+**Fixed in S8-02 (PR #67)** — `sheetSampleIdentity` gates name/roast at the data source in print, cva-pdf and close email; super-admin print uses the owner lens.
 
 - **Problem** — `print/page.tsx:106-107` passes `coffeeName: s.coffee ? coffeeDisplayName(...) : null` and `roastLevel: s.coffee?.roastLevel ?? null` to the client component with no `revealed` condition (the query at `:42` selects them for everyone). The sheet hides them only at paint time (`cvaFormData.ts:881-886` gates on `revealed`), so the RSC payload of a participant in a blind group session carries every sample's coffee. The sibling `cva-pdf/route.ts:102-105` also hands the names to the builder, but there nothing is serialized to the browser. Also, `print/page.tsx:43` filters evaluations by `user.id` and `:99` uses `ownerView: isOwner`, never a `viewAsId`, so the super-admin gets their own empty sheet while `cva-pdf/route.ts:42-43,86` renders the owner's.
 - **Implication** — Trust and scoring integrity: single-blind is the cupping norm. A curious participant (or anyone with a debugger in a wrapped app) can read which coffee is which before scoring. Easy to exploit, silent, and it contradicts the rule that the builder is the gate.
@@ -28,6 +29,7 @@ A cupper or owner leaves the results page by one of four plain links in the dock
 - **Invariant check** — Reinforces "PDF gating inside the builder" and owner-only physical/extrinsic; touches none.
 
 ### F-informes-2 · The coffee ficha averages open blind sessions, excluded cuppers and other owners' session names · severity: P2 · status: confirms-board(La ficha del café mezcla catas abiertas, ciegas y de otros dueños)
+**Fixed in S8-02 (PR #67)** — Ficha shares the viewer-aware model with the profile (closed sessions only, named rows only for own/joined sessions).
 
 - **Problem** — `lib/coffees/aggregateSamples.ts:12-31` selects every `sessionSample` of the coffee with no filter on session status, `revealed`, group visibility or exclusion; evaluations are only `isDraft: false`. The ficha route builds from it (`ficha/route.ts:73-95`): `included` and `submitted` are both set to `evaluationsCount` (`:80-81`), `sd: null`, and `sessions` carries `r.sessionName` for any session, including another owner's. A non-owner reaches this once `coffee.resultsPublished` (`:69`). The DB trigger already drops excluded cuppers from `communityScore`, but `evaluationsCount`, individual averages and descriptors count their raw rows.
 - **Implication** — A public coffee used in someone else's live blind cupping leaks a running community score and a session title to strangers. Owners see mixed, still-changing numbers labelled as a community result.

@@ -13,7 +13,8 @@
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
 import { orderReferencesFirst } from "@/lib/referenceRules";
-import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
+import { deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
+import { sheetSampleIdentity, sheetSampleRecords } from "@/lib/pdf/sheetSource";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email";
 import { CvaFormDocument, type CvaDocumentProps } from "@/lib/pdf/CvaFormDocument";
@@ -239,21 +240,12 @@ export async function sendCloseEmails(
             return {
               label: s.label,
               revealed: s.revealed,
-              coffeeName: s.coffee
-                ? coffeeDisplayName(s.coffee, deletedCoffeeLabel(recipientLocale))
-                : null,
-              roastLevel: s.coffee?.roastLevel ?? null,
+              ...sheetSampleIdentity(s, deletedCoffeeLabel(recipientLocale)),
               isReference: s.id === session.referenceSampleId,
               descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
               affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
               combined: (ev?.combinedData as Record<string, unknown>) ?? {},
-              physical: isOwnerRecipient
-                ? ((s.physical?.data as Record<string, unknown>) ?? {})
-                : {},
-              extrinsic:
-                isOwnerRecipient || s.revealed
-                  ? ((s.extrinsic?.data as Record<string, unknown>) ?? {})
-                  : {},
+              ...sheetSampleRecords(s, isOwnerRecipient),
             };
           }),
         };

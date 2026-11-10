@@ -103,6 +103,7 @@ export default async function Dashboard({
         isGroup: true,
         createdBy: true,
         startedAt: true,
+        closesAt: true,
         _count: { select: { samples: true } },
       },
       // Order by session DATE (not createdAt) so a session you joined shows up

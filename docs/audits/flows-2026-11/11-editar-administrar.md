@@ -18,6 +18,8 @@ The owner manages a session from the sessions list (edit, duplicate, delete icon
 
 ### F-sesiones-1 · Database write policies bypass "closed = read-only" · severity: P1 · status: confirms-board(Las políticas RLS de escritura saltan «cerrada = solo lectura»)
 
+- **Status** — Fixed in S8-01 (PR #68): PHASE 21 SQL (to be applied by the owner, runbook §10) makes the browser key SELECT-only on the session tables. Not verified against the live database.
+
 - **Problem** — `prisma/sql/rls_and_triggers.sql:132` `CREATE POLICY "evals_own" ON evaluations FOR ALL USING ("cupperId" = auth.uid()::text)`, and the same shape for `sessions_write` (:114), `samples_write` (:121), `participants_write` (:146), `phys_all` (:51), `ext_all` (:55). No later phase replaces them (PHASE 18/18b/20 only touch reads, functions and coffees). The public anon key plus a user JWT can therefore write these tables directly through PostgREST. Sharpening beyond the board: the evaluation policy has no membership condition, so any authenticated user (a guest included) who knows a sample id can insert an evaluation for it, and an excluded or removed cupper keeps write access.
 - **Implication** — Security and scoring correctness. After close, a cupper can change scores or flip `isDraft`, which re-fires the aggregate trigger, so results and already-emailed PDFs diverge without passing `assertSessionWritable` or server-side scoring derivation. The owner can reopen a closed session by writing `status`.
 - **Fix** — Make every API role read-only on these tables (SELECT policies only, or revoke INSERT/UPDATE/DELETE from `anon, authenticated`); keep the SELECT policies Realtime depends on. **Acceptance:** with a browser JWT, UPDATE of own evaluation after close returns 401/403; INSERT into a session the user is not in is refused; realtime subscriptions on `evaluations` and `cupping_sessions` still deliver; every app flow (cup, results, wizard) still works. **Size:** M (SQL + Security Advisor + runbook section).
@@ -28,6 +30,8 @@ The owner manages a session from the sessions list (edit, duplicate, delete icon
 
 ### F-sesiones-2 · Several server actions write after close, and two dead exports flip evaluations · severity: P2 · status: confirms-board(Lista cerrada de escrituras permitidas tras el cierre) — severity raised from the board's P3 for the dead exports
 
+- **Status** — Fixed in S8-01 (PR #68): `revealSample` guarded and loses its `coffeeId` parameter; dead exports deleted. Owner exclusion/refresh after close stay allowlisted pending S8-12.
+
 - **Problem** — `app/actions/community.ts:85 submitSampleEvaluation` and `:110 submitEvaluation` update `{ isDraft: false, submittedAt: new Date() }` with only `requireUser()`; no `assertSessionWritable`. They have no callers outside the file (grep) but, being `"use server"` exports, they are public endpoints. `revealSample` (:271) accepts a `coffeeId` and rewrites `session_samples.coffeeId` with no closed check (the UI only ever calls it without a coffee: `ResultsClient.tsx:448`). `setParticipantExclusion` (:426) and `refreshAggregateScores` (:463) also run after close, but neither is among the two sanctioned post-close writes in CLAUDE.md.
 - **Implication** — Trust and scoring: a cupper whose draft was left at close can submit it afterwards and move the community score of a closed session; coffee identity of a closed sample can be re-aimed with no history re-sync.
 - **Fix** — Delete the two dead exports. Give `revealSample` the closed guard (or drop its `coffeeId` parameter). Decide explicitly whether owner exclusion after close is sanctioned (board Option A); if yes, add it to the written list in CLAUDE.md and `docs/flows.md` §1 and implement the single helper the board proposes. **Acceptance:** each remaining mutating action either calls `assertSessionWritable` or is on the written list; a test scanning `'use server'` exports fails otherwise. **Size:** S–M.
@@ -37,6 +41,8 @@ The owner manages a session from the sessions list (edit, duplicate, delete icon
 - **Invariant check** — closed = read-only; fix tightens it. Any new exception must update `docs/flows.md` §1.
 
 ### F-sesiones-3 · Removing a sample: no closed guard, race with a first evaluation, silent loss of physical/extrinsic data · severity: P2 · status: confirms-board(Quitar una muestra sin evaluaciones en una sesión cerrada)
+
+- **Status** — Fixed in S8-01 (PR #68), closed-guard half only: `removeSessionSample` now authorizes with `requireSampleOwner` and returns `session_closed`. The race and the physical/extrinsic-data warning are S8-10.
 
 - **Problem** — `app/actions/sessions.ts:1115` `removeSessionSample` reads the sample with its own `findUnique` (not `requireSampleOwner`), never calls `assertSessionWritable`, checks `_count.evaluations > 0` at :1132 and only then deletes at :1137, outside the transaction. `PhysicalEvaluation` and `ExtrinsicData` cascade on sample delete (`schema.prisma:247,261`) but are not part of the refusal test.
 - **Implication** — Data loss. (a) A closed session loses a sample from results and PDFs (board). (b) The owner's green-bean grading and origin data on a sample vanish with no warning, because only evaluations block removal and the dialog text says nothing about them (`removeSampleBody`). (c) A cupper's first autosave landing between the check and the delete is cascaded away.
@@ -110,6 +116,7 @@ The owner manages a session from the sessions list (edit, duplicate, delete icon
 - **Native** — n/a. **Confidence** — `verified-in-code`. **Kim?** — no. **Invariant check** — validation and ActionResult contract.
 
 ### F-sesiones-11 · Deleting an open blind session reveals the coffee names in each cupper's history · severity: P3 · status: confirms-board(Borrar una cata ciega abierta revela el café en el historial)
+**Fixed in S8-02 (PR #67)** — `detachCoffeeHistoryForSession` skips never-revealed samples (commit 1; label-only rows await Kim D8).
 
 - **Problem** — `lib/coffeeHistory.ts:133` calls `syncCoffeeHistoryForSession(sessionId, { includeUnrevealed: true, db })`, so rows for never-revealed samples are created and kept with a snapshot.
 - **Implication** — A blind cupping the owner cancels teaches participants what was on the table. Cupping protocol: blind identity is the point of the exercise.
@@ -126,6 +133,21 @@ The owner manages a session from the sessions list (edit, duplicate, delete icon
 - **Native** — n/a. **Confidence** — `needs-runtime-check` (set a date, open `/waiting` as a participant).
 - **Kim?** — yes: "¿Ponen fecha de cierre a las catas en vivo, o solo a las que cada quien hace a su ritmo?" Options: date only for self-paced · allow both, keep the room.
 - **Invariant check** — `closesAt` semantics (UTC end of day) unchanged.
+
+### F-sesiones-13 · A participant can read the coffee id of an unrevealed sample through the public key · severity: P2 · status: new (found in S8-01 review)
+
+- **Problem** — `samples_select` exposed `session_samples."coffeeId"` to every participant over PostgREST: a blind-coding leak the page never shows.
+- **Fix** — Fixed in S8-01 (PR #68): PHASE 21 hides the column from the API roles (column privileges), the app reads it through Prisma. Rule: a new `session_samples` column needs a column `GRANT SELECT` in a new SQL phase.
+
+### F-sesiones-14 · Any signed-in user can mint an invite for any session · severity: P2 · status: new (found in S8-01 review)
+
+- **Problem** — `invites_write` (FOR ALL, `createdBy = auth.uid()`, no session check) let any user INSERT a `session_invites` row for any session id with a token they chose, then redeem it through `joinViaToken` and become a participant.
+- **Fix** — Fixed in S8-01 (PR #68): PHASE 21 drops the write policy and revokes writes; the owner keeps reading their own invites. All invite writes are server-side.
+
+### F-sesiones-15 · A signed-in user can set their own `analyticsAccess` · severity: P2 · status: new (found in S8-01 review)
+
+- **Problem** — `profiles_update` had no column limit, and `lib/analytics/access.ts` trusts the flag for Insights access.
+- **Fix** — Fixed in S8-01 (PR #68): PHASE 21 drops `profiles_update` and `profiles_insert` and revokes writes. Every profile write is server-side.
 
 ## 4. Keep — works well
 

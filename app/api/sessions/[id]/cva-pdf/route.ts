@@ -10,7 +10,8 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { orderReferencesFirst } from "@/lib/referenceRules";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
-import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
+import { deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
+import { sheetSampleIdentity, sheetSampleRecords } from "@/lib/pdf/sheetSource";
 import { slug } from "@/lib/pdf/filename";
 import { CvaFormDocument, type CvaDocumentProps } from "@/lib/pdf/CvaFormDocument";
 
@@ -99,22 +100,13 @@ export async function GET(
       return {
         label: sample.label,
         revealed: sample.revealed,
-        coffeeName: sample.coffee
-          ? coffeeDisplayName(sample.coffee, deletedCoffeeLabel(locale))
-          : null,
-        roastLevel: sample.coffee?.roastLevel ?? null,
+        ...sheetSampleIdentity(sample, deletedCoffeeLabel(locale)),
         isReference: sample.referenceRank != null,
         referenceRank: sample.referenceRank ?? null,
         descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
         affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
         combined: (ev?.combinedData as Record<string, unknown>) ?? {},
-        physical: ownerView
-          ? ((sample.physical?.data as Record<string, unknown>) ?? {})
-          : {},
-        extrinsic:
-          ownerView || sample.revealed
-            ? ((sample.extrinsic?.data as Record<string, unknown>) ?? {})
-            : {},
+        ...sheetSampleRecords(sample, ownerView),
       };
     }),
   };

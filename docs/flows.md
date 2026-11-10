@@ -37,6 +37,33 @@ Once closed, a session is **read-only**: every mutation runs
 `assertSessionWritable` and throws `session_closed`; `/cup` redirects to
 `/results`; offline drafts for a closed session are discarded on replay.
 
+**Expiry rule (S8-01).** A session is also read-only once its `closesAt` has
+passed (`isSessionExpired`, strict `<`, server clock) even though `status` stays
+`active` until the daily cron or the owner closes it: `assertSessionWritable`,
+`joinViaToken` (newcomers), the `/cup` and `/waiting` redirects, `sessionHref`,
+the offline replay and the results page all use the same helper, so writing stops
+at the instant group results open. `submitAllEvaluations` flips drafts with a
+conditional `updateMany` (open sessions only), so a close racing a submit cannot
+be written past. `updateSession` is the one exception: it stays status-only so the
+owner can still move a passed deadline. A participant cannot write to a live
+group session before the master starts it (`assertSessionStarted`,
+`session_not_started`); offline replay keeps such a draft pending, never
+discarded.
+
+**Written list after close** (everything else throws `session_closed`; enforced by
+`tests/useServerExports.test.ts`): `upsertExtrinsic` via `ExtrinsicEditDialog`
+(owner, revealed sample), `updateSampleMetadata` naming a coffee-less sample
+(owner), and, pending the S8-12 decision, the owner's `setParticipantExclusion` and
+`refreshAggregateScores`. `closeSession`, `startSession`, `resendCloseEmails`,
+`deleteSession` and `duplicateSession` are lifecycle actions, idempotent or allowed
+on a closed session by design.
+
+**The database says the same (PHASE 21).** The browser key is SELECT-only on the
+session tables: no `INSERT/UPDATE/DELETE` for `anon`/`authenticated`, a participant
+reads only their own `evaluations` (the owner also reads submitted rows), and
+`aggregate_scores` stays hidden from participants until `can_view_group_results`.
+Writes happen only in server actions (Prisma as `postgres`).
+
 ### Solo sessions
 
 `createSession` sets `status: "active"` immediately (there is no meaningful
@@ -82,7 +109,9 @@ master panel's "Iniciar cata" (idempotent). An **async** session (`isAsync`,
 (`/api/cron/close-expired-sessions`, 06:00 UTC) once `closesAt` passes, or
 earlier by the owner. `closesAt` is the END of the chosen calendar day (UTC,
 `dateOnlyEndOfDay`), so a session with closing date D is closed by the cron on
-D+1 in the early morning — never before the day the owner picked has ended. Close emails are queued with `after()` and ledgered per
+D+1 in the early morning — never before the day the owner picked has ended. From
+`closesAt` on, though, the session is already read-only and its group results are
+visible (expiry rule, §1 above): the cron only flips `status` and sends the emails. Close emails are queued with `after()` and ledgered per
 recipient in `close_email_deliveries`; the owner sees sent / no-email / failed /
 pending on the results page and can "Reenviar" (only unsent recipients go out).
 
@@ -148,8 +177,8 @@ The owner may delete a session at any time. The confirm dialog (fed by
 records and their statistics belong to those owners and are never touched — and
 states how many cuppers' evaluations will go. Inside the same transaction,
 `detachCoffeeHistoryForSession` first guarantees every cupper a
-`UserCoffeeHistory` row per coffee-linked sample they submitted (revealed or
-not) carrying a `snapshot` of **their own** evaluation + session metadata; then
+`UserCoffeeHistory` row per **revealed** coffee-linked sample they submitted (a
+never-revealed blind sample is skipped, so the coffee name never leaks, S8-02; label-only rows await Kim D8) carrying a `snapshot` of **their own** evaluation + session metadata; then
 the session is deleted and the history rows' `sessionId`/`evaluationId` go
 `NULL` (`SetNull`) instead of cascading away. Profile history, coffee detail and
 the dashboard read `snapshot` for those rows and label them "Sesión eliminada".
@@ -221,7 +250,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    A[Session row clicked] --> B{status == closed?}
+    A[Session row clicked] --> B{closed OR closesAt passed?}
     B -- yes --> R[/sessions/id/results/]
     B -- no --> C{group && !startedAt\n&& viewer is not owner?}
     C -- yes --> W[/sessions/id/waiting/]
@@ -229,7 +258,7 @@ flowchart LR
 ```
 
 Every list (sessions, dashboard, profile, group page) must use `sessionHref` —
-never hardcode `/cup`.
+never hardcode `/cup`. Its input must include `closesAt` (the type requires it).
 
 ### Sample / coffee metadata lifecycle (progressive)
 
@@ -558,7 +587,7 @@ flowchart LR
     PS --> EM["close email attachment\n(lib/closeEmail.ts, ledgered)"]
     FT --> R2["/api/sessions/[id]/ficha-tecnica\nowner|admin · others 404"]
     TN --> R2
-    CF["lib/coffees/aggregateSamples +\ncomputeCoffeeAggregate"] --> R3["/api/coffees/[id]/ficha\nusableCoffeeWhere · community block if\nresultsPublished || owner"]
+    CF["loadCoffeeAggregateSamples(viewer) →\nfilterCoffeeSamples (closed + revealed,\nno excluded cuppers) → computeCoffeeAggregate"] --> R3["/api/coffees/[id]/ficha\nusableCoffeeWhere · community block if\nresultsPublished || owner"]
     CVA["buildCvaFormData(ownerView)\nphysical: owner only · extrinsic: owner || revealed"] --> R4["/api/sessions/[id]/cva-pdf\n+ /print page (HTML twin)"]
 ```
 
@@ -569,6 +598,30 @@ documents register fonts once (`lib/pdf/fonts.ts`) and draw charts with the
 `lib/pdf/charts.tsx` SVG primitives; `?inline=1` opens the native viewer
 (iOS) instead of downloading. New reports are PDF-only — `PrintClient.tsx`
 stays the HTML twin of the CVA form only.
+
+**Blind-leak gates (S8-02)** — data the UI hides must not be serialized either,
+each gate is a pure, tested helper shared by every consumer:
+
+- `sheetSampleIdentity` / `sheetSampleRecords` (`lib/pdf/sheetSource.ts`): coffee
+  name + roast only once the sample is `revealed` (owner not exempt); physical
+  owner-view only, extrinsic owner-view or revealed. Used by `/print`, `cva-pdf`
+  and the close email. `/print` for a super-admin renders the OWNER's sheet
+  (same `viewAsId` lens as cva-pdf); the invite QR stays on the real owner.
+- `gateSampleForViewer` (`lib/reports/sampleGate.ts`): results payload ships
+  `physical` only on the owner/admin lens and no `aggregateScore` while a group
+  session's community results are hidden.
+- `filterCoffeeSamples` (`lib/coffees/filterCoffeeSamples.ts`) behind
+  `loadCoffeeAggregateSamples(coffeeId, viewer)`: the coffee profile and the
+  Ficha count **closed + revealed** samples only (D6 a; a coffee used only in
+  open sessions shows no results until close), drop `excludedFromResults`
+  cuppers before counting, and expose session name/date only for sessions the
+  viewer owns or joined (admin: all). Other sessions still feed the anonymous
+  totals. "Recent tastings" = the viewer's own evaluations plus every evaluation
+  of sessions they own.
+- Coffee `notes` render for the owner/super-admin only; `duplicableFields`
+  (`lib/coffeeDuplicate.ts`) is the allow-list a duplicate copies from.
+- D8 (cancelled blind session): unrevealed samples get no history row; label-only
+  rows ("Muestra B", nullable `coffeeId`) wait for Kim's answer.
 
 ---
 

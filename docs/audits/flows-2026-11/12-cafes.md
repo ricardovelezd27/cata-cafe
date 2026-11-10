@@ -18,6 +18,7 @@ A coffee is a reusable record owned by its creator (`createdBy`), with a 6-chara
 ## 3. Findings
 
 ### F-cafes-1 · The community block of profile and Ficha exposes other people's session names, dates and per-evaluation scores · severity: P1 · status: confirms-board(El bloque de comunidad expone sesiones y notas de otros catadores)
+**Fixed in S8-02 (PR #67)** — session names/dates only for sessions the viewer owns or joined; recent tastings = own evaluations plus owned sessions.
 
 - **Problem** — `loadCoffeeAggregateSamples` (`lib/coffees/aggregateSamples.ts:11-31`) fetches every `sessionSample` of the coffee with `session: { select: { id, name, date } }`, and its header says "NO AUTHORIZATION HERE". The profile renders `row.sessionName` + date + score (`page.tsx:383-395`) and the "recent tastings" list shows `ev.sessionName` with each `individualScore` (`page.tsx:426-440`); the Ficha route prints the same (`ficha/route.ts:90-94`). The only gate is `showResults = isOwner || coffee.resultsPublished || isAdmin` (`page.tsx:123`, `ficha/route.ts:69`). The coffee owner therefore sees names and scores of sessions run by strangers, including private solo ones, and with `resultsPublished` every shared or public viewer does too.
 - **Implication** — privacy/security. Session names often carry a teacher's, school's or client's name; a single cupper's score identifies that person's palate on that coffee. Hits every owner of a coffee used by someone else.
@@ -28,6 +29,7 @@ A coffee is a reusable record owned by its creator (`createdBy`), with a 6-chara
 - **Invariant check** — PDF gating inside the builder and the anonymity invariant (no other cupper's data) are reinforced, not bent.
 
 ### F-cafes-2 · The coffee aggregate counts open sessions and excluded cuppers · severity: P2 · status: new
+**Fixed in S8-02 (PR #67)** — viewer-aware loader: closed + revealed sessions only, excluded cuppers removed (D6 a).
 
 - **Problem** — the loader filters only `evaluations: { where: { isDraft: false } }` (`aggregateSamples.ts:19-26`). It has no session-status check, no `canViewGroupResults` rule and no `excludedFromResults` check, so `computeCoffeeAggregate` (`lib/coffeeAggregate.ts:224-248`) counts submitted evaluations of a session still in progress, of a group whose results are still hidden, and of cuppers the host excluded. Attribute averages come from `AggregateScore`, which the trigger updates live. The Ficha hardcodes `sd: null` and zero penalties (`ficha/route.ts:80-88`), so its number cannot be reconciled with any session report.
 - **Implication** — scoring correctness and blind-tasting integrity: the owner of a coffee (often a roaster, not the host) can read running scores of a live blind cupping, and a cupper the host excluded still moves the shown number. The coffee score can differ from the closed-session score the cuppers saw.
@@ -38,6 +40,7 @@ A coffee is a reusable record owned by its creator (`createdBy`), with a 6-chara
 - **Invariant check** — scoring never from the client, trigger authoritative: the fix filters inputs and does not reimplement `lib/scoring.ts`.
 
 ### F-cafes-3 · Owner's private notes are shown to every viewer and copied by Duplicate · severity: P2 · status: new
+**Fixed in S8-02 (PR #67)** — notes render for owner/super-admin only; `duplicableFields` allow-list drops them from duplicates.
 
 - **Problem** — the Ficha route says "Private owner text: never printed for other viewers (the profile page omits it too)" (`ficha/route.ts:122-123`), but the profile prints `coffee.notes` for anyone who can open the coffee (`page.tsx:274-278`, no `isOwner` guard). `duplicateCoffee` also selects and copies `notes` of a foreign coffee (coffees.ts:282, 296-300). Anonymize treats notes as identifying (`coffeeAnonymize.ts:45`).
 - **Implication** — trust/privacy: a roaster who puts a buyer, price or lot remark in notes on a public or shared coffee publishes it to all registered users. Code comment and page disagree, so one of them is a bug.
@@ -90,6 +93,7 @@ A coffee is a reusable record owned by its creator (`createdBy`), with a 6-chara
 - **Invariant check** — guest scope kept; validation per CLAUDE.md.
 
 ### F-cafes-8 · "Anonymized" coffees still reveal farm and producer through sample data, and the dialog over-promises · severity: P3 · status: confirms-board(Anonimizar deja finca y productor en los datos extrínsecos)
+**Fixed in S8-02 (PR #67)** — delete dialog now lists what stays on sample origin sheets (no clearing).
 
 - **Problem** — `ANONYMIZED_COFFEE_DATA` clears coffee fields only (`coffeeAnonymize.ts:55-65`); `ExtrinsicData` keys `ext_finca_val`/`ext_productor_val` (`ExtrinsicForm.tsx:123-129`, rendered via `cvaFormData.ts:581-586`) and sample labels stay. Retained region + altitude + harvest + variety + process, plus `createdBy` still pointing at the owner, make the row pseudonymous rather than anonymous. The dialog says data stays "de forma anónima" (`messages/es.json` `coffee.deleteCoffee.body`).
 - **Implication** — trust/compliance: the owner asked to erase farm and producer and results, CVA PDF and print can still show them.
