@@ -201,3 +201,18 @@ The chain tip is now `claude/s8-26-coffee-policy-recursion-impl` (26th and last 
 - **S8-27 DONE: draft PR #94, `claude/s8-27-verification-fixes-impl` @ `80271b5` is the NEW CHAIN TIP** (contains everything, including `f74d053`). tsc clean, 1,162 tests / 129 files, lint 4 pre-existing errors. Architect-reviewed: removing the active reference returns `conflict` unless `confirmRepin` when the re-activated reference has ratings off the 79.00 anchor; `removeSessionSample` refuses with `reference_repin_required`; `removeSamplesInTx` takes a required `{ onReactivate }` (solo finish passes "ignore": review caught that the guard would otherwise break finishing a solo session). Not run in a browser; `next build` not re-run at this tip (last build check was at `2a19f83`). Merge #94 into `main` to bring in the whole chain.
 - **A-13 answered (read-only, 2026-11-11):** production has **3 `@cata.test` accounts, 2 of them own sessions**. 185 registered users, 315 anonymous guests. Removing or re-keying the test accounts is Ricardo's action.
 - **S8-28 in progress** (`claude/s8-28-audit-partials-impl`, stacked on #94): `next build` at the tip plus the partly resolved findings A-03, A-04, B-03, C-04, D-09, A-05 test, doc drift. No migration allowed in it. Review before treating it as the tip.
+
+## Update 2026-11-11 (SQL phases applied)
+
+Ricardo authorized Claude to run the three phases and to merge + deploy (answers to an explicit question, 2026-11-11). Applied through the Supabase SQL editor, each script checksum-verified in the page before running, source = `prisma/sql/rls_and_triggers.sql` at `80271b5`:
+
+| Phase | Applied | Verified (read-only, after) |
+|---|---|---|
+| PHASE 22 | yes | RLS on for `outbound_email_events` and `group_email_deliveries`, 0 policies on them |
+| PHASE 23 STEP 1 | yes (sha256 `a5a49f6d…f7b9`, identical to the dry-run copy) | function contains `v_cups_per_sample >= 5`, `proconfig = {search_path=public}`, trigger enabled |
+| PHASE 23 STEP 2 (recompute) | **NO: on hold until Kim is told** (54 past scores go up) | n/a |
+| PHASE 24 | yes (sha256 `c40c7b09…df6a`, with its self-check) | 16 policies, all SELECT + `authenticated`; 0 API-role write privileges in `public`; `is_coffee_owner` EXECUTE authenticated yes / anon no; every public table has RLS on |
+
+- PHASE 24 pre-flight (a) matched the expected 18 policies exactly. Pre-flight (b), the grant half of the rollback, is saved as `docs/handover/phase24-rollback-grants.sql` (19 tables x 2 roles); the policy half is the commented block at the end of PHASE 24 in the SQL file. Pre-flight (c): postgres defaults in public were the Supabase defaults (`arwdDxtm` for anon and authenticated).
+- Not checked yet: Supabase Security Advisor, and the two-account Realtime test (needs Ricardo's accounts).
+- The old app is still what is deployed; it ran on top of these rules from this moment.
