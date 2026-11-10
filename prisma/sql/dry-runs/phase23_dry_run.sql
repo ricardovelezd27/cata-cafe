@@ -14,6 +14,7 @@ DO $dry$
 DECLARE
   v_total int; v_low int; v_low_changed int; v_high_changed int;
   v_out text := '';
+  v_conf text;
   r record;
 BEGIN
   CREATE TEMP TABLE agg_before ON COMMIT DROP AS
@@ -21,7 +22,7 @@ BEGIN
 
   -- >>> PHASE 23 STEP 1 (copy of rls_and_triggers.sql) >>>
 CREATE OR REPLACE FUNCTION recompute_aggregate_score()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $fn$
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $fn$
 DECLARE
   v_session_id         text;
   v_cups_per_sample    int;
@@ -153,6 +154,8 @@ END;
 $fn$;
   -- <<< PHASE 23 STEP 1 <<<
 
+  SELECT proconfig::text INTO v_conf FROM pg_proc WHERE proname = 'recompute_aggregate_score';
+
   -- STEP 2
   UPDATE evaluations SET "isDraft" = "isDraft" WHERE "isDraft" = false;
 
@@ -167,6 +170,8 @@ $fn$;
   v_out := v_out || format(E'\n 1 aggregate rows: %s, of which cupsPerSample < 5: %s', v_total, v_low);
   v_out := v_out || format(E'\n 2 rows with cupsPerSample < 5 whose communityScore CHANGES (tell Kim first): %s', v_low_changed);
   v_out := v_out || format(E'\n 3 rows with cupsPerSample >= 5 whose communityScore changes (expect 0): %s', v_high_changed);
+  v_out := v_out || format(E'
+ 4 proconfig of recompute_aggregate_score (expect {search_path=public}): %s', v_conf);
   FOR r IN
     SELECT b."sessionSampleId" AS id, b."cupsPerSample" AS cups, b."communityScore" AS before, a."communityScore" AS after
       FROM agg_before b JOIN aggregate_scores a USING ("sessionSampleId")

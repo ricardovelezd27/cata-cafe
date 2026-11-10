@@ -186,6 +186,9 @@ export async function finishSoloSession(
           samples: {
             select: {
               id: true,
+              referenceRank: true,
+              physical: { select: { id: true } },
+              extrinsic: { select: { id: true } },
               evaluations: {
                 where: { cupperId: user.id },
                 select: {
@@ -207,6 +210,8 @@ export async function finishSoloSession(
           const ev = s.evaluations[0];
           return {
             id: s.id,
+            hasOtherData: s.physical !== null || s.extrinsic !== null,
+            isReference: s.referenceRank !== null,
             evaluation: ev ? { isDraft: ev.isDraft, complete: isEvaluationComplete(ev, session.format) } : null,
           };
         }),
@@ -233,7 +238,14 @@ export async function finishSoloSession(
       if (plan.removeIds.length > 0) {
         removed = await prisma.$transaction(async (tx) => {
           const safe = await tx.sessionSample.findMany({
-            where: { id: { in: plan.removeIds }, sessionId, evaluations: { none: {} } },
+            where: {
+              id: { in: plan.removeIds },
+              sessionId,
+              evaluations: { none: {} },
+              // physical / extrinsic cascade on delete: never prune them.
+              physical: null,
+              extrinsic: null,
+            },
             select: { id: true },
           });
           await removeSamplesInTx(tx, sessionId, safe.map((x) => x.id));
