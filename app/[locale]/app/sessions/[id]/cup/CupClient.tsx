@@ -33,10 +33,12 @@ import {
 } from "@/components/cupping/EditSampleMetadataForm";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { isEvaluationComplete as isEvaluationCompleteForScore } from "@/lib/evaluationState";
 import { DeadlineBanner, type DeadlineBannerTranslations } from "@/components/session/DeadlineBanner";
 import {
   submitAllEvaluations,
   closeSession,
+  finishSoloSession,
   getCloseImpact,
   createInviteToken,
   startSession,
@@ -285,6 +287,10 @@ export function CupClient({
       review: string;
       continueAnyway: string;
       submitAnyway: string;
+      // Optional: a pre-upgrade IndexedDB props cache may predate them.
+      outcomeCloses?: string;
+      outcomeStays?: string;
+      finishWith?: string;
     };
     // Optional: props can be rehydrated from a pre-upgrade IndexedDB cache
     // (cup/error.tsx offline rebuild) that predates this key — CupClient
@@ -1257,7 +1263,7 @@ export function CupClient({
     scrollCanvasToTop();
   };
 
-  const doGoToResults = async () => {
+  const doGoToResults = async (mode: "submit" | "finish" = "submit") => {
     // Final submit + results require connectivity. Offline, we keep the drafts
     // saved locally (they sync on reconnect) and surface a notice instead of
     // queuing an irreversible submit the user can't verify.
@@ -1287,7 +1293,18 @@ export function CupClient({
         setHasPending(false);
       }
       setSubmitBlocked(false);
-      await submitAllEvaluations(session.id);
+      if (mode === "finish") {
+        // Solo "Terminar cata": submit the complete ones, drop the unopened,
+        // close (lib/closeRules.ts planFinish; community.ts finishSoloSession).
+        const r = await finishSoloSession(session.id);
+        if (!r.ok) {
+          feedback.notifyError(r.error);
+          setIsGoingToResults(false);
+          return;
+        }
+      } else {
+        await submitAllEvaluations(session.id);
+      }
       // Navigate only on success — a failed submit must not strand the user on
       // the results page believing their drafts were sent. isGoingToResults
       // stays true so the button remains disabled during navigation.
@@ -1574,6 +1591,35 @@ export function CupClient({
       );
     });
   };
+
+  // Solo only (F-express-1 / F-solo-3): what "send anyway" will do, stated
+  // before the click, and a way to finish with the samples actually cupped.
+  const isSoloOwner = !isGroup && isOwner;
+  const unopenedCount = viewSamples.filter(
+    (s) => !CUPPING_STEPS.some((st) => hasStepFill(s, st)),
+  ).length;
+  const scoredCount = viewSamples.filter((s) => {
+    if (!s.isDraft && s.evaluationId) return true;
+    const data =
+      guardFormat === "combined" ? s.combined : guardFormat === "affective" ? s.affective : s.descriptive;
+    return isEvaluationCompleteForScore(guardFormat, data);
+  }).length;
+  const guardOutcome =
+    isSoloOwner && guard?.kind === "submit"
+      ? unopenedCount === 0
+        ? (translations.guard.outcomeCloses ?? null)
+        : (translations.guard.outcomeStays?.replace("{n}", String(unopenedCount)) ?? null)
+      : null;
+  const guardSecondary =
+    isSoloOwner && guard?.kind === "submit" && scoredCount > 0 && translations.guard.finishWith
+      ? {
+          label: translations.guard.finishWith.replace("{n}", String(scoredCount)),
+          onClick: () => {
+            setGuard(null);
+            void doGoToResults("finish");
+          },
+        }
+      : null;
 
   const getStepStatus = (
     step: CuppingStep
@@ -2256,6 +2302,8 @@ export function CupClient({
             : translations.guard.nextBody
         }
         items={guard?.items ?? []}
+        outcome={guardOutcome}
+        secondary={guardSecondary}
         onCancel={() => setGuard(null)}
         onConfirm={handleGuardConfirm}
         translations={{

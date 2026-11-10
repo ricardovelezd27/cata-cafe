@@ -123,6 +123,7 @@ export default async function ResultsPage({
   // Fetched early — needed below by the owner-only participant matrix
   // (coffeeDisplayName fallback) before the rest of the page's translators.
   const tCommon = await getTranslations("common");
+  const tErrors = await getTranslations("errors");
   // Descriptor aggregation locale + block-label resolver — shared by both the
   // group (anonymous, cross-cupper) and solo (own-data) descriptor paths below.
   const localeStr: "es" | "en" = locale === "en" ? "en" : "es";
@@ -736,6 +737,22 @@ export default async function ResultsPage({
       }}
       myDraftNotice={myDraftNotice}
       closedNotice={closedNotice}
+      finish={
+        !isAdminViewer && !session.isGroup && isOwner && !sessionOver
+          ? {
+              button: tResults("finish.button"),
+              title: tResults("finish.title"),
+              body: tResults("finish.body"),
+              submitLine: tResults.raw("finish.submitLine") as string,
+              removeLine: tResults.raw("finish.removeLine") as string,
+              keepLine: tResults.raw("finish.keepLine") as string,
+              confirm: tResults("finish.confirm"),
+              cancel: tResults("finish.cancel"),
+              close: tResults("finish.cancel"),
+              errors: tErrors.raw("codes") as Record<string, string>,
+            }
+          : null
+      }
       sync={{
         syncing: tResults("sync.syncing", { count: "{count}" }),
         pending: tResults("sync.pending", { count: "{count}" }),

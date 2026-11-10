@@ -333,7 +333,10 @@
       "submitBody": "These samples have unfinished sections. Once submitted, the score is calculated without them.",
       "review": "Review",
       "continueAnyway": "Continue anyway",
-      "submitAnyway": "Submit anyway"
+      "submitAnyway": "Submit anyway",
+      "outcomeCloses": "Sending closes the session and it can no longer be edited.",
+      "outcomeStays": "The session will stay open: {n} samples are still unopened. If you finish with the ones you cupped, those samples are removed and the session closes.",
+      "finishWith": "Finish with the {n} I cupped"
     },
     "leaveGuard": {
       "title": "Leave the tasting?",
@@ -792,7 +795,8 @@
       }
     },
     "closedUnsentNotice": "You had {count, plural, one {# complete sample} other {# complete samples}} unsent when the session closed. They do not count in the results.",
-    "closedNotice": "The session closed. What you sent counts in the results; anything left unsent does not."
+    "closedNotice": "The session closed. What you sent counts in the results; anything left unsent does not.",
+    "finish": {"button": "Finish cupping", "title": "Finish the cupping?", "body": "This closes the session and it can no longer be edited.", "submitLine": "{n} complete samples will be sent.", "removeLine": "{n} samples you never opened will be removed.", "keepLine": "{n} incomplete samples will stay without a score.", "confirm": "Finish cupping", "cancel": "Keep cupping"}
   },
   "community": {
     "score": "Community score",

@@ -26,11 +26,10 @@ import {
 } from "@/lib/coffeeHistory";
 import { isSessionClosed, isSessionExpired, planClosesAtChange } from "@/lib/sessionState";
 import { endOfDayInZone, normalizeZone } from "@/lib/closeRules";
+import { removeSamplesInTx } from "@/lib/sampleRemoval";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { computeEvaluationDerived, moduleKeyForFormat } from "@/lib/evaluation";
 import {
-  activeReferenceId,
-  compactReferenceRanks,
   isPinnedModule,
   pinReferenceAffective,
   planAddReference,
@@ -1183,35 +1182,9 @@ export async function removeSessionSample(sampleId: string, locale: string = "es
   }
 
   await prisma.$transaction(async (tx) => {
-    await tx.sessionSample.delete({ where: { id: sampleId } });
-    // A removed reference leaves a gap in the ranks and (SetNull) may have
-    // cleared the pointer: renumber 1..n and re-aim at the highest rank.
-    const refRows = await tx.sessionSample.findMany({
-      where: { sessionId: sample.sessionId, referenceRank: { not: null } },
-      select: { id: true, referenceRank: true },
-    });
-    for (const { id, rank } of compactReferenceRanks(refRows)) {
-      await tx.sessionSample.update({ where: { id }, data: { referenceRank: rank } });
-    }
-    await tx.cuppingSession.update({
-      where: { id: sample.sessionId },
-      data: { referenceSampleId: activeReferenceId(refRows) },
-    });
-    // Re-pack positions ascending so the (sessionId, position) unique key
-    // stays dense; each shifted row lands on a slot vacated one step earlier.
-    const rest = await tx.sessionSample.findMany({
-      where: { sessionId: sample.sessionId },
-      orderBy: { position: "asc" },
-      select: { id: true, position: true },
-    });
-    for (let i = 0; i < rest.length; i++) {
-      if (rest[i].position !== i) {
-        await tx.sessionSample.update({
-          where: { id: rest[i].id },
-          data: { position: i },
-        });
-      }
-    }
+    // Delete + reference-rank compaction + position re-pack (lib/sampleRemoval.ts,
+    // shared with the solo "Terminar cata" finish).
+    await removeSamplesInTx(tx, sample.sessionId, [sampleId]);
     await touchSession(tx, sample.sessionId);
   });
 

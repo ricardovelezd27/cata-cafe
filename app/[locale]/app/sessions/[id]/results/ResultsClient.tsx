@@ -4,7 +4,9 @@ import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
-import { revealSample, refreshAggregateScores, resendCloseEmails } from "@/app/actions/community";
+import { revealSample, refreshAggregateScores, resendCloseEmails, finishSoloSession } from "@/app/actions/community";
+import { planFinish } from "@/lib/closeRules";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ScoreTable, type ScoreTableTranslations } from "@/components/results/ScoreTable";
 import { SampleRadarChart } from "@/components/results/SampleRadarChart";
 import type { ScoreBreakdownTranslations } from "@/components/results/ScoreBreakdownPanel";
@@ -142,6 +144,7 @@ export function ResultsClient({
   guestSave = null,
   myDraftNotice = null,
   closedNotice = null,
+  finish = null,
   sync = null,
   translations,
 }: {
@@ -206,6 +209,21 @@ export function ResultsClient({
   myDraftNotice?: string | null;
   // Closed-session line for the viewer: did their unsent notes count? (S8-05)
   closedNotice?: string | null;
+  // Solo owner of an open session with unscored samples: "Terminar cata"
+  // (F-express-1 / F-solo-3). Null for everyone else.
+  finish?: {
+    button: string;
+    title: string;
+    body: string;
+    // RAW templates with "{n}", filled here from the sample states.
+    submitLine: string;
+    removeLine: string;
+    keepLine: string;
+    confirm: string;
+    cancel: string;
+    close: string;
+    errors: Record<string, string>;
+  } | null;
   // Strings for the device-pending sync pill + conflict modal. Null in the
   // admin read-only view (nothing of the admin's is ever pending here).
   sync?: SessionSyncStatusTranslations | null;
@@ -352,6 +370,19 @@ export function ResultsClient({
   const [liveUpdatesDown, setLiveUpdatesDown] = useState(false);
   const [, startTransition] = useTransition();
   const feedback = useActionFeedback();
+  const [finishOpen, setFinishOpen] = useState(false);
+  // What "Terminar cata" would do, from the per-sample states the server sent.
+  const finishPlan = finish
+    ? planFinish(
+        session.samples.map((s) => ({
+          id: s.id,
+          evaluation:
+            !s.myEvaluation || s.myEvaluation.status === "none"
+              ? null
+              : { isDraft: s.myEvaluation.status === "draft", complete: s.myEvaluation.complete },
+        })),
+      )
+    : null;
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [editingSampleId, setEditingSampleId] = useState<string | null>(null);
   const [editingExtrinsicSampleId, setEditingExtrinsicSampleId] = useState<string | null>(null);
@@ -731,7 +762,43 @@ export function ResultsClient({
               {translations.myDraftCta}
             </Button>
           )}
+          {!isAdminViewer && cuppingOpen && finishPlan?.canFinish && finish && (
+            <Button size="sm" variant="secondary" onClick={() => setFinishOpen(true)}>
+              {finish.button}
+            </Button>
+          )}
         </div>
+      )}
+      {finish && finishPlan && (
+        <ConfirmDialog
+          open={finishOpen}
+          onOpenChange={setFinishOpen}
+          title={finish.title}
+          body={
+            <div className="space-y-2">
+              <p>{finish.body}</p>
+              {finishPlan.submitIds.length > 0 && (
+                <p>{finish.submitLine.replace("{n}", String(finishPlan.submitIds.length))}</p>
+              )}
+              {finishPlan.removeIds.length > 0 && (
+                <p>{finish.removeLine.replace("{n}", String(finishPlan.removeIds.length))}</p>
+              )}
+              {finishPlan.keptPartialIds.length > 0 && (
+                <p>{finish.keepLine.replace("{n}", String(finishPlan.keptPartialIds.length))}</p>
+              )}
+            </div>
+          }
+          confirmLabel={finish.confirm}
+          cancelLabel={finish.cancel}
+          closeLabel={finish.close}
+          destructive
+          errorMessages={finish.errors}
+          onConfirm={async () => {
+            const r = await finishSoloSession(session.id);
+            if (r.ok) router.refresh();
+            return r;
+          }}
+        />
       )}
       {partialSyncNotice && (
         <div

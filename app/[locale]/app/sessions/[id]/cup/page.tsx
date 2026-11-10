@@ -336,6 +336,9 @@ export default async function CupPage({
           review: t("cupping.guard.review"),
           continueAnyway: t("cupping.guard.continueAnyway"),
           submitAnyway: t("cupping.guard.submitAnyway"),
+          outcomeCloses: t("cupping.guard.outcomeCloses"),
+          outcomeStays: t.raw("cupping.guard.outcomeStays") as string,
+          finishWith: t.raw("cupping.guard.finishWith") as string,
         },
         leaveGuard: {
           title: t("cupping.leaveGuard.title"),

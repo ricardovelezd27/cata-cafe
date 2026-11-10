@@ -19,7 +19,8 @@ import { runLengthMs } from "@/lib/warmup/syncedRun";
 import { run } from "@/lib/safeAction";
 import type { ActionResult } from "@/lib/actionResult";
 import { refireAggregates } from "@/lib/aggregates";
-import { countUnsentComplete } from "@/lib/closeRules";
+import { countUnsentComplete, isEvaluationComplete, planFinish } from "@/lib/closeRules";
+import { removeSamplesInTx } from "@/lib/sampleRemoval";
 
 // ─── Submit all draft evaluations for a session ───────────────────────────────
 export async function submitAllEvaluations(sessionId: string) {
@@ -158,6 +159,107 @@ async function maybeAutoCloseSoloSession(sessionId: string, userId: string) {
   // Same routine as the owner close and the cron: reveal → history. Solo
   // sessions never email. Idempotent, so two concurrent submits can't double-run.
   await closeSessionInternal(sessionId, { reason: "solo_auto", emails: "skip" });
+}
+
+// ─── Manual finish for solo / express sessions (F-express-1, F-solo-3) ────────
+// The one bend of "solo has no manual close": a quick session with fewer cupped
+// samples than created otherwise never closes (auto-close needs EVERY sample
+// submitted). Submits the owner's COMPLETE drafts, removes only samples that
+// have no evaluation at all, keeps partial drafts unscored (Kim C2 default a;
+// no editing after closing), then closes through the single close routine.
+// Group sessions never use this (they close via closeSession / the cron).
+export async function finishSoloSession(
+  sessionId: string,
+): Promise<ActionResult<{ closed: boolean; scored: number; removed: number; kept: number }>> {
+  return run(
+    "finishSoloSession",
+    async () => {
+      const user = await requireUser();
+      const auth = await requireSessionOwner(sessionId, user.id);
+      assertSessionWritable(auth);
+      if (auth.isGroup) throw new Error("invalid_input");
+
+      const session = await prisma.cuppingSession.findUnique({
+        where: { id: sessionId },
+        select: {
+          format: true,
+          samples: {
+            select: {
+              id: true,
+              evaluations: {
+                where: { cupperId: user.id },
+                select: {
+                  isDraft: true,
+                  descriptiveData: true,
+                  affectiveData: true,
+                  combinedData: true,
+                  cupperId: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      if (!session) throw new Error("not_found_or_forbidden");
+
+      const plan = planFinish(
+        session.samples.map((s) => {
+          const ev = s.evaluations[0];
+          return {
+            id: s.id,
+            evaluation: ev ? { isDraft: ev.isDraft, complete: isEvaluationComplete(ev, session.format) } : null,
+          };
+        }),
+      );
+      // Nothing scored would leave an empty session: the owner keeps cupping.
+      if (!plan.canFinish) throw new Error("invalid_input");
+
+      const now = new Date();
+      if (plan.submitIds.length > 0) {
+        await prisma.evaluation.updateMany({
+          where: {
+            isDraft: true,
+            cupperId: user.id,
+            sessionSampleId: { in: plan.submitIds },
+            sessionSample: { sessionId, session: { status: { not: "closed" } } },
+          },
+          data: { isDraft: false, submittedAt: now },
+        });
+      }
+
+      // Only samples that STILL have no evaluation are removed (a concurrent
+      // save between the read above and here keeps its sample).
+      let removed = 0;
+      if (plan.removeIds.length > 0) {
+        removed = await prisma.$transaction(async (tx) => {
+          const safe = await tx.sessionSample.findMany({
+            where: { id: { in: plan.removeIds }, sessionId, evaluations: { none: {} } },
+            select: { id: true },
+          });
+          await removeSamplesInTx(tx, sessionId, safe.map((x) => x.id));
+          return safe.length;
+        });
+      }
+
+      const result = await closeSessionInternal(sessionId, {
+        reason: "solo_finish",
+        emails: "skip",
+        repairGraceMs: 0,
+      });
+
+      revalidatePath(`/es/app/sessions/${sessionId}/results`);
+      revalidatePath(`/en/app/sessions/${sessionId}/results`);
+      revalidatePath(`/es/app/sessions/${sessionId}/cup`);
+      revalidatePath(`/en/app/sessions/${sessionId}/cup`);
+      return {
+        closed: result.closed || result.repaired === true,
+        scored: plan.scoredCount,
+        removed,
+        kept: plan.keptPartialIds.length,
+      };
+    },
+    { sessionId },
+  );
 }
 
 // ─── Start a session (maestro moves past invite screen) ───────────────────────
