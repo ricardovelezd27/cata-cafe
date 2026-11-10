@@ -135,4 +135,27 @@ describe("planFinish (F-express-1, F-solo-3)", () => {
     ]);
     expect(p.canFinish).toBe(false);
   });
+
+  it("keeps (unscored) a never-opened sample that holds physical or extrinsic data", () => {
+    const p = planFinish([
+      { id: "a", evaluation: { isDraft: false, complete: true } },
+      { id: "b", evaluation: null, hasOtherData: true },
+      { id: "c", evaluation: null },
+    ]);
+    expect(p.removeIds).toEqual(["c"]);
+    expect(p.keptPartialIds).toEqual(["b"]);
+  });
+
+  it("a reference as the only scored sample cannot finish", () => {
+    const only = planFinish([
+      { id: "r", evaluation: { isDraft: true, complete: true }, isReference: true },
+      { id: "x", evaluation: null },
+    ]);
+    expect(only.canFinish).toBe(false);
+    const withOther = planFinish([
+      { id: "r", evaluation: { isDraft: false, complete: true }, isReference: true },
+      { id: "x", evaluation: { isDraft: true, complete: true } },
+    ]);
+    expect(withOther.canFinish).toBe(true);
+  });
 });

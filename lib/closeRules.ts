@@ -220,12 +220,18 @@ export type FinishSampleInput = {
   id: string;
   /** The owner's evaluation row of this sample; null when never opened. */
   evaluation: { isDraft: boolean; complete: boolean } | null;
+  /** The sample holds a green-bean (physical) or origin (extrinsic) row. Those
+   *  cascade on sample delete, so such a sample is never removed. */
+  hasOtherData?: boolean;
+  /** The sample is a reference/anchor: pinned, always has a row, so it does not
+   *  count as something the owner actually scored. */
+  isReference?: boolean;
 };
 
 export type FinishPlan = {
   /** Complete drafts to submit. */
   submitIds: string[];
-  /** Samples with no evaluation at all: removed (Kim C2 default a). */
+  /** Samples with no evaluation AND no other data: removed (Kim C2 default a). */
   removeIds: string[];
   /** Partial drafts: kept in the session, without a score. */
   keptPartialIds: string[];
@@ -240,12 +246,24 @@ export function planFinish(samples: FinishSampleInput[]): FinishPlan {
   const removeIds: string[] = [];
   const keptPartialIds: string[] = [];
   let alreadySubmitted = 0;
+  let nonReferenceScored = 0;
+  let hasReference = false;
   for (const s of samples) {
-    if (!s.evaluation) removeIds.push(s.id);
-    else if (!s.evaluation.isDraft) alreadySubmitted++;
-    else if (s.evaluation.complete) submitIds.push(s.id);
-    else keptPartialIds.push(s.id);
+    if (s.isReference) hasReference = true;
+    if (!s.evaluation) {
+      // Physical / extrinsic data would be lost with the row: keep it, unscored.
+      if (s.hasOtherData) keptPartialIds.push(s.id);
+      else removeIds.push(s.id);
+    } else if (!s.evaluation.isDraft) {
+      alreadySubmitted++;
+      if (!s.isReference) nonReferenceScored++;
+    } else if (s.evaluation.complete) {
+      submitIds.push(s.id);
+      if (!s.isReference) nonReferenceScored++;
+    } else keptPartialIds.push(s.id);
   }
   const scoredCount = alreadySubmitted + submitIds.length;
-  return { submitIds, removeIds, keptPartialIds, scoredCount, canFinish: scoredCount > 0 };
+  // With a reference, its pinned row alone must not allow closing.
+  const canFinish = hasReference ? nonReferenceScored > 0 : scoredCount > 0;
+  return { submitIds, removeIds, keptPartialIds, scoredCount, canFinish };
 }

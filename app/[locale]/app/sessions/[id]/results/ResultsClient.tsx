@@ -376,6 +376,8 @@ export function ResultsClient({
     ? planFinish(
         session.samples.map((s) => ({
           id: s.id,
+          isReference: s.isReference,
+          hasOtherData: Object.keys(s.physical ?? {}).length > 0,
           evaluation:
             !s.myEvaluation || s.myEvaluation.status === "none"
               ? null
