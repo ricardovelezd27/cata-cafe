@@ -1633,6 +1633,7 @@
       "token_exhausted": "Este enlace de invitación ya alcanzó su número máximo de usos.",
       "coffee_not_usable": "Ese café no está disponible para ti.",
       "invalid_input": "Revisa los datos ingresados.",
+      "already_claimed": "Esa participación como invitado ya está vinculada a una cuenta.",
       "conflict": "Alguien más acaba de hacer ese cambio. Actualiza la página.",
       "not_found": "Ese elemento ya no existe.",
       "invalid_reference": "Uno de los elementos vinculados ya no existe.",

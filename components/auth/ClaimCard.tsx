@@ -77,7 +77,7 @@ export function ClaimCard({
         const code: ActionErrorCode = result.error;
         if (code === "invalid_token") router.replace(errorPage("invalid"));
         else if (code === "token_expired") router.replace(errorPage("expired"));
-        else if (code === "not_found") router.replace(errorPage("already"));
+        else if (code === "already_claimed") router.replace(errorPage("already"));
         else if (code === "not_authenticated") router.replace(`/${locale}/auth/login?next=${encodeURIComponent(claimUrl)}&intent=claim`);
         else setPhase("retry");
       } catch {

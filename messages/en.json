@@ -1633,6 +1633,7 @@
       "token_exhausted": "This invite link has reached its maximum number of uses.",
       "coffee_not_usable": "That coffee isn't available to you.",
       "invalid_input": "Check the information you entered.",
+      "already_claimed": "That guest participation is already linked to an account.",
       "conflict": "Someone else just made that change. Refresh the page.",
       "not_found": "That item no longer exists.",
       "invalid_reference": "One of the linked items no longer exists.",

@@ -49,8 +49,8 @@ export async function startGuestClaim(
  * real account, and the token must still verify.
  *
  * Returns an ActionResult (S8-07, F-guest-8) instead of redirecting on every
- * outcome: the card maps `invalid_token` / `token_expired` / `not_found`
- * (already linked) to its final states and shows a RETRY card for anything
+ * outcome: the card maps `invalid_token` / `token_expired` / `already_claimed`
+ * to its final states and shows a RETRY card for anything
  * else (`unknown` covers a failed auth lookup and a rolled-back merge), which
  * is safe to repeat because the merge is one transaction.
  */
@@ -76,7 +76,10 @@ export async function confirmGuestClaim(
     if (!result.ok) {
       if (result.error === "lookup_failed") throw new Error("unknown");
       if (result.error === "same_user") throw new Error("invalid_input");
-      throw new Error("not_found");
+      // result.error === "not_anonymous": the one deliberate final outcome.
+      // A P2025 rolled back inside the merge surfaces as `not_found` and is
+      // retryable, so it must stay distinct from this code.
+      throw new Error("already_claimed");
     }
     return { next: safeBack };
   });

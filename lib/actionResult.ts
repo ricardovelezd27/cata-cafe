@@ -22,6 +22,7 @@ export const ACTION_ERROR_CODES = [
   "rate_limited", // lib/emailBudget.ts refused a send (S8-03)
   "offline", // client-only: the device has no connection (S8-07, sign-out needs the server)
   "email_exists", // requestEmailChange: that address already has an account (S8-07)
+  "already_claimed", // confirmGuestClaim: the guest account is gone or no longer anonymous (S8-07)
   "conflict", // Prisma P2002 — unique constraint
   "not_found", // Prisma P2025 — row vanished (concurrent delete)
   "invalid_reference", // Prisma P2003 — FK target vanished

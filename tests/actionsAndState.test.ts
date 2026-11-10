@@ -29,6 +29,10 @@ describe("classifyActionError", () => {
     expect(classifyActionError(new Error("forbidden"))).toBe("not_found_or_forbidden");
     expect(classifyActionError(new Error("not_found"))).toBe("not_found");
   });
+  it("keeps the guest-claim 'already linked' code distinct from a rolled-back P2025", () => {
+    expect(classifyActionError(new Error("already_claimed"))).toBe("already_claimed");
+    expect(classifyActionError({ code: "P2025" })).not.toBe("already_claimed");
+  });
   it("maps Prisma known-request codes", () => {
     expect(classifyActionError({ code: "P2002" })).toBe("conflict");
     expect(classifyActionError({ code: "P2025" })).toBe("not_found");
