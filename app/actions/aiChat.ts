@@ -2,6 +2,8 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireAiAdmin } from "@/lib/analytics/access";
+import { scopeFor } from "@/lib/analytics/scope";
+import { logError, logInfo } from "@/lib/log";
 import { getAiProvider } from "@/lib/ai";
 import {
   DAILY_QUESTION_LIMIT,
@@ -11,6 +13,11 @@ import {
   buildChatSystem,
   executeTool,
 } from "@/lib/ai/chatTools";
+import {
+  releaseQuestionSlot,
+  reserveQuestionSlot,
+  type ChatQuotaStore,
+} from "@/lib/ai/chatQuota";
 import type { AiChatBlock, AskDataResult, ChatHistoryItem } from "@/lib/ai/chatTypes";
 import type { AiChatMessage, AiToolResponse } from "@/lib/ai/types";
 import type { AnalyticsScope } from "@/lib/analytics/types";
@@ -63,6 +70,40 @@ function blockCitations(block: AiChatBlock): string[] {
   return [];
 }
 
+// Prisma-backed ChatQuotaStore (lib/ai/chatQuota.ts). Not exported: a
+// "use server" file only exports public actions.
+function prismaQuotaStore(userId: string, day: string): ChatQuotaStore {
+  const key = { userId_day: { userId, day } };
+  return {
+    async ensureRow() {
+      try {
+        await prisma.aiChatUsage.upsert({
+          where: key,
+          create: { userId, day, questionCount: 0 },
+          update: {},
+        });
+      } catch (err) {
+        // Two first questions of the day racing to create the row: the loser
+        // hits the unique index; the row exists, which is all we need.
+        if ((err as { code?: string } | null)?.code !== "P2002") throw err;
+      }
+    },
+    async tryIncrement(limit) {
+      const r = await prisma.aiChatUsage.updateMany({
+        where: { userId, day, questionCount: { lt: limit } },
+        data: { questionCount: { increment: 1 } },
+      });
+      return r.count;
+    },
+    async decrement() {
+      await prisma.aiChatUsage.updateMany({
+        where: { userId, day, questionCount: { gt: 0 } },
+        data: { questionCount: { decrement: 1 } },
+      });
+    },
+  };
+}
+
 export async function askDataQuestion(
   history: ChatHistoryItem[],
   question: string,
@@ -75,19 +116,25 @@ export async function askDataQuestion(
   // never from anything the client sent. Super admin = platform-wide;
   // everyone else on the AI allowlist sees only their own data (their
   // sessions, their evaluations, their usable coffees).
-  const scope: AnalyticsScope = access.isSuperAdmin
-    ? { kind: "platform" }
-    : { kind: "user", userId: access.userId };
+  const scope: AnalyticsScope = scopeFor(access);
 
   const day = new Date().toISOString().slice(0, 10);
-  const usageRow = await prisma.aiChatUsage.findUnique({
-    where: { userId_day: { userId: access.userId, day } },
-  });
+  const usageKey = { userId_day: { userId: access.userId, day } };
+  const usageRow = await prisma.aiChatUsage.findUnique({ where: usageKey });
   const used = usageRow?.questionCount ?? 0;
   const limit = DAILY_QUESTION_LIMIT;
+  const quotaStore = prismaQuotaStore(access.userId, day);
 
   if (used >= limit) {
-    console.info(`[aiChat] user=${access.userId} exit=limit_reached used=${used}/${limit}`);
+    logInfo({
+      where: "aiChat",
+      action: "askDataQuestion",
+      userId: access.userId,
+      scope: scope.kind,
+      exit: "limit_reached",
+      used,
+      limit,
+    });
     return { ok: false, error: "limit_reached", usage: { used, limit, remaining: 0 } };
   }
 
@@ -98,13 +145,35 @@ export async function askDataQuestion(
     return { ok: false, error: "no_answer", usage: { used, limit, remaining: limit - used } };
   }
 
-  // Server-side trace of every question and its outcome — this loop used to
-  // fail (no_answer / provider_error) with no forensic trail at all.
-  console.info(
-    `[aiChat] user=${access.userId} scope=${scope.kind} q="${trimmedQuestion.slice(0, 120)}"`,
-  );
+  // S8-14 F-insights-6: reserve the slot BEFORE the (paid) model loop with an
+  // atomic conditional increment, so parallel questions cannot overshoot the
+  // daily limit. It is released below when no model call succeeded.
+  if (!(await reserveQuestionSlot(quotaStore, limit))) {
+    logInfo({
+      where: "aiChat",
+      action: "askDataQuestion",
+      userId: access.userId,
+      scope: scope.kind,
+      exit: "limit_reached",
+      used: limit,
+      limit,
+    });
+    return { ok: false, error: "limit_reached", usage: { used: limit, limit, remaining: 0 } };
+  }
 
-  const messages = toChatMessages(cleanHistory, trimmedQuestion);
+  // Server-side trace of every question's outcome — this loop used to fail
+  // (no_answer / provider_error) with no forensic trail at all. S8-08
+  // F-insights-4: the question text and tool arguments are NEVER logged.
+  logInfo({
+    where: "aiChat",
+    action: "askDataQuestion",
+    userId: access.userId,
+    scope: scope.kind,
+    exit: "asked",
+    historyTurns: cleanHistory.length,
+  });
+
+  let messages: AiChatMessage[] = [];
 
   const blocks: AiChatBlock[] = [];
   const citationSet = new Set<string>();
@@ -114,66 +183,96 @@ export async function askDataQuestion(
   let answer: string | null = null;
   let providerFailed = false;
 
-  for (let i = 0; i < MAX_MODEL_CALLS; i++) {
-    const lastTurn = i === MAX_MODEL_CALLS - 1;
-    const res = await getAiProvider().chat({
-      tier: "pro",
-      system: buildChatSystem(loc, scope),
-      messages,
-      tools: lastTurn ? undefined : TOOL_DEFS,
-      maxOutputTokens: 1024,
-      temperature: 0.4,
-    });
+  try {
+    // Inside the try so a throw here releases the reserved slot (catch below).
+    messages = toChatMessages(cleanHistory, trimmedQuestion);
+    for (let i = 0; i < MAX_MODEL_CALLS; i++) {
+      const lastTurn = i === MAX_MODEL_CALLS - 1;
+      const res = await getAiProvider().chat({
+        tier: "pro",
+        system: buildChatSystem(loc, scope),
+        messages,
+        tools: lastTurn ? undefined : TOOL_DEFS,
+        maxOutputTokens: 1024,
+        temperature: 0.4,
+      });
 
-    if (!res.ok) {
-      if (res.skipped) {
-        // Provider not configured — do not bill the question.
-        return { ok: false, skipped: true };
+      if (!res.ok) {
+        if (res.skipped) {
+          // Provider not configured — do not bill the question.
+          await releaseQuestionSlot(quotaStore);
+          return { ok: false, skipped: true };
+        }
+        providerFailed = true;
+        break;
       }
-      providerFailed = true;
+
+      totalModelCalls += 1;
+      totalPromptTokens += res.usage.promptTokens;
+      totalOutputTokens += res.usage.outputTokens;
+      messages.push(res.message);
+
+      if (res.message.toolCalls?.length) {
+        const toolResponses: AiToolResponse[] = [];
+        for (const call of res.message.toolCalls) {
+          logInfo({
+            where: "aiChat",
+            action: "tool",
+            userId: access.userId,
+            scope: scope.kind,
+            tool: call.name,
+          });
+          try {
+            const { block, toolResponse } = await executeTool(call.name, call.args, loc, scope);
+            blocks.push(block);
+            for (const citation of blockCitations(block)) citationSet.add(citation);
+            toolResponses.push({ ...toolResponse, id: call.id });
+          } catch (err) {
+            const message = err instanceof Error ? err.message : "tool_error";
+            // The error message can echo tool arguments; log only its class.
+            logError({
+              where: "aiChat",
+              action: "tool",
+              userId: access.userId,
+              scope: scope.kind,
+              tool: call.name,
+              code: err instanceof Error ? err.name : "unknown",
+            });
+            toolResponses.push({ id: call.id, name: call.name, response: { error: message } });
+          }
+        }
+        messages.push({ role: "user", toolResponses });
+        continue;
+      }
+
+      answer = res.message.text ?? null;
       break;
     }
-
-    totalModelCalls += 1;
-    totalPromptTokens += res.usage.promptTokens;
-    totalOutputTokens += res.usage.outputTokens;
-    messages.push(res.message);
-
-    if (res.message.toolCalls?.length) {
-      const toolResponses: AiToolResponse[] = [];
-      for (const call of res.message.toolCalls) {
-        console.info(`[aiChat] tool=${call.name} args=${JSON.stringify(call.args).slice(0, 200)}`);
-        try {
-          const { block, toolResponse } = await executeTool(call.name, call.args, loc, scope);
-          blocks.push(block);
-          for (const citation of blockCitations(block)) citationSet.add(citation);
-          toolResponses.push({ ...toolResponse, id: call.id });
-        } catch (err) {
-          const message = err instanceof Error ? err.message : "tool_error";
-          console.error(`[aiChat] tool=${call.name} error=${message}`);
-          toolResponses.push({ id: call.id, name: call.name, response: { error: message } });
-        }
-      }
-      messages.push({ role: "user", toolResponses });
-      continue;
-    }
-
-    answer = res.message.text ?? null;
-    break;
+  } catch (err) {
+    // Anything thrown before a successful model call must not cost a question.
+    if (totalModelCalls === 0) await releaseQuestionSlot(quotaStore).catch(() => {});
+    throw err;
   }
 
   // Billing rule: the daily quota is only discounted if at least one model
   // API call actually succeeded (totalModelCalls > 0) — i.e. real cost was
   // incurred. A pure failure before any successful call (e.g. a bad model
   // name 404 on the very first call) must not cost the user a question, so
-  // we skip the upsert entirely and return the usage numbers UN-incremented.
+  // we release the slot reserved above and return the usage UN-incremented.
   // Once at least one call succeeded, bill exactly as before even if the
   // final outcome is a mid-loop provider_error or a no_answer — API cost was
   // actually incurred. (The `skipped`/no-API-key path already returned above.)
   if (totalModelCalls === 0) {
-    console.error(
-      `[aiChat] exit=${providerFailed ? "provider_error" : "no_answer"} calls=0 (not billed)`,
-    );
+    await releaseQuestionSlot(quotaStore);
+    logError({
+      where: "aiChat",
+      action: "askDataQuestion",
+      userId: access.userId,
+      scope: scope.kind,
+      exit: providerFailed ? "provider_error" : "no_answer",
+      calls: 0,
+      billed: false,
+    });
     return {
       ok: false,
       error: providerFailed ? "provider_error" : "no_answer",
@@ -181,31 +280,36 @@ export async function askDataQuestion(
     };
   }
 
-  await prisma.aiChatUsage.upsert({
-    where: { userId_day: { userId: access.userId, day } },
-    create: {
-      userId: access.userId,
-      day,
-      questionCount: 1,
-      modelCalls: totalModelCalls,
-      promptTokens: totalPromptTokens,
-      outputTokens: totalOutputTokens,
-    },
-    update: {
-      questionCount: { increment: 1 },
+  // The question itself was counted when the slot was reserved; only the
+  // cost counters are added here.
+  const usageAfter = await prisma.aiChatUsage.update({
+    where: usageKey,
+    data: {
       modelCalls: { increment: totalModelCalls },
       promptTokens: { increment: totalPromptTokens },
       outputTokens: { increment: totalOutputTokens },
     },
+    select: { questionCount: true },
   });
 
-  const newUsed = used + 1;
+  // Read back AFTER the reservation, so parallel questions report the real
+  // count rather than the stale one read before the slot was reserved.
+  const newUsed = Math.min(limit, usageAfter.questionCount);
   const remaining = Math.max(0, limit - newUsed);
 
   const exit = providerFailed ? "provider_error" : answer ? "answer" : "no_answer";
-  const logLine = `[aiChat] exit=${exit} calls=${totalModelCalls} promptTokens=${totalPromptTokens} outputTokens=${totalOutputTokens}`;
-  if (exit === "answer") console.info(logLine);
-  else console.error(logLine);
+  const outcome = {
+    where: "aiChat",
+    action: "askDataQuestion",
+    userId: access.userId,
+    scope: scope.kind,
+    exit,
+    calls: totalModelCalls,
+    promptTokens: totalPromptTokens,
+    outputTokens: totalOutputTokens,
+  };
+  if (exit === "answer") logInfo(outcome);
+  else logError(outcome);
 
   if (providerFailed) {
     return { ok: false, error: "provider_error", usage: { used: newUsed, limit, remaining } };

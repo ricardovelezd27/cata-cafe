@@ -7,6 +7,9 @@ import { prisma } from "@/lib/prisma";
 // their row would stay unlinked forever and every members.some({ userId })
 // visibility check (group detail, groups list, profile) would miss the group.
 // Calling this on each groups surface closes that gap on their next visit.
+// TODO(S8-11 step 9, owner decision): TastingGroupMember.status
+// pending|accepted|declined (F-grupos-4). Not built: it changes the rule
+// "being added is membership"; this claim would set `pending`.
 export async function claimGroupMembershipsByEmail(
   userId: string,
   email: string | null | undefined,

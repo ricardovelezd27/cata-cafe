@@ -13,6 +13,8 @@ export interface OverlayGateInput {
   isOwner: boolean;
   isGroup: boolean;
   isAsync: boolean;
+  /** The live cupping has started (CuppingSession.startedAt is set). */
+  startedAt: boolean;
 }
 
 /**
@@ -22,14 +24,21 @@ export interface OverlayGateInput {
  *  - has an evaluation already             → false (returning mid-cupping)
  *  - owner of a LIVE group session         → false (the master runs it with the
  *                                            group from the panel — Stage 2)
+ *  - LIVE group session already started  → false (S8-13 F-1: the water is on;
+ *                                            nobody gets a 3-7 min interstitial
+ *                                            between the cups, late joiners included)
  *  - otherwise (solo owner, async owner,
  *    any participant)                       → true
  */
+// TODO(Kim F1): optional discreet entry after start / always-show (answers b, c).
+// TODO(Kim F4): short version, repeat-step on interruption (resume = today's pause/resume).
+// TODO(Kim F5): substitutable movements; group free-run mode.
 export function shouldShowWarmupOverlay(i: OverlayGateInput): boolean {
   if (!isWarmupId(i.exerciseId)) return false;
   if (i.seenValue === i.exerciseId) return false;
   if (i.hasOwnEvaluation) return false;
   if (i.isOwner && i.isGroup && !i.isAsync) return false;
+  if (i.isGroup && !i.isAsync && i.startedAt) return false;
   return true;
 }
 
@@ -44,4 +53,32 @@ export type StartArrival = "push" | "bar";
  *  player leave at the next segment boundary or the cap). */
 export function onCuppingStarted(playerState: "closed" | "intro" | "run" | "ended"): StartArrival {
   return playerState === "run" ? "bar" : "push";
+}
+
+// ── Leaving the player early (S8-13 F-movimiento-sensorial-6) ────────────
+
+/** A skip before this much run time does NOT mark the exercise seen, so a
+ *  stray tap on the × never silences it for the whole session. */
+export const SKIP_SEEN_AFTER_MS = 20_000;
+
+/** What the player tells its host when it is left (× / Skip / Escape). */
+export interface WarmupExitInfo {
+  /** The exercise ran to its end (reflect / done reached). */
+  completed: boolean;
+  /** Run time reached, in ms (0 from the intro). */
+  elapsedMs: number;
+}
+
+/** Host rule: mark the (session, user, exercise) seen only when it was
+ *  completed or the person was at least SKIP_SEEN_AFTER_MS in. No info
+ *  (legacy caller) keeps the old behaviour: seen. */
+export function exitMarksSeen(info?: WarmupExitInfo | null): boolean {
+  if (!info) return true;
+  return info.completed || info.elapsedMs >= SKIP_SEEN_AFTER_MS;
+}
+
+/** Player rule: a skip that WOULD mark the exercise seen asks for a second
+ *  tap first (an early stray tap just leaves it unseen, no question). */
+export function skipNeedsConfirm(info: WarmupExitInfo): boolean {
+  return !info.completed && info.elapsedMs >= SKIP_SEEN_AFTER_MS;
 }

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Plus } from "lucide-react";
 import { addMemberByUserId } from "@/app/actions/groups";
+import { useActionFeedback } from "@/components/ui/Toast";
 
 type Candidate = { userId: string; displayName: string };
 
@@ -19,19 +20,17 @@ export function QuickAddCoCuppers({
   const router = useRouter();
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const feedback = useActionFeedback();
   const [, start] = useTransition();
 
   const onAdd = (userId: string) => {
-    setError(null);
     setPendingId(userId);
     start(async () => {
       try {
-        await addMemberByUserId(groupId, userId);
-        setAddedIds((prev) => new Set(prev).add(userId));
-        router.refresh();
-      } catch {
-        setError(t.errorGeneric);
+        await feedback.run(addMemberByUserId(groupId, userId), () => {
+          setAddedIds((prev) => new Set(prev).add(userId));
+          router.refresh();
+        });
       } finally {
         setPendingId(null);
       }
@@ -69,7 +68,6 @@ export function QuickAddCoCuppers({
           </div>
         );
       })}
-      {error && <p className="text-xs text-error">{error}</p>}
     </div>
   );
 }

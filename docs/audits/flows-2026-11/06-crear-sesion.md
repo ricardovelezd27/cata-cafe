@@ -18,6 +18,7 @@ An owner opens `/sessions/new` and fills one long form in `NewSessionForm.tsx` (
 ## 3. Findings
 
 ### F-crear-sesion-1 · A failed create throws away the whole form · severity: P2 · status: confirms-board(La acción lanza (BD caída, sesión expirada))
+**Fixed in S8-10** (PR pending): see F-04-2; locale whitelisted with `safeLocale` (T1).
 
 - **Problem** — `createSession` and `createGroupSession` are not wrapped in `run()` (`app/actions/sessions.ts:320`, `:438`; both start with `await requireUser()`, which throws `not_authenticated`). `onSubmit` calls them in `start(async () => { ... })` with no try/catch (`NewSessionForm.tsx:495-533`), so any throw (expired session, DB down, a non-collision error rethrown by `resolveCoffees`) reaches the route error boundary.
 - **Implication** — A host who typed 6 coffees and 6 samples before a tasting loses all of it on one flaky request. Data loss of typed input; trust.
@@ -38,6 +39,7 @@ An owner opens `/sessions/new` and fills one long form in `NewSessionForm.tsx` (
 - **Invariant check** — authz via `requireSessionOwner`; no new close path.
 
 ### F-crear-sesion-3 · Most specific error messages never reach the user · severity: P2 · status: confirms-board(invalid_name · date · objective · format · cups · too_many_samples · invalid_closes_at · invalid_warmup)
+**Fixed in S8-10** (PR pending): the wizard receives the whole `errors` table; `invalid_warmup`, `not_found_or_forbidden`, `not_authenticated`, `unknown` added; `tests/sessionErrorsCopy.test.ts` enumerates the validator codes (T2).
 
 - **Problem** — `new/page.tsx:103-` passes 8 error keys while `messages/es.json` and `en.json` define 15 under `session.newForm.errors`. Anything else falls back to generic in the form (`errorText`, `NewSessionForm.tsx`). Two codes have no copy at all: `invalid_warmup` (`sessions.ts:227`) and `not_found_or_forbidden` (`:475`).
 - **Implication** — An emptied date field (not `required`) or a past closing date shows "No se pudo crear la sesión" with nothing to fix. Repeated identical generic error calls for redesign (P17).
@@ -61,6 +63,8 @@ An owner opens `/sessions/new` and fills one long form in `NewSessionForm.tsx` (
 
 ### F-crear-sesion-5 · Two cups by default, and the consequence is never shown · severity: P2 · status: new
 
+**Fixed in S8-04** (draft PR, branch `claude/s8-04-scoring-impl`): same change as F-04-4 (this finding owns the field); the hint states the consequence.
+
 - **Problem** — The wizard starts at `useState(2)` cups with format combinado (`NewSessionForm.tsx:274`); the label is only "Tazas por café" (`es.json` `session.cups`), and uniformity/defect deductions apply only at 5 cups or more (`lib/scoring.ts:209`). Express is fixed at 1 cup.
 - **Implication** — A teacher running a normal five-cup session who skims past the pre-filled 2 gets scores with no deductions and no warning; sessions with different cups are not comparable and nobody learns why. A silent default becomes data (P9; cupping P7).
 - **Fix** — Show a one-line hint under the field when cups is 1–4 ("con menos de 5 tazas no se descuentan uniformidad ni defectos"), and set the default per Kim. **Acceptance:** hint appears for 1–4 and disappears at 5, in es and en; default as decided. **Size:** S.
@@ -70,6 +74,7 @@ An owner opens `/sessions/new` and fills one long form in `NewSessionForm.tsx` (
 - **Invariant check** — scoring formula untouched; cups stay server-derived.
 
 ### F-crear-sesion-6 · Unfinished form is not saved and errors sit far from the field · severity: P3 · status: new
+**Partly fixed in S8-10** (PR pending): every code has copy and the invite step survives a reload via `sessions/[id]/invite`. Draft persistence and field-level focus NOT built.
 
 - **Problem** — No draft persistence and no unload guard in `NewSessionForm.tsx`; server errors render in one strip above the submit at the bottom of a long form (`:1262-1264`); only coffee-card errors get a red border and scroll.
 - **Implication** — A back-swipe or app switch discards the form; a bad name or date error appears screens away from its field.
@@ -90,6 +95,7 @@ An owner opens `/sessions/new` and fills one long form in `NewSessionForm.tsx` (
 - **Invariant check** — closesAt semantics unchanged (end of day UTC).
 
 ### F-crear-sesion-8 · Group step-1 button says "Iniciar cata" but only creates · severity: P3 · status: confirms-board(Paso 1 «Iniciar cata» sólo crea; paso 2 «Siguiente» sí inicia)
+**NOT fixed in S8-10**: the group submit label is unchanged (T4 copy half not built).
 
 - **Problem** — The step-1 submit always renders `t.start` (`NewSessionForm.tsx:1272`), solo and group alike. The step-2 half of the board item is already fixed.
 - **Implication** — Downgraded from the board's P2: step 2 now states clearly that the room has not started, so the residual is a misleading label.

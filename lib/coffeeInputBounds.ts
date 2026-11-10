@@ -131,3 +131,13 @@ export function checkWizardBounds(
   }
   return null;
 }
+
+/** Optimistic-concurrency check for the coffee edit form (S8-10 T12,
+ *  F-cafes-9). `expected` is the ISO `updatedAt` the form loaded with; absent
+ *  = legacy caller that never sent one (no check). */
+export function isStaleCoffeeEdit(current: Date, expected: string | undefined): boolean {
+  if (expected === undefined) return false;
+  const t = Date.parse(expected);
+  if (Number.isNaN(t)) return true;
+  return t !== current.getTime();
+}

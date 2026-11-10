@@ -11,6 +11,9 @@ export type SessionRouteInfo = {
   id: string;
   status: string;
   isGroup: boolean;
+  // Required so every caller selects it: an UNSTARTED async session has no
+  // waiting room (S8-11 T3), it goes straight to /cup.
+  isAsync: boolean;
   startedAt: Date | string | null;
   // Required (nullable) so every caller is forced to select it.
   closesAt: Date | string | null;
@@ -28,7 +31,8 @@ export function sessionHref(
   if (ctx.isAdminViewer) return `${base}/results`;
   // Closed or past its deadline → the session's "detail view" is its results.
   if (isSessionExpired(s, now)) return `${base}/results`;
-  // Group session not yet started: participants wait; the owner runs setup.
-  if (s.isGroup && !s.startedAt && !ctx.isOwner) return `${base}/waiting`;
+  // LIVE group session not yet started: participants wait; the owner runs
+  // setup. Async sessions never start (no "Iniciar cata"), so no waiting.
+  if (s.isGroup && !s.isAsync && !s.startedAt && !ctx.isOwner) return `${base}/waiting`;
   return `${base}/cup`;
 }

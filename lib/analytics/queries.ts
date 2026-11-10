@@ -17,6 +17,7 @@ import {
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { PLATFORM_SCOPE } from "./types";
+import { anonymizeCuppers } from "./cupperPrivacy";
 import type {
   AnalyticsScope,
   Dataset,
@@ -54,6 +55,8 @@ interface AnalyticsRow {
   sessionStatus?: string | null;
   cupperId?: string;
   cupperName?: string;
+  /** Platform scope: too few evaluations to show this cupper as a bucket. */
+  cupperSuppressed?: boolean;
   individualScore?: number | null;
   affectiveSum?: number | null;
   communityScore?: number | null;
@@ -148,7 +151,7 @@ async function fetchEvaluationRows(
       },
     },
   });
-  return rows.map((r) => ({
+  const mapped: AnalyticsRow[] = rows.map((r) => ({
     date: r.submittedAt,
     coffeeCountry: r.sessionSample.coffee?.country,
     coffeeRegion: r.sessionSample.coffee?.region,
@@ -167,6 +170,21 @@ async function fetchEvaluationRows(
       r.combinedData,
     ),
   }));
+  // S8-08 F-insights-1: platform scope never carries a display name or a real
+  // cupper id. The under-3 rule counts the cupper's evaluations in the whole
+  // scope (one grouped query, none of the pivot's own filters).
+  if (scope.kind !== "platform") return mapped;
+  const grouped = await prisma.evaluation.groupBy({
+    by: ["cupperId"],
+    where: { isDraft: false, ...scopedEvaluationWhere(scope) },
+    _count: { _all: true },
+  });
+  const secret = process.env.GUEST_CLAIM_SECRET ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!secret) throw new Error("guest_claim_secret_missing");
+  return anonymizeCuppers(mapped, scope, {
+    secret,
+    totals: new Map(grouped.map((g) => [g.cupperId, g._count._all])),
+  });
 }
 
 async function fetchSessionRows(
@@ -327,7 +345,7 @@ function extractBuckets(
       if (!row.date) return [];
       return [{ key: monthKey(row.date), label: monthLabel(monthKey(row.date), locale) }];
     case "cupper":
-      if (!row.cupperId) return [];
+      if (!row.cupperId || row.cupperSuppressed) return [];
       return [{ key: row.cupperId, label: row.cupperName ?? row.cupperId }];
     case "scoreBucket": {
       const s = row.individualScore;

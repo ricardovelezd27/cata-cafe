@@ -1,6 +1,7 @@
-import { notFound, redirect } from "next/navigation";
+import { getLatestInvite } from "@/lib/invites";
+import { notFound } from "next/navigation";
+import { requireAppUser } from "@/lib/auth";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { orderReferencesFirst } from "@/lib/referenceRules";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
@@ -16,11 +17,7 @@ export default async function PrintPage({
   const { locale, id } = await params;
   setRequestLocale(locale);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/${locale}/auth/login`);
+  const user = await requireAppUser(locale, `/${locale}/app/sessions/${id}/print`);
 
   // Super-admin god mode (read-only): any session, rendered from the OWNER's
   // evaluation — same lens as the cva-pdf route. The invite QR below stays
@@ -68,16 +65,10 @@ export default async function PrintPage({
   // only if a valid invite already exists — this page never mints one.
   let inviteUrl: string | null = null;
   if (session.isGroup && isOwner) {
-    const invite = await prisma.sessionInvite.findFirst({
-      where: {
-        sessionId: session.id,
-        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-      },
-      orderBy: { createdAt: "desc" },
-    });
-    const isUsable =
-      invite && (invite.maxUses === null || invite.useCount < invite.maxUses);
-    if (isUsable) {
+    // Newest ACTIVE, unexpired invite with seats left (S8-11: a regenerated
+    // link's QR must not print the revoked token).
+    const invite = await getLatestInvite(session.id);
+    if (invite) {
       const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
       inviteUrl = buildInviteUrl(siteOrigin, locale, invite.token);
     }

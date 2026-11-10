@@ -13,6 +13,8 @@ import type {
   PivotResult,
 } from "@/lib/analytics/types";
 import { listPivotDimensionValues, runPivot } from "@/app/actions/analytics";
+import { useActionFeedback } from "@/components/ui/Toast";
+import { isAccessError } from "@/lib/actionResult";
 import { PivotTable } from "@/components/insights/PivotTable";
 import { PivotChart } from "@/components/insights/PivotChart";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
@@ -142,6 +144,7 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
   const [result, setResult] = useState<PivotResult | null>(null);
   const [error, setError] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const { notifyError } = useActionFeedback();
 
   const [rowsPickerOpen, setRowsPickerOpen] = useState(false);
   const [columnsPickerOpen, setColumnsPickerOpen] = useState(false);
@@ -211,7 +214,8 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
     setFilterDialogValues([]);
     setFilterDialogLoading(true);
     listPivotDimensionValues(dataset, dim, locale).then((res) => {
-      if (res.ok) setFilterDialogValues(res.values);
+      if (res.ok) setFilterDialogValues(res.data);
+      else notifyError(res.error);
       setFilterDialogLoading(false);
     });
   }
@@ -269,17 +273,18 @@ export function PivotBuilder({ locale, t, loadedConfig, loadKey, onConfigChange 
       startTransition(async () => {
         const res = await runPivot(config, locale);
         if (res.ok) {
-          setResult(res.result);
+          setResult(res.data);
           setError(false);
         } else {
           setError(true);
+          if (isAccessError(res.error)) notifyError(res.error);
         }
       });
     }, 400);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [buildConfig, locale, onConfigChange]);
+  }, [buildConfig, locale, onConfigChange, notifyError]);
 
   // Applies a saved config pushed down by the workspace. Keyed on loadKey
   // (not loadedConfig identity) so re-opening the same saved item retriggers.

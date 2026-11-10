@@ -14,6 +14,7 @@ import { deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { sheetSampleIdentity, sheetSampleRecords } from "@/lib/pdf/sheetSource";
 import { slug, dateSlug } from "@/lib/pdf/filename";
 import { pdfFailureResponse } from "@/lib/pdf/routeFailure";
+import { pdfDisposition } from "@/lib/pdf/disposition";
 import { CvaFormDocument, type CvaDocumentProps } from "@/lib/pdf/CvaFormDocument";
 
 export const runtime = "nodejs";
@@ -135,7 +136,7 @@ export async function GET(
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${filename}"`,
+      "Content-Disposition": pdfDisposition(inline, filename),
       "Cache-Control": "no-store",
     },
   });

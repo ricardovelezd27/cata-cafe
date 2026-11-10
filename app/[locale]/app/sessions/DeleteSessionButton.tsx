@@ -7,6 +7,7 @@ import { deleteSession, getDeleteImpact, type DeleteImpact } from "@/app/actions
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Badge } from "@/components/ui/Badge";
 import { formatCoffeeCode } from "@/lib/coffeeCode";
+import { fillTemplate } from "@/lib/deleteImpact";
 
 export type DeleteSessionTranslations = {
   title: string;
@@ -21,6 +22,8 @@ export type DeleteSessionTranslations = {
   // interpolated client-side via .replace() (ICU plurals need next-intl,
   // which only runs server-side in this codebase).
   impact: string;
+  // {submitted} {drafts} {participants} — filled client-side from getDeleteImpact.
+  detail: string;
 };
 
 export function DeleteSessionButton({
@@ -58,6 +61,8 @@ export function DeleteSessionButton({
       <p>{t.loadingImpact}</p>
     ) : (
       <div className="space-y-3">
+        {/* The permanence line: what goes, and that it cannot be undone. */}
+        <p className="font-medium text-on-surface">{t.body}</p>
         {impact.coffees.length > 0 && (
           <div className="space-y-1.5">
             <p>{t.coffeesIntro}</p>
@@ -79,9 +84,17 @@ export function DeleteSessionButton({
           </div>
         )}
         <p>
-          {t.impact
-            .replace("{evaluations}", String(impact.evaluationCount))
-            .replace("{cuppers}", String(impact.cupperCount))}
+          {fillTemplate(t.impact, {
+            evaluations: impact.evaluationCount,
+            cuppers: impact.cupperCount,
+          })}
+        </p>
+        <p>
+          {fillTemplate(t.detail, {
+            submitted: impact.submittedCount,
+            drafts: impact.draftCount,
+            participants: impact.participantCount,
+          })}
         </p>
       </div>
     );

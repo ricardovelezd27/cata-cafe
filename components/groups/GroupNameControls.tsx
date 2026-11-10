@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Check, Trash2 } from "lucide-react";
 import { updateGroup, deleteGroup } from "@/app/actions/groups";
+import { useActionFeedback } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export function GroupNameControls({
@@ -34,6 +35,7 @@ export function GroupNameControls({
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(name);
   const [descValue, setDescValue] = useState(description ?? "");
+  const feedback = useActionFeedback();
   const [error, setError] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [pending, start] = useTransition();
@@ -44,13 +46,13 @@ export function GroupNameControls({
     if (!trimmed) return;
     setError(null);
     start(async () => {
-      try {
-        await updateGroup(groupId, { name: trimmed, description: descValue.trim() || null });
-        setEditing(false);
-        router.refresh();
-      } catch {
-        setError(t.errorGeneric);
-      }
+      await feedback.run(
+        updateGroup(groupId, { name: trimmed, description: descValue.trim() || null }),
+        () => {
+          setEditing(false);
+          router.refresh();
+        },
+      );
     });
   };
 

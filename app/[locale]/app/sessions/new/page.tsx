@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { parseWizardHandoff } from "@/lib/sessionDefaults";
 import { NewSessionForm } from "./NewSessionForm";
 import { COFFEE_COUNTRIES } from "@/lib/analytics/normalize";
 import { getUsableCoffees } from "@/lib/coffees/queries";
@@ -15,10 +16,13 @@ export default async function NewSessionPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ groupId?: string }>;
+  searchParams: Promise<{ groupId?: string; coffeeId?: string; name?: string; format?: string; n?: string }>;
 }) {
   const { locale } = await params;
-  const { groupId: requestedGroupId } = await searchParams;
+  const sp = await searchParams;
+  const requestedGroupId = sp.groupId;
+  // "Configurar sesión completa" from the express form: bad values ignored.
+  const handoff = parseWizardHandoff(sp);
   setRequestLocale(locale);
   const t = await getTranslations("session");
   const tc = await getTranslations("coffee");
@@ -76,6 +80,7 @@ export default async function NewSessionPage({
     groupToggle: tg("toggle"),
     groupClosesAt: tg("closesAt"),
     groupClosesAtHint: tg("closesAtHint"),
+    groupClosesAtLiveNotice: tg("closesAtLiveNotice"),
     groupInviteLink: tg("inviteLink"),
     groupCopyLink: tg("copyLink"),
     groupCopied: tg("copied"),
@@ -96,20 +101,16 @@ export default async function NewSessionPage({
       goToPanel: t("newForm.goToPanel"),
       goToPanelHint: t("newForm.goToPanelHint"),
       startNow: t("newForm.startNow"),
+      startGroup: t("newForm.startGroup"),
       referenceMark: t.raw("newForm.referenceMark"),
+      cupsHint: t("newForm.cupsHint"),
       referenceBadge: t("newForm.referenceBadge"),
       referenceNone: t("newForm.referenceNone"),
       referenceClear: t("newForm.referenceClear"),
-      errors: {
-        no_samples: t("newForm.errors.no_samples"),
-        no_coffees: t("newForm.errors.no_coffees"),
-        missing_coffee_fields: t("newForm.errors.missing_coffee_fields"),
-        invalid_altitude: t("newForm.errors.invalid_altitude"),
-        sample_without_coffee: t("newForm.errors.sample_without_coffee"),
-        generic: t("newForm.errors.generic"),
-        coffee_not_found: t("newForm.errors.coffee_not_found"),
-        invalid_reference: t("newForm.errors.invalid_reference"),
-      },
+      // The WHOLE table: every code the validators can return needs copy
+      // (S8-10 T2; tests/sessionErrorsCopy.test.ts enumerates them). Includes
+      // S8-09's `offline` and S8-05's codes.
+      errors: t.raw("newForm.errors") as Record<string, string> & { generic: string },
     },
     // coffee picker
     picker: {
@@ -188,6 +189,11 @@ export default async function NewSessionPage({
     origin: c.createdBy === user!.id ? "mine" : c.visibility === "public" ? "public" : "shared",
   }));
 
+  // ?coffeeId=<id> ("Catar este café"): honored only when the coffee is in the
+  // set this user may use — usableCoffeeWhere ran inside getUsableCoffees —
+  // so a foreign or anonymized id is silently ignored.
+  const initialCoffee = usableCoffees.find((c) => c.id === sp.coffeeId) ?? null;
+
   return (
     <div className="max-w-2xl">
       <h1 className="font-display text-3xl text-primary-container mb-6">{translations.title}</h1>
@@ -199,6 +205,9 @@ export default async function NewSessionPage({
         countries={countries}
         usableCoffees={usableCoffees}
         initialGroupId={initialGroupId}
+        handoff={handoff}
+        userId={user?.id ?? null}
+        initialCoffee={initialCoffee}
       />
     </div>
   );

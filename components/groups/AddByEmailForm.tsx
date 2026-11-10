@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Clock, X, type LucideIcon } from "lucide-react";
 import { addMemberByEmail } from "@/app/actions/groups";
+import { useActionFeedback } from "@/components/ui/Toast";
 
 type EmailStatus = "sent" | "skipped" | "failed" | "rate_limited";
 
@@ -36,7 +37,7 @@ export function AddByEmailForm({
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const feedback = useActionFeedback();
   const [status, setStatus] = useState<EmailStatus | null>(null);
   const [pending, start] = useTransition();
 
@@ -47,18 +48,17 @@ export function AddByEmailForm({
     e.preventDefault();
     const trimmed = email.trim();
     if (!trimmed) return;
-    setError(null);
     setStatus(null);
     start(async () => {
-      try {
-        const result = await addMemberByEmail(groupId, trimmed, displayName.trim() || undefined);
-        setEmail("");
-        setDisplayName("");
-        setStatus(result.emailStatus ?? null);
-        router.refresh();
-      } catch {
-        setError(t.errorGeneric);
-      }
+      await feedback.run(
+        addMemberByEmail(groupId, trimmed, displayName.trim() || undefined),
+        (data) => {
+          setEmail("");
+          setDisplayName("");
+          setStatus(data.emailStatus ?? null);
+          router.refresh();
+        },
+      );
     });
   };
 
@@ -88,7 +88,6 @@ export function AddByEmailForm({
       >
         {t.addMember}
       </button>
-      {error && <p className="text-xs text-error">{error}</p>}
       {status && StatusIcon && (
         <div className={`flex items-center gap-1.5 text-xs font-medium ${STATUS_STYLE[status].className}`}>
           <StatusIcon size={14} />

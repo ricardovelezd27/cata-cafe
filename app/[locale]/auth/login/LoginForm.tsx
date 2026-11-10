@@ -1,96 +1,129 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { signInWithMagicLink, signInWithGoogle } from "@/app/actions/auth";
+import type { AuthErrorKey } from "@/lib/authErrors";
+import { useInAppBrowser } from "@/hooks/useInAppBrowser";
+import { EmailSentState, type EmailSentLabels } from "@/components/auth/EmailSentState";
 
 export function LoginForm({
   emailLabel,
   sendLabel,
   sendingLabel,
-  sentLabel,
-  errorLabel,
-  rateLimitErrorLabel,
   googleLabel,
+  inAppLabels,
   orLabel,
   subtitleLabel,
-  changeEmailLabel,
-  sentHintLabel,
-  googleErrorLabel,
+  sentLabels,
+  errors,
+  supportHref,
+  locale,
   next,
   initialEmail,
+  initialError,
   autoFocusEmail,
 }: {
+  inAppLabels: { hint: string; copy: string; copied: string };
   emailLabel: string;
   sendLabel: string;
   sendingLabel: string;
-  sentLabel: string;
-  errorLabel: string;
-  rateLimitErrorLabel: string;
   googleLabel: string;
   orLabel: string;
   subtitleLabel: string;
-  changeEmailLabel: string;
-  sentHintLabel: string;
-  googleErrorLabel: string;
+  sentLabels: EmailSentLabels;
+  errors: Record<AuthErrorKey, string>;
+  supportHref: string;
+  locale: string;
   next?: string;
   initialEmail?: string;
+  initialError?: AuthErrorKey | null;
   autoFocusEmail?: boolean;
 }) {
-  const [status, setStatus] = useState<
-    "idle" | "sending" | "sent" | "error" | "rate_limit" | "google_error"
-  >("idle");
+  const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle");
+  const [error, setError] = useState<AuthErrorKey | null>(initialError ?? null);
   const [email, setEmail] = useState(initialEmail ?? "");
   const [isPending, startTransition] = useTransition();
+  const [sentEmail, setSentEmail] = useState("");
+  const lastSent = useRef("");
+  const inApp = useInAppBrowser();
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  async function copyPageLink() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setLinkCopied(true);
+    } catch {
+      // Clipboard blocked in some webviews — the hint text still explains the way out.
+    }
+  }
+
+  async function send(address: string) {
+    const fd = new FormData();
+    fd.set("email", address);
+    return signInWithMagicLink(fd, next, locale);
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setStatus("sending");
-    const fd = new FormData(e.currentTarget);
+    setError(null);
     try {
-      const result = await signInWithMagicLink(fd, next);
+      const result = await send(email);
       if (result.ok) {
+        lastSent.current = email;
+        setSentEmail(email);
         setStatus("sent");
-      } else if (
-        result.error === "over_email_send_rate_limit" ||
-        result.error === "rate_limited" ||
-        result.error?.toLowerCase().includes("rate limit")
-      ) {
-        setStatus("rate_limit");
-      } else {
-        setStatus("error");
+        return;
       }
+      setError(result.error);
     } catch {
       // Never let the button stick on "Enviando…" if the action throws.
-      setStatus("error");
+      setError("unknown");
     }
+    setStatus("idle");
   }
 
   function onGoogleClick() {
+    setError(null);
     startTransition(async () => {
-      const r = await signInWithGoogle(next);
+      const r = await signInWithGoogle(next, locale);
       // A success redirect throws NEXT_REDIRECT and never resolves here.
-      if (r && !r.ok) setStatus("google_error");
+      if (r && !r.ok) setError(r.error);
     });
   }
 
   if (status === "sent") {
     return (
-      <div className="space-y-2">
-        <div className="text-green-dark text-sm">{sentLabel}</div>
-        <p className="text-on-surface-variant text-xs">{sentHintLabel}</p>
-        <button
-          type="button"
-          onClick={() => setStatus("idle")}
-          className="text-xs font-semibold text-green-dark underline"
-        >
-          {changeEmailLabel}
-        </button>
-      </div>
+      <EmailSentState
+        email={sentEmail}
+        next={next}
+        locale={locale}
+        labels={sentLabels}
+        supportHref={supportHref}
+        onResend={() => send(lastSent.current)}
+        onChangeEmail={() => {
+          // The typed address stays in the field.
+          setStatus("idle");
+          setError(null);
+        }}
+      />
     );
   }
 
   return (
     <div className="space-y-4">
+      {inApp ? (
+        <div className="rounded-card border border-[#D4C5A9] bg-white p-3 text-sm text-brown-dark space-y-2">
+          <p>{inAppLabels.hint}</p>
+          <button
+            type="button"
+            onClick={copyPageLink}
+            className="rounded-pill border border-green-mid px-3.5 py-2 text-xs font-semibold text-green-dark hover:bg-green-light/25 transition-colors"
+          >
+            {linkCopied ? inAppLabels.copied : inAppLabels.copy}
+          </button>
+        </div>
+      ) : (
       <button
         type="button"
         onClick={onGoogleClick}
@@ -105,7 +138,7 @@ export function LoginForm({
         </svg>
         {googleLabel}
       </button>
-      {status === "google_error" && <div className="text-red-defect text-sm">{googleErrorLabel}</div>}
+      )}
 
       <div className="flex items-center gap-3">
         <div className="flex-1 h-px bg-[#D4C5A9]" />
@@ -114,36 +147,46 @@ export function LoginForm({
       </div>
 
       <form onSubmit={onSubmit} className="space-y-3">
-      <p className="text-sm text-brown-mid">{subtitleLabel}</p>
-      <label className="block">
-        <span className="text-xs text-brown-mid font-semibold uppercase tracking-wide">
-          {emailLabel}
-        </span>
-        <input
-          type="email"
-          name="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value.trim())}
-          autoComplete="email"
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          inputMode="email"
-          autoFocus={autoFocusEmail}
-          className="mt-1 w-full px-3 py-2 border border-[#D4C5A9] rounded-input text-sm bg-white text-brown-dark focus:outline-none focus:border-green-dark"
-        />
-      </label>
-      <button
-        type="submit"
-        disabled={status === "sending"}
-        className="w-full py-2.5 rounded-pill bg-green-dark text-white font-bold hover:bg-green-mid transition disabled:opacity-50"
-      >
-        {status === "sending" ? sendingLabel : sendLabel}
-      </button>
-      {status === "error" && <div className="text-red-defect text-sm">{errorLabel}</div>}
-      {status === "rate_limit" && <div className="text-red-defect text-sm">{rateLimitErrorLabel}</div>}
-    </form>
+        <p className="text-sm text-brown-mid">{subtitleLabel}</p>
+        <label className="block">
+          <span className="text-xs text-brown-mid font-semibold uppercase tracking-wide">
+            {emailLabel}
+          </span>
+          <input
+            type="email"
+            name="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value.trim())}
+            autoComplete="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            inputMode="email"
+            autoFocus={autoFocusEmail}
+            aria-describedby={error ? "login-error" : undefined}
+            aria-invalid={error ? true : undefined}
+            className="mt-1 w-full px-3 py-2 border border-[#D4C5A9] rounded-input text-sm bg-white text-brown-dark focus:outline-none focus:border-green-dark"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={status === "sending"}
+          className="w-full py-2.5 rounded-pill bg-green-dark text-white font-bold hover:bg-green-mid transition disabled:opacity-50"
+        >
+          {status === "sending" ? sendingLabel : sendLabel}
+        </button>
+        {error && (
+          <p id="login-error" role="alert" className="text-red-defect text-sm">
+            {errors[error]}
+          </p>
+        )}
+        <p className="text-xs">
+          <a href={supportHref} className="font-semibold text-green-dark underline">
+            {sentLabels.support}
+          </a>
+        </p>
+      </form>
     </div>
   );
 }

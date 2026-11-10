@@ -21,6 +21,7 @@ const ALLOWLIST: Record<string, string> = {
   "sessions.ts#getDeleteImpact": "read-only impact summary",
   "sessions.ts#getWaitingState": "read-only polling fallback",
   "sessions.ts#checkSessionStarted": "read-only polling fallback",
+  "community.ts#getCloseImpact": "owner-only read of unsent-draft counts for the close dialog",
   // Allowed on closed sessions by design
   "sessions.ts#deleteSession": "owner may delete a closed session; history is detached",
   "sessions.ts#duplicateSession": "a closed session is a valid template",

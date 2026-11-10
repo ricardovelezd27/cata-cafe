@@ -73,6 +73,7 @@ A coffee is a reusable record owned by its creator (`createdBy`), with a 6-chara
 - **Fixed in S8-12** (PR #74) — `setCoffeeVisibility(private)` deletes the invites; returning to shared/public lists the previous people and lets the owner keep or clear them.
 
 ### F-cafes-6 · Create, edit and duplicate throw instead of returning ActionResult · severity: P2 · status: new
+**Partly fixed in S8-10** (PR pending): createCoffee and updateCoffee return `{ ok:false }` on a throw and CoffeeForm keeps its values (T12). duplicateCoffee is unchanged (its only consumer already catches).
 
 - **Problem** — `createCoffee`, `updateCoffee`, `duplicateCoffee` are not wrapped in `run()`; they throw `not_authenticated`/`not_found_or_forbidden` (coffees.ts:159, 225-227, 286) and return an ad-hoc `{ok:false,error:string}`. `CoffeeForm` awaits them inside a transition with no try/catch (`components/coffees/CoffeeForm.tsx:160,169`); a thrown error reaches the browser as an opaque digest and hits the error boundary, discarding the typed form. Contract: CLAUDE.md "Server Action Contract". (`joinCoffeeViaToken` is fine: it is wrapped by `joinCoffeeForm` in `app/actions/join.ts:33-41`.)
 - **Implication** — robustness and native-readiness: an expired session, a coffee anonymized in another tab, or a dropped connection on a phone while saving loses a long form with no localized message.
@@ -106,6 +107,7 @@ A coffee is a reusable record owned by its creator (`createdBy`), with a 6-chara
 - **Invariant check** — closed = read-only: clearing extrinsic data on closed sessions is a new post-close write; it needs a named exception in `docs/flows.md` §1, so the copy-only option is the safe default.
 
 ### F-cafes-9 · Editing a coffee rewrites past sessions, and concurrent edits overwrite each other · severity: P3 · status: new
+**Partly fixed in S8-10** (PR pending): `updateCoffee` refuses a stale `expectedUpdatedAt` with `conflict` (T12). Past sessions are not snapshotted (K-cafes-2 default).
 
 - **Problem** — the edit page promises "Los cambios se reflejan en todas sus sesiones" (`messages/es.json` `coffee.editSubtitle`); history snapshots hold only the cupper's own evaluation and session metadata (`lib/coffeeHistory.ts:157-163`), so closed results and PDFs read the live coffee. `updateCoffee` has no `updatedAt` precondition (coffees.ts:232-249).
 - **Implication** — trust: a corrected process or origin changes a report already shared; a two-device edit silently loses a change.

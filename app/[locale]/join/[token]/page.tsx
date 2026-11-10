@@ -1,9 +1,12 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { GuestJoinForm } from "@/components/join/GuestJoinForm";
+import { evaluateJoin } from "@/lib/joinRules";
 import { JoinSessionForm } from "@/components/join/JoinSessionForm";
+import { DeadlineBanner } from "@/components/session/DeadlineBanner";
 
 export const dynamic = "force-dynamic";
 
@@ -24,28 +27,88 @@ export default async function JoinPage({
   const tErrors = await getTranslations("errors");
   const tAuth = await getTranslations("auth");
 
-  // Validate invite token
+  // Same pure decision joinViaToken enforces (lib/joinRules.ts).
   const invite = await prisma.sessionInvite.findUnique({
     where: { token },
-    include: { session: { select: { id: true, name: true } } },
+    select: {
+      active: true,
+      expiresAt: true,
+      maxUses: true,
+      useCount: true,
+      session: {
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          closesAt: true,
+          closesAtZone: true,
+          startedAt: true,
+          isGroup: true,
+          isAsync: true,
+          createdBy: true,
+          entriesLocked: true,
+        },
+      },
+    },
   });
 
-  const isValid =
-    invite &&
-    (!invite.expiresAt || invite.expiresAt > new Date()) &&
-    (invite.maxUses === null || invite.useCount < invite.maxUses);
+  const isMember =
+    user && invite
+      ? !!(await prisma.sessionParticipant.findUnique({
+          where: { sessionId_userId: { sessionId: invite.session.id, userId: user.id } },
+          select: { userId: true },
+        }))
+      : false;
 
-  if (!isValid) {
+  const decision = evaluateJoin(
+    { invite, session: invite?.session ?? null, viewer: { userId: user?.id ?? null, isMember } },
+    locale,
+  );
+
+  if (decision.kind === "redirect") redirect(decision.href);
+
+  // F-grupal-asincrona-3 (S8-05): the closing date is visible before committing to join.
+  const deadline = invite ? (
+    <DeadlineBanner
+      closesAt={invite.session.closesAt?.toISOString() ?? null}
+      zone={invite.session.closesAtZone}
+      locale={locale}
+      translations={{
+        open: t.raw("deadlineOpen") as string,
+        soon: t.raw("deadlineSoon") as string,
+        passed: t.raw("deadlinePassed") as string,
+        local: t.raw("deadlineLocal") as string,
+      }}
+    />
+  ) : null;
+
+  // Refused states: a distinct message each, and NO anonymous sign-in is
+  // ever offered (the form below only renders for "ok").
+  if (decision.kind !== "ok" || !invite) {
+    const kind = decision.kind === "ok" ? "invalid" : decision.kind;
+    const copy = {
+      closed: [t("joinClosedTitle"), t("joinClosedBody")],
+      expired: [t("joinExpiredTitle"), t("joinExpiredBody")],
+      exhausted: [t("joinExhaustedTitle"), t("joinExhaustedBody")],
+      entries_closed: [t("joinEntriesClosedTitle"), t("joinEntriesClosedBody")],
+      invalid: [t("joinInvalidTitle"), t("joinInvalidBody")],
+    }[kind];
+    // S8-07 (F-guest-3): a participant who is not signed in on this device signs
+    // in and comes back here; evaluateJoin then sends them to their results.
+    const loginHref = user
+      ? `/${locale}/auth/login`
+      : `/${locale}/auth/login?next=${encodeURIComponent(`/${locale}/join/${token}`)}`;
     return (
       <main className="flex flex-1 items-center justify-center px-6 py-16">
         <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-card p-8 text-center space-y-4">
-          <p className="text-lg font-semibold text-red-defect">{t("invalidToken")}</p>
+          <p className="text-lg font-semibold text-red-defect">{copy[0]}</p>
+          <p className="text-sm text-brown-mid">{copy[1]}</p>
           <div className="flex flex-col gap-2 text-sm">
             <Link href={`/${locale}/app`} className="text-brown-mid underline hover:text-green-dark">
-              {tErrors("home")}
+              {t("joinHome")}
             </Link>
             <Link
-              href={`/${locale}/auth/login`}
+              href={loginHref}
               className="text-brown-mid underline hover:text-green-dark"
             >
               {tAuth("loginTitle")}
@@ -55,6 +118,10 @@ export default async function JoinPage({
       </main>
     );
   }
+
+  const lateNote = decision.late ? (
+    <p className="text-sm text-green-dark font-medium">{t("joinLateNote")}</p>
+  ) : null;
 
   // Valid token, no user yet: offer guest (anonymous) join instead of forcing
   // login. Email login is still available as a subtle fallback below.
@@ -68,7 +135,9 @@ export default async function JoinPage({
               {invite.session.name}
             </h1>
             <p className="text-sm text-brown-mid mt-1">{t("joinSession")}</p>
+            {lateNote}
           </div>
+          {deadline}
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-brown-mid mb-2">
               {t("continueAsGuest")}
@@ -83,6 +152,11 @@ export default async function JoinPage({
                 offlineNotice: t("guestOfflineNotice"),
                 dataNotice: t("guestDataNotice"),
                 error: t("guestError"),
+                errors: {
+                  ...(tErrors.raw("codes") as Record<string, string>),
+                  session_closed: t("sessionClosed"),
+                  rate_limited: t("guestRateLimited"),
+                },
               }}
             />
           </div>
@@ -96,6 +170,9 @@ export default async function JoinPage({
     );
   }
 
+  // TODO(E1-Kim): a signed-in ANONYMOUS visitor lands here as that guest
+  // ("¿Eres X? Entrar como X / No soy X", with a warning when evaluations
+  // exist). Not built: it needs Kim's answer on own-phone vs shared tablet.
   const errorCodes = tErrors.raw("codes") as Record<string, string>;
   const joinErrors = { ...errorCodes, session_closed: t("sessionClosed") };
 
@@ -107,7 +184,9 @@ export default async function JoinPage({
             {invite.session.name}
           </h1>
           <p className="text-sm text-brown-mid mt-1">{t("joinSession")}</p>
+          {lateNote}
         </div>
+        {deadline}
         <JoinSessionForm
           token={token}
           locale={locale}

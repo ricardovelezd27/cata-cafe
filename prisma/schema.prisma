@@ -140,10 +140,18 @@ model CuppingSession {
   groupId       String?
   group         TastingGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
   closesAt      DateTime?
+  /// IANA zone of the owner when `closesAt` was set (S8-05): "end of the day
+  /// the owner picked" in THEIR zone. Null = UTC (legacy rows).
+  closesAtZone  String?
   startedAt     DateTime?
   // Stamped by the single close routine (lib/closeSession.ts) — owner close,
   // solo auto-close and the daily cron all go through it. Null while active.
   closedAt      DateTime?
+  /// Stamped when phase 2 of the close (reveal, aggregate refire, coffee
+  /// history, close emails) finished. Null on a closed row = a repair is owed
+  /// (lib/closeSession.ts finalizeClosedSession, cron repair pass). Backfilled
+  /// to closedAt for sessions that were already closed. Never read by scoring.
+  closeFinalizedAt DateTime? @db.Timestamptz(3)
   // The ONE sample the owner marks as "Referencia" (control sample the others
   // are compared against). Display-only: scoring and ranking never read it;
   // results show a client-side Δ against it (lib/referenceDelta.ts). SetNull
@@ -160,6 +168,10 @@ model CuppingSession {
   /// TIMESTAMPTZ so the realtime payload carries its offset. Never read by
   /// scoring, aggregates or the trigger. Not copied by duplicateSession.
   warmupStartedAt DateTime? @db.Timestamptz(3)
+  /// Owner closed new entries (S8-11 T6 / C4): a NEWCOMER's join link is
+  /// refused with `entries_closed`; existing members re-enter. Display/gating
+  /// only: never read by scoring, aggregates or the trigger.
+  entriesLocked Boolean @default(false)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -168,6 +180,7 @@ model CuppingSession {
   invites              SessionInvite[]
   coffeeHistory        UserCoffeeHistory[]
   closeEmailDeliveries CloseEmailDelivery[]
+  reminderDeliveries   SessionReminderDelivery[]
 
   @@index([createdBy])
   @@index([createdBy, status])
@@ -363,6 +376,22 @@ model CloseEmailDelivery {
   @@map("close_email_deliveries")
 }
 
+/// One row per session x recipient x reminder kind (S8-05): "deadline_24h" to
+/// members with unsent work, "live_idle" to the owner of a forgotten live
+/// session. System mail with its own ledger (never the user email budget).
+/// userId is a plain String with NO Profile FK, same as CloseEmailDelivery, so
+/// mergeGuestData has nothing to move (guests have no email, so no rows).
+model SessionReminderDelivery {
+  sessionId String
+  session   CuppingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId    String
+  kind      String
+  sentAt    DateTime       @default(now())
+
+  @@id([sessionId, userId, kind])
+  @@map("session_reminder_deliveries")
+}
+
 model SessionInvite {
   id        String         @id @default(cuid())
   sessionId String
@@ -374,6 +403,9 @@ model SessionInvite {
   createdBy String
   creator   Profile        @relation(fields: [createdBy], references: [id])
   createdAt DateTime       @default(now())
+  /// false = revoked by "Regenerar enlace" (S8-11 T5). Inactive tokens read
+  /// as expired on /join, joinViaToken and the print QR.
+  active    Boolean        @default(true)
 
   @@index([sessionId])
   @@index([createdBy])
@@ -450,6 +482,11 @@ model DigestRun {
   recipients Int
   sent       Int
   aiSkipped  Boolean  @default(false)
+  // S8-14: the period is CLAIMED first as "running", then marked "done" after
+  // the sends. Rows from before this column are complete runs, hence the default.
+  status     String   @default("done")
+  // Per-recipient outcome { "<email>": "sent" | "failed" } (lib/digestClaim.ts).
+  results    Json?
   createdAt  DateTime @default(now())
 
   @@map("digest_runs")
@@ -462,6 +499,10 @@ model WaitlistEntry {
   locale    String   @default("es")
   source    String   @default("landing")
   createdAt DateTime @default(now())
+  // S8-08: when and under which notice the person typed their address.
+  // Null on rows created before the consent record existed.
+  consentAt            DateTime?
+  consentNoticeVersion String?
 
   @@map("waitlist_entries")
 }

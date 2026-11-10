@@ -13,6 +13,9 @@ import {
   assertSessionStarted,
   isSessionExpired,
 } from "@/lib/sessionAuth";
+import { evaluateJoin } from "@/lib/joinRules";
+import { regenerateSessionInvite, resolveOrCreateSessionInvite } from "@/lib/invites";
+import { sessionHref } from "@/lib/sessionRouting";
 import { closeSessionInternal } from "@/lib/closeSession";
 import * as v from "@/lib/validate";
 import { runLengthMs } from "@/lib/warmup/syncedRun";
@@ -21,13 +24,54 @@ import { logWarn } from "@/lib/log";
 import { syncCoffeeHistoryForSession } from "@/lib/coffeeHistory";
 import { EXCLUSION_REASONS, exclusionData } from "@/lib/exclusionReasons";
 import type { ActionResult } from "@/lib/actionResult";
+import { refireAggregates } from "@/lib/aggregates";
+import { countUnsentComplete, isEvaluationComplete, planFinish } from "@/lib/closeRules";
+import { removeSamplesInTx } from "@/lib/sampleRemoval";
 
 // ─── Submit all draft evaluations for a session ───────────────────────────────
-export async function submitAllEvaluations(sessionId: string) {
+// S8-10 T11 (F-solo-6): interactive, so ActionResult. A second submit after the
+// solo auto-close used to throw `session_closed`; now a cupper who already has
+// submitted work gets `{ closed: true, submitted: 0 }` — the final state — and
+// only someone with nothing submitted sees the error.
+export async function submitAllEvaluations(
+  sessionId: string,
+): Promise<ActionResult<{ closed: boolean; submitted: number }>> {
+  return run("submitAllEvaluations", () => submitAllEvaluationsBody(sessionId), { sessionId });
+}
+
+async function submitAllEvaluationsBody(
+  sessionId: string,
+): Promise<{ closed: boolean; submitted: number }> {
   const user = await requireUser();
   // Member gate + closed/expired guard (a closed session's results are final)
   // + not-started guard (a participant cannot write before the master starts).
   const auth = await requireSessionMember(sessionId, user.id);
+
+  // F-solo-1 (S8-05): a solo close that threw after the flip leaves the session
+  // closed but not finalized. Resubmitting must repair it (phase 2 of the
+  // close), not fail with session_closed. A finalized session falls through.
+  if (auth.status === "closed" && !auth.isGroup && auth.createdBy === user.id) {
+    const repair = await closeSessionInternal(sessionId, {
+      reason: "solo_auto",
+      emails: "skip",
+      repairGraceMs: 0,
+    });
+    if (repair.repaired) {
+      revalidatePath(`/es/app/sessions/${sessionId}/results`);
+      revalidatePath(`/en/app/sessions/${sessionId}/results`);
+      return { closed: true, submitted: 0 };
+    }
+  }
+
+  if (isSessionExpired(auth)) {
+    // S8-10: double submit after the (solo) auto-close: already final for a
+    // cupper who has submitted work. Someone with nothing submitted still errors.
+    const done = await prisma.evaluation.count({
+      where: { cupperId: user.id, isDraft: false, sessionSample: { sessionId } },
+    });
+    if (done > 0) return { closed: true, submitted: 0 };
+  }
+
   assertSessionWritable(auth);
   assertSessionStarted({ ...auth, isOwner: auth.createdBy === user.id });
 
@@ -78,7 +122,11 @@ export async function submitAllEvaluations(sessionId: string) {
   // auditing the 2026-09-26 "results look stale" report).
   revalidatePath(`/es/app/sessions/${sessionId}/results`);
   revalidatePath(`/en/app/sessions/${sessionId}/results`);
-  return { ok: true };
+  const finalRow = await prisma.cuppingSession.findUnique({
+    where: { id: sessionId },
+    select: { status: true },
+  });
+  return { closed: finalRow?.status === "closed", submitted: res.count };
 }
 
 // Group results become visible to participants when every participant row has
@@ -141,6 +189,119 @@ async function maybeAutoCloseSoloSession(sessionId: string, userId: string) {
   // Same routine as the owner close and the cron: reveal → history. Solo
   // sessions never email. Idempotent, so two concurrent submits can't double-run.
   await closeSessionInternal(sessionId, { reason: "solo_auto", emails: "skip" });
+}
+
+// ─── Manual finish for solo / express sessions (F-express-1, F-solo-3) ────────
+// The one bend of "solo has no manual close": a quick session with fewer cupped
+// samples than created otherwise never closes (auto-close needs EVERY sample
+// submitted). Submits the owner's COMPLETE drafts, removes only samples that
+// have no evaluation at all, keeps partial drafts unscored (Kim C2 default a;
+// no editing after closing), then closes through the single close routine.
+// Group sessions never use this (they close via closeSession / the cron).
+export async function finishSoloSession(
+  sessionId: string,
+): Promise<ActionResult<{ closed: boolean; scored: number; removed: number; kept: number }>> {
+  return run(
+    "finishSoloSession",
+    async () => {
+      const user = await requireUser();
+      const auth = await requireSessionOwner(sessionId, user.id);
+      assertSessionWritable(auth);
+      if (auth.isGroup) throw new Error("invalid_input");
+
+      const session = await prisma.cuppingSession.findUnique({
+        where: { id: sessionId },
+        select: {
+          format: true,
+          samples: {
+            select: {
+              id: true,
+              referenceRank: true,
+              physical: { select: { id: true } },
+              extrinsic: { select: { id: true } },
+              evaluations: {
+                where: { cupperId: user.id },
+                select: {
+                  isDraft: true,
+                  descriptiveData: true,
+                  affectiveData: true,
+                  combinedData: true,
+                  cupperId: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      if (!session) throw new Error("not_found_or_forbidden");
+
+      const plan = planFinish(
+        session.samples.map((s) => {
+          const ev = s.evaluations[0];
+          return {
+            id: s.id,
+            hasOtherData: s.physical !== null || s.extrinsic !== null,
+            isReference: s.referenceRank !== null,
+            evaluation: ev ? { isDraft: ev.isDraft, complete: isEvaluationComplete(ev, session.format) } : null,
+          };
+        }),
+      );
+      // Nothing scored would leave an empty session: the owner keeps cupping.
+      if (!plan.canFinish) throw new Error("invalid_input");
+
+      const now = new Date();
+      if (plan.submitIds.length > 0) {
+        await prisma.evaluation.updateMany({
+          where: {
+            isDraft: true,
+            cupperId: user.id,
+            sessionSampleId: { in: plan.submitIds },
+            sessionSample: { sessionId, session: { status: { not: "closed" } } },
+          },
+          data: { isDraft: false, submittedAt: now },
+        });
+      }
+
+      // Only samples that STILL have no evaluation are removed (a concurrent
+      // save between the read above and here keeps its sample).
+      let removed = 0;
+      if (plan.removeIds.length > 0) {
+        removed = await prisma.$transaction(async (tx) => {
+          const safe = await tx.sessionSample.findMany({
+            where: {
+              id: { in: plan.removeIds },
+              sessionId,
+              evaluations: { none: {} },
+              // physical / extrinsic cascade on delete: never prune them.
+              physical: null,
+              extrinsic: null,
+            },
+            select: { id: true },
+          });
+          await removeSamplesInTx(tx, sessionId, safe.map((x) => x.id));
+          return safe.length;
+        });
+      }
+
+      const result = await closeSessionInternal(sessionId, {
+        reason: "solo_finish",
+        emails: "skip",
+        repairGraceMs: 0,
+      });
+
+      revalidatePath(`/es/app/sessions/${sessionId}/results`);
+      revalidatePath(`/en/app/sessions/${sessionId}/results`);
+      revalidatePath(`/es/app/sessions/${sessionId}/cup`);
+      revalidatePath(`/en/app/sessions/${sessionId}/cup`);
+      return {
+        closed: result.closed || result.repaired === true,
+        scored: plan.scoredCount,
+        removed,
+        kept: plan.keptPartialIds.length,
+      };
+    },
+    { sessionId },
+  );
 }
 
 // ─── Start a session (maestro moves past invite screen) ───────────────────────
@@ -232,6 +393,35 @@ export async function stopWarmup(sessionId: string): Promise<ActionResult<{ stop
     },
     { sessionId },
   );
+}
+
+// ─── What closing now would leave out (F-grupal-2) ────────────────────────────
+// Owner-only read for the close dialog: how many cuppers hold COMPLETE drafts
+// that were never sent. Under the default draft policy (lib/closeRules.ts
+// DRAFT_AT_CLOSE = "exclude") those do not count once the session closes.
+// Counts only; no names, no evaluation content.
+export async function getCloseImpact(
+  sessionId: string,
+): Promise<{ unsentCuppers: number; unsentEvaluations: number }> {
+  const user = await requireUser();
+  await requireSessionOwner(sessionId, user.id);
+  const session = await prisma.cuppingSession.findUnique({
+    where: { id: sessionId },
+    select: { format: true },
+  });
+  if (!session) return { unsentCuppers: 0, unsentEvaluations: 0 };
+  const drafts = await prisma.evaluation.findMany({
+    where: { sessionSample: { sessionId }, isDraft: true },
+    select: {
+      cupperId: true,
+      isDraft: true,
+      descriptiveData: true,
+      affectiveData: true,
+      combinedData: true,
+    },
+  });
+  const c = countUnsentComplete(drafts, session.format);
+  return { unsentCuppers: c.cuppers, unsentEvaluations: c.evaluations };
 }
 
 // ─── Close a session ──────────────────────────────────────────────────────────
@@ -337,50 +527,73 @@ export async function joinViaToken(token: string, locale: string = "es") {
       maxUses: true,
       useCount: true,
       expiresAt: true,
+      active: true,
       session: {
-        select: { startedAt: true, status: true, closesAt: true, createdBy: true, isAsync: true },
+        select: {
+          id: true,
+          startedAt: true,
+          status: true,
+          closesAt: true,
+          createdBy: true,
+          isAsync: true,
+          isGroup: true,
+          entriesLocked: true,
+        },
       },
     },
   });
 
   if (!invite) throw new Error("invalid_token");
-  if (invite.expiresAt && invite.expiresAt < new Date()) {
-    throw new Error("token_expired");
-  }
-
   const { sessionId, session } = invite;
-  const base = `/${locale}/app/sessions/${sessionId}`;
-  const closed = isSessionExpired(session, new Date());
-  const destination = closed
-    ? `${base}/results`
-    : !session.startedAt && !session.isAsync
-      ? `${base}/waiting`
-      : `${base}/cup`;
-
-  if (session.createdBy === user.id) {
-    redirect(closed ? `${base}/results` : `${base}/cup`);
-  }
+  // Only group sessions have a join flow (a solo link must not mint members).
+  if (!session.isGroup) throw new Error("invalid_input");
 
   const existing = await prisma.sessionParticipant.findUnique({
     where: { sessionId_userId: { sessionId, userId: user.id } },
     select: { userId: true },
   });
-  if (existing) redirect(destination);
 
-  if (closed) throw new Error("session_closed");
-  if (invite.maxUses !== null && invite.useCount >= invite.maxUses) {
-    throw new Error("token_exhausted");
+  // The same pure rule the /join page renders (lib/joinRules.ts): owner and
+  // members go straight in even with a dead link; newcomers are refused by
+  // closed > entries closed > revoked/expired > exhausted.
+  const decision = evaluateJoin(
+    { invite, session, viewer: { userId: user.id, isMember: !!existing } },
+    locale,
+  );
+  switch (decision.kind) {
+    case "redirect":
+      redirect(decision.href);
+    case "closed":
+      throw new Error("session_closed");
+    case "expired":
+      throw new Error("token_expired");
+    case "exhausted":
+      throw new Error("token_exhausted");
+    case "entries_closed":
+      throw new Error("entries_closed");
+    case "invalid":
+      throw new Error("invalid_token");
+    case "ok":
+      break;
   }
 
   await prisma.$transaction(async (tx) => {
     const fresh = await tx.sessionInvite.update({
       where: { id: invite.id },
       data: { useCount: { increment: 1 } },
-      select: { useCount: true, maxUses: true },
+      select: {
+        useCount: true,
+        maxUses: true,
+        active: true,
+        session: { select: { entriesLocked: true } },
+      },
     });
     // Re-check on the locked row: a concurrent redemption may have taken the
-    // last seat between the read above and this increment. Throwing rolls the
-    // increment back.
+    // last seat, the owner may have regenerated the link or closed entries
+    // between the read above and this increment. Throwing rolls the
+    // increment back. (Only newcomers reach here; members/owner redirected.)
+    if (!fresh.active) throw new Error("token_expired");
+    if (fresh.session.entriesLocked) throw new Error("entries_closed");
     if (fresh.maxUses !== null && fresh.useCount > fresh.maxUses) {
       throw new Error("token_exhausted");
     }
@@ -389,37 +602,78 @@ export async function joinViaToken(token: string, locale: string = "es") {
     });
   });
 
-  redirect(destination);
+  // A latecomer joins a started session: same destination as everyone else.
+  redirect(sessionHref(session, { locale, isOwner: false }));
 }
 
 // ─── Create an invite token ───────────────────────────────────────────────────
+// Idempotent (S8-11 T5): opening "Invitar" twice shows ONE link — the newest
+// active, unexpired invite with seats left, minted only when none exists.
+// `regenerate: true` revokes every earlier token (`active = false`, they read
+// as expired on /join) and mints a new one in one transaction. Explicit
+// `maxUses` / `expiresAt` are a deliberate new link, so they mint as before.
 export async function createInviteToken(
   sessionId: string,
   maxUses?: number,
   expiresAt?: string,
-): Promise<{ token: string }> {
-  const user = await requireRegisteredUser();
-  assertSessionWritable(await requireSessionOwner(sessionId, user.id));
+  regenerate?: boolean,
+): Promise<ActionResult<{ token: string }>> {
+  return run(
+    "createInviteToken",
+    async () => {
+      const user = await requireRegisteredUser();
+      assertSessionWritable(await requireSessionOwner(sessionId, user.id));
 
-  // 0 / negative would mint a dead-on-arrival token; a past date a pre-expired
-  // one — both reject as invalid_input.
-  const safeMaxUses =
-    maxUses === undefined || maxUses === null ? null : v.int(maxUses, "maxUses", 1, 1000);
-  const safeExpiresAt = expiresAt ? v.isoDate(expiresAt, "expiresAt", { future: true }) : null;
+      // 0 / negative would mint a dead-on-arrival token; a past date a
+      // pre-expired one — both reject as invalid_input.
+      const safeMaxUses =
+        maxUses === undefined || maxUses === null ? null : v.int(maxUses, "maxUses", 1, 1000);
+      const safeExpiresAt = expiresAt ? v.isoDate(expiresAt, "expiresAt", { future: true }) : null;
 
-  const token = crypto.randomUUID();
-
-  await prisma.sessionInvite.create({
-    data: {
-      sessionId,
-      token,
-      maxUses: safeMaxUses,
-      expiresAt: safeExpiresAt,
-      createdBy: user.id,
+      if (regenerate === true) {
+        const token = await regenerateSessionInvite(sessionId, user.id, {
+          maxUses: safeMaxUses,
+          expiresAt: safeExpiresAt,
+        });
+        return { token };
+      }
+      if (safeMaxUses === null && safeExpiresAt === null) {
+        return { token: await resolveOrCreateSessionInvite(sessionId, user.id) };
+      }
+      const token = crypto.randomUUID();
+      await prisma.sessionInvite.create({
+        data: { sessionId, token, maxUses: safeMaxUses, expiresAt: safeExpiresAt, createdBy: user.id },
+      });
+      return { token };
     },
-  });
+    { sessionId },
+  );
+}
 
-  return { token };
+// ─── Close / reopen new entries (owner only, S8-11 T6 / C4 default a) ────────
+// `entriesLocked` only gates NEWCOMERS in joinViaToken (`entries_closed`);
+// members re-enter. Display/gating state: never read by scoring, the
+// aggregate trigger or AggregateScore.
+export async function setEntriesLocked(
+  sessionId: string,
+  locked: boolean,
+): Promise<ActionResult<{ entriesLocked: boolean }>> {
+  return run(
+    "setEntriesLocked",
+    async () => {
+      if (typeof locked !== "boolean") throw new Error("invalid_input");
+      const user = await requireRegisteredUser();
+      assertSessionWritable(await requireSessionOwner(sessionId, user.id));
+      // Only group sessions have entries to close.
+      const { count } = await prisma.cuppingSession.updateMany({
+        where: { id: sessionId, isGroup: true },
+        data: { entriesLocked: locked },
+      });
+      if (count === 0) throw new Error("invalid_input");
+      return { entriesLocked: locked };
+    },
+    { sessionId },
+  );
 }
 
 // ─── Exclude / re-include a participant from group results (owner only) ──────
@@ -503,14 +757,9 @@ export async function refreshAggregateScores(sessionId: string) {
   const user = await requireUser();
   await requireSessionOwner(sessionId, user.id);
 
-  await prisma.$executeRaw`
-    UPDATE evaluations e
-    SET "isDraft" = e."isDraft"
-    FROM session_samples ss
-    WHERE e."sessionSampleId" = ss.id
-      AND ss."sessionId" = ${sessionId}
-      AND e."isDraft" = false
-  `;
+  // S8-04: the refire itself lives in lib/aggregates.ts (shared with the close
+  // routine); this action is only the owner-gated wrapper.
+  await refireAggregates(sessionId);
 
   revalidatePath(`/es/app/sessions/${sessionId}/results`);
   revalidatePath(`/en/app/sessions/${sessionId}/results`);

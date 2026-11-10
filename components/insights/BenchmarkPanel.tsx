@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { runBenchmark } from "@/app/actions/analytics";
+import { useActionFeedback } from "@/components/ui/Toast";
 import type { BenchmarkComparison, BenchmarkSlices } from "@/lib/analytics/benchmarks";
 
 export interface BenchmarkTranslations {
@@ -58,12 +59,12 @@ export function BenchmarkPanel({ slices, initialComparison, t }: BenchmarkPanelP
   const [variety, setVariety] = useState("");
   const [comparison, setComparison] = useState<BenchmarkComparison>(initialComparison);
   const [isPending, startTransition] = useTransition();
+  const feedback = useActionFeedback();
 
   function refresh(next: { countryCode: string; processType: string; variety: string }) {
     startTransition(async () => {
-      const result = await runBenchmark(next);
       // On error, keep showing the last-good comparison rather than blanking it.
-      if (result.ok) setComparison(result.comparison);
+      await feedback.run(runBenchmark(next), (data) => setComparison(data));
     });
   }
 

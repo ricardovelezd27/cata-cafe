@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { updateProfile } from "@/app/actions/profile";
 import { Select } from "@/components/ui/Select";
+import { useActionFeedback } from "@/components/ui/Toast";
 
 const inputCls =
   "w-full border border-outline-variant rounded-input px-3 py-2 text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary-container/25 focus:border-primary-container transition-colors";
@@ -32,6 +33,7 @@ export function ProfileForm({
     countryLabel: string;
     saveSuccess: string;
     saveError: string;
+    saving: string;
   };
 }) {
   const [displayName, setDisplayName] = useState(initial.displayName);
@@ -41,6 +43,15 @@ export function ProfileForm({
   const [country, setCountry] = useState(initial.country);
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [pending, start] = useTransition();
+  const feedback = useActionFeedback();
+  const uid = useId();
+  const ids = {
+    name: `${uid}-name`,
+    role: `${uid}-role`,
+    country: `${uid}-country`,
+    lang: `${uid}-lang`,
+    bio: `${uid}-bio`,
+  };
 
   // The saved profile's country may predate the fixed list (or hold a value
   // outside it) — keep it selectable rather than silently dropping it.
@@ -60,26 +71,30 @@ export function ProfileForm({
     <form
       onSubmit={(e) => {
         e.preventDefault();
+        setStatus("idle");
         start(async () => {
-          try {
-            await updateProfile({
+          // updateProfile returns an ActionResult (S8-07, F-cuenta-8): a
+          // failure toasts the localized code AND leaves the inline status.
+          const result = await feedback.run(
+            updateProfile({
               displayName,
               preferredLang,
               bio,
               role,
               country: country || null,
-            });
-            setStatus("success");
-          } catch {
-            setStatus("error");
-          }
+            }),
+          );
+          setStatus(result.ok ? "success" : "error");
         });
       }}
       className="space-y-4"
     >
       <div>
-        <label className={labelCls}>{t.displayName}</label>
+        <label htmlFor={ids.name} className={labelCls}>
+          {t.displayName}
+        </label>
         <input
+          id={ids.name}
           className={inputCls}
           value={displayName}
           onChange={(e) => {
@@ -91,8 +106,11 @@ export function ProfileForm({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label className={labelCls}>{t.roleLabel}</label>
+          <label htmlFor={ids.role} className={labelCls}>
+            {t.roleLabel}
+          </label>
           <Select
+            id={ids.role}
             value={role}
             onChange={(v) => {
               setRole(v);
@@ -103,8 +121,11 @@ export function ProfileForm({
           />
         </div>
         <div>
-          <label className={labelCls}>{t.countryLabel}</label>
+          <label htmlFor={ids.country} className={labelCls}>
+            {t.countryLabel}
+          </label>
           <Select
+            id={ids.country}
             value={country}
             onChange={(v) => {
               setCountry(v);
@@ -117,8 +138,11 @@ export function ProfileForm({
       </div>
 
       <div>
-        <label className={labelCls}>{t.preferredLang}</label>
+        <label htmlFor={ids.lang} className={labelCls}>
+          {t.preferredLang}
+        </label>
         <Select
+          id={ids.lang}
           value={preferredLang}
           onChange={(v) => {
             setPreferredLang(v as "es" | "en");
@@ -133,8 +157,11 @@ export function ProfileForm({
       </div>
 
       <div>
-        <label className={labelCls}>{t.bio}</label>
+        <label htmlFor={ids.bio} className={labelCls}>
+          {t.bio}
+        </label>
         <textarea
+          id={ids.bio}
           className={inputCls + " min-h-[80px]"}
           value={bio}
           onChange={(e) => {
@@ -148,14 +175,17 @@ export function ProfileForm({
         <button
           type="submit"
           disabled={pending}
+          aria-busy={pending}
           className="rounded-pill bg-primary-container px-5 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-primary disabled:opacity-50"
         >
-          {t.save}
+          {pending ? t.saving : t.save}
         </button>
-        {status === "success" && (
-          <span className="text-sm text-primary-container">{t.saveSuccess}</span>
-        )}
-        {status === "error" && <span className="text-sm text-error">{t.saveError}</span>}
+        {/* One live region for every state, so a screen reader announces the
+            result without moving focus. */}
+        <span role="status" aria-live="polite" className="text-sm">
+          {status === "success" && <span className="text-primary-container">{t.saveSuccess}</span>}
+          {status === "error" && <span className="text-error">{t.saveError}</span>}
+        </span>
       </div>
     </form>
   );

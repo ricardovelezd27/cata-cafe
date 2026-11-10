@@ -4,6 +4,8 @@ import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { startGuestClaim } from "@/app/actions/guestClaim";
 import { useConnectivity } from "@/hooks/useConnectivity";
+import { useUnsyncedGuard } from "@/components/offline/UnsyncedGuardProvider";
+import { CLAIM_ANON_KEY, serializeStarted } from "@/lib/offline/claimMarker";
 
 /**
  * Step 1 of the guest → account flow from the client's side, shared by every
@@ -17,6 +19,7 @@ export function useGuestClaim(locale: string) {
   const [starting, setStarting] = useState(false);
   const [failed, setFailed] = useState(false);
   const { online } = useConnectivity();
+  const guard = useUnsyncedGuard();
 
   const start = useCallback(
     async (backPath: string) => {
@@ -24,6 +27,12 @@ export function useGuestClaim(locale: string) {
       setFailed(false);
       setStarting(true);
       try {
+        // The claim deletes the anonymous account the drafts are keyed to:
+        // wait for them to sync or say how many are at risk (S8-09, F-guest-5).
+        if (guard && !(await guard.confirmLeave("claim"))) {
+          setStarting(false);
+          return;
+        }
         const result = await startGuestClaim(locale, backPath);
         if (!result.ok) {
           // not_anonymous: the viewer already converted in another tab — a
@@ -33,13 +42,24 @@ export function useGuestClaim(locale: string) {
           setStarting(false);
           return;
         }
+        // The merge happens after a sign-in round trip on another page, so
+        // remember the anonymous id (with a timestamp); the app shell re-keys
+        // the drafts only after /auth/claim (ClaimCard) wrote the completion
+        // marker for the signed-in account on a successful merge (claimMarker.ts).
+        if (guard) {
+          try {
+            window.localStorage.setItem(CLAIM_ANON_KEY, serializeStarted(guard.userId));
+          } catch {
+            // private mode: the pre-claim guard above already warned
+          }
+        }
         router.push(result.loginUrl);
       } catch {
         setFailed(true);
         setStarting(false);
       }
     },
-    [locale, online, router, starting],
+    [locale, online, router, starting, guard],
   );
 
   return { start, starting, failed, online };

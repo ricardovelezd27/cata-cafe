@@ -4,7 +4,9 @@ import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
-import { revealSample, refreshAggregateScores, resendCloseEmails } from "@/app/actions/community";
+import { revealSample, refreshAggregateScores, resendCloseEmails, finishSoloSession } from "@/app/actions/community";
+import { planFinish } from "@/lib/closeRules";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ScoreTable, type ScoreTableTranslations } from "@/components/results/ScoreTable";
 import { SampleRadarChart } from "@/components/results/SampleRadarChart";
 import type { ScoreBreakdownTranslations } from "@/components/results/ScoreBreakdownPanel";
@@ -46,7 +48,10 @@ import {
   ButtonLink,
   useActionFeedback,
 } from "@/components/ui";
-import { updateSampleMetadata } from "@/app/actions/sessions";
+import { ReportLink } from "@/components/ui/ReportLink";
+import { useForegroundResume } from "@/hooks/useForegroundResume";
+import { assignSampleCoffee, updateSampleMetadata } from "@/app/actions/sessions";
+import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
 import { ArrowLeft, FileDown, Printer, RefreshCw } from "lucide-react";
@@ -131,6 +136,7 @@ function getCompareRefServerSnapshot(): string {
 
 export function ResultsClient({
   locale,
+  usableCoffees = [],
   session,
   isOwner,
   isAdminViewer = false,
@@ -139,6 +145,7 @@ export function ResultsClient({
   isGroup,
   canViewGroup,
   cuppingOpen,
+  sessionClosed,
   closedOnLabel = null,
   updatedAfterCloseLabel = null,
   closeEmails = null,
@@ -157,6 +164,8 @@ export function ResultsClient({
   isSoloDescriptors,
   guestSave = null,
   myDraftNotice = null,
+  closedNotice = null,
+  finish = null,
   sync = null,
   translations,
 }: {
@@ -182,6 +191,10 @@ export function ResultsClient({
   // False once the session is closed OR its closesAt passed (server clock):
   // gates "Volver a catar", since /cup redirects back here from that instant.
   cuppingOpen: boolean;
+  // True only once the session is actually CLOSED (status), not merely past
+  // closesAt: "Asignar café" is the post-close coffee naming that
+  // updateSampleMetadata allows on a closed session (S8-10 T10).
+  sessionClosed: boolean;
   // Pre-formatted "Cata cerrada el {date}" — null unless this is a closed
   // group session (see CLAUDE.md's product-law on closedAt).
   closedOnLabel?: string | null;
@@ -219,9 +232,28 @@ export function ResultsClient({
   // line — non-null only while the viewer's own evaluation is unsubmitted on
   // an open session (see page.tsx). Pairs with translations.myDraftCta.
   myDraftNotice?: string | null;
+  // Closed-session line for the viewer: did their unsent notes count? (S8-05)
+  closedNotice?: string | null;
+  // Solo owner of an open session with unscored samples: "Terminar cata"
+  // (F-express-1 / F-solo-3). Null for everyone else.
+  finish?: {
+    button: string;
+    title: string;
+    body: string;
+    // RAW templates with "{n}", filled here from the sample states.
+    submitLine: string;
+    removeLine: string;
+    keepLine: string;
+    confirm: string;
+    cancel: string;
+    close: string;
+    errors: Record<string, string>;
+  } | null;
   // Strings for the device-pending sync pill + conflict modal. Null in the
   // admin read-only view (nothing of the admin's is ever pending here).
   sync?: SessionSyncStatusTranslations | null;
+  /** Coffees the owner may link in "Asignar café" (empty unless needed). */
+  usableCoffees?: UsableCoffee[];
   translations: {
     title: string;
     backToCupping: string;
@@ -230,6 +262,7 @@ export function ResultsClient({
     downloadSummary: string;
     downloadFicha: string;
     downloadCsv: string;
+    needsConnection: string;
     refresh: string;
     refreshing: string;
     refreshNew: string;
@@ -289,6 +322,17 @@ export function ResultsClient({
     alignNoData: string;
     editSample: string;
     editSampleError: string;
+    assignPick: string;
+    assignedToast: string;
+    coffeePicker: {
+      title: string;
+      searchPlaceholder: string;
+      mine: string;
+      shared: string;
+      public: string;
+      empty: string;
+      close: string;
+    };
     editSampleNotOwner: string;
     sampleLabel: string;
     coffeeName: string;
@@ -379,8 +423,24 @@ export function ResultsClient({
   const [liveUpdatesDown, setLiveUpdatesDown] = useState(false);
   const [, startTransition] = useTransition();
   const feedback = useActionFeedback();
+  const [finishOpen, setFinishOpen] = useState(false);
+  // What "Terminar cata" would do, from the per-sample states the server sent.
+  const finishPlan = finish
+    ? planFinish(
+        session.samples.map((s) => ({
+          id: s.id,
+          isReference: s.isReference,
+          hasOtherData: Object.keys(s.physical ?? {}).length > 0,
+          evaluation:
+            !s.myEvaluation || s.myEvaluation.status === "none"
+              ? null
+              : { isDraft: s.myEvaluation.status === "draft", complete: s.myEvaluation.complete },
+        })),
+      )
+    : null;
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [editingSampleId, setEditingSampleId] = useState<string | null>(null);
+  const [pickingCoffee, setPickingCoffee] = useState(false);
   const [editingExtrinsicSampleId, setEditingExtrinsicSampleId] = useState<string | null>(null);
   // Set after a metadata save when the linked coffee belongs to someone else
   // — the label still saved, but the coffee record itself was skipped.
@@ -395,6 +455,17 @@ export function ResultsClient({
   // refresh), so the no-op UPDATE storms from exclusion toggles / owner
   // recomputes don't re-badge evaluations the viewer has already seen.
   const seenEvalIds = useRef(new Set<string>(knownEvalIds));
+  // Bumped on foreground resume so the realtime effect below re-runs (S8-15).
+  const [resumeKey, setResumeKey] = useState(0);
+  // A phone that slept has a dead socket and stale numbers: recreate the channel
+  // and re-fetch the server render once. Pending badges are now moot.
+  useForegroundResume(() => {
+    if (isAdminViewer) return;
+    setResumeKey((k) => k + 1);
+    setNewSubmissions(0);
+    setHasGenericUpdates(false);
+    router.refresh();
+  });
 
   // ─── Realtime: badge the refresh button when something new is available ───
   // Manual-refresh design is intentional (no auto re-render); this only tells
@@ -478,7 +549,7 @@ export function ResultsClient({
     );
 
     return stop;
-  }, [isGroup, canViewGroup, isOwner, isAdminViewer, session.id, session.samples, currentUserId]);
+  }, [isGroup, canViewGroup, isOwner, isAdminViewer, session.id, session.samples, currentUserId, resumeKey]);
 
   const handleEditSample = (sampleId: string) => {
     router.push(`/${locale}/app/sessions/${session.id}/cup?sample=${sampleId}`);
@@ -492,8 +563,42 @@ export function ResultsClient({
   const detailParticipants: SampleDetailParticipant[] | null =
     (isOwner || isAdminViewer) && participants && participants.length > 0 ? participants : null;
 
+  // "Asignar café" (closed session, coffee-less sample): goes through
+  // assignSampleCoffee so failures toast the localized code instead of
+  // crashing, and success says what happened (S8-10 T10, F-express-3).
+  const isAssigning = sessionClosed && !!editingSample && !editingSample.hasCoffee;
+
+  const assignPendingRef = useRef(false);
+
+  const finishAssign = () => {
+    setEditingSampleId(null);
+    setPickingCoffee(false);
+    feedback.notifySuccess(translations.assignedToast);
+    router.refresh();
+  };
+
+  const handlePickCoffee = async (picked: UsableCoffee) => {
+    if (!editingSampleId || assignPendingRef.current) return;
+    assignPendingRef.current = true;
+    setPickingCoffee(false);
+    try {
+      await feedback.run(assignSampleCoffee(editingSampleId, { coffeeId: picked.id }), finishAssign);
+    } finally {
+      assignPendingRef.current = false;
+    }
+  };
+
   const handleSaveSampleMetadata = async (data: SampleMetadataFormData) => {
     if (!editingSampleId) return;
+    if (isAssigning) {
+      const res = await feedback.run(
+        assignSampleCoffee(editingSampleId, { fields: data }),
+        finishAssign,
+      );
+      // Keep the dialog (and the typed values) open on failure.
+      if (!res.ok) throw new Error(res.error);
+      return;
+    }
     const result = await updateSampleMetadata(editingSampleId, data);
     setEditingSampleId(null);
     setCoffeeNotOwnedNotice(!result.coffeeUpdated);
@@ -746,6 +851,14 @@ export function ResultsClient({
       )}
       {/* The viewer's own evaluation is still a draft: "—" cells are unrated
           attributes, not lost data. Offer the way back into the tasting. */}
+      {closedNotice && (
+        <div
+          role="status"
+          className="mx-4 mt-4 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6"
+        >
+          {closedNotice}
+        </div>
+      )}
       {myDraftNotice && (
         <div
           role="status"
@@ -761,7 +874,43 @@ export function ResultsClient({
               {translations.myDraftCta}
             </Button>
           )}
+          {!isAdminViewer && cuppingOpen && finishPlan?.canFinish && finish && (
+            <Button size="sm" variant="secondary" onClick={() => setFinishOpen(true)}>
+              {finish.button}
+            </Button>
+          )}
         </div>
+      )}
+      {finish && finishPlan && (
+        <ConfirmDialog
+          open={finishOpen}
+          onOpenChange={setFinishOpen}
+          title={finish.title}
+          body={
+            <div className="space-y-2">
+              <p>{finish.body}</p>
+              {finishPlan.submitIds.length > 0 && (
+                <p>{finish.submitLine.replace("{n}", String(finishPlan.submitIds.length))}</p>
+              )}
+              {finishPlan.removeIds.length > 0 && (
+                <p>{finish.removeLine.replace("{n}", String(finishPlan.removeIds.length))}</p>
+              )}
+              {finishPlan.keptPartialIds.length > 0 && (
+                <p>{finish.keepLine.replace("{n}", String(finishPlan.keptPartialIds.length))}</p>
+              )}
+            </div>
+          }
+          confirmLabel={finish.confirm}
+          cancelLabel={finish.cancel}
+          closeLabel={finish.close}
+          destructive
+          errorMessages={finish.errors}
+          onConfirm={async () => {
+            const r = await finishSoloSession(session.id);
+            if (r.ok) router.refresh();
+            return r;
+          }}
+        />
       )}
       {partialSyncNotice && (
         <div
@@ -1008,15 +1157,17 @@ export function ResultsClient({
               {translations.viewForm}
             </Button>
             {/* Server-generated CVA PDF — plain link so no @react-pdf ships to the client. */}
-            <ButtonLink
+            <ReportLink
               href={`/api/sessions/${session.id}/cva-pdf?locale=${locale}`}
+              filename={`cva-${session.id}.pdf`}
+              offlineLabel={translations.needsConnection}
               size="md"
               variant="primary"
               icon={<FileDown size={16} aria-hidden />}
               className="flex-1"
             >
               {translations.downloadPdf}
-            </ButtonLink>
+            </ReportLink>
           </div>
           {/* Personal summary PDF — inline so iOS opens the native viewer. Group
               sessions only once the group results are visible (the route enforces
@@ -1024,31 +1175,33 @@ export function ResultsClient({
           <div className="flex flex-col gap-2 sm:flex-1 sm:flex-row">
             {(!isGroup || canViewGroup) &&
               session.samples.some((s) => s.myEvaluation?.status === "submitted") && (
-              <ButtonLink
+              <ReportLink
                 href={`/api/sessions/${session.id}/participant-summary?locale=${locale}&inline=1`}
-                target="_blank"
-                rel="noopener"
+                filename={`resumen-${session.id}.pdf`}
+                offlineLabel={translations.needsConnection}
+                newTab
                 size="md"
                 variant="secondary"
                 icon={<FileDown size={16} aria-hidden />}
                 className="w-full sm:flex-1"
               >
                 {translations.downloadSummary}
-              </ButtonLink>
+              </ReportLink>
             )}
             {/* Owner-tier "Ficha técnica" — the route 404s for anyone else. */}
             {(isOwner || isAdminViewer) && (
-              <ButtonLink
+              <ReportLink
                 href={`/api/sessions/${session.id}/ficha-tecnica?locale=${locale}&inline=1`}
-                target="_blank"
-                rel="noopener"
+                filename={`ficha-${session.id}.pdf`}
+                offlineLabel={translations.needsConnection}
+                newTab
                 size="md"
                 variant="secondary"
                 icon={<FileDown size={16} aria-hidden />}
                 className="w-full sm:flex-1"
               >
                 {translations.downloadFicha}
-              </ButtonLink>
+              </ReportLink>
             )}
             {/* Owner raw data (CSV) — a plain URL; the route 404s for anyone else. */}
             {(isOwner || isAdminViewer) && (
@@ -1100,7 +1253,7 @@ export function ResultsClient({
             // Post-close coffee naming (WP-B): a coffee-less sample (express
             // sessions) may get its coffee AFTER the close — the one write
             // updateSampleMetadata allows on a closed session, owner only.
-            isOwner && !isAdminViewer && !cuppingOpen && !detailSample.hasCoffee
+            isOwner && !isAdminViewer && sessionClosed && !detailSample.hasCoffee
               ? () => {
                   setDetail(null);
                   setEditingSampleId(detailSample.id);
@@ -1132,12 +1285,21 @@ export function ResultsClient({
           open
           onOpenChange={() => setEditingSampleId(null)}
           title={`${
-            !cuppingOpen && !editingSample.hasCoffee
+            sessionClosed && !editingSample.hasCoffee
               ? translations.detail.assignCoffee
               : translations.editSample
           }: ${editingSample.label}`}
           closeLabel={translations.cancel}
         >
+          {isAssigning && usableCoffees.length > 0 && (
+            <Button
+              variant="secondary"
+              className="w-full mb-4"
+              onClick={() => setPickingCoffee(true)}
+            >
+              {translations.assignPick}
+            </Button>
+          )}
           <EditSampleMetadataForm
             initialData={{
               label: editingSample.label,
@@ -1171,6 +1333,16 @@ export function ResultsClient({
             }}
           />
         </ResponsiveDialog>
+      )}
+
+      {isOwner && isAssigning && (
+        <CoffeePicker
+          open={pickingCoffee}
+          onOpenChange={setPickingCoffee}
+          coffees={usableCoffees}
+          onSelect={handlePickCoffee}
+          translations={translations.coffeePicker}
+        />
       )}
 
       {isOwner && editingExtrinsicSample && (

@@ -102,6 +102,7 @@ export default async function Dashboard({
         status: true,
         isGroup: true,
         createdBy: true,
+        isAsync: true,
         startedAt: true,
         closesAt: true,
         _count: { select: { samples: true } },

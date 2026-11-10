@@ -70,16 +70,17 @@ export interface WarmupPlayerStrings {
   reflectEyebrow: string;
   reflectTitle: string;
   reflectLead: string;
-  answerLabel: string;
-  save: string;
-  omit: string;
-  savedNote: string;
+  reflectContinue: string;
   doneTitle: string;
   doneBody: string;
   noticedTitle: string;
   repeat: string;
   backToList: string;
   finish: string;
+  /** Shown when the sound went silent after a lock / call (S8-13). */
+  tapToResume: string;
+  /** Second tap on "Saltar ejercicio" once the exercise would count as seen. */
+  skipConfirm: string;
 }
 
 const LABEL_KEYS: SegmentLabel[] = [
@@ -155,15 +156,14 @@ export function warmupPlayerStrings(t: T): WarmupPlayerStrings {
     reflectEyebrow: t("reflect.eyebrow"),
     reflectTitle: t("reflect.title"),
     reflectLead: t("reflect.lead"),
-    answerLabel: t("reflect.answerLabel"),
-    save: t("reflect.save"),
-    omit: t("reflect.omit"),
-    savedNote: t("reflect.savedNote"),
+    reflectContinue: t("reflect.continue"),
     doneTitle: t("player.doneTitle"),
     doneBody: t("player.doneBody"),
     noticedTitle: t("player.noticedTitle"),
     repeat: t("player.repeat"),
     backToList: t("player.backToList"),
     finish: t("player.finish"),
+    tapToResume: t("player.tapToResume"),
+    skipConfirm: t("player.skipConfirm"),
   };
 }

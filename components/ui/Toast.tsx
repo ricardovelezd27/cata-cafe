@@ -19,7 +19,12 @@ import {
   type ReactNode,
 } from "react";
 import { AlertTriangle, CheckCircle2, X } from "lucide-react";
-import { isActionErrorCode, type ActionErrorCode, type ActionResult } from "@/lib/actionResult";
+import {
+  isActionErrorCode,
+  isNetworkFailure,
+  type ActionErrorCode,
+  type ActionResult,
+} from "@/lib/actionResult";
 
 const AUTO_DISMISS_MS = 5000;
 
@@ -114,8 +119,15 @@ export function ActionFeedbackProvider({
         if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) {
           throw err;
         }
-        notifyError("unknown");
-        return { ok: false, error: "unknown" };
+        // No signal: say so (S8-09, F-04-3) instead of a generic failure.
+        const code: ActionErrorCode = isNetworkFailure(
+          err,
+          typeof navigator !== "undefined" ? navigator.onLine : undefined,
+        )
+          ? "offline"
+          : "unknown";
+        notifyError(code);
+        return { ok: false, error: code };
       }
     },
     [notifyError],

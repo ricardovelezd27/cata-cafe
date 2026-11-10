@@ -39,6 +39,11 @@ export type GroupMailOutcome =
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+// TODO(owner): per-group unsubscribe (F-grupos-8). Needs a signed one-click
+// route (RFC 8058), an opt-out column on tasting_group_members and the
+// List-Unsubscribe headers on the three templates; the skip belongs in this
+// delivery step. Not built in S8-14: a new public endpoint and the opt-out
+// semantics are an owner decision.
 export async function deliverGroupMail(args: {
   userId: string;
   groupId: string;

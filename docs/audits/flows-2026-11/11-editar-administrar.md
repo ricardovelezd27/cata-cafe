@@ -41,6 +41,7 @@ The owner manages a session from the sessions list (edit, duplicate, delete icon
 - **Invariant check** — closed = read-only; fix tightens it. Any new exception must update `docs/flows.md` §1.
 
 ### F-sesiones-3 · Removing a sample: no closed guard, race with a first evaluation, silent loss of physical/extrinsic data · severity: P2 · status: confirms-board(Quitar una muestra sin evaluaciones en una sesión cerrada)
+**Fixed in S8-10** (PR pending, race half): evaluation, physical and extrinsic counts are read inside the delete transaction; physical/origin data refuses with `sample_has_data` (T5).
 
 - **Status** — Fixed in S8-01 (PR #68), closed-guard half only: `removeSessionSample` now authorizes with `requireSampleOwner` and returns `session_closed`. The race and the physical/extrinsic-data warning are S8-10.
 
@@ -64,6 +65,8 @@ The owner manages a session from the sessions list (edit, duplicate, delete icon
 
 ### F-sesiones-5 · A cupper's offline draft is orphaned when the owner deletes the session or removes the sample · severity: P2 · status: new
 
+**Fixed in S8-09** (draft PR, branch `claude/s8-09-offline-impl`): a draft for a deleted session/sample is reported as `orphaned`, stops retrying, no longer blocks submit and is listed in "Notas sin sincronizar" (read, copy, confirmed discard).
+
 - **Problem** — `app/actions/offline.ts:39` `syncEvaluation` calls `requireSampleMember`, which throws `not_found_or_forbidden` when the sample no longer exists (`lib/sessionAuth.ts:118–124`). `hooks/useOfflineSync.ts:91–95` catches every throw, retries, then returns `"failed"`; only a `"discarded"` result (closed session) clears the pending flag (:80–83). Nothing handles "session deleted" or "sample removed".
 - **Implication** — Native-readiness and trust. A participant who cupped offline sees the amber "pendiente de sincronizar" state and the pending-drafts badge indefinitely for a session that no longer exists, with no explanation and no way to dismiss or keep their notes. Likely on tablets in a lab with bad Wi-Fi, exactly when owners tidy up.
 - **Fix** — Distinguish "gone" from "transient": the replay returns a `gone` outcome for a missing sample or a revoked membership; the client clears the pending flag and shows one plain notice ("Esta sesión ya no existe; tus notas siguen en este dispositivo / se descartaron"), choosing whether to offer a local export. **Acceptance:** delete a session while a second device holds an unsynced draft, reconnect → draft leaves the queue within one replay, a notice appears, badge count drops to zero. **Size:** M.
@@ -73,6 +76,7 @@ The owner manages a session from the sessions list (edit, duplicate, delete icon
 - **Invariant check** — offline store stays client-only; the action keeps the same authorization as the live path and returns a status, not a throw.
 
 ### F-sesiones-6 · Marking a rated sample as reference silently overwrites every cupper's ratings · severity: P2 · status: new
+**Fixed in S8-10** (PR pending): `setReferenceSample(…, confirmRepin)` returns `conflict` for a rated, not-yet-reference sample; the edit form confirms with the cupper count and reverts on cancel (T7). B2 default, `TODO(B2-b)`. The cup-page master panel still re-pins without the prompt (`TODO(S8-10)`).
 
 - **Problem** — `setReferenceSample` (`sessions.ts:~808–860`) re-pins the new active reference in the same transaction: `planReferenceRepin` rewrites each existing evaluation to 5 on all attributes and clears cup marks (`lib/referenceRules.ts:174–200`), without keeping the original. The edit form only shows "Referencia actualizada" (`referenceSaved`); the helper text explains the 79.00 anchor but not that already-entered ratings are replaced. Removing the reference later does not restore them (the pin applies only going forward, per CLAUDE.md).
 - **Implication** — Data loss: real sensory scores are destroyed by one dropdown change mid-session, for all participants, with no prompt and no undo. Cuppers looking at that sample see their ratings jump.
@@ -83,6 +87,7 @@ The owner manages a session from the sessions list (edit, duplicate, delete icon
 - **Invariant check** — reference rules and the 79.00 anchor stay server-enforced; this adds a confirmation only.
 
 ### F-sesiones-7 · Saving the edit form can fail with a wrong "format locked" error, and the lock ignores whether the cupping has started · severity: P2 · status: new
+**Fixed in S8-10** (PR pending): unchanged format/cups are ignored server-side; the lock starts at `startedAt` as well as the first evaluation (T6). C6 default, `TODO(C6)`.
 
 - **Problem** — `EditSessionForm.tsx:~205` always sends `format` and `cupsPerSample` when the page-load `evalCount` was zero (`...(!locked ? { format, cupsPerSample: cups } : {})`), even when unchanged. `updateSession` (`sessions.ts:1009`) returns `format_locked` for any request containing them once an evaluation exists, before applying name/date/objective. The lock itself is only `evaluation.count > 0`, whereas the warm-up lock also uses `startedAt` (:~983).
 - **Implication** — Robustness. If the first cupper's autosave lands while the owner has the page open (normal in a live group), the owner's rename or objective edit is rejected with "El formato… se bloquean" although they changed neither. Conversely, between "Iniciar cata" and the first autosave, format or cups can still change under cuppers' open screens (cupping protocol: the cup count and format are fixed once the cups are on the table).
@@ -93,6 +98,7 @@ The owner manages a session from the sessions list (edit, duplicate, delete icon
 - **Invariant check** — scoring inputs stay server-derived; no bend.
 
 ### F-sesiones-8 · Duplicate copies unusable coffees and keeps only one reference · severity: P2 · status: confirms-board(Duplicar copia cafés que ya no son usables y pierde referencias)
+**Fixed in S8-10** (PR pending): see F-04-5 (T8).
 
 - **Problem** — `sessions.ts:775` `coffeeId: s.coffeeId` copies every link with no `usableCoffeeWhere(user.id)` check; the source select takes only `referenceSampleId` (:731) and `applyReferenceByPosition` receives one `refPosition` (:744). Re-verified in the current code.
 - **Implication** — A template points at anonymized "Café eliminado" or no-longer-shared coffees (violates "never trust a client-supplied coffee id" in spirit); an R1/R2/R3 setup returns with one reference.
@@ -101,6 +107,7 @@ The owner manages a session from the sessions list (edit, duplicate, delete icon
 - **Invariant check** — reference rules (rank cap 3, active = highest) preserved.
 
 ### F-sesiones-9 · Closed edit form still looks editable; add/rename fail silently or crash; Enter double-adds · severity: P3 · status: confirms-board(Sesión cerrada: el formulario parece editable) + new details
+**Fixed in S8-10** (PR pending): a closed session disables the whole form with one fieldset; rename/add failures toast; add is guarded against double submit (T6).
 
 - **Problem** — Only Save (`:540`), closing date (:415), warm-up and the reference fieldset (:509) are disabled for `closed`; name, date, objective, format, sample rows and the add field are not. `commitRename` (:231) and `handleAddSample` (:239) ignore `!result.ok`, and a thrown `session_closed` reaches the error boundary. The add input's Enter handler (:480–483) calls `handleAddSample` without checking `addPending`, and `addSessionSample` computes `max+1` outside the transaction (`sessions.ts:1066`), so a double Enter creates two samples or a position-unique error.
 - **Implication** — Friction; a duplicate sample in a live cupping shifts the sample letters of everyone.
@@ -109,6 +116,7 @@ The owner manages a session from the sessions list (edit, duplicate, delete icon
 - **Confidence** — `verified-in-code`. **Kim?** — no. **Invariant check** — ActionResult contract (`feedback.run`).
 
 ### F-sesiones-10 · `updateSession` stores unvalidated name, objective and format and throws opaque errors · severity: P3 · status: confirms-board(updateSession acepta formato, nombre y objetivo sin validar)
+**Fixed in S8-10** (PR pending): `updateSession` runs under `run()` and validates name, date, objective, format and cups with `lib/validate` (T6).
 
 - **Problem** — `sessions.ts:953` trims the name with no length cap, `:963` stores the objective unbounded, `:1010` `data.format = input.format` trusts the TypeScript type. The action returns its own `{ok,error}` and is not wrapped in `run()`, so auth or DB failures reach the browser as an opaque digest.
 - **Implication** — A tampered client can store any format string (breaking `moduleKeyForFormat` downstream) or huge text. Low likelihood, wide blast radius on results pages.
@@ -126,6 +134,8 @@ The owner manages a session from the sessions list (edit, duplicate, delete icon
 - **Invariant check** — "delete keeps history" holds for closed sessions.
 
 ### F-sesiones-12 · Adding a closing date silently turns a live cupping into an asynchronous one · severity: P3 · status: new
+
+**Fixed in S8-05** (draft PR, branch `claude/s8-05-close-lifecycle-impl`): both forms show the consequence ("pasa a tu ritmo, sin sala de espera ni Iniciar cata") next to the date. TODO(S8-05/C7) separation of `isAsync` from `closesAt` not built.
 
 - **Problem** — `planClosesAtChange` returns `isAsync: true` for any date (`lib/sessionState.ts:~104`) and the form saves it with other fields. Async removes the waiting room and "Iniciar cata" for non-owners (`cup/page.tsx:90`, `community.ts:351`) and `startWarmup` refuses async sessions (:170), while the edit form still offers a warm-up toggle. The hint (`closesAtHint`) says only that the session closes by itself.
 - **Implication** — A teacher who adds a safety close date to a planned live cupping loses the synchronized start and shared warm-up with no warning.

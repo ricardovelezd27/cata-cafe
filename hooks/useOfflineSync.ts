@@ -1,30 +1,34 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { syncEvaluation } from "@/app/actions/offline";
-import { upsertPhysical, upsertExtrinsic } from "@/app/actions/sessions";
-import { replayOutcomeFromResult } from "@/lib/offline/replayOutcome";
+import { replayEvaluation, replayPhysical, replayExtrinsic } from "@/app/actions/offline";
 import {
-  listUserKeys,
-  loadByKey,
+  applyReplayOutcome,
   loadSession,
+  loadUserBlobs,
+  reviveFailedModules,
   setModuleStatus,
 } from "@/lib/offline/store";
 import type { EvalModuleKey } from "@/lib/evaluation";
+import type { ReplayOutcome } from "@/lib/offline/status";
 import {
   EVALUATION_MODULES,
   type Data,
   type ModuleKey,
   type SyncConflict,
 } from "@/lib/offline/types";
+import { useResume } from "@/hooks/useResume";
 
 export type SyncPhase = "idle" | "syncing" | "synced" | "failed";
 
 // Fired on window after every replay run (success or failure) — see syncAll.
 export const OFFLINE_SYNC_EVENT = "cata-offline-sync";
 
+// In-run retries of ONE module (thrown error / network failure). Across runs the
+// module's own `attempts` counter decides when it is parked as `failed`.
 const MAX_RETRIES = 3;
 const SYNCED_BANNER_MS = 3000;
+const STALE_RERUN_MS = 1000;
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -35,12 +39,20 @@ function backoffDelay(attempt: number): number {
   return Math.max(0, base + jitter);
 }
 
-type ReplayResult = "synced" | "conflict" | "failed";
+// CupClient and SessionSyncStatus both mount this hook, and the per-instance
+// ref could not stop two instances replaying the same module at once. One lock
+// for the whole page (S8-09, F-offline-2).
+// A late caller awaits the pass in flight instead of silently returning, so a
+// manual "Enviar" or a sign-out guard recount never reads a half-done queue.
+let inflight: Promise<void> | null = null;
 
-// Drives sync-on-reconnect for the current user. On every offline→online edge
-// (and once on an online mount, to flush anything left from a prior session) it
-// replays every `pending` module through the server actions with bounded
-// exponential-backoff retries, collecting submit-conflicts for the modal.
+type ReplayResult = ReplayOutcome | "offline";
+
+// Drives sync-on-reconnect for the current user. A replay runs on every
+// offline→online edge, on resume (tab visible again, bfcache restore), once on
+// an online mount, and on a bounded jittered schedule (15 s doubling to 5 min)
+// while anything is still `pending`. Modules that hit a permanent outcome are
+// parked (`closed_unsent`, `orphaned`, `failed`) and never retried on a timer.
 export function useOfflineSync({
   userId,
   online,
@@ -50,15 +62,17 @@ export function useOfflineSync({
 }) {
   const [syncPhase, setSyncPhase] = useState<SyncPhase>("idle");
   const [conflicts, setConflicts] = useState<SyncConflict[]>([]);
+  const [nextRetryAt, setNextRetryAt] = useState<number | null>(null);
 
   const onlineRef = useRef(online);
-  const syncingRef = useRef(false);
   const runRef = useRef(0);
   const prevOnline = useRef(online);
   const didMount = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const syncAllRef = useRef<(manual?: boolean) => Promise<void>>(async () => {});
 
-  // Replay a single module with retries. Retries ONLY on thrown errors; a
-  // `conflict` is a successful response and is returned immediately.
+  // Replay a single module with in-run retries. Retries ONLY on thrown errors;
+  // every returned status is final for this run.
   const replayModule = useCallback(
     async (
       sampleId: string,
@@ -68,118 +82,182 @@ export function useOfflineSync({
       force: boolean,
     ): Promise<ReplayResult> => {
       for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        if (!onlineRef.current) return "failed";
+        if (!onlineRef.current) return "offline";
         try {
           if (EVALUATION_MODULES.includes(moduleKey)) {
-            const res = await syncEvaluation({
+            const res = await replayEvaluation({
               sessionSampleId: sampleId,
               moduleKey: moduleKey as EvalModuleKey,
               data,
               cupsPerSample,
               force,
             });
-            // "discarded" = the session closed meanwhile; the server keeps the
-            // submitted data and this draft can't apply. Treat as synced so
-            // the pending flag clears (nothing to retry, nothing to resolve).
             // "pending" = the master has not started this live session yet; the
-            // draft stays on the device and is retried on the next sync.
-            if (res.status === "pending") return "failed";
-            return res.status === "discarded" ? "synced" : res.status;
+            // draft stays pending without burning an attempt (no fast retry).
+            return res.status === "pending" ? "waiting" : res.status;
           }
-          if (moduleKey === "physical") {
-            await upsertPhysical({ sessionSampleId: sampleId, data });
-          } else {
-            const r = await upsertExtrinsic({ sessionSampleId: sampleId, data });
-            // ActionResult: a refused replay must not clear the pending flag.
-            // session_closed is non-retryable (see replayOutcomeFromResult).
-            if (replayOutcomeFromResult(r) === "retry" && !r.ok) throw new Error(r.error);
-          }
-          return "synced";
+          const res =
+            moduleKey === "physical"
+              ? await replayPhysical({ sessionSampleId: sampleId, data })
+              : await replayExtrinsic({ sessionSampleId: sampleId, data });
+          return res.status;
         } catch {
           if (attempt < MAX_RETRIES) await wait(backoffDelay(attempt));
         }
       }
-      return "failed";
+      return "retry";
     },
     [],
   );
 
-  const syncAll = useCallback(async () => {
-    if (syncingRef.current || !onlineRef.current) return;
-    syncingRef.current = true;
-    const myRun = ++runRef.current;
-    setSyncPhase("syncing");
+  // Conflicts are rebuilt from the durable blobs, never kept only in React
+  // state: a reload (or a second tab) must not lose them (F-offline-3).
+  const rebuildConflicts = useCallback(async () => {
+    const found: SyncConflict[] = [];
+    for (const blob of await loadUserBlobs(userId)) {
+      for (const [sampleId, sample] of Object.entries(blob.samples)) {
+        for (const moduleKey of Object.keys(sample.modules) as ModuleKey[]) {
+          if (sample.modules[moduleKey]?.syncStatus !== "conflict") continue;
+          found.push({
+            sessionId: blob.sessionId,
+            userId: blob.userId,
+            sampleId,
+            sampleLabel: sample.label,
+            moduleKey,
+            cupsPerSample: blob.cupsPerSample,
+          });
+        }
+      }
+    }
+    setConflicts(found);
+  }, [userId]);
 
-    let anyFailed = false;
-    const collected: SyncConflict[] = [];
-
-    try {
-      const keys = await listUserKeys(userId);
-      outer: for (const key of keys) {
-        const blob = await loadByKey(key);
-        if (!blob) continue;
-        for (const [sampleId, sample] of Object.entries(blob.samples)) {
-          for (const moduleKey of Object.keys(sample.modules) as ModuleKey[]) {
-            // Bail cooperatively if a newer run started or we dropped offline.
-            if (runRef.current !== myRun || !onlineRef.current) {
-              anyFailed = true;
-              break outer;
-            }
-            const mod = sample.modules[moduleKey];
-            if (!mod || mod.syncStatus !== "pending") continue;
-
-            const result = await replayModule(
-              sampleId,
-              moduleKey,
-              mod.data,
-              blob.cupsPerSample,
-              false,
-            );
-            if (result === "synced") {
-              await setModuleStatus(blob.sessionId, blob.userId, sampleId, moduleKey, "synced");
-            } else if (result === "conflict") {
-              await setModuleStatus(blob.sessionId, blob.userId, sampleId, moduleKey, "conflict");
-              collected.push({
-                sessionId: blob.sessionId,
-                userId: blob.userId,
-                sampleId,
-                sampleLabel: sample.label,
-                moduleKey,
-                cupsPerSample: blob.cupsPerSample,
-              });
-            } else {
-              anyFailed = true;
-            }
+  const scheduleNext = useCallback(async (rerunSoon: boolean) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = null;
+    let due: number | null = null;
+    if (rerunSoon) {
+      due = Date.now() + STALE_RERUN_MS;
+    } else {
+      for (const blob of await loadUserBlobs(userId)) {
+        for (const sample of Object.values(blob.samples)) {
+          for (const mod of Object.values(sample.modules)) {
+            if (mod?.syncStatus !== "pending" || mod.waiting) continue;
+            const at = mod.nextAttemptAt ?? Date.now() + 15_000;
+            if (due === null || at < due) due = at;
           }
         }
       }
-
-      if (collected.length) {
-        setConflicts((prev) => {
-          const seen = new Set(prev.map((c) => `${c.sessionId}:${c.sampleId}:${c.moduleKey}`));
-          const fresh = collected.filter(
-            (c) => !seen.has(`${c.sessionId}:${c.sampleId}:${c.moduleKey}`),
-          );
-          return fresh.length ? [...prev, ...fresh] : prev;
-        });
-      }
-
-      if (runRef.current === myRun) {
-        setSyncPhase(anyFailed ? "failed" : "synced");
-        if (!anyFailed) {
-          setTimeout(() => {
-            if (runRef.current === myRun) setSyncPhase("idle");
-          }, SYNCED_BANNER_MS);
-        }
-      }
-    } finally {
-      syncingRef.current = false;
-      // Let independent pending-count readers (the app-shell
-      // PendingDraftsBadge, the results-page sync pill) recount now instead of
-      // waiting for the next mount or `online` event.
-      window.dispatchEvent(new Event(OFFLINE_SYNC_EVENT));
     }
-  }, [userId, replayModule]);
+    setNextRetryAt(rerunSoon ? null : due);
+    if (due === null || !onlineRef.current) return;
+    timerRef.current = setTimeout(
+      () => void syncAllRef.current(),
+      Math.max(1000, due - Date.now()),
+    );
+  }, [userId]);
+
+  const runPass = useCallback(
+    async (manual: boolean) => {
+      const myRun = ++runRef.current;
+      setSyncPhase("syncing");
+
+      let anyRetry = false;
+      let skippedStale = false;
+
+      try {
+        if (manual) await reviveFailedModules(userId);
+        const blobs = await loadUserBlobs(userId);
+        outer: for (const blob of blobs) {
+          for (const [sampleId, sample] of Object.entries(blob.samples)) {
+            for (const moduleKey of Object.keys(sample.modules) as ModuleKey[]) {
+              // Bail cooperatively if a newer run started or we dropped offline.
+              if (runRef.current !== myRun || !onlineRef.current) {
+                anyRetry = true;
+                break outer;
+              }
+              const mod = sample.modules[moduleKey];
+              if (!mod || mod.syncStatus !== "pending") continue;
+
+              const sentAt = mod.updatedAt;
+              const result = await replayModule(
+                sampleId,
+                moduleKey,
+                mod.data,
+                blob.cupsPerSample,
+                false,
+              );
+              if (result === "offline") {
+                anyRetry = true;
+                break outer;
+              }
+              const applied = await applyReplayOutcome(
+                blob.sessionId,
+                blob.userId,
+                sampleId,
+                moduleKey,
+                result,
+                { ifUpdatedAt: sentAt },
+              );
+              // Edited while the request was in flight: the newer edit stays
+              // pending and goes out on a quick follow-up run.
+              if (!applied) skippedStale = true;
+              else if (result === "retry" || result === "waiting") anyRetry = true;
+            }
+          }
+        }
+        await rebuildConflicts();
+
+        // A module parked as `failed` (5 attempts) is not retried on a timer, so
+        // the banner must keep offering the manual retry instead of "synced".
+        const stuck = (await loadUserBlobs(userId)).some((b) =>
+          Object.values(b.samples).some((s) =>
+            Object.values(s.modules).some((m) => m?.syncStatus === "failed"),
+          ),
+        );
+
+        if (runRef.current === myRun) {
+          setSyncPhase(anyRetry || stuck ? "failed" : "synced");
+          if (!anyRetry && !stuck) {
+            setTimeout(() => {
+              if (runRef.current === myRun) setSyncPhase("idle");
+            }, SYNCED_BANNER_MS);
+          }
+        }
+        await scheduleNext(skippedStale);
+      } finally {
+        // Let independent pending-count readers (the app-shell
+        // PendingDraftsBadge, the results-page sync pill) recount now instead of
+        // waiting for the next mount or `online` event.
+        window.dispatchEvent(new Event(OFFLINE_SYNC_EVENT));
+      }
+    },
+    [userId, replayModule, rebuildConflicts, scheduleNext],
+  );
+
+  // One replay at a time across every hook instance. A late caller waits for the
+  // pass in flight; a manual one then runs its own (it revives `failed` modules).
+  const syncAll = useCallback(
+    async (manual = false) => {
+      if (!onlineRef.current) return;
+      while (inflight) {
+        await inflight.catch(() => {});
+        if (!manual || !onlineRef.current) return;
+      }
+      const pass = runPass(manual);
+      inflight = pass;
+      try {
+        await pass;
+      } finally {
+        if (inflight === pass) inflight = null;
+      }
+    },
+    [runPass],
+  );
+
+  useEffect(() => {
+    syncAllRef.current = syncAll;
+  }, [syncAll]);
 
   // Resolve a submit-conflict from the modal. `replace` forces the local
   // version over the already-submitted one; otherwise the local module is
@@ -188,52 +266,79 @@ export function useOfflineSync({
     async (conflict: SyncConflict, replace: boolean) => {
       if (replace) {
         const blob = await loadSession(conflict.sessionId, conflict.userId);
-        const data = blob?.samples[conflict.sampleId]?.modules[conflict.moduleKey]?.data;
-        if (data) {
+        const mod = blob?.samples[conflict.sampleId]?.modules[conflict.moduleKey];
+        if (mod) {
           const result = await replayModule(
             conflict.sampleId,
             conflict.moduleKey,
-            data,
+            mod.data,
             conflict.cupsPerSample,
             true,
           );
-          if (result === "failed") return; // keep the conflict for a later retry
+          if (result === "offline" || result === "retry" || result === "waiting" || result === "conflict") return; // keep it for a later retry
+          await applyReplayOutcome(
+            conflict.sessionId,
+            conflict.userId,
+            conflict.sampleId,
+            conflict.moduleKey,
+            result,
+            { ifUpdatedAt: mod.updatedAt },
+          );
         }
+      } else {
+        await setModuleStatus(
+          conflict.sessionId,
+          conflict.userId,
+          conflict.sampleId,
+          conflict.moduleKey,
+          "synced",
+        );
       }
-      await setModuleStatus(
-        conflict.sessionId,
-        conflict.userId,
-        conflict.sampleId,
-        conflict.moduleKey,
-        "synced",
-      );
-      setConflicts((prev) =>
-        prev.filter(
-          (c) =>
-            !(
-              c.sessionId === conflict.sessionId &&
-              c.sampleId === conflict.sampleId &&
-              c.moduleKey === conflict.moduleKey
-            ),
-        ),
-      );
+      await rebuildConflicts();
+      window.dispatchEvent(new Event(OFFLINE_SYNC_EVENT));
     },
-    [replayModule],
+    [replayModule, rebuildConflicts],
   );
+
+  // Conflicts survive a reload: show them as soon as the hook mounts, even
+  // offline.
+  useEffect(() => {
+    // Mirrors durable storage into React state once on mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void rebuildConflicts();
+  }, [rebuildConflicts]);
 
   useEffect(() => {
     onlineRef.current = online;
     const reconnected = online && !prevOnline.current;
     const firstOnlineMount = online && !didMount.current;
     if (reconnected || firstOnlineMount) void syncAll();
+    if (!online && timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
     prevOnline.current = online;
     didMount.current = true;
   }, [online, syncAll]);
+
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    },
+    [],
+  );
+
+  useResume(() => {
+    if (onlineRef.current) void syncAll();
+  });
+
+  const retrySync = useCallback(() => syncAll(true), [syncAll]);
 
   return {
     syncPhase,
     conflicts,
     resolveConflict,
-    retrySync: syncAll,
+    retrySync,
+    nextRetryAt,
   };
 }

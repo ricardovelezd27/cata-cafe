@@ -10,6 +10,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Send } from "lucide-react";
 import { createGroupPost } from "@/app/actions/groups";
+import { useActionFeedback } from "@/components/ui/Toast";
 
 export type PostComposerTranslations = {
   composerTitle: string;
@@ -48,7 +49,7 @@ export function PostComposer({
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [notifyByEmail, setNotifyByEmail] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const feedback = useActionFeedback();
   const [notice, setNotice] = useState<{ text: string; tone: "ok" | "warn" } | null>(null);
   const [pending, start] = useTransition();
 
@@ -59,38 +60,33 @@ export function PostComposer({
     e.preventDefault();
     const trimmedBody = body.trim();
     if (!trimmedBody) return;
-    setError(null);
     setNotice(null);
     start(async () => {
-      try {
-        const result = await createGroupPost({
+      await feedback.run(
+        createGroupPost({
           groupId,
           title: title.trim() || undefined,
           body: trimmedBody,
           notifyByEmail,
-        });
-        if (!result.ok) {
-          setError(t.error);
-          return;
-        }
-        setTitle("");
-        setBody("");
-        if (result.emailBlocked === "rate_limited") {
-          setNotice({ text: t.sendRateLimited, tone: "warn" });
-        } else if (result.emailSummary) {
-          setNotice({
-            text: formatTemplate(t.sendSummaryTemplate, {
-              sent: result.emailSummary.sent,
-              skipped: result.emailSummary.skipped,
-              failed: result.emailSummary.failed,
-            }),
-            tone: result.emailSummary.failed > 0 ? "warn" : "ok",
-          });
-        }
-        router.refresh();
-      } catch {
-        setError(t.error);
-      }
+        }),
+        (data) => {
+          setTitle("");
+          setBody("");
+          if (data.emailBlocked === "rate_limited") {
+            setNotice({ text: t.sendRateLimited, tone: "warn" });
+          } else if (data.emailSummary) {
+            setNotice({
+              text: formatTemplate(t.sendSummaryTemplate, {
+                sent: data.emailSummary.sent,
+                skipped: data.emailSummary.skipped,
+                failed: data.emailSummary.failed,
+              }),
+              tone: data.emailSummary.failed > 0 ? "warn" : "ok",
+            });
+          }
+          router.refresh();
+        },
+      );
     });
   };
 
@@ -132,11 +128,6 @@ export function PostComposer({
         </span>
       </label>
 
-      {error && (
-        <p className="text-xs text-error" role="alert">
-          {error}
-        </p>
-      )}
       {notice && (
         <p
           role="status"
