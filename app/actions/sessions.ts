@@ -1015,6 +1015,11 @@ export async function setReferenceSample(
             });
           }
           active = plan.activeId;
+          // B-05: the earlier reference is the pinned anchor again; rewrite
+          // its stored rows to 79.00 like the forward path does.
+          // TODO(S8-22): no owner confirmation here (removal has no confirm
+          // UI today); the forward path asks first via confirmRepin.
+          repinTarget = plan.repinId;
         } else {
           const plan = planAddReference(rows, targetId);
           if (plan.kind === "full") throw new Error("invalid_input");
