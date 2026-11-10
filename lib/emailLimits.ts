@@ -17,8 +17,10 @@ const DAY = 24 * HOUR;
  *  - `group_broadcast`  one message to a whole roster (compose, session
  *                       notice, announcement post). Uses a broadcast slot.
  *  - `group_invite`     invitations (create group, add member, resend) and
- *                       "retry failed" of a broadcast. Recipients only. */
-export type EmailKind = "magic_link" | "group_broadcast" | "group_invite";
+ *                       "retry failed" of a broadcast. Recipients only.
+ *  - `code_verify`      NOT an email: one ATTEMPT to redeem a sign-in code or
+ *                       link token (S8-22 A-03). Same ledger, no recipients. */
+export type EmailKind = "magic_link" | "group_broadcast" | "group_invite" | "code_verify";
 
 /** One reservation already in the ledger, reduced to what a rule needs. */
 export type EmailEvent = { at: number; recipients: number };
@@ -44,6 +46,17 @@ export const MAGIC_LINK_PER_ADDRESS: ThrottleRule = { windowMs: 15 * MINUTE, max
 // so this must sit well above a full room (the audit's draft value of 6 would
 // have locked the room out).
 export const MAGIC_LINK_PER_IP: ThrottleRule = { windowMs: 15 * MINUTE, maxEvents: 60 };
+
+// ── Code / link verification (S8-22 A-03) ───────────────────────────────────
+// These count ATTEMPTS (every call reserves one, right or wrong), not failures:
+// the reservation is made BEFORE Supabase is called, so a brute force of the
+// 6-digit code cannot win by racing the counter. Per target (the address, or a
+// hash of the link token): 10 attempts / 15 min stops guessing one code. Per
+// IP when known: 120 / 15 min is a tripwire sized for a 50-person room behind
+// one NAT (each guest needs 1-3 attempts), and keeps one visitor from burning
+// the shared GoTrue verification bucket for everybody.
+export const CODE_VERIFY_PER_TARGET: ThrottleRule = { windowMs: 15 * MINUTE, maxEvents: 10 };
+export const CODE_VERIFY_PER_IP: ThrottleRule = { windowMs: 15 * MINUTE, maxEvents: 120 };
 
 // ── Group mail (per sending account) ────────────────────────────────────────
 export const GROUP_BROADCASTS_PER_HOUR: ThrottleRule = { windowMs: HOUR, maxEvents: 3 };

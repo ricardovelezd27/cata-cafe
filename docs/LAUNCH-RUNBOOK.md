@@ -854,6 +854,13 @@ code as unknown statuses and simply never replay, so keep them readable by not d
 
 ## §15. Supabase — paste the sign-in email templates (2026-11, S8-06)
 
+**Review Supabase Auth rate limits (S8-22 A-03, migration-free).** The app now counts code and
+link verification ATTEMPTS itself (10 per address and 120 per IP per 15 minutes, kind
+`code_verify` in `outbound_email_events`), but the server-side calls reach GoTrue from Vercel's
+egress IPs, so GoTrue's per-IP buckets are shared by every user. Dashboard → Authentication →
+**Rate Limits**: check "Token verifications" and "Sign-ups and sign-ins" are sized for your
+largest room (50 people within a few minutes), not just "Emails sent".
+
 No migration, no SQL. The sign-in link now opens `/auth/confirm` (a button press consumes
 the token, so mail scanners cannot burn it) and the email also carries a 6-digit code.
 
