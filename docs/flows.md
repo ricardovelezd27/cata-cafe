@@ -511,7 +511,7 @@ flowchart TD
   D[Eliminar cuenta: counts + typed word] --> P[planAccountDeletion - pure]
   P -- super-admin --> R[account_protected]
   P --> C[closeSessionInternal owner_deleted, emails skipped, for kept live group sessions]
-  C --> T[ONE transaction, 30 s]
+  C --> T[ONE transaction, timeout 120 s]
   T --> T1[create placeholder deleted_random]
   T1 --> T2[own solo / nobody-else sessions: detach history + delete]
   T2 --> T3[kept sessions, participations + exclusion, evaluations, physical/extrinsic, coffees anonymized, kept groups, posts -> placeholder]
@@ -888,8 +888,11 @@ each gate is a pure, tested helper shared by every consumer:
   of sessions they own.
 - Coffee `notes` render for the owner/super-admin only; `duplicableFields`
   (`lib/coffeeDuplicate.ts`) is the allow-list a duplicate copies from.
-- D8 (cancelled blind session): unrevealed samples get no history row; label-only
-  rows ("Muestra B", nullable `coffeeId`) wait for Kim's answer.
+- D8 (cancelled blind session): since S8-16 each submitted evaluation on a
+  never-revealed sample gets a **label-only** history row on delete ("Muestra B",
+  `coffeeId` NULL, "Café sin revelar"; `detachCoffeeHistoryForSession` →
+  `ensureLabelRows` in `lib/coffeeHistory.ts`, which never reads the coffee), so the
+  coffee name still never leaks.
 
 ---
 
