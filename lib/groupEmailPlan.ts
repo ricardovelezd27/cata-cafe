@@ -37,7 +37,10 @@ export function backoffMs(
 
 /** Splits a broadcast into who still needs a send and who already got it.
  *  A recipient with a `sent` row is never sent twice; `skipped` and `failed`
- *  rows are retried. `isRetry` is true when the ledger knew this broadcast. */
+ *  rows are retried. `isRetry` is true only when EVERY recipient still to be
+ *  sent already has a ledger row (any status) for this broadcast. The id is
+ *  client-supplied, so a call that reaches even one recipient new to the
+ *  ledger is a fresh broadcast and must take a broadcast slot. */
 export function planBroadcast<T extends { memberId: string }>(
   recipients: readonly T[],
   ledger: readonly LedgerRow[],
@@ -51,7 +54,9 @@ export function planBroadcast<T extends { memberId: string }>(
     seen.add(r.memberId);
     (sent.has(r.memberId) ? alreadySent : toSend).push(r);
   }
-  return { toSend, alreadySent, isRetry: ledger.length > 0 };
+  const known = new Set(ledger.map((r) => r.memberId));
+  const isRetry = toSend.length > 0 && toSend.every((r) => known.has(r.memberId));
+  return { toSend, alreadySent, isRetry };
 }
 
 export function summarize<R extends { status: DeliveryStatus }>(

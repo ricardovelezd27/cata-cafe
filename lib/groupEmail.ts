@@ -63,7 +63,10 @@ export async function deliverGroupMail(args: {
   }
 
   if (plan.toSend.length > 0) {
-    // A retry never takes a second broadcast slot, but its recipients count.
+    // A pure retry (every remaining recipient already has a ledger row for
+    // this broadcast) takes no second broadcast slot, but its recipients
+    // count. Any recipient new to the ledger makes it a fresh broadcast, so
+    // reusing a client-supplied id cannot smuggle a send past the hourly cap.
     const budget = await reserveEmailBudget({
       kind: plan.isRetry ? "group_invite" : args.kind,
       userId: args.userId,

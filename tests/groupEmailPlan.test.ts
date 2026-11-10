@@ -32,6 +32,32 @@ describe("planBroadcast", () => {
     expect(plan.alreadySent.map((x) => x.memberId)).toEqual(["a"]);
     expect(plan.isRetry).toBe(true);
   });
+  it("isRetry when every recipient still to send is already in the ledger", () => {
+    const plan = planBroadcast(
+      [r("a"), r("b")],
+      [
+        { memberId: "a", status: "failed" },
+        { memberId: "b", status: "failed" },
+      ],
+    );
+    expect(plan.isRetry).toBe(true);
+  });
+  it("not a retry when one recipient to send is new to the ledger", () => {
+    const plan = planBroadcast([r("a"), r("b")], [{ memberId: "a", status: "sent" }]);
+    expect(plan.toSend.map((x) => x.memberId)).toEqual(["b"]);
+    expect(plan.isRetry).toBe(false);
+  });
+  it("not a retry when everything is already sent", () => {
+    const plan = planBroadcast([r("a"), r("b")], [
+      { memberId: "a", status: "sent" },
+      { memberId: "b", status: "sent" },
+    ]);
+    expect(plan.toSend).toEqual([]);
+    expect(plan.isRetry).toBe(false);
+  });
+  it("not a retry with an empty ledger", () => {
+    expect(planBroadcast([r("a")], []).isRetry).toBe(false);
+  });
   it("never lists a recipient twice per broadcast", () => {
     const plan = planBroadcast([r("a"), r("a"), r("b")], []);
     expect(plan.toSend.map((x) => x.memberId)).toEqual(["a", "b"]);
