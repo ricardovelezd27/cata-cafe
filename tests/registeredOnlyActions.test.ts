@@ -27,7 +27,7 @@ function exportsOf(src: string): string[] {
 }
 
 const REGISTERED: Record<string, string[]> = {
-  "sessions.ts": ["createSession", "createExpressSession", "createGroupSession", "duplicateSession"],
+  "sessions.ts": ["createSession", "createExpressSession", "createGroupSession", "duplicateSession", "assignSampleCoffee"],
   "community.ts": ["createInviteToken", "setEntriesLocked"],
 };
 

@@ -22,6 +22,7 @@ import {
   Notes,
   CupToggleGrid,
 } from "@/components/ui";
+import { penaltiesApply } from "@/lib/scoring";
 import { FlavorPicker } from "@/components/cupping/FlavorPicker";
 import type { CATAOption, CATASubItem } from "@/components/ui/CATAPills";
 
@@ -127,7 +128,7 @@ export function CombinedForm({
     (d[k] as boolean[] | undefined) ?? Array(cupsPerSample).fill(false);
 
   const showCups = cupsPerSample >= 2;
-  const uniformityInScore = cupsPerSample >= 5;
+  const uniformityInScore = penaltiesApply(cupsPerSample);
 
   const lockedBanner =
     lockedAffective && lockedNote ? (

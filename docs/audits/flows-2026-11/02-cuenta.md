@@ -20,6 +20,8 @@ A registered user or QR guest opens `/app/profile` (page; "Cuenta" card at `app/
 
 ### F-cuenta-1 · No way to delete the account, and the data model cannot do it today · severity: P1 · status: confirms-board(No se puede eliminar la cuenta)
 
+**Partly addressed in S8-07: the deletion guard only. `lib/accountDeletion/manifest.ts` lists every Profile relation and bare user column with its intended rule, and `tests/profileRelations.test.ts` fails on an unlisted one. `deleteAccount` is NOT built (needs the tombstone design and owner choices E3/E4); this finding stays open.**
+
 - **Problem** — The "Cuenta" card holds only the identity line and two buttons (`page.tsx:394-425`); no deletion or export action exists (a search for `deleteUser` finds only `lib/guestClaim.ts:331`, the best-effort cleanup of a merged guest). `lib/supabase/admin.ts` exists, so the mechanism is available. The schema blocks a naive delete: `Coffee.creator`, `CoffeeInvite.creator`, `CuppingSession.createdByUser`, `Evaluation.cupper`, `PhysicalEvaluation.evaluator`, `ExtrinsicData.revealedByUser` and `SessionInvite.creator` are relations to `Profile` with no `onDelete`, so restrict by default (`prisma/schema.prisma:53,118,136,212,249,264,366`), while others cascade (`:101,:275,:311,:379,:467,:489`) and `UserCoffeeHistory` sets null.
 - **Implication** — Store-readiness blocker (Apple 5.1.1(v), Google Play) and an erasure-request exposure. A careless fix hits restrict errors, or cascades away an organizer's session and with it other cuppers' evaluations and community scores. Guests are covered by the same rule; today they can only leave by being orphaned.
 - **Fix** — Write the owned-versus-shared rule first, then one `deleteAccount` action (`run()` → `ActionResult`) behind a typed confirmation. Shared or closed sessions, coffees and groups that others rely on are anonymized (the coffee soft-delete pattern already exists); personal rows (own evaluations, history snapshots, notes) are erased; then the auth user is removed with the admin client and device state is cleared. **Acceptance:** a test lists every `Profile` relation and fails on an unhandled one (same checklist as `mergeGuestData`); other participants' results of a deleted organizer's closed session still render; the same email can sign up afterwards; a guest sees the control; no row keeps the user's name or email. **Size:** L.
@@ -29,6 +31,8 @@ A registered user or QR guest opens `/app/profile` (page; "Cuenta" card at `app/
 - **Invariant check** — closed = read-only (deletion is a new sanctioned write and must be added to `docs/flows.md` §1); "delete keeps history" and coffee anonymize-not-delete stay intact; the participant-tier anonymity invariant must hold for anonymized names.
 
 ### F-cuenta-2 · "Salir" ends the session on every device, and lands English users on the Spanish landing · severity: P2 · status: new
+
+**Fixed in S8-07: `signOut(locale, scope)` defaults to this device only; "Salir en todos los dispositivos" is the explicit global option (the locale half was fixed in S8-06).**
 
 - **Problem** — `signOut()` calls `supabase.auth.signOut()` with no options (`app/actions/auth.ts:56` (line corrected in verification)). In the installed auth-js the default is `scope: 'global'` (`GoTrueClient.ts:3720`), which revokes the user's refresh tokens on all devices, not only this one. `switchAccount` does the same (`:66`). `signOut` then does `redirect("/")` (`:57`), ignoring the user's locale, although `switchAccount` receives one.
 - **Implication** — An organizer who signs out of a shared lab tablet also kills the session on the laptop where she runs the master panel; that device is bounced to login at its next token refresh, mid-cupping, with drafts waiting. English users land on a Spanish page. Robustness, trust.
@@ -40,6 +44,8 @@ A registered user or QR guest opens `/app/profile` (page; "Cuenta" card at `app/
 
 ### F-cuenta-3 · The ES/EN link does nothing from Spanish routes · severity: P2 · status: confirms-board(El selector de idioma no funciona desde rutas en español)
 
+**Fixed in S8-06: lib/localeSwitch.ts, used by Sidebar and TopBar.**
+
 - **Problem** — `otherPath = pathname.replace(`/${locale}/`, `/${otherLocale}/`)` in `components/layout/Sidebar.tsx:22` and `components/layout/TopBar.tsx:16`. With `localePrefix: "as-needed"` (`i18n/routing.ts:7`) the Spanish URL is `/app/profile` and contains no `/es/`, so the link points at the current page; from `/en/...` it works. Query and hash are dropped. The repo already has the right helper (`stripLocale`, `lib/guestScope.ts:23`).
 - **Implication** — The default-locale majority cannot reach English from the shell; a visible control looks broken. Trust, friction.
 - **Fix** — Build the target from the locale-stripped path, keep search and hash, prefix `/en` for English only. **Acceptance:** `/app/profile` → EN opens `/en/app/profile`; `/en/app/profile` → ES opens `/app/profile`; a `?gate=1` query survives. **Size:** S.
@@ -49,6 +55,8 @@ A registered user or QR guest opens `/app/profile` (page; "Cuenta" card at `app/
 - **Invariant check** — none touched.
 
 ### F-cuenta-4 · "Idioma preferido" is never captured at sign-up and does not change the interface · severity: P2 · status: new (extends board "«Idioma preferido» no cambia la interfaz")
+
+**Fixed in S8-06: language captured at sign-up; the profile field is relabelled "Idioma de los correos".**
 
 - **Problem** — The board says the initial value comes from the signup locale. It does not: nothing writes `preferred_lang` into auth metadata (no match in `app/`, `lib/`, `components/`; `signInWithOtp` sends only `emailRedirectTo`, `app/actions/auth.ts:45-48` (line corrected in verification)), so `handle_new_user` always falls back to `'es'` (`prisma/sql/rls_and_triggers.sql:73`). Group emails and invitations read that column (`app/actions/groups.ts:285,450,538,704`). The profile field (`ProfileForm.tsx:120-133`) reads as the interface language, but saving only revalidates `/${preferredLang}/app/profile` (`app/actions/profile.ts:119`) and the UI stays put.
 - **Implication** — Every English-speaking user receives Spanish group emails until they find and set the field, and then sees no effect, so they think it failed. Trust.
@@ -60,6 +68,8 @@ A registered user or QR guest opens `/app/profile` (page; "Cuenta" card at `app/
 
 ### F-cuenta-5 · Changing mailbox means a new account and lost history · severity: P2 · status: confirms-board(No se puede cambiar el correo)
 
+**Fixed in S8-07: `requestEmailChange` (registered users), pending address shown on the profile, `email_exists` localized; the link returns through `/auth/confirm` (type `email_change`).**
+
 - **Problem** — The email is plain text (`page.tsx:116,395`). `/auth/callback` already forwards any `type` to `verifyOtp` (`app/auth/callback/route.ts:34,43`), so an `email_change` confirmation would be accepted, but no action calls `updateUser({ email })`.
 - **Implication** — A school or lab address that disappears strands years of tastings; the only recourse is a second account. Data loss in practice, and the lost-mailbox policy is undefined.
 - **Fix** — Registered users request a change from Cuenta; the new address is confirmed by link or code, the card shows the pending address, magic links keep going to the old one until confirmation, an address already in use returns a localized error; document the lost-mailbox path. **Acceptance:** as the board lists, plus the confirmation returns to `/app/profile` and no second `Profile` row appears. **Size:** M.
@@ -69,6 +79,8 @@ A registered user or QR guest opens `/app/profile` (page; "Cuenta" card at `app/
 - **Invariant check** — none touched.
 
 ### F-cuenta-6 · Guests and users with unsynced drafts leave with one tap and no warning · severity: P2 · status: confirms-board(Un invitado pierde su identidad al salir)
+
+**Partly fixed in S8-07: a guest gets a loss warning with "Guardar mis resultados" before sign-out or switch-account. The unsynced-drafts half is S8-09 (`countDeviceOnly`).**
 
 - **Problem** — `SignOutButton` runs `clearLocalDeviceState()` then the action with no confirmation (`components/layout/SignOutButton.tsx:29-35`). The only guest warning is a paragraph on the page (`messages/es.json:1539`), not at the button. Drafts are kept on purpose, keyed `_user_<id>` (`lib/offline/store.ts:73-74`), but an anonymous id can never sign back in, so those drafts are unreachable forever; a registered user's pending drafts are not mentioned either. In the sidebar "Salir" sits right under "Cambiar de cuenta" (`Sidebar.tsx:64-79`).
 - **Implication** — A walk-up cupper loses their cupping and results with one mistap; a registered cupper may leave with unsynced scores and not know they must return. Data loss, trust.
@@ -80,6 +92,8 @@ A registered user or QR guest opens `/app/profile` (page; "Cuenta" card at `app/
 
 ### F-cuenta-7 · "Salir" offline wipes caches, then fails silently · severity: P3 · status: new
 
+**Fixed in S8-07: the server action runs first and returns the landing path; device caches are cleared only after it succeeded, and an offline tap shows "Necesitas conexión" without touching anything.**
+
 - **Problem** — `await clearLocalDeviceState()` runs first, then `await signOut()` inside `startTransition` with no try/catch (`SignOutButton.tsx:31-33`). Offline, the server action rejects and the button just re-enables.
 - **Implication** — The user stays signed in, cached pages are gone, and nothing says why. Robustness on a patchy lab network.
 - **Fix** — Order the work so a failed sign-out does not destroy offline pages, and show a localized "Necesitas conexión para cerrar sesión" via `useActionFeedback`. **Acceptance:** with the network off, tapping Salir shows the message and cached pages still load. **Size:** S.
@@ -89,6 +103,8 @@ A registered user or QR guest opens `/app/profile` (page; "Cuenta" card at `app/
 - **Invariant check** — ActionResult contract (wrap `signOut`); offline store stays client-only.
 
 ### F-cuenta-8 · Profile save: throws, loses the cause, labels not tied to fields · severity: P3 · status: confirms-board(updateProfile lanza en vez de devolver un resultado; Sesión caducada a mitad de uso)
+
+**Fixed in S8-07: `updateProfile` returns an ActionResult through `run()`, syncs the auth `display_name`, labels are tied to inputs (`htmlFor`/`id`) and a live status region announces the result.**
 
 - **Problem** — `updateProfile` throws and is not wrapped by `run()` (`app/actions/profile.ts:75-86`); `ProfileForm` collapses every failure to one string (`ProfileForm.tsx:73-75`). It also does not sync `display_name` to auth metadata, unlike `completeOnboarding` (`profile.ts:58-60`), so the magic-link greeting keeps the old name. Labels have no `htmlFor`/`id` (`ProfileForm.tsx:81-89`) and the status text is not a live region. The app layout sends expired sessions to login without `next` (`app/[locale]/app/layout.tsx:30`).
 - **Implication** — An opaque digest in production, a stale greeting, screen-reader users cannot name the fields, and an expired session loses the page the user was on.

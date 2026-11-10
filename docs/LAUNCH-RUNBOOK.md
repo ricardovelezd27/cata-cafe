@@ -722,6 +722,233 @@ create button yields one group.
 **Rollback:** the objects are additive; code rolled back ignores them. Do not drop the
 tables while the new code is deployed.
 
+---
+
+## §12. Supabase — apply PHASE 23 (one score below five cups, 2026-11, S8-04)
+
+**When:** any time after the deploy; the new app is correct without it for what users SEE
+(group results already ignored deductions under 5 cups), but the STORED score used by the
+coffee history and profile only changes once this is applied. No Prisma migration. Apply in the
+Supabase **SQL editor of the production project** (there is only one).
+
+**Tell Kim first.** The recompute (step 4) changes the stored community score of every
+past session with fewer than 5 cups per sample and a flagged cup, once. Those scores go UP
+(deductions disappear). Sessions with 5 or more cups never move.
+
+**Steps**
+
+1. **Pre-flight** (read-only). The live function must still be the PHASE 11 body:
+
+   ```sql
+   select pg_get_functiondef('public.recompute_aggregate_score()'::regprocedure);
+   ```
+
+   It must contain `IF v_total_cups > 0 THEN` and not `v_cups_per_sample >= 5`. If it differs, stop.
+2. **Dry run** (changes nothing): paste all of `prisma/sql/dry-runs/phase23_dry_run.sql` and run it.
+   It ends with a red error starting `PHASE 23 DRY RUN: NOTHING WAS APPLIED`; that error is the
+   expected result. Line 3 must say `0` (no row with 5 or more cups changes) and line 4 must show `{search_path=public}`. Line 2 is how many
+   past aggregates will change. Any other error: stop and report it.
+3. **STEP 1:** run the `CREATE OR REPLACE FUNCTION recompute_aggregate_score()` block of PHASE 23
+   in `prisma/sql/rls_and_triggers.sql`. Nothing stored changes yet.
+4. **STEP 2 (recompute):** run `UPDATE evaluations SET "isDraft" = "isDraft" WHERE "isDraft" = false;`
+   (idempotent; a second run changes nothing).
+5. **History:** from the checkout you choose, `npx tsx scripts/resync-low-cup-history.ts` (dry run:
+   prints the rows that would change), then `npx tsx scripts/resync-low-cup-history.ts --apply`.
+6. **Check:** pick one session with fewer than 5 cups and a flagged cup:
+
+   ```sql
+   select a."avgRawScore", a."communityScore" from aggregate_scores a
+   join session_samples ss on ss.id = a."sessionSampleId"
+   where ss."sessionId" = '<session id>';
+   ```
+
+   Before step 4 `communityScore` is below `avgRawScore`; after it equals `avgRawScore` rounded to
+   0.25. The results page, the coffee profile and the history now show the same number.
+   Also confirm the PHASE 18 `search_path` pin survived STEP 1:
+
+   ```sql
+   select proconfig from pg_proc where proname = 'recompute_aggregate_score';  -- expect {search_path=public}
+   ```
+
+   Then Security Advisor: no new findings expected.
+
+**Rollback:** re-create the previous function body (kept verbatim in the PHASE 23 comment)
+and re-run step 4, then step 5. Nothing is deleted: the cup flags stay in the evaluations.
+
+---
+
+## §13. Database: apply the `close_lifecycle` migration (2026-11, S8-05)
+
+What it is for: the closing date keeps the owner's time zone, a closed session records
+whether its second phase (history, emails) finished so a failed close can be repaired, and
+reminder emails get their own ledger. Additive only; no Supabase SQL. Prisma migrations are
+NOT applied by the deploy: run it yourself, **before** the deploy, from the checkout that
+contains `prisma/migrations/20261111090000_close_lifecycle/`.
+
+**Steps**
+
+1. From that checkout (with `.env.local` or `DIRECT_URL` pointing at the production
+   database; there is only one): `npx prisma migrate deploy`. It must report exactly one
+   migration applied, `20261111090000_close_lifecycle`.
+2. **Check** (Supabase SQL editor, read-only):
+
+   ```sql
+   select count(*) filter (where status = 'closed' and "closeFinalizedAt" is null) as owed,
+          count(*) filter (where status = 'closed') as closed
+   from cupping_sessions;
+   ```
+
+   `owed` must be `0` right after the migration (history was backfilled to finalized).
+3. Deploy. The next daily cron (06:00 UTC) now also runs the repair and reminder passes inside
+   `close-expired-sessions`; there is no new cron entry. In the JSON response look for
+   `repair` and `reminders`.
+4. **After the deploy:** a session whose close emails or history failed shows up as `owed` in
+   the query above after 5 minutes; the next cron run repairs it. Vercel logs: search
+   `closeSession.finalize` (error level) for the step that failed.
+
+**Rollback:** the deploy can be reverted freely (the columns are nullable and unused by old
+code). Dropping the columns/table is not needed.
+
+---
+
+## §14. Offline sync hardening, service worker v3 (2026-11, S8-09)
+
+What it is for: offline drafts get explicit end states (nothing is dropped silently), the
+replay retries by itself, and the service worker stops serving stale or other users' pages.
+**No migration and no Supabase SQL.** The one thing to know before deploying:
+
+- `public/sw.js` goes from `v2` to `v3`. On the first visit after the deploy every
+  browser drops its old `cata-static-*`, `cata-pages-*` and `cata-rsc-*` caches once and
+  rebuilds them. Expect one slower first load per device and, for a cupper who is OFFLINE
+  at that moment with an uncached page, the "need connection" screen. Deploy outside a live
+  tasting. Drafts in IndexedDB are not touched.
+
+**Steps**
+
+1. Deploy. Nothing to run.
+2. **Check** on a phone after the deploy: DevTools or Safari Web Inspector, Application,
+   Cache Storage shows only `cata-*-v3` caches; `/app/insights` and `/app/profile` are not
+   in `cata-pages-v3`.
+
+**Device checks (physical iPhone and a low-end Android; audit 15 section 5)**
+
+- Lock the phone mid-cupping with a pending draft, unlock: the replay runs without a tap.
+- Turn the server off (or airplane mode on a resumed tab), watch "Próximo intento en N s";
+  after 5 failed attempts the module is parked and "Reintentar sincronización" appears.
+- Delete a session from a second device while the first holds a draft, reconnect: the draft
+  appears under "Notas sin sincronizar", no endless retry.
+- Sign out with a pending draft: the warning dialog names the count.
+- A guest with a pending draft taps "Guardar mis resultados": the dialog names the count;
+  after signing in, the draft replays under the new account (the marker is localStorage
+  `cata_claim_anon`).
+- Shared tablet: user A signs out, B signs in, go offline: A's pages are not served.
+
+**Not in this PR (owned by S8-15):** `navigator.storage.persist()` and the 3-day stale-draft
+warning.
+
+**Rollback:** revert the deploy. Reverting `sw.js` to `v2` evicts the v3 caches again on the
+next activate; blobs written with the new statuses (`failed`, `orphaned`) are read by old
+code as unknown statuses and simply never replay, so keep them readable by not deleting them.
+
+---
+
+## §15. Supabase — paste the sign-in email templates (2026-11, S8-06)
+
+No migration, no SQL. The sign-in link now opens `/auth/confirm` (a button press consumes
+the token, so mail scanners cannot burn it) and the email also carries a 6-digit code.
+
+**Order matters: deploy first, paste second.** Templates pasted before the deploy link to a
+page that does not exist yet. Links from emails sent with the old template keep working
+(`/auth/callback` redirects them to `/auth/confirm`).
+
+1. Merge and let Vercel deploy.
+2. Supabase Dashboard → Authentication → **Sign In / Providers → Email**: confirm
+   **OTP length = 6**. Leave "OTP expiry" as it is; the copy never states a number.
+3. Authentication → **URL Configuration**: the redirect allow-list must cover the site
+   origin with a wildcard (`https://cafesensible.ai/**`), which includes `/auth/confirm` and
+   `/en/auth/confirm`.
+4. Authentication → **Email Templates**: paste, with the subject given at the top of each file
+   - **Magic Link** ← `docs/auth/email-templates/magic-link.html`
+   - **Confirm signup** ← `docs/auth/email-templates/confirm-signup.html`
+   - **Change Email Address** ← `docs/auth/email-templates/change-email.html`
+5. TODO(owner): confirm `hola@estudiodecafe.online` (`lib/siteContact.ts`) is the address people
+   should write to when sign-in fails; it appears on the login screen and the "sent" state.
+
+**Smoke test (3 minutes):** request a link; before opening it, `curl` the link URL (a bare
+GET) — the page loads and the token is untouched. Then enter the 6-digit code from the same
+email on the login screen: you are signed in. Repeat from `/en/auth/login` with a new
+address: the email is in English and the link goes to `/en/auth/confirm`.
+
+**Rollback:** paste the previous templates back (copy them before step 4). The code keeps
+accepting both link shapes.
+
+---
+
+## §16. Supabase — account settings and guest capacity (2026-11, S8-07)
+
+No migration, no SQL, no new env variable. Two dashboard settings, one rehearsal.
+
+1. Authentication → **Sign In / Providers → Email**: turn on **Secure email change** (the change
+   needs a click from the old and the new mailbox, so a hijacked session cannot silently move the
+   account). The **Change Email Address** template was pasted in §15; the link lands on
+   `/auth/confirm` and returns to `/app/profile`.
+2. Authentication → **Rate Limits → Anonymous sign-ins**: this is a per-IP hourly cap. A room
+   where 40 people share one Wi-Fi shows up as ONE IP. Set it to at least 2x the largest
+   expected room per hour (for a 50-person tasting, 100 or more). Confirm "Allow anonymous
+   sign-ins" is on (CLAUDE.md, Supabase Manual Steps).
+3. **Rehearsal before a big event** (5 minutes): from one network, open the QR link in 40
+   fresh private windows in sequence and join each time. All 40 must reach the waiting room or
+   `/cup`. If the 41st fails with the "mucha gente está entrando" message, the limit is too low.
+   Fallback during an event: people join with their email (magic link or 6-digit code).
+
+**Manual path for a lost mailbox (E4 option c, Ricardo only; `TODO(E4-Kim)`):** a person who
+can no longer open their old address and cannot use "Cambiar correo" writes to support. Verify
+who they are by a second channel, then in Supabase Dashboard → Authentication → Users edit the
+user's email to the new address. The profile and all history stay attached because they hang off
+the user id, not the address. Never create a second account and "move" data by hand.
+
+**Not in this release:** account deletion (`deleteAccount`). The manifest and its test are in;
+the destructive action waits on the tombstone design and the E3/E4 answers.
+
+---
+
+## §17. Database + env + legal switch (2026-11, S8-08)
+
+No SQL phase. One additive migration, one env variable, one code switch.
+
+**1. Migration (before the deploy).** From the right checkout:
+`npx prisma migrate deploy` applies `20261111100000_waitlist_consent` (two nullable
+columns on `waitlist_entries`: `consentAt`, `consentNoticeVersion`). Old rows stay null; new rows stay null too until the legal pages are published, so these columns record consent only from that moment.
+RLS stays on with no policies; nothing else to do.
+
+**2. Env.** Set `ANALYTICS_SUPER_ADMIN_EMAIL` in Vercel Production to the address that
+should be super-admin. It is NOT boot-fatal: until it is set, the code falls back to the
+built-in address and the boot logs one `env` warning. After this PR only the super-admin
+sees platform-wide insights, the platform report PDF, the digest and the email CSV export;
+AI admins and flagged users see their own data.
+
+**3. Legal pages (owner).** `/privacidad` and `/terminos` already render draft text with a
+"Borrador" banner and `noindex`, but nothing links to them. To publish: paste the final
+text (es, en) into `lib/legal/privacy.ts` and `lib/legal/terms.ts`, bump
+`CONSENT_NOTICE_VERSION` in `lib/legal/config.ts`, flip `LEGAL_PAGES_PUBLISHED` to `true`
+and deploy. That turns on the footer links, the login-page links and the notice line under
+both waitlist forms.
+
+**4. Retention (decision, no job).** Proposal: keep a waitlist email at most 12 months when
+no account exists for it (`WAITLIST_RETENTION_MONTHS`). Nothing deletes rows automatically;
+until a job exists, delete old rows by hand when asked. Account deletion should remove the
+row too (TODO in S8-07).
+
+**Verify:** insert one waitlist entry from the hero form on a preview and check
+`source = 'hero'` and BOTH `consentAt` and `consentNoticeVersion` null (legal pages unpublished, no notice shown, no consent recorded; they are stamped only after the flag is true); open
+`/?src=chile` and submit the founding form: `source = 'founding:chile'`. Log in as an AI admin:
+the Users page shows masked emails (masked in the payload itself), no reveal toggle and no CSV button; Vercel Logs search `"where":"audit"`.
+
+**Rollback:** the columns are nullable and unused by older code; no rollback needed. To give AI
+admins the platform view again change `scopeFor` in `lib/analytics/scope.ts`.
+
+---
+
 ## §18. Database — apply the `invite_active_entries_locked` migration (2026-11, S8-11)
 
 **When:** BEFORE the deploy that contains S8-11 (live group robustness). The regenerated

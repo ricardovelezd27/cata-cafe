@@ -1,6 +1,8 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Coffee, ClipboardList, CheckCircle2, Users, Download } from "lucide-react";
 import { getDashboardData } from "@/lib/analytics/queries";
+import { requireAnalyticsAccess } from "@/lib/analytics/access";
+import { scopeFor } from "@/lib/analytics/scope";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { TrendChart } from "@/components/insights/TrendChart";
 import { InsightChart } from "@/components/insights/InsightChart";
@@ -31,9 +33,10 @@ export default async function InsightsDashboardPage({
   const { locale } = await params;
   setRequestLocale(locale);
 
+  const scope = scopeFor(await requireAnalyticsAccess());
   const [t, data] = await Promise.all([
     getTranslations("insights"),
-    getDashboardData(locale === "en" ? "en" : "es"),
+    getDashboardData(locale === "en" ? "en" : "es", scope),
   ]);
 
   const statusSub = ["draft", "active", "closed"]

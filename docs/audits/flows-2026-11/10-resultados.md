@@ -103,6 +103,8 @@ After a cupping, owner, participants, guests and the super-admin lens all land o
 
 ### F-resultados-9 · Footer PDF links are plain anchors with no offline or native path · severity: P3 · status: new
 
+**Fixed in S8-15 (PR #…): footer PDF links are ReportLink — plain anchor on the web, disabled with "Necesita conexión" offline, openReport in a native shell.**
+
 - **Problem** — `ResultsClient.tsx:943-981` uses `<a href>` and `target="_blank"` for the CVA, summary and ficha PDFs, and `router.push` to `/print` (`:937`). There is no connectivity check; offline the link dies in the browser error page.
 - **Implication** — Native-readiness: a WebView often cannot open `_blank` PDFs or save `blob:` downloads; a cupper offline at the table taps a dead button.
 - **Fix** — Route all report opens through one helper (web: anchor; native: fetch then share/save) and disable with a message when offline. **Acceptance:** offline shows "necesita conexión"; one helper owns the open logic. **Size:** M.

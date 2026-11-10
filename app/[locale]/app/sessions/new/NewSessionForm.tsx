@@ -1,10 +1,13 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useActionFeedback } from "@/components/ui/Toast";
+import { useConnectivity } from "@/hooks/useConnectivity";
+import { isNetworkFailure } from "@/lib/actionResult";
 import { Trash2, X, ChevronDown } from "lucide-react";
 import { PROCESS_TYPES, CERTIFICATIONS, ROAST_LEVELS } from "@/lib/constants";
+import { MIN_CUPS_FOR_PENALTIES } from "@/lib/scoring";
 import { createSession, createGroupSession } from "@/app/actions/sessions";
 import { startSession } from "@/app/actions/community";
 import type { GroupEmailSummary } from "@/app/actions/groups";
@@ -14,7 +17,20 @@ import { buildInviteUrl } from "@/lib/inviteUrl";
 import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { Badge } from "@/components/ui/Badge";
 import { localDateISO } from "@/lib/localDate";
+import {
+  isDraftDirtyFrom,
+  parseDraft,
+  serializeDraft,
+  wizardDraftKey,
+} from "@/lib/wizardDraft";
+import {
+  LAST_FORMAT_KEY,
+  WIZARD_DEFAULT_FORMAT,
+  parseLastFormat,
+  type WizardHandoff,
+} from "@/lib/sessionDefaults";
 import { Select } from "@/components/ui/Select";
+import { browserZone, dateInZone } from "@/lib/closeRules";
 import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 
 // Groups v2: session wizard extends NotifyGroupTranslations with the
@@ -113,6 +129,8 @@ type Translations = {
   groupToggle: string;
   groupClosesAt: string;
   groupClosesAtHint: string;
+  /** Consequence of picking a closing date on a live cupping (F-sesiones-12). */
+  groupClosesAtLiveNotice: string;
   groupInviteLink: string;
   groupCopyLink: string;
   groupCopied: string;
@@ -133,12 +151,15 @@ type Translations = {
     goToPanel: string;
     goToPanelHint: string;
     startNow: string;
+    startGroup: string;
     /** Raw ICU string (t.raw()) — contains a literal "{label}" token. */
     referenceMark: string;
+    cupsHint: string;
     referenceBadge: string;
     referenceNone: string;
     referenceClear: string;
-    errors: Record<string, string> & { generic: string };
+    /** Whole newForm.errors table (S8-10); includes `offline` (S8-09). */
+    errors: Record<string, string> & { generic: string; offline?: string };
   };
   picker: {
     useExisting: string;
@@ -170,6 +191,9 @@ const sampleLetter = (i: number) => {
 /** Stable id for coffees/samples so React keys and card refs survive add/remove. */
 const newId = () => crypto.randomUUID();
 
+/** TODO(A2): one-line constant for the cups the wizard proposes. */
+const DEFAULT_CUPS_PER_SAMPLE = 5;
+
 const EMPTY_COFFEE: CoffeeInput = {
   name: "",
   producer: "",
@@ -185,6 +209,30 @@ const EMPTY_COFFEE: CoffeeInput = {
   certifications: [],
   notes: "",
 };
+
+/** A coffee card linked to an existing usable coffee. Linked entries never
+ *  submit field data (the server resolves by existingCoffeeId) — the
+ *  create-only extras are reset. */
+function linkedEntry(base: CoffeeEntry, picked: UsableCoffee): CoffeeEntry {
+  return {
+    ...base,
+    name: picked.name,
+    producer: picked.producer ?? "",
+    variety: picked.variety ?? "",
+    altitude: picked.altitude ?? "",
+    roastLevel: picked.roastLevel ?? "",
+    country: picked.country ?? "",
+    region: picked.region ?? "",
+    farm: "",
+    species: "",
+    harvestYear: "",
+    processType: picked.processType ?? "",
+    certifications: [],
+    notes: "",
+    existingCoffeeId: picked.id,
+    linkedOrigin: picked.origin,
+  };
+}
 
 /** Recomputes A, B, C… labels by list position; leaves user-edited labels untouched. */
 function relabel(samples: SampleEntry[], chip: string): SampleEntry[] {
@@ -246,6 +294,9 @@ export function NewSessionForm({
   groups,
   usableCoffees,
   initialGroupId,
+  handoff,
+  userId,
+  initialCoffee,
 }: {
   locale: string;
   t: Translations;
@@ -256,17 +307,43 @@ export function NewSessionForm({
   /** Prefill from `?groupId=` (e.g. the group page's "create session" CTA) —
    *  already validated server-side against the user's own groups. */
   initialGroupId?: string;
+  /** Prefill carried from the express form (already validated server-side). */
+  handoff?: WizardHandoff;
+  /** Keys the localStorage draft; null disables drafts. */
+  userId?: string | null;
+  /** "Catar este café": a coffee the server already checked with usableCoffeeWhere. */
+  initialCoffee?: UsableCoffee | null;
 }) {
   const router = useRouter();
   const feedback = useActionFeedback();
+  // Shared connectivity probe: creating a session needs the server. Offline the
+  // submit is disabled and every field keeps its value (S8-09, F-04-3).
+  const { online } = useConnectivity();
 
   // Session basics
-  const [name, setName] = useState("");
+  const [name, setName] = useState(handoff?.name ?? "");
   const [date, setDate] = useState(localDateISO());
   const [objective, setObjective] = useState("");
-  const [format, setFormat] = useState<"descriptive" | "affective" | "combined">("combined");
-  const [cupsPerSample, setCupsPerSample] = useState(2);
-  const [cupsInput, setCupsInput] = useState("2");
+  const [format, setFormat] = useState<"descriptive" | "affective" | "combined">(
+    handoff?.format ?? WIZARD_DEFAULT_FORMAT,
+  );
+
+  // Remembered last format (shared with the express form) — an explicit
+  // handoff wins.
+  useEffect(() => {
+    if (handoff?.format) return;
+    try {
+      const last = parseLastFormat(window.localStorage.getItem(LAST_FORMAT_KEY));
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (last) setFormat(last);
+    } catch {
+      // storage blocked: keep the default
+    }
+  }, [handoff?.format]);
+  // TODO(A2): Kim has not answered what the app should propose. Default 5 for
+  // affective/combined (the CVA protocol; deductions only exist from 5 cups).
+  const [cupsPerSample, setCupsPerSample] = useState(DEFAULT_CUPS_PER_SAMPLE);
+  const [cupsInput, setCupsInput] = useState(String(DEFAULT_CUPS_PER_SAMPLE));
 
   // Optional pre-cupping warm-up (CuppingSession.warmupExerciseId).
   const [warmupOn, setWarmupOn] = useState(false);
@@ -274,15 +351,19 @@ export function NewSessionForm({
   // the back off the backrest, so the wizard offers 1–3 (the library has all).
   const [warmupId, setWarmupId] = useState<WarmupId>("eyes");
 
-  const [coffees, setCoffees] = useState<CoffeeEntry[]>(() => [{ ...EMPTY_COFFEE, id: newId() }]);
-  const [samples, setSamples] = useState<SampleEntry[]>(() => [
-    {
+  const [coffees, setCoffees] = useState<CoffeeEntry[]>(() => {
+    const blank: CoffeeEntry = { ...EMPTY_COFFEE, id: newId() };
+    return [initialCoffee ? linkedEntry(blank, initialCoffee) : blank];
+  });
+  const [samples, setSamples] = useState<SampleEntry[]>(() =>
+    // N sample chips from the express handoff (default 1); coffees stay required.
+    Array.from({ length: handoff?.sampleCount ?? 1 }, (_, i) => ({
       id: newId(),
-      label: `${t.newForm.sampleChip} ${sampleLetter(0)}`,
+      label: `${t.newForm.sampleChip} ${sampleLetter(i)}`,
       coffeeId: coffees[0].id,
       auto: true,
-    },
-  ]);
+    })),
+  );
 
   // Reference sample — the SampleEntry.id (never the index) so add/remove/
   // reorder keep the selection stable across relabelling.
@@ -292,6 +373,8 @@ export function NewSessionForm({
   // preselects the group in one step.
   const [isGroup, setIsGroup] = useState(!!initialGroupId);
   const [closesAt, setClosesAt] = useState("");
+  // Today in the owner's own zone (see the date input below).
+  const [todayMin] = useState(() => dateInZone(Date.now(), browserZone()));
   const [linkedGroupId, setLinkedGroupId] = useState(initialGroupId ?? "");
   const [notifyGroup, setNotifyGroup] = useState(true);
   const [emailSummary, setEmailSummary] = useState<GroupEmailSummary | undefined>(undefined);
@@ -312,6 +395,113 @@ export function NewSessionForm({
   const [copied, setCopied] = useState(false);
 
   const [pending, start] = useTransition();
+
+  // ── Draft (S8-10 T3): per-user localStorage copy of the unsent form ─────────
+  const draftKey = userId ? wizardDraftKey(userId) : null;
+  const draftReady = useRef(false);
+  const leaving = useRef(false);
+
+  const clearDraft = () => {
+    leaving.current = true;
+    if (!draftKey) return;
+    try {
+      window.localStorage.removeItem(draftKey);
+    } catch {
+      // storage blocked: nothing to clear
+    }
+  };
+
+  // Restore once on mount. An explicit prefill (?groupId= / express handoff)
+  // wins over an old draft.
+  useEffect(() => {
+    const prefilled =
+      !!initialGroupId || !!initialCoffee || !!handoff?.name || !!handoff?.format || !!handoff?.sampleCount;
+    if (draftKey && !prefilled) {
+      try {
+        const d = parseDraft(window.localStorage.getItem(draftKey));
+        if (d) {
+          /* eslint-disable react-hooks/set-state-in-effect */
+          setName(d.name);
+          setObjective(d.objective);
+          setFormat(d.format);
+          setCupsPerSample(d.cupsPerSample);
+          setCupsInput(String(d.cupsPerSample));
+          setWarmupOn(d.warmupOn);
+          if (WARMUP_EXERCISES.some((ex) => ex.id === d.warmupId)) {
+            setWarmupId(d.warmupId as WarmupId);
+          }
+          setCoffees(d.coffees);
+          setSamples(d.samples);
+          setReferenceId(
+            d.referenceId && d.samples.some((x) => x.id === d.referenceId) ? d.referenceId : null,
+          );
+          setIsGroup(d.isGroup);
+          setClosesAt(d.closesAt);
+          setLinkedGroupId(d.linkedGroupId);
+          setNotifyGroup(d.notifyGroup);
+          /* eslint-enable react-hooks/set-state-in-effect */
+        }
+      } catch {
+        // storage blocked or corrupt: start clean
+      }
+    }
+    draftReady.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Captured on the first render: the prefilled-but-untouched form is pristine.
+  const [initialShape] = useState(() => ({ name, objective, coffees, samples }));
+  const dirty = isDraftDirtyFrom({ name, objective, coffees, samples }, initialShape);
+
+  // Save (debounced) while there is something worth keeping; drop it when the
+  // form is back to pristine. The date is intentionally not stored.
+  useEffect(() => {
+    if (!draftKey || !draftReady.current || step !== "form" || leaving.current) return;
+    const timer = setTimeout(() => {
+      try {
+        if (dirty) {
+          window.localStorage.setItem(
+            draftKey,
+            serializeDraft({
+              name,
+              objective,
+              format,
+              cupsPerSample,
+              warmupOn,
+              warmupId,
+              coffees,
+              samples,
+              referenceId,
+              isGroup,
+              closesAt,
+              linkedGroupId,
+              notifyGroup,
+            }),
+          );
+        } else {
+          window.localStorage.removeItem(draftKey);
+        }
+      } catch {
+        // quota / blocked: the form still works
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [
+    draftKey, step, dirty, name, objective, format, cupsPerSample, warmupOn, warmupId,
+    coffees, samples, referenceId, isGroup, closesAt, linkedGroupId, notifyGroup,
+  ]);
+
+  // Leaving the tab with an unsent form: ask first (the draft also survives).
+  useEffect(() => {
+    if (!dirty || step !== "form") return;
+    const guard = (e: BeforeUnloadEvent) => {
+      if (leaving.current) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", guard);
+    return () => window.removeEventListener("beforeunload", guard);
+  }, [dirty, step]);
 
   // ── Coffee + sample helpers ────────────────────────────────────────────────
   const updateCoffee = (
@@ -342,32 +532,7 @@ export function NewSessionForm({
   };
 
   const applyExistingCoffee = (id: string, picked: UsableCoffee) => {
-    setCoffees((prev) =>
-      prev.map((c) =>
-        c.id === id
-          ? {
-              ...c,
-              name: picked.name,
-              producer: picked.producer ?? "",
-              variety: picked.variety ?? "",
-              altitude: picked.altitude ?? "",
-              roastLevel: picked.roastLevel ?? "",
-              country: picked.country ?? "",
-              region: picked.region ?? "",
-              // Linked entries never submit field data (the server resolves by
-              // existingCoffeeId) — reset the create-only extras.
-              farm: "",
-              species: "",
-              harvestYear: "",
-              processType: picked.processType ?? "",
-              certifications: [],
-              notes: "",
-              existingCoffeeId: picked.id,
-              linkedOrigin: picked.origin,
-            }
-          : c
-      )
-    );
+    setCoffees((prev) => prev.map((c) => (c.id === id ? linkedEntry(c, picked) : c)));
     if (invalidCoffeeId === id) {
       setInvalidCoffeeId(null);
       setErrorCode(null);
@@ -448,7 +613,10 @@ export function NewSessionForm({
       cardRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "center" });
       return false;
     };
+    // Cards no sample uses are dropped server-side, so they cannot block the submit.
+    const referenced = new Set(samples.map((s) => s.coffeeId));
     for (const c of coffees) {
+      if (!referenced.has(c.id)) continue;
       if (c.existingCoffeeId) continue;
       // Data-quality gate relaxed 2026-09 — only the name is required now;
       // everything else is progressive/fill-later. Mirror of the server-side
@@ -487,6 +655,12 @@ export function NewSessionForm({
       ? ((idx) => (idx === -1 ? null : idx))(samples.findIndex((s) => s.id === referenceId))
       : null;
 
+    try {
+      window.localStorage.setItem(LAST_FORMAT_KEY, format);
+    } catch {
+      // non-fatal
+    }
+
     start(async () => {
       // A network drop / opaque server failure must never unmount the form:
       // every field stays in state and the strip shows copy (S8-10 T1).
@@ -517,10 +691,12 @@ export function NewSessionForm({
           referenceIdx,
           warmupExerciseId: warmupOn ? warmupId : null,
           closesAt: closesAt || undefined,
+          closesAtZone: closesAt ? browserZone() : undefined,
           groupId: linkedGroupId || undefined,
           notifyGroup,
         });
         if (result.ok) {
+          clearDraft();
           setSessionId(result.sessionId);
           setInviteToken(result.inviteToken);
           setEmailSummary(result.emailSummary);
@@ -546,8 +722,13 @@ export function NewSessionForm({
         // Successful solo create navigates via redirect(); never treat that
         // control-flow throw as a failure.
         const digest = (err as { digest?: unknown } | null)?.digest;
-        if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) throw err;
-        setErrorCode("unknown");
+        if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) {
+          clearDraft();
+          throw err;
+        }
+        // A dropped request gets the offline copy (S8-09); anything else falls
+        // back to the generic line (S8-10).
+        setErrorCode(isNetworkFailure(err, navigator.onLine) ? "offline" : "unknown");
       }
     });
   };
@@ -687,7 +868,7 @@ export function NewSessionForm({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className={format === "descriptive" ? "grid grid-cols-1 gap-3" : "grid grid-cols-2 gap-3"}>
           <div>
             <FieldLabel>{t.date}</FieldLabel>
             <input
@@ -697,10 +878,13 @@ export function NewSessionForm({
               onChange={(e) => setDate(e.target.value)}
             />
           </div>
+          {format !== "descriptive" && (
           <div>
             <FieldLabel>{t.cups}</FieldLabel>
             <input
               type="number"
+              inputMode="numeric"
+              enterKeyHint="next"
               min={1}
               max={5}
               className={inputCls}
@@ -715,13 +899,17 @@ export function NewSessionForm({
               }}
               onBlur={() => {
                 const n = parseInt(cupsInput, 10);
-                const clamped = Number.isNaN(n) ? 2 : Math.min(5, Math.max(1, n));
+                const clamped = Number.isNaN(n) ? DEFAULT_CUPS_PER_SAMPLE : Math.min(5, Math.max(1, n));
                 setCupsPerSample(clamped);
                 setCupsInput(String(clamped));
               }}
             />
           </div>
+          )}
         </div>
+        {format !== "descriptive" && cupsPerSample < MIN_CUPS_FOR_PENALTIES && (
+          <p className="-mt-2 text-xs text-on-surface-variant">{t.newForm.cupsHint}</p>
+        )}
 
         <div>
           <FieldLabel>{t.objective}</FieldLabel>
@@ -1241,13 +1429,19 @@ export function NewSessionForm({
             <div>
               <FieldLabel>{t.groupClosesAt}</FieldLabel>
               <input
-                type="date" suppressHydrationWarning
+                type="date"
                 className={inputCls}
                 value={closesAt}
-                min={localDateISO()}
+                // "Today" in the owner's own zone; the server render is UTC,
+                // so the attribute may differ at hydration.
+                suppressHydrationWarning
+                min={todayMin}
                 onChange={(e) => setClosesAt(e.target.value)}
               />
               <p className="mt-1 text-xs text-on-surface-variant">{t.groupClosesAtHint}</p>
+              {closesAt && (
+                <p className="mt-1 text-xs font-medium text-secondary">{t.groupClosesAtLiveNotice}</p>
+              )}
             </div>
 
             <div>
@@ -1291,12 +1485,18 @@ export function NewSessionForm({
           </div>
         )}
 
+        {!online && t.newForm.errors.offline && (
+          <p role="status" className="text-center text-sm text-error">
+            {t.newForm.errors.offline}
+          </p>
+        )}
+
         <button
           type="submit"
-          disabled={pending}
+          disabled={pending || !online}
           className="w-full bg-primary-container text-on-primary rounded-pill py-3.5 font-medium hover:bg-primary transition-colors disabled:opacity-50"
         >
-          {t.start}
+          {isGroup ? t.newForm.startGroup : t.start}
         </button>
       </div>
     </form>

@@ -13,6 +13,7 @@ import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { sheetSampleIdentity, sheetSampleRecords } from "@/lib/pdf/sheetSource";
 import { slug } from "@/lib/pdf/filename";
+import { pdfDisposition } from "@/lib/pdf/disposition";
 import { CvaFormDocument, type CvaDocumentProps } from "@/lib/pdf/CvaFormDocument";
 
 export const runtime = "nodejs";
@@ -25,6 +26,7 @@ export async function GET(
   const { id } = await params;
   const localeParam = request.nextUrl.searchParams.get("locale");
   const locale: "es" | "en" = localeParam === "en" ? "en" : "es";
+  const inline = request.nextUrl.searchParams.get("inline") === "1";
 
   const supabase = await createClient();
   const {
@@ -123,7 +125,7 @@ export async function GET(
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": pdfDisposition(inline, filename),
       "Cache-Control": "no-store",
     },
   });

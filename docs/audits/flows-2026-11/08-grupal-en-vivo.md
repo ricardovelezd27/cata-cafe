@@ -19,6 +19,8 @@ The owner creates a group session (`createGroupSession`), shares `/join/[token]`
 
 ### F-grupal-1 · El disparador de la base penaliza uniformidad/defectos con menos de 5 tazas; la app no · severity: P1 · status: confirms-board(Con 2–4 tazas el trigger penaliza y la vista no)
 
+**Fixed in S8-04** (draft PR, branch `claude/s8-04-scoring-impl`): option 1a: `penaltiesApply` gates deductions at 5 cups in TS and in the trigger (PHASE 23, owner applies, runbook §12); `tests/scoringConsistency.test.ts` ties the two. TODO(A1): Kim has not answered.
+
 - **Problem** — The authoritative SQL aggregate subtracts penalties for any number of cups: `v_uniformity_penalty := v_total_non_uniform::float * (10.0 / v_total_cups)` with no cup-count guard (`prisma/sql/rls_and_triggers.sql:765-772`). The TypeScript side applies them only `if (cupsPerSample >= 5)` (`lib/scoring.ts:209`), and the results page prefers that recompute (`results/page.tsx:619-624`). Coffee history stores the trigger value: `communityScore = sample.aggregateScore?.communityScore` (`lib/coffeeHistory.ts:54`).
 - **Implication** — Scoring correctness. With the wizard default of 2 cups and any cup marked, the session results and the coffee profile / history show different community scores for the same coffee. A teacher cannot reconcile them and the cupper's history is wrong without any signal. The board rates this P2; by the severity rule (scoring correctness) it is P1.
 - **Fix** — One penalty rule everywhere: penalties apply only from 5 cups, in SQL and TS. Ship it as a new PHASE block plus a runbook step, then recompute existing aggregates and re-sync history rows for sessions with fewer than 5 cups. **Acceptance:** a 2-cup session with a non-uniform cup shows the same score on results, coffee profile and history; a 5-cup session is unchanged; a repeated recompute is idempotent. **Size:** M.
@@ -28,6 +30,8 @@ The owner creates a group session (`createGroupSession`), shares `/join/[token]`
 - **Invariant check** — Touches the trigger-authoritative community score. Allowed: the change aligns SQL to the documented formula, and TS stays display-only.
 
 ### F-grupal-2 · Cerrar deja fuera los borradores sin enviar y nadie lo sabe · severity: P2 · status: confirms-board(Cerrar con borradores sin enviar: no cuentan y nadie avisa)
+
+**Fixed in S8-05** (draft PR, branch `claude/s8-05-close-lifecycle-impl`): the close dialog counts cuppers with complete unsent notes and states the rule (`getCloseImpact`); the close email repeats it and tells each affected cupper. Default policy `DRAFT_AT_CLOSE = "exclude"` (Kim C1 b); TODO(S8-05/C1-d) accept-late action not built.
 
 - **Problem** — The close dialog says only «¿Cerrar la sesión? Los resultados quedarán finales.» (`messages/es.json:501`). `closeSessionInternal` never looks at drafts, and history sync reads only `isDraft: false` (`lib/coffeeHistory.ts:28`). After close every write throws `session_closed`, so a participant still typing is moved to results by the page redirect (`cup/page.tsx:80-81`; line corrected in verification) and the offline replay discards their pending draft silently (CLAUDE.md, closed = read-only). The cron has the same blind spot for async sessions.
 - **Implication** — Data loss in the most common live moment: the owner closes while two people are on the last sample. Their notes vanish from results, history and the email, and they get no explanation.
@@ -100,6 +104,8 @@ The owner creates a group session (`createGroupSession`), shares `/join/[token]`
 - **Invariant check** — Offline replay must keep returning "pending", not "discarded", so the cupper loses nothing.
 
 ### F-grupal-8 · Una sesión en vivo olvidada nunca se cierra ni avisa · severity: P3 · status: confirms-board(⚑ sesión en vivo sin fecha de cierre)
+
+**Fixed in S8-05** (draft PR, branch `claude/s8-05-close-lifecycle-impl`): one `live_idle` owner reminder after 12 h of inactivity from the cron, ledgered, never closes (Kim C3 default a).
 
 - **Problem** — The cron selects only `status: "active", closesAt: { lt: now }` (`close-expired-sessions/route.ts:29`); a live session has no `closesAt` and stays active indefinitely. Nothing reminds the owner.
 - **Implication** — Provisional results for participants, no coffee history and no email until the owner returns. Nothing is lost while the session stays open, so this is friction, not data loss. Sharpening: a reminder to the owner is safer than an auto-close, which would run into F-grupal-2.

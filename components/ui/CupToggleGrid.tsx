@@ -83,6 +83,9 @@ export function CupToggleGrid({
             );
           })}
         </div>
+        {/* TODO(A1): Kim's answer pending. Architect: the boxes stay visible below
+            5 cups with this note (stored flags are ignored by scoring, see
+            penaltiesApply in lib/scoring.ts); hiding them is not built. */}
         {!uniformityInScore && (
           <span className={styles.note}>
             <Info size={12} aria-hidden />

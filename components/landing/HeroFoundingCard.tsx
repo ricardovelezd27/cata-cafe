@@ -1,6 +1,10 @@
 import { getTranslations } from "next-intl/server";
 import { Check } from "lucide-react";
 import WaitlistForm from "./WaitlistForm";
+import { emailSentCopy } from "@/components/auth/authCopy";
+import { supportMailto } from "@/lib/siteContact";
+import { LEGAL_PAGES_PUBLISHED } from "@/lib/legal/config";
+import { localeHref } from "./locale-href";
 
 // The hero's "instrument": the one solid cream card on the dark stage, now the
 // founding-cohort reservation instead of the calibration demo.
@@ -8,6 +12,7 @@ export default async function HeroFoundingCard({ locale }: { locale: string }) {
   const t = await getTranslations("landing.founding");
   const th = await getTranslations("landing.hero");
   const tw = await getTranslations("landing.waitlist");
+  const ta = await getTranslations("auth");
 
   const waitlistLabels = {
     label: tw("label"),
@@ -19,7 +24,14 @@ export default async function HeroFoundingCard({ locale }: { locale: string }) {
     invalid: tw("invalid"),
     error: tw("error"),
     rateLimit: tw("rateLimit"),
+    sent: emailSentCopy(ta),
+    supportHref: supportMailto(),
   };
+
+  // F-landing-1: shown only once the owner has published the final legal text.
+  const notice = LEGAL_PAGES_PUBLISHED
+    ? { text: tw("notice"), linkLabel: tw("noticeLink"), href: localeHref(locale, "/privacidad") }
+    : undefined;
 
   return (
     <div className="rounded-[2rem] border border-outline-variant/60 bg-surface p-6 text-on-surface shadow-[0_24px_60px_-24px_rgba(21,53,38,0.45)] sm:p-8">
@@ -50,7 +62,7 @@ export default async function HeroFoundingCard({ locale }: { locale: string }) {
       </ul>
 
       <div className="mt-6">
-        <WaitlistForm locale={locale} labels={waitlistLabels} variant="onLight" />
+        <WaitlistForm locale={locale} labels={waitlistLabels} variant="onLight" source="hero" notice={notice} />
       </div>
       <p className="mt-3 text-sm font-medium text-on-surface">{th("ctaNote")}</p>
       <p className="mt-2 text-xs leading-relaxed text-on-surface-variant">{t("note")}</p>
