@@ -469,7 +469,9 @@ export default async function GroupDetailPage({
           t={{
             unregistered: t("unregistered"),
             removeMember: t("removeMember"),
-            confirmRemoveMember: t("confirmRemoveMember"),
+            removeTitle: t("memberEdit.removeTitle"),
+            removeBodyNamed: t.raw("memberEdit.removeBodyNamed") as string,
+            cancel: tCommon("cancel"),
             errorGeneric: t("errorGeneric"),
             editName: t("memberEdit.editName"),
             namePlaceholder: t("memberEdit.namePlaceholder"),

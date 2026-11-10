@@ -1535,7 +1535,9 @@
       "resent": "Invitación reenviada",
       "resendFailed": "No se pudo reenviar la invitación",
       "resendRateLimited": "Alcanzaste el límite de envíos. Inténtalo más tarde.",
-      "error": "No se pudo guardar. Inténtalo de nuevo."
+      "error": "No se pudo guardar. Inténtalo de nuevo.",
+      "removeTitle": "Quitar del grupo",
+      "removeBodyNamed": "¿Quitar a {name} del grupo?"
     },
     "empty": "Aún no tienes grupos. Crea uno para reutilizar tu roster de catadores en cada sesión.",
     "coCuppersTitle": "Personas con las que has catado",
@@ -1646,7 +1648,10 @@
       "invalid_reference": "Uno de los elementos vinculados ya no existe.",
       "rate_limited": "Demasiados envíos en poco tiempo. Espera un momento e inténtalo de nuevo.",
       "unknown": "Algo salió mal. Inténtalo de nuevo.",
-      "entries_closed": "El organizador cerró las entradas de esta cata."
+      "entries_closed": "El organizador cerró las entradas de esta cata.",
+      "group_full": "Este grupo ya tiene 200 integrantes, el máximo.",
+      "invalid_email": "Ese correo no parece válido. Revísalo e inténtalo de nuevo.",
+      "offline": "Sin conexión. Revisa tu internet e inténtalo de nuevo."
     }
   },
   "warmup": {

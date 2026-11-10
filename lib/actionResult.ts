@@ -21,6 +21,9 @@ export const ACTION_ERROR_CODES = [
   "coffee_not_usable",
   "invalid_input",
   "rate_limited", // lib/emailBudget.ts refused a send (S8-03)
+  "group_full", // tasting group already has 200 members (S8-14)
+  "invalid_email", // address failed the format check (S8-14)
+  "offline", // client-side only: the request never reached the server (S8-14)
   "conflict", // Prisma P2002 — unique constraint
   "not_found", // Prisma P2025 — row vanished (concurrent delete)
   "invalid_reference", // Prisma P2003 — FK target vanished

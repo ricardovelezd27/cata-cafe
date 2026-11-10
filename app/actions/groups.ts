@@ -39,39 +39,41 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export async function updateGroup(
   groupId: string,
   input: { name?: string; description?: string | null },
-): Promise<{ ok: true }> {
-  const user = await requireRegisteredUser();
+): Promise<ActionResult<void>> {
+  return run("updateGroup", async () => {
+    const user = await requireRegisteredUser();
 
-  const group = await prisma.tastingGroup.findUnique({
-    where: { id: groupId },
-    select: { createdBy: true },
+    const group = await prisma.tastingGroup.findUnique({
+      where: { id: groupId },
+      select: { createdBy: true },
+    });
+    if (!group || group.createdBy !== user.id) {
+      throw new Error("not_found_or_forbidden");
+    }
+
+    const data: { name?: string; description?: string | null } = {};
+
+    if (input.name !== undefined) {
+      const trimmed = input.name.trim();
+      if (trimmed.length < 1 || trimmed.length > 80) throw new Error("invalid_input");
+      data.name = trimmed;
+    }
+
+    if (input.description !== undefined) {
+      const trimmed = input.description?.trim() || null;
+      if (trimmed && trimmed.length > 500) throw new Error("invalid_input");
+      data.description = trimmed;
+    }
+
+    await prisma.tastingGroup.update({
+      where: { id: groupId },
+      data,
+    });
+
+    revalidatePath(`/es/app/groups/${groupId}`);
+    revalidatePath(`/en/app/groups/${groupId}`);
+    return;
   });
-  if (!group || group.createdBy !== user.id) {
-    throw new Error("not_found_or_forbidden");
-  }
-
-  const data: { name?: string; description?: string | null } = {};
-
-  if (input.name !== undefined) {
-    const trimmed = input.name.trim();
-    if (trimmed.length < 1 || trimmed.length > 80) throw new Error("invalid_name");
-    data.name = trimmed;
-  }
-
-  if (input.description !== undefined) {
-    const trimmed = input.description?.trim() || null;
-    if (trimmed && trimmed.length > 500) throw new Error("invalid_description");
-    data.description = trimmed;
-  }
-
-  await prisma.tastingGroup.update({
-    where: { id: groupId },
-    data,
-  });
-
-  revalidatePath(`/es/app/groups/${groupId}`);
-  revalidatePath(`/en/app/groups/${groupId}`);
-  return { ok: true };
 }
 
 // ─── Delete a tasting group (owner only) — members cascade ────────────────────
@@ -103,53 +105,55 @@ export async function deleteGroup(groupId: string): Promise<{ ok: true }> {
 export async function addMemberByUserId(
   groupId: string,
   userId: string,
-): Promise<{ ok: true; memberId: string }> {
-  const user = await requireRegisteredUser();
+): Promise<ActionResult<{ memberId: string }>> {
+  return run("addMemberByUserId", async () => {
+    const user = await requireRegisteredUser();
 
-  const group = await prisma.tastingGroup.findUnique({
-    where: { id: groupId },
-    select: { createdBy: true },
+    const group = await prisma.tastingGroup.findUnique({
+      where: { id: groupId },
+      select: { createdBy: true },
+    });
+    if (!group || group.createdBy !== user.id) {
+      throw new Error("not_found_or_forbidden");
+    }
+
+    // The target must be a real co-cupper of the caller. Without this, owning
+    // any group let a caller resolve ANY account's email from a harvested UUID
+    // via the service-role lookup below (platform-wide email enumeration).
+    if (!(await isCoCupper(user.id, userId))) {
+      throw new Error("not_found_or_forbidden");
+    }
+
+    const admin = createAdminClient();
+    const { data, error } = await admin.auth.admin.getUserById(userId);
+    const rawEmail = data?.user?.email;
+    if (error || !rawEmail) throw new Error("not_found");
+    const email = rawEmail.trim().toLowerCase();
+
+    const targetProfile = await prisma.profile.findUnique({
+      where: { id: userId },
+      select: { displayName: true },
+    });
+
+    const existing = await prisma.tastingGroupMember.findUnique({
+      where: { groupId_email: { groupId, email } },
+      select: { id: true },
+    });
+    if (!existing) {
+      const count = await prisma.tastingGroupMember.count({ where: { groupId } });
+      if (count >= MAX_GROUP_MEMBERS) throw new Error("group_full");
+    }
+
+    const member = await prisma.tastingGroupMember.upsert({
+      where: { groupId_email: { groupId, email } },
+      create: { groupId, email, userId, displayName: targetProfile?.displayName ?? null },
+      update: { userId, displayName: targetProfile?.displayName ?? null },
+    });
+
+    revalidatePath(`/es/app/groups/${groupId}`);
+    revalidatePath(`/en/app/groups/${groupId}`);
+    return { memberId: member.id };
   });
-  if (!group || group.createdBy !== user.id) {
-    throw new Error("not_found_or_forbidden");
-  }
-
-  // The target must be a real co-cupper of the caller. Without this, owning
-  // any group let a caller resolve ANY account's email from a harvested UUID
-  // via the service-role lookup below (platform-wide email enumeration).
-  if (!(await isCoCupper(user.id, userId))) {
-    throw new Error("not_found_or_forbidden");
-  }
-
-  const admin = createAdminClient();
-  const { data, error } = await admin.auth.admin.getUserById(userId);
-  const rawEmail = data?.user?.email;
-  if (error || !rawEmail) throw new Error("email_unresolvable");
-  const email = rawEmail.trim().toLowerCase();
-
-  const targetProfile = await prisma.profile.findUnique({
-    where: { id: userId },
-    select: { displayName: true },
-  });
-
-  const existing = await prisma.tastingGroupMember.findUnique({
-    where: { groupId_email: { groupId, email } },
-    select: { id: true },
-  });
-  if (!existing) {
-    const count = await prisma.tastingGroupMember.count({ where: { groupId } });
-    if (count >= MAX_GROUP_MEMBERS) throw new Error("group_full");
-  }
-
-  const member = await prisma.tastingGroupMember.upsert({
-    where: { groupId_email: { groupId, email } },
-    create: { groupId, email, userId, displayName: targetProfile?.displayName ?? null },
-    update: { userId, displayName: targetProfile?.displayName ?? null },
-  });
-
-  revalidatePath(`/es/app/groups/${groupId}`);
-  revalidatePath(`/en/app/groups/${groupId}`);
-  return { ok: true, memberId: member.id };
 }
 
 // ─── Group invitation email (join-the-platform, not a specific session) ───────
@@ -502,117 +506,117 @@ export async function addMemberByEmail(
   email: string,
   displayName?: string,
   options?: { sendInvite?: boolean },
-): Promise<{
-  ok: true;
-  memberId: string;
-  emailStatus?: "sent" | "skipped" | "failed" | "rate_limited";
-}> {
-  const user = await requireRegisteredUser();
+): Promise<ActionResult<{ memberId: string; emailStatus?: "sent" | "skipped" | "failed" | "rate_limited" }>> {
+  return run("addMemberByEmail", async () => {
+    const user = await requireRegisteredUser();
 
-  const group = await prisma.tastingGroup.findUnique({
-    where: { id: groupId },
-    select: { createdBy: true, name: true, description: true },
-  });
-  if (!group || group.createdBy !== user.id) {
-    throw new Error("not_found_or_forbidden");
-  }
-
-  const normalizedEmail = email.trim().toLowerCase();
-  if (!EMAIL_RE.test(normalizedEmail)) throw new Error("invalid_email");
-
-  const trimmedDisplayName = displayName?.trim();
-
-  const existing = await prisma.tastingGroupMember.findUnique({
-    where: { groupId_email: { groupId, email: normalizedEmail } },
-    select: { id: true },
-  });
-  if (!existing) {
-    const count = await prisma.tastingGroupMember.count({ where: { groupId } });
-    if (count >= MAX_GROUP_MEMBERS) throw new Error("group_full");
-  }
-
-  const member = await prisma.tastingGroupMember.upsert({
-    where: { groupId_email: { groupId, email: normalizedEmail } },
-    create: {
-      groupId,
-      email: normalizedEmail,
-      userId: null,
-      displayName: trimmedDisplayName || null,
-    },
-    // Never touch userId here — re-adding an email that's already linked to a
-    // user must not sever that link.
-    update: trimmedDisplayName ? { displayName: trimmedDisplayName } : {},
-    select: { id: true, userId: true },
-  });
-
-  const sendInvite = options?.sendInvite !== false;
-  let emailStatus: "sent" | "skipped" | "failed" | "rate_limited" | undefined;
-
-  if (sendInvite && member.userId === null) {
-    try {
-      const inviterProfile = await prisma.profile.findUnique({
-        where: { id: user.id },
-        select: { displayName: true, preferredLang: true },
-      });
-      const senderLocale: Locale = inviterProfile?.preferredLang === "en" ? "en" : "es";
-      const origin = await trustedRequestOrigin();
-      const sent = await sendGroupInvitationEmails({
-        group: { id: groupId, name: group.name, description: group.description },
-        inviterId: user.id,
-        inviterName: inviterProfile?.displayName ?? "",
-        recipients: [
-          {
-            memberId: member.id,
-            email: normalizedEmail,
-            userId: null,
-            displayName: trimmedDisplayName || null,
-          },
-        ],
-        origin,
-        senderLocale,
-      });
-      emailStatus = sent.ok ? (sent.summary.results[0]?.status ?? "failed") : sent.error;
-    } catch (e) {
-      logWarn({
-        where: "addMemberByEmail",
-        message: "invitation_email_threw",
-        groupId,
-        code: (e as { code?: string })?.code ?? "unknown",
-      });
-      emailStatus = "failed";
+    const group = await prisma.tastingGroup.findUnique({
+      where: { id: groupId },
+      select: { createdBy: true, name: true, description: true },
+    });
+    if (!group || group.createdBy !== user.id) {
+      throw new Error("not_found_or_forbidden");
     }
-  }
 
-  revalidatePath(`/es/app/groups/${groupId}`);
-  revalidatePath(`/en/app/groups/${groupId}`);
-  return { ok: true, memberId: member.id, emailStatus };
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!EMAIL_RE.test(normalizedEmail)) throw new Error("invalid_email");
+
+    const trimmedDisplayName = displayName?.trim();
+
+    const existing = await prisma.tastingGroupMember.findUnique({
+      where: { groupId_email: { groupId, email: normalizedEmail } },
+      select: { id: true },
+    });
+    if (!existing) {
+      const count = await prisma.tastingGroupMember.count({ where: { groupId } });
+      if (count >= MAX_GROUP_MEMBERS) throw new Error("group_full");
+    }
+
+    const member = await prisma.tastingGroupMember.upsert({
+      where: { groupId_email: { groupId, email: normalizedEmail } },
+      create: {
+        groupId,
+        email: normalizedEmail,
+        userId: null,
+        displayName: trimmedDisplayName || null,
+      },
+      // Never touch userId here — re-adding an email that's already linked to a
+      // user must not sever that link.
+      update: trimmedDisplayName ? { displayName: trimmedDisplayName } : {},
+      select: { id: true, userId: true },
+    });
+
+    const sendInvite = options?.sendInvite !== false;
+    let emailStatus: "sent" | "skipped" | "failed" | "rate_limited" | undefined;
+
+    if (sendInvite && member.userId === null) {
+      try {
+        const inviterProfile = await prisma.profile.findUnique({
+          where: { id: user.id },
+          select: { displayName: true, preferredLang: true },
+        });
+        const senderLocale: Locale = inviterProfile?.preferredLang === "en" ? "en" : "es";
+        const origin = await trustedRequestOrigin();
+        const sent = await sendGroupInvitationEmails({
+          group: { id: groupId, name: group.name, description: group.description },
+          inviterId: user.id,
+          inviterName: inviterProfile?.displayName ?? "",
+          recipients: [
+            {
+              memberId: member.id,
+              email: normalizedEmail,
+              userId: null,
+              displayName: trimmedDisplayName || null,
+            },
+          ],
+          origin,
+          senderLocale,
+        });
+        emailStatus = sent.ok ? (sent.summary.results[0]?.status ?? "failed") : sent.error;
+      } catch (e) {
+        logWarn({
+          where: "addMemberByEmail",
+          message: "invitation_email_threw",
+          groupId,
+          code: (e as { code?: string })?.code ?? "unknown",
+        });
+        emailStatus = "failed";
+      }
+    }
+
+    revalidatePath(`/es/app/groups/${groupId}`);
+    revalidatePath(`/en/app/groups/${groupId}`);
+    return { memberId: member.id, emailStatus };
+  });
 }
 
 // ─── Remove a member (owner only) ──────────────────────────────────────────────
-export async function removeMember(groupId: string, memberId: string): Promise<{ ok: true }> {
-  const user = await requireRegisteredUser();
+export async function removeMember(groupId: string, memberId: string): Promise<ActionResult<void>> {
+  return run("removeMember", async () => {
+    const user = await requireRegisteredUser();
 
-  const group = await prisma.tastingGroup.findUnique({
-    where: { id: groupId },
-    select: { createdBy: true },
+    const group = await prisma.tastingGroup.findUnique({
+      where: { id: groupId },
+      select: { createdBy: true },
+    });
+    if (!group || group.createdBy !== user.id) {
+      throw new Error("not_found_or_forbidden");
+    }
+
+    const member = await prisma.tastingGroupMember.findUnique({
+      where: { id: memberId },
+      select: { groupId: true },
+    });
+    if (!member || member.groupId !== groupId) {
+      throw new Error("not_found_or_forbidden");
+    }
+
+    await prisma.tastingGroupMember.delete({ where: { id: memberId } });
+
+    revalidatePath(`/es/app/groups/${groupId}`);
+    revalidatePath(`/en/app/groups/${groupId}`);
+    return;
   });
-  if (!group || group.createdBy !== user.id) {
-    throw new Error("not_found_or_forbidden");
-  }
-
-  const member = await prisma.tastingGroupMember.findUnique({
-    where: { id: memberId },
-    select: { groupId: true },
-  });
-  if (!member || member.groupId !== groupId) {
-    throw new Error("not_found_or_forbidden");
-  }
-
-  await prisma.tastingGroupMember.delete({ where: { id: memberId } });
-
-  revalidatePath(`/es/app/groups/${groupId}`);
-  revalidatePath(`/en/app/groups/${groupId}`);
-  return { ok: true };
 }
 
 // ─── Send an email blast to a group (owner only) ───────────────────────────────
@@ -974,76 +978,76 @@ export async function createGroupPost(input: {
   body: string;
   notifyByEmail?: boolean;
 }): Promise<
-  | {
-      ok: true;
-      postId: string;
-      emailSummary?: GroupEmailSummary;
-      emailBlocked?: "rate_limited";
-    }
-  | { ok: false; error: "body_required" | "body_too_long" | "title_too_long" }
+  ActionResult<{
+    postId: string;
+    emailSummary?: GroupEmailSummary;
+    emailBlocked?: "rate_limited";
+  }>
 > {
-  const user = await requireRegisteredUser();
+  return run("createGroupPost", async () => {
+    const user = await requireRegisteredUser();
 
-  const group = await prisma.tastingGroup.findUnique({
-    where: { id: input.groupId },
-    select: { createdBy: true, name: true },
-  });
-  if (!group || group.createdBy !== user.id) {
-    throw new Error("not_found_or_forbidden");
-  }
+    const group = await prisma.tastingGroup.findUnique({
+      where: { id: input.groupId },
+      select: { createdBy: true, name: true },
+    });
+    if (!group || group.createdBy !== user.id) {
+      throw new Error("not_found_or_forbidden");
+    }
 
-  const body = input.body?.trim();
-  if (!body) return { ok: false, error: "body_required" };
-  if (body.length > 5000) return { ok: false, error: "body_too_long" };
-  const title = input.title?.trim() || null;
-  if (title && title.length > 120) return { ok: false, error: "title_too_long" };
+    const body = input.body?.trim();
+    if (!body) throw new Error("invalid_input");
+    if (body.length > 5000) throw new Error("invalid_input");
+    const title = input.title?.trim() || null;
+    if (title && title.length > 120) throw new Error("invalid_input");
 
-  const post = await prisma.groupPost.create({
-    data: { groupId: input.groupId, authorId: user.id, title, body },
-    select: { id: true },
-  });
+    const post = await prisma.groupPost.create({
+      data: { groupId: input.groupId, authorId: user.id, title, body },
+      select: { id: true },
+    });
 
-  // The post is already saved: a throttled or failed blast never fails it.
-  let emailSummary: GroupEmailSummary | undefined;
-  let emailBlocked: "rate_limited" | undefined;
-  if (input.notifyByEmail) {
-    try {
-      const result = await sendGroupEmail({
-        groupId: input.groupId,
-        subject: title || group.name,
-        message: body,
-      });
-      if (result.ok) {
-        emailSummary = result.data;
-        if (emailSummary.sent > 0) {
-          await prisma.groupPost.update({
-            where: { id: post.id },
-            data: { emailSent: true },
+    // The post is already saved: a throttled or failed blast never fails it.
+    let emailSummary: GroupEmailSummary | undefined;
+    let emailBlocked: "rate_limited" | undefined;
+    if (input.notifyByEmail) {
+      try {
+        const result = await sendGroupEmail({
+          groupId: input.groupId,
+          subject: title || group.name,
+          message: body,
+        });
+        if (result.ok) {
+          emailSummary = result.data;
+          if (emailSummary.sent > 0) {
+            await prisma.groupPost.update({
+              where: { id: post.id },
+              data: { emailSent: true },
+            });
+          }
+        } else if (result.error === "rate_limited") {
+          emailBlocked = "rate_limited";
+        } else {
+          logWarn({
+            where: "createGroupPost",
+            message: "notify_email_failed",
+            groupId: input.groupId,
+            code: result.error,
           });
         }
-      } else if (result.error === "rate_limited") {
-        emailBlocked = "rate_limited";
-      } else {
+      } catch (e) {
         logWarn({
           where: "createGroupPost",
-          message: "notify_email_failed",
+          message: "notify_email_threw",
           groupId: input.groupId,
-          code: result.error,
+          code: (e as { code?: string })?.code ?? "unknown",
         });
       }
-    } catch (e) {
-      logWarn({
-        where: "createGroupPost",
-        message: "notify_email_threw",
-        groupId: input.groupId,
-        code: (e as { code?: string })?.code ?? "unknown",
-      });
     }
-  }
 
-  revalidatePath(`/es/app/groups/${input.groupId}`);
-  revalidatePath(`/en/app/groups/${input.groupId}`);
-  return { ok: true, postId: post.id, emailSummary, emailBlocked };
+    revalidatePath(`/es/app/groups/${input.groupId}`);
+    revalidatePath(`/en/app/groups/${input.groupId}`);
+    return { postId: post.id, emailSummary, emailBlocked };
+  });
 }
 
 export async function updateGroupPost(
@@ -1173,36 +1177,38 @@ export async function updateMemberDisplayName(
   groupId: string,
   memberId: string,
   displayName: string,
-): Promise<{ ok: true }> {
-  const user = await requireRegisteredUser();
+): Promise<ActionResult<void>> {
+  return run("updateMemberDisplayName", async () => {
+    const user = await requireRegisteredUser();
 
-  const group = await prisma.tastingGroup.findUnique({
-    where: { id: groupId },
-    select: { createdBy: true },
+    const group = await prisma.tastingGroup.findUnique({
+      where: { id: groupId },
+      select: { createdBy: true },
+    });
+    if (!group || group.createdBy !== user.id) {
+      throw new Error("not_found_or_forbidden");
+    }
+
+    const member = await prisma.tastingGroupMember.findUnique({
+      where: { id: memberId },
+      select: { groupId: true },
+    });
+    if (!member || member.groupId !== groupId) {
+      throw new Error("not_found_or_forbidden");
+    }
+
+    const trimmed = displayName.trim();
+    if (trimmed.length < 1 || trimmed.length > 80) throw new Error("invalid_input");
+
+    await prisma.tastingGroupMember.update({
+      where: { id: memberId },
+      data: { displayName: trimmed },
+    });
+
+    revalidatePath(`/es/app/groups/${groupId}`);
+    revalidatePath(`/en/app/groups/${groupId}`);
+    return;
   });
-  if (!group || group.createdBy !== user.id) {
-    throw new Error("not_found_or_forbidden");
-  }
-
-  const member = await prisma.tastingGroupMember.findUnique({
-    where: { id: memberId },
-    select: { groupId: true },
-  });
-  if (!member || member.groupId !== groupId) {
-    throw new Error("not_found_or_forbidden");
-  }
-
-  const trimmed = displayName.trim();
-  if (trimmed.length < 1 || trimmed.length > 80) throw new Error("invalid_name");
-
-  await prisma.tastingGroupMember.update({
-    where: { id: memberId },
-    data: { displayName: trimmed },
-  });
-
-  revalidatePath(`/es/app/groups/${groupId}`);
-  revalidatePath(`/en/app/groups/${groupId}`);
-  return { ok: true };
 }
 
 // ─── Resend a membership invitation (owner only) ──────────────────────────────
@@ -1212,54 +1218,55 @@ export async function updateMemberDisplayName(
 export async function resendInvitation(
   groupId: string,
   memberId: string,
-): Promise<{ ok: true; emailStatus: "sent" | "skipped" | "failed" | "rate_limited" }> {
-  const user = await requireRegisteredUser();
+): Promise<ActionResult<{ emailStatus: "sent" | "skipped" | "failed" | "rate_limited" }>> {
+  return run("resendInvitation", async () => {
+    const user = await requireRegisteredUser();
 
-  const group = await prisma.tastingGroup.findUnique({
-    where: { id: groupId },
-    select: { createdBy: true, name: true, description: true },
+    const group = await prisma.tastingGroup.findUnique({
+      where: { id: groupId },
+      select: { createdBy: true, name: true, description: true },
+    });
+    if (!group || group.createdBy !== user.id) {
+      throw new Error("not_found_or_forbidden");
+    }
+
+    const member = await prisma.tastingGroupMember.findUnique({
+      where: { id: memberId },
+      select: { groupId: true, email: true, userId: true, displayName: true },
+    });
+    if (!member || member.groupId !== groupId) {
+      throw new Error("not_found_or_forbidden");
+    }
+    if (member.userId !== null) return { emailStatus: "skipped" };
+
+    try {
+      const inviterProfile = await prisma.profile.findUnique({
+        where: { id: user.id },
+        select: { displayName: true, preferredLang: true },
+      });
+      const senderLocale: Locale = inviterProfile?.preferredLang === "en" ? "en" : "es";
+      const origin = await trustedRequestOrigin();
+      const sent = await sendGroupInvitationEmails({
+        group: { id: groupId, name: group.name, description: group.description },
+        inviterId: user.id,
+        inviterName: inviterProfile?.displayName ?? "",
+        recipients: [
+          { memberId, email: member.email, userId: null, displayName: member.displayName },
+        ],
+        origin,
+        senderLocale,
+      });
+      return {
+        emailStatus: sent.ok ? (sent.summary.results[0]?.status ?? "failed") : sent.error,
+      };
+    } catch (e) {
+      logWarn({
+        where: "resendInvitation",
+        message: "invitation_email_threw",
+        groupId,
+        code: (e as { code?: string })?.code ?? "unknown",
+      });
+      return { emailStatus: "failed" };
+    }
   });
-  if (!group || group.createdBy !== user.id) {
-    throw new Error("not_found_or_forbidden");
-  }
-
-  const member = await prisma.tastingGroupMember.findUnique({
-    where: { id: memberId },
-    select: { groupId: true, email: true, userId: true, displayName: true },
-  });
-  if (!member || member.groupId !== groupId) {
-    throw new Error("not_found_or_forbidden");
-  }
-  if (member.userId !== null) return { ok: true, emailStatus: "skipped" };
-
-  try {
-    const inviterProfile = await prisma.profile.findUnique({
-      where: { id: user.id },
-      select: { displayName: true, preferredLang: true },
-    });
-    const senderLocale: Locale = inviterProfile?.preferredLang === "en" ? "en" : "es";
-    const origin = await trustedRequestOrigin();
-    const sent = await sendGroupInvitationEmails({
-      group: { id: groupId, name: group.name, description: group.description },
-      inviterId: user.id,
-      inviterName: inviterProfile?.displayName ?? "",
-      recipients: [
-        { memberId, email: member.email, userId: null, displayName: member.displayName },
-      ],
-      origin,
-      senderLocale,
-    });
-    return {
-      ok: true,
-      emailStatus: sent.ok ? (sent.summary.results[0]?.status ?? "failed") : sent.error,
-    };
-  } catch (e) {
-    logWarn({
-      where: "resendInvitation",
-      message: "invitation_email_threw",
-      groupId,
-      code: (e as { code?: string })?.code ?? "unknown",
-    });
-    return { ok: true, emailStatus: "failed" };
-  }
 }

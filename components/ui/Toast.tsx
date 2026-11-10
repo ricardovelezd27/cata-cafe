@@ -114,6 +114,12 @@ export function ActionFeedbackProvider({
         if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) {
           throw err;
         }
+        // A fetch that never reached the server (S8-14): say "offline", not
+        // "something went wrong", so the cupper knows to retry on a connection.
+        if (typeof navigator !== "undefined" && navigator.onLine === false) {
+          notifyError("offline");
+          return { ok: false, error: "offline" };
+        }
         notifyError("unknown");
         return { ok: false, error: "unknown" };
       }

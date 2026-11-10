@@ -1535,7 +1535,9 @@
       "resent": "Invitation resent",
       "resendFailed": "Couldn't resend the invitation",
       "resendRateLimited": "You reached the sending limit. Try again later.",
-      "error": "Couldn't save. Please try again."
+      "error": "Couldn't save. Please try again.",
+      "removeTitle": "Remove from group",
+      "removeBodyNamed": "Remove {name} from the group?"
     },
     "empty": "You don't have any groups yet. Create one to reuse your cupper roster across sessions.",
     "coCuppersTitle": "People you've cupped with",
@@ -1646,7 +1648,10 @@
       "invalid_reference": "One of the linked items no longer exists.",
       "rate_limited": "Too many sends in a short time. Wait a moment and try again.",
       "unknown": "Something went wrong. Please try again.",
-      "entries_closed": "The organizer closed entries for this tasting."
+      "entries_closed": "The organizer closed entries for this tasting.",
+      "group_full": "This group already has 200 members, the maximum.",
+      "invalid_email": "That email address doesn't look valid. Check it and try again.",
+      "offline": "You're offline. Check your connection and try again."
     }
   },
   "warmup": {
