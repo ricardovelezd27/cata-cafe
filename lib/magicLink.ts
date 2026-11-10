@@ -3,9 +3,9 @@ import "server-only";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { reserveEmailBudget } from "@/lib/emailBudget";
-import { siteOrigin } from "@/lib/inviteUrl";
+import { trustedRequestOrigin } from "@/lib/requestOrigin";
 import { parseClientIp } from "@/lib/requestIp";
-import { pickTrustedOrigin, safeNextPath } from "@/lib/trustedOrigin";
+import { safeNextPath } from "@/lib/trustedOrigin";
 
 // The ONE place a sign-in link is requested (S8-03, F-entrar-6): the login
 // form (signInWithMagicLink) and the founding-seat signup (reserveFoundingSeat)
@@ -17,20 +17,6 @@ export type MagicLinkResult =
   | { ok: false; error: string; retryAfterMs?: number };
 
 const DEFAULT_NEXT = "/es/app";
-
-async function trustedOrigin(): Promise<string> {
-  const h = await headers();
-  const requestOrigin =
-    h.get("origin") ||
-    `${h.get("x-forwarded-proto") || "http"}://${h.get("host") || "localhost:3000"}`;
-  return pickTrustedOrigin({
-    requestOrigin,
-    siteOrigin: siteOrigin(),
-    nodeEnv: process.env.NODE_ENV,
-    vercelEnv: process.env.VERCEL_ENV,
-    vercelUrls: [process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL],
-  });
-}
 
 /**
  * @param beforeSend runs after the budget check passes and before the link is
@@ -60,7 +46,7 @@ export async function sendMagicLink(
   // /auth/callback verifies the token_hash then redirects here. This token_hash
   // flow is stateless, so it works even when the email link opens in a
   // different browser or an in-app webview (where PKCE code exchange fails).
-  const origin = await trustedOrigin();
+  const origin = await trustedRequestOrigin();
   const redirectTo = `${origin}${safeNextPath(next, DEFAULT_NEXT)}`;
 
   const supabase = await createClient();

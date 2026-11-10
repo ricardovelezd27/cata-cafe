@@ -7,7 +7,6 @@
 // prisma/sql/rls_and_triggers.sql Phase 8b) when their email matches.
 
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { prisma } from "@/lib/prisma";
 import { requireRegisteredUser } from "@/lib/auth";
@@ -16,6 +15,7 @@ import { deliverGroupMail, type GroupEmailResult, type GroupMailJob } from "@/li
 import { isBroadcastId, summarize } from "@/lib/groupEmailPlan";
 import { logWarn } from "@/lib/log";
 import { memberLabel } from "@/lib/maskEmail";
+import { trustedRequestOrigin } from "@/lib/requestOrigin";
 import { coCupperIdsAmong, isCoCupper } from "@/lib/coCuppers";
 import { run } from "@/lib/safeAction";
 import type { ActionResult } from "@/lib/actionResult";
@@ -26,14 +26,6 @@ const MAX_GROUP_MEMBERS = 200;
 
 // Same email shape check used by the landing-page waitlist (app/actions/waitlist.ts).
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-async function getOrigin() {
-  const h = await headers();
-  return (
-    h.get("origin") ||
-    `${h.get("x-forwarded-proto") || "http"}://${h.get("host") || "localhost:3000"}`
-  );
-}
 
 // Finds a still-valid SessionInvite for a session, or mints a fresh one.
 // Extracted from sendGroupEmail so notifyGroupOfSession can reuse the exact
@@ -476,7 +468,7 @@ export async function createGroupWithMembers(input: {
           : inviterProfile?.preferredLang === "en"
             ? "en"
             : "es";
-      const origin = await getOrigin();
+      const origin = await trustedRequestOrigin();
       const sent = await sendGroupInvitationEmails({
         group: { id: groupId, name, description },
         inviterId: user.id,
@@ -588,7 +580,7 @@ export async function addMemberByEmail(
         select: { displayName: true, preferredLang: true },
       });
       const senderLocale: Locale = inviterProfile?.preferredLang === "en" ? "en" : "es";
-      const origin = await getOrigin();
+      const origin = await trustedRequestOrigin();
       const sent = await sendGroupInvitationEmails({
         group: { id: groupId, name: group.name, description: group.description },
         inviterId: user.id,
@@ -778,7 +770,7 @@ export async function sendGroupEmail(input: {
     const senderLocale: Locale = senderProfile?.preferredLang === "en" ? "en" : "es";
 
     const localeByUserId = await localesOfLinkedMembers(members);
-    const origin = await getOrigin();
+    const origin = await trustedRequestOrigin();
     const emails = await liveEmails(members);
 
     const jobs: GroupMailJob[] = members.map((m) => {
@@ -942,7 +934,7 @@ export async function notifyGroupOfSession(input: {
     const senderLocale: Locale = senderProfile?.preferredLang === "en" ? "en" : "es";
 
     const localeByUserId = await localesOfLinkedMembers(members);
-    const origin = await getOrigin();
+    const origin = await trustedRequestOrigin();
     const emails = await liveEmails(members);
 
     const jobs: GroupMailJob[] = members.map((m) => {
@@ -1259,7 +1251,7 @@ export async function resendInvitation(
       select: { displayName: true, preferredLang: true },
     });
     const senderLocale: Locale = inviterProfile?.preferredLang === "en" ? "en" : "es";
-    const origin = await getOrigin();
+    const origin = await trustedRequestOrigin();
     const sent = await sendGroupInvitationEmails({
       group: { id: groupId, name: group.name, description: group.description },
       inviterId: user.id,
