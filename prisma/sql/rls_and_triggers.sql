@@ -1325,35 +1325,10 @@ CREATE POLICY "coffees_write" ON coffees
 --     where table_schema='public' and table_name in ('evaluations','session_samples')
 --       and grantee in ('anon','authenticated') order by 1,2,3;
 --
--- Dry run: run the block below with its last line `COMMIT;` replaced by the
--- probes at the end of this header and a final `ROLLBACK;`. Read every probe,
--- then run the block for real.
---
--- Probes (as a participant of an ACTIVE group session; replace the uuids):
---   set local role authenticated;
---   set local request.jwt.claims = '{"sub":"<participant-uuid>","role":"authenticated"}';
---   select count(*), count(distinct "cupperId") from evaluations;
---     -- own rows only: distinct cupperId = 1
---   select count(*) from aggregate_scores where "sessionSampleId" in
---     (select id from session_samples where "sessionId" = '<hidden-session-id>');
---     -- 0 while results are hidden for that participant
---   update evaluations set "isDraft" = false;      -- ERROR: permission denied
---   insert into session_invites (id, token, "sessionId", "createdBy")
---     values ('x','x','<any-session-id>','<participant-uuid>');  -- ERROR: permission denied
---   update profiles set "analyticsAccess" = true;  -- ERROR: permission denied
---   select "coffeeId" from session_samples;        -- ERROR: permission denied for column
---   select id, label, revealed from session_samples limit 3;   -- works
---   select has_function_privilege('authenticated','public.is_session_owner(text)','EXECUTE'),
---          has_function_privilege('authenticated','public.can_view_group_results(text)','EXECUTE'),
---          has_function_privilege('authenticated','public.is_session_participant(text)','EXECUTE');
---     -- true, true, true
---   select has_function_privilege('anon','public.is_session_owner(text)','EXECUTE'),
---          has_function_privilege('anon','public.can_view_group_results(text)','EXECUTE'),
---          has_function_privilege('anon','public.is_session_participant(text)','EXECUTE');
---     -- false, false, false
---   -- then as the OWNER (swap the sub): evaluations shows peers' SUBMITTED rows
---   -- only (never drafts); aggregate_scores shows every sample.
---   reset role;
+-- Dry run: prisma/sql/dry-runs/phase21_dry_run.sql. It is ONE DO statement, so
+-- nothing can be applied and no transaction can be left open. Replace its three
+-- placeholders (participant uuid, owner uuid, session id) and run it: it ends in
+-- an intentional error whose message lists every check with its expected value.
 --
 -- After applying: Supabase Dashboard → Advisors → Security (no new findings),
 -- and open one group session as owner + participant to confirm the waiting

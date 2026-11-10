@@ -609,13 +609,27 @@ learn about new results from the `cupping_sessions` channel only. Apply in the S
    If the column list differs, add the missing columns to the `GRANT SELECT (...)` line
    before running. If the second query returns rows, ask each owner to press "Iniciar
    cata" (or close the session) before you deploy the app.
-2. **Dry run.** Paste the whole `PHASE 21` block, replace its last `COMMIT;` with the
-   probes listed in the header comment, end with `ROLLBACK;`, and run. Expected: own
-   evaluations only; `aggregate_scores` empty while hidden; `update evaluations`,
-   `insert into session_invites` and `update profiles` fail with *permission denied*;
-   `select "coffeeId" from session_samples` fails; `select id, label from session_samples`
-   works; `has_function_privilege` is `true` for `authenticated` and `false` for `anon` on
-   `is_session_owner`, `can_view_group_results` and `is_session_participant`.
+2. **Dry run** (fail-safe: one statement, nothing is applied). Open
+   `prisma/sql/dry-runs/phase21_dry_run.sql` and replace its three placeholders. Find
+   candidates with this read-only query (an active group session with at least one
+   participant who has not submitted; `owner_id` is the creator, `participant_id` a
+   non-owner participant):
+
+   ```sql
+   select cs.id as session_id, cs."createdBy" as owner_id, sp."userId" as participant_id
+   from cupping_sessions cs
+   join session_participants sp on sp."sessionId" = cs.id and sp.status <> 'owner'
+   where cs."isGroup" and cs.status = 'active'
+     and not exists (
+       select 1 from evaluations e join session_samples ss on ss.id = e."sessionSampleId"
+       where ss."sessionId" = cs.id and e."cupperId" = sp."userId" and e."isDraft" = false)
+   limit 10;
+   ```
+
+   Paste the whole file and run it. Expected: a red error starting with `PHASE 21 DRY
+   RUN: NOTHING WAS APPLIED`, listing lines 1a to 3b; compare each with its
+   `(expect ...)` text. Any OTHER error: stop and report it (nothing was applied either
+   way).
 3. **Apply.** Run the block as written (`BEGIN … COMMIT`). Expected: `Success. No rows
    returned`.
 4. **Verify** in the SQL Editor:
