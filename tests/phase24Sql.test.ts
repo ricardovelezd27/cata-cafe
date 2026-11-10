@@ -144,6 +144,18 @@ describe("phase24_dry_run.sql", () => {
     expect(exec).toContain("3e owner reads coffee_shares without error");
   });
 
+  it("restricts every default-ACL probe feeding an expect-0 check to schema public", () => {
+    const exec = stripComments(DRY);
+    const probe4a = /SELECT count\(\*\) INTO v_n\s+FROM pg_default_acl[\s\S]*?;/.exec(exec);
+    expect(probe4a).not.toBeNull();
+    expect(probe4a![0]).toMatch(/JOIN pg_namespace n ON n\.oid = d\.defaclnamespace AND n\.nspname = 'public'/);
+    // every pg_default_acl query other than the informational 4c is public-only
+    const queries = exec.match(/FROM pg_default_acl[\s\S]*?;/g) ?? [];
+    expect(queries.length).toBe(3);
+    for (const q of queries.slice(0, 2)) expect(q).toMatch(/n\.nspname = 'public'/);
+    expect(DRY).toContain("4c other schemas where postgres still grants default writes");
+  });
+
   it("is one DO statement that can only end in an exception", () => {
     const exec = stripComments(DRY);
     expect(exec.match(/\bDO \$dry\$/g)?.length).toBe(1);

@@ -1979,7 +1979,8 @@ $$;
 --   -- (c) default privileges of postgres in public (expect anon and authenticated
 --   --     to hold arwdDxt or similar, i.e. the Supabase default):
 --   select defaclrole::regrole, defaclnamespace::regnamespace, defaclobjtype, defaclacl
---     from pg_default_acl order by 1, 2, 3;
+--     from pg_default_acl where defaclnamespace = 'public'::regnamespace order by 1, 2, 3;
+--   -- Supabase's own storage schema keeps its own defaults and is out of scope.
 --
 -- Dry run: prisma/sql/dry-runs/phase24_dry_run.sql (ONE DO statement, nothing
 -- can be applied; one placeholder, the owner uuid). It ends in an intentional
