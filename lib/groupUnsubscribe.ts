@@ -99,6 +99,18 @@ export function unsubscribeFooterHtml(locale: "es" | "en", url: string): string 
   return `<p style="color:#7a7168; font-size:12px; margin-top:24px;"><a href="${url}" style="color:#7a7168;">${FOOTER[locale === "en" ? "en" : "es"]}</a></p>`;
 }
 
+/** What every group mail is sent with: footer link in the body plus the RFC 8058 headers. */
+export function decorateGroupMail(args: {
+  html: string;
+  locale: "es" | "en";
+  unsubUrl: string;
+}): { html: string; headers: Record<string, string> } {
+  return {
+    html: withUnsubscribeFooter(args.html, args.locale, args.unsubUrl),
+    headers: unsubscribeHeaders(args.unsubUrl),
+  };
+}
+
 /** Puts the footer before the final closing tag of the template's wrapper, or at the end. */
 export function withUnsubscribeFooter(html: string, locale: "es" | "en", url: string): string {
   const footer = unsubscribeFooterHtml(locale, url);

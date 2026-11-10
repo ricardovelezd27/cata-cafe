@@ -6,11 +6,10 @@ import { reserveEmailBudget } from "@/lib/emailBudget";
 import { logWarn } from "@/lib/log";
 import { siteOrigin } from "@/lib/inviteUrl";
 import {
+  decorateGroupMail,
   mintUnsubscribeToken,
-  unsubscribeHeaders,
   unsubscribeUrl,
-  withUnsubscribeFooter,
-} from "@/lib/groupUnsubscribe";
+}from "@/lib/groupUnsubscribe";
 import {
   SEND_CONCURRENCY,
   idempotencyKeyFor,
@@ -116,12 +115,14 @@ export async function deliverGroupMail(args: {
         chunk.map(async (job) => {
           const key = idempotencyKeyFor(broadcastId, job.memberId, prior.get(job.memberId) ?? 0);
           const unsubUrl = unsubscribeUrl(origin, mintUnsubscribeToken(groupId, job.memberEmail));
+          const mail = decorateGroupMail({ html: job.html, locale: job.locale, unsubUrl });
           const outcome = await sendWithRetry(
             () =>
               sendEmail({
                 to: job.email,
                 subject: job.subject,
-                html: job.html,
+                html: mail.html,
+                headers: mail.headers,
                 idempotencyKey: key,
               }),
             sleep,
