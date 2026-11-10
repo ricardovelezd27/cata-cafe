@@ -859,8 +859,15 @@ One nullable column and one column with a constant default. Existing rows become
 card. To test the cron manually:
 `curl -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/cron/insights-digest`.
 With `RESEND_API_KEY` set it answers `sent: 1`; the second call answers `alreadyRan: true`.
-With the key unset it answers `sent: 0` and the month stays retryable (no row is kept).
+With the key unset it answers `sent: 0` and no row is kept, so the month is free to run again.
 A `running` row older than 30 minutes (a crashed run) is taken over by the next call.
+
+**The cron is monthly, so nothing retries by itself.** A run left `running` (the function
+died) or released with zero sends is NOT retried automatically: the next scheduled tick is a
+month away. The owner re-runs the cron URL by hand (the `curl` above) once 30 minutes have
+passed for a stuck `running` row, or right after fixing the cause for a zero-send run. Until
+then the Acceso page shows "En curso" for the stuck run. Each recipient's outcome is saved as
+soon as its email is sent, so the manual re-run skips anyone who already received it.
 
 **Rollback:** code revert is enough (the columns are harmless when unread). If a `running`
 row blocks a month you want to resend, delete it in the SQL editor:
