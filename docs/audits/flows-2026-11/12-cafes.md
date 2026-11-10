@@ -59,7 +59,7 @@ A coffee is a reusable record owned by its creator (`createdBy`), with a 6-chara
 - **Confidence** — verified-in-code
 - **Kim?** — no
 - **Invariant check** — none touched.
-- **Fixed in S8-12** (PR #TBD) — `rotateCoffeeInvite` (old URL reads invalid), offered in the revoke confirmation (default on), 30-day expiry shown next to the link, `maxUses` checked inside the join transaction.
+- **Fixed in S8-12** (PR #74) — `rotateCoffeeInvite` (old URL reads invalid), offered in the revoke confirmation (default on), 30-day expiry shown next to the link, `maxUses` checked inside the join transaction.
 
 ### F-cafes-5 · Going private and back silently reactivates old links and people · severity: P2 · status: confirms-board(Volver a compartir reactiva enlaces y accesos antiguos)
 
@@ -70,7 +70,7 @@ A coffee is a reusable record owned by its creator (`createdBy`), with a 6-chara
 - **Confidence** — verified-in-code
 - **Kim?** — no
 - **Invariant check** — none touched (RLS `coffees_select` mirrors `usableCoffeeWhere`; change both if shares are deleted).
-- **Fixed in S8-12** (PR #TBD) — `setCoffeeVisibility(private)` deletes the invites; returning to shared/public lists the previous people and lets the owner keep or clear them.
+- **Fixed in S8-12** (PR #74) — `setCoffeeVisibility(private)` deletes the invites; returning to shared/public lists the previous people and lets the owner keep or clear them.
 
 ### F-cafes-6 · Create, edit and duplicate throw instead of returning ActionResult · severity: P2 · status: new
 

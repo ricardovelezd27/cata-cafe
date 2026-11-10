@@ -60,7 +60,7 @@ After a cupping, owner, participants, guests and the super-admin lens all land o
 - **Confidence** — verified-in-code.
 - **Kim?** — yes, K-resultados-1.
 - **Invariant check** — Option A adds a third sanctioned post-close write; CLAUDE.md and `docs/flows.md` §1 must be updated in the same PR.
-- **Fixed in S8-12** (PR #TBD) — owner AND revealed sample may save origin data after close (`upsertExtrinsic` returns `ActionResult`, stamps `edited_at`; others get `session_closed`), dialog errors are localized toasts, reports say "Origen editado el …". TODO(Kim-D1) left.
+- **Fixed in S8-12** (PR #74) — owner AND revealed sample may save origin data after close (`upsertExtrinsic` returns `ActionResult`, stamps `edited_at`; others get `session_closed`), dialog errors are localized toasts, reports say "Origen editado el …". TODO(Kim-D1) left.
 
 ### F-resultados-5 · Excluding a cupper is a bare switch: no reason, no author, no notice, and it still works after close · severity: P2 · status: confirms-board(Excluir a un catador después del cierre cambia resultados ya enviados) + new (no audit trail, no n of N)
 
@@ -71,7 +71,7 @@ After a cupping, owner, participants, guests and the super-admin lens all land o
 - **Confidence** — verified-in-code.
 - **Kim?** — yes, K-resultados-2.
 - **Invariant check** — If allowed after close, add it to the sanctioned-writes list in CLAUDE.md and `docs/flows.md` §1.
-- **Fixed in S8-12** (PR #TBD) — `setParticipantExclusion` is `run()` -> `ActionResult` with a fixed reason list, author/time/reason stored (migration `20261111130000`), `ExclusionDialog` + localized toasts, matrix shows who/when/why, "n de N incluidos" everywhere, "Resultados actualizados el …" after close. TODO(Kim-D2) left.
+- **Fixed in S8-12** (PR #74) — `setParticipantExclusion` is `run()` -> `ActionResult` with a fixed reason list, author/time/reason stored (migration `20261111130000`), `ExclusionDialog` + localized toasts, matrix shows who/when/why, "n de N incluidos" everywhere, "Resultados actualizados el …" after close. TODO(Kim-D2) left.
 
 ### F-resultados-6 · Ranking implies a verdict the data cannot support · severity: P2 · status: new
 
@@ -82,7 +82,7 @@ After a cupping, owner, participants, guests and the super-admin lens all land o
 - **Confidence** — verified-in-code.
 - **Kim?** — yes, K-resultados-3.
 - **Invariant check** — Display-only; reference anchors stay out of ranking, average and best; scoring untouched.
-- **Fixed in S8-12** (PR #TBD) — `RANKING_POLICY` in `lib/reports/ranking.ts`: shared ranks, suppressed/indicative n, no SD or "mejor" under 3 cuppers, "sin diferencia clara", basis chip when bases mix; page, summary and ficha read one output. TODO(Kim-D3) left.
+- **Fixed in S8-12** (PR #74) — `RANKING_POLICY` in `lib/reports/ranking.ts`: shared ranks, suppressed/indicative n, no SD or "mejor" under 3 cuppers, "sin diferencia clara", basis chip when bases mix; page, summary and ficha read one output. TODO(Kim-D3) left.
 
 ### F-resultados-7 · Radar card hard-codes Spanish and "Revelar" works on closed sessions · severity: P3 · status: confirms-board(Revelar sigue disponible en una sesión cerrada)
 
@@ -93,7 +93,7 @@ After a cupping, owner, participants, guests and the super-admin lens all land o
 - **Confidence** — verified-in-code.
 - **Kim?** — no.
 - **Invariant check** — Restores closed = read-only.
-- **Fixed in S8-12** (PR #TBD) — radar card strings come from `results.radar.*` (es/en), "Revelar" is hidden on closed sessions (the action itself was already guarded by S8-01).
+- **Fixed in S8-12** (PR #74) — radar card strings come from `results.radar.*` (es/en), "Revelar" is hidden on closed sessions (the action itself was already guarded by S8-01).
 
 ### F-resultados-8 · PDFs carry no timestamp, language or inclusion state, and the CVA form can print an unfinished draft unmarked · severity: P3 · status: new
 
@@ -104,7 +104,7 @@ After a cupping, owner, participants, guests and the super-admin lens all land o
 - **Confidence** — verified-in-code.
 - **Kim?** — no.
 - **Invariant check** — PDF gating stays inside builders.
-- **Fixed in S8-12** (PR #TBD) — `ReportStamp` (server date/time UTC, language, inclusion, "Borrador"), `Document language` on all six PDFs, dated filenames, `cva-pdf` passes `draft`.
+- **Fixed in S8-12** (PR #74) — `ReportStamp` (server date/time UTC, language, inclusion, "Borrador"), `Document language` on all six PDFs, dated filenames, `cva-pdf` passes `draft`.
 
 ### F-resultados-9 · Footer PDF links are plain anchors with no offline or native path · severity: P3 · status: new
 
@@ -125,7 +125,7 @@ After a cupping, owner, participants, guests and the super-admin lens all land o
 - **Confidence** — verified-in-code.
 - **Kim?** — no.
 - **Invariant check** — none touched.
-- **Fixed in S8-12** (PR #TBD) — `localStorage` read guarded, "Editar" dropped on closed sessions, login redirect carries `next=`.
+- **Fixed in S8-12** (PR #74) — `localStorage` read guarded, "Editar" dropped on closed sessions, login redirect carries `next=`.
 
 ## 4. Keep — works well
 
