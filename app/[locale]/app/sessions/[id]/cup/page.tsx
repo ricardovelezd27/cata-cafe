@@ -113,6 +113,17 @@ export default async function CupPage({
         })
       ).map((r) => ({ cupperId: r.cupperId, sampleId: r.sessionSampleId }))
     : [];
+  // Owner only: evaluations (draft or submitted) per sample, so the master
+  // panel can ask before a re-pin replaces cuppers' notes (S8-21 #1).
+  const evalCountBySample: Record<string, number> = {};
+  if (isOwner) {
+    const grouped = await prisma.evaluation.groupBy({
+      by: ["sessionSampleId"],
+      where: { sessionSample: { sessionId: id } },
+      _count: { _all: true },
+    });
+    for (const g of grouped) evalCountBySample[g.sessionSampleId] = g._count._all;
+  }
   const submittedProgress = computeSubmitProgress(
     seedSubmitMap(submittedRows),
     session.samples.map((s) => s.id),
@@ -184,6 +195,7 @@ export default async function CupPage({
       submittedCount={submittedProgress.done}
       // Only the owner sees peers' rows (RLS) and renders the live counter.
       submittedRows={isOwner ? submittedRows : []}
+      evalCountBySample={evalCountBySample}
       eligibleCupperIds={isOwner ? eligibleCupperIds : []}
       session={{
         id: session.id,
@@ -297,6 +309,8 @@ export default async function CupPage({
         referenceAddHint: tg("referenceAddHint"),
         referenceAddTitle: tg("referenceAddTitle"),
         referenceAddConfirm: tg("referenceAddConfirm"),
+        referenceRepinTitle: t("session.edit.repinTitle"),
+        referenceRepinBody: t.raw("session.edit.repinBody") as string,
         inviteRegenerate: tg("inviteRegenerate"),
         inviteRegenerateTitle: tg("inviteRegenerateTitle"),
         inviteRegenerateBody: tg("inviteRegenerateBody"),

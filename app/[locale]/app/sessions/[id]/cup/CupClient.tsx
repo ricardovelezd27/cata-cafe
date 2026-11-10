@@ -177,6 +177,7 @@ type CuppingTab = "cupping" | "extrinsic" | "physical";
 // Stable defaults: a fresh [] per render would re-trigger the re-seed effect.
 const NO_ROWS: SubmittedRow[] = [];
 const NO_IDS: string[] = [];
+const NO_COUNTS: Record<string, number> = {};
 
 export function CupClient({
   locale,
@@ -192,6 +193,7 @@ export function CupClient({
   submittedCount: initialSubmittedCount,
   submittedRows = NO_ROWS,
   eligibleCupperIds = NO_IDS,
+  evalCountBySample = NO_COUNTS,
   translations,
   userEmail,
   userCountry,
@@ -237,6 +239,8 @@ export function CupClient({
   /** Owner only: submitted evaluation rows + the cuppers who count (S8-11 T1). */
   submittedRows?: SubmittedRow[];
   eligibleCupperIds?: string[];
+  /** Owner only: evaluations per sample, for the re-pin confirm (S8-21 #1). */
+  evalCountBySample?: Record<string, number>;
   userId: string;
   translations: {
     sample: string;
@@ -363,6 +367,9 @@ export function CupClient({
     referenceAddHint?: string;
     referenceAddTitle?: string;
     referenceAddConfirm?: string;
+    referenceRepinTitle?: string;
+    /** `{n}` placeholder, replaced client-side. */
+    referenceRepinBody?: string;
     // Invite control + late joiners (S8-11). Optional: offline prop blobs.
     inviteRegenerate?: string;
     inviteRegenerateTitle?: string;
@@ -515,6 +522,9 @@ export function CupClient({
   const refOrderRef = useRef(refOrder);
   const referenceSampleId = refOrder.length ? refOrder[refOrder.length - 1] : null;
   const [pendingReference, setPendingReference] = useState<string | null>(null);
+  // Re-pin of a sample cuppers already rated: asks before their notes are
+  // replaced by the 79.00 anchor, then sends confirmRepin (S8-21 #1).
+  const [repinTarget, setRepinTarget] = useState<string | null>(null);
   const referenceSeqRef = useRef(0);
   // Sample ids whose pinned "ensure" auto-save has already been queued.
   const ensuredReferenceRef = useRef<Set<string>>(new Set());
@@ -1584,17 +1594,20 @@ export function CupClient({
   // drops only the active one. Adding on top of an existing reference asks
   // for confirmation first (the old one unlocks, the new one is pinned).
   const REMOVE_ACTIVE = "__remove_active__";
-  const commitReference = (next: string | null) => {
+  const commitReference = (next: string | null, confirmRepin = false) => {
     if (next && refOrderRef.current.includes(next)) return; // already one: server no-op
     if (!next && refOrderRef.current.length === 0) return;
+    // A new reference that already has evaluations asks first (the server
+    // refuses without confirmRepin anyway).
+    if (next && !confirmRepin && (evalCountBySample[next] ?? 0) > 0) {
+      setRepinTarget(next);
+      return;
+    }
     const prevOrder = refOrderRef.current;
     const seq = ++referenceSeqRef.current;
     applyReferenceOrder(next);
     startTransition(async () => {
-      // TODO(S8-10): the master panel does not yet show the "N cuppers' notes
-      // will be replaced" confirm that the edit form has (B2 default); until
-      // then it keeps the S6 mid-session re-pin behaviour.
-      const r = await feedback.run(setReferenceSample(session.id, next, true));
+      const r = await feedback.run(setReferenceSample(session.id, next, confirmRepin));
       if (!r.ok && seq === referenceSeqRef.current) applyRefOrder(prevOrder);
     });
   };
@@ -2440,6 +2453,25 @@ export function CupClient({
           const id = pendingReference;
           setPendingReference(null);
           if (id) commitReference(id);
+        }}
+      />
+      <ConfirmDialog
+        open={repinTarget !== null}
+        onOpenChange={(o) => {
+          if (!o) setRepinTarget(null);
+        }}
+        title={translations.referenceRepinTitle ?? "¿Fijar esta muestra como referencia?"}
+        body={(
+          translations.referenceRepinBody ??
+          "{n} catadores ya evaluaron esta muestra. Al marcarla como referencia, sus notas de calidad se reemplazan por el ancla de 79.00. No se puede deshacer."
+        ).replace("{n}", String(repinTarget ? (evalCountBySample[repinTarget] ?? 0) : 0))}
+        confirmLabel={translations.referenceAddConfirm ?? "Añadir referencia"}
+        cancelLabel={translations.cancel}
+        closeLabel={translations.cancel}
+        onConfirm={() => {
+          const id = repinTarget;
+          setRepinTarget(null);
+          if (id) commitReference(id, true);
         }}
       />
       <ConfirmDialog
