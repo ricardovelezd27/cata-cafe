@@ -1265,3 +1265,73 @@ member → group page shows the notice → "Volver a recibir correos de este gru
 
 **Rollback:** the column is nullable; code rolled back ignores it. Do not drop it while the new
 code is deployed.
+
+---
+
+## §26. Supabase — apply PHASE 24 (API roles read-only across the schema, 2026-11, S8-24 / audit A-02)
+
+**When:** any time, before or after the deploy (the app never writes through the API roles;
+see the S8 combined rollout section for the order). No Prisma migration. Apply in the Supabase **SQL editor of
+the production project** (there is only one).
+
+**What it does** (`prisma/sql/rls_and_triggers.sql`, block `PHASE 24`, read its header):
+
+- Drops the last five write policies on the browser key: `tasting_groups_owner_all`,
+  `tasting_group_members_owner_all`, `group_posts_write`, `coffees_write`, `history_own`.
+  The exploitable one let any signed-in user (a guest too) link any user id into their own
+  group over `/rest/v1/tasting_group_members` and then mail that person through "Enviar
+  correo". Where a dropped policy was also the only read path (`tasting_groups`,
+  `tasting_group_members`, `user_coffee_history`) a SELECT-only twin with the same condition
+  replaces it, so reads do not change.
+- Re-targets the six SELECT policies that had no role (`coffees_select`,
+  `coffee_shares_select`, `group_posts_select`, `sessions_select`, `samples_select`,
+  `participants_select`) to `authenticated`. The public key can no longer list public coffees
+  with their owner ids.
+- Revokes `INSERT/UPDATE/DELETE/TRUNCATE` from `anon` and `authenticated` on **every** table in
+  `public`, and changes the default privileges of `postgres` so a table created by a future
+  migration is born read-only for them. **Future rule:** a table the browser must write
+  needs an explicit `GRANT … TO authenticated` (and a policy) in its own SQL phase.
+- Ends with a self-check: if any write policy or API-role write privilege is left, the whole
+  block aborts and nothing is applied.
+
+**Steps**
+
+1. **Pre-flight** (read-only): run the three queries (a), (b), (c) from the PHASE 24 header.
+   (a) must list exactly the 18 policies named there; anything else: stop and report.
+   **Save the output of (b) and (c)**: (b) prints the exact `GRANT` statements that restore
+   today's write grants, which is the grant half of the rollback.
+2. **Dry run** (fail-safe: one statement, nothing is applied). Open
+   `prisma/sql/dry-runs/phase24_dry_run.sql` and replace its one placeholder, `<owner-uuid>`,
+   with a registered user who owns a tasting group and a coffee:
+
+   ```sql
+   select g."createdBy" as owner_id, count(*) as groups
+   from tasting_groups g
+   join coffees c on c."createdBy" = g."createdBy" and c."deletedAt" is null
+   group by 1 order by 2 desc limit 5;
+   ```
+
+   Paste the whole file and run it. Expected: a red error starting with `PHASE 24 DRY RUN:
+   NOTHING WAS APPLIED`, lines 1a to 4b; compare each with its `(expect ...)` text (1a, 1b,
+   1c, 1d, 2a, 2b, 2c and 4a must be `0` / `f`; 3a and 3b greater than 0 for that owner).
+   Line 4b is informational. Any OTHER error (for example `policy "…" does not exist`):
+   stop and report it; nothing was applied either way.
+3. **Apply.** Run the block as written (`BEGIN … COMMIT`). Expected: `Success. No rows
+   returned`. An error starting `PHASE 24 aborted, nothing applied` means the self-check
+   found something left: report it.
+4. **Verify** in the SQL Editor:
+
+   ```sql
+   select tablename, policyname, cmd, roles from pg_policies
+   where schemaname = 'public' and (cmd <> 'SELECT' or roles <> '{authenticated}');
+   ```
+
+   Expected: no rows. Then Supabase **Advisors → Security**: no new warnings.
+5. **Smoke test** (two accounts, an active group session): the waiting room, cup and results
+   screens still update live (Realtime reads `cupping_sessions` and `evaluations` through
+   their SELECT policies); create a group, add a member, post, send a group email, create a
+   coffee: all work (they are server actions through Prisma).
+
+**Rollback:** the commented block at the end of PHASE 24 (paste the saved pre-flight (b)
+output where it says so; run the default-privileges line only if (c) showed them). Run it
+in one transaction. The app keeps working under either state.

@@ -1859,3 +1859,253 @@ $$;
 --     RETURN NEW;
 --   END;
 --   $$;
+
+-- ============================================================================
+-- PHASE 24 (2026-11-10, S8-24 / audit A-02): the API roles are READ-ONLY across
+-- the whole public schema.
+-- Apply via runbook §26, dry run first (prisma/sql/dry-runs/phase24_dry_run.sql).
+-- The Supabase project is production (there is only one).
+--
+-- Why: PHASE 21 closed the browser-key write surface on the nine session tables
+-- only. Five tables still carried a FOR ALL policy (USING doubles as WITH CHECK,
+-- no TO clause, so it applied to `anon` too) and the Supabase default grants
+-- (INSERT/UPDATE/DELETE/TRUNCATE to anon + authenticated) were still in place:
+--   * tasting_groups_owner_all        (PHASE 10)  tasting_groups
+--   * tasting_group_members_owner_all (PHASE 10)  tasting_group_members
+--   * group_posts_write               (PHASE 17)  group_posts
+--   * coffees_write                   (PHASE 20)  coffees
+--   * history_own                     (PHASE 2)   user_coffee_history
+-- The exploitable one: with any `authenticated` JWT (a guest's too) a group
+-- owner could POST /rest/v1/tasting_group_members with {groupId: <own group>,
+-- userId: <any user uuid>} (the policy only checks group ownership), and the
+-- group mail path (liveEmails in app/actions/groups.ts) then resolves that
+-- uuid to the victim's real address and mails attacker-written text to it.
+-- Guests could also INSERT coffees / tasting_groups past requireRegisteredUser
+-- and forge their own user_coffee_history rows. Read from the policies and the
+-- code, not demonstrated against production.
+--
+-- Verified 2026-11-10 at this tip:
+--   * Every write in this app is a server action / route / script going
+--     through Prisma as `postgres` (table owner, bypasses RLS). SECURITY
+--     DEFINER triggers (handle_new_user, recompute_aggregate_score) run as
+--     their owner. Neither depends on anon/authenticated privileges.
+--   * The browser makes no PostgREST call at all:
+--       grep -rnE '\.(from|rpc)\(\s*["'"'"'`]' app components hooks lib scripts
+--       → (no output, exit 1)
+--     Browser supabase-js is used only for auth and three Realtime clients.
+--   * supabase_realtime holds only `evaluations` and `cupping_sessions`
+--     (Phase 7). Realtime evaluates their SELECT policies as `authenticated`;
+--     both stay SELECT policies with the same USING expression.
+--
+-- What it does (one transaction):
+--   1. Drops the five write policies. Where the FOR ALL policy was also the
+--      only READ path (tasting_groups, tasting_group_members,
+--      user_coffee_history) a SELECT-only policy TO authenticated with the SAME
+--      USING expression replaces it, so reads are unchanged. group_posts and
+--      coffees already have a SELECT policy covering the owner's rows
+--      (group_posts_select has the identical USING; coffees_select includes
+--      "createdBy" = auth.uid() AND "deletedAt" IS NULL), so nothing is added.
+--   2. Every remaining SELECT policy without a role (coffees_select,
+--      coffee_shares_select, group_posts_select, sessions_select,
+--      samples_select, participants_select) is re-targeted TO authenticated
+--      with ALTER POLICY, which keeps the USING expression byte for byte. For
+--      `anon` they returned nothing anyway (auth.uid() is NULL), except
+--      coffees_select, which let the public key read every public coffee with
+--      its "createdBy" (the uuid harvest the attack above starts from).
+--      No policy calls a new helper; is_session_participant keeps EXECUTE for
+--      authenticated (PHASE 18b rule) and is not touched here.
+--   3. Belt and braces, schema-wide: INSERT/UPDATE/DELETE/TRUNCATE revoked from
+--      anon and authenticated on EVERY table in public, and the default
+--      privileges of `postgres` (the role Prisma migrations create tables as)
+--      no longer hand those four to anon/authenticated, so a future table is
+--      born read-only for the API roles.
+--      FUTURE WORK: a table that must be written from the browser needs an
+--      explicit `GRANT INSERT|UPDATE|DELETE ... TO authenticated` in its own
+--      SQL phase, plus a policy. Nothing today needs it.
+--      Not touched: SELECT grants (beyond PHASE 21's session_samples column
+--      grant), REFERENCES/TRIGGER grants, sequences, functions, service_role,
+--      and default privileges of roles other than postgres (a table created
+--      from the dashboard Table Editor as supabase_admin would still get the
+--      Supabase defaults; the dry run reports them, line 4b).
+--   4. A self-check at the end aborts the whole transaction (nothing applied)
+--      if any non-SELECT policy, any `TO public USING (true)` policy or any
+--      API-role write privilege is left in public.
+--
+-- Pre-flight (read-only; run first, SAVE BOTH OUTPUTS: they are the exact rollback):
+--   -- (a) current policies; expect exactly these 18 (PHASE 21 applied):
+--   select tablename, policyname, cmd, roles from pg_policies
+--     where schemaname = 'public' order by 1, 2;
+--   --   aggregate_scores.agg_select SELECT {authenticated}
+--   --   coffee_shares.coffee_shares_select SELECT {public}
+--   --   coffees.coffees_select SELECT {public}; coffees.coffees_write ALL {public}
+--   --   cupping_sessions.sessions_select SELECT {public}
+--   --   evaluations.evals_select_own, evals_select_owner SELECT {authenticated}
+--   --   extrinsic_data.ext_select SELECT {authenticated}
+--   --   group_posts.group_posts_select SELECT {public}; group_posts_write ALL {public}
+--   --   physical_evaluations.phys_select SELECT {authenticated}
+--   --   profiles.profiles_select SELECT {authenticated}
+--   --   session_invites.invites_select_own SELECT {authenticated}
+--   --   session_participants.participants_select SELECT {public}
+--   --   session_samples.samples_select SELECT {public}
+--   --   tasting_group_members.tasting_group_members_owner_all ALL {public}
+--   --   tasting_groups.tasting_groups_owner_all ALL {public}
+--   --   user_coffee_history.history_own ALL {public}
+--   -- Anything else (an extra write policy, a missing one): stop and report.
+--   -- (b) API-role write grants today, printed as the GRANT statements that
+--   --     restore them (this output IS the grant half of the rollback):
+--   select format('GRANT %s ON public.%I TO %I;',
+--                 string_agg(DISTINCT a.privilege_type, ', '), c.relname, r.rolname)
+--     from pg_class c
+--     join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
+--     cross join lateral aclexplode(c.relacl) a
+--     join pg_roles r on r.oid = a.grantee and r.rolname in ('anon', 'authenticated')
+--    where c.relkind in ('r', 'p', 'v', 'f')
+--      and a.privilege_type in ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')
+--    group by c.relname, r.rolname order by 1;
+--   -- expect: every public table EXCEPT PHASE 21's nine (evaluations,
+--   -- aggregate_scores, cupping_sessions, session_samples, session_participants,
+--   -- physical_evaluations, extrinsic_data, session_invites, profiles).
+--   -- (c) default privileges of postgres in public (expect anon and authenticated
+--   --     to hold arwdDxt or similar, i.e. the Supabase default):
+--   select defaclrole::regrole, defaclnamespace::regnamespace, defaclobjtype, defaclacl
+--     from pg_default_acl order by 1, 2, 3;
+--
+-- Dry run: prisma/sql/dry-runs/phase24_dry_run.sql (ONE DO statement, nothing
+-- can be applied; one placeholder, the owner uuid). It ends in an intentional
+-- error whose message lists every probe with its expected value.
+--
+-- How to verify after applying:
+--   select tablename, policyname, cmd, roles from pg_policies
+--     where schemaname = 'public' and (cmd <> 'SELECT' or roles <> '{authenticated}');
+--     -- expect 0 rows
+--   then Supabase Dashboard → Advisors → Security (no new findings), and the
+--   two-account Realtime smoke test of runbook §10 step 5 (waiting room, cup,
+--   results still update: sessions_select / evals_* are what Realtime reads).
+-- Rollback: the commented block at the end of this phase.
+-- ============================================================================
+BEGIN;
+
+-- >>> PHASE 24 statements (copied verbatim into phase24_dry_run.sql) >>>
+
+-- 1. Write policies go. The three FOR ALL policies that were also the only read
+--    path get a SELECT-only twin with the same USING expression.
+DROP POLICY IF EXISTS "tasting_groups_owner_all" ON tasting_groups;
+DROP POLICY IF EXISTS "tasting_groups_select_own" ON tasting_groups;
+CREATE POLICY "tasting_groups_select_own" ON tasting_groups
+  FOR SELECT TO authenticated
+  USING ("createdBy" = auth.uid()::text);
+
+DROP POLICY IF EXISTS "tasting_group_members_owner_all" ON tasting_group_members;
+DROP POLICY IF EXISTS "tasting_group_members_select_owner" ON tasting_group_members;
+CREATE POLICY "tasting_group_members_select_owner" ON tasting_group_members
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM tasting_groups
+      WHERE id = tasting_group_members."groupId"
+        AND "createdBy" = auth.uid()::text
+    )
+  );
+
+DROP POLICY IF EXISTS "history_own" ON user_coffee_history;
+DROP POLICY IF EXISTS "history_select_own" ON user_coffee_history;
+CREATE POLICY "history_select_own" ON user_coffee_history
+  FOR SELECT TO authenticated
+  USING ("userId" = auth.uid()::text);
+
+-- group_posts_select (same USING) and coffees_select (a superset) already
+-- cover the owner's reads.
+DROP POLICY IF EXISTS "group_posts_write" ON group_posts;
+DROP POLICY IF EXISTS "coffees_write" ON coffees;
+
+-- 2. SELECT policies without a role: TO authenticated, USING untouched.
+--    ALTER POLICY fails (and the whole transaction rolls back) if one of them
+--    does not exist: that is drift, stop and report it.
+ALTER POLICY "coffees_select" ON coffees TO authenticated;
+ALTER POLICY "coffee_shares_select" ON coffee_shares TO authenticated;
+ALTER POLICY "group_posts_select" ON group_posts TO authenticated;
+ALTER POLICY "sessions_select" ON cupping_sessions TO authenticated;
+ALTER POLICY "samples_select" ON session_samples TO authenticated;
+ALTER POLICY "participants_select" ON session_participants TO authenticated;
+
+-- 3. Belt and braces, schema-wide and for future tables. Prisma (postgres, the
+--    table owner) and SECURITY DEFINER triggers are unaffected.
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+  REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLES FROM anon, authenticated;
+
+-- <<< end of PHASE 24 statements <<<
+
+-- 4. Self-check (not copied into the dry run, whose probes 1a-1c check the
+--    same things). Any failure aborts the transaction: nothing is applied.
+DO $chk$
+DECLARE
+  v_n int;
+BEGIN
+  SELECT count(*) INTO v_n FROM pg_policies
+   WHERE schemaname = 'public' AND cmd <> 'SELECT';
+  IF v_n > 0 THEN
+    RAISE EXCEPTION 'PHASE 24 aborted, nothing applied: % non-SELECT policies left in public', v_n;
+  END IF;
+  SELECT count(*) INTO v_n FROM pg_policies
+   WHERE schemaname = 'public' AND 'public' = ANY (roles) AND qual = 'true';
+  IF v_n > 0 THEN
+    RAISE EXCEPTION 'PHASE 24 aborted, nothing applied: % TO public USING (true) policies in public', v_n;
+  END IF;
+  SELECT count(*) INTO v_n
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
+    CROSS JOIN unnest(ARRAY['anon', 'authenticated']) AS r(role)
+    CROSS JOIN unnest(ARRAY['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE']) AS p(priv)
+   WHERE c.relkind IN ('r', 'p', 'v', 'f')
+     AND has_table_privilege(r.role::name, c.oid, p.priv);
+  IF v_n > 0 THEN
+    RAISE EXCEPTION 'PHASE 24 aborted, nothing applied: % API-role write privileges left in public', v_n;
+  END IF;
+END
+$chk$;
+
+COMMIT;
+
+-- Rollback (restores exactly what was there before this phase; one transaction):
+--   BEGIN;
+--   -- grants: paste the output of pre-flight (b) here, e.g.
+--   --   GRANT DELETE, INSERT, TRUNCATE, UPDATE ON public.coffees TO anon;
+--   --   GRANT DELETE, INSERT, TRUNCATE, UPDATE ON public.coffees TO authenticated;
+--   --   ...
+--   -- default privileges (only if pre-flight (c) showed them for postgres in public):
+--   ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+--     GRANT INSERT, UPDATE, DELETE, TRUNCATE ON TABLES TO anon, authenticated;
+--   ALTER POLICY "coffees_select" ON coffees TO public;
+--   ALTER POLICY "coffee_shares_select" ON coffee_shares TO public;
+--   ALTER POLICY "group_posts_select" ON group_posts TO public;
+--   ALTER POLICY "sessions_select" ON cupping_sessions TO public;
+--   ALTER POLICY "samples_select" ON session_samples TO public;
+--   ALTER POLICY "participants_select" ON session_participants TO public;
+--   DROP POLICY IF EXISTS "tasting_groups_select_own" ON tasting_groups;
+--   CREATE POLICY "tasting_groups_owner_all" ON tasting_groups
+--     FOR ALL USING ("createdBy" = auth.uid()::text);
+--   DROP POLICY IF EXISTS "tasting_group_members_select_owner" ON tasting_group_members;
+--   CREATE POLICY "tasting_group_members_owner_all" ON tasting_group_members
+--     FOR ALL USING (
+--       EXISTS (
+--         SELECT 1 FROM tasting_groups
+--         WHERE id = tasting_group_members."groupId"
+--           AND "createdBy" = auth.uid()::text
+--       )
+--     );
+--   DROP POLICY IF EXISTS "history_select_own" ON user_coffee_history;
+--   CREATE POLICY "history_own" ON user_coffee_history
+--     FOR ALL USING ("userId" = auth.uid()::text);
+--   CREATE POLICY "group_posts_write" ON group_posts
+--     FOR ALL USING (
+--       EXISTS (
+--         SELECT 1 FROM tasting_groups g
+--         WHERE g.id = group_posts."groupId"
+--           AND g."createdBy" = auth.uid()::text
+--       )
+--     );
+--   CREATE POLICY "coffees_write" ON coffees
+--     FOR ALL USING ("deletedAt" IS NULL AND "createdBy" = auth.uid()::text);
+--   COMMIT;
+-- ============================================================================
