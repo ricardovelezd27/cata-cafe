@@ -36,7 +36,9 @@ export default async function AppLayout({
   // gated destination gets the "finish creating your account" modal instead
   // (GuestGateProvider / GuestGateLink), and proxy.ts stays the server gate.
   const isGuest = user.is_anonymous === true;
-  const showOnboarding = !profile?.onboardingCompleted;
+  // Guests never see the welcome dialog: they are mid-cupping, and the claim
+  // flow carries their name over (F-guest-7).
+  const showOnboarding = !isGuest && !profile?.onboardingCompleted;
   const showInsights =
     isSuperAdminEmail(user.email) || isAiAdminEmail(user.email) || !!profile?.analyticsAccess;
   const initialDisplayName =
@@ -62,6 +64,7 @@ export default async function AppLayout({
     next: tOnb("next"),
     whereToStart: tOnb("whereToStart"),
     saving: tOnb("saving"),
+    close: tOnb("close"),
     goTo: tOnb.raw("goTo"),
     roles: {
       q_grader: tOnb("roles.q_grader"),

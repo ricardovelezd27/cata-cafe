@@ -461,7 +461,7 @@
   "profile": {
     "title": "Profile",
     "displayName": "Display name",
-    "preferredLang": "Preferred language",
+    "preferredLang": "Email language",
     "bio": "Bio",
     "save": "Save",
     "ownedSessions": "My sessions as master",
@@ -1008,6 +1008,7 @@
     "next": "Next",
     "whereToStart": "Where to start?",
     "saving": "Saving…",
+    "close": "Close",
     "goTo": "Go to {label}",
     "roles": {
       "q_grader": "Q Grader",

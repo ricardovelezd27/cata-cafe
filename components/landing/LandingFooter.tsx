@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { localeHref } from "./locale-href";
+import { supportMailto } from "@/lib/siteContact";
 
 export default async function LandingFooter({ locale }: { locale: string }) {
   const t = await getTranslations("landing.footer");
@@ -30,15 +31,15 @@ export default async function LandingFooter({ locale }: { locale: string }) {
               >
                 {t("signIn")}
               </Link>
-              <a href="mailto:hola@estudiodecafe.online" className="block hover:text-surface">
+              <a href={supportMailto()} className="block hover:text-surface">
                 {t("contact")}
               </a>
             </div>
             <div className="space-y-2.5">
-              <a href="mailto:hola@estudiodecafe.online?subject=Privacidad" className="block hover:text-surface">
+              <a href={supportMailto("Privacidad")} className="block hover:text-surface">
                 {t("privacy")}
               </a>
-              <a href="mailto:hola@estudiodecafe.online?subject=Terminos" className="block hover:text-surface">
+              <a href={supportMailto("Terminos")} className="block hover:text-surface">
                 {t("terms")}
               </a>
             </div>

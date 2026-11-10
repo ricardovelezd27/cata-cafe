@@ -461,7 +461,7 @@
   "profile": {
     "title": "Perfil",
     "displayName": "Nombre para mostrar",
-    "preferredLang": "Idioma preferido",
+    "preferredLang": "Idioma de los correos",
     "bio": "Bio",
     "save": "Guardar",
     "ownedSessions": "Mis sesiones como maestro",
@@ -1008,6 +1008,7 @@
     "next": "Siguiente",
     "whereToStart": "¿Por dónde empezar?",
     "saving": "Guardando…",
+    "close": "Cerrar",
     "goTo": "Ir a {label}",
     "roles": {
       "q_grader": "Catador/a Certificado/a Q",
