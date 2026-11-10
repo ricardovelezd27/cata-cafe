@@ -579,6 +579,7 @@
     "starting": "Starting…",
     "startSessionError": "Could not start the tasting. Please try again.",
     "startGroupNoticeFailed": "The tasting started, but we could not email the group. You can resend the notice from the group page.",
+    "startGroupNoticePartial": "The tasting started. The notice reached part of the group; retry the failed ones from the group page.",
     "reveal": "Reveal identity",
     "revealed": "Revealed",
     "selectCoffee": "Select coffee",

@@ -19,7 +19,7 @@ import { sessionHref } from "@/lib/sessionRouting";
 import { closeSessionInternal } from "@/lib/closeSession";
 import * as v from "@/lib/validate";
 import { runLengthMs } from "@/lib/warmup/syncedRun";
-import { shouldNotifyAtStart } from "@/lib/groupNotify";
+import { noticeOutcome, shouldNotifyAtStart } from "@/lib/groupNotify";
 import { notifyGroupOfSession } from "@/app/actions/groups";
 import { run } from "@/lib/safeAction";
 import { logWarn } from "@/lib/log";
@@ -333,7 +333,7 @@ export async function startSession(sessionId: string) {
 async function notifyGroupAtStart(
   sessionId: string,
   startFlipped: boolean,
-): Promise<"sent" | "rate_limited" | "failed" | undefined> {
+): Promise<"sent" | "partial" | "rate_limited" | "failed" | undefined> {
   try {
     const s = await prisma.cuppingSession.findUnique({
       where: { id: sessionId },
@@ -367,13 +367,17 @@ async function notifyGroupAtStart(
     if (claim.count !== 1) return undefined;
 
     const res = await notifyGroupOfSession({ groupId: s.groupId, sessionId });
-    if (res.ok) return "sent";
-    // Release the claim so the owner can resend from the group page.
+    if (res.ok) {
+      // `ok` is true even when every recipient failed: the summary decides.
+      const outcome = noticeOutcome(res.data);
+      if (outcome !== "failed") return outcome; // "sent" | "partial" keep the stamp
+    }
+    // Nothing went out: release the claim so the owner can resend.
     await prisma.cuppingSession.updateMany({
       where: { id: sessionId },
       data: { groupNotifiedAt: null },
     });
-    return res.error === "rate_limited" ? "rate_limited" : "failed";
+    return !res.ok && res.error === "rate_limited" ? "rate_limited" : "failed";
   } catch (err) {
     logWarn({
       where: "startSession",

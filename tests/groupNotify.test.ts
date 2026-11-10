@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shouldNotifyAtCreate, shouldNotifyAtStart } from "@/lib/groupNotify";
+import { noticeOutcome, shouldNotifyAtCreate, shouldNotifyAtStart } from "@/lib/groupNotify";
 
 const base = { isGroup: true, isAsync: false, hasGroup: true, alreadyNotified: false };
 const startBase = { ...base, notifyGroupAtStart: true, startFlipped: true };
@@ -23,6 +23,19 @@ describe("shouldNotifyAtStart", () => {
   });
   it("a second start call (not flipped) never notifies", () => {
     expect(shouldNotifyAtStart({ ...startBase, startFlipped: false })).toBe(false);
+  });
+});
+
+describe("noticeOutcome", () => {
+  it("everyone failed -> failed (stamp released)", () => {
+    expect(noticeOutcome({ sent: 0, failed: 3 })).toBe("failed");
+  });
+  it("some sent, some failed -> partial", () => {
+    expect(noticeOutcome({ sent: 2, failed: 1 })).toBe("partial");
+  });
+  it("all sent or nothing failed -> sent", () => {
+    expect(noticeOutcome({ sent: 3, failed: 0 })).toBe("sent");
+    expect(noticeOutcome({ sent: 0, failed: 0 })).toBe("sent");
   });
 });
 

@@ -34,6 +34,17 @@ export function shouldNotifyAtStart(i: NotifyAtStartInput): boolean {
   );
 }
 
+export type NoticeOutcome = "sent" | "partial" | "failed";
+
+/** How a finished send looks to the owner. `notifyGroupOfSession` is `ok`
+ *  even when every recipient failed; only the summary tells. Nothing sent but
+ *  something failed -> "failed" (release the stamp so it can be resent); some
+ *  sent and some failed -> "partial" (keep the stamp; retry from the group). */
+export function noticeOutcome(summary: { sent: number; failed: number }): NoticeOutcome {
+  if (summary.failed > 0) return summary.sent > 0 ? "partial" : "failed";
+  return "sent";
+}
+
 /** Async group session linked to a group: send at creation. */
 export function shouldNotifyAtCreate(i: NotifyRuleInput): boolean {
   return i.isGroup && i.isAsync && i.hasGroup && !i.alreadyNotified;
