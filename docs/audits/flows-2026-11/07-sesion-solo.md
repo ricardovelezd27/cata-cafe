@@ -67,6 +67,8 @@ The owner of a solo session (wizard or express; always `status: "active"` from c
 
 ### F-solo-5 · A good save of one sample clears the amber "pendiente" while another sample is still device-only · severity: P3 · status: confirms-board(Un guardado correcto de otra muestra borra el aviso ámbar)
 
+**Fixed in S8-09** (draft PR, branch `claude/s8-09-offline-impl`): the amber pending state and `hasPending` are derived from the store after every flush; one synced sample no longer clears another sample that is still device-only.
+
 - **Problem** — `persist` calls `setHasPending(false)` and `setSaveStatus("saved")` on any synced flush (`CupClient.tsx:1063-1066`) instead of reading the durable count (`countLocalPending`, `:952-962`).
 - **Implication** — Pending sample A looks saved once B syncs, and the leave guard shows its plain body, so the cupper can walk away believing everything is on the server. Final submit stays protected (`:1243-1250`). Trust, mild data-loss risk.
 - **Fix** — Derive indicator and leave-guard copy from the local pending count after each flush. **Acceptance:** A pending and B synced stays amber; it clears only after A syncs; leave guard uses the pending body meanwhile. **Size:** S.

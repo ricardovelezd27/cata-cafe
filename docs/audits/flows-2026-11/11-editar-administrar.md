@@ -64,6 +64,8 @@ The owner manages a session from the sessions list (edit, duplicate, delete icon
 
 ### F-sesiones-5 · A cupper's offline draft is orphaned when the owner deletes the session or removes the sample · severity: P2 · status: new
 
+**Fixed in S8-09** (draft PR, branch `claude/s8-09-offline-impl`): a draft for a deleted session/sample is reported as `orphaned`, stops retrying, no longer blocks submit and is listed in "Notas sin sincronizar" (read, copy, confirmed discard).
+
 - **Problem** — `app/actions/offline.ts:39` `syncEvaluation` calls `requireSampleMember`, which throws `not_found_or_forbidden` when the sample no longer exists (`lib/sessionAuth.ts:118–124`). `hooks/useOfflineSync.ts:91–95` catches every throw, retries, then returns `"failed"`; only a `"discarded"` result (closed session) clears the pending flag (:80–83). Nothing handles "session deleted" or "sample removed".
 - **Implication** — Native-readiness and trust. A participant who cupped offline sees the amber "pendiente de sincronizar" state and the pending-drafts badge indefinitely for a session that no longer exists, with no explanation and no way to dismiss or keep their notes. Likely on tablets in a lab with bad Wi-Fi, exactly when owners tidy up.
 - **Fix** — Distinguish "gone" from "transient": the replay returns a `gone` outcome for a missing sample or a revoked membership; the client clears the pending flag and shows one plain notice ("Esta sesión ya no existe; tus notas siguen en este dispositivo / se descartaron"), choosing whether to offer a local export. **Acceptance:** delete a session while a second device holds an unsynced draft, reconnect → draft leaves the queue within one replay, a notice appears, badge count drops to zero. **Size:** M.

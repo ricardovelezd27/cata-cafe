@@ -665,6 +665,44 @@ each gate is a pure, tested helper shared by every consumer:
 
 ---
 
+## 7. Offline drafts and replay (S8-09)
+
+```mermaid
+stateDiagram-v2
+  [*] --> pending: edit saved on the device
+  pending --> synced: replay ok
+  pending --> conflict: server holds a submitted row (group)
+  pending --> closed_unsent: session closed or expired
+  pending --> orphaned: sample or session gone for this user
+  pending --> pending: replay failed, retry in 15 s doubling to 5 min
+  pending --> failed: 5 failed runs
+  failed --> pending: cupper taps Reintentar
+  conflict --> synced: keep submitted, or replace and replay
+  closed_unsent --> [*]: cupper discards after reading or copying
+  orphaned --> [*]: cupper discards after reading or copying
+```
+
+- Replay runs on the online edge, on resume (tab visible, `pageshow`, via `hooks/useResume.ts`),
+  once on an online mount and on the retry schedule. One module-level lock means the cup screen,
+  the results pill and the guard provider never replay at once.
+- The replay result is applied only if the module's `updatedAt` still equals the one sent
+  (`applyOutcome`, `lib/offline/status.ts`): an edit made mid-flight stays `pending`.
+- Only `pending` blocks the final submit. `failed`, `closed_unsent` and `orphaned` never do; the
+  cup screen names them in a notice and the app-shell badge opens "Notas sin sincronizar"
+  (read, copy, confirmed discard; nothing is deleted automatically).
+- `conflict` is rebuilt from the stored blobs, so it survives a reload.
+- Sign-out and the guest claim ask first when anything exists only on the device
+  (`UnsyncedGuardProvider`). The claim stores the anonymous id in `cata_claim_anon`; the next app
+  mount under the signed-in account re-keys the blobs (`rekeyUserBlobs`).
+- Replay actions return `synced | conflict | closed | pending | gone | rejected` and never throw
+  for those; `syncEvaluation` keeps its legacy contract for cached bundles.
+- Service worker v3: static cache capped at 120 entries, `/app/insights` and `/app/profile`
+  never cached, page caches purged when the signed-in id differs from the last one.
+- TODO(C1): sending a `closed_unsent` note to the session owner is a post-close write and waits
+  for Kim. TODO(E5): creating a session offline waits for Kim; only detection and the message ship.
+
+---
+
 ## Maintenance checklist
 
 When you touch any of these, update the matching diagram **in the same PR**:

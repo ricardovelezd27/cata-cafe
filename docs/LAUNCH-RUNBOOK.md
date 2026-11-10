@@ -802,3 +802,44 @@ contains `prisma/migrations/20261111090000_close_lifecycle/`.
 
 **Rollback:** the deploy can be reverted freely (the columns are nullable and unused by old
 code). Dropping the columns/table is not needed.
+
+---
+
+## §14. Offline sync hardening, service worker v3 (2026-11, S8-09)
+
+What it is for: offline drafts get explicit end states (nothing is dropped silently), the
+replay retries by itself, and the service worker stops serving stale or other users' pages.
+**No migration and no Supabase SQL.** The one thing to know before deploying:
+
+- `public/sw.js` goes from `v2` to `v3`. On the first visit after the deploy every
+  browser drops its old `cata-static-*`, `cata-pages-*` and `cata-rsc-*` caches once and
+  rebuilds them. Expect one slower first load per device and, for a cupper who is OFFLINE
+  at that moment with an uncached page, the "need connection" screen. Deploy outside a live
+  tasting. Drafts in IndexedDB are not touched.
+
+**Steps**
+
+1. Deploy. Nothing to run.
+2. **Check** on a phone after the deploy: DevTools or Safari Web Inspector, Application,
+   Cache Storage shows only `cata-*-v3` caches; `/app/insights` and `/app/profile` are not
+   in `cata-pages-v3`.
+
+**Device checks (physical iPhone and a low-end Android; audit 15 section 5)**
+
+- Lock the phone mid-cupping with a pending draft, unlock: the replay runs without a tap.
+- Turn the server off (or airplane mode on a resumed tab), watch "Próximo intento en N s";
+  after 5 failed attempts the module is parked and "Reintentar sincronización" appears.
+- Delete a session from a second device while the first holds a draft, reconnect: the draft
+  appears under "Notas sin sincronizar", no endless retry.
+- Sign out with a pending draft: the warning dialog names the count.
+- A guest with a pending draft taps "Guardar mis resultados": the dialog names the count;
+  after signing in, the draft replays under the new account (the marker is localStorage
+  `cata_claim_anon`).
+- Shared tablet: user A signs out, B signs in, go offline: A's pages are not served.
+
+**Not in this PR (owned by S8-15):** `navigator.storage.persist()` and the 3-day stale-draft
+warning.
+
+**Rollback:** revert the deploy. Reverting `sw.js` to `v2` evicts the v3 caches again on the
+next activate; blobs written with the new statuses (`failed`, `orphaned`) are read by old
+code as unknown statuses and simply never replay, so keep them readable by not deleting them.

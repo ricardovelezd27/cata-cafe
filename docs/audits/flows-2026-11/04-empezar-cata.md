@@ -45,6 +45,8 @@
 
 ### F-04-3 · Starting a cupping offline fails with a generic error · severity: P2 · status: new
 
+**Fixed in S8-09** (draft PR, branch `claude/s8-09-offline-impl`): Express and the wizard disable submit while the connectivity probe says offline (values kept) and a dropped request shows the specific `offline` copy. Queued creation stays `TODO(E5)`.
+
 - **Problem** — `ExpressForm.tsx:67-74` and the wizard call the server directly; there is no connectivity check and no queue. On a network failure `useActionFeedback.run` falls into its catch and toasts `unknown` (`components/ui/Toast.tsx:110-117`). The pages may load from the service-worker cache, so the user fills the form and only then fails.
 - **Implication** — The offline-first promise stops at the door: evaluations survive offline, but the session that holds them cannot be started. A cupper in a lab with bad signal sees "something went wrong".
 - **Fix** — Minimum: detect offline and say so, keeping the form ("Sin conexión: se necesita internet para crear la sesión"). Later (needs a spec): client-generated ids so express can be created locally and replayed. **Acceptance:** offline tap shows the specific message and keeps values; reconnecting lets the same tap succeed. **Size:** S for the message, L for queued creation.
