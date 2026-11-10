@@ -218,6 +218,22 @@ export async function mergeModuleData(
   });
 }
 
+// One module read through the same per-key chain as every write, so the result
+// reflects every save already queued ahead of it (S8-23, C-01). Null when the
+// module (or storage) is gone.
+export async function loadModuleSerialized(
+  sessionId: string,
+  userId: string,
+  sampleId: string,
+  moduleKey: ModuleKey,
+): Promise<OfflineModuleData | null> {
+  if (!instance()) return null;
+  return serialize(sessionKey(sessionId, userId), async () => {
+    const blob = await loadSession(sessionId, userId);
+    return blob?.samples[sampleId]?.modules[moduleKey] ?? null;
+  });
+}
+
 // Flip a module's syncStatus after a sync attempt resolves.
 export async function setModuleStatus(
   sessionId: string,

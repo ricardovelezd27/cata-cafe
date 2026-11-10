@@ -3,6 +3,7 @@ import {
   applyOutcome,
   countStatuses,
   deviceOnlyCount,
+  moduleToSend,
   rekeyBlob,
   retryDelayMs,
   RETRY_BASE_MS,
@@ -158,5 +159,41 @@ describe("rekeyBlob (guest claim, F-guest-5)", () => {
     const out = rekeyBlob(from, "real", existing);
     expect(out.samples.a.modules.affective?.data).toEqual({ keep: 1 });
     expect(out.samples.a.modules.descriptive).toBeDefined();
+  });
+});
+
+describe("moduleToSend: the replay pass never sends its stale snapshot (S8-23, C-01/C-02)", () => {
+  it("skips a module a live save already delivered meanwhile", () => {
+    const snapshot = mod({ updatedAt: 100, data: { v: 1 } });
+    const current = mod({ updatedAt: 250, data: { v: 2 }, syncStatus: "synced" });
+    expect(moduleToSend(current, snapshot)).toBeNull();
+  });
+  it("sends the fresh data and updatedAt when edited but still pending", () => {
+    const snapshot = mod({ updatedAt: 100, data: { v: 1 } });
+    const current = mod({ updatedAt: 250, data: { v: 2 } });
+    expect(moduleToSend(current, snapshot)).toEqual({ data: { v: 2 }, updatedAt: 250 });
+  });
+  it("skips a module that vanished or is parked", () => {
+    expect(moduleToSend(null, mod())).toBeNull();
+    expect(moduleToSend(undefined, mod())).toBeNull();
+    for (const s of ["conflict", "closed_unsent", "orphaned"] as const) {
+      expect(moduleToSend(mod({ syncStatus: s }), mod())).toBeNull();
+    }
+  });
+  it("still sends a failed module (manual retry path)", () => {
+    expect(moduleToSend(mod({ syncStatus: "failed", updatedAt: 7 }), mod())?.updatedAt).toBe(7);
+  });
+
+  it("fast device clock: the server alone would apply the stale replay, so it must not be sent", () => {
+    const S0 = 1_700_000_000_000;
+    const delta = 10_000; // device clock 10 s ahead
+    // Live save of the newer edit at S0+5s: stamp clamped to server time.
+    const liveStamp = effectiveClientTs(S0 + 5_000 + delta, S0 + 5_000)!;
+    // Stale replay of the old edit (device ts S0+delta) arriving at S0+5.3s.
+    const staleStamp = effectiveClientTs(S0 + delta, S0 + 5_300)!;
+    expect(shouldApplyClientWrite(liveStamp, staleStamp, S0 + 5_300)).toBe(true); // the C-02 hole
+    // Fix at the send: the store says the module was delivered, nothing is sent.
+    const afterLive = mod({ updatedAt: S0 + 5_000, syncStatus: "synced" });
+    expect(moduleToSend(afterLive, mod({ updatedAt: S0 }))).toBeNull();
   });
 });

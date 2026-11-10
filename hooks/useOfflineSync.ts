@@ -4,13 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { replayEvaluation, replayPhysical, replayExtrinsic } from "@/app/actions/offline";
 import {
   applyReplayOutcome,
+  loadModuleSerialized,
   loadSession,
   loadUserBlobs,
   reviveFailedModules,
   setModuleStatus,
 } from "@/lib/offline/store";
 import type { EvalModuleKey } from "@/lib/evaluation";
-import type { ReplayOutcome } from "@/lib/offline/status";
+import { moduleToSend, type ReplayOutcome } from "@/lib/offline/status";
 import {
   EVALUATION_MODULES,
   type Data,
@@ -182,11 +183,19 @@ export function useOfflineSync({
               const mod = sample.modules[moduleKey];
               if (!mod || mod.syncStatus !== "pending") continue;
 
-              const sentAt = mod.updatedAt;
+              // C-01/C-02: `mod` is the pass-start snapshot. Re-read it now and
+              // send what is stored NOW, or nothing if a live save already
+              // delivered it, so an older draft can never land after a newer one.
+              const fresh = moduleToSend(
+                await loadModuleSerialized(blob.sessionId, blob.userId, sampleId, moduleKey),
+                mod,
+              );
+              if (!fresh) continue;
+              const sentAt = fresh.updatedAt;
               const result = await replayModule(
                 sampleId,
                 moduleKey,
-                mod.data,
+                fresh.data,
                 blob.cupsPerSample,
                 false,
                 sentAt,

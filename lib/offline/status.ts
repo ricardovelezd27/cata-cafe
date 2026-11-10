@@ -124,6 +124,24 @@ export function applyOutcome(
   return next;
 }
 
+/** S8-23 (C-01/C-02): what a replay pass should send for one module, decided
+ *  immediately before the request from a FRESH read of the store. The pass
+ *  works from a snapshot taken at its start, so by the time it reaches a module
+ *  the cupper may have edited it (and the live save already delivered that
+ *  edit). Sending the snapshot would put older data on the server after newer
+ *  data. Returns null when the module is gone or no longer waiting to be sent,
+ *  otherwise the CURRENT data and its `updatedAt` (never the snapshot's). The
+ *  snapshot is accepted only to make call sites say what they are replacing. */
+export function moduleToSend(
+  current: OfflineModuleData | null | undefined,
+  snapshot?: OfflineModuleData | null,
+): { data: OfflineModuleData["data"]; updatedAt: number } | null {
+  void snapshot;
+  if (!current) return null;
+  if (current.syncStatus !== "pending" && current.syncStatus !== "failed") return null;
+  return { data: current.data, updatedAt: current.updatedAt };
+}
+
 /** Manual retry: park `failed` modules back into the queue with a clean slate. */
 export function reviveFailed(mod: OfflineModuleData): OfflineModuleData {
   if (mod.syncStatus !== "failed") return mod;
