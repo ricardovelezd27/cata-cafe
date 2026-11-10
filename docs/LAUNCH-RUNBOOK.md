@@ -1175,7 +1175,12 @@ code is deployed.
 
 ## §24. Account deletion: verify on a throwaway account, clean an orphaned auth user (2026-11, S8-19)
 
-No migration, no SQL phase, no new environment variable. Nothing to apply before the deploy.
+No migration and no SQL phase. **Account deletion ships DISABLED (S8-22 A-01).** The one
+environment variable is `ACCOUNT_DELETION_ENABLED`: **leave it unset until the
+throwaway-account rehearsal below has passed** in a non-production environment. While it is
+unset (or anything other than `1`) the profile page does not show "Eliminar cuenta" and both
+`deleteAccount` and the impact read refuse with `not_found_or_forbidden`. Set it to `1` in
+Vercel (Production) only after the rehearsal, then redeploy. Nothing else to apply before the deploy.
 `deleteAccount` creates its own placeholder profile (`deleted_<random>`) inside its transaction,
 so there is no fixed tombstone row to insert.
 

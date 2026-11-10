@@ -9,6 +9,7 @@ import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { isDeleteConfirmed, type AccountDeletionImpact } from "@/lib/accountDeletion/plan";
 import { getAccountDeletionImpact } from "@/lib/accountDeletion/load";
 import { deleteAccountData } from "@/lib/accountDeletion/deleteAccount";
+import { isAccountDeletionEnabled } from "@/lib/features";
 
 function localeOf(value: string | undefined): "es" | "en" {
   return value === "en" ? "en" : "es";
@@ -20,6 +21,8 @@ function localeOf(value: string | undefined): "es" | "en" {
  */
 export async function getMyAccountDeletionImpact(): Promise<ActionResult<AccountDeletionImpact>> {
   return run("getMyAccountDeletionImpact", async () => {
+    // A-01: disabled until the runbook §24 rehearsal passes. Checked FIRST.
+    if (!isAccountDeletionEnabled()) throw new Error("not_found_or_forbidden");
     const user = await requireUser({ skipProfileUpsert: true });
     return getAccountDeletionImpact(user);
   });
@@ -42,6 +45,9 @@ export async function deleteAccount(
   locale?: string,
 ): Promise<ActionResult<{ next: string; userId: string; authDeleted: boolean }>> {
   return run("deleteAccount", async () => {
+    // A-01: disabled until the runbook §24 rehearsal passes. Checked BEFORE
+    // requireUser's result is used for anything, so nothing is read or deleted.
+    if (!isAccountDeletionEnabled()) throw new Error("not_found_or_forbidden");
     const user = await requireUser({ skipProfileUpsert: true });
     const loc = localeOf(locale);
     if (!isDeleteConfirmed(confirmation, loc)) throw new Error("invalid_input");
