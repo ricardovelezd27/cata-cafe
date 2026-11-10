@@ -530,6 +530,8 @@
     "copyImage": "Copy QR",
     "downloadQr": "Download QR",
     "inviteMissing": "This tasting has no active invite link. Generate one from the tasting panel.",
+    "inviteClosed": "This tasting is closed, so its invite link is no longer available.",
+    "viewResults": "View results",
     "scanToJoin": "Scan to join the tasting",
     "continueAsGuest": "Continue as guest",
     "guestNamePlaceholder": "Your name",

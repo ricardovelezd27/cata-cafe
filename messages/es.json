@@ -530,6 +530,8 @@
     "copyImage": "Copiar QR",
     "downloadQr": "Descargar QR",
     "inviteMissing": "Esta cata no tiene un enlace de invitación activo. Genera uno desde el panel de la cata.",
+    "inviteClosed": "Esta cata está cerrada, así que su enlace de invitación ya no está disponible.",
+    "viewResults": "Ver resultados",
     "scanToJoin": "Escanea para unirte a la cata",
     "continueAsGuest": "Continuar como invitado",
     "guestNamePlaceholder": "Tu nombre",
