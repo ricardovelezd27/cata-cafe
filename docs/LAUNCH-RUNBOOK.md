@@ -721,3 +721,36 @@ create button yields one group.
 
 **Rollback:** the objects are additive; code rolled back ignores them. Do not drop the
 tables while the new code is deployed.
+
+## §18. Database — apply the `invite_active_entries_locked` migration (2026-11, S8-11)
+
+**When:** BEFORE the deploy that contains S8-11 (live group robustness). The regenerated
+Prisma client selects `session_invites."active"` and `cupping_sessions."entriesLocked"`
+on every invite / session read, so deploying the code first makes the join page, the cup
+and waiting pages and every session list return 500 until the columns exist. Applying
+the migration first is safe: old code ignores both columns.
+
+**What it does** (`prisma/migrations/20261111110000_invite_active_entries_locked/migration.sql`):
+
+```sql
+ALTER TABLE "session_invites" ADD COLUMN "active" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "cupping_sessions" ADD COLUMN "entriesLocked" BOOLEAN NOT NULL DEFAULT false;
+```
+
+Two columns with constant defaults, no index, no backfill. Every existing invite stays
+usable and every existing session keeps accepting newcomers. Brief lock, no downtime.
+No SQL PHASE block and no RLS change are needed.
+
+**Steps** (repo root, production `DIRECT_URL` in `.env.local`, same precondition as §9):
+
+1. `npx prisma migrate status` — expected: exactly one pending migration,
+   `20261111110000_invite_active_entries_locked`. Anything else: stop and paste the output.
+2. `npx prisma migrate deploy`.
+3. Deploy the code.
+
+**Verify:** open a group session as owner, press "Invitar" twice — the same link shows
+both times; "Regenerar enlace" (confirm) shows a new link and the old one reads "expirado"
+on `/join`. Close entries in the master panel: a new scan is refused with a clear
+message, an existing participant re-enters.
+
+**Rollback:** code revert is enough (the columns are harmless when unread).

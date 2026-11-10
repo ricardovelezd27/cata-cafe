@@ -160,6 +160,10 @@ model CuppingSession {
   /// TIMESTAMPTZ so the realtime payload carries its offset. Never read by
   /// scoring, aggregates or the trigger. Not copied by duplicateSession.
   warmupStartedAt DateTime? @db.Timestamptz(3)
+  /// Owner closed new entries (S8-11 T6 / C4): a NEWCOMER's join link is
+  /// refused with `entries_closed`; existing members re-enter. Display/gating
+  /// only: never read by scoring, aggregates or the trigger.
+  entriesLocked Boolean @default(false)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -365,6 +369,9 @@ model SessionInvite {
   createdBy String
   creator   Profile        @relation(fields: [createdBy], references: [id])
   createdAt DateTime       @default(now())
+  /// false = revoked by "Regenerar enlace" (S8-11 T5). Inactive tokens read
+  /// as expired on /join, joinViaToken and the print QR.
+  active    Boolean        @default(true)
 
   @@index([sessionId])
   @@index([createdBy])
