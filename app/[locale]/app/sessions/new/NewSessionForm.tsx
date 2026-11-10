@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useActionFeedback } from "@/components/ui/Toast";
 import { Trash2, X, ChevronDown } from "lucide-react";
@@ -14,6 +14,12 @@ import { buildInviteUrl } from "@/lib/inviteUrl";
 import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { Badge } from "@/components/ui/Badge";
 import { localDateISO } from "@/lib/localDate";
+import {
+  LAST_FORMAT_KEY,
+  WIZARD_DEFAULT_FORMAT,
+  parseLastFormat,
+  type WizardHandoff,
+} from "@/lib/sessionDefaults";
 import { Select } from "@/components/ui/Select";
 import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 
@@ -246,6 +252,7 @@ export function NewSessionForm({
   groups,
   usableCoffees,
   initialGroupId,
+  handoff,
 }: {
   locale: string;
   t: Translations;
@@ -256,15 +263,32 @@ export function NewSessionForm({
   /** Prefill from `?groupId=` (e.g. the group page's "create session" CTA) —
    *  already validated server-side against the user's own groups. */
   initialGroupId?: string;
+  /** Prefill carried from the express form (already validated server-side). */
+  handoff?: WizardHandoff;
 }) {
   const router = useRouter();
   const feedback = useActionFeedback();
 
   // Session basics
-  const [name, setName] = useState("");
+  const [name, setName] = useState(handoff?.name ?? "");
   const [date, setDate] = useState(localDateISO());
   const [objective, setObjective] = useState("");
-  const [format, setFormat] = useState<"descriptive" | "affective" | "combined">("combined");
+  const [format, setFormat] = useState<"descriptive" | "affective" | "combined">(
+    handoff?.format ?? WIZARD_DEFAULT_FORMAT,
+  );
+
+  // Remembered last format (shared with the express form) — an explicit
+  // handoff wins.
+  useEffect(() => {
+    if (handoff?.format) return;
+    try {
+      const last = parseLastFormat(window.localStorage.getItem(LAST_FORMAT_KEY));
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (last) setFormat(last);
+    } catch {
+      // storage blocked: keep the default
+    }
+  }, [handoff?.format]);
   const [cupsPerSample, setCupsPerSample] = useState(2);
   const [cupsInput, setCupsInput] = useState("2");
 
@@ -275,14 +299,15 @@ export function NewSessionForm({
   const [warmupId, setWarmupId] = useState<WarmupId>("eyes");
 
   const [coffees, setCoffees] = useState<CoffeeEntry[]>(() => [{ ...EMPTY_COFFEE, id: newId() }]);
-  const [samples, setSamples] = useState<SampleEntry[]>(() => [
-    {
+  const [samples, setSamples] = useState<SampleEntry[]>(() =>
+    // N sample chips from the express handoff (default 1); coffees stay required.
+    Array.from({ length: handoff?.sampleCount ?? 1 }, (_, i) => ({
       id: newId(),
-      label: `${t.newForm.sampleChip} ${sampleLetter(0)}`,
+      label: `${t.newForm.sampleChip} ${sampleLetter(i)}`,
       coffeeId: coffees[0].id,
       auto: true,
-    },
-  ]);
+    })),
+  );
 
   // Reference sample — the SampleEntry.id (never the index) so add/remove/
   // reorder keep the selection stable across relabelling.
@@ -486,6 +511,12 @@ export function NewSessionForm({
     const referenceIdx = referenceId
       ? ((idx) => (idx === -1 ? null : idx))(samples.findIndex((s) => s.id === referenceId))
       : null;
+
+    try {
+      window.localStorage.setItem(LAST_FORMAT_KEY, format);
+    } catch {
+      // non-fatal
+    }
 
     start(async () => {
       // A network drop / opaque server failure must never unmount the form:

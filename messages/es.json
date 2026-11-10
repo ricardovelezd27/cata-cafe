@@ -221,7 +221,8 @@
       "increment": "Una muestra más",
       "cta": "Catar ahora",
       "creating": "Creando…",
-      "fullWizard": "Configurar sesión completa"
+      "fullWizard": "Configurar sesión completa",
+      "nameRequired": "Ponle un nombre a la cata para continuar."
     },
     "deleteSession": {
       "title": "Eliminar sesión",

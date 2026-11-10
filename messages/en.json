@@ -221,7 +221,8 @@
       "increment": "One sample more",
       "cta": "Cup now",
       "creating": "Creating…",
-      "fullWizard": "Set up a full session"
+      "fullWizard": "Set up a full session",
+      "nameRequired": "Give the cupping a name to continue."
     },
     "deleteSession": {
       "title": "Delete session",

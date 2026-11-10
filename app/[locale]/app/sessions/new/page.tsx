@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { parseWizardHandoff } from "@/lib/sessionDefaults";
 import { NewSessionForm } from "./NewSessionForm";
 import { COFFEE_COUNTRIES } from "@/lib/analytics/normalize";
 import { getUsableCoffees } from "@/lib/coffees/queries";
@@ -15,10 +16,13 @@ export default async function NewSessionPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ groupId?: string }>;
+  searchParams: Promise<{ groupId?: string; name?: string; format?: string; n?: string }>;
 }) {
   const { locale } = await params;
-  const { groupId: requestedGroupId } = await searchParams;
+  const sp = await searchParams;
+  const requestedGroupId = sp.groupId;
+  // "Configurar sesión completa" from the express form: bad values ignored.
+  const handoff = parseWizardHandoff(sp);
   setRequestLocale(locale);
   const t = await getTranslations("session");
   const tc = await getTranslations("coffee");
@@ -192,6 +196,7 @@ export default async function NewSessionPage({
         countries={countries}
         usableCoffees={usableCoffees}
         initialGroupId={initialGroupId}
+        handoff={handoff}
       />
     </div>
   );
