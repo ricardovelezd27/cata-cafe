@@ -1553,7 +1553,6 @@
     "displayNamePlaceholder": "Name (optional)",
     "unregistered": "No account yet",
     "removeMember": "Remove",
-    "confirmRemoveMember": "Remove this person from the group?",
     "composeEmail": "Email the group",
     "subject": "Subject",
     "message": "Message",
