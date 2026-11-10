@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { completeGuestOnboarding } from "@/app/actions/community";
 import { checkJoinable, joinSessionForm } from "@/app/actions/join";
@@ -34,6 +35,7 @@ interface GuestJoinFormProps {
  * instead of one generic line.
  */
 export function GuestJoinForm({ token, locale, translations }: GuestJoinFormProps) {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +60,15 @@ export function GuestJoinForm({ token, locale, translations }: GuestJoinFormProp
       const {
         data: { user: existing },
       } = await supabase.auth.getUser();
-      if (!existing?.is_anonymous) {
+      if (existing && !existing.is_anonymous) {
+        // A registered user is signed in (stale page, another tab): never
+        // replace their session. Re-render so the server shows the signed-in
+        // join form.
+        router.refresh();
+        setIsSubmitting(false);
+        return;
+      }
+      if (!existing) {
         const { error: signInError } = await supabase.auth.signInAnonymously({
           options: { data: { display_name: trimmed } },
         });
