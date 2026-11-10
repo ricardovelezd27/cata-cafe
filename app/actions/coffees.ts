@@ -8,6 +8,8 @@ import { withCodeRetry } from "@/lib/coffeeCode";
 import { run } from "@/lib/safeAction";
 import type { ActionResult } from "@/lib/actionResult";
 import { idList } from "@/lib/validate";
+import { normalizeCoffeeFields } from "@/lib/coffeeInputBounds";
+import { CERTIFICATIONS } from "@/lib/constants";
 import { ANONYMIZED_COFFEE_DATA } from "@/lib/coffeeAnonymize";
 import {
   isCoffeeVisibility,
@@ -158,8 +160,8 @@ export async function createCoffee(input: {
 }): Promise<{ ok: true; coffeeId: string } | { ok: false; error: string }> {
   const user = await requireRegisteredUser();
 
-  const name = input.name?.trim();
-  if (!name) return { ok: false, error: "name_required" };
+  const fields = normalizeCoffeeFields(input, "create", CERTIFICATIONS);
+  if (!fields.ok) return { ok: false, error: fields.error };
   if (!isCoffeeVisibility(input.visibility)) {
     return { ok: false, error: "invalid_visibility" };
   }
@@ -168,19 +170,7 @@ export async function createCoffee(input: {
     prisma.coffee.create({
       data: {
         code,
-        name,
-        country: input.country?.trim() || null,
-        region: input.region?.trim() || null,
-        farm: input.farm?.trim() || null,
-        producer: input.producer?.trim() || null,
-        species: input.species?.trim() || null,
-        variety: input.variety?.trim() || null,
-        harvestYear: input.harvestYear?.trim() || null,
-        processType: input.processType?.trim() || null,
-        altitude: input.altitude?.trim() || null,
-        roastLevel: input.roastLevel?.trim() || null,
-        certifications: input.certifications ?? [],
-        notes: input.notes?.trim() || null,
+        ...fields.value,
         createdBy: user.id,
         visibility: input.visibility,
       },
@@ -226,26 +216,13 @@ export async function updateCoffee(
     throw new Error("not_found_or_forbidden");
   }
 
-  const name = input.name?.trim();
-  if (!name) return { ok: false, error: "name_required" };
+  // Unknown certifications are dropped (not rejected) so a legacy coffee stays editable.
+  const fields = normalizeCoffeeFields(input, "update", CERTIFICATIONS);
+  if (!fields.ok) return { ok: false, error: fields.error };
 
   await prisma.coffee.update({
     where: { id: coffeeId },
-    data: {
-      name,
-      country: input.country?.trim() || null,
-      region: input.region?.trim() || null,
-      farm: input.farm?.trim() || null,
-      producer: input.producer?.trim() || null,
-      species: input.species?.trim() || null,
-      variety: input.variety?.trim() || null,
-      harvestYear: input.harvestYear?.trim() || null,
-      processType: input.processType?.trim() || null,
-      altitude: input.altitude?.trim() || null,
-      roastLevel: input.roastLevel?.trim() || null,
-      certifications: input.certifications ?? [],
-      notes: input.notes?.trim() || null,
-    },
+    data: fields.value,
   });
 
   revalidatePath("/es/app/coffees");

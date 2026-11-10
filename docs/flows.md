@@ -17,6 +17,12 @@ manage samples (with guards), reveal, close, delete. A **participant** can only
 evaluate and view results. Deleting a session cascades **all participants'
 evaluations**, physical/extrinsic data, invites, and its tasting-history rows.
 
+**Registered-only creation (S8-03):** `createSession`, `createExpressSession`,
+`createGroupSession` and `duplicateSession` call `requireRegisteredUser()`
+(`lib/auth.ts`); an anonymous QR guest gets the same refusal as a stranger even
+by a direct POST (`proxy.ts` only gates pages). Guests keep `requireUser()` for
+join, evaluate, submit, waiting room, offline replay and claim.
+
 ### The one close routine (2026-09-08)
 
 Every path that ends a session goes through `closeSessionInternal`
@@ -392,6 +398,29 @@ sequenceDiagram
         O->>G: updateMemberDisplayName / resendInvitation
     end
 ```
+
+**Group email (S8-03).** Every group action is registered-only. All group mail
+(broadcast, session notice, announcement blast, invitations, resend) goes through
+one sender, `deliverGroupMail` (`lib/groupEmail.ts`):
+
+1. **Reserve** budget first (`reserveEmailBudget`, `lib/emailBudget.ts`; limits in
+   `lib/emailLimits.ts`): 3 broadcasts/hour and 300 recipients/day per account
+   (40/day under 24 h). A refusal is a typed `rate_limited`, never a thrown error;
+   when the database write already succeeded (create group, post, session) the
+   action still returns ok with `emailBlocked: "rate_limited"` and the UI shows an
+   inline notice.
+2. **Send** 4 at a time; 429/5xx/network retried up to 3 attempts with backoff.
+3. **Ledger**: one `group_email_deliveries` row per recipient. "Reintentar
+   fallidos" re-sends the same `broadcastId` and only members whose row is not
+   `sent` get mail (a retry takes recipients, not a broadcast slot).
+4. Results carry a name or masked address (`maskEmail`), never a raw address.
+5. The announcement composer's email checkbox is **opt-in** and shows the
+   recipient count. `createGroupWithMembers` takes a `clientKey` so a replayed
+   submit returns the stored group and sends nothing.
+
+Sign-in links use the same ledger (`magic_link`): 3 per address and 60 per IP per
+15 min, reserved once per send by `sendMagicLink` (`lib/magicLink.ts`), used by
+the login form and the founding-seat signup.
 
 **Sessions for a group:** the owner creates one from the group page ("Crear
 sesión para este grupo" → wizard prefilled via `?groupId=`) or from the wizard

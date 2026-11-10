@@ -563,3 +563,68 @@ alone.
 
 **Rollback:** the column is nullable and unused by the old code — roll the app back and
 leave the column in place.
+
+---
+
+## §11. Database — apply the `outbound_email_ledger` migration + PHASE 22 (2026-11, S8-03)
+
+(S8-01 takes §10 / PHASE 21. If this PR merges first, renumber to §10 / PHASE 21 here and
+in `prisma/sql/rls_and_triggers.sql`.)
+
+**When:** BEFORE the deploy that contains S8-03. The ordering is mandatory, as in §9: the
+regenerated Prisma client selects `tasting_groups."clientKey"` on every group read, so
+deploying the code first makes the groups pages return 500 until the column exists. The
+new email throttle also reads `outbound_email_events` on every sign-in link request, so
+the login form fails until the table exists. Applying the migration first is safe — the
+old code ignores the new objects.
+
+**What it does** (`prisma/migrations/20261110120000_outbound_email_ledger/migration.sql`),
+additive only:
+
+- `outbound_email_events` — one row per reserved send (`kind`, `actorKey`, `targetKey`,
+  `recipients`, `createdAt`). Keys are HMACs of the address / IP, never raw values.
+- `group_email_deliveries` — one row per group-broadcast recipient (`sent | skipped |
+  failed`), what "Reintentar fallidos" reads. FK to `tasting_group_members`, cascade.
+- `tasting_groups."clientKey"` — nullable unique idempotency key of the create-group dialog.
+
+**Steps** (repo root, production `DIRECT_URL` in `.env.local`, direct connection — same
+precondition as §7):
+
+1. Preview: `npx prisma migrate status` — expected: exactly one pending migration,
+   `20261110120000_outbound_email_ledger` (plus any S8-01 / S8-02 migrations if those are
+   not applied yet). Anything else or drift: stop and paste the output.
+2. Apply: `npx prisma migrate deploy` — expected: the migration(s) applied.
+3. **PHASE 22 (RLS)** — Supabase → SQL Editor, run the `PHASE 22` block at the end of
+   `prisma/sql/rls_and_triggers.sql`:
+
+   ```sql
+   ALTER TABLE outbound_email_events ENABLE ROW LEVEL SECURITY;
+   ALTER TABLE group_email_deliveries ENABLE ROW LEVEL SECURITY;
+   ```
+
+   No policies on purpose (server-only through Prisma). Then check **Security Advisor**:
+   it must not list these two tables as "RLS disabled".
+4. **Verify** — SQL Editor:
+
+   ```sql
+   SELECT tablename, rowsecurity FROM pg_tables
+   WHERE tablename IN ('outbound_email_events', 'group_email_deliveries');
+   ```
+
+   Expected: both rows `rowsecurity = true`.
+5. Deploy the branch (merge → Vercel deploys).
+
+**Limits worth checking before a live event** (`lib/emailLimits.ts`, one file):
+sign-in link 3 per address and 60 per IP per 15 min; group mail 3 broadcasts per hour and
+300 recipients per day per account (40 per day while the account is under 24 h). Confirm
+the **Resend plan** covers the daily volume (Resend dashboard → Usage) and Supabase's own
+auth email limit (Dashboard → Authentication → Rate Limits) is not lower than the 60 per IP
+tripwire when a whole room asks for a link at once.
+
+**Smoke test (2 minutes):** request a sign-in link for the same address four times in a
+row — the fourth shows the "demasiados intentos" message under the form, no email is sent.
+Create a group with an email member: the invitation arrives once; double-clicking the
+create button yields one group.
+
+**Rollback:** the objects are additive; code rolled back ignores them. Do not drop the
+tables while the new code is deployed.

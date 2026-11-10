@@ -23,6 +23,8 @@
 
 ### F-04-1 · A guest can create sessions by direct POST · severity: P2 · status: confirms-board(Invitado anónimo crea sesiones por POST directo)
 
+**Fixed in S8-03** (draft PR from branch `claude/s8-03-guest-guard-email-impl`; not yet merged).
+
 - **Problem** — `createExpressSession` rejects anonymous users (`app/actions/sessions.ts:405`: `if (user.is_anonymous) throw new Error("not_found_or_forbidden")`), but `createSession` (`:320`) and `createGroupSession` (`:438`) only call `requireUser()`, which accepts anonymous sessions (`lib/auth.ts:9`). `proxy.ts` only blocks the pages; a server action is a public POST.
 - **Implication** — The guest-scope rule ("guests never create assets under a throwaway identity") is enforced only in the UI. A crafted request creates a solo or group session, with an invite link, under an anonymous id that `mergeGuestData` later has to carry. No data is lost and nobody else's data is exposed, so I rate it P2, not the board's P1 (board says major).
 - **Fix** — One shared guard (registered users only) used by every creator, including `duplicateSession`. **Acceptance:** an anonymous token calling each creator gets `not_found_or_forbidden` and creates no row; registered users unchanged; a unit test lists every creator. **Size:** S.

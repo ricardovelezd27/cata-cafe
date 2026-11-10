@@ -15,7 +15,7 @@ import { escapeHtml } from "@/lib/email";
 import { deliverGroupMail, type GroupEmailResult, type GroupMailJob } from "@/lib/groupEmail";
 import { isBroadcastId, summarize } from "@/lib/groupEmailPlan";
 import { logWarn } from "@/lib/log";
-import { maskEmail } from "@/lib/maskEmail";
+import { memberLabel } from "@/lib/maskEmail";
 import { coCupperIdsAmong, isCoCupper } from "@/lib/coCuppers";
 import { run } from "@/lib/safeAction";
 import type { ActionResult } from "@/lib/actionResult";
@@ -294,7 +294,7 @@ async function sendGroupInvitationEmails(args: {
 
     return {
       memberId: r.memberId,
-      label: r.displayName || maskEmail(r.email),
+      label: memberLabel(r),
       email: r.email,
       subject: GROUP_INVITE_TEXT[recipientLocale].subject(args.inviterName, args.group.name),
       html: buildGroupInviteHtml({
@@ -788,7 +788,7 @@ export async function sendGroupEmail(input: {
       const inviteUrl = inviteToken ? `${origin}/${recipientLocale}/join/${inviteToken}` : null;
       return {
         memberId: m.id,
-        label: m.displayName || maskEmail(m.email),
+        label: memberLabel(m),
         email: emails.get(m.id) ?? m.email,
         subject,
         html: buildGroupEmailHtml({ message, inviteUrl, locale: recipientLocale, origin }),
@@ -959,7 +959,7 @@ export async function notifyGroupOfSession(input: {
 
       return {
         memberId: m.id,
-        label: m.displayName || maskEmail(m.email),
+        label: memberLabel(m),
         email,
         subject: GROUP_SESSION_INVITE_TEXT[recipientLocale].subject(session.name),
         html: buildGroupSessionInviteHtml({

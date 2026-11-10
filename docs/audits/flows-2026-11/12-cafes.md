@@ -79,6 +79,8 @@ A coffee is a reusable record owned by its creator (`createdBy`), with a 6-chara
 
 ### F-cafes-7 · Guests can create coffees by direct call; text is unvalidated · severity: P3 · status: confirms-board(Acciones de café aceptan invitados y textos sin validar)
 
+**Fixed in S8-03** (draft PR from branch `claude/s8-03-guest-guard-email-impl`; not yet merged).
+
 - **Problem** — `requireUser` (`lib/auth.ts:4-18`) accepts anonymous users and upserts a profile; coffee actions never check `is_anonymous` (compare `createExpressSession`, sessions.ts:405). `createCoffee`/`updateCoffee` only `trim()` and take `certifications` as given (coffees.ts:161-183, 232-248); `lib/validate.ts` is not used.
 - **Implication** — robustness/abuse: a throwaway identity can mint coffees (with codes) and share rows; huge strings reach Prisma.
 - **Fix** — Reject guests in every coffee mutation and validate with `lib/validate` (name ≤120, fields ≤200, notes ≤2000, certifications a subset of the known list). **Acceptance:** a guest POST returns `not_found_or_forbidden`; over-length input returns `invalid_input`. **Size:** S.

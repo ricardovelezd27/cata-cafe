@@ -194,6 +194,9 @@
         "invalid_format": "Elige un formato de cata válido.",
         "invalid_cups": "Las tazas por muestra deben ser un número entre 1 y 5.",
         "too_many_samples": "Máximo 100 muestras por sesión.",
+        "too_many_coffees": "Máximo 100 cafés por sesión.",
+        "invalid_coffee": "Revisa los datos de los cafés: algún campo es demasiado largo o no es válido.",
+        "invalid_label": "El nombre de una muestra es demasiado largo (máx. 120 caracteres).",
         "invalid_closes_at": "La fecha de cierre debe estar en el futuro.",
         "invalid_reference": "La muestra de referencia no es válida. Elige una de la lista."
       },

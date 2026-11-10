@@ -29,6 +29,8 @@ A visitor reads the dark marketing page (`app/[locale]/page.tsx`) and types an e
 
 ### F-landing-2 · Public endpoint can burn the project's email quota and fill the waitlist with other people's addresses · severity: P2 · status: confirms-board(Un bot puede agotar el cupo de correos de acceso de todo el proyecto)
 
+**Fixed in S8-03** (draft PR from branch `claude/s8-03-guest-guard-email-impl`; not yet merged).
+
 - **Problem** — The only guard is the honeypot (`waitlist.ts:23`, "field not empty"), which a script that posts only `email` passes. There is no per-IP or per-email throttle and no challenge. Order matters: the row is inserted first (`:34`), then the magic link is sent (`:45`), so every typed address is stored and mailed. `signInWithMagicLink` (`app/actions/auth.ts:31`) is itself an exported server action, so the login path is open the same way.
 - **Implication** — Robustness and trust: a loop exhausts Supabase's shared email-send limit and blocks real sign-ins (cuppers, guests claiming results, an event with ~50 people). It also lets anyone put a third party's address on a "founding" list and send them a login email, creating an account for them with no verification (`signInWithOtp` creates users by default).
 - **Fix** — Add a challenge (for example Turnstile) or a throttle per IP and per email on both the waitlist action and the login action, and run the waitlist insert only after the check passes. Throttled users get the existing localized "demasiados intentos" message. **Acceptance:** 50 scripted posts from one IP in one minute send at most a handful of emails; a normal visitor still gets the link on the first try; the honeypot is not the only protection. **Size:** M.

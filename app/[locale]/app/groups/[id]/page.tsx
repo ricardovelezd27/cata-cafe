@@ -4,7 +4,7 @@ import { CheckCircle2, ChevronLeft, Clipboard, Plus, UserCheck, Users } from "lu
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { maskEmail } from "@/lib/maskEmail";
+import { maskEmail, memberLabel } from "@/lib/maskEmail";
 import { getCoCupperCandidates } from "@/lib/coCuppers";
 import { claimGroupMembershipsByEmail } from "@/lib/groupMembership";
 import { sessionHref } from "@/lib/sessionRouting";
@@ -210,7 +210,7 @@ export default async function GroupDetailPage({
     //    activity feed; only displayName or a masked email is ever shown. ──
     const memberRows = group.members.map((m) => ({
       id: m.id,
-      label: m.displayName || maskEmail(m.email),
+      label: memberLabel(m),
     }));
     const leaveT = {
       cta: t("leave.cta"),
@@ -287,7 +287,7 @@ export default async function GroupDetailPage({
   const nameByUserId = new Map(
     group.members
       .filter((m): m is typeof m & { userId: string } => !!m.userId)
-      .map((m) => [m.userId, m.displayName ?? maskEmail(m.email)]),
+      .map((m) => [m.userId, memberLabel(m)]),
   );
 
   let groupEvalCount = 0;

@@ -49,6 +49,8 @@ An owner opens `/sessions/new` and fills one long form in `NewSessionForm.tsx` (
 
 ### F-crear-sesion-4 · Create actions are public endpoints with thin validation and no guest guard · severity: P2 · status: new
 
+**Fixed in S8-03** (draft PR from branch `claude/s8-03-guest-guard-email-impl`; not yet merged).
+
 - **Problem** — `createExpressSession` rejects anonymous users because "this closes the direct-POST path" (`sessions.ts:405`), but `createSession` and `createGroupSession` only call `requireUser()`; `proxy.ts` is the sole barrier (`lib/guestScope.ts` excludes `sessions/new`). Also unchecked: the `coffees` array length (only samples are capped, `MAX_SAMPLES = 100`), every coffee text field, `notes`, `certifications`, and `s.label` length/type (`validateSessionInput`, `sessions.ts:119-148`).
 - **Implication** — A QR walk-up guest could create sessions and coffees under a throwaway identity that the claim flow must later merge; a malformed payload can flood the library or throw inside Prisma. Security/robustness; no other user's data is exposed.
 - **Fix** — Reject `is_anonymous` in both actions with `not_found_or_forbidden`; cap coffees (for example 100) and bound string lengths and the label type via `lib/validate`. **Acceptance:** an anonymous direct call writes nothing and returns forbidden; 101 coffees or a 5 000-character label returns a field error. **Size:** S.

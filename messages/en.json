@@ -194,6 +194,9 @@
         "invalid_format": "Choose a valid tasting format.",
         "invalid_cups": "Cups per sample must be a number between 1 and 5.",
         "too_many_samples": "Maximum 100 samples per session.",
+        "too_many_coffees": "Maximum 100 coffees per session.",
+        "invalid_coffee": "Check the coffee details: a field is too long or not valid.",
+        "invalid_label": "A sample name is too long (max 120 characters).",
         "invalid_closes_at": "The closing date must be in the future.",
         "invalid_reference": "The reference sample is not valid. Pick one from the list."
       },

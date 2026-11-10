@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { pickTrustedOrigin, safeNextPath } from "@/lib/trustedOrigin";
 import { parseClientIp } from "@/lib/requestIp";
-import { maskEmail } from "@/lib/maskEmail";
+import { maskEmail, memberLabel } from "@/lib/maskEmail";
 import {
   GROUP_BROADCASTS_PER_HOUR,
   GROUP_RECIPIENTS_PER_DAY,
@@ -97,6 +97,18 @@ describe("maskEmail", () => {
     expect(maskEmail("no-at-sign")).toBe("***");
     expect(maskEmail("@x.com")).toBe("***");
     expect(maskEmail("")).toBe("***");
+  });
+});
+
+describe("memberLabel", () => {
+  it("prefers the name", () => {
+    expect(memberLabel({ displayName: " Ana ", email: "a@x.com", userId: "u1" })).toBe("Ana");
+  });
+  it("shows a linked member without a name as 'j***' with no @ at all", () => {
+    expect(memberLabel({ displayName: null, email: "juan@x.com", userId: "u1" })).toBe("j***");
+  });
+  it("shows an email-only invitee as a masked address", () => {
+    expect(memberLabel({ displayName: null, email: "juan@x.com", userId: null })).toBe("j***@x.com");
   });
 });
 

@@ -70,6 +70,8 @@ A person arrives at `/auth/login` from the landing, an invite page, the claim ba
 
 ### F-entrar-6 · Unauthenticated email send is open to abuse and shares one project-wide mail quota · severity: P2 · status: new
 
+**Fixed in S8-03** (draft PR from branch `claude/s8-03-guest-guard-email-impl`; not yet merged).
+
 - **Problem** — `signInWithMagicLink` is an exported `"use server"` action (`auth.ts:31`) with no throttle of its own; `reserveFoundingSeat` adds only a honeypot field (`waitlist.ts:23`) and calls it for any address. Abuse is limited only by Supabase's per-address window and the project-wide email cap. `getOrigin()` also builds the link host from the request's `Origin`/`Host` headers (`auth.ts:7-13`).
 - **Implication** — A script can exhaust the hourly mail cap and block email login for everyone, including organisers on the morning of an event, and can mail-bomb third parties from our sender.
 - **Fix** — Per-IP and per-email throttle in front of the send (and a bot check on the landing form), base URL from `NEXT_PUBLIC_SITE_URL`, and a runbook line with the configured custom-SMTP limit. **Acceptance:** 10 rapid sends from one IP are refused locally with the rate-limit copy; the link host never comes from request headers. **Size:** M.

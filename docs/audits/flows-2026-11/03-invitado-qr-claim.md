@@ -18,6 +18,8 @@ A walk-up opens `/join/[token]`, types a name, and `GuestJoinForm` calls `signIn
 
 ### F-guest-1 · Un invitado puede crear grupos, sesiones y enviar correos llamando a la acción · severity: P1 · status: confirms-board(Un invitado puede crear grupos y enviar correos llamando a la acción)
 
+**Fixed in S8-03** (draft PR from branch `claude/s8-03-guest-guard-email-impl`; not yet merged).
+
 - **Problem** — The only guest gate is the proxy (pages) and link components. `requireUser()` (`lib/auth.ts:4-18`) accepts anonymous users and even upserts a Profile for them. Only `createExpressSession` checks it: `if (user.is_anonymous) throw new Error("not_found_or_forbidden")` (`app/actions/sessions.ts:405`). `createGroupWithMembers` (`app/actions/groups.ts:343-353`), `sendGroupEmail` (`groups.ts:648-656`), `addMemberByEmail`, `createSession`, `createGroupSession`, `createCoffee`, `createInviteToken` and `createCoffeeInvite` have no guest check, and `proxy.ts` excludes `/api` from its matcher (line 88).
 - **Implication** — Security and trust. Anonymous accounts need no email and cost one sign-in, so a script can mint accounts and send Café Sensible-branded invitations to arbitrary addresses (sender reputation, Resend quota), and a guest can own assets that the claim then has to drag along.
 - **Fix** — One shared "registered users only" check in `lib/auth.ts`, applied to every action that creates or shares an asset or sends email, returning the localized not-allowed copy. **Acceptance:** with a guest session, a direct POST to each listed action fails with `not_found_or_forbidden`; registered users are unaffected; the pure predicate is unit-tested next to `guestScope`. **Size:** M.

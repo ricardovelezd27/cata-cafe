@@ -38,6 +38,8 @@ import {
 import * as v from "@/lib/validate";
 import { expressSampleLabel, validateExpressInput } from "@/lib/expressSession";
 import { logInfo, logWarn } from "@/lib/log";
+import { checkWizardBounds } from "@/lib/coffeeInputBounds";
+import { CERTIFICATIONS } from "@/lib/constants";
 import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/groups";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
 import { WARMUP_IDS, type WarmupId } from "@/lib/warmup/exercises";
@@ -122,6 +124,10 @@ function validateSessionInput(
 ): string | null {
   if (!samples || samples.length === 0) return "no_samples";
   if (!coffees || coffees.length === 0) return "no_coffees";
+  // Shape and size first (S8-03): nothing below may call .trim() on a value
+  // the client could have sent as a non-string.
+  const outOfBounds = checkWizardBounds(coffees, samples, CERTIFICATIONS);
+  if (outOfBounds) return outOfBounds;
   for (const c of coffees) {
     // Linked entries reference an already-created coffee; the data-quality
     // gate only applies to coffees being entered from scratch (an older

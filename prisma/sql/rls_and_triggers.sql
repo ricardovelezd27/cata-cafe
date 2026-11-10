@@ -1251,3 +1251,17 @@ DROP POLICY IF EXISTS "coffees_write" ON coffees;
 CREATE POLICY "coffees_write" ON coffees
   FOR ALL USING ("deletedAt" IS NULL AND "createdBy" = auth.uid()::text);
 -- ============================================================================
+
+-- ============================================================================
+-- PHASE 22 (2026-11-10, S8-03): outbound email ledger tables, server-only
+-- `outbound_email_events` (the throttle's reservations) and
+-- `group_email_deliveries` (per-recipient ledger of a group broadcast) are read
+-- and written only through server-side Prisma (postgres role, bypasses RLS):
+-- lib/emailBudget.ts and lib/groupEmail.ts. Deny-all via RLS with no policies,
+-- same rationale as ai_chat_usage (PHASE 12). Supabase auto-enables RLS on new
+-- public tables, so this is documentation + idempotent. Neither table holds a
+-- raw address or IP: the keys are HMACs (lib/emailKeys.ts).
+-- Apply AFTER `npx prisma migrate deploy` created the tables (runbook §11).
+-- ============================================================================
+ALTER TABLE outbound_email_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE group_email_deliveries ENABLE ROW LEVEL SECURITY;
