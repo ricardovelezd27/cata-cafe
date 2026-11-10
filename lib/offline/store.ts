@@ -162,6 +162,25 @@ export async function listUserKeys(userId: string): Promise<string[]> {
   }
 }
 
+/** Account deleted (S8-19): drop every draft blob of that user on this device.
+ *  The server rows are already gone or anonymized, so nothing can sync them.
+ *  Never throws. Returns how many blobs were removed. */
+export async function removeUserDrafts(userId: string): Promise<number> {
+  const lf = instance();
+  if (!lf) return 0;
+  const keys = await listUserKeys(userId);
+  let removed = 0;
+  for (const key of keys) {
+    try {
+      await lf.removeItem(key);
+      removed++;
+    } catch (err) {
+      markUnavailable("removeUserDrafts", err);
+    }
+  }
+  return removed;
+}
+
 // Read-modify-write a single module's data into the session blob, stamping it
 // `pending`. `seed` provides the immutable session metadata for first write.
 export async function mergeModuleData(

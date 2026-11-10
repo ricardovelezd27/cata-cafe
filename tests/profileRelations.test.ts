@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { PROFILE_MANIFEST, manifestKey } from "../lib/accountDeletion/manifest";
+import { PROFILE_MANIFEST, deletionDelegate, manifestKey } from "../lib/accountDeletion/manifest";
 
 // S8-07 (F-cuenta-1, F-guest-8): every user-referencing column is listed in
 // the account-deletion manifest and, unless it says otherwise, handled by
@@ -98,5 +98,67 @@ describe("mergeGuestData covers the manifest", () => {
 
   it("deletes the guest's profile last so a forgotten FK rolls the merge back", () => {
     expect(mergeSource).toContain("tx.profile.delete");
+  });
+});
+
+// S8-19: deleteAccount follows the manifest rule by rule. Same source-scan
+// style (the module imports Prisma and server-only).
+const deleteSource = readFileSync(
+  join(ROOT, "lib", "accountDeletion", "deleteAccount.ts"),
+  "utf8",
+);
+
+describe("deleteAccount covers the manifest", () => {
+  for (const e of PROFILE_MANIFEST) {
+    if (e.onDelete === "keep") continue;
+    const delegate = deletionDelegate(e);
+    it(`${e.model}.${e.field} (${e.onDelete}) has a statement in deleteAccount`, () => {
+      expect(delegate, `${e.model} needs a delegate (merge rule or deleteDelegate)`).not.toBeNull();
+      if (e.onDelete === "erase") {
+        expect(deleteSource).toContain(`tx.${delegate}.deleteMany(`);
+      } else if (e.onDelete === "reassign-tombstone") {
+        expect(deleteSource).toContain(`tx.${delegate}.updateMany(`);
+      } else if (e.onDelete === "delete-if-solo-else-tombstone") {
+        expect(deleteSource).toMatch(new RegExp(`tx\\.${delegate}\\.delete(Many)?\\(`));
+        expect(deleteSource).toContain(`tx.${delegate}.updateMany(`);
+      }
+    });
+  }
+
+  it("reassigns to a fresh placeholder, never a shared tombstone", () => {
+    expect(deleteSource).toContain("deletedProfileId(randomUUID())");
+    expect(deleteSource).toContain("tx.profile.create(");
+  });
+
+  it("closes the live sessions it keeps before the transaction", () => {
+    expect(deleteSource).toMatch(/closeSessionInternal\([^)]*reason: "owner_deleted"/);
+  });
+
+  it("deletes own sessions through the deleteSession path", () => {
+    expect(deleteSource).toContain("detachCoffeeHistoryForSession(tx, sessionId)");
+  });
+
+  it("anonymizes coffees with the deleteCoffees routine", () => {
+    expect(deleteSource).toContain("anonymizeOwnedCoffees(tx, userId)");
+  });
+
+  it("does not put isDraft in the evaluation SET (the trigger must not re-fire)", () => {
+    const evalUpdate = deleteSource.match(/tx\.evaluation\.updateMany\(\{[\s\S]*?\}\);/);
+    expect(evalUpdate).not.toBeNull();
+    expect(evalUpdate![0]).not.toContain("isDraft");
+  });
+
+  it("removes the waitlist row by email (S8-08 TODO)", () => {
+    expect(deleteSource).toMatch(/tx\.waitlistEntry\.deleteMany\(\{ where: \{ email: plan\.waitlistEmail \} \}\)/);
+  });
+
+  it("deletes the profile LAST and never catches it", () => {
+    const last = deleteSource.lastIndexOf("tx.profile.delete(");
+    expect(last).toBeGreaterThan(-1);
+    const txEnd = deleteSource.indexOf("}, TX_OPTIONS);");
+    expect(txEnd).toBeGreaterThan(last);
+    const between = deleteSource.slice(last, txEnd);
+    expect(between).not.toMatch(/\btx\.(?!profile\.delete)/);
+    expect(between).not.toContain("catch");
   });
 });

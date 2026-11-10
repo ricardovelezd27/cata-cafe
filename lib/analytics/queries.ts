@@ -16,6 +16,7 @@ import {
 } from "./normalize";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
+import { DELETED_PROFILE_PREFIX } from "@/lib/accountDeletion/deletedProfile";
 import { PLATFORM_SCOPE } from "./types";
 import { anonymizeCuppers } from "./cupperPrivacy";
 import type {
@@ -906,7 +907,7 @@ export async function getDashboardData(
     // Platform: registered profiles. Scoped: distinct cuppers this user's
     // data actually contains (their sessions' participants + themselves).
     scope.kind === "platform"
-      ? prisma.profile.count()
+      ? prisma.profile.count({ where: { NOT: { id: { startsWith: DELETED_PROFILE_PREFIX } } } })
       : prisma.evaluation
           .findMany({
             where: { isDraft: false, ...scopedEvaluationWhere(scope) },

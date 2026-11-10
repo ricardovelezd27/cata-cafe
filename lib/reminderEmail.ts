@@ -10,6 +10,7 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isDeletedProfileId } from "@/lib/accountDeletion/deletedProfile";
 import { sendEmail } from "@/lib/email";
 import { siteOrigin } from "@/lib/inviteUrl";
 import { errorMessage, logError } from "@/lib/log";
@@ -53,6 +54,10 @@ async function sendOne(args: {
       // nothing to release
     }
   };
+
+  // A deleted account's placeholder (S8-19) has no auth user: keep the row so
+  // it is never looked up again.
+  if (isDeletedProfileId(args.userId)) return "skipped";
 
   try {
     const { data, error } = await createAdminClient().auth.admin.getUserById(args.userId);

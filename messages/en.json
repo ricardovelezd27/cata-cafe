@@ -544,7 +544,28 @@
     "changeEmailSubmit": "Send link",
     "changeEmailSending": "Sending…",
     "changeEmailSent": "We sent a confirmation link to {email}. Open it to finish the change.",
-    "changeEmailPending": "Change pending to {email}: confirm from that inbox."
+    "changeEmailPending": "Change pending to {email}: confirm from that inbox.",
+    "deleteAccount": {
+      "open": "Delete account",
+      "title": "Delete your account",
+      "intro": "This is what will happen to what is in your account:",
+      "loading": "Checking your account…",
+      "impactSessionsDeleted": "{n} sessions that only held your data are deleted.",
+      "impactSessionsKept": "{n} sessions with other cuppers' data are kept, closed and without your name.",
+      "impactEvaluations": "{n} of your evaluations stay, anonymized, in the sessions you took part in.",
+      "impactCoffees": "{n} coffees you created are anonymized.",
+      "impactGroupsKept": "{n} groups with other members stay without your name; nobody will be able to manage them.",
+      "impactGroupsDeleted": "{n} groups with no other members are deleted.",
+      "impactNothing": "Your profile, your history and your sign-in.",
+      "keepScores": "Your anonymized scores stay in the sessions you took part in, so other people's results do not change.",
+      "keepCoffees": "Coffees you created stay without their identifying data (name, farm, producer, notes).",
+      "irreversible": "This cannot be undone.",
+      "protectedBody": "This account administers the platform and cannot be deleted from the app.",
+      "typeLabel": "Type {word} to confirm",
+      "submit": "Delete my account",
+      "deleting": "Deleting…",
+      "cancel": "Cancel"
+    }
   },
   "actions": {
     "save": "Save",
@@ -1816,7 +1837,8 @@
       "group_full": "This group already has 200 members, the maximum.",
       "invalid_email": "That email address doesn't look valid. Check it and try again.",
       "offline": "You need a connection to do this. Try again once you are back online.",
-      "email_exists": "That email already has an account."
+      "email_exists": "That email already has an account.",
+      "account_protected": "This account administers the platform and cannot be deleted from the app."
     }
   },
   "warmup": {

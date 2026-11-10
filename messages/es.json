@@ -544,7 +544,28 @@
     "changeEmailSubmit": "Enviar enlace",
     "changeEmailSending": "Enviando…",
     "changeEmailSent": "Enviamos un enlace de confirmación a {email}. Ábrelo para terminar el cambio.",
-    "changeEmailPending": "Cambio pendiente a {email}: confirma desde ese correo."
+    "changeEmailPending": "Cambio pendiente a {email}: confirma desde ese correo.",
+    "deleteAccount": {
+      "open": "Eliminar cuenta",
+      "title": "Eliminar tu cuenta",
+      "intro": "Esto es lo que pasará con lo que hay en tu cuenta:",
+      "loading": "Revisando tu cuenta…",
+      "impactSessionsDeleted": "Se eliminan {n} sesiones que solo tenían tus datos.",
+      "impactSessionsKept": "Se conservan {n} sesiones con datos de otros catadores, cerradas y sin tu nombre.",
+      "impactEvaluations": "{n} evaluaciones tuyas quedan anónimas en las sesiones donde participaste.",
+      "impactCoffees": "Se anonimizan {n} cafés que creaste.",
+      "impactGroupsKept": "{n} grupos con otros miembros siguen existiendo sin tu nombre; nadie podrá administrarlos.",
+      "impactGroupsDeleted": "Se eliminan {n} grupos sin otros miembros.",
+      "impactNothing": "Tu perfil, tu historial y tus datos de acceso.",
+      "keepScores": "Tus puntajes anonimizados se quedan en las sesiones donde participaste, para que los resultados de los demás no cambien.",
+      "keepCoffees": "Los cafés que creaste se quedan sin sus datos identificativos (nombre, finca, productor, notas).",
+      "irreversible": "Esto no se puede deshacer.",
+      "protectedBody": "Esta cuenta administra la plataforma y no se puede eliminar desde la app.",
+      "typeLabel": "Escribe {word} para confirmar",
+      "submit": "Eliminar mi cuenta",
+      "deleting": "Eliminando…",
+      "cancel": "Cancelar"
+    }
   },
   "actions": {
     "save": "Guardar",
@@ -1816,7 +1837,8 @@
       "group_full": "Este grupo ya tiene 200 integrantes, el máximo.",
       "invalid_email": "Ese correo no parece válido. Revísalo e inténtalo de nuevo.",
       "offline": "Necesitas conexión para hacer esto. Inténtalo cuando vuelvas a estar en línea.",
-      "email_exists": "Ese correo ya tiene una cuenta."
+      "email_exists": "Ese correo ya tiene una cuenta.",
+      "account_protected": "Esta cuenta administra la plataforma y no se puede eliminar desde la app."
     }
   },
   "warmup": {
