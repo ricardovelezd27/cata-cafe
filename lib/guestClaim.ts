@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { anonEvalWins, needsAggregateRefire } from "@/lib/guestClaimToken";
+import { needsAggregateRefire, resolveEvalConflicts } from "@/lib/guestClaimToken";
 
 /**
  * Guest → account "claim": ties a walk-up guest's tasting data to the account
@@ -123,13 +123,22 @@ export async function mergeGuestData(
     const refireSessions = new Set<string>();
     const targetBySample = new Map(targetEvals.map((e) => [e.sessionSampleId, e]));
     const conflictSamples: string[] = [];
-    const deleteIds: string[] = [];
+    const pairs: { anon: (typeof anonEvals)[number]; target: (typeof anonEvals)[number] }[] = [];
     for (const a of anonEvals) {
       const t = targetBySample.get(a.sessionSampleId);
       if (!t) continue;
       conflictSamples.push(a.sessionSampleId);
       refireSessions.add(a.sessionSample.sessionId);
-      deleteIds.push(anonEvalWins(a, t) ? t.id : a.id);
+      pairs.push({ anon: a, target: t });
+    }
+    const { deleteIds, accountLoserIds } = resolveEvalConflicts(pairs);
+    if (accountLoserIds.length > 0) {
+      // S8-16: the guest's label-only row for the sample moves over below, so
+      // the account's label-only row for its replaced evaluation must go (by
+      // evaluation id, BEFORE the evaluation delete SetNulls the link).
+      await tx.userCoffeeHistory.deleteMany({
+        where: { userId: target, coffeeId: null, evaluationId: { in: accountLoserIds } },
+      });
     }
     if (deleteIds.length > 0) {
       // user_coffee_history rows pointing at these evaluations get
@@ -145,7 +154,7 @@ export async function mergeGuestData(
     // ── Coffee history (unique per user+coffee+session) ────────────────────
     const anonHistory = await tx.userCoffeeHistory.findMany({
       where: { userId: anon },
-      select: { id: true, coffeeId: true, sessionId: true },
+      select: { id: true, coffeeId: true, sessionId: true, evaluationId: true },
     });
     if (anonHistory.length > 0) {
       // Detached rows (sessionId NULL — their session was deleted) can never
@@ -162,7 +171,18 @@ export async function mergeGuestData(
             })
           : [];
       const taken = new Set(targetHistory.map((h) => `${h.coffeeId}|${h.sessionId}`));
-      const dupIds = anonHistory.filter((h) => taken.has(`${h.coffeeId}|${h.sessionId}`)).map((h) => h.id);
+      // Label-only rows (coffeeId NULL, S8-16) are per-sample, not per-coffee:
+      // the (coffee, session) key would wrongly collapse every sample of a
+      // session. Their identity is the evaluation. A live one whose evaluation
+      // is gone (the conflict loop above deleted it → SetNull) is the losing
+      // side of a conflict, so the target's row for that sample stands.
+      const dupIds = anonHistory
+        .filter((h) =>
+          h.coffeeId === null
+            ? h.sessionId !== null && h.evaluationId === null
+            : taken.has(`${h.coffeeId}|${h.sessionId}`),
+        )
+        .map((h) => h.id);
       if (dupIds.length > 0) await tx.userCoffeeHistory.deleteMany({ where: { id: { in: dupIds } } });
       await tx.userCoffeeHistory.updateMany({ where: { userId: anon }, data: { userId: target } });
     }

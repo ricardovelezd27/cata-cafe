@@ -578,6 +578,8 @@
     "startSession": "Start tasting",
     "starting": "Starting…",
     "startSessionError": "Could not start the tasting. Please try again.",
+    "startGroupNoticeFailed": "The tasting started, but we could not email the group. You can resend the notice from the group page.",
+    "startGroupNoticePartial": "The tasting started. The notice reached part of the group; retry the failed ones from the group page.",
     "reveal": "Reveal identity",
     "revealed": "Revealed",
     "selectCoffee": "Select coffee",
@@ -949,7 +951,9 @@
     "yourScore": "Your score",
     "communityScore": "Community score",
     "sessionDeleted": "Session deleted",
-    "quickImpression": "Quick impression"
+    "quickImpression": "Quick impression",
+    "noCoffeeAssigned": "No coffee assigned",
+    "coffeeUnrevealed": "Coffee not revealed"
   },
   "coffee": {
     "title": "Coffee profile",
@@ -1760,7 +1764,8 @@
     "saveDetails": "Save details",
     "linkGroupLabel": "Link to a group",
     "noGroupOption": "No group",
-    "autoInviteToggle": "Send an invitation to the group on creation",
+    "autoInviteLive": "Email the group when you start the tasting",
+    "autoInviteAsync": "Email the group when the session is created",
     "autoInviteSummary": "Invitation sent to {sent} members · {skipped} skipped · {failed} failed",
     "joinSessionLink": "Join the session"
   },

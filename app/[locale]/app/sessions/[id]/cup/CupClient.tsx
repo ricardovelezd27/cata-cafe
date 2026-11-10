@@ -286,6 +286,8 @@ export function CupClient({
     startSession: string;
     starting: string;
     startSessionError: string;
+    startGroupNoticeFailed: string;
+    startGroupNoticePartial: string;
     masterRole: string;
     participantRole: string;
     // Shell (Phase 3)
@@ -662,6 +664,7 @@ export function CupClient({
     setMasterPlayer({ seekMs: seekFor(warmupStartedAtMs, warmupServerNow, 0, { live: false }) });
   };
   const [startError, setStartError] = useState(false);
+  const [groupNotice, setGroupNotice] = useState<"failed" | "partial" | null>(null);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
   // F-grupal-2: how many cuppers hold complete notes that were never sent.
   // undefined = loading, null = could not be read (the rule sentence still shows).
@@ -1561,6 +1564,8 @@ export function CupClient({
       try {
         const r = await startSession(session.id);
         if (r.ok) setStartedAt(new Date().toISOString());
+        if (r.groupNotice === "rate_limited" || r.groupNotice === "failed") setGroupNotice("failed");
+        else if (r.groupNotice === "partial") setGroupNotice("partial");
       } catch {
         setStartError(true);
       } finally {
@@ -2400,6 +2405,26 @@ export function CupClient({
           <button
             type="button"
             onClick={() => setSubmitError(false)}
+            aria-label="×"
+            className="shrink-0 font-semibold hover:opacity-80"
+          >
+            ×
+          </button>
+        </div>
+      )}
+      {groupNotice && (
+        <div
+          role="status"
+          className="flex items-start gap-2 px-4 py-2 mb-3 rounded-card bg-secondary-container text-on-secondary-container font-sans text-sm"
+        >
+          <span className="flex-1">
+            {groupNotice === "partial"
+              ? translations.startGroupNoticePartial
+              : translations.startGroupNoticeFailed}
+          </span>
+          <button
+            type="button"
+            onClick={() => setGroupNotice(null)}
             aria-label="×"
             className="shrink-0 font-semibold hover:opacity-80"
           >

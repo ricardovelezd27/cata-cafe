@@ -33,3 +33,34 @@ export function historyCupsPerSample(
 export function isQuickImpression(cupsPerSample: number | null | undefined): boolean {
   return typeof cupsPerSample === "number" && cupsPerSample < MIN_CUPS_FOR_PENALTIES;
 }
+
+/**
+ * S8-16: label-only rows (coffeeId NULL) of a LIVE session whose evaluation no
+ * longer exists (cupper removed / evaluation deleted → SetNull) describe
+ * nothing and are never refreshed, so the sync drops them. Rows whose SESSION
+ * was deleted (sessionId NULL, the D8 case) are kept: the session id in this
+ * filter is required, so they can never match.
+ */
+export function orphanLabelRowWhere(sessionId: string): {
+  sessionId: string;
+  coffeeId: null;
+  evaluationId: null;
+} {
+  return { sessionId, coffeeId: null, evaluationId: null };
+}
+
+/**
+ * S8-16: split label rows into those that already exist (update) and those to
+ * insert. The insert goes through createMany({ skipDuplicates }) (ON CONFLICT
+ * DO NOTHING) so a concurrent writer hitting the partial unique index on
+ * evaluationId cannot abort the surrounding Postgres transaction.
+ */
+export function partitionLabelRows<T extends { evaluationId: string }>(
+  rows: T[],
+  existingEvaluationIds: Set<string>,
+): { toInsert: T[]; toUpdate: T[] } {
+  const toInsert: T[] = [];
+  const toUpdate: T[] = [];
+  for (const r of rows) (existingEvaluationIds.has(r.evaluationId) ? toUpdate : toInsert).push(r);
+  return { toInsert, toUpdate };
+}

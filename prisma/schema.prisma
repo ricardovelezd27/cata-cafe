@@ -172,6 +172,13 @@ model CuppingSession {
   /// refused with `entries_closed`; existing members re-enter. Display/gating
   /// only: never read by scoring, aggregates or the trigger.
   entriesLocked Boolean @default(false)
+  /// S8-17 (C8): live group session linked to a tasting group whose owner
+  /// asked to notify it; the email goes out from `startSession`. The group
+  /// itself is `groupId`. Flow only: never read by scoring or the trigger.
+  notifyGroupAtStart Boolean @default(false)
+  /// Idempotence stamp of the group "new session" email (claimed before the
+  /// send, cleared when the send fails). Not copied by duplicateSession.
+  groupNotifiedAt DateTime? @db.Timestamptz(3)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -334,8 +341,11 @@ model UserCoffeeHistory {
   id              String         @id @default(cuid())
   userId          String
   user            Profile        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  coffeeId        String
-  coffee          Coffee         @relation(fields: [coffeeId], references: [id], onDelete: Cascade)
+  // NULL = a label-only row (S8-16): a coffee-less sample, or a never-revealed
+  // sample whose session was deleted. Never link these to a coffee page and
+  // exclude them from per-coffee aggregates (lib/historyDisplay.ts).
+  coffeeId        String?
+  coffee          Coffee?        @relation(fields: [coffeeId], references: [id], onDelete: Cascade)
   // A cupper's coffee history OUTLIVES the session it came from: deleting a
   // session detaches these rows (evaluation/session → NULL, `snapshot` filled
   // with the cupper's OWN evaluation + session metadata) instead of cascading
@@ -354,6 +364,11 @@ model UserCoffeeHistory {
   detachedAt      DateTime?
   createdAt       DateTime       @default(now())
 
+  // NOTE (S8-16): a PARTIAL unique index exists only in the migration
+  // 20261111140000_history_coffee_optional — Prisma cannot express it:
+  //   user_coffee_history_label_row_evaluation_key ON ("evaluationId")
+  //   WHERE "coffeeId" IS NULL AND "evaluationId" IS NOT NULL
+  // `prisma migrate dev` may propose dropping it. Never accept.
   @@unique([userId, coffeeId, sessionId])
   @@index([userId])
   @@index([coffeeId])

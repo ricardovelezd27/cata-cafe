@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser, requireRegisteredUser } from "@/lib/auth";
 import { run } from "@/lib/safeAction";
+import { notifyFlagAfterGroupChange } from "@/lib/groupNotify";
 import type { ActionResult } from "@/lib/actionResult";
 import type { Prisma } from "@/app/generated/prisma/client";
 import {
@@ -46,6 +47,7 @@ import { logInfo, logWarn } from "@/lib/log";
 import { checkWizardBounds } from "@/lib/coffeeInputBounds";
 import { CERTIFICATIONS } from "@/lib/constants";
 import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/groups";
+import { shouldNotifyAtCreate } from "@/lib/groupNotify";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
 import { splitEvaluationCounts } from "@/lib/deleteImpact";
 import { planAssignCoffee } from "@/lib/assignCoffee";
@@ -587,6 +589,9 @@ async function createGroupSessionBody(input: {
         closesAtZone: meta.closesAtZone,
         createdBy: user.id,
         groupId: input.groupId ?? null,
+        // S8-17: a LIVE session owes the group email at start (startSession).
+        notifyGroupAtStart:
+          !!input.groupId && input.notifyGroup !== false && meta.closesAt === null,
         warmupExerciseId: meta.warmupExerciseId,
         samples: {
           create: input.samples.map((s, i) => ({
@@ -621,16 +626,30 @@ async function createGroupSessionBody(input: {
   // creation itself.
   let emailSummary: GroupEmailSummary | undefined;
   let emailBlocked: "rate_limited" | undefined;
-  if (input.groupId && input.notifyGroup !== false) {
-    // TODO(C8): live sessions notify from startSession (spec default b);
-    // undecided with Kim, so the email still goes out at creation for now.
+  // Only ASYNC sessions notify at creation; live ones notify from
+  // `startSession` (S8-17, C8 default b — see lib/groupNotify.ts).
+  if (
+    input.groupId &&
+    input.notifyGroup !== false &&
+    shouldNotifyAtCreate({
+      isGroup: true,
+      isAsync: meta.closesAt !== null,
+      hasGroup: true,
+      alreadyNotified: false,
+    })
+  ) {
     try {
       const notified = await notifyGroupOfSession({
         groupId: input.groupId,
         sessionId: session.id,
       });
-      if (notified.ok) emailSummary = notified.data;
-      else if (notified.error === "rate_limited") emailBlocked = "rate_limited";
+      if (notified.ok) {
+        emailSummary = notified.data;
+        await prisma.cuppingSession.update({
+          where: { id: session.id },
+          data: { groupNotifiedAt: new Date() },
+        });
+      } else if (notified.error === "rate_limited") emailBlocked = "rate_limited";
     } catch (err) {
       logWarn({
         where: "createGroupSession",
@@ -1112,6 +1131,7 @@ async function updateSessionBody(
     date?: Date;
     objective?: string | null;
     groupId?: string | null;
+    notifyGroupAtStart?: boolean;
     format?: string;
     cupsPerSample?: number;
     closesAt?: Date | null;
@@ -1209,6 +1229,16 @@ async function updateSessionBody(
       }
       data.groupId = input.groupId;
     }
+    // S8-17: the "notify the group at start" tick was made for the group the
+    // owner picked at creation. If the group changes (or is removed) the start
+    // email must not go to a different group the owner never ticked it for;
+    // they can notify from the group page. An unchanged re-post keeps the flag.
+    const storedGroup = await prisma.cuppingSession.findUnique({
+      where: { id: sessionId },
+      select: { groupId: true },
+    });
+    const flag = notifyFlagAfterGroupChange(storedGroup?.groupId ?? null, data.groupId ?? null);
+    if (flag !== undefined) data.notifyGroupAtStart = flag;
   }
 
   if (input.format !== undefined || input.cupsPerSample !== undefined) {
