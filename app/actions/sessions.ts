@@ -1322,6 +1322,12 @@ export async function removeSessionSample(sampleId: string, locale: string = "es
   // transaction so a first evaluation landing between the check and the delete
   // cannot be cascaded away (S8-10 T5; F-sesiones-3, race half).
   const refused = await prisma.$transaction(async (tx) => {
+    // READ COMMITTED does not stop a cupper's first auto-save from committing
+    // between the counts and the delete. Row-lock the sample first: the
+    // FK key-share lock that an evaluation/physical/extrinsic INSERT takes on
+    // its parent conflicts with FOR UPDATE, so a concurrent insert either
+    // lands before the lock (and is counted) or waits until we are done.
+    await tx.$queryRaw`SELECT id FROM session_samples WHERE id = ${sampleId} FOR UPDATE`;
     const [evaluations, physical, extrinsic] = await Promise.all([
       tx.evaluation.count({ where: { sessionSampleId: sampleId } }),
       tx.physicalEvaluation.count({ where: { sessionSampleId: sampleId } }),
