@@ -3,9 +3,8 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { getGuestClaimSummary } from "@/lib/guestClaim";
 import { safeClaimBack, verifyGuestClaimToken } from "@/lib/guestClaimToken";
-import { confirmGuestClaim } from "@/app/actions/guestClaim";
 import { ButtonLink } from "@/components/ui";
-import { ClaimConfirmButton } from "@/components/auth/ClaimConfirmButton";
+import { ClaimCard } from "@/components/auth/ClaimCard";
 
 // Reads cookies (the freshly signed-in user) — never statically rendered.
 export const dynamic = "force-dynamic";
@@ -82,26 +81,40 @@ export default async function ClaimPage({
     );
   }
 
-  const confirm = confirmGuestClaim.bind(null, loc, token, safeBack);
+  const claimUrl = `/${loc}/auth/claim?token=${encodeURIComponent(token)}&back=${encodeURIComponent(safeBack)}`;
 
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-16">
       <div className={card}>
-        <h1 className="font-display text-2xl text-primary-container">{t("title")}</h1>
-        <p className="text-sm text-on-surface">
-          {t("body", {
-            name: summary.displayName,
-            sessions: summary.sessionsParticipated + summary.sessionsCreated,
-            email: user.email ?? "",
-          })}
-        </p>
-        <p className="text-xs text-on-surface-variant">{t("note")}</p>
-        <form action={confirm} className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <ButtonLink href={home} variant="secondary" size="sm">
-            {t("cancel")}
-          </ButtonLink>
-          <ClaimConfirmButton label={t("confirm")} pendingLabel={t("confirming")} />
-        </form>
+        <ClaimCard
+          locale={loc}
+          token={token}
+          back={safeBack}
+          home={home}
+          claimUrl={claimUrl}
+          strings={{
+            title: t("title"),
+            body: t("body", {
+              name: summary.displayName,
+              sessions: summary.sessionsParticipated + summary.sessionsCreated,
+              evaluations: summary.evaluations,
+              email: user.email ?? "",
+            }),
+            note: t("note"),
+            confirm: t("confirm"),
+            confirming: t("confirming"),
+            useOther: t("useOther"),
+            skip: t("skip"),
+            skipTitle: t("skipTitle"),
+            skipBody: t("skipBody"),
+            skipConfirm: t("skipConfirm"),
+            skipBack: t("skipBack"),
+            retryTitle: t("retryTitle"),
+            retryBody: t("retryBody"),
+            retry: t("retry"),
+            offline: t("offline"),
+          }}
+        />
       </div>
     </main>
   );

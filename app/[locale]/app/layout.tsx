@@ -91,6 +91,20 @@ export default async function AppLayout({
     close: tGate("close"),
     offline: tGate("offline"),
     error: tGate("error"),
+    leave: {
+      close: tGate("close"),
+      cancel: tGate("leaveCancel"),
+      guestTitle: tGate("leaveGuestTitle"),
+      guestBody: tGate("leaveGuestBody"),
+      save: tGate("leaveSave"),
+      saving: tGate("ctaLoading"),
+      saveError: tGate("error"),
+      offline: tGate("offline"),
+      leaveAnyway: tGate("leaveAnyway"),
+      everywhereTitle: tGate("leaveEverywhereTitle"),
+      everywhereBody: tGate("leaveEverywhereBody"),
+      everywhereConfirm: tGate("leaveEverywhereConfirm"),
+    },
   };
   // Raw template ({count} is filled in client-side by PendingDraftsBadge) —
   // t() would error on the "missing" ICU arg, same pattern as offline.conflictBody.

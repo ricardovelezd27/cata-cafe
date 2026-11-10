@@ -65,16 +65,25 @@
     "claimIntro": "Crea tu cuenta o inicia sesión para guardar los resultados de tu cata. Al terminar volverás a tus resultados.",
     "claim": {
       "title": "Vincular tus resultados",
-      "body": "¿Vincular la participación de «{name}» ({sessions, plural, =1 {1 sesión de cata} other {# sesiones de cata}}) a la cuenta {email}?",
-      "note": "Las evaluaciones y el historial de esa participación como invitado pasarán a esta cuenta. Si no reconoces ese nombre, cancela.",
+      "body": "¿Vincular la participación de «{name}» ({sessions, plural, =1 {1 sesión de cata} other {# sesiones de cata}}, {evaluations, plural, =0 {sin evaluaciones} =1 {1 evaluación} other {# evaluaciones}}) a la cuenta {email}?",
+      "note": "Las evaluaciones y el historial de esa participación como invitado pasarán a esta cuenta. Si no reconoces ese nombre, elige «Usar otra cuenta» o «No vincular».",
       "confirm": "Vincular a mi cuenta",
       "confirming": "Vinculando…",
-      "cancel": "Cancelar",
       "errorTitle": "No pudimos vincular tus resultados",
       "errorInvalid": "El enlace no es válido. Si todavía tienes abierta la sesión de invitado en el dispositivo donde cataste, vuelve a sus resultados y pulsa «Crear cuenta y guardar» de nuevo; si ya iniciaste sesión ahí, esa participación como invitado ya no se puede vincular. Tu cuenta funciona con normalidad.",
       "errorExpired": "El enlace caducó (dura 7 días). Si todavía tienes abierta la sesión de invitado en el dispositivo donde cataste, vuelve a sus resultados y pulsa «Crear cuenta y guardar» de nuevo. Tu cuenta funciona con normalidad.",
       "errorAlready": "Estos resultados ya fueron vinculados a una cuenta, o la participación como invitado ya no existe.",
-      "continue": "Ir a mi cuenta"
+      "continue": "Ir a mi cuenta",
+      "useOther": "Usar otra cuenta",
+      "skip": "No vincular",
+      "skipTitle": "¿Seguro que no quieres vincular?",
+      "skipBody": "Si no vinculas, esa participación como invitado no pasará a esta cuenta: sus resultados solo seguirán visibles en el dispositivo donde cataste, y se pierden si cierras sesión o borras los datos del navegador. El enlace dura 7 días.",
+      "skipConfirm": "Sí, no vincular",
+      "skipBack": "Volver",
+      "retryTitle": "No pudimos terminar de vincular",
+      "retryBody": "Algo falló del lado del servidor y no se movió nada. Puedes reintentar: es seguro repetirlo.",
+      "retry": "Reintentar",
+      "offline": "Sin conexión: podrás vincular cuando vuelvas a estar en línea."
     },
     "errors": {
       "rate_limited": "Demasiados intentos en poco tiempo. Espera un minuto e inténtalo de nuevo.",
@@ -504,7 +513,17 @@
     "recentCoffees": "Cafés recientes",
     "viewAllSessions": "Ver todas las sesiones",
     "viewAllCoffees": "Ver todos los cafés",
-    "settingsTitle": "Configuración"
+    "settingsTitle": "Configuración",
+    "saving": "Guardando…",
+    "logoutEverywhere": "Salir en todos los dispositivos",
+    "changeEmail": "Cambiar correo",
+    "changeEmailTitle": "Cambiar el correo de tu cuenta",
+    "changeEmailBody": "Te enviamos un enlace de confirmación al correo nuevo. Hasta que lo abras sigues entrando con el actual, y puede que también debas confirmar desde el actual.",
+    "changeEmailLabel": "Correo nuevo",
+    "changeEmailSubmit": "Enviar enlace",
+    "changeEmailSending": "Enviando…",
+    "changeEmailSent": "Enviamos un enlace de confirmación a {email}. Ábrelo para terminar el cambio.",
+    "changeEmailPending": "Cambio pendiente a {email}: confirma desde ese correo."
   },
   "actions": {
     "save": "Guardar",
@@ -577,7 +596,8 @@
     "warmupConfirmStartTitle": "El grupo está en el ejercicio",
     "warmupConfirmStart": "El grupo está en el ejercicio (quedan {time}). ¿Iniciar igual?",
     "warmupConfirmStartYes": "Iniciar igual",
-    "warmupStartError": "No se pudo empezar el ejercicio."
+    "warmupStartError": "No se pudo empezar el ejercicio.",
+    "guestRateLimited": "Mucha gente está entrando desde esta red a la vez. Espera un minuto y vuelve a intentarlo, o entra con tu correo."
   },
   "results": {
     "title": "Resultados de la Sesión",
@@ -1582,7 +1602,15 @@
     "error": "No pudimos iniciar el proceso. Inténtalo de nuevo.",
     "guestLabel": "Invitado",
     "profileCta": "Terminar de crear tu cuenta",
-    "accountBody": "Estás participando como invitado: tu acceso vive solo en este navegador y se pierde al borrar los datos de navegación, cambiar de dispositivo o cerrar sesión. Crea tu cuenta para conservar tus catas."
+    "accountBody": "Estás participando como invitado: tu acceso vive solo en este navegador y se pierde al borrar los datos de navegación, cambiar de dispositivo o cerrar sesión. Crea tu cuenta para conservar tus catas.",
+    "leaveGuestTitle": "Si sales, pierdes tus resultados",
+    "leaveGuestBody": "Eres invitado: tus evaluaciones viven solo en este navegador y no podrás recuperarlas si sales. Guarda tus resultados en una cuenta antes de salir.",
+    "leaveSave": "Guardar mis resultados",
+    "leaveAnyway": "Salir de todos modos",
+    "leaveCancel": "Cancelar",
+    "leaveEverywhereTitle": "¿Cerrar sesión en todos los dispositivos?",
+    "leaveEverywhereBody": "Saldrás de tu cuenta en este y en todos los demás dispositivos donde hayas iniciado sesión. Tendrás que entrar de nuevo en cada uno.",
+    "leaveEverywhereConfirm": "Cerrar en todos"
   },
   "errors": {
     "title": "Algo salió mal",
@@ -1609,7 +1637,9 @@
       "not_found": "Ese elemento ya no existe.",
       "invalid_reference": "Uno de los elementos vinculados ya no existe.",
       "rate_limited": "Demasiados envíos en poco tiempo. Espera un momento e inténtalo de nuevo.",
-      "unknown": "Algo salió mal. Inténtalo de nuevo."
+      "unknown": "Algo salió mal. Inténtalo de nuevo.",
+      "offline": "Necesitas conexión para hacer esto. Inténtalo cuando vuelvas a estar en línea.",
+      "email_exists": "Ese correo ya tiene una cuenta."
     }
   },
   "warmup": {

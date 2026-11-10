@@ -65,16 +65,25 @@
     "claimIntro": "Create your account or sign in to save your cupping results. You'll be taken back to your results afterwards.",
     "claim": {
       "title": "Link your results",
-      "body": "Link “{name}”'s participation ({sessions, plural, =1 {1 cupping session} other {# cupping sessions}}) to the account {email}?",
-      "note": "The evaluations and history from that guest participation will move to this account. If you don't recognise that name, cancel.",
+      "body": "Link “{name}”'s participation ({sessions, plural, =1 {1 cupping session} other {# cupping sessions}}, {evaluations, plural, =0 {no evaluations} =1 {1 evaluation} other {# evaluations}}) to the account {email}?",
+      "note": "The evaluations and history from that guest participation will move to this account. If you don't recognise that name, choose “Use another account” or “Don't link”.",
       "confirm": "Link to my account",
       "confirming": "Linking…",
-      "cancel": "Cancel",
       "errorTitle": "We couldn't link your results",
       "errorInvalid": "This link isn't valid. If the guest session is still open on the device where you cupped, go back to its results and press “Create account & save” again; if you already signed in there, that guest participation can no longer be linked. Your account works normally.",
       "errorExpired": "This link expired (it lasts 7 days). If the guest session is still open on the device where you cupped, go back to its results and press “Create account & save” again. Your account works normally.",
       "errorAlready": "These results were already linked to an account, or the guest participation no longer exists.",
-      "continue": "Go to my account"
+      "continue": "Go to my account",
+      "useOther": "Use another account",
+      "skip": "Don't link",
+      "skipTitle": "Are you sure you don't want to link?",
+      "skipBody": "If you don't link, that guest participation will not move to this account: its results stay visible only on the device where you cupped, and are lost if you sign out or clear browser data. The link lasts 7 days.",
+      "skipConfirm": "Yes, don't link",
+      "skipBack": "Go back",
+      "retryTitle": "We couldn't finish linking",
+      "retryBody": "Something failed on our side and nothing was moved. You can retry: it is safe to repeat.",
+      "retry": "Retry",
+      "offline": "You're offline: you can link once you're back online."
     },
     "errors": {
       "rate_limited": "Too many attempts in a short time. Wait a minute and try again.",
@@ -504,7 +513,17 @@
     "recentCoffees": "Recent coffees",
     "viewAllSessions": "View all sessions",
     "viewAllCoffees": "View all coffees",
-    "settingsTitle": "Settings"
+    "settingsTitle": "Settings",
+    "saving": "Saving…",
+    "logoutEverywhere": "Sign out on all devices",
+    "changeEmail": "Change email",
+    "changeEmailTitle": "Change your account email",
+    "changeEmailBody": "We'll send a confirmation link to the new address. Until you open it you keep signing in with the current one, and you may also need to confirm from the current one.",
+    "changeEmailLabel": "New email",
+    "changeEmailSubmit": "Send link",
+    "changeEmailSending": "Sending…",
+    "changeEmailSent": "We sent a confirmation link to {email}. Open it to finish the change.",
+    "changeEmailPending": "Change pending to {email}: confirm from that inbox."
   },
   "actions": {
     "save": "Save",
@@ -577,7 +596,8 @@
     "warmupConfirmStartTitle": "The group is still in the exercise",
     "warmupConfirmStart": "The group is still in the exercise ({time} left). Start anyway?",
     "warmupConfirmStartYes": "Start anyway",
-    "warmupStartError": "The exercise couldn't be started."
+    "warmupStartError": "The exercise couldn't be started.",
+    "guestRateLimited": "A lot of people are joining from this network at once. Wait a minute and try again, or sign in with your email."
   },
   "results": {
     "title": "Session Results",
@@ -1582,7 +1602,15 @@
     "error": "We couldn't start the process. Please try again.",
     "guestLabel": "Guest",
     "profileCta": "Finish creating your account",
-    "accountBody": "You're participating as a guest: your access lives only in this browser and is lost if you clear browsing data, switch devices or sign out. Create your account to keep your cuppings."
+    "accountBody": "You're participating as a guest: your access lives only in this browser and is lost if you clear browsing data, switch devices or sign out. Create your account to keep your cuppings.",
+    "leaveGuestTitle": "If you leave, you lose your results",
+    "leaveGuestBody": "You're a guest: your evaluations live only in this browser and can't be recovered if you sign out. Save your results to an account before leaving.",
+    "leaveSave": "Save my results",
+    "leaveAnyway": "Leave anyway",
+    "leaveCancel": "Cancel",
+    "leaveEverywhereTitle": "Sign out on all devices?",
+    "leaveEverywhereBody": "You'll be signed out of your account here and on every other device where you're signed in. You'll need to sign in again on each one.",
+    "leaveEverywhereConfirm": "Sign out everywhere"
   },
   "errors": {
     "title": "Something went wrong",
@@ -1609,7 +1637,9 @@
       "not_found": "That item no longer exists.",
       "invalid_reference": "One of the linked items no longer exists.",
       "rate_limited": "Too many sends in a short time. Wait a moment and try again.",
-      "unknown": "Something went wrong. Please try again."
+      "unknown": "Something went wrong. Please try again.",
+      "offline": "You need a connection to do this. Try again once you are back online.",
+      "email_exists": "That email already has an account."
     }
   },
   "warmup": {

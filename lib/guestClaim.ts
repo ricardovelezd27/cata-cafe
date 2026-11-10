@@ -51,7 +51,14 @@ export async function getGuestClaimSummary(anonymousUserId: string): Promise<Gue
 
 export type MergeResult =
   | { ok: true; movedEvaluations: number; movedSessions: number }
-  | { ok: false; error: "not_anonymous" | "same_user" };
+  // lookup_failed = the auth service could not answer (retryable); not_anonymous
+  // = the guest is gone or was never one (final). They used to be one code, so a
+  // blip read as "already claimed" (F-guest-8).
+  | { ok: false; error: "not_anonymous" | "same_user" | "lookup_failed" };
+
+/** One claim can touch many rows; the default 5 s interactive-transaction
+ *  timeout is too tight for a guest with a long history. */
+const MERGE_TX_OPTIONS = { maxWait: 5_000, timeout: 30_000 } as const;
 
 /**
  * Moves everything the anonymous user owns to `targetUserId`, then deletes
@@ -79,7 +86,11 @@ export async function mergeGuestData(
   // stop here.
   const admin = createAdminClient();
   const { data: anonLookup, error: lookupError } = await admin.auth.admin.getUserById(anonymousUserId);
-  if (lookupError || !anonLookup?.user || anonLookup.user.is_anonymous !== true) {
+  if (lookupError) {
+    const gone = lookupError.status === 404 || lookupError.code === "user_not_found";
+    return { ok: false, error: gone ? "not_anonymous" : "lookup_failed" };
+  }
+  if (!anonLookup?.user || anonLookup.user.is_anonymous !== true) {
     return { ok: false, error: "not_anonymous" };
   }
 
@@ -106,7 +117,10 @@ export async function mergeGuestData(
       where: { cupperId: target, sessionSampleId: { in: anonEvals.map((e) => e.sessionSampleId) } },
       select: evalSelect,
     });
-    const touchedSessions = new Set<string>(anonEvals.map((e) => e.sessionSample.sessionId));
+    // Sessions whose stored aggregate may now be wrong: a conflict deletes one
+    // evaluation, and a merged exclusion flag changes who the trigger counts.
+    // Plain moves (cupperId only) change nothing the trigger reads (F-guest-6).
+    const refireSessions = new Set<string>();
     const targetBySample = new Map(targetEvals.map((e) => [e.sessionSampleId, e]));
     const conflictSamples: string[] = [];
     const deleteIds: string[] = [];
@@ -114,6 +128,7 @@ export async function mergeGuestData(
       const t = targetBySample.get(a.sessionSampleId);
       if (!t) continue;
       conflictSamples.push(a.sessionSampleId);
+      refireSessions.add(a.sessionSample.sessionId);
       deleteIds.push(anonEvalWins(a, t) ? t.id : a.id);
     }
     if (deleteIds.length > 0) {
@@ -162,10 +177,10 @@ export async function mergeGuestData(
       select: { sessionId: true, excludedFromResults: true },
     });
     const targetPartBySession = new Map(targetParts.map((p) => [p.sessionId, p]));
-    for (const p of anonParts) touchedSessions.add(p.sessionId);
     for (const p of anonParts) {
       const existing = targetPartBySession.get(p.sessionId);
       if (!existing) continue;
+      if (p.excludedFromResults && !existing.excludedFromResults) refireSessions.add(p.sessionId);
       // Both identities joined the same session: keep the target's row, but
       // an "owner" status must follow the session (createdBy moves below) and
       // an exclusion the master applied to EITHER identity must survive —
@@ -212,6 +227,38 @@ export async function mergeGuestData(
     await tx.tastingGroupMember.updateMany({ where: { userId: anon }, data: { userId: target } });
     await tx.groupPost.updateMany({ where: { authorId: anon }, data: { authorId: target } });
 
+    // ── Bare user columns (no FK, so the profile delete would not catch them) ─
+    // See lib/accountDeletion/manifest.ts; tests/profileRelations.test.ts
+    // fails if one of these is dropped.
+    const anonUsage = await tx.aiChatUsage.findMany({ where: { userId: anon } });
+    for (const u of anonUsage) {
+      const existing = await tx.aiChatUsage.findUnique({
+        where: { userId_day: { userId: target, day: u.day } },
+      });
+      if (existing) {
+        await tx.aiChatUsage.update({
+          where: { id: existing.id },
+          data: {
+            questionCount: { increment: u.questionCount },
+            modelCalls: { increment: u.modelCalls },
+            promptTokens: { increment: u.promptTokens },
+            outputTokens: { increment: u.outputTokens },
+          },
+        });
+        await tx.aiChatUsage.delete({ where: { id: u.id } });
+      } else {
+        await tx.aiChatUsage.update({ where: { id: u.id }, data: { userId: target } });
+      }
+    }
+    // Throttle history follows the person (actorKey is "u_<userId>", S8-03).
+    await tx.outboundEmailEvent.updateMany({
+      where: { actorKey: `u_${anon}` },
+      data: { actorKey: `u_${target}` },
+    });
+    // A guest has no address, so every row is "skipped": the account must not
+    // inherit a ledger that would suppress its own close email.
+    await tx.closeEmailDelivery.deleteMany({ where: { userId: anon } });
+
     // ── Profile ────────────────────────────────────────────────────────────
     // A brand-new account (created by this very sign-in, i.e. after the claim
     // was minted) only has the trigger's email-prefix fallback as its name —
@@ -236,21 +283,24 @@ export async function mergeGuestData(
 
     // ── Aggregates ─────────────────────────────────────────────────────────
     // The aggregate trigger only fires on INSERT / UPDATE OF isDraft, so
-    // re-fire it for every touched session with the same no-op update trick
-    // as refreshAggregateScores (app/actions/community.ts) — inside this
-    // transaction, so a crash can never leave stale aggregates behind. A
-    // sample whose surviving evaluation is a draft has nothing to fire on;
-    // its aggregate would still describe the deleted submission, so drop it
-    // (the results page treats a missing aggregate as "pending").
-    for (const sessionId of touchedSessions) {
-      await tx.$executeRaw`
-        UPDATE evaluations e
-        SET "isDraft" = e."isDraft"
-        FROM session_samples ss
-        WHERE e."sessionSampleId" = ss.id
-          AND ss."sessionId" = ${sessionId}
-          AND e."isDraft" = false
-      `;
+    // re-fire it ONLY where something it reads changed (conflicted samples and
+    // sessions whose exclusion flag was merged) with the same no-op SET as
+    // refreshAggregateScores — inside this transaction, so a crash can never
+    // leave stale aggregates behind. A sample whose surviving evaluation is a
+    // draft has nothing to fire on; its aggregate would still describe the
+    // deleted submission, so drop it (the results page treats a missing
+    // aggregate as "pending").
+    if (conflictSamples.length > 0) {
+      await tx.evaluation.updateMany({
+        where: { sessionSampleId: { in: conflictSamples }, isDraft: false },
+        data: { isDraft: false },
+      });
+    }
+    if (refireSessions.size > 0) {
+      await tx.evaluation.updateMany({
+        where: { sessionSample: { sessionId: { in: [...refireSessions] } }, isDraft: false },
+        data: { isDraft: false },
+      });
     }
     for (const sampleId of new Set(conflictSamples)) {
       const submitted = await tx.evaluation.count({ where: { sessionSampleId: sampleId, isDraft: false } });
@@ -258,7 +308,7 @@ export async function mergeGuestData(
     }
 
     return { movedEvaluations: movedEvals.count, movedSessions: movedSessions.count };
-  });
+  }, MERGE_TX_OPTIONS);
 
   // Best effort — the profile and every row are already gone/moved; a
   // lingering auth user with no data is harmless.

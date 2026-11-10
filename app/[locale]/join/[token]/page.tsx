@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { joinBlock } from "@/lib/joinability";
 import { GuestJoinForm } from "@/components/join/GuestJoinForm";
 import { JoinSessionForm } from "@/components/join/JoinSessionForm";
 
@@ -27,15 +28,38 @@ export default async function JoinPage({
   // Validate invite token
   const invite = await prisma.sessionInvite.findUnique({
     where: { token },
-    include: { session: { select: { id: true, name: true } } },
+    include: { session: { select: { id: true, name: true, status: true, closesAt: true } } },
   });
 
-  const isValid =
-    invite &&
-    (!invite.expiresAt || invite.expiresAt > new Date()) &&
-    (invite.maxUses === null || invite.useCount < invite.maxUses);
+  // Same rule as checkJoinable and joinViaToken (lib/joinability.ts). A CLOSED
+  // session is not "invalid": a signed-in participant must still reach their
+  // results through joinViaToken, so only a visitor with no session gets the
+  // closed state (S8-07, F-guest-3).
+  const block = joinBlock(invite, invite?.session);
+  const closedForVisitor = block === "session_closed" && !user;
 
-  if (!isValid) {
+  if (closedForVisitor && invite) {
+    return (
+      <main className="flex flex-1 items-center justify-center px-6 py-16">
+        <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-card p-8 text-center space-y-4">
+          <h1 className="text-2xl font-serif text-green-dark font-semibold">{invite.session.name}</h1>
+          <p className="text-sm text-brown-mid">{t("sessionClosed")}</p>
+          <div className="flex flex-col gap-2 text-sm">
+            <Link
+              href={`/${locale}/auth/login?next=${encodeURIComponent(`/${locale}/join/${token}`)}`}
+              className="text-brown-mid underline hover:text-green-dark"
+            >
+              {t("orSignIn")}
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const isValid = !!invite && (block === null || block === "session_closed");
+
+  if (!isValid || !invite) {
     return (
       <main className="flex flex-1 items-center justify-center px-6 py-16">
         <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-card p-8 text-center space-y-4">
@@ -83,6 +107,11 @@ export default async function JoinPage({
                 offlineNotice: t("guestOfflineNotice"),
                 dataNotice: t("guestDataNotice"),
                 error: t("guestError"),
+                errors: {
+                  ...(tErrors.raw("codes") as Record<string, string>),
+                  session_closed: t("sessionClosed"),
+                  rate_limited: t("guestRateLimited"),
+                },
               }}
             />
           </div>
@@ -96,6 +125,9 @@ export default async function JoinPage({
     );
   }
 
+  // TODO(E1-Kim): a signed-in ANONYMOUS visitor lands here as that guest
+  // ("¿Eres X? Entrar como X / No soy X", with a warning when evaluations
+  // exist). Not built: it needs Kim's answer on own-phone vs shared tablet.
   const errorCodes = tErrors.raw("codes") as Record<string, string>;
   const joinErrors = { ...errorCodes, session_closed: t("sessionClosed") };
 
