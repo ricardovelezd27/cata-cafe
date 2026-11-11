@@ -216,3 +216,8 @@ Ricardo authorized Claude to run the three phases and to merge + deploy (answers
 - PHASE 24 pre-flight (a) matched the expected 18 policies exactly. Pre-flight (b), the grant half of the rollback, is saved as `docs/handover/phase24-rollback-grants.sql` (19 tables x 2 roles); the policy half is the commented block at the end of PHASE 24 in the SQL file. Pre-flight (c): postgres defaults in public were the Supabase defaults (`arwdDxtm` for anon and authenticated).
 - Not checked yet: Supabase Security Advisor, and the two-account Realtime test (needs Ricardo's accounts).
 - The old app is still what is deployed; it ran on top of these rules from this moment.
+
+## Update 2026-11-11 (MERGED)
+
+- **S8-28** (PR #95, `12b8d0f`): build at the S8-27 tip passed; fixed A-03 (email ledger purged in the daily close cron), A-04 (per-account magic-link bucket, 10 per 15 min: Claude's number, Ricardo may change it in `lib/emailLimits.ts`), B-03, C-04 (static SW cache cap 400), D-09 (`notifyGroupOfSession` claims `groupNotifiedAt` itself), A-05 (pure rule + behavioural tests); C-02 documented as by design. 1,175 tests, tsc clean, `next build` OK. Architect-reviewed (D-09 and A-03/A-04 diffs read).
+- **MERGED INTO MAIN: `fa5ed64` "S8: flows-audit remediation, all 28 parts (#95)"** (merge commit; brings in the whole chain #67–#81, #83–#95). No new required environment variable (only a recommended one, `ANALYTICS_SUPER_ADMIN_EMAIL`, warns at boot).
