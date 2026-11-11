@@ -18,3 +18,23 @@ describe("groupSessionInviteUrl", () => {
     );
   });
 });
+
+import { normalizeSiteOrigin } from "@/lib/inviteUrl";
+
+describe("normalizeSiteOrigin", () => {
+  it("upgrades a real host configured with http to https (the 2026-11-11 sign-in outage)", () => {
+    expect(normalizeSiteOrigin("http://cata-cafe-opal.vercel.app")).toBe("https://cata-cafe-opal.vercel.app");
+    expect(normalizeSiteOrigin("http://cata-cafe-opal.vercel.app/")).toBe("https://cata-cafe-opal.vercel.app");
+  });
+  it("leaves https alone and strips trailing slashes", () => {
+    expect(normalizeSiteOrigin("https://cafesensible.ai//")).toBe("https://cafesensible.ai");
+  });
+  it("keeps http for local development hosts, with their port", () => {
+    expect(normalizeSiteOrigin("http://localhost:3000")).toBe("http://localhost:3000");
+    expect(normalizeSiteOrigin("http://127.0.0.1:3000/")).toBe("http://127.0.0.1:3000");
+  });
+  it("falls back to the dev origin when unset or blank", () => {
+    expect(normalizeSiteOrigin(undefined)).toBe("http://localhost:3000");
+    expect(normalizeSiteOrigin("  ")).toBe("http://localhost:3000");
+  });
+});

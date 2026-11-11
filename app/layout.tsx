@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Newsreader, Hanken_Grotesk } from "next/font/google";
 import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
+import { siteOrigin } from "@/lib/inviteUrl";
 import "./globals.css";
 
 // Single variable-font file instead of three static weight cuts. Not
@@ -46,9 +47,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
-  ),
+  metadataBase: new URL(siteOrigin()),
   title: "Café Sensible",
   description:
     "La herramienta del Método Café Sensible: cata SCA CVA en grupo con referencia del instructor y convergencia visible.",
