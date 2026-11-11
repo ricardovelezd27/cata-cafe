@@ -1259,6 +1259,15 @@ CREATE POLICY "coffees_write" ON coffees
 -- F-resultados-1, F-sesiones-13/14/15). Apply via runbook §10 — SQL FIRST,
 -- then deploy the app. The Supabase project is production.
 --
+-- NOTE (S9-01, audit A-12; comment only): the SECURITY DEFINER policy helpers
+-- (is_session_participant, is_session_owner, can_view_group_results,
+-- is_coffee_owner, ...) are callable over /rest/v1/rpc by ANY signed-in user.
+-- That is acceptable only because each one answers about the caller's own
+-- standing; never add a helper that takes a user id to probe. They must also
+-- KEEP EXECUTE for `authenticated`: policy expressions run as the querying
+-- role, and revoking it broke every Realtime subscription on 2026-09-14
+-- (PHASE 18b). Revoke from PUBLIC / anon only.
+--
 -- Why: NEXT_PUBLIC_SUPABASE_ANON_KEY is public and every signed-in user
 -- (guests included) holds an `authenticated` JWT. The Phase 1/2 policies were
 -- written for a browser that talked to PostgREST directly, which this app
