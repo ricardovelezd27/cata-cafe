@@ -51,6 +51,7 @@ export function AffectiveBlock({
             {showIncluded ? (
               <Text style={[st.small, { marginTop: 5 }]}>
                 {t.includedOf(affective.included, affective.submitted)}
+                {affective.indicative ? ` · ${t.indicative}` : ""}
               </Text>
             ) : null}
             {showPenalties ? (

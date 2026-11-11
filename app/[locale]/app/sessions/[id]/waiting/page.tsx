@@ -1,9 +1,11 @@
 import { notFound, redirect } from "next/navigation";
+import { requireAppUser } from "@/lib/auth";
 import { referencesOf } from "@/lib/referenceRules";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { isSessionExpired } from "@/lib/sessionState";
 import { WaitingRoomClient } from "./WaitingRoomClient";
+import { DeadlineBanner } from "@/components/session/DeadlineBanner";
 import { warmupPlayerStrings } from "@/components/warmup/playerStrings";
 
 export const dynamic = "force-dynamic";
@@ -16,11 +18,7 @@ export default async function WaitingPage({
   const { locale, id } = await params;
   setRequestLocale(locale);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/${locale}/auth/login`);
+  const user = await requireAppUser(locale, `/${locale}/app/sessions/${id}/waiting`);
 
   const session = await prisma.cuppingSession.findFirst({
     where: {
@@ -35,6 +33,8 @@ export default async function WaitingPage({
       date: true,
       isAsync: true,
       status: true,
+      closesAt: true,
+      closesAtZone: true,
       referenceSampleId: true,
       warmupExerciseId: true,
       warmupStartedAt: true,
@@ -53,7 +53,7 @@ export default async function WaitingPage({
   }
 
   // A closed session has nothing left to wait for — send everyone to results.
-  if (session.status === "closed") {
+  if (isSessionExpired(session)) {
     redirect(`/${locale}/app/sessions/${id}/results`);
   }
 
@@ -66,8 +66,25 @@ export default async function WaitingPage({
 
   const t = await getTranslations("waiting");
   const tw = await getTranslations("warmup");
+  const tg = await getTranslations("group");
 
   return (
+    <>
+    {session.closesAt && (
+      <div className="mx-auto w-full max-w-2xl px-4 pt-4">
+        <DeadlineBanner
+          closesAt={session.closesAt.toISOString()}
+          zone={session.closesAtZone}
+          locale={locale}
+          translations={{
+            open: tg.raw("deadlineOpen") as string,
+            soon: tg.raw("deadlineSoon") as string,
+            passed: tg.raw("deadlinePassed") as string,
+            local: tg.raw("deadlineLocal") as string,
+          }}
+        />
+      </div>
+    )}
     <WaitingRoomClient
       sessionId={session.id}
       sessionName={session.name}
@@ -119,5 +136,6 @@ export default async function WaitingPage({
         connectionLost: t("connectionLost"),
       }}
     />
+    </>
   );
 }

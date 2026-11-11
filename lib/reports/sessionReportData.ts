@@ -13,6 +13,8 @@ import { asSessionFormat } from "@/lib/constants";
 import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
 import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
 import { computeCupperAlignment, computeMajoritySets } from "@/lib/alignment";
+import { resultsUpdatedAfterClose } from "@/lib/exclusionReasons";
+import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 import type { ReportLocale, SessionReportSource } from "./types";
 
 export type { SessionReportSource } from "./types";
@@ -66,6 +68,8 @@ export async function loadSessionReportSource(
             userId: true,
             status: true,
             excludedFromResults: true,
+            excludedAt: true,
+            exclusionReason: true,
             user: { select: { displayName: true } },
           },
         },
@@ -94,9 +98,10 @@ export async function loadSessionReportSource(
 
   const participants = session.participants.map((p) => ({
     userId: p.userId,
-    displayName: p.user.displayName,
+    displayName: profileDisplayName({ id: p.userId, displayName: p.user.displayName }, locale),
     status: p.status,
     excluded: p.excludedFromResults,
+    exclusionReason: p.exclusionReason,
   }));
   const excludedUserIds =
     options.excludedUserIds ??
@@ -105,7 +110,7 @@ export async function loadSessionReportSource(
   const evals = evalRows.map((ev) => ({
     id: ev.id,
     cupperId: ev.cupperId,
-    displayName: ev.cupper.displayName,
+    displayName: profileDisplayName({ id: ev.cupperId, displayName: ev.cupper.displayName }, locale),
     sessionSampleId: ev.sessionSampleId,
     descriptiveData: asObj(ev.descriptiveData),
     affectiveData: asObj(ev.affectiveData),
@@ -171,7 +176,31 @@ export async function loadSessionReportSource(
   const alignmentRows = computeCupperAlignment(alignmentInput);
   const majoritySets = computeMajoritySets(alignmentInput);
 
+  // Disclosure for the report stamp (S8-12): who the group numbers rest on and
+  // whether anything changed after the close.
+  const submittedCuppers = new Set(evals.map((e) => e.cupperId));
+  const includedCuppers = [...submittedCuppers].filter((id) => !excludedUserIds.has(id)).length;
+  let originEditedAt: Date | null = null;
+  for (const s of session.samples) {
+    const at = s.revealed ? (s.extrinsic?.editedAt ?? null) : null;
+    if (at && (!originEditedAt || at > originEditedAt)) originEditedAt = at;
+  }
+  const stamp = {
+    inclusion: session.isGroup
+      ? { included: includedCuppers, total: submittedCuppers.size }
+      : null,
+    resultsUpdatedAt:
+      session.isGroup && session.status === "closed"
+        ? resultsUpdatedAfterClose(
+            session.closedAt,
+            session.participants.map((p) => p.excludedAt),
+          )
+        : null,
+    originEditedAt,
+  };
+
   return {
+    stamp,
     session: {
       id: session.id,
       name: session.name,
@@ -185,7 +214,7 @@ export async function loadSessionReportSource(
       referenceSampleId,
       closedAt: session.closedAt,
     },
-    ownerName: session.createdByUser.displayName,
+    ownerName: profileDisplayName({ id: session.createdBy, displayName: session.createdByUser.displayName }, locale),
     samples: samples.map((s) => ({
       id: s.id,
       label: s.label,

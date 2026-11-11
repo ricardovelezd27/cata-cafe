@@ -3,8 +3,9 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ClipboardList, Coffee, Users, ChevronRight, ChevronLeft } from "lucide-react";
-import { completeOnboarding } from "@/app/actions/profile";
+import { completeOnboarding, dismissOnboarding } from "@/app/actions/profile";
 import { useActionFeedback } from "@/components/ui";
+import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { COUNTRIES } from "@/lib/constants";
 
 // NOTE: these lists drive ONBOARDING CHOICES (values + prompt copy), a separate
@@ -37,6 +38,7 @@ export interface WelcomeModalTranslations {
   next: string;
   whereToStart: string;
   saving: string;
+  close: string;
   /** Raw ICU template with a {label} placeholder, replaced client-side. */
   goTo: string;
   roles: Record<(typeof ROLE_VALUES)[number], string>;
@@ -59,22 +61,19 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
   const feedback = useActionFeedback();
   const [isPending, startTransition] = useTransition();
 
+  const [open, setOpen] = useState(true);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [displayName, setDisplayName] = useState(initialDisplayName);
   const [role, setRole] = useState("");
   const [country, setCountry] = useState("");
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
 
-  function handleSkip() {
+  // X, Esc, tapping outside and "skip" all do the same thing: mark onboarding
+  // done and write nothing else (no invented role). F-entrar-4.
+  function handleDismiss() {
+    setOpen(false);
     startTransition(async () => {
-      await feedback.run(
-        completeOnboarding({
-          displayName: displayName || initialDisplayName,
-          role: role || "enthusiast",
-          country: country || "",
-        }),
-        () => router.refresh(),
-      );
+      await feedback.run(dismissOnboarding(), () => router.refresh());
     });
   }
 
@@ -91,18 +90,30 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
 
   const selectedPathLabel = PATHS.find((p) => p.id === selectedPath)?.label ?? "";
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-inverse-surface/60">
-      <div className="bg-surface-container-lowest rounded-card shadow-card-lg w-full max-w-[480px] overflow-hidden">
+  const dialogTitle = step === 1 ? t.welcomeTitle : step === 2 ? t.aboutYou : t.whereToStart;
 
+  return (
+    <ResponsiveDialog
+      open={open}
+      // Escape / outside tap only dismiss on the welcome step; from step 2 on
+      // they are ignored so a typed name/role/country is never discarded by
+      // accident. The X (below) and "skip" always dismiss.
+      onOpenChange={(next) => {
+        if (!next && step === 1) handleDismiss();
+      }}
+      onCloseButtonClick={(e) => {
+        e.preventDefault();
+        handleDismiss();
+      }}
+      title={dialogTitle}
+      closeLabel={t.close}
+    >
+      <div>
         {/* Step 1 — Welcome */}
         {step === 1 && (
-          <div className="p-8 flex flex-col items-center text-center gap-5">
-            <span className="text-5xl">☕</span>
+          <div className="pb-2 flex flex-col items-center text-center gap-5">
+            <span className="text-5xl" aria-hidden>☕</span>
             <div className="space-y-2">
-              <h1 className="font-display text-[28px] font-medium leading-tight text-primary-container">
-                {t.welcomeTitle}
-              </h1>
               <p className="text-sm font-medium text-on-surface">
                 {t.welcomeTagline}
               </p>
@@ -120,7 +131,7 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
               {t.start} <ChevronRight className="w-4 h-4" />
             </button>
             <button
-              onClick={handleSkip}
+              onClick={handleDismiss}
               disabled={isPending}
               className="text-sm text-on-surface-variant hover:text-on-surface transition-colors"
             >
@@ -131,11 +142,7 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
 
         {/* Step 2 — Profile */}
         {step === 2 && (
-          <div className="p-8 flex flex-col gap-5">
-            <h2 className="font-display text-2xl font-medium text-primary-container">
-              {t.aboutYou}
-            </h2>
-
+          <div className="pb-2 flex flex-col gap-5">
             <div className="space-y-4">
               <label className="block">
                 <span className="text-sm font-medium text-on-surface mb-1 block">
@@ -205,11 +212,7 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
 
         {/* Step 3 — First step */}
         {step === 3 && (
-          <div className="p-8 flex flex-col gap-5">
-            <h2 className="font-display text-2xl font-medium text-primary-container">
-              {t.whereToStart}
-            </h2>
-
+          <div className="pb-2 flex flex-col gap-5">
             <div className="space-y-3">
               {PATHS.map((path) => {
                 const Icon = path.icon;
@@ -265,7 +268,7 @@ export default function WelcomeModal({ locale, initialDisplayName, translations:
           </div>
         )}
       </div>
-    </div>
+    </ResponsiveDialog>
   );
 }
 

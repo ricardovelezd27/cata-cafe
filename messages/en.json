@@ -38,7 +38,8 @@
     "delete": "Delete",
     "view": "View",
     "duplicate": "Duplicate",
-    "duplicateError": "Couldn't duplicate. Please try again."
+    "duplicateError": "Couldn't duplicate. Please try again.",
+    "duplicateDropped": "Session duplicated. Coffees you can no longer use were removed from those samples: {count}."
   },
   "home": {
     "heroTitle": "Professional sensory cupping",
@@ -65,17 +66,60 @@
     "claimIntro": "Create your account or sign in to save your cupping results. You'll be taken back to your results afterwards.",
     "claim": {
       "title": "Link your results",
-      "body": "Link “{name}”'s participation ({sessions, plural, =1 {1 cupping session} other {# cupping sessions}}) to the account {email}?",
-      "note": "The evaluations and history from that guest participation will move to this account. If you don't recognise that name, cancel.",
+      "body": "Link “{name}”'s participation ({sessions, plural, =1 {1 cupping session} other {# cupping sessions}}, {evaluations, plural, =0 {no evaluations} =1 {1 evaluation} other {# evaluations}}) to the account {email}?",
+      "note": "The evaluations and history from that guest participation will move to this account. If you don't recognise that name, choose “Use another account” or “Don't link”.",
       "confirm": "Link to my account",
       "confirming": "Linking…",
-      "cancel": "Cancel",
       "errorTitle": "We couldn't link your results",
       "errorInvalid": "This link isn't valid. If the guest session is still open on the device where you cupped, go back to its results and press “Create account & save” again; if you already signed in there, that guest participation can no longer be linked. Your account works normally.",
       "errorExpired": "This link expired (it lasts 7 days). If the guest session is still open on the device where you cupped, go back to its results and press “Create account & save” again. Your account works normally.",
       "errorAlready": "These results were already linked to an account, or the guest participation no longer exists.",
-      "continue": "Go to my account"
-    }
+      "continue": "Go to my account",
+      "useOther": "Use another account",
+      "skip": "Don't link",
+      "skipTitle": "Are you sure you don't want to link?",
+      "skipBody": "If you don't link, that guest participation will not move to this account: its results stay under the guest identity and will not be visible from this account. You can still link them from this same link within 7 days.",
+      "skipConfirm": "Yes, don't link",
+      "skipBack": "Go back",
+      "retryTitle": "We couldn't finish linking",
+      "retryBody": "Something failed on our side and nothing was moved. You can retry: it is safe to repeat.",
+      "retry": "Retry",
+      "offline": "You're offline: you can link once you're back online."
+    },
+    "errors": {
+      "rate_limited": "Too many attempts in a short time. Wait a minute and try again.",
+      "invalid_email": "Check the email: it does not look like a valid address.",
+      "code_invalid": "The code or link is not valid, was already used, or expired. Check the 6 digits or request a new one.",
+      "link_failed": "We could not complete sign-in with that link. Request a new one.",
+      "cancelled": "You cancelled the Google sign-in. You can try again or sign in with your email.",
+      "unreachable": "We could not reach the sign-in service. Check your connection and try again.",
+      "unknown": "Something went wrong while signing in. Please try again."
+    },
+    "sentState": {
+      "title": "Check your email",
+      "body": "We sent a link and a 6-digit code to {email}. Use whichever is closer to hand.",
+      "codeLabel": "6-digit code",
+      "codeHint": "Copy it from the same email. It works if the link does not open or opened in another browser.",
+      "codeSubmit": "Sign in with the code",
+      "codeSubmitting": "Verifying…",
+      "resend": "Resend email",
+      "resendIn": "Resend in {seconds} s",
+      "resent": "We sent a new email. The earlier ones stop working.",
+      "changeEmail": "Use another email",
+      "support": "Trouble signing in? Write to us"
+    },
+    "confirm": {
+      "title": "Confirm your sign-in",
+      "body": "Press “Sign in” to finish signing in. We ask so that email security filters do not use up your link.",
+      "button": "Sign in",
+      "working": "Signing in…",
+      "failedTitle": "This link no longer works",
+      "failedBody": "Sign-in links work once and expire. Request a new one and sign in with the link or the 6-digit code.",
+      "newLink": "Request a new link"
+    },
+    "inAppBrowserHint": "Google sign-in does not work inside this app. Use your email, or open this page in your browser (Safari or Chrome) to sign in with Google.",
+    "inAppCopyLink": "Copy link",
+    "inAppLinkCopied": "Link copied"
   },
   "dashboard": {
     "title": "Your cupping studio",
@@ -137,7 +181,7 @@
     "objective": "Objective",
     "objectivePh": "What do you want to learn from this session?",
     "format": "Format",
-    "cups": "Cups per coffee",
+    "cups": "Cups per sample",
     "coffees": "Coffees to evaluate",
     "coffeeName": "Coffee name",
     "producerRoaster": "Producer / Roaster",
@@ -187,6 +231,7 @@
         "invalid_altitude": "Altitude must be a number in masl (e.g. 1800).",
         "sample_without_coffee": "Each sample must be linked to a coffee.",
         "generic": "Couldn't create the session. Please try again.",
+        "offline": "No connection: you need internet to create the session. Your input is still here.",
         "coffee_not_found": "One of the selected coffees is no longer available. Please pick it again.",
         "invalid_name": "Give the session a name (max. 120 characters).",
         "invalid_date": "That date isn't valid.",
@@ -194,12 +239,21 @@
         "invalid_format": "Choose a valid tasting format.",
         "invalid_cups": "Cups per sample must be a number between 1 and 5.",
         "too_many_samples": "Maximum 100 samples per session.",
+        "too_many_coffees": "Maximum 100 coffees per session.",
+        "invalid_coffee": "Check the coffee details: a field is too long or not valid.",
+        "invalid_label": "A sample name is too long (max 120 characters).",
         "invalid_closes_at": "The closing date must be in the future.",
-        "invalid_reference": "The reference sample is not valid. Pick one from the list."
+        "invalid_reference": "The reference sample is not valid. Pick one from the list.",
+        "invalid_warmup": "That warm-up exercise is not valid. Pick one from the list.",
+        "not_found_or_forbidden": "You don't have access to this or it no longer exists. Check the chosen group.",
+        "not_authenticated": "Your session expired. Sign in again; what you typed is still here.",
+        "unknown": "Couldn't create the session. What you typed is still here; please try again."
       },
       "goToPanel": "Go to the panel",
       "startNow": "Start the cupping now",
-      "goToPanelHint": "From the panel you can run the sensory movement with the group and start the cupping once everyone is in the room."
+      "goToPanelHint": "From the panel you can run the sensory movement with the group and start the cupping once everyone is in the room.",
+      "startGroup": "Create cupping and get the link",
+      "cupsHint": "With fewer than 5 cups, uniformity and defects are not deducted: the sample is scored on its attributes only."
     },
     "express": {
       "title": "Cup now",
@@ -213,7 +267,9 @@
       "increment": "One sample more",
       "cta": "Cup now",
       "creating": "Creating…",
-      "fullWizard": "Set up a full session"
+      "fullWizard": "Set up a full session",
+      "nameRequired": "Give the cupping a name to continue.",
+      "offline": "No connection: you need internet to create the session."
     },
     "deleteSession": {
       "title": "Delete session",
@@ -222,9 +278,12 @@
       "cancel": "Cancel",
       "error": "Couldn't delete the session. Please try again.",
       "loadingImpact": "Calculating impact…",
+      "impactFailed": "Couldn't calculate the impact of deleting this session.",
+      "retry": "Try again",
       "coffeesIntro": "The coffees in this session and their stats belong to their owners and are kept:",
       "you": "You",
-      "impact": "The session and {evaluations} evaluation(s) from {cuppers} cupper(s) will be deleted. Each cupper keeps their coffee history anonymously, unlinked from this session."
+      "impact": "The session and {evaluations} evaluation(s) from {cuppers} cupper(s) will be deleted. Each cupper keeps their coffee history anonymously, unlinked from this session.",
+      "detail": "Submitted evaluations: {submitted} · drafts: {drafts} · participants who joined: {participants}."
     },
     "table": {
       "colName": "Session",
@@ -269,7 +328,15 @@
       "closesAtHint": "Optional. The session closes by itself in the early hours after this date. Leave it empty for a live tasting you close yourself.",
       "closesAtPast": "The closing date must be today or later.",
       "sessionClosed": "This session is closed and can no longer be edited.",
-      "warmupLocked": "The exercise can't be changed once the cupping has started."
+      "warmupLocked": "The exercise can't be changed once the cupping has started.",
+      "repinTitle": "Set this sample as the reference?",
+      "repinBody": "{n} cuppers already rated this sample. Marking it as the reference replaces their quality ratings with the 79.00 anchor. This cannot be undone.",
+      "sampleHasData": "Has physical or origin data — cannot be removed",
+      "removeRepinTitle": "Remove the active reference?",
+      "removeRepinBody": "Removing it makes {label} the reference again, and {n} cuppers will have their quality ratings replaced by the 79.00 anchor. This cannot be undone.",
+      "removeRepinConfirm": "Remove reference",
+      "referenceRepinBlocked": "Removing this sample would reactivate an earlier reference and replace its cuppers' ratings. Change the reference first.",
+      "formatLockedStarted": "Format and cups per sample lock once the cupping has started or has evaluations."
     }
   },
   "cupping": {
@@ -329,7 +396,10 @@
       "submitBody": "These samples have unfinished sections. Once submitted, the score is calculated without them.",
       "review": "Review",
       "continueAnyway": "Continue anyway",
-      "submitAnyway": "Submit anyway"
+      "submitAnyway": "Submit anyway",
+      "outcomeCloses": "Sending closes the session and it can no longer be edited.",
+      "outcomeStays": "The session will stay open: {n} samples are still unopened. If you finish with the ones you cupped, those samples are removed and the session closes.",
+      "finishWith": "Finish with the {n} I cupped"
     },
     "leaveGuard": {
       "title": "Leave the tasting?",
@@ -427,7 +497,7 @@
   "profile": {
     "title": "Profile",
     "displayName": "Display name",
-    "preferredLang": "Preferred language",
+    "preferredLang": "Email language",
     "bio": "Bio",
     "save": "Save",
     "ownedSessions": "My sessions as master",
@@ -470,7 +540,40 @@
     "recentCoffees": "Recent coffees",
     "viewAllSessions": "View all sessions",
     "viewAllCoffees": "View all coffees",
-    "settingsTitle": "Settings"
+    "settingsTitle": "Settings",
+    "saving": "Saving…",
+    "logoutEverywhere": "Sign out on all devices",
+    "changeEmail": "Change email",
+    "changeEmailTitle": "Change your account email",
+    "changeEmailBody": "We'll send a confirmation link to the new address. Until you open it you keep signing in with the current one, and you may also need to confirm from the current one.",
+    "changeEmailLabel": "New email",
+    "changeEmailSubmit": "Send link",
+    "changeEmailSending": "Sending…",
+    "changeEmailSent": "We sent a confirmation link to {email}. Open it to finish the change.",
+    "changeEmailPending": "Change pending to {email}: confirm from that inbox.",
+    "deleteAccount": {
+      "open": "Delete account",
+      "title": "Delete your account",
+      "intro": "This is what will happen to what is in your account:",
+      "loading": "Checking your account…",
+      "impactSessionsDeleted": "{n} sessions that only held your data are deleted.",
+      "impactSessionsKept": "{n} sessions other cuppers joined or evaluated in are kept, closed and without your name.",
+      "impactEvaluations": "{n} of your evaluations stay, anonymized, in the sessions you took part in.",
+      "impactCoffees": "{n} coffees you created are anonymized.",
+      "impactGroupsKept": "{n} groups with other members stay without your name; nobody will be able to manage them.",
+      "impactGroupsDeleted": "{n} groups with no other members are deleted.",
+      "impactNothing": "Your profile, your history and your sign-in.",
+      "keepScores": "Your anonymized scores stay in the sessions you took part in, so other people's results do not change.",
+      "keepCoffees": "Coffees you created stay without their identifying data (name, farm, producer, notes).",
+      "irreversible": "This cannot be undone.",
+      "protectedBody": "This account administers the platform and cannot be deleted from the app.",
+      "tooLargeBody": "You have more than {max} sessions of your own that would be deleted, too many to do from the app in one go. Write to support and we will delete the account for you.",
+      "changed": "Something changed in your account while we were deleting it (for example, someone joined one of your sessions). Nothing was deleted (shared sessions that were already closed stay closed). Check the updated summary and confirm again.",
+      "typeLabel": "Type {word} to confirm",
+      "submit": "Delete my account",
+      "deleting": "Deleting…",
+      "cancel": "Cancel"
+    }
   },
   "actions": {
     "save": "Save",
@@ -496,7 +599,7 @@
     "copyLink": "Copy link",
     "copied": "Copied",
     "participants": "Participants",
-    "submittedOf": "{count} of {total} submitted",
+    "submittedOf": "{count} of {total} sent everything",
     "closeSession": "Close session",
     "confirmClose": "Close the session? Results will be finalized.",
     "liveCountDown": "Live count unavailable — reload the page to see the current total.",
@@ -504,6 +607,8 @@
     "startSession": "Start tasting",
     "starting": "Starting…",
     "startSessionError": "Could not start the tasting. Please try again.",
+    "startGroupNoticeFailed": "The tasting started, but we could not email the group. You can resend the notice from the group page.",
+    "startGroupNoticePartial": "The tasting started. The notice reached part of the group; retry the failed ones from the group page.",
     "reveal": "Reveal identity",
     "revealed": "Revealed",
     "selectCoffee": "Select coffee",
@@ -517,6 +622,9 @@
     "participantRole": "Participant Cupper",
     "copyImage": "Copy QR",
     "downloadQr": "Download QR",
+    "inviteMissing": "This tasting has no active invite link. Generate one from the tasting panel.",
+    "inviteClosed": "This tasting is closed, so its invite link is no longer available.",
+    "viewResults": "View results",
     "scanToJoin": "Scan to join the tasting",
     "continueAsGuest": "Continue as guest",
     "guestNamePlaceholder": "Your name",
@@ -543,7 +651,38 @@
     "warmupConfirmStartTitle": "The group is still in the exercise",
     "warmupConfirmStart": "The group is still in the exercise ({time} left). Start anyway?",
     "warmupConfirmStartYes": "Start anyway",
-    "warmupStartError": "The exercise couldn't be started."
+    "warmupStartError": "The exercise couldn't be started.",
+    "joinClosedTitle": "This tasting has closed",
+    "joinClosedBody": "It no longer accepts cuppers. Ask the organizer for the results link.",
+    "joinExpiredTitle": "This link no longer works",
+    "joinExpiredBody": "The organizer replaced it or it expired. Ask for the latest link or QR.",
+    "joinExhaustedTitle": "No seats left",
+    "joinExhaustedBody": "This link reached its maximum number of uses. Ask the organizer to raise the limit.",
+    "joinEntriesClosedTitle": "The organizer closed entries",
+    "joinEntriesClosedBody": "This tasting no longer takes new cuppers. If you were already part of it, sign in with your account.",
+    "joinInvalidTitle": "Invalid link",
+    "joinInvalidBody": "We could not find this tasting. Check the link is complete or ask for a new one.",
+    "joinLateNote": "This tasting has already started. You can cup all the samples.",
+    "joinHome": "Go to home",
+    "inviteRegenerate": "Regenerate link",
+    "inviteRegenerateTitle": "Regenerate the link?",
+    "inviteRegenerateBody": "The current link and QR will stop working. People who already joined stay in.",
+    "inviteRegenerateConfirm": "Regenerate",
+    "entriesClose": "Close entries",
+    "entriesOpen": "Reopen entries",
+    "entriesClosedNote": "Entries closed: only people who were already part can enter.",
+    "guestRateLimited": "A lot of people are joining from this network at once. Wait a minute and try again, or sign in with your email.",
+    "closeRule": "Complete notes that are still unsent when the session closes are left out of the results.",
+    "closeUnsentOne": "1 cupper has complete notes that are still unsent. If you close now, they will not be counted.",
+    "closeUnsentMany": "{count} cuppers have complete notes that are still unsent. If you close now, they will not be counted.",
+    "closeUnsentNone": "Nobody has complete notes waiting to be sent.",
+    "closeNotFinalized": "The session is closed. Some final steps (reveals, history) will be retried automatically.",
+    "closeImpactLoading": "Checking for unsent notes…",
+    "deadlineOpen": "Closes {when}",
+    "deadlineSoon": "Closing soon: {when}",
+    "deadlinePassed": "The deadline has passed: {when}",
+    "deadlineLocal": "{local} your time",
+    "closesAtLiveNotice": "With a closing date the cupping becomes self-paced: no waiting room and no \"Start cupping\" button."
   },
   "results": {
     "title": "Session Results",
@@ -556,6 +695,7 @@
     "refresh": "Refresh",
     "refreshing": "Refreshing…",
     "refreshNew": "Refresh ({count} new)",
+    "refreshNewGeneric": "New updates · Refresh",
     "participation": "{submitted} of {total} tasters",
     "lastUpdated": "Updated: {time}",
     "mine": "My evaluation",
@@ -588,7 +728,8 @@
       "pending": "{count} change(s) saved on this device · waiting to sync",
       "offline": "Offline: {count} change(s) will sync when you reconnect.",
       "retry": "Retry",
-      "synced": "Changes synced. Refreshing results…"
+      "synced": "Changes synced. Refreshing results…",
+      "closedUnsent": "{count} change(s) saved on this device were not sent because the session was already closed. They do not count in the results."
     },
     "closeEmails": {
       "label": "Close emails:",
@@ -628,7 +769,12 @@
       "alignmentNote": "Informational: does not affect scores.",
       "highlights": "Featured descriptors",
       "soloTopDescriptors": "Your most frequent descriptors",
-      "viewInDescriptors": "View in Descriptors"
+      "viewInDescriptors": "View in Descriptors",
+      "includedOf": "{n} of {total} included",
+      "rankIndicative": "indicative",
+      "rankNoClearGap": "no clear difference",
+      "basisMine": "your score",
+      "fewNote": "With fewer than 3 cuppers the score is only indicative: no spread is shown and no best sample is picked."
     },
     "table": {
       "sample": "Sample",
@@ -675,7 +821,9 @@
       "expressNotes": "Quick notes",
       "assignCoffee": "Assign coffee",
       "extrinsicSaved": "Origin data saved",
-      "close": "Close"
+      "close": "Close",
+      "assignPick": "Pick an existing coffee",
+      "assignedToast": "Coffee assigned to the sample"
     },
     "matrix": {
       "matrixTitle": "CVA score summary",
@@ -689,7 +837,23 @@
       "included": "Included",
       "excluded": "Excluded",
       "excludedTag": "(excluded)",
-      "ownerSection": "Analysis by cupper"
+      "ownerSection": "Analysis by cupper",
+      "includedCount": "{n} of {total} cuppers included in the results",
+      "excludeDialogTitle": "Exclude from the group",
+      "excludeDialogBody": "Their evaluations stop counting in the group average, the spread and the charts. The cupper still sees their own results. Who excluded them, when and why is recorded.",
+      "excludeReasonLabel": "Reason",
+      "excludeConfirm": "Exclude",
+      "dialogCancel": "Cancel",
+      "dialogClose": "Close",
+      "exclusionReasons": {
+        "sample_error": "Sample error",
+        "protocol": "Did not follow the protocol",
+        "calibration": "Different calibration",
+        "other": "Other reason"
+      },
+      "excludedTrail": "Excluded by {who} on {date} · {reason}",
+      "excludedToast": "Cupper excluded from the results",
+      "restoredToast": "Cupper included in the results again"
     },
     "breakdown": {
       "how": "How was this calculated?",
@@ -774,6 +938,30 @@
         "title": "Reference sample",
         "body": "The session master can mark one sample as the reference: a shared starting point the others are read against. The tasting starts with it and its quality is pinned at 5 (neither high nor low) on every attribute, so every cupper gives it 79.00 and only describes what they perceive. It sits outside the ranking, the average and the best sample: it is the anchor.\nWhat it adds is context: next to each sample you'll see Δ, the difference between its score and the reference's, always computed on the same kind of score you see beside it (community when visible, otherwise your own).\nReference, group mean and deviation are different things: the reference is the starting point the master chose; the mean is what the group perceived; the deviation (±) is how much the group spread."
       }
+    },
+    "radar": {
+      "score": "CVA SCORE",
+      "reveal": "Reveal",
+      "communityScore": "Community score",
+      "includedLine": "{n} of {total} cuppers included in the average",
+      "noAffective": "No affective data recorded",
+      "requiresAffective": "The radar chart needs affective data (affective or combined format)"
+    },
+    "updatedAfterClose": "Results updated on {date}, after the session closed.",
+    "originEditedAt": "Origin edited on {date}",
+    "downloadCsv": "Data per cupper (CSV)",
+    "needsConnection": "Needs a connection",
+    "closedUnsentNotice": "You had {count, plural, one {# complete sample} other {# complete samples}} unsent when the session closed. They do not count in the results.",
+    "closedNotice": "The session closed. What you sent counts in the results; anything left unsent does not.",
+    "finish": {
+      "button": "Finish cupping",
+      "title": "Finish the cupping?",
+      "body": "This closes the session and it can no longer be edited.",
+      "submitLine": "{n} complete samples will be sent.",
+      "removeLine": "{n} samples you never opened will be removed.",
+      "keepLine": "{n} incomplete samples will stay without a score.",
+      "confirm": "Finish cupping",
+      "cancel": "Keep cupping"
     }
   },
   "community": {
@@ -792,7 +980,10 @@
     "tasted": "Tasted",
     "yourScore": "Your score",
     "communityScore": "Community score",
-    "sessionDeleted": "Session deleted"
+    "sessionDeleted": "Session deleted",
+    "quickImpression": "Quick impression",
+    "noCoffeeAssigned": "No coffee assigned",
+    "coffeeUnrevealed": "Coffee not revealed"
   },
   "coffee": {
     "title": "Coffee profile",
@@ -858,10 +1049,11 @@
     "adminOwnerPrefix": "Owner:",
     "recentTastingsTitle": "Recent cuppings",
     "recentTastingsEmpty": "No recent cuppings yet.",
+    "sessionsOthersNote": "This coffee's sessions belong to other cuppers; their names are not shown, but their results count in the totals.",
     "deleteCoffee": {
       "title": "Delete coffee",
       "titleMany": "Delete {count} coffees",
-      "body": "The data that identifies the coffee (name, code, farm, producer, notes and certifications) is erased and it disappears from your list and from sessions. Tasting data — scores, perceived notes, origin, variety and process — is kept anonymously for statistics. This cannot be undone.",
+      "body": "The data that identifies the coffee (name, code, farm, producer, notes and certifications) is erased and it disappears from your list and from sessions. Tasting data — scores, perceived notes, origin, variety and process — is kept anonymously for statistics. Origin sheets of past session samples (farm, producer) and sample labels are not changed. This cannot be undone.",
       "confirm": "Delete coffee",
       "confirmMany": "Delete {count} coffees",
       "cancel": "Cancel",
@@ -905,7 +1097,8 @@
       "create": "Create coffee",
       "creating": "Creating…",
       "nameRequired": "Name is required.",
-      "error": "The coffee could not be created. Please try again."
+      "error": "The coffee could not be created. Please try again.",
+      "conflict": "This coffee changed somewhere else since you opened it. Reload the page to see the latest version before saving."
     },
     "share": {
       "title": "Share coffee",
@@ -922,7 +1115,25 @@
       "joinBody": "Accept the invitation to view {name} and use it in your own cuppings.",
       "joinCta": "Accept invitation",
       "joinLogin": "Sign in to accept the invitation.",
-      "invalidToken": "This invite link is invalid or has expired."
+      "invalidToken": "This invite link is invalid or has expired.",
+      "expiresOn": "The link expires on {date}",
+      "noExpiry": "This older link never expires; generate a new one so it lapses in 30 days.",
+      "rotate": "Generate new link",
+      "rotateTitle": "Generate a new link",
+      "rotateBody": "The current link stops working. People who already have access keep it.",
+      "rotateConfirm": "Generate new link",
+      "revokeTitle": "Revoke access",
+      "revokeBody": "{name} will lose access to this coffee.",
+      "revokeAlsoRotate": "Also generate a new link: the current one stops working so they cannot get back in with it.",
+      "revokeConfirm": "Revoke",
+      "dialogCancel": "Cancel",
+      "dialogClose": "Close",
+      "returnTitle": "People with earlier access",
+      "returnBody": "These people had access before the coffee went private. Choose what to do with them before sharing it again.",
+      "returnKeep": "Keep their access",
+      "returnClear": "Remove their access",
+      "returnConfirm": "Continue",
+      "returnLinksNote": "Earlier links no longer work; generate a new one if you need it."
     },
     "picker": {
       "useExisting": "Use existing coffee",
@@ -934,7 +1145,9 @@
       "empty": "No coffees found.",
       "linked": "Linked coffee",
       "unlink": "Unlink"
-    }
+    },
+    "tasteThis": "Taste this coffee",
+    "needsConnection": "Needs a connection"
   },
   "offline": {
     "bannerOffline": "You're offline. Your evaluations are being saved locally.",
@@ -953,7 +1166,49 @@
     "conflictReplace": "Replace with this version",
     "partialSyncNotice": "Showing results for {included} of {total} participants. {pending} have not yet synced.",
     "bannerStorageUnavailable": "This browser doesn't allow saving offline drafts. Keep your connection active while cupping.",
-    "pendingDrafts": "{count} drafts not synced"
+    "pendingDrafts": "{count} drafts not synced",
+    "staleDrafts": "You have unsynced drafts older than 3 days. The browser may delete them if the app stays closed: reconnect soon or install it to your home screen.",
+    "closedUnsentDrafts": "{count} drafts not sent: the session was already closed",
+    "unsyncedNotes": "{count} unsynced notes",
+    "conflictDrafts": "{count} changes need your decision",
+    "bannerNextAttempt": "Next attempt in {seconds} s.",
+    "terminalNotice": "{count} note(s) from this session could not be sent and are still saved on this device. Review them under \"Unsynced notes\".",
+    "panel": {
+      "title": "Unsynced notes",
+      "intro": "These notes exist only on this device. You can read and copy them; nothing is deleted until you confirm.",
+      "empty": "There are no unsynced notes.",
+      "statusClosed": "The session was already closed",
+      "statusOrphaned": "The session or sample no longer exists",
+      "statusFailed": "Could not be sent",
+      "view": "View",
+      "hide": "Hide",
+      "copy": "Copy",
+      "copied": "Copied",
+      "discard": "Discard",
+      "discardTitle": "Discard this note?",
+      "discardBody": "It will be deleted from this device and cannot be recovered.",
+      "discardConfirm": "Discard note",
+      "cancel": "Cancel",
+      "close": "Close",
+      "openSession": "View results",
+      "moduleDescriptive": "Descriptive",
+      "moduleAffective": "Affective",
+      "moduleCombined": "Combined",
+      "modulePhysical": "Physical",
+      "moduleExtrinsic": "Origin",
+      "savedAt": "Saved {date}"
+    },
+    "guard": {
+      "signOutTitle": "Some changes exist only on this device",
+      "signOutBody": "{count} changes have not reached the server. If you sign out they stay saved here and are sent when you sign back in with this account.",
+      "signOutCancel": "Cancel",
+      "signOutLeave": "Sign out anyway",
+      "claimTitle": "Some changes have not been sent",
+      "claimBody": "{count} changes from this guest have not reached the server. Wait for them to send before creating the account; if you continue now they could be lost.",
+      "claimCancel": "Wait",
+      "claimLeave": "Continue and lose these",
+      "close": "Close"
+    }
   },
   "onboarding": {
     "welcomeTitle": "Welcome to Café Sensible",
@@ -972,6 +1227,7 @@
     "next": "Next",
     "whereToStart": "Where to start?",
     "saving": "Saving…",
+    "close": "Close",
     "goTo": "Go to {label}",
     "roles": {
       "q_grader": "Q Grader",
@@ -1115,9 +1371,8 @@
       "title": "Free for the founding cohort",
       "badge": "Founding cohort",
       "heroLead": "Free for the first",
-      "heroCount": "100",
       "heroUnit": "founding members",
-      "offer": "Free for the first 100 founding members",
+      "offer": "Free for the first {count} founding members",
       "feature1": "Full CVA cupping across its three sheets: descriptive, affective and extrinsic",
       "feature2": "Group sessions and calibration with an instructor reference",
       "feature3": "PDF reports and certificates",
@@ -1130,11 +1385,13 @@
       "emailPlaceholder": "you@email.com",
       "button": "Claim my spot",
       "submitting": "Sending…",
-      "success": "Seat reserved. Check your inbox: we have sent you the link to get in.",
+      "success": "We sent you the link; you're on the founding list. Check your inbox to get in.",
       "sentHint": "No password. If it does not arrive, check spam or request another link in a few minutes.",
       "invalid": "Enter a valid email.",
       "error": "We could not send the link. Check the email and try again.",
-      "rateLimit": "Too many attempts in a short time. Wait a few minutes and try again."
+      "rateLimit": "Too many attempts in a short time. Wait a few minutes and try again.",
+      "notice": "We store your email to send you access and tell you about founding seats.",
+      "noticeLink": "Privacy policy"
     },
     "finalCta": {
       "kicker": "Many palates. One reference. One number.",
@@ -1311,7 +1568,11 @@
       "superAdmin": "Super admin",
       "emailUnavailable": "email unavailable",
       "toggleError": "Could not update. Try again.",
-      "empty": "No users found."
+      "empty": "No users found.",
+      "digestTitle": "Monthly email digest",
+      "digestLast": "Last run: period {period} · {sent} of {recipients} delivered.",
+      "digestRunning": "In progress: period {period}.",
+      "digestNone": "No digest has been sent yet."
     },
     "users": {
       "lead": "Directory of everyone registered on the platform, with their cupping activity.",
@@ -1328,7 +1589,9 @@
       "filterType": "Type",
       "typeRegistered": "Registered",
       "typeGuest": "Guest",
-      "exportCsv": "Export emails (CSV)"
+      "exportCsv": "Export emails (CSV)",
+      "showEmails": "Show emails",
+      "hideEmails": "Hide emails"
     },
     "benchmark": {
       "title": "Benchmark vs. CQI",
@@ -1432,6 +1695,8 @@
       "titlePlaceholder": "Title (optional)",
       "bodyPlaceholder": "Write an announcement for the group…",
       "notifyByEmail": "Notify members by email",
+      "notifyRecipients": "An email will be sent to {count} members",
+      "notifyNone": "The group has no members yet",
       "publish": "Publish",
       "publishing": "Publishing…",
       "emailSentBadge": "Sent by email",
@@ -1443,6 +1708,11 @@
       "deleteTitle": "Delete announcement",
       "deleteBody": "The announcement will be removed for every member. This cannot be undone.",
       "error": "Couldn't publish the announcement. Please try again."
+    },
+    "emailOptOut": {
+      "badge": "Unsubscribed from emails",
+      "note": "You unsubscribed from this group's emails. You still see the group, its announcements and its sessions here in the app.",
+      "resume": "Receive emails from this group again"
     },
     "leave": {
       "cta": "Leave group",
@@ -1459,7 +1729,10 @@
       "resend": "Resend invitation",
       "resent": "Invitation resent",
       "resendFailed": "Couldn't resend the invitation",
-      "error": "Couldn't save. Please try again."
+      "resendRateLimited": "You reached the sending limit. Try again later.",
+      "error": "Couldn't save. Please try again.",
+      "removeTitle": "Remove from group",
+      "removeBodyNamed": "Remove {name} from the group?"
     },
     "empty": "You don't have any groups yet. Create one to reuse your cupper roster across sessions.",
     "coCuppersTitle": "People you've cupped with",
@@ -1472,7 +1745,6 @@
     "displayNamePlaceholder": "Name (optional)",
     "unregistered": "No account yet",
     "removeMember": "Remove",
-    "confirmRemoveMember": "Remove this person from the group?",
     "composeEmail": "Email the group",
     "subject": "Subject",
     "message": "Message",
@@ -1482,6 +1754,12 @@
     "sending": "Sending...",
     "sendSummary": "{sent} sent · {skipped} skipped · {failed} failed",
     "sendSkippedNotice": "Email sending isn't configured in this environment.",
+    "sendRateLimited": "You reached the email sending limit. Try again later.",
+    "retryFailed": "Retry failed",
+    "retrying": "Retrying…",
+    "invitesRateLimited": "Group created. The invitations were not sent because of the sending limit; resend them later from the list.",
+    "invitesRateLimitedShort": "Member added. The invitation was not sent because of the sending limit; resend it later.",
+    "autoInviteRateLimited": "Session created. The group invitation was not sent because of the sending limit; send it later from the group.",
     "notifyGroupTitle": "Notify a group",
     "selectGroup": "Select a group",
     "noGroupsYet": "You don't have any saved groups yet.",
@@ -1521,7 +1799,8 @@
     "saveDetails": "Save details",
     "linkGroupLabel": "Link to a group",
     "noGroupOption": "No group",
-    "autoInviteToggle": "Send an invitation to the group on creation",
+    "autoInviteLive": "Email the group when you start the tasting",
+    "autoInviteAsync": "Email the group when the session is created",
     "autoInviteSummary": "Invitation sent to {sent} members · {skipped} skipped · {failed} failed",
     "joinSessionLink": "Join the session"
   },
@@ -1536,7 +1815,15 @@
     "error": "We couldn't start the process. Please try again.",
     "guestLabel": "Guest",
     "profileCta": "Finish creating your account",
-    "accountBody": "You're participating as a guest: your access lives only in this browser and is lost if you clear browsing data, switch devices or sign out. Create your account to keep your cuppings."
+    "accountBody": "You're participating as a guest: your access lives only in this browser and is lost if you clear browsing data, switch devices or sign out. Create your account to keep your cuppings.",
+    "leaveGuestTitle": "If you leave, you lose your results",
+    "leaveGuestBody": "You're a guest: your evaluations live only in this browser and can't be recovered if you sign out. Save your results to an account before leaving.",
+    "leaveSave": "Save my results",
+    "leaveAnyway": "Leave anyway",
+    "leaveCancel": "Cancel",
+    "leaveEverywhereTitle": "Sign out on all devices?",
+    "leaveEverywhereBody": "You'll be signed out of your account here and on every other device where you're signed in. You'll need to sign in again on each one.",
+    "leaveEverywhereConfirm": "Sign out everywhere"
   },
   "errors": {
     "title": "Something went wrong",
@@ -1552,16 +1839,26 @@
     "codes": {
       "not_authenticated": "Your session expired. Please sign in again.",
       "not_found_or_forbidden": "We couldn't find that, or you don't have permission.",
+      "session_not_started": "The tasting has not started yet. Wait for the host to start it.",
       "session_closed": "This tasting is already closed; its results are final.",
       "invalid_token": "This invite link isn't valid.",
       "token_expired": "This invite link has expired.",
       "token_exhausted": "This invite link has reached its maximum number of uses.",
       "coffee_not_usable": "That coffee isn't available to you.",
       "invalid_input": "Check the information you entered.",
+      "already_claimed": "That guest participation is already linked to an account.",
       "conflict": "Someone else just made that change. Refresh the page.",
       "not_found": "That item no longer exists.",
       "invalid_reference": "One of the linked items no longer exists.",
-      "unknown": "Something went wrong. Please try again."
+      "rate_limited": "Too many sends in a short time. Wait a moment and try again.",
+      "unknown": "Something went wrong. Please try again.",
+      "entries_closed": "The organizer closed entries for this tasting.",
+      "group_full": "This group already has 200 members, the maximum.",
+      "invalid_email": "That email address doesn't look valid. Check it and try again.",
+      "offline": "You need a connection to do this. Try again once you are back online.",
+      "email_exists": "That email already has an account.",
+      "account_protected": "This account administers the platform and cannot be deleted from the app.",
+      "account_too_large": "Your account has too many sessions to delete it from the app. Write to support and we will delete it for you; nothing was deleted."
     }
   },
   "warmup": {
@@ -1579,12 +1876,12 @@
     "dashboard": {
       "eyebrow": "Before cupping",
       "title": "Sensory Movement",
-      "body": "Kim's five slow movements to wake up perception before smelling and tasting. 3 to 8 minutes, seated or standing.",
+      "body": "Kim's five slow movements to help you settle and arrive calmly before smelling and tasting. 3 to 8 minutes, seated or standing.",
       "cta": "See the exercises"
     },
     "waiting": {
       "title": "While you wait",
-      "body": "A slow movement prepares the senses. Pick an exercise; if the cupping starts, we take you to the table.",
+      "body": "A slow movement helps you settle before cupping. Pick an exercise; if the cupping starts, we take you to the table.",
       "minutes": "{min} min",
       "hero": "Your host chose",
       "heroStart": "Start",
@@ -1642,11 +1939,13 @@
       "breathOnItsOwn": "Let your breathing go on its own.",
       "goToTable": "Go to the table",
       "doneTitle": "Done",
-      "doneBody": "Back to the cupping with your senses awake.",
+      "doneBody": "Back to the cupping, settled.",
       "noticedTitle": "What you may have noticed",
       "repeat": "Repeat",
       "backToList": "Back to the exercises",
-      "finish": "Finish"
+      "finish": "Finish",
+      "tapToResume": "Tap to resume",
+      "skipConfirm": "Tap again to skip"
     },
     "label": {
       "up": "Up",
@@ -1683,11 +1982,8 @@
     "reflect": {
       "eyebrow": "A moment",
       "title": "Two questions, no hurry",
-      "lead": "Optional. What you write stays on this device only: it is never sent or mixed with your cuppings.",
-      "answerLabel": "Your answer (optional)",
-      "save": "Save on this device",
-      "omit": "Skip",
-      "savedNote": "Saved on this device."
+      "lead": "Nothing to write: just take a moment with these two questions.",
+      "continue": "Continue"
     },
     "synced": {
       "listen": "Close your eyes and listen",
@@ -1697,5 +1993,10 @@
       "inProgress": "In progress · step {n} of {total}",
       "join": "Join"
     }
+  },
+  "legal": {
+    "draftTitle": "Draft",
+    "draftBody": "This text is a draft and not yet the final version. It is not legal advice.",
+    "back": "Back to home"
   }
 }

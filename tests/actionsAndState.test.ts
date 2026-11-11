@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { classifyActionError, isActionErrorCode } from "@/lib/actionResult";
+import { readdirSync, readFileSync } from "node:fs";
+import { ACTION_ERROR_CODES, classifyActionError, isAccessError, isActionErrorCode } from "@/lib/actionResult";
 import { assertSessionWritable, isSessionClosed, planClosesAtChange } from "@/lib/sessionState";
 import { missingProductionEnv } from "@/lib/env";
 import { redactPath } from "@/lib/log";
@@ -20,16 +21,46 @@ describe("classifyActionError", () => {
   it("passes known codes through", () => {
     expect(classifyActionError(new Error("not_found_or_forbidden"))).toBe("not_found_or_forbidden");
     expect(classifyActionError(new Error("session_closed"))).toBe("session_closed");
+    expect(classifyActionError(new Error("session_not_started"))).toBe("session_not_started");
     expect(classifyActionError(new Error("token_expired"))).toBe("token_expired");
+    expect(classifyActionError(new Error("rate_limited"))).toBe("rate_limited");
+    expect(isActionErrorCode("rate_limited")).toBe(true);
   });
   it("maps the legacy forbidden throw; a legacy not_found is already a real code", () => {
     expect(classifyActionError(new Error("forbidden"))).toBe("not_found_or_forbidden");
     expect(classifyActionError(new Error("not_found"))).toBe("not_found");
   });
+  it("keeps the guest-claim 'already linked' code distinct from a rolled-back P2025", () => {
+    expect(classifyActionError(new Error("already_claimed"))).toBe("already_claimed");
+    expect(classifyActionError({ code: "P2025" })).not.toBe("already_claimed");
+  });
   it("maps Prisma known-request codes", () => {
     expect(classifyActionError({ code: "P2002" })).toBe("conflict");
     expect(classifyActionError({ code: "P2025" })).toBe("not_found");
     expect(classifyActionError({ code: "P2003" })).toBe("invalid_reference");
+  });
+  it("passes the S8-14 group codes through", () => {
+    expect(classifyActionError(new Error("group_full"))).toBe("group_full");
+    expect(classifyActionError(new Error("invalid_email"))).toBe("invalid_email");
+    expect(isActionErrorCode("offline")).toBe(true);
+  });
+  it("a revoked analytics user (thrown forbidden) classifies as an access error", () => {
+    const code = classifyActionError(new Error("forbidden"));
+    expect(isAccessError(code)).toBe(true);
+    expect(isAccessError("invalid_input")).toBe(false);
+  });
+  it("every code has es and en toast copy", () => {
+    for (const lang of ["es", "en"]) {
+      const msgs = JSON.parse(readFileSync(`messages/${lang}.json`, "utf8"));
+      for (const code of ACTION_ERROR_CODES) {
+        expect(msgs.errors.codes[code], `${lang}:${code}`).toBeTruthy();
+      }
+    }
+  });
+  it("group clients use ConfirmDialog, never window.confirm", () => {
+    for (const file of readdirSync("components/groups")) {
+      expect(readFileSync(`components/groups/${file}`, "utf8"), file).not.toContain("window.confirm");
+    }
   });
   it("everything else is unknown", () => {
     expect(classifyActionError(new Error("boom"))).toBe("unknown");
@@ -79,8 +110,8 @@ describe("planClosesAtChange", () => {
   });
 
   it("clears the close on an async session with cuppers → live, manual close", () => {
-    expect(planClosesAtChange(group, "", NOW)).toEqual({ closesAt: null, isAsync: false });
-    expect(planClosesAtChange(group, null, NOW)).toEqual({ closesAt: null, isAsync: false });
+    expect(planClosesAtChange(group, "", NOW)).toEqual({ closesAt: null, closesAtZone: null, isAsync: false });
+    expect(planClosesAtChange(group, null, NOW)).toEqual({ closesAt: null, closesAtZone: null, isAsync: false });
   });
 
   it("rejects a past date and malformed input", () => {

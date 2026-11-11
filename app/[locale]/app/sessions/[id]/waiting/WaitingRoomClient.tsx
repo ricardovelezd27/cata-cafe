@@ -1,17 +1,19 @@
 "use client";
 
+import { createPollChain } from "@/lib/waitingPoll";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
+import { useForegroundResume } from "@/hooks/useForegroundResume";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronDown, EyeOff } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
 import { checkSessionStarted, getWaitingState } from "@/app/actions/sessions";
-import { isMissed, parseDbTimestamp, runLengthMs, seekFor, skewMs, warmupSyncReducer, type SyncState } from "@/lib/warmup/syncedRun";
+import { isMissed, parseDbTimestamp, resyncPositionMs, runLengthMs, seekFor, skewMs, warmupSyncReducer, type SyncState } from "@/lib/warmup/syncedRun";
 import { nextReferenceOrder } from "@/lib/referenceRules";
 import { WARMUP_EXERCISES, WARMUP_SHARED, lw, warmupById, type WarmupExercise } from "@/lib/warmup/exercises";
 import { hasSeenMoment, markMomentSeen, subscribeMoments } from "@/lib/sessionMoments";
-import { START_EXIT_CAP_MS, onCuppingStarted } from "@/lib/warmup/overlayGate";
+import { START_EXIT_CAP_MS, exitMarksSeen, onCuppingStarted } from "@/lib/warmup/overlayGate";
 import { previewSpec } from "@/lib/warmup/preview";
 import { WarmupPlayer, type WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
 import { WarmupFigure } from "@/components/warmup/figures";
@@ -91,7 +93,8 @@ export function WaitingRoomClient({
   // True whenever the realtime channel is not actively SUBSCRIBED — drives the
   // 15s polling fallback and the "connection lost" notice below.
   const [connectionLost, setConnectionLost] = useState(false);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Bumped on foreground resume so the realtime effect below re-runs (S8-15).
+  const [resumeKey, setResumeKey] = useState(0);
   // The owner may pick/change the reference while people wait — same
   // cupping_sessions UPDATE stream that carries startedAt.
   const [refOrder, setRefOrder] = useState<string[]>(initialReferenceIds);
@@ -132,6 +135,11 @@ export function WaitingRoomClient({
   const [syncedNote, setSyncedNote] = useState<string | null>(null);
   const [syncedRunning, setSyncedRunning] = useState(false);
   const syncRef = useRef<SyncState>({ lastStartedAt: null });
+  const syncedStartedAtMs = synced?.startedAtMs ?? null;
+  const syncedResyncMs = useCallback(
+    () => (syncedStartedAtMs === null ? null : resyncPositionMs(syncedStartedAtMs, Date.now(), skewRef.current)),
+    [syncedStartedAtMs],
+  );
   const openSynced = useCallback(
     (startedAtMs: number, live: boolean) => {
       if (!chosen || runMs <= 0) return;
@@ -186,10 +194,11 @@ export function WaitingRoomClient({
     router.push(`/${locale}/app/sessions/${sessionId}/cup`);
   }, [router, locale, sessionId]);
 
-  const closePlayer = useCallback(() => {
+  const closePlayer = useCallback((markSeen: boolean) => {
     const id = activeRef.current;
-    if (id && chosen && id === chosen.id) {
-      // Finishing OR skipping the master's pick counts (never nag twice).
+    if (markSeen && id && chosen && id === chosen.id) {
+      // Finishing, or skipping after 20 s of the run, counts (never nag
+      // twice); an early stray skip leaves it unseen (S8-13 F-6).
       markMomentSeen("warmup", sessionId, userId, chosen.id);
     }
     setActiveWarmupId(null);
@@ -217,6 +226,21 @@ export function WaitingRoomClient({
     onStartedRef.current = onStarted;
   });
 
+  // ONE foreground-resume path (S8-15 hook, S8-21 merge of S8-11's listeners):
+  // a phone that slept has a dead socket and may have missed the start. Return
+  // to the tab, bfcache pageshow and online all (a) recreate the channel via
+  // resumeKey and (b) re-seed from the server right away through the same
+  // refetch the SUBSCRIBED handler and the polling fallback use.
+  const refetchRef = useRef<(() => Promise<void>) | null>(null);
+  useForegroundResume(
+    () => {
+      if (isAsync) return;
+      setResumeKey((k) => k + 1);
+      void refetchRef.current?.();
+    },
+    { minHiddenMs: 0, pageshow: true },
+  );
+
   // Back closes the player, not the page (push a history entry when it opens).
   useEffect(() => {
     if (!activeWarmupId) return;
@@ -232,12 +256,29 @@ export function WaitingRoomClient({
   useEffect(() => {
     if (isAsync) return;
 
-    const clearPoll = () => {
-      if (pollRef.current) {
-        clearInterval(pollRef.current);
-        pollRef.current = null;
+    // Fallback poll (S8-23 C-03: survives a rejected tick; see lib/waitingPoll).
+    // refetchState stops it once the session started.
+    const poll = createPollChain({ tick: () => refetchState() });
+    const clearPoll = () => poll.stop();
+
+    // One refetch, same handling as the live handler: started -> leave the
+    // room; otherwise (re)apply the synced warm-up run. checkSessionStarted
+    // stays boolean on purpose (service-worker-cached bundles call it).
+    const refetchState = async () => {
+      if (startedRef.current) return;
+      const state = await getWaitingState(sessionId);
+      if (!state) return;
+      const serverNow = parseDbTimestamp(state.serverNow);
+      if (serverNow !== null) skewRef.current = skewMs(serverNow, Date.now());
+      if (state.startedAt) {
+        clearPoll();
+        onStartedRef.current();
+        return;
       }
+      applySyncRef.current({ warmupStartedAt: state.warmupStartedAt }, false);
     };
+
+    refetchRef.current = refetchState;
 
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -281,31 +322,24 @@ export function WaitingRoomClient({
         if (status === "SUBSCRIBED") {
           setConnectionLost(false);
           clearPoll();
+          // Anything that happened while the socket was (re)connecting —
+          // the start included — is only in the row, not in a missed event.
+          void refetchState();
           return;
         }
-        // Not (or no longer) subscribed — fall back to polling every 15s so a
-        // dropped realtime connection never strands the waiting room.
+        // Not (or no longer) subscribed — fall back to polling (15 s +/- 3 s)
+        // so a dropped realtime connection never strands the waiting room.
         setConnectionLost(true);
-        if (!pollRef.current) {
-          pollRef.current = setInterval(async () => {
-            const state = await getWaitingState(sessionId);
-            if (!state) return;
-            if (state.startedAt) {
-              clearPoll();
-              onStartedRef.current();
-              return;
-            }
-            applySyncRef.current({ warmupStartedAt: state.warmupStartedAt }, false);
-          }, 15000);
-        }
+        poll.start();
       },
     );
 
     return () => {
+      refetchRef.current = null;
       clearPoll();
       stop();
     };
-  }, [sessionId, router, isAsync]);
+  }, [sessionId, router, isAsync, resumeKey]);
 
   const handleStart = async () => {
     if (isAsync) {
@@ -313,8 +347,14 @@ export function WaitingRoomClient({
       return;
     }
     setChecking(true);
-    const started = await checkSessionStarted(sessionId);
-    setChecking(false);
+    let started = false;
+    try {
+      started = await checkSessionStarted(sessionId);
+    } catch {
+      // Network failure: treat as "not started yet"; the button must re-enable.
+    } finally {
+      setChecking(false);
+    }
     if (started) {
       onStarted();
     } else {
@@ -471,9 +511,10 @@ export function WaitingRoomClient({
           mode={synced ? "synced" : "session"}
           seekToMs={synced?.seekMs}
           soundDefault={synced ? false : undefined}
+          resyncPositionMs={synced ? syncedResyncMs : undefined}
           exitRequest={exitRequest}
-          onFinish={closePlayer}
-          onExit={closePlayer}
+          onFinish={() => closePlayer(true)}
+          onExit={(info) => closePlayer(exitMarksSeen(info))}
         />
       )}
     </main>

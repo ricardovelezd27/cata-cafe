@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const PING_INTERVAL_MS = 30_000;
 const PING_TIMEOUT_MS = 8_000;
@@ -13,11 +13,16 @@ const PING_TIMEOUT_MS = 8_000;
 //
 // Returns the current `online` flag. The boolean flips drive the offline banner
 // and trigger sync-on-reconnect (see useOfflineSync).
-export function useConnectivity(): { online: boolean } {
+//
+// `recheck()` runs the probe now (S8-15 foreground resume): a phone that slept
+// must not trust a stale "online" until the next 30 s tick.
+export function useConnectivity(): { online: boolean; recheck: () => Promise<void> } {
   // Default true on first render to avoid a hydration flash / banner blink;
   // the first probe corrects it within a tick.
   const [online, setOnline] = useState(true);
   const onlineRef = useRef(true);
+  const pingRef = useRef<() => Promise<void>>(async () => {});
+  const recheck = useCallback(() => pingRef.current(), []);
 
   const update = (next: boolean) => {
     if (onlineRef.current === next) return;
@@ -51,6 +56,8 @@ export function useConnectivity(): { online: boolean } {
       }
     };
 
+    pingRef.current = ping;
+
     // Browser events give us an instant signal; the probe confirms reality.
     const onOnline = () => void ping();
     const onOffline = () => update(false);
@@ -68,5 +75,5 @@ export function useConnectivity(): { online: boolean } {
     };
   }, []);
 
-  return { online };
+  return { online, recheck };
 }

@@ -140,10 +140,18 @@ model CuppingSession {
   groupId       String?
   group         TastingGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
   closesAt      DateTime?
+  /// IANA zone of the owner when `closesAt` was set (S8-05): "end of the day
+  /// the owner picked" in THEIR zone. Null = UTC (legacy rows).
+  closesAtZone  String?
   startedAt     DateTime?
   // Stamped by the single close routine (lib/closeSession.ts) — owner close,
   // solo auto-close and the daily cron all go through it. Null while active.
   closedAt      DateTime?
+  /// Stamped when phase 2 of the close (reveal, aggregate refire, coffee
+  /// history, close emails) finished. Null on a closed row = a repair is owed
+  /// (lib/closeSession.ts finalizeClosedSession, cron repair pass). Backfilled
+  /// to closedAt for sessions that were already closed. Never read by scoring.
+  closeFinalizedAt DateTime? @db.Timestamptz(3)
   // The ONE sample the owner marks as "Referencia" (control sample the others
   // are compared against). Display-only: scoring and ranking never read it;
   // results show a client-side Δ against it (lib/referenceDelta.ts). SetNull
@@ -160,6 +168,17 @@ model CuppingSession {
   /// TIMESTAMPTZ so the realtime payload carries its offset. Never read by
   /// scoring, aggregates or the trigger. Not copied by duplicateSession.
   warmupStartedAt DateTime? @db.Timestamptz(3)
+  /// Owner closed new entries (S8-11 T6 / C4): a NEWCOMER's join link is
+  /// refused with `entries_closed`; existing members re-enter. Display/gating
+  /// only: never read by scoring, aggregates or the trigger.
+  entriesLocked Boolean @default(false)
+  /// S8-17 (C8): live group session linked to a tasting group whose owner
+  /// asked to notify it; the email goes out from `startSession`. The group
+  /// itself is `groupId`. Flow only: never read by scoring or the trigger.
+  notifyGroupAtStart Boolean @default(false)
+  /// Idempotence stamp of the group "new session" email (claimed before the
+  /// send, cleared when the send fails). Not copied by duplicateSession.
+  groupNotifiedAt DateTime? @db.Timestamptz(3)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -168,6 +187,7 @@ model CuppingSession {
   invites              SessionInvite[]
   coffeeHistory        UserCoffeeHistory[]
   closeEmailDeliveries CloseEmailDelivery[]
+  reminderDeliveries   SessionReminderDelivery[]
 
   @@index([createdBy])
   @@index([createdBy, status])
@@ -231,6 +251,9 @@ model Evaluation {
   isDraft     Boolean   @default(true)
   submittedAt DateTime?
   updatedAt   DateTime  @updatedAt
+  // S8-18: newest client edit time accepted for this row (ordering only; never
+  // read by scoring, the trigger or AggregateScore).
+  lastClientWriteAt DateTime? @db.Timestamptz(3)
 
   coffeeHistory UserCoffeeHistory[]
 
@@ -263,6 +286,9 @@ model ExtrinsicData {
   revealedBy      String?
   revealedByUser  Profile?      @relation(fields: [revealedBy], references: [id])
   revealedAt      DateTime?
+  // S8-12: set when the owner corrects origin data AFTER the session closed, so
+  // reports can say "Origen editado el <fecha>". Null = never edited post-close.
+  editedAt        DateTime?     @map("edited_at") @db.Timestamptz(3)
 
   @@index([revealedBy])
   @@map("extrinsic_data")
@@ -278,6 +304,12 @@ model SessionParticipant {
   // frequency and charts. Authoritative for the aggregate trigger (see
   // prisma/sql/rls_and_triggers.sql Phase 4). The participant still sees their own results.
   excludedFromResults Boolean        @default(false) @map("excluded_from_results")
+  // S8-12 exclusion trail: who/when/why. Stamped by setParticipantExclusion,
+  // cleared on restore. excludedBy is a plain user id with NO foreign key (so
+  // mergeGuestData / account deletion never have to touch it). Display-only.
+  excludedAt          DateTime?      @map("excluded_at") @db.Timestamptz(3)
+  excludedBy          String?        @map("excluded_by")
+  exclusionReason     String?        @map("exclusion_reason") // sample_error | protocol | calibration | other
   joinedAt            DateTime       @default(now())
 
   @@id([sessionId, userId])
@@ -309,8 +341,11 @@ model UserCoffeeHistory {
   id              String         @id @default(cuid())
   userId          String
   user            Profile        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  coffeeId        String
-  coffee          Coffee         @relation(fields: [coffeeId], references: [id], onDelete: Cascade)
+  // NULL = a label-only row (S8-16): a coffee-less sample, or a never-revealed
+  // sample whose session was deleted. Never link these to a coffee page and
+  // exclude them from per-coffee aggregates (lib/historyDisplay.ts).
+  coffeeId        String?
+  coffee          Coffee?        @relation(fields: [coffeeId], references: [id], onDelete: Cascade)
   // A cupper's coffee history OUTLIVES the session it came from: deleting a
   // session detaches these rows (evaluation/session → NULL, `snapshot` filled
   // with the cupper's OWN evaluation + session metadata) instead of cascading
@@ -329,6 +364,11 @@ model UserCoffeeHistory {
   detachedAt      DateTime?
   createdAt       DateTime       @default(now())
 
+  // NOTE (S8-16): a PARTIAL unique index exists only in the migration
+  // 20261111140000_history_coffee_optional — Prisma cannot express it:
+  //   user_coffee_history_label_row_evaluation_key ON ("evaluationId")
+  //   WHERE "coffeeId" IS NULL AND "evaluationId" IS NOT NULL
+  // `prisma migrate dev` may propose dropping it. Never accept.
   @@unique([userId, coffeeId, sessionId])
   @@index([userId])
   @@index([coffeeId])
@@ -354,6 +394,22 @@ model CloseEmailDelivery {
   @@map("close_email_deliveries")
 }
 
+/// One row per session x recipient x reminder kind (S8-05): "deadline_24h" to
+/// members with unsent work, "live_idle" to the owner of a forgotten live
+/// session. System mail with its own ledger (never the user email budget).
+/// userId is a plain String with NO Profile FK, same as CloseEmailDelivery, so
+/// mergeGuestData has nothing to move (guests have no email, so no rows).
+model SessionReminderDelivery {
+  sessionId String
+  session   CuppingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId    String
+  kind      String
+  sentAt    DateTime       @default(now())
+
+  @@id([sessionId, userId, kind])
+  @@map("session_reminder_deliveries")
+}
+
 model SessionInvite {
   id        String         @id @default(cuid())
   sessionId String
@@ -365,6 +421,9 @@ model SessionInvite {
   createdBy String
   creator   Profile        @relation(fields: [createdBy], references: [id])
   createdAt DateTime       @default(now())
+  /// false = revoked by "Regenerar enlace" (S8-11 T5). Inactive tokens read
+  /// as expired on /join, joinViaToken and the print QR.
+  active    Boolean        @default(true)
 
   @@index([sessionId])
   @@index([createdBy])
@@ -441,6 +500,11 @@ model DigestRun {
   recipients Int
   sent       Int
   aiSkipped  Boolean  @default(false)
+  // S8-14: the period is CLAIMED first as "running", then marked "done" after
+  // the sends. Rows from before this column are complete runs, hence the default.
+  status     String   @default("done")
+  // Per-recipient outcome { "<email>": "sent" | "failed" } (lib/digestClaim.ts).
+  results    Json?
   createdAt  DateTime @default(now())
 
   @@map("digest_runs")
@@ -453,6 +517,10 @@ model WaitlistEntry {
   locale    String   @default("es")
   source    String   @default("landing")
   createdAt DateTime @default(now())
+  // S8-08: when and under which notice the person typed their address.
+  // Null on rows created before the consent record existed.
+  consentAt            DateTime?
+  consentNoticeVersion String?
 
   @@map("waitlist_entries")
 }
@@ -465,6 +533,10 @@ model TastingGroup {
   description String?
   createdBy   String
   owner       Profile  @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  // Idempotency key posted by the create-group dialog (S8-03): a replayed
+  // submit returns this group instead of creating a second one and re-sending
+  // the invitations.
+  clientKey   String?  @unique
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -506,11 +578,53 @@ model TastingGroupMember {
   user        Profile?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   displayName String?
   createdAt   DateTime     @default(now())
+  // Set when the member unsubscribes from this group's emails (S8-20,
+  // F-grupos-8). The owner re-adding the address (an upsert) never touches it.
+  emailOptOutAt DateTime? @db.Timestamptz(3)
+
+  emailDeliveries GroupEmailDelivery[]
 
   @@unique([groupId, email])
   @@index([groupId])
   @@index([userId])
   @@map("tasting_group_members")
+}
+
+// One row per RESERVED outbound email (S8-03). lib/emailBudget.ts counts these
+// to throttle magic links and group mail before anything is sent. No user FK
+// on purpose (mergeGuestData is untouched): actorKey is "u_<userId>" or an
+// HMAC of the request IP, targetKey an HMAC of the lowercased address. Never a
+// raw IP or address. RLS on, no policies (server-only via Prisma).
+model OutboundEmailEvent {
+  id         String   @id @default(cuid())
+  kind       String // "magic_link" | "group_broadcast" | "group_invite"
+  actorKey   String?
+  targetKey  String?
+  recipients Int      @default(1)
+  createdAt  DateTime @default(now())
+
+  @@index([kind, actorKey, createdAt])
+  @@index([kind, targetKey, createdAt])
+  @@map("outbound_email_events")
+}
+
+// Per-recipient ledger of one group broadcast (S8-03), the close-email
+// ledger's shape: "retry failed" resends only rows that are not "sent", and no
+// recipient gets the same broadcast twice. lastError holds a code, never the
+// provider's response body. RLS on, no policies.
+model GroupEmailDelivery {
+  broadcastId String
+  memberId    String
+  member      TastingGroupMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  status      String // "sent" | "skipped" | "failed"
+  attempts    Int                @default(1)
+  lastError   String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@id([broadcastId, memberId])
+  @@index([memberId])
+  @@map("group_email_deliveries")
 }
 
 // Per-user daily AI-chat cost governor. One row per (user, UTC day); written

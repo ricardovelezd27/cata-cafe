@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 import { addMemberByUserId, createGroupWithMembers } from "@/app/actions/groups";
+import { useActionFeedback } from "@/components/ui/Toast";
 
 export type GroupOption = { id: string; name: string };
 
@@ -30,6 +31,7 @@ export function AddToGroupButton({
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [added, setAdded] = useState(false);
+  const feedback = useActionFeedback();
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -42,15 +44,12 @@ export function AddToGroupButton({
     }
     if (!value) return;
     start(async () => {
-      try {
-        await addMemberByUserId(value, candidateUserId);
+      await feedback.run(addMemberByUserId(value, candidateUserId), () => {
         setAdded(true);
         setSelected("");
         router.refresh();
         setTimeout(() => setAdded(false), 2000);
-      } catch {
-        setError(t.errorGeneric);
-      }
+      });
     });
   };
 
@@ -63,7 +62,12 @@ export function AddToGroupButton({
       try {
         const created = await createGroupWithMembers({ name: trimmed, members: [] });
         if (!created.ok) throw new Error(created.error);
-        await addMemberByUserId(created.groupId, candidateUserId);
+        const addResult = await addMemberByUserId(created.groupId, candidateUserId);
+        if (!addResult.ok) {
+          feedback.notifyError(addResult.error);
+          router.refresh();
+          return;
+        }
         setAdded(true);
         setNewName("");
         setCreating(false);

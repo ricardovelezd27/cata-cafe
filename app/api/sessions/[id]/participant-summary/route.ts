@@ -11,11 +11,11 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
-import { canViewGroupResults } from "@/lib/sessionState";
+import { canViewGroupResults, isSessionExpired } from "@/lib/sessionState";
 import { loadSessionReportSource } from "@/lib/reports/sessionReportData";
 import { buildParticipantSummary } from "@/lib/reports/participantSummary";
 import { ParticipantSummaryDocument } from "@/lib/pdf/ParticipantSummaryDocument";
-import { slug } from "@/lib/pdf/filename";
+import { slug, dateSlug } from "@/lib/pdf/filename";
 import { logError, errorMessage } from "@/lib/log";
 
 export const runtime = "nodejs";
@@ -100,9 +100,7 @@ export async function GET(
       .then((rows) => rows.length);
     const total = session.participants.length;
     const allSubmitted = total > 0 && submittedCuppers >= total;
-    const sessionExpired = session.closesAt
-      ? session.closesAt < new Date()
-      : false;
+    const sessionExpired = isSessionExpired({ status: "active", closesAt: session.closesAt });
     const canView = canViewGroupResults({
       isGroup: true,
       ownerRead,
@@ -150,7 +148,7 @@ export async function GET(
     return failureResponse("participant-summary", { sessionId: id }, locale, err);
   }
 
-  const filename = `${locale === "en" ? "summary" : "resumen"}_${slug(session.name) || "sesion"}.pdf`;
+  const filename = `${locale === "en" ? "summary" : "resumen"}_${slug(session.name) || "sesion"}_${dateSlug()}.pdf`;
   return new Response(new Uint8Array(buffer), {
     status: 200,
     headers: {

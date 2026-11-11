@@ -102,7 +102,9 @@ export default async function Dashboard({
         status: true,
         isGroup: true,
         createdBy: true,
+        isAsync: true,
         startedAt: true,
+        closesAt: true,
         _count: { select: { samples: true } },
       },
       // Order by session DATE (not createdAt) so a session you joined shows up
@@ -113,7 +115,8 @@ export default async function Dashboard({
 
     prisma.userCoffeeHistory.groupBy({
       by: ["coffeeId"],
-      where: { userId: user.id, individualScore: { not: null } },
+      // coffeeId NOT NULL: label-only rows (S8-16) are not a coffee.
+      where: { userId: user.id, coffeeId: { not: null }, individualScore: { not: null } },
       _avg: { individualScore: true },
       _count: { coffeeId: true },
       orderBy: { _avg: { individualScore: "desc" } },
@@ -156,7 +159,9 @@ export default async function Dashboard({
       : null;
 
   // Top coffee details
-  const topCoffeeIds = topCoffeeGroups.map((g) => g.coffeeId);
+  const topCoffeeIds = topCoffeeGroups
+    .map((g) => g.coffeeId)
+    .filter((c): c is string => c !== null);
   const topCoffeeDetails =
     topCoffeeIds.length > 0
       ? await prisma.coffee.findMany({
@@ -355,7 +360,7 @@ export default async function Dashboard({
             ) : (
               <ul className="space-y-2">
                 {topCoffeeGroups.map((g, i) => {
-                  const coffee = coffeeMap.get(g.coffeeId);
+                  const coffee = g.coffeeId ? coffeeMap.get(g.coffeeId) : undefined;
                   const avg = g._avg.individualScore ?? 0;
                   return (
                     <li

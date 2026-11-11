@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { isRegisteredUser } from "@/lib/guestScope";
 import { JoinCoffeeForm } from "@/components/join/JoinCoffeeForm";
 
 // Auth'd page with an extra dynamic [token] segment: must render per-request
@@ -58,7 +59,9 @@ export default async function JoinCoffeePage({
     );
   }
 
-  if (!user) {
+  // An anonymous QR guest is treated like a signed-out visitor: coffee links
+  // need a real account (S8-03).
+  if (!isRegisteredUser(user)) {
     const loginHref = `/${locale}/auth/login?next=${encodeURIComponent(`/${locale}/join/coffee/${token}`)}`;
     return (
       <main className="flex flex-1 items-center justify-center px-6 py-16">

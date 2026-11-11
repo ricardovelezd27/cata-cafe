@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireAppUser } from "@/lib/auth";
 import { COFFEE_COUNTRIES } from "@/lib/analytics/normalize";
 import { CoffeeForm } from "@/components/coffees/CoffeeForm";
 
@@ -16,11 +15,7 @@ export default async function NewCoffeePage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/${locale}/auth/login`);
+  const user = await requireAppUser(locale, `/${locale}/app/coffees/new`);
 
   const t = await getTranslations("coffee");
 

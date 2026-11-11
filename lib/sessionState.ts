@@ -1,17 +1,81 @@
 // Pure session-state rules — no Prisma, no Next imports — so they can be
 // unit-tested and reused from lib/sessionAuth.ts.
 
-import { dateOnlyEndOfDay } from "@/lib/validate";
+import { dateInZone, endOfDayInZone, normalizeZone } from "@/lib/closeRules";
 
-/** Throws `session_closed` for a closed session. Call it right after the
+type ExpiryRow = { status: string; closesAt?: Date | string | null };
+
+function toMs(v: Date | string | number): number {
+  return typeof v === "number" ? v : typeof v === "string" ? Date.parse(v) : v.getTime();
+}
+
+/** A session stops accepting work when it is closed OR its `closesAt` has
+ *  passed (strict `<`, the same boundary as the results page and the cron).
+ *  `status` is still flipped only by closeSessionInternal: an expired session
+ *  stays "active" until the cron or the owner closes it, but it is already
+ *  read-only and its group results are already visible. Server clock only:
+ *  client components never compute this. */
+export function isSessionExpired(row: ExpiryRow, now: Date | number = Date.now()): boolean {
+  if (row.status === "closed") return true;
+  if (row.closesAt == null) return false;
+  return toMs(row.closesAt) < toMs(now);
+}
+
+/** Throws `session_closed` for a closed or expired session. Call it right after the
  *  requireSessionOwner / requireSessionMember / requireSampleOwner /
  *  requireSampleMember check in EVERY mutation that writes evaluations,
  *  samples, physical/extrinsic data or metadata. "closed = the session's
  *  results ARE its detail view" is only true if nothing can still change
  *  underneath them (and the aggregate trigger only re-fires on isDraft
- *  changes, so a post-close edit would silently desync aggregate_scores). */
-export function assertSessionWritable(row: { status: string }): void {
-  if (row.status === "closed") throw new Error("session_closed");
+ *  changes, so a post-close edit would silently desync aggregate_scores).
+ *  A row without `closesAt` is judged on status alone, which is what the two
+ *  post-close writes rely on. */
+export function assertSessionWritable(row: ExpiryRow, now: Date | number = Date.now()): void {
+  if (isSessionExpired(row, now)) throw new Error("session_closed");
+}
+
+/** `updateSampleMetadata`'s write gate (S8-28 A-05: extracted from the action,
+ *  behaviour unchanged). The SECOND sanctioned post-close write: naming a
+ *  coffee on a CLOSED, coffee-less sample. Everything else, including a
+ *  label-only edit on a closed session, goes through assertSessionWritable
+ *  (which also stops an expired-but-not-yet-closed session). Throws
+ *  `session_closed`. Pure. */
+export function isPostCloseNaming(
+  session: ExpiryRow,
+  sample: { coffeeId: string | null },
+  namesCoffee: boolean,
+): boolean {
+  return isSessionClosed(session) && sample.coffeeId === null && namesCoffee;
+}
+
+export function assertSampleMetadataWritable(
+  session: ExpiryRow,
+  sample: { coffeeId: string | null },
+  namesCoffee: boolean,
+  now: Date | number = Date.now(),
+): void {
+  if (!isPostCloseNaming(session, sample, namesCoffee)) assertSessionWritable(session, now);
+}
+
+/** Origin (extrinsic) data is the one thing besides coffee naming the owner may
+ *  still correct once a session is over (S8-12, F-resultados-4): only on a
+ *  REVEALED sample, so blind integrity holds and an unrevealed sample stays
+ *  read-only like everything else. Open sessions are unaffected. Pure. */
+export function extrinsicWriteAllowed(input: { over: boolean; revealed: boolean }): boolean {
+  return !input.over || input.revealed;
+}
+
+/** A participant cannot write before the master starts a live group session.
+ *  Owner, async and solo sessions are never blocked. */
+export function assertSessionStarted(row: {
+  isGroup: boolean;
+  isAsync: boolean;
+  startedAt: Date | string | null;
+  isOwner: boolean;
+}): void {
+  if (row.isGroup && !row.isAsync && !row.startedAt && !row.isOwner) {
+    throw new Error("session_not_started");
+  }
 }
 
 export function isSessionClosed(row: { status: string }): boolean {
@@ -36,39 +100,63 @@ export function canViewGroupResults(input: {
   );
 }
 
-/** Editing `closesAt` after creation (S6 CP-C3 / S5 item 9). Pure; the
- *  action translates the thrown codes to its own error shape.
+/** Editing `closesAt` after creation (S6 CP-C3 / S5 item 9; zone-aware since
+ *  S8-05). Pure; the action translates the thrown codes to its own error shape.
  *
- *  - A value equal to the stored date is also a no-op (saving other fields
- *    must not fail once the stored date has passed).
  *  - `undefined` → no change.
- *  - `""` / `null` → clear: `closesAt = null`, `isAsync = false` (the owner
- *    closes manually from then on — a live cupping). Allowed even when
- *    cuppers already submitted.
- *  - `"YYYY-MM-DD"` → END of that day in UTC (same `dateOnlyEndOfDay` rule as
- *    the wizard: picking today is valid, the cron closes it on D+1 ~06:00
- *    UTC) and `isAsync = true`. Allowed on a live session that already
- *    started — it simply gains an automatic close. A past date throws
+ *  - `""` / `null` → clear: `closesAt = null`, `closesAtZone = null`,
+ *    `isAsync = false` (the owner closes manually from then on — a live
+ *    cupping). Allowed even when cuppers already submitted.
+ *  - `"YYYY-MM-DD"` → END of that day in the owner's IANA `zone` (UTC when the
+ *    zone is missing or unknown, the pre-S8-05 behaviour) and `isAsync = true`.
+ *    Picking today is valid until 23:59 local. A past date throws
  *    `invalid_closes_at`.
+ *  - A value equal to the stored date, read back in the STORED zone (UTC for
+ *    legacy rows), is a no-op, so saving other fields never fails once the
+ *    stored date has passed.
  *  - Only group sessions carry a close date (`not_group_session`); a closed
- *    session is refused upstream by `assertSessionWritable`. */
+ *    session is refused upstream by `assertSessionWritable`.
+ *  // TODO(S8-05/C7): separating `isAsync` from `closesAt` (a live cupping
+ *  // that also has a deadline) is Kim's call; today a date means self-paced. */
 export function planClosesAtChange(
-  session: { isGroup: boolean; closesAt?: Date | null },
+  session: {
+    isGroup: boolean;
+    closesAt?: Date | null;
+    closesAtZone?: string | null;
+    startedAt?: Date | null;
+    /** True when any cupper has an evaluation on the session. */
+    hasActivity?: boolean;
+  },
   input: string | null | undefined,
   now: number = Date.now(),
-): { closesAt: Date | null; isAsync: boolean } | null {
+  zone?: string | null,
+): { closesAt: Date | null; closesAtZone: string | null; isAsync: boolean; startedAt?: Date } | null {
   if (input === undefined) return null;
   if (!session.isGroup) throw new Error("not_group_session");
-  if (input === null || input === "") return { closesAt: null, isAsync: false };
+  if (input === null || input === "") {
+    // B-02 (S8-22): a self-paced session never gets `startedAt`. Turning it
+    // live (isAsync=false) with startedAt null would lock every participant out
+    // (`session_not_started`). When it is NOT a fresh unstarted session (any
+    // activity), it counts as started from now. A fresh one stays unstarted:
+    // the owner starts it from the waiting room as usual.
+    const mustStart = !session.startedAt && session.hasActivity === true;
+    return {
+      closesAt: null,
+      closesAtZone: null,
+      isAsync: false,
+      ...(mustStart ? { startedAt: new Date(now) } : {}),
+    };
+  }
   // Unchanged value -> no-op, so saving an unrelated field never trips over a
   // stored date that has since slipped into the past.
-  if (session.closesAt && input === session.closesAt.toISOString().slice(0, 10)) return null;
+  if (session.closesAt && input === dateInZone(session.closesAt, session.closesAtZone)) return null;
+  const useZone = normalizeZone(zone);
   let d: Date;
   try {
-    d = dateOnlyEndOfDay(input, "closesAt");
+    d = endOfDayInZone(input, useZone);
   } catch {
     throw new Error("invalid_closes_at");
   }
   if (d.getTime() < now + 60_000) throw new Error("invalid_closes_at");
-  return { closesAt: d, isAsync: true };
+  return { closesAt: d, closesAtZone: useZone, isAsync: true };
 }

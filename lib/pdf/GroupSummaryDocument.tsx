@@ -203,7 +203,7 @@ function SampleCard({
 export function GroupSummaryDocument(props: GroupSummaryProps) {
   const t = TEXT[props.locale];
   return (
-    <Document title={`${t.spec} · ${props.sessionName}`} author="Café Sensible">
+    <Document title={`${t.spec} · ${props.sessionName}`} author="Café Sensible" language={props.locale}>
       <Page size="A4" style={s.page}>
         <View style={s.headerBox}>
           <View style={s.headerTopRow}>

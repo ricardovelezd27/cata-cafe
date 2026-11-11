@@ -1251,3 +1251,894 @@ DROP POLICY IF EXISTS "coffees_write" ON coffees;
 CREATE POLICY "coffees_write" ON coffees
   FOR ALL USING ("deletedAt" IS NULL AND "createdBy" = auth.uid()::text);
 -- ============================================================================
+
+-- ============================================================================
+-- PHASE 21 (2026-11-10): closed / expired means read-only IN SQL TOO, and a
+-- participant can no longer read a peer's submitted rows through the API.
+-- Spec: docs/prompts/S8-flows/S8-01-rls-closed-readonly.md (F-sesiones-1,
+-- F-resultados-1, F-sesiones-13/14/15). Apply via runbook §10 — SQL FIRST,
+-- then deploy the app. The Supabase project is production.
+--
+-- Why: NEXT_PUBLIC_SUPABASE_ANON_KEY is public and every signed-in user
+-- (guests included) holds an `authenticated` JWT. The Phase 1/2 policies were
+-- written for a browser that talked to PostgREST directly, which this app
+-- stopped doing long ago (every write is a server action running through
+-- Prisma as `postgres`, which bypasses RLS). What is left is only attack
+-- surface that bypasses lib/sessionAuth.ts:
+--   * evals_own (FOR ALL, no membership test, no closed test): any user could
+--     INSERT/UPDATE/DELETE evaluations for ANY sample, before or after close.
+--   * sessions_write / samples_write / participants_write: the owner could
+--     PATCH `status`, samples or the roster directly, past the closed guard.
+--   * phys_all / ext_all: same, for the owner-only per-sample tables.
+--   * evals_submitted_participant + agg_select: a participant could read every
+--     peer's submitted evaluation (names via cupperId, raw scores) and the
+--     hidden community score while results were not yet visible.
+--   * samples_select exposes session_samples."coffeeId" (blind coding): a
+--     participant could read which coffee an unrevealed sample is.
+--   * invites_write (FOR ALL, no session check): any user could mint an invite
+--     for ANY session id and redeem it (F-sesiones-14).
+--   * profiles_update (no column limit): a user could set their own
+--     "analyticsAccess" and open Insights (F-sesiones-15).
+-- Exploitability of these over PostgREST was read from the policies, not
+-- demonstrated against production.
+--
+-- Verified 2026-11-10 that NO browser code reads or writes these tables:
+--   grep -rnE '\.(from|rpc)\(\s*["'"'"'`]' app components hooks lib scripts
+--   → no matches. Browser supabase-js is used only for signInAnonymously and
+--   three Realtime clients (CupClient, ResultsClient, WaitingRoomClient). Those
+--   subscribe to `evaluations` (owner only after this phase) and
+--   `cupping_sessions`; neither the SELECT policies nor the publication change.
+--   `session_samples` and `aggregate_scores` are NOT in supabase_realtime.
+--
+-- What it does (see the statements; all inside one transaction):
+--   1. Two helpers, is_session_owner() and can_view_group_results() (the SQL
+--      twin of canViewGroupResults in lib/sessionState.ts: keep them in step).
+--      SECURITY DEFINER, pinned search_path, EXECUTE revoked from PUBLIC/anon and
+--      kept for `authenticated` (PHASE 18b rule: policy helpers run as the
+--      querying role).
+--   2. evaluations: own rows + owner's submitted rows, SELECT only.
+--   3. aggregate_scores: owner always; participant only once group results are
+--      visible (strict `closesAt < now`, the same boundary as isSessionExpired).
+--   4. Write policies dropped on the seven session tables + session_invites +
+--      profiles; INSERT/UPDATE/DELETE/TRUNCATE revoked from anon/authenticated.
+--      Prisma (postgres) and SECURITY DEFINER triggers are unaffected.
+--   5. session_samples."coffeeId" hidden by column privileges for everyone over
+--      the API (nothing in the browser reads it). RULE: a future column added to
+--      session_samples needs `GRANT SELECT ("col") ... TO authenticated` here,
+--      or API reads of it fail.
+--
+-- Not built (architect decision): a `touch_session_on_submit` trigger. The app
+-- touches cupping_sessions."updatedAt" once, in submitAllEvaluations, on the
+-- submit that makes group results visible.
+--
+-- Pre-flight (read-only; run first, expect what is noted):
+--   -- column list must still be exactly the GRANT below (+ "coffeeId"):
+--   select column_name from information_schema.columns
+--     where table_schema='public' and table_name='session_samples' order by 1;
+--     -- expect: coffeeId, createdAt, id, label, position, referenceRank, revealed, sessionId
+--   -- live group sessions that never recorded a start would block participants
+--   -- (assertSessionStarted); list them and decide before deploying the app:
+--   select id, name from cupping_sessions
+--     where "isGroup" and not "isAsync" and status = 'active' and "startedAt" is null;
+--   -- current table privileges (Supabase default: all to anon+authenticated):
+--   select table_name, grantee, privilege_type from information_schema.role_table_grants
+--     where table_schema='public' and table_name in ('evaluations','session_samples')
+--       and grantee in ('anon','authenticated') order by 1,2,3;
+--
+-- Dry run: prisma/sql/dry-runs/phase21_dry_run.sql. It is ONE DO statement, so
+-- nothing can be applied and no transaction can be left open. Replace its three
+-- placeholders (participant uuid, owner uuid, session id) and run it: it ends in
+-- an intentional error whose message lists every check with its expected value.
+--
+-- After applying: Supabase Dashboard → Advisors → Security (no new findings),
+-- and open one group session as owner + participant to confirm the waiting
+-- room, cup and results screens still update (Realtime delivers).
+-- Rollback: the commented block at the end of this phase.
+-- ============================================================================
+BEGIN;
+
+-- Helpers. Policies run as the querying role, so both keep EXECUTE for
+-- `authenticated` (PHASE 18b rule) and lose it for PUBLIC and anon.
+CREATE OR REPLACE FUNCTION public.is_session_owner(p_session_id text)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM cupping_sessions
+    WHERE id = p_session_id AND "createdBy" = auth.uid()::text
+  );
+$$;
+
+-- SQL twin of canViewGroupResults (lib/sessionState.ts). Keep the two in step.
+-- "closesAt" is TIMESTAMP(3) holding UTC, hence now() AT TIME ZONE 'utc'.
+CREATE OR REPLACE FUNCTION public.can_view_group_results(p_session_id text)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM cupping_sessions cs
+    WHERE cs.id = p_session_id
+      AND cs."isGroup"
+      AND (
+        cs."createdBy" = auth.uid()::text
+        OR cs.status = 'closed'
+        OR (cs."closesAt" IS NOT NULL AND cs."closesAt" < (now() AT TIME ZONE 'utc'))
+        OR (
+          (SELECT count(*) FROM session_participants sp WHERE sp."sessionId" = cs.id) > 0
+          AND (
+            SELECT count(DISTINCT e."cupperId")
+            FROM evaluations e
+            JOIN session_samples ss ON ss.id = e."sessionSampleId"
+            WHERE ss."sessionId" = cs.id AND e."isDraft" = false
+          ) >= (SELECT count(*) FROM session_participants sp WHERE sp."sessionId" = cs.id)
+        )
+      )
+  );
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.is_session_owner(text) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.can_view_group_results(text) FROM PUBLIC, anon;
+GRANT  EXECUTE ON FUNCTION public.is_session_owner(text) TO authenticated;
+GRANT  EXECUTE ON FUNCTION public.can_view_group_results(text) TO authenticated;
+
+-- evaluations: a cupper reads their own rows; the session owner reads
+-- submitted rows (live "submitted" counter). Nobody reads a peer's row.
+DROP POLICY IF EXISTS "evals_own" ON evaluations;
+DROP POLICY IF EXISTS "evals_submitted_participant" ON evaluations;
+DROP POLICY IF EXISTS "evals_select_own" ON evaluations;
+DROP POLICY IF EXISTS "evals_select_owner" ON evaluations;
+CREATE POLICY "evals_select_own" ON evaluations
+  FOR SELECT TO authenticated
+  USING ("cupperId" = auth.uid()::text);
+CREATE POLICY "evals_select_owner" ON evaluations
+  FOR SELECT TO authenticated
+  USING (
+    "isDraft" = false
+    AND is_session_owner(COALESCE(
+      "sessionId",
+      (SELECT ss."sessionId" FROM session_samples ss WHERE ss.id = "sessionSampleId")
+    ))
+  );
+
+-- aggregate_scores: owner always; a participant only once group results are visible.
+DROP POLICY IF EXISTS "agg_select" ON aggregate_scores;
+CREATE POLICY "agg_select" ON aggregate_scores
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM session_samples ss
+      WHERE ss.id = aggregate_scores."sessionSampleId"
+        AND (
+          is_session_owner(ss."sessionId")
+          OR (is_session_participant(ss."sessionId") AND can_view_group_results(ss."sessionId"))
+        )
+    )
+  );
+
+-- Write policies go: every write is a server action through Prisma (postgres).
+-- The SELECT policies stay (Realtime evaluates them).
+DROP POLICY IF EXISTS "sessions_write" ON cupping_sessions;
+DROP POLICY IF EXISTS "samples_write" ON session_samples;
+DROP POLICY IF EXISTS "participants_write" ON session_participants;
+
+DROP POLICY IF EXISTS "phys_all" ON physical_evaluations;
+DROP POLICY IF EXISTS "phys_select" ON physical_evaluations;
+CREATE POLICY "phys_select" ON physical_evaluations
+  FOR SELECT TO authenticated
+  USING ("evaluatedBy" = auth.uid()::text);
+
+DROP POLICY IF EXISTS "ext_all" ON extrinsic_data;
+DROP POLICY IF EXISTS "ext_select" ON extrinsic_data;
+CREATE POLICY "ext_select" ON extrinsic_data
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM session_samples ss
+      JOIN cupping_sessions cs ON cs.id = ss."sessionId"
+      WHERE ss.id = extrinsic_data."sessionSampleId"
+        AND cs."createdBy" = auth.uid()::text
+    )
+  );
+
+-- session_invites (F-sesiones-14): the FOR ALL policy let any signed-in user
+-- mint an invite for any session. Owner keeps reading their own invites.
+DROP POLICY IF EXISTS "invites_write" ON session_invites;
+DROP POLICY IF EXISTS "invites_select_own" ON session_invites;
+CREATE POLICY "invites_select_own" ON session_invites
+  FOR SELECT TO authenticated
+  USING ("createdBy" = auth.uid()::text);
+
+-- profiles (F-sesiones-15): the UPDATE policy had no column limit, so a user
+-- could set their own "analyticsAccess". Every profile write is server-side
+-- (requireUser upserts through Prisma; handle_new_user is SECURITY DEFINER),
+-- so profiles_insert is not needed either.
+DROP POLICY IF EXISTS "profiles_update" ON profiles;
+DROP POLICY IF EXISTS "profiles_insert" ON profiles;
+
+-- Belt and braces: no API role can write these tables whatever a future
+-- policy says. Prisma (postgres) and SECURITY DEFINER triggers are unaffected.
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON
+  evaluations, aggregate_scores, cupping_sessions, session_samples,
+  session_participants, physical_evaluations, extrinsic_data,
+  session_invites, profiles
+FROM anon, authenticated;
+
+-- Blind coding (F-sesiones-13): participants could read the coffee id of an
+-- unrevealed sample. Column privileges are per role, so the column is hidden
+-- from the API for everyone; the app reads it through Prisma.
+-- RULE: a new column on session_samples needs a GRANT SELECT (col) here, or
+-- API reads of it fail. List every column of the table except "coffeeId".
+REVOKE SELECT ON session_samples FROM anon, authenticated;
+GRANT SELECT (id, "sessionId", position, label, revealed, "referenceRank", "createdAt")
+  ON session_samples TO authenticated;
+
+COMMIT;
+
+-- Rollback (restores the policies and grants exactly as they were before this
+-- phase; run it in one transaction):
+--   BEGIN;
+--   GRANT INSERT, UPDATE, DELETE, TRUNCATE ON
+--     evaluations, aggregate_scores, cupping_sessions, session_samples,
+--     session_participants, physical_evaluations, extrinsic_data,
+--     session_invites, profiles
+--   TO anon, authenticated;
+--   GRANT SELECT ON session_samples TO anon, authenticated;
+--   DROP POLICY IF EXISTS "evals_select_own" ON evaluations;
+--   DROP POLICY IF EXISTS "evals_select_owner" ON evaluations;
+--   CREATE POLICY "evals_own" ON evaluations
+--     FOR ALL USING ("cupperId" = auth.uid()::text);
+--   CREATE POLICY "evals_submitted_participant" ON evaluations
+--     FOR SELECT USING (
+--       "isDraft" = false
+--       AND is_session_participant((
+--         SELECT ss."sessionId" FROM session_samples ss
+--         WHERE ss.id = "sessionSampleId"
+--       ))
+--     );
+--   DROP POLICY IF EXISTS "agg_select" ON aggregate_scores;
+--   CREATE POLICY "agg_select" ON aggregate_scores
+--     FOR SELECT USING (
+--       is_session_participant((
+--         SELECT ss."sessionId" FROM session_samples ss
+--         WHERE ss.id = aggregate_scores."sessionSampleId"
+--       ))
+--     );
+--   CREATE POLICY "sessions_write" ON cupping_sessions
+--     FOR ALL USING ("createdBy" = auth.uid()::text);
+--   CREATE POLICY "samples_write" ON session_samples
+--     FOR ALL USING (
+--       EXISTS (
+--         SELECT 1 FROM cupping_sessions
+--         WHERE id = session_samples."sessionId"
+--           AND "createdBy" = auth.uid()::text
+--       )
+--     );
+--   CREATE POLICY "participants_write" ON session_participants
+--     FOR ALL USING (
+--       EXISTS (
+--         SELECT 1 FROM cupping_sessions
+--         WHERE id = session_participants."sessionId"
+--           AND "createdBy" = auth.uid()::text
+--       )
+--     );
+--   DROP POLICY IF EXISTS "phys_select" ON physical_evaluations;
+--   CREATE POLICY "phys_all" ON physical_evaluations
+--     FOR ALL USING ("evaluatedBy" = auth.uid()::text);
+--   DROP POLICY IF EXISTS "ext_select" ON extrinsic_data;
+--   CREATE POLICY "ext_all" ON extrinsic_data
+--     FOR ALL USING (
+--       EXISTS (
+--         SELECT 1 FROM session_samples ss
+--         JOIN cupping_sessions cs ON cs.id = ss."sessionId"
+--         WHERE ss.id = extrinsic_data."sessionSampleId"
+--           AND cs."createdBy" = auth.uid()::text
+--       )
+--     );
+--   DROP POLICY IF EXISTS "invites_select_own" ON session_invites;
+--   CREATE POLICY "invites_write" ON session_invites
+--     FOR ALL USING ("createdBy" = auth.uid()::text);
+--   CREATE POLICY "profiles_update" ON profiles
+--     FOR UPDATE USING (id = auth.uid()::text);
+--   CREATE POLICY "profiles_insert" ON profiles
+--     FOR INSERT WITH CHECK (id = auth.uid()::text);
+--   -- the two helpers are harmless to keep; to drop them, first drop the
+--   -- policies above that call them (already done), then:
+--   --   DROP FUNCTION public.is_session_owner(text);
+--   --   DROP FUNCTION public.can_view_group_results(text);
+--   COMMIT;
+-- ============================================================================
+-- PHASE 22 (2026-11-10, S8-03): outbound email ledger tables, server-only
+-- `outbound_email_events` (the throttle's reservations) and
+-- `group_email_deliveries` (per-recipient ledger of a group broadcast) are read
+-- and written only through server-side Prisma (postgres role, bypasses RLS):
+-- lib/emailBudget.ts and lib/groupEmail.ts. Deny-all via RLS with no policies,
+-- same rationale as ai_chat_usage (PHASE 12). Supabase auto-enables RLS on new
+-- public tables, so this is documentation + idempotent. Neither table holds a
+-- raw address or IP: the keys are HMACs (lib/emailKeys.ts).
+-- Apply AFTER `npx prisma migrate deploy` created the tables (runbook §11).
+-- ============================================================================
+ALTER TABLE outbound_email_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE group_email_deliveries ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- PHASE 23 (2026-11-10, S8-04): one community score below five cups
+-- Spec: docs/prompts/S8-flows/S8-04-scoring-under-five-cups.md (F-grupal-1).
+-- Apply via runbook §12, dry run first (prisma/sql/dry-runs/phase23_dry_run.sql).
+--
+-- Why: recompute_aggregate_score() (PHASE 11 body, line ~710) subtracts the
+-- uniformity (10/total_cups) and defect (30/total_cups) penalties at ANY cup
+-- count, while lib/scoring.ts (computeGroupAggregate, calcIndividualBreakdown)
+-- only deducts from 5 cups per sample (CLAUDE.md "Scoring System"). A 2-cup
+-- session with one flagged cup therefore showed 79.00 on the results page and
+-- a lower number in the coffee history, which copies the stored aggregate.
+-- This phase aligns the SQL with the documented formula: the trigger stays the
+-- authority for the STORED score, and it now agrees with the TypeScript gate.
+-- calcCommunityScore stays display-only.
+--
+-- Pre-flight (do NOT skip): confirm the live function body still matches the
+-- definition at line ~710 of this file:
+--   SELECT pg_get_functiondef('public.recompute_aggregate_score()'::regprocedure);
+-- It must contain "IF v_total_cups > 0 THEN" and no "v_cups_per_sample >= 5".
+--
+-- TWO STEPS, in this order, in separate SQL editor runs:
+--   STEP 1  re-issue the function (changes nothing stored by itself).
+--   STEP 2  the recompute (below, commented). It CHANGES the stored community
+--           score of every past session with cupsPerSample < 5 and a flagged
+--           cup, exactly once; it is idempotent (a second run changes nothing).
+--           Tell Kim BEFORE running it.
+--
+-- Post-apply check (STEP 1 must keep the PHASE 18 pin; CREATE OR REPLACE resets function config):
+--   select proconfig from pg_proc where proname = 'recompute_aggregate_score';  -- expect {search_path=public}
+-- Verify: pick a session with cupsPerSample < 5 and a flagged cup; before STEP 2
+-- its aggregate_scores."communityScore" is below "avgRawScore", after it equals
+-- "avgRawScore" rounded to 0.25. Sessions with cupsPerSample >= 5 never move.
+-- ============================================================================
+-- STEP 1
+CREATE OR REPLACE FUNCTION recompute_aggregate_score()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_session_id         text;
+  v_cups_per_sample    int;
+  v_format             text;
+  v_participant_count  int;   -- INCLUDED (complete) evaluations
+  v_submitted_count    int;   -- all submitted, non-excluded evaluations
+  v_total_cups         int;
+  v_avg_raw            float;
+  v_total_non_uniform  int;
+  v_total_defective    int;
+  v_uniformity_penalty float;
+  v_defect_penalty     float;
+  v_community_score    float;
+  v_attr_averages      jsonb;
+  v_json_col           text;
+BEGIN
+  -- Get sessionId, cupsPerSample and format from parent session
+  SELECT ss."sessionId", cs."cupsPerSample", cs.format
+    INTO v_session_id, v_cups_per_sample, v_format
+  FROM session_samples ss
+  JOIN cupping_sessions cs ON cs.id = ss."sessionId"
+  WHERE ss.id = NEW."sessionSampleId";
+
+  -- Pick which JSON column holds affective data
+  v_json_col := CASE WHEN v_format = 'affective' THEN 'affectiveData' ELSE 'combinedData' END;
+
+  -- Aggregate over submitted, NON-EXCLUDED evaluations. Score/penalty metrics use
+  -- a FILTER so only COMPLETE evaluations contribute; submittedCount counts all.
+  SELECT
+    COUNT(*) FILTER (WHERE is_affective_complete(
+      CASE WHEN v_format = 'affective' THEN e."affectiveData" ELSE e."combinedData" END))::int,
+    COUNT(*)::int,
+    AVG("rawScore") FILTER (WHERE is_affective_complete(
+      CASE WHEN v_format = 'affective' THEN e."affectiveData" ELSE e."combinedData" END)),
+    COALESCE(SUM((
+      SELECT COUNT(*) FROM unnest("nonUniformCups") AS t(u) WHERE u = true
+    )::int) FILTER (WHERE is_affective_complete(
+      CASE WHEN v_format = 'affective' THEN e."affectiveData" ELSE e."combinedData" END)), 0),
+    COALESCE(SUM((
+      SELECT COUNT(*) FROM unnest("defectiveCups") AS d(v) WHERE v = true
+    )::int) FILTER (WHERE is_affective_complete(
+      CASE WHEN v_format = 'affective' THEN e."affectiveData" ELSE e."combinedData" END)), 0)
+  INTO v_participant_count, v_submitted_count, v_avg_raw, v_total_non_uniform, v_total_defective
+  FROM evaluations e
+  WHERE e."sessionSampleId" = NEW."sessionSampleId" AND e."isDraft" = false
+    AND NOT EXISTS (
+      SELECT 1 FROM session_participants sp
+      WHERE sp."sessionId" = v_session_id
+        AND sp."userId" = e."cupperId"
+        AND sp.excluded_from_results = true
+    );
+
+  -- totalCups uses the INCLUDED count so penalties normalize over real cups only.
+  v_total_cups := v_cups_per_sample * v_participant_count;
+
+  -- S8-04: deductions only from 5 cups per sample (mirror of penaltiesApply() in
+  -- lib/scoring.ts). Below that the stored community score is the plain average.
+  IF v_cups_per_sample >= 5 AND v_total_cups > 0 THEN
+    v_uniformity_penalty := v_total_non_uniform::float * (10.0 / v_total_cups);
+    v_defect_penalty     := v_total_defective::float  * (30.0 / v_total_cups);
+  ELSE
+    v_uniformity_penalty := 0;
+    v_defect_penalty     := 0;
+  END IF;
+
+  -- N4: round the final community score to the nearest 0.25 (was ROUND(..., 2)).
+  v_community_score := GREATEST(0, LEAST(100,
+    ROUND((COALESCE(v_avg_raw, 0) - v_uniformity_penalty - v_defect_penalty)::numeric * 4) / 4
+  ));
+
+  -- Per-attribute averages over submitted, NON-EXCLUDED, COMPLETE evaluations.
+  SELECT jsonb_build_object(
+    'Fragancia',        ROUND(AVG(NULLIF((e.data->>'fragancia_af_final'),   '')::numeric), 2),
+    'Aroma',            ROUND(AVG(NULLIF((e.data->>'aroma_af_final'),        '')::numeric), 2),
+    'Sabor',            ROUND(AVG(NULLIF((e.data->>'sabor_af_final'),        '')::numeric), 2),
+    'Sabor residual',   ROUND(AVG(NULLIF((e.data->>'sabor_residual_af_final'),'')::numeric), 2),
+    'Acidez',           ROUND(AVG(NULLIF((e.data->>'acidez_af_final'),       '')::numeric), 2),
+    'Dulzor',           ROUND(AVG(NULLIF((e.data->>'dulzor_af_final'),       '')::numeric), 2),
+    'Sensación en boca',ROUND(AVG(NULLIF((e.data->>'sensacion_af_final'),    '')::numeric), 2),
+    'Impresión global', ROUND(AVG(NULLIF((e.data->>'impresion_global_final'),'')::numeric), 2)
+  )
+  INTO v_attr_averages
+  FROM (
+    SELECT CASE v_json_col
+      WHEN 'affectiveData' THEN "affectiveData"
+      ELSE "combinedData"
+    END AS data
+    FROM evaluations ev
+    WHERE ev."sessionSampleId" = NEW."sessionSampleId" AND ev."isDraft" = false
+      AND is_affective_complete(
+        CASE v_json_col WHEN 'affectiveData' THEN ev."affectiveData" ELSE ev."combinedData" END)
+      AND NOT EXISTS (
+        SELECT 1 FROM session_participants sp
+        WHERE sp."sessionId" = v_session_id
+          AND sp."userId" = ev."cupperId"
+          AND sp.excluded_from_results = true
+      )
+  ) e;
+
+  INSERT INTO aggregate_scores (
+    id,
+    "sessionSampleId", "participantCount", "submittedCount", "cupsPerSample", "totalCups",
+    "avgRawScore", "totalNonUniform", "totalDefective",
+    "uniformityPenalty", "defectPenalty", "communityScore",
+    "attrAverages", "computedAt"
+  ) VALUES (
+    gen_random_uuid()::text,
+    NEW."sessionSampleId", v_participant_count, v_submitted_count, v_cups_per_sample, v_total_cups,
+    v_avg_raw, v_total_non_uniform, v_total_defective,
+    v_uniformity_penalty, v_defect_penalty, v_community_score,
+    COALESCE(v_attr_averages, '{}'::jsonb), now()
+  )
+  ON CONFLICT ("sessionSampleId") DO UPDATE SET
+    "participantCount"  = EXCLUDED."participantCount",
+    "submittedCount"    = EXCLUDED."submittedCount",
+    "cupsPerSample"     = EXCLUDED."cupsPerSample",
+    "totalCups"         = EXCLUDED."totalCups",
+    "avgRawScore"       = EXCLUDED."avgRawScore",
+    "totalNonUniform"   = EXCLUDED."totalNonUniform",
+    "totalDefective"    = EXCLUDED."totalDefective",
+    "uniformityPenalty" = EXCLUDED."uniformityPenalty",
+    "defectPenalty"     = EXCLUDED."defectPenalty",
+    "communityScore"    = EXCLUDED."communityScore",
+    "attrAverages"      = EXCLUDED."attrAverages",
+    "computedAt"        = EXCLUDED."computedAt";
+
+  RETURN NEW;
+END;
+$$;
+
+-- STEP 2 (separate run, after telling Kim). Idempotent. Re-fires the trigger
+-- (it fires on UPDATE OF "isDraft" when "isDraft" = false) for every submitted
+-- evaluation. Afterwards run: npx tsx scripts/resync-low-cup-history.ts --apply
+-- (dry-run without --apply) so UserCoffeeHistory follows the new aggregates.
+--   UPDATE evaluations SET "isDraft" = "isDraft" WHERE "isDraft" = false;
+--
+-- ROLLBACK: re-create the previous function body (verbatim below) and re-run
+-- STEP 2. The scores of sessions under 5 cups then go back to the old values.
+--   CREATE OR REPLACE FUNCTION recompute_aggregate_score()
+--   RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+--   DECLARE
+--     v_session_id         text;
+--     v_cups_per_sample    int;
+--     v_format             text;
+--     v_participant_count  int;   -- INCLUDED (complete) evaluations
+--     v_submitted_count    int;   -- all submitted, non-excluded evaluations
+--     v_total_cups         int;
+--     v_avg_raw            float;
+--     v_total_non_uniform  int;
+--     v_total_defective    int;
+--     v_uniformity_penalty float;
+--     v_defect_penalty     float;
+--     v_community_score    float;
+--     v_attr_averages      jsonb;
+--     v_json_col           text;
+--   BEGIN
+--     -- Get sessionId, cupsPerSample and format from parent session
+--     SELECT ss."sessionId", cs."cupsPerSample", cs.format
+--       INTO v_session_id, v_cups_per_sample, v_format
+--     FROM session_samples ss
+--     JOIN cupping_sessions cs ON cs.id = ss."sessionId"
+--     WHERE ss.id = NEW."sessionSampleId";
+--   
+--     -- Pick which JSON column holds affective data
+--     v_json_col := CASE WHEN v_format = 'affective' THEN 'affectiveData' ELSE 'combinedData' END;
+--   
+--     -- Aggregate over submitted, NON-EXCLUDED evaluations. Score/penalty metrics use
+--     -- a FILTER so only COMPLETE evaluations contribute; submittedCount counts all.
+--     SELECT
+--       COUNT(*) FILTER (WHERE is_affective_complete(
+--         CASE WHEN v_format = 'affective' THEN e."affectiveData" ELSE e."combinedData" END))::int,
+--       COUNT(*)::int,
+--       AVG("rawScore") FILTER (WHERE is_affective_complete(
+--         CASE WHEN v_format = 'affective' THEN e."affectiveData" ELSE e."combinedData" END)),
+--       COALESCE(SUM((
+--         SELECT COUNT(*) FROM unnest("nonUniformCups") AS t(u) WHERE u = true
+--       )::int) FILTER (WHERE is_affective_complete(
+--         CASE WHEN v_format = 'affective' THEN e."affectiveData" ELSE e."combinedData" END)), 0),
+--       COALESCE(SUM((
+--         SELECT COUNT(*) FROM unnest("defectiveCups") AS d(v) WHERE v = true
+--       )::int) FILTER (WHERE is_affective_complete(
+--         CASE WHEN v_format = 'affective' THEN e."affectiveData" ELSE e."combinedData" END)), 0)
+--     INTO v_participant_count, v_submitted_count, v_avg_raw, v_total_non_uniform, v_total_defective
+--     FROM evaluations e
+--     WHERE e."sessionSampleId" = NEW."sessionSampleId" AND e."isDraft" = false
+--       AND NOT EXISTS (
+--         SELECT 1 FROM session_participants sp
+--         WHERE sp."sessionId" = v_session_id
+--           AND sp."userId" = e."cupperId"
+--           AND sp.excluded_from_results = true
+--       );
+--   
+--     -- totalCups uses the INCLUDED count so penalties normalize over real cups only.
+--     v_total_cups := v_cups_per_sample * v_participant_count;
+--   
+--     IF v_total_cups > 0 THEN
+--       v_uniformity_penalty := v_total_non_uniform::float * (10.0 / v_total_cups);
+--       v_defect_penalty     := v_total_defective::float  * (30.0 / v_total_cups);
+--     ELSE
+--       v_uniformity_penalty := 0;
+--       v_defect_penalty     := 0;
+--     END IF;
+--   
+--     -- N4: round the final community score to the nearest 0.25 (was ROUND(..., 2)).
+--     v_community_score := GREATEST(0, LEAST(100,
+--       ROUND((COALESCE(v_avg_raw, 0) - v_uniformity_penalty - v_defect_penalty)::numeric * 4) / 4
+--     ));
+--   
+--     -- Per-attribute averages over submitted, NON-EXCLUDED, COMPLETE evaluations.
+--     SELECT jsonb_build_object(
+--       'Fragancia',        ROUND(AVG(NULLIF((e.data->>'fragancia_af_final'),   '')::numeric), 2),
+--       'Aroma',            ROUND(AVG(NULLIF((e.data->>'aroma_af_final'),        '')::numeric), 2),
+--       'Sabor',            ROUND(AVG(NULLIF((e.data->>'sabor_af_final'),        '')::numeric), 2),
+--       'Sabor residual',   ROUND(AVG(NULLIF((e.data->>'sabor_residual_af_final'),'')::numeric), 2),
+--       'Acidez',           ROUND(AVG(NULLIF((e.data->>'acidez_af_final'),       '')::numeric), 2),
+--       'Dulzor',           ROUND(AVG(NULLIF((e.data->>'dulzor_af_final'),       '')::numeric), 2),
+--       'Sensación en boca',ROUND(AVG(NULLIF((e.data->>'sensacion_af_final'),    '')::numeric), 2),
+--       'Impresión global', ROUND(AVG(NULLIF((e.data->>'impresion_global_final'),'')::numeric), 2)
+--     )
+--     INTO v_attr_averages
+--     FROM (
+--       SELECT CASE v_json_col
+--         WHEN 'affectiveData' THEN "affectiveData"
+--         ELSE "combinedData"
+--       END AS data
+--       FROM evaluations ev
+--       WHERE ev."sessionSampleId" = NEW."sessionSampleId" AND ev."isDraft" = false
+--         AND is_affective_complete(
+--           CASE v_json_col WHEN 'affectiveData' THEN ev."affectiveData" ELSE ev."combinedData" END)
+--         AND NOT EXISTS (
+--           SELECT 1 FROM session_participants sp
+--           WHERE sp."sessionId" = v_session_id
+--             AND sp."userId" = ev."cupperId"
+--             AND sp.excluded_from_results = true
+--         )
+--     ) e;
+--   
+--     INSERT INTO aggregate_scores (
+--       id,
+--       "sessionSampleId", "participantCount", "submittedCount", "cupsPerSample", "totalCups",
+--       "avgRawScore", "totalNonUniform", "totalDefective",
+--       "uniformityPenalty", "defectPenalty", "communityScore",
+--       "attrAverages", "computedAt"
+--     ) VALUES (
+--       gen_random_uuid()::text,
+--       NEW."sessionSampleId", v_participant_count, v_submitted_count, v_cups_per_sample, v_total_cups,
+--       v_avg_raw, v_total_non_uniform, v_total_defective,
+--       v_uniformity_penalty, v_defect_penalty, v_community_score,
+--       COALESCE(v_attr_averages, '{}'::jsonb), now()
+--     )
+--     ON CONFLICT ("sessionSampleId") DO UPDATE SET
+--       "participantCount"  = EXCLUDED."participantCount",
+--       "submittedCount"    = EXCLUDED."submittedCount",
+--       "cupsPerSample"     = EXCLUDED."cupsPerSample",
+--       "totalCups"         = EXCLUDED."totalCups",
+--       "avgRawScore"       = EXCLUDED."avgRawScore",
+--       "totalNonUniform"   = EXCLUDED."totalNonUniform",
+--       "totalDefective"    = EXCLUDED."totalDefective",
+--       "uniformityPenalty" = EXCLUDED."uniformityPenalty",
+--       "defectPenalty"     = EXCLUDED."defectPenalty",
+--       "communityScore"    = EXCLUDED."communityScore",
+--       "attrAverages"      = EXCLUDED."attrAverages",
+--       "computedAt"        = EXCLUDED."computedAt";
+--   
+--     RETURN NEW;
+--   END;
+--   $$;
+
+-- ============================================================================
+-- PHASE 24 (2026-11-10, S8-24 / audit A-02): the API roles are READ-ONLY across
+-- the whole public schema.
+-- Apply via runbook §26, dry run first (prisma/sql/dry-runs/phase24_dry_run.sql).
+-- The Supabase project is production (there is only one).
+--
+-- Why: PHASE 21 closed the browser-key write surface on the nine session tables
+-- only. Five tables still carried a FOR ALL policy (USING doubles as WITH CHECK,
+-- no TO clause, so it applied to `anon` too) and the Supabase default grants
+-- (INSERT/UPDATE/DELETE/TRUNCATE to anon + authenticated) were still in place:
+--   * tasting_groups_owner_all        (PHASE 10)  tasting_groups
+--   * tasting_group_members_owner_all (PHASE 10)  tasting_group_members
+--   * group_posts_write               (PHASE 17)  group_posts
+--   * coffees_write                   (PHASE 20)  coffees
+--   * history_own                     (PHASE 2)   user_coffee_history
+-- The exploitable one: with any `authenticated` JWT (a guest's too) a group
+-- owner could POST /rest/v1/tasting_group_members with {groupId: <own group>,
+-- userId: <any user uuid>} (the policy only checks group ownership), and the
+-- group mail path (liveEmails in app/actions/groups.ts) then resolves that
+-- uuid to the victim's real address and mails attacker-written text to it.
+-- Guests could also INSERT coffees / tasting_groups past requireRegisteredUser
+-- and forge their own user_coffee_history rows. Read from the policies and the
+-- code, not demonstrated against production.
+--
+-- Verified 2026-11-10 at this tip:
+--   * Every write in this app is a server action / route / script going
+--     through Prisma as `postgres` (table owner, bypasses RLS). SECURITY
+--     DEFINER triggers (handle_new_user, recompute_aggregate_score) run as
+--     their owner. Neither depends on anon/authenticated privileges.
+--   * The browser makes no PostgREST call at all:
+--       grep -rnE '\.(from|rpc)\(\s*["'"'"'`]' app components hooks lib scripts
+--       → (no output, exit 1)
+--     Browser supabase-js is used only for auth and three Realtime clients.
+--   * supabase_realtime holds only `evaluations` and `cupping_sessions`
+--     (Phase 7). Realtime evaluates their SELECT policies as `authenticated`;
+--     both stay SELECT policies with the same USING expression.
+--
+-- What it does (one transaction):
+--   1. Drops the five write policies. Where the FOR ALL policy was also the
+--      only READ path (tasting_groups, tasting_group_members,
+--      user_coffee_history) a SELECT-only policy TO authenticated with the SAME
+--      USING expression replaces it, so reads are unchanged. group_posts and
+--      coffees already have a SELECT policy covering the owner's rows
+--      (group_posts_select has the identical USING; coffees_select includes
+--      "createdBy" = auth.uid() AND "deletedAt" IS NULL), so nothing is added.
+--   2. Every remaining SELECT policy without a role (coffees_select,
+--      group_posts_select, sessions_select, samples_select,
+--      participants_select) is re-targeted TO authenticated
+--      with ALTER POLICY, which keeps the USING expression byte for byte. For
+--      `anon` they returned nothing anyway (auth.uid() is NULL), except
+--      coffees_select, which let the public key read every public coffee with
+--      its "createdBy" (the uuid harvest the attack above starts from).
+--      coffee_shares_select is not ALTERed but recreated (see "Recursion" below).
+--      is_session_participant keeps EXECUTE for authenticated (PHASE 18b rule)
+--      and is not touched here. Functions added by this phase: one,
+--      is_coffee_owner(text) (SECURITY DEFINER, EXECUTE for authenticated only).
+--      Recursion (found by the 2026-11-10 production dry run): since PHASE 16
+--      coffees_select reads coffee_shares and coffee_shares_select reads coffees,
+--      so ANY select on either table as `authenticated` failed with 42P17
+--      "infinite recursion detected in policy". The app never saw it (Prisma
+--      runs as postgres) but a policy that errors is not a policy and the dry
+--      run's probes could not run. coffee_shares_select now asks is_coffee_owner(),
+--      which reads coffees as its owner (RLS bypassed), so the loop is broken
+--      with the same visible rows. Policies after the phase: 16 (18 before,
+--      minus 5 write policies, plus 3 read twins; the recreated one is a swap).
+--   3. Belt and braces, schema-wide: INSERT/UPDATE/DELETE/TRUNCATE revoked from
+--      anon and authenticated on EVERY table in public, and the default
+--      privileges of `postgres` (the role Prisma migrations create tables as)
+--      no longer hand those four to anon/authenticated, so a future table is
+--      born read-only for the API roles.
+--      FUTURE WORK: a table that must be written from the browser needs an
+--      explicit `GRANT INSERT|UPDATE|DELETE ... TO authenticated` in its own
+--      SQL phase, plus a policy. Nothing today needs it.
+--      Not touched: SELECT grants (beyond PHASE 21's session_samples column
+--      grant), REFERENCES/TRIGGER grants, sequences, functions, service_role,
+--      and default privileges of roles other than postgres (a table created
+--      from the dashboard Table Editor as supabase_admin would still get the
+--      Supabase defaults; the dry run reports them, line 4b).
+--   4. A self-check at the end aborts the whole transaction (nothing applied)
+--      if any non-SELECT policy, any `TO public USING (true)` policy or any
+--      API-role write privilege is left in public.
+--
+-- Pre-flight (read-only; run first, SAVE BOTH OUTPUTS: they are the exact rollback):
+--   -- (a) current policies; expect exactly these 18 (PHASE 21 applied):
+--   select tablename, policyname, cmd, roles from pg_policies
+--     where schemaname = 'public' order by 1, 2;
+--   --   aggregate_scores.agg_select SELECT {authenticated}
+--   --   coffee_shares.coffee_shares_select SELECT {public}
+--   --   coffees.coffees_select SELECT {public}; coffees.coffees_write ALL {public}
+--   --   cupping_sessions.sessions_select SELECT {public}
+--   --   evaluations.evals_select_own, evals_select_owner SELECT {authenticated}
+--   --   extrinsic_data.ext_select SELECT {authenticated}
+--   --   group_posts.group_posts_select SELECT {public}; group_posts_write ALL {public}
+--   --   physical_evaluations.phys_select SELECT {authenticated}
+--   --   profiles.profiles_select SELECT {authenticated}
+--   --   session_invites.invites_select_own SELECT {authenticated}
+--   --   session_participants.participants_select SELECT {public}
+--   --   session_samples.samples_select SELECT {public}
+--   --   tasting_group_members.tasting_group_members_owner_all ALL {public}
+--   --   tasting_groups.tasting_groups_owner_all ALL {public}
+--   --   user_coffee_history.history_own ALL {public}
+--   -- Anything else (an extra write policy, a missing one): stop and report.
+--   -- (b) API-role write grants today, printed as the GRANT statements that
+--   --     restore them (this output IS the grant half of the rollback):
+--   select format('GRANT %s ON public.%I TO %I;',
+--                 string_agg(DISTINCT a.privilege_type, ', '), c.relname, r.rolname)
+--     from pg_class c
+--     join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
+--     cross join lateral aclexplode(c.relacl) a
+--     join pg_roles r on r.oid = a.grantee and r.rolname in ('anon', 'authenticated')
+--    where c.relkind in ('r', 'p', 'v', 'f')
+--      and a.privilege_type in ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')
+--    group by c.relname, r.rolname order by 1;
+--   -- expect: every public table EXCEPT PHASE 21's nine (evaluations,
+--   -- aggregate_scores, cupping_sessions, session_samples, session_participants,
+--   -- physical_evaluations, extrinsic_data, session_invites, profiles).
+--   -- (c) default privileges of postgres in public (expect anon and authenticated
+--   --     to hold arwdDxt or similar, i.e. the Supabase default):
+--   select defaclrole::regrole, defaclnamespace::regnamespace, defaclobjtype, defaclacl
+--     from pg_default_acl where defaclnamespace = 'public'::regnamespace order by 1, 2, 3;
+--   -- Supabase's own storage schema keeps its own defaults and is out of scope.
+--
+-- Dry run: prisma/sql/dry-runs/phase24_dry_run.sql (ONE DO statement, nothing
+-- can be applied; one placeholder, the owner uuid). It ends in an intentional
+-- error whose message lists every probe with its expected value.
+--
+-- How to verify after applying:
+--   select tablename, policyname, cmd, roles from pg_policies
+--     where schemaname = 'public' and (cmd <> 'SELECT' or roles <> '{authenticated}');
+--     -- expect 0 rows
+--   then Supabase Dashboard → Advisors → Security (no new findings), and the
+--   two-account Realtime smoke test of runbook §10 step 5 (waiting room, cup,
+--   results still update: sessions_select / evals_* are what Realtime reads).
+-- Rollback: the commented block at the end of this phase.
+-- ============================================================================
+BEGIN;
+
+-- >>> PHASE 24 statements (copied verbatim into phase24_dry_run.sql) >>>
+
+-- 1. Write policies go. The three FOR ALL policies that were also the only read
+--    path get a SELECT-only twin with the same USING expression.
+DROP POLICY IF EXISTS "tasting_groups_owner_all" ON tasting_groups;
+DROP POLICY IF EXISTS "tasting_groups_select_own" ON tasting_groups;
+CREATE POLICY "tasting_groups_select_own" ON tasting_groups
+  FOR SELECT TO authenticated
+  USING ("createdBy" = auth.uid()::text);
+
+DROP POLICY IF EXISTS "tasting_group_members_owner_all" ON tasting_group_members;
+DROP POLICY IF EXISTS "tasting_group_members_select_owner" ON tasting_group_members;
+CREATE POLICY "tasting_group_members_select_owner" ON tasting_group_members
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM tasting_groups
+      WHERE id = tasting_group_members."groupId"
+        AND "createdBy" = auth.uid()::text
+    )
+  );
+
+DROP POLICY IF EXISTS "history_own" ON user_coffee_history;
+DROP POLICY IF EXISTS "history_select_own" ON user_coffee_history;
+CREATE POLICY "history_select_own" ON user_coffee_history
+  FOR SELECT TO authenticated
+  USING ("userId" = auth.uid()::text);
+
+-- group_posts_select (same USING) and coffees_select (a superset) already
+-- cover the owner's reads.
+DROP POLICY IF EXISTS "group_posts_write" ON group_posts;
+DROP POLICY IF EXISTS "coffees_write" ON coffees;
+
+-- 2. SELECT policies without a role: TO authenticated, USING untouched.
+--    ALTER POLICY fails (and the whole transaction rolls back) if one of them
+--    does not exist: that is drift, stop and report it.
+ALTER POLICY "coffees_select" ON coffees TO authenticated;
+-- Break the coffees <-> coffee_shares policy loop (42P17 since PHASE 16):
+-- coffee_shares_select asked `coffees` (whose policy asks coffee_shares back).
+-- A SECURITY DEFINER helper answers "is this caller the coffee's owner?"
+-- without going through the coffees policy. PHASE 18b rule: it keeps EXECUTE
+-- for `authenticated` (policies run as the querying role).
+CREATE OR REPLACE FUNCTION public.is_coffee_owner(p_coffee_id text)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM coffees
+    WHERE id = p_coffee_id AND "createdBy" = auth.uid()::text
+  );
+$$;
+REVOKE EXECUTE ON FUNCTION public.is_coffee_owner(text) FROM PUBLIC, anon;
+GRANT  EXECUTE ON FUNCTION public.is_coffee_owner(text) TO authenticated;
+
+DROP POLICY IF EXISTS "coffee_shares_select" ON coffee_shares;
+CREATE POLICY "coffee_shares_select" ON coffee_shares
+  FOR SELECT TO authenticated
+  USING ("userId" = auth.uid()::text OR is_coffee_owner("coffeeId"));
+ALTER POLICY "group_posts_select" ON group_posts TO authenticated;
+ALTER POLICY "sessions_select" ON cupping_sessions TO authenticated;
+ALTER POLICY "samples_select" ON session_samples TO authenticated;
+ALTER POLICY "participants_select" ON session_participants TO authenticated;
+
+-- 3. Belt and braces, schema-wide and for future tables. Prisma (postgres, the
+--    table owner) and SECURITY DEFINER triggers are unaffected.
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+  REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLES FROM anon, authenticated;
+
+-- <<< end of PHASE 24 statements <<<
+
+-- 4. Self-check (not copied into the dry run, whose probes 1a-1c check the
+--    same things). Any failure aborts the transaction: nothing is applied.
+DO $chk$
+DECLARE
+  v_n int;
+BEGIN
+  SELECT count(*) INTO v_n FROM pg_policies
+   WHERE schemaname = 'public' AND cmd <> 'SELECT';
+  IF v_n > 0 THEN
+    RAISE EXCEPTION 'PHASE 24 aborted, nothing applied: % non-SELECT policies left in public', v_n;
+  END IF;
+  SELECT count(*) INTO v_n FROM pg_policies
+   WHERE schemaname = 'public' AND 'public' = ANY (roles) AND qual = 'true';
+  IF v_n > 0 THEN
+    RAISE EXCEPTION 'PHASE 24 aborted, nothing applied: % TO public USING (true) policies in public', v_n;
+  END IF;
+  SELECT count(*) INTO v_n
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
+    CROSS JOIN unnest(ARRAY['anon', 'authenticated']) AS r(role)
+    CROSS JOIN unnest(ARRAY['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE']) AS p(priv)
+   WHERE c.relkind IN ('r', 'p', 'v', 'f')
+     AND has_table_privilege(r.role::name, c.oid, p.priv);
+  IF v_n > 0 THEN
+    RAISE EXCEPTION 'PHASE 24 aborted, nothing applied: % API-role write privileges left in public', v_n;
+  END IF;
+END
+$chk$;
+
+COMMIT;
+
+-- Rollback (restores exactly what was there before this phase; one transaction):
+--   BEGIN;
+--   -- grants: paste the output of pre-flight (b) here, e.g.
+--   --   GRANT DELETE, INSERT, TRUNCATE, UPDATE ON public.coffees TO anon;
+--   --   GRANT DELETE, INSERT, TRUNCATE, UPDATE ON public.coffees TO authenticated;
+--   --   ...
+--   -- default privileges (only if pre-flight (c) showed them for postgres in public):
+--   ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+--     GRANT INSERT, UPDATE, DELETE, TRUNCATE ON TABLES TO anon, authenticated;
+--   ALTER POLICY "coffees_select" ON coffees TO public;
+--   DROP POLICY IF EXISTS "coffee_shares_select" ON coffee_shares;
+--   CREATE POLICY "coffee_shares_select" ON coffee_shares
+--     FOR SELECT USING ("userId" = auth.uid()::text OR EXISTS (SELECT 1 FROM coffees c WHERE c.id = coffee_shares."coffeeId" AND c."createdBy" = auth.uid()::text));
+--   DROP FUNCTION IF EXISTS public.is_coffee_owner(text);
+--   ALTER POLICY "group_posts_select" ON group_posts TO public;
+--   ALTER POLICY "sessions_select" ON cupping_sessions TO public;
+--   ALTER POLICY "samples_select" ON session_samples TO public;
+--   ALTER POLICY "participants_select" ON session_participants TO public;
+--   DROP POLICY IF EXISTS "tasting_groups_select_own" ON tasting_groups;
+--   CREATE POLICY "tasting_groups_owner_all" ON tasting_groups
+--     FOR ALL USING ("createdBy" = auth.uid()::text);
+--   DROP POLICY IF EXISTS "tasting_group_members_select_owner" ON tasting_group_members;
+--   CREATE POLICY "tasting_group_members_owner_all" ON tasting_group_members
+--     FOR ALL USING (
+--       EXISTS (
+--         SELECT 1 FROM tasting_groups
+--         WHERE id = tasting_group_members."groupId"
+--           AND "createdBy" = auth.uid()::text
+--       )
+--     );
+--   DROP POLICY IF EXISTS "history_select_own" ON user_coffee_history;
+--   CREATE POLICY "history_own" ON user_coffee_history
+--     FOR ALL USING ("userId" = auth.uid()::text);
+--   CREATE POLICY "group_posts_write" ON group_posts
+--     FOR ALL USING (
+--       EXISTS (
+--         SELECT 1 FROM tasting_groups g
+--         WHERE g.id = group_posts."groupId"
+--           AND g."createdBy" = auth.uid()::text
+--       )
+--     );
+--   CREATE POLICY "coffees_write" ON coffees
+--     FOR ALL USING ("deletedAt" IS NULL AND "createdBy" = auth.uid()::text);
+--   COMMIT;
+-- ============================================================================

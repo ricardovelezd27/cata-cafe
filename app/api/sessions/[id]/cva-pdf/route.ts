@@ -10,12 +10,17 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { orderReferencesFirst } from "@/lib/referenceRules";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
-import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
-import { slug } from "@/lib/pdf/filename";
+import { deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
+import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
+import { sheetSampleIdentity, sheetSampleRecords } from "@/lib/pdf/sheetSource";
+import { slug, dateSlug } from "@/lib/pdf/filename";
+import { pdfFailureResponse } from "@/lib/pdf/routeFailure";
+import { pdfDisposition } from "@/lib/pdf/disposition";
 import { CvaFormDocument, type CvaDocumentProps } from "@/lib/pdf/CvaFormDocument";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export async function GET(
   request: NextRequest,
@@ -24,6 +29,7 @@ export async function GET(
   const { id } = await params;
   const localeParam = request.nextUrl.searchParams.get("locale");
   const locale: "es" | "en" = localeParam === "en" ? "en" : "es";
+  const inline = request.nextUrl.searchParams.get("inline") === "1";
 
   const supabase = await createClient();
   const {
@@ -85,11 +91,15 @@ export async function GET(
   // data of a sample that is still blind.
   const ownerView = session.createdBy === viewAsId;
 
+  // Any of the viewer's evaluations still unsent: the sheet is stamped "Borrador".
+  const hasDraft = session.samples.some((sample) => sample.evaluations[0]?.isDraft === true);
+
   const props: CvaDocumentProps = {
+    draft: hasDraft,
     ownerView,
     sessionName: session.name,
     date: dateStr,
-    cupperName: profile?.displayName ?? "",
+    cupperName: profileDisplayName(profile ? { id: viewAsId, displayName: profile.displayName } : null, locale),
     purpose: session.objective ?? "",
     cupsPerSample: session.cupsPerSample,
     format: session.format,
@@ -99,39 +109,35 @@ export async function GET(
       return {
         label: sample.label,
         revealed: sample.revealed,
-        coffeeName: sample.coffee
-          ? coffeeDisplayName(sample.coffee, deletedCoffeeLabel(locale))
-          : null,
-        roastLevel: sample.coffee?.roastLevel ?? null,
+        ...sheetSampleIdentity(sample, deletedCoffeeLabel(locale)),
         isReference: sample.referenceRank != null,
         referenceRank: sample.referenceRank ?? null,
         descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
         affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
         combined: (ev?.combinedData as Record<string, unknown>) ?? {},
-        physical: ownerView
-          ? ((sample.physical?.data as Record<string, unknown>) ?? {})
-          : {},
-        extrinsic:
-          ownerView || sample.revealed
-            ? ((sample.extrinsic?.data as Record<string, unknown>) ?? {})
-            : {},
+        ...sheetSampleRecords(sample, ownerView),
       };
     }),
   };
 
-  const buffer = await renderToBuffer(CvaFormDocument(props));
+  let buffer: Buffer;
+  try {
+    buffer = await renderToBuffer(CvaFormDocument(props));
+  } catch (err) {
+    return pdfFailureResponse("cva-pdf", { sessionId: id }, locale, err);
+  }
 
   const firstLabel = session.samples[0]?.label ?? "";
   const lastLabel = session.samples[session.samples.length - 1]?.label ?? "";
   const range =
     session.samples.length <= 1 ? firstLabel : `${firstLabel}-${lastLabel}`;
-  const filename = `cva_${slug(session.name)}${range ? `_${slug(range)}` : ""}.pdf`;
+  const filename = `cva_${slug(session.name)}${range ? `_${slug(range)}` : ""}_${dateSlug()}.pdf`;
 
   return new Response(new Uint8Array(buffer), {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": pdfDisposition(inline, filename),
       "Cache-Control": "no-store",
     },
   });

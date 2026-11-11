@@ -14,6 +14,8 @@ import { Select } from "@/components/ui/Select";
 import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useActionFeedback } from "@/components/ui/Toast";
+import { browserZone, dateInZone } from "@/lib/closeRules";
+import { planRemoveActive } from "@/lib/referenceRules";
 
 export type EditSessionFormTranslations = {
   name: string;
@@ -48,12 +50,28 @@ export type EditSessionFormTranslations = {
   closesAt: string;
   closesAtHint: string;
   closesAtPast: string;
+  closesAtLiveNotice: string;
   sessionClosed: string;
   warmupLocked: string;
+  repinTitle: string;
+  /** Raw ICU string (t.raw()) — contains a literal "{n}" token. */
+  repinBody: string;
+  sampleHasData: string;
+  removeRepinTitle: string;
+  /** Raw ICU string (t.raw()) with literal "{label}" and "{n}" tokens. */
+  removeRepinBody: string;
+  removeRepinConfirm: string;
+  referenceRepinBlocked: string;
+  formatLockedStarted: string;
   warmup: { toggle: string; label: string; hint: string; minutes: string };
 };
 
-export type EditSampleRow = { id: string; label: string; evalCount: number };
+export type EditSampleRow = {
+  id: string;
+  label: string;
+  evalCount: number;
+  referenceRank: number | null;
+};
 export type EditGroupOption = { id: string; name: string };
 
 const inputCls =
@@ -64,12 +82,6 @@ const cardCls = "bg-surface-container-lowest border border-outline-variant round
 const labelCls = "block text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant mb-1.5";
 
 const FORMAT_OPTIONS = ["descriptive", "affective", "combined"] as const;
-
-/** UTC calendar date, same rule as the wizard and `planClosesAtChange` (the
- *  server closes at END of the chosen day in UTC), so both forms agree. */
-function utcDateString(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export function EditSessionForm({
   locale,
@@ -105,7 +117,9 @@ export function EditSessionForm({
 }) {
   const router = useRouter();
   const feedback = useActionFeedback();
-  const locked = evalCount > 0;
+  // Format/cups freeze at "Iniciar cata" as well as at the first evaluation
+  // (C6 default; the server enforces the same rule via isFormatLocked).
+  const locked = evalCount > 0 || initial.started;
   const closed = initial.closed;
 
   const [name, setName] = useState(initial.name);
@@ -115,6 +129,8 @@ export function EditSessionForm({
   const [cupsInput, setCupsInput] = useState(String(initial.cupsPerSample));
   const [groupId, setGroupId] = useState(initial.groupId ?? "");
   const [closesAt, setClosesAt] = useState(initial.closesAt);
+  // Today in the owner's own zone (see the date input below).
+  const [todayMin] = useState(() => dateInZone(Date.now(), browserZone()));
   const [warmupOn, setWarmupOn] = useState(initial.warmupExerciseId !== null);
   const [warmupId, setWarmupId] = useState<WarmupId>(
     (initial.warmupExerciseId as WarmupId | null) ?? "eyes",
@@ -163,14 +179,41 @@ export function EditSessionForm({
   // choice (pick B, pick C, B's save fails → C must stay).
   const referenceSeq = useRef(0);
 
+  // B2 default: a sample cuppers already rated asks before its notes are
+  // replaced by the 79.00 anchor. Cancel leaves the select untouched.
+  const [repinTarget, setRepinTarget] = useState<EditSampleRow | null>(null);
+
+  // S8-27: dropping the active reference re-pins the EARLIER one, which may
+  // overwrite its cuppers' ratings; ask first when it has evaluations (the
+  // server refuses without confirmRepin when it would really rewrite them).
+  const [removeRepinTarget, setRemoveRepinTarget] = useState<EditSampleRow | null>(null);
+
   const handleReferenceChange = (value: string) => {
     const next = value || null;
+    if (next === referenceId) return;
+    if (next === null) {
+      const prevId = planRemoveActive(samples).repinId;
+      const prev = prevId ? samples.find((s) => s.id === prevId) : undefined;
+      if (prev && prev.evalCount > 0) {
+        setRemoveRepinTarget(prev);
+        return;
+      }
+    }
+    const target = next ? samples.find((s) => s.id === next) : undefined;
+    if (target && target.evalCount > 0) {
+      setRepinTarget(target);
+      return;
+    }
+    commitReference(next, false);
+  };
+
+  const commitReference = (next: string | null, confirmRepin: boolean) => {
     const previous = referenceId;
     if (next === previous) return;
     const seq = ++referenceSeq.current;
     setReferenceIdState(next);
     startReference(async () => {
-      const result = await feedback.run(setReferenceSample(sessionId, next), () => {
+      const result = await feedback.run(setReferenceSample(sessionId, next, confirmRepin), () => {
         if (seq === referenceSeq.current) feedback.notifySuccess(t.referenceSaved);
       });
       // Naming an existing reference is a server no-op — show what the
@@ -199,10 +242,14 @@ export function EditSessionForm({
               groupId: groupId || null,
               // Only send a changed date: re-posting an unchanged one failed
               // once the stored date had passed.
-              ...(closesAt !== initial.closesAt ? { closesAt: closesAt || null } : {}),
+              ...(closesAt !== initial.closesAt
+                ? { closesAt: closesAt || null, closesAtZone: closesAt ? browserZone() : null }
+                : {}),
             }
           : {}),
-        ...(!locked ? { format, cupsPerSample: cups } : {}),
+        ...(!locked && (format !== initial.format || cups !== initial.cupsPerSample)
+          ? { format, cupsPerSample: cups }
+          : {}),
         // Only send a changed warm-up (same pattern as closesAt).
         ...((warmupOn ? warmupId : null) !== initial.warmupExerciseId
           ? { warmupExerciseId: warmupOn ? warmupId : null }
@@ -232,17 +279,26 @@ export function EditSessionForm({
       if (result.ok) {
         setSamples((prev) => prev.map((s) => (s.id === row.id ? { ...s, label: value } : s)));
         router.refresh();
+      } else {
+        // Never fail silently: the input would otherwise keep a label the
+        // server never saved.
+        feedback.notifyError(result.error);
+        router.refresh();
       }
     });
   };
 
   const handleAddSample = () => {
+    // Enter held down / double click must not add two samples.
+    if (addPending) return;
     const label = newSampleLabel.trim();
     startAdd(async () => {
       const result = await addSessionSample(sessionId, { label: label || undefined, locale });
       if (result.ok) {
         setNewSampleLabel("");
         router.refresh();
+      } else {
+        feedback.notifyError(result.error);
       }
     });
   };
@@ -250,7 +306,15 @@ export function EditSessionForm({
   const handleRemoveConfirm = async () => {
     if (!removeTarget) return;
     const result = await removeSessionSample(removeTarget.id, locale);
-    if (!result.ok) throw new Error(result.error);
+    if (!result.ok) {
+      // The race half of F-sesiones-3: the sample gained evaluations (or
+      // physical/origin data) after this page loaded. Refresh so the trash
+      // button disables, and let the dialog show its error line.
+      router.refresh();
+      // Returned, not thrown: ConfirmDialog maps the code via errorMessages
+      // (a thrown error would only show the generic line).
+      return result;
+    }
     // The DB SETs NULL on the FK when the referenced sample is deleted —
     // mirror that locally so the select doesn't keep pointing at a gone row.
     if (removeTarget.id === referenceId) setReferenceIdState(null);
@@ -270,7 +334,10 @@ export function EditSessionForm({
     : null;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit}>
+      {/* A closed session is read-only: ONE disabled fieldset covers every
+          control (S8-10 T6, F-sesiones-9) instead of per-field flags. */}
+      <fieldset disabled={closed} className="m-0 min-w-0 space-y-6 border-0 p-0">
       {/* a. Metadata */}
       <div className={cardCls}>
         <div>
@@ -352,7 +419,11 @@ export function EditSessionForm({
             }}
           />
         </div>
-        {locked && <p className="text-xs text-on-surface-variant">{t.formatLocked}</p>}
+        {locked && (
+          <p className="text-xs text-on-surface-variant">
+            {initial.started ? t.formatLockedStarted : t.formatLocked}
+          </p>
+        )}
 
         {/* Optional pre-cupping warm-up (same switch pattern as the wizard) */}
         <div className="space-y-3">
@@ -411,7 +482,8 @@ export function EditSessionForm({
               type="date"
               className={inputCls}
               value={closesAt}
-              min={utcDateString()}
+              suppressHydrationWarning
+              min={todayMin}
               disabled={closed}
               onChange={(e) => {
                 setClosesAt(e.target.value);
@@ -419,6 +491,10 @@ export function EditSessionForm({
               }}
             />
             <p className="mt-1 text-xs text-on-surface-variant">{t.closesAtHint}</p>
+            {/* F-sesiones-12: a date turns a live cupping into a self-paced one. */}
+            {!closed && !initial.started && !initial.closesAt && closesAt && (
+              <p className="mt-1 text-xs font-medium text-secondary">{t.closesAtLiveNotice}</p>
+            )}
           </div>
           <div>
             <label className={labelCls}>{t.linkedGroup}</label>
@@ -520,6 +596,42 @@ export function EditSessionForm({
       </div>
 
       <ConfirmDialog
+        open={repinTarget !== null}
+        onOpenChange={(o) => {
+          if (!o) setRepinTarget(null);
+        }}
+        title={t.repinTitle}
+        body={t.repinBody.replace("{n}", String(repinTarget?.evalCount ?? 0))}
+        confirmLabel={t.save}
+        cancelLabel={t.cancel}
+        closeLabel={t.close}
+        onConfirm={async () => {
+          if (repinTarget) commitReference(repinTarget.id, true);
+          setRepinTarget(null);
+        }}
+        error={t.error}
+      />
+
+      <ConfirmDialog
+        open={removeRepinTarget !== null}
+        onOpenChange={(o) => {
+          if (!o) setRemoveRepinTarget(null);
+        }}
+        title={t.removeRepinTitle}
+        body={t.removeRepinBody
+          .replace("{label}", removeRepinTarget?.label ?? "")
+          .replace("{n}", String(removeRepinTarget?.evalCount ?? 0))}
+        confirmLabel={t.removeRepinConfirm}
+        cancelLabel={t.cancel}
+        closeLabel={t.close}
+        onConfirm={async () => {
+          commitReference(null, true);
+          setRemoveRepinTarget(null);
+        }}
+        error={t.error}
+      />
+
+      <ConfirmDialog
         open={removeTarget !== null}
         onOpenChange={(o) => {
           if (!o) setRemoveTarget(null);
@@ -530,6 +642,12 @@ export function EditSessionForm({
         cancelLabel={t.cancel}
         closeLabel={t.close}
         onConfirm={handleRemoveConfirm}
+        errorMessages={{
+          sample_has_data: t.sampleHasData,
+          sample_has_evaluations: t.sampleHasEvals,
+          reference_repin_required: t.referenceRepinBlocked,
+          session_closed: t.sessionClosed,
+        }}
         error={t.error}
       />
 
@@ -546,6 +664,7 @@ export function EditSessionForm({
         {errorText && <p className="text-sm text-error">{errorText}</p>}
         {closed && !errorText && <p className="text-sm text-on-surface-variant">{t.sessionClosed}</p>}
       </div>
+      </fieldset>
     </form>
   );
 }

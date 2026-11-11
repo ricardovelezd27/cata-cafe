@@ -14,7 +14,7 @@ import { loadSessionReportSource } from "@/lib/reports/sessionReportData";
 import { buildFichaTecnica } from "@/lib/reports/fichaTecnica";
 import { buildTeacherNotes } from "@/lib/reports/teacherNotes";
 import { FichaTecnicaDocument } from "@/lib/pdf/FichaTecnicaDocument";
-import { slug } from "@/lib/pdf/filename";
+import { slug, dateSlug } from "@/lib/pdf/filename";
 import { logError, errorMessage } from "@/lib/log";
 
 export const runtime = "nodejs";
@@ -92,7 +92,7 @@ export async function GET(
     return failureResponse("ficha-tecnica", { sessionId: id }, locale, err);
   }
 
-  const filename = `ficha_${slug(session.name) || "sesion"}.pdf`;
+  const filename = `ficha_${slug(session.name) || "sesion"}_${dateSlug()}.pdf`;
   return new Response(new Uint8Array(buffer), {
     status: 200,
     headers: {

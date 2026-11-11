@@ -28,6 +28,7 @@ export type NotifyGroupTranslations = {
   // interpolated locally with formatTemplate below rather than via t().
   sendSummary: string;
   sendSkippedNotice: string;
+  sendRateLimited: string;
   skip: string;
   inviteDefaultMessage: string;
 };
@@ -56,6 +57,7 @@ export function NotifyGroupPanel({
   const [message, setMessage] = useState(t.inviteDefaultMessage);
   const [summary, setSummary] = useState<GroupEmailSummary | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const [rateLimited, setRateLimited] = useState(false);
   const [pending, start] = useTransition();
 
   if (groups.length === 0 || dismissed) return null;
@@ -70,8 +72,9 @@ export function NotifyGroupPanel({
 
   const onSend = () => {
     if (!groupId || !subject.trim() || !message.trim()) return;
+    setRateLimited(false);
     start(async () => {
-      await feedback.run(
+      const result = await feedback.run(
         sendGroupEmail({
           groupId,
           subject: subject.trim(),
@@ -80,6 +83,8 @@ export function NotifyGroupPanel({
         }),
         (data) => setSummary(data),
       );
+      // The toast already fired; keep the reason on screen as well.
+      if (!result.ok && result.error === "rate_limited") setRateLimited(true);
     });
   };
 
@@ -133,6 +138,12 @@ export function NotifyGroupPanel({
       >
         {pending ? t.sending : t.send}
       </button>
+
+      {rateLimited && (
+        <p className="text-xs text-secondary font-semibold" role="status">
+          {t.sendRateLimited}
+        </p>
+      )}
 
       {summary && (
         <div className="pt-2 border-t border-outline-variant space-y-1">

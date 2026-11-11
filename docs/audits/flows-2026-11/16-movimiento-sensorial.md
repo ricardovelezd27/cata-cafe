@@ -30,8 +30,11 @@ The board's spec is partly stale. Its waiting-room requirement ("does not mark s
 - **Confidence** — verified-in-code (gate and wiring); the live-group experience needs two phones.
 - **Kim?** — yes, K-movimiento-sensorial-1.
 - **Invariant check** — none touched (the warm-up is display-only; scoring, authz and the close routine are unaffected).
+- **Fixed in S8-13 (PR pending)** — `startedAt` in the gate, live group after start never opens the overlay (`tests/warmup-overlayGate.test.ts`). Kim F1 answers b/c left as TODO(Kim F1).
 
 ### F-movimiento-sensorial-2 · A synced run never surfaces wake-lock failure and never re-syncs after the phone sleeps · severity: P2 · status: new
+
+**Partly fixed in S8-15 (PR #…): the waiting room recreates its channel and re-reads getWaitingState on foreground resume (hooks/useForegroundResume). The synced-run re-seek and the wake-lock-lost note stay with S8-13.**
 
 - **Problem** — A synced player opens straight in `run` (`WarmupPlayer.tsx:88`, `useState(seekToMs != null ? "run" : "intro")`), so the only place that tells the person to keep the screen on (`wakeDenied` → `t.wakeLockNote`, `:1026`) is never shown to followers or to the master. `useWakeLock` reports `denied` (`hooks/useWakeLock.ts:215`) but nothing reads it during a run. In synced mode the clock does not pause on hide (`pauseOnHide: !synced`, `WarmupPlayer.tsx:97`) and the single seek happens once (`seekedRef`, `:109-114`). If the screen locks (battery saver, iOS < 16.4, power button) the follower's `performance.now()` clock and the host's wall-clock timeline can diverge, and no re-seek happens on `visibilitychange`.
 - **Implication** — The cohort that follows a group exercise with eyes closed gets no warning, may find the phone dark mid-run, and may come back several seconds behind the room, with cues out of step.
@@ -40,6 +43,7 @@ The board's spec is partly stale. Its waiting-room requirement ("does not mark s
 - **Confidence** — needs-runtime-check (two phones: lock one for 10 s, compare cues).
 - **Kim?** — no.
 - **Invariant check** — none touched (never read `warmupStartedAt` from scoring; the math stays in `lib/warmup/syncedRun.ts`).
+- **Fixed in S8-13 (PR pending)** — persistent wake-lock note in synced runs; re-seek on visibility/pageshow past 1.5 s drift (`resyncPositionMs`, `shouldResync`).
 
 ### F-movimiento-sensorial-3 · After a lock or interruption the exercise can continue silently with eyes closed · severity: P2 · status: new
 
@@ -50,8 +54,11 @@ The board's spec is partly stale. Its waiting-room requirement ("does not mark s
 - **Confidence** — needs-runtime-check (iOS Safari and Android Chrome: lock 15 s mid-run, confirm audio state on return).
 - **Kim?** — no.
 - **Invariant check** — none touched.
+- **Fixed in S8-13 (PR pending)** — `audioResumeDecision` + `checkContext`; paused player with "Toca para reanudar" when audio stays suspended after ~300 ms; never when muted.
 
 ### F-movimiento-sensorial-4 · The offline-rebuilt `/cup` drops the warm-up · severity: P3 · status: confirms-board(Pantalla /cup reconstruida offline sin el calentamiento)
+
+**Fixed in S8-09** (draft PR, branch `claude/s8-09-offline-impl`): `cacheProps` stores the static warm-up (never `warmupStartedAt`/`serverNow`); `cup/error.tsx` rebuilds it, treating a cupper with local drafts as returning.
 
 - **Problem** — `cacheProps` writes the props payload on each online mount (`CupClient.tsx:648-663`). The list has `locale, session, isOwner, …, userId` but no `warmup`. `cup/error.tsx:123-141` rebuilds `CupClient` from that cache, so `warmup` is `undefined` and `WarmupMoment` never renders (`CupClient.tsx:2312`). Re-read on this branch: the gap is still present.
 - **Implication** — After an offline hard refresh the configured exercise silently never appears. Minor for the cupper, and untested.
@@ -62,6 +69,7 @@ The board's spec is partly stale. Its waiting-room requirement ("does not mark s
 - **Invariant check** — the offline store stays client-only; no authz change.
 
 ### F-movimiento-sensorial-5 · Reflection notes are saved but unreadable, shared across users and survive sign-out · severity: P3 · status: confirms-board(Las reflexiones se guardan pero no se pueden ver ni son por usuario)
+**Also fixed in S8-21** — the legacy `cata_warmup_reflections_*` keys are purged on app-shell mount, not only on sign-out.
 
 - **Problem** — `saveReflection` writes `cata_warmup_reflections_<exerciseId>` with no user id (`lib/warmup/reflections.ts:5,18-31`). Nothing reads the list (a repo search finds only that file). `clearLocalDeviceState` removes `cata_moment_*` keys but not these (`lib/offline/deviceState.ts:33-39`). The reflect step promises "Guardado en este dispositivo" (`messages/es.json`, `warmup.reflect.savedNote`).
 - **Implication** — On a shared tablet the next cupper's notes append to the previous person's, and "saved" has no way back to the text. A trust and privacy leak, not data loss.
@@ -70,6 +78,7 @@ The board's spec is partly stale. Its waiting-room requirement ("does not mark s
 - **Confidence** — verified-in-code.
 - **Kim?** — yes, K-movimiento-sensorial-2.
 - **Invariant check** — none touched (data stays local, never joined with evaluations).
+- **Fixed in S8-13 (PR pending)** — reflections no longer written, savedNote removed, legacy `cata_warmup_reflections_*` purged on sign-out. Kim F2 answer a left as TODO(Kim F2).
 
 ### F-movimiento-sensorial-6 · Eyes-closed runs hide the pause control, and a stray skip is permanent · severity: P3 · status: new
 
@@ -80,6 +89,7 @@ The board's spec is partly stale. Its waiting-room requirement ("does not mark s
 - **Confidence** — inferred-from-code (needs a phone to feel the double tap).
 - **Kim?** — no.
 - **Invariant check** — none touched.
+- **Fixed in S8-13 (PR pending)** — first tap in a dusk leg pauses; `onExit({ completed, elapsedMs })`; skip before 20 s leaves it unseen, later skip asks a second tap.
 
 ### F-movimiento-sensorial-7 · Copy promises benefits the evidence does not support · severity: P3 · status: new
 
@@ -90,6 +100,7 @@ The board's spec is partly stale. Its waiting-room requirement ("does not mark s
 - **Confidence** — verified-in-code.
 - **Kim?** — yes, K-movimiento-sensorial-3.
 - **Invariant check** — none touched.
+- **Fixed in S8-13 (PR pending)** — dashboard body, done body, exercise purpose and library intro reworded to settling (es+en). Kim F3 answers b/c left open.
 
 ### F-movimiento-sensorial-8 · A tampered or retired warm-up id returns a generic error · severity: P3 · status: confirms-board(Id de calentamiento manipulado o retirado)
 

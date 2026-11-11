@@ -95,13 +95,16 @@ export function planAddReference(
 export function planRemoveActive(samples: readonly RankedSample[]): {
   removeId: string | null;
   activeId: string | null;
+  /** B-05 (S8-22): the previous reference was UNLOCKED while a later one was
+   *  active, so its stored ratings may have drifted off 79.00. It is active
+   *  and pinned again, so it must be re-pinned (planReferenceRepin) in the
+   *  same transaction. Always equal to `activeId`. */
+  repinId: string | null;
 } {
   const refs = referencesOf(samples);
-  if (refs.length === 0) return { removeId: null, activeId: null };
-  return {
-    removeId: refs[refs.length - 1].id,
-    activeId: refs.length > 1 ? refs[refs.length - 2].id : null,
-  };
+  if (refs.length === 0) return { removeId: null, activeId: null, repinId: null };
+  const activeId = refs.length > 1 ? refs[refs.length - 2].id : null;
+  return { removeId: refs[refs.length - 1].id, activeId, repinId: activeId };
 }
 
 /** Dense renumbering (1..n by current rank) after a reference sample row is
@@ -198,6 +201,18 @@ export function planReferenceRepin<
     plan.push({ id: ev.id, data: { ...fields, isDraft: ev.isDraft } });
   }
   return plan;
+}
+
+/** S8-27: how many stored evaluations a re-pin would actually REWRITE (those
+ *  not already at the 79.00 anchor). Decides whether re-activating an earlier
+ *  reference (removing the active one, or removing its sample) needs the
+ *  owner's confirmation: 0 means pinning it again changes nothing. */
+export function countRepinOverwrites(
+  evaluations: Parameters<typeof planReferenceRepin>[0],
+  moduleKey: string,
+  cupsPerSample: number,
+): number {
+  return planReferenceRepin(evaluations, moduleKey, cupsPerSample).length;
 }
 
 /** True when every affective rating already sits at the pin value and no cup

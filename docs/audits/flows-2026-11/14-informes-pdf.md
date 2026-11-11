@@ -18,6 +18,7 @@ A cupper or owner leaves the results page by one of four plain links in the dock
 ## 3. Findings
 
 ### F-informes-1 · /print serializes coffee name and roast of blind samples to participants · severity: P1 · status: confirms-board(La hoja imprimible envía el nombre del café antes de revelar)
+**Fixed in S8-02 (PR #67)** — `sheetSampleIdentity` gates name/roast at the data source in print, cva-pdf and close email; super-admin print uses the owner lens.
 
 - **Problem** — `print/page.tsx:106-107` passes `coffeeName: s.coffee ? coffeeDisplayName(...) : null` and `roastLevel: s.coffee?.roastLevel ?? null` to the client component with no `revealed` condition (the query at `:42` selects them for everyone). The sheet hides them only at paint time (`cvaFormData.ts:881-886` gates on `revealed`), so the RSC payload of a participant in a blind group session carries every sample's coffee. The sibling `cva-pdf/route.ts:102-105` also hands the names to the builder, but there nothing is serialized to the browser. Also, `print/page.tsx:43` filters evaluations by `user.id` and `:99` uses `ownerView: isOwner`, never a `viewAsId`, so the super-admin gets their own empty sheet while `cva-pdf/route.ts:42-43,86` renders the owner's.
 - **Implication** — Trust and scoring integrity: single-blind is the cupping norm. A curious participant (or anyone with a debugger in a wrapped app) can read which coffee is which before scoring. Easy to exploit, silent, and it contradicts the rule that the builder is the gate.
@@ -28,6 +29,7 @@ A cupper or owner leaves the results page by one of four plain links in the dock
 - **Invariant check** — Reinforces "PDF gating inside the builder" and owner-only physical/extrinsic; touches none.
 
 ### F-informes-2 · The coffee ficha averages open blind sessions, excluded cuppers and other owners' session names · severity: P2 · status: confirms-board(La ficha del café mezcla catas abiertas, ciegas y de otros dueños)
+**Fixed in S8-02 (PR #67)** — Ficha shares the viewer-aware model with the profile (closed sessions only, named rows only for own/joined sessions).
 
 - **Problem** — `lib/coffees/aggregateSamples.ts:12-31` selects every `sessionSample` of the coffee with no filter on session status, `revealed`, group visibility or exclusion; evaluations are only `isDraft: false`. The ficha route builds from it (`ficha/route.ts:73-95`): `included` and `submitted` are both set to `evaluationsCount` (`:80-81`), `sd: null`, and `sessions` carries `r.sessionName` for any session, including another owner's. A non-owner reaches this once `coffee.resultsPublished` (`:69`). The DB trigger already drops excluded cuppers from `communityScore`, but `evaluationsCount`, individual averages and descriptors count their raw rows.
 - **Implication** — A public coffee used in someone else's live blind cupping leaks a running community score and a session title to strangers. Owners see mixed, still-changing numbers labelled as a community result.
@@ -46,8 +48,11 @@ A cupper or owner leaves the results page by one of four plain links in the dock
 - **Confidence** — verified-in-code.
 - **Kim?** — yes: K-informes-1.
 - **Invariant check** — The anonymity invariant (`tests/reports.test.ts`) is unaffected; counts only.
+- **Fixed in S8-12** (PR #74) — participant summary shows "n de N incluidos" per sample, says when the viewer's own evaluation is excluded (no reason, no peer identity) and carries the generation stamp.
 
 ### F-informes-4 · PDF delivery has no WebView path (print dialog, attachment link) · severity: P2 · status: new
+
+**Fixed in S8-15 (PR #…): lib/platform/ seam (printPage, downloadFile, openReport, ReportLink); cva-pdf honours ?inline=1. Native branches are TODO stubs; device rows pending in docs/native/device-checklist.md.**
 
 - **Problem** — `PrintClient.tsx:1225,1270` offer only `window.print()`. The CVA download is a plain link answered with `Content-Disposition: attachment` (`cva-pdf/route.ts:134`) and the route ignores `?inline=1`, unlike the newer routes (`participant-summary/route.ts:56,158`). Summary and ficha open with `target="_blank"` (`ResultsClient.tsx:963,974`).
 - **Implication** — Native-readiness: in a Capacitor WebView, `window.print()`, `target=_blank` and attachment downloads often do nothing, so a roaster on an iPhone app taps and nothing happens. Offline is also silent, since the render needs a connection.
@@ -66,6 +71,7 @@ A cupper or owner leaves the results page by one of four plain links in the dock
 - **Confidence** — verified-in-code.
 - **Kim?** — no.
 - **Invariant check** — none touched.
+- **Fixed in S8-12** (PR #74) — `cva-pdf` has `maxDuration = 60`, try/catch with a logged digest (`lib/pdf/routeFailure.ts`) and `?inline=1`.
 
 ### F-informes-6 · The close email's legacy CVA attachment loses multi-reference labels · severity: P3 · status: new
 
@@ -76,6 +82,7 @@ A cupper or owner leaves the results page by one of four plain links in the dock
 - **Confidence** — verified-in-code.
 - **Kim?** — no.
 - **Invariant check** — Reference rules (display-only) untouched.
+- **Fixed in S8-12** (PR #74) — the legacy CVA attachment in the close email passes `referenceRank`, so R1/R2/R3 labels survive.
 
 ### F-informes-7 · PDFs set no document language, radar values may lack a text twin, and there is no raw export · severity: P3 · status: new
 
@@ -86,6 +93,7 @@ A cupper or owner leaves the results page by one of four plain links in the dock
 - **Confidence** — inferred-from-spec for the radar table; needs-runtime-check with an accessibility checker.
 - **Kim?** — yes: K-informes-2.
 - **Invariant check** — An owner CSV must follow the ficha-técnica owner gate.
+- **Fixed in S8-12** (PR #74) — `Document language` set, radar values printed as text in the participant summary (ficha already lists the eight means), owner CSV at `/api/sessions/[id]/results-csv`. TODO(Kim-D5) left.
 
 ## 4. Keep — works well
 

@@ -23,6 +23,8 @@
 
 ### F-04-1 · A guest can create sessions by direct POST · severity: P2 · status: confirms-board(Invitado anónimo crea sesiones por POST directo)
 
+**Fixed in S8-03** (draft PR from branch `claude/s8-03-guest-guard-email-impl`; not yet merged).
+
 - **Problem** — `createExpressSession` rejects anonymous users (`app/actions/sessions.ts:405`: `if (user.is_anonymous) throw new Error("not_found_or_forbidden")`), but `createSession` (`:320`) and `createGroupSession` (`:438`) only call `requireUser()`, which accepts anonymous sessions (`lib/auth.ts:9`). `proxy.ts` only blocks the pages; a server action is a public POST.
 - **Implication** — The guest-scope rule ("guests never create assets under a throwaway identity") is enforced only in the UI. A crafted request creates a solo or group session, with an invite link, under an anonymous id that `mergeGuestData` later has to carry. No data is lost and nobody else's data is exposed, so I rate it P2, not the board's P1 (board says major).
 - **Fix** — One shared guard (registered users only) used by every creator, including `duplicateSession`. **Acceptance:** an anonymous token calling each creator gets `not_found_or_forbidden` and creates no row; registered users unchanged; a unit test lists every creator. **Size:** S.
@@ -32,6 +34,7 @@
 - **Invariant check** — Guest scope: this fix completes it.
 
 ### F-04-2 · A failed or interrupted wizard loses everything the owner typed · severity: P2 · status: new
+**Fixed in S8-10** (PR pending): createSession / createGroupSession run under `run()`; a throw returns `{ ok:false }` and the wizard keeps every field (T1). Wizard draft in localStorage NOT built (see PR body).
 
 - **Problem** — `createSession`/`createGroupSession` are not wrapped in `run()`; they return plain `{ok:false,error}` or throw. `NewSessionForm.tsx:495-520` awaits them inside `start(async …)` with no try/catch and no `useActionFeedback`, so a thrown error (pool timeout, unknown Prisma error) reaches the error boundary and the form state is gone. Separately, all state is `useState` (`:268-300`) with no draft, no `beforeunload`, no history guard: a phone back swipe or refresh drops the coffee cards. `createSession` also redirects to `` `/${input.locale || "es"}/…` `` (`:381`) without whitelisting the locale, unlike express (`:408`).
 - **Implication** — Whoever is preparing six coffees at the table and hits a transient failure retypes every card. This breaks the Server Action Contract for an interactive action. Trust and robustness.
@@ -43,6 +46,8 @@
 
 ### F-04-3 · Starting a cupping offline fails with a generic error · severity: P2 · status: new
 
+**Fixed in S8-09** (draft PR, branch `claude/s8-09-offline-impl`): Express and the wizard disable submit while the connectivity probe says offline (values kept) and a dropped request shows the specific `offline` copy. Queued creation stays `TODO(E5)`.
+
 - **Problem** — `ExpressForm.tsx:67-74` and the wizard call the server directly; there is no connectivity check and no queue. On a network failure `useActionFeedback.run` falls into its catch and toasts `unknown` (`components/ui/Toast.tsx:110-117`). The pages may load from the service-worker cache, so the user fills the form and only then fails.
 - **Implication** — The offline-first promise stops at the door: evaluations survive offline, but the session that holds them cannot be started. A cupper in a lab with bad signal sees "something went wrong".
 - **Fix** — Minimum: detect offline and say so, keeping the form ("Sin conexión: se necesita internet para crear la sesión"). Later (needs a spec): client-generated ids so express can be created locally and replayed. **Acceptance:** offline tap shows the specific message and keeps values; reconnecting lets the same tap succeed. **Size:** S for the message, L for queued creation.
@@ -53,6 +58,8 @@
 
 ### F-04-4 · The wizard defaults to 2 cups, and CVA penalties exist only at 5 · severity: P2 · status: new
 
+**Fixed in S8-04** (draft PR, branch `claude/s8-04-scoring-impl`): wizard proposes 5 cups, label "Tazas por muestra", numeric keyboard, one-line hint below 5, field hidden for descriptive (TODO(A2) constant `DEFAULT_CUPS_PER_SAMPLE`).
+
 - **Problem** — `NewSessionForm.tsx:274` starts at 2 cups for a combined format, while score penalties only count with 5 cups per sample (CLAUDE.md scoring; `cupping-protocol` P7). The field is labelled «Tazas por café» (`messages/es.json:140`) though it is per sample, and for descriptive it is asked but unused. It is a native `type="number"` spinner (`:676`).
 - **Implication** — A professional running the five-cup protocol who leaves the default gets scores with no uniformity/defect deduction, silently different from the SCA calculator. Scoring expectation, not a code bug.
 - **Fix** — Decide the default with Kim; show a one-line hint under the field when the value is below 5 ("las penalizaciones por taza solo se aplican con 5"); rename the label to «Tazas por muestra»; hide the field for descriptive. **Acceptance:** hint visible below 5, label per sample, field absent for descriptive, numeric keyboard (`inputMode="numeric"`). **Size:** S.
@@ -62,6 +69,7 @@
 - **Invariant check** — Scoring inputs stay server-derived; this only changes the default and the copy.
 
 ### F-04-5 · Duplicar arrastra de más y de menos · severity: P3 · status: confirms-board(Duplicar re-enlaza cafés que ya no se pueden usar) + confirms-board(⚑ Duplicar conserva sólo la referencia activa)
+**Fixed in S8-10** (PR pending): duplicate copies every reference rank and turns unusable coffees into coffee-less samples; failure text is visible (T8). B8 default (all ranks), `TODO(B8)`.
 
 - **Problem** — `duplicateSession` copies `coffeeId` as is (`app/actions/sessions.ts:775`) without `usableCoffeeWhere`, and selects only `referenceSampleId` (`:731`), stamping `referenceRank: 1` (`:105`). A source with R1+R2 copies R2 as R1 and the earlier reference becomes an ordinary sample. Sharpening the ⚑: the dropped reference is the one cupped first in the source. `DuplicateButton` shows a failure only through `title` (`components/DuplicateButton.tsx:61`), invisible on touch.
 - **Implication** — A template silently differs from its source; a copy can link an anonymized coffee and write history against it at close.
@@ -82,6 +90,7 @@
 - **Invariant check** — Guest scope: keep `GuestGateLink` on every new entry.
 
 ### F-04-7 · Dates are UTC, so evening cuppings in the Americas get tomorrow · severity: P3 · status: new
+**Fixed in S8-10** (PR pending): `localDateISO()` replaces the UTC date in the wizard and edit form (T4).
 
 - **Problem** — The wizard date defaults to `new Date().toISOString().slice(0,10)` (`NewSessionForm.tsx:271`) and the closing-date `min` uses the same (`:1220`); the express name is built on the server (`express/page.tsx:18`, `defaultExpressName(new Date())`).
 - **Implication** — At 21:00 in Chile the session is dated the next day, the closing picker refuses "today", and the express name can carry the server's date.

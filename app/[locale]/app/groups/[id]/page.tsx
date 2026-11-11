@@ -1,9 +1,10 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
+import { requireAppUser } from "@/lib/auth";
 import Link from "next/link";
 import { CheckCircle2, ChevronLeft, Clipboard, Plus, UserCheck, Users } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { maskEmail, memberLabel } from "@/lib/maskEmail";
 import { getCoCupperCandidates } from "@/lib/coCuppers";
 import { claimGroupMembershipsByEmail } from "@/lib/groupMembership";
 import { sessionHref } from "@/lib/sessionRouting";
@@ -20,6 +21,8 @@ import { GroupFeed, type GroupFeedPost } from "@/components/groups/GroupFeed";
 import { PostComposer } from "@/components/groups/PostComposer";
 import { DuplicateButton } from "@/components/DuplicateButton";
 import { LeaveGroupButton } from "@/components/groups/LeaveGroupButton";
+import { GroupEmailOptOutNotice } from "@/components/groups/GroupEmailOptOutNotice";
+import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 
 // Auth'd page with a dynamic [id] segment: must render per-request. With
 // generateStaticParams present, prod attempts on-demand static generation and
@@ -27,23 +30,15 @@ import { LeaveGroupButton } from "@/components/groups/LeaveGroupButton";
 // so the crash only appears in production). Same pattern as join/[token].
 export const dynamic = "force-dynamic";
 
-// Never send a co-member's full email address to the client — this runs
-// server-side and only the masked string ever ends up in the rendered HTML.
-function maskEmail(email: string): string {
-  const at = email.indexOf("@");
-  if (at <= 0) return email;
-  const local = email.slice(0, at);
-  const domain = email.slice(at + 1);
-  return `${local[0]}***@${domain}`;
-}
-
 type GroupSessionRow = {
   id: string;
   name: string;
   date: Date;
   status: string;
   isGroup: boolean;
+  isAsync: boolean;
   startedAt: Date | null;
+  closesAt: Date | null;
 };
 
 export default async function GroupDetailPage({
@@ -54,11 +49,7 @@ export default async function GroupDetailPage({
   const { locale, id } = await params;
   setRequestLocale(locale);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/${locale}/auth/login`);
+  const user = await requireAppUser(locale, `/${locale}/app/groups/${id}`);
 
   // Link any email-only memberships to this account first — an invitee who
   // already had an account (signup trigger never fired) would otherwise fail
@@ -97,7 +88,7 @@ export default async function GroupDetailPage({
     body: p.body,
     emailSent: p.emailSent,
     createdAt: p.createdAt.toISOString(),
-    author: { displayName: p.author.displayName },
+    author: { displayName: profileDisplayName({ id: p.authorId, displayName: p.author.displayName }, locale) },
   }));
   const feedT = {
     empty: t("feed.empty"),
@@ -120,7 +111,7 @@ export default async function GroupDetailPage({
   const groupSessions: GroupSessionRow[] = await prisma.cuppingSession.findMany({
     where: { groupId: id },
     orderBy: { date: "desc" },
-    select: { id: true, name: true, date: true, status: true, isGroup: true, startedAt: true },
+    select: { id: true, name: true, date: true, status: true, isGroup: true, isAsync: true, startedAt: true, closesAt: true },
   });
 
   // Only needed for the member (non-owner) view's per-session link rule.
@@ -135,7 +126,7 @@ export default async function GroupDetailPage({
         select: { sessionId: true },
       }),
       prisma.sessionInvite.findMany({
-        where: { sessionId: { in: sessionIds } },
+        where: { sessionId: { in: sessionIds }, active: true },
         orderBy: { createdAt: "desc" },
         select: { sessionId: true, token: true, maxUses: true, useCount: true, expiresAt: true },
       }),
@@ -217,9 +208,13 @@ export default async function GroupDetailPage({
   if (!isOwner) {
     // ── Member (read-only) view — no stats, add-member forms, composer, or
     //    activity feed; only displayName or a masked email is ever shown. ──
+    // TODO(D7): roster visibility is (a) every member sees names (the Kim default,
+    // built). If Kim answers (b) teacher-chosen names or (c) teacher-only, add a
+    // roster setting here in a follow-up PR; nothing in this PR changes it.
+    const myMemberRow = group.members.find((m) => m.userId === user.id);
     const memberRows = group.members.map((m) => ({
       id: m.id,
-      label: m.displayName || maskEmail(m.email),
+      label: memberLabel(m),
     }));
     const leaveT = {
       cta: t("leave.cta"),
@@ -239,7 +234,7 @@ export default async function GroupDetailPage({
           description={group.description || t("noDescription")}
         />
         <p className="text-xs text-on-surface-variant -mt-4">
-          {t("ownerLabel")}: <span className="font-semibold text-on-surface">{group.owner.displayName}</span>
+          {t("ownerLabel")}: <span className="font-semibold text-on-surface">{profileDisplayName({ id: group.createdBy, displayName: group.owner.displayName }, locale)}</span>
         </p>
 
         <div className="space-y-3">
@@ -262,6 +257,13 @@ export default async function GroupDetailPage({
         </div>
 
         {sessionsSection}
+
+        {myMemberRow?.emailOptOutAt && (
+          <GroupEmailOptOutNotice
+            groupId={group.id}
+            t={{ note: t("emailOptOut.note"), resume: t("emailOptOut.resume") }}
+          />
+        )}
 
         <div className="pt-2">
           <LeaveGroupButton groupId={group.id} locale={locale} t={leaveT} />
@@ -296,7 +298,7 @@ export default async function GroupDetailPage({
   const nameByUserId = new Map(
     group.members
       .filter((m): m is typeof m & { userId: string } => !!m.userId)
-      .map((m) => [m.userId, m.displayName ?? m.email]),
+      .map((m) => [m.userId, memberLabel(m)]),
   );
 
   let groupEvalCount = 0;
@@ -374,6 +376,10 @@ export default async function GroupDetailPage({
     publish: t("feed.publish"),
     publishing: t("feed.publishing"),
     error: t("feed.error"),
+    notifyRecipientsTemplate: t.raw("feed.notifyRecipients") as string,
+    notifyNone: t("feed.notifyNone"),
+    sendSummaryTemplate: t.raw("sendSummary") as string,
+    sendRateLimited: t("sendRateLimited"),
   };
 
   return (
@@ -454,7 +460,7 @@ export default async function GroupDetailPage({
       {/* Announcements — the group's pulse, front and center right after stats */}
       <div className="space-y-3">
         <h2 className="font-display text-2xl text-primary-container">{t("feed.title")}</h2>
-        <PostComposer groupId={group.id} t={composerT} />
+        <PostComposer groupId={group.id} recipientCount={group.members.length} t={composerT} />
         <GroupFeed posts={feedPosts} isOwner locale={locale} t={feedT} />
       </div>
 
@@ -472,11 +478,15 @@ export default async function GroupDetailPage({
             email: m.userId ? maskEmail(m.email) : m.email,
             displayName: m.displayName,
             userId: m.userId,
+            emailOptedOut: !!m.emailOptOutAt,
           }))}
           t={{
             unregistered: t("unregistered"),
+            emailOptedOut: t("emailOptOut.badge"),
             removeMember: t("removeMember"),
-            confirmRemoveMember: t("confirmRemoveMember"),
+            removeTitle: t("memberEdit.removeTitle"),
+            removeBodyNamed: t.raw("memberEdit.removeBodyNamed") as string,
+            cancel: tCommon("cancel"),
             errorGeneric: t("errorGeneric"),
             editName: t("memberEdit.editName"),
             namePlaceholder: t("memberEdit.namePlaceholder"),
@@ -484,6 +494,7 @@ export default async function GroupDetailPage({
             resend: t("memberEdit.resend"),
             resent: t("memberEdit.resent"),
             resendFailed: t("memberEdit.resendFailed"),
+            resendRateLimited: t("memberEdit.resendRateLimited"),
           }}
         />
       </div>
@@ -529,6 +540,7 @@ export default async function GroupDetailPage({
               addMember: t("addMember"),
               added: t("added"),
               sendSkippedNotice: t("sendSkippedNotice"),
+              inviteRateLimited: t("invitesRateLimitedShort"),
               errorGeneric: t("errorGeneric"),
             }}
           />
@@ -551,6 +563,9 @@ export default async function GroupDetailPage({
             sendSummaryTemplate: t.raw("sendSummary"),
             sendSkippedNotice: t("sendSkippedNotice"),
             errorGeneric: t("errorGeneric"),
+            rateLimited: t("sendRateLimited"),
+            retryFailed: t("retryFailed"),
+            retrying: t("retrying"),
           }}
         />
       </div>

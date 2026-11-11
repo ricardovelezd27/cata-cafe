@@ -12,13 +12,16 @@
 
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
+import { isEvaluationComplete } from "@/lib/closeRules";
 import { orderReferencesFirst } from "@/lib/referenceRules";
-import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
+import { deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
+import { isDeletedProfileId } from "@/lib/accountDeletion/deletedProfile";
+import { sheetSampleIdentity, sheetSampleRecords } from "@/lib/pdf/sheetSource";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email";
 import { CvaFormDocument, type CvaDocumentProps } from "@/lib/pdf/CvaFormDocument";
 import { ParticipantSummaryDocument } from "@/lib/pdf/ParticipantSummaryDocument";
-import { slug } from "@/lib/pdf/filename";
+import { slug, dateSlug } from "@/lib/pdf/filename";
 import type { SessionReportSource } from "@/lib/reports/types";
 import { loadSessionReportSource } from "@/lib/reports/sessionReportData";
 import { buildParticipantSummary } from "@/lib/reports/participantSummary";
@@ -89,6 +92,22 @@ export async function sendCloseEmails(
       defectiveCups: true,
     },
   });
+
+  // C1 default (b): complete drafts that never got sent are left out; tell
+  // each of those cuppers in their own close email (lib/closeRules.ts).
+  const unsentDrafts = await prisma.evaluation.findMany({
+    where: { sessionSample: { sessionId }, isDraft: true },
+    select: {
+      cupperId: true,
+      isDraft: true,
+      descriptiveData: true,
+      affectiveData: true,
+      combinedData: true,
+    },
+  });
+  const cuppersWithUnsent = new Set(
+    unsentDrafts.filter((d) => isEvaluationComplete(d, session.format)).map((d) => d.cupperId),
+  );
 
   const evalsByCupper = new Map<string, Map<string, (typeof evals)[number]>>();
   for (const ev of evals) {
@@ -173,7 +192,9 @@ export async function sendCloseEmails(
   const sendOne = async (p: (typeof recipients)[number]): Promise<Outcome> => {
       // Resolve the recipient's email via the service-role admin client — the
       // Profile model has no email column. Anonymous guests have none: that is
-      // "skipped" (nothing to retry), not a failure.
+      // "skipped" (nothing to retry), not a failure. A deleted account's
+      // placeholder (S8-19) has no auth user at all: skipped, never looked up.
+      if (isDeletedProfileId(p.userId)) return { status: "skipped", error: "deleted_account" };
       const { data, error } = await admin.auth.admin.getUserById(p.userId);
       const email = data?.user?.email;
       if (error) {
@@ -218,7 +239,7 @@ export async function sendCloseEmails(
       }
 
       const attachments: { filename: string; content: Buffer }[] = summaryBuffer
-        ? [{ filename: `${isEn ? "summary" : "resumen"}_${nameSlug || "session"}.pdf`, content: summaryBuffer }]
+        ? [{ filename: `${isEn ? "summary" : "resumen"}_${nameSlug || "session"}_${dateSlug()}.pdf`, content: summaryBuffer }]
         : [];
 
       if (attachCva) {
@@ -239,27 +260,21 @@ export async function sendCloseEmails(
             return {
               label: s.label,
               revealed: s.revealed,
-              coffeeName: s.coffee
-                ? coffeeDisplayName(s.coffee, deletedCoffeeLabel(recipientLocale))
-                : null,
-              roastLevel: s.coffee?.roastLevel ?? null,
-              isReference: s.id === session.referenceSampleId,
+              ...sheetSampleIdentity(s, deletedCoffeeLabel(recipientLocale)),
+              // Multi-reference (S6): keep R1/R2/R3 labels in the emailed sheet
+              // (S8-12, F-informes-6); the legacy pointer covers pre-rank rows.
+              isReference: s.referenceRank != null || s.id === session.referenceSampleId,
+              referenceRank: s.referenceRank ?? null,
               descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
               affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
               combined: (ev?.combinedData as Record<string, unknown>) ?? {},
-              physical: isOwnerRecipient
-                ? ((s.physical?.data as Record<string, unknown>) ?? {})
-                : {},
-              extrinsic:
-                isOwnerRecipient || s.revealed
-                  ? ((s.extrinsic?.data as Record<string, unknown>) ?? {})
-                  : {},
+              ...sheetSampleRecords(s, isOwnerRecipient),
             };
           }),
         };
         const cvaBuffer = await renderToBuffer(CvaFormDocument(cvaProps));
         attachments.push({
-          filename: `cva_${isEn ? "form" : "formulario"}_${nameSlug || "session"}.pdf`,
+          filename: `cva_${isEn ? "form" : "formulario"}_${nameSlug || "session"}_${dateSlug()}.pdf`,
           content: cvaBuffer,
         });
       }
@@ -272,6 +287,7 @@ export async function sendCloseEmails(
           sessionName: session.name,
           dateStr: assets.dateStr,
           resultsUrl: buildResultsLoginUrl(siteOrigin(), recipientLocale, sessionId),
+          hadUnsent: cuppersWithUnsent.has(p.userId),
         }),
         attachments,
       });

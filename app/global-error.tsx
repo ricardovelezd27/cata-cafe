@@ -28,11 +28,11 @@ const COPY = {
 
 export default function GlobalError({
   error,
-  unstable_retry,
+  retry,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
-  unstable_retry: () => void;
+  retry: () => void;
 }) {
   const locale =
     typeof window !== "undefined" && window.location.pathname.startsWith("/en")
@@ -52,7 +52,7 @@ export default function GlobalError({
             title={copy.title}
             body={copy.body}
             retryLabel={copy.retry}
-            onRetry={unstable_retry}
+            onRetry={retry}
             homeLabel={copy.home}
             homeHref={`/${locale}/app`}
             supportLabel={copy.support}

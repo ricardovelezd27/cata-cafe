@@ -15,7 +15,16 @@ export type RankableSample = {
   descriptive: Record<string, unknown>;
   affective: Record<string, unknown>;
   combined: Record<string, unknown>;
-  aggregateScore: { communityScore: number | null; scoreSd: number | null } | null;
+  aggregateScore: {
+    communityScore: number | null;
+    scoreSd: number | null;
+    /** Included (complete, non-excluded) evaluations behind the community score = "n". */
+    participantCount?: number;
+    /** Submitted, non-excluded evaluations (incl. incomplete ones). */
+    submittedCount?: number;
+    /** Every SUBMITTED evaluation, excluded cuppers included = "N" (S8-12). */
+    totalSubmitted?: number;
+  } | null;
   myEvaluation: MyEvaluation;
   /** Multi-reference (S6): R1, R2… or null/undefined for a regular sample. */
   referenceRank?: number | null;
@@ -32,7 +41,52 @@ export type RankValue = {
   score: number | null;
   sd: number | null;
   basis: ScoreBasis | null;
+  /** Evaluations behind a COMMUNITY score (null for "mine" or when unknown). */
+  n: number | null;
+  /** Every submitted evaluation incl. excluded cuppers; null when unknown. */
+  total: number | null;
 };
+
+// S8-12 (F-resultados-6, F-informes-3): when a community number is trustworthy
+// enough to be ranked / called "best" / shown with a spread. Display-only —
+// scoring, the trigger and AggregateScore never read it. Setting
+// { minN: 1, indicativeBelow: 1, gapSdFactor: 0 } restores the old behaviour.
+// TODO(Kim-D3): values are the spec defaults, pending Kim's answer.
+export const RANKING_POLICY = {
+  /** Below this many included cuppers: no SD, never "best". */
+  minN: 3,
+  /** Below this many (but >= minN): shown as "indicativo". */
+  indicativeBelow: 5,
+  /** Neighbours closer than this x the larger sample SD have no clear gap. */
+  gapSdFactor: 0.5,
+} as const;
+
+export type RankPolicy = {
+  minN: number;
+  indicativeBelow: number;
+  gapSdFactor: number;
+};
+
+/** Sample SD from the population SD (÷n): sd * sqrt(n / (n - 1)). */
+export function sampleSdFromPopulation(sd: number | null, n: number | null): number | null {
+  if (sd === null || n === null || n < 2) return null;
+  return sd * Math.sqrt(n / (n - 1));
+}
+
+/** Policy flags for ONE community number. "mine" scores (a single person) and
+ *  unknown n are never flagged. */
+export function policyFlags(
+  value: RankValue,
+  policy: RankPolicy = RANKING_POLICY,
+): { indicative: boolean; suppressed: boolean } {
+  if (value.basis !== "community" || value.n === null) {
+    return { indicative: false, suppressed: false };
+  }
+  return {
+    suppressed: value.n < policy.minN,
+    indicative: value.n >= policy.minN && value.n < policy.indicativeBelow,
+  };
+}
 
 export function average(values: number[]): number | null {
   if (values.length === 0) return null;
@@ -70,28 +124,52 @@ export function myScoreFor(
  *  view is unlocked and one exists), else the viewer's own. `sd` is only ever
  *  attached when the displayed score IS the community score. */
 export function rankFor(sample: RankableSample, ctx: RankContext): RankValue {
-  if (ctx.format === "descriptive") return { score: null, sd: null, basis: null };
+  if (ctx.format === "descriptive") {
+    return { score: null, sd: null, basis: null, n: null, total: null };
+  }
   if (ctx.isGroup && ctx.canViewGroup) {
-    const community = sample.aggregateScore?.communityScore ?? null;
-    if (community !== null) {
-      return {
+    const agg = sample.aggregateScore;
+    const community = agg?.communityScore ?? null;
+    if (agg && community !== null) {
+      const n = typeof agg.participantCount === "number" ? agg.participantCount : null;
+      const value: RankValue = {
         score: community,
-        sd: sample.aggregateScore?.scoreSd ?? null,
+        sd: agg.scoreSd ?? null,
         basis: "community",
+        n,
+        total: typeof agg.totalSubmitted === "number" ? agg.totalSubmitted : null,
       };
+      // Too few cuppers: a spread of 1-2 numbers says nothing.
+      if (policyFlags(value).suppressed) value.sd = null;
+      return value;
     }
   }
   const mine = myScoreFor(sample, ctx.format, ctx.cupsPerSample);
-  return { score: mine, sd: null, basis: mine === null ? null : "mine" };
+  return { score: mine, sd: null, basis: mine === null ? null : "mine", n: null, total: null };
 }
 
 export type RankedEntry<S> = {
   sample: S;
   position: number;
+  /** Competition rank (1, 1, 3): equal displayed scores share it; null when unscored. */
+  rank: number | null;
   score: number | null;
   sd: number | null;
   basis: ScoreBasis | null;
+  n: number | null;
+  total: number | null;
+  /** Community n between minN and indicativeBelow: show "indicativo". */
+  indicative: boolean;
+  /** Community n below minN: no SD, never "best". */
+  suppressed: boolean;
+  /** A neighbour is closer than gapSdFactor x the larger sample SD. */
+  noClearGap: boolean;
 };
+
+/** The score as displayed (2 decimals): two samples that print the same number share a rank. */
+function displayedScore(score: number): number {
+  return Math.round(score * 100) / 100;
+}
 
 export type AnchorEntry<S> = { sample: S; rank: RankValue };
 
@@ -140,8 +218,16 @@ export function rankSamples<S extends RankableSample>(
   const ranked = samples
     .filter((sample) => !anchorIds.has(sample.id))
     .map((sample, position) => {
-      const { score, sd, basis } = rankFor(sample, ctx);
-      return { sample, position, score, sd, basis };
+      const value = rankFor(sample, ctx);
+      const flags = policyFlags(value);
+      return {
+        sample,
+        position,
+        rank: null as number | null,
+        ...value,
+        ...flags,
+        noClearGap: false,
+      };
     })
     .sort((a, b) => {
       if (a.score === null && b.score === null) return a.position - b.position;
@@ -150,6 +236,8 @@ export function rankSamples<S extends RankableSample>(
       if (b.score !== a.score) return b.score - a.score;
       return a.position - b.position;
     });
+
+  assignRanks(ranked);
 
   const refDeltas = deltasVsReference(
     [
@@ -170,6 +258,32 @@ export function rankSamples<S extends RankableSample>(
   };
 }
 
+/** Mutates the already-sorted list: shared ranks and the no-clear-gap flag. */
+function assignRanks<S>(ranked: RankedEntry<S>[], policy: RankPolicy = RANKING_POLICY): void {
+  const scored = ranked.filter((r) => r.score !== null);
+  scored.forEach((entry, i) => {
+    const prev = scored[i - 1];
+    entry.rank =
+      prev && displayedScore(prev.score as number) === displayedScore(entry.score as number)
+        ? (prev.rank as number)
+        : i + 1;
+  });
+  if (policy.gapSdFactor <= 0) return;
+  const sdOf = (r: RankedEntry<S>) => sampleSdFromPopulation(r.sd, r.n);
+  for (let i = 0; i < scored.length; i++) {
+    for (const j of [i - 1, i + 1]) {
+      const other = scored[j];
+      if (!other) continue;
+      const a = sdOf(scored[i]);
+      const b = sdOf(other);
+      const spread = a === null ? b : b === null ? a : Math.max(a, b);
+      if (spread === null) continue;
+      const gap = Math.abs((scored[i].score as number) - (other.score as number));
+      if (gap < policy.gapSdFactor * spread) scored[i].noClearGap = true;
+    }
+  }
+}
+
 export type SessionStats = {
   evaluatedCount: number;
   avgScore: number | null;
@@ -188,9 +302,16 @@ export function sessionStats<S extends RankableSample>(
   ctx: RankContext,
 ): SessionStats {
   const evaluatedCount = samples.filter(hasAnyEvalData).length;
-  const rankScores = ranked.map((r) => r.score).filter((v): v is number => v !== null);
+  // ONE policy for every aggregate: a community number built from fewer than
+  // RANKING_POLICY.minN cuppers is excluded from the average, the community
+  // average, Δ and "best" alike (F-resultados-6).
+  const suppressedIds = new Set(ranked.filter((r) => r.suppressed).map((r) => r.sample.id));
+  const rankScores = ranked
+    .filter((r) => !r.suppressed)
+    .map((r) => r.score)
+    .filter((v): v is number => v !== null);
   const avgScore = average(rankScores);
-  const bestEntry = ranked.find((r) => r.score !== null) ?? null;
+  const bestEntry = ranked.find((r) => r.score !== null && !r.suppressed) ?? null;
 
   const anchorIds = new Set(anchorsOf(samples, referenceId).map((s) => s.id));
   const scoredSamples = samples.filter((s) => !anchorIds.has(s.id));
@@ -198,11 +319,18 @@ export function sessionStats<S extends RankableSample>(
     .map((s) => myScoreFor(s, ctx.format, ctx.cupsPerSample))
     .filter((v): v is number => v !== null);
   const myAvg = average(myScores);
-  const communityScores = scoredSamples
+  const trusted = scoredSamples.filter((s) => !suppressedIds.has(s.id));
+  const communityScores = trusted
     .map((s) => s.aggregateScore?.communityScore ?? null)
     .filter((v): v is number => v !== null);
   const communityAvg = average(communityScores);
-  const delta = myAvg !== null && communityAvg !== null ? myAvg - communityAvg : null;
+  // Δ compares like with like: the same trusted samples on both sides.
+  const myTrustedAvg = average(
+    trusted
+      .map((s) => myScoreFor(s, ctx.format, ctx.cupsPerSample))
+      .filter((v): v is number => v !== null),
+  );
+  const delta = myTrustedAvg !== null && communityAvg !== null ? myTrustedAvg - communityAvg : null;
 
   return {
     evaluatedCount,
@@ -247,4 +375,28 @@ export function consensusLine(
   }
   if (generalTop3.length === 0) return null;
   return generalTop3.join(", ");
+}
+
+/**
+ * B-07 (S8-22): the community block for a sample whose submitted evaluations
+ * ALL belong to excluded cuppers. There is nothing to average: no score, n = 0,
+ * and N still counts every submitted evaluation ("0 de N incluidos"). Used
+ * INSTEAD of falling back to the stored trigger row, whose COALESCE(avg, 0)
+ * would read as a real community score of 0.
+ */
+export function noIncludedAggregate(totalSubmitted: number) {
+  return {
+    communityScore: null as number | null,
+    avgRawScore: 0,
+    scoreSd: null as number | null,
+    participantCount: 0,
+    submittedCount: 0,
+    totalSubmitted,
+    totalCups: 0,
+    totalNonUniform: 0,
+    totalDefective: 0,
+    uniformityPenalty: 0,
+    defectPenalty: 0,
+    attrAverages: {} as Record<string, number>,
+  };
 }

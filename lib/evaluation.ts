@@ -1,6 +1,7 @@
 import { calcAffectiveSum, calcIndividualScore, calcRawScore } from "@/lib/scoring";
-import { asSessionFormat } from "@/lib/constants";
+import { AFFECTIVE_ATTRIBUTES, asSessionFormat } from "@/lib/constants";
 import { cupFlags } from "@/lib/validate";
+import { EXPRESS_NOTE_KEY, EXPRESS_NOTE_MAX } from "@/lib/expressSession";
 
 export type EvalModuleKey = "descriptive" | "affective" | "combined";
 
@@ -12,6 +13,75 @@ export type EvalModuleKey = "descriptive" | "affective" | "combined";
 export function moduleKeyForFormat(format: string): EvalModuleKey {
   const f = asSessionFormat(format);
   return f === "descriptive" ? "descriptive" : f === "affective" ? "affective" : "combined";
+}
+
+/** Largest serialized module JSON one evaluation may carry. A real form is a
+ *  few KB; this only stops a tampered client from storing megabytes. */
+export const MAX_MODULE_JSON_CHARS = 64_000;
+
+/** Bounds on the free-form parts of a module (S8-10 T11, F-express-5): the
+ *  express note is capped at EXPRESS_NOTE_MAX and the whole serialized module
+ *  at MAX_MODULE_JSON_CHARS. Throws Error("invalid_input") — live autosave and
+ *  the offline replay share this, so both reject the same payloads. */
+export function assertModuleBounds(data: Record<string, unknown>): void {
+  const note = data[EXPRESS_NOTE_KEY];
+  if (note !== undefined && note !== null) {
+    if (typeof note !== "string" || note.length > EXPRESS_NOTE_MAX) {
+      throw new Error("invalid_input");
+    }
+  }
+  if (JSON.stringify(data).length > MAX_MODULE_JSON_CHARS) {
+    throw new Error("invalid_input");
+  }
+}
+
+/** Lowest / highest value of the CVA affective scale. */
+export const AFFECTIVE_MIN = 1;
+export const AFFECTIVE_MAX = 9;
+
+/** The module keys the scorer (lib/scoring.ts) and the SQL trigger /
+ *  is_affective_complete cast with ::numeric: `<attr>_final` and the base
+ *  `<attr>` for each of the 8 affective attributes. */
+export function affectiveRatingKeys(): string[] {
+  return AFFECTIVE_ATTRIBUTES.flatMap((a) => [`${a.id}_final`, a.id]);
+}
+
+/**
+ * B-01 (S8-22): server-side bound on every affective rating. A finite number is
+ * rounded to the nearest integer (4.6 -> 5; halves round up) and clamped to
+ * 1..9; a non-number (string, null, NaN, Infinity, object, boolean) is REMOVED,
+ * i.e. treated as "not rated", and is never stored: a non-numeric string would
+ * make the trigger's ::numeric cast raise and block the sample's aggregate.
+ * Returns a new object; valid data passes through untouched. It is applied by
+ * the one shared derivation, so the live and offline paths cannot diverge.
+ */
+export function sanitizeAffectiveRatings(data: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...data };
+  for (const key of affectiveRatingKeys()) {
+    if (!(key in out)) continue;
+    const v = out[key];
+    if (typeof v === "number" && Number.isFinite(v)) {
+      out[key] = Math.min(AFFECTIVE_MAX, Math.max(AFFECTIVE_MIN, Math.round(v)));
+    } else {
+      delete out[key];
+    }
+  }
+  return out;
+}
+
+/** Offline-replay wrapper: returns the derived fields, or `null` when the
+ *  payload is rejected with `invalid_input`. Any other error propagates. */
+export function tryComputeEvaluationDerived(
+  moduleKey: EvalModuleKey,
+  data: Record<string, unknown>,
+  cupsPerSample: number,
+): ReturnType<typeof computeEvaluationDerived> | null {
+  try {
+    return computeEvaluationDerived(moduleKey, data, cupsPerSample);
+  } catch (e) {
+    if (e instanceof Error && e.message === "invalid_input") return null;
+    throw e;
+  }
 }
 
 // Single source of truth for the Evaluation row shape derived from a module's
@@ -35,6 +105,8 @@ export function computeEvaluationDerived(
         ? "affectiveData"
         : "combinedData";
 
+  assertModuleBounds(data);
+
   // Clamp the cup arrays to the session's cup count before anything reads
   // them: an over-long or non-boolean array would either crash the Boolean[]
   // column or let one cupper drive a sample's community score to zero.
@@ -46,7 +118,7 @@ export function computeEvaluationDerived(
         .slice(0, 20)
     : [];
   const normalized: Record<string, unknown> = {
-    ...data,
+    ...sanitizeAffectiveRatings(data),
     tazas_no_uniformes: nonUniformCups,
     tazas_defectuosas: defectiveCups,
     defecto_tipo: defectTypes,

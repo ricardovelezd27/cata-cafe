@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { computeEvaluationDerived, moduleKeyForFormat } from "@/lib/evaluation";
+import {
+  computeEvaluationDerived,
+  moduleKeyForFormat,
+  tryComputeEvaluationDerived,
+} from "@/lib/evaluation";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 
 const neutral = Object.fromEntries(AFFECTIVE_ATTRIBUTES.map((a) => [`${a.id}_final`, 5]));
@@ -64,5 +68,35 @@ describe("nota_express (quick note) travels inside the module JSON", () => {
     const b = computeEvaluationDerived("affective", { ...neutral, nota_express: NOTE }, 1);
     expect(b.individualScore).toBe(a.individualScore);
     expect(b.affectiveSum).toBe(a.affectiveSum);
+  });
+});
+
+describe("module bounds (S8-10 T11)", () => {
+  it("rejects an over-long express note and an oversized module", () => {
+    expect(() =>
+      computeEvaluationDerived("affective", { ...neutral, nota_express: "x".repeat(501) }, 1),
+    ).toThrow("invalid_input");
+    expect(() =>
+      computeEvaluationDerived("affective", { ...neutral, nota_express: 42 }, 1),
+    ).toThrow("invalid_input");
+    expect(() =>
+      computeEvaluationDerived("affective", { ...neutral, filler: "y".repeat(70_000) }, 1),
+    ).toThrow("invalid_input");
+  });
+  it("accepts a note at the cap", () => {
+    expect(() =>
+      computeEvaluationDerived("affective", { ...neutral, nota_express: "x".repeat(500) }, 1),
+    ).not.toThrow();
+  });
+});
+
+describe("tryComputeEvaluationDerived (offline replay)", () => {
+  it("returns null for an out-of-bounds payload instead of throwing", () => {
+    expect(
+      tryComputeEvaluationDerived("affective", { ...neutral, nota_express: "x".repeat(100_000) }, 1),
+    ).toBeNull();
+  });
+  it("returns the derived fields for a valid payload", () => {
+    expect(tryComputeEvaluationDerived("affective", neutral, 1)).not.toBeNull();
   });
 });

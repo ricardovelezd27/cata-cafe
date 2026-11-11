@@ -13,6 +13,9 @@ export type AggregateScoreData = {
   scoreSd: number | null;
   participantCount: number;
   submittedCount: number;
+  // N of "n de N incluidos": every SUBMITTED evaluation of the sample, excluded
+  // cuppers and incomplete ones included (S8-12). Display-only.
+  totalSubmitted: number;
   totalCups: number;
   totalNonUniform: number;
   totalDefective: number;
@@ -50,7 +53,8 @@ export type SampleResult = {
   coffee: CoffeeInfo | null;
   masterCoffee: SampleCoffee | null;
   // Whether a coffee row is linked at all — masterCoffee is a (blank) object
-  // even for coffee-less samples, so it cannot answer this. Express sessions
+  // even for coffee-less samples, so it cannot answer this. Sent as false to
+  // non-owner viewers of an unrevealed sample (blind). Express sessions
   // create coffee-less samples; the owner may name one post-close.
   hasCoffee: boolean;
   descriptive: Record<string, unknown>;
@@ -58,6 +62,8 @@ export type SampleResult = {
   combined: Record<string, unknown>;
   physical: Record<string, unknown>;
   extrinsic: Record<string, unknown>;
+  // Pre-formatted "Origen editado el <fecha>" (S8-12); null when never edited post-close.
+  extrinsicEditedLabel?: string | null;
   aggregateScore: AggregateScoreData | null;
   // True for the ONE sample the owner marked as the "Referencia" (control) —
   // session.referenceSampleId. Display-only: scoring is untouched. See

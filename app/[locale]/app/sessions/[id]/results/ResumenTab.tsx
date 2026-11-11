@@ -2,7 +2,7 @@
 
 import { ChevronRight } from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { ScorePill, InfoHint } from "@/components/ui";
+import { ScorePill, InfoHint, Badge } from "@/components/ui";
 import { formatSignedDelta } from "@/lib/referenceDelta";
 import { consensusLine, rankSamples, sessionStats } from "@/lib/reports/ranking";
 import type { SessionFormat } from "@/lib/constants";
@@ -33,7 +33,18 @@ type ResumenTabTranslations = {
   deltaVsReferenceAria: string;
   anchorTitle: string;
   anchorHint: string;
+  /** "{n} de {total} incluidos" — raw template, replaced client-side. */
+  includedOf: string;
+  rankIndicative: string;
+  rankNoClearGap: string;
+  /** Shown beside a score that is the viewer's own inside a group ranking. */
+  basisMine: string;
+  fewNote: string;
 };
+
+function fill(template: string, n: number, total: number): string {
+  return template.replace("{n}", String(n)).replace("{total}", String(total));
+}
 
 export function ResumenTab({
   samples,
@@ -79,13 +90,17 @@ export function ResumenTab({
     referenceId,
     rankCtx,
   );
-  const { evaluatedCount, avgScore, myAvg, communityAvg, delta } = sessionStats(
+  const { evaluatedCount, avgScore, myAvg, communityAvg, delta, bestSampleId } = sessionStats(
     samples,
     ranked,
     referenceId,
     rankCtx,
   );
-  const bestEntry = ranked.find((r) => r.score !== null) ?? null;
+  // "Best" skips a sample whose community number rests on too few cuppers.
+  const bestEntry = ranked.find((r) => r.sample.id === bestSampleId) ?? null;
+  const showFewNote = ranked.some((r) => r.suppressed);
+  const hasMixedBasis =
+    new Set(ranked.filter((r) => r.score !== null).map((r) => r.basis)).size > 1;
 
   // Don't render an all-dashes card: performance needs at least one real average.
   const showPerformance =
@@ -134,6 +149,9 @@ export function ResumenTab({
                 ? bestEntry.sample.label +
                   (bestEntry.sample.revealed && bestEntry.sample.coffee
                     ? ` · ${bestEntry.sample.coffee.name}`
+                    : "") +
+                  (bestEntry.n !== null && bestEntry.total !== null
+                    ? ` · ${fill(t.includedOf, bestEntry.n, bestEntry.total)}`
                     : "")
                 : ""
             }
@@ -178,7 +196,8 @@ export function ResumenTab({
             </button>
           ))}
           <div className="flex flex-col gap-2">
-            {ranked.map(({ sample, score, sd }, idx) => (
+            {ranked.map(
+              ({ sample, score, sd, rank, n, total, basis, indicative, suppressed, noClearGap }) => (
               <button
                 key={sample.id}
                 type="button"
@@ -186,13 +205,37 @@ export function ResumenTab({
                 className="min-h-[44px] flex w-full items-center gap-3 rounded-card border border-outline-variant bg-surface-container-lowest px-4 py-3 text-left transition-colors hover:bg-surface-container-high"
               >
                 <span className="w-8 shrink-0 font-display text-2xl tabular-nums text-on-surface-variant">
-                  {idx + 1}
+                  {rank ?? "—"}
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium text-on-surface">{sample.label}</div>
                   {sample.revealed && sample.coffee && (
                     <div className="truncate text-xs text-on-surface-variant">
                       {sample.coffee.name}
+                    </div>
+                  )}
+                  {score !== null && (
+                    <div className="mt-0.5 flex flex-wrap items-center gap-1">
+                      {basis === "community" && n !== null && total !== null && (
+                        <span className="text-[11px] text-on-surface-variant tabular-nums">
+                          {fill(t.includedOf, n, total)}
+                        </span>
+                      )}
+                      {basis === "mine" && hasMixedBasis && (
+                        <Badge tone="outline" size="xs">
+                          {t.basisMine}
+                        </Badge>
+                      )}
+                      {(indicative || suppressed) && (
+                        <Badge tone="accent" size="xs">
+                          {t.rankIndicative}
+                        </Badge>
+                      )}
+                      {noClearGap && (
+                        <Badge tone="outline" size="xs">
+                          {t.rankNoClearGap}
+                        </Badge>
+                      )}
                     </div>
                   )}
                 </div>
@@ -228,8 +271,12 @@ export function ResumenTab({
                 )}
                 <ChevronRight size={16} aria-hidden className="shrink-0 text-on-surface-variant" />
               </button>
-            ))}
+              ),
+            )}
           </div>
+          {showFewNote && (
+            <p className="text-xs text-on-surface-variant">{t.fewNote}</p>
+          )}
         </div>
 
         {/* Performance / community pending */}

@@ -4,6 +4,9 @@ import {
   isMissed,
   isRunning,
   parseDbTimestamp,
+  RESYNC_DRIFT_MS,
+  resyncPositionMs,
+  shouldResync,
   runLengthMs,
   seekFor,
   skewMs,
@@ -84,5 +87,19 @@ describe("warmupSyncReducer (full-row UPDATE payloads)", () => {
     expect(r.action).toEqual({ type: "none" });
     r = warmupSyncReducer({ lastStartedAt: null }, { startedAt: iso });
     expect(r.action).toEqual({ type: "none" });
+  });
+});
+
+describe("re-sync after the page was away", () => {
+  it("target is now + skew - start, never negative", () => {
+    expect(resyncPositionMs(T0, T0 + 12_000, 500)).toBe(12_500);
+    expect(resyncPositionMs(T0, T0 - 5_000, 0)).toBe(0);
+  });
+  it("re-seeks only past the drift threshold", () => {
+    expect(RESYNC_DRIFT_MS).toBe(1500);
+    expect(shouldResync(10_000, 10_900)).toBe(false);
+    expect(shouldResync(10_000, 11_500)).toBe(false);
+    expect(shouldResync(10_000, 11_501)).toBe(true);
+    expect(shouldResync(20_000, 10_000)).toBe(true);
   });
 });

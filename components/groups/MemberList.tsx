@@ -4,12 +4,17 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2, Pencil, Check, X, Send } from "lucide-react";
 import { removeMember, updateMemberDisplayName, resendInvitation } from "@/app/actions/groups";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useActionFeedback } from "@/components/ui/Toast";
+import { Badge } from "@/components/ui/Badge";
 
 type Member = {
   id: string;
   email: string;
   displayName: string | null;
   userId: string | null;
+  /** The member unsubscribed from this group's emails (S8-20). */
+  emailOptedOut?: boolean;
 };
 
 export function MemberList({
@@ -21,8 +26,13 @@ export function MemberList({
   members: Member[];
   t: {
     unregistered: string;
+    emailOptedOut: string;
     removeMember: string;
-    confirmRemoveMember: string;
+    /** ConfirmDialog title. */
+    removeTitle: string;
+    /** Raw template with {name}: "¿Quitar a {name} del grupo?". */
+    removeBodyNamed: string;
+    cancel: string;
     errorGeneric: string;
     editName: string;
     namePlaceholder: string;
@@ -30,30 +40,26 @@ export function MemberList({
     resend: string;
     resent: string;
     resendFailed: string;
+    resendRateLimited: string;
   };
 }) {
   const router = useRouter();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const feedback = useActionFeedback();
+  const [removeTarget, setRemoveTarget] = useState<Member | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
-  const [resendStatus, setResendStatus] = useState<Record<string, "sent" | "skipped" | "failed">>({});
+  const [resendStatus, setResendStatus] = useState<
+    Record<string, "sent" | "skipped" | "failed" | "rate_limited">
+  >({});
   const [, start] = useTransition();
 
-  const onRemove = (memberId: string) => {
-    if (!window.confirm(t.confirmRemoveMember)) return;
-    setError(null);
-    setPendingId(memberId);
-    start(async () => {
-      try {
-        await removeMember(groupId, memberId);
-        router.refresh();
-      } catch {
-        setError(t.errorGeneric);
-      } finally {
-        setPendingId(null);
-      }
-    });
+  // Runs inside ConfirmDialog. A failure is toasted with its own localized
+  // copy (feedback.run) and the dialog closes; success refreshes the roster.
+  const confirmRemove = async () => {
+    if (!removeTarget) return;
+    await feedback.run(removeMember(groupId, removeTarget.id), () => router.refresh());
   };
 
   const startEdit = (member: Member) => {
@@ -74,11 +80,10 @@ export function MemberList({
     setPendingId(memberId);
     start(async () => {
       try {
-        await updateMemberDisplayName(groupId, memberId, trimmed);
-        setEditingId(null);
-        router.refresh();
-      } catch {
-        setError(t.errorGeneric);
+        await feedback.run(updateMemberDisplayName(groupId, memberId, trimmed), () => {
+          setEditingId(null);
+          router.refresh();
+        });
       } finally {
         setPendingId(null);
       }
@@ -91,9 +96,16 @@ export function MemberList({
     start(async () => {
       try {
         const result = await resendInvitation(groupId, memberId);
-        setResendStatus((prev) => ({ ...prev, [memberId]: result.emailStatus }));
+        setResendStatus((prev) => ({
+          ...prev,
+          [memberId]: result.ok ? result.data.emailStatus : "failed",
+        }));
+        if (!result.ok) feedback.notifyError(result.error);
       } catch {
         setResendStatus((prev) => ({ ...prev, [memberId]: "failed" }));
+        feedback.notifyError(
+          typeof navigator !== "undefined" && navigator.onLine === false ? "offline" : "unknown",
+        );
       } finally {
         setPendingId(null);
       }
@@ -146,10 +158,20 @@ export function MemberList({
                 {m.displayName && <p className="text-xs text-on-surface-variant truncate">{m.email}</p>}
                 {status === "sent" && <p className="text-xs text-primary-container">{t.resent}</p>}
                 {status === "failed" && <p className="text-xs text-error">{t.resendFailed}</p>}
+                {status === "rate_limited" && (
+                  <p className="text-xs text-secondary" role="status">
+                    {t.resendRateLimited}
+                  </p>
+                )}
               </div>
             )}
             {!isEditing && (
               <div className="flex items-center gap-2 shrink-0">
+                {m.emailOptedOut && (
+                  <Badge tone="neutral" size="xs">
+                    {t.emailOptedOut}
+                  </Badge>
+                )}
                 {!m.userId && (
                   <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-full bg-secondary/15 text-secondary">
                     {t.unregistered}
@@ -177,7 +199,7 @@ export function MemberList({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onRemove(m.id)}
+                  onClick={() => setRemoveTarget(m)}
                   disabled={pendingId === m.id}
                   title={t.removeMember}
                   className="p-1.5 text-on-surface-variant hover:text-error transition-colors disabled:opacity-50"
@@ -190,6 +212,20 @@ export function MemberList({
         );
       })}
       {error && <p className="text-xs text-error">{error}</p>}
+      <ConfirmDialog
+        open={removeTarget !== null}
+        onOpenChange={(o) => !o && setRemoveTarget(null)}
+        title={t.removeTitle}
+        body={t.removeBodyNamed.replace(
+          "{name}",
+          removeTarget?.displayName || removeTarget?.email || "",
+        )}
+        confirmLabel={t.removeMember}
+        cancelLabel={t.cancel}
+        closeLabel={t.cancel}
+        onConfirm={confirmRemove}
+        error={t.errorGeneric}
+      />
     </div>
   );
 }

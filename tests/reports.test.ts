@@ -4,11 +4,20 @@ import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
 import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
 import { computeCupperAlignment, computeMajoritySets } from "@/lib/alignment";
 import { canViewGroupResults } from "@/lib/sessionState";
+import { gateSampleForViewer, communityHidden } from "@/lib/reports/sampleGate";
 import { NO_EVALUATION } from "@/lib/evaluationState";
-import { rankSamples, sessionStats, consensusLine, type RankableSample } from "@/lib/reports/ranking";
+import {
+  rankSamples,
+  sessionStats,
+  consensusLine,
+  RANKING_POLICY,
+  type RankableSample,
+} from "@/lib/reports/ranking";
 import { rowStats, bandFor } from "@/lib/reports/cupperStats";
 import { buildParticipantSummary } from "@/lib/reports/participantSummary";
 import { buildFichaTecnica } from "@/lib/reports/fichaTecnica";
+import { buildResultsCsv } from "@/lib/reports/resultsCsv";
+import { csvCell } from "@/lib/csv";
 import { buildTeacherNotes } from "@/lib/reports/teacherNotes";
 import type { ReportEvalRow, SessionReportSource } from "@/lib/reports/types";
 
@@ -45,14 +54,22 @@ describe("canViewGroupResults", () => {
 function rs(
   id: string,
   community: number | null,
-  opts: { sd?: number | null } = {},
+  opts: { sd?: number | null; n?: number; total?: number } = {},
 ): RankableSample {
   return {
     id,
     descriptive: {},
     affective: {},
     combined: {},
-    aggregateScore: community === null ? null : { communityScore: community, scoreSd: opts.sd ?? null },
+    aggregateScore:
+      community === null
+        ? null
+        : {
+            communityScore: community,
+            scoreSd: opts.sd ?? null,
+            participantCount: opts.n,
+            totalSubmitted: opts.total,
+          },
     myEvaluation: NO_EVALUATION,
   };
 }
@@ -93,6 +110,93 @@ describe("rankSamples", () => {
   it("descriptive sessions carry no scores", () => {
     const { ranked } = rankSamples([rs("a", 84)], null, { ...groupCtx, format: "descriptive" });
     expect(ranked[0].score).toBeNull();
+  });
+});
+
+describe("rankSamples — ranking honesty (S8-12, F-resultados-6)", () => {
+  it("equal displayed scores share a rank (1, 1, 3)", () => {
+    const samples = [rs("a", 85, { n: 6 }), rs("b", 85, { n: 6 }), rs("c", 80, { n: 6 })];
+    const { ranked } = rankSamples(samples, null, groupCtx);
+    expect(ranked.map((r) => r.rank)).toEqual([1, 1, 3]);
+  });
+
+  it("unscored rows carry no rank", () => {
+    const { ranked } = rankSamples([rs("a", 85, { n: 6 }), rs("b", null)], null, groupCtx);
+    expect(ranked.map((r) => r.rank)).toEqual([1, null]);
+  });
+
+  it("n below the minimum is suppressed: no SD and never 'best'", () => {
+    const samples = [rs("a", 90, { n: 1, sd: 2 }), rs("b", 80, { n: 4, sd: 1 })];
+    const { ranked } = rankSamples(samples, null, groupCtx);
+    expect(ranked[0].sample.id).toBe("a");
+    expect(ranked[0].suppressed).toBe(true);
+    expect(ranked[0].sd).toBeNull();
+    const st = sessionStats(samples, ranked, null, groupCtx);
+    expect(st.bestSampleId).toBe("b");
+  });
+
+  it("sessionStats: a suppressed sample is out of avg, communityAvg, delta and best alike", () => {
+    const mine = {
+      myEvaluation: { status: "submitted" as const, complete: true },
+      combined: Object.fromEntries(
+        [
+          "fragancia_af",
+          "aroma_af",
+          "sabor_af",
+          "sabor_residual_af",
+          "acidez_af",
+          "dulzor_af",
+          "sensacion_af",
+          "impresion_global",
+        ].map((id) => [`${id}_final`, 8]),
+      ),
+    };
+    const samples = [
+      { ...rs("a", 90, { n: 1 }), ...mine },
+      { ...rs("b", 80, { n: 4 }), ...mine },
+      { ...rs("c", 82, { n: 5 }), ...mine },
+    ];
+    const { ranked } = rankSamples(samples, null, groupCtx);
+    expect(ranked.find((r) => r.sample.id === "a")?.suppressed).toBe(true);
+    const st = sessionStats(samples, ranked, null, groupCtx);
+    expect(st.bestSampleId).toBe("c");
+    expect(st.avgScore).toBeCloseTo(81);
+    expect(st.communityAvg).toBeCloseTo(81);
+    expect(st.myAvg).not.toBeNull();
+    expect(st.delta).toBeCloseTo(st.myAvg! - 81);
+  });
+
+  it("n = 3 and 4 are indicative, n = 5 is normal", () => {
+    const samples = [rs("a", 90, { n: 3 }), rs("b", 88, { n: 4 }), rs("c", 86, { n: 5 })];
+    const { ranked } = rankSamples(samples, null, groupCtx);
+    expect(ranked.map((r) => [r.indicative, r.suppressed])).toEqual([
+      [true, false],
+      [true, false],
+      [false, false],
+    ]);
+    expect(RANKING_POLICY.minN).toBe(3);
+  });
+
+  it("flags neighbours closer than half the larger sample SD", () => {
+    // population sd 2, n 5 -> sample sd ~2.236 -> threshold ~1.118
+    const samples = [
+      rs("a", 85, { n: 5, sd: 2 }),
+      rs("b", 84.5, { n: 5, sd: 2 }),
+      rs("c", 80, { n: 5, sd: 2 }),
+    ];
+    const { ranked } = rankSamples(samples, null, groupCtx);
+    expect(ranked.map((r) => r.noClearGap)).toEqual([true, true, false]);
+  });
+
+  it("never flags a gap without an SD, and never on the 'mine' basis", () => {
+    const { ranked } = rankSamples([rs("a", 85, { n: 5 }), rs("b", 85, { n: 5 })], null, groupCtx);
+    expect(ranked.every((r) => !r.noClearGap)).toBe(true);
+  });
+
+  it("carries n of N for the displayed community score", () => {
+    const { ranked } = rankSamples([rs("a", 85, { n: 4, total: 6 })], null, groupCtx);
+    expect(ranked[0].n).toBe(4);
+    expect(ranked[0].total).toBe(6);
   });
 });
 
@@ -388,6 +492,46 @@ describe("buildParticipantSummary — anonymity invariant", () => {
   });
 });
 
+describe("participant summary and ficha — n of N (S8-12)", () => {
+  it("N counts every submitted evaluation of the sample, excluded cuppers included", () => {
+    const src = fixture();
+    const model = buildParticipantSummary(
+      { ...src, excludedUserIds: [CUPPERS.C.id] },
+      { viewerId: CUPPERS.B.id, locale: "es", labels },
+    );
+    const s2 = model.samples.find((s) => s.label === "Muestra 2")!;
+    const submitted = src.evals.filter((e) => e.sessionSampleId === "s-2").length;
+    expect(s2.inclusion?.total).toBe(submitted);
+    expect(s2.inclusion?.included).toBe(src.groupAggBySample["s-2"].included);
+    expect(model.header.viewerExcluded).toBe(false);
+  });
+
+  it("tells a cupper their own evaluation was excluded, with no reason or peer identity", () => {
+    const src = fixture();
+    const model = buildParticipantSummary(
+      { ...src, excludedUserIds: [CUPPERS.B.id] },
+      { viewerId: CUPPERS.B.id, locale: "es", labels },
+    );
+    expect(model.header.viewerExcluded).toBe(true);
+    const json = JSON.stringify(model);
+    expect(json).not.toContain(CUPPERS.A.name);
+    expect(json).not.toContain("exclusionReason");
+  });
+
+  it("ficha: N is all submitted evaluations and a thin panel is indicative with no SD", () => {
+    const src = fixture();
+    const m = buildFichaTecnica(src, { tier: "participant", locale: "es", labels });
+    for (const s of m.samples) {
+      if (!s.affective) continue;
+      expect(s.affective.submitted).toBe(s.participation.submitted);
+      if (s.affective.included < RANKING_POLICY.minN) expect(s.affective.sd).toBeNull();
+      expect(s.affective.indicative).toBe(
+        s.affective.communityScore != null && s.affective.included < RANKING_POLICY.indicativeBelow,
+      );
+    }
+  });
+});
+
 describe("buildFichaTecnica", () => {
   const src = fixture();
 
@@ -463,5 +607,111 @@ describe("computeMajoritySets", () => {
         excludedUserIds: new Set(),
       }),
     ).toEqual({});
+  });
+});
+
+describe("gateSampleForViewer (S8-02 F-resultados-2)", () => {
+  const input = { physical: { phys_color: "green" }, aggregateScore: { communityScore: 85 } };
+  const open = { status: "active", allSubmitted: false, sessionExpired: false };
+
+  it("participant of a hidden group session gets no physical and no aggregate", () => {
+    const ctx = {
+      ownerRead: false,
+      isGroup: true,
+      canViewGroup: canViewGroupResults({ isGroup: true, ownerRead: false, ...open }),
+    };
+    expect(communityHidden(ctx)).toBe(true);
+    expect(gateSampleForViewer(input, ctx)).toEqual({ physical: {}, aggregateScore: null });
+  });
+  it("owner and admin lens are unchanged", () => {
+    const ctx = {
+      ownerRead: true,
+      isGroup: true,
+      canViewGroup: canViewGroupResults({ isGroup: true, ownerRead: true, ...open }),
+    };
+    expect(communityHidden(ctx)).toBe(false);
+    expect(gateSampleForViewer(input, ctx)).toEqual(input);
+  });
+  it("solo owner keeps the trigger-row aggregate", () => {
+    const ctx = { ownerRead: true, isGroup: false, canViewGroup: false };
+    expect(gateSampleForViewer(input, ctx)).toEqual(input);
+  });
+  it("participant of a closed group session sees the aggregate but never physical", () => {
+    const ctx = {
+      ownerRead: false,
+      isGroup: true,
+      canViewGroup: canViewGroupResults({
+        isGroup: true,
+        ownerRead: false,
+        status: "closed",
+        allSubmitted: false,
+        sessionExpired: false,
+      }),
+    };
+    expect(gateSampleForViewer(input, ctx)).toEqual({
+      physical: {},
+      aggregateScore: input.aggregateScore,
+    });
+  });
+  it("owner of a group session can always view, so owner + hidden is unreachable", () => {
+    for (const status of ["active", "closed", "draft"]) {
+      expect(
+        canViewGroupResults({ isGroup: true, ownerRead: true, status, allSubmitted: false, sessionExpired: false }),
+      ).toBe(true);
+    }
+  });
+  it("does not mutate its input", () => {
+    const copy = structuredClone(input);
+    gateSampleForViewer(input, { ownerRead: false, isGroup: true, canViewGroup: false });
+    expect(input).toEqual(copy);
+  });
+});
+
+describe("buildResultsCsv / csvCell (S8-12, F-informes-7)", () => {
+  const src = fixture();
+  const out = buildResultsCsv(src, { locale: "es", coffeeDeleted: "Café eliminado" });
+
+  it("starts with a UTF-8 BOM and one row per submitted evaluation", () => {
+    expect(out.csv.charCodeAt(0)).toBe(0xfeff);
+    const lines = out.csv.trim().split("\n");
+    expect(lines).toHaveLength(src.evals.length + 1);
+    expect(out.rows).toBe(src.evals.length);
+    expect(lines[0]).toContain("puntaje_cva");
+  });
+
+  it("never prints the coffee of a blind sample", () => {
+    expect(out.csv).not.toContain("CAFE-CIEGO-SECRETO");
+    expect(out.csv).toContain("Finca Revelada");
+  });
+
+  it("names by default and codes on request", () => {
+    expect(out.csv).toContain(CUPPERS.A.name);
+    const coded = buildResultsCsv(src, { locale: "en", coffeeDeleted: "x", codes: true });
+    expect(coded.csv).not.toContain(CUPPERS.A.name);
+    expect(coded.csv).toContain("Muestra REF");
+    expect(coded.csv.split("\n").some((l) => l.startsWith("C1,"))).toBe(true);
+    expect(coded.csv.split("\n")[0]).toContain("cva_score");
+  });
+
+  it("flags excluded cuppers with their reason", () => {
+    const withExclusion = buildResultsCsv(
+      {
+        ...src,
+        excludedUserIds: [CUPPERS.C.id],
+        participants: src.participants.map((p) =>
+          p.userId === CUPPERS.C.id ? { ...p, excluded: true, exclusionReason: "protocol" } : p,
+        ),
+      },
+      { locale: "es", coffeeDeleted: "x" },
+    );
+    const cLines = withExclusion.csv.split("\n").filter((l) => l.startsWith(CUPPERS.C.name));
+    expect(cLines.length).toBeGreaterThan(0);
+    expect(cLines.every((l) => l.includes(",si,protocol,"))).toBe(true);
+  });
+
+  it("neutralises formula injection and quotes awkward cells", () => {
+    expect(csvCell("=SUM(A1)")).toBe("'=SUM(A1)");
+    expect(csvCell('a,"b"')).toBe('"a,""b"""');
+    expect(csvCell("plain")).toBe("plain");
   });
 });

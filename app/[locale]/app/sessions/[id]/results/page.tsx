@@ -1,8 +1,9 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
+import { requireAppUser } from "@/lib/auth";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { orderReferencesFirst } from "@/lib/referenceRules";
+import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
 import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
@@ -11,7 +12,15 @@ import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
 import { asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { deriveMyEvaluation, summarizeMyProgress } from "@/lib/evaluationState";
-import { canViewGroupResults } from "@/lib/sessionState";
+import { canViewGroupResults, isSessionExpired } from "@/lib/sessionState";
+import { resultsUpdatedAfterClose } from "@/lib/exclusionReasons";
+import { gateSampleForViewer, communityHidden } from "@/lib/reports/sampleGate";
+import { getUsableCoffees } from "@/lib/coffees/queries";
+import type { UsableCoffee } from "@/components/coffees/CoffeePicker";
+import { closeSessionInternal } from "@/lib/closeSession";
+import { ON_VIEW_REPAIR_GRACE_MS, soloRepairOwedOnView } from "@/lib/closeRules";
+import { errorMessage, logError } from "@/lib/log";
+import { noIncludedAggregate } from "@/lib/reports/ranking";
 import { ResultsClient } from "./ResultsClient";
 
 // resendCloseEmails / refreshAggregateScores run from here; give the
@@ -20,17 +29,16 @@ export const maxDuration = 120;
 
 export default async function ResultsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
+  searchParams: Promise<{ closed?: string }>;
 }) {
   const { locale, id } = await params;
+  const { closed: closedParam } = await searchParams;
   setRequestLocale(locale);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/${locale}/auth/login`);
+  const user = await requireAppUser(locale, `/${locale}/app/sessions/${id}/results`);
 
   // Super-admin god mode: read-only access to ANY session's results, rendered
   // from the owner's perspective. The admin's identity is resolved up front so
@@ -46,6 +54,22 @@ export default async function ResultsPage({
   // for an admin viewing someone else's session — the owner's.
   const viewAsId =
     adminTarget && adminTarget.createdBy !== user.id ? adminTarget.createdBy : user.id;
+
+  // S8-21: a SOLO owner whose session closed but never finalized (reveal +
+  // coffee history) gets the repair now instead of waiting for the daily cron.
+  // The 20 s grace keeps it from overlapping a close still in flight; a failure
+  // only logs.
+  try {
+    const closeRow = await prisma.cuppingSession.findUnique({
+      where: { id },
+      select: { status: true, isGroup: true, createdBy: true, closedAt: true, closeFinalizedAt: true },
+    });
+    if (closeRow && soloRepairOwedOnView(closeRow, user.id)) {
+      await closeSessionInternal(id, { reason: "repair", emails: "skip", repairGraceMs: ON_VIEW_REPAIR_GRACE_MS });
+    }
+  } catch (err) {
+    logError({ where: "results.soloRepair", sessionId: id, message: errorMessage(err) });
+  }
 
   const [session, submittedCupperCount] = await Promise.all([
     prisma.cuppingSession.findFirst({
@@ -82,7 +106,15 @@ export default async function ResultsPage({
             },
           },
         },
-        participants: { select: { userId: true, excludedFromResults: true } },
+        participants: {
+          select: {
+            userId: true,
+            excludedFromResults: true,
+            excludedAt: true,
+            excludedBy: true,
+            exclusionReason: true,
+          },
+        },
       },
     }),
     prisma.evaluation
@@ -119,6 +151,7 @@ export default async function ResultsPage({
   // Fetched early — needed below by the owner-only participant matrix
   // (coffeeDisplayName fallback) before the rest of the page's translators.
   const tCommon = await getTranslations("common");
+  const tErrors = await getTranslations("errors");
   // Descriptor aggregation locale + block-label resolver — shared by both the
   // group (anonymous, cross-cupper) and solo (own-data) descriptor paths below.
   const localeStr: "es" | "en" = locale === "en" ? "en" : "es";
@@ -127,7 +160,9 @@ export default async function ResultsPage({
 
   const totalParticipants = session.participants.length;
   const allSubmitted = totalParticipants > 0 && submittedCupperCount >= totalParticipants;
-  const sessionExpired = session.closesAt ? session.closesAt < new Date() : false;
+  const sessionExpired = isSessionExpired({ status: "active", closesAt: session.closesAt });
+  // Closed OR past its deadline: no more cupping, no more drafts to finish.
+  const sessionOver = isSessionExpired(session);
   const canViewGroup = canViewGroupResults({
     isGroup: session.isGroup,
     ownerRead,
@@ -195,6 +230,7 @@ export default async function ResultsPage({
   // incomplete/empty submissions don't skew the community average. Keyed by
   // sessionSampleId.
   let groupAggBySample: Map<string, GroupAggregate> | null = null;
+  const submittedAllBySample = new Map<string, number>();
 
   // Ids of evaluations already visible at render time — seeds the client's
   // realtime-badge dedup set so a later no-op UPDATE storm (owner refresh,
@@ -222,6 +258,13 @@ export default async function ResultsPage({
     // Recompute each sample's community aggregate, excluding master-excluded
     // cuppers and (inside computeGroupAggregate) incomplete evaluations.
     groupAggBySample = new Map<string, GroupAggregate>();
+    // N for "n de N incluidos": submitted evaluations BEFORE the exclusion filter.
+    for (const ev of evals) {
+      submittedAllBySample.set(
+        ev.sessionSampleId,
+        (submittedAllBySample.get(ev.sessionSampleId) ?? 0) + 1,
+      );
+    }
     {
       const bySample = new Map<string, (typeof evals)[number][]>();
       for (const ev of evals) {
@@ -249,6 +292,43 @@ export default async function ResultsPage({
 
     // ---- Master-only raw participant matrix (Individual view) ----
     if (ownerRead) {
+      // Who excluded whom (S8-12): the author is always the session owner, but
+      // the column holds a plain id, so resolve names with one tiny lookup.
+      const excluderIds = [
+        ...new Set(
+          session.participants
+            .map((p) => p.excludedBy)
+            .filter((x): x is string => typeof x === "string"),
+        ),
+      ];
+      const excluderNames = new Map<string, string>(
+        excluderIds.length
+          ? (
+              await prisma.profile.findMany({
+                where: { id: { in: excluderIds } },
+                select: { id: true, displayName: true },
+              })
+            ).map((p) => [p.id, profileDisplayName(p, localeStr)] as [string, string])
+          : [],
+      );
+      const trailByUser = new Map(
+        session.participants
+          .filter((p) => p.excludedFromResults)
+          .map((p) => [
+            p.userId,
+            {
+              at: p.excludedAt
+                ? p.excludedAt.toLocaleDateString(locale === "es" ? "es-CO" : "en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })
+                : null,
+              by: p.excludedBy ? (excluderNames.get(p.excludedBy) ?? null) : null,
+              reason: p.exclusionReason ?? null,
+            },
+          ]),
+      );
       const byCupper = new Map<
         string,
         { name: string; bySample: Map<string, (typeof evals)[number]> }
@@ -256,7 +336,7 @@ export default async function ResultsPage({
       for (const ev of evals) {
         let entry = byCupper.get(ev.cupperId);
         if (!entry) {
-          entry = { name: ev.cupper.displayName, bySample: new Map() };
+          entry = { name: profileDisplayName(ev.cupper, localeStr), bySample: new Map() };
           byCupper.set(ev.cupperId, entry);
         }
         entry.bySample.set(ev.sessionSampleId, ev);
@@ -267,6 +347,7 @@ export default async function ResultsPage({
           id: cupperId,
           name: entry.name,
           excluded: excludedUserIds.has(cupperId),
+          trail: trailByUser.get(cupperId) ?? null,
           samples: session.samples.map((s) => {
             const ev = entry.bySample.get(s.id);
             return {
@@ -324,7 +405,7 @@ export default async function ResultsPage({
           sessionSampleId: ev.sessionSampleId,
           descriptiveData: ev.descriptiveData,
           combinedData: ev.combinedData,
-          cupper: { displayName: ev.cupper.displayName },
+          cupper: { displayName: profileDisplayName(ev.cupper, localeStr) },
         })),
         excludedUserIds,
       });
@@ -490,8 +571,26 @@ export default async function ResultsPage({
   // a single sample: that is a plain "not evaluated" state, not "in progress".
   const hasAnyOwnRow = [...myEvaluationBySample.values()].some((m) => m.status !== "none");
   const myDraftNotice =
-    !isAdminViewer && session.status !== "closed" && hasAnyOwnRow && !myProgress.allSubmitted
+    !isAdminViewer && !sessionOver && hasAnyOwnRow && !myProgress.allSubmitted
       ? tResults("myDraftNotice", { complete: myProgress.complete, total: myProgress.total })
+      : null;
+
+  // F-grupal-2 / F-grupal-asincrona-1: a cupper who was cupping when the
+  // session closed (or whose deadline passed) learns, in one persistent line,
+  // whether their unsent notes counted. Under the default draft policy
+  // (lib/closeRules.ts DRAFT_AT_CLOSE = "exclude") complete drafts are left
+  // out. `?closed=1` is set by the /cup redirect and adds the plain statement
+  // even when nothing was left unsent.
+  const myUnsentComplete = [...myEvaluationBySample.values()].filter(
+    (m) => m.status === "draft" && m.complete,
+  ).length;
+  const closedNotice =
+    !isAdminViewer && sessionOver
+      ? myUnsentComplete > 0
+        ? tResults("closedUnsentNotice", { count: myUnsentComplete })
+        : closedParam === "1"
+          ? tResults("closedNotice")
+          : null
       : null;
 
   // Shared score-transparency translations ("¿Cómo se calculó?") — fed to both
@@ -542,10 +641,32 @@ export default async function ResultsPage({
   // Freshness: the trigger stamps computedAt on every recompute, so the newest
   // computedAt across samples is "when community data last changed".
   let lastComputedAt: Date | null = null;
-  for (const s of session.samples) {
+  const hideCommunity = communityHidden({ ownerRead, isGroup: session.isGroup, canViewGroup });
+  for (const s of hideCommunity ? [] : session.samples) {
     const at = s.aggregateScore?.computedAt ?? null;
     if (at && (!lastComputedAt || at > lastComputedAt)) lastComputedAt = at;
   }
+  // Group results that changed AFTER the close (an owner exclusion/restore, a
+  // recompute): say so, so an emailed summary or an old tab is not trusted blindly.
+  const updatedAfterClose =
+    session.isGroup && session.status === "closed" && !hideCommunity
+      ? resultsUpdatedAfterClose(
+          session.closedAt,
+          session.participants.map((p) => p.excludedAt),
+          [lastComputedAt],
+        )
+      : null;
+  const updatedAfterCloseLabel = updatedAfterClose
+    ? tResults("updatedAfterClose", {
+        date: updatedAfterClose.toLocaleString(locale === "es" ? "es-CO" : "en-US", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      })
+    : null;
   const participationLabel = session.isGroup
     ? tResults("participation", {
         submitted: submittedCupperCount,
@@ -566,21 +687,44 @@ export default async function ResultsPage({
   // Read-only banner for the super-admin view, interpolated server-side.
   const adminViewNotice = isAdminViewer
     ? tResults("adminViewNotice", {
-        owner: adminTarget?.createdByUser.displayName ?? "—",
+        owner: adminTarget ? profileDisplayName({ id: adminTarget.createdBy, displayName: adminTarget.createdByUser.displayName }, localeStr, "—") : "—",
       })
     : null;
+
+  // "Asignar café": only the owner of a CLOSED session with coffee-less
+  // samples can pick an existing coffee, so only then ship the list.
+  const needsCoffeePicker =
+    isOwner && !isAdminViewer && session.status === "closed" && session.samples.some((s) => s.coffeeId === null);
+  const usableCoffees: UsableCoffee[] = needsCoffeePicker
+    ? (await getUsableCoffees(user.id)).map((c) => ({
+        id: c.id,
+        name: c.name,
+        code: c.code,
+        producer: c.producer,
+        variety: c.variety,
+        altitude: c.altitude,
+        roastLevel: c.roastLevel,
+        country: c.country,
+        region: c.region,
+        processType: c.processType,
+        origin: c.createdBy === user.id ? "mine" : c.visibility === "public" ? "public" : "shared",
+      }))
+    : [];
 
   return (
     <ResultsClient
       locale={locale}
+      usableCoffees={usableCoffees}
       isOwner={isOwner}
       isAdminViewer={isAdminViewer}
       adminViewNotice={adminViewNotice}
-      adminOwnerName={isAdminViewer ? (adminTarget?.createdByUser.displayName ?? null) : null}
+      adminOwnerName={isAdminViewer && adminTarget ? profileDisplayName({ id: adminTarget.createdBy, displayName: adminTarget.createdByUser.displayName }, localeStr) : null}
       isGroup={session.isGroup}
       canViewGroup={canViewGroup}
-      sessionStatus={session.status}
+      cuppingOpen={!sessionOver}
+      sessionClosed={session.status === "closed"}
       closedOnLabel={closedOnLabel}
+      updatedAfterCloseLabel={updatedAfterCloseLabel}
       closeEmails={closeEmails}
       currentUserId={user.id}
       participationLabel={participationLabel}
@@ -628,6 +772,7 @@ export default async function ResultsPage({
                 scoreSd: recomputed.scoreSd,
                 participantCount: recomputed.included,
                 submittedCount: recomputed.submitted,
+                totalSubmitted: submittedAllBySample.get(s.id) ?? recomputed.submitted,
                 totalCups: recomputed.totalCups,
                 totalNonUniform: recomputed.totalNonUniform,
                 totalDefective: recomputed.totalDefective,
@@ -641,13 +786,18 @@ export default async function ResultsPage({
                     : 0,
                 attrAverages: recomputed.attrAverages,
               }
-            : agg
+            : groupAggBySample && (submittedAllBySample.get(s.id) ?? 0) > 0
+              ? // B-07: every submitted evaluation is excluded -> n = 0, no score
+                // (never the trigger row's COALESCE(avg, 0) = 0).
+                noIncludedAggregate(submittedAllBySample.get(s.id) ?? 0)
+              : agg
               ? {
                   communityScore: agg.communityScore,
                   avgRawScore: agg.avgRawScore,
                   scoreSd: null,
                   participantCount: agg.participantCount,
                   submittedCount: agg.participantCount,
+                  totalSubmitted: agg.participantCount,
                   totalCups: agg.totalCups,
                   totalNonUniform: agg.totalNonUniform,
                   totalDefective: agg.totalDefective,
@@ -656,6 +806,15 @@ export default async function ResultsPage({
                   attrAverages: (agg.attrAverages as Record<string, number>) ?? {},
                 }
               : null;
+          // Server-side viewer gate: physical sheet owner-only, community
+          // numbers withheld while a group session's results are hidden.
+          const gated = gateSampleForViewer(
+            {
+              physical: (s.physical?.data as Record<string, unknown>) ?? {},
+              aggregateScore,
+            },
+            { ownerRead, isGroup: session.isGroup, canViewGroup },
+          );
           return {
             id: s.id,
             label: s.label,
@@ -672,7 +831,10 @@ export default async function ResultsPage({
                     roastLevel: s.coffee.roastLevel,
                   }
                 : null,
-            hasCoffee: s.coffeeId !== null,
+            // S8-21: an unrevealed sample's coffee link is blind data; only the
+            // owner/admin (or a revealed sample) learns whether one exists. Every
+            // consumer in ResultsClient is also owner-gated.
+            hasCoffee: ownerRead || s.revealed ? s.coffeeId !== null : false,
             // Never re-identify an anonymized coffee in the owner's edit form.
             masterCoffee: ownerRead && !s.coffee?.deletedAt
               ? {
@@ -690,9 +852,20 @@ export default async function ResultsPage({
             descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
             affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
             combined: (ev?.combinedData as Record<string, unknown>) ?? {},
-            physical: (s.physical?.data as Record<string, unknown>) ?? {},
+            physical: gated.physical,
             extrinsic: s.revealed ? ((s.extrinsic?.data as Record<string, unknown>) ?? {}) : {},
-            aggregateScore,
+            // "Origen editado el <fecha>" — only when the owner corrected origin
+            // data after the session closed (S8-12).
+            extrinsicEditedLabel:
+              s.revealed && s.extrinsic?.editedAt
+                ? tResults("originEditedAt", {
+                    date: s.extrinsic.editedAt.toLocaleDateString(
+                      locale === "es" ? "es-CO" : "en-US",
+                      { day: "numeric", month: "short", year: "numeric" },
+                    ),
+                  })
+                : null,
+            aggregateScore: gated.aggregateScore,
             isReference: s.referenceRank != null,
             referenceRank: s.referenceRank ?? null,
             myEvaluation: myEvaluationBySample.get(s.id) ?? { status: "none", complete: false },
@@ -700,12 +873,30 @@ export default async function ResultsPage({
         }),
       }}
       myDraftNotice={myDraftNotice}
+      closedNotice={closedNotice}
+      finish={
+        !isAdminViewer && !session.isGroup && isOwner && !sessionOver
+          ? {
+              button: tResults("finish.button"),
+              title: tResults("finish.title"),
+              body: tResults("finish.body"),
+              submitLine: tResults.raw("finish.submitLine") as string,
+              removeLine: tResults.raw("finish.removeLine") as string,
+              keepLine: tResults.raw("finish.keepLine") as string,
+              confirm: tResults("finish.confirm"),
+              cancel: tResults("finish.cancel"),
+              close: tResults("finish.cancel"),
+              errors: tErrors.raw("codes") as Record<string, string>,
+            }
+          : null
+      }
       sync={{
         syncing: tResults("sync.syncing", { count: "{count}" }),
         pending: tResults("sync.pending", { count: "{count}" }),
         offline: tResults("sync.offline", { count: "{count}" }),
         retry: tResults("sync.retry"),
         synced: tResults("sync.synced"),
+        closedUnsent: tResults("sync.closedUnsent", { count: "{count}" }),
         conflictTitle: tOffline("conflictTitle"),
         // Raw template — `{sample}` is filled client-side by SyncConflictModal.
         conflictBody: tOffline.raw("conflictBody") as string,
@@ -719,13 +910,25 @@ export default async function ResultsPage({
         downloadPdf: tResults("downloadPdf"),
         downloadSummary: tResults("downloadSummary"),
         downloadFicha: tResults("downloadFicha"),
+        downloadCsv: tResults("downloadCsv"),
+        needsConnection: tResults("needsConnection"),
         refresh: tResults("refresh"),
         refreshing: tResults("refreshing"),
         // Template — the live count is substituted client-side.
         refreshNew: tResults("refreshNew", { count: "{count}" }),
+        refreshNewGeneric: tResults("refreshNewGeneric"),
         radarMine: tResults("mine"),
         radarCommunity: tResults("community"),
         deltaAttribute: tResults("deltaAttribute"),
+        radar: {
+          score: tResults("radar.score"),
+          reveal: tResults("radar.reveal"),
+          communityScore: tResults("radar.communityScore"),
+          // {n}/{total} are substituted client-side.
+          includedLine: tResults.raw("radar.includedLine") as string,
+          noAffective: tResults("radar.noAffective"),
+          requiresAffective: tResults("radar.requiresAffective"),
+        },
         flavorProfiles: tResults("flavorProfiles"),
         referenceBadge: tResults("referenceBadge"),
         // `{n}` is an ICU arg — fetched raw and replaced client-side.
@@ -770,6 +973,17 @@ export default async function ResultsPage({
         alignNoData: tAlign("noData"),
         editSample: t("editSample"),
         editSampleError: t("editSampleError"),
+        assignPick: tResults("detail.assignPick"),
+        assignedToast: tResults("detail.assignedToast"),
+        coffeePicker: {
+          title: tc("picker.title"),
+          searchPlaceholder: tc("picker.searchPlaceholder"),
+          mine: tc("picker.mine"),
+          shared: tc("picker.shared"),
+          public: tc("picker.public"),
+          empty: tc("picker.empty"),
+          close: tCommon("close"),
+        },
         editSampleNotOwner: t("editSampleNotOwner"),
         sampleLabel: t("sampleLabel"),
         coffeeName: t("coffeeName"),
@@ -808,6 +1022,12 @@ export default async function ResultsPage({
           deltaVsReferenceAria: tResults("deltaVsReferenceAria"),
           anchorTitle: tResults("dashboard.anchorTitle"),
           anchorHint: tResults("dashboard.anchorHint"),
+          // Templates / ICU args: fetched raw, filled client-side.
+          includedOf: tResults.raw("dashboard.includedOf") as string,
+          rankIndicative: tResults("dashboard.rankIndicative"),
+          rankNoClearGap: tResults("dashboard.rankNoClearGap"),
+          basisMine: tResults("dashboard.basisMine"),
+          fewNote: tResults("dashboard.fewNote"),
         },
         table: {
           sample: tResults("table.sample"),
@@ -873,6 +1093,23 @@ export default async function ResultsPage({
           legendRed: tResults("matrix.legendRed"),
           noScore: tResults("matrix.noScore"),
           sdHeader: tResults("matrix.sdHeader"),
+          // ICU args: fetched raw and filled client-side.
+          includedCount: tResults.raw("matrix.includedCount") as string,
+          excludeDialogTitle: tResults("matrix.excludeDialogTitle"),
+          excludeDialogBody: tResults("matrix.excludeDialogBody"),
+          excludeReasonLabel: tResults("matrix.excludeReasonLabel"),
+          excludeConfirm: tResults("matrix.excludeConfirm"),
+          dialogCancel: tResults("matrix.dialogCancel"),
+          dialogClose: tResults("matrix.dialogClose"),
+          excludedTrail: tResults.raw("matrix.excludedTrail") as string,
+          excludedToast: tResults("matrix.excludedToast"),
+          restoredToast: tResults("matrix.restoredToast"),
+          reasons: {
+            sample_error: tResults("matrix.exclusionReasons.sample_error"),
+            protocol: tResults("matrix.exclusionReasons.protocol"),
+            calibration: tResults("matrix.exclusionReasons.calibration"),
+            other: tResults("matrix.exclusionReasons.other"),
+          },
         },
         help: {
           // "Cerrar" reads better than "Cancelar" for a read-only info dialog.

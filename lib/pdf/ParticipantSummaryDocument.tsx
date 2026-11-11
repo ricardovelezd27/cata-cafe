@@ -13,6 +13,7 @@ import { PdfRadar, PdfPercentBars, PdfScoreBand, PdfDeltaChip } from "./charts";
 import { sanitizePdfText } from "./text";
 import { CVA_TEXT } from "./cvaFormData";
 import { scoreBand } from "../scoring";
+import { ReportStamp } from "./sections/ReportStamp";
 import type {
   ParticipantSummaryModel,
   ParticipantSummarySample,
@@ -47,6 +48,10 @@ type Copy = {
   descriptors: string;
   you: string;
   notes: string;
+  inclusion: (n: number, total: number) => string;
+  indicative: string;
+  noClearGap: string;
+  radarValues: string;
   formats: Record<string, string>;
   stages: Record<string, string>;
   axes: string[];
@@ -80,6 +85,10 @@ const TEXT: Record<Locale, Copy> = {
     descriptors: "Descriptores más frecuentes",
     you: "tú",
     notes: "Tus notas",
+    inclusion: (n, total) => `${n} de ${total} incluidos`,
+    indicative: "indicativo",
+    noClearGap: "sin diferencia clara con la muestra vecina",
+    radarValues: "Valores del radar (tú / grupo)",
     formats: {
       descriptive: "Descriptivo",
       affective: "Afectivo",
@@ -133,6 +142,10 @@ const TEXT: Record<Locale, Copy> = {
     descriptors: "Most frequent descriptors",
     you: "you",
     notes: "Your notes",
+    inclusion: (n, total) => `${n} of ${total} included`,
+    indicative: "indicative",
+    noClearGap: "no clear difference from the neighbouring sample",
+    radarValues: "Radar values (you / group)",
     formats: {
       descriptive: "Descriptive",
       affective: "Affective",
@@ -443,6 +456,13 @@ function SampleCard({
               <View style={s.scoreCol}>
                 <Text style={s.scoreCap}>{t.community}</Text>
                 <Text style={s.communityNum}>{fmt(sample.communityScore)}</Text>
+                {sample.inclusion ? (
+                  <Text style={s.chipCap}>
+                    {t.inclusion(sample.inclusion.included, sample.inclusion.total)}
+                    {sample.indicative ? ` · ${t.indicative}` : ""}
+                  </Text>
+                ) : null}
+                {sample.noClearGap ? <Text style={s.chipCap}>{t.noClearGap}</Text> : null}
                 {sample.sd !== null ? (
                   <View style={s.chipRow}>
                     <View style={s.sdChip}>
@@ -507,6 +527,24 @@ function SampleCard({
                 ))}
               </View>
             ) : null}
+            {radar && (radar.mine || radar.community) ? (
+              // Text twin of the radar: the eight values are readable without
+              // the chart (screen readers, B/W prints, copy-paste).
+              <View style={{ marginTop: 4 }}>
+                <Text style={s.chipCap}>
+                  {t.radarValues}:{" "}
+                  {t.axes
+                    .map((axis, i) => {
+                      const m = radar.mine ? radar.mine[i].toFixed(1) : "—";
+                      const c = radar.community ? radar.community[i].toFixed(1) : "—";
+                      return radar.community && radar.mine
+                        ? `${axis} ${m} / ${c}`
+                        : `${axis} ${radar.mine ? m : c}`;
+                    })
+                    .join(" · ")}
+                </Text>
+              </View>
+            ) : null}
             {sample.consensus ? (
               <Text style={s.consensus}>
                 {sanitizePdfText(sample.consensus)}
@@ -547,7 +585,11 @@ export function ParticipantSummaryDocument({
   const sessionName = sanitizePdfText(header.sessionName);
 
   return (
-    <Document title={`${t.spec} · ${sessionName}`} author="Café Sensible">
+    <Document
+      title={`${t.spec} · ${sessionName}`}
+      author="Café Sensible"
+      language={locale}
+    >
       <Page size="A4" style={s.page}>
         <Text style={s.spec}>{t.spec}</Text>
         <Text style={s.title}>{sessionName}</Text>
@@ -571,6 +613,13 @@ export function ParticipantSummaryDocument({
             />
           ) : null}
         </View>
+        <ReportStamp
+          locale={locale}
+          inclusion={header.inclusion}
+          viewerExcluded={header.viewerExcluded}
+          resultsUpdatedAt={header.resultsUpdatedAt}
+          originEditedAt={header.originEditedAt}
+        />
         <View style={s.rule} />
 
         <Text style={s.sectionLabel}>{t.yourNumbers}</Text>

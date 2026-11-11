@@ -1,16 +1,12 @@
 // Pure CSV builder for the registered-users export (no server imports so the
 // vitest suite can cover it). Same output as scripts/export-emails.ts.
 
+import { csvCell } from "@/lib/csv";
+
 export interface ExportUser {
   email: string | null;
   isAnonymous: boolean;
   createdAt: string | null;
-}
-
-function csvCell(s: string): string {
-  // Neutralise spreadsheet formula injection, then quote when needed.
-  const safe = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
-  return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
 /** Registered (non-anonymous, with an email) accounts as `email,created_at`, oldest first. */

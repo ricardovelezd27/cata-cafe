@@ -79,12 +79,41 @@ export function decideThrottle(
   request: { recipients: number },
   now: number,
 ): ThrottleDecision {
-  // TODO(human): implement the window decision described in the contract above.
-  void events;
-  void rule;
-  void request;
-  void now;
-  throw new Error("decideThrottle_not_implemented");
+  const windowStart = now - rule.windowMs;
+  const inWindow = events.filter((e) => e.at > windowStart).sort((a, b) => a.at - b.at);
+  let retryAfterMs = 0;
+
+  if (rule.maxEvents !== undefined && inWindow.length >= rule.maxEvents) {
+    // Fits once enough of the oldest reservations age out to leave room for one more.
+    const mustExpire = rule.maxEvents > 0 ? inWindow[inWindow.length - rule.maxEvents] : undefined;
+    retryAfterMs = Math.max(
+      retryAfterMs,
+      mustExpire ? mustExpire.at + rule.windowMs - now : rule.windowMs,
+    );
+  }
+
+  if (rule.maxRecipients !== undefined) {
+    const used = inWindow.reduce((sum, e) => sum + e.recipients, 0);
+    if (used + request.recipients > rule.maxRecipients) {
+      // A request larger than the cap never fits: answer with the full window.
+      let wait = rule.windowMs;
+      if (request.recipients <= rule.maxRecipients) {
+        let remaining = used;
+        for (const e of inWindow) {
+          remaining -= e.recipients;
+          if (remaining + request.recipients <= rule.maxRecipients) {
+            wait = e.at + rule.windowMs - now;
+            break;
+          }
+        }
+      }
+      retryAfterMs = Math.max(retryAfterMs, wait);
+    }
+  }
+
+  return retryAfterMs > 0
+    ? { allowed: false, retryAfterMs: Math.max(1, Math.ceil(retryAfterMs)) }
+    : { allowed: true };
 }
 
 /** All rules must allow; the longest wait wins so the caller can show one. */

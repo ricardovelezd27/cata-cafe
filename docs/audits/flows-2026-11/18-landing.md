@@ -19,6 +19,8 @@ A visitor reads the dark marketing page (`app/[locale]/page.tsx`) and types an e
 
 ### F-landing-1 · No privacy notice, no policy pages, no consent record on an email-collecting form · severity: P1 · status: confirms-board(Se recogen correos sin aviso de privacidad ni página de política)
 
+**Fixed in S8-08: PARTIAL: draft /privacidad and /terminos with a Borrador banner and noindex behind LEGAL_PAGES_PUBLISHED=false (nothing links to them yet); consentAt + consentNoticeVersion stamped on every new waitlist row (migration 20261111100000, unapplied); retention proposal in runbook section 17. Open: final legal text, publishing the links and notice line (TODO(owner)), deleteAccount removing the row (TODO(S8-07)). Done in S8-19: deleteAccount deletes the row by the lowercased email.**
+
 - **Problem** — The form stores the email in a table (`app/actions/waitlist.ts:34`, model at `prisma/schema.prisma:449-458` (line corrected in verification): `email`, `plan`, `locale`, `source`, `createdAt`) and the page copy then promises future contact: "Simplemente te avisaremos cuando se agoten las plazas fundadoras" (`messages/es.json:1126`, rendered under both forms). Neither form links to any policy. The footer's "Privacidad" and "Términos" are `mailto:` links (`components/landing/LandingFooter.tsx:38,41`); no privacy or terms route exists under `app/`. The row has no consent timestamp and nothing deletes it (no retention job; no account-deletion path was found in `app/` or `lib/`, and `mergeGuestData` does not touch the table).
 - **Implication** — Trust and legal exposure: a stored email plus a stated promise to email later is a commercial relationship with no visible basis or opt-out (growth-admin P3/P4). It also blocks store submission, which needs a live privacy URL and a deletion path (P15). Every day the form is live adds rows with no retention rule.
 - **Fix** — Publish privacy and terms pages (es/en) and link them from the footer, both forms and the login page. Show one line under each form: who stores the email, why (account link plus founding-cohort news), link to the policy. Store a consent timestamp. Decide whether the "te avisaremos" mail is consent-based; if yes, add a tick or reword it as a one-off notice with a baja link. Define retention (for example 12 months for entries with no account) and delete a person's entry when their account is deleted. **Acceptance:** footer links resolve to pages in both locales; the notice is visible without scrolling on a 375 px phone under both forms; a row records when the notice was shown/accepted; deleting an account removes its row; a stale-entry job exists or the retention decision is written down. **Size:** M (legal wording is Ricardo's; the row change is S).
@@ -28,6 +30,8 @@ A visitor reads the dark marketing page (`app/[locale]/page.tsx`) and types an e
 - **Invariant check** — none touched.
 
 ### F-landing-2 · Public endpoint can burn the project's email quota and fill the waitlist with other people's addresses · severity: P2 · status: confirms-board(Un bot puede agotar el cupo de correos de acceso de todo el proyecto)
+
+**Fixed in S8-03** (draft PR from branch `claude/s8-03-guest-guard-email-impl`; not yet merged).
 
 - **Problem** — The only guard is the honeypot (`waitlist.ts:23`, "field not empty"), which a script that posts only `email` passes. There is no per-IP or per-email throttle and no challenge. Order matters: the row is inserted first (`:34`), then the magic link is sent (`:45`), so every typed address is stored and mailed. `signInWithMagicLink` (`app/actions/auth.ts:31`) is itself an exported server action, so the login path is open the same way.
 - **Implication** — Robustness and trust: a loop exhausts Supabase's shared email-send limit and blocks real sign-ins (cuppers, guests claiming results, an event with ~50 people). It also lets anyone put a third party's address on a "founding" list and send them a login email, creating an account for them with no verification (`signInWithOtp` creates users by default).
@@ -39,6 +43,8 @@ A visitor reads the dark marketing page (`app/[locale]/page.tsx`) and types an e
 
 ### F-landing-3 · Magic link is consumed by the first GET, so a mail scanner can burn it · severity: P2 · status: new
 
+**Fixed in S8-06: same /auth/confirm change as F-entrar-1.**
+
 - **Problem** — The email link goes straight to `/auth/callback?token_hash=…`, and the route verifies the token on the GET itself (`app/auth/callback/route.ts:42-44`, `supabase.auth.verifyOtp`). There is no intermediate page that needs a human click. The stateless token-hash flow is deliberate (comment at `app/actions/auth.ts:37-41`: works across browsers and in-app webviews), but any prefetch (corporate or university scanner, link preview) uses the single-use token.
 - **Implication** — Blocked flow for exactly the target users: labs, schools and companies with mail scanners. The visitor lands on the login page with "El enlace no funcionó" (`app/[locale]/auth/login/page.tsx:45`) right after being told "Plaza reservada", and must start again.
 - **Fix** — Make the email link open a page on our domain with an "Entrar" button; the button performs `verifyOtp`. Keep the stateless token-hash approach. On failure, offer "pedir otro enlace" with the email prefilled. **Acceptance:** a plain GET of the link (curl) does not consume the token; clicking the button signs in and lands on `next`; opening the link in a second browser still works; the failure screen offers a one-tap resend. **Size:** M.
@@ -48,6 +54,8 @@ A visitor reads the dark marketing page (`app/[locale]/page.tsx`) and types an e
 - **Invariant check** — none touched (the guest-claim `next=/auth/claim?token=` must keep working through the same page).
 
 ### F-landing-4 · After "Plaza reservada" the visitor is stuck: no address shown, no resend, no change-email · severity: P2 · status: new
+
+**Fixed in S8-06: the founding-seat form shows the address, the code field and a resend (EmailSentState).**
 
 - **Problem** — On success the form is replaced by a static panel (`components/landing/WaitlistForm.tsx:53-60`). It does not show the address the link went to and offers no resend or typo fix; the only way back is a page reload. The hint says "pide otro enlace en unos minutos" (`messages/es.json:1134`) but gives no control to do so. The login form, by contrast, has a "cambiar correo" button and hint (`app/[locale]/auth/login/LoginForm.tsx:75-89`). The headline "Plaza reservada" also shows even when the waitlist insert failed silently (`waitlist.ts:39`).
 - **Implication** — Typos (common on phones) look like success: the person waits for a mail that never comes, believing a seat is held. Repeated reloads then hit the rate limit.
@@ -59,6 +67,8 @@ A visitor reads the dark marketing page (`app/[locale]/page.tsx`) and types an e
 
 ### F-landing-5 · "100 plazas" is fixed text; the 101st person gets the same "Plaza reservada" · severity: P3 · status: confirms-board(«Plaza reservada» sin control del cupo de 100)
 
+**Fixed in S8-14 (copy half): `FOUNDING_SEATS` in `lib/landing/founding.ts` feeds the hero counter and the offer line; the success text no longer promises a reserved seat. STILL OPEN by design: enforcing the cap is the owner's call (`TODO(S8-14)` in `app/actions/waitlist.ts`)**
+
 - **Problem** — `heroCount` is the literal "100" (`messages/es.json:1118`, shown at `components/landing/HeroFoundingCard.tsx:38`) and `offer` repeats "primeros 100" (`components/landing/FoundingSection.tsx:54`). `reserveFoundingSeat` never counts rows (`waitlist.ts:34` is a bare `create`), and nothing implements the promise to warn "cuando se agoten" (`es.json:1126`).
 - **Implication** — Trust: the scarcity claim cannot be honoured or corrected, and "Plaza reservada" is a promise to someone who may be 300th. Low frequency now; matters once the page is shared at an event.
 - **Fix** — Take the board's default: reword success to "Te enviamos el enlace; quedas en la lista fundadora" and derive the number from one shared constant. Enforcing the cap is Ricardo's product decision. **Acceptance:** one named constant feeds both copy and action; a duplicate email never takes a second place; the link is sent in every case. **Size:** S.
@@ -69,6 +79,8 @@ A visitor reads the dark marketing page (`app/[locale]/page.tsx`) and types an e
 
 ### F-landing-6 · Waitlist row carries no cohort, source or consent data, and the founding-section form hides its promise · severity: P3 · status: new
 
+**Fixed in S8-08: hidden source input (hero | founding, plus a sanitized ?src= tag read in an effect) validated by lib/waitlistSource.ts and stored in WaitlistEntry.source; both forms already show the promise line (landing.founding.note).**
+
 - **Problem** — `source` defaults to "landing" and `reserveFoundingSeat` never sets it (`waitlist.ts:34`), so the hero card and the founding section are indistinguishable and an event cohort (for example the Chile tasting) cannot be recorded; `plan` defaults to "pro" for everyone (`prisma/schema.prisma:447`). Separately, "Sin tarjeta. Sin contraseña. Solo tu correo." sits only under the hero card (`HeroFoundingCard.tsx:55`); the founding-section form has no such line near its button (`FoundingSection.tsx:59-64`).
 - **Implication** — Growth: cohort questions cannot be answered later, and the second form asks for an email without saying what happens next.
 - **Fix** — Pass `source` (hero | founding | a campaign tag from the URL) into the row and repeat the one-line promise under both forms. Cookieless: store the tag on the row, no tracker. **Acceptance:** rows from each form differ in `source`; a `?src=chile` visit is stored; both forms show the promise line. **Size:** S.
@@ -78,6 +90,8 @@ A visitor reads the dark marketing page (`app/[locale]/page.tsx`) and types an e
 - **Invariant check** — none touched.
 
 ### F-landing-7 · Rate-limit mapping on the landing is narrower than on the login · severity: P3 · status: new
+
+**Fixed in S8-06: landing and login share lib/authErrors.ts and the sendMagicLink result.**
 
 - **Problem** — The landing maps only `over_email_send_rate_limit` to the friendly message (`waitlist.ts:49`); every other failure shows "No pudimos enviar el enlace. Verifica el correo…" (`messages/es.json:1136`). The login form also accepts any message containing "rate limit" (`LoginForm.tsx:54-56`).
 - **Implication** — A visitor throttled by a different limit is told their email is wrong and retries, making it worse.

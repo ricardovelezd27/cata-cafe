@@ -3,12 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/auth";
+import { requireRegisteredUser } from "@/lib/auth";
 import { withCodeRetry } from "@/lib/coffeeCode";
 import { run } from "@/lib/safeAction";
 import type { ActionResult } from "@/lib/actionResult";
 import { idList } from "@/lib/validate";
-import { ANONYMIZED_COFFEE_DATA } from "@/lib/coffeeAnonymize";
+import { normalizeCoffeeFields, isStaleCoffeeEdit } from "@/lib/coffeeInputBounds";
+import { CERTIFICATIONS } from "@/lib/constants";
+import { anonymizeOwnedCoffees } from "@/lib/coffees/anonymize";
+import { duplicableFields } from "@/lib/coffeeDuplicate";
+import { coffeeInviteExpiry, isCoffeeInviteUsable } from "@/lib/coffeeInvite";
 import {
   isCoffeeVisibility,
   usableCoffeeWhere,
@@ -38,25 +42,11 @@ export async function deleteCoffees(
   return run(
     "deleteCoffees",
     async () => {
-      const user = await requireUser();
+      const user = await requireRegisteredUser();
       const ids = idList(coffeeIds, "coffeeIds", MAX_BULK_COFFEE_DELETE);
 
-      const deleted = await prisma.$transaction(async (tx) => {
-        const owned = await tx.coffee.findMany({
-          where: { id: { in: ids }, createdBy: user.id, deletedAt: null },
-          select: { id: true },
-        });
-        const ownedIds = owned.map((c) => c.id);
-        if (ownedIds.length === 0) return 0;
-
-        const { count } = await tx.coffee.updateMany({
-          where: { id: { in: ownedIds }, createdBy: user.id, deletedAt: null },
-          data: { ...ANONYMIZED_COFFEE_DATA, deletedAt: new Date() },
-        });
-        await tx.coffeeShare.deleteMany({ where: { coffeeId: { in: ownedIds } } });
-        await tx.coffeeInvite.deleteMany({ where: { coffeeId: { in: ownedIds } } });
-        return count;
-      });
+      // Same routine deleteAccount uses for every coffee the person owns.
+      const deleted = await prisma.$transaction((tx) => anonymizeOwnedCoffees(tx, user.id, ids));
 
       // A tampered / stale request must never read as a silent success.
       if (deleted === 0) throw new Error("not_found_or_forbidden");
@@ -102,7 +92,7 @@ export async function getCoffeeDeleteImpact(
   return run(
     "getCoffeeDeleteImpact",
     async () => {
-      const user = await requireUser();
+      const user = await requireRegisteredUser();
       const ids = idList(coffeeIds, "coffeeIds", MAX_BULK_COFFEE_DELETE);
 
       // Scoped to OWNED ids so this endpoint can never be used to probe how
@@ -156,10 +146,32 @@ export async function createCoffee(input: {
   notes?: string;
   visibility: CoffeeVisibility;
 }): Promise<{ ok: true; coffeeId: string } | { ok: false; error: string }> {
-  const user = await requireUser();
+  // S8-10 T12 (design b): validation codes keep their shape; a THROW (expired
+  // auth, DB) becomes `{ ok:false, error }` so CoffeeForm keeps its values.
+  const result = await run("createCoffee", () => createCoffeeBody(input));
+  return result.ok ? result.data : { ok: false, error: result.error };
+}
 
-  const name = input.name?.trim();
-  if (!name) return { ok: false, error: "name_required" };
+async function createCoffeeBody(input: {
+  name: string;
+  country?: string;
+  region?: string;
+  farm?: string;
+  producer?: string;
+  species?: string;
+  variety?: string;
+  harvestYear?: string;
+  processType?: string;
+  altitude?: string;
+  roastLevel?: string;
+  certifications?: string[];
+  notes?: string;
+  visibility: CoffeeVisibility;
+}): Promise<{ ok: true; coffeeId: string } | { ok: false; error: string }> {
+  const user = await requireRegisteredUser();
+
+  const fields = normalizeCoffeeFields(input, "create", CERTIFICATIONS);
+  if (!fields.ok) return { ok: false, error: fields.error };
   if (!isCoffeeVisibility(input.visibility)) {
     return { ok: false, error: "invalid_visibility" };
   }
@@ -168,19 +180,7 @@ export async function createCoffee(input: {
     prisma.coffee.create({
       data: {
         code,
-        name,
-        country: input.country?.trim() || null,
-        region: input.region?.trim() || null,
-        farm: input.farm?.trim() || null,
-        producer: input.producer?.trim() || null,
-        species: input.species?.trim() || null,
-        variety: input.variety?.trim() || null,
-        harvestYear: input.harvestYear?.trim() || null,
-        processType: input.processType?.trim() || null,
-        altitude: input.altitude?.trim() || null,
-        roastLevel: input.roastLevel?.trim() || null,
-        certifications: input.certifications ?? [],
-        notes: input.notes?.trim() || null,
+        ...fields.value,
         createdBy: user.id,
         visibility: input.visibility,
       },
@@ -213,39 +213,41 @@ export async function updateCoffee(
     roastLevel?: string;
     certifications?: string[];
     notes?: string;
+    /** ISO `updatedAt` the form loaded with. When it no longer matches, the
+     *  coffee changed elsewhere (another tab, a session rename): refuse with
+     *  `conflict` instead of silently overwriting it (F-cafes-9). */
+    expectedUpdatedAt?: string;
   },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const user = await requireUser();
+  const result = await run("updateCoffee", () => updateCoffeeBody(coffeeId, input), { coffeeId });
+  return result.ok ? result.data : { ok: false, error: result.error };
+}
+
+async function updateCoffeeBody(
+  coffeeId: string,
+  input: Parameters<typeof updateCoffee>[1],
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await requireRegisteredUser();
 
   // deletedAt filter: an anonymized coffee must never be re-identified.
   const coffee = await prisma.coffee.findFirst({
     where: { id: coffeeId, deletedAt: null },
-    select: { createdBy: true },
+    select: { createdBy: true, updatedAt: true },
   });
   if (!coffee || coffee.createdBy !== user.id) {
     throw new Error("not_found_or_forbidden");
   }
+  if (isStaleCoffeeEdit(coffee.updatedAt, input.expectedUpdatedAt)) {
+    return { ok: false, error: "conflict" };
+  }
 
-  const name = input.name?.trim();
-  if (!name) return { ok: false, error: "name_required" };
+  // Unknown certifications are dropped (not rejected) so a legacy coffee stays editable.
+  const fields = normalizeCoffeeFields(input, "update", CERTIFICATIONS);
+  if (!fields.ok) return { ok: false, error: fields.error };
 
   await prisma.coffee.update({
     where: { id: coffeeId },
-    data: {
-      name,
-      country: input.country?.trim() || null,
-      region: input.region?.trim() || null,
-      farm: input.farm?.trim() || null,
-      producer: input.producer?.trim() || null,
-      species: input.species?.trim() || null,
-      variety: input.variety?.trim() || null,
-      harvestYear: input.harvestYear?.trim() || null,
-      processType: input.processType?.trim() || null,
-      altitude: input.altitude?.trim() || null,
-      roastLevel: input.roastLevel?.trim() || null,
-      certifications: input.certifications ?? [],
-      notes: input.notes?.trim() || null,
-    },
+    data: fields.value,
   });
 
   revalidatePath("/es/app/coffees");
@@ -262,60 +264,64 @@ export async function updateCoffee(
 export async function duplicateCoffee(
   coffeeId: string,
   locale: string = "es",
-): Promise<{ ok: true; coffeeId: string }> {
-  const user = await requireUser();
+): Promise<ActionResult<{ coffeeId: string }>> {
+  return run("duplicateCoffee", async () => {
+    const user = await requireRegisteredUser();
 
-  const source = await prisma.coffee.findFirst({
-    where: { id: coffeeId, AND: [usableCoffeeWhere(user.id)] },
-    select: {
-      name: true,
-      country: true,
-      region: true,
-      farm: true,
-      producer: true,
-      species: true,
-      variety: true,
-      harvestYear: true,
-      processType: true,
-      altitude: true,
-      roastLevel: true,
-      certifications: true,
-      notes: true,
-    },
-  });
-  if (!source) throw new Error("not_found_or_forbidden");
-
-  const prefix = locale === "en" ? "Copy of" : "Copia de";
-  // The copy gets its OWN short code (source.code is deliberately not in the
-  // select above — codes are per-row identifiers, never inherited).
-  const copy = await withCodeRetry((code) =>
-    prisma.coffee.create({
-      data: {
-        ...source,
-        code,
-        name: `${prefix} ${source.name}`.slice(0, 120),
-        createdBy: user.id,
-        visibility: "private",
-        resultsPublished: false,
+    const source = await prisma.coffee.findFirst({
+      where: { id: coffeeId, AND: [usableCoffeeWhere(user.id)] },
+      select: {
+        name: true,
+        country: true,
+        region: true,
+        farm: true,
+        producer: true,
+        species: true,
+        variety: true,
+        harvestYear: true,
+        processType: true,
+        altitude: true,
+        roastLevel: true,
+        certifications: true,
+        // notes are deliberately NOT selected or copied: they are the owner's
+        // private text (S8-02 F-cafes-3, see duplicableFields).
       },
-      select: { id: true },
-    }),
-  );
+    });
+    if (!source) throw new Error("not_found_or_forbidden");
 
-  revalidatePath(`/${locale}/app/coffees`);
-  return { ok: true, coffeeId: copy.id };
+    const prefix = locale === "en" ? "Copy of" : "Copia de";
+    // The copy gets its OWN short code (source.code is deliberately not in the
+    // select above — codes are per-row identifiers, never inherited).
+    const copy = await withCodeRetry((code) =>
+      prisma.coffee.create({
+        data: {
+          ...duplicableFields(source),
+          code,
+          name: `${prefix} ${source.name}`.slice(0, 120),
+          createdBy: user.id,
+          visibility: "private",
+          resultsPublished: false,
+        },
+        select: { id: true },
+      }),
+    );
+
+    revalidatePath(`/${locale}/app/coffees`);
+    return { coffeeId: copy.id };
+  });
 }
 
 // ─── Share a coffee via invite link (owner only) ──────────────────────────────
 // Generating a link on a private coffee flips it to "shared" in the same call
 // — creating a link IS the intent to share. Reuses the newest still-valid
 // invite so repeated clicks don't mint token litter (mirrors createInviteToken
-// in app/actions/community.ts otherwise).
+// in app/actions/community.ts otherwise). New invites expire after
+// COFFEE_INVITE_TTL_DAYS (S8-12, F-cafes-4); the owner sees the date.
 export async function createCoffeeInvite(
   coffeeId: string,
-): Promise<ActionResult<{ token: string }>> {
+): Promise<ActionResult<{ token: string; expiresAt: string | null }>> {
   return run("createCoffeeInvite", async () => {
-    const user = await requireUser();
+    const user = await requireRegisteredUser();
 
     const coffee = await prisma.coffee.findFirst({
       where: { id: coffeeId, deletedAt: null },
@@ -341,18 +347,53 @@ export async function createCoffeeInvite(
       },
       orderBy: { createdAt: "desc" },
     });
-    if (
-      existing &&
-      (existing.maxUses === null || existing.useCount < existing.maxUses)
-    ) {
-      return { token: existing.token };
+    if (existing && isCoffeeInviteUsable(existing)) {
+      return { token: existing.token, expiresAt: existing.expiresAt?.toISOString() ?? null };
     }
 
     const token = crypto.randomUUID();
+    const expiresAt = coffeeInviteExpiry();
     await prisma.coffeeInvite.create({
-      data: { coffeeId, token, createdBy: user.id },
+      data: { coffeeId, token, createdBy: user.id, expiresAt },
     });
-    return { token };
+    return { token, expiresAt: expiresAt.toISOString() };
+  }, { coffeeId });
+}
+
+// ─── Rotate the invite link (owner only) ──────────────────────────────────────
+// Deletes EVERY previous invite of the coffee (the old URL then reads "invalid")
+// and mints a fresh one with a 30-day expiry (S8-12, F-cafes-4). Offered next
+// to the link and inside the revoke confirmation. People who already joined keep
+// their share row; revoking them is a separate action.
+async function rotateInvite(
+  coffeeId: string,
+  userId: string,
+): Promise<{ token: string; expiresAt: string }> {
+  const token = crypto.randomUUID();
+  const expiresAt = coffeeInviteExpiry();
+  await prisma.$transaction([
+    prisma.coffeeInvite.deleteMany({ where: { coffeeId } }),
+    prisma.coffeeInvite.create({ data: { coffeeId, token, createdBy: userId, expiresAt } }),
+  ]);
+  return { token, expiresAt: expiresAt.toISOString() };
+}
+
+export async function rotateCoffeeInvite(
+  coffeeId: string,
+): Promise<ActionResult<{ token: string; expiresAt: string }>> {
+  return run("rotateCoffeeInvite", async () => {
+    const user = await requireRegisteredUser();
+    const coffee = await prisma.coffee.findFirst({
+      where: { id: coffeeId, deletedAt: null },
+      select: { createdBy: true },
+    });
+    if (!coffee || coffee.createdBy !== user.id) {
+      throw new Error("not_found_or_forbidden");
+    }
+    const fresh = await rotateInvite(coffeeId, user.id);
+    revalidatePath(`/es/app/coffees/${coffeeId}`);
+    revalidatePath(`/en/app/coffees/${coffeeId}`);
+    return fresh;
   }, { coffeeId });
 }
 
@@ -362,7 +403,7 @@ export async function createCoffeeInvite(
 // rls_and_triggers.sql PHASE 16). A private coffee rejects its outstanding
 // tokens: flipping to private instantly kills every link.
 export async function joinCoffeeViaToken(token: string, locale: string = "es") {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
 
   const invite = await prisma.coffeeInvite.findUnique({
     where: { token },
@@ -394,10 +435,17 @@ export async function joinCoffeeViaToken(token: string, locale: string = "es") {
       });
       if (already) return; // re-opening the link is a no-op, not a "use"
       await tx.coffeeShare.create({ data: { coffeeId, userId: user.id } });
-      await tx.coffeeInvite.update({
+      // maxUses is enforced INSIDE the transaction (increment on the locked
+      // row, then check, throw to roll back the share) so simultaneous opens
+      // cannot overshoot the seat count — same pattern as session invites.
+      const bumped = await tx.coffeeInvite.update({
         where: { id: invite.id },
         data: { useCount: { increment: 1 } },
+        select: { useCount: true, maxUses: true },
       });
+      if (bumped.maxUses !== null && bumped.useCount > bumped.maxUses) {
+        throw new Error("token_exhausted");
+      }
     });
     revalidatePath(`/es/app/coffees/${coffeeId}`);
     revalidatePath(`/en/app/coffees/${coffeeId}`);
@@ -409,12 +457,17 @@ export async function joinCoffeeViaToken(token: string, locale: string = "es") {
 }
 
 // ─── Revoke a person's access to a shared coffee (owner only) ─────────────────
+// Removing the share row alone leaves the invite alive: the person could reopen
+// the old URL and regain access. `rotate: true` (the default in the confirmation
+// dialog) also replaces the link so the old URL reads "invalid" (S8-12,
+// F-cafes-4). Returns the fresh token when it rotated.
 export async function revokeCoffeeShare(
   coffeeId: string,
   userId: string,
-): Promise<ActionResult<void>> {
+  rotate: boolean = false,
+): Promise<ActionResult<{ token: string; expiresAt: string } | null>> {
   return run("revokeCoffeeShare", async () => {
-    const user = await requireUser();
+    const user = await requireRegisteredUser();
 
     const coffee = await prisma.coffee.findFirst({
       where: { id: coffeeId, deletedAt: null },
@@ -425,9 +478,11 @@ export async function revokeCoffeeShare(
     }
 
     await prisma.coffeeShare.deleteMany({ where: { coffeeId, userId } });
+    const fresh = rotate === true ? await rotateInvite(coffeeId, user.id) : null;
 
     revalidatePath(`/es/app/coffees/${coffeeId}`);
     revalidatePath(`/en/app/coffees/${coffeeId}`);
+    return fresh;
   }, { coffeeId });
 }
 
@@ -440,7 +495,7 @@ export async function setCoffeeResultsPublished(
   published: boolean,
 ): Promise<ActionResult<{ resultsPublished: boolean }>> {
   return run("setCoffeeResultsPublished", async () => {
-    const user = await requireUser();
+    const user = await requireRegisteredUser();
 
     const coffee = await prisma.coffee.findFirst({
       where: { id: coffeeId, deletedAt: null },
@@ -472,12 +527,19 @@ export async function setCoffeeResultsPublished(
 // the record itself (profile page + list entry); see the access gate in
 // app/[locale]/app/coffees/[id]/page.tsx (usableCoffeeWhere) and the list
 // query in getCoffeesWithStats (lib/coffees/queries.ts).
+//
+// S8-12 (F-cafes-5): going PRIVATE deletes the coffee's invites, so links never
+// come back to life on a later round trip (shares stay as inert rows — no RLS
+// change). Returning to shared/public can pass `clearShares: true` to drop the
+// people who held access before; the UI lists them first and lets the owner
+// choose to keep or clear.
 export async function setCoffeeVisibility(
   coffeeId: string,
   visibility: CoffeeVisibility,
+  clearShares: boolean = false,
 ): Promise<ActionResult<{ visibility: CoffeeVisibility }>> {
   return run("setCoffeeVisibility", async () => {
-    const user = await requireUser();
+    const user = await requireRegisteredUser();
     // Public POST endpoint — never trust the caller's string.
     if (!isCoffeeVisibility(visibility)) throw new Error("invalid_input");
 
@@ -490,10 +552,15 @@ export async function setCoffeeVisibility(
       throw new Error("not_found_or_forbidden");
     }
 
-    await prisma.coffee.update({
-      where: { id: coffeeId },
-      data: { visibility },
-    });
+    await prisma.$transaction([
+      prisma.coffee.update({ where: { id: coffeeId }, data: { visibility } }),
+      ...(visibility === "private"
+        ? [prisma.coffeeInvite.deleteMany({ where: { coffeeId } })]
+        : []),
+      ...(visibility !== "private" && clearShares === true
+        ? [prisma.coffeeShare.deleteMany({ where: { coffeeId } })]
+        : []),
+    ]);
 
     revalidatePath(`/es/app/coffees/${coffeeId}`);
     revalidatePath(`/en/app/coffees/${coffeeId}`);

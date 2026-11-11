@@ -19,6 +19,8 @@ The owner creates a group session (`createGroupSession`), shares `/join/[token]`
 
 ### F-grupal-1 · El disparador de la base penaliza uniformidad/defectos con menos de 5 tazas; la app no · severity: P1 · status: confirms-board(Con 2–4 tazas el trigger penaliza y la vista no)
 
+**Fixed in S8-04** (draft PR, branch `claude/s8-04-scoring-impl`): option 1a: `penaltiesApply` gates deductions at 5 cups in TS and in the trigger (PHASE 23, owner applies, runbook §12); `tests/scoringConsistency.test.ts` ties the two. TODO(A1): Kim has not answered.
+
 - **Problem** — The authoritative SQL aggregate subtracts penalties for any number of cups: `v_uniformity_penalty := v_total_non_uniform::float * (10.0 / v_total_cups)` with no cup-count guard (`prisma/sql/rls_and_triggers.sql:765-772`). The TypeScript side applies them only `if (cupsPerSample >= 5)` (`lib/scoring.ts:209`), and the results page prefers that recompute (`results/page.tsx:619-624`). Coffee history stores the trigger value: `communityScore = sample.aggregateScore?.communityScore` (`lib/coffeeHistory.ts:54`).
 - **Implication** — Scoring correctness. With the wizard default of 2 cups and any cup marked, the session results and the coffee profile / history show different community scores for the same coffee. A teacher cannot reconcile them and the cupper's history is wrong without any signal. The board rates this P2; by the severity rule (scoring correctness) it is P1.
 - **Fix** — One penalty rule everywhere: penalties apply only from 5 cups, in SQL and TS. Ship it as a new PHASE block plus a runbook step, then recompute existing aggregates and re-sync history rows for sessions with fewer than 5 cups. **Acceptance:** a 2-cup session with a non-uniform cup shows the same score on results, coffee profile and history; a 5-cup session is unchanged; a repeated recompute is idempotent. **Size:** M.
@@ -28,6 +30,8 @@ The owner creates a group session (`createGroupSession`), shares `/join/[token]`
 - **Invariant check** — Touches the trigger-authoritative community score. Allowed: the change aligns SQL to the documented formula, and TS stays display-only.
 
 ### F-grupal-2 · Cerrar deja fuera los borradores sin enviar y nadie lo sabe · severity: P2 · status: confirms-board(Cerrar con borradores sin enviar: no cuentan y nadie avisa)
+
+**Fixed in S8-05** (draft PR, branch `claude/s8-05-close-lifecycle-impl`): the close dialog counts cuppers with complete unsent notes and states the rule (`getCloseImpact`); the close email repeats it and tells each affected cupper. Default policy `DRAFT_AT_CLOSE = "exclude"` (Kim C1 b); TODO(S8-05/C1-d) accept-late action not built.
 
 - **Problem** — The close dialog says only «¿Cerrar la sesión? Los resultados quedarán finales.» (`messages/es.json:501`). `closeSessionInternal` never looks at drafts, and history sync reads only `isDraft: false` (`lib/coffeeHistory.ts:28`). After close every write throws `session_closed`, so a participant still typing is moved to results by the page redirect (`cup/page.tsx:80-81`; line corrected in verification) and the offline replay discards their pending draft silently (CLAUDE.md, closed = read-only). The cron has the same blind spot for async sessions.
 - **Implication** — Data loss in the most common live moment: the owner closes while two people are on the last sample. Their notes vanish from results, history and the email, and they get no explanation.
@@ -39,6 +43,8 @@ The owner creates a group session (`createGroupSession`), shares `/join/[token]`
 
 ### F-grupal-3 · `/join` no aplica las reglas de `joinViaToken` · severity: P2 · status: confirms-board(/join no aplica las reglas de joinViaToken)
 
+**Fixed in S8-11** (PR pending): pure `evaluateJoin` (`lib/joinRules.ts`) shared by `/join` and `joinViaToken`; closed, expired/revoked, exhausted, entries-closed and invalid each get their own es/en copy and a refused link never offers the anonymous sign-in; owner/member go straight in even with a dead link; non-group tokens are `invalid_input`; the guest form posts through `joinSessionAsGuest` (ActionResult) (T4).
+
 - **Problem** — The page checks only token existence, expiry and seats (`join/[token]/page.tsx:33-36`) and shows one generic invalid-token message. It ignores session status and membership. A visitor to a closed session sees the guest form; `GuestJoinForm` creates an anonymous user (`GuestJoinForm.tsx:41`), then calls the raw `joinViaToken`, which throws `session_closed` (`community.ts:365`; line corrected in verification), and the form shows a generic guest error (`GuestJoinForm.tsx:59`). A member re-opening an exhausted link sees «enlace inválido» even though `joinViaToken` would route them in (`community.ts:363`; line corrected in verification).
 - **Implication** — Trust and robustness. Guests arriving late at a QR-led event pile up throwaway users and get no reason; a member whose seat count ran out cannot get back to their own session from the link.
 - **Fix** — Evaluate the same rules before rendering: owner or member goes straight to their destination; a newcomer to a closed session sees a specific closed message and no sign-in is attempted; expired and exhausted show their own messages. Route the guest form through an `ActionResult` wrapper like `joinSessionForm`. **Acceptance:** a closed link as visitor creates no anonymous user; a member with an exhausted link lands in `/cup` or `/waiting`; each error has distinct copy in es and en. **Size:** S.
@@ -49,6 +55,8 @@ The owner creates a group session (`createGroupSession`), shares `/join/[token]`
 
 ### F-grupal-4 · El contador «enviados» del dueño cuenta eventos, no catadores · severity: P2 · status: confirms-board(El contador «enviados» del panel maestro cuenta filas, no catadores)
 
+**Fixed in S8-11** (PR pending): numerator = eligible cuppers with EVERY sample submitted, denominator = joined/owner non-excluded; client `Map<cupperId, sampleIds>` re-seeded on refresh, SUBSCRIBED and visibility; label "N de M enviaron todo" (T1).
+
 - **Problem** — The realtime handler does `setSubmittedCount((prev) => prev + 1)` for every evaluation UPDATE with `isDraft === false` (`CupClient.tsx:822`). The state is seeded once from the prop (`CupClient.tsx:391`), so the 30 s `router.refresh()` (`CupClient.tsx:871`; line corrected in verification) never corrects it. The denominator is `session.participants.length`, which includes the owner row and excluded cuppers (`cup/page.tsx:168`), while the numerator counts distinct cuppers (`cup/page.tsx:98-106`; line corrected in verification).
 - **Implication** — Trust. The owner decides when to close by this number; it can read «9 / 3» or lag after a missed event, and an unreliable counter pushes owners to close early (see F-grupal-2).
 - **Fix** — Track a set of cupper ids from events, and reconcile with the server count on every successful subscribe and on each periodic refresh. Define numerator and denominator over the same population and say which. **Acceptance:** a participant submitting 6 samples moves the counter by 1; autosaves of an already-submitted evaluation do not move it; after a reconnect the number equals the server value. **Size:** S.
@@ -58,6 +66,9 @@ The owner creates a group session (`createGroupSession`), shares `/join/[token]`
 - **Invariant check** — none touched.
 
 ### F-grupal-5 · La sala de espera no se recupera tras bloquear el teléfono · severity: P2 · status: new
+**Also fixed in S8-21** — the waiting room has one foreground-resume path (shared `useForegroundResume` with `pageshow`).
+
+**Fixed in S8-11** (PR pending): one `refetchState()` over `getWaitingState` on SUBSCRIBED, visibilitychange, pageshow and online; fallback poll 15 s +/- 3 s (T2).
 
 - **Problem** — The waiting room subscribes once and polls only when the channel status is not `SUBSCRIBED` (`WaitingRoomClient.tsx:277-296`). It never refetches state when the channel becomes subscribed, so an owner start that lands between the server render and the subscription is missed. There is no `visibilitychange`, `pageshow` or `online` handler in the file (grep finds none), and a silently dead socket on a locked iOS phone can keep reporting a healthy status. The 15 s poll has no jitter. The only recovery left is the manual button (`WaitingRoomClient.tsx:316`).
 - **Implication** — Robustness. Participants lock their phones while waiting; after the owner starts, some stay on the waiting card and ask the room what to do, which is what the wait screen was meant to avoid. This matters at the QR-event scale in the project memory.
@@ -69,6 +80,8 @@ The owner creates a group session (`createGroupSession`), shares `/join/[token]`
 
 ### F-grupal-6 · Un envío puede llegar después del cierre y hay endpoints sin guarda · severity: P2 · status: confirms-board(Envíos que llegan después del cierre)
 
+- **Status** — Fixed in S8-01 (PR #68): the two dead exports are gone and `submitAllEvaluations` flips drafts with an `updateMany` conditional on the session being open.
+
 - **Problem** — `submitAllEvaluations` checks `assertSessionWritable` first (`community.ts:25`) and then runs an `updateMany` with no status condition (`community.ts:29-36`), so a submit racing a close can land after the flip. Two more exported actions, `submitSampleEvaluation` (`community.ts:85`) and `submitEvaluation` (`community.ts:110`), have no closed guard at all and no caller in `app/`, `components/`, `lib/` or `hooks/` (grep). Each is a public endpoint that flips `isDraft` and re-fires the aggregate trigger. The board rates this P3; I raise it to P2 because it breaks the closed = read-only rule.
 - **Implication** — Trust and closed = read-only: after the owner shares final results, a participant can still change the community score, and the history row is not written for that late submit.
 - **Fix** — Make the submit itself conditional on an open session, and delete the two unused actions. **Acceptance:** a submit sent after close changes nothing and returns `session_closed`; the two actions no longer exist; a submit racing a close either lands before close and appears in history, or is refused. **Size:** S.
@@ -78,6 +91,10 @@ The owner creates a group session (`createGroupSession`), shares `/join/[token]`
 - **Invariant check** — Restores closed = read-only; one close routine untouched.
 
 ### F-grupal-7 · El inicio no se exige en el servidor para evaluar o enviar · severity: P3 · status: confirms-board(Un participante abre /cup de una sesión en vivo sin iniciar)
+
+**Not in S8-11**: the server-side start check is S8-01 (`assertSessionStarted`, already in the base).
+
+- **Status** — Fixed in S8-01 (PR #68): `assertSessionStarted` in `upsertEvaluation`, `submitAllEvaluations` and the offline replay (`session_not_started`; the replay keeps the draft pending).
 
 - **Problem** — The UI half is fixed: a non-owner is redirected to `/waiting` (`cup/page.tsx:51`). `upsertEvaluation` (`sessions.ts:561-593`) and `submitAllEvaluations` still never read `startedAt`, although `requireSessionMember` already returns it (`lib/sessionAuth.ts:76`).
 - **Implication** — Low in practice: only a stale tab or a hand-built request writes before the start. The owner's simultaneous-start control is client-enforced only.
@@ -89,6 +106,8 @@ The owner creates a group session (`createGroupSession`), shares `/join/[token]`
 
 ### F-grupal-8 · Una sesión en vivo olvidada nunca se cierra ni avisa · severity: P3 · status: confirms-board(⚑ sesión en vivo sin fecha de cierre)
 
+**Fixed in S8-05** (draft PR, branch `claude/s8-05-close-lifecycle-impl`): one `live_idle` owner reminder after 12 h of inactivity from the cron, ledgered, never closes (Kim C3 default a).
+
 - **Problem** — The cron selects only `status: "active", closesAt: { lt: now }` (`close-expired-sessions/route.ts:29`); a live session has no `closesAt` and stays active indefinitely. Nothing reminds the owner.
 - **Implication** — Provisional results for participants, no coffee history and no email until the owner returns. Nothing is lost while the session stays open, so this is friction, not data loss. Sharpening: a reminder to the owner is safer than an auto-close, which would run into F-grupal-2.
 - **Fix** — A reconciliation-based nudge: a daily pass finds live active sessions with no activity for N hours and emails the owner once (ledgered), without closing. **Acceptance:** a session idle past N hours produces one owner reminder; a second cron run sends nothing; closing stops reminders. **Size:** M.
@@ -99,6 +118,8 @@ The owner creates a group session (`createGroupSession`), shares `/join/[token]`
 
 ### F-grupal-9 · Los enlaces de invitación no se pueden revocar y cada «Invitar» crea uno nuevo · severity: P3 · status: confirms-board(Un enlace filtrado no se puede revocar)
 
+**Fixed in S8-11** (PR pending): `createInviteToken` returns the newest active unexpired invite; "Regenerar enlace" (confirm) deactivates earlier tokens in one transaction (`SessionInvite.active`); `joinViaToken`, `/join`, the print QR and the group page ignore inactive tokens (T5). Needs the unapplied migration (runbook section 18).
+
 - **Problem** — `handleGenerateInvite` calls `createInviteToken(session.id)` with no limits (`CupClient.tsx:1307`), and the action stores `maxUses: null`, `expiresAt: null` when none are passed (`community.ts:162-176`). There is no revoke path.
 - **Implication** — A link posted in a public chat stays valid until the session closes; seats cannot be capped after the fact.
 - **Fix** — Reuse the current token when opening «Invitar» and add «Regenerar enlace», which expires earlier tokens. **Acceptance:** opening «Invitar» twice shows one token; after «Regenerar» the old link shows the expired message. **Size:** S.
@@ -108,6 +129,8 @@ The owner creates a group session (`createGroupSession`), shares `/join/[token]`
 - **Invariant check** — none touched.
 
 ### F-grupal-10 · No hay regla visible para quien llega tarde ni forma de bloquear o sacar participantes · severity: P3 · status: new
+
+**Fixed in S8-11** (PR pending, C4 default a): `CuppingSession.entriesLocked` + owner-only `setEntriesLocked`; newcomers get `entries_closed`, members re-enter; `/join` tells a latecomer they can cup every sample (T6). Per-sample cut-offs not built: `TODO(C4)`.
 
 - **Problem** — `joinViaToken` admits any newcomer while the session is not closed, before or after the start, with no host lock (`community.ts:126-146`). The owner can exclude a cupper from results (`setParticipantExclusion`, `community.ts:426`) but cannot remove a participant or stop new joins.
 - **Implication** — A late joiner who cups only the last two samples enters the average with a partial set, and the owner has no way to stop it except by closing.

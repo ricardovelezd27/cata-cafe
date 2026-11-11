@@ -16,6 +16,7 @@ const SESSION_AUTH_SELECT = {
   id: true,
   createdBy: true,
   isGroup: true,
+  isAsync: true,
   status: true,
   startedAt: true,
   closesAt: true,
@@ -25,13 +26,14 @@ export type SessionAuthRow = {
   id: string;
   createdBy: string;
   isGroup: boolean;
+  isAsync: boolean;
   status: string;
   startedAt: Date | null;
   closesAt: Date | null;
 };
 
 // Re-exported from the pure module so callers keep one import site.
-export { assertSessionWritable, isSessionClosed } from "@/lib/sessionState";
+export { assertSessionWritable, assertSessionStarted, isSessionClosed, isSessionExpired } from "@/lib/sessionState";
 
 /** The session's creator, or throws. Returns the session auth row so callers
  *  don't re-query for status/isGroup. */
@@ -72,6 +74,7 @@ export async function requireSessionMember(
     id: session.id,
     createdBy: session.createdBy,
     isGroup: session.isGroup,
+    isAsync: session.isAsync,
     status: session.status,
     startedAt: session.startedAt,
     closesAt: session.closesAt,
@@ -89,6 +92,12 @@ export type SampleAuthRow = {
   // The session's "Referencia" sample, so the evaluation write paths can pin
   // its affective ratings (lib/referenceRules.ts) without a second query.
   referenceSampleId: string | null;
+  // Cutover + start rules (assertSessionWritable / assertSessionStarted).
+  closesAt: Date | null;
+  isGroup: boolean;
+  isAsync: boolean;
+  startedAt: Date | null;
+  isOwner: boolean;
 };
 
 /** Member access resolved through a sample id; returns the sample's real
@@ -107,6 +116,10 @@ export async function requireSampleMember(
         select: {
           createdBy: true,
           status: true,
+          closesAt: true,
+          isGroup: true,
+          isAsync: true,
+          startedAt: true,
           cupsPerSample: true,
           format: true,
           referenceSampleId: true,
@@ -128,6 +141,11 @@ export async function requireSampleMember(
     cupsPerSample: sample.session.cupsPerSample,
     format: sample.session.format,
     referenceSampleId: sample.session.referenceSampleId,
+    closesAt: sample.session.closesAt,
+    isGroup: sample.session.isGroup,
+    isAsync: sample.session.isAsync,
+    startedAt: sample.session.startedAt,
+    isOwner: sample.session.createdBy === userId,
   };
 }
 
@@ -142,7 +160,17 @@ export async function requireSampleOwner(
     select: {
       sessionId: true,
       session: {
-        select: { createdBy: true, status: true, cupsPerSample: true, format: true, referenceSampleId: true },
+        select: {
+          createdBy: true,
+          status: true,
+          closesAt: true,
+          isGroup: true,
+          isAsync: true,
+          startedAt: true,
+          cupsPerSample: true,
+          format: true,
+          referenceSampleId: true,
+        },
       },
     },
   });
@@ -155,5 +183,10 @@ export async function requireSampleOwner(
     cupsPerSample: sample.session.cupsPerSample,
     format: sample.session.format,
     referenceSampleId: sample.session.referenceSampleId,
+    closesAt: sample.session.closesAt,
+    isGroup: sample.session.isGroup,
+    isAsync: sample.session.isAsync,
+    startedAt: sample.session.startedAt,
+    isOwner: true,
   };
 }

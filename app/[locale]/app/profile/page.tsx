@@ -1,9 +1,8 @@
-import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { requireAppUser } from "@/lib/auth";
 import { ClipboardList, Users, CheckCircle2, Coffee } from "lucide-react";
 import Link from "next/link";
 import { GuestGateLink } from "@/components/guest/GuestGateLink";
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { SignOutButton } from "@/components/layout/SignOutButton";
 import { Avatar } from "@/components/ui/Avatar";
@@ -15,6 +14,15 @@ import { ROLE_LABELS, COUNTRIES } from "@/lib/constants";
 import { sessionHref } from "@/lib/sessionRouting";
 import { GuestClaimButton, type GuestClaimButtonTranslations } from "@/components/guest/GuestClaimButton";
 import { EditProfileDialog } from "./EditProfileDialog";
+import { ChangeEmailDialog } from "@/components/profile/ChangeEmailDialog";
+import { isAccountDeletionEnabled } from "@/lib/features";
+import { DeleteAccountDialog } from "@/components/profile/DeleteAccountDialog";
+import { deleteConfirmationWord, MAX_SESSIONS_TO_DELETE } from "@/lib/accountDeletion/plan";
+
+// The "Eliminar cuenta" dialog posts deleteAccount from this page: its one
+// transaction may run up to 120 s (lib/accountDeletion/deleteAccount.ts),
+// after closing kept sessions and before deleting the auth user.
+export const maxDuration = 300;
 
 export function generateStaticParams() {
   return [{ locale: "es" }, { locale: "en" }];
@@ -28,11 +36,7 @@ export default async function ProfilePage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/${locale}/auth/login`);
+  const user = await requireAppUser(locale, `/${locale}/app/profile`);
 
   const [
     profile,
@@ -52,7 +56,12 @@ export default async function ProfilePage({
     prisma.sessionParticipant.count({ where: { userId: user.id, status: "joined" } }),
     prisma.evaluation.count({ where: { cupperId: user.id, isDraft: false } }),
     prisma.userCoffeeHistory
-      .findMany({ where: { userId: user.id }, select: { coffeeId: true }, distinct: ["coffeeId"] })
+      // coffeeId NOT NULL: label-only rows (S8-16) are not "a coffee tasted".
+      .findMany({
+        where: { userId: user.id, coffeeId: { not: null } },
+        select: { coffeeId: true },
+        distinct: ["coffeeId"],
+      })
       .then((rows) => rows.length),
     // Percentile rank among ACTIVE cuppers, computed in one CTE-based query so we
     // don't have to pull every profile's counts into TS. The per-profile point
@@ -67,7 +76,7 @@ export default async function ProfilePage({
         LEFT JOIN (SELECT "cupperId" AS id, count(*) AS cnt FROM evaluations WHERE "isDraft" = false GROUP BY 1) e ON e.id = p.id
         LEFT JOIN (SELECT "userId" AS id, count(*) AS cnt FROM session_participants WHERE status = 'joined' GROUP BY 1) j ON j.id = p.id
         LEFT JOIN (SELECT "createdBy" AS id, count(*) AS cnt FROM cupping_sessions WHERE status <> 'draft' GROUP BY 1) m ON m.id = p.id
-      ), active AS (SELECT * FROM pts WHERE points > 0)
+      ), active AS (SELECT * FROM pts WHERE points > 0 AND left(id, 8) <> 'deleted_')
       SELECT
         (SELECT count(*) FROM active) AS active_count,
         (SELECT count(*) FROM active a WHERE a.points < (SELECT points FROM pts WHERE id = ${user.id})) AS below_count
@@ -89,7 +98,9 @@ export default async function ProfilePage({
         date: true,
         status: true,
         isGroup: true,
+        isAsync: true,
         startedAt: true,
+        closesAt: true,
         createdBy: true,
       },
     }),
@@ -114,6 +125,9 @@ export default async function ProfilePage({
   // live in the nav gate (GuestGateLink), not in the shape of this page.
   const isGuest = user.is_anonymous === true;
   const identityLine = isGuest ? tGate("guestLabel") : user.email;
+  // Supabase keeps the old address until the confirmation link is opened;
+  // `new_email` is the pending one (S8-07, F-cuenta-5).
+  const pendingEmail = !isGuest && user.new_email ? user.new_email : null;
   const claimT: GuestClaimButtonTranslations = {
     label: tGate("profileCta"),
     loading: tGate("ctaLoading"),
@@ -208,6 +222,7 @@ export default async function ProfilePage({
           countryLabel: t("countryLabel"),
           saveSuccess: t("saveSuccess"),
           saveError: t("saveError"),
+          saving: t("saving"),
         },
       }}
     />
@@ -393,6 +408,11 @@ export default async function ProfilePage({
           <h2 className="mb-3 font-display text-xl text-primary-container">{t("account")}</h2>
           <div className="rounded-card border border-outline-variant bg-surface-container-lowest p-4">
             <div className="mb-3 text-sm text-on-surface-variant">{identityLine}</div>
+            {pendingEmail && (
+              <p role="status" className="mb-3 text-sm text-on-surface">
+                {t("changeEmailPending", { email: pendingEmail })}
+              </p>
+            )}
             {isGuest && (
               <p className="mb-3 text-sm leading-relaxed text-on-surface">{tGate("accountBody")}</p>
             )}
@@ -421,6 +441,69 @@ export default async function ProfilePage({
                 {t("logout")}
               </SignOutButton>
             </div>
+            {/* Less common account actions sit below the everyday ones. */}
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+              {!isGuest && (
+                <ChangeEmailDialog
+                  locale={locale}
+                  strings={{
+                    open: t("changeEmail"),
+                    title: t("changeEmailTitle"),
+                    body: t("changeEmailBody"),
+                    label: t("changeEmailLabel"),
+                    submit: t("changeEmailSubmit"),
+                    sending: t("changeEmailSending"),
+                    sent: t.raw("changeEmailSent") as string,
+                    close: tc("close"),
+                  }}
+                />
+              )}
+              <SignOutButton
+                mode="signOutEverywhere"
+                locale={locale}
+                className="w-full rounded-pill border border-outline-variant px-4 py-2 text-sm font-semibold text-on-surface-variant transition-colors hover:bg-surface-container sm:w-auto"
+              >
+                {t("logoutEverywhere")}
+              </SignOutButton>
+            </div>
+            {/* Danger zone (S8-19, F-cuenta-1): everyone, guests included. Hidden
+                until ACCOUNT_DELETION_ENABLED=1 (S8-22 A-01, runbook §24). */}
+            {isAccountDeletionEnabled() && (
+              <div className="mt-4 border-t border-outline-variant pt-4">
+                <DeleteAccountDialog
+                  locale={locale}
+                  className="w-full sm:w-auto"
+                  strings={{
+                    open: t("deleteAccount.open"),
+                    title: t("deleteAccount.title"),
+                    intro: t("deleteAccount.intro"),
+                    loading: t("deleteAccount.loading"),
+                    impactSessionsDeleted: t.raw("deleteAccount.impactSessionsDeleted") as string,
+                    impactSessionsKept: t.raw("deleteAccount.impactSessionsKept") as string,
+                    impactEvaluations: t.raw("deleteAccount.impactEvaluations") as string,
+                    impactCoffees: t.raw("deleteAccount.impactCoffees") as string,
+                    impactGroupsKept: t.raw("deleteAccount.impactGroupsKept") as string,
+                    impactGroupsDeleted: t.raw("deleteAccount.impactGroupsDeleted") as string,
+                    impactNothing: t("deleteAccount.impactNothing"),
+                    keepScores: t("deleteAccount.keepScores"),
+                    keepCoffees: t("deleteAccount.keepCoffees"),
+                    irreversible: t("deleteAccount.irreversible"),
+                    protectedBody: t("deleteAccount.protectedBody"),
+                    changed: t("deleteAccount.changed"),
+                    tooLargeBody: (t.raw("deleteAccount.tooLargeBody") as string).replace(
+                      "{max}",
+                      String(MAX_SESSIONS_TO_DELETE),
+                    ),
+                    typeLabel: t.raw("deleteAccount.typeLabel") as string,
+                    word: deleteConfirmationWord(locale),
+                    submit: t("deleteAccount.submit"),
+                    deleting: t("deleteAccount.deleting"),
+                    cancel: t("deleteAccount.cancel"),
+                    close: tc("close"),
+                  }}
+                />
+              </div>
+            )}
           </div>
         </section>
       </div>

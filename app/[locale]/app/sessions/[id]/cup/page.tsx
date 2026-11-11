@@ -1,10 +1,12 @@
+import { computeSubmitProgress, seedSubmitMap } from "@/lib/submitProgress";
 import { notFound, redirect } from "next/navigation";
+import { requireAppUser } from "@/lib/auth";
 import { warmupPlayerStrings } from "@/components/warmup/playerStrings";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { EmptyState, ButtonLink } from "@/components/ui";
+import { isSessionExpired } from "@/lib/sessionState";
 import { CupClient } from "./CupClient";
 
 // Server actions invoked from this page (closeSession → after() email fan-out
@@ -22,11 +24,7 @@ export default async function CupPage({
   const { sample: initialSampleId } = await searchParams;
   setRequestLocale(locale);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/${locale}/auth/login`);
+  const user = await requireAppUser(locale, `/${locale}/app/sessions/${id}/cup`);
 
   const session = await prisma.cuppingSession.findFirst({
     where: {
@@ -59,7 +57,7 @@ export default async function CupPage({
           },
         },
       },
-      participants: { select: { userId: true, status: true } },
+      participants: { select: { userId: true, status: true, excludedFromResults: true } },
     },
   });
 
@@ -77,9 +75,10 @@ export default async function CupPage({
     notFound();
   }
 
-  // A closed session's cupping form is final — send everyone to results.
-  if (session.status === "closed") {
-    redirect(`/${locale}/app/sessions/${id}/results`);
+  // A closed (or past-deadline) session's cupping form is final — send
+  // everyone to results at the same instant results open.
+  if (isSessionExpired(session)) {
+    redirect(`/${locale}/app/sessions/${id}/results?closed=1`);
   }
 
   const isOwner = session.createdBy === user.id;
@@ -95,15 +94,41 @@ export default async function CupPage({
   // the per-cupper evaluations are already loaded above.
   const hasOwnEvaluation = session.samples.some((s) => s.evaluations.length > 0);
 
-  // How many unique participants have submitted at least one evaluation
-  const submittedParticipantsResult = await prisma.evaluation.findMany({
-    where: {
-      sessionSample: { sessionId: id },
-      isDraft: false,
-    },
-    select: { cupperId: true },
-    distinct: ["cupperId"],
-  });
+  // Honest "enviados" (S8-11 T1): eligible cuppers (joined or owner, not
+  // excluded, owner always included) that submitted EVERY sample — not "at
+  // least one evaluation over every participant row".
+  const eligibleCupperIds = Array.from(
+    new Set([
+      session.createdBy,
+      ...session.participants
+        .filter((p) => (p.status === "joined" || p.status === "owner") && !p.excludedFromResults)
+        .map((p) => p.userId),
+    ]),
+  );
+  const submittedRows = session.isGroup
+    ? (
+        await prisma.evaluation.findMany({
+          where: { sessionSample: { sessionId: id }, isDraft: false },
+          select: { cupperId: true, sessionSampleId: true },
+        })
+      ).map((r) => ({ cupperId: r.cupperId, sampleId: r.sessionSampleId }))
+    : [];
+  // Owner only: evaluations (draft or submitted) per sample, so the master
+  // panel can ask before a re-pin replaces cuppers' notes (S8-21 #1).
+  const evalCountBySample: Record<string, number> = {};
+  if (isOwner) {
+    const grouped = await prisma.evaluation.groupBy({
+      by: ["sessionSampleId"],
+      where: { sessionSample: { sessionId: id } },
+      _count: { _all: true },
+    });
+    for (const g of grouped) evalCountBySample[g.sessionSampleId] = g._count._all;
+  }
+  const submittedProgress = computeSubmitProgress(
+    seedSubmitMap(submittedRows),
+    session.samples.map((s) => s.id),
+    eligibleCupperIds,
+  );
 
   const profile = await prisma.profile.findUnique({
     where: { id: user.id },
@@ -146,6 +171,7 @@ export default async function CupPage({
       sessionStatus={session.status}
       sessionStartedAt={session.startedAt?.toISOString() ?? null}
       sessionIsAsync={session.isAsync}
+      sessionEntriesLocked={session.entriesLocked}
       warmup={{
         exerciseId: session.warmupExerciseId,
         hasOwnEvaluation,
@@ -166,7 +192,11 @@ export default async function CupPage({
         },
       }}
       participantCount={session.participants.length}
-      submittedCount={submittedParticipantsResult.length}
+      submittedCount={submittedProgress.done}
+      // Only the owner sees peers' rows (RLS) and renders the live counter.
+      submittedRows={isOwner ? submittedRows : []}
+      evalCountBySample={evalCountBySample}
+      eligibleCupperIds={isOwner ? eligibleCupperIds : []}
       session={{
         id: session.id,
         name: session.name,
@@ -174,6 +204,8 @@ export default async function CupPage({
         cupsPerSample: session.cupsPerSample,
         date: session.date.toISOString(),
         referenceSampleId: session.referenceSampleId,
+        closesAt: session.closesAt?.toISOString() ?? null,
+        closesAtZone: session.closesAtZone,
         samples: session.samples.map((s) => {
           const ev = s.evaluations[0];
           return {
@@ -246,14 +278,30 @@ export default async function CupPage({
         cancel: ta("cancel"),
         individual: t("score.individual"),
         masterControls: tg("masterControls"),
-        submittedOf: tg("submittedOf", { count: submittedParticipantsResult.length, total: session.participants.length }),
+        submittedOf: tg("submittedOf", { count: submittedProgress.done, total: submittedProgress.total }),
+        submittedTemplate: tg.raw("submittedOf") as string,
         closeSession: tg("closeSession"),
         confirmClose: tg("confirmClose"),
         liveCountDown: tg("liveCountDown"),
         closeSessionError: tg("closeSessionError"),
+        deadline: {
+          open: tg.raw("deadlineOpen") as string,
+          soon: tg.raw("deadlineSoon") as string,
+          passed: tg.raw("deadlinePassed") as string,
+          local: tg.raw("deadlineLocal") as string,
+        },
+        // Raw: "{count}" is replaced client-side (a bare t() would need the arg).
+        closeRule: tg("closeRule"),
+        closeUnsentOne: tg("closeUnsentOne"),
+        closeUnsentMany: tg.raw("closeUnsentMany") as string,
+        closeUnsentNone: tg("closeUnsentNone"),
+        closeNotFinalized: tg("closeNotFinalized"),
+        closeImpactLoading: tg("closeImpactLoading"),
         startSession: tg("startSession"),
         starting: tg("starting"),
         startSessionError: tg("startSessionError"),
+        startGroupNoticeFailed: tg("startGroupNoticeFailed"),
+        startGroupNoticePartial: tg("startGroupNoticePartial"),
         masterRole: tg("masterRole"),
         participantRole: tg("participantRole"),
         referenceSelect: tg("referenceSelect"),
@@ -264,6 +312,18 @@ export default async function CupPage({
         referenceAddHint: tg("referenceAddHint"),
         referenceAddTitle: tg("referenceAddTitle"),
         referenceAddConfirm: tg("referenceAddConfirm"),
+        referenceRepinTitle: t("session.edit.repinTitle"),
+        referenceRepinBody: t.raw("session.edit.repinBody") as string,
+        referenceRemoveRepinTitle: t("session.edit.removeRepinTitle"),
+        referenceRemoveRepinBody: t.raw("session.edit.removeRepinBody") as string,
+        referenceRemoveRepinConfirm: t("session.edit.removeRepinConfirm"),
+        inviteRegenerate: tg("inviteRegenerate"),
+        inviteRegenerateTitle: tg("inviteRegenerateTitle"),
+        inviteRegenerateBody: tg("inviteRegenerateBody"),
+        inviteRegenerateConfirm: tg("inviteRegenerateConfirm"),
+        entriesClose: tg("entriesClose"),
+        entriesOpen: tg("entriesOpen"),
+        entriesClosedNote: tg("entriesClosedNote"),
         referenceBadge: t("cupping.referenceBadge"),
         // `{label}` is an ICU arg — fetched raw and replaced client-side.
         compareHint: t.raw("cupping.compareHint") as string,
@@ -320,6 +380,9 @@ export default async function CupPage({
           review: t("cupping.guard.review"),
           continueAnyway: t("cupping.guard.continueAnyway"),
           submitAnyway: t("cupping.guard.submitAnyway"),
+          outcomeCloses: t("cupping.guard.outcomeCloses"),
+          outcomeStays: t.raw("cupping.guard.outcomeStays") as string,
+          finishWith: t.raw("cupping.guard.finishWith") as string,
         },
         leaveGuard: {
           title: t("cupping.leaveGuard.title"),
@@ -345,6 +408,9 @@ export default async function CupPage({
           conflictKeep: t("offline.conflictKeep"),
           conflictReplace: t("offline.conflictReplace"),
           bannerStorageUnavailable: t("offline.bannerStorageUnavailable"),
+          // Raw templates: "{seconds}" / "{count}" are filled client-side.
+          bannerNextAttempt: t.raw("offline.bannerNextAttempt") as string,
+          terminalNotice: t.raw("offline.terminalNotice") as string,
         },
       }}
     />

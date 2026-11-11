@@ -14,7 +14,7 @@ import { computeCoffeeAggregate } from "@/lib/coffeeAggregate";
 import { loadCoffeeAggregateSamples } from "@/lib/coffees/aggregateSamples";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { CoffeeFichaDocument, type CoffeeFichaModel } from "@/lib/pdf/CoffeeFichaDocument";
-import { slug } from "@/lib/pdf/filename";
+import { slug, dateSlug } from "@/lib/pdf/filename";
 import { logError, errorMessage } from "@/lib/log";
 
 export const runtime = "nodejs";
@@ -70,7 +70,7 @@ export async function GET(
 
     let results: CoffeeFichaModel["results"] = null;
     if (showResults) {
-      const aggregate = computeCoffeeAggregate(await loadCoffeeAggregateSamples(id));
+      const aggregate = computeCoffeeAggregate(await loadCoffeeAggregateSamples(id, { userId: user.id, isAdmin }));
       results = {
         sessionsCount: aggregate.sessionsCount,
         evaluationsCount: aggregate.evaluationsCount,
@@ -120,7 +120,8 @@ export async function GET(
         ext_certs: coffee.certifications,
       },
       // Private owner text: never printed for other viewers (the profile page omits it too).
-      notes: isOwner ? coffee.notes : null,
+      // Same rule as the coffee page: owner or super-admin (S8-21).
+      notes: isOwner || isAdmin ? coffee.notes : null,
       results,
     };
 
@@ -129,7 +130,7 @@ export async function GET(
     return failureResponse("coffee-ficha", { coffeeId: id }, locale, err);
   }
 
-  const filename = `ficha_cafe_${slug(coffee.name) || "cafe"}.pdf`;
+  const filename = `ficha_cafe_${slug(coffee.name) || "cafe"}_${dateSlug()}.pdf`;
   return new Response(new Uint8Array(buffer), {
     status: 200,
     headers: {

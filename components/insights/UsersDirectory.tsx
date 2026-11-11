@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useTransition } from "react";
-import { Download, Users } from "lucide-react";
+import { useMemo, useState, useTransition } from "react";
+import { Download, Eye, EyeOff, Users } from "lucide-react";
+import { maskEmail } from "@/lib/maskEmail";
 import { DataTable, type Column, type Facet } from "@/components/ui/DataTable";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -9,6 +10,8 @@ import { ROLE_LABELS } from "@/lib/constants";
 import { exportRegisteredUsersCsv, type AnalyticsUser } from "@/app/actions/analytics";
 import { Button } from "@/components/ui/Button";
 import { useActionFeedback } from "@/components/ui/Toast";
+import { downloadFile } from "@/lib/platform/files";
+import { useIsNativeShell } from "@/hooks/useIsNativeShell";
 
 export interface UsersDirectoryTranslations {
   table: {
@@ -34,12 +37,18 @@ export interface UsersDirectoryTranslations {
   typeRegistered: string;
   typeGuest: string;
   exportCsv: string;
+  showEmails: string;
+  hideEmails: string;
 }
 
 interface UsersDirectoryProps {
   users: AnalyticsUser[];
   locale: string;
   t: UsersDirectoryTranslations;
+  /** CSV export is super-admin only (S8-08). */
+  canExport: boolean;
+  /** Only the super-admin receives raw addresses; others get them masked from the server. */
+  canRevealEmails: boolean;
 }
 
 function roleLabel(role: string, locale: string): string {
@@ -48,19 +57,17 @@ function roleLabel(role: string, locale: string): string {
   return entry[locale === "en" ? "en" : "es"];
 }
 
-export function UsersDirectory({ users, locale, t }: UsersDirectoryProps) {
+export function UsersDirectory({ users, locale, t, canExport, canRevealEmails }: UsersDirectoryProps) {
+  const [reveal, setReveal] = useState(false);
+  const shown = (email: string) => (canRevealEmails && reveal ? email : maskEmail(email));
   const feedback = useActionFeedback();
   const [exporting, startExport] = useTransition();
+  const inShell = useIsNativeShell();
 
   function downloadCsv() {
     startExport(async () => {
       await feedback.run(exportRegisteredUsersCsv(), ({ csv, filename }) => {
-        const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        downloadFile({ text: csv, filename, mime: "text/csv;charset=utf-8" });
       });
     });
   }
@@ -85,7 +92,7 @@ export function UsersDirectory({ users, locale, t }: UsersDirectoryProps) {
           <span className="text-on-surface-variant">—</span>
         ) : (
           <span className={row.email ? "text-on-surface" : "text-on-surface-variant italic"}>
-            {row.email ?? t.emailUnavailable}
+            {row.email ? shown(row.email) : t.emailUnavailable}
           </span>
         ),
     },
@@ -151,17 +158,32 @@ export function UsersDirectory({ users, locale, t }: UsersDirectoryProps) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex justify-end">
-        <Button type="button" variant="secondary" size="sm" onClick={downloadCsv} disabled={exporting}>
-          <Download size={16} aria-hidden />
-          {t.exportCsv}
+      <div className="flex flex-wrap justify-end gap-2">
+        {canRevealEmails && (
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => setReveal((v) => !v)}
+          aria-pressed={reveal}
+        >
+          {reveal ? <EyeOff size={16} aria-hidden /> : <Eye size={16} aria-hidden />}
+          {reveal ? t.hideEmails : t.showEmails}
         </Button>
+        )}
+        {/* TODO(native): CSV hidden in the shell until downloadFile has a Filesystem+Share branch. */}
+        {canExport && !inShell && (
+          <Button type="button" variant="secondary" size="sm" onClick={downloadCsv} disabled={exporting}>
+            <Download size={16} aria-hidden />
+            {t.exportCsv}
+          </Button>
+        )}
       </div>
       <DataTable
         rows={users}
         rowKey={(row) => row.userId}
         columns={columns}
-        searchText={(row) => [row.displayName, row.email]}
+        searchText={(row) => [row.displayName, row.email ? shown(row.email) : null]}
         facets={facets}
         renderMobileCard={(row) => (
           <div className="space-y-2 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
@@ -180,7 +202,7 @@ export function UsersDirectory({ users, locale, t }: UsersDirectoryProps) {
                         : "text-on-surface-variant italic"
                   }`}
                 >
-                  {row.isAnonymous ? "—" : (row.email ?? t.emailUnavailable)}
+                  {row.isAnonymous ? "—" : row.email ? shown(row.email) : t.emailUnavailable}
                 </p>
               </div>
               <Badge tone="neutral">{roleLabel(row.role, locale)}</Badge>

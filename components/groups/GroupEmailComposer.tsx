@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Mail, Check, Clock, X, type LucideIcon } from "lucide-react";
+import { useRef, useState, useTransition } from "react";
+import { Mail, Check, Clock, X, RotateCcw, type LucideIcon } from "lucide-react";
 import { sendGroupEmail, type GroupEmailSummary } from "@/app/actions/groups";
 
 type SessionOption = { id: string; name: string; status: string };
@@ -46,6 +46,9 @@ export function GroupEmailComposer({
     sendSummaryTemplate: string;
     sendSkippedNotice: string;
     errorGeneric: string;
+    rateLimited: string;
+    retryFailed: string;
+    retrying: string;
   };
 }) {
   const [subject, setSubject] = useState("");
@@ -54,15 +57,23 @@ export function GroupEmailComposer({
   const [sessionId, setSessionId] = useState(sessions[0]?.id ?? "");
   const [summary, setSummary] = useState<GroupEmailSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retryable, setRetryable] = useState(false);
   const [pending, start] = useTransition();
+  // One id per message: re-sending it ("Reintentar fallidos") reaches only the
+  // recipients that did not get it. Any edit makes it a different message.
+  const broadcastRef = useRef<string | null>(null);
+  const edited = () => {
+    broadcastRef.current = null;
+    setRetryable(false);
+  };
 
   const inputCls =
     "w-full px-3 py-2 border border-outline-variant rounded-input text-sm bg-surface-container-lowest text-on-surface focus:outline-none focus:border-primary-container";
 
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const submit = () => {
     if (!subject.trim() || !message.trim()) return;
     setError(null);
+    broadcastRef.current ??= crypto.randomUUID();
     start(async () => {
       try {
         const result = await sendGroupEmail({
@@ -70,9 +81,14 @@ export function GroupEmailComposer({
           subject: subject.trim(),
           message: message.trim(),
           sessionId: includeInvite && sessionId ? sessionId : undefined,
+          broadcastId: broadcastRef.current ?? undefined,
         });
         if (result.ok) {
           setSummary(result.data);
+          setRetryable(result.data.failed > 0);
+          if (result.data.failed === 0) broadcastRef.current = null;
+        } else if (result.error === "rate_limited") {
+          setError(t.rateLimited);
         } else {
           setError(t.errorGeneric);
         }
@@ -80,6 +96,11 @@ export function GroupEmailComposer({
         setError(t.errorGeneric);
       }
     });
+  };
+
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submit();
   };
 
   const allSkipped =
@@ -90,7 +111,10 @@ export function GroupEmailComposer({
       <input
         className={inputCls}
         value={subject}
-        onChange={(e) => setSubject(e.target.value)}
+        onChange={(e) => {
+          setSubject(e.target.value);
+          edited();
+        }}
         placeholder={t.subject}
         maxLength={200}
         required
@@ -98,7 +122,10 @@ export function GroupEmailComposer({
       <textarea
         className={inputCls + " min-h-[120px]"}
         value={message}
-        onChange={(e) => setMessage(e.target.value)}
+        onChange={(e) => {
+          setMessage(e.target.value);
+          edited();
+        }}
         placeholder={t.message}
         maxLength={5000}
         required
@@ -110,7 +137,10 @@ export function GroupEmailComposer({
             <input
               type="checkbox"
               checked={includeInvite}
-              onChange={(e) => setIncludeInvite(e.target.checked)}
+              onChange={(e) => {
+                setIncludeInvite(e.target.checked);
+                edited();
+              }}
               className="rounded border-outline-variant"
             />
             {t.includeInviteLink}
@@ -118,7 +148,10 @@ export function GroupEmailComposer({
           {includeInvite && (
             <select
               value={sessionId}
-              onChange={(e) => setSessionId(e.target.value)}
+              onChange={(e) => {
+                setSessionId(e.target.value);
+                edited();
+              }}
               className={inputCls}
               title={t.selectSession}
             >
@@ -141,7 +174,11 @@ export function GroupEmailComposer({
         {pending ? t.sending : t.send}
       </button>
 
-      {error && <p className="text-xs text-error">{error}</p>}
+      {error && (
+        <p className="text-xs text-error" role="alert">
+          {error}
+        </p>
+      )}
 
       {summary && (
         <div className="space-y-3 pt-3 border-t border-outline-variant">
@@ -153,16 +190,27 @@ export function GroupEmailComposer({
             })}
           </p>
           {allSkipped && <p className="text-xs text-on-surface-variant">{t.sendSkippedNotice}</p>}
+          {retryable && summary.failed > 0 && (
+            <button
+              type="button"
+              onClick={submit}
+              disabled={pending}
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-pill border border-outline text-sm font-semibold text-on-surface hover:bg-surface-container transition-colors disabled:opacity-50"
+            >
+              <RotateCcw size={14} />
+              {pending ? t.retrying : t.retryFailed}
+            </button>
+          )}
           <div className="space-y-1">
-            {summary.results.map((r, i) => {
+            {summary.results.map((r) => {
               const style = STATUS_STYLE[r.status];
               const Icon = style.icon;
               return (
                 <div
-                  key={`${r.email}-${i}`}
+                  key={r.memberId}
                   className="flex items-center justify-between gap-3 text-xs px-3 py-1.5 bg-surface border border-outline-variant rounded-card"
                 >
-                  <span className="text-on-surface truncate">{r.email}</span>
+                  <span className="text-on-surface truncate">{r.label}</span>
                   <span
                     className={`inline-flex items-center justify-center w-5 h-5 rounded-full shrink-0 ${style.className}`}
                     title={r.status}

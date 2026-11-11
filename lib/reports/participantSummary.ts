@@ -42,6 +42,13 @@ export type ParticipantSummarySample = {
   myScore: number | null;
   communityScore: number | null;
   sd: number | null;
+  /** "n de N incluidos": n = complete, non-excluded evaluations behind the community
+   *  score, N = every submitted evaluation (excluded ones too). Null off-basis. */
+  inclusion: { included: number; total: number } | null;
+  /** Community n in the "indicativo" band, or too few cuppers for an SD. */
+  indicative: boolean;
+  /** Neighbour in the ranking is closer than half the panel spread. */
+  noClearGap: boolean;
   deltaVsRef: number | null;
   /** 8 values in AFFECTIVE_ATTRIBUTES order; null side = nothing to draw. */
   radar: { mine: number[] | null; community: number[] | null } | null;
@@ -61,6 +68,13 @@ export type ParticipantSummaryModel = {
     participants: number;
     /** Label of the reference sample, or null. */
     referenceLabel: string | null;
+    /** The viewer's OWN evaluation was left out of the group numbers (S8-12). No
+     *  reason, no peer identity. */
+    viewerExcluded: boolean;
+    /** Report-stamp disclosure (S8-12): group inclusion and post-close changes. */
+    inclusion: { included: number; total: number } | null;
+    resultsUpdatedAt: Date | null;
+    originEditedAt: Date | null;
   };
   kpis: {
     myAvg: number | null;
@@ -105,6 +119,8 @@ export function buildParticipantSummary(
     const ev = mine.get(s.id);
     const agg = src.groupAggBySample[s.id];
     const blob = ev ? blobForFormat(format, ev) : {};
+    // N = every submitted evaluation of this sample, excluded cuppers included.
+    const totalSubmitted = src.evals.filter((e) => e.sessionSampleId === s.id).length;
     return {
       sid: s.id,
       id: s.id,
@@ -113,7 +129,13 @@ export function buildParticipantSummary(
       affective: ev?.affectiveData ?? {},
       combined: ev?.combinedData ?? {},
       aggregateScore: agg
-        ? { communityScore: agg.communityScore, scoreSd: agg.scoreSd }
+        ? {
+            communityScore: agg.communityScore,
+            scoreSd: agg.scoreSd,
+            participantCount: agg.included,
+            submittedCount: agg.submitted,
+            totalSubmitted,
+          }
         : null,
       // Source evals are submitted rows only, so status is "submitted".
       myEvaluation: ev ? deriveMyEvaluation(format, { isDraft: false, data: blob }) : NO_EVALUATION,
@@ -140,6 +162,7 @@ export function buildParticipantSummary(
     r: { id: string },
     score: number | null,
     sd: number | null,
+    flags: { indicative: boolean; noClearGap: boolean; n: number | null; total: number | null },
   ): ParticipantSummarySample => {
     const sample = sampleById.get(r.id)!;
     const ev = mine.get(r.id);
@@ -200,6 +223,12 @@ export function buildParticipantSummary(
       myScore,
       communityScore,
       sd: score !== null && communityScore !== null && score === communityScore ? sd : null,
+      inclusion:
+        communityScore !== null && flags.n !== null && flags.total !== null
+          ? { included: flags.n, total: flags.total }
+          : null,
+      indicative: flags.indicative,
+      noClearGap: flags.noClearGap,
       deltaVsRef: refDeltas.get(r.id) ?? null,
       radar,
       topDescriptors,
@@ -210,8 +239,26 @@ export function buildParticipantSummary(
 
   // Every reference first (R1, R2…), then the ranking.
   const samples: ParticipantSummarySample[] = [];
-  for (const a of anchors) samples.push(build(a.sample, a.rank.score, a.rank.sd));
-  for (const r of ranked) samples.push(build(r.sample, r.score, r.sd));
+  for (const a of anchors) {
+    samples.push(
+      build(a.sample, a.rank.score, a.rank.sd, {
+        indicative: false,
+        noClearGap: false,
+        n: a.rank.n,
+        total: a.rank.total,
+      }),
+    );
+  }
+  for (const r of ranked) {
+    samples.push(
+      build(r.sample, r.score, r.sd, {
+        indicative: r.indicative || r.suppressed,
+        noClearGap: r.noClearGap,
+        n: r.n,
+        total: r.total,
+      }),
+    );
+  }
 
   const myRow = src.alignmentRows.find((r) => r.id === opts.viewerId);
   const viewerName =
@@ -227,6 +274,10 @@ export function buildParticipantSummary(
       format,
       cupsPerSample: session.cupsPerSample,
       participants: src.participants.length,
+      viewerExcluded: src.excludedUserIds.includes(opts.viewerId),
+      inclusion: src.stamp?.inclusion ?? null,
+      resultsUpdatedAt: src.stamp?.resultsUpdatedAt ?? null,
+      originEditedAt: src.stamp?.originEditedAt ?? null,
       referenceLabel: anchors.length
         ? anchors.map((a) => sampleById.get(a.sample.id)?.label ?? "").filter(Boolean).join(" · ")
         : null,

@@ -20,6 +20,8 @@ A teacher or lab lead (the owner) creates a standing roster of cuppers by email 
 
 ### F-grupos-1 · Any account, including an anonymous QR guest, can send unlimited branded email · severity: P1 · status: confirms-board(Invitados y cualquier cuenta pueden enviar correos masivos sin límite)
 
+**Fixed in S8-03** (draft PR from branch `claude/s8-03-guest-guard-email-impl`; not yet merged).
+
 - **Problem** — `requireUser()` only checks that a Supabase user exists (`lib/auth.ts:9` `if (!user) throw`). It never checks `is_anonymous`. `createGroupWithMembers` (`app/actions/groups.ts:353` `const user = await requireUser();`), `addMemberByEmail` (:491), `resendInvitation` (:1182), `sendGroupEmail` (:656), `notifyGroupOfSession` (:836) and `createGroupPost` with `notifyByEmail` (:963, :985) all stop there. Nothing counts or caps volume. A group holds up to 200 members (:21), the subject is up to 200 characters and the body up to 5 000 (:667-670), and the group name and description are interpolated into the invitation subject and HTML (:221, :249). `proxy.ts` only gates guests by page path (`guestRedirect`), which does not stop a direct action POST. Guest page-gating is therefore not an authorization control for these actions.
 - **Implication** — Anyone can create a QR walk-up identity and then send arbitrary text to arbitrary addresses from the brand's Resend domain, over and over. That means spam or phishing under the brand and a burned sender reputation, which would also break the close emails and magic links that share the domain. Security and trust.
 - **Fix** — Group and broadcast actions reject anonymous users with `not_found_or_forbidden` and send nothing. Outbound user-triggered email is rate-limited per sender (recipients per day, broadcasts per hour, a lower cap for accounts under 24 h), counted in a table, and returns a localized `rate_limited` code. The limits are named constants in one module. **Acceptance:** an anonymous caller of each of the six actions gets a refusal and zero sends; the 4th broadcast in an hour is refused with copy in `errors.codes`; a unit test pins the constants. **Size:** M.
@@ -29,6 +31,8 @@ A teacher or lab lead (the owner) creates a standing roster of cuppers by email 
 - **Invariant check** — brushes the guest-scope rule (guests never create assets). The fix enforces it in the action layer as well, and `lib/guestScope.ts` stays the page-level rule. The `ActionResult` contract is respected by converting these actions to `run()`.
 
 ### F-grupos-2 · Announcements email the whole roster by default, and the owner never sees the outcome · severity: P2 · status: new
+
+**Fixed in S8-03** (draft PR from branch `claude/s8-03-guest-guard-email-impl`; not yet merged).
 
 - **Problem** — `PostComposer` initialises `notifyByEmail` to `true` (`components/groups/PostComposer.tsx:29` `useState(true)`). The action's result carries `emailSummary` (`app/actions/groups.ts:1012`), but the composer ignores it and just clears the form (`PostComposer.tsx:51-57`). If the blast fails, `createGroupPost` only does `console.warn` (`groups.ts:1001`) and leaves `emailSent` false. There is no recipient count before sending, and an email cannot be recalled.
 - **Implication** — A quick "bring a cup tomorrow" note becomes an irreversible email to up to 200 people, including invitees who have not accepted. A failed or skipped send is invisible, so the teacher believes the class was told when only the in-app feed was updated. Trust and robustness.
@@ -40,6 +44,8 @@ A teacher or lab lead (the owner) creates a standing roster of cuppers by email 
 
 ### F-grupos-3 · Send results return linked members' live email addresses · severity: P2 · status: confirms-board(El resumen de envío muestra el correo completo de miembros enlazados)
 
+**Fixed in S8-03** (draft PR from branch `claude/s8-03-guest-guard-email-impl`; not yet merged).
+
 - **Problem** — `sendGroupEmail` resolves the current address through the admin client (`groups.ts:730-732` `email = liveEmail`) and returns it in `results` (:754, :764). `GroupEmailComposer` prints it (`components/groups/GroupEmailComposer.tsx:165` `{r.email}`). `notifyGroupOfSession` does the same (:889-894, :925-944) and its summary reaches the browser through `createGroupSession`'s `emailSummary` payload (`app/actions/sessions.ts:559`). The group page masks the stored address (`page.tsx:472`), so the invariant "linked members' emails render masked" is bypassed. A smaller leak of the same kind is in the owner's activity feed, which falls back to the raw stored email when a linked member has no display name (`page.tsx:299` `m.displayName ?? m.email`).
 - **Implication** — An owner learns the new address of someone who changed it (security and privacy). I rate this P2 rather than the board's P1, because only the owner of a group the person belongs to sees it, and the person has cupped with them. Raise it if guests can own groups (see F-grupos-1).
 - **Fix** — Results are keyed by `memberId` with a display label (name, or masked email), and the live address is used only for the Resend call. One shared mask helper replaces the private one in the page file. **Acceptance:** the action JSON has no `@` for members with `userId`; both components render name or `j***@dominio`; the helper has a unit test. **Size:** S.
@@ -49,6 +55,8 @@ A teacher or lab lead (the owner) creates a standing roster of cuppers by email 
 - **Invariant check** — keeps the "user-id → email resolution is co-cupper-scoped" rule; no change to `lib/coCuppers.ts`.
 
 ### F-grupos-4 · Adding someone by email makes them a member without their consent · severity: P2 · status: new
+
+**Not fixed in S8-11** (owner decision): changes the rule "being added is membership"; left for Ricardo.
 
 - **Problem** — A row created by `addMemberByEmail` or `createGroupWithMembers` is linked to the account that owns that address on its next page visit. `claimGroupMembershipsByEmail` runs `updateMany({ where: { userId: null, email }, data: { userId } })` (`lib/groupMembership.ts:16-19`) with no accept step. The person then sees the group name, description, roster and any session join links (`page.tsx:130-155`). The only exit is `leaveGroup` (:1115), which does not stop the owner re-adding them. `duplicateGroup` (:1071-1105) also copies members into a new group without telling them.
 - **Implication** — Anyone can attach another person to a group with an arbitrary name and description, a harassment and phishing surface that rides on the same email list as F-grupos-1. Legitimate use is also affected, because a teacher's students who left cannot stay out. Trust and security.
@@ -60,6 +68,8 @@ A teacher or lab lead (the owner) creates a standing roster of cuppers by email 
 
 ### F-grupos-5 · A double click on "Crear e invitar" can create two groups and send two blasts · severity: P2 · status: new
 
+**Fixed in S8-03** (draft PR from branch `claude/s8-03-guest-guard-email-impl`; not yet merged).
+
 - **Problem** — After a successful create with emails, `CreateGroupDialog` shows a summary and delays the redirect by 1.4 s (`components/groups/CreateGroupDialog.tsx:132-136` `setTimeout(... 1400)`). The transition has already ended, so `pending` is false and the submit button is enabled again (`disabled={pending || !name.trim()}`). The server has no idempotency key and no unique name (`groups.ts:416-430`), so a second click creates another group and sends every invitation again.
 - **Implication** — Recipients get duplicate invitations, and the owner has two groups to clean up. It is likely on a slow connection, where people tap twice. Trust and robustness.
 - **Fix** — Keep the form locked from submit until navigation, and add a client-generated key per create so a replay returns the stored group instead of making a new one. **Acceptance:** two submits within 2 s produce one group and one email per recipient; the button stays disabled until the redirect. **Size:** S.
@@ -69,6 +79,8 @@ A teacher or lab lead (the owner) creates a standing roster of cuppers by email 
 - **Invariant check** — none touched.
 
 ### F-grupos-6 · The session invite in a group email sends people to the guest path, and its target is unchecked · severity: P2 · status: new
+
+**Fixed in S8-11** (PR pending): `groupSessionInviteUrl` sends linked members straight to `/join/[token]` and unlinked recipients through login with the join as `next`; `sendGroupEmail` and `notifyGroupOfSession` reject sessions that are not active group sessions of the caller with `invalid_input` (T7). **C8 closed in S8-17**: live group sessions notify the group from `startSession` (async still at creation); `TODO(C8)` removed.
 
 - **Problem** — `notifyGroupOfSession` deliberately routes unlinked members through login "so handle_new_user links them" (comments at :782-786; URL at :904-908). `sendGroupEmail` with a session sends every member, linked or not, straight to `/join/<token>` (:742). That page offers "continue as guest" as the primary action and login as a "subtle fallback" (`app/[locale]/join/[token]/page.tsx:59-90`). The server also accepts any owned session: it checks only `createdBy` (:678-684), not `isGroup` or `status`. `joinViaToken` has no `isGroup` check either (`app/actions/community.ts:324-388`). The composer filters to draft/active group sessions only in the UI (`page.tsx:277`).
 - **Implication** — A student with no account who follows the group email cups as an anonymous guest, so the session does not show in their account until they run the claim flow, and the group page cannot attribute the work to them. An owner who targets a closed or solo session sends a link that fails or enrolls people in a solo session.
@@ -80,6 +92,8 @@ A teacher or lab lead (the owner) creates a standing roster of cuppers by email 
 
 ### F-grupos-7 · No rate-limit handling, retry, delivery record or clean logs for group email · severity: P2 · status: confirms-board(Resend rechaza ráfagas (429) y no hay reintento ni registro) + confirms-board(Los logs guardan las direcciones de correo de los destinatarios)
 
+**Fixed in S8-03** (draft PR from branch `claude/s8-03-guest-guard-email-impl`; not yet merged).
+
 - **Problem** — `runChunked(prepared, 20, …)` fires 20 parallel Resend calls per batch (`groups.ts:309`, :749, :921). `sendEmail` makes one attempt and maps a non-2xx to `failed` (`lib/email.ts:87-93`), with no retry, backoff or idempotency key. Nothing is stored per recipient. The close email has a ledger (`lib/closeEmail.ts`, `close_email_deliveries`); group email has none. Failures log the full address and the Resend body through `console.warn` (`groups.ts:316-323`, :755-762, :927-934), against the log rule in CLAUDE.md and `lib/log.ts:7-10`.
 - **Implication** — A 50-person invite can end with a block of "failed" rows the owner can only fix by resending to everyone (duplicates) or one by one. Addresses sit in Vercel Logs. Robustness and privacy.
 - **Fix** — One shared sender with low concurrency, backoff on 429/5xx and a per-message/recipient idempotency key. Outcomes recorded like the close-email ledger, with "reintentar fallidos". Logs go through `lib/log` with ids and codes only. **Acceptance:** retry resends only failed rows; no recipient gets the same broadcast twice; no email string appears in logs. **Size:** L (ledger table, migration, and the owner-visible trace in P26).
@@ -89,6 +103,8 @@ A teacher or lab lead (the owner) creates a standing roster of cuppers by email 
 - **Invariant check** — mirrors the close-email ledger pattern; it does not touch `closeSessionInternal`. A new table needs a migration and RLS (documented as manual steps).
 
 ### F-grupos-8 · Email links come from request headers, carry the address in the URL, and have no unsubscribe · severity: P3 · status: confirms-board(Enlaces del correo salen de cabeceras y llevan el correo en la URL) + confirms-board(Correos de grupo sin baja ni cabecera List-Unsubscribe)
+
+**Fixed in S8-14 (links half): no outbound URL carries the recipient address (`groups.ts` invitation + `groupSessionInviteUrl`), and every origin comes from `trustedRequestOrigin()` since S8-03/S8-06. Fixed in S8-20 (unsubscribe half): signed one-click unsubscribe per group (`/api/groups/unsubscribe`), `List-Unsubscribe` headers + footer on every group mail, opt-out honoured in the plan step. F-grupos-8 fully fixed.**
 
 - **Problem** — `getOrigin()` takes `Origin` or `Host` from the request (`groups.ts:26-32`; same in `app/actions/auth.ts:7-13`), so an invite sent from a preview deployment links to the preview. The invitation URL embeds `?email=<address>` (`groups.ts:293-295`, and :906-908). No group email has an unsubscribe link or `List-Unsubscribe` header (`lib/email.ts:64-69` builds no headers). `lib/insightsDigestEmail.ts:286` already uses `NEXT_PUBLIC_SITE_URL`, which is the model to follow.
 - **Implication** — Wrong-host links on previews, addresses in browser history and referrers, and complaints that reach the sender's reputation because recipients cannot opt out. Trust.
@@ -100,6 +116,8 @@ A teacher or lab lead (the owner) creates a standing roster of cuppers by email 
 
 ### F-grupos-9 · Group actions break the error contract, so failures read as one generic message · severity: P3 · status: new
 
+**Fixed in S8-14: `updateGroup`, `addMemberByEmail`, `addMemberByUserId`, `removeMember`, `updateMemberDisplayName`, `resendInvitation` and `createGroupPost` return `ActionResult` via `run()`; `group_full`, `invalid_email` and `offline` are new `errors.codes`; the clients use `useActionFeedback`; member removal uses `ConfirmDialog` naming the person (no `window.confirm` left under `components/groups`, tested). `deleteGroup`/`leaveGroup` keep throwing (wrapped by `ConfirmDialog`)**
+
 - **Problem** — `updateGroup`, `deleteGroup`, `addMemberByEmail`, `addMemberByUserId`, `removeMember`, `updateMemberDisplayName`, `resendInvitation`, `leaveGroup`, `createGroupPost` and `notifyGroupOfSession` throw plain errors, while CLAUDE.md requires interactive actions to return `ActionResult` via `run()`. Callers catch everything and show `errorGeneric` (e.g. `components/groups/MemberList.tsx:49-53`, `AddByEmailForm.tsx:56-58`, `QuickAddCoCuppers.tsx:33-35`). A full group (`group_full`), a bad address (`invalid_email`) and an offline phone all show the same text. Member removal uses a blocking `window.confirm` with no name (`MemberList.tsx:44`, copy "¿Quitar a esta persona del grupo?"), while delete-group and leave use the shared `ConfirmDialog`.
 - **Implication** — The owner cannot tell whether to retry, fix the address or wait for signal, and an offline cupping room is the normal case. Friction and native-readiness.
 - **Fix** — Convert these actions to `run()` and surface the localized `errors.codes` copy through `useActionFeedback`, including an "estás sin conexión" case. Replace `window.confirm` with the shared `ConfirmDialog` naming the person. **Acceptance:** `group_full` and `invalid_email` each show their own message; remove names the person; no blocking native confirm. **Size:** M.
@@ -109,6 +127,8 @@ A teacher or lab lead (the owner) creates a standing roster of cuppers by email 
 - **Invariant check** — this restores the ActionResult contract; `leaveGroup`/`deleteGroup` may stay throwing only if wrapped by `ConfirmDialog` as the contract allows.
 
 ### F-grupos-10 · Every member sees the full roster, with a partly readable email · severity: P3 · status: new
+
+**Partly addressed in S8-14: the D7 default (a) stays; the member view already uses `memberLabel` (name, else `j***` for a linked member, else `j***@domain`) since S8-03, now covered by `tests/maskEmail.test.ts`. `// TODO(D7)` marks the member view for the roster-visibility setting if Kim answers (b) or (c)**
 
 - **Problem** — The member view lists every member by display name, else `maskEmail(m.email)` (`page.tsx:220-223`), and `maskEmail` keeps the first letter and the whole domain (:32-38). Members also see the owner name and every group session with a join link (:130-155, :173-175).
 - **Implication** — In a small group on a company or school domain the mask still identifies people; for a class, students may not want peers to see each other. Privacy, with a cupping-practice angle.

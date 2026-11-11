@@ -193,6 +193,7 @@ export function SampleDetailDialog({
           affective={affective}
           combined={combined}
           extrinsic={sample.extrinsic}
+          extrinsicNote={sample.extrinsicEditedLabel ?? null}
           format={format}
           cupsPerSample={cupsPerSample}
           locale={locale}

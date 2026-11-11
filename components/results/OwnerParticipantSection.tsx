@@ -1,12 +1,13 @@
 "use client";
 
 import { referenceBadgeText } from "@/lib/referenceRules";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { calcIndividualScore } from "@/lib/scoring";
 import { rowStats, bandFor } from "@/lib/reports/cupperStats";
 import { setParticipantExclusion } from "@/app/actions/community";
-import { Badge } from "@/components/ui";
+import { Badge, useActionFeedback } from "@/components/ui";
+import { ExclusionDialog } from "@/components/results/ExclusionDialog";
 import type { SessionFormat } from "@/lib/constants";
 
 type SampleResult = {
@@ -25,6 +26,8 @@ export type ParticipantResult = {
   id: string;
   name: string;
   excluded: boolean;
+  /** Who/when/why the owner excluded this cupper (S8-12); null when included. */
+  trail?: { at: string | null; by: string | null; reason: string | null } | null;
   samples: SampleResult[];
 };
 
@@ -136,35 +139,66 @@ export function OwnerParticipantSection({
     legendRed: string;
     noScore: string;
     sdHeader: string;
+    /** "{n} de {total} catadores incluidos…" — raw template. */
+    includedCount: string;
+    excludeDialogTitle: string;
+    excludeDialogBody: string;
+    excludeReasonLabel: string;
+    excludeConfirm: string;
+    dialogCancel: string;
+    dialogClose: string;
+    /** "Excluido por {who} el {date} · {reason}" — raw template. */
+    excludedTrail: string;
+    excludedToast: string;
+    restoredToast: string;
+    reasons: Record<string, string>;
   };
 }) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const feedback = useActionFeedback();
+  const [askExclude, setAskExclude] = useState<ParticipantResult | null>(null);
 
   // Optimistic exclusion: override per id until the server refresh confirms it.
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
   const isExcluded = (p: ParticipantResult): boolean => overrides[p.id] ?? p.excluded;
 
-  const toggleExclude = (p: ParticipantResult) => {
-    const next = !isExcluded(p);
-    setOverrides((o) => ({ ...o, [p.id]: next }));
+  // Run one exclusion write with localized failure feedback (the old code
+  // swallowed errors and silently flipped the switch back).
+  const applyExclusion = async (
+    p: ParticipantResult,
+    next: boolean,
+    reason?: string,
+  ): Promise<{ ok: boolean }> => {
     setPendingIds((s) => new Set(s).add(p.id));
-    startTransition(async () => {
-      try {
-        await setParticipantExclusion(sessionId, p.id, next);
-        router.refresh();
-      } catch {
-        setOverrides((o) => ({ ...o, [p.id]: !next })); // revert on failure
-      } finally {
-        setPendingIds((s) => {
-          const n = new Set(s);
-          n.delete(p.id);
-          return n;
-        });
-      }
-    });
+    try {
+      const result = await feedback.run(
+        setParticipantExclusion(sessionId, p.id, next, reason),
+        () => {
+          setOverrides((o) => ({ ...o, [p.id]: next }));
+          feedback.notifySuccess(next ? t.excludedToast : t.restoredToast);
+          router.refresh();
+        },
+      );
+      return { ok: result.ok };
+    } finally {
+      setPendingIds((s) => {
+        const n = new Set(s);
+        n.delete(p.id);
+        return n;
+      });
+    }
   };
+
+  // Excluding asks for a reason first; restoring is a plain one-tap undo.
+  const toggleExclude = (p: ParticipantResult) => {
+    if (isExcluded(p)) void applyExclusion(p, false);
+    else setAskExclude(p);
+  };
+
+  const includedN = participants.filter((p) => !isExcluded(p)).length;
+  const fill = (tpl: string, vars: Record<string, string>) =>
+    Object.entries(vars).reduce((acc, [k, val]) => acc.replace(`{${k}}`, val), tpl);
 
   // Build the sample axis from the first participant (all share the same sample
   // order/labels because each ParticipantResult is built over session.samples).
@@ -199,8 +233,11 @@ export function OwnerParticipantSection({
         <div className="mb-1 font-display text-lg font-semibold text-primary-container">
           {t.manageTitle}
         </div>
-        <div className="mb-3 text-[11px] leading-relaxed text-on-surface-variant">
+        <div className="mb-1 text-[11px] leading-relaxed text-on-surface-variant">
           {t.manageHint}
+        </div>
+        <div className="mb-3 text-[11px] font-semibold tabular-nums text-on-surface-variant">
+          {fill(t.includedCount, { n: String(includedN), total: String(participants.length) })}
         </div>
         <div className="flex flex-col">
           {participants.map((p, i) => {
@@ -208,7 +245,7 @@ export function OwnerParticipantSection({
             return (
               <div
                 key={p.id}
-                className={`flex min-h-[44px] items-center gap-2.5 py-2 ${
+                className={`flex min-h-[44px] flex-wrap items-center gap-x-2.5 gap-y-1 py-2 ${
                   i === 0 ? "" : "border-t border-outline-variant/50"
                 }`}
               >
@@ -229,15 +266,49 @@ export function OwnerParticipantSection({
                 </span>
                 <ToggleSwitch
                   on={!excluded}
-                  disabled={pendingIds.has(p.id) || isPending}
+                  disabled={pendingIds.has(p.id)}
                   onClick={() => toggleExclude(p)}
                   ariaLabel={`${excluded ? t.included : t.excluded}: ${p.name}`}
                 />
+                {excluded && p.trail && (p.trail.by || p.trail.at || p.trail.reason) && (
+                  <span className="basis-full text-[11px] text-on-surface-variant">
+                    {fill(t.excludedTrail, {
+                      who: p.trail.by ?? "—",
+                      date: p.trail.at ?? "—",
+                      reason: p.trail.reason ? (t.reasons[p.trail.reason] ?? p.trail.reason) : "—",
+                    })}
+                  </span>
+                )}
               </div>
             );
           })}
         </div>
       </div>
+      )}
+
+      {askExclude && (
+        <ExclusionDialog
+          open
+          onOpenChange={(o) => {
+            if (!o) setAskExclude(null);
+          }}
+          cupperName={askExclude.name}
+          onConfirm={async (reason) => {
+            const target = askExclude;
+            const res = await applyExclusion(target, true, reason);
+            if (res.ok) setAskExclude(null);
+            return res;
+          }}
+          t={{
+            title: t.excludeDialogTitle,
+            body: t.excludeDialogBody,
+            reasonLabel: t.excludeReasonLabel,
+            confirm: t.excludeConfirm,
+            cancel: t.dialogCancel,
+            close: t.dialogClose,
+            reasons: t.reasons,
+          }}
+        />
       )}
 
       {/* CVA summary matrix — every cell/header is a drill-down trigger */}

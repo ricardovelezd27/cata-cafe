@@ -1,5 +1,11 @@
 // Pure helper shared by the PDF routes (cva-pdf, participant-summary).
 
+/** YYYYMMDD in UTC — appended to report filenames so a re-download never
+ *  overwrites (or gets confused with) an older copy (S8-12, F-resultados-8). */
+export function dateSlug(d: Date = new Date()): string {
+  return d.toISOString().slice(0, 10).replace(/-/g, "");
+}
+
 /** ASCII-safe filename fragment (Content-Disposition filenames choke on accents). */
 export function slug(input: string): string {
   // NFD splits accented letters into base + combining mark; the alnum filter

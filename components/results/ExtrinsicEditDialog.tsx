@@ -9,15 +9,17 @@
  * used in ResultsClient (~676-716): local state seeded once from the
  * sample's current extrinsic data, Save → upsertExtrinsic, close on success.
  *
- * upsertExtrinsic (app/actions/sessions.ts) is member-gated and status-
- * ungated already — this dialog adds no new authz surface, it just gives the
- * owner a second entry point into that same action.
+ * upsertExtrinsic (app/actions/sessions.ts) is owner-gated and, once the
+ * session is over, additionally requires a REVEALED sample (the first
+ * sanctioned post-close write, S8-12). It returns an ActionResult, so a
+ * refusal (session_closed, not_found_or_forbidden…) surfaces as a localized
+ * toast through useActionFeedback and the dialog stays open.
  */
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
-import { Button } from "@/components/ui";
+import { Button, useActionFeedback } from "@/components/ui";
 import { ExtrinsicForm } from "@/components/cupping/ExtrinsicForm";
 import { upsertExtrinsic } from "@/app/actions/sessions";
 
@@ -27,7 +29,6 @@ export type ExtrinsicEditDialogTranslations = {
   save: string;
   saving: string;
   cancel: string;
-  error: string;
 };
 
 export function ExtrinsicEditDialog({
@@ -46,17 +47,15 @@ export function ExtrinsicEditDialog({
   const router = useRouter();
   const [data, setData] = useState<Record<string, unknown>>(initialData);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const feedback = useActionFeedback();
 
   const handleSave = async () => {
-    setError(null);
     setSaving(true);
     try {
-      await upsertExtrinsic({ sessionSampleId: sampleId, data });
-      onClose();
-      router.refresh();
-    } catch {
-      setError(t.error);
+      await feedback.run(upsertExtrinsic({ sessionSampleId: sampleId, data }), () => {
+        onClose();
+        router.refresh();
+      });
     } finally {
       setSaving(false);
     }
@@ -73,12 +72,6 @@ export function ExtrinsicEditDialog({
     >
       <div className="flex flex-col gap-4">
         <ExtrinsicForm sampleData={data} onChange={setData} hideHeader />
-
-        {error && (
-          <p role="alert" className="text-xs text-error">
-            {error}
-          </p>
-        )}
 
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end pt-1">
           <Button variant="secondary" size="md" onClick={onClose} disabled={saving}>

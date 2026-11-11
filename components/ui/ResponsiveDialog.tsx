@@ -13,6 +13,10 @@ interface ResponsiveDialogProps {
   subtitle?: ReactNode;
   children: ReactNode;
   closeLabel: string;
+  /** Optional handler for the visible X button only. Calling preventDefault()
+   *  stops Radix from also firing onOpenChange(false), so a caller can treat
+   *  the X differently from Escape / outside-click. */
+  onCloseButtonClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
 /**
@@ -27,6 +31,7 @@ export function ResponsiveDialog({
   subtitle,
   children,
   closeLabel,
+  onCloseButtonClick,
 }: ResponsiveDialogProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -39,7 +44,11 @@ export function ResponsiveDialog({
               <Dialog.Title className={styles.title}>{title}</Dialog.Title>
               {subtitle && <div className={styles.subtitle}>{subtitle}</div>}
             </div>
-            <Dialog.Close className={styles.close} aria-label={closeLabel}>
+            <Dialog.Close
+              className={styles.close}
+              aria-label={closeLabel}
+              onClick={onCloseButtonClick}
+            >
               <X size={18} aria-hidden />
             </Dialog.Close>
           </div>

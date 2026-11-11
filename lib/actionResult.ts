@@ -13,11 +13,21 @@ export const ACTION_ERROR_CODES = [
   "not_authenticated",
   "not_found_or_forbidden",
   "session_closed",
+  "session_not_started",
+  "entries_closed", // owner closed new entries (S8-11)
   "invalid_token",
   "token_expired",
   "token_exhausted",
   "coffee_not_usable",
   "invalid_input",
+  "rate_limited", // lib/emailBudget.ts refused a send (S8-03)
+  "group_full", // tasting group already has 200 members (S8-14)
+  "invalid_email", // address failed the format check (S8-14)
+  "offline", // client-side only: no connection / the request never reached the server (S8-09; S8-07 sign-out needs the server)
+  "email_exists", // requestEmailChange: that address already has an account (S8-07)
+  "already_claimed", // confirmGuestClaim: the guest account is gone or no longer anonymous (S8-07)
+  "account_protected", // deleteAccount: the super-admin account cannot be deleted from the app (S8-19)
+  "account_too_large", // deleteAccount: more own sessions than one transaction may delete (S8-19, runbook §24)
   "conflict", // Prisma P2002 — unique constraint
   "not_found", // Prisma P2025 — row vanished (concurrent delete)
   "invalid_reference", // Prisma P2003 — FK target vanished
@@ -29,6 +39,12 @@ export type ActionErrorCode = (typeof ACTION_ERROR_CODES)[number];
 export type ActionResult<T = void> =
   | { ok: true; data: T }
   | { ok: false; error: ActionErrorCode };
+
+/** The caller lost (or never had) access. Background/auto-run actions toast
+ *  only for these, so a half-typed filter that fails validation stays quiet. */
+export function isAccessError(code: ActionErrorCode): boolean {
+  return code === "not_authenticated" || code === "not_found_or_forbidden";
+}
 
 export function isActionErrorCode(value: unknown): value is ActionErrorCode {
   return (
@@ -57,4 +73,14 @@ export function classifyActionError(err: unknown): ActionErrorCode {
   const code = (err as { code?: unknown } | null)?.code;
   if (typeof code === "string" && code in PRISMA_CODE_MAP) return PRISMA_CODE_MAP[code];
   return "unknown";
+}
+
+/** Client-side: did this failure happen because the request never reached the
+ *  server (no signal, dropped connection)? Used to show the specific `offline`
+ *  copy instead of a generic `unknown` toast (S8-09, F-04-3). Pure: pass the
+ *  navigator's `onLine` flag in. */
+export function isNetworkFailure(err: unknown, navigatorOnLine?: boolean): boolean {
+  if (navigatorOnLine === false) return true;
+  if (err instanceof TypeError) return /fetch|network|load failed/i.test(err.message);
+  return false;
 }

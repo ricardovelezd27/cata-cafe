@@ -19,6 +19,8 @@ An owner turns on "sesión grupal" in the wizard and picks a closing date; `vali
 
 ### F-grupal-asincrona-1 · Unsent evaluations are silently dropped when the session closes · severity: P1 · status: new
 
+**Fixed in S8-05** (draft PR, branch `claude/s8-05-close-lifecycle-impl`): owner dialog and close email warn, `deadline_24h` reminder before an async deadline, replay answers `closed` and the draft stays visible as `closed_unsent`, `/results?closed=1` notice says whether unsent notes counted.
+
 - **Problem** — Community scores, results and coffee history only read `isDraft: false` rows (`lib/coffeeHistory.ts` `evaluations: { where: { isDraft: false } }`; the aggregate trigger fires on `isDraft=false`). Drafts become final only through `submitAllEvaluations` (`app/actions/community.ts:29-35`), a participant action. `closeSessionInternal` (`lib/closeSession.ts:38-60`) flips status, reveals and syncs history but never promotes drafts, and after the flip every write throws `session_closed`. In an async session people cup over days; a cupper who scored every sample but did not press the final submit loses it at the cron. The offline path then reports the draft as handled: `syncEvaluation` returns `"discarded"` (`app/actions/offline.ts:48`) and `useOfflineSync` maps it to `"synced"` (`hooks/useOfflineSync.ts:83` `return res.status === "discarded" ? "synced" : res.status`), so the pending badge turns green for work that was thrown away.
 - **Implication** — Data loss and trust. A participant opens the results email and their own evaluation is absent from the group; the owner's average silently excludes them. Worst in async because nobody is in the room to say "send it now".
 - **Fix** — Decide with Kim what counts at the deadline (K-grupal-asincrona-1). Whatever the rule, the participant is told before it happens (deadline and reminder, F-3) and, when work is discarded, told afterwards instead of seeing green "synced". **Acceptance:** (1) a complete-but-unsent draft at cron close follows the agreed rule and the cupper sees which of their samples counted; (2) an offline draft discarded by close shows a distinct "la sesión cerró; esta evaluación no se envió" notice, never the green saved state; (3) the rule lives inside the one close routine, not per caller; (4) closing twice changes nothing. **Size:** M.
@@ -28,6 +30,8 @@ An owner turns on "sesión grupal" in the wizard and picks a closing date; `vali
 - **Invariant check** — touches "one close routine" and "closed = read-only": any promotion must live in `closeSessionInternal` and must not allow edits after close. Scoring stays server-derived.
 
 ### F-grupal-asincrona-2 · After the deadline the session stays writable and joinable until the cron runs · severity: P2 · status: confirms-board(Pasada la fecha de cierre la sesión sigue escribible hasta el cron)
+
+- **Status** — Fixed in S8-01 (PR #68): `closesAt` is now a write cutoff (`isSessionExpired`) in `assertSessionWritable`, `joinViaToken`, the `/cup` and `/waiting` redirects, `sessionHref`, the offline replay and the results page.
 
 - **Problem** — `assertSessionWritable` checks status only (`lib/sessionState.ts:13-15` `if (row.status === "closed") throw`); `joinViaToken` checks `session.status === "closed"` only (`app/actions/community.ts:348,365`) and does not select `closesAt`; `cup/page.tsx` redirects on status only. Meanwhile results already treat `closesAt < now` as "open to everyone" (`results/page.tsx:130`, `lib/sessionState.ts:32`). Between 23:59:59 UTC and the next 06:00 UTC run (longer if a run is missed; Vercel does not retry) cuppers can still submit and newcomers join while participants already see group results.
 - **Implication** — Robustness and blind integrity: someone who sees community scores can still submit; late evaluations change aggregates after results were shown; the deadline is soft by hours or a day.
@@ -39,6 +43,8 @@ An owner turns on "sesión grupal" in the wizard and picks a closing date; `vali
 
 ### F-grupal-asincrona-3 · Participants never see the deadline · severity: P2 · status: new
 
+**Fixed in S8-05** (draft PR, branch `claude/s8-05-close-lifecycle-impl`): `DeadlineBanner` on the join confirmation, waiting screen, cup header and session list, owner zone plus viewer local time, stronger in the last 24 h.
+
 - **Problem** — `closesAt` is read only by the wizard, the edit form, results, the participant-summary route and the cron (grep over `app lib components`). It is not selected or shown in `cup/page.tsx`, `waiting/page.tsx`, the join page or the sessions list; the async waiting copy only says "a tu propio ritmo" (`messages/es.json:361`). The owner-side hint explains the "madrugada siguiente" (`es.json:269`) but that never reaches invitees.
 - **Implication** — Trust and data loss (feeds F-1): a participant cannot know "tienes hasta el jueves"; the first signal is the close email. They also cannot see that the owner moved or removed the date.
 - **Fix** — Show the deadline in the viewer's local time on the join confirmation, the async waiting screen, the cup header and the list row; reflect owner edits; stronger state in the last 24 h. **Acceptance:** an invitee sees the date on join and on `/cup`; an edit in `/edit` appears on next open or live; no date → no banner. **Size:** M.
@@ -49,6 +55,8 @@ An owner turns on "sesión grupal" in the wizard and picks a closing date; `vali
 
 ### F-grupal-asincrona-4 · The closing date is a UTC day, not the owner's day · severity: P2 · status: confirms-board(La fecha de cierre es un día UTC, no el día local del dueño)
 
+**Fixed in S8-05** (draft PR, branch `claude/s8-05-close-lifecycle-impl`): `closesAtZone` stored; `endOfDayInZone` replaces `dateOnlyEndOfDay` in create/update; the edit form reads the day back in the stored zone; unchanged-day detection is zone-aware.
+
 - **Problem** — `dateOnlyEndOfDay` appends `T23:59:59.999Z` (`lib/validate.ts:79`; line corrected in verification); the picker `min` and the session-date default use `new Date().toISOString().slice(0, 10)` (`NewSessionForm.tsx:271,1220`; `EditSessionForm.tsx:414` `min={utcDateString()}`); `/edit` reads the stored date back with `.toISOString().slice(0, 10)` (`edit/page.tsx:130`). In UTC−5 "cierra hoy" expires at 18:59 local and after 19:00 today cannot be picked. The hint never says UTC. Board line numbers (266, 1195) have shifted to 271 and 1220.
 - **Implication** — Wrong behaviour for the Latin-American core audience (Colombia, Chile, Peru): sessions expire hours before the owner expects, mid-evening.
 - **Fix** — Interpret the date in the owner's IANA zone (sent with the form, stored with the session), state the exact local deadline in the UI, and use one zone-aware helper for creation, edit and `planClosesAtChange`. **Acceptance:** a Bogotá owner picking today at 20:00 is accepted and closes after 23:59 local; default date = local date; vitest covers UTC−5, UTC−3, UTC+1; the `/edit` round trip shows the day the owner picked. **Size:** M.
@@ -58,6 +66,8 @@ An owner turns on "sesión grupal" in the wizard and picks a closing date; `vali
 - **Invariant check** — keeps `closesAt` semantics (end of day, cron D+1); update `docs/flows.md` and the CLAUDE.md `closesAt` note in the same PR.
 
 ### F-grupal-asincrona-5 · Unstarted async sessions go to a waiting room from the list, to `/cup` from the link · severity: P3 · status: confirms-board(Sesión asíncrona sin iniciar enrutada a la sala de espera)
+
+**Fixed in S8-11** (PR pending): `SessionRouteInfo.isAsync` is required; an unstarted async session routes to `/cup`, a live one to `/waiting`; matrix in `tests/sessionRouting.test.ts` (T3).
 
 - **Problem** — `sessionHref` has no `isAsync` input and routes any unstarted group session for a non-owner to `/waiting` (`lib/sessionRouting.ts:24`; line corrected in verification `if (s.isGroup && !s.startedAt && !ctx.isOwner)`), while `joinViaToken` and `cup/page.tsx:90` exempt async (`community.ts:351`). Because async sessions are never started (section 1), this is every async session, not the edge case the board describes. The waiting page then shows an extra entry button (`WaitingRoomClient.tsx:311-313`).
 - **Implication** — Friction and an inconsistent first impression: the same session opens differently from the link and from the list.
@@ -80,6 +90,8 @@ An owner turns on "sesión grupal" in the wizard and picks a closing date; `vali
 - **Invariant check** — `canViewGroupResults` stays the single source for page and routes.
 
 ### F-grupal-asincrona-7 · A failed cron close is never retried and nobody is told · severity: P2 · status: new
+
+**Fixed in S8-05** (draft PR, branch `claude/s8-05-close-lifecycle-impl`): cron repair pass (bounded, `truncated` reported) for closed sessions with `closeFinalizedAt` null, error-level `closeSession.finalize` log lines.
 
 - **Problem** — `closeSessionInternal` flips `status` first, then reveals, syncs history and emails (`lib/closeSession.ts:38-60`); the cron selects only `status: "active"` (`route.ts:29`). If `syncCoffeeHistoryForSession` throws after the flip, the cron puts `error` in its JSON response and moves on; the session is closed, history rows are missing, and the next run no longer sees it. No one reads that response (no alert). Emails run inline (`emails: "await"`) for up to 25 sessions within `maxDuration = 300` (`route.ts:14`, batch size `:16`; lines corrected in verification); `truncated` is returned but only the next day's run continues.
 - **Implication** — Robustness: silently missing coffee history for a session's cuppers; a slow day delays closes by 24 h. Low frequency, hard to notice.

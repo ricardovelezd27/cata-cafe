@@ -1,4 +1,6 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
+import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
+import { requireAppUser } from "@/lib/auth";
 import Link from "next/link";
 import {
   ClipboardList,
@@ -10,7 +12,6 @@ import {
   Coffee as CoffeeIcon,
 } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { usableCoffeeWhere, type CoffeeVisibility } from "@/lib/coffeeAccess";
@@ -30,6 +31,8 @@ import {
   type DeleteCoffeeTranslations,
 } from "@/components/coffees/DeleteCoffeeButton";
 import { Badge, ButtonLink, ScorePill } from "@/components/ui";
+import { ReportLink } from "@/components/ui/ReportLink";
+import { historyCupsPerSample, isQuickImpression } from "@/lib/historyRules";
 import { DuplicateButton } from "@/components/DuplicateButton";
 
 // Auth'd page with a dynamic [id] segment: must render per-request. With
@@ -56,11 +59,7 @@ export default async function CoffeeProfilePage({
   const { locale, id } = await params;
   setRequestLocale(locale);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/${locale}/auth/login`);
+  const user = await requireAppUser(locale, `/${locale}/app/coffees/${id}`);
 
   const t = await getTranslations("coffee");
   const th = await getTranslations("history");
@@ -111,10 +110,10 @@ export default async function CoffeeProfilePage({
       include: {
         // sessionId/session can be null — a deleted session detaches the row
         // instead of cascading it away, leaving `snapshot` as the fallback.
-        session: { select: { id: true, name: true } },
+        session: { select: { id: true, name: true, cupsPerSample: true } },
       },
     }),
-    loadCoffeeAggregateSamples(id),
+    loadCoffeeAggregateSamples(id, { userId: user.id, isAdmin }),
   ]);
 
   // Visibility rule: results (counts, scores, attr averages, flavor cloud) are
@@ -214,6 +213,15 @@ export default async function CoffeeProfilePage({
                 </div>
               </div>
               <div className="flex flex-wrap justify-end gap-2">
+                {/* Opens the session wizard with this coffee already linked
+                    (validated server-side with usableCoffeeWhere). */}
+                <ButtonLink
+                  href={`/${locale}/app/sessions/new?coffeeId=${coffee.id}`}
+                  variant="primary"
+                  size="sm"
+                >
+                  {t("tasteThis")}
+                </ButtonLink>
                 {isOwner && (
                   <ButtonLink
                     href={`/${locale}/app/coffees/${coffee.id}/edit`}
@@ -271,7 +279,7 @@ export default async function CoffeeProfilePage({
               </div>
             </div>
 
-            {coffee.notes && (
+            {coffee.notes && (isOwner || isAdmin) && (
               <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-on-surface">
                 {coffee.notes}
               </p>
@@ -381,39 +389,30 @@ export default async function CoffeeProfilePage({
               <section>
                 <h3 className={`mb-2 ${SUB_H3}`}>{t("sessionsListTitle")}</h3>
                 {aggregate.sessionRows.length === 0 ? (
-                  <p className="text-sm text-on-surface-variant">{t("noResults")}</p>
+                  <p className="text-sm text-on-surface-variant">
+                    {aggregate.sessionsCount > 0 ? t("sessionsOthersNote") : t("noResults")}
+                  </p>
                 ) : (
                   <div className="space-y-2">
-                    {aggregate.sessionRows.map((row, i) => {
-                      const inner = (
-                        <>
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-semibold text-on-surface">
-                              {row.sessionName}
-                            </div>
-                            <div className="mt-0.5 text-xs text-on-surface-variant">
-                              {formatDate(row.sessionDate)}
-                            </div>
+                    {aggregate.sessionRows.map((row, i) => (
+                      // Only sessions the viewer owns or joined reach this list
+                      // (filterCoffeeSamples), so every row can open its results.
+                      <Link
+                        key={`${row.sessionId}-${i}`}
+                        href={`/${locale}/app/sessions/${row.sessionId}/results`}
+                        className={`${LIST_ROW} transition-colors hover:bg-surface-container-low`}
+                      >
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold text-on-surface">
+                            {row.sessionName}
                           </div>
-                          <ScorePill score={row.communityScore} />
-                        </>
-                      );
-                      // Session results are the owner's to open; others only
-                      // see the appearance + community score.
-                      return isOwner ? (
-                        <Link
-                          key={`${row.sessionId}-${i}`}
-                          href={`/${locale}/app/sessions/${row.sessionId}/results`}
-                          className={`${LIST_ROW} transition-colors hover:bg-surface-container-low`}
-                        >
-                          {inner}
-                        </Link>
-                      ) : (
-                        <div key={`${row.sessionId}-${i}`} className={LIST_ROW}>
-                          {inner}
+                          <div className="mt-0.5 text-xs text-on-surface-variant">
+                            {formatDate(row.sessionDate)}
+                          </div>
                         </div>
-                      );
-                    })}
+                        <ScorePill score={row.communityScore} />
+                      </Link>
+                    ))}
                   </div>
                 )}
               </section>
@@ -461,7 +460,8 @@ export default async function CoffeeProfilePage({
               ) : (
                 <div className="space-y-2">
                   {history.map((h) => {
-                    const snapshot = h.snapshot as { sessionName?: string } | null;
+                    const snapshot = h.snapshot as { sessionName?: string; cupsPerSample?: number } | null;
+                    const quick = isQuickImpression(historyCupsPerSample(h.session, snapshot));
                     const sessionName = h.session?.name ?? snapshot?.sessionName ?? "—";
                     return (
                       <div key={h.id} className={LIST_ROW}>
@@ -486,6 +486,11 @@ export default async function CoffeeProfilePage({
                               {th("yourScore")}
                             </span>
                             <ScorePill score={h.individualScore} />
+                            {quick && (
+                              <Badge tone="outline" size="xs">
+                                {th("quickImpression")}
+                              </Badge>
+                            )}
                           </span>
                           <span className="flex flex-col items-end gap-0.5">
                             <span className="text-[10px] uppercase tracking-wide text-on-surface-variant">
@@ -507,16 +512,17 @@ export default async function CoffeeProfilePage({
         <section>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-display text-xl text-primary-container">{t("detailsTitle")}</h2>
-            <ButtonLink
+            <ReportLink
               href={`/api/coffees/${coffee.id}/ficha?locale=${locale}&inline=1`}
-              target="_blank"
-              rel="noopener"
+              filename={`ficha-${coffee.id}.pdf`}
+              offlineLabel={t("needsConnection")}
+              newTab
               variant="secondary"
               size="sm"
               icon={<FileDown size={15} aria-hidden />}
             >
               {t("downloadFicha")}
-            </ButtonLink>
+            </ReportLink>
           </div>
           <div className="grid grid-cols-2 gap-4 rounded-card border border-outline-variant bg-surface-container-lowest p-5 sm:grid-cols-3 lg:grid-cols-4">
             {filledFields.map((f) => (
@@ -557,11 +563,23 @@ export default async function CoffeeProfilePage({
                 <CoffeeVisibilityToggle
                   coffeeId={coffee.id}
                   visibility={coffee.visibility as CoffeeVisibility}
+                  previousShares={shares.map((s) => ({
+                    userId: s.userId,
+                    displayName: profileDisplayName({ id: s.userId, displayName: s.user.displayName }, locale),
+                  }))}
                   translations={{
                     recordPublic: t("recordPublic"),
                     recordPrivate: t("recordPrivate"),
                     recordShared: t("recordShared"),
                     confirmMakePublic: t("confirmMakePublic"),
+                    returnTitle: t("share.returnTitle"),
+                    returnBody: t("share.returnBody"),
+                    returnKeep: t("share.returnKeep"),
+                    returnClear: t("share.returnClear"),
+                    returnConfirm: t("share.returnConfirm"),
+                    returnLinksNote: t("share.returnLinksNote"),
+                    dialogCancel: t("share.dialogCancel"),
+                    dialogClose: t("share.dialogClose"),
                   }}
                 />
                 <p className="text-xs text-on-surface-variant">{t("recordHint")}</p>
@@ -589,7 +607,11 @@ export default async function CoffeeProfilePage({
                   coffeeId={coffee.id}
                   locale={locale}
                   initialToken={shareInitialToken}
-                  shares={shares.map((s) => ({ userId: s.userId, displayName: s.user.displayName }))}
+                  initialExpiresAt={shareInitialToken ? (invite?.expiresAt?.toISOString() ?? null) : null}
+                  shares={shares.map((s) => ({
+                    userId: s.userId,
+                    displayName: profileDisplayName({ id: s.userId, displayName: s.user.displayName }, locale),
+                  }))}
                   translations={{
                     title: t("share.title"),
                     generateLink: t("share.generateLink"),
@@ -600,6 +622,19 @@ export default async function CoffeeProfilePage({
                     noShares: t("share.noShares"),
                     revoke: t("share.revoke"),
                     linkHint: t("share.linkHint"),
+                    // Templates: filled client-side.
+                    expiresOn: t.raw("share.expiresOn") as string,
+                    noExpiry: t("share.noExpiry"),
+                    rotate: t("share.rotate"),
+                    rotateTitle: t("share.rotateTitle"),
+                    rotateBody: t("share.rotateBody"),
+                    rotateConfirm: t("share.rotateConfirm"),
+                    revokeTitle: t("share.revokeTitle"),
+                    revokeBody: t.raw("share.revokeBody") as string,
+                    revokeAlsoRotate: t("share.revokeAlsoRotate"),
+                    revokeConfirm: t("share.revokeConfirm"),
+                    dialogCancel: t("share.dialogCancel"),
+                    dialogClose: t("share.dialogClose"),
                   }}
                 />
               </div>

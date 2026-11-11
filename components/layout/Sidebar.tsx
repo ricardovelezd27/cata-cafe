@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { LocaleSwitchLink } from "@/components/layout/LocaleSwitchLink";
 import { GuestGateLink } from "@/components/guest/GuestGateLink";
 import { usePathname } from "next/navigation";
 import { LogOut, Languages, UserCog } from "lucide-react";
@@ -19,7 +19,6 @@ export default function Sidebar({
   const pathname = usePathname();
   const navItems = showInsights ? [...NAV_ITEMS, INSIGHTS_ITEM] : NAV_ITEMS;
   const otherLocale = locale === "es" ? "en" : "es";
-  const otherPath = pathname.replace(`/${locale}/`, `/${otherLocale}/`);
 
   return (
     <aside className="hidden lg:flex flex-col w-60 shrink-0 bg-surface-container border-r border-outline-variant h-full">
@@ -54,13 +53,13 @@ export default function Sidebar({
       </nav>
 
       <div className="border-t border-outline-variant py-3 px-5 flex flex-col gap-1">
-        <Link
-          href={otherPath}
+        <LocaleSwitchLink
+          locale={locale}
           className="flex items-center gap-3 py-2 text-sm text-on-surface-variant hover:text-on-surface transition-colors"
         >
           <Languages size={18} strokeWidth={1.8} />
           {otherLocale.toUpperCase()}
-        </Link>
+        </LocaleSwitchLink>
         <SignOutButton
           mode="switchAccount"
           locale={locale}

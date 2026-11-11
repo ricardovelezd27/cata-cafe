@@ -18,6 +18,8 @@ After a cupping, owner, participants, guests and the super-admin lens all land o
 
 ### F-resultados-1 · A participant can read other cuppers' evaluations, hidden community scores and the coffee through the public key · severity: P1 · status: confirms-board(Con la clave pública un participante lee evaluaciones ajenas y el café)
 
+- **Status** — Fixed in S8-01 (PR #68): PHASE 21 SQL (owner applies, runbook §10) limits `evaluations` to own rows plus the owner's submitted rows and hides `aggregate_scores` until group results are visible; non-owners get a generic refresh chip instead of peers' rows over Realtime.
+
 - **Problem** — `prisma/sql/rls_and_triggers.sql:134` creates `evals_submitted_participant` (`FOR SELECT USING ("isDraft" = false AND is_session_participant(...))`), and `:156` creates `agg_select` with only `is_session_participant(...)`. No later block drops or narrows them; PHASE 18b only re-grants EXECUTE on the helper. So any signed-in participant (guests included) can query the REST endpoint with their own JWT and get every submitted evaluation of the session (`cupperId`, raw data, `nota_express`) and `aggregate_scores` while the page shows "communityPending". `ResultsClient.tsx:379-414` also subscribes to raw `evaluations` UPDATE rows, so the app itself relies on that access.
 - **Implication** — Security and trust. A cupper can see peers' scores before committing (anchoring), the owner's blind cupping is undone, and identities are linked to scores. It affects every group session, but only someone who opens dev tools will notice.
 - **Fix** — Participants can read only their own evaluation rows. `aggregate_scores` is readable by non-owners only under the same condition as `canViewGroupResults` (closed, all submitted, or `closesAt` passed). The results "nuevos envíos" badge listens to a source with no per-cupper data. **Acceptance:** with a participant JWT, `select * from evaluations` returns only own rows; `aggregate_scores` returns nothing while the community is hidden; owner and closed-session reads still work; the realtime badge still fires. **Size:** M (SQL plus runbook section, applied manually).
@@ -27,6 +29,7 @@ After a cupping, owner, participants, guests and the super-admin lens all land o
 - **Invariant check** — Touches the RLS rules (never `USING (true)` without `TO authenticated`; keep EXECUTE on helpers used by policies). The new SQL twin of `canViewGroupResults` must be kept in sync.
 
 ### F-resultados-2 · The results page ships physical data and pre-release community scores to every viewer · severity: P1 · status: confirms-board(El payload incluye la hoja física del dueño…, El payload lleva el puntaje comunitario…)
+**Fixed in S8-02 (PR #67)** — results payload gated by `gateSampleForViewer` (physical owner-only, community withheld while hidden).
 
 - **Problem** — `results/page.tsx:693` sends `physical: (s.physical?.data …) ?? {}` with no `ownerRead` condition, although `cup/page.tsx` and `cva-pdf/route.ts:111` gate it. Lines `:644-658` fall back to the trigger row `agg` (`communityScore`, `attrAverages`, penalties) whenever `groupAggBySample` is null, which is exactly the case when `canViewGroup` is false. The UI hides both (`physical` is not read anywhere under `results/` or `components/results/`), but the RSC payload carries them.
 - **Implication** — Security and scoring leak, same audience as F-1 but needing no key: view-source is enough. Contradicts CLAUDE.md ("the cup page and the CVA PDF route only ship `physical` to the owner").
@@ -37,6 +40,8 @@ After a cupping, owner, participants, guests and the super-admin lens all land o
 - **Invariant check** — Restores "owner-only physical/extrinsic" and page/PDF parity; does not touch scoring.
 
 ### F-resultados-3 · Two forgotten server actions let a cupper submit an evaluation after the session is closed · severity: P2 · status: new
+
+- **Status** — Fixed in S8-01 (PR #68): `submitSampleEvaluation` and `submitEvaluation` deleted, guarded by `tests/useServerExports.test.ts`.
 
 - **Problem** — `app/actions/community.ts:85-103` (`submitSampleEvaluation`) and `:110-125` (`submitEvaluation`) are exported `"use server"` functions with no `requireSession*`/`assertSessionWritable`, no `run()` wrapper, and no caller anywhere in `app/`, `components/`, `hooks/` or `lib/`. They flip the caller's own draft to `isDraft: false`. Unlike `submitAllEvaluations` (`:24-26`, guarded), they work on a closed session, and the flip re-fires `trg_recompute_aggregate`.
 - **Implication** — Scoring correctness and trust. A participant who left a draft at close can add it afterwards with a hand-made POST. The community score and ranking change after the close emails went out. A normal user cannot reach this, so it is rare, but it breaks "closed = read-only".
@@ -55,6 +60,7 @@ After a cupping, owner, participants, guests and the super-admin lens all land o
 - **Confidence** — verified-in-code.
 - **Kim?** — yes, K-resultados-1.
 - **Invariant check** — Option A adds a third sanctioned post-close write; CLAUDE.md and `docs/flows.md` §1 must be updated in the same PR.
+- **Fixed in S8-12** (PR #74) — owner AND revealed sample may save origin data after close (`upsertExtrinsic` returns `ActionResult`, stamps `edited_at`; others get `session_closed`), dialog errors are localized toasts, reports say "Origen editado el …". TODO(Kim-D1) left.
 
 ### F-resultados-5 · Excluding a cupper is a bare switch: no reason, no author, no notice, and it still works after close · severity: P2 · status: confirms-board(Excluir a un catador después del cierre cambia resultados ya enviados) + new (no audit trail, no n of N)
 
@@ -65,6 +71,7 @@ After a cupping, owner, participants, guests and the super-admin lens all land o
 - **Confidence** — verified-in-code.
 - **Kim?** — yes, K-resultados-2.
 - **Invariant check** — If allowed after close, add it to the sanctioned-writes list in CLAUDE.md and `docs/flows.md` §1.
+- **Fixed in S8-12** (PR #74) — `setParticipantExclusion` is `run()` -> `ActionResult` with a fixed reason list, author/time/reason stored (migration `20261111130000`), `ExclusionDialog` + localized toasts, matrix shows who/when/why, "n de N incluidos" everywhere, "Resultados actualizados el …" after close. TODO(Kim-D2) left.
 
 ### F-resultados-6 · Ranking implies a verdict the data cannot support · severity: P2 · status: new
 
@@ -75,6 +82,7 @@ After a cupping, owner, participants, guests and the super-admin lens all land o
 - **Confidence** — verified-in-code.
 - **Kim?** — yes, K-resultados-3.
 - **Invariant check** — Display-only; reference anchors stay out of ranking, average and best; scoring untouched.
+- **Fixed in S8-12** (PR #74) — `RANKING_POLICY` in `lib/reports/ranking.ts`: shared ranks, suppressed/indicative n, no SD or "mejor" under 3 cuppers, "sin diferencia clara", basis chip when bases mix; page, summary and ficha read one output. TODO(Kim-D3) left.
 
 ### F-resultados-7 · Radar card hard-codes Spanish and "Revelar" works on closed sessions · severity: P3 · status: confirms-board(Revelar sigue disponible en una sesión cerrada)
 
@@ -85,6 +93,7 @@ After a cupping, owner, participants, guests and the super-admin lens all land o
 - **Confidence** — verified-in-code.
 - **Kim?** — no.
 - **Invariant check** — Restores closed = read-only.
+- **Fixed in S8-12** (PR #74) — radar card strings come from `results.radar.*` (es/en), "Revelar" is hidden on closed sessions (the action itself was already guarded by S8-01).
 
 ### F-resultados-8 · PDFs carry no timestamp, language or inclusion state, and the CVA form can print an unfinished draft unmarked · severity: P3 · status: new
 
@@ -95,8 +104,11 @@ After a cupping, owner, participants, guests and the super-admin lens all land o
 - **Confidence** — verified-in-code.
 - **Kim?** — no.
 - **Invariant check** — PDF gating stays inside builders.
+- **Fixed in S8-12** (PR #74) — `ReportStamp` (server date/time UTC, language, inclusion, "Borrador"), `Document language` on all six PDFs, dated filenames, `cva-pdf` passes `draft`.
 
 ### F-resultados-9 · Footer PDF links are plain anchors with no offline or native path · severity: P3 · status: new
+
+**Fixed in S8-15 (PR #…): footer PDF links are ReportLink — plain anchor on the web, disabled with "Necesita conexión" offline, openReport in a native shell.**
 
 - **Problem** — `ResultsClient.tsx:943-981` uses `<a href>` and `target="_blank"` for the CVA, summary and ficha PDFs, and `router.push` to `/print` (`:937`). There is no connectivity check; offline the link dies in the browser error page.
 - **Implication** — Native-readiness: a WebView often cannot open `_blank` PDFs or save `blob:` downloads; a cupper offline at the table taps a dead button.
@@ -115,6 +127,7 @@ After a cupping, owner, participants, guests and the super-admin lens all land o
 - **Confidence** — verified-in-code.
 - **Kim?** — no.
 - **Invariant check** — none touched.
+- **Fixed in S8-12** (PR #74) — `localStorage` read guarded, "Editar" dropped on closed sessions, login redirect carries `next=`.
 
 ## 4. Keep — works well
 

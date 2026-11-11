@@ -275,7 +275,7 @@ export function InsightsReportDocument(props: InsightsReportProps) {
   const showBenchmark = !!benchmark && benchmark.benchmark.n > 0;
 
   return (
-    <Document title={`${t.title} · ${t.wordmark}`} author={t.wordmark}>
+    <Document title={`${t.title} · ${t.wordmark}`} author={t.wordmark} language={props.locale}>
       <Page size="A4" style={s.page} wrap>
         <View style={s.headerBox}>
           <View style={s.headerTopRow}>

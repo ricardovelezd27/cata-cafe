@@ -38,7 +38,8 @@
     "delete": "Eliminar",
     "view": "Ver",
     "duplicate": "Duplicar",
-    "duplicateError": "No se pudo duplicar. Inténtalo de nuevo."
+    "duplicateError": "No se pudo duplicar. Inténtalo de nuevo.",
+    "duplicateDropped": "Sesión duplicada. Cafés que ya no puedes usar y se quitaron de sus muestras: {count}."
   },
   "home": {
     "heroTitle": "Cata sensorial profesional",
@@ -65,17 +66,60 @@
     "claimIntro": "Crea tu cuenta o inicia sesión para guardar los resultados de tu cata. Al terminar volverás a tus resultados.",
     "claim": {
       "title": "Vincular tus resultados",
-      "body": "¿Vincular la participación de «{name}» ({sessions, plural, =1 {1 sesión de cata} other {# sesiones de cata}}) a la cuenta {email}?",
-      "note": "Las evaluaciones y el historial de esa participación como invitado pasarán a esta cuenta. Si no reconoces ese nombre, cancela.",
+      "body": "¿Vincular la participación de «{name}» ({sessions, plural, =1 {1 sesión de cata} other {# sesiones de cata}}, {evaluations, plural, =0 {sin evaluaciones} =1 {1 evaluación} other {# evaluaciones}}) a la cuenta {email}?",
+      "note": "Las evaluaciones y el historial de esa participación como invitado pasarán a esta cuenta. Si no reconoces ese nombre, elige «Usar otra cuenta» o «No vincular».",
       "confirm": "Vincular a mi cuenta",
       "confirming": "Vinculando…",
-      "cancel": "Cancelar",
       "errorTitle": "No pudimos vincular tus resultados",
       "errorInvalid": "El enlace no es válido. Si todavía tienes abierta la sesión de invitado en el dispositivo donde cataste, vuelve a sus resultados y pulsa «Crear cuenta y guardar» de nuevo; si ya iniciaste sesión ahí, esa participación como invitado ya no se puede vincular. Tu cuenta funciona con normalidad.",
       "errorExpired": "El enlace caducó (dura 7 días). Si todavía tienes abierta la sesión de invitado en el dispositivo donde cataste, vuelve a sus resultados y pulsa «Crear cuenta y guardar» de nuevo. Tu cuenta funciona con normalidad.",
       "errorAlready": "Estos resultados ya fueron vinculados a una cuenta, o la participación como invitado ya no existe.",
-      "continue": "Ir a mi cuenta"
-    }
+      "continue": "Ir a mi cuenta",
+      "useOther": "Usar otra cuenta",
+      "skip": "No vincular",
+      "skipTitle": "¿Seguro que no quieres vincular?",
+      "skipBody": "Si no vinculas, esa participación como invitado no pasará a esta cuenta: sus resultados quedarán bajo la identidad de invitado y no se verán desde esta cuenta. Solo podrás vincularlos desde este mismo enlace durante 7 días.",
+      "skipConfirm": "Sí, no vincular",
+      "skipBack": "Volver",
+      "retryTitle": "No pudimos terminar de vincular",
+      "retryBody": "Algo falló del lado del servidor y no se movió nada. Puedes reintentar: es seguro repetirlo.",
+      "retry": "Reintentar",
+      "offline": "Sin conexión: podrás vincular cuando vuelvas a estar en línea."
+    },
+    "errors": {
+      "rate_limited": "Demasiados intentos en poco tiempo. Espera un minuto e inténtalo de nuevo.",
+      "invalid_email": "Revisa el correo: no parece una dirección válida.",
+      "code_invalid": "El código o el enlace no es válido, ya se usó o caducó. Revisa los 6 dígitos o pide uno nuevo.",
+      "link_failed": "No pudimos completar el acceso con ese enlace. Pide uno nuevo.",
+      "cancelled": "Cancelaste el acceso con Google. Puedes intentarlo de nuevo o entrar con tu correo.",
+      "unreachable": "No pudimos conectar con el servicio de acceso. Revisa tu conexión e inténtalo de nuevo.",
+      "unknown": "Algo salió mal al entrar. Inténtalo de nuevo."
+    },
+    "sentState": {
+      "title": "Revisa tu correo",
+      "body": "Enviamos un enlace y un código de 6 dígitos a {email}. Usa lo que te quede más a mano.",
+      "codeLabel": "Código de 6 dígitos",
+      "codeHint": "Cópialo del mismo correo. Sirve si el enlace no abre o se abrió en otro navegador.",
+      "codeSubmit": "Entrar con el código",
+      "codeSubmitting": "Verificando…",
+      "resend": "Reenviar correo",
+      "resendIn": "Reenviar en {seconds} s",
+      "resent": "Enviamos un correo nuevo. Los anteriores dejan de servir.",
+      "changeEmail": "Usar otro correo",
+      "support": "¿Problemas para entrar? Escríbenos"
+    },
+    "confirm": {
+      "title": "Confirma tu acceso",
+      "body": "Pulsa «Entrar» para terminar de iniciar sesión. Lo pedimos para que los filtros de seguridad del correo no gasten tu enlace.",
+      "button": "Entrar",
+      "working": "Entrando…",
+      "failedTitle": "Este enlace ya no sirve",
+      "failedBody": "Los enlaces de acceso funcionan una sola vez y caducan. Pide uno nuevo y entra con el enlace o con el código de 6 dígitos.",
+      "newLink": "Pedir un enlace nuevo"
+    },
+    "inAppBrowserHint": "Google no funciona dentro de esta app. Usa tu correo, o abre esta página en tu navegador (Safari o Chrome) para entrar con Google.",
+    "inAppCopyLink": "Copiar enlace",
+    "inAppLinkCopied": "Enlace copiado"
   },
   "dashboard": {
     "title": "Tu estudio de catación",
@@ -137,7 +181,7 @@
     "objective": "Objetivo",
     "objectivePh": "¿Qué quieres aprender con esta sesión?",
     "format": "Formato",
-    "cups": "Tazas por café",
+    "cups": "Tazas por muestra",
     "coffees": "Cafés a evaluar",
     "coffeeName": "Nombre del café",
     "producerRoaster": "Productor / Tostador",
@@ -187,6 +231,7 @@
         "invalid_altitude": "La altitud debe ser un número en msnm (por ejemplo 1800).",
         "sample_without_coffee": "Cada muestra debe estar vinculada a un café.",
         "generic": "No se pudo crear la sesión. Inténtalo de nuevo.",
+        "offline": "Sin conexión: se necesita internet para crear la sesión. Tus datos siguen aquí.",
         "coffee_not_found": "Uno de los cafés seleccionados ya no está disponible. Vuelve a elegirlo.",
         "invalid_name": "Ponle un nombre a la sesión (máx. 120 caracteres).",
         "invalid_date": "La fecha no es válida.",
@@ -194,12 +239,21 @@
         "invalid_format": "Elige un formato de cata válido.",
         "invalid_cups": "Las tazas por muestra deben ser un número entre 1 y 5.",
         "too_many_samples": "Máximo 100 muestras por sesión.",
+        "too_many_coffees": "Máximo 100 cafés por sesión.",
+        "invalid_coffee": "Revisa los datos de los cafés: algún campo es demasiado largo o no es válido.",
+        "invalid_label": "El nombre de una muestra es demasiado largo (máx. 120 caracteres).",
         "invalid_closes_at": "La fecha de cierre debe estar en el futuro.",
-        "invalid_reference": "La muestra de referencia no es válida. Elige una de la lista."
+        "invalid_reference": "La muestra de referencia no es válida. Elige una de la lista.",
+        "invalid_warmup": "El ejercicio de calentamiento no es válido. Elige uno de la lista.",
+        "not_found_or_forbidden": "No tienes permiso para esto o ya no existe. Revisa el grupo elegido.",
+        "not_authenticated": "Tu sesión expiró. Vuelve a iniciar sesión; lo que escribiste sigue aquí.",
+        "unknown": "No se pudo crear la sesión. Lo que escribiste sigue aquí; inténtalo de nuevo."
       },
       "goToPanel": "Ir al panel",
       "startNow": "Iniciar cata ahora",
-      "goToPanelHint": "Desde el panel puedes lanzar el movimiento sensorial con el grupo y empezar la cata cuando todos estén en la sala."
+      "goToPanelHint": "Desde el panel puedes lanzar el movimiento sensorial con el grupo y empezar la cata cuando todos estén en la sala.",
+      "startGroup": "Crear cata y obtener enlace",
+      "cupsHint": "Con menos de 5 tazas no se descuentan uniformidad ni defectos: la muestra puntúa solo por sus atributos."
     },
     "express": {
       "title": "Catar ahora",
@@ -213,7 +267,9 @@
       "increment": "Una muestra más",
       "cta": "Catar ahora",
       "creating": "Creando…",
-      "fullWizard": "Configurar sesión completa"
+      "fullWizard": "Configurar sesión completa",
+      "nameRequired": "Ponle un nombre a la cata para continuar.",
+      "offline": "Sin conexión: se necesita internet para crear la sesión."
     },
     "deleteSession": {
       "title": "Eliminar sesión",
@@ -222,9 +278,12 @@
       "cancel": "Cancelar",
       "error": "No se pudo eliminar la sesión. Inténtalo de nuevo.",
       "loadingImpact": "Calculando el impacto…",
+      "impactFailed": "No se pudo calcular el impacto de eliminar esta sesión.",
+      "retry": "Reintentar",
       "coffeesIntro": "Los cafés de esta sesión y sus estadísticas pertenecen a sus propietarios y se conservan:",
       "you": "Tú",
-      "impact": "Se eliminarán la sesión y {evaluations} evaluación(es) de {cuppers} catador(es). Cada catador conserva su historial de cafés de forma anónima, sin vínculo a esta sesión."
+      "impact": "Se eliminarán la sesión y {evaluations} evaluación(es) de {cuppers} catador(es). Cada catador conserva su historial de cafés de forma anónima, sin vínculo a esta sesión.",
+      "detail": "Evaluaciones enviadas: {submitted} · borradores: {drafts} · participantes que se unieron: {participants}."
     },
     "table": {
       "colName": "Sesión",
@@ -269,7 +328,15 @@
       "closesAtHint": "Opcional. La sesión se cierra sola en la madrugada siguiente a esta fecha. Déjala vacía para una cata en vivo que cierras tú.",
       "closesAtPast": "La fecha de cierre debe ser hoy o una fecha futura.",
       "sessionClosed": "Esta sesión está cerrada y ya no se puede editar.",
-      "warmupLocked": "El ejercicio no se puede cambiar una vez iniciada la cata."
+      "warmupLocked": "El ejercicio no se puede cambiar una vez iniciada la cata.",
+      "repinTitle": "¿Fijar esta muestra como referencia?",
+      "repinBody": "{n} catadores ya evaluaron esta muestra. Al marcarla como referencia, sus notas de calidad se reemplazan por el ancla de 79.00. No se puede deshacer.",
+      "sampleHasData": "Tiene datos físicos o de origen — no se puede eliminar",
+      "removeRepinTitle": "¿Quitar la referencia activa?",
+      "removeRepinBody": "Al quitarla, {label} vuelve a ser la referencia y {n} catadores verán sus notas de calidad reemplazadas por el ancla de 79.00. No se puede deshacer.",
+      "removeRepinConfirm": "Quitar referencia",
+      "referenceRepinBlocked": "Quitar esta muestra reactivaría una referencia anterior y reemplazaría las notas de sus catadores. Cambia primero la referencia.",
+      "formatLockedStarted": "El formato y las tazas por muestra se bloquean cuando la cata ya empezó o tiene evaluaciones."
     }
   },
   "cupping": {
@@ -329,7 +396,10 @@
       "submitBody": "Estas muestras tienen secciones sin completar. Al enviar, el puntaje se calcula sin ellas.",
       "review": "Revisar",
       "continueAnyway": "Continuar de todos modos",
-      "submitAnyway": "Enviar de todos modos"
+      "submitAnyway": "Enviar de todos modos",
+      "outcomeCloses": "Al enviar, la cata se cierra y ya no se podrá editar.",
+      "outcomeStays": "La cata seguirá abierta: te faltan {n} muestras por abrir. Si terminas con las que catiste, esas muestras se quitan y la cata se cierra.",
+      "finishWith": "Terminar con las {n} que catié"
     },
     "leaveGuard": {
       "title": "¿Salir de la cata?",
@@ -427,7 +497,7 @@
   "profile": {
     "title": "Perfil",
     "displayName": "Nombre para mostrar",
-    "preferredLang": "Idioma preferido",
+    "preferredLang": "Idioma de los correos",
     "bio": "Bio",
     "save": "Guardar",
     "ownedSessions": "Mis sesiones como maestro",
@@ -470,7 +540,40 @@
     "recentCoffees": "Cafés recientes",
     "viewAllSessions": "Ver todas las sesiones",
     "viewAllCoffees": "Ver todos los cafés",
-    "settingsTitle": "Configuración"
+    "settingsTitle": "Configuración",
+    "saving": "Guardando…",
+    "logoutEverywhere": "Salir en todos los dispositivos",
+    "changeEmail": "Cambiar correo",
+    "changeEmailTitle": "Cambiar el correo de tu cuenta",
+    "changeEmailBody": "Te enviamos un enlace de confirmación al correo nuevo. Hasta que lo abras sigues entrando con el actual, y puede que también debas confirmar desde el actual.",
+    "changeEmailLabel": "Correo nuevo",
+    "changeEmailSubmit": "Enviar enlace",
+    "changeEmailSending": "Enviando…",
+    "changeEmailSent": "Enviamos un enlace de confirmación a {email}. Ábrelo para terminar el cambio.",
+    "changeEmailPending": "Cambio pendiente a {email}: confirma desde ese correo.",
+    "deleteAccount": {
+      "open": "Eliminar cuenta",
+      "title": "Eliminar tu cuenta",
+      "intro": "Esto es lo que pasará con lo que hay en tu cuenta:",
+      "loading": "Revisando tu cuenta…",
+      "impactSessionsDeleted": "Se eliminan {n} sesiones que solo tenían tus datos.",
+      "impactSessionsKept": "Se conservan {n} sesiones a las que se unieron o en las que evaluaron otros catadores, cerradas y sin tu nombre.",
+      "impactEvaluations": "{n} evaluaciones tuyas quedan anónimas en las sesiones donde participaste.",
+      "impactCoffees": "Se anonimizan {n} cafés que creaste.",
+      "impactGroupsKept": "{n} grupos con otros miembros siguen existiendo sin tu nombre; nadie podrá administrarlos.",
+      "impactGroupsDeleted": "Se eliminan {n} grupos sin otros miembros.",
+      "impactNothing": "Tu perfil, tu historial y tus datos de acceso.",
+      "keepScores": "Tus puntajes anonimizados se quedan en las sesiones donde participaste, para que los resultados de los demás no cambien.",
+      "keepCoffees": "Los cafés que creaste se quedan sin sus datos identificativos (nombre, finca, productor, notas).",
+      "irreversible": "Esto no se puede deshacer.",
+      "protectedBody": "Esta cuenta administra la plataforma y no se puede eliminar desde la app.",
+      "tooLargeBody": "Tienes más de {max} sesiones propias que se eliminarían, demasiadas para hacerlo desde la app de una vez. Escríbenos a soporte y eliminamos la cuenta por ti.",
+      "changed": "Algo cambió en tu cuenta mientras la eliminábamos (por ejemplo, alguien se unió a una de tus sesiones). No se eliminó nada (las sesiones compartidas que ya se cerraron siguen cerradas). Revisa el resumen actualizado y vuelve a confirmar.",
+      "typeLabel": "Escribe {word} para confirmar",
+      "submit": "Eliminar mi cuenta",
+      "deleting": "Eliminando…",
+      "cancel": "Cancelar"
+    }
   },
   "actions": {
     "save": "Guardar",
@@ -496,7 +599,7 @@
     "copyLink": "Copiar enlace",
     "copied": "Copiado",
     "participants": "Participantes",
-    "submittedOf": "{count} de {total} enviaron",
+    "submittedOf": "{count} de {total} enviaron todo",
     "closeSession": "Cerrar sesión",
     "confirmClose": "¿Cerrar la sesión? Los resultados quedarán finales.",
     "liveCountDown": "Conteo en vivo no disponible — recarga la página para ver el total actualizado.",
@@ -504,6 +607,8 @@
     "startSession": "Iniciar cata",
     "starting": "Iniciando…",
     "startSessionError": "No se pudo iniciar la cata. Inténtalo de nuevo.",
+    "startGroupNoticeFailed": "La cata empezó, pero no pudimos avisar al grupo por correo. Puedes reenviar el aviso desde la página del grupo.",
+    "startGroupNoticePartial": "La cata empezó. El aviso llegó a una parte del grupo; reintenta los fallidos desde la página del grupo.",
     "reveal": "Revelar identidad",
     "revealed": "Revelado",
     "selectCoffee": "Seleccionar café",
@@ -517,6 +622,9 @@
     "participantRole": "Catador Participante",
     "copyImage": "Copiar QR",
     "downloadQr": "Descargar QR",
+    "inviteMissing": "Esta cata no tiene un enlace de invitación activo. Genera uno desde el panel de la cata.",
+    "inviteClosed": "Esta cata está cerrada, así que su enlace de invitación ya no está disponible.",
+    "viewResults": "Ver resultados",
     "scanToJoin": "Escanea para unirte a la cata",
     "continueAsGuest": "Continuar como invitado",
     "guestNamePlaceholder": "Tu nombre",
@@ -543,7 +651,38 @@
     "warmupConfirmStartTitle": "El grupo está en el ejercicio",
     "warmupConfirmStart": "El grupo está en el ejercicio (quedan {time}). ¿Iniciar igual?",
     "warmupConfirmStartYes": "Iniciar igual",
-    "warmupStartError": "No se pudo empezar el ejercicio."
+    "warmupStartError": "No se pudo empezar el ejercicio.",
+    "joinClosedTitle": "Esta cata ya cerró",
+    "joinClosedBody": "Ya no se aceptan catadores. Pide al organizador el enlace de resultados.",
+    "joinExpiredTitle": "Este enlace ya no sirve",
+    "joinExpiredBody": "El organizador lo reemplazó o caducó. Pídele el enlace o el QR más reciente.",
+    "joinExhaustedTitle": "Ya no quedan lugares",
+    "joinExhaustedBody": "Este enlace alcanzó su número máximo de usos. Pídele al organizador que amplíe los lugares.",
+    "joinEntriesClosedTitle": "El organizador cerró las entradas",
+    "joinEntriesClosedBody": "Esta cata ya no recibe catadores nuevos. Si ya eras parte, inicia sesión con tu cuenta.",
+    "joinInvalidTitle": "Enlace no válido",
+    "joinInvalidBody": "No encontramos esta cata. Revisa que el enlace esté completo o pide uno nuevo.",
+    "joinLateNote": "Esta cata ya empezó. Puedes catar todas las muestras.",
+    "joinHome": "Ir al inicio",
+    "inviteRegenerate": "Regenerar enlace",
+    "inviteRegenerateTitle": "¿Regenerar el enlace?",
+    "inviteRegenerateBody": "El enlace y el QR actuales dejarán de funcionar. Quienes ya entraron siguen dentro.",
+    "inviteRegenerateConfirm": "Regenerar",
+    "entriesClose": "Cerrar entradas",
+    "entriesOpen": "Reabrir entradas",
+    "entriesClosedNote": "Entradas cerradas: solo entran quienes ya eran parte.",
+    "guestRateLimited": "Mucha gente está entrando desde esta red a la vez. Espera un minuto y vuelve a intentarlo, o entra con tu correo.",
+    "closeRule": "Las notas completas que sigan sin enviar al cerrar quedan fuera de los resultados.",
+    "closeUnsentOne": "1 catador tiene notas completas sin enviar. Si cierras ahora, no se contarán.",
+    "closeUnsentMany": "{count} catadores tienen notas completas sin enviar. Si cierras ahora, no se contarán.",
+    "closeUnsentNone": "Nadie tiene notas completas sin enviar.",
+    "closeNotFinalized": "La sesión se cerró. Algunos pasos finales (revelar cafés, historial) se reintentarán automáticamente.",
+    "closeImpactLoading": "Revisando notas sin enviar…",
+    "deadlineOpen": "Cierra el {when}",
+    "deadlineSoon": "Cierra pronto: {when}",
+    "deadlinePassed": "El plazo terminó: {when}",
+    "deadlineLocal": "{local} en tu hora",
+    "closesAtLiveNotice": "Con fecha de cierre la cata pasa a tu ritmo: sin sala de espera ni «Iniciar cata»."
   },
   "results": {
     "title": "Resultados de la Sesión",
@@ -556,6 +695,7 @@
     "refresh": "Actualizar",
     "refreshing": "Actualizando…",
     "refreshNew": "Actualizar ({count} nuevas)",
+    "refreshNewGeneric": "Hay novedades · Actualizar",
     "participation": "{submitted} de {total} catadores",
     "lastUpdated": "Actualizado: {time}",
     "mine": "Mi evaluación",
@@ -588,7 +728,8 @@
       "pending": "{count} cambio(s) guardado(s) en este dispositivo · pendiente de sincronizar",
       "offline": "Sin conexión: {count} cambio(s) se sincronizarán al reconectar.",
       "retry": "Reintentar",
-      "synced": "Cambios sincronizados. Actualizando resultados…"
+      "synced": "Cambios sincronizados. Actualizando resultados…",
+      "closedUnsent": "{count} cambio(s) guardado(s) en este dispositivo no se enviaron porque la cata ya estaba cerrada. No cuentan en los resultados."
     },
     "closeEmails": {
       "label": "Correos de cierre:",
@@ -628,7 +769,12 @@
       "alignmentNote": "Informativo: no afecta los puntajes.",
       "highlights": "Descriptores destacados",
       "soloTopDescriptors": "Tus descriptores más frecuentes",
-      "viewInDescriptors": "Ver en Descriptores"
+      "viewInDescriptors": "Ver en Descriptores",
+      "includedOf": "{n} de {total} incluidos",
+      "rankIndicative": "indicativo",
+      "rankNoClearGap": "sin diferencia clara",
+      "basisMine": "tu puntaje",
+      "fewNote": "Con menos de 3 catadores el puntaje es indicativo: no se muestra dispersión ni se elige mejor muestra."
     },
     "table": {
       "sample": "Muestra",
@@ -675,7 +821,9 @@
       "expressNotes": "Notas rápidas",
       "assignCoffee": "Asignar café",
       "extrinsicSaved": "Datos de origen guardados",
-      "close": "Cerrar"
+      "close": "Cerrar",
+      "assignPick": "Elegir un café existente",
+      "assignedToast": "Café asignado a la muestra"
     },
     "matrix": {
       "matrixTitle": "Resumen de puntajes CVA",
@@ -689,7 +837,23 @@
       "included": "Incluido",
       "excluded": "Excluido",
       "excludedTag": "(excluido)",
-      "ownerSection": "Análisis por catador"
+      "ownerSection": "Análisis por catador",
+      "includedCount": "{n} de {total} catadores incluidos en los resultados",
+      "excludeDialogTitle": "Excluir del grupo",
+      "excludeDialogBody": "Sus evaluaciones dejan de contar en el promedio del grupo, la dispersión y los gráficos. El catador sigue viendo sus propios resultados. Queda registrado quién lo excluyó, cuándo y por qué.",
+      "excludeReasonLabel": "Motivo",
+      "excludeConfirm": "Excluir",
+      "dialogCancel": "Cancelar",
+      "dialogClose": "Cerrar",
+      "exclusionReasons": {
+        "sample_error": "Error de muestra",
+        "protocol": "No siguió el protocolo",
+        "calibration": "Calibración distinta",
+        "other": "Otro motivo"
+      },
+      "excludedTrail": "Excluido por {who} el {date} · {reason}",
+      "excludedToast": "Catador excluido de los resultados",
+      "restoredToast": "Catador incluido de nuevo en los resultados"
     },
     "breakdown": {
       "how": "¿Cómo se calculó?",
@@ -774,6 +938,30 @@
         "title": "Muestra de referencia",
         "body": "El maestro de cata puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La cata empieza por ella y su calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos, así que cada catador le da siempre 79.00 y solo describe lo que percibe. No entra en el ranking, en el promedio ni en la mejor muestra: es el ancla.\nLo que agrega es contexto: junto a cada muestra verás Δ, la diferencia entre su puntaje y el de la referencia, calculada siempre con el mismo tipo de puntaje que ves al lado (comunitario cuando está visible; si no, el tuyo).\nReferencia, media del grupo y desviación son cosas distintas: la referencia es el punto de partida elegido por el maestro; la media es lo que percibió el grupo; la desviación (±) es cuánto se dispersó el grupo."
       }
+    },
+    "radar": {
+      "score": "PUNTAJE CVA",
+      "reveal": "Revelar",
+      "communityScore": "Puntuación comunidad",
+      "includedLine": "{n} de {total} evaluadores incluidos en el promedio",
+      "noAffective": "Sin datos afectivos registrados",
+      "requiresAffective": "El gráfico radar requiere datos afectivos (formato afectivo o combinado)"
+    },
+    "updatedAfterClose": "Resultados actualizados el {date}, después del cierre.",
+    "originEditedAt": "Origen editado el {date}",
+    "downloadCsv": "Datos por catador (CSV)",
+    "needsConnection": "Necesita conexión",
+    "closedUnsentNotice": "Tenías {count, plural, one {# muestra completa} other {# muestras completas}} sin enviar cuando se cerró la cata. No cuentan en los resultados.",
+    "closedNotice": "La cata se cerró. Lo que enviaste cuenta en los resultados; lo que quedó sin enviar, no.",
+    "finish": {
+      "button": "Terminar cata",
+      "title": "¿Terminar la cata?",
+      "body": "Esto cierra la cata y ya no se podrá editar.",
+      "submitLine": "Se enviarán {n} muestras completas.",
+      "removeLine": "Se quitarán {n} muestras que nunca abriste.",
+      "keepLine": "{n} muestras incompletas quedarán sin puntaje.",
+      "confirm": "Terminar cata",
+      "cancel": "Seguir catando"
     }
   },
   "community": {
@@ -792,7 +980,10 @@
     "tasted": "Catado",
     "yourScore": "Tu puntaje",
     "communityScore": "Puntaje comunitario",
-    "sessionDeleted": "Sesión eliminada"
+    "sessionDeleted": "Sesión eliminada",
+    "quickImpression": "Impresión rápida",
+    "noCoffeeAssigned": "Sin café asignado",
+    "coffeeUnrevealed": "Café sin revelar"
   },
   "coffee": {
     "title": "Perfil del café",
@@ -858,10 +1049,11 @@
     "adminOwnerPrefix": "Dueño:",
     "recentTastingsTitle": "Catas recientes",
     "recentTastingsEmpty": "Sin catas recientes.",
+    "sessionsOthersNote": "Las sesiones de este café son de otros catadores; sus nombres no se muestran, pero sus resultados cuentan en los totales.",
     "deleteCoffee": {
       "title": "Eliminar café",
       "titleMany": "Eliminar {count} cafés",
-      "body": "Se borran los datos que identifican el café (nombre, código, finca, productor, notas y certificaciones) y deja de aparecer en tu lista y en las sesiones. Los datos de cata —puntajes, notas percibidas, origen, variedad y proceso— se conservan de forma anónima para las estadísticas. Esta acción no se puede deshacer.",
+      "body": "Se borran los datos que identifican el café (nombre, código, finca, productor, notas y certificaciones) y deja de aparecer en tu lista y en las sesiones. Los datos de cata —puntajes, notas percibidas, origen, variedad y proceso— se conservan de forma anónima para las estadísticas. Las fichas de origen de las muestras de sesiones pasadas (finca, productor) y las etiquetas de muestra no se modifican. Esta acción no se puede deshacer.",
       "confirm": "Eliminar café",
       "confirmMany": "Eliminar {count} cafés",
       "cancel": "Cancelar",
@@ -905,7 +1097,8 @@
       "create": "Crear café",
       "creating": "Creando…",
       "nameRequired": "El nombre es obligatorio.",
-      "error": "No se pudo crear el café. Inténtalo de nuevo."
+      "error": "No se pudo crear el café. Inténtalo de nuevo.",
+      "conflict": "Este café cambió en otro lugar desde que lo abriste. Recarga la página para ver la última versión antes de guardar."
     },
     "share": {
       "title": "Compartir café",
@@ -922,7 +1115,25 @@
       "joinBody": "Acepta la invitación para ver {name} y usarlo en tus propias catas.",
       "joinCta": "Aceptar invitación",
       "joinLogin": "Inicia sesión para aceptar la invitación.",
-      "invalidToken": "Este enlace de invitación no es válido o ya expiró."
+      "invalidToken": "Este enlace de invitación no es válido o ya expiró.",
+      "expiresOn": "El enlace vence el {date}",
+      "noExpiry": "Este enlace antiguo no vence; genera uno nuevo para que caduque en 30 días.",
+      "rotate": "Generar enlace nuevo",
+      "rotateTitle": "Generar un enlace nuevo",
+      "rotateBody": "El enlace actual dejará de funcionar. Quienes ya tienen acceso lo conservan.",
+      "rotateConfirm": "Generar enlace nuevo",
+      "revokeTitle": "Revocar acceso",
+      "revokeBody": "{name} perderá el acceso a este café.",
+      "revokeAlsoRotate": "Generar también un enlace nuevo: el actual dejará de funcionar y así no podrá volver a entrar con él.",
+      "revokeConfirm": "Revocar",
+      "dialogCancel": "Cancelar",
+      "dialogClose": "Cerrar",
+      "returnTitle": "Personas con acceso anterior",
+      "returnBody": "Estas personas tenían acceso antes de que el café fuera privado. Elige qué hacer con ellas antes de volver a compartirlo.",
+      "returnKeep": "Mantener su acceso",
+      "returnClear": "Quitar su acceso",
+      "returnConfirm": "Continuar",
+      "returnLinksNote": "Los enlaces anteriores ya no funcionan; genera uno nuevo si lo necesitas."
     },
     "picker": {
       "useExisting": "Usar café existente",
@@ -934,7 +1145,9 @@
       "empty": "No se encontraron cafés.",
       "linked": "Café vinculado",
       "unlink": "Desvincular"
-    }
+    },
+    "tasteThis": "Catar este café",
+    "needsConnection": "Necesita conexión"
   },
   "offline": {
     "bannerOffline": "Sin conexión. Tus evaluaciones se guardan localmente.",
@@ -953,7 +1166,49 @@
     "conflictReplace": "Reemplazar con esta versión",
     "partialSyncNotice": "Mostrando resultados de {included} de {total} participantes. {pending} aún no han sincronizado.",
     "bannerStorageUnavailable": "Este navegador no permite guardar borradores sin conexión. Mantén la conexión activa mientras catas.",
-    "pendingDrafts": "{count} borradores sin sincronizar"
+    "pendingDrafts": "{count} borradores sin sincronizar",
+    "staleDrafts": "Tienes borradores sin sincronizar de hace más de 3 días. El navegador puede borrarlos si no abres la app: conéctate pronto o instálala en tu pantalla de inicio.",
+    "closedUnsentDrafts": "{count} borradores sin enviar: la cata ya estaba cerrada",
+    "unsyncedNotes": "{count} notas sin sincronizar",
+    "conflictDrafts": "{count} cambios esperan tu decisión",
+    "bannerNextAttempt": "Próximo intento en {seconds} s.",
+    "terminalNotice": "{count} nota(s) de esta cata no se pudieron enviar y siguen guardadas en este dispositivo. Revísalas en «Notas sin sincronizar».",
+    "panel": {
+      "title": "Notas sin sincronizar",
+      "intro": "Estas notas quedaron solo en este dispositivo. Puedes leerlas y copiarlas; nada se borra hasta que lo confirmes.",
+      "empty": "No hay notas sin sincronizar.",
+      "statusClosed": "La cata ya estaba cerrada",
+      "statusOrphaned": "La cata o la muestra ya no existe",
+      "statusFailed": "No se pudo enviar",
+      "view": "Ver",
+      "hide": "Ocultar",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "discard": "Descartar",
+      "discardTitle": "¿Descartar esta nota?",
+      "discardBody": "Se borrará de este dispositivo y no se puede recuperar.",
+      "discardConfirm": "Descartar nota",
+      "cancel": "Cancelar",
+      "close": "Cerrar",
+      "openSession": "Ver resultados",
+      "moduleDescriptive": "Descriptiva",
+      "moduleAffective": "Afectiva",
+      "moduleCombined": "Combinada",
+      "modulePhysical": "Física",
+      "moduleExtrinsic": "Origen",
+      "savedAt": "Guardada {date}"
+    },
+    "guard": {
+      "signOutTitle": "Hay cambios solo en este dispositivo",
+      "signOutBody": "{count} cambios no han llegado al servidor. Si cierras sesión se quedan guardados aquí y se enviarán cuando vuelvas a entrar con esta cuenta.",
+      "signOutCancel": "Cancelar",
+      "signOutLeave": "Salir de todos modos",
+      "claimTitle": "Hay cambios sin enviar",
+      "claimBody": "{count} cambios de este invitado no han llegado al servidor. Espera a que se envíen antes de crear la cuenta; si sigues ahora podrían perderse.",
+      "claimCancel": "Esperar",
+      "claimLeave": "Seguir y perder estos",
+      "close": "Cerrar"
+    }
   },
   "onboarding": {
     "welcomeTitle": "Bienvenido a Café Sensible",
@@ -972,6 +1227,7 @@
     "next": "Siguiente",
     "whereToStart": "¿Por dónde empezar?",
     "saving": "Guardando…",
+    "close": "Cerrar",
     "goTo": "Ir a {label}",
     "roles": {
       "q_grader": "Catador/a Certificado/a Q",
@@ -1115,9 +1371,8 @@
       "title": "Gratis para la cohorte fundadora",
       "badge": "Cohorte fundadora",
       "heroLead": "Gratis para los primeros",
-      "heroCount": "100",
       "heroUnit": "miembros fundadores",
-      "offer": "Gratis para los primeros 100 miembros fundadores",
+      "offer": "Gratis para los primeros {count} miembros fundadores",
       "feature1": "Cata CVA completa en sus tres hojas: descriptiva, afectiva y extrínseca",
       "feature2": "Sesiones en grupo y calibración con referencia del instructor",
       "feature3": "Informes y certificados en PDF",
@@ -1130,11 +1385,13 @@
       "emailPlaceholder": "tu@correo.com",
       "button": "Reservar mi plaza",
       "submitting": "Enviando…",
-      "success": "Plaza reservada. Revisa tu correo: te hemos enviado el enlace para entrar.",
+      "success": "Te enviamos el enlace; quedas en la lista fundadora. Revisa tu correo para entrar.",
       "sentHint": "Sin contraseña. Si no llega, mira en spam o pide otro enlace en unos minutos.",
       "invalid": "Introduce un correo válido.",
       "error": "No pudimos enviar el enlace. Verifica el correo e inténtalo de nuevo.",
-      "rateLimit": "Demasiados intentos en poco tiempo. Espera unos minutos e inténtalo de nuevo."
+      "rateLimit": "Demasiados intentos en poco tiempo. Espera unos minutos e inténtalo de nuevo.",
+      "notice": "Guardamos tu correo para enviarte el acceso y avisarte de las plazas fundadoras.",
+      "noticeLink": "Política de privacidad"
     },
     "finalCta": {
       "kicker": "Muchos paladares. Una referencia. Un número.",
@@ -1311,7 +1568,11 @@
       "superAdmin": "Superadmin",
       "emailUnavailable": "correo no disponible",
       "toggleError": "No se pudo actualizar. Inténtalo de nuevo.",
-      "empty": "No se encontraron usuarios."
+      "empty": "No se encontraron usuarios.",
+      "digestTitle": "Resumen mensual por correo",
+      "digestLast": "Último envío: período {period} · {sent} de {recipients} entregados.",
+      "digestRunning": "En curso: período {period}.",
+      "digestNone": "Aún no se ha enviado ningún resumen."
     },
     "users": {
       "lead": "Directorio de todas las personas registradas en la plataforma, con su actividad de catación.",
@@ -1328,7 +1589,9 @@
       "filterType": "Tipo",
       "typeRegistered": "Registrado",
       "typeGuest": "Invitado",
-      "exportCsv": "Exportar correos (CSV)"
+      "exportCsv": "Exportar correos (CSV)",
+      "showEmails": "Mostrar correos",
+      "hideEmails": "Ocultar correos"
     },
     "benchmark": {
       "title": "Benchmark vs. CQI",
@@ -1432,6 +1695,8 @@
       "titlePlaceholder": "Título (opcional)",
       "bodyPlaceholder": "Escribe un anuncio para el grupo…",
       "notifyByEmail": "Notificar por correo a los miembros",
+      "notifyRecipients": "Se enviará un correo a {count} integrantes",
+      "notifyNone": "El grupo aún no tiene integrantes",
       "publish": "Publicar",
       "publishing": "Publicando…",
       "emailSentBadge": "Enviado por correo",
@@ -1443,6 +1708,11 @@
       "deleteTitle": "Eliminar anuncio",
       "deleteBody": "El anuncio se eliminará para todos los miembros. Esta acción no se puede deshacer.",
       "error": "No se pudo publicar el anuncio. Inténtalo de nuevo."
+    },
+    "emailOptOut": {
+      "badge": "Se dio de baja de los correos",
+      "note": "Te diste de baja de los correos de este grupo. Sigues viendo el grupo, sus anuncios y sus sesiones aquí en la app.",
+      "resume": "Volver a recibir correos de este grupo"
     },
     "leave": {
       "cta": "Salir del grupo",
@@ -1459,7 +1729,10 @@
       "resend": "Reenviar invitación",
       "resent": "Invitación reenviada",
       "resendFailed": "No se pudo reenviar la invitación",
-      "error": "No se pudo guardar. Inténtalo de nuevo."
+      "resendRateLimited": "Alcanzaste el límite de envíos. Inténtalo más tarde.",
+      "error": "No se pudo guardar. Inténtalo de nuevo.",
+      "removeTitle": "Quitar del grupo",
+      "removeBodyNamed": "¿Quitar a {name} del grupo?"
     },
     "empty": "Aún no tienes grupos. Crea uno para reutilizar tu roster de catadores en cada sesión.",
     "coCuppersTitle": "Personas con las que has catado",
@@ -1472,7 +1745,6 @@
     "displayNamePlaceholder": "Nombre (opcional)",
     "unregistered": "Sin cuenta todavía",
     "removeMember": "Quitar",
-    "confirmRemoveMember": "¿Quitar a esta persona del grupo?",
     "composeEmail": "Enviar correo al grupo",
     "subject": "Asunto",
     "message": "Mensaje",
@@ -1482,6 +1754,12 @@
     "sending": "Enviando...",
     "sendSummary": "{sent} enviados · {skipped} omitidos · {failed} fallidos",
     "sendSkippedNotice": "El envío de correos no está configurado en este entorno.",
+    "sendRateLimited": "Alcanzaste el límite de envíos por correo. Inténtalo más tarde.",
+    "retryFailed": "Reintentar fallidos",
+    "retrying": "Reintentando…",
+    "invitesRateLimited": "Grupo creado. Las invitaciones no se enviaron por el límite de envíos; reenvíalas más tarde desde la lista.",
+    "invitesRateLimitedShort": "Integrante añadido. La invitación no se envió por el límite de envíos; reenvíala más tarde.",
+    "autoInviteRateLimited": "Sesión creada. No enviamos la invitación al grupo por el límite de envíos; envíala más tarde desde el grupo.",
     "notifyGroupTitle": "Avisar a un grupo",
     "selectGroup": "Selecciona un grupo",
     "noGroupsYet": "Aún no tienes grupos guardados.",
@@ -1521,7 +1799,8 @@
     "saveDetails": "Guardar detalles",
     "linkGroupLabel": "Vincular a un grupo",
     "noGroupOption": "Sin grupo",
-    "autoInviteToggle": "Enviar invitación al grupo al crear",
+    "autoInviteLive": "Avisar al grupo por correo cuando inicies la cata",
+    "autoInviteAsync": "Avisar al grupo por correo al crear la sesión",
     "autoInviteSummary": "Invitación enviada a {sent} integrantes · {skipped} omitidas · {failed} fallidas",
     "joinSessionLink": "Unirme a la sesión"
   },
@@ -1536,7 +1815,15 @@
     "error": "No pudimos iniciar el proceso. Inténtalo de nuevo.",
     "guestLabel": "Invitado",
     "profileCta": "Terminar de crear tu cuenta",
-    "accountBody": "Estás participando como invitado: tu acceso vive solo en este navegador y se pierde al borrar los datos de navegación, cambiar de dispositivo o cerrar sesión. Crea tu cuenta para conservar tus catas."
+    "accountBody": "Estás participando como invitado: tu acceso vive solo en este navegador y se pierde al borrar los datos de navegación, cambiar de dispositivo o cerrar sesión. Crea tu cuenta para conservar tus catas.",
+    "leaveGuestTitle": "Si sales, pierdes tus resultados",
+    "leaveGuestBody": "Eres invitado: tus evaluaciones viven solo en este navegador y no podrás recuperarlas si sales. Guarda tus resultados en una cuenta antes de salir.",
+    "leaveSave": "Guardar mis resultados",
+    "leaveAnyway": "Salir de todos modos",
+    "leaveCancel": "Cancelar",
+    "leaveEverywhereTitle": "¿Cerrar sesión en todos los dispositivos?",
+    "leaveEverywhereBody": "Saldrás de tu cuenta en este y en todos los demás dispositivos donde hayas iniciado sesión. Tendrás que entrar de nuevo en cada uno.",
+    "leaveEverywhereConfirm": "Cerrar en todos"
   },
   "errors": {
     "title": "Algo salió mal",
@@ -1552,16 +1839,26 @@
     "codes": {
       "not_authenticated": "Tu sesión caducó. Vuelve a iniciar sesión.",
       "not_found_or_forbidden": "No encontramos ese elemento o no tienes permiso.",
+      "session_not_started": "La cata aún no empezó. Espera a que el maestro la inicie.",
       "session_closed": "Esta cata ya está cerrada; sus resultados son definitivos.",
       "invalid_token": "Este enlace de invitación no es válido.",
       "token_expired": "Este enlace de invitación caducó.",
       "token_exhausted": "Este enlace de invitación ya alcanzó su número máximo de usos.",
       "coffee_not_usable": "Ese café no está disponible para ti.",
       "invalid_input": "Revisa los datos ingresados.",
+      "already_claimed": "Esa participación como invitado ya está vinculada a una cuenta.",
       "conflict": "Alguien más acaba de hacer ese cambio. Actualiza la página.",
       "not_found": "Ese elemento ya no existe.",
       "invalid_reference": "Uno de los elementos vinculados ya no existe.",
-      "unknown": "Algo salió mal. Inténtalo de nuevo."
+      "rate_limited": "Demasiados envíos en poco tiempo. Espera un momento e inténtalo de nuevo.",
+      "unknown": "Algo salió mal. Inténtalo de nuevo.",
+      "entries_closed": "El organizador cerró las entradas de esta cata.",
+      "group_full": "Este grupo ya tiene 200 integrantes, el máximo.",
+      "invalid_email": "Ese correo no parece válido. Revísalo e inténtalo de nuevo.",
+      "offline": "Necesitas conexión para hacer esto. Inténtalo cuando vuelvas a estar en línea.",
+      "email_exists": "Ese correo ya tiene una cuenta.",
+      "account_protected": "Esta cuenta administra la plataforma y no se puede eliminar desde la app.",
+      "account_too_large": "Tu cuenta tiene demasiadas sesiones para eliminarla desde la app. Escríbenos a soporte y la eliminamos por ti; no se borró nada."
     }
   },
   "warmup": {
@@ -1579,12 +1876,12 @@
     "dashboard": {
       "eyebrow": "Antes de catar",
       "title": "Movimiento Sensorial",
-      "body": "Cinco movimientos lentos de Kim para despertar la percepción antes de oler y probar. De 3 a 8 minutos, con silla o de pie.",
+      "body": "Cinco movimientos lentos de Kim para asentarte y llegar con calma antes de oler y probar. De 3 a 8 minutos, con silla o de pie.",
       "cta": "Ver los ejercicios"
     },
     "waiting": {
       "title": "Mientras esperas",
-      "body": "Un movimiento lento prepara los sentidos. Elige un ejercicio; si la cata empieza, te llevamos a la mesa.",
+      "body": "Un movimiento lento te ayuda a asentarte antes de catar. Elige un ejercicio; si la cata empieza, te llevamos a la mesa.",
       "minutes": "{min} min",
       "hero": "Tu maestro eligió",
       "heroStart": "Empezar",
@@ -1642,11 +1939,13 @@
       "breathOnItsOwn": "Deja que la respiración vaya sola.",
       "goToTable": "Ir a la mesa",
       "doneTitle": "Listo",
-      "doneBody": "Vuelve a la cata con los sentidos despiertos.",
+      "doneBody": "Vuelve a la cata con calma.",
       "noticedTitle": "Lo que pudiste notar",
       "repeat": "Repetir",
       "backToList": "Volver a los ejercicios",
-      "finish": "Terminar"
+      "finish": "Terminar",
+      "tapToResume": "Toca para reanudar",
+      "skipConfirm": "Toca otra vez para saltar"
     },
     "label": {
       "up": "Sube",
@@ -1683,11 +1982,8 @@
     "reflect": {
       "eyebrow": "Un momento",
       "title": "Dos preguntas, sin prisa",
-      "lead": "Opcional. Lo que escribas se guarda solo en este dispositivo: no se envía ni se mezcla con tus catas.",
-      "answerLabel": "Tu respuesta (opcional)",
-      "save": "Guardar en el dispositivo",
-      "omit": "Omitir",
-      "savedNote": "Guardado en este dispositivo."
+      "lead": "Sin escribir nada: solo tómate un momento con estas dos preguntas.",
+      "continue": "Continuar"
     },
     "synced": {
       "listen": "Cierra los ojos y escucha",
@@ -1697,5 +1993,10 @@
       "inProgress": "En curso · paso {n} de {total}",
       "join": "Unirme"
     }
+  },
+  "legal": {
+    "draftTitle": "Borrador",
+    "draftBody": "Este texto es un borrador y todavía no es la versión final. No lo tomes como asesoramiento legal.",
+    "back": "Volver al inicio"
   }
 }
