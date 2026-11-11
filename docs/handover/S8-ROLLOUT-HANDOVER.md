@@ -279,3 +279,4 @@ Ricardo authorized Claude to run the three phases and to merge + deploy (answers
   - Change email: previous link was `{{ .ConfirmationURL }}`; now `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email_change&next={{ .RedirectTo }}` (what S8-07 expects). Not exercised: nobody changed an email address yet.
 - Site URL in Supabase ends with a slash, so links come out as `…vercel.app//auth/…`; Vercel answers 308 to the single-slash path (checked). Cosmetic; removing the trailing slash from the Site URL would tidy it.
 - **Still unverified**: a complete Google sign-in after the fix; a signup email for a brand-new address; two-account Realtime; phone offline; warm-up on two phones.
+- **Google sign-in confirmed working by Ricardo after the fix (2026-11-11).** Email link and Google are both verified; the 6-digit code is delivered in the email.
