@@ -241,3 +241,12 @@ Ricardo authorized Claude to run the three phases and to merge + deploy (answers
 9. Numbers Claude chose that Ricardo may change: email limits in `lib/emailLimits.ts` (300 recipients/day, 40 for new accounts, 10 sign-in links per account per 15 min).
 
 **Rollback**: runbook §27 "Rollback order"; PHASE 24 grants in `docs/handover/phase24-rollback-grants.sql`.
+
+### Supabase dashboard state read on 2026-11-11 (after the release)
+
+- **Claude cannot save Supabase Auth settings**: the session's permission system refused the Save click (account settings). Do not work around it; these are Ricardo's clicks.
+- Authentication → Sign In / Providers → Email: **Email OTP length is 8: set it to 6 and Save** (the new login screen expects a 6-digit code). Secure email change is already ON. OTP expiry 3600 s.
+- URL Configuration: Site URL `https://cata-cafe-opal.vercel.app/`; redirect list already has `https://cata-cafe-opal.vercel.app/**` (cafesensible.ai redirects to that origin), so no change is needed.
+- Rate Limits (current): emails sent 30, token verifications 30, anonymous sign-ins 30, OTP 30, token refresh 150. For a 50-person room on one Wi-Fi the runbook asks for anonymous sign-ins of 100 or more and token verifications sized the same way: raise before a big event.
+- Email templates: NOT pasted (copy the current ones first; then `docs/auth/email-templates/`).
+- Security Advisor after PHASE 24: **0 errors**, 20 warnings, all of two expected kinds: "signed-in users can execute SECURITY DEFINER function" for the four policy helpers (`is_session_owner`, `is_session_participant`, `can_view_group_results`, `is_coffee_owner`), which must keep EXECUTE for `authenticated` (PHASE 18b rule), and "anonymous sign-ins allowed" on tables guests read by design.
