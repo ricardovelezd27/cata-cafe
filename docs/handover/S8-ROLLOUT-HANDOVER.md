@@ -250,3 +250,20 @@ Ricardo authorized Claude to run the three phases and to merge + deploy (answers
 - Rate Limits (current): emails sent 30, token verifications 30, anonymous sign-ins 30, OTP 30, token refresh 150. For a 50-person room on one Wi-Fi the runbook asks for anonymous sign-ins of 100 or more and token verifications sized the same way: raise before a big event.
 - Email templates: NOT pasted (copy the current ones first; then `docs/auth/email-templates/`).
 - Security Advisor after PHASE 24: **0 errors**, 20 warnings, all of two expected kinds: "signed-in users can execute SECURITY DEFINER function" for the four policy helpers (`is_session_owner`, `is_session_participant`, `can_view_group_results`, `is_coffee_owner`), which must keep EXECUTE for `authenticated` (PHASE 18b rule), and "anonymous sign-ins allowed" on tables guests read by design.
+
+## Incident 2026-11-11: sign-in broken after the S8 release (fixed)
+
+- **Symptom** (reported by Ricardo): Google sign-in and email-link sign-in both failed in production.
+- **Cause**: Vercel Production has `NEXT_PUBLIC_SITE_URL=http://cata-cafe-opal.vercel.app` (http). S8-03 made the sign-in actions take the return address from that variable (`trustedRequestOrigin`) instead of the request header, so every sign-in asked Supabase to redirect to `http://…/auth/callback`. Supabase's redirect allow-list only has the https address, so it fell back to the bare Site URL and the session was never created. Observed directly: the Google button sent `redirect_to=http://cata-cafe-opal.vercel.app/auth/callback…`.
+- **Fix**: PR #98 (`f8193ee`, deployed): `normalizeSiteOrigin` in `lib/inviteUrl.ts` upgrades http to https for any non-local host; robots, sitemap, `metadataBase` and the print QR use `siteOrigin()` too. Tested (`tests/inviteUrl.test.ts`).
+- **Verified in production after the fix**: Google button now sends `redirect_to=https://…`; email link requested for the owner's test mailbox, opened in the same browser, "Entrar" pressed → dashboard. Signed-in pages checked with that account: dashboard, sessions list, a closed group session's results (reference anchor shown), coffees, groups, profile: all render, no console errors. Completing a Google login was not tested (needs the owner's credentials).
+- **Still to do by Ricardo**: set `NEXT_PUBLIC_SITE_URL` to the https address in Vercel (the code now tolerates http, but the variable is wrong).
+- **Why the audit missed it**: nothing in the repo knows the production value of the variable; no test exercised sign-in against the real Supabase allow-list. A smoke test that needs an account was listed as owed and was not run before the merge.
+
+### Supabase Auth settings after the incident
+
+- Email OTP length: now **6** (changed by Ricardo).
+- Magic link template: Ricardo's branded template kept; a "type this code" paragraph with `{{ .Token }}` was added under each button (saved by Claude at Ricardo's request, 2026-11-11). The previous template is saved as `docs/auth/email-templates/previous-magic-link-2026-11-11.md` (rollback: remove the two inserted paragraphs).
+- Links still go to `/auth/callback?token_hash=…`, which redirects to the confirm page; that path is proven working.
+- Confirm signup and Change Email templates: unchanged.
+- Adding `http://cata-cafe-opal.vercel.app/**` to the redirect allow-list was tried as a stop-gap and refused by the session's permission system (it weakens security); not needed after PR #98.
