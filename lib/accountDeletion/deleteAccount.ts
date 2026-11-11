@@ -112,6 +112,21 @@ export async function deleteAccountData(user: {
     // ── SessionParticipant.userId: reassign WITH excludedFromResults and its
     //    trail, so the trigger keeps excluding an excluded cupper and the
     //    participant count does not move. ─────────────────────────────────
+    // A-07: in open sessions where the person only took part and submitted
+    // nothing, the row and their drafts are dropped instead (the placeholder
+    // would never submit and would freeze the "everyone submitted" rule).
+    if (inner.dropParticipationSessionIds.length > 0) {
+      await tx.evaluation.deleteMany({
+        where: {
+          cupperId: userId,
+          isDraft: true,
+          sessionSample: { sessionId: { in: inner.dropParticipationSessionIds } },
+        },
+      });
+      await tx.sessionParticipant.deleteMany({
+        where: { userId, sessionId: { in: inner.dropParticipationSessionIds } },
+      });
+    }
     await tx.sessionParticipant.updateMany({
       where: { userId },
       data: { userId: placeholderId },

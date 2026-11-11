@@ -32,11 +32,16 @@ export async function loadDeletionFixture(
       }),
       db.sessionParticipant.findMany({
         where: { userId },
-        select: { sessionId: true, excludedFromResults: true },
+        select: {
+          sessionId: true,
+          excludedFromResults: true,
+          status: true,
+          session: { select: { status: true } },
+        },
       }),
       db.evaluation.findMany({
         where: { cupperId: userId },
-        select: { sessionSample: { select: { sessionId: true } } },
+        select: { isDraft: true, sessionSample: { select: { sessionId: true } } },
       }),
       db.tastingGroup.findMany({ where: { createdBy: userId }, select: { id: true } }),
       db.coffee.count({ where: { createdBy: userId, deletedAt: null } }),
@@ -85,6 +90,10 @@ export async function loadDeletionFixture(
     }
   }
 
+  const submittedSessions = new Set(
+    evaluations.filter((e) => !e.isDraft).map((e) => e.sessionSample.sessionId),
+  );
+
   return {
     userId,
     email,
@@ -97,7 +106,13 @@ export async function loadDeletionFixture(
       otherCupperEvaluations: othersBySession.get(s.id) ?? 0,
       otherJoinedParticipants: joinedBySession.get(s.id) ?? 0,
     })),
-    participations,
+    participations: participations.map((p) => ({
+      sessionId: p.sessionId,
+      excludedFromResults: p.excludedFromResults,
+      sessionStatus: p.session.status,
+      participantStatus: p.status,
+      hasSubmitted: submittedSessions.has(p.sessionId),
+    })),
     evaluationSessionIds: evaluations.map((e) => e.sessionSample.sessionId),
     ownedGroups: groupIds.map((id) => ({ id, otherMembers: otherMembersByGroup.get(id) ?? 0 })),
     liveOwnedCoffees,

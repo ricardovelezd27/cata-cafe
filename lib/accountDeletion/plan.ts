@@ -26,6 +26,14 @@ export type OwnedSessionFact = {
 export type ParticipationFact = {
   sessionId: string;
   excludedFromResults: boolean;
+  /** Status of the session the row belongs to. Absent = unknown: the row is
+   *  kept (reassigned), never dropped. */
+  sessionStatus?: string;
+  /** The participant row's own status ("owner" = the person created it). */
+  participantStatus?: string;
+  /** The person has a SUBMITTED (non-draft) evaluation in that session.
+   *  Absent = unknown: the row is kept. */
+  hasSubmitted?: boolean;
 };
 
 export type OwnedGroupFact = {
@@ -66,6 +74,10 @@ export type DeletionPlan =
        *  flag (the trigger reads it off the row). Rows in deleted sessions go
        *  with the session. */
       reassignParticipations: ParticipationFact[];
+      /** Sessions (not closed) where the person only took part and submitted
+       *  nothing: the participant row and their draft evaluations are deleted
+       *  (A-07). */
+      dropParticipationSessionIds: string[];
       /** The person's evaluations that stay, anonymized. */
       evaluationsAnonymized: number;
       /** The person's evaluations deleted with their own sessions. */
@@ -87,6 +99,25 @@ export function isOwnSessionDeletable(s: OwnedSessionFact): boolean {
   return s.otherCupperEvaluations === 0 && s.otherJoinedParticipants === 0;
 }
 
+/**
+ * A-07 (S9-01): a participant row that is dropped instead of reassigned. The
+ * placeholder never submits, so keeping it in a session that is still open
+ * would freeze the "everyone submitted" rule (results page and SQL
+ * can_view_group_results) for the others. Dropped only when ALL hold: the
+ * session is known and not closed, the person is a participant (not its
+ * owner, not a session they created), and they have no submitted evaluation
+ * there. Their draft evaluations go with the row. Anything unknown is kept.
+ */
+export function isDroppableParticipation(
+  p: ParticipationFact,
+  ownedSessionIds: ReadonlySet<string>,
+): boolean {
+  if (ownedSessionIds.has(p.sessionId)) return false;
+  if (p.participantStatus === "owner") return false;
+  if (p.sessionStatus === undefined || p.sessionStatus === "closed") return false;
+  return p.hasSubmitted === false;
+}
+
 export function planAccountDeletion(f: DeletionFixture): DeletionPlan {
   // The super-admin account holds the analytics grants; deleting it from the
   // app would lock everyone out of Acceso. It is removed by hand if ever.
@@ -105,8 +136,17 @@ export function planAccountDeletion(f: DeletionFixture): DeletionPlan {
   }
   const deleted = new Set(deleteSessionIds);
 
-  const reassignParticipations = f.participations.filter((p) => !deleted.has(p.sessionId));
-  const evaluationsDeleted = f.evaluationSessionIds.filter((id) => deleted.has(id)).length;
+  const ownedIds = new Set(f.ownedSessions.map((s) => s.id));
+  const dropParticipationSessionIds = f.participations
+    .filter((p) => !deleted.has(p.sessionId) && isDroppableParticipation(p, ownedIds))
+    .map((p) => p.sessionId);
+  const dropped = new Set(dropParticipationSessionIds);
+  const reassignParticipations = f.participations.filter(
+    (p) => !deleted.has(p.sessionId) && !dropped.has(p.sessionId),
+  );
+  const evaluationsDeleted = f.evaluationSessionIds.filter(
+    (id) => deleted.has(id) || dropped.has(id),
+  ).length;
 
   const deleteGroupIds: string[] = [];
   const keepGroupIds: string[] = [];
@@ -123,6 +163,7 @@ export function planAccountDeletion(f: DeletionFixture): DeletionPlan {
     deleteSessionIds,
     keepSessionIds,
     reassignParticipations,
+    dropParticipationSessionIds,
     evaluationsAnonymized: f.evaluationSessionIds.length - evaluationsDeleted,
     evaluationsDeleted,
     deleteGroupIds,
@@ -151,6 +192,7 @@ export function plansEqual(a: DeletionPlan, b: DeletionPlan): boolean {
   return (
     sameIds(a.deleteSessionIds, b.deleteSessionIds) &&
     sameIds(a.keepSessionIds, b.keepSessionIds) &&
+    sameIds(a.dropParticipationSessionIds, b.dropParticipationSessionIds) &&
     sameIds(a.deleteGroupIds, b.deleteGroupIds) &&
     sameIds(a.keepGroupIds, b.keepGroupIds)
   );
