@@ -408,6 +408,8 @@ export default async function CupPage({
           conflictKeep: t("offline.conflictKeep"),
           conflictReplace: t("offline.conflictReplace"),
           bannerStorageUnavailable: t("offline.bannerStorageUnavailable"),
+          bannerNewVersion: t("offline.bannerNewVersion"),
+          reloadNow: t("offline.reloadNow"),
           // Raw templates: "{seconds}" / "{count}" are filled client-side.
           bannerNextAttempt: t.raw("offline.bannerNextAttempt") as string,
           terminalNotice: t.raw("offline.terminalNotice") as string,

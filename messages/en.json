@@ -1166,6 +1166,8 @@
     "conflictReplace": "Replace with this version",
     "partialSyncNotice": "Showing results for {included} of {total} participants. {pending} have not yet synced.",
     "bannerStorageUnavailable": "This browser doesn't allow saving offline drafts. Keep your connection active while cupping.",
+    "bannerNewVersion": "A new version of the app is available. Your notes are saved on this device; reload to keep syncing.",
+    "reloadNow": "Reload",
     "pendingDrafts": "{count} drafts not synced",
     "staleDrafts": "You have unsynced drafts older than 3 days. The browser may delete them if the app stays closed: reconnect soon or install it to your home screen.",
     "closedUnsentDrafts": "{count} drafts not sent: the session was already closed",

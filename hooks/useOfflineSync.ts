@@ -19,6 +19,7 @@ import {
   type SyncConflict,
 } from "@/lib/offline/types";
 import { useResume } from "@/hooks/useResume";
+import { noteIfStaleBundle } from "@/lib/staleBundle";
 
 export type SyncPhase = "idle" | "syncing" | "synced" | "failed";
 
@@ -105,7 +106,11 @@ export function useOfflineSync({
               ? await replayPhysical({ sessionSampleId: sampleId, data })
               : await replayExtrinsic({ sessionSampleId: sampleId, data });
           return res.status;
-        } catch {
+        } catch (err) {
+          // C-06: the tab predates a deploy; every retry fails the same way.
+          // Flag it (the cup banner asks for a reload) and leave the draft
+          // pending without burning an attempt.
+          if (noteIfStaleBundle(err)) return "waiting";
           if (attempt < MAX_RETRIES) await wait(backoffDelay(attempt));
         }
       }

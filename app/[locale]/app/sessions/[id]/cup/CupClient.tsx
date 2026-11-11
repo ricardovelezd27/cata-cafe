@@ -103,6 +103,7 @@ import {
 } from "@/lib/referenceRules";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { OfflineBanner } from "@/components/offline/OfflineBanner";
+import { noteIfStaleBundle } from "@/lib/staleBundle";
 import { SyncConflictModal } from "@/components/offline/SyncConflictModal";
 import {
   mergeModuleData,
@@ -353,6 +354,9 @@ export function CupClient({
       conflictKeep: string;
       conflictReplace: string;
       bannerStorageUnavailable: string;
+      // S9-01 C-06. Optional: pre-upgrade offline prop blobs lack them.
+      bannerNewVersion?: string;
+      reloadNow?: string;
       // S8-09. Optional: pre-upgrade offline prop blobs lack them.
       bannerNextAttempt?: string;
       /** RAW template with "{count}". */
@@ -1116,9 +1120,12 @@ export function CupClient({
       // local edit (the 500 ms local debounce is independent) stays pending.
       await setModuleStatus(session.id, userId, sampleId, mk, "synced", { ifData: data });
       return "synced";
-    } catch {
+    } catch (err) {
       // Network/server failure → fall back to a durable local pending write so
       // the edit survives and is replayed on the next reconnect.
+      // C-06: a tab open across a deploy hits "Server Action not found" on every
+      // save; flag it so the banner asks for a reload (the draft stays pending).
+      noteIfStaleBundle(err);
       await writeLocal(sampleId, labelFor(sampleId), mk, data);
       return "pending";
     }
