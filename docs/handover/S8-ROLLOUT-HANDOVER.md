@@ -269,3 +269,13 @@ Ricardo authorized Claude to run the three phases and to merge + deploy (answers
 - Adding `http://cata-cafe-opal.vercel.app/**` to the redirect allow-list was tried as a stop-gap and refused by the session's permission system (it weakens security); not needed after PR #98.
 - Template check: the email sent at 01:03 UTC carries the 6-digit code in both language blocks. Supabase took about 8 minutes to start using the saved template (three emails sent in between still used the old one). Typing the code on the login screen was NOT tested by Claude (one-time codes are the owner's to enter); Ricardo to confirm.
 - Sign-in records (auth.flow_state): Ricardo's Google attempts were at 00:19 and 00:31 UTC, before the fix was live (~00:46). A Google sign-in after the fix has not been confirmed yet.
+
+### Checks and template changes after the sign-in fix (2026-11-11, ~01:10–01:25 UTC)
+
+- **Full round on the new code, in production, with Ricardo's test account**: express session "[TEST S8] prueba tras el despliegue - borrar" (`cmwbf3p8q000708kx9xt3jf7w`), affective, 1 sample, eight ratings of 7, quick note, "Enviar y ver resultados" → auto-closed → results show 89.50 (= 0.65625 × 56 + 52.75). The "Te falta completar algo" guard fired correctly when a rating was missing. CVA PDF, participant summary PDF and ficha técnica PDF all return 200 `application/pdf`. No console errors. The test session is still there: Ricardo can delete it from the sessions list.
+- **Templates in Supabase (all three now saved by Claude at Ricardo's request)**:
+  - Magic link: branded template + `{{ .Token }}` paragraph under each button (see `docs/auth/email-templates/previous-magic-link-2026-11-11.md`).
+  - Confirm signup: previous content was `<h2>Confirm your signup</h2> … <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email&next={{ .RedirectTo }}">Confirm your mail</a>`; a bilingual "type this code" line with `{{ .Token }}` was appended. Link unchanged.
+  - Change email: previous link was `{{ .ConfirmationURL }}`; now `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email_change&next={{ .RedirectTo }}` (what S8-07 expects). Not exercised: nobody changed an email address yet.
+- Site URL in Supabase ends with a slash, so links come out as `…vercel.app//auth/…`; Vercel answers 308 to the single-slash path (checked). Cosmetic; removing the trailing slash from the Site URL would tidy it.
+- **Still unverified**: a complete Google sign-in after the fix; a signup email for a brand-new address; two-account Realtime; phone offline; warm-up on two phones.
