@@ -1407,6 +1407,13 @@ Vercel (Production) only after the rehearsal, then redeploy. Nothing else to app
 `deleteAccount` creates its own placeholder profile (`deleted_<random>`) inside its transaction,
 so there is no fixed tombstone row to insert.
 
+**Order of effects (S9-01, audit A-06):** kept live group sessions are closed BEFORE the deletion
+transaction starts (`closeSessionInternal`, emails skipped), so if the transaction then fails
+(conflict, timeout) those sessions stay closed even though the account still exists. Tell the
+person so; retrying the deletion is safe. Separately (A-07), in sessions that are not closed
+where the person only took part and submitted nothing, their participant row and draft
+evaluations are deleted instead of moved to the placeholder.
+
 **Never test this against production with a real account.** `.env.local` points at
 production: do not run `deleteAccount` from a local dev server with it. Verify only in a
 NON-production environment (a Supabase branch or a separate project with its own
