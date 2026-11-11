@@ -1050,16 +1050,9 @@ export function CupClient({
     };
   }, [isGroup, isOwner, online, session.id, router, resumeKey]);
 
-  // Owner coming back to the tab (phone unlocked, tab switch): re-seed the
-  // counter from the server instead of trusting a socket that may have slept.
-  useEffect(() => {
-    if (!isGroup || !isOwner) return;
-    const onVisible = () => {
-      if (document.visibilityState === "visible") router.refresh();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [isGroup, isOwner, router]);
+  // (S9-01 C-07: the owner's own visibilitychange -> router.refresh() effect was
+  // removed; useForegroundResume bumps `resumeKey`, which rebuilds the channel
+  // above, and its SUBSCRIBED callback re-seeds the owner's counter.)
 
   // Safety net for the realtime path above (S6 CP-C4): a group cupper whose
   // channel is silently dead (see lib/supabase/realtimeAuth.ts) still picks up

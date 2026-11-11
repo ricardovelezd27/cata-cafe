@@ -457,6 +457,9 @@ export function ResultsClient({
   const seenEvalIds = useRef(new Set<string>(knownEvalIds));
   // Bumped on foreground resume so the realtime effect below re-runs (S8-15).
   const [resumeKey, setResumeKey] = useState(0);
+  // S9-01 C-07: a stable key so the realtime effect below is not torn down on
+  // every router.refresh() (which hands down a new session.samples array).
+  const sampleIdsKey = session.samples.map((s) => s.id).join(",");
   // A phone that slept has a dead socket and stale numbers: recreate the channel
   // and re-fetch the server render once. Pending badges are now moot.
   useForegroundResume(() => {
@@ -489,7 +492,7 @@ export function ResultsClient({
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
 
-    const sampleIds = new Set(session.samples.map((s) => s.id));
+    const sampleIds = new Set(sampleIdsKey ? sampleIdsKey.split(",") : []);
 
     // JWT before join — see lib/supabase/realtimeAuth.ts (S6 CP-C4).
     const stop = subscribeWithSessionAuth(
@@ -549,7 +552,7 @@ export function ResultsClient({
     );
 
     return stop;
-  }, [isGroup, canViewGroup, isOwner, isAdminViewer, session.id, session.samples, currentUserId, resumeKey]);
+  }, [isGroup, canViewGroup, isOwner, isAdminViewer, session.id, sampleIdsKey, currentUserId, resumeKey]);
 
   const handleEditSample = (sampleId: string) => {
     router.push(`/${locale}/app/sessions/${session.id}/cup?sample=${sampleId}`);
