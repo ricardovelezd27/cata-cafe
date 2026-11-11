@@ -5,7 +5,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
 import { orderReferencesFirst } from "@/lib/referenceRules";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
-import { buildInviteUrl } from "@/lib/inviteUrl";
+import { buildInviteUrl, siteOrigin } from "@/lib/inviteUrl";
 import { sheetSampleIdentity, sheetSampleRecords } from "@/lib/pdf/sheetSource";
 import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 import { PrintClient } from "./PrintClient";
@@ -70,8 +70,7 @@ export default async function PrintPage({
     // link's QR must not print the revoked token).
     const invite = await getLatestInvite(session.id);
     if (invite) {
-      const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-      inviteUrl = buildInviteUrl(siteOrigin, locale, invite.token);
+      inviteUrl = buildInviteUrl(siteOrigin(), locale, invite.token);
     }
   }
 

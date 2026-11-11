@@ -20,7 +20,30 @@ export function buildCoffeeInviteUrl(origin: string, locale: string, token: stri
  * dev fallback as the rest of the app (sitemap, robots, digest email).
  */
 export function siteOrigin(): string {
-  return (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/+$/, "");
+  return normalizeSiteOrigin(process.env.NEXT_PUBLIC_SITE_URL);
+}
+
+/**
+ * The configured site origin, made safe to build links from: no trailing slash,
+ * and never plain http for a real host. Production was configured with
+ * `http://<host>`; after S8-03 made sign-in use this value (not the request
+ * header), every sign-in asked Supabase to return to an http address that its
+ * allow-list (https only) refused, so Google and email sign-in both failed
+ * (2026-11-11). Local dev hosts keep http.
+ */
+export function normalizeSiteOrigin(raw: string | undefined | null): string {
+  const value = (raw ?? "").trim().replace(/\/+$/, "");
+  if (!value) return "http://localhost:3000";
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return value;
+  }
+  const local =
+    url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]";
+  if (url.protocol === "http:" && !local) return `https://${url.host}`;
+  return value;
 }
 
 /**
