@@ -635,7 +635,7 @@ export function ResultsClient({
       try {
         const r = await resendCloseEmails(session.id);
         setResendState(r.ok ? "sent" : "error");
-        if (!r.ok) feedback.notifyError("unknown");
+        if (!r.ok) feedback.notifyError(r.error === "rate_limited" ? "rate_limited" : "unknown");
       } catch {
         setResendState("error");
         feedback.notifyError("unknown");

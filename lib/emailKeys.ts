@@ -28,6 +28,11 @@ export function actorKeyForUser(userId: string): string {
   return `u_${userId}`;
 }
 
+/** Bucket key for a session-scoped limit (S9-01). A session id is not a secret. */
+export function targetKeyForSession(sessionId: string): string {
+  return `s_${sessionId}`;
+}
+
 /** Bucket key for a destination address. */
 export function targetKeyForEmail(email: string): string {
   return hmac("email-target", email.trim().toLowerCase());

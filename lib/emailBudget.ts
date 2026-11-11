@@ -1,11 +1,12 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
-import { actorKeyForIp, actorKeyForUser, targetKeyForEmail } from "@/lib/emailKeys";
+import { actorKeyForIp, actorKeyForUser, targetKeyForEmail, targetKeyForSession } from "@/lib/emailKeys";
 import {
   type EmailEvent,
   type ThrottleDecision,
   type ThrottleRule,
+  CLOSE_RESEND_PER_SESSION,
   GROUP_BROADCASTS_PER_HOUR,
   CODE_VERIFY_PER_IP,
   CODE_VERIFY_PER_TARGET,
@@ -49,6 +50,11 @@ export type EmailBudgetRequest =
       ip: string | null;
       /** The address, or a string derived from the link token (never raw). */
       subject: string;
+    }
+  | {
+      /** One owner click on "resend close emails" (S9-01, A-09). */
+      kind: "close_resend";
+      sessionId: string;
     }
   | {
       kind: "group_broadcast" | "group_invite";
@@ -126,6 +132,20 @@ export async function reserveEmailBudget(
     if (!decision.allowed) return decision;
     await prisma.outboundEmailEvent.create({
       data: { kind: "code_verify", actorKey, targetKey, recipients: 0 },
+    });
+    return decision;
+  }
+
+  if (req.kind === "close_resend") {
+    const targetKey = targetKeyForSession(req.sessionId);
+    const decision = decideAll(
+      [{ events: await eventsFor({ kind: { in: ["close_resend"] }, targetKey }, now), rule: CLOSE_RESEND_PER_SESSION }],
+      { recipients: 0 },
+      now,
+    );
+    if (!decision.allowed) return decision;
+    await prisma.outboundEmailEvent.create({
+      data: { kind: "close_resend", actorKey: null, targetKey, recipients: 0 },
     });
     return decision;
   }

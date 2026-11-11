@@ -6,6 +6,7 @@ import {
   GROUP_BROADCASTS_PER_HOUR,
   GROUP_RECIPIENTS_PER_DAY,
   GROUP_RECIPIENTS_PER_DAY_NEW_ACCOUNT,
+  CLOSE_RESEND_PER_SESSION,
   MAGIC_LINK_PER_ADDRESS,
   MAGIC_LINK_PER_IP,
   MAGIC_LINK_PER_USER,
@@ -196,6 +197,7 @@ describe("limit constants", () => {
     expect(GROUP_RECIPIENTS_PER_DAY).toEqual({ windowMs: DAY, maxRecipients: 300 });
     expect(GROUP_RECIPIENTS_PER_DAY_NEW_ACCOUNT).toEqual({ windowMs: DAY, maxRecipients: 40 });
     expect(NEW_ACCOUNT_AGE_MS).toBe(DAY);
+    expect(CLOSE_RESEND_PER_SESSION).toEqual({ windowMs: HOUR, maxEvents: 3 });
     expect(MAX_WINDOW_MS).toBe(DAY);
   });
 });
@@ -212,5 +214,16 @@ describe("S8-28 A-03/A-04", () => {
     expect(decideThrottle(ten.slice(0, 9), MAGIC_LINK_PER_USER, one, NOW)).toEqual({ allowed: true });
     expect(decideThrottle(ten, MAGIC_LINK_PER_USER, one, NOW).allowed).toBe(false);
     expect(decideThrottle([ev(16 * MIN), ...ten.slice(0, 5)], MAGIC_LINK_PER_USER, one, NOW)).toEqual({ allowed: true });
+  });
+});
+
+describe("S9-01 A-09: close-email resend", () => {
+  it("allows 3 resends per session per hour, the 4th waits for the oldest to age out", () => {
+    const events = [ev(50 * MIN), ev(20 * MIN), ev(5 * MIN)];
+    const d = decideThrottle(events, CLOSE_RESEND_PER_SESSION, { recipients: 0 }, NOW);
+    expect(d).toEqual({ allowed: false, retryAfterMs: 10 * MIN });
+    expect(decideThrottle(events.slice(1), CLOSE_RESEND_PER_SESSION, { recipients: 0 }, NOW)).toEqual({
+      allowed: true,
+    });
   });
 });

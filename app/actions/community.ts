@@ -27,6 +27,7 @@ import { syncCoffeeHistoryForSession } from "@/lib/coffeeHistory";
 import { EXCLUSION_REASONS, exclusionData } from "@/lib/exclusionReasons";
 import type { ActionResult } from "@/lib/actionResult";
 import { refireAggregates } from "@/lib/aggregates";
+import { reserveEmailBudget } from "@/lib/emailBudget";
 import { countUnsentComplete, isEvaluationComplete, planFinish } from "@/lib/closeRules";
 import { removeSamplesInTx } from "@/lib/sampleRemoval";
 
@@ -515,6 +516,11 @@ export async function resendCloseEmails(sessionId: string) {
   const session = await requireSessionOwner(sessionId, user.id);
   if (!session.isGroup) return { ok: false as const, error: "not_group" };
   if (session.status !== "closed") return { ok: false as const, error: "not_closed" };
+
+  // S9-01 (A-09): bounded per session (CLOSE_RESEND_PER_SESSION in
+  // lib/emailLimits.ts). Reserved before the work, like every sender.
+  const budget = await reserveEmailBudget({ kind: "close_resend", sessionId });
+  if (!budget.allowed) return { ok: false as const, error: "rate_limited" };
 
   after(async () => {
     try {
