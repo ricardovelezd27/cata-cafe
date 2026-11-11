@@ -506,7 +506,9 @@ export default async function ResultsPage({
       else if (d.status === "skipped") noEmail += 1;
       else if (d.status === "failed") failed += 1;
     }
-    const pending = session.participants.filter((p) => !seenUserIds.has(p.userId)).length;
+    // S9-01 B-08: a "sending" row is an in-flight (or abandoned) reservation: still pending.
+    const inFlight = deliveries.filter((d) => d.status === "sending").length;
+    const pending = session.participants.filter((p) => !seenUserIds.has(p.userId)).length + inFlight;
     const parts = [
       sent > 0 ? tResults("closeEmails.sent", { count: sent }) : null,
       noEmail > 0 ? tResults("closeEmails.noEmail", { count: noEmail }) : null,

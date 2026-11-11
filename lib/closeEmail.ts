@@ -13,6 +13,7 @@
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
 import { isEvaluationComplete } from "@/lib/closeRules";
+import { isClaimable, leaseCutoff } from "@/lib/closeEmailLedger";
 import { orderReferencesFirst } from "@/lib/referenceRules";
 import { deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { isDeletedProfileId } from "@/lib/accountDeletion/deletedProfile";
@@ -177,19 +178,61 @@ export async function sendCloseEmails(
   // they still get their own summary)
   // — EXCEPT those already marked "sent" in close_email_deliveries. That ledger
   // is what makes a re-run (double click, cron retry, owner "resend") safe.
-  const alreadySent = new Set(
+  // B-08 (S9-01): each recipient is RESERVED ("sending") before the render and
+  // the send (claimRecipient below), so two runs racing never both email the
+  // same person; a reservation abandoned by a crash is retriable after
+  // CLOSE_EMAIL_LEASE_MS (lib/closeEmailLedger.ts). This read only narrows the
+  // list; the claim is the lock.
+  const nowMs = Date.now();
+  const ledger = new Map(
     (
       await prisma.closeEmailDelivery.findMany({
-        where: { sessionId, status: "sent" },
-        select: { userId: true },
+        where: { sessionId },
+        select: { userId: true, status: true, updatedAt: true },
       })
-    ).map((d) => d.userId),
+    ).map((d) => [d.userId, { status: d.status, updatedAt: d.updatedAt.getTime() }]),
   );
-  const recipients = session.participants.filter((p) => !alreadySent.has(p.userId));
+  const recipients = session.participants.filter((p) =>
+    isClaimable(ledger.get(p.userId) ?? null, nowMs),
+  );
 
-  type Outcome = { status: "sent" | "skipped" | "failed"; error?: string };
+  type Outcome =
+    | { status: "sent" | "skipped" | "failed"; error?: string }
+    // Another run holds the reservation (or it was sent meanwhile): no send,
+    // no ledger write, not counted.
+    | { status: "held" };
+
+  /** Atomically take the recipient. true = this run owns the send. */
+  const claimRecipient = async (userId: string): Promise<boolean> => {
+    try {
+      await prisma.closeEmailDelivery.create({
+        data: { sessionId, userId, status: "sending" },
+      });
+      return true;
+    } catch {
+      // Row exists (or the insert lost a race): take it over only if it is
+      // retriable, in ONE conditional update so exactly one run wins.
+      try {
+        const r = await prisma.closeEmailDelivery.updateMany({
+          where: {
+            sessionId,
+            userId,
+            OR: [
+              { status: { in: ["failed", "skipped"] } },
+              { status: "sending", updatedAt: { lte: new Date(leaseCutoff(Date.now())) } },
+            ],
+          },
+          data: { status: "sending", attempts: { increment: 1 }, lastError: null },
+        });
+        return r.count === 1;
+      } catch {
+        return false;
+      }
+    }
+  };
 
   const sendOne = async (p: (typeof recipients)[number]): Promise<Outcome> => {
+      if (!(await claimRecipient(p.userId))) return { status: "held" };
       // Resolve the recipient's email via the service-role admin client — the
       // Profile model has no email column. Anonymous guests have none: that is
       // "skipped" (nothing to retry), not a failure. A deleted account's
@@ -303,7 +346,7 @@ export async function sendCloseEmails(
   };
 
   const summary: CloseEmailSummary = {
-    attempted: recipients.length,
+    attempted: 0,
     sent: 0,
     skipped: 0,
     failed: 0,
@@ -325,12 +368,15 @@ export async function sendCloseEmails(
       if (r.status === "rejected") {
         console.warn(`[closeEmail] recipient task rejected: ${String(r.reason)}`);
       }
+      if (outcome.status === "held") continue;
+      summary.attempted += 1;
       if (outcome.status === "sent") summary.sent += 1;
       else if (outcome.status === "skipped") summary.skipped += 1;
       else summary.failed += 1;
 
-      // Ledger row per recipient — never lets a bookkeeping failure sink the
-      // send loop itself.
+      // Final outcome onto the row this run reserved — never lets a
+      // bookkeeping failure sink the send loop itself. (A rejected task may
+      // have thrown before its claim: the upsert then creates the row.)
       try {
         await prisma.closeEmailDelivery.upsert({
           where: { sessionId_userId: { sessionId, userId: chunk[j].userId } },
@@ -342,7 +388,6 @@ export async function sendCloseEmails(
           },
           update: {
             status: outcome.status,
-            attempts: { increment: 1 },
             lastError: outcome.error?.slice(0, 300) ?? null,
           },
         });
