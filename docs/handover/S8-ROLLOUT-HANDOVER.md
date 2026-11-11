@@ -221,3 +221,23 @@ Ricardo authorized Claude to run the three phases and to merge + deploy (answers
 
 - **S8-28** (PR #95, `12b8d0f`): build at the S8-27 tip passed; fixed A-03 (email ledger purged in the daily close cron), A-04 (per-account magic-link bucket, 10 per 15 min: Claude's number, Ricardo may change it in `lib/emailLimits.ts`), B-03, C-04 (static SW cache cap 400), D-09 (`notifyGroupOfSession` claims `groupNotifiedAt` itself), A-05 (pure rule + behavioural tests); C-02 documented as by design. 1,175 tests, tsc clean, `next build` OK. Architect-reviewed (D-09 and A-03/A-04 diffs read).
 - **MERGED INTO MAIN: `fa5ed64` "S8: flows-audit remediation, all 28 parts (#95)"** (merge commit; brings in the whole chain #67–#81, #83–#95). No new required environment variable (only a recommended one, `ANALYTICS_SUPER_ADMIN_EMAIL`, warns at boot).
+
+## After the release (2026-11-11): the state to resume from
+
+**Done**
+- `main` = `0bdb5c6` (docs) on top of `fa5ed64` (all S8 code). No open PRs. Production (Vercel) runs `fa5ed64`: the deployment of the docs-only commit `0bdb5c6` was refused by Vercel's daily limit, which changes nothing in the app.
+- Smoke test without an account, against production: landing (es/en) 200, `/api/health` 204, login 200 with no console errors, `/auth/confirm` exists, `/app` redirects to login with `next=`, service worker `v4`, cron route answers 401 without the secret.
+- Database: see "SQL phases applied" above. Flowmap: specs `merged`, cards `k-s8-01…28` `done`, card `k-s8-open` lists the owner steps.
+
+**Owed, in order (all need Ricardo or Kim)**
+1. Sign in once in production and confirm the app works end to end (create a session, save an evaluation, see results). Nothing authenticated has been exercised since the deploy.
+2. Supabase dashboard, runbook §27 step 9: OTP length 6, Secure email change, redirect allow-list, the three email templates from `docs/auth/email-templates/` (save the old ones first), rate limits. Until then sign-in uses the old link emails, which keep working; the 6-digit code does not.
+3. Checks with real accounts: two-account Realtime, phone offline (§14, §23), warm-up on two phones (§9), Security Advisor.
+4. Three never-started live group sessions (ids in §5 above): their participants cannot save until the owner presses "Iniciar cata" or closes them.
+5. Tell Kim, then PHASE 23 STEP 2 + `scripts/resync-low-cup-history.ts` (§12 steps 4–6).
+6. Three `@cata.test` accounts in production (two own sessions): remove or re-key.
+7. Account deletion: rehearse on a non-production database (§24) before setting `ACCOUNT_DELETION_ENABLED=1`.
+8. Final legal text, then `LEGAL_PAGES_PUBLISHED`; `ANALYTICS_SUPER_ADMIN_EMAIL` in Vercel.
+9. Numbers Claude chose that Ricardo may change: email limits in `lib/emailLimits.ts` (300 recipients/day, 40 for new accounts, 10 sign-in links per account per 15 min).
+
+**Rollback**: runbook §27 "Rollback order"; PHASE 24 grants in `docs/handover/phase24-rollback-grants.sql`.
