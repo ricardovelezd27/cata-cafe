@@ -267,3 +267,5 @@ Ricardo authorized Claude to run the three phases and to merge + deploy (answers
 - Links still go to `/auth/callback?token_hash=…`, which redirects to the confirm page; that path is proven working.
 - Confirm signup and Change Email templates: unchanged.
 - Adding `http://cata-cafe-opal.vercel.app/**` to the redirect allow-list was tried as a stop-gap and refused by the session's permission system (it weakens security); not needed after PR #98.
+- Template check: the email sent at 01:03 UTC carries the 6-digit code in both language blocks. Supabase took about 8 minutes to start using the saved template (three emails sent in between still used the old one). Typing the code on the login screen was NOT tested by Claude (one-time codes are the owner's to enter); Ricardo to confirm.
+- Sign-in records (auth.flow_state): Ricardo's Google attempts were at 00:19 and 00:31 UTC, before the fix was live (~00:46). A Google sign-in after the fix has not been confirmed yet.
