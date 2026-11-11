@@ -29,6 +29,8 @@ import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 // the cookies() call inside createClient() 500s (dev always renders dynamic,
 // so the crash only appears in production). Same pattern as join/[token].
 export const dynamic = "force-dynamic";
+// Hosts group mail actions (compose, resend, notice): outlive the fan-out (S9-01 D-08).
+export const maxDuration = 120;
 
 type GroupSessionRow = {
   id: string;

@@ -7,6 +7,9 @@ import { COFFEE_COUNTRIES } from "@/lib/analytics/normalize";
 import { getUsableCoffees } from "@/lib/coffees/queries";
 import type { UsableCoffee } from "@/components/coffees/CoffeePicker";
 
+// Hosts createGroupSession, which can notify a tasting group by mail (S9-01 D-08).
+export const maxDuration = 120;
+
 export function generateStaticParams() {
   return [{ locale: "es" }, { locale: "en" }];
 }

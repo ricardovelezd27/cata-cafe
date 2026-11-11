@@ -8,6 +8,9 @@ import { claimGroupMembershipsByEmail } from "@/lib/groupMembership";
 import { CreateGroupDialog } from "@/components/groups/CreateGroupDialog";
 import { CoCupperCard } from "@/components/groups/CoCupperCard";
 
+// Hosts the create-group action, which sends invitation mail (S9-01 D-08).
+export const maxDuration = 120;
+
 export function generateStaticParams() {
   return [{ locale: "es" }, { locale: "en" }];
 }

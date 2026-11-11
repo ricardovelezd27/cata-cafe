@@ -241,11 +241,6 @@ export const PROFILE_MANIFEST: readonly ManifestEntry[] = [
   },
 ];
 
-/** Bare columns the test checks exist in the schema (relations are discovered from it). */
-export const BARE_COLUMNS = PROFILE_MANIFEST.filter((e) => e.kind === "bare").map(
-  (e) => `${e.model}.${e.field}`,
-);
-
 export function manifestKey(model: string, field: string): string {
   return `${model}.${field}`;
 }

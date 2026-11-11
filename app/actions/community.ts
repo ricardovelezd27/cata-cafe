@@ -782,17 +782,8 @@ export async function setParticipantExclusion(
         }),
       });
 
-      // Re-fire trg_recompute_aggregate for the whole session. Touching "isDraft"
-      // (even to its current value) satisfies `AFTER UPDATE OF "isDraft"`; the
-      // WHEN (NEW."isDraft" = false) clause keeps it to submitted evaluations.
-      await prisma.$executeRaw`
-        UPDATE evaluations e
-        SET "isDraft" = e."isDraft"
-        FROM session_samples ss
-        WHERE e."sessionSampleId" = ss.id
-          AND ss."sessionId" = ${sessionId}
-          AND e."isDraft" = false
-      `;
+      // Re-fire trg_recompute_aggregate for the whole session (lib/aggregates.ts).
+      await refireAggregates(sessionId);
 
       // A closed session already wrote each cupper's coffee history with the
       // community score of the day; refresh it so the profile does not keep the
