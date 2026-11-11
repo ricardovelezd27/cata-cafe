@@ -42,14 +42,16 @@ export async function purgeCachesOnUserChange(userId: string): Promise<boolean> 
  *  (`cata-static-*`) are shared and kept; evaluation drafts are user-keyed
  *  in IndexedDB and kept so an unsynced draft is never destroyed. Never
  *  throws — a browser without the Cache API just skips. */
-export async function clearLocalDeviceState(): Promise<void> {
+export async function clearLocalDeviceState(
+  opts: { keepClaimInProgress?: boolean } = {},
+): Promise<void> {
   if (typeof window === "undefined") return;
   await purgePageCaches();
   try {
-    // A pending guest-claim hand-over must not outlive the sign-out.
-    const { CLAIM_ANON_KEY, CLAIM_DONE_KEY } = await import("@/lib/offline/claimMarker");
-    window.localStorage.removeItem(CLAIM_ANON_KEY);
-    window.localStorage.removeItem(CLAIM_DONE_KEY);
+    // A pending guest-claim hand-over must not outlive the sign-out, except
+    // on the "use another account" step of a claim in progress (C-08).
+    const { claimKeysToClear } = await import("@/lib/offline/claimMarker");
+    for (const key of claimKeysToClear(opts)) window.localStorage.removeItem(key);
   } catch {
     // best effort
   }

@@ -99,3 +99,15 @@ export function decideClaimRekey(input: {
   if (started.anonId === userId) return { rekeyFrom: null, clear: true };
   return { rekeyFrom: started.anonId, clear: true };
 }
+
+/**
+ * Which claim markers a device-state clear removes (S9-01, C-08). A plain
+ * sign-out drops both: a pending hand-over must not outlive it. The "Usar otra
+ * cuenta" path of an IN-PROGRESS claim keeps the start marker (CLAIM_ANON_KEY),
+ * otherwise the later confirmation under the other account finds only the done
+ * marker and the anonymous drafts are never re-keyed. The done marker is not
+ * written yet on that path, but is dropped anyway so a stale one cannot linger.
+ */
+export function claimKeysToClear(opts: { keepClaimInProgress?: boolean } = {}): string[] {
+  return opts.keepClaimInProgress ? [CLAIM_DONE_KEY] : [CLAIM_ANON_KEY, CLAIM_DONE_KEY];
+}
