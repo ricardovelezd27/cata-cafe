@@ -13,7 +13,7 @@
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
 import { isEvaluationComplete } from "@/lib/closeRules";
-import { isClaimable, leaseCutoff } from "@/lib/closeEmailLedger";
+import { hasClaimableRecipient, isClaimable, leaseCutoff, mustRecordFinalOutcome } from "@/lib/closeEmailLedger";
 import { orderReferencesFirst } from "@/lib/referenceRules";
 import { deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { isDeletedProfileId } from "@/lib/accountDeletion/deletedProfile";
@@ -32,6 +32,32 @@ import esMessages from "@/messages/es.json";
 import enMessages from "@/messages/en.json";
 
 type Locale = "es" | "en";
+
+/** Ledger rows of a session keyed by user (shared by the send and the
+ *  resend pre-check, so both apply the same claim rules). */
+async function loadCloseLedger(sessionId: string) {
+  return new Map(
+    (
+      await prisma.closeEmailDelivery.findMany({
+        where: { sessionId },
+        select: { userId: true, status: true, updatedAt: true },
+      })
+    ).map((d) => [d.userId, { status: d.status, updatedAt: d.updatedAt.getTime() }]),
+  );
+}
+
+/** True when a send right now would take at least one recipient. */
+export async function hasClaimableCloseRecipients(sessionId: string): Promise<boolean> {
+  const [participants, ledger] = await Promise.all([
+    prisma.sessionParticipant.findMany({ where: { sessionId }, select: { userId: true } }),
+    loadCloseLedger(sessionId),
+  ]);
+  return hasClaimableRecipient(
+    participants.map((p) => p.userId),
+    ledger,
+    Date.now(),
+  );
+}
 
 export type CloseEmailSummary = {
   attempted: number;
@@ -184,14 +210,7 @@ export async function sendCloseEmails(
   // CLOSE_EMAIL_LEASE_MS (lib/closeEmailLedger.ts). This read only narrows the
   // list; the claim is the lock.
   const nowMs = Date.now();
-  const ledger = new Map(
-    (
-      await prisma.closeEmailDelivery.findMany({
-        where: { sessionId },
-        select: { userId: true, status: true, updatedAt: true },
-      })
-    ).map((d) => [d.userId, { status: d.status, updatedAt: d.updatedAt.getTime() }]),
-  );
+  const ledger = await loadCloseLedger(sessionId);
   const recipients = session.participants.filter((p) =>
     isClaimable(ledger.get(p.userId) ?? null, nowMs),
   );
@@ -377,20 +396,32 @@ export async function sendCloseEmails(
       // Final outcome onto the row this run reserved — never lets a
       // bookkeeping failure sink the send loop itself. (A rejected task may
       // have thrown before its claim: the upsert then creates the row.)
+      // Conditional on the row still being "sending": a run that lost its
+      // lease must not overwrite the run that took over. A real "sent" is the
+      // exception and is always recorded (never downgraded).
       try {
-        await prisma.closeEmailDelivery.upsert({
-          where: { sessionId_userId: { sessionId, userId: chunk[j].userId } },
-          create: {
-            sessionId,
-            userId: chunk[j].userId,
-            status: outcome.status,
-            lastError: outcome.error?.slice(0, 300) ?? null,
-          },
-          update: {
-            status: outcome.status,
-            lastError: outcome.error?.slice(0, 300) ?? null,
-          },
+        const lastError = outcome.error?.slice(0, 300) ?? null;
+        const userId = chunk[j].userId;
+        const done = await prisma.closeEmailDelivery.updateMany({
+          where: { sessionId, userId, status: "sending" },
+          data: { status: outcome.status, lastError },
         });
+        if (done.count === 0) {
+          if (mustRecordFinalOutcome(outcome.status)) {
+            await prisma.closeEmailDelivery.upsert({
+              where: { sessionId_userId: { sessionId, userId } },
+              create: { sessionId, userId, status: "sent", lastError },
+              update: { status: "sent", lastError },
+            });
+          } else {
+            // No row at all (a task rejected before its claim): create it.
+            // An existing non-"sending" row belongs to another run: leave it.
+            await prisma.closeEmailDelivery.createMany({
+              data: [{ sessionId, userId, status: outcome.status, lastError }],
+              skipDuplicates: true,
+            });
+          }
+        }
       } catch (err) {
         console.warn(
           `[closeEmail] could not record delivery for ${chunk[j].userId}: ${err instanceof Error ? err.message : String(err)}`,

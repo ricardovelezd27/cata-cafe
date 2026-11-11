@@ -299,6 +299,7 @@ export function ResultsClient({
     closeEmailsResending: string;
     closeEmailsResent: string;
     closeEmailsResendError: string;
+    closeEmailsInProgress: string;
     descViewAll: string;
     descByGroup: string;
     descOf: string;
@@ -637,6 +638,12 @@ export function ResultsClient({
     startTransition(async () => {
       try {
         const r = await resendCloseEmails(session.id);
+        if (r.ok && r.nothingToSend) {
+          // Rows still held by a run in progress: non-blocking notice, no budget spent.
+          setResendState("idle");
+          feedback.notifyWarning(translations.closeEmailsInProgress);
+          return;
+        }
         setResendState(r.ok ? "sent" : "error");
         if (!r.ok) feedback.notifyError(r.error === "rate_limited" ? "rate_limited" : "unknown");
       } catch {

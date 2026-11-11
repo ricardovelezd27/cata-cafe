@@ -517,6 +517,13 @@ export async function resendCloseEmails(sessionId: string) {
   if (!session.isGroup) return { ok: false as const, error: "not_group" };
   if (session.status !== "closed") return { ok: false as const, error: "not_closed" };
 
+  // Nothing claimable (everyone sent, or held by a fresh "sending" lease):
+  // return before spending a resend from the budget.
+  const { hasClaimableCloseRecipients } = await import("@/lib/closeEmail");
+  if (!(await hasClaimableCloseRecipients(sessionId))) {
+    return { ok: true as const, nothingToSend: true as const };
+  }
+
   // S9-01 (A-09): bounded per session (CLOSE_RESEND_PER_SESSION in
   // lib/emailLimits.ts). Reserved before the work, like every sender.
   const budget = await reserveEmailBudget({ kind: "close_resend", sessionId });
@@ -538,7 +545,7 @@ export async function resendCloseEmails(sessionId: string) {
     }
   });
 
-  return { ok: true as const };
+  return { ok: true as const, nothingToSend: false as const };
 }
 
 // ─── Reveal a sample (show its already-linked coffee identity) ────────────────

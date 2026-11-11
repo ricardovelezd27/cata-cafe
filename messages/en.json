@@ -740,7 +740,8 @@
       "resend": "Resend",
       "resending": "Resending…",
       "resent": "Emails resent",
-      "resendError": "Could not resend emails. Please try again."
+      "resendError": "Could not resend emails. Please try again.",
+      "inProgress": "The emails are being sent. Try again in a few minutes."
     },
     "guestCta": {
       "title": "Save your results",

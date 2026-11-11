@@ -740,7 +740,8 @@
       "resend": "Reenviar",
       "resending": "Reenviando…",
       "resent": "Correos reenviados",
-      "resendError": "No se pudieron reenviar los correos. Inténtalo de nuevo."
+      "resendError": "No se pudieron reenviar los correos. Inténtalo de nuevo.",
+      "inProgress": "Los correos se están enviando. Inténtalo de nuevo en unos minutos."
     },
     "guestCta": {
       "title": "Guarda tus resultados",

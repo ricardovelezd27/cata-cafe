@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { CLOSE_EMAIL_LEASE_MS, isClaimable, leaseCutoff } from "@/lib/closeEmailLedger";
+import {
+  CLOSE_EMAIL_LEASE_MS,
+  hasClaimableRecipient,
+  isClaimable,
+  leaseCutoff,
+  mustRecordFinalOutcome,
+} from "@/lib/closeEmailLedger";
 
 // S9-01 B-08: the close-email ledger reserves a recipient ("sending") before
 // the send. A reservation is a lease; a crashed run's row is retriable.
@@ -37,5 +43,43 @@ describe("isClaimable", () => {
 describe("leaseCutoff", () => {
   it("is now minus the lease", () => {
     expect(leaseCutoff(NOW)).toBe(NOW - CLOSE_EMAIL_LEASE_MS);
+  });
+});
+
+describe("hasClaimableRecipient", () => {
+  const ledger = (entries: [string, ReturnType<typeof row>][]) => new Map(entries);
+
+  it("is false with no recipients", () => {
+    expect(hasClaimableRecipient([], ledger([]), NOW)).toBe(false);
+  });
+
+  it("is true when someone has no row yet", () => {
+    expect(hasClaimableRecipient(["a", "b"], ledger([["a", row("sent")]]), NOW)).toBe(true);
+  });
+
+  it("is false when everyone is sent or held by a fresh lease", () => {
+    const l = ledger([["a", row("sent")], ["b", row("sending", 1_000)]]);
+    expect(hasClaimableRecipient(["a", "b"], l, NOW)).toBe(false);
+  });
+
+  it("is true when a failed, skipped or expired-lease row exists", () => {
+    expect(hasClaimableRecipient(["a"], ledger([["a", row("failed")]]), NOW)).toBe(true);
+    expect(hasClaimableRecipient(["a"], ledger([["a", row("skipped")]]), NOW)).toBe(true);
+    expect(
+      hasClaimableRecipient(["a"], ledger([["a", row("sending", CLOSE_EMAIL_LEASE_MS)]]), NOW),
+    ).toBe(true);
+  });
+
+  it("ignores ledger rows of users who are not recipients", () => {
+    const l = ledger([["a", row("sent")], ["z", row("failed")]]);
+    expect(hasClaimableRecipient(["a"], l, NOW)).toBe(false);
+  });
+});
+
+describe("mustRecordFinalOutcome", () => {
+  it("forces only a real send", () => {
+    expect(mustRecordFinalOutcome("sent")).toBe(true);
+    expect(mustRecordFinalOutcome("failed")).toBe(false);
+    expect(mustRecordFinalOutcome("skipped")).toBe(false);
   });
 });

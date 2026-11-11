@@ -952,6 +952,7 @@ export default async function ResultsPage({
         closeEmailsResending: tResults("closeEmails.resending"),
         closeEmailsResent: tResults("closeEmails.resent"),
         closeEmailsResendError: tResults("closeEmails.resendError"),
+        closeEmailsInProgress: tResults("closeEmails.inProgress"),
         descViewAll: tDesc("viewAll"),
         descByGroup: tDesc("byGroup"),
         descOf: tDesc("of"),

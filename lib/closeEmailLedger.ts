@@ -14,7 +14,9 @@ export type CloseEmailStatus = "sending" | "sent" | "skipped" | "failed";
 
 /** How long a "sending" reservation holds before another run may take it over.
  *  Far longer than one recipient's lookup + PDF render + send, shorter than
- *  the daily repair cadence. */
+ *  the daily repair cadence.
+ *  MUST stay longer than every caller's `maxDuration` (120-300 s): a live run
+ *  can never outlast its own lease, so a takeover only ever follows a crash. */
 export const CLOSE_EMAIL_LEASE_MS = 10 * 60_000;
 
 /** `updatedAt` (ms epoch) at or before which a "sending" row is abandoned. */
@@ -45,4 +47,28 @@ export function isClaimable(
     default:
       return false;
   }
+}
+
+/**
+ * Is at least one recipient claimable right now? `resendCloseEmails` asks this
+ * BEFORE reserving the close_resend budget: a resend with nothing to send (all
+ * "sent", or every remaining row held by a fresh "sending" lease) must not
+ * spend one of the session's hourly resends. Same rule as `isClaimable`.
+ */
+export function hasClaimableRecipient(
+  userIds: readonly string[],
+  ledger: ReadonlyMap<string, { status: string; updatedAt: number }>,
+  now: number,
+): boolean {
+  return userIds.some((id) => isClaimable(ledger.get(id) ?? null, now));
+}
+
+/**
+ * The final per-recipient write is conditional on the row still being
+ * "sending" (another run may have taken it over after the lease expired and
+ * recorded its own outcome). The one exception: a run that really sent the mail
+ * records "sent" regardless, and "sent" is never downgraded.
+ */
+export function mustRecordFinalOutcome(outcome: string): boolean {
+  return outcome === "sent";
 }
