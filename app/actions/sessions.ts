@@ -11,6 +11,7 @@ import type { Prisma } from "@/app/generated/prisma/client";
 import {
   generateUniqueCoffeeCodes,
   isCoffeeCodeCollision,
+  retryOnCodeCollision,
 } from "@/lib/coffeeCode";
 import {
   requireSessionOwner,
@@ -85,7 +86,7 @@ type CoffeeInput = {
   notes?: string;
   // When set, the entry references an existing Coffee (picked via the
   // "Usar café existente" picker) instead of creating a new row. Access is
-  // re-validated server-side in resolveCoffees — never trusted from the client.
+  // re-validated server-side in linkedCoffeesUsable — never trusted from the client.
   existingCoffeeId?: string;
 };
 
@@ -270,19 +271,10 @@ function validateSessionMeta(input: {
   };
 }
 
-// Resolves the wizard's coffee entries to database ids, index-aligned with the
-// input array so the `coffeeIdx` sample mapping below stays untouched. Linked
-// entries (existingCoffeeId) are re-validated against the caller's usable set
-// (owned + public + shared-with-me) — a tampered id for someone else's private
-// coffee returns the "coffee_not_found" error string instead. Non-linked
-// entries are created in one transaction ($transaction with an array preserves
-// input order; createMany can't return ids).
-async function resolveCoffees(
-  coffees: CoffeeInput[],
-  userId: string,
-): Promise<{ id: string }[] | "coffee_not_found"> {
-  if (!coffees || coffees.length === 0) return [];
-
+// Wizard coffee entries. Linked entries (existingCoffeeId) are re-validated
+// against the caller's usable set (owned + public + shared-with-me) — a
+// tampered id for someone else's private coffee yields "coffee_not_found".
+async function linkedCoffeesUsable(coffees: CoffeeInput[], userId: string): Promise<boolean> {
   const existingIds = [
     ...new Set(
       coffees
@@ -290,68 +282,62 @@ async function resolveCoffees(
         .filter((id): id is string => typeof id === "string" && id.length > 0),
     ),
   ];
-  if (existingIds.length > 0) {
-    const usable = await prisma.coffee.findMany({
-      where: { id: { in: existingIds }, AND: [usableCoffeeWhere(userId)] },
-      select: { id: true },
-    });
-    if (usable.length !== existingIds.length) return "coffee_not_found";
-  }
+  if (existingIds.length === 0) return true;
+  const usable = await prisma.coffee.findMany({
+    where: { id: { in: existingIds }, AND: [usableCoffeeWhere(userId)] },
+    select: { id: true },
+  });
+  return usable.length === existingIds.length;
+}
 
-  // Codes are pre-generated OUTSIDE the transaction: a per-create retry
-  // inside a Postgres transaction can never work (the first P2002 aborts the
-  // tx — every later statement fails with 25P02), so on a code collision the
-  // WHOLE batch re-runs with fresh codes instead (bounded attempts; the
-  // rolled-back attempt leaves no partial data). The array-form $transaction
-  // preserves input order for the coffeeIdx mapping and keeps batch speed.
+// Creates the wizard's NEW coffees INSIDE the session's own transaction
+// (S9-03, F-crear-sesion-9), so a failed session insert leaves no stray coffee.
+// Returns ids index-aligned with the input array (the `coffeeIdx` mapping).
+// Codes are pre-generated per attempt: a P2002 on a code aborts the whole
+// Postgres transaction (25P02), so the CALLER retries the whole transaction
+// with `retryOnCodeCollision` — a per-row retry can never work here.
+async function createCoffeesInTx(
+  tx: Prisma.TransactionClient,
+  coffees: CoffeeInput[],
+  userId: string,
+): Promise<{ id: string }[]> {
   const toCreate = coffees.filter((c) => !c.existingCoffeeId);
-  let created: { id: string }[] = [];
-  if (toCreate.length > 0) {
-    const MAX_BATCH_ATTEMPTS = 5;
-    let lastError: unknown;
-    let done = false;
-    for (let attempt = 0; attempt < MAX_BATCH_ATTEMPTS && !done; attempt++) {
-      const codes = generateUniqueCoffeeCodes(toCreate.length);
-      try {
-        created = await prisma.$transaction(
-          toCreate.map((c, i) =>
-            prisma.coffee.create({
-              data: {
-                code: codes[i],
-                name: c.name || "Sin nombre",
-                producer: c.producer?.trim() || null,
-                variety: c.variety?.trim() || null,
-                altitude: c.altitude?.trim() || null,
-                roastLevel: c.roastLevel?.trim() || null,
-                country: c.country?.trim() || null,
-                region: c.region?.trim() || null,
-                farm: c.farm?.trim() || null,
-                species: c.species?.trim() || null,
-                harvestYear: c.harvestYear?.trim() || null,
-                processType: c.processType?.trim() || null,
-                certifications: c.certifications ?? [],
-                notes: c.notes?.trim() || null,
-                createdBy: userId,
-                visibility: "private",
-              },
-              select: { id: true },
-            }),
-          ),
-        );
-        done = true;
-      } catch (err) {
-        if (!isCoffeeCodeCollision(err)) throw err;
-        lastError = err;
-      }
-    }
-    if (!done) throw lastError;
+  const codes = generateUniqueCoffeeCodes(toCreate.length);
+  const created: { id: string }[] = [];
+  for (const [i, c] of toCreate.entries()) {
+    created.push(
+      await tx.coffee.create({
+        data: {
+          code: codes[i],
+          name: c.name || "Sin nombre",
+          producer: c.producer?.trim() || null,
+          variety: c.variety?.trim() || null,
+          altitude: c.altitude?.trim() || null,
+          roastLevel: c.roastLevel?.trim() || null,
+          country: c.country?.trim() || null,
+          region: c.region?.trim() || null,
+          farm: c.farm?.trim() || null,
+          species: c.species?.trim() || null,
+          harvestYear: c.harvestYear?.trim() || null,
+          processType: c.processType?.trim() || null,
+          certifications: c.certifications ?? [],
+          notes: c.notes?.trim() || null,
+          createdBy: userId,
+          visibility: "private",
+        },
+        select: { id: true },
+      }),
+    );
   }
-
   let createdIdx = 0;
   return coffees.map((c) =>
     c.existingCoffeeId ? { id: c.existingCoffeeId } : created[createdIdx++],
   );
 }
+
+// Interactive-transaction options for the create paths (up to 100 coffees are
+// now created sequentially inside it).
+const CREATE_TX_OPTIONS = { maxWait: 10_000, timeout: 30_000 } as const;
 
 export async function createSession(input: {
   name: string;
@@ -400,13 +386,13 @@ async function createSessionBody(input: {
   const refResult = parseReferenceIdx(input.referenceIdx, input.samples.length);
   if (!refResult.ok) return refResult;
 
-  const createdCoffees = await resolveCoffees(input.coffees ?? [], user.id);
-  if (createdCoffees === "coffee_not_found") {
+  if (!(await linkedCoffeesUsable(input.coffees ?? [], user.id))) {
     return { ok: false, error: "coffee_not_found" };
   }
 
   // redirect() stays OUTSIDE the transaction (it is implemented as a throw).
-  const sessionId = await prisma.$transaction(async (tx) => {
+  const sessionId = await retryOnCodeCollision(() => prisma.$transaction(async (tx) => {
+    const createdCoffees = await createCoffeesInTx(tx, input.coffees ?? [], user.id);
     const session = await tx.cuppingSession.create({
       data: {
         name: meta.name,
@@ -435,7 +421,7 @@ async function createSessionBody(input: {
     });
     await applyReferenceByPosition(tx, session.id, session.samples, refResult.idx);
     return session.id;
-  });
+  }, CREATE_TX_OPTIONS));
 
   // The locale reaches a redirect URL: whitelist it (`//evil.test` would be a
   // protocol-relative redirect).
@@ -568,14 +554,14 @@ async function createGroupSessionBody(input: {
     }
   }
 
-  const createdCoffees = await resolveCoffees(input.coffees ?? [], user.id);
-  if (createdCoffees === "coffee_not_found") {
+  if (!(await linkedCoffeesUsable(input.coffees ?? [], user.id))) {
     return { ok: false, error: "coffee_not_found" };
   }
 
   const token = crypto.randomUUID();
 
-  const session = await prisma.$transaction(async (tx) => {
+  const session = await retryOnCodeCollision(() => prisma.$transaction(async (tx) => {
+    const createdCoffees = await createCoffeesInTx(tx, input.coffees ?? [], user.id);
     const created = await tx.cuppingSession.create({
       data: {
         name: meta.name,
@@ -621,7 +607,7 @@ async function createGroupSessionBody(input: {
     });
     await applyReferenceByPosition(tx, created.id, created.samples, refResult.idx);
     return { id: created.id };
-  });
+  }, CREATE_TX_OPTIONS));
 
   // Best-effort — a failed/skipped auto-invite email must never fail session
   // creation itself.
@@ -1682,13 +1668,18 @@ export async function updateSampleMetadata(
     // The session already closed without a history row for this sample (no
     // coffee at close time) — same idempotent sync the close routine runs.
     await syncCoffeeHistoryForSession(sample.sessionId);
-    revalidatePath(`/app/profile/history`);
-    revalidatePath(`/app/coffees`);
+    for (const l of ["es", "en"] as const) {
+      revalidatePath(`/${l}/app/profile/history`);
+      revalidatePath(`/${l}/app/coffees`);
+    }
   }
 
-  revalidatePath(`/app/sessions/${sample.sessionId}/cup`);
-  revalidatePath(`/app/sessions/${sample.sessionId}/results`);
-  revalidatePath(`/app/sessions/${sample.sessionId}/print`);
+  // Locale-prefixed: a bare "/app/..." path matches no cached page (S9-03 review).
+  for (const l of ["es", "en"] as const) {
+    revalidatePath(`/${l}/app/sessions/${sample.sessionId}/cup`);
+    revalidatePath(`/${l}/app/sessions/${sample.sessionId}/results`);
+    revalidatePath(`/${l}/app/sessions/${sample.sessionId}/print`);
+  }
 
   return { ok: true as const, coffeeUpdated };
 }
@@ -1739,14 +1730,17 @@ export async function assignSampleCoffee(
     });
     if (res.count === 0) throw new Error("conflict");
 
-    if (closed) {
-      await syncCoffeeHistoryForSession(sample.sessionId);
-      revalidatePath(`/app/profile/history`);
-      revalidatePath(`/app/coffees`);
+    // Locale-aware (a bare "/app/…" path matches no cached page).
+    for (const l of ["es", "en"]) {
+      if (closed) {
+        revalidatePath(`/${l}/app/profile/history`);
+        revalidatePath(`/${l}/app/coffees`);
+      }
+      revalidatePath(`/${l}/app/sessions/${sample.sessionId}/cup`);
+      revalidatePath(`/${l}/app/sessions/${sample.sessionId}/results`);
+      revalidatePath(`/${l}/app/sessions/${sample.sessionId}/print`);
     }
-    revalidatePath(`/app/sessions/${sample.sessionId}/cup`);
-    revalidatePath(`/app/sessions/${sample.sessionId}/results`);
-    revalidatePath(`/app/sessions/${sample.sessionId}/print`);
+    if (closed) await syncCoffeeHistoryForSession(sample.sessionId);
     return { linked: true };
   });
 }

@@ -30,6 +30,12 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   danger: "border border-error text-error hover:bg-error-container",
 };
 
+/** Class string of a Button, for wrappers that must render their own element
+ * (e.g. GuestGateLink, which is a Link for members and a button for guests). */
+export function buttonClasses(variant: ButtonVariant = "primary", size: ButtonSize = "md"): string {
+  return `${BASE} ${SIZE_CLASSES[size]} ${VARIANT_CLASSES[variant]} no-underline`;
+}
+
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;

@@ -142,7 +142,6 @@
       "what": "Run CVA cuppings —descriptive, affective, or combined—, solo or in a group, and get a verifiable, exportable score.",
       "howLabel": "How",
       "how": "Create a session, evaluate cup by cup, and review a transparent score you can audit and compare.",
-      "ctaPrimary": "Create CVA session",
       "ctaCalc": "How is the score calculated?",
       "dismiss": "Got it",
       "reopen": "How does Cata Café work?",
@@ -170,7 +169,6 @@
     "noAvg": "No data",
     "activityEval": "You cupped {coffee}",
     "emptyTitle": "No cupping sessions yet",
-    "emptyCta": "Create first CVA session →",
     "noActivity": "No recent activity",
     "noBestCoffees": "No coffees evaluated yet",
     "cuppingsCount": "{count} cuppings",
@@ -271,6 +269,11 @@
       "back": "Sessions",
       "name": "Cupping name",
       "format": "Format",
+      "formatHint": {
+        "descriptive": "Describe aromas and flavors with their intensity, no score.",
+        "affective": "Rate the quality of each sample from 1 to 9.",
+        "combined": "Describe the flavors and rate the quality, all in one."
+      },
       "samples": "Samples",
       "samplesHint": "Between 1 and 20 samples, no coffee attached. You can name them at the end.",
       "decrement": "One sample fewer",

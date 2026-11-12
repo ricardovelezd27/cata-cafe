@@ -229,7 +229,10 @@ export default async function CupPage({
                 ? ((s.extrinsic?.data as Record<string, unknown>) ?? {})
                 : {},
             revealed: s.revealed,
-            coffeeId: s.coffeeId,
+            // Owner only: PHASE 21 hides session_samples."coffeeId" from the API
+            // so a participant cannot look a blind sample's coffee up; the page
+            // must not hand the id over either (S9-05 review).
+            coffeeId: isOwner ? s.coffeeId : null,
             coffee: isOwner
               ? {
                   name: s.coffee?.name ?? "",
@@ -264,6 +267,16 @@ export default async function CupPage({
         editSample: t("session.editSample"),
         editSampleError: t("session.editSampleError"),
         editSampleNotOwner: t("session.editSampleNotOwner"),
+        coffeePicker: {
+          useExisting: tc("picker.useExisting"),
+          title: tc("picker.title"),
+          searchPlaceholder: tc("picker.searchPlaceholder"),
+          mine: tc("picker.mine"),
+          shared: tc("picker.shared"),
+          public: tc("picker.public"),
+          empty: tc("picker.empty"),
+          close: t("common.close"),
+        },
         coffeeName: t("session.coffeeName"),
         coffeeCountry: tc("country"),
         coffeeRegion: tc("region"),

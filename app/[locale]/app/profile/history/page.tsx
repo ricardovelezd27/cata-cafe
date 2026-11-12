@@ -87,6 +87,7 @@ export default async function HistoryPage({
     filterYear: tYear("year"),
     emptyBody: t("empty"),
     newSessionLabel: tSession("new"),
+    expressLabel: tSession("express.cta"),
     noResults: tc("noResults"),
     sessionDeleted: t("sessionDeleted"),
     quickImpression: t("quickImpression"),
@@ -99,6 +100,7 @@ export default async function HistoryPage({
         rows={rows}
         locale={locale}
         newSessionHref={`/${locale}/app/sessions/new`}
+        expressHref={`/${locale}/app/sessions/express`}
         translations={tableTranslations}
       />
     </div>
