@@ -47,6 +47,7 @@ import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { canPickExistingCoffee } from "@/lib/cupCoffeePick";
+import { resumeCallbackRefreshes } from "@/lib/cupResume";
 import { isEvaluationComplete as isEvaluationCompleteForScore } from "@/lib/evaluationState";
 import { DeadlineBanner, type DeadlineBannerTranslations } from "@/components/session/DeadlineBanner";
 import {
@@ -122,6 +123,9 @@ import type { ModuleKey } from "@/lib/offline/types";
 type Data = Record<string, unknown>;
 
 // The five Sample fields that map to persistable evaluation modules.
+/** How long the online owner waits for the rebuilt channel's SUBSCRIBED re-seed after a resume before refreshing anyway. */
+const OWNER_RESEED_FALLBACK_MS = 8000;
+
 const MODULE_KEYS = new Set<ModuleKey>([
   "descriptive",
   "affective",
@@ -732,6 +736,9 @@ export function CupClient({
   // channel through subscribeWithSessionAuth (S8-15). Never saves: the pagehide
   // flush stays the only writer.
   const [resumeKey, setResumeKey] = useState(0);
+  // When the owner's channel last reached SUBSCRIBED (and re-seeded); the resume
+  // fallback timer checks it so a channel that never subscribes still refreshes.
+  const ownerSeededAtRef = useRef(0);
   const onlineRef = useRef(online);
   useEffect(() => {
     onlineRef.current = online;
@@ -960,7 +967,17 @@ export function CupClient({
     void recheck();
     if (!isGroup) return;
     setResumeKey((k) => k + 1);
-    router.refresh();
+    // One refetch per resume: the online owner gets it from the rebuilt channel's
+    // SUBSCRIBED re-seed (it also covers events missed while the socket was down).
+    if (resumeCallbackRefreshes({ isGroup, isOwner, online })) {
+      router.refresh();
+    } else {
+      // Safety net: if the channel never reaches SUBSCRIBED, refresh anyway.
+      const resumedAt = Date.now();
+      setTimeout(() => {
+        if (ownerSeededAtRef.current < resumedAt) router.refresh();
+      }, OWNER_RESEED_FALLBACK_MS);
+    }
   });
 
   // ─── Realtime subscription for group sessions ─────────────────
@@ -1057,7 +1074,10 @@ export function CupClient({
       (status) => {
         setLiveCountDown(status !== "SUBSCRIBED");
         // Events missed while the socket was down: re-seed from the server.
-        if (status === "SUBSCRIBED" && isOwner) router.refresh();
+        if (status === "SUBSCRIBED" && isOwner) {
+          ownerSeededAtRef.current = Date.now();
+          router.refresh();
+        }
       },
     );
 
