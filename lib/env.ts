@@ -25,6 +25,7 @@ export const REQUIRED_IN_PRODUCTION = [
   "GUEST_CLAIM_SECRET",
   "CRON_SECRET",
   "RESEND_API_KEY",
+  "ANALYTICS_SUPER_ADMIN_EMAIL",
 ] as const;
 
 type EnvLike = Record<string, string | undefined>;
@@ -34,12 +35,11 @@ export function missingProductionEnv(env: EnvLike = process.env): string[] {
 }
 
 // Variables that SHOULD be set in production but must not stop the boot: the
-// code has a safe fallback. S8-08 F-insights-5: the super-admin address falls
-// back to a hard-coded Gmail in lib/analytics/access.ts. Setting it removes
-// that hidden dependency; the boot logs one warning until it is set.
-// TODO(owner): set ANALYTICS_SUPER_ADMIN_EMAIL in Vercel Production, then move
-// it to REQUIRED_IN_PRODUCTION and drop the fallback.
-export const RECOMMENDED_IN_PRODUCTION = ["ANALYTICS_SUPER_ADMIN_EMAIL", "UNSUBSCRIBE_SECRET"] as const;
+// code has a safe fallback (UNSUBSCRIBE_SECRET falls back to
+// GUEST_CLAIM_SECRET). The boot logs one warning until they are set.
+// ANALYTICS_SUPER_ADMIN_EMAIL is REQUIRED (F-insights-5): without it nobody is
+// super-admin, and there is no address hard-coded in lib/analytics/access.ts.
+export const RECOMMENDED_IN_PRODUCTION = ["UNSUBSCRIBE_SECRET"] as const;
 
 export function missingRecommendedEnv(env: EnvLike = process.env): string[] {
   return RECOMMENDED_IN_PRODUCTION.filter((name) => !env[name] || env[name]!.trim() === "");

@@ -12,6 +12,7 @@
 // component — uses the service-role admin client and server-only AI modules.
 
 import { prisma } from "@/lib/prisma";
+import { logWarn } from "@/lib/log";
 import { listAllAuthUsers } from "@/lib/supabase/adminUsers";
 import { sendEmail } from "@/lib/email";
 import { getSuperAdminEmail, isSuperAdminEmail } from "@/lib/analytics/access";
@@ -38,6 +39,8 @@ type Locale = "es" | "en";
 
 export type DigestSummary = {
   ok: boolean;
+  /** Set when nothing was attempted because no super-admin address is configured. */
+  error?: "no_super_admin";
   period: string;
   alreadyRan?: boolean;
   /** Another invocation holds the period right now (alreadyRan is also true). */
@@ -238,6 +241,13 @@ function digestHtml(
 export async function sendInsightsDigest(now = new Date()): Promise<DigestSummary> {
   const period = previousPeriod(periodOf(now));
 
+  // No super-admin configured (local dev; production requires the variable):
+  // there is nobody to send to, so claim nothing and spend no AI call.
+  if (!getSuperAdminEmail()) {
+    logWarn({ where: "insightsDigest", message: "ANALYTICS_SUPER_ADMIN_EMAIL is not set; digest skipped" });
+    return { ok: false, error: "no_super_admin", period, recipients: 0, sent: 0, failed: 0, aiSkipped: false };
+  }
+
   // 1. Claim the period. The unique `period` makes this atomic: of two
   //    simultaneous invocations exactly one create succeeds.
   let previous: DigestResults = {};
@@ -321,7 +331,7 @@ async function runClaimedDigest(args: {
   // TODO(S8-08): per-recipient user-scoped digests, if Ricardo wants them.
   const targets = new Map<string, Locale>();
   const superEmail = getSuperAdminEmail();
-  if (!targets.has(superEmail)) {
+  if (superEmail && !targets.has(superEmail)) {
     let superLocale: Locale = "es";
     if (superAdminId) {
       const profile = await prisma.profile.findUnique({

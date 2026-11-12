@@ -202,7 +202,7 @@ The "Análisis" area (`/app/insights`) appears only for people granted access. T
 
 | Level | Granted by | Sees |
 |---|---|---|
-| Super-admin | the `ANALYTICS_SUPER_ADMIN_EMAIL` setting (with a fallback address in code) | Everything: platform-wide data, the access list, the monthly digest |
+| Super-admin | the `ANALYTICS_SUPER_ADMIN_EMAIL` setting (required in production; no address is built into the code) | Everything: platform-wide data, the access list, the monthly digest |
 | AI admin | the `ANALYTICS_AI_ADMIN_EMAILS` allowlist | The insights pages, the AI chat, and the Usuarios directory (emails masked) |
 | Flagged user | a flag on their profile | The base insights page, scoped to their own data |
 
@@ -366,12 +366,12 @@ Create `.env.local`. The boot check in `instrumentation.ts` (`lib/env.ts`) fails
 | `GUEST_CLAIM_SECRET` | Random secret (32+ bytes) that signs the "keep my guest results" links |
 | `CRON_SECRET` | Random secret (32+ bytes); Vercel Cron sends it as `Authorization: Bearer` to `/api/cron/*`, which answer 503 without it |
 | `RESEND_API_KEY` | Resend API key for outbound email |
+| `ANALYTICS_SUPER_ADMIN_EMAIL` | The insights super-admin address. If unset, nobody is super-admin (no address is built into the code). In local development, set it in `.env.local` if you need to reach the super-admin screens |
 
 ### Recommended in production (boot logs a warning if unset)
 
 | Variable | What it is |
 |---|---|
-| `ANALYTICS_SUPER_ADMIN_EMAIL` | The insights super-admin address. If unset, a fallback address hard-coded in `lib/analytics/access.ts` is used |
 | `UNSUBSCRIBE_SECRET` | Signs the group-email unsubscribe links. Optional: when unset the legacy signing secret is used. Once set, never change it, or old links stop working |
 
 ### Optional
