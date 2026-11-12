@@ -32,6 +32,7 @@ import {
 import { Select } from "@/components/ui/Select";
 import { browserZone, dateInZone } from "@/lib/closeRules";
 import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
+import { fieldErrorId, fieldForErrorCode, fieldInputId, type SessionFormField } from "@/lib/sessionFormErrors";
 
 // Groups v2: session wizard extends NotifyGroupTranslations with the
 // step-1 "link a group" selector copy + the step-2 auto-invite success
@@ -388,6 +389,22 @@ export function NewSessionForm({
   const [invalidCoffeeId, setInvalidCoffeeId] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  // Bumped on every failed submit that belongs to a field, so the focus effect
+  // re-runs even when the same code comes back twice (S9-03).
+  const [focusTick, setFocusTick] = useState(0);
+  const showError = (code: string) => {
+    setErrorCode(code);
+    if (fieldForErrorCode(code)) setFocusTick((n) => n + 1);
+  };
+  const errorField: SessionFormField | null = fieldForErrorCode(errorCode);
+  useEffect(() => {
+    if (focusTick === 0 || !errorField) return;
+    const el = document.getElementById(fieldInputId(errorField));
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.focus({ preventScroll: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusTick]);
 
   // Coffee picker — targets a single CoffeeEntry card at a time.
   const [pickerFor, setPickerFor] = useState<string | null>(null);
@@ -682,7 +699,7 @@ export function NewSessionForm({
           warmupExerciseId: warmupOn ? warmupId : null,
           locale,
         });
-        if (result) setErrorCode(result.error);
+        if (result) showError(result.error);
       } else {
         const result = await createGroupSession({
           name,
@@ -719,7 +736,7 @@ export function NewSessionForm({
             // Non-fatal: the in-memory step still works.
           }
         } else {
-          setErrorCode(result.error);
+          showError(result.error);
         }
       }
       } catch (err) {
@@ -740,6 +757,18 @@ export function NewSessionForm({
   const errorText = errorCode
     ? (t.newForm.errors as Record<string, string>)[errorCode] ?? t.newForm.errors.generic
     : null;
+  // A field-level error renders under its field; the strip keeps the rest.
+  const stripText = errorField ? null : errorText;
+  const fieldProps = (f: SessionFormField) =>
+    errorField === f
+      ? { id: fieldInputId(f), "aria-invalid": true as const, "aria-describedby": fieldErrorId(f) }
+      : { id: fieldInputId(f) };
+  const fieldError = (f: SessionFormField) =>
+    errorField === f && errorText ? (
+      <p id={fieldErrorId(f)} role="alert" className="mt-1 text-xs text-error">
+        {errorText}
+      </p>
+    ) : null;
 
   const inviteUrl =
     typeof window !== "undefined" ? buildInviteUrl(window.location.origin, locale, inviteToken) : "";
@@ -871,12 +900,14 @@ export function NewSessionForm({
         <div>
           <FieldLabel>{t.name}</FieldLabel>
           <input
+            {...fieldProps("name")}
             className={inputCls}
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
             placeholder={t.namePh}
           />
+          {fieldError("name")}
         </div>
 
         <div className={format === "descriptive" ? "grid grid-cols-1 gap-3" : "grid grid-cols-2 gap-3"}>
@@ -884,10 +915,12 @@ export function NewSessionForm({
             <FieldLabel>{t.date}</FieldLabel>
             <input
               type="date" suppressHydrationWarning
+              {...fieldProps("date")}
               className={inputCls}
               value={date}
               onChange={(e) => setDate(e.target.value)}
             />
+            {fieldError("date")}
           </div>
           {format !== "descriptive" && (
           <div>
@@ -898,6 +931,7 @@ export function NewSessionForm({
               enterKeyHint="next"
               min={1}
               max={5}
+              {...fieldProps("cups")}
               className={inputCls}
               value={cupsInput}
               onChange={(e) => {
@@ -915,6 +949,7 @@ export function NewSessionForm({
                 setCupsInput(String(clamped));
               }}
             />
+            {fieldError("cups")}
           </div>
           )}
         </div>
@@ -1441,6 +1476,7 @@ export function NewSessionForm({
               <FieldLabel>{t.groupClosesAt}</FieldLabel>
               <input
                 type="date"
+                {...fieldProps("closesAt")}
                 className={inputCls}
                 value={closesAt}
                 // "Today" in the owner's own zone; the server render is UTC,
@@ -1449,6 +1485,7 @@ export function NewSessionForm({
                 min={todayMin}
                 onChange={(e) => setClosesAt(e.target.value)}
               />
+              {fieldError("closesAt")}
               <p className="mt-1 text-xs text-on-surface-variant">{t.groupClosesAtHint}</p>
               {closesAt && (
                 <p className="mt-1 text-xs font-medium text-secondary">{t.groupClosesAtLiveNotice}</p>
@@ -1490,9 +1527,9 @@ export function NewSessionForm({
 
       {/* Error strip + submit */}
       <div className="space-y-4">
-        {errorText && (
+        {stripText && (
           <div className="bg-error-container text-on-error-container rounded-card px-4 py-3 text-sm">
-            {errorText}
+            {stripText}
           </div>
         )}
 
