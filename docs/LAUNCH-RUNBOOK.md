@@ -1415,6 +1415,15 @@ person so; retrying the deletion is safe. Separately (A-07), in sessions that ar
 where the person only took part and submitted nothing, their participant row and draft
 evaluations are deleted instead of moved to the placeholder.
 
+**What the automated suite now covers (S9-04):** `npm run test:db` runs `deleteAccountData` against
+a disposable local Postgres (all migrations and `rls_and_triggers.sql` applied): the whole
+transaction, the placeholder profile, kept and deleted sessions, the A-07 drop of draft-only
+participation, anonymized coffees, every table of `lib/accountDeletion/manifest.ts` (no row left
+pointing at the person) and that other people's submitted evaluations and stored scores are
+untouched. It does NOT cover the real Supabase auth user deletion (the admin call is mocked, so the
+orphan path of this section still needs a real check), a production-sized account, or the
+production schema's drift. The rehearsal below stays required.
+
 **Never test this against production with a real account.** `.env.local` points at
 production: do not run `deleteAccount` from a local dev server with it. Verify only in a
 NON-production environment (a Supabase branch or a separate project with its own
