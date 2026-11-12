@@ -6,7 +6,7 @@
 // what happens can never drift. Rules: lib/accountDeletion/manifest.ts.
 //
 // E3 (a): other people keep their results, without the organizer's
-// name. This is the one place the session/group split changes.
+// name. This is the one place the session/group split is decided.
 //
 // Pure (no Prisma, no server-only) so tests/accountDeletion.test.ts covers it.
 

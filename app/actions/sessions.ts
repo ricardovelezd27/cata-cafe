@@ -869,7 +869,6 @@ export async function duplicateSession(
   // remapped by position; the active one is the source's pointer. Coffees the
   // caller can no longer use (anonymized since, unshared) are NOT copied: the
   // sample stays, coffee-less, with its label (F-sesiones-8).
-  // Every reference is copied, not only the active one.
   const refPosition =
     source.samples.find((s) => s.id === source.referenceSampleId)?.position ?? null;
   const linkedIds = [
