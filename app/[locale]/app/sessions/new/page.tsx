@@ -111,6 +111,13 @@ export default async function NewSessionPage({
       referenceBadge: t("newForm.referenceBadge"),
       referenceNone: t("newForm.referenceNone"),
       referenceClear: t("newForm.referenceClear"),
+      sampleLabelAuto: t("newForm.sampleLabelAuto"),
+      samplesBlindHelper: t("newForm.samplesBlindHelper"),
+      sampleKey: {
+        title: t("newForm.sampleKey.title"),
+        hint: t("newForm.sampleKey.hint"),
+        noCoffee: t("newForm.sampleKey.noCoffee"),
+      },
       // The WHOLE table: every code the validators can return needs copy
       // (S8-10 T2; tests/sessionErrorsCopy.test.ts enumerates them). Includes
       // S8-09's `offline` and S8-05's codes.

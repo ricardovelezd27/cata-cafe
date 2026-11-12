@@ -1,5 +1,6 @@
 "use server";
 
+import { randomInt } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -46,6 +47,7 @@ import {
 } from "@/lib/referenceRules";
 import * as v from "@/lib/validate";
 import { expressSampleLabel, validateExpressInput } from "@/lib/expressSession";
+import { planBlindSamples } from "@/lib/blindLabels";
 import { logInfo, logWarn } from "@/lib/log";
 import { checkWizardBounds } from "@/lib/coffeeInputBounds";
 import { CERTIFICATIONS } from "@/lib/constants";
@@ -91,9 +93,20 @@ type CoffeeInput = {
 };
 
 type SampleInput = {
+  /** Empty = "give me a random letter" (A4); anything else is kept verbatim. */
   label: string;
   coffeeIdx?: number;
 };
+
+/** The final position of the sample the owner marked as reference (an index
+ *  into the INPUT list), after the blind shuffle. null = no reference. */
+function blindReferencePosition(
+  planned: { sourceIndex: number; position: number }[],
+  referenceIdx: number | null,
+): number | null {
+  if (referenceIdx === null) return null;
+  return planned.find((p) => p.sourceIndex === referenceIdx)?.position ?? null;
+}
 
 // ─── Reference sample helpers ────────────────────────────────────────────────
 // The reference ("Referencia") is the ONE sample the owner marks as the control
@@ -390,6 +403,11 @@ async function createSessionBody(input: {
     return { ok: false, error: "coffee_not_found" };
   }
 
+  // A4: the letters are assigned at random (planned ONCE, outside the
+  // retried transaction, so a code-collision retry keeps the same order).
+  const blind = planBlindSamples(input.samples, randomInt, safeLocale(input.locale));
+  const referencePosition = blindReferencePosition(blind, refResult.idx);
+
   // redirect() stays OUTSIDE the transaction (it is implemented as a throw).
   const sessionId = await retryOnCodeCollision(() => prisma.$transaction(async (tx) => {
     const createdCoffees = await createCoffeesInTx(tx, input.coffees ?? [], user.id);
@@ -407,19 +425,19 @@ async function createSessionBody(input: {
         createdBy: user.id,
         warmupExerciseId: meta.warmupExerciseId,
         samples: {
-          create: input.samples.map((s, i) => ({
-            label: s.label || `Muestra ${i + 1}`,
-            position: i,
+          create: blind.map((b) => ({
+            label: b.label,
+            position: b.position,
             coffeeId:
-              typeof s.coffeeIdx === "number" && createdCoffees[s.coffeeIdx]
-                ? createdCoffees[s.coffeeIdx].id
+              typeof b.sample.coffeeIdx === "number" && createdCoffees[b.sample.coffeeIdx]
+                ? createdCoffees[b.sample.coffeeIdx].id
                 : null,
           })),
         },
       },
       select: { id: true, samples: { select: { id: true, position: true } } },
     });
-    await applyReferenceByPosition(tx, session.id, session.samples, refResult.idx);
+    await applyReferenceByPosition(tx, session.id, session.samples, referencePosition);
     return session.id;
   }, CREATE_TX_OPTIONS));
 
@@ -486,6 +504,10 @@ type GroupSessionResult =
       inviteToken: string;
       emailSummary?: GroupEmailSummary;
       emailBlocked?: "rate_limited";
+      /** A4: which sample (index in the posted `samples`) got which letter, so
+       *  step 2 can show the owner the "Clave de muestras". Owner's own
+       *  response only; participants never receive it. */
+      sampleKey: { sourceIndex: number; label: string; position: number }[];
     }
   | { ok: false; error: string };
 
@@ -503,6 +525,8 @@ export async function createGroupSession(input: {
   notifyGroup?: boolean;
   referenceIdx?: number | null;
   warmupExerciseId?: string | null;
+  /** Locale for generated sample labels (Muestra A / Sample A). */
+  locale?: string;
 }): Promise<GroupSessionResult> {
   // S8-10 T1 (design b): thrown failures become `{ ok:false, error }` so the
   // wizard stays mounted with its state; validation codes pass through.
@@ -530,6 +554,7 @@ async function createGroupSessionBody(input: {
   referenceIdx?: number | null;
   /** Optional pre-cupping warm-up (WARMUP_IDS); null/absent = none. */
   warmupExerciseId?: string | null;
+  locale?: string;
 }): Promise<GroupSessionResult> {
   const user = await requireRegisteredUser();
 
@@ -560,6 +585,10 @@ async function createGroupSessionBody(input: {
 
   const token = crypto.randomUUID();
 
+  // A4: random letters, planned once (see createSessionBody).
+  const blind = planBlindSamples(input.samples, randomInt, safeLocale(input.locale));
+  const referencePosition = blindReferencePosition(blind, refResult.idx);
+
   const session = await retryOnCodeCollision(() => prisma.$transaction(async (tx) => {
     const createdCoffees = await createCoffeesInTx(tx, input.coffees ?? [], user.id);
     const created = await tx.cuppingSession.create({
@@ -581,12 +610,12 @@ async function createGroupSessionBody(input: {
           !!input.groupId && input.notifyGroup !== false && meta.closesAt === null,
         warmupExerciseId: meta.warmupExerciseId,
         samples: {
-          create: input.samples.map((s, i) => ({
-            label: s.label || `Muestra ${i + 1}`,
-            position: i,
+          create: blind.map((b) => ({
+            label: b.label,
+            position: b.position,
             coffeeId:
-              typeof s.coffeeIdx === "number" && createdCoffees[s.coffeeIdx]
-                ? createdCoffees[s.coffeeIdx].id
+              typeof b.sample.coffeeIdx === "number" && createdCoffees[b.sample.coffeeIdx]
+                ? createdCoffees[b.sample.coffeeIdx].id
                 : null,
           })),
         },
@@ -605,7 +634,7 @@ async function createGroupSessionBody(input: {
       },
       select: { id: true, samples: { select: { id: true, position: true } } },
     });
-    await applyReferenceByPosition(tx, created.id, created.samples, refResult.idx);
+    await applyReferenceByPosition(tx, created.id, created.samples, referencePosition);
     return { id: created.id };
   }, CREATE_TX_OPTIONS));
 
@@ -644,7 +673,14 @@ async function createGroupSessionBody(input: {
     }
   }
 
-  return { ok: true, sessionId: session.id, inviteToken: token, emailSummary, emailBlocked };
+  return {
+    ok: true,
+    sessionId: session.id,
+    inviteToken: token,
+    emailSummary,
+    emailBlocked,
+    sampleKey: blind.map((b) => ({ sourceIndex: b.sourceIndex, label: b.label, position: b.position })),
+  };
 }
 
 // Prisma unique-constraint violation (duck-typed like app/actions/waitlist.ts —
@@ -865,13 +901,12 @@ export async function duplicateSession(
   if (!source) throw new Error("not_found_or_forbidden");
   void session;
 
-  // Every reference travels with the template (B8 default (a): all ranks),
-  // remapped by position; the active one is the source's pointer. Coffees the
-  // caller can no longer use (anonymized since, unshared) are NOT copied: the
-  // sample stays, coffee-less, with its label (F-sesiones-8).
+  // Every reference travels with the template (B8 default (a): all ranks)
+  // together with its sample; the active one is the source's pointer, re-aimed
+  // at the copy of the SAME sample below. Coffees the caller can no longer use
+  // (anonymized since, unshared) are NOT copied: the sample stays, coffee-less,
+  // with its label (F-sesiones-8).
   // TODO(B8): Kim may prefer copying only the active reference.
-  const refPosition =
-    source.samples.find((s) => s.id === source.referenceSampleId)?.position ?? null;
   const linkedIds = [
     ...new Set(source.samples.map((s) => s.coffeeId).filter((id): id is string => id !== null)),
   ];
@@ -882,7 +917,16 @@ export async function duplicateSession(
           where: { id: { in: linkedIds }, AND: [usableCoffeeWhere(user.id)] },
           select: { id: true },
         });
-  const plan = planDuplicateSamples(source.samples, new Set(usable.map((c) => c.id)));
+  // A4: auto-labelled samples get a fresh random order (never the source's
+  // letter <-> coffee mapping); owner-typed labels keep label and position.
+  const plan = planDuplicateSamples(
+    source.samples,
+    new Set(usable.map((c) => c.id)),
+    randomInt,
+    safeLocale(locale),
+  );
+  const activeCopyPosition =
+    plan.samples.find((s) => s.sourceId === source.referenceSampleId)?.position ?? null;
 
   // Keep the group link only if the group still exists and is still ours.
   let groupId: string | null = null;
@@ -926,9 +970,11 @@ export async function duplicateSession(
       select: { id: true, samples: { select: { id: true, position: true } } },
     });
     // Ranks were copied with the samples; only the active pointer needs the
-    // fresh sample id (found by position).
+    // fresh sample id (found by the copy's new position).
     const activeCopy =
-      refPosition === null ? undefined : created.samples.find((s) => s.position === refPosition);
+      activeCopyPosition === null
+        ? undefined
+        : created.samples.find((s) => s.position === activeCopyPosition);
     if (activeCopy) {
       await tx.cuppingSession.update({
         where: { id: created.id },

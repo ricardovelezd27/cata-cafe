@@ -16,6 +16,7 @@ import { InviteQR } from "@/components/ui/InviteQR";
 import { buildInviteUrl } from "@/lib/inviteUrl";
 import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { Badge } from "@/components/ui/Badge";
+import { SampleKey, type SampleKeyRow, type SampleKeyTranslations } from "@/components/cupping/SampleKey";
 import { localDateISO } from "@/lib/localDate";
 import {
   isDraftDirtyFrom,
@@ -163,6 +164,10 @@ type Translations = {
     referenceBadge: string;
     referenceNone: string;
     referenceClear: string;
+    /** A4: placeholder of a row whose letter is drawn at random, and the helper above the list. */
+    sampleLabelAuto: string;
+    samplesBlindHelper: string;
+    sampleKey: SampleKeyTranslations;
     /** Whole newForm.errors table (S8-10); includes `offline` (S8-09). */
     errors: Record<string, string> & { generic: string; offline?: string };
   };
@@ -181,17 +186,6 @@ type Translations = {
 };
 
 type WizardStep = "form" | "invite";
-
-const sampleLetter = (i: number) => {
-  let n = i + 1;
-  let s = "";
-  while (n > 0) {
-    const r = (n - 1) % 26;
-    s = String.fromCharCode(65 + r) + s;
-    n = Math.floor((n - 1) / 26);
-  }
-  return s; // 0→A … 25→Z, 26→AA
-};
 
 /** Stable id for coffees/samples so React keys and card refs survive add/remove. */
 const newId = () => crypto.randomUUID();
@@ -240,10 +234,15 @@ function linkedEntry(base: CoffeeEntry, picked: UsableCoffee): CoffeeEntry {
   };
 }
 
-/** Recomputes A, B, C… labels by list position; leaves user-edited labels untouched. */
-function relabel(samples: SampleEntry[], chip: string): SampleEntry[] {
-  return samples.map((s, i) => (s.auto ? { ...s, label: `${chip} ${sampleLetter(i)}` } : s));
-}
+/** A fresh sample row. Its label stays EMPTY while `auto` (A4): the server
+ *  assigns the letters at random when the session is created, so the wizard
+ *  must not show a fixed "Muestra A" next to a coffee. */
+const autoSample = (coffeeId: string): SampleEntry => ({
+  id: newId(),
+  label: "",
+  coffeeId,
+  auto: true,
+});
 
 const inputBase =
   "w-full border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary-container/25 focus:border-primary-container transition-colors";
@@ -365,12 +364,7 @@ export function NewSessionForm({
   });
   const [samples, setSamples] = useState<SampleEntry[]>(() =>
     // N sample chips from the express handoff (default 1); coffees stay required.
-    Array.from({ length: handoff?.sampleCount ?? 1 }, (_, i) => ({
-      id: newId(),
-      label: `${t.newForm.sampleChip} ${sampleLetter(i)}`,
-      coffeeId: coffees[0].id,
-      auto: true,
-    })),
+    Array.from({ length: handoff?.sampleCount ?? 1 }, () => autoSample(coffees[0].id)),
   );
 
   // Reference sample — the SampleEntry.id (never the index) so add/remove/
@@ -387,6 +381,8 @@ export function NewSessionForm({
   const [notifyGroup, setNotifyGroup] = useState(true);
   const [emailSummary, setEmailSummary] = useState<GroupEmailSummary | undefined>(undefined);
   const [inviteBlocked, setInviteBlocked] = useState(false);
+  // Step 2: letter -> coffee, from the server's response (A4).
+  const [sampleKey, setSampleKey] = useState<(SampleKeyRow & { sourceId: string | null })[]>([]);
 
   // Client-side validation state
   const [invalidCoffeeId, setInvalidCoffeeId] = useState<string | null>(null);
@@ -582,9 +578,7 @@ export function NewSessionForm({
     // its label and coffee can be freely edited afterward.
     const coffeeId = newId();
     setCoffees((prev) => [...prev, { ...EMPTY_COFFEE, id: coffeeId }]);
-    setSamples((prev) =>
-      relabel([...prev, { id: newId(), label: "", coffeeId, auto: true }], t.newForm.sampleChip)
-    );
+    setSamples((prev) => [...prev, autoSample(coffeeId)]);
   };
 
   const removeCoffee = (id: string) => {
@@ -593,10 +587,10 @@ export function NewSessionForm({
     // Drop samples that pointed at the removed coffee; never leave the list empty.
     let nextSamples = samples.filter((s) => s.coffeeId !== id);
     if (nextSamples.length === 0) {
-      nextSamples = [{ id: newId(), label: "", coffeeId: nextCoffees[0].id, auto: true }];
+      nextSamples = [autoSample(nextCoffees[0].id)];
     }
     setCoffees(nextCoffees);
-    setSamples(relabel(nextSamples, t.newForm.sampleChip));
+    setSamples(nextSamples);
     if (referenceId && !nextSamples.some((s) => s.id === referenceId)) {
       setReferenceId(null);
     }
@@ -607,22 +601,20 @@ export function NewSessionForm({
   };
 
   const addSample = () => {
-    setSamples((prev) =>
-      relabel(
-        [...prev, { id: newId(), label: "", coffeeId: coffees[0].id, auto: true }],
-        t.newForm.sampleChip
-      )
-    );
+    setSamples((prev) => [...prev, autoSample(coffees[0].id)]);
   };
 
   const removeSample = (id: string) => {
     if (samples.length <= 1) return;
-    setSamples((prev) => relabel(prev.filter((s) => s.id !== id), t.newForm.sampleChip));
+    setSamples((prev) => prev.filter((s) => s.id !== id));
     if (referenceId === id) setReferenceId(null);
   };
 
+  // Clearing a typed label hands the row back to the random letters.
   const updateSampleLabel = (id: string, value: string) => {
-    setSamples((prev) => prev.map((s) => (s.id === id ? { ...s, label: value, auto: false } : s)));
+    setSamples((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, label: value, auto: value.trim() === "" } : s)),
+    );
   };
 
   const updateSampleCoffee = (id: string, coffeeId: string) => {
@@ -632,6 +624,9 @@ export function NewSessionForm({
 
   const coffeeLabel = (coffee: CoffeeEntry, i: number) =>
     coffee.name.trim() || `${t.newForm.coffeeCard} ${i + 1}`;
+  /** Typed name of a coffee card ("" while it is still blank). */
+  const coffeeNameOf = (coffeeId: string) =>
+    coffees.find((c) => c.id === coffeeId)?.name.trim() ?? "";
 
   // ── Submit ──────────────────────────────────────────────────────────────────
   const validateClient = (): boolean => {
@@ -675,8 +670,9 @@ export function NewSessionForm({
       void linkedOrigin;
       return existingCoffeeId ? { ...rest, existingCoffeeId } : rest;
     });
+    // An EMPTY label asks for a random letter (A4); a typed one is kept as is.
     const samplePayload = samples.map((s) => ({
-      label: s.label,
+      label: s.auto ? "" : s.label,
       coffeeIdx: idxById.get(s.coffeeId) ?? 0,
     }));
     const referenceIdx = referenceId
@@ -718,6 +714,7 @@ export function NewSessionForm({
           samples: samplePayload,
           referenceIdx,
           warmupExerciseId: warmupOn ? warmupId : null,
+          locale,
           closesAt: closesAt || undefined,
           closesAtZone: closesAt ? browserZone() : undefined,
           groupId: linkedGroupId || undefined,
@@ -729,6 +726,19 @@ export function NewSessionForm({
           setInviteToken(result.inviteToken);
           setEmailSummary(result.emailSummary);
           setInviteBlocked(result.emailBlocked === "rate_limited");
+          // A4: which letter got which coffee, in cupping order (owner only).
+          setSampleKey(
+            result.sampleKey.map((k) => {
+              const src = samples[k.sourceIndex];
+              const coffee = src ? coffees.find((c) => c.id === src.coffeeId) : undefined;
+              return {
+                id: src?.id ?? String(k.position),
+                label: k.label,
+                coffee: coffee?.name.trim() || null,
+                sourceId: src?.id ?? null,
+              };
+            }),
+          );
           setStep("invite");
           // Step 2 used to live only in memory: a reload lost the link. Point
           // the address bar at the owner-only invite route so a reload (or a
@@ -788,17 +798,20 @@ export function NewSessionForm({
 
   // ── Step 2: Invite link ──────────────────────────────────────────────────────
   if (step === "invite") {
-    const refSample = referenceId ? samples.find((s) => s.id === referenceId) : undefined;
+    // The reference's label is the letter the server drew for it (A4).
+    const refKey = referenceId ? sampleKey.find((k) => k.sourceId === referenceId) : undefined;
     return (
       <div className="space-y-6">
-        {refSample && (
+        {refKey && (
           <p className="flex items-center gap-2 text-sm text-on-surface">
             <Badge tone="accent" size="xs">
               {t.newForm.referenceBadge}
             </Badge>
-            {refSample.label}
+            {refKey.label}
           </p>
         )}
+
+        <SampleKey rows={sampleKey} translations={t.newForm.sampleKey} />
 
         <div className="bg-surface-container-low border border-outline-variant rounded-card p-5 space-y-3">
           <p className="text-sm font-semibold text-primary-container">{t.groupInviteLink}</p>
@@ -1394,8 +1407,10 @@ export function NewSessionForm({
           )}
         </div>
 
+        <p className="text-xs text-on-surface-variant">{t.newForm.samplesBlindHelper}</p>
+
         <div className="space-y-2">
-          {samples.map((s) => (
+          {samples.map((s, si) => (
             <div key={s.id} className="flex flex-wrap items-center gap-2 min-w-0">
               {/* 44px touch target around a 16px radio (mobile hit area). */}
               <label className="flex h-11 w-9 shrink-0 cursor-pointer items-center justify-center -my-1">
@@ -1404,7 +1419,14 @@ export function NewSessionForm({
                   name="reference"
                   checked={referenceId === s.id}
                   onChange={() => setReferenceId(s.id)}
-                  aria-label={t.newForm.referenceMark.replace("{label}", s.label.trim() || t.sampleLabel)}
+                  // An auto row has no label yet (the letter is drawn at
+                  // creation): name it by its coffee, else by its row number.
+                  aria-label={t.newForm.referenceMark.replace(
+                    "{label}",
+                    s.label.trim() ||
+                      coffeeNameOf(s.coffeeId) ||
+                      `${t.newForm.sampleChip} ${si + 1}`,
+                  )}
                   className="h-4 w-4 accent-secondary cursor-pointer"
                 />
               </label>
@@ -1412,7 +1434,7 @@ export function NewSessionForm({
                 value={s.label}
                 onChange={(e) => updateSampleLabel(s.id, e.target.value)}
                 aria-label={t.sampleLabel}
-                placeholder={t.sampleLabel}
+                placeholder={t.newForm.sampleLabelAuto}
                 className={inputCls + " flex-1 min-w-[8rem]"}
               />
               {coffees.length > 1 && (

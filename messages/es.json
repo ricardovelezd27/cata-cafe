@@ -261,7 +261,14 @@
       "startNow": "Iniciar cata ahora",
       "goToPanelHint": "Desde el panel puedes lanzar el movimiento sensorial con el grupo y empezar la cata cuando todos estén en la sala.",
       "startGroup": "Crear cata y obtener enlace",
-      "cupsHint": "Con menos de 5 tazas no se descuentan uniformidad ni defectos: la muestra puntúa solo por sus atributos."
+      "cupsHint": "Con menos de 5 tazas no se descuentan uniformidad ni defectos: la muestra puntúa solo por sus atributos.",
+      "sampleLabelAuto": "Letra al azar",
+      "samplesBlindHelper": "Las letras se reparten al azar al crear la sesión. Escribe una etiqueta solo si quieres fijarla tú.",
+      "sampleKey": {
+        "title": "Clave de muestras",
+        "hint": "Solo tú ves esta clave. Ciérrala antes de proyectar la pantalla.",
+        "noCoffee": "Sin café"
+      }
     },
     "express": {
       "title": "Catar ahora",

@@ -267,6 +267,13 @@ export default async function CupPage({
         editSample: t("session.editSample"),
         editSampleError: t("session.editSampleError"),
         editSampleNotOwner: t("session.editSampleNotOwner"),
+        sampleKey: isOwner
+          ? {
+              title: t("session.newForm.sampleKey.title"),
+              hint: t("session.newForm.sampleKey.hint"),
+              noCoffee: t("session.newForm.sampleKey.noCoffee"),
+            }
+          : undefined,
         coffeePicker: {
           useExisting: tc("picker.useExisting"),
           title: tc("picker.title"),

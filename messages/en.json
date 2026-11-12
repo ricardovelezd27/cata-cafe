@@ -261,7 +261,14 @@
       "startNow": "Start the cupping now",
       "goToPanelHint": "From the panel you can run the sensory movement with the group and start the cupping once everyone is in the room.",
       "startGroup": "Create cupping and get the link",
-      "cupsHint": "With fewer than 5 cups, uniformity and defects are not deducted: the sample is scored on its attributes only."
+      "cupsHint": "With fewer than 5 cups, uniformity and defects are not deducted: the sample is scored on its attributes only.",
+      "sampleLabelAuto": "Random letter",
+      "samplesBlindHelper": "Letters are assigned at random when the session is created. Type a label only if you want to fix it yourself.",
+      "sampleKey": {
+        "title": "Sample key",
+        "hint": "Only you see this key. Close it before projecting your screen.",
+        "noCoffee": "No coffee"
+      }
     },
     "express": {
       "title": "Cup now",

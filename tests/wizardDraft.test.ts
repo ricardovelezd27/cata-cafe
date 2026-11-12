@@ -79,6 +79,20 @@ describe("wizardDraft", () => {
     expect(isDraftDirtyFrom(base({ name: "x" }), empty)).toBe(true);
   });
 
+  it("A4: a restored auto row has no label (old drafts stored 'Muestra A'), a typed one is kept", () => {
+    const raw = serializeDraft(
+      base({
+        coffees: [coffee()],
+        samples: [
+          { id: "s1", label: "Muestra A", coffeeId: "c1", auto: true },
+          { id: "s2", label: "Mi lote", coffeeId: "c1", auto: false },
+        ],
+      }),
+      1000,
+    );
+    expect(parseDraft(raw, 2000)?.samples.map((s) => s.label)).toEqual(["", "Mi lote"]);
+  });
+
   it("clearWizardDrafts removes every draft and nothing else", () => {
     const store = new Map<string, string>([
       [wizardDraftKey("u1"), "a"],

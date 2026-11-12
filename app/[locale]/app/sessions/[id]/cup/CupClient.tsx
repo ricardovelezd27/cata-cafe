@@ -44,6 +44,7 @@ import {
   type SampleMetadataFormData,
 } from "@/components/cupping/EditSampleMetadataForm";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
+import { SampleKey, type SampleKeyTranslations } from "@/components/cupping/SampleKey";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { canPickExistingCoffee } from "@/lib/cupCoffeePick";
@@ -264,6 +265,8 @@ export function CupClient({
     process: string;
     editSample: string;
     editSampleError: string;
+    /** Owner-only "Clave de muestras" (A4); optional for offline blobs. */
+    sampleKey?: SampleKeyTranslations;
     /** "Usar café existente" picker strings (S9-05); optional for offline blobs. */
     coffeePicker?: {
       useExisting: string;
@@ -2371,6 +2374,21 @@ export function CupClient({
             zone={session.closesAtZone ?? null}
             locale={locale}
             translations={translations.deadline}
+          />
+        </div>
+      )}
+      {/* A4: the letters are drawn at random, so the owner (only) gets a
+          collapsed letter -> coffee key. Participants never receive coffee
+          names (cup/page.tsx ships `coffee` to the owner only). */}
+      {isOwner && translations.sampleKey && !notesStage && (
+        <div className="mx-4 mt-3 lg:mx-6">
+          <SampleKey
+            rows={viewSamples.map((s) => ({
+              id: s.id,
+              label: s.label,
+              coffee: s.coffee?.name?.trim() || null,
+            }))}
+            translations={translations.sampleKey}
           />
         </div>
       )}

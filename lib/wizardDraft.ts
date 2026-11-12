@@ -143,7 +143,13 @@ export function parseDraft(raw: string | null, now: number = Date.now()): Wizard
     if (!coffeeIds.has(s.coffeeId)) return null;
   }
   if (d.referenceId !== null && !isStr(d.referenceId)) return null;
-  return d as unknown as WizardDraft;
+  // A4: a row still on "auto" carries NO label (the letter is drawn at
+  // creation). Drafts saved before that stored "Muestra A" in the label; blank
+  // it so the restored row shows the "random letter" placeholder.
+  return {
+    ...(d as unknown as WizardDraft),
+    samples: (d.samples as DraftSample[]).map((s) => (s.auto ? { ...s, label: "" } : s)),
+  };
 }
 
 /** Minimal Storage surface so the helper is testable without a DOM. */

@@ -1,6 +1,8 @@
 // Pure rules for editing and duplicating a session (S8-10). Dependency-free so
 // vitest can cover them; the actions in app/actions/sessions.ts do the I/O.
 
+import { planBlindOrder, finalSampleLabel, sampleLetterLabel } from "@/lib/blindLabels";
+
 /** Format and cups feed the stored scores, so they freeze once the cupping is
  *  under way. C6 default (b): "Iniciar cata" (startedAt) freezes them as well
  *  as the first evaluation; adding samples stays allowed after the start. */
@@ -25,6 +27,7 @@ export function changedFormatCups(
 }
 
 export type DuplicateSampleSource = {
+  id: string;
   label: string;
   position: number;
   coffeeId: string | null;
@@ -32,34 +35,45 @@ export type DuplicateSampleSource = {
 };
 
 export type DuplicateSamplePlan = {
+  /** Id of the source sample this row was copied from. */
+  sourceId: string;
   label: string;
   position: number;
   coffeeId: string | null;
   referenceRank: number | null;
 };
 
-/** Copies the samples for a duplicate: a coffee the caller can no longer use
- *  (anonymized, unshared) becomes a coffee-less sample with its label kept,
- *  and EVERY reference rank travels (B8 default (a): all). Returns how many
- *  coffee links were dropped so the edit page can say so. */
+/** Copies the samples for a duplicate. A coffee the caller can no longer use
+ *  (anonymized, unshared) becomes a coffee-less sample, and EVERY reference
+ *  rank travels with its sample (B8 default (a): all). A4: samples whose label
+ *  is auto-generated ("Muestra B", empty) are re-shuffled with a fresh random
+ *  order, so a duplicate never reuses the source's letter <-> coffee mapping;
+ *  owner-typed labels keep their label and position. Returns the rows sorted by
+ *  their NEW position and how many coffee links were dropped. */
 export function planDuplicateSamples(
   samples: DuplicateSampleSource[],
   usableCoffeeIds: ReadonlySet<string>,
+  random: (maxExclusive: number) => number,
+  locale: string,
 ): { samples: DuplicateSamplePlan[]; droppedCoffees: number } {
+  const ordered = [...samples].sort((a, b) => a.position - b.position);
+  const order = planBlindOrder(ordered, random);
   let droppedCoffees = 0;
-  const out = samples.map((s) => {
+  const out = ordered.map((s, i) => {
     let coffeeId = s.coffeeId;
     if (coffeeId !== null && !usableCoffeeIds.has(coffeeId)) {
       coffeeId = null;
       droppedCoffees++;
     }
     return {
-      label: s.label,
-      position: s.position,
+      sourceId: s.id,
+      label: finalSampleLabel(s.label, order[i], locale),
+      position: order[i].position,
       coffeeId,
       referenceRank: s.referenceRank,
     };
   });
+  out.sort((a, b) => a.position - b.position);
   return { samples: out, droppedCoffees };
 }
 
@@ -83,8 +97,11 @@ export function nextSamplePosition(maxPosition: number | null | undefined): numb
 
 export const MAX_SESSION_SAMPLES = 100;
 
-/** Default label for a sample the owner adds without typing one.
- *  TODO(A4): wizard labels stay "Muestra N" until Kim decides on random blind codes. */
+/** Default label for a sample the owner adds without typing one: the LETTER of
+ *  its position ("Muestra D"), the same form the wizard generates (A4). A single
+ *  late-added sample is identifiable as the newest by nature; only the wizard,
+ *  which places many samples at once, can shuffle them.
+ *  TODO(kim-validar:A4) */
 export function defaultSampleLabel(position: number, locale: string): string {
-  return `${locale === "en" ? "Sample" : "Muestra"} ${position + 1}`;
+  return sampleLetterLabel(position, locale);
 }
