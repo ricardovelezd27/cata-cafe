@@ -477,6 +477,11 @@ flowchart TD
   L --> M[Link email or 6-digit code]
   M -- link --> C[/auth/confirm page, GET touches nothing/]
   C -- button POST --> V[confirmEmailToken -> verifyOtp]
+  V --> I{intent cookie matches the signed-in address?}
+  I -- yes --> N
+  I -- no or missing --> ID[identity card: Vas a entrar como j***@dominio.com]
+  ID -- Si, continuar --> N
+  ID -- No soy yo --> SO[switchAccount: signOut local -> login]
   M -- code --> V2[verifyEmailCode -> verifyOtp type email]
   V --> N[safeNext destination]
   V2 --> N
@@ -486,6 +491,7 @@ flowchart TD
 
 - One `next` validator (`lib/safeNext.ts`): same-site path or same-origin absolute URL; rejects `//x`, `/\x`, `@`, encoded slashes and `/auth/{callback,confirm,login}` (loops). `/auth/claim` is allowed (guest claim chain).
 - `lib/authState.ts` classifies `user | none | unreachable`; anonymous guests are `user`. Only `none` redirects to login; a down auth service shows the error boundary's retry panel.
+- **Login CSRF (S9-02, A-08)**: requesting a link or email change (`sendMagicLink`, so the login form and the founding-seat form, and `requestEmailChange` for the new AND current address) sets the httpOnly `cata_signin_intent` cookie (1 h, SameSite=Lax, Secure in production) holding HMACs of the normalized address, never the address (`lib/signInIntent.ts` pure, `lib/signInIntentCookie.ts` plumbing). `confirmEmailToken` verifies the token on an ephemeral Supabase client (`lib/supabase/ephemeral.ts`: no cookie adapter, `persistSession: false`), so the browser's session is untouched, then compares the cookie with the verified user's address. Match -> `setSession` on the normal client, intent cookie cleared, as before (zero extra steps). No cookie or mismatch -> NO session is established: the tokens wait 10 min in the httpOnly, SameSite=Strict `cata_signin_pending` cookie (`lib/signInPending.ts`) and the page shows the FULL address ("Vas a entrar como x@y.com"). "Sí, continuar" runs `acceptPendingSignIn` (`setSession`, cookie deleted, `safeNext` destination; expired cookie -> `token_expired` -> "El enlace caducó"). "No soy yo" runs `rejectPendingSignIn` (best-effort revoke of that parked session only, `signOut({ scope: "local" })` on the ephemeral client; the cookie is always deleted; the browser's own session is not touched) and the page says "No entraste". Closing the tab signs nothing in; the cookie just expires. `verifyEmailCode` is unaffected (the person typed their own address). Google sign-in is unaffected.
 - A GET never consumes a token. The guest-claim chain is unchanged: login `next=/auth/claim?...` -> confirm -> claim page (login-then-confirm, never a merge on GET).
 - Language: `signInWithMagicLink(formData, next, locale)` sends `preferred_lang` (new accounts only) and defaults `next` to `/{locale}/app`; `signOut(locale)` lands on `/` or `/en`; the ES/EN switch keeps page, query and hash (`lib/localeSwitch.ts`).
 - The welcome dialog mounts only on `/app` itself and never for guests; closing it (X, Esc, skip) calls `dismissOnboarding`, which sets only `onboardingCompleted`.

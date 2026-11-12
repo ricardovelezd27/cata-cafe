@@ -115,7 +115,17 @@
       "working": "Signing in…",
       "failedTitle": "This link no longer works",
       "failedBody": "Sign-in links work once and expire. Request a new one and sign in with the link or the 6-digit code.",
-      "newLink": "Request a new link"
+      "newLink": "Request a new link",
+      "identityTitle": "Check your account",
+      "identityBody": "You are about to sign in as {email}. Is that you?",
+      "identityYes": "Yes, continue",
+      "identityNo": "Not me",
+      "identityError": "We could not complete that. Check your connection and try again.",
+      "identityExpiredTitle": "The link expired",
+      "identityExpiredBody": "More than 10 minutes passed or it was already used. Request a new link to sign in.",
+      "rejectedTitle": "You were not signed in",
+      "rejectedBody": "If you did not request this email, you can ignore it.",
+      "toLogin": "Go to sign in"
     },
     "inAppBrowserHint": "Google sign-in does not work inside this app. Use your email, or open this page in your browser (Safari or Chrome) to sign in with Google.",
     "inAppCopyLink": "Copy link",

@@ -2151,3 +2151,136 @@ COMMIT;
 --     FOR ALL USING ("deletedAt" IS NULL AND "createdBy" = auth.uid()::text);
 --   COMMIT;
 -- ============================================================================
+
+-- ============================================================================
+-- PHASE 25 (2026-11-12, S9-02 / audit A-10): a participant can no longer read a
+-- peer's exclusion state or reason through the API.
+-- Apply via runbook §28, dry run first (prisma/sql/dry-runs/phase25_dry_run.sql).
+-- The Supabase project is production (there is only one). NOT applied by the PR
+-- that adds it: the owner applies it.
+--
+-- Why: participants_select (USING is_session_participant("sessionId")) lets every
+-- member of a session read EVERY row of session_participants over PostgREST,
+-- including excluded_from_results, excluded_at, excluded_by and exclusion_reason,
+-- i.e. who the owner excluded from the results and why (a sample_error /
+-- protocol / calibration label is a judgement about a named cupper). Read from
+-- the policy, not demonstrated against production. The app reads this table with
+-- Prisma as `postgres` (table owner, bypasses RLS and column privileges) and the
+-- browser never queries it (verified 2026-11-12: no supabase-js .from()/.rpc()
+-- call anywhere; supabase_realtime holds only evaluations and cupping_sessions),
+-- so column privileges change nothing for the app.
+--
+-- Everything that touches session_participants (latest definition of each, read
+-- from this file on 2026-11-12) and what it reads:
+--   1. POLICY participants_select (PHASE 2; PHASE 24 made it TO authenticated).
+--      Querying-role expression: is_session_participant("sessionId"). Reads
+--      "sessionId" only. PHASE 21 dropped participants_write.
+--   2. FUNCTION is_session_participant(text) (PHASE 2). SECURITY DEFINER. Reads
+--      "sessionId", "userId". Called by participants_select, sessions_select,
+--      samples_select and agg_select.
+--   3. FUNCTION can_view_group_results(text) (PHASE 21). SECURITY DEFINER,
+--      search_path pinned. Reads "sessionId" (two count(*) subqueries). Called by
+--      agg_select.
+--   4. FUNCTION/TRIGGER recompute_aggregate_score() (PHASE 2, 3, 4, 5, 6; latest
+--      PHASE 23). SECURITY DEFINER, search_path pinned. Reads "sessionId",
+--      "userId" AND excluded_from_results (the exclusion filter in both the
+--      INCLUDED count and the SD query). Runs as its owner, never as the
+--      querying role, so it keeps working with the column hidden.
+--   5. FUNCTION is_session_owner(text) (PHASE 21): does NOT touch
+--      session_participants (cupping_sessions only). evals_select_owner,
+--      ext_select, phys_select, invites_select_own: no reference either.
+--   No other policy, view or function in this file mentions the table.
+-- Result: NO querying-role expression reads excluded_from_results (the only
+-- consumers are SECURITY DEFINER), so it is HIDDEN along with the other three.
+-- The only column a querying-role expression reads is "sessionId" (policy 1); the
+-- GRANT below covers it, and dry-run probe 3 selects from every table whose
+-- policy goes through these helpers, which is what would fail with "permission
+-- denied" if a column had been missed.
+--
+-- Allowed to `authenticated`: "sessionId", "userId", status, "joinedAt".
+-- Hidden from everyone over the API: excluded_from_results, excluded_at,
+-- excluded_by, exclusion_reason.
+-- RULE: a NEW column on session_participants needs an explicit
+--   GRANT SELECT ("col") ON session_participants TO authenticated;
+-- in a later phase, or API reads of that column fail (same rule as
+-- session_samples after PHASE 21). Never grant the four hidden columns.
+-- Consequence: `select=*` against /rest/v1/session_participants now errors with
+-- "permission denied"; name the columns.
+--
+-- Pre-flight (read-only; run first, SAVE THE OUTPUT: it is the rollback):
+--   -- (a) column list must still be exactly the 8 columns of the GRANT + hidden:
+--   select column_name from information_schema.columns
+--     where table_schema='public' and table_name='session_participants' order by 1;
+--     -- expect: excluded_at, excluded_by, excluded_from_results, exclusion_reason,
+--     --         joinedAt, sessionId, status, userId
+--   -- (b) current TABLE privileges for the API roles (Supabase default after
+--   --     PHASE 21/24: SELECT/REFERENCES/TRIGGER, no writes):
+--   select grantee, privilege_type from information_schema.role_table_grants
+--     where table_schema='public' and table_name='session_participants'
+--       and grantee in ('anon','authenticated') order by 1,2;
+--   -- (c) current COLUMN privileges (expect no rows: nothing column-level yet):
+--   select grantee, column_name, privilege_type from information_schema.column_privileges
+--     where table_schema='public' and table_name='session_participants'
+--       and grantee in ('anon','authenticated') order by 1,2,3;
+--   -- (d) the policy set on the table (expect participants_select SELECT {authenticated}):
+--   select policyname, cmd, roles, qual from pg_policies
+--     where schemaname='public' and tablename='session_participants';
+--
+-- Dry run: prisma/sql/dry-runs/phase25_dry_run.sql (ONE DO statement, nothing can
+-- be applied; two placeholders, the owner uuid and a session id). It ends in an
+-- intentional error whose message lists every probe with its expected value.
+--
+-- How to verify after applying:
+--   select column_name, grantee from information_schema.column_privileges
+--     where table_schema='public' and table_name='session_participants'
+--       and grantee in ('anon','authenticated') and privilege_type='SELECT' order by 1;
+--     -- expect exactly: joinedAt, sessionId, status, userId (all authenticated)
+--   then the two-account smoke test of runbook §28 (waiting room, cup and results
+--   still load; Supabase Advisors → Security shows nothing new).
+-- Rollback: the commented block at the end of this phase.
+-- ============================================================================
+BEGIN;
+
+-- >>> PHASE 25 statements (copied verbatim into phase25_dry_run.sql) >>>
+
+-- Table-level SELECT goes; only the columns the API may show are granted back.
+-- Hidden: excluded_from_results, excluded_at, excluded_by, exclusion_reason.
+-- "joinedAt" is granted too: it is the only other column, and harmless.
+REVOKE SELECT ON session_participants FROM anon, authenticated;
+GRANT SELECT ("sessionId", "userId", status, "joinedAt")
+  ON session_participants TO authenticated;
+
+-- <<< end of PHASE 25 statements <<<
+
+-- Self-check (not copied into the dry run, whose probes 1a-1c check the same
+-- things). Any failure aborts the transaction: nothing is applied.
+DO $chk$
+DECLARE
+  v_col text;
+BEGIN
+  FOREACH v_col IN ARRAY ARRAY['excluded_from_results', 'excluded_at', 'excluded_by', 'exclusion_reason'] LOOP
+    IF has_column_privilege('authenticated', 'public.session_participants', v_col, 'SELECT')
+       OR has_column_privilege('anon', 'public.session_participants', v_col, 'SELECT') THEN
+      RAISE EXCEPTION 'PHASE 25 aborted, nothing applied: % is still readable by an API role', v_col;
+    END IF;
+  END LOOP;
+  FOREACH v_col IN ARRAY ARRAY['sessionId', 'userId', 'status', 'joinedAt'] LOOP
+    IF NOT has_column_privilege('authenticated', 'public.session_participants', v_col, 'SELECT') THEN
+      RAISE EXCEPTION 'PHASE 25 aborted, nothing applied: % is not readable by authenticated', v_col;
+    END IF;
+  END LOOP;
+END
+$chk$;
+
+COMMIT;
+
+-- Rollback (restores table-level SELECT exactly as before; one transaction):
+--   BEGIN;
+--   REVOKE SELECT ("sessionId", "userId", status, "joinedAt")
+--     ON session_participants FROM authenticated;
+--   -- then the table-level grants saved from pre-flight (b), normally:
+--   GRANT SELECT ON session_participants TO anon, authenticated;
+--   COMMIT;
+--   -- (anon had SELECT under the Supabase default; the policy never returned
+--   --  rows to it. Grant it back only if pre-flight (b) listed it.)
+-- ============================================================================

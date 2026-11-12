@@ -203,6 +203,7 @@ row was detached in the meantime — do not do that without asking.)
    | `EMAIL_FROM` | e.g. `Cata Café <no-reply@your-domain>` | Must be a Resend-verified domain. |
    | `CLOSE_EMAIL_ATTACH_CVA` | *(optional)* `1` | Legacy: also attach each participant's CVA form PDF to the close email. Default (unset) = link to results + personal summary PDF only. |
    | `ANALYTICS_SUPER_ADMIN_EMAIL` | your admin email | The code fallback is a personal Gmail — set it explicitly. |
+   | `UNSUBSCRIBE_SECRET` | *(optional, recommended)* `openssl rand -base64 48` | Signs the per-group unsubscribe links (S9-02, A-11). Unset = the links use `GUEST_CLAIM_SECRET`. **Once set, never remove or change it** without keeping the old value as `GUEST_CLAIM_SECRET`'s role (see §25): unsubscribe links never expire. Unset means one boot warning, never a failed deploy. |
 
 4. Click **Save** for each. Vercel only applies env changes to NEW deployments: after the
    last one, go to **Deployments** → the latest production deployment → **⋯** →
@@ -1490,8 +1491,25 @@ mail; without it group email fails.
    WHERE table_name = 'tasting_group_members' AND column_name = 'emailOptOutAt';
    ```
    Expected: one row, `timestamp with time zone`.
-3. Deploy the branch. No SQL PHASE, no new environment variable (the token uses
+3. Deploy the branch. No SQL PHASE, no new required environment variable (the token uses
    `GUEST_CLAIM_SECRET`; `NEXT_PUBLIC_SITE_URL` builds the link and is already required).
+
+**`UNSUBSCRIBE_SECRET` (S9-02, A-11, optional).** Unsubscribe links never expire, so the secret
+that signed them must outlive every mail ever sent. A dedicated secret lets `GUEST_CLAIM_SECRET`
+be rotated later without breaking NEW mails' links:
+
+- Generate: `openssl rand -base64 48`, add it in Vercel Production as `UNSUBSCRIBE_SECRET`, redeploy.
+- From then on new mails are signed with it. Verification accepts BOTH the new secret and the
+  legacy one (`GUEST_CLAIM_SECRET`, else the service-role key), so every link mailed before the
+  switch keeps working as long as the legacy value is unchanged.
+- **Never remove or change `UNSUBSCRIBE_SECRET` once set**: every link mailed since would stop
+  working. If it must change, there is no second slot: keep the old value reachable as the
+  legacy one or accept that those links die.
+- **Rotating `GUEST_CLAIM_SECRET` still breaks the links of mails sent BEFORE the switch**
+  (they were signed with it). Only mails sent after `UNSUBSCRIBE_SECRET` was set survive that
+  rotation. A broken link only means the person cannot self-unsubscribe from that old mail
+  (the owner can still remove them); it never unsubscribes the wrong person.
+- Unset: behaviour is exactly as before; the app logs one boot warning in production.
 
 **Smoke test (3 minutes):** send a group announcement email to a test address; the mail has a
 "Darte de baja…" footer link (and your mail client shows its own Unsubscribe control). Open it →
@@ -1578,3 +1596,67 @@ the production project** (there is only one).
 **Rollback:** the commented block at the end of PHASE 24 (paste the saved pre-flight (b)
 output where it says so; run the default-privileges line only if (c) showed them). Run it
 in one transaction. The app keeps working under either state.
+
+---
+
+## §28. Supabase — apply PHASE 25 (hide exclusion metadata from the API, 2026-11, S9-02 / audit A-10)
+
+**When:** any time, before or after the deploy; the app never reads `session_participants`
+through the API (Prisma reads it as `postgres`, which ignores column privileges). No Prisma
+migration, no new environment variable. Apply in the Supabase **SQL editor of the production
+project** (there is only one). **This PR does NOT apply it: you do, after the dry run.**
+
+**What it does** (`prisma/sql/rls_and_triggers.sql`, block `PHASE 25`, read its header):
+
+- Today every member of a session can read every row of `session_participants` over
+  `/rest/v1/session_participants`, including who the owner excluded from the results
+  (`excluded_from_results`, `excluded_at`, `excluded_by`, `exclusion_reason`).
+- The block revokes table-level SELECT from `anon` and `authenticated` and grants back only
+  `"sessionId"`, `"userId"`, `status`, `"joinedAt"` to `authenticated`. The four exclusion
+  columns are unreadable over the API; the header lists every policy and function that
+  touches the table and why hiding them cannot break one (only SECURITY DEFINER code reads
+  `excluded_from_results`).
+- Side effect: `select=*` against that endpoint now errors; name the columns.
+- **Future rule:** a NEW column on `session_participants` needs its own
+  `GRANT SELECT ("col") ON session_participants TO authenticated;` in a later phase.
+
+**Steps**
+
+1. **Pre-flight** (read-only): run queries (a) to (d) from the PHASE 25 header. (a) must list
+   exactly the eight columns; (d) exactly `participants_select SELECT {authenticated}`.
+   Anything else: stop and report. **Save the output of (b)**: it is the rollback.
+2. **Dry run** (fail-safe: one statement, nothing is applied). Open
+   `prisma/sql/dry-runs/phase25_dry_run.sql`, replace `<owner-uuid>` and `<session-id>` with
+   a session owner and one of their group sessions:
+
+   ```sql
+   select s."createdBy" as owner_id, s.id as session_id, count(p.*) as roster
+   from cupping_sessions s
+   left join session_participants p on p."sessionId" = s.id
+   where s."isGroup" group by 1, 2 order by 3 desc limit 5;
+   ```
+
+   Paste the whole file and run it. Expected: a red error starting `PHASE 25 DRY RUN:
+   NOTHING WAS APPLIED`. Compare each line with its `(expect ...)` text: 1a all `t`;
+   1b all `f f`; 1c `0`; 2a a roster count, 2b `ok`; every 2c and 2d line `refused`; every
+   line 3 a number and no `FAILED`; 4a/4b `t` for the owner, 4c no error. **Any `FAILED` or
+   `NOT REFUSED`, or any OTHER error: stop and report; nothing was applied either way.**
+3. **Apply.** Run the block as written (`BEGIN … COMMIT`). Expected: `Success. No rows
+   returned`. An error starting `PHASE 25 aborted, nothing applied` means the self-check
+   found a column in the wrong state: report it.
+4. **Verify** in the SQL Editor:
+
+   ```sql
+   select column_name, grantee from information_schema.column_privileges
+   where table_schema='public' and table_name='session_participants'
+     and grantee in ('anon','authenticated') and privilege_type='SELECT' order by 1;
+   ```
+
+   Expected: exactly `joinedAt`, `sessionId`, `status`, `userId` (all `authenticated`). Then
+   Supabase **Advisors → Security**: no new warnings.
+5. **Smoke test** (two accounts, an active group session): the waiting room, cup and results
+   screens load and update live; the owner can exclude and restore a participant and the
+   results page says "Resultados actualizados el …" (Prisma, unaffected).
+
+**Rollback:** the commented block at the end of PHASE 25 (restore the table-level grant saved
+from pre-flight (b)). One transaction; the app works under either state.
