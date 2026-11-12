@@ -44,9 +44,12 @@
   never run it, and never run `scripts/resync-low-cup-history.ts` under the S8-04 rule.**
 - `npm run test:db` runs 54 tests against a throwaway local Postgres. Use it for every change
   to scoring, the trigger, close, delete, merge, RLS or email ledgers.
-- Open findings on the board: F-crear-sesion-10, F-guest-4, F-grupos-10, F-cafes-9 (all in
-  this prompt), F-landing-1 and F-insights-5 (Ricardo's: legal text, a Vercel variable; not
-  yours), and F-grupal-1 (reopened: the scoring rule, WP1).
+- The flows audit logged 157 findings. 150 are fixed. The seven that are not, and where each
+  is handled here: F-grupal-1 (reopened: the score, WP1), F-crear-sesion-10 (WP2), F-cafes-9
+  and F-grupos-10 (WP5), F-guest-4 (WP8), F-landing-1 and F-insights-5 (WP9; each needs one
+  action from Ricardo, which you ask for at the start).
+- **The goal of this session is that the board ends with zero open findings**, or with a
+  finding explicitly parked by Ricardo and a reason written on it.
 
 ## How to work (non-negotiable; this is what worked in S8 and S9)
 
@@ -88,9 +91,12 @@
 
 ## Order
 
+Before anything: ask Ricardo for the two things WP9 needs from him, because they take him
+time and block nothing else.
+
 WP0 → WP1 (the score; biggest, everything about results depends on it) → WP2 → WP3 → WP4 →
-WP5 → WP7 → WP8 → WP6 (copy last, after names settle). WP0, WP2, WP7 can run in parallel
-with WP1 because they touch different files.
+WP5 → WP7 → WP8 → WP9 → WP6 (copy last, after names settle) → WP10 (documentation, last).
+WP0, WP2, WP7 and WP9 can run in parallel with WP1 because they touch different files.
 
 ---
 
@@ -341,6 +347,65 @@ owner (RLS: no API access; Prisma only), added to `mergeGuestData`, `deleteAccou
   legal pages are unpublished drafts (`LEGAL_PAGES_PUBLISHED = false`). Record it on the
   board as waiting on Ricardo's legal text, next to F-landing-1.
 
+## WP9 — The two findings that wait on Ricardo, and the loose ends (M)
+
+**Ask Ricardo at the very start of the session** (AskUserQuestion), so he can do them while
+you build:
+1. "Set `ANALYTICS_SUPER_ADMIN_EMAIL` in Vercel (Production) to the super-admin address, then
+   tell me." Vercel asks him for an emailed code to edit variables; that step is his.
+2. "Do you approve the draft privacy and terms pages as the published text, or will you send
+   the final text?" Show him the two draft pages (`/privacidad`, `/terminos`) in the browser
+   pane or paste their text. Legal wording is his decision, never yours.
+
+- **F-insights-5:** once (1) is done: move `ANALYTICS_SUPER_ADMIN_EMAIL` from
+  `RECOMMENDED_IN_PRODUCTION` to the required list in `lib/env.ts` and remove the personal
+  address hard-coded as a fallback in `lib/analytics/access.ts`. Verify the variable is set
+  BEFORE merging (a missing required variable fails the production boot). Update the runbook
+  §3 and `CLAUDE.md`.
+- **F-landing-1 (the only P1 left):** once (2) is answered: put the approved text in the
+  pages, set `LEGAL_PAGES_PUBLISHED = true` (`lib/legal/config.ts`) so the footer links, the
+  notice line under the waitlist form and the consent stamp (`consentAt`,
+  `consentNoticeVersion`) all turn on together; add the retention job the finding asks for
+  (`WAITLIST_RETENTION_MONTHS` exists only as a constant: purge in the existing daily cron,
+  bounded, logged with counts only); check the waitlist row is still covered by
+  `mergeGuestData` / `deleteAccount` / the manifest. If Ricardo does not approve a text in
+  this session, build everything except the flag flip and write on the finding exactly what
+  is waiting.
+- **Group member consent (S8-11 step 9, `TODO(S8-11 step 9, owner decision)` in
+  `lib/groupMembership.ts`):** ask Ricardo once whether a person added to a tasting group
+  must accept before receiving group email. Build his answer or record it as parked by him.
+- **Leftovers that reviews found and nobody fixed** (small; one PR):
+  - the reload notice for a tab left open across a deploy exists only on the cup page; show
+    it wherever the pending-drafts badge shows (`lib/staleBundle.ts`, `OfflineBanner`);
+  - on the owner's cup page a resume still refetches twice (resume callback and SUBSCRIBED);
+    keep one;
+  - the session edit form offers the coffee picker on a session whose closing date has
+    passed but which is not closed yet (`edit/page.tsx` checks `status` only; use
+    `isSessionExpired`).
+- **Do not build, record as the owner's decision:** making the old migrations replayable
+  from an empty database (runbook §29 has the workaround); the `__Host-` prefix for the
+  sign-in cookies (only matters on a custom domain shared with other subdomains).
+
+## WP10 — Documentation of the app (S–M; last, after everything is merged)
+
+Ricardo wants the documents that explain the app to be true when this work ends. They were
+brought up to date for S8 and S9 on 2026-11-12; you own them from here.
+
+- `README.md`: what the app is and does, how each kind of user uses it, the scoring section
+  (the rule of WP1 and the coffee's lifetime score, in plain words with the worked examples),
+  setup, environment variables, the manual database steps, tests (`npm test`,
+  `npm run test:db`).
+- `CLAUDE.md`: every section whose behaviour changed, and the project-structure tree.
+- `docs/flows.md`: the diagrams are normative; update them in the same PR as each flow
+  change, and do one read-through at the end against the code.
+- `PRODUCT.md`: the scoring principle (close to the CVA, decentralized, three scopes) and the
+  owner's product rules decided on 2026-11-12 (least free text; teaching only at close).
+- `docs/LAUNCH-RUNBOOK.md`: every manual step you added, click by click.
+- `docs/HANDOVER.md` and `docs/handover/S8-ROLLOUT-HANDOVER.md`: the state to resume from.
+- Check each claim against the code before writing it. A document that describes a rule the
+  code does not follow is worse than a missing one. Have the independent reviewer read the
+  final README and the scoring sections against `lib/scoring.ts` and the SQL.
+
 ## Explicitly not in scope
 
 - Three-digit blind codes (A4 "later"), queued offline session creation (E5), group member
@@ -348,18 +413,25 @@ owner (RLS: no API access; Prisma only), added to `mergeGuestData`, `deleteAccou
   email at join (E2), the teacher's guide and session types (B4), free-word acidity and
   sweetness (X4).
 - The database cleanup (`docs/prompts/S9-database-cleanup.md`) is its own session.
-- Ricardo's items: legal text, `ANALYTICS_SUPER_ADMIN_EMAIL` and `UNSUBSCRIBE_SECRET` in
-  Vercel, device checks, making old migrations replayable.
+- Checks that need Ricardo's devices and accounts (audit report §8): two phones in a live
+  session, a locked phone in the warm-up, offline on a phone, a signup with a new address,
+  the cross-device sign-in card. List them for him at the end; do not claim them.
+- The audit's parked meta-audits (report §9): design-system consistency, accessibility
+  (WCAG pass), performance, copy and i18n parity, test coverage. They were never findings;
+  each is its own piece of work.
+- `UNSUBSCRIBE_SECRET` in Vercel (optional; Ricardo generates it).
 
 ## Done means
 
 - Every item above is merged and deployed, or recorded on the board as parked with the
   reason and who it waits on.
-- The Flowmap shows F-grupal-1, F-crear-sesion-10, F-guest-4, F-grupos-10 and F-cafes-9 as
-  fixed with their PRs, and only F-landing-1 and F-insights-5 open.
+- The Flowmap shows all seven remaining findings as fixed with their PRs: F-grupal-1,
+  F-crear-sesion-10, F-guest-4, F-grupos-10, F-cafes-9, F-insights-5, F-landing-1. If one
+  could not be closed, its `reopened`/note field says exactly what it waits on and who.
 - `grep -rn "TODO(" app lib components hooks` shows no Kim marker other than
   `TODO(kim-validar:…)`, `TODO(E5)` and the S8-11 consent one.
 - `CLAUDE.md`'s scoring sections describe the rule (flat CVA deductions, diluted beyond five
   pooled cups) and the three scopes, and no document still says "no deductions under five
   cups" or describes a deduction above 6 points per cup.
+- The documents in WP10 describe the app as it now is.
 - A final section in the handover says what was verified in production and what was not.
