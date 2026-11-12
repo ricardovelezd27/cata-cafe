@@ -893,6 +893,7 @@
       "modeAcademic": "Académico",
       "modeFree": "Libre",
       "notTrackedNote": "Con una taza no se evalúa uniformidad.",
+      "previousRule": "Esta cata se puntuó con la regla anterior: los descuentos por taza solo se aplicaban con 5 tazas o más.",
       "groupTitle": "Cómo se calculó el puntaje de la comunidad",
       "groupAvgRaw": "Promedio base (Σ puntajes sin penalizar ÷ catadores)",
       "groupUniformity": "Penalización uniformidad",

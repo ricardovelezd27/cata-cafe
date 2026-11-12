@@ -8,6 +8,7 @@
 
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { calcIndividualScore, evaluationCupCounts, hasAffectiveData } from "@/lib/scoring";
+import { evaluationScoreRule } from "@/lib/scoreRule";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { CSV_BOM, csvRow } from "@/lib/csv";
 import { blobForFormat, type ReportLocale, type SessionReportSource } from "./types";
@@ -87,9 +88,14 @@ export function buildResultsCsv(
     for (const ev of evals) {
       const blob = blobForFormat(src.session.format, ev);
       const scored = src.session.format !== "descriptive" && hasAffectiveData(blob);
+      // cups NULL = scored before the 2026-11 rule: v1 arithmetic, raw flag counts
+      const rule = evaluationScoreRule(ev.cups, true);
       const cups = ev.cups ?? src.session.cupsPerSample;
-      const evalCupCounts = evaluationCupCounts(ev.nonUniformCups, ev.defectiveCups, cups);
-      const score = scored ? calcIndividualScore(blob, cups) : "";
+      const evalCupCounts =
+        rule === "v1"
+          ? { u: ev.nonUniformCups.filter(Boolean).length, d: ev.defectiveCups.filter(Boolean).length }
+          : evaluationCupCounts(ev.nonUniformCups, ev.defectiveCups, cups);
+      const score = scored ? calcIndividualScore(blob, cups, { rule }) : "";
       const isExcluded = excluded.has(ev.cupperId);
       lines.push(
         csvRow([

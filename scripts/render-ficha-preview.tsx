@@ -87,6 +87,7 @@ function mkEval(cupper: (typeof CUPPERS)[number], si: number): ReportEvalRow {
     combinedData: data,
     nonUniformCups: [false, false, si === 2, false, false],
     defectiveCups: [false, false, false, false, si === 2 && cupper.id === "u5"],
+    cups: 5,
   };
 }
 

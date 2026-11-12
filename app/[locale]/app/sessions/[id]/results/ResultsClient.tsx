@@ -685,7 +685,9 @@ export function ResultsClient({
     if (!affData || !hasAffectiveData(affData) || !canShowMyScore(referenceSample.myEvaluation)) {
       return null;
     }
-    const score = calcIndividualScore(affData, session.cupsPerSample);
+    const score = calcIndividualScore(affData, session.cupsPerSample, {
+      rule: referenceSample.scoreRule,
+    });
     return typeof score === "number" ? score : null;
   })();
   // Each surface pairs bases itself (ScoreTable per row, ResumenTab via

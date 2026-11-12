@@ -16,6 +16,7 @@ import { sheetSampleIdentity, sheetSampleRecords } from "@/lib/pdf/sheetSource";
 import { slug, dateSlug } from "@/lib/pdf/filename";
 import { pdfFailureResponse } from "@/lib/pdf/routeFailure";
 import { pdfDisposition } from "@/lib/pdf/disposition";
+import { evaluationScoreRule } from "@/lib/scoreRule";
 import { CvaFormDocument, type CvaDocumentProps } from "@/lib/pdf/CvaFormDocument";
 
 export const runtime = "nodejs";
@@ -112,6 +113,7 @@ export async function GET(
         ...sheetSampleIdentity(sample, deletedCoffeeLabel(locale)),
         isReference: sample.referenceRank != null,
         referenceRank: sample.referenceRank ?? null,
+        scoreRule: evaluationScoreRule(ev?.cups, ev !== undefined),
         descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
         affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
         combined: (ev?.combinedData as Record<string, unknown>) ?? {},

@@ -9,6 +9,7 @@ import { PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
 import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
 import { computeCupperAlignment, type CupperAlignmentRow } from "@/lib/alignment";
 import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
+import { evaluationScoreRule, sampleScoreRule } from "@/lib/scoreRule";
 import { asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { deriveMyEvaluation, summarizeMyProgress } from "@/lib/evaluationState";
@@ -274,6 +275,11 @@ export default async function ResultsPage({
         if (list) list.push(ev);
         else bySample.set(ev.sessionSampleId, [ev]);
       }
+      // Each sample is recomputed under the rule its STORED aggregate row says
+      // (ruleVersion 1 = before 2026-11), so past results render unchanged.
+      const ruleBySample = new Map(
+        session.samples.map((s) => [s.id, sampleScoreRule(s.aggregateScore)] as const),
+      );
       for (const [sampleId, list] of bySample) {
         groupAggBySample.set(
           sampleId,
@@ -287,6 +293,7 @@ export default async function ResultsPage({
               cups: ev.cups ?? undefined,
             })),
             session.cupsPerSample,
+            { rule: ruleBySample.get(sampleId) },
           ),
         );
       }
@@ -365,6 +372,8 @@ export default async function ResultsPage({
               combined: (ev?.combinedData as Record<string, unknown>) ?? {},
               isReference: s.referenceRank != null,
               referenceRank: s.referenceRank ?? null,
+              // cups NULL on a stored row = scored before the 2026-11 rule
+              scoreRule: evaluationScoreRule(ev?.cups, ev !== undefined),
             };
           }),
         }))
@@ -624,6 +633,7 @@ export default async function ResultsPage({
     modeAcademic: tResults("breakdown.modeAcademic"),
     modeFree: tResults("breakdown.modeFree"),
     notTrackedNote: tResults("breakdown.notTrackedNote"),
+    previousRule: tResults("breakdown.previousRule"),
     groupTitle: tResults("breakdown.groupTitle"),
     groupAvgRaw: tResults("breakdown.groupAvgRaw"),
     groupUniformity: tResults("breakdown.groupUniformity"),
@@ -781,6 +791,7 @@ export default async function ResultsPage({
                 totalDefective: recomputed.totalDefective,
                 uniformityPenalty: recomputed.uniformityPenalty,
                 defectPenalty: recomputed.defectPenalty,
+                rule: sampleScoreRule(agg),
                 attrAverages: recomputed.attrAverages,
               }
             : groupAggBySample && (submittedAllBySample.get(s.id) ?? 0) > 0
@@ -800,6 +811,7 @@ export default async function ResultsPage({
                   totalDefective: agg.totalDefective,
                   uniformityPenalty: agg.uniformityPenalty,
                   defectPenalty: agg.defectPenalty,
+                  rule: sampleScoreRule(agg),
                   attrAverages: (agg.attrAverages as Record<string, number>) ?? {},
                 }
               : null;
@@ -863,6 +875,8 @@ export default async function ResultsPage({
                   })
                 : null,
             aggregateScore: gated.aggregateScore,
+            // rule of the VIEWER'S own evaluation: cups NULL on a stored row = before 2026-11
+            scoreRule: evaluationScoreRule(ev?.cups, ev !== undefined),
             isReference: s.referenceRank != null,
             referenceRank: s.referenceRank ?? null,
             myEvaluation: myEvaluationBySample.get(s.id) ?? { status: "none", complete: false },

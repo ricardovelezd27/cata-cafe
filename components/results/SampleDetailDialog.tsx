@@ -19,6 +19,7 @@ import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { PillTabs, Button, type PillTabItem } from "@/components/ui";
 import { SampleDetail, type SampleDetailTranslations } from "@/components/results/SampleDetail";
 import type { SessionFormat } from "@/lib/constants";
+import type { ScoreRule } from "@/lib/scoreRule";
 import type { SampleResult } from "@/app/[locale]/app/sessions/[id]/results/types";
 
 /** SampleDetail's full translation shape, plus the dialog's own strings. */
@@ -36,6 +37,7 @@ type ParticipantSample = {
   descriptive: Record<string, unknown>;
   affective: Record<string, unknown>;
   combined: Record<string, unknown>;
+  scoreRule?: ScoreRule;
 };
 
 export type SampleDetailParticipant = {
@@ -118,6 +120,8 @@ export function SampleDetailDialog({
   const descriptive = activeParticipant ? (activeSample?.descriptive ?? {}) : sample.descriptive;
   const affective = activeParticipant ? (activeSample?.affective ?? {}) : sample.affective;
   const combined = activeParticipant ? (activeSample?.combined ?? {}) : sample.combined;
+  // Rule the shown evaluation was scored under (stored cups NULL = before 2026-11).
+  const scoreRule = activeParticipant ? activeSample?.scoreRule : sample.scoreRule;
 
   const title =
     sample.revealed && sample.coffee ? `${sample.label} · ${sample.coffee.name}` : sample.label;
@@ -196,6 +200,7 @@ export function SampleDetailDialog({
           extrinsicNote={sample.extrinsicEditedLabel ?? null}
           format={format}
           cupsPerSample={cupsPerSample}
+          scoreRule={scoreRule}
           locale={locale}
           onEdit={viewerId === "me" ? onEdit : undefined}
           referenceBadge={

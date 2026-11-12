@@ -30,6 +30,7 @@ import { buildCloseEmailHtml, closeEmailSubject } from "@/lib/closeEmailBody";
 import { buildResultsLoginUrl, siteOrigin } from "@/lib/inviteUrl";
 import esMessages from "@/messages/es.json";
 import enMessages from "@/messages/en.json";
+import { evaluationScoreRule } from "@/lib/scoreRule";
 
 type Locale = "es" | "en";
 
@@ -117,6 +118,7 @@ export async function sendCloseEmails(
       combinedData: true,
       nonUniformCups: true,
       defectiveCups: true,
+      cups: true,
     },
   });
 
@@ -327,6 +329,7 @@ export async function sendCloseEmails(
               // (S8-12, F-informes-6); the legacy pointer covers pre-rank rows.
               isReference: s.referenceRank != null || s.id === session.referenceSampleId,
               referenceRank: s.referenceRank ?? null,
+              scoreRule: evaluationScoreRule(ev?.cups, ev !== undefined),
               descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
               affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
               combined: (ev?.combinedData as Record<string, unknown>) ?? {},

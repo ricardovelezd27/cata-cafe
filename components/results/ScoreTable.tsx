@@ -162,7 +162,7 @@ export function ScoreTable({
     const affData =
       format === "affective" ? sample.affective : format === "combined" ? sample.combined : null;
     if (!affData || !hasAffectiveData(affData) || !canShowMyScore(sample.myEvaluation)) return null;
-    return calcIndividualScore(affData, cupsPerSample);
+    return calcIndividualScore(affData, cupsPerSample, { rule: sample.scoreRule });
   };
   const rowScores = samples.map((sample) => {
     const myScore = myScoreOf(sample);

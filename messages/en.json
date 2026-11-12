@@ -893,6 +893,7 @@
       "modeAcademic": "Academic",
       "modeFree": "Free",
       "notTrackedNote": "With one cup, uniformity is not evaluated.",
+      "previousRule": "This cupping was scored under the previous rule: cup deductions applied only from 5 cups.",
       "groupTitle": "How the community score was calculated",
       "groupAvgRaw": "Base average (Σ unpenalized scores ÷ cuppers)",
       "groupUniformity": "Uniformity penalty",

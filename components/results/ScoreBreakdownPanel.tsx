@@ -2,6 +2,7 @@
 
 import { Calculator } from "lucide-react";
 import { cupDeduction, type IndividualBreakdown } from "@/lib/scoring";
+import type { ScoreRule } from "@/lib/scoreRule";
 
 /* ============================================================
    N5 — Score transparency panel ("¿Cómo se calculó?")
@@ -28,6 +29,8 @@ type AggregateScoreData = {
   totalDefective: number;
   uniformityPenalty: number;
   defectPenalty: number;
+  /** "v1" = computed under the rule before 2026-11 (past results render unchanged). */
+  rule?: ScoreRule;
   attrAverages: Record<string, number>;
 };
 
@@ -64,6 +67,8 @@ export type ScoreBreakdownTranslations = {
   modeAcademic: string;
   modeFree: string;
   notTrackedNote: string;
+  /** Neutral line shown instead of the current-rule explanation for a past (v1) result. */
+  previousRule: string;
   groupTitle: string;
   groupAvgRaw: string;
   groupUniformity: string;
@@ -212,13 +217,19 @@ function renderIndividual(
         <TallyRow label={t.rounded} value={fmt(b.score)} strong />
       </div>
 
-      {!b.uniformityTracked && (
+      {b.rule === "v1" ? (
         <div className="mt-2 text-[10px] italic leading-relaxed text-on-surface-variant">
-          {t.notTrackedNote}
+          {t.previousRule}
         </div>
+      ) : (
+        !b.uniformityTracked && (
+          <div className="mt-2 text-[10px] italic leading-relaxed text-on-surface-variant">
+            {t.notTrackedNote}
+          </div>
+        )
       )}
 
-      <SetupStamp setup={setup} t={t} />
+      <SetupStamp setup={{ ...setup, uniformityTracked: b.uniformityTracked }} t={t} />
     </>
   );
 }
@@ -237,7 +248,9 @@ function renderGroup(
   // stored number; otherwise the line carries just its name.
   const cups = g.totalCups || cupsPerSample;
   const expected = cupDeduction({ cups, nonUniform: g.totalNonUniform, defective: g.totalDefective });
+  const previous = g.rule === "v1";
   const matches =
+    !previous &&
     Math.abs(expected.uniformityPenalty - g.uniformityPenalty) < 0.005 &&
     Math.abs(expected.defectPenalty - g.defectPenalty) < 0.005;
   const uniformityLabel = matches
@@ -253,7 +266,7 @@ function renderGroup(
           revisit this explanatory copy — the data still arrives via the
           aggregate, so only the wording changes. */}
       <div className="mb-1 text-[11px] leading-relaxed text-on-surface-variant">
-        {t.groupExplain}
+        {previous ? t.previousRule : t.groupExplain}
       </div>
 
       <div className={sectionLabel}>{t.finalScore}</div>
@@ -278,7 +291,10 @@ function renderGroup(
           .replace("{total}", String(g.totalSubmitted ?? g.submittedCount))}
       </div>
 
-      <SetupStamp setup={setup} t={t} />
+      <SetupStamp
+        setup={{ ...setup, uniformityTracked: previous ? cupsPerSample >= 5 : setup.uniformityTracked }}
+        t={t}
+      />
     </>
   );
 }

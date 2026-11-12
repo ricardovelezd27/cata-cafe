@@ -3,6 +3,7 @@
 // instead of redeclaring them.
 
 import type { MyEvaluation } from "@/lib/evaluationState";
+import type { ScoreRule } from "@/lib/scoreRule";
 
 export type AggregateScoreData = {
   communityScore: number | null;
@@ -21,6 +22,8 @@ export type AggregateScoreData = {
   totalDefective: number;
   uniformityPenalty: number;
   defectPenalty: number;
+  /** Rule this sample's numbers were computed under ("v1" = before 2026-11). */
+  rule?: ScoreRule;
   attrAverages: Record<string, number>;
 };
 
@@ -65,6 +68,9 @@ export type SampleResult = {
   // Pre-formatted "Origen editado el <fecha>" (S8-12); null when never edited post-close.
   extrinsicEditedLabel?: string | null;
   aggregateScore: AggregateScoreData | null;
+  // Rule the shown evaluation was scored under: a stored row with cups NULL is
+  // "v1" (before 2026-11), anything else "v2" (lib/scoreRule.ts). Absent = v2.
+  scoreRule?: ScoreRule;
   // True for the ONE sample the owner marked as the "Referencia" (control) —
   // session.referenceSampleId. Display-only: scoring is untouched. See
   // lib/referenceDelta.ts for the Δ-vs-reference helpers this feeds.
