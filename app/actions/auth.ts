@@ -16,6 +16,7 @@ import { parseClientIp } from "@/lib/requestIp";
 import { loginHref } from "@/lib/authRedirect";
 import { clearPendingSignIn, readPendingSignIn, storePendingSignIn } from "@/lib/signInPendingCookie";
 import { logWarn } from "@/lib/log";
+import { classifyPendingFailure, pendingEmailMatches } from "@/lib/signInPendingRules";
 import { checkSignInIntent, clearSignInIntent, rememberSignInIntent } from "@/lib/signInIntentCookie";
 import { isRegisteredUser } from "@/lib/guestScope";
 import * as v from "@/lib/validate";
@@ -140,15 +141,20 @@ export async function confirmEmailToken(
       // sign-in stays zero extra steps.
       const supabase = await createClient();
       const { error: setError } = await supabase.auth.setSession(tokens);
-      if (setError) throw new Error("unknown");
-      await clearSignInIntent();
-      return { next: dest };
+      if (!setError) {
+        await clearPendingSignIn();
+        await clearSignInIntent();
+        return { next: dest };
+      }
+      // The one-time link is already consumed: do not strand the person. Fall
+      // through and park the tokens so "Si, continuar" acts as the retry.
     }
 
-    // Mismatch or no intent cookie: do NOT sign in. Park the tokens for 10
-    // minutes; the person confirms with acceptPendingSignIn or discards them
-    // with rejectPendingSignIn. The FULL address is shown (not masked): a mask
-    // is defeated by an address sharing the first letter and domain.
+    // Mismatch, no intent cookie, or a failed zero-click setSession: do NOT
+    // leave the person without a way forward. Park the tokens for 10 minutes;
+    // the person confirms with acceptPendingSignIn (also the retry) or discards
+    // them with rejectPendingSignIn. The FULL address is shown (not masked): a
+    // mask is defeated by an address sharing the first letter and domain.
     if (!email) throw new Error("invalid_token");
     const stored = await storePendingSignIn({
       accessToken: tokens.access_token,
@@ -166,20 +172,40 @@ export async function confirmEmailToken(
  * minted for this browser by confirmEmailToken in the last 10 minutes.
  */
 export async function acceptPendingSignIn(
+  shownEmail: string,
   locale?: string,
   next?: string,
 ): Promise<ActionResult<{ next: string }>> {
   return run("acceptPendingSignIn", async () => {
     const pending = await readPendingSignIn();
     if (!pending) throw new Error("token_expired");
+
+    // Tie the parked tokens to the address the card displayed. Transient
+    // failures keep the cookie (the same button retries); definitive ones drop it.
+    const { data: who, error: whoError } = await createEphemeralClient().auth.getUser(
+      pending.accessToken,
+    );
+    if (whoError || !who?.user) {
+      if (whoError && classifyPendingFailure(whoError) === "retry") throw new Error("unknown");
+      await clearPendingSignIn();
+      throw new Error("token_expired");
+    }
+    if (!pendingEmailMatches(shownEmail, who.user.email)) {
+      await clearPendingSignIn();
+      throw new Error("conflict");
+    }
+
     const supabase = await createClient();
     const { error } = await supabase.auth.setSession({
       access_token: pending.accessToken,
       refresh_token: pending.refreshToken,
     });
-    // The parked session is single-use either way.
+    if (error) {
+      if (classifyPendingFailure(error) === "retry") throw new Error("unknown");
+      await clearPendingSignIn();
+      throw new Error("token_expired");
+    }
     await clearPendingSignIn();
-    if (error) throw new Error("token_expired");
     await clearSignInIntent();
     return { next: safeNext(next, { fallback: defaultNextFor(localeOf(locale)) }) };
   });
@@ -196,13 +222,12 @@ export async function rejectPendingSignIn(): Promise<ActionResult> {
     const pending = await readPendingSignIn();
     try {
       if (pending) {
-        const ephemeral = createEphemeralClient();
-        const { error: setError } = await ephemeral.auth.setSession({
-          access_token: pending.accessToken,
-          refresh_token: pending.refreshToken,
-        });
-        if (setError) throw setError;
-        const { error: outError } = await ephemeral.auth.signOut({ scope: "local" });
+        // One call: POST /logout?scope=local with the parked access token as
+        // the bearer (auth.admin.signOut(jwt, scope) needs no service role).
+        const { error: outError } = await createEphemeralClient().auth.admin.signOut(
+          pending.accessToken,
+          "local",
+        );
         if (outError) throw outError;
       }
     } catch (err) {

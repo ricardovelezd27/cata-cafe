@@ -13,7 +13,7 @@ import {
 // lib/emailKeys.ts; the cookie holds HMACs only, never an address.
 
 function secret(): string {
-  const s = process.env.GUEST_CLAIM_SECRET ||process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const s = process.env.GUEST_CLAIM_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!s) throw new Error("guest_claim_secret_missing");
   return s;
 }

@@ -107,7 +107,8 @@ describe("wiring: who touches the pending cookie and the ephemeral client", () =
   it("rejectPendingSignIn never signs out the browser's own session", () => {
     const s = section("rejectPendingSignIn");
     expect(s).not.toContain("createClient()");
-    expect(s).toContain('signOut({ scope: "local" })');
+    expect(s).toContain("createEphemeralClient().auth.admin.signOut(");
+    expect(s).toContain('"local"');
     expect(s).toContain("clearPendingSignIn()");
   });
 });

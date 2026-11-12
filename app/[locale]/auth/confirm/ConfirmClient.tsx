@@ -78,10 +78,16 @@ export function ConfirmClient({
     setBusy(true);
     setIdentityFailed(false);
     try {
-      const r = await acceptPendingSignIn(locale, next);
+      const r = await acceptPendingSignIn(identity ?? "", locale, next);
       if (r.ok) {
         // Full navigation so the new session cookie is sent with the request.
         window.location.assign(r.data.next);
+        return;
+      }
+      if (r.error === "conflict") {
+        // The parked session is not the address shown: neutral state, no name.
+        setBusy(false);
+        setIdentityStatus("rejected");
         return;
       }
       if (r.error === "token_expired") {
