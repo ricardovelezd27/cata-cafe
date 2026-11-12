@@ -344,3 +344,12 @@ Ricardo authorized Claude to run the three phases and to merge + deploy (answers
 - Kim: PHASE 23 step 2 (54 past scores), blind codes (A4), join-page identity (E1), roster visibility (D7), coffee edits vs past sessions, C1-d late notes, C7, C9.
 - Ricardo: cross-device sign-in card test; a signup with a new address; two-account Realtime, phone offline, warm-up on two phones; legal text then `LEGAL_PAGES_PUBLISHED`; `ANALYTICS_SUPER_ADMIN_EMAIL` and optionally `UNSUBSCRIBE_SECRET` in Vercel; the account-deletion rehearsal; the database cleanup (`docs/prompts/S9-database-cleanup.md`); whether to make the migrations replayable.
 - Nothing else that Claude can build without one of them is known.
+
+## 2026-11-12 (late): scoring decision reversed, S10 prompt ready
+
+- **S8-04 was the wrong direction for this product** (Ricardo, 2026-11-12). "No deductions under five cups" is replaced by the decentralized score: deduction = 20 × defective ÷ cups + 10 × non-uniform ÷ cups, the same formula for my score, the session's score (both frozen at close) and a new coffee lifetime score on the coffee profile. Decision and evidence: `docs/product/cata-descentralizada-puntaje.md`. Nothing is built; no stored score has changed.
+- **PHASE 23 STEP 2 IS CANCELLED** (it would remove a deduction the new rule keeps). Do not run it, do not run `scripts/resync-low-cup-history.ts`, do not send the "54 scores go up" message to Kim. PHASE 23 step 1 stays applied until S10 replaces the trigger in a new phase.
+- Production facts behind the decision (read-only, 2026-11-12): 1,081 submitted non-descriptive evaluations, 96% with fewer than five cups (309 with 1, 664 with 2, 60 with 3, 48 with 5); 22 defective cups, all also flagged non-uniform; 47 samples with a flagged cup; no flagged evaluation under five cups submitted since PHASE 23 step 1.
+- Also found: at five cups the individual score charges 6 for a defective cup and the stored session score charges 8 (the cup is in both arrays); the tests miss it.
+- **Kim's answers are SIMULATED by Ricardo's committee:** `docs/product/kim-flows-2026-11/respuestas-kim-2026-11.md`. Code built on them carries `TODO(kim-validar:<code>)`.
+- **Next session: `docs/prompts/S10-kim-answers.md`** (also in the Flowmap Specs panel as S10): eight work packages, each with the decisions Ricardo must confirm first. Flowmap: F-grupal-1 reopened, card `k-s10` added.
