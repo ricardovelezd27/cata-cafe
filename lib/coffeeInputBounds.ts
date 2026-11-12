@@ -107,7 +107,7 @@ export function checkWizardBounds(
       if (typeof c !== "object" || c === null) return "invalid_coffee";
       const row = c as Record<string, unknown>;
       if (row.existingCoffeeId !== undefined && row.existingCoffeeId !== null) {
-        // A linked coffee carries only an id; resolveCoffees re-validates access.
+        // A linked coffee carries only an id; linkedCoffeesUsable re-validates access.
         if (typeof row.existingCoffeeId !== "string" || row.existingCoffeeId.length > 64) {
           return "invalid_coffee";
         }

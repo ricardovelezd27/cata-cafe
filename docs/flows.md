@@ -591,7 +591,7 @@ page — all through `components/coffees/DeleteCoffeeButton.tsx`.
 ### Coffee codes
 
 Every coffee gets a unique 6-char short code (`lib/coffeeCode.ts`) at creation —
-`createCoffee`, the session wizard (`resolveCoffees`, with whole-batch retry on
+`createCoffee`, the session wizard (`createCoffeesInTx` inside the session transaction, with whole-transaction retry on
 a within-transaction collision), `updateSampleMetadata`'s implicit create, and
 `duplicateCoffee` all stamp one. It's the external identifier people quote to
 each other ("mi café es el código K7M-3FP"): shown as a pill on the coffee

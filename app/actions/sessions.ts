@@ -86,7 +86,7 @@ type CoffeeInput = {
   notes?: string;
   // When set, the entry references an existing Coffee (picked via the
   // "Usar café existente" picker) instead of creating a new row. Access is
-  // re-validated server-side in resolveCoffees — never trusted from the client.
+  // re-validated server-side in linkedCoffeesUsable — never trusted from the client.
   existingCoffeeId?: string;
 };
 
