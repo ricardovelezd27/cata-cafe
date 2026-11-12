@@ -36,13 +36,17 @@ import {
   upsertPhysical,
   updateSampleMetadata,
   setReferenceSample,
+  assignSampleCoffee,
 } from "@/app/actions/sessions";
+import { listUsableCoffeesForPicker } from "@/app/actions/coffees";
 import {
   EditSampleMetadataForm,
   type SampleMetadataFormData,
 } from "@/components/cupping/EditSampleMetadataForm";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
+import { canPickExistingCoffee } from "@/lib/cupCoffeePick";
 import { isEvaluationComplete as isEvaluationCompleteForScore } from "@/lib/evaluationState";
 import { DeadlineBanner, type DeadlineBannerTranslations } from "@/components/session/DeadlineBanner";
 import {
@@ -260,6 +264,17 @@ export function CupClient({
     process: string;
     editSample: string;
     editSampleError: string;
+    /** "Usar café existente" picker strings (S9-05); optional for offline blobs. */
+    coffeePicker?: {
+      useExisting: string;
+      title: string;
+      searchPlaceholder: string;
+      mine: string;
+      shared: string;
+      public: string;
+      empty: string;
+      close: string;
+    };
     editSampleNotOwner: string;
     coffeeName: string;
     coffeeCountry: string;
@@ -485,6 +500,11 @@ export function CupClient({
   // Set after a metadata save when the linked coffee belongs to someone else
   // — the label still saved, but the coffee record itself was skipped.
   const [coffeeNotOwnedNotice, setCoffeeNotOwnedNotice] = useState(false);
+  const [pickingCoffee, setPickingCoffee] = useState(false);
+  const [pickPending, setPickPending] = useState(false);
+  // Loaded when the picker opens (never shipped in the page props).
+  const [pickerCoffees, setPickerCoffees] = useState<UsableCoffee[]>([]);
+  const pickBusy = useRef(false);
   // Owner's counter: Map<cupperId, submitted sampleIds>, re-seeded from the
   // server rows on every refresh (30 s poll, SUBSCRIBED, visibility) — never
   // a `+1` per realtime event.
@@ -1758,6 +1778,52 @@ export function CupClient({
     setCoffeeNotOwnedNotice(!result.coffeeUpdated);
   };
 
+  // "Usar café existente" (S9-05): link a coffee the owner already has to a
+  // coffee-less sample. assignSampleCoffee re-validates the id
+  // (usableCoffeeWhere), refuses a sample that already has a coffee and
+  // returns an ActionResult, so every refusal gets its own localized toast.
+  const canPickCoffee =
+    canPickExistingCoffee({
+      isOwner,
+      writable: sessionStatus !== "closed",
+      sampleCoffeeId: current.coffeeId ?? null,
+    }) && !!translations.coffeePicker;
+  const openCoffeePicker = async () => {
+    if (pickBusy.current) return;
+    pickBusy.current = true;
+    setPickPending(true);
+    try {
+      await feedback.run(listUsableCoffeesForPicker(), (list) => {
+        setPickerCoffees(list);
+        setPickingCoffee(true);
+      });
+    } finally {
+      pickBusy.current = false;
+      setPickPending(false);
+    }
+  };
+  const handlePickCoffee = async (picked: UsableCoffee) => {
+    if (pickBusy.current) return;
+    pickBusy.current = true;
+    setPickPending(true);
+    setPickingCoffee(false);
+    const sampleId = current.id;
+    try {
+      await feedback.run(assignSampleCoffee(sampleId, { coffeeId: picked.id }), () => {
+        // Only the link is set locally. The coffee's fields arrive with the
+        // server render: a hand-built copy here lacks fields the picker list
+        // does not carry, and a later save of the editor would then blank
+        // them on the owner's real coffee.
+        setSamples((prev) => prev.map((s) => (s.id === sampleId ? { ...s, coffeeId: picked.id } : s)));
+        setEditingSample(false);
+        router.refresh();
+      });
+    } finally {
+      pickBusy.current = false;
+      setPickPending(false);
+    }
+  };
+
   const editSampleButton = isOwner ? (
     <button
       type="button"
@@ -2335,6 +2401,18 @@ export function CupClient({
               />
             </label>
           )}
+          {canPickCoffee && translations.coffeePicker && (
+            <div className="mb-4">
+              <button
+                type="button"
+                disabled={pickPending}
+                onClick={openCoffeePicker}
+                className="inline-flex min-h-[44px] items-center rounded-pill border border-outline-variant px-4 text-sm font-medium text-on-surface transition-colors hover:bg-surface-container disabled:opacity-50"
+              >
+                {translations.coffeePicker.useExisting}
+              </button>
+            </div>
+          )}
           <EditSampleMetadataForm
             initialData={{
               label: current.label,
@@ -2368,6 +2446,15 @@ export function CupClient({
             }}
           />
         </ResponsiveDialog>
+      )}
+      {canPickCoffee && translations.coffeePicker && (
+        <CoffeePicker
+          open={pickingCoffee}
+          onOpenChange={setPickingCoffee}
+          coffees={pickerCoffees}
+          onSelect={handlePickCoffee}
+          translations={translations.coffeePicker}
+        />
       )}
       {coffeeNotOwnedNotice && (
         <div
