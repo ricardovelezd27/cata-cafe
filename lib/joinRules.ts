@@ -71,6 +71,28 @@ export function evaluateJoin(
   return { kind: "ok", late: session.startedAt !== null };
 }
 
+/**
+ * Which screen the join page renders for the signed-in viewer (S10 WP8,
+ * F-guest-4). "identity" = ask "¿Eres <nombre>?" before acting as the browser's
+ * anonymous user: a shared tablet may now be in the hands of someone else.
+ * "decision" = today's behaviour, exactly what `evaluateJoin` says (redirect,
+ * join button, refusal, or the guest form when nobody is signed in).
+ *
+ * Only an ANONYMOUS viewer whose decision is `redirect` (already a member) or
+ * `ok` (newcomer) gets "identity". Registered users and refused links are
+ * untouched. An owner is never anonymous, but if one were, they redirect.
+ * TODO(kim-validar:E1): simulated answer, confirm with Kim.
+ */
+export type JoinScreen = "identity" | "decision";
+
+export function joinScreenFor(
+  decisionKind: JoinDecision["kind"],
+  viewer: { userId: string | null; isAnonymous: boolean; isOwner?: boolean },
+): JoinScreen {
+  if (viewer.userId === null || !viewer.isAnonymous || viewer.isOwner) return "decision";
+  return decisionKind === "redirect" || decisionKind === "ok" ? "identity" : "decision";
+}
+
 export type JoinRefusalCode =
   | "session_closed"
   | "token_expired"

@@ -26,8 +26,10 @@ import { useGuestClaim } from "@/hooks/useGuestClaim";
  *  - A guest never signs out silently (F-cuenta-6, F-guest-4): the identity
  *    lives only in this browser, so a loss warning offers "Guardar mis
  *    resultados" (the normal claim flow) before "Salir de todos modos".
- *    // TODO(E1-Kim): confirm own-phone vs shared tablet; on a shared tablet
- *    // the guest may WANT to leave and let the next person start fresh.
+ *    The own phone is the norm, so the loss warning stays. On a shared tablet
+ *    the join page's "No soy {name}" (components/join/GuestIdentityChoice.tsx)
+ *    is how the next person starts clean, not this button.
+ *    TODO(kim-validar:E1): simulated answer.
  *    The warning for unsynced evaluation drafts is S8-09's (countDeviceOnly).
  */
 export function SignOutButton({

@@ -4,7 +4,8 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { GuestJoinForm } from "@/components/join/GuestJoinForm";
-import { evaluateJoin } from "@/lib/joinRules";
+import { evaluateJoin, joinScreenFor } from "@/lib/joinRules";
+import { GuestIdentityChoice } from "@/components/join/GuestIdentityChoice";
 import { JoinSessionForm } from "@/components/join/JoinSessionForm";
 import { DeadlineBanner } from "@/components/session/DeadlineBanner";
 
@@ -65,7 +66,21 @@ export default async function JoinPage({
     locale,
   );
 
-  if (decision.kind === "redirect") redirect(decision.href);
+  // F-guest-4 (S10 WP8): an ANONYMOUS visitor is asked "¿Eres <nombre>?" before
+  // acting as that guest, whether they are already in (decision.redirect) or
+  // would join now (decision.ok). Everyone else keeps today's behaviour.
+  // TODO(kim-validar:E1): simulated answer.
+  const showIdentity =
+    !!user &&
+    !!invite &&
+    (decision.kind === "redirect" || decision.kind === "ok") &&
+    joinScreenFor(decision.kind, {
+      userId: user.id,
+      isAnonymous: user.is_anonymous === true,
+      isOwner: invite.session.createdBy === user.id,
+    }) === "identity";
+
+  if (decision.kind === "redirect" && !showIdentity) redirect(decision.href);
 
   // F-grupal-asincrona-3 (S8-05): the closing date is visible before committing to join.
   const deadline = invite ? (
@@ -81,6 +96,57 @@ export default async function JoinPage({
       }}
     />
   ) : null;
+
+  if (showIdentity && user && invite) {
+    const profile = await prisma.profile.findUnique({
+      where: { id: user.id },
+      select: { displayName: true },
+    });
+    const name = profile?.displayName?.trim() || t("identityFallbackName");
+    const errorCodes = tErrors.raw("codes") as Record<string, string>;
+    const member = decision.kind === "redirect";
+    return (
+      <main className="flex flex-1 items-center justify-center px-6 py-16">
+        <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-card p-8 space-y-6">
+          <div>
+            <h1 className="text-2xl font-serif text-green-dark font-semibold">
+              {invite.session.name}
+            </h1>
+          </div>
+          {!member && deadline}
+          <GuestIdentityChoice
+            mode={member ? "member" : "newcomer"}
+            continueHref={decision.kind === "redirect" ? decision.href : undefined}
+            joinForm={{
+              button: t("joinSession"),
+              pending: t("joining"),
+              errors: { ...errorCodes, session_closed: t("sessionClosed") },
+              home: tErrors("home"),
+            }}
+            userId={user.id}
+            name={name}
+            token={token}
+            locale={locale}
+            translations={{
+              title: t("identityTitle", { name }),
+              lead: t("identityLead", { name }),
+              continueLabel: t("identityContinue", { name }),
+              notMeLabel: t("identityNotMe", { name }),
+              confirmTitle: t("identityConfirmTitle"),
+              confirmBody: t("identityConfirmBody", { name }),
+              unsyncedTemplate: t.raw("identityUnsynced") as string,
+              confirmButton: t("identityConfirmButton"),
+              cancel: t("identityCancel"),
+              close: t("identityClose"),
+            }}
+          />
+        </div>
+      </main>
+    );
+  }
+
+  // Narrowing only: a redirect without the identity screen already left above.
+  if (decision.kind === "redirect") redirect(decision.href);
 
   // Refused states: a distinct message each, and NO anonymous sign-in is
   // ever offered (the form below only renders for "ok").
@@ -170,9 +236,6 @@ export default async function JoinPage({
     );
   }
 
-  // TODO(E1-Kim): a signed-in ANONYMOUS visitor lands here as that guest
-  // ("¿Eres X? Entrar como X / No soy X", with a warning when evaluations
-  // exist). Not built: it needs Kim's answer on own-phone vs shared tablet.
   const errorCodes = tErrors.raw("codes") as Record<string, string>;
   const joinErrors = { ...errorCodes, session_closed: t("sessionClosed") };
 

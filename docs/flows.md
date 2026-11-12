@@ -331,6 +331,32 @@ sessions… — onto the signed-in account (**new or already existing**), delete
 the anonymous user, and returns to the results page. Never gate *joining* on an
 email — valor antes que fricción (see PRODUCT.md).
 
+**"¿Eres {nombre}?" on a shared device (S10 WP8, F-guest-4; `TODO(kim-validar:E1)`,
+simulated answer).** When the browser already holds an ANONYMOUS user and opens a
+join link, the page no longer acts as that guest silently. The pure
+`joinScreenFor(decision.kind, viewer)` (`lib/joinRules.ts`) returns `"identity"` for an
+anonymous viewer whose `evaluateJoin` decision is `redirect` (already a member) or
+`ok` (newcomer); registered users, the owner, refused links and "no user" are unchanged.
+
+```mermaid
+flowchart TD
+    O[open /join/token] --> V{viewer}
+    V -- no user --> GF[guest name form]
+    V -- registered or owner --> D[evaluateJoin: redirect / join button / refusal]
+    V -- anonymous --> K{decision}
+    K -- refused --> R[refusal screen]
+    K -- redirect or ok --> I["¿Eres nombre?"]
+    I -- Continuar como nombre --> C[member: go in / newcomer: join action]
+    I -- No soy nombre --> W[confirm: cuppings no longer openable from here;\nunsynced note count if any]
+    W -- confirm --> S[signOut local, then clearLocalDeviceState]
+    S --> H[hard navigation to the SAME join URL] --> GF
+```
+
+Nothing is deleted from the device's draft store (drafts are keyed by user id and
+stay, as on sign-out); the previous guest reaches their cuppings again only if they
+saved them in an account. `GuestJoinForm` no longer reuses an anonymous session it
+finds at submit time: it refreshes so the page renders this screen.
+
 **Guest scope in the app shell.** A guest may open Inicio, Sesiones, their own
 session pages (cup / waiting / results / print) and **Perfil** (+ history) —
 `lib/guestScope.ts`. The nav is the SAME for everyone; tapping a gated tab or

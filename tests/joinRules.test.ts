@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluateJoin, joinRefusalCode, type JoinInvite, type JoinSession } from "@/lib/joinRules";
+import { evaluateJoin, joinRefusalCode, joinScreenFor, type JoinInvite, type JoinSession } from "@/lib/joinRules";
 
 const NOW = new Date("2026-11-10T12:00:00.000Z");
 const future = new Date(NOW.getTime() + 3_600_000);
@@ -113,5 +113,29 @@ describe("joinRefusalCode", () => {
   it("an admissible link is not a refusal", () => {
     expect(joinRefusalCode(ev({}))).toBeNull();
     expect(joinRefusalCode(ev({ viewer: member }))).toBeNull();
+  });
+});
+
+describe("joinScreenFor (F-guest-4)", () => {
+  const kinds = ["redirect", "ok", "closed", "expired", "exhausted", "entries_closed", "invalid"] as const;
+  it("asks an anonymous viewer who they are for redirect and ok only", () => {
+    for (const k of kinds) {
+      const expected = k === "redirect" || k === "ok" ? "identity" : "decision";
+      expect(joinScreenFor(k, { userId: "g", isAnonymous: true })).toBe(expected);
+    }
+  });
+  it("never changes anything for a registered user", () => {
+    for (const k of kinds) {
+      expect(joinScreenFor(k, { userId: "r", isAnonymous: false })).toBe("decision");
+    }
+  });
+  it("never changes anything when nobody is signed in", () => {
+    for (const k of kinds) {
+      expect(joinScreenFor(k, { userId: null, isAnonymous: false })).toBe("decision");
+      expect(joinScreenFor(k, { userId: null, isAnonymous: true })).toBe("decision");
+    }
+  });
+  it("an owner is never asked, even if flagged anonymous", () => {
+    expect(joinScreenFor("redirect", { userId: "o", isAnonymous: true, isOwner: true })).toBe("decision");
   });
 });

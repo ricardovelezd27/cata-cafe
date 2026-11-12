@@ -29,8 +29,9 @@ interface GuestJoinFormProps {
  * PHASE 13 of rls_and_triggers.sql applied first.
  *
  * S8-07 (F-guest-3, F-guest-2): the invite is checked BEFORE any anonymous
- * user is created, an anonymous session left by an earlier failed try is
- * reused (five retries create one user, not five), the Supabase rate limit
+ * user is created, five retries create one user, not five (an anonymous
+ * session found at submit now sends the page back to the "¿Eres …?" screen,
+ * S10 WP8, instead of being reused silently), the Supabase rate limit
  * has its own message, and every failure shows its own localized reason
  * instead of one generic line.
  */
@@ -64,6 +65,14 @@ export function GuestJoinForm({ token, locale, translations }: GuestJoinFormProp
         // A registered user is signed in (stale page, another tab): never
         // replace their session. Re-render so the server shows the signed-in
         // join form.
+        router.refresh();
+        setIsSubmitting(false);
+        return;
+      }
+      if (existing?.is_anonymous) {
+        // F-guest-4 (S10 WP8): an anonymous session appeared between render and
+        // submit (another tab, or the previous guest on this shared device).
+        // Never reuse it silently: re-render so the server asks "¿Eres …?".
         router.refresh();
         setIsSubmitting(false);
         return;
