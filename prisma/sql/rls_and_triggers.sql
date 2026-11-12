@@ -1585,7 +1585,8 @@ ALTER TABLE group_email_deliveries ENABLE ROW LEVEL SECURITY;
 --   SELECT pg_get_functiondef('public.recompute_aggregate_score()'::regprocedure);
 -- It must contain "IF v_total_cups > 0 THEN" and no "v_cups_per_sample >= 5".
 --
--- TWO STEPS, in this order, in separate SQL editor runs:
+-- TWO STEPS, in this order, in separate SQL editor runs (STEP 2 was CANCELLED on
+-- 2026-11-12 and must never run, see PHASE 26; STEP 1 was applied 2026-11-11):
 --   STEP 1  re-issue the function (changes nothing stored by itself).
 --   STEP 2  the recompute (below, commented). It CHANGES the stored community
 --           score of every past session with cupsPerSample < 5 and a flagged
@@ -1731,7 +1732,11 @@ BEGIN
 END;
 $$;
 
--- STEP 2 (separate run, after telling Kim). Idempotent. Re-fires the trigger
+-- STEP 2 -- CANCELLED 2026-11-12, NEVER RUN. Do not run it (nor
+-- scripts/resync-low-cup-history.ts): it would raise 54 stored scores and the
+-- rule that replaced S8-04 is docs/product/cata-descentralizada-puntaje.md
+-- (PHASE 26 below). The text that follows is kept only as a record of what it was.
+-- (separate run, after telling Kim). Idempotent. Re-fires the trigger
 -- (it fires on UPDATE OF "isDraft" when "isDraft" = false) for every submitted
 -- evaluation. Afterwards run: npx tsx scripts/resync-low-cup-history.ts --apply
 -- (dry-run without --apply) so UserCoffeeHistory follows the new aggregates.
@@ -2283,4 +2288,349 @@ COMMIT;
 --   COMMIT;
 --   -- (anon had SELECT under the Supabase default; the policy never returned
 --   --  rows to it. Grant it back only if pre-flight (b) listed it.)
+-- ============================================================================
+
+-- ============================================================================
+-- PHASE 26 (2026-11-13, S10 WP1a): the flat CVA deduction at ANY cup count,
+-- shared across everyone's cups and diluted beyond five pooled cups.
+-- Spec: docs/product/cata-descentralizada-puntaje.md (overrides S8-04 / PHASE 23).
+-- Apply via runbook §30, dry run first (prisma/sql/dry-runs/phase26_dry_run.sql).
+-- The Supabase project is production (there is only one). NOT applied by the PR
+-- that adds it: the owner applies it, on an explicit yes, AFTER
+-- `npx prisma migrate deploy` added evaluations."cups" (migration
+-- 20261113090000_evaluation_cups).
+--
+-- Why: the score that existed before S8 was right in principle and had bugs;
+-- S8-04 / PHASE 23 removed the deductions below five cups instead of fixing them.
+-- This goes back to the principle (flagged cups cost points at any cup count;
+-- everyone's cups share the deduction) and fixes three bugs: (1) a cupper with
+-- fewer than five cups saw no deduction; (2) with fewer than five pooled cups
+-- the stored group score AMPLIFIED the deduction (10 / total_cups, 30 /
+-- total_cups: 1 defective cup of 2 cost 20 points); (3) a defective cup is also
+-- flagged non-uniform by the form, so the old 10 + 30 per total cups counted it
+-- twice (8 points for 1 of 5, against 6 in the CVA and in the individual score).
+--
+-- The rule (same arithmetic, same operation order as lib/scoring.ts cupDeduction;
+-- tests/scoringConsistency.test.ts ports it and tests/db/aggregate.dbtest.ts
+-- runs this function against computeGroupAggregate):
+--   factor            = 5 / max(5, pooled cups)
+--   uniformityPenalty = 2 * non-uniform * factor   (only evaluations with 2+ cups)
+--   defectPenalty     = 4 * defective  * factor
+--   score             = clamp(0..100, round to 0.25 (base - both penalties))
+-- Pooled cups = SUM over the INCLUDED evaluations of evaluations."cups" (NULL
+-- falls back to the session's cupsPerSample, so the stored value is right under
+-- the old app code too: that is why the order in the runbook is migrate, SQL,
+-- then deploy). Flag counts are clamped to each evaluation's cups.
+--
+-- Nothing stored is recomputed by this phase: it only re-issues the function, so
+-- aggregate_scores keeps what the old function computed until an evaluation is
+-- next submitted or edited (owner's decision: scores stored before the deploy
+-- are NOT recomputed; PHASE 23 STEP 2 is cancelled).
+--
+-- Pre-flight (read-only):
+--   select column_name from information_schema.columns
+--     where table_schema='public' and table_name='evaluations' and column_name='cups'; -- 1 row
+--   select pg_get_functiondef('public.recompute_aggregate_score()'::regprocedure);
+--     -- must still be the PHASE 23 body ("v_cups_per_sample >= 5", no "v_factor")
+-- Post-apply check:
+--   select proconfig from pg_proc where proname = 'recompute_aggregate_score';  -- {search_path=public}
+--   select pg_get_functiondef('public.recompute_aggregate_score()'::regprocedure) like '%v_factor%';  -- t
+--   select count(*) from aggregate_scores where "computedAt" > now() - interval '10 minutes';  -- 0 (nothing recomputed)
+-- ============================================================================
+-- Guard (not copied into the dry run, which has its own): refuse to run before
+-- the evaluations."cups" migration, because the trigger would then fail on the
+-- next submit with `column e.cups does not exist`.
+DO $chk$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'evaluations' AND column_name = 'cups'
+  ) THEN
+    RAISE EXCEPTION 'PHASE 26 aborted, nothing applied: evaluations.cups is missing (run npx prisma migrate deploy first)';
+  END IF;
+END
+$chk$;
+
+-- >>> PHASE 26 statements (copied verbatim into phase26_dry_run.sql) >>>
+-- PHASE 26: the flat CVA deduction at ANY cup count, diluted by 5 / pooled cups
+-- beyond five. Differences from the PHASE 23 body, and only these: (1) the
+-- per-evaluation values (cups, non-uniform count, defective count) are computed
+-- in a subquery and then pooled over the INCLUDED (complete) evaluations;
+-- (2) v_total_cups is the SUM of those cups, not cupsPerSample x participants;
+-- (3) the deduction is 2 x non-uniform x factor and 4 x defective x factor with
+-- factor = 5 / GREATEST(5, v_total_cups). No `>= 5` gate. Everything else
+-- (SECURITY DEFINER, search_path, exclusion filter, is_affective_complete,
+-- attrAverages, INSERT ... ON CONFLICT) is unchanged.
+CREATE OR REPLACE FUNCTION recompute_aggregate_score()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $fn$
+DECLARE
+  v_session_id         text;
+  v_cups_per_sample    int;
+  v_format             text;
+  v_participant_count  int;   -- INCLUDED (complete) evaluations
+  v_submitted_count    int;   -- all submitted, non-excluded evaluations
+  v_total_cups         int;   -- pooled cups of the INCLUDED evaluations
+  v_avg_raw            float;
+  v_total_non_uniform  int;
+  v_total_defective    int;
+  v_factor             float;
+  v_uniformity_penalty float;
+  v_defect_penalty     float;
+  v_community_score    float;
+  v_attr_averages      jsonb;
+  v_json_col           text;
+BEGIN
+  -- Get sessionId, cupsPerSample and format from parent session
+  SELECT ss."sessionId", cs."cupsPerSample", cs.format
+    INTO v_session_id, v_cups_per_sample, v_format
+  FROM session_samples ss
+  JOIN cupping_sessions cs ON cs.id = ss."sessionId"
+  WHERE ss.id = NEW."sessionSampleId";
+
+  -- Pick which JSON column holds affective data
+  v_json_col := CASE WHEN v_format = 'affective' THEN 'affectiveData' ELSE 'combinedData' END;
+
+  -- Per-evaluation values (cups, non-uniform and defective counts clamped to
+  -- the evaluation's cups; non-uniformity exists only with 2+ cups), then
+  -- pooled over the INCLUDED (complete) evaluations. submittedCount counts all
+  -- submitted, non-excluded evaluations. A row with cups NULL (older than the
+  -- backfill) falls back to the session's cupsPerSample.
+  SELECT
+    COUNT(*) FILTER (WHERE s.inc)::int,
+    COUNT(*)::int,
+    AVG(s."rawScore") FILTER (WHERE s.inc),
+    COALESCE(SUM(s.nu) FILTER (WHERE s.inc), 0)::int,
+    COALESCE(SUM(s.df) FILTER (WHERE s.inc), 0)::int,
+    COALESCE(SUM(s.cups) FILTER (WHERE s.inc), 0)::int
+  INTO v_participant_count, v_submitted_count, v_avg_raw,
+       v_total_non_uniform, v_total_defective, v_total_cups
+  FROM (
+    SELECT
+      e."rawScore",
+      is_affective_complete(CASE WHEN v_format = 'affective' THEN e."affectiveData" ELSE e."combinedData" END) AS inc,
+      GREATEST(COALESCE(e.cups, v_cups_per_sample), 0) AS cups,
+      CASE WHEN COALESCE(e.cups, v_cups_per_sample) >= 2
+           THEN LEAST((SELECT COUNT(*) FROM unnest(e."nonUniformCups") AS t(u) WHERE u = true)::int,
+                      COALESCE(e.cups, v_cups_per_sample))
+           ELSE 0 END AS nu,
+      LEAST((SELECT COUNT(*) FROM unnest(e."defectiveCups") AS d(v) WHERE v = true)::int,
+            GREATEST(COALESCE(e.cups, v_cups_per_sample), 0)) AS df
+    FROM evaluations e
+    WHERE e."sessionSampleId" = NEW."sessionSampleId" AND e."isDraft" = false
+      AND NOT EXISTS (
+        SELECT 1 FROM session_participants sp
+        WHERE sp."sessionId" = v_session_id
+          AND sp."userId" = e."cupperId"
+          AND sp.excluded_from_results = true
+      )
+  ) s;
+
+  IF v_total_cups > 0 THEN
+    v_factor             := 5.0 / GREATEST(5, v_total_cups);
+    v_uniformity_penalty := 2.0 * v_total_non_uniform * v_factor;
+    v_defect_penalty     := 4.0 * v_total_defective  * v_factor;
+  ELSE
+    v_uniformity_penalty := 0;
+    v_defect_penalty     := 0;
+  END IF;
+
+  -- N4: round the final community score to the nearest 0.25 (was ROUND(..., 2)).
+  v_community_score := GREATEST(0, LEAST(100,
+    ROUND((COALESCE(v_avg_raw, 0) - v_uniformity_penalty - v_defect_penalty)::numeric * 4) / 4
+  ));
+
+  -- Per-attribute averages over submitted, NON-EXCLUDED, COMPLETE evaluations.
+  SELECT jsonb_build_object(
+    'Fragancia',        ROUND(AVG(NULLIF((e.data->>'fragancia_af_final'),   '')::numeric), 2),
+    'Aroma',            ROUND(AVG(NULLIF((e.data->>'aroma_af_final'),        '')::numeric), 2),
+    'Sabor',            ROUND(AVG(NULLIF((e.data->>'sabor_af_final'),        '')::numeric), 2),
+    'Sabor residual',   ROUND(AVG(NULLIF((e.data->>'sabor_residual_af_final'),'')::numeric), 2),
+    'Acidez',           ROUND(AVG(NULLIF((e.data->>'acidez_af_final'),       '')::numeric), 2),
+    'Dulzor',           ROUND(AVG(NULLIF((e.data->>'dulzor_af_final'),       '')::numeric), 2),
+    'Sensación en boca',ROUND(AVG(NULLIF((e.data->>'sensacion_af_final'),    '')::numeric), 2),
+    'Impresión global', ROUND(AVG(NULLIF((e.data->>'impresion_global_final'),'')::numeric), 2)
+  )
+  INTO v_attr_averages
+  FROM (
+    SELECT CASE v_json_col
+      WHEN 'affectiveData' THEN "affectiveData"
+      ELSE "combinedData"
+    END AS data
+    FROM evaluations ev
+    WHERE ev."sessionSampleId" = NEW."sessionSampleId" AND ev."isDraft" = false
+      AND is_affective_complete(
+        CASE v_json_col WHEN 'affectiveData' THEN ev."affectiveData" ELSE ev."combinedData" END)
+      AND NOT EXISTS (
+        SELECT 1 FROM session_participants sp
+        WHERE sp."sessionId" = v_session_id
+          AND sp."userId" = ev."cupperId"
+          AND sp.excluded_from_results = true
+      )
+  ) e;
+
+  INSERT INTO aggregate_scores (
+    id,
+    "sessionSampleId", "participantCount", "submittedCount", "cupsPerSample", "totalCups",
+    "avgRawScore", "totalNonUniform", "totalDefective",
+    "uniformityPenalty", "defectPenalty", "communityScore",
+    "attrAverages", "computedAt"
+  ) VALUES (
+    gen_random_uuid()::text,
+    NEW."sessionSampleId", v_participant_count, v_submitted_count, v_cups_per_sample, v_total_cups,
+    v_avg_raw, v_total_non_uniform, v_total_defective,
+    v_uniformity_penalty, v_defect_penalty, v_community_score,
+    COALESCE(v_attr_averages, '{}'::jsonb), now()
+  )
+  ON CONFLICT ("sessionSampleId") DO UPDATE SET
+    "participantCount"  = EXCLUDED."participantCount",
+    "submittedCount"    = EXCLUDED."submittedCount",
+    "cupsPerSample"     = EXCLUDED."cupsPerSample",
+    "totalCups"         = EXCLUDED."totalCups",
+    "avgRawScore"       = EXCLUDED."avgRawScore",
+    "totalNonUniform"   = EXCLUDED."totalNonUniform",
+    "totalDefective"    = EXCLUDED."totalDefective",
+    "uniformityPenalty" = EXCLUDED."uniformityPenalty",
+    "defectPenalty"     = EXCLUDED."defectPenalty",
+    "communityScore"    = EXCLUDED."communityScore",
+    "attrAverages"      = EXCLUDED."attrAverages",
+    "computedAt"        = EXCLUDED."computedAt";
+
+  RETURN NEW;
+END;
+$fn$;
+-- <<< end of PHASE 26 statements <<<
+
+-- ROLLBACK: re-create the PHASE 23 function body (verbatim below). The stored
+-- scores are not touched by either direction.
+--   CREATE OR REPLACE FUNCTION recompute_aggregate_score()
+--   RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+--   DECLARE
+--     v_session_id         text;
+--     v_cups_per_sample    int;
+--     v_format             text;
+--     v_participant_count  int;   -- INCLUDED (complete) evaluations
+--     v_submitted_count    int;   -- all submitted, non-excluded evaluations
+--     v_total_cups         int;
+--     v_avg_raw            float;
+--     v_total_non_uniform  int;
+--     v_total_defective    int;
+--     v_uniformity_penalty float;
+--     v_defect_penalty     float;
+--     v_community_score    float;
+--     v_attr_averages      jsonb;
+--     v_json_col           text;
+--   BEGIN
+--     -- Get sessionId, cupsPerSample and format from parent session
+--     SELECT ss."sessionId", cs."cupsPerSample", cs.format
+--       INTO v_session_id, v_cups_per_sample, v_format
+--     FROM session_samples ss
+--     JOIN cupping_sessions cs ON cs.id = ss."sessionId"
+--     WHERE ss.id = NEW."sessionSampleId";
+--
+--     -- Pick which JSON column holds affective data
+--     v_json_col := CASE WHEN v_format = 'affective' THEN 'affectiveData' ELSE 'combinedData' END;
+--
+--     -- Aggregate over submitted, NON-EXCLUDED evaluations. Score/penalty metrics use
+--     -- a FILTER so only COMPLETE evaluations contribute; submittedCount counts all.
+--     SELECT
+--       COUNT(*) FILTER (WHERE is_affective_complete(
+--         CASE WHEN v_format = 'affective' THEN e."affectiveData" ELSE e."combinedData" END))::int,
+--       COUNT(*)::int,
+--       AVG("rawScore") FILTER (WHERE is_affective_complete(
+--         CASE WHEN v_format = 'affective' THEN e."affectiveData" ELSE e."combinedData" END)),
+--       COALESCE(SUM((
+--         SELECT COUNT(*) FROM unnest("nonUniformCups") AS t(u) WHERE u = true
+--       )::int) FILTER (WHERE is_affective_complete(
+--         CASE WHEN v_format = 'affective' THEN e."affectiveData" ELSE e."combinedData" END)), 0),
+--       COALESCE(SUM((
+--         SELECT COUNT(*) FROM unnest("defectiveCups") AS d(v) WHERE v = true
+--       )::int) FILTER (WHERE is_affective_complete(
+--         CASE WHEN v_format = 'affective' THEN e."affectiveData" ELSE e."combinedData" END)), 0)
+--     INTO v_participant_count, v_submitted_count, v_avg_raw, v_total_non_uniform, v_total_defective
+--     FROM evaluations e
+--     WHERE e."sessionSampleId" = NEW."sessionSampleId" AND e."isDraft" = false
+--       AND NOT EXISTS (
+--         SELECT 1 FROM session_participants sp
+--         WHERE sp."sessionId" = v_session_id
+--           AND sp."userId" = e."cupperId"
+--           AND sp.excluded_from_results = true
+--       );
+--
+--     -- totalCups uses the INCLUDED count so penalties normalize over real cups only.
+--     v_total_cups := v_cups_per_sample * v_participant_count;
+--
+--     -- S8-04: deductions only from 5 cups per sample (mirror of penaltiesApply() in
+--     -- lib/scoring.ts). Below that the stored community score is the plain average.
+--     IF v_cups_per_sample >= 5 AND v_total_cups > 0 THEN
+--       v_uniformity_penalty := v_total_non_uniform::float * (10.0 / v_total_cups);
+--       v_defect_penalty     := v_total_defective::float  * (30.0 / v_total_cups);
+--     ELSE
+--       v_uniformity_penalty := 0;
+--       v_defect_penalty     := 0;
+--     END IF;
+--
+--     -- N4: round the final community score to the nearest 0.25 (was ROUND(..., 2)).
+--     v_community_score := GREATEST(0, LEAST(100,
+--       ROUND((COALESCE(v_avg_raw, 0) - v_uniformity_penalty - v_defect_penalty)::numeric * 4) / 4
+--     ));
+--
+--     -- Per-attribute averages over submitted, NON-EXCLUDED, COMPLETE evaluations.
+--     SELECT jsonb_build_object(
+--       'Fragancia',        ROUND(AVG(NULLIF((e.data->>'fragancia_af_final'),   '')::numeric), 2),
+--       'Aroma',            ROUND(AVG(NULLIF((e.data->>'aroma_af_final'),        '')::numeric), 2),
+--       'Sabor',            ROUND(AVG(NULLIF((e.data->>'sabor_af_final'),        '')::numeric), 2),
+--       'Sabor residual',   ROUND(AVG(NULLIF((e.data->>'sabor_residual_af_final'),'')::numeric), 2),
+--       'Acidez',           ROUND(AVG(NULLIF((e.data->>'acidez_af_final'),       '')::numeric), 2),
+--       'Dulzor',           ROUND(AVG(NULLIF((e.data->>'dulzor_af_final'),       '')::numeric), 2),
+--       'Sensación en boca',ROUND(AVG(NULLIF((e.data->>'sensacion_af_final'),    '')::numeric), 2),
+--       'Impresión global', ROUND(AVG(NULLIF((e.data->>'impresion_global_final'),'')::numeric), 2)
+--     )
+--     INTO v_attr_averages
+--     FROM (
+--       SELECT CASE v_json_col
+--         WHEN 'affectiveData' THEN "affectiveData"
+--         ELSE "combinedData"
+--       END AS data
+--       FROM evaluations ev
+--       WHERE ev."sessionSampleId" = NEW."sessionSampleId" AND ev."isDraft" = false
+--         AND is_affective_complete(
+--           CASE v_json_col WHEN 'affectiveData' THEN ev."affectiveData" ELSE ev."combinedData" END)
+--         AND NOT EXISTS (
+--           SELECT 1 FROM session_participants sp
+--           WHERE sp."sessionId" = v_session_id
+--             AND sp."userId" = ev."cupperId"
+--             AND sp.excluded_from_results = true
+--         )
+--     ) e;
+--
+--     INSERT INTO aggregate_scores (
+--       id,
+--       "sessionSampleId", "participantCount", "submittedCount", "cupsPerSample", "totalCups",
+--       "avgRawScore", "totalNonUniform", "totalDefective",
+--       "uniformityPenalty", "defectPenalty", "communityScore",
+--       "attrAverages", "computedAt"
+--     ) VALUES (
+--       gen_random_uuid()::text,
+--       NEW."sessionSampleId", v_participant_count, v_submitted_count, v_cups_per_sample, v_total_cups,
+--       v_avg_raw, v_total_non_uniform, v_total_defective,
+--       v_uniformity_penalty, v_defect_penalty, v_community_score,
+--       COALESCE(v_attr_averages, '{}'::jsonb), now()
+--     )
+--     ON CONFLICT ("sessionSampleId") DO UPDATE SET
+--       "participantCount"  = EXCLUDED."participantCount",
+--       "submittedCount"    = EXCLUDED."submittedCount",
+--       "cupsPerSample"     = EXCLUDED."cupsPerSample",
+--       "totalCups"         = EXCLUDED."totalCups",
+--       "avgRawScore"       = EXCLUDED."avgRawScore",
+--       "totalNonUniform"   = EXCLUDED."totalNonUniform",
+--       "totalDefective"    = EXCLUDED."totalDefective",
+--       "uniformityPenalty" = EXCLUDED."uniformityPenalty",
+--       "defectPenalty"     = EXCLUDED."defectPenalty",
+--       "communityScore"    = EXCLUDED."communityScore",
+--       "attrAverages"      = EXCLUDED."attrAverages",
+--       "computedAt"        = EXCLUDED."computedAt";
+--
+--     RETURN NEW;
+--   END;
+--   $$;
 -- ============================================================================

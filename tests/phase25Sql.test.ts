@@ -26,7 +26,8 @@ function stripComments(sql: string): string {
     .join("\n");
 }
 
-const phase25 = SQL.slice(SQL.indexOf("-- PHASE 25"));
+// Bounded: later phases (PHASE 26 holds INSERTs inside a function) are not part of this one.
+const phase25 = SQL.slice(SQL.indexOf("-- PHASE 25"), SQL.indexOf("-- PHASE 26"));
 
 const block = (s: string, start: string, end: string) => {
   const a = s.indexOf(start);
@@ -40,7 +41,7 @@ describe("PHASE 25: session_participants exclusion metadata hidden from the API"
   const stmts = block(phase25, ">>> PHASE 25 statements", "<<< end of PHASE 25 statements");
   const exec = stripComments(stmts).replace(/\s+/g, " ");
 
-  it("is the last phase and exists once", () => {
+  it("exists once, after PHASE 24 (PHASE 26 follows it)", () => {
     expect(SQL.match(/-- PHASE 25 /g)?.length).toBe(1);
     expect(SQL.indexOf("-- PHASE 25")).toBeGreaterThan(SQL.indexOf("-- PHASE 24"));
   });
@@ -104,7 +105,7 @@ describe("PHASE 25: session_participants exclusion metadata hidden from the API"
 describe("phase25_dry_run.sql", () => {
   it("runs exactly the PHASE 25 statements", () => {
     expect(block(DRY, ">>> PHASE 25 statements", "<<< end of PHASE 25 statements")).toBe(
-      block(SQL.slice(SQL.indexOf("-- PHASE 25")), ">>> PHASE 25 statements", "<<< end of PHASE 25 statements"),
+      block(phase25, ">>> PHASE 25 statements", "<<< end of PHASE 25 statements"),
     );
   });
 

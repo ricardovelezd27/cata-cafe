@@ -14,6 +14,12 @@
 // The rule is inlined (lib/historyRules.ts historyCommunityScore) so the script
 // runs under tsx without Next.js path aliases. Keep the two in step.
 
+// CANCELLED 2026-11-12 (S10 WP1a). PHASE 23 STEP 2 never ran and must not: the
+// rule that replaced S8-04 is docs/product/cata-descentralizada-puntaje.md, and
+// no stored score is recomputed. The script refuses to run (first statement).
+console.error("CANCELLED 2026-11-12, see docs/product/cata-descentralizada-puntaje.md §6");
+process.exit(1);
+
 import { config } from "dotenv";
 config({ path: ".env.local" });
 
