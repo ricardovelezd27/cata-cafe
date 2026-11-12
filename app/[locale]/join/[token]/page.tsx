@@ -107,22 +107,20 @@ export default async function JoinPage({
     const member = decision.kind === "redirect";
     return (
       <main className="flex flex-1 items-center justify-center px-6 py-16">
-        <div className="w-full max-w-md bg-[#FDFBF7] border border-brown-light rounded-card p-8 space-y-6">
+        <div className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-card p-8 space-y-6">
           <div>
-            <h1 className="text-2xl font-serif text-green-dark font-semibold">
+            <h1 className="break-words text-2xl font-serif text-on-surface font-semibold">
               {invite.session.name}
             </h1>
+            {!member && decision.kind === "ok" && decision.late && (
+              <p className="mt-1 text-sm font-medium text-on-surface">{t("joinLateNote")}</p>
+            )}
           </div>
           {!member && deadline}
           <GuestIdentityChoice
             mode={member ? "member" : "newcomer"}
             continueHref={decision.kind === "redirect" ? decision.href : undefined}
-            joinForm={{
-              button: t("joinSession"),
-              pending: t("joining"),
-              errors: { ...errorCodes, session_closed: t("sessionClosed") },
-              home: tErrors("home"),
-            }}
+            errorMessages={{ ...errorCodes, session_closed: t("sessionClosed") }}
             userId={user.id}
             name={name}
             token={token}
@@ -138,6 +136,8 @@ export default async function JoinPage({
               confirmButton: t("identityConfirmButton"),
               cancel: t("identityCancel"),
               close: t("identityClose"),
+              syncing: t("identitySyncing"),
+              joining: t("joining"),
             }}
           />
         </div>
@@ -145,7 +145,7 @@ export default async function JoinPage({
     );
   }
 
-  // Narrowing only: a redirect without the identity screen already left above.
+  // Narrowing only, unreachable: a redirect without the identity screen already left above.
   if (decision.kind === "redirect") redirect(decision.href);
 
   // Refused states: a distinct message each, and NO anonymous sign-in is

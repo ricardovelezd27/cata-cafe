@@ -349,13 +349,20 @@ flowchart TD
     I -- Continuar como nombre --> C[member: go in / newcomer: join action]
     I -- No soy nombre --> W[confirm: cuppings no longer openable from here;\nunsynced note count if any]
     W -- confirm --> S[signOut local, then clearLocalDeviceState]
-    S --> H[hard navigation to the SAME join URL] --> GF
+    S --> H[hard navigation to the SAME join URL] --> N[normal decision again:
+guest form, or the refusal screen when the link is closed,
+expired, full or entries-locked]
 ```
 
 Nothing is deleted from the device's draft store (drafts are keyed by user id and
 stay, as on sign-out); the previous guest reaches their cuppings again only if they
-saved them in an account. `GuestJoinForm` no longer reuses an anonymous session it
-finds at submit time: it refreshes so the page renders this screen.
+saved them in an account. Every action on the screen first checks that the browser is
+still signed in as the guest it was rendered for (`isSameAnonymousGuest`); a stale tab
+only refreshes. When the dialog opens online, the guest's own saved drafts are replayed
+first (the sign-out guard's `retrySync`) and only what is still unsynced is counted.
+`GuestJoinForm` reuses silently only the anonymous user its own tab created on an
+earlier failed try (`sessionStorage`, `existingUserAction`); any other anonymous user
+makes it refresh so the page renders this screen.
 
 **Guest scope in the app shell.** A guest may open Inicio, Sesiones, their own
 session pages (cup / waiting / results / print) and **Perfil** (+ history) —

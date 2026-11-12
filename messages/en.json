@@ -658,6 +658,7 @@
     "identityConfirmButton": "I'm someone else",
     "identityCancel": "Cancel",
     "identityClose": "Close",
+    "identitySyncing": "Sending pending notes…",
     "sessionClosed": "This tasting is already closed — ask the organizer for the results link.",
     "referenceSelect": "Reference sample",
     "referenceNone": "No reference",

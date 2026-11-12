@@ -658,6 +658,7 @@
     "identityConfirmButton": "Soy otra persona",
     "identityCancel": "Cancelar",
     "identityClose": "Cerrar",
+    "identitySyncing": "Enviando notas pendientes…",
     "sessionClosed": "Esta cata ya cerró — pide al organizador el enlace de resultados.",
     "referenceSelect": "Muestra de referencia",
     "referenceNone": "Sin referencia",

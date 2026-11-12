@@ -93,6 +93,37 @@ export function joinScreenFor(
   return decisionKind === "redirect" || decisionKind === "ok" ? "identity" : "decision";
 }
 
+/**
+ * Is the browser's current user still the guest this screen/tab is about?
+ * A stale tab must never act (sign out, join, sync drafts) as a DIFFERENT
+ * guest who joined on the same device since. `null` = no session / lookup gave
+ * nothing. Registered users never match (the screen is anonymous-only).
+ */
+export function isSameAnonymousGuest(
+  renderedUserId: string,
+  current: { id: string; is_anonymous?: boolean } | null,
+): boolean {
+  return !!current && current.is_anonymous === true && current.id === renderedUserId;
+}
+
+/**
+ * What GuestJoinForm does when it finds a user at submit time.
+ * - "registered": refresh (server shows the signed-in join form).
+ * - "reuse": the anonymous user THIS tab created on an earlier try (S8-07
+ *   F-guest-2: five retries create one user); keep going silently.
+ * - "identity": any other anonymous user (the previous guest on a shared
+ *   device): refresh so the server asks "¿Eres …?".
+ * - "create": nobody is signed in.
+ */
+export function existingUserAction(
+  existing: { id: string; is_anonymous?: boolean } | null,
+  rememberedAnonId: string | null,
+): "create" | "registered" | "reuse" | "identity" {
+  if (!existing) return "create";
+  if (!existing.is_anonymous) return "registered";
+  return rememberedAnonId !== null && existing.id === rememberedAnonId ? "reuse" : "identity";
+}
+
 export type JoinRefusalCode =
   | "session_closed"
   | "token_expired"

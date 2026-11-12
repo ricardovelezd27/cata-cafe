@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluateJoin, joinRefusalCode, joinScreenFor, type JoinInvite, type JoinSession } from "@/lib/joinRules";
+import { evaluateJoin, joinRefusalCode, joinScreenFor, isSameAnonymousGuest, existingUserAction, type JoinInvite, type JoinSession } from "@/lib/joinRules";
 
 const NOW = new Date("2026-11-10T12:00:00.000Z");
 const future = new Date(NOW.getTime() + 3_600_000);
@@ -135,7 +135,35 @@ describe("joinScreenFor (F-guest-4)", () => {
       expect(joinScreenFor(k, { userId: null, isAnonymous: true })).toBe("decision");
     }
   });
-  it("an owner is never asked, even if flagged anonymous", () => {
-    expect(joinScreenFor("redirect", { userId: "o", isAnonymous: true, isOwner: true })).toBe("decision");
+  it("an owner is never asked, for every decision kind", () => {
+    for (const k of kinds) {
+      expect(joinScreenFor(k, { userId: "o", isAnonymous: true, isOwner: true })).toBe("decision");
+      expect(joinScreenFor(k, { userId: "o", isAnonymous: false, isOwner: true })).toBe("decision");
+    }
+  });
+});
+
+describe("isSameAnonymousGuest", () => {
+  it("matches only the same anonymous user", () => {
+    expect(isSameAnonymousGuest("a", { id: "a", is_anonymous: true })).toBe(true);
+    expect(isSameAnonymousGuest("a", { id: "b", is_anonymous: true })).toBe(false);
+    expect(isSameAnonymousGuest("a", { id: "a", is_anonymous: false })).toBe(false);
+    expect(isSameAnonymousGuest("a", { id: "a" })).toBe(false);
+    expect(isSameAnonymousGuest("a", null)).toBe(false);
+  });
+});
+
+describe("existingUserAction", () => {
+  it("creates when nobody is signed in", () => {
+    expect(existingUserAction(null, null)).toBe("create");
+    expect(existingUserAction(null, "x")).toBe("create");
+  });
+  it("leaves a registered user alone", () => {
+    expect(existingUserAction({ id: "r", is_anonymous: false }, "r")).toBe("registered");
+  });
+  it("reuses only the anonymous user this tab created", () => {
+    expect(existingUserAction({ id: "g", is_anonymous: true }, "g")).toBe("reuse");
+    expect(existingUserAction({ id: "g", is_anonymous: true }, "other")).toBe("identity");
+    expect(existingUserAction({ id: "g", is_anonymous: true }, null)).toBe("identity");
   });
 });

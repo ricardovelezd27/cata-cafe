@@ -4,7 +4,32 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { completeGuestOnboarding } from "@/app/actions/community";
+import { existingUserAction } from "@/lib/joinRules";
 import { checkJoinable, joinSessionAsGuest } from "@/app/actions/join";
+
+// Per tab, best effort, never required: the anonymous user THIS tab created.
+const CREATED_ANON_KEY = "cata_join_anon_created";
+function readCreatedAnonId(): string | null {
+  try {
+    return window.sessionStorage.getItem(CREATED_ANON_KEY);
+  } catch {
+    return null;
+  }
+}
+function rememberCreatedAnonId(id: string | null) {
+  try {
+    if (id) window.sessionStorage.setItem(CREATED_ANON_KEY, id);
+  } catch {
+    // best effort
+  }
+}
+function forgetCreatedAnonId() {
+  try {
+    window.sessionStorage.removeItem(CREATED_ANON_KEY);
+  } catch {
+    // best effort
+  }
+}
 
 interface GuestJoinFormProps {
   token: string;
@@ -61,26 +86,24 @@ export function GuestJoinForm({ token, locale, translations }: GuestJoinFormProp
       const {
         data: { user: existing },
       } = await supabase.auth.getUser();
-      if (existing && !existing.is_anonymous) {
+      const action = existingUserAction(existing, readCreatedAnonId());
+      if (action === "registered" || action === "identity") {
         // A registered user is signed in (stale page, another tab): never
-        // replace their session. Re-render so the server shows the signed-in
-        // join form.
+        // replace their session. Or an anonymous user this tab did NOT create
+        // (the previous guest on a shared device, S10 WP8 F-guest-4): never
+        // reuse it silently. Re-render so the server shows the signed-in join
+        // form or the "¿Eres …?" screen.
         router.refresh();
         setIsSubmitting(false);
         return;
       }
-      if (existing?.is_anonymous) {
-        // F-guest-4 (S10 WP8): an anonymous session appeared between render and
-        // submit (another tab, or the previous guest on this shared device).
-        // Never reuse it silently: re-render so the server asks "¿Eres …?".
-        router.refresh();
-        setIsSubmitting(false);
-        return;
-      }
+      // "reuse" = the anonymous user THIS tab created on an earlier failed try
+      // (S8-07 F-guest-2): five retries create one user, not five.
       if (!existing) {
-        const { error: signInError } = await supabase.auth.signInAnonymously({
+        const { data: created, error: signInError } = await supabase.auth.signInAnonymously({
           options: { data: { display_name: trimmed } },
         });
+        rememberCreatedAnonId(created?.user?.id ?? null);
         if (signInError) {
           const limited =
             signInError.status === 429 ||
@@ -99,6 +122,7 @@ export function GuestJoinForm({ token, locale, translations }: GuestJoinFormProp
     } catch (err) {
       const digest = (err as { digest?: string } | undefined)?.digest;
       if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) {
+        forgetCreatedAnonId(); // the join succeeded
         throw err;
       }
       fail("unknown");
