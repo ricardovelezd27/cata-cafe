@@ -211,7 +211,7 @@ export default async function Dashboard({
           what: t("intro.what"),
           howLabel: t("intro.howLabel"),
           how: t("intro.how"),
-          ctaPrimary: t("intro.ctaPrimary"),
+          ctaPrimary: t("fullWizardCta"),
           ctaCalc: t("intro.ctaCalc"),
           dismiss: t("intro.dismiss"),
           reopen: t("intro.reopen"),
@@ -297,7 +297,7 @@ export default async function Dashboard({
             href={`/${locale}/app/sessions/new`}
             className="px-6 py-3 rounded-pill border border-primary-container text-primary-container font-semibold text-sm hover:bg-primary-fixed transition-colors"
           >
-            {t("emptyCta")}
+            {t("fullWizardCta")}
           </GuestGateLink>
         </div>
       ) : (

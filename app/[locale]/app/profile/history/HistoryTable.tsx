@@ -7,6 +7,7 @@ import { Coffee } from "lucide-react";
 import { DataTable, type Column, type Facet } from "@/components/ui/DataTable";
 import { Badge, ScorePill } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { buttonClasses } from "@/components/ui/Button";
 
 export type HistoryRow = {
   id: string;
@@ -48,6 +49,8 @@ export type HistoryTableTranslations = {
   filterYear: string;
   emptyBody: string;
   newSessionLabel: string;
+  /** "Catar ahora" — the express path, offered first in the empty state. */
+  expressLabel: string;
   noResults: string;
   sessionDeleted: string;
   quickImpression: string;
@@ -70,11 +73,13 @@ export function HistoryTable({
   rows,
   locale,
   newSessionHref,
+  expressHref,
   translations: t,
 }: {
   rows: HistoryRow[];
   locale: string;
   newSessionHref: string;
+  expressHref: string;
   translations: HistoryTableTranslations;
 }) {
   const years = useMemo(
@@ -240,12 +245,14 @@ export function HistoryTable({
           icon={<Coffee size={20} />}
           title={t.emptyBody}
           action={
-            <GuestGateLink
-              href={newSessionHref}
-              className="inline-flex items-center rounded-pill bg-primary-container px-5 py-2.5 text-sm font-medium text-on-primary transition-colors hover:bg-primary"
-            >
-              {t.newSessionLabel}
-            </GuestGateLink>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <GuestGateLink href={expressHref} className={buttonClasses("primary")}>
+                {t.expressLabel}
+              </GuestGateLink>
+              <GuestGateLink href={newSessionHref} className={buttonClasses("secondary")}>
+                {t.newSessionLabel}
+              </GuestGateLink>
+            </div>
           }
         />
       }
