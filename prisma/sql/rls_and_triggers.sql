@@ -2322,6 +2322,13 @@ COMMIT;
 -- the old app code too: that is why the order in the runbook is migrate, SQL,
 -- then deploy). Flag counts are clamped to each evaluation's cups.
 --
+-- Rule versions: evaluations."cups" IS NULL means "scored before the 2026-11 rule"
+-- (v1; the migration does NOT backfill it) and aggregate_scores."ruleVersion" is 1
+-- until this function recomputes the sample (then 2). The app shows each stored
+-- score under the rule its data says, so past results render unchanged. A re-fire
+-- of an old sample (exclusion after close, repair) recomputes it under this rule
+-- and stamps ruleVersion 2: intended.
+--
 -- Nothing stored is recomputed by this phase: it only re-issues the function, so
 -- aggregate_scores keeps what the old function computed until an evaluation is
 -- next submitted or edited (owner's decision: scores stored before the deploy
@@ -2330,6 +2337,8 @@ COMMIT;
 -- Pre-flight (read-only):
 --   select column_name from information_schema.columns
 --     where table_schema='public' and table_name='evaluations' and column_name='cups'; -- 1 row
+--   select column_name from information_schema.columns
+--     where table_schema='public' and table_name='aggregate_scores' and column_name='ruleVersion'; -- 1 row
 --   select pg_get_functiondef('public.recompute_aggregate_score()'::regprocedure);
 --     -- must still be the PHASE 23 body ("v_cups_per_sample >= 5", no "v_factor")
 -- Post-apply check:
@@ -2338,15 +2347,15 @@ COMMIT;
 --   select count(*) from aggregate_scores where "computedAt" > now() - interval '10 minutes';  -- 0 (nothing recomputed)
 -- ============================================================================
 -- Guard (not copied into the dry run, which has its own): refuse to run before
--- the evaluations."cups" migration, because the trigger would then fail on the
--- next submit with `column e.cups does not exist`.
+-- the evaluation_cups migration (evaluations."cups" AND aggregate_scores."ruleVersion"),
+-- because the trigger would then fail on the next submit with `column ... does not exist`.
 DO $chk$
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema = 'public' AND table_name = 'evaluations' AND column_name = 'cups'
-  ) THEN
-    RAISE EXCEPTION 'PHASE 26 aborted, nothing applied: evaluations.cups is missing (run npx prisma migrate deploy first)';
+  IF (SELECT count(*) FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND ((table_name = 'evaluations' AND column_name = 'cups')
+          OR (table_name = 'aggregate_scores' AND column_name = 'ruleVersion'))) <> 2 THEN
+    RAISE EXCEPTION 'PHASE 26 aborted, nothing applied: evaluations.cups and/or aggregate_scores."ruleVersion" is missing (run npx prisma migrate deploy first)';
   END IF;
 END
 $chk$;
@@ -2360,7 +2369,10 @@ $chk$;
 -- (3) the deduction is 2 x non-uniform x factor and 4 x defective x factor with
 -- factor = 5 / GREATEST(5, v_total_cups). No `>= 5` gate. Everything else
 -- (SECURITY DEFINER, search_path, exclusion filter, is_affective_complete,
--- attrAverages, INSERT ... ON CONFLICT) is unchanged.
+-- attrAverages, INSERT ... ON CONFLICT) is unchanged, except that the upsert now
+-- also writes "ruleVersion" = 2 (INSERT and ON CONFLICT UPDATE): a sample the
+-- trigger (re)computes says it was scored under this rule; rows it does not
+-- touch keep ruleVersion 1 and the screen keeps showing them under the old rule.
 CREATE OR REPLACE FUNCTION recompute_aggregate_score()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $fn$
 DECLARE
@@ -2473,13 +2485,13 @@ BEGIN
     "sessionSampleId", "participantCount", "submittedCount", "cupsPerSample", "totalCups",
     "avgRawScore", "totalNonUniform", "totalDefective",
     "uniformityPenalty", "defectPenalty", "communityScore",
-    "attrAverages", "computedAt"
+    "attrAverages", "computedAt", "ruleVersion"
   ) VALUES (
     gen_random_uuid()::text,
     NEW."sessionSampleId", v_participant_count, v_submitted_count, v_cups_per_sample, v_total_cups,
     v_avg_raw, v_total_non_uniform, v_total_defective,
     v_uniformity_penalty, v_defect_penalty, v_community_score,
-    COALESCE(v_attr_averages, '{}'::jsonb), now()
+    COALESCE(v_attr_averages, '{}'::jsonb), now(), 2
   )
   ON CONFLICT ("sessionSampleId") DO UPDATE SET
     "participantCount"  = EXCLUDED."participantCount",
@@ -2493,7 +2505,8 @@ BEGIN
     "defectPenalty"     = EXCLUDED."defectPenalty",
     "communityScore"    = EXCLUDED."communityScore",
     "attrAverages"      = EXCLUDED."attrAverages",
-    "computedAt"        = EXCLUDED."computedAt";
+    "computedAt"        = EXCLUDED."computedAt",
+    "ruleVersion"       = EXCLUDED."ruleVersion";
 
   RETURN NEW;
 END;

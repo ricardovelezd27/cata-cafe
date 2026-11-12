@@ -86,8 +86,22 @@ describe("PHASE 26: flat deduction, diluted beyond five pooled cups", () => {
     expect(all).not.toMatch(/\bUPDATE\s+evaluations\b/i); // the recompute is NOT part of the phase
   });
 
-  it("has a guard that refuses to run before the evaluations.cups migration", () => {
-    expect(phase26).toMatch(/DO \$chk\$[\s\S]*column_name = 'cups'[\s\S]*RAISE EXCEPTION 'PHASE 26 aborted/);
+  it("has a guard that refuses to run before the migration (both columns)", () => {
+    expect(phase26).toMatch(/DO \$chk\$[\s\S]*column_name = 'cups'[\s\S]*column_name = 'ruleVersion'[\s\S]*RAISE EXCEPTION 'PHASE 26 aborted/);
+  });
+
+  it("stamps ruleVersion = 2 in the INSERT and in the ON CONFLICT UPDATE", () => {
+    expect(exec).toContain('"attrAverages", "computedAt", "ruleVersion" ) VALUES (');
+    expect(exec).toContain("COALESCE(v_attr_averages, '{}'::jsonb), now(), 2 )");
+    expect(exec).toContain('"ruleVersion" = EXCLUDED."ruleVersion";');
+  });
+
+  it("the migration adds both columns and backfills NOTHING (cups NULL means scored before the rule)", () => {
+    const m = stripComments(read("prisma/migrations/20261113090000_evaluation_cups/migration.sql"));
+    expect(m).toContain('ALTER TABLE "evaluations" ADD COLUMN "cups" INTEGER;');
+    expect(m).toContain('ALTER TABLE "aggregate_scores" ADD COLUMN "ruleVersion" INTEGER NOT NULL DEFAULT 1;');
+    expect(m).not.toMatch(/\bUPDATE\b/i);
+    expect(m).not.toMatch(/\bINSERT\b/i);
   });
 
   it("carries the PHASE 23 body as a commented rollback", () => {
@@ -121,8 +135,9 @@ describe("phase26_dry_run.sql", () => {
   });
 
   it("states the migration prerequisite and checks it", () => {
-    expect(DRY).toMatch(/REQUIRES the evaluations\."cups" migration/);
+    expect(DRY).toMatch(/REQUIRES the evaluation_cups migration/);
     expect(DRY).toContain("column_name = 'cups'");
+    expect(DRY).toContain("column_name = 'ruleVersion'");
   });
 
   it("re-fires the trigger and reports the numbers the owner needs", () => {

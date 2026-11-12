@@ -1,20 +1,18 @@
--- S10 WP1a (2026-11-13): the number of cups each evaluation covers.
--- Additive and backwards compatible: one NULLABLE column, no default, no index, no FK.
---   * evaluations."cups"
---       cups this evaluation covers; the app writes it on every save. The PHASE 26
---       trigger pools it across a sample's included evaluations and falls back to
---       the session's "cupsPerSample" while it is NULL, so the stored score is
---       right under both old and new app code.
--- The backfill UPDATE names only "cups": trg_recompute_aggregate is
--- AFTER INSERT OR UPDATE OF "isDraft", so it does NOT fire and no stored score
--- is recomputed.
+-- S10 WP1a (2026-11-13): which cup-deduction rule each stored score was computed under.
+-- Additive and backwards compatible; NO backfill and NO trigger fires.
+--   * evaluations."cups"  (nullable, no default)
+--       cups this evaluation covers; the app writes it on every save. It is left NULL
+--       on existing rows ON PURPOSE: NULL means "scored before the 2026-11 rule" and
+--       the app keeps showing those evaluations under the old rule, so past results
+--       render unchanged. The PHASE 26 trigger reads COALESCE("cups", cupsPerSample).
+--   * aggregate_scores."ruleVersion"  (INTEGER NOT NULL DEFAULT 1)
+--       1 = computed under the rule before 2026-11; the PHASE 26 function stamps 2
+--       whenever it (re)computes a sample. Existing rows therefore stay 1.
 -- Apply with `npx prisma migrate deploy` BEFORE PHASE 26 and before the deploy
 -- (runbook section 30).
 
 -- AlterTable
 ALTER TABLE "evaluations" ADD COLUMN "cups" INTEGER;
 
--- Backfill from the session's cups per sample.
-UPDATE "evaluations" e SET "cups" = cs."cupsPerSample"
-FROM "session_samples" ss JOIN "cupping_sessions" cs ON cs.id = ss."sessionId"
-WHERE ss.id = e."sessionSampleId";
+-- AlterTable
+ALTER TABLE "aggregate_scores" ADD COLUMN "ruleVersion" INTEGER NOT NULL DEFAULT 1;

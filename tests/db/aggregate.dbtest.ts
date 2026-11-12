@@ -450,3 +450,51 @@ describe("aggregate trigger vs computeGroupAggregate", () => {
     expect(diffs).toEqual([]);
   }, 300_000);
 });
+
+describe("rule versions (past results render unchanged)", () => {
+  it("legacy rows (cups NULL, aggregate ruleVersion 1) stay untouched until an evaluation is re-fired; a re-fire stamps 2 and equals TypeScript v2", async () => {
+    const owner = await makeUser();
+    const a = await makeUser();
+    const b = await makeUser();
+    const s = await makeSession({ ownerId: owner, isGroup: true, cupsPerSample: 2, participants: [a, b] });
+    const sample = s.samples[0];
+    await makeEvaluation({
+      sampleId: sample.id, sessionId: s.id, cupperId: a, cupsPerSample: 2, values: 5,
+      nonUniform: [true, false], defective: [true, false],
+    });
+    await makeEvaluation({ sampleId: sample.id, sessionId: s.id, cupperId: b, cupsPerSample: 2, values: 5 });
+
+    // Every trigger run stamps the current rule.
+    expect((await storedAggregate(sample.id))?.ruleVersion).toBe(2);
+
+    // Make the sample look like it did before the migration: cups NULL, the
+    // aggregate computed under the old rule (no deduction under five cups).
+    // Neither statement names "isDraft", so the trigger does not fire.
+    await prisma.$executeRaw`UPDATE evaluations SET "cups" = NULL WHERE "sessionId" = ${s.id}`;
+    await prisma.$executeRaw`
+      UPDATE aggregate_scores SET "ruleVersion" = 1, "communityScore" = 79,
+        "uniformityPenalty" = 0, "defectPenalty" = 0, "totalNonUniform" = 0, "totalDefective" = 0, "totalCups" = 4
+      WHERE "sessionSampleId" = ${sample.id}`;
+    const before = await storedAggregate(sample.id);
+    expect([before?.ruleVersion, before?.communityScore]).toEqual([1, 79]);
+
+    // Reading is not writing: nothing changes the stored row by itself.
+    const same = await storedAggregate(sample.id);
+    expect(same).toEqual(before);
+
+    // A re-fire (owner exclusion after close, repair) recomputes under the current rule.
+    await refireAggregates(s.id);
+    const after = await storedAggregate(sample.id);
+    expect(after?.ruleVersion).toBe(2);
+    expect(after?.communityScore).toBe(73);
+    const ts = computeGroupAggregate(
+      [
+        { data: affectiveData(5), nonUniformCups: [true, false], defectiveCups: [true, false] },
+        { data: affectiveData(5), nonUniformCups: [false, false], defectiveCups: [false, false] },
+      ],
+      2,
+      { rule: "v2" },
+    );
+    expect(ts.communityScore).toBe(after?.communityScore);
+  });
+});

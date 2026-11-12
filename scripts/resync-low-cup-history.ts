@@ -20,15 +20,15 @@
 console.error("CANCELLED 2026-11-12, see docs/product/cata-descentralizada-puntaje.md §6");
 process.exit(1);
 
-import { config } from "dotenv";
-config({ path: ".env.local" });
-
-import { PrismaClient } from "../app/generated/prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-
+// No static imports on purpose: nothing (dotenv, Prisma, a pool) is loaded before
+// the refusal above. The original body below is kept only as a record.
 const APPLY = process.argv.includes("--apply");
 
 async function main() {
+  const { config } = await import("dotenv");
+  config({ path: ".env.local" });
+  const { PrismaClient } = await import("../app/generated/prisma/client");
+  const { PrismaPg } = await import("@prisma/adapter-pg");
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) {
     console.error("Missing DATABASE_URL. Make sure .env.local has DATABASE_URL set.");

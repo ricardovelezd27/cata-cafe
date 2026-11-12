@@ -1,7 +1,7 @@
 -- PHASE 26 DRY RUN (S10 WP1a). Fail-safe: ONE statement, nothing can be applied.
 --
--- REQUIRES the evaluations."cups" migration to be applied first
--- (npx prisma migrate deploy, migration 20261113090000_evaluation_cups); the
+-- REQUIRES the evaluation_cups migration to be applied first (npx prisma migrate deploy,
+-- migration 20261113090000_evaluation_cups: evaluations."cups" and aggregate_scores."ruleVersion"); the
 -- first thing this does is check it and stop with a plain message if it is missing.
 -- NOTHING is applied by running this file: the statement ends with RAISE EXCEPTION,
 -- which rolls back the re-issued function and the re-fire alike.
@@ -27,16 +27,16 @@ DECLARE
   v_conf text;
   r record;
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema = 'public' AND table_name = 'evaluations' AND column_name = 'cups'
-  ) THEN
-    RAISE EXCEPTION 'PHASE 26 DRY RUN: evaluations.cups is missing. Run npx prisma migrate deploy first. Nothing was applied.';
+  IF (SELECT count(*) FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND ((table_name = 'evaluations' AND column_name = 'cups')
+          OR (table_name = 'aggregate_scores' AND column_name = 'ruleVersion'))) <> 2 THEN
+    RAISE EXCEPTION 'PHASE 26 DRY RUN: evaluations.cups and/or aggregate_scores."ruleVersion" is missing. Run npx prisma migrate deploy first. Nothing was applied.';
   END IF;
 
   CREATE TEMP TABLE agg_before ON COMMIT DROP AS
     SELECT "sessionSampleId", "cupsPerSample", "totalCups", "communityScore", "avgRawScore",
-           "uniformityPenalty", "defectPenalty"
+           "uniformityPenalty", "defectPenalty", "ruleVersion"
       FROM aggregate_scores;
 
   -- >>> PHASE 26 statements (copy of rls_and_triggers.sql) >>>
@@ -48,7 +48,10 @@ BEGIN
 -- (3) the deduction is 2 x non-uniform x factor and 4 x defective x factor with
 -- factor = 5 / GREATEST(5, v_total_cups). No `>= 5` gate. Everything else
 -- (SECURITY DEFINER, search_path, exclusion filter, is_affective_complete,
--- attrAverages, INSERT ... ON CONFLICT) is unchanged.
+-- attrAverages, INSERT ... ON CONFLICT) is unchanged, except that the upsert now
+-- also writes "ruleVersion" = 2 (INSERT and ON CONFLICT UPDATE): a sample the
+-- trigger (re)computes says it was scored under this rule; rows it does not
+-- touch keep ruleVersion 1 and the screen keeps showing them under the old rule.
 CREATE OR REPLACE FUNCTION recompute_aggregate_score()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $fn$
 DECLARE
@@ -161,13 +164,13 @@ BEGIN
     "sessionSampleId", "participantCount", "submittedCount", "cupsPerSample", "totalCups",
     "avgRawScore", "totalNonUniform", "totalDefective",
     "uniformityPenalty", "defectPenalty", "communityScore",
-    "attrAverages", "computedAt"
+    "attrAverages", "computedAt", "ruleVersion"
   ) VALUES (
     gen_random_uuid()::text,
     NEW."sessionSampleId", v_participant_count, v_submitted_count, v_cups_per_sample, v_total_cups,
     v_avg_raw, v_total_non_uniform, v_total_defective,
     v_uniformity_penalty, v_defect_penalty, v_community_score,
-    COALESCE(v_attr_averages, '{}'::jsonb), now()
+    COALESCE(v_attr_averages, '{}'::jsonb), now(), 2
   )
   ON CONFLICT ("sessionSampleId") DO UPDATE SET
     "participantCount"  = EXCLUDED."participantCount",
@@ -181,7 +184,8 @@ BEGIN
     "defectPenalty"     = EXCLUDED."defectPenalty",
     "communityScore"    = EXCLUDED."communityScore",
     "attrAverages"      = EXCLUDED."attrAverages",
-    "computedAt"        = EXCLUDED."computedAt";
+    "computedAt"        = EXCLUDED."computedAt",
+    "ruleVersion"       = EXCLUDED."ruleVersion";
 
   RETURN NEW;
 END;
