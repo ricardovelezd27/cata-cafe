@@ -269,6 +269,11 @@
       "back": "Sessions",
       "name": "Cupping name",
       "format": "Format",
+      "formatHint": {
+        "descriptive": "Describe aromas and flavors with their intensity, no score.",
+        "affective": "Rate the quality of each sample from 1 to 9.",
+        "combined": "Describe the flavors and rate the quality, all in one."
+      },
       "samples": "Samples",
       "samplesHint": "Between 1 and 20 samples, no coffee attached. You can name them at the end.",
       "decrement": "One sample fewer",

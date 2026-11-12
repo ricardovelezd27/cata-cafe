@@ -269,6 +269,11 @@
       "back": "Sesiones",
       "name": "Nombre de la cata",
       "format": "Formato",
+      "formatHint": {
+        "descriptive": "Describe aromas y sabores con su intensidad, sin puntaje.",
+        "affective": "Puntúa la calidad de cada muestra del 1 al 9.",
+        "combined": "Describe los sabores y puntúa la calidad, todo en uno."
+      },
       "samples": "Muestras",
       "samplesHint": "Entre 1 y 20 muestras, sin café asignado. Podrás nombrarlos al final.",
       "decrement": "Una muestra menos",
