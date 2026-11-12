@@ -205,6 +205,7 @@ export default async function CupPage({
         cupsPerSample: session.cupsPerSample,
         date: session.date.toISOString(),
         referenceSampleId: session.referenceSampleId,
+        referenceMode: session.referenceMode,
         closesAt: session.closesAt?.toISOString() ?? null,
         closesAtZone: session.closesAtZone,
         samples: session.samples.map((s) => {
@@ -345,7 +346,7 @@ export default async function CupPage({
         referenceActive: tg("referenceActive"),
         referenceAdd: tg("referenceAdd"),
         referenceRemoveActive: tg("referenceRemoveActive"),
-        referenceAddHint: tg("referenceAddHint"),
+        referenceAddHint: tg(session.referenceMode === "free" ? "referenceAddHintFree" : "referenceAddHint"),
         referenceAddTitle: tg("referenceAddTitle"),
         referenceAddConfirm: tg("referenceAddConfirm"),
         referenceRepinTitle: t("session.edit.repinTitle"),

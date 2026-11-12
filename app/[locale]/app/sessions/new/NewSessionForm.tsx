@@ -35,6 +35,7 @@ import {
 import { Select } from "@/components/ui/Select";
 import { sampleCountWarning, type SampleCountWarning } from "@/lib/sampleCount";
 import { DEFAULT_NOTIFY_WHEN, type NotifyWhen } from "@/lib/groupNotify";
+import { DEFAULT_REFERENCE_MODE, type ReferenceMode } from "@/lib/referenceRules";
 import { browserZone, dateInZone } from "@/lib/closeRules";
 import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 import { fieldErrorId, fieldForErrorCode, fieldInputId, type SessionFormField } from "@/lib/sessionFormErrors";
@@ -179,6 +180,8 @@ type Translations = {
     sampleKey: SampleKeyTranslations;
     /** X6: non-blocking line above the add button when the count is high for the format. */
     sampleWarning: Record<SampleCountWarning, string>;
+    /** B1: how the reference is scored (anchor / free) and the helper for each. */
+    referenceMode: { legend: string; anchor: string; free: string; anchorHelp: string; freeHelp: string };
     /** A9: the collapsed "Más datos de la muestra" section of each sample row. */
     samplePrep: SamplePrepTranslations;
     /** C8: when a LIVE session's linked group is emailed. */
@@ -385,6 +388,9 @@ export function NewSessionForm({
   // Reference sample — the SampleEntry.id (never the index) so add/remove/
   // reorder keep the selection stable across relabelling.
   const [referenceId, setReferenceId] = useState<string | null>(null);
+  // B1: how the reference is scored; only asked (and only sent as "free") when
+  // a reference is marked. "anchor" = today's pinned 79.00 exercise.
+  const [referenceMode, setReferenceMode] = useState<ReferenceMode>(DEFAULT_REFERENCE_MODE);
 
   // Group session fields — a valid ?groupId= prefill turns the toggle on and
   // preselects the group in one step.
@@ -481,6 +487,7 @@ export function NewSessionForm({
           setLinkedGroupId(d.linkedGroupId);
           setNotifyGroup(d.notifyGroup);
           setNotifyGroupWhen(d.notifyGroupWhen);
+          setReferenceMode(d.referenceMode);
           /* eslint-enable react-hooks/set-state-in-effect */
         }
       } catch {
@@ -519,6 +526,7 @@ export function NewSessionForm({
               linkedGroupId,
               notifyGroup,
               notifyGroupWhen,
+              referenceMode,
             }),
           );
         } else {
@@ -532,6 +540,7 @@ export function NewSessionForm({
   }, [
     draftKey, step, dirty, name, objective, format, cupsPerSample, warmupOn, warmupId,
     coffees, samples, referenceId, isGroup, closesAt, linkedGroupId, notifyGroup, notifyGroupWhen,
+    referenceMode,
   ]);
 
   // Leaving the tab with an unsent form: ask first (the draft also survives).
@@ -729,6 +738,7 @@ export function NewSessionForm({
           samples: samplePayload,
           referenceIdx,
           warmupExerciseId: warmupOn ? warmupId : null,
+          referenceMode: referenceIdx === null ? DEFAULT_REFERENCE_MODE : referenceMode,
           locale,
         });
         if (result) showError(result.error);
@@ -743,6 +753,7 @@ export function NewSessionForm({
           samples: samplePayload,
           referenceIdx,
           warmupExerciseId: warmupOn ? warmupId : null,
+          referenceMode: referenceIdx === null ? DEFAULT_REFERENCE_MODE : referenceMode,
           locale,
           closesAt: closesAt || undefined,
           closesAtZone: closesAt ? browserZone() : undefined,
@@ -1436,6 +1447,47 @@ export function NewSessionForm({
             </button>
           )}
         </div>
+
+        {/* B1: how the reference is scored. Shown only once one is marked. */}
+        {referenceId !== null && (
+          <fieldset className="space-y-1.5 border-0 p-0">
+            <legend className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
+              {t.newForm.referenceMode.legend}
+            </legend>
+            <div
+              role="radiogroup"
+              aria-label={t.newForm.referenceMode.legend}
+              className="flex flex-wrap gap-2"
+            >
+              {(
+                [
+                  { v: "anchor", l: t.newForm.referenceMode.anchor },
+                  { v: "free", l: t.newForm.referenceMode.free },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.v}
+                  type="button"
+                  role="radio"
+                  aria-checked={referenceMode === opt.v}
+                  onClick={() => setReferenceMode(opt.v)}
+                  className={
+                    referenceMode === opt.v
+                      ? "min-h-[44px] bg-primary-container text-on-primary rounded-pill px-4 py-2 text-sm font-medium"
+                      : "min-h-[44px] border border-outline-variant text-on-surface rounded-pill px-4 py-2 text-sm hover:bg-surface-container transition-colors"
+                  }
+                >
+                  {opt.l}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-on-surface-variant">
+              {referenceMode === "free"
+                ? t.newForm.referenceMode.freeHelp
+                : t.newForm.referenceMode.anchorHelp}
+            </p>
+          </fieldset>
+        )}
 
         <p className="text-xs text-on-surface-variant">{t.newForm.samplesBlindHelper}</p>
 

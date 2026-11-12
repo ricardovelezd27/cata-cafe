@@ -14,7 +14,7 @@ import {
   moduleKeyForFormat,
   type EvalModuleKey,
 } from "@/lib/evaluation";
-import { isPinnedModule, pinReferenceAffective } from "@/lib/referenceRules";
+import { pinReferenceAffective, shouldPinReference } from "@/lib/referenceRules";
 import { writeEvaluationOrdered } from "@/lib/evaluationWrite";
 import { logInfo } from "@/lib/log";
 import { replayOverExisting } from "@/lib/aggregateRefire";
@@ -122,10 +122,14 @@ async function replayEvaluationCore(input: EvaluationReplayInput): Promise<Repla
   // compatibility with queued offline blobs).
   // Same reference pin as the live path (lib/referenceRules.ts).
   const moduleKey = moduleKeyForFormat(format);
-  const data =
-    referenceSampleId === input.sessionSampleId && isPinnedModule(moduleKey)
-      ? pinReferenceAffective(input.data, cupsPerSample)
-      : input.data;
+  // B1: the pin applies only in "anchor" mode.
+  const data = shouldPinReference({
+    mode: auth.referenceMode,
+    moduleKey,
+    isActiveReference: referenceSampleId === input.sessionSampleId,
+  })
+    ? pinReferenceAffective(input.data, cupsPerSample)
+    : input.data;
   // A thrown invalid_input would make useOfflineSync retry and leave the draft
   // pending forever (S8-10). Out-of-bounds data is reachable only with a
   // tampered or legacy blob and can never become valid: report the

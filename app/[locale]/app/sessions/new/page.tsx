@@ -115,6 +115,13 @@ export default async function NewSessionPage({
         many: t("sampleCountWarning.many"),
         combined: t("sampleCountWarning.combined"),
       },
+      referenceMode: {
+        legend: t("newForm.referenceMode.legend"),
+        anchor: t("newForm.referenceMode.anchor"),
+        free: t("newForm.referenceMode.free"),
+        anchorHelp: t("newForm.referenceMode.anchorHelp"),
+        freeHelp: t("newForm.referenceMode.freeHelp"),
+      },
       samplePrep: {
         summary: t("newForm.samplePrep.summary"),
         hint: t("newForm.samplePrep.hint"),

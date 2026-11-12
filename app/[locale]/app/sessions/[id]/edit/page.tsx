@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getUsableCoffees } from "@/lib/coffees/queries";
 import type { UsableCoffee } from "@/components/coffees/CoffeePicker";
+import { normalizeReferenceMode } from "@/lib/referenceRules";
 import { EditSessionForm, type EditSessionFormTranslations } from "./EditSessionForm";
 
 // Authed page with an extra [id] dynamic segment: force-dynamic, never
@@ -114,6 +115,13 @@ export default async function EditSessionPage({
     referenceTitle: t("edit.referenceTitle"),
     referenceNone: t("edit.referenceNone"),
     referenceHelper: t("edit.referenceHelper"),
+    referenceHelperFree: t("edit.referenceHelperFree"),
+    referenceModeLegend: t("newForm.referenceMode.legend"),
+    referenceModeAnchor: t("newForm.referenceMode.anchor"),
+    referenceModeFree: t("newForm.referenceMode.free"),
+    referenceModeAnchorHelp: t("newForm.referenceMode.anchorHelp"),
+    referenceModeFreeHelp: t("newForm.referenceMode.freeHelp"),
+    referenceModeLocked: t("edit.referenceModeLocked"),
     referenceSaved: t("edit.referenceSaved"),
     closesAt: t("edit.closesAt"),
     closesAtHint: t("edit.closesAtHint"),
@@ -163,6 +171,7 @@ export default async function EditSessionPage({
           isGroup: session.isGroup,
           groupId: session.groupId,
           referenceSampleId: session.referenceSampleId,
+          referenceMode: normalizeReferenceMode(session.referenceMode),
           // Stored as the END of the day the owner picked IN THEIR ZONE, so the
           // read-back uses that zone (null = UTC for legacy rows).
           closesAt: session.closesAt ? dateInZone(session.closesAt, session.closesAtZone) : "",

@@ -258,7 +258,7 @@ export type FinishSampleInput = {
   /** The sample holds a green-bean (physical) or origin (extrinsic) row. Those
    *  cascade on sample delete, so such a sample is never removed. */
   hasOtherData?: boolean;
-  /** The sample is a reference/anchor: pinned, always has a row, so it does not
+  /** The sample is a reference (anchor or free, B1): in anchor mode it is pinned and always has a row; in both modes it is out of the ranking, so it does not
    *  count as something the owner actually scored. */
   isReference?: boolean;
 };
@@ -298,7 +298,8 @@ export function planFinish(samples: FinishSampleInput[]): FinishPlan {
     } else keptPartialIds.push(s.id);
   }
   const scoredCount = alreadySubmitted + submitIds.length;
-  // With a reference, its pinned row alone must not allow closing.
+  // With a reference, its row alone must not allow closing: in both reference
+  // modes (B1) a reference stays out of the ranking, so nothing would be ranked.
   const canFinish = hasReference ? nonReferenceScored > 0 : scoredCount > 0;
   return { submitIds, removeIds, keptPartialIds, scoredCount, canFinish };
 }

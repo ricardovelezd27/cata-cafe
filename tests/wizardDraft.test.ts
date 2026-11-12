@@ -21,7 +21,7 @@ const base = (over: Partial<WizardDraft> = {}): Omit<WizardDraft, "v" | "savedAt
   name: "Cata", objective: "", format: "combined", cupsPerSample: 2, warmupOn: false,
   warmupId: "eyes", coffees: [coffee()], samples: [{ id: "s1", label: "Muestra A", coffeeId: "c1", auto: true }],
   referenceId: null, isGroup: false, closesAt: "", linkedGroupId: "", notifyGroup: true,
-  notifyGroupWhen: "start",
+  notifyGroupWhen: "start", referenceMode: "anchor",
   ...over,
 });
 
@@ -102,6 +102,24 @@ describe("wizardDraft", () => {
     expect(parseDraft(JSON.stringify(legacy), 2000)?.notifyGroupWhen).toBe("start");
     legacy.notifyGroupWhen = "bogus";
     expect(parseDraft(JSON.stringify(legacy), 2000)?.notifyGroupWhen).toBe("start");
+  });
+
+  it("B1: the reference mode round-trips; an old draft or a bogus value reads as 'anchor'", () => {
+    expect(parseDraft(serializeDraft(base({ referenceMode: "free" }), 1000), 2000)?.referenceMode).toBe("free");
+    const legacy = JSON.parse(serializeDraft(base(), 1000));
+    delete legacy.referenceMode;
+    expect(parseDraft(JSON.stringify(legacy), 2000)?.referenceMode).toBe("anchor");
+    legacy.referenceMode = "weird";
+    expect(parseDraft(JSON.stringify(legacy), 2000)?.referenceMode).toBe("anchor");
+  });
+
+  it("A9: per-sample prep data round-trips, makes the form dirty, and bad types are rejected", () => {
+    const sample = { id: "s1", label: "", coffeeId: "c1", auto: true, roastDate: "2026-11-01", preparationNote: "92 C", offProtocol: true, offProtocolNote: "grifo" };
+    const back = parseDraft(serializeDraft(base({ samples: [sample] }), 1000), 2000);
+    expect(back?.samples[0]).toMatchObject({ roastDate: "2026-11-01", preparationNote: "92 C", offProtocol: true, offProtocolNote: "grifo" });
+    expect(isDraftDirty(base({ name: "", samples: [sample] }))).toBe(true);
+    const bad = serializeDraft(base({ samples: [{ ...sample, offProtocol: "yes" as unknown as boolean }] }), 1000);
+    expect(parseDraft(bad, 2000)).toBeNull();
   });
 
   it("clearWizardDrafts removes every draft and nothing else", () => {

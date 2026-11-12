@@ -62,6 +62,8 @@ export type WizardDraft = {
   notifyGroup: boolean;
   /** C8: when a LIVE session's group is emailed. Drafts saved before it existed read as "start". */
   notifyGroupWhen: "create" | "start";
+  /** B1: how the reference is scored. Drafts saved before it existed read as "anchor". */
+  referenceMode: "anchor" | "free";
 };
 
 export function wizardDraftKey(userId: string): string {
@@ -175,6 +177,7 @@ export function parseDraft(raw: string | null, now: number = Date.now()): Wizard
   return {
     ...(d as unknown as WizardDraft),
     notifyGroupWhen: d.notifyGroupWhen === "create" ? "create" : "start",
+    referenceMode: d.referenceMode === "free" ? "free" : "anchor",
     samples: (d.samples as DraftSample[]).map((s) => (s.auto ? { ...s, label: "" } : s)),
   };
 }

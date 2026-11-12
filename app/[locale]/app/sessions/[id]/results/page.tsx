@@ -141,6 +141,8 @@ export default async function ResultsPage({
   const isAdminViewer = isSuperAdmin && !isOwner;
   // Owner-perspective read gate — shared by every owner-only READ block below.
   const ownerRead = isOwner || isAdminViewer;
+  // B1: a "free" reference is scored like any sample (no "79.00 anchor" copy).
+  const referenceFree = session.referenceMode === "free";
   // Narrowed session format — used for every format-shaped gate below.
   // `session.format` (raw string) is still passed inside the `session` prop
   // unchanged, since the client-side type there is a plain string.
@@ -1026,8 +1028,8 @@ export default async function ResultsPage({
           referenceBadge: tResults("referenceBadge"),
           deltaVsReference: tResults("deltaVsReference"),
           deltaVsReferenceAria: tResults("deltaVsReferenceAria"),
-          anchorTitle: tResults("dashboard.anchorTitle"),
-          anchorHint: tResults("dashboard.anchorHint"),
+          anchorTitle: tResults(referenceFree ? "dashboard.anchorTitleFree" : "dashboard.anchorTitle"),
+          anchorHint: tResults(referenceFree ? "dashboard.anchorHintFree" : "dashboard.anchorHint"),
           // Templates / ICU args: fetched raw, filled client-side.
           includedOf: tResults.raw("dashboard.includedOf") as string,
           rankIndicative: tResults("dashboard.rankIndicative"),
@@ -1153,7 +1155,7 @@ export default async function ResultsPage({
           },
           referencia: {
             title: tResults("help.referencia.title"),
-            body: tResults("help.referencia.body"),
+            body: tResults(referenceFree ? "help.referencia.bodyFree" : "help.referencia.body"),
           },
         },
       }}

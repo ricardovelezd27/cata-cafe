@@ -40,6 +40,8 @@ type Copy = {
   evaluated: (x: number, n: number) => string;
   sample: string;
   referenceNote: string;
+  /** B1: the same tag for a "free" reference, which is scored like any sample. */
+  referenceNoteFree: string;
   mine: string;
   community: string;
   sd: string;
@@ -77,6 +79,7 @@ const TEXT: Record<Locale, Copy> = {
     evaluated: (x, n) => `Evaluaste ${x} de ${n} muestras`,
     sample: "Muestra",
     referenceNote: "Referencia · ancla 79.00",
+    referenceNoteFree: "Referencia",
     mine: "Tú",
     community: "Grupo",
     sd: "desv.",
@@ -134,6 +137,7 @@ const TEXT: Record<Locale, Copy> = {
     evaluated: (x, n) => `You evaluated ${x} of ${n} samples`,
     sample: "Sample",
     referenceNote: "Reference · 79.00 anchor",
+    referenceNoteFree: "Reference",
     mine: "You",
     community: "Group",
     sd: "SD",
@@ -388,10 +392,13 @@ function SampleCard({
   sample,
   t,
   hasCommunity,
+  referenceFree,
 }: {
   sample: ParticipantSummarySample;
   t: Copy;
   hasCommunity: boolean;
+  /** B1: a "free" reference is scored like any sample, so it is not called an anchor. */
+  referenceFree: boolean;
 }) {
   const radar = sample.radar;
   const series = radar
@@ -427,7 +434,7 @@ function SampleCard({
             <Text style={s.coffee}>{sanitizePdfText(sample.coffee)}</Text>
           ) : null}
           {sample.isReference ? (
-            <Text style={s.refNote}>{t.referenceNote}</Text>
+            <Text style={s.refNote}>{referenceFree ? t.referenceNoteFree : t.referenceNote}</Text>
           ) : null}
         </View>
         {sample.myScore === null && sample.communityScore === null ? (
@@ -663,6 +670,7 @@ export function ParticipantSummaryDocument({
             sample={sample}
             t={t}
             hasCommunity={hasCommunity}
+            referenceFree={header.referenceMode === "free"}
           />
         ))}
 

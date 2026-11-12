@@ -102,7 +102,7 @@ import {
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { useForegroundResume } from "@/hooks/useForegroundResume";
 import {
-  isPinnedModule,
+  shouldPinReference,
   nextReferenceOrder,
   orderByReferenceIds,
   pinReferenceAffective,
@@ -178,6 +178,10 @@ type Session = {
   // The owner's "Referencia" sample (display-only). Optional so a pre-upgrade
   // offline blob rehydrated by cup/error.tsx still type-checks.
   referenceSampleId?: string | null;
+  /** B1: "anchor" (pinned at 79.00) | "free". Fixed once the format is locked,
+   *  so it cannot go stale during a cupping. Optional for old offline blobs
+   *  (read as anchor). */
+  referenceMode?: string;
   /** ISO closing date + the owner's IANA zone (deadline banner). */
   closesAt?: string | null;
   closesAtZone?: string | null;
@@ -1639,18 +1643,25 @@ export function CupClient({
   // drops only the active one. Adding on top of an existing reference asks
   // for confirmation first (the old one unlocks, the new one is pinned).
   const REMOVE_ACTIVE = "__remove_active__";
+  // B1: the pin (and so every re-pin confirmation) exists only in anchor mode.
+  const referencePins = shouldPinReference({
+    mode: session.referenceMode,
+    moduleKey: session.format === "descriptive" ? "descriptive" : session.format === "affective" ? "affective" : "combined",
+    isActiveReference: true,
+  });
   const commitReference = (next: string | null, confirmRepin = false) => {
     if (next && refOrderRef.current.includes(next)) return; // already one: server no-op
     if (!next && refOrderRef.current.length === 0) return;
     // A new reference that already has evaluations asks first (the server
-    // refuses without confirmRepin anyway).
-    if (next && !confirmRepin && (evalCountBySample[next] ?? 0) > 0) {
+    // refuses without confirmRepin anyway). Anchor mode only.
+    if (referencePins && next && !confirmRepin && (evalCountBySample[next] ?? 0) > 0) {
       setRepinTarget(next);
       return;
     }
     // S8-27: dropping the active reference re-pins the earlier one; when
     // cuppers already rated it, ask first (the server refuses otherwise).
-    if (!next && !confirmRepin) {
+    // Anchor mode only.
+    if (referencePins && !next && !confirmRepin) {
       const order = refOrderRef.current;
       const prevId = order.length > 1 ? order[order.length - 2] : null;
       const n = prevId ? (evalCountBySample[prevId] ?? 0) : 0;
@@ -1684,8 +1695,16 @@ export function CupClient({
   // every save, so a stale client cannot move the anchor.
   const affectiveModuleKey: "affective" | "combined" | null =
     session.format === "affective" ? "affective" : session.format === "descriptive" ? null : "combined";
+  // B1: pinned only for the active reference of an ANCHOR session; a "free"
+  // reference is a normal, editable sample for the forms, the tabs and the guards.
+  const isPinnedReference = (sampleId: string): boolean =>
+    shouldPinReference({
+      mode: session.referenceMode,
+      moduleKey: affectiveModuleKey ?? "descriptive",
+      isActiveReference: sampleId === referenceSampleId,
+    });
   const pinForReference = (s: Sample): Sample =>
-    s.id === referenceSampleId && affectiveModuleKey
+    isPinnedReference(s.id) && affectiveModuleKey
       ? {
           ...s,
           affective: pinReferenceAffective(s.affective, session.cupsPerSample),
@@ -1694,7 +1713,7 @@ export function CupClient({
       : s;
   const viewSamples = samples.map(pinForReference);
   const current = viewSamples[sampleIdx];
-  const isCurrentLocked = current.id === referenceSampleId && affectiveModuleKey !== null;
+  const isCurrentLocked = isPinnedReference(current.id);
   const referenceSample = referenceSampleId
     ? viewSamples.find((s) => s.id === referenceSampleId) ?? null
     : null;
@@ -1709,9 +1728,10 @@ export function CupClient({
     if (sessionStatus === "closed") return;
     const sample = samplesRef.current[sampleIdx];
     if (!sample || sample.id !== referenceSampleId) return;
+    // B1: a "free" reference is scored like any sample: no pinned first-visit save.
+    if (!isPinnedReference(sample.id)) return;
     if (ensuredReferenceRef.current.has(sample.id)) return;
     ensuredReferenceRef.current.add(sample.id);
-    if (!isPinnedModule(affectiveModuleKey)) return;
     scheduleAutoSave(
       sample.id,
       affectiveModuleKey,

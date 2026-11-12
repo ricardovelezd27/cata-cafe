@@ -38,12 +38,16 @@ import { REFERENCE_REPIN_REQUIRED, removeSamplesInTx } from "@/lib/sampleRemoval
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { computeEvaluationDerived, moduleKeyForFormat } from "@/lib/evaluation";
 import {
-  isPinnedModule,
+  DEFAULT_REFERENCE_MODE,
+  normalizeReferenceMode,
+  REFERENCE_MODES,
+  shouldPinReference,
   pinReferenceAffective,
   planAddReference,
   countRepinOverwrites,
   planReferenceRepin,
   planRemoveActive,
+  type ReferenceMode,
 } from "@/lib/referenceRules";
 import * as v from "@/lib/validate";
 import { expressSampleLabel, validateExpressInput } from "@/lib/expressSession";
@@ -114,6 +118,14 @@ type SampleInput = SamplePrepInput & {
  *  values were already validated by validateSessionInput. */
 function samplePrepData(s: SampleInput): SamplePrepUpdate {
   return parseSamplePrepInput(pickSamplePrepInput(s as Record<string, unknown>));
+}
+
+/** B1: the wizard's / edit form's reference mode. Absent = "anchor" (today's
+ *  behaviour); anything else but a listed value throws invalid_input. */
+function parseReferenceModeInput(raw: unknown): ReferenceMode {
+  return raw === undefined || raw === null
+    ? DEFAULT_REFERENCE_MODE
+    : v.oneOf(raw, "referenceMode", REFERENCE_MODES);
 }
 
 /** The final position of the sample the owner marked as reference (an index
@@ -386,6 +398,8 @@ export async function createSession(input: {
   samples: SampleInput[];
   /** Index into `samples` of the reference sample; null/absent = none. */
   referenceIdx?: number | null;
+  /** B1: "anchor" (default) or "free"; see lib/referenceRules.ts. */
+  referenceMode?: string;
   /** Optional pre-cupping warm-up (WARMUP_IDS); null/absent = none. */
   warmupExerciseId?: string | null;
   locale?: string;
@@ -407,6 +421,7 @@ async function createSessionBody(input: {
   coffees?: CoffeeInput[];
   samples: SampleInput[];
   referenceIdx?: number | null;
+  referenceMode?: string;
   warmupExerciseId?: string | null;
   locale?: string;
 }): Promise<{ ok: false; error: string } | void> {
@@ -422,6 +437,7 @@ async function createSessionBody(input: {
   const meta = metaResult.meta;
   const refResult = parseReferenceIdx(input.referenceIdx, input.samples.length);
   if (!refResult.ok) return refResult;
+  const referenceMode = parseReferenceModeInput(input.referenceMode);
 
   if (!(await linkedCoffeesUsable(input.coffees ?? [], user.id))) {
     return { ok: false, error: "coffee_not_found" };
@@ -448,6 +464,7 @@ async function createSessionBody(input: {
         status: "active",
         createdBy: user.id,
         warmupExerciseId: meta.warmupExerciseId,
+        referenceMode,
         samples: {
           create: blind.map((b) => ({
             label: b.label,
@@ -551,6 +568,8 @@ export async function createGroupSession(input: {
   /** C8: "create" | "start" - when a LIVE session emails its group (default start). */
   notifyGroupWhen?: string;
   referenceIdx?: number | null;
+  /** B1: "anchor" (default) or "free"; see lib/referenceRules.ts. */
+  referenceMode?: string;
   warmupExerciseId?: string | null;
   /** Locale for generated sample labels (Muestra A / Sample A). */
   locale?: string;
@@ -580,6 +599,7 @@ async function createGroupSessionBody(input: {
   notifyGroupWhen?: string;
   /** Index into `samples` of the reference sample; null/absent = none. */
   referenceIdx?: number | null;
+  referenceMode?: string;
   /** Optional pre-cupping warm-up (WARMUP_IDS); null/absent = none. */
   warmupExerciseId?: string | null;
   locale?: string;
@@ -596,6 +616,7 @@ async function createGroupSessionBody(input: {
   const meta = metaResult.meta;
   const refResult = parseReferenceIdx(input.referenceIdx, input.samples.length);
   if (!refResult.ok) return refResult;
+  const referenceMode = parseReferenceModeInput(input.referenceMode);
 
   if (input.groupId) {
     const group = await prisma.tastingGroup.findUnique({
@@ -649,6 +670,7 @@ async function createGroupSessionBody(input: {
           notifyWhen,
         }),
         warmupExerciseId: meta.warmupExerciseId,
+        referenceMode,
         samples: {
           create: blind.map((b) => ({
             label: b.label,
@@ -771,10 +793,14 @@ export async function upsertEvaluation(input: {
   // are pinned to 5 and its cups cleared on EVERY save, server-side, so no
   // client can move it (lib/referenceRules.ts). Descriptive data is untouched.
   const moduleKey = moduleKeyForFormat(auth.format);
-  const data =
-    auth.referenceSampleId === input.sessionSampleId && isPinnedModule(moduleKey)
-      ? pinReferenceAffective(input.data, auth.cupsPerSample)
-      : input.data;
+  // B1: only in "anchor" mode (a "free" reference is scored like any sample).
+  const data = shouldPinReference({
+    mode: auth.referenceMode,
+    moduleKey,
+    isActiveReference: auth.referenceSampleId === input.sessionSampleId,
+  })
+    ? pinReferenceAffective(input.data, auth.cupsPerSample)
+    : input.data;
   const fields = computeEvaluationDerived(moduleKey, data, auth.cupsPerSample);
 
   const doUpsert = () =>
@@ -935,6 +961,7 @@ export async function duplicateSession(
       isGroup: true,
       groupId: true,
       referenceSampleId: true,
+      referenceMode: true,
       warmupExerciseId: true,
       samples: {
         orderBy: { position: "asc" },
@@ -996,6 +1023,8 @@ export async function duplicateSession(
         createdBy: user.id,
         groupId,
         warmupExerciseId: source.warmupExerciseId,
+        // B1: the copy keeps the template's reference mode.
+        referenceMode: source.referenceMode,
         samples: {
           create: plan.samples.map((s) => ({
             label: s.label,
@@ -1080,6 +1109,18 @@ export async function setReferenceSample(
           where: { sessionId },
           select: { id: true, referenceRank: true },
         });
+        // B1: the mode is read INSIDE the transaction. In "free" mode nothing is
+        // pinned, so there is nothing to re-pin and nothing to confirm: the
+        // pointer and the ranks move and cuppers' ratings are never touched.
+        const sess = await tx.cuppingSession.findUniqueOrThrow({
+          where: { id: sessionId },
+          select: { format: true, cupsPerSample: true, referenceMode: true },
+        });
+        const pinsWhenActive = shouldPinReference({
+          mode: sess.referenceMode,
+          moduleKey: moduleKeyForFormat(sess.format),
+          isActiveReference: true,
+        });
         let repinTarget: string | null = null;
         if (targetId === null) {
           const plan = planRemoveActive(rows);
@@ -1094,11 +1135,8 @@ export async function setReferenceSample(
           // its stored rows to 79.00 like the forward path does, but (S8-27)
           // only after the owner confirmed when that would overwrite ratings
           // cuppers already saved (rows already at the anchor need nothing).
-          if (plan.repinId) {
-            const sess = await tx.cuppingSession.findUniqueOrThrow({
-              where: { id: sessionId },
-              select: { format: true, cupsPerSample: true },
-            });
+          // Anchor mode only (B1).
+          if (plan.repinId && pinsWhenActive) {
             const evs = await tx.evaluation.findMany({
               where: { sessionSampleId: plan.repinId },
               select: { id: true, isDraft: true, affectiveData: true, combinedData: true },
@@ -1109,31 +1147,34 @@ export async function setReferenceSample(
               sess.cupsPerSample,
             );
             if (overwrites > 0 && !confirmRepin) throw new Error("conflict");
+            repinTarget = plan.repinId;
           }
-          repinTarget = plan.repinId;
         } else {
           const plan = planAddReference(rows, targetId);
           if (plan.kind === "full") throw new Error("invalid_input");
           if (plan.kind === "add") {
             // B2 default (a): replacing cuppers' saved ratings with the 79.00
             // anchor is allowed, but only after the owner confirmed it. The
-            // count is read in this transaction so it cannot go stale.
+            // count is read in this transaction so it cannot go stale. Anchor
+            // mode only: a free reference never rewrites anything (B1).
             // TODO(B2-b): Kim may prefer keeping the originals aside.
-            const existing = await tx.evaluation.count({ where: { sessionSampleId: targetId } });
-            if (
-              repinNeedsConfirm({
-                isAlreadyReference: false,
-                evaluationCount: existing,
-                confirmRepin,
-              })
-            ) {
-              throw new Error("conflict");
+            if (pinsWhenActive) {
+              const existing = await tx.evaluation.count({ where: { sessionSampleId: targetId } });
+              if (
+                repinNeedsConfirm({
+                  isAlreadyReference: false,
+                  evaluationCount: existing,
+                  confirmRepin,
+                })
+              ) {
+                throw new Error("conflict");
+              }
+              repinTarget = targetId;
             }
             await tx.sessionSample.update({
               where: { id: targetId },
               data: { referenceRank: plan.rank },
             });
-            repinTarget = targetId;
           }
           active = plan.activeId;
         }
@@ -1144,7 +1185,7 @@ export async function setReferenceSample(
         });
         if (!repinTarget) return;
         const moduleKey = moduleKeyForFormat(session.format);
-        if (!isPinnedModule(moduleKey)) return;
+        if (!pinsWhenActive) return;
         const evaluations = await tx.evaluation.findMany({
           where: { sessionSampleId: repinTarget },
           select: { id: true, isDraft: true, affectiveData: true, combinedData: true },
@@ -1190,6 +1231,8 @@ export type UpdateSessionInput = {
   // derived from them); the server rejects regardless of what the form shows.
   format?: "descriptive" | "affective" | "combined";
   cupsPerSample?: number;
+  /** B1: "anchor" | "free"; changing it is refused once the format is locked. */
+  referenceMode?: string;
   /** Optional pre-cupping warm-up (WARMUP_IDS); null clears it. */
   warmupExerciseId?: string | null;
   locale?: string;
@@ -1225,6 +1268,7 @@ async function updateSessionBody(
     notifyGroupAtStart?: boolean;
     format?: string;
     cupsPerSample?: number;
+    referenceMode?: ReferenceMode;
     closesAt?: Date | null;
     closesAtZone?: string | null;
     isAsync?: boolean;
@@ -1379,6 +1423,28 @@ async function updateSessionBody(
       }
       if (changed.format !== undefined) data.format = changed.format;
       if (changed.cupsPerSample !== undefined) data.cupsPerSample = changed.cupsPerSample;
+    }
+  }
+
+  // B1: the reference mode freezes with the format (before the start and before
+  // any evaluation), because it decides whether the reference is pinned at
+  // 79.00. The server reads the stored value (session.referenceMode); an
+  // unchanged re-post is a no-op, so a harmless rename never hits the lock.
+  if (input.referenceMode !== undefined) {
+    let mode: ReferenceMode;
+    try {
+      mode = v.oneOf(input.referenceMode, "referenceMode", REFERENCE_MODES);
+    } catch {
+      return { ok: false as const, error: "invalid_input" };
+    }
+    if (mode !== normalizeReferenceMode(session.referenceMode)) {
+      const evalCount = await prisma.evaluation.count({
+        where: { sessionSample: { sessionId } },
+      });
+      if (isFormatLocked(session.startedAt, evalCount)) {
+        return { ok: false as const, error: "format_locked" };
+      }
+      data.referenceMode = mode;
     }
   }
 
