@@ -55,6 +55,11 @@ export default async function ConfirmPage({
             identityYes: t("identityYes"),
             identityNo: t("identityNo"),
             identityError: t("identityError"),
+            identityExpiredTitle: t("identityExpiredTitle"),
+            identityExpiredBody: t("identityExpiredBody"),
+            rejectedTitle: t("rejectedTitle"),
+            rejectedBody: t("rejectedBody"),
+            toLogin: t("toLogin"),
           }}
         />
       </div>

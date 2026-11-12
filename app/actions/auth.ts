@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { createHash } from "node:crypto";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { createEphemeralClient } from "@/lib/supabase/ephemeral";
 import { sendMagicLink, defaultNextFor, type MagicLinkResult } from "@/lib/magicLink";
 import { trustedRequestOrigin } from "@/lib/requestOrigin";
 import { safeNext } from "@/lib/safeNext";
@@ -13,7 +14,8 @@ import { run } from "@/lib/safeAction";
 import { reserveEmailBudget } from "@/lib/emailBudget";
 import { parseClientIp } from "@/lib/requestIp";
 import { loginHref } from "@/lib/authRedirect";
-import { maskEmail } from "@/lib/maskEmail";
+import { clearPendingSignIn, readPendingSignIn, storePendingSignIn } from "@/lib/signInPendingCookie";
+import { logWarn } from "@/lib/log";
 import { checkSignInIntent, clearSignInIntent, rememberSignInIntent } from "@/lib/signInIntentCookie";
 import { isRegisteredUser } from "@/lib/guestScope";
 import * as v from "@/lib/validate";
@@ -119,19 +121,99 @@ export async function confirmEmailToken(
       ip: await requestIp(),
       subject: `token:${createHash("sha256").update(hash).digest("hex")}`,
     });
-    const supabase = await createClient();
-    const { data, error } = await supabase.auth.verifyOtp({ type: type as EmailOtpType, token_hash: hash });
+    // S9-02 A-08 (login CSRF): verify on a client that cannot write this
+    // browser's cookies. The token is consumed and the tokens come back, but no
+    // session exists in the browser until the intent check below says so.
+    const ephemeral = createEphemeralClient();
+    const { data, error } = await ephemeral.auth.verifyOtp({ type: type as EmailOtpType, token_hash: hash });
     if (error) throw new Error(authCodeFor(error));
     const dest = safeNext(next, { fallback: defaultNextFor(localeOf(locale)) });
-    // S9-02 A-08 (login CSRF): the session exists now. Proceed silently only when
-    // THIS browser asked for a sign-in link for THIS address; otherwise the client
-    // shows "Vas a entrar como j***@dominio.com" and the person decides.
-    const email = data.user?.email ?? (await supabase.auth.getUser()).data.user?.email ?? null;
-    if ((await checkSignInIntent(email)) === "match") {
+    const session = data.session;
+    // No session (e.g. the first of two email_change confirmations): nothing to
+    // establish, and the browser's current session stays as it was.
+    if (!session?.access_token || !session.refresh_token) return { next: dest };
+    const email = data.user?.email ?? session.user?.email ?? null;
+    const tokens = { access_token: session.access_token, refresh_token: session.refresh_token };
+
+    if (email && (await checkSignInIntent(email)) === "match") {
+      // This browser asked for a link for this very address: same-browser
+      // sign-in stays zero extra steps.
+      const supabase = await createClient();
+      const { error: setError } = await supabase.auth.setSession(tokens);
+      if (setError) throw new Error("unknown");
       await clearSignInIntent();
       return { next: dest };
     }
-    return { next: dest, confirmIdentity: email ? maskEmail(email) : "***" };
+
+    // Mismatch or no intent cookie: do NOT sign in. Park the tokens for 10
+    // minutes; the person confirms with acceptPendingSignIn or discards them
+    // with rejectPendingSignIn. The FULL address is shown (not masked): a mask
+    // is defeated by an address sharing the first letter and domain.
+    if (!email) throw new Error("invalid_token");
+    const stored = await storePendingSignIn({
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token,
+    });
+    if (!stored) throw new Error("unknown");
+    return { next: dest, confirmIdentity: email };
+  });
+}
+
+/**
+ * "Si, continuar" on the identity card (S9-02, A-08): establishes the session
+ * parked by confirmEmailToken. Callable by an unauthenticated browser by
+ * design (it IS the sign-in); it only works with the httpOnly pending cookie
+ * minted for this browser by confirmEmailToken in the last 10 minutes.
+ */
+export async function acceptPendingSignIn(
+  locale?: string,
+  next?: string,
+): Promise<ActionResult<{ next: string }>> {
+  return run("acceptPendingSignIn", async () => {
+    const pending = await readPendingSignIn();
+    if (!pending) throw new Error("token_expired");
+    const supabase = await createClient();
+    const { error } = await supabase.auth.setSession({
+      access_token: pending.accessToken,
+      refresh_token: pending.refreshToken,
+    });
+    // The parked session is single-use either way.
+    await clearPendingSignIn();
+    if (error) throw new Error("token_expired");
+    await clearSignInIntent();
+    return { next: safeNext(next, { fallback: defaultNextFor(localeOf(locale)) }) };
+  });
+}
+
+/**
+ * "No soy yo" on the identity card (S9-02, A-08): discards the parked session.
+ * Best-effort revokes THAT session only (ephemeral client, local scope) and
+ * always deletes the pending cookie. It never touches the browser's own
+ * session: someone already signed in as themselves stays signed in.
+ */
+export async function rejectPendingSignIn(): Promise<ActionResult> {
+  return run("rejectPendingSignIn", async () => {
+    const pending = await readPendingSignIn();
+    try {
+      if (pending) {
+        const ephemeral = createEphemeralClient();
+        const { error: setError } = await ephemeral.auth.setSession({
+          access_token: pending.accessToken,
+          refresh_token: pending.refreshToken,
+        });
+        if (setError) throw setError;
+        const { error: outError } = await ephemeral.auth.signOut({ scope: "local" });
+        if (outError) throw outError;
+      }
+    } catch (err) {
+      logWarn({
+        where: "action.rejectPendingSignIn",
+        code: "revoke_failed",
+        message: (err as { code?: string } | null)?.code ?? "unknown",
+      });
+    } finally {
+      await clearPendingSignIn();
+    }
   });
 }
 

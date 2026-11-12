@@ -74,3 +74,20 @@ describe("sign-in intent (A-08)", () => {
     expect(parseIntentValue(c)).toEqual([intentMac(S, "a@x.co")]);
   });
 });
+
+describe("decision feeds the A-08 redesign", () => {
+  it("only an exact match lets the browser session be established", () => {
+    const c = mintIntentValue(S, ["ana@example.com"]);
+    // "match" -> setSession; anything else -> pending cookie + full-address card.
+    expect(decideSignInIntent(S, c, "ana@example.com")).toBe("match");
+    // The old masked card was defeated by same first letter + domain; the
+    // decision itself never depended on the mask.
+    expect(decideSignInIntent(S, c, "a.attacker@example.com")).toBe("confirm");
+    expect(decideSignInIntent(S, c, null)).toBe("confirm");
+  });
+
+  it("a different secret never matches", () => {
+    const c = mintIntentValue(S, ["ana@example.com"]);
+    expect(decideSignInIntent("other-secret", c, "ana@example.com")).toBe("confirm");
+  });
+});
