@@ -109,6 +109,16 @@ Also fix the doc error found in S10 preparation: `CLAUDE.md` "Community Score" s
 
 ## WP1 — The decentralized score (L; migration + SQL phase)
 
+**Framing, from Ricardo:** the cupping score that existed before S8 was not wrong in
+principle; it had bugs. This package goes back to where things stood before S8-04 "corrected"
+the score (flagged cups cost points at any cup count, and everyone's cups share the
+deduction), fixes three bugs (the cupper saw no deduction under five cups; the stored group
+score amplified the deduction under five pooled cups; a defective cup was counted twice in
+the group), and adds ONE new thing: the coffee's lifetime score for the same coffee cupped by
+different people at different times. Do not present it, in code comments, copy or PR text,
+as a new scoring system. A literal `git revert` of S8-04 is NOT the task: it would bring the
+three bugs back.
+
 Spec: `docs/product/cata-descentralizada-puntaje.md`. Read all of it. Summary: one formula,
 `(4 × defective + 2 × non-uniform) × 5 ÷ max(5, cups)`, in three scopes. **My score:** my
 cups, never more than five, so always the flat CVA deduction. **The session's score:** the

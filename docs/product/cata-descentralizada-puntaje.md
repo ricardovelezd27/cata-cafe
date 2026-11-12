@@ -27,6 +27,21 @@ Dos principios:
 
 No es CVA estricto, pero se queda cerca. El número deja de llamarse "puntaje CVA" (§6).
 
+**Cómo leer esta decisión (Ricardo, 2026-11-12):** el puntaje de cata que había antes de S8
+no estaba mal planteado; tenía fallos. Esto es volver a donde estábamos antes de "corregir" el
+puntaje en S8-04, arreglando tres fallos, y añadir una sola cosa nueva.
+
+- *Se vuelve a:* los defectos y la no uniformidad descuentan con cualquier número de tazas, y
+  las tazas de todos reparten el descuento.
+- *Fallo 1:* quien cataba con menos de cinco tazas no veía ningún descuento en su propio
+  puntaje (solo lo aplicaba el puntaje guardado del grupo).
+- *Fallo 2:* con menos de cinco tazas en el grupo, el puntaje guardado agrandaba el descuento
+  (1 taza defectuosa de 2 costaba 20 puntos).
+- *Fallo 3:* una taza defectuosa se contaba dos veces en el grupo (8 puntos por 1 de 5, frente
+  a los 6 del CVA y del puntaje individual).
+- *Lo nuevo:* el puntaje acumulado del café, para catas del mismo café hechas por personas
+  distintas en momentos distintos (§3).
+
 ## 2. La regla
 
 Base, igual que el CVA: `B = 0,65625 × (suma de las 8 secciones afectivas) + 52,75`.
