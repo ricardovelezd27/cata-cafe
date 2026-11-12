@@ -80,21 +80,86 @@ export function scoreBand(score: number): 'green' | 'amber' | 'red' {
    Official SCA CVA formula:
      S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
    hᵢ = the FINAL value (1-9) for each of the 8 affective attributes.
-   u = non-uniform cups, d = defective cups (penalties applied only if ≥5 cups).
+   u = non-uniform cups, d = defective cups (deducted at any cup count, see cupDeduction).
    Verification: Σ=8 → 58.00; Σ=40 → 79.00; Σ=72 → 100.00.
    ============================================================ */
 
 export type EvalData = Record<string, unknown>;
 
-// S8-04 (F-grupal-1): uniformity / defect deductions exist ONLY from this many
-// cups per sample, in every code path (individual, group aggregate, community
-// display) AND in the SQL trigger (PHASE 23). One definition, one gate.
-// TODO(A1): Kim's answer to A1 is pending. This is option (a) "never deduct
-// below 5 cups"; option (c) proportional deductions is NOT built.
-export const MIN_CUPS_FOR_PENALTIES = 5;
+/* ------------------------------------------------------------
+   The ONE deduction rule (S10 WP1a; spec docs/product/cata-descentralizada-puntaje.md).
 
-export function penaltiesApply(cupsPerSample: number): boolean {
-  return Number.isFinite(cupsPerSample) && cupsPerSample >= MIN_CUPS_FOR_PENALTIES;
+   Flagged cups cost points at ANY cup count, as in the CVA form: 2 per
+   non-uniform cup, 4 per defective cup. A defective cup is also flagged
+   non-uniform by the form, so it sits in both arrays and costs 6 (4 when the
+   evaluation has a single cup, where uniformity does not exist). Everyone's
+   cups share the deduction: up to five cups (one cupper's whole sample, or a
+   small group) it is the flat CVA amount; beyond five pooled cups it is
+   diluted by 5 / cups.
+
+       factor            = 5 / max(5, cups)
+       uniformityPenalty = 2 * nonUniform * factor
+       defectPenalty     = 4 * defective  * factor
+
+   Individual scope: cups = that evaluation's cups. Session scope: cups = the
+   SUM over the included evaluations. The SQL trigger (PHASE 26) does the same
+   arithmetic in the same operation order; tests/scoringConsistency.test.ts
+   keeps the two equal.
+   TODO(kim-validar:A1): the answers behind this rule are simulated; Kim must
+   validate them. Nothing here is a new scoring system: it is the pre-S8 score
+   with its three bugs fixed.
+   ------------------------------------------------------------ */
+
+/** Flag counts of ONE evaluation, clamped to its cups. Non-uniformity exists
+ *  only with 2+ cups (with one cup it is neither counted nor deducted). */
+export function evaluationCupCounts(
+  nonUniform: readonly boolean[] | undefined | null,
+  defective: readonly boolean[] | undefined | null,
+  cups: number,
+): { u: number; d: number } {
+  if (!Number.isFinite(cups) || cups <= 0) return { u: 0, d: 0 };
+  const n = Math.floor(cups);
+  const count = (flags: readonly boolean[] | undefined | null) =>
+    Array.isArray(flags) ? flags.filter((v) => v === true).length : 0;
+  const d = Math.min(count(defective), n);
+  const u = n >= 2 ? Math.min(count(nonUniform), n) : 0;
+  return { u, d };
+}
+
+export interface CupDeduction {
+  cups: number;
+  nonUniform: number;
+  defective: number;
+  factor: number;
+  uniformityPenalty: number;
+  defectPenalty: number;
+  total: number;
+}
+
+/** The deduction for `cups` cups holding `nonUniform` / `defective` flagged
+ *  ones. Callers pass counts from `evaluationCupCounts` (this function does not
+ *  apply the "2 cups" rule). Negatives and non-finite values count as 0. */
+export function cupDeduction(input: {
+  cups: number;
+  nonUniform: number;
+  defective: number;
+}): CupDeduction {
+  const clean = (v: number) => (Number.isFinite(v) && v > 0 ? v : 0);
+  const cups = clean(input.cups);
+  const nonUniform = clean(input.nonUniform);
+  const defective = clean(input.defective);
+  const factor = 5 / Math.max(5, cups);
+  const uniformityPenalty = 2 * nonUniform * factor;
+  const defectPenalty = 4 * defective * factor;
+  return {
+    cups,
+    nonUniform,
+    defective,
+    factor,
+    uniformityPenalty,
+    defectPenalty,
+    total: uniformityPenalty + defectPenalty,
+  };
 }
 
 export function calcAffectiveSum(data: EvalData): {
@@ -149,6 +214,9 @@ export interface GroupEvalInput {
   data: EvalData;
   nonUniformCups?: boolean[];
   defectiveCups?: boolean[];
+  /** Cups this evaluation covers (Evaluation.cups). Falls back to the
+   *  `cupsPerSample` argument of computeGroupAggregate. */
+  cups?: number;
 }
 
 export interface GroupAggregate {
@@ -165,6 +233,10 @@ export interface GroupAggregate {
   totalNonUniform: number;
   totalDefective: number;
   totalCups: number;
+  // Session-scope deduction (pooled cups of the included evaluations).
+  uniformityPenalty: number;
+  defectPenalty: number;
+  deductionFactor: number;
   attrAverages: Record<string, number>;
 }
 
@@ -191,6 +263,9 @@ export function computeGroupAggregate(
       totalNonUniform: 0,
       totalDefective: 0,
       totalCups: 0,
+      uniformityPenalty: 0,
+      defectPenalty: 0,
+      deductionFactor: 1,
       attrAverages: {},
     };
   }
@@ -202,8 +277,9 @@ export function computeGroupAggregate(
   // total. Same population as avgRawScore/communityScore — `complete` already
   // excludes master-excluded cuppers (filtered by the caller) and incomplete
   // evaluations (filtered above).
+  const cupsOf = (e: GroupEvalInput) => e.cups ?? cupsPerSample;
   const individualScores = complete
-    .map((e) => calcIndividualScore(e.data, cupsPerSample))
+    .map((e) => calcIndividualScore(e.data, cupsOf(e)))
     .filter((v): v is number => typeof v === "number");
   let scoreSd: number | null = null;
   if (individualScores.length >= 2) {
@@ -215,22 +291,25 @@ export function computeGroupAggregate(
     scoreSd = Math.round(Math.sqrt(iVariance) * 100) / 100;
   }
 
+  // Pooled over the included evaluations; flags are always counted (no gate),
+  // each evaluation clamped to its own cups (evaluationCupCounts).
   let totalNonUniform = 0;
   let totalDefective = 0;
-  if (penaltiesApply(cupsPerSample)) {
-    for (const e of complete) {
-      totalNonUniform += (e.nonUniformCups ?? []).filter(Boolean).length;
-      totalDefective += (e.defectiveCups ?? []).filter(Boolean).length;
-    }
+  let totalCups = 0;
+  for (const e of complete) {
+    const cups = cupsOf(e);
+    const { u, d } = evaluationCupCounts(e.nonUniformCups, e.defectiveCups, cups);
+    totalNonUniform += u;
+    totalDefective += d;
+    totalCups += Number.isFinite(cups) && cups > 0 ? cups : 0;
   }
-  const totalCups = cupsPerSample * included;
 
+  const deduction = cupDeduction({ cups: totalCups, nonUniform: totalNonUniform, defective: totalDefective });
   const communityScore = calcCommunityScore({
     avgRawScore,
     totalNonUniform,
     totalDefective,
     totalCups,
-    cupsPerSample,
   });
 
   const attrAverages: Record<string, number> = {};
@@ -251,6 +330,9 @@ export function computeGroupAggregate(
     totalNonUniform,
     totalDefective,
     totalCups,
+    uniformityPenalty: deduction.uniformityPenalty,
+    defectPenalty: deduction.defectPenalty,
+    deductionFactor: deduction.factor,
     attrAverages,
   };
 }
@@ -261,17 +343,18 @@ export function computeGroupAggregate(
 // intermediates, so the explainer can never drift from the displayed number.
 //
 // NOTE: distinct from `calculateCVABreakdown` above (the design-system API),
-// which always applies cup penalties. This one honors the protocol gate —
-// penalties apply ONLY when cupsPerSample >= 5 — exactly like the live score.
+// which does not clamp the counts to the evaluation's cups. This one uses the
+// shared rule (evaluationCupCounts + cupDeduction), exactly like the stored score.
 export interface IndividualBreakdown {
   affectiveSum: number; // Σhᵢ
   affectiveTerm: number; // 0.65625 × Σhᵢ
   base: number; // affectiveTerm + 52.75
   u: number; // non-uniform cups counted
   d: number; // defective cups counted
-  uniformityTracked: boolean; // cupsPerSample >= 5
-  uniformityPenalty: number; // 2u (0 when not tracked)
-  defectPenalty: number; // 4d (0 when not tracked)
+  uniformityTracked: boolean; // the evaluation has 2+ cups (with one cup uniformity does not exist)
+  factor: number; // 5 / max(5, cups): always 1 for one cupper (never more than five cups)
+  uniformityPenalty: number; // 2u × factor
+  defectPenalty: number; // 4d × factor
   raw: number; // base − penalties, pre-rounding/clamp
   score: number; // final, clamped [0,100], rounded to 0.25
   cupsPerSample: number;
@@ -285,22 +368,22 @@ export function calcIndividualBreakdown(
   const affectiveTerm = 0.65625 * affectiveSum;
   const base = affectiveTerm + 52.75;
 
-  const uniformityTracked = penaltiesApply(cupsPerSample);
-  let u = 0;
-  let d = 0;
-  if (uniformityTracked) {
-    const nonUniform = (data.tazas_no_uniformes as boolean[] | undefined) ?? [];
-    const defective = (data.tazas_defectuosas as boolean[] | undefined) ?? [];
-    u = nonUniform.filter(Boolean).length;
-    d = defective.filter(Boolean).length;
-  }
-  const uniformityPenalty = 2 * u;
-  const defectPenalty = 4 * d;
+  const uniformityTracked = Number.isFinite(cupsPerSample) && cupsPerSample >= 2;
+  const { u, d } = evaluationCupCounts(
+    data.tazas_no_uniformes as boolean[] | undefined,
+    data.tazas_defectuosas as boolean[] | undefined,
+    cupsPerSample,
+  );
+  const { factor, uniformityPenalty, defectPenalty } = cupDeduction({
+    cups: cupsPerSample,
+    nonUniform: u,
+    defective: d,
+  });
 
   const raw = base - uniformityPenalty - defectPenalty;
   // CVA scores fall on quarter-point steps — round ONCE, as the final step,
-  // to the nearest 0.25 (not 2 decimals). Applied after the cup penalties.
-  const score = Math.max(0, Math.min(100, Math.round(raw * 4) / 4));
+  // to the nearest 0.25 (same tie handling as the trigger), after the deduction.
+  const score = Math.max(0, Math.min(100, roundToQuarter(raw)));
 
   return {
     affectiveSum,
@@ -309,6 +392,7 @@ export function calcIndividualBreakdown(
     u,
     d,
     uniformityTracked,
+    factor,
     uniformityPenalty,
     defectPenalty,
     raw,
@@ -324,33 +408,27 @@ export function calcIndividualScore(
   return calcIndividualBreakdown(data, cupsPerSample).score;
 }
 
-// Community formula: normalized penalties across all participants
-// totalNonUniform = ALL cups marked non-uniform (including defective) — defective implies non-uniform
-// totalDefective  = ALL cups marked defective
-// A defective cup contributes to both → penalty = 10/cup + 30/cup = 40/cup
-// totalCups       = cupsPerSample × participantCount
-// uniformityPenalty = totalNonUniform × (10 / totalCups)
-// defectPenalty     = totalDefective  × (30 / totalCups)
+// Session (group) score: the average of the included cuppers' bases minus the
+// deduction of their POOLED cups (cupDeduction): flat up to five cups, diluted
+// by 5 / cups beyond. totalNonUniform / totalDefective are the per-evaluation
+// clamped sums (evaluationCupCounts); a defective cup is also in the
+// non-uniform total, so it costs 4 + 2.
 // This is display-only — the authoritative value is computed by the DB trigger.
 export function calcCommunityScore(params: {
   avgRawScore: number;
   totalNonUniform: number;
   totalDefective: number;
   totalCups: number;
-  // S8-04: when given, deductions only apply from MIN_CUPS_FOR_PENALTIES cups
-  // (mirrors the trigger's `v_cups_per_sample >= 5`). Omitted = the caller
-  // already passes gated totals.
-  cupsPerSample?: number;
 }): number {
-  const { avgRawScore, totalCups, cupsPerSample } = params;
+  const { avgRawScore, totalCups } = params;
   if (!avgRawScore || totalCups === 0) return 0;
-  const gated = cupsPerSample === undefined || penaltiesApply(cupsPerSample);
-  const totalNonUniform = gated ? params.totalNonUniform : 0;
-  const totalDefective = gated ? params.totalDefective : 0;
-  const up = totalNonUniform * (10 / totalCups);
-  const dp = totalDefective * (30 / totalCups);
+  const { uniformityPenalty, defectPenalty } = cupDeduction({
+    cups: totalCups,
+    nonUniform: params.totalNonUniform,
+    defective: params.totalDefective,
+  });
   // Round the final community score to the nearest 0.25, matching the DB trigger.
-  return Math.max(0, Math.min(100, roundToQuarter(avgRawScore - up - dp)));
+  return Math.max(0, Math.min(100, roundToQuarter(avgRawScore - uniformityPenalty - defectPenalty)));
 }
 
 /**

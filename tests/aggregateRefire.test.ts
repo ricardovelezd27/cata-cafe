@@ -40,9 +40,10 @@ describe("history honesty (F-solo-4, F-express-4)", () => {
     expect(historyCommunityScore({ communityScore: 0, participantCount: 0 })).toBeNull();
     expect(historyCommunityScore({ communityScore: 81.25, participantCount: 2 })).toBe(81.25);
   });
-  it("tags sessions under 5 cups, not 5", () => {
+  it("tags a session of exactly one cup per sample, nothing else", () => {
     expect(isQuickImpression(1)).toBe(true);
-    expect(isQuickImpression(4)).toBe(true);
+    expect(isQuickImpression(2)).toBe(false);
+    expect(isQuickImpression(4)).toBe(false);
     expect(isQuickImpression(5)).toBe(false);
     expect(isQuickImpression(null)).toBe(false);
   });
