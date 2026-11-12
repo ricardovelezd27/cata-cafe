@@ -75,10 +75,14 @@ describe("wiring: who touches the pending cookie and the ephemeral client", () =
   );
 
   it("only the cookie plumbing and its pure module name the cookie", () => {
-    // lib/legal/ only DOCUMENTS the cookie by name in the privacy policy table.
-    const users = files.filter((f) => !f.startsWith("lib/legal/")).filter((f) => {
+    // Only the two privacy texts may name the cookie, and only as text in the cookie
+    // table. Any other file, or an identifier use anywhere (including those two),
+    // still counts.
+    const TEXT_ONLY = new Set(["lib/legal/es/privacy.ts", "lib/legal/en/privacy.ts"]);
+    const users = files.filter((f) => {
       const src = readFileSync(f, "utf8");
-      return src.includes(SIGNIN_PENDING_COOKIE) || src.includes("SIGNIN_PENDING_COOKIE");
+      if (src.includes("SIGNIN_PENDING_COOKIE")) return true;
+      return !TEXT_ONLY.has(f) && src.includes(SIGNIN_PENDING_COOKIE);
     });
     expect(users.sort()).toEqual(["lib/signInPending.ts", "lib/signInPendingCookie.ts"]);
   });

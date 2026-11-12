@@ -122,13 +122,17 @@ export async function GET(request: Request) {
     logError({ where: "cron.purgeEmailLedger", message: errorMessage(err) });
   }
 
-  // Waitlist retention (S10 WP9a): rows older than WAITLIST_RETENTION_MONTHS,
-  // by age alone. Count only; never logs an address. Never fails the run.
+  // Waitlist retention (S10 WP9a): overdue rows whose address has NO account
+  // (lib/waitlistPurge.ts). Count only; never logs an address. Never fails the run.
   let waitlistPurged = 0;
   try {
     waitlistPurged = await purgeWaitlist();
   } catch (err) {
-    logError({ where: "cron.purgeWaitlist", message: errorMessage(err) });
+    // Error code only: a Prisma code, the typed listing failure, or "unknown".
+    const code =
+      (err as { code?: unknown } | null)?.code ??
+      (err instanceof Error && err.message === "auth_list_failed" ? "auth_list_failed" : "unknown");
+    logError({ where: "cron.purgeWaitlist", code: String(code) });
   }
 
   return NextResponse.json({

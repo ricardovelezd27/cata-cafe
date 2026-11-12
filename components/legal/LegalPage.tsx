@@ -10,6 +10,9 @@ function Block({ block }: { block: LegalBlock }) {
   if (typeof block === "string") {
     return <p className={`mt-2 ${TEXT}`}>{block}</p>;
   }
+  if ("sub" in block) {
+    return <h3 className="mt-5 text-base font-semibold text-on-surface">{block.sub}</h3>;
+  }
   if ("list" in block) {
     return (
       <ul className={`mt-2 list-disc space-y-1.5 pl-5 ${TEXT}`}>

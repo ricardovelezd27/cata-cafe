@@ -53,7 +53,7 @@ export const TERMS_EN: LegalDoc = {
     {
       heading: "3. Account registration and user obligations",
       body: [
-        "3.1 Registration requirements:",
+        { sub: "3.1 Registration requirements" },
         {
           list: [
             "The user must be over 14 years of age. Persons under 14 require the express consent of their legal guardians.",
@@ -65,7 +65,7 @@ export const TERMS_EN: LegalDoc = {
             "It is possible to take part in a cupping as a guest, without an account, by giving a name. A guest's access is tied to the browser they used and is lost if they delete their browsing data, unless they save their results by creating an account.",
           ],
         },
-        "3.2 User obligations:",
+        { sub: "3.2 User obligations" },
         {
           list: [
             `Keep control of their email and their sign-in links, and immediately notify any unauthorized use to ${SUPPORT_EMAIL}.`,
@@ -76,7 +76,8 @@ export const TERMS_EN: LegalDoc = {
             "If they enter data of other people (for example, the email addresses of a cupping group or the details of a producer), guarantee that they are authorized to do so.",
           ],
         },
-        "3.3 Prohibited uses. The following is expressly prohibited:",
+        { sub: "3.3 Prohibited uses" },
+        "The following is expressly prohibited:",
         {
           list: [
             "Using the Platform for illegal or fraudulent activities or activities that infringe third-party rights.",
@@ -94,8 +95,8 @@ export const TERMS_EN: LegalDoc = {
       // ADDED: the owner / participant rule that the product applies everywhere.
       heading: "4. Cuppings, organizers and participants",
       body: [
-        "Whoever creates a cupping, a coffee or a group is its organizer: they can edit, close and delete it, and invite or exclude participants. Participants take part in the cupping and see their own results and, once the cupping is closed, those of the group.",
-        "The results of a closed cupping are not modified. If a participant deletes their account, their evaluations in cuppings shared with other people are kept without their name, so that other people's results do not change.",
+        "Whoever creates a cupping, a coffee or a group is its organizer: they can edit, close and delete it, and invite or exclude participants. Participants take part in the cupping and see their own results and, once the cupping has ended, those of the group.",
+        "A closed cupping stays as a record: nobody can change the evaluations already submitted. The organizer can make limited corrections after closing (for example, excluding a participant or completing the origin data of a coffee); the results then show the date of the update. If a participant deletes their account, their evaluations in cuppings shared with other people are kept without their name, so that other people's results do not change.",
         // ADAPTED from the source's "no professional certification" clause for its learning module.
         "The scores and reports of the Platform are for training and working purposes. They do not constitute a professional certification nor are they equivalent to an assessment accredited by any official body.",
       ],
@@ -104,9 +105,11 @@ export const TERMS_EN: LegalDoc = {
       heading: "5. Intellectual property",
       body: [
         `5.1 Ownership of content. All content of the Platform — including source code, design, logos, exercises, texts and reference data — is owned by ${E.name} or licensed by third parties, and is protected by the Intellectual Property Act (Royal Legislative Decree 1/1996) and international regulations.`,
+        // ADAPTED: the source limits the licence to "personal, non-commercial purposes".
+        // Dropped here because this product is used professionally (courses, labs, producers).
         `5.2 Licence of use. ${E.name} grants the user a personal, non-exclusive, non-transferable and revocable licence to access and use the Platform on the terms set out in these T&C.`,
-        `5.3 User-generated content. The user retains ownership of the evaluations, cupping notes, coffee records and any other content they enter into the Platform. By entering it, they grant ${E.name} a worldwide, non-exclusive, royalty-free, sublicensable and transferable licence to reproduce, distribute, display and adapt that content in the context of the operation and promotion of the Platform.`,
-        "The user guarantees that the content they enter does not infringe third-party rights and assumes full responsibility for it.",
+        `5.3 User-generated content. The user retains ownership of the evaluations, cupping notes, coffee records and ratings they publish on the Platform. By publishing them, they grant ${E.name} a worldwide, non-exclusive, royalty-free, sublicensable and transferable licence to reproduce, distribute, display and adapt that content in the context of the operation and promotion of the Platform.`,
+        "The user guarantees that the content they publish does not infringe third-party rights and assumes full responsibility for it.",
       ],
     },
     {
@@ -127,8 +130,12 @@ export const TERMS_EN: LegalDoc = {
     {
       heading: "8. Limitation of liability",
       body: [
+        // ADAPTED: the source promises 24 hours of notice before scheduled maintenance; this
+        // product has no channel to announce maintenance, so the promise is not made.
         `8.1 Availability of the service. ${E.name} undertakes to make reasonable efforts to keep the Platform continuously available, but does not guarantee 100% availability. It will not be liable for interruptions due to maintenance, failures of third-party infrastructure providers or force majeure, nor for losses arising from such interruptions.`,
         `8.2 Accuracy of content. The information about coffees and the content of the Platform are provided «as is». ${E.name} does not guarantee that they are exhaustive, error-free or up to date at all times.`,
+        // OWNER DECISION NEEDED: kept from the source. While access is free, "the amount
+        // paid in the 12 months" is zero.
         `8.3 Exclusion of indirect damages. To the maximum extent permitted by applicable law, ${E.name} will not be liable for indirect damages, loss of profit, loss of data or any consequential damage arising from the use of, or inability to use, the Platform. The total maximum liability towards a user will not exceed the amount paid by that user in the 12 months preceding the event giving rise to the damage.`,
         `8.4 Unfair terms (LGDCU Arts. 82–90). The above limitations of liability do not apply to: (a) death or personal injury caused by the negligence of ${E.name}; (b) fraud or wilful misconduct of the provider; (c) non-waivable consumer rights under Spanish law. No clause of these T&C is intended to limit rights that the law grants to the consumer on a non-waivable basis.`,
       ],
@@ -140,6 +147,7 @@ export const TERMS_EN: LegalDoc = {
         {
           list: [
             "The user will be notified by email or through a prominent notice on the Platform at least 30 days before the changes enter into force.",
+            // ADAPTED: the source says "cancel their subscription without penalty"; there are no subscriptions.
             "The user may stop using the Platform and request the deletion of their account before the date of entry into force if they do not accept the changes.",
             "Continued use of the Platform after entry into force implies acceptance of the new terms.",
             "In no case will the essential terms of the contract be modified unilaterally to the detriment of the user without their express consent (LGDCU Art. 85).",
@@ -150,15 +158,15 @@ export const TERMS_EN: LegalDoc = {
     {
       heading: "10. Suspension and termination of the contract",
       body: [
-        "10.1 By the user:",
+        { sub: "10.1 By the user" },
         {
           list: [
             // ADAPTED: the source points to an in-app delete button, which is not enabled yet.
             `The user may request the deletion of their account at any time by writing to ${SUPPORT_EMAIL}.`,
-            "Deleting the account implies the loss of the profile, the history and other associated data, which will be blocked and subsequently deleted in accordance with Art. 32 LOPDGDD. Evaluations made in cuppings shared with other people are kept without the user's name.",
+            "Deleting the account implies the loss of the profile, the history and other associated data, which will be blocked and subsequently deleted in accordance with Art. 32 LOPDGDD. Evaluations made in cuppings shared with other people, and the cuppings the user organized and in which other people evaluated, are kept without the user's name.",
           ],
         },
-        "10.2 By the provider:",
+        { sub: "10.2 By the provider" },
         {
           list: [
             `${E.name} may suspend or cancel an account, with or without notice, in the event of: serious breach of these T&C; fraudulent or abusive conduct; or legal requirement.`,
@@ -170,7 +178,7 @@ export const TERMS_EN: LegalDoc = {
     {
       heading: "11. Data protection",
       body: [
-        `The processing of personal data arising from the use of the Platform is governed by our Privacy Policy, available at ${E.site}/privacidad, which forms an integral part of these T&C.`,
+        `The processing of personal data arising from the use of the Platform is governed by our Privacy Policy, available at ${E.site}/en/privacidad, which forms an integral part of these T&C.`,
         `${E.name} processes data in accordance with the GDPR (Regulation (EU) 2016/679) and the LOPDGDD (Organic Law 3/2018). The data controller is ${E.name}, CIF ${E.cif}, with registered office at ${E.address}.`,
       ],
     },
@@ -187,7 +195,7 @@ export const TERMS_EN: LegalDoc = {
             "Regulation (EU) 2016/679 (GDPR) and Organic Law 3/2018 (LOPDGDD).",
           ],
         },
-        "For any dispute that cannot be resolved amicably, the parties submit to the jurisdiction of the Courts and Tribunals of Madrid. However, if the user is a consumer, they may go to the courts of their place of residence or to alternative dispute resolution mechanisms: the Consumer Arbitration Boards (Juntas Arbitrales de Consumo) of their municipality or autonomous community and the Municipal Consumer Information Offices (OMIC).",
+        "For any dispute that cannot be resolved amicably, the parties submit to the jurisdiction of the Courts and Tribunals of Madrid. However, if the user is a consumer, they may go to the courts of their place of residence or to alternative dispute resolution mechanisms: the Consumer Arbitration Boards (Juntas Arbitrales de Consumo) of their municipality or autonomous community, the Municipal Consumer Information Offices (OMIC) and AECOSAN (Spanish Agency for Consumer Affairs, Food Safety and Nutrition).",
         `${E.name} | CIF: ${E.cif} | ${E.address} | ${SUPPORT_EMAIL} | ${E.site}`,
       ],
     },

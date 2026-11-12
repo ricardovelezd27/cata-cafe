@@ -42,12 +42,13 @@ export const PRIVACY_EN: LegalDoc = {
       heading: "2. Personal data we process",
       body: [
         "We collect only the data necessary to provide the service.",
-        "2.1 Data you provide to us directly:",
+        { sub: "2.1 Data you provide to us directly" },
         {
           list: [
-            "Identification data: the name you choose to display.",
+            // ADAPTED: the default name is the first part of the address until the person changes it.
+            "Identification data: the name under which you are displayed. By default it is the first part of your email; you can change it in your profile.",
             "Contact data: your email address, when you create an account, reserve a founding seat or request a sign-in link.",
-            "Profile data: role, country, preferred language and, if you add them, a short biography and a profile picture.",
+            "Profile data: role, country, preferred language and, if you add it, a short biography.",
             "Generated content: cupping sessions, evaluations, scores, descriptors, notes, coffees you register (including origin data such as farm or producer) and cupping groups.",
             // ADDED: guests exist only in this app.
             "If you take part as a guest in a cupping without creating an account: the name you type and an anonymous identifier tied to your browser.",
@@ -57,24 +58,29 @@ export const PRIVACY_EN: LegalDoc = {
           ],
         },
         // ADAPTED: the source lists a hashed password; this app has no passwords.
-        "We do not use passwords: access is by a link or a code sent to your email, or with your Google account if you choose that option. In that case Google sends us your email address and your name.",
+        "We do not use passwords: access is by a link or a code sent to your email, or with your Google account if you choose that option. In that case Google sends us your email address, your name, your profile picture and your Google account identifier.",
         // ADAPTED: the source describes Stripe payments; this app takes no payments.
         "We do not process payment data: the platform currently does not charge for any service.",
-        "2.2 Data collected automatically:",
+        { sub: "2.2 Data collected automatically" },
         {
           list: [
-            "Technical data: operation and error logs (action name, error code and internal identifiers; never the content of your evaluations or your email).",
-            // ADDED: the email rate limit ledger (HMAC of IP / address).
-            "To limit abuse of sign-in emails we use your IP address and the destination address transiently, and we store only an encrypted fingerprint of both, not the original data.",
-            "Storage on your device: drafts of your evaluations so that you can cup offline, interface preferences and copies of pages already visited (see section 9).",
+            // ADAPTED: the app's own logs are designed to carry ids and codes only.
+            "Technical data of the application: operation and error logs (action name, error code and internal identifiers). We deliberately do not log the content of your evaluations or your email.",
+            "Device and connection data: our hosting and authentication providers record technical data of each request (IP address, browser and device type, requested path and timestamps).",
+            // ADDED: the email rate limit ledger (keyed hash of IP / address).
+            "To limit abuse of sign-in emails we use your IP address and the destination address transiently, and we store only a keyed fingerprint of both, which does not allow the original data to be recovered.",
+            "Storage on your device: drafts of your evaluations so that you can cup offline, a copy of the data of your cuppings, interface preferences and copies of pages already visited (see section 9).",
           ],
         },
-        "2.3 Data NOT collected:",
+        { sub: "2.3 Data NOT collected" },
         {
           list: [
+            // ADDED: the second sentence (free-text fields exist in this app).
             "We do not ask for special categories of data (health, racial origin, beliefs, etc.). Please do not include them in notes or free-text fields.",
+            // ADAPTED: the source says microphone, camera and contacts; location added (blocked by the app's headers).
             "We do not access the microphone, the camera, the location or the contacts of your device.",
             "We do not sell or transfer data to third parties for advertising purposes.",
+            // ADDED: verified in the code (no analytics, pixel or tag manager).
             "We do not use analytics or advertising cookies, or third-party tracking tools.",
           ],
         },
@@ -108,7 +114,8 @@ export const PRIVACY_EN: LegalDoc = {
         "Your data may be disclosed to the following service providers, which act as processors (Art. 28 GDPR):",
         {
           rows: [
-            ["Supabase Inc.", "Database, authentication and real-time synchronization. USA — standard contractual clauses and signed data processing agreement. supabase.com/privacy"],
+            // ADAPTED: the project's region is Central EU (Frankfurt), checked in the Supabase dashboard on 2026-11-13.
+            ["Supabase Inc.", "Database, authentication, sending of sign-in emails and real-time synchronization. The data is hosted in the European Union (Frankfurt). US company — standard contractual clauses and signed data processing agreement. supabase.com/privacy"],
             // ADAPTED: the source lists Stripe and Lovable Cloud; this app uses Vercel and Resend.
             ["Vercel Inc.", "Application hosting and technical logs. USA — with the safeguards of Chapter V of the GDPR. vercel.com/legal/privacy-policy"],
             ["Resend (Plus Five Five, Inc.)", "Sending of service emails (results, invitations, reminders). USA — with the safeguards of Chapter V of the GDPR. resend.com/legal/privacy-policy"],
@@ -117,13 +124,16 @@ export const PRIVACY_EN: LegalDoc = {
         },
         "We do not disclose your data to third parties for their own purposes without your explicit consent. We do not carry out international transfers other than the above, all with adequate safeguards under Chapter V of the GDPR.",
         // ADDED: what other users of a shared cupping can see.
-        "Within the platform, the organizer of a cupping sees the name and the evaluations of those who take part in it, and the members of a cupping group see the names of the other members. Platform administrators may access the data to provide support and produce statistics.",
+        "Within the platform, the organizer of a cupping sees the name and the evaluations of those who take part in it, and the members of a cupping group see the names of the other members. People who have cupped with you in a group cupping can see your name, your role and the name of the last cupping you shared when they form a group. Coffees that their creator makes public or shares are visible to other people. Platform administrators may access the data to provide support and produce statistics.",
       ],
     },
     {
       heading: "5. Minors",
       body: [
         "In accordance with Article 7 of the LOPDGDD, the minimum age to consent to the processing of data in Spain is 14. Persons under 14 require the consent of the holder of parental authority or guardianship. Note: the PLOPMED bill (approved in March 2025, pending parliamentary approval) will raise this limit to 16 for digital services; this policy will be updated when it enters into force.",
+        // OWNER DECISION NEEDED: kept from the source. There is no age check in the
+        // product, and "delete the account immediately" needs account deletion
+        // enabled (ACCOUNT_DELETION_ENABLED is off until the runbook §24 rehearsal).
         `${E.product} is not aimed at persons under 14. If you are a parent or guardian and suspect that your child under 14 has created an account, please let us know at ${SUPPORT_EMAIL}. We will delete the account and the associated data immediately.`,
       ],
     },
@@ -143,7 +153,7 @@ export const PRIVACY_EN: LegalDoc = {
             "Withdrawal of consent at any time, without affecting the lawfulness of prior processing (Art. 7(3) GDPR).",
           ],
         },
-        "How to exercise your rights:",
+        { sub: "How to exercise your rights" },
         {
           list: [
             `Send an email to ${SUPPORT_EMAIL} with the subject «Exercise of GDPR rights».`,
@@ -163,9 +173,11 @@ export const PRIVACY_EN: LegalDoc = {
             "Encryption in transit using TLS in all communications.",
             // ADAPTED: the source describes password hashing; this app has no passwords.
             "Passwordless access: single-use links and codes sent to your email.",
-            "Permission checks on the server for every operation and row-level security in the database: each person can only access their own data and the cuppings they take part in.",
+            "Permission checks on the server for every operation and row-level security in the database: each person accesses their own data, the cuppings they take part in and what other people have shared with them or made public.",
             "Role-based access control (cupping organizer, participant, administrator).",
             "Rate limiting to prevent abuse of sign-in emails.",
+            // ADAPTED: the source also commits to regular key rotation and periodic
+            // security audits; neither is a process this product can show today.
             "Service keys are used only on the server, with the minimum privileges necessary.",
           ],
         },
@@ -180,7 +192,7 @@ export const PRIVACY_EN: LegalDoc = {
         {
           list: [
             `${E.name} acts as «deployer» for the purposes of the EU AI Act; Google LLC acts as «provider» of the Gemini model.`,
-            "To write the summaries in the analytics area, only aggregated figures and labels are sent to the model (averages, counts, names of origins or processes). Individual evaluations, notes and email addresses are not sent.",
+            "To write the summaries in the analytics area, aggregated figures and labels are sent to the model (averages, counts, names of origins or processes). When the person querying breaks down their own cuppings by cupper, the labels include the names of those cuppers. Individual evaluations, notes and email addresses are not sent.",
             "The analytics assistant, reserved for platform administrators, additionally sends the question typed by the administrator and the names of cupping sessions.",
             "No automated decisions are made about you with these systems.",
           ],
@@ -196,14 +208,14 @@ export const PRIVACY_EN: LegalDoc = {
         {
           rows: [
             ["User session (Supabase cookies, named «sb-…-auth-token»)", "They keep you signed in. They are renewed while you use the application and expire after 400 days at most."],
-            ["cata_signin_intent", "Protects sign-in: remembers, in encrypted form, that the sign-in link was requested from this browser. 1 hour."],
+            ["Sign-in with Google (Supabase cookie, named «sb-…-auth-token-code-verifier»)", "Protects sign-in with Google. It is deleted when sign-in is completed."],
+            ["cata_signin_intent", "Protects sign-in: remembers, by means of a keyed fingerprint, that the sign-in link was requested from this browser. 1 hour."],
             ["cata_signin_pending", "Protects sign-in when the link is opened in another browser, until you confirm who you are. 10 minutes."],
-            ["NEXT_LOCALE", "Remembers the language (Spanish or English). Lasts as long as the browser session."],
           ],
         },
         "We do not use analytics, advertising or third-party cookies for tracking purposes.",
-        "In addition, the application stores on your device (the browser's local storage) what it needs to work: the drafts of your evaluations, so that you can cup offline and not lose work; your interface preferences; and copies of pages already visited. When you sign out, the page copies are deleted; drafts pending submission are kept on the device until they are synchronized or you discard them.",
-        "You can delete cookies and storage from your browser settings. If you do, you will have to sign in again and you will lose any drafts that have not been synchronized.",
+        "In addition, the application stores on your device (the browser's local storage) what it needs to work: the drafts of your evaluations, so that you can cup offline and not lose work; a copy of the data of your cuppings; your interface preferences; and copies of pages already visited. When you sign out, the page copies are deleted. The drafts and the copy of the data of your cuppings remain on the device until you discard them or delete the browser data.",
+        "You can delete cookies and storage from your browser settings. If you do, you will have to sign in again and you will lose any drafts that have not been synchronized. On a shared device, delete the browser data when you finish.",
       ],
     },
     {
@@ -215,13 +227,18 @@ export const PRIVACY_EN: LegalDoc = {
             // ADAPTED: the source adds tax retention periods tied to payments, which do not exist here.
             "Account data and content: while the account exists.",
             // ADDED: what account deletion really does in this app.
-            "When the account is deleted, the profile, the history and the access data are erased. The evaluations you made in cuppings shared with other people are kept without your name, so that other people's results do not change, and the coffees you created are kept without their identifying data (name, farm, producer, notes).",
-            `Founding seat reservation without an account: a maximum of ${WAITLIST_RETENTION_MONTHS} months. If you delete your account, that reservation is also deleted.`,
-            "Encrypted fingerprints used to limit email sending: deleted automatically when they are no longer needed.",
+            "When the account is deleted, the profile, the history and the access data are erased. The evaluations you made in cuppings shared with other people are kept without your name, so that other people's results do not change; the cuppings you organized and in which other people took part are kept closed and without your name; and the coffees you created are kept without their identifying data (name, farm, producer, notes).",
+            `Founding seat reservation without an account: a maximum of ${WAITLIST_RETENTION_MONTHS} months. If you created an account, the reservation is kept while the account exists and is deleted when you delete it.`,
+            // ADDED: addresses a group organiser enters for other people.
+            "Addresses added to a cupping group by its organizer: while the group exists or until the organizer removes them.",
+            "Fingerprints used to limit email sending: deleted automatically when they are no longer needed.",
+            // ADAPTED: the source says 12 months; the retention of provider logs is set by the providers.
             "Technical logs: for a limited period, for security.",
             "Security breach records: 3 years (accountability, Art. 5(2) GDPR).",
           ],
         },
+        // OWNER DECISION NEEDED: kept from the source. Today account deletion erases
+        // or anonymises in one step (lib/accountDeletion); no code "blocks" data first.
         "Blocking obligation (Art. 32 LOPDGDD): Spanish law requires that, before your data is finally deleted, it be «blocked», that is, inaccessible for ordinary processing but kept available to courts, the public prosecutor or competent public authorities. Once the statutory limitation period has elapsed, the data will be securely and irreversibly deleted.",
       ],
     },
@@ -235,6 +252,7 @@ export const PRIVACY_EN: LegalDoc = {
             "We currently do not send commercial communications.",
             "Consent to receive marketing is always optional and does not condition the provision of the service.",
             `You may withdraw your consent at any time by writing to ${SUPPORT_EMAIL}.`,
+            "We will never send emails asking for permission to send marketing: such an email would itself be an unsolicited communication and would infringe Art. 21 LSSI.",
             "Service communications (sign-in links, results of a cupping, closing notices, security alerts) are not commercial communications and are sent on the basis of the contract.",
           ],
         },
