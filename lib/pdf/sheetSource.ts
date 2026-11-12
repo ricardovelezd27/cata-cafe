@@ -7,6 +7,7 @@
 // Pure module (only imports another pure module) so vitest can load it.
 
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
+import { gateSamplePrep, type SamplePrep, type SamplePrepRow } from "@/lib/samplePrep";
 
 export interface SheetSampleSource {
   revealed: boolean;
@@ -33,6 +34,17 @@ export function sheetSampleIdentity(
     coffeeName: coffeeDisplayName(sample.coffee, deletedLabel),
     roastLevel: sample.coffee.roastLevel ?? null,
   };
+}
+
+/** A9: the owner's optional prep data (roast date, preparation note,
+ *  off-protocol) for the sheet header. BLIND DATA: owner view or a revealed
+ *  sample only (lib/samplePrep.ts `gateSamplePrep`, the one shared rule), so a
+ *  participant's sheet of a still-blind sample never carries it. */
+export function sheetSamplePrep(
+  sample: SamplePrepRow & { revealed: boolean },
+  ownerView: boolean,
+): { prep: SamplePrep | null } {
+  return { prep: gateSamplePrep(sample, { ownerView, revealed: sample.revealed }) };
 }
 
 /** Per-sample owner-authored records: physical only for the owner view,

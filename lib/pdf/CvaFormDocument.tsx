@@ -32,6 +32,7 @@ import {
   Polygon,
 } from "@react-pdf/renderer";
 import { buildStampLine } from "./stampText";
+import type { SamplePrep } from "@/lib/samplePrep";
 import { registerPdfFonts, SANS, SERIF } from "./fonts";
 import {
   buildCvaFormData,
@@ -589,6 +590,17 @@ function SheetHeader({
         <DotField label={t.session} value={h.sessionName} />
         {h.roastLevel ? <DotField label={t.roastLevel} value={h.roastLevel} /> : null}
       </View>
+      {h.prep ? (
+        <View style={s.fieldGrid}>
+          {h.prep.roastDate ? <DotField label={t.roastDate} value={h.prep.roastDate} /> : null}
+          {h.prep.preparationNote ? (
+            <DotField label={t.preparation} value={h.prep.preparationNote} />
+          ) : null}
+          {h.prep.offProtocol ? (
+            <DotField label={t.offProtocol} value={h.prep.offProtocolNote ?? "•"} />
+          ) : null}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -1075,6 +1087,8 @@ export type CvaDocumentProps = {
     revealed: boolean;
     coffeeName: string | null;
     roastLevel: string | null;
+    /** A9 prep data, already gated by the caller (sheetSamplePrep). */
+    prep?: SamplePrep | null;
     isReference?: boolean;
     referenceRank?: number | null;
     descriptive: Record<string, unknown>;

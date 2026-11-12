@@ -48,6 +48,13 @@ import {
 import * as v from "@/lib/validate";
 import { expressSampleLabel, validateExpressInput } from "@/lib/expressSession";
 import { planBlindSamples } from "@/lib/blindLabels";
+import {
+  parseSamplePrepInput,
+  pickSamplePrepInput,
+  touchesSamplePrep,
+  type SamplePrepInput,
+  type SamplePrepUpdate,
+} from "@/lib/samplePrep";
 import { logInfo, logWarn } from "@/lib/log";
 import { checkWizardBounds } from "@/lib/coffeeInputBounds";
 import { CERTIFICATIONS } from "@/lib/constants";
@@ -97,11 +104,17 @@ type CoffeeInput = {
   existingCoffeeId?: string;
 };
 
-type SampleInput = {
+type SampleInput = SamplePrepInput & {
   /** Empty = "give me a random letter" (A4); anything else is kept verbatim. */
   label: string;
   coffeeIdx?: number;
 };
+
+/** Prep columns for one wizard sample (A9). Absent keys write nothing; the
+ *  values were already validated by validateSessionInput. */
+function samplePrepData(s: SampleInput): SamplePrepUpdate {
+  return parseSamplePrepInput(pickSamplePrepInput(s as Record<string, unknown>));
+}
 
 /** The final position of the sample the owner marked as reference (an index
  *  into the INPUT list), after the blind shuffle. null = no reference. */
@@ -190,6 +203,12 @@ function validateSessionInput(
   for (const s of samples) {
     if (typeof s.coffeeIdx !== "number" || !coffees[s.coffeeIdx]) {
       return "sample_without_coffee";
+    }
+    // A9: the optional per-sample prep data (roast date, notes, off-protocol).
+    try {
+      parseSamplePrepInput(pickSamplePrepInput(s as Record<string, unknown>));
+    } catch {
+      return "invalid_sample_prep";
     }
   }
   return null;
@@ -437,6 +456,7 @@ async function createSessionBody(input: {
               typeof b.sample.coffeeIdx === "number" && createdCoffees[b.sample.coffeeIdx]
                 ? createdCoffees[b.sample.coffeeIdx].id
                 : null,
+            ...samplePrepData(b.sample),
           })),
         },
       },
@@ -637,6 +657,7 @@ async function createGroupSessionBody(input: {
               typeof b.sample.coffeeIdx === "number" && createdCoffees[b.sample.coffeeIdx]
                 ? createdCoffees[b.sample.coffeeIdx].id
                 : null,
+            ...samplePrepData(b.sample),
           })),
         },
         participants: {
@@ -1566,7 +1587,7 @@ export async function upsertPhysical(input: {
 // from an explicit "" (clear). The EditSampleMetadataForm caller still
 // submits every key every time (its own type stays fully-required), but the
 // action itself no longer assumes that.
-export type SampleMetadataInput = {
+export type SampleMetadataInput = SamplePrepInput & {
   label?: string;
   name?: string;
   country?: string;
@@ -1630,6 +1651,15 @@ export async function updateSampleMetadata(
   // read-only (session_closed), including label-only renames.
   const postCloseNaming = isPostCloseNaming(sample.session, sample, hasAnyCoffeeField(input));
   assertSampleMetadataWritable(sample.session, sample, hasAnyCoffeeField(input));
+
+  // A9: per-sample prep data. Same merge semantics as the coffee fields (absent
+  // key = untouched, "" = clear) and validated before anything is written.
+  // NOT a sanctioned post-close write: on a closed or expired session it is
+  // refused even when the call also names a coffee (postCloseNaming).
+  const prepUpdate = parseSamplePrepInput(pickSamplePrepInput(input as Record<string, unknown>));
+  if (touchesSamplePrep(prepUpdate) && isSessionExpired(sample.session)) {
+    throw new Error("session_closed");
+  }
 
   let coffeeUpdated: boolean;
 
@@ -1729,7 +1759,7 @@ export async function updateSampleMetadata(
     await prisma.$transaction(async (tx) => {
       await tx.sessionSample.update({
         where: { id: sampleId },
-        data: { label: input.label || undefined },
+        data: { label: input.label || undefined, ...prepUpdate },
       });
       await touchSession(tx, sample.sessionId);
     });

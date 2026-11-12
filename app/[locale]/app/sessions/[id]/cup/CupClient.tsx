@@ -45,6 +45,8 @@ import {
 } from "@/components/cupping/EditSampleMetadataForm";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { SampleKey, type SampleKeyTranslations } from "@/components/cupping/SampleKey";
+import type { SamplePrepTranslations } from "@/components/cupping/SamplePrepFields";
+import { prepFromForm, prepToForm, type SamplePrep } from "@/lib/samplePrep";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { canPickExistingCoffee } from "@/lib/cupCoffeePick";
@@ -159,6 +161,9 @@ type Sample = {
   revealed: boolean;
   coffeeId: string | null;
   coffee: SampleCoffee | null;
+  /** A9 prep data (roast date, notes, off-protocol); the server ships it to the
+   *  owner or once revealed only. Optional for pre-upgrade offline blobs. */
+  prep?: SamplePrep | null;
   /** 1, 2, … when the sample is a reference (S6 multi-reference). */
   referenceRank?: number | null;
 };
@@ -267,6 +272,8 @@ export function CupClient({
     editSampleError: string;
     /** Owner-only "Clave de muestras" (A4); optional for offline blobs. */
     sampleKey?: SampleKeyTranslations;
+    /** A9 "Más datos de la muestra" section of the owner's sample editor. */
+    samplePrep?: SamplePrepTranslations;
     /** "Usar café existente" picker strings (S9-05); optional for offline blobs. */
     coffeePicker?: {
       useExisting: string;
@@ -1773,6 +1780,8 @@ export function CupClient({
               // Only reflect the coffee edit locally when the server actually
               // applied it — a non-owned coffee's data was silently skipped.
               coffee: result.coffeeUpdated ? { ...data } : s.coffee,
+              // A9: the prep fields saved with the same call.
+              prep: prepFromForm(data),
             }
           : s
       )
@@ -2443,10 +2452,12 @@ export function CupClient({
               processType: current.coffee?.processType ?? "",
               altitude: current.coffee?.altitude ?? "",
               roastLevel: current.coffee?.roastLevel ?? "",
+              ...prepToForm(current.prep),
             }}
             onSubmit={handleSaveSampleMetadata}
             onCancel={() => setEditingSample(false)}
             translations={{
+              prep: translations.samplePrep,
               label: translations.sample,
               name: translations.coffeeName,
               country: translations.coffeeCountry,

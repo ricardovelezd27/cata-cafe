@@ -255,7 +255,8 @@
         "invalid_warmup": "El ejercicio de calentamiento no es válido. Elige uno de la lista.",
         "not_found_or_forbidden": "No tienes permiso para esto o ya no existe. Revisa el grupo elegido.",
         "not_authenticated": "Tu sesión expiró. Vuelve a iniciar sesión; lo que escribiste sigue aquí.",
-        "unknown": "No se pudo crear la sesión. Lo que escribiste sigue aquí; inténtalo de nuevo."
+        "unknown": "No se pudo crear la sesión. Lo que escribiste sigue aquí; inténtalo de nuevo.",
+        "invalid_sample_prep": "Revisa los datos opcionales de una muestra: la fecha de tueste no puede ser futura y las notas admiten hasta 500 caracteres."
       },
       "goToPanel": "Ir al panel",
       "startNow": "Iniciar cata ahora",
@@ -274,6 +275,16 @@
         "legend": "Cuándo avisar al grupo",
         "onCreate": "Avisar al crear la sesión",
         "onStart": "Avisar al iniciar la cata"
+      },
+      "samplePrep": {
+        "summary": "Más datos de la muestra (opcional)",
+        "hint": "Solo tú ves estos datos hasta que reveles la muestra.",
+        "roastDate": "Fecha de tueste",
+        "preparation": "Preparación",
+        "preparationPh": "Agua, ratio, molienda…",
+        "offProtocol": "Catado fuera de protocolo",
+        "offProtocolNote": "¿Qué cambió respecto al protocolo?",
+        "offProtocolNotePh": "Por ejemplo: reposo de 3 horas"
       }
     },
     "express": {
@@ -993,6 +1004,11 @@
       "keepLine": "{n} muestras incompletas quedarán sin puntaje.",
       "confirm": "Terminar cata",
       "cancel": "Seguir catando"
+    },
+    "samplePrep": {
+      "roastDate": "Fecha de tueste",
+      "preparation": "Preparación",
+      "offProtocol": "Catado fuera de protocolo"
     }
   },
   "community": {

@@ -17,6 +17,8 @@ import { buildInviteUrl } from "@/lib/inviteUrl";
 import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { Badge } from "@/components/ui/Badge";
 import { SampleKey, type SampleKeyRow, type SampleKeyTranslations } from "@/components/cupping/SampleKey";
+import { SamplePrepFields, type SamplePrepTranslations } from "@/components/cupping/SamplePrepFields";
+import { prepToForm } from "@/lib/samplePrep";
 import { localDateISO } from "@/lib/localDate";
 import {
   isDraftDirtyFrom,
@@ -91,8 +93,13 @@ type SampleEntry = {
   id: string;
   label: string;
   coffeeId: string;
-  /** True while the label is still the auto-generated "Muestra X" text (not user-edited). */
+  /** True while the label is still empty = a random letter is drawn at creation (A4). */
   auto: boolean;
+  /** A9 optional prep data (owner-only until the sample is revealed). */
+  roastDate?: string;
+  preparationNote?: string;
+  offProtocol?: boolean;
+  offProtocolNote?: string;
 };
 
 type Translations = {
@@ -172,6 +179,8 @@ type Translations = {
     sampleKey: SampleKeyTranslations;
     /** X6: non-blocking line above the add button when the count is high for the format. */
     sampleWarning: Record<SampleCountWarning, string>;
+    /** A9: the collapsed "Más datos de la muestra" section of each sample row. */
+    samplePrep: SamplePrepTranslations;
     /** C8: when a LIVE session's linked group is emailed. */
     notifyWhen: { checkbox: string; legend: string; onCreate: string; onStart: string };
     /** Whole newForm.errors table (S8-10); includes `offline` (S8-09). */
@@ -682,9 +691,18 @@ export function NewSessionForm({
       return existingCoffeeId ? { ...rest, existingCoffeeId } : rest;
     });
     // An EMPTY label asks for a random letter (A4); a typed one is kept as is.
+    // The A9 prep keys travel only when the owner filled them.
     const samplePayload = samples.map((s) => ({
       label: s.auto ? "" : s.label,
       coffeeIdx: idxById.get(s.coffeeId) ?? 0,
+      ...(s.roastDate ? { roastDate: s.roastDate } : {}),
+      ...(s.preparationNote?.trim() ? { preparationNote: s.preparationNote } : {}),
+      ...(s.offProtocol
+        ? {
+            offProtocol: true,
+            ...(s.offProtocolNote?.trim() ? { offProtocolNote: s.offProtocolNote } : {}),
+          }
+        : {}),
     }));
     const referenceIdx = referenceId
       ? ((idx) => (idx === -1 ? null : idx))(samples.findIndex((s) => s.id === referenceId))
@@ -1473,6 +1491,20 @@ export function NewSessionForm({
                   <X size={16} />
                 </button>
               )}
+              <SamplePrepFields
+                idPrefix={`prep-${s.id}`}
+                className="basis-full"
+                value={prepToForm({
+                  roastDate: s.roastDate || null,
+                  preparationNote: s.preparationNote || null,
+                  offProtocol: s.offProtocol === true,
+                  offProtocolNote: s.offProtocolNote || null,
+                })}
+                onChange={(patch) =>
+                  setSamples((prev) => prev.map((x) => (x.id === s.id ? { ...x, ...patch } : x)))
+                }
+                translations={t.newForm.samplePrep}
+              />
             </div>
           ))}
         </div>

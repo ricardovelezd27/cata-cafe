@@ -115,6 +115,16 @@ export default async function NewSessionPage({
         many: t("sampleCountWarning.many"),
         combined: t("sampleCountWarning.combined"),
       },
+      samplePrep: {
+        summary: t("newForm.samplePrep.summary"),
+        hint: t("newForm.samplePrep.hint"),
+        roastDate: t("newForm.samplePrep.roastDate"),
+        preparation: t("newForm.samplePrep.preparation"),
+        preparationPh: t("newForm.samplePrep.preparationPh"),
+        offProtocol: t("newForm.samplePrep.offProtocol"),
+        offProtocolNote: t("newForm.samplePrep.offProtocolNote"),
+        offProtocolNotePh: t("newForm.samplePrep.offProtocolNotePh"),
+      },
       notifyWhen: {
         checkbox: t("newForm.notifyWhen.checkbox"),
         legend: t("newForm.notifyWhen.legend"),

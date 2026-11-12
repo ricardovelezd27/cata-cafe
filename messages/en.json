@@ -255,7 +255,8 @@
         "invalid_warmup": "That warm-up exercise is not valid. Pick one from the list.",
         "not_found_or_forbidden": "You don't have access to this or it no longer exists. Check the chosen group.",
         "not_authenticated": "Your session expired. Sign in again; what you typed is still here.",
-        "unknown": "Couldn't create the session. What you typed is still here; please try again."
+        "unknown": "Couldn't create the session. What you typed is still here; please try again.",
+        "invalid_sample_prep": "Check the optional details of a sample: the roast date cannot be in the future and notes allow up to 500 characters."
       },
       "goToPanel": "Go to the panel",
       "startNow": "Start the cupping now",
@@ -274,6 +275,16 @@
         "legend": "When to email the group",
         "onCreate": "Email when the session is created",
         "onStart": "Email when the tasting starts"
+      },
+      "samplePrep": {
+        "summary": "More sample details (optional)",
+        "hint": "Only you see these until you reveal the sample.",
+        "roastDate": "Roast date",
+        "preparation": "Preparation",
+        "preparationPh": "Water, ratio, grind…",
+        "offProtocol": "Cupped outside protocol",
+        "offProtocolNote": "What differed from the protocol?",
+        "offProtocolNotePh": "For example: 3-hour rest"
       }
     },
     "express": {
@@ -993,6 +1004,11 @@
       "keepLine": "{n} incomplete samples will stay without a score.",
       "confirm": "Finish cupping",
       "cancel": "Keep cupping"
+    },
+    "samplePrep": {
+      "roastDate": "Roast date",
+      "preparation": "Preparation",
+      "offProtocol": "Cupped outside protocol"
     }
   },
   "community": {

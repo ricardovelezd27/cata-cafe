@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { EmptyState, ButtonLink } from "@/components/ui";
 import { isSessionExpired } from "@/lib/sessionState";
+import { gateSamplePrep } from "@/lib/samplePrep";
 import { CupClient } from "./CupClient";
 
 // Server actions invoked from this page (closeSession → after() email fan-out
@@ -229,6 +230,9 @@ export default async function CupPage({
                 ? ((s.extrinsic?.data as Record<string, unknown>) ?? {})
                 : {},
             revealed: s.revealed,
+            // A9 prep data can identify a blind coffee: owner, or a revealed
+            // sample (the one shared rule, lib/samplePrep.ts).
+            prep: gateSamplePrep(s, { ownerView: isOwner, revealed: s.revealed }),
             // Owner only: PHASE 21 hides session_samples."coffeeId" from the API
             // so a participant cannot look a blind sample's coffee up; the page
             // must not hand the id over either (S9-05 review).
@@ -267,6 +271,18 @@ export default async function CupPage({
         editSample: t("session.editSample"),
         editSampleError: t("session.editSampleError"),
         editSampleNotOwner: t("session.editSampleNotOwner"),
+        samplePrep: isOwner
+          ? {
+              summary: t("session.newForm.samplePrep.summary"),
+              hint: t("session.newForm.samplePrep.hint"),
+              roastDate: t("session.newForm.samplePrep.roastDate"),
+              preparation: t("session.newForm.samplePrep.preparation"),
+              preparationPh: t("session.newForm.samplePrep.preparationPh"),
+              offProtocol: t("session.newForm.samplePrep.offProtocol"),
+              offProtocolNote: t("session.newForm.samplePrep.offProtocolNote"),
+              offProtocolNotePh: t("session.newForm.samplePrep.offProtocolNotePh"),
+            }
+          : undefined,
         sampleKey: isOwner
           ? {
               title: t("session.newForm.sampleKey.title"),
