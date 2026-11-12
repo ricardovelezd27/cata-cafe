@@ -369,9 +369,6 @@ export function CupClient({
       conflictKeep: string;
       conflictReplace: string;
       bannerStorageUnavailable: string;
-      // S9-01 C-06. Optional: pre-upgrade offline prop blobs lack them.
-      bannerNewVersion?: string;
-      reloadNow?: string;
       // S8-09. Optional: pre-upgrade offline prop blobs lack them.
       bannerNextAttempt?: string;
       /** RAW template with "{count}". */
