@@ -203,6 +203,7 @@ row was detached in the meantime — do not do that without asking.)
    | `EMAIL_FROM` | e.g. `Cata Café <no-reply@your-domain>` | Must be a Resend-verified domain. |
    | `CLOSE_EMAIL_ATTACH_CVA` | *(optional)* `1` | Legacy: also attach each participant's CVA form PDF to the close email. Default (unset) = link to results + personal summary PDF only. |
    | `ANALYTICS_SUPER_ADMIN_EMAIL` | your admin email | The code fallback is a personal Gmail — set it explicitly. |
+   | `UNSUBSCRIBE_SECRET` | *(optional, recommended)* `openssl rand -base64 48` | Signs the per-group unsubscribe links (S9-02, A-11). Unset = the links use `GUEST_CLAIM_SECRET`. **Once set, never remove or change it** without keeping the old value as `GUEST_CLAIM_SECRET`'s role (see §25): unsubscribe links never expire. Unset means one boot warning, never a failed deploy. |
 
 4. Click **Save** for each. Vercel only applies env changes to NEW deployments: after the
    last one, go to **Deployments** → the latest production deployment → **⋯** →
@@ -1490,8 +1491,25 @@ mail; without it group email fails.
    WHERE table_name = 'tasting_group_members' AND column_name = 'emailOptOutAt';
    ```
    Expected: one row, `timestamp with time zone`.
-3. Deploy the branch. No SQL PHASE, no new environment variable (the token uses
+3. Deploy the branch. No SQL PHASE, no new required environment variable (the token uses
    `GUEST_CLAIM_SECRET`; `NEXT_PUBLIC_SITE_URL` builds the link and is already required).
+
+**`UNSUBSCRIBE_SECRET` (S9-02, A-11, optional).** Unsubscribe links never expire, so the secret
+that signed them must outlive every mail ever sent. A dedicated secret lets `GUEST_CLAIM_SECRET`
+be rotated later without breaking NEW mails' links:
+
+- Generate: `openssl rand -base64 48`, add it in Vercel Production as `UNSUBSCRIBE_SECRET`, redeploy.
+- From then on new mails are signed with it. Verification accepts BOTH the new secret and the
+  legacy one (`GUEST_CLAIM_SECRET`, else the service-role key), so every link mailed before the
+  switch keeps working as long as the legacy value is unchanged.
+- **Never remove or change `UNSUBSCRIBE_SECRET` once set**: every link mailed since would stop
+  working. If it must change, there is no second slot: keep the old value reachable as the
+  legacy one or accept that those links die.
+- **Rotating `GUEST_CLAIM_SECRET` still breaks the links of mails sent BEFORE the switch**
+  (they were signed with it). Only mails sent after `UNSUBSCRIBE_SECRET` was set survive that
+  rotation. A broken link only means the person cannot self-unsubscribe from that old mail
+  (the owner can still remove them); it never unsubscribes the wrong person.
+- Unset: behaviour is exactly as before; the app logs one boot warning in production.
 
 **Smoke test (3 minutes):** send a group announcement email to a test address; the mail has a
 "Darte de baja…" footer link (and your mail client shows its own Unsubscribe control). Open it →
@@ -1578,3 +1596,4 @@ the production project** (there is only one).
 **Rollback:** the commented block at the end of PHASE 24 (paste the saved pre-flight (b)
 output where it says so; run the default-privileges line only if (c) showed them). Run it
 in one transaction. The app keeps working under either state.
+
