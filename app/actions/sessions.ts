@@ -227,7 +227,7 @@ function validateSessionMeta(input: {
   let date = new Date(0);
   let objective: string | null = null;
   let format: SessionMeta["format"] = "combined";
-  let cupsPerSample = 5;
+  let cupsPerSample = 2; // TODO(kim-validar:A2): same default as the wizard
   let closesAt: Date | null = null;
   const closesAtZone = input.closesAt ? normalizeZone(input.closesAtZone) : null;
   let warmupExerciseId: WarmupId | null = null;

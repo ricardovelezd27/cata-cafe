@@ -196,8 +196,9 @@ const sampleLetter = (i: number) => {
 /** Stable id for coffees/samples so React keys and card refs survive add/remove. */
 const newId = () => crypto.randomUUID();
 
-/** TODO(A2): one-line constant for the cups the wizard proposes. */
-const DEFAULT_CUPS_PER_SAMPLE = 5;
+/** Cups the wizard proposes for affective and combined sessions (express stays at 1).
+ *  TODO(kim-validar:A2): simulated answer; Kim to confirm 2. */
+const DEFAULT_CUPS_PER_SAMPLE = 2;
 
 const EMPTY_COFFEE: CoffeeInput = {
   name: "",
@@ -347,8 +348,8 @@ export function NewSessionForm({
       // storage blocked: keep the default
     }
   }, [handoff?.format]);
-  // TODO(A2): Kim has not answered what the app should propose. Default 5 for
-  // affective/combined (the CVA protocol; deductions only exist from 5 cups).
+  // The wizard proposes 2 cups per sample for affective and combined (the
+  // owner can raise it to 5). TODO(kim-validar:A2): simulated answer.
   const [cupsPerSample, setCupsPerSample] = useState(DEFAULT_CUPS_PER_SAMPLE);
   const [cupsInput, setCupsInput] = useState(String(DEFAULT_CUPS_PER_SAMPLE));
 
