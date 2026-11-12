@@ -61,7 +61,7 @@ function coffeeSharesUsing(exec: string): string {
   return m![1];
 }
 
-const phase24 = SQL.slice(SQL.indexOf("-- PHASE 24"));
+const phase24 = SQL.slice(SQL.indexOf("-- PHASE 24"), SQL.indexOf("-- PHASE 25"));
 
 describe("PHASE 24: API roles read-only (rls_and_triggers.sql replayed in order)", () => {
   const policies = finalPolicies(SQL);
