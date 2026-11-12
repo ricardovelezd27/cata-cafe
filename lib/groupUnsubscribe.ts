@@ -13,10 +13,32 @@ import { createHmac, timingSafeEqual } from "node:crypto";
  * for as long as the mail exists. It can only ever switch mail OFF.
  */
 
-function envSecret(): string {
-  const s = process.env.GUEST_CLAIM_SECRET ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
+// Secrets (S9-02, A-11). Unsubscribe links never expire, so the secret that
+// signed them must never be rotated out from under mailed links:
+//  - MINT uses UNSUBSCRIBE_SECRET when set, else the legacy secret
+//    (GUEST_CLAIM_SECRET, falling back to the service-role key).
+//  - VERIFY accepts a token signed with EITHER, so links mailed before
+//    UNSUBSCRIBE_SECRET was set keep working. Once set, never remove or change
+//    it without keeping the old value as the legacy one (runbook §3 / §25).
+function legacySecret(): string | undefined {
+  return process.env.GUEST_CLAIM_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || undefined;
+}
+
+function dedicatedSecret(): string | undefined {
+  return process.env.UNSUBSCRIBE_SECRET?.trim() || undefined;
+}
+
+function mintSecret(): string {
+  const s = dedicatedSecret() ?? legacySecret();
   if (!s) throw new Error("guest_claim_secret_missing");
   return s;
+}
+
+/** Every secret a token may have been signed with, newest first. */
+function verifySecrets(): string[] {
+  const all = [dedicatedSecret(), legacySecret()].filter((s): s is string => !!s);
+  if (all.length === 0) throw new Error("guest_claim_secret_missing");
+  return Array.from(new Set(all));
 }
 
 export function normalizeUnsubscribeEmail(email: string): string {
@@ -29,7 +51,7 @@ function macFor(secret: string, groupId: string, email: string): string {
     .digest("base64url");
 }
 
-export function mintUnsubscribeToken(groupId: string, email: string, secret: string = envSecret()): string {
+export function mintUnsubscribeToken(groupId: string, email: string, secret: string = mintSecret()): string {
   return `${groupId}.${macFor(secret, groupId, email)}`;
 }
 
@@ -62,16 +84,25 @@ function safeEqual(a: string, b: string): boolean {
   return x.length === y.length && timingSafeEqual(x, y);
 }
 
-/** True when `token` is the genuine token for exactly this group and address. */
+/**
+ * True when `token` is the genuine token for exactly this group and address,
+ * signed with any accepted secret (default: the dedicated one AND the legacy
+ * one). Every secret is tried (no early exit) and each compare is constant-time.
+ */
 export function tokenMatches(
   token: string,
   groupId: string,
   email: string,
-  secret: string = envSecret(),
+  secret: string | readonly string[] = verifySecrets(),
 ): boolean {
   const parsed = parseUnsubscribeToken(token);
   if (!parsed || parsed.groupId !== groupId) return false;
-  return safeEqual(parsed.mac, macFor(secret, groupId, email));
+  const secrets = typeof secret === "string" ? [secret] : secret;
+  let ok = false;
+  for (const s of secrets) {
+    if (safeEqual(parsed.mac, macFor(s, groupId, email))) ok = true;
+  }
+  return ok;
 }
 
 /**
@@ -83,7 +114,7 @@ export function addressesForToken(
   token: string,
   groupId: string,
   candidateEmails: readonly string[],
-  secret: string = envSecret(),
+  secret: string | readonly string[] = verifySecrets(),
 ): string[] {
   return candidateEmails.filter((e) => tokenMatches(token, groupId, e, secret));
 }

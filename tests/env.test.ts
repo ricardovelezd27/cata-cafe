@@ -18,8 +18,11 @@ describe("production env", () => {
   });
   it("super-admin email is recommended, not boot-fatal", () => {
     expect(REQUIRED_IN_PRODUCTION).not.toContain("ANALYTICS_SUPER_ADMIN_EMAIL");
-    expect(missingRecommendedEnv(full)).toEqual(["ANALYTICS_SUPER_ADMIN_EMAIL"]);
-    expect(missingRecommendedEnv({ ...full, ANALYTICS_SUPER_ADMIN_EMAIL: "a@b.c" })).toEqual([]);
+    expect(REQUIRED_IN_PRODUCTION).not.toContain("UNSUBSCRIBE_SECRET");
+    expect(missingRecommendedEnv(full)).toEqual(["ANALYTICS_SUPER_ADMIN_EMAIL", "UNSUBSCRIBE_SECRET"]);
+    expect(
+      missingRecommendedEnv({ ...full, ANALYTICS_SUPER_ADMIN_EMAIL: "a@b.c", UNSUBSCRIBE_SECRET: "s" }),
+    ).toEqual([]);
   });
   it("warns once in production when it is unset, silent otherwise", () => {
     const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -29,7 +32,12 @@ describe("production env", () => {
     expect(spy).toHaveBeenCalledTimes(1);
     expect(String(spy.mock.calls[0][0])).toContain("ANALYTICS_SUPER_ADMIN_EMAIL");
     spy.mockClear();
-    warnRecommendedEnv({ ...full, NODE_ENV: "production", ANALYTICS_SUPER_ADMIN_EMAIL: "a@b.c" });
+    warnRecommendedEnv({
+      ...full,
+      NODE_ENV: "production",
+      ANALYTICS_SUPER_ADMIN_EMAIL: "a@b.c",
+      UNSUBSCRIBE_SECRET: "s",
+    });
     expect(spy).not.toHaveBeenCalled();
   });
 });

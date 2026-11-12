@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   addressesForToken,
   mintUnsubscribeToken,
@@ -77,5 +77,51 @@ describe("unsubscribe pages", () => {
     expect(localeFromAcceptLanguage("en-US,en;q=0.9")).toBe("en");
     expect(localeFromAcceptLanguage(null)).toBe("es");
     expect(invalidPage("en")).toContain("not valid");
+  });
+});
+
+describe("versioned unsubscribe secret (A-11)", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  function env(legacy: string | undefined, dedicated: string | undefined) {
+    vi.stubEnv("GUEST_CLAIM_SECRET", legacy ?? "");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "");
+    vi.stubEnv("UNSUBSCRIBE_SECRET", dedicated ?? "");
+  }
+
+  it("mints with the new secret when set, and that token verifies", () => {
+    env("legacy-s", "new-s");
+    const t = mintUnsubscribeToken(G, "ana@example.com");
+    expect(t).toBe(mintUnsubscribeToken(G, "ana@example.com", "new-s"));
+    expect(tokenMatches(t, G, "ana@example.com")).toBe(true);
+  });
+
+  it("a token signed with the legacy secret still verifies once a new one is set", () => {
+    const legacyToken = mintUnsubscribeToken(G, "ana@example.com", "legacy-s");
+    env("legacy-s", "new-s");
+    expect(tokenMatches(legacyToken, G, "ana@example.com")).toBe(true);
+    expect(addressesForToken(legacyToken, G, ["ana@example.com", "bob@example.com"])).toEqual(["ana@example.com"]);
+  });
+
+  it("a token signed with an unrelated secret fails", () => {
+    env("legacy-s", "new-s");
+    const bad = mintUnsubscribeToken(G, "ana@example.com", "unrelated");
+    expect(tokenMatches(bad, G, "ana@example.com")).toBe(false);
+    expect(addressesForToken(bad, G, ["ana@example.com"])).toEqual([]);
+  });
+
+  it("without UNSUBSCRIBE_SECRET behaviour is unchanged (legacy mints and verifies)", () => {
+    env("legacy-s", undefined);
+    const t = mintUnsubscribeToken(G, "ana@example.com");
+    expect(t).toBe(mintUnsubscribeToken(G, "ana@example.com", "legacy-s"));
+    expect(tokenMatches(t, G, "ana@example.com")).toBe(true);
+    expect(tokenMatches(mintUnsubscribeToken(G, "ana@example.com", "new-s"), G, "ana@example.com")).toBe(false);
+  });
+
+  it("falls back to the service-role key when GUEST_CLAIM_SECRET is unset", () => {
+    vi.stubEnv("GUEST_CLAIM_SECRET", "");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "srk");
+    vi.stubEnv("UNSUBSCRIBE_SECRET", "");
+    expect(mintUnsubscribeToken(G, "a@b.co")).toBe(mintUnsubscribeToken(G, "a@b.co", "srk"));
   });
 });

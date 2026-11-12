@@ -50,6 +50,16 @@ export default async function ConfirmPage({
             failedTitle: t("failedTitle"),
             failedBody: t("failedBody"),
             newLink: t("newLink"),
+            identityTitle: t("identityTitle"),
+            identityBody: t.raw("identityBody") as string,
+            identityYes: t("identityYes"),
+            identityNo: t("identityNo"),
+            identityError: t("identityError"),
+            identityExpiredTitle: t("identityExpiredTitle"),
+            identityExpiredBody: t("identityExpiredBody"),
+            rejectedTitle: t("rejectedTitle"),
+            rejectedBody: t("rejectedBody"),
+            toLogin: t("toLogin"),
           }}
         />
       </div>
