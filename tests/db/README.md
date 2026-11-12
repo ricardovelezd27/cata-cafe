@@ -10,8 +10,10 @@ npx vitest run --config vitest.db.config.ts tests/db/rls.dbtest.ts   # one file
 
 ## What it starts
 
-`globalSetup.ts` uses the `embedded-postgres` dev dependency (real PostgreSQL binaries per
-platform; 18.6 on Windows x64) to start a server in a temp directory on a free `127.0.0.1` port,
+`globalSetup.ts` uses `embedded-postgres` (real PostgreSQL binaries per
+platform; 18.6 on Windows x64), installed from `tests/db/package.json` (own lockfile, gitignored
+`tests/db/node_modules`; `npm run test:db` runs `npm ci` there when it is missing or outdated, so the
+app's own install carries no Postgres binaries). vitest, prisma and the app's `pg` come from the root to start a server in a temp directory on a free `127.0.0.1` port,
 creates `cata_test_<random>` and then, in this order:
 
 1. `support/shim.sql`: the Supabase pieces the project's SQL expects (roles `anon`,
@@ -42,8 +44,10 @@ The suite never reads `DATABASE_URL`/`DIRECT_URL`/`.env.local`. Unit test: `test
 ## What is mocked
 
 Only external boundaries: Resend (`sendEmail`), the Supabase admin client (`getUserById`,
-`deleteUser`), PDF rendering, and `server-only` (aliased to an empty stub). Everything else
-(`lib/prisma`, the triggers, the lib functions) is the real code.
+`deleteUser`), PDF rendering AND the report-data read that feeds the PDF attachment in the
+close-email tests (`loadSessionReportSource`, `buildParticipantSummary`), `sendCloseEmails` itself in
+`close.dbtest.ts` (it only records the call), and `server-only` (aliased to an empty stub).
+Everything else (`lib/prisma`, the triggers, the lib functions) is the real code.
 
 ## Files
 
@@ -56,6 +60,7 @@ Only external boundaries: Resend (`sendEmail`), the Supabase admin client (`getU
 | `accountDeletion.dbtest.ts` | `deleteAccountData`: whole transaction, manifest tables, placeholder, others untouched |
 | `evaluationWrite.dbtest.ts` | `writeEvaluationOrdered`: ordering by `clientTs`, legacy writes, re-fire, concurrency |
 | `emailLedgers.dbtest.ts` | `reserveEmailBudget` limits, `sendCloseEmails` claim and lease |
+| `harness.dbtest.ts` | the bring-up tolerated EXACTLY the one known SQL failure (a second one, or the known one starting to work, fails the run) |
 | `rls.dbtest.ts` | `authenticated` / `anon` privileges and policies (PHASE 21, 24, 25) |
 
 ## Known clean-database failures (tolerated, listed in `knownSqlFailures.ts`)
@@ -68,6 +73,8 @@ Only external boundaries: Resend (`sendEmail`), the Supabase admin client (`getU
 
 ## Not covered
 
-Real Supabase Auth (GoTrue), PostgREST, Realtime, the `supabase_auth_admin` flow of
+The tests connect as a real Postgres SUPERUSER, while hosted Supabase's `postgres` role is not one:
+a missing grant on a SECURITY DEFINER function or trigger would stay hidden here. Also not covered:
+real Supabase Auth (GoTrue), PostgREST, Realtime, the `supabase_auth_admin` flow of
 `handle_new_user`, production-sized data, schema drift of the live project, the browser/offline
 client, and server actions that need a request context (they delegate to the lib functions tested here).

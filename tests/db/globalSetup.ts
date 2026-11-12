@@ -168,6 +168,7 @@ ${migrate.stderr}`);
       fs.readFileSync(path.join(ROOT, "prisma", "sql", "rls_and_triggers.sql"), "utf8"),
     );
     const failures: string[] = [];
+    const knownHits: number[] = KNOWN_SQL_FAILURES.map(() => 0);
     for (const s of stmts) {
       try {
         await db.query(s);
@@ -175,13 +176,32 @@ ${migrate.stderr}`);
         const msg = (e as Error).message;
         const head = s.replace(/\s+/g, " ").slice(0, 160);
         failures.push(`${head}  =>  ${msg}`);
-        const known = KNOWN_SQL_FAILURES.some((k) => k.match.test(s) && k.error.test(msg));
-        if (!known && !process.env.CATA_TEST_COLLECT_ALL) {
+        let known = false;
+        KNOWN_SQL_FAILURES.forEach((k, i) => {
+          if (k.match.test(s) && k.error.test(msg)) {
+            knownHits[i]++;
+            known = true;
+          }
+        });
+        if (!known) {
           throw new Error(`UNEXPECTED failure applying rls_and_triggers.sql:\n${head}\n${msg}`);
         }
       }
     }
     await db.end();
+
+    // The tolerated list must be EXACTLY the known one: each known entry must
+    // have failed exactly once and nothing else may have failed. A known
+    // statement that starts working, or a second failure, stops the suite here
+    // (tests/db/harness.dbtest.ts asserts the same from inside the run).
+    const wrongHits = KNOWN_SQL_FAILURES.map((k, i) => `${k.why.slice(0, 60)}... -> ${knownHits[i]} hit(s)`).filter((_, i) => knownHits[i] !== 1);
+    if (wrongHits.length > 0 || failures.length !== KNOWN_SQL_FAILURES.length) {
+      throw new Error(
+        "rls_and_triggers.sql: the tolerated failures are not exactly the known list. " +
+          `expected ${KNOWN_SQL_FAILURES.length}, got ${failures.length}. ` +
+          `entries not hit exactly once: ${wrongHits.join("; ") || "none"}. failures: ${failures.join(" || ")}`,
+      );
+    }
 
     project.provide("dbUrl", dbUrl);
     project.provide("sqlFailures", failures);
