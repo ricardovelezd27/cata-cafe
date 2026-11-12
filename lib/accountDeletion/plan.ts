@@ -5,9 +5,8 @@
 // confirm dialog shows the same plan's counts, so what the person is told and
 // what happens can never drift. Rules: lib/accountDeletion/manifest.ts.
 //
-// E3 default (a): other people keep their results, without the organizer's
-// name. TODO(E3-Kim): if Kim picks another E3 option, this is the one place
-// the session/group split changes.
+// E3 (a): other people keep their results, without the organizer's
+// name. This is the one place the session/group split changes.
 //
 // Pure (no Prisma, no server-only) so tests/accountDeletion.test.ts covers it.
 
@@ -151,8 +150,8 @@ export function planAccountDeletion(f: DeletionFixture): DeletionPlan {
   const deleteGroupIds: string[] = [];
   const keepGroupIds: string[] = [];
   for (const g of f.ownedGroups) {
-    // TODO(E3-Kim): transfer ownership instead of leaving the group with no
-    // one able to manage it.
+    // A kept group is left with no one able to manage it (no ownership
+    // transfer).
     if (g.otherMembers > 0) keepGroupIds.push(g.id);
     else deleteGroupIds.push(g.id);
   }

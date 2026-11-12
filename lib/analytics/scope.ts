@@ -17,9 +17,8 @@ export function scopeFor(access: ScopeAccess): AnalyticsScope {
     : { kind: "user", userId: access.userId };
 }
 
-// TODO(D4): Kim to confirm (a: session owner sees names, b: admins see names,
-// c: admins anonymous with groups under 3 suppressed). Built: (c) in platform
-// scope; names only for the owner's own sessions in user scope.
+// Platform scope: admins see anonymous cuppers and groups under 3 are
+// suppressed; names only for the owner's own sessions in user scope.
 export const MIN_GROUP_SIZE_PLATFORM = 3;
 export const ANONYMOUS_CUPPER_PREFIX = "Catador";
 

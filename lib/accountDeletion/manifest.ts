@@ -63,11 +63,10 @@ export function deletionDelegate(e: ManifestEntry): string | null {
   return e.merge.kind === "not-applicable" ? null : e.merge.delegate;
 }
 
-// E3 default (a): others keep their results without the person's name; E4 (a):
-// self-service deletion. TODO(E3-Kim): every "reassign-tombstone" and
-// "delete-if-solo-else-tombstone" rule changes if Kim prefers erasure or an
-// ownership transfer. TODO(E4-Kim): the manual lost-mailbox path stays in the
-// runbook (§16).
+// E3 (a): others keep their results without the person's name; E4 (a):
+// self-service deletion. Every "reassign-tombstone" and
+// "delete-if-solo-else-tombstone" rule follows from that. The manual
+// lost-mailbox path stays in the runbook (§16).
 export const PROFILE_MANIFEST: readonly ManifestEntry[] = [
   // ── Relations that RESTRICT account deletion today ──────────────────────
   {

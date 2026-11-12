@@ -4,7 +4,6 @@
 /** Format and cups feed the stored scores, so they freeze once the cupping is
  *  under way. C6 default (b): "Iniciar cata" (startedAt) freezes them as well
  *  as the first evaluation; adding samples stays allowed after the start. */
-// TODO(C6): Kim to confirm what else freezes at "Iniciar cata".
 export function isFormatLocked(startedAt: Date | null | undefined, evaluationCount: number): boolean {
   return startedAt != null || evaluationCount > 0;
 }
