@@ -1739,14 +1739,17 @@ export async function assignSampleCoffee(
     });
     if (res.count === 0) throw new Error("conflict");
 
-    if (closed) {
-      await syncCoffeeHistoryForSession(sample.sessionId);
-      revalidatePath(`/app/profile/history`);
-      revalidatePath(`/app/coffees`);
+    // Locale-aware (a bare "/app/…" path matches no cached page).
+    for (const l of ["es", "en"]) {
+      if (closed) {
+        revalidatePath(`/${l}/app/profile/history`);
+        revalidatePath(`/${l}/app/coffees`);
+      }
+      revalidatePath(`/${l}/app/sessions/${sample.sessionId}/cup`);
+      revalidatePath(`/${l}/app/sessions/${sample.sessionId}/results`);
+      revalidatePath(`/${l}/app/sessions/${sample.sessionId}/print`);
     }
-    revalidatePath(`/app/sessions/${sample.sessionId}/cup`);
-    revalidatePath(`/app/sessions/${sample.sessionId}/results`);
-    revalidatePath(`/app/sessions/${sample.sessionId}/print`);
+    if (closed) await syncCoffeeHistoryForSession(sample.sessionId);
     return { linked: true };
   });
 }
