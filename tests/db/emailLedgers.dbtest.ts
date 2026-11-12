@@ -86,20 +86,76 @@ describe("reserveEmailBudget", () => {
     expect((await reserveEmailBudget({ kind: "magic_link", ip: null, email: "a@example.test" })).allowed).toBe(true);
   });
 
-  // The module documents "two simultaneous requests can overshoot by one". The real
-  // behaviour under N simultaneous requests is measured here and pinned to the
-  // documented guarantee, which is what a reader of the comment relies on.
-  // DEFECT (D-05 finding, low): lib/emailBudget.ts says check-then-insert "can overshoot a
-  // limit by one reservation". Under 10 simultaneous requests 6 pass a limit of 3 (measured),
-  // so the stated bound does not hold. Marked it.fails so the suite goes red the day it is fixed.
-  it.fails("N simultaneous requests overshoot the limit by at most one (documented guarantee)", async () => {
+  // S9-04: the reservation takes a transaction-level advisory lock per bucket, so N
+  // simultaneous requests let through exactly `limit` (before the fix, 10 against a
+  // limit of 3 let 6 through).
+  describe("simultaneous reservations never overshoot the limit", () => {
     const N = 10;
-    const res = await Promise.all(
-      Array.from({ length: N }, () => reserveEmailBudget({ kind: "magic_link", ip: null, email: "race@example.test" })),
-    );
-    const allowed = res.filter((r) => r.allowed).length;
-    console.log(`[D-05] ${N} simultaneous magic_link reservations, limit 3 -> ${allowed} allowed`);
-    expect(allowed).toBeLessThanOrEqual(3 + 1);
+
+    it("magic_link, one address (limit 3)", async () => {
+      const res = await Promise.all(
+        Array.from({ length: N }, () => reserveEmailBudget({ kind: "magic_link", ip: null, email: "race@example.test" })),
+      );
+      expect(res.filter((r) => r.allowed)).toHaveLength(3);
+      expect(await prisma.outboundEmailEvent.count({ where: { kind: "magic_link" } })).toBe(3);
+    });
+
+    it("close_resend, one session (limit 3)", async () => {
+      const res = await Promise.all(
+        Array.from({ length: N }, () => reserveEmailBudget({ kind: "close_resend", sessionId: "race-session" })),
+      );
+      expect(res.filter((r) => r.allowed)).toHaveLength(3);
+      expect(await prisma.outboundEmailEvent.count({ where: { kind: "close_resend" } })).toBe(3);
+    });
+
+    it("group_broadcast, one account (limit 3 per hour)", async () => {
+      const u = await makeUser();
+      const res = await Promise.all(
+        Array.from({ length: N }, () => reserveEmailBudget({ kind: "group_broadcast", userId: u, recipients: 1 })),
+      );
+      expect(res.filter((r) => r.allowed)).toHaveLength(3);
+      expect(await prisma.outboundEmailEvent.count({ where: { kind: "group_broadcast" } })).toBe(3);
+    });
+
+    it("code_verify, one subject (limit 10) with 25 simultaneous attempts", async () => {
+      const res = await Promise.all(
+        Array.from({ length: 25 }, () => reserveEmailBudget({ kind: "code_verify", ip: null, subject: "race@example.test" })),
+      );
+      expect(res.filter((r) => r.allowed)).toHaveLength(10);
+    });
+
+    it("different buckets do not block each other and each keeps its own limit", async () => {
+      const addrs = ["a1", "a2", "a3"].map((x) => `${x}@example.test`);
+      const res = await Promise.all(
+        addrs.flatMap((email) => Array.from({ length: 6 }, () => reserveEmailBudget({ kind: "magic_link", ip: null, email }))),
+      );
+      expect(res.filter((r) => r.allowed)).toHaveLength(9); // 3 per address
+    });
+  });
+
+  it("requests with overlapping keys (shared IP, shared address, shared account) do not deadlock", async () => {
+    const u1 = await makeUser();
+    const u2 = await makeUser();
+    const ips = ["198.51.100.1", "198.51.100.2"];
+    const emails = ["x@example.test", "y@example.test", "z@example.test"];
+    const jobs: Promise<unknown>[] = [];
+    // every (email, ip, user) combination twice, interleaved so the lock sets cross each other
+    for (let round = 0; round < 2; round++) {
+      for (const email of emails) {
+        for (const ip of ips) {
+          for (const userId of [u1, u2, null]) {
+            jobs.push(reserveEmailBudget({ kind: "magic_link", ip, email, userId }));
+          }
+        }
+      }
+    }
+    const settled = await Promise.allSettled(jobs);
+    const failed = settled.filter((r) => r.status === "rejected");
+    expect(failed.map((f) => String((f as PromiseRejectedResult).reason))).toEqual([]);
+    const allowed = settled.filter((r) => r.status === "fulfilled" && (r.value as { allowed: boolean }).allowed).length;
+    // per-address limit 3 across 3 addresses; the per-user bucket (10) and per-IP (60) are not the binding ones
+    expect(allowed).toBeLessThanOrEqual(9);
+    expect(await prisma.outboundEmailEvent.count({ where: { kind: "magic_link" } })).toBe(allowed);
   });
 });
 
