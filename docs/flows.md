@@ -42,6 +42,8 @@ join, evaluate, submit, waiting room, offline replay and claim.
   submit after the solo auto-close is the final state, not an error. The module
   JSON is bounded in `computeEvaluationDerived` (note 500, module 64k).
 - Naming a coffee on a coffee-less sample creates and links it in one transaction.
+- **Wizard coffees (S9-03).** The new coffees typed in the wizard are created INSIDE the session's own transaction (`createCoffeesInTx`, `app/actions/sessions.ts`), so a failed session insert leaves no stray coffee; codes are pre-generated and the whole transaction is retried on a code collision (`retryOnCodeCollision`). The full wizard still requires a coffee per sample (`sample_without_coffee`); only "Catar ahora" makes coffee-less samples.
+- **Existing coffee on a sample (S9-03, S9-05).** The session edit form (`EditSessionForm`, `addSessionSample` with a `coffeeId`) and the cup page's sample editor (`CupClient`) both offer the shared `CoffeePicker`. On a coffee-less sample the cup page links the picked coffee through `assignSampleCoffee` (owner only; the id is re-validated with `usableCoffeeWhere`; a sample that already has a coffee is `conflict`; on a closed session the sample is also revealed and history re-synced). `cup/page.tsx` sends a sample's `coffeeId` to the owner only, so a participant cannot open a public or shared coffee's page before the reveal.
 
 ### The one close routine (2026-09-08)
 
@@ -207,6 +209,13 @@ self-paced (no waiting room, no "Iniciar cata"), which the forms say before savi
 visible (expiry rule, §1 above): the cron only flips `status` and sends the emails. Close emails are queued with `after()` and ledgered per
 recipient in `close_email_deliveries`; the owner sees sent / no-email / failed /
 pending on the results page and can "Reenviar" (only unsent recipients go out).
+**Reservation (S9-01):** a recipient's row is written with status `sending`
+BEFORE the PDF render and the send, so the cron repair pass racing an owner
+resend cannot email the same person twice. It is a 10-minute lease
+(`CLOSE_EMAIL_LEASE_MS`, `lib/closeEmailLedger.ts`): a `sending` row older than
+that belongs to a crashed run and is claimable again; `sent` is never retried;
+`failed`/`skipped` are. A resend with no claimable recipient does not spend the
+`close_resend` budget (3 per session per hour).
 
 ```mermaid
 stateDiagram-v2
@@ -1002,6 +1011,8 @@ When you touch any of these, update the matching diagram **in the same PR**:
 - Results page tab structure, gating (owner vs. participant), or the drill-down dialog → §5
 
 ## Scoring below five cups (S8-04)
+
+> **Decided, not built (2026-11-12):** `docs/product/cata-descentralizada-puntaje.md` replaces this rule (deductions at any cup count, at most 6 per cup, diluted only beyond five pooled cups, plus a coffee lifetime score). The description below is what the code does today.
 
 ```mermaid
 flowchart TD

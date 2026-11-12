@@ -1,344 +1,258 @@
 # Cata Café Sensible
 
-A professional coffee cupping evaluation platform for specialty coffee experts (*catadores*). Implements the **SCA CVA (Specialty Coffee Association — Coffee Value Assessment)** methodology with three evaluation formats: Descriptive, Affective, and Combined.
+A web app for running coffee cupping sessions (*catas*) the way specialty-coffee professionals score them. It follows the **SCA CVA (Specialty Coffee Association, Coffee Value Assessment)** form, offers three evaluation formats (Descriptive, Affective and Combined), and works for one person alone or for a group tasting together or each at their own pace.
 
-Built with Next.js 16, Supabase, Prisma, and Tailwind CSS 4.
+Built with Next.js 16, Supabase, Prisma and Tailwind CSS 4. The interface is Spanish first, with English available throughout.
+
+This README describes the code on `main`. Where something has been built but never exercised against the real production service, it says so.
 
 ---
 
 ## Table of Contents
 
 - [Overview](#overview)
-  - [The Problem](#the-problem)
-  - [The Solution](#the-solution)
-  - [Who It's For](#who-its-for)
-  - [Why Cata Café](#why-cata-café)
-  - [Feature Highlights](#feature-highlights)
 - [What It Does](#what-it-does)
 - [How to Use the App](#how-to-use-the-app)
-  - [All Users: Getting Access](#all-users-getting-access)
-  - [Session Leader (Admin): Solo Cupping](#session-leader-admin-solo-cupping)
-  - [Session Leader (Admin): Group Cupping](#session-leader-admin-group-cupping)
-  - [Participant: Joining and Evaluating](#participant-joining-and-evaluating)
-  - [All Users: Results and History](#all-users-results-and-history)
-  - [All Users: Coffee Profiles](#all-users-coffee-profiles)
+  - [Signing in, guests and accounts](#signing-in-guests-and-accounts)
+  - [Starting a session](#starting-a-session)
+  - [Cupping](#cupping)
+  - [Group sessions: the organizer](#group-sessions-the-organizer)
+  - [Group sessions: a participant](#group-sessions-a-participant)
+  - [Closing a session](#closing-a-session)
+  - [Results, reports and exports](#results-reports-and-exports)
+  - [Coffees](#coffees)
+  - [Tasting groups](#tasting-groups)
+  - [Sensory warm-up](#sensory-warm-up)
+  - [Insights (restricted)](#insights-restricted)
+  - [Profile and account](#profile-and-account)
 - [Scoring System](#scoring-system)
 - [Tech Stack](#tech-stack)
 - [Local Development Setup](#local-development-setup)
 - [Environment Variables](#environment-variables)
-- [Database & Supabase Setup](#database--supabase-setup)
+- [Database and Supabase Setup](#database-and-supabase-setup)
+- [Tests](#tests)
 - [Project Structure](#project-structure)
 - [Dev Commands](#dev-commands)
+- [Further Documentation](#further-documentation)
 
 ---
 
 ## Overview
 
-> **The professional cupping platform that keeps a Q-grader's full attention on the coffee — not the software.**
+### The problem
 
-Cata Café Sensible is a web app for running rigorous, reproducible specialty-coffee evaluations the way the industry actually scores them: the official **SCA CVA (Coffee Value Assessment)** protocol, end to end. Solo or in a group, online or offline, every cup is captured, scored, and traceable — from green-bean inspection through blind tasting to the exportable certificate.
+Professional cupping still runs on paper forms and spreadsheets:
 
-**Auténtico · Profesional · Refinado** — built for people who taste coffee for a living.
+- The CVA arithmetic is easy to get wrong by hand.
+- Collecting every taster's sheet and producing one group result is slow.
+- Keeping sample identities hidden until the reveal, and tying results back to the coffee afterwards, takes manual discipline.
+- Cupping rooms, roasteries and farms often have weak or no connection.
+- Last quarter's score for the same coffee ends up in a folder, disconnected from the coffee.
 
-### The Problem
+### What the app does about it
 
-Professional cupping still runs on paper forms and spreadsheets. That creates real friction in the lab:
+- It captures the CVA evaluation on a phone or tablet and computes the score for you, showing the formula.
+- A session can be solo, a live group (everyone cups together, with a waiting room), or a self-paced group with a closing date.
+- A cupper can keep evaluating without a connection. Drafts are stored on the device and sync when the connection returns.
+- Samples are blind (coded labels) until the organizer reveals which coffee each one was.
+- Every revealed coffee gets a profile, and every cupper keeps a personal tasting history.
+- Results can be exported as PDFs; the session organizer can also download a CSV.
 
-- **Manual CVA math is error-prone.** The scoring formula is fiddly, and hand-tallying uniformity and defect penalties across cups invites mistakes on results clients rely on.
-- **Group calibrations are hard to aggregate.** Collecting every taster's sheet, normalizing penalties, and producing one community score is slow and inconsistent.
-- **Blind integrity is fragile on paper.** Keeping sample identities hidden until the reveal — and tying results back to origin afterward — takes manual discipline.
-- **Connectivity is unreliable.** Cupping labs, roasteries, and farm sites often have weak or no wifi, exactly where the data is being entered.
-- **History gets lost.** Last quarter's score for the same lot lives in a folder somewhere, disconnected from the coffee itself.
+### Who it is for
 
-### The Solution
-
-Cata Café Sensible replaces the paper sheet with a purpose-built tool:
-
-- The **complete SCA CVA protocol** — Descriptive, Affective, and Combined formats — with scores computed automatically and the formula shown transparently.
-- **Solo and group sessions**, with invite links, real-time submission tracking, and a single authoritative **community aggregate score**.
-- **Offline-first cupping**: evaluate with no connection, and drafts sync automatically — with conflict resolution — the moment you're back online.
-- **Blind by design**: coded sample labels, origin data entered only after the reveal.
-- **Full traceability**: every revealed sample feeds a coffee profile and a personal tasting history.
-- **Exportable PDF certificates** for records and clients.
-
-### Who It's For
-
-| Persona | Role | What they need |
-|---|---|---|
-| **Q-Grader / Trained Cupper** | Runs formal evaluations in a lab or roastery | Fast, reliable data entry during a timed protocol; precise, transparent scoring; green-bean and post-reveal data capture; PDF export |
-| **Session Organizer / Lab Manager** | Sets up sessions, invites cuppers, manages reveals | Solo or group sessions with format choice; blind sample control; live submission progress; community aggregate scoring; shareable invites |
-| **Invited Participant** | Joins a group session via link | A frictionless join, a clean evaluation flow, and access to aggregate results after the session closes |
-
-Default language is **Spanish** (the working language of much of the specialty-coffee world), with full English support.
-
-### Why Cata Café
-
-| Value | What it means |
+| Role | What they do in the app |
 |---|---|
-| **Protocol fidelity** | Implements the official SCA CVA formula exactly — no approximations. Penalties are normalized correctly across cups and participants. |
-| **Zero-friction entry** | Auto-save at every keystroke (800ms debounce). Magic-link sign-in — no passwords to manage. Guests can join a session with just a name (QR join, no email) — same law in practice: *valor antes que fricción* (see PRODUCT.md). |
-| **Works offline** | Cup in a basement lab or on a farm with no wifi. Drafts persist locally and sync — conflict-aware — on reconnect. |
-| **Real-time group calibration** | Watch submissions land live; produce one trustworthy community score the instant the session closes. |
-| **Blind integrity** | Coded labels (A, B, C…); origin revealed only post-tasting, on the leader's command. |
-| **Full traceability** | Every cup links to a coffee profile and a personal history with both individual and community scores. |
-| **Certificate export** | One-click formatted PDF for records or clients. |
-| **Bilingual, Spanish-first** | Built for Latin-American specialty-coffee professionals, with English available throughout. |
+| **Cupper** (Q-grader, roaster, barista, producer, enthusiast) | Evaluates samples, reads results, keeps a history |
+| **Session organizer** | Creates sessions, invites cuppers, controls the reveal and the close, and sees the per-cupper breakdown |
+| **Guest** | Joins a group session by scanning a QR code with just a name, cups, and can later keep the results by creating an account |
+| **Restricted analytics users** | A small set of people who can open the Insights area (see [Insights](#insights-restricted)) |
 
-### Feature Highlights
-
-**Solo cupping** — Create a session, inspect green beans, cup each sample across the chosen format, reveal origins, and export a certificate.
-
-**Group cupping** — Invite cuppers by link, track who has submitted in real time, reveal samples on your command, exclude outliers from the aggregate, and close the session to lock in community scores.
-
-**Offline-first** — Keep evaluating with no connection; a banner shows offline status and drafts replay automatically on reconnect, with a conflict modal if a draft was already submitted elsewhere.
-
-**Predictive flavor entry** — Flavor descriptors are chosen from the SCA flavor wheel either by browsing the hierarchy or by a fuzzy typeahead (Fuse.js) that tolerates typos and accents ("framuesa" → *Frambuesa*) and shows each descriptor's breadcrumb so the cupper confirms which group it files under.
-
-**Score transparency** — A collapsible "¿Cómo se calculó?" panel breaks down exactly how each individual and community CVA score was computed — the formula, the per-section values, and the session setup (cups per sample, when penalties apply) — reading the authoritative numbers verbatim, never recomputing.
-
-**Guided onboarding** — First-time cuppers tell us their role and country and are routed straight to a first action (create a session or add a coffee).
-
-**Coffee library & history** — Every revealed coffee gets a profile tracking each session it appeared in; each cupper gets a personal tasting history with individual and community scores. Every coffee also gets a short, shareable 6-character code (e.g. `K7M-3FP`) shown on its profile and searchable by prefix in the coffee picker.
-
-**Reference sample (control) with signed Δ on results** — the session leader marks one sample as the point of comparison, and every other sample's score is shown against it — score with context.
-
-**Mobile-ready** — A responsive cupping layout with mobile sample navigation, tuned for tablets and phones at the cupping table.
+Product principle (see `PRODUCT.md`): *valor antes que fricción* — ask for as little as possible before the person gets value. That is why a guest needs no email and why creating a session only requires a name.
 
 ---
 
 ## What It Does
 
-Cata Café Sensible allows coffee professionals to:
-
-- Run **solo or group blind cupping sessions** following SCA CVA methodology
-- Evaluate samples across **3 formats**: Descriptive (intensity + sensory descriptors), Affective (1–9 quality scores), or Combined
-- Assess **green bean quality** (physical defects, screen size, color) before tasting
-- Record **post-reveal origin data** (country, farm, variety, process) after blind tasting
-- In group sessions: **invite participants via link**, track submission progress in real time, and compute **community aggregate scores**
-- View **individual and community scores** with radar charts comparing attribute averages
-- Browse a **coffee profile library** tracking every cupping session a coffee has appeared in
-- Review a personal **tasting history** across all revealed coffees
-- Keep cupping **offline** — drafts persist locally and sync automatically (with conflict resolution) on reconnect
-- Get started fast with **guided onboarding** that captures role and country and routes to a first action
+- Runs **solo, live-group and self-paced group** cupping sessions, plus a three-tap quick start ("Catar ahora").
+- Supports three **formats**: Descriptive (intensities and sensory descriptors), Affective (1–9 quality ratings of eight attributes) and Combined.
+- Records an optional **green-bean (physical) assessment** and **origin data** that the organizer can fill in around the reveal.
+- Lets the organizer mark up to three samples as a **reference** that the other samples are compared against.
+- Computes **individual and community scores**, a consensus figure, and ranks the samples with labels that say when a number is only indicative.
+- Keeps working **offline** and syncs drafts on reconnect.
+- Builds a **coffee library** (short codes, visibility, sharing) and a personal **tasting history**.
+- Manages **tasting groups**: a standing roster of co-cuppers, an announcements feed, and group emails.
+- Offers a guided **sensory warm-up** ("Movimiento sensorial") before cupping.
+- Produces **PDFs** (CVA form, personal summary, technical sheet, coffee sheet) and, for organizers, a **CSV** of the per-cupper data.
+- Sends email: sign-in links and codes, group announcements, session-close emails with a results link and a personal summary PDF, and deadline reminders.
 
 ---
 
 ## How to Use the App
 
-### All Users: Getting Access
+### Signing in, guests and accounts
 
-The app uses **magic link authentication** — no passwords.
+There are no passwords. There are three ways in:
 
-1. Go to the app URL and navigate to **Login**.
-2. Enter your email address and click **Send magic link**.
-3. Open the email and click the link — you are logged in automatically.
-4. Your profile is created on first login. You can update your display name and preferred language from the **Profile** page.
-5. On your **first login**, a short onboarding welcome captures your role (Q-grader, barista, roaster, producer, trader, or enthusiast) and country, then routes you to a first action — creating a session or adding a coffee.
+1. **Email.** On the login screen, enter your address and choose "Enviar enlace". The email contains a link and a 6-digit code. Either works: open the link, or type the code on the login screen ("Entrar con el código").
+2. **Google.** "Continuar con Google". (Google sign-in does not work inside some in-app browsers; the login screen says so and offers to copy the link.)
+3. **Guest, by QR or invite link.** A group session's join page offers "Continuar como invitado": only a display name, no email.
 
-> **Invited to a group session?** Open the invite link directly — no account required. If you are not logged in, the join page offers **Continuar como invitado** (just a display name, no email or password) alongside an optional sign-in link for returning users. Guests can keep their results later by creating an account from the results page (magic link or Google — the guest's tasting data is linked to the new or existing account).
+How the email link behaves:
 
-> **Cupping offline?** The evaluation interface keeps working without a connection — an offline banner appears and your scores are saved locally. When you reconnect, drafts sync automatically. If an evaluation was already submitted from another device while you were offline, a conflict dialog lets you choose what to keep.
+- Opening the link does **not** sign you in by itself. It lands on a confirmation page (`/auth/confirm`) with an "Entrar" button; pressing it completes the sign-in. This is so email security scanners that open links cannot use up your one-time link.
+- If you open the link in a **different browser than the one that requested it** (for example, you asked for the link on a laptop and open the email on a phone), the app does not sign you in silently. It shows "Vas a entrar como …" with the full address and two buttons, "Sí, continuar" and "No soy yo". This check has been exercised in production only for the same-browser case; the different-browser case has not been tried against the real service.
+- Links work once and expire; a failed link offers to request a new one.
 
----
+On the first sign-in a short welcome asks for your role and country and points you to a first action (create a session or add a coffee). You can skip it.
 
-### Session Leader (Admin): Solo Cupping
+**Guests** can join, cup, and read the results of the sessions they joined, and see their own profile. They cannot create sessions, coffees or groups, send invitations or use the Insights area; tapping one of those opens a "Termina de crear tu cuenta" dialog. A guest's access is tied to that browser: clearing site data or switching device loses it.
 
-The session leader creates and controls all aspects of the session.
+**Keeping a guest's results.** On a results page a guest sees a banner with "Crear cuenta y guardar". It sends them through the normal sign-in (email or Google), then to a confirmation card ("Vincular tus resultados") that names the guest participation. Only when the guest presses "Vincular a mi cuenta" are the evaluations and history moved to the account, whether the account is new or already existed. The link is valid for 7 days.
 
-#### 1. Create a session
+### Starting a session
 
-1. From the **Dashboard** or **Sessions** page, click **Nueva sesión**.
-2. Fill in:
-   - **Name** — a label for this cupping (e.g. "Lote 23 — Filtrado")
-   - **Date**
-   - **Objective** (optional)
-   - **Format** — Descriptive, Affective, or Combined
-   - **Cups per sample** — how many cups each sample is served in (affects penalty calculations)
-   - **Samples** — add one row per coffee sample; each gets a blind label (e.g. "A", "B", "C") and, if you like, a linked coffee — only the coffee's **name** is required, altitude and roast level can be filled in later
-     - Optionally mark one sample as the **Referencia** (control) with a radio next to it — every other sample's results will show a Δ against it. You can change this later from the master panel or the sample edit dialog inside `/cup`.
-   - Leave **Group session** toggle off for solo use
-3. Click **Create session** — you land directly on the cupping interface. Each new coffee gets a short shareable code automatically (see [Coffee Profiles](#all-users-coffee-profiles)).
+From the dashboard or the **Sesiones** page:
 
-#### 2. Physical evaluation (optional, pre-tasting)
+- **"Catar ahora"** (quick start): a name, a format and 1–20 samples, nothing else. It creates a solo session with one cup per sample and samples that have no coffee attached yet (labels "Muestra A", "Muestra B"…). You can name the coffees at the end or after the session closes. Registered users only.
+- **"Nueva sesión"** (full wizard):
+  - **Name** and **date** (required name), optional **objective**.
+  - **Format**: Descriptivo, Afectivo or Combinado.
+  - **Cups per sample**: 1 to 5.
+  - **Samples**: one row each, with a blind label and a coffee, either one from your library or a new one created together with the session (only the coffee's name is required; altitude, roast and the rest can be filled in later). A coffee created this way is saved in the same step as the session, so a failed save leaves no stray coffee.
+  - Optionally one sample marked as the **Referencia** (see below).
+  - **"Sesión grupal"** switches on the group options: **"Asíncrona"** (self-paced) and **"Fecha de cierre"** (closing date). Setting a date makes the session self-paced: no waiting room and no "Iniciar cata". Leave the date empty for a live cupping that you close yourself.
+  - A group session has a second step that shows the invite link and a QR code.
+- **Duplicate** an existing session as a template.
 
-Before cupping, you can evaluate the green beans:
+The organizer can later edit the session, add, rename or remove samples, change the reference, and (for a group session) change or clear the closing date, as long as the session is not closed. The warm-up exercise can only be chosen before the session starts or anyone evaluates.
 
-1. On the cupping page, select a sample and open the **Physical** tab.
-2. Record defects (Category 1 and Category 2), screen size, and color.
-3. Save — data is persisted automatically.
+**Reference sample ("Referencia").** The organizer can mark one sample as the control that the others are compared against, and up to three over time (each new one becomes the active reference; the earlier ones keep their data but are no longer fixed). The reference is cupped first. In affective and combined formats the active reference's quality is fixed at 5 ("ni alto ni bajo") on all eight attributes, so every cupper's score for it is exactly 79.00 and cuppers only describe what they perceive. On the results page the reference is shown as an anchor above the ranking, is left out of the ranking, the session average and "Mejor muestra", and every other sample shows a signed **Δ** against it (the "Comparar con" selector chooses which reference to compare against). The reference never changes any score; it only gives context.
 
-#### 3. Cup the samples
+### Cupping
 
-1. Select a sample from the top pill navigation.
-2. Open the **Cupping** tab.
-3. Fill in the evaluation form according to the format:
-   - **Descriptive**: intensity sliders, the flavor-wheel picker (browse or type-to-search), acidity/sweetness/mouthfeel descriptors, gustos predominantes
-   - **Affective**: 1–9 quality scales for each of the 8 SCA CVA attributes (Fragancia, Aroma, Sabor, Sabor residual, Acidez, Cuerpo, Uniformidad, Balance)
-   - **Combined**: both forms on one page
-4. Mark any non-uniform or defective cups using the cup checkboxes.
-5. Your score is **saved automatically** as you type (800ms debounce) — no manual save needed.
-6. Navigate between samples using the pill tabs at the top.
+The cupping screen has a sample navigator, the evaluation form and, for the organizer, a control panel ("Panel de maestro") in group sessions.
 
-> If a reference sample was marked, the tasting starts there: its quality is already fixed at 5 on every attribute (you only describe what you perceive), and results later show it as an anchor above the ranking rather than a ranked competitor.
+- **Descriptive:** intensity sliders, a flavor-wheel picker (browse the hierarchy or type and get fuzzy matches that tolerate typos and accents, with the breadcrumb shown), acidity, sweetness and mouthfeel descriptors, and main tastes.
+- **Affective:** 1–9 ratings of eight attributes: Fragancia, Aroma, Sabor, Sabor residual, Acidez, Dulzor, Sensación en boca and Impresión global.
+- **Combined:** both on one page.
+- **Cups:** for each cup you can mark it non-uniform or defective. A defective cup is also counted as non-uniform. Below five cups per sample the marks are stored but do not change the score (see [Scoring](#scoring-system)).
+- **Físico (physical) and Extrínseco (origin) modules:** green-bean defects, screen size, color, and origin data (country, farm, variety, process…). These are per sample, not per cupper, so only the session owner edits them; participants do not see the physical data, and the origin data is shown only to the owner or once the sample is revealed.
+- **Notas rápidas:** an optional last step with a free-text note per sample. It is never part of the score.
+- Your work **saves itself** a moment after you stop typing. The indicator says "saved" only when the server has it; if you are offline or the write failed it says the note is saved on this device and pending sync.
+- **Offline:** the page keeps working without a connection. Drafts live in the browser's IndexedDB and are sent when you reconnect. If an evaluation was already submitted (for example from another device) while you were offline, a conflict dialog lets you choose what to keep. A service worker (production builds only) lets the app shell reopen offline. Drafts that cannot be synced (for example because the session closed meanwhile) are listed in a "Notas sin sincronizar" panel where you can read and copy them; nothing is deleted automatically.
+- **Submitting:** "Enviar evaluación" per sample, or "Enviar y ver resultados" at the end. In a group session the organizer sees a live count of how many cuppers have submitted everything.
 
-#### 4. Reveal sample identities (optional)
+### Group sessions: the organizer
 
-After blind tasting, you can reveal what each sample was:
+- **Invite** by link or QR (`/join/[token]`). The organizer can regenerate the link ("Regenerar enlace", which invalidates the old one and its QR), and "Cerrar entradas" so that only people already in can enter.
+- **Live group:** participants who arrive wait in a waiting room until the organizer presses **"Iniciar cata"**, which can be done on the second wizard step or from the control panel. If the session is linked to a tasting group and the organizer asked to notify it, the group is emailed when the cupping starts (self-paced sessions notify at creation).
+- **Self-paced group:** with a closing date there is no waiting room; each cupper evaluates whenever they like until the date.
+- **Reveal:** "Revelar identidad" attaches the real coffee to a blind sample. Revealed samples feed coffee profiles and histories.
+- **Exclusion:** the organizer can exclude a cupper from the results (with a reason). The cupper still sees their own results; the community numbers recompute without them.
+- **Control panel extras:** change the reference, start the group warm-up together, see who has unsent complete notes before closing.
 
-1. In the **Extrinsic** tab for a sample, fill in origin data (country, region, farm, producer, variety, process, certifications).
-2. Data is saved and linked to the coffee profile.
+### Group sessions: a participant
 
-#### 5. View results
+Open the invite link or scan the QR; sign in or "Continuar como invitado". You land in the waiting room (live) or straight in the cupping screen (self-paced, or a live session already started). A participant sees no control panel and no reveal buttons. If the organizer chose a reference, its tab shows a "Referencia" pill and the others suggest comparing with it.
 
-1. Click **Ver resultados** from the cupping page or navigate to the session's **Results** page.
-2. See per-sample scores, SCA CVA breakdown, and attribute radar charts.
-3. As owner, you can still edit a sample's origin data from the results drill-down after the session closes — no need to reopen the cupping flow.
-4. Use **Print / PDF** to export a formatted certificate — it includes the physical-evaluation appendix (defects, screen size, color) and, once revealed, the roast level in the header.
+Results of a group session are visible to a participant once the session is closed, once everyone has submitted, or once the closing date has passed; the organizer can see them at any time.
 
----
+### Closing a session
 
-### Session Leader (Admin): Group Cupping
+- **Solo:** the session closes itself when every sample has a submitted evaluation. "Terminar cata" closes it early: it submits your complete drafts, removes samples with no evaluation, and closes.
+- **Group:** the organizer closes it with "Cerrar sesión", or the daily job closes a session whose closing date has passed (see [Scheduled jobs](#scheduled-jobs)). The dialog warns how many cuppers have complete notes that were never submitted: at close, those notes are **left out** of the results.
+- **What closing does**, in one routine: the session becomes read-only; every sample that has a coffee linked is revealed; community scores are recomputed; each cupper's coffee history is written; and for a group session each participant with an email address is emailed a link to the results plus a personal summary PDF. If a later step fails, the close is marked unfinished and retried automatically (by the daily job, by an owner action, or when a solo owner opens the results).
+- **Read-only:** a closed or expired session accepts no new evaluations. The few things that can still be changed are: the owner editing a revealed sample's origin data, the owner excluding or re-including a cupper (the results then say "Resultados actualizados el …"), and the owner attaching a coffee to a sample that had none (which also reveals it).
 
-Group sessions add invite management, real-time progress tracking, reveal control, and community aggregate scoring on top of the solo flow.
+### Results, reports and exports
 
-#### 1. Create a group session
+The results page (`/app/sessions/[id]/results`) is one page with three tabs, the same for everyone; owner-only content is hidden from others inside the tabs.
 
-1. Click **Nueva sesión** and fill in the same fields as a solo session, including — optionally — marking one sample as the **Referencia** (control) with the radio next to it. Step 2 of the wizard shows the chosen reference label.
-2. Toggle **Sesión grupal** on.
-3. Optional group-specific settings:
-   - **Asíncrona** — participants can cup at different times (no live session required)
-   - **Fecha de cierre** — auto-deadline after which the session stops accepting submissions
-4. Click **Create** — instead of redirecting immediately, a **Step 2** appears showing the invite link.
+- **Resumen:** a dashboard with the ranking (community score in a group session, your own score in a solo session, with a "± X.X" consensus chip), your performance against the community, and a one-line descriptor summary per sample.
+- **Resultados:** a table or chart view (Tabla / Gráfico), and for the owner a per-cupper CVA matrix with the exclusion switches and a standard deviation column.
+- **Descriptores:** word cloud, frequency bars and consensus sentences, filterable by sample and by perceptual block.
+- **Ranking honesty:** community numbers are shown as "n de N incluidos". Equal scores share a rank; with fewer than 5 cuppers the score is labelled "indicativo"; with fewer than 3 there is no spread and no "best sample"; samples whose gap is within the spread are marked "sin diferencia clara". These labels are display only and never change a score.
+- A collapsible "¿Cómo se calculó?" panel breaks down how a score was computed.
+- **PDFs** ("Descargar PDF" and related links): the CVA form for a session, a personal summary, a technical sheet for the owner, and a coffee sheet. They carry a stamp with the generation date, the language, how many cuppers the group numbers include, and a note when results or origin data changed after the close. A printable HTML version of the CVA form is also available.
+- **CSV** ("Datos por catador (CSV)"): per-cupper data, for the session owner only.
 
-#### 2. Share the invite link
+### Coffees
 
-- Copy the invite URL shown on Step 2 (format: `/[locale]/join/[token]`).
-- Send it to participants via email, WhatsApp, or any channel.
-- The link can be used multiple times (no use limit by default; you can set `maxUses` when generating additional tokens via the API).
-- Anyone who opens the link and authenticates becomes a **joined participant** of the session.
+- The **Cafés** page lists coffees you own and coffees shared with you or public. Each coffee has a unique 6-character **short code** (for example `K7M-3FP`) that you can quote to others and search for in the coffee picker.
+- **Visibility** is private, shared (with people you invite or who open your invite link) or public. The owner can also choose whether the community results on the coffee page are visible to others.
+- A coffee's page shows its origin data and every session it appeared in, with individual and community scores. Only sessions that are closed and revealed contribute, so a blind coffee is not given away before its reveal.
+- **Deleting a coffee** anonymizes it rather than erasing it: identifying fields are wiped and it disappears from lists, while the tasting data attached to it stays for analysis. Only the owner can do this.
+- Coffees can be duplicated, and an existing coffee can be linked to a sample from the session wizard, the session edit form, or the sample editor on the cupping page.
 
-#### 3. Monitor progress during the session
+### Tasting groups
 
-On the cupping page, the **Master Controls panel** (visible only to the session leader) shows:
+A **Grupo** is a standing roster of co-cuppers, separate from any one session. The owner creates it, adds members by email or from people they have cupped with, renames members, resends invitations, and posts announcements to a feed. Members can read the feed and leave the group. The owner can email the whole group and can link a session to a group so members are notified.
 
-- **X / Y submitted** — live count of how many participants have submitted their evaluation for each sample. This updates in real time as participants submit — no page refresh needed.
-- A **Muestra de referencia** selector — change which sample is the reference at any time before the session closes; participants see the change live, no reload needed.
-- Per-sample **Reveal** buttons (see step 4 below).
-- A **Close Session** button (see step 5 below).
+Group emails carry an unsubscribe link (and the standard one-click unsubscribe header); a member who opts out stops receiving that group's emails but keeps seeing the group in the app. Outbound email is rate limited, and the app tells the sender when a send was refused for that reason.
 
-#### 4. Reveal sample identities
+### Sensory warm-up
 
-When you're ready to reveal which coffee was which (after all or most participants have submitted):
+"Movimiento sensorial" is a library of five guided warm-up exercises with an animated figure, optional sound cues, and optional spoken narration ("Leer en voz alta"). It is in the sidebar under Sesiones (on phones, reached from the dashboard and the Sesiones page). A session owner can choose an exercise in the session wizard or edit form; cuppers who have not evaluated yet are offered it when they open the cupping screen. In a live group session the organizer can start it for everybody at once ("Empezar con el grupo").
 
-1. In the Master Controls panel, click **Revelar identidad** next to a sample.
-2. Select the coffee from the dropdown (or create a new coffee profile).
-3. Confirm — the sample's coffee ID is now set and `revealed = true`.
+The group synchronized run, and the audio and narration on real phones, have not been verified on two physical devices.
 
-> Revealed samples are included in coffee profiles and tasting history. Unrevealed samples are not.
+### Insights (restricted)
 
-#### 5. Close the session
+The "Análisis" area (`/app/insights`) appears only for people granted access. There are three levels:
 
-**Group sessions** — when cupping is complete:
+| Level | Granted by | Sees |
+|---|---|---|
+| Super-admin | the `ANALYTICS_SUPER_ADMIN_EMAIL` setting (with a fallback address in code) | Everything: platform-wide data, the access list, the monthly digest |
+| AI admin | the `ANALYTICS_AI_ADMIN_EMAILS` allowlist | The insights pages, the AI chat, and the Usuarios directory (emails masked) |
+| Flagged user | a flag on their profile | The base insights page, scoped to their own data |
 
-1. Click **Cerrar sesión** in the Master Controls panel.
-2. Confirm the dialog — session status changes to `closed`.
-3. This triggers the coffee-history sync (`lib/coffeeHistory.ts`): for every revealed sample, each participant's individual score and the community aggregate score are written to the **coffee history**.
-4. Community results (aggregate scores, radar charts, per-participant breakdown) become visible to all participants.
+Everyone except the super-admin sees only their own data. In platform scope, cuppers appear as anonymous "Catador XXXX" labels. The AI features call Google Gemini with aggregated numbers only. A monthly digest email goes to the super-admin. Insights shows derived numbers next to reference datasets with their required attribution lines.
 
-**Solo sessions close themselves** — there is no close button. When you submit
-evaluations for every sample (going to results submits all drafts), the session
-auto-closes: coffee-linked samples are revealed, status flips to `closed`, and
-your scores land in the coffee history. See `docs/flows.md` §1 for the diagrams.
+### Profile and account
 
----
+The profile page holds your display name, language, role and country, your sessions, coffees and groups, an activity-points level, and tools to change your email address, sign out on this device or everywhere, and (for guests) finish creating an account.
 
-### Participant: Joining and Evaluating
+**Account deletion** is built (with a typed confirmation) but **disabled**: it appears only when the server setting `ACCOUNT_DELETION_ENABLED=1` is on, and it has never been run against real data. It should be rehearsed on a throwaway account first (`docs/LAUNCH-RUNBOOK.md` §24).
 
-Participants follow the standard cupping flow but have a restricted view — no master controls, no reveal buttons.
+**Legal pages** (`/privacidad`, `/terminos`) exist as unpublished drafts. Nothing links to them until the owner pastes the final text and switches `LEGAL_PAGES_PUBLISHED` in `lib/legal/config.ts`.
 
-#### 1. Join via invite link
+### Scheduled jobs
 
-1. Open the invite link shared by the session leader.
-2. If not logged in, the join page offers **Continuar como invitado** — enter just a display name (no email or password) — or an optional sign-in link for returning users.
-3. Click **Unirse a la sesión** — you are added as a participant and redirected to the cupping interface. Guests can keep their results later by creating an account from the results page (magic link or Google — the guest's tasting data is linked to the new or existing account).
+Two jobs are registered in `vercel.json` and protected by `CRON_SECRET`:
 
-> You can only join once. Reopening the link after joining takes you directly to the cupping page.
+| Path | Schedule (UTC) | What it does |
+|---|---|---|
+| `/api/cron/close-expired-sessions` | every day, 06:00 | Closes active sessions whose closing date has passed, finishes closes that were left unfinished, and sends a 24-hour deadline reminder and (for a live session forgotten open) an idle reminder. It never closes a session through a reminder. |
+| `/api/cron/insights-digest` | the 1st of each month, 12:00 | Sends the monthly insights digest to the super-admin |
 
-#### 2. Cup the samples
-
-Same flow as the session leader:
-
-1. Select a sample from the pill navigation.
-2. Fill in the evaluation form (Descriptive, Affective, or Combined — set by the session leader at creation).
-3. Your work saves automatically.
-
-If the session leader marked a reference sample, the tasting starts there — its quality is already fixed at 5 on every attribute, so you only describe what you perceive — and its tab shows a small **Referencia** pill, while every other sample shows a "Compara con la referencia (X)" hint; results later show it as an anchor above the ranking, not a ranked competitor.
-
-#### 3. Submit your evaluation
-
-When you are satisfied with your scores for a sample:
-
-1. Click **Enviar evaluación** (visible in the cupping tab).
-2. Confirm — your evaluation is marked as submitted (`isDraft = false`).
-3. The session leader's progress counter increments in real time.
-
-> You cannot edit a submitted evaluation. Review carefully before submitting.
-
-#### 4. View results after session closes
-
-Once the session leader closes the session, the **Results** page shows two tabs:
-
-- **Mis resultados** — your individual scores per sample
-- **Resultados grupales** — community aggregate scores, radar chart of attribute averages, delta (your score vs. community), and the full participant breakdown
-
----
-
-### All Users: Results and History
-
-#### Results page
-
-- Accessible from any session card in the Dashboard or Sessions list.
-- For solo sessions: individual scores and SCA CVA breakdown only.
-- For group sessions (closed, or if you are the session leader): tab toggle for individual vs. group results.
-- If a reference sample was marked, it carries a **Referencia** badge everywhere its label appears (ranking, table, chart cards, drill-down), and every other sample shows a signed **Δ** against it, with an info icon explaining how to read it.
-- **PDF export**: click **Imprimir / PDF** to generate a formatted evaluation certificate.
-
-#### Personal tasting history
-
-- Navigate to **Historial** in the top nav.
-- Shows every coffee you have tasted in a revealed session — coffee name, session, your individual score, community score, and date.
-- Links to the coffee profile for each entry.
-
----
-
-### All Users: Coffee Profiles
-
-- Navigate to **Cafés** in the top nav.
-- Lists all public coffees plus any coffees you created.
-- Click a coffee to see its **profile page**: a short shareable code (e.g. `K7M-3FP`, shown as a pill next to the name), origin details (country, region, farm, producer, variety, process, certifications) and a full tasting history showing every session it appeared in along with individual and community scores.
-- When picking an existing coffee (session wizard, sample editor), you can search by name or by code — typing 3+ code characters ranks exact code matches first without hiding fuzzy name results.
+A closing date means the end of that day in the time zone of the browser that set it, so the job closes the session in the early hours after that day.
 
 ---
 
 ## Scoring System
 
-### Individual Score (SCA CVA)
+This section describes what the code does **today**.
+
+### Individual score (one cupper, one sample)
 
 ```
 S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 ```
 
-| Variable | Meaning |
+| Symbol | Meaning |
 |---|---|
-| `hᵢ` | Final value (1–9) for each of the 8 affective attributes |
-| `u` | Non-uniform cups (penalty applies only when ≥5 cups per sample) |
-| `d` | Defective cups (penalty applies only when ≥5 cups per sample) |
+| `hᵢ` | the final 1–9 value of each of the eight affective attributes |
+| `u` | number of cups marked non-uniform |
+| `d` | number of cups marked defective |
 
-Score range: roughly 36–100 points.
+- Every attribute at 1 gives 58.00, at 5 gives 79.00, at 9 gives 100.00.
+- The deductions of 2 per non-uniform cup and 4 per defective cup apply **only when the session has five or more cups per sample**. Below five cups the marks are stored but ignored.
+- A defective cup is also marked non-uniform, so it costs 6 in total.
+- The result is rounded to the nearest 0.25 and kept between 0 and 100.
 
-### Community Score (group sessions)
+### Community score (a group's score for one sample)
 
-Computed by a **PostgreSQL trigger** (`trg_recompute_aggregate`) the moment an evaluation is submitted. The TypeScript `calcCommunityScore()` function is display-only.
+Averaging the cuppers' raw scores (the formula above without the cup deductions) and then deducting normalized cup penalties:
 
 ```
 uniformityPenalty = totalNonUniform × (10 / totalCups)
@@ -346,146 +260,200 @@ defectPenalty     = totalDefective  × (30 / totalCups)
 communityScore    = avgRawScore − uniformityPenalty − defectPenalty
 ```
 
-| Variable | Meaning |
+| Symbol | Meaning |
 |---|---|
-| `totalNonUniform` | Cups marked non-uniform but NOT defective, summed across all participants |
-| `totalDefective` | Cups marked defective, summed across all participants |
-| `totalCups` | `cupsPerSample × participantCount` |
-| `avgRawScore` | Average of individual raw scores across all submitted evaluations |
+| `avgRawScore` | average of the included cuppers' raw scores |
+| `totalNonUniform` | non-uniform cups across included cuppers (defective cups included, since a defective cup is also non-uniform) |
+| `totalDefective` | defective cups across included cuppers |
+| `totalCups` | `cupsPerSample` × number of included cuppers |
 
-**Consensus (SD)**: the results page also shows a "± X.X" figure next to the community score — the population standard deviation of the included cuppers' individual scores, a quick read on how much the table agreed. It's display-only and computed alongside `communityScore`, never stored by the trigger.
+- Only **complete** evaluations (all eight attributes rated) from non-excluded cuppers are included.
+- As with the individual score, the penalty terms apply only from five cups per sample.
+- Because a defective cup is counted in both totals, it costs 40/`totalCups`: for one cupper with five cups that is 8 points, against 6 in that cupper's individual score.
+- The result is rounded to the nearest 0.25 and kept between 0 and 100.
+- The authoritative value is computed by a PostgreSQL trigger (`trg_recompute_aggregate`) when an evaluation is submitted and stored in `aggregate_scores`. The TypeScript `calcCommunityScore()` is only for display, and a test keeps the two in agreement.
+
+### Other numbers
+
+- **Consensus (SD):** the "± X.X" next to the community score is the population standard deviation of the included cuppers' individual scores; it is `null` for fewer than two cuppers. Display only.
+- **"Impresión rápida":** a session with fewer than five cups per sample is tagged this way in the tasting history and on the coffee page, because its score is not a full CVA score.
+- **Reference sample:** pinned at 79.00 as described above; never read by scoring.
+
+> **Decided, not built yet.** On 2026-11-12 the owner decided to change this rule: cup deductions will apply at any number of cups (flat 4 per defective cup and 2 per non-uniform cup, at most 6 per cup), diluted only when more than five cups are pooled (a group's session score and a new lifetime score per coffee). The specification is `docs/product/cata-descentralizada-puntaje.md` and the work is planned in `docs/prompts/S10-kim-answers.md`. None of this is implemented; the behaviour above is what the app does now, and no stored score has changed.
 
 ---
 
 ## Tech Stack
 
+Versions are the ones installed from `package-lock.json`.
+
 | Layer | Library | Version |
 |---|---|---|
-| Framework | Next.js App Router | 16.2.4 |
-| UI Runtime | React + React DOM | 19.2.4 |
-| Language | TypeScript | 5 (strict) |
-| ORM | Prisma + PrismaPg adapter | 7.7.0 |
+| Framework | Next.js (App Router) | 16.4.6 |
+| UI runtime | React + React DOM | 19.2.4 |
+| Language | TypeScript (strict) | 5.9.3 |
+| ORM | Prisma + `@prisma/adapter-pg` | 7.7.0 |
 | Database | PostgreSQL via Supabase | — |
-| Auth | Supabase Auth (magic link OTP) | 2.104.0 |
-| SSR Auth | @supabase/ssr | 0.10.2 |
-| i18n | next-intl | 4.9.1 |
-| Styling | Tailwind CSS 4 + PostCSS | 4 |
-| Client State | Zustand | 5.0.12 |
+| Auth | Supabase Auth: email link and 6-digit code, Google, anonymous guests (`@supabase/supabase-js`) | 2.104.0 |
+| SSR auth | `@supabase/ssr` | 0.10.2 |
+| i18n | next-intl | 4.14.10 |
+| Styling | Tailwind CSS (PostCSS) | 4.2.3 |
+| Client state | Zustand | 5.0.12 |
 | Offline storage | localforage (IndexedDB) | 1.10.0 |
-| Flavor search | Fuse.js (fuzzy typeahead) | 7.4.2 |
+| Flavor search | Fuse.js | 7.4.2 |
 | Charts | Recharts | 3.8.1 |
-| PDF | @react-pdf/renderer | 4.5.1 |
-| Primitives | Radix UI (dialog) | 1.1.15 |
+| PDF | `@react-pdf/renderer` | 4.5.1 |
+| Dialogs | Radix UI Dialog | 1.1.15 |
 | Icons | lucide-react | 1.8.0 |
-| Animation | GSAP (marketing landing) | 3.15.0 |
-| Scripts/tooling | tsx | 4.21.0 |
+| Animation | GSAP (landing page text reveals) | 3.15.0 |
+| QR codes | qrcode.react | 4.2.0 |
+| AI (insights only) | `@google/genai` (Gemini) | 2.12.0 |
+| Email | Resend (HTTP API, no SDK dependency) | — |
+| Tests | Vitest | 3.2.7 |
+| Scripts | tsx | 4.21.0 |
+
+Hosting is on Vercel (cron jobs in `vercel.json`).
 
 ---
 
 ## Local Development Setup
 
+The only database the project has is the production one. **A local `.env.local` that points at the real Supabase project talks to production data.** For experiments, create a separate Supabase project.
+
 ### Prerequisites
 
-- Node.js 20+
-- A Supabase project (free tier works)
+- Node.js 20 or newer (`@types/node` targets 20; `package.json` does not pin an engine)
+- A Supabase project
 
 ### Steps
 
-1. **Clone and install**
+1. **Install**
    ```bash
    git clone <repo-url>
    cd cata-cafe
    npm install
    ```
-
-2. **Configure environment**
+2. **Create `.env.local`** at the project root with the variables in [Environment Variables](#environment-variables). There is no `.env.example` file in the repository.
+3. **Apply the migrations and generate the client**
    ```bash
-   cp .env.example .env.local
-   # Fill in the four required variables (see Environment Variables below)
-   ```
-
-3. **Run database migrations**
-   ```bash
-   npx prisma migrate dev
+   npx prisma migrate deploy   # applies the committed migrations
    npx prisma generate
    ```
-
-4. **Apply RLS policies and triggers manually**
-   - Open your Supabase project → SQL Editor
-   - Run the full contents of `prisma/sql/rls_and_triggers.sql`
-   - This step is required — Prisma migrate does NOT apply triggers or RLS policies
-
-5. **Start the dev server**
+   (`npx prisma migrate dev` is for creating new migrations while developing a schema change.) On a brand-new empty database the migrations stop at one migration; see `docs/LAUNCH-RUNBOOK.md` §29 for the workaround.
+4. **Apply the SQL file by hand**: see [Database and Supabase Setup](#database-and-supabase-setup).
+5. **Configure Supabase Auth** (same section), including enabling anonymous sign-ins.
+6. **Run**
    ```bash
    npm run dev
    ```
-   App runs at [http://localhost:3000](http://localhost:3000). The default locale is Spanish (`/es/`).
+   The app runs at [http://localhost:3000](http://localhost:3000); the default locale is Spanish (`/es`, English at `/en`).
 
 ---
 
 ## Environment Variables
 
-Create `.env.local` at the project root:
+Create `.env.local`. The boot check in `instrumentation.ts` (`lib/env.ts`) fails a **production** start if a required variable is missing; in development it only warns.
 
-```
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-DATABASE_URL=postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
-RESEND_API_KEY=your-resend-api-key
-EMAIL_FROM="Cata Café <no-reply@yourdomain.com>"
-```
+### Required in production
 
-| Variable | Where to find it |
+| Variable | What it is |
 |---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase Dashboard → Project Settings → API |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Dashboard → Project Settings → API |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase Dashboard → Project Settings → API (keep secret — server only) |
-| `DATABASE_URL` | Supabase Dashboard → Project Settings → Database → Connection pooler (Transaction mode) |
-| `RESEND_API_KEY` | Resend Dashboard → API Keys. Server-only. When unset, `lib/email.ts` degrades gracefully — sending is a no-op instead of throwing. |
-| `EMAIL_FROM` | Optional — overrides the default sender in `lib/email.ts`. Must be an address on a Resend-verified domain. |
-| `DIRECT_URL` | Supabase Dashboard → Project Settings → Database → Connection string → Direct connection. Used only by `prisma migrate` (the transaction pooler cannot run migrations). |
-| `NEXT_PUBLIC_SITE_URL` | Your production origin, no trailing slash. Used in the printed join QR, close/digest emails and canonical URLs. Defaults to `http://localhost:3000` in dev only. |
-| `GUEST_CLAIM_SECRET` | Any random 32+ byte secret. Signs the guest "save my results" links (`lib/guestClaim.ts`). |
-| `CRON_SECRET` | Any random 32+ byte secret. Vercel Cron sends it as `Authorization: Bearer` to `/api/cron/*`. |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (Project Settings → API) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public anon key (same page) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service-role key. Server only; never expose it to the browser |
+| `DATABASE_URL` | Postgres connection through the Supabase pooler (transaction mode) |
+| `NEXT_PUBLIC_SITE_URL` | Your public origin, no trailing slash. Used in emails, sign-in return addresses, the printed join QR and canonical URLs. An `http://` value for a non-local host is upgraded to `https://` |
+| `GUEST_CLAIM_SECRET` | Random secret (32+ bytes) that signs the "keep my guest results" links |
+| `CRON_SECRET` | Random secret (32+ bytes); Vercel Cron sends it as `Authorization: Bearer` to `/api/cron/*`, which answer 503 without it |
+| `RESEND_API_KEY` | Resend API key for outbound email |
+
+### Recommended in production (boot logs a warning if unset)
+
+| Variable | What it is |
+|---|---|
+| `ANALYTICS_SUPER_ADMIN_EMAIL` | The insights super-admin address. If unset, a fallback address hard-coded in `lib/analytics/access.ts` is used |
+| `UNSUBSCRIBE_SECRET` | Signs the group-email unsubscribe links. Optional: when unset the legacy signing secret is used. Once set, never change it, or old links stop working |
+
+### Optional
+
+| Variable | What it does |
+|---|---|
+| `DIRECT_URL` | Direct (non-pooler) Postgres connection, used only by `prisma migrate`; it falls back to `DATABASE_URL` |
+| `EMAIL_FROM` | Sender address override; must be on a domain verified in Resend |
+| `ACCOUNT_DELETION_ENABLED` | `1` shows and enables "Eliminar cuenta". Off by default |
+| `ANALYTICS_AI_ADMIN_EMAILS` | Comma-separated AI-admin addresses; unset means super-admin only |
+| `GEMINI_API_KEY` | Enables the AI narratives and chat; unset shows "AI not configured" |
+| `GEMINI_MODEL_LITE`, `GEMINI_MODEL_STANDARD`, `GEMINI_MODEL_PRO` | Model overrides for the AI features |
+| `CLOSE_EMAIL_ATTACH_CVA` | `1` also attaches each participant's CVA form PDF to close emails (default: results link and summary PDF only) |
+| `DB_POOL_MAX` | Per-instance Postgres pool size; default 8 |
+
+`VERCEL_URL`, `VERCEL_ENV` and `VERCEL_BRANCH_URL` are read from the Vercel platform when present. Step-by-step setup, including where to find each value, is in `docs/LAUNCH-RUNBOOK.md` §3.
 
 ---
 
-## Database & Supabase Setup
+## Database and Supabase Setup
 
-### Prisma migrations (run locally)
+### Migrations (Prisma)
+
+The schema is `prisma/schema.prisma`; migrations are in `prisma/migrations/` (40 of them). Apply with `npx prisma migrate deploy`; after any schema change run `npx prisma generate`. Prisma connects as the `postgres` role, which bypasses Row Level Security, so authorization is enforced in application code (`lib/sessionAuth.ts` and friends), not by RLS. The generated client lives in `app/generated/prisma/` and is imported from there, not from `@prisma/client`.
+
+### Manual SQL: `prisma/sql/rls_and_triggers.sql`
+
+Prisma does not manage policies, triggers or functions. The file `prisma/sql/rls_and_triggers.sql` holds them and is applied **by hand in the Supabase SQL editor, one phase at a time**, with the matching runbook section (and, for the recent phases, a dry-run script in `prisma/sql/dry-runs/`). Phases in the file:
+
+| Phase | What it does |
+|---|---|
+| Initial block | Turns on RLS for the original tables and creates `handle_new_user()` (creates a profile on sign-up) |
+| 2 | Group sessions, participants, and the community-score trigger |
+| 3 | Stores per-attribute community averages in the trigger |
+| 4 | Excludes cuppers the organizer removed from the aggregate |
+| 5 | Excludes incomplete evaluations from the aggregate |
+| 5 (2026-07, second block with the same number) | Locks the saved-insights table behind RLS with no policies |
+| 6 | Rounds the community score to 0.25 |
+| 7 | Adds `evaluations` and `cupping_sessions` to the Realtime publication |
+| 8, 9, 12 | Deny-all RLS on the reference-data, AI-narrative and AI-usage tables |
+| 10, 10b | Tasting-group tables; auto-links emailed group invitees when they sign up |
+| 11 | Fixes the coffees read policy |
+| 13 | Notes the `evaluations.sessionId` column used for Realtime filtering (no SQL to run) |
+| 14 | Makes `handle_new_user()` safe for anonymous users (no email) |
+| 15 | Comment only (groups v2) |
+| 16 | Coffee visibility and sharing policies |
+| 17 | Group posts table |
+| 18, 18b | Closes anon-key reads and locks down helper functions; 18b restores execute rights that policies need |
+| 20 | Hides anonymized (deleted) coffees from direct reads |
+| 21 | Closed or expired sessions are read-only in SQL too; participants cannot read others' submitted rows through the API |
+| 22 | Outbound-email ledger tables (server only) |
+| 23 | Community score deducts nothing below five cups. Step 1 (the function) is applied; step 2 (recomputing past scores) was **cancelled** and must not be run |
+| 24 | API roles are read-only across the whole `public` schema |
+| 25 | Hides exclusion metadata of other participants from the API |
+
+There is no phase numbered 19 in the file. The runbook (`docs/LAUNCH-RUNBOOK.md`) has a section per phase and per migration, including **§29, building a new environment from an empty database**: two things fail on an empty database (one migration and one statement of the SQL file), and §29 gives the workaround. Which phases are applied in production, and what is still owed, is tracked in `docs/handover/S8-ROLLOUT-HANDOVER.md`.
+
+### Supabase Auth settings
+
+In the Supabase dashboard:
+
+1. **Authentication → Providers**: enable Email (links and codes) and Google. Enable **Allow anonymous sign-ins**, which the guest QR join needs. Apply the phase 14 `handle_new_user()` before enabling it.
+2. **Authentication → URL Configuration**: set the Site URL to your origin (https, no trailing slash) and add `<origin>/auth/callback` to the redirect list.
+3. **Email templates**: the sign-in emails must contain both the link and the 6-digit code. The templates live in `docs/auth/email-templates/` and are pasted by hand (runbook §15).
+4. **Rate limits**: raise the anonymous sign-in and token-verification limits before a large group event (runbook §16).
+
+### Realtime
+
+Realtime updates (live submission counts, waiting-room start, reference changes) rely on phase 7 and on `REPLICA IDENTITY FULL` on `evaluations`, both in the SQL file.
+
+---
+
+## Tests
 
 ```bash
-npx prisma migrate dev        # Apply all pending migrations
-npx prisma generate           # Regenerate Prisma client after schema changes
-npx prisma studio             # GUI DB explorer at localhost:5555
+npm test          # Vitest over tests/**: pure unit tests, no database, no network
+npm run test:db   # 54 tests against a throwaway local Postgres
 ```
 
-Migration `20260922120000_reference_sample` (adds `cupping_sessions.referenceSampleId`) is additive and nullable — it needs no manual SQL step.
+`npm run test:db` starts its own temporary PostgreSQL (the `embedded-postgres` package, installed from `tests/db/package.json` on first run), builds a database from the migrations and the SQL file, runs the tests that move data (scoring trigger, close, deletion, guest merge, email ledgers, RLS), and deletes everything afterwards. A guard refuses any host other than `127.0.0.1`/`localhost` and any database whose name does not start with `cata_test_`, so it cannot touch production. It takes about two minutes. It does not cover Supabase's own services (Auth, the REST layer, Realtime). Details are in `tests/db/README.md`.
 
-### Manual Supabase steps (SQL Editor)
-
-The following must be applied manually — Prisma cannot manage them:
-
-- Row Level Security policies
-- Trigger functions (`handle_new_user`, `recompute_aggregate_score`)
-- `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`
-- `ALTER TABLE evaluations REPLICA IDENTITY FULL` (required for Realtime UPDATE events)
-
-**All of these are in `prisma/sql/rls_and_triggers.sql`.**  
-Open Supabase → SQL Editor → paste and run the file contents.
-
-### Auth configuration (Supabase Dashboard)
-
-1. Go to **Authentication → Providers → Email** and ensure **magic links** are enabled.
-2. Go to **Authentication → URL Configuration** and add your site URL and redirect URL:
-   - Site URL: `http://localhost:3000` (dev) or your production URL
-   - Redirect URLs: `http://localhost:3000/auth/callback`, `https://your-domain.com/auth/callback`
-
-### Realtime configuration
-
-1. Go to **Database → Replication** in the Supabase dashboard.
-2. Enable Realtime for the `evaluations` table (the `REPLICA IDENTITY FULL` SQL handles the row data; this step enables the channel subscription).
+`npm run typecheck:db` type-checks that suite.
 
 ---
 
@@ -494,66 +462,75 @@ Open Supabase → SQL Editor → paste and run the file contents.
 ```
 cata-cafe/
 ├── app/
-│   ├── [locale]/
-│   │   ├── page.tsx                    # Public marketing landing page (es default, /en secondary)
-│   │   ├── app/                        # Authenticated routes (auth guard in layout)
-│   │   │   ├── page.tsx                # Dashboard
-│   │   │   ├── coffees/
-│   │   │   │   ├── page.tsx            # Coffee list
-│   │   │   │   └── [id]/page.tsx       # Coffee profile + tasting history
-│   │   │   ├── profile/
-│   │   │   │   ├── page.tsx            # User profile
-│   │   │   │   └── history/page.tsx    # Personal tasting history
-│   │   │   └── sessions/
-│   │   │       ├── page.tsx            # Sessions list (own + joined)
-│   │   │       ├── new/                # Create session wizard
-│   │   │       └── [id]/
-│   │   │           ├── cup/            # Cupping interface
-│   │   │           ├── results/        # Scores & analysis
-│   │   │           └── print/          # PDF export
-│   │   ├── join/[token]/page.tsx       # Invite join page (no auth guard)
-│   │   └── auth/login/                 # Magic link login (supports ?next=)
-│   ├── actions/
-│   │   ├── auth.ts                     # signInWithMagicLink, signOut
-│   │   ├── sessions.ts                 # createSession, createGroupSession, upsertEvaluation...
-│   │   ├── community.ts                # closeSession, revealSample, joinViaToken, setParticipantExclusion...
-│   │   ├── coffees.ts                  # Coffee profile create/update
-│   │   ├── offline.ts                  # Conflict-aware replay of offline drafts on reconnect
-│   │   ├── profile.ts                  # Profile updates, completeOnboarding
-│   │   └── dev.ts                      # Dev-only helpers
-│   └── auth/callback/route.ts          # Supabase OAuth callback
+│   ├── [locale]/                        # every page is under /es or /en
+│   │   ├── page.tsx                     # public landing page + waitlist
+│   │   ├── privacidad/, terminos/       # draft legal pages (unlinked)
+│   │   ├── auth/                        # login, confirm (button completes sign-in), claim (guest results)
+│   │   ├── join/[token]/                # session invite page; join/coffee/[token] for coffee invites
+│   │   └── app/                         # signed-in area (guests see a subset)
+│   │       ├── page.tsx                 # dashboard
+│   │       ├── sessions/                # list; new/; express/ ("Catar ahora"); [id]/{cup,waiting,results,print,edit,invite}
+│   │       ├── coffees/                 # list; new/; [id]/ and [id]/edit/
+│   │       ├── groups/                  # tasting groups; [id]/
+│   │       ├── warmup/                  # sensory warm-up library and per-exercise player
+│   │       ├── insights/                # restricted analytics: explorer, benchmark, chat, users, access
+│   │       ├── profile/                 # profile; history/
+│   │       └── team/                    # redirects to groups
+│   ├── actions/                         # server actions: every write lives here
+│   │   ├── auth.ts, join.ts, guestClaim.ts, account.ts, profile.ts
+│   │   ├── sessions.ts, community.ts, offline.ts
+│   │   ├── coffees.ts, groups.ts
+│   │   ├── analytics.ts, ai.ts, aiChat.ts, waitlist.ts, dev.ts
+│   ├── api/
+│   │   ├── cron/                        # close-expired-sessions, insights-digest
+│   │   ├── sessions/[id]/               # cva-pdf, participant-summary, ficha-tecnica, results-csv
+│   │   ├── coffees/[id]/ficha/          # coffee sheet PDF
+│   │   ├── groups/unsubscribe/          # public one-click unsubscribe
+│   │   ├── insights/report/, health/, dev/
+│   ├── auth/callback/route.ts           # sign-in return route (redirects links to the confirm page)
+│   ├── generated/prisma/                # generated Prisma client (do not edit)
+│   └── layout.tsx, manifest.ts, robots.ts, sitemap.ts, global-error.tsx
 ├── components/
-│   ├── cupping/                        # Evaluation form components (CombinedForm, FlavorPicker, …)
-│   ├── results/                        # Score tables, radar charts, descriptor frequency, ScoreBreakdownPanel
-│   ├── landing/                        # Marketing landing sections (Hero, Pricing, WaitlistForm, …)
-│   ├── offline/                        # OfflineBanner, SyncConflictModal, OfflineFirstLoadError
-│   ├── onboarding/                     # WelcomeModal, OnboardingWrapper
-│   └── ui/, layout/, dashboard/        # Atomic design system, shell, dashboard widgets
-├── hooks/
-│   ├── useConnectivity.ts              # Online/offline detection
-│   └── useOfflineSync.ts              # Drains the offline draft queue on reconnect
+│   ├── cupping/                         # evaluation forms, flavor picker, phase stepper
+│   ├── results/                         # score tables, charts, descriptor views, drill-down dialogs
+│   ├── ui/                              # shared UI kit: tables, buttons, dialogs, pills, toasts
+│   ├── layout/, dashboard/, session/, session-moments/
+│   ├── coffees/, groups/, insights/, profile/
+│   ├── auth/, guest/, join/, onboarding/, legal/
+│   ├── landing/                         # marketing page, including the particle-canvas journey
+│   ├── warmup/                          # warm-up player, figures, breathing canvas
+│   ├── offline/, pwa/, errors/, dev/
+├── hooks/                               # connectivity, offline sync, resume, warm-up clock and audio, guest claim
 ├── lib/
-│   ├── prisma.ts                       # Prisma singleton
-│   ├── scoring.ts                      # SCA CVA formula
-│   ├── evaluation.ts                   # Derived-score computation shared by live + offline paths
-│   ├── constants.ts                    # Flavor wheel, attributes, defect categories
-│   ├── descriptors.ts                  # Descriptor helpers
-│   ├── flavorSearch.ts                 # Fuse.js predictive search over the flavor wheel
-│   ├── offline/
-│   │   ├── store.ts                    # localforage/IndexedDB draft store (client-only, SSR-safe)
-│   │   └── types.ts                    # Offline blob + sync-status types
-│   └── supabase/
-│       ├── client.ts                   # Browser client (Realtime + offline)
-│       ├── server.ts                   # Cookie-based client (SSR)
-│       └── admin.ts                    # Service-role client (server only)
+│   ├── scoring.ts                       # CVA formulas (the only place that implements them)
+│   ├── evaluation.ts, completeness.ts   # derived scores shared by live and offline paths
+│   ├── closeSession.ts, closeRules.ts   # the one close routine and its pure rules
+│   ├── sessionAuth.ts                   # who may touch a session or sample
+│   ├── referenceRules.ts                # reference-sample rules
+│   ├── constants.ts                     # flavor wheel, attributes, defect lists
+│   ├── offline/                         # IndexedDB draft store and sync status rules
+│   ├── reports/, pdf/                   # report data models and PDF documents
+│   ├── warmup/                          # exercise content and timeline
+│   ├── accountDeletion/                 # account deletion and guest-merge support
+│   ├── platform/                        # the one place for browser/native-shell differences
+│   ├── analytics/, ai/                  # insights scope, access, Gemini
+│   ├── coffees/, landing/, legal/
+│   ├── supabase/                        # browser, server, admin (service role) and ephemeral clients
+│   ├── prisma.ts                        # Prisma singleton
+│   └── env.ts, features.ts, validate.ts, safeAction.ts, log.ts, ...
 ├── prisma/
 │   ├── schema.prisma
 │   ├── migrations/
-│   └── sql/rls_and_triggers.sql        # Apply manually via Supabase SQL editor
-├── messages/
-│   ├── es.json                         # Spanish (default)
-│   └── en.json                         # English
-└── proxy.ts                            # Middleware (Next.js 16 — must be proxy.ts)
+│   └── sql/                             # rls_and_triggers.sql (applied by hand) + dry-runs/
+├── i18n/, messages/{es,en}.json         # locale routing; all UI text
+├── stores/                              # Zustand store for the insights chat
+├── public/                              # service worker (sw.js), icons, fonts, landing images
+├── scripts/                             # seed, import and preview scripts; scripts/data/
+├── tests/                               # Vitest unit tests; tests/db/ for the database suite
+├── docs/                                # flows, runbook, handover, product decisions, prompts, audits
+├── proxy.ts                             # request gate: session refresh, guest scope, i18n (Next.js 16 name)
+├── instrumentation.ts                   # boot env check and error logging
+└── vercel.json                          # cron schedule
 ```
 
 ---
@@ -561,14 +538,41 @@ cata-cafe/
 ## Dev Commands
 
 ```bash
-npm run dev          # Start dev server → http://localhost:3000
-npm run build        # Production build (runs prisma generate first)
+npm run dev          # dev server on http://localhost:3000
+npm run build        # prisma generate, then production build
+npm run start        # serve the production build
 npm run lint         # ESLint
 
-npm run seed:test            # Seed test users (scripts/seed-test-users.ts)
-npm run verify:group-average # Verify group-average scoring (scripts/verify-group-average.ts)
+npm test             # unit tests
+npm run test:db      # database tests against a throwaway local Postgres
+npm run typecheck:db # type-check the database tests
 
-npx prisma migrate dev      # Apply pending migrations
-npx prisma generate         # Regenerate client after schema changes
-npx prisma studio           # DB GUI explorer
+npm run seed:test             # seed test users (scripts/seed-test-users.ts)
+npm run verify:group-average  # check group-average scoring (scripts/verify-group-average.ts)
+npm run import:reference      # import reference series for Insights
+npm run import:benchmarks     # import the benchmark cupping dataset for Insights
+npm run export:descriptors    # export descriptor data
+
+npx prisma migrate deploy     # apply committed migrations
+npx prisma migrate dev        # create/apply a migration while developing a schema change
+npx prisma generate           # regenerate the client after a schema change
+npx prisma studio             # database browser
 ```
+
+The seed and import scripts write to whatever database `.env.local` points at.
+
+---
+
+## Further Documentation
+
+| File | What it is |
+|---|---|
+| `PRODUCT.md` | Product rules and principles |
+| `DESIGN.md` | Design tokens and the UI system |
+| `CLAUDE.md` | Working guide for coding agents: conventions, patterns, pitfalls |
+| `docs/flows.md` | Diagrams of the session lifecycle, sign-in, coffees, groups, results and offline flows |
+| `docs/LAUNCH-RUNBOOK.md` | Step-by-step operations: environment, migrations, SQL phases, smoke test, account-deletion rehearsal, empty-database build |
+| `docs/handover/S8-ROLLOUT-HANDOVER.md` | What shipped, what is applied in production, what is still owed |
+| `docs/HANDOVER.md` | Status ledger for work in progress |
+| `docs/product/cata-descentralizada-puntaje.md` | The decided, not-yet-built scoring change |
+| `docs/prompts/` | Specifications for upcoming work |
