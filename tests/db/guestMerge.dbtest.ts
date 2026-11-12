@@ -9,6 +9,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 
 import { mergeGuestData } from "@/lib/guestClaim";
+import { detachCoffeeHistoryForSession } from "@/lib/coffeeHistory";
 import { closeSessionInternal } from "@/lib/closeSession";
 import { makeCoffee, makeEvaluation, makeSession, makeUser, prisma, resetDb, storedAggregate } from "./support/db";
 import { referencesTo } from "./support/refs";
@@ -50,6 +51,28 @@ describe("mergeGuestData", () => {
     await prisma.aiChatUsage.create({ data: { userId: guest, day: "2026-11-01", questionCount: 2 } });
     await prisma.aiChatUsage.create({ data: { userId: account, day: "2026-11-01", questionCount: 1 } });
 
+    // A DETACHED history row: the guest cupped a revealed coffee in a session that
+    // was then deleted through the delete path (sessionId/evaluationId NULL,
+    // snapshot set). No post-merge re-sync can rebuild it, so only the real
+    // userCoffeeHistory move in mergeGuestData can put it on the account.
+    const goneCoffee = await makeCoffee(owner, "Café de la sesión borrada");
+    const gone = await makeSession({
+      ownerId: owner,
+      isGroup: true,
+      participants: [guest],
+      samples: [{ label: "G", coffeeId: goneCoffee.id, revealed: true }],
+    });
+    await makeEvaluation({ sampleId: gone.samples[0].id, sessionId: gone.id, cupperId: guest, values: 7 });
+    await prisma.$transaction(async (tx) => {
+      await detachCoffeeHistoryForSession(tx, gone.id);
+      await tx.cuppingSession.delete({ where: { id: gone.id } });
+    });
+    const detachedBefore = await prisma.userCoffeeHistory.findMany({ where: { userId: guest, coffeeId: goneCoffee.id } });
+    expect(detachedBefore).toHaveLength(1);
+    expect(detachedBefore[0].sessionId).toBeNull();
+    expect(detachedBefore[0].evaluationId).toBeNull();
+    expect(detachedBefore[0].snapshot).not.toBeNull();
+
     await closeSessionInternal(s.id, { reason: "owner", emails: "skip" });
     // history before the merge: guest has the X coffee row, account the Y label row
     expect(await prisma.userCoffeeHistory.count({ where: { userId: guest, coffeeId: coffee.id } })).toBe(1);
@@ -85,6 +108,12 @@ describe("mergeGuestData", () => {
     const accHist = await prisma.userCoffeeHistory.findMany({ where: { userId: account } });
     expect(accHist.filter((h) => h.coffeeId === coffee.id)).toHaveLength(1);
     expect(accHist.filter((h) => h.coffeeId === null)).toHaveLength(1);
+    // the detached row is the SAME row (same id), now owned by the account
+    const detachedAfter = await prisma.userCoffeeHistory.findMany({ where: { userId: account, coffeeId: goneCoffee.id } });
+    expect(detachedAfter).toHaveLength(1);
+    expect(detachedAfter[0].id).toBe(detachedBefore[0].id);
+    expect(detachedAfter[0].sessionId).toBeNull();
+    expect((detachedAfter[0].snapshot as { sampleLabel: string }).sampleLabel).toBe("G");
     // post-commit re-sync: the moved coffee row carries the surviving evaluation's score
     const xRow = accHist.find((h) => h.coffeeId === coffee.id)!;
     expect(xRow.individualScore).toBe(survivingX.individualScore);
