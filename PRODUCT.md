@@ -16,6 +16,14 @@ The tool exists to make rigorous, reproducible cupping sessions as frictionless 
 
 **El puntaje necesita contexto.** A CVA number alone is not a decision: the same coffee can be excellent for one objective (filter, education, calibration) and wrong for another (espresso, a buyer's target). Every score surface therefore ships with its comparison — community mean, consensus SD, and now the owner's reference sample with a signed Δ — all display-only; the CVA formula is never mutated. As of 2026-09-25 the reference is cupped first and its quality pinned at 5, so it functions as a true anchor the room calibrates against rather than another competitor in the ranking. New features are checked against one question: does this help the user understand what they are evaluating, against what, and what the result means? Adding numbers without context is regression.
 
+**Product rules decided on 2026-11-12 (decided, pending implementation — none of this is built yet).** Source: `docs/product/cata-descentralizada-puntaje.md` and the top of `docs/prompts/S10-kim-answers.md`.
+- **Stay close to the CVA.** The cupper sees the CVA's own deductions, not a reinterpretation: 4 points per defective cup, 2 per non-uniform cup.
+- **A defect must cost the cupper points at any cup count.** The current "no deductions under five cups" rule is being replaced.
+- **One cup never costs more than 6 points.** A rule under which a single cup cost 15 to 30 points was considered and rejected.
+- **A coffee's lifetime score weighs a bad cup less as more cups are tasted.** The deduction is diluted only when more than five cups are pooled (a session's group score, a coffee's lifetime score); a cupper's own score is always the flat CVA deduction. No past score is rewritten.
+- **As little free text as possible.** Prefer fixed option lists so cuppings stay comparable (the acidity and sweetness pickers stay as they are).
+- **Teaching and comparisons appear only when a session is closed**, never as guidance during the cupping.
+
 ---
 
 ## Target Users

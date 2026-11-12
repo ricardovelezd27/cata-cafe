@@ -54,7 +54,7 @@ This project uses **Tailwind CSS v4** (PostCSS-based). There is no `tailwind.con
 | Language | TypeScript | 5 (strict) |
 | ORM | Prisma + PrismaPg adapter | 7.7.0 |
 | Database | PostgreSQL (via Supabase) | — |
-| Auth | Supabase Auth (magic link OTP) | 2.104.0 |
+| Auth | Supabase Auth (email link + 6-digit code, Google, anonymous guests; no passwords) | 2.104.0 |
 | SSR Auth | @supabase/ssr | 0.10.2 |
 | i18n | next-intl | 4.14.10 |
 | Styling | Tailwind CSS 4 + PostCSS | 4 |
@@ -85,20 +85,31 @@ cata-cafe/
 │   │   │   ├── profile/
 │   │   │   │   ├── page.tsx        # User profile management
 │   │   │   │   └── history/page.tsx # Complete coffee tasting history
-│   │   │   ├── team/page.tsx       # Team / participants view
+│   │   │   ├── coffees/new, [id]/edit  # coffee create / edit forms
+│   │   │   ├── groups/             # Tasting groups (list + [id] roster, feed, email)
+│   │   │   ├── insights/           # Restricted analytics: explorer, benchmark, chat, users, access
+│   │   │   ├── warmup/             # "Movimiento sensorial" library + [slug] player (+ dev-* routes)
+│   │   │   ├── team/page.tsx       # Redirects to /app/groups (kept for old links)
 │   │   │   └── sessions/
 │   │   │       ├── page.tsx        # Session list (own + joined sections)
 │   │   │       ├── new/            # Create session wizard (two-step for group)
+│   │   │       ├── express/        # "Catar ahora" three-tap solo session
 │   │   │       └── [id]/
 │   │   │           ├── cup/        # Main cupping interface (CupClient)
 │   │   │           ├── waiting/    # Pre-start waiting room (group/async sessions)
 │   │   │           ├── results/    # 3-tab shell — Resumen (dashboard) / Resultados (Tabla·Gráfico) / Descriptores
-│   │   │           └── print/      # PDF export
-│   │   ├── join/[token]/page.tsx   # Invite join page (outside /app/ — no auth guard)
-│   │   ├── auth/login/             # Magic link login (supports ?next= redirect)
+│   │   │           ├── edit/, invite/  # owner edit form; invite link + QR
+│   │   │           └── print/      # HTML twin of the CVA form
+│   │   ├── join/[token]/page.tsx   # Invite join page (outside /app/ — no auth guard); join/coffee/[token] for coffee invites
+│   │   ├── auth/login/             # Login: email link, 6-digit code, Google (supports ?next= redirect)
+│   │   ├── auth/confirm/           # Button page that completes an emailed link (a GET never consumes it)
+│   │   ├── auth/claim/             # Guest → account confirmation card
+│   │   ├── privacidad/, terminos/  # Draft legal pages (unlinked while LEGAL_PAGES_PUBLISHED is false)
 │   │   └── layout.tsx              # Locale layout (next-intl)
 │   ├── actions/                    # Server actions (all mutations live here)
-│   │   ├── auth.ts                 # signInWithMagicLink(formData, next?), signOut
+│   │   ├── auth.ts                 # signInWithMagicLink, verifyEmailCode, signInWithGoogle, confirmEmailToken,
+│   │   │                           #   accept/rejectPendingSignIn, signOut, switchAccount, requestEmailChange
+│   │   ├── join.ts, guestClaim.ts, account.ts  # join forms + checkJoinable; guest claim; account deletion (flag-gated)
 │   │   ├── sessions.ts             # createSession, createGroupSession, updateSession, deleteSession,
 │   │   │                           #   addSessionSample/renameSessionSample/removeSessionSample (owner, guarded),
 │   │   │                           #   upsertEvaluation/upsertPhysical/upsertExtrinsic (member-gated), updateSampleMetadata
@@ -111,8 +122,13 @@ cata-cafe/
 │   │   ├── offline.ts              # Conflict-aware replay of offline evaluation drafts on reconnect
 │   │   ├── profile.ts              # Profile updates, completeOnboarding
 │   │   ├── waitlist.ts             # Landing-page waitlist signup
+│   │   ├── analytics.ts, ai.ts, aiChat.ts  # Insights actions (scope from lib/analytics/scope.ts)
 │   │   └── dev.ts                  # Dev-only helpers (seed/inspect)
-│   ├── auth/callback/route.ts      # Supabase OAuth callback (reads ?next= param)
+│   ├── api/
+│   │   ├── cron/                   # close-expired-sessions (daily 06:00 UTC), insights-digest (monthly) — see vercel.json
+│   │   ├── sessions/[id]/          # cva-pdf, participant-summary, ficha-tecnica, results-csv
+│   │   ├── coffees/[id]/ficha/, groups/unsubscribe/, insights/report/, health/, dev/
+│   ├── auth/callback/route.ts      # Supabase sign-in return (reads ?next=; redirects token_hash links to /auth/confirm)
 │   ├── generated/prisma/           # AUTO-GENERATED — DO NOT EDIT
 │   └── layout.tsx                  # Root layout
 ├── components/
@@ -151,6 +167,9 @@ cata-cafe/
 │   │   └── journey/                # Persistent particle canvas: formations.ts + bracket.ts (pure, tested),
 │   │       #   ConstellationCanvas (engine + governor + kill-switch), ConstellationMount (idle gate). README inside.
 │   ├── offline/                    # OfflineBanner, SyncConflictModal, OfflineFirstLoadError
+│   ├── auth/, guest/, join/        # EmailSentState + ClaimCard; GuestGateProvider/GuestGateLink; join forms
+│   ├── warmup/, session-moments/   # warm-up player + figures; the /cup interstitial
+│   ├── coffees/, groups/, insights/, profile/, legal/, pwa/, errors/, session/
 │   ├── onboarding/                 # WelcomeModal, OnboardingWrapper (role/country capture)
 │   └── layout/, dashboard/         # App shell + dashboard widgets (DashboardIntro, StatCard, FormatBadge)
 ├── hooks/
@@ -167,13 +186,20 @@ cata-cafe/
 │   ├── constants.ts                # All cupping reference data (FLAVOR_WHEEL, attributes, defects…)
 │   ├── descriptors.ts              # Descriptor helpers + unmapped-note resolution
 │   ├── flavorSearch.ts             # Fuse.js predictive search over FLAVOR_WHEEL (powers FlavorPicker)
+│   ├── closeSession.ts, closeRules.ts  # the one close routine + pure rules
+│   ├── reports/, pdf/              # pure report models (ranking, ficha, summaries, CSV) / react-pdf documents + charts
+│   ├── platform/                   # the ONLY place for native-shell / browser-API differences
+│   ├── accountDeletion/            # deleteAccount plan + manifest (also drives the guest-merge column list)
+│   ├── analytics/, ai/, warmup/, coffees/, landing/, legal/
 │   ├── offline/
 │   │   ├── store.ts                # localforage/IndexedDB draft store — CLIENT ONLY, SSR-safe (no-ops on server)
 │   │   └── types.ts                # Offline blob + sync-status types
 │   └── supabase/
 │       ├── client.ts               # Browser client (Realtime + offline)
 │       ├── server.ts               # Server-side Supabase client (cookie-based)
+│       ├── ephemeral.ts            # Cookie-less client (verifies a sign-in token without touching the browser session)
 │       └── admin.ts                # Service-role client — SERVER ONLY, never import from client components
+├── tests/                          # Vitest unit tests (npm test); tests/db/ = disposable local-Postgres suite (npm run test:db)
 ├── prisma/
 │   ├── schema.prisma               # Database schema
 │   ├── migrations/                 # Versioned migrations
@@ -249,7 +275,7 @@ All writes go through `app/actions/`. Call `revalidatePath()` after mutations to
 - **AUTHORIZATION** for session-scoped actions goes through `lib/sessionAuth.ts`: `requireSessionOwner`/`requireSessionMember` (by session id) and `requireSampleOwner`/`requireSampleMember` (by sample id — also returns the sample's real `sessionId`; never trust a client-supplied sessionId next to a sampleId). Every new session/sample mutation MUST call one of these — Prisma connects as postgres and bypasses RLS, so these TS checks are the real gate.
 - Protected layout at `app/[locale]/app/layout.tsx` redirects to login
 - Session stored in cookies via `@supabase/ssr`; refreshed by `proxy.ts` middleware on every request
-- Auth is **magic link OTP only** — there are no passwords in this system
+- Sign-in is passwordless and has three entry points: the **email link** (opens `/auth/confirm`, a button completes it), the **6-digit code** typed on the login screen (`verifyEmailCode`), and **Google**; walk-up guests are anonymous Supabase users. There are no passwords in this system. (Details in "Sign-in deep links, code entry and locale" below.)
 - `signInWithMagicLink(formData, next?)` threads `next` into `emailRedirectTo` → `/auth/callback?next=...` → callback at `app/auth/callback/route.ts` reads `?next=` and redirects there after auth. Used for invite links that require auth before joining.
 - Owner vs participant rule (product-wide): the creator of an asset (session, coffee, group) has full create/edit/delete; participants/members only take part (evaluate, read the feed, leave a group).
 - **Registered-only actions (S8-03)**: anything that creates an asset, shares, invites or sends email calls `requireRegisteredUser()` (`lib/auth.ts`, `isRegisteredUser` in `lib/guestScope.ts`) — never bare `requireUser()` — because `proxy.ts` gates pages, not server-action POSTs. Every export of `coffees.ts` and `groups.ts`, plus `createSession`/`createExpressSession`/`createGroupSession`/`duplicateSession`/`createInviteToken`, is pinned by `tests/registeredOnlyActions.test.ts`. Guests keep `requireUser()` for join, evaluate, submit, waiting room, offline replay and claim.
@@ -439,14 +465,16 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 
 Functions: `calcAffectiveSum()`, `calcRawScore()`, `calcIndividualScore()` — all exported from `lib/scoring.ts`.
 
+**Decided, NOT built (2026-11-12):** the owner replaced the "no deductions under five cups" rule; see `docs/product/cata-descentralizada-puntaje.md` (work: `docs/prompts/S10-kim-answers.md`). Until that lands, this section describes the code.
+
 ### Community Score (group sessions — trigger-authoritative)
 ```
 uniformityPenalty = totalNonUniform × (10 / totalCups)
 defectPenalty     = totalDefective  × (30 / totalCups)
 communityScore    = avgRawScore − uniformityPenalty − defectPenalty
 ```
-- `totalNonUniform` — cups marked non-uniform but NOT defective (non-overlapping)
-- `totalDefective` — cups marked defective only
+- `totalNonUniform` — ALL cups marked non-uniform, defective ones included (marking a cup defective also marks it non-uniform in `AffectiveForm`/`CombinedForm`, so a defective cup is in both arrays and costs 40/`totalCups` here, versus 6 in the individual score)
+- `totalDefective` — all cups marked defective
 - `totalCups` = `cupsPerSample × participantCount`
 - Computed by PostgreSQL trigger `trg_recompute_aggregate` on `evaluations` table; written to `aggregate_scores`
 - TypeScript function `calcCommunityScore()` in `lib/scoring.ts` is **display-only** — trigger result is authoritative
@@ -454,6 +482,8 @@ communityScore    = avgRawScore − uniformityPenalty − defectPenalty
 Verification: 2 participants, cupsPerSample=5, 1 uOnly cup → uniformityPenalty = 1×(10/10) = 1.0 ✓
 
 ### One score below five cups (S8-04)
+**Superseded by a decision, not yet by code (2026-11-12):** `docs/product/cata-descentralizada-puntaje.md` replaces this rule (deductions at any cup count, at most 6 per cup, diluted only beyond five pooled cups, plus a coffee lifetime score). Nothing of it is built; PHASE 23 step 2 is cancelled. What follows is what the code does today.
+
 Uniformity and defect deductions exist ONLY from `MIN_CUPS_FOR_PENALTIES = 5` cups per sample, everywhere: `penaltiesApply()` in `lib/scoring.ts` gates `calcIndividualBreakdown`, `computeGroupAggregate` and `calcCommunityScore`, and PHASE 23 re-issues `recompute_aggregate_score()` with `IF v_cups_per_sample >= 5 AND v_total_cups > 0`. The flags stay in the arrays below 5 cups and are ignored (`CupToggleGrid` keeps its "not scored" note). `tests/scoringConsistency.test.ts` ports the SQL arithmetic and must stay equal to the TypeScript side; change both in one commit. A submitted evaluation edited later (`upsertEvaluation`, `syncEvaluation`) ends with `updateMany(submittedRefireArgs(id))` (`lib/aggregateRefire.ts`) so the trigger re-fires; `closeSessionInternal` calls `refireAggregates` (`lib/aggregates.ts`) before the history sync. History: `communityScore` is null without an included evaluation, and sessions under 5 cups carry an "Impresión rápida" tag (`lib/historyRules.ts`). Open: TODO(A1) proportional deductions are NOT built.
 
 ### Consensus (SD)
