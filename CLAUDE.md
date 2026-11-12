@@ -271,6 +271,7 @@ All writes go through `app/actions/`. Call `revalidatePath()` after mutations to
 ### Sample / Coffee Metadata Editing
 - Session creation and coffee forms only require **name** — altitude is range-checked (1–6000) only when a value is entered, and roast level is optional ("valor antes que fricción": progressive data-quality gate relaxed 2026-09).
 - `updateSampleMetadata` merges rather than overwrites: an absent key leaves that coffee field untouched, `""` clears it, and `name` is never blanked. It returns `coffeeUpdated: false` when the linked coffee isn't owned by the caller (the two callers show a dismissible notice instead of failing).
+- `updateSampleMetadata` also takes an optional `coffeeId` (S9-05, cup-page "Usar café existente"): only for a sample with no coffee (else `invalid_input`), re-validated with `usableCoffeeWhere` (`coffee_not_usable`), linked with the same `coffeeId: null` guard as the implicit create and never touching the picked coffee's fields. `cup/page.tsx` ships the usable-coffee list only to the owner while some sample has no coffee (`needsCupCoffeePicker`, `lib/cupCoffeePick.ts`); the action still throws rather than returning `ActionResult`.
 - Post-close origin-data editing lives in `ExtrinsicEditDialog` (`components/results/`), opened from the results drill-down for the session **owner** on a **revealed** sample — it reuses `ExtrinsicForm` with its in-cupping header/disclaimer suppressed and still saves through `upsertExtrinsic`.
 
 ### Reference Sample ("Referencia", 2026-09)

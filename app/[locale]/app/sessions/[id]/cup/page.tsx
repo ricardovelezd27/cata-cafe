@@ -7,6 +7,9 @@ import { prisma } from "@/lib/prisma";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { EmptyState, ButtonLink } from "@/components/ui";
 import { isSessionExpired } from "@/lib/sessionState";
+import { getUsableCoffees } from "@/lib/coffees/queries";
+import { needsCupCoffeePicker } from "@/lib/cupCoffeePick";
+import type { UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { CupClient } from "./CupClient";
 
 // Server actions invoked from this page (closeSession → after() email fan-out
@@ -130,6 +133,29 @@ export default async function CupPage({
     eligibleCupperIds,
   );
 
+  // "Usar café existente" in the sample editor (S9-05): owner only, and only
+  // while some sample has no coffee, so the hot path pays no extra query.
+  // (An expired session already redirected above, so it is writable here.)
+  const usableCoffees: UsableCoffee[] = needsCupCoffeePicker({
+    isOwner,
+    writable: !isSessionExpired(session),
+    samples: session.samples,
+  })
+    ? (await getUsableCoffees(user.id)).map((c) => ({
+        id: c.id,
+        name: c.name,
+        code: c.code,
+        producer: c.producer,
+        variety: c.variety,
+        altitude: c.altitude,
+        roastLevel: c.roastLevel,
+        country: c.country,
+        region: c.region,
+        processType: c.processType,
+        origin: c.createdBy === user.id ? "mine" : c.visibility === "public" ? "public" : "shared",
+      }))
+    : [];
+
   const profile = await prisma.profile.findUnique({
     where: { id: user.id },
     select: { country: true },
@@ -196,6 +222,7 @@ export default async function CupPage({
       // Only the owner sees peers' rows (RLS) and renders the live counter.
       submittedRows={isOwner ? submittedRows : []}
       evalCountBySample={evalCountBySample}
+      usableCoffees={usableCoffees}
       eligibleCupperIds={isOwner ? eligibleCupperIds : []}
       session={{
         id: session.id,
@@ -264,6 +291,16 @@ export default async function CupPage({
         editSample: t("session.editSample"),
         editSampleError: t("session.editSampleError"),
         editSampleNotOwner: t("session.editSampleNotOwner"),
+        coffeePicker: {
+          useExisting: tc("picker.useExisting"),
+          title: tc("picker.title"),
+          searchPlaceholder: tc("picker.searchPlaceholder"),
+          mine: tc("picker.mine"),
+          shared: tc("picker.shared"),
+          public: tc("picker.public"),
+          empty: tc("picker.empty"),
+          close: t("common.close"),
+        },
         coffeeName: t("session.coffeeName"),
         coffeeCountry: tc("country"),
         coffeeRegion: tc("region"),
