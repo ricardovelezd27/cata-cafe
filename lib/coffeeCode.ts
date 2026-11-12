@@ -44,12 +44,26 @@ export function normalizeCoffeeCodeQuery(query: string): string {
  * imports. A P2002 on a different column is NOT a code collision.
  */
 export function isCoffeeCodeCollision(err: unknown): boolean {
-  const e = err as { code?: string; meta?: { target?: unknown } } | null;
+  const e = err as {
+    code?: string;
+    meta?: {
+      target?: unknown;
+      driverAdapterError?: { cause?: { constraint?: { fields?: unknown } } };
+    };
+  } | null;
   if (e?.code !== "P2002") return false;
-  const target = e?.meta?.target;
-  return Array.isArray(target)
-    ? target.includes("code")
-    : String(target ?? "").includes("code");
+  // Two shapes. The query engine reports `meta.target`; the pg driver adapter
+  // (what this app runs on, Prisma 7) reports no target at all, only
+  // `meta.driverAdapterError.cause.constraint.fields`, parsed from Postgres's
+  // "Key (code)=..." detail. Checking only `target` meant a real collision was
+  // never recognised and nothing ever retried (S9-03 review).
+  const names = (v: unknown): string[] =>
+    Array.isArray(v) ? v.map(String) : v == null ? [] : [String(v)];
+  const fields = [
+    ...names(e.meta?.target),
+    ...names(e.meta?.driverAdapterError?.cause?.constraint?.fields),
+  ];
+  return fields.some((f) => f === "code" || f.replace(/"/g, "") === "code" || f.endsWith("_code_key"));
 }
 
 /**

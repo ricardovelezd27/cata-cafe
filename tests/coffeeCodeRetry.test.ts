@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { retryOnCodeCollision } from "@/lib/coffeeCode";
+import { isCoffeeCodeCollision, retryOnCodeCollision } from "@/lib/coffeeCode";
 
 const codeCollision = () => Object.assign(new Error("dup"), { code: "P2002", meta: { target: ["code"] } });
 const otherUnique = () => Object.assign(new Error("dup"), { code: "P2002", meta: { target: ["name"] } });
@@ -26,5 +26,34 @@ describe("retryOnCodeCollision", () => {
       await expect(retryOnCodeCollision(run)).rejects.toBe(err);
       expect(run).toHaveBeenCalledTimes(1);
     }
+  });
+});
+
+// The shape Prisma 7 + @prisma/adapter-pg really produces: no `meta.target`,
+// the column sits under meta.driverAdapterError.cause.constraint.fields.
+const adapterCollision = (fields: string[]) =>
+  Object.assign(new Error("dup"), {
+    code: "P2002",
+    meta: { driverAdapterError: { cause: { kind: "UniqueConstraintViolation", constraint: { fields } } } },
+  });
+
+describe("isCoffeeCodeCollision with the pg driver adapter's error shape", () => {
+  it("recognises a collision on code", () => {
+    expect(isCoffeeCodeCollision(adapterCollision(["code"]))).toBe(true);
+    expect(isCoffeeCodeCollision(adapterCollision(['"code"']))).toBe(true);
+  });
+  it("does not treat another column as a code collision", () => {
+    expect(isCoffeeCodeCollision(adapterCollision(["name"]))).toBe(false);
+    expect(isCoffeeCodeCollision(adapterCollision(["sessionId", "position"]))).toBe(false);
+    expect(isCoffeeCodeCollision(adapterCollision(["coffeeCodeOther"]))).toBe(false);
+  });
+  it("still needs P2002", () => {
+    expect(isCoffeeCodeCollision({ code: "P2003", meta: { driverAdapterError: { cause: { constraint: { fields: ["code"] } } } } })).toBe(false);
+    expect(isCoffeeCodeCollision(null)).toBe(false);
+  });
+  it("retries the whole run on the adapter shape too", async () => {
+    const run = vi.fn().mockRejectedValueOnce(adapterCollision(["code"])).mockResolvedValue("ok");
+    await expect(retryOnCodeCollision(run)).resolves.toBe("ok");
+    expect(run).toHaveBeenCalledTimes(2);
   });
 });

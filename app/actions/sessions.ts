@@ -1668,13 +1668,18 @@ export async function updateSampleMetadata(
     // The session already closed without a history row for this sample (no
     // coffee at close time) — same idempotent sync the close routine runs.
     await syncCoffeeHistoryForSession(sample.sessionId);
-    revalidatePath(`/app/profile/history`);
-    revalidatePath(`/app/coffees`);
+    for (const l of ["es", "en"] as const) {
+      revalidatePath(`/${l}/app/profile/history`);
+      revalidatePath(`/${l}/app/coffees`);
+    }
   }
 
-  revalidatePath(`/app/sessions/${sample.sessionId}/cup`);
-  revalidatePath(`/app/sessions/${sample.sessionId}/results`);
-  revalidatePath(`/app/sessions/${sample.sessionId}/print`);
+  // Locale-prefixed: a bare "/app/..." path matches no cached page (S9-03 review).
+  for (const l of ["es", "en"] as const) {
+    revalidatePath(`/${l}/app/sessions/${sample.sessionId}/cup`);
+    revalidatePath(`/${l}/app/sessions/${sample.sessionId}/results`);
+    revalidatePath(`/${l}/app/sessions/${sample.sessionId}/print`);
+  }
 
   return { ok: true as const, coffeeUpdated };
 }

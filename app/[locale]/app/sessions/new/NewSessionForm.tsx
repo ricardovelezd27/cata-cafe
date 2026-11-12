@@ -398,7 +398,11 @@ export function NewSessionForm({
     setErrorCode(code);
     if (fieldForErrorCode(code)) setFocusTick((n) => n + 1);
   };
-  const errorField: SessionFormField | null = fieldForErrorCode(errorCode);
+  // The cups input only exists outside the descriptive format; an invalid_cups
+  // error with no field to sit under must fall back to the strip, never vanish.
+  const rawErrorField: SessionFormField | null = fieldForErrorCode(errorCode);
+  const errorField: SessionFormField | null =
+    rawErrorField === "cups" && format === "descriptive" ? null : rawErrorField;
   useEffect(() => {
     if (focusTick === 0 || !errorField) return;
     const el = document.getElementById(fieldInputId(errorField));
