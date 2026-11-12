@@ -1669,3 +1669,46 @@ project** (there is only one). **This PR does NOT apply it: you do, after the dr
 
 **Rollback:** the commented block at the end of PHASE 25 (restore the table-level grant saved
 from pre-flight (b)). One transaction; the app works under either state.
+
+
+## §29. Building a new environment from scratch (2026-11, S9-04)
+
+Two things fail on an EMPTY database. Both were found by the runtime DB suite (`npm run test:db`,
+`tests/db/README.md`), which builds an empty database on every run. **Production and the existing
+shared project are not affected**, and neither file may be edited (an applied migration's checksum
+must not change; the SQL file is production history). Do the workarounds below ONLY when you create
+a new database (a second Supabase project, a staging copy, a restore into an empty project).
+
+**(a) The migrations do not replay from zero.**
+`20260805100000_coffee_visibility_and_sharing` already drops `coffees."isPublic"`, and
+`20260805120000_drop_deprecated_is_public` drops it again without `IF EXISTS`, so
+`prisma migrate deploy` on an empty database stops at the second one with
+`column "isPublic" of relation "coffees" does not exist` (42703). Production is unaffected because
+there the column had been re-added out of band (the 2026-08-05 drift incident), and the migration
+was applied by hand and recorded with `migrate resolve --applied`.
+
+Workaround on a new database, with `DATABASE_URL`/`DIRECT_URL` pointing at the NEW database only:
+
+1. `npx prisma migrate deploy` (it fails at `20260805120000_drop_deprecated_is_public`; that
+   migration is one statement, so nothing is half applied).
+2. `npx prisma migrate resolve --applied 20260805120000_drop_deprecated_is_public`
+3. `npx prisma migrate deploy` again (applies everything after it).
+
+The test harness does it differently, because its database is thrown away: it runs
+`migrate deploy` on a temporary COPY of `prisma/migrations` in which that one statement reads
+`DROP COLUMN IF EXISTS "isPublic"` (`tests/db/support/knownSqlFailures.ts`). Do not use the patched
+copy for a real environment: the recorded checksum would differ from the repository file.
+
+**(b) One statement of `prisma/sql/rls_and_triggers.sql` fails on a clean database.**
+In PHASE 11, `CREATE POLICY "coffees_select" ON coffees FOR SELECT USING ("isPublic" = true OR ...)`
+(about line 964) fails with `column "isPublic" does not exist`, because the migrations of (a) have
+dropped the column before the file runs. Production is unaffected: the file was applied there
+before the column was dropped, and later phases of the file (lines ~1087, ~1237, ~2045) redefine `coffees_select` without it,
+so the final policy is the same either way. The Supabase SQL editor runs a pasted script as one
+transaction, so the failure would roll back the whole paste.
+
+Workaround: paste the file into the SQL editor with exactly that one statement removed (the
+two-line `CREATE POLICY "coffees_select" ON coffees FOR SELECT USING ("isPublic" ...)` in PHASE 11;
+the later `DROP POLICY IF EXISTS "coffees_select"` + `CREATE POLICY` pairs stay). The test harness
+applies the file statement by statement and tolerates exactly this one failure; it fails the run if
+a second statement fails or if this one stops failing.

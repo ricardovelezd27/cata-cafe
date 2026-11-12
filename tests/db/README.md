@@ -71,6 +71,9 @@ Everything else (`lib/prisma`, the triggers, the lib functions) is the real code
 * `rls_and_triggers.sql` PHASE 11 `CREATE POLICY "coffees_select" ... "isPublic"`: the column no
   longer exists when the file runs on a clean database; PHASE 16/20/24 redefine the policy.
 
+Neither affects production. Both are written up, with the manual workaround for building a real new
+environment, in `docs/LAUNCH-RUNBOOK.md` §29 ("Building a new environment from scratch").
+
 ## Not covered
 
 The tests connect as a real Postgres SUPERUSER, while hosted Supabase's `postgres` role is not one:
