@@ -1508,10 +1508,6 @@ export type SampleMetadataInput = {
   processType?: string;
   altitude?: string;
   roastLevel?: string;
-  /** Link an EXISTING coffee the caller may use (S9-05). Only for a sample
-   *  with no coffee; the coffee's own fields and every coffee field above are
-   *  then ignored. Re-validated with usableCoffeeWhere. */
-  coffeeId?: string;
 };
 
 // Coffee fields (besides name) where merge semantics apply: absent key ->
@@ -1563,33 +1559,12 @@ export async function updateSampleMetadata(
   // owner (checked above) AND the sample has no coffee yet AND the call
   // actually names a coffee. Anything else on a closed session stays
   // read-only (session_closed), including label-only renames.
-  // S9-05: picking an existing coffee (cup page). Never the post-close naming
-  // path (that stays the typed-fields flow), so a closed/expired session is
-  // refused by the normal write guard.
-  const pickId = input.coffeeId === undefined ? null : v.str(input.coffeeId, "coffeeId", { max: 64 });
-  if (pickId && sample.coffeeId) throw new Error("invalid_input");
-  const namesCoffee = !pickId && hasAnyCoffeeField(input);
-  const postCloseNaming = isPostCloseNaming(sample.session, sample, namesCoffee);
-  assertSampleMetadataWritable(sample.session, sample, namesCoffee);
+  const postCloseNaming = isPostCloseNaming(sample.session, sample, hasAnyCoffeeField(input));
+  assertSampleMetadataWritable(sample.session, sample, hasAnyCoffeeField(input));
 
   let coffeeUpdated: boolean;
 
-  if (pickId) {
-    // A client-supplied coffee id is never trusted: it must be one this owner
-    // may use. Link exactly like the implicit create below (same guard, same
-    // `revealed` rule) but create nothing and touch no coffee field.
-    const usable = await prisma.coffee.findFirst({
-      where: { id: pickId, ...usableCoffeeWhere(user.id) },
-      select: { id: true },
-    });
-    if (!usable) throw new Error("coffee_not_usable");
-    const linked = await prisma.sessionSample.updateMany({
-      where: { id: sampleId, coffeeId: null },
-      data: { coffeeId: usable.id, ...(postCloseNaming ? { revealed: true } : {}) },
-    });
-    if (linked.count === 0) throw new Error("conflict");
-    coffeeUpdated = true;
-  } else if (sample.coffeeId) {
+  if (sample.coffeeId) {
     // Samples can point at coffees the session owner merely USES (picked
     // shared/public coffees) — only the coffee's own creator may edit the
     // coffee record itself. For non-owned coffees the label update below

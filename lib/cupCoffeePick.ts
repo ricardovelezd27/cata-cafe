@@ -1,6 +1,6 @@
 // "Usar café existente" on the cup page's sample editor (S9-05, F-express-3).
-// Pure, dependency-free rules; the server action (updateSampleMetadata) and
-// cup/page.tsx do the authorization, queries and writes.
+// Pure, dependency-free rules; the server action (assignSampleCoffee) does the
+// authorization, the re-validation of the coffee id and the write.
 
 /** May the owner link an existing coffee to this sample from the cup page?
  *  Owner only, session still writable (not closed, not past `closesAt`) and
@@ -12,21 +12,4 @@ export function canPickExistingCoffee(input: {
   sampleCoffeeId: string | null;
 }): boolean {
   return input.isOwner && input.writable && input.sampleCoffeeId === null;
-}
-
-/** Should cup/page.tsx ship the usable-coffee list at all? Only when at least
- *  one sample could use it, so participants and fully-linked sessions pay no
- *  extra query. */
-export function needsCupCoffeePicker(input: {
-  isOwner: boolean;
-  writable: boolean;
-  samples: { coffeeId: string | null }[];
-}): boolean {
-  return input.samples.some((s) =>
-    canPickExistingCoffee({
-      isOwner: input.isOwner,
-      writable: input.writable,
-      sampleCoffeeId: s.coffeeId,
-    }),
-  );
 }

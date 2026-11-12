@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { requireRegisteredUser } from "@/lib/auth";
 import { withCodeRetry } from "@/lib/coffeeCode";
 import { run } from "@/lib/safeAction";
+import { getUsableCoffees } from "@/lib/coffees/queries";
+import type { UsableCoffee } from "@/components/coffees/CoffeePicker";
 import type { ActionResult } from "@/lib/actionResult";
 import { idList } from "@/lib/validate";
 import { normalizeCoffeeFields, isStaleCoffeeEdit } from "@/lib/coffeeInputBounds";
@@ -568,4 +570,31 @@ export async function setCoffeeVisibility(
     revalidatePath("/en/app/coffees");
     return { visibility };
   }, { coffeeId });
+}
+
+/**
+ * The caller's usable coffees for a "Usar café existente" picker, fetched when
+ * the picker OPENS (S9-05). The cup page is the hot path and re-renders on
+ * every refresh, so it must not carry this list in its props. Registered users
+ * only; the list is the caller's own view (own, shared with them, public),
+ * with the same fields the wizard ships: no notes, no other owner's identity.
+ * Whatever the client then sends back is re-validated by the write action.
+ */
+export async function listUsableCoffeesForPicker(): Promise<ActionResult<UsableCoffee[]>> {
+  return run("listUsableCoffeesForPicker", async () => {
+    const user = await requireRegisteredUser();
+    return (await getUsableCoffees(user.id)).map((c) => ({
+      id: c.id,
+      name: c.name,
+      code: c.code,
+      producer: c.producer,
+      variety: c.variety,
+      altitude: c.altitude,
+      roastLevel: c.roastLevel,
+      country: c.country,
+      region: c.region,
+      processType: c.processType,
+      origin: c.createdBy === user.id ? "mine" : c.visibility === "public" ? "public" : "shared",
+    }));
+  });
 }

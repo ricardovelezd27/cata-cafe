@@ -36,7 +36,9 @@ import {
   upsertPhysical,
   updateSampleMetadata,
   setReferenceSample,
+  assignSampleCoffee,
 } from "@/app/actions/sessions";
+import { listUsableCoffeesForPicker } from "@/app/actions/coffees";
 import {
   EditSampleMetadataForm,
   type SampleMetadataFormData,
@@ -181,7 +183,6 @@ type CuppingTab = "cupping" | "extrinsic" | "physical";
 const NO_ROWS: SubmittedRow[] = [];
 const NO_IDS: string[] = [];
 const NO_COUNTS: Record<string, number> = {};
-const NO_COFFEES: UsableCoffee[] = [];
 
 export function CupClient({
   locale,
@@ -198,7 +199,6 @@ export function CupClient({
   submittedRows = NO_ROWS,
   eligibleCupperIds = NO_IDS,
   evalCountBySample = NO_COUNTS,
-  usableCoffees = NO_COFFEES,
   translations,
   userEmail,
   userCountry,
@@ -246,8 +246,6 @@ export function CupClient({
   eligibleCupperIds?: string[];
   /** Owner only: evaluations per sample, for the re-pin confirm (S8-21 #1). */
   evalCountBySample?: Record<string, number>;
-  /** Owner only, and only while a sample has no coffee (S9-05). */
-  usableCoffees?: UsableCoffee[];
   userId: string;
   translations: {
     sample: string;
@@ -504,6 +502,9 @@ export function CupClient({
   const [coffeeNotOwnedNotice, setCoffeeNotOwnedNotice] = useState(false);
   const [pickingCoffee, setPickingCoffee] = useState(false);
   const [pickPending, setPickPending] = useState(false);
+  // Loaded when the picker opens (never shipped in the page props).
+  const [pickerCoffees, setPickerCoffees] = useState<UsableCoffee[]>([]);
+  const pickBusy = useRef(false);
   // Owner's counter: Map<cupperId, submitted sampleIds>, re-seeded from the
   // server rows on every refresh (30 s poll, SUBSCRIBED, visibility) — never
   // a `+1` per realtime event.
@@ -1778,49 +1779,47 @@ export function CupClient({
   };
 
   // "Usar café existente" (S9-05): link a coffee the owner already has to a
-  // coffee-less sample. The server re-validates the id (usableCoffeeWhere) and
-  // rejects a sample that already has a coffee.
+  // coffee-less sample. assignSampleCoffee re-validates the id
+  // (usableCoffeeWhere), refuses a sample that already has a coffee and
+  // returns an ActionResult, so every refusal gets its own localized toast.
   const canPickCoffee =
     canPickExistingCoffee({
       isOwner,
       writable: sessionStatus !== "closed",
       sampleCoffeeId: current.coffeeId ?? null,
-    }) &&
-    usableCoffees.length > 0 &&
-    !!translations.coffeePicker;
+    }) && !!translations.coffeePicker;
+  const openCoffeePicker = async () => {
+    if (pickBusy.current) return;
+    pickBusy.current = true;
+    setPickPending(true);
+    try {
+      await feedback.run(listUsableCoffeesForPicker(), (list) => {
+        setPickerCoffees(list);
+        setPickingCoffee(true);
+      });
+    } finally {
+      pickBusy.current = false;
+      setPickPending(false);
+    }
+  };
   const handlePickCoffee = async (picked: UsableCoffee) => {
-    if (pickPending) return;
+    if (pickBusy.current) return;
+    pickBusy.current = true;
     setPickPending(true);
     setPickingCoffee(false);
+    const sampleId = current.id;
     try {
-      await updateSampleMetadata(current.id, { coffeeId: picked.id });
-      setSamples((prev) =>
-        prev.map((s) =>
-          s.id === current.id
-            ? {
-                ...s,
-                coffeeId: picked.id,
-                coffee: {
-                  name: picked.name,
-                  country: picked.country ?? "",
-                  region: picked.region ?? "",
-                  farm: "",
-                  producer: picked.producer ?? "",
-                  variety: picked.variety ?? "",
-                  processType: picked.processType ?? "",
-                  altitude: picked.altitude ?? "",
-                  roastLevel: picked.roastLevel ?? "",
-                },
-              }
-            : s
-        )
-      );
-      setEditingSample(false);
-    } catch {
-      // updateSampleMetadata still throws (not wrapped in run()): the
-      // production digest is opaque, so show the generic localized copy.
-      feedback.notifyError("unknown");
+      await feedback.run(assignSampleCoffee(sampleId, { coffeeId: picked.id }), () => {
+        // Only the link is set locally. The coffee's fields arrive with the
+        // server render: a hand-built copy here lacks fields the picker list
+        // does not carry, and a later save of the editor would then blank
+        // them on the owner's real coffee.
+        setSamples((prev) => prev.map((s) => (s.id === sampleId ? { ...s, coffeeId: picked.id } : s)));
+        setEditingSample(false);
+        router.refresh();
+      });
     } finally {
+      pickBusy.current = false;
       setPickPending(false);
     }
   };
@@ -2407,7 +2406,7 @@ export function CupClient({
               <button
                 type="button"
                 disabled={pickPending}
-                onClick={() => setPickingCoffee(true)}
+                onClick={openCoffeePicker}
                 className="inline-flex min-h-[44px] items-center rounded-pill border border-outline-variant px-4 text-sm font-medium text-on-surface transition-colors hover:bg-surface-container disabled:opacity-50"
               >
                 {translations.coffeePicker.useExisting}
@@ -2452,7 +2451,7 @@ export function CupClient({
         <CoffeePicker
           open={pickingCoffee}
           onOpenChange={setPickingCoffee}
-          coffees={usableCoffees}
+          coffees={pickerCoffees}
           onSelect={handlePickCoffee}
           translations={translations.coffeePicker}
         />
