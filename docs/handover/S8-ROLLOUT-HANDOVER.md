@@ -280,3 +280,22 @@ Ricardo authorized Claude to run the three phases and to merge + deploy (answers
 - Site URL in Supabase ends with a slash, so links come out as `…vercel.app//auth/…`; Vercel answers 308 to the single-slash path (checked). Cosmetic; removing the trailing slash from the Site URL would tidy it.
 - **Still unverified**: a complete Google sign-in after the fix; a signup email for a brand-new address; two-account Realtime; phone offline; warm-up on two phones.
 - **Google sign-in confirmed working by Ricardo after the fix (2026-11-11).** Email link and Google are both verified; the 6-digit code is delivered in the email.
+
+## 2026-11-11 (later session): S9-01, deferred audit findings
+
+- State at start: `main` = `565c713`, production runs `f8193ee`, no open PRs, `/api/health` 204.
+- **Draft PR #102, `claude/s9-01-audit-lows-impl` @ `3bc7d1c`** (not merged): A-06, A-07, A-09, A-12, B-08, C-06, C-07 (partly: owner resume still re-fetches twice), C-08, D-06 (the `newTab` prop stays, it has callers), D-08. tsc clean, 1,199 tests / 133 files, lint 4 pre-existing errors, `next build` OK at `0561a99` (not re-run at `3bc7d1c`). Independent Opus review: nothing serious; its two actionable notes (resend spending budget with nothing claimable, unconditional final ledger write) are fixed in `3bc7d1c` and architect-read. Nothing ran in a browser or against a database.
+- New numbers Claude chose: `close_resend` 3 per session per hour (`lib/emailLimits.ts`); close-email `sending` reservation 10 min (`lib/closeEmailLedger.ts`, must stay above every caller's `maxDuration`).
+- **B-04 is open**: `roundToQuarter` in `lib/scoring.ts` carries `TODO(human)` (Ricardo writes it) in the worktree `agitated-matsumoto-fe2ac8`, uncommitted; the boundary test in `tests/scoringConsistency.test.ts` follows. It must land on the S9-01 branch before the PR is marked ready.
+- Still out: A-08 (email template change), A-10 (new SQL phase), A-11 (new env var), D-05 (disposable database).
+- Read-only production facts (2026-11-11): "Artisan Brasil anaerobico" has 4 participants and 4 submitted evaluations (owner should close it); "Ejemplo de cata." has 0 evaluations; "[DEV] Sesión de prueba 19:26" belongs to `master@cata.test`. Test accounts: `master@` owns 8 sessions (7 open), `par1@` 3 (3 open), `par2@` none. Asked Ricardo whether to lock them with random passwords; no answer yet.
+- Still Ricardo's clicks: `NEXT_PUBLIC_SITE_URL` to https in Vercel, Site URL trailing slash and rate limits in Supabase, two-account Realtime check.
+
+## 2026-11-12: Supabase settings saved, cleanup prompt
+
+- **Supabase Auth, saved by Claude at Ricardo's request:** Site URL is now `https://cata-cafe-opal.vercel.app` (no trailing slash; was with slash). Rate limits: token verifications 30 → 100 per 5 min, anonymous sign-ins 30 → 100 per hour. Emails sent (30/h), sign-ups/sign-ins (30 per 5 min) and token refresh (150) unchanged. Rollback: put the old values back on the same two pages.
+- **Vercel `NEXT_PUBLIC_SITE_URL`: NOT changed.** Vercel asks for a 6-digit emailed code before it reveals or edits the variable; that verification is Ricardo's.
+- **Cleanup prompt:** `docs/prompts/S9-database-cleanup.md`, with a read-only survey of 2026-11-12 (174 sessions, 26 without evaluations, 21 test-named of which 4 shared with another cupper, 11 owned by `@cata.test`, 113 empty anonymous users, 77 unused coffees). Nothing was deleted.
+- **S9-01 MERGED (2026-11-12): `main` = `43cb3d7` "S9-01: deferred audit findings, low severity (#102)"**, including B-04 (`roundToQuarter`, commit `2f4177a`). 1,202 tests / 133 files on the PR tip; Vercel preview build of the tip succeeded. No migration, no SQL phase, no new environment variable. Nothing in it was exercised in a browser before the merge. The earlier bullet "B-04 is open" above is superseded.
+- **Production runs `43cb3d7`** (deployed 2026-11-12 17:40 UTC; `/api/health` 204, `/en` 200, login reachable). No signed-in check after this deploy.
+- **Vercel `NEXT_PUBLIC_SITE_URL` is now `https://cata-cafe-opal.vercel.app`** (Production and Preview; saved by Claude after Ricardo passed Vercel's email verification, 2026-11-12). It was saved AFTER the `43cb3d7` build started, so it takes effect on the next production deployment. This supersedes the "NOT changed" line above.
