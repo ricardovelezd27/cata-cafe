@@ -4,8 +4,18 @@
 > (`01-preguntas-para-kim.md`) el 2026-11-12. Ricardo simuló estas respuestas con un comité
 > (Q Grader, formador CVA, catador tradicional, usuario) para no bloquear el trabajo. Todo lo
 > que se construya con ellas lleva `TODO(kim-validar:<código>)` y se revisa cuando Kim
-> conteste. La decisión sobre el puntaje (A1) es de Ricardo: ver
-> `docs/product/cata-descentralizada-puntaje.md`.
+> conteste.
+>
+> **Decisiones de Ricardo que mandan sobre este archivo (2026-11-12):**
+> - **A1 y la "Regla de cálculo" del final:** vale `docs/product/cata-descentralizada-puntaje.md`.
+>   El descuento individual de aquí (−4 y −2 por taza) coincide; la fórmula del grupo de aquí
+>   (20 × defectuosas ÷ tazas) NO vale con menos de cinco tazas: el descuento es plano hasta
+>   cinco tazas y solo se reparte con más.
+> - **B4** (guía del profesor y tipo de sesión): aparcado. Enseñanzas y comparaciones, solo
+>   con la sesión cerrada.
+> - **Acidez y dulzor** ("Cosas que no me preguntaron"): se quedan las listas fijas; el menor
+>   texto libre posible.
+> - **E2** (correo opcional al entrar): aparcado.
 
 fecha: 2026-11-12
 respondido por: Kim (SIMULADO por comité: Q Grader, formador CVA, catador tradicional, usuario. Pendiente de validar con Kim)
