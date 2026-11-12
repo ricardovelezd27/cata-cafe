@@ -1,4 +1,5 @@
 import { AFFECTIVE_ATTRIBUTES } from "./constants";
+import type { ScoreRule } from "./scoreRule";
 
 /* ============================================================
    NEW: SCA CVA scoring — design system API
@@ -126,6 +127,20 @@ export function evaluationCupCounts(
   return { u, d };
 }
 
+/* ------------------------------------------------------------
+   RULE BEFORE 2026-11 ("v1"), kept only so past results render unchanged.
+   A closed session is the record of that day: a score stored under v1 is shown
+   with v1 arithmetic (lib/scoreRule.ts says which rule the data was scored
+   under). Deductions existed only from five cups per sample; the individual
+   score deducted 2 per non-uniform and 4 per defective cup (arrays counted
+   independently, unclamped); the group deducted
+   totalNonUniform x 10 / totalCups + totalDefective x 30 / totalCups with
+   totalCups = cupsPerSample x included evaluations. Nothing new may call this.
+   ------------------------------------------------------------ */
+const V1_MIN_CUPS = 5;
+const v1Applies = (cupsPerSample: number) =>
+  Number.isFinite(cupsPerSample) && cupsPerSample >= V1_MIN_CUPS;
+
 export interface CupDeduction {
   cups: number;
   nonUniform: number;
@@ -248,7 +263,9 @@ export interface GroupAggregate {
 export function computeGroupAggregate(
   evals: GroupEvalInput[],
   cupsPerSample: number,
+  opts?: { rule?: ScoreRule },
 ): GroupAggregate {
+  const rule: ScoreRule = opts?.rule ?? "v2";
   const submitted = evals.length;
   const complete = evals.filter((e) => isAffectiveComplete(e.data));
   const included = complete.length;
@@ -279,7 +296,7 @@ export function computeGroupAggregate(
   // evaluations (filtered above).
   const cupsOf = (e: GroupEvalInput) => e.cups ?? cupsPerSample;
   const individualScores = complete
-    .map((e) => calcIndividualScore(e.data, cupsOf(e)))
+    .map((e) => calcIndividualScore(e.data, rule === "v1" ? cupsPerSample : cupsOf(e), { rule }))
     .filter((v): v is number => typeof v === "number");
   let scoreSd: number | null = null;
   if (individualScores.length >= 2) {
@@ -289,6 +306,46 @@ export function computeGroupAggregate(
       individualScores.reduce((a, b) => a + (b - iMean) ** 2, 0) /
       individualScores.length;
     scoreSd = Math.round(Math.sqrt(iVariance) * 100) / 100;
+  }
+
+  if (rule === "v1") {
+    // Rule before 2026-11 (see the v1 note above): gated by the session's cups.
+    let nu = 0;
+    let df = 0;
+    if (v1Applies(cupsPerSample)) {
+      for (const e of complete) {
+        nu += (e.nonUniformCups ?? []).filter(Boolean).length;
+        df += (e.defectiveCups ?? []).filter(Boolean).length;
+      }
+    }
+    const cupsV1 = cupsPerSample * included;
+    const gated = v1Applies(cupsPerSample);
+    const up = gated && cupsV1 > 0 ? nu * (10 / cupsV1) : 0;
+    const dp = gated && cupsV1 > 0 ? df * (30 / cupsV1) : 0;
+    const communityV1 =
+      !avgRawScore || cupsV1 === 0
+        ? 0
+        : Math.max(0, Math.min(100, roundToQuarter(avgRawScore - up - dp)));
+    const attrV1: Record<string, number> = {};
+    for (const attr of AFFECTIVE_ATTRIBUTES) {
+      let sum = 0;
+      for (const e of complete) sum += Number(e.data[`${attr.id}_final`] ?? e.data[attr.id] ?? 0);
+      attrV1[attr.label] = Math.round((sum / included) * 100) / 100;
+    }
+    return {
+      submitted,
+      included,
+      avgRawScore: Math.round(avgRawScore * 100) / 100,
+      communityScore: communityV1,
+      scoreSd,
+      totalNonUniform: nu,
+      totalDefective: df,
+      totalCups: cupsV1,
+      uniformityPenalty: up,
+      defectPenalty: dp,
+      deductionFactor: 1,
+      attrAverages: attrV1,
+    };
   }
 
   // Pooled over the included evaluations; flags are always counted (no gate),
@@ -358,15 +415,46 @@ export interface IndividualBreakdown {
   raw: number; // base − penalties, pre-rounding/clamp
   score: number; // final, clamped [0,100], rounded to 0.25
   cupsPerSample: number;
+  rule: ScoreRule; // which rule produced the numbers ("v1" = before 2026-11, past results only)
 }
 
 export function calcIndividualBreakdown(
   data: EvalData,
   cupsPerSample: number,
+  opts?: { rule?: ScoreRule },
 ): IndividualBreakdown {
   const { sum: affectiveSum } = calcAffectiveSum(data);
   const affectiveTerm = 0.65625 * affectiveSum;
   const base = affectiveTerm + 52.75;
+
+  if (opts?.rule === "v1") {
+    // Rule before 2026-11 (see the v1 note above), exactly as it was computed.
+    const tracked = v1Applies(cupsPerSample);
+    let u1 = 0;
+    let d1 = 0;
+    if (tracked) {
+      u1 = ((data.tazas_no_uniformes as boolean[] | undefined) ?? []).filter(Boolean).length;
+      d1 = ((data.tazas_defectuosas as boolean[] | undefined) ?? []).filter(Boolean).length;
+    }
+    const up = 2 * u1;
+    const dp = 4 * d1;
+    const raw1 = base - up - dp;
+    return {
+      affectiveSum,
+      affectiveTerm,
+      base,
+      u: u1,
+      d: d1,
+      uniformityTracked: tracked,
+      factor: 1,
+      uniformityPenalty: up,
+      defectPenalty: dp,
+      raw: raw1,
+      score: Math.max(0, Math.min(100, Math.round(raw1 * 4) / 4)),
+      cupsPerSample,
+      rule: "v1",
+    };
+  }
 
   const uniformityTracked = Number.isFinite(cupsPerSample) && cupsPerSample >= 2;
   const { u, d } = evaluationCupCounts(
@@ -398,14 +486,16 @@ export function calcIndividualBreakdown(
     raw,
     score,
     cupsPerSample,
+    rule: "v2",
   };
 }
 
 export function calcIndividualScore(
   data: EvalData,
   cupsPerSample: number,
+  opts?: { rule?: ScoreRule },
 ): number | "—" {
-  return calcIndividualBreakdown(data, cupsPerSample).score;
+  return calcIndividualBreakdown(data, cupsPerSample, opts).score;
 }
 
 // Session (group) score: the average of the included cuppers' bases minus the

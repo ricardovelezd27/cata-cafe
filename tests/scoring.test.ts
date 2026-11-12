@@ -11,6 +11,7 @@ import {
   type GroupEvalInput,
 } from "@/lib/scoring";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
+import { evaluationScoreRule, sampleScoreRule } from "@/lib/scoreRule";
 
 // S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d, rounded to 0.25 (CLAUDE.md "Scoring System"),
 // the deduction shared across everyone's cups and diluted beyond five (lib/scoring.ts cupDeduction).
@@ -255,5 +256,83 @@ describe("cupDeduction", () => {
       const pooled = cupDeduction({ cups: cups * people, nonUniform: u * people, defective: d * people });
       if (flagged > 0) expect(pooled.total / (flagged * people)).toBeLessThanOrEqual(6 + 1e-9);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Rule versions: past results render unchanged (lib/scoreRule.ts).
+// "v1" must reproduce what main computed before this change.
+// ---------------------------------------------------------------------------
+describe("rule v1 (before 2026-11) reproduces the old numbers", () => {
+  const v1 = { rule: "v1" as const };
+
+  it("3 cups, everything flagged: no deduction (79), as main", () => {
+    const data = {
+      ...allAttrs(5),
+      tazas_no_uniformes: [true, true, true],
+      tazas_defectuosas: [true, true, true],
+    };
+    expect(calcIndividualScore(data, 3, v1)).toBe(79);
+    expect(calcIndividualBreakdown(data, 3, v1)).toMatchObject({ uniformityTracked: false, u: 0, d: 0, rule: "v1" });
+  });
+
+  it("5 cups, 1 non-uniform + 1 defective (arrays independent): 73, as main", () => {
+    const data = {
+      ...allAttrs(5),
+      tazas_no_uniformes: [true, false, false, false, false],
+      tazas_defectuosas: [false, true, false, false, false],
+    };
+    expect(calcIndividualScore(data, 5, v1)).toBe(73);
+  });
+
+  it("group 2 x 5 cups with one defective-only cup: 30/total_cups = 3, so 76", () => {
+    const evals: GroupEvalInput[] = [0, 1].map((i) => ({
+      data: allAttrs(5),
+      nonUniformCups: [false, false, false, false, false],
+      defectiveCups: [i === 0, false, false, false, false],
+    }));
+    const agg = computeGroupAggregate(evals, 5, v1);
+    expect(agg.communityScore).toBe(76);
+    expect(agg.defectPenalty).toBe(3);
+    expect(agg.totalCups).toBe(10);
+  });
+
+  it("group under five cups is the plain average, flags ignored", () => {
+    const evals: GroupEvalInput[] = [0, 1].map((i) => ({
+      data: allAttrs(5),
+      nonUniformCups: [true, true],
+      defectiveCups: [i === 0, false],
+    }));
+    const agg = computeGroupAggregate(evals, 2, v1);
+    expect(agg.communityScore).toBe(79);
+    expect([agg.totalNonUniform, agg.totalDefective, agg.uniformityPenalty, agg.defectPenalty]).toEqual([0, 0, 0, 0]);
+    // the same data under the current rule deducts
+    expect(computeGroupAggregate(evals, 2).communityScore).toBeLessThan(79);
+  });
+
+  it("a stored row with cups NULL renders the SAME individual score as before; with cups 2 it gets -6", () => {
+    const data = { ...allAttrs(5), ...flagsFor(2, 0, 1) };
+    const stored = (cups: number | null) => calcIndividualScore(data, 2, { rule: evaluationScoreRule(cups, true) });
+    expect(stored(null)).toBe(79); // what main showed for this row
+    expect(stored(2)).toBe(73);
+  });
+});
+
+describe("rule selection helpers", () => {
+  it("evaluationScoreRule: v1 only for a STORED row whose cups is null", () => {
+    expect(evaluationScoreRule(null, true)).toBe("v1");
+    expect(evaluationScoreRule(undefined, true)).toBe("v1");
+    expect(evaluationScoreRule(2, true)).toBe("v2");
+    expect(evaluationScoreRule(0, true)).toBe("v2");
+    expect(evaluationScoreRule(null, false)).toBe("v2");
+    expect(evaluationScoreRule(undefined, false)).toBe("v2");
+    expect(evaluationScoreRule(5, false)).toBe("v2");
+  });
+
+  it("sampleScoreRule: v1 only when a stored aggregate says ruleVersion 1; no row means v2", () => {
+    expect(sampleScoreRule({ ruleVersion: 1 })).toBe("v1");
+    expect(sampleScoreRule({ ruleVersion: 2 })).toBe("v2");
+    expect(sampleScoreRule(null)).toBe("v2");
+    expect(sampleScoreRule(undefined)).toBe("v2");
   });
 });
