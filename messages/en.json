@@ -357,6 +357,10 @@
       "removeRepinConfirm": "Remove reference",
       "referenceRepinBlocked": "Removing this sample would reactivate an earlier reference and replace its cuppers' ratings. Change the reference first.",
       "formatLockedStarted": "Format and cups per sample lock once the cupping has started or has evaluations."
+    },
+    "sampleCountWarning": {
+      "many": "More than 6 samples tires the palate. Consider splitting them across two cuppings.",
+      "combined": "For the combined format, 4 samples at most are recommended."
     }
   },
   "cupping": {

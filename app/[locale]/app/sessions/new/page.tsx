@@ -111,6 +111,10 @@ export default async function NewSessionPage({
       referenceBadge: t("newForm.referenceBadge"),
       referenceNone: t("newForm.referenceNone"),
       referenceClear: t("newForm.referenceClear"),
+      sampleWarning: {
+        many: t("sampleCountWarning.many"),
+        combined: t("sampleCountWarning.combined"),
+      },
       sampleLabelAuto: t("newForm.sampleLabelAuto"),
       samplesBlindHelper: t("newForm.samplesBlindHelper"),
       sampleKey: {

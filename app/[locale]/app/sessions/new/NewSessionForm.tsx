@@ -31,6 +31,7 @@ import {
   type WizardHandoff,
 } from "@/lib/sessionDefaults";
 import { Select } from "@/components/ui/Select";
+import { sampleCountWarning, type SampleCountWarning } from "@/lib/sampleCount";
 import { browserZone, dateInZone } from "@/lib/closeRules";
 import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 import { fieldErrorId, fieldForErrorCode, fieldInputId, type SessionFormField } from "@/lib/sessionFormErrors";
@@ -168,6 +169,8 @@ type Translations = {
     sampleLabelAuto: string;
     samplesBlindHelper: string;
     sampleKey: SampleKeyTranslations;
+    /** X6: non-blocking line above the add button when the count is high for the format. */
+    sampleWarning: Record<SampleCountWarning, string>;
     /** Whole newForm.errors table (S8-10); includes `offline` (S8-09). */
     errors: Record<string, string> & { generic: string; offline?: string };
   };
@@ -622,6 +625,7 @@ export function NewSessionForm({
     setErrorCode(null);
   };
 
+  const sampleWarning = sampleCountWarning(format, samples.length);
   const coffeeLabel = (coffee: CoffeeEntry, i: number) =>
     coffee.name.trim() || `${t.newForm.coffeeCard} ${i + 1}`;
   /** Typed name of a coffee card ("" while it is still blank). */
@@ -1464,6 +1468,12 @@ export function NewSessionForm({
             </div>
           ))}
         </div>
+
+        {sampleWarning && (
+          <p role="status" className="text-xs font-medium text-secondary">
+            {t.newForm.sampleWarning[sampleWarning]}
+          </p>
+        )}
 
         <button
           type="button"

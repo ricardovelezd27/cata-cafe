@@ -40,6 +40,10 @@ export default async function ExpressSessionPage({
     fullWizard: t("express.fullWizard"),
     nameRequired: t("express.nameRequired"),
     offline: t("express.offline"),
+    sampleWarning: {
+      many: t("sampleCountWarning.many"),
+      combined: t("sampleCountWarning.combined"),
+    },
   };
 
   return (

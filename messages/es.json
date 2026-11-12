@@ -357,6 +357,10 @@
       "removeRepinConfirm": "Quitar referencia",
       "referenceRepinBlocked": "Quitar esta muestra reactivaría una referencia anterior y reemplazaría las notas de sus catadores. Cambia primero la referencia.",
       "formatLockedStarted": "El formato y las tazas por muestra se bloquean cuando la cata ya empezó o tiene evaluaciones."
+    },
+    "sampleCountWarning": {
+      "many": "Más de 6 muestras cansa el paladar. Considera repartirlas en dos catas.",
+      "combined": "En formato combinado se recomiendan 4 muestras como máximo."
     }
   },
   "cupping": {
