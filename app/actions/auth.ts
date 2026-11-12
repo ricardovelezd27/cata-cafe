@@ -13,6 +13,8 @@ import { run } from "@/lib/safeAction";
 import { reserveEmailBudget } from "@/lib/emailBudget";
 import { parseClientIp } from "@/lib/requestIp";
 import { loginHref } from "@/lib/authRedirect";
+import { maskEmail } from "@/lib/maskEmail";
+import { checkSignInIntent, clearSignInIntent, rememberSignInIntent } from "@/lib/signInIntentCookie";
 import { isRegisteredUser } from "@/lib/guestScope";
 import * as v from "@/lib/validate";
 import type { ActionResult } from "@/lib/actionResult";
@@ -105,7 +107,7 @@ export async function confirmEmailToken(
   type: string,
   next?: string,
   locale?: string,
-): Promise<ActionResult<{ next: string }>> {
+): Promise<ActionResult<{ next: string; confirmIdentity?: string }>> {
   return run("confirmEmailToken", async () => {
     const hash = String(tokenHash ?? "");
     if (!hash || hash.length > 512 || !CONFIRM_TYPES.includes(type as EmailOtpType)) {
@@ -118,9 +120,18 @@ export async function confirmEmailToken(
       subject: `token:${createHash("sha256").update(hash).digest("hex")}`,
     });
     const supabase = await createClient();
-    const { error } = await supabase.auth.verifyOtp({ type: type as EmailOtpType, token_hash: hash });
+    const { data, error } = await supabase.auth.verifyOtp({ type: type as EmailOtpType, token_hash: hash });
     if (error) throw new Error(authCodeFor(error));
-    return { next: safeNext(next, { fallback: defaultNextFor(localeOf(locale)) }) };
+    const dest = safeNext(next, { fallback: defaultNextFor(localeOf(locale)) });
+    // S9-02 A-08 (login CSRF): the session exists now. Proceed silently only when
+    // THIS browser asked for a sign-in link for THIS address; otherwise the client
+    // shows "Vas a entrar como j***@dominio.com" and the person decides.
+    const email = data.user?.email ?? (await supabase.auth.getUser()).data.user?.email ?? null;
+    if ((await checkSignInIntent(email)) === "match") {
+      await clearSignInIntent();
+      return { next: dest };
+    }
+    return { next: dest, confirmIdentity: email ? maskEmail(email) : "***" };
   });
 }
 
@@ -204,6 +215,8 @@ export async function requestEmailChange(
 
     const loc = localeOf(locale);
     const origin = await trustedRequestOrigin();
+    // S9-02 A-08: the confirm link returns here signed in as either address.
+    await rememberSignInIntent([address, user.email ?? ""].filter(Boolean));
     const { error } = await supabase.auth.updateUser(
       { email: address },
       { emailRedirectTo: `${origin}/${loc}/app/profile` },

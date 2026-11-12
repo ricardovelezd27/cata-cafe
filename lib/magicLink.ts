@@ -7,6 +7,7 @@ import { trustedRequestOrigin } from "@/lib/requestOrigin";
 import { parseClientIp } from "@/lib/requestIp";
 import { safeNext } from "@/lib/safeNext";
 import { mapAuthError, type AuthErrorKey } from "@/lib/authErrors";
+import { rememberSignInIntent } from "@/lib/signInIntentCookie";
 
 // The ONE place a sign-in link is requested (S8-03, F-entrar-6): the login
 // form (signInWithMagicLink) and the founding-seat signup (reserveFoundingSeat)
@@ -72,5 +73,8 @@ export async function sendMagicLink(
   });
 
   if (error) return { ok: false, error: mapAuthError(error.code ?? error.message) };
+  // S9-02 A-08: this browser asked for this sign-in, so /auth/confirm can tell
+  // it apart from a link someone else sent. Best effort (server action context).
+  await rememberSignInIntent([email]);
   return { ok: true };
 }

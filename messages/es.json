@@ -115,7 +115,12 @@
       "working": "Entrando…",
       "failedTitle": "Este enlace ya no sirve",
       "failedBody": "Los enlaces de acceso funcionan una sola vez y caducan. Pide uno nuevo y entra con el enlace o con el código de 6 dígitos.",
-      "newLink": "Pedir un enlace nuevo"
+      "newLink": "Pedir un enlace nuevo",
+      "identityTitle": "Verifica tu cuenta",
+      "identityBody": "Vas a entrar como {email}. ¿Eres tú?",
+      "identityYes": "Sí, continuar",
+      "identityNo": "No soy yo",
+      "identityError": "No pudimos cerrar la sesión. Revisa tu conexión e inténtalo de nuevo."
     },
     "inAppBrowserHint": "Google no funciona dentro de esta app. Usa tu correo, o abre esta página en tu navegador (Safari o Chrome) para entrar con Google.",
     "inAppCopyLink": "Copiar enlace",
