@@ -17,6 +17,26 @@
    `01-preguntas-para-kim.md` in the same folder.
 4. `docs/handover/S8-ROLLOUT-HANDOVER.md`, last two sections, and §3 for how SQL is run.
 
+## Decisions Ricardo has already taken (2026-11-12). Do not ask them again
+
+- **The score** (full text in the scoring decision): CVA's flat deductions, 4 points per
+  defective cup and 2 per non-uniform cup, at most 6 per cup, for what a cupper sees; the
+  deduction is diluted only when MORE than five cups are pooled (a session's group score, a
+  coffee's lifetime score). One cup never costs 15, 20 or 30 points. A purely proportional
+  rule was considered and rejected the same day; ignore any text that still describes it.
+- **No past score ever changes.** Only the coffee profile's lifetime score moves.
+- **Latecomers ("no evaluado"):** a cupper who skipped a section gets no total and is left out
+  of the session's average of totals; the sections they did rate still count in the
+  per-attribute averages; labelled "parcial".
+- **Late contributions after close:** allowed, owner only, complete drafts only, stamped,
+  shown with the "Resultados actualizados el…" banner.
+- **As little free text as possible.** Keep fixed option lists for consistency across
+  cuppings. The acidity and sweetness pickers stay as they are; do not replace them with free
+  words, even though CVA 2024 did. This is a deliberate departure from the answers file.
+- **Teaching and comparisons only when the session is closed.** No "teacher's guide" shown
+  during a session; that feature (answer B4) is parked.
+- **Optional email at join (E2):** parked.
+
 ## State you start from (2026-11-12)
 
 - `main` = `4dce4d9` plus a docs commit; production runs it. No open PRs.
@@ -89,12 +109,15 @@ Also fix the doc error found in S10 preparation: `CLAUDE.md` "Community Score" s
 
 ## WP1 — The decentralized score (L; migration + SQL phase)
 
-Spec: `docs/product/cata-descentralizada-puntaje.md`. Read all of it. Summary: one
-proportional formula, `20 × defective ÷ cups + 10 × non-uniform ÷ cups`, in three scopes: my
-score, the session's score (both "immediate", frozen at close), and the coffee's lifetime
-score on its profile (all cups of that coffee across the sessions that count).
+Spec: `docs/product/cata-descentralizada-puntaje.md`. Read all of it. Summary: one formula,
+`(4 × defective + 2 × non-uniform) × 5 ÷ max(5, cups)`, in three scopes. **My score:** my
+cups, never more than five, so always the flat CVA deduction. **The session's score:** the
+included cuppers' pooled cups, flat up to five cups and diluted beyond. **The coffee's
+lifetime score** on its profile: every cup of that coffee across the sessions that count.
+The first two are frozen at close; only the third moves.
 
-**Decisions to confirm:** the ten in §5 of the spec.
+**Decisions to confirm:** the eight under "A confirmar con Ricardo" in §5 of the spec. The
+ones under "Ya decididas" are settled.
 
 **Today (verified 2026-11-12):**
 - Deductions only from 5 cups, TS and SQL: `lib/scoring.ts` (`penaltiesApply`,
@@ -119,12 +142,14 @@ a third):**
 1. **Read-only impact list first.** A script or SQL (dry, writes nothing) listing every
    sample with a flagged cup: session, cups, today's stored session score, the score under
    the new rule, and the same for each individual score. 47 samples are expected. Give the
-   list to Ricardo. Nothing stored changes until he decides (spec §5.9).
-2. **Pure rule in TypeScript.** One function for the proportional deduction, used by the
-   individual breakdown, the session aggregate and the coffee aggregate. Remove
-   `MIN_CUPS_FOR_PENALTIES`/`penaltiesApply` as a gate. Table-driven tests from the spec's
-   "Comprobaciones", including a defective cup that is also non-uniform at 5 cups (= 6, on
-   every side).
+   list to Ricardo so he can confirm spec §5.1 (recommended: nothing stored is recomputed;
+   the new rule applies to what is submitted after the deploy).
+2. **Pure rule in TypeScript.** One function for the deduction (flat up to five cups,
+   diluted beyond), used by the individual breakdown, the session aggregate and the coffee
+   aggregate. Remove `MIN_CUPS_FOR_PENALTIES`/`penaltiesApply` as a gate. Table-driven tests
+   from the spec's "Comprobaciones", including: a defective cup that is also non-uniform at
+   5 cups (= 6, on every side); two defective cups of two (= 12); one cup, defective (= 4);
+   and a property test that no flagged cup ever costs more than 6.
 3. **Per-cup defect type and cups on the evaluation.** Type per cup in the module JSON (the
    JSON shape is intentionally flexible), validated server-side in `computeEvaluationDerived`:
    a new defective cup without a type does not count. Keep `Evaluation.defectTypes` as the
@@ -132,19 +157,22 @@ a third):**
    (migration; backfill from the session's `cupsPerSample`). Forms: the cup grid appears with
    1 cup too (defect only, with the line "Con una taza no se evalúa uniformidad"); marking a
    cup defective asks for its type; Spanish labels mohoso / fenólico / papa.
-4. **SQL phase (PHASE 26):** new `recompute_aggregate_score()` with the proportional rule,
+4. **SQL phase (PHASE 26):** new `recompute_aggregate_score()` with the rule of spec §2 (flat up to five pooled cups, diluted beyond),
    reading cups from the new column; port it in `tests/scoringConsistency.test.ts` in the
    same commit and extend `tests/db/aggregate.dbtest.ts` (trigger must equal TypeScript on
    every case, including the tie cases). Dry run in production, then Ricardo's yes.
    Deploy order matters: document it in the runbook (S8 lesson: page and trigger must not
    disagree in between).
 5. **What the cupper sees (answer "no total while cupping").** Remove the live total from the
-   two forms. At submit and in results show the breakdown: "82,25 − 20 × 1/2 (1 taza
-   fenólica de 2) − … = …" through the existing `ScoreBreakdownPanel`. New hint copy
-   (answer A2): "Tus tazas se suman a las del grupo…" replacing "Con menos de 5 tazas no se
-   descuentan…" (`messages/*.json`, and the hardcoded `notScored` in the two forms).
+   two forms. At submit and in results show the breakdown through the existing
+   `ScoreBreakdownPanel`: "82,25 − 4 (1 taza fenólica) − 2 (no uniforme) = 76,25". Where a
+   session's group score was diluted, one line says why: "Entre todos se cataron 8 tazas: el
+   descuento del grupo se reparte". New hint copy (answer A2, which now matches the rule):
+   "Tus tazas se suman a las del grupo. Cada taza defectuosa que marques te resta 4 puntos",
+   replacing "Con menos de 5 tazas no se descuentan…" (`messages/*.json`, and the hardcoded
+   `notScored` in the two forms).
 6. **Coffee lifetime score and defect tally (answers A3, D6).** A pure function over the
-   coffee's counted evaluations (spec §3 and §5.2, §5.4, §5.5); computed at read time, not
+   coffee's counted evaluations (spec §3 and §5 items 2, 4 and 5); computed at read time, not
    stored, never read or written by the session trigger. Coffee profile and
    `/api/coffees/[id]/ficha`: the lifetime score, "X tazas defectuosas de N catadas (%)" by
    type, and how many different people found it; "indicativo" under 5 pooled cups. Keep the
@@ -154,11 +182,13 @@ a third):**
 7. **Everything downstream reads the one rule:** `fichaTecnica.ts` (delete its copy of the
    formula), `participantSummary.ts`, `resultsCsv.ts`, `cvaFormData.ts`, close email, history
    (`coffeeHistory.ts`, `historyRules.ts`), analytics queries, `RANKING_POLICY`
-   ("indicativo" by pooled cups). Rename to "Puntaje Café Sensible (base CVA)" (spec §5.10;
+   ("indicativo" by pooled cups). Rename to "Puntaje Café Sensible (base CVA)" (spec §5.8;
    CSV header too, noted in the PR because it changes a file format).
-8. **Stored data, only after Ricardo's decision on the list from step 1:** recompute session
-   aggregates (the existing "touch isDraft" re-fire) and resync history. Individual scores of
-   closed sessions are not rewritten unless he says so.
+8. **Stored data: by default nothing.** Ricardo decided that no past score changes. Stored
+   individual and session scores of closed sessions stay as they are; do not re-fire
+   aggregates in bulk and do not resync history. Only if he says otherwise after seeing the
+   list from step 1. Note in the runbook that scores stored before the deploy were computed
+   under older rules.
 
 Closes: F-grupal-1 (reopened), `TODO(A1)`, `TODO(A2)`, `TODO(A3)`, K-cafes-1.
 
@@ -190,15 +220,9 @@ Closes: F-grupal-1 (reopened), `TODO(A1)`, `TODO(A2)`, `TODO(A3)`, K-cafes-1.
 
 ## WP3 — The cupping form (M)
 
-**Decisions to confirm:** (a) C4: a latecomer's "no evaluado" sections: recommended, that
-cupper gets no total, is left out of the session's B, still feeds the per-attribute averages
-for the sections they did rate, labelled "parcial"; (b) X4: acidity and sweetness are
-checkbox sets today (10 options; 3 families) and the answer says CVA 2024 has only intensity
-and free words, which collides with the 2026-09-25 rule "no free text on the descriptive
-sheet": recommended, remove both pickers from the form and the printed form, keep intensity,
-route words through the existing flavour picker, keep the constants so old results resolve;
-(c) A10 bands: recommended, colour by nothing but keep the number; show only the two anchors
-(79 and 100) as reference text.
+**Decision to confirm:** A10 bands: recommended, colour by nothing but keep the number; show
+only the two anchors (79 and 100) as reference text. (C4 and X4 are already decided, see the
+top of this file.)
 
 - **X3:** an evaluation of a sample cannot be written after that sample is revealed, and
   `revealSample` on an open session warns the owner that it freezes cupping for it. Today no
@@ -206,51 +230,58 @@ route words through the existing flavour picker, keep the constants so old resul
 - **A5:** optional, discreet timer (crust at 4 min, first pass around 8–10 min, two more
   passes); and a second value per affective attribute "as it cooled" with the final one
   chosen, the first kept (JSON keys; scoring uses the final).
-- **C4:** "no evaluado" per section for a latecomer (after (a)).
-- **X4:** after (b).
-- **A10:** bands (`scoreBand`, `scoreToCategory`, `ScorePill`, PDFs) after (c); optional
+- **C4:** "no evaluado" per section for a latecomer: no total for that cupper, left out of
+  the session's average of totals, rated sections still feed the per-attribute averages,
+  labelled "parcial". `isAffectiveComplete` (`lib/scoring.ts`) and its SQL twin
+  `is_affective_complete` decide today who has a total: check both.
+- **X4: no change.** Acidity and sweetness keep their fixed option pickers (decided:
+  as little free text as possible). Record it in `CLAUDE.md` as a deliberate departure from
+  CVA 2024 so nobody "fixes" it later.
+- **A10:** bands (`scoreBand`, `scoreToCategory`, `ScorePill`, PDFs) after the decision
+  above; optional
   "market" note per evaluation with "mi preferencia" as default (JSON key). Do NOT rename
   attributes to "official Spanish" wording: blocked until the official form is available.
 
 ## WP4 — Closing a session (M; one SQL phase)
 
-**Decisions to confirm:** (a) C1-d versus C2: accepting a late contribution changes results
-after close; recommended: allowed, owner only, complete drafts only, stamped, shown with the
-existing "Resultados actualizados el…" banner, and it becomes a fourth sanctioned post-close
-write (update `docs/flows.md` §1 and the allowlist in `tests/useServerExports.test.ts`);
-(b) C9: today the owner can re-date a session whose closing date has passed but which the
-cron has not closed yet, which is a reopen; recommended: block it with `isSessionExpired`.
+**Decision to confirm:** C9: today the owner can re-date a session whose closing date has
+passed but which the cron has not closed yet, which is a reopen; recommended: block it with
+`isSessionExpired`. (Late contributions are already decided: allowed, owner only, complete
+drafts only, stamped, shown with the "Resultados actualizados el…" banner. It becomes a
+sanctioned post-close write: update `docs/flows.md` §1 and the allowlist in
+`tests/useServerExports.test.ts`. The cupper's own stored score for that evaluation is
+written once, at acceptance; it does not change a score that already existed.)
 
 - **C1:** a warning to cuppers a few minutes before a live close (the owner's close dialog
   already counts unsent cuppers; async already has the 24 h mail); unsent complete drafts are
   kept aside at close and the owner can accept each one (`TODO(S8-05/C1-d)` in
   `lib/closeRules.ts`, `TODO(C1)` in `UnsyncedNotesPanel.tsx`: "send to owner").
-- **C2:** a text note can be added to one's evaluation after close (a fifth sanctioned
-  write, or folded into (a); text only, never a rating).
+- **C2:** a text note can be added to one's evaluation after close (another sanctioned
+  write; text only, never a rating).
 - **C3:** live sessions: reminder at 24 h (today 12 h, `LIVE_IDLE_MS`) and automatic close at
   7 days through the existing cron and `closeSessionInternal`. Only after C1 works.
 - **C5:** group results visible only at close (today: when everyone has submitted). TypeScript
   (`canViewGroupResults`, `lib/sessionState.ts`) AND its SQL twin `can_view_group_results`
   (new SQL phase, dry run, Ricardo's yes), the participant-summary route and the results
-  banner. Check the B4 dependency in WP5 before changing it.
-- **C9:** after (b).
+  banner. This is also the rule for every comparison and teaching view: nothing about the
+  group is shown before close.
+- **C9:** after the decision above.
 
-## WP5 — Results, reports, privacy (M–L; one column)
+## WP5 — Results, reports, privacy (M)
 
-**Decisions to confirm:** (a) B4 versus C5: the teacher's descriptive guide "after the cupper
-sends" versus "group only at close"; recommended: in a live alignment session the guide shows
-to a cupper who has sent every sample, in an async one at close; (b) D3 "hasta 6":
-recommended, "indicativo" for 3 to 5 cuppers, firm from 6; (c) D2: is "calibración distinta"
-removed as an exclusion reason (the answer says "scored differently" must never be a reason)?
-Recommended: remove it for new exclusions, keep reading old rows.
+**Decisions to confirm:** (a) D3 "hasta 6": recommended, "indicativo" for 3 to 5 cuppers,
+firm from 6; (b) D2: is "calibración distinta" removed as an exclusion reason (the answer
+says "scored differently" must never be a reason)? Recommended: remove it for new
+exclusions, keep reading old rows.
 
 - **B2 (`TODO(B2-b)`):** re-pinning a reference never destroys a cupper's ratings: stash the
   previous values inside the module JSON, warn, allow undo.
 - **B3:** personal drill-down: descriptive intensities and descriptors against the group
   average; affective shows own score and the group's spread, with no "error" wording; Δ
   against a reference only in anchor mode (needs WP2's B1).
-- **B4:** session type "alineación" or "abierta" (one column); in an alignment session the
-  owner's descriptive sheet is the guide (after (a)); never before the cupper sends.
+- **B4 is parked, not built** (decided: teaching and comparisons only at close; no teacher's
+  guide during a session, no session type column). Record it on the board as parked by the
+  owner. B3 above is shown only on a closed session.
 - **B6:** a repeated sample in one session (same coffee, different letter): show each cupper
   the difference between their two evaluations, tolerance 2 points total and 2 on
   intensities. No consistency score.
@@ -258,7 +289,7 @@ Recommended: remove it for new exclusions, keep reading old rows.
   health, test or duplicate, other (free text). A private, kind notice to the excluded
   cupper. The ≥2 SD "posible atípico" wording must not suggest that scoring differently is
   an error.
-- **D3 (`TODO(Kim-D3)`):** after (b); tie = "sin diferencia clara" when the gap is under
+- **D3 (`TODO(Kim-D3)`):** after (a); tie = "sin diferencia clara" when the gap is under
   1 point or under half the panel's SD, whichever is larger (today only the SD half).
 - **D5 (`TODO(Kim-D5)`):** results CSV with names AND a code column for the owner; a
   "sin nombres" download in the UI.
@@ -303,7 +334,9 @@ owner (RLS: no API access; Prisma only), added to `mergeGuestData`, `deleteAccou
 ## Explicitly not in scope
 
 - Three-digit blind codes (A4 "later"), queued offline session creation (E5), group member
-  consent (S8-11 step 9), official Spanish CVA wording (blocked on the form), E2.
+  consent (S8-11 step 9), official Spanish CVA wording (blocked on the form), the optional
+  email at join (E2), the teacher's guide and session types (B4), free-word acidity and
+  sweetness (X4).
 - The database cleanup (`docs/prompts/S9-database-cleanup.md`) is its own session.
 - Ricardo's items: legal text, `ANALYTICS_SUPER_ADMIN_EMAIL` and `UNSUBSCRIBE_SECRET` in
   Vercel, device checks, making old migrations replayable.
@@ -316,6 +349,7 @@ owner (RLS: no API access; Prisma only), added to `mergeGuestData`, `deleteAccou
   fixed with their PRs, and only F-landing-1 and F-insights-5 open.
 - `grep -rn "TODO(" app lib components hooks` shows no Kim marker other than
   `TODO(kim-validar:…)`, `TODO(E5)` and the S8-11 consent one.
-- `CLAUDE.md`'s scoring sections describe the proportional rule and the three scopes, and no
-  document still says "no deductions under five cups".
+- `CLAUDE.md`'s scoring sections describe the rule (flat CVA deductions, diluted beyond five
+  pooled cups) and the three scopes, and no document still says "no deductions under five
+  cups" or describes a deduction above 6 points per cup.
 - A final section in the handover says what was verified in production and what was not.
