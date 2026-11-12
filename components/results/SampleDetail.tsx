@@ -16,7 +16,7 @@
 
 import { useState } from "react";
 import { ChevronDown, Pencil } from "lucide-react";
-import { calcIndividualBreakdown, calcIndividualScore, penaltiesApply } from "@/lib/scoring";
+import { calcIndividualBreakdown, calcIndividualScore } from "@/lib/scoring";
 import {
   resolveDescriptor,
   resolveMainTaste,
@@ -487,7 +487,7 @@ export function SampleDetail({
                   breakdown={calcIndividualBreakdown(data, cupsPerSample)}
                   setup={{
                     cupsPerSample,
-                    uniformityTracked: penaltiesApply(cupsPerSample),
+                    uniformityTracked: cupsPerSample >= 2,
                     roundingEnforced: true,
                   }}
                   t={t.breakdown}

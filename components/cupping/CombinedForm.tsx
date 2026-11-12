@@ -22,7 +22,6 @@ import {
   Notes,
   CupToggleGrid,
 } from "@/components/ui";
-import { penaltiesApply } from "@/lib/scoring";
 import { FlavorPicker } from "@/components/cupping/FlavorPicker";
 import type { CATAOption, CATASubItem } from "@/components/ui/CATAPills";
 
@@ -79,7 +78,8 @@ const CUP_LABELS = {
   defectiveLegend: "Defectuosa",
   oneTap: "(1 toque)",
   defectType: "Tipo de defecto",
-  notScored: "Se registra pero no afecta el puntaje (requiere ≥5 tazas)",
+  scoreHint:
+    "Tus tazas se suman a las del grupo. Cada taza defectuosa que marques te resta 4 puntos; cada taza no uniforme, 2.",
 };
 
 export function CombinedForm({
@@ -128,7 +128,6 @@ export function CombinedForm({
     (d[k] as boolean[] | undefined) ?? Array(cupsPerSample).fill(false);
 
   const showCups = cupsPerSample >= 2;
-  const uniformityInScore = penaltiesApply(cupsPerSample);
 
   const lockedBanner =
     lockedAffective && lockedNote ? (
@@ -213,7 +212,6 @@ export function CombinedForm({
               defectOptions={SENSORY_DEFECTS as readonly string[]}
               defectLabels={SENSORY_DEFECT_LABELS as Record<string, string>}
               labels={CUP_LABELS}
-              uniformityInScore={uniformityInScore}
               onToggleNonUniform={toggleNonUniform}
               onToggleDefective={toggleDefective}
               onToggleDefectType={toggleDefectType}

@@ -1,7 +1,7 @@
 "use client";
 
 import { Calculator } from "lucide-react";
-import type { IndividualBreakdown } from "@/lib/scoring";
+import { cupDeduction, type IndividualBreakdown } from "@/lib/scoring";
 
 /* ============================================================
    N5 — Score transparency panel ("¿Cómo se calculó?")
@@ -33,7 +33,7 @@ type AggregateScoreData = {
 
 export type ScoreSetup = {
   cupsPerSample: number;
-  uniformityTracked: boolean; // now: cupsPerSample >= 5
+  uniformityTracked: boolean; // the evaluation has 2+ cups
   roundingEnforced: boolean; // now: always true
   mode?: "professional" | "academic" | "free"; // N6 — undefined for now
 };
@@ -64,7 +64,6 @@ export type ScoreBreakdownTranslations = {
   modeAcademic: string;
   modeFree: string;
   notTrackedNote: string;
-  recorded: string;
   groupTitle: string;
   groupAvgRaw: string;
   groupUniformity: string;
@@ -174,6 +173,9 @@ function renderIndividual(
   setup: ScoreSetup,
   t: ScoreBreakdownTranslations,
 ) {
+  // One cupper never has more than five cups, so the factor is 1 and is not
+  // printed; a longer sample (not offered today) prints it so the line stays true.
+  const factorSuffix = b.factor < 1 ? ` × ${fmt(b.factor)}` : "";
   return (
     <>
       <div className={sectionLabel}>{t.formula}</div>
@@ -187,10 +189,7 @@ function renderIndividual(
       <div className={sectionLabel}>{t.values}</div>
       <div className="text-[11px] leading-relaxed text-on-surface">
         Σhᵢ = <strong>{b.affectiveSum}</strong> &nbsp;·&nbsp; u = <strong>{b.u}</strong>{" "}
-        &nbsp;·&nbsp; d = <strong>{b.d}</strong>{" "}
-        {!b.uniformityTracked && (
-          <span className="text-on-surface-variant">({t.recorded})</span>
-        )}
+        &nbsp;·&nbsp; d = <strong>{b.d}</strong>
       </div>
 
       <div className={sectionLabel}>{t.finalScore}</div>
@@ -200,12 +199,12 @@ function renderIndividual(
           value={fmt(b.base)}
         />
         <TallyRow
-          label={`− ${t.uniformity} (2 × ${b.u})`}
+          label={`− ${t.uniformity} (2 × ${b.u}${factorSuffix})`}
           value={`−${fmt(b.uniformityPenalty)}`}
           tone={b.uniformityPenalty > 0 ? "error" : undefined}
         />
         <TallyRow
-          label={`− ${t.defects} (4 × ${b.d})`}
+          label={`− ${t.defects} (4 × ${b.d}${factorSuffix})`}
           value={`−${fmt(b.defectPenalty)}`}
           tone={b.defectPenalty > 0 ? "error" : undefined}
         />
@@ -232,6 +231,21 @@ function renderGroup(
 ) {
   const avgRaw = g.avgRawScore ?? 0;
   const community = g.communityScore ?? 0;
+  // The penalties printed are the STORED ones. Rows stored before the current
+  // rule (flat CVA deduction, diluted beyond five pooled cups) were computed
+  // under older arithmetic, so the formula is shown only when it reproduces the
+  // stored number; otherwise the line carries just its name.
+  const cups = g.totalCups || cupsPerSample;
+  const expected = cupDeduction({ cups, nonUniform: g.totalNonUniform, defective: g.totalDefective });
+  const matches =
+    Math.abs(expected.uniformityPenalty - g.uniformityPenalty) < 0.005 &&
+    Math.abs(expected.defectPenalty - g.defectPenalty) < 0.005;
+  const uniformityLabel = matches
+    ? `− ${t.groupUniformity} (2 × ${g.totalNonUniform} × 5 ÷ max(5, ${cups}))`
+    : `− ${t.groupUniformity}`;
+  const defectsLabel = matches
+    ? `− ${t.groupDefects} (4 × ${g.totalDefective} × 5 ÷ max(5, ${cups}))`
+    : `− ${t.groupDefects}`;
   return (
     <>
       <div className={sectionLabel}>{t.groupTitle}</div>
@@ -246,12 +260,12 @@ function renderGroup(
       <div>
         <TallyRow label={t.groupAvgRaw} value={fmt(avgRaw)} />
         <TallyRow
-          label={`− ${t.groupUniformity} (${g.totalNonUniform} × 10 / ${g.totalCups || cupsPerSample})`}
+          label={uniformityLabel}
           value={`−${fmt(g.uniformityPenalty)}`}
           tone={g.uniformityPenalty > 0 ? "error" : undefined}
         />
         <TallyRow
-          label={`− ${t.groupDefects} (${g.totalDefective} × 30 / ${g.totalCups || cupsPerSample})`}
+          label={defectsLabel}
           value={`−${fmt(g.defectPenalty)}`}
           tone={g.defectPenalty > 0 ? "error" : undefined}
         />

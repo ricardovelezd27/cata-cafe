@@ -1,6 +1,5 @@
 "use client";
 
-import { penaltiesApply } from "@/lib/scoring";
 import {
   AFFECTIVE_ATTRIBUTES,
   STEP_ATTRIBUTES,
@@ -26,7 +25,8 @@ const CUP_LABELS = {
   defectiveLegend: "Defectuosa",
   oneTap: "(1 toque)",
   defectType: "Tipo de defecto",
-  notScored: "Se registra pero no afecta el puntaje (requiere ≥5 tazas)",
+  scoreHint:
+    "Tus tazas se suman a las del grupo. Cada taza defectuosa que marques te resta 4 puntos; cada taza no uniforme, 2.",
 };
 
 export function AffectiveForm({
@@ -63,7 +63,6 @@ export function AffectiveForm({
     (d[k] as boolean[] | undefined) ?? Array(cupsPerSample).fill(false);
 
   const showCups = cupsPerSample >= 2;
-  const uniformityInScore = penaltiesApply(cupsPerSample);
 
   const stepAttrs = STEP_ATTRIBUTES[currentStep];
 
@@ -193,7 +192,6 @@ export function AffectiveForm({
             defectOptions={SENSORY_DEFECTS as readonly string[]}
             defectLabels={SENSORY_DEFECT_LABELS as Record<string, string>}
             labels={CUP_LABELS}
-            uniformityInScore={uniformityInScore}
             onToggleNonUniform={toggleNonUniform}
             onToggleDefective={toggleDefective}
             onToggleDefectType={toggleDefectType}
