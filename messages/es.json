@@ -268,6 +268,12 @@
         "title": "Clave de muestras",
         "hint": "Solo tú ves esta clave. Ciérrala antes de proyectar la pantalla.",
         "noCoffee": "Sin café"
+      },
+      "notifyWhen": {
+        "checkbox": "Avisar al grupo por correo",
+        "legend": "Cuándo avisar al grupo",
+        "onCreate": "Avisar al crear la sesión",
+        "onStart": "Avisar al iniciar la cata"
       }
     },
     "express": {

@@ -115,6 +115,12 @@ export default async function NewSessionPage({
         many: t("sampleCountWarning.many"),
         combined: t("sampleCountWarning.combined"),
       },
+      notifyWhen: {
+        checkbox: t("newForm.notifyWhen.checkbox"),
+        legend: t("newForm.notifyWhen.legend"),
+        onCreate: t("newForm.notifyWhen.onCreate"),
+        onStart: t("newForm.notifyWhen.onStart"),
+      },
       sampleLabelAuto: t("newForm.sampleLabelAuto"),
       samplesBlindHelper: t("newForm.samplesBlindHelper"),
       sampleKey: {

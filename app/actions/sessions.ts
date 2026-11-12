@@ -52,7 +52,12 @@ import { logInfo, logWarn } from "@/lib/log";
 import { checkWizardBounds } from "@/lib/coffeeInputBounds";
 import { CERTIFICATIONS } from "@/lib/constants";
 import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/groups";
-import { shouldNotifyAtCreate } from "@/lib/groupNotify";
+import {
+  DEFAULT_NOTIFY_WHEN,
+  NOTIFY_WHEN,
+  notifyAtStartFlag,
+  shouldNotifyAtCreate,
+} from "@/lib/groupNotify";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
 import { splitEvaluationCounts } from "@/lib/deleteImpact";
 import { planAssignCoffee } from "@/lib/assignCoffee";
@@ -523,6 +528,8 @@ export async function createGroupSession(input: {
   closesAtZone?: string;
   groupId?: string;
   notifyGroup?: boolean;
+  /** C8: "create" | "start" - when a LIVE session emails its group (default start). */
+  notifyGroupWhen?: string;
   referenceIdx?: number | null;
   warmupExerciseId?: string | null;
   /** Locale for generated sample labels (Muestra A / Sample A). */
@@ -550,6 +557,7 @@ async function createGroupSessionBody(input: {
   // invitation email to every member right after creation.
   groupId?: string;
   notifyGroup?: boolean;
+  notifyGroupWhen?: string;
   /** Index into `samples` of the reference sample; null/absent = none. */
   referenceIdx?: number | null;
   /** Optional pre-cupping warm-up (WARMUP_IDS); null/absent = none. */
@@ -585,6 +593,13 @@ async function createGroupSessionBody(input: {
 
   const token = crypto.randomUUID();
 
+  // C8: when a LIVE session's group is emailed. Absent = today's rule (start);
+  // a tampered value throws invalid_input (run() maps it).
+  const notifyWhen =
+    input.notifyGroupWhen === undefined
+      ? DEFAULT_NOTIFY_WHEN
+      : v.oneOf(input.notifyGroupWhen, "notifyGroupWhen", NOTIFY_WHEN);
+
   // A4: random letters, planned once (see createSessionBody).
   const blind = planBlindSamples(input.samples, randomInt, safeLocale(input.locale));
   const referencePosition = blindReferencePosition(blind, refResult.idx);
@@ -605,9 +620,14 @@ async function createGroupSessionBody(input: {
         closesAtZone: meta.closesAtZone,
         createdBy: user.id,
         groupId: input.groupId ?? null,
-        // S8-17: a LIVE session owes the group email at start (startSession).
-        notifyGroupAtStart:
-          !!input.groupId && input.notifyGroup !== false && meta.closesAt === null,
+        // S8-17 / C8: a LIVE session owes the group email at start
+        // (startSession) unless the owner chose "at creation" (sent below).
+        notifyGroupAtStart: notifyAtStartFlag({
+          hasGroup: !!input.groupId,
+          notify: input.notifyGroup !== false,
+          isAsync: meta.closesAt !== null,
+          notifyWhen,
+        }),
         warmupExerciseId: meta.warmupExerciseId,
         samples: {
           create: blind.map((b) => ({
@@ -642,8 +662,10 @@ async function createGroupSessionBody(input: {
   // creation itself.
   let emailSummary: GroupEmailSummary | undefined;
   let emailBlocked: "rate_limited" | undefined;
-  // Only ASYNC sessions notify at creation; live ones notify from
-  // `startSession` (S8-17, C8 default b — see lib/groupNotify.ts).
+  // ASYNC sessions notify at creation; LIVE ones notify from `startSession`
+  // unless the owner chose "at creation" (C8; lib/groupNotify.ts). Either way
+  // notifyGroupOfSession claims `groupNotifiedAt` atomically, so a later start
+  // can never send a second email.
   if (
     input.groupId &&
     input.notifyGroup !== false &&
@@ -652,6 +674,7 @@ async function createGroupSessionBody(input: {
       isAsync: meta.closesAt !== null,
       hasGroup: true,
       alreadyNotified: false,
+      notifyWhen,
     })
   ) {
     try {

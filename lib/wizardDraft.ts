@@ -50,6 +50,8 @@ export type WizardDraft = {
   closesAt: string;
   linkedGroupId: string;
   notifyGroup: boolean;
+  /** C8: when a LIVE session's group is emailed. Drafts saved before it existed read as "start". */
+  notifyGroupWhen: "create" | "start";
 };
 
 export function wizardDraftKey(userId: string): string {
@@ -148,6 +150,7 @@ export function parseDraft(raw: string | null, now: number = Date.now()): Wizard
   // it so the restored row shows the "random letter" placeholder.
   return {
     ...(d as unknown as WizardDraft),
+    notifyGroupWhen: d.notifyGroupWhen === "create" ? "create" : "start",
     samples: (d.samples as DraftSample[]).map((s) => (s.auto ? { ...s, label: "" } : s)),
   };
 }

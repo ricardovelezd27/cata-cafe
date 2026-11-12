@@ -56,9 +56,33 @@ export function keepNoticeStamp(summary: { sent: number; failed: number; skipped
   return summary !== null && noticeOutcome(summary) !== "failed";
 }
 
-/** Async group session linked to a group: send at creation. */
-export function shouldNotifyAtCreate(i: NotifyRuleInput): boolean {
-  return i.isGroup && i.isAsync && i.hasGroup && !i.alreadyNotified;
+/** C8 (S10 WP2): when the owner of a LIVE group session (no closing date) wants
+ *  the linked group emailed. Async sessions have no start, so they always
+ *  notify at creation and ignore this. Default = "start" (the S8-17 rule).
+ *  TODO(kim-validar:C8): simulated answer (Kim: "que el profesor elija"). */
+export const NOTIFY_WHEN = ["create", "start"] as const;
+export type NotifyWhen = (typeof NOTIFY_WHEN)[number];
+export const DEFAULT_NOTIFY_WHEN: NotifyWhen = "start";
+
+/** Send from `createGroupSession` when the session is ASYNC, or LIVE and the
+ *  owner chose "create". `alreadyNotified` keeps it idempotent. */
+export function shouldNotifyAtCreate(i: NotifyRuleInput & { notifyWhen?: NotifyWhen }): boolean {
+  const when = i.notifyWhen ?? DEFAULT_NOTIFY_WHEN;
+  return i.isGroup && i.hasGroup && !i.alreadyNotified && (i.isAsync || when === "create");
+}
+
+/** The value stored in `CuppingSession.notifyGroupAtStart` at creation: true
+ *  only for a LIVE session linked to a group, with "notify" ticked, whose
+ *  owner chose "start". A live session notified at creation never waits for
+ *  the start (and `groupNotifiedAt` stops a later start from sending twice). */
+export function notifyAtStartFlag(i: {
+  hasGroup: boolean;
+  notify: boolean;
+  isAsync: boolean;
+  notifyWhen?: NotifyWhen;
+}): boolean {
+  const when = i.notifyWhen ?? DEFAULT_NOTIFY_WHEN;
+  return i.hasGroup && i.notify && !i.isAsync && when === "start";
 }
 
 /** `updateSession` group edit: a tick made for group A must never email group B.

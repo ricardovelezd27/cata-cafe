@@ -21,6 +21,7 @@ const base = (over: Partial<WizardDraft> = {}): Omit<WizardDraft, "v" | "savedAt
   name: "Cata", objective: "", format: "combined", cupsPerSample: 2, warmupOn: false,
   warmupId: "eyes", coffees: [coffee()], samples: [{ id: "s1", label: "Muestra A", coffeeId: "c1", auto: true }],
   referenceId: null, isGroup: false, closesAt: "", linkedGroupId: "", notifyGroup: true,
+  notifyGroupWhen: "start",
   ...over,
 });
 
@@ -91,6 +92,16 @@ describe("wizardDraft", () => {
       1000,
     );
     expect(parseDraft(raw, 2000)?.samples.map((s) => s.label)).toEqual(["", "Mi lote"]);
+  });
+
+  it("C8: the notice timing round-trips; an old draft without it reads as 'start'", () => {
+    const created = parseDraft(serializeDraft(base({ notifyGroupWhen: "create" }), 1000), 2000);
+    expect(created?.notifyGroupWhen).toBe("create");
+    const legacy = JSON.parse(serializeDraft(base(), 1000));
+    delete legacy.notifyGroupWhen;
+    expect(parseDraft(JSON.stringify(legacy), 2000)?.notifyGroupWhen).toBe("start");
+    legacy.notifyGroupWhen = "bogus";
+    expect(parseDraft(JSON.stringify(legacy), 2000)?.notifyGroupWhen).toBe("start");
   });
 
   it("clearWizardDrafts removes every draft and nothing else", () => {

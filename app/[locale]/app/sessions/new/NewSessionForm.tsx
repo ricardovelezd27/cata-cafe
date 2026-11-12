@@ -32,6 +32,7 @@ import {
 } from "@/lib/sessionDefaults";
 import { Select } from "@/components/ui/Select";
 import { sampleCountWarning, type SampleCountWarning } from "@/lib/sampleCount";
+import { DEFAULT_NOTIFY_WHEN, type NotifyWhen } from "@/lib/groupNotify";
 import { browserZone, dateInZone } from "@/lib/closeRules";
 import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 import { fieldErrorId, fieldForErrorCode, fieldInputId, type SessionFormField } from "@/lib/sessionFormErrors";
@@ -171,6 +172,8 @@ type Translations = {
     sampleKey: SampleKeyTranslations;
     /** X6: non-blocking line above the add button when the count is high for the format. */
     sampleWarning: Record<SampleCountWarning, string>;
+    /** C8: when a LIVE session's linked group is emailed. */
+    notifyWhen: { checkbox: string; legend: string; onCreate: string; onStart: string };
     /** Whole newForm.errors table (S8-10); includes `offline` (S8-09). */
     errors: Record<string, string> & { generic: string; offline?: string };
   };
@@ -382,6 +385,8 @@ export function NewSessionForm({
   const [todayMin] = useState(() => dateInZone(Date.now(), browserZone()));
   const [linkedGroupId, setLinkedGroupId] = useState(initialGroupId ?? "");
   const [notifyGroup, setNotifyGroup] = useState(true);
+  // C8: when a LIVE session's group is emailed (async sessions ignore it).
+  const [notifyGroupWhen, setNotifyGroupWhen] = useState<NotifyWhen>(DEFAULT_NOTIFY_WHEN);
   const [emailSummary, setEmailSummary] = useState<GroupEmailSummary | undefined>(undefined);
   const [inviteBlocked, setInviteBlocked] = useState(false);
   // Step 2: letter -> coffee, from the server's response (A4).
@@ -466,6 +471,7 @@ export function NewSessionForm({
           setClosesAt(d.closesAt);
           setLinkedGroupId(d.linkedGroupId);
           setNotifyGroup(d.notifyGroup);
+          setNotifyGroupWhen(d.notifyGroupWhen);
           /* eslint-enable react-hooks/set-state-in-effect */
         }
       } catch {
@@ -503,6 +509,7 @@ export function NewSessionForm({
               closesAt,
               linkedGroupId,
               notifyGroup,
+              notifyGroupWhen,
             }),
           );
         } else {
@@ -515,7 +522,7 @@ export function NewSessionForm({
     return () => clearTimeout(timer);
   }, [
     draftKey, step, dirty, name, objective, format, cupsPerSample, warmupOn, warmupId,
-    coffees, samples, referenceId, isGroup, closesAt, linkedGroupId, notifyGroup,
+    coffees, samples, referenceId, isGroup, closesAt, linkedGroupId, notifyGroup, notifyGroupWhen,
   ]);
 
   // Leaving the tab with an unsent form: ask first (the draft also survives).
@@ -723,6 +730,7 @@ export function NewSessionForm({
           closesAtZone: closesAt ? browserZone() : undefined,
           groupId: linkedGroupId || undefined,
           notifyGroup,
+          notifyGroupWhen,
         });
         if (result.ok) {
           clearDraft();
@@ -1555,8 +1563,41 @@ export function NewSessionForm({
                   onChange={(e) => setNotifyGroup(e.target.checked)}
                   className="h-4 w-4 rounded accent-primary-container cursor-pointer"
                 />
-                {closesAt ? groupsT.autoInviteAsync : groupsT.autoInviteLive}
+                {closesAt ? groupsT.autoInviteAsync : t.newForm.notifyWhen.checkbox}
               </label>
+            )}
+
+            {/* C8: only a LIVE session (no closing date) has a start to wait
+                for; an async one is always announced at creation. */}
+            {linkedGroupId && notifyGroup && !closesAt && (
+              <fieldset className="space-y-1.5">
+                <legend className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant">
+                  {t.newForm.notifyWhen.legend}
+                </legend>
+                <div role="radiogroup" aria-label={t.newForm.notifyWhen.legend} className="flex flex-wrap gap-2">
+                  {(
+                    [
+                      { v: "create", l: t.newForm.notifyWhen.onCreate },
+                      { v: "start", l: t.newForm.notifyWhen.onStart },
+                    ] as const
+                  ).map((opt) => (
+                    <button
+                      key={opt.v}
+                      type="button"
+                      role="radio"
+                      aria-checked={notifyGroupWhen === opt.v}
+                      onClick={() => setNotifyGroupWhen(opt.v)}
+                      className={
+                        notifyGroupWhen === opt.v
+                          ? "min-h-[44px] bg-primary-container text-on-primary rounded-pill px-4 py-2 text-sm font-medium"
+                          : "min-h-[44px] border border-outline-variant text-on-surface rounded-pill px-4 py-2 text-sm hover:bg-surface-container transition-colors"
+                      }
+                    >
+                      {opt.l}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
             )}
           </div>
         )}
