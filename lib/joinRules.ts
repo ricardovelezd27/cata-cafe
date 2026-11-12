@@ -107,6 +107,30 @@ export function isSameAnonymousGuest(
 }
 
 /**
+ * Classifies a `supabase.auth.getUser()` result against the guest a screen was
+ * rendered for. A MISSING SESSION (AuthSessionMissingError, or a 401/403) is
+ * "no user" = not the same guest (the commonest stale-tab case: another tab did
+ * "No soy"), so callers refresh. Only a network failure or a 5xx is
+ * "unreachable" (callers show an error and change nothing).
+ */
+export type GuestLookup = "same" | "different" | "unreachable";
+
+export function classifyGuestLookup(
+  renderedUserId: string,
+  result: {
+    user: { id: string; is_anonymous?: boolean } | null;
+    error: { name?: string; status?: number; code?: string } | null;
+  },
+): GuestLookup {
+  const { user, error } = result;
+  if (user) return isSameAnonymousGuest(renderedUserId, user) ? "same" : "different";
+  if (!error) return "different";
+  if (error.name === "AuthSessionMissingError" || error.code === "session_not_found") return "different";
+  if (error.status === 401 || error.status === 403) return "different";
+  return "unreachable";
+}
+
+/**
  * What GuestJoinForm does when it finds a user at submit time.
  * - "registered": refresh (server shows the signed-in join form).
  * - "reuse": the anonymous user THIS tab created on an earlier try (S8-07

@@ -356,9 +356,12 @@ expired, full or entries-locked]
 
 Nothing is deleted from the device's draft store (drafts are keyed by user id and
 stay, as on sign-out); the previous guest reaches their cuppings again only if they
-saved them in an account. Every action on the screen first checks that the browser is
-still signed in as the guest it was rendered for (`isSameAnonymousGuest`); a stale tab
-only refreshes. When the dialog opens online, the guest's own saved drafts are replayed
+saved them in an account. Every action on the screen (continue, join, "No soy", the draft sync) first checks
+that the browser is still signed in as the guest it was rendered for
+(`classifyGuestLookup`; a missing session counts as a different user); a stale tab only
+refreshes. The replay actions also take an optional `expectedUserId` and write nothing
+(answer `pending`, draft kept, no attempt burnt) if the signed-in user differs; the
+dialog waits at most 8 s for the sync. When the dialog opens online, the guest's own saved drafts are replayed
 first (the sign-out guard's `retrySync`) and only what is still unsynced is counted.
 `GuestJoinForm` reuses silently only the anonymous user its own tab created on an
 earlier failed try (`sessionStorage`, `existingUserAction`); any other anonymous user

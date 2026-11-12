@@ -7,18 +7,32 @@ import { completeGuestOnboarding } from "@/app/actions/community";
 import { existingUserAction } from "@/lib/joinRules";
 import { checkJoinable, joinSessionAsGuest } from "@/app/actions/join";
 
-// Per tab, best effort, never required: the anonymous user THIS tab created.
+// Per tab, best effort, never required: the anonymous user THIS tab created,
+// with a timestamp so it expires (a later person on the same tab must not
+// inherit an earlier person's anonymous user).
 const CREATED_ANON_KEY = "cata_join_anon_created";
+const CREATED_ANON_TTL_MS = 10 * 60_000;
+const FINAL_REFUSALS = new Set([
+  "session_closed",
+  "token_expired",
+  "token_exhausted",
+  "entries_closed",
+  "invalid_token",
+]);
 function readCreatedAnonId(): string | null {
   try {
-    return window.sessionStorage.getItem(CREATED_ANON_KEY);
+    const raw = window.sessionStorage.getItem(CREATED_ANON_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { id?: unknown; at?: unknown };
+    if (typeof parsed.id !== "string" || typeof parsed.at !== "number") return null;
+    return Date.now() - parsed.at <= CREATED_ANON_TTL_MS ? parsed.id : null;
   } catch {
     return null;
   }
 }
 function rememberCreatedAnonId(id: string | null) {
   try {
-    if (id) window.sessionStorage.setItem(CREATED_ANON_KEY, id);
+    if (id) window.sessionStorage.setItem(CREATED_ANON_KEY, JSON.stringify({ id, at: Date.now() }));
   } catch {
     // best effort
   }
@@ -80,7 +94,10 @@ export function GuestJoinForm({ token, locale, translations }: GuestJoinFormProp
     setIsSubmitting(true);
     try {
       const joinable = await checkJoinable(token);
-      if (!joinable.ok) return fail(joinable.error);
+      if (!joinable.ok) {
+        if (FINAL_REFUSALS.has(joinable.error)) forgetCreatedAnonId();
+        return fail(joinable.error);
+      }
 
       const supabase = createClient();
       const {
@@ -118,7 +135,10 @@ export function GuestJoinForm({ token, locale, translations }: GuestJoinFormProp
       // The join redirects server-side on success (NEXT_REDIRECT, handled by
       // Next — never swallow it); a refusal comes back as an ActionResult (S8-11).
       const result = await joinSessionAsGuest(token, locale);
-      if (!result.ok) fail(result.error);
+      if (!result.ok) {
+        if (FINAL_REFUSALS.has(result.error)) forgetCreatedAnonId();
+        fail(result.error);
+      }
     } catch (err) {
       const digest = (err as { digest?: string } | undefined)?.digest;
       if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) {

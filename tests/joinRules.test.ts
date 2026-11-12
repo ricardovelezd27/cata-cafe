@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluateJoin, joinRefusalCode, joinScreenFor, isSameAnonymousGuest, existingUserAction, type JoinInvite, type JoinSession } from "@/lib/joinRules";
+import { evaluateJoin, joinRefusalCode, joinScreenFor, isSameAnonymousGuest, existingUserAction, classifyGuestLookup, type JoinInvite, type JoinSession } from "@/lib/joinRules";
 
 const NOW = new Date("2026-11-10T12:00:00.000Z");
 const future = new Date(NOW.getTime() + 3_600_000);
@@ -165,5 +165,25 @@ describe("existingUserAction", () => {
     expect(existingUserAction({ id: "g", is_anonymous: true }, "g")).toBe("reuse");
     expect(existingUserAction({ id: "g", is_anonymous: true }, "other")).toBe("identity");
     expect(existingUserAction({ id: "g", is_anonymous: true }, null)).toBe("identity");
+  });
+});
+
+describe("classifyGuestLookup", () => {
+  const ok = { id: "a", is_anonymous: true };
+  it("same / different user", () => {
+    expect(classifyGuestLookup("a", { user: ok, error: null })).toBe("same");
+    expect(classifyGuestLookup("a", { user: { id: "b", is_anonymous: true }, error: null })).toBe("different");
+    expect(classifyGuestLookup("a", { user: { id: "a", is_anonymous: false }, error: null })).toBe("different");
+  });
+  it("a missing session or 401/403 is no user, not an error", () => {
+    expect(classifyGuestLookup("a", { user: null, error: { name: "AuthSessionMissingError", status: 400 } })).toBe("different");
+    expect(classifyGuestLookup("a", { user: null, error: { status: 401 } })).toBe("different");
+    expect(classifyGuestLookup("a", { user: null, error: { status: 403 } })).toBe("different");
+    expect(classifyGuestLookup("a", { user: null, error: null })).toBe("different");
+  });
+  it("network failures and 5xx are unreachable", () => {
+    expect(classifyGuestLookup("a", { user: null, error: { name: "AuthRetryableFetchError", status: 0 } })).toBe("unreachable");
+    expect(classifyGuestLookup("a", { user: null, error: { status: 503 } })).toBe("unreachable");
+    expect(classifyGuestLookup("a", { user: null, error: {} })).toBe("unreachable");
   });
 });
