@@ -1,18 +1,54 @@
-<!-- Supabase -> Authentication -> Email Templates -> "Change Email Address".
-     Subject: Confirma tu nuevo correo · Confirm your new email
-     type=email_change. The app has no change-email screen yet (see the
-     runbook); keep the template so the day it ships the link is already safe. -->
-{{ $en := false }}{{ if .Data }}{{ if eq .Data.preferred_lang "en" }}{{ $en = true }}{{ end }}{{ end }}
-<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#1f2a24">
-  {{ if $en }}
-  <h2 style="margin:0 0 12px">Confirm your new email</h2>
-  <p>Press the button to change your sign-in email from {{ .Email }} to {{ .NewEmail }}.</p>
-  <p><a href="{{ .SiteURL }}/en/auth/confirm?token_hash={{ .TokenHash }}&type=email_change&next={{ .RedirectTo }}"
-        style="display:inline-block;background:#1f4d3a;color:#fff;padding:12px 22px;border-radius:999px;text-decoration:none">Confirm change</a></p>
-  {{ else }}
-  <h2 style="margin:0 0 12px">Confirma tu nuevo correo</h2>
-  <p>Pulsa el botón para cambiar tu correo de acceso de {{ .Email }} a {{ .NewEmail }}.</p>
-  <p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email_change&next={{ .RedirectTo }}"
-        style="display:inline-block;background:#1f4d3a;color:#fff;padding:12px 22px;border-radius:999px;text-decoration:none">Confirmar cambio</a></p>
-  {{ end }}
-</div>
+<!DOCTYPE html>
+<html>
+<head>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;600;700&family=Lato:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body style="margin: 0; padding: 0; background-color: #F5F0E6; font-family: 'Lato', 'Segoe UI', sans-serif; color: #5C4A32;">
+  <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 480px; margin: 20px auto; background-color: #FDFBF7; border: 1px solid #E8E0D0; border-radius: 12px; overflow: hidden; border-collapse: collapse;">
+    
+    <tr>
+      <td style="background: linear-gradient(135deg, #3D5A3E 0%, #2A4430 100%); padding: 32px 20px; text-align: center;">
+        <div style="font-size: 10px; letter-spacing: 3px; color: rgba(245, 240, 230, 0.7); margin-bottom: 4px; text-transform: uppercase;">Cata Café Sensible</div>
+        <div style="font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 300; color: #F5F0E6; letter-spacing: 1px;">Cambio de correo / Email change</div>
+      </td>
+    </tr>
+
+    <tr>
+      <td style="padding: 32px 30px 20px 30px; text-align: center;">
+        <h3 style="font-family: 'Cormorant Garamond', serif; font-size: 14px; font-weight: 700; color: #3D5A3E; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 12px 0;">Confirma tu nuevo correo</h3>
+        <p style="font-size: 14px; line-height: 1.5; color: #5C4A32; margin-bottom: 24px;">
+          Pediste cambiar tu correo de acceso de {{ .Email }} a {{ .NewEmail }}. Haz clic en el botón de abajo para confirmarlo.
+        </p>
+        <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email_change&next={{ .RedirectTo }}" style="display: inline-block; background: #3D5A3E; color: #FFFFFF; padding: 12px 24px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 600; font-family: 'Lato', sans-serif;">Confirmar cambio</a>
+      </td>
+    </tr>
+
+    <tr>
+      <td style="padding: 0 40px;">
+        <div style="border-top: 1px dashed #D4C5A9;"></div>
+      </td>
+    </tr>
+
+    <tr>
+      <td style="padding: 24px 30px 32px 30px; text-align: center;">
+        <h3 style="font-family: 'Cormorant Garamond', serif; font-size: 14px; font-weight: 700; color: #3D5A3E; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 12px 0;">Confirm your new email</h3>
+        <p style="font-size: 14px; line-height: 1.5; color: #5C4A32; margin-bottom: 24px;">
+          You asked to change your sign-in email from {{ .Email }} to {{ .NewEmail }}. Click the button below to confirm it.
+        </p>
+        <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email_change&next={{ .RedirectTo }}" style="display: inline-block; background: #3D5A3E; color: #FFFFFF; padding: 12px 24px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 600; font-family: 'Lato', sans-serif;">Confirm change</a>
+      </td>
+    </tr>
+
+    <tr>
+      <td style="padding: 20px; border-top: 1px solid #E8E0D0; text-align: center; background-color: #FDFBF7;">
+        <div style="font-size: 10px; color: #8B7355; letter-spacing: 1px; margin-bottom: 4px; text-transform: uppercase;">
+          Coffee Value Assessment · SCA CVA v2
+        </div>
+        <div style="font-size: 9px; color: #8B7355; font-style: italic;">
+          Si no pediste este cambio, ignora este correo: tu correo de acceso no cambiará. / If you didn't ask for this change, ignore this email: your sign-in email will stay the same.
+        </div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

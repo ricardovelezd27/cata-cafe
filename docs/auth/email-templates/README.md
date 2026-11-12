@@ -9,6 +9,26 @@ Supabase keeps its own copy: **pasting them is a manual step** (runbook §15).
 | `confirm-signup.html` | Confirm signup | `signup` |
 | `change-email.html` | Change Email Address | `email_change` |
 
+## Live state (2026-11-12)
+
+The three `.html` files in this folder are **byte-for-byte what is saved in Supabase**
+(checked by SHA-256 in the dashboard on 2026-11-12):
+
+| File | Subject in Supabase | SHA-256 (first 12) |
+|---|---|---|
+| `magic-link.html` | `Inicia sesion /Sign In a Cata Cafe Sensible` | `26a348edc007` |
+| `confirm-signup.html` | `Confirma tu cuenta / Confirm your account · Cata Café Sensible` | `1901469fb7fd` |
+| `change-email.html` | `Confirma tu nuevo correo / Confirm your new email · Cata Café Sensible` | `a50c777b6d0b` |
+
+They are Ricardo's branded design, with Spanish and English in the same email (two
+blocks, two buttons), so they do not use `.Data.preferred_lang`. The magic link and the
+signup email link to `/auth/callback?token_hash=…&type=email`, which only redirects to
+`/auth/confirm` (never verifies on GET); the change-email link goes to `/auth/confirm`
+directly with `type=email_change`. The sections below describe the earlier generic
+versions of these files and the reasoning behind `/auth/confirm`; the link shapes above
+are the ones in use. Rollback texts: `previous-magic-link-2026-11-11.md`,
+`previous-templates-2026-11-12.md`.
+
 ## What changed from the old template
 
 The old link went to `/auth/callback?token_hash=…`, whose GET consumed the one-time token. A
