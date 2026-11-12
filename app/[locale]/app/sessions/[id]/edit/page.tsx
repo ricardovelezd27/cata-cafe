@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireAppUser } from "@/lib/auth";
 import { dateInZone } from "@/lib/closeRules";
+import { isSessionExpired } from "@/lib/sessionState";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -55,7 +56,10 @@ export default async function EditSessionPage({
 
   // Same source and mapping as the wizard (sessions/new/page.tsx):
   // getUsableCoffees runs usableCoffeeWhere; addSessionSample re-validates.
-  const usableRaw = session.status === "closed" ? [] : await getUsableCoffees(user.id);
+  // Server clock (client components never compute expiry): a session whose closesAt
+  // has passed is already read-only on the server even before the nightly close.
+  const readOnly = isSessionExpired(session);
+  const usableRaw = readOnly ? [] : await getUsableCoffees(user.id);
   const usableCoffees: UsableCoffee[] = usableRaw.map((c) => ({
     id: c.id,
     name: c.name,
@@ -120,6 +124,7 @@ export default async function EditSessionPage({
     closesAtPast: t("edit.closesAtPast"),
     closesAtLiveNotice: tg("closesAtLiveNotice"),
     sessionClosed: t("edit.sessionClosed"),
+    sessionExpired: t("edit.sessionExpired"),
     warmupLocked: t("edit.warmupLocked"),
     repinTitle: t("edit.repinTitle"),
     repinBody: t.raw("edit.repinBody") as string,
@@ -169,6 +174,8 @@ export default async function EditSessionPage({
           warmupExerciseId: session.warmupExerciseId,
           started: session.startedAt !== null,
           closed: session.status === "closed",
+          // Expired but not yet closed by the nightly job: read-only except the closing date.
+          expired: readOnly && session.status !== "closed",
         }}
         samples={session.samples.map((s) => ({
           id: s.id,
