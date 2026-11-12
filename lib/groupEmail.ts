@@ -15,7 +15,6 @@ import {
   idempotencyKeyFor,
   planBroadcast,
   sendWithRetry,
-  summarize,
   type DeliveryStatus,
 } from "@/lib/groupEmailPlan";
 
@@ -168,9 +167,4 @@ export async function deliverGroupMail(args: {
     .map((j) => byMember.get(j.memberId))
     .filter((r): r is GroupEmailResult => !!r);
   return { ok: true, results };
-}
-
-/** Same shape the UI has always received, now without addresses. */
-export function summaryOf(results: GroupEmailResult[]) {
-  return summarize(results);
 }

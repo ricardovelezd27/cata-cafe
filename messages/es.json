@@ -740,7 +740,8 @@
       "resend": "Reenviar",
       "resending": "Reenviando…",
       "resent": "Correos reenviados",
-      "resendError": "No se pudieron reenviar los correos. Inténtalo de nuevo."
+      "resendError": "No se pudieron reenviar los correos. Inténtalo de nuevo.",
+      "inProgress": "Los correos se están enviando. Inténtalo de nuevo en unos minutos."
     },
     "guestCta": {
       "title": "Guarda tus resultados",
@@ -1166,6 +1167,8 @@
     "conflictReplace": "Reemplazar con esta versión",
     "partialSyncNotice": "Mostrando resultados de {included} de {total} participantes. {pending} aún no han sincronizado.",
     "bannerStorageUnavailable": "Este navegador no permite guardar borradores sin conexión. Mantén la conexión activa mientras catas.",
+    "bannerNewVersion": "Hay una versión nueva de la app. Tus notas están guardadas en este dispositivo; recarga para seguir sincronizando.",
+    "reloadNow": "Recargar",
     "pendingDrafts": "{count} borradores sin sincronizar",
     "staleDrafts": "Tienes borradores sin sincronizar de hace más de 3 días. El navegador puede borrarlos si no abres la app: conéctate pronto o instálala en tu pantalla de inicio.",
     "closedUnsentDrafts": "{count} borradores sin enviar: la cata ya estaba cerrada",

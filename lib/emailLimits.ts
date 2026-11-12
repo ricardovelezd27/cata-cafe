@@ -20,7 +20,12 @@ const DAY = 24 * HOUR;
  *                       "retry failed" of a broadcast. Recipients only.
  *  - `code_verify`      NOT an email: one ATTEMPT to redeem a sign-in code or
  *                       link token (S8-22 A-03). Same ledger, no recipients. */
-export type EmailKind = "magic_link" | "group_broadcast" | "group_invite" | "code_verify";
+export type EmailKind =
+  | "magic_link"
+  | "group_broadcast"
+  | "group_invite"
+  | "code_verify"
+  | "close_resend";
 
 /** One reservation already in the ledger, reduced to what a rule needs. */
 export type EmailEvent = { at: number; recipients: number };
@@ -71,6 +76,13 @@ export const GROUP_RECIPIENTS_PER_DAY: ThrottleRule = { windowMs: DAY, maxRecipi
  *  NEW_ACCOUNT_AGE_MS. */
 export const GROUP_RECIPIENTS_PER_DAY_NEW_ACCOUNT: ThrottleRule = { windowMs: DAY, maxRecipients: 40 };
 export const NEW_ACCOUNT_AGE_MS = DAY;
+
+// ── Close-email resend (S9-01, audit A-09) ──────────────────────────────────
+// `resendCloseEmails` re-renders PDFs and re-sends to every non-"sent"
+// recipient. Bucketed by SESSION (ledger kind `close_resend`, targetKey
+// `s_<sessionId>`), one event per click.
+// Claude's number, owner may change
+export const CLOSE_RESEND_PER_SESSION: ThrottleRule = { windowMs: HOUR, maxEvents: 3 };
 
 /** The longest window any rule looks back; the ledger query uses it. */
 export const MAX_WINDOW_MS = DAY;

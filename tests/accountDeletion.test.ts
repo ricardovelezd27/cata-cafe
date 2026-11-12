@@ -379,3 +379,57 @@ describe("deleted profile placeholder", () => {
     expect(profileDisplayName(null, "en", "—")).toBe("—");
   });
 });
+
+describe("A-07: participant rows in open sessions with nothing submitted", () => {
+  const open = (over: object = {}) => ({
+    sessionId: "live",
+    excludedFromResults: false,
+    sessionStatus: "active",
+    participantStatus: "joined",
+    hasSubmitted: false,
+    ...over,
+  });
+
+  it("drops the row and counts its drafts as deleted", () => {
+    const p = okPlan(
+      fixture({ participations: [open()], evaluationSessionIds: ["live", "live", "other"] }),
+    );
+    expect(p.dropParticipationSessionIds).toEqual(["live"]);
+    expect(p.reassignParticipations).toEqual([]);
+    expect(p.evaluationsDeleted).toBe(2);
+    expect(p.evaluationsAnonymized).toBe(1);
+  });
+
+  it("keeps the row when something was submitted, the session is closed, or the facts are unknown", () => {
+    const p = okPlan(
+      fixture({
+        participations: [
+          open({ sessionId: "sub", hasSubmitted: true }),
+          open({ sessionId: "done", sessionStatus: "closed" }),
+          { sessionId: "unknown", excludedFromResults: false },
+          open({ sessionId: "own", participantStatus: "owner" }),
+        ],
+      }),
+    );
+    expect(p.dropParticipationSessionIds).toEqual([]);
+    expect(p.reassignParticipations.map((r) => r.sessionId)).toEqual(["sub", "done", "unknown", "own"]);
+  });
+
+  it("never drops a row of a session the person owns", () => {
+    const p = okPlan(
+      fixture({
+        ownedSessions: [
+          { id: "live", isGroup: true, status: "active", otherCupperEvaluations: 2, otherJoinedParticipants: 1 },
+        ],
+        participations: [open()],
+      }),
+    );
+    expect(p.dropParticipationSessionIds).toEqual([]);
+  });
+
+  it("plansEqual notices a change in the dropped set", () => {
+    const a = planAccountDeletion(fixture({ participations: [open()] }));
+    const b = planAccountDeletion(fixture({ participations: [open({ hasSubmitted: true })] }));
+    expect(plansEqual(a, b)).toBe(false);
+  });
+});

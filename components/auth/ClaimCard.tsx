@@ -108,7 +108,9 @@ export function ClaimCard({
     }
     startTransition(async () => {
       await feedback.run(switchAccount(locale, claimUrl), async (data) => {
-        await clearLocalDeviceState();
+        // C-08: the claim is still in progress under the other account, so the
+        // anonymous-id marker must survive for the re-key after confirmation.
+        await clearLocalDeviceState({ keepClaimInProgress: true });
         window.location.assign(data.next);
       });
     });

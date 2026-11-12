@@ -350,5 +350,18 @@ export function calcCommunityScore(params: {
   const up = totalNonUniform * (10 / totalCups);
   const dp = totalDefective * (30 / totalCups);
   // Round the final community score to the nearest 0.25, matching the DB trigger.
-  return Math.max(0, Math.min(100, Math.round((avgRawScore - up - dp) * 4) / 4));
+  return Math.max(0, Math.min(100, roundToQuarter(avgRawScore - up - dp)));
+}
+
+/**
+ * Nearest 0.25, the way the SQL trigger does it: `ROUND((x)::numeric * 4) / 4`.
+ * Postgres casts float8 → numeric with 15 significant digits BEFORE rounding and
+ * rounds halves away from zero; JS rounds the full double. On a tie that the
+ * double misses by one bit the two differ by 0.25 (audit B-04: 7 cuppers, 5 cups,
+ * Σ=20, 1 non-uniform + 2 defective → exact 63.875, TS 63.75, trigger 64).
+ */
+export function roundToQuarter(x: number): number {
+  // Same 15 significant digits Postgres keeps, so a tie stored one bit short
+  // (63.87499999999999) becomes the tie again (63.875) before rounding.
+  return Math.round(Number(x.toPrecision(15)) * 4) / 4;
 }

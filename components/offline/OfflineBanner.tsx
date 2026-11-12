@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { WifiOff, RefreshCw, CheckCircle2, AlertTriangle } from "lucide-react";
 import type { SyncPhase } from "@/hooks/useOfflineSync";
+import { isStaleBundle, onStaleBundle } from "@/lib/staleBundle";
 
 export type OfflineBannerTranslations = {
   bannerOffline: string;
@@ -11,6 +12,9 @@ export type OfflineBannerTranslations = {
   bannerSyncFailed: string;
   retrySync: string;
   bannerStorageUnavailable: string;
+  /** S9-01 C-06. Optional: pre-upgrade prop blobs lack them. */
+  bannerNewVersion?: string;
+  reloadNow?: string;
   /** RAW template with "{seconds}" (optional: older cached props lack it). */
   bannerNextAttempt?: string;
 };
@@ -43,6 +47,8 @@ export function OfflineBanner({
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [nextRetryAt]);
+  // C-06: this tab predates the latest deploy (its server-action ids are gone).
+  const staleBundle = useSyncExternalStore(onStaleBundle, isStaleBundle, () => false);
   const secondsLeft = nextRetryAt ? Math.max(0, Math.ceil((nextRetryAt - now) / 1000)) : null;
 
   let tone: "offline" | "info" | "success" | "warn" | null = null;
@@ -54,6 +60,11 @@ export function OfflineBanner({
     tone = "warn";
     message = t.bannerStorageUnavailable;
     icon = <AlertTriangle size={15} aria-hidden />;
+  } else if (staleBundle && t.bannerNewVersion) {
+    // Persistent and non-blocking: drafts stay on the device, still pending.
+    tone = "warn";
+    message = t.bannerNewVersion;
+    icon = <RefreshCw size={15} aria-hidden />;
   } else if (!online) {
     tone = "offline";
     message = t.bannerOffline;
@@ -93,6 +104,15 @@ export function OfflineBanner({
     >
       {icon}
       <span className="flex-1">{message}</span>
+      {tone === "warn" && staleBundle && !storageUnavailable && t.bannerNewVersion && (
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="shrink-0 font-semibold underline underline-offset-2 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 rounded-sm"
+        >
+          {t.reloadNow ?? "Reload"}
+        </button>
+      )}
       {showRetry && (
         <button
           type="button"

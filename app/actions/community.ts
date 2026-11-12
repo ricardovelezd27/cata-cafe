@@ -27,6 +27,7 @@ import { syncCoffeeHistoryForSession } from "@/lib/coffeeHistory";
 import { EXCLUSION_REASONS, exclusionData } from "@/lib/exclusionReasons";
 import type { ActionResult } from "@/lib/actionResult";
 import { refireAggregates } from "@/lib/aggregates";
+import { reserveEmailBudget } from "@/lib/emailBudget";
 import { countUnsentComplete, isEvaluationComplete, planFinish } from "@/lib/closeRules";
 import { removeSamplesInTx } from "@/lib/sampleRemoval";
 
@@ -516,6 +517,18 @@ export async function resendCloseEmails(sessionId: string) {
   if (!session.isGroup) return { ok: false as const, error: "not_group" };
   if (session.status !== "closed") return { ok: false as const, error: "not_closed" };
 
+  // Nothing claimable (everyone sent, or held by a fresh "sending" lease):
+  // return before spending a resend from the budget.
+  const { hasClaimableCloseRecipients } = await import("@/lib/closeEmail");
+  if (!(await hasClaimableCloseRecipients(sessionId))) {
+    return { ok: true as const, nothingToSend: true as const };
+  }
+
+  // S9-01 (A-09): bounded per session (CLOSE_RESEND_PER_SESSION in
+  // lib/emailLimits.ts). Reserved before the work, like every sender.
+  const budget = await reserveEmailBudget({ kind: "close_resend", sessionId });
+  if (!budget.allowed) return { ok: false as const, error: "rate_limited" };
+
   after(async () => {
     try {
       const { sendCloseEmails } = await import("@/lib/closeEmail");
@@ -532,7 +545,7 @@ export async function resendCloseEmails(sessionId: string) {
     }
   });
 
-  return { ok: true as const };
+  return { ok: true as const, nothingToSend: false as const };
 }
 
 // ─── Reveal a sample (show its already-linked coffee identity) ────────────────
@@ -776,17 +789,8 @@ export async function setParticipantExclusion(
         }),
       });
 
-      // Re-fire trg_recompute_aggregate for the whole session. Touching "isDraft"
-      // (even to its current value) satisfies `AFTER UPDATE OF "isDraft"`; the
-      // WHEN (NEW."isDraft" = false) clause keeps it to submitted evaluations.
-      await prisma.$executeRaw`
-        UPDATE evaluations e
-        SET "isDraft" = e."isDraft"
-        FROM session_samples ss
-        WHERE e."sessionSampleId" = ss.id
-          AND ss."sessionId" = ${sessionId}
-          AND e."isDraft" = false
-      `;
+      // Re-fire trg_recompute_aggregate for the whole session (lib/aggregates.ts).
+      await refireAggregates(sessionId);
 
       // A closed session already wrote each cupper's coffee history with the
       // community score of the day; refresh it so the profile does not keep the

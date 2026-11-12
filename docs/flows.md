@@ -528,7 +528,7 @@ flowchart TD
   - One placeholder PER deletion (never a shared tombstone: `Evaluation` is unique on sample + cupper). It has no auth user, can never sign in and is skipped by close and reminder emails. Names render "Cuenta eliminada" / "Deleted account" (`profileDisplayName`, `lib/accountDeletion/deletedProfile.ts`) in results, reports, the sessions list and group pages; the Users directory and platform counts hide placeholders.
   - What others see: closed results unchanged, the person's column/row under "Cuenta eliminada". A kept group stays readable to its members but nobody can manage it (`TODO(E3-Kim)`: ownership transfer).
   - Coffees the person created are anonymized exactly like "Eliminar café" (`anonymizeOwnedCoffees`), never deleted.
-- **Guest join**: `checkJoinable(token)` (`lib/joinability.ts`, same rule as the `/join` page and `joinViaToken`) runs before `signInAnonymously`; a closed link shows its own state to a visitor with no session (a signed-in participant still reaches results through `joinViaToken`); a retry reuses the anonymous user the earlier try created.
+- **Guest join**: `checkJoinable(token)` (`app/actions/join.ts`, same `evaluateJoin` rule as the `/join` page and `joinViaToken`) runs before `signInAnonymously`; a closed link shows its own state to a visitor with no session (a signed-in participant still reaches results through `joinViaToken`); a retry reuses the anonymous user the earlier try created.
 - **Email change**: registered users only (`requestEmailChange`), mails a confirmation through `/auth/confirm` (type `email_change`) back to `/app/profile`; the profile shows `new_email` as pending until it is confirmed.
 
 ## 2. Coffee visibility & sharing

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  CLAIM_ANON_KEY,
+  CLAIM_DONE_KEY,
   CLAIM_MARKER_TTL_MS,
+  claimKeysToClear,
   decideClaimRekey,
   serializeDone,
   serializeStarted,
@@ -73,5 +76,25 @@ describe("decideClaimRekey", () => {
     expect(
       decideClaimRekey({ startedRaw: null, doneRaw: null, userId: ACCOUNT, now: NOW }),
     ).toEqual({ rekeyFrom: null, clear: false });
+  });
+});
+
+describe("claimKeysToClear (C-08)", () => {
+  it("a plain sign-out drops both markers", () => {
+    expect(claimKeysToClear()).toEqual([CLAIM_ANON_KEY, CLAIM_DONE_KEY]);
+  });
+
+  it("switching account mid-claim keeps the anonymous-id marker", () => {
+    expect(claimKeysToClear({ keepClaimInProgress: true })).toEqual([CLAIM_DONE_KEY]);
+  });
+
+  it("the kept marker still re-keys once the other account confirms", () => {
+    const d = decideClaimRekey({
+      startedRaw: serializeStarted(ANON, NOW - 60_000),
+      doneRaw: serializeDone(ANON, "acct-2", NOW - 10_000),
+      userId: "acct-2",
+      now: NOW,
+    });
+    expect(d).toEqual({ rekeyFrom: ANON, clear: true });
   });
 });
