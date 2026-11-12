@@ -318,3 +318,29 @@ Ricardo authorized Claude to run the three phases and to merge + deploy (answers
 - **PHASE 25 APPLIED 2026-11-12** (after Ricardo's explicit yes). Verified after: `authenticated` has column SELECT on `joinedAt`, `sessionId`, `status`, `userId` only; no table-level SELECT for anon/authenticated; 0 API-role readers of the four exclusion columns; 0 write privileges in `public`; policy `participants_select` unchanged. Rollback: the commented block at the end of PHASE 25 in `prisma/sql/rls_and_triggers.sql`. Security Advisor not re-checked after this phase.
 - Reviewer's note left unbuilt: `__Host-` prefix for the two sign-in cookies if the app ever moves to a custom domain with other subdomains.
 - Remaining from the audit: D-05 only (runtime tests on a disposable database).
+
+## 2026-11-12 (night): S9-03, S9-04, S9-05 merged. State to resume from
+
+`main` = `b282536`, deployed, `/api/health` 204. No open PRs.
+
+| Part | PR | What | Verified |
+|---|---|---|---|
+| S9-03 | #106 | Leftovers of partly fixed flow findings: 44 px tap targets, field-level errors in the wizard, express first in empty states, existing coffee in the edit form, coffees created inside the session transaction, format description in "Catar ahora", warm-up error copy | Production, signed in: heights measured, a session with a new coffee created through the wizard |
+| S9-05 | #107 | Existing-coffee picker in the cup page's sample editor (through `assignSampleCoffee`, list loaded when the picker opens). `cup/page.tsx` now sends a sample's `coffeeId` to the owner only | Production, signed in: express session, coffee picked, name arrives from the server. Participant view NOT checked on a second device |
+| S9-04 | #108 | Audit D-05: `npm run test:db`, 54 tests in 9 files against a throwaway local Postgres (`embedded-postgres`, own `tests/db/package.json`; the root lockfile is identical to before). Plus the email-budget race fix in `lib/emailBudget.ts` (advisory lock per bucket inside one transaction) | Suite run 3 times, ~108 s each. Production: a sign-in link requested after the deploy arrived |
+
+- **Flow findings board:** 31 were listed open on 2026-11-12. A triage against the code found 18 already fixed by S8; with S9-03 and S9-05, 25 are fixed. Left: F-crear-sesion-10, F-guest-4, F-grupos-10, F-cafes-9 (Kim) and F-landing-1, F-insights-5 (Ricardo).
+- **Blind-tasting leak closed in #107 (it predated S9):** the cup page handed each sample's coffee id to participants; with a public or shared coffee they could open its page before the reveal.
+- **Defects the DB suite found:**
+  1. Migrations do not replay from an empty database (`20260805120000_drop_deprecated_is_public` drops `coffees."isPublic"` a second time). NOT fixed: an applied migration's checksum must not change. Workaround in runbook §29.
+  2. One PHASE 11 statement of `rls_and_triggers.sql` fails on a clean database for the same reason. NOT fixed; runbook §29.
+  3. `reserveEmailBudget` let 6 of 10 simultaneous requests through a limit of 3. FIXED in #108.
+- **Also found in review and fixed:** `isCoffeeCodeCollision` only read `meta.target`, which Prisma 7 with the pg adapter never sends, so no coffee-code collision was ever retried anywhere (#106).
+- **DB suite safety:** it refuses any host other than 127.0.0.1/localhost and any database not named `cata_test_*`; a reviewer ran it with fake production URLs planted in the environment and in a `.env` file, and it never used them. It does not cover the real Supabase auth deletion, GoTrue, PostgREST, Realtime, or the fact that Supabase's `postgres` role is not a superuser. The throwaway-account rehearsal of runbook §24 is still required before enabling account deletion.
+- **Test data added to production by Claude today** (Ricardo's test account, for the cleanup): sessions "[TEST S9] crear con cafe nuevo - borrar" (`cmwdyizd4000108l27unoj4m4`) and "[TEST S9] express picker - borrar" (`cmwdzg3a5000008l0jrgmo1tp`), coffee "[TEST S9] cafe - borrar".
+- **New copy to review (Ricardo):** the three format descriptions under `session.express.formatHint`, and the two branded email templates.
+
+**What is left, by who**
+- Kim: PHASE 23 step 2 (54 past scores), blind codes (A4), join-page identity (E1), roster visibility (D7), coffee edits vs past sessions, C1-d late notes, C7, C9.
+- Ricardo: cross-device sign-in card test; a signup with a new address; two-account Realtime, phone offline, warm-up on two phones; legal text then `LEGAL_PAGES_PUBLISHED`; `ANALYTICS_SUPER_ADMIN_EMAIL` and optionally `UNSUBSCRIBE_SECRET` in Vercel; the account-deletion rehearsal; the database cleanup (`docs/prompts/S9-database-cleanup.md`); whether to make the migrations replayable.
+- Nothing else that Claude can build without one of them is known.
