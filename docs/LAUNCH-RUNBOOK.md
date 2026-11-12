@@ -1728,7 +1728,9 @@ goes back to it (flagged cups cost points at any cup count, everyone's cups shar
 deduction) and fixes three bugs: a cupper under five cups saw no deduction, a group under five
 pooled cups had its stored deduction amplified, a defective cup was counted twice in the group.
 Spec: `docs/product/cata-descentralizada-puntaje.md`. **Scores stored before this deploy were
-computed under older rules and are NOT recomputed (owner's decision).** PHASE 23 STEP 2 (§12
+computed under older rules and are NOT recomputed, and they are DISPLAYED unchanged (owner's
+decision: no past score ever changes).** The data says which rule a stored score used
+(`evaluations.cups` NULL = old; `aggregate_scores."ruleVersion"` 1 = old), so there is no backfill. PHASE 23 STEP 2 (§12
 steps 4–5) and `scripts/resync-low-cup-history.ts` are CANCELLED and must never run.
 
 **Order, and why.** (1) migration, (2) dry run, (3) PHASE 26, (4) check, (5) merge and deploy.
@@ -1740,13 +1742,16 @@ score (coffee history, profile) still follows the PHASE 23 rule until the next s
 
 **Steps** (Supabase SQL editor of the production project; there is only one)
 
-1. **Migration (adds the column, backfills it, fires no trigger).** From the checkout you
+1. **Migration (adds two columns, NO backfill, fires no trigger).** From the checkout you
    choose (`.env.local` IS production) run `npx prisma migrate deploy`. It applies
-   `20261113090000_evaluation_cups`: `ALTER TABLE "evaluations" ADD COLUMN "cups" INTEGER`, then
-   one `UPDATE` that sets `cups` from each session's `cupsPerSample`. The only trigger on
-   `evaluations` is `trg_recompute_aggregate` (`AFTER INSERT OR UPDATE OF "isDraft"`); the
-   backfill names only `cups`, so it does not fire and `aggregate_scores` is untouched.
-   Check: `select count(*) from evaluations where "cups" is null;` returns `0`.
+   `20261113090000_evaluation_cups`: `ALTER TABLE "evaluations" ADD COLUMN "cups" INTEGER`
+   (left NULL on every existing row on purpose: **NULL means "scored before the 2026-11 rule"**
+   and the app keeps showing those evaluations under the old rule) and
+   `ALTER TABLE "aggregate_scores" ADD COLUMN "ruleVersion" INTEGER NOT NULL DEFAULT 1`
+   (existing rows are 1 = old rule). Both are metadata-only statements: no row is rewritten
+   and `trg_recompute_aggregate` (`AFTER INSERT OR UPDATE OF "isDraft"`) does not fire.
+   Check: `select count(*) from aggregate_scores where "ruleVersion" <> 1;` returns `0`, and
+   `select count(*) from evaluations where "cups" is not null;` returns `0`.
 2. **Dry run** (fail-safe: one statement, nothing is applied). Open
    `prisma/sql/dry-runs/phase26_dry_run.sql`, paste the whole file, run it. Expected: a red
    error starting `PHASE 26 DRY RUN: NOTHING WAS APPLIED`. Read each numbered line:
@@ -1760,16 +1765,24 @@ score (coffee history, profile) still follows the PHASE 23 rule until the next s
 3. **Only on the owner's explicit yes**, run the PHASE 26 block of
    `prisma/sql/rls_and_triggers.sql` (from the `DO $chk$` guard to the closing `$fn$;`). Expected:
    `Success. No rows returned`. It re-issues the function; it does NOT recompute anything.
+   **What a later re-fire does (intended):** whenever the trigger recomputes a sample (a new
+   submit, an owner exclusion after close, a repair), it uses the current rule and stamps
+   `aggregate_scores."ruleVersion" = 2`; from then on the results screen shows that sample under
+   the current rule. Samples nobody touches stay `ruleVersion = 1` and keep rendering exactly as
+   before. The app reads the version from the data, there is no cut-over date.
 4. **Verify (read-only):**
 
    ```sql
    select pg_get_functiondef('public.recompute_aggregate_score()'::regprocedure) like '%v_factor%';  -- t
    select proconfig from pg_proc where proname = 'recompute_aggregate_score';  -- {search_path=public}
    select count(*) from aggregate_scores where "computedAt" > now() - interval '10 minutes';  -- 0: nothing recomputed
+   select count(*) from aggregate_scores where "ruleVersion" = 2;  -- 0 right after applying
    ```
 
    The last count may be non-zero only if someone submitted an evaluation in those minutes.
-5. **Merge and deploy** the PR. Smoke test with a throwaway solo session of 2 cups: mark one cup
+5. **Merge and deploy** the PR. Smoke test: (a) an OLD closed session with a flagged cup under
+   five cups opens with the same numbers as before the deploy (and the breakdown says it was
+   scored under the previous rule); (b) a throwaway solo session of 2 cups: mark one cup
    defective and submit; the results page and the coffee history show the base minus 6.
    Note: a tab left open across the deploy shows the reload notice (Next 16 action ids change
    per build); drafts stay on the device.
