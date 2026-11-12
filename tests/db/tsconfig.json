@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "plugins": [],
+    "baseUrl": "../..",
+    "paths": {
+      "@/*": ["./*"],
+      "pg": ["./tests/db/node_modules/@types/pg"]
+    }
+  },
+  "include": ["./**/*.ts", "../../vitest.db.config.ts", "../../next-env.d.ts"],
+  "exclude": ["node_modules", "./node_modules"]
+}

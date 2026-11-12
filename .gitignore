@@ -51,3 +51,5 @@ graphify-out/
 
 # git worktrees (local dev isolation)
 /.worktrees/
+# DB suite deps (tests/db/package.json)
+/tests/db/node_modules

@@ -13,7 +13,9 @@
     "import:reference": "tsx scripts/import-reference-series.ts",
     "export:descriptors": "tsx scripts/export-descriptors.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:db": "node tests/db/run.mjs",
+    "typecheck:db": "tsc --noEmit -p tests/db/tsconfig.json"
   },
   "dependencies": {
     "@google/genai": "^2.12.0",

@@ -125,6 +125,11 @@ ledger. Then enable account deletion. Also A-06, A-07, A-08, B-04, B-08, C-06, C
 - **Unverified workflows:** everything that needs a database or a browser. The most important are the
   guest claim, closing a group session with its emails, the cron repair, offline replay on a phone,
   and account deletion.
+- **D-05 status (S9-04, 2026-11-12):** partly closed. `npm run test:db` now runs the data-moving paths
+  (aggregate trigger vs TypeScript, close and repair, session delete, guest merge, account deletion,
+  ordered evaluation writes, email ledgers, RLS as `authenticated`) against a disposable local
+  Postgres. Still open: the real Supabase auth user deletion, GoTrue/PostgREST/Realtime behaviour,
+  production data volume and the browser. See `tests/db/README.md` and PR "S9-04".
 - **What would raise confidence:** one rehearsal on a non-production database with all migrations and
   SQL phases applied, covering guest join → cup → claim → close → cron → delete account; and a
   two-phone session after deploy.

@@ -1,0 +1,11 @@
+{
+  "name": "cata-cafe-db-tests",
+  "private": true,
+  "description": "Dependencies used ONLY by the runtime DB suite (npm run test:db). Kept out of the root package.json so the app's install and lockfile do not carry ~59 MB of Postgres binaries.",
+  "dependencies": {
+    "embedded-postgres": "18.6.0-beta.19"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1"
+  }
+}
