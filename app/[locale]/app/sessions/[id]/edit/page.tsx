@@ -4,6 +4,8 @@ import { dateInZone } from "@/lib/closeRules";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { getUsableCoffees } from "@/lib/coffees/queries";
+import type { UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { EditSessionForm, type EditSessionFormTranslations } from "./EditSessionForm";
 
 // Authed page with an extra [id] dynamic segment: force-dynamic, never
@@ -51,7 +53,25 @@ export default async function EditSessionPage({
       })
     : [];
 
+  // Same source and mapping as the wizard (sessions/new/page.tsx):
+  // getUsableCoffees runs usableCoffeeWhere; addSessionSample re-validates.
+  const usableRaw = session.status === "closed" ? [] : await getUsableCoffees(user.id);
+  const usableCoffees: UsableCoffee[] = usableRaw.map((c) => ({
+    id: c.id,
+    name: c.name,
+    code: c.code,
+    producer: c.producer,
+    variety: c.variety,
+    altitude: c.altitude,
+    roastLevel: c.roastLevel,
+    country: c.country,
+    region: c.region,
+    processType: c.processType,
+    origin: c.createdBy === user.id ? "mine" : c.visibility === "public" ? "public" : "shared",
+  }));
+
   const t = await getTranslations("session");
+  const tcoffee = await getTranslations("coffee");
   const tc = await getTranslations("common");
   const tw = await getTranslations("warmup");
   const tg = await getTranslations("group");
@@ -109,6 +129,16 @@ export default async function EditSessionPage({
     removeRepinConfirm: t("edit.removeRepinConfirm"),
     referenceRepinBlocked: t("edit.referenceRepinBlocked"),
     formatLockedStarted: t("edit.formatLockedStarted"),
+    invalidWarmup: t("newForm.errors.invalid_warmup"),
+    picker: {
+      useExisting: tcoffee("picker.useExisting"),
+      title: tcoffee("picker.title"),
+      searchPlaceholder: tcoffee("picker.searchPlaceholder"),
+      mine: tcoffee("picker.mine"),
+      shared: tcoffee("picker.shared"),
+      public: tcoffee("picker.public"),
+      empty: tcoffee("picker.empty"),
+    },
   };
 
   return (
@@ -123,6 +153,7 @@ export default async function EditSessionPage({
       <EditSessionForm
         locale={locale}
         sessionId={session.id}
+        usableCoffees={usableCoffees}
         initial={{
           name: session.name,
           date: session.date.toISOString().slice(0, 10),

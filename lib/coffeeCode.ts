@@ -44,12 +44,26 @@ export function normalizeCoffeeCodeQuery(query: string): string {
  * imports. A P2002 on a different column is NOT a code collision.
  */
 export function isCoffeeCodeCollision(err: unknown): boolean {
-  const e = err as { code?: string; meta?: { target?: unknown } } | null;
+  const e = err as {
+    code?: string;
+    meta?: {
+      target?: unknown;
+      driverAdapterError?: { cause?: { constraint?: { fields?: unknown } } };
+    };
+  } | null;
   if (e?.code !== "P2002") return false;
-  const target = e?.meta?.target;
-  return Array.isArray(target)
-    ? target.includes("code")
-    : String(target ?? "").includes("code");
+  // Two shapes. The query engine reports `meta.target`; the pg driver adapter
+  // (what this app runs on, Prisma 7) reports no target at all, only
+  // `meta.driverAdapterError.cause.constraint.fields`, parsed from Postgres's
+  // "Key (code)=..." detail. Checking only `target` meant a real collision was
+  // never recognised and nothing ever retried (S9-03 review).
+  const names = (v: unknown): string[] =>
+    Array.isArray(v) ? v.map(String) : v == null ? [] : [String(v)];
+  const fields = [
+    ...names(e.meta?.target),
+    ...names(e.meta?.driverAdapterError?.cause?.constraint?.fields),
+  ];
+  return fields.some((f) => f === "code" || f.replace(/"/g, "") === "code" || f.endsWith("_code_key"));
 }
 
 /**
@@ -63,6 +77,28 @@ export function generateUniqueCoffeeCodes(count: number): string[] {
 }
 
 /**
+ * Re-runs a WHOLE interactive transaction when it failed on a coffee `code`
+ * collision (S9-03, F-crear-sesion-9). `run` must generate fresh codes on every
+ * call. Any other error (including a P2002 on another column) rethrows at once;
+ * after `maxAttempts` collisions the last collision rethrows.
+ */
+export async function retryOnCodeCollision<T>(
+  run: () => Promise<T>,
+  maxAttempts = 5,
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      return await run();
+    } catch (err) {
+      if (!isCoffeeCodeCollision(err)) throw err;
+      lastError = err;
+    }
+  }
+  throw lastError;
+}
+
+/**
  * Runs a coffee create, retrying with a fresh code on a code collision. Any
  * other error rethrows immediately.
  *
@@ -71,7 +107,7 @@ export function generateUniqueCoffeeCodes(count: number): string[] {
  * Do NOT use inside an interactive `$transaction` on Postgres: the first
  * P2002 aborts the surrounding transaction (25P02 on every later statement),
  * so the retry can never succeed there — retry the whole transaction with
- * fresh codes instead (see resolveCoffees in app/actions/sessions.ts).
+ * fresh codes instead (see createCoffeesInTx + retryOnCodeCollision in app/actions/sessions.ts).
  */
 export async function withCodeRetry<T>(
   create: (code: string) => Promise<T>,

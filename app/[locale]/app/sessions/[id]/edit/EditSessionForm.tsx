@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import {
   updateSession,
   addSessionSample,
@@ -11,6 +11,7 @@ import {
   setReferenceSample,
 } from "@/app/actions/sessions";
 import { Select } from "@/components/ui/Select";
+import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useActionFeedback } from "@/components/ui/Toast";
@@ -64,6 +65,17 @@ export type EditSessionFormTranslations = {
   referenceRepinBlocked: string;
   formatLockedStarted: string;
   warmup: { toggle: string; label: string; hint: string; minutes: string };
+  /** Retired / unknown warm-up id (same copy as the wizard's invalid_warmup). */
+  invalidWarmup: string;
+  picker: {
+    useExisting: string;
+    title: string;
+    searchPlaceholder: string;
+    mine: string;
+    shared: string;
+    public: string;
+    empty: string;
+  };
 };
 
 export type EditSampleRow = {
@@ -86,6 +98,7 @@ const FORMAT_OPTIONS = ["descriptive", "affective", "combined"] as const;
 export function EditSessionForm({
   locale,
   sessionId,
+  usableCoffees,
   initial,
   samples: initialSamples,
   groups,
@@ -94,6 +107,8 @@ export function EditSessionForm({
 }: {
   locale: string;
   sessionId: string;
+  /** Coffees the owner may link (getUsableCoffees); [] on a closed session. */
+  usableCoffees: UsableCoffee[];
   initial: {
     name: string;
     date: string;
@@ -161,6 +176,8 @@ export function EditSessionForm({
   const [, startRename] = useTransition();
 
   const [newSampleLabel, setNewSampleLabel] = useState("");
+  const [newSampleCoffee, setNewSampleCoffee] = useState<UsableCoffee | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [addPending, startAdd] = useTransition();
 
   const [removeTarget, setRemoveTarget] = useState<EditSampleRow | null>(null);
@@ -293,12 +310,19 @@ export function EditSessionForm({
     if (addPending) return;
     const label = newSampleLabel.trim();
     startAdd(async () => {
-      const result = await addSessionSample(sessionId, { label: label || undefined, locale });
+      const result = await addSessionSample(sessionId, {
+        label: label || undefined,
+        coffeeId: newSampleCoffee?.id,
+        locale,
+      });
       if (result.ok) {
         setNewSampleLabel("");
+        setNewSampleCoffee(null);
         router.refresh();
       } else {
-        feedback.notifyError(result.error);
+        // The coffee became unavailable between picking and adding.
+        if (result.error === "coffee_not_found") setNewSampleCoffee(null);
+        feedback.notifyError(result.error === "coffee_not_found" ? "coffee_not_usable" : result.error);
       }
     });
   };
@@ -330,7 +354,9 @@ export function EditSessionForm({
           ? t.sessionClosed
           : errorCode === "warmup_locked"
             ? t.warmupLocked
-            : t.error
+            : errorCode === "invalid_warmup"
+              ? t.invalidWarmup
+              : t.error
     : null;
 
   return (
@@ -573,6 +599,39 @@ export function EditSessionForm({
             {t.addSample}
           </button>
         </div>
+        {/* Optional: link an existing coffee to the new sample. The server
+            re-validates the id with usableCoffeeWhere (addSessionSample). */}
+        <div className="flex flex-wrap items-center gap-2">
+          {newSampleCoffee ? (
+            <span className="inline-flex items-center gap-1.5 rounded-pill border border-outline-variant bg-surface-container px-3 py-1.5 text-xs font-medium text-on-surface">
+              {newSampleCoffee.name}
+              <button
+                type="button"
+                onClick={() => setNewSampleCoffee(null)}
+                aria-label={t.cancel}
+                className="inline-flex min-h-[28px] min-w-[28px] items-center justify-center text-on-surface-variant hover:text-error"
+              >
+                <X size={14} />
+              </button>
+            </span>
+          ) : (
+            <button
+              type="button"
+              disabled={addPending || usableCoffees.length === 0}
+              onClick={() => setPickerOpen(true)}
+              className="inline-flex min-h-[44px] items-center rounded-pill border border-outline-variant px-4 text-sm font-medium text-on-surface transition-colors hover:bg-surface-container disabled:opacity-50"
+            >
+              {t.picker.useExisting}
+            </button>
+          )}
+        </div>
+        <CoffeePicker
+          open={pickerOpen}
+          onOpenChange={setPickerOpen}
+          coffees={usableCoffees}
+          onSelect={(picked) => setNewSampleCoffee(picked)}
+          translations={{ ...t.picker, close: t.close }}
+        />
       </div>
 
       {/* e. Reference sample */}

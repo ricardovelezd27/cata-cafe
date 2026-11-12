@@ -78,7 +78,7 @@ export function DuplicateButton({
           disabled={pending}
           aria-label={label}
           title={failed ? errorText : label}
-          className={`inline-flex rounded-sm p-1.5 transition-colors disabled:opacity-40 ${
+          className={`inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-sm p-1.5 transition-colors disabled:opacity-40 ${
             failed
               ? "text-error"
               : "text-on-surface-variant hover:text-primary-container"

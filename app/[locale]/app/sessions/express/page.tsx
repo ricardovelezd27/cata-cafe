@@ -26,6 +26,11 @@ export default async function ExpressSessionPage({
     formatDescriptive: t("formats.descriptive"),
     formatAffective: t("formats.affective"),
     formatCombined: t("formats.combined"),
+    formatHint: {
+      descriptive: t("express.formatHint.descriptive"),
+      affective: t("express.formatHint.affective"),
+      combined: t("express.formatHint.combined"),
+    },
     samples: t("express.samples"),
     samplesHint: t("express.samplesHint"),
     decrement: t("express.decrement"),

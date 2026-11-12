@@ -31,6 +31,8 @@ export type ExpressFormTranslations = {
   formatDescriptive: string;
   formatAffective: string;
   formatCombined: string;
+  /** One plain line under the selected format. */
+  formatHint: Record<ExpressFormat, string>;
   samples: string;
   samplesHint: string;
   decrement: string;
@@ -150,6 +152,7 @@ export function ExpressForm({
         <div
           role="radiogroup"
           aria-labelledby="express-format-label"
+          aria-describedby="express-format-hint"
           className="grid grid-cols-3 gap-2"
         >
           {EXPRESS_FORMATS.map((f) => {
@@ -172,6 +175,9 @@ export function ExpressForm({
             );
           })}
         </div>
+        <p id="express-format-hint" className="text-xs text-on-surface-variant">
+          {t.formatHint[format]}
+        </p>
       </div>
 
       <div className="space-y-2">

@@ -142,7 +142,6 @@
       "what": "Ejecuta catas CVA —descriptiva, afectiva o combinada—, en solitario o en grupo, y obtén una puntuación verificable y exportable.",
       "howLabel": "Cómo",
       "how": "Crea una sesión, evalúa taza por taza y revisa una puntuación transparente que puedes auditar y comparar.",
-      "ctaPrimary": "Crear sesión CVA",
       "ctaCalc": "¿Cómo se calcula la puntuación?",
       "dismiss": "Entendido",
       "reopen": "¿Cómo funciona Cata Café?",
@@ -170,7 +169,6 @@
     "noAvg": "Sin datos",
     "activityEval": "Evaluaste {coffee}",
     "emptyTitle": "Aún no tienes sesiones de cata",
-    "emptyCta": "Crear primera sesión CVA →",
     "noActivity": "Sin actividad reciente",
     "noBestCoffees": "Sin cafés evaluados aún",
     "cuppingsCount": "{count} cataciones",
@@ -271,6 +269,11 @@
       "back": "Sesiones",
       "name": "Nombre de la cata",
       "format": "Formato",
+      "formatHint": {
+        "descriptive": "Describe aromas y sabores con su intensidad, sin puntaje.",
+        "affective": "Puntúa la calidad de cada muestra del 1 al 9.",
+        "combined": "Describe los sabores y puntúa la calidad, todo en uno."
+      },
       "samples": "Muestras",
       "samplesHint": "Entre 1 y 20 muestras, sin café asignado. Podrás nombrarlos al final.",
       "decrement": "Una muestra menos",

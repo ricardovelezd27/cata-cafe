@@ -129,7 +129,7 @@ export function DeleteSessionButton({
           handleOpenChange(true);
         }}
         aria-label={t.title}
-        className="inline-flex rounded-sm p-1.5 text-on-surface-variant transition-colors hover:text-error"
+        className="inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-sm p-1.5 text-on-surface-variant transition-colors hover:text-error"
       >
         <Trash2 size={16} />
       </button>
