@@ -204,7 +204,7 @@ beside it when they differ, stronger in the last 24 h. The cron also sends the
 reminder to its owner (never a close); both are ledgered in
 `session_reminder_deliveries`. Setting a date on an unstarted live session turns it
 self-paced (no waiting room, no "Iniciar cata"), which the forms say before saving
-(// TODO(S8-05/C7): separating `isAsync` from `closesAt` awaits Kim). From
+(a closing date means self-paced; separating `isAsync` from `closesAt` is not supported). From
 `closesAt` on, though, the session is already read-only and its group results are
 visible (expiry rule, §1 above): the cron only flips `status` and sends the emails. Close emails are queued with `after()` and ledgered per
 recipient in `close_email_deliveries`; the owner sees sent / no-email / failed /
@@ -567,7 +567,7 @@ flowchart TD
 ```
 
   - One placeholder PER deletion (never a shared tombstone: `Evaluation` is unique on sample + cupper). It has no auth user, can never sign in and is skipped by close and reminder emails. Names render "Cuenta eliminada" / "Deleted account" (`profileDisplayName`, `lib/accountDeletion/deletedProfile.ts`) in results, reports, the sessions list and group pages; the Users directory and platform counts hide placeholders.
-  - What others see: closed results unchanged, the person's column/row under "Cuenta eliminada". A kept group stays readable to its members but nobody can manage it (`TODO(E3-Kim)`: ownership transfer).
+  - What others see: closed results unchanged, the person's column/row under "Cuenta eliminada". A kept group stays readable to its members but nobody can manage it (no ownership transfer, by decision).
   - Coffees the person created are anonymized exactly like "Eliminar café" (`anonymizeOwnedCoffees`), never deleted.
 - **Guest join**: `checkJoinable(token)` (`app/actions/join.ts`, same `evaluateJoin` rule as the `/join` page and `joinViaToken`) runs before `signInAnonymously`; a closed link shows its own state to a visitor with no session (a signed-in participant still reaches results through `joinViaToken`); a retry reuses the anonymous user the earlier try created.
 - **Email change**: registered users only (`requestEmailChange`), mails a confirmation through `/auth/confirm` (type `email_change`) back to `/app/profile`; the profile shows `new_email` as pending until it is confirmed.

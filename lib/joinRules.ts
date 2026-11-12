@@ -59,7 +59,7 @@ export function evaluateJoin(
   if (sessionHref(session, { locale, isOwner: false }, now).endsWith("/results")) {
     return { kind: "closed" };
   }
-  // TODO(C4): per-sample cut-offs for late joiners (default a: they cup everything).
+  // Late joiners cup everything (no per-sample cut-offs).
   if (session.entriesLocked) return { kind: "entries_closed" };
   if (!invite.active) return { kind: "expired" };
   if (invite.expiresAt !== null && invite.expiresAt.getTime() <= now.getTime()) {
