@@ -75,7 +75,8 @@ describe("wiring: who touches the pending cookie and the ephemeral client", () =
   );
 
   it("only the cookie plumbing and its pure module name the cookie", () => {
-    const users = files.filter((f) => {
+    // lib/legal/ only DOCUMENTS the cookie by name in the privacy policy table.
+    const users = files.filter((f) => !f.startsWith("lib/legal/")).filter((f) => {
       const src = readFileSync(f, "utf8");
       return src.includes(SIGNIN_PENDING_COOKIE) || src.includes("SIGNIN_PENDING_COOKIE");
     });

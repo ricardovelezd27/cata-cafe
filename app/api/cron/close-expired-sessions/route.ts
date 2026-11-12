@@ -19,6 +19,7 @@ import { closeSessionInternal } from "@/lib/closeSession";
 import { FINALIZE_GRACE_MS } from "@/lib/closeRules";
 import { errorMessage, logError, logWarn } from "@/lib/log";
 import { purgeEmailLedger } from "@/lib/emailBudget";
+import { purgeWaitlist } from "@/lib/waitlistPurge";
 import { sendDeadlineReminders, sendLiveIdleReminders } from "@/lib/reminderEmail";
 
 export const runtime = "nodejs";
@@ -121,9 +122,19 @@ export async function GET(request: Request) {
     logError({ where: "cron.purgeEmailLedger", message: errorMessage(err) });
   }
 
+  // Waitlist retention (S10 WP9a): rows older than WAITLIST_RETENTION_MONTHS,
+  // by age alone. Count only; never logs an address. Never fails the run.
+  let waitlistPurged = 0;
+  try {
+    waitlistPurged = await purgeWaitlist();
+  } catch (err) {
+    logError({ where: "cron.purgeWaitlist", message: errorMessage(err) });
+  }
+
   return NextResponse.json({
     ok: true,
     ledgerPurged,
+    waitlistPurged,
     due: due.length,
     closed: results.filter((r) => r.closed).length,
     results,

@@ -947,8 +947,9 @@ flowchart TD
   D --> M[emails masked, Mostrar toggle; CSV super-admin only]
   W[Waitlist form] --> R[row: source, consentAt, consentNoticeVersion]
   W --> Q{LEGAL_PAGES_PUBLISHED}
-  Q -- false --> X[notice line + footer/login links hidden; pages direct-visit only, Borrador, noindex]
-  Q -- true --> Y[notice line + links shown]
+  Q -- false --> X[notice line + footer/login links hidden; privacidad, terminos, aviso-legal direct-visit only, Borrador, noindex]
+  Q -- true --> Y[notice line + links shown, consent stamped, banner gone, indexable]
+  W --> K[daily cron: purgeWaitlist deletes rows older than 12 months]
 ```
 
 ## 7. Offline drafts and replay (S8-09)

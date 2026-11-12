@@ -7,6 +7,15 @@
 // art. 10.1(b) for a Sociedad Limitada. Fill `registry` (tomo, folio, hoja,
 // inscripción) from the deed of incorporation; while it is null the pages
 // omit that line.
+//
+// TODO(owner): FOUNDING OFFER. Terms section 6 says only that reserving a seat
+// implies no payment; the offer's conditions are yours to write.
+// TODO(owner): TRANSFER SAFEGUARDS. Privacy section 4 states the Vercel and
+// Resend safeguards generically ("garantías del Capítulo V"); check them
+// against the actual DPAs/SCCs.
+// TODO(owner): CONTACT. The pages use the app's support address
+// (lib/siteContact.ts), not the personal address and phone printed in the
+// source documents.
 export const LEGAL_ENTITY = {
   name: "Just a Simple Company, S.L.",
   cif: "B27544147",

@@ -1145,17 +1145,12 @@ built-in address and the boot logs one `env` warning. After this PR only the sup
 sees platform-wide insights, the platform report PDF, the digest and the email CSV export;
 AI admins and flagged users see their own data.
 
-**3. Legal pages (owner).** `/privacidad` and `/terminos` already render draft text with a
-"Borrador" banner and `noindex`, but nothing links to them. To publish: paste the final
-text (es, en) into `lib/legal/privacy.ts` and `lib/legal/terms.ts`, bump
-`CONSENT_NOTICE_VERSION` in `lib/legal/config.ts`, flip `LEGAL_PAGES_PUBLISHED` to `true`
-and deploy. That turns on the footer links, the login-page links and the notice line under
-both waitlist forms.
+**3. Publishing the legal pages (owner; S10 WP9a).** `/es|en/privacidad`, `/terminos` and `/aviso-legal` carry the final adapted text (Spanish original in `lib/legal/es/*`, English translation in `lib/legal/en/*`) but stay unpublished: they render for a direct visit with a "Borrador" banner and `noindex`, and nothing links to them. Steps:
+   1. Read the three pages in Spanish and English on the Vercel preview of the WP9a PR. Open items still marked `TODO(owner)`: Registro Mercantil data (`LEGAL_ENTITY.registry`, mandatory under LSSI-CE art. 10.1(b); the pages omit the line until supplied), the founding-offer conditions (terms section 6), the 12-month waitlist retention, the Vercel/Resend transfer safeguards, and the contact address (the pages use the support address).
+   2. Approve, then flip `LEGAL_PAGES_PUBLISHED` to `true` in `lib/legal/config.ts` (a one-line PR) and deploy. If the text changed after approval, bump `CONSENT_NOTICE_VERSION` in the same PR.
+   3. What turns on together: the footer links (Privacidad, Términos, Aviso legal), the login-page legal line, the notice line under both waitlist forms, the consent stamp (`consentAt`, `consentNoticeVersion` written on new waitlist rows), the removal of the "Borrador" banner and indexing of the three pages.
 
-**4. Retention (decision, no job).** Proposal: keep a waitlist email at most 12 months when
-no account exists for it (`WAITLIST_RETENTION_MONTHS`). Nothing deletes rows automatically;
-until a job exists, delete old rows by hand when asked. Account deletion should remove the
-row too (TODO in S8-07).
+**4. Waitlist retention (S10 WP9a).** The daily `close-expired-sessions` cron deletes `waitlist_entries` older than `WAITLIST_RETENTION_MONTHS` (12; calendar months, oldest first, at most 500 per run) by age alone, whether or not the person created an account. The JSON response carries `waitlistPurged` (a count). Manual check: call the cron (the curl in §3) and read `waitlistPurged`; it is `0` while no row is over a year old. To see what is due, in the SQL editor: `select count(*) from waitlist_entries where "createdAt" < now() - interval '12 months';` (read only). A failure appears in Vercel Logs as `"where":"cron.purgeWaitlist"` and never fails the run.
 
 **Verify:** insert one waitlist entry from the hero form on a preview and check
 `source = 'hero'` and BOTH `consentAt` and `consentNoticeVersion` null (legal pages unpublished, no notice shown, no consent recorded; they are stamped only after the flag is true); open
