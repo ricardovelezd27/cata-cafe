@@ -21,27 +21,28 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-describe("reference pin is gated by referenceMode", () => {
-  const files = [...walk(join(root, "app")), ...walk(join(root, "lib")), ...walk(join(root, "components"))];
+// Read every source file ONCE at collection time (not inside a test, whose
+// 5 s budget a loaded machine can exceed).
+const sources = [...walk(join(root, "app")), ...walk(join(root, "lib")), ...walk(join(root, "components"))]
+  .filter((f) => !f.endsWith(join("lib", "referenceRules.ts"))) // the definitions
+  .map((f) => ({ file: f.replace(root, ""), src: readFileSync(f, "utf8") }));
 
+describe("reference pin is gated by referenceMode", () => {
   it("every file that pins or re-pins also calls shouldPinReference", () => {
-    const offenders: string[] = [];
-    for (const f of files) {
-      if (f.endsWith(join("lib", "referenceRules.ts"))) continue; // the definitions
-      const src = readFileSync(f, "utf8");
-      const pins = /\b(pinReferenceAffective|planReferenceRepin|countRepinOverwrites|repinNeedsConfirm)\(/.test(src);
-      if (pins && !/\bshouldPinReference\(/.test(src)) offenders.push(f.replace(root, ""));
-    }
-    // sessionEdit.ts only DEFINES repinNeedsConfirm; its callers are gated.
-    expect(offenders.filter((f) => !f.endsWith("sessionEdit.ts"))).toEqual([]);
+    const offenders = sources
+      .filter(
+        ({ src }) =>
+          /\b(pinReferenceAffective|planReferenceRepin|countRepinOverwrites|repinNeedsConfirm)\(/.test(src) &&
+          !/\bshouldPinReference\(/.test(src),
+      )
+      .map(({ file }) => file)
+      // sessionEdit.ts only DEFINES repinNeedsConfirm; its callers are gated.
+      .filter((f) => !f.endsWith("sessionEdit.ts"));
+    expect(offenders).toEqual([]);
   });
 
   it("no source file uses the bare isPinnedModule predicate to decide a pin", () => {
-    const offenders: string[] = [];
-    for (const f of files) {
-      if (f.endsWith(join("lib", "referenceRules.ts"))) continue;
-      if (/\bisPinnedModule\(/.test(readFileSync(f, "utf8"))) offenders.push(f.replace(root, ""));
-    }
+    const offenders = sources.filter(({ src }) => /\bisPinnedModule\(/.test(src)).map(({ file }) => file);
     expect(offenders).toEqual([]);
   });
 
