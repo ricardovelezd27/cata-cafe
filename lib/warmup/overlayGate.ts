@@ -30,15 +30,38 @@ export interface OverlayGateInput {
  *  - otherwise (solo owner, async owner,
  *    any participant)                       → true
  */
-// TODO(Kim F1): optional discreet entry after start / always-show (answers b, c).
-// TODO(Kim F4): short version, repeat-step on interruption (resume = today's pause/resume).
-// TODO(Kim F5): substitutable movements; group free-run mode.
 export function shouldShowWarmupOverlay(i: OverlayGateInput): boolean {
   if (!isWarmupId(i.exerciseId)) return false;
   if (i.seenValue === i.exerciseId) return false;
   if (i.hasOwnEvaluation) return false;
   if (i.isOwner && i.isGroup && !i.isAsync) return false;
   if (i.isGroup && !i.isAsync && i.startedAt) return false;
+  return true;
+}
+
+export interface WarmupEntryInput {
+  /** CuppingSession.warmupExerciseId */
+  exerciseId: string | null | undefined;
+  /** The session is closed (or its status says so): nothing to warm up for. */
+  sessionClosed: boolean;
+  /** The pre-cupping interstitial is on screen right now. */
+  overlayOpen: boolean;
+}
+
+/**
+ * S10 WP7 (Kim F1): the DISCREET entry to the warm-up once the interstitial is
+ * not (or no longer) showing: one small text button on the cup page that opens
+ * the same player in session mode. Never the interstitial: it appears only
+ * when the session has an exercise, is not closed, and the overlay itself is
+ * not open (so it covers a cupping that already started, a returning cupper,
+ * a skipped or finished warm-up, and the master of a live group, whose own
+ * run lives in the master panel). Closing the player changes nothing: it
+ * marks nothing seen and never blocks the cupping.
+ */
+export function shouldOfferWarmupEntry(i: WarmupEntryInput): boolean {
+  if (!isWarmupId(i.exerciseId)) return false;
+  if (i.sessionClosed) return false;
+  if (i.overlayOpen) return false;
   return true;
 }
 

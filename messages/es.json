@@ -282,7 +282,8 @@
       "creating": "Creando…",
       "fullWizard": "Configurar sesión completa",
       "nameRequired": "Ponle un nombre a la cata para continuar.",
-      "offline": "Sin conexión: se necesita internet para crear la sesión."
+      "offline": "Sin conexión: se necesita internet para crear la sesión.",
+      "warmup": "Calentar 1–2 min antes"
     },
     "deleteSession": {
       "title": "Eliminar sesión",
@@ -1961,7 +1962,14 @@
       "backToList": "Volver a los ejercicios",
       "finish": "Terminar",
       "tapToResume": "Toca para reanudar",
-      "skipConfirm": "Toca otra vez para saltar"
+      "skipConfirm": "Toca otra vez para saltar",
+      "shortMinutes": "1–2 min",
+      "lengthLabel": "Duración",
+      "lengthFull": "Completa · {min} min",
+      "lengthShort": "Corta · 1–2 min",
+      "adaptLabel": "Adaptar el ejercicio",
+      "seatedLabel": "Sentado",
+      "compactLabel": "Poco espacio"
     },
     "label": {
       "up": "Sube",
@@ -1998,8 +2006,27 @@
     "reflect": {
       "eyebrow": "Un momento",
       "title": "Dos preguntas, sin prisa",
-      "lead": "Sin escribir nada: solo tómate un momento con estas dos preguntas.",
-      "continue": "Continuar"
+      "lead": "Tómate un momento con estas dos preguntas. Si quieres, escribe lo que notaste.",
+      "continue": "Continuar",
+      "private": "Solo tú puedes verlas.",
+      "skip": "Continuar sin guardar",
+      "save": "Guardar",
+      "saving": "Guardando…",
+      "saved": "Guardado. Solo tú puedes verlo."
+    },
+    "reflections": {
+      "title": "Tus reflexiones",
+      "private": "Solo tú puedes verlas.",
+      "empty": "Aún no has guardado reflexiones de este ejercicio.",
+      "delete": "Eliminar reflexión",
+      "deleteTitle": "¿Eliminar esta reflexión?",
+      "deleteBody": "Se borrará de forma permanente. No se puede deshacer.",
+      "deleteConfirm": "Eliminar",
+      "deleteCancel": "Cancelar",
+      "deleteFailed": "No se pudo eliminar. Inténtalo de nuevo."
+    },
+    "entry": {
+      "label": "Movimiento Sensorial · {min} min"
     },
     "synced": {
       "listen": "Cierra los ojos y escucha",

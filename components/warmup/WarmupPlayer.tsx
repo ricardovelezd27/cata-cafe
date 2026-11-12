@@ -4,14 +4,15 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, use
 import { createPortal } from "react-dom";
 import { Armchair, ChevronDown, ChevronLeft, ChevronRight, Pause, Play, Settings2, ShieldCheck, Volume2, VolumeX, X } from "lucide-react";
 import { WARMUP_SHARED, lw, type WarmupExercise } from "@/lib/warmup/exercises";
-import { buildExerciseTimeline, poseInSegment, segmentAt, sequenceMap, stepSegments } from "@/lib/warmup/timeline";
-import { arrivePhaseAt, halo as haloAt } from "@/lib/warmup/breath";
+import { buildExerciseTimeline, exerciseForLength, poseInSegment, segmentAt, sequenceMap, stepSegments } from "@/lib/warmup/timeline";
+import { ARRIVE_PLAN, ARRIVE_PLAN_SHORT, arrivePhaseAt, halo as haloAt } from "@/lib/warmup/breath";
 import { partTransforms, passedDots, torsoBreathTransform } from "@/lib/warmup/poses";
 import { previewSpec } from "@/lib/warmup/preview";
 import { RESUME_WAIT_MS, audioResumeDecision } from "@/lib/warmup/audioResume";
 import { shouldResync } from "@/lib/warmup/syncedRun";
 import { skipNeedsConfirm, type WarmupExitInfo } from "@/lib/warmup/overlayGate";
-import type { NarrationSource, Pose, Segment } from "@/lib/warmup/timelineTypes";
+import { REFLECTION_MAX } from "@/lib/warmup/reflections";
+import type { NarrationSource, Pose, Segment, TimelineLength } from "@/lib/warmup/timelineTypes";
 import { useRunClock } from "@/hooks/useRunClock";
 import { useWarmupAudio } from "@/hooks/useWarmupAudio";
 import { useWakeLock } from "@/hooks/useWakeLock";
@@ -34,6 +35,16 @@ export interface WarmupPlayerProps {
   /** library: intro → run → reflect → done. session: intro → run (+bridge) → onFinish.
    *  synced: like session, started by the host; the player opens seeked. */
   mode?: WarmupPlayerMode;
+  /** Run length (S10 WP7, Kim F4/B7). "short" is 1-2 minutes with no reflect
+   *  phase. The synced run ignores it (everyone follows the master's full
+   *  timeline). With `lengthChoice` it is only the initial choice. */
+  length?: TimelineLength;
+  /** Show the "Completa / Corta" choice on the intro screen (library page). */
+  lengthChoice?: boolean;
+  /** Library mode: saves the two reflection answers (the host calls the server
+   *  action and toasts a failure). Resolves true when saved. Absent = the
+   *  reflect phase only shows the questions, as before. */
+  onSaveReflection?: (answers: { feel: string; discovery: string }) => Promise<boolean>;
   /** Final screen's button / end of the bridge. */
   onFinish?: () => void;
   /** × "Saltar ejercicio" / "Cerrar" / Escape — the person leaves early. */
@@ -63,10 +74,13 @@ const CHROME_HIDE_MS = 4000;
 const subscribeNoop = () => () => {};
 
 export function WarmupPlayer({
-  exercise,
+  exercise: exerciseProp,
   locale,
   t,
   mode = "library",
+  length: lengthProp = "full",
+  lengthChoice = false,
+  onSaveReflection,
   onFinish,
   onExit,
   inline = false,
@@ -81,12 +95,23 @@ export function WarmupPlayer({
   const [accessible, setAccessible] = useLocalFlag("cata_warmup_numeral", false);
   const [largeText, setLargeText] = useLocalFlag("cata_warmup_largetext", false);
   const [still, setStill] = useLocalFlag("cata_warmup_still", false);
+  const [seatedFlag, setSeatedFlag] = useLocalFlag("cata_warmup_seated", false);
+  const [compactFlag, setCompactFlag] = useLocalFlag("cata_warmup_compact", false);
   const synced = mode === "synced";
   const sessionLike = mode !== "library";
+  const [lengthChoiceState, setLengthChoiceState] = useState<TimelineLength>(lengthProp);
+  // The synced run is always the full version, with neither option (everyone
+  // follows the master's timeline).
+  const length: TimelineLength = synced ? "full" : lengthChoiceState;
+  const seated = !synced && seatedFlag && !!exerciseProp.seated;
+  const compact = !synced && compactFlag;
+  // The exercise as this length plays it (the short version keeps its first steps).
+  const exercise = useMemo(() => exerciseForLength(exerciseProp, length), [exerciseProp, length]);
+  const arrivePlan = length === "short" ? ARRIVE_PLAN_SHORT : ARRIVE_PLAN;
 
   const tl = useMemo(
-    () => buildExerciseTimeline(exercise, { mode: sessionLike ? "session" : "library" }),
-    [exercise, sessionLike],
+    () => buildExerciseTimeline(exercise, { mode: sessionLike ? "session" : "library", length, compact }),
+    [exercise, sessionLike, length, compact],
   );
   const steps = exercise.steps;
   const total = steps.length;
@@ -94,6 +119,11 @@ export function WarmupPlayer({
 
   const [phase, setPhase] = useState<Phase>(seekToMs != null ? "run" : "intro");
   const [runKey, setRunKey] = useState(0);
+  // Reflect phase (library mode, full version): the two optional answers.
+  const [feel, setFeel] = useState("");
+  const [discovery, setDiscovery] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [savedNote, setSavedNote] = useState(false);
 
   // ── Clock ─────────────────────────────────────────────────────────────
   const clock = useRunClock(tl.totalMs, {
@@ -102,7 +132,7 @@ export function WarmupPlayer({
     pauseOnHide: !synced,
     onDone: () => {
       if (sessionLike) onFinish?.();
-      else setPhase("reflect");
+      else setPhase(length === "short" ? "done" : "reflect");
     },
   });
   const { elapsedMs, setStopAt: setClockStopAt, seek: clockSeek, runId } = clock;
@@ -226,13 +256,13 @@ export function WarmupPlayer({
 
       // Breathing field (arrive).
       if (sg.kind === "arrive" && fieldRef.current) {
-        const ap = arrivePhaseAt(elapsed);
-        if (ap.phase === "breath" && ap.breath) fieldRef.current.draw(ap.breath.scale, haloAt(elapsed - 6000), elapsed);
+        const ap = arrivePhaseAt(elapsed, arrivePlan);
+        if (ap.phase === "breath" && ap.breath) fieldRef.current.draw(ap.breath.scale, haloAt(elapsed - arrivePlan.postureMs), elapsed);
         else fieldRef.current.draw(0.62, 0.25, elapsed);
       }
       return { i, u, local, sg };
     },
-    [tl, reducedMotion, pathSeg],
+    [tl, reducedMotion, pathSeg, arrivePlan],
   );
 
   // Segment-level reactions (edge-detected by the loop and by the layout paint).
@@ -265,6 +295,19 @@ export function WarmupPlayer({
   // ── Voice: every segment is narrated (lib/warmup/timeline.ts narrations) ──
   // Resolved here because step texts live in the exercise and the rest in
   // the chrome strings. Read through a ref so the loop never re-subscribes.
+  // The posture line of the arrival: the seated substitution (standing
+  // exercise only) and the "Poco espacio" sentence are both applied here, so
+  // the text on screen and the voice always agree.
+  const postureLine = useMemo(() => {
+    const base =
+      exercise.posture === "standing"
+        ? seated && exerciseProp.seated
+          ? lw(exerciseProp.seated.arrivePosture, locale)
+          : t.arrivePostureStanding
+        : t.arrivePosture;
+    return compact ? `${base} ${lw(WARMUP_SHARED.compactLine, locale)}` : base;
+  }, [exercise.posture, exerciseProp.seated, seated, compact, locale, t.arrivePosture, t.arrivePostureStanding]);
+
   const narrationText = useCallback(
     (src: NarrationSource): string => {
       switch (src.kind) {
@@ -275,7 +318,7 @@ export function WarmupPlayer({
         case "chrome":
           return src.cue === "stop" ? t.cueStop : src.cue === "return" ? t.cueReturn : t.cueOtherSide;
         case "arrive":
-          return src.phase === "notice" ? t.arriveNotice : exercise.posture === "standing" ? t.arrivePostureStanding : t.arrivePosture;
+          return src.phase === "notice" ? t.arriveNotice : postureLine;
         case "breath":
           return src.dir === "in" ? (src.first ? t.breathInFirst : t.breathIn) : src.first ? t.breathOutFirst : t.breathOut;
         case "closing":
@@ -286,7 +329,7 @@ export function WarmupPlayer({
           return t.bridge;
       }
     },
-    [steps, locale, t, exercise.posture],
+    [steps, locale, t, postureLine],
   );
   const voiceOn = phase === "run" && audio.voice && audio.voiceAvailable && !synced;
   const narrateRef = useRef<(elapsed: number) => void>(() => {});
@@ -337,7 +380,7 @@ export function WarmupPlayer({
         const st = tl.secondaryTexts.find((x) => elapsed >= x.fromMs && elapsed < x.untilMs);
         setSecondaryIdx((cur) => (cur === (st?.stepIdx ?? null) ? cur : (st?.stepIdx ?? null)));
         if (sg.kind === "arrive") {
-          const ap = arrivePhaseAt(elapsed);
+          const ap = arrivePhaseAt(elapsed, arrivePlan);
           const next =
             ap.phase === "breath" && ap.breath
               ? ap.breath.phase === "in"
@@ -369,7 +412,7 @@ export function WarmupPlayer({
       cancelAnimationFrame(raf);
       clearInterval(fallback);
     };
-  }, [running, elapsedMs, tl, paint, onSegmentChange, accessible, reducedMotion, t, audio]);
+  }, [running, elapsedMs, tl, paint, onSegmentChange, accessible, reducedMotion, t, audio, arrivePlan]);
 
   // Paint once on mount / segment change / pause / seek (StrictMode-safe).
   useLayoutEffect(() => {
@@ -498,6 +541,9 @@ export function WarmupPlayer({
   // ── Navigation ────────────────────────────────────────────────────────
   const start = useCallback(() => {
     audio.unlock();
+    setFeel("");
+    setDiscovery("");
+    setSavedNote(false);
     lastSegRef.current = 0;
     setSegIdx(0);
     setRunKey((k) => k + 1);
@@ -516,11 +562,11 @@ export function WarmupPlayer({
     if (target >= tl.totalMs) {
       clock.seek(tl.totalMs, { play: false });
       if (sessionLike) onFinish?.();
-      else setPhase("reflect");
+      else setPhase(length === "short" ? "done" : "reflect");
       return;
     }
     clock.seek(target, { play: true });
-  }, [phase, start, tl, segIdx, total, clock, sessionLike, onFinish]);
+  }, [phase, start, tl, segIdx, total, clock, sessionLike, onFinish, length]);
 
   const goPrev = useCallback(() => {
     if (phase !== "run") return;
@@ -686,11 +732,9 @@ export function WarmupPlayer({
   const labels = t.labels;
   const stepText = step ? lw(step.text, locale) : "";
   const cueText = isArrive
-    ? arrivePhaseAt(clock.elapsedMs()).phase === "posture"
-      ? exercise.posture === "standing"
-        ? t.arrivePostureStanding
-        : t.arrivePosture
-      : arrivePhaseAt(clock.elapsedMs()).phase === "notice"
+    ? arrivePhaseAt(clock.elapsedMs(), arrivePlan).phase === "posture"
+      ? postureLine
+      : arrivePhaseAt(clock.elapsedMs(), arrivePlan).phase === "notice"
         ? t.arriveNotice
         : "" // the bubble carries "Toma aire / Suelta"
     : isClosing
@@ -820,6 +864,15 @@ export function WarmupPlayer({
         {phase === "intro" && (
           <IntroScreen
             exercise={exercise}
+            seatedTexts={exerciseProp.seated ?? null}
+            lengthChoice={lengthChoice && !synced}
+            length={length}
+            setLength={setLengthChoiceState}
+            fullMinutes={exerciseProp.durationMin}
+            seated={seated}
+            setSeated={setSeatedFlag}
+            compact={compact}
+            setCompact={setCompactFlag}
             locale={locale}
             t={t}
             evolution={evolution}
@@ -884,22 +937,68 @@ export function WarmupPlayer({
         {phase === "reflect" && (
           <form
             className={s.reflect}
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
-              setPhase("done");
+              if (saving) return;
+              const hasText = feel.trim() !== "" || discovery.trim() !== "";
+              if (!onSaveReflection || !hasText) {
+                setPhase("done");
+                return;
+              }
+              setSaving(true);
+              let ok = false;
+              try {
+                ok = await onSaveReflection({ feel: feel.trim(), discovery: discovery.trim() });
+              } finally {
+                setSaving(false);
+              }
+              // A failed save keeps the text on screen (the host toasts why).
+              if (ok) {
+                setSavedNote(true);
+                setPhase("done");
+              }
             }}
           >
             <h2 className={s.title}>{t.reflectTitle}</h2>
             <p className={s.muted}>{t.reflectLead}</p>
             {exercise.closing.map((q, i) => (
               <div key={i} className={s.field}>
-                <p className={s.question}>{lw(q, locale)}</p>
+                {onSaveReflection ? (
+                  <label className={s.question} htmlFor={`wu-reflect-${i}`}>
+                    {lw(q, locale)}
+                  </label>
+                ) : (
+                  <p className={s.question}>{lw(q, locale)}</p>
+                )}
+                {onSaveReflection && (
+                  <textarea
+                    id={`wu-reflect-${i}`}
+                    className={s.textarea}
+                    rows={3}
+                    maxLength={REFLECTION_MAX}
+                    value={i === 0 ? feel : discovery}
+                    onChange={(e) => (i === 0 ? setFeel(e.target.value) : setDiscovery(e.target.value))}
+                    disabled={saving}
+                  />
+                )}
               </div>
             ))}
+            {onSaveReflection && <p className={s.muted}>{t.reflectPrivate}</p>}
             <div className={s.reflectActions}>
-              <button type="submit" className={s.primaryBtn}>
-                {t.reflectContinue}
-              </button>
+              {onSaveReflection ? (
+                <>
+                  <button type="button" className={s.ghostBtn} onClick={() => setPhase("done")} disabled={saving}>
+                    {t.reflectSkip}
+                  </button>
+                  <button type="submit" className={s.primaryBtn} disabled={saving}>
+                    {saving ? t.reflectSaving : t.reflectSave}
+                  </button>
+                </>
+              ) : (
+                <button type="submit" className={s.primaryBtn}>
+                  {t.reflectContinue}
+                </button>
+              )}
             </div>
           </form>
         )}
@@ -908,6 +1007,7 @@ export function WarmupPlayer({
           <>
             <h2 className={s.title}>{t.doneTitle}</h2>
             <p className={s.lead}>{t.doneBody}</p>
+            {savedNote && <p className={s.muted}>{t.reflectSaved}</p>}
             {tl.doneObserveIdx.length > 0 && (
               <>
                 <p className={s.kicker}>{t.noticedTitle}</p>
@@ -982,6 +1082,15 @@ export function WarmupPlayer({
 
 function IntroScreen({
   exercise,
+  seatedTexts,
+  lengthChoice,
+  length,
+  setLength,
+  fullMinutes,
+  seated,
+  setSeated,
+  compact,
+  setCompact,
   locale,
   t,
   evolution,
@@ -998,6 +1107,15 @@ function IntroScreen({
   wakeDenied,
 }: {
   exercise: WarmupExercise;
+  seatedTexts: WarmupExercise["seated"] | null;
+  lengthChoice: boolean;
+  length: TimelineLength;
+  setLength: (l: TimelineLength) => void;
+  fullMinutes: number;
+  seated: boolean;
+  setSeated: (v: boolean) => void;
+  compact: boolean;
+  setCompact: (v: boolean) => void;
   locale: string;
   t: WarmupPlayerStrings;
   evolution: string[];
@@ -1018,9 +1136,9 @@ function IntroScreen({
     <div className={s.intro}>
       <header className={s.introHead}>
         <div className={s.pills} aria-hidden>
-          <span className={s.pill}>{fill(t.minutes, { min: exercise.durationMin })}</span>
+          <span className={s.pill}>{length === "short" ? t.shortMinutes : fill(t.minutes, { min: fullMinutes })}</span>
           <span className={s.pill}>{fill(t.stepsCount, { count: total })}</span>
-          <span className={s.pill}>{lw(WARMUP_SHARED.posture[exercise.posture], locale)}</span>
+          <span className={s.pill}>{lw(seated ? WARMUP_SHARED.posture.seated : WARMUP_SHARED.posture[exercise.posture], locale)}</span>
         </div>
         <h1 className={s.title}>{lw(exercise.name, locale)}</h1>
         <p className={s.lead}>{lw(exercise.purpose, locale)}</p>
@@ -1044,7 +1162,7 @@ function IntroScreen({
           <Armchair size={18} className={s.cardIcon} aria-hidden />
           <div>
             <p className={s.cardTitle}>{t.postureLabel}</p>
-            <p className={s.cardBody}>{lw(exercise.postureText, locale)}</p>
+            <p className={s.cardBody}>{lw(seated && seatedTexts ? seatedTexts.postureText : exercise.postureText, locale)}</p>
           </div>
         </section>
         <section className={[s.card, s.cardSafety].join(" ")}>
@@ -1055,6 +1173,44 @@ function IntroScreen({
           </div>
         </section>
       </div>
+
+      {/* Run length (library page): full or the 1-2 minute version. */}
+      {lengthChoice && (
+        <section aria-label={t.lengthLabel}>
+          <p className={s.kicker}>{t.lengthLabel}</p>
+          <div className={s.segRow} role="radiogroup" aria-label={t.lengthLabel}>
+            {(["full", "short"] as const).map((l) => (
+              <button
+                key={l}
+                type="button"
+                role="radio"
+                aria-checked={length === l}
+                className={[s.seg, length === l ? s.segOn : ""].join(" ")}
+                onClick={() => setLength(l)}
+              >
+                {l === "full" ? fill(t.lengthFull, { min: fullMinutes }) : t.lengthShort}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Two optional substitutions (S10 WP7, Kim F5), both off by default and
+          remembered on this device. Same timing, same choreography. */}
+      <section aria-label={t.adaptLabel}>
+        <p className={s.kicker}>{t.adaptLabel}</p>
+        <div className={s.chipRow}>
+          {seatedTexts && (
+            <button type="button" aria-pressed={seated} className={[s.toggleChip, seated ? s.toggleChipOn : ""].join(" ")} onClick={() => setSeated(!seated)}>
+              {t.seatedLabel}
+            </button>
+          )}
+          <button type="button" aria-pressed={compact} className={[s.toggleChip, compact ? s.toggleChipOn : ""].join(" ")} onClick={() => setCompact(!compact)}>
+            {t.compactLabel}
+          </button>
+        </div>
+        {compact && <p className={[s.muted, s.note].join(" ")}>{lw(WARMUP_SHARED.compactLine, locale)}</p>}
+      </section>
 
       {/* Kim's evolution: fast with eyes open → slow → slow with eyes closed. */}
       <section aria-label={t.evolutionLabel}>

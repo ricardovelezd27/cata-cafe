@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { warmupById, lw } from "@/lib/warmup/exercises";
 import { seenMomentValue } from "@/lib/sessionMoments";
 import { exitMarksSeen, shouldShowWarmupOverlay } from "@/lib/warmup/overlayGate";
@@ -23,6 +23,9 @@ export interface WarmupMomentProps {
   /** Extra gate from the host (e.g. session not closed). */
   enabled?: boolean;
   strings: WarmupPlayerStrings;
+  /** Tells the host whether the interstitial is on screen (the discreet
+   *  entry, WarmupEntry, is hidden while it is). */
+  onOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -48,6 +51,7 @@ export function WarmupMoment({
   startedAt = false,
   enabled = true,
   strings,
+  onOpenChange,
 }: WarmupMomentProps) {
   const [frozen] = useState(() => {
     const id = exerciseId ?? null;
@@ -72,6 +76,9 @@ export function WarmupMoment({
     value: frozen.id ?? "",
     when: frozen.show && exercise !== null,
   });
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
   if (!exercise) return null;
   return (
     <SessionMomentOverlay open={open} label={lw(exercise.name, locale)}>

@@ -81,6 +81,21 @@ export interface WarmupPlayerStrings {
   tapToResume: string;
   /** Second tap on "Saltar ejercicio" once the exercise would count as seen. */
   skipConfirm: string;
+  /* S10 WP7: run length, adaptations, saved reflections */
+  /** "1–2 min" (pill of the short version). */
+  shortMinutes: string;
+  lengthLabel: string;
+  /** "Completa · {min} min" */
+  lengthFull: string;
+  lengthShort: string;
+  adaptLabel: string;
+  seatedLabel: string;
+  compactLabel: string;
+  reflectPrivate: string;
+  reflectSkip: string;
+  reflectSave: string;
+  reflectSaving: string;
+  reflectSaved: string;
 }
 
 const LABEL_KEYS: SegmentLabel[] = [
@@ -165,5 +180,17 @@ export function warmupPlayerStrings(t: T): WarmupPlayerStrings {
     finish: t("player.finish"),
     tapToResume: t("player.tapToResume"),
     skipConfirm: t("player.skipConfirm"),
+    shortMinutes: t("player.shortMinutes"),
+    lengthLabel: t("player.lengthLabel"),
+    lengthFull: t.raw("player.lengthFull"),
+    lengthShort: t("player.lengthShort"),
+    adaptLabel: t("player.adaptLabel"),
+    seatedLabel: t("player.seatedLabel"),
+    compactLabel: t("player.compactLabel"),
+    reflectPrivate: t("reflect.private"),
+    reflectSkip: t("reflect.skip"),
+    reflectSave: t("reflect.save"),
+    reflectSaving: t("reflect.saving"),
+    reflectSaved: t("reflect.saved"),
   };
 }

@@ -103,6 +103,10 @@ export interface WarmupExercise {
   readonly purpose: Localized;
   readonly posture: WarmupPosture;
   readonly postureText: Localized;
+  /** Only for an exercise whose `posture` is "standing" (S10 WP7, Kim F5): the
+   *  texts shown/spoken when the person picks the "Sentado" option on the
+   *  intro screen. Same choreography, a seated posture line. */
+  readonly seated?: { readonly postureText: Localized; readonly arrivePosture: Localized };
   /** Kim's approximate total minutes (includes breathing room; the sum of
    *  step durations is shorter). */
   readonly durationMin: number;
@@ -139,6 +143,16 @@ export const WARMUP_CLOSING_HOLD_SEC = 30;
 export const WARMUP_LEG_SEC = 15;
 /** "Para tres segundos" — the hold at the end of a leg. */
 export const WARMUP_HOLD_SEC = 3;
+
+// The short version, 1-2 minutes (S10 WP7, Kim F4 / B7). Its arrival is the
+// posture line + ONE breath cycle (lib/warmup/breath.ts ARRIVE_PLAN_SHORT).
+/** Seconds of arrival in the short version. */
+export const WARMUP_SHORT_ARRIVE_SEC = 15;
+/** Seconds of closing stillness in the short version. */
+export const WARMUP_SHORT_CLOSING_SEC = 15;
+/** The short version takes the exercise's first steps, in order, while their
+ *  running time (read beats included) stays within this many seconds. */
+export const WARMUP_SHORT_STEP_BUDGET_SEC = 75;
 
 /** EN column status — surfaced in the dev review page and the PR, never to
  *  end users. Flip to "reviewed" once Kim signs the English off. */
@@ -199,6 +213,14 @@ export const WARMUP_SHARED = {
     },
     questions: CLOSING,
   },
+  /** "Poco espacio" option (S10 WP7, Kim F5): every movement is drawn with the
+   *  existing small amplitude, the timing does not change. This one line is
+   *  shown on the intro and added to the arrival narration (read aloud, so
+   *  keep it short). TODO(kim-validar:F5): simulated answer, awaiting Kim. */
+  compactLine: {
+    es: "Haz el mismo movimiento, más pequeño.",
+    en: "Make the same movement, only smaller.",
+  } satisfies Localized,
   posture: {
     seated: { es: "Sentado", en: "Seated" },
     standing: { es: "De pie o sentado", en: "Standing or seated" },
@@ -224,6 +246,17 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
     postureText: {
       es: "De pie o sentado, con un brazo colgando relajado al lado del cuerpo.",
       en: "Standing or seated, with one arm hanging relaxed by your side.",
+    },
+    // TODO(kim-validar:F5): seated substitution texts are a simulated answer, awaiting Kim.
+    seated: {
+      postureText: {
+        es: "Sentado en una silla firme, espalda apoyada, pies planos en el suelo, con un brazo colgando relajado al lado del cuerpo.",
+        en: "Seated on a firm chair, back supported, feet flat on the floor, with one arm hanging relaxed by your side.",
+      },
+      arrivePosture: {
+        es: "Vamos a empezar respirando. Sentado, pies en el suelo, un brazo cuelga suelto a tu lado.",
+        en: "Let's begin by breathing. Seated, feet on the floor, one arm hanging loose at your side.",
+      },
     },
     durationMin: 3,
     figureKind: "arm-raise",
