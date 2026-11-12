@@ -347,7 +347,7 @@ All writes go through `app/actions/`. Call `revalidatePath()` after mutations to
 - The **PostgreSQL trigger** `trg_recompute_aggregate` is the single source of truth for community scores. It fires `AFTER INSERT OR UPDATE OF "isDraft"` on `evaluations` when `isDraft=false` and writes to `aggregate_scores`.
 - TypeScript `calcCommunityScore()` in `lib/scoring.ts` is **display-only** — never store its result.
 - `prisma/sql/rls_and_triggers.sql` must be applied **manually** via the Supabase dashboard SQL editor. Prisma migrate does NOT apply triggers or functions.
-- `attrAverages` JSONB column on `AggregateScore` is populated alongside the score (section-level community averages); the exclude-participant path re-fires the recompute so penalties and `attrAverages` exclude removed cuppers.
+- `attrAverages` JSONB column on `AggregateScore` is populated alongside the score (section-level community averages); the exclude-participant path re-fires the recompute so penalties, pooled cups and `attrAverages` exclude removed cuppers.
 
 ### Offline-First Pattern
 - The offline draft store (`lib/offline/store.ts`) wraps **localforage/IndexedDB** and is **client-only**. It is accessed through a lazy `instance()` getter that returns `null` during SSR, so an accidental server import degrades to a no-op instead of crashing. **Never import `lib/offline/store` from a Server Component or server action.**
@@ -436,7 +436,7 @@ Cupping form components are fully controlled. State is lifted to `CupClient`, wh
 | `Profile` | User account (id = Supabase user UUID); `role`, `country`, `onboardingCompleted` |
 | `CuppingSession` | A cupping event (format, date, status, isGroup, isAsync, closesAt, cupsPerSample); `referenceSampleId → SessionSample` (SetNull; display-only "Referencia", Δ via `lib/referenceDelta.ts`); `warmupStartedAt` — master-led synced warm-up run (PR3) |
 | `SessionSample` | A coffee sample within a session (position, label, revealed, coffeeId); `referencedBy` — back-relation from `CuppingSession.referenceSampleId` (at most one session per sample) |
-| `Evaluation` | A cupper's score for one sample (JSON data + computed scores, isDraft, submittedAt) |
+| `Evaluation` | A cupper's score for one sample (JSON data + computed scores, isDraft, submittedAt; `cups` = cups it covers, S10 WP1a) |
 | `PhysicalEvaluation` | Green bean assessment for a sample (pre-reveal) |
 | `ExtrinsicData` | Origin/processing info revealed post-tasting |
 | `Coffee` | Coffee product reference data; `code` — unique 6-char short code (`lib/coffeeCode.ts`), stamped at every create path |
@@ -455,36 +455,42 @@ Cupping form components are fully controlled. State is lifted to `CupClient`, wh
 
 The SCA CVA scoring formula is implemented in `lib/scoring.ts`. **Do not reimplement it.**
 
-### Individual Score (per cupper)
+### The deduction rule (S10 WP1a — one formula, three scopes)
+The score that existed before S8 was right in principle and had bugs; S8-04 removed the deductions below five cups instead of fixing them. This goes back to the principle (flagged cups cost points at ANY cup count, and everyone's cups share the deduction) and fixes three bugs: (1) a cupper with fewer than five cups saw no deduction in their stored score; (2) with fewer than five pooled cups the stored group score amplified the deduction (1 defective cup of 2 cost 20); (3) a defective cup was counted twice in the group (8 points for 1 of 5; the CVA and the individual score say 6). It is not a new scoring system. Spec: `docs/product/cata-descentralizada-puntaje.md`.
+
 ```
-S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
+S                 = 0.65625 × Σhᵢ + 52.75 − uniformityPenalty − defectPenalty        (rounded to 0.25, clamped 0..100)
+factor            = 5 ÷ max(5, cups)
+uniformityPenalty = 2 × nonUniform × factor
+defectPenalty     = 4 × defective  × factor
 ```
 - `hᵢ` — final value (1–9) for each of 8 affective attributes
-- `u` — non-uniform cups (penalized only when ≥5 cups per sample)
-- `d` — defective cups (penalized only when ≥5 cups per sample)
+- `nonUniform` / `defective` — flagged cups, counted independently from the two arrays and clamped to the evaluation's cups (`evaluationCupCounts`). A defective cup is ALSO flagged non-uniform by `AffectiveForm`/`CombinedForm`, so it sits in both arrays and costs 4 + 2 = 6. Never more than 6 per flagged cup.
+- Non-uniformity exists only for an evaluation with 2 or more cups: with 1 cup it is neither counted nor deducted (a defective cup costs 4).
+- `cups` — **individual scope:** that evaluation's cups (never more than five, so the factor is 1: the flat CVA deduction). **Session (group) scope:** the SUM over the INCLUDED evaluations of their cups, flags summed over the same evaluations: flat up to five pooled cups, diluted beyond. **Coffee lifetime scope:** every cup of that coffee across the sessions that count; arrives in a later S10 PR (computed at read time, never by the trigger).
+- `cupDeduction({ cups, nonUniform, defective })` and `evaluationCupCounts(nonUniform, defective, cups)` in `lib/scoring.ts` are the only implementation: `calcIndividualBreakdown`, `computeGroupAggregate`, `calcCommunityScore`, the results page, `fichaTecnica` and the CSV/PDF all read them. There is no `MIN_CUPS_FOR_PENALTIES` / `penaltiesApply` gate any more and no formula copy anywhere else.
+- `Evaluation.cups` (migration `20261113090000_evaluation_cups`, nullable) is the number of cups an evaluation covers, written by `computeEvaluationDerived` on every save (live and offline replay); NULL only for rows older than the backfill, which the trigger reads as the session's `cupsPerSample`.
+- Scores stored before the deploy were computed under older rules and are NOT recomputed (owner's decision); PHASE 23 STEP 2 and `scripts/resync-low-cup-history.ts` are CANCELLED and must never run. TODO(kim-validar:A1): the answers behind this rule are simulated and await Kim.
 
-Functions: `calcAffectiveSum()`, `calcRawScore()`, `calcIndividualScore()` — all exported from `lib/scoring.ts`.
-
-**Decided, NOT built (2026-11-12):** the owner replaced the "no deductions under five cups" rule; see `docs/product/cata-descentralizada-puntaje.md` (work: `docs/prompts/S10-kim-answers.md`). Until that lands, this section describes the code.
+Functions: `calcAffectiveSum()`, `calcRawScore()`, `calcIndividualScore()` / `calcIndividualBreakdown()` — all exported from `lib/scoring.ts`. The live total in the cup forms (`calculateCVAScore`) is a separate helper that a later S10 PR removes.
 
 ### Community Score (group sessions — trigger-authoritative)
 ```
-uniformityPenalty = totalNonUniform × (10 / totalCups)
-defectPenalty     = totalDefective  × (30 / totalCups)
+totalCups         = Σ cups over the INCLUDED evaluations          (evaluations.cups, else the session's cupsPerSample)
+uniformityPenalty = 2 × Σ nonUniform × 5 ÷ max(5, totalCups)
+defectPenalty     = 4 × Σ defective  × 5 ÷ max(5, totalCups)
 communityScore    = avgRawScore − uniformityPenalty − defectPenalty
 ```
-- `totalNonUniform` — ALL cups marked non-uniform, defective ones included (marking a cup defective also marks it non-uniform in `AffectiveForm`/`CombinedForm`, so a defective cup is in both arrays and costs 40/`totalCups` here, versus 6 in the individual score)
-- `totalDefective` — all cups marked defective
-- `totalCups` = `cupsPerSample × participantCount`
-- Computed by PostgreSQL trigger `trg_recompute_aggregate` on `evaluations` table; written to `aggregate_scores`
-- TypeScript function `calcCommunityScore()` in `lib/scoring.ts` is **display-only** — trigger result is authoritative
+- `totalNonUniform` — non-uniform cups of evaluations with 2+ cups, defective ones included (a defective cup is in both arrays and costs 6, same as the individual score)
+- `totalDefective` — defective cups
+- Both are summed per evaluation after clamping to that evaluation's cups.
+- Computed by PostgreSQL trigger `trg_recompute_aggregate` on `evaluations` table (function re-issued by **PHASE 26**); written to `aggregate_scores`
+- TypeScript function `calcCommunityScore()` in `lib/scoring.ts` is **display-only** — trigger result is authoritative; `tests/scoringConsistency.test.ts` ports the SQL arithmetic (same operation order, 15-digit numeric cast) and `tests/db/aggregate.dbtest.ts` runs the real trigger against `computeGroupAggregate` at every cup count 1–8. Change SQL and port in one commit.
 
-Verification: 2 participants, cupsPerSample=5, 1 uOnly cup → uniformityPenalty = 1×(10/10) = 1.0 ✓
+Verification: 2 participants, cupsPerSample=5, 1 non-uniform-only cup → uniformityPenalty = 2×1×(5/10) = 1.0 ✓. 1 person with 2 cups, 1 defective → −6; 4 people × 2 cups, 1 defective → mine −6, session −3.75 (6 × 5/8).
 
-### One score below five cups (S8-04)
-**Superseded by a decision, not yet by code (2026-11-12):** `docs/product/cata-descentralizada-puntaje.md` replaces this rule (deductions at any cup count, at most 6 per cup, diluted only beyond five pooled cups, plus a coffee lifetime score). Nothing of it is built; PHASE 23 step 2 is cancelled. What follows is what the code does today.
-
-Uniformity and defect deductions exist ONLY from `MIN_CUPS_FOR_PENALTIES = 5` cups per sample, everywhere: `penaltiesApply()` in `lib/scoring.ts` gates `calcIndividualBreakdown`, `computeGroupAggregate` and `calcCommunityScore`, and PHASE 23 re-issues `recompute_aggregate_score()` with `IF v_cups_per_sample >= 5 AND v_total_cups > 0`. The flags stay in the arrays below 5 cups and are ignored (`CupToggleGrid` keeps its "not scored" note). `tests/scoringConsistency.test.ts` ports the SQL arithmetic and must stay equal to the TypeScript side; change both in one commit. A submitted evaluation edited later (`upsertEvaluation`, `syncEvaluation`) ends with `updateMany(submittedRefireArgs(id))` (`lib/aggregateRefire.ts`) so the trigger re-fires; `closeSessionInternal` calls `refireAggregates` (`lib/aggregates.ts`) before the history sync. History: `communityScore` is null without an included evaluation, and sessions under 5 cups carry an "Impresión rápida" tag (`lib/historyRules.ts`). Open: TODO(A1) proportional deductions are NOT built.
+### Where the rule is applied and displayed
+A submitted evaluation edited later (`upsertEvaluation`, `syncEvaluation`) ends with `updateMany(submittedRefireArgs(id))` (`lib/aggregateRefire.ts`) so the trigger re-fires; `closeSessionInternal` calls `refireAggregates` (`lib/aggregates.ts`) before the history sync. History: `communityScore` is null without an included evaluation, and a "quick impression" is a session with exactly ONE cup per sample (`QUICK_IMPRESSION_CUPS`, `isQuickImpression` in `lib/historyRules.ts`; owner's decision 2026-11-12, display-only tag; TODO(kim-validar:A3)). `CupToggleGrid` always shows the hint "Tus tazas se suman a las del grupo…". The results breakdown (`ScoreBreakdownPanel`) prints the STORED group penalties and shows the formula only when it reproduces them (rows stored under older rules print just the name).
 
 ### Consensus (SD)
 `computeGroupAggregate` also returns `scoreSd` — the population standard deviation (÷n) of the included cuppers' individual CVA totals, `null` when fewer than 2 evaluations are included. Display-only, like `communityScore`; the DB trigger is untouched. Shown as a neutral "± X.X" chip next to the community `ScorePill` in the Resumen ranking, and as a "DE" column in the owner's CVA matrix (`OwnerParticipantSection`, reusing its existing `rowStats`).

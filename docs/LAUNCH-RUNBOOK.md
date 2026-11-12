@@ -927,6 +927,11 @@ tables while the new code is deployed.
 
 ## §12. Supabase — apply PHASE 23 (one score below five cups, 2026-11, S8-04)
 
+> **STEP 1 was applied 2026-11-11. STEP 2 (steps 4–5 below, the recompute and the history
+> resync) is CANCELLED as of 2026-11-12 and must never run.** The rule of this section was
+> replaced by the flat deduction at any cup count: see §30 and
+> `docs/product/cata-descentralizada-puntaje.md`.
+
 **When:** any time after the deploy; the new app is correct without it for what users SEE
 (group results already ignored deductions under 5 cups), but the STORED score used by the
 coffee history and profile only changes once this is applied. No Prisma migration. Apply in the
@@ -1712,3 +1717,63 @@ two-line `CREATE POLICY "coffees_select" ON coffees FOR SELECT USING ("isPublic"
 the later `DROP POLICY IF EXISTS "coffees_select"` + `CREATE POLICY` pairs stay). The test harness
 applies the file statement by statement and tolerates exactly this one failure; it fails the run if
 a second statement fails or if this one stops failing.
+
+
+---
+
+## §30. The cup deduction at any cup count: migration, PHASE 26, deploy (2026-11, S10 WP1a)
+
+**Read this first.** The score that existed before S8 was right in principle and had bugs; this
+goes back to it (flagged cups cost points at any cup count, everyone's cups share the
+deduction) and fixes three bugs: a cupper under five cups saw no deduction, a group under five
+pooled cups had its stored deduction amplified, a defective cup was counted twice in the group.
+Spec: `docs/product/cata-descentralizada-puntaje.md`. **Scores stored before this deploy were
+computed under older rules and are NOT recomputed (owner's decision).** PHASE 23 STEP 2 (§12
+steps 4–5) and `scripts/resync-low-cup-history.ts` are CANCELLED and must never run.
+
+**Order, and why.** (1) migration, (2) dry run, (3) PHASE 26, (4) check, (5) merge and deploy.
+The new trigger reads `COALESCE(evaluations."cups", cupsPerSample)`, so it is correct under the
+OLD app code (which does not write `cups` yet) and under the new one: the stored value is right
+first, and the page, which recomputes the same rule in TypeScript, never disagrees with it in
+between. Doing the deploy before PHASE 26 would show the new rule on the page while the stored
+score (coffee history, profile) still follows the PHASE 23 rule until the next submit.
+
+**Steps** (Supabase SQL editor of the production project; there is only one)
+
+1. **Migration (adds the column, backfills it, fires no trigger).** From the checkout you
+   choose (`.env.local` IS production) run `npx prisma migrate deploy`. It applies
+   `20261113090000_evaluation_cups`: `ALTER TABLE "evaluations" ADD COLUMN "cups" INTEGER`, then
+   one `UPDATE` that sets `cups` from each session's `cupsPerSample`. The only trigger on
+   `evaluations` is `trg_recompute_aggregate` (`AFTER INSERT OR UPDATE OF "isDraft"`); the
+   backfill names only `cups`, so it does not fire and `aggregate_scores` is untouched.
+   Check: `select count(*) from evaluations where "cups" is null;` returns `0`.
+2. **Dry run** (fail-safe: one statement, nothing is applied). Open
+   `prisma/sql/dry-runs/phase26_dry_run.sql`, paste the whole file, run it. Expected: a red
+   error starting `PHASE 26 DRY RUN: NOTHING WAS APPLIED`. Read each numbered line:
+   - 1: how many `aggregate_scores` rows would change;
+   - 2: the same split by cups per sample (1 cup, 2 cups, 3-4 cups, 5+ cups);
+   - 3: the largest increase and decrease of `communityScore` (show them to the owner);
+   - 4: rows charging more than 6 points per flagged cup: must be `0`;
+   - 5: `proconfig` must be `{search_path=public}`.
+   If it says `evaluations.cups is missing`, redo step 1. Any OTHER error: stop and report;
+   nothing was applied either way.
+3. **Only on the owner's explicit yes**, run the PHASE 26 block of
+   `prisma/sql/rls_and_triggers.sql` (from the `DO $chk$` guard to the closing `$fn$;`). Expected:
+   `Success. No rows returned`. It re-issues the function; it does NOT recompute anything.
+4. **Verify (read-only):**
+
+   ```sql
+   select pg_get_functiondef('public.recompute_aggregate_score()'::regprocedure) like '%v_factor%';  -- t
+   select proconfig from pg_proc where proname = 'recompute_aggregate_score';  -- {search_path=public}
+   select count(*) from aggregate_scores where "computedAt" > now() - interval '10 minutes';  -- 0: nothing recomputed
+   ```
+
+   The last count may be non-zero only if someone submitted an evaluation in those minutes.
+5. **Merge and deploy** the PR. Smoke test with a throwaway solo session of 2 cups: mark one cup
+   defective and submit; the results page and the coffee history show the base minus 6.
+   Note: a tab left open across the deploy shows the reload notice (Next 16 action ids change
+   per build); drafts stay on the device.
+6. **Rollback.** Code: revert the PR (the `cups` column can stay, it is nullable and unread by
+   old code). Database: re-create the PHASE 23 function with the commented block at the end of
+   PHASE 26 in `rls_and_triggers.sql` (it is the exact previous body). Neither direction
+   touches stored scores.

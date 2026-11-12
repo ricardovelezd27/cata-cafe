@@ -1010,15 +1010,15 @@ When you touch any of these, update the matching diagram **in the same PR**:
 - Analytics scope, admin audit/masking, legal pages switch or waitlist consent fields → the S8-08 diagram above
 - Results page tab structure, gating (owner vs. participant), or the drill-down dialog → §5
 
-## Scoring below five cups (S8-04)
+## The cup deduction at any cup count (S10 WP1a; replaces S8-04)
 
-> **Decided, not built (2026-11-12):** `docs/product/cata-descentralizada-puntaje.md` replaces this rule (deductions at any cup count, at most 6 per cup, diluted only beyond five pooled cups, plus a coffee lifetime score). The description below is what the code does today.
+> The score that existed before S8 was right in principle and had bugs. This is that score with its three bugs fixed (spec: `docs/product/cata-descentralizada-puntaje.md`). It is not a new scoring system. The coffee lifetime score arrives in a later S10 PR.
 
 ```mermaid
 flowchart TD
-  A[Cupper submits or edits an evaluation] --> B{cupsPerSample >= 5?}
-  B -- yes --> C[Flags count: -2 per non-uniform, -4 per defective cup individually; 10/total and 30/total per cup in the community score]
-  B -- no --> D[Flags are stored but ignored: score comes from the 8 attributes only]
+  A[Cupper submits or edits an evaluation] --> B[computeEvaluationDerived stores cups, flags clamped to cups; no uniformity at 1 cup]
+  B --> C[Individual score: flat -2 per non-uniform, -4 per defective cup, a defective cup is both = -6, at most 5 cups so factor 1]
+  B --> D[Trigger trg_recompute_aggregate pools the INCLUDED evaluations: factor = 5 / max 5, pooled cups; -2 x U x factor, -4 x D x factor]
   C --> E[Trigger trg_recompute_aggregate writes aggregate_scores]
   D --> E
   F[Edit of an already submitted row] -->|guarded isDraft write| E
@@ -1029,4 +1029,4 @@ flowchart TD
   I -- no --> K[history communityScore = null, shown as a dash]
 ```
 
-The same `penaltiesApply` rule feeds the individual score, the group aggregate shown on results and the trigger, so a coffee never shows two scores. Sessions under five cups carry an "Impresión rápida" tag in history and on the coffee profile.
+The same `cupDeduction` / `evaluationCupCounts` rule (`lib/scoring.ts`) feeds the individual score, the group aggregate shown on results and, through its SQL twin (PHASE 26, reading `Evaluation.cups`), the trigger, so a coffee never shows two scores. A session of exactly one cup per sample carries an "Impresión rápida" tag in history and on the coffee profile. Scores stored before the deploy are not recomputed.
