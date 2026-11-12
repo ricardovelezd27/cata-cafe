@@ -63,6 +63,28 @@ export function generateUniqueCoffeeCodes(count: number): string[] {
 }
 
 /**
+ * Re-runs a WHOLE interactive transaction when it failed on a coffee `code`
+ * collision (S9-03, F-crear-sesion-9). `run` must generate fresh codes on every
+ * call. Any other error (including a P2002 on another column) rethrows at once;
+ * after `maxAttempts` collisions the last collision rethrows.
+ */
+export async function retryOnCodeCollision<T>(
+  run: () => Promise<T>,
+  maxAttempts = 5,
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      return await run();
+    } catch (err) {
+      if (!isCoffeeCodeCollision(err)) throw err;
+      lastError = err;
+    }
+  }
+  throw lastError;
+}
+
+/**
  * Runs a coffee create, retrying with a fresh code on a code collision. Any
  * other error rethrows immediately.
  *
@@ -71,7 +93,7 @@ export function generateUniqueCoffeeCodes(count: number): string[] {
  * Do NOT use inside an interactive `$transaction` on Postgres: the first
  * P2002 aborts the surrounding transaction (25P02 on every later statement),
  * so the retry can never succeed there — retry the whole transaction with
- * fresh codes instead (see resolveCoffees in app/actions/sessions.ts).
+ * fresh codes instead (see createCoffeesInTx + retryOnCodeCollision in app/actions/sessions.ts).
  */
 export async function withCodeRetry<T>(
   create: (code: string) => Promise<T>,
