@@ -175,8 +175,8 @@ export async function deleteAccountData(user: {
         where: { id: { in: inner.deleteGroupIds }, createdBy: userId },
       });
     }
-    // TODO(E3-Kim): transfer ownership. Until then a kept group stays
-    // readable for its members, but nobody can manage it.
+    // A kept group stays readable for its members, but nobody can manage it
+    // (no ownership transfer).
     await tx.tastingGroup.updateMany({
       where: { createdBy: userId },
       data: { createdBy: placeholderId },

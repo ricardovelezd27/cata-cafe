@@ -9,8 +9,6 @@
 // the `cupper` dimension.
 // User scope is untouched: a caller there only ever sees themselves and the
 // cuppers of sessions they own, which the results page already shows by name.
-//
-// TODO(D4): Kim to confirm (a/b/c); flip here.
 
 import { createHmac } from "node:crypto";
 import type { AnalyticsScope } from "./types";
