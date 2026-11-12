@@ -86,6 +86,7 @@ export async function loadSessionReportSource(
         combinedData: true,
         nonUniformCups: true,
         defectiveCups: true,
+        cups: true,
         cupper: { select: { displayName: true } },
       },
     }),
@@ -117,6 +118,7 @@ export async function loadSessionReportSource(
     combinedData: asObj(ev.combinedData),
     nonUniformCups: ev.nonUniformCups,
     defectiveCups: ev.defectiveCups,
+    cups: ev.cups,
   }));
 
   const samples = orderReferencesFirst(session.samples);
@@ -140,6 +142,7 @@ export async function loadSessionReportSource(
         data: format === "combined" ? ev.combinedData : ev.affectiveData,
         nonUniformCups: ev.nonUniformCups,
         defectiveCups: ev.defectiveCups,
+        cups: ev.cups ?? undefined,
       })),
       session.cupsPerSample,
     );

@@ -7,7 +7,7 @@
 // anonymous codes (C1, C2…) when Kim prefers that.
 
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
-import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
+import { calcIndividualScore, evaluationCupCounts, hasAffectiveData } from "@/lib/scoring";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { CSV_BOM, csvRow } from "@/lib/csv";
 import { blobForFormat, type ReportLocale, type SessionReportSource } from "./types";
@@ -87,7 +87,9 @@ export function buildResultsCsv(
     for (const ev of evals) {
       const blob = blobForFormat(src.session.format, ev);
       const scored = src.session.format !== "descriptive" && hasAffectiveData(blob);
-      const score = scored ? calcIndividualScore(blob, src.session.cupsPerSample) : "";
+      const cups = ev.cups ?? src.session.cupsPerSample;
+      const evalCupCounts = evaluationCupCounts(ev.nonUniformCups, ev.defectiveCups, cups);
+      const score = scored ? calcIndividualScore(blob, cups) : "";
       const isExcluded = excluded.has(ev.cupperId);
       lines.push(
         csvRow([
@@ -98,8 +100,8 @@ export function buildResultsCsv(
           isExcluded ? h.yes : h.no,
           isExcluded ? (reasonByUser.get(ev.cupperId) ?? "") : "",
           ...AFFECTIVE_ATTRIBUTES.map((a) => (scored ? attrValue(blob, a.id) : "")),
-          ev.nonUniformCups.filter(Boolean).length,
-          ev.defectiveCups.filter(Boolean).length,
+          evalCupCounts.u,
+          evalCupCounts.d,
           typeof score === "number" ? score.toFixed(2) : "",
         ]),
       );

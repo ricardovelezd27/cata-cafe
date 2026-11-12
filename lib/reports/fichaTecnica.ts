@@ -176,9 +176,8 @@ export function buildFichaTecnica(
           label: a.label,
           value: agg && agg.included > 0 ? (agg.attrAverages[a.label] ?? null) : null,
         })),
-        uniformityPenalty:
-          agg && agg.totalCups > 0 ? agg.totalNonUniform * (10 / agg.totalCups) : 0,
-        defectPenalty: agg && agg.totalCups > 0 ? agg.totalDefective * (30 / agg.totalCups) : 0,
+        uniformityPenalty: agg?.uniformityPenalty ?? 0,
+        defectPenalty: agg?.defectPenalty ?? 0,
       };
     }
 

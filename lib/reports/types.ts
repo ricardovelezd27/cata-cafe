@@ -30,6 +30,8 @@ export type ReportEvalRow = {
   combinedData: Record<string, unknown>;
   nonUniformCups: boolean[];
   defectiveCups: boolean[];
+  /** Cups the evaluation covers; null for rows older than the backfill. */
+  cups?: number | null;
 };
 
 export type ReportCoffee = {

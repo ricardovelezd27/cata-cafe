@@ -243,6 +243,11 @@ model Evaluation {
   nonUniformCups Boolean[] @default([])
   defectiveCups  Boolean[] @default([])
   defectTypes    String[]  @default([])
+  // Cups this evaluation covers; written on every save (computeEvaluationDerived).
+  // NULL only for rows older than the backfill. The SQL trigger pools these
+  // across a sample's included evaluations (PHASE 26), falling back to the
+  // session's cupsPerSample while it is NULL.
+  cups Int?
 
   affectiveSum    Float?
   rawScore        Float?

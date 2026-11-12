@@ -249,6 +249,7 @@ export default async function ResultsPage({
         combinedData: true,
         nonUniformCups: true,
         defectiveCups: true,
+        cups: true,
         cupper: { select: { id: true, displayName: true } },
       },
     });
@@ -283,6 +284,7 @@ export default async function ResultsPage({
                 : ev.affectiveData) as Record<string, unknown>,
               nonUniformCups: ev.nonUniformCups,
               defectiveCups: ev.defectiveCups,
+              cups: ev.cups ?? undefined,
             })),
             session.cupsPerSample,
           ),
@@ -622,7 +624,6 @@ export default async function ResultsPage({
     modeAcademic: tResults("breakdown.modeAcademic"),
     modeFree: tResults("breakdown.modeFree"),
     notTrackedNote: tResults("breakdown.notTrackedNote"),
-    recorded: tResults("breakdown.recorded"),
     groupTitle: tResults("breakdown.groupTitle"),
     groupAvgRaw: tResults("breakdown.groupAvgRaw"),
     groupUniformity: tResults("breakdown.groupUniformity"),
@@ -778,14 +779,8 @@ export default async function ResultsPage({
                 totalCups: recomputed.totalCups,
                 totalNonUniform: recomputed.totalNonUniform,
                 totalDefective: recomputed.totalDefective,
-                uniformityPenalty:
-                  recomputed.totalCups > 0
-                    ? recomputed.totalNonUniform * (10 / recomputed.totalCups)
-                    : 0,
-                defectPenalty:
-                  recomputed.totalCups > 0
-                    ? recomputed.totalDefective * (30 / recomputed.totalCups)
-                    : 0,
+                uniformityPenalty: recomputed.uniformityPenalty,
+                defectPenalty: recomputed.defectPenalty,
                 attrAverages: recomputed.attrAverages,
               }
             : groupAggBySample && (submittedAllBySample.get(s.id) ?? 0) > 0
