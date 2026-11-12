@@ -14,7 +14,8 @@
     "export:descriptors": "tsx scripts/export-descriptors.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:db": "vitest run --config vitest.db.config.ts"
+    "test:db": "node tests/db/run.mjs",
+    "typecheck:db": "tsc --noEmit -p tests/db/tsconfig.json"
   },
   "dependencies": {
     "@google/genai": "^2.12.0",
@@ -47,7 +48,6 @@
     "@types/react-dom": "^19",
     "csv-parse": "^7.0.1",
     "dotenv": "^17.4.2",
-    "embedded-postgres": "^18.6.0-beta.19",
     "eslint": "^9",
     "eslint-config-next": "16.4.6",
     "exceljs": "^4.4.0",

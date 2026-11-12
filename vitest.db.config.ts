@@ -17,6 +17,12 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname),
+      // tests/db/node_modules carries its own pg (an embedded-postgres dependency);
+      // the suite must talk through the APP's pg, from the root install.
+      pg: path.resolve(__dirname, "node_modules/pg"),
+      // Vite resolves bare imports from the project root, so the suite-only
+      // dependency (tests/db/package.json) is pointed at its own install.
+      "embedded-postgres": path.resolve(__dirname, "tests/db/node_modules/embedded-postgres"),
       "server-only": path.resolve(__dirname, "tests/db/support/serverOnlyStub.ts"),
     },
   },
