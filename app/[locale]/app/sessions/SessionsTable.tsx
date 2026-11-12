@@ -218,7 +218,7 @@ export function SessionsTable({
             <Link
               href={`/${locale}/app/sessions/${row.id}/edit`}
               aria-label={t.editLabel}
-              className="inline-flex rounded-sm p-1.5 text-on-surface-variant transition-colors hover:text-primary-container"
+              className="inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-sm p-1.5 text-on-surface-variant transition-colors hover:text-primary-container"
             >
               <Pencil size={16} />
             </Link>

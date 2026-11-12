@@ -186,13 +186,13 @@ export default async function Dashboard({
         <div className="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center">
           <GuestGateLink
             href={`/${locale}/app/sessions/express`}
-            className="px-4 py-2 rounded-pill bg-primary-container text-white text-sm font-bold hover:bg-primary transition-colors text-center"
+            className="inline-flex min-h-[44px] items-center justify-center px-4 py-2 rounded-pill bg-primary-container text-white text-sm font-bold hover:bg-primary transition-colors text-center"
           >
             {t("expressCta")}
           </GuestGateLink>
           <GuestGateLink
             href={`/${locale}/app/sessions/new`}
-            className="px-4 py-2 rounded-pill border border-primary-container text-primary-container text-sm font-semibold hover:bg-primary-fixed transition-colors text-center"
+            className="inline-flex min-h-[44px] items-center justify-center px-4 py-2 rounded-pill border border-primary-container text-primary-container text-sm font-semibold hover:bg-primary-fixed transition-colors text-center"
           >
             {t("fullWizardCta")}
           </GuestGateLink>

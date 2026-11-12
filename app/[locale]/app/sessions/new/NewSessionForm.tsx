@@ -244,8 +244,10 @@ function relabel(samples: SampleEntry[], chip: string): SampleEntry[] {
   return samples.map((s, i) => (s.auto ? { ...s, label: `${chip} ${sampleLetter(i)}` } : s));
 }
 
-const inputCls =
+const inputBase =
   "w-full border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary-container/25 focus:border-primary-container transition-colors";
+// 44px tap target (root font-size is 14px, so min-h-11 would paint 38.5px).
+const inputCls = inputBase + " min-h-[44px]";
 
 /** Origin badge colors mirror CoffeePicker's own badges. */
 const originBadgeCls: Record<UsableCoffee["origin"], string> = {
@@ -960,7 +962,7 @@ export function NewSessionForm({
         <div>
           <FieldLabel>{t.objective}</FieldLabel>
           <textarea
-            className={inputCls + " min-h-[72px]"}
+            className={inputBase + " min-h-[72px]"}
             value={objective}
             onChange={(e) => setObjective(e.target.value)}
             placeholder={t.objectivePh}
@@ -987,8 +989,8 @@ export function NewSessionForm({
               onClick={() => setFormat(opt.v)}
               className={
                 format === opt.v
-                  ? "bg-primary-container text-on-primary rounded-pill px-5 py-2.5 text-sm font-medium"
-                  : "border border-outline-variant text-on-surface rounded-pill px-5 py-2.5 text-sm hover:bg-surface-container transition-colors"
+                  ? "min-h-[44px] bg-primary-container text-on-primary rounded-pill px-5 py-2.5 text-sm font-medium"
+                  : "min-h-[44px] border border-outline-variant text-on-surface rounded-pill px-5 py-2.5 text-sm hover:bg-surface-container transition-colors"
               }
             >
               {opt.l}
@@ -1318,7 +1320,7 @@ export function NewSessionForm({
                             {t.coffeeNotes}
                           </FieldLabel>
                           <textarea
-                            className={inputCls + " min-h-[64px]"}
+                            className={inputBase + " min-h-[64px]"}
                             value={coffee.notes}
                             onChange={(e) => updateCoffee(coffee.id, "notes", e.target.value)}
                             placeholder={t.coffeeNotesPh}
