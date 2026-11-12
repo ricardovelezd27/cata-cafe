@@ -1,5 +1,10 @@
-/** One block of a legal section: a paragraph, a bullet list, or a two-column table. */
-export type LegalBlock = string | { list: string[] } | { rows: [string, string][] };
+/** One block of a legal section: a paragraph, a sub-heading, a bullet list, or a
+ *  two-column table. */
+export type LegalBlock =
+  | string
+  | { sub: string }
+  | { list: string[] }
+  | { rows: [string, string][] };
 export type LegalSection = { heading: string; body: LegalBlock[] };
 export type LegalDoc = {
   title: string;

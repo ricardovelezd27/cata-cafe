@@ -56,7 +56,7 @@ export const TERMS_ES: LegalDoc = {
     {
       heading: "3. Registro de cuenta y obligaciones del usuario",
       body: [
-        "3.1 Requisitos de registro:",
+        { sub: "3.1 Requisitos de registro" },
         {
           list: [
             "El usuario debe ser mayor de 14 años. Los menores de 14 años requieren consentimiento expreso de sus tutores legales.",
@@ -68,7 +68,7 @@ export const TERMS_ES: LegalDoc = {
             "Se puede participar en una cata como invitado, sin cuenta, indicando un nombre. El acceso de un invitado queda ligado al navegador que usó y se pierde si borra sus datos de navegación, salvo que guarde sus resultados creando una cuenta.",
           ],
         },
-        "3.2 Obligaciones del usuario:",
+        { sub: "3.2 Obligaciones del usuario" },
         {
           list: [
             `Mantener el control de su correo electrónico y de sus enlaces de acceso, y notificar inmediatamente cualquier uso no autorizado a ${SUPPORT_EMAIL}.`,
@@ -79,7 +79,8 @@ export const TERMS_ES: LegalDoc = {
             "Si introduce datos de otras personas (por ejemplo, las direcciones de correo de un grupo de cata o los datos de un productor), garantizar que está autorizado para hacerlo.",
           ],
         },
-        "3.3 Usos prohibidos. Queda expresamente prohibido:",
+        { sub: "3.3 Usos prohibidos" },
+        "Queda expresamente prohibido:",
         {
           list: [
             "Utilizar la Plataforma para actividades ilegales, fraudulentas o que vulneren derechos de terceros.",
@@ -97,8 +98,8 @@ export const TERMS_ES: LegalDoc = {
       // ADDED: the owner / participant rule that the product applies everywhere.
       heading: "4. Catas, organizadores y participantes",
       body: [
-        "Quien crea una cata, un café o un grupo es su organizador: puede editarlo, cerrarlo y eliminarlo, e invitar o excluir participantes. Los participantes toman parte en la cata y ven sus propios resultados y, cuando la cata se cierra, los del grupo.",
-        "Los resultados de una cata cerrada no se modifican. Si un participante suprime su cuenta, sus evaluaciones en catas compartidas se conservan sin su nombre, para que los resultados de los demás no cambien.",
+        "Quien crea una cata, un café o un grupo es su organizador: puede editarlo, cerrarlo y eliminarlo, e invitar o excluir participantes. Los participantes toman parte en la cata y ven sus propios resultados y, una vez terminada la cata, los del grupo.",
+        "Una cata cerrada queda como registro: nadie puede cambiar las evaluaciones ya enviadas. El organizador puede hacer correcciones acotadas después del cierre (por ejemplo, excluir a un participante o completar los datos de origen de un café); los resultados indican entonces la fecha de actualización. Si un participante suprime su cuenta, sus evaluaciones en catas compartidas se conservan sin su nombre, para que los resultados de los demás no cambien.",
         // ADAPTED from the source's "no professional certification" clause for its learning module.
         "Los puntajes e informes de la Plataforma tienen fines formativos y de trabajo. No constituyen una certificación profesional ni equivalen a una evaluación acreditada por ningún organismo oficial.",
       ],
@@ -107,9 +108,11 @@ export const TERMS_ES: LegalDoc = {
       heading: "5. Propiedad intelectual",
       body: [
         `5.1 Titularidad de contenidos. Todos los contenidos de la Plataforma — incluyendo el código fuente, diseño, logotipos, ejercicios, textos y datos de referencia — son propiedad de ${E.name} o están licenciados por terceros, y están protegidos por la Ley de Propiedad Intelectual (Real Decreto Legislativo 1/1996) y normativa internacional.`,
+        // ADAPTED: the source limits the licence to "fines personales y no comerciales".
+        // Dropped here because this product is used professionally (courses, labs, producers).
         `5.2 Licencia de uso. ${E.name} otorga al usuario una licencia personal, no exclusiva, intransferible y revocable para acceder y usar la Plataforma en los términos previstos en estos T&C.`,
-        `5.3 Contenido generado por el usuario. El usuario conserva la titularidad de las evaluaciones, notas de cata, fichas de café y demás contenido que introduzca en la Plataforma. Al introducirlo, otorga a ${E.name} una licencia mundial, no exclusiva, gratuita, sublicenciable y transferible para reproducir, distribuir, mostrar y adaptar dicho contenido en el contexto del funcionamiento y promoción de la Plataforma.`,
-        "El usuario garantiza que el contenido que introduce no infringe derechos de terceros y asume plena responsabilidad por el mismo.",
+        `5.3 Contenido generado por el usuario. El usuario conserva la titularidad de las evaluaciones, notas de cata, fichas de café y valoraciones que publique en la Plataforma. Al publicarlos, otorga a ${E.name} una licencia mundial, no exclusiva, gratuita, sublicenciable y transferible para reproducir, distribuir, mostrar y adaptar dicho contenido en el contexto del funcionamiento y promoción de la Plataforma.`,
+        "El usuario garantiza que el contenido que publica no infringe derechos de terceros y asume plena responsabilidad por el mismo.",
       ],
     },
     {
@@ -130,8 +133,12 @@ export const TERMS_ES: LegalDoc = {
     {
       heading: "8. Limitación de responsabilidad",
       body: [
+        // ADAPTED: the source promises 24 hours of notice before scheduled maintenance; this
+        // product has no channel to announce maintenance, so the promise is not made.
         `8.1 Disponibilidad del servicio. ${E.name} se compromete a realizar esfuerzos razonables para mantener la Plataforma disponible de manera continua, pero no garantiza una disponibilidad del 100 %. No será responsable por interrupciones debidas a mantenimiento, fallos de terceros proveedores de infraestructura, causas de fuerza mayor, ni por pérdidas derivadas de dichas interrupciones.`,
         `8.2 Exactitud de contenidos. La información sobre cafés y los contenidos de la Plataforma se proporcionan «tal cual». ${E.name} no garantiza que sean exhaustivos, libres de errores ni actualizados en todo momento.`,
+        // OWNER DECISION NEEDED: kept from the source. While access is free, "el importe
+        // abonado en los 12 meses anteriores" is zero.
         `8.3 Exclusión de daños indirectos. En la máxima medida permitida por la ley aplicable, ${E.name} no será responsable de daños indirectos, lucro cesante, pérdida de datos o cualquier daño consecuente derivado del uso o imposibilidad de uso de la Plataforma. La responsabilidad máxima total frente a un usuario no superará el importe abonado por éste en los 12 meses anteriores al hecho causante del daño.`,
         `8.4 Cláusulas abusivas (LGDCU arts. 82–90). Las limitaciones de responsabilidad anteriores no se aplican a: (a) muerte o daños personales causados por negligencia de ${E.name}; (b) fraude o dolo del prestador; (c) derechos irrenunciables del consumidor bajo la legislación española. Ninguna cláusula de estos T&C pretende limitar derechos que la ley otorga al consumidor de forma irrenunciable.`,
       ],
@@ -143,6 +150,7 @@ export const TERMS_ES: LegalDoc = {
         {
           list: [
             "Se notificará al usuario por correo electrónico o mediante aviso destacado en la Plataforma con al menos 30 días de antelación a la entrada en vigor de los cambios.",
+            // ADAPTED: the source says "cancelar su suscripción sin penalización"; there are no subscriptions.
             "El usuario podrá dejar de usar la Plataforma y pedir la supresión de su cuenta antes de la fecha de entrada en vigor si no acepta las modificaciones.",
             "El uso continuado de la Plataforma tras la entrada en vigor implica la aceptación de los nuevos términos.",
             "En ningún caso se modificarán unilateralmente los términos esenciales del contrato en perjuicio del usuario sin su consentimiento expreso (LGDCU art. 85).",
@@ -153,15 +161,15 @@ export const TERMS_ES: LegalDoc = {
     {
       heading: "10. Suspensión y resolución del contrato",
       body: [
-        "10.1 Por parte del usuario:",
+        { sub: "10.1 Por parte del usuario" },
         {
           list: [
             // ADAPTED: the source points to an in-app delete button, which is not enabled yet.
             `El usuario puede pedir la supresión de su cuenta en cualquier momento escribiendo a ${SUPPORT_EMAIL}.`,
-            "La supresión de la cuenta implica la pérdida del perfil, el historial y demás datos asociados, que serán bloqueados y posteriormente eliminados conforme al art. 32 LOPDGDD. Las evaluaciones hechas en catas compartidas con otras personas se conservan sin el nombre del usuario.",
+            "La supresión de la cuenta implica la pérdida del perfil, el historial y demás datos asociados, que serán bloqueados y posteriormente eliminados conforme al art. 32 LOPDGDD. Las evaluaciones hechas en catas compartidas con otras personas, y las catas que organizó y en las que evaluaron otras personas, se conservan sin el nombre del usuario.",
           ],
         },
-        "10.2 Por parte del prestador:",
+        { sub: "10.2 Por parte del prestador" },
         {
           list: [
             `${E.name} podrá suspender o cancelar una cuenta, con o sin preaviso, en caso de: incumplimiento grave de estos T&C; conducta fraudulenta o abusiva; o requerimiento legal.`,
@@ -190,7 +198,7 @@ export const TERMS_ES: LegalDoc = {
             "Reglamento (UE) 2016/679 (RGPD) y Ley Orgánica 3/2018 (LOPDGDD).",
           ],
         },
-        "Para cualquier controversia que no pueda resolverse amistosamente, las partes se someten a la jurisdicción de los Juzgados y Tribunales de Madrid. No obstante, si el usuario tiene la condición de consumidor, podrá acudir a los tribunales de su lugar de residencia o a los mecanismos de resolución alternativa de litigios: las Juntas Arbitrales de Consumo de su municipio o comunidad autónoma y las Oficinas Municipales de Información al Consumidor (OMIC).",
+        "Para cualquier controversia que no pueda resolverse amistosamente, las partes se someten a la jurisdicción de los Juzgados y Tribunales de Madrid. No obstante, si el usuario tiene la condición de consumidor, podrá acudir a los tribunales de su lugar de residencia o a los mecanismos de resolución alternativa de litigios: las Juntas Arbitrales de Consumo de su municipio o comunidad autónoma, las Oficinas Municipales de Información al Consumidor (OMIC) y AECOSAN (Agencia Española de Consumo, Seguridad Alimentaria y Nutrición).",
         `${E.name} | CIF: ${E.cif} | ${E.address} | ${SUPPORT_EMAIL} | ${E.site}`,
       ],
     },

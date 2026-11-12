@@ -42,7 +42,11 @@ export const LEGAL_NOTICE_ES: LegalDoc = {
       heading: "2. Objeto y ámbito de aplicación",
       body: [
         `El presente Aviso Legal regula el acceso y uso del sitio web accesible en ${E.site} y de la aplicación ${E.product} (en adelante, conjuntamente, «la Plataforma»), titularidad de ${E.name}.`,
+        // ADAPTED: the source names the Privacy Policy and the Cookie Policy; here cookies
+        // are a section of the Privacy Policy and the Terms are named instead.
         "El acceso a la Plataforma implica la aceptación plena y sin reservas del presente Aviso Legal, así como de los Términos y Condiciones y de la Política de Privacidad, que forman parte integrante del marco legal aplicable a los usuarios.",
+        // ADAPTED: the source adds "residentes en España y en la Unión Europea"; this
+        // product is also used outside the EU.
         "La Plataforma está dirigida a mayores de 14 años. Los menores de 14 años requieren el consentimiento expreso de sus tutores legales para registrarse y usar el servicio.",
       ],
     },
@@ -60,8 +64,10 @@ export const LEGAL_NOTICE_ES: LegalDoc = {
             "Usar robots, scrapers u otras herramientas automáticas para extraer contenidos o datos de la Plataforma.",
           ],
         },
+        // ADAPTED: the source says "son marcas de"; "signos distintivos" is used here
+        // because no trademark registration for this name has been shown.
         `3.2 Marcas y nombres comerciales. El nombre «${E.product}», el logotipo asociado y cualquier otra denominación comercial o signo distintivo que aparezca en la Plataforma son signos distintivos de ${E.name} o de terceros que han autorizado su uso. Su uso no autorizado constituye una infracción de la normativa aplicable.`,
-        `3.3 Contenido generado por el usuario. Los usuarios que introduzcan evaluaciones, notas de cata, fichas de café u otro contenido en la Plataforma conservan sus derechos de autor sobre dicho contenido, pero otorgan a ${E.name} una licencia no exclusiva, mundial, gratuita y transferible para usar, reproducir, mostrar y distribuir ese contenido en el marco del funcionamiento de la Plataforma.`,
+        `3.3 Contenido generado por el usuario. Los usuarios que publiquen evaluaciones, notas de cata, fichas de café u otro contenido en la Plataforma conservan sus derechos de autor sobre dicho contenido, pero otorgan a ${E.name} una licencia no exclusiva, mundial, gratuita y transferible para usar, reproducir, mostrar y distribuir ese contenido en el marco del funcionamiento de la Plataforma.`,
       ],
     },
     {
@@ -111,9 +117,22 @@ export const LEGAL_NOTICE_ES: LegalDoc = {
       ],
     },
     {
-      heading: "8. Legislación aplicable y jurisdicción",
+      heading: "8. Régimen sancionador aplicable",
       body: [
-        "8.1 Marco legal. El presente Aviso Legal se rige por la legislación española y europea, en particular:",
+        "A efectos informativos, el incumplimiento de las obligaciones establecidas en la LSSI-CE puede dar lugar a las siguientes sanciones (artículos 38–39 LSSI-CE):",
+        {
+          rows: [
+            ["Infracción leve", "Hasta 30.000 €. Incumplimientos menores del art. 10 (por ejemplo, datos incompletos). Primera infracción: puede sustituirse por apercibimiento (art. 39 bis)."],
+            ["Infracción grave", "30.001 € – 150.000 €. Incumplimiento significativo de identificación o requisitos de precios. Reincidencia en infracciones leves."],
+            ["Infracción muy grave", "150.001 € – 600.000 €. Infracciones reiteradas o que causen daño generalizado. Puede acompañarse de prohibición de operar en España por 2 años."],
+          ],
+        },
+      ],
+    },
+    {
+      heading: "9. Legislación aplicable y jurisdicción",
+      body: [
+        "9.1 Marco legal. El presente Aviso Legal se rige por la legislación española y europea, en particular:",
         {
           list: [
             "Ley 34/2002, de 11 de julio, de servicios de la sociedad de la información y de comercio electrónico (LSSI-CE).",
@@ -124,21 +143,21 @@ export const LEGAL_NOTICE_ES: LegalDoc = {
             "Ley 11/2023, de 8 de mayo — accesibilidad de productos y servicios digitales.",
           ],
         },
-        "8.2 Jurisdicción. Para la resolución de cualquier conflicto derivado del acceso o uso de la Plataforma, las partes se someten, con renuncia expresa a cualquier otro fuero que pudiera corresponderles, a la jurisdicción de los Juzgados y Tribunales de la ciudad de Madrid.",
+        "9.2 Jurisdicción. Para la resolución de cualquier conflicto derivado del acceso o uso de la Plataforma, las partes se someten, con renuncia expresa a cualquier otro fuero que pudiera corresponderles, a la jurisdicción de los Juzgados y Tribunales de la ciudad de Madrid.",
         "Sin perjuicio de lo anterior, si el usuario tiene la condición de consumidor conforme a la LGDCU, será de aplicación la normativa de protección al consumidor, que puede otorgar competencia a los tribunales del lugar de residencia del consumidor o a los mecanismos alternativos de resolución de conflictos (Juntas Arbitrales de Consumo, OMIC).",
       ],
     },
     {
       // ADAPTED: the source links to a full accessibility statement, which does
       // not exist for this app yet (parked by the owner until an audit is done).
-      heading: "9. Accesibilidad",
+      heading: "10. Accesibilidad",
       body: [
         `${E.name} está comprometida con la accesibilidad digital de conformidad con la Ley 11/2023 (transposición de la Directiva Europea de Accesibilidad, Directiva 2019/882/UE). La Plataforma aspira a conformarse con el estándar EN 301 549 v3.2.1, que incorpora las Directrices de Accesibilidad para el Contenido Web (WCAG) 2.1 en su nivel AA.`,
         `Si encuentra barreras de accesibilidad en la Plataforma, puede comunicárnoslo a través de ${SUPPORT_EMAIL}. Atenderemos su solicitud en el plazo de 15 días hábiles.`,
       ],
     },
     {
-      heading: "10. Modificaciones del aviso legal",
+      heading: "11. Modificaciones del aviso legal",
       body: [
         `${E.name} se reserva el derecho de modificar el presente Aviso Legal en cualquier momento para adaptarlo a cambios legislativos, jurisprudenciales o empresariales. Las modificaciones entrarán en vigor en el momento de su publicación en la Plataforma.`,
         "Se recomienda a los usuarios revisar periódicamente este Aviso Legal. El acceso continuado a la Plataforma con posterioridad a cualquier modificación implica la aceptación de los cambios introducidos.",
