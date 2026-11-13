@@ -16,6 +16,8 @@ import { deriveMyEvaluation, summarizeMyProgress } from "@/lib/evaluationState";
 import { isSessionExpired, viewerMayReadGroupResults } from "@/lib/sessionState";
 import { wasClosedSilently } from "@/lib/repairClose";
 import { resultsUpdatedAfterClose } from "@/lib/exclusionReasons";
+import { ownExclusionNotice } from "@/lib/exclusionNotice";
+import { sampleOriginEditedAt } from "@/lib/originEdit";
 import { gateSampleForViewer, communityHidden } from "@/lib/reports/sampleGate";
 import { gateSamplePrep } from "@/lib/samplePrep";
 import { getUsableCoffees } from "@/lib/coffees/queries";
@@ -97,6 +99,7 @@ export default async function ResultsPage({
               select: {
                 name: true,
                 deletedAt: true,
+                originEditedAt: true,
                 country: true,
                 region: true,
                 producer: true,
@@ -701,6 +704,39 @@ export default async function ResultsPage({
           [lastComputedAt],
         )
       : null;
+  // S10 WP5a (D2): the excluded cupper's PRIVATE notice. ownExclusionNotice returns only
+  // the viewer's own row, so no other cupper's exclusion can reach this payload.
+  const exclusionReasonLabels: Record<string, string> = {
+    sample_error: tResults("matrix.exclusionReasons.sample_error"),
+    protocol: tResults("matrix.exclusionReasons.protocol"),
+    incomplete: tResults("matrix.exclusionReasons.incomplete"),
+    not_fit: tResults("matrix.exclusionReasons.not_fit"),
+    test_duplicate: tResults("matrix.exclusionReasons.test_duplicate"),
+    calibration: tResults("matrix.exclusionReasons.calibration"),
+    other: tResults("matrix.exclusionReasons.other"),
+  };
+  const ownExclusion = session.isGroup
+    ? ownExclusionNotice(session.participants, user.id, exclusionReasonLabels)
+    : null;
+  // F-cafes-9: origin data is live; say so when it changed after the session closed
+  // (the sample's own origin record, or the linked coffee). One rule: lib/originEdit.ts.
+  const originEditedAtFor = (s: {
+    revealed: boolean;
+    extrinsic?: { editedAt: Date | null } | null;
+    coffee?: { originEditedAt: Date | null } | null;
+  }): Date | null =>
+    sampleOriginEditedAt({
+      revealed: s.revealed,
+      closedAt: session.closedAt,
+      closesAt: session.closesAt,
+      extrinsicEditedAt: s.extrinsic?.editedAt,
+      coffeeOriginEditedAt: s.coffee?.originEditedAt,
+    });
+  const exclusionNoticeLabel = ownExclusion
+    ? ownExclusion.reason
+      ? tResults("exclusionNotice", { reason: ownExclusion.reason })
+      : tResults("exclusionNoticeNoReason")
+    : null;
   const updatedAfterCloseLabel = updatedAfterClose
     ? tResults("updatedAfterClose", {
         date: updatedAfterClose.toLocaleString(locale === "es" ? "es-CO" : "en-US", {
@@ -770,6 +806,7 @@ export default async function ResultsPage({
       sessionClosed={session.status === "closed"}
       closedOnLabel={closedOnLabel}
       updatedAfterCloseLabel={updatedAfterCloseLabel}
+      exclusionNotice={exclusionNoticeLabel}
       closeEmails={closeEmails}
       currentUserId={user.id}
       participationLabel={participationLabel}
@@ -897,12 +934,10 @@ export default async function ResultsPage({
             // A9: blind data, so the owner/admin lens or a revealed sample only.
             prep: gateSamplePrep(s, { ownerView: ownerRead, revealed: s.revealed }),
             extrinsic: s.revealed ? ((s.extrinsic?.data as Record<string, unknown>) ?? {}) : {},
-            // "Origen editado el <fecha>" — only when the owner corrected origin
-            // data after the session closed (S8-12).
-            extrinsicEditedLabel:
-              s.revealed && s.extrinsic?.editedAt
-                ? tResults("originEditedAt", {
-                    date: s.extrinsic.editedAt.toLocaleDateString(
+            // "Datos de origen editados el <fecha>" — only after the close (S8-12, F-cafes-9).
+            extrinsicEditedLabel: originEditedAtFor(s)
+              ? tResults("originEditedAt", {
+                    date: originEditedAtFor(s)!.toLocaleDateString(
                       locale === "es" ? "es-CO" : "en-US",
                       { day: "numeric", month: "short", year: "numeric" },
                     ),
@@ -977,6 +1012,7 @@ export default async function ResultsPage({
         downloadSummary: tResults("downloadSummary"),
         downloadFicha: tResults("downloadFicha"),
         downloadCsv: tResults("downloadCsv"),
+        downloadCsvNoNames: tResults("downloadCsvNoNames"),
         needsConnection: tResults("needsConnection"),
         refresh: tResults("refresh"),
         refreshing: tResults("refreshing"),
@@ -1174,18 +1210,16 @@ export default async function ResultsPage({
             ? tResults("matrix.oldRuleNote")
             : null,
           excludeReasonLabel: tResults("matrix.excludeReasonLabel"),
+          excludeOtherLabel: tResults("matrix.excludeOtherLabel"),
+          // S10 WP5a (D2): only once the session is closed.
+          closedNote: session.status === "closed" ? tResults("matrix.closedNote") : null,
           excludeConfirm: tResults("matrix.excludeConfirm"),
           dialogCancel: tResults("matrix.dialogCancel"),
           dialogClose: tResults("matrix.dialogClose"),
           excludedTrail: tResults.raw("matrix.excludedTrail") as string,
           excludedToast: tResults("matrix.excludedToast"),
           restoredToast: tResults("matrix.restoredToast"),
-          reasons: {
-            sample_error: tResults("matrix.exclusionReasons.sample_error"),
-            protocol: tResults("matrix.exclusionReasons.protocol"),
-            calibration: tResults("matrix.exclusionReasons.calibration"),
-            other: tResults("matrix.exclusionReasons.other"),
-          },
+          reasons: exclusionReasonLabels,
         },
         help: {
           // "Cerrar" reads better than "Cancelar" for a read-only info dialog.

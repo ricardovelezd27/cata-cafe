@@ -48,7 +48,7 @@ describe("report stamp text (S8-12, F-informes-3 / F-resultados-8)", () => {
       originEditedAt: new Date("2026-11-12T09:15:00Z"),
     });
     expect(line).toContain("Results updated on");
-    expect(line).toContain("Origin edited on");
+    expect(line).toContain("Origin data edited on");
   });
 
   it("formats dates in UTC regardless of the host timezone", () => {
