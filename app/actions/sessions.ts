@@ -1,5 +1,6 @@
 "use server";
 
+import { randomInt } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -38,20 +39,39 @@ import { REFERENCE_REPIN_REQUIRED, removeSamplesInTx } from "@/lib/sampleRemoval
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { computeEvaluationDerived, moduleKeyForFormat } from "@/lib/evaluation";
 import {
-  isPinnedModule,
+  DEFAULT_REFERENCE_MODE,
+  normalizeReferenceMode,
+  REFERENCE_MODES,
+  shouldPinReference,
   pinReferenceAffective,
   planAddReference,
   countRepinOverwrites,
   planReferenceRepin,
   planRemoveActive,
+  type ReferenceMode,
 } from "@/lib/referenceRules";
 import * as v from "@/lib/validate";
 import { expressSampleLabel, validateExpressInput } from "@/lib/expressSession";
+import { blindReferencePosition, planBlindSamples } from "@/lib/blindLabels";
+import {
+  parseSamplePrepInput,
+  pickSamplePrepInput,
+  touchesSamplePrep,
+  type SamplePrepInput,
+  type SamplePrepUpdate,
+} from "@/lib/samplePrep";
 import { logInfo, logWarn } from "@/lib/log";
 import { checkWizardBounds } from "@/lib/coffeeInputBounds";
 import { CERTIFICATIONS } from "@/lib/constants";
 import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/groups";
-import { shouldNotifyAtCreate } from "@/lib/groupNotify";
+import {
+  DEFAULT_NOTIFY_WHEN,
+  NOTIFY_WHEN,
+  noticeOutcome,
+  notifyAtStartFlag,
+  shouldNotifyAtCreate,
+  shouldNotifyOnBecomingAsync,
+} from "@/lib/groupNotify";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
 import { splitEvaluationCounts } from "@/lib/deleteImpact";
 import { planAssignCoffee } from "@/lib/assignCoffee";
@@ -62,6 +82,7 @@ import {
   changedFormatCups,
   isFormatLocked,
   nextSamplePosition,
+  activeCopyPosition,
   planDuplicateSamples,
   repinNeedsConfirm,
   MAX_SESSION_SAMPLES,
@@ -91,10 +112,25 @@ type CoffeeInput = {
   existingCoffeeId?: string;
 };
 
-type SampleInput = {
+type SampleInput = SamplePrepInput & {
+  /** Empty = "give me a random letter" (A4); anything else is kept verbatim. */
   label: string;
   coffeeIdx?: number;
 };
+
+/** Prep columns for one wizard sample (A9). Absent keys write nothing; the
+ *  values were already validated by validateSessionInput. */
+function samplePrepData(s: SampleInput): SamplePrepUpdate {
+  return parseSamplePrepInput(pickSamplePrepInput(s as Record<string, unknown>));
+}
+
+/** B1: the wizard's / edit form's reference mode. Absent = "anchor" (today's
+ *  behaviour); anything else but a listed value throws invalid_input. */
+function parseReferenceModeInput(raw: unknown): ReferenceMode {
+  return raw === undefined || raw === null
+    ? DEFAULT_REFERENCE_MODE
+    : v.oneOf(raw, "referenceMode", REFERENCE_MODES);
+}
 
 // ─── Reference sample helpers ────────────────────────────────────────────────
 // The reference ("Referencia") is the ONE sample the owner marks as the control
@@ -174,6 +210,12 @@ function validateSessionInput(
     if (typeof s.coffeeIdx !== "number" || !coffees[s.coffeeIdx]) {
       return "sample_without_coffee";
     }
+    // A9: the optional per-sample prep data (roast date, notes, off-protocol).
+    try {
+      parseSamplePrepInput(pickSamplePrepInput(s as Record<string, unknown>));
+    } catch {
+      return "invalid_sample_prep";
+    }
   }
   return null;
 }
@@ -228,7 +270,7 @@ function validateSessionMeta(input: {
   let date = new Date(0);
   let objective: string | null = null;
   let format: SessionMeta["format"] = "combined";
-  let cupsPerSample = 5;
+  let cupsPerSample = 2; // TODO(kim-validar:A2): same default as the wizard
   let closesAt: Date | null = null;
   const closesAtZone = input.closesAt ? normalizeZone(input.closesAtZone) : null;
   let warmupExerciseId: WarmupId | null = null;
@@ -350,6 +392,8 @@ export async function createSession(input: {
   samples: SampleInput[];
   /** Index into `samples` of the reference sample; null/absent = none. */
   referenceIdx?: number | null;
+  /** B1: "anchor" (default) or "free"; see lib/referenceRules.ts. */
+  referenceMode?: string;
   /** Optional pre-cupping warm-up (WARMUP_IDS); null/absent = none. */
   warmupExerciseId?: string | null;
   locale?: string;
@@ -371,6 +415,7 @@ async function createSessionBody(input: {
   coffees?: CoffeeInput[];
   samples: SampleInput[];
   referenceIdx?: number | null;
+  referenceMode?: string;
   warmupExerciseId?: string | null;
   locale?: string;
 }): Promise<{ ok: false; error: string } | void> {
@@ -386,10 +431,16 @@ async function createSessionBody(input: {
   const meta = metaResult.meta;
   const refResult = parseReferenceIdx(input.referenceIdx, input.samples.length);
   if (!refResult.ok) return refResult;
+  const referenceMode = parseReferenceModeInput(input.referenceMode);
 
   if (!(await linkedCoffeesUsable(input.coffees ?? [], user.id))) {
     return { ok: false, error: "coffee_not_found" };
   }
+
+  // A4: the letters are assigned at random (planned ONCE, outside the
+  // retried transaction, so a code-collision retry keeps the same order).
+  const blind = planBlindSamples(input.samples, randomInt, safeLocale(input.locale), "create");
+  const referencePosition = blindReferencePosition(blind, refResult.idx);
 
   // redirect() stays OUTSIDE the transaction (it is implemented as a throw).
   const sessionId = await retryOnCodeCollision(() => prisma.$transaction(async (tx) => {
@@ -407,20 +458,22 @@ async function createSessionBody(input: {
         status: "active",
         createdBy: user.id,
         warmupExerciseId: meta.warmupExerciseId,
+        referenceMode,
         samples: {
-          create: input.samples.map((s, i) => ({
-            label: s.label || `Muestra ${i + 1}`,
-            position: i,
+          create: blind.map((b) => ({
+            label: b.label,
+            position: b.position,
             coffeeId:
-              typeof s.coffeeIdx === "number" && createdCoffees[s.coffeeIdx]
-                ? createdCoffees[s.coffeeIdx].id
+              typeof b.sample.coffeeIdx === "number" && createdCoffees[b.sample.coffeeIdx]
+                ? createdCoffees[b.sample.coffeeIdx].id
                 : null,
+            ...samplePrepData(b.sample),
           })),
         },
       },
       select: { id: true, samples: { select: { id: true, position: true } } },
     });
-    await applyReferenceByPosition(tx, session.id, session.samples, refResult.idx);
+    await applyReferenceByPosition(tx, session.id, session.samples, referencePosition);
     return session.id;
   }, CREATE_TX_OPTIONS));
 
@@ -487,6 +540,10 @@ type GroupSessionResult =
       inviteToken: string;
       emailSummary?: GroupEmailSummary;
       emailBlocked?: "rate_limited";
+      /** A4: which sample (index in the posted `samples`) got which letter, so
+       *  step 2 can show the owner the "Clave de muestras". Owner's own
+       *  response only; participants never receive it. */
+      sampleKey: { sourceIndex: number; label: string; position: number }[];
     }
   | { ok: false; error: string };
 
@@ -502,8 +559,14 @@ export async function createGroupSession(input: {
   closesAtZone?: string;
   groupId?: string;
   notifyGroup?: boolean;
+  /** C8: "create" | "start" - when a LIVE session emails its group (default start). */
+  notifyGroupWhen?: string;
   referenceIdx?: number | null;
+  /** B1: "anchor" (default) or "free"; see lib/referenceRules.ts. */
+  referenceMode?: string;
   warmupExerciseId?: string | null;
+  /** Locale for generated sample labels (Muestra A / Sample A). */
+  locale?: string;
 }): Promise<GroupSessionResult> {
   // S8-10 T1 (design b): thrown failures become `{ ok:false, error }` so the
   // wizard stays mounted with its state; validation codes pass through.
@@ -527,10 +590,13 @@ async function createGroupSessionBody(input: {
   // invitation email to every member right after creation.
   groupId?: string;
   notifyGroup?: boolean;
+  notifyGroupWhen?: string;
   /** Index into `samples` of the reference sample; null/absent = none. */
   referenceIdx?: number | null;
+  referenceMode?: string;
   /** Optional pre-cupping warm-up (WARMUP_IDS); null/absent = none. */
   warmupExerciseId?: string | null;
+  locale?: string;
 }): Promise<GroupSessionResult> {
   const user = await requireRegisteredUser();
 
@@ -544,6 +610,7 @@ async function createGroupSessionBody(input: {
   const meta = metaResult.meta;
   const refResult = parseReferenceIdx(input.referenceIdx, input.samples.length);
   if (!refResult.ok) return refResult;
+  const referenceMode = parseReferenceModeInput(input.referenceMode);
 
   if (input.groupId) {
     const group = await prisma.tastingGroup.findUnique({
@@ -561,6 +628,17 @@ async function createGroupSessionBody(input: {
 
   const token = crypto.randomUUID();
 
+  // C8: when a LIVE session's group is emailed. Absent = today's rule (start);
+  // a tampered value throws invalid_input (run() maps it).
+  const notifyWhen =
+    input.notifyGroupWhen === undefined
+      ? DEFAULT_NOTIFY_WHEN
+      : v.oneOf(input.notifyGroupWhen, "notifyGroupWhen", NOTIFY_WHEN);
+
+  // A4: random letters, planned once (see createSessionBody).
+  const blind = planBlindSamples(input.samples, randomInt, safeLocale(input.locale), "create");
+  const referencePosition = blindReferencePosition(blind, refResult.idx);
+
   const session = await retryOnCodeCollision(() => prisma.$transaction(async (tx) => {
     const createdCoffees = await createCoffeesInTx(tx, input.coffees ?? [], user.id);
     const created = await tx.cuppingSession.create({
@@ -577,18 +655,25 @@ async function createGroupSessionBody(input: {
         closesAtZone: meta.closesAtZone,
         createdBy: user.id,
         groupId: input.groupId ?? null,
-        // S8-17: a LIVE session owes the group email at start (startSession).
-        notifyGroupAtStart:
-          !!input.groupId && input.notifyGroup !== false && meta.closesAt === null,
+        // S8-17 / C8: a LIVE session owes the group email at start
+        // (startSession) unless the owner chose "at creation" (sent below).
+        notifyGroupAtStart: notifyAtStartFlag({
+          hasGroup: !!input.groupId,
+          notify: input.notifyGroup !== false,
+          isAsync: meta.closesAt !== null,
+          notifyWhen,
+        }),
         warmupExerciseId: meta.warmupExerciseId,
+        referenceMode,
         samples: {
-          create: input.samples.map((s, i) => ({
-            label: s.label || `Muestra ${i + 1}`,
-            position: i,
+          create: blind.map((b) => ({
+            label: b.label,
+            position: b.position,
             coffeeId:
-              typeof s.coffeeIdx === "number" && createdCoffees[s.coffeeIdx]
-                ? createdCoffees[s.coffeeIdx].id
+              typeof b.sample.coffeeIdx === "number" && createdCoffees[b.sample.coffeeIdx]
+                ? createdCoffees[b.sample.coffeeIdx].id
                 : null,
+            ...samplePrepData(b.sample),
           })),
         },
         participants: {
@@ -606,7 +691,7 @@ async function createGroupSessionBody(input: {
       },
       select: { id: true, samples: { select: { id: true, position: true } } },
     });
-    await applyReferenceByPosition(tx, created.id, created.samples, refResult.idx);
+    await applyReferenceByPosition(tx, created.id, created.samples, referencePosition);
     return { id: created.id };
   }, CREATE_TX_OPTIONS));
 
@@ -614,8 +699,10 @@ async function createGroupSessionBody(input: {
   // creation itself.
   let emailSummary: GroupEmailSummary | undefined;
   let emailBlocked: "rate_limited" | undefined;
-  // Only ASYNC sessions notify at creation; live ones notify from
-  // `startSession` (S8-17, C8 default b — see lib/groupNotify.ts).
+  // ASYNC sessions notify at creation; LIVE ones notify from `startSession`
+  // unless the owner chose "at creation" (C8; lib/groupNotify.ts). Either way
+  // notifyGroupOfSession claims `groupNotifiedAt` atomically, so a later start
+  // can never send a second email.
   if (
     input.groupId &&
     input.notifyGroup !== false &&
@@ -624,6 +711,7 @@ async function createGroupSessionBody(input: {
       isAsync: meta.closesAt !== null,
       hasGroup: true,
       alreadyNotified: false,
+      notifyWhen,
     })
   ) {
     try {
@@ -645,7 +733,14 @@ async function createGroupSessionBody(input: {
     }
   }
 
-  return { ok: true, sessionId: session.id, inviteToken: token, emailSummary, emailBlocked };
+  return {
+    ok: true,
+    sessionId: session.id,
+    inviteToken: token,
+    emailSummary,
+    emailBlocked,
+    sampleKey: blind.map((b) => ({ sourceIndex: b.sourceIndex, label: b.label, position: b.position })),
+  };
 }
 
 // Prisma unique-constraint violation (duck-typed like app/actions/waitlist.ts —
@@ -706,10 +801,14 @@ export async function upsertEvaluation(input: {
   // are pinned to 5 and its cups cleared on EVERY save, server-side, so no
   // client can move it (lib/referenceRules.ts). Descriptive data is untouched.
   const moduleKey = moduleKeyForFormat(auth.format);
-  const data =
-    auth.referenceSampleId === input.sessionSampleId && isPinnedModule(moduleKey)
-      ? pinReferenceAffective(input.data, auth.cupsPerSample)
-      : input.data;
+  // B1: only in "anchor" mode (a "free" reference is scored like any sample).
+  const data = shouldPinReference({
+    mode: auth.referenceMode,
+    moduleKey,
+    isActiveReference: auth.referenceSampleId === input.sessionSampleId,
+  })
+    ? pinReferenceAffective(input.data, auth.cupsPerSample)
+    : input.data;
   const fields = computeEvaluationDerived(moduleKey, data, auth.cupsPerSample);
 
   const doUpsert = () =>
@@ -870,6 +969,7 @@ export async function duplicateSession(
       isGroup: true,
       groupId: true,
       referenceSampleId: true,
+      referenceMode: true,
       warmupExerciseId: true,
       samples: {
         orderBy: { position: "asc" },
@@ -880,12 +980,11 @@ export async function duplicateSession(
   if (!source) throw new Error("not_found_or_forbidden");
   void session;
 
-  // Every reference travels with the template (B8 default (a): all ranks),
-  // remapped by position; the active one is the source's pointer. Coffees the
-  // caller can no longer use (anonymized since, unshared) are NOT copied: the
-  // sample stays, coffee-less, with its label (F-sesiones-8).
-  const refPosition =
-    source.samples.find((s) => s.id === source.referenceSampleId)?.position ?? null;
+  // Every reference travels with the template (B8 default (a): all ranks)
+  // together with its sample; the active one is the source's pointer, re-aimed
+  // at the copy of the SAME sample below. Coffees the caller can no longer use
+  // (anonymized since, unshared) are NOT copied: the sample stays, coffee-less,
+  // with its label (F-sesiones-8).
   const linkedIds = [
     ...new Set(source.samples.map((s) => s.coffeeId).filter((id): id is string => id !== null)),
   ];
@@ -896,7 +995,15 @@ export async function duplicateSession(
           where: { id: { in: linkedIds }, AND: [usableCoffeeWhere(user.id)] },
           select: { id: true },
         });
-  const plan = planDuplicateSamples(source.samples, new Set(usable.map((c) => c.id)));
+  // A4: auto-labelled samples get a fresh random order (never the source's
+  // letter <-> coffee mapping); owner-typed labels keep label and position.
+  const plan = planDuplicateSamples(
+    source.samples,
+    new Set(usable.map((c) => c.id)),
+    randomInt,
+    safeLocale(locale),
+  );
+  const copyActivePosition = activeCopyPosition(plan.samples, source.referenceSampleId);
 
   // Keep the group link only if the group still exists and is still ours.
   let groupId: string | null = null;
@@ -922,6 +1029,8 @@ export async function duplicateSession(
         createdBy: user.id,
         groupId,
         warmupExerciseId: source.warmupExerciseId,
+        // B1: the copy keeps the template's reference mode.
+        referenceMode: source.referenceMode,
         samples: {
           create: plan.samples.map((s) => ({
             label: s.label,
@@ -940,9 +1049,11 @@ export async function duplicateSession(
       select: { id: true, samples: { select: { id: true, position: true } } },
     });
     // Ranks were copied with the samples; only the active pointer needs the
-    // fresh sample id (found by position).
+    // fresh sample id (found by the copy's new position).
     const activeCopy =
-      refPosition === null ? undefined : created.samples.find((s) => s.position === refPosition);
+      copyActivePosition === null
+        ? undefined
+        : created.samples.find((s) => s.position === copyActivePosition);
     if (activeCopy) {
       await tx.cuppingSession.update({
         where: { id: created.id },
@@ -1004,6 +1115,18 @@ export async function setReferenceSample(
           where: { sessionId },
           select: { id: true, referenceRank: true },
         });
+        // B1: the mode is read INSIDE the transaction. In "free" mode nothing is
+        // pinned, so there is nothing to re-pin and nothing to confirm: the
+        // pointer and the ranks move and cuppers' ratings are never touched.
+        const sess = await tx.cuppingSession.findUniqueOrThrow({
+          where: { id: sessionId },
+          select: { format: true, cupsPerSample: true, referenceMode: true },
+        });
+        const pinsWhenActive = shouldPinReference({
+          mode: sess.referenceMode,
+          moduleKey: moduleKeyForFormat(sess.format),
+          isActiveReference: true,
+        });
         let repinTarget: string | null = null;
         if (targetId === null) {
           const plan = planRemoveActive(rows);
@@ -1018,11 +1141,8 @@ export async function setReferenceSample(
           // its stored rows to 79.00 like the forward path does, but (S8-27)
           // only after the owner confirmed when that would overwrite ratings
           // cuppers already saved (rows already at the anchor need nothing).
-          if (plan.repinId) {
-            const sess = await tx.cuppingSession.findUniqueOrThrow({
-              where: { id: sessionId },
-              select: { format: true, cupsPerSample: true },
-            });
+          // Anchor mode only (B1).
+          if (plan.repinId && pinsWhenActive) {
             const evs = await tx.evaluation.findMany({
               where: { sessionSampleId: plan.repinId },
               select: { id: true, isDraft: true, affectiveData: true, combinedData: true },
@@ -1033,31 +1153,34 @@ export async function setReferenceSample(
               sess.cupsPerSample,
             );
             if (overwrites > 0 && !confirmRepin) throw new Error("conflict");
+            repinTarget = plan.repinId;
           }
-          repinTarget = plan.repinId;
         } else {
           const plan = planAddReference(rows, targetId);
           if (plan.kind === "full") throw new Error("invalid_input");
           if (plan.kind === "add") {
             // B2 default (a): replacing cuppers' saved ratings with the 79.00
             // anchor is allowed, but only after the owner confirmed it. The
-            // count is read in this transaction so it cannot go stale.
+            // count is read in this transaction so it cannot go stale. Anchor
+            // mode only: a free reference never rewrites anything (B1).
             // TODO(B2-b): Kim may prefer keeping the originals aside.
-            const existing = await tx.evaluation.count({ where: { sessionSampleId: targetId } });
-            if (
-              repinNeedsConfirm({
-                isAlreadyReference: false,
-                evaluationCount: existing,
-                confirmRepin,
-              })
-            ) {
-              throw new Error("conflict");
+            if (pinsWhenActive) {
+              const existing = await tx.evaluation.count({ where: { sessionSampleId: targetId } });
+              if (
+                repinNeedsConfirm({
+                  isAlreadyReference: false,
+                  evaluationCount: existing,
+                  confirmRepin,
+                })
+              ) {
+                throw new Error("conflict");
+              }
+              repinTarget = targetId;
             }
             await tx.sessionSample.update({
               where: { id: targetId },
               data: { referenceRank: plan.rank },
             });
-            repinTarget = targetId;
           }
           active = plan.activeId;
         }
@@ -1068,7 +1191,7 @@ export async function setReferenceSample(
         });
         if (!repinTarget) return;
         const moduleKey = moduleKeyForFormat(session.format);
-        if (!isPinnedModule(moduleKey)) return;
+        if (!pinsWhenActive) return;
         const evaluations = await tx.evaluation.findMany({
           where: { sessionSampleId: repinTarget },
           select: { id: true, isDraft: true, affectiveData: true, combinedData: true },
@@ -1114,12 +1237,18 @@ export type UpdateSessionInput = {
   // derived from them); the server rejects regardless of what the form shows.
   format?: "descriptive" | "affective" | "combined";
   cupsPerSample?: number;
+  /** B1: "anchor" | "free"; changing it is refused once the format is locked. */
+  referenceMode?: string;
   /** Optional pre-cupping warm-up (WARMUP_IDS); null clears it. */
   warmupExerciseId?: string | null;
   locale?: string;
 };
 
-type UpdateSessionResult = { ok: true } | { ok: false; error: string };
+/** `groupNotice` (C8): set when this edit gave a ticked live session a closing
+ *  date and so sent the group notice that would have gone out at the start. */
+type UpdateSessionResult =
+  | { ok: true; groupNotice?: "sent" | "partial" | "rate_limited" | "failed" }
+  | { ok: false; error: string };
 
 export async function updateSession(
   sessionId: string,
@@ -1149,6 +1278,7 @@ async function updateSessionBody(
     notifyGroupAtStart?: boolean;
     format?: string;
     cupsPerSample?: number;
+    referenceMode?: ReferenceMode;
     closesAt?: Date | null;
     closesAtZone?: string | null;
     isAsync?: boolean;
@@ -1306,15 +1436,97 @@ async function updateSessionBody(
     }
   }
 
+  // B1: the reference mode freezes with the format (before the start and before
+  // any evaluation), because it decides whether the reference is pinned at
+  // 79.00. The server reads the stored value (session.referenceMode); an
+  // unchanged re-post is a no-op, so a harmless rename never hits the lock.
+  if (input.referenceMode !== undefined) {
+    let mode: ReferenceMode;
+    try {
+      mode = v.oneOf(input.referenceMode, "referenceMode", REFERENCE_MODES);
+    } catch {
+      return { ok: false as const, error: "invalid_input" };
+    }
+    if (mode !== normalizeReferenceMode(session.referenceMode)) {
+      const evalCount = await prisma.evaluation.count({
+        where: { sessionSample: { sessionId } },
+      });
+      if (isFormatLocked(session.startedAt, evalCount)) {
+        return { ok: false as const, error: "format_locked" };
+      }
+      data.referenceMode = mode;
+    }
+  }
+
+  // C8: a LIVE session ticked "notify at start" that this edit turns async has
+  // no start any more -> the group notice goes out now (decision in
+  // lib/groupNotify.ts) and the flag is cleared in the same write, so exactly
+  // one of {creation, start, this edit} sends it.
+  let noticeGroupId: string | null = null;
+  if (data.isAsync === true) {
+    const cur = await prisma.cuppingSession.findUnique({
+      where: { id: sessionId },
+      select: {
+        isGroup: true,
+        isAsync: true,
+        groupId: true,
+        notifyGroupAtStart: true,
+        groupNotifiedAt: true,
+        startedAt: true,
+      },
+    });
+    if (cur) {
+      const effectiveGroupId = data.groupId !== undefined ? data.groupId : cur.groupId;
+      const effectiveFlag = data.notifyGroupAtStart ?? cur.notifyGroupAtStart;
+      if (
+        effectiveGroupId &&
+        shouldNotifyOnBecomingAsync({
+          isGroup: cur.isGroup,
+          wasAsync: cur.isAsync,
+          becomesAsync: true,
+          hasGroup: true,
+          notifyGroupAtStart: effectiveFlag,
+          alreadyNotified: cur.groupNotifiedAt !== null,
+          started: cur.startedAt !== null,
+        })
+      ) {
+        data.notifyGroupAtStart = false;
+        noticeGroupId = effectiveGroupId;
+      }
+    }
+  }
+
   if (Object.keys(data).length > 0) {
     await prisma.cuppingSession.update({ where: { id: sessionId }, data });
+  }
+
+  // Best effort and non-blocking, like createGroupSession / startSession: the
+  // save already happened; a refusal or failure is reported, never thrown.
+  // notifyGroupOfSession claims `groupNotifiedAt` atomically and releases it
+  // when nothing went out.
+  let groupNotice: "sent" | "partial" | "rate_limited" | "failed" | undefined;
+  if (noticeGroupId) {
+    try {
+      const res = await notifyGroupOfSession({ groupId: noticeGroupId, sessionId });
+      if (res.ok) groupNotice = noticeOutcome(res.data);
+      else if (res.error === "rate_limited") groupNotice = "rate_limited";
+      else if (res.error !== "invalid_input") groupNotice = "failed";
+    } catch (err) {
+      groupNotice = "failed";
+      logWarn({
+        where: "updateSession",
+        message: "notify_group_on_async_threw",
+        sessionId,
+        code: (err as { code?: string })?.code ?? "unknown",
+      });
+    }
   }
 
   const locale = safeLocale(input.locale);
   revalidatePath(`/${locale}/app/sessions`);
   revalidatePath(`/${locale}/app/sessions/${sessionId}/cup`);
   revalidatePath(`/${locale}/app/sessions/${sessionId}/results`);
-  return { ok: true as const };
+  return { ok: true as const, groupNotice };
 }
 
 // Sample add/rename/remove write to session_samples, which is NOT in the
@@ -1521,7 +1733,7 @@ export async function upsertPhysical(input: {
 // from an explicit "" (clear). The EditSampleMetadataForm caller still
 // submits every key every time (its own type stays fully-required), but the
 // action itself no longer assumes that.
-export type SampleMetadataInput = {
+export type SampleMetadataInput = SamplePrepInput & {
   label?: string;
   name?: string;
   country?: string;
@@ -1567,6 +1779,7 @@ export async function updateSampleMetadata(
       id: true,
       sessionId: true,
       coffeeId: true,
+      offProtocol: true,
       coffee: { select: { createdBy: true, deletedAt: true } },
       // closesAt: assertSessionWritable is expiry-aware (S8-22 A-05), so a
       // label edit stops at the deadline, not at the next 06:00 UTC cron.
@@ -1585,6 +1798,19 @@ export async function updateSampleMetadata(
   // read-only (session_closed), including label-only renames.
   const postCloseNaming = isPostCloseNaming(sample.session, sample, hasAnyCoffeeField(input));
   assertSampleMetadataWritable(sample.session, sample, hasAnyCoffeeField(input));
+
+  // A9: per-sample prep data. Same merge semantics as the coffee fields (absent
+  // key = untouched, "" = clear) and validated before anything is written.
+  // NOT a sanctioned post-close write: on a closed or expired session it is
+  // refused even when the call also names a coffee (postCloseNaming).
+  const prepUpdate = parseSamplePrepInput(
+    pickSamplePrepInput(input as Record<string, unknown>),
+    Date.now(),
+    sample.offProtocol,
+  );
+  if (touchesSamplePrep(prepUpdate) && isSessionExpired(sample.session)) {
+    throw new Error("session_closed");
+  }
 
   let coffeeUpdated: boolean;
 
@@ -1684,7 +1910,7 @@ export async function updateSampleMetadata(
     await prisma.$transaction(async (tx) => {
       await tx.sessionSample.update({
         where: { id: sampleId },
-        data: { label: input.label || undefined },
+        data: { label: input.label || undefined, ...prepUpdate },
       });
       await touchSession(tx, sample.sessionId);
     });

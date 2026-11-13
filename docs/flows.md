@@ -160,6 +160,58 @@ drafts without a score (Kim C2 default a; no editing after closing) and then cal
 catié", with the outcome stated beforehand) and a "Terminar cata" button on the
 results banner. Group sessions never see it.
 
+### Creating a session (S10 WP2)
+
+The wizard (`NewSessionForm` -> `createSession` / `createGroupSession`) and the
+express form share these rules; every `TODO(kim-validar:<code>)` marks a
+SIMULATED answer awaiting Kim.
+
+```mermaid
+flowchart TD
+    W[Wizard step 1: coffees, samples, optional per-sample data] --> V{validateSessionInput\n+ validateSessionMeta}
+    V -- invalid --> E[error code, form stays mounted]
+    V -- ok --> P[planBlindSamples\nauto-labelled samples permuted among their positions\ncrypto.randomInt, planned once outside the retried tx]
+    P --> T[one transaction: coffees, session, samples at their NEW positions,\nreferenceIdx mapped through the permutation, referenceMode stored]
+    T --> N{linked group + notify?}
+    N -- async OR live+create --> M[notifyGroupOfSession at creation]
+    N -- live+start --> S[notifyGroupAtStart = true: sent by startSession]
+    T --> K[step 2 gets sampleKey: letter -> coffee\nowner only, collapsed Clave de muestras]
+```
+
+- **Cups (A2).** The wizard proposes 2 cups per sample for affective and combined
+  (`DEFAULT_CUPS_PER_SAMPLE`, server fallback also 2); express stays 1; the Prisma
+  column default is untouched.
+- **Blind letters (A4, closes F-crear-sesion-10).** The letters used to follow the
+  order in which the owner typed the coffees, so "A" was always the first one entered.
+  Now `lib/blindLabels.ts planBlindOrder` permutes the samples whose label is AUTO
+  (empty, or the generated "Muestra X" / "Sample X") AMONG THE POSITIONS THEY OCCUPY and
+  labels each by its new position; owner-typed labels keep position and label. The
+  wizard sends an EMPTY label for rows still on auto and shows a "Letra al azar"
+  placeholder, never a fixed letter next to a coffee. The owner finds letter -> coffee in
+  the collapsed "Clave de muestras": on wizard step 2 (from the action's `sampleKey`) and
+  on the cup page (owner only; participants never receive coffee names).
+  `duplicateSession` re-shuffles auto samples (never reusing the source's mapping),
+  `referenceRank` travels with its sample and the active pointer is re-aimed at the same
+  sample; `addSessionSample` labels the new sample with the LETTER of its position (a
+  single late-added sample is identifiable as the newest by nature: known limit).
+  Express is unchanged (coffee-less samples).
+- **Sample count (X6).** `lib/sampleCount.ts sampleCountWarning`: a non-blocking line above
+  6 samples, above 4 for combined; creation is never blocked.
+- **Per-sample data (A9).** `session_samples.roastDate / preparationNote / offProtocol /
+  offProtocolNote`, entered in the wizard's collapsed "Más datos de la muestra" and edited
+  later through `updateSampleMetadata` (merge semantics; refused on a closed or expired
+  session). BLIND DATA: owner-only until the sample is revealed, through the one rule
+  `lib/samplePrep.ts gateSamplePrep` (cup page, results page, CVA PDF, print page, close
+  email). The columns are not in the PHASE 21 grant. Display-only: scoring never reads them.
+- **Reference mode (B1).** `CuppingSession.referenceMode`: `anchor` (default, existing
+  sessions: the active reference is pinned at 5 / 79.00, a Café Sensible exercise, not
+  CVA) or `free` (everyone scores it like any other sample, the others are compared with
+  its average). Chosen in the wizard when a reference is marked; changeable in the edit
+  form only while the format is unlocked (before start and before any evaluation, else
+  `format_locked`); copied by `duplicateSession`. The pin and every lock/confirmation go
+  through `shouldPinReference` (`lib/referenceRules.ts`); in both modes references stay
+  out of the ranking, the session average and "Mejor muestra".
+
 ### Group sessions (live and async)
 
 `createGroupSession` starts at `active`, creates the owner's participant row and
@@ -529,6 +581,16 @@ rewritten. **Anchor:** results treat the reference as context, not a
 competitor — it is pulled out of the ranking, the session average and "Mejor
 muestra" into its own card above the ranking; the Δ against it is unchanged.
 
+**2026-11 — reference mode (S10 WP2, B1):** everything in the "Pin" and "Anchor"
+paragraphs above holds for `referenceMode = "anchor"` (the default for every
+existing session). In `"free"` mode the reference is NOT pinned: cuppers score it like
+any sample (server paths `upsertEvaluation`, the offline replay, `setReferenceSample`'s
+re-pin and `confirmRepin`, the sample-removal re-activation and CupClient's lock /
+first-visit auto-save all ask `shouldPinReference`, which reads the mode from the session
+row), nothing is rewritten when the reference changes, and the results card shows its
+real score. References stay out of the ranking, the session average and "Mejor muestra"
+in both modes.
+
 **2026-10 — multiple references (Referencia 1 / 2):** references ACCUMULATE
 instead of replacing. `SessionSample.referenceRank` (1, 2, 3 — unique per
 session, max 3) records the order they were named; `referenceSampleId` stays
@@ -713,6 +775,24 @@ error), so the owner can resend from the group page. A failed notice never block
 the start; the cup page shows a non-blocking notice. ASYNC sessions (never
 "started") still notify at creation. `CuppingSession.notifyGroupAtStart` records
 the owner's choice; the group is `groupId`. Rules: `lib/groupNotify.ts`.
+
+**The owner chooses when (S10 WP2, C8).** For a LIVE session linked to a group the
+wizard asks "Avisar al crear la sesión" / "Avisar al iniciar la cata" (default:
+at start, today's rule); `createGroupSession` takes `notifyGroupWhen: "create" |
+"start"` (validated with `oneOf`). `shouldNotifyAtCreate` is true when the session
+is async OR (live AND when = "create"); `notifyAtStartFlag` stores
+`notifyGroupAtStart` true only for live AND when = "start", so one choice never
+sends twice, and the atomic `groupNotifiedAt` claim in `notifyGroupOfSession`
+stops a later start from sending a second email either way. An async session
+(it has a closing date) has no start and ignores the choice. A LIVE session
+ticked "at start" that LATER gets a closing date (`updateSession`) becomes async
+and has no start any more: `shouldNotifyOnBecomingAsync` sends the notice at
+that edit (same claim and email budget; a refusal or failure never blocks the
+save and comes back as `groupNotice`) and clears `notifyGroupAtStart`. So
+exactly one of creation, start or that edit sends the notice; the opposite
+change (async -> live) needs nothing, it was notified at creation. A session that already STARTED never sends one by gaining a date (`started` in the rule: its start notice was already attempted). The edit form shows an inline note before saving ("Al guardar, se enviará el aviso...", computed on the server from the same rule) and a toast after (`groupNotice` = `sent`). Known limit: the flag is cleared in the save itself, so if that send fails no later path sends it automatically; the owner gets the failure notice and writes to the group from the group page (same as a failed start notice). The email body
+("Te invito a una sesión de catación … Usa el enlace para unirte") is true for a
+live session announced before it starts: the link opens the waiting room.
 
 ```mermaid
 sequenceDiagram

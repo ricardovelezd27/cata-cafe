@@ -1712,3 +1712,64 @@ two-line `CREATE POLICY "coffees_select" ON coffees FOR SELECT USING ("isPublic"
 the later `DROP POLICY IF EXISTS "coffees_select"` + `CREATE POLICY` pairs stay). The test harness
 applies the file statement by statement and tolerates exactly this one failure; it fails the run if
 a second statement fails or if this one stops failing.
+
+---
+
+## §32. Database — apply the `sample_prep_and_reference_mode` migration (2026-11, S10 WP2)
+
+**What it does:** adds five columns, all additive, no trigger, no function, no policy, no index,
+no foreign key:
+
+- `session_samples."roastDate"` (DATE, nullable), `"preparationNote"` (TEXT, nullable),
+  `"offProtocol"` (BOOLEAN NOT NULL DEFAULT false), `"offProtocolNote"` (TEXT, nullable): the
+  owner's optional per-sample prep data (Kim A9).
+- `cupping_sessions."referenceMode"` (TEXT NOT NULL DEFAULT `'anchor'`): how the session's
+  reference behaves (`anchor` = pinned at 79.00 as before, `free` = scored like any sample).
+  Every existing session is `anchor`, so nothing changes for them.
+
+The two NOT NULL defaults are constants, so Postgres adds them without rewriting either table.
+
+**Order matters:** run it BEFORE the deploy. The regenerated Prisma client selects these columns
+on the cup, results, print and PDF pages immediately; without them those pages fail.
+
+1. On your machine, with `.env.local` pointing at the project (it is production):
+   ```bash
+   npx prisma migrate deploy
+   ```
+   Expected: `… 20261113100000_sample_prep_and_reference_mode … applied`. This migration's name
+   sorts after `20261113090000_evaluation_cups` (PR #117); `migrate deploy` applies pending
+   migrations in name order whichever PR merges first, and neither depends on the other (so
+   the output may list one or two migrations).
+2. **Verify** — Supabase SQL Editor:
+   ```sql
+   SELECT table_name, column_name, data_type, column_default
+   FROM information_schema.columns
+   WHERE (table_name = 'session_samples'
+          AND column_name IN ('roastDate','preparationNote','offProtocol','offProtocolNote'))
+      OR (table_name = 'cupping_sessions' AND column_name = 'referenceMode')
+   ORDER BY table_name, column_name;
+   ```
+   Expected: five rows; `referenceMode` default `'anchor'::text`, `offProtocol` default `false`.
+3. **Blind-data check (read-only).** The four `session_samples` columns can identify a coffee, so
+   they are deliberately NOT in the PHASE 21 column grant and no SQL phase is needed. Confirm the
+   browser key cannot read them:
+   ```sql
+   SELECT column_name, has_column_privilege('authenticated', 'public.session_samples', column_name, 'SELECT') AS readable
+   FROM information_schema.columns
+   WHERE table_schema = 'public' AND table_name = 'session_samples'
+   ORDER BY column_name;
+   ```
+   Expected: `readable = false` for `roastDate`, `preparationNote`, `offProtocol`, `offProtocolNote`
+   (and `coffeeId`); `true` only for `id, sessionId, position, label, revealed, referenceRank, createdAt`.
+4. Deploy the branch. No new environment variable.
+
+**Smoke test (5 minutes, throwaway session):** create a group session with three coffees, tick a
+reference and pick "Referencia libre"; the three samples get letters in a random order each time you
+repeat it, and "Clave de muestras" (collapsed) on step 2 and on the cup page lists letter -> coffee;
+cup the reference as another cupper and check its bubbles are NOT locked and its score is not
+79.00; open the owner's sample editor, fill "Más datos de la muestra", and check a participant's
+`/print` shows none of it until the owner reveals the sample.
+
+**Rollback:** the columns are additive; code rolled back ignores them. Do not drop them while the
+new code is deployed. Sessions already created as `free` would be pinned again by older code on the
+next save of their reference, so do not roll back the code while a `free` session is mid-cupping.

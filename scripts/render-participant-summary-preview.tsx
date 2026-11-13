@@ -173,6 +173,7 @@ const model: ParticipantSummaryModel = {
     resultsUpdatedAt: null,
     originEditedAt: null,
     referenceLabel: "A",
+    referenceMode: "anchor",
   },
   kpis: {
     myAvg: 82.06,

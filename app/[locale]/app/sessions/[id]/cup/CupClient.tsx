@@ -44,6 +44,9 @@ import {
   type SampleMetadataFormData,
 } from "@/components/cupping/EditSampleMetadataForm";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
+import { SampleKey, type SampleKeyTranslations } from "@/components/cupping/SampleKey";
+import type { SamplePrepTranslations } from "@/components/cupping/SamplePrepFields";
+import { prepFromForm, prepToForm, type SamplePrep } from "@/lib/samplePrep";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { canPickExistingCoffee } from "@/lib/cupCoffeePick";
@@ -99,7 +102,7 @@ import {
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { useForegroundResume } from "@/hooks/useForegroundResume";
 import {
-  isPinnedModule,
+  shouldPinReference,
   nextReferenceOrder,
   orderByReferenceIds,
   pinReferenceAffective,
@@ -161,6 +164,9 @@ type Sample = {
   revealed: boolean;
   coffeeId: string | null;
   coffee: SampleCoffee | null;
+  /** A9 prep data (roast date, notes, off-protocol); the server ships it to the
+   *  owner or once revealed only. Optional for pre-upgrade offline blobs. */
+  prep?: SamplePrep | null;
   /** 1, 2, … when the sample is a reference (S6 multi-reference). */
   referenceRank?: number | null;
 };
@@ -175,6 +181,10 @@ type Session = {
   // The owner's "Referencia" sample (display-only). Optional so a pre-upgrade
   // offline blob rehydrated by cup/error.tsx still type-checks.
   referenceSampleId?: string | null;
+  /** B1: "anchor" (pinned at 79.00) | "free". Fixed once the format is locked,
+   *  so it cannot go stale during a cupping. Optional for old offline blobs
+   *  (read as anchor). */
+  referenceMode?: string;
   /** ISO closing date + the owner's IANA zone (deadline banner). */
   closesAt?: string | null;
   closesAtZone?: string | null;
@@ -267,6 +277,10 @@ export function CupClient({
     process: string;
     editSample: string;
     editSampleError: string;
+    /** Owner-only "Clave de muestras" (A4); optional for offline blobs. */
+    sampleKey?: SampleKeyTranslations;
+    /** A9 "Más datos de la muestra" section of the owner's sample editor. */
+    samplePrep?: SamplePrepTranslations;
     /** "Usar café existente" picker strings (S9-05); optional for offline blobs. */
     coffeePicker?: {
       useExisting: string;
@@ -554,6 +568,18 @@ export function CupClient({
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
   const [regenerateOpen, setRegenerateOpen] = useState(false);
   const [entriesLocked, setEntriesLockedState] = useState(sessionEntriesLocked);
+  // B1: the reference mode is read from the realtime payload too, so a tab that
+  // is already open follows an owner switch (anchor <-> free) and never pins
+  // locally on a stale mode. The server stays the authority: upsertEvaluation
+  // and the offline replay read the STORED mode and pin (or not) regardless.
+  const [referenceMode, setReferenceModeState] = useState<string | undefined>(session.referenceMode);
+  // A fresh server prop (router.refresh) wins: adjust state during render
+  // (React's derived-state pattern) instead of an effect.
+  const [seenReferenceMode, setSeenReferenceMode] = useState(session.referenceMode);
+  if (seenReferenceMode !== session.referenceMode) {
+    setSeenReferenceMode(session.referenceMode);
+    setReferenceModeState(session.referenceMode);
+  }
   const [entriesPending, setEntriesPending] = useState(false);
   // Follow the server value when router.refresh() delivers a fresh one.
   const [seenEntriesLocked, setSeenEntriesLocked] = useState(sessionEntriesLocked);
@@ -1079,6 +1105,9 @@ export function CupClient({
             applyReferenceOrderRef.current(
               next && sampleIdsRef.current.has(next) ? next : null,
             );
+          }
+          if (typeof row.referenceMode === "string" || typeof row.reference_mode === "string") {
+            setReferenceModeState((row.referenceMode ?? row.reference_mode) as string);
           }
           if (typeof row.entriesLocked === "boolean") {
             setEntriesLockedState(row.entriesLocked);
@@ -1698,18 +1727,25 @@ export function CupClient({
   // drops only the active one. Adding on top of an existing reference asks
   // for confirmation first (the old one unlocks, the new one is pinned).
   const REMOVE_ACTIVE = "__remove_active__";
+  // B1: the pin (and so every re-pin confirmation) exists only in anchor mode.
+  const referencePins = shouldPinReference({
+    mode: referenceMode,
+    moduleKey: session.format === "descriptive" ? "descriptive" : session.format === "affective" ? "affective" : "combined",
+    isActiveReference: true,
+  });
   const commitReference = (next: string | null, confirmRepin = false) => {
     if (next && refOrderRef.current.includes(next)) return; // already one: server no-op
     if (!next && refOrderRef.current.length === 0) return;
     // A new reference that already has evaluations asks first (the server
-    // refuses without confirmRepin anyway).
-    if (next && !confirmRepin && (evalCountBySample[next] ?? 0) > 0) {
+    // refuses without confirmRepin anyway). Anchor mode only.
+    if (referencePins && next && !confirmRepin && (evalCountBySample[next] ?? 0) > 0) {
       setRepinTarget(next);
       return;
     }
     // S8-27: dropping the active reference re-pins the earlier one; when
     // cuppers already rated it, ask first (the server refuses otherwise).
-    if (!next && !confirmRepin) {
+    // Anchor mode only.
+    if (referencePins && !next && !confirmRepin) {
       const order = refOrderRef.current;
       const prevId = order.length > 1 ? order[order.length - 2] : null;
       const n = prevId ? (evalCountBySample[prevId] ?? 0) : 0;
@@ -1743,8 +1779,16 @@ export function CupClient({
   // every save, so a stale client cannot move the anchor.
   const affectiveModuleKey: "affective" | "combined" | null =
     session.format === "affective" ? "affective" : session.format === "descriptive" ? null : "combined";
+  // B1: pinned only for the active reference of an ANCHOR session; a "free"
+  // reference is a normal, editable sample for the forms, the tabs and the guards.
+  const isPinnedReference = (sampleId: string): boolean =>
+    shouldPinReference({
+      mode: referenceMode,
+      moduleKey: affectiveModuleKey ?? "descriptive",
+      isActiveReference: sampleId === referenceSampleId,
+    });
   const pinForReference = (s: Sample): Sample =>
-    s.id === referenceSampleId && affectiveModuleKey
+    isPinnedReference(s.id) && affectiveModuleKey
       ? {
           ...s,
           affective: pinReferenceAffective(s.affective, session.cupsPerSample),
@@ -1753,7 +1797,7 @@ export function CupClient({
       : s;
   const viewSamples = samples.map(pinForReference);
   const current = viewSamples[sampleIdx];
-  const isCurrentLocked = current.id === referenceSampleId && affectiveModuleKey !== null;
+  const isCurrentLocked = isPinnedReference(current.id);
   const referenceSample = referenceSampleId
     ? viewSamples.find((s) => s.id === referenceSampleId) ?? null
     : null;
@@ -1768,16 +1812,17 @@ export function CupClient({
     if (sessionStatus === "closed") return;
     const sample = samplesRef.current[sampleIdx];
     if (!sample || sample.id !== referenceSampleId) return;
+    // B1: a "free" reference is scored like any sample: no pinned first-visit save.
+    if (!isPinnedReference(sample.id)) return;
     if (ensuredReferenceRef.current.has(sample.id)) return;
     ensuredReferenceRef.current.add(sample.id);
-    if (!isPinnedModule(affectiveModuleKey)) return;
     scheduleAutoSave(
       sample.id,
       affectiveModuleKey,
       pinReferenceAffective(sample[affectiveModuleKey], session.cupsPerSample),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [referenceSampleId, sampleIdx, affectiveModuleKey, sessionStatus]);
+  }, [referenceSampleId, sampleIdx, affectiveModuleKey, sessionStatus, referenceMode]);
   const currentRefIdx = refOrder.indexOf(current.id);
   const isCurrentReference = currentRefIdx !== -1;
   const referenceBadgeLabel = translations.referenceBadge ?? "Referencia";
@@ -1839,6 +1884,8 @@ export function CupClient({
               // Only reflect the coffee edit locally when the server actually
               // applied it — a non-owned coffee's data was silently skipped.
               coffee: result.coffeeUpdated ? { ...data } : s.coffee,
+              // A9: the prep fields saved with the same call.
+              prep: prepFromForm(data),
             }
           : s
       )
@@ -2443,6 +2490,21 @@ export function CupClient({
           />
         </div>
       )}
+      {/* A4: the letters are drawn at random, so the owner (only) gets a
+          collapsed letter -> coffee key. Participants never receive coffee
+          names (cup/page.tsx ships `coffee` to the owner only). */}
+      {isOwner && translations.sampleKey && !notesStage && (
+        <div className="mx-4 mt-3 lg:mx-6">
+          <SampleKey
+            rows={viewSamples.map((s) => ({
+              id: s.id,
+              label: s.label,
+              coffee: s.coffee?.name?.trim() || null,
+            }))}
+            translations={translations.sampleKey}
+          />
+        </div>
+      )}
       {isOwner && editingSample && (
         <ResponsiveDialog
           open={editingSample}
@@ -2494,10 +2556,12 @@ export function CupClient({
               processType: current.coffee?.processType ?? "",
               altitude: current.coffee?.altitude ?? "",
               roastLevel: current.coffee?.roastLevel ?? "",
+              ...prepToForm(current.prep),
             }}
             onSubmit={handleSaveSampleMetadata}
             onCancel={() => setEditingSample(false)}
             translations={{
+              prep: translations.samplePrep,
               label: translations.sample,
               name: translations.coffeeName,
               country: translations.coffeeCountry,

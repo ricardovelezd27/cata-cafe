@@ -29,6 +29,7 @@ import {
 import { resolveDescriptor, normalizeDescriptorId, legacyDescriptorFamily } from "@/lib/descriptors";
 import { EXPRESS_NOTE_KEY } from "@/lib/expressSession";
 import { sanitizePdfText } from "@/lib/pdf/text";
+import { samplePrepVisible, type SamplePrep } from "@/lib/samplePrep";
 import { calcIndividualBreakdown, isAffectiveComplete, penaltiesApply as penaltiesApplyRule } from "@/lib/scoring";
 
 export type Locale = "es" | "en";
@@ -105,6 +106,9 @@ export const CVA_TEXT: Record<Locale, Record<string, string>> = {
     name: "Nombre",
     sampleNo: "Muestra n.º",
     roastLevel: "Nivel de tueste",
+    roastDate: "Fecha de tueste",
+    preparation: "Preparación",
+    offProtocol: "Fuera de protocolo",
     impressionOfQuality: "Impresión de calidad",
     selectUpToFive: "Seleccione hasta cinco",
     selectUpToTwo: "Seleccione hasta dos",
@@ -183,6 +187,9 @@ export const CVA_TEXT: Record<Locale, Record<string, string>> = {
     name: "Name",
     sampleNo: "Sample No.",
     roastLevel: "Roast level",
+    roastDate: "Roast date",
+    preparation: "Preparation",
+    offProtocol: "Off protocol",
     impressionOfQuality: "Impression of quality",
     selectUpToFive: "Select up to five",
     selectUpToTwo: "Select up to two",
@@ -661,6 +668,9 @@ export type SheetHeader = {
   sampleLabel: string;
   coffeeName: string | null; // only when revealed
   roastLevel: string | null; // only when revealed — same gate as coffeeName
+  /** A9: roast date / preparation / off-protocol note. Owner view or a revealed
+   *  sample only (re-gated here even though the callers already gate). */
+  prep: SamplePrep | null;
   cupsPerSample: number;
   purpose: string;
   isReference: boolean;
@@ -718,6 +728,8 @@ export type CvaFormInput = {
     revealed: boolean;
     coffeeName: string | null;
     roastLevel: string | null;
+    /** A9 prep data as gated by the caller (sheetSamplePrep). */
+    prep?: SamplePrep | null;
     isReference?: boolean;
     referenceRank?: number | null;
     descriptive: D;
@@ -884,6 +896,19 @@ export function buildCvaFormData(input: CvaFormInput): CvaSampleSheet {
           : sanitizePdfText(input.sample.coffeeName)
         : null,
       roastLevel: input.sample.revealed ? input.sample.roastLevel : null,
+      prep:
+        samplePrepVisible({ ownerView: input.ownerView, revealed: input.sample.revealed }) &&
+        input.sample.prep
+          ? {
+              ...input.sample.prep,
+              preparationNote: input.sample.prep.preparationNote
+                ? sanitizePdfText(input.sample.prep.preparationNote)
+                : null,
+              offProtocolNote: input.sample.prep.offProtocolNote
+                ? sanitizePdfText(input.sample.prep.offProtocolNote)
+                : null,
+            }
+          : null,
       cupsPerSample: input.cupsPerSample,
       purpose: sanitizePdfText(input.purpose),
       isReference: input.sample.isReference ?? false,
