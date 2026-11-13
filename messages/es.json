@@ -1116,7 +1116,7 @@
     "closedNotice": "La cata se cerró. Lo que enviaste cuenta en los resultados; lo que quedó sin enviar, no.",
     "revealConfirm": {
       "title": "¿Revelar esta muestra?",
-      "body": "Todos verán qué café es y nadie podrá seguir evaluando esta muestra. Las evaluaciones en borrador de esta muestra quedarán como están.",
+      "body": "Todos verán qué café es y nadie podrá seguir evaluando esta muestra. Las evaluaciones en borrador de esta muestra quedarán como están. Si todavía no la evaluaste, ya no podrás hacerlo.",
       "confirm": "Revelar muestra",
       "cancel": "Cancelar"
     },
@@ -1127,6 +1127,14 @@
     "closeNow": {
       "line": "La fecha de cierre ya pasó. La cata se cerrará sola en las próximas horas; puedes cerrarla ahora para enviar los resultados.",
       "button": "Cerrar ahora"
+    },
+    "closeAsIs": {
+      "line": "Las muestras ya reveladas no se pueden seguir evaluando. Puedes cerrar la cata tal como está: lo que ya enviaste se conserva.",
+      "button": "Cerrar la cata",
+      "title": "¿Cerrar la cata?",
+      "body": "La cata se cierra tal como está y ya no se podrá editar. Lo que ya enviaste se conserva.",
+      "confirm": "Cerrar la cata",
+      "cancel": "Seguir catando"
     },
     "finish": {
       "button": "Terminar cata",
@@ -2072,7 +2080,7 @@
       "not_found_or_forbidden": "No encontramos ese elemento o no tienes permiso.",
       "session_not_started": "La cata aún no empezó. Espera a que el maestro la inicie.",
       "session_closed": "Esta cata ya está cerrada; sus resultados son definitivos.",
-      "reference_revealed": "Esta acción cambiaría las calificaciones de una muestra ya revelada. Elige otra muestra como referencia.",
+      "reference_revealed": "Esta acción cambiaría las calificaciones de una muestra ya revelada. Puedes marcar otra muestra como referencia o dejar la referencia como está.",
       "sample_revealed": "Esta muestra ya fue revelada y no se puede seguir evaluando.",
       "invalid_token": "Este enlace de invitación no es válido.",
       "token_expired": "Este enlace de invitación caducó.",

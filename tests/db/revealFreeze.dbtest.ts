@@ -18,7 +18,7 @@ vi.mock("next/cache", () => ({ revalidatePath: () => {}, revalidateTag: () => {}
 vi.mock("next/server", () => ({ after: (fn: () => unknown) => void fn }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ auth: { admin: {} } }) }));
 
-import { revealSample, submitAllEvaluations } from "@/app/actions/community";
+import { closeSession, finishSoloSession, revealSample, submitAllEvaluations } from "@/app/actions/community";
 import { upsertEvaluation } from "@/app/actions/sessions";
 import { replayEvaluation, syncEvaluation } from "@/app/actions/offline";
 import { affectiveData, makeEvaluation, makeSession, makeUser, prisma, resetDb } from "./support/db";
@@ -131,5 +131,38 @@ describe("reveal freezes evaluation on an open session", () => {
     expect(after.updatedAt.getTime()).toBeGreaterThan(before.updatedAt.getTime());
     // And from now on the sample is frozen.
     expect(await upsertEvaluation(payload(s.id, blind.id, 9))).toEqual({ ok: false, error: "sample_revealed" });
+  });
+});
+
+// S10 WP6 C1: a solo cupping must never get stuck open after a reveal.
+describe("solo cupping with every sample revealed before it was scored", () => {
+  it("'Terminar cata' cannot finish it, the owner close can (through closeSessionInternal)", async () => {
+    const owner = await makeUser({ name: "Solo" });
+    const s = await makeSession({
+      ownerId: owner,
+      isGroup: false,
+      cupsPerSample: 2,
+      samples: [{ revealed: true }, { revealed: true }],
+    });
+    h.userId = owner;
+    // one draft left incomplete, the other sample never opened: nothing can be finished
+    await makeEvaluation({
+      sampleId: s.samples[0].id,
+      sessionId: s.id,
+      cupperId: owner,
+      cupsPerSample: 2,
+      draft: true,
+      data: { fragancia_af_final: 6 },
+    });
+    expect(await finishSoloSession(s.id)).toEqual({ ok: false, error: "invalid_input" });
+    expect((await prisma.cuppingSession.findUniqueOrThrow({ where: { id: s.id } })).status).toBe("active");
+
+    const r = await closeSession(s.id);
+    expect(r.ok).toBe(true);
+    const after = await prisma.cuppingSession.findUniqueOrThrow({ where: { id: s.id } });
+    expect(after.status).toBe("closed");
+    expect(after.closedAt).not.toBeNull();
+    // what was already sent is kept: nothing was submitted here, nothing was invented
+    expect(await prisma.evaluation.count({ where: { sessionId: s.id, isDraft: false } })).toBe(0);
   });
 });

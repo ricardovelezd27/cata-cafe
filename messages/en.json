@@ -1116,7 +1116,7 @@
     "closedNotice": "The session closed. What you sent counts in the results; anything left unsent does not.",
     "revealConfirm": {
       "title": "Reveal this sample?",
-      "body": "Everyone will see which coffee it is and nobody will be able to keep evaluating this sample. Draft evaluations of this sample will stay as they are.",
+      "body": "Everyone will see which coffee it is and nobody will be able to keep evaluating this sample. Draft evaluations of this sample will stay as they are. If you have not evaluated it yet, you will not be able to.",
       "confirm": "Reveal sample",
       "cancel": "Cancel"
     },
@@ -1127,6 +1127,14 @@
     "closeNow": {
       "line": "The closing date has passed. The cupping will close by itself in the next few hours; you can close it now to send the results.",
       "button": "Close now"
+    },
+    "closeAsIs": {
+      "line": "Samples that have already been revealed can no longer be evaluated. You can close the cupping as it is: what you already sent is kept.",
+      "button": "Close the cupping",
+      "title": "Close the cupping?",
+      "body": "The cupping closes as it is and can no longer be edited. What you already sent is kept.",
+      "confirm": "Close the cupping",
+      "cancel": "Keep cupping"
     },
     "finish": {
       "button": "Finish cupping",
@@ -2072,7 +2080,7 @@
       "not_found_or_forbidden": "We couldn't find that, or you don't have permission.",
       "session_not_started": "The tasting has not started yet. Wait for the host to start it.",
       "session_closed": "This tasting is already closed; its results are final.",
-      "reference_revealed": "This would change the ratings of a sample that has already been revealed. Choose another sample as the reference.",
+      "reference_revealed": "This would change the ratings of a sample that has already been revealed. You can mark another sample as the reference or leave the reference as it is.",
       "sample_revealed": "This sample has been revealed and can no longer be evaluated.",
       "invalid_token": "This invite link isn't valid.",
       "token_expired": "This invite link has expired.",

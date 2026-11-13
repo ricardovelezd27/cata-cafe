@@ -208,6 +208,12 @@ drafts without a score (Kim C2 default a; no editing after closing) and then cal
 catié", with the outcome stated beforehand) and a "Terminar cata" button on the
 results banner. Group sessions never see it.
 
+**Stuck after a reveal (S10 WP6 C1).** A revealed sample can no longer be evaluated, so a solo owner who
+revealed samples before scoring them can end with nothing `planFinish` can finish. When `canFinish` is
+false and an unfinished sample is revealed (`soloCloseAsIsOffer`, `lib/closeRules.ts`), the results page
+offers "Cerrar la cata": the existing owner `closeSession` (so `closeSessionInternal`, never a direct
+`status` write); what was already sent is kept.
+
 ### Creating a session (S10 WP2)
 
 The wizard (`NewSessionForm` -> `createSession` / `createGroupSession`) and the

@@ -106,20 +106,19 @@ export function SessionSyncStatus({
     };
   } else if (pendingCount > 0) {
     line = { tone: "warn", icon: <CloudOff size={14} aria-hidden />, text: fill(t.pending), retry: true };
-  } else if (closedUnsentCount > 0 && t.closedUnsent) {
-    line = {
-      tone: "warn",
-      icon: <CloudOff size={14} aria-hidden />,
-      text: t.closedUnsent.replace("{count}", String(closedUnsentCount)),
-      retry: false,
-    };
-  } else if (revealedUnsentCount > 0 && t.revealedUnsent) {
-    line = {
-      tone: "warn",
-      icon: <CloudOff size={14} aria-hidden />,
-      text: t.revealedUnsent.replace("{count}", String(revealedUnsentCount)),
-      retry: false,
-    };
+  } else if (
+    (closedUnsentCount > 0 && t.closedUnsent) ||
+    (revealedUnsentCount > 0 && t.revealedUnsent)
+  ) {
+    // S10 WP6 C3: when both kinds exist, say both (the line used to hide the second).
+    const parts: string[] = [];
+    if (closedUnsentCount > 0 && t.closedUnsent) {
+      parts.push(t.closedUnsent.replace("{count}", String(closedUnsentCount)));
+    }
+    if (revealedUnsentCount > 0 && t.revealedUnsent) {
+      parts.push(t.revealedUnsent.replace("{count}", String(revealedUnsentCount)));
+    }
+    line = { tone: "warn", icon: <CloudOff size={14} aria-hidden />, text: parts.join(" "), retry: false };
   } else if (justSynced) {
     line = { tone: "success", icon: <CheckCircle2 size={14} aria-hidden />, text: t.synced, retry: false };
   }

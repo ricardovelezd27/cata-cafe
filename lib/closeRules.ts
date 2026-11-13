@@ -548,3 +548,24 @@ export function soloRepairOwedOnView(
   if (row.isGroup || row.createdBy !== viewerId) return false;
   return needsFinalize(row, now, graceMs);
 }
+
+// ─── S10 WP6 C1: a solo cupping that "Terminar cata" cannot finish ───────────────────────
+// After a reveal (S10 WP3a) a sample can no longer be evaluated. A solo owner who
+// revealed a sample before scoring it (or while its draft was incomplete) can end up
+// with no sample left to finish: `planFinish` says `canFinish: false` and the owner has
+// no other close control, so the only way out was deleting the cupping. When that is the
+// case AND at least one unfinished sample (no submitted evaluation) is revealed, the
+// results page offers to close the cupping as it is. TODO(kim-validar:X3)
+export type CloseAsIsSample = {
+  revealed: boolean;
+  /** The owner has a SUBMITTED evaluation of this sample. */
+  submitted: boolean;
+};
+
+export function soloCloseAsIsOffer(input: {
+  canFinish: boolean;
+  samples: CloseAsIsSample[];
+}): boolean {
+  if (input.canFinish) return false;
+  return input.samples.some((s) => s.revealed && !s.submitted);
+}
