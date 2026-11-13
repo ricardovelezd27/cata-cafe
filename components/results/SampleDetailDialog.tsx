@@ -20,6 +20,7 @@ import { PillTabs, Button, type PillTabItem } from "@/components/ui";
 import { SampleDetail, type SampleDetailTranslations } from "@/components/results/SampleDetail";
 import type { SessionFormat } from "@/lib/constants";
 import type { ScoreRule } from "@/lib/scoreRule";
+import { SampleComparisons, type SampleComparisonsTranslations } from "@/components/results/SampleComparisons";
 import type { SampleResult } from "@/app/[locale]/app/sessions/[id]/results/types";
 
 /** SampleDetail's full translation shape, plus the dialog's own strings. */
@@ -30,6 +31,7 @@ export type SampleDetailDialogTranslations = SampleDetailTranslations & {
   editExtrinsic: string;
   assignCoffee: string;
   close: string;
+  compare?: SampleComparisonsTranslations;
 };
 
 type ParticipantSample = {
@@ -214,6 +216,15 @@ export function SampleDetailDialog({
           myEvaluation={activeParticipant ? undefined : sample.myEvaluation}
           t={t}
         />
+
+        {/* S10 WP5b B3 + B6: the viewer's own lens only (never when the owner browses a cupper). */}
+        {!activeParticipant && t.compare && (
+          <SampleComparisons
+            comparison={sample.comparison}
+            repeatDiffs={sample.repeatDiffs}
+            t={t.compare}
+          />
+        )}
       </div>
     </ResponsiveDialog>
   );

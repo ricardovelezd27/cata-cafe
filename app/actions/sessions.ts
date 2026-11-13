@@ -38,16 +38,19 @@ import {
   planClosesAtChange,
 } from "@/lib/sessionState";
 import { endOfDayInZone, normalizeZone } from "@/lib/closeRules";
+import { lockSessionRow } from "@/lib/sessionLock";
 import { REFERENCE_REPIN_REQUIRED, REFERENCE_REVEALED, removeSamplesInTx } from "@/lib/sampleRemoval";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
-import { computeEvaluationDerived, moduleKeyForFormat } from "@/lib/evaluation";
+import { moduleKeyForFormat } from "@/lib/evaluation";
+import { writeEvaluationPinAware } from "@/lib/evaluationPinWrite";
 import {
   DEFAULT_REFERENCE_MODE,
   normalizeReferenceMode,
   pinWouldTouchRevealed,
   REFERENCE_MODES,
   shouldPinReference,
-  pinReferenceAffective,
+  planReferenceRestore,
+  activeReferenceId,
   planAddReference,
   countRepinOverwrites,
   planReferenceRepin,
@@ -92,7 +95,6 @@ import {
   MAX_SESSION_SAMPLES,
   defaultSampleLabel,
 } from "@/lib/sessionEdit";
-import { writeEvaluationOrdered } from "@/lib/evaluationWrite";
 
 // Mirrors the standalone CoffeeForm's field set — wizard-created coffees land
 // in the SAME coffees table with the same shape (no wizard-only subset).
@@ -781,6 +783,11 @@ export async function upsertEvaluation(input: {
   // Nobody signed in, or an unreachable auth lookup, is NOT an identity change:
   // it throws `not_authenticated` exactly as requireUser() does.
   expectedUserId?: string;
+  // S10 WP5b review H1: true when the page produced this module while the sample
+  // was the pinned reference. If the sample is NOT pinned any more when the write
+  // runs, the pinned keys keep the stored (restored) values; see
+  // lib/referenceRules.ts resolvePinnedPayload. Absent = an ordinary save.
+  pinnedView?: boolean;
 }): Promise<
   { ok: true; evaluationId: string } | { ok: false; error: "identity_changed" | "sample_revealed" }
 > {
@@ -814,21 +821,23 @@ export async function upsertEvaluation(input: {
   // client can move it (lib/referenceRules.ts). Descriptive data is untouched.
   const moduleKey = moduleKeyForFormat(auth.format);
   // B1: only in "anchor" mode (a "free" reference is scored like any sample).
-  const data = shouldPinReference({
+  const pinsThisSample = shouldPinReference({
     mode: auth.referenceMode,
     moduleKey,
     isActiveReference: auth.referenceSampleId === input.sessionSampleId,
-  })
-    ? pinReferenceAffective(input.data, auth.cupsPerSample)
-    : input.data;
-  const fields = computeEvaluationDerived(moduleKey, data, auth.cupsPerSample);
-
+  });
+  // S10 WP5b (B2 + review H1): the pinned write is decided inside the write's own
+  // transaction against the session's CURRENT reference (lib/evaluationPinWrite.ts).
   const doUpsert = () =>
-    writeEvaluationOrdered(prisma, {
+    writeEvaluationPinAware({
       sessionSampleId: input.sessionSampleId,
       sessionId,
       cupperId: user.id,
-      fields,
+      moduleKey,
+      cupsPerSample: auth.cupsPerSample,
+      posted: input.data,
+      pinnedView: input.pinnedView === true,
+      pinnedAtAuth: pinsThisSample,
       clientTs: input.clientTs,
     });
 
@@ -1091,7 +1100,7 @@ export async function setReferenceSample(
   sessionId: string,
   sampleId: string | null,
   confirmRepin: boolean = false,
-): Promise<ActionResult<{ referenceSampleId: string | null }>> {
+): Promise<ActionResult<{ referenceSampleId: string | null; restored?: number }>> {
   return run(
     "setReferenceSample",
     async () => {
@@ -1119,8 +1128,13 @@ export async function setReferenceSample(
       // The one sanctioned server-side rewrite of a submitted evaluation.
       // Earlier references are never touched (they keep their pinned rows).
       let repinned = 0;
+      let restored = 0;
       let active: string | null = null;
       await prisma.$transaction(async (tx) => {
+        // LOCK ORDER (lib/sessionLock.ts): the session row FIRST, before any
+        // sample/evaluation row, so a cupper's pinned save (FOR SHARE on the
+        // session, then a sample key-share) can never deadlock with this change.
+        await lockSessionRow(tx, sessionId);
         // Read the ranks inside the transaction so two owners' tabs cannot
         // both pick the same next rank (the unique key is the backstop).
         const rows = await tx.sessionSample.findMany({
@@ -1140,8 +1154,11 @@ export async function setReferenceSample(
           isActiveReference: true,
         });
         let repinTarget: string | null = null;
+        const activeBefore = activeReferenceId(rows);
+        let removedActiveId: string | null = null;
         if (targetId === null) {
           const plan = planRemoveActive(rows);
+          removedActiveId = plan.removeId;
           if (plan.removeId) {
             await tx.sessionSample.update({
               where: { id: plan.removeId },
@@ -1190,7 +1207,9 @@ export async function setReferenceSample(
             // anchor is allowed, but only after the owner confirmed it. The
             // count is read in this transaction so it cannot go stale. Anchor
             // mode only: a free reference never rewrites anything (B1).
-            // TODO(B2-b): Kim may prefer keeping the originals aside.
+            // S10 WP5b (B2-b, TODO(kim-validar:B2)): the originals are kept
+            // aside under `ref_previo` (planReferenceRepin) and come back when
+            // this sample stops being the active reference.
             if (pinsWhenActive) {
               // S10 WP3a review H1: thrown BEFORE any write.
               const target = await tx.sessionSample.findUniqueOrThrow({
@@ -1239,6 +1258,29 @@ export async function setReferenceSample(
           data: { referenceSampleId: active },
           select: { format: true, cupsPerSample: true },
         });
+        // S10 WP5b (B2, TODO(kim-validar:B2)): the sample that STOPPED being the
+        // active pinned reference (removed, or unlocked because a newer one was
+        // named) gets each cupper's previous ratings back, same transaction.
+        // Anchor mode only: free mode never pinned, so nothing was stashed.
+        const stoppedPinning = targetId === null ? removedActiveId : activeBefore;
+        if (stoppedPinning && stoppedPinning !== active && pinsWhenActive) {
+          const stoppedEvals = await tx.evaluation.findMany({
+            where: { sessionSampleId: stoppedPinning },
+            select: { id: true, isDraft: true, affectiveData: true, combinedData: true },
+          });
+          const { plan: restore, skipped } = planReferenceRestore(
+            stoppedEvals,
+            moduleKeyForFormat(session.format),
+            session.cupsPerSample,
+          );
+          for (const { id, data } of restore) {
+            await tx.evaluation.update({ where: { id }, data: data as Prisma.EvaluationUpdateInput });
+          }
+          restored = restore.filter((r) => r.restored).length;
+          for (const evaluationId of skipped) {
+            logWarn({ where: "setReferenceSample", sessionId, evaluationId, message: "restore_skipped_invalid" });
+          }
+        }
         if (!repinTarget) return;
         const moduleKey = moduleKeyForFormat(session.format);
         if (!pinsWhenActive) return;
@@ -1257,6 +1299,9 @@ export async function setReferenceSample(
       if (repinned > 0) {
         logInfo({ where: "setReferenceSample", sessionId, message: "reference_repinned", count: repinned });
       }
+      if (restored > 0) {
+        logInfo({ where: "setReferenceSample", sessionId, message: "reference_ratings_restored", count: restored });
+      }
 
       for (const l of ["es", "en"]) {
         revalidatePath(`/${l}/app/sessions/${sessionId}/cup`);
@@ -1264,7 +1309,8 @@ export async function setReferenceSample(
         revalidatePath(`/${l}/app/sessions/${sessionId}/edit`);
         revalidatePath(`/${l}/app/sessions/${sessionId}/waiting`);
       }
-      return { referenceSampleId: active };
+      // `restored` only when something was given back (a zero never changes the shape).
+      return restored > 0 ? { referenceSampleId: active, restored } : { referenceSampleId: active };
     },
     { sessionId },
   );
@@ -1717,6 +1763,8 @@ export async function removeSessionSample(sampleId: string, locale: string = "es
   // transaction so a first evaluation landing between the check and the delete
   // cannot be cascaded away (S8-10 T5; F-sesiones-3, race half).
   const refused = await prisma.$transaction(async (tx) => {
+    // LOCK ORDER (lib/sessionLock.ts): the session row before the sample row below.
+    await lockSessionRow(tx, sample.sessionId);
     // (S8-27: removeSamplesInTx may throw REFERENCE_REPIN_REQUIRED; the
     // transaction rolls back and the catch below turns it into a code.)
     // READ COMMITTED does not stop a cupper's first auto-save from committing

@@ -5,6 +5,15 @@
 import type { MyEvaluation } from "@/lib/evaluationState";
 import type { ScoreRule } from "@/lib/scoreRule";
 import type { SamplePrep } from "@/lib/samplePrep";
+import type { PersonalComparison } from "@/lib/reports/personalComparison";
+import type { RepeatDiffRow } from "@/lib/reports/repeatedSample";
+
+/** B6: the viewer's own two evaluations of the same coffee, compared. */
+export type RepeatDiff = {
+  partnerLabel: string;
+  total: RepeatDiffRow | null;
+  intensities: RepeatDiffRow[];
+};
 
 export type AggregateScoreData = {
   communityScore: number | null;
@@ -89,6 +98,11 @@ export type SampleResult = {
   // score" surface so an unfinished draft never prints a 5-filled score
   // (lib/evaluationState.ts).
   myEvaluation: MyEvaluation;
+  /** S10 WP5b B3: the viewer's own numbers vs the group's (closed group session,
+   *  participant lens only). Absent/null otherwise. */
+  comparison?: PersonalComparison | null;
+  /** S10 WP5b B6: the same coffee served twice (closed session), own evaluations only. */
+  repeatDiffs?: RepeatDiff[];
 };
 
 // In-app help (InfoHint) content — one title/body pair per help topic. Shared

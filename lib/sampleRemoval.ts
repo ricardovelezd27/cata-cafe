@@ -8,6 +8,7 @@ import "server-only";
 
 import type { Prisma } from "@/app/generated/prisma/client";
 import { moduleKeyForFormat } from "@/lib/evaluation";
+import { lockSessionRow } from "@/lib/sessionLock";
 import {
   activeReferenceId,
   compactReferenceRanks,
@@ -37,6 +38,9 @@ export async function removeSamplesInTx(
   opts: { onReactivate: "refuse" | "ignore" },
 ): Promise<void> {
   if (sampleIds.length === 0) return;
+  // LOCK ORDER (lib/sessionLock.ts): the session row first, then the sample rows
+  // (taking it again in a transaction that already holds it is free).
+  await lockSessionRow(tx, sessionId);
   const refsBefore = await tx.sessionSample.findMany({
     where: { sessionId, referenceRank: { not: null } },
     select: { id: true, referenceRank: true },

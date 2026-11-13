@@ -186,11 +186,15 @@ export function warnableCount(blobs: Iterable<OfflineSessionBlob>, now: number =
 export function moduleToSend(
   current: OfflineModuleData | null | undefined,
   snapshot?: OfflineModuleData | null,
-): { data: OfflineModuleData["data"]; updatedAt: number } | null {
+): { data: OfflineModuleData["data"]; updatedAt: number; pinnedView?: boolean } | null {
   void snapshot;
   if (!current) return null;
   if (current.syncStatus !== "pending" && current.syncStatus !== "failed") return null;
-  return { data: current.data, updatedAt: current.updatedAt };
+  return {
+    data: current.data,
+    updatedAt: current.updatedAt,
+    ...(current.pinnedView ? { pinnedView: true } : {}),
+  };
 }
 
 /** Manual retry: park `failed` modules back into the queue with a clean slate. */
