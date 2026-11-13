@@ -314,7 +314,8 @@
       "creating": "Creating…",
       "fullWizard": "Set up a full session",
       "nameRequired": "Give the cupping a name to continue.",
-      "offline": "No connection: you need internet to create the session."
+      "offline": "No connection: you need internet to create the session.",
+      "warmup": "Warm up for 1–2 min first"
     },
     "deleteSession": {
       "title": "Delete session",
@@ -1934,6 +1935,7 @@
       "unknown": "Something went wrong. Please try again.",
       "entries_closed": "The organizer closed entries for this tasting.",
       "group_full": "This group already has 200 members, the maximum.",
+      "reflection_limit": "You have already saved many reflections for this exercise. Delete one to add another.",
       "invalid_email": "That email address doesn't look valid. Check it and try again.",
       "offline": "You need a connection to do this. Try again once you are back online.",
       "identity_changed": "This device changed user. Reload the page to continue.",
@@ -1995,6 +1997,7 @@
       "stillHelp": "No movement and no automatic advance: you attend to your body and move to the next step yourself.",
       "soundDemo": "Hear the sounds",
       "soundDemoCaptions": "Bell: move · Tick: stop · Bowl: stay still · Double bell: open your eyes",
+      "soundDemoCaptionsEyesOpen": "Bell: move · Tick: stop · Bowl: stay still",
       "wakeLockNote": "Keep the screen on during the exercise.",
       "reducedMotionNote": "Reduced motion is on: the figure shows each position without animating it.",
       "keyboardHint": "← → to move · space to pause",
@@ -2026,7 +2029,14 @@
       "backToList": "Back to the exercises",
       "finish": "Finish",
       "tapToResume": "Tap to resume",
-      "skipConfirm": "Tap again to skip"
+      "skipConfirm": "Tap again to skip",
+      "shortMinutes": "1–2 min",
+      "lengthLabel": "Length",
+      "lengthFull": "Full · {min} min",
+      "lengthShort": "Short · 1–2 min",
+      "adaptLabel": "Adapt the exercise",
+      "seatedLabel": "Seated",
+      "compactLabel": "Small space"
     },
     "label": {
       "up": "Up",
@@ -2063,8 +2073,28 @@
     "reflect": {
       "eyebrow": "A moment",
       "title": "Two questions, no hurry",
-      "lead": "Nothing to write: just take a moment with these two questions.",
-      "continue": "Continue"
+      "lead": "Take a moment with these two questions. If you like, write what you noticed.",
+      "leadNoSave": "Nothing to write: just take a moment with these two questions.",
+      "continue": "Continue",
+      "private": "Only you can see them.",
+      "skip": "Continue without saving",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Saved. Only you can see it."
+    },
+    "reflections": {
+      "title": "Your reflections",
+      "private": "Only you can see them.",
+      "empty": "You haven't saved any reflections for this exercise yet.",
+      "delete": "Delete reflection",
+      "deleteTitle": "Delete this reflection?",
+      "deleteBody": "It will be removed permanently. This cannot be undone.",
+      "deleteConfirm": "Delete",
+      "deleteCancel": "Cancel",
+      "deleteFailed": "Could not delete it. Please try again."
+    },
+    "entry": {
+      "label": "Sensory Movement · {min} min"
     },
     "synced": {
       "listen": "Close your eyes and listen",

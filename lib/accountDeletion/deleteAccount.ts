@@ -206,6 +206,7 @@ export async function deleteAccountData(user: {
     // ── Erase ─────────────────────────────────────────────────────────────
     await tx.userCoffeeHistory.deleteMany({ where: { userId } });
     await tx.savedInsight.deleteMany({ where: { createdBy: userId } });
+    await tx.warmupReflection.deleteMany({ where: { userId } });
     await tx.aiChatUsage.deleteMany({ where: { userId } });
     await tx.outboundEmailEvent.deleteMany({ where: { actorKey: `u_${userId}` } });
     await tx.closeEmailDelivery.deleteMany({ where: { userId } });
