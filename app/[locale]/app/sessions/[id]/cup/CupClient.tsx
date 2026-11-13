@@ -90,6 +90,7 @@ import { moduleKeyForFormat } from "@/lib/evaluation";
 import { useKeyboardOpen } from "@/hooks/useKeyboardOpen";
 import { isEvaluationReadOnly, isModuleFrozenForRevealed } from "@/lib/revealFreeze";
 import type { MarketCopy } from "@/components/cupping/MarketNote";
+import { backupEntryFor, planHydration } from "@/lib/pinnedViewHydration";
 import { indexAfterReconcile, reconcileSamples, reconcileUnpinned } from "@/lib/sampleReconcile";
 import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
 import { DevRoleBadge } from "@/components/dev/DevRoleBadge";
@@ -954,6 +955,8 @@ export function CupClient({
     key: ModuleKey;
     data: Data;
     ts: number;
+    /** S10 WP5b review: the data was produced under the pin (lib/pinnedViewHydration.ts). */
+    pinnedView?: boolean;
   };
 
   // Cache the full props payload on each online mount so an offline hard-refresh
@@ -1015,26 +1018,55 @@ export function CupClient({
       const blob = await loadSession(session.id, userId);
       if (cancelled) return;
 
-      if (blob || backup.length > 0) {
+      // S10 WP5b review round 3 (lib/pinnedViewHydration.ts): the "pinned view" mark of a
+      // stored module / backup entry survives the reload. planHydration is the single rule:
+      // a flagged module on a sample that is NOT the pinned reference any more takes the
+      // server props' values for the pin-overwritten keys right away; a flagged module on
+      // the pinned one keeps the mark (hydrated object + sample) so the next save carries it.
+      const planned = planHydration({
+        blob: blob
+          ? {
+              samples: Object.fromEntries(
+                Object.entries(blob.samples).map(([sid, smp]) => [
+                  sid,
+                  {
+                    label: smp.label,
+                    modules: Object.fromEntries(
+                      Object.entries(smp.modules).map(([mk, mod]) => [
+                        mk,
+                        mod
+                          ? {
+                              data: mod.data,
+                              updatedAt: mod.updatedAt,
+                              pinnedView: mod.pinnedView,
+                              hydrates: hydratesForm(mod.syncStatus),
+                            }
+                          : undefined,
+                      ]),
+                    ),
+                  },
+                ]),
+              ),
+            }
+          : null,
+        backup,
+        isModuleKey,
+        stillPinned: (sampleId) => isPinnedReference(sampleId),
+        serverModule: (sampleId, key) =>
+          (session.samples.find((x) => x.id === sampleId)?.[key as keyof Sample] as Data | undefined) ?? null,
+      });
+      for (const m of planned.values()) {
+        if (m.pinnedView) {
+          pinnedDataRef.current.add(m.data);
+          pinnedSamplesRef.current.add(m.sampleId);
+        }
+      }
+      if (planned.size > 0) {
         setSamples((prev) =>
           prev.map((s) => {
             let next = s;
-            const local = blob?.samples[s.id];
-            if (local) {
-              for (const [mk, mod] of Object.entries(local.modules)) {
-                // Conflicts are the SyncConflictModal's job — don't pre-apply them.
-                if (!mod || !hydratesForm(mod.syncStatus) || !isModuleKey(mk))
-                  continue;
-                next = { ...next, [mk]: mod.data };
-              }
-            }
-            for (const entry of backup) {
-              if (entry.sampleId !== s.id || !isModuleKey(entry.key)) continue;
-              // A crash can leave a backup behind without pagehide clearing
-              // it — never let it regress a newer IndexedDB write.
-              const mod = blob?.samples[s.id]?.modules[entry.key];
-              if (mod && mod.updatedAt > entry.ts) continue;
-              next = { ...next, [entry.key]: entry.data };
+            for (const m of planned.values()) {
+              if (m.sampleId === s.id) next = { ...next, [m.key]: m.data };
             }
             return next;
           }),
@@ -1042,12 +1074,11 @@ export function CupClient({
       }
 
       // Promote backup entries into the durable pending store (so the replay
-      // pushes them to the server), then clear the one-shot backup.
-      for (const entry of backup) {
-        if (!isModuleKey(entry.key)) continue;
-        const mod = blob?.samples[entry.sampleId]?.modules[entry.key];
-        if (mod && mod.updatedAt > entry.ts) continue;
-        await writeLocal(entry.sampleId, entry.label, entry.key, entry.data);
+      // pushes them to the server), then clear the one-shot backup. A module whose pin
+      // keys were replaced by the server's is rewritten too (its flag dropped).
+      for (const m of planned.values()) {
+        if (!m.fromBackup && !m.adopted) continue;
+        await writeLocal(m.sampleId, m.label, m.key as ModuleKey, m.data);
       }
       if (backup.length > 0) {
         try {
@@ -1088,14 +1119,20 @@ export function CupClient({
       const lp = localPendingRef.current;
       if (lp) {
         void writeLocal(lp.sampleId, lp.label, lp.key, lp.data);
-        entries.push({ ...lp, ts: now });
+        entries.push(backupEntryFor(lp, now, pinnedDataRef.current.has(lp.data)) as FlushBackupEntry);
       }
       const sp = pendingSaveRef.current;
       if (sp && isModuleKey(sp.key)) {
         const label =
           session.samples.find((s) => s.id === sp.sampleId)?.label ?? "";
         void writeLocal(sp.sampleId, label, sp.key, sp.data);
-        entries.push({ sampleId: sp.sampleId, label, key: sp.key, data: sp.data, ts: now });
+        entries.push(
+          backupEntryFor(
+            { sampleId: sp.sampleId, label, key: sp.key, data: sp.data },
+            now,
+            pinnedDataRef.current.has(sp.data),
+          ) as FlushBackupEntry,
+        );
       }
       // Sync mirror: survives even if the async IndexedDB writes above are
       // aborted by an instant page kill. Always rewritten (or cleared) so it
