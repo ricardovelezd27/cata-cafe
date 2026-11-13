@@ -877,6 +877,7 @@
       "rankIndicative": "indicativo",
       "rankNoClearGap": "sin diferencia clara",
       "basisMine": "tu puntaje",
+      "rankHelp": "\"Indicativo\": hay menos de 6 catadores o menos de 5 tazas, así que el puntaje es una primera señal. \"Sin diferencia clara\": dos muestras vecinas están a menos de 1 punto, o a menos de la mitad de la dispersión del grupo.",
       "fewNote": "Con menos de 3 catadores el puntaje es indicativo: no se muestra dispersión ni se elige mejor muestra.",
       "anchorTitleFree": "Referencia",
       "anchorHintFree": "Puntuada como cualquier otra muestra · fuera del ranking, del promedio y de la mejor muestra"

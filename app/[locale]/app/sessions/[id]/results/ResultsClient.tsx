@@ -397,6 +397,7 @@ export function ResultsClient({
       rankNoClearGap: string;
       basisMine: string;
       fewNote: string;
+      rankHelp: string;
     };
     table: ScoreTableTranslations;
     detail: SampleDetailDialogTranslations;

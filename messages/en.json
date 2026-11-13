@@ -877,6 +877,7 @@
       "rankIndicative": "indicative",
       "rankNoClearGap": "no clear difference",
       "basisMine": "your score",
+      "rankHelp": "\"Indicative\": fewer than 6 cuppers or fewer than 5 cups, so the score is a first signal. \"No clear difference\": two neighbouring samples are less than 1 point apart, or less than half the group's spread apart.",
       "fewNote": "With fewer than 3 cuppers the score is only indicative: no spread is shown and no best sample is picked.",
       "anchorTitleFree": "Reference",
       "anchorHintFree": "Scored like any other sample · outside the ranking, the average and the best sample"

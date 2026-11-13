@@ -1131,6 +1131,7 @@ export default async function ResultsPage({
           rankNoClearGap: tResults("dashboard.rankNoClearGap"),
           basisMine: tResults("dashboard.basisMine"),
           fewNote: tResults("dashboard.fewNote"),
+          rankHelp: tResults("dashboard.rankHelp"),
         },
         table: {
           sample: tResults("table.sample"),
