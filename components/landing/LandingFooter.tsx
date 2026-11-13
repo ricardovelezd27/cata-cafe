@@ -47,6 +47,9 @@ export default async function LandingFooter({ locale }: { locale: string }) {
                   <Link href={localeHref(locale, "/terminos")} className="block hover:text-surface">
                     {t("terms")}
                   </Link>
+                  <Link href={localeHref(locale, "/aviso-legal")} className="block hover:text-surface">
+                    {t("legalNotice")}
+                  </Link>
                 </>
               ) : (
                 <>

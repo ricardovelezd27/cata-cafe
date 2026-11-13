@@ -21,3 +21,16 @@ export function isAccountDeletionEnabled(
 ): boolean {
   return parseFlag(env.ACCOUNT_DELETION_ENABLED);
 }
+
+/**
+ * The 12-month deletion of accounts that were never used (S10 WP9a, privacy
+ * text sections 3 and 10). OFF by default: the daily cron then only COUNTS what
+ * it would delete (cron summary `unusedAccounts`). Set UNUSED_ACCOUNT_PURGE_ENABLED=1
+ * only after the rehearsal in docs/LAUNCH-RUNBOOK.md ("Unused accounts") has
+ * passed, and before the first never-used account reaches 12 months.
+ */
+export function isUnusedAccountPurgeEnabled(
+  env: Record<string, string | undefined> = process.env,
+): boolean {
+  return parseFlag(env.UNUSED_ACCOUNT_PURGE_ENABLED);
+}

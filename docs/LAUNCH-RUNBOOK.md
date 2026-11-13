@@ -1154,17 +1154,69 @@ the deployment goes Ready and then returns 500 on every request, so deploy a Pre
 sees platform-wide insights, the platform report PDF, the digest and the email CSV export;
 AI admins and flagged users see their own data.
 
-**3. Legal pages (owner).** `/privacidad` and `/terminos` already render draft text with a
-"Borrador" banner and `noindex`, but nothing links to them. To publish: paste the final
-text (es, en) into `lib/legal/privacy.ts` and `lib/legal/terms.ts`, bump
-`CONSENT_NOTICE_VERSION` in `lib/legal/config.ts`, flip `LEGAL_PAGES_PUBLISHED` to `true`
-and deploy. That turns on the footer links, the login-page links and the notice line under
-both waitlist forms.
+**3. Publishing the legal pages (owner; S10 WP9a).** `/es|en/privacidad`, `/terminos` and `/aviso-legal` carry the final adapted text (Spanish original in `lib/legal/es/*`, English translation in `lib/legal/en/*`) but stay unpublished: they render for a direct visit with a "Borrador" banner and `noindex`, and nothing links to them. Steps:
+   1. Read the three pages in Spanish and English on the Vercel preview of the WP9a PR. Open items still marked `TODO(owner)`: Registro Mercantil data (`LEGAL_ENTITY.registry`, mandatory under LSSI-CE art. 10.1(b); the pages omit the line until supplied), the founding-offer conditions (terms section 6), the Vercel/Resend transfer safeguards, and the contact address (the pages use the support address).
+   2. Approve, then flip `LEGAL_PAGES_PUBLISHED` to `true` in `lib/legal/config.ts` (a one-line PR) and deploy. If the text changed after approval, bump `CONSENT_NOTICE_VERSION` in the same PR.
+   3. What turns on together: the footer links (Privacidad, Términos, Aviso legal), the login-page legal line, the notice line under both waitlist forms, the consent stamp (`consentAt`, `consentNoticeVersion` written on new waitlist rows), the removal of the "Borrador" banner, indexing of the three pages (`robots` no longer `noindex`) and their listing in `app/sitemap.ts` (both locales). The test `tests/legalDocs.test.ts` fails if the flag is true while `LEGAL_ENTITY.registry` is still null (Registro Mercantil data is mandatory, LSSI-CE art. 10.1(b)).
+   4. The pages STATE the 12-month deletion of unused accounts, so before the first account reaches 12 months (query in item 4 below) the rehearsal must have passed and `UNUSED_ACCOUNT_PURGE_ENABLED=1` must be set. Do not publish the pages while the switch is off and accounts are already due.
+   5. Terms section 4 says the group's results are shown when the cupping is closed (organizer closes it or its closing date arrives). That is true only once the closing-rules change (PR #123) is live: today `canViewGroupResults` also shows them once everyone has submitted. Do NOT publish the pages before PR #123 is deployed.
 
-**4. Retention (decision, no job).** Proposal: keep a waitlist email at most 12 months when
-no account exists for it (`WAITLIST_RETENTION_MONTHS`). Nothing deletes rows automatically;
-until a job exists, delete old rows by hand when asked. Account deletion should remove the
-row too (TODO in S8-07).
+**4. Unused accounts: the 12-month deletion (S10 WP9a; owner decision 2026-11-14).** Every founding-seat reservation and every request for a sign-in link or code creates an auth user at once (`signInWithOtp` makes an unconfirmed `auth.users` row and `handle_new_user` makes its `profiles` row), so "a reservation without an account" does not exist. The privacy text (sections 3 and 10) says: an account that was never used is deleted, with its reservation, once `WAITLIST_RETENTION_MONTHS` (12, calendar months) have passed since the person's LAST reservation or access request; if the person did sign in with the address of the reservation, the reservation is kept while the account exists; a reservation whose address matches no account is deleted 12 months after the reservation.
+
+*What the daily `close-expired-sessions` cron does* (`lib/unusedAccountPurge.ts`; rule in `lib/unusedAccountRules.ts`):
+- An account is "never used" when ALL hold: not anonymous; has an email; `email_confirmed_at`, `phone_confirmed_at` and `last_sign_in_at` are all null (a Google account is confirmed at creation, so it is never selected; any OTP or link sign-in confirms the address); not invited, not SSO, not banned, not soft-deleted; not the super-admin or an `ANALYTICS_AI_ADMIN_EMAILS` address; the LATEST of `created_at`, `confirmation_sent_at`, `recovery_sent_at`, `email_change_sent_at`, `reauthentication_sent_at` (SQL `GREATEST`) AND the `createdAt` of any reservation at the same normalised address is older than 12 calendar months (a person who asked for a link 13 months ago and reserved a seat yesterday is NOT due); and, a second line, none of the four access-email columns is within the last 48 hours (a link may still be in an inbox). An address that is empty or blank is never selected.
+- It must also be EMPTY: no coffee, session, evaluation, participation, group, post, saved insight, history, AI usage, invite, or profile sign of use (analytics access, finished onboarding, a chosen role, country, bio, avatar). Such an account is never deleted; it counts as `skippedUsed`. Grants made TO the account by someone else (a coffee share), its own email ledgers and its reservation are deleted with it; a group owner's roster row that is linked to it keeps the address the owner typed and only loses the link. Nothing owned by another person is deleted.
+- At most 50 accounts per run, oldest first. For each: one database transaction (re-check, unlink/erase, `profile` delete), then a LAST re-check of the auth row (a sign-in that landed in between keeps the auth user and logs `unusedAccount.signedInDuringPurge`, ids only), THEN the auth user through the admin API (3 attempts). If the admin call fails, the database rows are already gone, the failure is logged (`deleteAccount.authUserOrphaned`, ids only) and the NEXT run selects the auth user again and retries the deletion. A failure on one account never stops the others, and a failure of the whole pass never fails the cron.
+- Reservations whose address has no auth user at all (the access email failed when reserving; or an old address left behind by an email change before this deploy) older than 12 months are deleted too, at most 500 per run. There is no exception for an email change: while a change is really in flight the account still holds the OLD address (so its reservation is not an orphan), and once it completes the reservation moves with it (next item).
+- **Switch: `UNUSED_ACCOUNT_PURGE_ENABLED`** (Vercel env). Unset or anything but `1` = OFF: the job only counts, and logs one `unusedAccount.switchOff` warning per run when something is due. The cron JSON carries `unusedAccounts: { due, deleted, skippedUsed, failed, enabled, orphanReservations: { due, deleted } }` (counts only).
+- An email change: after Supabase accepted the request, `requestEmailChange` records `{ from, to }` in the account's `app_metadata.email_change` through the service role (service role only; `user_metadata` is user-writable and is never read for this): `from` is the address the SERVER read for the signed-in user, `to` the new address the SERVER passed to Supabase. Each new request overwrites the record. The move runs in ONE place: `confirmEmailToken`, right after the link's token was verified for `type=email_change`, whatever the browser does afterwards (opened in another browser and never confirmed with "Si, continuar", or "No soy yo": the change is complete at Supabase either way). It moves the reservation row to the new address only when the verified account's current address IS the recorded `to` and no second confirmation is pending (the first of two "secure email change" confirmations moves nothing), only if the old address has a row, the new one has none and no OTHER account holds the old address (in that last case nothing moves and the record is KEPT, logged `old_address_held`), and then clears the record. A record whose `to` never became the account's address is inert. Changes completed BEFORE this deploy cannot be reconciled: a reservation left under an old address with no account is deleted after 12 months as an orphan. Addresses compare as lowercase with surrounding SPACES trimmed (`lower(btrim())` in SQL, `normalizeAddress` in code), nothing wider.
+
+*Pre-flight (only the owner can check these; do them before the rehearsal).*
+- The role behind `DATABASE_URL` can read `auth.users`: in the SQL editor run `select current_user, has_table_privilege(current_user, 'auth.users', 'SELECT');` (the user should be `postgres.<ref>`, the answer `true`). After deploying with the switch OFF, the cron JSON must show `unusedAccounts.due` as a number, not `{ error }`.
+- The SQL editor may UPDATE `auth.users` (the rehearsal back-dates one row). If it is refused, STOP: there is no other project to rehearse on.
+- The real `auth.users` has every column the job reads (the queries below fail loudly with "column does not exist" if not), including `raw_app_meta_data`.
+- GoTrue's OTP expiry (Authentication > Providers/Email) is 24 hours or less (the 48-hour guard relies on it).
+- "Secure email change" is on (the code works either way: the first of two confirmations returns no user, so nothing moves).
+- Read-only count BEFORE the rehearsal's switch-on step. Reservations with no account, older than the period:
+
+```sql
+select count(*) as orphan_reservations from waitlist_entries w
+where w."createdAt" < now() - interval '12 months'
+  and not exists (select 1 from auth.users u where lower(btrim(u.email)) = lower(btrim(w.email)));
+```
+
+  **The reservations this query counts WILL BE DELETED by the rehearsal's switch-on step (step 5), up to 500 real rows on the first run: the switch-on deletes every reservation older than the period whose address matches no account, not only the throwaway's. That is exactly what the privacy text promises ("las reservas cuya dirección ya no corresponde a ninguna cuenta se eliminan una vez transcurridos 12 meses"). Proceed to step 5 only if you accept that deletion. If you do not, STOP here: leave the switch off and tell the developer.** To see the rows first: `select * from waitlist_entries w where w."createdAt" < now() - interval '12 months' and not exists (select 1 from auth.users u where lower(btrim(u.email)) = lower(btrim(w.email)));`.
+
+  Accounts due: the cron JSON's `unusedAccounts.due` with the switch OFF. The rehearsal proceeds ONLY when due = 1 (the throwaway). Run steps 4 and 5 of the rehearsal the SAME DAY: an account can become due in between.
+
+*Read-only checks (SQL editor, nothing is written).* Upper bound of what will become due (the cron adds the "empty account" and super-admin filters; its JSON with the switch OFF gives the exact `due`):
+
+```sql
+select count(*) as never_used,
+       count(*) filter (where greatest(u.created_at, u.confirmation_sent_at, u.recovery_sent_at, u.email_change_sent_at, u.reauthentication_sent_at) < now() - interval '12 months') as over_12_months
+from auth.users u
+where u.is_anonymous = false and u.email is not null
+  and u.email_confirmed_at is null and u.phone_confirmed_at is null and u.last_sign_in_at is null
+  and u.invited_at is null and coalesce(u.is_sso_user, false) = false
+  and u.banned_until is null and u.deleted_at is null;
+```
+
+The OLDEST never-used account (the switch MUST be on, after the rehearsal, before `switch_on_before` below, because the privacy text promises the deletion):
+
+```sql
+select min(greatest(u.created_at, u.confirmation_sent_at, u.recovery_sent_at, u.email_change_sent_at, u.reauthentication_sent_at)) as latest_activity_of_the_oldest, min(greatest(u.created_at, u.confirmation_sent_at, u.recovery_sent_at, u.email_change_sent_at, u.reauthentication_sent_at)) + interval '12 months' as switch_on_before
+from auth.users u
+where u.is_anonymous = false and u.email is not null
+  and u.email_confirmed_at is null and u.phone_confirmed_at is null and u.last_sign_in_at is null
+  and u.invited_at is null and coalesce(u.is_sso_user, false) = false
+  and u.banned_until is null and u.deleted_at is null;
+```
+
+If a query fails with "column does not exist", a GoTrue column differs from `lib/unusedAccountPurge.ts`: stop and tell the developer before switching anything on (the job reads exactly these columns).
+
+*Rehearsal on ONE throwaway address (before the first real deletion).* 1) From the landing form (or the login page) request an access link for an address you own and NEVER open the link. 2) Find its id (read-only): `select id, email, created_at from auth.users where email = '<that address>';` 3) The one write, owner-run, back-dates that single account: `update auth.users set created_at = now() - interval '13 months', confirmation_sent_at = now() - interval '13 months' where id = '<that id>';` and `update waitlist_entries set "createdAt" = now() - interval '13 months' where lower(btrim(email)) = '<that address, typed in LOWERCASE>';` (the 12 months count from the latest of creation, last access email and reservation, so ALL three must be back-dated; use the id, never the address for `auth.users`). 4) Call the cron by hand with the switch still OFF (the curl in §3) and confirm `unusedAccounts.due` is EXACTLY 1 (more means real accounts are already due: investigate, do not continue) and `deleted` is 0. If `due` is 0 the back-dating did not take (a column missed, the address typed with capitals, the wrong id): STOP, check the three back-dated values with a read-only `select`, and do NOT switch on until `due` is exactly 1. 5) Set `UNUSED_ACCOUNT_PURGE_ENABLED=1` in Vercel Production, redeploy, call the cron again: expect `due: 1, deleted: 1, failed: 0`. 6) Verify with read-only queries that `auth.users`, `profiles` (`where id = '<id>'`) and `waitlist_entries` (`where email = '<address>'`) no longer have it, and that the counts of the other tables did not change. 7) Leave the switch on.
+
+*Turning it on* (Vercel → Project → Settings → Environment Variables → add `UNUSED_ACCOUNT_PURGE_ENABLED` = `1` for Production → redeploy). To turn it off, delete the variable or set it to anything but `1`.
 
 **Verify:** insert one waitlist entry from the hero form on a preview and check
 `source = 'hero'` and BOTH `consentAt` and `consentNoticeVersion` null (legal pages unpublished, no notice shown, no consent recorded; they are stamped only after the flag is true); open

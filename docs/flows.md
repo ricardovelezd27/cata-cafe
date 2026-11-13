@@ -796,7 +796,7 @@ flowchart TD
   - What others see: closed results unchanged, the person's column/row under "Cuenta eliminada". A kept group stays readable to its members but nobody can manage it (no ownership transfer, by decision).
   - Coffees the person created are anonymized exactly like "Eliminar café" (`anonymizeOwnedCoffees`), never deleted.
 - **Guest join**: `checkJoinable(token)` (`app/actions/join.ts`, same `evaluateJoin` rule as the `/join` page and `joinViaToken`) runs before `signInAnonymously`; a closed link shows its own state to a visitor with no session (a signed-in participant still reaches results through `joinViaToken`); a retry reuses the anonymous user the earlier try created.
-- **Email change**: registered users only (`requestEmailChange`), mails a confirmation through `/auth/confirm` (type `email_change`) back to `/app/profile`; the profile shows `new_email` as pending until it is confirmed.
+- **Email change**: registered users only (`requestEmailChange`), mails a confirmation through `/auth/confirm` (type `email_change`) back to `/app/profile`; the profile shows `new_email` as pending until it is confirmed. The founding-seat reservation follows the address (S10 WP9a): `requestEmailChange` records `{ from, to }` in `app_metadata.email_change` (service role only, after Supabase accepted the request, overwritten by a newer request); `confirmEmailToken` moves the reservation row right after the link is verified (the move's only call site, before any session handling, so it also happens when the link was opened in another browser and the identity card is never answered or is rejected), only when the account's address is the recorded `to` and no second confirmation is pending, then clears the record. No orphan-reservation exception exists for email changes.
 
 ## 2. Coffee visibility & sharing
 
@@ -1217,8 +1217,9 @@ flowchart TD
   D --> M[emails masked, Mostrar toggle; CSV super-admin only]
   W[Waitlist form] --> R[row: source, consentAt, consentNoticeVersion]
   W --> Q{LEGAL_PAGES_PUBLISHED}
-  Q -- false --> X[notice line + footer/login links hidden; pages direct-visit only, Borrador, noindex]
-  Q -- true --> Y[notice line + links shown]
+  Q -- false --> X[notice line + footer/login links hidden; privacidad, terminos, aviso-legal direct-visit only, Borrador, noindex]
+  Q -- true --> Y[notice line + links shown, consent stamped, banner gone, indexable]
+  W --> K[daily cron: purgeUnusedAccounts - an account never used (never confirmed or signed in, empty, its last reservation, access request and creation all older than 12 months, no access email in 48 h) is deleted with its reservation, after a last re-check right before the auth delete; switch UNUSED_ACCOUNT_PURGE_ENABLED, off = count only]
 ```
 
 ## 7. Offline drafts and replay (S8-09)
