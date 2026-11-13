@@ -197,6 +197,8 @@ export function pinReferenceAffective(
   pinned.tazas_no_uniformes = Array(cups).fill(false);
   pinned.tazas_defectuosas = Array(cups).fill(false);
   pinned.defecto_tipo = [];
+  // S10 WP1b: the per-cup defect types go with the flags.
+  pinned.tazas_defecto_tipo = Array(cups).fill(null);
   return pinned;
 }
 

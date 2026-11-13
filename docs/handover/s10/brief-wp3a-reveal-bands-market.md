@@ -100,6 +100,24 @@ CLAUDE.md gains one sentence under the cupping form notes: the acidity and sweet
 descriptor pickers stay on purpose (a recorded departure from the CVA 2024 form, Kim's
 answer), with `TODO(kim-validar:B8)` only in the doc line, not in code.
 
+## Addendum (2026-11-13): what merged since this brief was written
+- Start from the current `origin/main`. It contains #127 (cup forms rebuilt around
+  `lib/cupDefects.ts`, no live total, the score line in `SampleDetail` /
+  `ScoreBreakdownPanel`: keep all of it), #123 (closing rules: an EXPIRED session is already
+  not writable; group results only at close), reference MODE (`shouldPinReference`: "the pin
+  clears the market keys" applies only where that predicate pins), and the guest identity
+  guard (`expectedUserId` on every cup-page write: keep passing it).
+- The reveal freeze concerns sessions that are NOT closed and NOT expired. Do not touch the
+  post-close paths: another PR in flight adds two sanctioned post-close writes
+  (`acceptLateEvaluation`, `submitLateDraft`); your pure rule must not be wired into them.
+- Other PRs in flight on neighbouring files (they may merge before you; `git merge
+  origin/main` before your last commit and re-run the gates): the coffee lifetime score
+  (coffee page, `lib/reports/ranking.ts`, the score's NAME in labels and CSV headers: do not
+  rename score labels yourself, only remove band colours and category names), the privacy
+  PR #128 (results page, `OwnerParticipantSection`, CSV), late contributions (results page,
+  `CupClient` banner). Keep your edits to shared files small.
+- If `npm ci` stalls more than ~15 minutes: commit, push and say so.
+
 ## Do not change
 Scoring arithmetic, the SQL, stored data, the reference pin rule, completeness rules.
 

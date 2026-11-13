@@ -1,33 +1,21 @@
 "use client";
 
 import {
-  AFFECTIVE_ATTRIBUTES,
   STEP_ATTRIBUTES,
   STEP_DESC_LABELS,
-  SENSORY_DEFECTS,
-  SENSORY_DEFECT_LABELS,
   type CuppingStep,
 } from "@/lib/constants";
 import {
   AffectiveBubbles,
-  ScoreDisplay,
   FormSection,
   Notes,
   CupToggleGrid,
 } from "@/components/ui";
 
-import { cupScoreHint } from "@/lib/cupHint";
+import { CUP_COPY_FALLBACK, cupSummary, type CupCopy } from "@/lib/cupCopy";
+import { applyDefectChoice, applyNonUniformToggle, formCupState } from "@/lib/cupDefects";
 
 type Data = Record<string, unknown>;
-
-const CUP_LABELS = {
-  nonUniform: "No uniformes",
-  defective: "Defectuosas",
-  nonUniformLegend: "No uniforme",
-  defectiveLegend: "Defectuosa",
-  oneTap: "(1 toque)",
-  defectType: "Tipo de defecto",
-};
 
 export function AffectiveForm({
   sampleData,
@@ -39,6 +27,8 @@ export function AffectiveForm({
   lockedNote,
   lockedCupsNote,
   isGroup = false,
+  locale = "es",
+  cupCopy,
 }: {
   sampleData: Data;
   onChange: (d: Data) => void;
@@ -55,17 +45,19 @@ export function AffectiveForm({
   lockedCupsNote?: string;
   /** Group sessions only: adds "Tus tazas se suman a las del grupo." to the cup hint. */
   isGroup?: boolean;
+  locale?: "es" | "en";
+  /** Cup grid + "score after submitting" copy (messages `cupping.cups`). */
+  cupCopy?: CupCopy;
 }) {
+  const copy = cupCopy ?? CUP_COPY_FALLBACK[locale];
   const isFlagged = (id: string) => missingIds?.includes(id) ?? false;
   const d = sampleData;
   const set = (key: string, val: unknown) => onChange({ ...d, [key]: val });
   const getNum = (k: string): number | null => (d[k] as number | undefined) ?? null;
   const getStr = (k: string): string => (d[k] as string | undefined) ?? "";
-  const getArr = (k: string): string[] => (d[k] as string[] | undefined) ?? [];
-  const getBools = (k: string): boolean[] =>
-    (d[k] as boolean[] | undefined) ?? Array(cupsPerSample).fill(false);
 
-  const showCups = cupsPerSample >= 2;
+  // ONE cup shows the grid too (only the defective row, S10 WP1b).
+  const showCups = cupsPerSample >= 1;
 
   const stepAttrs = STEP_ATTRIBUTES[currentStep];
 
@@ -80,43 +72,11 @@ export function AffectiveForm({
     ) : null;
 
   // Cup state (only used in overall step)
-  const nonUniformBools = getBools("tazas_no_uniformes");
-  const defectiveBools = getBools("tazas_defectuosas");
-  const defectoTipo = getArr("defecto_tipo");
-
-  const nonUniformCups = nonUniformBools
-    .map((v, i) => (v ? i + 1 : -1))
-    .filter((n) => n > 0);
-
-  function toggleNonUniform(idx: number) {
-    const next = [...nonUniformBools];
-    if (next[idx]) {
-      next[idx] = false;
-      const nextDef = [...defectiveBools];
-      nextDef[idx] = false;
-      onChange({ ...d, tazas_no_uniformes: next, tazas_defectuosas: nextDef });
-    } else {
-      next[idx] = true;
-      onChange({ ...d, tazas_no_uniformes: next });
-    }
-  }
-
-  function toggleDefective(idx: number) {
-    const next = [...defectiveBools];
-    next[idx] = !next[idx];
-    const nextNU = [...nonUniformBools];
-    if (next[idx]) nextNU[idx] = true;
-    onChange({ ...d, tazas_defectuosas: next, tazas_no_uniformes: nextNU });
-  }
-
-  function toggleDefectType(type: string) {
-    const cur = getArr("defecto_tipo");
-    if (cur.includes(type)) {
-      set("defecto_tipo", cur.filter((x) => x !== type));
-    } else {
-      set("defecto_tipo", [...cur, type]);
-    }
-  }
+  const cupState = formCupState(d, cupsPerSample);
+  const nonUniformBools = cupState.nonUniform;
+  const defectiveBools = cupState.defective;
+  const nonUniformCount = nonUniformBools.filter(Boolean).length;
+  const defectiveCount = defectiveBools.filter(Boolean).length;
 
   // Non-overall steps
   if (currentStep !== "overall") {
@@ -181,41 +141,31 @@ export function AffectiveForm({
       </FormSection>
 
       {showCups && lockedAffective && lockedCupsNote && (
-        <FormSection title="Tazas">
+        <FormSection title={copy.title}>
           <p className="font-sans text-sm text-brown-mid">{lockedCupsNote}</p>
         </FormSection>
       )}
       {showCups && !lockedAffective && (
-        <FormSection title="Tazas">
+        <FormSection title={copy.title}>
           <CupToggleGrid
             cupsPerSample={cupsPerSample}
             nonUniformBools={nonUniformBools}
             defectiveBools={defectiveBools}
-            defectTypes={defectoTipo}
-            defectOptions={SENSORY_DEFECTS as readonly string[]}
-            defectLabels={SENSORY_DEFECT_LABELS as Record<string, string>}
-            labels={{ ...CUP_LABELS, scoreHint: cupScoreHint(isGroup) }}
-            onToggleNonUniform={toggleNonUniform}
-            onToggleDefective={toggleDefective}
-            onToggleDefectType={toggleDefectType}
+            cupTypes={cupState.types}
+            copy={copy}
+            isGroup={isGroup}
+            onToggleNonUniform={(i) => onChange(applyNonUniformToggle(d, cupsPerSample, i))}
+            onSetDefect={(i, type) => onChange(applyDefectChoice(d, cupsPerSample, i, type))}
           />
-          {(nonUniformCups.length > 0 || defectiveBools.some(Boolean)) && (
+          {(nonUniformCount > 0 || defectiveCount > 0) && (
             <div className="mt-2 text-[11px] text-brown-mid">
-              {nonUniformCups.length} {CUP_LABELS.nonUniform.toLowerCase()} ·{" "}
-              {defectiveBools.filter(Boolean).length} {CUP_LABELS.defective.toLowerCase()}
+              {cupSummary(copy, nonUniformCount, defectiveCount)}
             </div>
           )}
         </FormSection>
       )}
 
-      <FormSection title="Puntaje Calculado">
-        <ScoreDisplay
-          sectionScores={AFFECTIVE_ATTRIBUTES.map((a) => getNum(`${a.id}_final`) ?? 0)}
-          nonUniformCups={nonUniformBools.filter(Boolean).length}
-          defectiveCups={defectiveBools.filter(Boolean).length}
-          defaultExpanded={false}
-        />
-      </FormSection>
+      <p className="mt-4 font-sans text-sm text-on-surface-variant">{copy.scoreLater}</p>
     </div>
   );
 }

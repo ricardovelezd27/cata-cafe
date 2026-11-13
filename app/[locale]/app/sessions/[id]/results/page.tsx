@@ -671,6 +671,20 @@ export default async function ResultsPage({
     includedNote: tResults("breakdown.includedNote", { n: "{n}", total: "{total}" }),
     groupExplain: tResults("breakdown.groupExplain"),
     perCup: tResults("breakdown.perCup"),
+    line: {
+      nonUniformOne: tResults("breakdown.line.nonUniformOne"),
+      nonUniformOther: tResults("breakdown.line.nonUniformOther"),
+      unspecifiedOne: tResults("breakdown.line.unspecifiedOne"),
+      unspecifiedOther: tResults("breakdown.line.unspecifiedOther"),
+      moldyOne: tResults("breakdown.line.moldyOne"),
+      moldyOther: tResults("breakdown.line.moldyOther"),
+      phenolicOne: tResults("breakdown.line.phenolicOne"),
+      phenolicOther: tResults("breakdown.line.phenolicOther"),
+      potatoOne: tResults("breakdown.line.potatoOne"),
+      potatoOther: tResults("breakdown.line.potatoOther"),
+      // `{cups}` is replaced client-side.
+      groupScope: tResults.raw("breakdown.line.groupScope") as string,
+    },
   };
 
   const dateStr = session.date.toLocaleDateString(locale === "es" ? "es-CO" : "en-US", {

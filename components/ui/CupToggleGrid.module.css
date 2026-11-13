@@ -78,9 +78,9 @@
 }
 
 .cup {
-  width: 42px;
-  height: 42px;
-  min-width: 42px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
