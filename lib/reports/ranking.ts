@@ -8,6 +8,7 @@ import type { ScoreRule } from "@/lib/scoreRule";
 import { canShowMyScore, type MyEvaluation } from "@/lib/evaluationState";
 import { deltasVsReference, type ScoreBasis } from "@/lib/referenceDelta";
 import type { SessionFormat } from "@/lib/constants";
+import { INDICATIVE_BELOW_CUPS, isIndicativeByCups } from "@/lib/indicativeCups";
 
 /** The structural slice of a sample that ranking needs. `SampleResult` in the
  *  results route satisfies it. */
@@ -27,6 +28,8 @@ export type RankableSample = {
     submittedCount?: number;
     /** Every SUBMITTED evaluation, excluded cuppers included = "N" (S8-12). */
     totalSubmitted?: number;
+    /** Cups pooled over the included evaluations (S10 WP1c, "indicativo" by cups). */
+    totalCups?: number;
   } | null;
   myEvaluation: MyEvaluation;
   /** Multi-reference (S6): R1, R2… or null/undefined for a regular sample. */
@@ -48,6 +51,8 @@ export type RankValue = {
   n: number | null;
   /** Every submitted evaluation incl. excluded cuppers; null when unknown. */
   total: number | null;
+  /** Cups pooled behind a COMMUNITY score (null for "mine" or when unknown). */
+  cups?: number | null;
 };
 
 // S8-12 (F-resultados-6, F-informes-3): when a community number is trustworthy
@@ -60,6 +65,10 @@ export const RANKING_POLICY = {
   minN: 3,
   /** Below this many (but >= minN): shown as "indicativo". */
   indicativeBelow: 5,
+  /** S10 WP1c (owner's decision 7, TODO(kim-validar:A2)): fewer pooled cups than
+   *  this is ALSO "indicativo", in addition to the cupper-count rule above.
+   *  The one definition lives in lib/indicativeCups.ts (shared with the coffee score). */
+  indicativeBelowCups: INDICATIVE_BELOW_CUPS,
   /** Neighbours closer than this x the larger sample SD have no clear gap. */
   gapSdFactor: 0.5,
 } as const;
@@ -67,6 +76,7 @@ export const RANKING_POLICY = {
 export type RankPolicy = {
   minN: number;
   indicativeBelow: number;
+  indicativeBelowCups?: number;
   gapSdFactor: number;
 };
 
@@ -85,9 +95,13 @@ export function policyFlags(
   if (value.basis !== "community" || value.n === null) {
     return { indicative: false, suppressed: false };
   }
+  const byCupperCount = value.n >= policy.minN && value.n < policy.indicativeBelow;
+  const byCups =
+    policy.indicativeBelowCups !== undefined &&
+    isIndicativeByCups(value.cups, policy.indicativeBelowCups);
   return {
     suppressed: value.n < policy.minN,
-    indicative: value.n >= policy.minN && value.n < policy.indicativeBelow,
+    indicative: byCupperCount || byCups,
   };
 }
 
@@ -141,6 +155,7 @@ export function rankFor(sample: RankableSample, ctx: RankContext): RankValue {
         basis: "community",
         n,
         total: typeof agg.totalSubmitted === "number" ? agg.totalSubmitted : null,
+        cups: typeof agg.totalCups === "number" ? agg.totalCups : null,
       };
       // Too few cuppers: a spread of 1-2 numbers says nothing.
       if (policyFlags(value).suppressed) value.sd = null;

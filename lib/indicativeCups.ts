@@ -9,6 +9,9 @@
 export const INDICATIVE_BELOW_CUPS = 5;
 
 /** `cups` = the cups pooled in the scope (Σ over the included evaluations). */
-export function isIndicativeByCups(cups: number | null | undefined): boolean {
-  return typeof cups === "number" && Number.isFinite(cups) && cups < INDICATIVE_BELOW_CUPS;
+export function isIndicativeByCups(
+  cups: number | null | undefined,
+  below: number = INDICATIVE_BELOW_CUPS,
+): boolean {
+  return typeof cups === "number" && Number.isFinite(cups) && cups < below;
 }
