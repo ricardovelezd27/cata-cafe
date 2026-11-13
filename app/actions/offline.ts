@@ -19,6 +19,7 @@ import { pinReferenceAffective, shouldPinReference } from "@/lib/referenceRules"
 import { writeEvaluationOrdered } from "@/lib/evaluationWrite";
 import { effectiveClientTs } from "@/lib/offline/clientWrite";
 import { isModuleSendable, planLateDraftWrite } from "@/lib/lateContributions";
+import { isEvaluationComplete } from "@/lib/closeRules";
 import { logInfo } from "@/lib/log";
 import { replayOverExisting } from "@/lib/aggregateRefire";
 
@@ -297,8 +298,33 @@ export async function submitLateDraft(input: {
   const key = { sessionSampleId_cupperId: { sessionSampleId: input.sessionSampleId, cupperId: user.id } };
   const ts = effectiveClientTs(input.clientTs, Date.now());
   const stamp = ts === undefined ? undefined : new Date(ts);
-  const load = () =>
-    prisma.evaluation.findUnique({ where: key, select: { id: true, isDraft: true, lastClientWriteAt: true, receivedLateAt: true } });
+  // The stored row as the plan sees it: `complete` = its stored module is COMPLETE for the
+  // session's format, i.e. the only kind of pre-close draft the organizer could have been shown.
+  const load = async () => {
+    const row = await prisma.evaluation.findUnique({
+      where: key,
+      select: {
+        id: true,
+        isDraft: true,
+        updatedAt: true,
+        lastClientWriteAt: true,
+        receivedLateAt: true,
+        descriptiveData: true,
+        affectiveData: true,
+        combinedData: true,
+      },
+    });
+    return row
+      ? {
+          id: row.id,
+          isDraft: row.isDraft,
+          updatedAt: row.updatedAt,
+          lastClientWriteAt: row.lastClientWriteAt,
+          receivedLateAt: row.receivedLateAt,
+          complete: isEvaluationComplete({ cupperId: user.id, ...row }, auth.format),
+        }
+      : null;
+  };
 
   // Two passes: a concurrent create (P2002) or a lost conditional update re-reads once.
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -337,8 +363,9 @@ export async function submitLateDraft(input: {
         sessionSampleId: input.sessionSampleId,
         cupperId: user.id,
         isDraft: true,
-        // Only a draft that itself arrived late: a draft the server had at the close is never replaced.
-        receivedLateAt: { not: null },
+        // Race-safe: exactly the version the plan read (a COMPLETE pre-close draft never gets here:
+        // the plan answered conflict). Any other write in between changes `updatedAt`: count 0, re-read.
+        updatedAt: existing!.updatedAt,
         ...(stamp ? { OR: [{ lastClientWriteAt: null }, { lastClientWriteAt: { lte: stamp } }] } : {}),
       },
       data: {
@@ -352,9 +379,11 @@ export async function submitLateDraft(input: {
   }
   // Lost both races: re-read once to tell a submitted row from a newer draft.
   const last = await load();
-  if (last && !last.isDraft) return { status: "conflict", reason: "submitted" };
-  if (last && last.receivedLateAt === null) return { status: "conflict", reason: "saved_before_close" };
-  return { status: "synced" };
+  const verdict = planLateDraftWrite({ existing: last, clientTs: input.clientTs });
+  if (verdict === "conflict") {
+    return { status: "conflict", reason: last && !last.isDraft ? "submitted" : "saved_before_close" };
+  }
+  return { status: verdict === "stale" ? "synced" : "pending" };
 }
 
 /** Owner-only physical module replay. Returns a status instead of throwing for

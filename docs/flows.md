@@ -149,6 +149,13 @@ flowchart TD
     says accepting recalculates it under the current one.
   - `acceptLateEvaluation(evaluationId, expectedUpdatedAt)`: the locked row's `updatedAt` must
     equal the rendered one, else `conflict` ("Esta evaluación cambió. Recarga…").
+  - A pre-close draft is replaced by a late send ONLY when the stored draft is INCOMPLETE (auto-save
+    writes partial drafts; the organizer has nothing to accept there): the row is updated and stamped
+    "Recibida después del cierre". A COMPLETE pre-close draft is never replaced.
+  - The total shown for a draft saved under the previous rule (`cups` NULL) is the one acceptance will
+    store (same derivation, no write), not the old stored number.
+  - A regular save that starts before the close and lands milliseconds after it is a pre-close draft
+    ("Guardada antes del cierre"): the session was checked open when the save was accepted.
   - An excluded participant is not listed and is refused (`invalid_input`); no "se incluyó" line.
   - `closeAnnounced(sessionId, closingAt)`: the owner page's zero-countdown calls this, never the
     plain close; it closes only if the stored `closingAt` is that instant and it has passed

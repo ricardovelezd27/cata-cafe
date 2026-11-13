@@ -829,6 +829,7 @@ export default async function ResultsPage({
             combinedData: true,
             updatedAt: true,
             individualScore: true,
+            cups: true,
             receivedLateAt: true,
             cupper: { select: { id: true, displayName: true } },
           },
@@ -843,6 +844,11 @@ export default async function ResultsPage({
     sampleLabels: sampleLabelById,
     nameOf: (cupperId) => lateNameById.get(cupperId) ?? "",
     excludedUserIds,
+    rule: {
+      cupsPerSample: session.cupsPerSample,
+      referenceSampleId: session.referenceSampleId,
+      referenceMode: session.referenceMode,
+    },
     groupScoreBySample: new Map(
       session.samples.map((s) => [s.id, groupAggBySample?.get(s.id)?.communityScore ?? null] as const),
     ),

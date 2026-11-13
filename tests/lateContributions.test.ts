@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
+import { calcIndividualScore } from "@/lib/scoring";
 import {
   POST_CLOSE_NOTE_MAX,
   buildMyLateNotices,
@@ -9,6 +10,7 @@ import {
   isModuleSendable,
   normalizePostCloseNote,
   planLateDraftWrite,
+  totalAcceptanceWillStore,
   postCloseNoteAllowed,
   type LateDraftForOwner,
   type LateDraftInput,
@@ -77,6 +79,7 @@ describe("buildOwnerLateRows (privacy gate)", () => {
   const owner = (d: LateDraftInput, over: Partial<LateDraftForOwner> = {}): LateDraftForOwner => ({
     ...d,
     individualScore: 79,
+    cups: 2,
     receivedLateAt: null,
     ...over,
   });
@@ -158,26 +161,68 @@ describe("buildMyLateNotices", () => {
   });
 });
 
-describe("planLateDraftWrite", () => {
+describe("planLateDraftWrite (truth table)", () => {
   const t0 = 1_700_000_000_000;
+  const now = t0 + 10_000;
   const late = new Date(t0 + 5);
-  it("no row creates; a submitted row is a conflict and writes nothing", () => {
+  const row = (o: { isDraft?: boolean; ts?: number | null; late?: boolean; complete?: boolean }) => ({
+    isDraft: o.isDraft ?? true,
+    lastClientWriteAt: o.ts === undefined || o.ts === null ? null : new Date(o.ts),
+    receivedLateAt: o.late ? late : null,
+    complete: o.complete ?? true,
+  });
+  it("no row: create", () => {
     expect(planLateDraftWrite({ existing: null, clientTs: t0 })).toBe("create");
-    expect(planLateDraftWrite({ existing: { isDraft: false, lastClientWriteAt: null, receivedLateAt: null }, clientTs: t0 })).toBe("conflict");
-    expect(planLateDraftWrite({ existing: { isDraft: false, lastClientWriteAt: null, receivedLateAt: late }, clientTs: t0 })).toBe("conflict");
   });
-  it("a draft the server already had at the close is NEVER replaced (even by a newer device copy)", () => {
-    const now = t0 + 10_000;
-    expect(planLateDraftWrite({ existing: { isDraft: true, lastClientWriteAt: null, receivedLateAt: null }, clientTs: t0 + 9_000, now })).toBe("conflict");
-    expect(planLateDraftWrite({ existing: { isDraft: true, lastClientWriteAt: new Date(t0), receivedLateAt: null }, clientTs: t0 + 1, now })).toBe("conflict");
+  it("submitted row: conflict, whatever else it carries", () => {
+    expect(planLateDraftWrite({ existing: row({ isDraft: false }), clientTs: t0 })).toBe("conflict");
+    expect(planLateDraftWrite({ existing: row({ isDraft: false, late: true, complete: false }), clientTs: t0 })).toBe("conflict");
   });
-  it("a draft that itself arrived late updates only when the device copy is not older", () => {
-    const now = t0 + 10_000;
-    const row = (ts: number | null) => ({ isDraft: true, lastClientWriteAt: ts === null ? null : new Date(ts), receivedLateAt: late });
-    expect(planLateDraftWrite({ existing: row(t0), clientTs: t0 + 1, now })).toBe("update");
-    expect(planLateDraftWrite({ existing: row(t0), clientTs: t0, now })).toBe("update");
-    expect(planLateDraftWrite({ existing: row(t0), clientTs: t0 - 1, now })).toBe("stale");
-    expect(planLateDraftWrite({ existing: row(null), clientTs: t0, now })).toBe("update");
+  it("pre-close COMPLETE draft: conflict, never replaced (even by a newer device copy)", () => {
+    expect(planLateDraftWrite({ existing: row({ complete: true }), clientTs: t0 + 9_000, now })).toBe("conflict");
+    expect(planLateDraftWrite({ existing: row({ complete: true, ts: t0 }), clientTs: t0 + 1, now })).toBe("conflict");
+  });
+  it("pre-close INCOMPLETE draft (auto-save partial): updated by the late send", () => {
+    expect(planLateDraftWrite({ existing: row({ complete: false }), clientTs: t0, now })).toBe("update");
+    expect(planLateDraftWrite({ existing: row({ complete: false, ts: t0 }), clientTs: t0 + 1, now })).toBe("update");
+  });
+  it("pre-close incomplete draft that the server holds NEWER than the device copy: stale", () => {
+    expect(planLateDraftWrite({ existing: row({ complete: false, ts: t0 }), clientTs: t0 - 1, now })).toBe("stale");
+  });
+  it("post-close draft (receivedLateAt set): update when not older, stale when older", () => {
+    expect(planLateDraftWrite({ existing: row({ late: true, ts: t0 }), clientTs: t0 + 1, now })).toBe("update");
+    expect(planLateDraftWrite({ existing: row({ late: true, ts: t0 }), clientTs: t0, now })).toBe("update");
+    expect(planLateDraftWrite({ existing: row({ late: true, ts: t0 }), clientTs: t0 - 1, now })).toBe("stale");
+    expect(planLateDraftWrite({ existing: row({ late: true, ts: null }), clientTs: t0, now })).toBe("update");
+    // `complete` is irrelevant once the content itself arrived late
+    expect(planLateDraftWrite({ existing: row({ late: true, complete: true, ts: t0 }), clientTs: t0 + 1, now })).toBe("update");
+  });
+});
+
+describe("totalAcceptanceWillStore (low 1)", () => {
+  // 3 cups, one flagged non-uniform: the old rule stored no deduction below five cups, the current one deducts.
+  const data = { ...complete(), tazas_no_uniformes: [true, false, false], tazas_defectuosas: [false, false, false] };
+  const base = { ...ev({ affectiveData: data, sessionSampleId: "s1" }), individualScore: 79, receivedLateAt: null as Date | null };
+  const rule = { cupsPerSample: 3, referenceSampleId: null, referenceMode: "anchor" };
+  it("a cups NULL draft shows the total the rewrite will store, not the old stored one", () => {
+    const shown = totalAcceptanceWillStore({ ...base, cups: null, individualScore: 99 }, "affective", rule);
+    expect(shown).toBe(calcIndividualScore(data, 3));
+    expect(shown).not.toBe(99);
+  });
+  it("a draft saved under the current rule shows its stored total", () => {
+    expect(totalAcceptanceWillStore({ ...base, cups: 3, individualScore: 77.25 }, "affective", rule)).toBe(77.25);
+  });
+  it("the owner payload carries it", () => {
+    const rows = buildOwnerLateRows({
+      ownerLens: true,
+      isGroup: true,
+      session: { status: "closed", format: "affective", closedAt: null },
+      drafts: [{ ...base, cups: null, individualScore: 99 }],
+      sampleLabels: new Map([["s1", "A"]]),
+      nameOf: () => "Ana",
+      rule,
+    });
+    expect(rows![0].individualScore).toBe(calcIndividualScore(data, 3));
   });
 });
 

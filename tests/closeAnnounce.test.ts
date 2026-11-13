@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ANNOUNCE_MINUTES,
   bannerState,
+  cancelledAfterCancelAttempt,
   closingAtFor,
   closingAtFromRow,
   formatClock,
@@ -107,6 +108,16 @@ describe("shouldAutoClose", () => {
     expect(shouldAutoClose({ ...due, busy: true })).toBe(false);
     expect(shouldAutoClose({ ...due, cancelled: true })).toBe(false);
     expect(shouldAutoClose({ ...due, busy: false, cancelled: false })).toBe(true);
+  });
+});
+
+describe("cancelledAfterCancelAttempt (low 3)", () => {
+  it("a failed cancel un-cancels the tab so the standing announcement can still auto-close", () => {
+    const due = { sawTimeLeft: true, remainingMs: 0, alreadyTried: false };
+    expect(cancelledAfterCancelAttempt(true)).toBe(true);
+    expect(cancelledAfterCancelAttempt(false)).toBe(false);
+    expect(shouldAutoClose({ ...due, cancelled: cancelledAfterCancelAttempt(true) })).toBe(false);
+    expect(shouldAutoClose({ ...due, cancelled: cancelledAfterCancelAttempt(false) })).toBe(true);
   });
 });
 

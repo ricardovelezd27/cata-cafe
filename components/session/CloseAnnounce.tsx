@@ -17,6 +17,7 @@ import { Clock } from "lucide-react";
 import { Button } from "@/components/ui";
 import {
   bannerState,
+  cancelledAfterCancelAttempt,
   formatClock,
   minuteBucket,
   ownerLineState,
@@ -197,6 +198,8 @@ export function OwnerCloseLine({
     setBusy("cancelling");
     setFailed(false);
     const ok = await onCancel();
+    // A failed cancel leaves the announcement standing: let this tab's countdown close it.
+    cancelled.current = cancelledAfterCancelAttempt(ok);
     if (!ok) setFailed(true);
     setBusy(null);
   };

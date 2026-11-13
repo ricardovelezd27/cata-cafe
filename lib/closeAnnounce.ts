@@ -112,6 +112,13 @@ export function shouldAutoClose(input: {
   return input.sawTimeLeft && !input.alreadyTried && input.remainingMs <= 0;
 }
 
+/** Whether this tab still counts the announcement as cancelled once the cancel request
+ *  answered. It is cancelled while the request is running; if the request FAILED the
+ *  announcement still stands on the server, so the countdown may close it again. */
+export function cancelledAfterCancelAttempt(cancelOk: boolean): boolean {
+  return cancelOk;
+}
+
 /** "m:ss" for the owner's line. */
 export function formatClock(remaining: number): string {
   const total = Math.max(0, Math.ceil(remaining / 1000));

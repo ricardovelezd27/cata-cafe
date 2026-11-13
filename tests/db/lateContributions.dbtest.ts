@@ -27,6 +27,7 @@ import {
 } from "@/app/actions/community";
 import { submitLateDraft } from "@/app/actions/offline";
 import { closeSessionInternal } from "@/lib/closeSession";
+import { buildOwnerLateRows, totalAcceptanceWillStore } from "@/lib/lateContributions";
 import { calcIndividualScore } from "@/lib/scoring";
 import {
   affectiveData,
@@ -113,6 +114,46 @@ describe("acceptLateEvaluation: version guard, excluded cuppers", () => {
     expect((await prisma.evaluation.findUniqueOrThrow({ where: { id: draft.id } })).individualScore).toBe(shown.individualScore);
   });
 
+  it("the reviewer's scenario: the server held 4 of 8 ratings at the close; the late send of 8 updates it, stamps it, lists it, and it can be accepted", async () => {
+    const { owner, u2, A, s, draft } = await closedScenario();
+    // auto-save left a PARTIAL draft at the close
+    const partial: Record<string, unknown> = {};
+    Object.entries(affectiveData(6)).slice(0, 4).forEach(([k, v]) => (partial[k] = v));
+    await prisma.evaluation.update({ where: { id: draft.id }, data: { affectiveData: partial, individualScore: null } });
+    h.userId = u2;
+    expect(await submitLateDraft({ sessionSampleId: A.id, moduleKey: "affective", data: affectiveData(8), clientTs: Date.now() })).toEqual({ status: "synced" });
+    const row = await prisma.evaluation.findUniqueOrThrow({ where: { id: draft.id } });
+    expect(row.isDraft).toBe(true);
+    expect(row.receivedLateAt).toBeInstanceOf(Date);
+    expect((row.affectiveData as Record<string, unknown>).fragancia_af_final).toBe(8);
+    // the organizer's late list shows it, labelled "received after the close"
+    const rows = buildOwnerLateRows({
+      ownerLens: true,
+      isGroup: true,
+      session: { status: "closed", format: "affective", closedAt: null },
+      drafts: [{ ...row, individualScore: row.individualScore }],
+      sampleLabels: new Map([[A.id, "A"]]),
+      nameOf: () => "Dos",
+    });
+    expect(rows?.[0]).toMatchObject({ evaluationId: draft.id, receivedLate: true });
+    h.userId = owner;
+    expect((await accept(draft.id)).ok).toBe(true);
+    expect(s.id).toBeTruthy();
+  });
+
+  it("a legacy (cups NULL) draft: the total the owner was shown equals the stored score after accept", async () => {
+    const { owner, draft } = await closedScenario({ cups: 3, legacyDraft: true });
+    const before = await prisma.evaluation.findUniqueOrThrow({ where: { id: draft.id } });
+    const shown = totalAcceptanceWillStore(
+      { ...before, individualScore: before.individualScore } as never,
+      "affective",
+      { cupsPerSample: 3, referenceSampleId: null, referenceMode: "anchor" },
+    );
+    h.userId = owner;
+    expect((await accept(draft.id)).ok).toBe(true);
+    expect((await prisma.evaluation.findUniqueOrThrow({ where: { id: draft.id } })).individualScore).toBe(shown);
+  });
+
   it("an excluded cupper's draft is refused and untouched", async () => {
     const { owner, u2, s, draft } = await closedScenario();
     await prisma.sessionParticipant.update({
@@ -169,6 +210,15 @@ describe("closeAnnounced", () => {
     await prisma.cuppingSession.update({ where: { id: s.id }, data: { closingAt: old } });
     await announceClose(s.id, 5); // moves closingAt to now + 5 min
     expect((await closeAnnounced(s.id, old.toISOString())).ok).toBe(true);
+    expect(await statusOf(s.id)).toBe("active");
+  });
+
+  it("the stored instant is due but DIFFERENT from the instant sent: closes nothing", async () => {
+    const { s } = await announced(2);
+    const stored = new Date(Date.now() - 500);
+    await prisma.cuppingSession.update({ where: { id: s.id }, data: { closingAt: stored } });
+    const sent = new Date(stored.getTime() - 1000);
+    expect(await closeAnnounced(s.id, sent.toISOString())).toEqual({ ok: true, data: { closed: false, finalized: true } });
     expect(await statusOf(s.id)).toBe("active");
   });
 

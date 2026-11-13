@@ -17,6 +17,8 @@ import { isEvaluationComplete, type EvaluationRowLike } from "@/lib/closeRules";
 import { isDeletedProfileId } from "@/lib/accountDeletion/deletedProfile";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { shouldApplyClientWrite } from "@/lib/offline/clientWrite";
+import { moduleKeyForFormat, tryComputeEvaluationDerived } from "@/lib/evaluation";
+import { pinReferenceAffective, shouldPinReference } from "@/lib/referenceRules";
 import * as v from "@/lib/validate";
 
 /** Max characters of the note a cupper can add after the close (C2). */
@@ -53,6 +55,8 @@ export type LateDraftInput = EvaluationRowLike & {
 export type LateDraftForOwner = LateDraftInput & {
   /** The evaluation's own stored total (null = partial / not scored). */
   individualScore: number | null;
+  /** NULL = saved before the 2026-11 rule: acceptance rewrites it under the current rule first. */
+  cups: number | null;
   /** Server stamp: set only when a device's late send put this content on the server after the close. */
   receivedLateAt: Date | null;
 };
@@ -77,6 +81,30 @@ export type OwnerLateRow = {
   /** The sample's stored group score is under the pre-2026-11 rule: accepting moves it to the current one. */
   oldRule: boolean;
 };
+
+/** The total acceptance WILL store (pure, no write). A draft saved under the previous rule
+ *  (`cups` NULL) is rewritten under the current one before the flip, so its stored total can
+ *  differ from what gets included: run the same derivation the rewrite runs. */
+export function totalAcceptanceWillStore(
+  d: LateDraftForOwner,
+  format: string,
+  rule: { cupsPerSample: number; referenceSampleId: string | null; referenceMode: unknown } | undefined,
+): number | null {
+  if (d.cups !== null || !rule) return d.individualScore;
+  const moduleKey = moduleKeyForFormat(format);
+  const raw =
+    moduleKey === "descriptive" ? d.descriptiveData : moduleKey === "affective" ? d.affectiveData : d.combinedData;
+  const stored = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+  const data = shouldPinReference({
+    mode: rule.referenceMode,
+    moduleKey,
+    isActiveReference: rule.referenceSampleId === d.sessionSampleId,
+  })
+    ? pinReferenceAffective(stored, rule.cupsPerSample)
+    : stored;
+  const fields = tryComputeEvaluationDerived(moduleKey, data, rule.cupsPerSample);
+  return fields ? fields.individualScore : d.individualScore;
+}
 
 function ratingsOf(d: EvaluationRowLike, format: string): { id: string; value: number | null }[] {
   const raw = format === "combined" ? d.combinedData : d.affectiveData;
@@ -104,6 +132,8 @@ export function buildOwnerLateRows(input: {
   groupScoreBySample?: ReadonlyMap<string, number | null>;
   /** Samples whose stored aggregate is under the pre-2026-11 rule. */
   oldRuleSampleIds?: ReadonlySet<string>;
+  /** The session's scoring inputs, to show the total acceptance will store for a `cups` NULL draft. */
+  rule?: { cupsPerSample: number; referenceSampleId: string | null; referenceMode: unknown };
 }): OwnerLateRow[] | null {
   if (!input.ownerLens || !input.isGroup || input.session.status !== "closed") return null;
   const rows: OwnerLateRow[] = [];
@@ -111,6 +141,7 @@ export function buildOwnerLateRows(input: {
     const excluded = input.excludedUserIds?.has(d.cupperId) === true;
     if (!isAcceptableLate(d, input.session, { excluded })) continue;
     const group = input.groupScoreBySample?.get(d.sessionSampleId) ?? null;
+    const total = totalAcceptanceWillStore(d, input.session.format, input.rule);
     rows.push({
       evaluationId: d.id,
       cupperName: input.nameOf(d.cupperId),
@@ -119,12 +150,9 @@ export function buildOwnerLateRows(input: {
       savedAt: d.updatedAt.toISOString(),
       updatedAt: d.updatedAt.toISOString(),
       receivedLate: d.receivedLateAt !== null,
-      individualScore: d.individualScore,
+      individualScore: total,
       groupScore: group,
-      diff:
-        d.individualScore !== null && group !== null
-          ? Math.round((d.individualScore - group) * 100) / 100
-          : null,
+      diff: total !== null && group !== null ? Math.round((total - group) * 100) / 100 : null,
       ratings: ratingsOf(d, input.session.format),
       oldRule: input.oldRuleSampleIds?.has(d.sessionSampleId) === true,
     });
@@ -171,19 +199,28 @@ export type LateDraftWriteDecision = "create" | "update" | "stale" | "conflict";
 /** What `submitLateDraft` does with the row that exists for (sample, cupper).
  *  Never an overwrite of a SUBMITTED row (`conflict`). A draft the server already
  *  had when the session closed (`receivedLateAt` NULL) is never replaced after the
- *  close either: `conflict`, the organizer can accept THAT version. A draft that
- *  itself arrived late (`receivedLateAt` set) is updated only if the device copy is
- *  not older than what the server stored (`stale` = the server already holds newer
- *  data, nothing written). No row: create. */
+ *  close ONLY when it is COMPLETE (`existing.complete`): that is the only version
+ *  the organizer could have been shown and accepted, so `conflict`. An INCOMPLETE
+ *  pre-close draft (auto-save writes partial drafts) is not acceptable, the
+ *  organizer has nothing: the late send updates it (and stamps `receivedLateAt`).
+ *  Any updatable draft is replaced only if the device copy is not older than what
+ *  the server stored (`stale` = the server already holds newer data, nothing
+ *  written). No row: create. */
 export function planLateDraftWrite(input: {
-  existing: { isDraft: boolean; lastClientWriteAt: Date | null; receivedLateAt: Date | null } | null;
+  existing: {
+    isDraft: boolean;
+    lastClientWriteAt: Date | null;
+    receivedLateAt: Date | null;
+    /** The stored draft is complete for the session's format. */
+    complete: boolean;
+  } | null;
   clientTs: unknown;
   now?: number;
 }): LateDraftWriteDecision {
   const { existing } = input;
   if (!existing) return "create";
   if (!existing.isDraft) return "conflict";
-  if (existing.receivedLateAt === null) return "conflict";
+  if (existing.receivedLateAt === null && existing.complete) return "conflict";
   return shouldApplyClientWrite(existing.lastClientWriteAt, input.clientTs, input.now) ? "update" : "stale";
 }
 
