@@ -8,47 +8,8 @@ import type { ScoreRule } from "./scoreRule";
    Rounded to nearest 0.25.
    ============================================================ */
 
-export interface CVABreakdown {
-  sectionScores: number[]    // 8 values, each 1–9
-  nonUniformCups: number     // 0–5
-  defectiveCups: number      // 0–5
-  affectiveSum: number       // Σhᵢ
-  affectiveTerm: number      // 0.65625 · Σhᵢ
-  uniformityPenalty: number  // 2u
-  defectPenalty: number      // 4d
-  raw: number                // pre-rounding
-  score: number              // rounded to 0.25
-}
-
 export type ScoreCategory =
   | 'exceptional' | 'excellent' | 'vgood' | 'good' | 'average' | 'low'
-
-export function calculateCVAScore(
-  sectionScores: number[],
-  nonUniformCups: number,
-  defectiveCups: number,
-): number {
-  const sum = sectionScores.reduce((acc, h) => acc + (Number.isFinite(h) ? h : 0), 0)
-  const raw = 0.65625 * sum + 52.75 - 2 * nonUniformCups - 4 * defectiveCups
-  return Math.round(raw * 4) / 4
-}
-
-export function calculateCVABreakdown(
-  sectionScores: number[],
-  nonUniformCups: number,
-  defectiveCups: number,
-): CVABreakdown {
-  const affectiveSum = sectionScores.reduce(
-    (acc, h) => acc + (Number.isFinite(h) ? h : 0),
-    0,
-  )
-  const affectiveTerm     = 0.65625 * affectiveSum
-  const uniformityPenalty = 2 * nonUniformCups
-  const defectPenalty     = 4 * defectiveCups
-  const raw   = affectiveTerm + 52.75 - uniformityPenalty - defectPenalty
-  const score = Math.round(raw * 4) / 4
-  return { sectionScores, nonUniformCups, defectiveCups, affectiveSum, affectiveTerm, uniformityPenalty, defectPenalty, raw, score }
-}
 
 export function scoreToCategory(score: number): ScoreCategory {
   if (score >= 90) return 'exceptional'

@@ -479,6 +479,34 @@
       "downloadQr": "Descargar QR",
       "currentSample": "Muestra activa",
       "sessionDetails": "Detalles de la sesión"
+    },
+    "cups": {
+      "title": "Tazas",
+      "nonUniform": "No uniformes",
+      "defective": "Defectuosas",
+      "nonUniformLegend": "No uniforme",
+      "defectiveLegend": "Defectuosa",
+      "oneTap": "(1 toque)",
+      "defectType": "Tipo de defecto",
+      "scoreHint": "Cada taza defectuosa te resta 6 puntos (4 por el defecto y 2 por no ser uniforme); con una sola taza, 4. Cada taza solo no uniforme, 2.",
+      "scoreHintGroup": "Tus tazas se suman a las del grupo.",
+      "oneCupNote": "Con una taza no se evalúa uniformidad.",
+      "pickTitle": "Taza {n}: ¿qué defecto tiene?",
+      "pickHelp": "Sin elegir un tipo, la taza no queda marcada.",
+      "typeMissing": "Falta el tipo de defecto",
+      "removeMark": "Quitar marca",
+      "closePicker": "Cerrar",
+      "cupAria": "Taza {n}",
+      "cupDefectiveAria": "Taza {n} defectuosa",
+      "cupNonUniformAria": "Taza {n} no uniforme",
+      "changeTypeAria": "Cambiar el tipo de defecto de la taza {n}",
+      "summary": "{u} no uniformes · {d} defectuosas",
+      "types": {
+        "moldy": "Mohoso",
+        "phenolic": "Fenólico",
+        "potato": "Papa"
+      },
+      "scoreLater": "Verás tu puntaje al enviar la evaluación."
     }
   },
   "waiting": {
@@ -933,8 +961,8 @@
       "how": "¿Cómo se calculó?",
       "formula": "Fórmula CVA",
       "sigma": "Σhᵢ = suma de las 8 secciones afectivas",
-      "u": "u = tazas no uniformes",
-      "d": "d = tazas defectuosas",
+      "u": "u = tazas no uniformes (2 puntos cada una; una taza defectuosa también cuenta aquí)",
+      "d": "d = tazas defectuosas (4 puntos cada una, con su tipo: mohoso, fenólico o papa)",
       "values": "Valores de esta evaluación",
       "base": "Base",
       "uniformity": "Uniformidad",
@@ -961,7 +989,20 @@
       "communityScore": "Puntaje de la comunidad",
       "includedNote": "{n} de {total} evaluadores incluidos en el promedio",
       "groupExplain": "El puntaje de la comunidad es el promedio de los puntajes base, menos el descuento de las tazas de todos los catadores incluidos (2 por taza no uniforme y 4 por taza defectuosa; con más de cinco tazas en total el descuento se reparte), redondeado a 0.25.",
-      "perCup": "por taza"
+      "perCup": "por taza",
+      "line": {
+        "nonUniformOne": "taza no uniforme",
+        "nonUniformOther": "tazas no uniformes",
+        "unspecifiedOne": "taza defectuosa, sin especificar",
+        "unspecifiedOther": "tazas defectuosas, sin especificar",
+        "moldyOne": "taza mohosa",
+        "moldyOther": "tazas mohosas",
+        "phenolicOne": "taza fenólica",
+        "phenolicOther": "tazas fenólicas",
+        "potatoOne": "taza con papa",
+        "potatoOther": "tazas con papa",
+        "groupScope": "Entre todos se cataron {cups} tazas: el descuento del grupo se reparte entre ellas."
+      }
     },
     "help": {
       "stats": {
