@@ -2310,7 +2310,7 @@ reads it is rolled back; code rolled back ignores the column anyway.
 
 ---
 
-## §35. Database — apply the `close_notice_and_late_contributions` migration (2026-11, S10 WP4b)
+## §36. Database — apply the `close_notice_and_late_contributions` migration (2026-11, S10 WP4b)
 
 **What it does:** five NULLABLE columns, no default, no backfill, no index, no trigger, no policy:
 

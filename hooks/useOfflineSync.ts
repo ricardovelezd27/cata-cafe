@@ -87,6 +87,8 @@ export function useOfflineSync({
       clientTs?: number,
       // M4: the user the draft belongs to; the server refuses to write under anyone else.
       expectedUserId?: string,
+      // S10 WP5b review H1: the draft was produced under the pin.
+      pinnedView?: boolean,
     ): Promise<ReplayResult> => {
       for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         if (!onlineRef.current) return "offline";
@@ -100,6 +102,7 @@ export function useOfflineSync({
               force,
               clientTs,
               expectedUserId,
+              pinnedView,
             });
             // "pending" = the master has not started this live session yet; the
             // draft stays pending without burning an attempt (no fast retry).
@@ -220,6 +223,7 @@ export function useOfflineSync({
                 false,
                 sentAt,
                 blob.userId,
+                fresh.pinnedView,
               );
               if (result === "offline") {
                 anyRetry = true;
@@ -312,6 +316,7 @@ export function useOfflineSync({
             true,
             mod.updatedAt,
             conflict.userId,
+            mod.pinnedView,
           );
           if (result === "offline" || result === "retry" || result === "waiting" || result === "conflict") return; // keep it for a later retry
           await applyReplayOutcome(

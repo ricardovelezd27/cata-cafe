@@ -393,6 +393,7 @@ export default async function CupPage({
         referenceAddConfirm: tg("referenceAddConfirm"),
         referenceRepinTitle: t("session.edit.repinTitle"),
         referenceRepinBody: t.raw("session.edit.repinBody") as string,
+        referenceRatingsRestored: t.raw("session.edit.ratingsRestored") as string,
         referenceRemoveRepinTitle: t("session.edit.removeRepinTitle"),
         referenceRemoveRepinBody: t.raw("session.edit.removeRepinBody") as string,
         referenceRemoveRepinConfirm: t("session.edit.removeRepinConfirm"),

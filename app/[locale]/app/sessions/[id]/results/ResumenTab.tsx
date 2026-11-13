@@ -42,6 +42,7 @@ type ResumenTabTranslations = {
   /** Shown beside a score that is the viewer's own inside a group ranking. */
   basisMine: string;
   fewNote: string;
+  rankHelp: string;
 };
 
 function fill(template: string, n: number, total: number): string {
@@ -101,6 +102,7 @@ export function ResumenTab({
   // "Best" skips a sample whose community number rests on too few cuppers.
   const bestEntry = ranked.find((r) => r.sample.id === bestSampleId) ?? null;
   const showFewNote = ranked.some((r) => r.suppressed);
+  const showRankHelp = ranked.some((r) => r.indicative || r.noClearGap);
   const hasMixedBasis =
     new Set(ranked.filter((r) => r.score !== null).map((r) => r.basis)).size > 1;
 
@@ -279,6 +281,9 @@ export function ResumenTab({
           </div>
           {showFewNote && (
             <p className="text-xs text-on-surface-variant">{t.fewNote}</p>
+          )}
+          {showRankHelp && (
+            <p className="text-xs text-on-surface-variant">{t.rankHelp}</p>
           )}
         </div>
 

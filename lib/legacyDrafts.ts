@@ -1,7 +1,7 @@
 import type { Prisma } from "@/app/generated/prisma/client";
 import { moduleKeyForFormat, tryComputeEvaluationDerived } from "@/lib/evaluation";
 import { logWarn } from "@/lib/log";
-import { pinReferenceAffective, shouldPinReference } from "@/lib/referenceRules";
+import { pinReferenceAffective, shouldPinReference, stashBeforePin } from "@/lib/referenceRules";
 
 /**
  * S10 WP1a (review M3 / second review H2, L6, L9): a draft saved BEFORE the
@@ -120,15 +120,16 @@ async function rewriteLegacyRow(
     raw && typeof raw === "object" && !Array.isArray(raw)
       ? (raw as Record<string, unknown>)
       : {};
-  const data =
-    shouldPinReference({
-      mode: ctx.referenceMode,
-      moduleKey,
-      isActiveReference: ctx.referenceSampleId === row.sessionSampleId,
-    })
-      ? pinReferenceAffective(stored, ctx.cupsPerSample)
-      : stored;
-  const fields = tryComputeEvaluationDerived(moduleKey, data, ctx.cupsPerSample);
+  const pins = shouldPinReference({
+    mode: ctx.referenceMode,
+    moduleKey,
+    isActiveReference: ctx.referenceSampleId === row.sessionSampleId,
+  });
+  const data = pins ? pinReferenceAffective(stored, ctx.cupsPerSample) : stored;
+  // S10 WP5b (B2): the stored row is the one being pinned, so its stash is carried over
+  // (or created from its current values). Shared by the submit-time pass and the owner's acceptance.
+  const refStash = pins ? stashBeforePin(stored, data) : null;
+  const fields = tryComputeEvaluationDerived(moduleKey, data, ctx.cupsPerSample, { refStash });
   if (!fields) {
     // Ids only: never the payload.
     logWarn({

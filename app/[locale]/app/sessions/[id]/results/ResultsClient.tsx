@@ -427,6 +427,7 @@ export function ResultsClient({
       scoreLegend: string;
       basisMine: string;
       fewNote: string;
+      rankHelp: string;
     };
     table: ScoreTableTranslations;
     detail: SampleDetailDialogTranslations;

@@ -139,6 +139,7 @@ export function UnsyncedNotesPanel({
         moduleKey: e.moduleKey as "descriptive" | "affective" | "combined",
         data: e.data,
         clientTs: e.updatedAt,
+        pinnedView: e.pinnedView === true,
         expectedUserId: userId,
       });
       if (status === "synced") {

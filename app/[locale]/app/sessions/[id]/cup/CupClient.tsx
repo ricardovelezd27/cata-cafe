@@ -104,7 +104,8 @@ import { moduleKeyForFormat } from "@/lib/evaluation";
 import { useKeyboardOpen } from "@/hooks/useKeyboardOpen";
 import { isEvaluationReadOnly, isModuleFrozenForRevealed } from "@/lib/revealFreeze";
 import type { MarketCopy } from "@/components/cupping/MarketNote";
-import { indexAfterReconcile, reconcileSamples } from "@/lib/sampleReconcile";
+import { backupEntryFor, planHydration } from "@/lib/pinnedViewHydration";
+import { indexAfterReconcile, reconcileSamples, reconcileUnpinned } from "@/lib/sampleReconcile";
 import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
 import { DevRoleBadge } from "@/components/dev/DevRoleBadge";
 import {
@@ -458,6 +459,7 @@ export function CupClient({
     referenceRepinTitle?: string;
     /** `{n}` placeholder, replaced client-side. */
     referenceRepinBody?: string;
+    referenceRatingsRestored?: string;
     /** S8-27: removing the active reference re-pins the earlier one. `{label}` + `{n}`. */
     referenceRemoveRepinTitle?: string;
     referenceRemoveRepinBody?: string;
@@ -677,6 +679,13 @@ export function CupClient({
   // evaluation draft (lib/sampleReconcile.ts). The server's referenceSampleId
   // is the truth after a refresh — it may point at a sample this client only
   // learns about now. Skipped on mount (state already equals the prop).
+  // S10 WP5b review H1: samples whose local module was produced under the pin, and
+  // the exact data objects that were (identity survives the debounce closures).
+  const pinnedSamplesRef = useRef<Set<string>>(new Set());
+  const pinnedDataRef = useRef<WeakSet<object>>(new WeakSet());
+  const writeLocalRef = useRef<(sampleId: string, label: string, key: ModuleKey, data: Data) => Promise<void>>(
+    async () => {},
+  );
   const serverSamplesRef = useRef(session.samples);
   useEffect(() => {
     if (serverSamplesRef.current === session.samples) return;
@@ -690,14 +699,25 @@ export function CupClient({
         ? [session.referenceSampleId]
         : [];
     const active = refIds.length ? refIds[refIds.length - 1] : null;
-    const merged = reconcileSamples(samplesRef.current, session.samples, active);
+    const reconciled = reconcileSamples(samplesRef.current, session.samples, active);
+    // S10 WP5b review H1: a sample that stopped being the pinned reference takes the
+    // server's restored ratings for the pinned keys (local descriptive edits stay);
+    // offline, no fresh row arrives and the server-side pinnedView rule protects it.
+    const unpin = reconcileUnpinned(reconciled, session.samples, pinnedSamplesRef.current, active);
+    const merged = unpin.samples;
+    for (const id of unpin.adopted) {
+      pinnedSamplesRef.current.delete(id);
+      const adoptedSample = merged.find((s) => s.id === id);
+      const mk = session.format === "affective" ? "affective" : session.format === "descriptive" ? null : "combined";
+      if (adoptedSample && mk) void writeLocalRef.current(id, adoptedSample.label, mk, adoptedSample[mk] as Data);
+    }
     const next = orderByReferenceIds(merged, refIds);
     const idx = indexAfterReconcile(next, sampleIdRef.current, samplesRef.current.findIndex((s) => s.id === sampleIdRef.current));
     setSamples(next);
     setSampleIdx(idx);
     refOrderRef.current = refIds;
     setRefOrder(refIds);
-  }, [session.samples, session.referenceSampleId]);
+  }, [session.samples, session.referenceSampleId, session.format]);
   // Moves the (new) reference to the front, restores position order for the
   // rest, and keeps the cupper on the sample they were looking at.
   const applyRefOrder = (order: string[]) => {
@@ -951,7 +971,12 @@ export function CupClient({
     key: ModuleKey,
     data: Data,
   ) =>
-    mergeModuleData(session.id, userId, sampleId, label, key, data, seed);
+    mergeModuleData(session.id, userId, sampleId, label, key, data, seed, {
+      pinnedView: pinnedDataRef.current.has(data),
+    });
+  useEffect(() => {
+    writeLocalRef.current = writeLocal;
+  });
 
   // Synchronous localStorage mirror of the pending refs, written on pagehide.
   // IndexedDB writes are async and can be aborted when the page dies instantly
@@ -964,6 +989,8 @@ export function CupClient({
     key: ModuleKey;
     data: Data;
     ts: number;
+    /** S10 WP5b review: the data was produced under the pin (lib/pinnedViewHydration.ts). */
+    pinnedView?: boolean;
   };
 
   // Cache the full props payload on each online mount so an offline hard-refresh
@@ -1025,26 +1052,60 @@ export function CupClient({
       const blob = await loadSession(session.id, userId);
       if (cancelled) return;
 
-      if (blob || backup.length > 0) {
+      // S10 WP5b review round 3 (lib/pinnedViewHydration.ts): the "pinned view" mark of a
+      // stored module / backup entry survives the reload. planHydration is the single rule:
+      // a flagged module on a sample that is NOT the pinned reference any more takes the
+      // server props' values for the pin-overwritten keys right away; a flagged module on
+      // the pinned one keeps the mark (hydrated object + sample) so the next save carries it.
+      const planned = planHydration({
+        blob: blob
+          ? {
+              samples: Object.fromEntries(
+                Object.entries(blob.samples).map(([sid, smp]) => [
+                  sid,
+                  {
+                    label: smp.label,
+                    modules: Object.fromEntries(
+                      Object.entries(smp.modules).map(([mk, mod]) => [
+                        mk,
+                        mod
+                          ? {
+                              data: mod.data,
+                              updatedAt: mod.updatedAt,
+                              pinnedView: mod.pinnedView,
+                              hydrates: hydratesForm(mod.syncStatus),
+                            }
+                          : undefined,
+                      ]),
+                    ),
+                  },
+                ]),
+              ),
+            }
+          : null,
+        backup,
+        isModuleKey,
+        stillPinned: (sampleId) =>
+          shouldPinReference({
+            mode: referenceMode,
+            moduleKey: session.format === "affective" ? "affective" : session.format === "descriptive" ? "descriptive" : "combined",
+            isActiveReference: sampleId === referenceSampleId,
+          }),
+        serverModule: (sampleId, key) =>
+          (session.samples.find((x) => x.id === sampleId)?.[key as keyof Sample] as Data | undefined) ?? null,
+      });
+      for (const m of planned.values()) {
+        if (m.pinnedView) {
+          pinnedDataRef.current.add(m.data);
+          pinnedSamplesRef.current.add(m.sampleId);
+        }
+      }
+      if (planned.size > 0) {
         setSamples((prev) =>
           prev.map((s) => {
             let next = s;
-            const local = blob?.samples[s.id];
-            if (local) {
-              for (const [mk, mod] of Object.entries(local.modules)) {
-                // Conflicts are the SyncConflictModal's job — don't pre-apply them.
-                if (!mod || !hydratesForm(mod.syncStatus) || !isModuleKey(mk))
-                  continue;
-                next = { ...next, [mk]: mod.data };
-              }
-            }
-            for (const entry of backup) {
-              if (entry.sampleId !== s.id || !isModuleKey(entry.key)) continue;
-              // A crash can leave a backup behind without pagehide clearing
-              // it — never let it regress a newer IndexedDB write.
-              const mod = blob?.samples[s.id]?.modules[entry.key];
-              if (mod && mod.updatedAt > entry.ts) continue;
-              next = { ...next, [entry.key]: entry.data };
+            for (const m of planned.values()) {
+              if (m.sampleId === s.id) next = { ...next, [m.key]: m.data };
             }
             return next;
           }),
@@ -1052,12 +1113,11 @@ export function CupClient({
       }
 
       // Promote backup entries into the durable pending store (so the replay
-      // pushes them to the server), then clear the one-shot backup.
-      for (const entry of backup) {
-        if (!isModuleKey(entry.key)) continue;
-        const mod = blob?.samples[entry.sampleId]?.modules[entry.key];
-        if (mod && mod.updatedAt > entry.ts) continue;
-        await writeLocal(entry.sampleId, entry.label, entry.key, entry.data);
+      // pushes them to the server), then clear the one-shot backup. A module whose pin
+      // keys were replaced by the server's is rewritten too (its flag dropped).
+      for (const m of planned.values()) {
+        if (!m.fromBackup && !m.adopted) continue;
+        await writeLocal(m.sampleId, m.label, m.key as ModuleKey, m.data);
       }
       if (backup.length > 0) {
         try {
@@ -1098,14 +1158,20 @@ export function CupClient({
       const lp = localPendingRef.current;
       if (lp) {
         void writeLocal(lp.sampleId, lp.label, lp.key, lp.data);
-        entries.push({ ...lp, ts: now });
+        entries.push(backupEntryFor(lp, now, pinnedDataRef.current.has(lp.data)) as FlushBackupEntry);
       }
       const sp = pendingSaveRef.current;
       if (sp && isModuleKey(sp.key)) {
         const label =
           session.samples.find((s) => s.id === sp.sampleId)?.label ?? "";
         void writeLocal(sp.sampleId, label, sp.key, sp.data);
-        entries.push({ sampleId: sp.sampleId, label, key: sp.key, data: sp.data, ts: now });
+        entries.push(
+          backupEntryFor(
+            { sampleId: sp.sampleId, label, key: sp.key, data: sp.data },
+            now,
+            pinnedDataRef.current.has(sp.data),
+          ) as FlushBackupEntry,
+        );
       }
       // Sync mirror: survives even if the async IndexedDB writes above are
       // aborted by an instant page kill. Always rewritten (or cleared) so it
@@ -1363,6 +1429,9 @@ export function CupClient({
           cupsPerSample: session.cupsPerSample,
           // S8-18: edit time, so the server drops this write if a newer one landed first.
           clientTs: Date.now(),
+          // S10 WP5b review H1: produced under the pin (the server then protects the
+          // ratings it restored if the reference moved meanwhile).
+          pinnedView: pinnedDataRef.current.has(data),
         });
         if (!saved.ok) throw new Error(saved.error);
       } else if (key === "extrinsic") {
@@ -1582,6 +1651,15 @@ export function CupClient({
     if (!sample) return;
     // S10 WP3a (X3): a revealed sample is frozen for evaluation (the server refuses it too).
     if (isModuleFrozenForRevealed({ revealed: sample.revealed, key: String(key) })) return;
+    // Still "pinned view" until the server's restored row has been adopted (a stale
+    // module posted in between is protected by the server's pinnedView rule).
+    if (
+      (isPinnedReference(sample.id) || pinnedSamplesRef.current.has(sample.id)) &&
+      (key === "affective" || key === "combined")
+    ) {
+      pinnedDataRef.current.add(data);
+      pinnedSamplesRef.current.add(sample.id);
+    }
     setSamples((prev) =>
       prev.map((s) => (s.id === sample.id ? { ...s, [key]: data } : s))
     );
@@ -1939,7 +2017,12 @@ export function CupClient({
     const seq = ++referenceSeqRef.current;
     applyReferenceOrder(next);
     startTransition(async () => {
-      const r = await feedback.run(setReferenceSample(session.id, next, confirmRepin));
+      const r = await feedback.run(setReferenceSample(session.id, next, confirmRepin), (d) => {
+        // S10 WP5b (B2): non-blocking notice when previous ratings were given back.
+        if ((d.restored ?? 0) > 0 && translations.referenceRatingsRestored) {
+          feedback.notifySuccess(translations.referenceRatingsRestored.replace("{n}", String(d.restored)));
+        }
+      });
       if (!r.ok && seq === referenceSeqRef.current) applyRefOrder(prevOrder);
     });
   };
@@ -1985,6 +2068,13 @@ export function CupClient({
   const referenceSample = referenceSampleId
     ? viewSamples.find((s) => s.id === referenceSampleId) ?? null
     : null;
+  // S10 WP5b review H1: whatever this page holds for the pinned reference is a pinned view.
+  useEffect(() => {
+    if (referenceSampleId && isPinnedReference(referenceSampleId)) {
+      pinnedSamplesRef.current.add(referenceSampleId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [referenceSampleId, referenceMode]);
   // The anchor must exist for everyone even when a cupper never touches the
   // reference (nothing to score in an affective session): the first visit
   // queues one pinned save so their 79.00 lands and Δ/community work. Only
@@ -2002,11 +2092,10 @@ export function CupClient({
     if (sample.revealed) return;
     if (ensuredReferenceRef.current.has(sample.id)) return;
     ensuredReferenceRef.current.add(sample.id);
-    scheduleAutoSave(
-      sample.id,
-      affectiveModuleKey,
-      pinReferenceAffective(sample[affectiveModuleKey], session.cupsPerSample),
-    );
+    const ensured = pinReferenceAffective(sample[affectiveModuleKey], session.cupsPerSample);
+    pinnedDataRef.current.add(ensured);
+    pinnedSamplesRef.current.add(sample.id);
+    scheduleAutoSave(sample.id, affectiveModuleKey, ensured);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [referenceSampleId, sampleIdx, affectiveModuleKey, sessionStatus, referenceMode]);
   const currentRefIdx = refOrder.indexOf(current.id);
