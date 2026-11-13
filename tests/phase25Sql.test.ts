@@ -26,12 +26,12 @@ function stripComments(sql: string): string {
     .join("\n");
 }
 
-// Bounded: from its own header to the NEXT "-- PHASE <number> (" header of any number (later
-// phases, e.g. PHASE 26 with INSERTs inside a function, are not part of this one), or end of file.
-const phaseStart = SQL.search(/^-- PHASE 25 \(/m);
-const phaseRest = SQL.slice(phaseStart + 1);
-const nextPhase = phaseRest.search(/^-- PHASE \d+ \(/m);
-const phase25 = nextPhase === -1 ? SQL.slice(phaseStart) : SQL.slice(phaseStart, phaseStart + 1 + nextPhase);
+// Bounded from this phase's own header to the NEXT "-- PHASE <number>" header of
+// ANY number (or the end of the file), so a phase that lands before or after
+// (26, 27 ...) in either merge order cannot leak into these assertions.
+const phase25Start = /^-- PHASE 25 /m.exec(SQL)!.index;
+const phase25Next = /^-- PHASE \d+/m.exec(SQL.slice(phase25Start + 10));
+const phase25 = SQL.slice(phase25Start, phase25Next ? phase25Start + 10 + phase25Next.index : undefined);
 
 const block = (s: string, start: string, end: string) => {
   const a = s.indexOf(start);
@@ -45,7 +45,7 @@ describe("PHASE 25: session_participants exclusion metadata hidden from the API"
   const stmts = block(phase25, ">>> PHASE 25 statements", "<<< end of PHASE 25 statements");
   const exec = stripComments(stmts).replace(/\s+/g, " ");
 
-  it("exists once, after PHASE 24 (PHASE 26 follows it)", () => {
+  it("exists once, after PHASE 24 (later phases may follow it)", () => {
     expect(SQL.match(/-- PHASE 25 /g)?.length).toBe(1);
     expect(SQL.indexOf("-- PHASE 25")).toBeGreaterThan(SQL.indexOf("-- PHASE 24"));
   });

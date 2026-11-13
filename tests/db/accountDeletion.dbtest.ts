@@ -86,6 +86,10 @@ async function world() {
   await prisma.outboundEmailEvent.create({ data: { kind: "group_invite", actorKey: `u_${D}`, recipients: 2 } });
   await prisma.waitlistEntry.create({ data: { email: "daniela@example.test" } });
   await prisma.savedInsight.create({ data: { createdBy: D, name: "mi insight", config: {} } });
+  // private warm-up reflections (S10 WP7): D's are erased with the account, P1's stay
+  await prisma.warmupReflection.create({ data: { userId: D, exerciseId: "eyes", feel: "tranquilo", discovery: "mis manos" } });
+  await prisma.warmupReflection.create({ data: { userId: D, exerciseId: "arm-raise", feel: "bien" } });
+  await prisma.warmupReflection.create({ data: { userId: P1, exerciseId: "eyes", feel: "de Pedro" } });
 
   return { D, P1, P2, Q, c1, c2, solo, kept, emptyGroup, otherDraft, otherSubmitted, soloGroup, sharedGroup };
 }
@@ -189,6 +193,10 @@ describe("deleteAccountData", () => {
     expect(await prisma.outboundEmailEvent.count({ where: { actorKey: `u_${userId}` } })).toBe(0);
     expect(await prisma.waitlistEntry.count({ where: { email: "daniela@example.test" } })).toBe(0);
     expect(await prisma.userCoffeeHistory.count({ where: { userId } })).toBe(0);
+    // the person's private reflections are gone (erase, never reassigned to the placeholder); P1's stay
+    expect(await prisma.warmupReflection.count({ where: { userId } })).toBe(0);
+    expect(await prisma.warmupReflection.count({ where: { userId: out.placeholderId } })).toBe(0);
+    expect((await prisma.warmupReflection.findMany()).map((r) => [r.userId, r.feel])).toEqual([[w.P1, "de Pedro"]]);
     // P1's and P2's history/profiles are intact
     expect(await prisma.profile.count({ where: { id: { in: [w.P1, w.P2, w.Q] } } })).toBe(3);
   }, 120_000);
