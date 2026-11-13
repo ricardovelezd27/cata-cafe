@@ -15,7 +15,7 @@ import {
   moduleKeyForFormat,
   type EvalModuleKey,
 } from "@/lib/evaluation";
-import { pinReferenceAffective, shouldPinReference } from "@/lib/referenceRules";
+import { pinReferenceAffective, shouldPinReference, stashBeforePin, type RefStash } from "@/lib/referenceRules";
 import { writeEvaluationOrdered } from "@/lib/evaluationWrite";
 import { logInfo } from "@/lib/log";
 import { replayOverExisting } from "@/lib/aggregateRefire";
@@ -161,18 +161,33 @@ async function replayEvaluationCore(input: EvaluationReplayInput): Promise<Repla
   // Same reference pin as the live path (lib/referenceRules.ts).
   const moduleKey = moduleKeyForFormat(format);
   // B1: the pin applies only in "anchor" mode.
-  const data = shouldPinReference({
+  const pinsThisSample = shouldPinReference({
     mode: auth.referenceMode,
     moduleKey,
     isActiveReference: referenceSampleId === input.sessionSampleId,
-  })
-    ? pinReferenceAffective(input.data, cupsPerSample)
-    : input.data;
+  });
+  const data = pinsThisSample ? pinReferenceAffective(input.data, cupsPerSample) : input.data;
+  // S10 WP5b (B2): carry the stored row's stash over (same rule as the live
+  // path); a client blob can never set or drop it. TODO(kim-validar:B2)
+  let refStash: RefStash | null = null;
+  if (pinsThisSample) {
+    const stored = await prisma.evaluation.findUnique({
+      where: {
+        sessionSampleId_cupperId: { sessionSampleId: input.sessionSampleId, cupperId: user.id },
+      },
+      select: { affectiveData: true, combinedData: true },
+    });
+    const raw = moduleKey === "affective" ? stored?.affectiveData : stored?.combinedData;
+    refStash = stashBeforePin(
+      raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : null,
+      data,
+    );
+  }
   // A thrown invalid_input would make useOfflineSync retry and leave the draft
   // pending forever (S8-10). Out-of-bounds data is reachable only with a
   // tampered or legacy blob and can never become valid: report the
   // non-retryable "rejected" (S8-09 replay contract).
-  const fields = tryComputeEvaluationDerived(moduleKey, data, cupsPerSample);
+  const fields = tryComputeEvaluationDerived(moduleKey, data, cupsPerSample, { refStash });
   if (!fields) return "rejected";
 
   const saved = await writeEvaluationOrdered(prisma, {

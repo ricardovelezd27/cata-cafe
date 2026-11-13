@@ -17,6 +17,10 @@
 
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { computeEvaluationDerived } from "@/lib/evaluation";
+import { DEFECT_TYPE_KEY } from "@/lib/cupDefects";
+import { REF_STASH_KEY, type RefStash } from "@/lib/referenceStashKey";
+
+export { REF_STASH_KEY, type RefStash };
 
 export const REFERENCE_PIN_VALUE = 5;
 
@@ -236,7 +240,9 @@ export function planReferenceRepin<
         : {};
     if (isReferencePinned(data)) continue;
     const pinned = pinReferenceAffective(data, cupsPerSample);
-    const fields = computeEvaluationDerived(moduleKey, pinned, cupsPerSample);
+    // B2: what the pin overwrites is kept under `ref_previo` (never replaced).
+    const refStash = stashBeforePin(data, pinned);
+    const fields = computeEvaluationDerived(moduleKey, pinned, cupsPerSample, { refStash });
     plan.push({ id: ev.id, data: { ...fields, isDraft: ev.isDraft } });
   }
   return plan;
@@ -265,6 +271,128 @@ export function isReferencePinned(data: Record<string, unknown>): boolean {
     return !Array.isArray(v) || v.every((x) => x !== true);
   });
   return allFive && noCups;
+}
+
+// ─── The pin never destroys a cupper's ratings (S10 WP5b, B2) ───────────────
+// TODO(kim-validar:B2): simulated answer. Whenever a pin overwrites stored
+// affective input that is not already the anchor state, the previous values are
+// kept inside the SAME module JSON under ONE key, `ref_previo` (lib/
+// referenceStashKey.ts). It is server-owned (stripped from every client payload
+// by computeEvaluationDerived), invisible to scoring and reports, never
+// overwritten by a later pin (the first real values win), and given back by
+// `restoreFromStash` when the sample stops being the active pinned reference.
+// Only where `shouldPinReference` applies: free mode never pins, never stashes.
+
+/** EVERY key `pinReferenceAffective` overwrites (the single list: a test pins
+ *  that the pin changes nothing outside it). The base `<attr>` ratings are not
+ *  touched by the pin, so they are not stashed. */
+export const PIN_OVERWRITTEN_KEYS: readonly string[] = [
+  ...AFFECTIVE_ATTRIBUTES.map((a) => `${a.id}_final`),
+  "tazas_no_uniformes",
+  "tazas_defectuosas",
+  "defecto_tipo",
+  DEFECT_TYPE_KEY,
+];
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+/** The stash a stored module carries, or null when absent or malformed. Keys
+ *  outside PIN_OVERWRITTEN_KEYS are dropped (a tampered blob cannot restore an
+ *  arbitrary key). */
+export function validStash(raw: unknown): RefStash | null {
+  if (!isPlainObject(raw)) return null;
+  const { at, valores } = raw;
+  if (typeof at !== "string" || !isPlainObject(valores)) return null;
+  const allowed: Record<string, unknown> = {};
+  for (const key of PIN_OVERWRITTEN_KEYS) {
+    if (key in valores) allowed[key] = valores[key];
+  }
+  return { at, valores: allowed };
+}
+
+/** The stash a write that PINS must carry. `stored` is the module as it is in
+ *  the database right now (null/undefined = no stored row), `pinned` what the
+ *  pin is about to write.
+ *   - an existing stash wins and is carried over untouched (never overwritten);
+ *   - no stored row, or stored data already at the anchor state: nothing to keep;
+ *   - otherwise a new stash with the value of every overwritten key that
+ *     actually changes (`null` = the key was absent). */
+export function stashBeforePin(
+  stored: Record<string, unknown> | null | undefined,
+  pinned: Record<string, unknown>,
+  now: Date = new Date(),
+): RefStash | null {
+  if (!stored) return null;
+  const existing = validStash(stored[REF_STASH_KEY]);
+  if (existing) return existing;
+  if (isReferencePinned(stored)) return null;
+  const valores: Record<string, unknown> = {};
+  for (const key of PIN_OVERWRITTEN_KEYS) {
+    const before = stored[key] === undefined ? null : stored[key];
+    const after = pinned[key] === undefined ? null : pinned[key];
+    if (JSON.stringify(before) !== JSON.stringify(after)) valores[key] = before;
+  }
+  if (Object.keys(valores).length === 0) return null;
+  return { at: now.toISOString(), valores };
+}
+
+/** "Undo": gives the stashed values back when the module STILL holds exactly
+ *  the anchor state. A module the cupper re-rated after the unlock keeps its
+ *  current values and just drops the stash (`restored: false`, `hadStash:
+ *  true`). Always returns data WITHOUT the stash key. */
+export function restoreFromStash(data: Record<string, unknown>): {
+  data: Record<string, unknown>;
+  restored: boolean;
+  hadStash: boolean;
+} {
+  const hadKey = REF_STASH_KEY in data;
+  const stash = validStash(data[REF_STASH_KEY]);
+  const clean: Record<string, unknown> = { ...data };
+  delete clean[REF_STASH_KEY];
+  if (!stash || !isReferencePinned(clean)) return { data: clean, restored: false, hadStash: hadKey };
+  for (const [key, value] of Object.entries(stash.valores)) {
+    if (value === null || value === undefined) delete clean[key];
+    else clean[key] = value;
+  }
+  return { data: clean, restored: true, hadStash: true };
+}
+
+/** Restore plan for a sample that STOPPED being the active pinned reference
+ *  (S10 WP5b). For each evaluation carrying a stash: when the anchor state is
+ *  intact the stashed values come back and the full derived payload is written
+ *  (`isDraft` echoed so a submitted row re-fires `trg_recompute_aggregate`,
+ *  like planReferenceRepin); otherwise only the module column is rewritten
+ *  without the stash (scores untouched). Evaluations without a stash are not
+ *  listed. `restored` marks the first kind. */
+export function planReferenceRestore<
+  E extends {
+    id: string;
+    isDraft: boolean;
+    affectiveData: unknown;
+    combinedData: unknown;
+  },
+>(
+  evaluations: readonly E[],
+  moduleKey: string,
+  cupsPerSample: number,
+): { id: string; restored: boolean; data: Record<string, unknown> }[] {
+  if (!isPinnedModule(moduleKey)) return [];
+  const column = moduleKey === "affective" ? "affectiveData" : "combinedData";
+  const plan: { id: string; restored: boolean; data: Record<string, unknown> }[] = [];
+  for (const ev of evaluations) {
+    const raw = ev[column];
+    if (!isPlainObject(raw) || !(REF_STASH_KEY in raw)) continue;
+    const res = restoreFromStash(raw);
+    if (res.restored) {
+      const fields = computeEvaluationDerived(moduleKey, res.data, cupsPerSample);
+      plan.push({ id: ev.id, restored: true, data: { ...fields, isDraft: ev.isDraft } });
+    } else {
+      plan.push({ id: ev.id, restored: false, data: { [column]: res.data } });
+    }
+  }
+  return plan;
 }
 
 // ─── Client-side mirror of the rank order (cup + waiting room) ───────────────

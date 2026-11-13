@@ -3,6 +3,7 @@ import { AFFECTIVE_ATTRIBUTES, asSessionFormat } from "@/lib/constants";
 import { cupDefectTypes, cupFlags } from "@/lib/validate";
 import { DEFECT_TYPE_KEY, distinctDefectTypes } from "@/lib/cupDefects";
 import { EXPRESS_NOTE_KEY, EXPRESS_NOTE_MAX } from "@/lib/expressSession";
+import { REF_STASH_KEY, type RefStash } from "@/lib/referenceStashKey";
 
 export type EvalModuleKey = "descriptive" | "affective" | "combined";
 
@@ -76,9 +77,10 @@ export function tryComputeEvaluationDerived(
   moduleKey: EvalModuleKey,
   data: Record<string, unknown>,
   cupsPerSample: number,
+  opts?: DerivationOptions,
 ): ReturnType<typeof computeEvaluationDerived> | null {
   try {
-    return computeEvaluationDerived(moduleKey, data, cupsPerSample);
+    return computeEvaluationDerived(moduleKey, data, cupsPerSample, opts);
   } catch (e) {
     if (e instanceof Error && e.message === "invalid_input") return null;
     throw e;
@@ -95,11 +97,25 @@ export function tryComputeEvaluationDerived(
 // the deduction (lib/scoring.ts cupDeduction), so a client-supplied value could
 // distort the stored individual score. It is also stored on the row as `cups`
 // (S10 WP1a): the SQL trigger pools the group's cups from that column.
+export type DerivationOptions = {
+  /** S10 WP5b (B2): the stash a TRUSTED server caller carries over into the
+   *  module (lib/referenceRules.ts stashBeforePin). Whatever a client posted
+   *  under the same key is always discarded first. */
+  refStash?: RefStash | null;
+};
+
 export function computeEvaluationDerived(
   moduleKey: EvalModuleKey,
-  data: Record<string, unknown>,
+  postedData: Record<string, unknown>,
   cupsPerSample: number,
+  opts?: DerivationOptions,
 ) {
+  // B2: `ref_previo` is server-owned. Strip anything the payload carries, then
+  // attach only the stash the caller vouches for (inside the size bound).
+  const data: Record<string, unknown> = { ...postedData };
+  delete data[REF_STASH_KEY];
+  if (opts?.refStash) data[REF_STASH_KEY] = opts.refStash;
+
   const dataField =
     moduleKey === "descriptive"
       ? "descriptiveData"

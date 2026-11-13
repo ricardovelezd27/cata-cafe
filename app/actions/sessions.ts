@@ -46,6 +46,10 @@ import {
   REFERENCE_MODES,
   shouldPinReference,
   pinReferenceAffective,
+  stashBeforePin,
+  planReferenceRestore,
+  activeReferenceId,
+  type RefStash,
   planAddReference,
   countRepinOverwrites,
   planReferenceRepin,
@@ -805,14 +809,34 @@ export async function upsertEvaluation(input: {
   // client can move it (lib/referenceRules.ts). Descriptive data is untouched.
   const moduleKey = moduleKeyForFormat(auth.format);
   // B1: only in "anchor" mode (a "free" reference is scored like any sample).
-  const data = shouldPinReference({
+  const pinsThisSample = shouldPinReference({
     mode: auth.referenceMode,
     moduleKey,
     isActiveReference: auth.referenceSampleId === input.sessionSampleId,
-  })
+  });
+  const data = pinsThisSample
     ? pinReferenceAffective(input.data, auth.cupsPerSample)
     : input.data;
-  const fields = computeEvaluationDerived(moduleKey, data, auth.cupsPerSample);
+  // S10 WP5b (B2): the pin never destroys the cupper's ratings. The row as it
+  // is stored now decides the stash this write carries (an existing one is
+  // carried over; a client can never set or drop it, computeEvaluationDerived
+  // discards whatever the payload says). One extra read, only for the pinned
+  // reference sample. TODO(kim-validar:B2)
+  let refStash: RefStash | null = null;
+  if (pinsThisSample) {
+    const stored = await prisma.evaluation.findUnique({
+      where: {
+        sessionSampleId_cupperId: { sessionSampleId: input.sessionSampleId, cupperId: user.id },
+      },
+      select: { affectiveData: true, combinedData: true },
+    });
+    const raw = moduleKey === "affective" ? stored?.affectiveData : stored?.combinedData;
+    refStash = stashBeforePin(
+      raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : null,
+      data,
+    );
+  }
+  const fields = computeEvaluationDerived(moduleKey, data, auth.cupsPerSample, { refStash });
 
   const doUpsert = () =>
     writeEvaluationOrdered(prisma, {
@@ -1082,7 +1106,7 @@ export async function setReferenceSample(
   sessionId: string,
   sampleId: string | null,
   confirmRepin: boolean = false,
-): Promise<ActionResult<{ referenceSampleId: string | null }>> {
+): Promise<ActionResult<{ referenceSampleId: string | null; restored: number }>> {
   return run(
     "setReferenceSample",
     async () => {
@@ -1110,6 +1134,7 @@ export async function setReferenceSample(
       // The one sanctioned server-side rewrite of a submitted evaluation.
       // Earlier references are never touched (they keep their pinned rows).
       let repinned = 0;
+      let restored = 0;
       let active: string | null = null;
       await prisma.$transaction(async (tx) => {
         // Read the ranks inside the transaction so two owners' tabs cannot
@@ -1131,8 +1156,11 @@ export async function setReferenceSample(
           isActiveReference: true,
         });
         let repinTarget: string | null = null;
+        const activeBefore = activeReferenceId(rows);
+        let removedActiveId: string | null = null;
         if (targetId === null) {
           const plan = planRemoveActive(rows);
+          removedActiveId = plan.removeId;
           if (plan.removeId) {
             await tx.sessionSample.update({
               where: { id: plan.removeId },
@@ -1166,7 +1194,9 @@ export async function setReferenceSample(
             // anchor is allowed, but only after the owner confirmed it. The
             // count is read in this transaction so it cannot go stale. Anchor
             // mode only: a free reference never rewrites anything (B1).
-            // TODO(B2-b): Kim may prefer keeping the originals aside.
+            // S10 WP5b (B2-b, TODO(kim-validar:B2)): the originals are kept
+            // aside under `ref_previo` (planReferenceRepin) and come back when
+            // this sample stops being the active reference.
             if (pinsWhenActive) {
               const existing = await tx.evaluation.count({ where: { sessionSampleId: targetId } });
               if (
@@ -1192,6 +1222,26 @@ export async function setReferenceSample(
           data: { referenceSampleId: active },
           select: { format: true, cupsPerSample: true },
         });
+        // S10 WP5b (B2, TODO(kim-validar:B2)): the sample that STOPPED being the
+        // active pinned reference (removed, or unlocked because a newer one was
+        // named) gets each cupper's previous ratings back, same transaction.
+        // Anchor mode only: free mode never pinned, so nothing was stashed.
+        const stoppedPinning = targetId === null ? removedActiveId : activeBefore;
+        if (stoppedPinning && stoppedPinning !== active && pinsWhenActive) {
+          const stoppedEvals = await tx.evaluation.findMany({
+            where: { sessionSampleId: stoppedPinning },
+            select: { id: true, isDraft: true, affectiveData: true, combinedData: true },
+          });
+          const restore = planReferenceRestore(
+            stoppedEvals,
+            moduleKeyForFormat(session.format),
+            session.cupsPerSample,
+          );
+          for (const { id, data } of restore) {
+            await tx.evaluation.update({ where: { id }, data: data as Prisma.EvaluationUpdateInput });
+          }
+          restored = restore.filter((r) => r.restored).length;
+        }
         if (!repinTarget) return;
         const moduleKey = moduleKeyForFormat(session.format);
         if (!pinsWhenActive) return;
@@ -1210,6 +1260,9 @@ export async function setReferenceSample(
       if (repinned > 0) {
         logInfo({ where: "setReferenceSample", sessionId, message: "reference_repinned", count: repinned });
       }
+      if (restored > 0) {
+        logInfo({ where: "setReferenceSample", sessionId, message: "reference_ratings_restored", count: restored });
+      }
 
       for (const l of ["es", "en"]) {
         revalidatePath(`/${l}/app/sessions/${sessionId}/cup`);
@@ -1217,7 +1270,7 @@ export async function setReferenceSample(
         revalidatePath(`/${l}/app/sessions/${sessionId}/edit`);
         revalidatePath(`/${l}/app/sessions/${sessionId}/waiting`);
       }
-      return { referenceSampleId: active };
+      return { referenceSampleId: active, restored };
     },
     { sessionId },
   );
