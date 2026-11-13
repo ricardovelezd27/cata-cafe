@@ -1,7 +1,8 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/auth";
+import { requireUserExpecting } from "@/lib/auth";
+import { IDENTITY_CHANGED } from "@/lib/expectedUser";
 import { requireSampleMember, requireSampleOwner } from "@/lib/sessionAuth";
 import { extrinsicWriteAllowed, isSessionExpired } from "@/lib/sessionState";
 // NOTE: no assertSessionWritable throw here — a closed or expired session must
@@ -18,7 +19,6 @@ import { isPinnedModule, pinReferenceAffective } from "@/lib/referenceRules";
 import { writeEvaluationOrdered } from "@/lib/evaluationWrite";
 import { logInfo } from "@/lib/log";
 import { replayOverExisting } from "@/lib/aggregateRefire";
-import { replayUserMismatch } from "@/lib/offline/replayGuard";
 
 // Conflict-aware replay of an offline evaluation draft, called on reconnect.
 // Authorization stays identical to the live path: Prisma scoped by cupperId
@@ -47,6 +47,22 @@ export type ReplayStatus = "synced" | "conflict" | "closed" | "pending" | "gone"
 
 type OwnerReplayStatus = "synced" | "closed" | "gone" | "rejected" | "pending";
 
+// The replay's authentication step. With `expectedUserId` (the user the draft
+// was saved for) the guard runs FIRST and without throwing: no user in the
+// cookie (the likeliest stale-tab state after "No soy") or a different user
+// returns null, and the caller answers "pending" (the draft stays pending, no
+// attempt is burnt). Without it this is requireUser() exactly as before.
+async function replayUser(expectedUserId: string | undefined) {
+  try {
+    return await requireUserExpecting(expectedUserId, { skipProfileUpsert: true });
+  } catch (err) {
+    if (expectedUserId !== undefined && err instanceof Error && err.message === IDENTITY_CHANGED) {
+      return null;
+    }
+    throw err;
+  }
+}
+
 function isGone(err: unknown): boolean {
   return err instanceof Error && err.message === "not_found_or_forbidden";
 }
@@ -73,8 +89,8 @@ type EvaluationReplayInput = {
 // of a "use server" file is a public endpoint. Authorization is identical to
 // the live path (requireSampleMember below).
 async function replayEvaluationCore(input: EvaluationReplayInput): Promise<ReplayStatus> {
-  const user = await requireUser({ skipProfileUpsert: true });
-  if (replayUserMismatch(input.expectedUserId, user.id)) return "pending";
+  const user = await replayUser(input.expectedUserId);
+  if (!user) return "pending";
   // Same authorization as the live upsertEvaluation path: session member only.
   // Also resolves the sample's real sessionId in one round-trip.
   let auth: Awaited<ReturnType<typeof requireSampleMember>>;
@@ -195,8 +211,8 @@ export async function replayPhysical(input: {
   data: Record<string, unknown>;
   expectedUserId?: string;
 }): Promise<{ status: OwnerReplayStatus }> {
-  const user = await requireUser({ skipProfileUpsert: true });
-  if (replayUserMismatch(input.expectedUserId, user.id)) return { status: "pending" };
+  const user = await replayUser(input.expectedUserId);
+  if (!user) return { status: "pending" };
   let auth: Awaited<ReturnType<typeof requireSampleOwner>>;
   try {
     auth = await requireSampleOwner(input.sessionSampleId, user.id);
@@ -224,8 +240,8 @@ export async function replayExtrinsic(input: {
   data: Record<string, unknown>;
   expectedUserId?: string;
 }): Promise<{ status: OwnerReplayStatus }> {
-  const user = await requireUser({ skipProfileUpsert: true });
-  if (replayUserMismatch(input.expectedUserId, user.id)) return { status: "pending" };
+  const user = await replayUser(input.expectedUserId);
+  if (!user) return { status: "pending" };
   let auth: Awaited<ReturnType<typeof requireSampleOwner>>;
   try {
     auth = await requireSampleOwner(input.sessionSampleId, user.id);

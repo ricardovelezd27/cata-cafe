@@ -4,6 +4,7 @@ import { useState, useTransition, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { signOut, switchAccount } from "@/app/actions/auth";
 import { clearLocalDeviceState } from "@/lib/offline/deviceState";
+import { announceIdentityLeft } from "@/lib/identityChange";
 import { stripLocale } from "@/lib/guestScope";
 import { useGuestGate, type GuestLeaveTranslations } from "@/components/guest/GuestGateProvider";
 import { useUnsyncedGuard } from "@/components/offline/UnsyncedGuardProvider";
@@ -70,6 +71,10 @@ export function SignOutButton({
           ? switchAccount(locale)
           : signOut(locale, mode === "signOutEverywhere" ? "global" : "local");
       await feedback.run(promise, async (data) => {
+        // Other tabs of this browser still show this person's pages: tell them
+        // (they stop saving and ask for a reload). "" = unknown id, receivers
+        // re-check with the server.
+        announceIdentityLeft(guard?.userId ?? "");
         await clearLocalDeviceState();
         // A full navigation: the auth cookies changed and every cached RSC
         // payload belonged to the previous identity.

@@ -4,6 +4,7 @@ import { classifyAuthResult } from "@/lib/authState";
 import { loginHref } from "@/lib/authRedirect";
 import { prisma } from "@/lib/prisma";
 import { isRegisteredUser } from "@/lib/guestScope";
+import { IDENTITY_CHANGED, identityMismatch } from "@/lib/expectedUser";
 
 /** Signed in / signed out / auth service unreachable (lib/authState.ts). */
 export async function getAuthUser() {
@@ -36,6 +37,35 @@ export async function requireUser(opts?: { skipProfileUpsert?: boolean }) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("not_authenticated");
+  if (!opts?.skipProfileUpsert) {
+    await prisma.profile.upsert({
+      where: { id: user.id },
+      create: { id: user.id, displayName: user.email?.split("@")[0] ?? "Catador" },
+      update: {},
+    });
+  }
+  return user;
+}
+
+/** requireUser() plus the optional "is this still the person the screen was
+ *  rendered for?" check (S10 WP8 third review H1/L2). With `expectedUserId`
+ *  absent this IS requireUser(), byte for byte (no user -> not_authenticated).
+ *  With it present, the cookie's user is read WITHOUT throwing: no user at all
+ *  or a different user throws `identity_changed` BEFORE any write or profile
+ *  upsert, so the caller can map it (live writes: ActionResult; offline
+ *  replays: "pending", no attempt burnt). */
+export async function requireUserExpecting(
+  expectedUserId: string | undefined,
+  opts?: { skipProfileUpsert?: boolean },
+) {
+  if (expectedUserId === undefined) return requireUser(opts);
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user || identityMismatch(expectedUserId, user.id)) {
+    throw new Error(IDENTITY_CHANGED);
+  }
   if (!opts?.skipProfileUpsert) {
     await prisma.profile.upsert({
       where: { id: user.id },

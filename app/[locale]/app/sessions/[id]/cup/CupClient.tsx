@@ -108,6 +108,8 @@ import {
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { OfflineBanner } from "@/components/offline/OfflineBanner";
 import { noteIfStaleBundle } from "@/lib/staleBundle";
+import { IDENTITY_CHANGED } from "@/lib/expectedUser";
+import { isIdentityChanged, markIdentityChanged } from "@/lib/identityChange";
 import { SyncConflictModal } from "@/components/offline/SyncConflictModal";
 import {
   mergeModuleData,
@@ -202,7 +204,7 @@ export function CupClient({
   translations,
   userEmail,
   userCountry,
-  userId,
+  userId: renderedUserId,
   warmup,
 }: {
   locale: string;
@@ -425,6 +427,13 @@ export function CupClient({
 }) {
   const router = useRouter();
   const feedback = useActionFeedback();
+  // S10 WP8 (shared device): the person this screen was RENDERED for, frozen at
+  // mount. Local draft keys, the offline replay and every server write use it,
+  // never a later prop: if another tab signs someone else in and this page is
+  // refreshed, the form state here is still the first person's and must not be
+  // saved as the new one. Server writes carry it as `expectedUserId`; on a
+  // mismatch they write nothing (`identity_changed`).
+  const [userId] = useState(renderedUserId);
   const stepsForFormat: CuppingStep[] =
     session.format === "descriptive" ? DESCRIPTIVE_STEPS : CUPPING_STEPS;
   // Formats other than affective/descriptive render the CombinedForm, so they
@@ -1110,9 +1119,19 @@ export function CupClient({
       return "pending";
     }
 
+    // The signed-in person changed under this tab (another tab, S10 WP8): stop
+    // writing to the server for the rest of this mount. The draft stays on the
+    // device under the rendered user's key, exactly as when offline; nothing is
+    // deleted and the IdentityWatcher notice asks for a reload.
+    if (isIdentityChanged()) {
+      await writeLocal(sampleId, labelFor(sampleId), mk, data);
+      return "pending";
+    }
+
     try {
       if (key === "descriptive" || key === "affective" || key === "combined") {
-        await upsertEvaluation({
+        const saved = await upsertEvaluation({
+          expectedUserId: userId,
           sessionSampleId: sampleId,
           sessionId: session.id,
           moduleKey: key,
@@ -1121,12 +1140,14 @@ export function CupClient({
           // S8-18: edit time, so the server drops this write if a newer one landed first.
           clientTs: Date.now(),
         });
+        if (!saved.ok) throw new Error(saved.error);
       } else if (key === "extrinsic") {
-        const saved = await upsertExtrinsic({ sessionSampleId: sampleId, data });
+        const saved = await upsertExtrinsic({ sessionSampleId: sampleId, data, expectedUserId: userId });
         // ActionResult: a refused write must fall to the local-pending path below.
         if (!saved.ok) throw new Error(saved.error);
       } else if (key === "physical") {
-        await upsertPhysical({ sessionSampleId: sampleId, data });
+        const saved = await upsertPhysical({ sessionSampleId: sampleId, data, expectedUserId: userId });
+        if (!saved.ok) throw new Error(saved.error);
       }
       // Server write landed — clear any local pending flag for this module.
       // Only when the stored draft is still exactly what was sent: a newer
@@ -1139,6 +1160,7 @@ export function CupClient({
       // C-06: a tab open across a deploy hits "Server Action not found" on every
       // save; flag it so the banner asks for a reload (the draft stays pending).
       noteIfStaleBundle(err);
+      if (err instanceof Error && err.message === IDENTITY_CHANGED) markIdentityChanged();
       await writeLocal(sampleId, labelFor(sampleId), mk, data);
       return "pending";
     }
@@ -1453,6 +1475,9 @@ export function CupClient({
       setSubmitBlocked(true);
       return;
     }
+    // Another tab changed the signed-in person: never submit for them. The
+    // IdentityWatcher notice (reload) is already showing.
+    if (isIdentityChanged()) return;
     setIsGoingToResults(true);
     setSubmitError(false);
     try {
@@ -1477,15 +1502,17 @@ export function CupClient({
       if (mode === "finish") {
         // Solo "Terminar cata": submit the complete ones, drop the unopened,
         // close (lib/closeRules.ts planFinish; community.ts finishSoloSession).
-        const r = await finishSoloSession(session.id);
+        const r = await finishSoloSession(session.id, userId);
         if (!r.ok) {
+          if (r.error === IDENTITY_CHANGED) markIdentityChanged();
           feedback.notifyError(r.error);
           setIsGoingToResults(false);
           return;
         }
       } else {
-        const submitted = await submitAllEvaluations(session.id);
+        const submitted = await submitAllEvaluations(session.id, userId);
         if (!submitted.ok) {
+          if (submitted.error === IDENTITY_CHANGED) markIdentityChanged();
           // Returned (not thrown) since S8-10: same failure path as before.
           setSubmitError(true);
           setIsGoingToResults(false);

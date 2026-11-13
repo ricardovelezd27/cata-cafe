@@ -1884,6 +1884,7 @@
       "group_full": "Este grupo ya tiene 200 integrantes, el máximo.",
       "invalid_email": "Ese correo no parece válido. Revísalo e inténtalo de nuevo.",
       "offline": "Necesitas conexión para hacer esto. Inténtalo cuando vuelvas a estar en línea.",
+      "identity_changed": "Este dispositivo cambió de persona. Recarga la página para continuar.",
       "email_exists": "Ese correo ya tiene una cuenta.",
       "account_protected": "Esta cuenta administra la plataforma y no se puede eliminar desde la app.",
       "account_too_large": "Tu cuenta tiene demasiadas sesiones para eliminarla desde la app. Escríbenos a soporte y la eliminamos por ti; no se borró nada."

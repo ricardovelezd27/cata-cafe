@@ -79,7 +79,8 @@ describe("registered-only server actions", () => {
       it(`${file} ${name} is registered-only or explicitly allowlisted`, () => {
         const body = bodyOf(src, name)!;
         if (name in allowed) {
-          expect(body).toContain("requireUser(");
+          // requireUserExpecting is requireUser plus the optional shared-device guard (S10 WP8).
+          expect(body).toMatch(/requireUser\(|requireUserExpecting\(/);
           expect(body).not.toContain("requireRegisteredUser(");
         } else if (ownerOnly.includes(name)) {
           expect(body).toMatch(/requireSessionOwner\(|requireSampleOwner\(/);

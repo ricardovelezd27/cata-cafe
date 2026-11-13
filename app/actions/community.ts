@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireUser, requireRegisteredUser } from "@/lib/auth";
+import { requireUser, requireRegisteredUser, requireUserExpecting } from "@/lib/auth";
 import {
   requireSessionOwner,
   requireSessionMember,
@@ -38,14 +38,19 @@ import { removeSamplesInTx } from "@/lib/sampleRemoval";
 // only someone with nothing submitted sees the error.
 export async function submitAllEvaluations(
   sessionId: string,
+  // S10 WP8 (shared device): the user the cup page was RENDERED for. Optional;
+  // absent = today's behaviour. A different (or missing) signed-in user writes
+  // nothing and returns the ActionResult error `identity_changed`.
+  expectedUserId?: string,
 ): Promise<ActionResult<{ closed: boolean; submitted: number }>> {
-  return run("submitAllEvaluations", () => submitAllEvaluationsBody(sessionId), { sessionId });
+  return run("submitAllEvaluations", () => submitAllEvaluationsBody(sessionId, expectedUserId), { sessionId });
 }
 
 async function submitAllEvaluationsBody(
   sessionId: string,
+  expectedUserId?: string,
 ): Promise<{ closed: boolean; submitted: number }> {
-  const user = await requireUser();
+  const user = await requireUserExpecting(expectedUserId);
   // Member gate + closed/expired guard (a closed session's results are final)
   // + not-started guard (a participant cannot write before the master starts).
   const auth = await requireSessionMember(sessionId, user.id);
@@ -203,11 +208,13 @@ async function maybeAutoCloseSoloSession(sessionId: string, userId: string) {
 // Group sessions never use this (they close via closeSession / the cron).
 export async function finishSoloSession(
   sessionId: string,
+  /** S10 WP8: see submitAllEvaluations. Absent = today's behaviour. */
+  expectedUserId?: string,
 ): Promise<ActionResult<{ closed: boolean; scored: number; removed: number; kept: number }>> {
   return run(
     "finishSoloSession",
     async () => {
-      const user = await requireUser();
+      const user = await requireUserExpecting(expectedUserId);
       const auth = await requireSessionOwner(sessionId, user.id);
       assertSessionWritable(auth);
       if (auth.isGroup) throw new Error("invalid_input");
