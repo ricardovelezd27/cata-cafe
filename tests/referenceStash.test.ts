@@ -261,3 +261,48 @@ describe("planReferenceRestore", () => {
     expect((plan[0].data.combinedData as Record<string, unknown>).fragancia_af_final).toBe(7);
   });
 });
+
+// S10 WP3b: the pin also clears every "no evaluado" mark and "as it cooled" value, so they are stashed
+// and restored with the ratings. (The garbage-fill test above only fills keys the list already names;
+// this one starts from realistic WP3b data, so a key missing from the list would fail here.)
+describe("WP3b keys (_ne, _inicial) in the stash", () => {
+  const withMarks = (): Record<string, unknown> => {
+    const d = rated(7);
+    delete d["aroma_af_final"];
+    delete d["aroma_af"];
+    d["aroma_af_ne"] = true;
+    d["dulzor_af_inicial"] = 5; // "5 -> 7 as it cooled"
+    return d;
+  };
+
+  it("every _ne and _inicial key is in PIN_OVERWRITTEN_KEYS, and the pin changes nothing outside the list", () => {
+    for (const a of AFFECTIVE_ATTRIBUTES) {
+      expect(PIN_OVERWRITTEN_KEYS).toContain(`${a.id}_ne`);
+      expect(PIN_OVERWRITTEN_KEYS).toContain(`${a.id}_inicial`);
+    }
+    const data = withMarks();
+    for (const a of AFFECTIVE_ATTRIBUTES) {
+      data[`${a.id}_ne`] = true;
+      data[`${a.id}_inicial`] = 3;
+    }
+    const pinned = pinReferenceAffective(data, 2);
+    const changed = Object.keys({ ...data, ...pinned }).filter((k) => JSON.stringify(data[k]) !== JSON.stringify(pinned[k]));
+    for (const k of changed) expect(PIN_OVERWRITTEN_KEYS).toContain(k);
+  });
+
+  it("a cupper with a 'no evaluado' mark and a cooled value gets both back after the restore", () => {
+    const stored = withMarks();
+    const pinned = pinReferenceAffective(stored, 2);
+    expect(pinned["aroma_af_ne"]).toBeUndefined();
+    expect(pinned["dulzor_af_inicial"]).toBeUndefined();
+    const stash = stashBeforePin(stored, pinned, NOW)!;
+    expect(stash.valores["aroma_af_ne"]).toBe(true);
+    expect(stash.valores["dulzor_af_inicial"]).toBe(5);
+    const res = restoreFromStash({ ...pinned, [REF_STASH_KEY]: stash });
+    expect(res.restored).toBe(true);
+    expect(res.data).toEqual(stored);
+    expect(res.data["aroma_af_ne"]).toBe(true);
+    expect(res.data["dulzor_af_inicial"]).toBe(5);
+    expect("aroma_af_final" in res.data).toBe(false);
+  });
+});

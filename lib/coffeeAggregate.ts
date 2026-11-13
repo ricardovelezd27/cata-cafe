@@ -34,6 +34,8 @@ export interface CoffeeAggregateSampleInput {
     attrAverages: unknown;
   } | null;
   evaluations: CoffeeAggregateEvaluationInput[];
+  /** S10 WP3b: how many of its evaluations are declared partials ("no evaluado"). A number only, no cupper id. Absent = 0. */
+  partialCount?: number;
 }
 
 export interface CoffeeSessionRow {
@@ -161,7 +163,9 @@ export function computeCoffeeAggregate(
       if (!agg || !isRecord(agg.attrAverages)) continue;
       const raw = agg.attrAverages[attr.label];
       if (typeof raw !== "number") continue;
-      const w = agg.participantCount ?? 0;
+      // S10 WP3b: the attribute weight counts the partial evaluations too (they feed the sample's
+      // per-attribute averages); with no partials this is exactly participantCount, as before.
+      const w = (agg.participantCount ?? 0) + (s.partialCount ?? 0);
       weightedSum += raw * w;
       weight += w;
       unweightedSum += raw;

@@ -25,6 +25,7 @@ export function EvaluationGuardModal({
   onConfirm,
   outcome,
   secondary,
+  notes,
   translations: t,
 }: {
   open: boolean;
@@ -37,6 +38,8 @@ export function EvaluationGuardModal({
   outcome?: string | null;
   /** Optional middle action, e.g. "finish with the N I cupped" (solo only). */
   secondary?: { label: string; onClick: () => void } | null;
+  /** One extra line per partial evaluation (S10 WP3b). */
+  notes?: string[];
   translations: EvaluationGuardTranslations;
 }) {
   if (!open) return null;
@@ -51,7 +54,7 @@ export function EvaluationGuardModal({
       closeLabel={t.review}
     >
       <div className="space-y-5">
-        <p className="font-sans text-sm text-brown-dark">{body}</p>
+        {body && <p className="font-sans text-sm text-brown-dark">{body}</p>}
 
         <ul className="space-y-1.5">
           {items.map((item, i) => (
@@ -65,6 +68,17 @@ export function EvaluationGuardModal({
             </li>
           ))}
         </ul>
+
+        {/* S10 WP3b: one line per partial evaluation (no total score). */}
+        {notes && notes.length > 0 && (
+          <ul className="space-y-1.5">
+            {notes.map((n, i) => (
+              <li key={i} className="font-sans text-sm text-brown-dark">
+                {n}
+              </li>
+            ))}
+          </ul>
+        )}
 
         {outcome && (
           <p className="font-sans text-sm font-medium text-secondary">{outcome}</p>

@@ -23,6 +23,7 @@
 // `aggregateScore` passes through untouched (trigger row). No scoring maths.
 
 import type { CoffeeAggregateSampleInput } from "@/lib/coffeeAggregate";
+import { isAffectiveDeclaredPartial } from "@/lib/affectivePartial";
 import type { LifetimeSample } from "@/lib/coffeeLifetimeScore";
 
 export interface CoffeeViewer {
@@ -111,6 +112,12 @@ export function filterCoffeeSamples(
         closedAt: knowsSession ? (sample.session.closedAt ?? null) : null,
       },
       aggregateScore: sample.aggregateScore,
+      // S10 WP3b: a count only (weight of the sample in the coffee attribute merge).
+      partialCount: evaluations.filter((ev) =>
+        isAffectiveDeclaredPartial(
+          (sample.session.format === "combined" ? ev.combinedData : ev.affectiveData) as Record<string, unknown> | null,
+        ),
+      ).length,
       evaluations: evaluations.map((ev) => ({
         descriptiveData: ev.descriptiveData,
         combinedData: ev.combinedData,

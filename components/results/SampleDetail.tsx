@@ -16,7 +16,8 @@
 
 import { useState } from "react";
 import { ChevronDown, Pencil } from "lucide-react";
-import { calcIndividualBreakdown, calcIndividualScore } from "@/lib/scoring";
+import { calcIndividualBreakdown, calcIndividualScore, hasIndividualScore } from "@/lib/scoring";
+import { cooledPair, isAffectiveDeclaredPartial, isNotEvaluated } from "@/lib/affectivePartial";
 import type { ScoreRule } from "@/lib/scoreRule";
 import {
   resolveDescriptor,
@@ -74,6 +75,8 @@ export type SampleDetailTranslations = {
   notEvaluated?: string;
   /** A9 prep-data labels (`results.samplePrep.*`). */
   prep?: { roastDate: string; preparation: string; offProtocol: string };
+  /** S10 WP3b: "no evaluado" / "as it cooled" labels (`results.partial.*`). cooledSummary is a raw {from}/{to} template. */
+  partial?: { label: string; notEvaluated: string; cooledSummary: string };
 };
 
 // Keys of SampleDetailTranslations whose value is a plain string — excludes
@@ -227,6 +230,28 @@ function StatChip({ label, value }: { label: string; value: number | null }) {
   );
 }
 
+/** S10 WP3b: "7 → 8 al enfriarse" under a section's row, or "No evaluado" when the cupper
+ *  left it out. Renders nothing for an ordinary single value. */
+function CooledLine({
+  data,
+  id,
+  copy,
+}: {
+  data: Record<string, unknown>;
+  id: string;
+  copy?: { notEvaluated: string; cooledSummary: string };
+}) {
+  if (!copy) return null;
+  const pair = cooledPair(data, id);
+  const ne = isNotEvaluated(data, id);
+  if (!pair && !ne) return null;
+  return (
+    <div className="pb-1 pl-[102px] text-xs text-on-surface-variant">
+      {ne ? copy.notEvaluated : copy.cooledSummary.replace("{from}", String(pair!.from)).replace("{to}", String(pair!.to))}
+    </div>
+  );
+}
+
 const rowClass =
   "grid grid-cols-[92px_1fr_auto] items-center gap-2.5 border-t border-outline-variant py-2";
 
@@ -302,7 +327,8 @@ export function SampleDetail({
     );
 
   const scoreAllowed = myEvaluation ? canShowMyScore(myEvaluation) : true;
-  const cva = showCVA && filled && scoreAllowed ? calcIndividualScore(data, cupsPerSample, { rule: scoreRule }) : null;
+  const isPartial = showCVA && isAffectiveDeclaredPartial(data);
+  const cva = showCVA && filled && scoreAllowed && hasIndividualScore(data) ? calcIndividualScore(data, cupsPerSample, { rule: scoreRule }) : null;
   const cvaNum = typeof cva === "number" ? cva : null;
   const stateChip =
     myEvaluation?.status === "draft"
@@ -489,6 +515,9 @@ export function SampleDetail({
                               {showAffective && <StatChip label={t.quality} value={quality} />}
                             </span>
                           </div>
+                          {showAffective && attr.affKey && (
+                            <CooledLine data={data} id={attr.affKey} copy={t.partial} />
+                          )}
                           {note && (
                             <div className="pb-2 pl-[102px] text-xs text-on-surface">
                               <span className="mr-1.5 text-[9px] font-semibold uppercase tracking-wider text-on-surface-variant">
@@ -526,6 +555,9 @@ export function SampleDetail({
                 </span>
               </div>
             )}
+            {showAffective && (
+              <CooledLine data={data} id="impresion_global" copy={t.partial} />
+            )}
           </div>
 
           {/* CVA total */}
@@ -535,7 +567,11 @@ export function SampleDetail({
                 <span className="text-[11px] font-bold uppercase tracking-wider text-primary-container">
                   {t.cvaScore}
                 </span>
-                <ScorePill score={cvaNum} />
+                {isPartial && cvaNum === null ? (
+                  <span className="text-sm font-medium text-on-surface-variant">{t.partial?.label ?? "—"}</span>
+                ) : (
+                  <ScorePill score={cvaNum} />
+                )}
               </div>
               {cvaNum !== null && (
                 <ScoreBreakdownPanel

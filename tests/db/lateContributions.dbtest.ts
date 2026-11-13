@@ -29,6 +29,7 @@ import { submitLateDraft } from "@/app/actions/offline";
 import { closeSessionInternal } from "@/lib/closeSession";
 import { buildOwnerLateRows, totalAcceptanceWillStore } from "@/lib/lateContributions";
 import { calcIndividualScore } from "@/lib/scoring";
+import { computeEvaluationDerived } from "@/lib/evaluation";
 import {
   affectiveData,
   makeCoffee,
@@ -550,5 +551,43 @@ describe("announceClose / cancelAnnouncedClose", () => {
     expect(closed.status).toBe("closed");
     expect(closed.closingAt?.getTime()).toBe(announced?.getTime());
     expect(await announceClose(s.id, 2)).toEqual({ ok: false, error: "session_closed" });
+  });
+});
+
+// S10 WP3b x WP4b: a DECLARED PARTIAL ("no evaluado") late draft is finished, so the owner can accept it;
+// it is stored like any partial: NULL scores, not counted in the total, only in the attribute averages.
+describe("acceptLateEvaluation with a declared-partial late draft", () => {
+  it("accepts it with NULL raw/individual scores, leaves the total unchanged and feeds the rated attributes", async () => {
+    const { owner, draft, A } = await closedScenario();
+    const data: Record<string, unknown> = { ...affectiveData(9), sabor_af_ne: true };
+    delete data["sabor_af_final"];
+    const f = computeEvaluationDerived("affective", data, 2);
+    expect(f.individualScore).toBeNull();
+    await prisma.evaluation.update({
+      where: { id: draft.id },
+      data: f as unknown as Record<string, never>,
+    });
+    const before = await storedAggregate(A.id);
+    expect(before?.participantCount).toBe(1);
+
+    h.userId = owner;
+    const r = await accept(draft.id);
+    expect(r).toEqual({ ok: true, data: { accepted: true } });
+
+    const row = await prisma.evaluation.findUniqueOrThrow({ where: { id: draft.id } });
+    expect(row.isDraft).toBe(false);
+    expect(row.acceptedLateAt).toBeInstanceOf(Date);
+    expect(row.rawScore).toBeNull();
+    expect(row.individualScore).toBeNull();
+    expect((row.affectiveData as Record<string, unknown>)["sabor_af_ne"]).toBe(true);
+
+    const after = await storedAggregate(A.id);
+    expect(after?.participantCount).toBe(1); // the partial is not "included"
+    expect(after?.submittedCount).toBe(2);
+    expect(after?.communityScore).toBe(before?.communityScore);
+    expect(after?.avgRawScore).toBe(before?.avgRawScore);
+    const attrs = after?.attrAverages as Record<string, number | null>;
+    expect(attrs["Fragancia"]).toBe(8); // (7 + 9) / 2
+    expect(attrs["Sabor"]).toBe(7); // only the complete evaluation rated it
   });
 });

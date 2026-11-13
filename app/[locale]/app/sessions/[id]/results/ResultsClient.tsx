@@ -64,7 +64,7 @@ import { useForegroundResume } from "@/hooks/useForegroundResume";
 import { assignSampleCoffee, updateSampleMetadata } from "@/app/actions/sessions";
 import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { asSessionFormat, type SessionFormat } from "@/lib/constants";
-import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
+import { calcIndividualScore, hasIndividualScore } from "@/lib/scoring";
 import { ArrowLeft, FileDown, Printer, RefreshCw } from "lucide-react";
 import { ResumenTab } from "./ResumenTab";
 import type { SampleResult, ResultsHelp } from "./types";
@@ -80,6 +80,7 @@ type MatrixTranslations = {
   legendAmber: string;
   legendRed: string;
   noScore: string;
+  partialLabel?: string;
   sdHeader: string;
   includedCount: string;
   excludeDialogTitle: string;
@@ -326,6 +327,10 @@ export function ResultsClient({
       includedLine: string;
       noAffective: string;
       requiresAffective: string;
+      partialLabel?: string;
+      includesOne?: string;
+      includesMany?: string;
+      axisNotEvaluated?: string;
     };
     flavorProfiles: string;
     referenceBadge: string;
@@ -748,7 +753,7 @@ export function ResultsClient({
         : resolvedFormat === "combined"
           ? referenceSample.combined
           : null;
-    if (!affData || !hasAffectiveData(affData) || !canShowMyScore(referenceSample.myEvaluation)) {
+    if (!affData || !hasIndividualScore(affData) || !canShowMyScore(referenceSample.myEvaluation)) {
       return null;
     }
     const score = calcIndividualScore(affData, session.cupsPerSample, {

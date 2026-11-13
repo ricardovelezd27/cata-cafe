@@ -11,6 +11,7 @@
 // now derives "show a score?" and "flag the row?" from this one shape.
 
 import { isAffectiveComplete } from "@/lib/scoring";
+import { isAffectiveDeclaredPartial } from "@/lib/affectivePartial";
 import { DESCRIPTOR_STAGES } from "@/lib/descriptors";
 import type { SessionFormat } from "@/lib/constants";
 
@@ -47,7 +48,9 @@ export function isEvaluationComplete(
   if (format === "descriptive") {
     return DESCRIPTOR_STAGES.every((stage) => num(data[`${stage.id}_int`]) > 0);
   }
-  return isAffectiveComplete(data);
+  // S10 WP3b (C4): a declared partial ("no evaluado" in some section) is FINISHED too; it
+  // has no total (hasIndividualScore), so "finished" never implies "scored".
+  return isAffectiveComplete(data) || isAffectiveDeclaredPartial(data);
 }
 
 export function deriveMyEvaluation(

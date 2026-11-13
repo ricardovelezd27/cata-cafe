@@ -441,6 +441,36 @@
       "noteLabel": "Which market?",
       "notePlaceholder": "E.g. specialty cafés in Madrid"
     },
+    "partial": {
+      "notEvaluated": "Not evaluated",
+      "notEvaluatedOn": "This section was left unevaluated.",
+      "evaluateIt": "Evaluate it",
+      "cooledPrompt": "Did it change as it cooled?",
+      "cooledLabel": "Value as it cooled",
+      "cooledRemove": "Remove",
+      "cooledSummary": "{from} → {to} as it cooled",
+      "submitNote": "Your evaluation of {sample} is partial: it will have no total score. What you did rate counts in the per-attribute averages.",
+      "submitNoteSolo": "Your evaluation of {sample} is partial: it will have no total score.",
+      "noneEvaluated": "Mark at least one section as evaluated, or leave the sample unevaluated.",
+      "submitTitle": "Submit a partial evaluation",
+      "scoreLabel": "Partial · no score",
+      "includesOne": "Includes {n} partial evaluation",
+      "includesMany": "Includes {n} partial evaluations"
+    },
+    "timer": {
+      "title": "Timer",
+      "show": "Timer",
+      "hide": "Hide",
+      "start": "Start",
+      "reset": "Reset",
+      "nextPass": "Next pass",
+      "cueWait": "Let it rest",
+      "cueBreak": "Break the crust",
+      "cuePass1": "First pass (between 8 and 10 min)",
+      "cuePass2": "Second pass",
+      "cuePass3": "Third pass",
+      "hint": "Optional. Start it when you pour the water."
+    },
     "referenceFirstHint": "The tasting starts with the reference.",
     "expressNotes": {
       "title": "Quick notes",
@@ -1174,6 +1204,14 @@
     "market": {
       "label": "Point of view",
       "known": "A market I know"
+    },
+    "partial": {
+      "label": "Partial · no score",
+      "notEvaluated": "Not evaluated",
+      "cooledSummary": "{from} → {to} as it cooled",
+      "axisNotEvaluated": "· not evaluated",
+      "includesOne": "Includes {n} partial evaluation",
+      "includesMany": "Includes {n} partial evaluations"
     },
     "closeNow": {
       "line": "The closing date has passed. The cupping will close by itself in the next few hours; you can close it now to send the results.",

@@ -9,6 +9,7 @@ import { PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
 import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
 import { computeCupperAlignment, type CupperAlignmentRow } from "@/lib/alignment";
 import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
+import { isAffectiveDeclaredPartial } from "@/lib/affectivePartial";
 import { evaluationScoreRule, sampleScoreRule, type ScoreRule } from "@/lib/scoreRule";
 import { AFFECTIVE_ATTRIBUTES, asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
@@ -249,6 +250,7 @@ export default async function ResultsPage({
   let groupAggBySample: Map<string, GroupAggregate> | null = null;
   const ruleBySample = new Map<string, ScoreRule>();
   const submittedAllBySample = new Map<string, number>();
+  const partialBySample = new Map<string, number>();
 
   // Ids of evaluations already visible at render time — seeds the client's
   // realtime-badge dedup set so a later no-op UPDATE storm (owner refresh,
@@ -328,6 +330,13 @@ export default async function ResultsPage({
         );
       }
       for (const [sampleId, list] of bySample) {
+        // S10 WP3b: how many of the included-in-averages cuppers declared a partial evaluation.
+        const nPartial = list.filter((ev) =>
+          isAffectiveDeclaredPartial(
+            (format === "combined" ? ev.combinedData : ev.affectiveData) as Record<string, unknown>,
+          ),
+        ).length;
+        if (nPartial > 0) partialBySample.set(sampleId, nPartial);
         groupAggBySample.set(
           sampleId,
           computeGroupAggregate(
@@ -1116,6 +1125,7 @@ export default async function ResultsPage({
                 defectPenalty: recomputed.defectPenalty,
                 rule: ruleBySample.get(s.id) ?? sampleScoreRule(agg),
                 attrAverages: recomputed.attrAverages,
+                partialCount: partialBySample.get(s.id) ?? 0,
               }
             : groupAggBySample && (submittedAllBySample.get(s.id) ?? 0) > 0
               ? // B-07: every submitted evaluation is excluded -> n = 0, no score
@@ -1297,6 +1307,11 @@ export default async function ResultsPage({
           includedLine: tResults.raw("radar.includedLine") as string,
           noAffective: tResults("radar.noAffective"),
           requiresAffective: tResults("radar.requiresAffective"),
+          // S10 WP3b: partial evaluations ({n} substituted client-side).
+          partialLabel: tResults("partial.label"),
+          includesOne: tResults.raw("partial.includesOne") as string,
+          includesMany: tResults.raw("partial.includesMany") as string,
+          axisNotEvaluated: tResults("partial.axisNotEvaluated"),
         },
         flavorProfiles: tResults("flavorProfiles"),
         referenceBadge: tResults("referenceBadge"),
@@ -1415,6 +1430,7 @@ export default async function ResultsPage({
           inProgress: tResults("table.inProgress"),
           notEvaluated: tResults("table.notEvaluated"),
           inProgressLegend: tResults("table.inProgressLegend"),
+          partialLabel: tResults("partial.label"),
         },
         detail: {
           prep: {
@@ -1472,6 +1488,12 @@ export default async function ResultsPage({
           editExtrinsic: tResults("detail.editExtrinsic"),
           expressNotes: tResults("detail.expressNotes"),
           market: { label: tResults("market.label"), known: tResults("market.known") },
+          partial: {
+            label: tResults("partial.label"),
+            notEvaluated: tResults("partial.notEvaluated"),
+            // {from}/{to} are substituted client-side.
+            cooledSummary: tResults.raw("partial.cooledSummary") as string,
+          },
           assignCoffee: tResults("detail.assignCoffee"),
           close: tResults("detail.close"),
           breakdown: breakdownT,
@@ -1488,6 +1510,7 @@ export default async function ResultsPage({
           legendAmber: tResults("matrix.legendAmber"),
           legendRed: tResults("matrix.legendRed"),
           noScore: tResults("matrix.noScore"),
+          partialLabel: tResults("partial.label"),
           sdHeader: tResults("matrix.sdHeader"),
           // ICU args: fetched raw and filled client-side.
           includedCount: tResults.raw("matrix.includedCount") as string,

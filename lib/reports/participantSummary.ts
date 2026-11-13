@@ -8,7 +8,7 @@
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { normalizeReferenceMode } from "@/lib/referenceRules";
 import { collectDescriptors } from "@/lib/descriptors";
-import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
+import { calcIndividualScore, hasAffectiveData, hasIndividualScore } from "@/lib/scoring";
 import { evaluationScoreRule } from "@/lib/scoreRule";
 import { deriveMyEvaluation, NO_EVALUATION } from "@/lib/evaluationState";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
@@ -175,7 +175,7 @@ export function buildParticipantSummary(
     const blob = ev ? blobForFormat(format, ev) : null;
 
     const myScore = (() => {
-      if (!blob || format === "descriptive" || !hasAffectiveData(blob)) return null;
+      if (!blob || format === "descriptive" || !hasIndividualScore(blob)) return null;
       const sc = calcIndividualScore(blob, session.cupsPerSample, {
         rule: evaluationScoreRule(ev!.cups, true),
       });

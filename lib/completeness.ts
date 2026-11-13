@@ -1,4 +1,4 @@
-import { STEP_ATTRIBUTES, type CuppingStep } from "@/lib/constants";
+import { AFFECTIVE_ATTRIBUTES, STEP_ATTRIBUTES, type CuppingStep } from "@/lib/constants";
 
 // Client-side completeness checks for the cupping module. Powers the "you missed
 // X" guardrail popups on next-sample navigation and on final submit. Framework-
@@ -18,6 +18,16 @@ export type SampleModules = {
 
 // Matches the emptiness convention used by hasStepFill in CupClient: a rating
 // is "set" only when it is neither null nor undefined.
+/** S10 WP3b (C4): a section marked "no evaluado" counts as answered, EXCEPT when all eight are marked
+ *  (nothing was evaluated: neither complete nor a declared partial, so the sample is not finished). */
+function markedNe(data: Data, affectiveId: string): boolean {
+  return data[`${affectiveId}_ne`] === true && !AFFECTIVE_ATTRIBUTES.every((a) => data[`${a.id}_ne`] === true);
+}
+
+export function isAllNotEvaluated(data: Data): boolean {
+  return AFFECTIVE_ATTRIBUTES.every((a) => data[`${a.id}_ne`] === true);
+}
+
 const hasValue = (v: unknown): boolean => v !== null && v !== undefined;
 
 const hasDescriptors = (v: unknown): boolean =>
@@ -40,7 +50,7 @@ export function stepMissing(
 
     if (format === "affective") {
       // Pure-affective form only collects the 1–9 rating.
-      if (!hasValue(data.affective[`${affectiveId}_final`])) {
+      if (!hasValue(data.affective[`${affectiveId}_final`]) && !markedNe(data.affective, affectiveId)) {
         missing.push(affectiveId);
       }
       continue;
@@ -58,7 +68,9 @@ export function stepMissing(
 
     // combined: require the rating, plus intensity + descriptors when the
     // section has a descriptive half (the `overall` step does not).
-    const ratingMissing = !hasValue(data.combined[`${affectiveId}_final`]);
+    // S10 WP3b (C4): a section marked "no evaluado" counts as answered (its rating is not missing).
+    const ratingMissing =
+      !hasValue(data.combined[`${affectiveId}_final`]) && !markedNe(data.combined, affectiveId);
     let descriptiveMissing = false;
     if (descriptiveId) {
       const intMissing = !hasValue(data.combined[`${descriptiveId}_int`]);
@@ -79,7 +91,12 @@ export function stepMissing(
   return missing;
 }
 
-export type SampleGap = { sampleLabel: string; sections: string[] };
+export type SampleGap = {
+  sampleLabel: string;
+  sections: string[];
+  /** S10 WP3b: every section is marked "no evaluado": neither complete nor partial, so not finished. */
+  allNotEvaluated?: boolean;
+};
 
 /**
  * Session-wide roll-up for the submit gate: one entry per sample that still has
@@ -98,7 +115,12 @@ export function sessionMissing(
       for (const id of stepMissing(sample, step, format)) sections.add(id);
     }
     if (sections.size > 0) {
-      gaps.push({ sampleLabel: sample.label, sections: [...sections] });
+      const bucket = format === "affective" ? sample.affective : format === "combined" ? sample.combined : null;
+      gaps.push({
+        sampleLabel: sample.label,
+        sections: [...sections],
+        ...(bucket && isAllNotEvaluated(bucket) ? { allNotEvaluated: true } : {}),
+      });
     }
   }
 

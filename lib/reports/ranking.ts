@@ -3,7 +3,7 @@
 // ficha técnica can never disagree about which number is "the score" of a
 // sample. No Prisma, no React, no i18n framework.
 
-import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
+import { calcIndividualScore, hasIndividualScore } from "@/lib/scoring";
 import type { ScoreRule } from "@/lib/scoreRule";
 import { canShowMyScore, type MyEvaluation } from "@/lib/evaluationState";
 import { deltasVsReference, type ScoreBasis } from "@/lib/referenceDelta";
@@ -150,7 +150,7 @@ export function myScoreFor(
 ): number | null {
   if (format === "descriptive") return null;
   const data = format === "combined" ? sample.combined : sample.affective;
-  if (!hasAffectiveData(data) || !canShowMyScore(sample.myEvaluation)) return null;
+  if (!hasIndividualScore(data) || !canShowMyScore(sample.myEvaluation)) return null;
   const score = calcIndividualScore(data, cupsPerSample, { rule: sample.scoreRule });
   return typeof score === "number" ? score : null;
 }
