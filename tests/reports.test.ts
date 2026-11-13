@@ -11,6 +11,7 @@ import {
   sessionStats,
   consensusLine,
   RANKING_POLICY,
+  hasNoClearGap,
   type RankableSample,
 } from "@/lib/reports/ranking";
 import { rowStats, bandFor } from "@/lib/reports/cupperStats";
@@ -167,15 +168,24 @@ describe("rankSamples — ranking honesty (S8-12, F-resultados-6)", () => {
     expect(st.delta).toBeCloseTo(st.myAvg! - 81);
   });
 
-  it("n = 3 and 4 are indicative, n = 5 is normal", () => {
-    const samples = [rs("a", 90, { n: 3 }), rs("b", 88, { n: 4 }), rs("c", 86, { n: 5 })];
+  it("(WP5b D3) n = 3, 4 and 5 are indicative, n = 6 is firm; n = 2 is suppressed", () => {
+    const samples = [
+      rs("a", 90, { n: 3 }),
+      rs("b", 88, { n: 4 }),
+      rs("c", 86, { n: 5 }),
+      rs("d", 84, { n: 6 }),
+      rs("e", 82, { n: 2 }),
+    ];
     const { ranked } = rankSamples(samples, null, groupCtx);
-    expect(ranked.map((r) => [r.indicative, r.suppressed])).toEqual([
-      [true, false],
-      [true, false],
-      [false, false],
+    expect(ranked.map((r) => [r.sample.id, r.indicative, r.suppressed])).toEqual([
+      ["a", true, false],
+      ["b", true, false],
+      ["c", true, false],
+      ["d", false, false],
+      ["e", false, true],
     ]);
     expect(RANKING_POLICY.minN).toBe(3);
+    expect(RANKING_POLICY.indicativeBelow).toBe(6);
   });
 
   it("(WP1c) indicativo by pooled cups: 1 person x 2 cups yes, 3 people x 2 cups no, in addition to the cupper rule", () => {
@@ -183,9 +193,9 @@ describe("rankSamples — ranking honesty (S8-12, F-resultados-6)", () => {
     const samples = [
       rs("a", 90, { n: 1, cups: 2 }), // 1 person, 2 cups: indicative by cups (and suppressed by cuppers)
       rs("b", 88, { n: 3, cups: 6 }), // 3 people x 2 cups: by cups no, by cuppers yes (n < 5)
-      rs("c", 86, { n: 5, cups: 4 }), // enough people, fewer than 5 cups pooled (1-cup sessions): by cups yes
-      rs("d", 84, { n: 5, cups: 10 }), // neither
-      rs("e", 82, { n: 5 }), // cups unknown: only the cupper rule decides
+      rs("c", 86, { n: 6, cups: 4 }), // enough people, fewer than 5 cups pooled (1-cup sessions): by cups yes
+      rs("d", 84, { n: 6, cups: 10 }), // neither
+      rs("e", 82, { n: 6 }), // cups unknown: only the cupper rule decides
     ];
     const { ranked } = rankSamples(samples, null, groupCtx);
     const byId = Object.fromEntries(ranked.map((r) => [r.sample.id, [r.indicative, r.suppressed]]));
@@ -199,7 +209,7 @@ describe("rankSamples — ranking honesty (S8-12, F-resultados-6)", () => {
   });
 
   it("(WP1c) 3 people x 2 cups with n >= 5 would not be flagged by cups", () => {
-    const { ranked } = rankSamples([rs("a", 90, { n: 5, cups: 10 })], null, groupCtx);
+    const { ranked } = rankSamples([rs("a", 90, { n: 6, cups: 10 })], null, groupCtx);
     expect(ranked[0].indicative).toBe(false);
   });
 
@@ -214,9 +224,30 @@ describe("rankSamples — ranking honesty (S8-12, F-resultados-6)", () => {
     expect(ranked.map((r) => r.noClearGap)).toEqual([true, true, false]);
   });
 
-  it("never flags a gap without an SD, and never on the 'mine' basis", () => {
-    const { ranked } = rankSamples([rs("a", 85, { n: 5 }), rs("b", 85, { n: 5 })], null, groupCtx);
+  it("never flags a 1+ point gap without an SD, and never on the 'mine' basis", () => {
+    const { ranked } = rankSamples([rs("a", 87, { n: 5 }), rs("b", 85, { n: 5 })], null, groupCtx);
     expect(ranked.every((r) => !r.noClearGap)).toBe(true);
+  });
+
+  it("(WP5b D3) tie rule: the larger of 1 point and half the sample SD", () => {
+    // no SD at all: the 1-point floor alone applies (strict: exactly 1.00 is clear)
+    expect(hasNoClearGap(0.75, null)).toBe(true);
+    expect(hasNoClearGap(1, null)).toBe(false);
+    // gap 0.75 with a tiny SD: the floor wins -> no clear gap
+    expect(hasNoClearGap(0.75, 0.2)).toBe(true);
+    // gap 1.25, sample SD 3: half SD = 1.5 > 1.25 -> no clear gap
+    expect(hasNoClearGap(1.25, 3)).toBe(true);
+    // gap 1.25, sample SD 2: max(1, 1) = 1 < 1.25 -> clear
+    expect(hasNoClearGap(1.25, 2)).toBe(false);
+  });
+
+  it("(WP5b D3) the floor flags neighbours without an SD in the ranking", () => {
+    const { ranked } = rankSamples(
+      [rs("a", 85, { n: 1 }), rs("b", 84.25, { n: 1 }), rs("c", 82, { n: 1 })],
+      null,
+      groupCtx,
+    );
+    expect(ranked.map((r) => r.noClearGap)).toEqual([true, true, false]);
   });
 
   it("carries n of N for the displayed community score", () => {

@@ -1133,11 +1133,28 @@ from the ranking, the session average and "Mejor muestra" — while every other
 sample's ranking row (R2) and matrix cell (S3) still shows a display-only
 signed Δ against it, explained by the `help.referencia` InfoHint.
 
+### Reference pin keeps the ratings (S10 WP5b, B2)
+
+Marking a sample as the (anchor-mode) reference rewrites every cupper's affective
+ratings of it to the 79.00 anchor, but first stores the previous values inside the
+same module JSON under `ref_previo` (server-owned, invisible to scoring). When the
+sample stops being the active pinned reference while the session is open (the owner
+removes the reference, or names another sample), each evaluation still at the anchor
+state gets its ratings back in the same transaction (aggregate re-fired for submitted
+rows); one re-rated meanwhile keeps its values and drops the stash. A restore on an already REVEALED sample is allowed (it puts back ratings given blind, before the pin; the reveal refusal applies to a new pin only). Known and accepted: an ORDINARY save (authorised while the sample was not pinned) that lands just after the owner marks that sample writes real ratings on a freshly pinned reference with no stash; the cupper's next save pins it and stashes those values. A page that was showing the pin keeps sending `pinnedView` (also after a reload), so a stale pinned save after the reference moved never overwrites the restored ratings. The owner sees a
+non-blocking "Se recuperaron las calificaciones anteriores de {n} evaluaciones."
+
+### Personal comparisons and repeated sample (S10 WP5b, B3 / B6)
+
+Closed sessions only. The cupper's drill-down adds "Tú y el grupo" (group sessions, the
+participant lens, only with at least 3 included cuppers) and, when two revealed samples
+share a coffee, "La misma muestra, dos veces" (own two evaluations, tolerance 2 points).
+
 ### Ranking honesty & n of N (S8-12)
 
 Display rules for community numbers live in `lib/reports/ranking.ts`
-(`RANKING_POLICY`, TODO(Kim-D3): min n 3, "indicativo" below 5, gap 0.5 × the larger
-sample SD). Equal displayed scores share a rank (1, 1, 3); a community score built from
+(`RANKING_POLICY`, TODO(kim-validar:D3): min n 3, "indicativo" with 3 to 5 cuppers and firm from 6, gap threshold the larger of 1 point and 0.5 × the larger
+sample SD; 1 point alone without an SD). Equal displayed scores share a rank (1, 1, 3); a community score built from
 fewer than 3 cuppers has no SD and is never "mejor muestra"; neighbours closer than the
 gap threshold read "sin diferencia clara". Every community number says **"n de N
 incluidos"**: n = complete evaluations of non-excluded cuppers, N = every submitted

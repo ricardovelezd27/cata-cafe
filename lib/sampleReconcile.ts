@@ -10,7 +10,7 @@
 // server added is taken whole; a sample the server removed is dropped.
 // The result is in position order with the reference first.
 
-import { orderReferenceFirst } from "@/lib/referenceRules";
+import { adoptServerPinKeys, orderReferenceFirst } from "@/lib/referenceRules";
 
 type SampleMeta = {
   id: string;
@@ -53,4 +53,36 @@ export function indexAfterReconcile(
   const i = currentId ? next.findIndex((s) => s.id === currentId) : -1;
   if (i >= 0) return i;
   return Math.min(Math.max(0, previousIdx), next.length - 1);
+}
+
+/** S10 WP5b review H1 (client rule): a sample whose local module was produced
+ *  under the pin and that is NOT the pinned reference any more takes the SERVER's
+ *  value for every key the pin overwrites (the server restored the cupper's
+ *  ratings when the reference moved); the rest of the module (unsaved
+ *  descriptive edits, notes) stays local. Samples not listed, still pinned, or
+ *  missing from the server list are untouched. `adopted` names the samples whose
+ *  module changed, so the caller can drop their "pinned view" mark and rewrite
+ *  the offline draft the same way. */
+export function reconcileUnpinned<
+  S extends { id: string; affective: Record<string, unknown>; combined: Record<string, unknown> },
+>(
+  local: readonly S[],
+  server: readonly S[],
+  pinnedViewIds: ReadonlySet<string>,
+  stillPinnedId: string | null,
+): { samples: S[]; adopted: string[] } {
+  const byId = new Map(server.map((s) => [s.id, s] as const));
+  const adopted: string[] = [];
+  const samples = local.map((s) => {
+    if (!pinnedViewIds.has(s.id) || s.id === stillPinnedId) return s;
+    const srv = byId.get(s.id);
+    if (!srv) return s;
+    adopted.push(s.id);
+    return {
+      ...s,
+      affective: adoptServerPinKeys(s.affective, srv.affective),
+      combined: adoptServerPinKeys(s.combined, srv.combined),
+    };
+  });
+  return { samples, adopted };
 }

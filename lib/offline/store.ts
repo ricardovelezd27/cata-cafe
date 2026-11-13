@@ -192,6 +192,7 @@ export async function mergeModuleData(
   moduleKey: ModuleKey,
   data: Data,
   seed: { format: string; cupsPerSample: number },
+  opts: { pinnedView?: boolean } = {},
 ): Promise<void> {
   const lf = instance();
   if (!lf) return;
@@ -209,7 +210,12 @@ export async function mergeModuleData(
     };
     const sample = blob.samples[sampleId] ?? { label: sampleLabel, modules: {} };
     sample.label = sampleLabel;
-    sample.modules[moduleKey] = { data, syncStatus: "pending", updatedAt: now };
+    sample.modules[moduleKey] = {
+      data,
+      syncStatus: "pending",
+      updatedAt: now,
+      ...(opts.pinnedView ? { pinnedView: true } : {}),
+    };
     blob.samples[sampleId] = sample;
     blob.updatedAt = now;
     await lf.setItem(sessionKey(sessionId, userId), blob);
