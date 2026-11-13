@@ -69,9 +69,9 @@ export type BlindOrderEntry = {
   position: number;
   /** True when the label must be generated. */
   auto: boolean;
-  /** Auto rows only: the 0-based letter index of the generated label. Drawn
-   *  from the letters no typed label of the session already uses, in position
-   *  order; without a typed clash it equals `position`. */
+  /** Auto rows only: the 0-based letter index of the generated label. It is
+   *  the letter of the row's own `position` unless a typed label of the session
+   *  already uses that letter; only then is a free letter drawn. */
   letterIndex?: number;
 };
 
@@ -131,15 +131,25 @@ export function planBlindOrder(
     position: auto[i] ? shuffled[next++] : i,
     auto: auto[i],
   }));
-  // Letters: the auto rows, in position order, take the first letters that no
-  // typed label already uses (two samples never share an automatic label).
-  const taken = reservedLetters(samples, auto);
-  entries
-    .filter((e) => e.auto)
-    .sort((a, b) => a.position - b.position)
-    .forEach((e) => {
-      e.letterIndex = drawLetterIndex(taken, e.position);
-    });
+  // Letters: an auto row keeps the letter of its own position (the 3rd cup is
+  // "C") unless a typed label already uses that letter. Only those clashing
+  // rows draw another letter: the first one that neither a typed label nor
+  // another auto row uses. Two samples never share an automatic label, and a
+  // session with no clash is lettered exactly as before.
+  const typed = reservedLetters(samples, auto);
+  const taken = new Set(typed);
+  const autoRows = entries.filter((e) => e.auto).sort((a, b) => a.position - b.position);
+  const clashing: BlindOrderEntry[] = [];
+  for (const e of autoRows) {
+    const own = sampleLetter(e.position);
+    if (typed.has(own)) {
+      clashing.push(e);
+    } else {
+      e.letterIndex = e.position;
+      taken.add(own);
+    }
+  }
+  for (const e of clashing) e.letterIndex = drawLetterIndex(taken, e.position);
   return entries;
 }
 

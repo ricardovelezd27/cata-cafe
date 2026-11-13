@@ -109,8 +109,8 @@ describe("planBlindSamples", () => {
       expect(out.map((o) => o.position)).toEqual([0, 1, 2]);
       expect(out[1]).toMatchObject({ label: "Mi lote", sourceIndex: 1 });
       for (const o of out) {
-        // typed "Mi lote" reserves no letter: the two blanks take A and B by position
-        if (o.sourceIndex !== 1) expect(o.label).toBe(sampleLetterLabel(o.position === 0 ? 0 : 1, "es"));
+        // typed "Mi lote" clashes with no letter: each blank keeps its position's letter (A and C)
+        if (o.sourceIndex !== 1) expect(o.label).toBe(sampleLetterLabel(o.position, "es"));
         expect(o.sample.coffeeIdx).toBe(o.sourceIndex);
       }
     }

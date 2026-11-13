@@ -153,3 +153,20 @@ describe("activeCopyPosition (duplicate remap)", () => {
     expect(activeCopyPosition(plan.samples, "nope")).toBeNull();
   });
 });
+
+describe("create mode keeps the position's letter when nothing clashes", () => {
+  it("a clashing row never takes the letter another automatic row keeps", () => {
+    // Typed "Muestra C" sits first; position 2 would be "C" too. Position 1 keeps
+    // B, position 2 draws the first free letter (A), position 3 keeps D.
+    for (let seed = 1; seed <= 50; seed++) {
+      const out = planBlindSamples(
+        [{ label: "Muestra C" }, { label: "" }, { label: "" }, { label: "" }],
+        seeded(seed),
+        "es",
+        "create",
+      );
+      const byPosition = [...out].sort((a, b) => a.position - b.position).map((o) => o.label);
+      expect(byPosition).toEqual(["Muestra C", "Muestra B", "Muestra A", "Muestra D"]);
+    }
+  });
+});
