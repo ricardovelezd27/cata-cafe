@@ -95,7 +95,7 @@ export async function GET(
           // F-cafes-9: the coffee's data is live, so past sessions carry the note.
           originEditedAt: originEditedAfterClose({
             closedAt: r.sessionClosedAt,
-            coffeeUpdatedAt: coffee.updatedAt,
+            coffeeOriginEditedAt: coffee.originEditedAt,
           }),
         })),
       };

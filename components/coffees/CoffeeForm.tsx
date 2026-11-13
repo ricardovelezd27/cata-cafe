@@ -165,6 +165,11 @@ export function CoffeeForm({
 
       if (isEdit) {
         if (!coffeeId) return;
+        // The save is guarded by the loaded version; without one, ask for a reload.
+        if (!expectedUpdatedAt) {
+          setErrorCode("conflict");
+          return;
+        }
         const res = await updateCoffee(coffeeId, { ...fields, expectedUpdatedAt });
         if (res.ok) {
           router.push(`/${locale}/app/coffees/${coffeeId}`);

@@ -414,7 +414,7 @@ export default async function CoffeeProfilePage({
                             // F-cafes-9: this coffee's origin data is live; say so when it changed after that session closed.
                             const edited = originEditedAfterClose({
                               closedAt: row.sessionClosedAt,
-                              coffeeUpdatedAt: coffee.updatedAt,
+                              coffeeOriginEditedAt: coffee.originEditedAt,
                             });
                             return edited ? (
                               <div className="mt-0.5 text-xs text-secondary">

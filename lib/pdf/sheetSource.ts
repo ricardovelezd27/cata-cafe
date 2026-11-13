@@ -7,7 +7,7 @@
 // Pure module (only imports another pure module) so vitest can load it.
 
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
-import { originEditedAfterClose } from "@/lib/originEdit";
+import { sampleOriginEditedAt } from "@/lib/originEdit";
 import { gateSamplePrep, type SamplePrep, type SamplePrepRow } from "@/lib/samplePrep";
 
 export interface SheetSampleSource {
@@ -55,11 +55,11 @@ export function sheetSampleRecords(
     revealed: boolean;
     physical: { data: unknown } | null | undefined;
     extrinsic: { data: unknown; editedAt?: Date | null } | null | undefined;
-    coffee?: { updatedAt?: Date | null; [k: string]: unknown } | null;
+    coffee?: { originEditedAt?: Date | null; [k: string]: unknown } | null;
   },
   ownerView: boolean,
-  /** The session's close time: with it the sheet says when origin data was edited afterwards (F-cafes-9). */
-  closedAt?: Date | null,
+  /** The session's close time and closing date: with them the sheet says when origin data was edited afterwards (F-cafes-9). */
+  session?: { closedAt?: Date | null; closesAt?: Date | null },
 ): {
   physical: Record<string, unknown>;
   extrinsic: Record<string, unknown>;
@@ -75,10 +75,13 @@ export function sheetSampleRecords(
     // Same gate as the extrinsic data itself: never a date for origin the reader may not see.
     originEditedAt:
       (ownerView || sample.revealed
-        ? originEditedAfterClose({
-            closedAt,
+        ? sampleOriginEditedAt({
+            // the owner view of a blind sample still never says anything about the coffee
+            revealed: true,
+            closedAt: session?.closedAt,
+            closesAt: session?.closesAt,
             extrinsicEditedAt: sample.extrinsic?.editedAt,
-            coffeeUpdatedAt: sample.revealed ? sample.coffee?.updatedAt : null,
+            coffeeOriginEditedAt: sample.revealed ? sample.coffee?.originEditedAt : null,
           })
         : null
       )?.toISOString() ?? null,

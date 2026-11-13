@@ -17,7 +17,7 @@ import { isSessionExpired, viewerMayReadGroupResults } from "@/lib/sessionState"
 import { wasClosedSilently } from "@/lib/repairClose";
 import { resultsUpdatedAfterClose } from "@/lib/exclusionReasons";
 import { ownExclusionNotice } from "@/lib/exclusionNotice";
-import { originEditedAfterClose } from "@/lib/originEdit";
+import { sampleOriginEditedAt } from "@/lib/originEdit";
 import { gateSampleForViewer, communityHidden } from "@/lib/reports/sampleGate";
 import { gateSamplePrep } from "@/lib/samplePrep";
 import { getUsableCoffees } from "@/lib/coffees/queries";
@@ -99,7 +99,7 @@ export default async function ResultsPage({
               select: {
                 name: true,
                 deletedAt: true,
-                updatedAt: true,
+                originEditedAt: true,
                 country: true,
                 region: true,
                 producer: true,
@@ -709,15 +709,15 @@ export default async function ResultsPage({
   const originEditedAtFor = (s: {
     revealed: boolean;
     extrinsic?: { editedAt: Date | null } | null;
-    coffee?: { updatedAt: Date } | null;
+    coffee?: { originEditedAt: Date | null } | null;
   }): Date | null =>
-    s.revealed
-      ? originEditedAfterClose({
-          closedAt: session.closedAt,
-          extrinsicEditedAt: s.extrinsic?.editedAt,
-          coffeeUpdatedAt: s.coffee?.updatedAt,
-        })
-      : null;
+    sampleOriginEditedAt({
+      revealed: s.revealed,
+      closedAt: session.closedAt,
+      closesAt: session.closesAt,
+      extrinsicEditedAt: s.extrinsic?.editedAt,
+      coffeeOriginEditedAt: s.coffee?.originEditedAt,
+    });
   const exclusionNoticeLabel = ownExclusion
     ? ownExclusion.reason
       ? tResults("exclusionNotice", { reason: ownExclusion.reason })

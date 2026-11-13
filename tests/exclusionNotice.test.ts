@@ -109,6 +109,8 @@ describe("exclusion reasons (S10 WP5a, D2)", () => {
 
   it("turns control characters in the free text into spaces", () => {
     expect(encodeExclusionReason("other", "a\nb\u0000c")).toBe("other:a b c");
+    // bidi and format controls too (they could reorder the text in a spreadsheet or a PDF)
+    expect(encodeExclusionReason("other", "x‮y‏z⁦w⁩")).toBe("other:x y z w");
   });
 
   it("exclusionData stores the encoded value", () => {

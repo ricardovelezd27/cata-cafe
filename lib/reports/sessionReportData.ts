@@ -15,7 +15,7 @@ import { evaluationScoreRule, sampleScoreRule } from "@/lib/scoreRule";
 import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
 import { computeCupperAlignment, computeMajoritySets } from "@/lib/alignment";
 import { resultsUpdatedAfterClose } from "@/lib/exclusionReasons";
-import { originEditedAfterClose } from "@/lib/originEdit";
+import { sampleOriginEditedAt } from "@/lib/originEdit";
 import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 import type { ReportLocale, SessionReportSource } from "./types";
 
@@ -50,7 +50,7 @@ export async function loadSessionReportSource(
               select: {
                 name: true,
                 deletedAt: true,
-                updatedAt: true,
+                originEditedAt: true,
                 code: true,
                 country: true,
                 region: true,
@@ -203,13 +203,13 @@ export async function loadSessionReportSource(
   const includedCuppers = [...submittedCuppers].filter((id) => !excludedUserIds.has(id)).length;
   let originEditedAt: Date | null = null;
   for (const s of session.samples) {
-    const at = s.revealed
-      ? originEditedAfterClose({
-          closedAt: session.closedAt,
-          extrinsicEditedAt: s.extrinsic?.editedAt,
-          coffeeUpdatedAt: s.coffee?.updatedAt,
-        })
-      : null;
+    const at = sampleOriginEditedAt({
+      revealed: s.revealed,
+      closedAt: session.closedAt,
+      closesAt: session.closesAt,
+      extrinsicEditedAt: s.extrinsic?.editedAt,
+      coffeeOriginEditedAt: s.coffee?.originEditedAt,
+    });
     if (at && (!originEditedAt || at > originEditedAt)) originEditedAt = at;
   }
   const stamp = {
