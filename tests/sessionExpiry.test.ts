@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertSessionStarted,
   assertSessionWritable,
+  canEditSessionSettings,
   canViewGroupResults,
   isSessionExpired,
 } from "@/lib/sessionState";
@@ -43,10 +44,25 @@ describe("isSessionExpired", () => {
         isGroup: true,
         ownerRead: false,
         status: row.status,
-        allSubmitted: false,
         sessionExpired: isSessionExpired(row, NOW),
       }),
     ).toBe(true);
+  });
+});
+
+describe("canEditSessionSettings (S10 WP4a, Kim C9: never reopen)", () => {
+  it("an open session with a future or no date can be edited", () => {
+    expect(canEditSessionSettings({ status: "active", closesAt: new Date(NOW.getTime() + 1) }, NOW)).toBe(true);
+    expect(canEditSessionSettings({ status: "active", closesAt: null }, NOW)).toBe(true);
+  });
+  it("closesAt === now is still editable (strict <, like the rest)", () => {
+    expect(canEditSessionSettings({ status: "active", closesAt: new Date(NOW) }, NOW)).toBe(true);
+  });
+  it("an expired but not yet closed session refuses ANY change, so the date cannot be moved or cleared", () => {
+    expect(canEditSessionSettings({ status: "active", closesAt: new Date(NOW.getTime() - 1) }, NOW)).toBe(false);
+  });
+  it("a closed session refuses too", () => {
+    expect(canEditSessionSettings({ status: "closed", closesAt: null }, NOW)).toBe(false);
   });
 });
 

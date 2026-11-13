@@ -27,6 +27,7 @@ import {
   syncCoffeeHistoryForSession,
 } from "@/lib/coffeeHistory";
 import {
+  canEditSessionSettings,
   extrinsicWriteAllowed,
   isSessionClosed,
   isSessionExpired,
@@ -1122,9 +1123,11 @@ async function updateSessionBody(
 ): Promise<UpdateSessionResult> {
   const user = await requireUser();
   const session = await requireSessionOwner(sessionId, user.id);
-  // Closed = read-only (S6 CP-C3). This action keeps its own `{ ok, error }`
-  // shape (not run()), so the code is returned rather than thrown.
-  if (isSessionClosed(session)) return { ok: false as const, error: "session_closed" };
+  // Closed OR past its closing date = read-only, including a new closing date
+  // or clearing it (S10 WP4a, Kim C9: nothing reopens; TODO(kim-validar:C9)).
+  // Server clock. This action keeps its own `{ ok, error }` shape (not run()),
+  // so the code is returned rather than thrown.
+  if (!canEditSessionSettings(session)) return { ok: false as const, error: "session_closed" };
 
   const data: {
     name?: string;

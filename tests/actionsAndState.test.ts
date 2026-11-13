@@ -120,7 +120,7 @@ describe("planClosesAtChange", () => {
     expect(() => planClosesAtChange(group, "2026-13-40", NOW)).toThrow("invalid_closes_at");
   });
 
-  it("an unchanged stored date is a no-op even when it is now in the past", () => {
+  it("(pure rule only) an unchanged stored date is a no-op even when it is now in the past; updateSession refuses an expired session before this runs (S10 C9)", () => {
     const stored = new Date("2026-10-10T23:59:59.999Z");
     expect(planClosesAtChange({ isGroup: true, closesAt: stored }, "2026-10-10", NOW)).toBeNull();
     expect(() => planClosesAtChange({ isGroup: true, closesAt: stored }, "2026-10-11", NOW)).toThrow("invalid_closes_at");

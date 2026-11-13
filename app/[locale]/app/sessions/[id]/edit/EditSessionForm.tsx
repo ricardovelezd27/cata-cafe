@@ -124,6 +124,8 @@ export function EditSessionForm({
     /** The cupping started: the warm-up can no longer change (warmup_locked). */
     started: boolean;
     closed: boolean;
+    /** Past closesAt but not yet closed by the nightly job. Same shape as PR #119. */
+    expired: boolean;
   };
   samples: EditSampleRow[];
   groups: EditGroupOption[];
@@ -135,7 +137,11 @@ export function EditSessionForm({
   // Format/cups freeze at "Iniciar cata" as well as at the first evaluation
   // (C6 default; the server enforces the same rule via isFormatLocked).
   const locked = evalCount > 0 || initial.started;
-  const closed = initial.closed;
+  // S10 WP4a (Kim C9): once the closing date has passed the session is closed
+  // for edits too, the closing date included, so an expired session renders
+  // exactly like a closed one. The server refuses it as well (updateSession).
+  // TODO(kim-validar:C9)
+  const closed = initial.closed || initial.expired;
 
   const [name, setName] = useState(initial.name);
   const [date, setDate] = useState(initial.date);
