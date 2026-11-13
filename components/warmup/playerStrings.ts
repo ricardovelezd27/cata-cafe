@@ -70,6 +70,8 @@ export interface WarmupPlayerStrings {
   reflectEyebrow: string;
   reflectTitle: string;
   reflectLead: string;
+  /** Shown when the host cannot save reflections (no text areas). */
+  reflectLeadNoSave: string;
   reflectContinue: string;
   doneTitle: string;
   doneBody: string;
@@ -171,6 +173,7 @@ export function warmupPlayerStrings(t: T): WarmupPlayerStrings {
     reflectEyebrow: t("reflect.eyebrow"),
     reflectTitle: t("reflect.title"),
     reflectLead: t("reflect.lead"),
+    reflectLeadNoSave: t("reflect.leadNoSave"),
     reflectContinue: t("reflect.continue"),
     doneTitle: t("player.doneTitle"),
     doneBody: t("player.doneBody"),

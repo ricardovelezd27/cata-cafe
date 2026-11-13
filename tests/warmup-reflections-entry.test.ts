@@ -111,7 +111,7 @@ describe("nobody else reads warmup_reflections", () => {
 });
 
 describe("shouldOfferWarmupEntry (the discreet entry after the interstitial)", () => {
-  const base = { exerciseId: "eyes", sessionClosed: false, overlayOpen: false };
+  const base = { exerciseId: "eyes", sessionClosed: false, overlayOpen: false, isOwner: false, isGroup: false, isAsync: false, startedAt: false };
 
   it("is offered when the session has an exercise, is not closed and the overlay is not open", () => {
     expect(shouldOfferWarmupEntry(base)).toBe(true);
@@ -136,15 +136,27 @@ describe("shouldOfferWarmupEntry (the discreet entry after the interstitial)", (
     const gate = { exerciseId: "eyes", seenValue: null, hasOwnEvaluation: false, isOwner: false, isGroup: true, isAsync: false, startedAt: true };
     // a live group already started: no interstitial, but the entry is there
     expect(shouldShowWarmupOverlay(gate)).toBe(false);
-    expect(shouldOfferWarmupEntry({ exerciseId: gate.exerciseId, sessionClosed: false, overlayOpen: false })).toBe(true);
+    expect(shouldOfferWarmupEntry({ ...base, isGroup: true, startedAt: true })).toBe(true);
     // returning mid-cupping (has an evaluation)
     expect(shouldShowWarmupOverlay({ ...gate, startedAt: false, hasOwnEvaluation: true })).toBe(false);
-    expect(shouldOfferWarmupEntry({ exerciseId: gate.exerciseId, sessionClosed: false, overlayOpen: false })).toBe(true);
+    expect(shouldOfferWarmupEntry({ ...base, isGroup: true })).toBe(true);
     // already seen
     expect(shouldShowWarmupOverlay({ ...gate, startedAt: false, seenValue: "eyes" })).toBe(false);
     // when the interstitial says yes, it is open, so no entry on top of it
     expect(shouldShowWarmupOverlay({ ...gate, startedAt: false })).toBe(true);
-    expect(shouldOfferWarmupEntry({ exerciseId: gate.exerciseId, sessionClosed: false, overlayOpen: true })).toBe(false);
+    expect(shouldOfferWarmupEntry({ ...base, overlayOpen: true })).toBe(false);
+  });
+
+  // TODO(kim-validar:F1): the master of a live group is not offered a private run before the start.
+  it("truth table for the owner: not offered before the start of a LIVE group, offered everywhere else", () => {
+    const rows: Array<[string, Partial<typeof base>, boolean]> = [
+      ["live group, owner, not started", { isOwner: true, isGroup: true, isAsync: false, startedAt: false }, false],
+      ["live group, owner, started", { isOwner: true, isGroup: true, isAsync: false, startedAt: true }, true],
+      ["live group, participant, not started", { isOwner: false, isGroup: true, isAsync: false, startedAt: false }, true],
+      ["async group, owner", { isOwner: true, isGroup: true, isAsync: true, startedAt: false }, true],
+      ["solo, owner", { isOwner: true, isGroup: false, isAsync: false, startedAt: false }, true],
+    ];
+    for (const [name, patch, want] of rows) expect(shouldOfferWarmupEntry({ ...base, ...patch }), name).toBe(want);
   });
 });
 

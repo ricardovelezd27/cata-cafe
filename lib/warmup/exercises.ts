@@ -146,13 +146,19 @@ export const WARMUP_HOLD_SEC = 3;
 
 // The short version, 1-2 minutes (S10 WP7, Kim F4 / B7). Its arrival is the
 // posture line + ONE breath cycle (lib/warmup/breath.ts ARRIVE_PLAN_SHORT).
+// TODO(kim-validar:F4): every WARMUP_SHORT_* value is a simulated answer.
 /** Seconds of arrival in the short version. */
 export const WARMUP_SHORT_ARRIVE_SEC = 15;
 /** Seconds of closing stillness in the short version. */
 export const WARMUP_SHORT_CLOSING_SEC = 15;
 /** The short version takes the exercise's first steps, in order, while their
- *  running time (read beats included) stays within this many seconds. */
+ *  running time (read beats included) stays within this many seconds; when the
+ *  last kept step ends off-centre, the exercise's own return-to-centre step is
+ *  appended. TODO(kim-validar:F4): simulated answer, awaiting Kim. */
 export const WARMUP_SHORT_STEP_BUDGET_SEC = 75;
+/** Hard ceiling of the short version (both modes), in seconds.
+ *  TODO(kim-validar:F4) */
+export const WARMUP_SHORT_MAX_SEC = 120;
 
 /** EN column status — surfaced in the dev review page and the PR, never to
  *  end users. Flip to "reviewed" once Kim signs the English off. */

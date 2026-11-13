@@ -2007,6 +2007,7 @@
       "eyebrow": "Un momento",
       "title": "Dos preguntas, sin prisa",
       "lead": "Tómate un momento con estas dos preguntas. Si quieres, escribe lo que notaste.",
+      "leadNoSave": "Sin escribir nada: solo tómate un momento con estas dos preguntas.",
       "continue": "Continuar",
       "private": "Solo tú puedes verlas.",
       "skip": "Continuar sin guardar",

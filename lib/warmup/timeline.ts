@@ -33,6 +33,7 @@ import {
   WARMUP_LEG_SEC,
   WARMUP_SHORT_ARRIVE_SEC,
   WARMUP_SHORT_CLOSING_SEC,
+  WARMUP_SHORT_MAX_SEC,
   WARMUP_SHORT_STEP_BUDGET_SEC,
   type WarmupExercise,
   type WarmupFigureKind,
@@ -149,6 +150,7 @@ export interface TimelineOptions {
  * order while their running time on the full clock (read beats included, from
  * the first step's read beat to the end of the step) stays within
  * WARMUP_SHORT_STEP_BUDGET_SEC; always at least one, never half a step.
+ * TODO(kim-validar:F4): simulated answer, awaiting Kim.
  */
 export function shortStepCount(ex: WarmupExercise): number {
   const full = buildExerciseTimeline(ex, { mode: "library", length: "full" });
@@ -161,11 +163,48 @@ export function shortStepCount(ex: WarmupExercise): number {
   return Math.max(1, k);
 }
 
+/** Exercises already cut for the short version (never cut twice: the appended
+ *  return-to-centre step is not part of the budget rule). */
+const SHORT_CUT = new WeakSet<WarmupExercise>();
+
+/**
+ * The step list is the kept prefix plus, when the last kept step ends
+ * off-centre, the exercise's OWN authored return-to-centre step (the first
+ * later step whose direction is `center`), shown with the eyes state of the
+ * last kept step so the short run never closes the eyes by the back door.
+ * TODO(kim-validar:F4): simulated answer, awaiting Kim.
+ */
+function shortReturnStep(ex: WarmupExercise, k: number): WarmupStep | null {
+  const full = buildExerciseTimeline(ex, { mode: "library", length: "full" });
+  let last: Segment | undefined;
+  for (const sg of full.segments) if (sg.stepIdx === k - 1) last = sg;
+  if (!last || isNeutral(last.to)) return null;
+  const centre = ex.steps.slice(k).find((st) => st.figure.direction === "center");
+  if (!centre) return null;
+  return {
+    ...centre,
+    readDuringPrevAtSec: undefined,
+    figure: { ...centre.figure, variant: ex.steps[k - 1].figure.variant, holdBeforeSec: undefined },
+  };
+}
+
 /** The exercise as the given length plays it (the same object for "full"). */
 export function exerciseForLength(ex: WarmupExercise, length: TimelineLength = "full"): WarmupExercise {
-  if (length !== "short") return ex;
+  if (length !== "short" || SHORT_CUT.has(ex)) return ex;
   const k = shortStepCount(ex);
-  return k >= ex.steps.length ? ex : { ...ex, steps: ex.steps.slice(0, k) };
+  if (k >= ex.steps.length) return ex;
+  const kept = ex.steps.slice(0, k);
+  const ret = shortReturnStep(ex, k);
+  if (ret) {
+    const withReturn: WarmupExercise = { ...ex, steps: [...kept, ret] };
+    SHORT_CUT.add(withReturn);
+    // The appended step must keep BOTH modes within two minutes; if it does
+    // not, the builder's own 3 s return cross is used instead (no new text).
+    if (buildExerciseTimeline(withReturn, { mode: "session", length: "short" }).totalMs <= WARMUP_SHORT_MAX_SEC * 1000) return withReturn;
+  }
+  const plain: WarmupExercise = { ...ex, steps: kept };
+  SHORT_CUT.add(plain);
+  return plain;
 }
 
 export function buildExerciseTimeline(exercise: WarmupExercise, opts: TimelineOptions): ExerciseTimeline {
@@ -306,14 +345,26 @@ export function buildExerciseTimeline(exercise: WarmupExercise, opts: TimelineOp
     stepEnd.push(t);
   });
 
+  // Safety net of the short version: a run that would still end off-centre
+  // (no authored return step fits) is brought back by a 3 s cross, no new text.
+  if (short && !isNeutral(cur)) {
+    push({ kind: "cross", stepIdx: ex.steps.length - 1, durMs: AMPLITUDE_CROSS_MS, from: cur, to: neutral, ease: "softLinear", label: kind === "arm-raise" ? "down" : "center", cueAtStart: "campana" });
+    stepEnd[stepEnd.length - 1] = t;
+    cur = neutral;
+  }
+
   // ── Cierre ───────────────────────────────────────────────────────────
+  // "Open your eyes" (narration + doble) exists only when the run closed them:
+  // always in the full version; in the short one only when a kept step is
+  // eyes-closed. TODO(kim-validar:F4): simulated answer, awaiting Kim.
+  const opensEyes = !short || ex.steps.some((st) => st.figure.variant === "slow-closed");
   const closingAt = t;
   const closingMs = (short ? WARMUP_SHORT_CLOSING_SEC : WARMUP_CLOSING_HOLD_SEC) * 1000;
   push({ kind: "closing", stepIdx: -1, durMs: closingMs, from: cur, to: cur, ease: "none", label: "closing", cueAtStart: "cuenco" });
   let bridgeAt: number | null = null;
   if (opts.mode === "session") {
     bridgeAt = t;
-    push({ kind: "bridge", stepIdx: -1, durMs: WARMUP_BRIDGE_SEC * 1000, from: cur, to: cur, ease: "none", label: "bridge", cueAtStart: "doble" });
+    push({ kind: "bridge", stepIdx: -1, durMs: WARMUP_BRIDGE_SEC * 1000, from: cur, to: cur, ease: "none", label: "bridge", cueAtStart: opensEyes ? "doble" : undefined });
   }
   const totalMs = t;
 
@@ -322,7 +373,7 @@ export function buildExerciseTimeline(exercise: WarmupExercise, opts: TimelineOp
   segs.forEach((s, idx) => {
     if (s.cueAtStart) cues.push({ atMs: s.t0Ms, kind: s.cueAtStart, segIdx: idx });
   });
-  if (opts.mode !== "session") {
+  if (opts.mode !== "session" && opensEyes) {
     const closingIdx = segs.findIndex((s) => s.kind === "closing");
     cues.push({ atMs: totalMs, kind: "doble", segIdx: closingIdx });
   }
@@ -402,10 +453,10 @@ export function buildExerciseTimeline(exercise: WarmupExercise, opts: TimelineOp
       }
       case "closing":
         say(sg.t0Ms, idx, { kind: "closing" }, true);
-        if (opts.mode !== "session") say(sg.t0Ms + sg.durMs - CLOSING_OPEN_LEAD_MS, idx, { kind: "closingOpen" }, true);
+        if (opts.mode !== "session" && opensEyes) say(sg.t0Ms + sg.durMs - CLOSING_OPEN_LEAD_MS, idx, { kind: "closingOpen" }, true);
         return;
       case "bridge":
-        say(sg.t0Ms, idx, { kind: "closingOpen" }, true);
+        if (opensEyes) say(sg.t0Ms, idx, { kind: "closingOpen" }, true);
         say(sg.t0Ms, idx, { kind: "bridge" });
         return;
     }

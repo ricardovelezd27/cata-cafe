@@ -296,8 +296,7 @@ export function WarmupPlayer({
   // Resolved here because step texts live in the exercise and the rest in
   // the chrome strings. Read through a ref so the loop never re-subscribes.
   // The posture line of the arrival: the seated substitution (standing
-  // exercise only) and the "Poco espacio" sentence are both applied here, so
-  // the text on screen and the voice always agree.
+  // exercise only) is applied here, so the text on screen and the voice agree.
   const postureLine = useMemo(() => {
     const base =
       exercise.posture === "standing"
@@ -305,8 +304,11 @@ export function WarmupPlayer({
           ? lw(exerciseProp.seated.arrivePosture, locale)
           : t.arrivePostureStanding
         : t.arrivePosture;
-    return compact ? `${base} ${lw(WARMUP_SHARED.compactLine, locale)}` : base;
-  }, [exercise.posture, exerciseProp.seated, seated, compact, locale, t.arrivePosture, t.arrivePostureStanding]);
+    // The "Poco espacio" line is on the intro screen only (text): a long
+    // spoken arrival would push the short version's breath prompts late.
+    // TODO(kim-validar:F5)
+    return base;
+  }, [exercise.posture, exerciseProp.seated, seated, locale, t.arrivePosture, t.arrivePostureStanding]);
 
   const narrationText = useCallback(
     (src: NarrationSource): string => {
@@ -960,7 +962,7 @@ export function WarmupPlayer({
             }}
           >
             <h2 className={s.title}>{t.reflectTitle}</h2>
-            <p className={s.muted}>{t.reflectLead}</p>
+            <p className={s.muted}>{onSaveReflection ? t.reflectLead : t.reflectLeadNoSave}</p>
             {exercise.closing.map((q, i) => (
               <div key={i} className={s.field}>
                 {onSaveReflection ? (

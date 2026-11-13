@@ -21,6 +21,10 @@ export function WarmupEntry({
   exerciseId,
   closed,
   overlayOpen,
+  isOwner,
+  isGroup,
+  isAsync,
+  startedAt,
   locale,
   label,
   strings,
@@ -28,6 +32,10 @@ export function WarmupEntry({
   exerciseId: string | null | undefined;
   closed: boolean;
   overlayOpen: boolean;
+  isOwner: boolean;
+  isGroup: boolean;
+  isAsync: boolean;
+  startedAt: boolean;
   locale: string;
   /** Raw `warmup.entry.label` ("Movimiento Sensorial · {min} min"). */
   label?: string;
@@ -37,7 +45,7 @@ export function WarmupEntry({
   const mounted = useSyncExternalStore(subscribeNoop, () => true, () => false);
   const exercise = warmupById(exerciseId);
   if (!exercise) return null;
-  const offered = !!label && shouldOfferWarmupEntry({ exerciseId, sessionClosed: closed, overlayOpen });
+  const offered = !!label && shouldOfferWarmupEntry({ exerciseId, sessionClosed: closed, overlayOpen, isOwner, isGroup, isAsync, startedAt });
   const close = () => setOpen(false);
   return (
     <>

@@ -2007,6 +2007,7 @@
       "eyebrow": "A moment",
       "title": "Two questions, no hurry",
       "lead": "Take a moment with these two questions. If you like, write what you noticed.",
+      "leadNoSave": "Nothing to write: just take a moment with these two questions.",
       "continue": "Continue",
       "private": "Only you can see them.",
       "skip": "Continue without saving",

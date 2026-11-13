@@ -46,6 +46,12 @@ export interface WarmupEntryInput {
   sessionClosed: boolean;
   /** The pre-cupping interstitial is on screen right now. */
   overlayOpen: boolean;
+  /** The viewer created the session. */
+  isOwner: boolean;
+  isGroup: boolean;
+  isAsync: boolean;
+  /** The live cupping has started (CuppingSession.startedAt is set). */
+  startedAt: boolean;
 }
 
 /**
@@ -57,11 +63,17 @@ export interface WarmupEntryInput {
  * a skipped or finished warm-up, and the master of a live group, whose own
  * run lives in the master panel). Closing the player changes nothing: it
  * marks nothing seen and never blocks the cupping.
+ *
+ * Never offered to the OWNER of a LIVE group session that has not started: the
+ * master panel has its own synced "start warm-up" for the room, and a private
+ * run on the master's device before the start would compete with it.
+ * TODO(kim-validar:F1): simulated answer, awaiting Kim.
  */
 export function shouldOfferWarmupEntry(i: WarmupEntryInput): boolean {
   if (!isWarmupId(i.exerciseId)) return false;
   if (i.sessionClosed) return false;
   if (i.overlayOpen) return false;
+  if (i.isOwner && i.isGroup && !i.isAsync && !i.startedAt) return false;
   return true;
 }
 

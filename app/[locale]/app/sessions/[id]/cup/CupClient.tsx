@@ -22,6 +22,7 @@ import { WarmupEntry } from "@/components/session-moments/WarmupEntry";
 import { SessionMomentOverlay } from "@/components/session-moments/SessionMomentOverlay";
 import { WarmupPlayer, type WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
 import { lw, warmupById } from "@/lib/warmup/exercises";
+import { shouldShowWarmupOverlay } from "@/lib/warmup/overlayGate";
 import { formatTimeLeft, isRunning as isWarmupRunning, parseDbTimestamp, resyncPositionMs, runLengthMs, seekFor, skewMs, timeLeftMs } from "@/lib/warmup/syncedRun";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
@@ -641,7 +642,24 @@ export function CupClient({
   // server timestamp (+ clock skew) so the panel can show time left and the
   // "Iniciar cata" button can ask before cutting the exercise short.
   const warmupExercise = warmupById(warmup?.exerciseId);
-  const [warmupOverlayOpen, setWarmupOverlayOpen] = useState(false);
+  // Starts from the server-knowable part of the interstitial's gate (the seen-set
+  // is only readable on the client), so the discreet entry never renders for a
+  // frame under an interstitial that is about to open; WarmupMoment corrects it
+  // once settled. TODO(kim-validar:F1)
+  const [warmupOverlayOpen, setWarmupOverlayOpen] = useState(
+    () =>
+      !!warmup &&
+      sessionStatus !== "closed" &&
+      shouldShowWarmupOverlay({
+        exerciseId: warmup.exerciseId,
+        seenValue: null,
+        hasOwnEvaluation: warmup.hasOwnEvaluation,
+        isOwner,
+        isGroup,
+        isAsync: sessionIsAsync,
+        startedAt: !!startedAt,
+      }),
+  );
   const warmupRunMs = runLengthMs(warmup?.exerciseId);
   const [warmupStartedAtMs, setWarmupStartedAtMs] = useState<number | null>(() =>
     parseDbTimestamp(warmup?.warmupStartedAt),
@@ -2218,6 +2236,10 @@ export function CupClient({
         exerciseId={warmup.exerciseId}
         closed={sessionStatus === "closed"}
         overlayOpen={warmupOverlayOpen}
+        isOwner={isOwner}
+        isGroup={isGroup}
+        isAsync={sessionIsAsync}
+        startedAt={!!startedAt}
         locale={locale}
         label={warmup.entryLabel}
         strings={warmup.strings}
