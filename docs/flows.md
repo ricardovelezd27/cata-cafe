@@ -1141,7 +1141,7 @@ same module JSON under `ref_previo` (server-owned, invisible to scoring). When t
 sample stops being the active pinned reference while the session is open (the owner
 removes the reference, or names another sample), each evaluation still at the anchor
 state gets its ratings back in the same transaction (aggregate re-fired for submitted
-rows); one re-rated meanwhile keeps its values and drops the stash. The owner sees a
+rows); one re-rated meanwhile keeps its values and drops the stash. A restore on an already REVEALED sample is allowed (it puts back ratings given blind, before the pin; the reveal refusal applies to a new pin only). A page that was showing the pin keeps sending `pinnedView`, so a stale pinned save after the reference moved never overwrites the restored ratings. The owner sees a
 non-blocking "Se recuperaron las calificaciones anteriores de {n} evaluaciones."
 
 ### Personal comparisons and repeated sample (S10 WP5b, B3 / B6)

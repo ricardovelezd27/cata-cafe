@@ -54,6 +54,10 @@ export type OfflineModuleData = {
   nextAttemptAt?: number;
   /** Replay answered "pending" (live session not started): no timed retry (S8-09). */
   waiting?: boolean;
+  /** S10 WP5b review H1: this module was produced while the sample was the pinned
+   *  reference, so its pinned keys are not the cupper's input. Sent with the replay;
+   *  the server keeps the stored ratings for them if the sample is not pinned any more. */
+  pinnedView?: boolean;
 };
 
 export type OfflineSampleData = {

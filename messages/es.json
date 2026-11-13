@@ -870,7 +870,7 @@
     },
     "compare": {
       "groupTitle": "Tú y el grupo",
-      "groupLine": "Grupo: {group} · entre {min} y {max} · ± {sd}",
+      "groupLine": "Grupo: {group} · ± {sd}",
       "mineLine": "Tu puntaje: {mine}",
       "attrLine": "tú {mine} · grupo {group}",
       "tooFew": "Con menos de 3 catadores no se muestra la comparación con el grupo.",

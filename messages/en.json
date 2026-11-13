@@ -870,7 +870,7 @@
     },
     "compare": {
       "groupTitle": "You and the group",
-      "groupLine": "Group: {group} · between {min} and {max} · ± {sd}",
+      "groupLine": "Group: {group} · ± {sd}",
       "mineLine": "Your score: {mine}",
       "attrLine": "you {mine} · group {group}",
       "tooFew": "With fewer than 3 cuppers the comparison with the group is not shown.",

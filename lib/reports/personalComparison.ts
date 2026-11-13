@@ -5,11 +5,13 @@
 //
 // PRIVACY (hard rule, tested): a group comparison is built ONLY when at least
 // `RANKING_POLICY.minN` cuppers are included for the sample (with 2 people an
-// average hands the other person's values over). The payload carries the
-// viewer's own values plus anonymous aggregates (mean, range and SD of the
-// totals, per-attribute means, top descriptors): never another cupper's
-// individual value per attribute, name or id; an excluded cupper never enters
-// an average. Neutral wording is the renderer's job: nothing here is a "fault".
+// average hands the other person's values over), AND each ROW of it (the total,
+// every attribute, every intensity) carries a group number only when at least
+// `minN` included cuppers have a value for THAT row (an average over one or two
+// people is those people's value). The payload carries the viewer's own values
+// plus anonymous aggregates (mean and SD, per-row means, top descriptors): never
+// another cupper's individual value, name or id, and no lowest/highest total; an
+// excluded cupper never enters an average. Neutral wording is the renderer's job: nothing here is a "fault".
 // Display-only: scoring, the trigger and AggregateScore never read it.
 
 import { AFFECTIVE_ATTRIBUTES, type SessionFormat } from "@/lib/constants";
@@ -33,12 +35,11 @@ export type PersonalComparison =
   | {
       status: "ok";
       included: number;
+      /** At least one row has no group number (fewer than minN cuppers set it). */
+      partial: boolean;
       affective: {
         mine: number | null;
         group: number | null;
-        /** Lowest / highest individual total among the included cuppers (anonymous range). */
-        min: number | null;
-        max: number | null;
         sd: number | null;
         attrs: ComparisonRow[];
       } | null;
@@ -56,8 +57,9 @@ const OVERALL_LABEL = { es: "Impresión global", en: "Overall impression" };
 function round2(v: number): number {
   return Math.round(v * 100) / 100;
 }
-function mean(values: number[]): number | null {
-  return values.length ? round2(values.reduce((a, b) => a + b, 0) / values.length) : null;
+/** Mean of the values, or null when fewer than `minN` cuppers have one. */
+function mean(values: number[], minN: number): number | null {
+  return values.length >= minN ? round2(values.reduce((a, b) => a + b, 0) / values.length) : null;
 }
 function numOrNull(v: unknown): number | null {
   const n = typeof v === "number" ? v : typeof v === "string" && v.trim() !== "" ? Number(v) : NaN;
@@ -116,19 +118,16 @@ export function buildPersonalComparison(input: {
       const v = calcIndividualScore(e.data, e.cups ?? cupsPerSample, { rule: e.rule });
       return typeof v === "number" ? v : null;
     };
-    const totals = pool.map(totalOf).filter((v): v is number => v !== null);
     const myTotal = isAffectiveComplete(mine.data) ? totalOf(mine) : null;
     affective = {
       mine: myTotal,
       group: input.aggregate?.communityScore ?? null,
-      min: totals.length ? Math.min(...totals) : null,
-      max: totals.length ? Math.max(...totals) : null,
       sd: input.aggregate?.scoreSd ?? null,
       attrs: AFFECTIVE_ATTRIBUTES.map((a) => ({
         id: a.id,
         label: (ATTR_LABELS[a.id] ?? { es: a.label, en: a.label })[locale],
         mine: affValue(mine.data, a.id),
-        group: mean(pool.map((e) => affValue(e.data, a.id)).filter((v): v is number => v !== null)),
+        group: mean(pool.map((e) => affValue(e.data, a.id)).filter((v): v is number => v !== null), minN),
       })),
     };
   }
@@ -141,8 +140,9 @@ export function buildPersonalComparison(input: {
       for (const a of block.attrs ?? []) {
         const key = `${a.id}_int`;
         const my = numOrNull(mine.data[key]);
-        const group = mean(pool.map((e) => numOrNull(e.data[key])).filter((v): v is number => v !== null));
+        const group = mean(pool.map((e) => numOrNull(e.data[key])).filter((v): v is number => v !== null), minN);
         if (my === null && group === null) continue;
+        // (a row with a value for me but fewer than minN for the group keeps group = null)
         intensities.push({ id: a.id, label: a.label[locale], mine: my, group });
       }
     }
@@ -155,7 +155,10 @@ export function buildPersonalComparison(input: {
     for (const [blockId, list] of Object.entries(input.groupBlocks ?? {})) {
       const block = PERCEPTUAL_BLOCKS.find((b) => b.id === blockId);
       if (!block || block.kind !== "desc") continue;
-      for (const d of list.filter((x) => x.count >= 2).slice(0, GROUP_TOP_PER_BLOCK)) {
+      // "Most chosen" = picked by at least 2 OTHER cuppers (the viewer's own pick is not counted).
+      for (const d of list
+        .filter((x) => x.count - (myIds.has(x.id) ? 1 : 0) >= 2)
+        .slice(0, GROUP_TOP_PER_BLOCK)) {
         if (!top.has(d.id)) top.set(d.id, d.label);
       }
     }
@@ -167,5 +170,9 @@ export function buildPersonalComparison(input: {
     };
   }
 
-  return { status: "ok", included: n, affective, descriptive };
+  const rows = [...(affective?.attrs ?? []), ...(descriptive?.intensities ?? [])];
+  const partial =
+    (affective !== null && affective.group === null) ||
+    rows.some((r) => r.mine !== null && r.group === null);
+  return { status: "ok", included: n, partial, affective, descriptive };
 }

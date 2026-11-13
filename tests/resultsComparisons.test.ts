@@ -55,7 +55,6 @@ describe("buildPersonalComparison: privacy gate (n >= 3)", () => {
     if (res?.status !== "ok") return;
     expect(res.affective?.group).toBe(84.25);
     expect(res.affective?.sd).toBe(1.2);
-    expect(res.affective!.min!).toBeLessThanOrEqual(res.affective!.max!);
     const first = res.affective!.attrs[0];
     expect(first.mine).toBe(7);
     expect(first.group).toBe(6); // (7 + 6 + 5) / 3
@@ -72,6 +71,94 @@ describe("buildPersonalComparison: privacy gate (n >= 3)", () => {
   });
 });
 
+const keysAtAnyDepth = (v: unknown, out = new Set<string>()): Set<string> => {
+  if (Array.isArray(v)) v.forEach((x) => keysAtAnyDepth(x, out));
+  else if (v && typeof v === "object")
+    for (const [k, x] of Object.entries(v)) {
+      out.add(k);
+      keysAtAnyDepth(x, out);
+    }
+  return out;
+};
+
+describe("buildPersonalComparison: no range, per-row gate (review H2 / H3)", () => {
+  it("H3: the payload has no min / max key at any depth", () => {
+    const me = ev("me", aff(7));
+    const res = buildPersonalComparison({
+      ...base,
+      included: [me, ev("a", aff(6)), ev("b", aff(5))],
+      viewer: me,
+      aggregate: { communityScore: 80, scoreSd: 1 },
+    });
+    const keys = keysAtAnyDepth(res);
+    expect(keys.has("min")).toBe(false);
+    expect(keys.has("max")).toBe(false);
+  });
+
+  it("H2: an intensity only ONE cupper set carries no group number (3 included, one set aroma_int)", () => {
+    const dBase = { format: "descriptive" as const, cupsPerSample: 5, locale: "es" as const };
+    const me = { cupperId: "me", data: { aroma_int: 4 } };
+    const res = buildPersonalComparison({
+      ...dBase,
+      included: [me, { cupperId: "a", data: {} }, { cupperId: "b", data: {} }],
+      viewer: me,
+      aggregate: null,
+    });
+    expect(res?.status).toBe("ok");
+    if (res?.status !== "ok") return;
+    expect(res.descriptive!.intensities.find((r) => r.id === "aroma")).toMatchObject({ mine: 4, group: null });
+    expect(res.partial).toBe(true);
+  });
+
+  it("H2: the viewer + ONE other set it (2 values): still no group number; with 3 values it shows", () => {
+    const dBase = { format: "descriptive" as const, cupsPerSample: 5, locale: "es" as const };
+    const me = { cupperId: "me", data: { aroma_int: 4 } };
+    const two = buildPersonalComparison({
+      ...dBase,
+      included: [me, { cupperId: "a", data: { aroma_int: 2 } }, { cupperId: "b", data: {} }],
+      viewer: me,
+      aggregate: null,
+    });
+    if (two?.status !== "ok") throw new Error("expected ok");
+    expect(two.descriptive!.intensities.find((r) => r.id === "aroma")!.group).toBeNull();
+    const three = buildPersonalComparison({
+      ...dBase,
+      included: [me, { cupperId: "a", data: { aroma_int: 2 } }, { cupperId: "b", data: { aroma_int: 3 } }],
+      viewer: me,
+      aggregate: null,
+    });
+    if (three?.status !== "ok") throw new Error("expected ok");
+    expect(three.descriptive!.intensities.find((r) => r.id === "aroma")!.group).toBe(3);
+  });
+
+  it("H2: affective rows come from complete evaluations only, so every attribute row has the full pool behind it", () => {
+    const me = ev("me", aff(7));
+    const res = buildPersonalComparison({
+      ...base,
+      included: [me, ev("a", aff(6)), ev("b", aff(5)), ev("partial", { fragancia_af_final: 9 })],
+      viewer: me,
+      aggregate: null,
+    });
+    if (res?.status !== "ok") throw new Error("expected ok");
+    expect(res.included).toBe(3);
+    expect(res.affective!.attrs[0].group).toBe(6); // the incomplete evaluation's 9 never enters
+  });
+
+  it("descriptors: a pick counted only by the viewer + one other is not 'most chosen'", () => {
+    const dBase = { format: "descriptive" as const, cupsPerSample: 5, locale: "es" as const };
+    const me = { cupperId: "me", data: { aroma_int: 3, aroma_desc: ["chocolate"] } };
+    const res = buildPersonalComparison({
+      ...dBase,
+      included: [me, { cupperId: "a", data: { aroma_int: 3, aroma_desc: ["chocolate"] } }, { cupperId: "b", data: { aroma_int: 3 } }],
+      viewer: me,
+      aggregate: null,
+      groupBlocks: { nariz: [{ id: "chocolate", label: "Chocolate", count: 2 }] },
+    });
+    if (res?.status !== "ok") throw new Error("expected ok");
+    expect(res.descriptive!.matches).toEqual([]);
+  });
+});
+
 describe("buildPersonalComparison: descriptive side", () => {
   const dFormat = { format: "descriptive" as const, cupsPerSample: 5, locale: "es" as const };
   const d = (int: number, descs: string[]) => ({ aroma_int: int, aroma_desc: descs });
@@ -85,7 +172,7 @@ describe("buildPersonalComparison: descriptive side", () => {
       aggregate: null,
       groupBlocks: {
         nariz: [
-          { id: "chocolate", label: "Chocolate", count: 2 },
+          { id: "chocolate", label: "Chocolate", count: 3 },
           { id: "caramelo", label: "Caramelo", count: 2 },
           { id: "frutal", label: "Frutal", count: 1 },
         ],

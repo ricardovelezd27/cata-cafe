@@ -27,6 +27,7 @@ import { ON_VIEW_REPAIR_GRACE_MS, canCloseNow, soloRepairOwedOnView } from "@/li
 import { errorMessage, logError } from "@/lib/log";
 import { noIncludedAggregate } from "@/lib/reports/ranking";
 import { buildPersonalComparison, type PersonalComparison } from "@/lib/reports/personalComparison";
+import { mayBuildPersonalComparison, mayBuildRepeatedDiffs } from "@/lib/reports/comparisonGates";
 import { compareOwnEvaluations, repeatedSamplePartners } from "@/lib/reports/repeatedSample";
 import type { RepeatDiff } from "./types";
 import { ResultsClient } from "./ResultsClient";
@@ -485,7 +486,14 @@ export default async function ResultsPage({
   const isSoloDescriptors = !session.isGroup;
   // S10 WP5b B3: built here (after the descriptor lists exist) from the same
   // submitted evaluations; the gate is the page's own canViewGroup.
-  if (canViewGroup && session.isGroup && !ownerRead && session.status === "closed") {
+  if (
+    mayBuildPersonalComparison({
+      status: session.status,
+      isGroup: session.isGroup,
+      canViewGroup,
+      ownerRead,
+    })
+  ) {
     for (const s of session.samples) {
       const mineRow = comparisonEvals.find((e) => e.sessionSampleId === s.id && e.cupperId === user.id);
       const included = comparisonEvals.filter(
@@ -751,7 +759,7 @@ export default async function ResultsPage({
   // partner's blind label travels. Never for the admin read view (it holds the
   // owner's rows, not the viewer's).
   const repeatDiffsBySample = new Map<string, RepeatDiff[]>();
-  if (session.status === "closed" && !isAdminViewer) {
+  if (mayBuildRepeatedDiffs({ status: session.status, isAdminViewer })) {
     const partners = repeatedSamplePartners(
       session.samples.map((s) => ({
         id: s.id,

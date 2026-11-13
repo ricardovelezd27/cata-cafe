@@ -74,8 +74,6 @@ export function SampleComparisons({
                     <p className="text-sm text-on-surface-variant">
                       {t.groupLine
                         .replace("{group}", fmt(comparison.affective.group))
-                        .replace("{min}", fmt(comparison.affective.min))
-                        .replace("{max}", fmt(comparison.affective.max))
                         .replace("{sd}", fmt(comparison.affective.sd, 1))}
                     </p>
                   )}
@@ -130,6 +128,7 @@ export function SampleComparisons({
                   )}
                 </>
               )}
+              {comparison.partial && <p className="text-xs text-on-surface-variant">{t.tooFew}</p>}
               <p className="text-xs text-on-surface-variant">{t.notAnError}</p>
             </>
           )}

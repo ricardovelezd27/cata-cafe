@@ -90,7 +90,7 @@ import { moduleKeyForFormat } from "@/lib/evaluation";
 import { useKeyboardOpen } from "@/hooks/useKeyboardOpen";
 import { isEvaluationReadOnly, isModuleFrozenForRevealed } from "@/lib/revealFreeze";
 import type { MarketCopy } from "@/components/cupping/MarketNote";
-import { indexAfterReconcile, reconcileSamples } from "@/lib/sampleReconcile";
+import { indexAfterReconcile, reconcileSamples, reconcileUnpinned } from "@/lib/sampleReconcile";
 import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
 import { DevRoleBadge } from "@/components/dev/DevRoleBadge";
 import {
@@ -655,6 +655,13 @@ export function CupClient({
   // evaluation draft (lib/sampleReconcile.ts). The server's referenceSampleId
   // is the truth after a refresh — it may point at a sample this client only
   // learns about now. Skipped on mount (state already equals the prop).
+  // S10 WP5b review H1: samples whose local module was produced under the pin, and
+  // the exact data objects that were (identity survives the debounce closures).
+  const pinnedSamplesRef = useRef<Set<string>>(new Set());
+  const pinnedDataRef = useRef<WeakSet<object>>(new WeakSet());
+  const writeLocalRef = useRef<(sampleId: string, label: string, key: ModuleKey, data: Data) => Promise<void>>(
+    async () => {},
+  );
   const serverSamplesRef = useRef(session.samples);
   useEffect(() => {
     if (serverSamplesRef.current === session.samples) return;
@@ -668,7 +675,18 @@ export function CupClient({
         ? [session.referenceSampleId]
         : [];
     const active = refIds.length ? refIds[refIds.length - 1] : null;
-    const merged = reconcileSamples(samplesRef.current, session.samples, active);
+    const reconciled = reconcileSamples(samplesRef.current, session.samples, active);
+    // S10 WP5b review H1: a sample that stopped being the pinned reference takes the
+    // server's restored ratings for the pinned keys (local descriptive edits stay);
+    // offline, no fresh row arrives and the server-side pinnedView rule protects it.
+    const unpin = reconcileUnpinned(reconciled, session.samples, pinnedSamplesRef.current, active);
+    const merged = unpin.samples;
+    for (const id of unpin.adopted) {
+      pinnedSamplesRef.current.delete(id);
+      const adoptedSample = merged.find((s) => s.id === id);
+      const mk = session.format === "affective" ? "affective" : session.format === "descriptive" ? null : "combined";
+      if (adoptedSample && mk) void writeLocalRef.current(id, adoptedSample.label, mk, adoptedSample[mk] as Data);
+    }
     const next = orderByReferenceIds(merged, refIds);
     const idx = indexAfterReconcile(next, sampleIdRef.current, samplesRef.current.findIndex((s) => s.id === sampleIdRef.current));
     setSamples(next);
@@ -918,7 +936,12 @@ export function CupClient({
     key: ModuleKey,
     data: Data,
   ) =>
-    mergeModuleData(session.id, userId, sampleId, label, key, data, seed);
+    mergeModuleData(session.id, userId, sampleId, label, key, data, seed, {
+      pinnedView: pinnedDataRef.current.has(data),
+    });
+  useEffect(() => {
+    writeLocalRef.current = writeLocal;
+  });
 
   // Synchronous localStorage mirror of the pending refs, written on pagehide.
   // IndexedDB writes are async and can be aborted when the page dies instantly
@@ -1327,6 +1350,9 @@ export function CupClient({
           cupsPerSample: session.cupsPerSample,
           // S8-18: edit time, so the server drops this write if a newer one landed first.
           clientTs: Date.now(),
+          // S10 WP5b review H1: produced under the pin (the server then protects the
+          // ratings it restored if the reference moved meanwhile).
+          pinnedView: pinnedDataRef.current.has(data),
         });
         if (!saved.ok) throw new Error(saved.error);
       } else if (key === "extrinsic") {
@@ -1546,6 +1572,15 @@ export function CupClient({
     if (!sample) return;
     // S10 WP3a (X3): a revealed sample is frozen for evaluation (the server refuses it too).
     if (isModuleFrozenForRevealed({ revealed: sample.revealed, key: String(key) })) return;
+    // Still "pinned view" until the server's restored row has been adopted (a stale
+    // module posted in between is protected by the server's pinnedView rule).
+    if (
+      (isPinnedReference(sample.id) || pinnedSamplesRef.current.has(sample.id)) &&
+      (key === "affective" || key === "combined")
+    ) {
+      pinnedDataRef.current.add(data);
+      pinnedSamplesRef.current.add(sample.id);
+    }
     setSamples((prev) =>
       prev.map((s) => (s.id === sample.id ? { ...s, [key]: data } : s))
     );
@@ -1954,6 +1989,13 @@ export function CupClient({
   const referenceSample = referenceSampleId
     ? viewSamples.find((s) => s.id === referenceSampleId) ?? null
     : null;
+  // S10 WP5b review H1: whatever this page holds for the pinned reference is a pinned view.
+  useEffect(() => {
+    if (referenceSampleId && isPinnedReference(referenceSampleId)) {
+      pinnedSamplesRef.current.add(referenceSampleId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [referenceSampleId, referenceMode]);
   // The anchor must exist for everyone even when a cupper never touches the
   // reference (nothing to score in an affective session): the first visit
   // queues one pinned save so their 79.00 lands and Δ/community work. Only
@@ -1971,11 +2013,10 @@ export function CupClient({
     if (sample.revealed) return;
     if (ensuredReferenceRef.current.has(sample.id)) return;
     ensuredReferenceRef.current.add(sample.id);
-    scheduleAutoSave(
-      sample.id,
-      affectiveModuleKey,
-      pinReferenceAffective(sample[affectiveModuleKey], session.cupsPerSample),
-    );
+    const ensured = pinReferenceAffective(sample[affectiveModuleKey], session.cupsPerSample);
+    pinnedDataRef.current.add(ensured);
+    pinnedSamplesRef.current.add(sample.id);
+    scheduleAutoSave(sample.id, affectiveModuleKey, ensured);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [referenceSampleId, sampleIdx, affectiveModuleKey, sessionStatus, referenceMode]);
   const currentRefIdx = refOrder.indexOf(current.id);
