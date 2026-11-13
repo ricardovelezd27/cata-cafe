@@ -116,6 +116,7 @@ import { noteIfStaleBundle } from "@/lib/staleBundle";
 import { IDENTITY_CHANGED } from "@/lib/expectedUser";
 import { isIdentityChanged, registerBeforeIdentityReload } from "@/lib/identityChange";
 import { onServerIdentityChanged } from "@/lib/identityResolve";
+import { awaitClaimRekey } from "@/lib/offline/claimRekey";
 import { SyncConflictModal } from "@/components/offline/SyncConflictModal";
 import {
   mergeModuleData,
@@ -917,6 +918,14 @@ export function CupClient({
         backup = [];
       }
 
+      // S10 WP8b: if this page was reloaded after the guest it showed was
+      // claimed in another tab, the latched edits still sit under the anonymous
+      // id. Move them to the account BEFORE the first read, so the form hydrates
+      // from them and the next save cannot replace the module with a stale copy.
+      // (The provider's own re-key runs after this effect: effects run child
+      // first. Doing it here makes the order explicit, not lucky.)
+      await awaitClaimRekey(userId);
+      if (cancelled) return;
       const blob = await loadSession(session.id, userId);
       if (cancelled) return;
 
@@ -1034,6 +1043,16 @@ export function CupClient({
         const label = session.samples.find((s) => s.id === sp.sampleId)?.label ?? "";
         await writeLocal(sp.sampleId, label, sp.key, sp.data);
       }
+      // S10 WP8b: both edits are durable now. Drop the refs and the timers so
+      // the reload's own pagehide flush does not write a SECOND copy under the
+      // old id (the re-key has just removed that key) and no debounce fires a
+      // late save from a page that is about to go.
+      localPendingRef.current = null;
+      pendingSaveRef.current = null;
+      if (localDebounceRef.current) clearTimeout(localDebounceRef.current);
+      localDebounceRef.current = null;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = null;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.id, userId]);

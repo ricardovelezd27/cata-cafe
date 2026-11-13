@@ -26,7 +26,8 @@ import {
   type IdentityAction,
 } from "@/lib/expectedUser";
 import { clearIdentityChanged, markIdentityChanged, runBeforeIdentityReload } from "@/lib/identityChange";
-import { CLAIM_ANON_KEY, CLAIM_DONE_KEY, claimedRenderedUser } from "@/lib/offline/claimMarker";
+import { claimedRenderedUser } from "@/lib/offline/claimMarker";
+import { readClaimMarkers } from "@/lib/offline/claimRekey";
 import { rekeyUserBlobs } from "@/lib/offline/store";
 
 type Read = { identity: BrowserIdentity; currentUserId: string | null };
@@ -44,25 +45,45 @@ async function readIdentity(renderedUserId: string): Promise<Read> {
   }
 }
 
+/** Do the claim markers say the guest this tab was rendered for was claimed by
+ *  `currentUserId`? (Pure rule: claimedRenderedUser.) */
+function claimedByMarkers(renderedUserId: string, currentUserId: string | null): boolean {
+  if (!currentUserId) return false;
+  const markers = readClaimMarkers();
+  if (!markers) return false;
+  return claimedRenderedUser({ renderedUserId, currentUserId, ...markers, now: Date.now() });
+}
+
+/**
+ * The ONE reload every identity notice uses (S10 WP8b): the banner's button on
+ * the cup page, the layout bar's button and the claim-driven automatic reload.
+ *  1. let the cup page write what is being typed (before-reload hooks, capped),
+ *  2. if the claim markers say this tab's guest was claimed by the account that
+ *     is signed in now, move every blob under the anonymous id to the account
+ *     (rekeyUserBlobs: idempotent, the newer edit per module wins),
+ *  3. reload. The reloaded cup page also awaits the same re-key before it
+ *     hydrates (lib/offline/claimRekey.ts), so a claim that finished while this
+ *     tab was latched is still picked up.
+ * Never throws; a failure to read the cookie just reloads.
+ */
+export async function reloadIdentity(renderedUserId: string): Promise<void> {
+  try {
+    await runBeforeIdentityReload();
+    const { currentUserId } = await readIdentity(renderedUserId);
+    if (currentUserId && claimedByMarkers(renderedUserId, currentUserId)) {
+      await rekeyUserBlobs(renderedUserId, currentUserId);
+    }
+  } catch {
+    // reload anyway: nothing was deleted
+  }
+  window.location.reload();
+}
+
 /** True (and the page is reloading) when the claim markers say the rendered
  *  guest was claimed by `currentUserId`. */
 async function reloadIfClaimed(renderedUserId: string, currentUserId: string | null): Promise<boolean> {
-  if (!currentUserId) return false;
-  let startedRaw: string | null = null;
-  let doneRaw: string | null = null;
-  try {
-    startedRaw = window.localStorage.getItem(CLAIM_ANON_KEY);
-    doneRaw = window.localStorage.getItem(CLAIM_DONE_KEY);
-  } catch {
-    return false;
-  }
-  if (!claimedRenderedUser({ renderedUserId, currentUserId, startedRaw, doneRaw, now: Date.now() })) return false;
-  // 1. let the cup page write what is being typed (under the anonymous id),
-  // 2. move every blob under the anonymous id to the account,
-  // 3. reload so the page renders for the account.
-  await runBeforeIdentityReload();
-  await rekeyUserBlobs(renderedUserId, currentUserId);
-  window.location.reload();
+  if (!claimedByMarkers(renderedUserId, currentUserId)) return false;
+  await reloadIdentity(renderedUserId);
   return true;
 }
 
