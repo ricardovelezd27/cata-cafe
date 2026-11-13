@@ -1051,7 +1051,12 @@ export function CupClient({
           : null,
         backup,
         isModuleKey,
-        stillPinned: (sampleId) => isPinnedReference(sampleId),
+        stillPinned: (sampleId) =>
+          shouldPinReference({
+            mode: referenceMode,
+            moduleKey: session.format === "affective" ? "affective" : session.format === "descriptive" ? "descriptive" : "combined",
+            isActiveReference: sampleId === referenceSampleId,
+          }),
         serverModule: (sampleId, key) =>
           (session.samples.find((x) => x.id === sampleId)?.[key as keyof Sample] as Data | undefined) ?? null,
       });
