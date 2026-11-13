@@ -76,6 +76,7 @@ type Candidate = { id: string; email: string };
 const AUTH_ELIGIBLE_WHERE = `
   u.is_anonymous = false
   AND u.email IS NOT NULL
+  AND btrim(u.email) <> ''
   AND lower(btrim(u.email)) <> ALL($3::text[])
   AND u.email_confirmed_at IS NULL
   AND u.phone_confirmed_at IS NULL
@@ -84,11 +85,15 @@ const AUTH_ELIGIBLE_WHERE = `
   AND COALESCE(u.is_sso_user, false) = false
   AND u.banned_until IS NULL
   AND u.deleted_at IS NULL
-  AND u.created_at < $1::timestamptz
+  AND GREATEST(u.created_at, u.confirmation_sent_at, u.recovery_sent_at,
+               u.email_change_sent_at, u.reauthentication_sent_at) < $1::timestamptz
   AND (u.confirmation_sent_at IS NULL OR u.confirmation_sent_at <= $2::timestamptz)
   AND (u.recovery_sent_at IS NULL OR u.recovery_sent_at <= $2::timestamptz)
   AND (u.email_change_sent_at IS NULL OR u.email_change_sent_at <= $2::timestamptz)
-  AND (u.reauthentication_sent_at IS NULL OR u.reauthentication_sent_at <= $2::timestamptz)`;
+  AND (u.reauthentication_sent_at IS NULL OR u.reauthentication_sent_at <= $2::timestamptz)
+  AND NOT EXISTS (
+    SELECT 1 FROM waitlist_entries w
+    WHERE lower(btrim(w.email)) = lower(btrim(u.email)) AND w."createdAt" >= $1::timestamptz)`;
 
 /** The "nothing shows use" part, built from the same rule table the plan uses. */
 function emptyAccountWhere(): string {
@@ -107,7 +112,10 @@ function emptyAccountWhere(): string {
 function protectedEmails(): string[] {
   // The super-admin is never a candidate. AI admins are listed by email in an
   // env var and are staff accounts: also never.
-  const out = new Set<string>([getSuperAdminEmail().toLowerCase()]);
+  // (unset = no super-admin: required in production, F-insights-5)
+  const out = new Set<string>();
+  const admin = getSuperAdminEmail();
+  if (admin) out.add(admin.trim().toLowerCase());
   for (const e of (process.env.ANALYTICS_AI_ADMIN_EMAILS ?? "").split(",")) {
     const k = e.trim().toLowerCase();
     if (k) out.add(k);
@@ -160,8 +168,13 @@ async function selectCandidates(now: Date, limit: number): Promise<Candidate[]> 
 }
 
 // ── Reservations with no auth user at all ──────────────────────────────────
+// A reservation whose address is the recorded OLD address of an email change in
+// flight (app_metadata.email_change_from, written by the service role only) is
+// not an orphan: the move happens when the change completes.
 const ORPHAN_WHERE = `w."createdAt" < $1::timestamptz
-  AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE lower(btrim(u.email)) = lower(btrim(w.email)))`;
+  AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE lower(btrim(u.email)) = lower(btrim(w.email)))
+  AND NOT EXISTS (SELECT 1 FROM auth.users u
+                  WHERE lower(btrim(u.raw_app_meta_data->>'email_change_from')) = lower(btrim(w.email)))`;
 
 async function purgeOrphanReservations(now: Date, enabled: boolean) {
   const cutoff = waitlistPurgeCutoff(now, WAITLIST_RETENTION_MONTHS);
@@ -179,6 +192,15 @@ async function purgeOrphanReservations(now: Date, enabled: boolean) {
     cutoff,
   );
   return { due, deleted };
+}
+
+async function stillAuthEligible(id: string, now: Date): Promise<boolean> {
+  const rows = await prisma.$queryRawUnsafe<{ id: string }[]>(
+    `SELECT u.id::text AS id FROM auth.users u WHERE ${AUTH_ELIGIBLE_WHERE} AND u.id = $4::uuid`,
+    ...params(now),
+    id,
+  );
+  return rows.length === 1;
 }
 
 // ── One account ────────────────────────────────────────────────────────────
@@ -263,9 +285,19 @@ function matchValue(key: string, id: string, email: string): string {
 
 // ── The run ────────────────────────────────────────────────────────────────
 
+/** Test seams only (tests/db/unusedAccountPurge.dbtest.ts): they let a test
+ *  change the world at the two moments where a real sign-in could land. */
+export type PurgeHooks = {
+  /** After the candidates are selected, before any account's transaction. */
+  afterSelect?: (candidates: readonly { id: string }[]) => Promise<void> | void;
+  /** After an account's transaction committed, before the auth delete. */
+  beforeAuthDelete?: (id: string) => Promise<void> | void;
+};
+
 export async function purgeUnusedAccounts(opts: {
   enabled: boolean;
   now?: Date;
+  hooks?: PurgeHooks;
 }): Promise<UnusedAccountSummary> {
   const now = opts.now ?? new Date();
   const enabled = opts.enabled;
@@ -278,12 +310,22 @@ export async function purgeUnusedAccounts(opts: {
 
   if (enabled && due > 0) {
     const candidates = await selectCandidates(now, UNUSED_ACCOUNT_BATCH);
+    await opts.hooks?.afterSelect?.(candidates);
     for (const c of candidates) {
       try {
         const outcome = await deleteAccountRows(c.id, now);
         if (outcome === "used") {
           skippedUsed += 1;
           logInfo({ where: "unusedAccount.skippedUsed", userId: c.id });
+          continue;
+        }
+        await opts.hooks?.beforeAuthDelete?.(c.id);
+        // Right before the irreversible step: the account must still qualify
+        // (a first sign-in, e.g. Google for the same address, may have landed
+        // since the transaction). If not, keep the auth user.
+        if (!(await stillAuthEligible(c.id, now))) {
+          skippedUsed += 1;
+          logWarn({ where: "unusedAccount.signedInDuringPurge", userId: c.id });
           continue;
         }
         if (await deleteAuthUser(c.id)) {

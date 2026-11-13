@@ -1107,7 +1107,7 @@ flowchart TD
   W --> Q{LEGAL_PAGES_PUBLISHED}
   Q -- false --> X[notice line + footer/login links hidden; privacidad, terminos, aviso-legal direct-visit only, Borrador, noindex]
   Q -- true --> Y[notice line + links shown, consent stamped, banner gone, indexable]
-  W --> K[daily cron: purgeUnusedAccounts - an account never used (never confirmed or signed in, empty, older than 12 months, no access email in 48 h) is deleted with its reservation; switch UNUSED_ACCOUNT_PURGE_ENABLED, off = count only]
+  W --> K[daily cron: purgeUnusedAccounts - an account never used (never confirmed or signed in, empty, its last reservation, access request and creation all older than 12 months, no access email in 48 h) is deleted with its reservation, after a last re-check right before the auth delete; switch UNUSED_ACCOUNT_PURGE_ENABLED, off = count only]
 ```
 
 ## 7. Offline drafts and replay (S8-09)

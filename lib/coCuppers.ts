@@ -86,11 +86,17 @@ export async function getCoCupperCandidates(
   const cupperIds = [...cupperMap.keys()];
   const evalCountMap = new Map<string, number>();
   if (cupperIds.length > 0) {
+    // SUBMITTED evaluations only (a draft is not "an evaluation made"), and
+    // never those of a cupper the owner excluded from that session's results.
+    const excluded = new Set(rows.filter((r) => r.excludedFromResults).map((r) => `${r.sessionId}:${r.userId}`));
     const evals = await prisma.evaluation.findMany({
-      where: { cupperId: { in: cupperIds }, sessionSample: { sessionId: { in: sessionIds } } },
-      select: { cupperId: true },
+      where: { cupperId: { in: cupperIds }, isDraft: false, sessionSample: { sessionId: { in: sessionIds } } },
+      select: { cupperId: true, sessionSample: { select: { sessionId: true } } },
     });
-    for (const e of evals) evalCountMap.set(e.cupperId, (evalCountMap.get(e.cupperId) ?? 0) + 1);
+    for (const e of evals) {
+      if (excluded.has(`${e.sessionSample.sessionId}:${e.cupperId}`)) continue;
+      evalCountMap.set(e.cupperId, (evalCountMap.get(e.cupperId) ?? 0) + 1);
+    }
   }
 
   return [...cupperMap.entries()].map(([id, data]) => ({

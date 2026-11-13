@@ -97,7 +97,7 @@ export const PRIVACY_EN: LegalDoc = {
             // ADDED: the waitlist / founding seats. OWNER DECISION (2026-11-14): a
             // reservation or sign-in request that is never completed is really
             // deleted after the retention period (lib/unusedAccountPurge.ts).
-            `Founding seat reservation and access request — Art. 6(1)(b), pre-contractual measures at your request: when you reserve a seat or ask for a sign-in link or code, we create an account with your email so that we can send it to you. If you never end up signing in, we delete that unused account and the reservation after ${WAITLIST_RETENTION_MONTHS} months.`,
+            `Founding seat reservation and access request — Art. 6(1)(b), pre-contractual measures at your request: when you reserve a seat or ask for a sign-in link or code, we create an account with your email so that we can send it to you. If you never end up signing in, we delete that unused account, together with the reservation, once ${WAITLIST_RETENTION_MONTHS} months have passed since your last reservation or access request.`,
             "Service communications (sign-in links, results of a cupping you took part in, closing reminders) — Art. 6(1)(b), performance of a contract.",
             // ADDED: group mail to addresses supplied by a group owner.
             "Notices from a cupping group to the addresses its organizer added — Art. 6(1)(f), legitimate interest in the group being able to organize itself. Every email includes a link to stop receiving them.",
@@ -231,7 +231,7 @@ export const PRIVACY_EN: LegalDoc = {
             // ADDED: what account deletion really does in this app.
             "When the account is deleted, the profile, the history and the access data are erased. The evaluations you made in cuppings shared with other people are kept without your name, so that other people's results do not change; the cuppings you organized and in which other people took part are kept closed and without your name; and the coffees you created are kept without their identifying data (name, farm, producer, notes).",
             // OWNER DECISION (2026-11-14): really deleted, by the daily job.
-            `Accounts that were never used (a seat was reserved or access was requested, but the person never signed in): they are deleted, together with the reservation, ${WAITLIST_RETENTION_MONTHS} months after they were created. If you did sign in, the reservation is kept while the account exists and is deleted when you delete it.`,
+            `Accounts that were never used (a seat was reserved or access was requested, but the person never signed in): they are deleted, together with the reservation, once ${WAITLIST_RETENTION_MONTHS} months have passed since the last reservation or access request. If you did sign in with the same address as the reservation, the reservation is kept while the account exists and is deleted when you delete it. Reservations whose address matches no account are deleted once ${WAITLIST_RETENTION_MONTHS} months have passed since the reservation.`,
             // ADDED: addresses a group organiser enters for other people.
             "Addresses added to a cupping group by its organizer: while the group exists or until the organizer removes them.",
             "Fingerprints used to limit email sending: deleted automatically when they are no longer needed.",

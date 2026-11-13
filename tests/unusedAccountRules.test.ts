@@ -32,6 +32,7 @@ function user(over: Partial<AuthUserFacts> = {}): AuthUserFacts {
     recoverySentAt: null,
     emailChangeSentAt: null,
     reauthenticationSentAt: null,
+    latestReservationAt: null,
     ...over,
   };
 }
@@ -91,10 +92,42 @@ describe("notUnusedReason (the 'never used' predicate)", () => {
       it(`${field}: 10 hours ago protects, 1 ms inside the window protects, exactly 48 h and older do not`, () => {
         expect(reason({ [field]: new Date(NOW.getTime() - 10 * 3_600_000) })).toBe("access_email_recent");
         expect(reason({ [field]: new Date(threshold.getTime() + 1) })).toBe("access_email_recent");
-        expect(reason({ [field]: threshold })).toBeNull();
-        expect(reason({ [field]: new Date(threshold.getTime() - 1) })).toBeNull();
+        // outside the 48 h window the 12-month rule (M1) decides: still recent
+        expect(reason({ [field]: threshold })).toBe("too_recent");
+        expect(reason({ [field]: new Date(threshold.getTime() - 1) })).toBe("too_recent");
       });
     }
+  });
+});
+
+describe("the 12 months count from the LATEST of creation, last access email and reservation (M1)", () => {
+  const day = 86_400_000;
+  const thirteenMonthsAgo = new Date(CUTOFF.getTime() - 30 * day);
+  const elevenMonthsAgo = new Date(CUTOFF.getTime() + 30 * day);
+  const yesterday = new Date(NOW.getTime() - day);
+  it("an account created 13 months ago with nothing else is due", () => {
+    expect(reason({ createdAt: thirteenMonthsAgo })).toBeNull();
+  });
+  it("created 13 months ago, access email 11 months ago: NOT due", () => {
+    for (const field of ["confirmationSentAt", "recoverySentAt", "emailChangeSentAt", "reauthenticationSentAt"] as const) {
+      expect(reason({ createdAt: thirteenMonthsAgo, [field]: elevenMonthsAgo }), field).toBe("too_recent");
+    }
+  });
+  it("created 13 months ago, access email 13 months ago too: due", () => {
+    expect(reason({ createdAt: thirteenMonthsAgo, confirmationSentAt: new Date(CUTOFF.getTime() - 1) })).toBeNull();
+    // exactly at the cutoff is not before it
+    expect(reason({ createdAt: thirteenMonthsAgo, confirmationSentAt: CUTOFF })).toBe("too_recent");
+  });
+  it("created 13 months ago, reservation created yesterday: NOT due", () => {
+    expect(reason({ createdAt: thirteenMonthsAgo, latestReservationAt: yesterday })).toBe("reservation_recent");
+  });
+  it("a reservation exactly at the cutoff is not old enough; one millisecond before is", () => {
+    expect(reason({ createdAt: thirteenMonthsAgo, latestReservationAt: CUTOFF })).toBe("reservation_recent");
+    expect(reason({ createdAt: thirteenMonthsAgo, latestReservationAt: new Date(CUTOFF.getTime() - 1) })).toBeNull();
+  });
+  it("an account with an empty-string or blank address is never selected", () => {
+    expect(reason({ email: "" })).toBe("no_email");
+    expect(reason({ email: "   " })).toBe("no_email");
   });
 });
 

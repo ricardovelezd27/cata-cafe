@@ -38,6 +38,9 @@ export type AuthUserFacts = {
   recoverySentAt: Date | null;
   emailChangeSentAt: Date | null;
   reauthenticationSentAt: Date | null;
+  /** The newest `createdAt` among the reservations (waitlist_entries) at this
+   *  address (normalised), null when there is none. */
+  latestReservationAt: Date | null;
 };
 
 export type NotUnusedReason =
@@ -51,14 +54,21 @@ export type NotUnusedReason =
   | "banned"
   | "soft_deleted"
   | "too_recent"
-  | "access_email_recent";
+  | "access_email_recent"
+  | "reservation_recent";
 
 /**
  * null = the account is "never used" and old enough: it may be deleted (the
  * database part is then decided by planUnusedAccountDeletion). Otherwise why
- * not. Boundaries: created strictly BEFORE the cutoff (calendar months,
- * waitlistPurgeCutoff); an access email counts as recent only when sent
- * strictly AFTER now - 48 h (sent exactly 48 h ago no longer protects).
+ * not. The N months count from the LATEST of the account's creation, its last
+ * access email (confirmation / recovery / email change / reauthentication) and
+ * the newest reservation at the same address (privacy section 3: "desde su
+ * ultima reserva o solicitud de acceso"): every one of them must be strictly
+ * BEFORE the cutoff (calendar months, waitlistPurgeCutoff). Separately, an
+ * access email counts as recent only when sent strictly AFTER now - 48 h (sent
+ * exactly 48 h ago no longer protects); with the rule above that is already
+ * implied, and it stays as a second line. SQL mirror: AUTH_ELIGIBLE_WHERE in
+ * lib/unusedAccountPurge.ts (GREATEST(...) < cutoff + the reservation clause).
  *
  * `protectedEmails` = the super-admin and the AI-admin allowlist, lowercase.
  * A Google account is confirmed at creation (email_confirmed_at set), so it is
@@ -72,7 +82,7 @@ export function notUnusedReason(
   protectedEmails: readonly string[] = [],
 ): NotUnusedReason | null {
   if (u.isAnonymous) return "anonymous";
-  if (!u.email) return "no_email";
+  if (!u.email || !u.email.trim()) return "no_email";
   if (protectedEmails.includes(u.email.trim().toLowerCase())) return "protected_email";
   if (u.emailConfirmedAt || u.phoneConfirmedAt) return "confirmed";
   if (u.lastSignInAt) return "signed_in";
@@ -80,11 +90,17 @@ export function notUnusedReason(
   if (u.isSsoUser) return "sso";
   if (u.bannedUntil) return "banned";
   if (u.deletedAt) return "soft_deleted";
-  if (!(u.createdAt.getTime() < waitlistPurgeCutoff(now, months).getTime())) return "too_recent";
   const threshold = recentAccessEmailThreshold(now).getTime();
-  for (const sent of [u.confirmationSentAt, u.recoverySentAt, u.emailChangeSentAt, u.reauthenticationSentAt]) {
+  const sentTimes = [u.confirmationSentAt, u.recoverySentAt, u.emailChangeSentAt, u.reauthenticationSentAt];
+  for (const sent of sentTimes) {
     if (sent && sent.getTime() > threshold) return "access_email_recent";
   }
+  const cutoff = waitlistPurgeCutoff(now, months).getTime();
+  if (!(u.createdAt.getTime() < cutoff)) return "too_recent";
+  for (const sent of sentTimes) {
+    if (sent && !(sent.getTime() < cutoff)) return "too_recent";
+  }
+  if (u.latestReservationAt && !(u.latestReservationAt.getTime() < cutoff)) return "reservation_recent";
   return null;
 }
 

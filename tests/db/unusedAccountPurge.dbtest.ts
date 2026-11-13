@@ -5,8 +5,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const deleteUser = vi.fn();
 const listUsers = vi.fn();
+const updateUserById = vi.fn();
 vi.mock("@/lib/supabase/admin", () => ({
-  createAdminClient: () => ({ auth: { admin: { deleteUser, listUsers } } }),
+  createAdminClient: () => ({ auth: { admin: { deleteUser, listUsers, updateUserById } } }),
 }));
 
 import { purgeUnusedAccounts, selectAuthEligibleIds } from "@/lib/unusedAccountPurge";
@@ -19,13 +20,14 @@ import {
 } from "@/lib/unusedAccountRules";
 import { waitlistPurgeCutoff } from "@/lib/legal/waitlistRetention";
 import { WAITLIST_RETENTION_MONTHS } from "@/lib/legal/config";
-import { getSuperAdminEmail } from "@/lib/analytics/access";
 import { moveWaitlistEntry } from "@/lib/waitlistMove";
+import { moveReservationAfterEmailChange, recordOldAddressForEmailChange } from "@/lib/emailChangeMove";
 import { getCoCupperCandidates } from "@/lib/coCuppers";
 import { listAllAuthUsersStrict } from "@/lib/supabase/adminUsers";
 import { PROFILE_MANIFEST, manifestKey } from "@/lib/accountDeletion/manifest";
 import { makeCoffee, makeEvaluation, makeSession, makeUser, prisma, resetDb } from "./support/db";
 
+const BOSS = "boss@example.test"; // ANALYTICS_SUPER_ADMIN_EMAIL for this file
 const NOW = new Date("2026-11-13T06:00:00.000Z");
 const CUTOFF = waitlistPurgeCutoff(NOW, WAITLIST_RETENTION_MONTHS);
 const THRESHOLD = recentAccessEmailThreshold(NOW);
@@ -48,6 +50,7 @@ const COLUMNS = {
 } as const;
 
 beforeEach(async () => {
+  process.env.ANALYTICS_SUPER_ADMIN_EMAIL = BOSS;
   await resetDb();
   deleteUser.mockReset();
   deleteUser.mockImplementation(async (id: string) => {
@@ -55,13 +58,17 @@ beforeEach(async () => {
     return { data: {}, error: null };
   });
   listUsers.mockReset();
+  updateUserById.mockReset();
+  updateUserById.mockResolvedValue({ data: {}, error: null });
 });
 
 type Opts = {
-  email?: string;
+  email?: string | null;
   createdAt?: Date;
   anonymous?: boolean;
   reservation?: boolean;
+  /** createdAt of the account's own reservation (default: the account's createdAt). */
+  reservationAt?: Date;
   set?: Partial<Record<keyof typeof COLUMNS, Date | null>>;
   isSsoUser?: boolean;
 };
@@ -75,7 +82,9 @@ async function acct(o: Opts = {}): Promise<{ id: string; email: string | null }>
     await prisma.$executeRawUnsafe(`UPDATE auth.users SET ${COLUMNS[col as keyof typeof COLUMNS]} = $1 WHERE id = $2::uuid`, val, id);
   }
   if (o.isSsoUser) await prisma.$executeRaw`update auth.users set is_sso_user = true where id = ${id}::uuid`;
-  if (o.reservation && email) await prisma.waitlistEntry.create({ data: { email: email.toLowerCase() } });
+  if (o.reservation && email) {
+    await prisma.waitlistEntry.create({ data: { email: email.toLowerCase(), createdAt: o.reservationAt ?? set.created_at ?? OLD } });
+  }
   return { id, email };
 }
 
@@ -120,22 +129,50 @@ describe("selection: which accounts are deleted", () => {
     }
   });
 
-  it("an access email sent 10 hours ago protects the account this run; a later run (49 h) deletes it", async () => {
+  it("an access email within the last 12 months protects the account (M1: 10 h and 49 h ago, 11 months ago); one 13 months ago does not", async () => {
     for (const col of ["confirmation_sent_at", "recovery_sent_at", "email_change_sent_at", "reauthentication_sent_at"] as const) {
+      for (const at of [hoursAgo(10), hoursAgo(49), YOUNG]) {
+        await resetDb();
+        const a = await acct({ email: "mail@example.test", reservation: true, set: { [col]: at } });
+        expect(await run(), `${col} ${at.toISOString()}`).toMatchObject({ due: 0, deleted: 0 });
+        expect(await authExists(a.id)).toBe(true);
+        expect(await reservationExists("mail@example.test")).toBe(true);
+      }
       await resetDb();
-      const a = await acct({ email: "mail@example.test", reservation: true, set: { [col]: hoursAgo(10) } });
-      expect(await run()).toMatchObject({ due: 0, deleted: 0 });
-      expect(await authExists(a.id)).toBe(true);
-      expect(await reservationExists("mail@example.test")).toBe(true);
-      await prisma.$executeRawUnsafe(`UPDATE auth.users SET ${col} = $1 WHERE id = $2::uuid`, hoursAgo(49), a.id);
-      expect(await run()).toMatchObject({ due: 1, deleted: 1 });
-      expect(await authExists(a.id)).toBe(false);
+      const b = await acct({ email: "mail@example.test", reservation: true, set: { [col]: new Date(OLD.getTime() + 86_400_000) } });
+      expect(await run(), col).toMatchObject({ due: 1, deleted: 1 });
+      expect(await authExists(b.id)).toBe(false);
     }
+  });
+
+  it("M1: created 13 months ago + access email 11 months ago is NOT due; + a reservation made yesterday is NOT due either (both kept)", async () => {
+    const mailed = await acct({ email: "m1@example.test", reservation: true, set: { confirmation_sent_at: YOUNG } });
+    const reserved = await acct({ email: "m2@example.test", reservation: true, reservationAt: hoursAgo(24) });
+    const plain = await acct({ email: "m3@example.test", reservation: true });
+    const r = await run();
+    expect(r).toMatchObject({ due: 1, deleted: 1, failed: 0 });
+    expect(await authExists(mailed.id)).toBe(true);
+    expect(await reservationExists("m1@example.test")).toBe(true);
+    expect(await authExists(reserved.id)).toBe(true);
+    expect(await profileExists(reserved.id)).toBe(true);
+    expect(await reservationExists("m2@example.test")).toBe(true);
+    expect(await authExists(plain.id)).toBe(false);
+  });
+
+  it("L3: an account with an empty or blank address is never selected (SQL and counts)", async () => {
+    const blank = await acct({ email: "blank@example.test" });
+    await prisma.$executeRaw`update auth.users set email = '' where id = ${blank.id}::uuid`;
+    const spaces = await acct({ email: "spaces@example.test" });
+    await prisma.$executeRaw`update auth.users set email = '   ' where id = ${spaces.id}::uuid`;
+    expect(await selectAuthEligibleIds(NOW)).toEqual([]);
+    expect(await run()).toMatchObject({ due: 0, deleted: 0 });
+    expect(await authExists(blank.id)).toBe(true);
+    expect(await authExists(spaces.id)).toBe(true);
   });
 
   it("never selects an anonymous guest, the super-admin, an invited, SSO, banned or soft-deleted account", async () => {
     const guest = await acct({ anonymous: true });
-    const boss = await acct({ email: getSuperAdminEmail().toUpperCase() });
+    const boss = await acct({ email: BOSS.toUpperCase() });
     const invited = await acct({ email: "i@example.test", set: { invited_at: OLD } });
     const sso = await acct({ email: "sso@example.test", isSsoUser: true });
     const banned = await acct({ email: "b@example.test", set: { banned_until: new Date("2099-01-01T00:00:00Z") } });
@@ -191,8 +228,23 @@ describe("the SQL and the pure predicate agree", () => {
       { set: { deleted_at: OLD } },
       { isSsoUser: true },
       { anonymous: true },
-      { email: getSuperAdminEmail() },
-      { email: getSuperAdminEmail().toUpperCase() },
+      { email: BOSS },
+      { email: BOSS.toUpperCase() },
+      // M1: the latest of creation / access email / reservation decides
+      { reservation: true },
+      { reservation: true, reservationAt: new Date(CUTOFF.getTime() - 1) },
+      { reservation: true, reservationAt: CUTOFF },
+      { reservation: true, reservationAt: hoursAgo(24) },
+      { set: { confirmation_sent_at: YOUNG } },
+      { set: { confirmation_sent_at: new Date(CUTOFF.getTime() - 1) } },
+      { set: { confirmation_sent_at: CUTOFF } },
+      { set: { recovery_sent_at: YOUNG, confirmation_sent_at: OLD } },
+      // staff and odd addresses
+      { email: "ai@example.test" },
+      { email: "AI@Example.test " },
+      { email: "   " },
+      { email: "" },
+      { email: null },
     ];
     for (const col of ["confirmation_sent_at", "recovery_sent_at", "email_change_sent_at", "reauthentication_sent_at"] as const) {
       for (const at of [new Date(THRESHOLD.getTime() - 1), THRESHOLD, new Date(THRESHOLD.getTime() + 1), hoursAgo(1), new Date(CUTOFF.getTime() - 400 * day)]) {
@@ -201,18 +253,26 @@ describe("the SQL and the pure predicate agree", () => {
     }
     const made: string[] = [];
     for (const [i, c] of cases.entries()) {
-      const a = await acct({ ...c, email: c.anonymous ? undefined : (c.email ?? `m${i}@example.test`) });
+      const a = await acct({ ...c, email: c.anonymous || c.email === null || c.email === "" || c.email === "   " ? undefined : (c.email ?? `m${i}@example.test`) });
+      // a NON-anonymous user without a usable address (the app has no phone auth, but the column allows it)
+      if (c.email === null) await prisma.$executeRaw`update auth.users set email = null where id = ${a.id}::uuid`;
+      if (c.email === "") await prisma.$executeRaw`update auth.users set email = '' where id = ${a.id}::uuid`;
+      if (c.email === "   ") await prisma.$executeRaw`update auth.users set email = '   ' where id = ${a.id}::uuid`;
       made.push(a.id);
     }
+    process.env.ANALYTICS_AI_ADMIN_EMAILS = "ai@example.test";
     const rows = await prisma.$queryRaw<
       {
         id: string; email: string | null; is_anonymous: boolean; created_at: Date; email_confirmed_at: Date | null; phone_confirmed_at: Date | null;
         last_sign_in_at: Date | null; invited_at: Date | null; banned_until: Date | null; deleted_at: Date | null; is_sso_user: boolean;
         confirmation_sent_at: Date | null; recovery_sent_at: Date | null; email_change_sent_at: Date | null; reauthentication_sent_at: Date | null;
+        latest_reservation: Date | null;
       }[]
     >`select id::text as id, email, is_anonymous, created_at, email_confirmed_at, phone_confirmed_at, last_sign_in_at, invited_at, banned_until,
-        deleted_at, is_sso_user, confirmation_sent_at, recovery_sent_at, email_change_sent_at, reauthentication_sent_at from auth.users`;
-    const protectedEmails = [getSuperAdminEmail().toLowerCase()];
+        deleted_at, is_sso_user, confirmation_sent_at, recovery_sent_at, email_change_sent_at, reauthentication_sent_at,
+        (select max(w."createdAt") from waitlist_entries w where lower(btrim(w.email)) = lower(btrim(auth.users.email))) as latest_reservation
+        from auth.users`;
+    const protectedEmails = [BOSS, "ai@example.test"];
     const jsEligible = rows
       .filter((r) => {
         const f: AuthUserFacts = {
@@ -220,6 +280,7 @@ describe("the SQL and the pure predicate agree", () => {
           phoneConfirmedAt: r.phone_confirmed_at, lastSignInAt: r.last_sign_in_at, invitedAt: r.invited_at, bannedUntil: r.banned_until,
           deletedAt: r.deleted_at, isSsoUser: r.is_sso_user, confirmationSentAt: r.confirmation_sent_at, recoverySentAt: r.recovery_sent_at,
           emailChangeSentAt: r.email_change_sent_at, reauthenticationSentAt: r.reauthentication_sent_at,
+          latestReservationAt: r.latest_reservation,
         };
         return notUnusedReason(f, NOW, WAITLIST_RETENTION_MONTHS, protectedEmails) === null;
       })
@@ -230,6 +291,7 @@ describe("the SQL and the pure predicate agree", () => {
     expect(sqlEligible).toEqual(jsEligible);
     expect(jsEligible.length).toBeGreaterThan(3);
     expect(jsEligible.length).toBeLessThan(cases.length);
+    delete process.env.ANALYTICS_AI_ADMIN_EMAILS;
   }, 120_000);
 });
 
@@ -305,6 +367,7 @@ describe("the account must be empty: table by table", () => {
       { role: "roaster" },
       { country: "CO" },
       { bio: "" },
+      { avatarUrl: "https://example.test/a.png" },
     ];
     for (const patch of patches) {
       await resetDb();
@@ -331,6 +394,25 @@ describe("the account must be empty: table by table", () => {
     const group = await prisma.tastingGroup.create({ data: { name: "Grupo de Q", createdBy: q } });
     const linked = await prisma.tastingGroupMember.create({ data: { groupId: group.id, email: "ghost@example.test", userId: a.id, displayName: "Fantasma" } });
     const pending = await prisma.tastingGroupMember.create({ data: { groupId: group.id, email: "ghost@example.test.other", userId: null } });
+    const otherEvent = await prisma.outboundEmailEvent.findFirstOrThrow({ where: { actorKey: "u_someone-else" } });
+    // L4: byte-for-byte snapshots of every row the other person owns, before and after
+    const snap = async () => {
+      const out: Record<string, unknown> = {};
+      const one = async (label: string, table: string, id: string) => {
+        out[label] = (await prisma.$queryRawUnsafe<{ j: unknown }[]>(`select to_jsonb(t) as j from "${table}" t where id = $1`, id))[0]?.j ?? null;
+      };
+      await one("profile", "profiles", q);
+      await one("coffee", "coffees", qCoffee.id);
+      await one("session", "cupping_sessions", qSession.id);
+      await one("group", "tasting_groups", group.id);
+      await one("pending", "tasting_group_members", pending.id);
+      await one("event", "outbound_email_events", otherEvent.id);
+      const m = (await prisma.$queryRawUnsafe<{ j: Record<string, unknown> }[]>(`select to_jsonb(t) as j from "tasting_group_members" t where id = $1`, linked.id))[0]?.j ?? {};
+      // the linked roster row legitimately loses ONLY its link
+      out["linked"] = { ...m, userId: null };
+      return out;
+    };
+    const before = await snap();
 
     const r = await run();
     expect(r).toMatchObject({ due: 1, deleted: 1, skippedUsed: 0, failed: 0 });
@@ -348,6 +430,7 @@ describe("the account must be empty: table by table", () => {
     expect(await prisma.cuppingSession.count({ where: { id: qSession.id } })).toBe(1);
     expect(await prisma.tastingGroup.count({ where: { id: group.id } })).toBe(1);
     expect(await profileExists(q)).toBe(true);
+    expect(await snap()).toEqual(before);
     // the roster row stays with the address Q typed and loses only the link
     const after = await prisma.tastingGroupMember.findUniqueOrThrow({ where: { id: linked.id } });
     expect(after.userId).toBeNull();
@@ -459,7 +542,180 @@ describe("co-cupper evaluation count is scoped to the shared sessions", () => {
     expect(card?.evaluationCount).toBe(2);
     expect(list.find((c) => c.userId === y)).toBeUndefined();
   });
+
+  it("counts SUBMITTED evaluations only, and none of a cupper the owner excluded", async () => {
+    const viewer = await makeUser({ name: "Viewer2" });
+    const x = await makeUser({ name: "Equis2" });
+    const z = await makeUser({ name: "Zeta2" });
+    const s = await makeSession({ ownerId: viewer, isGroup: true, participants: [x, z], samples: [{}, {}, {}] });
+    await makeEvaluation({ sampleId: s.samples[0].id, sessionId: s.id, cupperId: x });
+    await makeEvaluation({ sampleId: s.samples[1].id, sessionId: s.id, cupperId: x });
+    await makeEvaluation({ sampleId: s.samples[2].id, sessionId: s.id, cupperId: x, draft: true });
+    await makeEvaluation({ sampleId: s.samples[0].id, sessionId: s.id, cupperId: z });
+    await prisma.sessionParticipant.updateMany({ where: { sessionId: s.id, userId: z }, data: { excludedFromResults: true } });
+    const list = await getCoCupperCandidates(viewer);
+    expect(list.find((c) => c.userId === x)?.evaluationCount).toBe(2);
+    expect(list.find((c) => c.userId === z)?.evaluationCount).toBe(0);
+  });
+
 });
+
+describe("races between selection and deletion (M2)", () => {
+  it("a blocking row inserted AFTER selection is caught by the in-transaction plan check: nothing deleted, counted skippedUsed", async () => {
+    const a = await acct({ email: "race@example.test", reservation: true });
+    const other = await makeUser({ email: "owner@example.test" });
+    const r = await purgeUnusedAccounts({
+      enabled: true,
+      now: NOW,
+      hooks: {
+        // after selection the account joins a session (a Cascade FK: without the plan check it would be dropped silently)
+        afterSelect: async () => void (await makeSession({ ownerId: other, isGroup: true, participants: [a.id] })),
+      },
+    });
+    expect(r).toMatchObject({ deleted: 0, skippedUsed: 1, failed: 0 });
+    expect(deleteUser).not.toHaveBeenCalled();
+    expect(await authExists(a.id)).toBe(true);
+    expect(await profileExists(a.id)).toBe(true);
+    expect(await reservationExists("race@example.test")).toBe(true);
+    expect(await prisma.sessionParticipant.count({ where: { userId: a.id } })).toBe(1);
+  });
+
+  it("a Restrict-FK blocking row inserted after selection is a skip, not a failure", async () => {
+    const a = await acct({ email: "race2@example.test", reservation: true });
+    const r = await purgeUnusedAccounts({
+      enabled: true,
+      now: NOW,
+      hooks: { afterSelect: async () => void (await makeCoffee(a.id)) },
+    });
+    expect(r).toMatchObject({ deleted: 0, skippedUsed: 1, failed: 0 });
+    expect(await profileExists(a.id)).toBe(true);
+    expect(await reservationExists("race2@example.test")).toBe(true);
+  });
+
+  it("a first sign-in landing AFTER selection is caught by the in-transaction auth re-check: profile, reservation and auth user all stay", async () => {
+    const a = await acct({ email: "race3@example.test", reservation: true });
+    const r = await purgeUnusedAccounts({
+      enabled: true,
+      now: NOW,
+      hooks: {
+        afterSelect: async () => void (await prisma.$executeRaw`update auth.users set last_sign_in_at = ${NOW}, email_confirmed_at = ${NOW} where id = ${a.id}::uuid`),
+      },
+    });
+    expect(r).toMatchObject({ deleted: 0, skippedUsed: 1, failed: 0 });
+    expect(deleteUser).not.toHaveBeenCalled();
+    expect(await authExists(a.id)).toBe(true);
+    expect(await profileExists(a.id)).toBe(true);
+    expect(await reservationExists("race3@example.test")).toBe(true);
+  });
+
+  it("a sign-in landing between the transaction and the auth delete keeps the auth user (signedInDuringPurge)", async () => {
+    const a = await acct({ email: "race4@example.test", reservation: true });
+    const r = await purgeUnusedAccounts({
+      enabled: true,
+      now: NOW,
+      hooks: {
+        beforeAuthDelete: async () => void (await prisma.$executeRaw`update auth.users set last_sign_in_at = ${NOW}, email_confirmed_at = ${NOW} where id = ${a.id}::uuid`),
+      },
+    });
+    expect(deleteUser).not.toHaveBeenCalled();
+    expect(await authExists(a.id)).toBe(true);
+    expect(r).toMatchObject({ deleted: 0, failed: 0 });
+    expect(r.skippedUsed).toBe(1);
+  });
+
+  it("without any race the same hooks change nothing (control)", async () => {
+    const a = await acct({ email: "race5@example.test", reservation: true });
+    const r = await purgeUnusedAccounts({ enabled: true, now: NOW, hooks: { afterSelect: async () => {}, beforeAuthDelete: async () => {} } });
+    expect(r).toMatchObject({ deleted: 1, skippedUsed: 0 });
+    expect(await authExists(a.id)).toBe(false);
+  });
+});
+
+describe("orphan reservations and an email change in flight (M3)", () => {
+  it("a 13-month-old reservation whose address is the recorded old address of a pending change is kept; others are deleted", async () => {
+    const mover = await makeUser({ email: "new-address@example.test" });
+    await prisma.$executeRaw`update auth.users set raw_app_meta_data = ${JSON.stringify({ email_change_from: "Old-Address@Example.test" })}::jsonb where id = ${mover}::uuid`;
+    await prisma.waitlistEntry.create({ data: { email: "old-address@example.test", createdAt: OLD } });
+    await prisma.waitlistEntry.create({ data: { email: "gone@example.test", createdAt: OLD } });
+    const r = await run();
+    expect(r.orphanReservations).toEqual({ due: 1, deleted: 1 });
+    expect(await reservationExists("old-address@example.test")).toBe(true);
+    expect(await reservationExists("gone@example.test")).toBe(false);
+  });
+});
+
+describe("email change: the old address comes from app_metadata only (H1)", () => {
+  const victim = "victim@example.test";
+  const mine = "mine-new@example.test";
+
+  it("a forged user_metadata carrying ANOTHER person's address moves nothing", async () => {
+    const attacker = await makeUser({ email: mine });
+    await prisma.waitlistEntry.create({ data: { email: victim, locale: "es", source: "landing" } });
+    const before = await prisma.waitlistEntry.findMany({ orderBy: { email: "asc" } });
+    await moveReservationAfterEmailChange({
+      id: attacker,
+      email: mine,
+      new_email: "",
+      // what a signed-in user can write with the public key
+      user_metadata: { email_change_from: victim },
+    } as never);
+    expect(await prisma.waitlistEntry.findMany({ orderBy: { email: "asc" } })).toEqual(before);
+    expect(await reservationExists(victim)).toBe(true);
+    expect(await reservationExists(mine)).toBe(false);
+    expect(updateUserById).not.toHaveBeenCalled();
+  });
+
+  it("app_metadata carrying the user's real old address moves the row, then clears it (service role)", async () => {
+    const me = await makeUser({ email: mine });
+    await prisma.waitlistEntry.create({ data: { email: "my-old@example.test", locale: "en", source: "landing" } });
+    await moveReservationAfterEmailChange({
+      id: me,
+      email: mine,
+      new_email: "",
+      app_metadata: { provider: "email", email_change_from: "My-Old@example.test" },
+    });
+    expect(await reservationExists("my-old@example.test")).toBe(false);
+    expect((await prisma.waitlistEntry.findUniqueOrThrow({ where: { email: mine } })).locale).toBe("en");
+    expect(updateUserById).toHaveBeenCalledWith(me, { app_metadata: { provider: "email", email_change_from: null } });
+  });
+
+  it("belt and braces: the recorded old address is held by ANOTHER auth user: nothing moves", async () => {
+    await makeUser({ email: victim });
+    const me = await makeUser({ email: mine });
+    await prisma.waitlistEntry.create({ data: { email: victim } });
+    await moveReservationAfterEmailChange({ id: me, email: mine, new_email: "", app_metadata: { email_change_from: victim } });
+    expect(await reservationExists(victim)).toBe(true);
+    expect(await reservationExists(mine)).toBe(false);
+  });
+
+  it("while the new address is still pending (first of two confirmations) nothing moves", async () => {
+    const me = await makeUser({ email: "still-old@example.test" });
+    await prisma.waitlistEntry.create({ data: { email: "still-old@example.test" } });
+    await moveReservationAfterEmailChange({ id: me, email: "still-old@example.test", new_email: mine, app_metadata: { email_change_from: "still-old@example.test" } });
+    expect(await reservationExists("still-old@example.test")).toBe(true);
+    expect(await reservationExists(mine)).toBe(false);
+  });
+
+  it("a failing admin clear never throws (the sign-in goes on) and the row has still moved", async () => {
+    const me = await makeUser({ email: mine });
+    await prisma.waitlistEntry.create({ data: { email: "my-old2@example.test" } });
+    updateUserById.mockRejectedValue(Object.assign(new Error("x"), { code: "boom" }));
+    await expect(
+      moveReservationAfterEmailChange({ id: me, email: mine, new_email: "", app_metadata: { email_change_from: "my-old2@example.test" } }),
+    ).resolves.toBeUndefined();
+    expect(await reservationExists(mine)).toBe(true);
+  });
+
+  it("requesting a change records the SERVER-read old address in app_metadata (existing keys kept); a failure does not throw", async () => {
+    await recordOldAddressForEmailChange({ id: "11111111-1111-1111-1111-111111111111", email: "Old@Example.test", app_metadata: { provider: "email" } });
+    expect(updateUserById).toHaveBeenCalledWith("11111111-1111-1111-1111-111111111111", {
+      app_metadata: { provider: "email", email_change_from: "old@example.test" },
+    });
+    updateUserById.mockResolvedValue({ data: null, error: { status: 500, code: "unexpected_failure" } });
+    await expect(recordOldAddressForEmailChange({ id: "x", email: "o@e.test" })).resolves.toBeUndefined();
+  });
+});
+
 
 describe("listAllAuthUsersStrict", () => {
   it("returns the full list when the last page has no next page", async () => {

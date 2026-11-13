@@ -24,6 +24,7 @@ CREATE TABLE auth.users (
   email text,
   is_anonymous boolean NOT NULL DEFAULT false,
   raw_user_meta_data jsonb NOT NULL DEFAULT '{}'::jsonb,
+  raw_app_meta_data jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
   last_sign_in_at timestamptz,
   -- Columns of the real GoTrue schema that the unused-account purge reads
