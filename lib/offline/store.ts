@@ -367,6 +367,8 @@ export type UnsyncedEntry = {
   status: SyncStatus;
   updatedAt: number;
   data: Data;
+  /** The module was produced while the sample was the pinned reference (S10 WP5b). */
+  pinnedView?: boolean;
 };
 
 /** Terminal modules the cupper may want to read, copy or dismiss (S8-05
@@ -385,6 +387,7 @@ export async function listTerminalEntries(userId: string): Promise<UnsyncedEntry
           status: mod.syncStatus,
           updatedAt: mod.updatedAt,
           data: mod.data,
+          ...(mod.pinnedView ? { pinnedView: true } : {}),
         });
       }
     }

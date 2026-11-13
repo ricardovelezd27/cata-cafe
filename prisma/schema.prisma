@@ -181,6 +181,12 @@ model CuppingSession {
   /// TIMESTAMPTZ so the realtime payload carries its offset. Never read by
   /// scoring, aggregates or the trigger. Not copied by duplicateSession.
   warmupStartedAt DateTime? @db.Timestamptz(3)
+  /// Announced close moment (S10 WP4b, Kim C1): set by `announceClose`, cleared
+  /// by `cancelAnnouncedClose`. TIMESTAMPTZ so the realtime payload carries its
+  /// offset. Display only: nothing closes at this instant on the server (the
+  /// owner's open cup page calls closeSession), and a closed session's value is
+  /// history. Never read by scoring, aggregates, the trigger or the cron.
+  closingAt DateTime? @db.Timestamptz(3)
   /// Owner closed new entries (S8-11 T6 / C4): a NEWCOMER's join link is
   /// refused with `entries_closed`; existing members re-enter. Display/gating
   /// only: never read by scoring, aggregates or the trigger.
@@ -283,6 +289,19 @@ model Evaluation {
   // S8-18: newest client edit time accepted for this row (ordering only; never
   // read by scoring, the trigger or AggregateScore).
   lastClientWriteAt DateTime? @db.Timestamptz(3)
+  /// S10 WP4b (Kim C1): when the session OWNER accepted this complete draft
+  /// after the close (`acceptLateEvaluation`). NULL = never. Display/audit only:
+  /// the aggregate trigger fires on the isDraft flip, never reads this.
+  acceptedLateAt DateTime? @db.Timestamptz(3)
+  /// S10 WP4b fix (review H1/H2): the server's own record that this content arrived
+  /// AFTER the close. Stamped ONLY by submitLateDraft (create and update); nothing the
+  /// client sends decides it. NULL on a draft = the server already had it when the session closed.
+  receivedLateAt DateTime? @db.Timestamptz(3)
+  /// S10 WP4b (Kim C2): a text note the cupper added to their own SUBMITTED
+  /// evaluation after the close (max 500 chars, enforced in the action). Never a
+  /// rating: scoring, the trigger and AggregateScore never read it.
+  postCloseNote   String?
+  postCloseNoteAt DateTime? @db.Timestamptz(3)
 
   coffeeHistory UserCoffeeHistory[]
 

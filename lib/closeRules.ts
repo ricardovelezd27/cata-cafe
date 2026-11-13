@@ -10,11 +10,12 @@ import type { SessionFormat } from "@/lib/constants";
 
 /** What happens to a cupper's complete-but-unsent evaluations when the session
  *  closes. Kim's default (C1 option b): they are left OUT of the results, the
- *  owner is told before closing, the cupper after. They stay in the database.
+ *  owner is told before closing, the cupper after. They stay in the database,
+ *  unless the owner accepts one afterwards (S10 WP4b, `acceptLateEvaluation`,
+ *  `TODO(kim-validar:C1)`; the pure rule is `isAcceptableLate` in
+ *  lib/lateContributions.ts).
  *  "promote_complete" is C1 option (a): submit complete drafts inside
- *  closeSessionInternal before the flip. It is OFF; nothing reads it yet.
- *  // TODO(S8-05/C1-d): the owner "accept late contribution" action is a
- *  post-close write and needs an answer from Kim; not built. */
+ *  closeSessionInternal before the flip. It is OFF; nothing reads it yet. */
 export type DraftAtClosePolicy = "exclude" | "promote_complete";
 export const DRAFT_AT_CLOSE: DraftAtClosePolicy = "exclude";
 

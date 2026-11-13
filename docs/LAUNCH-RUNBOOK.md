@@ -2271,6 +2271,7 @@ No Prisma migration, no new environment variable, no new cron entry.
 rollback at its end (the PHASE 21 body of `can_view_group_results`). Run it in one transaction; the
 app works under either state.
 
+
 ---
 
 ## §34. Database — apply the `coffee_origin_edited_at` migration (2026-11, S10 WP5a)
@@ -2310,6 +2311,13 @@ reads it is rolled back; code rolled back ignores the column anyway.
 ---
 
 ## §35. Partial evaluations ("no evaluado"): dry run, PHASE 29, check, merge (2026-11, S10 WP3b)
+
+**Status (2026-11-13/14): PHASE 29 is LIVE in production.** The dry run was executed in production on
+2026-11-13 at 22:36 UTC (every line as expected: 0 evaluations with a `_ne` marker, 0 with a non-numeric
+rating). PHASE 29 was APPLIED on 2026-11-13 at 23:36 UTC, on the owner's explicit yes, exactly as it stands
+in `rls_and_triggers.sql`. Verified read-only afterwards: the helper is present and not executable by
+`authenticated` / `anon`, the trigger function mentions it, and the 354 aggregate rows are all
+`ruleVersion` 1 (none recomputed). What remains is step 4 (merge and deploy of the application code).
 
 **What it does:** a cupper who could not judge one affective section (for instance arrived after the
 fragrance) marks it "No evaluado" instead of inventing a value. That evaluation is a **declared
@@ -2392,3 +2400,57 @@ trigger's stored averages.
    app on the PHASE 26 function would count partial evaluations in the averages on screen while the trigger
    ignores them. Neither direction touches a stored score; evaluations already stored with a marker keep it
    (and NULL scores), which the old code reads as an ordinary incomplete evaluation.
+---
+
+## §36. Database — apply the `close_notice_and_late_contributions` migration (2026-11, S10 WP4b)
+
+**What it does:** five NULLABLE columns, no default, no backfill, no index, no trigger, no policy:
+
+- `cupping_sessions."closingAt"` (TIMESTAMPTZ): the close the owner announced a few minutes ahead.
+- `evaluations."acceptedLateAt"` (TIMESTAMPTZ): when the owner accepted a complete draft after the close.
+- `evaluations."receivedLateAt"` (TIMESTAMPTZ): the server's own record that a device's late send arrived after the close.
+- `evaluations."postCloseNote"` (TEXT) and `"postCloseNoteAt"` (TIMESTAMPTZ): a cupper's text note
+  on their own submitted evaluation after the close.
+
+**No SQL phase.** `cupping_sessions` and `evaluations` are granted table-wide to the browser key
+(only `session_samples` and `session_participants` are column-level), so the realtime banner
+and the owner's reads need nothing more. Participants still read only their own `evaluations`
+rows (PHASE 21), so another cupper's note never reaches the browser key.
+
+**Order matters:** run it BEFORE the merge and the deploy. The regenerated Prisma client selects the
+columns on the cup and results pages at once; without them those pages fail. Code that predates
+the migration ignores the columns, so applying it early is safe.
+
+1. On your machine, with `.env.local` pointing at the project (it is production):
+   ```bash
+   npx.cmd prisma migrate deploy
+   ```
+   Expected: `… 20261115100000_close_notice_and_late_contributions … applied` (the output may list
+   other pending migrations before it, in name order).
+2. **Verify** — Supabase SQL Editor:
+   ```sql
+   SELECT table_name, column_name, data_type, is_nullable
+   FROM information_schema.columns
+   WHERE (table_name = 'cupping_sessions' AND column_name = 'closingAt')
+      OR (table_name = 'evaluations' AND column_name IN ('acceptedLateAt','receivedLateAt','postCloseNote','postCloseNoteAt'))
+   ORDER BY table_name, column_name;
+   ```
+   Expected: five rows, all `is_nullable = YES`.
+3. Deploy the branch. No new environment variable.
+
+**Limit to know:** the announced close is NOT enforced by the server and no cron acts on it. The
+owner's open cup page calls "Cerrar" when the countdown reaches zero; if that page is not open
+then, nothing closes and the owner sees "El cierre anunciado ya pasó" with "Cerrar ahora" /
+"Cancelar" on return. The cron deadline close and the idle close are unchanged.
+
+**Smoke test (two accounts, a live group session with a complete unsent draft):** the owner opens
+"Cerrar sesión" and picks "Avisar y cerrar en 2 min"; the other cupper's cup page shows "El
+organizador cerrará la cata en 2 min. Envía tus evaluaciones." (no sound, input never blocked);
+"Cancelar" removes it; at zero the owner's page closes. On the owner's results page "Evaluaciones
+recibidas tarde" lists the complete draft; "Aceptar" asks to confirm, then the cupper's own results
+page says "Tu evaluación de … se incluyó el …" and "Resultados actualizados el …" shows on the
+owner's page. A cupper adds "una nota después del cierre" on their sample drill-down; the owner
+reads it under "Notas añadidas después del cierre"; nobody else sees it.
+
+**Rollback:** the columns are additive; code rolled back ignores them. Do not drop them while the
+new code is deployed.

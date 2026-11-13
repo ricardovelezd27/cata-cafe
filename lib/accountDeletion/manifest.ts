@@ -99,7 +99,7 @@ export const PROFILE_MANIFEST: readonly ManifestEntry[] = [
     kind: "relation",
     merge: { kind: "move", delegate: "evaluation" },
     onDelete: "reassign-tombstone",
-    note: "Anonymized, not erased, so community scores and SD do not move (spec 7). An excluded cupper stays excluded: their participant row moves with its flag.",
+    note: "Anonymized, not erased, so community scores and SD do not move (spec 7). An excluded cupper stays excluded: their participant row moves with its flag. Their postCloseNote / postCloseNoteAt (free text written after a close, S10 WP4b) are set NULL in the same update.",
   },
   {
     model: "PhysicalEvaluation",

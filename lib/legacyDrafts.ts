@@ -75,6 +75,82 @@ export async function hasLegacyDrafts(
   return row !== null;
 }
 
+type LegacyRewriteContext = {
+  sessionId: string;
+  cupperId: string;
+  format: string;
+  cupsPerSample: number;
+  referenceSampleId: string | null;
+  /** B1: the session's reference mode; a "free" reference is scored like any sample. */
+  referenceMode: unknown;
+};
+
+type LegacyRow = {
+  id: string;
+  sessionSampleId: string;
+  descriptiveData: unknown;
+  affectiveData: unknown;
+  combinedData: unknown;
+};
+
+const LEGACY_ROW_SELECT = {
+  id: true,
+  sessionSampleId: true,
+  descriptiveData: true,
+  affectiveData: true,
+  combinedData: true,
+} as const;
+
+/** Rewrites ONE legacy row (cups NULL, still a draft) under the current rule;
+ *  returns 1 when it was written, 0 when skipped or already newer. Shared by the
+ *  submit-time pass and the owner's post-close acceptance (S10 WP4b). */
+async function rewriteLegacyRow(
+  tx: Pick<Prisma.TransactionClient, "evaluation">,
+  row: LegacyRow,
+  ctx: LegacyRewriteContext,
+): Promise<number> {
+  const moduleKey = moduleKeyForFormat(ctx.format);
+  const raw =
+    moduleKey === "descriptive"
+      ? row.descriptiveData
+      : moduleKey === "affective"
+        ? row.affectiveData
+        : row.combinedData;
+  const stored =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : {};
+  const pins = shouldPinReference({
+    mode: ctx.referenceMode,
+    moduleKey,
+    isActiveReference: ctx.referenceSampleId === row.sessionSampleId,
+  });
+  const data = pins ? pinReferenceAffective(stored, ctx.cupsPerSample) : stored;
+  // S10 WP5b (B2): the stored row is the one being pinned, so its stash is carried over
+  // (or created from its current values). Shared by the submit-time pass and the owner's acceptance.
+  const refStash = pins ? stashBeforePin(stored, data) : null;
+  const fields = tryComputeEvaluationDerived(moduleKey, data, ctx.cupsPerSample, { refStash });
+  if (!fields) {
+    // Ids only: never the payload.
+    logWarn({
+      where: "legacyDrafts.skipped_invalid",
+      sessionId: ctx.sessionId,
+      userId: ctx.cupperId,
+      evaluationId: row.id,
+    });
+    return 0;
+  }
+  // Third review L-1: the row was read above, so an autosave (which now writes `cups`) may
+  // have rewritten it since. The write names the same two conditions the read used
+  // (`cups` NULL, still a draft): a row that no longer matches is left exactly as the
+  // newer save wrote it, and is not counted.
+  const res = await tx.evaluation.updateMany({
+    where: { id: row.id, cups: null, isDraft: true },
+    data: fields as unknown as Prisma.EvaluationUpdateManyMutationInput,
+  });
+  return res.count;
+}
+
 /** Returns how many rows were rewritten. */
 export async function recomputeLegacyDraftsInTx(
   tx: Pick<Prisma.TransactionClient, "evaluation">,
@@ -86,59 +162,39 @@ export async function recomputeLegacyDraftsInTx(
     referenceMode: unknown;
   },
 ): Promise<number> {
-  const moduleKey = moduleKeyForFormat(args.format);
   const rows = await tx.evaluation.findMany({
     where: legacyWhere(args),
-    select: {
-      id: true,
-      sessionSampleId: true,
-      descriptiveData: true,
-      affectiveData: true,
-      combinedData: true,
-    },
+    select: LEGACY_ROW_SELECT,
   });
 
   let rewritten = 0;
   for (const row of rows) {
-    const raw =
-      moduleKey === "descriptive"
-        ? row.descriptiveData
-        : moduleKey === "affective"
-          ? row.affectiveData
-          : row.combinedData;
-    const stored =
-      raw && typeof raw === "object" && !Array.isArray(raw)
-        ? (raw as Record<string, unknown>)
-        : {};
-    const pins = shouldPinReference({
-      mode: args.referenceMode,
-      moduleKey,
-      isActiveReference: args.referenceSampleId === row.sessionSampleId,
+    rewritten += await rewriteLegacyRow(tx, row, {
+      sessionId: args.sessionId,
+      cupperId: args.cupperId,
+      format: args.format,
+      cupsPerSample: args.cupsPerSample,
+      referenceSampleId: args.referenceSampleId,
+      referenceMode: args.referenceMode,
     });
-    const data = pins ? pinReferenceAffective(stored, args.cupsPerSample) : stored;
-    // S10 WP5b (B2): the stored row is the one being pinned, so its stash is
-    // carried over (or created from its current values).
-    const refStash = pins ? stashBeforePin(stored, data) : null;
-    const fields = tryComputeEvaluationDerived(moduleKey, data, args.cupsPerSample, { refStash });
-    if (!fields) {
-      // Ids only: never the payload.
-      logWarn({
-        where: "legacyDrafts.skipped_invalid",
-        sessionId: args.sessionId,
-        userId: args.cupperId,
-        evaluationId: row.id,
-      });
-      continue;
-    }
-    // Third review L-1: the row was read above, so an autosave (which now writes `cups`) may
-    // have rewritten it since. The write names the same two conditions the read used
-    // (`cups` NULL, still a draft): a row that no longer matches is left exactly as the
-    // newer save wrote it, and is not counted.
-    const res = await tx.evaluation.updateMany({
-      where: { id: row.id, cups: null, isDraft: true },
-      data: fields as unknown as Prisma.EvaluationUpdateManyMutationInput,
-    });
-    rewritten += res.count;
   }
   return rewritten;
+}
+
+/** S10 WP4b: the owner accepts ONE complete draft after the close. The session
+ *  is closed, so `legacyWhere` (open sessions only) does not apply; this reads
+ *  the one row by id and rewrites it the same way (cups NULL -> derived fields
+ *  and `cups` written, reference pinned as the save path pins it), right before
+ *  the caller flips `isDraft`. A row that is not a legacy draft is left alone.
+ *  Callers authorize first. Returns 1 when rewritten. */
+export async function recomputeLegacyDraftByIdInTx(
+  tx: Pick<Prisma.TransactionClient, "evaluation">,
+  args: LegacyRewriteContext & { evaluationId: string },
+): Promise<number> {
+  const row = await tx.evaluation.findFirst({
+    where: { id: args.evaluationId, isDraft: true, cups: null },
+    select: LEGACY_ROW_SELECT,
+  });
+  if (!row) return 0;
+  return rewriteLegacyRow(tx, row, args);
 }
