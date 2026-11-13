@@ -51,12 +51,33 @@ describe("form helpers", () => {
     expect(d.defecto_tipo).toEqual([]);
     expect(d.tazas_no_uniformes).toEqual([true, false]);
   });
-  it("unmarking a non-uniform cup also clears its defect and type", () => {
-    let d = applyDefectChoice({}, 2, 1, "moldy");
+  it("a tap on the non-uniform row of a DEFECTIVE cup changes nothing (a defect is only removed on purpose)", () => {
+    const d = applyDefectChoice({}, 3, 1, "phenolic");
+    const after = applyNonUniformToggle(d, 3, 1);
+    expect(after).toBe(d);
+    expect(after.tazas_defectuosas).toEqual([false, true, false]);
+    expect(after.tazas_no_uniformes).toEqual([false, true, false]);
+    expect(after[KEY]).toEqual([null, "phenolic", null]);
+  });
+  it("the same holds for a legacy defective cup with no type", () => {
+    const legacy = { tazas_defectuosas: [true, false], tazas_no_uniformes: [true, false], defecto_tipo: [] };
+    expect(applyNonUniformToggle(legacy, 2, 0)).toBe(legacy);
+  });
+  it("the non-uniform row still toggles a cup that is not defective", () => {
+    let d = applyNonUniformToggle({}, 2, 1);
+    expect(d.tazas_no_uniformes).toEqual([false, true]);
     d = applyNonUniformToggle(d, 2, 1);
     expect(d.tazas_no_uniformes).toEqual([false, false]);
     expect(d.tazas_defectuosas).toEqual([false, false]);
-    expect(d[KEY]).toEqual([null, null]);
+  });
+  it("'remove mark' on a cup that is not marked marks nothing (a new cup is only ever marked with a type)", () => {
+    const d = applyDefectChoice({}, 3, 0, null);
+    expect(d.tazas_defectuosas).toEqual([false, false, false]);
+    expect(d[KEY]).toEqual([null, null, null]);
+    expect(d.defecto_tipo).toEqual([]);
+    const withNu = applyDefectChoice(applyNonUniformToggle({}, 3, 2), 3, 2, null);
+    expect(withNu.tazas_defectuosas).toEqual([false, false, false]);
+    expect(withNu.tazas_no_uniformes).toEqual([false, false, true]);
   });
   it("a non-uniform toggle does nothing with one cup", () => {
     const d = { a: 1 };

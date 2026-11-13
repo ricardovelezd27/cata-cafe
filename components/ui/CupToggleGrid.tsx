@@ -97,6 +97,13 @@ export function CupToggleGrid({
                   key={i}
                   type="button"
                   onClick={() => {
+                    // A defective cup is always non-uniform: this row never
+                    // removes a defect. The tap opens that cup's type chooser,
+                    // where "remove mark" is the one deliberate way out.
+                    if (isDef) {
+                      setPicking(picking === i ? null : i);
+                      return;
+                    }
                     if (picking === i) setPicking(null);
                     onToggleNonUniform(i);
                   }}

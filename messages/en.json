@@ -967,7 +967,7 @@
       "u": "u = non-uniform cups (2 points each; a defective cup counts here too)",
       "d": "d = defective cups (4 points each, with its type: moldy, phenolic or potato)",
       "values": "Values for this evaluation",
-      "base": "Base (before rounding)",
+      "base": "Base (before rounding to 0.25)",
       "uniformity": "Uniformity",
       "defects": "Defects",
       "raw": "Unrounded",

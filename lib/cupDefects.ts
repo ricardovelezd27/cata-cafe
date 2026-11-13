@@ -96,8 +96,11 @@ export function applyDefectChoice(
   return withCups(data, cups, s);
 }
 
-/** Tap on the non-uniform row: marking sets it; unmarking also clears a defect
- *  on that cup (a defective cup is always non-uniform). */
+/** Tap on the non-uniform row of a cup that is NOT defective: toggles it. On a
+ *  DEFECTIVE cup it changes nothing: a defective cup is always non-uniform, and
+ *  the only way to remove a defect is the deliberate "remove mark" of the type
+ *  chooser (`applyDefectChoice(…, null)`), never a stray tap on the other row
+ *  (the grid opens the chooser instead). */
 export function applyNonUniformToggle(
   data: Record<string, unknown>,
   cups: number,
@@ -105,13 +108,8 @@ export function applyNonUniformToggle(
 ): Record<string, unknown> {
   if (idx < 0 || idx >= cups || cups < 2) return data;
   const s = formCupState(data, cups);
-  if (s.nonUniform[idx]) {
-    s.nonUniform[idx] = false;
-    s.defective[idx] = false;
-    s.types[idx] = null;
-  } else {
-    s.nonUniform[idx] = true;
-  }
+  if (s.defective[idx]) return data;
+  s.nonUniform[idx] = !s.nonUniform[idx];
   return withCups(data, cups, s);
 }
 

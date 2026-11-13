@@ -967,7 +967,7 @@
       "u": "u = tazas no uniformes (2 puntos cada una; una taza defectuosa también cuenta aquí)",
       "d": "d = tazas defectuosas (4 puntos cada una, con su tipo: mohoso, fenólico o papa)",
       "values": "Valores de esta evaluación",
-      "base": "Base (sin redondear)",
+      "base": "Base (antes de redondear a 0.25)",
       "uniformity": "Uniformidad",
       "defects": "Defectos",
       "raw": "Sin redondear",
