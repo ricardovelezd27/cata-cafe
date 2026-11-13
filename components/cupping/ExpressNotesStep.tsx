@@ -10,9 +10,11 @@ export type ExpressNotesStepTranslations = {
   placeholder: string;
   referenceBadge: string;
   optional: string;
+  /** One line shown on a revealed sample, whose note can no longer be edited (S10 WP3a). */
+  revealedNote: string;
 };
 
-export type ExpressNotesSample = { id: string; label: string; isReference: boolean };
+export type ExpressNotesSample = { id: string; label: string; isReference: boolean; readOnly?: boolean };
 
 export function ExpressNotesStep({
   samples,
@@ -27,7 +29,7 @@ export function ExpressNotesStep({
   translations: ExpressNotesStepTranslations;
   maxLength?: number;
 }) {
-  const { title, body, placeholder, referenceBadge, optional } = translations;
+  const { title, body, placeholder, referenceBadge, optional, revealedNote } = translations;
   return (
     <div className="space-y-4">
       <div className="space-y-1">
@@ -55,14 +57,21 @@ export function ExpressNotesStep({
                   </Badge>
                 )}
               </div>
-              <Notes
-                value={text}
-                onChange={(v) => onChange(s.id, v)}
-                placeholder={placeholder}
-                rows={3}
-                maxLength={maxLength}
-                ariaLabel={`${title} · ${s.label}`}
-              />
+              {s.readOnly && (
+                <p role="note" className="mb-2 font-sans text-xs text-on-secondary-fixed-variant">
+                  {revealedNote}
+                </p>
+              )}
+              <fieldset disabled={s.readOnly === true} className="m-0 min-w-0 border-0 p-0 disabled:opacity-70">
+                <Notes
+                  value={text}
+                  onChange={(v) => onChange(s.id, v)}
+                  placeholder={placeholder}
+                  rows={3}
+                  maxLength={maxLength}
+                  ariaLabel={`${title} · ${s.label}`}
+                />
+              </fieldset>
               <p className="mt-1 text-right text-[11px] text-on-surface-variant tabular-nums">
                 {text.length}/{maxLength}
               </p>

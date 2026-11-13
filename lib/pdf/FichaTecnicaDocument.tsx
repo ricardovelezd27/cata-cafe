@@ -10,12 +10,11 @@
 // NEVER import this (or @react-pdf/renderer) from a client component.
 
 import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
-import { scoreBand } from "../scoring";
 import type { FichaTecnicaModel } from "../reports/fichaTecnica";
 import type { TeacherCupperNotes } from "../reports/teacherNotes";
 import { registerPdfFonts, SANS, SERIF } from "./fonts";
 import { CVA_TEXT } from "./cvaFormData";
-import { PdfScoreBand } from "./charts";
+import { PdfScorePill } from "./charts";
 import { sanitizePdfText } from "./text";
 import { IdentityBlock } from "./sections/IdentityBlock";
 import { ExtrinsicBlock } from "./sections/ExtrinsicBlock";
@@ -208,6 +207,9 @@ export function FichaTecnicaDocument({
           ) : null}
           <Text style={[st.th, { width: 60, textAlign: "right" }]}>{t.colIncluded}</Text>
         </View>
+        {showScores ? (
+          <Text style={[st.small, { marginBottom: 4 }]}>{CVA_TEXT[locale].scoreLegend}</Text>
+        ) : null}
         {model.samples.map((x, i) => (
           <View key={i} style={[st.row, { paddingVertical: 4 }]} wrap={false}>
             <Text style={[st.body, { width: 120, fontWeight: 700 }]}>
@@ -220,10 +222,7 @@ export function FichaTecnicaDocument({
             {showScores ? (
               <View style={{ width: 90 }}>
                 {x.affective?.communityScore != null ? (
-                  <PdfScoreBand
-                    score={x.affective.communityScore}
-                    band={scoreBand(x.affective.communityScore)}
-                  />
+                  <PdfScorePill score={x.affective.communityScore} />
                 ) : (
                   <Text style={st.small}>—</Text>
                 )}

@@ -632,12 +632,25 @@ export async function revealSample(sampleId: string): Promise<ActionResult> {
     const auth = await requireSampleOwner(sampleId, user.id);
     assertSessionWritable(auth);
 
-    await prisma.sessionSample.update({
-      where: { id: sampleId },
-      data: { revealed: true },
-    });
+    // S10 WP3a (X3): once revealed the sample is frozen for evaluation (live
+    // and offline, lib/sessionState.ts evaluationWriteAllowed). session_samples
+    // is not in the realtime publication, so the session row's updatedAt is
+    // touched in the same transaction: open cup pages get the cupping_sessions
+    // UPDATE event, re-fetch, and show the sample read-only without a reload.
+    await prisma.$transaction([
+      prisma.sessionSample.update({
+        where: { id: sampleId },
+        data: { revealed: true },
+      }),
+      prisma.cuppingSession.update({
+        where: { id: auth.sessionId },
+        data: { updatedAt: new Date() },
+        select: { id: true },
+      }),
+    ]);
 
     revalidatePath(`/app/sessions/${auth.sessionId}/results`);
+    revalidatePath(`/app/sessions/${auth.sessionId}/cup`);
   });
 }
 

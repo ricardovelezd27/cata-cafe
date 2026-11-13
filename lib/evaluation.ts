@@ -3,6 +3,7 @@ import { AFFECTIVE_ATTRIBUTES, asSessionFormat } from "@/lib/constants";
 import { cupDefectTypes, cupFlags } from "@/lib/validate";
 import { DEFECT_TYPE_KEY, distinctDefectTypes } from "@/lib/cupDefects";
 import { EXPRESS_NOTE_KEY, EXPRESS_NOTE_MAX } from "@/lib/expressSession";
+import { sanitizeMarketNote } from "@/lib/marketNote";
 
 export type EvalModuleKey = "descriptive" | "affective" | "combined";
 
@@ -123,7 +124,9 @@ export function computeEvaluationDerived(
         .filter((v): v is string => typeof v === "string")
         .slice(0, 20)
     : [];
-  const normalized: Record<string, unknown> = { ...sanitizeAffectiveRatings(data) };
+  // S10 WP3a (A10): the optional market note; display-only, validated here so the live and
+  // offline paths agree; never read by scoring, completeness or the trigger.
+  const normalized: Record<string, unknown> = sanitizeMarketNote(sanitizeAffectiveRatings(data), moduleKey);
 
   // S10 WP1b: a module that carries the per-cup defect type key is the new
   // shape. A flagged cup is ALWAYS defective, typed or not: a deduction a

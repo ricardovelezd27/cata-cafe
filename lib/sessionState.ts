@@ -65,6 +65,32 @@ export function extrinsicWriteAllowed(input: { over: boolean; revealed: boolean 
   return !input.over || input.revealed;
 }
 
+/** Why a cupper's RATINGS for a sample cannot be written right now, or null
+ *  when they can (S10 WP3a, X3, TODO(kim-validar:X3)). `closed` = the session
+ *  is closed or past its `closesAt` (the existing read-only rule); `revealed`
+ *  = the sample's coffee is already shown on a session that is still open:
+ *  the evaluation is no longer blind, so nobody keeps rating it. Used by the
+ *  live autosave (upsertEvaluation) and the offline replay (replayEvaluation /
+ *  syncEvaluation) ONLY. It is deliberately NOT used by submitting an existing
+ *  draft (no rating changes), the owner-only physical / extrinsic rows, nor
+ *  the post-close writes. Pure. */
+export function evaluationWriteRefusal(input: {
+  status: string;
+  closesAt?: Date | string | null;
+  revealed: boolean;
+}, now: Date | number = Date.now()): "closed" | "revealed" | null {
+  if (isSessionExpired(input, now)) return "closed";
+  if (input.revealed) return "revealed";
+  return null;
+}
+
+export function evaluationWriteAllowed(
+  input: { status: string; closesAt?: Date | string | null; revealed: boolean },
+  now: Date | number = Date.now(),
+): boolean {
+  return evaluationWriteRefusal(input, now) === null;
+}
+
 /** A participant cannot write before the master starts a live group session.
  *  Owner, async and solo sessions are never blocked. */
 export function assertSessionStarted(row: {

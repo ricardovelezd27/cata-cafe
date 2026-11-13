@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUserExpecting } from "@/lib/auth";
 import { IDENTITY_CHANGED } from "@/lib/expectedUser";
 import { requireSampleMember, requireSampleOwner } from "@/lib/sessionAuth";
-import { extrinsicWriteAllowed, isSessionExpired } from "@/lib/sessionState";
+import { evaluationWriteRefusal, extrinsicWriteAllowed, isSessionExpired } from "@/lib/sessionState";
 // NOTE: no assertSessionWritable throw here — a closed or expired session must
 // not burn the replay's retry budget. Replay answers with a status instead:
 // `replay*` return "closed" (the client keeps the draft as `closed_unsent` and
@@ -56,6 +56,10 @@ export type ReplayStatus =
   | "synced"
   | "conflict"
   | "closed"
+  // S10 WP3a review M3: the sample was revealed on a still-open session. A distinct answer
+  // (not "closed") so the client parks it as `revealed_unsent`. Cached bundles cannot call a
+  // new build's action ids, so widening the union breaks nobody.
+  | "revealed"
   | "pending"
   | "gone"
   | "rejected"
@@ -125,7 +129,12 @@ async function replayEvaluationCore(input: EvaluationReplayInput): Promise<Repla
   // stands; a stale local edit can no longer be applied (aggregates and
   // history are final). Report "closed" so the client stops retrying AND keeps
   // the draft visible as unsent, instead of showing it as synced.
-  if (isSessionExpired(auth)) return "closed";
+  // S10 WP3a (X3): a sample revealed on a still-open session is frozen for
+  // ratings too; the draft is kept on the device exactly like the closed case
+  // (`closed_unsent`), never an error and never a silent overwrite.
+  const refusal = evaluationWriteRefusal(auth);
+  if (refusal === "closed") return "closed";
+  if (refusal === "revealed") return "revealed";
 
   // A participant's draft written before the master started a live session
   // (the cup screen normally prevents it): keep it pending on the device, never
@@ -217,7 +226,7 @@ export async function syncEvaluation(
   if (status === "rejected") throw new Error("invalid_input");
   // Cached bundles do not know `identity_changed`: for them it is "pending".
   if (status === "identity_changed") return { status: "pending" };
-  return { status: status === "closed" ? "discarded" : status };
+  return { status: status === "closed" || status === "revealed" ? "discarded" : status };
 }
 
 /** Offline replay of an evaluation module. A closed or expired session returns

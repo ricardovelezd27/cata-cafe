@@ -37,6 +37,8 @@ type ResumenTabTranslations = {
   includedOf: string;
   rankIndicative: string;
   rankNoClearGap: string;
+  /** Where a score list starts: 79 = neutral, 100 = maximum (S10 WP3a, A10). */
+  scoreLegend: string;
   /** Shown beside a score that is the viewer's own inside a group ranking. */
   basisMine: string;
   fewNote: string;
@@ -168,6 +170,7 @@ export function ResumenTab({
             {t.ranking}
             <InfoHint title={help.ranking.title} body={help.ranking.body} closeLabel={help.closeLabel} />
           </h2>
+          <p className="-mt-1 font-sans text-xs text-on-surface-variant">{t.scoreLegend}</p>
           {anchors.map(({ sample: referenceSample, rank: referenceRank }) => (
             <button
               key={referenceSample.id}

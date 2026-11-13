@@ -1121,6 +1121,16 @@ export default async function ResultsPage({
             }
           : null
       }
+      revealConfirm={
+        !isAdminViewer && isOwner && !sessionOver
+          ? {
+              title: tResults("revealConfirm.title"),
+              body: tResults("revealConfirm.body"),
+              confirm: tResults("revealConfirm.confirm"),
+              cancel: tResults("revealConfirm.cancel"),
+            }
+          : null
+      }
       finish={
         !isAdminViewer && !session.isGroup && isOwner && !sessionOver
           ? {
@@ -1144,6 +1154,7 @@ export default async function ResultsPage({
         retry: tResults("sync.retry"),
         synced: tResults("sync.synced"),
         closedUnsent: tResults("sync.closedUnsent", { count: "{count}" }),
+        revealedUnsent: tResults("sync.revealedUnsent", { count: "{count}" }),
         conflictTitle: tOffline("conflictTitle"),
         // Raw template — `{sample}` is filled client-side by SyncConflictModal.
         conflictBody: tOffline.raw("conflictBody") as string,
@@ -1275,6 +1286,7 @@ export default async function ResultsPage({
           includedOf: tResults.raw("dashboard.includedOf") as string,
           rankIndicative: tResults("dashboard.rankIndicative"),
           rankNoClearGap: tResults("dashboard.rankNoClearGap"),
+          scoreLegend: tCommon("scoreLegend"),
           basisMine: tResults("dashboard.basisMine"),
           fewNote: tResults("dashboard.fewNote"),
         },
@@ -1330,6 +1342,7 @@ export default async function ResultsPage({
           editSample: tResults("detail.editSample"),
           editExtrinsic: tResults("detail.editExtrinsic"),
           expressNotes: tResults("detail.expressNotes"),
+          market: { label: tResults("market.label"), known: tResults("market.known") },
           assignCoffee: tResults("detail.assignCoffee"),
           close: tResults("detail.close"),
           breakdown: breakdownT,

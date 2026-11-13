@@ -1,6 +1,6 @@
 import { View, Text } from "@react-pdf/renderer";
 import type { FichaOwnerAppendix } from "@/lib/reports/fichaTecnica";
-import { PdfScoreBand } from "../charts";
+import { PdfDeviationBand } from "../charts";
 import { PDF_PALETTE } from "../palette";
 import { sanitizePdfText } from "../text";
 import { C, CONTENT_W, SECTION_TEXT, fmt, st, type Locale } from "./shared";
@@ -67,7 +67,7 @@ export function OwnerAppendix({
                           <Text style={[st.body, { fontWeight: 700 }]}>{fmt(c.scores[si])}</Text>
                         ) : (
                           <View style={{ flexDirection: "row", justifyContent: "center" }}>
-                            <PdfScoreBand score={c.scores[si]} band={c.bands[si]} />
+                            <PdfDeviationBand score={c.scores[si]} band={c.bands[si]} />
                           </View>
                         )}
                       </View>
