@@ -181,6 +181,7 @@ export default async function CupPage({
       sessionStartedAt={session.startedAt?.toISOString() ?? null}
       sessionIsAsync={session.isAsync}
       sessionEntriesLocked={session.entriesLocked}
+      closeNotice={{ closingAt: session.closingAt?.toISOString() ?? null, serverNow: new Date().toISOString() }}
       warmup={{
         exerciseId: session.warmupExerciseId,
         hasOwnEvaluation,
@@ -345,6 +346,33 @@ export default async function CupPage({
         closeUnsentMany: tg.raw("closeUnsentMany") as string,
         closeUnsentNone: tg("closeUnsentNone"),
         closeNotFinalized: tg("closeNotFinalized"),
+        closeAnnounce: {
+          dialog: {
+            title: tg("closeSession"),
+            closeNow: tg("closeNowAction"),
+            announce2: tg("closeAnnounce2"),
+            announce5: tg("closeAnnounce5"),
+            hint: tg("closeAnnounceHint"),
+            cancel: tg("closeLineCancel"),
+            close: tg("closeLineCancel"),
+            closeError: tg("closeSessionError"),
+            announceError: tg("closeAnnounceError"),
+          },
+          banner: {
+            counting: tg.raw("closeBannerCounting") as string,
+            due: tg("closeBannerDue"),
+            minutes: tg.raw("closeBannerMinutes") as string,
+            lessThanMinute: tg("closeBannerLessThanMinute"),
+          },
+          line: {
+            counting: tg.raw("closeLineCounting") as string,
+            passed: tg("closeLinePassed"),
+            closeNow: tg("closeLineCloseNow"),
+            cancel: tg("closeLineCancel"),
+            closing: tg("closeLineClosing"),
+            error: tg("closeSessionError"),
+          },
+        },
         closeImpactLoading: tg("closeImpactLoading"),
         startSession: tg("startSession"),
         starting: tg("starting"),

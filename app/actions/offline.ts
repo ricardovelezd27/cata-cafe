@@ -17,6 +17,8 @@ import {
 } from "@/lib/evaluation";
 import { pinReferenceAffective, shouldPinReference } from "@/lib/referenceRules";
 import { writeEvaluationOrdered } from "@/lib/evaluationWrite";
+import { effectiveClientTs } from "@/lib/offline/clientWrite";
+import { isModuleSendable, planLateDraftWrite } from "@/lib/lateContributions";
 import { logInfo } from "@/lib/log";
 import { replayOverExisting } from "@/lib/aggregateRefire";
 
@@ -224,6 +226,121 @@ export async function replayEvaluation(
   input: EvaluationReplayInput,
 ): Promise<{ status: ReplayStatus }> {
   return { status: await replayEvaluationCore(input) };
+}
+
+// ─── C1c (S10 WP4b, Kim C1): a complete note left only on the device ─────────
+// `TODO(kim-validar:C1)`. The session closed before this module reached the
+// server. The cupper may send it to the owner, who decides whether to include it
+// (acceptLateEvaluation). SANCTIONED post-close write, and it writes a DRAFT row
+// only: it never sets isDraft = false, submittedAt or acceptedLateAt, so the
+// aggregate trigger never runs and no score changes until the owner accepts.
+//
+// Answers a status like the replay actions and never throws for an expected case:
+//   synced        the draft is on the server (created, updated, or the server already
+//                 held newer data of the same draft)
+//   conflict      a SUBMITTED row exists: nothing is written
+//   pending       not sent: nobody signed in, or the session is not closed (an open or
+//                 merely expired session takes the normal replay)
+//   gone          the sample or membership no longer exists
+//   rejected      not a group session, not a plain object, not complete, or invalid data
+//   identity_changed  a different user is signed in (shared device)
+// Everything is derived from the session row (format, cups, reference pin), never
+// from the client.
+export type LateDraftStatus = "synced" | "conflict" | "pending" | "gone" | "rejected" | "identity_changed";
+
+function isUniqueViolation(e: unknown): boolean {
+  return typeof e === "object" && e !== null && (e as { code?: unknown }).code === "P2002";
+}
+
+export async function submitLateDraft(input: {
+  sessionSampleId: string;
+  /** Ignored (kept so the client can name the module it holds): the column comes from the session's format. */
+  moduleKey: EvalModuleKey;
+  data: Record<string, unknown>;
+  /** ms epoch of the draft's last edit on the device. */
+  clientTs?: number;
+  expectedUserId?: string;
+}): Promise<{ status: LateDraftStatus }> {
+  const user = await replayUser(input.expectedUserId);
+  if (user === "identity_changed") return { status: "identity_changed" };
+  if (!user) return { status: "pending" };
+
+  let auth: Awaited<ReturnType<typeof requireSampleMember>>;
+  try {
+    auth = await requireSampleMember(input.sessionSampleId, user.id);
+  } catch (err) {
+    if (isGone(err)) return { status: "gone" };
+    throw err;
+  }
+  // CLOSED (status), not merely expired: only then does the owner's acceptance exist.
+  if (auth.status !== "closed") return { status: "pending" };
+  if (!auth.isGroup) return { status: "rejected" };
+  if (!isPlainObject(input.data)) return { status: "rejected" };
+
+  const moduleKey = moduleKeyForFormat(auth.format);
+  // The device copy must be COMPLETE by the rule the owner's panel and the submit
+  // path use; an incomplete one keeps today's options (read, copy, discard).
+  if (!isModuleSendable(moduleKey, input.data)) return { status: "rejected" };
+
+  const data = shouldPinReference({
+    mode: auth.referenceMode,
+    moduleKey,
+    isActiveReference: auth.referenceSampleId === input.sessionSampleId,
+  })
+    ? pinReferenceAffective(input.data, auth.cupsPerSample)
+    : input.data;
+  const fields = tryComputeEvaluationDerived(moduleKey, data, auth.cupsPerSample);
+  if (!fields) return { status: "rejected" };
+
+  const key = { sessionSampleId_cupperId: { sessionSampleId: input.sessionSampleId, cupperId: user.id } };
+  const ts = effectiveClientTs(input.clientTs, Date.now());
+  const stamp = ts === undefined ? undefined : new Date(ts);
+  const load = () =>
+    prisma.evaluation.findUnique({ where: key, select: { id: true, isDraft: true, lastClientWriteAt: true } });
+
+  // Two passes: a concurrent create (P2002) or a lost conditional update re-reads once.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const existing = await load();
+    const plan = planLateDraftWrite({ existing, clientTs: input.clientTs });
+    if (plan === "conflict") return { status: "conflict" };
+    if (plan === "stale") return { status: "synced" };
+
+    if (plan === "create") {
+      try {
+        await prisma.evaluation.create({
+          data: {
+            sessionSampleId: input.sessionSampleId,
+            sessionId: auth.sessionId,
+            cupperId: user.id,
+            ...fields,
+            ...(stamp ? { lastClientWriteAt: stamp } : {}),
+          },
+          select: { id: true },
+        });
+        return { status: "synced" };
+      } catch (e) {
+        if (!isUniqueViolation(e)) throw e;
+        continue; // someone created it meanwhile: re-read and re-plan
+      }
+    }
+
+    // plan === "update": guarded so it can never land on a submitted row, and an
+    // older device stamp cannot overwrite a newer one.
+    const res = await prisma.evaluation.updateMany({
+      where: {
+        sessionSampleId: input.sessionSampleId,
+        cupperId: user.id,
+        isDraft: true,
+        ...(stamp ? { OR: [{ lastClientWriteAt: null }, { lastClientWriteAt: { lte: stamp } }] } : {}),
+      },
+      data: { sessionId: auth.sessionId, ...fields, ...(stamp ? { lastClientWriteAt: stamp } : {}) },
+    });
+    if (res.count === 1) return { status: "synced" };
+  }
+  // Lost both races: re-read once to tell a submitted row from a newer draft.
+  const last = await load();
+  if (last && !last.isDraft) return { status: "conflict" };
+  return { status: "synced" };
 }
 
 /** Owner-only physical module replay. Returns a status instead of throwing for

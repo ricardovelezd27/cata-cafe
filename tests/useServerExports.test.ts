@@ -35,7 +35,14 @@ const ALLOWLIST: Record<string, string> = {
   // Owner actions on results that stay open after close (decided in S8-12)
   "community.ts#setParticipantExclusion":
     "sanctioned post-close write (S8-12): owner only, stamped with author/time/reason",
-  "community.ts#refreshAggregateScores": "no-op after close or expiry (S10 review H1): it only re-fires an open session and revalidates the page",
+  // S10 WP4b (Kim C1 / C2): the three new sanctioned post-close writes, each with its own gate.
+  "community.ts#acceptLateEvaluation":
+    "sanctioned post-close write (S10 WP4b, C1): session owner only, resolved server-side from the evaluation, acceptable only if closed + complete draft (isAcceptableLate), stamped acceptedLateAt, idempotent",
+  "community.ts#setPostCloseNote":
+    "sanctioned post-close write (S10 WP4b, C2): the cupper's OWN submitted evaluation of a CLOSED session, text only, writes postCloseNote/postCloseNoteAt and nothing else",
+  "offline.ts#submitLateDraft":
+    "sanctioned post-close write (S10 WP4b, C1c): session member, CLOSED session only, writes a DRAFT row only (never isDraft/submittedAt/acceptedLateAt) and never over a submitted row",
+  "community.ts#refreshAggregateScores":"no-op after close or expiry (S10 review H1): it only re-fires an open session and revalidates the page",
 };
 
 function exportsOf(source: string): { name: string; body: string }[] {

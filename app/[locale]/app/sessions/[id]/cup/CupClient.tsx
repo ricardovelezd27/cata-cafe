@@ -56,6 +56,19 @@ import { resumeCallbackRefreshes } from "@/lib/cupResume";
 import { isEvaluationComplete as isEvaluationCompleteForScore } from "@/lib/evaluationState";
 import { DeadlineBanner, type DeadlineBannerTranslations } from "@/components/session/DeadlineBanner";
 import {
+  CloseAnnounceBanner,
+  OwnerCloseLine,
+  type CloseBannerTranslations,
+  type OwnerCloseLineTranslations,
+} from "@/components/session/CloseAnnounce";
+import {
+  CloseSessionDialog,
+  type CloseSessionDialogTranslations,
+} from "@/components/cupping/CloseSessionDialog";
+import { closingAtFromRow } from "@/lib/closeAnnounce";
+import {
+  announceClose,
+  cancelAnnouncedClose,
   submitAllEvaluations,
   closeSession,
   finishSoloSession,
@@ -225,6 +238,7 @@ export function CupClient({
   userCountry,
   userId: renderedUserId,
   warmup,
+  closeNotice,
 }: {
   locale: string;
   initialSampleId?: string;
@@ -232,6 +246,8 @@ export function CupClient({
   /** Optional pre-cupping warm-up (CuppingSession.warmupExerciseId) — shown
    *  once per (session, user, exercise) per device by the session-moment
    *  overlay; gate in lib/warmup/overlayGate.ts, frozen at mount. */
+  /** S10 WP4b (Kim C1): the announced close (ISO or null) and the server clock at render. */
+  closeNotice?: { closingAt: string | null; serverNow: string };
   warmup?: {
     exerciseId: string | null;
     hasOwnEvaluation: boolean;
@@ -331,6 +347,12 @@ export function CupClient({
     closeUnsentMany: string;
     closeUnsentNone: string;
     closeNotFinalized?: string;
+    /** S10 WP4b (Kim C1): announced close; absent in old cached copies = no announcement UI. */
+    closeAnnounce?: {
+      dialog: CloseSessionDialogTranslations;
+      banner: CloseBannerTranslations;
+      line: OwnerCloseLineTranslations;
+    };
     closeImpactLoading: string;
     startSession: string;
     starting: string;
@@ -780,6 +802,17 @@ export function CupClient({
   const [startError, setStartError] = useState(false);
   const [groupNotice, setGroupNotice] = useState<"failed" | "partial" | null>(null);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
+  // S10 WP4b (Kim C1): the announced close moment. Realtime sets it from the session-row
+  // UPDATE below; the server page's value wins whenever IT changes (adjusted during render).
+  const [closingAtMs, setClosingAtMs] = useState<number | null>(() =>
+    parseDbTimestamp(closeNotice?.closingAt),
+  );
+  const [lastClosingProp, setLastClosingProp] = useState<string | null>(closeNotice?.closingAt ?? null);
+  const closingProp = closeNotice?.closingAt ?? null;
+  if (closingProp !== lastClosingProp) {
+    setLastClosingProp(closingProp);
+    setClosingAtMs(parseDbTimestamp(closingProp));
+  }
   // F-grupal-2: how many cuppers hold complete notes that were never sent.
   // undefined = loading, null = could not be read (the rule sentence still shows).
   const [closeImpact, setCloseImpact] = useState<{ unsentCuppers: number } | null | undefined>(
@@ -1202,6 +1235,9 @@ export function CupClient({
           if (typeof row.entriesLocked === "boolean") {
             setEntriesLockedState(row.entriesLocked);
           }
+          // S10 WP4b: the owner announced (or cancelled) the close.
+          const announced = closingAtFromRow(row);
+          if (announced !== undefined) setClosingAtMs(announced);
           // Any session-row change (sample add/rename/remove touch updatedAt;
           // start/close/reference) → re-fetch the server page; the reconcile
           // effect above merges the fresh samples without losing drafts.
@@ -2337,6 +2373,25 @@ export function CupClient({
     />
   );
 
+  // What closing leaves out (F-grupal-2): shared by the three-choice dialog and the plain confirm.
+  const closeDialogBody = (
+    <div className="space-y-2">
+      <p>{translations.confirmClose}</p>
+      <p>{translations.closeRule}</p>
+      {closeImpact === undefined ? (
+        <p className="text-on-surface-variant">{translations.closeImpactLoading}</p>
+      ) : closeImpact === null ? null : closeImpact.unsentCuppers === 0 ? (
+        <p className="text-on-surface-variant">{translations.closeUnsentNone}</p>
+      ) : (
+        <p className="font-medium text-secondary">
+          {closeImpact.unsentCuppers === 1
+            ? translations.closeUnsentOne
+            : translations.closeUnsentMany.replace("{count}", String(closeImpact.unsentCuppers))}
+        </p>
+      )}
+    </div>
+  );
+
   const ownerControls =
     isOwner && isGroup ? (
       <MasterControls
@@ -2606,6 +2661,28 @@ export function CupClient({
         >
           {translations.offline.terminalNotice.replace("{count}", String(terminalCount))}
         </div>
+      )}
+      {isGroup && translations.closeAnnounce && !isOwner && (
+        <CloseAnnounceBanner
+          closingAtMs={closingAtMs}
+          serverNow={closeNotice?.serverNow}
+          sessionClosed={sessionClosed}
+          translations={translations.closeAnnounce.banner}
+        />
+      )}
+      {isGroup && translations.closeAnnounce && isOwner && !sessionClosed && (
+        <OwnerCloseLine
+          closingAtMs={closingAtMs}
+          serverNow={closeNotice?.serverNow}
+          sessionClosed={sessionClosed}
+          onCloseNow={handleConfirmClose}
+          onCancel={async () => {
+            const r = await cancelAnnouncedClose(session.id);
+            if (r.ok) setClosingAtMs(null);
+            return r.ok;
+          }}
+          translations={translations.closeAnnounce.line}
+        />
       )}
       {session.closesAt && !sessionClosed && (
         <div className="mx-4 mt-3 lg:mx-6">
@@ -2901,33 +2978,33 @@ export function CupClient({
         destructive={false}
         onConfirm={handleRegenerateInvite}
       />
-      <ConfirmDialog
-        open={closeDialogOpen}
-        onOpenChange={setCloseDialogOpen}
-        title={translations.closeSession}
-        body={
-          <div className="space-y-2">
-            <p>{translations.confirmClose}</p>
-            <p>{translations.closeRule}</p>
-            {closeImpact === undefined ? (
-              <p className="text-on-surface-variant">{translations.closeImpactLoading}</p>
-            ) : closeImpact === null ? null : closeImpact.unsentCuppers === 0 ? (
-              <p className="text-on-surface-variant">{translations.closeUnsentNone}</p>
-            ) : (
-              <p className="font-medium text-secondary">
-                {closeImpact.unsentCuppers === 1
-                  ? translations.closeUnsentOne
-                  : translations.closeUnsentMany.replace("{count}", String(closeImpact.unsentCuppers))}
-              </p>
-            )}
-          </div>
-        }
-        confirmLabel={translations.closeSession}
-        cancelLabel={translations.cancel}
-        closeLabel={translations.cancel}
-        onConfirm={handleConfirmClose}
-        error={translations.closeSessionError}
-      />
+      {translations.closeAnnounce ? (
+        <CloseSessionDialog
+          open={closeDialogOpen}
+          onOpenChange={setCloseDialogOpen}
+          confirmDisabled={closeImpact === undefined}
+          body={closeDialogBody}
+          onCloseNow={handleConfirmClose}
+          onAnnounce={async (minutes) => {
+            const r = await announceClose(session.id, minutes);
+            if (r.ok) setClosingAtMs(parseDbTimestamp(r.data.closingAt));
+            return r;
+          }}
+          translations={translations.closeAnnounce.dialog}
+        />
+      ) : (
+        <ConfirmDialog
+          open={closeDialogOpen}
+          onOpenChange={setCloseDialogOpen}
+          title={translations.closeSession}
+          body={closeDialogBody}
+          confirmLabel={translations.closeSession}
+          cancelLabel={translations.cancel}
+          closeLabel={translations.cancel}
+          onConfirm={handleConfirmClose}
+          error={translations.closeSessionError}
+        />
+      )}
       <SyncConflictModal
         conflicts={conflicts}
         onResolve={resolveConflict}
