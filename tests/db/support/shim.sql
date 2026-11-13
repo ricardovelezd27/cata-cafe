@@ -25,7 +25,19 @@ CREATE TABLE auth.users (
   is_anonymous boolean NOT NULL DEFAULT false,
   raw_user_meta_data jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
-  last_sign_in_at timestamptz
+  last_sign_in_at timestamptz,
+  -- Columns of the real GoTrue schema that the unused-account purge reads
+  -- (lib/unusedAccountPurge.ts). Not generated columns: tests set them directly.
+  email_confirmed_at timestamptz,
+  phone_confirmed_at timestamptz,
+  invited_at timestamptz,
+  confirmation_sent_at timestamptz,
+  recovery_sent_at timestamptz,
+  email_change_sent_at timestamptz,
+  reauthentication_sent_at timestamptz,
+  banned_until timestamptz,
+  deleted_at timestamptz,
+  is_sso_user boolean NOT NULL DEFAULT false
 );
 
 CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb

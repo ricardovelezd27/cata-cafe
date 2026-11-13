@@ -80,18 +80,18 @@ export async function getCoCupperCandidates(
     }
   }
 
-  // Step 3: evaluation counts per cupper
+  // Step 3: evaluation counts per cupper, ONLY in the sessions shared with the
+  // viewer (the privacy text, section 4: "how many evaluations you made in
+  // them"). A cupper's evaluations elsewhere on the platform are not counted.
   const cupperIds = [...cupperMap.keys()];
-  const evalCounts =
-    cupperIds.length > 0
-      ? await prisma.evaluation.groupBy({
-          by: ["cupperId"],
-          where: { cupperId: { in: cupperIds } },
-          _count: { id: true },
-        })
-      : [];
-
-  const evalCountMap = new Map(evalCounts.map((e) => [e.cupperId, e._count.id]));
+  const evalCountMap = new Map<string, number>();
+  if (cupperIds.length > 0) {
+    const evals = await prisma.evaluation.findMany({
+      where: { cupperId: { in: cupperIds }, sessionSample: { sessionId: { in: sessionIds } } },
+      select: { cupperId: true },
+    });
+    for (const e of evals) evalCountMap.set(e.cupperId, (evalCountMap.get(e.cupperId) ?? 0) + 1);
+  }
 
   return [...cupperMap.entries()].map(([id, data]) => ({
     userId: id,
