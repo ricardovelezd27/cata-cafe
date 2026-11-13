@@ -51,7 +51,7 @@ import {
 } from "@/lib/referenceRules";
 import * as v from "@/lib/validate";
 import { expressSampleLabel, validateExpressInput } from "@/lib/expressSession";
-import { planBlindSamples } from "@/lib/blindLabels";
+import { blindReferencePosition, planBlindSamples } from "@/lib/blindLabels";
 import {
   parseSamplePrepInput,
   pickSamplePrepInput,
@@ -66,8 +66,10 @@ import { notifyGroupOfSession, type GroupEmailSummary } from "@/app/actions/grou
 import {
   DEFAULT_NOTIFY_WHEN,
   NOTIFY_WHEN,
+  noticeOutcome,
   notifyAtStartFlag,
   shouldNotifyAtCreate,
+  shouldNotifyOnBecomingAsync,
 } from "@/lib/groupNotify";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
 import { splitEvaluationCounts } from "@/lib/deleteImpact";
@@ -79,6 +81,7 @@ import {
   changedFormatCups,
   isFormatLocked,
   nextSamplePosition,
+  activeCopyPosition,
   planDuplicateSamples,
   repinNeedsConfirm,
   MAX_SESSION_SAMPLES,
@@ -126,16 +129,6 @@ function parseReferenceModeInput(raw: unknown): ReferenceMode {
   return raw === undefined || raw === null
     ? DEFAULT_REFERENCE_MODE
     : v.oneOf(raw, "referenceMode", REFERENCE_MODES);
-}
-
-/** The final position of the sample the owner marked as reference (an index
- *  into the INPUT list), after the blind shuffle. null = no reference. */
-function blindReferencePosition(
-  planned: { sourceIndex: number; position: number }[],
-  referenceIdx: number | null,
-): number | null {
-  if (referenceIdx === null) return null;
-  return planned.find((p) => p.sourceIndex === referenceIdx)?.position ?? null;
 }
 
 // ─── Reference sample helpers ────────────────────────────────────────────────
@@ -995,8 +988,7 @@ export async function duplicateSession(
     randomInt,
     safeLocale(locale),
   );
-  const activeCopyPosition =
-    plan.samples.find((s) => s.sourceId === source.referenceSampleId)?.position ?? null;
+  const copyActivePosition = activeCopyPosition(plan.samples, source.referenceSampleId);
 
   // Keep the group link only if the group still exists and is still ours.
   let groupId: string | null = null;
@@ -1044,9 +1036,9 @@ export async function duplicateSession(
     // Ranks were copied with the samples; only the active pointer needs the
     // fresh sample id (found by the copy's new position).
     const activeCopy =
-      activeCopyPosition === null
+      copyActivePosition === null
         ? undefined
-        : created.samples.find((s) => s.position === activeCopyPosition);
+        : created.samples.find((s) => s.position === copyActivePosition);
     if (activeCopy) {
       await tx.cuppingSession.update({
         where: { id: created.id },
@@ -1237,7 +1229,11 @@ export type UpdateSessionInput = {
   locale?: string;
 };
 
-type UpdateSessionResult = { ok: true } | { ok: false; error: string };
+/** `groupNotice` (C8): set when this edit gave a ticked live session a closing
+ *  date and so sent the group notice that would have gone out at the start. */
+type UpdateSessionResult =
+  | { ok: true; groupNotice?: "sent" | "partial" | "rate_limited" | "failed" }
+  | { ok: false; error: string };
 
 export async function updateSession(
   sessionId: string,
@@ -1447,15 +1443,73 @@ async function updateSessionBody(
     }
   }
 
+  // C8: a LIVE session ticked "notify at start" that this edit turns async has
+  // no start any more -> the group notice goes out now (decision in
+  // lib/groupNotify.ts) and the flag is cleared in the same write, so exactly
+  // one of {creation, start, this edit} sends it.
+  let noticeGroupId: string | null = null;
+  if (data.isAsync === true) {
+    const cur = await prisma.cuppingSession.findUnique({
+      where: { id: sessionId },
+      select: {
+        isGroup: true,
+        isAsync: true,
+        groupId: true,
+        notifyGroupAtStart: true,
+        groupNotifiedAt: true,
+      },
+    });
+    if (cur) {
+      const effectiveGroupId = data.groupId !== undefined ? data.groupId : cur.groupId;
+      const effectiveFlag = data.notifyGroupAtStart ?? cur.notifyGroupAtStart;
+      if (
+        effectiveGroupId &&
+        shouldNotifyOnBecomingAsync({
+          isGroup: cur.isGroup,
+          wasAsync: cur.isAsync,
+          becomesAsync: true,
+          hasGroup: true,
+          notifyGroupAtStart: effectiveFlag,
+          alreadyNotified: cur.groupNotifiedAt !== null,
+        })
+      ) {
+        data.notifyGroupAtStart = false;
+        noticeGroupId = effectiveGroupId;
+      }
+    }
+  }
+
   if (Object.keys(data).length > 0) {
     await prisma.cuppingSession.update({ where: { id: sessionId }, data });
+  }
+
+  // Best effort and non-blocking, like createGroupSession / startSession: the
+  // save already happened; a refusal or failure is reported, never thrown.
+  // notifyGroupOfSession claims `groupNotifiedAt` atomically and releases it
+  // when nothing went out.
+  let groupNotice: "sent" | "partial" | "rate_limited" | "failed" | undefined;
+  if (noticeGroupId) {
+    try {
+      const res = await notifyGroupOfSession({ groupId: noticeGroupId, sessionId });
+      if (res.ok) groupNotice = noticeOutcome(res.data);
+      else if (res.error === "rate_limited") groupNotice = "rate_limited";
+      else if (res.error !== "invalid_input") groupNotice = "failed";
+    } catch (err) {
+      groupNotice = "failed";
+      logWarn({
+        where: "updateSession",
+        message: "notify_group_on_async_threw",
+        sessionId,
+        code: (err as { code?: string })?.code ?? "unknown",
+      });
+    }
   }
 
   const locale = safeLocale(input.locale);
   revalidatePath(`/${locale}/app/sessions`);
   revalidatePath(`/${locale}/app/sessions/${sessionId}/cup`);
   revalidatePath(`/${locale}/app/sessions/${sessionId}/results`);
-  return { ok: true as const };
+  return { ok: true as const, groupNotice };
 }
 
 // Sample add/rename/remove write to session_samples, which is NOT in the
@@ -1698,6 +1752,7 @@ export async function updateSampleMetadata(
       id: true,
       sessionId: true,
       coffeeId: true,
+      offProtocol: true,
       coffee: { select: { createdBy: true, deletedAt: true } },
       // closesAt: assertSessionWritable is expiry-aware (S8-22 A-05), so a
       // label edit stops at the deadline, not at the next 06:00 UTC cron.
@@ -1721,7 +1776,11 @@ export async function updateSampleMetadata(
   // key = untouched, "" = clear) and validated before anything is written.
   // NOT a sanctioned post-close write: on a closed or expired session it is
   // refused even when the call also names a coffee (postCloseNaming).
-  const prepUpdate = parseSamplePrepInput(pickSamplePrepInput(input as Record<string, unknown>));
+  const prepUpdate = parseSamplePrepInput(
+    pickSamplePrepInput(input as Record<string, unknown>),
+    Date.now(),
+    sample.offProtocol,
+  );
   if (touchesSamplePrep(prepUpdate) && isSessionExpired(sample.session)) {
     throw new Error("session_closed");
   }

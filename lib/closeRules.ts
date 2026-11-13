@@ -287,7 +287,9 @@ export function planFinish(samples: FinishSampleInput[]): FinishPlan {
     if (s.isReference) hasReference = true;
     if (!s.evaluation) {
       // Physical / extrinsic data would be lost with the row: keep it, unscored.
-      if (s.hasOtherData) keptPartialIds.push(s.id);
+      // A reference (any rank) is never removed either: in free mode the owner
+      // may never score it, but it is the comparison basis of the results.
+      if (s.hasOtherData || s.isReference) keptPartialIds.push(s.id);
       else removeIds.push(s.id);
     } else if (!s.evaluation.isDraft) {
       alreadySubmitted++;

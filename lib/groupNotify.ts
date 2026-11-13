@@ -93,3 +93,28 @@ export function notifyFlagAfterGroupChange(
 ): false | undefined {
   return storedGroupId === nextGroupId ? undefined : false;
 }
+
+/** C8 (S10 WP2 review): a LIVE session ticked "notify at start" that later gets
+ *  a closing date becomes ASYNC: it has no "start" any more, so the notice goes
+ *  out at THAT edit (same path as an async session's creation). Inputs are the
+ *  values AFTER the edit (a group removed or changed in the same save already
+ *  cleared the flag, so it never emails a group the owner did not tick it for).
+ *  `groupNotifiedAt` keeps it to one notice; the opposite change (async ->
+ *  live) needs nothing, that session was notified at creation. */
+export function shouldNotifyOnBecomingAsync(i: {
+  isGroup: boolean;
+  wasAsync: boolean;
+  becomesAsync: boolean;
+  hasGroup: boolean;
+  notifyGroupAtStart: boolean;
+  alreadyNotified: boolean;
+}): boolean {
+  return (
+    i.isGroup &&
+    !i.wasAsync &&
+    i.becomesAsync &&
+    i.hasGroup &&
+    i.notifyGroupAtStart &&
+    !i.alreadyNotified
+  );
+}

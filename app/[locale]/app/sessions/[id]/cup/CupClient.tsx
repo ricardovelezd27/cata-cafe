@@ -551,6 +551,18 @@ export function CupClient({
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
   const [regenerateOpen, setRegenerateOpen] = useState(false);
   const [entriesLocked, setEntriesLockedState] = useState(sessionEntriesLocked);
+  // B1: the reference mode is read from the realtime payload too, so a tab that
+  // is already open follows an owner switch (anchor <-> free) and never pins
+  // locally on a stale mode. The server stays the authority: upsertEvaluation
+  // and the offline replay read the STORED mode and pin (or not) regardless.
+  const [referenceMode, setReferenceModeState] = useState<string | undefined>(session.referenceMode);
+  // A fresh server prop (router.refresh) wins: adjust state during render
+  // (React's derived-state pattern) instead of an effect.
+  const [seenReferenceMode, setSeenReferenceMode] = useState(session.referenceMode);
+  if (seenReferenceMode !== session.referenceMode) {
+    setSeenReferenceMode(session.referenceMode);
+    setReferenceModeState(session.referenceMode);
+  }
   const [entriesPending, setEntriesPending] = useState(false);
   // Follow the server value when router.refresh() delivers a fresh one.
   const [seenEntriesLocked, setSeenEntriesLocked] = useState(sessionEntriesLocked);
@@ -1057,6 +1069,9 @@ export function CupClient({
             applyReferenceOrderRef.current(
               next && sampleIdsRef.current.has(next) ? next : null,
             );
+          }
+          if (typeof row.referenceMode === "string" || typeof row.reference_mode === "string") {
+            setReferenceModeState((row.referenceMode ?? row.reference_mode) as string);
           }
           if (typeof row.entriesLocked === "boolean") {
             setEntriesLockedState(row.entriesLocked);
@@ -1645,7 +1660,7 @@ export function CupClient({
   const REMOVE_ACTIVE = "__remove_active__";
   // B1: the pin (and so every re-pin confirmation) exists only in anchor mode.
   const referencePins = shouldPinReference({
-    mode: session.referenceMode,
+    mode: referenceMode,
     moduleKey: session.format === "descriptive" ? "descriptive" : session.format === "affective" ? "affective" : "combined",
     isActiveReference: true,
   });
@@ -1699,7 +1714,7 @@ export function CupClient({
   // reference is a normal, editable sample for the forms, the tabs and the guards.
   const isPinnedReference = (sampleId: string): boolean =>
     shouldPinReference({
-      mode: session.referenceMode,
+      mode: referenceMode,
       moduleKey: affectiveModuleKey ?? "descriptive",
       isActiveReference: sampleId === referenceSampleId,
     });
@@ -1738,7 +1753,7 @@ export function CupClient({
       pinReferenceAffective(sample[affectiveModuleKey], session.cupsPerSample),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [referenceSampleId, sampleIdx, affectiveModuleKey, sessionStatus]);
+  }, [referenceSampleId, sampleIdx, affectiveModuleKey, sessionStatus, referenceMode]);
   const currentRefIdx = refOrder.indexOf(current.id);
   const isCurrentReference = currentRefIdx !== -1;
   const referenceBadgeLabel = translations.referenceBadge ?? "Referencia";

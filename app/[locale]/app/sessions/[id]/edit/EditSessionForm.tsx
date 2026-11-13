@@ -16,7 +16,7 @@ import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useActionFeedback } from "@/components/ui/Toast";
 import { browserZone, dateInZone } from "@/lib/closeRules";
-import { planRemoveActive, type ReferenceMode } from "@/lib/referenceRules";
+import { planRemoveActive, shouldPinReference, type ReferenceMode } from "@/lib/referenceRules";
 
 export type EditSessionFormTranslations = {
   name: string;
@@ -54,6 +54,8 @@ export type EditSessionFormTranslations = {
   referenceModeAnchorHelp: string;
   referenceModeFreeHelp: string;
   referenceModeLocked: string;
+  asyncGroupNoticeFailed: string;
+  asyncGroupNoticePartial: string;
   referenceSaved: string;
   closesAt: string;
   closesAtHint: string;
@@ -222,7 +224,12 @@ export function EditSessionForm({
     // B1: the re-pin confirmations exist only for an anchor session (a free
     // reference never rewrites cuppers' ratings). The stored mode is the one
     // the server uses; it cannot differ from the shown one once ratings exist.
-    if (initial.referenceMode === "free") {
+    const referencePins = shouldPinReference({
+      mode: initial.referenceMode,
+      moduleKey: initial.format,
+      isActiveReference: true,
+    });
+    if (!referencePins) {
       commitReference(next, false);
       return;
     }
@@ -295,6 +302,13 @@ export function EditSessionForm({
       });
       if (result.ok) {
         setSaved(true);
+        // C8: the save is done either way; a refused/failed group notice is a
+        // non-blocking warning, like the one after "Iniciar cata".
+        if (result.groupNotice === "rate_limited" || result.groupNotice === "failed") {
+          feedback.notifyWarning(t.asyncGroupNoticeFailed);
+        } else if (result.groupNotice === "partial") {
+          feedback.notifyWarning(t.asyncGroupNoticePartial);
+        }
         router.refresh();
       } else {
         setErrorCode(result.error);

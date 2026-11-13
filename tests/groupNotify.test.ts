@@ -111,3 +111,36 @@ describe("notifyFlagAfterGroupChange", () => {
     expect(notifyFlagAfterGroupChange(null, null)).toBeUndefined();
   });
 });
+
+import { shouldNotifyOnBecomingAsync } from "@/lib/groupNotify";
+
+describe("shouldNotifyOnBecomingAsync", () => {
+  const b = {
+    isGroup: true,
+    wasAsync: false,
+    becomesAsync: true,
+    hasGroup: true,
+    notifyGroupAtStart: true,
+    alreadyNotified: false,
+  };
+  it("live session waiting for the start that gets a closing date notifies now", () => {
+    expect(shouldNotifyOnBecomingAsync(b)).toBe(true);
+  });
+  it("never twice", () => {
+    expect(shouldNotifyOnBecomingAsync({ ...b, alreadyNotified: true })).toBe(false);
+  });
+  it("needs the tick, a group and a group session", () => {
+    expect(shouldNotifyOnBecomingAsync({ ...b, notifyGroupAtStart: false })).toBe(false);
+    expect(shouldNotifyOnBecomingAsync({ ...b, hasGroup: false })).toBe(false);
+    expect(shouldNotifyOnBecomingAsync({ ...b, isGroup: false })).toBe(false);
+  });
+  it("an already-async session (notified at creation) or a session that stays live does nothing", () => {
+    expect(shouldNotifyOnBecomingAsync({ ...b, wasAsync: true })).toBe(false);
+    expect(shouldNotifyOnBecomingAsync({ ...b, becomesAsync: false })).toBe(false);
+  });
+  it("is exclusive with the start rule: once it fires the flag is cleared, so a start cannot send too", () => {
+    // After the edit `notifyGroupAtStart` is false; shouldNotifyAtStart needs it true.
+    const afterEdit = { isGroup: true, isAsync: true, hasGroup: true, alreadyNotified: false, notifyGroupAtStart: false, startFlipped: true };
+    expect(shouldNotifyAtStart(afterEdit)).toBe(false);
+  });
+});

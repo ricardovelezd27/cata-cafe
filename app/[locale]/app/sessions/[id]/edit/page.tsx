@@ -122,6 +122,8 @@ export default async function EditSessionPage({
     referenceModeAnchorHelp: t("newForm.referenceMode.anchorHelp"),
     referenceModeFreeHelp: t("newForm.referenceMode.freeHelp"),
     referenceModeLocked: t("edit.referenceModeLocked"),
+    asyncGroupNoticeFailed: t("edit.asyncGroupNoticeFailed"),
+    asyncGroupNoticePartial: t("edit.asyncGroupNoticePartial"),
     referenceSaved: t("edit.referenceSaved"),
     closesAt: t("edit.closesAt"),
     closesAtHint: t("edit.closesAtHint"),
