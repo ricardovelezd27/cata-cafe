@@ -16,9 +16,14 @@
 //  6. `visibleIndividually` marks evaluations whose individual score may be
 //     listed: the viewer's own, or any evaluation of a session the viewer owns
 //     (or admin). The cupper id itself is never passed on.
+//  7. (S10 WP1c) each sample also carries `lifetime`, the slice that
+//     computeCoffeeLifetimeScore needs, over the SAME surviving evaluations.
+//     Cuppers are replaced by an opaque index (per call, first appearance
+//     order) so "found by N people" can be counted without any id leaving here.
 // `aggregateScore` passes through untouched (trigger row). No scoring maths.
 
 import type { CoffeeAggregateSampleInput } from "@/lib/coffeeAggregate";
+import type { LifetimeSample } from "@/lib/coffeeLifetimeScore";
 
 export interface CoffeeViewer {
   userId: string;
@@ -29,11 +34,16 @@ export interface RawCoffeeSample {
   id: string;
   sessionId: string;
   revealed: boolean;
+  /** SessionSample.referenceRank (S10 WP1c: anchor references are out of the lifetime score). */
+  referenceRank: number | null;
   session: {
     id: string;
     name: string;
     date: Date;
     status: string;
+    format: string;
+    cupsPerSample: number;
+    referenceMode: string;
     createdBy: string;
     participants: { userId: string; excludedFromResults: boolean }[];
   };
@@ -45,17 +55,34 @@ export interface RawCoffeeSample {
   evaluations: {
     cupperId: string;
     descriptiveData: unknown;
+    affectiveData: unknown;
     combinedData: unknown;
+    nonUniformCups: boolean[];
+    defectiveCups: boolean[];
+    cups: number | null;
     individualScore: number | null;
     submittedAt: Date | null;
   }[];
 }
 
+/** What filterCoffeeSamples returns: the aggregate input plus the lifetime slice. */
+export type FilteredCoffeeSample = CoffeeAggregateSampleInput & { lifetime: LifetimeSample };
+
 export function filterCoffeeSamples(
   raw: RawCoffeeSample[],
   viewer: CoffeeViewer,
-): CoffeeAggregateSampleInput[] {
-  const out: CoffeeAggregateSampleInput[] = [];
+): FilteredCoffeeSample[] {
+  const out: FilteredCoffeeSample[] = [];
+  // Opaque per-call cupper index; the id itself never leaves this function.
+  const cupperKeys = new Map<string, number>();
+  const keyOf = (id: string) => {
+    let k = cupperKeys.get(id);
+    if (k === undefined) {
+      k = cupperKeys.size;
+      cupperKeys.set(id, k);
+    }
+    return k;
+  };
   for (const sample of raw) {
     if (sample.session.status !== "closed") continue;
     if (!sample.revealed) continue;
@@ -89,6 +116,23 @@ export function filterCoffeeSamples(
         submittedAt: ev.submittedAt,
         visibleIndividually: listAll || ev.cupperId === viewer.userId,
       })),
+      lifetime: {
+        sessionId: sample.sessionId,
+        referenceRank: sample.referenceRank,
+        session: {
+          format: sample.session.format,
+          cupsPerSample: sample.session.cupsPerSample,
+          referenceMode: sample.session.referenceMode,
+        },
+        evaluations: evaluations.map((ev) => ({
+          cupperKey: keyOf(ev.cupperId),
+          affectiveData: ev.affectiveData,
+          combinedData: ev.combinedData,
+          nonUniformCups: ev.nonUniformCups,
+          defectiveCups: ev.defectiveCups,
+          cups: ev.cups,
+        })),
+      },
     });
   }
   return out;
