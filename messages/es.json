@@ -227,7 +227,7 @@
       "samplesHelper": "Cada muestra se cata por separado. Edita su etiqueta y asígnale un café.",
       "moreDetails": "Más detalles del café (opcional)",
       "referenceTitle": "Muestra de referencia",
-      "referenceHelper": "Opcional. Marca una muestra como referencia para comparar las demás contra ella en los resultados. Se cata y se puntúa como cualquier otra.",
+      "referenceHelper": "Opcional. Marca una muestra como referencia para comparar las demás contra ella en los resultados. Abajo eliges cómo se puntúa.",
       "referenceMark": "Marcar {label} como referencia",
       "referenceBadge": "Referencia",
       "referenceNone": "Sin referencia",
@@ -255,13 +255,45 @@
         "invalid_warmup": "El ejercicio de calentamiento no es válido. Elige uno de la lista.",
         "not_found_or_forbidden": "No tienes permiso para esto o ya no existe. Revisa el grupo elegido.",
         "not_authenticated": "Tu sesión expiró. Vuelve a iniciar sesión; lo que escribiste sigue aquí.",
-        "unknown": "No se pudo crear la sesión. Lo que escribiste sigue aquí; inténtalo de nuevo."
+        "unknown": "No se pudo crear la sesión. Lo que escribiste sigue aquí; inténtalo de nuevo.",
+        "invalid_sample_prep": "Revisa los datos opcionales de una muestra: la fecha de tueste no puede ser futura y las notas admiten hasta 500 caracteres.",
+        "invalid_input": "Revisa los datos de la sesión: alguna opción no es válida."
       },
       "goToPanel": "Ir al panel",
       "startNow": "Iniciar cata ahora",
       "goToPanelHint": "Desde el panel puedes lanzar el movimiento sensorial con el grupo y empezar la cata cuando todos estén en la sala.",
       "startGroup": "Crear cata y obtener enlace",
-      "cupsHint": "Con menos de 5 tazas no se descuentan uniformidad ni defectos: la muestra puntúa solo por sus atributos."
+      "cupsHint": "Con menos de 5 tazas no se descuentan uniformidad ni defectos: la muestra puntúa solo por sus atributos.",
+      "sampleLabelAuto": "Letra al azar",
+      "samplesBlindHelper": "Las letras se reparten al azar al crear la sesión. Escribe una etiqueta solo si quieres fijarla tú.",
+      "sampleKey": {
+        "title": "Clave de muestras",
+        "hint": "Solo tú ves esta clave. Ciérrala antes de proyectar la pantalla.",
+        "noCoffee": "Sin café"
+      },
+      "notifyWhen": {
+        "checkbox": "Avisar al grupo por correo",
+        "legend": "Cuándo avisar al grupo",
+        "onCreate": "Avisar al crear la sesión",
+        "onStart": "Avisar al iniciar la cata"
+      },
+      "samplePrep": {
+        "summary": "Más datos de la muestra (opcional)",
+        "hint": "Solo tú ves estos datos hasta que reveles la muestra.",
+        "roastDate": "Fecha de tueste",
+        "preparation": "Preparación",
+        "preparationPh": "Agua, ratio, molienda…",
+        "offProtocol": "Catado fuera de protocolo",
+        "offProtocolNote": "¿Qué cambió respecto al protocolo?",
+        "offProtocolNotePh": "Por ejemplo: reposo de 3 horas"
+      },
+      "referenceMode": {
+        "legend": "Cómo se usa la referencia",
+        "anchor": "Ancla",
+        "free": "Referencia libre",
+        "anchorHelp": "Su calidad queda fijada en 5 (79.00) para todos y solo se describe. Es un ejercicio de Café Sensible, no del CVA.",
+        "freeHelp": "Todos la puntúan como cualquier otra muestra y las demás se comparan con su promedio."
+      }
     },
     "express": {
       "title": "Catar ahora",
@@ -349,7 +381,17 @@
       "removeRepinBody": "Al quitarla, {label} vuelve a ser la referencia y {n} catadores verán sus notas de calidad reemplazadas por el ancla de 79.00. No se puede deshacer.",
       "removeRepinConfirm": "Quitar referencia",
       "referenceRepinBlocked": "Quitar esta muestra reactivaría una referencia anterior y reemplazaría las notas de sus catadores. Cambia primero la referencia.",
-      "formatLockedStarted": "El formato y las tazas por muestra se bloquean cuando la cata ya empezó o tiene evaluaciones."
+      "formatLockedStarted": "El formato y las tazas por muestra se bloquean cuando la cata ya empezó o tiene evaluaciones.",
+      "referenceHelperFree": "Las demás muestras se comparan contra su promedio en los resultados. Todos la puntúan como cualquier otra muestra. Si eliges otra, se añade como Referencia 2.",
+      "referenceModeLocked": "El modo de la referencia no se puede cambiar una vez que la cata ha empezado o tiene alguna evaluación, incluida la referencia fijada.",
+      "asyncGroupNoticeFailed": "Guardado. Al ponerle fecha de cierre, la cata ya no tiene un inicio, así que debíamos avisar al grupo ahora, pero no pudimos enviar el correo. Puedes reenviar el aviso desde la página del grupo.",
+      "asyncGroupNoticePartial": "Guardado. El aviso al grupo llegó a una parte de los miembros; reintenta los fallidos desde la página del grupo.",
+      "asyncGroupNoticeSent": "Aviso enviado a tu grupo.",
+      "closesAtNotifyNote": "Al guardar, se enviará el aviso de esta cata a tu grupo."
+    },
+    "sampleCountWarning": {
+      "many": "Más de 6 muestras cansa el paladar. Considera repartirlas en dos catas.",
+      "combined": "En formato combinado se recomiendan 4 muestras como máximo."
     }
   },
   "cupping": {
@@ -707,7 +749,8 @@
     "deadlineSoon": "Cierra pronto: {when}",
     "deadlinePassed": "El plazo terminó: {when}",
     "deadlineLocal": "{local} en tu hora",
-    "closesAtLiveNotice": "Con fecha de cierre la cata pasa a tu ritmo: sin sala de espera ni «Iniciar cata»."
+    "closesAtLiveNotice": "Con fecha de cierre la cata pasa a tu ritmo: sin sala de espera ni «Iniciar cata».",
+    "referenceAddHintFree": "Todos puntúan las referencias como cualquier otra muestra; la anterior se mantiene."
   },
   "results": {
     "title": "Resultados de la Sesión",
@@ -800,7 +843,9 @@
       "rankIndicative": "indicativo",
       "rankNoClearGap": "sin diferencia clara",
       "basisMine": "tu puntaje",
-      "fewNote": "Con menos de 3 catadores el puntaje es indicativo: no se muestra dispersión ni se elige mejor muestra."
+      "fewNote": "Con menos de 3 catadores el puntaje es indicativo: no se muestra dispersión ni se elige mejor muestra.",
+      "anchorTitleFree": "Referencia",
+      "anchorHintFree": "Puntuada como cualquier otra muestra · fuera del ranking, del promedio y de la mejor muestra"
     },
     "table": {
       "sample": "Muestra",
@@ -962,7 +1007,8 @@
       },
       "referencia": {
         "title": "Muestra de referencia",
-        "body": "El maestro de cata puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La cata empieza por ella y su calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos, así que cada catador le da siempre 79.00 y solo describe lo que percibe. No entra en el ranking, en el promedio ni en la mejor muestra: es el ancla.\nLo que agrega es contexto: junto a cada muestra verás Δ, la diferencia entre su puntaje y el de la referencia, calculada siempre con el mismo tipo de puntaje que ves al lado (comunitario cuando está visible; si no, el tuyo).\nReferencia, media del grupo y desviación son cosas distintas: la referencia es el punto de partida elegido por el maestro; la media es lo que percibió el grupo; la desviación (±) es cuánto se dispersó el grupo."
+        "body": "El maestro de cata puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La cata empieza por ella y su calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos, así que cada catador le da siempre 79.00 y solo describe lo que percibe. No entra en el ranking, en el promedio ni en la mejor muestra: es el ancla.\nLo que agrega es contexto: junto a cada muestra verás Δ, la diferencia entre su puntaje y el de la referencia, calculada siempre con el mismo tipo de puntaje que ves al lado (comunitario cuando está visible; si no, el tuyo).\nReferencia, media del grupo y desviación son cosas distintas: la referencia es el punto de partida elegido por el maestro; la media es lo que percibió el grupo; la desviación (±) es cuánto se dispersó el grupo.",
+        "bodyFree": "El maestro de cata puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La cata empieza por ella y todos la puntúan libremente, como cualquier otra muestra. No entra en el ranking, en el promedio ni en la mejor muestra.\nLo que agrega es contexto: junto a cada muestra verás Δ, la diferencia entre su puntaje y el de la referencia, calculada siempre con el mismo tipo de puntaje que ves al lado (comunitario cuando está visible; si no, el tuyo).\nReferencia, media del grupo y desviación son cosas distintas: la referencia es el punto de partida elegido por el maestro; la media es lo que percibió el grupo; la desviación (±) es cuánto se dispersó el grupo."
       }
     },
     "radar": {
@@ -988,6 +1034,11 @@
       "keepLine": "{n} muestras incompletas quedarán sin puntaje.",
       "confirm": "Terminar cata",
       "cancel": "Seguir catando"
+    },
+    "samplePrep": {
+      "roastDate": "Fecha de tueste",
+      "preparation": "Preparación",
+      "offProtocol": "Catado fuera de protocolo"
     }
   },
   "community": {
@@ -1827,7 +1878,6 @@
     "saveDetails": "Guardar detalles",
     "linkGroupLabel": "Vincular a un grupo",
     "noGroupOption": "Sin grupo",
-    "autoInviteLive": "Avisar al grupo por correo cuando inicies la cata",
     "autoInviteAsync": "Avisar al grupo por correo al crear la sesión",
     "autoInviteSummary": "Invitación enviada a {sent} integrantes · {skipped} omitidas · {failed} fallidas",
     "joinSessionLink": "Unirme a la sesión"

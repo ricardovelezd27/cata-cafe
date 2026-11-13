@@ -7,6 +7,8 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getUsableCoffees } from "@/lib/coffees/queries";
 import type { UsableCoffee } from "@/components/coffees/CoffeePicker";
+import { normalizeReferenceMode } from "@/lib/referenceRules";
+import { shouldNotifyOnBecomingAsync } from "@/lib/groupNotify";
 import { EditSessionForm, type EditSessionFormTranslations } from "./EditSessionForm";
 
 // Authed page with an extra [id] dynamic segment: force-dynamic, never
@@ -14,6 +16,8 @@ import { EditSessionForm, type EditSessionFormTranslations } from "./EditSession
 // segment" (on-demand static generation would crash the cookies() call
 // inside createClient() in production; see app/[locale]/join/[token]/page.tsx).
 export const dynamic = "force-dynamic";
+// Saving a closing date can send the group notice inline (updateSession).
+export const maxDuration = 120;
 
 export default async function EditSessionPage({
   params,
@@ -118,6 +122,17 @@ export default async function EditSessionPage({
     referenceTitle: t("edit.referenceTitle"),
     referenceNone: t("edit.referenceNone"),
     referenceHelper: t("edit.referenceHelper"),
+    referenceHelperFree: t("edit.referenceHelperFree"),
+    referenceModeLegend: t("newForm.referenceMode.legend"),
+    referenceModeAnchor: t("newForm.referenceMode.anchor"),
+    referenceModeFree: t("newForm.referenceMode.free"),
+    referenceModeAnchorHelp: t("newForm.referenceMode.anchorHelp"),
+    referenceModeFreeHelp: t("newForm.referenceMode.freeHelp"),
+    referenceModeLocked: t("edit.referenceModeLocked"),
+    asyncGroupNoticeFailed: t("edit.asyncGroupNoticeFailed"),
+    asyncGroupNoticePartial: t("edit.asyncGroupNoticePartial"),
+    asyncGroupNoticeSent: t("edit.asyncGroupNoticeSent"),
+    closesAtNotifyNote: t("edit.closesAtNotifyNote"),
     referenceSaved: t("edit.referenceSaved"),
     closesAt: t("edit.closesAt"),
     closesAtHint: t("edit.closesAtHint"),
@@ -167,11 +182,23 @@ export default async function EditSessionPage({
           isGroup: session.isGroup,
           groupId: session.groupId,
           referenceSampleId: session.referenceSampleId,
+          referenceMode: normalizeReferenceMode(session.referenceMode),
           // Stored as the END of the day the owner picked IN THEIR ZONE, so the
           // read-back uses that zone (null = UTC for legacy rows).
           closesAt: session.closesAt ? dateInZone(session.closesAt, session.closesAtZone) : "",
           warmupExerciseId: session.warmupExerciseId,
           started: session.startedAt !== null,
+          // Same pure rule as updateSession: setting a closing date NOW would
+          // send the group notice (the form shows an inline note).
+          closingDateSendsNotice: shouldNotifyOnBecomingAsync({
+            isGroup: session.isGroup,
+            wasAsync: session.isAsync,
+            becomesAsync: true,
+            hasGroup: session.groupId !== null,
+            notifyGroupAtStart: session.notifyGroupAtStart,
+            alreadyNotified: session.groupNotifiedAt !== null,
+            started: session.startedAt !== null,
+          }),
           closed: session.status === "closed",
           // Expired but not yet closed by the nightly job: read-only, closing date included.
           expired: readOnly && session.status !== "closed",

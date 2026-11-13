@@ -17,6 +17,8 @@ import {
   referenceBadgeText,
   referenceTag,
   referencesOf,
+  normalizeReferenceMode,
+  shouldPinReference,
   resolveCompareReference,
 } from "@/lib/referenceRules";
 import { calcIndividualScore } from "@/lib/scoring";
@@ -301,6 +303,31 @@ describe("only the active reference is locked", () => {
     expect(isReferencePinned(old)).toBe(true); // data survives the unlock
     const edited = { ...old, [`${AFFECTIVE_ATTRIBUTES[0].id}_final`]: 7 };
     expect(isReferencePinned(edited)).toBe(false); // an unlocked save is not rewritten
+  });
+});
+
+describe("shouldPinReference (B1 reference mode)", () => {
+  const base = { mode: "anchor", moduleKey: "affective", isActiveReference: true };
+  it("pins the active reference of an affective or combined anchor session", () => {
+    expect(shouldPinReference(base)).toBe(true);
+    expect(shouldPinReference({ ...base, moduleKey: "combined" })).toBe(true);
+  });
+  it("never pins in free mode", () => {
+    for (const moduleKey of ["affective", "combined", "descriptive"]) {
+      expect(shouldPinReference({ ...base, mode: "free", moduleKey })).toBe(false);
+    }
+  });
+  it("never pins a descriptive session or a non-active reference", () => {
+    expect(shouldPinReference({ ...base, moduleKey: "descriptive" })).toBe(false);
+    expect(shouldPinReference({ ...base, isActiveReference: false })).toBe(false);
+  });
+  it("an unknown or missing mode reads as anchor (today's behaviour, fail closed)", () => {
+    for (const mode of [undefined, null, "", "weird", "ANCHOR"]) {
+      expect(shouldPinReference({ ...base, mode })).toBe(true);
+    }
+    expect(normalizeReferenceMode("free")).toBe("free");
+    expect(normalizeReferenceMode("anchor")).toBe("anchor");
+    expect(normalizeReferenceMode("Free")).toBe("anchor");
   });
 });
 

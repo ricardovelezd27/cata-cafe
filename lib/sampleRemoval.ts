@@ -12,6 +12,7 @@ import {
   activeReferenceId,
   compactReferenceRanks,
   countRepinOverwrites,
+  shouldPinReference,
 } from "@/lib/referenceRules";
 
 /** Thrown (rolling the transaction back) when removing samples would
@@ -48,14 +49,24 @@ export async function removeSamplesInTx(
   const session = await tx.cuppingSession.update({
     where: { id: sessionId },
     data: { referenceSampleId: activeAfter },
-    select: { format: true, cupsPerSample: true },
+    select: { format: true, cupsPerSample: true, referenceMode: true },
   });
   // S8-27: removing the active reference's sample re-activates an EARLIER
   // reference, which is pinned again. If its stored ratings drifted off the
   // 79.00 anchor, pinning it would silently overwrite cuppers' work: refuse
   // (the whole transaction rolls back) and let the owner change the reference
-  // first, which asks for confirmation.
-  if (opts.onReactivate === "refuse" && activeAfter && activeAfter !== activeBefore) {
+  // first, which asks for confirmation. Anchor mode only (B1): a "free"
+  // reference is never pinned, so there is nothing to overwrite.
+  if (
+    opts.onReactivate === "refuse" &&
+    activeAfter &&
+    activeAfter !== activeBefore &&
+    shouldPinReference({
+      mode: session.referenceMode,
+      moduleKey: moduleKeyForFormat(session.format),
+      isActiveReference: true,
+    })
+  ) {
     const evs = await tx.evaluation.findMany({
       where: { sessionSampleId: activeAfter },
       select: { id: true, isDraft: true, affectiveData: true, combinedData: true },

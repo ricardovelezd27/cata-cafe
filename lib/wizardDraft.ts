@@ -32,7 +32,17 @@ export type DraftCoffee = {
   linkedOrigin?: "mine" | "shared" | "public";
 };
 
-export type DraftSample = { id: string; label: string; coffeeId: string; auto: boolean };
+export type DraftSample = {
+  id: string;
+  label: string;
+  coffeeId: string;
+  auto: boolean;
+  /** A9 optional prep data, flat; absent in drafts saved before it existed. */
+  roastDate?: string;
+  preparationNote?: string;
+  offProtocol?: boolean;
+  offProtocolNote?: string;
+};
 
 export type WizardDraft = {
   v: number;
@@ -50,6 +60,10 @@ export type WizardDraft = {
   closesAt: string;
   linkedGroupId: string;
   notifyGroup: boolean;
+  /** C8: when a LIVE session's group is emailed. Drafts saved before it existed read as "start". */
+  notifyGroupWhen: "create" | "start";
+  /** B1: how the reference is scored. Drafts saved before it existed read as "anchor". */
+  referenceMode: "anchor" | "free";
 };
 
 export function wizardDraftKey(userId: string): string {
@@ -66,6 +80,9 @@ function isStr(v: unknown): v is string {
 export function isDraftDirty(d: Pick<WizardDraft, "name" | "objective" | "coffees" | "samples">): boolean {
   if (d.name.trim() || d.objective.trim()) return true;
   if (d.samples.length > 1 || d.coffees.length > 1) return true;
+  if (d.samples.some((s) => s.roastDate || s.preparationNote || s.offProtocol || s.offProtocolNote)) {
+    return true;
+  }
   return d.coffees.some(
     (c) =>
       !!c.existingCoffeeId ||
@@ -85,7 +102,14 @@ function contentSignature(d: DirtyShape): string {
     n: d.name.trim(),
     o: d.objective.trim(),
     c: d.coffees.map(({ id: _id, ...rest }) => rest),
-    s: d.samples.map((s) => [s.label, idx.get(s.coffeeId) ?? -1]),
+    s: d.samples.map((s) => [
+      s.label,
+      idx.get(s.coffeeId) ?? -1,
+      s.roastDate ?? "",
+      s.preparationNote ?? "",
+      s.offProtocol === true,
+      s.offProtocolNote ?? "",
+    ]),
   });
 }
 
@@ -141,9 +165,21 @@ export function parseDraft(raw: string | null, now: number = Date.now()): Wizard
     if (!s || typeof s !== "object") return null;
     if (!isStr(s.id) || !isStr(s.label) || !isStr(s.coffeeId) || typeof s.auto !== "boolean") return null;
     if (!coffeeIds.has(s.coffeeId)) return null;
+    for (const k of ["roastDate", "preparationNote", "offProtocolNote"]) {
+      if (s[k] !== undefined && !isStr(s[k])) return null;
+    }
+    if (s.offProtocol !== undefined && typeof s.offProtocol !== "boolean") return null;
   }
   if (d.referenceId !== null && !isStr(d.referenceId)) return null;
-  return d as unknown as WizardDraft;
+  // A4: a row still on "auto" carries NO label (the letter is drawn at
+  // creation). Drafts saved before that stored "Muestra A" in the label; blank
+  // it so the restored row shows the "random letter" placeholder.
+  return {
+    ...(d as unknown as WizardDraft),
+    notifyGroupWhen: d.notifyGroupWhen === "create" ? "create" : "start",
+    referenceMode: d.referenceMode === "free" ? "free" : "anchor",
+    samples: (d.samples as DraftSample[]).map((s) => (s.auto ? { ...s, label: "" } : s)),
+  };
 }
 
 /** Minimal Storage surface so the helper is testable without a DOM. */

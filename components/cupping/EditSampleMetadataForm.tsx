@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { SamplePrepFields, type SamplePrepTranslations } from "@/components/cupping/SamplePrepFields";
+import { prepToForm, type SamplePrepForm } from "@/lib/samplePrep";
 
 export type SampleCoffeeFields = {
   name: string;
@@ -14,7 +16,11 @@ export type SampleCoffeeFields = {
   roastLevel: string;
 };
 
-export type SampleMetadataFormData = SampleCoffeeFields & { label: string };
+/** The prep keys (A9) are present only when the caller offers the section
+ *  (`translations.prep`); a form without them posts none, so a caller that
+ *  does not know about them (the closed-session results dialog) can never
+ *  clear a column by accident. */
+export type SampleMetadataFormData = SampleCoffeeFields & { label: string } & Partial<SamplePrepForm>;
 
 export type EditSampleMetadataFormTranslations = {
   label: string;
@@ -31,6 +37,8 @@ export type EditSampleMetadataFormTranslations = {
   saving: string;
   cancel: string;
   error?: string;
+  /** A9: "Más datos de la muestra". Omit to hide the section. */
+  prep?: SamplePrepTranslations;
 };
 
 const inputCls =
@@ -53,7 +61,7 @@ export function EditSampleMetadataForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const set = (field: keyof SampleMetadataFormData) => (
+  const set = (field: keyof SampleCoffeeFields | "label") => (
     e: React.ChangeEvent<HTMLInputElement>
   ) => setData((prev) => ({ ...prev, [field]: e.target.value }));
 
@@ -70,7 +78,7 @@ export function EditSampleMetadataForm({
     }
   };
 
-  const fields: { key: keyof SampleMetadataFormData; label: string }[] = [
+  const fields: { key: keyof SampleCoffeeFields | "label"; label: string }[] = [
     { key: "label", label: t.label },
     { key: "name", label: t.name },
     { key: "country", label: t.country },
@@ -97,6 +105,14 @@ export function EditSampleMetadataForm({
           </div>
         ))}
       </div>
+      {t.prep && (
+        <SamplePrepFields
+          idPrefix="edit-sample-prep"
+          value={{ ...prepToForm(null), ...data } as SamplePrepForm}
+          onChange={(patch) => setData((prev) => ({ ...prev, ...patch }))}
+          translations={t.prep}
+        />
+      )}
       {error && (
         <p role="alert" className="text-sm text-red-defect">
           {error}
