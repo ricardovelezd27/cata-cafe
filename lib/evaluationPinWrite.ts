@@ -2,7 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { computeEvaluationDerived, type EvalModuleKey } from "@/lib/evaluation";
 import { writeEvaluationOrdered, type EvaluationWriteDb } from "@/lib/evaluationWrite";
-import { isPinnedModule, resolvePinnedPayload, shouldPinReference } from "@/lib/referenceRules";
+import { resolvePinnedPayload, shouldPinReference } from "@/lib/referenceRules";
 
 // S10 WP5b review H1 (TODO(kim-validar:B2)): the ONE entry point that writes an
 // evaluation module of a sample that is, was or may be the pinned reference.
@@ -37,7 +37,7 @@ type Args = {
 
 export async function writeEvaluationPinAware(args: Args): Promise<{ id: string; applied: boolean }> {
   const { moduleKey } = args;
-  if (!isPinnedModule(moduleKey) || (!args.pinnedView && !args.pinnedAtAuth)) {
+  if (moduleKey === "descriptive" || (!args.pinnedView && !args.pinnedAtAuth)) {
     const fields = computeEvaluationDerived(moduleKey, args.posted, args.cupsPerSample);
     return writeEvaluationOrdered(prisma as unknown as EvaluationWriteDb, {
       sessionSampleId: args.sessionSampleId,
@@ -64,12 +64,13 @@ export async function writeEvaluationPinAware(args: Args): Promise<{ id: string;
       const raw = moduleKey === "affective" ? stored?.affectiveData : stored?.combinedData;
       const storedModule =
         raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : null;
+      const pinsNow = shouldPinReference({
+        mode: sess.referenceMode,
+        moduleKey,
+        isActiveReference: sess.referenceSampleId === args.sessionSampleId,
+      });
       const { data, refStash } = resolvePinnedPayload({
-        pinsNow: shouldPinReference({
-          mode: sess.referenceMode,
-          moduleKey,
-          isActiveReference: sess.referenceSampleId === args.sessionSampleId,
-        }),
+        pinsNow,
         pinnedView: args.pinnedView,
         moduleKey,
         posted: args.posted,

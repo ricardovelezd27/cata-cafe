@@ -78,7 +78,7 @@ const sources = [...walk(join(root, "app")), ...walk(join(root, "lib")), ...walk
   .filter((f) => f !== rulesPath) // the definitions (scanned separately below)
   .map((f) => ({ file: f.replace(root, ""), src: stripComments(readFileSync(f, "utf8")) }));
 
-const RAW_FUNCTIONS = ["pinReferenceAffective", "planReferenceRepin", "countRepinOverwrites"];
+const RAW_FUNCTIONS = ["pinReferenceAffective", "planReferenceRepin", "countRepinOverwrites", "resolvePinnedPayload"];
 const ALIAS_IMPORT = new RegExp(`\\b(?:${RAW_FUNCTIONS.join("|")})\\s+as\\b`);
 
 /** Call sites in referenceRules.ts whose enclosing top-level function is not

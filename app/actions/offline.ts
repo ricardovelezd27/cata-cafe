@@ -11,13 +11,11 @@ import { evaluationWriteRefusal, extrinsicWriteAllowed, isSessionExpired } from 
 // says so); the legacy `syncEvaluation` keeps returning "discarded" because
 // service-worker-cached bundles still map it to "synced" (S8-05, F-offline-1).
 import {
-  tryComputeEvaluationDerived,
   moduleKeyForFormat,
   type EvalModuleKey,
 } from "@/lib/evaluation";
 import { shouldPinReference } from "@/lib/referenceRules";
 import { writeEvaluationPinAware } from "@/lib/evaluationPinWrite";
-import { writeEvaluationOrdered } from "@/lib/evaluationWrite";
 import { logInfo } from "@/lib/log";
 import { replayOverExisting } from "@/lib/aggregateRefire";
 

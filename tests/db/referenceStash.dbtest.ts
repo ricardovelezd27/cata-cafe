@@ -247,6 +247,6 @@ describe("B2: the pin keeps the ratings, the unpin gives them back", () => {
     as(owner);
     const un = await setReferenceSample(s.id, null);
     expect(un.ok).toBe(true);
-    if (un.ok) expect(un.data.restored).toBe(0);
+    if (un.ok) expect(un.data.restored ?? 0).toBe(0);
   });
 });

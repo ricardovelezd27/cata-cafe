@@ -693,7 +693,7 @@ export function CupClient({
     setSampleIdx(idx);
     refOrderRef.current = refIds;
     setRefOrder(refIds);
-  }, [session.samples, session.referenceSampleId]);
+  }, [session.samples, session.referenceSampleId, session.format]);
   // Moves the (new) reference to the front, restores position order for the
   // rest, and keeps the cupper on the sample they were looking at.
   const applyRefOrder = (order: string[]) => {
@@ -1940,7 +1940,7 @@ export function CupClient({
     startTransition(async () => {
       const r = await feedback.run(setReferenceSample(session.id, next, confirmRepin), (d) => {
         // S10 WP5b (B2): non-blocking notice when previous ratings were given back.
-        if (d.restored > 0 && translations.referenceRatingsRestored) {
+        if ((d.restored ?? 0) > 0 && translations.referenceRatingsRestored) {
           feedback.notifySuccess(translations.referenceRatingsRestored.replace("{n}", String(d.restored)));
         }
       });

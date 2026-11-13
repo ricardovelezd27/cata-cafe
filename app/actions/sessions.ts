@@ -48,11 +48,8 @@ import {
   pinWouldTouchRevealed,
   REFERENCE_MODES,
   shouldPinReference,
-  pinReferenceAffective,
-  stashBeforePin,
   planReferenceRestore,
   activeReferenceId,
-  type RefStash,
   planAddReference,
   countRepinOverwrites,
   planReferenceRepin,
@@ -97,7 +94,6 @@ import {
   MAX_SESSION_SAMPLES,
   defaultSampleLabel,
 } from "@/lib/sessionEdit";
-import { writeEvaluationOrdered } from "@/lib/evaluationWrite";
 
 // Mirrors the standalone CoffeeForm's field set — wizard-created coffees land
 // in the SAME coffees table with the same shape (no wizard-only subset).
@@ -1103,7 +1099,7 @@ export async function setReferenceSample(
   sessionId: string,
   sampleId: string | null,
   confirmRepin: boolean = false,
-): Promise<ActionResult<{ referenceSampleId: string | null; restored: number }>> {
+): Promise<ActionResult<{ referenceSampleId: string | null; restored?: number }>> {
   return run(
     "setReferenceSample",
     async () => {
@@ -1308,7 +1304,8 @@ export async function setReferenceSample(
         revalidatePath(`/${l}/app/sessions/${sessionId}/edit`);
         revalidatePath(`/${l}/app/sessions/${sessionId}/waiting`);
       }
-      return { referenceSampleId: active, restored };
+      // `restored` only when something was given back (a zero never changes the shape).
+      return restored > 0 ? { referenceSampleId: active, restored } : { referenceSampleId: active };
     },
     { sessionId },
   );

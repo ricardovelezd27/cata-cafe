@@ -276,7 +276,7 @@ export function EditSessionForm({
         if (seq !== referenceSeq.current) return;
         feedback.notifySuccess(t.referenceSaved);
         // S10 WP5b (B2): non-blocking notice when previous ratings were given back.
-        if (d.restored > 0) feedback.notifySuccess(t.ratingsRestored.replace("{n}", String(d.restored)));
+        if ((d.restored ?? 0) > 0) feedback.notifySuccess(t.ratingsRestored.replace("{n}", String(d.restored)));
       });
       // Naming an existing reference is a server no-op — show what the
       // server kept as the active one (references accumulate, S6).
