@@ -270,14 +270,21 @@ open the session sees the date (`DeadlineBanner`: join confirmation, waiting
 screen, cup header, session list) in the owner's zone with the viewer's local time
 beside it when they differ, stronger in the last 24 h. The cron also sends the
 `deadline_24h` reminder and, for a forgotten live session, one `live_idle`
-reminder to its owner after 24 h without activity (`LIVE_IDLE_MS`); both are ledgered in
+reminder to its owner after 24 h without evaluations (`LIVE_IDLE_MS`); both are ledgered in
 `session_reminder_deliveries`. **Idle close (S10 WP4a, Kim C3, `TODO(kim-validar:C3)`):**
-a live group session (not async, no `closesAt`, started) with no activity for 7 days
+a live group session (not async, no `closesAt`, started) with no evaluation saved for 7 days
 (`LIVE_AUTO_CLOSE_MS`; idle = time since max(`startedAt`, last evaluation update),
-`isLiveAbandoned`) is closed by the same cron run, in its own bounded pass
-(`closeIdleLiveSessions`, `lib/idleClose.ts`, 25 per run, oldest first) through
-`closeSessionInternal(id, { reason: "idle", emails: "await" })`: same reveal, history
-sync and close emails as the deadline pass. Unstarted and solo sessions are never touched. Setting a date on an unstarted live session turns it
+`isLiveAbandoned` / `liveIdleMs`) is closed by the same cron run, in its own bounded pass
+(`closeIdleLiveSessions`, `lib/idleClose.ts`, 5 per run, oldest first, LAST of the closing
+passes: after the deadline closes, the repairs and the reminders; the time budget stops new
+closes after ~150 s) through `closeSessionInternal(id, { reason: "idle", emails })`, where
+`emails = idleCloseEmailMode(idleMs)`: idle 7 to under 30 days = `"await"` (same reveal,
+history sync and close emails as the deadline pass); idle **30 days or more** = `"skip"`
+(closed silently: the first production run must not mail the backlog; `skip` stamps
+`closeFinalizedAt`, so the repair pass never sends later, and the owner can still "Reenviar
+correos"). Idleness is re-checked right before each close. Unstarted and solo sessions are never touched.
+An expired, not closed group session shows its OWNER a "Cerrar ahora" button on the results
+page (`canCloseNow`) in case the nightly job fails. Setting a date on an unstarted live session turns it
 self-paced (no waiting room, no "Iniciar cata"), which the forms say before saving
 (a closing date means self-paced; separating `isAsync` from `closesAt` is not supported). From
 `closesAt` on, though, the session is already read-only and its group results are
