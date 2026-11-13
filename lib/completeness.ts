@@ -40,7 +40,7 @@ export function stepMissing(
 
     if (format === "affective") {
       // Pure-affective form only collects the 1–9 rating.
-      if (!hasValue(data.affective[`${affectiveId}_final`])) {
+      if (!hasValue(data.affective[`${affectiveId}_final`]) && data.affective[`${affectiveId}_ne`] !== true) {
         missing.push(affectiveId);
       }
       continue;
@@ -58,7 +58,9 @@ export function stepMissing(
 
     // combined: require the rating, plus intensity + descriptors when the
     // section has a descriptive half (the `overall` step does not).
-    const ratingMissing = !hasValue(data.combined[`${affectiveId}_final`]);
+    // S10 WP3b (C4): a section marked "no evaluado" counts as answered (its rating is not missing).
+    const ratingMissing =
+      !hasValue(data.combined[`${affectiveId}_final`]) && data.combined[`${affectiveId}_ne`] !== true;
     let descriptiveMissing = false;
     if (descriptiveId) {
       const intMissing = !hasValue(data.combined[`${descriptiveId}_int`]);

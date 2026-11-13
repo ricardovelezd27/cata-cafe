@@ -2898,3 +2898,396 @@ COMMIT;
 --   GRANT  EXECUTE ON FUNCTION public.can_view_group_results(text) TO authenticated;
 --   COMMIT;
 -- ============================================================================
+
+-- ============================================================================
+-- PHASE 29 (2026-11-14, S10 WP3b / Kim C4): per-attribute averages count the
+-- evaluations that are COMPLETE or a declared PARTIAL ("no evaluado" in a
+-- section). Apply via runbook §35, dry run first (prisma/sql/dry-runs/phase29_dry_run.sql).
+-- The Supabase project is production (there is only one). NOT applied by the PR
+-- that adds it: the owner applies it, on an explicit yes, BEFORE merging.
+--
+-- TODO(kim-validar:C4) the rule comes from the owner's decision of 2026-11-12 on
+-- a SIMULATED answer: a cupper who could not judge a section marks it "No
+-- evaluado" instead of inventing a value.
+--
+-- WHAT IT ADDS
+--   (1) public.is_affective_declared_partial(jsonb): the exact SQL twin of
+--       isAffectiveDeclaredPartial (lib/affectivePartial.ts). TRUE when at least
+--       one of the 8 affective sections is marked `<attr>_ne = true` (the JSON
+--       boolean true, nothing else counts), at least one is rated, and every
+--       section is EITHER rated OR marked. A rating is read exactly like
+--       is_affective_complete reads it (`<attr>_final`, else `<attr>`, > 0).
+--       is_affective_complete itself is UNCHANGED (all 8 rated).
+--   (2) recompute_aggregate_score() re-issued as a copy of the PHASE 26 body with
+--       ONE changed clause: the WHERE of the v_attr_averages subquery becomes
+--       (is_affective_complete(..) OR is_affective_declared_partial(..)).
+--       Nothing else changes: the totals, the average of raw scores, the cup
+--       deduction, "participantCount" (INCLUDED = complete only), "ruleVersion" = 2
+--       and the ON CONFLICT list are byte-identical (tests/phase29Sql.test.ts diffs
+--       the two bodies). A partial evaluation has no total (its rawScore is NULL,
+--       it is not "included"); it only feeds the per-attribute averages, each
+--       attribute over the evaluations that RATED it (AVG skips NULLs; the app
+--       deletes the keys of a section marked "no evaluado").
+--
+-- WHY BEFORE THE MERGE: with the OLD application code no row carries a marker, so
+-- the new function behaves exactly like PHASE 26 (a no-op). The new code writes
+-- markers; if the function were still PHASE 26, a partial evaluation would be
+-- ignored by the trigger's averages while the screen (the TypeScript recompute)
+-- counted it.
+--
+-- NOTHING STORED CHANGES: this phase re-issues functions only. aggregate_scores
+-- keeps every row until an evaluation is next submitted or edited.
+--
+-- Pre-flight (read-only):
+--   select pg_get_functiondef('public.recompute_aggregate_score()'::regprocedure) like '%v_factor%';  -- t (PHASE 26 is live)
+--   select pg_get_functiondef('public.recompute_aggregate_score()'::regprocedure) like '%is_affective_declared_partial%';  -- f
+--   select count(*) from evaluations
+--     where "isDraft" = false and ("affectiveData"::text like '%\_ne"%' or "combinedData"::text like '%\_ne"%');  -- 0
+-- Post-apply check (runbook §35):
+--   select pg_get_functiondef('public.recompute_aggregate_score()'::regprocedure) like '%is_affective_declared_partial%';  -- t
+--   select proconfig from pg_proc where proname in ('recompute_aggregate_score','is_affective_declared_partial'); -- {search_path=public} twice
+--   select has_function_privilege('authenticated', 'public.is_affective_declared_partial(jsonb)', 'EXECUTE');  -- f
+-- Rollback: the commented block at the end of this phase (the PHASE 26 body).
+-- ============================================================================
+BEGIN;
+
+-- >>> PHASE 29 statements (copied verbatim into phase29_dry_run.sql) >>>
+-- SQL twin of isAffectiveDeclaredPartial (lib/affectivePartial.ts). Same key list and the
+-- same rating read as is_affective_complete; a marker counts only as the JSON boolean true.
+CREATE OR REPLACE FUNCTION public.is_affective_declared_partial(data jsonb)
+RETURNS boolean LANGUAGE sql IMMUTABLE SET search_path = public AS $$
+  SELECT COALESCE(bool_and(a.rated OR a.marked), false)
+     AND COALESCE(bool_or(a.marked), false)
+     AND COALESCE(bool_or(a.rated), false)
+  FROM (
+    SELECT
+      COALESCE(NULLIF(data->>(k || '_final'),'')::numeric, NULLIF(data->>k,'')::numeric, 0) > 0 AS rated,
+      COALESCE((data->(k || '_ne')) = 'true'::jsonb, false) AS marked
+    FROM unnest(ARRAY[
+      'fragancia_af', 'aroma_af', 'sabor_af', 'sabor_residual_af',
+      'acidez_af', 'dulzor_af', 'sensacion_af', 'impresion_global'
+    ]) AS k
+  ) a
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.is_affective_declared_partial(jsonb) FROM PUBLIC, anon, authenticated;
+
+-- PHASE 29: the PHASE 26 body with ONE changed clause (the WHERE of the v_attr_averages subquery).
+CREATE OR REPLACE FUNCTION recompute_aggregate_score()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $fn$
+DECLARE
+  v_session_id         text;
+  v_cups_per_sample    int;
+  v_format             text;
+  v_participant_count  int;   -- INCLUDED (complete) evaluations
+  v_submitted_count    int;   -- all submitted, non-excluded evaluations
+  v_total_cups         int;   -- pooled cups of the INCLUDED evaluations
+  v_avg_raw            float;
+  v_total_non_uniform  int;
+  v_total_defective    int;
+  v_factor             float;
+  v_uniformity_penalty float;
+  v_defect_penalty     float;
+  v_community_score    float;
+  v_attr_averages      jsonb;
+  v_json_col           text;
+BEGIN
+  -- Get sessionId, cupsPerSample and format from parent session
+  SELECT ss."sessionId", cs."cupsPerSample", cs.format
+    INTO v_session_id, v_cups_per_sample, v_format
+  FROM session_samples ss
+  JOIN cupping_sessions cs ON cs.id = ss."sessionId"
+  WHERE ss.id = NEW."sessionSampleId";
+
+  -- Pick which JSON column holds affective data
+  v_json_col := CASE WHEN v_format = 'affective' THEN 'affectiveData' ELSE 'combinedData' END;
+
+  -- Per-evaluation values (cups, non-uniform and defective counts clamped to
+  -- the evaluation's cups; non-uniformity exists only with 2+ cups), then
+  -- pooled over the INCLUDED (complete) evaluations. submittedCount counts all
+  -- submitted, non-excluded evaluations. A row with cups NULL (older than the
+  -- backfill) falls back to the session's cupsPerSample.
+  SELECT
+    COUNT(*) FILTER (WHERE s.inc)::int,
+    COUNT(*)::int,
+    AVG(s."rawScore") FILTER (WHERE s.inc),
+    COALESCE(SUM(s.nu) FILTER (WHERE s.inc), 0)::int,
+    COALESCE(SUM(s.df) FILTER (WHERE s.inc), 0)::int,
+    COALESCE(SUM(s.cups) FILTER (WHERE s.inc), 0)::int
+  INTO v_participant_count, v_submitted_count, v_avg_raw,
+       v_total_non_uniform, v_total_defective, v_total_cups
+  FROM (
+    SELECT
+      e."rawScore",
+      is_affective_complete(CASE WHEN v_format = 'affective' THEN e."affectiveData" ELSE e."combinedData" END) AS inc,
+      GREATEST(COALESCE(e.cups, v_cups_per_sample), 0) AS cups,
+      CASE WHEN COALESCE(e.cups, v_cups_per_sample) >= 2
+           THEN LEAST((SELECT COUNT(*) FROM unnest(e."nonUniformCups") AS t(u) WHERE u = true)::int,
+                      COALESCE(e.cups, v_cups_per_sample))
+           ELSE 0 END AS nu,
+      LEAST((SELECT COUNT(*) FROM unnest(e."defectiveCups") AS d(v) WHERE v = true)::int,
+            GREATEST(COALESCE(e.cups, v_cups_per_sample), 0)) AS df
+    FROM evaluations e
+    WHERE e."sessionSampleId" = NEW."sessionSampleId" AND e."isDraft" = false
+      AND NOT EXISTS (
+        SELECT 1 FROM session_participants sp
+        WHERE sp."sessionId" = v_session_id
+          AND sp."userId" = e."cupperId"
+          AND sp.excluded_from_results = true
+      )
+  ) s;
+
+  IF v_total_cups > 0 THEN
+    v_factor             := 5.0 / GREATEST(5, v_total_cups);
+    v_uniformity_penalty := 2.0 * v_total_non_uniform * v_factor;
+    v_defect_penalty     := 4.0 * v_total_defective  * v_factor;
+  ELSE
+    v_uniformity_penalty := 0;
+    v_defect_penalty     := 0;
+  END IF;
+
+  -- N4: round the final community score to the nearest 0.25 (was ROUND(..., 2)).
+  v_community_score := GREATEST(0, LEAST(100,
+    ROUND((COALESCE(v_avg_raw, 0) - v_uniformity_penalty - v_defect_penalty)::numeric * 4) / 4
+  ));
+
+  -- Per-attribute averages over submitted, NON-EXCLUDED evaluations that are COMPLETE or a declared
+  -- PARTIAL ("no evaluado"), each attribute over the evaluations that rated it (AVG skips NULLs).
+  SELECT jsonb_build_object(
+    'Fragancia',        ROUND(AVG(NULLIF((e.data->>'fragancia_af_final'),   '')::numeric), 2),
+    'Aroma',            ROUND(AVG(NULLIF((e.data->>'aroma_af_final'),        '')::numeric), 2),
+    'Sabor',            ROUND(AVG(NULLIF((e.data->>'sabor_af_final'),        '')::numeric), 2),
+    'Sabor residual',   ROUND(AVG(NULLIF((e.data->>'sabor_residual_af_final'),'')::numeric), 2),
+    'Acidez',           ROUND(AVG(NULLIF((e.data->>'acidez_af_final'),       '')::numeric), 2),
+    'Dulzor',           ROUND(AVG(NULLIF((e.data->>'dulzor_af_final'),       '')::numeric), 2),
+    'Sensación en boca',ROUND(AVG(NULLIF((e.data->>'sensacion_af_final'),    '')::numeric), 2),
+    'Impresión global', ROUND(AVG(NULLIF((e.data->>'impresion_global_final'),'')::numeric), 2)
+  )
+  INTO v_attr_averages
+  FROM (
+    SELECT CASE v_json_col
+      WHEN 'affectiveData' THEN "affectiveData"
+      ELSE "combinedData"
+    END AS data
+    FROM evaluations ev
+    WHERE ev."sessionSampleId" = NEW."sessionSampleId" AND ev."isDraft" = false
+      AND (
+        is_affective_complete(
+          CASE v_json_col WHEN 'affectiveData' THEN ev."affectiveData" ELSE ev."combinedData" END)
+        OR is_affective_declared_partial(
+          CASE v_json_col WHEN 'affectiveData' THEN ev."affectiveData" ELSE ev."combinedData" END)
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM session_participants sp
+        WHERE sp."sessionId" = v_session_id
+          AND sp."userId" = ev."cupperId"
+          AND sp.excluded_from_results = true
+      )
+  ) e;
+
+  INSERT INTO aggregate_scores (
+    id,
+    "sessionSampleId", "participantCount", "submittedCount", "cupsPerSample", "totalCups",
+    "avgRawScore", "totalNonUniform", "totalDefective",
+    "uniformityPenalty", "defectPenalty", "communityScore",
+    "attrAverages", "computedAt", "ruleVersion"
+  ) VALUES (
+    gen_random_uuid()::text,
+    NEW."sessionSampleId", v_participant_count, v_submitted_count, v_cups_per_sample, v_total_cups,
+    v_avg_raw, v_total_non_uniform, v_total_defective,
+    v_uniformity_penalty, v_defect_penalty, v_community_score,
+    COALESCE(v_attr_averages, '{}'::jsonb), now(), 2
+  )
+  ON CONFLICT ("sessionSampleId") DO UPDATE SET
+    "participantCount"  = EXCLUDED."participantCount",
+    "submittedCount"    = EXCLUDED."submittedCount",
+    "cupsPerSample"     = EXCLUDED."cupsPerSample",
+    "totalCups"         = EXCLUDED."totalCups",
+    "avgRawScore"       = EXCLUDED."avgRawScore",
+    "totalNonUniform"   = EXCLUDED."totalNonUniform",
+    "totalDefective"    = EXCLUDED."totalDefective",
+    "uniformityPenalty" = EXCLUDED."uniformityPenalty",
+    "defectPenalty"     = EXCLUDED."defectPenalty",
+    "communityScore"    = EXCLUDED."communityScore",
+    "attrAverages"      = EXCLUDED."attrAverages",
+    "computedAt"        = EXCLUDED."computedAt",
+    "ruleVersion"       = EXCLUDED."ruleVersion";
+
+  RETURN NEW;
+END;
+$fn$;
+-- <<< end of PHASE 29 statements <<<
+
+-- Self-check (not copied into the dry run, whose probes check the same things).
+-- Any failure aborts the transaction: nothing is applied.
+DO $chk$
+DECLARE
+  v_def text := pg_get_functiondef('public.recompute_aggregate_score()'::regprocedure);
+BEGIN
+  IF v_def NOT LIKE '%is_affective_declared_partial%' OR v_def NOT LIKE '%v_factor%' OR v_def NOT LIKE '%"ruleVersion"%' THEN
+    RAISE EXCEPTION 'PHASE 29 aborted, nothing applied: recompute_aggregate_score is not the expected body';
+  END IF;
+  IF (SELECT proconfig FROM pg_proc WHERE oid = 'public.recompute_aggregate_score()'::regprocedure)
+       IS DISTINCT FROM ARRAY['search_path=public']::text[]
+     OR (SELECT proconfig FROM pg_proc WHERE oid = 'public.is_affective_declared_partial(jsonb)'::regprocedure)
+       IS DISTINCT FROM ARRAY['search_path=public']::text[] THEN
+    RAISE EXCEPTION 'PHASE 29 aborted, nothing applied: a function lost SET search_path = public';
+  END IF;
+  IF has_function_privilege('authenticated', 'public.is_affective_declared_partial(jsonb)', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.is_affective_declared_partial(jsonb)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'PHASE 29 aborted, nothing applied: an API role can execute is_affective_declared_partial';
+  END IF;
+  IF is_affective_declared_partial(NULL) OR is_affective_declared_partial('{}'::jsonb) THEN
+    RAISE EXCEPTION 'PHASE 29 aborted, nothing applied: an empty evaluation reads as a declared partial';
+  END IF;
+END
+$chk$;
+
+COMMIT;
+
+-- ROLLBACK (one transaction): re-create the PHASE 26 function body (below, identical to the PHASE 26
+-- block above), then drop the helper. Stored scores are not touched by either direction. The app
+-- revert must land BEFORE or together with the database rollback: the new app on the PHASE 26
+-- function would show partial evaluations in the averages on screen while the trigger ignores them.
+--   BEGIN;
+--   CREATE OR REPLACE FUNCTION recompute_aggregate_score()
+--   RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $fn$
+--   DECLARE
+--     v_session_id         text;
+--     v_cups_per_sample    int;
+--     v_format             text;
+--     v_participant_count  int;   -- INCLUDED (complete) evaluations
+--     v_submitted_count    int;   -- all submitted, non-excluded evaluations
+--     v_total_cups         int;   -- pooled cups of the INCLUDED evaluations
+--     v_avg_raw            float;
+--     v_total_non_uniform  int;
+--     v_total_defective    int;
+--     v_factor             float;
+--     v_uniformity_penalty float;
+--     v_defect_penalty     float;
+--     v_community_score    float;
+--     v_attr_averages      jsonb;
+--     v_json_col           text;
+--   BEGIN
+--     -- Get sessionId, cupsPerSample and format from parent session
+--     SELECT ss."sessionId", cs."cupsPerSample", cs.format
+--       INTO v_session_id, v_cups_per_sample, v_format
+--     FROM session_samples ss
+--     JOIN cupping_sessions cs ON cs.id = ss."sessionId"
+--     WHERE ss.id = NEW."sessionSampleId";
+--   
+--     -- Pick which JSON column holds affective data
+--     v_json_col := CASE WHEN v_format = 'affective' THEN 'affectiveData' ELSE 'combinedData' END;
+--   
+--     -- Per-evaluation values (cups, non-uniform and defective counts clamped to
+--     -- the evaluation's cups; non-uniformity exists only with 2+ cups), then
+--     -- pooled over the INCLUDED (complete) evaluations. submittedCount counts all
+--     -- submitted, non-excluded evaluations. A row with cups NULL (older than the
+--     -- backfill) falls back to the session's cupsPerSample.
+--     SELECT
+--       COUNT(*) FILTER (WHERE s.inc)::int,
+--       COUNT(*)::int,
+--       AVG(s."rawScore") FILTER (WHERE s.inc),
+--       COALESCE(SUM(s.nu) FILTER (WHERE s.inc), 0)::int,
+--       COALESCE(SUM(s.df) FILTER (WHERE s.inc), 0)::int,
+--       COALESCE(SUM(s.cups) FILTER (WHERE s.inc), 0)::int
+--     INTO v_participant_count, v_submitted_count, v_avg_raw,
+--          v_total_non_uniform, v_total_defective, v_total_cups
+--     FROM (
+--       SELECT
+--         e."rawScore",
+--         is_affective_complete(CASE WHEN v_format = 'affective' THEN e."affectiveData" ELSE e."combinedData" END) AS inc,
+--         GREATEST(COALESCE(e.cups, v_cups_per_sample), 0) AS cups,
+--         CASE WHEN COALESCE(e.cups, v_cups_per_sample) >= 2
+--              THEN LEAST((SELECT COUNT(*) FROM unnest(e."nonUniformCups") AS t(u) WHERE u = true)::int,
+--                         COALESCE(e.cups, v_cups_per_sample))
+--              ELSE 0 END AS nu,
+--         LEAST((SELECT COUNT(*) FROM unnest(e."defectiveCups") AS d(v) WHERE v = true)::int,
+--               GREATEST(COALESCE(e.cups, v_cups_per_sample), 0)) AS df
+--       FROM evaluations e
+--       WHERE e."sessionSampleId" = NEW."sessionSampleId" AND e."isDraft" = false
+--         AND NOT EXISTS (
+--           SELECT 1 FROM session_participants sp
+--           WHERE sp."sessionId" = v_session_id
+--             AND sp."userId" = e."cupperId"
+--             AND sp.excluded_from_results = true
+--         )
+--     ) s;
+--   
+--     IF v_total_cups > 0 THEN
+--       v_factor             := 5.0 / GREATEST(5, v_total_cups);
+--       v_uniformity_penalty := 2.0 * v_total_non_uniform * v_factor;
+--       v_defect_penalty     := 4.0 * v_total_defective  * v_factor;
+--     ELSE
+--       v_uniformity_penalty := 0;
+--       v_defect_penalty     := 0;
+--     END IF;
+--   
+--     -- N4: round the final community score to the nearest 0.25 (was ROUND(..., 2)).
+--     v_community_score := GREATEST(0, LEAST(100,
+--       ROUND((COALESCE(v_avg_raw, 0) - v_uniformity_penalty - v_defect_penalty)::numeric * 4) / 4
+--     ));
+--   
+--     -- Per-attribute averages over submitted, NON-EXCLUDED, COMPLETE evaluations.
+--     SELECT jsonb_build_object(
+--       'Fragancia',        ROUND(AVG(NULLIF((e.data->>'fragancia_af_final'),   '')::numeric), 2),
+--       'Aroma',            ROUND(AVG(NULLIF((e.data->>'aroma_af_final'),        '')::numeric), 2),
+--       'Sabor',            ROUND(AVG(NULLIF((e.data->>'sabor_af_final'),        '')::numeric), 2),
+--       'Sabor residual',   ROUND(AVG(NULLIF((e.data->>'sabor_residual_af_final'),'')::numeric), 2),
+--       'Acidez',           ROUND(AVG(NULLIF((e.data->>'acidez_af_final'),       '')::numeric), 2),
+--       'Dulzor',           ROUND(AVG(NULLIF((e.data->>'dulzor_af_final'),       '')::numeric), 2),
+--       'Sensación en boca',ROUND(AVG(NULLIF((e.data->>'sensacion_af_final'),    '')::numeric), 2),
+--       'Impresión global', ROUND(AVG(NULLIF((e.data->>'impresion_global_final'),'')::numeric), 2)
+--     )
+--     INTO v_attr_averages
+--     FROM (
+--       SELECT CASE v_json_col
+--         WHEN 'affectiveData' THEN "affectiveData"
+--         ELSE "combinedData"
+--       END AS data
+--       FROM evaluations ev
+--       WHERE ev."sessionSampleId" = NEW."sessionSampleId" AND ev."isDraft" = false
+--         AND is_affective_complete(
+--           CASE v_json_col WHEN 'affectiveData' THEN ev."affectiveData" ELSE ev."combinedData" END)
+--         AND NOT EXISTS (
+--           SELECT 1 FROM session_participants sp
+--           WHERE sp."sessionId" = v_session_id
+--             AND sp."userId" = ev."cupperId"
+--             AND sp.excluded_from_results = true
+--         )
+--     ) e;
+--   
+--     INSERT INTO aggregate_scores (
+--       id,
+--       "sessionSampleId", "participantCount", "submittedCount", "cupsPerSample", "totalCups",
+--       "avgRawScore", "totalNonUniform", "totalDefective",
+--       "uniformityPenalty", "defectPenalty", "communityScore",
+--       "attrAverages", "computedAt", "ruleVersion"
+--     ) VALUES (
+--       gen_random_uuid()::text,
+--       NEW."sessionSampleId", v_participant_count, v_submitted_count, v_cups_per_sample, v_total_cups,
+--       v_avg_raw, v_total_non_uniform, v_total_defective,
+--       v_uniformity_penalty, v_defect_penalty, v_community_score,
+--       COALESCE(v_attr_averages, '{}'::jsonb), now(), 2
+--     )
+--     ON CONFLICT ("sessionSampleId") DO UPDATE SET
+--       "participantCount"  = EXCLUDED."participantCount",
+--       "submittedCount"    = EXCLUDED."submittedCount",
+--       "cupsPerSample"     = EXCLUDED."cupsPerSample",
+--       "totalCups"         = EXCLUDED."totalCups",
+--       "avgRawScore"       = EXCLUDED."avgRawScore",
+--       "totalNonUniform"   = EXCLUDED."totalNonUniform",
+--       "totalDefective"    = EXCLUDED."totalDefective",
+--       "uniformityPenalty" = EXCLUDED."uniformityPenalty",
+--       "defectPenalty"     = EXCLUDED."defectPenalty",
+--       "communityScore"    = EXCLUDED."communityScore",
+--       "attrAverages"      = EXCLUDED."attrAverages",
+--       "computedAt"        = EXCLUDED."computedAt",
+--       "ruleVersion"       = EXCLUDED."ruleVersion";
+--   
+--     RETURN NEW;
+--   END;
+--   $fn$;
+--   DROP FUNCTION public.is_affective_declared_partial(jsonb);
+--   COMMIT;
+-- ============================================================================

@@ -268,3 +268,99 @@ describe("quarter rounding on tie values (B-04)", () => {
     expect(checked).toBeGreaterThan(1500);
   });
 });
+
+/**
+ * S10 WP3b (PHASE 29). Pure TS port of the v_attr_averages SELECT in recompute_aggregate_score(), the
+ * ONE clause PHASE 29 changed: AVG(NULLIF(data->>'<attr>_final','')::numeric) over the submitted,
+ * non-excluded evaluations that are COMPLETE or a declared PARTIAL, ROUND(..., 2). AVG skips NULLs, so
+ * each attribute has its own denominator. Change the SQL and this port in the same commit; the real
+ * trigger is compared in tests/db/aggregate.dbtest.ts.
+ */
+describe("attribute averages: SQL port (PHASE 29) == computeGroupAggregate", () => {
+  type Row = { data: Record<string, unknown> };
+  const rated = (d: Record<string, unknown>, id: string) => {
+    const v = Number(d[`${id}_final`] ?? d[id] ?? 0);
+    return Number.isFinite(v) && v > 0;
+  };
+  const isComplete = (d: Record<string, unknown>) => AFFECTIVE_ATTRIBUTES.every((a) => rated(d, a.id));
+  const isPartial = (d: Record<string, unknown>) => {
+    const marked = (id: string) => d[`${id}_ne`] === true;
+    return (
+      AFFECTIVE_ATTRIBUTES.every((a) => rated(d, a.id) || marked(a.id)) &&
+      AFFECTIVE_ATTRIBUTES.some((a) => marked(a.id)) &&
+      AFFECTIVE_ATTRIBUTES.some((a) => rated(d, a.id))
+    );
+  };
+  function sqlAttrAverages(rows: Row[]) {
+    const out: Record<string, number | null> = {};
+    for (const a of AFFECTIVE_ATTRIBUTES) {
+      const vals = rows
+        .filter((r) => isComplete(r.data) || isPartial(r.data))
+        .map((r) => r.data[`${a.id}_final`])
+        .filter((v): v is number => typeof v === "number");
+      out[a.label] = vals.length ? Math.round((vals.reduce((x, y) => x + y, 0) / vals.length) * 100) / 100 : null;
+    }
+    return out;
+  }
+  const withNe = (v: number, ...ne: string[]) => {
+    const d = attrs(v);
+    for (const id of ne) {
+      delete d[`${id}_final`];
+      d[`${id}_ne`] = true;
+    }
+    return d;
+  };
+  const tsAvg = (rows: Row[]) => computeGroupAggregate(rows.map((r) => ({ data: r.data, cups: 2 })), 2).attrAverages;
+
+  it("complete + declared partial: each attribute over the evaluations that rated it", () => {
+    const rows: Row[] = [{ data: attrs(6) }, { data: withNe(8, "sabor_af") }, { data: withNe(9, "aroma_af", "dulzor_af") }];
+    const sql = sqlAttrAverages(rows);
+    const ts = tsAvg(rows);
+    for (const a of AFFECTIVE_ATTRIBUTES) expect(ts[a.label] ?? null, a.label).toBe(sql[a.label]);
+    expect(sql["Sabor"]).toBe(7.5); // (6 + 9) / 2
+    expect(sql["Fragancia"]).toBe(7.67); // (6 + 8 + 9) / 3
+  });
+
+  it("an unmarked incomplete evaluation feeds nothing, on both sides", () => {
+    const old = attrs(2);
+    delete old["impresion_global_final"];
+    const rows: Row[] = [{ data: attrs(6) }, { data: old }];
+    const sql = sqlAttrAverages(rows);
+    const ts = tsAvg(rows);
+    for (const a of AFFECTIVE_ATTRIBUTES) expect(ts[a.label] ?? null, a.label).toBe(sql[a.label]);
+    expect(sql["Fragancia"]).toBe(6);
+  });
+
+  it("a sample whose only evaluation is a declared partial has averages for what it rated, null for the rest", () => {
+    const rows: Row[] = [{ data: withNe(7, "acidez_af") }];
+    const sql = sqlAttrAverages(rows);
+    const ts = tsAvg(rows);
+    expect(sql["Acidez"]).toBeNull();
+    expect("Acidez" in ts).toBe(false);
+    for (const a of AFFECTIVE_ATTRIBUTES) expect(ts[a.label] ?? null, a.label).toBe(sql[a.label]);
+  });
+
+  it("grid: TS equals the port over random mixes of complete / partial / unmarked-incomplete rows", () => {
+    let s = 7;
+    const rnd = () => ((s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+    for (let n = 0; n < 300; n++) {
+      const rows: Row[] = [];
+      const count = 1 + Math.floor(rnd() * 5);
+      for (let i = 0; i < count; i++) {
+        const d: Record<string, unknown> = {};
+        for (const a of AFFECTIVE_ATTRIBUTES) {
+          const r = rnd();
+          if (r < 0.1) d[`${a.id}_ne`] = true;
+          else if (r < 0.15) continue; // neither rated nor marked
+          else d[`${a.id}_final`] = 1 + Math.floor(rnd() * 9);
+        }
+        rows.push({ data: d });
+      }
+      const sql = sqlAttrAverages(rows);
+      const ts = tsAvg(rows);
+      for (const a of AFFECTIVE_ATTRIBUTES) {
+        if ((ts[a.label] ?? null) !== sql[a.label]) throw new Error(`${a.label} #${n}: ${ts[a.label]} vs ${sql[a.label]}`);
+      }
+    }
+  });
+});

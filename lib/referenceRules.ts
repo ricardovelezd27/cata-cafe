@@ -18,6 +18,7 @@
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { computeEvaluationDerived } from "@/lib/evaluation";
 import { MARKET_KEY, MARKET_NOTE_KEY } from "@/lib/marketNote";
+import { clearPartialKeys, hasPartialKeys } from "@/lib/affectivePartial";
 
 export const REFERENCE_PIN_VALUE = 5;
 
@@ -191,7 +192,8 @@ export function pinReferenceAffective(
   cupsPerSample: number,
 ): Record<string, unknown> {
   const cups = Math.max(0, Math.floor(cupsPerSample));
-  const pinned: Record<string, unknown> = { ...data };
+  // S10 WP3b: "no evaluado" markers and cooled values are affective inputs too; the pin clears them.
+  const pinned: Record<string, unknown> = clearPartialKeys(data);
   for (const attr of AFFECTIVE_ATTRIBUTES) {
     pinned[`${attr.id}_final`] = REFERENCE_PIN_VALUE;
   }
@@ -269,7 +271,7 @@ export function isReferencePinned(data: Record<string, unknown>): boolean {
     return !Array.isArray(v) || v.every((x) => x !== true);
   });
   const noMarket = data[MARKET_KEY] === undefined && data[MARKET_NOTE_KEY] === undefined;
-  return allFive && noCups && noMarket;
+  return allFive && noCups && noMarket && !hasPartialKeys(data);
 }
 
 /** S10 WP3a review H1 (+ round 3): a reference change that would PIN a sample whose coffee is

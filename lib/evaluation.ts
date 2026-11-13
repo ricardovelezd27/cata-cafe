@@ -4,6 +4,7 @@ import { cupDefectTypes, cupFlags } from "@/lib/validate";
 import { DEFECT_TYPE_KEY, distinctDefectTypes } from "@/lib/cupDefects";
 import { EXPRESS_NOTE_KEY, EXPRESS_NOTE_MAX } from "@/lib/expressSession";
 import { sanitizeMarketNote } from "@/lib/marketNote";
+import { applyNotEvaluated, isAffectiveDeclaredPartial, sanitizeCooledValues } from "@/lib/affectivePartial";
 
 export type EvalModuleKey = "descriptive" | "affective" | "combined";
 
@@ -126,7 +127,13 @@ export function computeEvaluationDerived(
     : [];
   // S10 WP3a (A10): the optional market note; display-only, validated here so the live and
   // offline paths agree; never read by scoring, completeness or the trigger.
-  const normalized: Record<string, unknown> = sanitizeMarketNote(sanitizeAffectiveRatings(data), moduleKey);
+  let normalized: Record<string, unknown> = sanitizeMarketNote(sanitizeAffectiveRatings(data), moduleKey);
+  // S10 WP3b (C4, A5): "no evaluado" markers delete the section's stale ratings; `_inicial`
+  // (the value before it cooled) is clamped and display-only. Order matters: ratings first.
+  // TODO(kim-validar:C4) TODO(kim-validar:A5)
+  if (moduleKey !== "descriptive") {
+    normalized = sanitizeCooledValues(applyNotEvaluated(normalized));
+  }
 
   // S10 WP1b: a module that carries the per-cup defect type key is the new
   // shape. A flagged cup is ALWAYS defective, typed or not: a deduction a
@@ -155,9 +162,11 @@ export function computeEvaluationDerived(
   normalized.tazas_defectuosas = defectiveCups;
   normalized.defecto_tipo = defectTypes;
 
+  // A declared partial evaluation has NO total: both scores are stored NULL, never a 5-filled one.
+  const declaredPartial = moduleKey !== "descriptive" && isAffectiveDeclaredPartial(normalized);
   const { sum } = calcAffectiveSum(normalized);
-  const rawScore = moduleKey === "descriptive" ? null : calcRawScore(normalized);
-  const individual = calcIndividualScore(normalized, cupsPerSample);
+  const rawScore = moduleKey === "descriptive" || declaredPartial ? null : calcRawScore(normalized);
+  const individual = declaredPartial ? "—" : calcIndividualScore(normalized, cupsPerSample);
   const individualScore = individual === "—" ? null : individual;
 
   return {
@@ -166,7 +175,7 @@ export function computeEvaluationDerived(
     defectiveCups,
     defectTypes,
     cups: cupsPerSample,
-    affectiveSum: sum || null,
+    affectiveSum: declaredPartial ? null : sum || null,
     rawScore,
     individualScore,
   };

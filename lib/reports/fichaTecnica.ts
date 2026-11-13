@@ -10,7 +10,7 @@
 
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { DESCRIPTOR_STAGES } from "@/lib/descriptors";
-import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
+import { calcIndividualScore, hasIndividualScore } from "@/lib/scoring";
 import { evaluationScoreRule } from "@/lib/scoreRule";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { bandFor, rowStats, type Band, type RowStats } from "./cupperStats";
@@ -261,7 +261,7 @@ export function buildFichaTecnica(
       const ev = src.evals.find((e) => e.cupperId === cupperId && e.sessionSampleId === sampleId);
       if (!ev) return null;
       const blob = blobForFormat(format, ev);
-      if (!hasAffectiveData(blob)) return null;
+      if (!hasIndividualScore(blob)) return null;
       const sc = calcIndividualScore(blob, session.cupsPerSample, {
         rule: evaluationScoreRule(ev.cups, true),
       });
