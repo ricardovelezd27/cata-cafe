@@ -4,6 +4,7 @@
 
 import type { MyEvaluation } from "@/lib/evaluationState";
 import type { ScoreRule } from "@/lib/scoreRule";
+import type { SamplePrep } from "@/lib/samplePrep";
 
 export type AggregateScoreData = {
   communityScore: number | null;
@@ -67,6 +68,9 @@ export type SampleResult = {
   extrinsic: Record<string, unknown>;
   // Pre-formatted "Origen editado el <fecha>" (S8-12); null when never edited post-close.
   extrinsicEditedLabel?: string | null;
+  /** A9 prep data (roast date, notes, off-protocol): owner/admin lens, or a
+   *  revealed sample; null otherwise (lib/samplePrep.ts gateSamplePrep). */
+  prep?: SamplePrep | null;
   aggregateScore: AggregateScoreData | null;
   // Rule the shown evaluation was scored under: a stored row with cups NULL is
   // "v1" (before 2026-11), anything else "v2" (lib/scoreRule.ts). Absent = v2.

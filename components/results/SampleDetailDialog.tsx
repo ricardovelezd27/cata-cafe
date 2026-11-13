@@ -198,6 +198,7 @@ export function SampleDetailDialog({
           combined={combined}
           extrinsic={sample.extrinsic}
           extrinsicNote={sample.extrinsicEditedLabel ?? null}
+          prep={sample.prep ?? null}
           format={format}
           cupsPerSample={cupsPerSample}
           scoreRule={scoreRule}

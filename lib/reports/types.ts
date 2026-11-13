@@ -84,6 +84,8 @@ export type ReportSession = {
   status: string;
   createdBy: string;
   referenceSampleId: string | null;
+  /** B1: "anchor" | "free"; absent in older fixtures = anchor. */
+  referenceMode?: string;
   closedAt: Date | null;
 };
 

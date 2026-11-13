@@ -17,7 +17,7 @@ import { hasClaimableRecipient, isClaimable, leaseCutoff, mustRecordFinalOutcome
 import { orderReferencesFirst } from "@/lib/referenceRules";
 import { deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { isDeletedProfileId } from "@/lib/accountDeletion/deletedProfile";
-import { sheetSampleIdentity, sheetSampleRecords } from "@/lib/pdf/sheetSource";
+import { sheetSampleIdentity, sheetSamplePrep, sheetSampleRecords } from "@/lib/pdf/sheetSource";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email";
 import { CvaFormDocument, type CvaDocumentProps } from "@/lib/pdf/CvaFormDocument";
@@ -334,6 +334,7 @@ export async function sendCloseEmails(
               affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
               combined: (ev?.combinedData as Record<string, unknown>) ?? {},
               ...sheetSampleRecords(s, isOwnerRecipient),
+              ...sheetSamplePrep(s, isOwnerRecipient),
             };
           }),
         };

@@ -12,7 +12,7 @@ import { orderReferencesFirst } from "@/lib/referenceRules";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
-import { sheetSampleIdentity, sheetSampleRecords } from "@/lib/pdf/sheetSource";
+import { sheetSampleIdentity, sheetSamplePrep, sheetSampleRecords } from "@/lib/pdf/sheetSource";
 import { slug, dateSlug } from "@/lib/pdf/filename";
 import { pdfFailureResponse } from "@/lib/pdf/routeFailure";
 import { pdfDisposition } from "@/lib/pdf/disposition";
@@ -118,6 +118,7 @@ export async function GET(
         affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
         combined: (ev?.combinedData as Record<string, unknown>) ?? {},
         ...sheetSampleRecords(sample, ownerView),
+        ...sheetSamplePrep(sample, ownerView),
       };
     }),
   };

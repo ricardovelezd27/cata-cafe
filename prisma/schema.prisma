@@ -159,6 +159,13 @@ model CuppingSession {
   // is the second CuppingSession ↔ SessionSample link (the first is samples).
   referenceSampleId String?
   referenceSample   SessionSample? @relation("SessionReferenceSample", fields: [referenceSampleId], references: [id], onDelete: SetNull)
+  /// S10 WP2 / B1: how the reference(s) behave. "anchor" (default, the
+  /// pre-existing behaviour) pins the active reference's quality at 5 (79.00)
+  /// for everyone; "free" lets everyone score it like any other sample. Fixed
+  /// once the format is locked (before start / first evaluation). Gates ONLY the
+  /// pin (lib/referenceRules.ts shouldPinReference); scoring, the trigger and
+  /// AggregateScore never read it. Plain string like `format`/`status`.
+  referenceMode String @default("anchor")
   // Optional pre-cupping warm-up ("Movimiento Sensorial"): a code constant
   // from lib/warmup/exercises.ts WARMUP_IDS, validated with oneOf() in the
   // session actions. Flow/display only — scoring and aggregates never read it.
@@ -208,6 +215,16 @@ model SessionSample {
   // Multi-reference (S6): null = not a reference; 1, 2, 3 = order named. referenceSampleId
   // on the session always points at the ACTIVE one (highest rank). Display-only.
   referenceRank Int?
+  /// S10 WP2 / A9: optional per-sample preparation data, entered by the owner.
+  /// BLIND DATA: a roast date or a preparation note can identify a coffee, so
+  /// these four columns are owner-only until `revealed` (cup/results/PDF/print
+  /// ship them only to the owner or once revealed) and are deliberately NOT in
+  /// the PHASE 21 column GRANT (invisible to the browser key, like "coffeeId").
+  /// Display-only: never read by scoring, the trigger or AggregateScore.
+  roastDate         DateTime? @db.Date
+  preparationNote   String?
+  offProtocol       Boolean   @default(false)
+  offProtocolNote   String?
   createdAt DateTime       @default(now())
 
   evaluations    Evaluation[]

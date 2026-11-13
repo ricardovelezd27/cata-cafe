@@ -25,7 +25,7 @@ function wizardCodes(): string[] {
   for (const m of boundsSrc.matchAll(/return "([a-z_]+)"/g)) codes.add(m[1]);
   // wizard bodies' own literal errors
   for (const m of sessionsSrc.matchAll(/error: "([a-z_]+)"/g)) {
-    if (["session_closed", "sample_has_evaluations", "format_locked", "warmup_locked", "not_group_session", "invalid_label", "coffee_not_found"].includes(m[1])) continue;
+    if (["session_closed", "sample_has_evaluations", "format_locked", "warmup_locked", "not_group_session", "invalid_label", "coffee_not_found", "identity_changed"].includes(m[1])) continue;
     codes.add(m[1]);
   }
   return [...codes];

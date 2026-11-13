@@ -11,6 +11,7 @@ const h = vi.hoisted(() => ({ userId: "" }));
 vi.mock("@/lib/auth", () => ({
   requireUser: async () => ({ id: h.userId, is_anonymous: false }),
   requireRegisteredUser: async () => ({ id: h.userId, is_anonymous: false }),
+  requireUserExpecting: async () => ({ id: h.userId, is_anonymous: false }),
 }));
 vi.mock("next/cache", () => ({ revalidatePath: () => {}, revalidateTag: () => {} }));
 vi.mock("next/server", () => ({ after: (fn: () => unknown) => void fn }));
@@ -421,6 +422,27 @@ describe("legacy drafts (review L8, L9)", () => {
     expect(other.individualScore).toBe(calcIndividualScore(flagged(3), 3));
   });
 
+  it("a FREE-mode reference is NOT pinned by the legacy-draft recompute (B1)", async () => {
+    const owner = await makeUser();
+    const s = await makeSession({ ownerId: owner, cupsPerSample: 3, samples: [{ label: "A" }, { label: "B" }] });
+    const [A] = s.samples;
+    await prisma.sessionSample.update({ where: { id: A.id }, data: { referenceRank: 1 } });
+    await prisma.cuppingSession.update({
+      where: { id: s.id },
+      data: { referenceSampleId: A.id, referenceMode: "free" },
+    });
+    await legacyDraft({ sessionId: s.id, sampleId: A.id, cupperId: owner, cups: 3 });
+
+    h.userId = owner;
+    const r = await submitAllEvaluations(s.id);
+    expect(r.ok).toBe(true);
+
+    const ref = await get(A.id, owner);
+    expect(ref.cups).toBe(3);
+    expect(ref.individualScore).toBe(calcIndividualScore(flagged(3), 3));
+    expect(ref.individualScore).not.toBe(79);
+  });
+
   it("refreshAggregateScores skips an expired-but-not-closed session", async () => {
     const owner = await makeUser();
     const u1 = await makeUser();
@@ -473,6 +495,7 @@ describe("legacy drafts (review L8, L9)", () => {
       format: "affective",
       cupsPerSample: 3,
       referenceSampleId: null,
+      referenceMode: "anchor",
     });
 
     expect(n).toBe(0);
@@ -502,6 +525,7 @@ describe("legacy drafts (review L8, L9)", () => {
       format: "affective",
       cupsPerSample: 3,
       referenceSampleId: null,
+      referenceMode: "anchor",
     });
     expect(n).toBe(0);
     expect((await get(A.id, u1)).cups).toBeNull();

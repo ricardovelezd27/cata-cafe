@@ -20,6 +20,7 @@ const SESSION_AUTH_SELECT = {
   status: true,
   startedAt: true,
   closesAt: true,
+  referenceMode: true,
 } as const;
 
 export type SessionAuthRow = {
@@ -30,6 +31,8 @@ export type SessionAuthRow = {
   status: string;
   startedAt: Date | null;
   closesAt: Date | null;
+  /** "anchor" | "free" (B1), read server-side so no path trusts the client. */
+  referenceMode: string;
 };
 
 // Re-exported from the pure module so callers keep one import site.
@@ -78,6 +81,7 @@ export async function requireSessionMember(
     status: session.status,
     startedAt: session.startedAt,
     closesAt: session.closesAt,
+    referenceMode: session.referenceMode,
   };
 }
 
@@ -92,6 +96,8 @@ export type SampleAuthRow = {
   // The session's "Referencia" sample, so the evaluation write paths can pin
   // its affective ratings (lib/referenceRules.ts) without a second query.
   referenceSampleId: string | null;
+  /** "anchor" | "free" (B1): decides whether the active reference is pinned. Read here so no server path trusts the client. */
+  referenceMode: string;
   // Cutover + start rules (assertSessionWritable / assertSessionStarted).
   closesAt: Date | null;
   isGroup: boolean;
@@ -123,6 +129,7 @@ export async function requireSampleMember(
           cupsPerSample: true,
           format: true,
           referenceSampleId: true,
+          referenceMode: true,
           participants: { where: { userId }, select: { userId: true }, take: 1 },
         },
       },
@@ -141,6 +148,7 @@ export async function requireSampleMember(
     cupsPerSample: sample.session.cupsPerSample,
     format: sample.session.format,
     referenceSampleId: sample.session.referenceSampleId,
+    referenceMode: sample.session.referenceMode,
     closesAt: sample.session.closesAt,
     isGroup: sample.session.isGroup,
     isAsync: sample.session.isAsync,
@@ -170,6 +178,7 @@ export async function requireSampleOwner(
           cupsPerSample: true,
           format: true,
           referenceSampleId: true,
+          referenceMode: true,
         },
       },
     },
@@ -183,6 +192,7 @@ export async function requireSampleOwner(
     cupsPerSample: sample.session.cupsPerSample,
     format: sample.session.format,
     referenceSampleId: sample.session.referenceSampleId,
+    referenceMode: sample.session.referenceMode,
     closesAt: sample.session.closesAt,
     isGroup: sample.session.isGroup,
     isAsync: sample.session.isAsync,

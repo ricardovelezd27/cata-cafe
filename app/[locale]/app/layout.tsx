@@ -8,7 +8,9 @@ import BottomNav from "@/components/layout/BottomNav";
 import OnboardingWrapper from "@/components/onboarding/OnboardingWrapper";
 import type { WelcomeModalTranslations } from "@/components/onboarding/WelcomeModal";
 import { LegacyStorageCleanup } from "@/components/layout/LegacyStorageCleanup";
+import { IdentityWatcher } from "@/components/layout/IdentityWatcher";
 import { PendingDraftsBadge } from "@/components/offline/PendingDraftsBadge";
+import { StaleBundleNotice } from "@/components/offline/StaleBundleNotice";
 import type { UnsyncedNotesTranslations } from "@/components/offline/UnsyncedNotesPanel";
 import {
   UnsyncedGuardProvider,
@@ -87,6 +89,7 @@ export default async function AppLayout({
     },
   };
   const tOffline = await getTranslations({ locale, namespace: "offline" });
+  const tErrors = await getTranslations({ locale, namespace: "errors" });
   const tGate = await getTranslations({ locale, namespace: "guestGate" });
   const guestGate: GuestGateTranslations = {
     title: tGate("title"),
@@ -145,6 +148,10 @@ export default async function AppLayout({
       <div className="flex flex-col flex-1 overflow-hidden">
         <TopBar locale={locale} translations={translations} />
         <LegacyStorageCleanup />
+        <StaleBundleNotice
+          message={tOffline("bannerNewVersion")}
+          reloadLabel={tOffline("reloadNow")}
+        />
         <PendingDraftsBadge
           userId={user.id}
           locale={locale}
@@ -153,6 +160,13 @@ export default async function AppLayout({
           conflictLabel={conflictDraftsLabel}
           panelTranslations={notesPanel}
           staleLabel={tOffline("staleDrafts")}
+        />
+        <IdentityWatcher
+          userId={user.id}
+          translations={{
+            notice: tErrors("codes.identity_changed"),
+            reload: tOffline("reloadNow"),
+          }}
         />
         <main className="relative flex-1 overflow-y-auto bg-surface p-4 lg:p-6 pb-20 lg:pb-6">
           {children}

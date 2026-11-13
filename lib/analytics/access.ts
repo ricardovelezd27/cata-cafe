@@ -1,37 +1,31 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { matchesAiAdmin, matchesSuperAdmin, parseSuperAdminEmail } from "@/lib/analytics/adminEmails";
 
 // Two envs gate two different things:
 // - ANALYTICS_SUPER_ADMIN_EMAIL: the one account that can see /app/insights
 //   unconditionally and grant/revoke Profile.analyticsAccess for others.
 // - ANALYTICS_AI_ADMIN_EMAILS: a comma-separated allowlist for the AI chat/
 //   pivot features specifically. Falls back to just the super-admin when
-//   unset, so those features stay locked down by default.
-const SUPER_ADMIN_EMAIL = (
-  process.env.ANALYTICS_SUPER_ADMIN_EMAIL ?? "ricardo.velez88@gmail.com"
-).toLowerCase();
+//   unset (an empty list when there is no super-admin either), so those
+//   features stay locked down by default.
+// ANALYTICS_SUPER_ADMIN_EMAIL is required in production (lib/env.ts). Unset or
+// blank (local dev) means there is NO super-admin: nobody matches and
+// getSuperAdminEmail() is null. No address is built into the code.
+// Parsing lives in the pure ./adminEmails (unit-tested).
 
 export function isSuperAdminEmail(email: string | null | undefined): boolean {
-  return !!email && email.toLowerCase() === SUPER_ADMIN_EMAIL;
+  return matchesSuperAdmin(email);
 }
 
-/** The super-admin address itself — digest recipient resolution (cron, no cookies). */
-export function getSuperAdminEmail(): string {
-  return SUPER_ADMIN_EMAIL;
+/** The super-admin address itself, or null when none is configured. Digest recipient resolution (cron, no cookies). */
+export function getSuperAdminEmail(): string | null {
+  return parseSuperAdminEmail();
 }
-
-const AI_ADMIN_EMAILS = (() => {
-  const raw = process.env.ANALYTICS_AI_ADMIN_EMAILS ?? "";
-  const emails = raw
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter((e) => e.length > 0);
-  return emails.length > 0 ? emails : [SUPER_ADMIN_EMAIL];
-})();
 
 export function isAiAdminEmail(email: string | null | undefined): boolean {
-  return !!email && AI_ADMIN_EMAILS.includes(email.toLowerCase());
+  return matchesAiAdmin(email);
 }
 
 export type AnalyticsAccess = {

@@ -3,7 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { WifiOff, RefreshCw, CheckCircle2, AlertTriangle } from "lucide-react";
 import type { SyncPhase } from "@/hooks/useOfflineSync";
-import { isStaleBundle, onStaleBundle } from "@/lib/staleBundle";
+import { isIdentityChanged, onIdentityChanged, registerIdentityNoticeHost } from "@/lib/identityChange";
 
 export type OfflineBannerTranslations = {
   bannerOffline: string;
@@ -12,9 +12,14 @@ export type OfflineBannerTranslations = {
   bannerSyncFailed: string;
   retrySync: string;
   bannerStorageUnavailable: string;
-  /** S9-01 C-06. Optional: pre-upgrade prop blobs lack them. */
-  bannerNewVersion?: string;
+  /** offline.reloadNow: label of the identity notice's reload button. Optional:
+   *  pre-upgrade prop blobs lack it. (The new-version notice is no longer
+   *  rendered here: components/offline/StaleBundleNotice.tsx, S10 WP9b.) */
   reloadNow?: string;
+  /** errors.codes.identity_changed (S10 WP8 fourth review): the cup page shows the
+   *  "this device changed user" notice HERE because the cup shell covers the
+   *  layout bar. Optional: pre-upgrade prop blobs lack it. */
+  bannerIdentityChanged?: string;
   /** RAW template with "{seconds}" (optional: older cached props lack it). */
   bannerNextAttempt?: string;
 };
@@ -47,8 +52,16 @@ export function OfflineBanner({
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [nextRetryAt]);
-  // C-06: this tab predates the latest deploy (its server-action ids are gone).
-  const staleBundle = useSyncExternalStore(onStaleBundle, isStaleBundle, () => false);
+  // S10 WP8: a positive "a different user is signed in" finding (module latch).
+  // Shown FIRST, before the new-version notice. Registering as the notice host
+  // keeps the layout's IdentityWatcher bar from showing the same message too.
+  const identityChanged = useSyncExternalStore(onIdentityChanged, isIdentityChanged, () => false);
+  const hostsIdentityNotice = !!t.bannerIdentityChanged;
+  useEffect(() => {
+    if (!hostsIdentityNotice) return;
+    return registerIdentityNoticeHost();
+  }, [hostsIdentityNotice]);
+  const showIdentity = identityChanged && hostsIdentityNotice;
   const secondsLeft = nextRetryAt ? Math.max(0, Math.ceil((nextRetryAt - now) / 1000)) : null;
 
   let tone: "offline" | "info" | "success" | "warn" | null = null;
@@ -56,15 +69,14 @@ export function OfflineBanner({
   let icon = null;
   let showRetry = false;
 
-  if (storageUnavailable) {
+  if (showIdentity) {
+    tone = "warn";
+    message = t.bannerIdentityChanged ?? "";
+    icon = <RefreshCw size={15} aria-hidden />;
+  } else if (storageUnavailable) {
     tone = "warn";
     message = t.bannerStorageUnavailable;
     icon = <AlertTriangle size={15} aria-hidden />;
-  } else if (staleBundle && t.bannerNewVersion) {
-    // Persistent and non-blocking: drafts stay on the device, still pending.
-    tone = "warn";
-    message = t.bannerNewVersion;
-    icon = <RefreshCw size={15} aria-hidden />;
   } else if (!online) {
     tone = "offline";
     message = t.bannerOffline;
@@ -104,7 +116,7 @@ export function OfflineBanner({
     >
       {icon}
       <span className="flex-1">{message}</span>
-      {tone === "warn" && staleBundle && !storageUnavailable && t.bannerNewVersion && (
+      {showIdentity && (
         <button
           type="button"
           onClick={() => window.location.reload()}

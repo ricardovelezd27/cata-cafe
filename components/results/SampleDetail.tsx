@@ -30,6 +30,7 @@ import { ExtrinsicSummary } from "@/components/results/ExtrinsicSummary";
 import { EXPRESS_NOTE_KEY } from "@/lib/expressSession";
 import { Badge, ScorePill, Button } from "@/components/ui";
 import type { SessionFormat } from "@/lib/constants";
+import type { SamplePrep } from "@/lib/samplePrep";
 import { canShowMyScore, type MyEvaluation } from "@/lib/evaluationState";
 
 type Lang = "es" | "en";
@@ -68,6 +69,8 @@ export type SampleDetailTranslations = {
   inProgress?: string;
   expressNotes?: string;
   notEvaluated?: string;
+  /** A9 prep-data labels (`results.samplePrep.*`). */
+  prep?: { roastDate: string; preparation: string; offProtocol: string };
 };
 
 // Keys of SampleDetailTranslations whose value is a plain string — excludes
@@ -232,6 +235,7 @@ export function SampleDetail({
   combined,
   extrinsic,
   extrinsicNote = null,
+  prep = null,
   format,
   cupsPerSample,
   scoreRule,
@@ -249,6 +253,8 @@ export function SampleDetail({
   extrinsic: Record<string, unknown>;
   /** "Origen editado el <fecha>" — shown under the origin data when set. */
   extrinsicNote?: string | null;
+  /** A9 prep data, already gated on the server (owner, or a revealed sample). */
+  prep?: SamplePrep | null;
   format: SessionFormat;
   cupsPerSample: number;
   /** Rule the shown evaluation was scored under ("v1" = before 2026-11). */
@@ -349,6 +355,36 @@ export function SampleDetail({
       <ExtrinsicSummary data={extrinsic} />
       {extrinsicNote && (
         <p className="mt-1 text-[11px] text-on-surface-variant">{extrinsicNote}</p>
+      )}
+
+      {/* A9: roast date / preparation / off-protocol (owner or revealed only). */}
+      {prep && t.prep && (
+        <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded-card border border-outline-variant bg-surface-container-low px-3 py-2 text-xs">
+          {prep.roastDate && (
+            <>
+              <dt className="font-semibold uppercase tracking-wider text-on-surface-variant">
+                {t.prep.roastDate}
+              </dt>
+              <dd className="text-on-surface">{prep.roastDate}</dd>
+            </>
+          )}
+          {prep.preparationNote && (
+            <>
+              <dt className="font-semibold uppercase tracking-wider text-on-surface-variant">
+                {t.prep.preparation}
+              </dt>
+              <dd className="text-on-surface">{prep.preparationNote}</dd>
+            </>
+          )}
+          {prep.offProtocol && (
+            <>
+              <dt className="font-semibold uppercase tracking-wider text-on-surface-variant">
+                {t.prep.offProtocol}
+              </dt>
+              <dd className="text-on-surface">{prep.offProtocolNote ?? "•"}</dd>
+            </>
+          )}
+        </dl>
       )}
 
       {expressNote && (

@@ -231,6 +231,7 @@ export async function loadSessionReportSource(
       status: session.status,
       createdBy: session.createdBy,
       referenceSampleId,
+      referenceMode: session.referenceMode,
       closedAt: session.closedAt,
     },
     ownerName: profileDisplayName({ id: session.createdBy, displayName: session.createdByUser.displayName }, locale),

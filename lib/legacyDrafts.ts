@@ -1,7 +1,7 @@
 import type { Prisma } from "@/app/generated/prisma/client";
 import { moduleKeyForFormat, tryComputeEvaluationDerived } from "@/lib/evaluation";
 import { logWarn } from "@/lib/log";
-import { isPinnedModule, pinReferenceAffective } from "@/lib/referenceRules";
+import { pinReferenceAffective, shouldPinReference } from "@/lib/referenceRules";
 
 /**
  * S10 WP1a (review M3 / second review H2, L6, L9): a draft saved BEFORE the
@@ -82,6 +82,8 @@ export async function recomputeLegacyDraftsInTx(
     format: string;
     cupsPerSample: number;
     referenceSampleId: string | null;
+    /** B1: the session's reference mode; a "free" reference is scored like any sample. */
+    referenceMode: unknown;
   },
 ): Promise<number> {
   const moduleKey = moduleKeyForFormat(args.format);
@@ -109,7 +111,11 @@ export async function recomputeLegacyDraftsInTx(
         ? (raw as Record<string, unknown>)
         : {};
     const data =
-      args.referenceSampleId === row.sessionSampleId && isPinnedModule(moduleKey)
+      shouldPinReference({
+        mode: args.referenceMode,
+        moduleKey,
+        isActiveReference: args.referenceSampleId === row.sessionSampleId,
+      })
         ? pinReferenceAffective(stored, args.cupsPerSample)
         : stored;
     const fields = tryComputeEvaluationDerived(moduleKey, data, args.cupsPerSample);

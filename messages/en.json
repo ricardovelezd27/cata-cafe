@@ -227,7 +227,7 @@
       "samplesHelper": "Each sample is cupped separately. Edit its label and assign it a coffee.",
       "moreDetails": "More coffee details (optional)",
       "referenceTitle": "Reference sample",
-      "referenceHelper": "Optional. Mark one sample as the reference so the others are compared against it in the results. It is cupped and scored like any other.",
+      "referenceHelper": "Optional. Mark one sample as the reference so the others are compared against it in the results. Below you choose how it is scored.",
       "referenceMark": "Mark {label} as reference",
       "referenceBadge": "Reference",
       "referenceNone": "No reference",
@@ -255,13 +255,45 @@
         "invalid_warmup": "That warm-up exercise is not valid. Pick one from the list.",
         "not_found_or_forbidden": "You don't have access to this or it no longer exists. Check the chosen group.",
         "not_authenticated": "Your session expired. Sign in again; what you typed is still here.",
-        "unknown": "Couldn't create the session. What you typed is still here; please try again."
+        "unknown": "Couldn't create the session. What you typed is still here; please try again.",
+        "invalid_sample_prep": "Check the optional details of a sample: the roast date cannot be in the future and notes allow up to 500 characters.",
+        "invalid_input": "Check the session details: one option is not valid."
       },
       "goToPanel": "Go to the panel",
       "startNow": "Start the cupping now",
       "goToPanelHint": "From the panel you can run the sensory movement with the group and start the cupping once everyone is in the room.",
       "startGroup": "Create cupping and get the link",
-      "cupsHint": "At any number of cups: a defective cup subtracts 6 points (4 with a single cup) and a non-uniform cup 2. With one cup, uniformity is not evaluated."
+      "cupsHint": "At any number of cups: a defective cup subtracts 6 points (4 with a single cup) and a non-uniform cup 2. With one cup, uniformity is not evaluated.",
+      "sampleLabelAuto": "Random letter",
+      "samplesBlindHelper": "Letters are assigned at random when the session is created. Type a label only if you want to fix it yourself.",
+      "sampleKey": {
+        "title": "Sample key",
+        "hint": "Only you see this key. Close it before projecting your screen.",
+        "noCoffee": "No coffee"
+      },
+      "notifyWhen": {
+        "checkbox": "Email the group",
+        "legend": "When to email the group",
+        "onCreate": "Email when the session is created",
+        "onStart": "Email when the tasting starts"
+      },
+      "samplePrep": {
+        "summary": "More sample details (optional)",
+        "hint": "Only you see these until you reveal the sample.",
+        "roastDate": "Roast date",
+        "preparation": "Preparation",
+        "preparationPh": "Water, ratio, grind…",
+        "offProtocol": "Cupped outside protocol",
+        "offProtocolNote": "What differed from the protocol?",
+        "offProtocolNotePh": "For example: 3-hour rest"
+      },
+      "referenceMode": {
+        "legend": "How the reference is used",
+        "anchor": "Anchor",
+        "free": "Free reference",
+        "anchorHelp": "Its quality is fixed at 5 (79.00) for everyone and it is only described. It is a Café Sensible exercise, not part of the CVA.",
+        "freeHelp": "Everyone scores it like any other sample and the rest are compared with its average."
+      }
     },
     "express": {
       "title": "Cup now",
@@ -341,6 +373,7 @@
       "closesAtHint": "Optional. The session closes by itself in the early hours after this date. Leave it empty for a live tasting you close yourself.",
       "closesAtPast": "The closing date must be today or later.",
       "sessionClosed": "This session is closed and can no longer be edited.",
+      "sessionExpired": "This session's deadline has passed: you can only change the closing date.",
       "warmupLocked": "The exercise can't be changed once the cupping has started.",
       "repinTitle": "Set this sample as the reference?",
       "repinBody": "{n} cuppers already rated this sample. Marking it as the reference replaces their quality ratings with the 79.00 anchor. This cannot be undone.",
@@ -349,7 +382,17 @@
       "removeRepinBody": "Removing it makes {label} the reference again, and {n} cuppers will have their quality ratings replaced by the 79.00 anchor. This cannot be undone.",
       "removeRepinConfirm": "Remove reference",
       "referenceRepinBlocked": "Removing this sample would reactivate an earlier reference and replace its cuppers' ratings. Change the reference first.",
-      "formatLockedStarted": "Format and cups per sample lock once the cupping has started or has evaluations."
+      "formatLockedStarted": "Format and cups per sample lock once the cupping has started or has evaluations.",
+      "referenceHelperFree": "The other samples are compared against its average in the results. Everyone scores it like any other sample. Picking another adds it as Reference 2.",
+      "referenceModeLocked": "The reference mode cannot be changed once the tasting has started or has any evaluation, including the pinned reference.",
+      "asyncGroupNoticeFailed": "Saved. With a closing date the tasting no longer has a start, so the group had to be notified now, but we could not send the email. You can resend the notice from the group page.",
+      "asyncGroupNoticePartial": "Saved. The notice reached part of the group; retry the failed ones from the group page.",
+      "asyncGroupNoticeSent": "Notice sent to your group.",
+      "closesAtNotifyNote": "Saving will send this tasting's notice to your group."
+    },
+    "sampleCountWarning": {
+      "many": "More than 6 samples tires the palate. Consider splitting them across two cuppings.",
+      "combined": "For the combined format, 4 samples at most are recommended."
     }
   },
   "cupping": {
@@ -647,6 +690,18 @@
     "guestDataNotice": "As a guest, your access is tied to this browser: clearing browsing data or switching devices means losing your progress. When you view your results you'll be able to save them by creating your account.",
     "guestOfflineNotice": "You need a connection to join; once in, you can cup offline.",
     "guestError": "Couldn't join as guest. Try with your email.",
+    "identityFallbackName": "Cupper",
+    "identityTitle": "Are you {name}?",
+    "identityLead": "This device already has a cupping open as {name}.",
+    "identityContinue": "Continue as {name}",
+    "identityNotMe": "I'm not {name}",
+    "identityConfirmTitle": "Start as someone else",
+    "identityConfirmBody": "{name}'s cuppings on this device can no longer be opened from here, unless {name} saved them in an account.",
+    "identityUnsynced": "Unsynced notes from {name} on this device: {count}. They stay stored here, but no one will be able to send them.",
+    "identityConfirmButton": "I'm someone else",
+    "identityCancel": "Cancel",
+    "identityClose": "Close",
+    "identitySyncing": "Sending pending notes…",
     "sessionClosed": "This tasting is already closed — ask the organizer for the results link.",
     "referenceSelect": "Reference sample",
     "referenceNone": "No reference",
@@ -695,7 +750,8 @@
     "deadlineSoon": "Closing soon: {when}",
     "deadlinePassed": "The deadline has passed: {when}",
     "deadlineLocal": "{local} your time",
-    "closesAtLiveNotice": "With a closing date the cupping becomes self-paced: no waiting room and no \"Start cupping\" button."
+    "closesAtLiveNotice": "With a closing date the cupping becomes self-paced: no waiting room and no \"Start cupping\" button.",
+    "referenceAddHintFree": "Everyone scores references like any other sample; the previous one stays."
   },
   "results": {
     "title": "Session Results",
@@ -788,7 +844,9 @@
       "rankIndicative": "indicative",
       "rankNoClearGap": "no clear difference",
       "basisMine": "your score",
-      "fewNote": "With fewer than 3 cuppers the score is only indicative: no spread is shown and no best sample is picked."
+      "fewNote": "With fewer than 3 cuppers the score is only indicative: no spread is shown and no best sample is picked.",
+      "anchorTitleFree": "Reference",
+      "anchorHintFree": "Scored like any other sample · outside the ranking, the average and the best sample"
     },
     "table": {
       "sample": "Sample",
@@ -951,7 +1009,8 @@
       },
       "referencia": {
         "title": "Reference sample",
-        "body": "The session master can mark one sample as the reference: a shared starting point the others are read against. The tasting starts with it and its quality is pinned at 5 (neither high nor low) on every attribute, so every cupper gives it 79.00 and only describes what they perceive. It sits outside the ranking, the average and the best sample: it is the anchor.\nWhat it adds is context: next to each sample you'll see Δ, the difference between its score and the reference's, always computed on the same kind of score you see beside it (community when visible, otherwise your own).\nReference, group mean and deviation are different things: the reference is the starting point the master chose; the mean is what the group perceived; the deviation (±) is how much the group spread."
+        "body": "The session master can mark one sample as the reference: a shared starting point the others are read against. The tasting starts with it and its quality is pinned at 5 (neither high nor low) on every attribute, so every cupper gives it 79.00 and only describes what they perceive. It sits outside the ranking, the average and the best sample: it is the anchor.\nWhat it adds is context: next to each sample you'll see Δ, the difference between its score and the reference's, always computed on the same kind of score you see beside it (community when visible, otherwise your own).\nReference, group mean and deviation are different things: the reference is the starting point the master chose; the mean is what the group perceived; the deviation (±) is how much the group spread.",
+        "bodyFree": "The session master can mark one sample as the reference: a shared starting point the others are read against. The tasting starts with it and everyone scores it freely, like any other sample. It sits outside the ranking, the average and the best sample.\nWhat it adds is context: next to each sample you'll see Δ, the difference between its score and the reference's, always computed on the same kind of score you see beside it (community when visible, otherwise your own).\nReference, group mean and deviation are different things: the reference is the starting point the master chose; the mean is what the group perceived; the deviation (±) is how much the group spread."
       }
     },
     "radar": {
@@ -977,6 +1036,11 @@
       "keepLine": "{n} incomplete samples will stay without a score.",
       "confirm": "Finish cupping",
       "cancel": "Keep cupping"
+    },
+    "samplePrep": {
+      "roastDate": "Roast date",
+      "preparation": "Preparation",
+      "offProtocol": "Cupped outside protocol"
     }
   },
   "community": {
@@ -1816,7 +1880,6 @@
     "saveDetails": "Save details",
     "linkGroupLabel": "Link to a group",
     "noGroupOption": "No group",
-    "autoInviteLive": "Email the group when you start the tasting",
     "autoInviteAsync": "Email the group when the session is created",
     "autoInviteSummary": "Invitation sent to {sent} members · {skipped} skipped · {failed} failed",
     "joinSessionLink": "Join the session"
@@ -1873,6 +1936,7 @@
       "group_full": "This group already has 200 members, the maximum.",
       "invalid_email": "That email address doesn't look valid. Check it and try again.",
       "offline": "You need a connection to do this. Try again once you are back online.",
+      "identity_changed": "This device changed user. Reload the page to continue.",
       "email_exists": "That email already has an account.",
       "account_protected": "This account administers the platform and cannot be deleted from the app.",
       "account_too_large": "Your account has too many sessions to delete it from the app. Write to support and we will delete it for you; nothing was deleted."

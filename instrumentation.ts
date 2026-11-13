@@ -17,8 +17,9 @@ import { errorMessage, logError, redactPath } from "@/lib/log";
 import { assertProductionEnv } from "@/lib/env";
 
 // Runs once per server instance at startup (Node runtime only — the edge
-// runtime has no process.env to assert). Fails the boot in production when a
-// required variable is missing instead of shipping localhost links or
+// runtime has no process.env to assert). Makes the server refuse to start in
+// production (it throws on each cold start; the build itself still succeeds)
+// when a required variable is missing instead of shipping localhost links or
 // silently skipped emails.
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {

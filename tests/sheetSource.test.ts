@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sheetSampleIdentity, sheetSampleRecords } from "@/lib/pdf/sheetSource";
+import { sheetSampleIdentity, sheetSamplePrep, sheetSampleRecords } from "@/lib/pdf/sheetSource";
 
 const coffee = { name: "Geisha", roastLevel: "Light", deletedAt: null };
 
@@ -72,5 +72,38 @@ describe("sheetSampleRecords", () => {
       physical: {},
       extrinsic: {},
     });
+  });
+});
+
+// A9: the prep data identifies a coffee, so it follows the extrinsic rule.
+describe("sheetSamplePrep", () => {
+  const cols = {
+    roastDate: new Date(Date.UTC(2026, 10, 1)),
+    preparationNote: "92 C",
+    offProtocol: true,
+    offProtocolNote: "grifo",
+  };
+  const expected = {
+    roastDate: "2026-11-01",
+    preparationNote: "92 C",
+    offProtocol: true,
+    offProtocolNote: "grifo",
+  };
+  it("a participant's sheet of a blind sample carries nothing", () => {
+    expect(sheetSamplePrep({ ...cols, revealed: false }, false)).toEqual({ prep: null });
+  });
+  it("a participant gets it once the sample is revealed", () => {
+    expect(sheetSamplePrep({ ...cols, revealed: true }, false)).toEqual({ prep: expected });
+  });
+  it("the owner gets it even before the reveal", () => {
+    expect(sheetSamplePrep({ ...cols, revealed: false }, true)).toEqual({ prep: expected });
+  });
+  it("an empty sample is null", () => {
+    expect(
+      sheetSamplePrep(
+        { roastDate: null, preparationNote: null, offProtocol: false, offProtocolNote: null, revealed: true },
+        true,
+      ),
+    ).toEqual({ prep: null });
   });
 });

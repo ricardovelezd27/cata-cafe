@@ -19,6 +19,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { ArrowLeft, Printer } from "lucide-react";
 import { printPage } from "@/lib/platform/print";
 import type { ScoreRule } from "@/lib/scoreRule";
+import type { SamplePrep } from "@/lib/samplePrep";
 import {
   buildCvaFormData,
   CVA_TEXT,
@@ -113,6 +114,8 @@ type SampleData = {
   revealed: boolean;
   coffeeName: string | null;
   roastLevel: string | null;
+  /** A9 prep data, already gated on the server (sheetSamplePrep). */
+  prep?: SamplePrep | null;
   isReference?: boolean;
   referenceRank?: number | null;
   /** "v1" = stored before the 2026-11 rule (lib/scoreRule.ts). */
@@ -672,6 +675,17 @@ function SheetHeader({ sheet, t, formName }: { sheet: CvaSampleSheet; t: T; form
         <DotField label={t.session} value={h.sessionName} />
         {h.roastLevel ? <DotField label={t.roastLevel} value={h.roastLevel} /> : null}
       </div>
+      {h.prep ? (
+        <div style={{ display: "flex", gap: "10pt", marginTop: "3pt" }}>
+          {h.prep.roastDate ? <DotField label={t.roastDate} value={h.prep.roastDate} /> : null}
+          {h.prep.preparationNote ? (
+            <DotField label={t.preparation} value={h.prep.preparationNote} />
+          ) : null}
+          {h.prep.offProtocol ? (
+            <DotField label={t.offProtocol} value={h.prep.offProtocolNote ?? "•"} />
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
