@@ -18,7 +18,7 @@ interface CupToggleGridProps {
     defectiveLegend: string;  // "Defectuosa"
     oneTap: string;           // "(1 toque)"
     defectType: string;       // "Tipo de defecto"
-    scoreHint: string;        // always-visible: how the cups cost points (4 defective, 2 non-uniform)
+    scoreHint: string;        // always-visible: how the cups cost points (see lib/cupHint.ts)
   };
   onToggleNonUniform: (idx: number) => void;
   onToggleDefective: (idx: number) => void;

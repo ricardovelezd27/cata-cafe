@@ -9,12 +9,19 @@
 -- What it does: snapshots aggregate_scores, re-issues recompute_aggregate_score()
 -- with the PHASE 26 body, re-fires the trigger for every submitted evaluation
 -- (UPDATE evaluations SET "isDraft" = "isDraft" WHERE "isDraft" = false) and
--- reports, in the exception text: how many aggregate rows WOULD change (split by
--- cups per sample 1, 2, 3-4, 5+), the largest increase and decrease of
--- communityScore, how many rows charge more than 6 points per flagged cup (must
--- be 0) and the function's proconfig. The red error it ends with IS the expected
--- outcome; it starts with "PHASE 26 DRY RUN: NOTHING WAS APPLIED". Any OTHER
--- error: stop and report it.
+-- reports, in the exception text: how many aggregate rows a FULL re-fire would
+-- change (split by cups per sample 1, 2, 3-4, 5+), the highest and lowest change
+-- of communityScore, how many rows were NOT stamped ruleVersion 2 by the
+-- re-fire (must be 0) and the function's proconfig. The red error it ends with IS
+-- the expected outcome; it starts with "PHASE 26 DRY RUN: NOTHING WAS APPLIED".
+-- Any OTHER error: stop and report it.
+--
+-- READ THE NUMBERS FOR WHAT THEY ARE: production NEVER does a full re-fire.
+-- This file is a functional test of the new function on real data, not a preview
+-- of what applying PHASE 26 changes (applying it changes NO stored row; only a
+-- later submit, exclusion or repair of one sample re-computes that sample). It
+-- holds row locks on every submitted evaluation until it rolls back, so run it
+-- when no cupping is live.
 --
 -- The statements between the two marker comments must stay identical to PHASE 26
 -- in prisma/sql/rls_and_triggers.sql (tests/phase26Sql.test.ts checks it).
@@ -201,7 +208,7 @@ $fn$;
   SELECT count(*) INTO v_changed
     FROM agg_before b JOIN aggregate_scores a USING ("sessionSampleId")
    WHERE a."communityScore" IS DISTINCT FROM b."communityScore";
-  v_out := v_out || format(E'\n 1 aggregate rows: %s, of which communityScore WOULD CHANGE: %s', v_total, v_changed);
+  v_out := v_out || format(E'\n 1 aggregate rows: %s, of which communityScore would change under a FULL re-fire (production never does one): %s', v_total, v_changed);
 
   FOR r IN
     SELECT CASE WHEN b."cupsPerSample" <= 1 THEN '1 cup'
@@ -213,19 +220,20 @@ $fn$;
       FROM agg_before b JOIN aggregate_scores a USING ("sessionSampleId")
      GROUP BY 1 ORDER BY 1
   LOOP
-    v_out := v_out || format(E'\n 2 cups per sample %s: %s rows, %s would change', r.bucket, r.n, r.changed);
+    v_out := v_out || format(E'\n 2 by cups per sample, group %s: %s rows, %s would change', r.bucket, r.n, r.changed);
   END LOOP;
 
   SELECT max(a."communityScore" - b."communityScore"), min(a."communityScore" - b."communityScore")
     INTO v_up, v_down
     FROM agg_before b JOIN aggregate_scores a USING ("sessionSampleId");
-  v_out := v_out || format(E'\n 3 largest increase of communityScore: %s; largest decrease: %s', v_up, v_down);
+  v_out := v_out || format(E'\n 3 change of communityScore under a full re-fire, highest: %s, lowest: %s (both negative = every sample would go down)', v_up, v_down);
 
+  -- A check that CAN fail: the old function never wrote ruleVersion 2.
   SELECT count(*) INTO v_excess
     FROM aggregate_scores a
-   WHERE GREATEST(a."totalNonUniform", a."totalDefective") > 0
-     AND (a."uniformityPenalty" + a."defectPenalty") / GREATEST(a."totalNonUniform", a."totalDefective") > 6.000001;
-  v_out := v_out || format(E'\n 4 rows whose new penalty per flagged cup exceeds 6 (expect 0): %s', v_excess);
+   WHERE a."ruleVersion" <> 2
+     AND EXISTS (SELECT 1 FROM evaluations e WHERE e."sessionSampleId" = a."sessionSampleId" AND e."isDraft" = false);
+  v_out := v_out || format(E'\n 4 rows with submitted evaluations NOT stamped ruleVersion 2 by the re-fire (expect 0): %s', v_excess);
   v_out := v_out || format(E'\n 5 proconfig of recompute_aggregate_score (expect {search_path=public}): %s', v_conf);
 
   FOR r IN
@@ -234,7 +242,7 @@ $fn$;
      WHERE a."communityScore" IS DISTINCT FROM b."communityScore"
      ORDER BY abs(a."communityScore" - b."communityScore") DESC, b."sessionSampleId" LIMIT 10
   LOOP
-    v_out := v_out || format(E'\n   sample %s (%s cups per sample): %s -> %s', r.id, r.cups, r.before, r.after);
+    v_out := v_out || format(E'\n 6 sample %s (%s cups per sample): %s -> %s', r.id, r.cups, r.before, r.after);
   END LOOP;
 
   RAISE EXCEPTION E'PHASE 26 DRY RUN: NOTHING WAS APPLIED (this error is the expected result). Compare each line with its expectation:%', v_out;

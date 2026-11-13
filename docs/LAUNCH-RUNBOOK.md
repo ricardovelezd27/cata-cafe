@@ -1734,11 +1734,16 @@ decision: no past score ever changes).** The data says which rule a stored score
 steps 4–5) and `scripts/resync-low-cup-history.ts` are CANCELLED and must never run.
 
 **Order, and why.** (1) migration, (2) dry run, (3) PHASE 26, (4) check, (5) merge and deploy.
-The new trigger reads `COALESCE(evaluations."cups", cupsPerSample)`, so it is correct under the
-OLD app code (which does not write `cups` yet) and under the new one: the stored value is right
-first, and the page, which recomputes the same rule in TypeScript, never disagrees with it in
-between. Doing the deploy before PHASE 26 would show the new rule on the page while the stored
-score (coffee history, profile) still follows the PHASE 23 rule until the next submit.
+The new trigger reads `COALESCE(evaluations."cups", cupsPerSample)`, so it computes the right
+number under the OLD app code (which does not write `cups` yet) and under the new one. **Do
+step 3 and step 5 back to back, at a time when no cupping is live.** Between them the OLD page
+still recomputes the old rule in TypeScript while the new trigger stores the new one: a
+submission in that window (for example a cupper who flags a cup in a 2-cup sample) is STORED
+with the deduction (coffee history, profile, results of that sample after the deploy) while the
+old page shows no deduction until the deploy lands. Nothing stored before the window changes.
+Doing the deploy BEFORE PHASE 26 is worse: the page would show the new rule while the stored
+score still follows the PHASE 23 rule until the next submit, and the old trigger stamps every
+new sample `ruleVersion = 1` while its evaluations already carry `cups`.
 
 **Steps** (Supabase SQL editor of the production project; there is only one)
 
@@ -1755,11 +1760,19 @@ score (coffee history, profile) still follows the PHASE 23 rule until the next s
 2. **Dry run** (fail-safe: one statement, nothing is applied). Open
    `prisma/sql/dry-runs/phase26_dry_run.sql`, paste the whole file, run it. Expected: a red
    error starting `PHASE 26 DRY RUN: NOTHING WAS APPLIED`. Read each numbered line:
-   - 1: how many `aggregate_scores` rows would change;
+   - 1: how many `aggregate_scores` rows a FULL re-fire would change;
    - 2: the same split by cups per sample (1 cup, 2 cups, 3-4 cups, 5+ cups);
-   - 3: the largest increase and decrease of `communityScore` (show them to the owner);
-   - 4: rows charging more than 6 points per flagged cup: must be `0`;
-   - 5: `proconfig` must be `{search_path=public}`.
+   - 3: the highest and lowest change of `communityScore` (both negative means every sample
+     would go down; show them to the owner);
+   - 4: rows with submitted evaluations NOT stamped `ruleVersion = 2` by the re-fire: must be
+     `0` (proves the new function is the one running);
+   - 5: `proconfig` must be `{search_path=public}`;
+   - 6: up to ten of the largest individual changes.
+   **These numbers are what a FULL re-fire of every sample would do, which production never
+   does.** The dry run is a functional test of the new function on real data, not a preview of
+   what applying PHASE 26 changes: applying it changes NO stored row (step 3). While it runs it
+   holds row locks on every submitted evaluation until it rolls back, so run it when no
+   cupping is live.
    If it says `evaluations.cups is missing`, redo step 1. Any OTHER error: stop and report;
    nothing was applied either way.
 3. **Only on the owner's explicit yes**, run the PHASE 26 block of
@@ -1770,10 +1783,19 @@ score (coffee history, profile) still follows the PHASE 23 rule until the next s
    `aggregate_scores."ruleVersion" = 2`; from then on the results screen shows that sample under
    the current rule. Samples nobody touches stay `ruleVersion = 1` and keep rendering exactly as
    before. The app reads the version from the data, there is no cut-over date.
-4. **Verify (read-only):**
+   The "Actualizar" button on a CLOSED or expired session does NOT re-fire (it only re-reads
+   the page), so a routine click never rewrites a past score. One accepted exception: a guest
+   claim (`mergeGuestData`) re-fires the closed sessions it touches when evaluations conflict
+   or an exclusion flag changes, which recomputes those samples under the current rule.
+4. **Verify (read-only). HARD STOP: this must run and pass BEFORE step 5; do not merge
+   otherwise.** If the live function body does not contain `v_factor` and write `"ruleVersion"`
+   (it is still the PHASE 23 body), the old trigger stamps every new sample `ruleVersion = 1`
+   while its evaluations already carry `cups`, and the screen would show those samples under
+   the old rule with no error anywhere:
 
    ```sql
    select pg_get_functiondef('public.recompute_aggregate_score()'::regprocedure) like '%v_factor%';  -- t
+   select pg_get_functiondef('public.recompute_aggregate_score()'::regprocedure) like '%"ruleVersion"%';  -- t
    select proconfig from pg_proc where proname = 'recompute_aggregate_score';  -- {search_path=public}
    select count(*) from aggregate_scores where "computedAt" > now() - interval '10 minutes';  -- 0: nothing recomputed
    select count(*) from aggregate_scores where "ruleVersion" = 2;  -- 0 right after applying
@@ -1788,5 +1810,9 @@ score (coffee history, profile) still follows the PHASE 23 rule until the next s
    per build); drafts stay on the device.
 6. **Rollback.** Code: revert the PR (the `cups` column can stay, it is nullable and unread by
    old code). Database: re-create the PHASE 23 function with the commented block at the end of
-   PHASE 26 in `rls_and_triggers.sql` (it is the exact previous body). Neither direction
-   touches stored scores.
+   PHASE 26 in `rls_and_triggers.sql` (the previous body, with one change: it writes
+   `"ruleVersion" = 1`, because the column survives a rollback). **The app revert must land
+   BEFORE or together with the database rollback**, never after: the new app on the old
+   function would show new-rule evaluations under whatever the old function stored. Neither
+   direction touches stored scores; rows already stamped `ruleVersion = 2` keep that stamp
+   until they are re-fired under the rolled-back function.

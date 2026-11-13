@@ -71,6 +71,8 @@ function pillsForDescId(descId: string): CATAOption[] | null {
   return null;
 }
 
+import { cupScoreHint } from "@/lib/cupHint";
+
 const CUP_LABELS = {
   nonUniform: "No uniformes",
   defective: "Defectuosas",
@@ -78,8 +80,6 @@ const CUP_LABELS = {
   defectiveLegend: "Defectuosa",
   oneTap: "(1 toque)",
   defectType: "Tipo de defecto",
-  scoreHint:
-    "Tus tazas se suman a las del grupo. Cada taza defectuosa que marques te resta 4 puntos; cada taza no uniforme, 2.",
 };
 
 export function CombinedForm({
@@ -92,6 +92,7 @@ export function CombinedForm({
   lockedAffective = false,
   lockedNote,
   lockedCupsNote,
+  isGroup = false,
 }: {
   sampleData: Data;
   onChange: (d: Data) => void;
@@ -105,6 +106,8 @@ export function CombinedForm({
   lockedAffective?: boolean;
   lockedNote?: string;
   lockedCupsNote?: string;
+  /** Group sessions only: adds "Tus tazas se suman a las del grupo." to the cup hint. */
+  isGroup?: boolean;
 }) {
   const isFlagged = (id: string) => missingIds?.includes(id) ?? false;
   const d = sampleData;
@@ -211,7 +214,7 @@ export function CombinedForm({
               defectTypes={defectoTipo}
               defectOptions={SENSORY_DEFECTS as readonly string[]}
               defectLabels={SENSORY_DEFECT_LABELS as Record<string, string>}
-              labels={CUP_LABELS}
+              labels={{ ...CUP_LABELS, scoreHint: cupScoreHint(isGroup) }}
               onToggleNonUniform={toggleNonUniform}
               onToggleDefective={toggleDefective}
               onToggleDefectType={toggleDefectType}

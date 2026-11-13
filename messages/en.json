@@ -261,7 +261,7 @@
       "startNow": "Start the cupping now",
       "goToPanelHint": "From the panel you can run the sensory movement with the group and start the cupping once everyone is in the room.",
       "startGroup": "Create cupping and get the link",
-      "cupsHint": "Each defective cup subtracts 4 points and each non-uniform cup 2, at any number of cups. With one cup, uniformity is not evaluated."
+      "cupsHint": "At any number of cups: a defective cup subtracts 6 points (4 with a single cup) and a non-uniform cup 2. With one cup, uniformity is not evaluated."
     },
     "express": {
       "title": "Cup now",

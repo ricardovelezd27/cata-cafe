@@ -147,9 +147,9 @@ describe("phase26_dry_run.sql", () => {
       "2 cups",
       "3-4 cups",
       "5+ cups",
-      "largest increase",
-      "largest decrease",
-      "exceeds 6 (expect 0)",
+      "highest:",
+      "lowest:",
+      "NOT stamped ruleVersion 2 by the re-fire (expect 0)",
       "proconfig",
     ]) {
       expect(DRY).toContain(needle);

@@ -242,10 +242,11 @@ function renderGroup(
 ) {
   const avgRaw = g.avgRawScore ?? 0;
   const community = g.communityScore ?? 0;
-  // The penalties printed are the STORED ones. Rows stored before the current
-  // rule (flat CVA deduction, diluted beyond five pooled cups) were computed
-  // under older arithmetic, so the formula is shown only when it reproduces the
-  // stored number; otherwise the line carries just its name.
+  // The penalties printed are the ones the page's data carries: the TypeScript
+  // recompute (results page), or the stored row when the page recomputed nothing.
+  // A sample scored under an older rule (g.rule === "v1") is never shown as the
+  // current formula, and the formula is shown only when it reproduces the
+  // penalties carried; otherwise the line carries just its name.
   const cups = g.totalCups || cupsPerSample;
   const expected = cupDeduction({ cups, nonUniform: g.totalNonUniform, defective: g.totalDefective });
   const previous = g.rule === "v1";

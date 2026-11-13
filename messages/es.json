@@ -261,7 +261,7 @@
       "startNow": "Iniciar cata ahora",
       "goToPanelHint": "Desde el panel puedes lanzar el movimiento sensorial con el grupo y empezar la cata cuando todos estén en la sala.",
       "startGroup": "Crear cata y obtener enlace",
-      "cupsHint": "Cada taza defectuosa resta 4 puntos y cada taza no uniforme 2, con cualquier número de tazas. Con una taza no se evalúa uniformidad."
+      "cupsHint": "Con cualquier número de tazas: una taza defectuosa resta 6 puntos (4 con una sola taza) y una no uniforme, 2. Con una taza no se evalúa uniformidad."
     },
     "express": {
       "title": "Catar ahora",
