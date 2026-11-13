@@ -16,11 +16,14 @@ export function AffectiveBlock({
   locale,
   showPenalties = true,
   showIncluded = true,
+  scoreLabel,
 }: {
   affective: FichaAffective;
   locale: Locale;
   showPenalties?: boolean;
   showIncluded?: boolean;
+  /** Overrides the "community score" caption (the coffee ficha shows the coffee's own score). */
+  scoreLabel?: string;
 }) {
   const t = SECTION_TEXT[locale];
   const score = affective.communityScore;
@@ -34,7 +37,7 @@ export function AffectiveBlock({
       ) : (
         <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
           <View style={{ width: 118 }}>
-            <Text style={st.kvLabel}>{t.communityScore}</Text>
+            <Text style={st.kvLabel}>{scoreLabel ?? t.communityScore}</Text>
             <View style={{ marginTop: 3 }}>
               {score !== null ? (
                 <PdfScorePill score={score} size="lg" />

@@ -11,6 +11,8 @@ import { prisma } from "@/lib/prisma";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
 import { computeCoffeeAggregate } from "@/lib/coffeeAggregate";
+import { computeCoffeeLifetimeScore } from "@/lib/coffeeLifetimeScore";
+import { buildLifetimeLines, LIFETIME_COPY } from "@/lib/coffeeLifetimeLines";
 import { originEditedAfterClose } from "@/lib/originEdit";
 import { loadCoffeeAggregateSamples } from "@/lib/coffees/aggregateSamples";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
@@ -71,12 +73,16 @@ export async function GET(
 
     let results: CoffeeFichaModel["results"] = null;
     if (showResults) {
-      const aggregate = computeCoffeeAggregate(await loadCoffeeAggregateSamples(id, { userId: user.id, isAdmin }));
+      const samples = await loadCoffeeAggregateSamples(id, { userId: user.id, isAdmin });
+      const aggregate = computeCoffeeAggregate(samples);
+      // S10 WP1c: the coffee's score is its lifetime computation, same as the page.
+      const lifetime = computeCoffeeLifetimeScore(samples.map((s) => s.lifetime));
       results = {
+        lifetime: buildLifetimeLines(lifetime, LIFETIME_COPY[locale]),
         sessionsCount: aggregate.sessionsCount,
         evaluationsCount: aggregate.evaluationsCount,
         affective: {
-          communityScore: aggregate.communityAvg,
+          communityScore: lifetime.score,
           sd: null,
           included: aggregate.evaluationsCount,
           submitted: aggregate.evaluationsCount,

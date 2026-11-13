@@ -10,6 +10,7 @@ import { registerPdfFonts, SANS } from "./fonts";
 import { CVA_TEXT } from "./cvaFormData";
 import { PdfScorePill } from "./charts";
 import { sanitizePdfText } from "./text";
+import { LIFETIME_COPY, type LifetimeLines } from "../coffeeLifetimeLines";
 import { IdentityBlock } from "./sections/IdentityBlock";
 import { ReportStamp } from "./sections/ReportStamp";
 import { ExtrinsicBlock } from "./sections/ExtrinsicBlock";
@@ -28,6 +29,8 @@ export type CoffeeFichaModel = {
     sessionsCount: number;
     evaluationsCount: number;
     affective: FichaAffective;
+    /** The coffee's lifetime score lines (S10 WP1c): cups, arithmetic, tally. Numbers only. */
+    lifetime: LifetimeLines;
     sessions: { name: string; date: Date; score: number | null; originEditedAt?: Date | null }[];
   };
 };
@@ -136,7 +139,30 @@ export function CoffeeFichaDocument({ model, locale }: { model: CoffeeFichaModel
                       locale={locale}
                       showPenalties={false}
                       showIncluded={false}
+                      scoreLabel={LIFETIME_COPY[locale].title}
                     />
+                  </View>
+                  <View style={{ marginTop: 6 }} wrap={false}>
+                    {results.lifetime.roundingNote ? <Text style={st.small}>{results.lifetime.roundingNote}</Text> : null}
+                    {results.lifetime.accumulated ? (
+                      <Text style={[st.body, { fontWeight: 700 }]}>{results.lifetime.accumulated}</Text>
+                    ) : null}
+                    {results.lifetime.arithmetic ? (
+                      <Text style={st.small}>{results.lifetime.arithmetic}</Text>
+                    ) : null}
+                    {results.lifetime.tally ? <Text style={st.small}>{results.lifetime.tally}</Text> : null}
+                    {results.lifetime.byType ? <Text style={st.small}>{results.lifetime.byType}</Text> : null}
+                    {results.lifetime.nonUniform ? (
+                      <Text style={st.small}>{results.lifetime.nonUniform}</Text>
+                    ) : null}
+                    {results.lifetime.indicative ? (
+                      <Text style={st.small}>
+                        {results.lifetime.indicative.badge} · {results.lifetime.indicative.note}
+                      </Text>
+                    ) : null}
+                    {results.lifetime.anchorNote ? <Text style={st.small}>{results.lifetime.anchorNote}</Text> : null}
+                    {results.lifetime.noBase ? <Text style={st.small}>{results.lifetime.noBase}</Text> : null}
+                    <Text style={[st.small, { marginTop: 2 }]}>{results.lifetime.note}</Text>
                   </View>
                   {results.sessions.length > 0 ? (
                     <View style={st.sep}>

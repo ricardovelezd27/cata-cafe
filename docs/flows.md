@@ -1206,6 +1206,11 @@ each gate is a pure, tested helper shared by every consumer:
   viewer owns or joined (admin: all). Other sessions still feed the anonymous
   totals. "Recent tastings" = the viewer's own evaluations plus every evaluation
   of sessions they own.
+- The coffee profile's headline number and the coffee ficha PDF show the coffee's
+  **lifetime score** (S10 WP1c): a read-time computation over the same surviving
+  samples (`computeCoffeeLifetimeScore`), never stored, with the cups line, the
+  arithmetic and the defect tally; the per-session rows keep each session's stored
+  score. No cupper id reaches it (`cupperKey` is an opaque index).
 - Coffee `notes` render for the owner/super-admin only; `duplicableFields`
   (`lib/coffeeDuplicate.ts`) is the allow-list a duplicate copies from.
 - D8 (cancelled blind session): since S8-16 each submitted evaluation on a

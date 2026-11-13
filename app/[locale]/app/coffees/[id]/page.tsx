@@ -17,6 +17,9 @@ import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { usableCoffeeWhere, type CoffeeVisibility } from "@/lib/coffeeAccess";
 import { computeCoffeeAggregate } from "@/lib/coffeeAggregate";
 import { loadCoffeeAggregateSamples } from "@/lib/coffees/aggregateSamples";
+import { computeCoffeeLifetimeScore } from "@/lib/coffeeLifetimeScore";
+import { buildLifetimeLines, type LifetimeLabels } from "@/lib/coffeeLifetimeLines";
+import { LifetimeScoreCard } from "@/components/coffees/LifetimeScoreCard";
 import { formatCoffeeCode } from "@/lib/coffeeCode";
 import { FLAVOR_DESC_KEYS } from "@/lib/descriptors";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
@@ -122,6 +125,11 @@ export default async function CoffeeProfilePage({
   // or to the super admin. Details grid and own history are unaffected.
   const showResults = isOwner || coffee.resultsPublished || isAdmin;
   const aggregate = computeCoffeeAggregate(samples);
+  // S10 WP1c: the coffee's headline score is its own lifetime computation (every
+  // cup ever cupped, current rule), not an average of stored session scores.
+  // Numbers only; same gate as the rest of the community block (showResults).
+  const lifetime = computeCoffeeLifetimeScore(samples.map((s) => s.lifetime));
+  const lifetimeLines = buildLifetimeLines(lifetime, t.raw("lifetime") as LifetimeLabels);
   const hasResults = samples.length > 0;
 
   // The viewer's own average across their history rows — the one number that
@@ -303,8 +311,8 @@ export default async function CoffeeProfilePage({
                   icon={<CheckCircle2 size={18} />}
                 />
                 <StatCard
-                  label={t("statCommunityAvg")}
-                  value={aggregate.communityAvg != null ? aggregate.communityAvg.toFixed(2) : "—"}
+                  label={t("lifetime.title")}
+                  value={lifetimeLines.headline ?? "—"}
                   subtext=""
                   accent
                   icon={<Users size={18} />}
@@ -323,6 +331,9 @@ export default async function CoffeeProfilePage({
                 icon={<Star size={18} />}
               />
             </Link>
+            {showResults && hasResults && (
+              <LifetimeScoreCard title={t("lifetime.title")} lines={lifetimeLines} />
+            )}
           </div>
         </div>
 

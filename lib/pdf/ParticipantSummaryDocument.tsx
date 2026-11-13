@@ -116,7 +116,7 @@ const TEXT: Record<Locale, Copy> = {
       "Global",
     ],
     scoreFormula:
-      "Puntaje individual = 0,65625 × Suma h + 52,75 − 2u − 4d (h: ocho atributos de 1 a 9; u: tazas no uniformes; d: tazas defectuosas).",
+      "Puntaje Café Sensible (base CVA), individual = 0,65625 × Suma h + 52,75 − 2u − 4d (h: ocho atributos de 1 a 9; u: tazas no uniformes; d: tazas defectuosas).",
     page: (n, total) => `Página ${n} de ${total}`,
   },
   en: {
@@ -174,7 +174,7 @@ const TEXT: Record<Locale, Copy> = {
       "Overall",
     ],
     scoreFormula:
-      "Individual score = 0.65625 × Sum h + 52.75 − 2u − 4d (h: eight attributes rated 1 to 9; u: non-uniform cups; d: defective cups).",
+      "Café Sensible score (CVA-based), individual = 0.65625 × Sum h + 52.75 − 2u − 4d (h: eight attributes rated 1 to 9; u: non-uniform cups; d: defective cups).",
     page: (n, total) => `Page ${n} of ${total}`,
   },
 };

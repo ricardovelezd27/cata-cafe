@@ -24,6 +24,7 @@ export async function loadCoffeeAggregateSamples(coffeeId: string, viewer: Coffe
       id: true,
       sessionId: true,
       revealed: true,
+      referenceRank: true,
       session: {
         select: {
           id: true,
@@ -31,6 +32,9 @@ export async function loadCoffeeAggregateSamples(coffeeId: string, viewer: Coffe
           date: true,
           closedAt: true,
           status: true,
+          format: true,
+          cupsPerSample: true,
+          referenceMode: true,
           createdBy: true,
           participants: { select: { userId: true, excludedFromResults: true } },
         },
@@ -43,7 +47,11 @@ export async function loadCoffeeAggregateSamples(coffeeId: string, viewer: Coffe
         select: {
           cupperId: true,
           descriptiveData: true,
+          affectiveData: true,
           combinedData: true,
+          nonUniformCups: true,
+          defectiveCups: true,
+          cups: true,
           individualScore: true,
           submittedAt: true,
         },
