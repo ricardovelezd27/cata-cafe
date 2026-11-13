@@ -7,7 +7,6 @@ import { useConnectivity } from "@/hooks/useConnectivity";
 import { isNetworkFailure } from "@/lib/actionResult";
 import { Trash2, X, ChevronDown } from "lucide-react";
 import { PROCESS_TYPES, CERTIFICATIONS, ROAST_LEVELS } from "@/lib/constants";
-import { MIN_CUPS_FOR_PENALTIES } from "@/lib/scoring";
 import { createSession, createGroupSession } from "@/app/actions/sessions";
 import { startSession } from "@/app/actions/community";
 import type { GroupEmailSummary } from "@/app/actions/groups";
@@ -1013,7 +1012,7 @@ export function NewSessionForm({
           </div>
           )}
         </div>
-        {format !== "descriptive" && cupsPerSample < MIN_CUPS_FOR_PENALTIES && (
+        {format !== "descriptive" && (
           <p className="-mt-2 text-xs text-on-surface-variant">{t.newForm.cupsHint}</p>
         )}
 

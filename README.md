@@ -135,7 +135,7 @@ The cupping screen has a sample navigator, the evaluation form and, for the orga
 - **Descriptive:** intensity sliders, a flavor-wheel picker (browse the hierarchy or type and get fuzzy matches that tolerate typos and accents, with the breadcrumb shown), acidity, sweetness and mouthfeel descriptors, and main tastes.
 - **Affective:** 1–9 ratings of eight attributes: Fragancia, Aroma, Sabor, Sabor residual, Acidez, Dulzor, Sensación en boca and Impresión global.
 - **Combined:** both on one page.
-- **Cups:** for each cup you can mark it non-uniform or defective. A defective cup is also counted as non-uniform. Below five cups per sample the marks are stored but do not change the score (see [Scoring](#scoring-system)).
+- **Cups:** for each cup you can mark it non-uniform or defective. A defective cup is also counted as non-uniform. Each marked cup costs points at any number of cups (see [Scoring](#scoring-system)); with a single cup uniformity is not evaluated.
 - **Físico (physical) and Extrínseco (origin) modules:** green-bean defects, screen size, color, and origin data (country, farm, variety, process…). These are per sample, not per cupper, so only the session owner edits them; participants do not see the physical data, and the origin data is shown only to the owner or once the sample is revealed.
 - **Notas rápidas:** an optional last step with a free-text note per sample. It is never part of the score.
 - Your work **saves itself** a moment after you stop typing. The indicator says "saved" only when the server has it; if you are offline or the write failed it says the note is saved on this device and pending sync.
@@ -246,40 +246,41 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 | `d` | number of cups marked defective |
 
 - Every attribute at 1 gives 58.00, at 5 gives 79.00, at 9 gives 100.00.
-- The deductions of 2 per non-uniform cup and 4 per defective cup apply **only when the session has five or more cups per sample**. Below five cups the marks are stored but ignored.
-- A defective cup is also marked non-uniform, so it costs 6 in total.
+- The deductions of 2 per non-uniform cup and 4 per defective cup apply at **any number of cups** (a cupper never has more than five, so the deduction is the flat CVA amount). With a single cup uniformity does not exist: it is neither counted nor deducted, and a defective cup costs 4.
+- A defective cup is also marked non-uniform, so it costs 6 in total (never more than 6 per cup).
 - The result is rounded to the nearest 0.25 and kept between 0 and 100.
 
 ### Community score (a group's score for one sample)
 
-Averaging the cuppers' raw scores (the formula above without the cup deductions) and then deducting normalized cup penalties:
+Averaging the cuppers' raw scores (the formula above without the cup deductions) and then deducting the cups of everyone included, shared out beyond five pooled cups:
 
 ```
-uniformityPenalty = totalNonUniform × (10 / totalCups)
-defectPenalty     = totalDefective  × (30 / totalCups)
+factor            = 5 ÷ max(5, totalCups)
+uniformityPenalty = 2 × totalNonUniform × factor
+defectPenalty     = 4 × totalDefective  × factor
 communityScore    = avgRawScore − uniformityPenalty − defectPenalty
 ```
 
 | Symbol | Meaning |
 |---|---|
 | `avgRawScore` | average of the included cuppers' raw scores |
-| `totalNonUniform` | non-uniform cups across included cuppers (defective cups included, since a defective cup is also non-uniform) |
+| `totalNonUniform` | non-uniform cups across included cuppers with two or more cups (defective cups included, since a defective cup is also non-uniform) |
 | `totalDefective` | defective cups across included cuppers |
-| `totalCups` | `cupsPerSample` × number of included cuppers |
+| `totalCups` | the sum of the cups of the included evaluations (`Evaluation.cups`) |
 
 - Only **complete** evaluations (all eight attributes rated) from non-excluded cuppers are included.
-- As with the individual score, the penalty terms apply only from five cups per sample.
-- Because a defective cup is counted in both totals, it costs 40/`totalCups`: for one cupper with five cups that is 8 points, against 6 in that cupper's individual score.
+- Up to five pooled cups the deduction is the flat CVA amount; beyond five it is diluted (10 pooled cups: half; 40: an eighth).
+- A defective cup is counted in both totals and costs 4 + 2 = 6, the same as in that cupper's individual score. Example: 4 cuppers with 2 cups each and one defective cup: that cupper loses 6, the session loses 6 × 5/8 = 3.75.
 - The result is rounded to the nearest 0.25 and kept between 0 and 100.
 - The authoritative value is computed by a PostgreSQL trigger (`trg_recompute_aggregate`) when an evaluation is submitted and stored in `aggregate_scores`. The TypeScript `calcCommunityScore()` is only for display, and a test keeps the two in agreement.
 
 ### Other numbers
 
 - **Consensus (SD):** the "± X.X" next to the community score is the population standard deviation of the included cuppers' individual scores; it is `null` for fewer than two cuppers. Display only.
-- **"Impresión rápida":** a session with fewer than five cups per sample is tagged this way in the tasting history and on the coffee page, because its score is not a full CVA score.
+- **"Impresión rápida":** a session with exactly one cup per sample is tagged this way in the tasting history and on the coffee page, because its score is not a full CVA score.
 - **Reference sample:** pinned at 79.00 as described above; never read by scoring.
 
-> **Decided, not built yet.** On 2026-11-12 the owner decided to change this rule: cup deductions will apply at any number of cups (flat 4 per defective cup and 2 per non-uniform cup, at most 6 per cup), diluted only when more than five cups are pooled (a group's session score and a new lifetime score per coffee). The specification is `docs/product/cata-descentralizada-puntaje.md` and the work is planned in `docs/prompts/S10-kim-answers.md`. None of this is implemented; the behaviour above is what the app does now, and no stored score has changed.
+> **Rule of 2026-11-12 (S10 WP1a).** The score that existed before S8 was right in principle and had three bugs; this is that score with the bugs fixed (a cupper under five cups saw no deduction, a group under five pooled cups had its deduction amplified, a defective cup was counted twice in the group). The specification is `docs/product/cata-descentralizada-puntaje.md`. The database function (PHASE 26) and the `evaluations.cups` column are applied by the owner (runbook §30); no stored score is recomputed and past results render unchanged (the rule version is read from the data: `evaluations.cups` NULL and `aggregate_scores."ruleVersion"` 1 mean the rule before 2026-11), until a sample is re-fired, which recomputes it under the current rule. The coffee lifetime score arrives in a later S10 PR.
 
 ---
 
@@ -423,9 +424,10 @@ Prisma does not manage policies, triggers or functions. The file `prisma/sql/rls
 | 20 | Hides anonymized (deleted) coffees from direct reads |
 | 21 | Closed or expired sessions are read-only in SQL too; participants cannot read others' submitted rows through the API |
 | 22 | Outbound-email ledger tables (server only) |
-| 23 | Community score deducts nothing below five cups. Step 1 (the function) is applied; step 2 (recomputing past scores) was **cancelled** and must not be run |
+| 23 | Community score deducts nothing below five cups (superseded by 26). Step 1 (the function) is applied; step 2 (recomputing past scores) was **cancelled** and must not be run |
 | 24 | API roles are read-only across the whole `public` schema |
 | 25 | Hides exclusion metadata of other participants from the API |
+| 26 | Community score: flat CVA deduction at any cup count, shared across the pooled cups of the included evaluations (`evaluations.cups`), diluted beyond five. Owner applies it after the `evaluation_cups` migration and a dry run (runbook §30); recomputes nothing |
 
 There is no phase numbered 19 in the file. The runbook (`docs/LAUNCH-RUNBOOK.md`) has a section per phase and per migration, including **§29, building a new environment from an empty database**: two things fail on an empty database (one migration and one statement of the SQL file), and §29 gives the workaround. Which phases are applied in production, and what is still owed, is tracked in `docs/handover/S8-ROLLOUT-HANDOVER.md`.
 

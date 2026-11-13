@@ -18,10 +18,8 @@ interface CupToggleGridProps {
     defectiveLegend: string;  // "Defectuosa"
     oneTap: string;           // "(1 toque)"
     defectType: string;       // "Tipo de defecto"
-    notScored: string;        // "Se registra pero no afecta el puntaje (requiere ≥5 tazas)"
+    scoreHint: string;        // always-visible: how the cups cost points (see lib/cupHint.ts)
   };
-  /** True when uniformity is part of the score (cupsPerSample >= 5). */
-  uniformityInScore: boolean;
   onToggleNonUniform: (idx: number) => void;
   onToggleDefective: (idx: number) => void;
   onToggleDefectType: (type: string) => void;
@@ -35,7 +33,6 @@ export function CupToggleGrid({
   defectOptions,
   defectLabels,
   labels,
-  uniformityInScore,
   onToggleNonUniform,
   onToggleDefective,
   onToggleDefectType,
@@ -83,15 +80,10 @@ export function CupToggleGrid({
             );
           })}
         </div>
-        {/* TODO(A1): Kim's answer pending. Architect: the boxes stay visible below
-            5 cups with this note (stored flags are ignored by scoring, see
-            penaltiesApply in lib/scoring.ts); hiding them is not built. */}
-        {!uniformityInScore && (
-          <span className={styles.note}>
-            <Info size={12} aria-hidden />
-            {labels.notScored}
-          </span>
-        )}
+        <span className={styles.note}>
+          <Info size={12} aria-hidden />
+          {labels.scoreHint}
+        </span>
       </div>
 
       <div className={styles.row}>

@@ -14,15 +14,21 @@
 // The rule is inlined (lib/historyRules.ts historyCommunityScore) so the script
 // runs under tsx without Next.js path aliases. Keep the two in step.
 
-import { config } from "dotenv";
-config({ path: ".env.local" });
+// CANCELLED 2026-11-12 (S10 WP1a). PHASE 23 STEP 2 never ran and must not: the
+// rule that replaced S8-04 is docs/product/cata-descentralizada-puntaje.md, and
+// no stored score is recomputed. The script refuses to run (first statement).
+console.error("CANCELLED 2026-11-12, see docs/product/cata-descentralizada-puntaje.md §6");
+process.exit(1);
 
-import { PrismaClient } from "../app/generated/prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-
+// No static imports on purpose: nothing (dotenv, Prisma, a pool) is loaded before
+// the refusal above. The original body below is kept only as a record.
 const APPLY = process.argv.includes("--apply");
 
 async function main() {
+  const { config } = await import("dotenv");
+  config({ path: ".env.local" });
+  const { PrismaClient } = await import("../app/generated/prisma/client");
+  const { PrismaPg } = await import("@prisma/adapter-pg");
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) {
     console.error("Missing DATABASE_URL. Make sure .env.local has DATABASE_URL set.");

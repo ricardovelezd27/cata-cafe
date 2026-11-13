@@ -1,4 +1,3 @@
-import { MIN_CUPS_FOR_PENALTIES } from "@/lib/scoring";
 
 /**
  * S8-28 B-03: the fields a coffee-history upsert refreshes on an existing row.
@@ -35,10 +34,13 @@ export function historyCommunityScore(
 }
 
 /**
- * "Impresion rapida": a score from fewer cups than the protocol's penalty gate.
- * Display-only tag, never changes a score. TODO(A3): ships as option (b) (same
- * score, tagged); option (c) would drop these from the history.
+ * "Impresion rapida": a session with exactly ONE cup per sample (owner's
+ * decision 2026-11-12; it used to mean "under five cups", the old deduction
+ * gate). Display-only tag, never changes a score. TODO(kim-validar:A3): ships as
+ * option (b) (same score, tagged); option (c) would drop these from the history.
  */
+export const QUICK_IMPRESSION_CUPS = 1;
+
 export function historyCupsPerSample(
   session: { cupsPerSample: number } | null | undefined,
   snapshot: { cupsPerSample?: number } | null | undefined,
@@ -48,7 +50,7 @@ export function historyCupsPerSample(
 }
 
 export function isQuickImpression(cupsPerSample: number | null | undefined): boolean {
-  return typeof cupsPerSample === "number" && cupsPerSample < MIN_CUPS_FOR_PENALTIES;
+  return cupsPerSample === QUICK_IMPRESSION_CUPS;
 }
 
 /**

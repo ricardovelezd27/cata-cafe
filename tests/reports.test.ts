@@ -294,6 +294,7 @@ function mkEval(
     combinedData: data,
     nonUniformCups: [],
     defectiveCups: [],
+    cups: 5,
   };
 }
 

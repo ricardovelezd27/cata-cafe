@@ -22,6 +22,7 @@
 // consumed only by the GET route (app/api/sessions/[id]/cva-pdf/route.ts) and
 // lib/closeEmail.ts. Fonts: lib/pdf/fonts.ts registers the bundled TTFs in public/fonts.
 
+import type { ScoreRule } from "@/lib/scoreRule";
 import {
   Document,
   Page,
@@ -1091,6 +1092,8 @@ export type CvaDocumentProps = {
     prep?: SamplePrep | null;
     isReference?: boolean;
     referenceRank?: number | null;
+    /** "v1" = stored before the 2026-11 rule (lib/scoreRule.ts). */
+    scoreRule?: ScoreRule;
     descriptive: Record<string, unknown>;
     affective: Record<string, unknown>;
     combined: Record<string, unknown>;

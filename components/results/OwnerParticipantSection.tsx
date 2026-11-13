@@ -4,6 +4,7 @@ import { referenceBadgeText } from "@/lib/referenceRules";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { calcIndividualScore } from "@/lib/scoring";
+import type { ScoreRule } from "@/lib/scoreRule";
 import { rowStats, bandFor } from "@/lib/reports/cupperStats";
 import { setParticipantExclusion } from "@/app/actions/community";
 import { Badge, useActionFeedback } from "@/components/ui";
@@ -20,6 +21,8 @@ type SampleResult = {
   combined: Record<string, unknown>;
   isReference?: boolean;
   referenceRank?: number | null;
+  /** "v1" for a stored evaluation scored before the 2026-11 rule (lib/scoreRule.ts). */
+  scoreRule?: ScoreRule;
 };
 
 export type ParticipantResult = {
@@ -55,7 +58,7 @@ function cvaFor(
   if (format === "descriptive") return null; // no CVA without affective scores
   const data = dataFor(s, format);
   if (!hasData(data)) return null;
-  const cva = calcIndividualScore(data, cupsPerSample);
+  const cva = calcIndividualScore(data, cupsPerSample, { rule: s.scoreRule });
   return typeof cva === "number" ? cva : null;
 }
 
@@ -143,6 +146,8 @@ export function OwnerParticipantSection({
     includedCount: string;
     excludeDialogTitle: string;
     excludeDialogBody: string;
+    /** Shown in the exclusion dialog only when a sample is still under the previous rule; null otherwise. */
+    oldRuleNote: string | null;
     excludeReasonLabel: string;
     excludeConfirm: string;
     dialogCancel: string;
@@ -302,6 +307,7 @@ export function OwnerParticipantSection({
           t={{
             title: t.excludeDialogTitle,
             body: t.excludeDialogBody,
+            note: t.oldRuleNote,
             reasonLabel: t.excludeReasonLabel,
             confirm: t.excludeConfirm,
             cancel: t.dialogCancel,

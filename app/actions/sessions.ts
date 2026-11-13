@@ -511,7 +511,7 @@ export async function createExpressSession(input: {
         date: new Date(),
         format: parsed.format,
         // One cup per sample: the express flow is a quick impression, not a
-        // uniformity/defect protocol (penalties only apply at ≥5 cups anyway).
+        // uniformity/defect protocol (one cup: uniformity does not exist, a defect costs 4).
         cupsPerSample: 1,
         status: "active",
         isGroup: false,
@@ -762,7 +762,7 @@ export async function upsertEvaluation(input: {
   sessionId: string;
   // Kept for API compatibility but IGNORED — both are derived from the
   // session row (moduleKeyForFormat / cupsPerSample) so a tampered client can
-  // neither skip the ≥5-cup penalties nor write into a column nobody reads.
+  // neither change the cup deduction nor write into a column nobody reads.
   moduleKey: "descriptive" | "affective" | "combined";
   data: Record<string, unknown>;
   cupsPerSample: number;

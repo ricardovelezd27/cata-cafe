@@ -109,7 +109,7 @@ describe("PHASE 25: session_participants exclusion metadata hidden from the API"
 describe("phase25_dry_run.sql", () => {
   it("runs exactly the PHASE 25 statements", () => {
     expect(block(DRY, ">>> PHASE 25 statements", "<<< end of PHASE 25 statements")).toBe(
-      block(SQL.slice(SQL.indexOf("-- PHASE 25")), ">>> PHASE 25 statements", "<<< end of PHASE 25 statements"),
+      block(phase25, ">>> PHASE 25 statements", "<<< end of PHASE 25 statements"),
     );
   });
 

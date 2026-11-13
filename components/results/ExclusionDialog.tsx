@@ -15,6 +15,8 @@ import { EXCLUSION_REASONS, type ExclusionReason } from "@/lib/exclusionReasons"
 export type ExclusionDialogTranslations = {
   title: string;
   body: string;
+  /** Extra line shown only when the session still has a sample scored under the previous rule. */
+  note?: string | null;
   reasonLabel: string;
   confirm: string;
   cancel: string;
@@ -53,6 +55,7 @@ export function ExclusionDialog({
       body={
         <fieldset className="flex flex-col gap-3">
           <legend className="text-sm text-on-surface-variant">{t.body}</legend>
+          {t.note && <p className="text-sm text-on-surface-variant">{t.note}</p>}
           <span className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
             {t.reasonLabel}
           </span>

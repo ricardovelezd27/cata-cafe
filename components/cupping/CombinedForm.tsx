@@ -22,7 +22,6 @@ import {
   Notes,
   CupToggleGrid,
 } from "@/components/ui";
-import { penaltiesApply } from "@/lib/scoring";
 import { FlavorPicker } from "@/components/cupping/FlavorPicker";
 import type { CATAOption, CATASubItem } from "@/components/ui/CATAPills";
 
@@ -72,6 +71,8 @@ function pillsForDescId(descId: string): CATAOption[] | null {
   return null;
 }
 
+import { cupScoreHint } from "@/lib/cupHint";
+
 const CUP_LABELS = {
   nonUniform: "No uniformes",
   defective: "Defectuosas",
@@ -79,7 +80,6 @@ const CUP_LABELS = {
   defectiveLegend: "Defectuosa",
   oneTap: "(1 toque)",
   defectType: "Tipo de defecto",
-  notScored: "Se registra pero no afecta el puntaje (requiere ≥5 tazas)",
 };
 
 export function CombinedForm({
@@ -92,6 +92,7 @@ export function CombinedForm({
   lockedAffective = false,
   lockedNote,
   lockedCupsNote,
+  isGroup = false,
 }: {
   sampleData: Data;
   onChange: (d: Data) => void;
@@ -105,6 +106,8 @@ export function CombinedForm({
   lockedAffective?: boolean;
   lockedNote?: string;
   lockedCupsNote?: string;
+  /** Group sessions only: adds "Tus tazas se suman a las del grupo." to the cup hint. */
+  isGroup?: boolean;
 }) {
   const isFlagged = (id: string) => missingIds?.includes(id) ?? false;
   const d = sampleData;
@@ -128,7 +131,6 @@ export function CombinedForm({
     (d[k] as boolean[] | undefined) ?? Array(cupsPerSample).fill(false);
 
   const showCups = cupsPerSample >= 2;
-  const uniformityInScore = penaltiesApply(cupsPerSample);
 
   const lockedBanner =
     lockedAffective && lockedNote ? (
@@ -212,8 +214,7 @@ export function CombinedForm({
               defectTypes={defectoTipo}
               defectOptions={SENSORY_DEFECTS as readonly string[]}
               defectLabels={SENSORY_DEFECT_LABELS as Record<string, string>}
-              labels={CUP_LABELS}
-              uniformityInScore={uniformityInScore}
+              labels={{ ...CUP_LABELS, scoreHint: cupScoreHint(isGroup) }}
               onToggleNonUniform={toggleNonUniform}
               onToggleDefective={toggleDefective}
               onToggleDefectType={toggleDefectType}

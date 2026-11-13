@@ -1,7 +1,12 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { needsAggregateRefire, resolveEvalConflicts } from "@/lib/guestClaimToken";
+import {
+  anonEvalWins,
+  resolveEvalConflicts,
+  samplesToRefireAfterMerge,
+  type MergeSessionRefireInput,
+} from "@/lib/guestClaimToken";
 import { syncCoffeeHistoryForSession } from "@/lib/coffeeHistory";
 import { logError } from "@/lib/log";
 
@@ -119,19 +124,58 @@ export async function mergeGuestData(
       where: { cupperId: target, sessionSampleId: { in: anonEvals.map((e) => e.sessionSampleId) } },
       select: evalSelect,
     });
-    // Sessions whose stored aggregate may now be wrong: a conflict deletes one
-    // evaluation, and a merged exclusion flag changes who the trigger counts.
-    // Plain moves (cupperId only) change nothing the trigger reads (F-guest-6).
-    const refireSessions = new Set<string>();
+    // Third review M-C: SAMPLES (not whole sessions) whose stored aggregate may now be
+    // wrong: a conflict deletes one evaluation, and a merged exclusion flag changes who
+    // the trigger counts. Plain moves (cupperId only) change nothing the trigger reads
+    // (F-guest-6). The list is decided by samplesToRefireAfterMerge (pure, tested); every
+    // other sample of those sessions is left exactly as stored.
+    const anonParts = await tx.sessionParticipant.findMany({
+      where: { userId: anon },
+      select: {
+        sessionId: true,
+        status: true,
+        excludedFromResults: true,
+        excludedAt: true,
+        excludedBy: true,
+        exclusionReason: true,
+      },
+    });
+    const anonEvalSessions = new Set(anonEvals.map((e) => e.sessionSample.sessionId));
+    const involvedSessions = [...new Set([...anonParts.map((p) => p.sessionId), ...anonEvalSessions])];
+    // The account's own SUBMITTED evaluations in those sessions, read before anything moves.
+    const accountSubmitted =
+      involvedSessions.length > 0
+        ? await tx.evaluation.findMany({
+            where: { cupperId: target, isDraft: false, sessionSample: { sessionId: { in: involvedSessions } } },
+            select: { sessionSampleId: true, sessionSample: { select: { sessionId: true } } },
+          })
+        : [];
+    const submittedSamplesBySession = (
+      rows: { sessionSampleId: string; sessionSample: { sessionId: string } }[],
+    ) => {
+      const m = new Map<string, string[]>();
+      for (const r of rows) {
+        const list = m.get(r.sessionSample.sessionId) ?? [];
+        list.push(r.sessionSampleId);
+        m.set(r.sessionSample.sessionId, list);
+      }
+      return m;
+    };
+    const guestSubmittedBySession = submittedSamplesBySession(anonEvals.filter((e) => !e.isDraft));
+    const accountSubmittedBySession = submittedSamplesBySession(accountSubmitted);
     const targetBySample = new Map(targetEvals.map((e) => [e.sessionSampleId, e]));
     const conflictSamples: string[] = [];
+    // Per conflict: was the evaluation the merge DELETES a submitted one? Only then did the
+    // group score's included set change (anonEvalWins: a submitted row always beats a draft).
+    const conflicts: { sampleId: string; deletedWasSubmitted: boolean }[] = [];
     const pairs: { anon: (typeof anonEvals)[number]; target: (typeof anonEvals)[number] }[] = [];
     for (const a of anonEvals) {
       const t = targetBySample.get(a.sessionSampleId);
       if (!t) continue;
       conflictSamples.push(a.sessionSampleId);
-      refireSessions.add(a.sessionSample.sessionId);
       pairs.push({ anon: a, target: t });
+      const deleted = anonEvalWins(a, t) ? t : a;
+      conflicts.push({ sampleId: a.sessionSampleId, deletedWasSubmitted: !deleted.isDraft });
     }
     const { deleteIds, accountLoserIds } = resolveEvalConflicts(pairs);
     if (accountLoserIds.length > 0) {
@@ -190,18 +234,6 @@ export async function mergeGuestData(
     }
 
     // ── Session participation (pk session+user) ────────────────────────────
-    const anonParts = await tx.sessionParticipant.findMany({
-      where: { userId: anon },
-      select: {
-        sessionId: true,
-        status: true,
-        excludedFromResults: true,
-        excludedAt: true,
-        excludedBy: true,
-        exclusionReason: true,
-      },
-    });
-    const anonEvalSessions = new Set(anonEvals.map((e) => e.sessionSample.sessionId));
     const targetParts = await tx.sessionParticipant.findMany({
       where: {
         userId: target,
@@ -215,21 +247,21 @@ export async function mergeGuestData(
     // surviving exclusion flag differs from the one they were counted under,
     // including a guest with no participant row (or a non-excluded one) whose
     // evaluations land on an EXCLUDED account.
+    const mergeInputs: MergeSessionRefireInput[] = [];
     for (const sessionId of new Set([...anonPartBySession.keys(), ...anonEvalSessions])) {
       const g = anonPartBySession.get(sessionId);
       const t = targetPartBySession.get(sessionId);
-      if (
-        needsAggregateRefire({
-          guestExcluded: g?.excludedFromResults ?? false,
-          guestHadRow: !!g,
-          accountExcluded: t?.excludedFromResults ?? false,
-          accountHadRow: !!t,
-          guestHasEvaluations: anonEvalSessions.has(sessionId),
-        })
-      ) {
-        refireSessions.add(sessionId);
-      }
+      mergeInputs.push({
+        guestExcluded: g?.excludedFromResults ?? false,
+        guestHadRow: !!g,
+        accountExcluded: t?.excludedFromResults ?? false,
+        accountHadRow: !!t,
+        guestHasEvaluations: anonEvalSessions.has(sessionId),
+        guestSampleIds: guestSubmittedBySession.get(sessionId) ?? [],
+        accountSampleIds: accountSubmittedBySession.get(sessionId) ?? [],
+      });
     }
+    const refireSamples = samplesToRefireAfterMerge(conflicts, mergeInputs);
     for (const p of anonParts) {
       const existing = targetPartBySession.get(p.sessionId);
       if (!existing) continue;
@@ -356,15 +388,9 @@ export async function mergeGuestData(
     // draft has nothing to fire on; its aggregate would still describe the
     // deleted submission, so drop it (the results page treats a missing
     // aggregate as "pending").
-    if (conflictSamples.length > 0) {
+    if (refireSamples.length > 0) {
       await tx.evaluation.updateMany({
-        where: { sessionSampleId: { in: conflictSamples }, isDraft: false },
-        data: { isDraft: false },
-      });
-    }
-    if (refireSessions.size > 0) {
-      await tx.evaluation.updateMany({
-        where: { sessionSample: { sessionId: { in: [...refireSessions] } }, isDraft: false },
+        where: { sessionSampleId: { in: refireSamples }, isDraft: false },
         data: { isDraft: false },
       });
     }
@@ -376,9 +402,9 @@ export async function mergeGuestData(
     // B-03 (S8-22): CLOSED sessions whose evaluations were re-resolved need
     // their history re-synced after the commit (below).
     const closedRefire =
-      refireSessions.size > 0
+      refireSamples.length > 0
         ? await tx.cuppingSession.findMany({
-            where: { id: { in: [...refireSessions] }, status: "closed" },
+            where: { status: "closed", samples: { some: { id: { in: refireSamples } } } },
             select: { id: true },
           })
         : [];

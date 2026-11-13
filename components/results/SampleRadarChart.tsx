@@ -1,5 +1,7 @@
 "use client";
 
+import type { ScoreRule } from "@/lib/scoreRule";
+
 import {
   RadarChart,
   Radar,
@@ -14,7 +16,6 @@ import {
   calcIndividualBreakdown,
   calcIndividualScore,
   hasAffectiveData,
-  penaltiesApply,
   scoreBand,
 } from "@/lib/scoring";
 import { ScoreBreakdownPanel, type ScoreBreakdownTranslations } from "@/components/results/ScoreBreakdownPanel";
@@ -62,6 +63,8 @@ type SampleResult = {
   physical: Record<string, unknown>;
   extrinsic: Record<string, unknown>;
   aggregateScore: AggregateScoreData | null;
+  /** Rule the viewer's own evaluation was scored under ("v1" = before 2026-11). */
+  scoreRule?: ScoreRule;
   isReference?: boolean;
   // Optional so pre-existing callers (print/PDF previews) keep working; when
   // absent the row is treated as submitted (today's behaviour).
@@ -180,7 +183,7 @@ export function SampleRadarChart({
       })
     : [];
 
-  const score = hasMyData && affData ? calcIndividualScore(affData, cupsPerSample) : null;
+  const score = hasMyData && affData ? calcIndividualScore(affData, cupsPerSample, { rule: sample.scoreRule }) : null;
   const scoreNum = score !== null && score !== "—" ? Number(score) : null;
   const band = scoreNum !== null ? scoreBand(scoreNum) : null;
   const scoreColorClass =
@@ -194,7 +197,7 @@ export function SampleRadarChart({
 
   const setup = {
     cupsPerSample,
-    uniformityTracked: penaltiesApply(cupsPerSample),
+    uniformityTracked: cupsPerSample >= 2,
     roundingEnforced: true,
   };
 
@@ -265,7 +268,7 @@ export function SampleRadarChart({
       {affData && scoreNum !== null && (
         <ScoreBreakdownPanel
           variant="individual"
-          breakdown={calcIndividualBreakdown(affData, cupsPerSample)}
+          breakdown={calcIndividualBreakdown(affData, cupsPerSample, { rule: sample.scoreRule })}
           setup={setup}
           t={t.breakdown}
         />

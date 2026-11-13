@@ -86,8 +86,8 @@ export async function requireSessionMember(
 }
 
 /** Also carries the two session fields scoring must never take from the
- *  client: `cupsPerSample` decides whether uniformity/defect penalties apply
- *  (≥5 cups) and `format` decides which JSON column an evaluation lands in. */
+ *  client: `cupsPerSample` sizes the cup deduction
+ *  (lib/scoring.ts cupDeduction) and `format` decides which JSON column an evaluation lands in. */
 export type SampleAuthRow = {
   sessionId: string;
   status: string;
