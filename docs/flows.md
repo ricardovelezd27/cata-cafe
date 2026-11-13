@@ -712,7 +712,7 @@ and has no start any more: `shouldNotifyOnBecomingAsync` sends the notice at
 that edit (same claim and email budget; a refusal or failure never blocks the
 save and comes back as `groupNotice`) and clears `notifyGroupAtStart`. So
 exactly one of creation, start or that edit sends the notice; the opposite
-change (async -> live) needs nothing, it was notified at creation. The email body
+change (async -> live) needs nothing, it was notified at creation. A session that already STARTED never sends one by gaining a date (`started` in the rule: its start notice was already attempted). The edit form shows an inline note before saving ("Al guardar, se enviará el aviso...", computed on the server from the same rule) and a toast after (`groupNotice` = `sent`). Known limit: the flag is cleared in the save itself, so if that send fails no later path sends it automatically; the owner gets the failure notice and writes to the group from the group page (same as a failed start notice). The email body
 ("Te invito a una sesión de catación … Usa el enlace para unirte") is true for a
 live session announced before it starts: the link opens the waiting room.
 

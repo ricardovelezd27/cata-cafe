@@ -108,8 +108,13 @@ export function shouldNotifyOnBecomingAsync(i: {
   hasGroup: boolean;
   notifyGroupAtStart: boolean;
   alreadyNotified: boolean;
+  /** `startedAt` is set: that session already had its start notice attempted
+   *  (sent, or failed and reported to the owner), so a date added later never
+   *  sends another one. */
+  started: boolean;
 }): boolean {
   return (
+    !i.started &&
     i.isGroup &&
     !i.wasAsync &&
     i.becomesAsync &&

@@ -67,9 +67,43 @@ export function isAutoLabelFor(
 export type BlindOrderEntry = {
   /** Final 0-based position of the input sample at the same index. */
   position: number;
-  /** True when the label must be generated from `position`. */
+  /** True when the label must be generated. */
   auto: boolean;
+  /** Auto rows only: the 0-based letter index of the generated label. Drawn
+   *  from the letters no typed label of the session already uses, in position
+   *  order; without a typed clash it equals `position`. */
+  letterIndex?: number;
 };
+
+const LETTER_LABEL_RE = /^(?:muestra|sample)\s+([a-z]{1,2})$/;
+
+/** Letters ("B", "AA") that a TYPED label already uses, in either language and
+ *  any case, so "Sample B" reserves the letter next to "Muestra B". */
+function reservedLetters(
+  samples: readonly { label: string | null | undefined }[],
+  auto: readonly boolean[],
+): Set<string> {
+  const out = new Set<string>();
+  samples.forEach((s, i) => {
+    if (auto[i]) return;
+    const m = LETTER_LABEL_RE.exec((s.label ?? "").trim().toLowerCase());
+    if (m) out.add(m[1].toUpperCase());
+  });
+  return out;
+}
+
+/** First letter index (single letters only) not reserved; the position letter
+ *  when every single letter is taken (cannot happen with <= 20 samples). */
+function drawLetterIndex(taken: Set<string>, fallback: number): number {
+  for (let k = 0; k < 26; k++) {
+    const l = sampleLetter(k);
+    if (!taken.has(l)) {
+      taken.add(l);
+      return k;
+    }
+  }
+  return fallback;
+}
 
 /** Randomly permutes the AUTO samples among the positions they occupy.
  *  Returns, per input index, the new position and whether the label is auto.
@@ -93,10 +127,20 @@ export function planBlindOrder(
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
   let next = 0;
-  return samples.map((_, i) => ({
+  const entries: BlindOrderEntry[] = samples.map((_, i) => ({
     position: auto[i] ? shuffled[next++] : i,
     auto: auto[i],
   }));
+  // Letters: the auto rows, in position order, take the first letters that no
+  // typed label already uses (two samples never share an automatic label).
+  const taken = reservedLetters(samples, auto);
+  entries
+    .filter((e) => e.auto)
+    .sort((a, b) => a.position - b.position)
+    .forEach((e) => {
+      e.letterIndex = drawLetterIndex(taken, e.position);
+    });
+  return entries;
 }
 
 /** The label a sample is stored with: the owner's own text, or the letter of
@@ -106,7 +150,9 @@ export function finalSampleLabel(
   entry: BlindOrderEntry,
   locale: string,
 ): string {
-  return entry.auto ? sampleLetterLabel(entry.position, locale) : (label ?? "").trim();
+  return entry.auto
+    ? sampleLetterLabel(entry.letterIndex ?? entry.position, locale)
+    : (label ?? "").trim();
 }
 
 export type BlindPlanned<T> = {
@@ -123,7 +169,7 @@ export function planBlindSamples<T extends { label: string | null | undefined }>
   samples: readonly T[],
   random: (maxExclusive: number) => number,
   locale: string,
-  mode: BlindLabelMode = "create",
+  mode: BlindLabelMode,
 ): BlindPlanned<T>[] {
   const order = planBlindOrder(samples, random, mode);
   return samples

@@ -56,6 +56,8 @@ export type EditSessionFormTranslations = {
   referenceModeLocked: string;
   asyncGroupNoticeFailed: string;
   asyncGroupNoticePartial: string;
+  asyncGroupNoticeSent: string;
+  closesAtNotifyNote: string;
   referenceSaved: string;
   closesAt: string;
   closesAtHint: string;
@@ -126,6 +128,8 @@ export function EditSessionForm({
     cupsPerSample: number;
     isGroup: boolean;
     groupId: string | null;
+    /** Server-computed: a closing date saved now would send the group notice. */
+    closingDateSendsNotice: boolean;
     referenceSampleId: string | null;
     /** B1: "anchor" | "free"; editable only while the format is unlocked. */
     referenceMode: ReferenceMode;
@@ -308,6 +312,8 @@ export function EditSessionForm({
           feedback.notifyWarning(t.asyncGroupNoticeFailed);
         } else if (result.groupNotice === "partial") {
           feedback.notifyWarning(t.asyncGroupNoticePartial);
+        } else if (result.groupNotice === "sent") {
+          feedback.notifySuccess(t.asyncGroupNoticeSent);
         }
         router.refresh();
       } else {
@@ -555,6 +561,12 @@ export function EditSessionForm({
             {!closed && !initial.started && !initial.closesAt && closesAt && (
               <p className="mt-1 text-xs font-medium text-secondary">{t.closesAtLiveNotice}</p>
             )}
+            {!closed &&
+              initial.closingDateSendsNotice &&
+              closesAt &&
+              groupId === (initial.groupId ?? "") && (
+                <p className="mt-1 text-xs font-medium text-secondary">{t.closesAtNotifyNote}</p>
+              )}
           </div>
           <div>
             <label className={labelCls}>{t.linkedGroup}</label>

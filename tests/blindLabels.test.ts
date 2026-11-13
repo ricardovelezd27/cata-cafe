@@ -50,7 +50,7 @@ describe("isAutoSampleLabel", () => {
 describe("planBlindOrder", () => {
   it("a single sample (or none) is a no-op", () => {
     expect(planBlindOrder([], seeded(1), "create")).toEqual([]);
-    expect(planBlindOrder([{ label: "" }], seeded(1), "create")).toEqual([{ position: 0, auto: true }]);
+    expect(planBlindOrder([{ label: "" }], seeded(1), "create")).toEqual([{ position: 0, auto: true, letterIndex: 0 }]);
   });
 
   it("is a true permutation and never moves a typed label (property)", () => {
@@ -105,12 +105,31 @@ describe("planBlindSamples", () => {
       { label: "", coffeeIdx: 2 },
     ];
     for (let seed = 1; seed <= 50; seed++) {
-      const out = planBlindSamples(input, seeded(seed), "es");
+      const out = planBlindSamples(input, seeded(seed), "es", "create");
       expect(out.map((o) => o.position)).toEqual([0, 1, 2]);
       expect(out[1]).toMatchObject({ label: "Mi lote", sourceIndex: 1 });
       for (const o of out) {
-        if (o.sourceIndex !== 1) expect(o.label).toBe(sampleLetterLabel(o.position, "es"));
+        // typed "Mi lote" reserves no letter: the two blanks take A and B by position
+        if (o.sourceIndex !== 1) expect(o.label).toBe(sampleLetterLabel(o.position === 0 ? 0 : 1, "es"));
         expect(o.sample.coffeeIdx).toBe(o.sourceIndex);
+      }
+    }
+  });
+
+  it("property: automatic labels are unique and never equal a typed label, in both languages", () => {
+    const typedPool = ["Muestra B", "sample c", "Geisha", "Muestra A ", "Sample AA", "Muestra 3"];
+    for (let seed = 1; seed <= 400; seed++) {
+      const rnd = seeded(seed);
+      const n = 1 + (seed % 12);
+      const input = Array.from({ length: n }, () => ({ label: rnd(2) ? "" : typedPool[rnd(typedPool.length)] }));
+      for (const locale of ["es", "en"]) {
+        const out = planBlindSamples(input, seeded(seed + 7), locale, "create");
+        const typed = out.filter((o) => o.label === input[o.sourceIndex].label.trim() && input[o.sourceIndex].label !== "");
+        const autos = out.filter((o) => input[o.sourceIndex].label === "");
+        const norm = (x: string) => x.trim().toLowerCase().replace(/^sample /, "muestra ");
+        const autoKeys = autos.map((o) => norm(o.label));
+        expect(new Set(autoKeys).size).toBe(autoKeys.length);
+        for (const t of typed) expect(autoKeys).not.toContain(norm(t.label));
       }
     }
   });

@@ -31,11 +31,13 @@ describe("the two label modes (A4 review)", () => {
     }
     const input = [{ label: "Muestra B" }, { label: "" }, { label: "Muestra A" }, { label: "" }];
     for (let seed = 1; seed <= 100; seed++) {
-      const out = planBlindSamples(input, seeded(seed), "es"); // default mode = create
+      const out = planBlindSamples(input, seeded(seed), "es", "create");
       const byIdx = (i: number) => out.find((o) => o.sourceIndex === i)!;
       expect(byIdx(0)).toMatchObject({ label: "Muestra B", position: 0 });
       expect(byIdx(2)).toMatchObject({ label: "Muestra A", position: 2 });
       expect(new Set([byIdx(1).position, byIdx(3).position])).toEqual(new Set([1, 3]));
+      // the automatic rows take the letters the typed ones do not use, by position
+      expect(byIdx(1).position < byIdx(3).position ? [byIdx(1).label, byIdx(3).label] : [byIdx(3).label, byIdx(1).label]).toEqual(["Muestra C", "Muestra D"]);
       const entry = planBlindOrder(input, seeded(seed), "create")[0];
       expect(finalSampleLabel("Muestra B", entry, "es")).toBe("Muestra B");
     }
@@ -55,6 +57,31 @@ describe("the two label modes (A4 review)", () => {
   });
 });
 
+describe("create mode never repeats a label", () => {
+  it('["Muestra B", "", ""] -> B kept, the blanks are A and C (never a second B)', () => {
+    for (let seed = 1; seed <= 100; seed++) {
+      const out = planBlindSamples([{ label: "Muestra B" }, { label: "" }, { label: "" }], seeded(seed), "es", "create");
+      const labels = out.map((o) => o.label);
+      expect(labels).toEqual(["Muestra B", expect.stringMatching(/^Muestra [AC]$/), expect.stringMatching(/^Muestra [AC]$/)]);
+      expect(new Set(labels).size).toBe(3);
+      expect(labels[1] < labels[2]).toBe(true); // by position: A then C
+    }
+  });
+  it("a typed 'Sample B' reserves letter B for the Spanish key too; case and spaces are ignored", () => {
+    const out = planBlindSamples([{ label: " sample b " }, { label: "" }, { label: "" }], seeded(3), "es", "create");
+    expect(out.map((o) => o.label)).toEqual(["sample b", "Muestra A", "Muestra C"]);
+  });
+  it("two identical TYPED labels are left alone", () => {
+    const out = planBlindSamples([{ label: "Lote" }, { label: "Lote" }], seeded(1), "es", "create");
+    expect(out.map((o) => o.label)).toEqual(["Lote", "Lote"]);
+  });
+  it("if every letter is taken it falls back to the position letter and terminates", () => {
+    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map((l) => ({ label: `Muestra ${l}` }));
+    const out = planBlindSamples([...letters, { label: "" }], seeded(1), "es", "create");
+    expect(out[26].label).toBe("Muestra AA");
+  });
+});
+
 describe("blindReferencePosition (action-level remap)", () => {
   type Row = { label: string; coffeeIdx: number; prep: string };
   it("[X0, X1 = reference, X2] with final positions X0->2, X1->0, X2->1: the reference is the row at position 0 carrying X1's coffee and prep", () => {
@@ -65,7 +92,7 @@ describe("blindReferencePosition (action-level remap)", () => {
     ];
     let found = false;
     for (let seed = 1; seed <= 2000 && !found; seed++) {
-      const planned = planBlindSamples(input, seeded(seed), "es");
+      const planned = planBlindSamples(input, seeded(seed), "es", "create");
       const pos = (i: number) => planned.find((p) => p.sourceIndex === i)!.position;
       if (pos(0) === 2 && pos(1) === 0 && pos(2) === 1) {
         found = true;
@@ -81,14 +108,14 @@ describe("blindReferencePosition (action-level remap)", () => {
     expect(found).toBe(true);
   });
   it("no reference, or an index that is not in the plan, is null", () => {
-    const planned = planBlindSamples([{ label: "" }, { label: "" }], seeded(1), "es");
+    const planned = planBlindSamples([{ label: "" }, { label: "" }], seeded(1), "es", "create");
     expect(blindReferencePosition(planned, null)).toBeNull();
     expect(blindReferencePosition(planned, 9)).toBeNull();
   });
   it("every source index maps to its own final position (property)", () => {
     for (let seed = 1; seed <= 100; seed++) {
       const input = Array.from({ length: 6 }, (_, i) => ({ label: i === 3 ? "Fijo" : "" }));
-      const planned = planBlindSamples(input, seeded(seed), "en");
+      const planned = planBlindSamples(input, seeded(seed), "en", "create");
       for (let i = 0; i < 6; i++) {
         const pos = blindReferencePosition(planned, i)!;
         expect(planned.find((p) => p.position === pos)!.sourceIndex).toBe(i);

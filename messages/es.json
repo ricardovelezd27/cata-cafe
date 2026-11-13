@@ -383,9 +383,11 @@
       "referenceRepinBlocked": "Quitar esta muestra reactivaría una referencia anterior y reemplazaría las notas de sus catadores. Cambia primero la referencia.",
       "formatLockedStarted": "El formato y las tazas por muestra se bloquean cuando la cata ya empezó o tiene evaluaciones.",
       "referenceHelperFree": "Las demás muestras se comparan contra su promedio en los resultados. Todos la puntúan como cualquier otra muestra. Si eliges otra, se añade como Referencia 2.",
-      "referenceModeLocked": "El modo de la referencia no se puede cambiar una vez que la cata tiene alguna evaluación, incluida la referencia fijada.",
+      "referenceModeLocked": "El modo de la referencia no se puede cambiar una vez que la cata ha empezado o tiene alguna evaluación, incluida la referencia fijada.",
       "asyncGroupNoticeFailed": "Guardado. Al ponerle fecha de cierre, la cata ya no tiene un inicio, así que debíamos avisar al grupo ahora, pero no pudimos enviar el correo. Puedes reenviar el aviso desde la página del grupo.",
-      "asyncGroupNoticePartial": "Guardado. El aviso al grupo llegó a una parte de los miembros; reintenta los fallidos desde la página del grupo."
+      "asyncGroupNoticePartial": "Guardado. El aviso al grupo llegó a una parte de los miembros; reintenta los fallidos desde la página del grupo.",
+      "asyncGroupNoticeSent": "Aviso enviado a tu grupo.",
+      "closesAtNotifyNote": "Al guardar, se enviará el aviso de esta cata a tu grupo."
     },
     "sampleCountWarning": {
       "many": "Más de 6 muestras cansa el paladar. Considera repartirlas en dos catas.",

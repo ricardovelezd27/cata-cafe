@@ -438,7 +438,7 @@ async function createSessionBody(input: {
 
   // A4: the letters are assigned at random (planned ONCE, outside the
   // retried transaction, so a code-collision retry keeps the same order).
-  const blind = planBlindSamples(input.samples, randomInt, safeLocale(input.locale));
+  const blind = planBlindSamples(input.samples, randomInt, safeLocale(input.locale), "create");
   const referencePosition = blindReferencePosition(blind, refResult.idx);
 
   // redirect() stays OUTSIDE the transaction (it is implemented as a throw).
@@ -635,7 +635,7 @@ async function createGroupSessionBody(input: {
       : v.oneOf(input.notifyGroupWhen, "notifyGroupWhen", NOTIFY_WHEN);
 
   // A4: random letters, planned once (see createSessionBody).
-  const blind = planBlindSamples(input.samples, randomInt, safeLocale(input.locale));
+  const blind = planBlindSamples(input.samples, randomInt, safeLocale(input.locale), "create");
   const referencePosition = blindReferencePosition(blind, refResult.idx);
 
   const session = await retryOnCodeCollision(() => prisma.$transaction(async (tx) => {
@@ -1457,6 +1457,7 @@ async function updateSessionBody(
         groupId: true,
         notifyGroupAtStart: true,
         groupNotifiedAt: true,
+        startedAt: true,
       },
     });
     if (cur) {
@@ -1471,6 +1472,7 @@ async function updateSessionBody(
           hasGroup: true,
           notifyGroupAtStart: effectiveFlag,
           alreadyNotified: cur.groupNotifiedAt !== null,
+          started: cur.startedAt !== null,
         })
       ) {
         data.notifyGroupAtStart = false;

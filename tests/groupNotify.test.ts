@@ -122,6 +122,7 @@ describe("shouldNotifyOnBecomingAsync", () => {
     hasGroup: true,
     notifyGroupAtStart: true,
     alreadyNotified: false,
+    started: false,
   };
   it("live session waiting for the start that gets a closing date notifies now", () => {
     expect(shouldNotifyOnBecomingAsync(b)).toBe(true);
@@ -133,6 +134,10 @@ describe("shouldNotifyOnBecomingAsync", () => {
     expect(shouldNotifyOnBecomingAsync({ ...b, notifyGroupAtStart: false })).toBe(false);
     expect(shouldNotifyOnBecomingAsync({ ...b, hasGroup: false })).toBe(false);
     expect(shouldNotifyOnBecomingAsync({ ...b, isGroup: false })).toBe(false);
+  });
+  it("a session that already started never sends a notice by gaining a date", () => {
+    expect(shouldNotifyOnBecomingAsync({ ...b, started: true })).toBe(false);
+    expect(shouldNotifyOnBecomingAsync({ ...b, started: true, alreadyNotified: true })).toBe(false);
   });
   it("an already-async session (notified at creation) or a session that stays live does nothing", () => {
     expect(shouldNotifyOnBecomingAsync({ ...b, wasAsync: true })).toBe(false);
