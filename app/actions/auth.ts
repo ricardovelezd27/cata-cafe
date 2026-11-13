@@ -19,6 +19,9 @@ import { logWarn } from "@/lib/log";
 import { classifyPendingFailure, pendingEmailMatches } from "@/lib/signInPendingRules";
 import { checkSignInIntent, clearSignInIntent, rememberSignInIntent } from "@/lib/signInIntentCookie";
 import { isRegisteredUser } from "@/lib/guestScope";
+import { completedEmailChange, EMAIL_CHANGE_FROM_KEY } from "@/lib/emailChangeRules";
+import { moveWaitlistEntry } from "@/lib/waitlistMove";
+import { createAdminClient } from "@/lib/supabase/admin";
 import * as v from "@/lib/validate";
 import type { ActionResult } from "@/lib/actionResult";
 
@@ -100,6 +103,31 @@ export async function verifyEmailCode(
   });
 }
 
+/** Moves the reservation to the new address once an email change is complete,
+ *  then clears the recorded old address. Every failure is swallowed (logged with
+ *  the user id and a code only): the reservation row is bookkeeping, the
+ *  sign-in must go on. Changes completed before this deploy cannot be
+ *  reconciled (no record of the old address). */
+async function moveReservationAfterEmailChange(
+  user: (Parameters<typeof completedEmailChange>[0] & { id?: string }) | null | undefined,
+): Promise<void> {
+  const change = completedEmailChange(user);
+  if (!change) return;
+  try {
+    const result = await moveWaitlistEntry(change.from, change.to);
+    if (result === "moved" || result === "no_row" || result === "target_exists") {
+      if (user?.id) {
+        await createAdminClient().auth.admin.updateUserById(user.id, {
+          user_metadata: { [EMAIL_CHANGE_FROM_KEY]: null },
+        });
+      }
+    }
+  } catch (err) {
+    const code = (err as { code?: unknown } | null)?.code;
+    logWarn({ where: "emailChange.moveReservation", userId: user?.id, code: typeof code === "string" ? code : "unknown" });
+  }
+}
+
 /**
  * The "Entrar" button on /auth/confirm (S8-06, F-entrar-1, F-landing-3).
  * Consuming the token needs a POST, so a mail scanner that only GETs the link
@@ -128,6 +156,9 @@ export async function confirmEmailToken(
     const ephemeral = createEphemeralClient();
     const { data, error } = await ephemeral.auth.verifyOtp({ type: type as EmailOtpType, token_hash: hash });
     if (error) throw new Error(authCodeFor(error));
+    // S10 WP9a: a COMPLETED email change takes the founding-seat reservation
+    // along (never fails the sign-in; ids only in logs).
+    if (type === "email_change") await moveReservationAfterEmailChange(data.user);
     const dest = safeNext(next, { fallback: defaultNextFor(localeOf(locale)) });
     const session = data.session;
     // No session (e.g. the first of two email_change confirmations): nothing to
@@ -325,7 +356,10 @@ export async function requestEmailChange(
     // S9-02 A-08: the confirm link returns here signed in as either address.
     await rememberSignInIntent([address, user.email ?? ""].filter(Boolean));
     const { error } = await supabase.auth.updateUser(
-      { email: address },
+      // The old address rides in the account's own user_metadata until the
+      // change completes, so confirmEmailToken can move the founding-seat
+      // reservation (lib/emailChangeRules.ts). Cleared after the move.
+      { email: address, data: { [EMAIL_CHANGE_FROM_KEY]: (user.email ?? "").toLowerCase() } },
       { emailRedirectTo: `${origin}/${loc}/app/profile` },
     );
     if (error) {
