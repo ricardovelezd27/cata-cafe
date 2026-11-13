@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, use
 import { createPortal } from "react-dom";
 import { Armchair, ChevronDown, ChevronLeft, ChevronRight, Pause, Play, Settings2, ShieldCheck, Volume2, VolumeX, X } from "lucide-react";
 import { WARMUP_SHARED, lw, type WarmupExercise } from "@/lib/warmup/exercises";
-import { buildExerciseTimeline, exerciseForLength, poseInSegment, segmentAt, sequenceMap, stepSegments } from "@/lib/warmup/timeline";
+import { buildExerciseTimeline, exerciseForLength, poseInSegment, segmentAt, sequenceMap, stepSegments, timelineOpensEyes } from "@/lib/warmup/timeline";
 import { ARRIVE_PLAN, ARRIVE_PLAN_SHORT, arrivePhaseAt, halo as haloAt } from "@/lib/warmup/breath";
 import { partTransforms, passedDots, torsoBreathTransform } from "@/lib/warmup/poses";
 import { previewSpec } from "@/lib/warmup/preview";
@@ -869,6 +869,7 @@ export function WarmupPlayer({
             seatedTexts={exerciseProp.seated ?? null}
             lengthChoice={lengthChoice && !synced}
             length={length}
+            opensEyes={timelineOpensEyes(tl)}
             setLength={setLengthChoiceState}
             fullMinutes={exerciseProp.durationMin}
             seated={seated}
@@ -1087,6 +1088,7 @@ function IntroScreen({
   seatedTexts,
   lengthChoice,
   length,
+  opensEyes,
   setLength,
   fullMinutes,
   seated,
@@ -1112,6 +1114,8 @@ function IntroScreen({
   seatedTexts: WarmupExercise["seated"] | null;
   lengthChoice: boolean;
   length: TimelineLength;
+  /** The chosen run plays the "doble" (derived from the timeline's cues). */
+  opensEyes: boolean;
   setLength: (l: TimelineLength) => void;
   fullMinutes: number;
   seated: boolean;
@@ -1263,12 +1267,12 @@ function IntroScreen({
                   audio.playDemo("campana");
                   setTimeout(() => audio.playDemo("tic"), 1400);
                   setTimeout(() => audio.playDemo("cuenco"), 2600);
-                  setTimeout(() => audio.playDemo("doble"), 5200);
+                  if (opensEyes) setTimeout(() => audio.playDemo("doble"), 5200);
                 }}
               >
                 <Volume2 size={14} aria-hidden /> {t.soundDemo}
               </button>
-              <span className={s.switchHint}>{t.soundDemoCaptions}</span>
+              <span className={s.switchHint}>{opensEyes ? t.soundDemoCaptions : t.soundDemoCaptionsEyesOpen}</span>
             </div>
             {audio.voiceAvailable && (
               <Switch label={t.voiceToggle} hint={t.voiceHint} checked={audio.voice} onChange={audio.setVoice} />

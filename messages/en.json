@@ -1932,6 +1932,7 @@
       "stillHelp": "No movement and no automatic advance: you attend to your body and move to the next step yourself.",
       "soundDemo": "Hear the sounds",
       "soundDemoCaptions": "Bell: move · Tick: stop · Bowl: stay still · Double bell: open your eyes",
+      "soundDemoCaptionsEyesOpen": "Bell: move · Tick: stop · Bowl: stay still",
       "wakeLockNote": "Keep the screen on during the exercise.",
       "reducedMotionNote": "Reduced motion is on: the figure shows each position without animating it.",
       "keyboardHint": "← → to move · space to pause",

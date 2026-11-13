@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { WARMUP_EXERCISES, WARMUP_SHARED, WARMUP_SHORT_STEP_BUDGET_SEC, warmupById } from "@/lib/warmup/exercises";
-import { SMALL_AMPLITUDE, buildExerciseTimeline, exerciseForLength, poseAt, poseInSegment, shortStepCount, timelineTotalMs } from "@/lib/warmup/timeline";
+import { SMALL_AMPLITUDE, buildExerciseTimeline, exerciseForLength, poseAt, poseInSegment, shortStepCount, timelineOpensEyes, timelineTotalMs } from "@/lib/warmup/timeline";
 import { ARRIVE_PLAN_SHORT, arrivePhaseAt } from "@/lib/warmup/breath";
 import type { ExerciseTimeline, Segment } from "@/lib/warmup/timelineTypes";
 
@@ -274,5 +274,64 @@ describe('"Poco espacio" (compact): same timing, smaller movement', () => {
         expect(ex.seated).toBeUndefined();
       }
     }
+  });
+});
+
+describe("short version: observe prompts only refer to steps that are played", () => {
+  const shownIdx = (tl: ExerciseTimeline) => [...tl.whispers.map((w) => w.observeIdx), ...tl.doneObserveIdx].sort((a, b) => a - b);
+
+  it("the short trunk-forward-back run has no done-screen observe item", () => {
+    const tl = buildExerciseTimeline(warmupById("trunk-forward-back")!, { mode: "library", length: "short" });
+    expect(tl.doneObserveIdx).toEqual([]);
+  });
+
+  it("every shown observe item of every short timeline has no requiresStep or a kept one", () => {
+    for (const ex of WARMUP_EXERCISES) {
+      for (const mode of ["library", "session"] as const) {
+        const tl = buildExerciseTimeline(ex, { mode, length: "short" });
+        const kept = new Set(exerciseForLength(ex, "short").steps.map((st) => st.id));
+        for (const i of shownIdx(tl)) {
+          const at = ex.observeAt[i];
+          if (at && "slot" in at && at.requiresStep) expect(kept.has(at.requiresStep)).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("every requiresStep names a real step of its exercise", () => {
+    for (const ex of WARMUP_EXERCISES) {
+      for (const at of ex.observeAt) {
+        if (at && "slot" in at && at.requiresStep) expect(ex.steps.some((st) => st.id === at.requiresStep)).toBe(true);
+      }
+    }
+  });
+
+  it("the full timelines' observe indexes are unchanged", () => {
+    expect(
+      WARMUP_EXERCISES.map((e) => {
+        const tl = buildExerciseTimeline(e, { mode: "library" });
+        return [e.id, tl.whispers.map((w) => w.observeIdx).sort((a, b) => a - b), [...tl.doneObserveIdx]];
+      }),
+    ).toEqual([
+      ["arm-raise", [0, 1, 2], []],
+      ["eyes", [1], []],
+      ["head-rotate", [0, 1], []],
+      ["trunk-forward-back", [0, 2], [1]],
+      ["trunk-side", [0, 1, 2], []],
+    ]);
+  });
+});
+
+describe("timelineOpensEyes (drives the intro's sound demo)", () => {
+  it("full runs open the eyes; a short run only when a kept step is eyes-closed", () => {
+    for (const ex of WARMUP_EXERCISES) {
+      for (const mode of ["library", "session"] as const) {
+        expect(timelineOpensEyes(buildExerciseTimeline(ex, { mode }))).toBe(true);
+        const short = buildExerciseTimeline(ex, { mode, length: "short" });
+        const closed = exerciseForLength(ex, "short").steps.some((st) => st.figure.variant === "slow-closed");
+        expect(timelineOpensEyes(short)).toBe(closed);
+      }
+    }
+    expect(timelineOpensEyes(buildExerciseTimeline(warmupById("eyes")!, { mode: "library", length: "short" }))).toBe(true);
   });
 });

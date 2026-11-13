@@ -25,6 +25,7 @@ export interface WarmupPlayerStrings {
   stillHelp: string;
   soundDemo: string;
   soundDemoCaptions: string;
+  soundDemoCaptionsEyesOpen: string;
   wakeLockNote: string;
   reducedMotionNote: string;
   keyboardHint: string;
@@ -135,6 +136,7 @@ export function warmupPlayerStrings(t: T): WarmupPlayerStrings {
     stillHelp: t("player.stillHelp"),
     soundDemo: t("player.soundDemo"),
     soundDemoCaptions: t("player.soundDemoCaptions"),
+    soundDemoCaptionsEyesOpen: t("player.soundDemoCaptionsEyesOpen"),
     wakeLockNote: t("player.wakeLockNote"),
     reducedMotionNote: t("player.reducedMotionNote"),
     keyboardHint: t("player.keyboardHint"),

@@ -91,7 +91,13 @@ export interface WarmupStep {
  *  done slot. */
 export type ObserveSlot =
   | { readonly step: string; readonly atSec: number }
-  | { readonly slot: "closing" | "done"; readonly atSec?: number };
+  | {
+      readonly slot: "closing" | "done";
+      readonly atSec?: number;
+      /** Id of a step the prompt refers to: the short version drops the item
+       *  when that step is not among the steps it plays. */
+      readonly requiresStep?: string;
+    };
 
 export type WarmupPosture = "seated" | "standing";
 
@@ -654,7 +660,7 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
         en: "In step 8: even if you move one centimetre, the sense of travel is much greater.",
       },
     ],
-    observeAt: [{ step: "trunk-forward-back-3", atSec: 9 }, { slot: "done" }, { step: "trunk-forward-back-8", atSec: 10 }], // v3 (council 2026-10-28)
+    observeAt: [{ step: "trunk-forward-back-3", atSec: 9 }, { slot: "done", requiresStep: "trunk-forward-back-6" }, { step: "trunk-forward-back-8", atSec: 10 }], // v3 (council 2026-10-28)
     closing: CLOSING,
   },
 

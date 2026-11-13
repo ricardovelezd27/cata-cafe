@@ -1932,6 +1932,7 @@
       "stillHelp": "Sin movimiento y sin avance automático: atiendes a tu cuerpo y pasas tú al siguiente paso.",
       "soundDemo": "Escucha los sonidos",
       "soundDemoCaptions": "Campana: muévete · Tic: para · Cuenco: quédate quieto · Doble campana: abre los ojos",
+      "soundDemoCaptionsEyesOpen": "Campana: muévete · Tic: para · Cuenco: quédate quieto",
       "wakeLockNote": "Mantén la pantalla encendida durante el ejercicio.",
       "reducedMotionNote": "Movimiento reducido activado: la figura muestra cada posición sin animarla.",
       "keyboardHint": "← → para moverte · espacio para pausar",

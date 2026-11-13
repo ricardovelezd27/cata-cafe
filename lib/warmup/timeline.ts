@@ -357,6 +357,8 @@ export function buildExerciseTimeline(exercise: WarmupExercise, opts: TimelineOp
   // "Open your eyes" (narration + doble) exists only when the run closed them:
   // always in the full version; in the short one only when a kept step is
   // eyes-closed. TODO(kim-validar:F4): simulated answer, awaiting Kim.
+  // TODO(kim-validar:F4): an eyes-open short run has no sound that marks the
+  // end (the last sound is the cuenco at the closing start); a single tic?
   const opensEyes = !short || ex.steps.some((st) => st.figure.variant === "slow-closed");
   const closingAt = t;
   const closingMs = (short ? WARMUP_SHORT_CLOSING_SEC : WARMUP_CLOSING_HOLD_SEC) * 1000;
@@ -481,6 +483,9 @@ export function buildExerciseTimeline(exercise: WarmupExercise, opts: TimelineOp
       if (si < 0) return;
       const from = stepFirstMove[si] + slot.atSec * 1000;
       whispers.push({ observeIdx, fromMs: from, untilMs: Math.min(from + WHISPER_MS, stepEnd[si]) });
+    } else if (slot.requiresStep && !ex.steps.some((s) => s.id === slot.requiresStep)) {
+      // The prompt refers to a step this (short) run does not play.
+      return;
     } else if (slot.slot === "closing") {
       const from = closingAt + (slot.atSec ?? 0) * 1000;
       whispers.push({ observeIdx, fromMs: from, untilMs: Math.min(from + WHISPER_MS, closingAt + closingMs) });
@@ -593,6 +598,12 @@ export function stepSegments(tl: ExerciseTimeline, segIdx: number): { first: num
 /** Duration the player will run (used by the synced run and the library). */
 export function timelineTotalMs(ex: WarmupExercise, mode: TimelineMode = "library", length: TimelineLength = "full"): number {
   return buildExerciseTimeline(ex, { mode, length }).totalMs;
+}
+
+/** True when the run plays the "doble" (open your eyes): derived from the
+ *  timeline's cues, so the intro never demos a sound the run will not make. */
+export function timelineOpensEyes(tl: ExerciseTimeline): boolean {
+  return tl.cues.some((c) => c.kind === "doble");
 }
 
 /** Short word sequence for the intro ("derecha · centro · izquierda · …"). */
