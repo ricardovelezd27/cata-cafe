@@ -224,6 +224,11 @@ AskUserQuestion, con estas recomendaciones)
   taza hoy no se puede marcar un defecto).
 - Perfil del café: `lib/coffees/filterCoffeeSamples.ts`, `loadCoffeeAggregateSamples`,
   `app/[locale]/app/coffees/[id]/page.tsx`, `/api/coffees/[id]/ficha`.
+  **Construido (S10 WP1c, 2026-11-13):** el puntaje del café vive en `lib/coffeeLifetimeScore.ts`
+  (`computeCoffeeLifetimeScore`, función pura, se calcula al leer, nunca se guarda ni lo toca el
+  trigger), las líneas de texto en `lib/coffeeLifetimeLines.ts`, y la definición única de
+  "indicativo" (menos de 5 tazas sumadas) en `lib/indicativeCups.ts`, que también usa el ranking
+  de la sesión (`RANKING_POLICY.indicativeBelowCups`). El café suma las tazas y marcas de las mismas evaluaciones que el puntaje de una sesión (las completas); una evaluación vacía o a medias no suma nada, y toda muestra de referencia de una sesión en modo ancla queda fuera.
 - Quién lee estos números: resultados (`results/page.tsx`, `ResumenTab`, `ScoreTable`,
   `SampleDetail`, `ScoreBreakdownPanel`, `OwnerParticipantSection`), informes
   (`lib/reports/ranking.ts`, `fichaTecnica.ts` (repite la fórmula 10/30), `participantSummary.ts`,

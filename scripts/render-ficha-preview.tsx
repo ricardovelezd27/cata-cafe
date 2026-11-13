@@ -16,6 +16,8 @@ import { buildFichaTecnica } from "../lib/reports/fichaTecnica";
 import { buildTeacherNotes } from "../lib/reports/teacherNotes";
 import type { ReportEvalRow, SessionReportSource } from "../lib/reports/types";
 import { FichaTecnicaDocument } from "../lib/pdf/FichaTecnicaDocument";
+import { computeCoffeeLifetimeScore } from "../lib/coffeeLifetimeScore";
+import { buildLifetimeLines, LIFETIME_COPY } from "../lib/coffeeLifetimeLines";
 import { CoffeeFichaDocument, type CoffeeFichaModel } from "../lib/pdf/CoffeeFichaDocument";
 
 const OUT = process.argv[2] ?? ".";
@@ -264,6 +266,31 @@ const teacherNotes = buildTeacherNotes(source);
 const fichaFile = path.join(OUT, locale === "en" ? "ficha-en.pdf" : "ficha.pdf");
 
 // Coffee-scoped ficha fixture.
+// The coffee page/PDF score goes through the REAL pure function: 3 closed sessions, 20 cups,
+// one moldy and one unspecified defective cup, found by two people.
+const lifetimeEval = (cupperKey: number, flagged: number | null, type: string | null) => {
+  const ratings = Object.fromEntries(AFFECTIVE_ATTRIBUTES.map((a) => [`${a.id}_final`, 7]));
+  const flags = [flagged === 0, flagged === 1];
+  return {
+    cupperKey,
+    affectiveData: { ...ratings, tazas_defectuosas: flags, tazas_no_uniformes: flags, tazas_defecto_tipo: [type, null] },
+    combinedData: {},
+    nonUniformCups: flags,
+    defectiveCups: flags,
+    cups: 2,
+  };
+};
+const lifetimeResult = computeCoffeeLifetimeScore(
+  [0, 1, 2].map((si) => ({
+    sessionId: `s${si}`,
+    referenceRank: null,
+    session: { format: "affective", cupsPerSample: 2, referenceMode: "anchor" },
+    evaluations: Array.from({ length: si === 2 ? 4 : 3 }, (_, i) =>
+      lifetimeEval(i, si === 0 && i === 0 ? 0 : si === 1 && i === 1 ? 1 : null, si === 0 && i === 0 ? "moldy" : null),
+    ),
+  })),
+);
+
 const coffeeModel: CoffeeFichaModel = {
   identity: {
     label: "Nariño Caturra lavado de altura",
@@ -287,8 +314,10 @@ const coffeeModel: CoffeeFichaModel = {
   results: {
     sessionsCount: 3,
     evaluationsCount: 14,
+    lifetime: buildLifetimeLines(lifetimeResult, LIFETIME_COPY[locale]),
     affective: {
-      communityScore: 84.1,
+      communityScore: lifetimeResult.score,
+      indicative: lifetimeResult.indicative,
       sd: null,
       included: 14,
       submitted: 14,

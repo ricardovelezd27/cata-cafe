@@ -427,7 +427,13 @@ export function closedSilently(input: {
  *  idle 30+ days, and whose finalize failed before the email step, is repaired
  *  without emails too; their results page says so and "Reenviar correos" sends
  *  them. No migration: derived from closedAt, startedAt, the evaluations, the
- *  ledger and the creator id. Pure. TODO(kim-validar:C3) */
+ *  ledger and the creator id. Pure. TODO(kim-validar:C3)
+ *  KNOWN CONSEQUENCE of the deleted-creator rule (documented, not changed; S10
+ *  leftovers B1): a session closed by its DEADLINE whose first finalize failed,
+ *  whose organiser deleted the account before the repair ran, is repaired
+ *  WITHOUT emails, so its participants never get the close email (they still see
+ *  the results in the app). Pinned by tests/repairEmailModeLeftovers.test.ts;
+ *  docs/flows.md section 1, runbook section 33. */
 export function repairEmailMode(input: {
   isLiveGroup: boolean;
   startedAt: Date | null;

@@ -359,11 +359,11 @@ history sync and close emails as the deadline pass); idle **30 days or more** = 
 `closeFinalizedAt`). **Grandfathered** sessions (started BEFORE `IDLE_RULE_EFFECTIVE_AT`, owner decision 2026-11) are never closed with emails: idle under 30 days = left alone (not even fetched), 30 days or more = silent; they get no new `live_idle` reminder. If a finalize step failed, the stamp stays null and the cron repair pass
 (`lib/repairClose.ts`) applies `repairEmailMode` (`lib/closeRules.ts`): it stays silent too
 (`skip`) exactly when the session is a live group session, was idle 30 days or more AT `closedAt`
-and has no `close_email_deliveries` row, or when the creator is a deleted-account placeholder; every other repair runs with emails. Accepted: an owner who
+and has no `close_email_deliveries` row, or when the creator is a deleted-account placeholder; every other repair runs with emails. **Consequence (accepted, pinned by `tests/repairEmailModeLeftovers.test.ts`):** a session closed by its deadline whose first finalize failed, whose organiser deleted the account before the repair ran, never gets its close email (participants still see the results in the app). Accepted: an owner who
 closes by hand a live session idle 30+ days whose finalize fails before the email step is repaired
 without emails; the results page then says "se cerró sola… no se enviaron correos" and the owner can
 "Reenviar". The pass walks up to 25 oldest candidates until 5 closes SUCCEEDED (a candidate that
-throws is logged and does not count), and repairs also stop starting after the ~150 s budget. Idleness is re-checked right before each close. Unstarted and solo sessions are never touched.
+throws is logged and does not count), and repairs also stop starting after the ~150 s budget. Idleness is re-checked right before each close. Unstarted and solo sessions are never touched. Every pass of the cron is isolated (S10 leftovers B3, `runPass`): a pass that throws is logged, flagged in the JSON (`closeFailed`, `repairFailed`, `remindersFailed`, `idlePassFailed`) and the later passes still run; between the idle pass and the ledger purge runs the email-change reconcile (`emailChangeReconcile`, runbook §17 item 4).
 An expired, not closed group session shows its OWNER a "Cerrar ahora" button on the results
 page (`canCloseNow`) in case the nightly job fails. Setting a date on an unstarted live session turns it
 self-paced (no waiting room, no "Iniciar cata"), which the forms say before saving
@@ -1253,6 +1253,11 @@ each gate is a pure, tested helper shared by every consumer:
   viewer owns or joined (admin: all). Other sessions still feed the anonymous
   totals. "Recent tastings" = the viewer's own evaluations plus every evaluation
   of sessions they own.
+- The coffee profile's headline number and the coffee ficha PDF show the coffee's
+  **lifetime score** (S10 WP1c): a read-time computation over the same surviving
+  samples (`computeCoffeeLifetimeScore`), never stored, with the cups line, the
+  arithmetic and the defect tally; the per-session rows keep each session's stored
+  score. No cupper id reaches it (`cupperKey` is an opaque index).
 - Coffee `notes` render for the owner/super-admin only; `duplicableFields`
   (`lib/coffeeDuplicate.ts`) is the allow-list a duplicate copies from.
 - D8 (cancelled blind session): since S8-16 each submitted evaluation on a

@@ -15,6 +15,7 @@ import { evaluationScoreRule } from "@/lib/scoreRule";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { bandFor, rowStats, type Band, type RowStats } from "./cupperStats";
 import { consensusLine, RANKING_POLICY } from "./ranking";
+import { isIndicativeByCups } from "@/lib/indicativeCups";
 import {
   blobForFormat,
   type ReportCoffee,
@@ -52,7 +53,7 @@ export type FichaAffective = {
   included: number;
   /** N: EVERY submitted evaluation of the sample, excluded cuppers included (S8-12). */
   submitted: number;
-  /** n is below RANKING_POLICY.indicativeBelow: the number is only indicative. */
+  /** n is below RANKING_POLICY.indicativeBelow, or fewer than 5 cups were pooled (S10 WP1c): the number is only indicative. */
   indicative?: boolean;
   /** AFFECTIVE_ATTRIBUTES order; value null when no data. */
   attrAverages: { id: string; label: string; value: number | null }[];
@@ -171,7 +172,10 @@ export function buildFichaTecnica(
         included: n,
         // N = every submitted evaluation incl. excluded cuppers ("n de N incluidos").
         submitted: sampleEvals.length,
-        indicative: agg?.communityScore != null && n < RANKING_POLICY.indicativeBelow,
+        indicative:
+          agg?.communityScore != null &&
+          (n < RANKING_POLICY.indicativeBelow ||
+            isIndicativeByCups(agg.totalCups, RANKING_POLICY.indicativeBelowCups)),
         attrAverages: AFFECTIVE_ATTRIBUTES.map((a) => ({
           id: a.id,
           label: a.label,

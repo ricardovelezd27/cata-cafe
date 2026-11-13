@@ -165,7 +165,7 @@
     "statSamples": "Muestras evaluadas",
     "statSamplesSub": "cafés únicos catados",
     "statAvg": "Puntuación promedio",
-    "statAvgSub": "promedio CVA personal",
+    "statAvgSub": "promedio personal, Puntaje Café Sensible",
     "noAvg": "Sin datos",
     "activityEval": "Evaluaste {coffee}",
     "emptyTitle": "Aún no tienes sesiones de cata",
@@ -900,7 +900,7 @@
       "sample": "Muestra",
       "descriptiveSection": "Evaluación descriptiva",
       "affectiveSection": "Evaluación afectiva",
-      "cvaScore": "Puntaje CVA",
+      "cvaScore": "Puntaje Café Sensible (base CVA)",
       "communityShort": "Com:",
       "legendMine": "Mi evaluación",
       "legendCommunity": "Comunidad",
@@ -921,7 +921,7 @@
       "intensity": "Intensidad",
       "quality": "Calidad",
       "notes": "Notas",
-      "cvaScore": "Puntaje CVA",
+      "cvaScore": "Puntaje Café Sensible (base CVA)",
       "edit": "Editar",
       "noData": "Sin evaluación registrada",
       "nariz": "Nariz",
@@ -946,7 +946,7 @@
       "assignedToast": "Café asignado a la muestra"
     },
     "matrix": {
-      "matrixTitle": "Resumen de puntajes CVA",
+      "matrixTitle": "Resumen del Puntaje Café Sensible (base CVA)",
       "legendGreen": "≤ 1 DE de la media (consenso)",
       "legendAmber": "> 1 DE de la media",
       "legendRed": "Lejos del grupo en esta muestra (2 DE o más). No es un error: en la cata afectiva las preferencias pueden diferir.",
@@ -983,7 +983,7 @@
     },
     "breakdown": {
       "how": "¿Cómo se calculó?",
-      "formula": "Fórmula CVA",
+      "formula": "Fórmula (base CVA)",
       "sigma": "Σhᵢ = suma de las 8 secciones afectivas",
       "u": "u = tazas no uniformes (2 puntos cada una; una taza defectuosa también cuenta aquí)",
       "d": "d = tazas defectuosas (4 puntos cada una, con su tipo: mohoso, fenólico o papa)",
@@ -1035,7 +1035,7 @@
       },
       "ranking": {
         "title": "Ranking de muestras",
-        "body": "Las muestras ordenadas de mayor a menor puntaje. En sesiones grupales se ordena por el puntaje comunitario; en sesiones individuales, por tu puntaje CVA. Toca una muestra para abrir su detalle completo. La cifra ± junto al puntaje comunitario es la desviación estándar entre catadores: mientras más baja, mayor consenso hubo en esa muestra."
+        "body": "Las muestras ordenadas de mayor a menor puntaje. En sesiones grupales se ordena por el puntaje comunitario; en sesiones individuales, por tu puntaje. Toca una muestra para abrir su detalle completo. La cifra ± junto al puntaje comunitario es la desviación estándar entre catadores: mientras más baja, mayor consenso hubo en esa muestra."
       },
       "performance": {
         "title": "Mi desempeño",
@@ -1047,7 +1047,7 @@
       },
       "tabla": {
         "title": "Tabla de resultados",
-        "body": "Todas tus calificaciones por muestra: intensidades descriptivas, calificaciones afectivas (1 a 9) y el puntaje CVA. En sesiones grupales, cada atributo muestra también el promedio de la comunidad debajo de tu valor. Toca el nombre de una muestra para ver su detalle."
+        "body": "Todas tus calificaciones por muestra: intensidades descriptivas, calificaciones afectivas (1 a 9) y el puntaje. En sesiones grupales, cada atributo muestra también el promedio de la comunidad debajo de tu valor. Toca el nombre de una muestra para ver su detalle."
       },
       "grafico": {
         "title": "Gráfico radar",
@@ -1055,7 +1055,7 @@
       },
       "porCatador": {
         "title": "Análisis por catador",
-        "body": "Solo visible para el maestro de la sesión: la matriz de puntajes CVA por catador, con un semáforo de tres colores por consenso — verde dentro de 1 desviación estándar de la media de la muestra, amarillo más de 1 DE, un tono más fuerte a 2 o más DE (lejos del grupo en esa muestra; no es un error, en la cata afectiva las preferencias pueden diferir); los catadores excluidos se muestran en gris. Puedes excluir un catador del cálculo grupal; los puntajes se recalculan automáticamente."
+        "body": "Solo visible para el maestro de la sesión: la matriz de puntajes por catador, con un semáforo de tres colores por consenso — verde dentro de 1 desviación estándar de la media de la muestra, amarillo más de 1 DE, un tono más fuerte a 2 o más DE (lejos del grupo en esa muestra; no es un error, en la cata afectiva las preferencias pueden diferir); los catadores excluidos se muestran en gris. Puedes excluir un catador del cálculo grupal; los puntajes se recalculan automáticamente."
       },
       "filtros": {
         "title": "Filtros de descriptores",
@@ -1080,7 +1080,7 @@
       }
     },
     "radar": {
-      "score": "PUNTAJE CVA",
+      "score": "PUNTAJE",
       "reveal": "Revelar",
       "communityScore": "Puntuación comunidad",
       "includedLine": "{n} de {total} evaluadores incluidos en el promedio",
@@ -1166,7 +1166,7 @@
     "title": "Historial de cafés",
     "empty": "Aún no has catado ningún café identificado.",
     "tasted": "Catado",
-    "yourScore": "Tu puntaje",
+    "yourScore": "Tu Puntaje Café Sensible (base CVA)",
     "communityScore": "Puntaje comunitario",
     "sessionDeleted": "Sesión eliminada",
     "quickImpression": "Impresión rápida",
@@ -1184,7 +1184,7 @@
     "colProcess": "Proceso",
     "colVariety": "Variedad",
     "colSessions": "Sesiones",
-    "colLastScore": "Últ. CVA",
+    "colLastScore": "Últ. puntaje",
     "colLastDate": "Última cata",
     "noData": "No hay cafés registrados. Crea tu primera sesión para empezar.",
     "showing": "Mostrando {from}–{to} de {total} cafés",
@@ -1207,7 +1207,6 @@
     "resultsPrivate": "Los resultados de este café son privados. El dueño puede publicarlos.",
     "statSessions": "Sesiones",
     "statEvals": "Catas",
-    "statCommunityAvg": "Promedio comunitario",
     "statYourAvg": "Tu promedio",
     "sensoryTitle": "Perfil sensorial",
     "activityTitle": "Actividad",
@@ -1239,6 +1238,47 @@
     "recentTastingsTitle": "Catas recientes",
     "recentTastingsEmpty": "Sin catas recientes.",
     "sessionsOthersNote": "Las sesiones de este café son de otros catadores; sus nombres no se muestran, pero sus resultados cuentan en los totales.",
+    "lifetime": {
+      "title": "Puntaje Café Sensible (base CVA)",
+      "accumulated": "Acumulado de {cups} en {sessions}",
+      "cupOne": "taza",
+      "cupOther": "tazas",
+      "sessionOne": "cata",
+      "sessionOther": "catas",
+      "voiceOne": "evaluación",
+      "voiceOther": "evaluaciones",
+      "base": "Base",
+      "deduction": "Descuento",
+      "scoreWord": "Puntaje",
+      "roundingNote": "El puntaje se redondea al cuarto de punto más cercano.",
+      "defectiveOne": "taza defectuosa",
+      "defectiveOther": "tazas defectuosas",
+      "nonUniformOnlyOne": "taza no uniforme (sin defecto)",
+      "nonUniformOnlyOther": "tazas no uniformes (sin defecto)",
+      "nonUniformReasonOne": "taza no uniforme sin defecto",
+      "nonUniformReasonOther": "tazas no uniformes sin defecto",
+      "tally": "{defective} de {cupped} ({pct} %), {found} por {people}",
+      "noDefects": "Sin tazas defectuosas en {cupped}",
+      "cuppedOne": "taza catada",
+      "cuppedOther": "tazas catadas",
+      "foundOne": "encontrada",
+      "foundOther": "encontradas",
+      "personOne": "persona",
+      "personOther": "personas",
+      "typePotato": "Papa",
+      "typeMoldy": "Mohoso",
+      "typePhenolic": "Fenólico",
+      "typeUnspecified": "Sin especificar",
+      "indicativeBadge": "Indicativo",
+      "indicativeNote": "Menos de 5 tazas catadas: es una primera señal.",
+      "anchorOne": "{n} cata en la que este café fue la referencia fija no cuenta para este puntaje.",
+      "anchorOther": "{n} catas en las que este café fue la referencia fija no cuentan para este puntaje.",
+      "note": "Cada cata conserva su propio puntaje. Este número es del café y cambia cuando se cierra una cata nueva.",
+      "noBaseQuick": "Todavía no hay una cata completa de varias tazas de este café. Las impresiones rápidas (1 taza) cuentan sus tazas y defectos, no su puntaje.",
+      "noBaseAnchor": "Este café solo se ha catado como referencia fija: esas catas no cuentan para este puntaje.",
+      "noBaseDescriptive": "Las catas de este café son descriptivas: ese formato no lleva puntaje.",
+      "noBaseIncomplete": "Todavía no hay una cata con puntaje completo de este café."
+    },
     "deleteCoffee": {
       "title": "Eliminar café",
       "titleMany": "Eliminar {count} cafés",
