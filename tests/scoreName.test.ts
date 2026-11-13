@@ -25,19 +25,15 @@ describe("the score's name", () => {
   });
 
   it("the full name is used on the results table, the drill-down, the matrix, history and the coffee page", () => {
-    const e = es as any;
-    const n = en as any;
-    for (const get of [
-      (m: any) => m.results.table.cvaScore,
-      (m: any) => m.results.detail.cvaScore,
-      (m: any) => m.coffee.lifetime.title,
-    ]) {
-      expect(get(e)).toBe("Puntaje Café Sensible (base CVA)");
-      expect(get(n)).toBe("Café Sensible score (CVA-based)");
+    const at = (m: unknown, path: string): string =>
+      path.split(".").reduce<unknown>((o, k) => (o as Record<string, unknown>)[k], m) as string;
+    for (const path of ["results.table.cvaScore", "results.detail.cvaScore", "coffee.lifetime.title"]) {
+      expect(at(es, path)).toBe("Puntaje Café Sensible (base CVA)");
+      expect(at(en, path)).toBe("Café Sensible score (CVA-based)");
     }
-    expect(e.results.matrix.matrixTitle).toContain("Puntaje Café Sensible (base CVA)");
-    expect(n.results.matrix.matrixTitle).toContain("Café Sensible score");
-    expect(e.history.yourScore).toContain("Puntaje Café Sensible (base CVA)");
-    expect(n.history.yourScore).toContain("Café Sensible score (CVA-based)");
+    expect(at(es, "results.matrix.matrixTitle")).toContain("Puntaje Café Sensible (base CVA)");
+    expect(at(en, "results.matrix.matrixTitle")).toContain("Café Sensible score");
+    expect(at(es, "history.yourScore")).toContain("Puntaje Café Sensible (base CVA)");
+    expect(at(en, "history.yourScore")).toContain("Café Sensible score (CVA-based)");
   });
 });
