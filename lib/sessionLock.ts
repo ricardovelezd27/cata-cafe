@@ -21,3 +21,17 @@ export async function lockSessionRow(
 ): Promise<void> {
   await tx.$queryRaw`SELECT id FROM cupping_sessions WHERE id = ${sessionId} FOR UPDATE`;
 }
+
+// S10 WP6 D1: the SHARED form of the same lock, for every transaction that writes
+// evaluations of a session without changing the reference ("Enviar", "Terminar cata",
+// the aggregate re-fire). Many of them run at once; each excludes (and is excluded
+// by) a reference change, which takes `lockSessionRow` exclusively. Taking it FIRST is
+// what keeps "evaluation row, then the aggregate trigger's sample key-share" from
+// crossing "sample row FOR UPDATE, then evaluation rows" (the owner naming the sample
+// that is being submitted as the reference): the shared holder simply finishes first.
+export async function lockSessionRowShared(
+  tx: Pick<Prisma.TransactionClient, "$queryRaw">,
+  sessionId: string,
+): Promise<void> {
+  await tx.$queryRaw`SELECT id FROM cupping_sessions WHERE id = ${sessionId} FOR SHARE`;
+}
