@@ -66,6 +66,8 @@ export type ReportSample = {
 
 export type ReportParticipant = {
   userId: string;
+  /** When the participant row was created; orders the anonymous CSV codes (S10 WP5a). */
+  joinedAt?: Date;
   displayName: string;
   status: string;
   excluded: boolean;

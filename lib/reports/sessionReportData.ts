@@ -73,6 +73,7 @@ export async function loadSessionReportSource(
             excludedFromResults: true,
             excludedAt: true,
             exclusionReason: true,
+            joinedAt: true,
             user: { select: { displayName: true } },
           },
         },
@@ -103,6 +104,7 @@ export async function loadSessionReportSource(
   const participants = session.participants.map((p) => ({
     userId: p.userId,
     displayName: profileDisplayName({ id: p.userId, displayName: p.user.displayName }, locale),
+    joinedAt: p.joinedAt,
     status: p.status,
     excluded: p.excludedFromResults,
     exclusionReason: p.exclusionReason,

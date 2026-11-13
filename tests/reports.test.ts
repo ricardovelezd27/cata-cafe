@@ -671,6 +671,8 @@ describe("gateSampleForViewer (S8-02 F-resultados-2)", () => {
 describe("buildResultsCsv / csvCell (S8-12, F-informes-7)", () => {
   const src = fixture();
   const out = buildResultsCsv(src, { locale: "es", coffeeDeleted: "Café eliminado" });
+  // Non-empty lines of a CSV, without its BOM.
+  const csvLines = (csv: string) => csv.replace(/^﻿/, "").split("\n").filter(Boolean);
 
   it("starts with a UTF-8 BOM and one row per submitted evaluation", () => {
     expect(out.csv.charCodeAt(0)).toBe(0xfeff);
@@ -685,13 +687,79 @@ describe("buildResultsCsv / csvCell (S8-12, F-informes-7)", () => {
     expect(out.csv).toContain("Finca Revelada");
   });
 
-  it("names by default and codes on request", () => {
+  it("names plus a code by default; the no-names variant drops the name column", () => {
     expect(out.csv).toContain(CUPPERS.A.name);
-    const coded = buildResultsCsv(src, { locale: "en", coffeeDeleted: "x", codes: true });
+    expect(csvLines(out.csv)[0]).toMatch(/^catador,codigo,muestra,/);
+    const coded = buildResultsCsv(src, { locale: "en", coffeeDeleted: "x", names: false });
     expect(coded.csv).not.toContain(CUPPERS.A.name);
     expect(coded.csv).toContain("Muestra REF");
-    expect(coded.csv.split("\n").some((l) => l.startsWith("C1,"))).toBe(true);
-    expect(coded.csv.split("\n")[0]).toContain("cva_score");
+    expect(csvLines(coded.csv)[0]).toMatch(/^code,sample,/);
+    expect(csvLines(coded.csv).some((l) => l.startsWith("C01,"))).toBe(true);
+    expect(csvLines(coded.csv)[0]).toContain("cva_score");
+  });
+
+  it("no-names variant: no display name, user id or email of any cupper, even in a free-text reason", () => {
+    const people = (["A", "B", "C"] as const).map((k) => CUPPERS[k]);
+    const shared = {
+      ...src,
+      excludedUserIds: [CUPPERS.C.id],
+      participants: src.participants.map((p) =>
+        p.userId === CUPPERS.C.id
+          ? { ...p, excluded: true, exclusionReason: `other:${CUPPERS.B.name} llegó tarde` }
+          : p,
+      ),
+    };
+    for (const locale of ["es", "en"] as const) {
+      const noNames = buildResultsCsv(shared, { locale, coffeeDeleted: "x", names: false }).csv;
+      for (const c of people) {
+        expect(noNames).not.toContain(c.name);
+        expect(noNames).not.toContain(c.id);
+      }
+      expect(noNames).not.toContain("@");
+      expect(noNames).not.toContain("llegó tarde");
+    }
+    // The owner file keeps the full reason.
+    const owner = buildResultsCsv(shared, { locale: "es", coffeeDeleted: "x" }).csv;
+    expect(owner).toContain("llegó tarde");
+  });
+
+  it("codes are stable between the two variants and follow the participant row order, not the name", () => {
+    const stamped = {
+      ...src,
+      participants: src.participants.map((p, i) => ({
+        ...p,
+        // C joined first, then A, then B: the reverse of name order.
+        joinedAt: new Date(2026, 9, 1, 10, [1, 2, 0][i]),
+      })),
+    };
+    const codeOf = (csv: string, nameCol: boolean, who: string) => {
+      const lines = csvLines(csv).slice(1);
+      const line = lines.find((l) => (nameCol ? l.startsWith(who + ",") : true));
+      return line!.split(",")[nameCol ? 1 : 0];
+    };
+    const withNames = buildResultsCsv(stamped, { locale: "es", coffeeDeleted: "x" }).csv;
+    expect(codeOf(withNames, true, CUPPERS.C.name)).toBe("C01");
+    expect(codeOf(withNames, true, CUPPERS.A.name)).toBe("C02");
+    expect(codeOf(withNames, true, CUPPERS.B.name)).toBe("C03");
+    // Same rows, same codes, no name.
+    const without = buildResultsCsv(stamped, { locale: "es", coffeeDeleted: "x", names: false }).csv;
+    const codesWith = csvLines(withNames).slice(1).map((l) => l.split(",")[1]);
+    const codesWithout = csvLines(without).slice(1).map((l) => l.split(",")[0]);
+    expect(codesWithout).toEqual(codesWith);
+  });
+
+  it("an excluded cupper is marked in the no-names variant too", () => {
+    const sh = buildResultsCsv(
+      {
+        ...src,
+        excludedUserIds: [CUPPERS.C.id],
+        participants: src.participants.map((p) =>
+          p.userId === CUPPERS.C.id ? { ...p, excluded: true, exclusionReason: "protocol" } : p,
+        ),
+      },
+      { locale: "es", coffeeDeleted: "x", names: false },
+    ).csv;
+    expect(sh).toContain(",si,protocol,");
   });
 
   it("flags excluded cuppers with their reason", () => {

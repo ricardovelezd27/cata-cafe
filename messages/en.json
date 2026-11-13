@@ -902,7 +902,7 @@
       "matrixTitle": "CVA score summary",
       "legendGreen": "Within 1 SD of the mean (consensus)",
       "legendAmber": "> 1 SD from mean",
-      "legendRed": "≥ 2 SD (possible outlier)",
+      "legendRed": "Far from the group on this sample (2 SD or more). Not an error: in affective cupping, preferences can differ.",
       "noScore": "—",
       "sdHeader": "SD",
       "manageTitle": "Participants in the group calculation",
@@ -913,15 +913,20 @@
       "ownerSection": "Analysis by cupper",
       "includedCount": "{n} of {total} cuppers included in the results",
       "excludeDialogTitle": "Exclude from the group",
-      "excludeDialogBody": "Their evaluations stop counting in the group average, the spread and the charts. The cupper still sees their own results. Who excluded them, when and why is recorded.",
+      "excludeDialogBody": "Their evaluations stop counting in the group average, the spread and the charts. The cupper still sees their own results, with a private note giving the reason. Who excluded them, when and why is recorded.",
+      "closedNote": "Summaries already sent had the previous number.",
+      "excludeOtherLabel": "Explain the reason (120 characters max)",
       "oldRuleNote": "This cupping was scored with the previous rule. When you exclude or include someone, its samples are recalculated with the current rule.",
       "excludeReasonLabel": "Reason",
       "excludeConfirm": "Exclude",
       "dialogCancel": "Cancel",
       "dialogClose": "Close",
       "exclusionReasons": {
-        "sample_error": "Sample error",
-        "protocol": "Did not follow the protocol",
+        "sample_error": "Wrong sample",
+        "protocol": "Protocol not followed (roast, grind, water)",
+        "incomplete": "Incomplete cupping",
+        "not_fit": "Not in a condition to cup",
+        "test_duplicate": "Test or duplicate",
         "calibration": "Different calibration",
         "other": "Other reason"
       },
@@ -990,7 +995,7 @@
       },
       "porCatador": {
         "title": "Analysis by cupper",
-        "body": "Visible only to the session owner: the CVA score matrix by cupper, with a three-color consensus semaphore — green within 1 standard deviation of the sample mean, yellow more than 1 SD, red 2+ SD (possible outlier); excluded cuppers are shown in grey. You can exclude a cupper from the group calculation; scores recalculate automatically."
+        "body": "Visible only to the session owner: the CVA score matrix by cupper, with a three-color consensus semaphore — green within 1 standard deviation of the sample mean, yellow more than 1 SD, a stronger tone at 2+ SD (far from the group on that sample; not an error, in affective cupping preferences can differ); excluded cuppers are shown in grey. You can exclude a cupper from the group calculation; scores recalculate automatically."
       },
       "filtros": {
         "title": "Descriptor filters",
@@ -1023,7 +1028,10 @@
       "requiresAffective": "The radar chart needs affective data (affective or combined format)"
     },
     "updatedAfterClose": "Results updated on {date}, after the session closed.",
-    "originEditedAt": "Origin edited on {date}",
+    "originEditedAt": "Origin data edited on {date}",
+    "exclusionNotice": "The organizer left your evaluation out of the group result ({reason}). Your own results do not change.",
+    "exclusionNoticeNoReason": "The organizer left your evaluation out of the group result. Your own results do not change.",
+    "downloadCsvNoNames": "CSV without names",
     "downloadCsv": "Data per cupper (CSV)",
     "needsConnection": "Needs a connection",
     "closedUnsentNotice": "You had {count, plural, one {# complete sample} other {# complete samples}} unsent when the session closed. They do not count in the results.",

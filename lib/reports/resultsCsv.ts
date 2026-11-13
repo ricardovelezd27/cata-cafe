@@ -3,8 +3,12 @@
 // in a spreadsheet. OWNER ONLY — the route gates it like the ficha tecnica. It
 // carries cupper identities, so participants never get it.
 //
-// TODO(Kim-D5): the default exports NAMES; `codes: true` swaps them for stable
-// anonymous codes (C1, C2…) when Kim prefers that.
+// S10 WP5a (D5, TODO(kim-validar:D5)): every row carries a stable code per cupper
+// ("C01", "C02"…, ordered by the participant row's creation, never by name). The
+// default export has the name AND the code; `names: false` drops the name column
+// (the code stays) so the file can be shared without identifying anyone: no
+// display name, id or email, and the free text of an "other" exclusion reason
+// (which could name someone) is reduced to the bare code "other".
 
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { calcIndividualScore, evaluationCupCounts, hasAffectiveData } from "@/lib/scoring";
@@ -16,6 +20,7 @@ import { blobForFormat, type ReportLocale, type SessionReportSource } from "./ty
 const HEADERS = {
   es: {
     cupper: "catador",
+    code: "codigo",
     sample: "muestra",
     reference: "referencia",
     coffee: "cafe",
@@ -29,6 +34,7 @@ const HEADERS = {
   },
   en: {
     cupper: "cupper",
+    code: "code",
     sample: "sample",
     reference: "reference",
     coffee: "coffee",
@@ -47,22 +53,48 @@ function attrValue(data: Record<string, unknown>, id: string): number | "" {
   return Number.isFinite(n) && n > 0 ? n : "";
 }
 
+/** Stable anonymous code per cupper ("C01", "C02"…). Order = participant row
+ *  creation (joinedAt, then user id as a deterministic tie-break), NEVER the
+ *  display name; a cupper with an evaluation but no participant row follows in
+ *  user-id order. Shared by both CSV variants so a code means the same cupper. */
+export function cupperCodes(
+  participants: { userId: string; joinedAt?: Date }[],
+  evalCupperIds: string[],
+): Map<string, string> {
+  const ordered = [...participants].sort((a, b) => {
+    const ta = a.joinedAt ? a.joinedAt.getTime() : Number.POSITIVE_INFINITY;
+    const tb = b.joinedAt ? b.joinedAt.getTime() : Number.POSITIVE_INFINITY;
+    if (ta !== tb) return ta < tb ? -1 : 1;
+    return a.userId < b.userId ? -1 : a.userId > b.userId ? 1 : 0;
+  });
+  const ids = ordered.map((p) => p.userId);
+  for (const id of [...new Set(evalCupperIds)].sort()) if (!ids.includes(id)) ids.push(id);
+  const width = Math.max(2, String(ids.length).length);
+  return new Map(ids.map((id, i) => [id, "C" + String(i + 1).padStart(width, "0")]));
+}
+
 export function buildResultsCsv(
   src: SessionReportSource,
-  opts: { locale: ReportLocale; coffeeDeleted: string; codes?: boolean },
+  opts: { locale: ReportLocale; coffeeDeleted: string; names?: boolean },
 ): { csv: string; rows: number } {
+  const withNames = opts.names !== false;
   const h = HEADERS[opts.locale];
   const excluded = new Set(src.excludedUserIds);
-  const reasonByUser = new Map(src.participants.map((p) => [p.userId, p.exclusionReason ?? ""]));
-
-  // Stable anonymous codes in first-seen cupper order (by name for determinism).
-  const cuppers = [...new Map(src.evals.map((e) => [e.cupperId, e.displayName])).entries()].sort(
-    (a, b) => a[1].localeCompare(b[1]),
+  const reasonByUser = new Map(
+    src.participants.map((p) => {
+      const stored = p.exclusionReason ?? "";
+      // The free text of "other" can name someone: the shareable file keeps only the code.
+      return [p.userId, withNames ? stored : stored.startsWith("other:") ? "other" : stored];
+    }),
   );
-  const codeById = new Map(cuppers.map(([id], i) => [id, `C${i + 1}`]));
+  const codeById = cupperCodes(
+    src.participants,
+    src.evals.map((e) => e.cupperId),
+  );
 
   const header = csvRow([
-    h.cupper,
+    ...(withNames ? [h.cupper] : []),
+    h.code,
     h.sample,
     h.reference,
     h.coffee,
@@ -99,7 +131,8 @@ export function buildResultsCsv(
       const isExcluded = excluded.has(ev.cupperId);
       lines.push(
         csvRow([
-          opts.codes ? (codeById.get(ev.cupperId) ?? "") : ev.displayName,
+          ...(withNames ? [ev.displayName] : []),
+          codeById.get(ev.cupperId) ?? "",
           sample.label,
           sample.isReference ? (sample.referenceRank ?? 1) : "",
           coffee,

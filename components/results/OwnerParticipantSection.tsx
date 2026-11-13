@@ -9,6 +9,7 @@ import { rowStats, bandFor } from "@/lib/reports/cupperStats";
 import { setParticipantExclusion } from "@/app/actions/community";
 import { Badge, useActionFeedback } from "@/components/ui";
 import { ExclusionDialog } from "@/components/results/ExclusionDialog";
+import { exclusionReasonText } from "@/lib/exclusionReasons";
 import type { SessionFormat } from "@/lib/constants";
 
 type SampleResult = {
@@ -66,12 +67,12 @@ type CellTone = "neutral" | "green" | "amber" | "red";
 
 /* Cell tone → MD3 token classes. Traffic-light consensus semaphore per
    DESIGN.md: bg-primary-fixed (green, within 1 SD of the row mean — consensus)
-   / bg-warning-container (amber, > 1 SD) / bg-error-container (red, >= 2 SD,
-   possible outlier). Excluded participants always render with the neutral
+   / bg-warning-container (amber, > 1 SD) / bg-warning (solid warning, >= 2 SD,
+   far from the group, NOT an error: S10 WP5a). Excluded participants always render with the neutral
    "greyed out" pairing regardless of their tone. */
 function toneClass(tone: CellTone, excluded: boolean): string {
   if (excluded) return "bg-surface-container-high text-on-surface-variant";
-  if (tone === "red") return "bg-error-container text-on-error-container font-bold";
+  if (tone === "red") return "bg-warning text-on-warning font-bold";
   if (tone === "amber") return "bg-warning-container text-on-warning-container font-bold";
   if (tone === "green") return "bg-primary-fixed text-on-primary-fixed font-semibold";
   return "text-on-surface font-semibold";
@@ -149,6 +150,9 @@ export function OwnerParticipantSection({
     /** Shown in the exclusion dialog only when a sample is still under the previous rule; null otherwise. */
     oldRuleNote: string | null;
     excludeReasonLabel: string;
+    excludeOtherLabel: string;
+    /** Only when the session is closed ("summaries already sent kept the old number"), else null. */
+    closedNote: string | null;
     excludeConfirm: string;
     dialogCancel: string;
     dialogClose: string;
@@ -174,11 +178,12 @@ export function OwnerParticipantSection({
     p: ParticipantResult,
     next: boolean,
     reason?: string,
+    reasonText?: string,
   ): Promise<{ ok: boolean }> => {
     setPendingIds((s) => new Set(s).add(p.id));
     try {
       const result = await feedback.run(
-        setParticipantExclusion(sessionId, p.id, next, reason),
+        setParticipantExclusion(sessionId, p.id, next, reason, reasonText),
         () => {
           setOverrides((o) => ({ ...o, [p.id]: next }));
           feedback.notifySuccess(next ? t.excludedToast : t.restoredToast);
@@ -280,7 +285,7 @@ export function OwnerParticipantSection({
                     {fill(t.excludedTrail, {
                       who: p.trail.by ?? "—",
                       date: p.trail.at ?? "—",
-                      reason: p.trail.reason ? (t.reasons[p.trail.reason] ?? p.trail.reason) : "—",
+                      reason: exclusionReasonText(p.trail.reason, t.reasons) ?? "—",
                     })}
                   </span>
                 )}
@@ -298,9 +303,9 @@ export function OwnerParticipantSection({
             if (!o) setAskExclude(null);
           }}
           cupperName={askExclude.name}
-          onConfirm={async (reason) => {
+          onConfirm={async (reason, otherText) => {
             const target = askExclude;
-            const res = await applyExclusion(target, true, reason);
+            const res = await applyExclusion(target, true, reason, otherText);
             if (res.ok) setAskExclude(null);
             return res;
           }}
@@ -308,6 +313,8 @@ export function OwnerParticipantSection({
             title: t.excludeDialogTitle,
             body: t.excludeDialogBody,
             note: t.oldRuleNote,
+            closedNote: t.closedNote,
+            otherLabel: t.excludeOtherLabel,
             reasonLabel: t.excludeReasonLabel,
             confirm: t.excludeConfirm,
             cancel: t.dialogCancel,
@@ -418,7 +425,7 @@ export function OwnerParticipantSection({
             {t.legendAmber}
           </span>
           <span className="inline-flex items-center gap-1.5 text-[11px] text-on-surface-variant">
-            <span className="h-3 w-3 rounded-sm bg-error-container" aria-hidden />
+            <span className="h-3 w-3 rounded-sm bg-warning" aria-hidden />
             {t.legendRed}
           </span>
         </div>
