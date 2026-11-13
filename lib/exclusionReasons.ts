@@ -43,8 +43,7 @@ export function encodeExclusionReason(reason: unknown, otherText?: unknown): str
   if (code !== "other") return code;
   const cleaned =
     typeof otherText === "string"
-      ? // eslint-disable-next-line no-control-regex
-        otherText.replace(/[\u0000-\u001f\u007f]+/g, " ")
+      ? otherText.replace(/[\u0000-\u001f\u007f]+/g, " ")
       : otherText;
   const text = v.str(cleaned, "reasonText", { max: EXCLUSION_OTHER_MAX }) as string;
   return `${OTHER_PREFIX}${text}`;
