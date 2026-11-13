@@ -842,7 +842,8 @@
       "offline": "Sin conexión: {count} cambio(s) se sincronizarán al reconectar.",
       "retry": "Reintentar",
       "synced": "Cambios sincronizados. Actualizando resultados…",
-      "closedUnsent": "{count} cambio(s) guardado(s) en este dispositivo no se enviaron porque la cata ya estaba cerrada. No cuentan en los resultados."
+      "closedUnsent": "{count} cambio(s) guardado(s) en este dispositivo no se enviaron porque la cata ya estaba cerrada. No cuentan en los resultados.",
+      "revealedUnsent": "{count} nota(s) guardada(s) en este dispositivo no se enviaron porque la muestra ya estaba revelada. No cuentan en los resultados."
     },
     "closeEmails": {
       "label": "Correos de cierre:",

@@ -35,6 +35,21 @@ describe("isModuleFrozenForRevealed (H2)", () => {
   });
 });
 
+describe("quick notes step on a revealed sample (round 3)", () => {
+  it("the note lives in the evaluation module, so a revealed sample is read-only there", () => {
+    for (const key of ["descriptive", "affective", "combined"]) {
+      expect(isModuleFrozenForRevealed({ revealed: true, key })).toBe(true);
+      expect(isModuleFrozenForRevealed({ revealed: false, key })).toBe(false);
+    }
+  });
+  it("CupClient hands the decision to the step and the step disables the textarea", () => {
+    const cup = read("app", "[locale]", "app", "sessions", "[id]", "cup", "CupClient.tsx");
+    expect(cup).toMatch(/readOnly: isModuleFrozenForRevealed\(\{ revealed: s\.revealed, key: notesModuleKey \}\)/);
+    const step = read("components", "cupping", "ExpressNotesStep.tsx");
+    expect(step).toMatch(/<fieldset disabled=\{s\.readOnly === true\}/);
+  });
+});
+
 describe("scorePillClasses (A10)", () => {
   it("takes no score and names no quality token", () => {
     expect(scorePillClasses.length).toBe(0);
@@ -49,17 +64,20 @@ describe("scorePillClasses (A10)", () => {
 });
 
 describe("pinWouldTouchRevealed (H1)", () => {
-  const base = { mode: "anchor", moduleKey: "affective" };
-  it("refuses pinning a revealed sample in anchor mode", () => {
+  const base = { mode: "anchor", moduleKey: "affective", overwrites: 2 };
+  it("refuses pinning a revealed sample in anchor mode when it would rewrite ratings", () => {
     expect(pinWouldTouchRevealed({ ...base, targetRevealed: true })).toBe(true);
     expect(pinWouldTouchRevealed({ ...base, moduleKey: "combined", targetRevealed: true })).toBe(true);
   });
+  it("proceeds when the pin would rewrite nothing (round 3)", () => {
+    expect(pinWouldTouchRevealed({ ...base, overwrites: 0, targetRevealed: true })).toBe(false);
+  });
   it("allows a blind sample, free mode and descriptive-only sessions", () => {
     expect(pinWouldTouchRevealed({ ...base, targetRevealed: false })).toBe(false);
-    expect(pinWouldTouchRevealed({ mode: "free", moduleKey: "affective", targetRevealed: true })).toBe(false);
-    expect(pinWouldTouchRevealed({ mode: "anchor", moduleKey: "descriptive", targetRevealed: true })).toBe(false);
+    expect(pinWouldTouchRevealed({ mode: "free", moduleKey: "affective", targetRevealed: true, overwrites: 3 })).toBe(false);
+    expect(pinWouldTouchRevealed({ mode: "anchor", moduleKey: "descriptive", targetRevealed: true, overwrites: 3 })).toBe(false);
   });
   it("an unknown mode reads as anchor (fail closed)", () => {
-    expect(pinWouldTouchRevealed({ mode: "weird", moduleKey: "affective", targetRevealed: true })).toBe(true);
+    expect(pinWouldTouchRevealed({ mode: "weird", moduleKey: "affective", targetRevealed: true, overwrites: 3 })).toBe(true);
   });
 });

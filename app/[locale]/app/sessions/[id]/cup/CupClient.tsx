@@ -3050,6 +3050,8 @@ export function CupClient({
             id: s.id,
             label: s.label,
             isReference: s.id === referenceSampleId,
+            // The quick note lives in the evaluation module: frozen once revealed (lib/revealFreeze.ts).
+            readOnly: isModuleFrozenForRevealed({ revealed: s.revealed, key: notesModuleKey }),
           }))}
           values={Object.fromEntries(
             samples.map((s) => {
@@ -3065,6 +3067,7 @@ export function CupClient({
             placeholder: expressNotesCopy.placeholder,
             optional: expressNotesCopy.optional,
             referenceBadge: referenceBadgeLabel,
+            revealedNote: translations.revealedNote ?? REVEALED_NOTE_FALLBACK[locale === "en" ? "en" : "es"],
           }}
         />
       )}

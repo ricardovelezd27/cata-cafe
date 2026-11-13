@@ -272,19 +272,24 @@ export function isReferencePinned(data: Record<string, unknown>): boolean {
   return allFive && noCups && noMarket;
 }
 
-/** S10 WP3a review H1: a reference change that would PIN a sample whose coffee is already
- *  revealed is refused (`reference_revealed`): the pin rewrites every cupper's ratings of
- *  that sample to 5, and a revealed sample is frozen for evaluation (the owner must not
- *  move the group score after the reveal). `targetRevealed` is the sample that would
- *  become the ACTIVE pinned reference: newly marked, or an earlier reference being
- *  reactivated. Free mode (no pin) and descriptive-only sessions are never refused. Pure. */
+/** S10 WP3a review H1 (+ round 3): a reference change that would PIN a sample whose coffee is
+ *  already revealed is refused (`reference_revealed`) ONLY when the pin would actually REWRITE
+ *  stored evaluations of it (`overwrites` = `countRepinOverwrites(...)`, rows not already at the
+ *  79.00 anchor): a revealed sample is frozen for evaluation, so the owner must not move the
+ *  group score after the reveal. When nothing would be rewritten the pointer just moves (later
+ *  saves stay refused by the reveal freeze). `targetRevealed` is the sample that would become the
+ *  ACTIVE pinned reference: newly marked, or an earlier reference being reactivated. Free mode
+ *  (no pin) and descriptive-only sessions are never refused. Pure; the ONE rule used by
+ *  setReferenceSample (add and remove-active) and removeSamplesInTx. */
 export function pinWouldTouchRevealed(input: {
   mode: unknown;
   moduleKey: string;
   targetRevealed: boolean;
+  overwrites: number;
 }): boolean {
   return (
     input.targetRevealed &&
+    input.overwrites > 0 &&
     shouldPinReference({ mode: input.mode, moduleKey: input.moduleKey, isActiveReference: true })
   );
 }

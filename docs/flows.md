@@ -30,13 +30,16 @@ the note as `closed_unsent`). Deliberately NOT covered: `submitAllEvaluations` /
 owner-only physical / origin rows. Submitting an existing draft of a
 revealed sample is allowed and may recompute its stored SCORE under the current rule
 (the legacy-draft rewrite, `lib/legacyDrafts.ts`); it never changes a rating except on
-the pinned anchor. Only the evaluation module is frozen: the owner's origin
+the pinned anchor: submitting a pre-2026-11 draft of the ACTIVE anchor reference after it was
+revealed can still re-pin it at submit (the legacy-draft rewrite pins the anchor). Only the evaluation module is frozen: the owner's origin
 (`extrinsic`) and `physical` rows stay editable (`lib/revealFreeze.ts`, one pure
 function used by `CupClient`). **References:** in anchor mode a reference change that
 would PIN a revealed sample is refused with `reference_revealed` before any write:
 marking it (`setReferenceSample`), removing the active reference when the earlier one
 is revealed (`setReferenceSample(null)`), or deleting the active reference's sample
-(`removeSamplesInTx`, rolls back); free mode is unaffected (`pinWouldTouchRevealed`,
+(`removeSamplesInTx`, rolls back); the refusal applies ONLY when the pin would actually rewrite
+stored ratings of that sample (`countRepinOverwrites > 0`): rows already at the 79.00 anchor
+mean the pointer just moves; free mode is unaffected (`pinWouldTouchRevealed`,
 `lib/referenceRules.ts`). A note refused for the reveal is parked on the device as
 `revealed_unsent` (own status: never retried, never blocks submit, read / copy /
 confirmed discard only, NEVER a send action; the replay answers `revealed`). The owner is asked first (`ConfirmDialog` on

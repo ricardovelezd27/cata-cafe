@@ -1164,7 +1164,7 @@ export async function setReferenceSample(
               moduleKeyForFormat(sess.format),
               sess.cupsPerSample,
             );
-            // S10 WP3a review H1: never pin (rewrite) a sample that was already revealed.
+            // S10 WP3a review H1: never REWRITE the ratings of a sample that was already revealed.
             const target = await tx.sessionSample.findUniqueOrThrow({
               where: { id: plan.repinId },
               select: { revealed: true },
@@ -1174,6 +1174,7 @@ export async function setReferenceSample(
                 mode: sess.referenceMode,
                 moduleKey: moduleKeyForFormat(sess.format),
                 targetRevealed: target.revealed,
+                overwrites,
               })
             ) {
               throw new Error("reference_revealed");
@@ -1196,11 +1197,20 @@ export async function setReferenceSample(
                 where: { id: targetId },
                 select: { revealed: true },
               });
+              const targetEvs = await tx.evaluation.findMany({
+                where: { sessionSampleId: targetId },
+                select: { id: true, isDraft: true, affectiveData: true, combinedData: true },
+              });
               if (
                 pinWouldTouchRevealed({
                   mode: sess.referenceMode,
                   moduleKey: moduleKeyForFormat(sess.format),
                   targetRevealed: target.revealed,
+                  overwrites: countRepinOverwrites(
+                    targetEvs,
+                    moduleKeyForFormat(sess.format),
+                    sess.cupsPerSample,
+                  ),
                 })
               ) {
                 throw new Error("reference_revealed");

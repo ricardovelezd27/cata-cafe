@@ -1008,6 +1008,7 @@ export default async function ResultsPage({
         retry: tResults("sync.retry"),
         synced: tResults("sync.synced"),
         closedUnsent: tResults("sync.closedUnsent", { count: "{count}" }),
+        revealedUnsent: tResults("sync.revealedUnsent", { count: "{count}" }),
         conflictTitle: tOffline("conflictTitle"),
         // Raw template — `{sample}` is filled client-side by SyncConflictModal.
         conflictBody: tOffline.raw("conflictBody") as string,

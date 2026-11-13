@@ -99,6 +99,52 @@ describe("reference_revealed (anchor mode)", () => {
   });
 });
 
+describe("nothing to rewrite: the organiser is never stuck (round 3)", () => {
+  // A (revealed) is the earlier reference, B the active one, and A's stored rows are
+  // EXACTLY the anchor state (all eight ratings 5, no cup marks): pinning would change nothing.
+  async function anchoredEarlier() {
+    const ctx = await setup();
+    const { s, A, B, owner } = ctx;
+    await prisma.sessionSample.update({ where: { id: A.id }, data: { referenceRank: 1 } });
+    await prisma.sessionSample.update({ where: { id: B.id }, data: { referenceRank: 2 } });
+    await prisma.cuppingSession.update({ where: { id: s.id }, data: { referenceSampleId: B.id } });
+    await makeEvaluation({ sampleId: A.id, sessionId: s.id, cupperId: owner, cupsPerSample: 2, values: 5, nonUniform: [false, false], defective: [false, false] });
+    const row = await prisma.evaluation.findUniqueOrThrow({
+      where: { sessionSampleId_cupperId: { sessionSampleId: A.id, cupperId: owner } },
+    });
+    const agg = await storedAggregate(A.id);
+    return { ...ctx, row, agg };
+  }
+
+  it("removing the active reference succeeds when the revealed earlier one is already at the anchor; rows byte-identical, no aggregate rewritten", async () => {
+    const { s, A, owner, row, agg } = await anchoredEarlier();
+    const r = await setReferenceSample(s.id, null);
+    expect(r).toEqual({ ok: true, data: { referenceSampleId: A.id } });
+    const after = await prisma.evaluation.findUniqueOrThrow({
+      where: { sessionSampleId_cupperId: { sessionSampleId: A.id, cupperId: owner } },
+    });
+    expect(after).toEqual(row);
+    const aggAfter = await storedAggregate(A.id);
+    expect(aggAfter?.computedAt.getTime()).toBe(agg?.computedAt.getTime());
+    expect(aggAfter?.communityScore).toBe(agg?.communityScore);
+  });
+
+  it("deleting the active reference's sample succeeds in the same situation", async () => {
+    const { s, A, B, owner, row, agg } = await anchoredEarlier();
+    const r = await removeSessionSample(B.id);
+    expect(r).toEqual({ ok: true });
+    expect(await prisma.sessionSample.count({ where: { sessionId: s.id } })).toBe(2);
+    const sess = await prisma.cuppingSession.findUniqueOrThrow({ where: { id: s.id }, select: { referenceSampleId: true } });
+    expect(sess.referenceSampleId).toBe(A.id);
+    const after = await prisma.evaluation.findUniqueOrThrow({
+      where: { sessionSampleId_cupperId: { sessionSampleId: A.id, cupperId: owner } },
+    });
+    expect(after).toEqual(row);
+    const aggAfter = await storedAggregate(A.id);
+    expect(aggAfter?.computedAt.getTime()).toBe(agg?.computedAt.getTime());
+  });
+});
+
 describe("free mode is unaffected", () => {
   it("a revealed sample can be the reference and nothing is rewritten", async () => {
     const { owner, s, A } = await setup("free");

@@ -842,7 +842,8 @@
       "offline": "Offline: {count} change(s) will sync when you reconnect.",
       "retry": "Retry",
       "synced": "Changes synced. Refreshing results…",
-      "closedUnsent": "{count} change(s) saved on this device were not sent because the session was already closed. They do not count in the results."
+      "closedUnsent": "{count} change(s) saved on this device were not sent because the session was already closed. They do not count in the results.",
+      "revealedUnsent": "{count} note(s) saved on this device were not sent because the sample was already revealed. They do not count in the results."
     },
     "closeEmails": {
       "label": "Close emails:",

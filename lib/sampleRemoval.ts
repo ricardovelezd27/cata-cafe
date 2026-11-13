@@ -76,20 +76,22 @@ export async function removeSamplesInTx(
       where: { id: activeAfter },
       select: { revealed: true },
     });
+    const evs = await tx.evaluation.findMany({
+      where: { sessionSampleId: activeAfter },
+      select: { id: true, isDraft: true, affectiveData: true, combinedData: true },
+    });
+    const overwrites = countRepinOverwrites(evs, moduleKeyForFormat(session.format), session.cupsPerSample);
     if (
       pinWouldTouchRevealed({
         mode: session.referenceMode,
         moduleKey: moduleKeyForFormat(session.format),
         targetRevealed: reactivated.revealed,
+        overwrites,
       })
     ) {
       throw new Error(REFERENCE_REVEALED);
     }
-    const evs = await tx.evaluation.findMany({
-      where: { sessionSampleId: activeAfter },
-      select: { id: true, isDraft: true, affectiveData: true, combinedData: true },
-    });
-    if (countRepinOverwrites(evs, moduleKeyForFormat(session.format), session.cupsPerSample) > 0) {
+    if (overwrites > 0) {
       throw new Error(REFERENCE_REPIN_REQUIRED);
     }
   }

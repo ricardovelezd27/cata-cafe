@@ -19,6 +19,8 @@ export type SessionSyncStatusTranslations = SyncConflictTranslations & {
   /** RAW template with "{count}": drafts kept on the device because the
    *  session was already closed (S8-05). */
   closedUnsent?: string;
+  /** RAW template with "{count}": notes refused because the sample was revealed (S10 WP3a). */
+  revealedUnsent?: string;
 };
 
 // Results-page twin of the cup screen's OfflineBanner: shows a live pill ONLY
@@ -42,6 +44,7 @@ export function SessionSyncStatus({
   const { syncPhase, conflicts, resolveConflict, retrySync } = useOfflineSync({ userId, online });
   const [pendingCount, setPendingCount] = useState(0);
   const [closedUnsentCount, setClosedUnsentCount] = useState(0);
+  const [revealedUnsentCount, setRevealedUnsentCount] = useState(0);
   // Show the green "synced" line only for a replay that actually pushed
   // something — the hook reports "synced" after every no-op run too.
   const [justSynced, setJustSynced] = useState(false);
@@ -51,16 +54,19 @@ export function SessionSyncStatus({
     const blob = await loadSession(sessionId, userId);
     let count = 0;
     let closedCount = 0;
+    let revealedCount = 0;
     if (blob) {
       for (const sample of Object.values(blob.samples)) {
         for (const mod of Object.values(sample.modules)) {
           if (mod?.syncStatus === "pending" || mod?.syncStatus === "failed") count += 1;
           else if (mod?.syncStatus === "closed_unsent" || mod?.syncStatus === "orphaned") closedCount += 1;
+          else if (mod?.syncStatus === "revealed_unsent") revealedCount += 1;
         }
       }
     }
     setPendingCount(count);
     setClosedUnsentCount(closedCount);
+    setRevealedUnsentCount(revealedCount);
     if (count > 0) hadPendingRef.current = true;
   }, [sessionId, userId]);
 
@@ -105,6 +111,13 @@ export function SessionSyncStatus({
       tone: "warn",
       icon: <CloudOff size={14} aria-hidden />,
       text: t.closedUnsent.replace("{count}", String(closedUnsentCount)),
+      retry: false,
+    };
+  } else if (revealedUnsentCount > 0 && t.revealedUnsent) {
+    line = {
+      tone: "warn",
+      icon: <CloudOff size={14} aria-hidden />,
+      text: t.revealedUnsent.replace("{count}", String(revealedUnsentCount)),
       retry: false,
     };
   } else if (justSynced) {
