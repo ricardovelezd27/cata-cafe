@@ -1741,7 +1741,22 @@ still recomputes the old rule in TypeScript while the new trigger stores the new
 submission in that window (for example a cupper who flags a cup in a 2-cup sample) is STORED
 with the deduction (coffee history, profile, results of that sample after the deploy) while the
 old page shows no deduction until the deploy lands. Nothing stored before the window changes.
-Doing the deploy BEFORE PHASE 26 is worse: the page would show the new rule while the stored
+**What such a submission looks like afterwards (permanent).** An evaluation SUBMITTED between
+PHASE 26 and the deploy is written by the old code: it keeps `cups` NULL for good and its
+INDIVIDUAL score has no deduction under five cups, while the trigger stores the sample's GROUP
+score with the deduction (`ruleVersion = 2`). In that window "my score" and the session score of
+a solo session can therefore differ permanently. List those rows afterwards (read-only; use the
+time you applied PHASE 26):
+
+```sql
+select e.id, ss."sessionId", e."cupperId", e."submittedAt"
+from evaluations e join session_samples ss on ss.id = e."sessionSampleId"
+where e."isDraft" = false and e.cups is null
+  and e."submittedAt" > '2026-11-DD HH:MI+00';  -- the time PHASE 26 was applied
+```
+
+The only prevention is to run the two steps back to back with no cupping live. Doing the deploy
+BEFORE PHASE 26 is worse: the page would show the new rule while the stored
 score still follows the PHASE 23 rule until the next submit, and the old trigger stamps every
 new sample `ruleVersion = 1` while its evaluations already carry `cups`.
 
@@ -1757,17 +1772,64 @@ new sample `ruleVersion = 1` while its evaluations already carry `cups`.
    and `trg_recompute_aggregate` (`AFTER INSERT OR UPDATE OF "isDraft"`) does not fire.
    Check: `select count(*) from aggregate_scores where "ruleVersion" <> 1;` returns `0`, and
    `select count(*) from evaluations where "cups" is not null;` returns `0`.
+
+   **Before you run it, read-only pre-flight: what exists right now and could be touched by the
+   system after the deploy.**
+
+   ```sql
+   -- A. closed sessions whose second phase (reveal, history, emails, stamp) never finished
+   select id, name, "closedAt" from cupping_sessions
+   where status = 'closed' and "closeFinalizedAt" is null order by "closedAt";
+   -- B. sessions not closed whose closing day already passed (the daily cron closes them)
+   select id, name, "closesAt", status from cupping_sessions
+   where status <> 'closed' and "closesAt" < now() order by "closesAt";
+   ```
+
+   What the code does with each, after the deploy: for A the next repair (cron pass, owner
+   close, a solo owner opening the results) finishes the reveal, the coffee history, the emails
+   and the stamp, and re-fires the score of a sample ONLY when that sample has a submitted
+   evaluation with `cups` set or no stored aggregate row or `ruleVersion = 2`; a sample made
+   entirely of evaluations stored before the deploy (`cups` NULL) whose aggregate is
+   `ruleVersion = 1` keeps its stored score byte for byte. For B the cron closes them with the
+   same rule: a first close of a session whose submitted evaluations all have `cups` NULL leaves
+   its aggregates untouched. The data says which rule produced a score, there is no date. Only a
+   deliberate owner action (excluding or including a cupper) recomputes a whole sample under the
+   current rule.
+
+   **If the migration fails on a lock timeout.** The file starts with
+   `SET LOCAL lock_timeout = '5s'`, so it gives up instead of queueing behind a long
+   transaction. Then `migrate deploy` fails with `P3018` (database code `55P03`), NOTHING is
+   applied, the migration row is left marked failed and a re-run is refused with `P3009`. Run
+   `npx prisma migrate resolve --rolled-back 20261113090000_evaluation_cups` and then
+   `npx prisma migrate deploy` again (at a quieter moment).
 2. **Dry run** (fail-safe: one statement, nothing is applied). Open
    `prisma/sql/dry-runs/phase26_dry_run.sql`, paste the whole file, run it. Expected: a red
-   error starting `PHASE 26 DRY RUN: NOTHING WAS APPLIED`. Read each numbered line:
-   - 1: how many `aggregate_scores` rows a FULL re-fire would change;
-   - 2: the same split by cups per sample (1 cup, 2 cups, 3-4 cups, 5+ cups);
-   - 3: the highest and lowest change of `communityScore` (both negative means every sample
-     would go down; show them to the owner);
-   - 4: rows with submitted evaluations NOT stamped `ruleVersion = 2` by the re-fire: must be
-     `0` (proves the new function is the one running);
-   - 5: `proconfig` must be `{search_path=public}`;
-   - 6: up to ten of the largest individual changes.
+   error starting `PHASE 26 DRY RUN: NOTHING WAS APPLIED`. Every numbered line says on the line
+   itself whether it is informational or has an expectation:
+   - 1 (informational): how many `aggregate_scores` rows a FULL re-fire would change;
+   - 2 (informational): the same split by cups per sample (1 cup, 2 cups, 3-4 cups, 5+ cups);
+   - 3 (informational): the highest and lowest change of `communityScore`. Increases are
+     expected for samples with 5 or more cups and a defective cup, which used to be counted
+     twice; decreases are expected for samples under 5 cups with flagged cups, which used to
+     have no deduction. Show the two numbers to the owner;
+   - 4 (expect 0): rows with submitted evaluations NOT stamped `ruleVersion = 2` by the re-fire
+     (proves the new function is the one running);
+   - 5 (expect `{search_path=public}`): the function's `proconfig`;
+   - 6 (informational): up to ten of the largest individual changes, each as session NAME,
+     date and sample label (this is your own SQL editor, so names are shown, not ids).
+
+   Example of a real report (run against a throwaway local database holding one made-up
+   session; `tests/db/phase26DryRun.dbtest.ts` produces it):
+
+   ```
+   PHASE 26 DRY RUN: NOTHING WAS APPLIED (this error is the expected result). Compare each line with its expectation:
+    1 (informational) aggregate rows: 1, of which communityScore would change under a FULL re-fire (production never does one): 1
+    2 (informational) by cups per sample, group 2 cups: 1 rows, 1 would change
+    3 (informational) change of communityScore under a full re-fire, highest: -2.75, lowest: -2.75. Increases are expected ...
+    4 rows with submitted evaluations NOT stamped ruleVersion 2 by the re-fire (expect 0): 0
+    5 proconfig of recompute_aggregate_score (expect {search_path=public}): {search_path=public}
+    6 (informational) Cata del viernes, 2026-11-01, sample Huila lote 7 (2 cups per sample): 80.25 -> 77.5
+   ```
    **These numbers are what a FULL re-fire of every sample would do, which production never
    does.** The dry run is a functional test of the new function on real data, not a preview of
    what applying PHASE 26 changes: applying it changes NO stored row (step 3). While it runs it
@@ -1783,6 +1845,10 @@ new sample `ruleVersion = 1` while its evaluations already carry `cups`.
    `aggregate_scores."ruleVersion" = 2`; from then on the results screen shows that sample under
    the current rule. Samples nobody touches stay `ruleVersion = 1` and keep rendering exactly as
    before. The app reads the version from the data, there is no cut-over date.
+   The close routine's own pass (first close, the cron's repair, a solo owner opening the
+   results) skips a sample whose aggregate is `ruleVersion = 1` and whose submitted evaluations
+   all have `cups` NULL (code: `refireAggregates(..., { mode: "keep-old-rule" })`), so it never
+   rewrites a pre-deploy score either.
    The "Actualizar" button on a CLOSED or expired session does NOT re-fire (it only re-reads
    the page), so a routine click never rewrites a past score. One accepted exception: a guest
    claim (`mergeGuestData`) re-fires the closed sessions it touches when evaluations conflict
@@ -1802,6 +1868,11 @@ new sample `ruleVersion = 1` while its evaluations already carry `cups`.
    ```
 
    The last count may be non-zero only if someone submitted an evaluation in those minutes.
+   **A draft that no longer validates.** A draft saved before the deploy is recomputed under
+   the current rule when its cupper submits it. If its stored payload no longer passes the
+   derivation, it is NOT blocked: it is submitted with `cups` NULL (scored under the old rule,
+   like a row submitted before the deploy) and the server logs
+   `legacyDrafts.skipped_invalid` once per row with ids only (search the Vercel logs for it).
 5. **Merge and deploy** the PR. Smoke test: (a) an OLD closed session with a flagged cup under
    five cups opens with the same numbers as before the deploy (and the breakdown says it was
    scored under the previous rule); (b) a throwaway solo session of 2 cups: mark one cup
