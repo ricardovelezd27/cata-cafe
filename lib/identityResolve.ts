@@ -30,6 +30,7 @@ import { clearIdentityChanged, markIdentityChanged, runBeforeIdentityReload } fr
 import { claimedRenderedUser } from "@/lib/offline/claimMarker";
 import { readClaimMarkers } from "@/lib/offline/claimRekey";
 import { rekeyUserBlobs } from "@/lib/offline/store";
+import { sequenceIdentityReload } from "@/lib/identitySequence";
 
 type Read = { identity: BrowserIdentity; currentUserId: string | null };
 
@@ -68,16 +69,18 @@ function claimedByMarkers(renderedUserId: string, currentUserId: string | null):
  * Never throws; a failure to read the cookie just reloads.
  */
 export async function reloadIdentity(renderedUserId: string): Promise<void> {
-  try {
-    await runBeforeIdentityReload();
-    const { currentUserId } = await readIdentity(renderedUserId);
-    if (currentUserId && claimedByMarkers(renderedUserId, currentUserId)) {
-      await rekeyUserBlobs(renderedUserId, currentUserId);
-    }
-  } catch {
-    // reload anyway: nothing was deleted
-  }
-  window.location.reload();
+  // The order (hooks, then re-key, then reload) is pinned by
+  // lib/identitySequence.ts + tests/identitySequence.test.ts.
+  await sequenceIdentityReload({
+    beforeReload: runBeforeIdentityReload,
+    rekeyIfClaimed: async () => {
+      const { currentUserId } = await readIdentity(renderedUserId);
+      if (currentUserId && claimedByMarkers(renderedUserId, currentUserId)) {
+        await rekeyUserBlobs(renderedUserId, currentUserId);
+      }
+    },
+    reload: () => window.location.reload(),
+  });
 }
 
 /** True (and the page is reloading) when the claim markers say the rendered

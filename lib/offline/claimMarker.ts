@@ -134,6 +134,19 @@ export function claimedRenderedUser(input: {
 }
 
 /**
+ * After the cup page's own re-key (`awaitClaimRekey`) actually moved drafts to
+ * the account, kick ONE replay so they sync now instead of waiting for the next
+ * reconnect (S10 leftovers C2). The provider's own re-key runs after the cup
+ * page's and then finds nothing left to move, so it never kicks one. Pure: the
+ * caller keeps `alreadyKicked` in a ref for the life of the page, so the guard
+ * cannot loop (a re-key that moves nothing, or a second effect run, never
+ * kicks).
+ */
+export function shouldKickReplayAfterRekey(moved: number, alreadyKicked: boolean): boolean {
+  return Number.isFinite(moved) && moved > 0 && !alreadyKicked;
+}
+
+/**
  * Which claim markers a device-state clear removes (S9-01, C-08). A plain
  * sign-out drops both: a pending hand-over must not outlive it. The "Usar otra
  * cuenta" path of an IN-PROGRESS claim keeps the start marker (CLAIM_ANON_KEY),

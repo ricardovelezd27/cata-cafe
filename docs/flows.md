@@ -288,7 +288,7 @@ and has no `close_email_deliveries` row, or when the creator is a deleted-accoun
 closes by hand a live session idle 30+ days whose finalize fails before the email step is repaired
 without emails; the results page then says "se cerró sola… no se enviaron correos" and the owner can
 "Reenviar". The pass walks up to 25 oldest candidates until 5 closes SUCCEEDED (a candidate that
-throws is logged and does not count), and repairs also stop starting after the ~150 s budget. Idleness is re-checked right before each close. Unstarted and solo sessions are never touched.
+throws is logged and does not count), and repairs also stop starting after the ~150 s budget. Idleness is re-checked right before each close. Unstarted and solo sessions are never touched. Every pass of the cron is isolated (S10 leftovers B3, `runPass`): a pass that throws is logged, flagged in the JSON (`closeFailed`, `repairFailed`, `remindersFailed`, `idlePassFailed`) and the later passes still run; between the idle pass and the ledger purge runs the email-change reconcile (`emailChangeReconcile`, runbook §17 item 4).
 An expired, not closed group session shows its OWNER a "Cerrar ahora" button on the results
 page (`canCloseNow`) in case the nightly job fails. Setting a date on an unstarted live session turns it
 self-paced (no waiting room, no "Iniciar cata"), which the forms say before saving

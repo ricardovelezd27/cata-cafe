@@ -379,6 +379,21 @@ describe("joinSessionAsGuest expectedUserId (WP8b)", () => {
     expect(invite.useCount).toBe(0);
   });
 
+  it("the same user the form onboarded is signed in: joins as a member (S10 leftovers C4)", async () => {
+    const { sessionId, token } = await inviteTo();
+    const mine = await makeUser({ anonymous: true, name: "Mine" });
+    signedInAs(mine);
+    // A successful join ends in redirect(), which the action lets through (it is
+    // not an ActionResult): the promise rejects with a NEXT_REDIRECT.
+    await expect(joinSessionAsGuest(token, "es", mine)).rejects.toMatchObject({
+      digest: expect.stringContaining("NEXT_REDIRECT"),
+    });
+    expect(await members(sessionId)).toBe(2); // the owner and the guest
+    const row = await prisma.sessionParticipant.findUniqueOrThrow({ where: { sessionId_userId: { sessionId, userId: mine } } });
+    expect(row.status).toBe("joined");
+    expect((await prisma.sessionInvite.findUniqueOrThrow({ where: { token } })).useCount).toBe(1);
+  });
+
   it("nobody signed in: not_authenticated as main, nobody joined", async () => {
     const { sessionId, token } = await inviteTo();
     const mine = await makeUser({ anonymous: true, name: "Mine" });
