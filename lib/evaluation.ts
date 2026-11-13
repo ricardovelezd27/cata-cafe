@@ -1,6 +1,7 @@
 import { calcAffectiveSum, calcIndividualScore, calcRawScore } from "@/lib/scoring";
 import { AFFECTIVE_ATTRIBUTES, asSessionFormat } from "@/lib/constants";
-import { cupFlags } from "@/lib/validate";
+import { cupDefectTypes, cupFlags } from "@/lib/validate";
+import { DEFECT_TYPE_KEY, distinctDefectTypes } from "@/lib/cupDefects";
 import { EXPRESS_NOTE_KEY, EXPRESS_NOTE_MAX } from "@/lib/expressSession";
 
 export type EvalModuleKey = "descriptive" | "affective" | "combined";
@@ -112,22 +113,42 @@ export function computeEvaluationDerived(
   // them: an over-long or non-boolean array would either crash the Boolean[]
   // column or let one cupper drive a sample's community score to zero.
   // With ONE cup uniformity does not exist: the flags are stored all false.
-  const nonUniformCups =
+  let nonUniformCups =
     cupsPerSample >= 2
       ? cupFlags(data.tazas_no_uniformes, cupsPerSample)
       : cupFlags(data.tazas_no_uniformes, cupsPerSample).map(() => false);
-  const defectiveCups = cupFlags(data.tazas_defectuosas, cupsPerSample);
-  const defectTypes = Array.isArray(data.defecto_tipo)
+  let defectiveCups = cupFlags(data.tazas_defectuosas, cupsPerSample);
+  let defectTypes = Array.isArray(data.defecto_tipo)
     ? (data.defecto_tipo as unknown[])
         .filter((v): v is string => typeof v === "string")
         .slice(0, 20)
     : [];
-  const normalized: Record<string, unknown> = {
-    ...sanitizeAffectiveRatings(data),
-    tazas_no_uniformes: nonUniformCups,
-    tazas_defectuosas: defectiveCups,
-    defecto_tipo: defectTypes,
-  };
+  const normalized: Record<string, unknown> = { ...sanitizeAffectiveRatings(data) };
+
+  // S10 WP1b: a module that carries the per-cup defect type key is the new
+  // shape. A cup counts as defective ONLY where its flag is true AND its type
+  // is set (the form cannot produce a flagged cup without a type; a tampered
+  // or half-synced payload must not create an untyped defect); a type on an
+  // unflagged cup is cleared; with 2+ cups a defective cup is also
+  // non-uniform; `defecto_tipo` and the `defectTypes` column are DERIVED from
+  // the per-cup types. A module WITHOUT the key is a legacy blob and is left
+  // exactly as it was posted. TODO(kim-validar:A3)
+  if (DEFECT_TYPE_KEY in data) {
+    const n = Math.max(0, Math.floor(cupsPerSample));
+    const flags = cupFlags(data.tazas_defectuosas, n);
+    const rawTypes = cupDefectTypes(data[DEFECT_TYPE_KEY], n);
+    const nuFlags = cupFlags(data.tazas_no_uniformes, n);
+    const cupTypes = rawTypes.map((t, i) => (flags[i] === true ? t : null));
+    defectiveCups = cupTypes.map((t) => t !== null);
+    nonUniformCups = Array.from({ length: n }, (_, i) =>
+      n >= 2 ? nuFlags[i] === true || defectiveCups[i] : false,
+    );
+    defectTypes = distinctDefectTypes(cupTypes, defectiveCups);
+    normalized[DEFECT_TYPE_KEY] = cupTypes;
+  }
+  normalized.tazas_no_uniformes = nonUniformCups;
+  normalized.tazas_defectuosas = defectiveCups;
+  normalized.defecto_tipo = defectTypes;
 
   const { sum } = calcAffectiveSum(normalized);
   const rawScore = moduleKey === "descriptive" ? null : calcRawScore(normalized);
