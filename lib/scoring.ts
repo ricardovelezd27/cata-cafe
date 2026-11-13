@@ -368,9 +368,8 @@ export function computeGroupAggregate(
 // `.score` from here, and the N5 score-transparency panel renders the same
 // intermediates, so the explainer can never drift from the displayed number.
 //
-// NOTE: distinct from `calculateCVABreakdown` above (the design-system API),
-// which does not clamp the counts to the evaluation's cups. This one uses the
-// shared rule (evaluationCupCounts + cupDeduction), exactly like the stored score.
+// The counts are clamped to the evaluation's cups by the shared rule
+// (evaluationCupCounts + cupDeduction), exactly like the stored score.
 export interface IndividualBreakdown {
   affectiveSum: number; // Σhᵢ
   affectiveTerm: number; // 0.65625 × Σhᵢ

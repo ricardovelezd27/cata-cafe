@@ -12,7 +12,7 @@ import {
   CupToggleGrid,
 } from "@/components/ui";
 
-import { CUP_COPY_FALLBACK, type CupCopy } from "@/lib/cupCopy";
+import { CUP_COPY_FALLBACK, cupSummary, type CupCopy } from "@/lib/cupCopy";
 import { applyDefectChoice, applyNonUniformToggle, formCupState } from "@/lib/cupDefects";
 
 type Data = Record<string, unknown>;
@@ -159,7 +159,7 @@ export function AffectiveForm({
           />
           {(nonUniformCount > 0 || defectiveCount > 0) && (
             <div className="mt-2 text-[11px] text-brown-mid">
-              {copy.summary.replace("{u}", String(nonUniformCount)).replace("{d}", String(defectiveCount))}
+              {cupSummary(copy, nonUniformCount, defectiveCount)}
             </div>
           )}
         </FormSection>

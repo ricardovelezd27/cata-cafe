@@ -71,9 +71,10 @@ describe("computeEvaluationDerived with per-cup defect types", () => {
     expect(d.individualScore).toBe(61);
   });
 
-  it("key PRESENT: a flagged cup with NO type is stored as not defective", () => {
+  it("key PRESENT: a flagged cup with NO type STAYS defective (sin especificar), forced non-uniform", () => {
     const d = derive({ tazas_defectuosas: [true, true], [KEY]: ["potato", null] }, 2);
-    expect(d.defectiveCups).toEqual([true, false]);
+    expect(d.defectiveCups).toEqual([true, true]);
+    expect(d.nonUniformCups).toEqual([true, true]);
     expect(stored(d)[KEY]).toEqual(["potato", null]);
     expect(d.defectTypes).toEqual(["potato"]);
   });
@@ -91,14 +92,14 @@ describe("computeEvaluationDerived with per-cup defect types", () => {
     );
     expect((stored(d)[KEY] as unknown[]).length).toBe(3);
     expect(stored(d)[KEY]).toEqual(["moldy", null, null]);
-    expect(d.defectiveCups).toEqual([true, false, false]);
+    expect(d.defectiveCups).toEqual([true, true, true]);
   });
 
-  it("key PRESENT with a non-array value: every cup untyped, nothing defective", () => {
+  it("key PRESENT with a non-array value: every cup untyped but flagged cups stay defective", () => {
     const d = derive({ tazas_defectuosas: [true, true], [KEY]: "moldy" }, 2);
-    expect(d.defectiveCups).toEqual([false, false]);
+    expect(d.defectiveCups).toEqual([true, true]);
     expect(stored(d)[KEY]).toEqual([null, null]);
-    expect(d.individualScore).toBe(79);
+    expect(d.defectTypes).toEqual([]);
   });
 
   it("ONE cup: a typed defect counts (4), non-uniform stays false", () => {
@@ -108,13 +109,14 @@ describe("computeEvaluationDerived with per-cup defect types", () => {
     expect(d.individualScore).toBe(75);
   });
 
-  it("the stored flags and the stored types always agree (a typed cup <=> a defective cup)", () => {
+  it("a typed cup is always a defective cup (an untyped flagged cup is defective too)", () => {
     const d = derive(
       { tazas_defectuosas: [true, true, false, true], [KEY]: [null, "potato", "moldy", "phenolic"] },
       4,
     );
     const types = stored(d)[KEY] as (string | null)[];
-    expect(d.defectiveCups).toEqual(types.map((t) => t !== null));
+    expect(d.defectiveCups).toEqual([true, true, false, true]);
+    types.forEach((t, i) => { if (t !== null) expect(d.defectiveCups[i]).toBe(true); });
   });
 
   it("the offline replay derivation (tryComputeEvaluationDerived) applies the same rule", () => {
@@ -122,7 +124,7 @@ describe("computeEvaluationDerived with per-cup defect types", () => {
     const live = computeEvaluationDerived("affective", data, 2);
     const replay = tryComputeEvaluationDerived("affective", data, 2);
     expect(replay).toEqual(live);
-    expect(replay?.defectiveCups).toEqual([true, false]);
+    expect(replay?.defectiveCups).toEqual([true, true]);
   });
 });
 

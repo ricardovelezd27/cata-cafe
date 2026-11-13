@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { applyDefectChoice, applyNonUniformToggle, defectTally, formCupState } from "@/lib/cupDefects";
+import { applyDefectChoice, applyNonUniformToggle, defectTally, formCupState, pickerFocusTarget } from "@/lib/cupDefects";
+import { CUP_COPY_FALLBACK, cupSummary } from "@/lib/cupCopy";
 import { computeEvaluationDerived } from "@/lib/evaluation";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 
@@ -80,5 +81,52 @@ describe("form helpers", () => {
     expect(derived.defectiveCups).toEqual(d.tazas_defectuosas);
     expect(derived.nonUniformCups).toEqual(d.tazas_no_uniformes);
     expect(derived.defectTypes).toEqual(["potato"]);
+  });
+});
+
+// S10 WP1b fix (review H1): a deduction a cupper already recorded must never
+// disappear without the cupper deliberately unmarking the cup (decision doc 5.3).
+describe("legacy untyped defective cups survive any other interaction", () => {
+  const legacyNoTypes = {
+    ...neutral,
+    tazas_defectuosas: [true, true, false],
+    tazas_no_uniformes: [true, true, false],
+  };
+  const legacyTwoTypes = { ...legacyNoTypes, defecto_tipo: ["moldy", "potato"] };
+  const derive = (d: Record<string, unknown>) => computeEvaluationDerived("affective", d, 3);
+
+  for (const [name, legacy] of [["0 legacy types", legacyNoTypes], ["2 legacy types", legacyTwoTypes]] as const) {
+    it(`${name}: tapping non-uniform on another cup keeps both defective cups`, () => {
+      const before = derive(legacy);
+      const after = derive(applyNonUniformToggle(legacy, 3, 2));
+      expect(after.defectiveCups).toEqual([true, true, false]);
+      expect(after.individualScore as number).toBeLessThanOrEqual(before.individualScore as number);
+    });
+    it(`${name}: typing only one of the cups keeps both deductions and the score`, () => {
+      const before = derive(legacy);
+      const after = derive(applyDefectChoice(legacy, 3, 0, "phenolic"));
+      expect(after.defectiveCups).toEqual([true, true, false]);
+      expect(after.individualScore).toBe(before.individualScore);
+      expect(defectTally(after.affectiveData as Record<string, unknown>, 3)).toMatchObject({ unspecified: 1, total: 2 });
+    });
+    it(`${name}: the cupper can still unmark one deliberately`, () => {
+      const after = derive(applyDefectChoice(legacy, 3, 1, null));
+      expect(after.defectiveCups).toEqual([true, false, false]);
+    });
+  }
+});
+
+describe("picker focus and summary wording", () => {
+  it("focus moves into the chooser on open or move, back to the cup on close", () => {
+    expect(pickerFocusTarget(null, 2)).toEqual({ to: "type" });
+    expect(pickerFocusTarget(1, 2)).toEqual({ to: "type" });
+    expect(pickerFocusTarget(2, null)).toEqual({ to: "cup", idx: 2 });
+    expect(pickerFocusTarget(2, 2)).toBeNull();
+    expect(pickerFocusTarget(null, null)).toBeNull();
+  });
+  it("the grid summary uses singular forms", () => {
+    expect(cupSummary(CUP_COPY_FALLBACK.es, 1, 1)).toBe("1 no uniforme · 1 defectuosa");
+    expect(cupSummary(CUP_COPY_FALLBACK.es, 2, 0)).toBe("2 no uniformes · 0 defectuosas");
+    expect(cupSummary(CUP_COPY_FALLBACK.en, 1, 2)).toBe("1 non-uniform · 2 defective");
   });
 });

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Info, Pencil } from "lucide-react";
 import { SENSORY_DEFECTS, type SensoryDefect } from "@/lib/constants";
 import type { CupCopy } from "@/lib/cupCopy";
+import { pickerFocusTarget } from "@/lib/cupDefects";
 import styles from "./CupToggleGrid.module.css";
 
 interface CupToggleGridProps {
@@ -43,6 +44,20 @@ export function CupToggleGrid({
   onSetDefect,
 }: CupToggleGridProps) {
   const [picking, setPicking] = useState<number | null>(null);
+  const pickerId = useId();
+  const cupRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const firstTypeRef = useRef<HTMLButtonElement | null>(null);
+  const prevPicking = useRef<number | null>(null);
+
+  // Keyboard focus follows the chooser: into its first type when it opens,
+  // back to the cup's own button when it closes.
+  useEffect(() => {
+    const target = pickerFocusTarget(prevPicking.current, picking);
+    prevPicking.current = picking;
+    if (!target) return;
+    if (target.to === "type") firstTypeRef.current?.focus();
+    else cupRefs.current[target.idx]?.focus();
+  }, [picking]);
   const showUniformity = cupsPerSample >= 2;
   const hint = isGroup ? `${copy.scoreHintGroup} ${copy.scoreHint}` : copy.scoreHint;
   const marked = Array.from({ length: cupsPerSample }, (_, i) => i).filter((i) => defectiveBools[i]);
@@ -100,7 +115,7 @@ export function CupToggleGrid({
       <div className={styles.row}>
         <div className={`${styles.rowLabel} ${styles.defective}`}>
           {copy.defective}
-          <span className={styles.rowHint}>{copy.oneTap}</span>
+          <span className={styles.rowHint}>{copy.defectTap}</span>
         </div>
         <div className={styles.grid}>
           {Array.from({ length: cupsPerSample }, (_, i) => {
@@ -109,11 +124,15 @@ export function CupToggleGrid({
               <button
                 key={i}
                 type="button"
+                ref={(el) => {
+                  cupRefs.current[i] = el;
+                }}
                 onClick={() => setPicking(picking === i ? null : i)}
                 className={`${styles.cup} ${isDef ? styles.isDefective : ""}`}
                 aria-label={fill(copy.cupDefectiveAria, { n: i + 1 })}
                 aria-pressed={isDef}
                 aria-expanded={picking === i}
+                aria-controls={picking === i ? pickerId : undefined}
               >
                 {isDef ? "✗" : i + 1}
               </button>
@@ -130,20 +149,28 @@ export function CupToggleGrid({
 
       {picking !== null && picking < cupsPerSample && (
         <div
+          id={pickerId}
           role="group"
           aria-label={fill(copy.pickTitle, { n: picking + 1 })}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.stopPropagation();
+              setPicking(null);
+            }
+          }}
           className="flex flex-col gap-2 rounded-card border border-outline-variant bg-surface-container-low p-3"
         >
           <div className="font-sans text-sm font-semibold text-on-surface">
             {fill(copy.pickTitle, { n: picking + 1 })}
           </div>
           <div className="flex flex-wrap gap-2">
-            {SENSORY_DEFECTS.map((dt) => {
+            {SENSORY_DEFECTS.map((dt, di) => {
               const active = cupTypes[picking] === dt && defectiveBools[picking];
               return (
                 <button
                   key={dt}
                   type="button"
+                  ref={di === 0 ? firstTypeRef : undefined}
                   onClick={() => {
                     onSetDefect(picking, dt);
                     setPicking(null);

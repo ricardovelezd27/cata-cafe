@@ -126,20 +126,22 @@ export function computeEvaluationDerived(
   const normalized: Record<string, unknown> = { ...sanitizeAffectiveRatings(data) };
 
   // S10 WP1b: a module that carries the per-cup defect type key is the new
-  // shape. A cup counts as defective ONLY where its flag is true AND its type
-  // is set (the form cannot produce a flagged cup without a type; a tampered
-  // or half-synced payload must not create an untyped defect); a type on an
-  // unflagged cup is cleared; with 2+ cups a defective cup is also
-  // non-uniform; `defecto_tipo` and the `defectTypes` column are DERIVED from
-  // the per-cup types. A module WITHOUT the key is a legacy blob and is left
-  // exactly as it was posted. TODO(kim-validar:A3)
+  // shape. A flagged cup is ALWAYS defective, typed or not: a deduction a
+  // cupper already recorded never disappears because its type is missing (a
+  // legacy cup has none; "no se pierde ningun defecto ya registrado"). The
+  // form is where a type is asked for; here an untyped flagged cup counts as
+  // "sin especificar". A type on an unflagged cup is cleared; with 2+ cups a
+  // defective cup is also non-uniform; `defecto_tipo` and the `defectTypes`
+  // column are the distinct non-null types of the defective cups. A module
+  // WITHOUT the key is a legacy blob and is left exactly as it was posted.
+  // TODO(kim-validar:A3)
   if (DEFECT_TYPE_KEY in data) {
     const n = Math.max(0, Math.floor(cupsPerSample));
     const flags = cupFlags(data.tazas_defectuosas, n);
     const rawTypes = cupDefectTypes(data[DEFECT_TYPE_KEY], n);
     const nuFlags = cupFlags(data.tazas_no_uniformes, n);
     const cupTypes = rawTypes.map((t, i) => (flags[i] === true ? t : null));
-    defectiveCups = cupTypes.map((t) => t !== null);
+    defectiveCups = flags.map((f) => f === true);
     nonUniformCups = Array.from({ length: n }, (_, i) =>
       n >= 2 ? nuFlags[i] === true || defectiveCups[i] : false,
     );

@@ -16,7 +16,8 @@ export type DefectTally = {
   byType: Record<SensoryDefect, number>;
   /** Defective cups with no type (legacy evaluations, or a half-synced draft). */
   unspecified: number;
-  /** Defective cups = sum of byType + unspecified (clamped to `cups`). */
+  /** Defective cups = sum of byType + unspecified. Only the first `cups`
+   *  flags are read (cupFlags pads/cuts to `cups`). */
   total: number;
 };
 
@@ -112,4 +113,16 @@ export function applyNonUniformToggle(
     s.nonUniform[idx] = true;
   }
   return withCups(data, cups, s);
+}
+
+/** Where keyboard focus goes when the type chooser's open cup changes: into
+ *  the chooser (its first type) when it opens or moves to another cup, back to
+ *  the cup's button when it closes, nowhere when nothing changed. */
+export function pickerFocusTarget(
+  prev: number | null,
+  next: number | null,
+): { to: "type" } | { to: "cup"; idx: number } | null {
+  if (prev === next) return null;
+  if (next !== null) return { to: "type" };
+  return prev === null ? null : { to: "cup", idx: prev };
 }

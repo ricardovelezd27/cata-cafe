@@ -15,6 +15,7 @@ export type CupCopy = {
   nonUniformLegend: string;
   defectiveLegend: string;
   oneTap: string;
+  defectTap: string;
   defectType: string;
   scoreHint: string;
   scoreHintGroup: string;
@@ -24,11 +25,13 @@ export type CupCopy = {
   typeMissing: string;
   removeMark: string;
   closePicker: string;
-  cupAria: string;
   cupDefectiveAria: string;
   cupNonUniformAria: string;
   changeTypeAria: string;
-  summary: string;
+  nonUniformCountOne: string;
+  nonUniformCountMany: string;
+  defectiveCountOne: string;
+  defectiveCountMany: string;
   types: Record<SensoryDefect, string>;
   scoreLater: string;
 };
@@ -41,6 +44,7 @@ export const CUP_COPY_FALLBACK: Record<"es" | "en", CupCopy> = {
     nonUniformLegend: "No uniforme",
     defectiveLegend: "Defectuosa",
     oneTap: "(1 toque)",
+    defectTap: "(toca y elige el tipo)",
     defectType: "Tipo de defecto",
     scoreHint:
       "Cada taza defectuosa te resta 6 puntos (4 por el defecto y 2 por no ser uniforme); con una sola taza, 4. Cada taza solo no uniforme, 2.",
@@ -51,11 +55,13 @@ export const CUP_COPY_FALLBACK: Record<"es" | "en", CupCopy> = {
     typeMissing: "Falta el tipo de defecto",
     removeMark: "Quitar marca",
     closePicker: "Cerrar",
-    cupAria: "Taza {n}",
     cupDefectiveAria: "Taza {n} defectuosa",
     cupNonUniformAria: "Taza {n} no uniforme",
     changeTypeAria: "Cambiar el tipo de defecto de la taza {n}",
-    summary: "{u} no uniformes · {d} defectuosas",
+    nonUniformCountOne: "{n} no uniforme",
+    nonUniformCountMany: "{n} no uniformes",
+    defectiveCountOne: "{n} defectuosa",
+    defectiveCountMany: "{n} defectuosas",
     types: { moldy: "Mohoso", phenolic: "Fenólico", potato: "Papa" },
     scoreLater: "Verás tu puntaje al enviar la evaluación.",
   },
@@ -66,6 +72,7 @@ export const CUP_COPY_FALLBACK: Record<"es" | "en", CupCopy> = {
     nonUniformLegend: "Non-uniform",
     defectiveLegend: "Defective",
     oneTap: "(1 tap)",
+    defectTap: "(tap, then pick the type)",
     defectType: "Defect type",
     scoreHint:
       "Each defective cup subtracts 6 points (4 for the defect and 2 for not being uniform); with a single cup, 4. A cup that is only non-uniform subtracts 2.",
@@ -76,12 +83,23 @@ export const CUP_COPY_FALLBACK: Record<"es" | "en", CupCopy> = {
     typeMissing: "Defect type missing",
     removeMark: "Remove mark",
     closePicker: "Close",
-    cupAria: "Cup {n}",
     cupDefectiveAria: "Cup {n} defective",
     cupNonUniformAria: "Cup {n} non-uniform",
     changeTypeAria: "Change the defect type of cup {n}",
-    summary: "{u} non-uniform · {d} defective",
+    nonUniformCountOne: "{n} non-uniform",
+    nonUniformCountMany: "{n} non-uniform",
+    defectiveCountOne: "{n} defective",
+    defectiveCountMany: "{n} defective",
     types: { moldy: "Moldy", phenolic: "Phenolic", potato: "Potato" },
     scoreLater: "You will see your score when you submit.",
   },
 };
+
+/** The grid summary line, with singular forms ("1 no uniforme · 1 defectuosa"). */
+export function cupSummary(copy: CupCopy, nonUniform: number, defective: number): string {
+  const part = (tpl: string, n: number) => tpl.replace("{n}", String(n));
+  return [
+    part(nonUniform === 1 ? copy.nonUniformCountOne : copy.nonUniformCountMany, nonUniform),
+    part(defective === 1 ? copy.defectiveCountOne : copy.defectiveCountMany, defective),
+  ].join(" · ");
+}
