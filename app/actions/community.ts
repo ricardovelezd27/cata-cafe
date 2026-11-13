@@ -619,8 +619,11 @@ export async function completeGuestOnboarding(
 //   * maxUses is enforced INSIDE the transaction (increment-then-check on the
 //     locked row, rolled back on overflow) so N simultaneous scans of a
 //     10-seat link cannot all get in
-export async function joinViaToken(token: string, locale: string = "es") {
-  const user = await requireUser();
+//   * S10 WP8b: the guest form passes `expectedUserId` (the anonymous id it
+//     onboarded). If another tab replaced the cookie since, a DIFFERENT signed-in
+//     user is refused with `identity_changed` and nobody is joined.
+export async function joinViaToken(token: string, locale: string = "es", expectedUserId?: string) {
+  const user = await requireUserExpecting(expectedUserId);
 
   const invite = await prisma.sessionInvite.findUnique({
     where: { token },

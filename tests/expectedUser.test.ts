@@ -94,6 +94,31 @@ describe("marker table (decideForMarker, then actionOnMarkerRecheck)", () => {
   });
 });
 
+describe("signedIn marker kind (S10 WP8b)", () => {
+  it("round-trips and old markers parse as 'left' (no kind)", () => {
+    const raw = serializeIdentityMarker("", 7, "signedIn");
+    expect(parseIdentityMarker(raw)).toEqual({ at: 7, leftUserId: "", kind: "signedIn" });
+    expect(serializeIdentityMarker("a", 7)).toBe(JSON.stringify({ at: 7, leftUserId: "a" }));
+    expect(parseIdentityMarker(serializeIdentityMarker("a", 7))).toEqual({ at: 7, leftUserId: "a" });
+  });
+  it("a signedIn marker always asks for a re-check, even one that names another user", () => {
+    expect(decideForMarker("a", { at: 1, leftUserId: "", kind: "signedIn" })).toBe("recheck");
+    expect(decideForMarker("a", { at: 1, leftUserId: "b", kind: "signedIn" })).toBe("recheck");
+  });
+  it.each([
+    ["same", "clear"],
+    ["different", "latch"],
+    ["none", "nothing"],
+    ["unknown", "nothing"],
+  ] as const)("after a signedIn re-check: %s -> %s", (identity, action) => {
+    expect(actionOnMarkerRecheck(identity, "signedIn")).toBe(action);
+  });
+  it("the 'left' table is unchanged", () => {
+    expect(actionOnMarkerRecheck("same", "left")).toBe("nothing");
+    expect(actionOnMarkerRecheck("none", "left")).toBe("latch");
+  });
+});
+
 describe("isNoSessionError / classifyIdentityLookup (L1)", () => {
   const same = (u: { id: string }) => u.id === "a";
   it("AuthSessionMissingError is no session", () => {

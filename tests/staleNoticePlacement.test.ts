@@ -24,6 +24,14 @@ describe("stale-bundle notice placement", () => {
     expect(isCupShellPath(p)).toBe(false);
     expect(staleNoticeRendersIn("app", p)).toBe(true);
   });
+  it("default-locale path without a prefix (localePrefix as-needed)", () => {
+    const p = "/app/sessions/abc-123/cup";
+    expect(isCupShellPath(p)).toBe(true);
+    expect(staleNoticeRendersIn("cup", p)).toBe(true);
+    expect(staleNoticeRendersIn("app", p)).toBe(false);
+    expect(isCupShellPath("/app/sessions/abc/results")).toBe(false);
+    expect(staleNoticeRendersIn("app", "/app/sessions/abc/results")).toBe(true);
+  });
   it("unknown pathname keeps the app copy", () => {
     expect(staleNoticeRendersIn("app", null)).toBe(true);
     expect(staleNoticeRendersIn("app", undefined)).toBe(true);

@@ -3,8 +3,8 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { RefreshCw } from "lucide-react";
 import { IDENTITY_EPOCH_KEY, decideForMarker, parseIdentityMarker } from "@/lib/expectedUser";
-import { hasIdentityNoticeHost, isIdentityChanged, onIdentityChanged } from "@/lib/identityChange";
-import { checkIdentityOnMarker, checkIdentityOnResume, onRenderedUserChanged } from "@/lib/identityResolve";
+import { announceSignedInIfStarted, hasIdentityNoticeHost, isIdentityChanged, onIdentityChanged } from "@/lib/identityChange";
+import { reloadIdentity, checkIdentityOnMarker, checkIdentityOnResume, onRenderedUserChanged } from "@/lib/identityResolve";
 import { useForegroundResume } from "@/hooks/useForegroundResume";
 
 export type IdentityWatcherTranslations = {
@@ -63,13 +63,15 @@ export function IdentityWatcher({
 
   useEffect(() => {
     void checkIdentityOnResume(renderedId);
+    announceSignedInIfStarted(); // WP8b: a Google sign-in just came back
   }, [renderedId]);
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key !== IDENTITY_EPOCH_KEY) return;
-      if (decideForMarker(renderedId, parseIdentityMarker(e.newValue)) === "recheck") {
-        void checkIdentityOnMarker(renderedId);
+      const marker = parseIdentityMarker(e.newValue);
+      if (decideForMarker(renderedId, marker) === "recheck") {
+        void checkIdentityOnMarker(renderedId, marker?.kind ?? "left");
       }
     };
     window.addEventListener("storage", onStorage);
@@ -89,7 +91,7 @@ export function IdentityWatcher({
       <span className="flex-1 break-words">{t.notice}</span>
       <button
         type="button"
-        onClick={() => window.location.reload()}
+        onClick={() => void reloadIdentity(renderedId)}
         className="min-h-[44px] shrink-0 rounded-sm px-2 font-semibold underline underline-offset-2 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2"
       >
         {t.reload}

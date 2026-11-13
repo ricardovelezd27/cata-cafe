@@ -85,10 +85,8 @@ export function decideClaimRekey(input: {
   if (!startedRaw && !doneRaw) return { rekeyFrom: null, clear: false };
 
   const started = parseStarted(startedRaw);
-  // Unreadable (including the legacy bare-id format) or expired: drop it.
-  if (startedRaw && (!started || !fresh(started.at, now))) {
-    return { rekeyFrom: null, clear: true };
-  }
+  // Unreadable (including the legacy bare-id format): drop it.
+  if (startedRaw && !started) return { rekeyFrom: null, clear: true };
   if (!started) {
     // Only a completion marker: stale ones go, a fresh one waits for its start.
     const doneOnly = parseDone(doneRaw);
@@ -96,7 +94,15 @@ export function decideClaimRekey(input: {
   }
 
   const done = parseDone(doneRaw);
-  if (!done) return { rekeyFrom: null, clear: false }; // claim not completed (yet)
+  if (!done) {
+    // Claim not completed (yet). A claim that never completes still expires
+    // from its START marker, as before.
+    return { rekeyFrom: null, clear: !fresh(started.at, now) };
+  }
+  // S10 WP8b: a COMPLETED claim is as old as its DONE marker, not its start (the
+  // guest may sit on the login screen for a long while; the claim finished
+  // later). A cup tab that notices more than an hour after the claim STARTED is
+  // still the same person and its edits must still be re-keyed.
   if (!fresh(done.at, now)) return { rekeyFrom: null, clear: true };
   if (done.anonId !== started.anonId) return { rekeyFrom: null, clear: false };
   if (done.accountId !== userId) return { rekeyFrom: null, clear: false };

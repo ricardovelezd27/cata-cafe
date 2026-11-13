@@ -43,25 +43,36 @@ import { replayOverExisting } from "@/lib/aggregateRefire";
 // longer exists for this user (deleted, removed, membership lost; the auth
 // helpers throw one code for both, so they cannot be told apart) and "rejected"
 // = the payload is not an object. The client parks both as `orphaned`.
-export type ReplayStatus = "synced" | "conflict" | "closed" | "pending" | "gone" | "rejected";
+//
+// S10 WP8b: "identity_changed" is answered ONLY when a user IS signed in and it
+// is a DIFFERENT one than the draft's owner (the same positive finding the live
+// writes answer). The client keeps the draft pending exactly as for "pending"
+// (no attempt burnt) and also latches the tab. Nobody signed in or an
+// unreachable auth lookup stay "pending".
+export type ReplayStatus =
+  | "synced"
+  | "conflict"
+  | "closed"
+  | "pending"
+  | "gone"
+  | "rejected"
+  | "identity_changed";
 
-type OwnerReplayStatus = "synced" | "closed" | "gone" | "rejected" | "pending";
+type OwnerReplayStatus = "synced" | "closed" | "gone" | "rejected" | "pending" | "identity_changed";
 
 // The replay's authentication step. With `expectedUserId` (the user the draft
-// was saved for) the guard runs FIRST and without throwing: a different user,
-// nobody signed in, or an auth lookup that failed all return null, and the
-// caller answers "pending" (the draft stays pending, no attempt is burnt).
+// was saved for) the guard runs FIRST and without throwing: a DIFFERENT signed-in
+// user returns "identity_changed" (S10 WP8b: the caller answers
+// "identity_changed"); nobody signed in returns null and the caller answers
+// "pending" (the draft stays pending, no attempt is burnt either way).
 // Without it this is requireUser() exactly as before.
 async function replayUser(expectedUserId: string | undefined) {
   try {
     return await requireUserExpecting(expectedUserId, { skipProfileUpsert: true });
   } catch (err) {
-    if (
-      expectedUserId !== undefined &&
-      err instanceof Error &&
-      (err.message === IDENTITY_CHANGED || err.message === "not_authenticated")
-    ) {
-      return null;
+    if (expectedUserId !== undefined && err instanceof Error) {
+      if (err.message === IDENTITY_CHANGED) return "identity_changed" as const;
+      if (err.message === "not_authenticated") return null;
     }
     throw err;
   }
@@ -94,6 +105,7 @@ type EvaluationReplayInput = {
 // the live path (requireSampleMember below).
 async function replayEvaluationCore(input: EvaluationReplayInput): Promise<ReplayStatus> {
   const user = await replayUser(input.expectedUserId);
+  if (user === "identity_changed") return "identity_changed";
   if (!user) return "pending";
   // Same authorization as the live upsertEvaluation path: session member only.
   // Also resolves the sample's real sessionId in one round-trip.
@@ -200,6 +212,8 @@ export async function syncEvaluation(
   // throw, so the new permanent outcomes surface as the codes they used to.
   if (status === "gone") throw new Error("not_found_or_forbidden");
   if (status === "rejected") throw new Error("invalid_input");
+  // Cached bundles do not know `identity_changed`: for them it is "pending".
+  if (status === "identity_changed") return { status: "pending" };
   return { status: status === "closed" ? "discarded" : status };
 }
 
@@ -220,6 +234,7 @@ export async function replayPhysical(input: {
   expectedUserId?: string;
 }): Promise<{ status: OwnerReplayStatus }> {
   const user = await replayUser(input.expectedUserId);
+  if (user === "identity_changed") return { status: "identity_changed" };
   if (!user) return { status: "pending" };
   let auth: Awaited<ReturnType<typeof requireSampleOwner>>;
   try {
@@ -249,6 +264,7 @@ export async function replayExtrinsic(input: {
   expectedUserId?: string;
 }): Promise<{ status: OwnerReplayStatus }> {
   const user = await replayUser(input.expectedUserId);
+  if (user === "identity_changed") return { status: "identity_changed" };
   if (!user) return { status: "pending" };
   let auth: Awaited<ReturnType<typeof requireSampleOwner>>;
   try {
