@@ -1712,3 +1712,75 @@ two-line `CREATE POLICY "coffees_select" ON coffees FOR SELECT USING ("isPublic"
 the later `DROP POLICY IF EXISTS "coffees_select"` + `CREATE POLICY` pairs stay). The test harness
 applies the file statement by statement and tolerates exactly this one failure; it fails the run if
 a second statement fails or if this one stops failing.
+
+
+---
+
+## §33. Close rules: apply PHASE 28, read the idle count, check the idle cron pass (2026-11, S10 WP4a)
+
+**What changes for people** (all three marked `TODO(kim-validar:C3|C5|C9)`: the answers behind
+them are simulated, Kim has not confirmed them):
+
+- **Group results only at close (Kim C5).** A participant no longer sees the group's numbers when
+  everyone has submitted; only once the session is closed or its closing date has passed. The
+  organizer sees them at any time. A participant's own results are unchanged; solo sessions are
+  unchanged. The page and the PDF route use `canViewGroupResults`; the database twin is PHASE 28.
+- **No re-dating after the deadline (Kim C9).** Once the closing date has passed, the edit page is
+  read-only (the date included) and `updateSession` refuses any change with `session_closed`.
+- **Live sessions (Kim C3).** The owner reminder for a forgotten live session now goes out after
+  24 h without activity (was 12 h), and the nightly cron closes the session after **7 days**
+  without activity (new pass, close reason `idle`; the close emails go out like any close).
+
+No Prisma migration, no new environment variable, no new cron entry.
+
+### Order
+
+1. **Before the deploy: read the idle count** (step 2). The first production run of the new cron
+   pass closes every live session that has been idle for more than 7 days, at most 25 per run, oldest
+   first. Closing sends the close emails to everyone in those sessions. If that number is large or
+   surprising, tell Ricardo before deploying.
+2. **Dry run** (fail-safe: one statement, nothing is applied, NO placeholders). Open
+   `prisma/sql/dry-runs/phase28_dry_run.sql`, paste the whole file into the Supabase **SQL editor of
+   the production project** and run it. Expected: a red error starting `PHASE 28 DRY RUN: NOTHING
+   WAS APPLIED`. Compare each line with its `(expect ...)` text:
+   - line 1: how many open group sessions have every participant submitted today, i.e. whose
+     participants lose group visibility when PHASE 28 is applied (read it; 0 is fine);
+   - line 2: **how many live sessions have been idle for more than 7 days** (the number to read in
+     step 1; the oldest ids are listed);
+   - line 3 equals line 1, line 4 is `0`, 5a, 5b and 6 are `0`, 7a `f f`, 7b `t`, 7c
+     `search_path=public`, 7d `t f`.
+   **Any other error: stop and report it; nothing was applied either way.**
+3. **Deploy**, then **apply PHASE 28** right after. Deploy and SQL may go in either order, because
+   both only narrow visibility; applying the SQL right after the deploy keeps the page and the API
+   saying the same thing. Run the PHASE 28 block as written (`BEGIN ... COMMIT`) in the SQL editor.
+   Expected: `Success. No rows returned`. An error starting `PHASE 28 aborted, nothing applied` means
+   the self-check found the function in the wrong state: report it.
+4. **Verify:**
+
+   ```sql
+   select pg_get_functiondef('public.can_view_group_results(text)'::regprocedure);
+   ```
+
+   Expected: no `isDraft` and no `cupperId` in the body. Then Supabase **Advisors → Security**: no
+   new warnings.
+5. **Smoke test** (two accounts, an open group session where both have submitted): the participant
+   sees their own results but the group part says "Los resultados del grupo aparecerán cuando el
+   organizador cierre la cata."; the owner sees everything; after the owner closes the session the
+   participant sees the group results (and the open results screen offers the refresh badge).
+6. **Check the idle cron pass** after the first cron run, or by hand (replace the two values):
+
+   ```bash
+   curl -s -H "Authorization: Bearer <CRON_SECRET>" https://<your-production-domain>/api/cron/close-expired-sessions
+   ```
+
+   The JSON now has `idleClosed` (sessions closed by the idle pass in this run), `idleTruncated`
+   (`true` means 25 were closed and more are waiting for the next run) and `idleResults` (id,
+   `closed`, `emailsQueued`, and `error` when one failed; a failure on one session never stops the
+   others). `idleClosed` should match what you read in step 2, up to the batch of 25. In Vercel
+   logs, `cron.closeIdle` (error level) names a session whose close failed. A session closed this way
+   shows the neutral results notice ("La cata se cerró.") and the usual close email; it never says
+   the organizer closed it.
+
+**Rollback:** the deploy can be reverted freely (no schema change). PHASE 28 has a commented
+rollback at its end (the PHASE 21 body of `can_view_group_results`). Run it in one transaction; the
+app works under either state.

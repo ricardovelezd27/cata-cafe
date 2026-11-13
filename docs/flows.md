@@ -90,8 +90,12 @@ passed (`isSessionExpired`, strict `<`, server clock) even though `status` stays
 the offline replay and the results page all use the same helper, so writing stops
 at the instant group results open. `submitAllEvaluations` flips drafts with a
 conditional `updateMany` (open sessions only), so a close racing a submit cannot
-be written past. `updateSession` is the one exception: it stays status-only so the
-owner can still move a passed deadline. A participant cannot write to a live
+be written past. **Never reopen (S10 WP4a, Kim C9, `TODO(kim-validar:C9)`).**
+`updateSession` is expiry-aware too (`canEditSessionSettings`, `lib/sessionState.ts`):
+once `closesAt` has passed, ANY update is refused with `session_closed`, a new
+closing date and clearing the date included, and the edit page renders the session
+fully read-only. (Until S10 it stayed status-only so the owner could move a passed
+deadline before the nightly job closed it; that exception is gone.) A participant cannot write to a live
 group session before the master starts it (`assertSessionStarted`,
 `session_not_started`); offline replay keeps such a draft pending, never
 discarded.
@@ -110,7 +114,20 @@ the idempotent `refreshAggregateScores`. After such a change the results page sh
 by design. **TODO(Kim-D1/D2):** both extensions are the spec defaults and stay
 reversible (hide the button, drop the allow-list).
 
-**The database says the same (PHASE 21).** The browser key is SELECT-only on the
+**Group results are visible only at close (S10 WP4a, Kim C5, `TODO(kim-validar:C5)`).**
+`canViewGroupResults` (`lib/sessionState.ts`) is: group session AND (owner / admin lens
+OR `status = closed` OR `closesAt` passed). "Everyone has submitted" no longer opens it:
+seeing the group biases a cupper, and in a self-paced session it spoils the cupping for
+whoever has not cupped yet. Everything that carries group data goes through that one
+rule: the results page (`communityHidden` / `gateSampleForViewer`, the descriptor
+clouds, `CupperAlignment`, `participation` and the "X de Y" notice, which are counts of
+who submitted), the participant-summary PDF (409 while hidden), the cup page's
+"enviados" counter (owner only) and, in SQL, `can_view_group_results` (PHASE 28, the
+`agg_select` policy). A participant's OWN results are visible as always; solo sessions
+are unaffected. The old "touch the session row when everyone submitted" nudge is gone;
+the close itself (a status update) is what the open results screens listen for.
+
+**The database says the same (PHASE 21, PHASE 28).** The browser key is SELECT-only on the
 session tables: no `INSERT/UPDATE/DELETE` for `anon`/`authenticated`, a participant
 reads only their own `evaluations` (the owner also reads submitted rows), and
 `aggregate_scores` stays hidden from participants until `can_view_group_results`.
@@ -201,8 +218,14 @@ open the session sees the date (`DeadlineBanner`: join confirmation, waiting
 screen, cup header, session list) in the owner's zone with the viewer's local time
 beside it when they differ, stronger in the last 24 h. The cron also sends the
 `deadline_24h` reminder and, for a forgotten live session, one `live_idle`
-reminder to its owner (never a close); both are ledgered in
-`session_reminder_deliveries`. Setting a date on an unstarted live session turns it
+reminder to its owner after 24 h without activity (`LIVE_IDLE_MS`); both are ledgered in
+`session_reminder_deliveries`. **Idle close (S10 WP4a, Kim C3, `TODO(kim-validar:C3)`):**
+a live group session (not async, no `closesAt`, started) with no activity for 7 days
+(`LIVE_AUTO_CLOSE_MS`; idle = time since max(`startedAt`, last evaluation update),
+`isLiveAbandoned`) is closed by the same cron run, in its own bounded pass
+(`closeIdleLiveSessions`, `lib/idleClose.ts`, 25 per run, oldest first) through
+`closeSessionInternal(id, { reason: "idle", emails: "await" })`: same reveal, history
+sync and close emails as the deadline pass. Unstarted and solo sessions are never touched. Setting a date on an unstarted live session turns it
 self-paced (no waiting room, no "Iniciar cata"), which the forms say before saving
 (a closing date means self-paced; separating `isAsync` from `closesAt` is not supported). From
 `closesAt` on, though, the session is already read-only and its group results are
@@ -228,7 +251,7 @@ stateDiagram-v2
         waiting --> cupping : owner startSession\n(wizard step 2 or master panel)
         cupping --> submitted : participant submits
     }
-    active --> closed : owner closeSession\nOR cron when closesAt < now\n→ closeSessionInternal: reveal → history\n→ close emails via after() (ledgered)
+    active --> closed : owner closeSession\nOR cron when closesAt < now\nOR cron after 7 idle days (live sessions, reason idle)\n→ closeSessionInternal: reveal → history\n→ close emails via after() (ledgered)
     closed --> [*]
 ```
 
