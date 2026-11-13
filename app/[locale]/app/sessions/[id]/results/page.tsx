@@ -504,7 +504,7 @@ export default async function ResultsPage({
         locale: localeStr,
         included: included.map(toEval),
         viewer: mineRow ? toEval(mineRow) : null,
-        aggregate: agg ? { communityScore: agg.communityScore, scoreSd: agg.scoreSd } : null,
+        aggregate: agg ? (({ communityScore, scoreSd }) => ({ communityScore, scoreSd }))(agg) : null,
         groupBlocks:
           descriptorFrequency?.find((d) => d.sampleId === s.id)?.blocks ?? null,
       });
