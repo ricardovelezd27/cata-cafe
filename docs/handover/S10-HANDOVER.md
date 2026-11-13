@@ -1,7 +1,7 @@
 # S10 — session handover
 
 - **status:** in-progress
-- **last updated:** 2026-11-13 by the database clock (third working day, written while four builders were running: ten PRs merged and live; three migrations and SQL phases 27, 26, 28 applied; four findings still open)
+- **last updated:** 2026-11-13 by the database clock, end of day three: FOURTEEN PRs merged and live, four migrations and SQL phases 27, 26, 28 applied, legal pages published, **zero open findings on the Flowmap**; three branches in flight (see the "Late update" at the top of §3)
 - **prompt:** `docs/prompts/S10-kim-answers.md`. **Approved plan with every decision:** `docs/handover/s10/approved-plan.md`.
 - **goal:** the Flowmap board (https://claude.ai/artifact/R4tkTWDPXYVJd3mDji91t9) ends with zero open findings.
 - **Resuming?** Read this file, then the plan. Do not re-plan and do not ask Ricardo again what §2 lists as decided. Continue from §5 "Next actions".
@@ -55,6 +55,38 @@ Decisions of day two (2026-11-14):
 - **Closing rules (#123):** on the idle auto-close, a session idle 30 days or more closes WITHOUT emails; 7 to 30 days closes with them. "Activity" = an evaluation being saved.
 
 ## 3. Pull requests (state during day three, 2026-11-13 by the database clock)
+
+### Late update (end of day three, written when the 5-hour usage limit was at 97%) — READ THIS FIRST; where it differs from the text below, this wins
+
+**The Flowmap board has ZERO open findings.** F-grupal-1, F-grupos-10, F-cafes-9 and F-landing-1 are `fixed`. The plan is NOT finished: see "Still to do".
+
+Merged and live since the tables below were written (fourteen S10 PRs in total):
+
+| PR | Package | Merge | Database step | Verified in production |
+|---|---|---|---|---|
+| #128 | WP5a privacy and organiser tools (F-grupos-10, F-cafes-9) | `75fcc06` | migration `20261115090000_coffee_origin_edited_at` run by Ricardo | deploy, health, results-csv 401 unsigned |
+| #130 | Leftovers (reservation move retried nightly, nightly passes isolated, guest follow-ups) | `8699553` | none | deploy, health, cron 401 |
+| #132 | WP1c coffee lifetime score (F-grupal-1) | `ed6330d` | none | deploy, health, ficha 401 unsigned |
+| #134 | Legal pages PUBLISHED (F-landing-1) | `3d79885` | none | six pages without banner, indexable; footer + login links; waitlist notice; sitemap |
+
+Ricardo's decisions of the late session: "Yes, publish" (legal pages); on the missing Registro Mercantil line: **"Publish without it"** (recorded as `REGISTRY_PENDING_BY_OWNER` in `lib/legal/company.ts`). **Deadline created by publishing:** the privacy text promises the deletion of never-used accounts after 12 months; read-only check in production: 30 never-used accounts, none due, the oldest reaches 12 months on **2027-05-30**; the rehearsal (runbook §17 item 4) and `UNUSED_ACCOUNT_PURGE_ENABLED=1` must happen before that date.
+
+Open branches when work stopped (the three agents were told to commit, push and stop; resume them or start fresh from the branch):
+
+| PR / branch | State | Next action |
+|---|---|---|
+| #131 `claude/s10-04b-late-contributions-impl` (WP4b) | Two reviews said no; first fix round done (`1bdce0c`: organiser sees score + label, `receivedLateAt`, version guard, `closeAnnounced`). SECOND fix round was running: a pre-close draft is replaced by a late send only when it is INCOMPLETE (a complete one is never replaced); 4 lows. Brief: `docs/handover/s10/brief-fix-131-late-contributions.md` + the second-round message (rule above). | Read `planLateDraftWrite` and the guarded update → gates → Ricardo runs `npx.cmd prisma migrate deploy` (migration `20261115100000_close_notice_and_late_contributions`, FIVE columns, runbook §35) → merge → card `k-s10-04b`. |
+| #133 `claude/s10-03a-reveal-bands-impl` (WP3a) | First review said no (a revealed sample could be re-pinned as the fixed reference; organiser's origin data dropped). Fix round done at `61d465d` (`reference_revealed`, `lib/revealFreeze.ts`, status `revealed_unsent`). Short re-review was running. | Finish the re-review → merge (no schema, no SQL) → card `k-s10-03a` → launch WP3b. |
+| `claude/s10-05b-results-comparisons-impl` (WP5b) | Builder was running (thresholds 3 to 5 cuppers + tie rule, re-pin keeps and restores the cupper's ratings, comparisons at close with a 3-cupper privacy gate, repeated sample). Brief: `docs/handover/s10/brief-wp5b-results-comparisons.md`. | Resume or rebuild from the pushed WIP → Opus review (focus: every write path that pins carries the stash; no other cupper's values in a participant's payload) → merge. |
+
+Still to do after those: **WP3b** (brief `docs/handover/s10/brief-wp3b-timer-cooled-not-evaluated.md`: timer, cooled value, "no evaluado"; SQL **PHASE 29** = dry run, Ricardo's yes, apply BEFORE the merge), **leftovers-2** (review lows of #128: db test that `updateSampleMetadata` stamps `originEditedAt`, a real race test for the atomic coffee save, coffee page + ficha use `stoppedWritingAt`, the conflict message must warn that reloading discards typed text, stale header comment in `resultsCsv.ts`) together with **WP6 copy** ("alineación" for "calibración", a non-CVA name for the anchor reference, `CoCupperCard` hard-coded Spanish), **WP10 documentation**, the final handover, Flowmap card `k-s10` → done with the parked items recorded (B4 teacher's guide, E2, group member consent, accessibility statement, `__Host-` cookie prefix, replayable old migrations).
+
+For Ricardo (none blocks): the Registro Mercantil line; the purge rehearsal before 2027-05-30; the founding-offer conditions, transfer-safeguards wording, contact address; pasting the email-change template (runbook §15); a decision on the default profile name (it is the first part of the email and is shown to co-cuppers in the waiting room, the organiser's matrix, group feed authors and the group page's "Propietario"); the browser pane's Vercel session expired (sign in again if a protected preview must be opened); every signed-in and device check listed in §4 item 5, plus: the coffee page's new score card, the published legal links, a results-CSV import that used the old `puntaje_cva` header (now `puntaje_cafe_sensible`).
+
+Lessons of the late session: three review "no" verdicts came from the ARCHITECT'S briefs, not the builders' code (#127 untyped defects, #131 blind acceptance and then the incomplete-draft rule, #132 empty evaluations): tell every reviewer to attack the brief's rule too. A builder killed every `postgres.exe` on the machine: every prompt now says never to kill processes by image name. A branch merge once carried conflict markers (CRLF files): ask the reviewer to verify the MERGE RESULT. An automatic restart was scheduled in the session for 22:14 local (session-only; it works only while the app stays open).
+
+### State before the late update
+
 
 Dates: the database clock and the session say 2026-11-13. Some earlier entries in this file and
 on the Flowmap are dated 2026-11-14 or 2026-11-15 by mistake; the order of events is right.

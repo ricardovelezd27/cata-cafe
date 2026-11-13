@@ -6,7 +6,8 @@
 // data as an unfilled placeholder and say it is mandatory under LSSI-CE
 // art. 10.1(b) for a Sociedad Limitada. Fill `registry` (tomo, folio, hoja,
 // inscripción) from the deed of incorporation; while it is null the pages
-// omit that line.
+// omit that line. The pages were PUBLISHED without it on 2026-11-13 by the
+// owner's explicit decision (see REGISTRY_PENDING_BY_OWNER below).
 //
 // TODO(owner): FOUNDING OFFER. Terms section 6 says only that reserving a seat
 // implies no payment; the offer's conditions are yours to write.
@@ -25,6 +26,16 @@ export const LEGAL_ENTITY = {
   product: "Café Sensible",
   site: "cafesensible.ai",
 } as const;
+
+/**
+ * The owner chose on 2026-11-13 to publish the legal pages while the Registro
+ * Mercantil line is still missing (asked: look it up / wait / publish without
+ * it; answer: "Publish without it"). This constant is that decision, written
+ * down: tests/legalDocs.test.ts allows `LEGAL_PAGES_PUBLISHED` with a null
+ * `registry` ONLY while it is true. When `registry` is filled in, set this to
+ * false in the same change (the test requires it).
+ */
+export const REGISTRY_PENDING_BY_OWNER = true;
 
 /** The published text's version, shown under each title. */
 export const LEGAL_TEXT_VERSION = {
