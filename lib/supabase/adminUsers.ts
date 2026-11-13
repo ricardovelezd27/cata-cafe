@@ -22,9 +22,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 type AuthUserRow = { id: string; email: string | null; isAnonymous: boolean; createdAt: string | null };
 
 /**
- * Same paging as listAllAuthUsers but THROWS on any listing error, so callers
- * that must not act on partial data (the CSV export) can tell "failed" from
- * "empty".
+ * Same paging as listAllAuthUsers but THROWS on any listing error AND when the
+ * page cap is reached while a next page exists (`auth_list_truncated`), so
+ * callers that must not act on partial data (the CSV export) can tell "failed"
+ * from "empty" and never get a silent partial list.
  */
 export async function listAllAuthUsersStrict(): Promise<AuthUserRow[]> {
   const users: AuthUserRow[] = [];
@@ -43,10 +44,12 @@ export async function listAllAuthUsersStrict(): Promise<AuthUserRow[]> {
         createdAt: u.created_at ?? null,
       });
     }
-    if (!data.nextPage) break;
+    if (!data.nextPage) return users;
     page = data.nextPage;
   }
-  return users;
+  // The cap was reached while GoTrue still reports a next page: a partial list
+  // must never pass for the whole one (the CSV export would silently truncate).
+  throw new Error("auth_list_truncated");
 }
 
 export async function listAllAuthUsers(): Promise<AuthUserRow[]> {

@@ -19,6 +19,8 @@ import { closeSessionInternal } from "@/lib/closeSession";
 import { FINALIZE_GRACE_MS } from "@/lib/closeRules";
 import { errorMessage, logError, logWarn } from "@/lib/log";
 import { purgeEmailLedger } from "@/lib/emailBudget";
+import { purgeUnusedAccounts, type UnusedAccountSummary } from "@/lib/unusedAccountPurge";
+import { isUnusedAccountPurgeEnabled } from "@/lib/features";
 import { sendDeadlineReminders, sendLiveIdleReminders } from "@/lib/reminderEmail";
 
 export const runtime = "nodejs";
@@ -121,9 +123,26 @@ export async function GET(request: Request) {
     logError({ where: "cron.purgeEmailLedger", message: errorMessage(err) });
   }
 
+  // Unused accounts (S10 WP9a): accounts that were never used are deleted with
+  // their reservation after WAITLIST_RETENTION_MONTHS, but only when
+  // UNUSED_ACCOUNT_PURGE_ENABLED=1; otherwise this pass COUNTS and warns once.
+  // Counts only in the summary, never an address. Never fails the run.
+  const unusedEnabled = isUnusedAccountPurgeEnabled();
+  let unusedAccounts: UnusedAccountSummary | { error: string; enabled: boolean };
+  try {
+    unusedAccounts = await purgeUnusedAccounts({ enabled: unusedEnabled });
+  } catch (err) {
+    // Error code only: a Prisma code, or "unknown".
+    const code = (err as { code?: unknown } | null)?.code;
+    const safe = typeof code === "string" ? code : "unknown";
+    logError({ where: "cron.unusedAccounts", code: safe });
+    unusedAccounts = { error: safe, enabled: unusedEnabled };
+  }
+
   return NextResponse.json({
     ok: true,
     ledgerPurged,
+    unusedAccounts,
     due: due.length,
     closed: results.filter((r) => r.closed).length,
     results,

@@ -19,6 +19,7 @@ import { logWarn } from "@/lib/log";
 import { classifyPendingFailure, pendingEmailMatches } from "@/lib/signInPendingRules";
 import { checkSignInIntent, clearSignInIntent, rememberSignInIntent } from "@/lib/signInIntentCookie";
 import { isRegisteredUser } from "@/lib/guestScope";
+import { moveReservationAfterEmailChange, recordEmailChange } from "@/lib/emailChangeMove";
 import * as v from "@/lib/validate";
 import type { ActionResult } from "@/lib/actionResult";
 
@@ -128,6 +129,13 @@ export async function confirmEmailToken(
     const ephemeral = createEphemeralClient();
     const { data, error } = await ephemeral.auth.verifyOtp({ type: type as EmailOtpType, token_hash: hash });
     if (error) throw new Error(authCodeFor(error));
+    // S10 WP9a (M-a): the token is verified, so GoTrue has done what the link
+    // says. A COMPLETED email change takes the founding-seat reservation along
+    // NOW, whatever happens to this browser's session below (zero click, parked,
+    // accepted, rejected, expired). The ONLY call site of the move. The record
+    // is service-role-only; the move acts only when the verified user's address
+    // is the recorded `to`; it never fails the sign-in (ids only in logs).
+    if (type === "email_change") await moveReservationAfterEmailChange(data.user);
     const dest = safeNext(next, { fallback: defaultNextFor(localeOf(locale)) });
     const session = data.session;
     // No session (e.g. the first of two email_change confirmations): nothing to
@@ -335,6 +343,11 @@ export async function requestEmailChange(
       }
       throw new Error("unknown");
     }
+    // S10 WP9a (H1, M-a): { from, to } is recorded where only the service role
+    // can write (app_metadata), AFTER the change was accepted: `from` is the
+    // address the server read for the signed-in user, `to` the one it passed to
+    // updateUser. A new request overwrites it. Failure never blocks the change.
+    await recordEmailChange(user, address);
     return { pending: address };
   });
 }
