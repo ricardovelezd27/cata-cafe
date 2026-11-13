@@ -38,6 +38,7 @@ import {
   planClosesAtChange,
 } from "@/lib/sessionState";
 import { endOfDayInZone, normalizeZone } from "@/lib/closeRules";
+import { lockSessionRow } from "@/lib/sessionLock";
 import { REFERENCE_REPIN_REQUIRED, REFERENCE_REVEALED, removeSamplesInTx } from "@/lib/sampleRemoval";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { moduleKeyForFormat } from "@/lib/evaluation";
@@ -1130,6 +1131,10 @@ export async function setReferenceSample(
       let restored = 0;
       let active: string | null = null;
       await prisma.$transaction(async (tx) => {
+        // LOCK ORDER (lib/sessionLock.ts): the session row FIRST, before any
+        // sample/evaluation row, so a cupper's pinned save (FOR SHARE on the
+        // session, then a sample key-share) can never deadlock with this change.
+        await lockSessionRow(tx, sessionId);
         // Read the ranks inside the transaction so two owners' tabs cannot
         // both pick the same next rank (the unique key is the backstop).
         const rows = await tx.sessionSample.findMany({
@@ -1758,6 +1763,8 @@ export async function removeSessionSample(sampleId: string, locale: string = "es
   // transaction so a first evaluation landing between the check and the delete
   // cannot be cascaded away (S8-10 T5; F-sesiones-3, race half).
   const refused = await prisma.$transaction(async (tx) => {
+    // LOCK ORDER (lib/sessionLock.ts): the session row before the sample row below.
+    await lockSessionRow(tx, sample.sessionId);
     // (S8-27: removeSamplesInTx may throw REFERENCE_REPIN_REQUIRED; the
     // transaction rolls back and the catch below turns it into a code.)
     // READ COMMITTED does not stop a cupper's first auto-save from committing

@@ -36,6 +36,21 @@ type Args = {
 };
 
 export async function writeEvaluationPinAware(args: Args): Promise<{ id: string; applied: boolean }> {
+  // A duplicate FIRST save (two tabs, or a replay racing a live save) hits the
+  // unique constraint inside the transaction, which aborts it (25P02 on every later
+  // statement). Catch the violation OUTSIDE the transaction and run the whole write
+  // once more: it finds the row and updates it.
+  try {
+    return await writeOnce(args);
+  } catch (e) {
+    if (typeof e === "object" && e !== null && (e as { code?: unknown }).code === "P2002") {
+      return writeOnce(args);
+    }
+    throw e;
+  }
+}
+
+async function writeOnce(args: Args): Promise<{ id: string; applied: boolean }> {
   const { moduleKey } = args;
   if (moduleKey === "descriptive" || (!args.pinnedView && !args.pinnedAtAuth)) {
     const fields = computeEvaluationDerived(moduleKey, args.posted, args.cupsPerSample);
@@ -50,6 +65,8 @@ export async function writeEvaluationPinAware(args: Args): Promise<{ id: string;
 
   return prisma.$transaction(
     async (tx) => {
+      // LOCK ORDER (lib/sessionLock.ts): the session row first (shared), then the sample
+      // key-share of the evaluation write. Reference changes take it exclusively first.
       await tx.$queryRaw`SELECT 1 FROM cupping_sessions WHERE id = ${args.sessionId} FOR SHARE`;
       const sess = await tx.cuppingSession.findUniqueOrThrow({
         where: { id: args.sessionId },

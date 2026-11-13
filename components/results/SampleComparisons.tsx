@@ -17,7 +17,7 @@ import type { RepeatDiff } from "@/app/[locale]/app/sessions/[id]/results/types"
 
 export type SampleComparisonsTranslations = {
   groupTitle: string;
-  /** "Grupo: {group} · entre {min} y {max} · ± {sd}" */
+  /** "Grupo: {group} · ± {sd}" */
   groupLine: string;
   /** "Tu total: {mine}" */
   mineLine: string;
