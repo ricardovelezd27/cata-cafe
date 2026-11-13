@@ -1124,7 +1124,7 @@ No migration, no SQL, no new env variable. Two dashboard settings, one rehearsal
    `/cup`. If the 41st fails with the "mucha gente está entrando" message, the limit is too low.
    Fallback during an event: people join with their email (magic link or 6-digit code).
 
-**Manual path for a lost mailbox (E4 option c, Ricardo only; `TODO(E4-Kim)`):** a person who
+**Manual path for a lost mailbox (E4 option c, Ricardo only):** a person who
 can no longer open their old address and cannot use "Cambiar correo" writes to support. Verify
 who they are by a second channel, then in Supabase Dashboard → Authentication → Users edit the
 user's email to the new address. The profile and all history stay attached because they hang off

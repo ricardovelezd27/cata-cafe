@@ -116,8 +116,8 @@ export function canViewGroupResults(input: {
  *    stored date has passed.
  *  - Only group sessions carry a close date (`not_group_session`); a closed
  *    session is refused upstream by `assertSessionWritable`.
- *  // TODO(S8-05/C7): separating `isAsync` from `closesAt` (a live cupping
- *  // that also has a deadline) is Kim's call; today a date means self-paced. */
+ *  - Separating `isAsync` from `closesAt` is not supported: a date means
+ *    self-paced. */
 export function planClosesAtChange(
   session: {
     isGroup: boolean;

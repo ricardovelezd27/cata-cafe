@@ -869,7 +869,6 @@ export async function duplicateSession(
   // remapped by position; the active one is the source's pointer. Coffees the
   // caller can no longer use (anonymized since, unshared) are NOT copied: the
   // sample stays, coffee-less, with its label (F-sesiones-8).
-  // TODO(B8): Kim may prefer copying only the active reference.
   const refPosition =
     source.samples.find((s) => s.id === source.referenceSampleId)?.position ?? null;
   const linkedIds = [
@@ -1755,8 +1754,7 @@ export async function assignSampleCoffee(
 // coffee-less sample). Allowed only for the owner AND a REVEALED sample
 // (extrinsicWriteAllowed), otherwise `session_closed`. Such a write stamps
 // `editedAt` so reports can say "Origen editado el <fecha>".
-// TODO(Kim-D1): if Kim refuses origin edits after close, hide the button in
-// results and drop this allow-list (the server guard then throws again).
+// Origin edits after close are an intended, allowed exception.
 export async function upsertExtrinsic(input: {
   sessionSampleId: string;
   data: Record<string, unknown>;
