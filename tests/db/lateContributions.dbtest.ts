@@ -402,6 +402,27 @@ describe("submitLateDraft", () => {
     expect(after.individualScore).toBe(before.individualScore);
   });
 
+  it("composition with the re-pin rules: a pinned reference gets the anchor and a stash of the real ratings, labelled received-late", async () => {
+    const { A, s } = await closedScenario();
+    await prisma.sessionSample.update({ where: { id: A.id }, data: { referenceRank: 1 } });
+    await prisma.cuppingSession.update({ where: { id: s.id }, data: { referenceSampleId: A.id, referenceMode: "anchor" } });
+    const late = await makeUser({ name: "Cinco" });
+    await prisma.sessionParticipant.create({ data: { sessionId: s.id, userId: late, status: "joined" } });
+    h.userId = late;
+    // real ratings and a CLIENT-sent forged stash: neither may survive as sent
+    const posted = { ...complete(8), ref_previo: { valores: { fragancia_af_final: 1 }, en: "2020-01-01T00:00:00.000Z" } };
+    expect(await submitLateDraft({ sessionSampleId: A.id, moduleKey: "affective", data: posted, clientTs: Date.now() })).toEqual({ status: "synced" });
+    const row = await prisma.evaluation.findUniqueOrThrow({
+      where: { sessionSampleId_cupperId: { sessionSampleId: A.id, cupperId: late } },
+    });
+    const stored = row.affectiveData as Record<string, unknown>;
+    expect(row.isDraft).toBe(true);
+    expect(row.receivedLateAt).toBeInstanceOf(Date);
+    expect(stored.fragancia_af_final).toBe(5); // pinned at the anchor
+    const stash = stored.ref_previo as { valores: Record<string, unknown> };
+    expect(stash.valores.fragancia_af_final).toBe(8); // the cupper's real ratings, not the forged ones
+  });
+
   it("answers pending (writes nothing) for an open session, rejected for incomplete data or a solo session", async () => {
     const owner = await makeUser();
     const u1 = await makeUser();
