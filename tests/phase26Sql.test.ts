@@ -46,10 +46,11 @@ describe("PHASE 26: flat deduction, diluted beyond five pooled cups", () => {
   const stmts = block(phase26, START, END);
   const exec = stripComments(stmts).replace(/\s+/g, " ");
 
-  it("exists once and is the last phase", () => {
+  // Not asserted as "the last phase": another PR appends PHASE 27+ after it (third review L-2); the
+  // block bounds above already stop at the next header.
+  it("exists once, after PHASE 25", () => {
     expect(SQL.match(/^-- PHASE 26 \(/gm)?.length).toBe(1);
     expect(SQL.search(/^-- PHASE 26 \(/m)).toBeGreaterThan(SQL.indexOf("-- PHASE 25"));
-    expect(SQL.match(/^-- PHASE (2[7-9]|[3-9]\d) \(/gm)).toBeNull();
   });
 
   it("re-issues the trigger function once, keeping SECURITY DEFINER and the pinned search_path", () => {
@@ -107,6 +108,13 @@ describe("PHASE 26: flat deduction, diluted beyond five pooled cups", () => {
     expect(m).toContain('ALTER TABLE "aggregate_scores" ADD COLUMN "ruleVersion" INTEGER NOT NULL DEFAULT 1;');
     expect(m).toContain("SET LOCAL lock_timeout = '5s';");
     expect(m).not.toMatch(/^\s*SET lock_timeout/m); // a plain SET would leak into later migrations
+    // prisma migrate deploy sends the file statement by statement in autocommit: only an explicit
+    // transaction makes SET LOCAL effective and the two ALTERs atomic (third review M-A).
+    const trimmed = m.trim();
+    expect(trimmed.startsWith("BEGIN;")).toBe(true);
+    expect(trimmed.endsWith("COMMIT;")).toBe(true);
+    expect(m.indexOf("SET LOCAL lock_timeout")).toBeGreaterThan(m.indexOf("BEGIN;"));
+    expect(m.indexOf("COMMIT;")).toBeGreaterThan(m.indexOf('ADD COLUMN "ruleVersion"'));
     expect(m).not.toMatch(/\bUPDATE\b/i);
     expect(m).not.toMatch(/\bINSERT\b/i);
   });

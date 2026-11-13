@@ -11,8 +11,12 @@
 -- Apply with `npx prisma migrate deploy` BEFORE PHASE 26 and before the deploy
 -- (runbook section 30).
 
+-- ONE explicit transaction (third review M-A): `prisma migrate deploy` sends this file statement by
+-- statement in autocommit, so without BEGIN/COMMIT the SET LOCAL below does nothing and the two
+-- ALTERs would commit separately (a failure on the second would leave the first applied).
 -- Both ALTERs are metadata-only but each takes a brief exclusive lock: fail fast instead of queueing behind a long transaction.
 -- SET LOCAL, not SET: a plain SET leaks into the next migrations of the same deploy run (second review M3).
+BEGIN;
 SET LOCAL lock_timeout = '5s';
 
 -- AlterTable
@@ -20,3 +24,5 @@ ALTER TABLE "evaluations" ADD COLUMN "cups" INTEGER;
 
 -- AlterTable
 ALTER TABLE "aggregate_scores" ADD COLUMN "ruleVersion" INTEGER NOT NULL DEFAULT 1;
+
+COMMIT;
