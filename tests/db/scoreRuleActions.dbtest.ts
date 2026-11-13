@@ -16,7 +16,14 @@ vi.mock("next/cache", () => ({ revalidatePath: () => {}, revalidateTag: () => {}
 vi.mock("next/server", () => ({ after: (fn: () => unknown) => void fn }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ auth: { admin: {} } }) }));
 
-import { refreshAggregateScores, submitAllEvaluations } from "@/app/actions/community";
+import {
+  finishSoloSession,
+  refreshAggregateScores,
+  setParticipantExclusion,
+  submitAllEvaluations,
+} from "@/app/actions/community";
+import { closeSessionInternal, finalizeClosedSession } from "@/lib/closeSession";
+import { hasLegacyDrafts, recomputeLegacyDraftsInTx } from "@/lib/legacyDrafts";
 import { computeGroupAggregate, calcIndividualScore } from "@/lib/scoring";
 import {
   affectiveData,
@@ -135,5 +142,270 @@ describe("submitAllEvaluations (review M3)", () => {
       3,
     );
     expect(agg?.communityScore).toBe(ts.communityScore);
+  });
+});
+
+// ── Second review additions ─────────────────────────────────────────────────
+
+const OLD_AT = new Date("2026-11-01T12:00:00Z");
+
+/** A submitted evaluation as the OLD code stored it (cups NULL), aggregate pinned to the old function's output. */
+async function oldRuleSample(args: { sessionId: string; sampleId: string; cuppers: string[]; cups: number }) {
+  for (const cupper of args.cuppers) {
+    await makeEvaluation({
+      sampleId: args.sampleId,
+      sessionId: args.sessionId,
+      cupperId: cupper,
+      cupsPerSample: args.cups,
+      values: 7,
+      nonUniform: [true, ...Array<boolean>(args.cups - 1).fill(false)],
+      defective: [true, ...Array<boolean>(args.cups - 1).fill(false)],
+      overrides: { cups: null },
+    });
+  }
+  await prisma.aggregateScore.update({
+    where: { sessionSampleId: args.sampleId },
+    data: { ruleVersion: 1, communityScore: 80.25, computedAt: OLD_AT },
+  });
+}
+
+describe("close routine never rewrites pre-deploy samples (second review H1)", () => {
+  it("(a) a closed, unfinalized session of all-old data is repaired (reveal, history, stamp) and its aggregates are byte-identical", async () => {
+    const owner = await makeUser({ name: "Dueña" });
+    const u1 = await makeUser({ name: "Uno" });
+    const coffee = await prisma.coffee.create({
+      data: { name: "Huila", createdBy: owner, country: "Colombia", visibility: "private" },
+    });
+    const s = await makeSession({
+      ownerId: owner,
+      isGroup: true,
+      participants: [u1],
+      cupsPerSample: 2,
+      samples: [{ label: "A", coffeeId: coffee.id, revealed: false }],
+    });
+    const A = s.samples[0];
+    await oldRuleSample({ sessionId: s.id, sampleId: A.id, cuppers: [owner, u1], cups: 2 });
+    await prisma.cuppingSession.update({
+      where: { id: s.id },
+      data: { status: "closed", closedAt: new Date("2026-11-02T12:00:00Z"), closeFinalizedAt: null },
+    });
+    const before = await storedAggregate(A.id);
+
+    const r = await finalizeClosedSession(s.id, { reason: "repair", emails: "skip" });
+    expect(r.finalized).toBe(true);
+
+    const row = await prisma.cuppingSession.findUniqueOrThrow({ where: { id: s.id } });
+    expect(row.closeFinalizedAt).toBeInstanceOf(Date);
+    expect((await prisma.sessionSample.findUniqueOrThrow({ where: { id: A.id } })).revealed).toBe(true);
+    expect(await prisma.userCoffeeHistory.count({ where: { coffeeId: coffee.id } })).toBe(2);
+    const after = await storedAggregate(A.id);
+    expect(after?.ruleVersion).toBe(1);
+    expect(after?.communityScore).toBe(before?.communityScore);
+    expect(after?.computedAt.getTime()).toBe(before?.computedAt.getTime());
+  });
+
+  it("(b) with one evaluation that has cups set, only THAT sample is re-fired", async () => {
+    const owner = await makeUser();
+    const u1 = await makeUser();
+    const s = await makeSession({
+      ownerId: owner,
+      isGroup: true,
+      participants: [u1],
+      cupsPerSample: 2,
+      samples: [{ label: "A" }, { label: "B" }],
+    });
+    const [A, B] = s.samples;
+    await oldRuleSample({ sessionId: s.id, sampleId: A.id, cuppers: [owner, u1], cups: 2 });
+    await oldRuleSample({ sessionId: s.id, sampleId: B.id, cuppers: [owner], cups: 2 });
+    // One evaluation of B written by the new code (cups set).
+    await makeEvaluation({ sampleId: B.id, sessionId: s.id, cupperId: u1, cupsPerSample: 2, values: 7 });
+    // The insert fired the trigger for B; pin B back to "old stored" so the re-fire is observable.
+    await prisma.aggregateScore.update({
+      where: { sessionSampleId: B.id },
+      data: { ruleVersion: 1, communityScore: 80.25, computedAt: OLD_AT },
+    });
+    await prisma.cuppingSession.update({
+      where: { id: s.id },
+      data: { status: "closed", closedAt: new Date("2026-11-02T12:00:00Z") },
+    });
+    const beforeA = await storedAggregate(A.id);
+
+    await finalizeClosedSession(s.id, { reason: "repair", emails: "skip" });
+
+    const afterA = await storedAggregate(A.id);
+    expect(afterA?.ruleVersion).toBe(1);
+    expect(afterA?.computedAt.getTime()).toBe(beforeA?.computedAt.getTime());
+    const afterB = await storedAggregate(B.id);
+    expect(afterB?.ruleVersion).toBe(2);
+    expect(afterB?.computedAt.getTime()).toBeGreaterThan(OLD_AT.getTime());
+  });
+
+  it("(c) the first close of a session opened before the deploy leaves its aggregates untouched", async () => {
+    const owner = await makeUser();
+    const s = await makeSession({ ownerId: owner, isGroup: false, cupsPerSample: 2 });
+    const A = s.samples[0];
+    await oldRuleSample({ sessionId: s.id, sampleId: A.id, cuppers: [owner], cups: 2 });
+    const before = await storedAggregate(A.id);
+
+    const r = await closeSessionInternal(s.id, { reason: "solo_auto", emails: "skip", repairGraceMs: 0 });
+    expect(r).toMatchObject({ closed: true, finalized: true });
+
+    const after = await storedAggregate(A.id);
+    expect(after?.ruleVersion).toBe(1);
+    expect(after?.communityScore).toBe(before?.communityScore);
+    expect(after?.computedAt.getTime()).toBe(before?.computedAt.getTime());
+  });
+
+  it("(d) the owner's exclusion still recomputes the whole sample (ruleVersion 2)", async () => {
+    const owner = await makeUser();
+    const u1 = await makeUser();
+    const s = await makeSession({ ownerId: owner, isGroup: true, participants: [u1], cupsPerSample: 2 });
+    const A = s.samples[0];
+    await oldRuleSample({ sessionId: s.id, sampleId: A.id, cuppers: [owner, u1], cups: 2 });
+    await prisma.cuppingSession.update({
+      where: { id: s.id },
+      data: { status: "closed", closedAt: new Date("2026-11-02T12:00:00Z") },
+    });
+
+    h.userId = owner;
+    const r = await setParticipantExclusion(s.id, u1, true, "other");
+    expect(r.ok).toBe(true);
+
+    const after = await storedAggregate(A.id);
+    expect(after?.ruleVersion).toBe(2);
+    expect(after?.participantCount).toBe(1);
+    expect(after?.computedAt.getTime()).toBeGreaterThan(OLD_AT.getTime());
+  });
+});
+
+describe("legacy drafts (review L8, L9)", () => {
+  const flagged = (cups: number) => ({
+    ...affectiveData(7),
+    tazas_no_uniformes: [true, ...Array<boolean>(cups - 1).fill(false)],
+    tazas_defectuosas: [true, ...Array<boolean>(cups - 1).fill(false)],
+  });
+  const legacyDraft = (args: { sessionId: string; sampleId: string; cupperId: string; cups: number }) =>
+    makeEvaluation({
+      sampleId: args.sampleId,
+      sessionId: args.sessionId,
+      cupperId: args.cupperId,
+      cupsPerSample: args.cups,
+      data: flagged(args.cups),
+      draft: true,
+      nonUniform: [true, ...Array<boolean>(args.cups - 1).fill(false)],
+      defective: [true, ...Array<boolean>(args.cups - 1).fill(false)],
+      overrides: { cups: null },
+    });
+  const get = (sampleId: string, cupperId: string) =>
+    prisma.evaluation.findUniqueOrThrow({ where: { sessionSampleId_cupperId: { sessionSampleId: sampleId, cupperId } } });
+
+  it("finishSoloSession recomputes a legacy draft before closing", async () => {
+    const owner = await makeUser();
+    const s = await makeSession({ ownerId: owner, cupsPerSample: 3, samples: [{ label: "A" }, { label: "B" }] });
+    const [A] = s.samples;
+    await legacyDraft({ sessionId: s.id, sampleId: A.id, cupperId: owner, cups: 3 });
+    await prisma.evaluation.update({
+      where: { sessionSampleId_cupperId: { sessionSampleId: A.id, cupperId: owner } },
+      data: { individualScore: calcIndividualScore(flagged(3), 3, { rule: "v1" }) as number },
+    });
+
+    h.userId = owner;
+    const r = await finishSoloSession(s.id);
+    expect(r.ok).toBe(true);
+
+    const ev = await get(A.id, owner);
+    expect(ev.isDraft).toBe(false);
+    expect(ev.cups).toBe(3);
+    expect(ev.individualScore).toBe(calcIndividualScore(flagged(3), 3));
+    expect((await storedAggregate(A.id))?.ruleVersion).toBe(2);
+  });
+
+  it("a group submit recomputes a legacy draft of the submitting cupper only", async () => {
+    const owner = await makeUser();
+    const u1 = await makeUser();
+    const s = await makeSession({ ownerId: owner, isGroup: true, participants: [u1], cupsPerSample: 3 });
+    const A = s.samples[0];
+    await legacyDraft({ sessionId: s.id, sampleId: A.id, cupperId: u1, cups: 3 });
+    await legacyDraft({ sessionId: s.id, sampleId: A.id, cupperId: owner, cups: 3 });
+
+    h.userId = u1;
+    const r = await submitAllEvaluations(s.id);
+    expect(r.ok).toBe(true);
+
+    const mine = await get(A.id, u1);
+    expect(mine.isDraft).toBe(false);
+    expect(mine.cups).toBe(3);
+    expect(mine.individualScore).toBe(calcIndividualScore(flagged(3), 3));
+    const theirs = await get(A.id, owner);
+    expect(theirs.isDraft).toBe(true);
+    expect(theirs.cups).toBeNull();
+  });
+
+  it("the pinned reference still scores exactly 79.00 after the recompute", async () => {
+    const owner = await makeUser();
+    const s = await makeSession({ ownerId: owner, cupsPerSample: 3, samples: [{ label: "A" }, { label: "B" }] });
+    const [A, B] = s.samples;
+    await prisma.sessionSample.update({ where: { id: A.id }, data: { referenceRank: 1 } });
+    await prisma.cuppingSession.update({ where: { id: s.id }, data: { referenceSampleId: A.id } });
+    // Old draft of the reference carrying unpinned values and flagged cups.
+    await legacyDraft({ sessionId: s.id, sampleId: A.id, cupperId: owner, cups: 3 });
+    await legacyDraft({ sessionId: s.id, sampleId: B.id, cupperId: owner, cups: 3 });
+
+    h.userId = owner;
+    const r = await submitAllEvaluations(s.id);
+    expect(r.ok).toBe(true);
+
+    const ref = await get(A.id, owner);
+    expect(ref.cups).toBe(3);
+    expect(ref.individualScore).toBe(79);
+    const other = await get(B.id, owner);
+    expect(other.individualScore).toBe(calcIndividualScore(flagged(3), 3));
+  });
+
+  it("refreshAggregateScores skips an expired-but-not-closed session", async () => {
+    const owner = await makeUser();
+    const u1 = await makeUser();
+    const s = await makeSession({
+      ownerId: owner,
+      isGroup: true,
+      participants: [u1],
+      cupsPerSample: 2,
+      closesAt: new Date(Date.now() - 60_000),
+    });
+    const A = s.samples[0];
+    await oldRuleSample({ sessionId: s.id, sampleId: A.id, cuppers: [owner, u1], cups: 2 });
+    const before = await storedAggregate(A.id);
+
+    h.userId = owner;
+    await refreshAggregateScores(s.id);
+
+    const after = await storedAggregate(A.id);
+    expect(after?.ruleVersion).toBe(1);
+    expect(after?.computedAt.getTime()).toBe(before?.computedAt.getTime());
+  });
+
+  it("the helper does not rewrite drafts of a session that has just expired (L9)", async () => {
+    const owner = await makeUser();
+    const u1 = await makeUser();
+    const s = await makeSession({
+      ownerId: owner,
+      isGroup: true,
+      participants: [u1],
+      cupsPerSample: 3,
+      closesAt: new Date(Date.now() - 60_000),
+    });
+    const A = s.samples[0];
+    await legacyDraft({ sessionId: s.id, sampleId: A.id, cupperId: u1, cups: 3 });
+    const args = { sessionId: s.id, cupperId: u1, now: new Date() };
+
+    expect(await hasLegacyDrafts(prisma, args)).toBe(false);
+    const n = await recomputeLegacyDraftsInTx(prisma, {
+      ...args,
+      format: "affective",
+      cupsPerSample: 3,
+      referenceSampleId: null,
+    });
+    expect(n).toBe(0);
+    expect((await get(A.id, u1)).cups).toBeNull();
   });
 });
