@@ -7,29 +7,90 @@ import {
 } from "@supabase/supabase-js";
 import {
   IDENTITY_EPOCH_KEY,
+  actionOnMarkerRecheck,
+  actionOnResume,
+  classifyBrowserSession,
   classifyIdentityLookup,
   decideForMarker,
-  identityMismatch,
+  decideServerIdentity,
   isNoSessionError,
   parseIdentityMarker,
   serializeIdentityMarker,
-  shouldStopForLookup,
 } from "@/lib/expectedUser";
 import { classifyGuestLookup, isFinalJoinRefusal } from "@/lib/joinRules";
 
-describe("identityMismatch (server rule)", () => {
-  it("absent expectation never mismatches (legacy callers)", () => {
-    expect(identityMismatch(undefined, "b")).toBe(false);
-    expect(identityMismatch(undefined, null)).toBe(false);
+describe("decideServerIdentity (server table)", () => {
+  it("a user who matches the expectation proceeds", () => {
+    expect(decideServerIdentity({ state: "user", userId: "a" }, "a")).toBe("proceed");
   });
-  it("same user matches", () => {
-    expect(identityMismatch("a", "a")).toBe(false);
+  it("a user who differs from the expectation is identity_changed", () => {
+    expect(decideServerIdentity({ state: "user", userId: "b" }, "a")).toBe("identity_changed");
   });
-  it("a different user mismatches", () => {
-    expect(identityMismatch("a", "b")).toBe(true);
+  it("a user with no expectation proceeds", () => {
+    expect(decideServerIdentity({ state: "user", userId: "b" }, undefined)).toBe("proceed");
   });
-  it("NO user in the cookie mismatches when an id was expected", () => {
-    expect(identityMismatch("a", null)).toBe(true);
+  it("nobody signed in behaves as unauthenticated, never identity_changed", () => {
+    expect(decideServerIdentity({ state: "none" }, "a")).toBe("as_unauthenticated");
+    expect(decideServerIdentity({ state: "none" }, undefined)).toBe("as_unauthenticated");
+  });
+  it("an unreachable auth lookup behaves as unreachable, never identity_changed", () => {
+    expect(decideServerIdentity({ state: "unreachable" }, "a")).toBe("as_unreachable");
+    expect(decideServerIdentity({ state: "unreachable" }, undefined)).toBe("as_unreachable");
+  });
+});
+
+describe("classifyBrowserSession (getSession read)", () => {
+  const user = (id: string) => ({ user: { id } });
+  it("a session with the rendered id is same", () => {
+    expect(classifyBrowserSession({ session: user("a"), error: null }, "a")).toBe("same");
+  });
+  it("a session with another id is different", () => {
+    expect(classifyBrowserSession({ session: user("b"), error: null }, "a")).toBe("different");
+  });
+  it("no session and no error is none", () => {
+    expect(classifyBrowserSession({ session: null, error: null }, "a")).toBe("none");
+  });
+  it("any error is unknown, whatever its status (no 4xx guessing)", () => {
+    expect(classifyBrowserSession({ session: null, error: new AuthApiError("x", 401, "bad_jwt") }, "a")).toBe("unknown");
+    expect(classifyBrowserSession({ session: null, error: new AuthRetryableFetchError("x", 0) }, "a")).toBe("unknown");
+    expect(classifyBrowserSession({ session: null, error: new AuthSessionMissingError() }, "a")).toBe("unknown");
+  });
+  it("an error wins even if a stale session object came with it", () => {
+    expect(classifyBrowserSession({ session: user("b"), error: new Error("x") }, "a")).toBe("unknown");
+  });
+});
+
+describe("resume table (actionOnResume)", () => {
+  it.each([
+    ["different", "latch"],
+    ["same", "clear"],
+    ["none", "nothing"],
+    ["unknown", "nothing"],
+  ] as const)("%s -> %s", (identity, action) => {
+    expect(actionOnResume(identity)).toBe(action);
+  });
+});
+
+describe("marker table (decideForMarker, then actionOnMarkerRecheck)", () => {
+  it("a marker naming the rendered user asks for a re-check", () => {
+    expect(decideForMarker("a", { at: 1, leftUserId: "a" })).toBe("recheck");
+  });
+  it("a marker naming nobody in particular asks for a re-check", () => {
+    expect(decideForMarker("a", { at: 1, leftUserId: "" })).toBe("recheck");
+  });
+  it("a marker naming another user is ignored", () => {
+    expect(decideForMarker("a", { at: 1, leftUserId: "b" })).toBe("ignore");
+  });
+  it("no marker is ignored", () => {
+    expect(decideForMarker("a", null)).toBe("ignore");
+  });
+  it.each([
+    ["different", "latch"],
+    ["none", "latch"],
+    ["same", "nothing"],
+    ["unknown", "nothing"],
+  ] as const)("after the re-check: %s -> %s", (identity, action) => {
+    expect(actionOnMarkerRecheck(identity)).toBe(action);
   });
 });
 
@@ -99,26 +160,6 @@ describe("cross-tab marker", () => {
   });
   it("the key is stable", () => {
     expect(IDENTITY_EPOCH_KEY).toBe("cata_identity_epoch");
-  });
-  it("stop when the marker names the rendered user", () => {
-    expect(decideForMarker("a", { at: 1, leftUserId: "a" })).toBe("stop");
-  });
-  it("ignore when another user left", () => {
-    expect(decideForMarker("a", { at: 1, leftUserId: "b" })).toBe("ignore");
-  });
-  it("recheck when the leaving user was unknown", () => {
-    expect(decideForMarker("a", { at: 1, leftUserId: "" })).toBe("recheck");
-  });
-  it("ignore with no marker", () => {
-    expect(decideForMarker("a", null)).toBe("ignore");
-  });
-});
-
-describe("shouldStopForLookup", () => {
-  it("stops only when the signed-in person is different", () => {
-    expect(shouldStopForLookup("different")).toBe(true);
-    expect(shouldStopForLookup("same")).toBe(false);
-    expect(shouldStopForLookup("unreachable")).toBe(false);
   });
 });
 

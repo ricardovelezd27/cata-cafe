@@ -118,11 +118,13 @@ export function GuestJoinForm({ token, locale, translations }: GuestJoinFormProp
       }
       // "reuse" = the anonymous user THIS tab created on an earlier failed try
       // (S8-07 F-guest-2): five retries create one user, not five.
+      let guestId: string | undefined = existing?.id;
       if (!existing) {
         const { data: created, error: signInError } = await supabase.auth.signInAnonymously({
           options: { data: { display_name: trimmed } },
         });
         rememberCreatedAnonId(created?.user?.id ?? null);
+        guestId = created?.user?.id;
         if (signInError) {
           const limited =
             signInError.status === 429 ||
@@ -132,7 +134,14 @@ export function GuestJoinForm({ token, locale, translations }: GuestJoinFormProp
         }
       }
 
-      await completeGuestOnboarding(trimmed);
+      // Pass the id we just signed in as: if another tab replaced the cookie in
+      // the meantime the server refuses and writes nothing (S10 WP8 fourth review).
+      const onboarded = await completeGuestOnboarding(trimmed, guestId);
+      if (!onboarded.ok) {
+        router.refresh();
+        setIsSubmitting(false);
+        return;
+      }
 
       // The join redirects server-side on success (NEXT_REDIRECT, handled by
       // Next — never swallow it); a refusal comes back as an ActionResult (S8-11).

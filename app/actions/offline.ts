@@ -48,15 +48,19 @@ export type ReplayStatus = "synced" | "conflict" | "closed" | "pending" | "gone"
 type OwnerReplayStatus = "synced" | "closed" | "gone" | "rejected" | "pending";
 
 // The replay's authentication step. With `expectedUserId` (the user the draft
-// was saved for) the guard runs FIRST and without throwing: no user in the
-// cookie (the likeliest stale-tab state after "No soy") or a different user
-// returns null, and the caller answers "pending" (the draft stays pending, no
-// attempt is burnt). Without it this is requireUser() exactly as before.
+// was saved for) the guard runs FIRST and without throwing: a different user,
+// nobody signed in, or an auth lookup that failed all return null, and the
+// caller answers "pending" (the draft stays pending, no attempt is burnt).
+// Without it this is requireUser() exactly as before.
 async function replayUser(expectedUserId: string | undefined) {
   try {
     return await requireUserExpecting(expectedUserId, { skipProfileUpsert: true });
   } catch (err) {
-    if (expectedUserId !== undefined && err instanceof Error && err.message === IDENTITY_CHANGED) {
+    if (
+      expectedUserId !== undefined &&
+      err instanceof Error &&
+      (err.message === IDENTITY_CHANGED || err.message === "not_authenticated")
+    ) {
       return null;
     }
     throw err;

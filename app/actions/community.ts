@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser, requireRegisteredUser, requireUserExpecting } from "@/lib/auth";
+import { IDENTITY_CHANGED } from "@/lib/expectedUser";
 import {
   requireSessionOwner,
   requireSessionMember,
@@ -578,8 +579,25 @@ export async function revealSample(sampleId: string): Promise<ActionResult> {
 // joinViaToken. Upsert (not update) because the DB trigger normally creates
 // the Profile row on signup, but we can't depend on its timing relative to
 // this call — the upsert makes either ordering safe.
-export async function completeGuestOnboarding(name: string) {
-  const user = await requireUser({ skipProfileUpsert: true });
+//
+// S10 WP8 (fourth review): the join form passes the id `signInAnonymously`
+// returned (or the anonymous user it reuses) as `expectedUserId`. If the cookie
+// meanwhile holds a DIFFERENT user (another tab signed someone else in), nothing
+// is written and the answer is `{ ok: false, error: "identity_changed" }`;
+// nobody signed in / auth unreachable stay `not_authenticated`, as before.
+export async function completeGuestOnboarding(
+  name: string,
+  expectedUserId?: string,
+): Promise<{ ok: true } | { ok: false; error: "identity_changed" }> {
+  let user;
+  try {
+    user = await requireUserExpecting(expectedUserId, { skipProfileUpsert: true });
+  } catch (e) {
+    if (expectedUserId !== undefined && e instanceof Error && e.message === IDENTITY_CHANGED) {
+      return { ok: false, error: IDENTITY_CHANGED };
+    }
+    throw e;
+  }
   const displayName = v.str(name, "name", { max: 80, required: false }) ?? "Catador";
 
   await prisma.profile.upsert({

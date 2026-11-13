@@ -1,27 +1,36 @@
-// S10 WP8, third review H1(c): the optional `expectedUserId` on the live cup-page
-// writes and on the offline replay, against a real Postgres. A tab rendered for
-// guest A must never write A's scores as guest B (B replaced A's cookie from
-// another tab), nor as nobody. Only external boundaries are mocked: the cookie
+// S10 WP8, third and fourth review: the optional `expectedUserId` on the live
+// cup-page writes and on the offline replay, against a real Postgres. A tab
+// rendered for guest A must never write A's scores as guest B (B replaced A's
+// cookie from another tab). "Nobody signed in" and "the auth lookup failed" are
+// NOT an identity change: they answer what main answers (not_authenticated; a
+// replay answers pending), and write nothing. Only external boundaries are mocked: the cookie
 // (Supabase server client) and Next's cache/after hooks. `@/lib/auth`,
 // `lib/sessionAuth`, the actions and Prisma are the real code.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type FakeUser = { id: string; email: string | null; is_anonymous: boolean } | null;
-const cookie: { user: FakeUser } = { user: null };
+const cookie: { user: FakeUser; error: unknown } = { user: null, error: null };
 
 vi.mock("@/lib/supabase/server", () => ({
-  createClient: async () => ({ auth: { getUser: async () => ({ data: { user: cookie.user }, error: null }) } }),
+  createClient: async () => ({ auth: { getUser: async () => ({ data: { user: cookie.user }, error: cookie.error }) } }),
 }));
 vi.mock("next/cache", () => ({ revalidatePath: () => {}, revalidateTag: () => {} }));
 vi.mock("next/server", async (orig) => ({ ...(await orig<object>()), after: () => {} }));
 
-import { upsertEvaluation } from "@/app/actions/sessions";
-import { submitAllEvaluations } from "@/app/actions/community";
-import { replayEvaluation } from "@/app/actions/offline";
+import { randomUUID } from "node:crypto";
+import { upsertEvaluation, upsertExtrinsic, upsertPhysical } from "@/app/actions/sessions";
+import { completeGuestOnboarding, finishSoloSession, submitAllEvaluations } from "@/app/actions/community";
+import { replayEvaluation, replayExtrinsic, replayPhysical } from "@/app/actions/offline";
 import { affectiveData, makeEvaluation, makeSession, makeUser, prisma, resetDb } from "./support/db";
 
 const signedInAs = (id: string | null) => {
   cookie.user = id === null ? null : { id, email: null, is_anonymous: true };
+  cookie.error = null;
+};
+// The auth lookup itself failed (network drop, GoTrue 503): no user AND an error.
+const authUnreachable = () => {
+  cookie.user = null;
+  cookie.error = { name: "AuthApiError", status: 503, message: "down" };
 };
 
 async function groupWithTwo() {
@@ -69,11 +78,21 @@ describe("upsertEvaluation expectedUserId", () => {
     expect(await evalCount(sampleId)).toBe(1);
   });
 
-  it("nobody signed in + an expectation = identity_changed, not a throw", async () => {
+  it("nobody signed in + an expectation behaves as main: not_authenticated, nothing written", async () => {
     const { a, sessionId, sampleId } = await groupWithTwo();
     signedInAs(null);
-    const r = await upsertEvaluation(input(sampleId, sessionId, { expectedUserId: a }));
-    expect(r).toEqual({ ok: false, error: "identity_changed" });
+    await expect(upsertEvaluation(input(sampleId, sessionId, { expectedUserId: a }))).rejects.toThrow(
+      "not_authenticated",
+    );
+    expect(await evalCount(sampleId)).toBe(0);
+  });
+
+  it("an unreachable auth lookup behaves as main (not identity_changed), nothing written", async () => {
+    const { a, sessionId, sampleId } = await groupWithTwo();
+    authUnreachable();
+    await expect(upsertEvaluation(input(sampleId, sessionId, { expectedUserId: a }))).rejects.toThrow(
+      "not_authenticated",
+    );
     expect(await evalCount(sampleId)).toBe(0);
   });
 
@@ -163,6 +182,13 @@ describe("replayEvaluation expectedUserId", () => {
     expect(await evalCount(sampleId)).toBe(0);
   });
 
+  it("an unreachable auth lookup answers pending too", async () => {
+    const { a, sampleId } = await groupWithTwo();
+    authUnreachable();
+    expect(await replay(sampleId, { expectedUserId: a })).toEqual({ status: "pending" });
+    expect(await evalCount(sampleId)).toBe(0);
+  });
+
   it("an absent argument writes as before", async () => {
     const { b, sampleId } = await groupWithTwo();
     signedInAs(b);
@@ -182,5 +208,175 @@ describe("replayEvaluation expectedUserId", () => {
     signedInAs(a);
     expect(await replay(sampleId, { expectedUserId: a })).toEqual({ status: "synced" });
     expect(await evalCount(sampleId)).toBe(1);
+  });
+});
+
+// ─── the other writes: physical, extrinsic, finishSoloSession, onboarding ───
+
+const profileCount = () => prisma.profile.count();
+
+async function soloOwned() {
+  const owner = await makeUser({ name: "Dueña" });
+  const other = await makeUser({ anonymous: true, name: "Otro" });
+  const s = await makeSession({ ownerId: owner, isGroup: false, samples: [{}] });
+  return { owner, other, sessionId: s.id, sampleId: s.samples[0].id };
+}
+
+const physRows = (sampleId: string) => prisma.physicalEvaluation.count({ where: { sessionSampleId: sampleId } });
+const extRows = (sampleId: string) => prisma.extrinsicData.count({ where: { sessionSampleId: sampleId } });
+
+describe("upsertPhysical / upsertExtrinsic expectedUserId", () => {
+  it("a different signed-in user: identity_changed, nothing written", async () => {
+    const { owner, other, sampleId } = await soloOwned();
+    signedInAs(other);
+    expect(await upsertPhysical({ sessionSampleId: sampleId, data: { a: 1 }, expectedUserId: owner })).toEqual({
+      ok: false,
+      error: "identity_changed",
+    });
+    expect(await upsertExtrinsic({ sessionSampleId: sampleId, data: { a: 1 }, expectedUserId: owner })).toEqual({
+      ok: false,
+      error: "identity_changed",
+    });
+    expect(await physRows(sampleId)).toBe(0);
+    expect(await extRows(sampleId)).toBe(0);
+  });
+
+  it("nobody signed in: what main answers (not_authenticated), nothing written", async () => {
+    const { owner, sampleId } = await soloOwned();
+    signedInAs(null);
+    await expect(upsertPhysical({ sessionSampleId: sampleId, data: { a: 1 }, expectedUserId: owner })).rejects.toThrow(
+      "not_authenticated",
+    );
+    expect(await upsertExtrinsic({ sessionSampleId: sampleId, data: { a: 1 }, expectedUserId: owner })).toEqual({
+      ok: false,
+      error: "not_authenticated",
+    });
+    expect(await physRows(sampleId)).toBe(0);
+    expect(await extRows(sampleId)).toBe(0);
+  });
+
+  it("an unreachable auth lookup: what main answers, never identity_changed, nothing written", async () => {
+    const { owner, sampleId } = await soloOwned();
+    authUnreachable();
+    await expect(upsertPhysical({ sessionSampleId: sampleId, data: { a: 1 }, expectedUserId: owner })).rejects.toThrow(
+      "not_authenticated",
+    );
+    expect(await upsertExtrinsic({ sessionSampleId: sampleId, data: { a: 1 }, expectedUserId: owner })).toEqual({
+      ok: false,
+      error: "not_authenticated",
+    });
+    expect(await physRows(sampleId)).toBe(0);
+    expect(await extRows(sampleId)).toBe(0);
+  });
+
+  it("a matching id writes both", async () => {
+    const { owner, sampleId } = await soloOwned();
+    signedInAs(owner);
+    expect(await upsertPhysical({ sessionSampleId: sampleId, data: { a: 1 }, expectedUserId: owner })).toEqual({
+      ok: true,
+    });
+    expect((await upsertExtrinsic({ sessionSampleId: sampleId, data: { a: 1 }, expectedUserId: owner })).ok).toBe(true);
+    expect(await physRows(sampleId)).toBe(1);
+    expect(await extRows(sampleId)).toBe(1);
+  });
+});
+
+describe("replayPhysical / replayExtrinsic expectedUserId", () => {
+  it("a different user, nobody, and an unreachable lookup all answer pending and write nothing", async () => {
+    const { owner, other, sampleId } = await soloOwned();
+    for (const arrange of [() => signedInAs(other), () => signedInAs(null), () => authUnreachable()]) {
+      arrange();
+      expect(await replayPhysical({ sessionSampleId: sampleId, data: { a: 1 }, expectedUserId: owner })).toEqual({
+        status: "pending",
+      });
+      expect(await replayExtrinsic({ sessionSampleId: sampleId, data: { a: 1 }, expectedUserId: owner })).toEqual({
+        status: "pending",
+      });
+    }
+    expect(await physRows(sampleId)).toBe(0);
+    expect(await extRows(sampleId)).toBe(0);
+  });
+
+  it("a matching id writes", async () => {
+    const { owner, sampleId } = await soloOwned();
+    signedInAs(owner);
+    expect(await replayPhysical({ sessionSampleId: sampleId, data: { a: 1 }, expectedUserId: owner })).toEqual({
+      status: "synced",
+    });
+    expect(await replayExtrinsic({ sessionSampleId: sampleId, data: { a: 1 }, expectedUserId: owner })).toEqual({
+      status: "synced",
+    });
+    expect(await physRows(sampleId)).toBe(1);
+    expect(await extRows(sampleId)).toBe(1);
+  });
+});
+
+describe("finishSoloSession / submitAllEvaluations: no profile upserted when they refuse", () => {
+  const statusOf = async (id: string) => (await prisma.cuppingSession.findUniqueOrThrow({ where: { id } })).status;
+
+  it("finishSoloSession: a different signed-in user", async () => {
+    const { owner, sessionId } = await soloOwned();
+    const ghost = randomUUID(); // signed in on the cookie, no profile row yet
+    signedInAs(ghost);
+    const before = await profileCount();
+    expect(await finishSoloSession(sessionId, owner)).toEqual({ ok: false, error: "identity_changed" });
+    expect(await statusOf(sessionId)).toBe("active");
+    expect(await profileCount()).toBe(before);
+    expect(await prisma.profile.findUnique({ where: { id: ghost } })).toBeNull();
+  });
+
+  it("finishSoloSession: nobody signed in / unreachable answer not_authenticated (as main)", async () => {
+    const { owner, sessionId } = await soloOwned();
+    const before = await profileCount();
+    signedInAs(null);
+    expect(await finishSoloSession(sessionId, owner)).toEqual({ ok: false, error: "not_authenticated" });
+    authUnreachable();
+    expect(await finishSoloSession(sessionId, owner)).toEqual({ ok: false, error: "not_authenticated" });
+    expect(await statusOf(sessionId)).toBe("active");
+    expect(await profileCount()).toBe(before);
+  });
+
+  it("submitAllEvaluations: all three refusals leave the profile table alone", async () => {
+    const { owner, sessionId } = await soloOwned();
+    const ghost = randomUUID();
+    signedInAs(ghost);
+    const before = await profileCount();
+    expect(await submitAllEvaluations(sessionId, owner)).toEqual({ ok: false, error: "identity_changed" });
+    signedInAs(null);
+    expect(await submitAllEvaluations(sessionId, owner)).toEqual({ ok: false, error: "not_authenticated" });
+    authUnreachable();
+    expect(await submitAllEvaluations(sessionId, owner)).toEqual({ ok: false, error: "not_authenticated" });
+    expect(await profileCount()).toBe(before);
+  });
+});
+
+describe("completeGuestOnboarding expectedUserId", () => {
+  const nameOf = async (id: string) => (await prisma.profile.findUnique({ where: { id } }))?.displayName;
+
+  it("a mismatch refuses and writes nothing", async () => {
+    const mine = await makeUser({ anonymous: true, name: "Mine" });
+    const other = await makeUser({ anonymous: true, name: "Other" });
+    signedInAs(other); // another tab replaced the cookie after signInAnonymously
+    expect(await completeGuestOnboarding("Nuevo", mine)).toEqual({ ok: false, error: "identity_changed" });
+    expect(await nameOf(mine)).toBe("Mine");
+    expect(await nameOf(other)).toBe("Other");
+  });
+
+  it("nobody signed in / unreachable: not_authenticated (a throw, as main), nothing written", async () => {
+    const mine = await makeUser({ anonymous: true, name: "Mine" });
+    signedInAs(null);
+    await expect(completeGuestOnboarding("Nuevo", mine)).rejects.toThrow("not_authenticated");
+    authUnreachable();
+    await expect(completeGuestOnboarding("Nuevo", mine)).rejects.toThrow("not_authenticated");
+    expect(await nameOf(mine)).toBe("Mine");
+  });
+
+  it("a matching id writes the name; an absent id behaves as before", async () => {
+    const mine = await makeUser({ anonymous: true, name: "Mine" });
+    signedInAs(mine);
+    expect(await completeGuestOnboarding("Nuevo", mine)).toEqual({ ok: true });
+    expect(await nameOf(mine)).toBe("Nuevo");
+    expect(await completeGuestOnboarding("Otro nombre")).toEqual({ ok: true });
+    expect(await nameOf(mine)).toBe("Otro nombre");
   });
 });

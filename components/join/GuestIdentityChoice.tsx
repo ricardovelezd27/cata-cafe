@@ -122,10 +122,13 @@ export function GuestIdentityChoice({
   }, []);
 
   // M2: after location.assign this screen is deliberately frozen (`leaving`). A
-  // page restored from the back/forward cache would stay frozen, so reload it.
+  // page restored from the back/forward cache would stay frozen, so reload it,
+  // but ONLY when this screen was left through "No soy" (fourth review: not on
+  // every restore, which would reload a screen the person never left).
+  const leavingRef = useRef(false);
   useEffect(() => {
     const onPageShow = (e: PageTransitionEvent) => {
-      if (e.persisted) window.location.reload();
+      if (e.persisted && leavingRef.current) window.location.reload();
     };
     window.addEventListener("pageshow", onPageShow);
     return () => window.removeEventListener("pageshow", onPageShow);
@@ -223,6 +226,7 @@ export function GuestIdentityChoice({
     // saving and ask for a reload).
     announceIdentityLeft(userId);
     await clearLocalDeviceState();
+    leavingRef.current = true;
     setLeaving(true);
     // Full navigation to the SAME join URL: auth cookies changed and the server
     // component must render with no user. Not the landing page.
