@@ -390,6 +390,71 @@ export function restoreFromStash(data: Record<string, unknown>): {
   return { data: clean, restored: true, hadStash: true };
 }
 
+/** S10 WP5b review H1 (TODO(kim-validar:B2)): what a write of an evaluation
+ *  module must store, decided against the session's CURRENT reference (the
+ *  caller reads it in the same transaction as the write).
+ *   - `pinsNow`: the sample IS the pinned reference now: pin the payload and
+ *     carry the stash. An existing stored stash wins; otherwise, when the
+ *     payload itself holds REAL ratings (`!pinnedView`: a cupper who was offline
+ *     when the sample was marked), the stash is taken from the PAYLOAD; else
+ *     from the stored row.
+ *   - not pinned now but the module was produced under the pin (`pinnedView`):
+ *     the pinned keys of the payload are not the cupper's input. Every key of
+ *     PIN_OVERWRITTEN_KEYS keeps the STORED row's value (absent stays absent);
+ *     everything else (descriptive side, notes) is taken from the payload. No
+ *     stash is written.
+ *   - otherwise an ordinary save. Only modules that carry affective ratings. */
+export function resolvePinnedPayload(input: {
+  pinsNow: boolean;
+  pinnedView: boolean;
+  moduleKey: string;
+  posted: Record<string, unknown>;
+  stored: Record<string, unknown> | null | undefined;
+  cupsPerSample: number;
+  now?: Date;
+}): { data: Record<string, unknown>; refStash: RefStash | null } {
+  const { posted, stored } = input;
+  if (!isPinnedModule(input.moduleKey)) return { data: posted, refStash: null };
+  if (input.pinsNow) {
+    const pinned = pinReferenceAffective(posted, input.cupsPerSample);
+    const existing = validStash(stored?.[REF_STASH_KEY]);
+    let refStash: RefStash | null = existing;
+    if (!refStash && !input.pinnedView) {
+      const { [REF_STASH_KEY]: _ignored, ...clean } = posted;
+      void _ignored;
+      refStash = stashBeforePin(clean, pinned, input.now);
+    }
+    if (!refStash) refStash = stashBeforePin(stored, pinned, input.now);
+    return { data: pinned, refStash };
+  }
+  if (input.pinnedView) {
+    const merged: Record<string, unknown> = { ...posted };
+    for (const key of PIN_OVERWRITTEN_KEYS) {
+      if (stored && key in stored && stored[key] !== undefined) merged[key] = stored[key];
+      else delete merged[key];
+    }
+    return { data: merged, refStash: null };
+  }
+  return { data: posted, refStash: null };
+}
+
+/** Client rule (H1): when a sample stops being the pinned reference, the page's
+ *  module takes the SERVER's value for every key the pin overwrites (the server
+ *  restored the cupper's ratings); everything else stays local (unsaved
+ *  descriptive edits). A key the server row does not have is removed. */
+export function adoptServerPinKeys(
+  local: Record<string, unknown>,
+  server: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...local };
+  delete out[REF_STASH_KEY];
+  for (const key of PIN_OVERWRITTEN_KEYS) {
+    if (server && key in server && server[key] !== undefined) out[key] = server[key];
+    else delete out[key];
+  }
+  return out;
+}
+
 /** Restore plan for a sample that STOPPED being the active pinned reference
  *  (S10 WP5b). For each evaluation carrying a stash: when the anchor state is
  *  intact the stashed values come back and the full derived payload is written
@@ -408,22 +473,29 @@ export function planReferenceRestore<
   evaluations: readonly E[],
   moduleKey: string,
   cupsPerSample: number,
-): { id: string; restored: boolean; data: Record<string, unknown> }[] {
-  if (!isPinnedModule(moduleKey)) return [];
-  const column = moduleKey === "affective" ? "affectiveData" : "combinedData";
+): { plan: { id: string; restored: boolean; data: Record<string, unknown> }[]; skipped: string[] } {
   const plan: { id: string; restored: boolean; data: Record<string, unknown> }[] = [];
+  const skipped: string[] = [];
+  if (!isPinnedModule(moduleKey)) return { plan, skipped };
+  const column = moduleKey === "affective" ? "affectiveData" : "combinedData";
   for (const ev of evaluations) {
     const raw = ev[column];
     if (!isPlainObject(raw) || !(REF_STASH_KEY in raw)) continue;
     const res = restoreFromStash(raw);
     if (res.restored) {
-      const fields = computeEvaluationDerived(moduleKey, res.data, cupsPerSample);
-      plan.push({ id: ev.id, restored: true, data: { ...fields, isDraft: ev.isDraft } });
+      // A restore never blocks the owner: values that fail validation leave the
+      // row pinned with its stash (the caller logs the id) and are not counted.
+      try {
+        const fields = computeEvaluationDerived(moduleKey, res.data, cupsPerSample);
+        plan.push({ id: ev.id, restored: true, data: { ...fields, isDraft: ev.isDraft } });
+      } catch {
+        skipped.push(ev.id);
+      }
     } else {
       plan.push({ id: ev.id, restored: false, data: { [column]: res.data } });
     }
   }
-  return plan;
+  return { plan, skipped };
 }
 
 // ─── Client-side mirror of the rank order (cup + waiting room) ───────────────

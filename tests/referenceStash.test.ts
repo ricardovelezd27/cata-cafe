@@ -222,7 +222,7 @@ describe("planReferenceRestore", () => {
   });
 
   it("restores intact anchors (scores recomputed, isDraft echoed), drops the stash of re-rated rows, ignores rows without a stash", () => {
-    const plan = planReferenceRestore(
+    const { plan } = planReferenceRestore(
       [
         row("ok", { ...pinned, [REF_STASH_KEY]: stash }),
         row("rerated", { ...pinned, fragancia_af_final: 8, [REF_STASH_KEY]: stash }, true),
@@ -248,11 +248,11 @@ describe("planReferenceRestore", () => {
   });
 
   it("descriptive sessions have nothing to restore", () => {
-    expect(planReferenceRestore([row("x", { ...pinned, [REF_STASH_KEY]: stash })], "descriptive", 2)).toEqual([]);
+    expect(planReferenceRestore([row("x", { ...pinned, [REF_STASH_KEY]: stash })], "descriptive", 2).plan).toEqual([]);
   });
 
   it("the combined column is read for combined sessions", () => {
-    const plan = planReferenceRestore(
+    const { plan } = planReferenceRestore(
       [{ id: "c", isDraft: false, affectiveData: {}, combinedData: { ...pinned, [REF_STASH_KEY]: stash } }],
       "combined",
       2,

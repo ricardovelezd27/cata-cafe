@@ -40,7 +40,8 @@ import {
 import { endOfDayInZone, normalizeZone } from "@/lib/closeRules";
 import { REFERENCE_REPIN_REQUIRED, REFERENCE_REVEALED, removeSamplesInTx } from "@/lib/sampleRemoval";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
-import { computeEvaluationDerived, moduleKeyForFormat } from "@/lib/evaluation";
+import { moduleKeyForFormat } from "@/lib/evaluation";
+import { writeEvaluationPinAware } from "@/lib/evaluationPinWrite";
 import {
   DEFAULT_REFERENCE_MODE,
   normalizeReferenceMode,
@@ -785,6 +786,11 @@ export async function upsertEvaluation(input: {
   // Nobody signed in, or an unreachable auth lookup, is NOT an identity change:
   // it throws `not_authenticated` exactly as requireUser() does.
   expectedUserId?: string;
+  // S10 WP5b review H1: true when the page produced this module while the sample
+  // was the pinned reference. If the sample is NOT pinned any more when the write
+  // runs, the pinned keys keep the stored (restored) values; see
+  // lib/referenceRules.ts resolvePinnedPayload. Absent = an ordinary save.
+  pinnedView?: boolean;
 }): Promise<
   { ok: true; evaluationId: string } | { ok: false; error: "identity_changed" | "sample_revealed" }
 > {
@@ -823,36 +829,18 @@ export async function upsertEvaluation(input: {
     moduleKey,
     isActiveReference: auth.referenceSampleId === input.sessionSampleId,
   });
-  const data = pinsThisSample
-    ? pinReferenceAffective(input.data, auth.cupsPerSample)
-    : input.data;
-  // S10 WP5b (B2): the pin never destroys the cupper's ratings. The row as it
-  // is stored now decides the stash this write carries (an existing one is
-  // carried over; a client can never set or drop it, computeEvaluationDerived
-  // discards whatever the payload says). One extra read, only for the pinned
-  // reference sample. TODO(kim-validar:B2)
-  let refStash: RefStash | null = null;
-  if (pinsThisSample) {
-    const stored = await prisma.evaluation.findUnique({
-      where: {
-        sessionSampleId_cupperId: { sessionSampleId: input.sessionSampleId, cupperId: user.id },
-      },
-      select: { affectiveData: true, combinedData: true },
-    });
-    const raw = moduleKey === "affective" ? stored?.affectiveData : stored?.combinedData;
-    refStash = stashBeforePin(
-      raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : null,
-      data,
-    );
-  }
-  const fields = computeEvaluationDerived(moduleKey, data, auth.cupsPerSample, { refStash });
-
+  // S10 WP5b (B2 + review H1): the pinned write is decided inside the write's own
+  // transaction against the session's CURRENT reference (lib/evaluationPinWrite.ts).
   const doUpsert = () =>
-    writeEvaluationOrdered(prisma, {
+    writeEvaluationPinAware({
       sessionSampleId: input.sessionSampleId,
       sessionId,
       cupperId: user.id,
-      fields,
+      moduleKey,
+      cupsPerSample: auth.cupsPerSample,
+      posted: input.data,
+      pinnedView: input.pinnedView === true,
+      pinnedAtAuth: pinsThisSample,
       clientTs: input.clientTs,
     });
 
@@ -1279,7 +1267,7 @@ export async function setReferenceSample(
             where: { sessionSampleId: stoppedPinning },
             select: { id: true, isDraft: true, affectiveData: true, combinedData: true },
           });
-          const restore = planReferenceRestore(
+          const { plan: restore, skipped } = planReferenceRestore(
             stoppedEvals,
             moduleKeyForFormat(session.format),
             session.cupsPerSample,
@@ -1288,6 +1276,9 @@ export async function setReferenceSample(
             await tx.evaluation.update({ where: { id }, data: data as Prisma.EvaluationUpdateInput });
           }
           restored = restore.filter((r) => r.restored).length;
+          for (const evaluationId of skipped) {
+            logWarn({ where: "setReferenceSample", sessionId, evaluationId, message: "restore_skipped_invalid" });
+          }
         }
         if (!repinTarget) return;
         const moduleKey = moduleKeyForFormat(session.format);

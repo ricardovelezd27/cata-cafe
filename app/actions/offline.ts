@@ -15,7 +15,8 @@ import {
   moduleKeyForFormat,
   type EvalModuleKey,
 } from "@/lib/evaluation";
-import { pinReferenceAffective, shouldPinReference, stashBeforePin, type RefStash } from "@/lib/referenceRules";
+import { shouldPinReference } from "@/lib/referenceRules";
+import { writeEvaluationPinAware } from "@/lib/evaluationPinWrite";
 import { writeEvaluationOrdered } from "@/lib/evaluationWrite";
 import { logInfo } from "@/lib/log";
 import { replayOverExisting } from "@/lib/aggregateRefire";
@@ -98,6 +99,8 @@ type EvaluationReplayInput = {
   force?: boolean;
   // S8-18: ms epoch of the draft's last edit (OfflineModuleData.updatedAt). Optional.
   clientTs?: number;
+  /** S10 WP5b review H1: the blob was produced while the sample was the pinned reference. */
+  pinnedView?: boolean;
   /** M4 (S10 WP8): the user the draft was saved for. When given and different
    *  from the signed-in user, nothing is written and the answer is "pending"
    *  (the draft stays pending, no attempt burnt). Absent = legacy behaviour. */
@@ -175,37 +178,30 @@ async function replayEvaluationCore(input: EvaluationReplayInput): Promise<Repla
     moduleKey,
     isActiveReference: referenceSampleId === input.sessionSampleId,
   });
-  const data = pinsThisSample ? pinReferenceAffective(input.data, cupsPerSample) : input.data;
-  // S10 WP5b (B2): carry the stored row's stash over (same rule as the live
-  // path); a client blob can never set or drop it. TODO(kim-validar:B2)
-  let refStash: RefStash | null = null;
-  if (pinsThisSample) {
-    const stored = await prisma.evaluation.findUnique({
-      where: {
-        sessionSampleId_cupperId: { sessionSampleId: input.sessionSampleId, cupperId: user.id },
-      },
-      select: { affectiveData: true, combinedData: true },
-    });
-    const raw = moduleKey === "affective" ? stored?.affectiveData : stored?.combinedData;
-    refStash = stashBeforePin(
-      raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : null,
-      data,
-    );
-  }
   // A thrown invalid_input would make useOfflineSync retry and leave the draft
   // pending forever (S8-10). Out-of-bounds data is reachable only with a
   // tampered or legacy blob and can never become valid: report the
   // non-retryable "rejected" (S8-09 replay contract).
-  const fields = tryComputeEvaluationDerived(moduleKey, data, cupsPerSample, { refStash });
-  if (!fields) return "rejected";
-
-  const saved = await writeEvaluationOrdered(prisma, {
-    sessionSampleId: input.sessionSampleId,
-    sessionId,
-    cupperId: user.id,
-    fields,
-    clientTs: input.clientTs,
-  });
+  // S10 WP5b (B2 + review H1): the pinned write is decided inside the write's own
+  // transaction against the session's CURRENT reference (lib/evaluationPinWrite.ts);
+  // a blob that does not know the stash can never set or drop it.
+  let saved: { id: string; applied: boolean };
+  try {
+    saved = await writeEvaluationPinAware({
+      sessionSampleId: input.sessionSampleId,
+      sessionId,
+      cupperId: user.id,
+      moduleKey,
+      cupsPerSample,
+      posted: input.data,
+      pinnedView: input.pinnedView === true,
+      pinnedAtAuth: pinsThisSample,
+      clientTs: input.clientTs,
+    });
+  } catch (e) {
+    if (e instanceof Error && e.message === "invalid_input") return "rejected";
+    throw e;
+  }
 
   // S8-18 (F-offline-2): a newer write already won. The server holds newer data
   // than this draft, so the answer is "synced" (the client's own `ifUpdatedAt`
