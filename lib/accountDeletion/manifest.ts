@@ -159,6 +159,14 @@ export const PROFILE_MANIFEST: readonly ManifestEntry[] = [
     note: "Private saved analytics.",
   },
   {
+    model: "WarmupReflection",
+    field: "userId",
+    kind: "relation",
+    merge: { kind: "move", delegate: "warmupReflection" },
+    onDelete: "erase",
+    note: "Private warm-up notes (S10 WP7, Kim F2): readable only by their owner, never by an admin, export or AI prompt. Restrict FK: the account deletion erases them explicitly.",
+  },
+  {
     model: "TastingGroup",
     field: "createdBy",
     kind: "relation",

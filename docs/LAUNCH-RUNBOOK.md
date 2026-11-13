@@ -1717,6 +1717,72 @@ the later `DROP POLICY IF EXISTS "coffees_select"` + `CREATE POLICY` pairs stay)
 applies the file statement by statement and tolerates exactly this one failure; it fails the run if
 a second statement fails or if this one stops failing.
 
+
+---
+
+## §31. Movimiento Sensorial: private reflections, the `warmup_reflections` migration and PHASE 27 (2026-11, S10 WP7)
+
+**What it does:** adds ONE new table, `warmup_reflections` (a person's saved answers to the two
+closing questions of a warm-up exercise: `id`, `userId` → `profiles` with `ON DELETE RESTRICT`,
+`exerciseId`, `feel`, `discovery`, `createdAt`), and PHASE 27 closes it to the API roles. The rows are
+**private to the person**: nobody else reads them, not the teacher, the group, an admin, an export,
+the analytics area or an AI prompt. The app reads and writes them only with Prisma as `postgres`,
+scoped by the signed-in user id. Account deletion erases them; a guest claim moves them.
+
+**Order matters:** migration FIRST, then the deploy; PHASE 27 any time after the migration (before or
+after the deploy; until it runs the table is only protected by Supabase's automatic RLS, which already
+denies the API roles, and PHASE 27 makes that explicit and adds the revoke).
+
+1. **Migration.** On your machine, with `.env.local` pointing at the project (it is production):
+   ```bash
+   npx prisma migrate deploy
+   ```
+   Expected: `1 migration found … 20261113110000_warmup_reflections … applied` (more lines if other
+   migrations are pending). Verify in the SQL Editor:
+   ```sql
+   select column_name from information_schema.columns
+   where table_schema='public' and table_name='warmup_reflections' order by 1;
+   ```
+   Expected: `createdAt, discovery, exerciseId, feel, id, userId`.
+2. **PHASE 27 pre-flight** (read-only): run queries (a) to (c) from the PHASE 27 header in
+   `prisma/sql/rls_and_triggers.sql`. Save the output of (b).
+3. **Dry run** (fail-safe: one statement, nothing is applied, nothing to replace). Open
+   `prisma/sql/dry-runs/phase27_dry_run.sql`, paste the whole file, run it. Expected: a red error
+   starting `PHASE 27 DRY RUN: NOTHING WAS APPLIED`. Compare each line with its `(expect ...)` text:
+   1a `t`; 1b `0`; every 1c line `f`; 2a, 2b and 3 `refused`; 4 a number and no error. **Any `NOT
+   REFUSED`, any `FAILED`, or any OTHER error: stop and report; nothing was applied either way.**
+4. **Apply** the `PHASE 27` block as written (`BEGIN … COMMIT`). Expected: `Success. No rows
+   returned`. An error starting `PHASE 27 aborted, nothing applied` means the self-check found the
+   table in the wrong state: report it.
+5. **Verify:**
+   ```sql
+   select relrowsecurity from pg_class where oid = 'public.warmup_reflections'::regclass;  -- t
+   select grantee, privilege_type from information_schema.role_table_grants
+   where table_schema='public' and table_name='warmup_reflections'
+     and grantee in ('anon','authenticated');                                               -- no rows
+   ```
+   Then Supabase **Advisors → Security**: nothing new.
+6. **Deploy** the branch. No environment variable.
+
+**Smoke test (5 minutes, one registered account, no second account needed):**
+1. Open a warm-up exercise (`/app/warmup/…`), choose **Completa**, run it to the end (the `›` button
+   skips ahead), write something in one or both boxes and press **Guardar**. The done screen says it
+   was saved; the exercise page lists it under **Tus reflexiones** with the date and
+   "Solo tú puedes verlas."
+2. Delete it with the bin button and confirm; it disappears.
+3. Choose **Corta · 1–2 min** and run it: it ends on the done screen without the two questions.
+4. On the intro screen turn on **Poco espacio**: the figure moves a small amount and the line "Haz el
+   mismo movimiento, más pequeño." shows; on the first exercise **Sentado** also appears.
+5. On **Catar ahora** press **Calentar 1–2 min antes**, finish or close it: the form still has the
+   name, format and sample count you typed.
+6. In a session that has a warm-up, after the cupping started (or after you skipped the warm-up), the
+   cup page's left column shows **Movimiento Sensorial · N min**; it opens the player and closing it
+   changes nothing.
+
+**Rollback:** roll the code back first (the exercise page lists the reflections and would fail
+without the table); the table itself can stay. Do not drop it: that erases people's notes. PHASE 27's
+rollback is the commented block at its end (leaving RLS on is the safe state).
+
 ---
 
 ## §32. Database — apply the `sample_prep_and_reference_mode` migration (2026-11, S10 WP2)

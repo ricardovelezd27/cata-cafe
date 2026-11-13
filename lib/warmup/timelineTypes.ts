@@ -74,7 +74,13 @@ export interface Segment {
   readonly chromeCue?: ChromeCue;
   readonly arrivePhase?: ArrivePhase;
   /** Fast reps: n full cycles of `cycleMs` each; the wave returns to `from`. */
-  readonly reps?: { readonly n: number; readonly cycleMs: number; readonly wave: "upDown" | "sine" };
+  readonly reps?: {
+    readonly n: number;
+    readonly cycleMs: number;
+    readonly wave: "upDown" | "sine";
+    /** "Poco espacio": scale of the wave (absent = 1, full). */
+    readonly amp?: number;
+  };
   /** Hold folded into the read beat ("Para arriba tres segundos"): the last
    *  `foldedHoldMs` of a read segment render as the three PARA dots. */
   readonly foldedHoldMs?: number;
@@ -137,6 +143,10 @@ export interface SecondaryText {
 }
 
 export type TimelineMode = "library" | "session";
+
+/** "full" = today's run; "short" = 1-2 minutes (S10 WP7, Kim F4 / B7). The
+ *  master-led synced run is always "full". */
+export type TimelineLength = "full" | "short";
 
 export interface ExerciseTimeline {
   readonly exerciseId: string;

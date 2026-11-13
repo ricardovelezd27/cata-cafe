@@ -3,7 +3,12 @@
 // Bump SW_VERSION whenever a change would make old cached entries incompatible
 // (e.g. cache-key logic changes, new required exclusion rule). Bumping it
 // forces old caches to be dropped on the next activate.
-const SW_VERSION = "v4"; // v4 (2026-11, S8-23): static cache is LRU (hit re-puts the entry); v3 (2026-11, S8-09): static cache capped, insights/profile never cached (v2: locale-prefixed /auth/* excluded)
+const SW_VERSION = "v5"; // v5 (2026-11, S10 WP7): warm-up exercise pages (reflection text) never cached; v4 (2026-11, S8-23): static cache is LRU (hit re-puts the entry); v3 (2026-11, S8-09): static cache capped, insights/profile never cached (v2: locale-prefixed /auth/* excluded)
+// Pages that carry per-user text and so never enter the page/RSC caches.
+const NEVER_CACHED_PAGE = /^\/(?:[a-z]{2}\/)?app\/(?:(?:insights|profile)(?:\/|$)|warmup\/[^/])/;
+function isNeverCachedPage(pathname) {
+  return NEVER_CACHED_PAGE.test(pathname);
+}
 const STATIC_CACHE = `cata-static-${SW_VERSION}`;
 const PAGES_CACHE = `cata-pages-${SW_VERSION}`;
 // RSC flight payloads live in their own cache so a navigation fallback can
@@ -127,7 +132,9 @@ self.addEventListener("fetch", (event) => {
   // Per-user admin/account pages are never cached: on a shared tablet the next
   // person could be served the previous user's insights or profile after a
   // network blip (S8-09, F-offline-9). Plain network, like any other pass-through.
-  if (/^\/(?:[a-z]{2}\/)?app\/(?:insights|profile)(?:\/|$)/.test(url.pathname)) return;
+  // Same for the warm-up exercise pages (/app/warmup/<slug>): they render the
+  // person's saved reflections. The /app/warmup list stays cached (S10 WP7, F2).
+  if (isNeverCachedPage(url.pathname)) return;
 
   // 2. Navigations + RSC data fetches: network-first, falling back to cache
   // so a reload/navigation while offline still renders the last-seen page.
