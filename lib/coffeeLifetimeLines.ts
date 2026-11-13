@@ -53,6 +53,7 @@ export type LifetimeLabels = {
   note: string;
   noBaseQuick: string;
   noBaseAnchor: string;
+  noBaseDescriptive: string;
   noBaseIncomplete: string;
 };
 
@@ -105,7 +106,9 @@ export function buildLifetimeLines(r: CoffeeLifetimeScore, L: LifetimeLabels): L
       if (r.tally.nonUniformOnly > 0) {
         reason.push(phrase(r.tally.nonUniformOnly, L.nonUniformReasonOne, L.nonUniformReasonOther));
       }
-      arithmetic = `${L.base} ${base} · ${L.deduction} ${r.deduction.toFixed(2)} (${reason.join(", ")}) · ${L.scoreWord} ${score}`;
+      // Never an empty "()": the reason is omitted if nothing can be named.
+      const why = reason.length > 0 ? ` (${reason.join(", ")})` : "";
+      arithmetic = `${L.base} ${base} · ${L.deduction} ${r.deduction.toFixed(2)}${why} · ${L.scoreWord} ${score}`;
     } else {
       arithmetic = `${L.base} ${base} · ${L.scoreWord} ${score}`;
     }
@@ -142,7 +145,9 @@ export function buildLifetimeLines(r: CoffeeLifetimeScore, L: LifetimeLabels): L
       ? L.noBaseQuick
       : r.noBaseReason === "anchor"
         ? L.noBaseAnchor
-        : L.noBaseIncomplete;
+        : r.noBaseReason === "descriptive"
+          ? L.noBaseDescriptive
+          : L.noBaseIncomplete;
 
   return {
     headline: hasBase ? (r.score as number).toFixed(2) : null,
@@ -207,9 +212,10 @@ export const LIFETIME_COPY: { es: LifetimeLabels; en: LifetimeLabels } = {
     anchorOther: "{n} catas en las que este café fue la referencia fija no cuentan para este puntaje.",
     note: "Cada cata conserva su propio puntaje. Este número es del café y cambia cuando se cierra una cata nueva.",
     noBaseQuick:
-      "Todavía no hay una cata completa de este café. Las impresiones rápidas (1 taza) cuentan sus tazas y defectos, no su puntaje.",
+      "Todavía no hay una cata completa de varias tazas de este café. Las impresiones rápidas (1 taza) cuentan sus tazas y defectos, no su puntaje.",
     noBaseAnchor: "Este café solo se ha catado como referencia fija: esas catas no cuentan para este puntaje.",
-    noBaseIncomplete: "Todavía no hay una cata completa de este café.",
+    noBaseDescriptive: "Las catas de este café son descriptivas: ese formato no lleva puntaje.",
+    noBaseIncomplete: "Todavía no hay una cata con puntaje completo de este café.",
   },
   en: {
     title: "Café Sensible score (CVA-based)",
@@ -248,8 +254,9 @@ export const LIFETIME_COPY: { es: LifetimeLabels; en: LifetimeLabels } = {
     anchorOther: "{n} cuppings where this coffee was the fixed reference do not count toward this score.",
     note: "Each cupping keeps its own score. This number belongs to the coffee and changes when a new cupping closes.",
     noBaseQuick:
-      "There is no complete cupping of this coffee yet. Quick impressions (1 cup) count their cups and defects, not their score.",
+      "There is no complete multi-cup cupping of this coffee yet. Quick impressions (1 cup) count their cups and defects, not their score.",
     noBaseAnchor: "This coffee has only been cupped as the fixed reference: those cuppings do not count toward this score.",
-    noBaseIncomplete: "There is no complete cupping of this coffee yet.",
+    noBaseDescriptive: "This coffee's cuppings are descriptive: that format has no score.",
+    noBaseIncomplete: "There is no cupping of this coffee with a complete score yet.",
   },
 };

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, it, expect } from "vitest";
 import { buildLifetimeLines, LIFETIME_COPY } from "@/lib/coffeeLifetimeLines";
 import { computeCoffeeLifetimeScore, type CoffeeLifetimeScore, type LifetimeSample } from "@/lib/coffeeLifetimeScore";
@@ -86,18 +87,20 @@ describe("buildLifetimeLines (es)", () => {
     expect(lines.indicative).toEqual({ badge: "Indicativo", note: "Menos de 5 tazas catadas: es una primera señal." });
   });
 
-  it("three honest no-base variants, chosen by the data", () => {
+  it("four honest no-base variants, chosen by the data", () => {
     const base = { score: null, base: null, voices: 0 };
     const quick = buildLifetimeLines(result({ ...base, noBaseReason: "quick", cups: 1, sessions: 1 }), L);
     const anchor = buildLifetimeLines(result({ ...base, noBaseReason: "anchor", cups: 0, sessions: 0, deduction: 0 }), L);
     const incomplete = buildLifetimeLines(result({ ...base, noBaseReason: "incomplete", cups: 0, sessions: 0, deduction: 0 }), L);
     expect(quick.noBase).toBe(
-      "Todavía no hay una cata completa de este café. Las impresiones rápidas (1 taza) cuentan sus tazas y defectos, no su puntaje.",
+      "Todavía no hay una cata completa de varias tazas de este café. Las impresiones rápidas (1 taza) cuentan sus tazas y defectos, no su puntaje.",
     );
     expect(anchor.noBase).toBe(
       "Este café solo se ha catado como referencia fija: esas catas no cuentan para este puntaje.",
     );
-    expect(incomplete.noBase).toBe("Todavía no hay una cata completa de este café.");
+    expect(incomplete.noBase).toBe("Todavía no hay una cata con puntaje completo de este café.");
+    const descriptive = buildLifetimeLines(result({ ...base, noBaseReason: "descriptive", cups: 0, sessions: 0, deduction: 0 }), L);
+    expect(descriptive.noBase).toBe("Las catas de este café son descriptivas: ese formato no lleva puntaje.");
     for (const l of [quick, anchor, incomplete]) {
       expect(l.headline).toBeNull();
       expect(l.arithmetic).toBeNull();
@@ -176,6 +179,11 @@ describe("copy", () => {
   it("messages coffee.lifetime equals the PDF maps in both languages", () => {
     expect((es as { coffee: { lifetime: unknown } }).coffee.lifetime).toEqual(LIFETIME_COPY.es);
     expect((en as { coffee: { lifetime: unknown } }).coffee.lifetime).toEqual(LIFETIME_COPY.en);
+  });
+
+  it("the coffee ficha says 'indicativo' once: the route does not also flag the shared score block", () => {
+    const src = readFileSync("app/api/coffees/[id]/ficha/route.ts", "utf8");
+    expect(src).not.toMatch(/indicative:\s*lifetime\.indicative/);
   });
 
   it("never names the score CVA", () => {

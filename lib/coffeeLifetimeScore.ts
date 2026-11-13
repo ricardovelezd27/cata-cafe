@@ -102,7 +102,7 @@ export interface CoffeeLifetimeScore {
   /** Distinct sessions skipped because this coffee was an anchor-mode reference there (M4). */
   anchorReferenceSessions: number;
   /** Why `score` is null (never blames quick impressions when the cause is another); null with a score. */
-  noBaseReason: "quick" | "anchor" | "incomplete" | null;
+  noBaseReason: "quick" | "anchor" | "descriptive" | "incomplete" | null;
   tally: LifetimeTally;
 }
 
@@ -111,12 +111,44 @@ function moduleData(format: string, ev: LifetimeEvaluation): Record<string, unkn
   return raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
 }
 
+/**
+ * Cups flagged non-uniform and NOT defective, for the WORDING only (the
+ * deduction uses `u` and `d` from evaluationCupCounts). Counted by position
+ * inside the evaluation's cups. A legacy row whose flag arrays do not fit its
+ * cups (a flag beyond the cup count) would make the positional count disagree
+ * with the totals that were deducted; then it falls back to `u - d`, so a
+ * sentence never names more cups than were deducted and a deduction is never
+ * left without a stated reason.
+ */
+export function nonUniformOnlyCount(
+  nonUniform: readonly boolean[],
+  defective: readonly boolean[],
+  cups: number,
+  u: number,
+  d: number,
+): number {
+  const n = Number.isFinite(cups) ? Math.max(0, Math.floor(cups)) : 0;
+  let posU = 0;
+  let posD = 0;
+  let only = 0;
+  for (let i = 0; i < n; i++) {
+    const nu = nonUniform[i] === true;
+    const df = defective[i] === true;
+    if (nu) posU += 1;
+    if (df) posD += 1;
+    if (nu && !df) only += 1;
+  }
+  return posU === u && posD === d ? only : Math.max(0, u - d);
+}
+
 export function computeCoffeeLifetimeScore(samples: readonly LifetimeSample[]): CoffeeLifetimeScore {
   const byType = Object.fromEntries(SENSORY_DEFECTS.map((d) => [d, 0])) as Record<SensoryDefect, number>;
   let unspecified = 0;
   let totalCups = 0;
   let nonUniformOnly = 0;
   let quickVoices = 0;
+  let scoredSamples = 0; // affective/combined samples that are not an anchor reference
+  let descriptiveSamples = 0;
   const anchorSessions = new Set<string>();
   let totalNonUniform = 0;
   let totalDefective = 0;
@@ -127,13 +159,17 @@ export function computeCoffeeLifetimeScore(samples: readonly LifetimeSample[]): 
 
   for (const sample of samples) {
     const format = asSessionFormat(sample.session.format);
-    if (format === "descriptive") continue;
+    if (format === "descriptive") {
+      descriptiveSamples += 1;
+      continue;
+    }
     // An anchor-mode reference is pinned at 5 and its cup checks are cleared:
     // it is not an opinion about the coffee. Free mode scores it like any sample.
     if (sample.referenceRank !== null && sample.session.referenceMode !== "free") {
       anchorSessions.add(sample.sessionId);
       continue;
     }
+    scoredSamples += 1;
     const quick = isQuickImpression(sample.session.cupsPerSample);
 
     for (const ev of sample.evaluations) {
@@ -148,10 +184,7 @@ export function computeCoffeeLifetimeScore(samples: readonly LifetimeSample[]): 
       }
       totalNonUniform += u;
       totalDefective += d;
-      if (u > 0) {
-        const n = Math.min(Math.floor(cups), Math.max(ev.nonUniformCups.length, ev.defectiveCups.length));
-        for (let i = 0; i < n; i++) if (ev.nonUniformCups[i] === true && ev.defectiveCups[i] !== true) nonUniformOnly += 1;
-      }
+      if (u > 0) nonUniformOnly += nonUniformOnlyCount(ev.nonUniformCups, ev.defectiveCups, cups, u, d);
 
       if (d > 0) {
         finders.add(ev.cupperKey);
@@ -195,9 +228,11 @@ export function computeCoffeeLifetimeScore(samples: readonly LifetimeSample[]): 
         ? null
         : quickVoices > 0
           ? "quick"
-          : anchorSessions.size > 0 && totalCups === 0
-            ? "anchor"
-            : "incomplete",
+          : scoredSamples === 0 && anchorSessions.size > 0 && descriptiveSamples === 0
+            ? "anchor" // EVERY cupping of it was as the fixed reference
+            : scoredSamples === 0 && descriptiveSamples > 0 && anchorSessions.size === 0
+              ? "descriptive" // only descriptive cuppings: that format has no score
+              : "incomplete",
     tally: {
       byType,
       unspecified,

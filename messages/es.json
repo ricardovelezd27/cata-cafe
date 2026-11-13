@@ -1223,9 +1223,10 @@
       "anchorOne": "{n} cata en la que este café fue la referencia fija no cuenta para este puntaje.",
       "anchorOther": "{n} catas en las que este café fue la referencia fija no cuentan para este puntaje.",
       "note": "Cada cata conserva su propio puntaje. Este número es del café y cambia cuando se cierra una cata nueva.",
-      "noBaseQuick": "Todavía no hay una cata completa de este café. Las impresiones rápidas (1 taza) cuentan sus tazas y defectos, no su puntaje.",
+      "noBaseQuick": "Todavía no hay una cata completa de varias tazas de este café. Las impresiones rápidas (1 taza) cuentan sus tazas y defectos, no su puntaje.",
       "noBaseAnchor": "Este café solo se ha catado como referencia fija: esas catas no cuentan para este puntaje.",
-      "noBaseIncomplete": "Todavía no hay una cata completa de este café."
+      "noBaseDescriptive": "Las catas de este café son descriptivas: ese formato no lleva puntaje.",
+      "noBaseIncomplete": "Todavía no hay una cata con puntaje completo de este café."
     },
     "deleteCoffee": {
       "title": "Eliminar café",

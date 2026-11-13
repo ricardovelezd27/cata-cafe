@@ -1,9 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
   computeCoffeeLifetimeScore,
+  nonUniformOnlyCount,
   type LifetimeEvaluation,
   type LifetimeSample,
 } from "@/lib/coffeeLifetimeScore";
+import { buildLifetimeLines, LIFETIME_COPY } from "@/lib/coffeeLifetimeLines";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { computeGroupAggregate } from "@/lib/scoring";
 
@@ -463,3 +465,64 @@ describe("anchor references are counted, quick impressions are classified, non-u
   });
 });
 
+
+// Second review of S10 WP1c: the no-base sentence must be true, and a legacy row
+// whose flag arrays do not fit its cups never yields a deduction without a reason
+// or a sentence naming more cups than were cupped.
+describe("no-base reason is true for mixed coffees; non-uniform-only wording follows the deducted totals", () => {
+  it("'anchor' only when EVERY scored cupping was as the fixed reference", () => {
+    const anchor = smp([ev()], { sessionId: "a", rank: 1, mode: "anchor" });
+    const partial = smp([ev({ partial: true })], { sessionId: "b" });
+    const descriptive = smp([ev()], { sessionId: "c", format: "descriptive" });
+    expect(computeCoffeeLifetimeScore([anchor]).noBaseReason).toBe("anchor");
+    expect(computeCoffeeLifetimeScore([anchor, partial]).noBaseReason).toBe("incomplete");
+    expect(computeCoffeeLifetimeScore([anchor, descriptive]).noBaseReason).toBe("incomplete");
+  });
+
+  it("'descriptive' when the coffee only has descriptive cuppings", () => {
+    const descriptive = smp([ev()], { format: "descriptive" });
+    expect(computeCoffeeLifetimeScore([descriptive]).noBaseReason).toBe("descriptive");
+    expect(computeCoffeeLifetimeScore([descriptive, smp([ev({ partial: true })])]).noBaseReason).toBe("incomplete");
+  });
+
+  it("nonUniformOnlyCount: positional when the arrays fit, u - d when a legacy row's flags fall outside its cups", () => {
+    // fits: cup 1 defective + non-uniform, cup 2 non-uniform only
+    expect(nonUniformOnlyCount([true, true], [true, false], 2, 2, 1)).toBe(1);
+    // a flag beyond the cup count: the deduction used u = 1, the sentence must name 1 cup
+    expect(nonUniformOnlyCount([false, false, true], [false, false, false], 2, 1, 0)).toBe(1);
+    // defective flag beyond the cup count: 1 defective + 1 non-uniform-only = 2 cups, never 3
+    expect(nonUniformOnlyCount([true, true], [false, false, true], 2, 2, 1)).toBe(1);
+    expect(nonUniformOnlyCount([], [], 2, 0, 0)).toBe(0);
+  });
+
+  it("a legacy row with a non-uniform flag beyond its cups: the deduction has a stated reason", () => {
+    const e: LifetimeEvaluation = {
+      ...ev({ rating: 7, cups: null }),
+      nonUniformCups: [false, false, true],
+      defectiveCups: [false, false, false],
+    };
+    const r = computeCoffeeLifetimeScore([smp([e], { cupsPerSample: 2 })]);
+    expect(r.deduction).toBe(2);
+    expect(r.tally.nonUniformOnly).toBe(1);
+    const line = buildLifetimeLines(r, LIFETIME_COPY.es).arithmetic as string;
+    expect(line).not.toContain("()");
+    expect(line).toContain("1 ");
+  });
+
+  it("random legacy rows: named cups never exceed cups cupped, and a deduction always has a reason", () => {
+    let seed = 7;
+    const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+    for (let i = 0; i < 1500; i++) {
+      const cups = 2 + Math.floor(rnd() * 4);
+      const len = cups + Math.floor(rnd() * 3) - 1;
+      const arr = () => Array.from({ length: Math.max(0, len) }, () => rnd() < 0.3);
+      const e: LifetimeEvaluation = { ...ev({ rating: 6, cups: null }), nonUniformCups: arr(), defectiveCups: arr() };
+      const r = computeCoffeeLifetimeScore([smp([e], { cupsPerSample: cups })]);
+      expect(r.tally.defective + r.tally.nonUniformOnly).toBeLessThanOrEqual(cups);
+      if (r.deduction > 0) {
+        expect(r.tally.defective + r.tally.nonUniformOnly).toBeGreaterThan(0);
+        expect(buildLifetimeLines(r, LIFETIME_COPY.es).arithmetic as string).not.toContain("()");
+      }
+    }
+  });
+});

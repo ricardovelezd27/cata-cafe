@@ -1223,9 +1223,10 @@
       "anchorOne": "{n} cupping where this coffee was the fixed reference does not count toward this score.",
       "anchorOther": "{n} cuppings where this coffee was the fixed reference do not count toward this score.",
       "note": "Each cupping keeps its own score. This number belongs to the coffee and changes when a new cupping closes.",
-      "noBaseQuick": "There is no complete cupping of this coffee yet. Quick impressions (1 cup) count their cups and defects, not their score.",
+      "noBaseQuick": "There is no complete multi-cup cupping of this coffee yet. Quick impressions (1 cup) count their cups and defects, not their score.",
       "noBaseAnchor": "This coffee has only been cupped as the fixed reference: those cuppings do not count toward this score.",
-      "noBaseIncomplete": "There is no complete cupping of this coffee yet."
+      "noBaseDescriptive": "This coffee's cuppings are descriptive: that format has no score.",
+      "noBaseIncomplete": "There is no cupping of this coffee with a complete score yet."
     },
     "deleteCoffee": {
       "title": "Delete coffee",
