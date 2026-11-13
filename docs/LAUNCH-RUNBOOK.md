@@ -176,7 +176,7 @@ row was detached in the meantime — do not do that without asking.)
 
 ## §3. Vercel — environment variables and the new cron
 
-> **DONE 2026-09-14.** All eight required variables are set; the deploy booting is itself the proof, since `lib/env.ts` fails the boot otherwise.
+> **DONE 2026-09-14.** All eight required variables are set; the deployment serving requests is itself the proof, since `lib/env.ts` makes the server refuse to start otherwise (a missing variable does not fail the build; the deployment goes Ready and then every request returns 500).
 
 
 **When:** before the first production deploy of the WP2 branch (the cron needs
@@ -202,7 +202,7 @@ row was detached in the meantime — do not do that without asking.)
    | `RESEND_API_KEY` | from <https://resend.com/api-keys> | Without it every email is silently skipped. |
    | `EMAIL_FROM` | e.g. `Cata Café <no-reply@your-domain>` | Must be a Resend-verified domain. |
    | `CLOSE_EMAIL_ATTACH_CVA` | *(optional)* `1` | Legacy: also attach each participant's CVA form PDF to the close email. Default (unset) = link to results + personal summary PDF only. |
-   | `ANALYTICS_SUPER_ADMIN_EMAIL` | your admin email | The code fallback is a personal Gmail — set it explicitly. |
+   | `ANALYTICS_SUPER_ADMIN_EMAIL` | your admin email | **Required** (F-insights-5): exactly ONE valid address (a list or a typo counts as missing). Without it the production server refuses to start: the build still succeeds and the deployment goes Ready, then every request returns 500; check a preview deployment first. There is no address built into the code. |
    | `UNSUBSCRIBE_SECRET` | *(optional, recommended)* `openssl rand -base64 48` | Signs the per-group unsubscribe links (S9-02, A-11). Unset = the links use `GUEST_CLAIM_SECRET`. **Once set, never remove or change it** without keeping the old value as `GUEST_CLAIM_SECRET`'s role (see §25): unsubscribe links never expire. Unset means one boot warning, never a failed deploy. |
 
 4. Click **Save** for each. Vercel only applies env changes to NEW deployments: after the
@@ -712,8 +712,9 @@ to `/auth/confirm`, which only exists after the deploy.
      audit's "server rules" change, S8-22 / A-01, which is in the chained S8 tip; only the exact
      value `1` turns deletion on. If that change is not in the deployed commit, account
      deletion is NOT gated: hold the deploy or accept it knowingly.)
-   - `ANALYTICS_SUPER_ADMIN_EMAIL`: recommended, set it to the super-admin address (§17; not
-     boot-fatal, the code falls back to a built-in address and logs a warning).
+   - `ANALYTICS_SUPER_ADMIN_EMAIL`: **required**, the super-admin address (§17). Without it (or with a
+     malformed value) the production server refuses to start (the build still succeeds, every
+     request then returns 500); there is no built-in fallback address any more.
    - `NEXT_PUBLIC_SITE_URL` present for Production AND Preview (§19).
    - Resend plan covers the daily volume, and Supabase **Authentication → Rate Limits → email**
      is not below the 60 per IP per 15 min tripwire (§11).
@@ -1140,8 +1141,11 @@ together with the other nine S8 migrations, §27 step 3.** Old rows stay null; n
 RLS stays on with no policies; nothing else to do.
 
 **2. Env.** Set `ANALYTICS_SUPER_ADMIN_EMAIL` in Vercel Production to the address that
-should be super-admin. It is NOT boot-fatal: until it is set, the code falls back to the
-built-in address and the boot logs one `env` warning. After this PR only the super-admin
+should be super-admin. Since S10 WP9b it is **required** (`REQUIRED_IN_PRODUCTION`): a
+production server without it (or with a malformed value: it must be exactly one address)
+refuses to start, and the built-in fallback address is gone. This does NOT fail the build:
+the deployment goes Ready and then returns 500 on every request, so deploy a Preview first
+(it runs with NODE_ENV=production too). Set it for Production AND Preview before deploying. After the S8 change only the super-admin
 sees platform-wide insights, the platform report PDF, the digest and the email CSV export;
 AI admins and flagged users see their own data.
 
@@ -1745,3 +1749,64 @@ two-line `CREATE POLICY "coffees_select" ON coffees FOR SELECT USING ("isPublic"
 the later `DROP POLICY IF EXISTS "coffees_select"` + `CREATE POLICY` pairs stay). The test harness
 applies the file statement by statement and tolerates exactly this one failure; it fails the run if
 a second statement fails or if this one stops failing.
+
+---
+
+## §32. Database — apply the `sample_prep_and_reference_mode` migration (2026-11, S10 WP2)
+
+**What it does:** adds five columns, all additive, no trigger, no function, no policy, no index,
+no foreign key:
+
+- `session_samples."roastDate"` (DATE, nullable), `"preparationNote"` (TEXT, nullable),
+  `"offProtocol"` (BOOLEAN NOT NULL DEFAULT false), `"offProtocolNote"` (TEXT, nullable): the
+  owner's optional per-sample prep data (Kim A9).
+- `cupping_sessions."referenceMode"` (TEXT NOT NULL DEFAULT `'anchor'`): how the session's
+  reference behaves (`anchor` = pinned at 79.00 as before, `free` = scored like any sample).
+  Every existing session is `anchor`, so nothing changes for them.
+
+The two NOT NULL defaults are constants, so Postgres adds them without rewriting either table.
+
+**Order matters:** run it BEFORE the deploy. The regenerated Prisma client selects these columns
+on the cup, results, print and PDF pages immediately; without them those pages fail.
+
+1. On your machine, with `.env.local` pointing at the project (it is production):
+   ```bash
+   npx prisma migrate deploy
+   ```
+   Expected: `… 20261113100000_sample_prep_and_reference_mode … applied`. This migration's name
+   sorts after `20261113090000_evaluation_cups` (PR #117); `migrate deploy` applies pending
+   migrations in name order whichever PR merges first, and neither depends on the other (so
+   the output may list one or two migrations).
+2. **Verify** — Supabase SQL Editor:
+   ```sql
+   SELECT table_name, column_name, data_type, column_default
+   FROM information_schema.columns
+   WHERE (table_name = 'session_samples'
+          AND column_name IN ('roastDate','preparationNote','offProtocol','offProtocolNote'))
+      OR (table_name = 'cupping_sessions' AND column_name = 'referenceMode')
+   ORDER BY table_name, column_name;
+   ```
+   Expected: five rows; `referenceMode` default `'anchor'::text`, `offProtocol` default `false`.
+3. **Blind-data check (read-only).** The four `session_samples` columns can identify a coffee, so
+   they are deliberately NOT in the PHASE 21 column grant and no SQL phase is needed. Confirm the
+   browser key cannot read them:
+   ```sql
+   SELECT column_name, has_column_privilege('authenticated', 'public.session_samples', column_name, 'SELECT') AS readable
+   FROM information_schema.columns
+   WHERE table_schema = 'public' AND table_name = 'session_samples'
+   ORDER BY column_name;
+   ```
+   Expected: `readable = false` for `roastDate`, `preparationNote`, `offProtocol`, `offProtocolNote`
+   (and `coffeeId`); `true` only for `id, sessionId, position, label, revealed, referenceRank, createdAt`.
+4. Deploy the branch. No new environment variable.
+
+**Smoke test (5 minutes, throwaway session):** create a group session with three coffees, tick a
+reference and pick "Referencia libre"; the three samples get letters in a random order each time you
+repeat it, and "Clave de muestras" (collapsed) on step 2 and on the cup page lists letter -> coffee;
+cup the reference as another cupper and check its bubbles are NOT locked and its score is not
+79.00; open the owner's sample editor, fill "Más datos de la muestra", and check a participant's
+`/print` shows none of it until the owner reveals the sample.
+
+**Rollback:** the columns are additive; code rolled back ignores them. Do not drop them while the
+new code is deployed. Sessions already created as `free` would be pinned again by older code on the
+next save of their reference, so do not roll back the code while a `free` session is mid-cupping.

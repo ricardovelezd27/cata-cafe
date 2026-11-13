@@ -44,9 +44,13 @@ import {
   type SampleMetadataFormData,
 } from "@/components/cupping/EditSampleMetadataForm";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
+import { SampleKey, type SampleKeyTranslations } from "@/components/cupping/SampleKey";
+import type { SamplePrepTranslations } from "@/components/cupping/SamplePrepFields";
+import { prepFromForm, prepToForm, type SamplePrep } from "@/lib/samplePrep";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { canPickExistingCoffee } from "@/lib/cupCoffeePick";
+import { resumeCallbackRefreshes } from "@/lib/cupResume";
 import { isEvaluationComplete as isEvaluationCompleteForScore } from "@/lib/evaluationState";
 import { DeadlineBanner, type DeadlineBannerTranslations } from "@/components/session/DeadlineBanner";
 import {
@@ -99,7 +103,7 @@ import {
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { useForegroundResume } from "@/hooks/useForegroundResume";
 import {
-  isPinnedModule,
+  shouldPinReference,
   nextReferenceOrder,
   orderByReferenceIds,
   pinReferenceAffective,
@@ -107,7 +111,11 @@ import {
 } from "@/lib/referenceRules";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { OfflineBanner } from "@/components/offline/OfflineBanner";
+import { StaleBundleNotice } from "@/components/offline/StaleBundleNotice";
 import { noteIfStaleBundle } from "@/lib/staleBundle";
+import { IDENTITY_CHANGED } from "@/lib/expectedUser";
+import { isIdentityChanged, registerBeforeIdentityReload } from "@/lib/identityChange";
+import { onServerIdentityChanged } from "@/lib/identityResolve";
 import { SyncConflictModal } from "@/components/offline/SyncConflictModal";
 import {
   mergeModuleData,
@@ -122,6 +130,9 @@ import type { ModuleKey } from "@/lib/offline/types";
 type Data = Record<string, unknown>;
 
 // The five Sample fields that map to persistable evaluation modules.
+/** How long the online owner waits for the rebuilt channel's SUBSCRIBED re-seed after a resume before refreshing anyway. */
+const OWNER_RESEED_FALLBACK_MS = 8000;
+
 const MODULE_KEYS = new Set<ModuleKey>([
   "descriptive",
   "affective",
@@ -158,6 +169,9 @@ type Sample = {
   revealed: boolean;
   coffeeId: string | null;
   coffee: SampleCoffee | null;
+  /** A9 prep data (roast date, notes, off-protocol); the server ships it to the
+   *  owner or once revealed only. Optional for pre-upgrade offline blobs. */
+  prep?: SamplePrep | null;
   /** 1, 2, … when the sample is a reference (S6 multi-reference). */
   referenceRank?: number | null;
 };
@@ -172,6 +186,10 @@ type Session = {
   // The owner's "Referencia" sample (display-only). Optional so a pre-upgrade
   // offline blob rehydrated by cup/error.tsx still type-checks.
   referenceSampleId?: string | null;
+  /** B1: "anchor" (pinned at 79.00) | "free". Fixed once the format is locked,
+   *  so it cannot go stale during a cupping. Optional for old offline blobs
+   *  (read as anchor). */
+  referenceMode?: string;
   /** ISO closing date + the owner's IANA zone (deadline banner). */
   closesAt?: string | null;
   closesAtZone?: string | null;
@@ -202,7 +220,7 @@ export function CupClient({
   translations,
   userEmail,
   userCountry,
-  userId,
+  userId: renderedUserId,
   warmup,
 }: {
   locale: string;
@@ -264,6 +282,10 @@ export function CupClient({
     process: string;
     editSample: string;
     editSampleError: string;
+    /** Owner-only "Clave de muestras" (A4); optional for offline blobs. */
+    sampleKey?: SampleKeyTranslations;
+    /** A9 "Más datos de la muestra" section of the owner's sample editor. */
+    samplePrep?: SamplePrepTranslations;
     /** "Usar café existente" picker strings (S9-05); optional for offline blobs. */
     coffeePicker?: {
       useExisting: string;
@@ -369,9 +391,13 @@ export function CupClient({
       conflictKeep: string;
       conflictReplace: string;
       bannerStorageUnavailable: string;
-      // S9-01 C-06. Optional: pre-upgrade offline prop blobs lack them.
+      // S10 WP9b: the "new version, reload" notice, rendered in the shell
+      // slot because the fixed SessionShell covers the app-layout copy.
+      // Optional: pre-upgrade offline prop blobs lack them.
       bannerNewVersion?: string;
       reloadNow?: string;
+      // S10 WP8 fourth review: the "device changed user" notice lives in the banner.
+      bannerIdentityChanged?: string;
       // S8-09. Optional: pre-upgrade offline prop blobs lack them.
       bannerNextAttempt?: string;
       /** RAW template with "{count}". */
@@ -425,6 +451,18 @@ export function CupClient({
 }) {
   const router = useRouter();
   const feedback = useActionFeedback();
+  // S10 WP8 (shared device): the person this screen was RENDERED for, frozen at
+  // mount. Local draft keys, the offline replay and every server write use it,
+  // never a later prop: if another tab signs someone else in and this page is
+  // refreshed, the form state here is still the first person's and must not be
+  // saved as the new one. Server writes carry it as `expectedUserId`; on a
+  // POSITIVE mismatch (a user is signed in and it is a different one) they write
+  // nothing and answer `identity_changed`. Only that answer latches this tab
+  // (lib/identityChange.ts, module-level: it lasts until a reload or until a
+  // later check sees the same user signed in again). Nobody signed in, or an
+  // unreachable auth service, is an ordinary pending save, as on main. The
+  // notice shows in the OfflineBanner below (this shell covers the layout bar).
+  const [userId] = useState(renderedUserId);
   const stepsForFormat: CuppingStep[] =
     session.format === "descriptive" ? DESCRIPTIVE_STEPS : CUPPING_STEPS;
   // Formats other than affective/descriptive render the CombinedForm, so they
@@ -537,6 +575,18 @@ export function CupClient({
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
   const [regenerateOpen, setRegenerateOpen] = useState(false);
   const [entriesLocked, setEntriesLockedState] = useState(sessionEntriesLocked);
+  // B1: the reference mode is read from the realtime payload too, so a tab that
+  // is already open follows an owner switch (anchor <-> free) and never pins
+  // locally on a stale mode. The server stays the authority: upsertEvaluation
+  // and the offline replay read the STORED mode and pin (or not) regardless.
+  const [referenceMode, setReferenceModeState] = useState<string | undefined>(session.referenceMode);
+  // A fresh server prop (router.refresh) wins: adjust state during render
+  // (React's derived-state pattern) instead of an effect.
+  const [seenReferenceMode, setSeenReferenceMode] = useState(session.referenceMode);
+  if (seenReferenceMode !== session.referenceMode) {
+    setSeenReferenceMode(session.referenceMode);
+    setReferenceModeState(session.referenceMode);
+  }
   const [entriesPending, setEntriesPending] = useState(false);
   // Follow the server value when router.refresh() delivers a fresh one.
   const [seenEntriesLocked, setSeenEntriesLocked] = useState(sessionEntriesLocked);
@@ -735,6 +785,19 @@ export function CupClient({
   // channel through subscribeWithSessionAuth (S8-15). Never saves: the pagehide
   // flush stays the only writer.
   const [resumeKey, setResumeKey] = useState(0);
+  // When the owner's channel last reached SUBSCRIBED (and re-seeded); the resume
+  // fallback timer checks it so a channel that never subscribes still refreshes.
+  const ownerSeededAtRef = useRef(0);
+  // The resume fallback timer: one at a time, cleared on the next resume, on
+  // unmount and when SUBSCRIBED arrives.
+  const reseedFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearReseedFallback = () => {
+    if (reseedFallbackRef.current) {
+      clearTimeout(reseedFallbackRef.current);
+      reseedFallbackRef.current = null;
+    }
+  };
+  useEffect(() => clearReseedFallback, []);
   const onlineRef = useRef(online);
   useEffect(() => {
     onlineRef.current = online;
@@ -956,6 +1019,25 @@ export function CupClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.id, userId]);
 
+  // S10 WP8 fourth review: a guest who finished the account claim in another tab
+  // makes lib/identityResolve.ts re-key this tab's drafts and RELOAD it. Before
+  // that, AWAIT the two pending edits into the durable store (under the id this
+  // tab was rendered for), so re-keying carries them to the account and
+  // nothing being typed is lost. (The pagehide flush also runs on the reload,
+  // but IndexedDB writes there are not awaited; this one is.)
+  useEffect(() => {
+    return registerBeforeIdentityReload(async () => {
+      const lp = localPendingRef.current;
+      if (lp) await writeLocal(lp.sampleId, lp.label, lp.key, lp.data);
+      const sp = pendingSaveRef.current;
+      if (sp && isModuleKey(sp.key)) {
+        const label = session.samples.find((s) => s.id === sp.sampleId)?.label ?? "";
+        await writeLocal(sp.sampleId, label, sp.key, sp.data);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.id, userId]);
+
   // Foreground resume: re-probe connectivity, rebuild the group channel and
   // refetch the server page (the reconcile effect merges fresh samples without
   // touching local drafts).
@@ -963,7 +1045,21 @@ export function CupClient({
     void recheck();
     if (!isGroup) return;
     setResumeKey((k) => k + 1);
-    router.refresh();
+    clearReseedFallback();
+    // One refetch per resume: the online owner gets it from the rebuilt channel's
+    // SUBSCRIBED re-seed (it also covers events missed while the socket was down).
+    if (resumeCallbackRefreshes({ isGroup, isOwner, online })) {
+      router.refresh();
+    } else {
+      // Safety net: if the channel never reaches SUBSCRIBED, refresh anyway.
+      // Known limit: a resume that follows the `online` event (the channel
+      // effect re-runs and SUBSCRIBED refreshes) can still refresh twice.
+      const resumedAt = Date.now();
+      reseedFallbackRef.current = setTimeout(() => {
+        reseedFallbackRef.current = null;
+        if (ownerSeededAtRef.current < resumedAt) router.refresh();
+      }, OWNER_RESEED_FALLBACK_MS);
+    }
   });
 
   // ─── Realtime subscription for group sessions ─────────────────
@@ -1044,6 +1140,9 @@ export function CupClient({
               next && sampleIdsRef.current.has(next) ? next : null,
             );
           }
+          if (typeof row.referenceMode === "string" || typeof row.reference_mode === "string") {
+            setReferenceModeState((row.referenceMode ?? row.reference_mode) as string);
+          }
           if (typeof row.entriesLocked === "boolean") {
             setEntriesLockedState(row.entriesLocked);
           }
@@ -1060,7 +1159,11 @@ export function CupClient({
       (status) => {
         setLiveCountDown(status !== "SUBSCRIBED");
         // Events missed while the socket was down: re-seed from the server.
-        if (status === "SUBSCRIBED" && isOwner) router.refresh();
+        if (status === "SUBSCRIBED" && isOwner) {
+          ownerSeededAtRef.current = Date.now();
+          clearReseedFallback();
+          router.refresh();
+        }
       },
     );
 
@@ -1110,9 +1213,20 @@ export function CupClient({
       return "pending";
     }
 
+    // A DIFFERENT user is signed in under this tab (another tab, S10 WP8): do
+    // not send to the server while the latch holds (until a reload or until the
+    // same user is seen again). The draft stays on the device under the rendered
+    // user's key, exactly as when offline; nothing is deleted and the banner
+    // asks for a reload.
+    if (isIdentityChanged()) {
+      await writeLocal(sampleId, labelFor(sampleId), mk, data);
+      return "pending";
+    }
+
     try {
       if (key === "descriptive" || key === "affective" || key === "combined") {
-        await upsertEvaluation({
+        const saved = await upsertEvaluation({
+          expectedUserId: userId,
           sessionSampleId: sampleId,
           sessionId: session.id,
           moduleKey: key,
@@ -1121,12 +1235,14 @@ export function CupClient({
           // S8-18: edit time, so the server drops this write if a newer one landed first.
           clientTs: Date.now(),
         });
+        if (!saved.ok) throw new Error(saved.error);
       } else if (key === "extrinsic") {
-        const saved = await upsertExtrinsic({ sessionSampleId: sampleId, data });
+        const saved = await upsertExtrinsic({ sessionSampleId: sampleId, data, expectedUserId: userId });
         // ActionResult: a refused write must fall to the local-pending path below.
         if (!saved.ok) throw new Error(saved.error);
       } else if (key === "physical") {
-        await upsertPhysical({ sessionSampleId: sampleId, data });
+        const saved = await upsertPhysical({ sessionSampleId: sampleId, data, expectedUserId: userId });
+        if (!saved.ok) throw new Error(saved.error);
       }
       // Server write landed — clear any local pending flag for this module.
       // Only when the stored draft is still exactly what was sent: a newer
@@ -1139,6 +1255,7 @@ export function CupClient({
       // C-06: a tab open across a deploy hits "Server Action not found" on every
       // save; flag it so the banner asks for a reload (the draft stays pending).
       noteIfStaleBundle(err);
+      if (err instanceof Error && err.message === IDENTITY_CHANGED) void onServerIdentityChanged(userId);
       await writeLocal(sampleId, labelFor(sampleId), mk, data);
       return "pending";
     }
@@ -1453,6 +1570,13 @@ export function CupClient({
       setSubmitBlocked(true);
       return;
     }
+    // A different user is signed in under this tab: never submit for them. The
+    // banner notice (reload) is already showing; say so here too, so "Enviar"
+    // never does nothing.
+    if (isIdentityChanged()) {
+      feedback.notifyError("identity_changed");
+      return;
+    }
     setIsGoingToResults(true);
     setSubmitError(false);
     try {
@@ -1477,15 +1601,27 @@ export function CupClient({
       if (mode === "finish") {
         // Solo "Terminar cata": submit the complete ones, drop the unopened,
         // close (lib/closeRules.ts planFinish; community.ts finishSoloSession).
-        const r = await finishSoloSession(session.id);
+        const r = await finishSoloSession(session.id, userId);
         if (!r.ok) {
-          feedback.notifyError(r.error);
+          if (r.error === IDENTITY_CHANGED) {
+            // Either latches (then say so) or is the claim case (page reloads).
+            await onServerIdentityChanged(userId);
+            if (isIdentityChanged()) feedback.notifyError(r.error);
+          } else {
+            feedback.notifyError(r.error);
+          }
           setIsGoingToResults(false);
           return;
         }
       } else {
-        const submitted = await submitAllEvaluations(session.id);
+        const submitted = await submitAllEvaluations(session.id, userId);
         if (!submitted.ok) {
+          if (submitted.error === IDENTITY_CHANGED) {
+            await onServerIdentityChanged(userId);
+            if (isIdentityChanged()) feedback.notifyError("identity_changed");
+            setIsGoingToResults(false);
+            return;
+          }
           // Returned (not thrown) since S8-10: same failure path as before.
           setSubmitError(true);
           setIsGoingToResults(false);
@@ -1629,18 +1765,25 @@ export function CupClient({
   // drops only the active one. Adding on top of an existing reference asks
   // for confirmation first (the old one unlocks, the new one is pinned).
   const REMOVE_ACTIVE = "__remove_active__";
+  // B1: the pin (and so every re-pin confirmation) exists only in anchor mode.
+  const referencePins = shouldPinReference({
+    mode: referenceMode,
+    moduleKey: session.format === "descriptive" ? "descriptive" : session.format === "affective" ? "affective" : "combined",
+    isActiveReference: true,
+  });
   const commitReference = (next: string | null, confirmRepin = false) => {
     if (next && refOrderRef.current.includes(next)) return; // already one: server no-op
     if (!next && refOrderRef.current.length === 0) return;
     // A new reference that already has evaluations asks first (the server
-    // refuses without confirmRepin anyway).
-    if (next && !confirmRepin && (evalCountBySample[next] ?? 0) > 0) {
+    // refuses without confirmRepin anyway). Anchor mode only.
+    if (referencePins && next && !confirmRepin && (evalCountBySample[next] ?? 0) > 0) {
       setRepinTarget(next);
       return;
     }
     // S8-27: dropping the active reference re-pins the earlier one; when
     // cuppers already rated it, ask first (the server refuses otherwise).
-    if (!next && !confirmRepin) {
+    // Anchor mode only.
+    if (referencePins && !next && !confirmRepin) {
       const order = refOrderRef.current;
       const prevId = order.length > 1 ? order[order.length - 2] : null;
       const n = prevId ? (evalCountBySample[prevId] ?? 0) : 0;
@@ -1674,8 +1817,16 @@ export function CupClient({
   // every save, so a stale client cannot move the anchor.
   const affectiveModuleKey: "affective" | "combined" | null =
     session.format === "affective" ? "affective" : session.format === "descriptive" ? null : "combined";
+  // B1: pinned only for the active reference of an ANCHOR session; a "free"
+  // reference is a normal, editable sample for the forms, the tabs and the guards.
+  const isPinnedReference = (sampleId: string): boolean =>
+    shouldPinReference({
+      mode: referenceMode,
+      moduleKey: affectiveModuleKey ?? "descriptive",
+      isActiveReference: sampleId === referenceSampleId,
+    });
   const pinForReference = (s: Sample): Sample =>
-    s.id === referenceSampleId && affectiveModuleKey
+    isPinnedReference(s.id) && affectiveModuleKey
       ? {
           ...s,
           affective: pinReferenceAffective(s.affective, session.cupsPerSample),
@@ -1684,7 +1835,7 @@ export function CupClient({
       : s;
   const viewSamples = samples.map(pinForReference);
   const current = viewSamples[sampleIdx];
-  const isCurrentLocked = current.id === referenceSampleId && affectiveModuleKey !== null;
+  const isCurrentLocked = isPinnedReference(current.id);
   const referenceSample = referenceSampleId
     ? viewSamples.find((s) => s.id === referenceSampleId) ?? null
     : null;
@@ -1699,16 +1850,17 @@ export function CupClient({
     if (sessionStatus === "closed") return;
     const sample = samplesRef.current[sampleIdx];
     if (!sample || sample.id !== referenceSampleId) return;
+    // B1: a "free" reference is scored like any sample: no pinned first-visit save.
+    if (!isPinnedReference(sample.id)) return;
     if (ensuredReferenceRef.current.has(sample.id)) return;
     ensuredReferenceRef.current.add(sample.id);
-    if (!isPinnedModule(affectiveModuleKey)) return;
     scheduleAutoSave(
       sample.id,
       affectiveModuleKey,
       pinReferenceAffective(sample[affectiveModuleKey], session.cupsPerSample),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [referenceSampleId, sampleIdx, affectiveModuleKey, sessionStatus]);
+  }, [referenceSampleId, sampleIdx, affectiveModuleKey, sessionStatus, referenceMode]);
   const currentRefIdx = refOrder.indexOf(current.id);
   const isCurrentReference = currentRefIdx !== -1;
   const referenceBadgeLabel = translations.referenceBadge ?? "Referencia";
@@ -1770,6 +1922,8 @@ export function CupClient({
               // Only reflect the coffee edit locally when the server actually
               // applied it — a non-owned coffee's data was silently skipped.
               coffee: result.coffeeUpdated ? { ...data } : s.coffee,
+              // A9: the prep fields saved with the same call.
+              prep: prepFromForm(data),
             }
           : s
       )
@@ -2356,6 +2510,13 @@ export function CupClient({
         storageUnavailable={storageUnavailable}
         nextRetryAt={nextRetryAt}
       />
+      {translations.offline.bannerNewVersion && translations.offline.reloadNow && (
+        <StaleBundleNotice
+          slot="cup"
+          message={translations.offline.bannerNewVersion}
+          reloadLabel={translations.offline.reloadNow}
+        />
+      )}
       {terminalCount > 0 && translations.offline.terminalNotice && (
         <div
           role="status"
@@ -2371,6 +2532,21 @@ export function CupClient({
             zone={session.closesAtZone ?? null}
             locale={locale}
             translations={translations.deadline}
+          />
+        </div>
+      )}
+      {/* A4: the letters are drawn at random, so the owner (only) gets a
+          collapsed letter -> coffee key. Participants never receive coffee
+          names (cup/page.tsx ships `coffee` to the owner only). */}
+      {isOwner && translations.sampleKey && !notesStage && (
+        <div className="mx-4 mt-3 lg:mx-6">
+          <SampleKey
+            rows={viewSamples.map((s) => ({
+              id: s.id,
+              label: s.label,
+              coffee: s.coffee?.name?.trim() || null,
+            }))}
+            translations={translations.sampleKey}
           />
         </div>
       )}
@@ -2425,10 +2601,12 @@ export function CupClient({
               processType: current.coffee?.processType ?? "",
               altitude: current.coffee?.altitude ?? "",
               roastLevel: current.coffee?.roastLevel ?? "",
+              ...prepToForm(current.prep),
             }}
             onSubmit={handleSaveSampleMetadata}
             onCancel={() => setEditingSample(false)}
             translations={{
+              prep: translations.samplePrep,
               label: translations.sample,
               name: translations.coffeeName,
               country: translations.coffeeCountry,

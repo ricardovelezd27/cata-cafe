@@ -2284,3 +2284,21 @@ COMMIT;
 --   -- (anon had SELECT under the Supabase default; the policy never returned
 --   --  rows to it. Grant it back only if pre-flight (b) listed it.)
 -- ============================================================================
+
+-- ============================================================================
+-- NOTE (S10 WP2, 2026-11-13): COMMENTS ONLY, nothing to apply.
+-- Migration 20261113100000_sample_prep_and_reference_mode added four columns to
+-- session_samples: "roastDate", "preparationNote", "offProtocol",
+-- "offProtocolNote". They can identify a coffee (a roast date or a preparation
+-- note narrows a blind sample down), so they are DELIBERATELY NOT added to the
+-- PHASE 21 column GRANT SELECT on session_samples: like "coffeeId" they are
+-- invisible to the browser key and are read only by Prisma (postgres role)
+-- behind the TypeScript gates (owner, or once the sample is revealed).
+-- A later phase must NOT grant them without a new owner decision, and the
+-- allowed-column list of PHASE 21 stays: id, sessionId, position, label,
+-- revealed, referenceRank, createdAt.
+-- cupping_sessions."referenceMode" (also from that migration) needs nothing:
+-- cupping_sessions has no column grants and no policy reads it.
+-- tests/db/rls.dbtest.ts asserts that selecting "roastDate" as authenticated
+-- fails with 42501.
+-- ============================================================================

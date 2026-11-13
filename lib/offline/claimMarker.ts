@@ -67,7 +67,11 @@ function fresh(at: number, now: number): boolean {
 export type ClaimDecision = {
   /** The anonymous id whose drafts move to `userId`, or null. */
   rekeyFrom: string | null;
-  /** Remove both markers now (re-key done, or the start marker is stale/unreadable). */
+  /** Remove both markers now (stale/unreadable, or the anonymous id IS the user).
+   *  Never set together with `rekeyFrom`: a valid claim keeps its markers until
+   *  they expire (CLAIM_MARKER_TTL_MS), so a stale cup tab that saves under the
+   *  anonymous id AFTER the first re-key is still re-keyed on the next app
+   *  mount, and still recognised as "the same person" (claimedRenderedUser). */
   clear: boolean;
 };
 
@@ -97,7 +101,30 @@ export function decideClaimRekey(input: {
   if (done.anonId !== started.anonId) return { rekeyFrom: null, clear: false };
   if (done.accountId !== userId) return { rekeyFrom: null, clear: false };
   if (started.anonId === userId) return { rekeyFrom: null, clear: true };
-  return { rekeyFrom: started.anonId, clear: true };
+  // Re-keying is idempotent (rekeyUserBlobs finds nothing the second time), so
+  // the markers stay until the TTL: later edits under the anonymous id (a cup
+  // tab still open in another window) are moved by the next app mount.
+  return { rekeyFrom: started.anonId, clear: false };
+}
+
+/**
+ * Was the user a page was RENDERED for (an anonymous guest) claimed by the user
+ * who is signed in NOW? True only when the completion marker, written after the
+ * merge succeeded, says exactly that. Then "device changed user" is a false
+ * alarm: it is the same person, the cup tab just has to re-key its drafts and
+ * reload. Reuses decideClaimRekey so a claim that was started but abandoned, a
+ * stale marker or a different account never qualifies.
+ */
+export function claimedRenderedUser(input: {
+  renderedUserId: string;
+  currentUserId: string;
+  startedRaw: string | null | undefined;
+  doneRaw: string | null | undefined;
+  now: number;
+}): boolean {
+  const { renderedUserId, currentUserId, startedRaw, doneRaw, now } = input;
+  if (renderedUserId === currentUserId) return false;
+  return decideClaimRekey({ startedRaw, doneRaw, userId: currentUserId, now }).rekeyFrom === renderedUserId;
 }
 
 /**

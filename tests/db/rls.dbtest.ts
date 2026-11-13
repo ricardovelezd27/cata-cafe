@@ -114,6 +114,18 @@ describe("RLS as authenticated", () => {
     expect(ok.rows).toHaveLength(1);
   });
 
+  // S10 WP2 / A9: per-sample preparation data can identify a coffee, so the four
+  // columns are owner-only until reveal and never granted to the browser key.
+  it("session_samples roastDate / preparationNote / offProtocol / offProtocolNote are hidden from the API", async () => {
+    const w = await world();
+    for (const col of ['"roastDate"', '"preparationNote"', '"offProtocol"', '"offProtocolNote"']) {
+      await expect(asUser(w.a, (q) => q(`select ${col} from session_samples`))).rejects.toMatchObject({ code: "42501" });
+    }
+    // the granted columns still read
+    const ok = await asUser(w.a, (q) => q('select id, label, "referenceRank" from session_samples'));
+    expect(ok.rows).toHaveLength(1);
+  });
+
   it("coffees and coffee_shares select without a policy recursion (PHASE 24, 42P17)", async () => {
     const w = await world();
     const coffees = await asUser(w.a, (q) => q("select name from coffees order by name"));

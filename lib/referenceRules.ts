@@ -145,6 +145,43 @@ export function isPinnedModule(moduleKey: string): moduleKey is "affective" | "c
   return moduleKey === "affective" || moduleKey === "combined";
 }
 
+// ─── Reference mode (S10 WP2 / B1) ───────────────────────────────────────────
+// "anchor" (default, today's behaviour): the ACTIVE reference is pinned at
+// 5 / 79.00 for everyone, a Café Sensible class exercise, not part of the CVA.
+// "free": everyone scores the reference like any other sample and the others
+// are compared with its average. In BOTH modes references stay out of the
+// ranking, the session average and "best" (lib/reports/ranking.ts anchorsOf).
+// The mode lives on CuppingSession.referenceMode, is fixed once the format is
+// locked, and is NEVER read by scoring, the trigger or AggregateScore.
+// TODO(kim-validar:B1): simulated answer.
+export const REFERENCE_MODES = ["anchor", "free"] as const;
+export type ReferenceMode = (typeof REFERENCE_MODES)[number];
+export const DEFAULT_REFERENCE_MODE: ReferenceMode = "anchor";
+
+/** Normalizes a stored/posted value. Only the exact string "free" lifts the
+ *  pin; anything else (including a legacy or unexpected value) reads as
+ *  "anchor", i.e. today's behaviour (fail closed). */
+export function normalizeReferenceMode(raw: unknown): ReferenceMode {
+  return raw === "free" ? "free" : "anchor";
+}
+
+/** THE predicate every place that pins or locks a reference must use
+ *  (upsertEvaluation, the offline replay, setReferenceSample's re-pin and its
+ *  confirm, the sample-removal re-activation, CupClient's lock/pin/auto-save).
+ *  The pin applies only to the ACTIVE reference, only in anchor mode and only
+ *  for a module that carries affective ratings. */
+export function shouldPinReference(input: {
+  mode: unknown;
+  moduleKey: string;
+  isActiveReference: boolean;
+}): boolean {
+  return (
+    input.isActiveReference &&
+    normalizeReferenceMode(input.mode) === "anchor" &&
+    isPinnedModule(input.moduleKey)
+  );
+}
+
 /** Returns a copy of `data` with every affective `<attr>_final` set to 5 and
  *  the cup arrays cleared (no non-uniform / defective cups, no defect types).
  *  Descriptive fields, notes and everything else are left untouched. */
