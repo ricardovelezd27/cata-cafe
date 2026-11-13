@@ -30,7 +30,8 @@ import { refireAggregates } from "@/lib/aggregates";
 import { reserveEmailBudget } from "@/lib/emailBudget";
 import { countUnsentComplete, isEvaluationComplete, planFinish } from "@/lib/closeRules";
 import { removeSamplesInTx } from "@/lib/sampleRemoval";
-import { recomputeLegacyDraftsInTx } from "@/lib/legacyDrafts";
+import { hasLegacyDrafts, recomputeLegacyDraftsInTx } from "@/lib/legacyDrafts";
+import type { Prisma } from "@/app/generated/prisma/client";
 
 // ─── Submit all draft evaluations for a session ───────────────────────────────
 // S8-10 T11 (F-solo-6): interactive, so ActionResult. A second submit after the
@@ -93,38 +94,48 @@ async function submitAllEvaluationsBody(
   // close or a passed `closesAt` that lands between the guard above and this
   // statement cannot be raced past.
   const now = new Date();
-  // S10 WP1a (review M3): a draft saved before the deploy (cups NULL) is
-  // rewritten under the current rule right before the flip, in the same
-  // transaction, so the trigger fires once with the final values.
-  const rule = await prisma.cuppingSession.findUnique({
-    where: { id: sessionId },
-    select: { format: true, cupsPerSample: true, referenceSampleId: true },
-  });
-  const res = await prisma.$transaction(async (tx) => {
-    if (rule) {
-      await recomputeLegacyDraftsInTx(tx, {
-        sessionId,
-        cupperId: user.id,
-        format: rule.format,
-        cupsPerSample: rule.cupsPerSample,
-        referenceSampleId: rule.referenceSampleId,
-      });
-    }
-    return tx.evaluation.updateMany({
-      where: {
-        isDraft: true,
-        cupperId: user.id,
-        sessionSample: {
-          sessionId,
-          session: {
-            status: { not: "closed" },
-            OR: [{ closesAt: null }, { closesAt: { gte: now } }],
-          },
-        },
+  // S10 WP1a (review M3 / second review H2): a draft saved before the deploy
+  // (cups NULL) is rewritten under the current rule right before the flip. The
+  // lookup runs OUTSIDE any transaction; in the normal case (no legacy draft)
+  // the flip is the plain single updateMany, exactly as before. Only when legacy
+  // drafts exist is a transaction opened (explicit limits, one trigger fire per
+  // row with the final values).
+  const flipWhere = {
+    isDraft: true,
+    cupperId: user.id,
+    sessionSample: {
+      sessionId,
+      session: {
+        status: { not: "closed" },
+        OR: [{ closesAt: null }, { closesAt: { gte: now } }],
       },
-      data: { isDraft: false, submittedAt: now },
-    });
-  });
+    },
+  } satisfies Prisma.EvaluationWhereInput;
+  const flipData = { isDraft: false, submittedAt: now };
+  const legacy = await hasLegacyDrafts(prisma, { sessionId, cupperId: user.id, now });
+  const rule = legacy
+    ? await prisma.cuppingSession.findUnique({
+        where: { id: sessionId },
+        select: { format: true, cupsPerSample: true, referenceSampleId: true },
+      })
+    : null;
+  const res =
+    legacy && rule
+      ? await prisma.$transaction(
+          async (tx) => {
+            await recomputeLegacyDraftsInTx(tx, {
+              sessionId,
+              cupperId: user.id,
+              now,
+              format: rule.format,
+              cupsPerSample: rule.cupsPerSample,
+              referenceSampleId: rule.referenceSampleId,
+            });
+            return tx.evaluation.updateMany({ where: flipWhere, data: flipData });
+          },
+          { maxWait: 10_000, timeout: 30_000 },
+        )
+      : await prisma.evaluation.updateMany({ where: flipWhere, data: flipData });
 
   if (res.count === 0) {
     // Zero rows is normal (double click, nothing left in draft). Only a session
@@ -275,27 +286,33 @@ export async function finishSoloSession(
 
       const now = new Date();
       if (plan.submitIds.length > 0) {
-        // S10 WP1a (review M3): drafts saved before the deploy (cups NULL) are
-        // rewritten under the current rule right before the flip, same transaction.
-        await prisma.$transaction(async (tx) => {
-          await recomputeLegacyDraftsInTx(tx, {
-            sessionId,
-            cupperId: user.id,
-            sampleIds: plan.submitIds,
-            format: session.format,
-            cupsPerSample: session.cupsPerSample,
-            referenceSampleId: session.referenceSampleId,
-          });
-          await tx.evaluation.updateMany({
-            where: {
-              isDraft: true,
-              cupperId: user.id,
-              sessionSampleId: { in: plan.submitIds },
-              sessionSample: { sessionId, session: { status: { not: "closed" } } },
+        // S10 WP1a (review M3 / second review H2): drafts saved before the deploy
+        // (cups NULL) are rewritten under the current rule right before the flip.
+        // Lookup outside any transaction; the plain updateMany when none exist.
+        const flipWhere = {
+          isDraft: true,
+          cupperId: user.id,
+          sessionSampleId: { in: plan.submitIds },
+          sessionSample: { sessionId, session: { status: { not: "closed" } } },
+        } satisfies Prisma.EvaluationWhereInput;
+        const flipData = { isDraft: false, submittedAt: now };
+        const legacyArgs = { sessionId, cupperId: user.id, sampleIds: plan.submitIds, now };
+        if (await hasLegacyDrafts(prisma, legacyArgs)) {
+          await prisma.$transaction(
+            async (tx) => {
+              await recomputeLegacyDraftsInTx(tx, {
+                ...legacyArgs,
+                format: session.format,
+                cupsPerSample: session.cupsPerSample,
+                referenceSampleId: session.referenceSampleId,
+              });
+              await tx.evaluation.updateMany({ where: flipWhere, data: flipData });
             },
-            data: { isDraft: false, submittedAt: now },
-          });
-        });
+            { maxWait: 10_000, timeout: 30_000 },
+          );
+        } else {
+          await prisma.evaluation.updateMany({ where: flipWhere, data: flipData });
+        }
       }
 
       // Only samples that STILL have no evaluation are removed (a concurrent
@@ -823,7 +840,7 @@ export async function setParticipantExclusion(
       });
 
       // Re-fire trg_recompute_aggregate for the whole session (lib/aggregates.ts).
-      await refireAggregates(sessionId);
+      await refireAggregates(sessionId, { mode: "full" }); // deliberate owner change
 
       // A closed session already wrote each cupper's coffee history with the
       // community score of the day; refresh it so the profile does not keep the
@@ -868,7 +885,7 @@ export async function refreshAggregateScores(sessionId: string) {
 
   // S8-04: the refire itself lives in lib/aggregates.ts (shared with the close
   // routine); this action is only the owner-gated wrapper.
-  if (!isSessionExpired(auth)) await refireAggregates(sessionId);
+  if (!isSessionExpired(auth)) await refireAggregates(sessionId, { mode: "full" });
 
   revalidatePath(`/es/app/sessions/${sessionId}/results`);
   revalidatePath(`/en/app/sessions/${sessionId}/results`);
