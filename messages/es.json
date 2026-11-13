@@ -1040,11 +1040,7 @@
       },
       "porCatador": {
         "title": "Análisis por catador",
-<<<<<<< HEAD
-        "body": "Solo visible para el maestro de la sesión: la matriz de puntajes por catador, con un semáforo de tres colores por consenso — verde dentro de 1 desviación estándar de la media de la muestra, amarillo más de 1 DE, rojo 2 o más DE (posible atípico); los catadores excluidos se muestran en gris. Puedes excluir un catador del cálculo grupal; los puntajes se recalculan automáticamente."
-=======
-        "body": "Solo visible para el maestro de la sesión: la matriz de puntajes CVA por catador, con un semáforo de tres colores por consenso — verde dentro de 1 desviación estándar de la media de la muestra, amarillo más de 1 DE, un tono más fuerte a 2 o más DE (lejos del grupo en esa muestra; no es un error, en la cata afectiva las preferencias pueden diferir); los catadores excluidos se muestran en gris. Puedes excluir un catador del cálculo grupal; los puntajes se recalculan automáticamente."
->>>>>>> origin/main
+        "body": "Solo visible para el maestro de la sesión: la matriz de puntajes por catador, con un semáforo de tres colores por consenso — verde dentro de 1 desviación estándar de la media de la muestra, amarillo más de 1 DE, un tono más fuerte a 2 o más DE (lejos del grupo en esa muestra; no es un error, en la cata afectiva las preferencias pueden diferir); los catadores excluidos se muestran en gris. Puedes excluir un catador del cálculo grupal; los puntajes se recalculan automáticamente."
       },
       "filtros": {
         "title": "Filtros de descriptores",

@@ -30,13 +30,9 @@ export type CoffeeFichaModel = {
     sessionsCount: number;
     evaluationsCount: number;
     affective: FichaAffective;
-<<<<<<< HEAD
     /** The coffee's lifetime score lines (S10 WP1c): cups, arithmetic, tally. Numbers only. */
     lifetime: LifetimeLines;
-    sessions: { name: string; date: Date; score: number | null }[];
-=======
     sessions: { name: string; date: Date; score: number | null; originEditedAt?: Date | null }[];
->>>>>>> origin/main
   };
 };
 

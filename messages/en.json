@@ -1040,11 +1040,7 @@
       },
       "porCatador": {
         "title": "Analysis by cupper",
-<<<<<<< HEAD
-        "body": "Visible only to the session owner: the score matrix by cupper, with a three-color consensus semaphore — green within 1 standard deviation of the sample mean, yellow more than 1 SD, red 2+ SD (possible outlier); excluded cuppers are shown in grey. You can exclude a cupper from the group calculation; scores recalculate automatically."
-=======
-        "body": "Visible only to the session owner: the CVA score matrix by cupper, with a three-color consensus semaphore — green within 1 standard deviation of the sample mean, yellow more than 1 SD, a stronger tone at 2+ SD (far from the group on that sample; not an error, in affective cupping preferences can differ); excluded cuppers are shown in grey. You can exclude a cupper from the group calculation; scores recalculate automatically."
->>>>>>> origin/main
+        "body": "Visible only to the session owner: the score matrix by cupper, with a three-color consensus semaphore — green within 1 standard deviation of the sample mean, yellow more than 1 SD, a stronger tone at 2+ SD (far from the group on that sample; not an error, in affective cupping preferences can differ); excluded cuppers are shown in grey. You can exclude a cupper from the group calculation; scores recalculate automatically."
       },
       "filtros": {
         "title": "Descriptor filters",

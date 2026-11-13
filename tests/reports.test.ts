@@ -727,16 +727,10 @@ describe("buildResultsCsv / csvCell (S8-12, F-informes-7)", () => {
     expect(csvLines(out.csv)[0]).toMatch(/^catador,codigo,muestra,.*,excluido,motivo_exclusion,/);
     const coded = buildResultsCsv(src, { locale: "en", names: false, ...base });
     expect(coded.csv).not.toContain(CUPPERS.A.name);
-<<<<<<< HEAD
-    expect(coded.csv).toContain("Muestra REF");
-    expect(coded.csv.split("\n").some((l) => l.startsWith("C1,"))).toBe(true);
-    expect(coded.csv.split("\n")[0]).toContain("cafe_sensible_score");
-=======
     expect(csvLines(coded.csv)[0]).toMatch(/^code,sample,/);
     expect(csvLines(coded.csv)[0]).toContain("excluded");
     expect(csvLines(coded.csv)[0]).not.toContain("exclusion_reason");
-    expect(csvLines(coded.csv)[0]).toContain("cva_score");
->>>>>>> origin/main
+    expect(csvLines(coded.csv)[0]).toContain("cafe_sensible_score");
   });
 
   it("rows follow the sample order, then the CODE: never name, id or join order", () => {
