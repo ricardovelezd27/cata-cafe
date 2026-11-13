@@ -79,7 +79,6 @@ export async function GET(
       isGroup: true,
       status: true,
       closesAt: true,
-      participants: { select: { userId: true } },
     },
   });
   if (!session) return new Response("Not found", { status: 404 });
@@ -92,20 +91,11 @@ export async function GET(
   const viewAsId = isAdminViewer ? session.createdBy : user.id;
 
   if (session.isGroup) {
-    const submittedCuppers = await prisma.evaluation
-      .groupBy({
-        by: ["cupperId"],
-        where: { sessionSample: { sessionId: id }, isDraft: false },
-      })
-      .then((rows) => rows.length);
-    const total = session.participants.length;
-    const allSubmitted = total > 0 && submittedCuppers >= total;
     const sessionExpired = isSessionExpired({ status: "active", closesAt: session.closesAt });
     const canView = canViewGroupResults({
       isGroup: true,
       ownerRead,
       status: session.status,
-      allSubmitted,
       sessionExpired,
     });
     if (!canView) {

@@ -724,7 +724,7 @@
       "chart": "Gráfico"
     },
     "flavorProfiles": "Perfiles de Sabor",
-    "communityPending": "Los resultados grupales aparecerán cuando todos los participantes envíen sus evaluaciones o el maestro cierre la sesión.",
+    "communityPending": "Los resultados del grupo aparecerán cuando el organizador cierre la cata.",
     "sdAria": "Desviación estándar entre catadores — menor es más consenso",
     "referenceBadge": "Referencia",
     "deltaVsReference": "Δ vs. referencia",
@@ -986,7 +986,7 @@
     "radarChart": "Perfil sensorial grupal",
     "myScore": "Mi puntaje",
     "delta": "Diferencia vs. comunidad",
-    "noGroupData": "Los resultados grupales aparecen cuando los participantes envíen sus evaluaciones."
+    "noGroupData": "Los resultados del grupo aparecen cuando el organizador cierra la cata."
   },
   "history": {
     "title": "Historial de cafés",

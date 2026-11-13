@@ -84,20 +84,28 @@ export function isSessionClosed(row: { status: string }): boolean {
 
 /** Whether group-level (community) results may be shown to this viewer:
  *  group sessions only, and then to the owner (or admin viewer) at any time,
- *  otherwise once the session is closed, every participant has submitted, or
- *  its `closesAt` has passed. Single source for results/page.tsx and the
- *  report routes (lib/reports/*) so a PDF can never reveal what the page hides. */
+ *  otherwise only once the session is closed or its `closesAt` has passed.
+ *  S10 WP4a (Kim C5): "everyone has submitted" no longer opens them, because
+ *  seeing the group biases a cupper and spoils a self-paced session for whoever
+ *  has not cupped yet. TODO(kim-validar:C5). Single source for results/page.tsx
+ *  and the report routes (lib/reports/*) so a PDF can never reveal what the
+ *  page hides. SQL twin: public.can_view_group_results (PHASE 28). */
 export function canViewGroupResults(input: {
   isGroup: boolean;
   ownerRead: boolean;
   status: string;
-  allSubmitted: boolean;
   sessionExpired: boolean;
 }): boolean {
-  return (
-    input.isGroup &&
-    (input.ownerRead || input.status === "closed" || input.allSubmitted || input.sessionExpired)
-  );
+  return input.isGroup && (input.ownerRead || input.status === "closed" || input.sessionExpired);
+}
+
+/** Whether `updateSession` may change ANYTHING on this session (S10 WP4a, Kim
+ *  C9: once the closing date has passed the session is closed for date changes
+ *  too, nothing reopens it). Closed OR expired on the server clock is refused.
+ *  `planClosesAtChange` keeps its own rules for sessions that are still open.
+ *  TODO(kim-validar:C9). Pure. */
+export function canEditSessionSettings(row: ExpiryRow, now: Date | number = Date.now()): boolean {
+  return !isSessionExpired(row, now);
 }
 
 /** Editing `closesAt` after creation (S6 CP-C3 / S5 item 9; zone-aware since

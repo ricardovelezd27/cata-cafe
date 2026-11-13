@@ -192,7 +192,10 @@ export default async function CupPage({
         },
       }}
       participantCount={session.participants.length}
-      submittedCount={submittedProgress.done}
+      // S10 WP4a (Kim C5): how many cuppers have submitted is group information,
+      // so only the owner receives it (participants never rendered it, now the
+      // payload does not carry it either).
+      submittedCount={isOwner ? submittedProgress.done : 0}
       // Only the owner sees peers' rows (RLS) and renders the live counter.
       submittedRows={isOwner ? submittedRows : []}
       evalCountBySample={evalCountBySample}

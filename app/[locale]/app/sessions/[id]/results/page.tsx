@@ -159,7 +159,6 @@ export default async function ResultsPage({
     tBlocks(blockId as Parameters<typeof tBlocks>[0]);
 
   const totalParticipants = session.participants.length;
-  const allSubmitted = totalParticipants > 0 && submittedCupperCount >= totalParticipants;
   const sessionExpired = isSessionExpired({ status: "active", closesAt: session.closesAt });
   // Closed OR past its deadline: no more cupping, no more drafts to finish.
   const sessionOver = isSessionExpired(session);
@@ -167,7 +166,6 @@ export default async function ResultsPage({
     isGroup: session.isGroup,
     ownerRead,
     status: session.status,
-    allSubmitted,
     sessionExpired,
   });
 
@@ -476,9 +474,12 @@ export default async function ResultsPage({
   // have submitted (synced) than the participant roster, surface how many are
   // missing. computeGroupAggregate already excludes incomplete evals, so this is
   // an explicit "X of Y" denominator, not a recompute.
+  // S10 WP4a (Kim C5): a count of who has submitted is group information, so it
+  // only leaves the server for a viewer who may see group results (the owner
+  // always, everyone else once the session is closed or expired).
   const pendingParticipants = Math.max(0, totalParticipants - submittedCupperCount);
   const partialSyncNotice =
-    session.isGroup && pendingParticipants > 0
+    session.isGroup && canViewGroup && pendingParticipants > 0
       ? tOffline("partialSyncNotice", {
           included: submittedCupperCount,
           total: totalParticipants,
@@ -541,7 +542,7 @@ export default async function ResultsPage({
   // `summary["general"]` entries computeSampleBlockFrequencies now always adds.
   blockLabels.general = tBlocks("general");
 
-  const participation = session.isGroup
+  const participation = session.isGroup && canViewGroup
     ? { submitted: submittedCupperCount, total: totalParticipants }
     : null;
 
@@ -669,7 +670,7 @@ export default async function ResultsPage({
         }),
       })
     : null;
-  const participationLabel = session.isGroup
+  const participationLabel = session.isGroup && canViewGroup
     ? tResults("participation", {
         submitted: submittedCupperCount,
         total: totalParticipants,

@@ -724,7 +724,7 @@
       "chart": "Chart"
     },
     "flavorProfiles": "Flavor Profiles",
-    "communityPending": "Group results will appear once all participants submit their evaluations or the session master closes the session.",
+    "communityPending": "Group results will appear once the organizer closes the cupping.",
     "sdAria": "Standard deviation across cuppers — lower means more consensus",
     "referenceBadge": "Reference",
     "deltaVsReference": "Δ vs. reference",
@@ -986,7 +986,7 @@
     "radarChart": "Group sensory profile",
     "myScore": "My score",
     "delta": "Difference vs. community",
-    "noGroupData": "Group results appear once participants submit their evaluations."
+    "noGroupData": "Group results appear once the organizer closes the cupping."
   },
   "history": {
     "title": "Coffee history",

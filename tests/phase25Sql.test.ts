@@ -26,7 +26,17 @@ function stripComments(sql: string): string {
     .join("\n");
 }
 
-const phase25 = SQL.slice(SQL.indexOf("-- PHASE 25"));
+/** The text of one phase: from its own header up to the NEXT `-- PHASE <n>` header
+ *  of any number (later phases may land in any order), or the end of the file. */
+function phaseText(sql: string, n: number): string {
+  const start = sql.indexOf(`-- PHASE ${n} `);
+  expect(start).toBeGreaterThan(-1);
+  const rest = sql.slice(start + 1);
+  const next = rest.search(/\n-- PHASE \d+/);
+  return next === -1 ? sql.slice(start) : sql.slice(start, start + 1 + next);
+}
+
+const phase25 = phaseText(SQL, 25);
 
 const block = (s: string, start: string, end: string) => {
   const a = s.indexOf(start);
@@ -40,7 +50,7 @@ describe("PHASE 25: session_participants exclusion metadata hidden from the API"
   const stmts = block(phase25, ">>> PHASE 25 statements", "<<< end of PHASE 25 statements");
   const exec = stripComments(stmts).replace(/\s+/g, " ");
 
-  it("is the last phase and exists once", () => {
+  it("exists once, after PHASE 24 (later phases may follow)", () => {
     expect(SQL.match(/-- PHASE 25 /g)?.length).toBe(1);
     expect(SQL.indexOf("-- PHASE 25")).toBeGreaterThan(SQL.indexOf("-- PHASE 24"));
   });
@@ -104,7 +114,7 @@ describe("PHASE 25: session_participants exclusion metadata hidden from the API"
 describe("phase25_dry_run.sql", () => {
   it("runs exactly the PHASE 25 statements", () => {
     expect(block(DRY, ">>> PHASE 25 statements", "<<< end of PHASE 25 statements")).toBe(
-      block(SQL.slice(SQL.indexOf("-- PHASE 25")), ">>> PHASE 25 statements", "<<< end of PHASE 25 statements"),
+      block(phase25, ">>> PHASE 25 statements", "<<< end of PHASE 25 statements"),
     );
   });
 
