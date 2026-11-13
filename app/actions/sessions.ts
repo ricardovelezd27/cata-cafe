@@ -1,5 +1,6 @@
 "use server";
 
+import { originFieldsChanged } from "@/lib/coffeeOrigin";
 import { randomInt } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -1792,7 +1793,20 @@ export async function updateSampleMetadata(
       sessionId: true,
       coffeeId: true,
       offProtocol: true,
-      coffee: { select: { createdBy: true, deletedAt: true } },
+      coffee: {
+        select: {
+          createdBy: true,
+          deletedAt: true,
+          country: true,
+          region: true,
+          farm: true,
+          producer: true,
+          variety: true,
+          processType: true,
+          altitude: true,
+          roastLevel: true,
+        },
+      },
       // closesAt: assertSessionWritable is expiry-aware (S8-22 A-05), so a
       // label edit stops at the deadline, not at the next 06:00 UTC cron.
       session: { select: { createdBy: true, status: true, closesAt: true } },
@@ -1855,7 +1869,11 @@ export async function updateSampleMetadata(
       if (Object.keys(coffeeData).length > 0) {
         await prisma.coffee.update({
           where: { id: sample.coffeeId },
-          data: coffeeData,
+          data: {
+            ...coffeeData,
+            // F-cafes-9: stamp the origin edit only when an origin field really changed.
+            ...(originFieldsChanged(sample.coffee, coffeeData) ? { originEditedAt: new Date() } : {}),
+          },
         });
       }
       coffeeUpdated = true;

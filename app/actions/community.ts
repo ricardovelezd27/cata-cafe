@@ -25,7 +25,7 @@ import { notifyGroupOfSession } from "@/app/actions/groups";
 import { run } from "@/lib/safeAction";
 import { logWarn } from "@/lib/log";
 import { syncCoffeeHistoryForSession } from "@/lib/coffeeHistory";
-import { EXCLUSION_REASONS, exclusionData } from "@/lib/exclusionReasons";
+import { encodeExclusionReason, exclusionData } from "@/lib/exclusionReasons";
 import type { ActionResult } from "@/lib/actionResult";
 import { refireAggregates } from "@/lib/aggregates";
 import { reserveEmailBudget } from "@/lib/emailBudget";
@@ -824,6 +824,8 @@ export async function setParticipantExclusion(
   participantUserId: string,
   excluded: boolean,
   reason?: string,
+  // Required (1..120 chars) when `reason` is "other"; ignored otherwise.
+  reasonText?: string,
 ): Promise<ActionResult<{ excluded: boolean }>> {
   return run(
     "setParticipantExclusion",
@@ -835,7 +837,9 @@ export async function setParticipantExclusion(
       // change is traceable, and the results page says "actualizados el".
       const auth = await requireSessionOwner(sessionId, user.id);
       const nextExcluded = excluded === true;
-      const nextReason = nextExcluded ? v.oneOf(reason, "reason", EXCLUSION_REASONS) : null;
+      // TODO(kim-validar:D2): fixed list + free text for "other", stored as
+      // "other:<text>" in the existing text column (no schema change).
+      const nextReason = nextExcluded ? encodeExclusionReason(reason, reasonText) : null;
       const target = v.str(participantUserId, "participantUserId", { max: 64 }) as string;
 
       await prisma.sessionParticipant.update({

@@ -944,7 +944,7 @@
       "matrixTitle": "Resumen de puntajes CVA",
       "legendGreen": "≤ 1 DE de la media (consenso)",
       "legendAmber": "> 1 DE de la media",
-      "legendRed": "≥ 2 DE (posible atípico)",
+      "legendRed": "Lejos del grupo en esta muestra (2 DE o más). No es un error: en la cata afectiva las preferencias pueden diferir.",
       "noScore": "—",
       "sdHeader": "DE",
       "manageTitle": "Participantes en el cálculo grupal",
@@ -955,15 +955,20 @@
       "ownerSection": "Análisis por catador",
       "includedCount": "{n} de {total} catadores incluidos en los resultados",
       "excludeDialogTitle": "Excluir del grupo",
-      "excludeDialogBody": "Sus evaluaciones dejan de contar en el promedio del grupo, la dispersión y los gráficos. El catador sigue viendo sus propios resultados. Queda registrado quién lo excluyó, cuándo y por qué.",
+      "excludeDialogBody": "Sus evaluaciones dejan de contar en el promedio del grupo, la dispersión y los gráficos. El catador sigue viendo sus propios resultados, con una nota privada que le dice el motivo. Queda registrado quién lo excluyó, cuándo y por qué.",
+      "closedNote": "Los resúmenes que ya se enviaron tenían el número anterior.",
+      "excludeOtherLabel": "Explica el motivo (máximo 120 caracteres)",
       "oldRuleNote": "Esta cata se puntuó con la regla anterior. Al excluir o incluir a alguien, sus muestras se recalculan con la regla actual.",
       "excludeReasonLabel": "Motivo",
       "excludeConfirm": "Excluir",
       "dialogCancel": "Cancelar",
       "dialogClose": "Cerrar",
       "exclusionReasons": {
-        "sample_error": "Error de muestra",
-        "protocol": "No siguió el protocolo",
+        "sample_error": "Muestra equivocada",
+        "protocol": "No se siguió el protocolo (tueste, molienda, agua)",
+        "incomplete": "Cata incompleta",
+        "not_fit": "No estaba en condiciones de catar",
+        "test_duplicate": "Prueba o duplicado",
         "calibration": "Calibración distinta",
         "other": "Otro motivo"
       },
@@ -1045,7 +1050,7 @@
       },
       "porCatador": {
         "title": "Análisis por catador",
-        "body": "Solo visible para el maestro de la sesión: la matriz de puntajes CVA por catador, con un semáforo de tres colores por consenso — verde dentro de 1 desviación estándar de la media de la muestra, amarillo más de 1 DE, rojo 2 o más DE (posible atípico); los catadores excluidos se muestran en gris. Puedes excluir un catador del cálculo grupal; los puntajes se recalculan automáticamente."
+        "body": "Solo visible para el maestro de la sesión: la matriz de puntajes CVA por catador, con un semáforo de tres colores por consenso — verde dentro de 1 desviación estándar de la media de la muestra, amarillo más de 1 DE, un tono más fuerte a 2 o más DE (lejos del grupo en esa muestra; no es un error, en la cata afectiva las preferencias pueden diferir); los catadores excluidos se muestran en gris. Puedes excluir un catador del cálculo grupal; los puntajes se recalculan automáticamente."
       },
       "filtros": {
         "title": "Filtros de descriptores",
@@ -1078,7 +1083,10 @@
       "requiresAffective": "El gráfico radar requiere datos afectivos (formato afectivo o combinado)"
     },
     "updatedAfterClose": "Resultados actualizados el {date}, después del cierre.",
-    "originEditedAt": "Origen editado el {date}",
+    "originEditedAt": "Datos de origen editados el {date}",
+    "exclusionNotice": "El organizador dejó tu evaluación fuera del resultado del grupo ({reason}). Tus propios resultados no cambian.",
+    "exclusionNoticeNoReason": "El organizador dejó tu evaluación fuera del resultado del grupo. Tus propios resultados no cambian.",
+    "downloadCsvNoNames": "CSV sin nombres",
     "downloadCsv": "Datos por catador (CSV)",
     "needsConnection": "Necesita conexión",
     "closedUnsentNotice": "Tenías {count, plural, one {# muestra completa} other {# muestras completas}} sin enviar cuando se cerró la cata. No cuentan en los resultados.",
@@ -1193,6 +1201,7 @@
     "attrAveragesTitle": "Promedios por atributo",
     "flavorsTitle": "Sabores reportados",
     "sessionsListTitle": "Apariciones en sesiones",
+    "originEditedNote": "Datos de origen editados el {date}",
     "noResults": "Aún no hay catas enviadas para este café.",
     "adminBadge": "Modo administrador — acceso total",
     "adminOwnerPrefix": "Dueño:",
@@ -1215,7 +1224,7 @@
       "partial": "{skipped} no se eliminaron: no son tuyos o ya no existen."
     },
     "editTitle": "Editar café",
-    "editSubtitle": "Actualiza los datos de este café. Los cambios se reflejan en todas sus sesiones.",
+    "editSubtitle": "Actualiza los datos de este café. Los cambios se reflejan en todas sus sesiones, también en las ya cerradas, con la nota «editado».",
     "saveChanges": "Guardar cambios",
     "savingChanges": "Guardando…",
     "updateError": "No se pudo guardar el café. Inténtalo de nuevo.",
@@ -1247,7 +1256,8 @@
       "creating": "Creando…",
       "nameRequired": "El nombre es obligatorio.",
       "error": "No se pudo crear el café. Inténtalo de nuevo.",
-      "conflict": "Este café cambió en otro lugar desde que lo abriste. Recarga la página para ver la última versión antes de guardar."
+      "conflict": "Este café cambió en otro dispositivo. Recarga para ver la versión actual.",
+      "conflictReload": "Recargar"
     },
     "share": {
       "title": "Compartir café",
@@ -1900,6 +1910,8 @@
     "emailPlaceholder": "correo@ejemplo.com",
     "displayNamePlaceholder": "Nombre (opcional)",
     "unregistered": "Sin cuenta todavía",
+    "pendingInvite": "Invitación pendiente",
+    "memberLabel": "Miembro",
     "removeMember": "Quitar",
     "composeEmail": "Enviar correo al grupo",
     "subject": "Asunto",

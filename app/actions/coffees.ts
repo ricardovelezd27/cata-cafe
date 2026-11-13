@@ -14,6 +14,7 @@ import { normalizeCoffeeFields, isStaleCoffeeEdit } from "@/lib/coffeeInputBound
 import { CERTIFICATIONS } from "@/lib/constants";
 import { anonymizeOwnedCoffees } from "@/lib/coffees/anonymize";
 import { duplicableFields } from "@/lib/coffeeDuplicate";
+import { COFFEE_ORIGIN_FIELDS, originFieldsChanged } from "@/lib/coffeeOrigin";
 import { coffeeInviteExpiry, isCoffeeInviteUsable } from "@/lib/coffeeInvite";
 import {
   isCoffeeVisibility,
@@ -215,15 +216,22 @@ export async function updateCoffee(
     roastLevel?: string;
     certifications?: string[];
     notes?: string;
-    /** ISO `updatedAt` the form loaded with. When it no longer matches, the
-     *  coffee changed elsewhere (another tab, a session rename): refuse with
-     *  `conflict` instead of silently overwriting it (F-cafes-9). */
-    expectedUpdatedAt?: string;
+    /** ISO `updatedAt` the form loaded with (REQUIRED: the edit form is the only
+     *  caller). When it no longer matches, the coffee changed elsewhere (another
+     *  tab, a session rename): refuse with `conflict` instead of silently
+     *  overwriting it (F-cafes-9). The write itself is guarded by it (atomic). */
+    expectedUpdatedAt: string;
   },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const result = await run("updateCoffee", () => updateCoffeeBody(coffeeId, input), { coffeeId });
   return result.ok ? result.data : { ok: false, error: result.error };
 }
+
+/** The origin fields read before a coffee edit (lib/coffeeOrigin.ts). */
+const ORIGIN_SELECT = Object.fromEntries(COFFEE_ORIGIN_FIELDS.map((f) => [f, true])) as Record<
+  (typeof COFFEE_ORIGIN_FIELDS)[number],
+  true
+>;
 
 async function updateCoffeeBody(
   coffeeId: string,
@@ -231,10 +239,13 @@ async function updateCoffeeBody(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const user = await requireRegisteredUser();
 
+  // A missing precondition is a malformed call, never an unchecked overwrite.
+  if (typeof input.expectedUpdatedAt !== "string") throw new Error("invalid_input");
+
   // deletedAt filter: an anonymized coffee must never be re-identified.
   const coffee = await prisma.coffee.findFirst({
     where: { id: coffeeId, deletedAt: null },
-    select: { createdBy: true, updatedAt: true },
+    select: { createdBy: true, updatedAt: true, ...ORIGIN_SELECT },
   });
   if (!coffee || coffee.createdBy !== user.id) {
     throw new Error("not_found_or_forbidden");
@@ -247,10 +258,24 @@ async function updateCoffeeBody(
   const fields = normalizeCoffeeFields(input, "update", CERTIFICATIONS);
   if (!fields.ok) return { ok: false, error: fields.error };
 
-  await prisma.coffee.update({
-    where: { id: coffeeId },
-    data: fields.value,
+  // F-cafes-9: stamp the origin edit ONLY when an origin field really changed.
+  const originChanged = originFieldsChanged(coffee, fields.value);
+
+  // ONE atomic write guarded by the version the form loaded: a second save from
+  // the same loaded version matches no row (L1). Count 0 = someone got there first
+  // (or the coffee vanished): re-read to tell conflict from not-found.
+  const { count } = await prisma.coffee.updateMany({
+    where: { id: coffeeId, createdBy: user.id, deletedAt: null, updatedAt: coffee.updatedAt },
+    data: { ...fields.value, ...(originChanged ? { originEditedAt: new Date() } : {}) },
   });
+  if (count === 0) {
+    const again = await prisma.coffee.findFirst({
+      where: { id: coffeeId, deletedAt: null },
+      select: { createdBy: true },
+    });
+    if (!again || again.createdBy !== user.id) throw new Error("not_found_or_forbidden");
+    return { ok: false, error: "conflict" };
+  }
 
   revalidatePath("/es/app/coffees");
   revalidatePath("/en/app/coffees");

@@ -1099,6 +1099,7 @@ export type CvaDocumentProps = {
     combined: Record<string, unknown>;
     physical: Record<string, unknown>;
     extrinsic: Record<string, unknown>;
+    originEditedAt?: string | null;
   }[];
 };
 

@@ -75,6 +75,8 @@ type MatrixTranslations = {
   excludeDialogBody: string;
   oldRuleNote: string | null;
   excludeReasonLabel: string;
+  excludeOtherLabel: string;
+  closedNote: string | null;
   excludeConfirm: string;
   dialogCancel: string;
   dialogClose: string;
@@ -149,6 +151,7 @@ export function ResultsClient({
   sessionClosed,
   closedOnLabel = null,
   updatedAfterCloseLabel = null,
+  exclusionNotice = null,
   closeEmails = null,
   currentUserId,
   participationLabel,
@@ -204,6 +207,8 @@ export function ResultsClient({
   // "Resultados actualizados el <fecha>" — set only when group results changed
   // after the close (S8-12).
   updatedAfterCloseLabel?: string | null;
+  // The signed-in cupper's OWN exclusion notice (S10 WP5a, D2); never anyone else's.
+  exclusionNotice?: string | null;
   // Owner-only, closed group sessions: pre-formatted close-email summary line
   // + whether the resend action should show (failed or pending recipients).
   closeEmails?: { line: string; showResend: boolean } | null;
@@ -281,6 +286,7 @@ export function ResultsClient({
     downloadSummary: string;
     downloadFicha: string;
     downloadCsv: string;
+    downloadCsvNoNames: string;
     needsConnection: string;
     refresh: string;
     refreshing: string;
@@ -863,6 +869,14 @@ export function ResultsClient({
           </div>
         )}
 
+        {exclusionNotice && (
+          <div className="px-4 pb-2">
+            <p role="status" className="rounded-card border border-outline-variant bg-surface-container px-3 py-2 text-xs text-on-surface-variant">
+              {exclusionNotice}
+            </p>
+          </div>
+        )}
+
         {canViewGroup && (participationLabel || lastUpdatedLabel) && (
           <div className="flex gap-3 overflow-hidden whitespace-nowrap px-4 pb-2 text-[10px] tabular-nums text-on-surface-variant">
             {participationLabel && <span>{participationLabel}</span>}
@@ -1314,6 +1328,20 @@ export function ResultsClient({
               >
                 {translations.downloadCsv}
               </ButtonLink>
+            )}
+            {/* S10 WP5a (D5): same data, codes instead of names, safe to share. */}
+            {(isOwner || isAdminViewer) && (
+              <ReportLink
+                href={`/api/sessions/${session.id}/results-csv?locale=${locale}&names=0`}
+                filename={locale === "en" ? "results-no-names.csv" : "resultados-sin-nombres.csv"}
+                offlineLabel={translations.needsConnection}
+                size="md"
+                variant="secondary"
+                icon={<FileDown size={16} aria-hidden />}
+                className="w-full sm:flex-1"
+              >
+                {translations.downloadCsvNoNames}
+              </ReportLink>
             )}
           </div>
         </div>

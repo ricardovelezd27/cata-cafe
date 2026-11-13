@@ -61,6 +61,7 @@ export default async function EditCoffeePage({
     // edit-specific failure copy (create flow uses newPage.error instead)
     error: t("updateError"),
     conflict: t("newPage.conflict"),
+    conflictReload: t("newPage.conflictReload"),
   };
 
   const countries = COFFEE_COUNTRIES.map((c) => (locale === "en" ? c.nameEn : c.nameEs));
