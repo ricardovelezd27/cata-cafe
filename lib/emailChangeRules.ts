@@ -73,7 +73,34 @@ export function appMetadataClearingEmailChange(): Record<string, unknown> {
   return { [EMAIL_CHANGE_KEY]: null };
 }
 
-export type ReconcileAction = "move" | "clear" | "keep";
+/**
+ * Is the `email_change` record in `after` the one the decision was made on
+ * (`before`)? Compared by value: same normalised `from` and `to` when both are
+ * usable records; otherwise the two raw values must be deeply equal (an unusable
+ * record that did not change is the same one). A missing record is never the
+ * same. Used to re-check right before clearing (a new request may have
+ * overwritten the record since it was read).
+ */
+export function sameEmailChangeRecord(
+  before: Record<string, unknown> | null | undefined,
+  after: Record<string, unknown> | null | undefined,
+): boolean {
+  const a = before?.[EMAIL_CHANGE_KEY];
+  const b = after?.[EMAIL_CHANGE_KEY];
+  if (a === null || a === undefined || b === null || b === undefined) return false;
+  const pa = a as { from?: unknown; to?: unknown };
+  const pb = b as { from?: unknown; to?: unknown };
+  const usable = (r: { from?: unknown; to?: unknown }) => typeof r.from === "string" && typeof r.to === "string";
+  if (typeof a === "object" && typeof b === "object" && usable(pa) && usable(pb)) {
+    return (
+      normalizeAddress(pa.from as string) === normalizeAddress(pb.from as string) &&
+      normalizeAddress(pa.to as string) === normalizeAddress(pb.to as string)
+    );
+  }
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+export type ReconcileAction ="move" | "clear" | "keep";
 
 /**
  * What the nightly reconcile pass (lib/emailChangeReconcile.ts) does with ONE

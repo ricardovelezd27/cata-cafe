@@ -120,7 +120,7 @@ import { IDENTITY_CHANGED } from "@/lib/expectedUser";
 import { isIdentityChanged, onIdentityChanged, registerBeforeIdentityReload } from "@/lib/identityChange";
 import { onServerIdentityChanged } from "@/lib/identityResolve";
 import { awaitClaimRekey } from "@/lib/offline/claimRekey";
-import { shouldKickReplayAfterRekey } from "@/lib/offline/claimMarker";
+import { nextRekeyKick } from "@/lib/offline/claimMarker";
 import { SyncConflictModal } from "@/components/offline/SyncConflictModal";
 import {
   mergeModuleData,
@@ -1024,9 +1024,10 @@ export function CupClient({
       // hook's mount replay may have read the store before that, and the
       // provider's re-key finds nothing left to move. ONE replay now (offline
       // it is a no-op; the guard is a pure rule, once per page).
-      if (!cancelled && shouldKickReplayAfterRekey(movedByRekey, rekeyReplayKickedRef.current)) {
-        rekeyReplayKickedRef.current = true;
-        void retrySyncRef.current();
+      if (!cancelled) {
+        const next = nextRekeyKick(movedByRekey, rekeyReplayKickedRef.current);
+        rekeyReplayKickedRef.current = next.kicked;
+        if (next.kick) void retrySyncRef.current();
       }
     })();
     return () => {

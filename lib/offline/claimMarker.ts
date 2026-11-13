@@ -147,6 +147,17 @@ export function shouldKickReplayAfterRekey(moved: number, alreadyKicked: boolean
 }
 
 /**
+ * The "mark as kicked, then kick" pair as ONE value (S10 leftovers C2): returns
+ * the next value of the once-per-page flag and whether to kick now. The caller
+ * stores `kicked` back in its ref and kicks when `kick` is true, so removing the
+ * store cannot go unnoticed by a test of this function's contract.
+ */
+export function nextRekeyKick(moved: number, alreadyKicked: boolean): { kicked: boolean; kick: boolean } {
+  const kick = shouldKickReplayAfterRekey(moved, alreadyKicked);
+  return { kicked: alreadyKicked || kick, kick };
+}
+
+/**
  * Which claim markers a device-state clear removes (S9-01, C-08). A plain
  * sign-out drops both: a pending hand-over must not outlive it. The "Usar otra
  * cuenta" path of an IN-PROGRESS claim keeps the start marker (CLAIM_ANON_KEY),

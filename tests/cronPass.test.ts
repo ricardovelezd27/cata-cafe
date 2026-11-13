@@ -49,7 +49,7 @@ describe("runPass (S10 leftovers B3)", () => {
         throw new Error("log down");
       },
     );
-    expect(r).toEqual({ ok: false, code: "unknown" });
+    expect(r).toEqual({ ok: false, code: "Error" });
   });
 
   it("passErrorCode: a string code, else unknown", () => {

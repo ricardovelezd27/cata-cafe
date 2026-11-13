@@ -46,7 +46,7 @@ import { purgeEmailLedger } from "@/lib/emailBudget";
 import { closeIdleLiveSessions, emptyIdleCloseSummary } from "@/lib/idleClose";
 import { purgeUnusedAccounts, type UnusedAccountSummary } from "@/lib/unusedAccountPurge";
 import { isUnusedAccountPurgeEnabled } from "@/lib/features";
-import { runPass } from "@/lib/cronPass";
+import { cronStatus, runPass } from "@/lib/cronPass";
 import { reconcileEmailChanges, emptyReconcileSummary } from "@/lib/emailChangeReconcile";
 import { sendDeadlineReminders, sendLiveIdleReminders } from "@/lib/reminderEmail";
 
@@ -206,8 +206,18 @@ export async function GET(request: Request) {
   // runs whether or not the purge switch is on, and it runs BEFORE the unused
   // account pass so a reservation that is about to be moved is never taken for
   // an orphan. Counts only in the summary.
-  const reconcilePass = await runPass("cron.emailChangeReconcile", () => reconcileEmailChanges(), passFailed);
-  const emailChangeReconcile = reconcilePass.ok ? reconcilePass.value : { ...emptyReconcileSummary(), error: reconcilePass.code };
+  // It respects the same start budget as the closes: not started when spent
+  // (`emailChangeReconcileSkipped`), and it stops between accounts.
+  const emailChangeReconcileSkipped = !mayStart();
+  const reconcilePass = emailChangeReconcileSkipped
+    ? null
+    : await runPass("cron.emailChangeReconcile", () => reconcileEmailChanges(undefined, { mayStart }), passFailed);
+  const reconcileFailed = reconcilePass !== null && !reconcilePass.ok;
+  const emailChangeReconcile =
+    reconcilePass === null || reconcilePass.ok
+      ? (reconcilePass?.value ?? emptyReconcileSummary())
+      : { ...emptyReconcileSummary(), error: reconcilePass.code };
+  if (emailChangeReconcileSkipped) logWarn({ where: "cron.emailChangeReconcile", message: "time budget spent, pass skipped" });
 
   // Housekeeping (S8-28 A-03): the throttle/attempt ledger grows with every
   // login attempt; drop rows older than the longest rule window. Never fails the run.
@@ -234,10 +244,17 @@ export async function GET(request: Request) {
     unusedAccounts = { error: safe, enabled: unusedEnabled };
   }
 
+  // Honest status: a failed deadline-close or repair pass makes the run RED (500,
+  // ok false) so the cron shows it, but everything above and below still ran and
+  // the full summary is returned. Best-effort passes keep 200 with their flag.
+  const status = cronStatus({ closeFailed, repairFailed, remindersFailed, idlePassFailed, reconcileFailed });
+
   return NextResponse.json({
-    ok: true,
+    ok: status.ok,
     ledgerPurged,
     emailChangeReconcile,
+    emailChangeReconcileSkipped,
+    reconcileFailed,
     unusedAccounts,
     // true when that whole pass threw (its cause is in the logs, code only); the
     // passes after it still ran (S10 leftovers B3)
@@ -262,5 +279,5 @@ export async function GET(request: Request) {
     idleResults: idle.results,
     reminders,
     repair: { owed: owed.length, budgetTruncated: repairBudgetTruncated, stillUnfinalized, finalized: repairs.filter((r) => r.finalized).length, results: repairs, truncated: repairTruncated },
-  });
+  }, { status: status.httpStatus });
 }
