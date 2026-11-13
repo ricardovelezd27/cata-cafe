@@ -1,7 +1,6 @@
 export { IntensitySlider } from './IntensitySlider'
 export { AffectiveBubbles } from './AffectiveBubbles'
 export { CATAPills } from './CATAPills'
-export { ScoreDisplay } from './ScoreDisplay'
 
 // Cupping shell primitives (Phase 3)
 export { SessionShell } from './SessionShell'

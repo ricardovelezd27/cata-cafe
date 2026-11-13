@@ -38,6 +38,30 @@ describe("writeEvaluationOrdered", () => {
     expect(rating(e)).toBe(6);
   });
 
+  it("stores the per-cup defect types (S10 WP1b): an untyped flagged cup stays defective, columns derived", async () => {
+    const { owner, sessionId, sampleId } = await setup();
+    const f = computeEvaluationDerived(
+      "affective",
+      {
+        ...affectiveData(6),
+        tazas_defectuosas: [true, true, false],
+        tazas_no_uniformes: [false, false, false],
+        tazas_defecto_tipo: ["phenolic", null, "moldy"],
+      },
+      3,
+    );
+    const r = await writeEvaluationOrdered(db, { sessionSampleId: sampleId, sessionId, cupperId: owner, fields: f });
+    expect(r.applied).toBe(true);
+    const e = await row(sampleId, owner);
+    expect(e.defectiveCups).toEqual([true, true, false]);
+    expect(e.nonUniformCups).toEqual([true, true, false]);
+    expect(e.defectTypes).toEqual(["phenolic"]);
+    expect((e.affectiveData as Record<string, unknown>).tazas_defecto_tipo).toEqual(["phenolic", null, null]);
+    // 6 x 8 attributes: 0.65625 x 48 + 52.75 = 84.25; minus 2 x 4 (defects) and 2 x 2 (non-uniform)
+    expect(e.individualScore).toBe(72.25);
+    expect(e.cups).toBe(3);
+  });
+
   it("an older clientTs arriving after a newer one is ignored", async () => {
     const { owner, sessionId, sampleId } = await setup();
     const older = Date.now() - 60_000;

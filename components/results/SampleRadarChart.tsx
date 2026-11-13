@@ -269,6 +269,7 @@ export function SampleRadarChart({
         <ScoreBreakdownPanel
           variant="individual"
           breakdown={calcIndividualBreakdown(affData, cupsPerSample, { rule: sample.scoreRule })}
+          data={affData}
           setup={setup}
           t={t.breakdown}
         />

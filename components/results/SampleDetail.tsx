@@ -525,6 +525,7 @@ export function SampleDetail({
                 <ScoreBreakdownPanel
                   variant="individual"
                   breakdown={calcIndividualBreakdown(data, cupsPerSample, { rule: scoreRule })}
+                  data={data}
                   setup={{
                     cupsPerSample,
                     uniformityTracked: cupsPerSample >= 2,
