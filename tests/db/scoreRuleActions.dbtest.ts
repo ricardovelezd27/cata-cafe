@@ -276,6 +276,65 @@ describe("close routine never rewrites pre-deploy samples (second review H1)", (
     expect(after?.participantCount).toBe(1);
     expect(after?.computedAt.getTime()).toBeGreaterThan(OLD_AT.getTime());
   });
+
+  // Third review M-B: the two conditions of the keep-old-rule filter that no test pinned.
+  it("(e) an all-old sample WITHOUT an aggregate row gets no first score at close, and the session still finalizes", async () => {
+    const owner = await makeUser({ name: "Dueña" });
+    const u1 = await makeUser({ name: "Uno" });
+    const coffee = await prisma.coffee.create({
+      data: { name: "Nariño", createdBy: owner, country: "Colombia", visibility: "private" },
+    });
+    const s = await makeSession({
+      ownerId: owner,
+      isGroup: true,
+      participants: [u1],
+      cupsPerSample: 2,
+      samples: [{ label: "A", coffeeId: coffee.id, revealed: false }],
+    });
+    const A = s.samples[0];
+    await oldRuleSample({ sessionId: s.id, sampleId: A.id, cuppers: [owner, u1], cups: 2 });
+    // Shape of a sample whose aggregate row was never written (or lost): evaluations submitted, no row.
+    await prisma.aggregateScore.delete({ where: { sessionSampleId: A.id } });
+    await prisma.cuppingSession.update({
+      where: { id: s.id },
+      data: { status: "closed", closedAt: new Date("2026-11-02T12:00:00Z"), closeFinalizedAt: null },
+    });
+    expect(await storedAggregate(A.id)).toBeNull();
+
+    const r = await finalizeClosedSession(s.id, { reason: "repair", emails: "skip" });
+    expect(r.finalized).toBe(true);
+
+    // No first score under the new rule was written by the close pass ...
+    expect(await prisma.aggregateScore.count({ where: { sessionSampleId: A.id } })).toBe(0);
+    // ... and the rest of the finalize ran (reveal, history, stamp).
+    const row = await prisma.cuppingSession.findUniqueOrThrow({ where: { id: s.id } });
+    expect(row.closeFinalizedAt).toBeInstanceOf(Date);
+    expect((await prisma.sessionSample.findUniqueOrThrow({ where: { id: A.id } })).revealed).toBe(true);
+    expect(await prisma.userCoffeeHistory.count({ where: { coffeeId: coffee.id } })).toBe(2);
+  });
+
+  it("(f) an aggregate row already at ruleVersion 2 is re-fired even when every evaluation is old (cups NULL)", async () => {
+    const owner = await makeUser();
+    const u1 = await makeUser();
+    const s = await makeSession({ ownerId: owner, isGroup: true, participants: [u1], cupsPerSample: 2 });
+    const A = s.samples[0];
+    await oldRuleSample({ sessionId: s.id, sampleId: A.id, cuppers: [owner, u1], cups: 2 });
+    await prisma.aggregateScore.update({
+      where: { sessionSampleId: A.id },
+      data: { ruleVersion: 2, communityScore: 70, computedAt: OLD_AT },
+    });
+    await prisma.cuppingSession.update({
+      where: { id: s.id },
+      data: { status: "closed", closedAt: new Date("2026-11-02T12:00:00Z"), closeFinalizedAt: null },
+    });
+
+    await finalizeClosedSession(s.id, { reason: "repair", emails: "skip" });
+
+    const after = await storedAggregate(A.id);
+    expect(after?.ruleVersion).toBe(2);
+    expect(after?.computedAt.getTime()).toBeGreaterThan(OLD_AT.getTime());
+    expect(after?.communityScore).not.toBe(70);
+  });
 });
 
 describe("legacy drafts (review L8, L9)", () => {
@@ -382,6 +441,45 @@ describe("legacy drafts (review L8, L9)", () => {
     const after = await storedAggregate(A.id);
     expect(after?.ruleVersion).toBe(1);
     expect(after?.computedAt.getTime()).toBe(before?.computedAt.getTime());
+  });
+
+  it("a row an autosave rewrote between the read and the write is not overwritten (third review L-1)", async () => {
+    const owner = await makeUser();
+    const u1 = await makeUser();
+    const s = await makeSession({ ownerId: owner, isGroup: true, participants: [u1], cupsPerSample: 3 });
+    const [A] = s.samples;
+    await legacyDraft({ sessionId: s.id, sampleId: A.id, cupperId: u1, cups: 3 });
+    const newer = { ...affectiveData(9), tazas_no_uniformes: [false, false, false], tazas_defectuosas: [false, false, false] };
+
+    // Same two steps as the helper, with the autosave landing between them: the proxy's findMany
+    // returns the row as the helper saw it and THEN the newer save (which carries `cups`) commits.
+    const racing = {
+      evaluation: {
+        findMany: (async (args: Parameters<typeof prisma.evaluation.findMany>[0]) => {
+          const rows = await prisma.evaluation.findMany(args);
+          await prisma.evaluation.update({
+            where: { sessionSampleId_cupperId: { sessionSampleId: A.id, cupperId: u1 } },
+            data: { affectiveData: newer, cups: 3, individualScore: 99 },
+          });
+          return rows;
+        }) as typeof prisma.evaluation.findMany,
+        updateMany: prisma.evaluation.updateMany.bind(prisma.evaluation),
+      },
+    };
+    const n = await recomputeLegacyDraftsInTx(racing as unknown as typeof prisma, {
+      sessionId: s.id,
+      cupperId: u1,
+      now: new Date(),
+      format: "affective",
+      cupsPerSample: 3,
+      referenceSampleId: null,
+    });
+
+    expect(n).toBe(0);
+    const row = await get(A.id, u1);
+    expect(row.cups).toBe(3);
+    expect(row.individualScore).toBe(99); // the newer save, not the recompute of the stale read
+    expect(row.affectiveData).toEqual(newer);
   });
 
   it("the helper does not rewrite drafts of a session that has just expired (L9)", async () => {

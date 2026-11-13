@@ -27,14 +27,25 @@ export type RefireMode =
  *    `refreshAggregateScores` (the latter only on a session still open). A
  *    guest claim re-fires through its own statement in lib/guestClaim.ts.
  *  - "keep-old-rule": used by `finalizeClosedSession` (first close, the cron's
- *    repair pass, the solo repair on view). A sample is SKIPPED when its stored
- *    aggregate row has "ruleVersion" = 1 AND every submitted evaluation of that
- *    sample has cups IS NULL: a sample made only of data stored before the
- *    deploy has nothing new to compute, and recomputing it would rewrite a past
- *    score under the new rule with nobody choosing that. A sample with no
- *    aggregate row, with "ruleVersion" = 2, or with at least one submitted
- *    evaluation that has cups set (written by the new code) is re-fired as
- *    always. The decision is part of the one UPDATE statement below.
+ *    repair pass, the solo repair on view). Nobody chose to change a score, so a
+ *    sample is SKIPPED (not re-fired) when it has no new-rule data at all:
+ *      NOT EXISTS (aggregate row with "ruleVersion" <> 1)
+ *      AND NOT EXISTS (submitted evaluation with cups IS NOT NULL)
+ *    i.e. no aggregate row or a v1 row, and every submitted evaluation stored
+ *    before the deploy. Re-firing it would write a first (or a rewritten) score
+ *    under the new rule that nobody asked for. Truth table (per sample):
+ *
+ *      aggregate row | submitted evaluations          | fires?
+ *      --------------+--------------------------------+-------
+ *      absent        | all cups NULL                  | no   (stays without a row: the page keeps showing the old-rule number)
+ *      absent        | some with cups                 | yes  (new data, first score)
+ *      v1            | all cups NULL                  | no   (the old-rule score stays)
+ *      v1            | some with cups                 | yes  (new data)
+ *      v2            | all cups NULL                  | yes  (the row is already new-rule; keep it consistent)
+ *      v2            | some with cups                 | yes
+ *      any           | none submitted                 | nothing to fire (only submitted rows are touched)
+ *
+ *    The decision is part of the one UPDATE statement below.
  *
  * Plain library function: callers authorize first (requireSessionOwner, the
  * close routine, the cron). Cost is roughly evaluations x evaluations trigger
@@ -47,12 +58,12 @@ export async function refireAggregates(
   const skipOldRule =
     opts.mode === "keep-old-rule"
       ? Prisma.sql`
-      AND NOT (
+      AND (
         EXISTS (
           SELECT 1 FROM aggregate_scores a
-          WHERE a."sessionSampleId" = e."sessionSampleId" AND a."ruleVersion" = 1
+          WHERE a."sessionSampleId" = e."sessionSampleId" AND a."ruleVersion" <> 1
         )
-        AND NOT EXISTS (
+        OR EXISTS (
           SELECT 1 FROM evaluations x
           WHERE x."sessionSampleId" = e."sessionSampleId"
             AND x."isDraft" = false
