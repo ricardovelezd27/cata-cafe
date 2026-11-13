@@ -523,13 +523,39 @@ describe("moveWaitlistEntry (email change)", () => {
     expect(await prisma.waitlistEntry.count({ where: { email: { contains: "old", mode: "insensitive" } } })).toBe(0);
     expect((await prisma.waitlistEntry.findUniqueOrThrow({ where: { email: "new@example.test" } })).locale).toBe("en");
   });
-  it("does nothing without a row for the old address, or when the new address already has one", async () => {
+  it("does nothing without a row for the old address, and says `same` for the same address", async () => {
     expect(await moveWaitlistEntry("none@example.test", "x@example.test")).toBe("no_row");
     await prisma.waitlistEntry.create({ data: { email: "a@example.test" } });
-    await prisma.waitlistEntry.create({ data: { email: "b@example.test" } });
-    expect(await moveWaitlistEntry("a@example.test", "b@example.test")).toBe("target_exists");
-    expect(await prisma.waitlistEntry.count()).toBe(2);
     expect(await moveWaitlistEntry("a@example.test", "A@example.test")).toBe("same");
+    expect(await prisma.waitlistEntry.count()).toBe(1);
+  });
+  it("both addresses reserved (A2): the EARLIER row is kept at the new address, the other is deleted, in one step", async () => {
+    // the old-address row is the earlier one
+    await prisma.waitlistEntry.create({ data: { email: "a@example.test", source: "landing", locale: "en", createdAt: new Date("2026-01-01T00:00:00Z") } });
+    await prisma.waitlistEntry.create({ data: { email: "b@example.test", source: "founding", locale: "es", createdAt: new Date("2026-02-01T00:00:00Z"), consentAt: new Date("2026-02-01T00:00:00Z"), consentNoticeVersion: "v1" } });
+    expect(await moveWaitlistEntry("a@example.test", "B@example.test")).toBe("merged");
+    const rows = await prisma.waitlistEntry.findMany();
+    expect(rows).toHaveLength(1);
+    // kept: the earlier row, its own source/locale/createdAt, the new address, the other's consent stamp (its own was null)
+    expect(rows[0]).toMatchObject({ email: "b@example.test", source: "landing", locale: "en" });
+    expect(rows[0].createdAt.toISOString()).toBe("2026-01-01T00:00:00.000Z");
+    expect(rows[0].consentAt?.toISOString()).toBe("2026-02-01T00:00:00.000Z");
+    expect(rows[0].consentNoticeVersion).toBe("v1");
+  });
+  it("both addresses reserved, the NEW-address row is the earlier one: it stays and keeps its own consent stamp", async () => {
+    await prisma.waitlistEntry.create({ data: { email: "a2@example.test", source: "landing", createdAt: new Date("2026-03-01T00:00:00Z"), consentAt: new Date("2026-03-01T00:00:00Z"), consentNoticeVersion: "v2" } });
+    await prisma.waitlistEntry.create({ data: { email: "b2@example.test", source: "founding", createdAt: new Date("2026-01-01T00:00:00Z"), consentAt: new Date("2026-01-01T00:00:00Z"), consentNoticeVersion: "v1" } });
+    expect(await moveWaitlistEntry("a2@example.test", "b2@example.test")).toBe("merged");
+    const rows = await prisma.waitlistEntry.findMany();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ email: "b2@example.test", source: "founding", consentNoticeVersion: "v1" });
+  });
+  it("an ambiguous shape (two rows differing only in case at one address) changes nothing", async () => {
+    await prisma.waitlistEntry.create({ data: { email: "a3@example.test" } });
+    await prisma.waitlistEntry.create({ data: { email: "B3@example.test" } });
+    await prisma.waitlistEntry.create({ data: { email: "b3@example.test" } });
+    expect(await moveWaitlistEntry("a3@example.test", "b3@example.test")).toBe("target_exists");
+    expect(await prisma.waitlistEntry.count()).toBe(3);
   });
   it("never matches by pattern", async () => {
     await prisma.waitlistEntry.create({ data: { email: "axb@example.test" } });

@@ -8,6 +8,7 @@ import {
   decideClaimRekey,
   serializeDone,
   serializeStarted,
+  shouldKickReplayAfterRekey,
 } from "@/lib/offline/claimMarker";
 
 const NOW = 10_000_000;
@@ -140,6 +141,48 @@ describe("markers survive a re-key (fourth review)", () => {
     });
     expect(d.rekeyFrom).toBeNull();
     expect(d.clear).toBe(true);
+  });
+});
+
+describe("marker TTL and expiry on read (S10 leftovers C3)", () => {
+  const input = (age: number) => ({
+    startedRaw: serializeStarted(ANON, NOW - age),
+    doneRaw: serializeDone(ANON, ACCOUNT, NOW - age),
+    userId: ACCOUNT,
+    now: NOW,
+  });
+  it("the TTL is exactly one hour", () => {
+    expect(CLAIM_MARKER_TTL_MS).toBe(3_600_000);
+  });
+  it("a completion marker is fresh up to and including the TTL and stale one millisecond later", () => {
+    expect(decideClaimRekey(input(CLAIM_MARKER_TTL_MS))).toEqual({ rekeyFrom: ANON, clear: false });
+    expect(decideClaimRekey(input(CLAIM_MARKER_TTL_MS + 1))).toEqual({ rekeyFrom: null, clear: true });
+  });
+  it("an expired marker is reported for removal on read (the provider removes both keys), even for another user", () => {
+    expect(decideClaimRekey({ ...input(CLAIM_MARKER_TTL_MS + 1), userId: "someone-else" })).toEqual({ rekeyFrom: null, clear: true });
+    // a marker stamped in the future is not fresh either
+    expect(decideClaimRekey(input(-1)).rekeyFrom).toBeNull();
+  });
+});
+
+describe("shouldKickReplayAfterRekey (S10 leftovers C2)", () => {
+  it("kicks once when the re-key moved something, never when it moved nothing, never twice", () => {
+    expect(shouldKickReplayAfterRekey(2, false)).toBe(true);
+    expect(shouldKickReplayAfterRekey(0, false)).toBe(false);
+    expect(shouldKickReplayAfterRekey(2, true)).toBe(false);
+    expect(shouldKickReplayAfterRekey(Number.NaN, false)).toBe(false);
+    expect(shouldKickReplayAfterRekey(-1, false)).toBe(false);
+  });
+  it("the guard cannot loop: once the flag is set no later call kicks", () => {
+    let kicked = false;
+    let kicks = 0;
+    for (const moved of [3, 3, 5, 1]) {
+      if (shouldKickReplayAfterRekey(moved, kicked)) {
+        kicked = true;
+        kicks += 1;
+      }
+    }
+    expect(kicks).toBe(1);
   });
 });
 

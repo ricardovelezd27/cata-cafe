@@ -9,6 +9,7 @@ import { countWarnable } from "@/lib/offline/store";
 import { clearLocalDeviceState } from "@/lib/offline/deviceState";
 import { classifyGuestLookup, isFinalJoinRefusal, type GuestLookup } from "@/lib/joinRules";
 import { announceIdentityLeft } from "@/lib/identityChange";
+import { sequenceLeaveAfterSignOut } from "@/lib/identitySequence";
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { Button, ConfirmDialog, useActionFeedback } from "@/components/ui";
@@ -215,17 +216,15 @@ export function GuestIdentityChoice({
       closeDialog();
       return;
     }
-    let result;
-    try {
-      result = await signOut(locale, "local");
-    } catch {
-      return { ok: false as const, error: "unknown" };
-    }
-    if (!result.ok) return { ok: false as const, error: result.error };
-    // Other tabs on this device still show this guest: tell them (they stop
-    // saving and ask for a reload).
-    announceIdentityLeft(userId);
-    await clearLocalDeviceState();
+    // signOut FIRST; only after it succeeded: tell the other tabs on this device
+    // that show this guest (they stop saving and ask for a reload), then clear
+    // this device's caches. Order pinned by lib/identitySequence.ts.
+    const left = await sequenceLeaveAfterSignOut({
+      signOut: () => signOut(locale, "local"),
+      announce: () => announceIdentityLeft(userId),
+      clearDevice: clearLocalDeviceState,
+    });
+    if (!left.ok) return { ok: false as const, error: left.error };
     leavingRef.current = true;
     setLeaving(true);
     // Full navigation to the SAME join URL: auth cookies changed and the server

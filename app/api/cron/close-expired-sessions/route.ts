@@ -23,9 +23,15 @@
 //                 = closed silently, review H2). LAST of the closing passes and
 //                 only IDLE_BATCH (5) per run, oldest first, so a backlog can
 //                 never starve the deadline closes, the repairs or the reminders.
+//   4b. reconcile the email-change records (S10 leftovers A1, `emailChangeReconcile` in the
+//                 summary): a reservation move that failed at verify time is retried and an inert
+//                 record cleared. Deletes nothing; runs whether or not the purge switch is on.
 //   5. purge      the email ledger housekeeping, then the unused-account purge (S10 WP9a,
 //                 `unusedAccounts` in the summary). Each always runs, last, in its own
 //                 try/catch; nothing above can stop it.
+// Every pass is isolated (S10 leftovers B3, lib/cronPass.ts `runPass`): one that throws is logged
+// (code only), flagged `closeFailed` / `repairFailed` / `remindersFailed` / `idlePassFailed` in the
+// summary, and the passes after it still run. The ledger purge stays last.
 // Time budget (review M1): maxDuration is 300 s; no NEW close or repair is started in pass 1,
 // pass 2 or pass 4 once CRON_CLOSE_START_BUDGET_MS (150 s) has elapsed (`budgetTruncated` /
 // `repairBudgetTruncated` / `idleBudgetTruncated` in the summary). Reminders are not gated.
@@ -40,6 +46,8 @@ import { purgeEmailLedger } from "@/lib/emailBudget";
 import { closeIdleLiveSessions, emptyIdleCloseSummary } from "@/lib/idleClose";
 import { purgeUnusedAccounts, type UnusedAccountSummary } from "@/lib/unusedAccountPurge";
 import { isUnusedAccountPurgeEnabled } from "@/lib/features";
+import { cronStatus, runPass } from "@/lib/cronPass";
+import { reconcileEmailChanges, emptyReconcileSummary } from "@/lib/emailChangeReconcile";
 import { sendDeadlineReminders, sendLiveIdleReminders } from "@/lib/reminderEmail";
 
 export const runtime = "nodejs";
@@ -74,72 +82,101 @@ export async function GET(request: Request) {
   const startedAt = Date.now();
   const mayStart = () => mayStartAnotherClose(Date.now() - startedAt, CRON_CLOSE_START_BUDGET_MS);
 
-  const due = await prisma.cuppingSession.findMany({
-    where: { status: "active", closesAt: { lt: new Date() } },
-    select: { id: true, name: true },
-    orderBy: { closesAt: "asc" },
-    take: BATCH,
-  });
+  // Each pass runs through `runPass` (S10 leftovers B3): a failure (a candidate
+  // query that throws, say) is logged with a code only, flagged in the summary
+  // (`closeFailed`, `repairFailed`, ...) and the passes after it still run.
+  const passFailed = (name: string, code: string) => logError({ where: name, code, message: "pass failed" });
 
-  const results: { id: string; closed: boolean; emailsQueued: number; error?: string }[] = [];
-  let budgetTruncated = false;
-  for (const s of due) {
-    if (!mayStart()) {
-      budgetTruncated = true;
-      logWarn({ where: "cron.closeExpired", message: "time budget spent, rest left for the next run" });
-      break;
+  const closePass = await runPass("cron.closeExpired", async () => {
+    const due = await prisma.cuppingSession.findMany({
+      where: { status: "active", closesAt: { lt: new Date() } },
+      select: { id: true, name: true },
+      orderBy: { closesAt: "asc" },
+      take: BATCH,
+    });
+    const results: { id: string; closed: boolean; emailsQueued: number; error?: string }[] = [];
+    let budgetTruncated = false;
+    for (const s of due) {
+      if (!mayStart()) {
+        budgetTruncated = true;
+        logWarn({ where: "cron.closeExpired", message: "time budget spent, rest left for the next run" });
+        break;
+      }
+      try {
+        const r = await closeSessionInternal(s.id, { reason: "cron", emails: "await" });
+        results.push({ id: s.id, closed: r.closed, emailsQueued: r.emailsQueued });
+      } catch (err) {
+        const message = errorMessage(err);
+        logError({ where: "cron.closeExpired", sessionId: s.id, message });
+        results.push({ id: s.id, closed: false, emailsQueued: 0, error: message });
+      }
     }
-    try {
-      const r = await closeSessionInternal(s.id, { reason: "cron", emails: "await" });
-      results.push({ id: s.id, closed: r.closed, emailsQueued: r.emailsQueued });
-    } catch (err) {
-      const message = errorMessage(err);
-      logError({ where: "cron.closeExpired", sessionId: s.id, message });
-      results.push({ id: s.id, closed: false, emailsQueued: 0, error: message });
-    }
-  }
-  const truncated = due.length === BATCH;
-  if (truncated) logWarn({ where: "cron.closeExpired", message: "batch full, more sessions are due", batch: BATCH });
+    const truncated = due.length === BATCH;
+    if (truncated) logWarn({ where: "cron.closeExpired", message: "batch full, more sessions are due", batch: BATCH });
+    return { due, results, budgetTruncated, truncated };
+  }, passFailed);
+  const closeFailed = !closePass.ok;
+  const { due, results, budgetTruncated, truncated } = closePass.ok
+    ? closePass.value
+    : {
+        due: [] as { id: string; name: string }[],
+        results: [] as { id: string; closed: boolean; emailsQueued: number; error?: string }[],
+        budgetTruncated: false,
+        truncated: false,
+      };
 
   // Pass 2: repair closed sessions whose phase 2 is owed.
-  const owed = await prisma.cuppingSession.findMany({
-    where: {
-      status: "closed",
-      closeFinalizedAt: null,
-      closedAt: { lt: new Date(Date.now() - FINALIZE_GRACE_MS) },
-    },
-    select: { id: true },
-    // updatedAt, not closedAt: a session whose finalize keeps failing is bumped
-    // below so it rotates to the back instead of starving newer ones forever.
-    orderBy: { updatedAt: "asc" },
-    take: BATCH,
-  });
-  const repairs: { id: string; finalized: boolean; error?: string }[] = [];
-  let repairBudgetTruncated = false;
-  for (const s of owed) {
-    if (!mayStart()) {
-      repairBudgetTruncated = true;
-      logWarn({ where: "cron.repairClose", message: "time budget spent, rest left for the next run" });
-      break;
+  const repairPass = await runPass("cron.repairClose", async () => {
+    const owed = await prisma.cuppingSession.findMany({
+      where: {
+        status: "closed",
+        closeFinalizedAt: null,
+        closedAt: { lt: new Date(Date.now() - FINALIZE_GRACE_MS) },
+      },
+      select: { id: true },
+      // updatedAt, not closedAt: a session whose finalize keeps failing is bumped
+      // below so it rotates to the back instead of starving newer ones forever.
+      orderBy: { updatedAt: "asc" },
+      take: BATCH,
+    });
+    const repairs: { id: string; finalized: boolean; error?: string }[] = [];
+    let repairBudgetTruncated = false;
+    for (const s of owed) {
+      if (!mayStart()) {
+        repairBudgetTruncated = true;
+        logWarn({ where: "cron.repairClose", message: "time budget spent, rest left for the next run" });
+        break;
+      }
+      try {
+        const r = await repairClosedSession(s.id);
+        const finalized = r.finalized === true;
+        repairs.push({ id: s.id, finalized });
+        if (!finalized) await requeueRepair(s.id);
+      } catch (err) {
+        const message = errorMessage(err);
+        logError({ where: "cron.repairClose", sessionId: s.id, message });
+        repairs.push({ id: s.id, finalized: false, error: message });
+        await requeueRepair(s.id);
+      }
     }
-    try {
-      const r = await repairClosedSession(s.id);
-      const finalized = r.finalized === true;
-      repairs.push({ id: s.id, finalized });
-      if (!finalized) await requeueRepair(s.id);
-    } catch (err) {
-      const message = errorMessage(err);
-      logError({ where: "cron.repairClose", sessionId: s.id, message });
-      repairs.push({ id: s.id, finalized: false, error: message });
-      await requeueRepair(s.id);
-    }
-  }
+    const repairTruncated = owed.length === BATCH;
+    if (repairTruncated) logWarn({ where: "cron.repairClose", message: "batch full, more repairs owed", batch: BATCH });
+    return { owed, repairs, repairBudgetTruncated, repairTruncated };
+  }, passFailed);
+  const repairFailed = !repairPass.ok;
+  const { owed, repairs, repairBudgetTruncated, repairTruncated } = repairPass.ok
+    ? repairPass.value
+    : {
+        owed: [] as { id: string }[],
+        repairs: [] as { id: string; finalized: boolean; error?: string }[],
+        repairBudgetTruncated: false,
+        repairTruncated: false,
+      };
   const stillUnfinalized = repairs.filter((r) => !r.finalized).length;
-  const repairTruncated = owed.length === BATCH;
-  if (repairTruncated) logWarn({ where: "cron.repairClose", message: "batch full, more repairs owed", batch: BATCH });
 
   // Pass 3: reminders. A failure here must never fail the closes above.
   let reminders: { deadline?: unknown; liveIdle?: unknown; error?: string } = {};
+  let remindersFailed = false;
   try {
     reminders = {
       deadline: await sendDeadlineReminders(BATCH, startedAt),
@@ -149,17 +186,38 @@ export async function GET(request: Request) {
     const message = errorMessage(err);
     logError({ where: "cron.reminders", message });
     reminders = { error: message };
+    remindersFailed = true;
   }
 
   // Pass 4: live sessions nobody has touched for 7 days (after the repairs and
   // the reminders, small batch). A failure here never fails the passes above or
   // the purge below.
   let idle = emptyIdleCloseSummary();
+  let idlePassFailed = false;
   try {
     idle = await closeIdleLiveSessions(IDLE_BATCH, startedAt, { mayStart });
   } catch (err) {
     logError({ where: "cron.closeIdle", message: errorMessage(err) });
+    idlePassFailed = true;
   }
+
+  // Email-change reconcile (S10 leftovers A1): retries a reservation move that
+  // failed at verify time and clears inert records. It deletes nothing, so it
+  // runs whether or not the purge switch is on, and it runs BEFORE the unused
+  // account pass so a reservation that is about to be moved is never taken for
+  // an orphan. Counts only in the summary.
+  // It respects the same start budget as the closes: not started when spent
+  // (`emailChangeReconcileSkipped`), and it stops between accounts.
+  const emailChangeReconcileSkipped = !mayStart();
+  const reconcilePass = emailChangeReconcileSkipped
+    ? null
+    : await runPass("cron.emailChangeReconcile", () => reconcileEmailChanges(undefined, { mayStart }), passFailed);
+  const reconcileFailed = reconcilePass !== null && !reconcilePass.ok;
+  const emailChangeReconcile =
+    reconcilePass === null || reconcilePass.ok
+      ? (reconcilePass?.value ?? emptyReconcileSummary())
+      : { ...emptyReconcileSummary(), error: reconcilePass.code };
+  if (emailChangeReconcileSkipped) logWarn({ where: "cron.emailChangeReconcile", message: "time budget spent, pass skipped" });
 
   // Housekeeping (S8-28 A-03): the throttle/attempt ledger grows with every
   // login attempt; drop rows older than the longest rule window. Never fails the run.
@@ -186,10 +244,24 @@ export async function GET(request: Request) {
     unusedAccounts = { error: safe, enabled: unusedEnabled };
   }
 
+  // Honest status: a failed deadline-close or repair pass makes the run RED (500,
+  // ok false) so the cron shows it, but everything above and below still ran and
+  // the full summary is returned. Best-effort passes keep 200 with their flag.
+  const status = cronStatus({ closeFailed, repairFailed, remindersFailed, idlePassFailed, reconcileFailed });
+
   return NextResponse.json({
-    ok: true,
+    ok: status.ok,
     ledgerPurged,
+    emailChangeReconcile,
+    emailChangeReconcileSkipped,
+    reconcileFailed,
     unusedAccounts,
+    // true when that whole pass threw (its cause is in the logs, code only); the
+    // passes after it still ran (S10 leftovers B3)
+    closeFailed,
+    repairFailed,
+    remindersFailed,
+    idlePassFailed,
     due: due.length,
     closed: results.filter((r) => r.closed).length,
     results,
@@ -207,5 +279,5 @@ export async function GET(request: Request) {
     idleResults: idle.results,
     reminders,
     repair: { owed: owed.length, budgetTruncated: repairBudgetTruncated, stillUnfinalized, finalized: repairs.filter((r) => r.finalized).length, results: repairs, truncated: repairTruncated },
-  });
+  }, { status: status.httpStatus });
 }

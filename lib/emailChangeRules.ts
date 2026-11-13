@@ -72,3 +72,56 @@ export function appMetadataRecordingEmailChange(from: string, to: string): Recor
 export function appMetadataClearingEmailChange(): Record<string, unknown> {
   return { [EMAIL_CHANGE_KEY]: null };
 }
+
+/**
+ * Is the `email_change` record in `after` the one the decision was made on
+ * (`before`)? Compared by value: same normalised `from` and `to` when both are
+ * usable records; otherwise the two raw values must be deeply equal (an unusable
+ * record that did not change is the same one). A missing record is never the
+ * same. Used to re-check right before clearing (a new request may have
+ * overwritten the record since it was read).
+ */
+export function sameEmailChangeRecord(
+  before: Record<string, unknown> | null | undefined,
+  after: Record<string, unknown> | null | undefined,
+): boolean {
+  const a = before?.[EMAIL_CHANGE_KEY];
+  const b = after?.[EMAIL_CHANGE_KEY];
+  if (a === null || a === undefined || b === null || b === undefined) return false;
+  const pa = a as { from?: unknown; to?: unknown };
+  const pb = b as { from?: unknown; to?: unknown };
+  const usable = (r: { from?: unknown; to?: unknown }) => typeof r.from === "string" && typeof r.to === "string";
+  if (typeof a === "object" && typeof b === "object" && usable(pa) && usable(pb)) {
+    return (
+      normalizeAddress(pa.from as string) === normalizeAddress(pb.from as string) &&
+      normalizeAddress(pa.to as string) === normalizeAddress(pb.to as string)
+    );
+  }
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+export type ReconcileAction ="move" | "clear" | "keep";
+
+/**
+ * What the nightly reconcile pass (lib/emailChangeReconcile.ts) does with ONE
+ * account that still carries an `app_metadata.email_change` record, given the
+ * auth user as the admin API reads it now (S10 leftovers A1: a move that failed
+ * at verify time was never retried):
+ *   - move  : the change is COMPLETED (`completedEmailChange`): run the same
+ *             move the verify path runs (same refusals).
+ *   - keep  : nothing to do tonight: no record at all, or a change still in
+ *             flight (`new_email` set: the person has not confirmed yet).
+ *   - clear : the record is INERT: it can never move anything (not an object,
+ *             `from`/`to` not usable, or the account's current address is not
+ *             the recorded `to` and no change is pending). Only the key is
+ *             removed.
+ * Never "move" unless `completedEmailChange` agrees, so the reconcile can never
+ * move anything the verify path would not.
+ */
+export function reconcileAction(user: UserLike): ReconcileAction {
+  if (completedEmailChange(user)) return "move";
+  const rec = user?.app_metadata?.[EMAIL_CHANGE_KEY];
+  if (rec === null || rec === undefined) return "keep";
+  if (user?.new_email) return "keep";
+  return "clear";
+}
