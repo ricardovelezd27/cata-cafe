@@ -703,7 +703,7 @@ describe("buildResultsCsv / csvCell (S8-12, F-informes-7)", () => {
     const lines = out.csv.trim().split("\n");
     expect(lines).toHaveLength(src.evals.length + 1);
     expect(out.rows).toBe(src.evals.length);
-    expect(lines[0]).toContain("puntaje_cva");
+    expect(lines[0]).toContain("puntaje_cafe_sensible");
   });
 
   it("never prints the coffee of a blind sample", () => {
@@ -717,7 +717,7 @@ describe("buildResultsCsv / csvCell (S8-12, F-informes-7)", () => {
     expect(coded.csv).not.toContain(CUPPERS.A.name);
     expect(coded.csv).toContain("Muestra REF");
     expect(coded.csv.split("\n").some((l) => l.startsWith("C1,"))).toBe(true);
-    expect(coded.csv.split("\n")[0]).toContain("cva_score");
+    expect(coded.csv.split("\n")[0]).toContain("cafe_sensible_score");
   });
 
   it("flags excluded cuppers with their reason", () => {

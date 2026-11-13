@@ -165,7 +165,7 @@
     "statSamples": "Samples evaluated",
     "statSamplesSub": "unique coffees cupped",
     "statAvg": "Average score",
-    "statAvgSub": "personal CVA average",
+    "statAvgSub": "personal average, Café Sensible score",
     "noAvg": "No data",
     "activityEval": "You cupped {coffee}",
     "emptyTitle": "No cupping sessions yet",
@@ -885,7 +885,7 @@
       "sample": "Sample",
       "descriptiveSection": "Descriptive evaluation",
       "affectiveSection": "Affective evaluation",
-      "cvaScore": "CVA Score",
+      "cvaScore": "Café Sensible score (CVA-based)",
       "communityShort": "Comm:",
       "legendMine": "My evaluation",
       "legendCommunity": "Community",
@@ -906,7 +906,7 @@
       "intensity": "Intensity",
       "quality": "Quality",
       "notes": "Notes",
-      "cvaScore": "CVA Score",
+      "cvaScore": "Café Sensible score (CVA-based)",
       "edit": "Edit",
       "noData": "No evaluation recorded",
       "nariz": "Nose",
@@ -931,7 +931,7 @@
       "assignedToast": "Coffee assigned to the sample"
     },
     "matrix": {
-      "matrixTitle": "CVA score summary",
+      "matrixTitle": "Café Sensible score summary (CVA-based)",
       "legendGreen": "Within 1 SD of the mean (consensus)",
       "legendAmber": "> 1 SD from mean",
       "legendRed": "≥ 2 SD (possible outlier)",
@@ -963,7 +963,7 @@
     },
     "breakdown": {
       "how": "How was this calculated?",
-      "formula": "CVA formula",
+      "formula": "Formula (CVA-based)",
       "sigma": "Σhᵢ = sum of the 8 affective sections",
       "u": "u = non-uniform cups (2 points each; a defective cup counts here too)",
       "d": "d = defective cups (4 points each, with its type: moldy, phenolic or potato)",
@@ -1015,7 +1015,7 @@
       },
       "ranking": {
         "title": "Sample ranking",
-        "body": "Samples ordered from highest to lowest score. In group sessions they are ordered by the community score; in individual sessions, by your CVA score. Tap a sample to open its full detail. The ± figure next to the community score is the standard deviation across cuppers: the lower it is, the more consensus there was on that sample."
+        "body": "Samples ordered from highest to lowest score. In group sessions they are ordered by the community score; in individual sessions, by your score. Tap a sample to open its full detail. The ± figure next to the community score is the standard deviation across cuppers: the lower it is, the more consensus there was on that sample."
       },
       "performance": {
         "title": "My performance",
@@ -1027,7 +1027,7 @@
       },
       "tabla": {
         "title": "Results table",
-        "body": "All your ratings by sample: descriptive intensities, affective ratings (1 to 9), and the CVA score. In group sessions, each attribute also shows the community average below your value. Tap a sample's name to see its detail."
+        "body": "All your ratings by sample: descriptive intensities, affective ratings (1 to 9), and the score. In group sessions, each attribute also shows the community average below your value. Tap a sample's name to see its detail."
       },
       "grafico": {
         "title": "Radar chart",
@@ -1035,7 +1035,7 @@
       },
       "porCatador": {
         "title": "Analysis by cupper",
-        "body": "Visible only to the session owner: the CVA score matrix by cupper, with a three-color consensus semaphore — green within 1 standard deviation of the sample mean, yellow more than 1 SD, red 2+ SD (possible outlier); excluded cuppers are shown in grey. You can exclude a cupper from the group calculation; scores recalculate automatically."
+        "body": "Visible only to the session owner: the score matrix by cupper, with a three-color consensus semaphore — green within 1 standard deviation of the sample mean, yellow more than 1 SD, red 2+ SD (possible outlier); excluded cuppers are shown in grey. You can exclude a cupper from the group calculation; scores recalculate automatically."
       },
       "filtros": {
         "title": "Descriptor filters",
@@ -1060,7 +1060,7 @@
       }
     },
     "radar": {
-      "score": "CVA SCORE",
+      "score": "SCORE",
       "reveal": "Reveal",
       "communityScore": "Community score",
       "includedLine": "{n} of {total} cuppers included in the average",
@@ -1107,7 +1107,7 @@
     "title": "Coffee history",
     "empty": "You haven't tasted any identified coffee yet.",
     "tasted": "Tasted",
-    "yourScore": "Your score",
+    "yourScore": "Your Café Sensible score (CVA-based)",
     "communityScore": "Community score",
     "sessionDeleted": "Session deleted",
     "quickImpression": "Quick impression",
@@ -1125,7 +1125,7 @@
     "colProcess": "Process",
     "colVariety": "Variety",
     "colSessions": "Sessions",
-    "colLastScore": "Last CVA",
+    "colLastScore": "Last score",
     "colLastDate": "Last tasting",
     "noData": "No coffees registered. Create your first session to get started.",
     "showing": "Showing {from}–{to} of {total} coffees",
@@ -1179,7 +1179,7 @@
     "recentTastingsEmpty": "No recent cuppings yet.",
     "sessionsOthersNote": "This coffee's sessions belong to other cuppers; their names are not shown, but their results count in the totals.",
     "lifetime": {
-      "title": "Coffee score",
+      "title": "Café Sensible score (CVA-based)",
       "accumulated": "Accumulated from {cups} in {sessions}",
       "cupOne": "cup",
       "cupOther": "cups",

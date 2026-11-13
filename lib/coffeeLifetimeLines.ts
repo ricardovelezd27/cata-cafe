@@ -153,7 +153,7 @@ export function buildLifetimeLines(r: CoffeeLifetimeScore, L: LifetimeLabels): L
 /** The same text as `coffee.lifetime` in messages/{es,en}.json (a test keeps them equal). */
 export const LIFETIME_COPY: { es: LifetimeLabels; en: LifetimeLabels } = {
   es: {
-    title: "Puntaje del café",
+    title: "Puntaje Café Sensible (base CVA)",
     accumulated: "Acumulado de {cups} en {sessions}",
     cupOne: "taza",
     cupOther: "tazas",
@@ -188,7 +188,7 @@ export const LIFETIME_COPY: { es: LifetimeLabels; en: LifetimeLabels } = {
       "Todavía no hay una cata completa de este café. Las impresiones rápidas (1 taza) cuentan sus tazas y defectos, no su puntaje.",
   },
   en: {
-    title: "Coffee score",
+    title: "Café Sensible score (CVA-based)",
     accumulated: "Accumulated from {cups} in {sessions}",
     cupOne: "cup",
     cupOther: "cups",

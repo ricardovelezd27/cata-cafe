@@ -165,7 +165,7 @@
     "statSamples": "Muestras evaluadas",
     "statSamplesSub": "cafés únicos catados",
     "statAvg": "Puntuación promedio",
-    "statAvgSub": "promedio CVA personal",
+    "statAvgSub": "promedio personal, Puntaje Café Sensible",
     "noAvg": "Sin datos",
     "activityEval": "Evaluaste {coffee}",
     "emptyTitle": "Aún no tienes sesiones de cata",
@@ -885,7 +885,7 @@
       "sample": "Muestra",
       "descriptiveSection": "Evaluación descriptiva",
       "affectiveSection": "Evaluación afectiva",
-      "cvaScore": "Puntaje CVA",
+      "cvaScore": "Puntaje Café Sensible (base CVA)",
       "communityShort": "Com:",
       "legendMine": "Mi evaluación",
       "legendCommunity": "Comunidad",
@@ -906,7 +906,7 @@
       "intensity": "Intensidad",
       "quality": "Calidad",
       "notes": "Notas",
-      "cvaScore": "Puntaje CVA",
+      "cvaScore": "Puntaje Café Sensible (base CVA)",
       "edit": "Editar",
       "noData": "Sin evaluación registrada",
       "nariz": "Nariz",
@@ -931,7 +931,7 @@
       "assignedToast": "Café asignado a la muestra"
     },
     "matrix": {
-      "matrixTitle": "Resumen de puntajes CVA",
+      "matrixTitle": "Resumen del Puntaje Café Sensible (base CVA)",
       "legendGreen": "≤ 1 DE de la media (consenso)",
       "legendAmber": "> 1 DE de la media",
       "legendRed": "≥ 2 DE (posible atípico)",
@@ -963,7 +963,7 @@
     },
     "breakdown": {
       "how": "¿Cómo se calculó?",
-      "formula": "Fórmula CVA",
+      "formula": "Fórmula (base CVA)",
       "sigma": "Σhᵢ = suma de las 8 secciones afectivas",
       "u": "u = tazas no uniformes (2 puntos cada una; una taza defectuosa también cuenta aquí)",
       "d": "d = tazas defectuosas (4 puntos cada una, con su tipo: mohoso, fenólico o papa)",
@@ -1015,7 +1015,7 @@
       },
       "ranking": {
         "title": "Ranking de muestras",
-        "body": "Las muestras ordenadas de mayor a menor puntaje. En sesiones grupales se ordena por el puntaje comunitario; en sesiones individuales, por tu puntaje CVA. Toca una muestra para abrir su detalle completo. La cifra ± junto al puntaje comunitario es la desviación estándar entre catadores: mientras más baja, mayor consenso hubo en esa muestra."
+        "body": "Las muestras ordenadas de mayor a menor puntaje. En sesiones grupales se ordena por el puntaje comunitario; en sesiones individuales, por tu puntaje. Toca una muestra para abrir su detalle completo. La cifra ± junto al puntaje comunitario es la desviación estándar entre catadores: mientras más baja, mayor consenso hubo en esa muestra."
       },
       "performance": {
         "title": "Mi desempeño",
@@ -1027,7 +1027,7 @@
       },
       "tabla": {
         "title": "Tabla de resultados",
-        "body": "Todas tus calificaciones por muestra: intensidades descriptivas, calificaciones afectivas (1 a 9) y el puntaje CVA. En sesiones grupales, cada atributo muestra también el promedio de la comunidad debajo de tu valor. Toca el nombre de una muestra para ver su detalle."
+        "body": "Todas tus calificaciones por muestra: intensidades descriptivas, calificaciones afectivas (1 a 9) y el puntaje. En sesiones grupales, cada atributo muestra también el promedio de la comunidad debajo de tu valor. Toca el nombre de una muestra para ver su detalle."
       },
       "grafico": {
         "title": "Gráfico radar",
@@ -1035,7 +1035,7 @@
       },
       "porCatador": {
         "title": "Análisis por catador",
-        "body": "Solo visible para el maestro de la sesión: la matriz de puntajes CVA por catador, con un semáforo de tres colores por consenso — verde dentro de 1 desviación estándar de la media de la muestra, amarillo más de 1 DE, rojo 2 o más DE (posible atípico); los catadores excluidos se muestran en gris. Puedes excluir un catador del cálculo grupal; los puntajes se recalculan automáticamente."
+        "body": "Solo visible para el maestro de la sesión: la matriz de puntajes por catador, con un semáforo de tres colores por consenso — verde dentro de 1 desviación estándar de la media de la muestra, amarillo más de 1 DE, rojo 2 o más DE (posible atípico); los catadores excluidos se muestran en gris. Puedes excluir un catador del cálculo grupal; los puntajes se recalculan automáticamente."
       },
       "filtros": {
         "title": "Filtros de descriptores",
@@ -1060,7 +1060,7 @@
       }
     },
     "radar": {
-      "score": "PUNTAJE CVA",
+      "score": "PUNTAJE",
       "reveal": "Revelar",
       "communityScore": "Puntuación comunidad",
       "includedLine": "{n} de {total} evaluadores incluidos en el promedio",
@@ -1107,7 +1107,7 @@
     "title": "Historial de cafés",
     "empty": "Aún no has catado ningún café identificado.",
     "tasted": "Catado",
-    "yourScore": "Tu puntaje",
+    "yourScore": "Tu Puntaje Café Sensible (base CVA)",
     "communityScore": "Puntaje comunitario",
     "sessionDeleted": "Sesión eliminada",
     "quickImpression": "Impresión rápida",
@@ -1125,7 +1125,7 @@
     "colProcess": "Proceso",
     "colVariety": "Variedad",
     "colSessions": "Sesiones",
-    "colLastScore": "Últ. CVA",
+    "colLastScore": "Últ. puntaje",
     "colLastDate": "Última cata",
     "noData": "No hay cafés registrados. Crea tu primera sesión para empezar.",
     "showing": "Mostrando {from}–{to} de {total} cafés",
@@ -1179,7 +1179,7 @@
     "recentTastingsEmpty": "Sin catas recientes.",
     "sessionsOthersNote": "Las sesiones de este café son de otros catadores; sus nombres no se muestran, pero sus resultados cuentan en los totales.",
     "lifetime": {
-      "title": "Puntaje del café",
+      "title": "Puntaje Café Sensible (base CVA)",
       "accumulated": "Acumulado de {cups} en {sessions}",
       "cupOne": "taza",
       "cupOther": "tazas",
