@@ -64,7 +64,7 @@ const OWNER_ONLY: Record<string, string[]> = {
   ],
   "community.ts": [
     "finishSoloSession", "startSession", "startWarmup", "stopWarmup", "getCloseImpact", "closeSession",
-    "resendCloseEmails", "revealSample", "setParticipantExclusion", "refreshAggregateScores",
+    "resendCloseEmails", "closeAnnounced", "revealSample", "setParticipantExclusion", "refreshAggregateScores",
   ],
 };
 

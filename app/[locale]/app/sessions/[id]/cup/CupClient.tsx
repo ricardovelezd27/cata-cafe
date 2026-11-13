@@ -70,6 +70,7 @@ import { closingAtFromRow } from "@/lib/closeAnnounce";
 import {
   announceClose,
   cancelAnnouncedClose,
+  closeAnnounced,
   submitAllEvaluations,
   closeSession,
   finishSoloSession,
@@ -2680,6 +2681,18 @@ export function CupClient({
           serverNow={closeNotice?.serverNow}
           sessionClosed={sessionClosed}
           onCloseNow={handleConfirmClose}
+          onAutoClose={async (instant) => {
+            // The server closes only the announced instant this page counted down to
+            // (a cancel, a re-announce or a second tab defeats it): then just refresh.
+            const r = await closeAnnounced(session.id, new Date(instant).toISOString());
+            if (!r.ok) throw new Error(r.error);
+            if (!r.data.closed) {
+              router.refresh();
+              return;
+            }
+            if (!r.data.finalized && translations.closeNotFinalized) feedback.notifySuccess(translations.closeNotFinalized);
+            router.push(`/${locale}/app/sessions/${session.id}/results`);
+          }}
           onCancel={async () => {
             const r = await cancelAnnouncedClose(session.id);
             if (r.ok) setClosingAtMs(null);

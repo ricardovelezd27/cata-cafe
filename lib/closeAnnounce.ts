@@ -36,13 +36,21 @@ export function remainingMs(closingAtMs: number, clientNowMs: number, skew: numb
   return closingAtMs - (clientNowMs + skew);
 }
 
-/** What a cupper sees. "none" = nothing (no announcement, a cancelled one, or
- *  the session already closed); "counting" = time left; "due" = the moment has
- *  passed but the session is not closed yet. */
+/** How long past zero the cupper's banner keeps saying "está por cerrar", and how long
+ *  after that it says the announced close did not happen (S10 WP4b review L1). */
+export const DUE_WINDOW_MS = 2 * 60_000;
+export const NOT_DONE_WINDOW_MS = 10 * 60_000;
+
+/** What a cupper sees. "none" = nothing (no announcement, a cancelled one, the
+ *  session already closed, or the announcement is older than both windows);
+ *  "counting" = time left; "due" = the moment passed (at most 2 minutes ago) and
+ *  the session is not closed; "notDone" = it passed 2 to 12 minutes ago and the
+ *  session is still open ("El cierre anunciado no se hizo"). */
 export type BannerState =
   | { kind: "none" }
   | { kind: "counting"; remainingMs: number }
-  | { kind: "due" };
+  | { kind: "due" }
+  | { kind: "notDone" };
 
 export function bannerState(input: {
   closingAtMs: number | null;
@@ -52,11 +60,15 @@ export function bannerState(input: {
 }): BannerState {
   if (input.sessionClosed || input.closingAtMs === null) return { kind: "none" };
   const left = remainingMs(input.closingAtMs, input.clientNowMs, input.skew);
-  return left > 0 ? { kind: "counting", remainingMs: left } : { kind: "due" };
+  if (left > 0) return { kind: "counting", remainingMs: left };
+  const past = -left;
+  if (past <= DUE_WINDOW_MS) return { kind: "due" };
+  if (past <= DUE_WINDOW_MS + NOT_DONE_WINDOW_MS) return { kind: "notDone" };
+  return { kind: "none" };
 }
 
 /** What the owner's docked line shows. "passed" = the announced moment is over
- *  and the session is still open. */
+ *  and the session is still open (stays until the owner closes or cancels). */
 export type OwnerLineState =
   | { kind: "none" }
   | { kind: "counting"; remainingMs: number }
@@ -68,9 +80,9 @@ export function ownerLineState(input: {
   skew: number;
   sessionClosed: boolean;
 }): OwnerLineState {
-  const s = bannerState(input);
-  if (s.kind === "none") return { kind: "none" };
-  return s.kind === "counting" ? { kind: "counting", remainingMs: s.remainingMs } : { kind: "passed" };
+  if (input.sessionClosed || input.closingAtMs === null) return { kind: "none" };
+  const left = remainingMs(input.closingAtMs, input.clientNowMs, input.skew);
+  return left > 0 ? { kind: "counting", remainingMs: left } : { kind: "passed" };
 }
 
 /** Whole minutes to read out, rounded UP, never below 1 while time is left.
@@ -84,12 +96,19 @@ export function minuteBucket(remaining: number): number {
 /** The owner's page closes the session by itself ONLY when it watched the
  *  countdown run out: at some earlier tick of THIS page load time was left
  *  (`sawTimeLeft`), and now it is over. A page opened after the moment passed
- *  never closes anything: it shows "El cierre anunciado ya pasó". */
+ *  never closes anything: it shows "El cierre anunciado ya pasó". Never while a cancel
+ *  is in flight or after the owner clicked "Cancelar". The server re-checks all of it
+ *  (`closeAnnounced`); this only keeps a stale tab quiet. */
 export function shouldAutoClose(input: {
   sawTimeLeft: boolean;
   remainingMs: number;
   alreadyTried: boolean;
+  /** A cancel (or another request) is in flight. */
+  busy?: boolean;
+  /** The owner clicked "Cancelar" for this announcement. */
+  cancelled?: boolean;
 }): boolean {
+  if (input.busy === true || input.cancelled === true) return false;
   return input.sawTimeLeft && !input.alreadyTried && input.remainingMs <= 0;
 }
 

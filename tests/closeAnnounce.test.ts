@@ -45,6 +45,15 @@ describe("bannerState", () => {
     expect(bannerState({ ...base, closingAtMs: 1_000 })).toEqual({ kind: "due" });
     expect(bannerState({ ...base, closingAtMs: 500 })).toEqual({ kind: "due" });
   });
+  it("due for at most 2 minutes past zero, then 'not done' for 10 minutes, then nothing", () => {
+    const at = 1_000; // remaining = at - clientNow
+    const s = (past: number) => bannerState({ ...base, clientNowMs: at + past, closingAtMs: at }).kind;
+    expect(s(0)).toBe("due");
+    expect(s(120_000)).toBe("due");
+    expect(s(120_001)).toBe("notDone");
+    expect(s(12 * 60_000)).toBe("notDone");
+    expect(s(12 * 60_000 + 1)).toBe("none");
+  });
   it("a cancelled announcement (null) makes the banner disappear", () => {
     expect(bannerState({ ...base, closingAtMs: 61_000 }).kind).toBe("counting");
     expect(bannerState({ ...base, closingAtMs: null }).kind).toBe("none");
@@ -56,6 +65,8 @@ describe("ownerLineState", () => {
   it("counting / passed / none", () => {
     expect(ownerLineState({ ...base, closingAtMs: 31_000 })).toEqual({ kind: "counting", remainingMs: 30_000 });
     expect(ownerLineState({ ...base, closingAtMs: 1_000 })).toEqual({ kind: "passed" });
+    // the owner's line never times out like the cupper banner
+    expect(ownerLineState({ ...base, clientNowMs: 10 * 3_600_000, closingAtMs: 1_000 })).toEqual({ kind: "passed" });
     expect(ownerLineState({ ...base, closingAtMs: null })).toEqual({ kind: "none" });
     expect(ownerLineState({ ...base, closingAtMs: 31_000, sessionClosed: true })).toEqual({ kind: "none" });
   });
@@ -90,6 +101,12 @@ describe("shouldAutoClose", () => {
     // page opened after the moment passed: never closes by itself
     expect(shouldAutoClose({ sawTimeLeft: false, remainingMs: -60_000, alreadyTried: false })).toBe(false);
     expect(shouldAutoClose({ sawTimeLeft: true, remainingMs: 0, alreadyTried: true })).toBe(false);
+  });
+  it("never while a cancel is running or after the owner clicked Cancelar", () => {
+    const due = { sawTimeLeft: true, remainingMs: 0, alreadyTried: false };
+    expect(shouldAutoClose({ ...due, busy: true })).toBe(false);
+    expect(shouldAutoClose({ ...due, cancelled: true })).toBe(false);
+    expect(shouldAutoClose({ ...due, busy: false, cancelled: false })).toBe(true);
   });
 });
 

@@ -7,9 +7,15 @@
 // accepted by the session OWNER only, only if it is a COMPLETE draft, stamped
 // (`Evaluation.acceptedLateAt`); the cupper's own stored score for it is written
 // once, at acceptance; a text note after close is text only, never a rating.
+// Review fixes (PR #131): the organizer sees what they accept (score, difference
+// from the group, the ratings, and whether the server received it before or after
+// the close), accepts exactly the version they saw (`updatedAt` guard in the
+// action), a draft the server already had at the close is never replaced after it,
+// and an excluded cupper is never accepted.
 
 import { isEvaluationComplete, type EvaluationRowLike } from "@/lib/closeRules";
 import { isDeletedProfileId } from "@/lib/accountDeletion/deletedProfile";
+import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { shouldApplyClientWrite } from "@/lib/offline/clientWrite";
 import * as v from "@/lib/validate";
 
@@ -23,32 +29,32 @@ export const POST_CLOSE_NOTE_MAX = 500;
  *  session is still closed by the owner first), the evaluation a DRAFT, COMPLETE
  *  by the same rule the submit path and `countUnsentComplete` use
  *  (`isEvaluationComplete` in lib/closeRules.ts, which delegates to
- *  lib/evaluationState.ts), and its cupper a real account (a deleted-account
- *  placeholder is never accepted). */
+ *  lib/evaluationState.ts). A guest (anonymous) cupper passes; only a
+ *  deleted-account placeholder and a cupper the owner EXCLUDED from the results
+ *  (`ctx.excluded`, the participant's `excludedFromResults`) are refused. */
 export function isAcceptableLate(
   evaluation: EvaluationRowLike,
   session: { status: string; format: string },
+  ctx: { excluded?: boolean } = {},
 ): boolean {
   if (session.status !== "closed") return false;
   if (!evaluation.isDraft) return false;
+  if (ctx.excluded === true) return false;
   if (isDeletedProfileId(evaluation.cupperId)) return false;
   return isEvaluationComplete(evaluation, session.format);
-}
-
-/** The row was saved after the session closed (an honest flag for the owner:
- *  "Recibida después del cierre"). */
-export function receivedAfterClose(
-  updatedAt: Date | null | undefined,
-  closedAt: Date | null | undefined,
-): boolean {
-  if (!updatedAt || !closedAt) return false;
-  return updatedAt.getTime() > closedAt.getTime();
 }
 
 export type LateDraftInput = EvaluationRowLike & {
   id: string;
   sessionSampleId: string;
   updatedAt: Date;
+};
+
+export type LateDraftForOwner = LateDraftInput & {
+  /** The evaluation's own stored total (null = partial / not scored). */
+  individualScore: number | null;
+  /** Server stamp: set only when a device's late send put this content on the server after the close. */
+  receivedLateAt: Date | null;
 };
 
 export type OwnerLateRow = {
@@ -58,32 +64,69 @@ export type OwnerLateRow = {
   sampleLabel: string;
   /** ISO of the draft's last save. */
   savedAt: string;
-  receivedAfterClose: boolean;
+  /** The version guard: the row's `updatedAt` as rendered (ISO, milliseconds kept). */
+  updatedAt: string;
+  /** true = the server received this content AFTER the close (`receivedLateAt`); false = it already had it at the close. */
+  receivedLate: boolean;
+  individualScore: number | null;
+  /** That sample's current group score and the evaluation's difference from it (null when either is). */
+  groupScore: number | null;
+  diff: number | null;
+  /** The 8 affective ratings, in attribute order (null = not rated). */
+  ratings: { id: string; value: number | null }[];
+  /** The sample's stored group score is under the pre-2026-11 rule: accepting moves it to the current one. */
+  oldRule: boolean;
 };
 
+function ratingsOf(d: EvaluationRowLike, format: string): { id: string; value: number | null }[] {
+  const raw = format === "combined" ? d.combinedData : d.affectiveData;
+  const obj = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+  return AFFECTIVE_ATTRIBUTES.map((a) => {
+    const n = Number(obj[`${a.id}_final`] ?? obj[a.id] ?? NaN);
+    return { id: a.id, value: Number.isFinite(n) && n > 0 ? n : null };
+  });
+}
+
 /** The owner's "Evaluaciones recibidas tarde" rows. Everything another cupper
- *  could be told (a name, a count) lives ONLY here, so the payload builder is
- *  the privacy gate: a viewer who is not the owner lens gets null, as does a
- *  session that is not a closed group session or has nothing acceptable. */
+ *  could be told (a name, a count, a score) lives ONLY here, so the payload
+ *  builder is the privacy gate: a viewer who is not the owner lens gets null, as
+ *  does a session that is not a closed group session or has nothing acceptable.
+ *  Excluded cuppers are not listed. */
 export function buildOwnerLateRows(input: {
   ownerLens: boolean;
   isGroup: boolean;
   session: { status: string; format: string; closedAt: Date | null };
-  drafts: LateDraftInput[];
+  drafts: LateDraftForOwner[];
   sampleLabels: Map<string, string>;
   nameOf: (cupperId: string) => string;
+  excludedUserIds?: ReadonlySet<string>;
+  /** Current group score per sample (the owner's TS recompute). */
+  groupScoreBySample?: ReadonlyMap<string, number | null>;
+  /** Samples whose stored aggregate is under the pre-2026-11 rule. */
+  oldRuleSampleIds?: ReadonlySet<string>;
 }): OwnerLateRow[] | null {
   if (!input.ownerLens || !input.isGroup || input.session.status !== "closed") return null;
   const rows: OwnerLateRow[] = [];
   for (const d of input.drafts) {
-    if (!isAcceptableLate(d, input.session)) continue;
+    const excluded = input.excludedUserIds?.has(d.cupperId) === true;
+    if (!isAcceptableLate(d, input.session, { excluded })) continue;
+    const group = input.groupScoreBySample?.get(d.sessionSampleId) ?? null;
     rows.push({
       evaluationId: d.id,
       cupperName: input.nameOf(d.cupperId),
       sampleId: d.sessionSampleId,
       sampleLabel: input.sampleLabels.get(d.sessionSampleId) ?? "",
       savedAt: d.updatedAt.toISOString(),
-      receivedAfterClose: receivedAfterClose(d.updatedAt, input.session.closedAt),
+      updatedAt: d.updatedAt.toISOString(),
+      receivedLate: d.receivedLateAt !== null,
+      individualScore: d.individualScore,
+      groupScore: group,
+      diff:
+        d.individualScore !== null && group !== null
+          ? Math.round((d.individualScore - group) * 100) / 100
+          : null,
+      ratings: ratingsOf(d, input.session.format),
+      oldRule: input.oldRuleSampleIds?.has(d.sessionSampleId) === true,
     });
   }
   if (rows.length === 0) return null;
@@ -100,14 +143,15 @@ export type MyLateNotice =
 /** The viewer's OWN complete drafts the close left out, and their own evaluations
  *  the owner accepted. Only the viewer's rows are ever passed in
  *  (`mine`, already filtered by cupper), and only closed group sessions yield
- *  anything. */
+ *  anything. An excluded viewer gets nothing. */
 export function buildMyLateNotices(input: {
   isGroup: boolean;
   session: { status: string; format: string };
   mine: (LateDraftInput & { acceptedLateAt: Date | null })[];
   sampleLabels: Map<string, string>;
+  viewerExcluded?: boolean;
 }): MyLateNotice[] {
-  if (!input.isGroup || input.session.status !== "closed") return [];
+  if (!input.isGroup || input.session.status !== "closed" || input.viewerExcluded === true) return [];
   const out: MyLateNotice[] = [];
   for (const e of input.mine) {
     const label = input.sampleLabels.get(e.sessionSampleId) ?? "";
@@ -125,18 +169,21 @@ export function buildMyLateNotices(input: {
 export type LateDraftWriteDecision = "create" | "update" | "stale" | "conflict";
 
 /** What `submitLateDraft` does with the row that exists for (sample, cupper).
- *  Never an overwrite of a SUBMITTED row (`conflict`, nothing written); an
- *  existing DRAFT is updated only if the device copy is not older than what the
- *  server stored (`stale` = the server already holds newer data, nothing
- *  written, the device copy is treated as sent). */
+ *  Never an overwrite of a SUBMITTED row (`conflict`). A draft the server already
+ *  had when the session closed (`receivedLateAt` NULL) is never replaced after the
+ *  close either: `conflict`, the organizer can accept THAT version. A draft that
+ *  itself arrived late (`receivedLateAt` set) is updated only if the device copy is
+ *  not older than what the server stored (`stale` = the server already holds newer
+ *  data, nothing written). No row: create. */
 export function planLateDraftWrite(input: {
-  existing: { isDraft: boolean; lastClientWriteAt: Date | null } | null;
+  existing: { isDraft: boolean; lastClientWriteAt: Date | null; receivedLateAt: Date | null } | null;
   clientTs: unknown;
   now?: number;
 }): LateDraftWriteDecision {
   const { existing } = input;
   if (!existing) return "create";
   if (!existing.isDraft) return "conflict";
+  if (existing.receivedLateAt === null) return "conflict";
   return shouldApplyClientWrite(existing.lastClientWriteAt, input.clientTs, input.now) ? "update" : "stale";
 }
 

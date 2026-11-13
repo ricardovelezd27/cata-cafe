@@ -293,6 +293,10 @@ model Evaluation {
   /// after the close (`acceptLateEvaluation`). NULL = never. Display/audit only:
   /// the aggregate trigger fires on the isDraft flip, never reads this.
   acceptedLateAt DateTime? @db.Timestamptz(3)
+  /// S10 WP4b fix (review H1/H2): the server's own record that this content arrived
+  /// AFTER the close. Stamped ONLY by submitLateDraft (create and update); nothing the
+  /// client sends decides it. NULL on a draft = the server already had it when the session closed.
+  receivedLateAt DateTime? @db.Timestamptz(3)
   /// S10 WP4b (Kim C2): a text note the cupper added to their own SUBMITTED
   /// evaluation after the close (max 500 chars, enforced in the action). Never a
   /// rating: scoring, the trigger and AggregateScore never read it.

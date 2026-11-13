@@ -22,6 +22,7 @@ import {
   acceptLateEvaluation,
   announceClose,
   cancelAnnouncedClose,
+  closeAnnounced,
   setPostCloseNote,
 } from "@/app/actions/community";
 import { submitLateDraft } from "@/app/actions/offline";
@@ -71,6 +72,113 @@ async function closedScenario(opts: { cups?: number; legacyDraft?: boolean } = {
   return { owner, u1, u2, coffee, s, A, B, draft, cups };
 }
 
+/** Accept with the `updatedAt` the organizer's page would have rendered right now. */
+async function accept(evaluationId: string) {
+  const row = await prisma.evaluation.findUnique({ where: { id: evaluationId }, select: { updatedAt: true } });
+  return acceptLateEvaluation(evaluationId, (row?.updatedAt ?? new Date()).toISOString());
+}
+
+describe("acceptLateEvaluation: version guard, excluded cuppers", () => {
+  it("a stale stamp answers conflict and flips nothing (the row changed after the page rendered)", async () => {
+    const { owner, draft, A } = await closedScenario();
+    const rendered = (await prisma.evaluation.findUniqueOrThrow({ where: { id: draft.id } })).updatedAt.toISOString();
+    // the content changes after the page rendered (79.00 shown, 100.00 now)
+    await prisma.evaluation.update({
+      where: { id: draft.id },
+      data: { affectiveData: affectiveData(9), individualScore: 100 },
+    });
+    const aggBefore = await storedAggregate(A.id);
+    h.userId = owner;
+    expect(await acceptLateEvaluation(draft.id, rendered)).toEqual({ ok: false, error: "conflict" });
+    const row = await prisma.evaluation.findUniqueOrThrow({ where: { id: draft.id } });
+    expect(row.isDraft).toBe(true);
+    expect(row.acceptedLateAt).toBeNull();
+    expect((await storedAggregate(A.id))?.communityScore).toBe(aggBefore?.communityScore);
+    // with the CURRENT stamp it is accepted: the organizer now accepts what they re-read
+    expect((await accept(draft.id)).ok).toBe(true);
+  });
+
+  it("the reviewer's probe: a late send never replaces the pre-close draft, so what is shown is what is accepted", async () => {
+    const { owner, u2, draft, A } = await closedScenario();
+    const shown = await prisma.evaluation.findUniqueOrThrow({ where: { id: draft.id } });
+    h.userId = u2;
+    const sent = await submitLateDraft({ sessionSampleId: A.id, moduleKey: "affective", data: affectiveData(9), clientTs: Date.now() });
+    expect(sent).toEqual({ status: "conflict", reason: "saved_before_close" });
+    const after = await prisma.evaluation.findUniqueOrThrow({ where: { id: draft.id } });
+    expect(after.updatedAt.getTime()).toBe(shown.updatedAt.getTime());
+    expect(after.individualScore).toBe(shown.individualScore);
+    expect(after.receivedLateAt).toBeNull();
+    h.userId = owner;
+    expect((await acceptLateEvaluation(draft.id, shown.updatedAt.toISOString())).ok).toBe(true);
+    expect((await prisma.evaluation.findUniqueOrThrow({ where: { id: draft.id } })).individualScore).toBe(shown.individualScore);
+  });
+
+  it("an excluded cupper's draft is refused and untouched", async () => {
+    const { owner, u2, s, draft } = await closedScenario();
+    await prisma.sessionParticipant.update({
+      where: { sessionId_userId: { sessionId: s.id, userId: u2 } },
+      data: { excludedFromResults: true, excludedAt: new Date(), excludedBy: owner, exclusionReason: "protocol" },
+    });
+    h.userId = owner;
+    expect(await accept(draft.id)).toEqual({ ok: false, error: "invalid_input" });
+    expect((await prisma.evaluation.findUniqueOrThrow({ where: { id: draft.id } })).isDraft).toBe(true);
+  });
+});
+
+describe("closeAnnounced", () => {
+  async function announced(minutes: 2 | 5) {
+    const owner = await makeUser();
+    const u1 = await makeUser();
+    const s = await makeSession({ ownerId: owner, isGroup: true, participants: [u1], cupsPerSample: 2 });
+    h.userId = owner;
+    await announceClose(s.id, minutes);
+    const at = (await prisma.cuppingSession.findUniqueOrThrow({ where: { id: s.id } })).closingAt!;
+    return { owner, s, at };
+  }
+  const statusOf = async (id: string) => (await prisma.cuppingSession.findUniqueOrThrow({ where: { id } })).status;
+
+  it("announced for the future closes nothing", async () => {
+    const { s, at } = await announced(5);
+    expect(await closeAnnounced(s.id, at.toISOString())).toEqual({ ok: true, data: { closed: false, finalized: true } });
+    expect(await statusOf(s.id)).toBe("active");
+  });
+
+  it("announced and due closes through the close routine", async () => {
+    const { s } = await announced(2);
+    const due = new Date(Date.now() - 500);
+    await prisma.cuppingSession.update({ where: { id: s.id }, data: { closingAt: due } });
+    const r = await closeAnnounced(s.id, due.toISOString());
+    expect(r.ok && r.data.closed).toBe(true);
+    const row = await prisma.cuppingSession.findUniqueOrThrow({ where: { id: s.id } });
+    expect(row.status).toBe("closed");
+    expect(row.closedAt).toBeInstanceOf(Date);
+  });
+
+  it("announced then cancelled: the old instant closes nothing", async () => {
+    const { s } = await announced(2);
+    const due = new Date(Date.now() - 500);
+    await prisma.cuppingSession.update({ where: { id: s.id }, data: { closingAt: due } });
+    await cancelAnnouncedClose(s.id);
+    expect(await closeAnnounced(s.id, due.toISOString())).toEqual({ ok: true, data: { closed: false, finalized: true } });
+    expect(await statusOf(s.id)).toBe("active");
+  });
+
+  it("a re-announce (another instant) defeats the stale tab's old instant", async () => {
+    const { s } = await announced(2);
+    const old = new Date(Date.now() - 500);
+    await prisma.cuppingSession.update({ where: { id: s.id }, data: { closingAt: old } });
+    await announceClose(s.id, 5); // moves closingAt to now + 5 min
+    expect((await closeAnnounced(s.id, old.toISOString())).ok).toBe(true);
+    expect(await statusOf(s.id)).toBe("active");
+  });
+
+  it("only the owner can call it", async () => {
+    const { s, at } = await announced(2);
+    h.userId = await makeUser();
+    expect(await closeAnnounced(s.id, at.toISOString())).toEqual({ ok: false, error: "not_found_or_forbidden" });
+  });
+});
+
 describe("acceptLateEvaluation", () => {
   it("submits ONE complete draft, stamps it, recomputes only that sample, writes history", async () => {
     const { owner, u1, u2, s, A, B, draft, coffee } = await closedScenario();
@@ -82,7 +190,7 @@ describe("acceptLateEvaluation", () => {
     });
 
     h.userId = owner;
-    const r = await acceptLateEvaluation(draft.id);
+    const r = await accept(draft.id);
     expect(r).toEqual({ ok: true, data: { accepted: true } });
 
     const ev = await prisma.evaluation.findUniqueOrThrow({ where: { id: draft.id } });
@@ -113,9 +221,9 @@ describe("acceptLateEvaluation", () => {
   it("is idempotent: a second call is a no-op success that changes nothing", async () => {
     const { owner, draft } = await closedScenario();
     h.userId = owner;
-    await acceptLateEvaluation(draft.id);
+    await accept(draft.id);
     const first = await prisma.evaluation.findUniqueOrThrow({ where: { id: draft.id } });
-    const again = await acceptLateEvaluation(draft.id);
+    const again = await accept(draft.id);
     expect(again).toEqual({ ok: true, data: { accepted: false } });
     const second = await prisma.evaluation.findUniqueOrThrow({ where: { id: draft.id } });
     expect(second.acceptedLateAt?.getTime()).toBe(first.acceptedLateAt?.getTime());
@@ -131,7 +239,7 @@ describe("acceptLateEvaluation", () => {
     expect(u2).toBeTruthy();
     expect(A).toBeTruthy();
     h.userId = owner;
-    expect(await acceptLateEvaluation(draft.id)).toEqual({ ok: false, error: "invalid_input" });
+    expect(await accept(draft.id)).toEqual({ ok: false, error: "invalid_input" });
     expect((await prisma.evaluation.findUniqueOrThrow({ where: { id: draft.id } })).isDraft).toBe(true);
   });
 
@@ -141,7 +249,7 @@ describe("acceptLateEvaluation", () => {
     const s = await makeSession({ ownerId: owner, isGroup: true, participants: [u1], cupsPerSample: 2 });
     const d = await makeEvaluation({ sampleId: s.samples[0].id, sessionId: s.id, cupperId: u1, cupsPerSample: 2, draft: true });
     h.userId = owner;
-    expect(await acceptLateEvaluation(d.id)).toEqual({ ok: false, error: "invalid_input" });
+    expect(await accept(d.id)).toEqual({ ok: false, error: "invalid_input" });
   });
 
   it("refuses anyone who is not the session owner (cupper, outsider)", async () => {
@@ -149,7 +257,7 @@ describe("acceptLateEvaluation", () => {
     const outsider = await makeUser();
     for (const who of [u2, u1, outsider]) {
       h.userId = who;
-      expect(await acceptLateEvaluation(draft.id)).toEqual({ ok: false, error: "not_found_or_forbidden" });
+      expect(await accept(draft.id)).toEqual({ ok: false, error: "not_found_or_forbidden" });
     }
     expect((await prisma.evaluation.findUniqueOrThrow({ where: { id: draft.id } })).isDraft).toBe(true);
   });
@@ -159,15 +267,18 @@ describe("acceptLateEvaluation", () => {
     const s = await makeSession({ ownerId: owner, isGroup: false, status: "closed" });
     const d = await makeEvaluation({ sampleId: s.samples[0].id, sessionId: s.id, cupperId: owner, draft: true });
     h.userId = owner;
-    expect(await acceptLateEvaluation(d.id)).toEqual({ ok: false, error: "invalid_input" });
-    expect(await acceptLateEvaluation("nope")).toEqual({ ok: false, error: "not_found_or_forbidden" });
+    expect(await accept(d.id)).toEqual({ ok: false, error: "invalid_input" });
+    expect(await acceptLateEvaluation("nope", new Date().toISOString())).toEqual({
+      ok: false,
+      error: "not_found_or_forbidden",
+    });
   });
 
   it("rewrites a legacy draft (cups NULL) under the current rule before the flip", async () => {
     const { owner, A, draft, u2 } = await closedScenario({ cups: 3, legacyDraft: true });
     expect((await prisma.evaluation.findUniqueOrThrow({ where: { id: draft.id } })).cups).toBeNull();
     h.userId = owner;
-    expect((await acceptLateEvaluation(draft.id)).ok).toBe(true);
+    expect((await accept(draft.id)).ok).toBe(true);
     const ev = await prisma.evaluation.findUniqueOrThrow({ where: { id: draft.id } });
     expect(ev.cups).toBe(3);
     const data = ev.affectiveData as Record<string, unknown>;
@@ -195,6 +306,7 @@ describe("submitLateDraft", () => {
     expect(ev.isDraft).toBe(true);
     expect(ev.submittedAt).toBeNull();
     expect(ev.acceptedLateAt).toBeNull();
+    expect(ev.receivedLateAt).toBeInstanceOf(Date); // the server's own record of "after the close"
     expect(ev.cups).toBe(2);
     // no trigger, no score moved
     const aggAfter = await storedAggregate(A.id);
@@ -204,13 +316,21 @@ describe("submitLateDraft", () => {
   });
 
   it("updates an existing draft only when the device copy is newer", async () => {
-    const { u2, A } = await closedScenario();
-    h.userId = u2;
+    const { A, s } = await closedScenario();
+    // a cupper who had NO row at the close (a pre-close draft is never replaced)
+    const late = await makeUser({ name: "Cuatro" });
+    await prisma.sessionParticipant.create({ data: { sessionId: s.id, userId: late, status: "joined" } });
+    h.userId = late;
     const t1 = Date.now() - 60_000;
     expect(await submitLateDraft({ sessionSampleId: A.id, moduleKey: "affective", data: complete(8), clientTs: t1 })).toEqual({ status: "synced" });
     const afterNewer = await prisma.evaluation.findUniqueOrThrow({
-      where: { sessionSampleId_cupperId: { sessionSampleId: A.id, cupperId: u2 } },
+      where: { sessionSampleId_cupperId: { sessionSampleId: A.id, cupperId: late } },
     });
+    expect(afterNewer.receivedLateAt).toBeInstanceOf(Date);
+    // a NEWER device copy updates it and keeps the server stamp
+    expect(await submitLateDraft({ sessionSampleId: A.id, moduleKey: "affective", data: complete(7), clientTs: t1 + 10_000 })).toEqual({ status: "synced" });
+    expect(((await prisma.evaluation.findUniqueOrThrow({ where: { id: afterNewer.id } })).affectiveData as Record<string, unknown>).fragancia_af_final).toBe(7);
+    await prisma.evaluation.update({ where: { id: afterNewer.id }, data: { affectiveData: complete(8) } });
     expect((afterNewer.affectiveData as Record<string, unknown>).fragancia_af_final).toBe(8);
     // an OLDER device copy does not overwrite it, and still answers synced
     expect(await submitLateDraft({ sessionSampleId: A.id, moduleKey: "affective", data: complete(3), clientTs: t1 - 30_000 })).toEqual({ status: "synced" });
@@ -225,7 +345,7 @@ describe("submitLateDraft", () => {
     const before = await prisma.evaluation.findUniqueOrThrow({
       where: { sessionSampleId_cupperId: { sessionSampleId: A.id, cupperId: u1 } },
     });
-    expect(await submitLateDraft({ sessionSampleId: A.id, moduleKey: "affective", data: complete(2), clientTs: Date.now() })).toEqual({ status: "conflict" });
+    expect(await submitLateDraft({ sessionSampleId: A.id, moduleKey: "affective", data: complete(2), clientTs: Date.now() })).toEqual({ status: "conflict", reason: "submitted" });
     const after = await prisma.evaluation.findUniqueOrThrow({ where: { id: before.id } });
     expect(after.affectiveData).toEqual(before.affectiveData);
     expect(after.isDraft).toBe(false);

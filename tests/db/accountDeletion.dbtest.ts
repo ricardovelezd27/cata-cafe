@@ -201,6 +201,23 @@ describe("deleteAccountData", () => {
     expect(await prisma.profile.count({ where: { id: { in: [w.P1, w.P2, w.Q] } } })).toBe(3);
   }, 120_000);
 
+  it("erases the free-text note written after a close (S10 WP4b) but keeps the evaluation", async () => {
+    const w = await world();
+    const mine = await prisma.evaluation.findFirstOrThrow({
+      where: { cupperId: w.D, sessionSampleId: w.otherSubmitted.samples[0].id },
+    });
+    await prisma.evaluation.update({
+      where: { id: mine.id },
+      data: { postCloseNote: "nota privada", postCloseNoteAt: new Date() },
+    });
+    const out = await deleteAccountData({ id: w.D, email: "daniela@example.test", is_anonymous: false });
+    const after = await prisma.evaluation.findUniqueOrThrow({ where: { id: mine.id } });
+    expect(after.cupperId).toBe(out.placeholderId);
+    expect(after.postCloseNote).toBeNull();
+    expect(after.postCloseNoteAt).toBeNull();
+    expect(after.individualScore).toBe(mine.individualScore);
+  }, 120_000);
+
   it("reports authDeleted=false after 3 failed attempts but the data is gone", async () => {
     const D = await makeUser({ email: "x@example.test" });
     await makeSession({ ownerId: D, samples: [{}] });

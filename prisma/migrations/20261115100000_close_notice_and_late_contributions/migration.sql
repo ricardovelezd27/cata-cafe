@@ -1,8 +1,10 @@
 -- S10 WP4b (2026-11-15): announced close, late evaluations the owner accepts, a note after close.
--- Additive and backwards compatible: four NULLABLE columns, no default, no backfill, no index,
+-- Additive and backwards compatible: five NULLABLE columns, no default, no backfill, no index,
 -- no trigger fires. Code that does not know the columns ignores them.
 --   * cupping_sessions."closingAt"        the announced close moment (owner's "avisar y cerrar").
 --   * evaluations."acceptedLateAt"        when the owner accepted a complete draft after the close.
+--   * evaluations."receivedLateAt"       the server's own record that a draft's content arrived after the
+--                                         close (stamped only by the late send from a device).
 --   * evaluations."postCloseNote"         a cupper's text note on their own submitted evaluation
 --                                         after the close (max 500 chars, enforced in the action).
 --   * evaluations."postCloseNoteAt"       when that note was written.
@@ -21,6 +23,7 @@ ALTER TABLE "cupping_sessions" ADD COLUMN "closingAt" TIMESTAMPTZ(3);
 
 -- AlterTable
 ALTER TABLE "evaluations" ADD COLUMN "acceptedLateAt" TIMESTAMPTZ(3),
+ADD COLUMN "receivedLateAt" TIMESTAMPTZ(3),
 ADD COLUMN "postCloseNote" TEXT,
 ADD COLUMN "postCloseNoteAt" TIMESTAMPTZ(3);
 

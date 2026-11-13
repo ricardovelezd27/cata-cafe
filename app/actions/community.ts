@@ -540,6 +540,49 @@ export async function closeSession(sessionId: string) {
   };
 }
 
+// ─── Close an announced close (S10 WP4b review M3 / L2) ───────────────────────
+// The owner's open cup page calls THIS (never the plain close) when its countdown
+// reaches zero. It closes ONLY if the session's stored `closingAt` is the very
+// instant that page counted down AND that instant has passed on the server clock
+// (2 s of tolerance); otherwise it answers ok with `closed: false` and changes
+// nothing. A cancel (null) or a re-announce (another instant) therefore defeats a
+// stale tab, a second tab and an old `serverNow`. "Cerrar ahora" stays closeSession.
+export async function closeAnnounced(
+  sessionId: string,
+  closingAt: string,
+): Promise<ActionResult<{ closed: boolean; finalized: boolean }>> {
+  return run(
+    "closeAnnounced",
+    async () => {
+      const user = await requireUser();
+      const counted = v.isoDate(closingAt, "closingAt");
+      await requireSessionOwner(sessionId, user.id);
+
+      const row = await prisma.cuppingSession.findUnique({
+        where: { id: sessionId },
+        select: { status: true, closingAt: true },
+      });
+      if (
+        !row ||
+        row.status === "closed" ||
+        !row.closingAt ||
+        row.closingAt.getTime() !== counted.getTime() ||
+        row.closingAt.getTime() > Date.now() + 2000
+      ) {
+        return { closed: false, finalized: true };
+      }
+
+      const result = await closeSessionInternal(sessionId, { reason: "owner", emails: "after" });
+      revalidatePath(`/es/app/sessions/${sessionId}/results`);
+      revalidatePath(`/en/app/sessions/${sessionId}/results`);
+      revalidatePath(`/es/app/sessions/${sessionId}/cup`);
+      revalidatePath(`/en/app/sessions/${sessionId}/cup`);
+      return { closed: result.closed, finalized: result.finalized !== false };
+    },
+    { sessionId },
+  );
+}
+
 // ─── Re-send close emails to participants who did not get theirs ─────────────
 // Owner only, closed group sessions only. sendCloseEmails skips every
 // recipient already marked "sent", so this only retries failed/skipped rows.
@@ -974,10 +1017,14 @@ export async function cancelAnnouncedClose(sessionId: string): Promise<ActionRes
 // once, here. Idempotent: an already submitted row is a no-op success.
 export async function acceptLateEvaluation(
   evaluationId: string,
+  /** The row's `updatedAt` as the organizer's page rendered it (ISO, milliseconds kept):
+   *  the version guard. A different stored value answers `conflict` and flips nothing. */
+  expectedUpdatedAt: string,
 ): Promise<ActionResult<{ accepted: boolean }>> {
   return run("acceptLateEvaluation", async () => {
     const user = await requireRegisteredUser();
     const id = v.str(evaluationId, "evaluationId", { max: 64 }) as string;
+    const expectedAt = v.isoDate(expectedUpdatedAt, "expectedUpdatedAt");
 
     const found = await prisma.evaluation.findUnique({
       where: { id },
@@ -1001,11 +1048,25 @@ export async function acceptLateEvaluation(
             descriptiveData: true,
             affectiveData: true,
             combinedData: true,
+            updatedAt: true,
           },
         });
         if (!row) throw new Error("not_found_or_forbidden");
         if (!row.isDraft) return false; // already submitted: nothing to do
-        if (!isAcceptableLate(row, { status: auth.status, format: auth.format })) {
+        // The organizer accepts exactly the version they saw (review H2).
+        if (row.updatedAt.getTime() !== expectedAt.getTime()) throw new Error("conflict");
+        // A cupper the owner excluded from the results is never accepted (review M1).
+        const participant = await tx.sessionParticipant.findUnique({
+          where: { sessionId_userId: { sessionId: auth.sessionId, userId: row.cupperId } },
+          select: { excludedFromResults: true },
+        });
+        if (
+          !isAcceptableLate(
+            row,
+            { status: auth.status, format: auth.format },
+            { excluded: participant?.excludedFromResults === true },
+          )
+        ) {
           throw new Error("invalid_input");
         }
         await recomputeLegacyDraftByIdInTx(tx, {

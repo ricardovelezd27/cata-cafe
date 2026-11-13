@@ -30,6 +30,8 @@ export type CloseBannerTranslations = {
   /** RAW with "{time}". */
   counting: string;
   due: string;
+  /** Shown from 2 to 12 minutes past the announced moment while the session is still open. */
+  notDone: string;
   /** RAW with "{n}". */
   minutes: string;
   lessThanMinute: string;
@@ -85,6 +87,7 @@ export function CloseAnnounceBanner({
 
   let text: string | null = null;
   if (mounted && state.kind === "due") text = t.due;
+  if (mounted && state.kind === "notDone") text = t.notDone;
   if (mounted && state.kind === "counting") {
     const bucket = minuteBucket(state.remainingMs);
     const time = bucket <= 1 ? t.lessThanMinute : t.minutes.replace("{n}", String(bucket));
@@ -109,14 +112,18 @@ export function OwnerCloseLine({
   serverNow,
   sessionClosed,
   onCloseNow,
+  onAutoClose,
   onCancel,
   translations: t,
 }: {
   closingAtMs: number | null;
   serverNow?: string;
   sessionClosed: boolean;
-  /** The same close the dialog confirmed; may throw (network). */
+  /** The plain close ("Cerrar ahora"); may throw (network). */
   onCloseNow: () => Promise<unknown>;
+  /** What happens when the countdown this page watched reaches zero: the server closes ONLY
+   *  if this very instant is still the announced one (`closeAnnounced`); may throw. */
+  onAutoClose: (closingAtMs: number) => Promise<unknown>;
   /** Takes the announcement back; resolves false when it failed. */
   onCancel: () => Promise<boolean>;
   translations: OwnerCloseLineTranslations;
@@ -128,6 +135,8 @@ export function OwnerCloseLine({
   const [failed, setFailed] = useState(false);
   const sawTimeLeft = useRef(false);
   const tried = useRef(false);
+  // The owner clicked "Cancelar" for this announcement: the countdown can never close it.
+  const cancelled = useRef(false);
 
   const state = ownerLineState({ closingAtMs, clientNowMs: now, skew, sessionClosed });
   const left = closingAtMs === null ? Number.POSITIVE_INFINITY : remainingMs(closingAtMs, now, skew);
@@ -143,17 +152,39 @@ export function OwnerCloseLine({
     }
   };
 
+  const autoClose = async (instant: number) => {
+    setBusy("closing");
+    setFailed(false);
+    try {
+      await onAutoClose(instant);
+    } catch {
+      setFailed(true);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   // A new announcement (or none) starts the watch over.
   useEffect(() => {
     sawTimeLeft.current = false;
     tried.current = false;
+    cancelled.current = false;
   }, [closingAtMs]);
 
   useEffect(() => {
     if (state.kind === "counting") sawTimeLeft.current = true;
-    if (shouldAutoClose({ sawTimeLeft: sawTimeLeft.current, remainingMs: left, alreadyTried: tried.current })) {
+    if (
+      closingAtMs !== null &&
+      shouldAutoClose({
+        sawTimeLeft: sawTimeLeft.current,
+        remainingMs: left,
+        alreadyTried: tried.current,
+        busy: busy !== null,
+        cancelled: cancelled.current,
+      })
+    ) {
       tried.current = true;
-      void closeNow();
+      void autoClose(closingAtMs);
     }
     // closeNow is recreated every render and only reads the latest props through the ref-guarded path.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -162,6 +193,7 @@ export function OwnerCloseLine({
   if (!mounted || state.kind === "none") return null;
 
   const cancel = async () => {
+    cancelled.current = true;
     setBusy("cancelling");
     setFailed(false);
     const ok = await onCancel();

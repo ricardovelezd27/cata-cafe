@@ -238,7 +238,9 @@ export async function replayEvaluation(
 // Answers a status like the replay actions and never throws for an expected case:
 //   synced        the draft is on the server (created, updated, or the server already
 //                 held newer data of the same draft)
-//   conflict      a SUBMITTED row exists: nothing is written
+//   conflict      nothing is written: either a SUBMITTED row exists (reason "submitted") or the
+//                 server already held a draft of this sample when the session closed (reason
+//                 "saved_before_close": the organizer can accept THAT version)
 //   pending       not sent: nobody signed in, or the session is not closed (an open or
 //                 merely expired session takes the normal replay)
 //   gone          the sample or membership no longer exists
@@ -260,7 +262,7 @@ export async function submitLateDraft(input: {
   /** ms epoch of the draft's last edit on the device. */
   clientTs?: number;
   expectedUserId?: string;
-}): Promise<{ status: LateDraftStatus }> {
+}): Promise<{ status: LateDraftStatus; reason?: "submitted" | "saved_before_close" }> {
   const user = await replayUser(input.expectedUserId);
   if (user === "identity_changed") return { status: "identity_changed" };
   if (!user) return { status: "pending" };
@@ -296,13 +298,15 @@ export async function submitLateDraft(input: {
   const ts = effectiveClientTs(input.clientTs, Date.now());
   const stamp = ts === undefined ? undefined : new Date(ts);
   const load = () =>
-    prisma.evaluation.findUnique({ where: key, select: { id: true, isDraft: true, lastClientWriteAt: true } });
+    prisma.evaluation.findUnique({ where: key, select: { id: true, isDraft: true, lastClientWriteAt: true, receivedLateAt: true } });
 
   // Two passes: a concurrent create (P2002) or a lost conditional update re-reads once.
   for (let attempt = 0; attempt < 2; attempt++) {
     const existing = await load();
     const plan = planLateDraftWrite({ existing, clientTs: input.clientTs });
-    if (plan === "conflict") return { status: "conflict" };
+    if (plan === "conflict") {
+      return { status: "conflict", reason: existing && !existing.isDraft ? "submitted" : "saved_before_close" };
+    }
     if (plan === "stale") return { status: "synced" };
 
     if (plan === "create") {
@@ -313,6 +317,8 @@ export async function submitLateDraft(input: {
             sessionId: auth.sessionId,
             cupperId: user.id,
             ...fields,
+            // The server's own record that this content arrived after the close.
+            receivedLateAt: new Date(),
             ...(stamp ? { lastClientWriteAt: stamp } : {}),
           },
           select: { id: true },
@@ -331,15 +337,23 @@ export async function submitLateDraft(input: {
         sessionSampleId: input.sessionSampleId,
         cupperId: user.id,
         isDraft: true,
+        // Only a draft that itself arrived late: a draft the server had at the close is never replaced.
+        receivedLateAt: { not: null },
         ...(stamp ? { OR: [{ lastClientWriteAt: null }, { lastClientWriteAt: { lte: stamp } }] } : {}),
       },
-      data: { sessionId: auth.sessionId, ...fields, ...(stamp ? { lastClientWriteAt: stamp } : {}) },
+      data: {
+        sessionId: auth.sessionId,
+        ...fields,
+        receivedLateAt: new Date(),
+        ...(stamp ? { lastClientWriteAt: stamp } : {}),
+      },
     });
     if (res.count === 1) return { status: "synced" };
   }
   // Lost both races: re-read once to tell a submitted row from a newer draft.
   const last = await load();
-  if (last && !last.isDraft) return { status: "conflict" };
+  if (last && !last.isDraft) return { status: "conflict", reason: "submitted" };
+  if (last && last.receivedLateAt === null) return { status: "conflict", reason: "saved_before_close" };
   return { status: "synced" };
 }
 

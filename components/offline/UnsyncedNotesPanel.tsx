@@ -49,6 +49,8 @@ export type UnsyncedNotesTranslations = {
   sent: string;
   sendFailed: string;
   sendConflict: string;
+  /** The organizer already holds the draft the server had when the session closed. */
+  sendKeptDraft: string;
   sendRejected: string;
 };
 
@@ -129,7 +131,7 @@ export function UnsyncedNotesPanel({
   const send = async (e: UnsyncedEntry) => {
     setSendingKey(entryKey(e));
     try {
-      const { status } = await submitLateDraft({
+      const { status, reason } = await submitLateDraft({
         sessionSampleId: e.sampleId,
         moduleKey: e.moduleKey as "descriptive" | "affective" | "combined",
         data: e.data,
@@ -148,7 +150,9 @@ export function UnsyncedNotesPanel({
       } else {
         feedback.notifyWarning(
           status === "conflict"
-            ? t.sendConflict
+            ? reason === "saved_before_close"
+              ? t.sendKeptDraft
+              : t.sendConflict
             : status === "rejected" || status === "gone"
               ? t.sendRejected
               : t.sendFailed,

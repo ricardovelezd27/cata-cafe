@@ -2300,10 +2300,11 @@ reads it is rolled back; code rolled back ignores the column anyway.
 
 ## §35. Database — apply the `close_notice_and_late_contributions` migration (2026-11, S10 WP4b)
 
-**What it does:** four NULLABLE columns, no default, no backfill, no index, no trigger, no policy:
+**What it does:** five NULLABLE columns, no default, no backfill, no index, no trigger, no policy:
 
 - `cupping_sessions."closingAt"` (TIMESTAMPTZ): the close the owner announced a few minutes ahead.
 - `evaluations."acceptedLateAt"` (TIMESTAMPTZ): when the owner accepted a complete draft after the close.
+- `evaluations."receivedLateAt"` (TIMESTAMPTZ): the server's own record that a device's late send arrived after the close.
 - `evaluations."postCloseNote"` (TEXT) and `"postCloseNoteAt"` (TIMESTAMPTZ): a cupper's text note
   on their own submitted evaluation after the close.
 
@@ -2327,10 +2328,10 @@ the migration ignores the columns, so applying it early is safe.
    SELECT table_name, column_name, data_type, is_nullable
    FROM information_schema.columns
    WHERE (table_name = 'cupping_sessions' AND column_name = 'closingAt')
-      OR (table_name = 'evaluations' AND column_name IN ('acceptedLateAt','postCloseNote','postCloseNoteAt'))
+      OR (table_name = 'evaluations' AND column_name IN ('acceptedLateAt','receivedLateAt','postCloseNote','postCloseNoteAt'))
    ORDER BY table_name, column_name;
    ```
-   Expected: four rows, all `is_nullable = YES`.
+   Expected: five rows, all `is_nullable = YES`.
 3. Deploy the branch. No new environment variable.
 
 **Limit to know:** the announced close is NOT enforced by the server and no cron acts on it. The

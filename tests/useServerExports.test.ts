@@ -28,6 +28,8 @@ const ALLOWLIST: Record<string, string> = {
   "sessions.ts#duplicateSession": "a closed session is a valid template",
   // Idempotent lifecycle transitions
   "community.ts#closeSession": "closing is idempotent (closeSessionInternal)",
+  "community.ts#closeAnnounced":
+    "closing is idempotent (closeSessionInternal); closes only the announced instant, re-checked on the server (S10 WP4b review M3)",
   "community.ts#resendCloseEmails": "retries the ledger of a session that is already closed",
   "community.ts#startSession": "idempotent updateMany guarded by status/startedAt",
   // Replay answers "discarded" instead of throwing (see offline.ts)

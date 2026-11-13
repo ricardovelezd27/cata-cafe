@@ -10,7 +10,7 @@ import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
 import { computeCupperAlignment, type CupperAlignmentRow } from "@/lib/alignment";
 import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
 import { evaluationScoreRule, sampleScoreRule, type ScoreRule } from "@/lib/scoreRule";
-import { asSessionFormat, type SessionFormat } from "@/lib/constants";
+import { AFFECTIVE_ATTRIBUTES, asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { deriveMyEvaluation, summarizeMyProgress } from "@/lib/evaluationState";
 import { isSessionExpired, viewerMayReadGroupResults } from "@/lib/sessionState";
@@ -496,6 +496,7 @@ export default async function ResultsPage({
   }
 
   const tResults = await getTranslations("results");
+  const tAttr = await getTranslations("attributes");
   const tg = await getTranslations("group");
   const tDesc = await getTranslations("descriptors");
   const tAlign = await getTranslations("alignment");
@@ -827,6 +828,8 @@ export default async function ResultsPage({
             affectiveData: true,
             combinedData: true,
             updatedAt: true,
+            individualScore: true,
+            receivedLateAt: true,
             cupper: { select: { id: true, displayName: true } },
           },
         })
@@ -839,6 +842,11 @@ export default async function ResultsPage({
     drafts: lateDrafts,
     sampleLabels: sampleLabelById,
     nameOf: (cupperId) => lateNameById.get(cupperId) ?? "",
+    excludedUserIds,
+    groupScoreBySample: new Map(
+      session.samples.map((s) => [s.id, groupAggBySample?.get(s.id)?.communityScore ?? null] as const),
+    ),
+    oldRuleSampleIds: new Set(session.samples.filter((s) => ruleBySample.get(s.id) === "v1").map((s) => s.id)),
   });
   const myEvalRows = isAdminViewer ? [] : session.samples.flatMap((s) => s.evaluations);
   const myLateNotices = isAdminViewer
@@ -848,6 +856,7 @@ export default async function ResultsPage({
         session: { status: session.status, format: session.format },
         mine: myEvalRows,
         sampleLabels: sampleLabelById,
+        viewerExcluded: excludedUserIds.has(user.id),
       }).map((n) =>
         n.kind === "left_out"
           ? tResults("lateNoticeLeftOut", { sample: n.sampleLabel })
@@ -884,7 +893,18 @@ export default async function ResultsPage({
     title: tResults("late.title"),
     intro: tResults("late.intro"),
     savedAt: tResults.raw("late.savedAt") as string,
-    receivedAfterClose: tResults("late.receivedAfterClose"),
+    savedBeforeClose: tResults("late.savedBeforeClose"),
+    receivedLate: tResults("late.receivedLate"),
+    score: tResults.raw("late.score") as string,
+    scorePartial: tResults("late.scorePartial"),
+    diff: tResults.raw("late.diff") as string,
+    showRatings: tResults("late.showRatings"),
+    hideRatings: tResults("late.hideRatings"),
+    oldRule: tResults("late.oldRule"),
+    stale: tResults("late.stale"),
+    attributeLabels: Object.fromEntries(
+      AFFECTIVE_ATTRIBUTES.map((a) => [a.id, tAttr(a.id as Parameters<typeof tAttr>[0])]),
+    ),
     accept: tResults("late.accept"),
     confirmTitle: tResults("late.confirmTitle"),
     confirmBody: tResults.raw("late.confirmBody") as string,

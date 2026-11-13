@@ -107,7 +107,7 @@ flowchart TD
 - **Announced close.** `announceClose(sessionId, 2|5)` / `cancelAnnouncedClose` (owner, group
   sessions, `assertSessionWritable`, `ActionResult`) set and clear `cupping_sessions."closingAt"`.
   It is display state: **no server enforcement and no cron act on it.** The owner's open cup
-  page calls the existing `closeSession` when it watches the countdown run out
+  page calls `closeAnnounced` (never the plain close) when it watches the countdown run out
   (`shouldAutoClose`); a page opened after the moment passed never closes anything and shows
   "El cierre anunciado ya pasó". `closeSessionInternal` leaves the column alone. Cuppers see a
   persistent polite banner fed by the `cupping_sessions` realtime UPDATE and the page render
@@ -131,6 +131,31 @@ flowchart TD
   the caller's OWN SUBMITTED evaluation of a CLOSED session, text only (max 500, "" clears),
   writes only `postCloseNote` / `postCloseNoteAt`. The trigger does not fire. Read by the
   cupper and the session owner only (`buildPostCloseNotes`); never in a report tier or the CSV.
+  It writes its two columns and `updatedAt` moves (Prisma `@updatedAt`); nothing reads
+  `Evaluation.updatedAt` of a submitted evaluation of a closed session. A guest-claim conflict
+  that deletes the losing evaluation loses its note (accepted); account deletion sets the note
+  to NULL when the evaluation moves to the placeholder.
+- **Review fixes (PR #131).** After the close every coffee is revealed and the group results
+  are visible, so a late evaluation may have been written knowing the answer; the organizer
+  accepts informed and accepts exactly what they saw:
+  - `submitLateDraft` stamps `evaluations."receivedLateAt"` (server record). A draft the server
+    already had at the close (`receivedLateAt` NULL) is never replaced after it (`conflict`,
+    "El organizador ya tiene la versión que guardaste antes del cierre."); a draft that arrived
+    late is updated only if newer; a submitted row is `conflict`.
+  - Each late row shows the evaluation's total, the difference from the sample's group score,
+    the 8 ratings on demand and ONE label from the stamp: "Guardada antes del cierre" or
+    "Recibida después del cierre: pudo escribirse después de ver los resultados." The confirm
+    dialog repeats them and, when the sample's stored aggregate is under the previous rule,
+    says accepting recalculates it under the current one.
+  - `acceptLateEvaluation(evaluationId, expectedUpdatedAt)`: the locked row's `updatedAt` must
+    equal the rendered one, else `conflict` ("Esta evaluación cambió. Recarga…").
+  - An excluded participant is not listed and is refused (`invalid_input`); no "se incluyó" line.
+  - `closeAnnounced(sessionId, closingAt)`: the owner page's zero-countdown calls this, never the
+    plain close; it closes only if the stored `closingAt` is that instant and it has passed
+    (2 s tolerance), else `closed: false`. A cancel or a re-announce defeats a stale tab.
+    "Cerrar ahora" stays the plain close. No auto-close while a cancel runs or after "Cancelar".
+  - Cupper banner: counting, "está por cerrar" up to 2 min past zero, "El cierre anunciado no se
+    hizo. La cata sigue abierta." for 10 min, then nothing.
 
 **Expiry rule (S8-01).** A session is also read-only once its `closesAt` has
 passed (`isSessionExpired`, strict `<`, server clock) even though `status` stays

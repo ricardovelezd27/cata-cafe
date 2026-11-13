@@ -361,6 +361,7 @@ export default async function CupPage({
           banner: {
             counting: tg.raw("closeBannerCounting") as string,
             due: tg("closeBannerDue"),
+            notDone: tg("closeBannerNotDone"),
             minutes: tg.raw("closeBannerMinutes") as string,
             lessThanMinute: tg("closeBannerLessThanMinute"),
           },
