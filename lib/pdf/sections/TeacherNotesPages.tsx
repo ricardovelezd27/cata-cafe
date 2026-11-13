@@ -2,7 +2,7 @@ import type { ComponentProps, ReactNode } from "react";
 import { Page, View, Text } from "@react-pdf/renderer";
 import { resolveDescriptor, resolveMainTaste } from "@/lib/descriptors";
 import type { TeacherCupperNotes } from "@/lib/reports/teacherNotes";
-import { PdfDeltaChip, PdfScoreBand } from "../charts";
+import { PdfDeltaChip, PdfDeviationBand } from "../charts";
 import { sanitizePdfText } from "../text";
 import { C, CONTENT_W, SECTION_TEXT, fmt, st, type Locale } from "./shared";
 
@@ -104,7 +104,7 @@ function TeacherNotesPage({
             {s.score === null ? (
               <Text style={st.small}>{t.notEvaluated}</Text>
             ) : (
-              <PdfScoreBand score={s.score} band={s.band} />
+              <PdfDeviationBand score={s.score} band={s.band} />
             )}
           </View>
           <Text style={[st.body, { width: COLS.community }]}>{fmt(s.communityScore)}</Text>

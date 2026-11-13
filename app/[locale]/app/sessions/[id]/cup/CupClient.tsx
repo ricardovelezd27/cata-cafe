@@ -88,6 +88,8 @@ import { ExpressNotesStep } from "@/components/cupping/ExpressNotesStep";
 import { EXPRESS_NOTE_KEY, EXPRESS_NOTE_MAX } from "@/lib/expressSession";
 import { moduleKeyForFormat } from "@/lib/evaluation";
 import { useKeyboardOpen } from "@/hooks/useKeyboardOpen";
+import { isEvaluationReadOnly, isModuleFrozenForRevealed } from "@/lib/revealFreeze";
+import type { MarketCopy } from "@/components/cupping/MarketNote";
 import { indexAfterReconcile, reconcileSamples } from "@/lib/sampleReconcile";
 import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
 import { DevRoleBadge } from "@/components/dev/DevRoleBadge";
@@ -159,6 +161,11 @@ type SampleCoffee = {
   altitude: string;
   roastLevel: string;
 };
+
+const REVEALED_NOTE_FALLBACK = {
+  es: "Muestra revelada: ya no se puede evaluar.",
+  en: "Sample revealed: it can no longer be evaluated.",
+} as const;
 
 type Sample = {
   id: string;
@@ -419,6 +426,8 @@ export function CupClient({
     // Multi-reference (S6)
     referenceActive?: string;
     referenceAdd?: string;
+    /** Suffix of a revealed sample's option: it cannot be the FIXED reference (S10 WP3a review H1). */
+    referenceRevealed?: string;
     referenceRemoveActive?: string;
     referenceAddHint?: string;
     referenceAddTitle?: string;
@@ -442,6 +451,10 @@ export function CupClient({
     referenceLocked?: string;
     referenceLockedAffective?: string;
     referenceCupsLocked?: string;
+    /** One line shown on a revealed sample, which can no longer be evaluated (S10 WP3a, X3). */
+    revealedNote?: string;
+    /** Optional "market" line copy (S10 WP3a, A10); fallback in components/cupping/MarketNote.tsx. */
+    market?: MarketCopy;
     /** Cup grid + "score after submitting" copy (S10 WP1b); optional: the error
      *  boundary rehydrates an older cached blob (lib/cupCopy.ts has a fallback). */
     cups?: CupCopy;
@@ -1277,6 +1290,7 @@ export function CupClient({
   // we were offline, or because the server call itself failed. Callers must
   // not report "saved" to the user on a "pending" result: the data is safe
   // (durable locally, replayed on reconnect) but NOT yet on the server.
+  const revealedToastedRef = useRef<Set<string>>(new Set());
   const flushSave = async (
     sampleId: string,
     key: keyof Sample,
@@ -1335,6 +1349,18 @@ export function CupClient({
       noteIfStaleBundle(err);
       if (err instanceof Error && err.message === IDENTITY_CHANGED) void onServerIdentityChanged(userId);
       await writeLocal(sampleId, labelFor(sampleId), mk, data);
+      // S10 WP3a (X3): the sample was revealed while this edit was in flight. The server wrote
+      // nothing; the draft stays on the device as an unsent note (the same terminal status a
+      // closed session gives it, so it never blocks submitting what was already complete) and
+      // the save indicator stays amber, never green.
+      if (err instanceof Error && err.message === "sample_revealed") {
+        await setModuleStatus(session.id, userId, sampleId, mk, "revealed_unsent");
+        // L6: toast once per sample per page, not on every 800 ms autosave.
+        if (!revealedToastedRef.current.has(sampleId)) {
+          revealedToastedRef.current.add(sampleId);
+          feedback.notifyError("sample_revealed");
+        }
+      }
       return "pending";
     }
   };
@@ -1517,6 +1543,8 @@ export function CupClient({
   const setSampleData = (idx: number, key: keyof Sample, data: Data) => {
     const sample = samples[idx];
     if (!sample) return;
+    // S10 WP3a (X3): a revealed sample is frozen for evaluation (the server refuses it too).
+    if (isModuleFrozenForRevealed({ revealed: sample.revealed, key: String(key) })) return;
     setSamples((prev) =>
       prev.map((s) => (s.id === sample.id ? { ...s, [key]: data } : s))
     );
@@ -1914,6 +1942,9 @@ export function CupClient({
   const viewSamples = samples.map(pinForReference);
   const current = viewSamples[sampleIdx];
   const isCurrentLocked = isPinnedReference(current.id);
+  // S10 WP3a (X3): once a sample is revealed nobody keeps rating it. The cup page only renders
+  // for sessions that are not closed, so this is always the "revealed on an open session" case.
+  const isCurrentRevealed = current.revealed === true;
   const referenceSample = referenceSampleId
     ? viewSamples.find((s) => s.id === referenceSampleId) ?? null
     : null;
@@ -1930,6 +1961,8 @@ export function CupClient({
     if (!sample || sample.id !== referenceSampleId) return;
     // B1: a "free" reference is scored like any sample: no pinned first-visit save.
     if (!isPinnedReference(sample.id)) return;
+    // S10 WP3a (X3): never attempt the pinned first-visit save on a revealed sample.
+    if (sample.revealed) return;
     if (ensuredReferenceRef.current.has(sample.id)) return;
     ensuredReferenceRef.current.add(sample.id);
     scheduleAutoSave(
@@ -1953,12 +1986,26 @@ export function CupClient({
         )
         .join(" · ")
     : undefined;
+  // S10 WP3a review H1: in anchor mode a revealed sample cannot become the FIXED reference
+  // (pinning would rewrite everyone's ratings after the reveal). The server refuses it too.
+  const revealedAwareOption = (s: Sample) => {
+    const blocked =
+      s.revealed &&
+      shouldPinReference({ mode: referenceMode, moduleKey: affectiveModuleKey ?? "descriptive", isActiveReference: true });
+    return blocked
+      ? {
+          value: s.id,
+          label: `${s.label} · ${translations.referenceRevealed ?? "revelada, no puede ser referencia fija"}`,
+          disabled: true,
+        }
+      : { value: s.id, label: s.label };
+  };
   const referenceOptions = refOrder.length
     ? [
         { value: "", label: translations.referenceAdd ?? "Añadir referencia…" },
         ...samples
           .filter((s) => !refOrder.includes(s.id))
-          .map((s) => ({ value: s.id, label: s.label })),
+          .map((s) => revealedAwareOption(s)),
         {
           value: REMOVE_ACTIVE,
           label: `${translations.referenceRemoveActive ?? "Quitar la referencia activa"} (R${refOrder.length})`,
@@ -1966,7 +2013,7 @@ export function CupClient({
       ]
     : [
         { value: "", label: translations.referenceNone ?? "Sin referencia" },
-        ...samples.map((s) => ({ value: s.id, label: s.label })),
+        ...samples.map((s) => revealedAwareOption(s)),
       ];
   // Header line under the sample name: "· Referencia" on the reference itself,
   // "Compara con la referencia (C)" on every other sample (participants too).
@@ -3003,6 +3050,8 @@ export function CupClient({
             id: s.id,
             label: s.label,
             isReference: s.id === referenceSampleId,
+            // The quick note lives in the evaluation module: frozen once revealed (lib/revealFreeze.ts).
+            readOnly: isModuleFrozenForRevealed({ revealed: s.revealed, key: notesModuleKey }),
           }))}
           values={Object.fromEntries(
             samples.map((s) => {
@@ -3018,11 +3067,24 @@ export function CupClient({
             placeholder: expressNotesCopy.placeholder,
             optional: expressNotesCopy.optional,
             referenceBadge: referenceBadgeLabel,
+            revealedNote: translations.revealedNote ?? REVEALED_NOTE_FALLBACK[locale === "en" ? "en" : "es"],
           }}
         />
       )}
       {!notesStage && (
       <div key={`${activeTab}-${currentStep}-${current.id}`}>
+        {isEvaluationReadOnly({ revealed: isCurrentRevealed, activeTab }) && (
+          <div
+            role="note"
+            className="mb-4 rounded-card border border-secondary/30 bg-secondary-fixed px-4 py-3 font-sans text-sm text-on-secondary-fixed-variant"
+          >
+            {translations.revealedNote ?? REVEALED_NOTE_FALLBACK[locale === "en" ? "en" : "es"]}
+          </div>
+        )}
+        <fieldset
+          disabled={isEvaluationReadOnly({ revealed: isCurrentRevealed, activeTab })}
+          className="m-0 min-w-0 border-0 p-0 disabled:opacity-70"
+        >
         {activeTab === "cupping" && session.format === "descriptive" && (
           <DescriptiveForm
             sampleData={current.descriptive}
@@ -3045,6 +3107,7 @@ export function CupClient({
             isGroup={isGroup}
             locale={locale === "en" ? "en" : "es"}
             cupCopy={translations.cups}
+            marketCopy={translations.market}
           />
         )}
         {activeTab === "cupping" &&
@@ -3062,6 +3125,7 @@ export function CupClient({
               lockedCupsNote={translations.referenceCupsLocked}
               isGroup={isGroup}
               cupCopy={translations.cups}
+              marketCopy={translations.market}
             />
           )}
         {activeTab === "extrinsic" && (
@@ -3076,6 +3140,7 @@ export function CupClient({
             onChange={(d) => setCurrentData("physical", d)}
           />
         )}
+        </fieldset>
       </div>
       )}
 

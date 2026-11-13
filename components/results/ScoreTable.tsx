@@ -2,7 +2,7 @@
 
 import { referenceBadgeText } from "@/lib/referenceRules";
 import { Check, ChevronRight, Eye } from "lucide-react";
-import { calcIndividualScore, hasAffectiveData, scoreBand } from "@/lib/scoring";
+import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
 import { canShowMyScore } from "@/lib/evaluationState";
 import { deltasVsReference, formatSignedDelta } from "@/lib/referenceDelta";
 import { AFFECTIVE_ATTRIBUTES, type SessionFormat } from "@/lib/constants";
@@ -80,19 +80,10 @@ function CvaCell({
   t: ScoreTableTranslations;
 }) {
   const scoreNum = myScore !== null && myScore !== "—" ? myScore : null;
-  const band = scoreNum !== null ? scoreBand(scoreNum) : null;
-  const bandBorderClass =
-    band === "green"
-      ? "border-primary-container"
-      : band === "amber"
-        ? "border-secondary"
-        : band === "red"
-          ? "border-error"
-          : "border-transparent";
 
   return (
     <td
-      className={`border-l-[3px] ${bandBorderClass} border-b border-outline-variant/40 bg-surface-container px-2.5 py-2 text-center align-middle`}
+      className={`border-b border-outline-variant/40 bg-surface-container px-2.5 py-2 text-center align-middle`}
     >
       <div className="flex flex-col items-center gap-0.5">
         <ScorePill score={scoreNum} />

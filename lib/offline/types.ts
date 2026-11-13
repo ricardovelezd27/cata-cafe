@@ -26,6 +26,12 @@ export const EVALUATION_MODULES: ModuleKey[] = [
 // replayed and never deleted without the cupper's say-so.
 //
 // S8-09 widens the machine (lib/offline/status.ts owns the transitions):
+// "revealed_unsent" (S10 WP3a review M3/M4): the sample was REVEALED on a session that is
+// still open, so the note typed after the reveal was refused. Same handling as closed_unsent
+// (kept, read-only, never retried, never blocks submit) but its own wording, and it must NEVER
+// be offered a send action: TODO for the late-contributions PR (acceptLateEvaluation /
+// submitLateDraft): do NOT wire "Enviar al organizador" for this status.
+//
 //   failed   : replay kept failing (5 automatic attempts); the cupper retries by hand
 //   orphaned : the sample or session no longer exists for this user (deleted
 //              session, removed sample, lost membership); kept readable
@@ -35,6 +41,7 @@ export type SyncStatus =
   | "conflict"
   | "failed"
   | "closed_unsent"
+  | "revealed_unsent"
   | "orphaned";
 
 export type OfflineModuleData = {

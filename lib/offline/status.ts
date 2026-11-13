@@ -27,6 +27,7 @@ export type ReplayOutcome =
   | "synced"
   | "conflict"
   | "closed"
+  | "revealed"
   | "gone"
   | "rejected"
   | "retry"
@@ -38,12 +39,18 @@ export const ALL_STATUSES: SyncStatus[] = [
   "conflict",
   "failed",
   "closed_unsent",
+  "revealed_unsent",
   "orphaned",
 ];
 
 /** Statuses the replay loop never touches on its own. */
 export function isTerminal(status: SyncStatus): boolean {
-  return status === "failed" || status === "closed_unsent" || status === "orphaned";
+  return (
+    status === "failed" ||
+    status === "closed_unsent" ||
+    status === "revealed_unsent" ||
+    status === "orphaned"
+  );
 }
 
 /** Data that exists only on this device. Everything but `synced`. */
@@ -78,6 +85,8 @@ export function statusForOutcome(
       return { status: "conflict", attempts: 0 };
     case "closed":
       return { status: "closed_unsent", attempts: 0 };
+    case "revealed":
+      return { status: "revealed_unsent", attempts: 0 };
     case "gone":
     case "rejected":
       return { status: "orphaned", attempts: 0 };
@@ -195,7 +204,7 @@ export function reviveFailed(mod: OfflineModuleData): OfflineModuleData {
 export type StatusCounts = Record<SyncStatus, number>;
 
 export function emptyCounts(): StatusCounts {
-  return { pending: 0, synced: 0, conflict: 0, failed: 0, closed_unsent: 0, orphaned: 0 };
+  return { pending: 0, synced: 0, conflict: 0, failed: 0, closed_unsent: 0, revealed_unsent: 0, orphaned: 0 };
 }
 
 export function countStatuses(blobs: Iterable<OfflineSessionBlob>): StatusCounts {

@@ -67,6 +67,7 @@ function pillsForDescId(descId: string): CATAOption[] | null {
   return null;
 }
 
+import { MarketNote, MARKET_COPY_FALLBACK, type MarketCopy } from "@/components/cupping/MarketNote";
 import { CUP_COPY_FALLBACK, cupSummary, type CupCopy } from "@/lib/cupCopy";
 import { applyDefectChoice, applyNonUniformToggle, formCupState } from "@/lib/cupDefects";
 
@@ -82,6 +83,7 @@ export function CombinedForm({
   lockedCupsNote,
   isGroup = false,
   cupCopy,
+  marketCopy,
 }: {
   sampleData: Data;
   onChange: (d: Data) => void;
@@ -99,6 +101,8 @@ export function CombinedForm({
   isGroup?: boolean;
   /** Cup grid + "score after submitting" copy (messages `cupping.cups`). */
   cupCopy?: CupCopy;
+  /** Optional "market" line copy (messages `cupping.market`, S10 WP3a). */
+  marketCopy?: MarketCopy;
 }) {
   const copy = cupCopy ?? CUP_COPY_FALLBACK[locale];
   const isFlagged = (id: string) => missingIds?.includes(id) ?? false;
@@ -183,6 +187,10 @@ export function CombinedForm({
               </div>
             )}
           </FormSection>
+        )}
+
+        {!lockedAffective && (
+          <MarketNote data={d} onChange={onChange} copy={marketCopy ?? MARKET_COPY_FALLBACK[locale]} />
         )}
 
         <p className="mt-4 font-sans text-sm text-on-surface-variant">{copy.scoreLater}</p>

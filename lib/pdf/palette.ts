@@ -17,8 +17,10 @@ export const PDF_PALETTE = {
   soft: "#555555",
   hair: "#d9d3c4",
   brandGreen: "#3D5A3E",
-  // Score bands (traffic light). Amber is NOT the --color-warning token:
-  // DESIGN.md reserves that for consensus deviation, never quality scoring.
+  // Deviation / delta tones (S10 WP3a: a score is never coloured by QUALITY any
+  // more; PdfScorePill is neutral). Used by the owner-matrix distance pills
+  // (cupperStats bandFor) and the delta chips only. Amber is NOT the
+  // --color-warning token.
   band: {
     green: "#2c4c3b", // --color-primary-container
     amber: "#9d4326", // --color-secondary (terracotta)

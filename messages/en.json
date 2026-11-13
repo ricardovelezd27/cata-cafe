@@ -17,6 +17,7 @@
     "warmup": "Sensory movement"
   },
   "common": {
+    "scoreLegend": "79 is the neutral point (neither high nor low) · 100 is the maximum.",
     "searchPlaceholder": "Search…",
     "showing": "Showing {from}–{to} of {total}",
     "prev": "Previous",
@@ -383,6 +384,7 @@
       "removeRepinBody": "Removing it makes {label} the reference again, and {n} cuppers will have their quality ratings replaced by the 79.00 anchor. This cannot be undone.",
       "removeRepinConfirm": "Remove reference",
       "referenceRepinBlocked": "Removing this sample would reactivate an earlier reference and replace its cuppers' ratings. Change the reference first.",
+      "referenceRevealed": "revealed, cannot be the fixed reference",
       "formatLockedStarted": "Format and cups per sample lock once the cupping has started or has evaluations.",
       "referenceHelperFree": "The other samples are compared against its average in the results. Everyone scores it like any other sample. Picking another adds it as Reference 2.",
       "referenceModeLocked": "The reference mode cannot be changed once the tasting has started or has any evaluation, including the pinned reference.",
@@ -429,6 +431,15 @@
     "referenceLocked": "Reference sample: quality is pinned at 5 (neither high nor low) on every attribute and its score is always 79.00. Describe what you perceive; you will score the other samples above or below this one.",
     "referenceLockedAffective": "Reference sample: quality is pinned at 5 (neither high nor low) on every attribute, so there is nothing to score here. Taste it calmly, note what you perceive and move on to the next sample.",
     "referenceCupsLocked": "Cups are not marked on the reference: its score stays fixed at 79.00.",
+    "revealedNote": "Sample revealed: it can no longer be evaluated.",
+    "market": {
+      "title": "Which point of view did you rate from?",
+      "optional": "Optional",
+      "own": "My preference",
+      "known": "A market I know",
+      "noteLabel": "Which market?",
+      "notePlaceholder": "E.g. specialty cafés in Madrid"
+    },
     "referenceFirstHint": "The tasting starts with the reference.",
     "expressNotes": {
       "title": "Quick notes",
@@ -740,6 +751,7 @@
     "referenceActive": "active",
     "referenceAdd": "Add reference…",
     "referenceRemoveActive": "Remove the active reference",
+    "referenceRevealed": "revealed, cannot be the fixed reference",
     "referenceAddHint": "The previous reference keeps its 79.00; the new one is pinned.",
     "referenceAddTitle": "Add reference",
     "referenceAddConfirm": "Add reference",
@@ -830,7 +842,8 @@
       "offline": "Offline: {count} change(s) will sync when you reconnect.",
       "retry": "Retry",
       "synced": "Changes synced. Refreshing results…",
-      "closedUnsent": "{count} change(s) saved on this device were not sent because the session was already closed. They do not count in the results."
+      "closedUnsent": "{count} change(s) saved on this device were not sent because the session was already closed. They do not count in the results.",
+      "revealedUnsent": "{count} note(s) saved on this device were not sent because the sample was already revealed. They do not count in the results."
     },
     "closeEmails": {
       "label": "Close emails:",
@@ -1081,6 +1094,16 @@
     "needsConnection": "Needs a connection",
     "closedUnsentNotice": "You had {count, plural, one {# complete sample} other {# complete samples}} unsent when the session closed. They do not count in the results.",
     "closedNotice": "The session closed. What you sent counts in the results; anything left unsent does not.",
+    "revealConfirm": {
+      "title": "Reveal this sample?",
+      "body": "Everyone will see which coffee it is and nobody will be able to keep evaluating this sample. Draft evaluations of this sample will stay as they are.",
+      "confirm": "Reveal sample",
+      "cancel": "Cancel"
+    },
+    "market": {
+      "label": "Point of view",
+      "known": "A market I know"
+    },
     "closeNow": {
       "line": "The closing date has passed. The cupping will close by itself in the next few hours; you can close it now to send the results.",
       "button": "Close now"
@@ -1360,6 +1383,7 @@
       "empty": "There are no unsynced notes.",
       "statusClosed": "The session was already closed",
       "statusOrphaned": "The session or sample no longer exists",
+      "statusRevealed": "The sample was revealed before this was saved. It cannot be sent.",
       "statusFailed": "Could not be sent",
       "view": "View",
       "hide": "Hide",
@@ -2028,6 +2052,8 @@
       "not_found_or_forbidden": "We couldn't find that, or you don't have permission.",
       "session_not_started": "The tasting has not started yet. Wait for the host to start it.",
       "session_closed": "This tasting is already closed; its results are final.",
+      "reference_revealed": "This would change the ratings of a sample that has already been revealed. Choose another sample as the reference.",
+      "sample_revealed": "This sample has been revealed and can no longer be evaluated.",
       "invalid_token": "This invite link isn't valid.",
       "token_expired": "This invite link has expired.",
       "token_exhausted": "This invite link has reached its maximum number of uses.",

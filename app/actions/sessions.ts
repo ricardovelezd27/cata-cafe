@@ -31,18 +31,20 @@ import {
 } from "@/lib/coffeeHistory";
 import {
   canEditSessionSettings,
+  evaluationWriteAllowed,
   extrinsicWriteAllowed,
   isSessionClosed,
   isSessionExpired,
   planClosesAtChange,
 } from "@/lib/sessionState";
 import { endOfDayInZone, normalizeZone } from "@/lib/closeRules";
-import { REFERENCE_REPIN_REQUIRED, removeSamplesInTx } from "@/lib/sampleRemoval";
+import { REFERENCE_REPIN_REQUIRED, REFERENCE_REVEALED, removeSamplesInTx } from "@/lib/sampleRemoval";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { computeEvaluationDerived, moduleKeyForFormat } from "@/lib/evaluation";
 import {
   DEFAULT_REFERENCE_MODE,
   normalizeReferenceMode,
+  pinWouldTouchRevealed,
   REFERENCE_MODES,
   shouldPinReference,
   pinReferenceAffective,
@@ -779,7 +781,9 @@ export async function upsertEvaluation(input: {
   // Nobody signed in, or an unreachable auth lookup, is NOT an identity change:
   // it throws `not_authenticated` exactly as requireUser() does.
   expectedUserId?: string;
-}): Promise<{ ok: true; evaluationId: string } | { ok: false; error: "identity_changed" }> {
+}): Promise<
+  { ok: true; evaluationId: string } | { ok: false; error: "identity_changed" | "sample_revealed" }
+> {
   let user;
   try {
     user = await requireUserExpecting(input.expectedUserId, { skipProfileUpsert: true });
@@ -794,6 +798,11 @@ export async function upsertEvaluation(input: {
   // without re-firing the aggregate trigger (it only fires on isDraft).
   assertSessionWritable(auth);
   assertSessionStarted(auth);
+  // S10 WP3a (X3, TODO(kim-validar:X3)): a revealed sample of an open session is
+  // frozen for ratings. Answered (not thrown) so the cup page keeps the draft
+  // on the device and never paints the green "saved" state. Submitting an
+  // existing draft (submitAllEvaluations) does not come through here.
+  if (!evaluationWriteAllowed(auth)) return { ok: false, error: "sample_revealed" };
   const { sessionId } = auth;
 
   if (!input.data || typeof input.data !== "object" || Array.isArray(input.data)) {
@@ -1155,6 +1164,21 @@ export async function setReferenceSample(
               moduleKeyForFormat(sess.format),
               sess.cupsPerSample,
             );
+            // S10 WP3a review H1: never REWRITE the ratings of a sample that was already revealed.
+            const target = await tx.sessionSample.findUniqueOrThrow({
+              where: { id: plan.repinId },
+              select: { revealed: true },
+            });
+            if (
+              pinWouldTouchRevealed({
+                mode: sess.referenceMode,
+                moduleKey: moduleKeyForFormat(sess.format),
+                targetRevealed: target.revealed,
+                overwrites,
+              })
+            ) {
+              throw new Error("reference_revealed");
+            }
             if (overwrites > 0 && !confirmRepin) throw new Error("conflict");
             repinTarget = plan.repinId;
           }
@@ -1168,6 +1192,29 @@ export async function setReferenceSample(
             // mode only: a free reference never rewrites anything (B1).
             // TODO(B2-b): Kim may prefer keeping the originals aside.
             if (pinsWhenActive) {
+              // S10 WP3a review H1: thrown BEFORE any write.
+              const target = await tx.sessionSample.findUniqueOrThrow({
+                where: { id: targetId },
+                select: { revealed: true },
+              });
+              const targetEvs = await tx.evaluation.findMany({
+                where: { sessionSampleId: targetId },
+                select: { id: true, isDraft: true, affectiveData: true, combinedData: true },
+              });
+              if (
+                pinWouldTouchRevealed({
+                  mode: sess.referenceMode,
+                  moduleKey: moduleKeyForFormat(sess.format),
+                  targetRevealed: target.revealed,
+                  overwrites: countRepinOverwrites(
+                    targetEvs,
+                    moduleKeyForFormat(sess.format),
+                    sess.cupsPerSample,
+                  ),
+                })
+              ) {
+                throw new Error("reference_revealed");
+              }
               const existing = await tx.evaluation.count({ where: { sessionSampleId: targetId } });
               if (
                 repinNeedsConfirm({
@@ -1693,6 +1740,9 @@ export async function removeSessionSample(sampleId: string, locale: string = "es
   }).catch((e: unknown) => {
     if (e instanceof Error && e.message === REFERENCE_REPIN_REQUIRED) {
       return "reference_repin_required" as const;
+    }
+    if (e instanceof Error && e.message === REFERENCE_REVEALED) {
+      return "reference_revealed" as const;
     }
     throw e;
   });

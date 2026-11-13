@@ -75,6 +75,7 @@ export type EditSessionFormTranslations = {
   removeRepinBody: string;
   removeRepinConfirm: string;
   referenceRepinBlocked: string;
+  referenceRevealed: string;
   formatLockedStarted: string;
   warmup: { toggle: string; label: string; hint: string; minutes: string };
   /** Retired / unknown warm-up id (same copy as the wizard's invalid_warmup). */
@@ -95,6 +96,7 @@ export type EditSampleRow = {
   label: string;
   evalCount: number;
   referenceRank: number | null;
+  revealed: boolean;
 };
 export type EditGroupOption = { id: string; name: string };
 
@@ -744,7 +746,13 @@ export function EditSessionForm({
             ariaLabel={t.referenceTitle}
             options={[
               { value: "", label: t.referenceNone },
-              ...samples.map((s) => ({ value: s.id, label: s.label })),
+              ...samples.map((s) => {
+                // S10 WP3a review H1: a revealed sample cannot be the FIXED reference (anchor mode).
+                const blocked = s.revealed && referenceMode === "anchor" && format !== "descriptive";
+                return blocked
+                  ? { value: s.id, label: `${s.label} · ${t.referenceRevealed}`, disabled: true }
+                  : { value: s.id, label: s.label };
+              }),
             ]}
           />
         </fieldset>

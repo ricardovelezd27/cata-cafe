@@ -17,6 +17,7 @@
     "warmup": "Movimiento sensorial"
   },
   "common": {
+    "scoreLegend": "79 es el punto neutro (ni alto ni bajo) · 100 es el máximo.",
     "searchPlaceholder": "Buscar…",
     "showing": "Mostrando {from}–{to} de {total}",
     "prev": "Anterior",
@@ -383,6 +384,7 @@
       "removeRepinBody": "Al quitarla, {label} vuelve a ser la referencia y {n} catadores verán sus notas de calidad reemplazadas por el ancla de 79.00. No se puede deshacer.",
       "removeRepinConfirm": "Quitar referencia",
       "referenceRepinBlocked": "Quitar esta muestra reactivaría una referencia anterior y reemplazaría las notas de sus catadores. Cambia primero la referencia.",
+      "referenceRevealed": "revelada, no puede ser referencia fija",
       "formatLockedStarted": "El formato y las tazas por muestra se bloquean cuando la cata ya empezó o tiene evaluaciones.",
       "referenceHelperFree": "Las demás muestras se comparan contra su promedio en los resultados. Todos la puntúan como cualquier otra muestra. Si eliges otra, se añade como Referencia 2.",
       "referenceModeLocked": "El modo de la referencia no se puede cambiar una vez que la cata ha empezado o tiene alguna evaluación, incluida la referencia fijada.",
@@ -429,6 +431,15 @@
     "referenceLocked": "Muestra de referencia: la calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos y su puntaje es siempre 79.00. Describe lo que percibes; en las demás muestras puntuarás por encima o por debajo de esta.",
     "referenceLockedAffective": "Muestra de referencia: la calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos y no hay nada que puntuar aquí. Pruébala con calma, anota lo que percibas y continúa con la siguiente muestra.",
     "referenceCupsLocked": "Las tazas de la referencia no se marcan: su puntaje se mantiene fijo en 79.00.",
+    "revealedNote": "Muestra revelada: ya no se puede evaluar.",
+    "market": {
+      "title": "¿Desde qué punto de vista calificaste?",
+      "optional": "Opcional",
+      "own": "Mi preferencia",
+      "known": "Un mercado que conozco",
+      "noteLabel": "¿Qué mercado?",
+      "notePlaceholder": "Ej. cafeterías de especialidad en Madrid"
+    },
     "referenceFirstHint": "La cata empieza por la referencia.",
     "expressNotes": {
       "title": "Notas rápidas",
@@ -740,6 +751,7 @@
     "referenceActive": "activa",
     "referenceAdd": "Añadir referencia…",
     "referenceRemoveActive": "Quitar la referencia activa",
+    "referenceRevealed": "revelada, no puede ser referencia fija",
     "referenceAddHint": "La referencia anterior conserva sus 79.00; la nueva queda fijada.",
     "referenceAddTitle": "Añadir referencia",
     "referenceAddConfirm": "Añadir referencia",
@@ -830,7 +842,8 @@
       "offline": "Sin conexión: {count} cambio(s) se sincronizarán al reconectar.",
       "retry": "Reintentar",
       "synced": "Cambios sincronizados. Actualizando resultados…",
-      "closedUnsent": "{count} cambio(s) guardado(s) en este dispositivo no se enviaron porque la cata ya estaba cerrada. No cuentan en los resultados."
+      "closedUnsent": "{count} cambio(s) guardado(s) en este dispositivo no se enviaron porque la cata ya estaba cerrada. No cuentan en los resultados.",
+      "revealedUnsent": "{count} nota(s) guardada(s) en este dispositivo no se enviaron porque la muestra ya estaba revelada. No cuentan en los resultados."
     },
     "closeEmails": {
       "label": "Correos de cierre:",
@@ -1081,6 +1094,16 @@
     "needsConnection": "Necesita conexión",
     "closedUnsentNotice": "Tenías {count, plural, one {# muestra completa} other {# muestras completas}} sin enviar cuando se cerró la cata. No cuentan en los resultados.",
     "closedNotice": "La cata se cerró. Lo que enviaste cuenta en los resultados; lo que quedó sin enviar, no.",
+    "revealConfirm": {
+      "title": "¿Revelar esta muestra?",
+      "body": "Todos verán qué café es y nadie podrá seguir evaluando esta muestra. Las evaluaciones en borrador de esta muestra quedarán como están.",
+      "confirm": "Revelar muestra",
+      "cancel": "Cancelar"
+    },
+    "market": {
+      "label": "Punto de vista",
+      "known": "Un mercado que conozco"
+    },
     "closeNow": {
       "line": "La fecha de cierre ya pasó. La cata se cerrará sola en las próximas horas; puedes cerrarla ahora para enviar los resultados.",
       "button": "Cerrar ahora"
@@ -1360,6 +1383,7 @@
       "empty": "No hay notas sin sincronizar.",
       "statusClosed": "La cata ya estaba cerrada",
       "statusOrphaned": "La cata o la muestra ya no existe",
+      "statusRevealed": "La muestra se reveló antes de que esto se guardara. No se puede enviar.",
       "statusFailed": "No se pudo enviar",
       "view": "Ver",
       "hide": "Ocultar",
@@ -2028,6 +2052,8 @@
       "not_found_or_forbidden": "No encontramos ese elemento o no tienes permiso.",
       "session_not_started": "La cata aún no empezó. Espera a que el maestro la inicie.",
       "session_closed": "Esta cata ya está cerrada; sus resultados son definitivos.",
+      "reference_revealed": "Esta acción cambiaría las calificaciones de una muestra ya revelada. Elige otra muestra como referencia.",
+      "sample_revealed": "Esta muestra ya fue revelada y no se puede seguir evaluando.",
       "invalid_token": "Este enlace de invitación no es válido.",
       "token_expired": "Este enlace de invitación caducó.",
       "token_exhausted": "Este enlace de invitación ya alcanzó su número máximo de usos.",

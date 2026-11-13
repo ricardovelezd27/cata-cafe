@@ -16,7 +16,6 @@ import {
   calcIndividualBreakdown,
   calcIndividualScore,
   hasAffectiveData,
-  scoreBand,
 } from "@/lib/scoring";
 import { ScoreBreakdownPanel, type ScoreBreakdownTranslations } from "@/components/results/ScoreBreakdownPanel";
 import { getChartColors } from "@/components/results/chartColors";
@@ -185,15 +184,7 @@ export function SampleRadarChart({
 
   const score = hasMyData && affData ? calcIndividualScore(affData, cupsPerSample, { rule: sample.scoreRule }) : null;
   const scoreNum = score !== null && score !== "—" ? Number(score) : null;
-  const band = scoreNum !== null ? scoreBand(scoreNum) : null;
-  const scoreColorClass =
-    band === "green"
-      ? "text-primary-container"
-      : band === "amber"
-        ? "text-secondary"
-        : band === "red"
-          ? "text-error"
-          : "text-on-surface-variant";
+  const scoreColorClass = "text-on-surface";
 
   const setup = {
     cupsPerSample,
