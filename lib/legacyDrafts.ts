@@ -123,11 +123,15 @@ export async function recomputeLegacyDraftsInTx(
       });
       continue;
     }
-    await tx.evaluation.update({
-      where: { id: row.id },
-      data: fields as unknown as Prisma.EvaluationUpdateInput,
+    // Third review L-1: the row was read above, so an autosave (which now writes `cups`) may
+    // have rewritten it since. The write names the same two conditions the read used
+    // (`cups` NULL, still a draft): a row that no longer matches is left exactly as the
+    // newer save wrote it, and is not counted.
+    const res = await tx.evaluation.updateMany({
+      where: { id: row.id, cups: null, isDraft: true },
+      data: fields as unknown as Prisma.EvaluationUpdateManyMutationInput,
     });
-    rewritten += 1;
+    rewritten += res.count;
   }
   return rewritten;
 }

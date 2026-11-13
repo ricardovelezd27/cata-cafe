@@ -4,6 +4,7 @@ import {
   anonEvalWins,
   resolveEvalConflicts,
   needsAggregateRefire,
+  samplesToRefireAfterMerge,
   mintGuestClaimToken,
   safeClaimBack,
   verifyGuestClaimToken,
@@ -180,5 +181,42 @@ describe("resolveEvalConflicts", () => {
     const out = resolveEvalConflicts([{ anon: r("g"), target: r("a") }]);
     expect(out.deleteIds).toEqual(["g"]);
     expect(out.accountLoserIds).toEqual([]);
+  });
+});
+
+describe("samplesToRefireAfterMerge (third review M-C)", () => {
+  const quiet = {
+    guestExcluded: false,
+    guestHadRow: true,
+    accountExcluded: false,
+    accountHadRow: true,
+    guestHasEvaluations: true,
+    guestSampleIds: ["g1", "g2"],
+    accountSampleIds: ["a1", "a2", "a3"],
+  };
+  it("re-fires nothing when there is no conflict and no exclusion difference", () => {
+    expect(samplesToRefireAfterMerge([], [quiet])).toEqual([]);
+    expect(samplesToRefireAfterMerge([], [])).toEqual([]);
+  });
+  it("re-fires only the conflicted samples, not the rest of their session", () => {
+    expect(samplesToRefireAfterMerge(["s2"], [{ ...quiet, accountSampleIds: ["s1", "s2", "s3"] }])).toEqual(["s2"]);
+  });
+  it("guest excluded, account not, both rows: the account's own submitted samples (their flag flipped), not the guest's", () => {
+    expect(samplesToRefireAfterMerge([], [{ ...quiet, guestExcluded: true }])).toEqual(["a1", "a2", "a3"]);
+  });
+  it("guest evaluations landing on an excluded account: the guest's samples only", () => {
+    expect(
+      samplesToRefireAfterMerge([], [{ ...quiet, guestHadRow: false, accountExcluded: true }]),
+    ).toEqual(["g1", "g2"]);
+  });
+  it("de-duplicates and sorts conflict and exclusion samples", () => {
+    expect(
+      samplesToRefireAfterMerge(["a2", "z"], [{ ...quiet, guestExcluded: true }]),
+    ).toEqual(["a1", "a2", "a3", "z"]);
+  });
+  it("ignores a session with no exclusion difference alongside one with it", () => {
+    expect(
+      samplesToRefireAfterMerge([], [quiet, { ...quiet, guestExcluded: true, accountSampleIds: ["b1"] }]),
+    ).toEqual(["b1"]);
   });
 });

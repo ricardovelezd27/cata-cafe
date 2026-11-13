@@ -6,8 +6,10 @@ import { readFileSync } from "node:fs";
 describe("mergeGuestData history re-sync (B-03)", () => {
   const src = readFileSync("lib/guestClaim.ts", "utf8");
 
-  it("reads the closed sessions of the refire set inside the transaction", () => {
-    expect(src).toMatch(/cuppingSession\.findMany\(\{\s*where: \{ id: \{ in: \[\.\.\.refireSessions\] \}, status: "closed" \}/);
+  it("reads the closed sessions of the refire set (the re-fired SAMPLES) inside the transaction", () => {
+    expect(src).toMatch(
+      /cuppingSession\.findMany\(\{\s*where: \{ status: "closed", samples: \{ some: \{ id: \{ in: refireSamples \} \} \} \}/,
+    );
   });
 
   it("syncs history for each of them AFTER the transaction commits, logging failures", () => {
