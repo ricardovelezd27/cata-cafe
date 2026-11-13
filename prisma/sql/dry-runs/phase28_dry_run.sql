@@ -79,7 +79,7 @@ BEGIN
            (SELECT count(*) FROM session_participants sp WHERE sp."sessionId" = x.id) AS people,
            (SELECT count(*) FROM session_participants sp
               JOIN auth.users u ON u.id::text = sp."userId"
-             WHERE sp."sessionId" = x.id AND u.email IS NOT NULL) AS people_with_email
+             WHERE sp."sessionId" = x.id AND coalesce(u.email, '') <> '') AS people_with_email
     FROM (
       SELECT cs.id, cs.name, cs."startedAt",
              GREATEST(

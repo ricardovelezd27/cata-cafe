@@ -140,7 +140,8 @@ export default async function CupPage({
   const t = await getTranslations();
   const tg = await getTranslations("group");
   const groupProgress = cupGroupProgressForViewer({
-    isOwner,
+    viewerId: user.id,
+    ownerId: session.createdBy,
     done: submittedProgress.done,
     total: submittedProgress.total,
     format: (count, total) => tg("submittedOf", { count, total }),

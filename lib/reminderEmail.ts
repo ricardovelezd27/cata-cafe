@@ -17,7 +17,7 @@ import { errorMessage, logError } from "@/lib/log";
 import {
   deadlineReminderWindow,
   isEvaluationComplete,
-  isLiveIdle,
+  shouldSendLiveIdleReminder,
   type ReminderKind,
 } from "@/lib/closeRules";
 import {
@@ -161,7 +161,8 @@ export async function sendLiveIdleReminders(batch: number): Promise<ReminderSumm
     if (u && (!cur || u > cur)) lastBySession.set(smp.sessionId, u);
   }
   for (const s of candidates) {
-    if (!isLiveIdle(s, lastBySession.get(s.id) ?? null)) continue;
+    // Not once it is abandoned (7 days): the idle pass closes it in this same run.
+    if (!shouldSendLiveIdleReminder(s, lastBySession.get(s.id) ?? null)) continue;
     summary.sessions += 1;
     const r = await sendOne({ sessionId: s.id, sessionName: s.name, userId: s.createdBy, kind: "live_idle" });
     summary[r] += 1;

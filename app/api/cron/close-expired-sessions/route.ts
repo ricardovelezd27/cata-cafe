@@ -8,7 +8,11 @@
 // Passes (each capped at BATCH, reported separately in the JSON):
 //   1. close      active sessions whose closesAt has passed
 //   2. repair     closed sessions whose phase 2 never finished (S8-05: a close
-//                 that threw after the flip is retried here, not lost)
+//                 that threw after the flip is retried here, not lost). Emails
+//                 follow `repairEmailMode` (lib/closeRules.ts, applied by
+//                 lib/repairClose.ts): a SILENT idle close (live group, idle 30
+//                 days or more at close, no close-email ledger row) is repaired
+//                 without emails, everything else with them.
 //   3. reminders  deadline_24h (members with complete unsent notes) and
 //                 live_idle (owner of a forgotten live session). Ledgered in
 //                 session_reminder_deliveries; NEVER closes a session.
@@ -19,13 +23,14 @@
 //                 never starve the deadline closes, the repairs or the reminders.
 //   5. purge      the email ledger housekeeping. Always runs, last, in its own
 //                 try/catch; nothing above can stop it.
-// Time budget (review M1): maxDuration is 300 s; no NEW close is started in pass 1
-// or pass 4 once CRON_CLOSE_START_BUDGET_MS (150 s) has elapsed (`budgetTruncated` /
-// `idleBudgetTruncated` in the summary). Repairs and reminders are not gated.
+// Time budget (review M1): maxDuration is 300 s; no NEW close or repair is started in pass 1,
+// pass 2 or pass 4 once CRON_CLOSE_START_BUDGET_MS (150 s) has elapsed (`budgetTruncated` /
+// `repairBudgetTruncated` / `idleBudgetTruncated` in the summary). Reminders are not gated.
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { closeSessionInternal } from "@/lib/closeSession";
+import { repairClosedSession } from "@/lib/repairClose";
 import { CRON_CLOSE_START_BUDGET_MS, FINALIZE_GRACE_MS, mayStartAnotherClose } from "@/lib/closeRules";
 import { errorMessage, logError, logWarn } from "@/lib/log";
 import { purgeEmailLedger } from "@/lib/emailBudget";
@@ -104,9 +109,15 @@ export async function GET(request: Request) {
     take: BATCH,
   });
   const repairs: { id: string; finalized: boolean; error?: string }[] = [];
+  let repairBudgetTruncated = false;
   for (const s of owed) {
+    if (!mayStart()) {
+      repairBudgetTruncated = true;
+      logWarn({ where: "cron.repairClose", message: "time budget spent, rest left for the next run" });
+      break;
+    }
     try {
-      const r = await closeSessionInternal(s.id, { reason: "repair", emails: "await" });
+      const r = await repairClosedSession(s.id);
       const finalized = r.finalized === true;
       repairs.push({ id: s.id, finalized });
       if (!finalized) await requeueRepair(s.id);
@@ -163,12 +174,15 @@ export async function GET(request: Request) {
     // up the rest — bounded per invocation on purpose.
     truncated: truncated || budgetTruncated,
     budgetTruncated,
+    repairBudgetTruncated,
     idleClosed: idle.idleClosed,
     idleClosedSilently: idle.idleClosedSilently,
+    idleExamined: idle.examined,
+    idleFailed: idle.idleFailed,
     idleTruncated: idle.idleTruncated,
     idleBudgetTruncated: idle.idleBudgetTruncated,
     idleResults: idle.results,
     reminders,
-    repair: { owed: owed.length, stillUnfinalized, finalized: repairs.filter((r) => r.finalized).length, results: repairs, truncated: repairTruncated },
+    repair: { owed: owed.length, budgetTruncated: repairBudgetTruncated, stillUnfinalized, finalized: repairs.filter((r) => r.finalized).length, results: repairs, truncated: repairTruncated },
   });
 }

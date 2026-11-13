@@ -281,8 +281,14 @@ closes after ~150 s) through `closeSessionInternal(id, { reason: "idle", emails 
 `emails = idleCloseEmailMode(idleMs)`: idle 7 to under 30 days = `"await"` (same reveal,
 history sync and close emails as the deadline pass); idle **30 days or more** = `"skip"`
 (closed silently: the first production run must not mail the backlog; `skip` stamps
-`closeFinalizedAt`, so the repair pass never sends later, and the owner can still "Reenviar
-correos"). Idleness is re-checked right before each close. Unstarted and solo sessions are never touched.
+`closeFinalizedAt`). If a finalize step failed, the stamp stays null and the cron repair pass
+(`lib/repairClose.ts`) applies `repairEmailMode` (`lib/closeRules.ts`): it stays silent too
+(`skip`) exactly when the session is a live group session, was idle 30 days or more AT `closedAt`
+and has no `close_email_deliveries` row; every other repair runs with emails. Accepted: an owner who
+closes by hand a live session idle 30+ days whose finalize fails before the email step is repaired
+without emails; the results page then says "se cerró sola… no se enviaron correos" and the owner can
+"Reenviar correos". The pass walks up to 25 oldest candidates until 5 closes SUCCEEDED (a candidate that
+throws is logged and does not count), and repairs also stop starting after the ~150 s budget. Idleness is re-checked right before each close. Unstarted and solo sessions are never touched.
 An expired, not closed group session shows its OWNER a "Cerrar ahora" button on the results
 page (`canCloseNow`) in case the nightly job fails. Setting a date on an unstarted live session turns it
 self-paced (no waiting room, no "Iniciar cata"), which the forms say before saving

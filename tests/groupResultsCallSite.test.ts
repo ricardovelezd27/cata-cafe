@@ -49,6 +49,30 @@ describe("the group-visibility call site", () => {
     expect(page).not.toMatch(/\ballSubmitted\s*[:,=]\s*(?!.*myProgress)/);
     expect(page).not.toMatch(/submittedCupperCount\s*>=\s*totalParticipants/);
   });
+
+  // Second review L6b: no expression outside the seam may compare the submitted-cuppers
+  // count with the participants total, in either order and with any operator.
+  const CMP = /(?:<=|>=|===|!==|==|!=|(?<![=\-])<(?!=)|(?<![=\-])>(?!=))/;
+  const COMPARES_BOTH = (src: string) =>
+    src.split(/[;\n]/).some((l) => {
+      const a = l.search(/submittedCupperCount|submittedCount/);
+      const b = l.search(/totalParticipants|participants\.length|participantCount/);
+      return a !== -1 && b !== -1 && CMP.test(l);
+    });
+
+  it("the comparison scan catches both operand orders and every operator (sanity)", () => {
+    expect(COMPARES_BOTH("const all = totalParticipants <= submittedCupperCount;")).toBe(true);
+    expect(COMPARES_BOTH("const all = submittedCupperCount >= totalParticipants;")).toBe(true);
+    expect(COMPARES_BOTH("if (submittedCupperCount === totalParticipants) {")).toBe(true);
+    expect(COMPARES_BOTH("const pending = Math.max(0, totalParticipants - submittedCupperCount);")).toBe(false);
+    expect(COMPARES_BOTH("items.map((x) => totalParticipants + submittedCupperCount)")).toBe(false);
+  });
+
+  it("neither the results page nor the participant-summary route compares the two counts", () => {
+    for (const f of [PAGE, ROUTE]) {
+      expect(COMPARES_BOTH(stripComments(read(f))), f).toBe(false);
+    }
+  });
 });
 
 describe("viewerMayReadGroupResults", () => {

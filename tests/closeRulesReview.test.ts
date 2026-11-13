@@ -4,6 +4,11 @@ import {
   IDLE_SILENT_CLOSE_MS,
   LIVE_AUTO_CLOSE_MS,
   canCloseNow,
+  closedSilently,
+  idleAtCloseMs,
+  repairEmailMode,
+  shouldSendLiveIdleReminder,
+  LIVE_IDLE_MS,
   idleCloseEmailMode,
   liveIdleMs,
   mayStartAnotherClose,
@@ -70,5 +75,63 @@ describe("canCloseNow (review M2)", () => {
     expect(canCloseNow({ ...ok, isGroup: false })).toBe(false);
     expect(canCloseNow({ ...ok, status: "closed" })).toBe(false);
     expect(canCloseNow({ ...ok, expired: false })).toBe(false);
+  });
+});
+
+// Second review M-A: the repair pass must not mail a silent idle close.
+describe("idleAtCloseMs", () => {
+  const begun = new Date(Date.UTC(2026, 0, 1));
+  it("closedAt minus the later of startedAt and the last evaluation before the close", () => {
+    const closedAt = new Date(begun.getTime() + 90 * DAY);
+    expect(idleAtCloseMs({ startedAt: begun, closedAt }, null)).toBe(90 * DAY);
+    expect(idleAtCloseMs({ startedAt: begun, closedAt }, new Date(begun.getTime() + 60 * DAY))).toBe(30 * DAY);
+  });
+  it("null when never started or not closed", () => {
+    expect(idleAtCloseMs({ startedAt: null, closedAt: new Date() }, null)).toBeNull();
+    expect(idleAtCloseMs({ startedAt: begun, closedAt: null }, null)).toBeNull();
+  });
+});
+
+describe("repairEmailMode / closedSilently", () => {
+  const base = { isLiveGroup: true, idleAtCloseMs: 90 * DAY, closeEmailLedgerRows: 0 };
+  it("skip exactly for a live group session idle 30+ days at close with no ledger row", () => {
+    expect(repairEmailMode(base)).toBe("skip");
+    expect(closedSilently(base)).toBe(true);
+  });
+  it("the 30-day boundary is the one of idleCloseEmailMode (inclusive)", () => {
+    expect(repairEmailMode({ ...base, idleAtCloseMs: IDLE_SILENT_CLOSE_MS })).toBe("skip");
+    expect(repairEmailMode({ ...base, idleAtCloseMs: IDLE_SILENT_CLOSE_MS - 1 })).toBe("await");
+    for (const ms of [0, 7 * DAY, 29 * DAY, 30 * DAY, 90 * DAY]) {
+      expect(repairEmailMode({ ...base, idleAtCloseMs: ms })).toBe(idleCloseEmailMode(ms));
+    }
+  });
+  it("await when it is not a live group session (deadline, solo)", () => {
+    expect(repairEmailMode({ ...base, isLiveGroup: false })).toBe("await");
+  });
+  it("await when idle is unknown (never started)", () => {
+    expect(repairEmailMode({ ...base, idleAtCloseMs: null })).toBe("await");
+  });
+  it("await when anybody already started emailing it (any ledger row)", () => {
+    expect(repairEmailMode({ ...base, closeEmailLedgerRows: 1 })).toBe("await");
+    expect(closedSilently({ ...base, closeEmailLedgerRows: 3 })).toBe(false);
+  });
+});
+
+describe("shouldSendLiveIdleReminder (L3)", () => {
+  const now = Date.UTC(2026, 5, 30);
+  const row = (daysIdle: number) => ({
+    isGroup: true,
+    isAsync: false,
+    closesAt: null,
+    status: "active",
+    startedAt: new Date(now - daysIdle * DAY),
+  });
+  it("sends between 24 h and 7 days idle, not before and not at 7 days or more", () => {
+    expect(LIVE_IDLE_MS).toBe(DAY);
+    expect(shouldSendLiveIdleReminder(row(0.5), null, now)).toBe(false);
+    expect(shouldSendLiveIdleReminder(row(1), null, now)).toBe(true);
+    expect(shouldSendLiveIdleReminder(row(6.9), null, now)).toBe(true);
+    expect(shouldSendLiveIdleReminder(row(7), null, now)).toBe(false);
+    expect(shouldSendLiveIdleReminder(row(20), null, now)).toBe(false);
   });
 });

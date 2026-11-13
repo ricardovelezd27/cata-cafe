@@ -803,6 +803,7 @@
     },
     "closeEmails": {
       "label": "Close emails:",
+      "silent": "This cupping closed by itself because of inactivity and no emails were sent. You can send them with “Resend emails”.",
       "sent": "{count, plural, =1 {1 sent} other {# sent}}",
       "noEmail": "{count, plural, =1 {1 with no email} other {# with no email}}",
       "failed": "{count, plural, =1 {1 failed} other {# failed}}",
@@ -1028,7 +1029,7 @@
     "closedUnsentNotice": "You had {count, plural, one {# complete sample} other {# complete samples}} unsent when the session closed. They do not count in the results.",
     "closedNotice": "The session closed. What you sent counts in the results; anything left unsent does not.",
     "closeNow": {
-      "line": "The closing date has passed. The cupping closes by itself tonight; you can close it now to send the results.",
+      "line": "The closing date has passed. The cupping will close by itself in the next few hours; you can close it now to send the results.",
       "button": "Close now"
     },
     "finish": {

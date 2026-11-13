@@ -13,6 +13,7 @@ import { asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { deriveMyEvaluation, summarizeMyProgress } from "@/lib/evaluationState";
 import { isSessionExpired, viewerMayReadGroupResults } from "@/lib/sessionState";
+import { wasClosedSilently } from "@/lib/repairClose";
 import { resultsUpdatedAfterClose } from "@/lib/exclusionReasons";
 import { gateSampleForViewer, communityHidden } from "@/lib/reports/sampleGate";
 import { gateSamplePrep } from "@/lib/samplePrep";
@@ -515,10 +516,16 @@ export default async function ResultsPage({
       failed > 0 ? tResults("closeEmails.failed", { count: failed }) : null,
       pending > 0 ? tResults("closeEmails.pending", { count: pending }) : null,
     ].filter((p): p is string => p !== null);
-    closeEmails = {
-      line: `${tResults("closeEmails.label")} ${parts.join(" · ")}`,
-      showResend: failed > 0 || pending > 0,
-    };
+    // Second review L4: a close that was silent (live group, idle 30+ days at close,
+    // no ledger row) must not read as mail owed. The same pure rule the repair pass uses.
+    const silent =
+      deliveries.length === 0 && (await wasClosedSilently(id));
+    closeEmails = silent
+      ? { line: tResults("closeEmails.silent"), showResend: true }
+      : {
+          line: `${tResults("closeEmails.label")} ${parts.join(" · ")}`,
+          showResend: failed > 0 || pending > 0,
+        };
   }
 
   // Neutral one-line notice for closed group sessions — formatted server-side

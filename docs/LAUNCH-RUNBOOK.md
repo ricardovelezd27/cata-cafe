@@ -1863,16 +1863,22 @@ them are simulated, Kim has not confirmed them):
   without evaluations ("activity" means an evaluation being saved, nothing else; new pass, close
   reason `idle`). **The backlog rule (review H2):** idle 7 days up to under 30 days = the designed
   flow, the close emails go out; idle **30 days or more** = closed **silently** (no email, still
-  finalized; the owner can use "Reenviar correos"). So the first production run never mails
+  finalized; the owner can use "Reenviar correos"). If a finalize step of such a close failed, the
+  next day's repair pass is silent too (`repairEmailMode`: live group session, idle 30 days or more
+  at the close, no close-email ledger row), so the backlog is not mailed by the repair either.
+  **Known and accepted:** an owner who closes by hand a live session idle 30+ days, and whose
+  finalize fails before the email step, is repaired without emails; their results page says "Esta
+  cata se cerró sola por inactividad y no se enviaron correos" and **Reenviar** sends them. So the first production run never mails
   people about sessions abandoned months ago, and, because the job is daily, after its first week
   only that backlog can cross 30 days.
 - **"Cerrar ahora" (review M2).** If the nightly job fails, the owner of a group session whose
   closing date has passed but that is not closed sees, on the results page, "La fecha de cierre ya
-  pasó. La cata se cierra sola esta noche; puedes cerrarla ahora para enviar los resultados." and a
+  pasó. La cata se cerrará sola en las próximas horas; puedes cerrarla ahora para enviar los resultados." and a
   **Cerrar ahora** button (same confirmation and the same close routine as the cup panel).
 - **Cron order (review M1).** Deadline closes, repairs, reminders, then the idle pass (5 per run,
-  oldest first), then the ledger purge (always last). No new close is started after ~150 s of the
-  300 s budget.
+  oldest first), then the ledger purge (always last). No new close or repair is started after
+  ~150 s of the 300 s budget. The idle pass walks up to 25 oldest candidates until 5 closes
+  succeeded; a candidate that throws is logged and skipped.
 
 No Prisma migration, no new environment variable, no new cron entry.
 
@@ -1928,6 +1934,8 @@ No Prisma migration, no new environment variable, no new cron entry.
 
    The JSON now has `idleClosed` (sessions closed by the idle pass in this run),
    `idleClosedSilently` (of those, the ones idle 30 days or more, closed without email),
+   `idleExamined` and `idleFailed` (candidates walked, and those whose close threw),
+   `repairBudgetTruncated` (the 150 s budget stopped the repairs),
    `idleTruncated` (`true` means the batch of 5 was full and more are waiting for the next run),
    `idleBudgetTruncated` (`true` means the 150 s start budget ran out first), `budgetTruncated`
    (the same for the deadline closes; `truncated` is true for either) and `idleResults` (id,

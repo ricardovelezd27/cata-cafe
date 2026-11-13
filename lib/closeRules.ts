@@ -303,10 +303,73 @@ export const IDLE_SILENT_CLOSE_MS = 30 * 24 * 3_600_000;
 
 /** Email mode for an idle close: 7 days up to (excluding) 30 days = the
  *  designed flow, emails; 30 days or more = close silently (`skip` stamps
- *  closeFinalizedAt, so the repair pass never sends later; the owner can still
- *  use "Reenviar correos"). Pure. TODO(kim-validar:C3) */
+ *  closeFinalizedAt; if a step failed the stamp stays null and the repair pass
+ *  applies `repairEmailMode`, which stays silent for the same sessions; the owner
+ *  can still use "Reenviar correos"). Pure. TODO(kim-validar:C3) */
 export function idleCloseEmailMode(idleMs: number): "await" | "skip" {
   return idleMs >= IDLE_SILENT_CLOSE_MS ? "skip" : "await";
+}
+
+/** Should the owner get the 24 h "nobody is cupping" reminder now? Idle for
+ *  LIVE_IDLE_MS but NOT yet abandoned: a session idle 7 days or more is about to
+ *  be closed by the idle pass of the same run, and the reminder's "si pasan 7
+ *  días…" would be false (second review L3). Pure. */
+export function shouldSendLiveIdleReminder(
+  row: Parameters<typeof isLiveIdle>[0],
+  lastEvaluationAt: Date | null,
+  now: number = Date.now(),
+): boolean {
+  return isLiveIdle(row, lastEvaluationAt, now) && !isLiveAbandoned(row, lastEvaluationAt, now);
+}
+
+/** Idle time AT the moment a live session was closed: closedAt minus the later
+ *  of startedAt and the last evaluation update BEFORE the close (later writes,
+ *  such as the aggregate re-fire of the finalize, must not count). `null` when
+ *  the session never started or is not closed. Pure. */
+export function idleAtCloseMs(
+  row: { startedAt: Date | null; closedAt: Date | null },
+  lastEvaluationBeforeCloseAt: Date | null,
+): number | null {
+  if (!row.startedAt || !row.closedAt) return null;
+  const last = Math.max(row.startedAt.getTime(), lastEvaluationBeforeCloseAt ? lastEvaluationBeforeCloseAt.getTime() : 0);
+  return row.closedAt.getTime() - last;
+}
+
+/** Was this close a SILENT one (S10 WP4a second review M-A, and the owner's
+ *  results-page line)? True exactly when the session is a live group session
+ *  (group, not async, no closesAt), it had been idle 30 days or more AT closedAt
+ *  (the same boundary as `idleCloseEmailMode`: IDLE_SILENT_CLOSE_MS), and nobody
+ *  ever started emailing it (no close_email_deliveries row at all). Pure.
+ *  TODO(kim-validar:C3) */
+export function closedSilently(input: {
+  isLiveGroup: boolean;
+  idleAtCloseMs: number | null;
+  closeEmailLedgerRows: number;
+}): boolean {
+  return (
+    input.isLiveGroup &&
+    input.idleAtCloseMs !== null &&
+    idleCloseEmailMode(input.idleAtCloseMs) === "skip" &&
+    input.closeEmailLedgerRows === 0
+  );
+}
+
+/** Email mode of the cron REPAIR pass for a closed-but-unfinalized session.
+ *  "skip" exactly when the close was silent (`closedSilently`), so a silent idle
+ *  close whose finalize failed halfway is repaired WITHOUT mailing the months-old
+ *  backlog the next day; "await" otherwise (deadline sessions and every session
+ *  somebody already started emailing keep today's behaviour).
+ *  Known and accepted: an OWNER who closed by hand a live session that had been
+ *  idle 30+ days, and whose finalize failed before the email step, is repaired
+ *  without emails too; their results page says so and "Reenviar correos" sends
+ *  them. No migration: derived from closedAt, startedAt, the evaluations and the
+ *  ledger. Pure. TODO(kim-validar:C3) */
+export function repairEmailMode(input: {
+  isLiveGroup: boolean;
+  idleAtCloseMs: number | null;
+  closeEmailLedgerRows: number;
+}): "await" | "skip" {
+  return closedSilently(input) ? "skip" : "await";
 }
 
 /** Time budget (S10 WP4a review M1): the cron has maxDuration 300 s; it stops

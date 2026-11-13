@@ -12,12 +12,15 @@ export type CupGroupProgress = {
 };
 
 export function cupGroupProgressForViewer(input: {
-  isOwner: boolean;
+  /** The signed-in viewer and the session's owner (`createdBy`): the helper
+   *  decides ownership itself, so a caller cannot pass a literal `true`. */
+  viewerId: string;
+  ownerId: string;
   done: number;
   total: number;
   /** Formats the line (the page's translator); only called for the owner. */
   format: (done: number, total: number) => string;
 }): CupGroupProgress {
-  if (!input.isOwner) return { submittedCount: 0, submittedOf: "" };
+  if (input.viewerId !== input.ownerId) return { submittedCount: 0, submittedOf: "" };
   return { submittedCount: input.done, submittedOf: input.format(input.done, input.total) };
 }

@@ -803,6 +803,7 @@
     },
     "closeEmails": {
       "label": "Correos de cierre:",
+      "silent": "Esta cata se cerró sola por inactividad y no se enviaron correos. Puedes enviarlos con «Reenviar correos».",
       "sent": "{count, plural, =1 {1 enviado} other {# enviados}}",
       "noEmail": "{count, plural, =1 {1 sin correo} other {# sin correo}}",
       "failed": "{count, plural, =1 {1 fallido} other {# fallidos}}",
@@ -1028,7 +1029,7 @@
     "closedUnsentNotice": "Tenías {count, plural, one {# muestra completa} other {# muestras completas}} sin enviar cuando se cerró la cata. No cuentan en los resultados.",
     "closedNotice": "La cata se cerró. Lo que enviaste cuenta en los resultados; lo que quedó sin enviar, no.",
     "closeNow": {
-      "line": "La fecha de cierre ya pasó. La cata se cierra sola esta noche; puedes cerrarla ahora para enviar los resultados.",
+      "line": "La fecha de cierre ya pasó. La cata se cerrará sola en las próximas horas; puedes cerrarla ahora para enviar los resultados.",
       "button": "Cerrar ahora"
     },
     "finish": {

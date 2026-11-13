@@ -8,7 +8,7 @@ const format = (done: number, total: number) => `${done} de ${total} enviados`;
 
 describe("cupGroupProgressForViewer", () => {
   it("gives the owner the count and the formatted line", () => {
-    expect(cupGroupProgressForViewer({ isOwner: true, done: 3, total: 5, format })).toEqual({
+    expect(cupGroupProgressForViewer({ viewerId: "o", ownerId: "o", done: 3, total: 5, format })).toEqual({
       submittedCount: 3,
       submittedOf: "3 de 5 enviados",
     });
@@ -20,17 +20,23 @@ describe("cupGroupProgressForViewer", () => {
       [3, 5],
       [5, 5],
     ]) {
-      expect(cupGroupProgressForViewer({ isOwner: false, done, total, format })).toEqual({
+      expect(cupGroupProgressForViewer({ viewerId: "p", ownerId: "o", done, total, format })).toEqual({
         submittedCount: 0,
         submittedOf: "",
       });
     }
   });
 
+  it("decides ownership by comparing the two ids: only viewerId === ownerId gets the count", () => {
+    expect(cupGroupProgressForViewer({ viewerId: "a", ownerId: "b", done: 1, total: 2, format }).submittedCount).toBe(0);
+    expect(cupGroupProgressForViewer({ viewerId: "b", ownerId: "b", done: 1, total: 2, format }).submittedCount).toBe(1);
+  });
+
   it("never calls the formatter for a participant", () => {
     let called = false;
     cupGroupProgressForViewer({
-      isOwner: false,
+      viewerId: "p",
+      ownerId: "o",
       done: 2,
       total: 4,
       format: () => {
@@ -53,6 +59,14 @@ describe("cup page / CupClient wiring", () => {
     expect(page).toContain("submittedCount={groupProgress.submittedCount}");
     expect(page).toContain("submittedOf: groupProgress.submittedOf");
     expect(page).not.toMatch(/tg\("submittedOf"[^)]*submittedProgress/);
+  });
+
+  it("the page passes the two real ids, never a literal or a derived boolean (second review L6a)", () => {
+    const call = page.slice(page.indexOf("cupGroupProgressForViewer({"));
+    const args = call.slice(0, call.indexOf("});"));
+    expect(args).toContain("viewerId: user.id");
+    expect(args).toContain("ownerId: session.createdBy");
+    expect(args).not.toMatch(/isOwner/);
   });
 
   it("CupClient renders the submitted line only for the owner", () => {
