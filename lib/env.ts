@@ -1,11 +1,14 @@
 import { logWarn } from "@/lib/log";
+import { parseSuperAdminEmail } from "@/lib/analytics/adminEmails";
 
 // Production environment assertions. Called once at server start from
 // instrumentation.ts register(). A missing value here would not crash the
 // app — it would quietly do the wrong thing (a printed QR pointing at
 // localhost, silently skipped emails, a disabled cron), which is worse. So in
-// production the boot fails loudly with the list of missing names; in
-// development it only warns.
+// production the server REFUSES TO START (register() throws on every cold
+// start) with the list of missing names; in development it only warns. This
+// does not fail the build: the deployment goes Ready and then returns 500s, so
+// a preview deployment of a change is the test.
 //
 // NEXT_PUBLIC_* values are inlined at build time, so the check for those is
 // on the build machine's env as well — Vercel injects Production env vars
@@ -31,7 +34,12 @@ export const REQUIRED_IN_PRODUCTION = [
 type EnvLike = Record<string, string | undefined>;
 
 export function missingProductionEnv(env: EnvLike = process.env): string[] {
-  return REQUIRED_IN_PRODUCTION.filter((name) => !env[name] || env[name]!.trim() === "");
+  return REQUIRED_IN_PRODUCTION.filter((name) => {
+    // The super-admin must be exactly one valid address; a list or a typo
+    // counts as missing (it would boot and leave no administrator).
+    if (name === "ANALYTICS_SUPER_ADMIN_EMAIL") return parseSuperAdminEmail(env) === null;
+    return !env[name] || env[name]!.trim() === "";
+  });
 }
 
 // Variables that SHOULD be set in production but must not stop the boot: the
@@ -59,7 +67,7 @@ export function assertProductionEnv(env: EnvLike = process.env): void {
   warnRecommendedEnv(env);
   const missing = missingProductionEnv(env);
   if (missing.length === 0) return;
-  const message = `[env] missing required environment variables: ${missing.join(", ")} — see docs/LAUNCH-RUNBOOK.md §3`;
+  const message = `[env] missing or invalid required environment variables: ${missing.join(", ")} — see docs/LAUNCH-RUNBOOK.md §3`;
   if (env.NODE_ENV === "production") throw new Error(message);
   console.warn(message);
 }

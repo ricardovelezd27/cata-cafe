@@ -17,6 +17,21 @@ describe("parseSuperAdminEmail", () => {
   });
 });
 
+describe("parseSuperAdminEmail: exactly one valid address", () => {
+  it("rejects a list, a non-address and inner spaces", () => {
+    for (const bad of ["a@b.test,c@d.test", "a@b.test, c@d.test", "not-an-email", "a b@c.test", "a@b.test,c.d"]) {
+      expect(parseSuperAdminEmail({ ANALYTICS_SUPER_ADMIN_EMAIL: bad })).toBeNull();
+    }
+  });
+  it("accepts surrounding spaces and mixed case", () => {
+    expect(parseSuperAdminEmail({ ANALYTICS_SUPER_ADMIN_EMAIL: "  a@b.test " })).toBe("a@b.test");
+    expect(parseSuperAdminEmail({ ANALYTICS_SUPER_ADMIN_EMAIL: "A@B.Test" })).toBe("a@b.test");
+  });
+  it("nobody matches when the value is malformed", () => {
+    expect(matchesSuperAdmin("a@b.test", { ANALYTICS_SUPER_ADMIN_EMAIL: "a@b.test,c@d.test" })).toBe(false);
+  });
+});
+
 describe("matchesSuperAdmin", () => {
   const env = { ANALYTICS_SUPER_ADMIN_EMAIL: "Boss@example.test" };
   it("matches case-insensitively", () => {

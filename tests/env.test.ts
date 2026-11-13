@@ -8,7 +8,10 @@ import {
   warnRecommendedEnv,
 } from "@/lib/env";
 
-const full = Object.fromEntries(REQUIRED_IN_PRODUCTION.map((n) => [n, "x"]));
+const full: Record<string, string> = {
+  ...Object.fromEntries(REQUIRED_IN_PRODUCTION.map((n) => [n, "x"])),
+  ANALYTICS_SUPER_ADMIN_EMAIL: "boss@example.test",
+};
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -36,6 +39,17 @@ describe("production env", () => {
       assertProductionEnv({ ...full, ANALYTICS_SUPER_ADMIN_EMAIL: "  ", NODE_ENV: "production" }),
     ).toThrow(/ANALYTICS_SUPER_ADMIN_EMAIL/);
     expect(() => assertProductionEnv({ ...full, NODE_ENV: "production" })).not.toThrow();
+  });
+  it("a malformed super-admin value counts as missing and names the variable", () => {
+    for (const bad of ["a@b.test,c@d.test", "not-an-email", "a b@c.test", "boss@"]) {
+      expect(missingProductionEnv({ ...full, ANALYTICS_SUPER_ADMIN_EMAIL: bad })).toEqual([
+        "ANALYTICS_SUPER_ADMIN_EMAIL",
+      ]);
+      expect(() =>
+        assertProductionEnv({ ...full, ANALYTICS_SUPER_ADMIN_EMAIL: bad, NODE_ENV: "production" }),
+      ).toThrow(/ANALYTICS_SUPER_ADMIN_EMAIL/);
+    }
+    expect(missingProductionEnv({ ...full, ANALYTICS_SUPER_ADMIN_EMAIL: "  Boss@Example.test " })).toEqual([]);
   });
   it("in development a missing super-admin email only warns", () => {
     const spy = vi.spyOn(console, "warn").mockImplementation(() => {});

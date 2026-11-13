@@ -108,6 +108,7 @@ import {
 } from "@/lib/referenceRules";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { OfflineBanner } from "@/components/offline/OfflineBanner";
+import { StaleBundleNotice } from "@/components/offline/StaleBundleNotice";
 import { noteIfStaleBundle } from "@/lib/staleBundle";
 import { SyncConflictModal } from "@/components/offline/SyncConflictModal";
 import {
@@ -373,6 +374,11 @@ export function CupClient({
       conflictKeep: string;
       conflictReplace: string;
       bannerStorageUnavailable: string;
+      // S10 WP9b: the "new version, reload" notice, rendered in the shell
+      // slot because the fixed SessionShell covers the app-layout copy.
+      // Optional: pre-upgrade offline prop blobs lack them.
+      bannerNewVersion?: string;
+      reloadNow?: string;
       // S8-09. Optional: pre-upgrade offline prop blobs lack them.
       bannerNextAttempt?: string;
       /** RAW template with "{count}". */
@@ -739,6 +745,16 @@ export function CupClient({
   // When the owner's channel last reached SUBSCRIBED (and re-seeded); the resume
   // fallback timer checks it so a channel that never subscribes still refreshes.
   const ownerSeededAtRef = useRef(0);
+  // The resume fallback timer: one at a time, cleared on the next resume, on
+  // unmount and when SUBSCRIBED arrives.
+  const reseedFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearReseedFallback = () => {
+    if (reseedFallbackRef.current) {
+      clearTimeout(reseedFallbackRef.current);
+      reseedFallbackRef.current = null;
+    }
+  };
+  useEffect(() => clearReseedFallback, []);
   const onlineRef = useRef(online);
   useEffect(() => {
     onlineRef.current = online;
@@ -967,14 +983,18 @@ export function CupClient({
     void recheck();
     if (!isGroup) return;
     setResumeKey((k) => k + 1);
+    clearReseedFallback();
     // One refetch per resume: the online owner gets it from the rebuilt channel's
     // SUBSCRIBED re-seed (it also covers events missed while the socket was down).
     if (resumeCallbackRefreshes({ isGroup, isOwner, online })) {
       router.refresh();
     } else {
       // Safety net: if the channel never reaches SUBSCRIBED, refresh anyway.
+      // Known limit: a resume that follows the `online` event (the channel
+      // effect re-runs and SUBSCRIBED refreshes) can still refresh twice.
       const resumedAt = Date.now();
-      setTimeout(() => {
+      reseedFallbackRef.current = setTimeout(() => {
+        reseedFallbackRef.current = null;
         if (ownerSeededAtRef.current < resumedAt) router.refresh();
       }, OWNER_RESEED_FALLBACK_MS);
     }
@@ -1076,6 +1096,7 @@ export function CupClient({
         // Events missed while the socket was down: re-seed from the server.
         if (status === "SUBSCRIBED" && isOwner) {
           ownerSeededAtRef.current = Date.now();
+          clearReseedFallback();
           router.refresh();
         }
       },
@@ -2373,6 +2394,13 @@ export function CupClient({
         storageUnavailable={storageUnavailable}
         nextRetryAt={nextRetryAt}
       />
+      {translations.offline.bannerNewVersion && translations.offline.reloadNow && (
+        <StaleBundleNotice
+          slot="cup"
+          message={translations.offline.bannerNewVersion}
+          reloadLabel={translations.offline.reloadNow}
+        />
+      )}
       {terminalCount > 0 && translations.offline.terminalNotice && (
         <div
           role="status"

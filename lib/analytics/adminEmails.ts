@@ -4,12 +4,24 @@
 // There is deliberately NO built-in address: when ANALYTICS_SUPER_ADMIN_EMAIL
 // is missing or blank there is no super-admin at all (F-insights-5).
 
+import { email as validateEmail } from "@/lib/validate";
+
 type EnvLike = Record<string, string | undefined>;
 
-/** The super-admin address, trimmed and lowercased; null when missing or blank. */
+/**
+ * The super-admin address, trimmed and lowercased. It must be exactly ONE
+ * valid address (lib/validate.ts `email` rules, plus no comma): a missing,
+ * blank or malformed value (a list, `not-an-email`) is null, so nobody is
+ * super-admin and the digest never targets a malformed string.
+ */
 export function parseSuperAdminEmail(env: EnvLike = process.env): string | null {
-  const v = env.ANALYTICS_SUPER_ADMIN_EMAIL?.trim().toLowerCase();
-  return v ? v : null;
+  const raw = env.ANALYTICS_SUPER_ADMIN_EMAIL?.trim();
+  if (!raw || raw.includes(",")) return null;
+  try {
+    return validateEmail(raw);
+  } catch {
+    return null;
+  }
 }
 
 /** True only for a non-empty address equal to the configured super-admin. */

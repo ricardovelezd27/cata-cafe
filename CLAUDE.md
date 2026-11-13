@@ -542,11 +542,11 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=    # Used by lib/supabase/admin.ts — never expose to client
 DATABASE_URL=                 # Supabase connection pooler URL
 DIRECT_URL=                   # Non-pooler connection for `prisma migrate` (prisma.config.ts falls back to DATABASE_URL)
-RESEND_API_KEY=               # Server-only. Unset → lib/email.ts sending is a graceful no-op (dev) / boot failure (prod)
+RESEND_API_KEY=               # Server-only. Unset → lib/email.ts sending is a graceful no-op (dev) / the server refuses to start (prod)
 EMAIL_FROM=                   # Optional — overrides the default sender; must be a Resend-verified domain
 ```
 
-**Required in production** (`lib/env.ts`, asserted at boot by `instrumentation.ts` — a missing one fails the deploy instead of shipping localhost links or silently skipped emails): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `NEXT_PUBLIC_SITE_URL`, `GUEST_CLAIM_SECRET`, `CRON_SECRET`, `RESEND_API_KEY`, `ANALYTICS_SUPER_ADMIN_EMAIL`. Setup steps: `docs/LAUNCH-RUNBOOK.md` §3.
+**Required in production** (`lib/env.ts`, asserted by `instrumentation.ts` `register()` on every server cold start — a missing or blank one makes production REFUSE TO START (every request 500s) instead of shipping localhost links or silently skipped emails; it does NOT fail the build, so the deployment still goes Ready, and a preview deployment of the change is the test, since preview also runs with NODE_ENV=production and the same variable entry; `ANALYTICS_SUPER_ADMIN_EMAIL` must be exactly one valid address, a list or a typo counts as missing): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `NEXT_PUBLIC_SITE_URL`, `GUEST_CLAIM_SECRET`, `CRON_SECRET`, `RESEND_API_KEY`, `ANALYTICS_SUPER_ADMIN_EMAIL`. Setup steps: `docs/LAUNCH-RUNBOOK.md` §3.
 
 ```
 GUEST_CLAIM_SECRET=           # HMAC key for guest "save my results" tokens (lib/guestClaim.ts); falls back to the service-role key in dev

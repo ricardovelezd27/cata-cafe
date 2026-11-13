@@ -139,8 +139,10 @@ export function EditSessionForm({
   // (C6 default; the server enforces the same rule via isFormatLocked).
   const locked = evalCount > 0 || initial.started;
   const closed = initial.closed;
-  // Expired = the server already refuses edits (assertSessionWritable); only the
-  // closing date stays usable (updateSession is status-only on purpose).
+  // Expired = this form treats the session as read-only except the closing
+  // date. That is a client-side rule here: the session-scoped mutations refuse
+  // an expired session (assertSessionWritable), but updateSession itself checks
+  // status only, so it does not refuse these edits on its own.
   const expired = initial.expired && !closed;
   const readOnlyExceptDate = closed || expired;
 
@@ -372,8 +374,9 @@ export function EditSessionForm({
           control (S8-10 T6, F-sesiones-9) instead of per-field flags. */}
       <fieldset disabled={closed} className="m-0 min-w-0 space-y-6 border-0 p-0">
       {/* An EXPIRED session (closesAt passed, nightly close not run yet) is
-          already read-only on the server: every card but the closing date is
-          disabled by its own fieldset (the date + save bar stay usable). */}
+          read-only in this form: every card but the closing date is disabled
+          by its own fieldset (the date + save bar stay usable). The server's
+          updateSession checks status only; this is not a server guarantee. */}
       <fieldset disabled={expired} className="m-0 min-w-0 space-y-6 border-0 p-0">
       {/* a. Metadata */}
       <div className={cardCls}>
@@ -740,7 +743,7 @@ export function EditSessionForm({
         {saved && <p className="text-sm text-primary-container">{t.saved}</p>}
         {errorText && <p className="text-sm text-error">{errorText}</p>}
         {closed && !errorText && <p className="text-sm text-on-surface-variant">{t.sessionClosed}</p>}
-        {expired && !errorText && <p className="text-sm text-on-surface-variant">{t.sessionExpired}</p>}
+        {expired && initial.isGroup && !errorText && <p className="text-sm text-on-surface-variant">{t.sessionExpired}</p>}
       </div>
       </fieldset>
     </form>
