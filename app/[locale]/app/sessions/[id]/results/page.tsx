@@ -9,6 +9,7 @@ import { PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
 import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
 import { computeCupperAlignment, type CupperAlignmentRow } from "@/lib/alignment";
 import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
+import { evaluationScoreRule, sampleScoreRule, type ScoreRule } from "@/lib/scoreRule";
 import { asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { deriveMyEvaluation, summarizeMyProgress } from "@/lib/evaluationState";
@@ -228,6 +229,7 @@ export default async function ResultsPage({
   // incomplete/empty submissions don't skew the community average. Keyed by
   // sessionSampleId.
   let groupAggBySample: Map<string, GroupAggregate> | null = null;
+  const ruleBySample = new Map<string, ScoreRule>();
   const submittedAllBySample = new Map<string, number>();
 
   // Ids of evaluations already visible at render time — seeds the client's
@@ -247,6 +249,7 @@ export default async function ResultsPage({
         combinedData: true,
         nonUniformCups: true,
         defectiveCups: true,
+        cups: true,
         cupper: { select: { id: true, displayName: true } },
       },
     });
@@ -271,6 +274,20 @@ export default async function ResultsPage({
         if (list) list.push(ev);
         else bySample.set(ev.sessionSampleId, [ev]);
       }
+      // Each sample is recomputed under the rule its STORED aggregate row says
+      // (ruleVersion 1 = before 2026-11), so past results render unchanged.
+      const cupsAllBySample = new Map<string, (number | null)[]>();
+      for (const ev of evals) {
+        const l = cupsAllBySample.get(ev.sessionSampleId);
+        if (l) l.push(ev.cups);
+        else cupsAllBySample.set(ev.sessionSampleId, [ev.cups]);
+      }
+      for (const s of session.samples) {
+        ruleBySample.set(
+          s.id,
+          sampleScoreRule(s.aggregateScore, cupsAllBySample.get(s.id) ?? []),
+        );
+      }
       for (const [sampleId, list] of bySample) {
         groupAggBySample.set(
           sampleId,
@@ -281,8 +298,11 @@ export default async function ResultsPage({
                 : ev.affectiveData) as Record<string, unknown>,
               nonUniformCups: ev.nonUniformCups,
               defectiveCups: ev.defectiveCups,
+              cups: ev.cups ?? undefined,
+              rule: evaluationScoreRule(ev.cups, true),
             })),
             session.cupsPerSample,
+            { rule: ruleBySample.get(sampleId) },
           ),
         );
       }
@@ -361,6 +381,8 @@ export default async function ResultsPage({
               combined: (ev?.combinedData as Record<string, unknown>) ?? {},
               isReference: s.referenceRank != null,
               referenceRank: s.referenceRank ?? null,
+              // cups NULL on a stored row = scored before the 2026-11 rule
+              scoreRule: evaluationScoreRule(ev?.cups, ev !== undefined),
             };
           }),
         }))
@@ -629,7 +651,7 @@ export default async function ResultsPage({
     modeAcademic: tResults("breakdown.modeAcademic"),
     modeFree: tResults("breakdown.modeFree"),
     notTrackedNote: tResults("breakdown.notTrackedNote"),
-    recorded: tResults("breakdown.recorded"),
+    previousRule: tResults("breakdown.previousRule"),
     groupTitle: tResults("breakdown.groupTitle"),
     groupAvgRaw: tResults("breakdown.groupAvgRaw"),
     groupUniformity: tResults("breakdown.groupUniformity"),
@@ -785,14 +807,9 @@ export default async function ResultsPage({
                 totalCups: recomputed.totalCups,
                 totalNonUniform: recomputed.totalNonUniform,
                 totalDefective: recomputed.totalDefective,
-                uniformityPenalty:
-                  recomputed.totalCups > 0
-                    ? recomputed.totalNonUniform * (10 / recomputed.totalCups)
-                    : 0,
-                defectPenalty:
-                  recomputed.totalCups > 0
-                    ? recomputed.totalDefective * (30 / recomputed.totalCups)
-                    : 0,
+                uniformityPenalty: recomputed.uniformityPenalty,
+                defectPenalty: recomputed.defectPenalty,
+                rule: ruleBySample.get(s.id) ?? sampleScoreRule(agg),
                 attrAverages: recomputed.attrAverages,
               }
             : groupAggBySample && (submittedAllBySample.get(s.id) ?? 0) > 0
@@ -812,6 +829,7 @@ export default async function ResultsPage({
                   totalDefective: agg.totalDefective,
                   uniformityPenalty: agg.uniformityPenalty,
                   defectPenalty: agg.defectPenalty,
+                  rule: sampleScoreRule(agg),
                   attrAverages: (agg.attrAverages as Record<string, number>) ?? {},
                 }
               : null;
@@ -877,6 +895,8 @@ export default async function ResultsPage({
                   })
                 : null,
             aggregateScore: gated.aggregateScore,
+            // rule of the VIEWER'S own evaluation: cups NULL on a stored row = before 2026-11
+            scoreRule: evaluationScoreRule(ev?.cups, ev !== undefined),
             isReference: s.referenceRank != null,
             referenceRank: s.referenceRank ?? null,
             myEvaluation: myEvaluationBySample.get(s.id) ?? { status: "none", complete: false },
@@ -1135,6 +1155,10 @@ export default async function ResultsPage({
           includedCount: tResults.raw("matrix.includedCount") as string,
           excludeDialogTitle: tResults("matrix.excludeDialogTitle"),
           excludeDialogBody: tResults("matrix.excludeDialogBody"),
+          // S10 WP1a review L7: only when a sample is still scored under the previous rule.
+          oldRuleNote: [...ruleBySample.values()].some((r) => r === "v1")
+            ? tResults("matrix.oldRuleNote")
+            : null,
           excludeReasonLabel: tResults("matrix.excludeReasonLabel"),
           excludeConfirm: tResults("matrix.excludeConfirm"),
           dialogCancel: tResults("matrix.dialogCancel"),

@@ -5,6 +5,7 @@
 
 import { collectDescriptors, PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
 import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
+import { evaluationScoreRule } from "@/lib/scoreRule";
 import { bandFor, rowStats, type Band } from "./cupperStats";
 import { blobForFormat, type SessionReportSource } from "./types";
 
@@ -50,7 +51,9 @@ export function buildTeacherNotes(src: SessionReportSource): TeacherCupperNotes[
     if (!ev) return null;
     const blob = blobForFormat(format, ev);
     if (!hasAffectiveData(blob)) return null;
-    const sc = calcIndividualScore(blob, session.cupsPerSample);
+    const sc = calcIndividualScore(blob, session.cupsPerSample, {
+      rule: evaluationScoreRule(ev.cups, true),
+    });
     return typeof sc === "number" ? sc : null;
   };
 

@@ -127,6 +127,10 @@ export async function makeEvaluation(opts: {
   defective?: boolean[];
   draft?: boolean;
   data?: Record<string, unknown>;
+  /** Column values written AFTER the derived ones: e.g. `{ cups: null }` for a row
+   *  older than the evaluations.cups backfill, or flag arrays longer than the cups
+   *  (which computeEvaluationDerived would clamp). */
+  overrides?: Record<string, unknown>;
 }) {
   const format = opts.format ?? "affective";
   const moduleKey = moduleKeyForFormat(format);
@@ -144,6 +148,7 @@ export async function makeEvaluation(opts: {
       sessionId: opts.sessionId,
       cupperId: opts.cupperId,
       ...(fields as unknown as Record<string, never>),
+      ...((opts.overrides ?? {}) as Record<string, never>),
       isDraft: draft,
       submittedAt: draft ? null : new Date(),
     },

@@ -119,11 +119,54 @@ export type RefireInput = {
  * under the account's flag and now sit under it too. Any change in who the
  * trigger counts needs a re-fire. */
 export function needsAggregateRefire(i: RefireInput): boolean {
+  return guestEvaluationsChangeInclusion(i) || accountEvaluationsChangeInclusion(i);
+}
+
+/** The guest's moved evaluations were counted under the guest's flag and now sit under the surviving one. */
+export function guestEvaluationsChangeInclusion(i: RefireInput): boolean {
   const guestFlag = i.guestHadRow && i.guestExcluded;
   const accountFlag = i.accountHadRow && i.accountExcluded;
   const surviving = guestFlag || accountFlag;
-  if (i.guestHasEvaluations && surviving !== guestFlag) return true;
-  // Pre-existing rule: both identities had rows and the guest's exclusion
-  // flipped the account's own flag.
+  return i.guestHasEvaluations && surviving !== guestFlag;
+}
+
+/** Pre-existing rule: both identities had rows and the guest's exclusion flipped the account's own flag. */
+export function accountEvaluationsChangeInclusion(i: RefireInput): boolean {
+  const guestFlag = i.guestHadRow && i.guestExcluded;
+  const accountFlag = i.accountHadRow && i.accountExcluded;
+  const surviving = guestFlag || accountFlag;
   return i.accountHadRow && i.guestHadRow && surviving !== accountFlag;
+}
+
+export type MergeSessionRefireInput = RefireInput & {
+  /** Samples of this session the GUEST has SUBMITTED evaluations for, read before the merge. */
+  guestSampleIds: readonly string[];
+  /** Samples of this session the ACCOUNT has SUBMITTED evaluations for, read before the merge. */
+  accountSampleIds: readonly string[];
+};
+
+/**
+ * Third review M-C. The samples whose group score must be recomputed after a guest merge
+ * (the trigger only fires on a re-fire, so these are the ones whose INCLUDED set of
+ * evaluations really changed):
+ *  - every conflicted sample where the evaluation the merge DELETES was SUBMITTED (a conflict
+ *    that only removes a draft changes nothing the group score counts, so it recomputes
+ *    nothing: a stored score of an old session must never move by itself), and
+ *  - when the merged exclusion flag differs from the one an identity's evaluations were
+ *    counted under: the samples THAT identity has submitted evaluations for (the guest's for
+ *    a moved-evaluation change, the account's own for a flipped account flag).
+ * Everything else, in those sessions too, is not touched: a plain move of an evaluation
+ * (cupperId only) changes nothing the trigger reads. Sorted, no duplicates.
+ */
+export function samplesToRefireAfterMerge(
+  conflicts: readonly { sampleId: string; deletedWasSubmitted: boolean }[],
+  sessions: readonly MergeSessionRefireInput[],
+): string[] {
+  const out = new Set<string>();
+  for (const c of conflicts) if (c.deletedWasSubmitted) out.add(c.sampleId);
+  for (const s of sessions) {
+    if (guestEvaluationsChangeInclusion(s)) for (const id of s.guestSampleIds) out.add(id);
+    if (accountEvaluationsChangeInclusion(s)) for (const id of s.accountSampleIds) out.add(id);
+  }
+  return [...out].sort();
 }

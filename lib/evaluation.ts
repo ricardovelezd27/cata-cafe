@@ -90,9 +90,10 @@ export function tryComputeEvaluationDerived(
 // identically. Returns the Prisma create/update payload (minus the row's
 // identity keys); never touches `isDraft`/`submittedAt`.
 //
-// `cupsPerSample` MUST come from the session row: it decides whether the
-// uniformity/defect penalties apply at all (≥5 cups, lib/scoring.ts), so a
-// client-supplied value could inflate the stored individual score.
+// `cupsPerSample` MUST come from the session row: it sizes the cup arrays and
+// the deduction (lib/scoring.ts cupDeduction), so a client-supplied value could
+// distort the stored individual score. It is also stored on the row as `cups`
+// (S10 WP1a): the SQL trigger pools the group's cups from that column.
 export function computeEvaluationDerived(
   moduleKey: EvalModuleKey,
   data: Record<string, unknown>,
@@ -110,7 +111,11 @@ export function computeEvaluationDerived(
   // Clamp the cup arrays to the session's cup count before anything reads
   // them: an over-long or non-boolean array would either crash the Boolean[]
   // column or let one cupper drive a sample's community score to zero.
-  const nonUniformCups = cupFlags(data.tazas_no_uniformes, cupsPerSample);
+  // With ONE cup uniformity does not exist: the flags are stored all false.
+  const nonUniformCups =
+    cupsPerSample >= 2
+      ? cupFlags(data.tazas_no_uniformes, cupsPerSample)
+      : cupFlags(data.tazas_no_uniformes, cupsPerSample).map(() => false);
   const defectiveCups = cupFlags(data.tazas_defectuosas, cupsPerSample);
   const defectTypes = Array.isArray(data.defecto_tipo)
     ? (data.defecto_tipo as unknown[])
@@ -134,6 +139,7 @@ export function computeEvaluationDerived(
     nonUniformCups,
     defectiveCups,
     defectTypes,
+    cups: cupsPerSample,
     affectiveSum: sum || null,
     rawScore,
     individualScore,

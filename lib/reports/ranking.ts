@@ -4,6 +4,7 @@
 // sample. No Prisma, no React, no i18n framework.
 
 import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
+import type { ScoreRule } from "@/lib/scoreRule";
 import { canShowMyScore, type MyEvaluation } from "@/lib/evaluationState";
 import { deltasVsReference, type ScoreBasis } from "@/lib/referenceDelta";
 import type { SessionFormat } from "@/lib/constants";
@@ -15,6 +16,8 @@ export type RankableSample = {
   descriptive: Record<string, unknown>;
   affective: Record<string, unknown>;
   combined: Record<string, unknown>;
+  /** Rule the viewer's own evaluation was scored under (lib/scoreRule.ts). */
+  scoreRule?: ScoreRule;
   aggregateScore: {
     communityScore: number | null;
     scoreSd: number | null;
@@ -116,7 +119,7 @@ export function myScoreFor(
   if (format === "descriptive") return null;
   const data = format === "combined" ? sample.combined : sample.affective;
   if (!hasAffectiveData(data) || !canShowMyScore(sample.myEvaluation)) return null;
-  const score = calcIndividualScore(data, cupsPerSample);
+  const score = calcIndividualScore(data, cupsPerSample, { rule: sample.scoreRule });
   return typeof score === "number" ? score : null;
 }
 

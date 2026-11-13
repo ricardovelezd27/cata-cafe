@@ -18,6 +18,7 @@
 import { QRCodeSVG } from "qrcode.react";
 import { ArrowLeft, Printer } from "lucide-react";
 import { printPage } from "@/lib/platform/print";
+import type { ScoreRule } from "@/lib/scoreRule";
 import type { SamplePrep } from "@/lib/samplePrep";
 import {
   buildCvaFormData,
@@ -117,6 +118,8 @@ type SampleData = {
   prep?: SamplePrep | null;
   isReference?: boolean;
   referenceRank?: number | null;
+  /** "v1" = stored before the 2026-11 rule (lib/scoreRule.ts). */
+  scoreRule?: ScoreRule;
   descriptive: D;
   affective: D;
   combined: D;

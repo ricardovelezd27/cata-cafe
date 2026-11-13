@@ -53,7 +53,7 @@ Everything else (`lib/prisma`, the triggers, the lib functions) is the real code
 
 | File | Covers |
 |---|---|
-| `aggregate.dbtest.ts` | `trg_recompute_aggregate` vs `computeGroupAggregate`: the -1.0 case, under five cups, the B-04 tie (64), exclusion, drafts, 320 generated cases |
+| `aggregate.dbtest.ts` | `trg_recompute_aggregate` vs `computeGroupAggregate`: the -1.0 case, the spec cases (flat deduction at any cup count, shared and diluted beyond five pooled cups), every cup count 1-8, a NULL-cups legacy row, over-long flag arrays, the B-04 tie (64), exclusion, drafts, 320 generated cases (PHASE 26) |
 | `close.dbtest.ts` | `closeSessionInternal` / `finalizeClosedSession`: both phases, idempotence, concurrency, repair |
 | `sessionDelete.dbtest.ts` | the `deleteSession` transaction (`detachCoffeeHistoryForSession`), label-only rows, the partial unique index |
 | `guestMerge.dbtest.ts` | `mergeGuestData`: conflict rules, moves, aggregate re-fire, no orphan rows |

@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { activeReferenceId, orderReferencesFirst } from "@/lib/referenceRules";
 import { asSessionFormat } from "@/lib/constants";
 import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
+import { evaluationScoreRule, sampleScoreRule } from "@/lib/scoreRule";
 import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
 import { computeCupperAlignment, computeMajoritySets } from "@/lib/alignment";
 import { resultsUpdatedAfterClose } from "@/lib/exclusionReasons";
@@ -61,6 +62,8 @@ export async function loadSessionReportSource(
             },
             physical: true,
             extrinsic: true,
+            // which rule the stored group score was computed under (lib/scoreRule.ts)
+            aggregateScore: { select: { ruleVersion: true } },
           },
         },
         participants: {
@@ -86,6 +89,7 @@ export async function loadSessionReportSource(
         combinedData: true,
         nonUniformCups: true,
         defectiveCups: true,
+        cups: true,
         cupper: { select: { displayName: true } },
       },
     }),
@@ -117,6 +121,7 @@ export async function loadSessionReportSource(
     combinedData: asObj(ev.combinedData),
     nonUniformCups: ev.nonUniformCups,
     defectiveCups: ev.defectiveCups,
+    cups: ev.cups,
   }));
 
   const samples = orderReferencesFirst(session.samples);
@@ -134,14 +139,28 @@ export async function loadSessionReportSource(
     if (list) list.push(ev);
     else bySample.set(ev.sessionSampleId, [ev]);
   }
+  const cupsAllBySample = new Map<string, (number | null)[]>();
+  for (const ev of evals) {
+    const l = cupsAllBySample.get(ev.sessionSampleId);
+    if (l) l.push(ev.cups);
+    else cupsAllBySample.set(ev.sessionSampleId, [ev.cups]);
+  }
+  const ruleBySample = new Map(
+    session.samples.map(
+      (s) => [s.id, sampleScoreRule(s.aggregateScore, cupsAllBySample.get(s.id) ?? [])] as const,
+    ),
+  );
   for (const [sampleId, list] of bySample) {
     groupAggBySample[sampleId] = computeGroupAggregate(
       list.map((ev) => ({
         data: format === "combined" ? ev.combinedData : ev.affectiveData,
         nonUniformCups: ev.nonUniformCups,
         defectiveCups: ev.defectiveCups,
+        cups: ev.cups ?? undefined,
+        rule: evaluationScoreRule(ev.cups, true),
       })),
       session.cupsPerSample,
+      { rule: ruleBySample.get(sampleId) },
     );
   }
 

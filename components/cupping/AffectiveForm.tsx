@@ -1,6 +1,5 @@
 "use client";
 
-import { penaltiesApply } from "@/lib/scoring";
 import {
   AFFECTIVE_ATTRIBUTES,
   STEP_ATTRIBUTES,
@@ -17,6 +16,8 @@ import {
   CupToggleGrid,
 } from "@/components/ui";
 
+import { cupScoreHint } from "@/lib/cupHint";
+
 type Data = Record<string, unknown>;
 
 const CUP_LABELS = {
@@ -26,7 +27,6 @@ const CUP_LABELS = {
   defectiveLegend: "Defectuosa",
   oneTap: "(1 toque)",
   defectType: "Tipo de defecto",
-  notScored: "Se registra pero no afecta el puntaje (requiere ≥5 tazas)",
 };
 
 export function AffectiveForm({
@@ -38,6 +38,7 @@ export function AffectiveForm({
   lockedAffective = false,
   lockedNote,
   lockedCupsNote,
+  isGroup = false,
 }: {
   sampleData: Data;
   onChange: (d: Data) => void;
@@ -52,6 +53,8 @@ export function AffectiveForm({
   lockedNote?: string;
   /** Replaces the cup grid on the overall step while locked. */
   lockedCupsNote?: string;
+  /** Group sessions only: adds "Tus tazas se suman a las del grupo." to the cup hint. */
+  isGroup?: boolean;
 }) {
   const isFlagged = (id: string) => missingIds?.includes(id) ?? false;
   const d = sampleData;
@@ -63,7 +66,6 @@ export function AffectiveForm({
     (d[k] as boolean[] | undefined) ?? Array(cupsPerSample).fill(false);
 
   const showCups = cupsPerSample >= 2;
-  const uniformityInScore = penaltiesApply(cupsPerSample);
 
   const stepAttrs = STEP_ATTRIBUTES[currentStep];
 
@@ -192,8 +194,7 @@ export function AffectiveForm({
             defectTypes={defectoTipo}
             defectOptions={SENSORY_DEFECTS as readonly string[]}
             defectLabels={SENSORY_DEFECT_LABELS as Record<string, string>}
-            labels={CUP_LABELS}
-            uniformityInScore={uniformityInScore}
+            labels={{ ...CUP_LABELS, scoreHint: cupScoreHint(isGroup) }}
             onToggleNonUniform={toggleNonUniform}
             onToggleDefective={toggleDefective}
             onToggleDefectType={toggleDefectType}

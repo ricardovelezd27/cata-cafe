@@ -1,5 +1,6 @@
-// Group 1 (audit B-04 / S8-04): the REAL trigger trg_recompute_aggregate versus
-// the TypeScript twin (computeGroupAggregate / calcCommunityScore).
+// Group 1 (audit B-04 / S10 WP1a): the REAL trigger trg_recompute_aggregate
+// (PHASE 26) versus the TypeScript twin (computeGroupAggregate / calcCommunityScore):
+// score, totals AND penalties, at every cup count.
 import { beforeEach, describe, expect, it } from "vitest";
 import { computeGroupAggregate, type GroupEvalInput } from "@/lib/scoring";
 import { refireAggregates } from "@/lib/aggregates";
@@ -20,6 +21,15 @@ type Case = {
   cuppers: { values: number | number[]; nonUniform: boolean[]; defective: boolean[]; omit?: number }[];
 };
 
+/** Flags the way the form stores them: a defective cup is ALSO non-uniform. */
+function flagged(cups: number, nonUniformOnly: number, defective: number) {
+  return {
+    defective: Array.from({ length: cups }, (_, c) => c < defective),
+    nonUniform: Array.from({ length: cups }, (_, c) => c < defective + nonUniformOnly),
+  };
+}
+const clean = (cups: number) => flagged(cups, 0, 0);
+
 function tsSide(c: Case) {
   const evals: GroupEvalInput[] = c.cuppers.map((p) => {
     const data = affectiveData(p.values) as Record<string, unknown>;
@@ -28,6 +38,7 @@ function tsSide(c: Case) {
       data: { ...data, tazas_no_uniformes: p.nonUniform.slice(0, c.cups), tazas_defectuosas: p.defective.slice(0, c.cups) },
       nonUniformCups: p.nonUniform.slice(0, c.cups),
       defectiveCups: p.defective.slice(0, c.cups),
+      cups: c.cups,
     };
   });
   return computeGroupAggregate(evals, c.cups);
@@ -81,7 +92,7 @@ describe("aggregate trigger vs computeGroupAggregate", () => {
     expect(agg?.totalNonUniform).toBe(1);
   });
 
-  it("under five cups: no deductions on either side", async () => {
+  it("under five cups the deduction is flat and shared: 3 cups x 2 cuppers, 6 pooled cups", async () => {
     const c: Case = {
       cups: 3,
       cuppers: [
@@ -91,29 +102,32 @@ describe("aggregate trigger vs computeGroupAggregate", () => {
     };
     const { agg } = await dbSide(c);
     const ts = tsSide(c);
-    expect(agg?.uniformityPenalty).toBe(0);
-    expect(agg?.defectPenalty).toBe(0);
-    expect(ts.totalNonUniform).toBe(0);
-    // stored totals still count the flags (display only); the score ignores them
-    expect(agg?.communityScore).toBe(ts.communityScore);
-    // avg of 0.65625*56+52.75=89.5 and 0.65625*40+52.75=79 -> 84.25
-    expect(agg?.communityScore).toBe(84.25);
+    // u = 2 + 1, d = 1 over 6 pooled cups: factor 5/6, 2*3*5/6 = 5 and 4*1*5/6 = 3.33
+    expect(agg?.totalCups).toBe(6);
+    expect(agg?.totalNonUniform).toBe(3);
+    expect(agg?.totalDefective).toBe(1);
+    expect(agg?.uniformityPenalty).toBeCloseTo(5, 9);
+    expect(agg?.defectPenalty).toBeCloseTo(10 / 3, 9);
+    // avg of 0.65625*56+52.75=89.5 and 0.65625*40+52.75=79 -> 84.25, minus 8.33 -> 75.92 -> 76
+    expect(agg?.communityScore).toBe(76);
+    expect(ts.communityScore).toBe(76);
   });
 
-  it("audit tie case (7 cuppers, 5 cups, sum 20, 1 non-uniform + 2 defective): 64 on both sides", async () => {
+  it("audit tie case (7 cuppers, 5 cups, sum 20, 1 non-uniform-only + 2 defective cups): 64 on both sides", async () => {
     const vals = [3, 3, 3, 3, 2, 2, 2, 2]; // sum 20
     const c: Case = {
       cups: 5,
       cuppers: [
         { values: vals, nonUniform: [true], defective: [] },
-        { values: vals, nonUniform: [], defective: [true] },
-        { values: vals, nonUniform: [], defective: [false, true] },
+        { values: vals, nonUniform: [true], defective: [true] },
+        { values: vals, nonUniform: [false, true], defective: [false, true] },
         ...Array.from({ length: 4 }, () => ({ values: vals, nonUniform: [] as boolean[], defective: [] as boolean[] })),
       ],
     };
     const { agg } = await dbSide(c);
     const ts = tsSide(c);
-    expect(agg?.totalNonUniform).toBe(1);
+    // 1 non-uniform-only + 2 defective cups (each also non-uniform): u 3, d 2 over 35 cups
+    expect(agg?.totalNonUniform).toBe(3);
     expect(agg?.totalDefective).toBe(2);
     expect(agg?.communityScore).toBe(64);
     expect(ts.communityScore).toBe(64);
@@ -141,6 +155,200 @@ describe("aggregate trigger vs computeGroupAggregate", () => {
     expect(after?.participantCount).toBe(1);
     expect(after?.communityScore).toBe(94.75);
     expect(after?.communityScore).not.toBe(before?.communityScore);
+  });
+
+  // The spec's "Comprobaciones": trigger == TypeScript on every one, with the
+  // absolute deduction pinned (all sections 5, so the base is exactly 79).
+  const specCases: { name: string; c: Case; loses: number }[] = [
+    {
+      name: "1 person, 5 cups, 1 defective: -6",
+      c: { cups: 5, cuppers: [{ values: 5, ...flagged(5, 0, 1) }] },
+      loses: 6,
+    },
+    {
+      name: "1 person, 2 cups, 1 defective: -6",
+      c: { cups: 2, cuppers: [{ values: 5, ...flagged(2, 0, 1) }] },
+      loses: 6,
+    },
+    {
+      name: "1 person, 2 cups, both defective: -12",
+      c: { cups: 2, cuppers: [{ values: 5, ...flagged(2, 0, 2) }] },
+      loses: 12,
+    },
+    {
+      name: "1 person, 1 cup, defective: -4 (no uniformity)",
+      c: { cups: 1, cuppers: [{ values: 5, ...flagged(1, 0, 1) }] },
+      loses: 4,
+    },
+    {
+      name: "1 person, 3 cups, 1 only non-uniform: -2",
+      c: { cups: 3, cuppers: [{ values: 5, ...flagged(3, 1, 0) }] },
+      loses: 2,
+    },
+    {
+      name: "2 people x 2 cups (4 cups), 1 defective: -6 (not shared)",
+      c: { cups: 2, cuppers: [{ values: 5, ...flagged(2, 0, 1) }, { values: 5, ...clean(2) }] },
+      loses: 6,
+    },
+    {
+      name: "4 people x 2 cups (8 cups), 1 defective: -3.75 (6 x 5/8)",
+      c: {
+        cups: 2,
+        cuppers: [
+          { values: 5, ...flagged(2, 0, 1) },
+          { values: 5, ...clean(2) },
+          { values: 5, ...clean(2) },
+          { values: 5, ...clean(2) },
+        ],
+      },
+      loses: 3.75,
+    },
+    {
+      name: "2 people x 5 cups (10 cups), 1 only non-uniform: -1",
+      c: { cups: 5, cuppers: [{ values: 5, ...flagged(5, 1, 0) }, { values: 5, ...clean(5) }] },
+      loses: 1,
+    },
+  ];
+  for (const sc of specCases) {
+    it(`spec case ${sc.name}`, async () => {
+      const { agg } = await dbSide(sc.c);
+      const ts = tsSide(sc.c);
+      expect(79 - (agg?.communityScore ?? 0)).toBe(sc.loses);
+      expect(ts.communityScore).toBe(agg?.communityScore);
+      expect(ts.totalCups).toBe(agg?.totalCups);
+      expect(ts.totalNonUniform).toBe(agg?.totalNonUniform);
+      expect(ts.totalDefective).toBe(agg?.totalDefective);
+      expect(ts.uniformityPenalty).toBeCloseTo(agg?.uniformityPenalty ?? NaN, 9);
+      expect(ts.defectPenalty).toBeCloseTo(agg?.defectPenalty ?? NaN, 9);
+    });
+  }
+
+  it("every cup count 1-8: one defective cup, alone and in a pair, trigger == TypeScript", async () => {
+    for (let cups = 1; cups <= 8; cups++) {
+      for (const people of [1, 2, 3]) {
+        const c: Case = {
+          cups,
+          cuppers: Array.from({ length: people }, (_, i) => ({
+            values: i === 0 ? 7 : 5,
+            ...(i === 0 ? flagged(cups, 1, 1) : clean(cups)),
+          })),
+        };
+        await resetDb();
+        const { agg } = await dbSide(c);
+        const ts = tsSide(c);
+        const where = `cups=${cups} people=${people}`;
+        expect(agg?.totalCups, where).toBe(cups * people);
+        expect(ts.communityScore, where).toBe(agg?.communityScore);
+        expect(ts.totalNonUniform, where).toBe(agg?.totalNonUniform);
+        expect(ts.totalDefective, where).toBe(agg?.totalDefective);
+        expect(ts.uniformityPenalty, where).toBeCloseTo(agg?.uniformityPenalty ?? NaN, 9);
+        expect(ts.defectPenalty, where).toBeCloseTo(agg?.defectPenalty ?? NaN, 9);
+        // never more than 6 per flagged cup, never more than 4 for a lone cup
+        const flaggedCups = cups >= 2 ? 2 : 1;
+        expect((agg!.uniformityPenalty + agg!.defectPenalty) / flaggedCups).toBeLessThanOrEqual(6 + 1e-9);
+      }
+    }
+  }, 120_000);
+
+  it("an excluded participant's cups and flags leave the pool after the refire", async () => {
+    const owner = await makeUser();
+    const a = await makeUser();
+    const b = await makeUser();
+    const s = await makeSession({ ownerId: owner, isGroup: true, cupsPerSample: 2, participants: [a, b] });
+    const sample = s.samples[0];
+    await makeEvaluation({
+      sampleId: sample.id, sessionId: s.id, cupperId: a, cupsPerSample: 2, values: 5,
+      nonUniform: [true, false], defective: [true, false],
+    });
+    await makeEvaluation({ sampleId: sample.id, sessionId: s.id, cupperId: b, cupsPerSample: 2, values: 5 });
+    const before = await storedAggregate(sample.id);
+    expect([before?.totalCups, before?.totalDefective, before?.communityScore]).toEqual([4, 1, 73]);
+
+    await prisma.sessionParticipant.update({
+      where: { sessionId_userId: { sessionId: s.id, userId: a } },
+      data: { excludedFromResults: true },
+    });
+    await refireAggregates(s.id);
+    const after = await storedAggregate(sample.id);
+    expect([after?.participantCount, after?.totalCups, after?.totalDefective, after?.totalNonUniform]).toEqual([1, 2, 0, 0]);
+    expect(after?.communityScore).toBe(79);
+  });
+
+  it("a legacy row with evaluations.cups NULL falls back to the session's cups", async () => {
+    const owner = await makeUser();
+    const a = await makeUser();
+    const b = await makeUser();
+    const s = await makeSession({ ownerId: owner, isGroup: true, cupsPerSample: 2, participants: [a, b] });
+    const sample = s.samples[0];
+    await makeEvaluation({
+      sampleId: sample.id, sessionId: s.id, cupperId: a, cupsPerSample: 2, values: 5,
+      nonUniform: [true, false], defective: [true, false], overrides: { cups: null },
+    });
+    await makeEvaluation({
+      sampleId: sample.id, sessionId: s.id, cupperId: b, cupsPerSample: 2, values: 5, overrides: { cups: null },
+    });
+    const nulls = await prisma.evaluation.count({ where: { sessionId: s.id, cups: null } });
+    expect(nulls).toBe(2);
+    const agg = await storedAggregate(sample.id);
+    expect([agg?.totalCups, agg?.totalDefective, agg?.totalNonUniform]).toEqual([4, 1, 1]);
+    expect(agg?.communityScore).toBe(73);
+    // and it equals TypeScript with cups left to the session's value
+    const ts = computeGroupAggregate(
+      [
+        { data: affectiveData(5), nonUniformCups: [true, false], defectiveCups: [true, false] },
+        { data: affectiveData(5), nonUniformCups: [false, false], defectiveCups: [false, false] },
+      ],
+      2,
+    );
+    expect(ts.communityScore).toBe(agg?.communityScore);
+  });
+
+  it("flag arrays longer than the evaluation's cups are clamped on both sides", async () => {
+    const owner = await makeUser();
+    const a = await makeUser();
+    const s = await makeSession({ ownerId: owner, isGroup: true, cupsPerSample: 2, participants: [a] });
+    const sample = s.samples[0];
+    await makeEvaluation({
+      sampleId: sample.id, sessionId: s.id, cupperId: a, cupsPerSample: 2, values: 5,
+      overrides: {
+        nonUniformCups: [true, true, true, true, true],
+        defectiveCups: [true, true, true, true, true],
+      },
+    });
+    const agg = await storedAggregate(sample.id);
+    // clamped to 2 cups: u 2, d 2 -> 2*2 + 4*2 = 12, never 6 per flag of the longer array
+    expect([agg?.totalCups, agg?.totalNonUniform, agg?.totalDefective]).toEqual([2, 2, 2]);
+    expect(agg?.communityScore).toBe(67);
+    const ts = computeGroupAggregate(
+      [
+        {
+          data: affectiveData(5),
+          nonUniformCups: [true, true, true, true, true],
+          defectiveCups: [true, true, true, true, true],
+          cups: 2,
+        },
+      ],
+      2,
+    );
+    expect(ts.communityScore).toBe(67);
+    expect(ts.totalNonUniform).toBe(2);
+    expect(ts.totalDefective).toBe(2);
+  });
+
+  it("an evaluation's own cups, not the session's, size the pool", async () => {
+    const owner = await makeUser();
+    const a = await makeUser();
+    const b = await makeUser();
+    const s = await makeSession({ ownerId: owner, isGroup: true, cupsPerSample: 5, participants: [a, b] });
+    const sample = s.samples[0];
+    await makeEvaluation({
+      sampleId: sample.id, sessionId: s.id, cupperId: a, cupsPerSample: 5, values: 5,
+      nonUniform: [true, false], defective: [true, false], overrides: { cups: 2 },
+    });
+    await makeEvaluation({ sampleId: sample.id, sessionId: s.id, cupperId: b, cupsPerSample: 5, values: 5, overrides: { cups: 1 } });
+    const agg = await storedAggregate(sample.id);
+    expect([agg?.totalCups, agg?.totalDefective, agg?.totalNonUniform, agg?.cupsPerSample]).toEqual([3, 1, 1, 5]);
+    expect(agg?.communityScore).toBe(73);
   });
 
   it("drafts never count; submitting later does", async () => {
@@ -226,7 +434,11 @@ describe("aggregate trigger vs computeGroupAggregate", () => {
           agg?.participantCount === ts.included &&
           agg?.submittedCount === ts.submitted &&
           Math.abs((agg?.avgRawScore ?? 0) - (ts.avgRawScore ?? 0)) < 0.006 &&
-          (cups < 5 || (agg?.totalNonUniform === ts.totalNonUniform && agg?.totalDefective === ts.totalDefective));
+          agg?.totalCups === ts.totalCups &&
+          agg?.totalNonUniform === ts.totalNonUniform &&
+          agg?.totalDefective === ts.totalDefective &&
+          Math.abs((agg?.uniformityPenalty ?? 0) - ts.uniformityPenalty) < 1e-9 &&
+          Math.abs((agg?.defectPenalty ?? 0) - ts.defectPenalty) < 1e-9;
         if (!ok) {
           diffs.push(
             `cups=${cups} k=${k} cuppers=${JSON.stringify(cases[k].cuppers)}: db=${agg?.communityScore} ts=${ts.communityScore}`,
@@ -237,4 +449,52 @@ describe("aggregate trigger vs computeGroupAggregate", () => {
     expect(total).toBe(320);
     expect(diffs).toEqual([]);
   }, 300_000);
+});
+
+describe("rule versions (past results render unchanged)", () => {
+  it("legacy rows (cups NULL, aggregate ruleVersion 1) stay untouched until an evaluation is re-fired; a re-fire stamps 2 and equals TypeScript v2", async () => {
+    const owner = await makeUser();
+    const a = await makeUser();
+    const b = await makeUser();
+    const s = await makeSession({ ownerId: owner, isGroup: true, cupsPerSample: 2, participants: [a, b] });
+    const sample = s.samples[0];
+    await makeEvaluation({
+      sampleId: sample.id, sessionId: s.id, cupperId: a, cupsPerSample: 2, values: 5,
+      nonUniform: [true, false], defective: [true, false],
+    });
+    await makeEvaluation({ sampleId: sample.id, sessionId: s.id, cupperId: b, cupsPerSample: 2, values: 5 });
+
+    // Every trigger run stamps the current rule.
+    expect((await storedAggregate(sample.id))?.ruleVersion).toBe(2);
+
+    // Make the sample look like it did before the migration: cups NULL, the
+    // aggregate computed under the old rule (no deduction under five cups).
+    // Neither statement names "isDraft", so the trigger does not fire.
+    await prisma.$executeRaw`UPDATE evaluations SET "cups" = NULL WHERE "sessionId" = ${s.id}`;
+    await prisma.$executeRaw`
+      UPDATE aggregate_scores SET "ruleVersion" = 1, "communityScore" = 79,
+        "uniformityPenalty" = 0, "defectPenalty" = 0, "totalNonUniform" = 0, "totalDefective" = 0, "totalCups" = 4
+      WHERE "sessionSampleId" = ${sample.id}`;
+    const before = await storedAggregate(sample.id);
+    expect([before?.ruleVersion, before?.communityScore]).toEqual([1, 79]);
+
+    // Reading is not writing: nothing changes the stored row by itself.
+    const same = await storedAggregate(sample.id);
+    expect(same).toEqual(before);
+
+    // A re-fire (owner exclusion after close, repair) recomputes under the current rule.
+    await refireAggregates(s.id);
+    const after = await storedAggregate(sample.id);
+    expect(after?.ruleVersion).toBe(2);
+    expect(after?.communityScore).toBe(73);
+    const ts = computeGroupAggregate(
+      [
+        { data: affectiveData(5), nonUniformCups: [true, false], defectiveCups: [true, false] },
+        { data: affectiveData(5), nonUniformCups: [false, false], defectiveCups: [false, false] },
+      ],
+      2,
+      { rule: "v2" },
+    );
+    expect(ts.communityScore).toBe(after?.communityScore);
+  });
 });

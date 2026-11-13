@@ -16,7 +16,8 @@
 
 import { useState } from "react";
 import { ChevronDown, Pencil } from "lucide-react";
-import { calcIndividualBreakdown, calcIndividualScore, penaltiesApply } from "@/lib/scoring";
+import { calcIndividualBreakdown, calcIndividualScore } from "@/lib/scoring";
+import type { ScoreRule } from "@/lib/scoreRule";
 import {
   resolveDescriptor,
   resolveMainTaste,
@@ -237,6 +238,7 @@ export function SampleDetail({
   prep = null,
   format,
   cupsPerSample,
+  scoreRule,
   locale,
   onEdit,
   referenceBadge = null,
@@ -255,6 +257,8 @@ export function SampleDetail({
   prep?: SamplePrep | null;
   format: SessionFormat;
   cupsPerSample: number;
+  /** Rule the shown evaluation was scored under ("v1" = before 2026-11). */
+  scoreRule?: ScoreRule;
   locale: string;
   onEdit?: () => void;
   // Non-null only when this sample IS the session's reference (control)
@@ -295,7 +299,7 @@ export function SampleDetail({
     );
 
   const scoreAllowed = myEvaluation ? canShowMyScore(myEvaluation) : true;
-  const cva = showCVA && filled && scoreAllowed ? calcIndividualScore(data, cupsPerSample) : null;
+  const cva = showCVA && filled && scoreAllowed ? calcIndividualScore(data, cupsPerSample, { rule: scoreRule }) : null;
   const cvaNum = typeof cva === "number" ? cva : null;
   const stateChip =
     myEvaluation?.status === "draft"
@@ -520,10 +524,10 @@ export function SampleDetail({
               {cvaNum !== null && (
                 <ScoreBreakdownPanel
                   variant="individual"
-                  breakdown={calcIndividualBreakdown(data, cupsPerSample)}
+                  breakdown={calcIndividualBreakdown(data, cupsPerSample, { rule: scoreRule })}
                   setup={{
                     cupsPerSample,
-                    uniformityTracked: penaltiesApply(cupsPerSample),
+                    uniformityTracked: cupsPerSample >= 2,
                     roundingEnforced: true,
                   }}
                   t={t.breakdown}

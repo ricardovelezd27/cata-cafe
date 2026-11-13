@@ -1,7 +1,8 @@
 "use client";
 
 import { Calculator } from "lucide-react";
-import type { IndividualBreakdown } from "@/lib/scoring";
+import { cupDeduction, type IndividualBreakdown } from "@/lib/scoring";
+import type { ScoreRule } from "@/lib/scoreRule";
 
 /* ============================================================
    N5 — Score transparency panel ("¿Cómo se calculó?")
@@ -28,12 +29,14 @@ type AggregateScoreData = {
   totalDefective: number;
   uniformityPenalty: number;
   defectPenalty: number;
+  /** "v1" = computed under the rule before 2026-11 (past results render unchanged). */
+  rule?: ScoreRule;
   attrAverages: Record<string, number>;
 };
 
 export type ScoreSetup = {
   cupsPerSample: number;
-  uniformityTracked: boolean; // now: cupsPerSample >= 5
+  uniformityTracked: boolean; // the evaluation has 2+ cups
   roundingEnforced: boolean; // now: always true
   mode?: "professional" | "academic" | "free"; // N6 — undefined for now
 };
@@ -64,7 +67,8 @@ export type ScoreBreakdownTranslations = {
   modeAcademic: string;
   modeFree: string;
   notTrackedNote: string;
-  recorded: string;
+  /** Neutral line shown instead of the current-rule explanation for a past (v1) result. */
+  previousRule: string;
   groupTitle: string;
   groupAvgRaw: string;
   groupUniformity: string;
@@ -174,6 +178,9 @@ function renderIndividual(
   setup: ScoreSetup,
   t: ScoreBreakdownTranslations,
 ) {
+  // One cupper never has more than five cups, so the factor is 1 and is not
+  // printed; a longer sample (not offered today) prints it so the line stays true.
+  const factorSuffix = b.factor < 1 ? ` × ${fmt(b.factor)}` : "";
   return (
     <>
       <div className={sectionLabel}>{t.formula}</div>
@@ -187,10 +194,7 @@ function renderIndividual(
       <div className={sectionLabel}>{t.values}</div>
       <div className="text-[11px] leading-relaxed text-on-surface">
         Σhᵢ = <strong>{b.affectiveSum}</strong> &nbsp;·&nbsp; u = <strong>{b.u}</strong>{" "}
-        &nbsp;·&nbsp; d = <strong>{b.d}</strong>{" "}
-        {!b.uniformityTracked && (
-          <span className="text-on-surface-variant">({t.recorded})</span>
-        )}
+        &nbsp;·&nbsp; d = <strong>{b.d}</strong>
       </div>
 
       <div className={sectionLabel}>{t.finalScore}</div>
@@ -200,12 +204,12 @@ function renderIndividual(
           value={fmt(b.base)}
         />
         <TallyRow
-          label={`− ${t.uniformity} (2 × ${b.u})`}
+          label={`− ${t.uniformity} (2 × ${b.u}${factorSuffix})`}
           value={`−${fmt(b.uniformityPenalty)}`}
           tone={b.uniformityPenalty > 0 ? "error" : undefined}
         />
         <TallyRow
-          label={`− ${t.defects} (4 × ${b.d})`}
+          label={`− ${t.defects} (4 × ${b.d}${factorSuffix})`}
           value={`−${fmt(b.defectPenalty)}`}
           tone={b.defectPenalty > 0 ? "error" : undefined}
         />
@@ -213,13 +217,19 @@ function renderIndividual(
         <TallyRow label={t.rounded} value={fmt(b.score)} strong />
       </div>
 
-      {!b.uniformityTracked && (
+      {b.rule === "v1" ? (
         <div className="mt-2 text-[10px] italic leading-relaxed text-on-surface-variant">
-          {t.notTrackedNote}
+          {t.previousRule}
         </div>
+      ) : (
+        !b.uniformityTracked && (
+          <div className="mt-2 text-[10px] italic leading-relaxed text-on-surface-variant">
+            {t.notTrackedNote}
+          </div>
+        )
       )}
 
-      <SetupStamp setup={setup} t={t} />
+      <SetupStamp setup={{ ...setup, uniformityTracked: b.uniformityTracked }} t={t} />
     </>
   );
 }
@@ -232,6 +242,24 @@ function renderGroup(
 ) {
   const avgRaw = g.avgRawScore ?? 0;
   const community = g.communityScore ?? 0;
+  // The penalties printed are the ones the page's data carries: the TypeScript
+  // recompute (results page), or the stored row when the page recomputed nothing.
+  // A sample scored under an older rule (g.rule === "v1") is never shown as the
+  // current formula, and the formula is shown only when it reproduces the
+  // penalties carried; otherwise the line carries just its name.
+  const cups = g.totalCups || cupsPerSample;
+  const expected = cupDeduction({ cups, nonUniform: g.totalNonUniform, defective: g.totalDefective });
+  const previous = g.rule === "v1";
+  const matches =
+    !previous &&
+    Math.abs(expected.uniformityPenalty - g.uniformityPenalty) < 0.005 &&
+    Math.abs(expected.defectPenalty - g.defectPenalty) < 0.005;
+  const uniformityLabel = matches
+    ? `− ${t.groupUniformity} (2 × ${g.totalNonUniform} × 5 ÷ max(5, ${cups}))`
+    : `− ${t.groupUniformity}`;
+  const defectsLabel = matches
+    ? `− ${t.groupDefects} (4 × ${g.totalDefective} × 5 ÷ max(5, ${cups}))`
+    : `− ${t.groupDefects}`;
   return (
     <>
       <div className={sectionLabel}>{t.groupTitle}</div>
@@ -239,19 +267,19 @@ function renderGroup(
           revisit this explanatory copy — the data still arrives via the
           aggregate, so only the wording changes. */}
       <div className="mb-1 text-[11px] leading-relaxed text-on-surface-variant">
-        {t.groupExplain}
+        {previous ? t.previousRule : t.groupExplain}
       </div>
 
       <div className={sectionLabel}>{t.finalScore}</div>
       <div>
         <TallyRow label={t.groupAvgRaw} value={fmt(avgRaw)} />
         <TallyRow
-          label={`− ${t.groupUniformity} (${g.totalNonUniform} × 10 / ${g.totalCups || cupsPerSample})`}
+          label={uniformityLabel}
           value={`−${fmt(g.uniformityPenalty)}`}
           tone={g.uniformityPenalty > 0 ? "error" : undefined}
         />
         <TallyRow
-          label={`− ${t.groupDefects} (${g.totalDefective} × 30 / ${g.totalCups || cupsPerSample})`}
+          label={defectsLabel}
           value={`−${fmt(g.defectPenalty)}`}
           tone={g.defectPenalty > 0 ? "error" : undefined}
         />
@@ -264,7 +292,10 @@ function renderGroup(
           .replace("{total}", String(g.totalSubmitted ?? g.submittedCount))}
       </div>
 
-      <SetupStamp setup={setup} t={t} />
+      <SetupStamp
+        setup={{ ...setup, uniformityTracked: previous ? cupsPerSample >= 5 : setup.uniformityTracked }}
+        t={t}
+      />
     </>
   );
 }

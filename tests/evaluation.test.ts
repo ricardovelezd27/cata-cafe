@@ -33,8 +33,8 @@ describe("computeEvaluationDerived (server-side derivation)", () => {
     expect(derived.individualScore).toBe(69);
   });
 
-  it("never lets a client skip the ≥5-cup penalties by passing its own cupsPerSample", () => {
-    // The action passes the SESSION's cupsPerSample (5), so penalties apply even
+  it("never lets a client skip the cup deductions by passing its own cupsPerSample", () => {
+    // The action passes the SESSION's cupsPerSample (5), so the deduction uses it even
     // if the client claimed 1 cup.
     const data = { ...neutral, tazas_defectuosas: [true] };
     expect(computeEvaluationDerived("combined", data, 5).individualScore).toBe(75);

@@ -11,6 +11,7 @@
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { DESCRIPTOR_STAGES } from "@/lib/descriptors";
 import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
+import { evaluationScoreRule } from "@/lib/scoreRule";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { bandFor, rowStats, type Band, type RowStats } from "./cupperStats";
 import { consensusLine, RANKING_POLICY } from "./ranking";
@@ -176,9 +177,8 @@ export function buildFichaTecnica(
           label: a.label,
           value: agg && agg.included > 0 ? (agg.attrAverages[a.label] ?? null) : null,
         })),
-        uniformityPenalty:
-          agg && agg.totalCups > 0 ? agg.totalNonUniform * (10 / agg.totalCups) : 0,
-        defectPenalty: agg && agg.totalCups > 0 ? agg.totalDefective * (30 / agg.totalCups) : 0,
+        uniformityPenalty: agg?.uniformityPenalty ?? 0,
+        defectPenalty: agg?.defectPenalty ?? 0,
       };
     }
 
@@ -258,7 +258,9 @@ export function buildFichaTecnica(
       if (!ev) return null;
       const blob = blobForFormat(format, ev);
       if (!hasAffectiveData(blob)) return null;
-      const sc = calcIndividualScore(blob, session.cupsPerSample);
+      const sc = calcIndividualScore(blob, session.cupsPerSample, {
+        rule: evaluationScoreRule(ev.cups, true),
+      });
       return typeof sc === "number" ? sc : null;
     };
     const matrix = src.samples.map((s) => cupperIds.map((id) => scoreFor(id, s.id)));

@@ -3020,6 +3020,7 @@ export function CupClient({
             lockedAffective={isCurrentLocked}
             lockedNote={translations.referenceLockedAffective}
             lockedCupsNote={translations.referenceCupsLocked}
+            isGroup={isGroup}
           />
         )}
         {activeTab === "cupping" &&
@@ -3035,6 +3036,7 @@ export function CupClient({
               lockedAffective={isCurrentLocked}
               lockedNote={translations.referenceLocked}
               lockedCupsNote={translations.referenceCupsLocked}
+              isGroup={isGroup}
             />
           )}
         {activeTab === "extrinsic" && (

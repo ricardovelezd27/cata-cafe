@@ -30,7 +30,8 @@ import { resolveDescriptor, normalizeDescriptorId, legacyDescriptorFamily } from
 import { EXPRESS_NOTE_KEY } from "@/lib/expressSession";
 import { sanitizePdfText } from "@/lib/pdf/text";
 import { samplePrepVisible, type SamplePrep } from "@/lib/samplePrep";
-import { calcIndividualBreakdown, isAffectiveComplete, penaltiesApply as penaltiesApplyRule } from "@/lib/scoring";
+import { calcIndividualBreakdown, evaluationCupCounts, isAffectiveComplete } from "@/lib/scoring";
+import type { ScoreRule } from "@/lib/scoreRule";
 
 export type Locale = "es" | "en";
 type D = Record<string, unknown>;
@@ -575,7 +576,7 @@ export type AffectiveRow = {
 // ─── Cups (uniformity / defect) ─────────────────────────────────────────────
 export type CupModel = {
   cupsPerSample: number;
-  penaltiesApply: boolean; // cupsPerSample >= 5
+  uniformityApplies: boolean; // the evaluation has 2+ cups (with one cup uniformity does not exist)
   nonUniform: boolean[];
   defective: boolean[];
   defectTypes: { id: SensoryDefect; label: string; checked: boolean }[];
@@ -732,6 +733,9 @@ export type CvaFormInput = {
     prep?: SamplePrep | null;
     isReference?: boolean;
     referenceRank?: number | null;
+    /** Rule the printed evaluation was scored under: "v1" for a stored row with
+     *  cups NULL (before 2026-11), so past sheets print unchanged. Absent = v2. */
+    scoreRule?: ScoreRule;
     descriptive: D;
     affective: D;
     combined: D;
@@ -838,10 +842,17 @@ export function buildCvaFormData(input: CvaFormInput): CvaSampleSheet {
   const nonUniform = bools(cupSource, "tazas_no_uniformes", cupsPerSample);
   const defective = bools(cupSource, "tazas_defectuosas", cupsPerSample);
   const defectTipoRaw = arr(cupSource, "defecto_tipo");
-  const penaltiesApply = penaltiesApplyRule(input.cupsPerSample);
+  const scoreRule: ScoreRule = input.sample.scoreRule ?? "v2";
+  const counts =
+    scoreRule === "v1"
+      ? // rule before 2026-11: raw counts, only from five cups per sample
+        input.cupsPerSample >= 5
+        ? { u: nonUniform.filter(Boolean).length, d: defective.filter(Boolean).length }
+        : { u: 0, d: 0 }
+      : evaluationCupCounts(nonUniform, defective, input.cupsPerSample);
   const cups: CupModel = {
     cupsPerSample,
-    penaltiesApply,
+    uniformityApplies: scoreRule === "v1" ? input.cupsPerSample >= 5 : input.cupsPerSample >= 2,
     nonUniform,
     defective,
     defectTypes: SENSORY_DEFECTS.map((id) => ({
@@ -849,8 +860,8 @@ export function buildCvaFormData(input: CvaFormInput): CvaSampleSheet {
       label: SENSORY_DEFECT_LABELS[id],
       checked: defectTipoRaw.includes(id),
     })),
-    u: penaltiesApply ? nonUniform.filter(Boolean).length : 0,
-    d: penaltiesApply ? defective.filter(Boolean).length : 0,
+    u: counts.u,
+    d: counts.d,
   };
 
   // ── Score ──
@@ -869,7 +880,7 @@ export function buildCvaFormData(input: CvaFormInput): CvaSampleSheet {
       return Number.isFinite(v) && v > 0;
     }).length;
     if (isAffectiveComplete(scoreSource)) {
-      const b = calcIndividualBreakdown(scoreSource, input.cupsPerSample);
+      const b = calcIndividualBreakdown(scoreSource, input.cupsPerSample, { rule: scoreRule });
       score = b.score;
       scoreState = "complete";
       breakdown = { affectiveSum: b.affectiveSum, u: b.u, d: b.d };

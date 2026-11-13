@@ -9,6 +9,7 @@ import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { normalizeReferenceMode } from "@/lib/referenceRules";
 import { collectDescriptors } from "@/lib/descriptors";
 import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
+import { evaluationScoreRule } from "@/lib/scoreRule";
 import { deriveMyEvaluation, NO_EVALUATION } from "@/lib/evaluationState";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { consensusLine, rankSamples, sessionStats, type RankableSample } from "./ranking";
@@ -131,6 +132,7 @@ export function buildParticipantSummary(
       descriptive: ev?.descriptiveData ?? {},
       affective: ev?.affectiveData ?? {},
       combined: ev?.combinedData ?? {},
+      scoreRule: ev ? evaluationScoreRule(ev.cups, true) : undefined,
       aggregateScore: agg
         ? {
             communityScore: agg.communityScore,
@@ -174,7 +176,9 @@ export function buildParticipantSummary(
 
     const myScore = (() => {
       if (!blob || format === "descriptive" || !hasAffectiveData(blob)) return null;
-      const sc = calcIndividualScore(blob, session.cupsPerSample);
+      const sc = calcIndividualScore(blob, session.cupsPerSample, {
+        rule: evaluationScoreRule(ev!.cups, true),
+      });
       return typeof sc === "number" ? sc : null;
     })();
     const communityScore =
