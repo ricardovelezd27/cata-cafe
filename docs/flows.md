@@ -359,9 +359,21 @@ stay, as on sign-out); the previous guest reaches their cuppings again only if t
 saved them in an account. Every action on the screen (continue, join, "No soy", the draft sync) first checks
 that the browser is still signed in as the guest it was rendered for
 (`classifyGuestLookup`; a missing session counts as a different user); a stale tab only
-refreshes. The replay actions also take an optional `expectedUserId` and write nothing
-(answer `pending`, draft kept, no attempt burnt) if the signed-in user differs; the
-dialog waits at most 8 s for the sync. When the dialog opens online, the guest's own saved drafts are replayed
+refreshes. **Old tabs (third review H1/L2):** the five live writes of the cup page
+(`upsertEvaluation`, `upsertPhysical`, `upsertExtrinsic`, `submitAllEvaluations`,
+`finishSoloSession`) and the three replay actions take an optional `expectedUserId`
+(the user the page was rendered for; `requireUserExpecting`, `lib/auth.ts`, rule in
+`lib/expectedUser.ts`). The guard runs FIRST and without throwing: a different user, or
+NO user in the cookie, writes nothing. Live writes answer `identity_changed`
+(`ActionResult` error; `upsertEvaluation`/`upsertPhysical` return `{ ok: false, error }`
+only in that case); replays answer `pending` (draft kept, no attempt burnt). Absent =
+today's behaviour. `CupClient` freezes the user id at mount, passes it on every write,
+and on `identity_changed` (or when `IdentityWatcher` latches) stops server saves for the
+mount, keeps the draft locally under the rendered user's key and shows a reload notice.
+`IdentityWatcher` (app shell) learns of the change from a `localStorage` marker
+(`cata_identity_epoch`, written by "No soy" and by sign-out / switch account), from a
+foreground re-check of `getUser()`, or from the shell re-rendering for another user.
+The dialog waits at most 8 s for the sync. When the dialog opens online, the guest's own saved drafts are replayed
 first (the sign-out guard's `retrySync`) and only what is still unsynced is counted.
 `GuestJoinForm` reuses silently only the anonymous user its own tab created on an
 earlier failed try (`sessionStorage`, `existingUserAction`); any other anonymous user

@@ -25,7 +25,9 @@ function readCreatedAnonId(): string | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { id?: unknown; at?: unknown };
     if (typeof parsed.id !== "string" || typeof parsed.at !== "number") return null;
-    return Date.now() - parsed.at <= CREATED_ANON_TTL_MS ? parsed.id : null;
+    // A stamp in the future (clock change) counts as expired, never as fresh.
+    const age = Date.now() - parsed.at;
+    return age >= 0 && age <= CREATED_ANON_TTL_MS ? parsed.id : null;
   } catch {
     return null;
   }

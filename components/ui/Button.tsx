@@ -17,7 +17,7 @@ const BASE =
 // overflowing. Both literals appear in source so Tailwind emits them; they
 // replace each other and never stack (nowrap would win the cascade).
 const NOWRAP = "whitespace-nowrap";
-const WRAP = "h-auto whitespace-normal break-words py-2 text-center";
+const WRAP = "h-auto whitespace-normal wrap-anywhere py-2 text-center";
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {
   md: "px-5 text-sm",

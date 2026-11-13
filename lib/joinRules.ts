@@ -3,6 +3,7 @@
 // enforces it), so the two can never disagree. Dependency-free for vitest.
 
 import { sessionHref } from "@/lib/sessionRouting";
+import { classifyIdentityLookup, type IdentityLookup } from "@/lib/expectedUser";
 
 export type JoinInvite = {
   active: boolean;
@@ -113,7 +114,7 @@ export function isSameAnonymousGuest(
  * "No soy"), so callers refresh. Only a network failure or a 5xx is
  * "unreachable" (callers show an error and change nothing).
  */
-export type GuestLookup = "same" | "different" | "unreachable";
+export type GuestLookup = IdentityLookup;
 
 export function classifyGuestLookup(
   renderedUserId: string,
@@ -122,12 +123,11 @@ export function classifyGuestLookup(
     error: { name?: string; status?: number; code?: string } | null;
   },
 ): GuestLookup {
-  const { user, error } = result;
-  if (user) return isSameAnonymousGuest(renderedUserId, user) ? "same" : "different";
-  if (!error) return "different";
-  if (error.name === "AuthSessionMissingError" || error.code === "session_not_found") return "different";
-  if (error.status === 401 || error.status === 403) return "different";
-  return "unreachable";
+  // Third review L1: the no-session / transient split lives in lib/expectedUser.ts
+  // (auth-js guards + any 4xx auth API error = no session).
+  return classifyIdentityLookup(result, (u) =>
+    isSameAnonymousGuest(renderedUserId, u as { id: string; is_anonymous?: boolean }),
+  );
 }
 
 /**
@@ -176,4 +176,17 @@ export function joinRefusalCode(decision: JoinDecision): JoinRefusalCode | null 
     case "redirect":
       return null;
   }
+}
+
+/** A join refusal that retrying cannot fix (the link or session is over, full
+ *  or locked). Screens refresh into the page's own refusal screen instead of
+ *  toasting (S10 WP8 third review L5). */
+export function isFinalJoinRefusal(code: string): code is JoinRefusalCode {
+  return (
+    code === "session_closed" ||
+    code === "token_expired" ||
+    code === "token_exhausted" ||
+    code === "entries_closed" ||
+    code === "invalid_token"
+  );
 }

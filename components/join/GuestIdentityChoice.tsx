@@ -7,7 +7,8 @@ import { joinSessionAsGuest } from "@/app/actions/join";
 import { createClient } from "@/lib/supabase/client";
 import { countWarnable } from "@/lib/offline/store";
 import { clearLocalDeviceState } from "@/lib/offline/deviceState";
-import { classifyGuestLookup, type GuestLookup } from "@/lib/joinRules";
+import { classifyGuestLookup, isFinalJoinRefusal, type GuestLookup } from "@/lib/joinRules";
+import { announceIdentityLeft } from "@/lib/identityChange";
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { Button, ConfirmDialog, useActionFeedback } from "@/components/ui";
@@ -44,15 +45,15 @@ function fillTemplate(template: string, values: Record<string, string>): string 
  *  runs the same replay the sign-out guard runs (useOfflineSync.retrySync) for
  *  THIS guest's own saved drafts, then reports back. The server refuses to
  *  write if the session changed meanwhile (replay `expectedUserId`). */
-function PendingNotesSync({ userId, onDone }: { userId: string; onDone: () => void }) {
+function PendingNotesSync({ userId, run, onDone }: { userId: string; run: number; onDone: (run: number) => void }) {
   const { online } = useConnectivity();
   const { retrySync } = useOfflineSync({ userId, online });
   const started = useRef(false);
   useEffect(() => {
     if (started.current) return;
     started.current = true;
-    void retrySync().finally(onDone);
-  }, [retrySync, onDone]);
+    void retrySync().finally(() => onDone(run));
+  }, [retrySync, onDone, run]);
   return null;
 }
 
@@ -103,7 +104,15 @@ export function GuestIdentityChoice({
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [unsynced, setUnsynced] = useState(0);
-  const [syncing, setSyncing] = useState(false);
+  // Run id of the sync started by the CURRENT dialog opening (null = none).
+  // Completions of an earlier opening carry an older id and are ignored (L3).
+  const [syncRun, setSyncRun] = useState<number | null>(null);
+  const syncing = syncRun !== null;
+  // True from the moment the dialog opens until the identity lookup AND the
+  // awaited unsynced count are done, so "Soy otra persona" can never be tapped
+  // before the warning exists (M1). Also true when offline: the count still runs.
+  const [checking, setChecking] = useState(false);
+  const openRunRef = useRef(0);
   const [leaving, setLeaving] = useState(false);
   const [busy, startBusy] = useTransition();
 
@@ -111,6 +120,23 @@ export function GuestIdentityChoice({
   useEffect(() => {
     titleRef.current?.focus();
   }, []);
+
+  // M2: after location.assign this screen is deliberately frozen (`leaving`). A
+  // page restored from the back/forward cache would stay frozen, so reload it.
+  useEffect(() => {
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) window.location.reload();
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
+
+  const closeDialog = () => {
+    openRunRef.current += 1; // invalidates any lookup / sync still in flight
+    setSyncRun(null);
+    setChecking(false);
+    setConfirmOpen(false);
+  };
 
   const lookup = async (): Promise<GuestLookup> => {
     try {
@@ -127,40 +153,52 @@ export function GuestIdentityChoice({
       .catch(() => {});
   }, [userId]);
 
-  // Dialog opens: verify identity, then (online) push this guest's own saved
-  // drafts like the sign-out guard does, then count what is STILL unsynced.
+  // Dialog opens: verify identity, count this guest's unsynced notes, then
+  // (online) push this guest's own saved drafts like the sign-out guard does and
+  // count what is STILL unsynced. Each opening has its own run id (L3).
   useEffect(() => {
     if (!confirmOpen) return;
-    let cancelled = false;
+    const run = ++openRunRef.current;
+    const current = () => run === openRunRef.current;
     void (async () => {
       const same = await lookup();
-      if (cancelled) return;
+      if (!current()) return;
       if (same === "different") {
         router.refresh();
-        setConfirmOpen(false);
+        closeDialog();
         return;
       }
-      recount();
-      if (same === "same" && typeof navigator !== "undefined" && navigator.onLine) setSyncing(true);
+      try {
+        const n = await countWarnable(userId);
+        if (!current()) return;
+        setUnsynced(n);
+      } catch {
+        // the count stays as it was; the warning is best effort
+      }
+      if (!current()) return;
+      setChecking(false);
+      if (same === "same" && typeof navigator !== "undefined" && navigator.onLine) setSyncRun(run);
     })();
-    return () => {
-      cancelled = true;
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [confirmOpen, userId]);
 
-  const syncDone = useCallback(() => {
-    setSyncing(false);
-    recount();
-  }, [recount]);
+  const syncDone = useCallback(
+    (run: number) => {
+      if (run !== openRunRef.current) return;
+      setSyncRun(null);
+      recount();
+    },
+    [recount],
+  );
 
   // M5: never wait for the sync forever. After the cap the button works; a late
-  // completion still updates the count through syncDone.
+  // completion of the SAME opening still updates the count through syncDone.
   useEffect(() => {
-    if (!syncing) return;
-    const timer = setTimeout(syncDone, SYNC_CAP_MS);
+    if (syncRun === null) return;
+    const run = syncRun;
+    const timer = setTimeout(() => syncDone(run), SYNC_CAP_MS);
     return () => clearTimeout(timer);
-  }, [syncing, syncDone]);
+  }, [syncRun, syncDone]);
 
   const notMe = async () => {
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
@@ -171,7 +209,7 @@ export function GuestIdentityChoice({
     if (same === "unreachable") return { ok: false as const, error: "unknown" };
     if (same === "different") {
       router.refresh();
-      setConfirmOpen(false);
+      closeDialog();
       return;
     }
     let result;
@@ -181,6 +219,9 @@ export function GuestIdentityChoice({
       return { ok: false as const, error: "unknown" };
     }
     if (!result.ok) return { ok: false as const, error: result.error };
+    // Other tabs on this device still show this guest: tell them (they stop
+    // saving and ask for a reload).
+    announceIdentityLeft(userId);
     await clearLocalDeviceState();
     setLeaving(true);
     // Full navigation to the SAME join URL: auth cookies changed and the server
@@ -211,11 +252,21 @@ export function GuestIdentityChoice({
         router.push(continueHref);
         return;
       }
-      // A successful join redirects server-side (handled by feedback.run).
-      const result = await feedback.run(joinSessionAsGuest(token, locale));
-      // Refused (closed / expired / full…): show the page's refusal screen
-      // instead of a button that fails every time.
-      if (!result.ok) router.refresh();
+      // A successful join redirects server-side (NEXT_REDIRECT, never swallowed).
+      let result;
+      try {
+        result = await joinSessionAsGuest(token, locale);
+      } catch (err) {
+        const digest = (err as { digest?: unknown } | null)?.digest;
+        if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) throw err;
+        feedback.notifyError(typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "unknown");
+        return;
+      }
+      if (result.ok) return;
+      // L5: a final refusal (closed / expired / full / locked) is ONE message:
+      // the page's own refusal screen. No toast on top of it.
+      if (isFinalJoinRefusal(result.error)) router.refresh();
+      else feedback.notifyError(result.error);
     });
 
   const unsyncedLine = fillTemplate(t.unsyncedTemplate, { name, count: String(unsynced) });
@@ -238,15 +289,17 @@ export function GuestIdentityChoice({
         <Button wrap className="w-full" onClick={continueAsThisGuest} disabled={disabled} aria-busy={busy}>
           {busy && mode === "newcomer" ? t.joining : t.continueLabel}
         </Button>
-        <Button wrap variant="secondary" className="w-full" onClick={() => setConfirmOpen(true)} disabled={disabled}>
+        <Button wrap variant="secondary" className="w-full" onClick={() => { setChecking(true); setConfirmOpen(true); }} disabled={disabled}>
           {t.notMeLabel}
         </Button>
       </div>
-      {confirmOpen && syncing && <PendingNotesSync userId={userId} onDone={syncDone} />}
+      {confirmOpen && syncRun !== null && <PendingNotesSync key={syncRun} userId={userId} run={syncRun} onDone={syncDone} />}
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={(o) => {
-          if (!leaving) setConfirmOpen(o);
+          if (leaving) return;
+          if (o) setConfirmOpen(true);
+          else closeDialog();
         }}
         title={t.confirmTitle}
         body={
@@ -257,7 +310,7 @@ export function GuestIdentityChoice({
                 {t.syncing}
               </p>
             )}
-            {!syncing && unsynced > 0 && (
+            {!checking && !syncing && unsynced > 0 && (
               <p role="alert" className="font-medium text-error">
                 {unsyncedLine}
               </p>
@@ -267,7 +320,7 @@ export function GuestIdentityChoice({
         confirmLabel={t.confirmButton}
         cancelLabel={t.cancel}
         closeLabel={t.close}
-        confirmDisabled={syncing || leaving}
+        confirmDisabled={checking || syncing || leaving}
         errorMessages={errorMessages}
         onConfirm={notMe}
       />
