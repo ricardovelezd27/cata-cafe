@@ -18,9 +18,9 @@ describe("reminder email body", () => {
 
   it("live_idle warns that it is closed automatically after 7 idle days (Kim C3)", () => {
     const es = buildReminderHtml({ kind: "live_idle", locale: "es", sessionName: "S", url: "https://x.test/u" });
-    expect(es).toContain("si pasan 7 días sin actividad, la cerramos por ti");
+    expect(es).toContain("si pasan 7 días sin que nadie evalúe, la cerramos por ti");
     const en = buildReminderHtml({ kind: "live_idle", locale: "en", sessionName: "S", url: "https://x.test/u" });
-    expect(en).toContain("after 7 days without activity we close it for you");
+    expect(en).toContain("if 7 days pass without anyone evaluating, we close it for you");
     expect(reminderSubject("live_idle", "en", "S")).toBe("Your cupping is still open: S");
   });
 

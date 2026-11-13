@@ -21,7 +21,7 @@ const TEXT: Record<
     live_idle: {
       subject: (name) => `Tu cata sigue abierta: ${name}`,
       body: (n) =>
-        `La sesión en vivo <strong>${n}</strong> lleva un día sin actividad y sigue abierta. Ciérrala desde el panel cuando termines; si pasan 7 días sin actividad, la cerramos por ti.`,
+        `La sesión en vivo <strong>${n}</strong> lleva un día sin evaluaciones nuevas y sigue abierta. Ciérrala desde el panel cuando termines; si pasan 7 días sin que nadie evalúe, la cerramos por ti.`,
       cta: "Abrir el panel de la cata",
     },
   },
@@ -35,7 +35,7 @@ const TEXT: Record<
     live_idle: {
       subject: (name) => `Your cupping is still open: ${name}`,
       body: (n) =>
-        `The live session <strong>${n}</strong> has had no activity for a day and is still open. Close it from the panel when you are done; after 7 days without activity we close it for you.`,
+        `The live session <strong>${n}</strong> has had no new evaluations for a day and is still open. Close it from the panel when you are done; if 7 days pass without anyone evaluating, we close it for you.`,
       cta: "Open the cupping panel",
     },
   },
