@@ -34,7 +34,8 @@ const ALLOWLIST: Record<string, string> = {
   // Owner actions on results that stay open after close (decided in S8-12)
   "community.ts#setParticipantExclusion":
     "sanctioned post-close write (S8-12): owner only, stamped with author/time/reason",
-  "community.ts#refreshAggregateScores": "owner recompute is idempotent and display-only (S8-12)",};
+  "community.ts#refreshAggregateScores": "no-op after close or expiry (S10 review H1): it only re-fires an open session and revalidates the page",
+};
 
 function exportsOf(source: string): { name: string; body: string }[] {
   const re = /^export async function (\w+)\s*\(/gm;

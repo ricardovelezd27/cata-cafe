@@ -103,7 +103,7 @@ discarded.
 a coffee-less sample (owner), and, decided in S8-12, the owner's
 `setParticipantExclusion` (reason / author / time stamped on `session_participants`,
 returns `ActionResult`, refreshes `UserCoffeeHistory` when the session is closed) and
-the idempotent `refreshAggregateScores`. After such a change the results page shows
+`refreshAggregateScores` (listed only because it is callable after close: it is a NO-OP then, since the aggregates were computed at close and a re-fire would recompute a past score under the current rule; on an open session it re-fires the aggregates). After such a change the results page shows
 "Resultados actualizados el <fecha>" to every viewer and the PDFs carry the same line.
 `closeSession`, `startSession`, `resendCloseEmails`, `deleteSession` and
 `duplicateSession` are lifecycle actions, idempotent or allowed on a closed session

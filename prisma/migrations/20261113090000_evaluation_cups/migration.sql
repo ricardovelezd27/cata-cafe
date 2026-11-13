@@ -11,6 +11,9 @@
 -- Apply with `npx prisma migrate deploy` BEFORE PHASE 26 and before the deploy
 -- (runbook section 30).
 
+-- Both ALTERs are metadata-only but each takes a brief exclusive lock: fail fast instead of queueing behind a long transaction.
+SET lock_timeout = '5s';
+
 -- AlterTable
 ALTER TABLE "evaluations" ADD COLUMN "cups" INTEGER;
 

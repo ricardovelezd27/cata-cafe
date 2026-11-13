@@ -621,7 +621,9 @@ export function ResultsClient({
     setHasGenericUpdates(false);
     try {
       // The button is available to everyone; only the owner additionally fires
-      // the self-healing trigger recompute. Non-owners just re-render: the page
+      // the self-healing trigger recompute (a no-op on the server once the
+      // session is closed or expired, so a past score is never rewritten).
+      // Non-owners just re-render: the page
       // recomputes group data at render and the trigger re-stamps computedAt on
       // every submission, so a plain refresh is always fresh for them.
       if (isOwner) await refreshAggregateScores(session.id);
