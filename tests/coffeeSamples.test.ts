@@ -5,6 +5,7 @@ import {
   type CoffeeViewer,
 } from "@/lib/coffees/filterCoffeeSamples";
 import { computeCoffeeAggregate } from "@/lib/coffeeAggregate";
+import { computeCoffeeLifetimeScore } from "@/lib/coffeeLifetimeScore";
 
 const OWNER = "owner";
 const JOINED = "joined";
@@ -16,11 +17,15 @@ function sample(over: Partial<RawCoffeeSample> = {}, status = "closed"): RawCoff
     id: "smp1",
     sessionId: "s1",
     revealed: true,
+    referenceRank: null,
     session: {
       id: "s1",
       name: "Cata secreta",
       date: new Date("2026-10-01"),
       status,
+      format: "affective",
+      cupsPerSample: 2,
+      referenceMode: "anchor",
       createdBy: OWNER,
       participants: [
         { userId: OWNER, excludedFromResults: false },
@@ -42,7 +47,11 @@ function ev(cupperId: string, individualScore: number, at: string) {
   return {
     cupperId,
     descriptiveData: {},
+    affectiveData: {},
     combinedData: {},
+    nonUniformCups: [] as boolean[],
+    defectiveCups: [] as boolean[],
+    cups: 2 as number | null,
     individualScore,
     submittedAt: new Date(at),
   };
@@ -136,5 +145,30 @@ describe("filterCoffeeSamples (S8-02, D6)", () => {
       filterCoffeeSamples([closed, { ...open, session: { ...open.session, status: "closed" } }], viewer(OWNER)),
     );
     expect(after.communityAvg).toBe(67);
+  });
+
+  it("(WP1c) the lifetime slice is built from the surviving evaluations with opaque cupper keys", () => {
+    const [out] = filterCoffeeSamples([sample()], viewer(STRANGER));
+    expect(out.lifetime.evaluations).toHaveLength(2); // the excluded cupper is gone
+    const keys = out.lifetime.evaluations.map((e) => e.cupperKey);
+    expect(new Set(keys).size).toBe(2);
+    expect(keys.every((k) => Number.isInteger(k))).toBe(true);
+    const json = JSON.stringify(out);
+    for (const id of [OWNER, JOINED, EXCLUDED]) expect(json).not.toContain(`"${id}"`);
+    expect(out.lifetime.session).toEqual({ format: "affective", cupsPerSample: 2, referenceMode: "anchor" });
+  });
+
+  it("(WP1c) the same cupper keeps one key across samples of one call", () => {
+    const a = sample({ id: "a", sessionId: "s1" });
+    const b = sample({ id: "b", sessionId: "s2" });
+    const [oa, ob] = filterCoffeeSamples([a, b], viewer(OWNER));
+    expect(oa.lifetime.evaluations.map((e) => e.cupperKey)).toEqual(ob.lifetime.evaluations.map((e) => e.cupperKey));
+  });
+
+  it("(WP1c) the value handed to the page (filter -> lifetime score) contains no cupper id", () => {
+    const filtered = filterCoffeeSamples([sample()], viewer(STRANGER));
+    const result = computeCoffeeLifetimeScore(filtered.map((s) => s.lifetime));
+    const json = JSON.stringify(result);
+    for (const id of [OWNER, JOINED, EXCLUDED, "cupper"]) expect(json).not.toContain(id);
   });
 });

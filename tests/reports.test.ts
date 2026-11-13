@@ -54,7 +54,7 @@ describe("canViewGroupResults", () => {
 function rs(
   id: string,
   community: number | null,
-  opts: { sd?: number | null; n?: number; total?: number } = {},
+  opts: { sd?: number | null; n?: number; total?: number; cups?: number } = {},
 ): RankableSample {
   return {
     id,
@@ -69,6 +69,7 @@ function rs(
             scoreSd: opts.sd ?? null,
             participantCount: opts.n,
             totalSubmitted: opts.total,
+            totalCups: opts.cups,
           },
     myEvaluation: NO_EVALUATION,
   };
@@ -175,6 +176,31 @@ describe("rankSamples — ranking honesty (S8-12, F-resultados-6)", () => {
       [false, false],
     ]);
     expect(RANKING_POLICY.minN).toBe(3);
+  });
+
+  it("(WP1c) indicativo by pooled cups: 1 person x 2 cups yes, 3 people x 2 cups no, in addition to the cupper rule", () => {
+    expect(RANKING_POLICY.indicativeBelowCups).toBe(5);
+    const samples = [
+      rs("a", 90, { n: 1, cups: 2 }), // 1 person, 2 cups: indicative by cups (and suppressed by cuppers)
+      rs("b", 88, { n: 3, cups: 6 }), // 3 people x 2 cups: by cups no, by cuppers yes (n < 5)
+      rs("c", 86, { n: 5, cups: 4 }), // enough people, fewer than 5 cups pooled (1-cup sessions): by cups yes
+      rs("d", 84, { n: 5, cups: 10 }), // neither
+      rs("e", 82, { n: 5 }), // cups unknown: only the cupper rule decides
+    ];
+    const { ranked } = rankSamples(samples, null, groupCtx);
+    const byId = Object.fromEntries(ranked.map((r) => [r.sample.id, [r.indicative, r.suppressed]]));
+    expect(byId).toEqual({
+      a: [true, true],
+      b: [true, false],
+      c: [true, false],
+      d: [false, false],
+      e: [false, false],
+    });
+  });
+
+  it("(WP1c) 3 people x 2 cups with n >= 5 would not be flagged by cups", () => {
+    const { ranked } = rankSamples([rs("a", 90, { n: 5, cups: 10 })], null, groupCtx);
+    expect(ranked[0].indicative).toBe(false);
   });
 
   it("flags neighbours closer than half the larger sample SD", () => {
@@ -522,12 +548,13 @@ describe("participant summary and ficha — n of N (S8-12)", () => {
   it("ficha: N is all submitted evaluations and a thin panel is indicative with no SD", () => {
     const src = fixture();
     const m = buildFichaTecnica(src, { tier: "participant", locale: "es", labels });
-    for (const s of m.samples) {
+    for (const [i, s] of m.samples.entries()) {
       if (!s.affective) continue;
       expect(s.affective.submitted).toBe(s.participation.submitted);
       if (s.affective.included < RANKING_POLICY.minN) expect(s.affective.sd).toBeNull();
       expect(s.affective.indicative).toBe(
-        s.affective.communityScore != null && s.affective.included < RANKING_POLICY.indicativeBelow,
+        s.affective.communityScore != null &&
+          (s.affective.included < RANKING_POLICY.indicativeBelow || (src.groupAggBySample[src.samples[i].id]?.totalCups ?? 99) < 5),
       );
     }
   });
@@ -687,7 +714,7 @@ describe("buildResultsCsv / csvCell (S8-12, F-informes-7)", () => {
     const lines = out.csv.trim().split("\n");
     expect(lines).toHaveLength(src.evals.length + 1);
     expect(out.rows).toBe(src.evals.length);
-    expect(lines[0]).toContain("puntaje_cva");
+    expect(lines[0]).toContain("puntaje_cafe_sensible");
   });
 
   it("never prints the coffee of a blind sample", () => {
@@ -703,7 +730,7 @@ describe("buildResultsCsv / csvCell (S8-12, F-informes-7)", () => {
     expect(csvLines(coded.csv)[0]).toMatch(/^code,sample,/);
     expect(csvLines(coded.csv)[0]).toContain("excluded");
     expect(csvLines(coded.csv)[0]).not.toContain("exclusion_reason");
-    expect(csvLines(coded.csv)[0]).toContain("cva_score");
+    expect(csvLines(coded.csv)[0]).toContain("cafe_sensible_score");
   });
 
   it("rows follow the sample order, then the CODE: never name, id or join order", () => {
