@@ -94,8 +94,14 @@ export async function joinCoffeeForm(
 /** Programmatic (non-form) twin of joinSessionForm for GuestJoinForm: the guest
  *  signs in anonymously on the client, then this joins and redirects. Failures
  *  come back as an ActionResult instead of an opaque production digest. */
-export async function joinSessionAsGuest(token: string, locale: string): Promise<ActionResult<void>> {
+export async function joinSessionAsGuest(
+  token: string,
+  locale: string,
+  // S10 WP8b: the guest id the caller onboarded as. A different signed-in user
+  // is refused (`identity_changed`) and joins nothing. Absent = as before.
+  expectedUserId?: string,
+): Promise<ActionResult<void>> {
   return run("joinSessionAsGuest", async () => {
-    await joinViaToken(token, locale);
+    await joinViaToken(token, locale, expectedUserId);
   });
 }

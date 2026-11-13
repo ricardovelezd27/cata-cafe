@@ -24,6 +24,7 @@ import {
   classifyBrowserSession,
   type BrowserIdentity,
   type IdentityAction,
+  type IdentityMarkerKind,
 } from "@/lib/expectedUser";
 import { clearIdentityChanged, markIdentityChanged, runBeforeIdentityReload } from "@/lib/identityChange";
 import { claimedRenderedUser } from "@/lib/offline/claimMarker";
@@ -102,10 +103,10 @@ export async function checkIdentityOnResume(renderedUserId: string): Promise<voi
 
 /** A storage marker named this tab's user (or nobody in particular). different
  *  (claim: reload) or none -> latch; same/unknown -> nothing. */
-export async function checkIdentityOnMarker(renderedUserId: string): Promise<void> {
+export async function checkIdentityOnMarker(renderedUserId: string, kind: IdentityMarkerKind = "left"): Promise<void> {
   const { identity, currentUserId } = await readIdentity(renderedUserId);
   if (identity === "different" && (await reloadIfClaimed(renderedUserId, currentUserId))) return;
-  apply(actionOnMarkerRecheck(identity));
+  apply(actionOnMarkerRecheck(identity, kind));
 }
 
 /** The server said `identity_changed` (a positive mismatch). Unless the claim

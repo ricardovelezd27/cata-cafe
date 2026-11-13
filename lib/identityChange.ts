@@ -106,3 +106,45 @@ export function announceIdentityLeft(leftUserId: string): void {
     // best effort
   }
 }
+
+/**
+ * A sign-in COMPLETED on this device (S10 WP8b). Other tabs that were paused by
+ * a sign-out re-read who holds the cookie and, when it is the same person they
+ * were rendered for, clear their latch. Written by client code only after the
+ * server action / verification returned ok. Best effort.
+ */
+export function announceSignedIn(): void {
+  try {
+    window.localStorage.setItem(IDENTITY_EPOCH_KEY, serializeIdentityMarker("", Date.now(), "signedIn"));
+  } catch {
+    // best effort
+  }
+}
+
+const SIGNIN_STARTED_KEY = "cata_signin_started";
+const SIGNIN_STARTED_TTL_MS = 10 * 60_000;
+
+/** Google sign-in leaves the page and comes back through the server callback, so
+ *  no client code runs at "completion". The login button records that it started
+ *  (WP8b); the next app-shell mount announces it. */
+export function rememberSignInStarted(): void {
+  try {
+    window.localStorage.setItem(SIGNIN_STARTED_KEY, String(Date.now()));
+  } catch {
+    // best effort
+  }
+}
+
+/** App-shell mount: if a sign-in was started on this device recently, announce
+ *  that one completed (once) so tabs paused by a sign-out resume. */
+export function announceSignedInIfStarted(now: number = Date.now()): void {
+  try {
+    const raw = window.localStorage.getItem(SIGNIN_STARTED_KEY);
+    if (!raw) return;
+    window.localStorage.removeItem(SIGNIN_STARTED_KEY);
+    const at = Number(raw);
+    if (Number.isFinite(at) && now - at >= 0 && now - at <= SIGNIN_STARTED_TTL_MS) announceSignedIn();
+  } catch {
+    // best effort
+  }
+}

@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { signInWithMagicLink, signInWithGoogle } from "@/app/actions/auth";
+import { rememberSignInStarted } from "@/lib/identityChange";
 import type { AuthErrorKey } from "@/lib/authErrors";
 import { useInAppBrowser } from "@/hooks/useInAppBrowser";
 import { EmailSentState, type EmailSentLabels } from "@/components/auth/EmailSentState";
@@ -85,6 +86,7 @@ export function LoginForm({
 
   function onGoogleClick() {
     setError(null);
+    rememberSignInStarted(); // WP8b: announced by the app shell once Google returns
     startTransition(async () => {
       const r = await signInWithGoogle(next, locale);
       // A success redirect throws NEXT_REDIRECT and never resolves here.

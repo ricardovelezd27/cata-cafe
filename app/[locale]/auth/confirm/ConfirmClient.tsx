@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { announceSignedIn } from "@/lib/identityChange";
 import { acceptPendingSignIn, confirmEmailToken, rejectPendingSignIn } from "@/app/actions/auth";
 import { Button, ButtonLink } from "@/components/ui";
 
@@ -61,6 +62,7 @@ export function ConfirmClient({
         return;
       }
       if (r.ok) {
+        announceSignedIn(); // WP8b: tabs paused by a sign-out may resume
         // Full navigation so the new session cookie is sent with the request.
         window.location.assign(r.data.next);
         return;
@@ -80,6 +82,7 @@ export function ConfirmClient({
     try {
       const r = await acceptPendingSignIn(identity ?? "", locale, next);
       if (r.ok) {
+        announceSignedIn(); // WP8b
         // Full navigation so the new session cookie is sent with the request.
         window.location.assign(r.data.next);
         return;

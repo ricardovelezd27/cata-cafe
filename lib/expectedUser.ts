@@ -88,18 +88,32 @@ export function classifyIdentityLookup(
 /** localStorage key written when the signed-in identity on this device changes. */
 export const IDENTITY_EPOCH_KEY = "cata_identity_epoch";
 
-export type IdentityMarker = { at: number; leftUserId: string };
+/** What the marker announces: someone LEFT this device (sign-out, "No soy",
+ *  switch account) or a sign-in COMPLETED on it (S10 WP8b). Absent = "left"
+ *  (markers written before WP8b). */
+export type IdentityMarkerKind = "left" | "signedIn";
 
-export function serializeIdentityMarker(leftUserId: string, now: number): string {
-  return JSON.stringify({ at: now, leftUserId } satisfies IdentityMarker);
+export type IdentityMarker = { at: number; leftUserId: string; kind?: IdentityMarkerKind };
+
+export function serializeIdentityMarker(
+  leftUserId: string,
+  now: number,
+  kind: IdentityMarkerKind = "left",
+): string {
+  // "left" keeps the exact pre-WP8b shape so older tabs read it unchanged.
+  return JSON.stringify(
+    kind === "left" ? ({ at: now, leftUserId } satisfies IdentityMarker) : ({ at: now, leftUserId, kind } satisfies IdentityMarker),
+  );
 }
 
 export function parseIdentityMarker(raw: string | null): IdentityMarker | null {
   if (!raw) return null;
   try {
-    const v = JSON.parse(raw) as { at?: unknown; leftUserId?: unknown };
+    const v = JSON.parse(raw) as { at?: unknown; leftUserId?: unknown; kind?: unknown };
     if (typeof v.at !== "number" || typeof v.leftUserId !== "string") return null;
-    return { at: v.at, leftUserId: v.leftUserId };
+    return v.kind === "signedIn"
+      ? { at: v.at, leftUserId: v.leftUserId, kind: "signedIn" }
+      : { at: v.at, leftUserId: v.leftUserId };
   } catch {
     return null;
   }
@@ -109,9 +123,12 @@ export function parseIdentityMarker(raw: string | null): IdentityMarker | null {
  * A storage marker arrived (another tab changed the identity). "recheck" when
  * it names the user this tab was rendered for, or nobody in particular (the
  * sign-out button does not know the leaver); "ignore" when another user left.
+ * A "signedIn" marker (a sign-in completed on this device) always rechecks: it
+ * can be the same person coming back, or someone else.
  */
 export function decideForMarker(renderedUserId: string, marker: IdentityMarker | null): "recheck" | "ignore" {
   if (!marker) return "ignore";
+  if (marker.kind === "signedIn") return "recheck";
   if (marker.leftUserId === renderedUserId || marker.leftUserId === "") return "recheck";
   return "ignore";
 }
@@ -145,10 +162,19 @@ export function actionOnResume(identity: BrowserIdentity): IdentityAction {
 }
 
 /**
- * After a marker naming this tab's user: different or none -> latch (this tab
- * can no longer save as that person); same (they signed back in as themself)
- * and unknown (the next resume re-checks) -> nothing.
+ * After a marker:
+ *  - "left": different or none -> latch (this tab can no longer save as that
+ *    person); same (they signed back in as themself) and unknown (the next
+ *    resume re-checks) -> nothing.
+ *  - "signedIn" (WP8b): same -> CLEAR the latch (the person who paused this tab
+ *    signed back in: no hidden wait for a 2 s hide/show); different -> latch;
+ *    none/unknown -> nothing (a sign-in just completed, so none is a stale read).
  */
-export function actionOnMarkerRecheck(identity: BrowserIdentity): IdentityAction {
+export function actionOnMarkerRecheck(identity: BrowserIdentity, kind: IdentityMarkerKind = "left"): IdentityAction {
+  if (kind === "signedIn") {
+    if (identity === "same") return "clear";
+    if (identity === "different") return "latch";
+    return "nothing";
+  }
   return identity === "different" || identity === "none" ? "latch" : "nothing";
 }

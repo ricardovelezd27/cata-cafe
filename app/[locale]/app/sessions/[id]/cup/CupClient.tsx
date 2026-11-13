@@ -116,7 +116,7 @@ import { OfflineBanner } from "@/components/offline/OfflineBanner";
 import { StaleBundleNotice } from "@/components/offline/StaleBundleNotice";
 import { noteIfStaleBundle } from "@/lib/staleBundle";
 import { IDENTITY_CHANGED } from "@/lib/expectedUser";
-import { isIdentityChanged, registerBeforeIdentityReload } from "@/lib/identityChange";
+import { isIdentityChanged, onIdentityChanged, registerBeforeIdentityReload } from "@/lib/identityChange";
 import { onServerIdentityChanged } from "@/lib/identityResolve";
 import { awaitClaimRekey } from "@/lib/offline/claimRekey";
 import { SyncConflictModal } from "@/components/offline/SyncConflictModal";
@@ -835,6 +835,20 @@ export function CupClient({
   const [leaveGuardOpen, setLeaveGuardOpen] = useState(false);
   // IndexedDB has proven unreliable (quota, Safari private mode, …) — the
   // OfflineBanner surfaces this so the cupper knows local drafts aren't safe.
+  // S10 WP8b: the OfflineBanner notice sits at the top of the scroll area; toast
+  // ONCE per latch (false -> true) so a cupper scrolled down the form sees it.
+  const identityLatched = useSyncExternalStore(onIdentityChanged, isIdentityChanged, () => false);
+  const toastedIdentityRef = useRef(false);
+  useEffect(() => {
+    if (!identityLatched) {
+      toastedIdentityRef.current = false;
+      return;
+    }
+    if (toastedIdentityRef.current) return;
+    toastedIdentityRef.current = true;
+    feedback.notifyError("identity_changed");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [identityLatched]);
   const storageUnavailable = useSyncExternalStore(
     onOfflineStorageUnavailable,
     isOfflineStorageUnavailable,
@@ -2572,6 +2586,7 @@ export function CupClient({
         translations={translations.offline}
         storageUnavailable={storageUnavailable}
         nextRetryAt={nextRetryAt}
+        renderedUserId={userId}
       />
       {translations.offline.bannerNewVersion && translations.offline.reloadNow && (
         <StaleBundleNotice

@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState, type ComponentProps } from "react";
+import { useEffect, useState, useSyncExternalStore, type ComponentProps } from "react";
 import { useParams } from "next/navigation";
 import { CupClient } from "./CupClient";
 import { OfflineFirstLoadError } from "@/components/offline/OfflineFirstLoadError";
 import { ErrorPanel } from "@/components/errors/ErrorPanel";
 import { loadCachedProps, loadSession, getLastUser } from "@/lib/offline/store";
+import { isStaleBundle, onStaleBundle } from "@/lib/staleBundle";
+import { isIdentityChanged, onIdentityChanged } from "@/lib/identityChange";
 import { warmupFromCache, type CachedWarmup } from "@/lib/warmup/offlineCache";
 
 type CupClientProps = ComponentProps<typeof CupClient>;
@@ -22,6 +24,10 @@ const COPY: Record<
     failedBody: string;
     back: string;
     support: string;
+    /** mirrors offline.bannerNewVersion / offline.reloadNow / errors.codes.identity_changed */
+    newVersion: string;
+    identityChanged: string;
+    reload: string;
   }
 > = {
   es: {
@@ -32,6 +38,10 @@ const COPY: Record<
       "Reintentamos automáticamente sin éxito. Vuelve a intentarlo o regresa a tus sesiones; lo que ya guardaste no se pierde.",
     back: "Volver a mis sesiones",
     support: "Código de soporte",
+    newVersion:
+      "Hay una versión nueva de la app. Tus notas están guardadas en este dispositivo; recarga para seguir sincronizando.",
+    identityChanged: "Este dispositivo cambió de persona. Recarga la página para continuar.",
+    reload: "Recargar",
   },
   en: {
     offlineTitle: "You need internet to load this session for the first time.",
@@ -41,6 +51,10 @@ const COPY: Record<
       "Automatic retries did not help. Try again or go back to your sessions; what you already saved is not lost.",
     back: "Back to my sessions",
     support: "Support code",
+    newVersion:
+      "A new version of the app is available. Your notes are saved on this device; reload to keep syncing.",
+    identityChanged: "This device changed user. Reload the page to continue.",
+    reload: "Reload",
   },
 };
 
@@ -92,6 +106,10 @@ export default function CupError({
   const copy = COPY[locale] ?? COPY.es;
 
   const [state, setState] = useState<State>({ phase: "checking" });
+  // S10 WP8b: in the FAILED state the page is not mounted, so neither notice
+  // host exists. Say why a retry will not help (new build / another person).
+  const stale = useSyncExternalStore(onStaleBundle, isStaleBundle, () => false);
+  const identityChanged = useSyncExternalStore(onIdentityChanged, isIdentityChanged, () => false);
 
   useEffect(() => {
     console.error("[cup/error]", error.message, error.digest ?? "");
@@ -162,7 +180,25 @@ export default function CupError({
 
   if (state.phase === "failed") {
     return (
-      <main className="flex flex-1 items-center justify-center px-6 py-16">
+      <main className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-16">
+        {(identityChanged || stale) && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex max-w-md flex-wrap items-center gap-x-3 gap-y-1 rounded-card border border-outline-variant bg-secondary-fixed px-4 py-2 text-sm text-on-secondary-fixed"
+          >
+            <span className="flex-1 min-w-[12rem]">
+              {identityChanged ? copy.identityChanged : copy.newVersion}
+            </span>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="min-h-[44px] shrink-0 rounded-sm px-2 font-semibold underline underline-offset-2"
+            >
+              {copy.reload}
+            </button>
+          </div>
+        )}
         <ErrorPanel
           title={copy.failedTitle}
           body={copy.failedBody}
