@@ -374,7 +374,7 @@ describe("joinSessionAsGuest expectedUserId (WP8b)", () => {
     const other = await makeUser({ anonymous: true, name: "Other" });
     signedInAs(other); // the cookie flipped between onboarding and the join
     expect(await joinSessionAsGuest(token, "es", mine)).toEqual({ ok: false, error: "identity_changed" });
-    expect(await members(sessionId)).toBe(0);
+    expect(await members(sessionId)).toBe(1); // the owner only
     const invite = await prisma.sessionInvite.findUniqueOrThrow({ where: { token } });
     expect(invite.useCount).toBe(0);
   });
@@ -384,7 +384,7 @@ describe("joinSessionAsGuest expectedUserId (WP8b)", () => {
     const mine = await makeUser({ anonymous: true, name: "Mine" });
     signedInAs(null);
     expect(await joinSessionAsGuest(token, "es", mine)).toEqual({ ok: false, error: "not_authenticated" });
-    expect(await members(sessionId)).toBe(0);
+    expect(await members(sessionId)).toBe(1); // the owner only
   });
 });
 

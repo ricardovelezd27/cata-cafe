@@ -212,6 +212,8 @@ export async function syncEvaluation(
   // throw, so the new permanent outcomes surface as the codes they used to.
   if (status === "gone") throw new Error("not_found_or_forbidden");
   if (status === "rejected") throw new Error("invalid_input");
+  // Cached bundles do not know `identity_changed`: for them it is "pending".
+  if (status === "identity_changed") return { status: "pending" };
   return { status: status === "closed" ? "discarded" : status };
 }
 
