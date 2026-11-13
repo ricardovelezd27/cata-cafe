@@ -479,6 +479,37 @@
       "downloadQr": "Download QR",
       "currentSample": "Current sample",
       "sessionDetails": "Session details"
+    },
+    "cups": {
+      "title": "Cups",
+      "nonUniform": "Non-uniform",
+      "defective": "Defective",
+      "nonUniformLegend": "Non-uniform",
+      "defectiveLegend": "Defective",
+      "oneTap": "(1 tap)",
+      "defectTap": "(tap, then pick the type)",
+      "defectType": "Defect type",
+      "scoreHint": "Each defective cup subtracts 6 points (4 for the defect and 2 for not being uniform); with a single cup, 4. A cup that is only non-uniform subtracts 2.",
+      "scoreHintGroup": "Your cups are added to the group's cups.",
+      "oneCupNote": "With one cup, uniformity is not assessed.",
+      "pickTitle": "Cup {n}: which defect does it have?",
+      "pickHelp": "Without a type, the cup is not marked.",
+      "typeMissing": "Defect type missing",
+      "removeMark": "Remove mark",
+      "closePicker": "Close",
+      "cupDefectiveAria": "Cup {n} defective",
+      "cupNonUniformAria": "Cup {n} non-uniform",
+      "changeTypeAria": "Change the defect type of cup {n}",
+      "nonUniformCountOne": "{n} non-uniform",
+      "nonUniformCountMany": "{n} non-uniform",
+      "defectiveCountOne": "{n} defective",
+      "defectiveCountMany": "{n} defective",
+      "types": {
+        "moldy": "Moldy",
+        "phenolic": "Phenolic",
+        "potato": "Potato"
+      },
+      "scoreLater": "You will see your score when you submit."
     }
   },
   "waiting": {
@@ -934,10 +965,10 @@
       "how": "How was this calculated?",
       "formula": "CVA formula",
       "sigma": "Σhᵢ = sum of the 8 affective sections",
-      "u": "u = non-uniform cups",
-      "d": "d = defective cups",
+      "u": "u = non-uniform cups (2 points each; a defective cup counts here too)",
+      "d": "d = defective cups (4 points each, with its type: moldy, phenolic or potato)",
       "values": "Values for this evaluation",
-      "base": "Base",
+      "base": "Base (before rounding to 0.25)",
       "uniformity": "Uniformity",
       "defects": "Defects",
       "raw": "Unrounded",
@@ -962,7 +993,20 @@
       "communityScore": "Community score",
       "includedNote": "{n} of {total} cuppers included in the average",
       "groupExplain": "The community score is the average of the base scores, minus the deduction for all included cuppers' cups (2 per non-uniform cup and 4 per defective cup; beyond five cups in total the deduction is shared out), rounded to 0.25.",
-      "perCup": "per cup"
+      "perCup": "per cup",
+      "line": {
+        "nonUniformOne": "non-uniform cup",
+        "nonUniformOther": "non-uniform cups",
+        "unspecifiedOne": "defective cup, unspecified",
+        "unspecifiedOther": "defective cups, unspecified",
+        "moldyOne": "moldy cup",
+        "moldyOther": "moldy cups",
+        "phenolicOne": "phenolic cup",
+        "phenolicOther": "phenolic cups",
+        "potatoOne": "potato cup",
+        "potatoOther": "potato cups",
+        "groupScope": "Together you cupped {cups} cups: the group's deduction is shared across them."
+      }
     },
     "help": {
       "stats": {
