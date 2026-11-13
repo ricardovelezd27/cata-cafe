@@ -429,7 +429,7 @@ export function PdfPercentBars({
   );
 }
 
-// ─── PdfScoreBand / PdfDeltaChip ─────────────────────────────────────────────
+// ─── PdfScorePill, PdfDeviationBand, PdfDeltaChip ─────────────────────────────────────────────
 
 /** Neutral score pill: the number only, never a colour or a name by quality
  *  (S10 WP3a, TODO(kim-validar:A10)). null score renders an em dash. */
