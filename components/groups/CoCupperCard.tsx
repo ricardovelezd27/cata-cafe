@@ -36,6 +36,10 @@ export function CoCupperCard({
     create: string;
     added: string;
     errorGeneric: string;
+    sessionOne: string;
+    sessionMany: string;
+    evaluationOne: string;
+    evaluationMany: string;
   };
 }) {
   // This component isn't passed a locale today, so it keeps rendering Spanish
@@ -61,9 +65,9 @@ export function CoCupperCard({
       <div className="flex flex-col gap-1.5">
         <p className="text-sm text-on-surface">
           <span className="font-semibold">{cupper.sessionCount}</span>{" "}
-          {cupper.sessionCount === 1 ? "sesión" : "sesiones"} ·{" "}
+          {cupper.sessionCount === 1 ? t.sessionOne : t.sessionMany} ·{" "}
           <span className="font-semibold">{cupper.evaluationCount}</span>{" "}
-          {cupper.evaluationCount === 1 ? "cata" : "catas"}
+          {cupper.evaluationCount === 1 ? t.evaluationOne : t.evaluationMany}
         </p>
         <p className="text-xs text-on-surface-variant">
           Última sesión: {formatRelativeDate(cupper.lastSessionDate)} —{" "}

@@ -67,6 +67,10 @@ export default async function GroupsPage({
     create: t("create"),
     added: t("added"),
     errorGeneric: t("errorGeneric"),
+    sessionOne: t("sessionOne"),
+    sessionMany: t("sessionMany"),
+    evaluationOne: t("evaluationOne"),
+    evaluationMany: t("evaluationMany"),
   };
 
   const createGroupT = {
