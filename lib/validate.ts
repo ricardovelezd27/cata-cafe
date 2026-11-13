@@ -10,6 +10,8 @@
 // feed scoring (cupsPerSample) are NEVER taken from the client at evaluation
 // time; they are read from the session row (see upsertEvaluation).
 
+import { SENSORY_DEFECTS, type SensoryDefect } from "@/lib/constants";
+
 export class ValidationError extends Error {
   constructor(public readonly field: string) {
     super("invalid_input");
@@ -117,4 +119,20 @@ export function email(value: unknown, field = "email"): string {
 export function cupFlags(value: unknown, cups: number): boolean[] {
   if (!Array.isArray(value)) return [];
   return value.slice(0, Math.max(0, cups)).map((v) => v === true);
+}
+
+/** Per-cup defect type (S10 WP1b, module key `tazas_defecto_tipo`): EXACTLY
+ *  `cups` entries, each one of SENSORY_DEFECTS or null. An over-long array is
+ *  cut, a short or non-array value is padded with null, anything that is not
+ *  one of the three defect ids (garbage, another string, a number) becomes
+ *  null. Never throws: the caller decides what an untyped cup means. */
+export function cupDefectTypes(value: unknown, cups: number): (SensoryDefect | null)[] {
+  const n = Number.isFinite(cups) ? Math.max(0, Math.floor(cups)) : 0;
+  const src = Array.isArray(value) ? value : [];
+  return Array.from({ length: n }, (_, i) => {
+    const v = src[i];
+    return typeof v === "string" && (SENSORY_DEFECTS as readonly string[]).includes(v)
+      ? (v as SensoryDefect)
+      : null;
+  });
 }

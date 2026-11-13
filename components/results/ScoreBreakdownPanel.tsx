@@ -3,6 +3,7 @@
 import { Calculator } from "lucide-react";
 import { cupDeduction, type IndividualBreakdown } from "@/lib/scoring";
 import type { ScoreRule } from "@/lib/scoreRule";
+import { buildScoreLine, groupScopeLine, type ScoreLineLabels } from "@/lib/scoreLine";
 
 /* ============================================================
    N5 — Score transparency panel ("¿Cómo se calculó?")
@@ -77,12 +78,19 @@ export type ScoreBreakdownTranslations = {
   includedNote: string;
   groupExplain: string;
   perCup: string;
+  /** Nouns for the always-visible arithmetic line (`results.breakdown.line.*`). */
+  line: ScoreLineLabels & {
+    /** "Entre todos se cataron {cups} tazas…" (client-side `{cups}` replace). */
+    groupScope: string;
+  };
 };
 
 type Props =
   | {
       variant: "individual";
       breakdown: IndividualBreakdown;
+      /** The evaluation's module JSON: lets the arithmetic line name the defect types. */
+      data?: Record<string, unknown>;
       setup: ScoreSetup;
       t: ScoreBreakdownTranslations;
     }
@@ -158,7 +166,28 @@ const sectionLabel = "mb-1 mt-2.5 text-[9px] font-bold uppercase tracking-widest
 
 export function ScoreBreakdownPanel(props: Props) {
   const { t } = props;
+  // The arithmetic of the total, visible without expanding anything. Only a line
+  // that adds up to the stored number is ever built (lib/scoreLine.ts).
+  const line =
+    props.variant === "individual" && props.data
+      ? buildScoreLine(props.breakdown, props.data, t.line)
+      : null;
+  const scope =
+    props.variant === "group"
+      ? groupScopeLine(props.group.totalCups, props.group.rule, t.line.groupScope)
+      : null;
   return (
+    <>
+    {line && (
+      <p className="mt-2 text-xs tabular-nums leading-relaxed text-on-surface" data-score-line>
+        {line}
+      </p>
+    )}
+    {scope && (
+      <p className="mt-2 text-xs leading-relaxed text-on-surface-variant" data-score-scope>
+        {scope}
+      </p>
+    )}
     <details className="mt-2 overflow-hidden rounded-input border border-outline-variant bg-surface-container-lowest">
       <summary className="flex min-h-[36px] cursor-pointer list-none items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-primary-container select-none [&::-webkit-details-marker]:hidden [&::marker]:content-none">
         <Calculator size={13} aria-hidden />
@@ -170,6 +199,7 @@ export function ScoreBreakdownPanel(props: Props) {
           : renderGroup(props.group, props.cupsPerSample, props.setup, t)}
       </div>
     </details>
+    </>
   );
 }
 

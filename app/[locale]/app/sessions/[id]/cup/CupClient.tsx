@@ -30,6 +30,7 @@ import { Coffee, Scale, FileText, BarChart3 } from "lucide-react";
 import { DescriptiveForm } from "@/components/cupping/DescriptiveForm";
 import { AffectiveForm } from "@/components/cupping/AffectiveForm";
 import { CombinedForm } from "@/components/cupping/CombinedForm";
+import type { CupCopy } from "@/lib/cupCopy";
 import { ExtrinsicForm } from "@/components/cupping/ExtrinsicForm";
 import { PhysicalEvalForm } from "@/components/cupping/PhysicalEvalForm";
 import {
@@ -440,6 +441,9 @@ export function CupClient({
     referenceLocked?: string;
     referenceLockedAffective?: string;
     referenceCupsLocked?: string;
+    /** Cup grid + "score after submitting" copy (S10 WP1b); optional: the error
+     *  boundary rehydrates an older cached blob (lib/cupCopy.ts has a fallback). */
+    cups?: CupCopy;
     // "Notas rápidas" end step (2026-10, WP-B). Optional with inline
     // fallbacks: the cup error boundary rehydrates an older cached prop blob.
     expressNotes?: {
@@ -3021,6 +3025,8 @@ export function CupClient({
             lockedNote={translations.referenceLockedAffective}
             lockedCupsNote={translations.referenceCupsLocked}
             isGroup={isGroup}
+            locale={locale === "en" ? "en" : "es"}
+            cupCopy={translations.cups}
           />
         )}
         {activeTab === "cupping" &&
@@ -3037,6 +3043,7 @@ export function CupClient({
               lockedNote={translations.referenceLocked}
               lockedCupsNote={translations.referenceCupsLocked}
               isGroup={isGroup}
+              cupCopy={translations.cups}
             />
           )}
         {activeTab === "extrinsic" && (

@@ -59,7 +59,13 @@ puntaje   = B − descuento        (redondeo a 0,25 con roundToQuarter, tope ent
   ya lo hace al marcar. Por eso una taza defectuosa cuesta 6 con 2+ tazas y 4 con 1 taza.
 - Tope: 6 puntos por taza. Dos tazas defectuosas de dos cuestan 12; cinco de cinco, 30, como
   en un formulario CVA.
-- Una taza defectuosa cuenta solo si lleva tipo de defecto: mohoso, fenólico o papa (§5.3).
+- El tipo de defecto (mohoso, fenólico o papa) es obligatorio al marcar una taza defectuosa:
+  el formulario no deja marcarla sin elegir el tipo (§5.3). Una taza que ya está marcada y
+  llega sin tipo (las antiguas, o un envío incompleto) cuenta igual, como "sin especificar":
+  un defecto registrado nunca se pierde por faltarle el tipo. (Precisión del 2026-11-13, al
+  construir: la primera redacción decía "cuenta solo si lleva tipo"; aplicada en el servidor,
+  esa frase borraba defectos antiguos al editar la evaluación. Pendiente de que Ricardo la
+  confirme.)
 
 ## 3. Tres ámbitos, la misma fórmula
 
@@ -107,7 +113,7 @@ Mi sesión sigue mostrando −6. El perfil del café muestra el número repartid
 | 2 personas × 5 tazas (10 en total), 1 solo no uniforme | quien la marcó −2; sesión −1 |
 | Café con 3 sesiones cerradas, 10 tazas en total, 1 defectuosa | perfil −3; cada sesión conserva su número |
 | Sesión con un catador excluido | sus tazas y sus secciones fuera de sesión y de café |
-| Taza defectuosa sin tipo (dato nuevo) | no descuenta |
+| Taza defectuosa sin tipo | el formulario no permite marcarla; si llega marcada sin tipo (dato antiguo), descuenta y aparece como "sin especificar" |
 | Cualquier caso | el descuento por taza marcada nunca pasa de 6 |
 
 ## 4. Qué hace la app hoy, y qué hizo S8-04
