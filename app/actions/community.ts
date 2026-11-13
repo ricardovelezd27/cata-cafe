@@ -23,7 +23,7 @@ import { runLengthMs } from "@/lib/warmup/syncedRun";
 import { noticeOutcome, shouldNotifyAtStart } from "@/lib/groupNotify";
 import { notifyGroupOfSession } from "@/app/actions/groups";
 import { run } from "@/lib/safeAction";
-import { logWarn } from "@/lib/log";
+import { logInfo, logWarn } from "@/lib/log";
 import { syncCoffeeHistoryForSession } from "@/lib/coffeeHistory";
 import { encodeExclusionReason, exclusionData } from "@/lib/exclusionReasons";
 import type { ActionResult } from "@/lib/actionResult";
@@ -31,7 +31,13 @@ import { refireAggregates } from "@/lib/aggregates";
 import { reserveEmailBudget } from "@/lib/emailBudget";
 import { countUnsentComplete, isEvaluationComplete, planFinish } from "@/lib/closeRules";
 import { removeSamplesInTx } from "@/lib/sampleRemoval";
-import { hasLegacyDrafts, recomputeLegacyDraftsInTx } from "@/lib/legacyDrafts";
+import {
+  hasLegacyDrafts,
+  recomputeLegacyDraftByIdInTx,
+  recomputeLegacyDraftsInTx,
+} from "@/lib/legacyDrafts";
+import { closingAtFor, isAnnounceMinutes } from "@/lib/closeAnnounce";
+import { isAcceptableLate, normalizePostCloseNote, postCloseNoteAllowed } from "@/lib/lateContributions";
 import type { Prisma } from "@/app/generated/prisma/client";
 
 // ─── Submit all draft evaluations for a session ───────────────────────────────
@@ -534,6 +540,49 @@ export async function closeSession(sessionId: string) {
   };
 }
 
+// ─── Close an announced close (S10 WP4b review M3 / L2) ───────────────────────
+// The owner's open cup page calls THIS (never the plain close) when its countdown
+// reaches zero. It closes ONLY if the session's stored `closingAt` is the very
+// instant that page counted down AND that instant has passed on the server clock
+// (2 s of tolerance); otherwise it answers ok with `closed: false` and changes
+// nothing. A cancel (null) or a re-announce (another instant) therefore defeats a
+// stale tab, a second tab and an old `serverNow`. "Cerrar ahora" stays closeSession.
+export async function closeAnnounced(
+  sessionId: string,
+  closingAt: string,
+): Promise<ActionResult<{ closed: boolean; finalized: boolean }>> {
+  return run(
+    "closeAnnounced",
+    async () => {
+      const user = await requireUser();
+      const counted = v.isoDate(closingAt, "closingAt");
+      await requireSessionOwner(sessionId, user.id);
+
+      const row = await prisma.cuppingSession.findUnique({
+        where: { id: sessionId },
+        select: { status: true, closingAt: true },
+      });
+      if (
+        !row ||
+        row.status === "closed" ||
+        !row.closingAt ||
+        row.closingAt.getTime() !== counted.getTime() ||
+        row.closingAt.getTime() > Date.now() + 2000
+      ) {
+        return { closed: false, finalized: true };
+      }
+
+      const result = await closeSessionInternal(sessionId, { reason: "owner", emails: "after" });
+      revalidatePath(`/es/app/sessions/${sessionId}/results`);
+      revalidatePath(`/en/app/sessions/${sessionId}/results`);
+      revalidatePath(`/es/app/sessions/${sessionId}/cup`);
+      revalidatePath(`/en/app/sessions/${sessionId}/cup`);
+      return { closed: result.closed, finalized: result.finalized !== false };
+    },
+    { sessionId },
+  );
+}
+
 // ─── Re-send close emails to participants who did not get theirs ─────────────
 // Owner only, closed group sessions only. sendCloseEmails skips every
 // recipient already marked "sent", so this only retries failed/skipped rows.
@@ -903,6 +952,223 @@ export async function refreshAggregateScores(sessionId: string) {
   revalidatePath(`/es/app/sessions/${sessionId}/results`);
   revalidatePath(`/en/app/sessions/${sessionId}/results`);
   return { ok: true };
+}
+
+// ─── Announce the close a few minutes ahead (S10 WP4b, Kim C1) ───────────────
+// `TODO(kim-validar:C1)`. Owner only, group sessions only. Stores the moment in
+// `cupping_sessions.closingAt`; the UPDATE reaches every cupper's page over the
+// existing session realtime channel. NOTHING closes on the server at that
+// instant: the owner's open cup page calls closeSession when its countdown
+// reaches zero (lib/closeAnnounce.ts). closeSessionInternal never touches the
+// column (a closed session's value is history). Idempotent: a second call just
+// moves the moment.
+export async function announceClose(
+  sessionId: string,
+  minutes: number,
+): Promise<ActionResult<{ closingAt: string; serverNow: string }>> {
+  return run(
+    "announceClose",
+    async () => {
+      const user = await requireRegisteredUser();
+      const lead = v.int(minutes, "minutes", 2, 5);
+      if (!isAnnounceMinutes(lead)) throw new Error("invalid_input");
+      const auth = await requireSessionOwner(sessionId, user.id);
+      assertSessionWritable(auth);
+      if (!auth.isGroup) throw new Error("invalid_input");
+
+      const now = new Date();
+      const closingAt = closingAtFor(now.getTime(), lead);
+      const res = await prisma.cuppingSession.updateMany({
+        where: { id: sessionId, isGroup: true, status: { not: "closed" } },
+        data: { closingAt },
+      });
+      if (res.count === 0) throw new Error("session_closed");
+
+      revalidatePath(`/es/app/sessions/${sessionId}/cup`);
+      revalidatePath(`/en/app/sessions/${sessionId}/cup`);
+      return { closingAt: closingAt.toISOString(), serverNow: new Date().toISOString() };
+    },
+    { sessionId },
+  );
+}
+
+/** Takes the announcement back. Idempotent (nothing announced = ok). */
+export async function cancelAnnouncedClose(sessionId: string): Promise<ActionResult<{ cancelled: boolean }>> {
+  return run(
+    "cancelAnnouncedClose",
+    async () => {
+      const user = await requireRegisteredUser();
+      const auth = await requireSessionOwner(sessionId, user.id);
+      assertSessionWritable(auth);
+      if (!auth.isGroup) throw new Error("invalid_input");
+
+      const res = await prisma.cuppingSession.updateMany({
+        where: { id: sessionId, isGroup: true, status: { not: "closed" }, closingAt: { not: null } },
+        data: { closingAt: null },
+      });
+      revalidatePath(`/es/app/sessions/${sessionId}/cup`);
+      revalidatePath(`/en/app/sessions/${sessionId}/cup`);
+      return { cancelled: res.count > 0 };
+    },
+    { sessionId },
+  );
+}
+
+// ─── Accept a complete draft the close left out (S10 WP4b, Kim C1) ───────────
+// `TODO(kim-validar:C1)`. SANCTIONED post-close write (docs/flows.md section 1):
+// the session OWNER turns ONE complete draft of a CLOSED group session into a
+// submitted evaluation, stamped `acceptedLateAt`. Never behind
+// assertSessionWritable (the session IS closed); every other guard is here:
+// the evaluation is resolved to its sample and session on the server (never a
+// client-supplied session id), the caller must own that session, and
+// isAcceptableLate (closed, draft, COMPLETE by the submit path's own rule, a real
+// account) must hold. In ONE transaction: the row is locked, a draft saved before
+// the 2026-11 rule (cups NULL) is rewritten exactly as the submit path rewrites
+// it, then isDraft flips (the aggregate trigger recomputes THAT sample's group
+// score only: mode "full" semantics, a deliberate owner action). No other
+// evaluation is touched, and the cupper's stored score for this row is written
+// once, here. Idempotent: an already submitted row is a no-op success.
+export async function acceptLateEvaluation(
+  evaluationId: string,
+  /** The row's `updatedAt` as the organizer's page rendered it (ISO, milliseconds kept):
+   *  the version guard. A different stored value answers `conflict` and flips nothing. */
+  expectedUpdatedAt: string,
+): Promise<ActionResult<{ accepted: boolean }>> {
+  return run("acceptLateEvaluation", async () => {
+    const user = await requireRegisteredUser();
+    const id = v.str(evaluationId, "evaluationId", { max: 64 }) as string;
+    const expectedAt = v.isoDate(expectedUpdatedAt, "expectedUpdatedAt");
+
+    const found = await prisma.evaluation.findUnique({
+      where: { id },
+      select: { sessionSampleId: true },
+    });
+    if (!found) throw new Error("not_found_or_forbidden");
+    const auth = await requireSampleOwner(found.sessionSampleId, user.id);
+    if (!auth.isGroup) throw new Error("invalid_input");
+
+    const accepted = await prisma.$transaction(
+      async (tx) => {
+        // LOCK ORDER (lib/sessionLock.ts): the session row first, SHARED (the flip below fires the
+        // aggregate trigger, which needs the sample row; a reference change takes the session row
+        // exclusively first), then the evaluation row.
+        await tx.$queryRaw`SELECT 1 FROM cupping_sessions WHERE id = ${auth.sessionId} FOR SHARE`;
+        // Lock the row so a late device send (submitLateDraft) cannot change the
+        // draft between the completeness check and the flip.
+        await tx.$queryRaw`SELECT id FROM evaluations WHERE id = ${id} FOR UPDATE`;
+        const row = await tx.evaluation.findUnique({
+          where: { id },
+          select: {
+            id: true,
+            cupperId: true,
+            isDraft: true,
+            descriptiveData: true,
+            affectiveData: true,
+            combinedData: true,
+            updatedAt: true,
+          },
+        });
+        if (!row) throw new Error("not_found_or_forbidden");
+        if (!row.isDraft) return false; // already submitted: nothing to do
+        // The organizer accepts exactly the version they saw (review H2).
+        if (row.updatedAt.getTime() !== expectedAt.getTime()) throw new Error("conflict");
+        // A cupper the owner excluded from the results is never accepted (review M1).
+        const participant = await tx.sessionParticipant.findUnique({
+          where: { sessionId_userId: { sessionId: auth.sessionId, userId: row.cupperId } },
+          select: { excludedFromResults: true },
+        });
+        if (
+          !isAcceptableLate(
+            row,
+            { status: auth.status, format: auth.format },
+            { excluded: participant?.excludedFromResults === true },
+          )
+        ) {
+          throw new Error("invalid_input");
+        }
+        await recomputeLegacyDraftByIdInTx(tx, {
+          evaluationId: id,
+          sessionId: auth.sessionId,
+          cupperId: row.cupperId,
+          format: auth.format,
+          cupsPerSample: auth.cupsPerSample,
+          referenceSampleId: auth.referenceSampleId,
+          referenceMode: auth.referenceMode,
+        });
+        const now = new Date();
+        const res = await tx.evaluation.updateMany({
+          where: { id, isDraft: true },
+          data: { isDraft: false, submittedAt: now, acceptedLateAt: now },
+        });
+        return res.count === 1;
+      },
+      { maxWait: 10_000, timeout: 30_000 },
+    );
+
+    if (accepted) {
+      // The cupper's coffee history carries the community score of the day: refresh
+      // it like the exclusion action does. Best effort: the acceptance is committed.
+      try {
+        await syncCoffeeHistoryForSession(auth.sessionId);
+      } catch (err) {
+        logWarn({
+          where: "acceptLateEvaluation.history_sync_failed",
+          sessionId: auth.sessionId,
+          message: err instanceof Error ? err.message : "unknown",
+        });
+      }
+      logInfo({ where: "acceptLateEvaluation", sessionId: auth.sessionId, evaluationId: id, userId: user.id });
+    }
+
+    revalidatePath(`/es/app/sessions/${auth.sessionId}/results`);
+    revalidatePath(`/en/app/sessions/${auth.sessionId}/results`);
+    return { accepted };
+  });
+}
+
+// ─── A text note after the close (S10 WP4b, Kim C2) ──────────────────────────
+// `TODO(kim-validar:C2)`. SANCTIONED post-close write: the cupper adds (or
+// clears, with "") a text note on their OWN SUBMITTED evaluation of a CLOSED
+// session. Writes ONLY postCloseNote / postCloseNoteAt: never the JSON module,
+// a rating, isDraft or submittedAt, so the aggregate trigger (which fires on
+// isDraft) does not run and no score changes. Guests may write (it is their own
+// evaluation); expectedUserId is the shared-device guard of the other cup-page
+// writes. Max 500 characters.
+export async function setPostCloseNote(
+  evaluationId: string,
+  text: string,
+  expectedUserId?: string,
+): Promise<ActionResult<{ text: string | null; at: string | null }>> {
+  return run("setPostCloseNote", async () => {
+    const user = await requireUserExpecting(expectedUserId);
+    const id = v.str(evaluationId, "evaluationId", { max: 64 }) as string;
+    const note = normalizePostCloseNote(text);
+
+    const row = await prisma.evaluation.findUnique({
+      where: { id },
+      select: {
+        cupperId: true,
+        isDraft: true,
+        sessionSample: { select: { sessionId: true, session: { select: { status: true } } } },
+      },
+    });
+    // Someone else's evaluation reads exactly like a missing one.
+    if (!row || row.cupperId !== user.id) throw new Error("not_found_or_forbidden");
+    if (!postCloseNoteAllowed({ sessionStatus: row.sessionSample.session.status, evaluation: row, userId: user.id })) {
+      throw new Error("invalid_input");
+    }
+
+    const at = note === null ? null : new Date();
+    const res = await prisma.evaluation.updateMany({
+      where: { id, cupperId: user.id, isDraft: false, sessionSample: { session: { status: "closed" } } },
+      data: { postCloseNote: note, postCloseNoteAt: at },
+    });
+    if (res.count === 0) throw new Error("invalid_input");
+
+    revalidatePath(`/es/app/sessions/${row.sessionSample.sessionId}/results`);
+    revalidatePath(`/en/app/sessions/${row.sessionSample.sessionId}/results`);
+    return { text: note, at: at ? at.toISOString() : null };
+  });
 }
 
 // NOTE: the old `syncCoffeeHistory` server action moved to

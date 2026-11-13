@@ -140,9 +140,11 @@ export async function deleteAccountData(user: {
     // ── Evaluation.cupperId: anonymized, not erased. isDraft is not in the
     //    SET, so the aggregate trigger does not re-fire and stored community
     //    scores stay exactly as they were. ────────────────────────────────
+    //    The note a person added after a close is free text they wrote: it is erased
+    //    (S10 WP4b review L4), the evaluation itself stays. ───────────────────
     await tx.evaluation.updateMany({
       where: { cupperId: userId },
-      data: { cupperId: placeholderId },
+      data: { cupperId: placeholderId, postCloseNote: null, postCloseNoteAt: null },
     });
 
     // ── Per-sample authorship on kept rows ────────────────────────────────

@@ -42,6 +42,7 @@ const GUEST_ALLOWED: Record<string, Record<string, string>> = {
     submitAllEvaluations: "member submit; guests submit their evaluations",
     joinViaToken: "invite join, the entry point for guests",
     completeGuestOnboarding: "guest onboarding after a QR join",
+    setPostCloseNote: "a guest may add a text note to their OWN submitted evaluation after the close (S10 WP4b, C2)",
   },
   // S8-19: both exports act on the signed-in user's OWN account only, never
   // an id from the client.
@@ -63,7 +64,7 @@ const OWNER_ONLY: Record<string, string[]> = {
   ],
   "community.ts": [
     "finishSoloSession", "startSession", "startWarmup", "stopWarmup", "getCloseImpact", "closeSession",
-    "resendCloseEmails", "revealSample", "setParticipantExclusion", "refreshAggregateScores",
+    "resendCloseEmails", "closeAnnounced", "revealSample", "setParticipantExclusion", "refreshAggregateScores",
   ],
 };
 

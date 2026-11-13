@@ -4,7 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Button, ConfirmDialog, Badge } from "@/components/ui";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
-import { listTerminalEntries, removeModule, type UnsyncedEntry } from "@/lib/offline/store";
+import {
+  applyReplayOutcome,
+  listTerminalEntries,
+  removeModule,
+  type UnsyncedEntry,
+} from "@/lib/offline/store";
+import { submitLateDraft } from "@/app/actions/offline";
+import { isModuleSendable } from "@/lib/lateContributions";
+import { useActionFeedback } from "@/components/ui";
 import { draftToText } from "@/lib/offline/draftText";
 import { OFFLINE_SYNC_EVENT } from "@/hooks/useOfflineSync";
 import type { ModuleKey } from "@/lib/offline/types";
@@ -35,16 +43,27 @@ export type UnsyncedNotesTranslations = {
   moduleExtrinsic: string;
   /** RAW template with "{date}". */
   savedAt: string;
+  // S10 WP4b (Kim C1c): send a COMPLETE note of a closed session to the organizer.
+  send: string;
+  sending: string;
+  sendHint: string;
+  sent: string;
+  sendFailed: string;
+  sendConflict: string;
+  /** The organizer already holds the draft the server had when the session closed. */
+  sendKeptDraft: string;
+  sendRejected: string;
 };
 
 const entryKey = (e: UnsyncedEntry) => `${e.sessionId}:${e.sampleId}:${e.moduleKey}`;
 
 // "Notas sin sincronizar" (S8-09, F-sesiones-5, F-offline-1 storage half): the
 // drafts that can never reach the server (session closed, sample deleted,
-// replay gave up). Read-only on purpose: view and copy only. Sending a note to
-// the session owner as a late contribution is a post-close write and waits on
-// Kim's answer to C1. Nothing is deleted without an explicit confirmation.
-// TODO(C1): send-to-owner (Kim C1 option b) -- a post-close write, not built.
+// replay gave up). View and copy always work. A COMPLETE note of a closed session can
+// also be sent to the organizer (S10 WP4b, `TODO(kim-validar:C1)`): it lands on the
+// server as a draft only and the organizer decides whether to include it. An
+// incomplete note keeps today's options. Nothing is deleted without an explicit
+// confirmation.
 export function UnsyncedNotesPanel({
   open,
   onOpenChange,
@@ -62,6 +81,8 @@ export function UnsyncedNotesPanel({
   const [expanded, setExpanded] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [discarding, setDiscarding] = useState<UnsyncedEntry | null>(null);
+  const [sendingKey, setSendingKey] = useState<string | null>(null);
+  const feedback = useActionFeedback();
 
   const refresh = useCallback(async () => {
     setEntries(await listTerminalEntries(userId));
@@ -110,6 +131,44 @@ export function UnsyncedNotesPanel({
     window.dispatchEvent(new Event(OFFLINE_SYNC_EVENT));
   };
 
+  const send = async (e: UnsyncedEntry) => {
+    setSendingKey(entryKey(e));
+    try {
+      const { status, reason } = await submitLateDraft({
+        sessionSampleId: e.sampleId,
+        moduleKey: e.moduleKey as "descriptive" | "affective" | "combined",
+        data: e.data,
+        clientTs: e.updatedAt,
+        pinnedView: e.pinnedView === true,
+        expectedUserId: userId,
+      });
+      if (status === "synced") {
+        // The module leaves the panel as synced (lib/offline/status.ts "synced"); an edit
+        // made meanwhile keeps its newer data (ifUpdatedAt).
+        await applyReplayOutcome(e.sessionId, userId, e.sampleId, e.moduleKey, "synced", {
+          ifUpdatedAt: e.updatedAt,
+        });
+        feedback.notifySuccess(t.sent);
+        await refresh();
+        window.dispatchEvent(new Event(OFFLINE_SYNC_EVENT));
+      } else {
+        feedback.notifyWarning(
+          status === "conflict"
+            ? reason === "saved_before_close"
+              ? t.sendKeptDraft
+              : t.sendConflict
+            : status === "rejected" || status === "gone"
+              ? t.sendRejected
+              : t.sendFailed,
+        );
+      }
+    } catch {
+      feedback.notifyWarning(t.sendFailed);
+    } finally {
+      setSendingKey(null);
+    }
+  };
+
   const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
 
   return (
@@ -141,6 +200,9 @@ export function UnsyncedNotesPanel({
                     <p className="mt-1 font-sans text-xs text-on-surface-variant">
                       {t.savedAt.replace("{date}", dateFmt.format(new Date(e.updatedAt)))}
                     </p>
+                    {e.status === "closed_unsent" && isModuleSendable(e.moduleKey, e.data) && (
+                      <p className="mt-1 font-sans text-xs text-on-surface-variant">{t.sendHint}</p>
+                    )}
                     {expanded === key && (
                       <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-input bg-surface p-2 font-sans text-sm text-on-surface">
                         {text}
@@ -155,6 +217,16 @@ export function UnsyncedNotesPanel({
                       >
                         {expanded === key ? t.hide : t.view}
                       </Button>
+                      {e.status === "closed_unsent" && isModuleSendable(e.moduleKey, e.data) && (
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          disabled={sendingKey !== null}
+                          onClick={() => void send(e)}
+                        >
+                          {sendingKey === key ? t.sending : t.send}
+                        </Button>
+                      )}
                       <Button size="sm" variant="secondary" onClick={() => void copy(e)}>
                         {copiedKey === key ? t.copied : t.copy}
                       </Button>
