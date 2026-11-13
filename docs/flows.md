@@ -354,6 +354,84 @@ sessions… — onto the signed-in account (**new or already existing**), delete
 the anonymous user, and returns to the results page. Never gate *joining* on an
 email — valor antes que fricción (see PRODUCT.md).
 
+**"¿Eres {nombre}?" on a shared device (S10 WP8, F-guest-4; `TODO(kim-validar:E1)`,
+simulated answer).** When the browser already holds an ANONYMOUS user and opens a
+join link, the page no longer acts as that guest silently. The pure
+`joinScreenFor(decision.kind, viewer)` (`lib/joinRules.ts`) returns `"identity"` for an
+anonymous viewer whose `evaluateJoin` decision is `redirect` (already a member) or
+`ok` (newcomer); registered users, the owner, refused links and "no user" are unchanged.
+
+```mermaid
+flowchart TD
+    O[open /join/token] --> V{viewer}
+    V -- no user --> GF[guest name form]
+    V -- registered or owner --> D[evaluateJoin: redirect / join button / refusal]
+    V -- anonymous --> K{decision}
+    K -- refused --> R[refusal screen]
+    K -- redirect or ok --> I["¿Eres nombre?"]
+    I -- Continuar como nombre --> C[member: go in / newcomer: join action]
+    I -- No soy nombre --> W[confirm: cuppings no longer openable from here;\nunsynced note count if any]
+    W -- confirm --> S[signOut local, then clearLocalDeviceState]
+    S --> H[hard navigation to the SAME join URL] --> N[normal decision again:
+guest form, or the refusal screen when the link is closed,
+expired, full or entries-locked]
+```
+
+Nothing is deleted from the device's draft store (drafts are keyed by user id and
+stay, as on sign-out); the previous guest reaches their cuppings again only if they
+saved them in an account. Every action on the screen (continue, join, "No soy", the draft sync) first checks
+that the browser is still signed in as the guest it was rendered for
+(`classifyGuestLookup`; a missing session counts as a different user); a stale tab only
+refreshes. **Old tabs (third + fourth review):** the five live writes of the cup page
+(`upsertEvaluation`, `upsertPhysical`, `upsertExtrinsic`, `submitAllEvaluations`,
+`finishSoloSession`), `completeGuestOnboarding` and the three replay actions take an
+optional `expectedUserId` (the user the page was rendered for; `requireUserExpecting`,
+`lib/auth.ts`, table `decideServerIdentity` in `lib/expectedUser.ts`).
+
+| Server sees | Live write | Replay |
+|---|---|---|
+| a user, the expected one | proceeds | proceeds |
+| a user, a DIFFERENT one | `identity_changed` (nothing read or written, no profile upsert) | `pending` |
+| nobody signed in | `not_authenticated`, exactly as `requireUser()` (client keeps it pending) | `pending` |
+| auth lookup failed (network, 5xx, 408, 429) | `not_authenticated`, as main | `pending` |
+| no `expectedUserId` | `requireUser()` unchanged | unchanged |
+
+"Identity changed" means ONE thing: a user IS signed in and it is a different user.
+`CupClient` freezes the user id at mount, passes it on every write and latches only on the
+server's `identity_changed`. The latch is module-level (`lib/identityChange.ts`): it lasts
+until a reload or until a later check sees the SAME user again, across client navigation.
+While latched the cup page sends no live writes (the draft stays local under the rendered
+user's key) and "Enviar" shows the `identity_changed` toast. The offline replay does not
+read the latch (the server-side `blob.userId` check protects it). The notice shows in the
+cup page's `OfflineBanner` (the cup shell covers the app bar) and in `IdentityWatcher`'s
+bar on every other app page; never both.
+
+`IdentityWatcher` reads who holds the cookie with `auth.getSession()` (local read):
+
+| Browser read | On mount / resume | After a marker naming this tab's user |
+|---|---|---|
+| same user | clear the latch | nothing |
+| different user | latch (claim case below: reload) | latch (claim case: reload) |
+| no session | nothing | latch |
+| error | nothing | nothing (next resume re-checks) |
+
+A `cata_identity_epoch` marker naming another user is ignored; one naming nobody (sign-out
+button) is treated like one naming this tab's user.
+
+**A guest who finishes the claim in another tab** is the same person, not a new one: when
+`cata_claim_done` says the RENDERED anonymous id was claimed by the CURRENT signed-in id
+(`claimedRenderedUser`), no notice is shown. The cup page awaits its pending draft writes,
+`rekeyUserBlobs(anon, account)` moves every blob, and the page reloads so it renders for
+the account and the drafts sync. The claim markers survive the re-key (TTL 1 h); every app
+mount re-runs the idempotent re-key.
+
+`IdentityWatcher` also learns of a change from the shell re-rendering for another user.
+The dialog waits at most 8 s for the sync. When the dialog opens online, the guest's own saved drafts are replayed
+first (the sign-out guard's `retrySync`) and only what is still unsynced is counted.
+`GuestJoinForm` reuses silently only the anonymous user its own tab created on an
+earlier failed try (`sessionStorage`, `existingUserAction`); any other anonymous user
+makes it refresh so the page renders this screen.
+
 **Guest scope in the app shell.** A guest may open Inicio, Sesiones, their own
 session pages (cup / waiting / results / print) and **Perfil** (+ history) —
 `lib/guestScope.ts`. The nav is the SAME for everyone; tapping a gated tab or

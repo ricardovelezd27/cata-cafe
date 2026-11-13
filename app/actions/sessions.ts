@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireUser, requireRegisteredUser } from "@/lib/auth";
+import { requireUser, requireRegisteredUser, requireUserExpecting } from "@/lib/auth";
+import { IDENTITY_CHANGED } from "@/lib/expectedUser";
 import { run } from "@/lib/safeAction";
 import { notifyFlagAfterGroupChange } from "@/lib/groupNotify";
 import type { ActionResult } from "@/lib/actionResult";
@@ -675,8 +676,22 @@ export async function upsertEvaluation(input: {
   // omit it and behave exactly as before); a write older than the row's newest
   // accepted one is ignored server-side. Invalid values count as absent.
   clientTs?: number;
-}) {
-  const user = await requireUser({ skipProfileUpsert: true });
+  // S10 WP8 (shared device): the user this page was RENDERED for. Optional;
+  // absent = today's behaviour. When present and the signed-in user differs
+  // (or nobody is signed in) NOTHING is written and the answer is
+  // `{ ok: false, error: "identity_changed" }` (not a throw: a thrown error
+  // reaches the browser as an opaque digest).
+  expectedUserId?: string;
+}): Promise<{ ok: true; evaluationId: string } | { ok: false; error: "identity_changed" }> {
+  let user;
+  try {
+    user = await requireUserExpecting(input.expectedUserId, { skipProfileUpsert: true });
+  } catch (e) {
+    if (input.expectedUserId !== undefined && e instanceof Error && e.message === IDENTITY_CHANGED) {
+      return { ok: false, error: IDENTITY_CHANGED };
+    }
+    throw e;
+  }
   const auth = await requireSampleMember(input.sessionSampleId, user.id);
   // Closed sessions are read-only: a post-close edit would change raw data
   // without re-firing the aggregate trigger (it only fires on isDraft).
@@ -1479,8 +1494,18 @@ export async function removeSessionSample(sampleId: string, locale: string = "es
 export async function upsertPhysical(input: {
   sessionSampleId: string;
   data: Record<string, unknown>;
-}) {
-  const user = await requireUser({ skipProfileUpsert: true });
+  /** S10 WP8: see upsertEvaluation. Absent = today's behaviour. */
+  expectedUserId?: string;
+}): Promise<{ ok: true } | { ok: false; error: "identity_changed" }> {
+  let user;
+  try {
+    user = await requireUserExpecting(input.expectedUserId, { skipProfileUpsert: true });
+  } catch (e) {
+    if (input.expectedUserId !== undefined && e instanceof Error && e.message === IDENTITY_CHANGED) {
+      return { ok: false, error: IDENTITY_CHANGED };
+    }
+    throw e;
+  }
   assertSessionWritable(await requireSampleOwner(input.sessionSampleId, user.id));
   await prisma.physicalEvaluation.upsert({
     where: { sessionSampleId: input.sessionSampleId },
@@ -1761,9 +1786,12 @@ export async function assignSampleCoffee(
 export async function upsertExtrinsic(input: {
   sessionSampleId: string;
   data: Record<string, unknown>;
+  /** S10 WP8: see upsertEvaluation. Absent = today's behaviour; a mismatch is
+   *  the ActionResult error `identity_changed`. */
+  expectedUserId?: string;
 }): Promise<ActionResult<{ edited: boolean }>> {
   return run("upsertExtrinsic", async () => {
-    const user = await requireUser({ skipProfileUpsert: true });
+    const user = await requireUserExpecting(input.expectedUserId, { skipProfileUpsert: true });
     const auth = await requireSampleOwner(input.sessionSampleId, user.id);
     const over = isSessionExpired(auth);
     if (over) {

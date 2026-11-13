@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireUser, requireRegisteredUser } from "@/lib/auth";
+import { requireUser, requireRegisteredUser, requireUserExpecting } from "@/lib/auth";
+import { IDENTITY_CHANGED } from "@/lib/expectedUser";
 import {
   requireSessionOwner,
   requireSessionMember,
@@ -38,14 +39,19 @@ import { removeSamplesInTx } from "@/lib/sampleRemoval";
 // only someone with nothing submitted sees the error.
 export async function submitAllEvaluations(
   sessionId: string,
+  // S10 WP8 (shared device): the user the cup page was RENDERED for. Optional;
+  // absent = today's behaviour. A different (or missing) signed-in user writes
+  // nothing and returns the ActionResult error `identity_changed`.
+  expectedUserId?: string,
 ): Promise<ActionResult<{ closed: boolean; submitted: number }>> {
-  return run("submitAllEvaluations", () => submitAllEvaluationsBody(sessionId), { sessionId });
+  return run("submitAllEvaluations", () => submitAllEvaluationsBody(sessionId, expectedUserId), { sessionId });
 }
 
 async function submitAllEvaluationsBody(
   sessionId: string,
+  expectedUserId?: string,
 ): Promise<{ closed: boolean; submitted: number }> {
-  const user = await requireUser();
+  const user = await requireUserExpecting(expectedUserId);
   // Member gate + closed/expired guard (a closed session's results are final)
   // + not-started guard (a participant cannot write before the master starts).
   const auth = await requireSessionMember(sessionId, user.id);
@@ -168,11 +174,13 @@ async function maybeAutoCloseSoloSession(sessionId: string, userId: string) {
 // Group sessions never use this (they close via closeSession / the cron).
 export async function finishSoloSession(
   sessionId: string,
+  /** S10 WP8: see submitAllEvaluations. Absent = today's behaviour. */
+  expectedUserId?: string,
 ): Promise<ActionResult<{ closed: boolean; scored: number; removed: number; kept: number }>> {
   return run(
     "finishSoloSession",
     async () => {
-      const user = await requireUser();
+      const user = await requireUserExpecting(expectedUserId);
       const auth = await requireSessionOwner(sessionId, user.id);
       assertSessionWritable(auth);
       if (auth.isGroup) throw new Error("invalid_input");
@@ -536,8 +544,25 @@ export async function revealSample(sampleId: string): Promise<ActionResult> {
 // joinViaToken. Upsert (not update) because the DB trigger normally creates
 // the Profile row on signup, but we can't depend on its timing relative to
 // this call — the upsert makes either ordering safe.
-export async function completeGuestOnboarding(name: string) {
-  const user = await requireUser({ skipProfileUpsert: true });
+//
+// S10 WP8 (fourth review): the join form passes the id `signInAnonymously`
+// returned (or the anonymous user it reuses) as `expectedUserId`. If the cookie
+// meanwhile holds a DIFFERENT user (another tab signed someone else in), nothing
+// is written and the answer is `{ ok: false, error: "identity_changed" }`;
+// nobody signed in / auth unreachable stay `not_authenticated`, as before.
+export async function completeGuestOnboarding(
+  name: string,
+  expectedUserId?: string,
+): Promise<{ ok: true } | { ok: false; error: "identity_changed" }> {
+  let user;
+  try {
+    user = await requireUserExpecting(expectedUserId, { skipProfileUpsert: true });
+  } catch (e) {
+    if (expectedUserId !== undefined && e instanceof Error && e.message === IDENTITY_CHANGED) {
+      return { ok: false, error: IDENTITY_CHANGED };
+    }
+    throw e;
+  }
   const displayName = v.str(name, "name", { max: 80, required: false }) ?? "Catador";
 
   await prisma.profile.upsert({

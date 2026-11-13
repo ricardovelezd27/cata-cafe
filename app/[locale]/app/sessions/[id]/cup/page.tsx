@@ -426,6 +426,7 @@ export default async function CupPage({
           bannerStorageUnavailable: t("offline.bannerStorageUnavailable"),
           bannerNewVersion: t("offline.bannerNewVersion"),
           reloadNow: t("offline.reloadNow"),
+          bannerIdentityChanged: t("errors.codes.identity_changed"),
           // Raw templates: "{seconds}" / "{count}" are filled client-side.
           bannerNextAttempt: t.raw("offline.bannerNextAttempt") as string,
           terminalNotice: t.raw("offline.terminalNotice") as string,
