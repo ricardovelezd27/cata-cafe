@@ -208,7 +208,7 @@ $fn$;
   SELECT count(*) INTO v_changed
     FROM agg_before b JOIN aggregate_scores a USING ("sessionSampleId")
    WHERE a."communityScore" IS DISTINCT FROM b."communityScore";
-  v_out := v_out || format(E'\n 1 aggregate rows: %s, of which communityScore would change under a FULL re-fire (production never does one): %s', v_total, v_changed);
+  v_out := v_out || format(E'\n 1 (informational) aggregate rows: %s, of which communityScore would change under a FULL re-fire (production never does one): %s', v_total, v_changed);
 
   FOR r IN
     SELECT CASE WHEN b."cupsPerSample" <= 1 THEN '1 cup'
@@ -220,13 +220,13 @@ $fn$;
       FROM agg_before b JOIN aggregate_scores a USING ("sessionSampleId")
      GROUP BY 1 ORDER BY 1
   LOOP
-    v_out := v_out || format(E'\n 2 by cups per sample, group %s: %s rows, %s would change', r.bucket, r.n, r.changed);
+    v_out := v_out || format(E'\n 2 (informational) by cups per sample, group %s: %s rows, %s would change', r.bucket, r.n, r.changed);
   END LOOP;
 
   SELECT max(a."communityScore" - b."communityScore"), min(a."communityScore" - b."communityScore")
     INTO v_up, v_down
     FROM agg_before b JOIN aggregate_scores a USING ("sessionSampleId");
-  v_out := v_out || format(E'\n 3 change of communityScore under a full re-fire, highest: %s, lowest: %s (both negative = every sample would go down)', v_up, v_down);
+  v_out := v_out || format(E'\n 3 (informational) change of communityScore under a full re-fire, highest: %s, lowest: %s. Increases are expected for samples with 5 or more cups and a defective cup, which used to be counted twice; decreases are expected for samples under 5 cups with flagged cups, which used to have no deduction', v_up, v_down);
 
   -- A check that CAN fail: the old function never wrote ruleVersion 2.
   SELECT count(*) INTO v_excess
@@ -237,12 +237,16 @@ $fn$;
   v_out := v_out || format(E'\n 5 proconfig of recompute_aggregate_score (expect {search_path=public}): %s', v_conf);
 
   FOR r IN
-    SELECT b."sessionSampleId" AS id, b."cupsPerSample" AS cups, b."communityScore" AS before, a."communityScore" AS after
-      FROM agg_before b JOIN aggregate_scores a USING ("sessionSampleId")
+    SELECT cs.name AS session_name, cs.date AS session_date, ss.label AS sample_label,
+           b."cupsPerSample" AS cups, b."communityScore" AS before, a."communityScore" AS after
+      FROM agg_before b
+      JOIN aggregate_scores a USING ("sessionSampleId")
+      JOIN session_samples ss ON ss.id = b."sessionSampleId"
+      JOIN cupping_sessions cs ON cs.id = ss."sessionId"
      WHERE a."communityScore" IS DISTINCT FROM b."communityScore"
-     ORDER BY abs(a."communityScore" - b."communityScore") DESC, b."sessionSampleId" LIMIT 10
+     ORDER BY abs(a."communityScore" - b."communityScore") DESC, cs.name, ss.label LIMIT 10
   LOOP
-    v_out := v_out || format(E'\n 6 sample %s (%s cups per sample): %s -> %s', r.id, r.cups, r.before, r.after);
+    v_out := v_out || format(E'\n 6 (informational) %s, %s, sample %s (%s cups per sample): %s -> %s', r.session_name, to_char(r.session_date, 'YYYY-MM-DD'), r.sample_label, r.cups, r.before, r.after);
   END LOOP;
 
   RAISE EXCEPTION E'PHASE 26 DRY RUN: NOTHING WAS APPLIED (this error is the expected result). Compare each line with its expectation:%', v_out;

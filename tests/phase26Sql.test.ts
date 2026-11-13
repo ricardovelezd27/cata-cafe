@@ -27,7 +27,12 @@ function stripComments(sql: string): string {
 
 const START = "-- >>> PHASE 26 statements";
 const END = "-- <<< end of PHASE 26 statements";
-const phase26 = SQL.slice(SQL.search(/^-- PHASE 26 \(/m));
+// Bounded: from its own header to the NEXT "-- PHASE <number> (" header of any number (a later
+// phase is appended after it by another PR), or the end of the file.
+const phaseStart = SQL.search(/^-- PHASE 26 \(/m);
+const phaseRest = SQL.slice(phaseStart + 1);
+const nextPhase = phaseRest.search(/^-- PHASE \d+ \(/m);
+const phase26 = nextPhase === -1 ? SQL.slice(phaseStart) : SQL.slice(phaseStart, phaseStart + 1 + nextPhase);
 
 const block = (s: string, start: string, end: string) => {
   const a = s.indexOf(start);
@@ -100,12 +105,14 @@ describe("PHASE 26: flat deduction, diluted beyond five pooled cups", () => {
     const m = stripComments(read("prisma/migrations/20261113090000_evaluation_cups/migration.sql"));
     expect(m).toContain('ALTER TABLE "evaluations" ADD COLUMN "cups" INTEGER;');
     expect(m).toContain('ALTER TABLE "aggregate_scores" ADD COLUMN "ruleVersion" INTEGER NOT NULL DEFAULT 1;');
+    expect(m).toContain("SET LOCAL lock_timeout = '5s';");
+    expect(m).not.toMatch(/^\s*SET lock_timeout/m); // a plain SET would leak into later migrations
     expect(m).not.toMatch(/\bUPDATE\b/i);
     expect(m).not.toMatch(/\bINSERT\b/i);
   });
 
   it("carries the PHASE 23 body as a commented rollback", () => {
-    const after = SQL.slice(SQL.indexOf(END));
+    const after = phase26.slice(phase26.indexOf(END));
     expect(after).toMatch(/^-- ROLLBACK/m);
     expect(after).toContain("--   CREATE OR REPLACE FUNCTION recompute_aggregate_score()");
     expect(after).toContain("--     IF v_cups_per_sample >= 5 AND v_total_cups > 0 THEN");

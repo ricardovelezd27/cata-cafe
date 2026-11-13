@@ -26,8 +26,12 @@ function stripComments(sql: string): string {
     .join("\n");
 }
 
-// Bounded: later phases (PHASE 26 holds INSERTs inside a function) are not part of this one.
-const phase25 = SQL.slice(SQL.indexOf("-- PHASE 25"), SQL.indexOf("-- PHASE 26"));
+// Bounded: from its own header to the NEXT "-- PHASE <number> (" header of any number (later
+// phases, e.g. PHASE 26 with INSERTs inside a function, are not part of this one), or end of file.
+const phaseStart = SQL.search(/^-- PHASE 25 \(/m);
+const phaseRest = SQL.slice(phaseStart + 1);
+const nextPhase = phaseRest.search(/^-- PHASE \d+ \(/m);
+const phase25 = nextPhase === -1 ? SQL.slice(phaseStart) : SQL.slice(phaseStart, phaseStart + 1 + nextPhase);
 
 const block = (s: string, start: string, end: string) => {
   const a = s.indexOf(start);

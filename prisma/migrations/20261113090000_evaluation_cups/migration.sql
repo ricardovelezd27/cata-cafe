@@ -12,7 +12,8 @@
 -- (runbook section 30).
 
 -- Both ALTERs are metadata-only but each takes a brief exclusive lock: fail fast instead of queueing behind a long transaction.
-SET lock_timeout = '5s';
+-- SET LOCAL, not SET: a plain SET leaks into the next migrations of the same deploy run (second review M3).
+SET LOCAL lock_timeout = '5s';
 
 -- AlterTable
 ALTER TABLE "evaluations" ADD COLUMN "cups" INTEGER;
