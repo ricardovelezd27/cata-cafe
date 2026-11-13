@@ -324,6 +324,7 @@ describe("the account must be empty: table by table", () => {
       case "SessionParticipant.userId": return void (await makeSession({ ownerId: other, isGroup: true, participants: [id] }));
       case "UserCoffeeHistory.userId": return void (await prisma.userCoffeeHistory.create({ data: { userId: id, tastedAt: new Date() } }));
       case "SavedInsight.createdBy": return void (await prisma.savedInsight.create({ data: { createdBy: id, name: "x", config: {} } }));
+      case "WarmupReflection.userId": return void (await prisma.warmupReflection.create({ data: { userId: id, exerciseId: "arrival", feel: "tranquilo" } }));
       case "TastingGroup.createdBy": return void (await prisma.tastingGroup.create({ data: { name: "G", createdBy: id } }));
       case "GroupPost.authorId": {
         const g = await prisma.tastingGroup.create({ data: { name: "G", createdBy: other } });
@@ -342,7 +343,7 @@ describe("the account must be empty: table by table", () => {
 
   it("the seed list covers every blocking rule of the manifest", () => {
     const blocking = PROFILE_MANIFEST.map((e) => manifestKey(e.model, e.field)).filter((k) => UNUSED_ACCOUNT_RULES[k].rule === "blocks");
-    expect(blocking.length).toBe(14);
+    expect(blocking.length).toBe(15);
   });
 
   for (const [key, rule] of Object.entries(UNUSED_ACCOUNT_RULES)) {
