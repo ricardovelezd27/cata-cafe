@@ -16,6 +16,7 @@ import { deriveMyEvaluation, summarizeMyProgress } from "@/lib/evaluationState";
 import { canViewGroupResults, isSessionExpired } from "@/lib/sessionState";
 import { resultsUpdatedAfterClose } from "@/lib/exclusionReasons";
 import { ownExclusionNotice } from "@/lib/exclusionNotice";
+import { originEditedAfterClose } from "@/lib/originEdit";
 import { gateSampleForViewer, communityHidden } from "@/lib/reports/sampleGate";
 import { gateSamplePrep } from "@/lib/samplePrep";
 import { getUsableCoffees } from "@/lib/coffees/queries";
@@ -97,6 +98,7 @@ export default async function ResultsPage({
               select: {
                 name: true,
                 deletedAt: true,
+                updatedAt: true,
                 country: true,
                 region: true,
                 producer: true,
@@ -698,6 +700,20 @@ export default async function ResultsPage({
   const ownExclusion = session.isGroup
     ? ownExclusionNotice(session.participants, user.id, exclusionReasonLabels)
     : null;
+  // F-cafes-9: origin data is live; say so when it changed after the session closed
+  // (the sample's own origin record, or the linked coffee). One rule: lib/originEdit.ts.
+  const originEditedAtFor = (s: {
+    revealed: boolean;
+    extrinsic?: { editedAt: Date | null } | null;
+    coffee?: { updatedAt: Date } | null;
+  }): Date | null =>
+    s.revealed
+      ? originEditedAfterClose({
+          closedAt: session.closedAt,
+          extrinsicEditedAt: s.extrinsic?.editedAt,
+          coffeeUpdatedAt: s.coffee?.updatedAt,
+        })
+      : null;
   const exclusionNoticeLabel = ownExclusion
     ? ownExclusion.reason
       ? tResults("exclusionNotice", { reason: ownExclusion.reason })
@@ -900,12 +916,10 @@ export default async function ResultsPage({
             // A9: blind data, so the owner/admin lens or a revealed sample only.
             prep: gateSamplePrep(s, { ownerView: ownerRead, revealed: s.revealed }),
             extrinsic: s.revealed ? ((s.extrinsic?.data as Record<string, unknown>) ?? {}) : {},
-            // "Origen editado el <fecha>" — only when the owner corrected origin
-            // data after the session closed (S8-12).
-            extrinsicEditedLabel:
-              s.revealed && s.extrinsic?.editedAt
-                ? tResults("originEditedAt", {
-                    date: s.extrinsic.editedAt.toLocaleDateString(
+            // "Datos de origen editados el <fecha>" — only after the close (S8-12, F-cafes-9).
+            extrinsicEditedLabel: originEditedAtFor(s)
+              ? tResults("originEditedAt", {
+                    date: originEditedAtFor(s)!.toLocaleDateString(
                       locale === "es" ? "es-CO" : "en-US",
                       { day: "numeric", month: "short", year: "numeric" },
                     ),

@@ -37,6 +37,8 @@ export type CoffeeFormTranslations = {
   nameRequired: string;
   error: string;
   conflict?: string;
+  /** Label of the reload button shown next to the stale-save message. */
+  conflictReload?: string;
 };
 
 export type CoffeeFormInitialValues = {
@@ -423,6 +425,15 @@ export function CoffeeForm({
         {errorText && (
           <div className="bg-error-container text-on-error-container rounded-card px-4 py-3 text-sm">
             {errorText}
+            {errorCode === "conflict" && t.conflictReload && (
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="mt-2 block min-h-[44px] rounded-input border border-on-error-container px-3 text-sm font-semibold"
+              >
+                {t.conflictReload}
+              </button>
+            )}
           </div>
         )}
 

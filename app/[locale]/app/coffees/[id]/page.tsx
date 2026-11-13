@@ -32,6 +32,7 @@ import {
 } from "@/components/coffees/DeleteCoffeeButton";
 import { Badge, ButtonLink, ScorePill } from "@/components/ui";
 import { ReportLink } from "@/components/ui/ReportLink";
+import { originEditedAfterClose } from "@/lib/originEdit";
 import { historyCupsPerSample, isQuickImpression } from "@/lib/historyRules";
 import { DuplicateButton } from "@/components/DuplicateButton";
 
@@ -409,6 +410,18 @@ export default async function CoffeeProfilePage({
                           <div className="mt-0.5 text-xs text-on-surface-variant">
                             {formatDate(row.sessionDate)}
                           </div>
+                          {(() => {
+                            // F-cafes-9: this coffee's origin data is live; say so when it changed after that session closed.
+                            const edited = originEditedAfterClose({
+                              closedAt: row.sessionClosedAt,
+                              coffeeUpdatedAt: coffee.updatedAt,
+                            });
+                            return edited ? (
+                              <div className="mt-0.5 text-xs text-secondary">
+                                {t("originEditedNote", { date: formatDate(edited) })}
+                              </div>
+                            ) : null;
+                          })()}
                         </div>
                         <ScorePill score={row.communityScore} />
                       </Link>

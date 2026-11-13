@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { usableCoffeeWhere } from "@/lib/coffeeAccess";
 import { computeCoffeeAggregate } from "@/lib/coffeeAggregate";
+import { originEditedAfterClose } from "@/lib/originEdit";
 import { loadCoffeeAggregateSamples } from "@/lib/coffees/aggregateSamples";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
 import { CoffeeFichaDocument, type CoffeeFichaModel } from "@/lib/pdf/CoffeeFichaDocument";
@@ -91,6 +92,11 @@ export async function GET(
           name: r.sessionName,
           date: r.sessionDate,
           score: r.communityScore,
+          // F-cafes-9: the coffee's data is live, so past sessions carry the note.
+          originEditedAt: originEditedAfterClose({
+            closedAt: r.sessionClosedAt,
+            coffeeUpdatedAt: coffee.updatedAt,
+          }),
         })),
       };
     }

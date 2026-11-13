@@ -1132,6 +1132,7 @@
     "attrAveragesTitle": "Promedios por atributo",
     "flavorsTitle": "Sabores reportados",
     "sessionsListTitle": "Apariciones en sesiones",
+    "originEditedNote": "Datos de origen editados el {date}",
     "noResults": "Aún no hay catas enviadas para este café.",
     "adminBadge": "Modo administrador — acceso total",
     "adminOwnerPrefix": "Dueño:",
@@ -1154,7 +1155,7 @@
       "partial": "{skipped} no se eliminaron: no son tuyos o ya no existen."
     },
     "editTitle": "Editar café",
-    "editSubtitle": "Actualiza los datos de este café. Los cambios se reflejan en todas sus sesiones.",
+    "editSubtitle": "Actualiza los datos de este café. Los cambios se reflejan en todas sus sesiones, también en las ya cerradas, con la nota «editado».",
     "saveChanges": "Guardar cambios",
     "savingChanges": "Guardando…",
     "updateError": "No se pudo guardar el café. Inténtalo de nuevo.",
@@ -1186,7 +1187,8 @@
       "creating": "Creando…",
       "nameRequired": "El nombre es obligatorio.",
       "error": "No se pudo crear el café. Inténtalo de nuevo.",
-      "conflict": "Este café cambió en otro lugar desde que lo abriste. Recarga la página para ver la última versión antes de guardar."
+      "conflict": "Este café cambió en otro dispositivo. Recarga para ver la versión actual.",
+      "conflictReload": "Recargar"
     },
     "share": {
       "title": "Compartir café",

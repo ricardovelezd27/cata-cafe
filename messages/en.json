@@ -1132,6 +1132,7 @@
     "attrAveragesTitle": "Attribute averages",
     "flavorsTitle": "Reported flavors",
     "sessionsListTitle": "Session appearances",
+    "originEditedNote": "Origin data edited on {date}",
     "noResults": "No cuppings have been submitted for this coffee yet.",
     "adminBadge": "Admin mode — full access",
     "adminOwnerPrefix": "Owner:",
@@ -1154,7 +1155,7 @@
       "partial": "{skipped} were not deleted: not yours or already gone."
     },
     "editTitle": "Edit coffee",
-    "editSubtitle": "Update this coffee's details. Changes are reflected across all its sessions.",
+    "editSubtitle": "Update this coffee's details. Changes are reflected across all its sessions, including closed ones, with an “edited” note.",
     "saveChanges": "Save changes",
     "savingChanges": "Saving…",
     "updateError": "Couldn't save the coffee. Please try again.",
@@ -1186,7 +1187,8 @@
       "creating": "Creating…",
       "nameRequired": "Name is required.",
       "error": "The coffee could not be created. Please try again.",
-      "conflict": "This coffee changed somewhere else since you opened it. Reload the page to see the latest version before saving."
+      "conflict": "This coffee changed on another device. Reload to see the current version.",
+      "conflictReload": "Reload"
     },
     "share": {
       "title": "Share coffee",

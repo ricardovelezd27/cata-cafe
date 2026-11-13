@@ -29,7 +29,7 @@ export type CoffeeFichaModel = {
     sessionsCount: number;
     evaluationsCount: number;
     affective: FichaAffective;
-    sessions: { name: string; date: Date; score: number | null }[];
+    sessions: { name: string; date: Date; score: number | null; originEditedAt?: Date | null }[];
   };
 };
 
@@ -45,6 +45,7 @@ const TEXT = {
     sessionName: "Sesión",
     sessionDate: "Fecha",
     sessionScore: "Puntaje",
+    originEdited: (d: string) => `Datos de origen editados el ${d}`,
     noResults: "Aún no hay resultados de catación para este café.",
     page: (n: number, total: number) => `Página ${n} de ${total}`,
     locale: "es-CO",
@@ -60,6 +61,7 @@ const TEXT = {
     sessionName: "Session",
     sessionDate: "Date",
     sessionScore: "Score",
+    originEdited: (d: string) => `Origin data edited on ${d}`,
     noResults: "No cupping results for this coffee yet.",
     page: (n: number, total: number) => `Page ${n} of ${total}`,
     locale: "en-US",
@@ -147,9 +149,21 @@ export function CoffeeFichaDocument({ model, locale }: { model: CoffeeFichaModel
                       </View>
                       {results.sessions.map((r, i) => (
                         <View key={i} style={[st.row, { paddingVertical: 4 }]} wrap={false}>
-                          <Text style={[st.body, { flexGrow: 1, flexBasis: 0, paddingRight: 6 }]}>
-                            {sanitizePdfText(r.name)}
-                          </Text>
+                          <View style={{ flexGrow: 1, flexBasis: 0, paddingRight: 6 }}>
+                            <Text style={st.body}>{sanitizePdfText(r.name)}</Text>
+                            {r.originEditedAt ? (
+                              <Text style={st.small}>
+                                {t.originEdited(
+                                  r.originEditedAt.toLocaleDateString(t.locale, {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                    timeZone: "UTC",
+                                  }),
+                                )}
+                              </Text>
+                            ) : null}
+                          </View>
                           <Text style={[st.body, { width: 110 }]}>
                             {r.date.toLocaleDateString(t.locale, {
                               year: "numeric",

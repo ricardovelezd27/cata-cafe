@@ -29,6 +29,7 @@ export async function loadCoffeeAggregateSamples(coffeeId: string, viewer: Coffe
           id: true,
           name: true,
           date: true,
+          closedAt: true,
           status: true,
           createdBy: true,
           participants: { select: { userId: true, excludedFromResults: true } },

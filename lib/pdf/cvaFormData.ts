@@ -93,6 +93,7 @@ export const CVA_TEXT: Record<Locale, Record<string, string>> = {
     score: "Puntaje de catación",
     scale9: "Escala 1–9 · 5 = ni alto ni bajo",
     extrinsic: "Datos extrínsecos",
+    originEdited: "Datos de origen editados el",
     physical: "Evaluación física",
     beta: "Beta",
     none: "—",
@@ -174,6 +175,7 @@ export const CVA_TEXT: Record<Locale, Record<string, string>> = {
     score: "Cupping score",
     scale9: "1–9 scale · 5 = neither high nor low",
     extrinsic: "Extrinsic data",
+    originEdited: "Origin data edited on",
     physical: "Physical evaluation",
     beta: "Beta",
     none: "—",
@@ -612,6 +614,20 @@ export const PHYSICAL_FIELDS: { key: string; es: string }[] = [
   { key: "phys_humedad", es: "Humedad (%)" },
 ];
 
+/** "Datos de origen editados el <fecha>" as one extra field of the origin block (F-cafes-9). */
+function originEditedField(iso: string | null | undefined, locale: Locale): LabeledField[] {
+  if (!iso) return [];
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return [];
+  const value = new Intl.DateTimeFormat(locale === "es" ? "es-CO" : "en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(d);
+  return [{ label: CVA_TEXT[locale].originEdited, value }];
+}
+
 export function collectLabeled(
   d: D,
   fields: { key: string; es: string }[]
@@ -740,6 +756,8 @@ export type CvaFormInput = {
     affective: D;
     combined: D;
     physical: D;
+    /** ISO time of the latest origin edit after the close (lib/originEdit.ts), already gated: owner or revealed only. */
+    originEditedAt?: string | null;
     extrinsic: D;
   };
   locale: Locale;
@@ -937,7 +955,10 @@ export function buildCvaFormData(input: CvaFormInput): CvaSampleSheet {
     breakdown,
     extrinsic:
       input.ownerView || input.sample.revealed
-        ? collectLabeled(input.sample.extrinsic, EXTRINSIC_FIELDS)
+        ? [
+            ...collectLabeled(input.sample.extrinsic, EXTRINSIC_FIELDS),
+            ...originEditedField(input.sample.originEditedAt, locale),
+          ]
         : [],
     physical: input.ownerView
       ? [
