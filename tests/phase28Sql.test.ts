@@ -123,8 +123,9 @@ describe("phase28_dry_run.sql", () => {
 
   it("reports the sessions that lose visibility and the live sessions idle 7 to 30 days and more than 30 days", () => {
     expect(DRY).toContain("lose group visibility");
-    expect(DRY).toContain("2a live sessions idle 7 to 30 days");
-    expect(DRY).toContain("2b live sessions idle more than 30 days");
+    expect(DRY).toContain("2a live sessions started on or after the rule");
+    expect(DRY).toContain("2b live sessions idle 30 days or more");
+    expect(DRY).toContain("2c live sessions idle 7 days to under 30, left alone");
     expect(DRY).toContain("participants with an email");
     expect(DRY).toContain("interval '7 days'");
     expect(DRY).toContain("interval '30 days'");

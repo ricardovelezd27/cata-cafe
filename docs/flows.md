@@ -278,16 +278,16 @@ a live group session (not async, no `closesAt`, started) with no evaluation save
 (`closeIdleLiveSessions`, `lib/idleClose.ts`, 5 per run, oldest first, LAST of the closing
 passes: after the deadline closes, the repairs and the reminders; the time budget stops new
 closes after ~150 s) through `closeSessionInternal(id, { reason: "idle", emails })`, where
-`emails = idleCloseEmailMode(idleMs)`: idle 7 to under 30 days = `"await"` (same reveal,
+`emails` from the ONE rule `idleCloseDecision({ startedAt, idleMs })` (`lib/closeRules.ts`; candidate query `idleCandidateBands`): a session STARTED on or after `IDLE_RULE_EFFECTIVE_AT` (2026-11-18 00:00 UTC) idle 7 to under 30 days = `"await"` (same reveal,
 history sync and close emails as the deadline pass); idle **30 days or more** = `"skip"`
-(closed silently: the first production run must not mail the backlog; `skip` stamps
-`closeFinalizedAt`). If a finalize step failed, the stamp stays null and the cron repair pass
+(closed silently, grandfathered or not: the first production run must not mail the backlog; `skip` stamps
+`closeFinalizedAt`). **Grandfathered** sessions (started BEFORE `IDLE_RULE_EFFECTIVE_AT`, owner decision 2026-11) are never closed with emails: idle under 30 days = left alone (not even fetched), 30 days or more = silent; they get no new `live_idle` reminder. If a finalize step failed, the stamp stays null and the cron repair pass
 (`lib/repairClose.ts`) applies `repairEmailMode` (`lib/closeRules.ts`): it stays silent too
 (`skip`) exactly when the session is a live group session, was idle 30 days or more AT `closedAt`
-and has no `close_email_deliveries` row; every other repair runs with emails. Accepted: an owner who
+and has no `close_email_deliveries` row, or when the creator is a deleted-account placeholder; every other repair runs with emails. Accepted: an owner who
 closes by hand a live session idle 30+ days whose finalize fails before the email step is repaired
 without emails; the results page then says "se cerró sola… no se enviaron correos" and the owner can
-"Reenviar correos". The pass walks up to 25 oldest candidates until 5 closes SUCCEEDED (a candidate that
+"Reenviar". The pass walks up to 25 oldest candidates until 5 closes SUCCEEDED (a candidate that
 throws is logged and does not count), and repairs also stop starting after the ~150 s budget. Idleness is re-checked right before each close. Unstarted and solo sessions are never touched.
 An expired, not closed group session shows its OWNER a "Cerrar ahora" button on the results
 page (`canCloseNow`) in case the nightly job fails. Setting a date on an unstarted live session turns it
