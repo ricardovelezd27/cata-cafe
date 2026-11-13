@@ -3,6 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { WifiOff, RefreshCw, CheckCircle2, AlertTriangle } from "lucide-react";
 import type { SyncPhase } from "@/hooks/useOfflineSync";
+import { reloadIdentity } from "@/lib/identityResolve";
 import { isIdentityChanged, onIdentityChanged, registerIdentityNoticeHost } from "@/lib/identityChange";
 
 export type OfflineBannerTranslations = {
@@ -33,6 +34,7 @@ export function OfflineBanner({
   translations: t,
   storageUnavailable = false,
   nextRetryAt = null,
+  renderedUserId,
 }: {
   online: boolean;
   syncPhase: SyncPhase;
@@ -45,6 +47,9 @@ export function OfflineBanner({
    *  takes priority over every connectivity state: if local drafts can't be
    *  saved at all, telling the cupper "saved locally" would be misleading. */
   storageUnavailable?: boolean;
+  /** The user this page was rendered for: the identity notice's reload button
+   *  re-keys a claimed guest's drafts through reloadIdentity (S10 WP8b). */
+  renderedUserId?: string;
 }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -119,7 +124,10 @@ export function OfflineBanner({
       {showIdentity && (
         <button
           type="button"
-          onClick={() => window.location.reload()}
+          onClick={() => {
+            if (renderedUserId) void reloadIdentity(renderedUserId);
+            else window.location.reload();
+          }}
           className="shrink-0 font-semibold underline underline-offset-2 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 rounded-sm"
         >
           {t.reloadNow ?? "Reload"}

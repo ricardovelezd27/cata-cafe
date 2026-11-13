@@ -25,10 +25,30 @@ describe("decideClaimRekey", () => {
     expect(d).toEqual({ rekeyFrom: ANON, clear: false });
   });
 
-  it("does nothing with a stale start marker, and deletes it", () => {
+  it("a claim that never completed expires from its START marker and is deleted", () => {
     const d = decideClaimRekey({
       startedRaw: serializeStarted(ANON, NOW - CLAIM_MARKER_TTL_MS - 1),
+      doneRaw: null,
+      userId: ACCOUNT,
+      now: NOW,
+    });
+    expect(d).toEqual({ rekeyFrom: null, clear: true });
+  });
+
+  it("a COMPLETED claim is as old as its DONE marker: an old start does not expire it (WP8b)", () => {
+    const d = decideClaimRekey({
+      startedRaw: serializeStarted(ANON, NOW - 3 * CLAIM_MARKER_TTL_MS),
       doneRaw: serializeDone(ANON, ACCOUNT, NOW - 10_000),
+      userId: ACCOUNT,
+      now: NOW,
+    });
+    expect(d).toEqual({ rekeyFrom: ANON, clear: false });
+  });
+
+  it("a stale DONE marker expires the claim even with a fresh start", () => {
+    const d = decideClaimRekey({
+      startedRaw: serializeStarted(ANON, NOW - 1000),
+      doneRaw: serializeDone(ANON, ACCOUNT, NOW - CLAIM_MARKER_TTL_MS - 1),
       userId: ACCOUNT,
       now: NOW,
     });
@@ -151,5 +171,10 @@ describe("claimedRenderedUser", () => {
   });
   it("false once the markers are stale", () => {
     expect(claimedRenderedUser({ ...base, now: NOW + CLAIM_MARKER_TTL_MS + 1 })).toBe(false);
+  });
+  it("true when the claim STARTED over an hour ago but finished recently (WP8b)", () => {
+    expect(
+      claimedRenderedUser({ ...base, startedRaw: serializeStarted(ANON, NOW - 5 * CLAIM_MARKER_TTL_MS) }),
+    ).toBe(true);
   });
 });

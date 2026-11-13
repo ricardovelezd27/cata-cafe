@@ -145,7 +145,9 @@ export function GuestJoinForm({ token, locale, translations }: GuestJoinFormProp
 
       // The join redirects server-side on success (NEXT_REDIRECT, handled by
       // Next — never swallow it); a refusal comes back as an ActionResult (S8-11).
-      const result = await joinSessionAsGuest(token, locale);
+      // The refusal `identity_changed` is shown as its own plain message (errors dict),
+      // not a silent refresh: someone else is signed in now and was NOT joined.
+      const result = await joinSessionAsGuest(token, locale, guestId);
       if (!result.ok) {
         if (FINAL_REFUSALS.has(result.error)) forgetCreatedAnonId();
         fail(result.error);

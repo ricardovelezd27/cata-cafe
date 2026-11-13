@@ -7,6 +7,7 @@ import { switchAccount } from "@/app/actions/auth";
 import { Button, ButtonLink } from "@/components/ui";
 import { useActionFeedback } from "@/components/ui/Toast";
 import { useConnectivity } from "@/hooks/useConnectivity";
+import { announceSignedIn } from "@/lib/identityChange";
 import { clearLocalDeviceState } from "@/lib/offline/deviceState";
 import { CLAIM_DONE_KEY, serializeDone } from "@/lib/offline/claimMarker";
 import type { ActionErrorCode } from "@/lib/actionResult";
@@ -85,6 +86,7 @@ export function ClaimCard({
           } catch {
             // private mode: the drafts stay under the guest id on this device
           }
+          announceSignedIn(); // WP8b: an old cup tab for the guest re-keys and reloads
           router.replace(result.data.next);
           router.refresh();
           return;
