@@ -82,6 +82,7 @@ describe("nobody else reads warmup_reflections", () => {
     "lib/guestClaim.ts",
     "lib/accountDeletion/deleteAccount.ts",
     "lib/accountDeletion/manifest.ts",
+    "lib/unusedAccountRules.ts", // names the table only: a row there means "the account was used" (an existence test, never content)
   ]);
 
   function walk(dir: string, out: string[] = []): string[] {

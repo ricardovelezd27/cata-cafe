@@ -248,7 +248,7 @@ export async function deleteAccountData(user: {
   };
 }
 
-async function deleteAuthUser(userId: string): Promise<boolean> {
+export async function deleteAuthUser(userId: string): Promise<boolean> {
   const admin = createAdminClient();
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {

@@ -1530,6 +1530,7 @@
       "contact": "Contact",
       "privacy": "Privacy",
       "terms": "Terms",
+      "legalNotice": "Legal notice",
       "copyright": "© {year} cafesensible.ai. All rights reserved.",
       "madeFor": "The tool for the Café Sensible Method. Made for specialty coffee professionals."
     }
@@ -1860,6 +1861,10 @@
     "empty": "You don't have any groups yet. Create one to reuse your cupper roster across sessions.",
     "coCuppersTitle": "People you've cupped with",
     "noCoCuppers": "You haven't cupped with anyone else yet — invite by email.",
+    "sessionOne": "session",
+    "sessionMany": "sessions",
+    "evaluationOne": "evaluation",
+    "evaluationMany": "evaluations",
     "addToGroup": "Add to group",
     "members": "Members",
     "addMember": "Add member",

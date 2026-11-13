@@ -75,15 +75,22 @@ describe("wiring: who touches the pending cookie and the ephemeral client", () =
   );
 
   it("only the cookie plumbing and its pure module name the cookie", () => {
+    // Only the two privacy texts may name the cookie, and only as text in the cookie
+    // table. Any other file, or an identifier use anywhere (including those two),
+    // still counts.
+    const TEXT_ONLY = new Set(["lib/legal/es/privacy.ts", "lib/legal/en/privacy.ts"]);
     const users = files.filter((f) => {
       const src = readFileSync(f, "utf8");
-      return src.includes(SIGNIN_PENDING_COOKIE) || src.includes("SIGNIN_PENDING_COOKIE");
+      if (src.includes("SIGNIN_PENDING_COOKIE")) return true;
+      return !TEXT_ONLY.has(f) && src.includes(SIGNIN_PENDING_COOKIE);
     });
     expect(users.sort()).toEqual(["lib/signInPending.ts", "lib/signInPendingCookie.ts"]);
   });
 
   it("only app/actions/auth.ts imports the pending cookie helpers", () => {
-    const users = files.filter((f) => readFileSync(f, "utf8").includes('/signInPendingCookie"'));
+    // Single or double quotes, from-imports and dynamic imports alike.
+    const importsCookie = /(?:from\s*|import\s*\(\s*)["'][^"']*\/signInPendingCookie["']/;
+    const users = files.filter((f) => importsCookie.test(readFileSync(f, "utf8")));
     expect(users).toEqual(["app/actions/auth.ts"]);
   });
 

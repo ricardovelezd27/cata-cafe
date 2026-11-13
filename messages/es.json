@@ -1530,6 +1530,7 @@
       "contact": "Contacto",
       "privacy": "Privacidad",
       "terms": "Términos",
+      "legalNotice": "Aviso legal",
       "copyright": "© {year} cafesensible.ai. Todos los derechos reservados.",
       "madeFor": "La herramienta del Método Café Sensible. Hecha para profesionales del café de especialidad."
     }
@@ -1860,6 +1861,10 @@
     "empty": "Aún no tienes grupos. Crea uno para reutilizar tu roster de catadores en cada sesión.",
     "coCuppersTitle": "Personas con las que has catado",
     "noCoCuppers": "Aún no has catado con nadie más — invita por correo.",
+    "sessionOne": "sesión",
+    "sessionMany": "sesiones",
+    "evaluationOne": "evaluación",
+    "evaluationMany": "evaluaciones",
     "addToGroup": "Añadir a grupo",
     "members": "Integrantes",
     "addMember": "Añadir integrante",

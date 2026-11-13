@@ -87,6 +87,10 @@ export default async function LoginPage({
             <Link href={localeHref(locale, "/terminos")} className="underline underline-offset-2">
               {tl("terms")}
             </Link>
+            {" · "}
+            <Link href={localeHref(locale, "/aviso-legal")} className="underline underline-offset-2">
+              {tl("legalNotice")}
+            </Link>
           </p>
         )}
       </div>
