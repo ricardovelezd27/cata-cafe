@@ -6,6 +6,9 @@ import { useRouter } from "next/navigation";
 import { Minus, Plus } from "lucide-react";
 import { Button, PageHeader, useActionFeedback } from "@/components/ui";
 import { createExpressSession } from "@/app/actions/sessions";
+import { warmupById, lw } from "@/lib/warmup/exercises";
+import { WarmupPlayer, type WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
+import { SessionMomentOverlay } from "@/components/session-moments/SessionMomentOverlay";
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { sampleCountWarning, type SampleCountWarning } from "@/lib/sampleCount";
 import {
@@ -44,9 +47,15 @@ export type ExpressFormTranslations = {
   nameRequired: string;
   /** Shown (and submit disabled) while the connectivity probe says offline. */
   offline: string;
+  /** "Calentar 1–2 min antes": the optional short warm-up (S10 WP7, Kim B7). */
+  warmup: string;
   /** X6: non-blocking line when the sample count is high for the format. */
   sampleWarning: Record<SampleCountWarning, string>;
 };
+
+/** The exercise the express path warms up with (Kim B7: only the warm-up, in
+ *  its short version; the reference is not offered here). */
+const EXPRESS_WARMUP_ID = "arm-raise";
 
 const inputClass =
   "w-full min-h-[48px] border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary-container/25 focus:border-primary-container transition-colors";
@@ -58,10 +67,13 @@ export function ExpressForm({
   locale,
   defaultName,
   translations,
+  warmupStrings,
 }: {
   locale: string;
   defaultName: string;
   translations: ExpressFormTranslations;
+  /** Chrome strings of the warm-up player (warmupPlayerStrings). */
+  warmupStrings: WarmupPlayerStrings;
 }) {
   const t = translations;
   const router = useRouter();
@@ -75,6 +87,10 @@ export function ExpressForm({
   const [name, setName] = useState(defaultName);
   const [format, setFormat] = useState<ExpressFormat>(EXPRESS_FIRST_RUN_FORMAT);
   const [nameError, setNameError] = useState(false);
+  // The optional short warm-up plays over the form, which stays mounted, so
+  // the name, format and sample count are intact when it closes.
+  const [warming, setWarming] = useState(false);
+  const warmupExercise = warmupById(EXPRESS_WARMUP_ID);
 
   // Remembered last format (per device; shared with the full wizard).
   useEffect(() => {
@@ -116,6 +132,7 @@ export function ExpressForm({
   }
 
   return (
+    <>
     <form onSubmit={submit} noValidate className="max-w-md mx-auto space-y-6">
       <PageHeader
         title={t.title}
@@ -240,6 +257,15 @@ export function ExpressForm({
         >
           {pending ? t.creating : t.cta}
         </Button>
+        {warmupExercise && (
+          <button
+            type="button"
+            onClick={() => setWarming(true)}
+            className="block min-h-[44px] w-full text-center text-sm text-on-surface-variant underline-offset-4 hover:text-on-surface hover:underline"
+          >
+            {t.warmup}
+          </button>
+        )}
         <Link
           href={`/${locale}/app/sessions/new${wizardHandoffQuery({ name, format, sampleCount })}`}
           className="text-sm text-on-surface-variant underline-offset-4 hover:underline text-center block"
@@ -248,5 +274,18 @@ export function ExpressForm({
         </Link>
       </div>
     </form>
+    {warmupExercise && warming && (
+      <SessionMomentOverlay open label={lw(warmupExercise.name, locale)}>
+        <WarmupPlayer
+          exercise={warmupExercise}
+          locale={locale}
+          t={warmupStrings}
+          mode="library"
+          length="short"
+          onExit={() => setWarming(false)}
+        />
+      </SessionMomentOverlay>
+    )}
+    </>
   );
 }

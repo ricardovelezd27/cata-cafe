@@ -367,9 +367,64 @@ drifted more than 1.5 s (`resyncPositionMs` from the caller, `shouldResync` in
 `syncedRun.ts`). In eyes-closed legs the first tap on the stage pauses (haptic +
 footer back). Leaving early (`onExit({ completed, elapsedMs })`) marks the
 exercise seen only when completed or after 20 s of run (`exitMarksSeen`); a skip
-past 20 s asks "Toca otra vez para saltar". The two closing questions are a
-quiet pause: nothing is written, and sign-out purges legacy
-`cata_warmup_reflections_*` keys.
+past 20 s asks "Toca otra vez para saltar". Sign-out purges the legacy
+`cata_warmup_reflections_*` keys (S8-13 stopped writing them; S10 WP7 below saves the
+answers again, but in the account, not in localStorage).
+
+**Reflections, short version, entry after start, seated and small space (S10 WP7,
+Kim F1 F2 F4 F5 B7; every answer is SIMULATED, `TODO(kim-validar:…)`).**
+
+```mermaid
+flowchart TD
+  L["exercise page: intro"] -->|"Completa"| RUN["run: Llega 40 s, steps, Cierre 30 s"]
+  L -->|"Corta 1-2 min"| SHORT["run: posture + 1 breath, first steps up to 75 s, Cierre 15 s"]
+  RUN --> REF["reflect: two optional answers"]
+  REF -->|"Guardar"| SAVE[("warmup_reflections: private to the person")]
+  REF -->|"Continuar sin guardar"| DONE["done"]
+  SAVE --> DONE
+  SHORT --> DONE
+  PAGE["exercise page: Tus reflexiones"] -->|"only the person's own rows"| SAVE
+  EX["Catar ahora: Calentar 1-2 min antes"] -->|"short player over the form, then back to it"| SHORT
+  CUP["cup page: interstitial not showing, session not closed"] -->|"Movimiento Sensorial, N min"| SESS["player in session mode, marks nothing seen"]
+```
+
+- **Reflections (F2).** In library mode the `reflect` phase has two optional text areas
+  (the two closing questions, 500 characters each) with "Guardar" and "Continuar sin
+  guardar". `saveWarmupReflection` / `deleteWarmupReflection` (`app/actions/warmup.ts`,
+  `run()` → `ActionResult`, `requireRegisteredUser`, rows scoped by the session's user
+  id) write `warmup_reflections`; the exercise page lists the person's own rows with a
+  `ConfirmDialog` delete and says "Solo tú puedes verlas.". The table is closed to the API
+  roles (PHASE 27: RLS with no policy, all privileges revoked) and the only read path is
+  `lib/warmup/reflectionsData.ts`. Nobody else reads them: no teacher, group, admin view,
+  export, analytics query or AI prompt. A guest claim moves the rows, account deletion
+  erases them. Session and synced modes have no reflect phase and are unchanged.
+- **Short version (F4 / B7).** `buildExerciseTimeline(ex, { mode, length: "short" })`
+  (`full` stays the default and byte-identical): posture 5 s + ONE breath cycle (no
+  notice beat), the exercise's first steps while their running time (read beats
+  included) stays within 75 s (at least one, never half a step), a 15 s closing, the
+  bridge as usual in session mode. When the last kept step ends off-centre
+  (head-rotate, trunk-side) the exercise's OWN return-to-centre step is appended, so it
+  ends at the neutral pose. "Open your eyes" (the `doble` cue and its line) exists only
+  when a kept step closes the eyes (only `eyes`). 93.5 to 111.8 s in library mode, at most
+  116.8 s in session mode, for the five exercises (`TODO(kim-validar:F4)`).
+  The short version has no reflect phase. The master-led synced run is always the full
+  version. The library intro offers "Completa · N min" / "Corta · 1–2 min"; **Catar
+  ahora** has an optional, secondary "Calentar 1–2 min antes" that plays `arm-raise` in
+  short, over the form (the form stays mounted, so its state is intact), before any
+  session exists (`createExpressSession` is unchanged).
+- **Entry after the cupping started (F1).** `shouldOfferWarmupEntry` (pure, in
+  `overlayGate.ts`): the session has an exercise, is not closed, and the interstitial is
+  not on screen, and it is not the owner of a LIVE group session that has not started
+  (the master panel has its own synced start; `TODO(kim-validar:F1)`). The cup page then shows one small text button under the exit link
+  ("Movimiento Sensorial · N min", `WarmupEntry`) that opens the same player in session
+  mode. Closing it marks nothing seen and never blocks the cupping.
+- **Seated and small space (F5).** Two optional chips on the player's intro, both off by
+  default and remembered per device (`cata_warmup_seated`, `cata_warmup_compact`).
+  "Sentado" (only for the standing exercise) swaps the posture card and the arrival line
+  for the seated texts in `exercises.ts`; "Poco espacio" draws every movement with the
+  small amplitude and shows "Haz el mismo movimiento, más pequeño." on the intro only
+  (never in the spoken arrival, which would push the short breath prompts late). **Timing never changes** (the silent amplitude cross is decided from
+  the normal schedule). The synced run ignores both.
 
 ### Deleting a session (2026-09-08)
 

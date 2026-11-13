@@ -186,6 +186,7 @@ export default async function CupPage({
         warmupStartedAt: session.warmupStartedAt?.toISOString() ?? null,
         serverNow: new Date().toISOString(),
         strings: warmupPlayerStrings(tw),
+        entryLabel: tw.raw("entry.label") as string,
         master: {
           startLabel: tg("warmupStart"),
           stopLabel: tg("warmupStop"),

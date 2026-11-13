@@ -50,6 +50,9 @@ describe("mergeGuestData", () => {
     await prisma.coffeeShare.create({ data: { coffeeId: coffee.id, userId: guest } });
     await prisma.aiChatUsage.create({ data: { userId: guest, day: "2026-11-01", questionCount: 2 } });
     await prisma.aiChatUsage.create({ data: { userId: account, day: "2026-11-01", questionCount: 1 } });
+    // private warm-up reflections (S10 WP7): the guest's move to the account, the account's stay
+    const guestReflection = await prisma.warmupReflection.create({ data: { userId: guest, exerciseId: "eyes", feel: "tranquilo" } });
+    const accountReflection = await prisma.warmupReflection.create({ data: { userId: account, exerciseId: "arm-raise", discovery: "mi mano" } });
 
     // A DETACHED history row: the guest cupped a revealed coffee in a session that
     // was then deleted through the delete path (sessionId/evaluationId NULL,
@@ -126,6 +129,12 @@ describe("mergeGuestData", () => {
     const usage = await prisma.aiChatUsage.findMany();
     expect(usage).toHaveLength(1);
     expect(usage[0]).toMatchObject({ userId: account, questionCount: 3 });
+
+    // reflections: the guest's row is the SAME row under the account, nothing was lost or duplicated
+    const reflections = await prisma.warmupReflection.findMany({ orderBy: { id: "asc" } });
+    expect(reflections.map((r) => [r.id, r.userId]).sort()).toEqual(
+      [[guestReflection.id, account], [accountReflection.id, account]].sort(),
+    );
 
     // the anonymous profile is gone; nothing anywhere still references it
     expect(await prisma.profile.findUnique({ where: { id: guest } })).toBeNull();

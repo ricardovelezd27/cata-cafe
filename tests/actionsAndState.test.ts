@@ -41,6 +41,7 @@ describe("classifyActionError", () => {
   });
   it("passes the S8-14 group codes through", () => {
     expect(classifyActionError(new Error("group_full"))).toBe("group_full");
+    expect(classifyActionError(new Error("reflection_limit"))).toBe("reflection_limit");
     expect(classifyActionError(new Error("invalid_email"))).toBe("invalid_email");
     expect(isActionErrorCode("offline")).toBe(true);
   });

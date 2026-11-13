@@ -140,6 +140,25 @@ describe("RLS as authenticated", () => {
     expect((await asUser(w.outsider, (q) => q("select * from coffee_shares"))).rows).toHaveLength(0);
   });
 
+  it("warmup_reflections is private: neither API role can read or write it, with or without a matching user (PHASE 27)", async () => {
+    const w = await world();
+    const mine = await prisma.warmupReflection.create({ data: { userId: w.a, exerciseId: "eyes", feel: "solo para mí" } });
+    for (const who of [w.a, w.b, w.owner, w.outsider]) {
+      await expect(asUser(who, (q) => q("select * from warmup_reflections"))).rejects.toMatchObject({ code: "42501" });
+      await expect(asUser(who, (q) => q('select id from warmup_reflections where "userId" = $1', [who]))).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        asUser(who, (q) => q('insert into warmup_reflections (id, "userId", "exerciseId", feel) values ($1, $2, $3, $4)', ["x", who, "eyes", "y"])),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(asUser(who, (q) => q("delete from warmup_reflections"))).rejects.toMatchObject({ code: "42501" });
+    }
+    await expect(asRole("anon", null, (q) => q("select * from warmup_reflections"))).rejects.toMatchObject({ code: "42501" });
+    // the app (Prisma, as the table owner) still sees the row, untouched
+    expect((await prisma.warmupReflection.findUniqueOrThrow({ where: { id: mine.id } })).feel).toBe("solo para mí");
+    // RLS is on with no policy at all
+    const meta = await pg.query(`select c.relrowsecurity as rls, (select count(*)::int from pg_policies p where p.schemaname = 'public' and p.tablename = 'warmup_reflections') as policies from pg_class c where c.oid = 'public.warmup_reflections'::regclass`);
+    expect(meta.rows[0]).toEqual({ rls: true, policies: 0 });
+  });
+
   it("anon sees nothing of the app tables", async () => {
     const w = await world();
     void w;

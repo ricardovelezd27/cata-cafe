@@ -36,6 +36,7 @@ model Profile {
   coffeeShares            CoffeeShare[]
   coffeeInvites           CoffeeInvite[]
   groupPosts              GroupPost[]
+  warmupReflections       WarmupReflection[]
 
   @@map("profiles")
 }
@@ -445,6 +446,26 @@ model SessionInvite {
   @@index([sessionId])
   @@index([createdBy])
   @@map("session_invites")
+}
+
+// Private notes a person writes after a Movimiento Sensorial exercise (S10 WP7,
+// Kim F2). One row per saved pair of answers. Readable ONLY by its owner: the
+// table has RLS enabled with no policy and no API grant (PHASE 27), and the app
+// reads it with Prisma scoped by userId (lib/warmup/reflectionsData.ts). No
+// analytics query, admin view, export or AI prompt may ever read it.
+model WarmupReflection {
+  id         String   @id @default(cuid())
+  userId     String
+  user       Profile  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  // One of WARMUP_IDS (lib/warmup/exercises.ts), validated on write.
+  exerciseId String
+  // Answers to the two closing questions; at least one is non-empty.
+  feel       String?
+  discovery  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, exerciseId, createdAt])
+  @@map("warmup_reflections")
 }
 
 model SavedInsight {

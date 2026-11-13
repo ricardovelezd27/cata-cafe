@@ -52,11 +52,25 @@ export function halo(ms: number, timing: BreathTiming = DEFAULT_BREATH): number 
   return HALO_MIN + (HALO_MAX - HALO_MIN) * fullness(ms - HALO_LAG_MS, timing).eased;
 }
 
-/** "Llega": a posture line, three slow breaths, then a moment to notice. */
-export const ARRIVE_PLAN = { postureMs: 6000, cycles: 3, inMs: 4000, outMs: 6000, noticeMs: 4000 } as const;
+/** "Llega": a posture line, slow breaths, then a moment to notice. */
+export interface ArrivePlan {
+  readonly postureMs: number;
+  readonly cycles: number;
+  readonly inMs: number;
+  readonly outMs: number;
+  /** 0 = no notice beat (the short version). */
+  readonly noticeMs: number;
+}
 
-export const ARRIVE_TOTAL_MS =
-  ARRIVE_PLAN.postureMs + ARRIVE_PLAN.cycles * (ARRIVE_PLAN.inMs + ARRIVE_PLAN.outMs) + ARRIVE_PLAN.noticeMs;
+export const ARRIVE_PLAN = { postureMs: 6000, cycles: 3, inMs: 4000, outMs: 6000, noticeMs: 4000 } as const satisfies ArrivePlan;
+
+/** The short version's arrival (S10 WP7, Kim F4/B7): the posture line and ONE
+ *  breath cycle, no notice beat (15 s in all). */
+export const ARRIVE_PLAN_SHORT = { postureMs: 5000, cycles: 1, inMs: 4000, outMs: 6000, noticeMs: 0 } as const satisfies ArrivePlan;
+
+export const arrivePlanTotalMs = (p: ArrivePlan) => p.postureMs + p.cycles * (p.inMs + p.outMs) + p.noticeMs;
+
+export const ARRIVE_TOTAL_MS = arrivePlanTotalMs(ARRIVE_PLAN);
 
 export interface ArrivePhaseState {
   readonly phase: "posture" | "breath" | "notice";
@@ -67,8 +81,7 @@ export interface ArrivePhaseState {
 
 /** Arrive sub-phase at `ms` from the start of "Llega". Past the end it stays
  *  in "notice". */
-export function arrivePhaseAt(ms: number): ArrivePhaseState {
-  const p = ARRIVE_PLAN;
+export function arrivePhaseAt(ms: number, p: ArrivePlan = ARRIVE_PLAN): ArrivePhaseState {
   if (ms < p.postureMs) return { phase: "posture" };
   const inBreath = ms - p.postureMs;
   const cycleMs = p.inMs + p.outMs;

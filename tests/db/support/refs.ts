@@ -16,6 +16,7 @@ const TABLE: Record<string, string> = {
   SessionParticipant: "session_participants",
   UserCoffeeHistory: "user_coffee_history",
   SavedInsight: "saved_insights",
+  WarmupReflection: "warmup_reflections",
   TastingGroup: "tasting_groups",
   GroupPost: "group_posts",
   TastingGroupMember: "tasting_group_members",
