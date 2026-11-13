@@ -1327,7 +1327,7 @@
       "creating": "Creando…",
       "nameRequired": "El nombre es obligatorio.",
       "error": "No se pudo crear el café. Inténtalo de nuevo.",
-      "conflict": "Este café cambió en otro dispositivo. Recarga para ver la versión actual.",
+      "conflict": "Este café cambió en otro dispositivo. Al recargar verás la versión actual y se perderá lo que escribiste aquí: cópialo antes si lo necesitas.",
       "conflictReload": "Recargar"
     },
     "share": {

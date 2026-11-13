@@ -1327,7 +1327,7 @@
       "creating": "Creating…",
       "nameRequired": "Name is required.",
       "error": "The coffee could not be created. Please try again.",
-      "conflict": "This coffee changed on another device. Reload to see the current version.",
+      "conflict": "This coffee changed on another device. Reloading shows the current version and discards what you typed here: copy it first if you need it.",
       "conflictReload": "Reload"
     },
     "share": {
