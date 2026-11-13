@@ -146,6 +146,8 @@ export function OwnerParticipantSection({
     includedCount: string;
     excludeDialogTitle: string;
     excludeDialogBody: string;
+    /** Shown in the exclusion dialog only when a sample is still under the previous rule; null otherwise. */
+    oldRuleNote: string | null;
     excludeReasonLabel: string;
     excludeConfirm: string;
     dialogCancel: string;
@@ -305,6 +307,7 @@ export function OwnerParticipantSection({
           t={{
             title: t.excludeDialogTitle,
             body: t.excludeDialogBody,
+            note: t.oldRuleNote,
             reasonLabel: t.excludeReasonLabel,
             confirm: t.excludeConfirm,
             cancel: t.dialogCancel,

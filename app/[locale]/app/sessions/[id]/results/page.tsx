@@ -1120,6 +1120,10 @@ export default async function ResultsPage({
           includedCount: tResults.raw("matrix.includedCount") as string,
           excludeDialogTitle: tResults("matrix.excludeDialogTitle"),
           excludeDialogBody: tResults("matrix.excludeDialogBody"),
+          // S10 WP1a review L7: only when a sample is still scored under the previous rule.
+          oldRuleNote: [...ruleBySample.values()].some((r) => r === "v1")
+            ? tResults("matrix.oldRuleNote")
+            : null,
           excludeReasonLabel: tResults("matrix.excludeReasonLabel"),
           excludeConfirm: tResults("matrix.excludeConfirm"),
           dialogCancel: tResults("matrix.dialogCancel"),

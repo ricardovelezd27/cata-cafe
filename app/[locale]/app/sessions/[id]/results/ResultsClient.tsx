@@ -73,6 +73,7 @@ type MatrixTranslations = {
   includedCount: string;
   excludeDialogTitle: string;
   excludeDialogBody: string;
+  oldRuleNote: string | null;
   excludeReasonLabel: string;
   excludeConfirm: string;
   dialogCancel: string;

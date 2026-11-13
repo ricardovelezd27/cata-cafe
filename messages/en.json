@@ -855,6 +855,7 @@
       "includedCount": "{n} of {total} cuppers included in the results",
       "excludeDialogTitle": "Exclude from the group",
       "excludeDialogBody": "Their evaluations stop counting in the group average, the spread and the charts. The cupper still sees their own results. Who excluded them, when and why is recorded.",
+      "oldRuleNote": "This cupping was scored with the previous rule. When you exclude or include someone, its samples are recalculated with the current rule.",
       "excludeReasonLabel": "Reason",
       "excludeConfirm": "Exclude",
       "dialogCancel": "Cancel",
