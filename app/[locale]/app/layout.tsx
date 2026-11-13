@@ -10,6 +10,7 @@ import type { WelcomeModalTranslations } from "@/components/onboarding/WelcomeMo
 import { LegacyStorageCleanup } from "@/components/layout/LegacyStorageCleanup";
 import { IdentityWatcher } from "@/components/layout/IdentityWatcher";
 import { PendingDraftsBadge } from "@/components/offline/PendingDraftsBadge";
+import { StaleBundleNotice } from "@/components/offline/StaleBundleNotice";
 import type { UnsyncedNotesTranslations } from "@/components/offline/UnsyncedNotesPanel";
 import {
   UnsyncedGuardProvider,
@@ -147,6 +148,10 @@ export default async function AppLayout({
       <div className="flex flex-col flex-1 overflow-hidden">
         <TopBar locale={locale} translations={translations} />
         <LegacyStorageCleanup />
+        <StaleBundleNotice
+          message={tOffline("bannerNewVersion")}
+          reloadLabel={tOffline("reloadNow")}
+        />
         <PendingDraftsBadge
           userId={user.id}
           locale={locale}

@@ -139,6 +139,7 @@ export default async function EditSessionPage({
     closesAtPast: t("edit.closesAtPast"),
     closesAtLiveNotice: tg("closesAtLiveNotice"),
     sessionClosed: t("edit.sessionClosed"),
+    sessionExpired: t("edit.sessionExpired"),
     warmupLocked: t("edit.warmupLocked"),
     repinTitle: t("edit.repinTitle"),
     repinBody: t.raw("edit.repinBody") as string,
@@ -200,7 +201,7 @@ export default async function EditSessionPage({
             started: session.startedAt !== null,
           }),
           closed: session.status === "closed",
-          // Expired but not yet closed by the nightly job: read-only, closing date included.
+          // Expired but not yet closed by the nightly job: read-only, closing date included (Kim C9).
           expired: readOnly && session.status !== "closed",
         }}
         samples={session.samples.map((s) => ({

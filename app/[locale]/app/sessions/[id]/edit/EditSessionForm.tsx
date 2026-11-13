@@ -64,6 +64,7 @@ export type EditSessionFormTranslations = {
   closesAtPast: string;
   closesAtLiveNotice: string;
   sessionClosed: string;
+  sessionExpired: string;
   warmupLocked: string;
   repinTitle: string;
   /** Raw ICU string (t.raw()) — contains a literal "{n}" token. */
@@ -139,7 +140,7 @@ export function EditSessionForm({
     /** The cupping started: the warm-up can no longer change (warmup_locked). */
     started: boolean;
     closed: boolean;
-    /** Past closesAt but not yet closed by the nightly job. Same shape as PR #119. */
+    /** Past closesAt but not yet closed by the nightly job: read-only like a closed one (Kim C9). */
     expired: boolean;
   };
   samples: EditSampleRow[];
@@ -153,10 +154,13 @@ export function EditSessionForm({
   // (C6 default; the server enforces the same rule via isFormatLocked).
   const locked = evalCount > 0 || initial.started;
   // S10 WP4a (Kim C9): once the closing date has passed the session is closed
-  // for edits too, the closing date included, so an expired session renders
-  // exactly like a closed one. The server refuses it as well (updateSession).
-  // TODO(kim-validar:C9)
+  // for edits too, the closing date included (PR #119 left the date open; the
+  // owner's decision supersedes it), so an expired session renders exactly like
+  // a closed one, with its own sentence. The server refuses it as well
+  // (updateSession). TODO(kim-validar:C9)
   const closed = initial.closed || initial.expired;
+  // ONE sentence for the state: an expired session is not "cerrada" yet.
+  const closedText = initial.expired && !initial.closed ? t.sessionExpired : t.sessionClosed;
 
   const [name, setName] = useState(initial.name);
   const [date, setDate] = useState(initial.date);
@@ -397,7 +401,7 @@ export function EditSessionForm({
       : errorCode === "invalid_closes_at"
         ? t.closesAtPast
         : errorCode === "session_closed"
-          ? t.sessionClosed
+          ? closedText
           : errorCode === "warmup_locked"
             ? t.warmupLocked
             : errorCode === "invalid_warmup"
@@ -797,7 +801,7 @@ export function EditSessionForm({
           sample_has_data: t.sampleHasData,
           sample_has_evaluations: t.sampleHasEvals,
           reference_repin_required: t.referenceRepinBlocked,
-          session_closed: t.sessionClosed,
+          session_closed: closedText,
         }}
         error={t.error}
       />
@@ -813,7 +817,7 @@ export function EditSessionForm({
         </button>
         {saved && <p className="text-sm text-primary-container">{t.saved}</p>}
         {errorText && <p className="text-sm text-error">{errorText}</p>}
-        {closed && !errorText && <p className="text-sm text-on-surface-variant">{t.sessionClosed}</p>}
+        {closed && !errorText && <p className="text-sm text-on-surface-variant">{closedText}</p>}
       </div>
       </fieldset>
     </form>
