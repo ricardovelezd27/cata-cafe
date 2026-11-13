@@ -1788,20 +1788,53 @@ new sample `ruleVersion = 1` while its evaluations already carry `cups`.
    What the code does with each, after the deploy: for A the next repair (cron pass, owner
    close, a solo owner opening the results) finishes the reveal, the coffee history, the emails
    and the stamp, and re-fires the score of a sample ONLY when that sample has a submitted
-   evaluation with `cups` set or no stored aggregate row or `ruleVersion = 2`; a sample made
-   entirely of evaluations stored before the deploy (`cups` NULL) whose aggregate is
-   `ruleVersion = 1` keeps its stored score byte for byte. For B the cron closes them with the
+   evaluation with `cups` set or a stored aggregate row with `ruleVersion` other than 1; a
+   sample made entirely of evaluations stored before the deploy (`cups` NULL) whose aggregate
+   is `ruleVersion = 1` keeps its stored score byte for byte, and one with NO aggregate row
+   (query C below) stays without one. For B the cron closes them with the
    same rule: a first close of a session whose submitted evaluations all have `cups` NULL leaves
    its aggregates untouched. The data says which rule produced a score, there is no date. Only a
    deliberate owner action (excluding or including a cupper) recomputes a whole sample under the
    current rule.
 
-   **If the migration fails on a lock timeout.** The file starts with
-   `SET LOCAL lock_timeout = '5s'`, so it gives up instead of queueing behind a long
-   transaction. Then `migrate deploy` fails with `P3018` (database code `55P03`), NOTHING is
-   applied, the migration row is left marked failed and a re-run is refused with `P3009`. Run
-   `npx prisma migrate resolve --rolled-back 20261113090000_evaluation_cups` and then
-   `npx prisma migrate deploy` again (at a quieter moment).
+   ```sql
+   -- C. samples with submitted evaluations and NO aggregate row, in a session that is not
+   --    closed or whose second phase never finished (expect few or none)
+   select ss.id as sample_id, ss."sessionId", cs.status, cs."closeFinalizedAt",
+          count(*) filter (where e."isDraft" = false) as submitted
+   from session_samples ss
+   join cupping_sessions cs on cs.id = ss."sessionId"
+   join evaluations e on e."sessionSampleId" = ss.id
+   left join aggregate_scores a on a."sessionSampleId" = ss.id
+   where a."sessionSampleId" is null
+     and (cs.status <> 'closed' or cs."closeFinalizedAt" is null)
+   group by ss.id, ss."sessionId", cs.status, cs."closeFinalizedAt"
+   having count(*) filter (where e."isDraft" = false) > 0;
+   ```
+
+   What the code does with C: nothing. The close routine's pass does not give a first score to a
+   sample whose submitted evaluations all have `cups` NULL (it has no new data), so its displayed
+   number stays the old-rule one; the sample is still revealed and its history written like any
+   other. A first score appears only when a cupper submits with the new code (`cups` set) or the
+   owner excludes or includes someone.
+
+   **Right before the migration, a read-only check that nothing long is running** (the
+   migration waits at most 5 s for its locks and then gives up). Expect no rows; if there are
+   rows, wait and run it again:
+
+   ```sql
+   select pid, now() - xact_start, state from pg_stat_activity
+   where xact_start < now() - interval '5 seconds';
+   ```
+
+   **If the migration fails on a lock timeout.** The file is ONE transaction
+   (`BEGIN; SET LOCAL lock_timeout = '5s'; ALTER …; ALTER …; COMMIT;`; `migrate deploy` sends it
+   statement by statement, and only the explicit `BEGIN` makes the timeout apply and the two
+   ALTERs succeed or fail together), so it gives up instead of queueing behind a long
+   transaction and nothing is applied when it fails. Then `migrate deploy` fails with `P3018`
+   (database code `55P03`), the migration row is left marked failed and a re-run is refused with
+   `P3009`. Run `npx prisma migrate resolve --rolled-back 20261113090000_evaluation_cups` and
+   then `npx prisma migrate deploy` again (at a quieter moment).
 2. **Dry run** (fail-safe: one statement, nothing is applied). Open
    `prisma/sql/dry-runs/phase26_dry_run.sql`, paste the whole file, run it. Expected: a red
    error starting `PHASE 26 DRY RUN: NOTHING WAS APPLIED`. Every numbered line says on the line
@@ -1811,23 +1844,28 @@ new sample `ruleVersion = 1` while its evaluations already carry `cups`.
    - 3 (informational): the highest and lowest change of `communityScore`. Increases are
      expected for samples with 5 or more cups and a defective cup, which used to be counted
      twice; decreases are expected for samples under 5 cups with flagged cups, which used to
-     have no deduction. Show the two numbers to the owner;
+     have no deduction; large increases can also appear on samples under 5 cups, on rows stored
+     by an older version of the function, which amplified deductions under 5 cups. Show the two
+     numbers to the owner;
    - 4 (expect 0): rows with submitted evaluations NOT stamped `ruleVersion = 2` by the re-fire
      (proves the new function is the one running);
    - 5 (expect `{search_path=public}`): the function's `proconfig`;
    - 6 (informational): up to ten of the largest individual changes, each as session NAME,
      date and sample label (this is your own SQL editor, so names are shown, not ids).
 
-   Example of a real report (run against a throwaway local database holding one made-up
-   session; `tests/db/phase26DryRun.dbtest.ts` produces it):
+   Example of a real report (run against a throwaway local database holding two made-up
+   sessions, with stored values pinned to arbitrary "old" numbers;
+   `tests/db/phase26DryRun.dbtest.ts` produces it):
 
    ```
    PHASE 26 DRY RUN: NOTHING WAS APPLIED (this error is the expected result). Compare each line with its expectation:
-    1 (informational) aggregate rows: 1, of which communityScore would change under a FULL re-fire (production never does one): 1
+    1 (informational) aggregate rows: 2, of which communityScore would change under a FULL re-fire (production never does one): 2
+    2 (informational) by cups per sample, group 1 cup: 1 rows, 1 would change
     2 (informational) by cups per sample, group 2 cups: 1 rows, 1 would change
-    3 (informational) change of communityScore under a full re-fire, highest: -2.75, lowest: -2.75. Increases are expected ...
+    3 (informational) change of communityScore under a full re-fire, highest: 5.25, lowest: -2.75. Increases are expected ... ; large increases can also appear on samples under 5 cups, on rows stored by an older version of the function, which amplified deductions under 5 cups
     4 rows with submitted evaluations NOT stamped ruleVersion 2 by the re-fire (expect 0): 0
     5 proconfig of recompute_aggregate_score (expect {search_path=public}): {search_path=public}
+    6 (informational) Cata solitaria, 2026-11-01, sample Nariño lote 2 (1 cup per sample): 80.25 -> 85.5
     6 (informational) Cata del viernes, 2026-11-01, sample Huila lote 7 (2 cups per sample): 80.25 -> 77.5
    ```
    **These numbers are what a FULL re-fire of every sample would do, which production never
@@ -1846,13 +1884,20 @@ new sample `ruleVersion = 1` while its evaluations already carry `cups`.
    the current rule. Samples nobody touches stay `ruleVersion = 1` and keep rendering exactly as
    before. The app reads the version from the data, there is no cut-over date.
    The close routine's own pass (first close, the cron's repair, a solo owner opening the
-   results) skips a sample whose aggregate is `ruleVersion = 1` and whose submitted evaluations
-   all have `cups` NULL (code: `refireAggregates(..., { mode: "keep-old-rule" })`), so it never
-   rewrites a pre-deploy score either.
+   results) SKIPS a sample that has no new-rule data: no aggregate row or a `ruleVersion = 1`
+   row, and every submitted evaluation with `cups` NULL (code:
+   `refireAggregates(..., { mode: "keep-old-rule" })`). It re-fires a sample that has a
+   submitted evaluation with `cups` set or a row with `ruleVersion` other than 1. So it never
+   writes or rewrites a score for a pre-deploy sample.
    The "Actualizar" button on a CLOSED or expired session does NOT re-fire (it only re-reads
-   the page), so a routine click never rewrites a past score. One accepted exception: a guest
-   claim (`mergeGuestData`) re-fires the closed sessions it touches when evaluations conflict
-   or an exclusion flag changes, which recomputes those samples under the current rule.
+   the page), so a routine click never rewrites a past score.
+   **One remaining exception, a decision the ARCHITECT took (the owner must be told):** when a
+   guest claim (`mergeGuestData`) removes or replaces an evaluation of a sample (a conflict
+   between the guest's and the account's evaluation of the same sample, or a participant
+   exclusion that differs between the two rows and changes who is included), that sample's group
+   score is recomputed, and the only function that exists computes the current rule; an old
+   sample in that situation moves to the current rule. Only the samples whose included set
+   changed are recomputed; every other sample of those sessions is not touched.
 4. **Verify (read-only). HARD STOP: this must run and pass BEFORE step 5; do not merge
    otherwise.** If the live function body does not contain `v_factor` and write `"ruleVersion"`
    (it is still the PHASE 23 body), the old trigger stamps every new sample `ruleVersion = 1`

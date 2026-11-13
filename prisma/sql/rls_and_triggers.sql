@@ -2326,8 +2326,11 @@ COMMIT;
 -- (v1; the migration does NOT backfill it) and aggregate_scores."ruleVersion" is 1
 -- until this function recomputes the sample (then 2). The app shows each stored
 -- score under the rule its data says, so past results render unchanged. A re-fire
--- of an old sample (exclusion after close, repair) recomputes it under this rule
--- and stamps ruleVersion 2: intended.
+-- of an old sample recomputes it under this rule and stamps ruleVersion 2: intended
+-- for a deliberate owner action (excluding or including a cupper) and for a guest
+-- claim that removes or replaces an evaluation of that sample. The close / repair
+-- pass does NOT re-fire an old sample (refireAggregates, mode keep-old-rule skips a
+-- sample with no aggregate row or a ruleVersion 1 row and no evaluation with cups).
 --
 -- Nothing stored is recomputed by this phase: it only re-issues the function, so
 -- aggregate_scores keeps what the old function computed until an evaluation is

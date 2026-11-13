@@ -39,6 +39,24 @@ describe("phase26_dry_run.sql", () => {
       data: { ruleVersion: 1, communityScore: 80.25 },
     });
 
+    // A solo session of ONE cup per sample (third review nit: line 6 says "1 cup", singular).
+    const solo = await makeSession({ ownerId: owner, cupsPerSample: 1, samples: [{ label: "Nariño lote 2" }] });
+    await prisma.cuppingSession.update({ where: { id: solo.id }, data: { name: "Cata solitaria" } });
+    await makeEvaluation({
+      sampleId: solo.samples[0].id,
+      sessionId: solo.id,
+      cupperId: owner,
+      cupsPerSample: 1,
+      values: 7,
+      nonUniform: [true],
+      defective: [true],
+      overrides: { cups: null },
+    });
+    await prisma.aggregateScore.update({
+      where: { sessionSampleId: solo.samples[0].id },
+      data: { ruleVersion: 1, communityScore: 80.25 },
+    });
+
     const sql = readFileSync(join(__dirname, "../../prisma/sql/dry-runs/phase26_dry_run.sql"), "utf8");
     const c = await rawClient();
     let message = "";
@@ -61,6 +79,8 @@ describe("phase26_dry_run.sql", () => {
     expect(message).toContain("Increases are expected for samples with 5 or more cups");
     expect(message).toContain("decreases are expected for samples under 5 cups with flagged cups");
     expect(message).toMatch(/ 6 \(informational\) Cata del viernes, \d{4}-\d{2}-\d{2}, sample Huila lote 7 \(2 cups per sample\)/);
+    expect(message).toContain("rows stored by an older version of the function, which amplified deductions under 5 cups");
+    expect(message).toMatch(/ 6 \(informational\) Cata solitaria, \d{4}-\d{2}-\d{2}, sample Nariño lote 2 \(1 cup per sample\)/);
     expect(message).toMatch(/ 4 .*\(expect 0\): 0/);
     // Nothing was applied: the stored row is the one we pinned.
     expect((await prisma.aggregateScore.findUniqueOrThrow({ where: { sessionSampleId: A.id } })).ruleVersion).toBe(1);

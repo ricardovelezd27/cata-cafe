@@ -226,7 +226,7 @@ $fn$;
   SELECT max(a."communityScore" - b."communityScore"), min(a."communityScore" - b."communityScore")
     INTO v_up, v_down
     FROM agg_before b JOIN aggregate_scores a USING ("sessionSampleId");
-  v_out := v_out || format(E'\n 3 (informational) change of communityScore under a full re-fire, highest: %s, lowest: %s. Increases are expected for samples with 5 or more cups and a defective cup, which used to be counted twice; decreases are expected for samples under 5 cups with flagged cups, which used to have no deduction', v_up, v_down);
+  v_out := v_out || format(E'\n 3 (informational) change of communityScore under a full re-fire, highest: %s, lowest: %s. Increases are expected for samples with 5 or more cups and a defective cup, which used to be counted twice; decreases are expected for samples under 5 cups with flagged cups, which used to have no deduction; large increases can also appear on samples under 5 cups, on rows stored by an older version of the function, which amplified deductions under 5 cups', v_up, v_down);
 
   -- A check that CAN fail: the old function never wrote ruleVersion 2.
   SELECT count(*) INTO v_excess
@@ -246,7 +246,7 @@ $fn$;
      WHERE a."communityScore" IS DISTINCT FROM b."communityScore"
      ORDER BY abs(a."communityScore" - b."communityScore") DESC, cs.name, ss.label LIMIT 10
   LOOP
-    v_out := v_out || format(E'\n 6 (informational) %s, %s, sample %s (%s cups per sample): %s -> %s', r.session_name, to_char(r.session_date, 'YYYY-MM-DD'), r.sample_label, r.cups, r.before, r.after);
+    v_out := v_out || format(E'\n 6 (informational) %s, %s, sample %s (%s %s per sample): %s -> %s', r.session_name, to_char(r.session_date, 'YYYY-MM-DD'), r.sample_label, r.cups, CASE WHEN r.cups = 1 THEN 'cup' ELSE 'cups' END, r.before, r.after);
   END LOOP;
 
   RAISE EXCEPTION E'PHASE 26 DRY RUN: NOTHING WAS APPLIED (this error is the expected result). Compare each line with its expectation:%', v_out;
