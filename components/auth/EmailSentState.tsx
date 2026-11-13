@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { verifyEmailCode } from "@/app/actions/auth";
+import { announceSignedIn } from "@/lib/identityChange";
 import { authErrorFromAction, type AuthErrorKey } from "@/lib/authErrors";
 
 // The "we sent you something" state shared by the login form and the
@@ -107,6 +108,7 @@ export function EmailSentState({
       try {
         const r = await verifyEmailCode(email, code, next, locale);
         if (r.ok) {
+          announceSignedIn(); // WP8b: tabs paused by a sign-out may resume
           window.location.assign(r.data.next);
           return; // stay in the verifying state while the page navigates
         }

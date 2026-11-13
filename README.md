@@ -366,7 +366,7 @@ Create `.env.local`. The boot check in `instrumentation.ts` (`lib/env.ts`) makes
 | `GUEST_CLAIM_SECRET` | Random secret (32+ bytes) that signs the "keep my guest results" links |
 | `CRON_SECRET` | Random secret (32+ bytes); Vercel Cron sends it as `Authorization: Bearer` to `/api/cron/*`, which answer 503 without it |
 | `RESEND_API_KEY` | Resend API key for outbound email |
-| `ANALYTICS_SUPER_ADMIN_EMAIL` | The insights super-admin address: exactly one valid address (a list or a typo counts as missing). If unset, nobody is super-admin (no address is built into the code). In local development, set it in `.env.local` if you need to reach the super-admin screens |
+| `ANALYTICS_SUPER_ADMIN_EMAIL` | The insights super-admin address: exactly one valid address (a missing, blank or invalid value, such as a list or a typo, refuses to start in production). If unset, nobody is super-admin (no address is built into the code). In local development, set it in `.env.local` if you need to reach the super-admin screens |
 
 ### Recommended in production (boot logs a warning if unset)
 

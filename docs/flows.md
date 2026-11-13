@@ -538,12 +538,33 @@ bar on every other app page; never both.
 A `cata_identity_epoch` marker naming another user is ignored; one naming nobody (sign-out
 button) is treated like one naming this tab's user.
 
+**Sign-in completed (S10 WP8b).** A tab paused by a sign-out used to stay paused until it was
+hidden 2+ s and shown again. Now every point where a sign-in COMPLETES on this device writes
+a second marker kind, `{ kind: "signedIn" }`, to `cata_identity_epoch` (client code, after
+the action returned ok): `ConfirmClient` (`confirmEmailToken`, `acceptPendingSignIn`),
+`EmailSentState` (`verifyEmailCode`), `ClaimCard` (after the merge), and Google (the login
+button records `cata_signin_started`; the next app-shell mount announces it, 10 min TTL).
+Receivers always re-read; for this kind `same` CLEARS the latch, `different` latches, `none`
+and `unknown` do nothing (`actionOnMarkerRecheck(identity, "signedIn")`).
+
 **A guest who finishes the claim in another tab** is the same person, not a new one: when
 `cata_claim_done` says the RENDERED anonymous id was claimed by the CURRENT signed-in id
 (`claimedRenderedUser`), no notice is shown. The cup page awaits its pending draft writes,
 `rekeyUserBlobs(anon, account)` moves every blob, and the page reloads so it renders for
 the account and the drafts sync. The claim markers survive the re-key (TTL 1 h); every app
-mount re-runs the idempotent re-key.
+mount re-runs the idempotent re-key. **WP8b:** the TTL counts from the DONE marker (a claim
+that never completed still expires from its start marker), so a tab that notices late is still
+the same person. Both reload buttons (cup banner, layout bar) call one `reloadIdentity()`:
+await pending local writes, re-key if the markers say this guest was claimed by the signed-in
+account, reload; the before-reload hook also clears the page's pending refs and timers so the
+reload's pagehide flush writes no second copy under the old id. The reloaded cup page awaits
+the same re-key (`awaitClaimRekey`) BEFORE its first `loadSession`, so the form hydrates from
+the latched edits and the next save cannot replace the module with a stale copy. On a key
+collision `rekeyBlob` keeps the NEWER module per `updatedAt` (equal timestamps keep the
+account's copy). The offline replay answers `identity_changed` (distinct from `pending`) for a
+positively different signed-in user: the draft stays pending, no attempt burnt, and the hook
+latches the tab. `joinSessionAsGuest` carries the onboarded guest id and refuses a different
+signed-in user (`identity_changed`, nobody joined). The latch also toasts once.
 
 `IdentityWatcher` also learns of a change from the shell re-rendering for another user.
 The dialog waits at most 8 s for the sync. When the dialog opens online, the guest's own saved drafts are replayed

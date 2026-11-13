@@ -20,6 +20,7 @@ import {
 } from "@/lib/offline/types";
 import { useResume } from "@/hooks/useResume";
 import { noteIfStaleBundle } from "@/lib/staleBundle";
+import { onServerIdentityChanged } from "@/lib/identityResolve";
 
 export type SyncPhase = "idle" | "syncing" | "synced" | "failed";
 
@@ -102,13 +103,22 @@ export function useOfflineSync({
             });
             // "pending" = the master has not started this live session yet; the
             // draft stays pending without burning an attempt (no fast retry).
+            if (res.status === "identity_changed") {
+              // A different user is signed in: latch the tab, keep the draft.
+              if (expectedUserId) void onServerIdentityChanged(expectedUserId);
+              return "waiting";
+            }
             return res.status === "pending" ? "waiting" : res.status;
           }
           const res =
             moduleKey === "physical"
               ? await replayPhysical({ sessionSampleId: sampleId, data, expectedUserId })
               : await replayExtrinsic({ sessionSampleId: sampleId, data, expectedUserId });
-          // "pending" = signed in as someone else right now: keep the draft, no attempt burnt.
+          if (res.status === "identity_changed") {
+            if (expectedUserId) void onServerIdentityChanged(expectedUserId);
+            return "waiting";
+          }
+          // "pending" = nobody signed in right now: keep the draft, no attempt burnt.
           return res.status === "pending" ? "waiting" : res.status;
         } catch (err) {
           // C-06: the tab predates a deploy; every retry fails the same way.

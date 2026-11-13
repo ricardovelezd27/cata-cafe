@@ -772,10 +772,11 @@ export async function upsertEvaluation(input: {
   // accepted one is ignored server-side. Invalid values count as absent.
   clientTs?: number;
   // S10 WP8 (shared device): the user this page was RENDERED for. Optional;
-  // absent = today's behaviour. When present and the signed-in user differs
-  // (or nobody is signed in) NOTHING is written and the answer is
-  // `{ ok: false, error: "identity_changed" }` (not a throw: a thrown error
-  // reaches the browser as an opaque digest).
+  // absent = today's behaviour. When present and a DIFFERENT user is signed in
+  // NOTHING is written and the answer is `{ ok: false, error: "identity_changed" }`
+  // (not a throw: a thrown error reaches the browser as an opaque digest).
+  // Nobody signed in, or an unreachable auth lookup, is NOT an identity change:
+  // it throws `not_authenticated` exactly as requireUser() does.
   expectedUserId?: string;
 }): Promise<{ ok: true; evaluationId: string } | { ok: false; error: "identity_changed" }> {
   let user;
