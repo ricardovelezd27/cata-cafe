@@ -27,7 +27,7 @@ export interface CoffeeAggregateSampleInput {
   id: string;
   sessionId: string;
   /** name/date are null when the viewer neither owns nor joined the session: the row still feeds the anonymous totals but is never listed. */
-  session: { id: string; name: string | null; date: Date | null };
+  session: { id: string; name: string | null; date: Date | null; closedAt?: Date | null };
   aggregateScore: {
     communityScore: number | null;
     participantCount: number;
@@ -40,6 +40,8 @@ export interface CoffeeSessionRow {
   sessionId: string;
   sessionName: string;
   sessionDate: Date;
+  /** When the session closed (only for sessions the viewer owns or joined); drives the "origin data edited" note. */
+  sessionClosedAt: Date | null;
   communityScore: number | null;
 }
 
@@ -180,6 +182,7 @@ export function computeCoffeeAggregate(
               sessionId: s.sessionId,
               sessionName: s.session.name,
               sessionDate: s.session.date,
+              sessionClosedAt: s.session.closedAt ?? null,
               communityScore: s.aggregateScore?.communityScore ?? null,
             },
           ],

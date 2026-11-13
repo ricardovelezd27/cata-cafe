@@ -2262,7 +2262,43 @@ app works under either state.
 
 ---
 
-## §34. Database — apply the `close_notice_and_late_contributions` migration (2026-11, S10 WP4b)
+## §34. Database — apply the `coffee_origin_edited_at` migration (2026-11, S10 WP5a)
+
+**What it does:** adds ONE column, additive, no default, no backfill, no trigger, no function, no
+policy, no index, no foreign key: `coffees."originEditedAt"` (TIMESTAMPTZ(3), nullable). It records
+when a coffee's ORIGIN data (country, region, farm, producer, species, variety, harvest, process,
+altitude, roast level, certifications) last really changed; NULL = no origin edit recorded. The
+"Datos de origen editados el {fecha}" note reads it instead of `coffees."updatedAt"` (which also
+moves on publish, visibility, invites, claim and anonymize). Old code ignores the column.
+
+**Order matters:** run it BEFORE merging/deploying PR #128. The regenerated Prisma client selects the
+column on the coffee, results and PDF pages immediately.
+
+1. On your machine, with `.env.local` pointing at the project (it is production):
+   ```bash
+   npx.cmd prisma migrate deploy
+   ```
+   Expected: `… 20261115090000_coffee_origin_edited_at … applied`.
+2. **Verify** (Supabase SQL Editor, read-only):
+   ```sql
+   SELECT column_name, data_type, is_nullable
+   FROM information_schema.columns
+   WHERE table_name = 'coffees' AND column_name = 'originEditedAt';
+   ```
+   Expected: one row, `timestamp with time zone`, `YES`.
+3. No SQL phase: `coffees` has no column grants (the API roles are read-only since PHASE 24); the app
+   reads the column only through Prisma.
+4. Deploy the branch. No new environment variable.
+
+**Smoke test:** edit a coffee's notes only (or its visibility): no "editados" note appears on its
+closed sessions. Change its country: the note appears with today's date.
+
+**Rollback:** `ALTER TABLE "coffees" DROP COLUMN "originEditedAt";` is safe only after the code that
+reads it is rolled back; code rolled back ignores the column anyway.
+
+---
+
+## §35. Database — apply the `close_notice_and_late_contributions` migration (2026-11, S10 WP4b)
 
 **What it does:** four NULLABLE columns, no default, no backfill, no index, no trigger, no policy:
 

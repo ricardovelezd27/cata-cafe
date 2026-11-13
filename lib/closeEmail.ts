@@ -333,7 +333,7 @@ export async function sendCloseEmails(
               descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
               affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
               combined: (ev?.combinedData as Record<string, unknown>) ?? {},
-              ...sheetSampleRecords(s, isOwnerRecipient),
+              ...sheetSampleRecords(s, isOwnerRecipient, session),
               ...sheetSamplePrep(s, isOwnerRecipient),
             };
           }),

@@ -125,6 +125,8 @@ type SampleData = {
   combined: D;
   physical: D;
   extrinsic: D;
+  /** ISO time of the latest origin edit after the close (already gated on the server). */
+  originEditedAt?: string | null;
 };
 
 type T = Record<string, string>;

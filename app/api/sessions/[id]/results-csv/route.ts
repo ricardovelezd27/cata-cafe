@@ -2,8 +2,9 @@
 // Gate mirrors the ficha-tecnica route: 401 signed-out, the session CREATOR or
 // the super-admin (read-only) get the file, everyone else — participants
 // included — gets 404 so the route does not reveal the session exists.
-// `?locale=en|es` picks the header language, `?codes=1` swaps cupper names for
-// anonymous codes (TODO(Kim-D5): names stay the default until Kim answers).
+// `?locale=en|es` picks the header language, `?names=0` drops the cupper name
+// column (S10 WP5a, TODO(kim-validar:D5)): the file keeps only the stable code
+// per cupper, no name, id or email. Same owner / super-admin gate.
 
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
@@ -12,6 +13,7 @@ import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { loadSessionReportSource } from "@/lib/reports/sessionReportData";
 import { buildResultsCsv } from "@/lib/reports/resultsCsv";
+import { csvCupperCodes } from "@/lib/reports/csvCodeKey";
 import { slug, dateSlug } from "@/lib/pdf/filename";
 import { logError, errorMessage } from "@/lib/log";
 
@@ -26,7 +28,7 @@ export async function GET(
   const { id } = await params;
   const sp = request.nextUrl.searchParams;
   const locale: "es" | "en" = sp.get("locale") === "en" ? "en" : "es";
-  const codes = sp.get("codes") === "1";
+  const names = sp.get("names") !== "0" && sp.get("codes") !== "1"; // the old ?codes=1 means the same as names=0
 
   const supabase = await createClient();
   const {
@@ -48,7 +50,11 @@ export async function GET(
     csv = buildResultsCsv(source, {
       locale,
       coffeeDeleted: deletedCoffeeLabel(locale),
-      codes,
+      names,
+      codes: csvCupperCodes(
+        id,
+        [...source.participants.map((p) => p.userId), ...source.evals.map((e) => e.cupperId)],
+      ),
     }).csv;
   } catch (err) {
     const digest = Math.random().toString(36).slice(2, 10);
@@ -66,7 +72,7 @@ export async function GET(
     });
   }
 
-  const filename = `${locale === "en" ? "results" : "resultados"}_${slug(session.name) || "sesion"}_${dateSlug()}.csv`;
+  const filename = `${locale === "en" ? "results" : "resultados"}_${slug(session.name) || "sesion"}${names ? "" : locale === "en" ? "_no-names" : "_sin-nombres"}_${dateSlug()}.csv`;
   return new Response(csv, {
     status: 200,
     headers: {

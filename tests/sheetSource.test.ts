@@ -53,24 +53,28 @@ describe("sheetSampleRecords", () => {
     expect(sheetSampleRecords({ revealed: false, physical: phys, extrinsic: ext }, false)).toEqual({
       physical: {},
       extrinsic: {},
+      originEditedAt: null,
     });
   });
   it("participant gets extrinsic once revealed, never physical", () => {
     expect(sheetSampleRecords({ revealed: true, physical: phys, extrinsic: ext }, false)).toEqual({
       physical: {},
       extrinsic: ext.data,
+      originEditedAt: null,
     });
   });
   it("owner gets both, extrinsic even pre-reveal", () => {
     expect(sheetSampleRecords({ revealed: false, physical: phys, extrinsic: ext }, true)).toEqual({
       physical: phys.data,
       extrinsic: ext.data,
+      originEditedAt: null,
     });
   });
   it("null rows give empty records", () => {
     expect(sheetSampleRecords({ revealed: true, physical: null, extrinsic: undefined }, true)).toEqual({
       physical: {},
       extrinsic: {},
+      originEditedAt: null,
     });
   });
 });

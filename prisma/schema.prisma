@@ -81,6 +81,11 @@ model Coffee {
   // and user_coffee_history keep pointing here so tasting-derived data stays
   // linked to the analytical attributes (country, variety, process…).
   deletedAt          DateTime?
+  // S10 WP5a (F-cafes-9): when an ORIGIN field last changed (lib/coffeeOrigin.ts).
+  // NULL = no origin edit recorded. Stamped only by updateCoffee and
+  // updateSampleMetadata when an origin field really differs; never by publish,
+  // visibility, invites, claim, anonymize or code backfill. Display-only.
+  originEditedAt     DateTime? @db.Timestamptz(3)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 

@@ -8,7 +8,7 @@
 --   * evaluations."postCloseNoteAt"       when that note was written.
 -- No grant change: cupping_sessions and evaluations are granted table-wide to the browser key
 -- (only session_samples and session_participants are column-level, PHASE 21 / PHASE 25).
--- Apply with `npx.cmd prisma migrate deploy` BEFORE the merge/deploy (runbook section 34).
+-- Apply with `npx.cmd prisma migrate deploy` BEFORE the merge/deploy (runbook section 35).
 
 -- ONE explicit transaction: `prisma migrate deploy` sends this file statement by statement in
 -- autocommit, so without BEGIN/COMMIT the SET LOCAL below does nothing and the ALTERs would

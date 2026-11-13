@@ -61,7 +61,7 @@ export async function GET(
         samples: {
           orderBy: { position: "asc" },
           include: {
-            coffee: { select: { name: true, deletedAt: true, roastLevel: true } },
+            coffee: { select: { name: true, deletedAt: true, roastLevel: true, originEditedAt: true } },
             evaluations: { where: { cupperId: viewAsId } },
             physical: true,
             extrinsic: true,
@@ -117,7 +117,7 @@ export async function GET(
         descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
         affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
         combined: (ev?.combinedData as Record<string, unknown>) ?? {},
-        ...sheetSampleRecords(sample, ownerView),
+        ...sheetSampleRecords(sample, ownerView, session),
         ...sheetSamplePrep(sample, ownerView),
       };
     }),

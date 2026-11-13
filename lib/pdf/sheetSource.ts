@@ -7,6 +7,7 @@
 // Pure module (only imports another pure module) so vitest can load it.
 
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
+import { sampleOriginEditedAt } from "@/lib/originEdit";
 import { gateSamplePrep, type SamplePrep, type SamplePrepRow } from "@/lib/samplePrep";
 
 export interface SheetSampleSource {
@@ -53,10 +54,17 @@ export function sheetSampleRecords(
   sample: {
     revealed: boolean;
     physical: { data: unknown } | null | undefined;
-    extrinsic: { data: unknown } | null | undefined;
+    extrinsic: { data: unknown; editedAt?: Date | null } | null | undefined;
+    coffee?: { originEditedAt?: Date | null; [k: string]: unknown } | null;
   },
   ownerView: boolean,
-): { physical: Record<string, unknown>; extrinsic: Record<string, unknown> } {
+  /** The session's close time and closing date: with them the sheet says when origin data was edited afterwards (F-cafes-9). */
+  session?: { closedAt?: Date | null; closesAt?: Date | null },
+): {
+  physical: Record<string, unknown>;
+  extrinsic: Record<string, unknown>;
+  originEditedAt: string | null;
+} {
   const asRecord = (v: unknown): Record<string, unknown> =>
     typeof v === "object" && v !== null && !Array.isArray(v)
       ? (v as Record<string, unknown>)
@@ -64,5 +72,18 @@ export function sheetSampleRecords(
   return {
     physical: ownerView ? asRecord(sample.physical?.data) : {},
     extrinsic: ownerView || sample.revealed ? asRecord(sample.extrinsic?.data) : {},
+    // Same gate as the extrinsic data itself: never a date for origin the reader may not see.
+    originEditedAt:
+      (ownerView || sample.revealed
+        ? sampleOriginEditedAt({
+            // the owner view of a blind sample still never says anything about the coffee
+            revealed: true,
+            closedAt: session?.closedAt,
+            closesAt: session?.closesAt,
+            extrinsicEditedAt: sample.extrinsic?.editedAt,
+            coffeeOriginEditedAt: sample.revealed ? sample.coffee?.originEditedAt : null,
+          })
+        : null
+      )?.toISOString() ?? null,
   };
 }

@@ -1011,10 +1011,11 @@ one sender, `deliverGroupMail` (`lib/groupEmail.ts`):
 (`group_full` at 200 members, `invalid_email`, and `offline` when the request
 never reached the server). Removing a member asks through `ConfirmDialog` and names
 the person. No outbound group link carries the recipient's address
-(`/auth/login?next=...` only). A member sees the roster as name, else `j***` for a
-linked account, else `j***@domain` for an email-only invitee (`memberLabel`); the
-owner's roster shows the typed address (linked accounts masked). Roster visibility
-beyond that is Kim's D7 (default: every member sees names). Per-group unsubscribe (S8-20): every group mail carries a footer link and
+(`/auth/login?next=...` only). A MEMBER sees the roster as a name, else a profile name that does not look like the address,
+else "Miembro" (linked) / "Invitación pendiente" (S10 WP5a, F-grupos-10, review H2,
+`memberRosterForMember` inside `lib/groups/memberView.ts`): the member's render never has an address, not even masked, because
+the page's shared query does not select it; only the OWNER's roster shows addresses (the typed
+ones whole, linked accounts masked). Every member seeing NAMES is the decided D7 default. Per-group unsubscribe (S8-20): every group mail carries a footer link and
 `List-Unsubscribe` / `List-Unsubscribe-Post` headers over a signed token
 (`lib/groupUnsubscribe.ts`, group + HMAC of the stored address, no expiry);
 `/api/groups/unsubscribe` (public) sets `tasting_group_members.emailOptOutAt`;
@@ -1162,7 +1163,7 @@ incluidos"**: n = complete evaluations of non-excluded cuppers, N = every submit
 evaluation (excluded ones too, computed separately from `submittedCount`). Resumen, the
 radar card, the score breakdown, the owner matrix, the participant summary and the ficha
 read the same output. The owner matrix shows who excluded whom, when and why
-(`ExclusionDialog`, fixed reason list in `lib/exclusionReasons.ts`). Display-only:
+(`ExclusionDialog`, fixed reason list plus a free text for "other" in `lib/exclusionReasons.ts`, S10 WP5a D2; scoring differently is never a reason; after the close the dialog adds "Los resúmenes que ya se enviaron tenían el número anterior"). The excluded cupper alone sees a private line on their own results page (`ownExclusionNotice`: only the viewer's own row, never by email, never in a PDF or CSV). Display-only:
 scoring, `computeGroupAggregate`, the SQL trigger and `AggregateScore` never read any of
 this.
 
@@ -1197,14 +1198,16 @@ stays the HTML twin of the CVA form only.
 **Report stamp & export (S8-12).** Every PDF carries `ReportStamp`
 (`lib/pdf/sections/ReportStamp.tsx`, text in the pure `lib/pdf/stampText.ts`): server date
 and time in UTC, language, the n-of-N inclusion line, "Resultados actualizados el …" /
-"Origen editado el …" when something changed after close, the viewer's own exclusion
+"Datos de origen editados el …" when origin data changed after close (sample record or the linked coffee's `originEditedAt`, stamped only by a real origin-field edit, `lib/originEdit.ts` + `lib/coffeeOrigin.ts`; the CVA sheet, the coffee profile's session list and the coffee ficha say it too, F-cafes-9), the viewer's own exclusion
 (participant summary: no reason, no peer identity) and "BORRADOR" for unsent drafts (the
 CVA form repeats it in every page footer). `Document language` is set on all six
 documents, filenames end in `_YYYYMMDD`, the participant summary prints the eight radar
 values as text, and `cva-pdf` has `maxDuration`, try/catch and a logged digest. The owner
 also gets `/api/sessions/[id]/results-csv` (one row per cupper × sample, UTF-8 BOM,
-`csvCell` from `lib/csv.ts`; coffee name only once revealed; `?codes=1` swaps names for
-codes; participants get 404).
+`csvCell` from `lib/csv.ts`; coffee name only once revealed; every row carries a code
+"C-XXXX" from a keyed hash of (session, cupper), rows ordered by sample then code (never by name,
+id or join time); `?names=0` drops the name AND the exclusion-reason columns (code only, no
+name, id or email; filename ends in sin-nombres); participants get 404; S10 WP5a D5).
 
 **Blind-leak gates (S8-02)** — data the UI hides must not be serialized either,
 each gate is a pure, tested helper shared by every consumer:
