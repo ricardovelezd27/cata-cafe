@@ -39,6 +39,8 @@ type Copy = {
   evaluated: (x: number, n: number) => string;
   sample: string;
   referenceNote: string;
+  /** One line under the fixed-reference tag: it is an exercise, not the CVA (S10 WP6 A2). */
+  referenceExplain: string;
   /** B1: the same tag for a "free" reference, which is scored like any sample. */
   referenceNoteFree: string;
   mine: string;
@@ -77,7 +79,9 @@ const TEXT: Record<Locale, Copy> = {
     alignmentSub: (m, o) => `${m} de ${o} descriptores`,
     evaluated: (x, n) => `Evaluaste ${x} de ${n} muestras`,
     sample: "Muestra",
-    referenceNote: "Referencia · ancla 79.00",
+    referenceNote: "Referencia fija · 79.00",
+    referenceExplain:
+      "Es un ejercicio de Café Sensible para alinear al grupo, no parte del CVA.",
     referenceNoteFree: "Referencia",
     mine: "Tú",
     community: "Grupo",
@@ -135,7 +139,9 @@ const TEXT: Record<Locale, Copy> = {
     alignmentSub: (m, o) => `${m} of ${o} descriptors`,
     evaluated: (x, n) => `You evaluated ${x} of ${n} samples`,
     sample: "Sample",
-    referenceNote: "Reference · 79.00 anchor",
+    referenceNote: "Fixed reference · 79.00",
+    referenceExplain:
+      "A Café Sensible exercise to align the group, not part of the CVA.",
     referenceNoteFree: "Reference",
     mine: "You",
     community: "Group",
@@ -435,6 +441,7 @@ function SampleCard({
           {sample.isReference ? (
             <Text style={s.refNote}>{referenceFree ? t.referenceNoteFree : t.referenceNote}</Text>
           ) : null}
+          {sample.isReference && !referenceFree ? <Text style={s.refNote}>{t.referenceExplain}</Text> : null}
         </View>
         {sample.myScore === null && sample.communityScore === null ? (
           <Text style={s.muted}>{t.notEvaluated}</Text>

@@ -290,9 +290,9 @@
       },
       "referenceMode": {
         "legend": "How the reference is used",
-        "anchor": "Anchor",
+        "anchor": "Fixed reference",
         "free": "Free reference",
-        "anchorHelp": "Its quality is fixed at 5 (79.00) for everyone and it is only described. It is a Café Sensible exercise, not part of the CVA.",
+        "anchorHelp": "Its quality is fixed at 5 and it is only described. The fixed reference is a Café Sensible exercise to align the group: everyone gives it 79.00. It is not part of the CVA, where each person scores their own impression.",
         "freeHelp": "Everyone scores it like any other sample and the rest are compared with its average."
       }
     },
@@ -378,10 +378,10 @@
       "sessionExpired": "This cupping's closing date has passed: it will close in the next few hours and can no longer be edited.",
       "warmupLocked": "The exercise can't be changed once the cupping has started.",
       "repinTitle": "Set this sample as the reference?",
-      "repinBody": "{n} cuppers already rated this sample. Marking it as the reference replaces their quality ratings with the 79.00 anchor. Their previous ratings of this sample are kept and come back if you remove the reference.",
+      "repinBody": "{n} cuppers already rated this sample. Marking it as the reference replaces their quality ratings with the 79.00 of the fixed reference. Their previous ratings of this sample are kept and come back if you remove the reference.",
       "sampleHasData": "Has physical or origin data — cannot be removed",
       "removeRepinTitle": "Remove the active reference?",
-      "removeRepinBody": "Removing it makes {label} the reference again, and {n} cuppers will have their quality ratings replaced by the 79.00 anchor. Their previous ratings of this sample are kept and come back if you remove the reference.",
+      "removeRepinBody": "Removing it makes {label} the reference again, and {n} cuppers will have their quality ratings replaced by the 79.00 of the fixed reference. Their previous ratings of this sample are kept and come back if you remove the reference.",
       "ratingsRestored": "The previous ratings of {n} evaluations were recovered.",
       "removeRepinConfirm": "Remove reference",
       "referenceRepinBlocked": "Removing this sample would reactivate an earlier reference and replace its cuppers' ratings. Change the reference first.",
@@ -429,8 +429,8 @@
     "noSamplesBody": "Add at least one sample to start cupping.",
     "referenceBadge": "Reference",
     "compareHint": "Compare against the reference ({label})",
-    "referenceLocked": "Reference sample: quality is pinned at 5 (neither high nor low) on every attribute and its score is always 79.00. Describe what you perceive; you will score the other samples above or below this one.",
-    "referenceLockedAffective": "Reference sample: quality is pinned at 5 (neither high nor low) on every attribute, so there is nothing to score here. Taste it calmly, note what you perceive and move on to the next sample.",
+    "referenceLocked": "Fixed reference: quality is pinned at 5 (neither high nor low) on every attribute and its score is always 79.00. Describe what you perceive; you will score the other samples above or below this one.",
+    "referenceLockedAffective": "Fixed reference: quality is pinned at 5 (neither high nor low) on every attribute, so there is nothing to score here. Taste it calmly, note what you perceive and move on to the next sample.",
     "referenceCupsLocked": "Cups are not marked on the reference: its score stays fixed at 79.00.",
     "revealedNote": "Sample revealed: it can no longer be evaluated.",
     "market": {
@@ -753,7 +753,7 @@
     "referenceAdd": "Add reference…",
     "referenceRemoveActive": "Remove the active reference",
     "referenceRevealed": "revealed, cannot be the fixed reference",
-    "referenceAddHint": "The previous reference keeps its 79.00; the new one is pinned.",
+    "referenceAddHint": "The previous reference keeps its 79.00; the new one is pinned. The fixed reference is a Café Sensible exercise to align the group: everyone gives it 79.00. It is not part of the CVA, where each person scores their own impression.",
     "referenceAddTitle": "Add reference",
     "referenceAddConfirm": "Add reference",
     "warmupStart": "Sensory movement · Start with the group",
@@ -888,8 +888,8 @@
     },
     "dashboard": {
       "statSamples": "Samples evaluated",
-      "anchorTitle": "Reference (anchor)",
-      "anchorHint": "Quality pinned at 5 on every attribute · always 79.00 · outside the ranking, the average and the best sample",
+      "anchorTitle": "Fixed reference",
+      "anchorHint": "Quality pinned at 5 on every attribute · always 79.00 · outside the ranking, the average and the best sample. The fixed reference is a Café Sensible exercise to align the group: everyone gives it 79.00. It is not part of the CVA, where each person scores their own impression.",
       "statParticipation": "Participation",
       "statAvg": "Session average",
       "statBest": "Best sample",
@@ -1093,7 +1093,7 @@
       },
       "referencia": {
         "title": "Reference sample",
-        "body": "The session master can mark one sample as the reference: a shared starting point the others are read against. The tasting starts with it and its quality is pinned at 5 (neither high nor low) on every attribute, so every cupper gives it 79.00 and only describes what they perceive. It sits outside the ranking, the average and the best sample: it is the anchor.\nWhat it adds is context: next to each sample you'll see Δ, the difference between its score and the reference's, always computed on the same kind of score you see beside it (community when visible, otherwise your own).\nReference, group mean and deviation are different things: the reference is the starting point the master chose; the mean is what the group perceived; the deviation (±) is how much the group spread.",
+        "body": "The session master can mark one sample as the reference: a shared starting point the others are read against. The tasting starts with it and its quality is pinned at 5 (neither high nor low) on every attribute, so every cupper gives it 79.00 and only describes what they perceive. It sits outside the ranking, the average and the best sample. The fixed reference is a Café Sensible exercise to align the group: everyone gives it 79.00. It is not part of the CVA, where each person scores their own impression.\nWhat it adds is context: next to each sample you'll see Δ, the difference between its score and the reference's, always computed on the same kind of score you see beside it (community when visible, otherwise your own).\nReference, group mean and deviation are different things: the reference is the starting point the master chose; the mean is what the group perceived; the deviation (±) is how much the group spread.",
         "bodyFree": "The session master can mark one sample as the reference: a shared starting point the others are read against. The tasting starts with it and everyone scores it freely, like any other sample. It sits outside the ranking, the average and the best sample.\nWhat it adds is context: next to each sample you'll see Δ, the difference between its score and the reference's, always computed on the same kind of score you see beside it (community when visible, otherwise your own).\nReference, group mean and deviation are different things: the reference is the starting point the master chose; the mean is what the group perceived; the deviation (±) is how much the group spread."
       }
     },
@@ -1487,9 +1487,9 @@
   },
   "landing": {
     "meta": {
-      "title": "cafesensible.ai — Calibrate your group's palate, with data",
+      "title": "cafesensible.ai — Align your group's palate, with data",
       "description": "The tool for the Café Sensible Method: group cupping sessions on the full SCA CVA protocol, with the instructor's reference and convergence you can see. For schools, trainers and facilitators.",
-      "ogTitle": "cafesensible.ai — Your group's palate, calibrated and measured.",
+      "ogTitle": "cafesensible.ai — Your group's palate, aligned and measured.",
       "ogDescription": "Group SCA CVA cupping with an instructor reference, per-person deviation and visible convergence, session after session."
     },
     "header": {
@@ -1500,7 +1500,7 @@
     },
     "hero": {
       "eyebrow": "The tool for the Café Sensible Method · SCA CVA",
-      "title": "Your group's palate, calibrated and measured.",
+      "title": "Your group's palate, aligned and measured.",
       "subtitle": "Group cupping sessions on the full SCA CVA protocol, with the instructor's reference and convergence you can see. The tool for the Café Sensible Method, for schools, trainers and facilitators.",
       "ctaNote": "No card. No password. Just your email."
     },
@@ -1532,7 +1532,7 @@
     },
     "how": {
       "eyebrow": "How it works",
-      "title": "Perceive, describe, calibrate. In that order.",
+      "title": "Perceive, describe, align. In that order.",
       "step1Kicker": "Perceive",
       "step1Title": "Cup it",
       "step1Desc": "Every person evaluates the cup with the official CVA protocol, at their own pace. Works offline, group sessions included.",
@@ -1542,7 +1542,7 @@
       "step2Desc": "The group records intensities and descriptors, cup by cup. The vocabulary is built together.",
       "step2Caption": "Live workshop. Real group.",
       "step3Kicker": "Measure",
-      "step3Title": "Calibrate",
+      "step3Title": "Align",
       "step3Desc": "Compare each evaluation with the instructor's reference, measure the deviation and export the PDF report. Convergence, made visible.",
       "frame1Aria": "Recreation of the affective evaluation screen with a 1-to-9 scale",
       "frame2Aria": "Recreation of the flavor descriptor selector",
@@ -1574,7 +1574,7 @@
         "desc": "A PDF report and certificate per session, ready to hand over."
       },
       "item6": {
-        "title": "Group calibration",
+        "title": "Group alignment",
         "desc": "Group sessions against the instructor reference, asynchronously too: each person cups whenever they can."
       },
       "factsSheets": "3 sheets",
@@ -1586,13 +1586,13 @@
       "eyebrow": "Who it's for",
       "title": "Built for people who train palates",
       "card1Title": "Trainers and facilitators",
-      "card1Desc": "You run cuppings and workshops and want your attendees to see their progress in data, not just your word for it. Calibrate the group against your reference and hand them their own evolution.",
+      "card1Desc": "You run cuppings and workshops and want your attendees to see their progress in data, not just your word for it. Align the group against your reference and hand them their own evolution.",
       "card2Title": "Schools",
-      "card2Desc": "Calibrate whole cohorts, track each student's deviation session after session, and close the course with PDF certificates.",
+      "card2Desc": "Align whole cohorts, track each student's deviation session after session, and close the course with PDF certificates.",
       "card3Title": "Roasters",
       "card3Desc": "Align your cupping table's judgment before you call a lot.",
       "card4Title": "Cooperatives",
-      "card4Desc": "Keep your panel calibrated, with evidence of consistency.",
+      "card4Desc": "Keep your panel aligned, with evidence of consistency.",
       "card5Title": "Importers",
       "card5Desc": "Group quality control with scores that compare across cuppers.",
       "galleryCaption": "Real sessions of the method. Groups from several countries.",
@@ -1607,7 +1607,7 @@
       "heroUnit": "founding members",
       "offer": "Free for the first {count} founding members",
       "feature1": "Full CVA cupping across its three sheets: descriptive, affective and extrinsic",
-      "feature2": "Group sessions and calibration with an instructor reference",
+      "feature2": "Group sessions and alignment with an instructor reference",
       "feature3": "PDF reports and certificates",
       "feature4": "Works offline, built for the lab",
       "cta": "Claim your founding spot →",
@@ -1630,7 +1630,7 @@
       "kicker": "Many palates. One reference. One number.",
       "title": "Stop <em>guessing</em> whether your team cups alike.",
       "sub": "Measure it. In your next session.",
-      "cta": "Calibrate your team for free →",
+      "cta": "Align your team for free →",
       "note": "No passwords. Sign in with a magic link to your email.",
       "photo5Alt": "Cuppers leaning over the cups during the evaluation."
     },
@@ -1975,6 +1975,14 @@
     "sessionMany": "sessions",
     "evaluationOne": "evaluation",
     "evaluationMany": "evaluations",
+    "lastSession": "Last session:",
+    "relToday": "today",
+    "relOneDay": "1 day ago",
+    "relDays": "{n} days ago",
+    "relOneMonth": "1 month ago",
+    "relMonths": "{n} months ago",
+    "relOneYear": "1 year ago",
+    "relYears": "{n} years ago",
     "addToGroup": "Add to group",
     "members": "Members",
     "addMember": "Add member",
@@ -2114,17 +2122,18 @@
       "open": "Open exercise",
       "mobileLink": "Sensory movement",
       "count": "5 exercises",
-      "eyesClosed": "Eyes closed"
+      "eyesClosed": "Eyes closed",
+      "kimLine": "“In my classes I see cuppers arrive more present at the table.” — Kim Ossenblok"
     },
     "dashboard": {
       "eyebrow": "Before cupping",
       "title": "Sensory Movement",
-      "body": "Kim's five slow movements to help you settle and arrive calmly before smelling and tasting. 3 to 8 minutes, seated or standing.",
+      "body": "Kim's five slow movements. Calm and focus your attention before cupping. 3 to 8 minutes, seated or standing.",
       "cta": "See the exercises"
     },
     "waiting": {
       "title": "While you wait",
-      "body": "A slow movement helps you settle before cupping. Pick an exercise; if the cupping starts, we take you to the table.",
+      "body": "A slow movement to calm and focus your attention before cupping. Pick an exercise; if the cupping starts, we take you to the table.",
       "minutes": "{min} min",
       "hero": "Your host chose",
       "heroStart": "Start",

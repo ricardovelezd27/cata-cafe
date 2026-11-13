@@ -3014,7 +3014,7 @@ export function CupClient({
         title={translations.referenceRepinTitle ?? "¿Fijar esta muestra como referencia?"}
         body={(
           translations.referenceRepinBody ??
-          "{n} catadores ya evaluaron esta muestra. Al marcarla como referencia, sus notas de calidad se reemplazan por el ancla de 79.00. No se puede deshacer."
+          "{n} catadores ya evaluaron esta muestra. Al marcarla como referencia, sus notas de calidad se reemplazan por los 79.00 de la referencia fija. No se puede deshacer."
         ).replace("{n}", String(repinTarget ? (evalCountBySample[repinTarget] ?? 0) : 0))}
         confirmLabel={translations.referenceAddConfirm ?? "Añadir referencia"}
         cancelLabel={translations.cancel}
@@ -3033,7 +3033,7 @@ export function CupClient({
         title={translations.referenceRemoveRepinTitle ?? "¿Quitar la referencia activa?"}
         body={(
           translations.referenceRemoveRepinBody ??
-          "Al quitarla, {label} vuelve a ser la referencia y {n} catadores verán sus notas de calidad reemplazadas por el ancla de 79.00. No se puede deshacer."
+          "Al quitarla, {label} vuelve a ser la referencia y {n} catadores verán sus notas de calidad reemplazadas por los 79.00 de la referencia fija. No se puede deshacer."
         )
           .replace("{label}", removeRepin?.label ?? "")
           .replace("{n}", String(removeRepin?.n ?? 0))}

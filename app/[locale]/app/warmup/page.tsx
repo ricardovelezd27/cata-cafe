@@ -100,6 +100,10 @@ export default async function WarmupLibraryPage({
         </ol>
       </section>
 
+      {/* One optional first-person line of Kim's, attributed. TODO(kim-validar:F3): simulated
+          answer; the wording is Ricardo's draft and awaits Kim's confirmation. */}
+      <p className="font-display text-base italic text-on-surface-variant">{t("library.kimLine")}</p>
+
       <p className="text-xs text-on-surface-variant">
         {lw(WARMUP_SHARED.closing.text, locale)}{" "}
         <em>
