@@ -95,7 +95,9 @@ export async function finalizeClosedSession(
 
   // S8-04 (F-solo-2): history copies the STORED aggregate, so make sure it is
   // current before reading it.
-  await step("refireAggregates", () => refireAggregates(sessionId));
+  // Mode "keep-old-rule" (S10 WP1a review H1): a sample made only of data stored
+  // before the 2026-11 deploy keeps its stored score; this pass is nobody's choice.
+  await step("refireAggregates", () => refireAggregates(sessionId, { mode: "keep-old-rule" }));
 
   await step("coffeeHistory", () => syncCoffeeHistoryForSession(sessionId));
 
