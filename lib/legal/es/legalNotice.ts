@@ -53,6 +53,8 @@ export const LEGAL_NOTICE_ES: LegalDoc = {
     {
       heading: "3. Propiedad intelectual e industrial",
       body: [
+        // ADAPTED: the source lists its own content types (learning modules, recipes,
+        // quizzes, gamification); here "ejercicios y datos de referencia".
         `Todos los contenidos de la Plataforma — incluyendo, sin carácter limitativo, textos, imágenes, logotipos, iconos, código fuente, diseño gráfico, ejercicios y datos de referencia — son propiedad exclusiva de ${E.name} o de terceros que han autorizado su uso, y están protegidos por la normativa española e internacional sobre propiedad intelectual e industrial.`,
         "3.1 Está expresamente prohibido:",
         {
@@ -65,7 +67,8 @@ export const LEGAL_NOTICE_ES: LegalDoc = {
           ],
         },
         // ADAPTED: the source says "son marcas de"; "signos distintivos" is used here
-        // because no trademark registration for this name has been shown.
+        // because no trademark registration for this name has been shown. For the
+        // same reason "infracción de la normativa de marcas" became "normativa aplicable".
         `3.2 Marcas y nombres comerciales. El nombre «${E.product}», el logotipo asociado y cualquier otra denominación comercial o signo distintivo que aparezca en la Plataforma son signos distintivos de ${E.name} o de terceros que han autorizado su uso. Su uso no autorizado constituye una infracción de la normativa aplicable.`,
         `3.3 Contenido generado por el usuario. Los usuarios que publiquen evaluaciones, notas de cata, fichas de café u otro contenido en la Plataforma conservan sus derechos de autor sobre dicho contenido, pero otorgan a ${E.name} una licencia no exclusiva, mundial, gratuita y transferible para usar, reproducir, mostrar y distribuir ese contenido en el marco del funcionamiento de la Plataforma.`,
       ],
@@ -73,7 +76,9 @@ export const LEGAL_NOTICE_ES: LegalDoc = {
     {
       heading: "4. Condiciones generales de uso",
       body: [
-        // ADAPTED: there are no passwords here.
+        // ADAPTED: there are no passwords here. The source's sentence "El acceso
+        // básico a la Plataforma es libre y gratuito… funcionalidades avanzadas" was
+        // dropped: there are no paid or advanced tiers (see section 6).
         "4.1 Acceso y registro. El registro de cuenta es necesario para crear catas, cafés y grupos. Al registrarse, el usuario garantiza que la información facilitada es veraz, completa y actualizada, y es responsable de mantener el control de su correo electrónico y de sus enlaces de acceso.",
         "4.2 Usos prohibidos. El usuario se compromete a no utilizar la Plataforma para:",
         {
@@ -98,7 +103,7 @@ export const LEGAL_NOTICE_ES: LegalDoc = {
         // ADAPTED: the source's clause is about an AI packaging scanner.
         `5.2 Exactitud del contenido e IA. Los textos generados con inteligencia artificial en el área de análisis son orientativos y pueden contener imprecisiones. ${E.name} no garantiza la exactitud, completitud o idoneidad de la información proporcionada por sistemas de IA.`,
         `5.3 Contenidos y enlaces de terceros. La Plataforma puede incluir contenidos o enlaces a sitios web de terceros. ${E.name} no tiene control sobre dichos sitios y no asume ninguna responsabilidad por sus contenidos, políticas de privacidad o prácticas. La inclusión de un enlace no implica respaldo ni relación comercial con el titular de dicho sitio.`,
-        `5.4 Responsabilidad del usuario. El usuario es responsable del uso que haga de la Plataforma y de los contenidos que introduzca. ${E.name} no se hace responsable de los daños que puedan derivarse del uso indebido de la Plataforma por parte del usuario o de terceros.`,
+        `5.4 Responsabilidad del usuario. El usuario es responsable del uso que haga de la Plataforma y de los contenidos que publique. ${E.name} no se hace responsable de los daños que puedan derivarse del uso indebido de la Plataforma por parte del usuario o de terceros.`,
       ],
     },
     {
@@ -132,6 +137,10 @@ export const LEGAL_NOTICE_ES: LegalDoc = {
     {
       heading: "9. Legislación aplicable y jurisdicción",
       body: [
+        // ADAPTED: the source's entries for the AI Regulation and the accessibility
+        // law carry a 2025 date clause and a transposition note; both were dropped
+        // here (the transposition is stated in section 10). The source's closing
+        // "Próxima revisión" line was dropped too: no review date has been set.
         "9.1 Marco legal. El presente Aviso Legal se rige por la legislación española y europea, en particular:",
         {
           list: [

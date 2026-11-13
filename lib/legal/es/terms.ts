@@ -98,7 +98,7 @@ export const TERMS_ES: LegalDoc = {
       // ADDED: the owner / participant rule that the product applies everywhere.
       heading: "4. Catas, organizadores y participantes",
       body: [
-        "Quien crea una cata, un café o un grupo es su organizador: puede editarlo, cerrarlo y eliminarlo, e invitar o excluir participantes. Los participantes toman parte en la cata y ven sus propios resultados y, una vez terminada la cata, los del grupo.",
+        "Quien crea una cata, un café o un grupo es su organizador: puede editarlo y eliminarlo, e invitar o excluir participantes; en una cata, también cerrarla. Eliminar un café retira sus datos identificativos, pero conserva las evaluaciones que otras personas hicieron de él. Los participantes toman parte en la cata y ven sus propios resultados; los resultados del grupo se muestran cuando la cata termina.",
         "Una cata cerrada queda como registro: nadie puede cambiar las evaluaciones ya enviadas. El organizador puede hacer correcciones acotadas después del cierre (por ejemplo, excluir a un participante o completar los datos de origen de un café); los resultados indican entonces la fecha de actualización. Si un participante suprime su cuenta, sus evaluaciones en catas compartidas se conservan sin su nombre, para que los resultados de los demás no cambien.",
         // ADAPTED from the source's "no professional certification" clause for its learning module.
         "Los puntajes e informes de la Plataforma tienen fines formativos y de trabajo. No constituyen una certificación profesional ni equivalen a una evaluación acreditada por ningún organismo oficial.",

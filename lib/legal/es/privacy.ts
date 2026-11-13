@@ -129,7 +129,7 @@ export const PRIVACY_ES: LegalDoc = {
         },
         "No comunicamos sus datos a terceros con fines propios sin su consentimiento explícito. No realizamos transferencias internacionales fuera de las anteriores, todas con garantías adecuadas conforme al Capítulo V del RGPD.",
         // ADDED: what other users of a shared cupping can see.
-        "Dentro de la plataforma, el organizador de una cata ve el nombre y las evaluaciones de quienes participan en ella, y los miembros de un grupo de cata ven los nombres de los demás miembros. Quienes han catado con usted en una cata de grupo pueden ver su nombre, su rol y el nombre de la última cata que compartieron cuando forman un grupo. Los cafés que su creador hace públicos o comparte son visibles para otras personas. Los administradores de la plataforma pueden acceder a los datos para dar soporte y elaborar estadísticas.",
+        "Dentro de la plataforma, el organizador de una cata ve el nombre y las evaluaciones de quienes participan en ella, y los miembros de un grupo de cata ven los nombres de los demás miembros. Quienes han catado con usted en una cata de grupo ven, en la sección Grupos, su nombre, su rol, cuántas catas han compartido con usted y cuántas evaluaciones hizo usted en ellas, y la fecha y el nombre de la última cata que compartieron. Los cafés que su creador hace públicos o comparte son visibles para otras personas. Los administradores de la plataforma pueden acceder a los datos para dar soporte y elaborar estadísticas.",
       ],
     },
     {
@@ -198,7 +198,7 @@ export const PRIVACY_ES: LegalDoc = {
           list: [
             `${E.name} actúa como «responsable del despliegue» a los efectos del Reglamento de IA de la UE; Google LLC actúa como «proveedor» del modelo Gemini.`,
             "Para redactar los resúmenes del área de análisis se envían al modelo cifras y etiquetas agregadas (promedios, recuentos, nombres de orígenes o de procesos). Cuando quien consulta desglosa sus propias catas por catador, las etiquetas incluyen los nombres de esos catadores. No se envían evaluaciones individuales, notas ni direcciones de correo.",
-            "El asistente de análisis, reservado a administradores de la plataforma, envía además la pregunta que escribe el administrador y nombres de sesiones de cata.",
+            "El asistente de análisis, reservado a administradores de la plataforma, envía además la pregunta que escribe el administrador, nombres de sesiones de cata y nombres de los cafés catados.",
             "No se toman decisiones automatizadas sobre usted con estos sistemas.",
           ],
         },
@@ -213,7 +213,7 @@ export const PRIVACY_ES: LegalDoc = {
         {
           rows: [
             ["Sesión de usuario (cookies de Supabase, nombre «sb-…-auth-token»)", "Mantienen su sesión iniciada. Se renuevan mientras usa la aplicación y caducan como máximo a los 400 días."],
-            ["Inicio de sesión con Google (cookie de Supabase, nombre «sb-…-auth-token-code-verifier»)", "Protege el inicio de sesión con Google. Se elimina al completarlo."],
+            ["Inicio de sesión (cookie de Supabase, nombre «sb-…-auth-token-code-verifier»)", "Protege el inicio de sesión. Se crea cuando usted pide un enlace o un código de acceso, reserva una plaza, cambia su correo o empieza a entrar con Google. Se elimina cuando el inicio de sesión se completa en este mismo navegador; si no se completa aquí, caduca como máximo a los 400 días."],
             ["cata_signin_intent", "Protege el inicio de sesión: recuerda, mediante una huella con clave, que el enlace de acceso se pidió desde este navegador. 1 hora."],
             ["cata_signin_pending", "Protege el inicio de sesión cuando el enlace se abre en otro navegador, hasta que usted confirma quién es. 10 minutos."],
           ],
