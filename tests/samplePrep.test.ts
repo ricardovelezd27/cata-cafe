@@ -109,3 +109,19 @@ describe("parseSamplePrepInput (merge semantics)", () => {
     expect(() => parseSamplePrepInput({ preparationNote: 5 as unknown as string }, NOW)).toThrow(ValidationError);
   });
 });
+
+describe("parseSamplePrepInput (off-protocol note needs the flag)", () => {
+  it("a note posted while the flag is false (stored or default) is dropped", () => {
+    expect(parseSamplePrepInput({ offProtocolNote: "grifo" }, NOW)).toEqual({});
+    expect(parseSamplePrepInput({ offProtocolNote: "grifo" }, NOW, false)).toEqual({});
+  });
+  it("a note posted while the STORED flag is true is kept", () => {
+    expect(parseSamplePrepInput({ offProtocolNote: " grifo " }, NOW, true)).toEqual({ offProtocolNote: "grifo" });
+  });
+  it("a note posted with the flag set in the same update is kept", () => {
+    expect(parseSamplePrepInput({ offProtocol: true, offProtocolNote: "x" }, NOW, false)).toEqual({ offProtocol: true, offProtocolNote: "x" });
+  });
+  it("unticking the flag drops the note even if the stored flag is true", () => {
+    expect(parseSamplePrepInput({ offProtocol: false, offProtocolNote: "x" }, NOW, true)).toEqual({ offProtocol: false, offProtocolNote: null });
+  });
+});

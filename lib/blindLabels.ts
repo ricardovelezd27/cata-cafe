@@ -5,7 +5,7 @@
 // who knew the owner's habit could guess. Now every sample whose label the
 // owner did NOT type is placed at a RANDOM one of the positions the auto
 // samples occupy; samples with an owner-typed label keep their position and
-// label. The letter is then derived from the NEW position ("Muestra A" for
+// label (see BlindLabelMode: on create only a BLANK label is automatic). The letter is then derived from the NEW position ("Muestra A" for
 // position 0), so the order of the letters carries no information.
 //
 // Pure and dependency-free (no prisma, no server-only): the random source is
@@ -34,13 +34,34 @@ export function sampleLetterLabel(position: number, locale: string): string {
 
 const AUTO_LABEL_RE = /^(?:Muestra|Sample)\s+(?:[A-Z]{1,2}|\d+)$/;
 
-/** True for a label the app generated (or would generate): empty/blank, or
- *  "Muestra X" / "Sample X" with X one or two capital letters or a number.
- *  Anything else is the owner's own label and is never moved or rewritten. */
+/** How "automatic" is decided. Two explicit modes:
+ *  - "create": the wizard already sends an EMPTY label for automatic rows, so
+ *    ONLY a blank label is automatic. Anything typed, including "Muestra B",
+ *    is the owner's (a teacher who pre-labelled physical cups) and is kept
+ *    verbatim with its position.
+ *  - "duplicate": stored labels of older sessions carry no "auto" flag, so a
+ *    generated-looking label ("Muestra B") counts as automatic as well. */
+export type BlindLabelMode = "create" | "duplicate";
+
+/** CREATE paths: true only for a missing / empty / blank label. */
+export function isBlankSampleLabel(label: string | null | undefined): boolean {
+  return label === null || label === undefined || label.trim() === "";
+}
+
+/** DUPLICATE path: true for a blank label or one the app generated (or would
+ *  generate): "Muestra X" / "Sample X" with X one or two capital letters or a
+ *  number. Anything else is the owner's own label. */
 export function isAutoSampleLabel(label: string | null | undefined): boolean {
-  if (label === null || label === undefined) return true;
-  const t = label.trim();
-  return t === "" || AUTO_LABEL_RE.test(t);
+  if (isBlankSampleLabel(label)) return true;
+  return AUTO_LABEL_RE.test((label as string).trim());
+}
+
+/** The predicate of a mode. */
+export function isAutoLabelFor(
+  mode: BlindLabelMode,
+  label: string | null | undefined,
+): boolean {
+  return mode === "create" ? isBlankSampleLabel(label) : isAutoSampleLabel(label);
 }
 
 export type BlindOrderEntry = {
@@ -57,8 +78,9 @@ export type BlindOrderEntry = {
 export function planBlindOrder(
   samples: readonly { label: string | null | undefined }[],
   random: (maxExclusive: number) => number,
+  mode: BlindLabelMode,
 ): BlindOrderEntry[] {
-  const auto = samples.map((s) => isAutoSampleLabel(s.label));
+  const auto = samples.map((s) => isAutoLabelFor(mode, s.label));
   const slots: number[] = [];
   auto.forEach((isAuto, i) => {
     if (isAuto) slots.push(i);
@@ -101,8 +123,9 @@ export function planBlindSamples<T extends { label: string | null | undefined }>
   samples: readonly T[],
   random: (maxExclusive: number) => number,
   locale: string,
+  mode: BlindLabelMode = "create",
 ): BlindPlanned<T>[] {
-  const order = planBlindOrder(samples, random);
+  const order = planBlindOrder(samples, random, mode);
   return samples
     .map((sample, sourceIndex) => ({
       sample,
@@ -111,4 +134,16 @@ export function planBlindSamples<T extends { label: string | null | undefined }>
       position: order[sourceIndex].position,
     }))
     .sort((a, b) => a.position - b.position);
+}
+
+/** The final position of the sample the owner marked as reference (an index
+ *  into the INPUT list), after the blind shuffle. null = no reference or an
+ *  index that is not in the plan. The reference travels with its sample: its
+ *  row carries the coffee index and prep fields of the source sample. */
+export function blindReferencePosition(
+  planned: readonly { sourceIndex: number; position: number }[],
+  referenceIdx: number | null,
+): number | null {
+  if (referenceIdx === null) return null;
+  return planned.find((p) => p.sourceIndex === referenceIdx)?.position ?? null;
 }

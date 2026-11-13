@@ -49,8 +49,8 @@ describe("isAutoSampleLabel", () => {
 
 describe("planBlindOrder", () => {
   it("a single sample (or none) is a no-op", () => {
-    expect(planBlindOrder([], seeded(1))).toEqual([]);
-    expect(planBlindOrder([{ label: "" }], seeded(1))).toEqual([{ position: 0, auto: true }]);
+    expect(planBlindOrder([], seeded(1), "create")).toEqual([]);
+    expect(planBlindOrder([{ label: "" }], seeded(1), "create")).toEqual([{ position: 0, auto: true }]);
   });
 
   it("is a true permutation and never moves a typed label (property)", () => {
@@ -58,7 +58,7 @@ describe("planBlindOrder", () => {
       const rnd = seeded(seed);
       const n = 1 + (seed % 9);
       const labels = Array.from({ length: n }, (_, i) => (rnd(3) === 0 ? `Mi ${i}` : rnd(2) ? "" : "Muestra A"));
-      const plan = planBlindOrder(labels.map((label) => ({ label })), rnd);
+      const plan = planBlindOrder(labels.map((label) => ({ label })), rnd, "duplicate");
       expect(plan.map((p) => p.position).sort((a, b) => a - b)).toEqual(labels.map((_, i) => i));
       plan.forEach((p, i) => {
         expect(p.auto).toBe(isAutoSampleLabel(labels[i]));
@@ -71,7 +71,7 @@ describe("planBlindOrder", () => {
     for (const n of [2, 3, 4]) {
       const seen = new Set<string>();
       for (let seed = 1; seed <= 4000; seed++) {
-        const plan = planBlindOrder(Array.from({ length: n }, () => ({ label: "" })), seeded(seed));
+        const plan = planBlindOrder(Array.from({ length: n }, () => ({ label: "" })), seeded(seed), "create");
         seen.add(plan.map((p) => p.position).join(","));
       }
       const fact = [1, 1, 2, 6, 24][n];
@@ -82,7 +82,7 @@ describe("planBlindOrder", () => {
   it("permutes only among the positions the auto samples occupy", () => {
     const labels = [{ label: "" }, { label: "Fijo" }, { label: "" }, { label: "" }];
     for (let seed = 1; seed <= 200; seed++) {
-      const plan = planBlindOrder(labels, seeded(seed));
+      const plan = planBlindOrder(labels, seeded(seed), "create");
       expect(plan[1]).toEqual({ position: 1, auto: false });
       expect(new Set([plan[0].position, plan[2].position, plan[3].position])).toEqual(new Set([0, 2, 3]));
     }
@@ -90,9 +90,9 @@ describe("planBlindOrder", () => {
 
   it("survives a hostile random source", () => {
     const five = () => Array.from({ length: 5 }, () => ({ label: "" }));
-    const big = planBlindOrder(five(), () => 999);
+    const big = planBlindOrder(five(), () => 999, "create");
     expect(big.map((p) => p.position).sort()).toEqual([0, 1, 2, 3, 4]);
-    const nan = planBlindOrder(five(), () => NaN);
+    const nan = planBlindOrder(five(), () => NaN, "create");
     expect(nan.map((p) => p.position).sort()).toEqual([0, 1, 2, 3, 4]);
   });
 });

@@ -111,7 +111,12 @@ export type SamplePrepUpdate = {
 
 /** Validates the prep keys of an input (throws invalid_input) and returns the
  *  columns to write. Unticking "off protocol" also clears its note. */
-export function parseSamplePrepInput(input: SamplePrepInput, now: number = Date.now()): SamplePrepUpdate {
+export function parseSamplePrepInput(
+  input: SamplePrepInput,
+  now: number = Date.now(),
+  /** The stored `offProtocol` of the row being edited (false for a create). */
+  storedOffProtocol: boolean = false,
+): SamplePrepUpdate {
   const out: SamplePrepUpdate = {};
   if (input.roastDate !== undefined) {
     out.roastDate =
@@ -130,11 +135,16 @@ export function parseSamplePrepInput(input: SamplePrepInput, now: number = Date.
     out.offProtocol = input.offProtocol;
     if (input.offProtocol === false) out.offProtocolNote = null;
   }
-  if (input.offProtocolNote !== undefined && out.offProtocol !== false) {
-    out.offProtocolNote = v.str(input.offProtocolNote, "offProtocolNote", {
+  // A note is only kept while the flag is (or becomes) true: a note posted while
+  // the effective flag is false (in this update or in the stored row) is dropped.
+  const effectiveOffProtocol = out.offProtocol ?? storedOffProtocol;
+  if (input.offProtocolNote !== undefined) {
+    const note = v.str(input.offProtocolNote, "offProtocolNote", {
       max: PREP_NOTE_MAX,
       required: false,
     });
+    // An empty note still clears; a non-empty one needs the flag.
+    if (effectiveOffProtocol || note === null || note === "") out.offProtocolNote = note;
   }
   return out;
 }

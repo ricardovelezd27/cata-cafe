@@ -56,7 +56,7 @@ export function planDuplicateSamples(
   locale: string,
 ): { samples: DuplicateSamplePlan[]; droppedCoffees: number } {
   const ordered = [...samples].sort((a, b) => a.position - b.position);
-  const order = planBlindOrder(ordered, random);
+  const order = planBlindOrder(ordered, random, "duplicate");
   let droppedCoffees = 0;
   const out = ordered.map((s, i) => {
     let coffeeId = s.coffeeId;
@@ -103,4 +103,15 @@ export const MAX_SESSION_SAMPLES = 100;
  *  TODO(kim-validar:A4) */
 export function defaultSampleLabel(position: number, locale: string): string {
   return sampleLetterLabel(position, locale);
+}
+
+/** Final position of the copy of the source's ACTIVE reference sample (the
+ *  pointer is re-aimed at the sample created at this position). null when the
+ *  source had no active reference or it is not in the plan. */
+export function activeCopyPosition(
+  planned: readonly { sourceId: string; position: number }[],
+  sourceReferenceSampleId: string | null,
+): number | null {
+  if (sourceReferenceSampleId === null) return null;
+  return planned.find((s) => s.sourceId === sourceReferenceSampleId)?.position ?? null;
 }
