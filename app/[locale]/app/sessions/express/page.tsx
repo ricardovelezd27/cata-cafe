@@ -43,6 +43,10 @@ export default async function ExpressSessionPage({
     nameRequired: t("express.nameRequired"),
     offline: t("express.offline"),
     warmup: t("express.warmup"),
+    sampleWarning: {
+      many: t("sampleCountWarning.many"),
+      combined: t("sampleCountWarning.combined"),
+    },
   };
 
   return (

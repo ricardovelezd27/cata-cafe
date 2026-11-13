@@ -4,6 +4,7 @@ import {
   CLAIM_DONE_KEY,
   CLAIM_MARKER_TTL_MS,
   claimKeysToClear,
+  claimedRenderedUser,
   decideClaimRekey,
   serializeDone,
   serializeStarted,
@@ -21,7 +22,7 @@ describe("decideClaimRekey", () => {
       userId: ACCOUNT,
       now: NOW,
     });
-    expect(d).toEqual({ rekeyFrom: ANON, clear: true });
+    expect(d).toEqual({ rekeyFrom: ANON, clear: false });
   });
 
   it("does nothing with a stale start marker, and deletes it", () => {
@@ -95,6 +96,60 @@ describe("claimKeysToClear (C-08)", () => {
       userId: "acct-2",
       now: NOW,
     });
-    expect(d).toEqual({ rekeyFrom: ANON, clear: true });
+    expect(d).toEqual({ rekeyFrom: ANON, clear: false });
+  });
+});
+
+describe("markers survive a re-key (fourth review)", () => {
+  it("the same fresh markers keep asking for the re-key on every later mount", () => {
+    const input = {
+      startedRaw: serializeStarted(ANON, NOW - 60_000),
+      doneRaw: serializeDone(ANON, ACCOUNT, NOW - 10_000),
+      userId: ACCOUNT,
+    };
+    expect(decideClaimRekey({ ...input, now: NOW })).toEqual({ rekeyFrom: ANON, clear: false });
+    expect(decideClaimRekey({ ...input, now: NOW + 30 * 60_000 })).toEqual({ rekeyFrom: ANON, clear: false });
+  });
+
+  it("they expire by TTL", () => {
+    const d = decideClaimRekey({
+      startedRaw: serializeStarted(ANON, NOW - 60_000),
+      doneRaw: serializeDone(ANON, ACCOUNT, NOW - 10_000),
+      userId: ACCOUNT,
+      now: NOW + CLAIM_MARKER_TTL_MS,
+    });
+    expect(d.rekeyFrom).toBeNull();
+    expect(d.clear).toBe(true);
+  });
+});
+
+describe("claimedRenderedUser", () => {
+  const base = {
+    renderedUserId: ANON,
+    currentUserId: ACCOUNT,
+    startedRaw: serializeStarted(ANON, NOW - 60_000),
+    doneRaw: serializeDone(ANON, ACCOUNT, NOW - 10_000),
+    now: NOW,
+  };
+  it("true when the completion says the rendered id was claimed by the current user", () => {
+    expect(claimedRenderedUser(base)).toBe(true);
+  });
+  it("false without a completion marker (claim started, not finished)", () => {
+    expect(claimedRenderedUser({ ...base, doneRaw: null })).toBe(false);
+  });
+  it("false without a start marker", () => {
+    expect(claimedRenderedUser({ ...base, startedRaw: null })).toBe(false);
+  });
+  it("false when another account is signed in", () => {
+    expect(claimedRenderedUser({ ...base, currentUserId: "acct-2" })).toBe(false);
+  });
+  it("false when the tab was rendered for someone else", () => {
+    expect(claimedRenderedUser({ ...base, renderedUserId: "anon-2" })).toBe(false);
+  });
+  it("false when rendered and current are the same user", () => {
+    expect(claimedRenderedUser({ ...base, currentUserId: ANON })).toBe(false);
+  });
+  it("false once the markers are stale", () => {
+    expect(claimedRenderedUser({ ...base, now: NOW + CLAIM_MARKER_TTL_MS + 1 })).toBe(false);
   });
 });

@@ -10,6 +10,7 @@ import { warmupById, lw } from "@/lib/warmup/exercises";
 import { WarmupPlayer, type WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
 import { SessionMomentOverlay } from "@/components/session-moments/SessionMomentOverlay";
 import { useConnectivity } from "@/hooks/useConnectivity";
+import { sampleCountWarning, type SampleCountWarning } from "@/lib/sampleCount";
 import {
   EXPRESS_DEFAULT_SAMPLES,
   EXPRESS_FORMATS,
@@ -48,6 +49,8 @@ export type ExpressFormTranslations = {
   offline: string;
   /** "Calentar 1–2 min antes": the optional short warm-up (S10 WP7, Kim B7). */
   warmup: string;
+  /** X6: non-blocking line when the sample count is high for the format. */
+  sampleWarning: Record<SampleCountWarning, string>;
 };
 
 /** The exercise the express path warms up with (Kim B7: only the warm-up, in
@@ -101,6 +104,7 @@ export function ExpressForm({
   }, []);
   const [sampleCount, setSampleCount] = useState(EXPRESS_DEFAULT_SAMPLES);
 
+  const warning = sampleCountWarning(format, sampleCount);
   const formatLabels: Record<ExpressFormat, string> = {
     descriptive: t.formatDescriptive,
     affective: t.formatAffective,
@@ -232,6 +236,11 @@ export function ExpressForm({
           </button>
         </div>
         <p className="text-center text-xs text-on-surface-variant">{t.samplesHint}</p>
+        {warning && (
+          <p role="status" className="text-center text-xs font-medium text-secondary">
+            {t.sampleWarning[warning]}
+          </p>
+        )}
       </div>
 
       <div className="space-y-3">

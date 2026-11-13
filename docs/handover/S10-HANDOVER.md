@@ -1,7 +1,7 @@
 # S10 — session handover
 
 - **status:** in-progress
-- **last updated:** 2026-11-13 (end of the first working day)
+- **last updated:** 2026-11-14 (end of the second working day: #116, #119 and #120 merged and live; two migrations applied)
 - **prompt:** `docs/prompts/S10-kim-answers.md`. **Approved plan with every decision:** `docs/handover/s10/approved-plan.md`.
 - **goal:** the Flowmap board (https://claude.ai/artifact/R4tkTWDPXYVJd3mDji91t9) ends with zero open findings.
 - **Resuming?** Read this file, then the plan. Do not re-plan and do not ask Ricardo again what §2 lists as decided. Continue from §5 "Next actions".
@@ -15,7 +15,8 @@
 - Executor briefs: `docs/handover/s10/brief-00-common-rules.md` holds the rules every executor gets; a package brief is a second file. Launch an executor with a short prompt that tells it to read both files.
 - Machine limit: 15.6 GB RAM. Five or six concurrent builders/reviewers (each runs `npm ci`, build, tests) leave about 1.5 GB free. Keep it at five or fewer.
 - A sub-agent sometimes ends without handing in its report: send it a message asking for the report; its context is intact.
-- The browser pane is signed in to Supabase (SQL editor recipe: handover S8 §3) and to Vercel. `ANALYTICS_SUPER_ADMIN_EMAIL` has been set in Vercel since 2026-09-14 for Production and Preview.
+- The browser pane is signed in to Vercel; it was signed OUT of Supabase on day two (SQL editor recipe: handover S8 §3). A health check answering 204 cannot be opened as a page: load `/es` and `fetch('/api/health')` from there.
+- A hook blocks Edit/Write into other worktrees. To edit a PR branch yourself, check it out in the main session's worktree. Ricardo's terminal needs `npx.cmd`, not `npx`. `ANALYTICS_SUPER_ADMIN_EMAIL` has been set in Vercel since 2026-09-14 for Production and Preview.
 
 ## 2. Decisions taken by Ricardo (do not ask again)
 
@@ -45,66 +46,62 @@ Architect decisions made during the run (told to Ricardo, not objected to):
 - **D2 "health" exclusion reason**: storing a health reason about a named person conflicts with the privacy text ("no special-category data"). Plan: word it "no estaba en condiciones de catar". Ricardo was told; no objection yet.
 - **Legal contact**: the pages use `SUPPORT_EMAIL` (`lib/siteContact.ts`), not the personal email and phone printed in his documents.
 
-## 3. Pull requests
+Decisions of day two (2026-11-14):
+- **Ricardo, legal:** an account that was never used (a reservation or a sign-in request whose person never signed in) is REALLY deleted, with its reservation, after 12 months. Switch default off; rehearsal and switch-on are his.
+- **Guests (#116):** `identity_changed` means only that a DIFFERENT user is positively signed in on the device; nobody signed in, or a failed lookup, behaves as before the guard.
+- **Scoring (#117):** the close and repair passes never re-fire a sample made only of pre-deploy data (decided by data: aggregate `ruleVersion` 1 or absent, and every submitted evaluation with `cups` NULL). A guest claim that removes or replaces an evaluation recomputes THAT sample only, under the current rule (Ricardo was told in the day-two report; no answer yet).
+- **Session creation (#120):** in create mode only a blank label is automatic; an automatic label keeps the letter of its position unless a typed label already uses it; adding a closing date to a live, not started, not yet notified session sends the group notice at that save, with an inline note before and a confirmation after.
+- **Warm-up (#122):** the short version has no "open your eyes" cue or line when no kept step closed the eyes, and appends the exercise's own return-to-centre step when it would end off-centre (`TODO(kim-validar:F4)`).
+- **Closing rules (#123):** on the idle auto-close, a session idle 30 days or more closes WITHOUT emails; 7 to 30 days closes with them. "Activity" = an evaluation being saved.
 
-| PR | Package | State at hand-over | Next action |
+## 3. Pull requests (state at the end of day two, 2026-11-14)
+
+**Merged to `main` and live** (production host `cata-cafe-opal.vercel.app`; `cafesensible.ai` redirects to it):
+
+| PR | Package | Merge | Verified in production | NOT verified |
+|---|---|---|---|---|
+| #115 | WP0 housekeeping | `c3e6c52` | nothing to verify | — |
+| #116 | WP8 guests on a shared device (F-guest-4) | `09715d0`, after FIVE reviews | deploy ok, health 204, join page loads | two people on one real device |
+| #120 | WP2 creating a session (F-crear-sesion-10) | `b33f6fc`, three review rounds; migration `20261113100000_sample_prep_and_reference_mode` applied by Ricardo first | deploy ok, health 204, no error in Vercel logs (30 min) | anything signed in: random letters, sample warning, per-sample fields hidden until reveal, free reference mode, group notice on adding a closing date |
+| #119 | WP9b admin variable + leftovers (F-insights-5) | `f867016`, two reviews + conflict resolution with #116 | preview and production boot with the variable required (health 204) | super-admin still sees Acceso / Usuarios; reload notice on a tab left open across a deploy |
+
+Flowmap updated for each: findings F-guest-4 (v3), F-crear-sesion-10 (v2), F-insights-5 (v3) are `fixed`; cards `k-s10-08`, `k-s10-02`, `k-s10-09b` created; `k-s10` still "doing" (version 4).
+
+**Open (all draft):**
+
+| PR | Package | State | Next action |
 |---|---|---|---|
-| #115 | WP0 housekeeping | **MERGED** (`c3e6c52`). Comments and docs only. | none |
-| #117 | WP1a scoring core | Draft. Tip `d4fcd8b`: rule, migration (two columns, no backfill), PHASE 26 + dry run, rule versions. 1,314 unit + 68 DB tests. **Independent review done: "not yet"** — the rule, the TS/SQL equality and every recompute are correct, but see §3a. | Send the §3a fixes to a builder on the same branch; focused re-review; then Ricardo: `migrate deploy` → dry run → his yes → apply PHASE 26 → verify → merge → production check (runbook §30 on the branch). |
-| #116 | WP8 guest join | Draft, tip `6fd866f`, gates green (1,292 unit + 54 DB tests). Two reviews said "not yet"; the second-round fixes are pushed: a `wrap` prop on `Button`/`ButtonLink`; the same identity check before every action through the pure `classifyGuestLookup` (same / different → refresh / unreachable → error); the three replay actions take an optional `expectedUserId` and answer "pending" on a mismatch (`lib/offline/replayGuard.ts`), threaded from `useOfflineSync` for every caller; an 8 s cap on the pre-sign-out sync; the remembered anonymous id expires after 10 min and is forgotten on a refusal. **The second-round fix has NOT been re-reviewed.** The replay guard has a unit test of the pure rule only (no test calls the three actions). | Third, focused review of `24bbba8..6fd866f` (the replay actions are a write path used app-wide: review them carefully); merge if yes. Needs two people on one device to verify for real (list it for Ricardo). |
-| #118 | WP9a legal pages | Draft, tip `3ebb9df`, gates green (1,308 tests, six legal routes static). First review said "not yet" (purge deleted founders' rows; three false statements). Fixed: Spanish text corrected by the architect (`a59f9c2`); English back in step; purge only removes reservations with no account (and deletes nothing if the account listing fails); `localeCookie: false`; publish guard test (flag true requires the Registro Mercantil data). **The fix has NOT been re-reviewed.** The builder doubts two source statements: AECOSAN may have been renamed AESAN, and the PLOPMED note may be out of date (both are Ricardo's source text). | Focused re-review of `6058d4c..3ebb9df`; merge with the flag still false; open `/es/privacidad`, `/es/terminos`, `/es/aviso-legal` on the preview for Ricardo; flag flip is a one-line follow-up after his yes. |
-| #119 | WP9b env + leftovers | Draft, tip `8932be2`, gates green (1,292 unit + 54 DB tests). Preview boots with the variable required (landing renders, health 204, checked 2026-11-13), which shows the Vercel value is non-blank in Preview; the same Vercel entry covers Production. **Independent review done: "not yet"**, see §3b. | Send the §3b fixes to a builder on the same branch; focused re-review; merge; production check; mark F-insights-5 fixed on the Flowmap. |
-| #120 | WP2 session creation | Draft, tip `ef594f5` (main merged in, no conflict left), gates green (1,328 unit + 55 DB tests). All six items built: 2 cups by default; blind letters shuffled at creation and on duplicate (`lib/blindLabels.ts` `planBlindOrder`, owner-only collapsed "Clave de muestras"); sample-count warning; choice of when a live session emails its group; four optional per-sample fields, owner-only until reveal and NOT in the PHASE 21 column grant (`lib/samplePrep.ts` `gateSamplePrep`); reference mode anchor / free with one predicate `shouldPinReference` and a source-scanning test (`tests/referencePinGate.test.ts`). **NOT reviewed yet.** | Independent review (attack: the permutation and the reference remap, every pin/lock site by mode, the blind gate of the four fields on every surface, the notify-timing rules, wizard draft round-trip). Its runbook section is numbered §30, the same number #117 uses: renumber whichever merges second. Known gaps the builder listed: anchor-mode copy outside the wizard does not yet say it is a Café Sensible exercise (WP6), the edit form shows the mode control even with no reference, prep data is not editable after close, a typed label that looks like "Muestra B" is treated as automatic. Ricardo runs `migrate deploy` (four `session_samples` columns + `cupping_sessions."referenceMode"`) before the deploy. Closes F-crear-sesion-10. |
-| #122 | WP7 warm-up | Draft, gates green (1,339 unit + 55 DB tests). All four parts built: private reflections (`warmup_reflections` table, migration `20261113110000_warmup_reflections`, PHASE 27 = RLS on with no policy and every privilege revoked from the API roles; in the manifest, guest merge and account deletion); short version (`buildExerciseTimeline(ex, { mode, length: "short" })`, 93 to 101 s, full fixtures unchanged; offered in the library and in "Catar ahora"); a discreet entry after the cupping has started; "Sentado" and "Poco espacio" options. **NOT reviewed yet.** | Independent review. **One product question for Ricardo:** the short version cuts by time, so two exercises (head-rotate, trunk-side) end at an extreme position while the closing line says "posición neutral": either stop at the last neutral step or add a return beat. Its runbook section is §31. Ricardo: `migrate deploy`, then PHASE 27 after its dry run. Not verified on a phone (audio unlock, lock-screen resume, the inline player in "Catar ahora"). |
+| #122 | WP7 warm-up | **Review-approved** ("merge as is: yes" at `8e5ef43`; small follow-up `4a5e8c8` read by the architect: `requiresStep` on observe items, no "doble" demo on eyes-open short runs). Migration `20261113110000_warmup_reflections` is **APPLIED in production** (table exists, empty). Phase tests pass in either merge order with #117. | `git merge origin/main` on the branch + gates (main moved: #116, #120, #119). Then **PHASE 27**: dry run `prisma/sql/dry-runs/phase27_dry_run.sql` in the Supabase SQL editor (the pane was signed OUT of Supabase on day two: Ricardo signs in) → his explicit yes → apply the PHASE 27 block → verify queries (runbook §31) → merge → production check → Flowmap. Question for Kim noted in the PR body: an eyes-open short run has no sound marking the end. |
+| #117 | WP1a scoring core | THREE reviews said "not yet"; each confirmed the rule, the TS/SQL equality and the dry run. Third fix round (`docs/handover/s10/brief-fix-117-round3.md`) was RUNNING at hand-over on the branch (tip before it: `d02cf4a`): migration wrapped in `BEGIN … COMMIT` (the reviewer PROVED `SET LOCAL lock_timeout` is a no-op the way Prisma sends the file), the close pass also skips an all-old sample that has no aggregate row, a guest claim re-fires only the samples whose evaluations changed, legacy-draft write guarded, "last phase" assertion dropped. | Check the branch tip and the builder's report (the PR body is updated by the builder); SHORT focused Opus re-review of that delta; then with Ricardo: check out the branch tip in the main session's worktree → `npx.cmd prisma migrate deploy` → PHASE 26 dry run → his yes → apply → verify → merge (runbook §30 on the branch). Then launch WP1b stacked on it (`brief-wp1b-cupper-experience.md`). |
+| #118 | WP9a legal pages | Ricardo decided on day two: **unused accounts are really deleted after 12 months**. Spanish updated by the architect (`d0e3ed6`, `986c1f7`); builder added the deletion job (`lib/unusedAccountPurge.ts`, `lib/unusedAccountRules.ts`, switch `UNUSED_ACCOUNT_PURGE_ENABLED` default OFF = count only), the email-change move of the reservation, English in step, review fixes (tip `c32aa10`; 1,334 unit + 90 DB tests). THIRD review (Opus) finished after hand-over: **"merge as is: no"**, saved verbatim in `docs/handover/s10/review-118-third-2026-11-14.md` (one High that is live even with the switch off: the email-change move reads `user_metadata`, which the user can write, so anyone could take another person's reservation). | Read the review (questions put to it: can a USED account ever look unused, e.g. `last_sign_in_at` NULL after the ephemeral-client sign-in flow; `user_metadata.email_change_from` is writable by the user from the browser, so the move may be spoofable → should be `app_metadata`; hosted GoTrue columns vs the test shim; does the hosted `postgres` role read `auth.users`). Fix round → merge with the flag false and the switch off → Ricardo reads the preview (`/es/privacidad`, `/es/terminos`, `/es/aviso-legal`). |
+| #123 | WP4a closing rules | Built (PHASE 28, runbook §33; 1,302 unit + 63 DB tests). Review said "not yet". Fix round (`brief-fix-123-close-rules.md`) was RUNNING at hand-over: the cup page still showed participants "3 de 5 enviados"; idle sessions of 30+ days close WITHOUT emails (backlog rule), 7–30 days with emails; idle pass last, 5 per run, time budget; owner "Cerrar ahora" on the results page of an expired, not closed session; tests that pin the two rules; neutral copy. | Focused Opus re-review → PHASE 28 dry run (it lists, by name, the sessions the first idle run would close, in two groups) → Ricardo's yes → apply → merge. **Conflict of meaning with #119 (now in main):** #119 left the closing date of an expired session editable; this PR must lock it (the brief says so). |
 
-### 3a. #117 review findings and the fix decided for each (not yet applied)
+Stopped at hand-over, nothing pushed: the WP8b builder (guest follow-ups). Brief ready: `brief-wp8b-guest-followups.md`.
 
-- **H1 (must fix).** The results page's "Actualizar" button (`ResultsClient.tsx` → `refreshAggregateScores` → `refireAggregates`) re-fires every sample of the session, also on a session closed long ago: one routine click rewrites its stored group scores under the new rule, and history keeps the old number. Fix: `refreshAggregateScores` does nothing for a closed or expired session (it was refreshed at close) and the owner's re-fire control is not offered there; DB test that a refresh leaves a `ruleVersion` 1 sample untouched.
-- **M1.** The commented rollback (PHASE 23 body) must write `"ruleVersion" = 1` in its INSERT and ON CONFLICT UPDATE; the runbook says the app revert lands before or with a database rollback.
-- **M2.** The runbook claims page and stored value never disagree in between; false while PHASE 26 is live and the old app still serves. Fix the paragraph: apply PHASE 26 and deploy back to back, when no cupping is live.
-- **M3.** A draft autosaved before the deploy and submitted after it keeps `cups` NULL (submit only flips `isDraft`): old rule for the individual, new rule in the group. Fix: `submitAllEvaluations` and `finishSoloSession` recompute the derived fields (through `computeEvaluationDerived`, session cups) of drafts whose `cups` is NULL before flipping them.
-- **L1.** `scoreSd` should score each evaluation under its own rule (`cups == null` → v1), like the owner matrix does.
-- **L2.** A guest claim can re-fire closed sessions (`lib/guestClaim.ts` ~l.350): accept and document in runbook §30.
-- **L3.** Hint copy: a defective cup costs 6 with 2+ cups (4 + 2 for non-uniform), 4 with one cup; the copy says 4. Also drop "Tus tazas se suman a las del grupo" in solo sessions.
-- **L4.** `sampleScoreRule`: no aggregate row + every evaluation with `cups` NULL ⇒ v1, not v2.
-- **L5.** `SET lock_timeout = '5s';` at the top of the migration (both statements are metadata-only, but each needs a brief exclusive lock).
-- **L6.** Wrong order (app deployed before PHASE 26) silently stamps new samples as v1: the runbook's verification step must confirm the function body contains `v_factor` BEFORE the merge.
-- **L7.** The dry run's numbers show what a FULL re-fire would do, which production never does; say so in the runbook, and run it when no cupping is live (it holds row locks on about 1,100 evaluations until it rolls back). The reviewer executed the dry-run file on the throwaway database: correct exception, nothing applied.
-- Nits: `ScoreBreakdownPanel` / CLAUDE.md say the group breakdown prints STORED penalties (it prints the recompute); stale test title in `tests/evaluation.test.ts`; `cups = 0` differs between TS (0) and SQL (average), unreachable today.
-- Confirmed correct by the reviewer: the rule on every edge case (never more than 6 per flagged cup); v1 is a faithful copy of main; TS equals the real trigger on the spec cases, the grid and adversarial cases; no test weakened; `cups` always comes from the session; no grant needed for the new columns; the migration rewrites no row and fires no trigger.
-
-### 3b. #119 review findings and the fix decided for each (not yet applied)
-
-- **High (item 2).** The "new version, reload" notice is now invisible on the cup page: the cup shell is `position: fixed; inset: 0; z-index: 40` (`components/ui/SessionShell.module.css`) and covers the notice mounted in the app shell, and the PR removed the branch that showed it inside the cup page. That is the page where it matters most. Fix: render the notice inside `CupClient`'s banner slot as well and suppress the shell copy while the cup page is mounted (exactly once everywhere); pin it with a test. Also keep an always-mounted empty live region (a `role="status"` inserted already filled is often not announced).
-- **Medium (item 1).** A missing or blank value does NOT fail the deploy: nothing checks at build time, the deployment goes Ready, and then every cold start throws in `register()` (500s everywhere). The docs on the branch say "fails the deploy": reword CLAUDE.md and runbook §3 / §17. The preview check above covers "non-blank"; before merging also confirm the super-admin's "Acceso" screen works in production today (proves the value matches the account).
-- **Low (item 1).** A malformed value (two addresses with a comma, or not an address) boots normally and leaves the app with no administrator. Fix: validate it as ONE address (`lib/validate.ts` `email`) and treat a malformed value as missing.
-- **Low (item 3).** The 8-second fallback timer is never cleared and can stack: keep it in a ref, clear it on unmount, on the next resume and when SUBSCRIBED arrives. Say in the comment that a resume right after the `online` event can still refresh twice.
-- **Nits (item 4).** The comment says the server already refuses edits of an expired session; `updateSession` does not (status-only until WP4a). Gate the "only the closing date" note on `isGroup`.
-- Confirmed correct: no account with an empty, null or undefined email can match the super-admin; with nothing configured the AI-admin list is empty and the digest sends nothing; auto-save is not put at risk by the resume change; every control except the closing date is disabled for an expired session and saving only the date works.
-
-What the reviews caught (keep doing them):
-- #115: a reworded comment stated something the code does not do.
-- #116: a stale tab could sign out a different guest; later, three fixes that did not work and a draft replay that could write under another user.
-- #118: the purge contradicted the policy; "closed results are never modified", the sign-out storage statement and the locale cookie row were false; source wording dropped without a marker.
-- #117 (found by the builder's own report): recomputed scores would have changed past results on screen.
+What the reviews caught on day two (keep doing them, including reviews of fixes):
+- #116: the guard blocked legitimate cuppers after any sign-in hiccup; the notice was hidden on the cup page; a guest who claimed an account in another tab was locked out.
+- #117: the close/repair pass could recompute pre-deploy sessions; every submit had become an interactive transaction; the migration's lock timeout did nothing (proven with probes).
+- #120: a typed label that looked automatic was overwritten; then two samples could share a label; a closing date emailed the group silently. The architect also corrected the builder's letter draw (a label keeps its position's letter unless a typed label uses it).
+- #122: the short version said "open your eyes" to people whose eyes were open and ended two exercises off-centre.
+- #123: a participant-visible count the builder said was never rendered; the first idle run would have emailed months-old sessions.
+- #118: every reservation already creates an account, so the old 12-month promise never ran.
 
 ## 4. Waiting on Ricardo
 
-1. `npx prisma migrate deploy` for #117 (adds `evaluations.cups` and `aggregate_scores."ruleVersion"`, backfills nothing), later for #120 and WP7.
-2. His yes for PHASE 26 after the dry run (and later PHASE 27, 28).
-3. Reading the legal preview. Open items for him there: Registro Mercantil data (mandatory, pages omit the line; a test blocks publishing while it is null); founding-offer conditions; the 12-month waitlist retention and its scope; which contact address to publish (the support address's domain is not the company's); transfer-safeguard wording for Vercel and Resend and the Supabase "acuerdo de encargo firmado" claim; whether the "bloqueo" paragraphs stay; account deletion is still switched off (a deletion request by email has no tooling); no age check exists; the liability cap is zero while access is free; the PLOPMED note may be out of date.
-4. Device checks only he can do (list at the end of the run): two people on one tablet for the join screen, two phones in a live session, a locked phone in the warm-up, offline on a phone.
-
-Not needed from him: the Vercel variable (already set).
+1. **Sign in to Supabase in the browser pane** (it was signed out on day two; Vercel is signed in) for the PHASE 27 dry run, then his yes. Same sitting later for PHASE 26 (#117) and PHASE 28 (#123).
+2. `npx.cmd prisma migrate deploy` for #117 when its review passes. **Always give him `npx.cmd`**: PowerShell on his machine blocks `npx` (execution policy). Procedure that worked on day two: check out the PR's tip in the main session's worktree (it has `node_modules` and `.env.local`), confirm with `npx prisma migrate status` that only the intended migrations are pending, give him the one-line command, then `migrate status` again.
+3. Reading the legal preview once #118 merges. Still open for him there: Registro Mercantil data (a test blocks publishing while it is null), founding-offer conditions, which contact address to publish, whether custom SMTP is configured in Supabase Auth (decides who sends access emails), transfer-safeguard wording, the "bloqueo" paragraphs, no age check exists, the liability cap. Later: the rehearsal and the switch for the unused-account deletion (before the oldest unused account reaches 12 months, about mid-2027; the runbook on the branch has the query).
+4. To be told (architect decisions of day two, see §2): a guest claim that removes or replaces an evaluation recomputes THAT sample under the current rule; idle sessions of 30+ days close silently.
+5. Device checks only he can do: two people on one tablet (join screen, old-tab notice, claim in a second tab); two phones in a live session; the warm-up on a phone (short version, lock screen, the entry on the cup page); a signed-in pass over the new session wizard.
 
 ## 5. Next actions, in order
 
-1. Every report that was in flight is in: nothing is running. `gh pr list --state open` shows #116 to #120 and #122 as drafts.
-2. #119: fix what the review found, merge, check production, mark F-insights-5 fixed on the Flowmap.
-3. #117: fix what the review found; then the manual sequence with Ricardo (§3). After the merge: production check (a 2-cup solo session with one defective cup shows −6 for the cupper and the session; an old closed session shows the same numbers as before; `aggregate_scores` rows untouched).
-4. Launch WP1b (cupper's experience) stacked on #117's branch as soon as #117's review passes; then WP1c.
-5. #116, #118, #120, WP7: review rounds and merges as they go green. WP4a can start any time (brief ready). WP3a/3b after WP1b (same two forms). WP5 after WP1c (same results files). WP6 copy, then WP10 docs, last.
-6. After every merge: production check in the browser pane, Flowmap `findings` + `kanban` (`k-s10-NN`, shape of `k-s10-00`; `k-s10` is at version 4), and this file.
+1. `gh pr list --state open` → #117, #118, #122, #123. For the three that had an agent running at hand-over, read the PR body and `git log` of the branch first: the agent's report may never have been read.
+2. #122: merge main, gates, PHASE 27 with Ricardo, merge. Smallest step to a fourth merge.
+3. #123: re-review, PHASE 28 with Ricardo, merge. #117: re-review, migration + PHASE 26 with Ricardo, merge. Merge order of the SQL file blocks does not matter for the tests (each phase test reads only its own block), but each branch must `git merge origin/main` and re-run gates after another lands.
+4. #118: act on the third review; merge with the flag false; show Ricardo the preview.
+5. Launch, in this order as their bases merge: WP8b (now; from main), WP1b (stacked on #117), WP3a (after #117; brief ready), WP1c (after WP1b), WP3b (PHASE 29), WP4b (migration), WP5 (after WP1c), WP6 copy, WP10 documentation. Designs in §6; briefs in `docs/handover/s10/`.
+6. After every merge: production check, Flowmap (`findings` → `state: "fixed"`, `pr`, `fixNote`, pinned with `if_version`; `kanban` card `k-s10-NN` shaped like `k-s10-02`), and this file.
 
 ## 6. Designs for the packages not yet built
 
@@ -137,7 +134,7 @@ Not needed from him: the Vercel variable (already set).
 
 **WP6 — copy**: "alineación" for "calibración"; a non-CVA name for the anchor reference; optional first-person warm-up line. **WP10 — documentation**: README, CLAUDE.md, flows.md, PRODUCT.md, runbook, handovers, each claim checked against the code; the reviewer reads the scoring sections against `lib/scoring.ts` and the SQL.
 
-SQL phase numbers reserved: 26 scoring core (#117), 27 warm-up reflections (WP7), 28 `can_view_group_results` (WP4a), 29 "no evaluado" attribute averages (WP3b). Each "is the last phase" test must tolerate earlier numbers landing first.
+SQL phase numbers reserved: 26 scoring core (#117), 27 warm-up reflections (WP7), 28 `can_view_group_results` (WP4a), 29 "no evaluado" attribute averages (WP3b). Runbook sections: §30 (#117), §31 (#122), §32 (#120, in main), §33 (#123). Each "is the last phase" test must tolerate earlier numbers landing first.
 
 ## 7. Facts gathered in production (read-only, 2026-11-13)
 

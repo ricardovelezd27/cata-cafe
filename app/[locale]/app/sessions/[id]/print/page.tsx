@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { orderReferencesFirst } from "@/lib/referenceRules";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { buildInviteUrl, siteOrigin } from "@/lib/inviteUrl";
-import { sheetSampleIdentity, sheetSampleRecords } from "@/lib/pdf/sheetSource";
+import { sheetSampleIdentity, sheetSamplePrep, sheetSampleRecords } from "@/lib/pdf/sheetSource";
 import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 import { PrintClient } from "./PrintClient";
 
@@ -111,6 +111,7 @@ export default async function PrintPage({
             affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
             combined: (ev?.combinedData as Record<string, unknown>) ?? {},
             ...sheetSampleRecords(s, ownerView),
+            ...sheetSamplePrep(s, ownerView),
           };
         }),
       }}

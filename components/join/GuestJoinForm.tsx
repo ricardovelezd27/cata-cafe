@@ -4,7 +4,48 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { completeGuestOnboarding } from "@/app/actions/community";
+import { existingUserAction } from "@/lib/joinRules";
 import { checkJoinable, joinSessionAsGuest } from "@/app/actions/join";
+
+// Per tab, best effort, never required: the anonymous user THIS tab created,
+// with a timestamp so it expires (a later person on the same tab must not
+// inherit an earlier person's anonymous user).
+const CREATED_ANON_KEY = "cata_join_anon_created";
+const CREATED_ANON_TTL_MS = 10 * 60_000;
+const FINAL_REFUSALS = new Set([
+  "session_closed",
+  "token_expired",
+  "token_exhausted",
+  "entries_closed",
+  "invalid_token",
+]);
+function readCreatedAnonId(): string | null {
+  try {
+    const raw = window.sessionStorage.getItem(CREATED_ANON_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { id?: unknown; at?: unknown };
+    if (typeof parsed.id !== "string" || typeof parsed.at !== "number") return null;
+    // A stamp in the future (clock change) counts as expired, never as fresh.
+    const age = Date.now() - parsed.at;
+    return age >= 0 && age <= CREATED_ANON_TTL_MS ? parsed.id : null;
+  } catch {
+    return null;
+  }
+}
+function rememberCreatedAnonId(id: string | null) {
+  try {
+    if (id) window.sessionStorage.setItem(CREATED_ANON_KEY, JSON.stringify({ id, at: Date.now() }));
+  } catch {
+    // best effort
+  }
+}
+function forgetCreatedAnonId() {
+  try {
+    window.sessionStorage.removeItem(CREATED_ANON_KEY);
+  } catch {
+    // best effort
+  }
+}
 
 interface GuestJoinFormProps {
   token: string;
@@ -29,8 +70,9 @@ interface GuestJoinFormProps {
  * PHASE 13 of rls_and_triggers.sql applied first.
  *
  * S8-07 (F-guest-3, F-guest-2): the invite is checked BEFORE any anonymous
- * user is created, an anonymous session left by an earlier failed try is
- * reused (five retries create one user, not five), the Supabase rate limit
+ * user is created, five retries create one user, not five (an anonymous
+ * session found at submit now sends the page back to the "¿Eres …?" screen,
+ * S10 WP8, instead of being reused silently), the Supabase rate limit
  * has its own message, and every failure shows its own localized reason
  * instead of one generic line.
  */
@@ -54,24 +96,35 @@ export function GuestJoinForm({ token, locale, translations }: GuestJoinFormProp
     setIsSubmitting(true);
     try {
       const joinable = await checkJoinable(token);
-      if (!joinable.ok) return fail(joinable.error);
+      if (!joinable.ok) {
+        if (FINAL_REFUSALS.has(joinable.error)) forgetCreatedAnonId();
+        return fail(joinable.error);
+      }
 
       const supabase = createClient();
       const {
         data: { user: existing },
       } = await supabase.auth.getUser();
-      if (existing && !existing.is_anonymous) {
+      const action = existingUserAction(existing, readCreatedAnonId());
+      if (action === "registered" || action === "identity") {
         // A registered user is signed in (stale page, another tab): never
-        // replace their session. Re-render so the server shows the signed-in
-        // join form.
+        // replace their session. Or an anonymous user this tab did NOT create
+        // (the previous guest on a shared device, S10 WP8 F-guest-4): never
+        // reuse it silently. Re-render so the server shows the signed-in join
+        // form or the "¿Eres …?" screen.
         router.refresh();
         setIsSubmitting(false);
         return;
       }
+      // "reuse" = the anonymous user THIS tab created on an earlier failed try
+      // (S8-07 F-guest-2): five retries create one user, not five.
+      let guestId: string | undefined = existing?.id;
       if (!existing) {
-        const { error: signInError } = await supabase.auth.signInAnonymously({
+        const { data: created, error: signInError } = await supabase.auth.signInAnonymously({
           options: { data: { display_name: trimmed } },
         });
+        rememberCreatedAnonId(created?.user?.id ?? null);
+        guestId = created?.user?.id;
         if (signInError) {
           const limited =
             signInError.status === 429 ||
@@ -81,15 +134,26 @@ export function GuestJoinForm({ token, locale, translations }: GuestJoinFormProp
         }
       }
 
-      await completeGuestOnboarding(trimmed);
+      // Pass the id we just signed in as: if another tab replaced the cookie in
+      // the meantime the server refuses and writes nothing (S10 WP8 fourth review).
+      const onboarded = await completeGuestOnboarding(trimmed, guestId);
+      if (!onboarded.ok) {
+        router.refresh();
+        setIsSubmitting(false);
+        return;
+      }
 
       // The join redirects server-side on success (NEXT_REDIRECT, handled by
       // Next — never swallow it); a refusal comes back as an ActionResult (S8-11).
       const result = await joinSessionAsGuest(token, locale);
-      if (!result.ok) fail(result.error);
+      if (!result.ok) {
+        if (FINAL_REFUSALS.has(result.error)) forgetCreatedAnonId();
+        fail(result.error);
+      }
     } catch (err) {
       const digest = (err as { digest?: string } | undefined)?.digest;
       if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) {
+        forgetCreatedAnonId(); // the join succeeded
         throw err;
       }
       fail("unknown");

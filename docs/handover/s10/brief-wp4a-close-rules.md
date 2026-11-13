@@ -92,3 +92,19 @@ Once the closing date has passed, the session is closed for date changes too.
 ## Docs
 CLAUDE.md "Session Lifecycle" (visibility rule, no re-dating, idle close, PHASE 28),
 `docs/flows.md` §1 diagrams, `docs/LAUNCH-RUNBOOK.md`.
+
+## Coordination with open PRs (added 2026-11-14)
+- Runbook section numbers already taken by open PRs: §30 (#117, PHASE 26), §31 (#122,
+  PHASE 27), §32 (#120). Yours is **§33**. None of those is on `origin/main` yet: append your
+  section after the last one main has, titled with its final number 33.
+- PR #119 (open, not merged; branch `origin/claude/s10-09b-env-leftovers-impl`) adds an
+  `expired` flag to `app/[locale]/app/sessions/[id]/edit/page.tsx` and its form. Read that
+  branch's version of the two files and use the SAME prop name and shape so the later merge is
+  trivial; do not copy its other changes.
+- PR #117 (open) changes `lib/closeSession.ts` (`finalizeClosedSession` → `refireAggregates`
+  options) and `app/actions/community.ts` submit paths. Keep your edits to those files as
+  small and local as possible (the `CloseReason` union and nothing else in `closeSession.ts`).
+- Phase tests: read your phase block from its own header up to the NEXT `^-- PHASE <number>`
+  header of any number, or end of file; do not assert "PHASE 28 is the last phase".
+- Sessions closed for idleness: `closeSessionInternal` reveals coffee-linked samples and sends
+  close emails. That is intended (same as the deadline cron).

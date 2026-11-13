@@ -24,6 +24,7 @@ export const ACTION_ERROR_CODES = [
   "group_full", // tasting group already has 200 members (S8-14)
   "reflection_limit", // saveWarmupReflection: 200 reflections already saved for that exercise (S10 WP7)
   "invalid_email", // address failed the format check (S8-14)
+  "identity_changed", // a write carried `expectedUserId` and the signed-in user differs (S10 WP8: shared device, stale tab)
   "offline", // client-side only: no connection / the request never reached the server (S8-09; S8-07 sign-out needs the server)
   "email_exists", // requestEmailChange: that address already has an account (S8-07)
   "already_claimed", // confirmGuestClaim: the guest account is gone or no longer anonymous (S8-07)

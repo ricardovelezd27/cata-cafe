@@ -146,6 +146,18 @@ describe("planFinish (F-express-1, F-solo-3)", () => {
     expect(p.keptPartialIds).toEqual(["b"]);
   });
 
+  it("never removes a reference the owner never scored (free mode): it is kept, unscored", () => {
+    const p = planFinish([
+      { id: "a", evaluation: { isDraft: false, complete: true } },
+      { id: "r", evaluation: null, isReference: true },
+      { id: "x", evaluation: null },
+    ]);
+    expect(p.removeIds).toEqual(["x"]);
+    expect(p.keptPartialIds).toEqual(["r"]);
+    expect(p.scoredCount).toBe(1);
+    expect(p.canFinish).toBe(true);
+  });
+
   it("a reference as the only scored sample cannot finish", () => {
     const only = planFinish([
       { id: "r", evaluation: { isDraft: true, complete: true }, isReference: true },

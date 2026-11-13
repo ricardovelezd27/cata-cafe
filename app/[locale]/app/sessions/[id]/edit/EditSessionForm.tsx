@@ -16,7 +16,7 @@ import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useActionFeedback } from "@/components/ui/Toast";
 import { browserZone, dateInZone } from "@/lib/closeRules";
-import { planRemoveActive } from "@/lib/referenceRules";
+import { planRemoveActive, shouldPinReference, type ReferenceMode } from "@/lib/referenceRules";
 
 export type EditSessionFormTranslations = {
   name: string;
@@ -47,12 +47,24 @@ export type EditSessionFormTranslations = {
   referenceTitle: string;
   referenceNone: string;
   referenceHelper: string;
+  referenceHelperFree: string;
+  referenceModeLegend: string;
+  referenceModeAnchor: string;
+  referenceModeFree: string;
+  referenceModeAnchorHelp: string;
+  referenceModeFreeHelp: string;
+  referenceModeLocked: string;
+  asyncGroupNoticeFailed: string;
+  asyncGroupNoticePartial: string;
+  asyncGroupNoticeSent: string;
+  closesAtNotifyNote: string;
   referenceSaved: string;
   closesAt: string;
   closesAtHint: string;
   closesAtPast: string;
   closesAtLiveNotice: string;
   sessionClosed: string;
+  sessionExpired: string;
   warmupLocked: string;
   repinTitle: string;
   /** Raw ICU string (t.raw()) — contains a literal "{n}" token. */
@@ -117,13 +129,19 @@ export function EditSessionForm({
     cupsPerSample: number;
     isGroup: boolean;
     groupId: string | null;
+    /** Server-computed: a closing date saved now would send the group notice. */
+    closingDateSendsNotice: boolean;
     referenceSampleId: string | null;
+    /** B1: "anchor" | "free"; editable only while the format is unlocked. */
+    referenceMode: ReferenceMode;
     /** "YYYY-MM-DD" or "" (group sessions only). */
     closesAt: string;
     warmupExerciseId: string | null;
     /** The cupping started: the warm-up can no longer change (warmup_locked). */
     started: boolean;
     closed: boolean;
+    /** Past closesAt but not yet closed by the nightly job: read-only except the closing date. */
+    expired: boolean;
   };
   samples: EditSampleRow[];
   groups: EditGroupOption[];
@@ -136,12 +154,20 @@ export function EditSessionForm({
   // (C6 default; the server enforces the same rule via isFormatLocked).
   const locked = evalCount > 0 || initial.started;
   const closed = initial.closed;
+  // Expired = this form treats the session as read-only except the closing
+  // date. That is a client-side rule here: the session-scoped mutations refuse
+  // an expired session (assertSessionWritable), but updateSession itself checks
+  // status only, so it does not refuse these edits on its own.
+  const expired = initial.expired && !closed;
+  const readOnlyExceptDate = closed || expired;
 
   const [name, setName] = useState(initial.name);
   const [date, setDate] = useState(initial.date);
   const [objective, setObjective] = useState(initial.objective);
   const [format, setFormat] = useState<"descriptive" | "affective" | "combined">(initial.format);
   const [cupsInput, setCupsInput] = useState(String(initial.cupsPerSample));
+  // B1: how the reference is scored; frozen with the format (server: format_locked).
+  const [referenceMode, setReferenceMode] = useState<ReferenceMode>(initial.referenceMode);
   const [groupId, setGroupId] = useState(initial.groupId ?? "");
   const [closesAt, setClosesAt] = useState(initial.closesAt);
   // Today in the owner's own zone (see the date input below).
@@ -151,7 +177,7 @@ export function EditSessionForm({
     (initial.warmupExerciseId as WarmupId | null) ?? "eyes",
   );
   // Locked once the cupping started or anyone has evaluated (server rule).
-  const warmupLocked = closed || initial.started || locked;
+  const warmupLocked = readOnlyExceptDate || initial.started || locked;
 
   const [saved, setSaved] = useState(false);
   const [errorCode, setErrorCode] = useState<string | null>(null);
@@ -208,6 +234,18 @@ export function EditSessionForm({
   const handleReferenceChange = (value: string) => {
     const next = value || null;
     if (next === referenceId) return;
+    // B1: the re-pin confirmations exist only for an anchor session (a free
+    // reference never rewrites cuppers' ratings). The stored mode is the one
+    // the server uses; it cannot differ from the shown one once ratings exist.
+    const referencePins = shouldPinReference({
+      mode: initial.referenceMode,
+      moduleKey: initial.format,
+      isActiveReference: true,
+    });
+    if (!referencePins) {
+      commitReference(next, false);
+      return;
+    }
     if (next === null) {
       const prevId = planRemoveActive(samples).repinId;
       const prev = prevId ? samples.find((s) => s.id === prevId) : undefined;
@@ -267,6 +305,8 @@ export function EditSessionForm({
         ...(!locked && (format !== initial.format || cups !== initial.cupsPerSample)
           ? { format, cupsPerSample: cups }
           : {}),
+        // Only a changed reference mode (and only while unlocked, like the format).
+        ...(!locked && referenceMode !== initial.referenceMode ? { referenceMode } : {}),
         // Only send a changed warm-up (same pattern as closesAt).
         ...((warmupOn ? warmupId : null) !== initial.warmupExerciseId
           ? { warmupExerciseId: warmupOn ? warmupId : null }
@@ -275,6 +315,15 @@ export function EditSessionForm({
       });
       if (result.ok) {
         setSaved(true);
+        // C8: the save is done either way; a refused/failed group notice is a
+        // non-blocking warning, like the one after "Iniciar cata".
+        if (result.groupNotice === "rate_limited" || result.groupNotice === "failed") {
+          feedback.notifyWarning(t.asyncGroupNoticeFailed);
+        } else if (result.groupNotice === "partial") {
+          feedback.notifyWarning(t.asyncGroupNoticePartial);
+        } else if (result.groupNotice === "sent") {
+          feedback.notifySuccess(t.asyncGroupNoticeSent);
+        }
         router.refresh();
       } else {
         setErrorCode(result.error);
@@ -364,6 +413,11 @@ export function EditSessionForm({
       {/* A closed session is read-only: ONE disabled fieldset covers every
           control (S8-10 T6, F-sesiones-9) instead of per-field flags. */}
       <fieldset disabled={closed} className="m-0 min-w-0 space-y-6 border-0 p-0">
+      {/* An EXPIRED session (closesAt passed, nightly close not run yet) is
+          read-only in this form: every card but the closing date is disabled
+          by its own fieldset (the date + save bar stay usable). The server's
+          updateSession checks status only; this is not a server guarantee. */}
+      <fieldset disabled={expired} className="m-0 min-w-0 space-y-6 border-0 p-0">
       {/* a. Metadata */}
       <div className={cardCls}>
         <div>
@@ -499,6 +553,8 @@ export function EditSessionForm({
         </div>
       </div>
 
+      </fieldset>
+
       {/* c. Group link + closing date (group sessions only) */}
       {initial.isGroup && (
         <div className={cardCls}>
@@ -521,9 +577,16 @@ export function EditSessionForm({
             {!closed && !initial.started && !initial.closesAt && closesAt && (
               <p className="mt-1 text-xs font-medium text-secondary">{t.closesAtLiveNotice}</p>
             )}
+            {!closed &&
+              initial.closingDateSendsNotice &&
+              closesAt &&
+              groupId === (initial.groupId ?? "") && (
+                <p className="mt-1 text-xs font-medium text-secondary">{t.closesAtNotifyNote}</p>
+              )}
           </div>
           <div>
             <label className={labelCls}>{t.linkedGroup}</label>
+            <fieldset disabled={expired} className="contents">
             <Select
               value={groupId}
               onChange={(v) => {
@@ -533,10 +596,12 @@ export function EditSessionForm({
               ariaLabel={t.linkedGroup}
               options={[{ value: "", label: t.noGroup }, ...groups.map((g) => ({ value: g.id, label: g.name }))]}
             />
+            </fieldset>
           </div>
         </div>
       )}
 
+      <fieldset disabled={expired} className="m-0 min-w-0 space-y-6 border-0 p-0">
       {/* d. Samples */}
       <div className={cardCls}>
         <label className={labelCls}>{t.samplesTitle}</label>
@@ -634,14 +699,56 @@ export function EditSessionForm({
         />
       </div>
 
+      </fieldset>
+
       {/* e. Reference sample */}
       <div className={cardCls}>
         <div>
           <label className={labelCls}>{t.referenceTitle}</label>
-          <p className="text-xs text-on-surface-variant mb-2">{t.referenceHelper}</p>
+          <p className="text-xs text-on-surface-variant mb-2">
+            {referenceMode === "free" ? t.referenceHelperFree : t.referenceHelper}
+          </p>
         </div>
+        {/* B1: how the reference is scored. Frozen with the format. */}
+        <fieldset disabled={closed || locked} className="space-y-1.5 border-0 p-0">
+          <legend className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
+            {t.referenceModeLegend}
+          </legend>
+          <div role="radiogroup" aria-label={t.referenceModeLegend} className="flex flex-wrap gap-2">
+            {(
+              [
+                { v: "anchor", l: t.referenceModeAnchor },
+                { v: "free", l: t.referenceModeFree },
+              ] as const
+            ).map((opt) => (
+              <button
+                key={opt.v}
+                type="button"
+                role="radio"
+                aria-checked={referenceMode === opt.v}
+                onClick={() => {
+                  setReferenceMode(opt.v);
+                  clearSaved();
+                }}
+                className={
+                  referenceMode === opt.v
+                    ? "min-h-[44px] rounded-pill bg-primary-container px-4 py-2 text-sm font-medium text-on-primary disabled:cursor-not-allowed disabled:opacity-60"
+                    : "min-h-[44px] rounded-pill border border-outline-variant px-4 py-2 text-sm text-on-surface transition-colors hover:bg-surface-container disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
+                }
+              >
+                {opt.l}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-on-surface-variant">
+            {referenceMode === "free" ? t.referenceModeFreeHelp : t.referenceModeAnchorHelp}
+          </p>
+          {locked && !closed && (
+            <p className="text-xs text-on-surface-variant">{t.referenceModeLocked}</p>
+          )}
+        </fieldset>
         {/* Native disabled state (keyboard + AT), not just pointer-events. */}
-        <fieldset disabled={closed} className={closed ? "opacity-60" : ""}>
+        <fieldset disabled={readOnlyExceptDate} className={readOnlyExceptDate ? "opacity-60" : ""}>
           <Select
             value={referenceId ?? ""}
             onChange={handleReferenceChange}
@@ -722,6 +829,7 @@ export function EditSessionForm({
         {saved && <p className="text-sm text-primary-container">{t.saved}</p>}
         {errorText && <p className="text-sm text-error">{errorText}</p>}
         {closed && !errorText && <p className="text-sm text-on-surface-variant">{t.sessionClosed}</p>}
+        {expired && initial.isGroup && !errorText && <p className="text-sm text-on-surface-variant">{t.sessionExpired}</p>}
       </div>
       </fieldset>
     </form>

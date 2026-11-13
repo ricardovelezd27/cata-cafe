@@ -111,6 +111,40 @@ export default async function NewSessionPage({
       referenceBadge: t("newForm.referenceBadge"),
       referenceNone: t("newForm.referenceNone"),
       referenceClear: t("newForm.referenceClear"),
+      sampleWarning: {
+        many: t("sampleCountWarning.many"),
+        combined: t("sampleCountWarning.combined"),
+      },
+      referenceMode: {
+        legend: t("newForm.referenceMode.legend"),
+        anchor: t("newForm.referenceMode.anchor"),
+        free: t("newForm.referenceMode.free"),
+        anchorHelp: t("newForm.referenceMode.anchorHelp"),
+        freeHelp: t("newForm.referenceMode.freeHelp"),
+      },
+      samplePrep: {
+        summary: t("newForm.samplePrep.summary"),
+        hint: t("newForm.samplePrep.hint"),
+        roastDate: t("newForm.samplePrep.roastDate"),
+        preparation: t("newForm.samplePrep.preparation"),
+        preparationPh: t("newForm.samplePrep.preparationPh"),
+        offProtocol: t("newForm.samplePrep.offProtocol"),
+        offProtocolNote: t("newForm.samplePrep.offProtocolNote"),
+        offProtocolNotePh: t("newForm.samplePrep.offProtocolNotePh"),
+      },
+      notifyWhen: {
+        checkbox: t("newForm.notifyWhen.checkbox"),
+        legend: t("newForm.notifyWhen.legend"),
+        onCreate: t("newForm.notifyWhen.onCreate"),
+        onStart: t("newForm.notifyWhen.onStart"),
+      },
+      sampleLabelAuto: t("newForm.sampleLabelAuto"),
+      samplesBlindHelper: t("newForm.samplesBlindHelper"),
+      sampleKey: {
+        title: t("newForm.sampleKey.title"),
+        hint: t("newForm.sampleKey.hint"),
+        noCoffee: t("newForm.sampleKey.noCoffee"),
+      },
       // The WHOLE table: every code the validators can return needs copy
       // (S8-10 T2; tests/sessionErrorsCopy.test.ts enumerates them). Includes
       // S8-09's `offline` and S8-05's codes.
@@ -148,7 +182,6 @@ export default async function NewSessionPage({
     // auto-invite success strip.
     linkGroupLabel: tgroups("linkGroupLabel"),
     noGroupOption: tgroups("noGroupOption"),
-    autoInviteLive: tgroups("autoInviteLive"),
     autoInviteAsync: tgroups("autoInviteAsync"),
     autoInviteSummary: tgroups.raw("autoInviteSummary"),
     autoInviteRateLimited: tgroups("autoInviteRateLimited"),

@@ -6,6 +6,7 @@
 // and no physical (green-bean) data. The only identity in it is the viewer's.
 
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
+import { normalizeReferenceMode } from "@/lib/referenceRules";
 import { collectDescriptors } from "@/lib/descriptors";
 import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
 import { deriveMyEvaluation, NO_EVALUATION } from "@/lib/evaluationState";
@@ -68,6 +69,8 @@ export type ParticipantSummaryModel = {
     participants: number;
     /** Label of the reference sample, or null. */
     referenceLabel: string | null;
+    /** B1: "free" references are scored like any sample (no "79.00 anchor" tag). */
+    referenceMode: "anchor" | "free";
     /** The viewer's OWN evaluation was left out of the group numbers (S8-12). No
      *  reason, no peer identity. */
     viewerExcluded: boolean;
@@ -278,6 +281,7 @@ export function buildParticipantSummary(
       inclusion: src.stamp?.inclusion ?? null,
       resultsUpdatedAt: src.stamp?.resultsUpdatedAt ?? null,
       originEditedAt: src.stamp?.originEditedAt ?? null,
+      referenceMode: normalizeReferenceMode(session.referenceMode),
       referenceLabel: anchors.length
         ? anchors.map((a) => sampleById.get(a.sample.id)?.label ?? "").filter(Boolean).join(" · ")
         : null,

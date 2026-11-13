@@ -22,6 +22,7 @@ export async function GET(request: Request) {
 
   try {
     const summary = await sendInsightsDigest();
+    if (summary.error === "no_super_admin") return NextResponse.json(summary, { status: 503 });
     return NextResponse.json(summary);
   } catch (err) {
     console.error("[cron] insights digest failed:", err);

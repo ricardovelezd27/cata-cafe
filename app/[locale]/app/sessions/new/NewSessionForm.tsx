@@ -16,6 +16,9 @@ import { InviteQR } from "@/components/ui/InviteQR";
 import { buildInviteUrl } from "@/lib/inviteUrl";
 import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { Badge } from "@/components/ui/Badge";
+import { SampleKey, type SampleKeyRow, type SampleKeyTranslations } from "@/components/cupping/SampleKey";
+import { SamplePrepFields, type SamplePrepTranslations } from "@/components/cupping/SamplePrepFields";
+import { prepToForm } from "@/lib/samplePrep";
 import { localDateISO } from "@/lib/localDate";
 import {
   isDraftDirtyFrom,
@@ -30,6 +33,9 @@ import {
   type WizardHandoff,
 } from "@/lib/sessionDefaults";
 import { Select } from "@/components/ui/Select";
+import { sampleCountWarning, type SampleCountWarning } from "@/lib/sampleCount";
+import { DEFAULT_NOTIFY_WHEN, type NotifyWhen } from "@/lib/groupNotify";
+import { DEFAULT_REFERENCE_MODE, type ReferenceMode } from "@/lib/referenceRules";
 import { browserZone, dateInZone } from "@/lib/closeRules";
 import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 import { fieldErrorId, fieldForErrorCode, fieldInputId, type SessionFormField } from "@/lib/sessionFormErrors";
@@ -41,7 +47,6 @@ import { fieldErrorId, fieldForErrorCode, fieldInputId, type SessionFormField } 
 type SessionGroupsTranslations = NotifyGroupTranslations & {
   linkGroupLabel: string;
   noGroupOption: string;
-  autoInviteLive: string;
   autoInviteAsync: string;
   // Raw ICU template — interpolated locally via formatTemplate, not t().
   autoInviteSummary: string;
@@ -88,8 +93,13 @@ type SampleEntry = {
   id: string;
   label: string;
   coffeeId: string;
-  /** True while the label is still the auto-generated "Muestra X" text (not user-edited). */
+  /** True while the label is still empty = a random letter is drawn at creation (A4). */
   auto: boolean;
+  /** A9 optional prep data (owner-only until the sample is revealed). */
+  roastDate?: string;
+  preparationNote?: string;
+  offProtocol?: boolean;
+  offProtocolNote?: string;
 };
 
 type Translations = {
@@ -163,6 +173,18 @@ type Translations = {
     referenceBadge: string;
     referenceNone: string;
     referenceClear: string;
+    /** A4: placeholder of a row whose letter is drawn at random, and the helper above the list. */
+    sampleLabelAuto: string;
+    samplesBlindHelper: string;
+    sampleKey: SampleKeyTranslations;
+    /** X6: non-blocking line above the add button when the count is high for the format. */
+    sampleWarning: Record<SampleCountWarning, string>;
+    /** B1: how the reference is scored (anchor / free) and the helper for each. */
+    referenceMode: { legend: string; anchor: string; free: string; anchorHelp: string; freeHelp: string };
+    /** A9: the collapsed "Más datos de la muestra" section of each sample row. */
+    samplePrep: SamplePrepTranslations;
+    /** C8: when a LIVE session's linked group is emailed. */
+    notifyWhen: { checkbox: string; legend: string; onCreate: string; onStart: string };
     /** Whole newForm.errors table (S8-10); includes `offline` (S8-09). */
     errors: Record<string, string> & { generic: string; offline?: string };
   };
@@ -182,22 +204,12 @@ type Translations = {
 
 type WizardStep = "form" | "invite";
 
-const sampleLetter = (i: number) => {
-  let n = i + 1;
-  let s = "";
-  while (n > 0) {
-    const r = (n - 1) % 26;
-    s = String.fromCharCode(65 + r) + s;
-    n = Math.floor((n - 1) / 26);
-  }
-  return s; // 0→A … 25→Z, 26→AA
-};
-
 /** Stable id for coffees/samples so React keys and card refs survive add/remove. */
 const newId = () => crypto.randomUUID();
 
-/** TODO(A2): one-line constant for the cups the wizard proposes. */
-const DEFAULT_CUPS_PER_SAMPLE = 5;
+/** Cups the wizard proposes for affective and combined sessions (express stays at 1).
+ *  TODO(kim-validar:A2): simulated answer; Kim to confirm 2. */
+const DEFAULT_CUPS_PER_SAMPLE = 2;
 
 const EMPTY_COFFEE: CoffeeInput = {
   name: "",
@@ -239,10 +251,15 @@ function linkedEntry(base: CoffeeEntry, picked: UsableCoffee): CoffeeEntry {
   };
 }
 
-/** Recomputes A, B, C… labels by list position; leaves user-edited labels untouched. */
-function relabel(samples: SampleEntry[], chip: string): SampleEntry[] {
-  return samples.map((s, i) => (s.auto ? { ...s, label: `${chip} ${sampleLetter(i)}` } : s));
-}
+/** A fresh sample row. Its label stays EMPTY while `auto` (A4): the server
+ *  assigns the letters at random when the session is created, so the wizard
+ *  must not show a fixed "Muestra A" next to a coffee. */
+const autoSample = (coffeeId: string): SampleEntry => ({
+  id: newId(),
+  label: "",
+  coffeeId,
+  auto: true,
+});
 
 const inputBase =
   "w-full border border-outline-variant rounded-input px-3.5 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary-container/25 focus:border-primary-container transition-colors";
@@ -347,8 +364,8 @@ export function NewSessionForm({
       // storage blocked: keep the default
     }
   }, [handoff?.format]);
-  // TODO(A2): Kim has not answered what the app should propose. Default 5 for
-  // affective/combined (the CVA protocol; deductions only exist from 5 cups).
+  // The wizard proposes 2 cups per sample for affective and combined (the
+  // owner can raise it to 5). TODO(kim-validar:A2): simulated answer.
   const [cupsPerSample, setCupsPerSample] = useState(DEFAULT_CUPS_PER_SAMPLE);
   const [cupsInput, setCupsInput] = useState(String(DEFAULT_CUPS_PER_SAMPLE));
 
@@ -364,17 +381,15 @@ export function NewSessionForm({
   });
   const [samples, setSamples] = useState<SampleEntry[]>(() =>
     // N sample chips from the express handoff (default 1); coffees stay required.
-    Array.from({ length: handoff?.sampleCount ?? 1 }, (_, i) => ({
-      id: newId(),
-      label: `${t.newForm.sampleChip} ${sampleLetter(i)}`,
-      coffeeId: coffees[0].id,
-      auto: true,
-    })),
+    Array.from({ length: handoff?.sampleCount ?? 1 }, () => autoSample(coffees[0].id)),
   );
 
   // Reference sample — the SampleEntry.id (never the index) so add/remove/
   // reorder keep the selection stable across relabelling.
   const [referenceId, setReferenceId] = useState<string | null>(null);
+  // B1: how the reference is scored; only asked (and only sent as "free") when
+  // a reference is marked. "anchor" = today's pinned 79.00 exercise.
+  const [referenceMode, setReferenceMode] = useState<ReferenceMode>(DEFAULT_REFERENCE_MODE);
 
   // Group session fields — a valid ?groupId= prefill turns the toggle on and
   // preselects the group in one step.
@@ -384,8 +399,12 @@ export function NewSessionForm({
   const [todayMin] = useState(() => dateInZone(Date.now(), browserZone()));
   const [linkedGroupId, setLinkedGroupId] = useState(initialGroupId ?? "");
   const [notifyGroup, setNotifyGroup] = useState(true);
+  // C8: when a LIVE session's group is emailed (async sessions ignore it).
+  const [notifyGroupWhen, setNotifyGroupWhen] = useState<NotifyWhen>(DEFAULT_NOTIFY_WHEN);
   const [emailSummary, setEmailSummary] = useState<GroupEmailSummary | undefined>(undefined);
   const [inviteBlocked, setInviteBlocked] = useState(false);
+  // Step 2: letter -> coffee, from the server's response (A4).
+  const [sampleKey, setSampleKey] = useState<(SampleKeyRow & { sourceId: string | null })[]>([]);
 
   // Client-side validation state
   const [invalidCoffeeId, setInvalidCoffeeId] = useState<string | null>(null);
@@ -466,6 +485,8 @@ export function NewSessionForm({
           setClosesAt(d.closesAt);
           setLinkedGroupId(d.linkedGroupId);
           setNotifyGroup(d.notifyGroup);
+          setNotifyGroupWhen(d.notifyGroupWhen);
+          setReferenceMode(d.referenceMode);
           /* eslint-enable react-hooks/set-state-in-effect */
         }
       } catch {
@@ -503,6 +524,8 @@ export function NewSessionForm({
               closesAt,
               linkedGroupId,
               notifyGroup,
+              notifyGroupWhen,
+              referenceMode,
             }),
           );
         } else {
@@ -515,7 +538,8 @@ export function NewSessionForm({
     return () => clearTimeout(timer);
   }, [
     draftKey, step, dirty, name, objective, format, cupsPerSample, warmupOn, warmupId,
-    coffees, samples, referenceId, isGroup, closesAt, linkedGroupId, notifyGroup,
+    coffees, samples, referenceId, isGroup, closesAt, linkedGroupId, notifyGroup, notifyGroupWhen,
+    referenceMode,
   ]);
 
   // Leaving the tab with an unsent form: ask first (the draft also survives).
@@ -581,9 +605,7 @@ export function NewSessionForm({
     // its label and coffee can be freely edited afterward.
     const coffeeId = newId();
     setCoffees((prev) => [...prev, { ...EMPTY_COFFEE, id: coffeeId }]);
-    setSamples((prev) =>
-      relabel([...prev, { id: newId(), label: "", coffeeId, auto: true }], t.newForm.sampleChip)
-    );
+    setSamples((prev) => [...prev, autoSample(coffeeId)]);
   };
 
   const removeCoffee = (id: string) => {
@@ -592,10 +614,10 @@ export function NewSessionForm({
     // Drop samples that pointed at the removed coffee; never leave the list empty.
     let nextSamples = samples.filter((s) => s.coffeeId !== id);
     if (nextSamples.length === 0) {
-      nextSamples = [{ id: newId(), label: "", coffeeId: nextCoffees[0].id, auto: true }];
+      nextSamples = [autoSample(nextCoffees[0].id)];
     }
     setCoffees(nextCoffees);
-    setSamples(relabel(nextSamples, t.newForm.sampleChip));
+    setSamples(nextSamples);
     if (referenceId && !nextSamples.some((s) => s.id === referenceId)) {
       setReferenceId(null);
     }
@@ -606,22 +628,20 @@ export function NewSessionForm({
   };
 
   const addSample = () => {
-    setSamples((prev) =>
-      relabel(
-        [...prev, { id: newId(), label: "", coffeeId: coffees[0].id, auto: true }],
-        t.newForm.sampleChip
-      )
-    );
+    setSamples((prev) => [...prev, autoSample(coffees[0].id)]);
   };
 
   const removeSample = (id: string) => {
     if (samples.length <= 1) return;
-    setSamples((prev) => relabel(prev.filter((s) => s.id !== id), t.newForm.sampleChip));
+    setSamples((prev) => prev.filter((s) => s.id !== id));
     if (referenceId === id) setReferenceId(null);
   };
 
+  // Clearing a typed label hands the row back to the random letters.
   const updateSampleLabel = (id: string, value: string) => {
-    setSamples((prev) => prev.map((s) => (s.id === id ? { ...s, label: value, auto: false } : s)));
+    setSamples((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, label: value, auto: value.trim() === "" } : s)),
+    );
   };
 
   const updateSampleCoffee = (id: string, coffeeId: string) => {
@@ -629,8 +649,12 @@ export function NewSessionForm({
     setErrorCode(null);
   };
 
+  const sampleWarning = sampleCountWarning(format, samples.length);
   const coffeeLabel = (coffee: CoffeeEntry, i: number) =>
     coffee.name.trim() || `${t.newForm.coffeeCard} ${i + 1}`;
+  /** Typed name of a coffee card ("" while it is still blank). */
+  const coffeeNameOf = (coffeeId: string) =>
+    coffees.find((c) => c.id === coffeeId)?.name.trim() ?? "";
 
   // ── Submit ──────────────────────────────────────────────────────────────────
   const validateClient = (): boolean => {
@@ -674,9 +698,19 @@ export function NewSessionForm({
       void linkedOrigin;
       return existingCoffeeId ? { ...rest, existingCoffeeId } : rest;
     });
+    // An EMPTY label asks for a random letter (A4); a typed one is kept as is.
+    // The A9 prep keys travel only when the owner filled them.
     const samplePayload = samples.map((s) => ({
-      label: s.label,
+      label: s.auto ? "" : s.label,
       coffeeIdx: idxById.get(s.coffeeId) ?? 0,
+      ...(s.roastDate ? { roastDate: s.roastDate } : {}),
+      ...(s.preparationNote?.trim() ? { preparationNote: s.preparationNote } : {}),
+      ...(s.offProtocol
+        ? {
+            offProtocol: true,
+            ...(s.offProtocolNote?.trim() ? { offProtocolNote: s.offProtocolNote } : {}),
+          }
+        : {}),
     }));
     const referenceIdx = referenceId
       ? ((idx) => (idx === -1 ? null : idx))(samples.findIndex((s) => s.id === referenceId))
@@ -703,6 +737,7 @@ export function NewSessionForm({
           samples: samplePayload,
           referenceIdx,
           warmupExerciseId: warmupOn ? warmupId : null,
+          referenceMode: referenceIdx === null ? DEFAULT_REFERENCE_MODE : referenceMode,
           locale,
         });
         if (result) showError(result.error);
@@ -717,10 +752,13 @@ export function NewSessionForm({
           samples: samplePayload,
           referenceIdx,
           warmupExerciseId: warmupOn ? warmupId : null,
+          referenceMode: referenceIdx === null ? DEFAULT_REFERENCE_MODE : referenceMode,
+          locale,
           closesAt: closesAt || undefined,
           closesAtZone: closesAt ? browserZone() : undefined,
           groupId: linkedGroupId || undefined,
           notifyGroup,
+          notifyGroupWhen,
         });
         if (result.ok) {
           clearDraft();
@@ -728,6 +766,19 @@ export function NewSessionForm({
           setInviteToken(result.inviteToken);
           setEmailSummary(result.emailSummary);
           setInviteBlocked(result.emailBlocked === "rate_limited");
+          // A4: which letter got which coffee, in cupping order (owner only).
+          setSampleKey(
+            result.sampleKey.map((k) => {
+              const src = samples[k.sourceIndex];
+              const coffee = src ? coffees.find((c) => c.id === src.coffeeId) : undefined;
+              return {
+                id: src?.id ?? String(k.position),
+                label: k.label,
+                coffee: coffee?.name.trim() || null,
+                sourceId: src?.id ?? null,
+              };
+            }),
+          );
           setStep("invite");
           // Step 2 used to live only in memory: a reload lost the link. Point
           // the address bar at the owner-only invite route so a reload (or a
@@ -787,17 +838,20 @@ export function NewSessionForm({
 
   // ── Step 2: Invite link ──────────────────────────────────────────────────────
   if (step === "invite") {
-    const refSample = referenceId ? samples.find((s) => s.id === referenceId) : undefined;
+    // The reference's label is the letter the server drew for it (A4).
+    const refKey = referenceId ? sampleKey.find((k) => k.sourceId === referenceId) : undefined;
     return (
       <div className="space-y-6">
-        {refSample && (
+        {refKey && (
           <p className="flex items-center gap-2 text-sm text-on-surface">
             <Badge tone="accent" size="xs">
               {t.newForm.referenceBadge}
             </Badge>
-            {refSample.label}
+            {refKey.label}
           </p>
         )}
+
+        <SampleKey rows={sampleKey} translations={t.newForm.sampleKey} />
 
         <div className="bg-surface-container-low border border-outline-variant rounded-card p-5 space-y-3">
           <p className="text-sm font-semibold text-primary-container">{t.groupInviteLink}</p>
@@ -1393,8 +1447,51 @@ export function NewSessionForm({
           )}
         </div>
 
+        {/* B1: how the reference is scored. Shown only once one is marked. */}
+        {referenceId !== null && (
+          <fieldset className="space-y-1.5 border-0 p-0">
+            <legend className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
+              {t.newForm.referenceMode.legend}
+            </legend>
+            <div
+              role="radiogroup"
+              aria-label={t.newForm.referenceMode.legend}
+              className="flex flex-wrap gap-2"
+            >
+              {(
+                [
+                  { v: "anchor", l: t.newForm.referenceMode.anchor },
+                  { v: "free", l: t.newForm.referenceMode.free },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.v}
+                  type="button"
+                  role="radio"
+                  aria-checked={referenceMode === opt.v}
+                  onClick={() => setReferenceMode(opt.v)}
+                  className={
+                    referenceMode === opt.v
+                      ? "min-h-[44px] bg-primary-container text-on-primary rounded-pill px-4 py-2 text-sm font-medium"
+                      : "min-h-[44px] border border-outline-variant text-on-surface rounded-pill px-4 py-2 text-sm hover:bg-surface-container transition-colors"
+                  }
+                >
+                  {opt.l}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-on-surface-variant">
+              {referenceMode === "free"
+                ? t.newForm.referenceMode.freeHelp
+                : t.newForm.referenceMode.anchorHelp}
+            </p>
+          </fieldset>
+        )}
+
+        <p className="text-xs text-on-surface-variant">{t.newForm.samplesBlindHelper}</p>
+
         <div className="space-y-2">
-          {samples.map((s) => (
+          {samples.map((s, si) => (
             <div key={s.id} className="flex flex-wrap items-center gap-2 min-w-0">
               {/* 44px touch target around a 16px radio (mobile hit area). */}
               <label className="flex h-11 w-9 shrink-0 cursor-pointer items-center justify-center -my-1">
@@ -1403,7 +1500,14 @@ export function NewSessionForm({
                   name="reference"
                   checked={referenceId === s.id}
                   onChange={() => setReferenceId(s.id)}
-                  aria-label={t.newForm.referenceMark.replace("{label}", s.label.trim() || t.sampleLabel)}
+                  // An auto row has no label yet (the letter is drawn at
+                  // creation): name it by its coffee, else by its row number.
+                  aria-label={t.newForm.referenceMark.replace(
+                    "{label}",
+                    s.label.trim() ||
+                      coffeeNameOf(s.coffeeId) ||
+                      `${t.newForm.sampleChip} ${si + 1}`,
+                  )}
                   className="h-4 w-4 accent-secondary cursor-pointer"
                 />
               </label>
@@ -1411,7 +1515,7 @@ export function NewSessionForm({
                 value={s.label}
                 onChange={(e) => updateSampleLabel(s.id, e.target.value)}
                 aria-label={t.sampleLabel}
-                placeholder={t.sampleLabel}
+                placeholder={t.newForm.sampleLabelAuto}
                 className={inputCls + " flex-1 min-w-[8rem]"}
               />
               {coffees.length > 1 && (
@@ -1438,9 +1542,29 @@ export function NewSessionForm({
                   <X size={16} />
                 </button>
               )}
+              <SamplePrepFields
+                idPrefix={`prep-${s.id}`}
+                className="basis-full"
+                value={prepToForm({
+                  roastDate: s.roastDate || null,
+                  preparationNote: s.preparationNote || null,
+                  offProtocol: s.offProtocol === true,
+                  offProtocolNote: s.offProtocolNote || null,
+                })}
+                onChange={(patch) =>
+                  setSamples((prev) => prev.map((x) => (x.id === s.id ? { ...x, ...patch } : x)))
+                }
+                translations={t.newForm.samplePrep}
+              />
             </div>
           ))}
         </div>
+
+        {sampleWarning && (
+          <p role="status" className="text-xs font-medium text-secondary">
+            {t.newForm.sampleWarning[sampleWarning]}
+          </p>
+        )}
 
         <button
           type="button"
@@ -1522,8 +1646,41 @@ export function NewSessionForm({
                   onChange={(e) => setNotifyGroup(e.target.checked)}
                   className="h-4 w-4 rounded accent-primary-container cursor-pointer"
                 />
-                {closesAt ? groupsT.autoInviteAsync : groupsT.autoInviteLive}
+                {closesAt ? groupsT.autoInviteAsync : t.newForm.notifyWhen.checkbox}
               </label>
+            )}
+
+            {/* C8: only a LIVE session (no closing date) has a start to wait
+                for; an async one is always announced at creation. */}
+            {linkedGroupId && notifyGroup && !closesAt && (
+              <fieldset className="space-y-1.5">
+                <legend className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant">
+                  {t.newForm.notifyWhen.legend}
+                </legend>
+                <div role="radiogroup" aria-label={t.newForm.notifyWhen.legend} className="flex flex-wrap gap-2">
+                  {(
+                    [
+                      { v: "create", l: t.newForm.notifyWhen.onCreate },
+                      { v: "start", l: t.newForm.notifyWhen.onStart },
+                    ] as const
+                  ).map((opt) => (
+                    <button
+                      key={opt.v}
+                      type="button"
+                      role="radio"
+                      aria-checked={notifyGroupWhen === opt.v}
+                      onClick={() => setNotifyGroupWhen(opt.v)}
+                      className={
+                        notifyGroupWhen === opt.v
+                          ? "min-h-[44px] bg-primary-container text-on-primary rounded-pill px-4 py-2 text-sm font-medium"
+                          : "min-h-[44px] border border-outline-variant text-on-surface rounded-pill px-4 py-2 text-sm hover:bg-surface-container transition-colors"
+                      }
+                    >
+                      {opt.l}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
             )}
           </div>
         )}

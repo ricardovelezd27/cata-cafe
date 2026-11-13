@@ -3,6 +3,7 @@
 // instead of redeclaring them.
 
 import type { MyEvaluation } from "@/lib/evaluationState";
+import type { SamplePrep } from "@/lib/samplePrep";
 
 export type AggregateScoreData = {
   communityScore: number | null;
@@ -64,6 +65,9 @@ export type SampleResult = {
   extrinsic: Record<string, unknown>;
   // Pre-formatted "Origen editado el <fecha>" (S8-12); null when never edited post-close.
   extrinsicEditedLabel?: string | null;
+  /** A9 prep data (roast date, notes, off-protocol): owner/admin lens, or a
+   *  revealed sample; null otherwise (lib/samplePrep.ts gateSamplePrep). */
+  prep?: SamplePrep | null;
   aggregateScore: AggregateScoreData | null;
   // True for the ONE sample the owner marked as the "Referencia" (control) —
   // session.referenceSampleId. Display-only: scoring is untouched. See

@@ -109,9 +109,12 @@ export function UnsyncedGuardProvider({
       return;
     }
     const anonId = decision.rekeyFrom;
+    // The markers are NOT cleared here (fourth review): a cup tab that was open
+    // for the anonymous id may still write drafts under it after this re-key.
+    // They expire by TTL, and every app mount re-runs this (idempotent).
     void (async () => {
-      await rekeyUserBlobs(anonId, userId);
-      clearMarkers();
+      const moved = await rekeyUserBlobs(anonId, userId);
+      if (moved === 0) return;
       window.dispatchEvent(new Event(OFFLINE_SYNC_EVENT));
       void retryRef.current();
     })();

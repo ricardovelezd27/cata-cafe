@@ -15,6 +15,7 @@ import { makeCoffee, makeEvaluation, makeSession, makeUser, prisma, resetDb, sto
 import { referencesTo } from "./support/refs";
 
 beforeEach(async () => {
+  vi.unstubAllEnvs();
   await resetDb();
   deleteUser.mockReset();
   deleteUser.mockResolvedValue({ data: {}, error: null });
@@ -211,7 +212,10 @@ describe("deleteAccountData", () => {
   });
 
   it("refuses the super-admin and writes nothing", async () => {
-    const boss = getSuperAdminEmail();
+    // No built-in super-admin any more: configure a throwaway test address.
+    vi.stubEnv("ANALYTICS_SUPER_ADMIN_EMAIL", "boss@example.test");
+    const boss = getSuperAdminEmail()!;
+    expect(boss).toBe("boss@example.test");
     const D = await makeUser({ email: boss });
     await makeSession({ ownerId: D, samples: [{}] });
     await expect(deleteAccountData({ id: D, email: boss })).rejects.toThrow("account_protected");

@@ -15,6 +15,7 @@ import { deriveMyEvaluation, summarizeMyProgress } from "@/lib/evaluationState";
 import { canViewGroupResults, isSessionExpired } from "@/lib/sessionState";
 import { resultsUpdatedAfterClose } from "@/lib/exclusionReasons";
 import { gateSampleForViewer, communityHidden } from "@/lib/reports/sampleGate";
+import { gateSamplePrep } from "@/lib/samplePrep";
 import { getUsableCoffees } from "@/lib/coffees/queries";
 import type { UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { closeSessionInternal } from "@/lib/closeSession";
@@ -140,6 +141,8 @@ export default async function ResultsPage({
   const isAdminViewer = isSuperAdmin && !isOwner;
   // Owner-perspective read gate — shared by every owner-only READ block below.
   const ownerRead = isOwner || isAdminViewer;
+  // B1: a "free" reference is scored like any sample (no "79.00 anchor" copy).
+  const referenceFree = session.referenceMode === "free";
   // Narrowed session format — used for every format-shaped gate below.
   // `session.format` (raw string) is still passed inside the `session` prop
   // unchanged, since the client-side type there is a plain string.
@@ -855,6 +858,8 @@ export default async function ResultsPage({
             affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
             combined: (ev?.combinedData as Record<string, unknown>) ?? {},
             physical: gated.physical,
+            // A9: blind data, so the owner/admin lens or a revealed sample only.
+            prep: gateSamplePrep(s, { ownerView: ownerRead, revealed: s.revealed }),
             extrinsic: s.revealed ? ((s.extrinsic?.data as Record<string, unknown>) ?? {}) : {},
             // "Origen editado el <fecha>" — only when the owner corrected origin
             // data after the session closed (S8-12).
@@ -1023,8 +1028,8 @@ export default async function ResultsPage({
           referenceBadge: tResults("referenceBadge"),
           deltaVsReference: tResults("deltaVsReference"),
           deltaVsReferenceAria: tResults("deltaVsReferenceAria"),
-          anchorTitle: tResults("dashboard.anchorTitle"),
-          anchorHint: tResults("dashboard.anchorHint"),
+          anchorTitle: tResults(referenceFree ? "dashboard.anchorTitleFree" : "dashboard.anchorTitle"),
+          anchorHint: tResults(referenceFree ? "dashboard.anchorHintFree" : "dashboard.anchorHint"),
           // Templates / ICU args: fetched raw, filled client-side.
           includedOf: tResults.raw("dashboard.includedOf") as string,
           rankIndicative: tResults("dashboard.rankIndicative"),
@@ -1048,6 +1053,11 @@ export default async function ResultsPage({
           inProgressLegend: tResults("table.inProgressLegend"),
         },
         detail: {
+          prep: {
+            roastDate: tResults("samplePrep.roastDate"),
+            preparation: tResults("samplePrep.preparation"),
+            offProtocol: tResults("samplePrep.offProtocol"),
+          },
           fragrance: tResults("detail.fragrance"),
           aroma: tResults("detail.aroma"),
           flavor: tResults("detail.flavor"),
@@ -1145,7 +1155,7 @@ export default async function ResultsPage({
           },
           referencia: {
             title: tResults("help.referencia.title"),
-            body: tResults("help.referencia.body"),
+            body: tResults(referenceFree ? "help.referencia.bodyFree" : "help.referencia.body"),
           },
         },
       }}
