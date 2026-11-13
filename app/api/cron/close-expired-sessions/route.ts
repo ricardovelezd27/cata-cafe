@@ -7,21 +7,29 @@
 //
 // Passes (each capped at BATCH, reported separately in the JSON):
 //   1. close      active sessions whose closesAt has passed
-//   1b. idle      live group sessions idle for 7 days (S10 WP4a, Kim C3; reason
-//                 "idle", same close routine and emails as pass 1)
 //   2. repair     closed sessions whose phase 2 never finished (S8-05: a close
 //                 that threw after the flip is retried here, not lost)
 //   3. reminders  deadline_24h (members with complete unsent notes) and
 //                 live_idle (owner of a forgotten live session). Ledgered in
 //                 session_reminder_deliveries; NEVER closes a session.
+//   4. idle       live group sessions idle for 7 days (S10 WP4a, Kim C3; reason
+//                 "idle"; 7 to under 30 days idle = close emails, 30 days or more
+//                 = closed silently, review H2). LAST of the closing passes and
+//                 only IDLE_BATCH (5) per run, oldest first, so a backlog can
+//                 never starve the deadline closes, the repairs or the reminders.
+//   5. purge      the email ledger housekeeping. Always runs, last, in its own
+//                 try/catch; nothing above can stop it.
+// Time budget (review M1): maxDuration is 300 s; no NEW close is started in pass 1
+// or pass 4 once CRON_CLOSE_START_BUDGET_MS (150 s) has elapsed (`budgetTruncated` /
+// `idleBudgetTruncated` in the summary). Repairs and reminders are not gated.
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { closeSessionInternal } from "@/lib/closeSession";
-import { FINALIZE_GRACE_MS } from "@/lib/closeRules";
+import { CRON_CLOSE_START_BUDGET_MS, FINALIZE_GRACE_MS, mayStartAnotherClose } from "@/lib/closeRules";
 import { errorMessage, logError, logWarn } from "@/lib/log";
 import { purgeEmailLedger } from "@/lib/emailBudget";
-import { closeIdleLiveSessions } from "@/lib/idleClose";
+import { closeIdleLiveSessions, emptyIdleCloseSummary } from "@/lib/idleClose";
 import { sendDeadlineReminders, sendLiveIdleReminders } from "@/lib/reminderEmail";
 
 export const runtime = "nodejs";
@@ -29,6 +37,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const BATCH = 25;
+/** The idle pass closes (and mails) whole sessions of up to ~50 people: keep it small. */
+const IDLE_BATCH = 5;
 
 /** Moves a session whose repair did not finish to the back of the queue (the
  *  pass orders by updatedAt asc) without a migration. Never throws. */
@@ -50,6 +60,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
+  const startedAt = Date.now();
+  const mayStart = () => mayStartAnotherClose(Date.now() - startedAt, CRON_CLOSE_START_BUDGET_MS);
+
   const due = await prisma.cuppingSession.findMany({
     where: { status: "active", closesAt: { lt: new Date() } },
     select: { id: true, name: true },
@@ -58,7 +71,13 @@ export async function GET(request: Request) {
   });
 
   const results: { id: string; closed: boolean; emailsQueued: number; error?: string }[] = [];
+  let budgetTruncated = false;
   for (const s of due) {
+    if (!mayStart()) {
+      budgetTruncated = true;
+      logWarn({ where: "cron.closeExpired", message: "time budget spent, rest left for the next run" });
+      break;
+    }
     try {
       const r = await closeSessionInternal(s.id, { reason: "cron", emails: "await" });
       results.push({ id: s.id, closed: r.closed, emailsQueued: r.emailsQueued });
@@ -70,20 +89,6 @@ export async function GET(request: Request) {
   }
   const truncated = due.length === BATCH;
   if (truncated) logWarn({ where: "cron.closeExpired", message: "batch full, more sessions are due", batch: BATCH });
-
-  // Pass 1b: live sessions nobody has touched for 7 days. A failure here must
-  // never fail the closes above or the passes below.
-  let idle: Awaited<ReturnType<typeof closeIdleLiveSessions>> = {
-    examined: 0,
-    idleClosed: 0,
-    idleTruncated: false,
-    results: [],
-  };
-  try {
-    idle = await closeIdleLiveSessions(BATCH);
-  } catch (err) {
-    logError({ where: "cron.closeIdle", message: errorMessage(err) });
-  }
 
   // Pass 2: repair closed sessions whose phase 2 is owed.
   const owed = await prisma.cuppingSession.findMany({
@@ -129,6 +134,16 @@ export async function GET(request: Request) {
     reminders = { error: message };
   }
 
+  // Pass 4: live sessions nobody has touched for 7 days (after the repairs and
+  // the reminders, small batch). A failure here never fails the passes above or
+  // the purge below.
+  let idle = emptyIdleCloseSummary();
+  try {
+    idle = await closeIdleLiveSessions(IDLE_BATCH, Date.now(), { mayStart });
+  } catch (err) {
+    logError({ where: "cron.closeIdle", message: errorMessage(err) });
+  }
+
   // Housekeeping (S8-28 A-03): the throttle/attempt ledger grows with every
   // login attempt; drop rows older than the longest rule window. Never fails the run.
   let ledgerPurged = 0;
@@ -146,9 +161,12 @@ export async function GET(request: Request) {
     results,
     // More than BATCH due means the next run (or a manual re-trigger) picks
     // up the rest — bounded per invocation on purpose.
-    truncated,
+    truncated: truncated || budgetTruncated,
+    budgetTruncated,
     idleClosed: idle.idleClosed,
+    idleClosedSilently: idle.idleClosedSilently,
     idleTruncated: idle.idleTruncated,
+    idleBudgetTruncated: idle.idleBudgetTruncated,
     idleResults: idle.results,
     reminders,
     repair: { owed: owed.length, stillUnfinalized, finalized: repairs.filter((r) => r.finalized).length, results: repairs, truncated: repairTruncated },

@@ -8,22 +8,38 @@
 
 import { prisma } from "@/lib/prisma";
 import { closeSessionInternal } from "@/lib/closeSession";
-import { isLiveAbandoned, LIVE_AUTO_CLOSE_MS } from "@/lib/closeRules";
+import { idleCloseEmailMode, isLiveAbandoned, liveIdleMs, LIVE_AUTO_CLOSE_MS } from "@/lib/closeRules";
 import { errorMessage, logError, logWarn } from "@/lib/log";
 
 export type IdleCloseSummary = {
   /** Candidates examined this run. */
   examined: number;
-  /** Sessions closed by this run. */
+  /** Sessions closed by this run (with or without emails). */
   idleClosed: number;
+  /** Of those, closed silently: idle 30 days or more, no close email sent (review H2). */
+  idleClosedSilently: number;
   /** The batch was full: more may be waiting for the next run. */
   idleTruncated: boolean;
-  results: { id: string; closed: boolean; emailsQueued: number; error?: string }[];
+  /** The time budget ran out before the batch was done (review M1). */
+  idleBudgetTruncated: boolean;
+  results: { id: string; closed: boolean; emailsQueued: number; silent?: boolean; error?: string }[];
 };
+
+export function emptyIdleCloseSummary(): IdleCloseSummary {
+  return {
+    examined: 0,
+    idleClosed: 0,
+    idleClosedSilently: 0,
+    idleTruncated: false,
+    idleBudgetTruncated: false,
+    results: [],
+  };
+}
 
 export async function closeIdleLiveSessions(
   batch: number,
   now: number = Date.now(),
+  opts: { mayStart?: () => boolean } = {},
 ): Promise<IdleCloseSummary> {
   const cutoff = new Date(now - LIVE_AUTO_CLOSE_MS);
   // The evaluation filter keeps sessions that are busy out of the batch (they
@@ -37,39 +53,50 @@ export async function closeIdleLiveSessions(
       startedAt: { not: null, lte: cutoff },
       samples: { none: { evaluations: { some: { updatedAt: { gt: cutoff } } } } },
     },
-    select: { id: true, isGroup: true, isAsync: true, closesAt: true, status: true, startedAt: true },
+    select: { id: true },
     orderBy: { startedAt: "asc" },
     take: batch,
   });
-  const summary: IdleCloseSummary = {
-    examined: candidates.length,
-    idleClosed: 0,
-    idleTruncated: candidates.length === batch,
-    results: [],
-  };
+  const summary = emptyIdleCloseSummary();
+  summary.examined = candidates.length;
+  summary.idleTruncated = candidates.length === batch;
   if (candidates.length === 0) return summary;
 
-  // Last activity through the sample relation (Evaluation.sessionId is nullable).
-  const samples = await prisma.sessionSample.findMany({
-    where: { sessionId: { in: candidates.map((c) => c.id) } },
-    select: {
-      sessionId: true,
-      evaluations: { orderBy: { updatedAt: "desc" }, take: 1, select: { updatedAt: true } },
-    },
-  });
-  const lastBySession = new Map<string, Date>();
-  for (const smp of samples) {
-    const u = smp.evaluations[0]?.updatedAt;
-    const cur = lastBySession.get(smp.sessionId);
-    if (u && (!cur || u > cur)) lastBySession.set(smp.sessionId, u);
-  }
-
-  for (const s of candidates) {
-    if (!isLiveAbandoned(s, lastBySession.get(s.id) ?? null, now)) continue;
+  for (const c of candidates) {
+    if (opts.mayStart && !opts.mayStart()) {
+      summary.idleBudgetTruncated = true;
+      logWarn({ where: "cron.closeIdle", message: "time budget spent, rest left for the next run" });
+      break;
+    }
+    // Re-check right before closing (review, race): the owner may have closed
+    // it, or someone may have saved an evaluation since the batch was read.
+    const s = await prisma.cuppingSession.findUnique({
+      where: { id: c.id },
+      select: { id: true, isGroup: true, isAsync: true, closesAt: true, status: true, startedAt: true },
+    });
+    if (!s) continue;
+    // "Activity" is an evaluation being saved (Evaluation.sessionId is nullable,
+    // so go through the sample relation).
+    const last = await prisma.evaluation.aggregate({
+      where: { sessionSample: { sessionId: s.id } },
+      _max: { updatedAt: true },
+    });
+    const lastAt = last._max.updatedAt ?? null;
+    if (!isLiveAbandoned(s, lastAt, now)) continue;
+    const idleMs = liveIdleMs(s, lastAt, now) ?? 0;
+    const mode = idleCloseEmailMode(idleMs);
     try {
-      const r = await closeSessionInternal(s.id, { reason: "idle", emails: "await" });
-      summary.results.push({ id: s.id, closed: r.closed, emailsQueued: r.emailsQueued });
-      if (r.closed) summary.idleClosed += 1;
+      const r = await closeSessionInternal(s.id, { reason: "idle", emails: mode });
+      summary.results.push({
+        id: s.id,
+        closed: r.closed,
+        emailsQueued: r.emailsQueued,
+        ...(mode === "skip" ? { silent: true } : {}),
+      });
+      if (r.closed) {
+        summary.idleClosed += 1;
+        if (mode === "skip") summary.idleClosedSilently += 1;
+      }
     } catch (err) {
       const message = errorMessage(err);
       logError({ where: "cron.closeIdle", sessionId: s.id, message });

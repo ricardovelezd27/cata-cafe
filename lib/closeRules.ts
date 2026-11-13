@@ -269,10 +269,66 @@ export function isLiveAbandoned(
   lastEvaluationAt: Date | null,
   now: number = Date.now(),
 ): boolean {
-  if (!row.isGroup || row.isAsync || row.closesAt || row.status !== "active") return false;
-  if (!row.startedAt) return false;
+  const idle = liveIdleMs(row, lastEvaluationAt, now);
+  return idle !== null && idle >= LIVE_AUTO_CLOSE_MS;
+}
+
+/** How long a live session has been idle: now minus max(startedAt, last
+ *  evaluation update). `null` when the session is not a live one (solo, async,
+ *  dated, not active, never started). "Activity" is an evaluation being saved,
+ *  nothing else. Pure. */
+export function liveIdleMs(
+  row: {
+    isGroup: boolean;
+    isAsync: boolean;
+    closesAt: Date | null;
+    status: string;
+    startedAt: Date | null;
+  },
+  lastEvaluationAt: Date | null,
+  now: number = Date.now(),
+): number | null {
+  if (!row.isGroup || row.isAsync || row.closesAt || row.status !== "active") return null;
+  if (!row.startedAt) return null;
   const last = Math.max(row.startedAt.getTime(), lastEvaluationAt ? lastEvaluationAt.getTime() : 0);
-  return now - last >= LIVE_AUTO_CLOSE_MS;
+  return now - last;
+}
+
+/** Idle this long or more: the cron closes the session WITHOUT sending the
+ *  close emails (S10 WP4a review H2). The first production run would otherwise
+ *  mail every participant of every session abandoned months ago. The daily job
+ *  means that, after its first week, only that backlog can cross this age.
+ *  TODO(kim-validar:C3) */
+export const IDLE_SILENT_CLOSE_MS = 30 * 24 * 3_600_000;
+
+/** Email mode for an idle close: 7 days up to (excluding) 30 days = the
+ *  designed flow, emails; 30 days or more = close silently (`skip` stamps
+ *  closeFinalizedAt, so the repair pass never sends later; the owner can still
+ *  use "Reenviar correos"). Pure. TODO(kim-validar:C3) */
+export function idleCloseEmailMode(idleMs: number): "await" | "skip" {
+  return idleMs >= IDLE_SILENT_CLOSE_MS ? "skip" : "await";
+}
+
+/** Time budget (S10 WP4a review M1): the cron has maxDuration 300 s; it stops
+ *  STARTING new closes once this much has elapsed so a slow run cannot be
+ *  killed in the middle of one. */
+export const CRON_CLOSE_START_BUDGET_MS = 150_000;
+
+/** May the cron start another close? Pure. */
+export function mayStartAnotherClose(elapsedMs: number, budgetMs: number = CRON_CLOSE_START_BUDGET_MS): boolean {
+  return elapsedMs < budgetMs;
+}
+
+/** Whether the results page offers the owner "Cerrar ahora" (S10 WP4a review
+ *  M2): the OWNER of a GROUP session whose closing date has passed but that is
+ *  not closed yet. `closeSession` already accepts expired sessions. Pure. */
+export function canCloseNow(input: {
+  isOwner: boolean;
+  isGroup: boolean;
+  status: string;
+  expired: boolean;
+}): boolean {
+  return input.isOwner && input.isGroup && input.status !== "closed" && input.expired;
 }
 
 // ─── Manual finish for solo / express sessions (F-express-1, F-solo-3) ───────
