@@ -13,14 +13,15 @@ import { evaluationScoreRule, sampleScoreRule, type ScoreRule } from "@/lib/scor
 import { asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { deriveMyEvaluation, summarizeMyProgress } from "@/lib/evaluationState";
-import { canViewGroupResults, isSessionExpired } from "@/lib/sessionState";
+import { isSessionExpired, viewerMayReadGroupResults } from "@/lib/sessionState";
+import { wasClosedSilently } from "@/lib/repairClose";
 import { resultsUpdatedAfterClose } from "@/lib/exclusionReasons";
 import { gateSampleForViewer, communityHidden } from "@/lib/reports/sampleGate";
 import { gateSamplePrep } from "@/lib/samplePrep";
 import { getUsableCoffees } from "@/lib/coffees/queries";
 import type { UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { closeSessionInternal } from "@/lib/closeSession";
-import { ON_VIEW_REPAIR_GRACE_MS, soloRepairOwedOnView } from "@/lib/closeRules";
+import { ON_VIEW_REPAIR_GRACE_MS, canCloseNow, soloRepairOwedOnView } from "@/lib/closeRules";
 import { errorMessage, logError } from "@/lib/log";
 import { noIncludedAggregate } from "@/lib/reports/ranking";
 import { ResultsClient } from "./ResultsClient";
@@ -163,17 +164,11 @@ export default async function ResultsPage({
     tBlocks(blockId as Parameters<typeof tBlocks>[0]);
 
   const totalParticipants = session.participants.length;
-  const allSubmitted = totalParticipants > 0 && submittedCupperCount >= totalParticipants;
   const sessionExpired = isSessionExpired({ status: "active", closesAt: session.closesAt });
   // Closed OR past its deadline: no more cupping, no more drafts to finish.
   const sessionOver = isSessionExpired(session);
-  const canViewGroup = canViewGroupResults({
-    isGroup: session.isGroup,
-    ownerRead,
-    status: session.status,
-    allSubmitted,
-    sessionExpired,
-  });
+  // The ONE call site of the group-visibility rule (shared with the report routes).
+  const canViewGroup = viewerMayReadGroupResults(session, { ownerRead });
 
   // Participants the master has excluded from group results. Used to (a) flag
   // excluded cuppers in the Individual view and (b) drop their descriptors from
@@ -501,9 +496,12 @@ export default async function ResultsPage({
   // have submitted (synced) than the participant roster, surface how many are
   // missing. computeGroupAggregate already excludes incomplete evals, so this is
   // an explicit "X of Y" denominator, not a recompute.
+  // S10 WP4a (Kim C5): a count of who has submitted is group information, so it
+  // only leaves the server for a viewer who may see group results (the owner
+  // always, everyone else once the session is closed or expired).
   const pendingParticipants = Math.max(0, totalParticipants - submittedCupperCount);
   const partialSyncNotice =
-    session.isGroup && pendingParticipants > 0
+    session.isGroup && canViewGroup && pendingParticipants > 0
       ? tOffline("partialSyncNotice", {
           included: submittedCupperCount,
           total: totalParticipants,
@@ -540,10 +538,16 @@ export default async function ResultsPage({
       failed > 0 ? tResults("closeEmails.failed", { count: failed }) : null,
       pending > 0 ? tResults("closeEmails.pending", { count: pending }) : null,
     ].filter((p): p is string => p !== null);
-    closeEmails = {
-      line: `${tResults("closeEmails.label")} ${parts.join(" · ")}`,
-      showResend: failed > 0 || pending > 0,
-    };
+    // Second review L4: a close that was silent (live group, idle 30+ days at close,
+    // no ledger row) must not read as mail owed. The same pure rule the repair pass uses.
+    const silent =
+      deliveries.length === 0 && (await wasClosedSilently(id));
+    closeEmails = silent
+      ? { line: tResults("closeEmails.silent", { button: tResults("closeEmails.resend") }), showResend: true }
+      : {
+          line: `${tResults("closeEmails.label")} ${parts.join(" · ")}`,
+          showResend: failed > 0 || pending > 0,
+        };
   }
 
   // Neutral one-line notice for closed group sessions — formatted server-side
@@ -566,7 +570,7 @@ export default async function ResultsPage({
   // `summary["general"]` entries computeSampleBlockFrequencies now always adds.
   blockLabels.general = tBlocks("general");
 
-  const participation = session.isGroup
+  const participation = session.isGroup && canViewGroup
     ? { submitted: submittedCupperCount, total: totalParticipants }
     : null;
 
@@ -694,7 +698,7 @@ export default async function ResultsPage({
         }),
       })
     : null;
-  const participationLabel = session.isGroup
+  const participationLabel = session.isGroup && canViewGroup
     ? tResults("participation", {
         submitted: submittedCupperCount,
         total: totalParticipants,
@@ -901,6 +905,27 @@ export default async function ResultsPage({
       }}
       myDraftNotice={myDraftNotice}
       closedNotice={closedNotice}
+      // Review M2 (Kim C9): an expired, not closed group session has no other way
+      // out if the nightly job fails, so its OWNER can close it now.
+      closeNow={
+        canCloseNow({
+          isOwner,
+          isGroup: session.isGroup,
+          status: session.status,
+          expired: sessionExpired,
+        })
+          ? {
+              line: tResults("closeNow.line"),
+              button: tResults("closeNow.button"),
+              title: tg("closeSession"),
+              body: tg("confirmClose"),
+              rule: tg("closeRule"),
+              cancel: ta("cancel"),
+              error: tg("closeSessionError"),
+              notFinalized: tg("closeNotFinalized"),
+            }
+          : null
+      }
       finish={
         !isAdminViewer && !session.isGroup && isOwner && !sessionOver
           ? {

@@ -6,7 +6,7 @@
 
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/app/generated/prisma/client";
-import { coffeeHistoryRefresh, historyCommunityScore, orphanLabelRowWhere, partitionLabelRows } from "@/lib/historyRules";
+import { coffeeHistoryRefresh, historyCommunityScoreForSession, orphanLabelRowWhere, partitionLabelRows } from "@/lib/historyRules";
 import { buildLabelSnapshot, type HistorySnapshot } from "@/lib/historySnapshot";
 
 export type { HistorySnapshot };
@@ -100,7 +100,7 @@ export async function syncCoffeeHistoryForSession(
 
   const session = await db.cuppingSession.findUnique({
     where: { id: sessionId },
-    select: { date: true },
+    select: { date: true, isGroup: true, status: true },
   });
 
   const tastedAt = session?.date ?? new Date();
@@ -124,7 +124,8 @@ export async function syncCoffeeHistoryForSession(
     if (!sample.coffeeId) continue;
     const coffeeId = sample.coffeeId;
     // S8-04: null unless a real included evaluation exists (lib/historyRules.ts).
-    const communityScore = historyCommunityScore(sample.aggregateScore);
+    // Also null for a group session that is not closed (Kim C5, deleting an open one).
+    const communityScore = historyCommunityScoreForSession(sample.aggregateScore, session);
 
     for (const evaluation of sample.evaluations) {
       upserts.push(

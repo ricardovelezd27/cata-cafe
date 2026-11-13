@@ -72,7 +72,7 @@ describe("planClosesAtChange with a zone", () => {
     );
   });
 
-  it("saving an unrelated field on a Bogota session is a no-op even after the date passed", () => {
+  it("(pure rule only) an unchanged Bogota day is a no-op even after it passed; updateSession refuses an expired session first (S10 C9)", () => {
     const stored = { isGroup: true, closesAt: new Date("2026-11-11T04:59:59.999Z"), closesAtZone: "America/Bogota" };
     expect(planClosesAtChange(stored, "2026-11-10", Date.parse("2026-11-12T00:00:00Z"), "America/Bogota")).toBeNull();
   });

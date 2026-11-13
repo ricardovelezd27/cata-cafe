@@ -220,8 +220,13 @@ export const REMINDER_KINDS = ["deadline_24h", "live_idle"] as const;
 export type ReminderKind = (typeof REMINDER_KINDS)[number];
 
 /** Live sessions with no activity for this long get ONE owner reminder (Kim
- *  C3 default, option a). Never a close. */
-export const LIVE_IDLE_MS = 12 * 3_600_000;
+ *  C3, S10 WP4a: 24 h, was 12 h). The reminder itself never closes anything.
+ *  TODO(kim-validar:C3) */
+export const LIVE_IDLE_MS = 24 * 3_600_000;
+
+/** A live session idle this long is closed by the daily cron (reason "idle").
+ *  TODO(kim-validar:C3) */
+export const LIVE_AUTO_CLOSE_MS = 7 * 24 * 3_600_000;
 
 /** Window for the 24 h deadline reminder: closesAt in (now, now + 24 h]. The
  *  cron runs daily, so a recipient gets it 0 to 24 h ahead; the ledger
@@ -247,6 +252,213 @@ export function isLiveIdle(
   if (!row.startedAt) return false; // not started: still in the waiting room
   const last = Math.max(row.startedAt.getTime(), lastEvaluationAt ? lastEvaluationAt.getTime() : 0);
   return now - last >= LIVE_IDLE_MS;
+}
+
+/** A live session the idle pass would close: same shape as isLiveIdle (group,
+ *  not async, no `closesAt`, active, started; idle = time since max(startedAt,
+ *  last evaluation update)) AND `idleCloseDecision` says "emails" or "silent".
+ *  Never started and solo sessions are never abandoned. Pure.
+ *  TODO(kim-validar:C3) */
+export function isLiveAbandoned(
+  row: {
+    isGroup: boolean;
+    isAsync: boolean;
+    closesAt: Date | null;
+    status: string;
+    startedAt: Date | null;
+  },
+  lastEvaluationAt: Date | null,
+  now: number = Date.now(),
+): boolean {
+  const idle = liveIdleMs(row, lastEvaluationAt, now);
+  return idle !== null && idleCloseDecision({ startedAt: row.startedAt, idleMs: idle }) !== "none";
+}
+
+/** How long a live session has been idle: now minus max(startedAt, last
+ *  evaluation update). `null` when the session is not a live one (solo, async,
+ *  dated, not active, never started). "Activity" is an evaluation being saved,
+ *  nothing else. Pure. */
+export function liveIdleMs(
+  row: {
+    isGroup: boolean;
+    isAsync: boolean;
+    closesAt: Date | null;
+    status: string;
+    startedAt: Date | null;
+  },
+  lastEvaluationAt: Date | null,
+  now: number = Date.now(),
+): number | null {
+  if (!row.isGroup || row.isAsync || row.closesAt || row.status !== "active") return null;
+  if (!row.startedAt) return null;
+  const last = Math.max(row.startedAt.getTime(), lastEvaluationAt ? lastEvaluationAt.getTime() : 0);
+  return now - last;
+}
+
+/** Idle this long or more: the cron closes the session WITHOUT sending the
+ *  close emails (S10 WP4a review H2). The first production run would otherwise
+ *  mail every participant of every session abandoned months ago. The daily job
+ *  means that, after its first week, only that backlog can cross this age.
+ *  TODO(kim-validar:C3) */
+export const IDLE_SILENT_CLOSE_MS = 30 * 24 * 3_600_000;
+
+/** The day the idle auto-close ships. A session STARTED before it is
+ *  "grandfathered": its organiser was told by the old reminder "No la cerramos
+ *  por ti", so it is never closed WITH emails by the idle pass; it is closed
+ *  (silently) only after 30 idle days. A session started ON or AFTER this
+ *  instant follows the designed rule (7 idle days = emails, 30 = silent).
+ *  The PHASE 28 dry run carries the same instant as one literal;
+ *  tests/closeRulesGrandfather.test.ts checks the two are equal.
+ *  TODO(kim-validar:C3) */
+export const IDLE_RULE_EFFECTIVE_AT = new Date("2026-11-18T00:00:00Z");
+
+/** Started before the idle rule existed. A session that never started is not
+ *  grandfathered (the idle pass never touches it anyway). Pure. */
+export function isGrandfatheredIdle(startedAt: Date | null): boolean {
+  return startedAt !== null && startedAt.getTime() < IDLE_RULE_EFFECTIVE_AT.getTime();
+}
+
+export type IdleCloseDecision = "none" | "emails" | "silent";
+
+/** THE idle rule (S10 WP4a, owner decision 2026-11): what the idle pass does
+ *  with a live session idle for `idleMs`.
+ *    started ON/AFTER IDLE_RULE_EFFECTIVE_AT: < 7 d none; 7 d to < 30 d emails; >= 30 d silent
+ *    started BEFORE it (grandfathered):       < 30 d none; >= 30 d silent; never emails
+ *    never started (startedAt null):          none
+ *  Every other idle decision (candidate query, reminder, repair pass, the owner's
+ *  "closed silently" line) goes through this function. Pure.
+ *  TODO(kim-validar:C3) */
+export function idleCloseDecision(input: { startedAt: Date | null; idleMs: number }): IdleCloseDecision {
+  if (input.startedAt === null) return "none";
+  if (input.idleMs >= IDLE_SILENT_CLOSE_MS) return "silent";
+  if (isGrandfatheredIdle(input.startedAt)) return "none";
+  return input.idleMs >= LIVE_AUTO_CLOSE_MS ? "emails" : "none";
+}
+
+/** The close routine's email mode for a decision that closes a session
+ *  (`skip` stamps closeFinalizedAt; if a step failed the stamp stays null and the
+ *  repair pass applies `repairEmailMode`, silent for the same sessions). */
+export function emailModeForIdleDecision(d: Exclude<IdleCloseDecision, "none">): "await" | "skip" {
+  return d === "silent" ? "skip" : "await";
+}
+
+/** Candidate bands of the idle pass, mirroring `idleCloseDecision`, so a
+ *  grandfathered session idle under 30 days is not even fetched (it could fill
+ *  the walk). A session is a candidate of a band when it STARTED in
+ *  [startedFrom, startedBefore), at or before `startedAtMost`, and no
+ *  evaluation was saved after `activityAfter`. Pure. */
+export type IdleCandidateBand = {
+  startedFrom?: Date;
+  startedBefore?: Date;
+  startedAtMost: Date;
+  activityAfter: Date;
+};
+export function idleCandidateBands(now: number): IdleCandidateBand[] {
+  const c7 = new Date(now - LIVE_AUTO_CLOSE_MS);
+  const c30 = new Date(now - IDLE_SILENT_CLOSE_MS);
+  return [
+    // grandfathered: only once they reach 30 idle days
+    { startedBefore: IDLE_RULE_EFFECTIVE_AT, startedAtMost: c30, activityAfter: c30 },
+    // started on or after the rule: from 7 idle days
+    { startedFrom: IDLE_RULE_EFFECTIVE_AT, startedAtMost: c7, activityAfter: c7 },
+  ];
+}
+
+/** Should the owner get the 24 h "nobody is cupping" reminder now? Idle for
+ *  LIVE_IDLE_MS and the idle rule would still do nothing (under 7 days), AND the
+ *  session is NOT grandfathered: a session that started before the rule existed
+ *  must never be promised a 7-day close it will not get, and its organiser may
+ *  already have had the old reminder (the ledger is once per session). Pure. */
+export function shouldSendLiveIdleReminder(
+  row: Parameters<typeof isLiveIdle>[0],
+  lastEvaluationAt: Date | null,
+  now: number = Date.now(),
+): boolean {
+  if (isGrandfatheredIdle(row.startedAt)) return false;
+  return isLiveIdle(row, lastEvaluationAt, now) && !isLiveAbandoned(row, lastEvaluationAt, now);
+}
+
+/** Idle time AT the moment a live session was closed: closedAt minus the later
+ *  of startedAt and the last evaluation update at or before `closedAt`. The
+ *  finalize's aggregate re-fire is raw SQL and does not bump `updatedAt`; the
+ *  `<= closedAt` filter matters for LATER Prisma writes (a guest merge, an
+ *  account deletion) which do, and must not make the session look recently
+ *  active. `null` when the session never started or is not closed. Pure. */
+export function idleAtCloseMs(
+  row: { startedAt: Date | null; closedAt: Date | null },
+  lastEvaluationBeforeCloseAt: Date | null,
+): number | null {
+  if (!row.startedAt || !row.closedAt) return null;
+  const last = Math.max(row.startedAt.getTime(), lastEvaluationBeforeCloseAt ? lastEvaluationBeforeCloseAt.getTime() : 0);
+  return row.closedAt.getTime() - last;
+}
+
+/** Was this close a SILENT one (S10 WP4a second review M-A, and the owner's
+ *  results-page line)? True exactly when the session is a live group session
+ *  (group, not async, no closesAt), `idleCloseDecision` says "silent" for the idle
+ *  it had AT closedAt (30 days or more, grandfathered or not), and nobody ever
+ *  started emailing it (no close_email_deliveries row at all). Pure.
+ *  TODO(kim-validar:C3) */
+export function closedSilently(input: {
+  isLiveGroup: boolean;
+  startedAt: Date | null;
+  idleAtCloseMs: number | null;
+  closeEmailLedgerRows: number;
+}): boolean {
+  return (
+    input.isLiveGroup &&
+    input.idleAtCloseMs !== null &&
+    idleCloseDecision({ startedAt: input.startedAt, idleMs: input.idleAtCloseMs }) === "silent" &&
+    input.closeEmailLedgerRows === 0
+  );
+}
+
+/** Email mode of the cron REPAIR pass for a closed-but-unfinalized session.
+ *  "skip" when the close was silent (`closedSilently`), so a silent idle close
+ *  whose finalize failed halfway is repaired WITHOUT mailing the months-old
+ *  backlog the next day, or when the creator is a deleted-account placeholder
+ *  (account deletion closes with emails "skip"; a failed finalize must not email
+ *  later). "await" otherwise (deadline sessions and every session somebody
+ *  already started emailing keep today's behaviour). A grandfathered session is
+ *  only ever closed by the idle pass at 30 idle days or more, i.e. silently, so
+ *  its repair agrees without an extra case.
+ *  Known and accepted: an OWNER who closed by hand a live session that had been
+ *  idle 30+ days, and whose finalize failed before the email step, is repaired
+ *  without emails too; their results page says so and "Reenviar correos" sends
+ *  them. No migration: derived from closedAt, startedAt, the evaluations, the
+ *  ledger and the creator id. Pure. TODO(kim-validar:C3) */
+export function repairEmailMode(input: {
+  isLiveGroup: boolean;
+  startedAt: Date | null;
+  idleAtCloseMs: number | null;
+  closeEmailLedgerRows: number;
+  /** createdBy is a deleted-account placeholder (isDeletedProfileId). */
+  ownerDeleted?: boolean;
+}): "await" | "skip" {
+  if (input.ownerDeleted) return "skip";
+  return closedSilently(input) ? "skip" : "await";
+}
+
+/** Time budget (S10 WP4a review M1): the cron has maxDuration 300 s; it stops
+ *  STARTING new closes once this much has elapsed so a slow run cannot be
+ *  killed in the middle of one. */
+export const CRON_CLOSE_START_BUDGET_MS = 150_000;
+
+/** May the cron start another close? Pure. */
+export function mayStartAnotherClose(elapsedMs: number, budgetMs: number = CRON_CLOSE_START_BUDGET_MS): boolean {
+  return elapsedMs < budgetMs;
+}
+
+/** Whether the results page offers the owner "Cerrar ahora" (S10 WP4a review
+ *  M2): the OWNER of a GROUP session whose closing date has passed but that is
+ *  not closed yet. `closeSession` already accepts expired sessions. Pure. */
+export function canCloseNow(input: {
+  isOwner: boolean;
+  isGroup: boolean;
+  status: string;
+  expired: boolean;
+}): boolean {
+  return input.isOwner && input.isGroup && input.status !== "closed" && input.expired;
 }
 
 // ─── Manual finish for solo / express sessions (F-express-1, F-solo-3) ───────

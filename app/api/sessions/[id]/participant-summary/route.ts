@@ -1,7 +1,7 @@
 // GET route: server-rendered "Resumen del participante" PDF — the CURRENT
 // user's numbers against the anonymous group. Authorization mirrors cva-pdf
 // (creator OR participant, super-admin read-only via the owner's lens) PLUS the
-// results page's group-visibility gate (canViewGroupResults), so the PDF can
+// results page's group-visibility gate (viewerMayReadGroupResults), so the PDF can
 // never reveal what the results page hides.
 
 import type { NextRequest } from "next/server";
@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
-import { canViewGroupResults, isSessionExpired } from "@/lib/sessionState";
+import { viewerMayReadGroupResults } from "@/lib/sessionState";
 import { loadSessionReportSource } from "@/lib/reports/sessionReportData";
 import { buildParticipantSummary } from "@/lib/reports/participantSummary";
 import { ParticipantSummaryDocument } from "@/lib/pdf/ParticipantSummaryDocument";
@@ -79,7 +79,6 @@ export async function GET(
       isGroup: true,
       status: true,
       closesAt: true,
-      participants: { select: { userId: true } },
     },
   });
   if (!session) return new Response("Not found", { status: 404 });
@@ -92,22 +91,8 @@ export async function GET(
   const viewAsId = isAdminViewer ? session.createdBy : user.id;
 
   if (session.isGroup) {
-    const submittedCuppers = await prisma.evaluation
-      .groupBy({
-        by: ["cupperId"],
-        where: { sessionSample: { sessionId: id }, isDraft: false },
-      })
-      .then((rows) => rows.length);
-    const total = session.participants.length;
-    const allSubmitted = total > 0 && submittedCuppers >= total;
-    const sessionExpired = isSessionExpired({ status: "active", closesAt: session.closesAt });
-    const canView = canViewGroupResults({
-      isGroup: true,
-      ownerRead,
-      status: session.status,
-      allSubmitted,
-      sessionExpired,
-    });
+    // The same single call site as the results page.
+    const canView = viewerMayReadGroupResults(session, { ownerRead });
     if (!canView) {
       return new Response(NOT_READY[locale], {
         status: 409,

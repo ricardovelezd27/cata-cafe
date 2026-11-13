@@ -8,17 +8,36 @@
 // Passes (each capped at BATCH, reported separately in the JSON):
 //   1. close      active sessions whose closesAt has passed
 //   2. repair     closed sessions whose phase 2 never finished (S8-05: a close
-//                 that threw after the flip is retried here, not lost)
+//                 that threw after the flip is retried here, not lost). Emails
+//                 follow `repairEmailMode` (lib/closeRules.ts, applied by
+//                 lib/repairClose.ts): a SILENT idle close (live group, idle 30
+//                 days or more at close, no close-email ledger row) is repaired
+//                 without emails, everything else with them.
 //   3. reminders  deadline_24h (members with complete unsent notes) and
 //                 live_idle (owner of a forgotten live session). Ledgered in
 //                 session_reminder_deliveries; NEVER closes a session.
+//   4. idle       live group sessions idle for 7 days (S10 WP4a, Kim C3; owner decision:
+//                 sessions STARTED before IDLE_RULE_EFFECTIVE_AT are grandfathered: only
+//                 closed, silently, at 30 idle days; rule = idleCloseDecision; reason
+//                 "idle"; 7 to under 30 days idle = close emails, 30 days or more
+//                 = closed silently, review H2). LAST of the closing passes and
+//                 only IDLE_BATCH (5) per run, oldest first, so a backlog can
+//                 never starve the deadline closes, the repairs or the reminders.
+//   5. purge      the email ledger housekeeping, then the unused-account purge (S10 WP9a,
+//                 `unusedAccounts` in the summary). Each always runs, last, in its own
+//                 try/catch; nothing above can stop it.
+// Time budget (review M1): maxDuration is 300 s; no NEW close or repair is started in pass 1,
+// pass 2 or pass 4 once CRON_CLOSE_START_BUDGET_MS (150 s) has elapsed (`budgetTruncated` /
+// `repairBudgetTruncated` / `idleBudgetTruncated` in the summary). Reminders are not gated.
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { closeSessionInternal } from "@/lib/closeSession";
-import { FINALIZE_GRACE_MS } from "@/lib/closeRules";
+import { repairClosedSession } from "@/lib/repairClose";
+import { CRON_CLOSE_START_BUDGET_MS, FINALIZE_GRACE_MS, mayStartAnotherClose } from "@/lib/closeRules";
 import { errorMessage, logError, logWarn } from "@/lib/log";
 import { purgeEmailLedger } from "@/lib/emailBudget";
+import { closeIdleLiveSessions, emptyIdleCloseSummary } from "@/lib/idleClose";
 import { purgeUnusedAccounts, type UnusedAccountSummary } from "@/lib/unusedAccountPurge";
 import { isUnusedAccountPurgeEnabled } from "@/lib/features";
 import { sendDeadlineReminders, sendLiveIdleReminders } from "@/lib/reminderEmail";
@@ -28,6 +47,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const BATCH = 25;
+/** The idle pass closes (and mails) whole sessions of up to ~50 people: keep it small. */
+const IDLE_BATCH = 5;
 
 /** Moves a session whose repair did not finish to the back of the queue (the
  *  pass orders by updatedAt asc) without a migration. Never throws. */
@@ -49,6 +70,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
+  // ONE clock for the whole run: the reminders and the idle pass get this `now`.
+  const startedAt = Date.now();
+  const mayStart = () => mayStartAnotherClose(Date.now() - startedAt, CRON_CLOSE_START_BUDGET_MS);
+
   const due = await prisma.cuppingSession.findMany({
     where: { status: "active", closesAt: { lt: new Date() } },
     select: { id: true, name: true },
@@ -57,7 +82,13 @@ export async function GET(request: Request) {
   });
 
   const results: { id: string; closed: boolean; emailsQueued: number; error?: string }[] = [];
+  let budgetTruncated = false;
   for (const s of due) {
+    if (!mayStart()) {
+      budgetTruncated = true;
+      logWarn({ where: "cron.closeExpired", message: "time budget spent, rest left for the next run" });
+      break;
+    }
     try {
       const r = await closeSessionInternal(s.id, { reason: "cron", emails: "await" });
       results.push({ id: s.id, closed: r.closed, emailsQueued: r.emailsQueued });
@@ -84,9 +115,15 @@ export async function GET(request: Request) {
     take: BATCH,
   });
   const repairs: { id: string; finalized: boolean; error?: string }[] = [];
+  let repairBudgetTruncated = false;
   for (const s of owed) {
+    if (!mayStart()) {
+      repairBudgetTruncated = true;
+      logWarn({ where: "cron.repairClose", message: "time budget spent, rest left for the next run" });
+      break;
+    }
     try {
-      const r = await closeSessionInternal(s.id, { reason: "repair", emails: "await" });
+      const r = await repairClosedSession(s.id);
       const finalized = r.finalized === true;
       repairs.push({ id: s.id, finalized });
       if (!finalized) await requeueRepair(s.id);
@@ -105,13 +142,23 @@ export async function GET(request: Request) {
   let reminders: { deadline?: unknown; liveIdle?: unknown; error?: string } = {};
   try {
     reminders = {
-      deadline: await sendDeadlineReminders(BATCH),
-      liveIdle: await sendLiveIdleReminders(BATCH),
+      deadline: await sendDeadlineReminders(BATCH, startedAt),
+      liveIdle: await sendLiveIdleReminders(BATCH, startedAt),
     };
   } catch (err) {
     const message = errorMessage(err);
     logError({ where: "cron.reminders", message });
     reminders = { error: message };
+  }
+
+  // Pass 4: live sessions nobody has touched for 7 days (after the repairs and
+  // the reminders, small batch). A failure here never fails the passes above or
+  // the purge below.
+  let idle = emptyIdleCloseSummary();
+  try {
+    idle = await closeIdleLiveSessions(IDLE_BATCH, startedAt, { mayStart });
+  } catch (err) {
+    logError({ where: "cron.closeIdle", message: errorMessage(err) });
   }
 
   // Housekeeping (S8-28 A-03): the throttle/attempt ledger grows with every
@@ -148,8 +195,17 @@ export async function GET(request: Request) {
     results,
     // More than BATCH due means the next run (or a manual re-trigger) picks
     // up the rest — bounded per invocation on purpose.
-    truncated,
+    truncated: truncated || budgetTruncated,
+    budgetTruncated,
+    repairBudgetTruncated,
+    idleClosed: idle.idleClosed,
+    idleClosedSilently: idle.idleClosedSilently,
+    idleExamined: idle.examined,
+    idleFailed: idle.idleFailed,
+    idleTruncated: idle.idleTruncated,
+    idleBudgetTruncated: idle.idleBudgetTruncated,
+    idleResults: idle.results,
     reminders,
-    repair: { owed: owed.length, stillUnfinalized, finalized: repairs.filter((r) => r.finalized).length, results: repairs, truncated: repairTruncated },
+    repair: { owed: owed.length, budgetTruncated: repairBudgetTruncated, stillUnfinalized, finalized: repairs.filter((r) => r.finalized).length, results: repairs, truncated: repairTruncated },
   });
 }

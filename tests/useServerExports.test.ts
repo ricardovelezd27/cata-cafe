@@ -13,7 +13,8 @@ import path from "node:path";
 const ACTIONS_DIR = path.join(process.cwd(), "app", "actions");
 
 const AUTHZ = /\brequire(SessionOwner|SessionMember|SampleOwner|SampleMember)\b/;
-const GUARD = /\b(assertSessionWritable|isSessionClosed|isSessionExpired)\s*\(/;
+// canEditSessionSettings: updateSession's expiry-aware gate (S10 WP4a, Kim C9).
+const GUARD = /\b(assertSessionWritable|isSessionClosed|isSessionExpired|canEditSessionSettings)\s*\(/;
 
 /** `file#export` -> why it may skip the closed guard. */
 const ALLOWLIST: Record<string, string> = {

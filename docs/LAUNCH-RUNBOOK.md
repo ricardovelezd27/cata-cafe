@@ -2139,3 +2139,122 @@ cup the reference as another cupper and check its bubbles are NOT locked and its
 **Rollback:** the columns are additive; code rolled back ignores them. Do not drop them while the
 new code is deployed. Sessions already created as `free` would be pinned again by older code on the
 next save of their reference, so do not roll back the code while a `free` session is mid-cupping.
+
+
+---
+
+## §33. Close rules: apply PHASE 28, read the idle count, check the idle cron pass (2026-11, S10 WP4a)
+
+**What changes for people** (all three marked `TODO(kim-validar:C3|C5|C9)`: the answers behind
+them are simulated, Kim has not confirmed them):
+
+- **Group results only at close (Kim C5).** A participant no longer sees the group's numbers when
+  everyone has submitted; only once the session is closed or its closing date has passed. The
+  organizer sees them at any time. A participant's own results are unchanged; solo sessions are
+  unchanged. The page and the PDF route use `canViewGroupResults`; the database twin is PHASE 28.
+- **No re-dating after the deadline (Kim C9).** Once the closing date has passed, the edit page is
+  read-only (the date included) and `updateSession` refuses any change with `session_closed`.
+- **Live sessions (Kim C3).** The owner reminder for a forgotten live session now goes out after
+  24 h without evaluations (was 12 h), and the nightly cron closes the session after **7 days**
+  without evaluations ("activity" means an evaluation being saved, nothing else; new pass, close
+  reason `idle`). **The backlog rule (review H2):** idle 7 days up to under 30 days = the designed
+  flow, the close emails go out; idle **30 days or more** = closed **silently** (no email, still
+  finalized; the owner can use "Reenviar"). **Sessions that started before the rule (owner decision):**
+  a session STARTED before **2026-11-18 00:00 UTC** (`IDLE_RULE_EFFECTIVE_AT`) is grandfathered: it is
+  never closed with emails, only closed silently if it reaches **30 idle days**, and it gets no new
+  24 h reminder (its organiser may already have had the old one, "No la cerramos por ti", and must
+  not be promised a 7-day close). Sessions started on or after that day follow the designed rule.
+  If a finalize step of such a close failed, the
+  next day's repair pass is silent too (`repairEmailMode`: live group session, idle 30 days or more
+  at the close, no close-email ledger row), so the backlog is not mailed by the repair either.
+  **Known and accepted:** an owner who closes by hand a live session idle 30+ days, and whose
+  finalize fails before the email step, is repaired without emails; their results page says "Esta
+  cata se cerró sola por inactividad y no se enviaron correos. Puedes enviarlos con «Reenviar»." and **Reenviar** sends them. A session whose creator deleted their account is also repaired without
+  emails (account deletion closes without them). So the first production run never mails
+  people about sessions abandoned months ago, and, because the job is daily, after its first week
+  only that backlog can cross 30 days.
+- **"Cerrar ahora" (review M2).** If the nightly job fails, the owner of a group session whose
+  closing date has passed but that is not closed sees, on the results page, "La fecha de cierre ya
+  pasó. La cata se cerrará sola en las próximas horas; puedes cerrarla ahora para enviar los resultados." and a
+  **Cerrar ahora** button (same confirmation and the same close routine as the cup panel).
+- **Cron order (review M1).** Deadline closes, repairs, reminders, then the idle pass (5 per run,
+  oldest first), then the ledger purge (always last). No new close or repair is started after
+  ~150 s of the 300 s budget. The idle pass walks up to 25 oldest candidates until 5 closes
+  succeeded; a candidate that throws is logged and skipped.
+
+No Prisma migration, no new environment variable, no new cron entry.
+
+### Order
+
+1. **Before the deploy: read the idle counts** (step 2, lines 2a, 2b and 2c). The idle pass closes at
+   most **5 sessions per run**, oldest first. **2a** = sessions STARTED on or after 2026-11-18, idle 7
+   to under 30 days: closed WITH the close emails, to everyone in them (the line says how many have an
+   email). Before the 25th of November 2a is normally 0 (nothing started on or after the 18th can be
+   idle 7 days yet). **2b** = every live session idle 30 days or more: closed silently, grandfathered
+   or not. **2c** = sessions started BEFORE the rule, idle 7 to under 30 days: left alone; they close
+   silently only if they reach 30 idle days (the line gives the date). If 2a is large or surprising,
+   tell Ricardo before deploying: at 5 per run it takes N/5 days to drain.
+2. **Dry run** (fail-safe: one statement, nothing is applied, NO placeholders). Open
+   `prisma/sql/dry-runs/phase28_dry_run.sql`, paste the whole file into the Supabase **SQL editor of
+   the production project** and run it. Expected: a red error starting `PHASE 28 DRY RUN: NOTHING
+   WAS APPLIED`. Compare each line with its `(expect ...)` text:
+   - line 1: how many open group sessions have every participant submitted today, i.e. whose
+     participants lose group visibility when PHASE 28 is applied (read it; 0 is fine). It lists up
+     to 10 of them by name, date, participants and how many submitted (no ids);
+   - line 2a: **sessions started on or after 2026-11-18, idle 7 to under 30 days** and **how many
+     participants with an email** would get a close email (the numbers to read in step 1), with up to
+     10 by name, last activity and participants. Idle = now minus the later of the start and the last
+     saved evaluation, 7 days or more, the same boundary as the code. The top of the DO block holds
+     the effective date as one literal (the same instant as `IDLE_RULE_EFFECTIVE_AT`);
+   - line 2b: **every live session idle 30 days or more**, which the pass closes silently, listed the
+     same way;
+   - line 2c: **sessions started before the rule, idle 7 to under 30 days**: "left alone: started
+     before the rule; they close silently only if they reach 30 idle days", with name, last activity
+     and the date they would reach 30 days (an evaluation saved before then restarts their idle clock);
+   - line 3 measures the function installed NOW: before PHASE 28 it equals line 1 (it is the old
+     function); once PHASE 28 is applied it reads `0` (run the dry run again afterwards and this is
+     the expected value);
+   - line 4 is `0`, 5a, 5b and 6 are `0`, 7a `f f`, 7b `t`, 7c `search_path=public`, 7d `t f`.
+     (The PHASE 28 block itself also checks the `search_path` setting and aborts if it is lost.)
+   **Any other error: stop and report it; nothing was applied either way.**
+3. **Deploy**, then **apply PHASE 28** right after. Deploy and SQL may go in either order, because
+   both only narrow visibility; applying the SQL right after the deploy keeps the page and the API
+   saying the same thing. Run the PHASE 28 block as written (`BEGIN ... COMMIT`) in the SQL editor.
+   Expected: `Success. No rows returned`. An error starting `PHASE 28 aborted, nothing applied` means
+   the self-check found the function in the wrong state: report it.
+4. **Verify:**
+
+   ```sql
+   select pg_get_functiondef('public.can_view_group_results(text)'::regprocedure);
+   ```
+
+   Expected: no `isDraft` and no `cupperId` in the body. Then Supabase **Advisors → Security**: no
+   new warnings.
+5. **Smoke test** (two accounts, an open group session where both have submitted): the participant
+   sees their own results but the group part says "Los resultados del grupo aparecerán cuando se
+   cierre la cata."; the participant's cup screen shows no "x de y enviados" line (the owner's does);
+   the owner sees everything; after the owner closes the session the
+   participant sees the group results (and the open results screen offers the refresh badge).
+6. **Check the idle cron pass** after the first cron run, or by hand (replace the two values):
+
+   ```bash
+   curl -s -H "Authorization: Bearer <CRON_SECRET>" https://<your-production-domain>/api/cron/close-expired-sessions
+   ```
+
+   The JSON now has `idleClosed` (sessions closed by the idle pass in this run),
+   `idleClosedSilently` (of those, the ones idle 30 days or more, closed without email; a grandfathered session only ever appears here),
+   `idleExamined` and `idleFailed` (candidates walked, and those whose close threw),
+   `repairBudgetTruncated` (the 150 s budget stopped the repairs),
+   `idleTruncated` (`true` means the batch of 5 was full and more are waiting for the next run),
+   `idleBudgetTruncated` (`true` means the 150 s start budget ran out first), `budgetTruncated`
+   (the same for the deadline closes; `truncated` is true for either) and `idleResults` (id,
+   `closed`, `emailsQueued`, `silent` when closed silently, and `error` when one failed; a failure
+   on one session never stops the others). `idleClosed` should match what you read in step 2
+   (2a plus 2b; 2c are left alone), up to the batch of 5 per run. In Vercel
+   logs, `cron.closeIdle` (error level) names a session whose close failed. A session closed this way
+   shows the neutral results notice ("La cata se cerró.") and the usual close email; it never says
+   the organizer closed it.
+
+**Rollback:** the deploy can be reverted freely (no schema change). PHASE 28 has a commented
+rollback at its end (the PHASE 21 body of `can_view_group_results`). Run it in one transaction; the
+app works under either state.
