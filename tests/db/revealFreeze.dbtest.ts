@@ -79,7 +79,7 @@ describe("reveal freezes evaluation on an open session", () => {
     expect((row.affectiveData as Record<string, number>).fragancia_af_final).toBe(7);
   });
 
-  it("offline replay (and the legacy sync) answer closed and write nothing", async () => {
+  it("offline replay answers revealed (legacy sync: discarded) and writes nothing", async () => {
     const { owner, s, revealed } = await setup();
     await makeEvaluation({ sampleId: revealed.id, sessionId: s.id, cupperId: owner, cupsPerSample: 2, values: 6, draft: true });
     const before = await prisma.evaluation.findUniqueOrThrow({ where: key(revealed.id, owner) });
@@ -90,7 +90,7 @@ describe("reveal freezes evaluation on an open session", () => {
       data: payload(s.id, revealed.id, 9).data,
       cupsPerSample: 2,
     };
-    expect(await replayEvaluation(input)).toEqual({ status: "closed" });
+    expect(await replayEvaluation(input)).toEqual({ status: "revealed" });
     // Legacy contract for cached bundles maps closed to "discarded"; still nothing written.
     expect(await syncEvaluation(input)).toEqual({ status: "discarded" });
     const after = await prisma.evaluation.findUniqueOrThrow({ where: key(revealed.id, owner) });

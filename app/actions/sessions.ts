@@ -38,12 +38,13 @@ import {
   planClosesAtChange,
 } from "@/lib/sessionState";
 import { endOfDayInZone, normalizeZone } from "@/lib/closeRules";
-import { REFERENCE_REPIN_REQUIRED, removeSamplesInTx } from "@/lib/sampleRemoval";
+import { REFERENCE_REPIN_REQUIRED, REFERENCE_REVEALED, removeSamplesInTx } from "@/lib/sampleRemoval";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { computeEvaluationDerived, moduleKeyForFormat } from "@/lib/evaluation";
 import {
   DEFAULT_REFERENCE_MODE,
   normalizeReferenceMode,
+  pinWouldTouchRevealed,
   REFERENCE_MODES,
   shouldPinReference,
   pinReferenceAffective,
@@ -1163,6 +1164,20 @@ export async function setReferenceSample(
               moduleKeyForFormat(sess.format),
               sess.cupsPerSample,
             );
+            // S10 WP3a review H1: never pin (rewrite) a sample that was already revealed.
+            const target = await tx.sessionSample.findUniqueOrThrow({
+              where: { id: plan.repinId },
+              select: { revealed: true },
+            });
+            if (
+              pinWouldTouchRevealed({
+                mode: sess.referenceMode,
+                moduleKey: moduleKeyForFormat(sess.format),
+                targetRevealed: target.revealed,
+              })
+            ) {
+              throw new Error("reference_revealed");
+            }
             if (overwrites > 0 && !confirmRepin) throw new Error("conflict");
             repinTarget = plan.repinId;
           }
@@ -1176,6 +1191,20 @@ export async function setReferenceSample(
             // mode only: a free reference never rewrites anything (B1).
             // TODO(B2-b): Kim may prefer keeping the originals aside.
             if (pinsWhenActive) {
+              // S10 WP3a review H1: thrown BEFORE any write.
+              const target = await tx.sessionSample.findUniqueOrThrow({
+                where: { id: targetId },
+                select: { revealed: true },
+              });
+              if (
+                pinWouldTouchRevealed({
+                  mode: sess.referenceMode,
+                  moduleKey: moduleKeyForFormat(sess.format),
+                  targetRevealed: target.revealed,
+                })
+              ) {
+                throw new Error("reference_revealed");
+              }
               const existing = await tx.evaluation.count({ where: { sessionSampleId: targetId } });
               if (
                 repinNeedsConfirm({
@@ -1701,6 +1730,9 @@ export async function removeSessionSample(sampleId: string, locale: string = "es
   }).catch((e: unknown) => {
     if (e instanceof Error && e.message === REFERENCE_REPIN_REQUIRED) {
       return "reference_repin_required" as const;
+    }
+    if (e instanceof Error && e.message === REFERENCE_REVEALED) {
+      return "reference_revealed" as const;
     }
     throw e;
   });

@@ -88,6 +88,7 @@ import { ExpressNotesStep } from "@/components/cupping/ExpressNotesStep";
 import { EXPRESS_NOTE_KEY, EXPRESS_NOTE_MAX } from "@/lib/expressSession";
 import { moduleKeyForFormat } from "@/lib/evaluation";
 import { useKeyboardOpen } from "@/hooks/useKeyboardOpen";
+import { isEvaluationReadOnly, isModuleFrozenForRevealed } from "@/lib/revealFreeze";
 import type { MarketCopy } from "@/components/cupping/MarketNote";
 import { indexAfterReconcile, reconcileSamples } from "@/lib/sampleReconcile";
 import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
@@ -425,6 +426,8 @@ export function CupClient({
     // Multi-reference (S6)
     referenceActive?: string;
     referenceAdd?: string;
+    /** Suffix of a revealed sample's option: it cannot be the FIXED reference (S10 WP3a review H1). */
+    referenceRevealed?: string;
     referenceRemoveActive?: string;
     referenceAddHint?: string;
     referenceAddTitle?: string;
@@ -1287,6 +1290,7 @@ export function CupClient({
   // we were offline, or because the server call itself failed. Callers must
   // not report "saved" to the user on a "pending" result: the data is safe
   // (durable locally, replayed on reconnect) but NOT yet on the server.
+  const revealedToastedRef = useRef<Set<string>>(new Set());
   const flushSave = async (
     sampleId: string,
     key: keyof Sample,
@@ -1350,8 +1354,12 @@ export function CupClient({
       // closed session gives it, so it never blocks submitting what was already complete) and
       // the save indicator stays amber, never green.
       if (err instanceof Error && err.message === "sample_revealed") {
-        await setModuleStatus(session.id, userId, sampleId, mk, "closed_unsent");
-        feedback.notifyError("sample_revealed");
+        await setModuleStatus(session.id, userId, sampleId, mk, "revealed_unsent");
+        // L6: toast once per sample per page, not on every 800 ms autosave.
+        if (!revealedToastedRef.current.has(sampleId)) {
+          revealedToastedRef.current.add(sampleId);
+          feedback.notifyError("sample_revealed");
+        }
       }
       return "pending";
     }
@@ -1536,7 +1544,7 @@ export function CupClient({
     const sample = samples[idx];
     if (!sample) return;
     // S10 WP3a (X3): a revealed sample is frozen for evaluation (the server refuses it too).
-    if (sample.revealed) return;
+    if (isModuleFrozenForRevealed({ revealed: sample.revealed, key: String(key) })) return;
     setSamples((prev) =>
       prev.map((s) => (s.id === sample.id ? { ...s, [key]: data } : s))
     );
@@ -1978,12 +1986,26 @@ export function CupClient({
         )
         .join(" · ")
     : undefined;
+  // S10 WP3a review H1: in anchor mode a revealed sample cannot become the FIXED reference
+  // (pinning would rewrite everyone's ratings after the reveal). The server refuses it too.
+  const revealedAwareOption = (s: Sample) => {
+    const blocked =
+      s.revealed &&
+      shouldPinReference({ mode: referenceMode, moduleKey: affectiveModuleKey ?? "descriptive", isActiveReference: true });
+    return blocked
+      ? {
+          value: s.id,
+          label: `${s.label} · ${translations.referenceRevealed ?? "revelada, no puede ser referencia fija"}`,
+          disabled: true,
+        }
+      : { value: s.id, label: s.label };
+  };
   const referenceOptions = refOrder.length
     ? [
         { value: "", label: translations.referenceAdd ?? "Añadir referencia…" },
         ...samples
           .filter((s) => !refOrder.includes(s.id))
-          .map((s) => ({ value: s.id, label: s.label })),
+          .map((s) => revealedAwareOption(s)),
         {
           value: REMOVE_ACTIVE,
           label: `${translations.referenceRemoveActive ?? "Quitar la referencia activa"} (R${refOrder.length})`,
@@ -1991,7 +2013,7 @@ export function CupClient({
       ]
     : [
         { value: "", label: translations.referenceNone ?? "Sin referencia" },
-        ...samples.map((s) => ({ value: s.id, label: s.label })),
+        ...samples.map((s) => revealedAwareOption(s)),
       ];
   // Header line under the sample name: "· Referencia" on the reference itself,
   // "Compara con la referencia (C)" on every other sample (participants too).
@@ -3048,7 +3070,7 @@ export function CupClient({
       )}
       {!notesStage && (
       <div key={`${activeTab}-${currentStep}-${current.id}`}>
-        {isCurrentRevealed && activeTab === "cupping" && (
+        {isEvaluationReadOnly({ revealed: isCurrentRevealed, activeTab }) && (
           <div
             role="note"
             className="mb-4 rounded-card border border-secondary/30 bg-secondary-fixed px-4 py-3 font-sans text-sm text-on-secondary-fixed-variant"
@@ -3057,7 +3079,7 @@ export function CupClient({
           </div>
         )}
         <fieldset
-          disabled={isCurrentRevealed && activeTab === "cupping"}
+          disabled={isEvaluationReadOnly({ revealed: isCurrentRevealed, activeTab })}
           className="m-0 min-w-0 border-0 p-0 disabled:opacity-70"
         >
         {activeTab === "cupping" && session.format === "descriptive" && (

@@ -272,6 +272,23 @@ export function isReferencePinned(data: Record<string, unknown>): boolean {
   return allFive && noCups && noMarket;
 }
 
+/** S10 WP3a review H1: a reference change that would PIN a sample whose coffee is already
+ *  revealed is refused (`reference_revealed`): the pin rewrites every cupper's ratings of
+ *  that sample to 5, and a revealed sample is frozen for evaluation (the owner must not
+ *  move the group score after the reveal). `targetRevealed` is the sample that would
+ *  become the ACTIVE pinned reference: newly marked, or an earlier reference being
+ *  reactivated. Free mode (no pin) and descriptive-only sessions are never refused. Pure. */
+export function pinWouldTouchRevealed(input: {
+  mode: unknown;
+  moduleKey: string;
+  targetRevealed: boolean;
+}): boolean {
+  return (
+    input.targetRevealed &&
+    shouldPinReference({ mode: input.mode, moduleKey: input.moduleKey, isActiveReference: true })
+  );
+}
+
 // ─── Client-side mirror of the rank order (cup + waiting room) ───────────────
 // The realtime stream only carries the session's `referenceSampleId` (the
 // ACTIVE reference), so clients keep the ordered id list of the references and

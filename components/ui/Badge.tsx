@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { scorePillClasses } from "@/lib/scorePillClass";
 
 export type BadgeTone = "neutral" | "success" | "accent" | "danger" | "outline";
 export type BadgeSize = "xs" | "sm";
@@ -85,7 +86,7 @@ export function ScorePill({
 
   return (
     <span
-      className={`inline-flex items-center rounded-pill px-2.5 py-0.5 text-sm font-semibold tabular-nums bg-surface-container-high text-on-surface`}
+      className={scorePillClasses()}
     >
       {score.toFixed(decimals)}
     </span>

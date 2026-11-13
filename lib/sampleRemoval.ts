@@ -12,12 +12,17 @@ import {
   activeReferenceId,
   compactReferenceRanks,
   countRepinOverwrites,
+  pinWouldTouchRevealed,
   shouldPinReference,
 } from "@/lib/referenceRules";
 
 /** Thrown (rolling the transaction back) when removing samples would
  *  re-activate an earlier reference whose ratings must be overwritten. */
 export const REFERENCE_REPIN_REQUIRED = "reference_repin_required";
+
+/** Thrown (rolling the transaction back) when the earlier reference that would be
+ *  re-activated (and so pinned again) belongs to an already REVEALED sample (S10 WP3a review H1). */
+export const REFERENCE_REVEALED = "reference_revealed";
 
 /** Deletes `sampleIds` (all must belong to `sessionId`), then repairs what the
  *  deletion leaves behind, inside the caller's transaction:
@@ -67,6 +72,19 @@ export async function removeSamplesInTx(
       isActiveReference: true,
     })
   ) {
+    const reactivated = await tx.sessionSample.findUniqueOrThrow({
+      where: { id: activeAfter },
+      select: { revealed: true },
+    });
+    if (
+      pinWouldTouchRevealed({
+        mode: session.referenceMode,
+        moduleKey: moduleKeyForFormat(session.format),
+        targetRevealed: reactivated.revealed,
+      })
+    ) {
+      throw new Error(REFERENCE_REVEALED);
+    }
     const evs = await tx.evaluation.findMany({
       where: { sessionSampleId: activeAfter },
       select: { id: true, isDraft: true, affectiveData: true, combinedData: true },

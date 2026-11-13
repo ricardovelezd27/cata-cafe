@@ -91,7 +91,7 @@ export async function requireSessionMember(
 export type SampleAuthRow = {
   sessionId: string;
   /** The sample's own `revealed` flag (S10 WP3a, X3): a revealed sample of an
-   *  open session is frozen for evaluation (lib/evaluationFreeze.ts). */
+   *  open session is frozen for evaluation (`evaluationWriteRefusal` in lib/sessionState.ts). */
   revealed: boolean;
   status: string;
   cupsPerSample: number;

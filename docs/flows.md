@@ -27,7 +27,19 @@ and never paints the green "saved" state) and by the offline replay
 (`replayEvaluation`, legacy `syncEvaluation`: answers `closed`, the client keeps
 the note as `closed_unsent`). Deliberately NOT covered: `submitAllEvaluations` /
 `finishSoloSession` (submitting an existing draft changes no rating) and the
-owner-only physical / origin rows. The owner is asked first (`ConfirmDialog` on
+owner-only physical / origin rows. Submitting an existing draft of a
+revealed sample is allowed and may recompute its stored SCORE under the current rule
+(the legacy-draft rewrite, `lib/legacyDrafts.ts`); it never changes a rating except on
+the pinned anchor. Only the evaluation module is frozen: the owner's origin
+(`extrinsic`) and `physical` rows stay editable (`lib/revealFreeze.ts`, one pure
+function used by `CupClient`). **References:** in anchor mode a reference change that
+would PIN a revealed sample is refused with `reference_revealed` before any write:
+marking it (`setReferenceSample`), removing the active reference when the earlier one
+is revealed (`setReferenceSample(null)`), or deleting the active reference's sample
+(`removeSamplesInTx`, rolls back); free mode is unaffected (`pinWouldTouchRevealed`,
+`lib/referenceRules.ts`). A note refused for the reveal is parked on the device as
+`revealed_unsent` (own status: never retried, never blocks submit, read / copy /
+confirmed discard only, NEVER a send action; the replay answers `revealed`). The owner is asked first (`ConfirmDialog` on
 the results page) and `revealSample` touches the session row so open cup pages
 re-fetch over the existing `cupping_sessions` realtime event and show the sample
 read-only ("Muestra revelada: ya no se puede evaluar."). Closing needs no dialog

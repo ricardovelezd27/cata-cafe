@@ -355,6 +355,7 @@ export default async function CupPage({
         participantRole: tg("participantRole"),
         referenceSelect: tg("referenceSelect"),
         referenceNone: tg("referenceNone"),
+        referenceRevealed: tg("referenceRevealed"),
         referenceActive: tg("referenceActive"),
         referenceAdd: tg("referenceAdd"),
         referenceRemoveActive: tg("referenceRemoveActive"),

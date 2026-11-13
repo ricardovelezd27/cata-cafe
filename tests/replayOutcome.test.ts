@@ -24,6 +24,7 @@ describe("statusForOutcome", () => {
     expect(statusForOutcome("synced", 3).status).toBe("synced");
     expect(statusForOutcome("conflict", 0).status).toBe("conflict");
     expect(statusForOutcome("closed", 0).status).toBe("closed_unsent");
+    expect(statusForOutcome("revealed", 2)).toEqual({ status: "revealed_unsent", attempts: 0 });
     expect(statusForOutcome("gone", 0).status).toBe("orphaned");
     expect(statusForOutcome("rejected", 0).status).toBe("orphaned");
   });
@@ -64,12 +65,14 @@ describe("status predicates", () => {
       synced: false,
       conflict: false,
       closed_unsent: false,
+      revealed_unsent: false,
       orphaned: false,
     } as const;
     for (const s of ALL_STATUSES) expect(blocksSubmit(s)).toBe(expected[s]);
   });
   it("terminal and unsynced sets", () => {
     expect(isTerminal("failed")).toBe(true);
+    expect(isTerminal("revealed_unsent")).toBe(true);
     expect(isTerminal("pending")).toBe(false);
     expect(isTerminal("conflict")).toBe(false);
     expect(isUnsynced("synced")).toBe(false);
@@ -79,7 +82,7 @@ describe("status predicates", () => {
 
 describe("applyOutcome", () => {
   it("keeps the data on every outcome (a draft is never dropped)", () => {
-    for (const o of ["synced", "conflict", "closed", "gone", "rejected", "retry"] as const) {
+    for (const o of ["synced", "conflict", "closed", "revealed", "gone", "rejected", "retry"] as const) {
       expect(applyOutcome(mod(), o)?.data).toEqual({ a: 1 });
     }
   });
@@ -106,6 +109,7 @@ describe("hydratesForm", () => {
       synced: false,
       conflict: false,
       closed_unsent: false,
+      revealed_unsent: false,
       orphaned: false,
     };
     expect(Object.keys(expected).sort()).toEqual([...ALL_STATUSES].sort());

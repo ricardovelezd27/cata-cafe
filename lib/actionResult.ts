@@ -13,6 +13,7 @@ export const ACTION_ERROR_CODES = [
   "not_authenticated",
   "not_found_or_forbidden",
   "session_closed",
+  "reference_revealed", // setReferenceSample / sample removal: would pin (rewrite the ratings of) an already revealed sample (S10 WP3a review H1)
   "sample_revealed", // upsertEvaluation: the sample was revealed on an open session, no more ratings (S10 WP3a, X3)
   "session_not_started",
   "entries_closed", // owner closed new entries (S8-11)
