@@ -16,6 +16,7 @@ import {
   calcIndividualBreakdown,
   calcIndividualScore,
   hasAffectiveData,
+  hasIndividualScore,
 } from "@/lib/scoring";
 import { ScoreBreakdownPanel, type ScoreBreakdownTranslations } from "@/components/results/ScoreBreakdownPanel";
 import { getChartColors } from "@/components/results/chartColors";
@@ -23,6 +24,7 @@ import { useContainerWidth } from "@/hooks/useContainerWidth";
 import { formatSignedDelta } from "@/lib/referenceDelta";
 import { canShowMyScore, type MyEvaluation } from "@/lib/evaluationState";
 import { Badge } from "@/components/ui";
+import { isAffectiveDeclaredPartial } from "@/lib/affectivePartial";
 
 const CHART_HEIGHT = 220;
 
@@ -39,6 +41,7 @@ type AggregateScoreData = {
   uniformityPenalty: number;
   defectPenalty: number;
   attrAverages: Record<string, number>;
+  partialCount?: number;
 };
 
 type CoffeeInfo = {
@@ -118,6 +121,10 @@ export function SampleRadarChart({
       includedLine: string;
       noAffective: string;
       requiresAffective: string;
+      /** S10 WP3b: "Parcial · sin puntaje" and the "Incluye {n} evaluación(es) parcial(es)" templates. */
+      partialLabel?: string;
+      includesOne?: string;
+      includesMany?: string;
     };
   };
 }) {
@@ -137,6 +144,7 @@ export function SampleRadarChart({
   // row's own-evaluation state, exactly like ScoreTable.
   const myState: MyEvaluation = sample.myEvaluation ?? { status: "submitted", complete: true };
   const hasMyData = hasAffectiveData(affData) && canShowMyScore(myState);
+  const isPartial = hasMyData && isAffectiveDeclaredPartial(affData);
   const stateChip =
     myState.status === "draft"
       ? (inProgressLabel ?? null)
@@ -152,7 +160,8 @@ export function SampleRadarChart({
           0
         )
       : 0;
-    const myVal = rawVal > 0 ? rawVal : 5;
+    // A declared partial plots its unrated sections at the centre (0), never a made-up 5.
+    const myVal = rawVal > 0 ? rawVal : isPartial ? 0 : 5;
     const comVal = sample.aggregateScore?.attrAverages[attr.label] ?? 0;
     return {
       subject: attr.label,
@@ -182,7 +191,7 @@ export function SampleRadarChart({
       })
     : [];
 
-  const score = hasMyData && affData ? calcIndividualScore(affData, cupsPerSample, { rule: sample.scoreRule }) : null;
+  const score = hasMyData && affData && hasIndividualScore(affData) ? calcIndividualScore(affData, cupsPerSample, { rule: sample.scoreRule }) : null;
   const scoreNum = score !== null && score !== "—" ? Number(score) : null;
   const scoreColorClass = "text-on-surface";
 
@@ -243,6 +252,10 @@ export function SampleRadarChart({
             </div>
           )}
 
+          {isPartial && scoreNum === null && t.radar.partialLabel && (
+            <div className="text-right text-xs font-medium text-on-surface-variant">{t.radar.partialLabel}</div>
+          )}
+
           {isOwner && !sample.revealed && !sessionClosed && (
             <button
               type="button"
@@ -286,6 +299,16 @@ export function SampleRadarChart({
               )}
           </span>
         </div>
+      )}
+
+      {/* S10 WP3b: the per-attribute averages include declared partial evaluations. */}
+      {showCommunity && (sample.aggregateScore?.partialCount ?? 0) > 0 && t.radar.includesOne && (
+        <p className="mb-2 text-[11px] text-on-surface-variant">
+          {((sample.aggregateScore?.partialCount ?? 0) === 1 ? t.radar.includesOne : (t.radar.includesMany ?? t.radar.includesOne)).replace(
+            "{n}",
+            String(sample.aggregateScore?.partialCount ?? 0),
+          )}
+        </p>
       )}
 
       {/* Community score transparency (N5) */}

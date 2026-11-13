@@ -440,6 +440,34 @@
       "noteLabel": "¿Qué mercado?",
       "notePlaceholder": "Ej. cafeterías de especialidad en Madrid"
     },
+    "partial": {
+      "notEvaluated": "No evaluado",
+      "notEvaluatedOn": "Esta sección quedó sin evaluar.",
+      "evaluateIt": "Evaluarla",
+      "cooledPrompt": "¿Cambió al enfriarse?",
+      "cooledLabel": "Valor al enfriarse",
+      "cooledRemove": "Quitar",
+      "cooledSummary": "{from} → {to} al enfriarse",
+      "submitNote": "Tu evaluación de {sample} es parcial: no tendrá puntaje total. Lo que sí calificaste cuenta en los promedios por atributo.",
+      "submitTitle": "Enviar evaluación parcial",
+      "scoreLabel": "Parcial · sin puntaje",
+      "includesOne": "Incluye {n} evaluación parcial",
+      "includesMany": "Incluye {n} evaluaciones parciales"
+    },
+    "timer": {
+      "title": "Temporizador",
+      "show": "Temporizador",
+      "hide": "Ocultar",
+      "start": "Empezar",
+      "reset": "Reiniciar",
+      "nextPass": "Siguiente pasada",
+      "cueWait": "Deja reposar",
+      "cueBreak": "Rompe la costra",
+      "cuePass1": "Primera pasada (entre 8 y 10 min)",
+      "cuePass2": "Segunda pasada",
+      "cuePass3": "Tercera pasada",
+      "hint": "Opcional. Empieza cuando viertas el agua."
+    },
     "referenceFirstHint": "La cata empieza por la referencia.",
     "expressNotes": {
       "title": "Notas rápidas",
@@ -1103,6 +1131,13 @@
     "market": {
       "label": "Punto de vista",
       "known": "Un mercado que conozco"
+    },
+    "partial": {
+      "label": "Parcial · sin puntaje",
+      "notEvaluated": "No evaluado",
+      "cooledSummary": "{from} → {to} al enfriarse",
+      "includesOne": "Incluye {n} evaluación parcial",
+      "includesMany": "Incluye {n} evaluaciones parciales"
     },
     "closeNow": {
       "line": "La fecha de cierre ya pasó. La cata se cerrará sola en las próximas horas; puedes cerrarla ahora para enviar los resultados.",

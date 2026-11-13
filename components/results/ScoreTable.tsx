@@ -2,7 +2,8 @@
 
 import { referenceBadgeText } from "@/lib/referenceRules";
 import { Check, ChevronRight, Eye } from "lucide-react";
-import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
+import { calcIndividualScore, hasIndividualScore } from "@/lib/scoring";
+import { isAffectiveDeclaredPartial } from "@/lib/affectivePartial";
 import { canShowMyScore } from "@/lib/evaluationState";
 import { deltasVsReference, formatSignedDelta } from "@/lib/referenceDelta";
 import { AFFECTIVE_ATTRIBUTES, type SessionFormat } from "@/lib/constants";
@@ -32,6 +33,8 @@ export type ScoreTableTranslations = {
   inProgress?: string;
   notEvaluated?: string;
   inProgressLegend?: string;
+  /** S10 WP3b: shown instead of a score for a partial evaluation ("Parcial · sin puntaje"). */
+  partialLabel?: string;
 };
 
 /**
@@ -58,6 +61,7 @@ function rowBgClass(rowIdx: number): string {
 
 function CvaCell({
   myScore,
+  partial = false,
   communityScore,
   showCommunity,
   u,
@@ -67,6 +71,7 @@ function CvaCell({
   t,
 }: {
   myScore: number | "—" | null;
+  partial?: boolean;
   communityScore: number | null;
   showCommunity: boolean;
   u: number;
@@ -86,7 +91,11 @@ function CvaCell({
       className={`border-b border-outline-variant/40 bg-surface-container px-2.5 py-2 text-center align-middle`}
     >
       <div className="flex flex-col items-center gap-0.5">
-        <ScorePill score={scoreNum} />
+        {partial && scoreNum === null ? (
+          <span className="text-[11px] font-medium text-on-surface-variant">{t.partialLabel ?? "—"}</span>
+        ) : (
+          <ScorePill score={scoreNum} />
+        )}
         {scoreNum !== null && typeof myDelta === "number" && (
           <span
             className="text-[10px] font-medium text-on-surface-variant tabular-nums"
@@ -152,7 +161,7 @@ export function ScoreTable({
   const myScoreOf = (sample: SampleResult): number | "—" | null => {
     const affData =
       format === "affective" ? sample.affective : format === "combined" ? sample.combined : null;
-    if (!affData || !hasAffectiveData(affData) || !canShowMyScore(sample.myEvaluation)) return null;
+    if (!affData || !hasIndividualScore(affData) || !canShowMyScore(sample.myEvaluation)) return null;
     return calcIndividualScore(affData, cupsPerSample, { rule: sample.scoreRule });
   };
   const rowScores = samples.map((sample) => {
@@ -269,6 +278,8 @@ export function ScoreTable({
               format === "descriptive" ? sample.descriptive : format === "combined" ? sample.combined : null;
 
             const score = myScoreOf(sample);
+            const isPartial =
+              !!affData && isAffectiveDeclaredPartial(affData) && canShowMyScore(sample.myEvaluation);
             const stateChip =
               sample.myEvaluation.status === "draft"
                 ? (t.inProgress ?? null)
@@ -398,6 +409,7 @@ export function ScoreTable({
                 {showCVA && (
                   <CvaCell
                     myScore={score}
+                    partial={isPartial}
                     communityScore={sample.aggregateScore?.communityScore ?? null}
                     showCommunity={showCommunity}
                     u={u}

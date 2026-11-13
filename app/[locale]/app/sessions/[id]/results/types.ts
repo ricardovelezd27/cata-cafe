@@ -26,6 +26,8 @@ export type AggregateScoreData = {
   /** Rule this sample's numbers were computed under ("v1" = before 2026-11). */
   rule?: ScoreRule;
   attrAverages: Record<string, number>;
+  /** S10 WP3b: evaluations in the per-attribute averages that are declared partials ("no evaluado"). */
+  partialCount?: number;
 };
 
 export type CoffeeInfo = {

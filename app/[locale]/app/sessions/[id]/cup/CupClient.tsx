@@ -90,6 +90,9 @@ import { moduleKeyForFormat } from "@/lib/evaluation";
 import { useKeyboardOpen } from "@/hooks/useKeyboardOpen";
 import { isEvaluationReadOnly, isModuleFrozenForRevealed } from "@/lib/revealFreeze";
 import type { MarketCopy } from "@/components/cupping/MarketNote";
+import { PARTIAL_COPY_FALLBACK, type PartialCopy } from "@/components/cupping/AttributeExtras";
+import { CuppingTimer, TIMER_COPY_FALLBACK, type TimerCopy } from "@/components/cupping/CuppingTimer";
+import { isAffectiveDeclaredPartial } from "@/lib/affectivePartial";
 import { indexAfterReconcile, reconcileSamples } from "@/lib/sampleReconcile";
 import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
 import { DevRoleBadge } from "@/components/dev/DevRoleBadge";
@@ -455,6 +458,10 @@ export function CupClient({
     revealedNote?: string;
     /** Optional "market" line copy (S10 WP3a, A10); fallback in components/cupping/MarketNote.tsx. */
     market?: MarketCopy;
+    /** "No evaluado" / "as it cooled" copy (S10 WP3b, C4/A5); fallback in components/cupping/AttributeExtras.tsx. */
+    partial?: PartialCopy;
+    /** Optional cupping timer copy (S10 WP3b, A5); fallback in components/cupping/CuppingTimer.tsx. */
+    timer?: TimerCopy;
     /** Cup grid + "score after submitting" copy (S10 WP1b); optional: the error
      *  boundary rehydrates an older cached blob (lib/cupCopy.ts has a fallback). */
     cups?: CupCopy;
@@ -589,6 +596,8 @@ export function CupClient({
   const [guard, setGuard] = useState<{
     kind: "next" | "submit";
     items: GuardItem[];
+    /** S10 WP3b: one line per sample whose evaluation is a declared partial (no total score). */
+    partialNotes?: string[];
   } | null>(null);
   // Sample+step combos ("sampleId:step") that have already triggered a guard —
   // once flagged, the inline * / red indicator stays visible on that section
@@ -1749,6 +1758,14 @@ export function CupClient({
   const handleGoToResults = async () => {
     if (guard) return;
     const gaps = sessionMissing(viewSamples, stepsForFormat, guardFormat);
+    // S10 WP3b (C4): a one-line note per sample whose evaluation is a declared partial.
+    const partialCopy = translations.partial ?? PARTIAL_COPY_FALLBACK[locale === "en" ? "en" : "es"];
+    const partialNotes =
+      guardFormat === "descriptive"
+        ? []
+        : viewSamples
+            .filter((s) => isAffectiveDeclaredPartial(guardFormat === "affective" ? s.affective : s.combined))
+            .map((s) => partialCopy.submitNote.replace("{sample}", s.label));
     if (gaps.length > 0) {
       // Flag every sample+step combo that has a gap so revisiting any of them
       // shows the inline indicator, not just the current one.
@@ -1769,7 +1786,13 @@ export function CupClient({
           sample: g.sampleLabel,
           sections: sectionLabels(g.sections),
         })),
+        partialNotes: partialNotes.length > 0 ? partialNotes : undefined,
       });
+      return;
+    }
+    if (partialNotes.length > 0) {
+      // No gaps, but at least one partial evaluation: the existing submit confirmation says so.
+      setGuard({ kind: "submit", items: [], partialNotes });
       return;
     }
     await doGoToResults();
@@ -2583,6 +2606,11 @@ export function CupClient({
         {/* Mobile/tablet: phase stepper + sample bar */}
         <div className="lg:hidden">{phaseStepper}</div>
         {mobileSampleBar}
+        <CuppingTimer
+          sessionId={session.id}
+          userId={userId}
+          copy={translations.timer ?? TIMER_COPY_FALLBACK[locale === "en" ? "en" : "es"]}
+        />
       </>
     ) : (
       <>
@@ -3023,15 +3051,20 @@ export function CupClient({
         open={guard !== null}
         title={
           guard?.kind === "submit"
-            ? translations.guard.submitTitle
+            ? guard.items.length === 0
+              ? (translations.partial ?? PARTIAL_COPY_FALLBACK[locale === "en" ? "en" : "es"]).submitTitle
+              : translations.guard.submitTitle
             : translations.guard.nextTitle
         }
         body={
           guard?.kind === "submit"
-            ? translations.guard.submitBody
+            ? guard.items.length === 0
+              ? ""
+              : translations.guard.submitBody
             : translations.guard.nextBody
         }
         items={guard?.items ?? []}
+        notes={guard?.partialNotes}
         outcome={guardOutcome}
         secondary={guardSecondary}
         onCancel={() => setGuard(null)}
@@ -3108,6 +3141,7 @@ export function CupClient({
             locale={locale === "en" ? "en" : "es"}
             cupCopy={translations.cups}
             marketCopy={translations.market}
+            partialCopy={translations.partial}
           />
         )}
         {activeTab === "cupping" &&
@@ -3126,6 +3160,7 @@ export function CupClient({
               isGroup={isGroup}
               cupCopy={translations.cups}
               marketCopy={translations.market}
+              partialCopy={translations.partial}
             />
           )}
         {activeTab === "extrinsic" && (
