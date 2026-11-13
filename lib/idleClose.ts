@@ -39,7 +39,7 @@ export function emptyIdleCloseSummary(): IdleCloseSummary {
 export async function closeIdleLiveSessions(
   batch: number,
   now: number = Date.now(),
-  opts: { mayStart?: () => boolean } = {},
+  opts: { mayStart?: () => boolean | Promise<boolean> } = {},
 ): Promise<IdleCloseSummary> {
   const cutoff = new Date(now - LIVE_AUTO_CLOSE_MS);
   // The evaluation filter keeps sessions that are busy out of the batch (they
@@ -63,7 +63,7 @@ export async function closeIdleLiveSessions(
   if (candidates.length === 0) return summary;
 
   for (const c of candidates) {
-    if (opts.mayStart && !opts.mayStart()) {
+    if (opts.mayStart && !(await opts.mayStart())) {
       summary.idleBudgetTruncated = true;
       logWarn({ where: "cron.closeIdle", message: "time budget spent, rest left for the next run" });
       break;

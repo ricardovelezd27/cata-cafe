@@ -121,10 +121,26 @@ describe("phase28_dry_run.sql", () => {
     expect(DRY).not.toMatch(/'<[a-z-]+>'/);
   });
 
-  it("reports the sessions that lose visibility and the live sessions idle for more than 7 days", () => {
+  it("reports the sessions that lose visibility and the live sessions idle 7 to 30 days and more than 30 days", () => {
     expect(DRY).toContain("lose group visibility");
-    expect(DRY).toContain("idle for more than 7 days");
+    expect(DRY).toContain("2a live sessions idle 7 to 30 days");
+    expect(DRY).toContain("2b live sessions idle more than 30 days");
+    expect(DRY).toContain("participants with an email");
     expect(DRY).toContain("interval '7 days'");
+    expect(DRY).toContain("interval '30 days'");
+    // the same boundary as the code (>= 7 days idle), not a strict one
+    expect(DRY).toContain("last_activity <= ((now() AT TIME ZONE 'utc') - interval '7 days')");
+  });
+
+  it("line 3 says it measures the function installed now, and what it reads after PHASE 28", () => {
+    expect(DRY).toContain("3 function installed now");
+    expect(DRY).toContain("after PHASE 28 is applied this line reads 0");
+    expect(DRY).not.toContain("OLD function");
+  });
+
+  it("the self-check also verifies the search_path setting (proconfig)", () => {
+    expect(phase28).toContain("lost SET search_path = public");
+    expect(phase28).toContain("proconfig");
   });
 
   it("only reads: no write statement outside the phase's own", () => {
@@ -134,12 +150,12 @@ describe("phase28_dry_run.sql", () => {
 });
 
 // ---------------------------------------------------------------------------
-// The SQL twin against the TypeScript rule. `sqlCanView` is a literal port of
+// The SQL twin against the TypeScript rule. `sqlCanView` is a literal HAND PORT of
 // the function body above:  isGroup AND (owner OR status='closed' OR
 // (closesAt IS NOT NULL AND closesAt < now)). The TS side feeds `ownerRead`
 // from "is the owner" (super-admin lens is TS-only and never reaches the API).
 // ---------------------------------------------------------------------------
-describe("canViewGroupResults (TS) agrees with the SQL twin on every combination", () => {
+describe("canViewGroupResults (TS) agrees with a HAND PORT of the SQL twin on every combination (the REAL function is compared in tests/db/closeRules.dbtest.ts)", () => {
   const NOW = Date.parse("2026-11-20T12:00:00Z");
 
   function sqlCanView(r: { isGroup: boolean; isOwner: boolean; status: string; closesAt: number | null }): boolean {

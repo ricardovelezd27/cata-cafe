@@ -9,12 +9,19 @@
 -- "(expect ...)" text. Any OTHER error: stop and report it; nothing was applied
 -- either way.
 --
--- It also reports two numbers to read BEFORE the deploy (read-only counts):
---   * line 1: open group sessions where everyone has submitted today. Their
---     participants lose group visibility when PHASE 28 is applied.
---   * line 2: live sessions idle for more than 7 days. The first run of the new
---     idle pass of the daily cron (runbook §33) closes all of them (25 per run),
---     and each close sends the close emails.
+-- It also reports read-only counts to read BEFORE the deploy:
+--   * line 1: open group sessions where everyone has submitted today (name,
+--     date, participants, submitted). Their participants lose group visibility
+--     when PHASE 28 is applied.
+--   * line 2a: live sessions idle 7 to 30 days. The idle pass of the daily cron
+--     (runbook 33) closes them WITH the close emails, 5 per run, oldest first.
+--     "participants with an email" is how many people would receive one.
+--   * line 2b: live sessions idle MORE than 30 days. The same pass closes them
+--     SILENTLY (no email): sessions abandoned long ago must not mail anyone.
+--   Idle = now minus the later of the start and the last saved evaluation, the
+--   same boundary as the code (7 days or more, 30 days or more).
+--   * line 3 measures the function installed NOW: before PHASE 28 it equals
+--     line 1; once PHASE 28 is applied it reads 0.
 --
 -- The statements between the two marker comments must stay identical to PHASE 28
 -- in prisma/sql/rls_and_triggers.sql (tests/phase28Sql.test.ts checks it).
@@ -24,11 +31,14 @@ DO $dry$
 DECLARE
   v_nobody  text := '00000000-0000-4000-8000-000000000000';  -- a viewer who owns nothing
   v_lose_n  int;
-  v_lose_ids text;
+  v_lose_list text;
   v_old_true int;
   v_new_true int;
   v_idle_n  int;
-  v_idle_ids text;
+  v_idle_list text;
+  v_idle_people int;
+  v_silent_n int;
+  v_silent_list text;
   v_open_n  int;
   v_bad     int := 0;
   v_s       record;
@@ -38,7 +48,12 @@ DECLARE
 BEGIN
   -- 1. Today, BEFORE the change: open group sessions where every participant has submitted
   CREATE TEMP TABLE dry_lose ON COMMIT DROP AS
-    SELECT cs.id
+    SELECT cs.id, cs.name, cs.date,
+           (SELECT count(*) FROM session_participants sp WHERE sp."sessionId" = cs.id) AS people,
+           (SELECT count(DISTINCT e."cupperId")
+              FROM evaluations e
+              JOIN session_samples ss ON ss.id = e."sessionSampleId"
+             WHERE ss."sessionId" = cs.id AND e."isDraft" = false) AS submitted
     FROM cupping_sessions cs
     WHERE cs."isGroup"
       AND cs.status <> 'closed'
@@ -51,38 +66,65 @@ BEGIN
         WHERE ss."sessionId" = cs.id AND e."isDraft" = false
       ) >= (SELECT count(*) FROM session_participants sp WHERE sp."sessionId" = cs.id);
   SELECT count(*) INTO v_lose_n FROM dry_lose;
-  SELECT string_agg(id, ', ' ORDER BY id) INTO v_lose_ids FROM (SELECT id FROM dry_lose ORDER BY id LIMIT 10) x;
-  v_out := v_out || format(E'
- 1 open group sessions where everyone submitted, whose participants lose group visibility (read this number; 0 is fine): %s%s', v_lose_n,
-    CASE WHEN v_lose_n > 0 THEN format(' (first ids: %s)', v_lose_ids) ELSE '' END);
+  SELECT string_agg(format('      - "%s", %s, %s participants, %s submitted', name, to_char(date, 'YYYY-MM-DD'), people, submitted),
+                    E'\n' ORDER BY date, name)
+    INTO v_lose_list FROM (SELECT * FROM dry_lose ORDER BY date, name LIMIT 10) x;
+  v_out := v_out || format(E'\n 1 open group sessions where everyone submitted, whose participants lose group visibility (read this number; 0 is fine): %s%s', v_lose_n,
+    CASE WHEN v_lose_n > 0 THEN E'\n' || v_lose_list ELSE '' END);
 
-  -- 2. Live sessions idle for more than 7 days (the new cron closes them)
+  -- 2. Live sessions idle for 7 days or more (the idle cron pass closes them). Idle = the later of
+  --    the start and the last saved evaluation, the same rule as lib/closeRules.ts liveIdleMs.
   CREATE TEMP TABLE dry_idle ON COMMIT DROP AS
-    SELECT cs.id, cs."startedAt"
-    FROM cupping_sessions cs
-    WHERE cs."isGroup" AND NOT cs."isAsync" AND cs."closesAt" IS NULL
-      AND cs.status = 'active' AND cs."startedAt" IS NOT NULL
-      AND GREATEST(
-            cs."startedAt",
-            COALESCE((
-              SELECT max(e."updatedAt")
-              FROM evaluations e
-              JOIN session_samples ss ON ss.id = e."sessionSampleId"
-              WHERE ss."sessionId" = cs.id
-            ), cs."startedAt")
-          ) < ((now() AT TIME ZONE 'utc') - interval '7 days');
-  SELECT count(*) INTO v_idle_n FROM dry_idle;
-  SELECT string_agg(id, ', ' ORDER BY "startedAt", id) INTO v_idle_ids
-    FROM (SELECT id, "startedAt" FROM dry_idle ORDER BY "startedAt", id LIMIT 10) z;
-  v_out := v_out || format(E'
- 2 live sessions idle for more than 7 days, closed by the first runs of the idle cron pass (read this number; 25 per run, oldest first): %s%s', v_idle_n,
-    CASE WHEN v_idle_n > 0 THEN format(' (oldest ids: %s)', v_idle_ids) ELSE '' END);
+    SELECT x.id, x.name, x."startedAt", x.last_activity,
+           (SELECT count(*) FROM session_participants sp WHERE sp."sessionId" = x.id) AS people,
+           (SELECT count(*) FROM session_participants sp
+              JOIN auth.users u ON u.id::text = sp."userId"
+             WHERE sp."sessionId" = x.id AND u.email IS NOT NULL) AS people_with_email
+    FROM (
+      SELECT cs.id, cs.name, cs."startedAt",
+             GREATEST(
+               cs."startedAt",
+               COALESCE((
+                 SELECT max(e."updatedAt")
+                 FROM evaluations e
+                 JOIN session_samples ss ON ss.id = e."sessionSampleId"
+                 WHERE ss."sessionId" = cs.id
+               ), cs."startedAt")
+             ) AS last_activity
+      FROM cupping_sessions cs
+      WHERE cs."isGroup" AND NOT cs."isAsync" AND cs."closesAt" IS NULL
+        AND cs.status = 'active' AND cs."startedAt" IS NOT NULL
+    ) x
+    WHERE x.last_activity <= ((now() AT TIME ZONE 'utc') - interval '7 days');
+  -- 2a. 7 days or more, under 30: closed WITH the close emails
+  SELECT count(*), COALESCE(sum(people_with_email), 0) INTO v_idle_n, v_idle_people
+    FROM dry_idle WHERE last_activity > ((now() AT TIME ZONE 'utc') - interval '30 days');
+  SELECT string_agg(format('      - "%s", last activity %s, %s participants (%s with an email)', name,
+                           to_char(last_activity, 'YYYY-MM-DD'), people, people_with_email),
+                    E'\n' ORDER BY last_activity, name)
+    INTO v_idle_list
+    FROM (SELECT * FROM dry_idle WHERE last_activity > ((now() AT TIME ZONE 'utc') - interval '30 days')
+          ORDER BY last_activity, name LIMIT 10) z;
+  v_out := v_out || format(E'\n 2a live sessions idle 7 to 30 days (closed WITH emails, 5 per run, oldest first; read these numbers): %s sessions, %s participants with an email%s', v_idle_n, v_idle_people,
+    CASE WHEN v_idle_n > 0 THEN E'\n' || v_idle_list ELSE '' END);
+  -- 2b. 30 days or more: closed silently
+  SELECT count(*) INTO v_silent_n
+    FROM dry_idle WHERE last_activity <= ((now() AT TIME ZONE 'utc') - interval '30 days');
+  SELECT string_agg(format('      - "%s", last activity %s, %s participants', name,
+                           to_char(last_activity, 'YYYY-MM-DD'), people),
+                    E'\n' ORDER BY last_activity, name)
+    INTO v_silent_list
+    FROM (SELECT * FROM dry_idle WHERE last_activity <= ((now() AT TIME ZONE 'utc') - interval '30 days')
+          ORDER BY last_activity, name LIMIT 10) w;
+  v_out := v_out || format(E'\n 2b live sessions idle more than 30 days (closed silently, no email; read this number): %s sessions%s', v_silent_n,
+    CASE WHEN v_silent_n > 0 THEN E'\n' || v_silent_list ELSE '' END);
 
-  -- 3. The OLD function, for a viewer who owns nothing: true for exactly the sessions of line 1
+  -- 3. The function installed NOW, for a viewer who owns nothing: true for exactly the sessions of
+  --    line 1 until PHASE 28 is applied
   PERFORM set_config('request.jwt.claims',
     json_build_object('sub', v_nobody, 'role', 'authenticated')::text, true);
   SELECT count(*) INTO v_old_true FROM dry_lose d WHERE public.can_view_group_results(d.id);
-  v_out := v_out || format(E'\n 3 OLD function, outsider viewer, on the sessions of line 1 (expect = line 1: %s): %s', v_lose_n, v_old_true);
+  v_out := v_out || format(E'\n 3 function installed now, outsider viewer, on the sessions of line 1 (before PHASE 28 this equals line 1: %s; after PHASE 28 is applied this line reads 0): %s', v_lose_n, v_old_true);
 
   -- >>> PHASE 28 statements (copy of rls_and_triggers.sql) >>>
 

@@ -2336,8 +2336,8 @@ COMMIT;
 --     where schemaname = 'public' and qual like '%can_view_group_results%';
 --     -- expect: aggregate_scores / agg_select
 --   -- (c) how many open group sessions lose visibility today, and how many live
---   --     sessions are idle for more than 7 days (the new cron closes those):
---   --     both are in the dry run's report.
+--   --     sessions are idle for 7 to 30 days (the new cron closes those, with
+--   --     emails) or more than 30 days (closed silently): all in the dry run's report.
 --
 -- Dry run: prisma/sql/dry-runs/phase28_dry_run.sql (ONE DO statement, nothing
 -- can be applied, NO placeholders). It ends in an intentional error whose
@@ -2387,6 +2387,10 @@ BEGIN
   END IF;
   IF NOT (SELECT prosecdef FROM pg_proc WHERE oid = 'public.can_view_group_results(text)'::regprocedure) THEN
     RAISE EXCEPTION 'PHASE 28 aborted, nothing applied: the function is no longer SECURITY DEFINER';
+  END IF;
+  IF (SELECT proconfig FROM pg_proc WHERE oid = 'public.can_view_group_results(text)'::regprocedure)
+       IS DISTINCT FROM ARRAY['search_path=public']::text[] THEN
+    RAISE EXCEPTION 'PHASE 28 aborted, nothing applied: the function lost SET search_path = public';
   END IF;
   IF NOT has_function_privilege('authenticated', 'public.can_view_group_results(text)', 'EXECUTE')
      OR has_function_privilege('anon', 'public.can_view_group_results(text)', 'EXECUTE') THEN
