@@ -1839,6 +1839,7 @@
     "emailPlaceholder": "correo@ejemplo.com",
     "displayNamePlaceholder": "Nombre (opcional)",
     "unregistered": "Sin cuenta todavía",
+    "pendingInvite": "Invitación pendiente",
     "removeMember": "Quitar",
     "composeEmail": "Enviar correo al grupo",
     "subject": "Asunto",
