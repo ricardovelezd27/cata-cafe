@@ -16,7 +16,9 @@
 //   3. reminders  deadline_24h (members with complete unsent notes) and
 //                 live_idle (owner of a forgotten live session). Ledgered in
 //                 session_reminder_deliveries; NEVER closes a session.
-//   4. idle       live group sessions idle for 7 days (S10 WP4a, Kim C3; reason
+//   4. idle       live group sessions idle for 7 days (S10 WP4a, Kim C3; owner decision:
+//                 sessions STARTED before IDLE_RULE_EFFECTIVE_AT are grandfathered: only
+//                 closed, silently, at 30 idle days; rule = idleCloseDecision; reason
 //                 "idle"; 7 to under 30 days idle = close emails, 30 days or more
 //                 = closed silently, review H2). LAST of the closing passes and
 //                 only IDLE_BATCH (5) per run, oldest first, so a backlog can
@@ -65,6 +67,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
+  // ONE clock for the whole run: the reminders and the idle pass get this `now`.
   const startedAt = Date.now();
   const mayStart = () => mayStartAnotherClose(Date.now() - startedAt, CRON_CLOSE_START_BUDGET_MS);
 
@@ -136,8 +139,8 @@ export async function GET(request: Request) {
   let reminders: { deadline?: unknown; liveIdle?: unknown; error?: string } = {};
   try {
     reminders = {
-      deadline: await sendDeadlineReminders(BATCH),
-      liveIdle: await sendLiveIdleReminders(BATCH),
+      deadline: await sendDeadlineReminders(BATCH, startedAt),
+      liveIdle: await sendLiveIdleReminders(BATCH, startedAt),
     };
   } catch (err) {
     const message = errorMessage(err);
@@ -150,7 +153,7 @@ export async function GET(request: Request) {
   // the purge below.
   let idle = emptyIdleCloseSummary();
   try {
-    idle = await closeIdleLiveSessions(IDLE_BATCH, Date.now(), { mayStart });
+    idle = await closeIdleLiveSessions(IDLE_BATCH, startedAt, { mayStart });
   } catch (err) {
     logError({ where: "cron.closeIdle", message: errorMessage(err) });
   }

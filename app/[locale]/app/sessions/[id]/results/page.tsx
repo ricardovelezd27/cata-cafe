@@ -521,7 +521,7 @@ export default async function ResultsPage({
     const silent =
       deliveries.length === 0 && (await wasClosedSilently(id));
     closeEmails = silent
-      ? { line: tResults("closeEmails.silent"), showResend: true }
+      ? { line: tResults("closeEmails.silent", { button: tResults("closeEmails.resend") }), showResend: true }
       : {
           line: `${tResults("closeEmails.label")} ${parts.join(" · ")}`,
           showResend: failed > 0 || pending > 0,

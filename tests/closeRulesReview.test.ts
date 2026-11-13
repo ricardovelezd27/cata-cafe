@@ -4,30 +4,37 @@ import {
   IDLE_SILENT_CLOSE_MS,
   LIVE_AUTO_CLOSE_MS,
   canCloseNow,
+  IDLE_RULE_EFFECTIVE_AT,
   closedSilently,
+  emailModeForIdleDecision,
   idleAtCloseMs,
   repairEmailMode,
   shouldSendLiveIdleReminder,
   LIVE_IDLE_MS,
-  idleCloseEmailMode,
+  idleCloseDecision,
   liveIdleMs,
   mayStartAnotherClose,
 } from "@/lib/closeRules";
 
 const DAY = 24 * 3_600_000;
 
-describe("idleCloseEmailMode (S10 WP4a review H2)", () => {
+// A session that started on the effective date (never grandfathered). The idle rule itself is
+// covered, band by band, in tests/closeRulesGrandfather.test.ts.
+const NEW = IDLE_RULE_EFFECTIVE_AT;
+
+describe("idle email mode through idleCloseDecision (S10 WP4a review H2)", () => {
   it("7 days up to under 30 days: the designed flow, with emails", () => {
-    expect(idleCloseEmailMode(LIVE_AUTO_CLOSE_MS)).toBe("await");
-    expect(idleCloseEmailMode(7 * DAY + 1)).toBe("await");
-    expect(idleCloseEmailMode(20 * DAY)).toBe("await");
-    expect(idleCloseEmailMode(30 * DAY - 1)).toBe("await");
+    for (const ms of [LIVE_AUTO_CLOSE_MS, 7 * DAY + 1, 20 * DAY, 30 * DAY - 1]) {
+      expect(idleCloseDecision({ startedAt: NEW, idleMs: ms })).toBe("emails");
+      expect(emailModeForIdleDecision("emails")).toBe("await");
+    }
   });
   it("30 days or more: closed silently, boundary included", () => {
     expect(IDLE_SILENT_CLOSE_MS).toBe(30 * DAY);
-    expect(idleCloseEmailMode(30 * DAY)).toBe("skip");
-    expect(idleCloseEmailMode(30 * DAY + 1)).toBe("skip");
-    expect(idleCloseEmailMode(200 * DAY)).toBe("skip");
+    for (const ms of [30 * DAY, 30 * DAY + 1, 200 * DAY]) {
+      expect(idleCloseDecision({ startedAt: NEW, idleMs: ms })).toBe("silent");
+      expect(emailModeForIdleDecision("silent")).toBe("skip");
+    }
   });
 });
 
@@ -93,17 +100,25 @@ describe("idleAtCloseMs", () => {
 });
 
 describe("repairEmailMode / closedSilently", () => {
-  const base = { isLiveGroup: true, idleAtCloseMs: 90 * DAY, closeEmailLedgerRows: 0 };
+  const base = { isLiveGroup: true, startedAt: NEW as Date | null, idleAtCloseMs: 90 * DAY as number | null, closeEmailLedgerRows: 0 };
   it("skip exactly for a live group session idle 30+ days at close with no ledger row", () => {
     expect(repairEmailMode(base)).toBe("skip");
     expect(closedSilently(base)).toBe(true);
   });
-  it("the 30-day boundary is the one of idleCloseEmailMode (inclusive)", () => {
+  it("the 30-day boundary is the one of idleCloseDecision (inclusive)", () => {
     expect(repairEmailMode({ ...base, idleAtCloseMs: IDLE_SILENT_CLOSE_MS })).toBe("skip");
     expect(repairEmailMode({ ...base, idleAtCloseMs: IDLE_SILENT_CLOSE_MS - 1 })).toBe("await");
     for (const ms of [0, 7 * DAY, 29 * DAY, 30 * DAY, 90 * DAY]) {
-      expect(repairEmailMode({ ...base, idleAtCloseMs: ms })).toBe(idleCloseEmailMode(ms));
+      expect(repairEmailMode({ ...base, idleAtCloseMs: ms })).toBe(
+        idleCloseDecision({ startedAt: NEW, idleMs: ms }) === "silent" ? "skip" : "await",
+      );
     }
+  });
+  it("L3: the creator is a deleted-account placeholder: always silent, whatever else is true", () => {
+    expect(repairEmailMode({ ...base, idleAtCloseMs: 2 * DAY, ownerDeleted: true })).toBe("skip");
+    expect(repairEmailMode({ ...base, isLiveGroup: false, idleAtCloseMs: null, ownerDeleted: true })).toBe("skip");
+    expect(repairEmailMode({ ...base, closeEmailLedgerRows: 2, ownerDeleted: true })).toBe("skip");
+    expect(repairEmailMode({ ...base, idleAtCloseMs: 2 * DAY, ownerDeleted: false })).toBe("await");
   });
   it("await when it is not a live group session (deadline, solo)", () => {
     expect(repairEmailMode({ ...base, isLiveGroup: false })).toBe("await");
@@ -118,7 +133,7 @@ describe("repairEmailMode / closedSilently", () => {
 });
 
 describe("shouldSendLiveIdleReminder (L3)", () => {
-  const now = Date.UTC(2026, 5, 30);
+  const now = Date.UTC(2027, 5, 30); // sessions started after the effective date
   const row = (daysIdle: number) => ({
     isGroup: true,
     isAsync: false,

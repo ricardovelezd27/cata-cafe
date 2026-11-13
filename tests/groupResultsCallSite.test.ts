@@ -53,24 +53,69 @@ describe("the group-visibility call site", () => {
   // Second review L6b: no expression outside the seam may compare the submitted-cuppers
   // count with the participants total, in either order and with any operator.
   const CMP = /(?:<=|>=|===|!==|==|!=|(?<![=\-])<(?!=)|(?<![=\-])>(?!=))/;
-  const COMPARES_BOTH = (src: string) =>
-    src.split(/[;\n]/).some((l) => {
-      const a = l.search(/submittedCupperCount|submittedCount/);
-      const b = l.search(/totalParticipants|participants\.length|participantCount/);
-      return a !== -1 && b !== -1 && CMP.test(l);
-    });
+  const A = /submittedCupperCount|submittedCount/g;
+  const B = /totalParticipants|participants\.length|participantCount/g;
+  // Third review L4: whole STATEMENTS, not lines. Every pair (submitted count, total) inside ONE
+  // statement (no `;` between them, newlines are just whitespace) with a comparison operator
+  // between them is a hidden "everyone has submitted" test, however the author wrapped the line.
+  const COMPARES_BOTH = (src: string) => {
+    const hits = (re: RegExp) => [...src.matchAll(re)].map((m) => ({ s: m.index!, e: m.index! + m[0].length }));
+    for (const a of hits(A)) {
+      for (const b of hits(B)) {
+        const [lo, hi] = a.s < b.s ? [a, b] : [b, a];
+        const between = src.slice(lo.e, hi.s);
+        if (between.includes(";") || between.length > 160) continue;
+        if (CMP.test(between)) return true;
+      }
+    }
+    return false;
+  };
+  // `pendingParticipants` (total - submitted) compared with zero is the same test in other words.
+  const PENDING_IS_ZERO = (src: string) =>
+    /pendingParticipants\s*(?:===|==|<=|<)\s*[01]\b/.test(src) ||
+    /\b[01]\s*(?:===|==|>=|>)\s*pendingParticipants\b/.test(src) ||
+    /!\s*pendingParticipants\b/.test(src) ||
+    /!\s*\(\s*pendingParticipants\s*>\s*0\s*\)/.test(src);
 
-  it("the comparison scan catches both operand orders and every operator (sanity)", () => {
+  it("the comparison scan catches both operand orders, every operator and wrapped lines (sanity)", () => {
     expect(COMPARES_BOTH("const all = totalParticipants <= submittedCupperCount;")).toBe(true);
     expect(COMPARES_BOTH("const all = submittedCupperCount >= totalParticipants;")).toBe(true);
     expect(COMPARES_BOTH("if (submittedCupperCount === totalParticipants) {")).toBe(true);
+    // the reviewer's surviving shape: the operator on another line than one of the operands
+    expect(COMPARES_BOTH("const all =\n  submittedCupperCount\n    >= totalParticipants;")).toBe(true);
+    expect(COMPARES_BOTH("const all = totalParticipants\n  <= submittedCupperCount;")).toBe(true);
     expect(COMPARES_BOTH("const pending = Math.max(0, totalParticipants - submittedCupperCount);")).toBe(false);
     expect(COMPARES_BOTH("items.map((x) => totalParticipants + submittedCupperCount)")).toBe(false);
+    expect(COMPARES_BOTH("const a = submittedCupperCount;\nconst b = x > totalParticipants;")).toBe(false);
+  });
+
+  it("the zero-pending scan catches every spelling of 'nobody is pending' (sanity)", () => {
+    for (const bad of [
+      "const all = pendingParticipants === 0;",
+      "const all = pendingParticipants == 0;",
+      "const all = pendingParticipants <= 0;",
+      "const all = pendingParticipants < 1;",
+      "const all = 0 === pendingParticipants;",
+      "const all = !pendingParticipants;",
+      "const all = !(pendingParticipants > 0);",
+      "const all =\n  pendingParticipants\n  === 0;",
+    ]) {
+      expect(PENDING_IS_ZERO(bad), bad).toBe(true);
+    }
+    // the banner's own use (canViewGroup is already true there) stays legal
+    expect(PENDING_IS_ZERO("session.isGroup && canViewGroup && pendingParticipants > 0")).toBe(false);
+    expect(PENDING_IS_ZERO("const pendingParticipants = Math.max(0, total - n);")).toBe(false);
   });
 
   it("neither the results page nor the participant-summary route compares the two counts", () => {
     for (const f of [PAGE, ROUTE]) {
       expect(COMPARES_BOTH(stripComments(read(f))), f).toBe(false);
+    }
+  });
+
+  it("neither of them tests pendingParticipants against zero as an 'everyone submitted' flag", () => {
+    for (const f of [PAGE, ROUTE]) {
+      expect(PENDING_IS_ZERO(stripComments(read(f))), f).toBe(false);
     }
   });
 });

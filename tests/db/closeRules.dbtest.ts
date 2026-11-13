@@ -4,9 +4,17 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Client } from "pg";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const sendCloseEmails = vi.fn();
+const sendEmail = vi.fn();
+vi.mock("@/lib/email", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/email")>()),
+  sendEmail: (...a: unknown[]) => sendEmail(...a),
+}));
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: () => ({ auth: { admin: { getUserById: async () => ({ data: { user: { email: "owner@example.test" } }, error: null }) } } }),
+}));
 vi.mock("@/lib/closeEmail", () => ({ sendCloseEmails: (...a: unknown[]) => sendCloseEmails(...a) }));
 
 // One close is made to THROW (by id) so the `catch` path of lib/idleClose.ts really runs.
@@ -39,7 +47,8 @@ vi.mock("@/lib/closeSession", async (importOriginal) => {
 import { closeIdleLiveSessions } from "@/lib/idleClose";
 import { closeSessionInternal } from "@/lib/closeSession";
 import { repairClosedSession } from "@/lib/repairClose";
-import { IDLE_SILENT_CLOSE_MS, LIVE_AUTO_CLOSE_MS } from "@/lib/closeRules";
+import { IDLE_RULE_EFFECTIVE_AT, IDLE_SILENT_CLOSE_MS, LIVE_AUTO_CLOSE_MS } from "@/lib/closeRules";
+import { sendLiveIdleReminders } from "@/lib/reminderEmail";
 import { viewerMayReadGroupResults } from "@/lib/sessionState";
 import { makeEvaluation, makeSession, makeUser, prisma, rawClient, resetDb } from "./support/db";
 
@@ -56,10 +65,23 @@ beforeEach(async () => {
   hoisted.historyThrows = false;
   hoisted.threw = 0;
   sendCloseEmails.mockReset();
+  sendEmail.mockReset();
+  sendEmail.mockResolvedValue({ ok: true });
   sendCloseEmails.mockResolvedValue({ attempted: 0, sent: 0, skipped: 0, failed: 0 });
 });
 
 const DAY = 24 * 3_600_000;
+// The idle pass runs on a FIXED clock, 100 days after the idle rule shipped, so a session started
+// "N days ago" is on the same side of IDLE_RULE_EFFECTIVE_AT whenever this suite runs. Anything the
+// pass reads from the database (evaluation updatedAt, closedAt) is written relative to NOW.
+const EFF = IDLE_RULE_EFFECTIVE_AT.getTime();
+const NOW = EFF + 100 * DAY;
+
+/** A submitted evaluation whose updatedAt is `at`. */
+async function evalAt(sampleId: string, sessionId: string, cupperId: string, at: number) {
+  const e = await makeEvaluation({ sampleId, sessionId, cupperId, values: 6 });
+  return prisma.evaluation.update({ where: { id: e.id }, data: { updatedAt: new Date(at) } });
+}
 
 async function asUser<T>(uid: string, fn: (q: Client["query"]) => Promise<T>): Promise<T> {
   await pg.query("BEGIN");
@@ -181,8 +203,14 @@ describe("phase28_dry_run.sql against the real schema", () => {
     return all.slice(all.indexOf("\n", a) + 1, b);
   }
 
-  async function runDry(): Promise<string> {
-    const dry = readFileSync(dryPath, "utf8");
+  /** `effective` replaces the ONE literal at the top of the DO block (the real file carries the
+   *  production date; the sessions below start relative to the real clock). */
+  async function runDry(effective?: string): Promise<string> {
+    let dry = readFileSync(dryPath, "utf8");
+    if (effective) {
+      expect(dry.match(/v_effective timestamp := '[^']+';/g)).toHaveLength(1);
+      dry = dry.replace(/(v_effective timestamp := ')[^']+(';)/, `$1${effective}$2`);
+    }
     try {
       await pg.query(dry);
     } catch (e) {
@@ -216,18 +244,21 @@ describe("phase28_dry_run.sql against the real schema", () => {
     // The test database already carries PHASE 28: put the PHASE 21 function back for the "before" probes.
     await pg.query(oldFunction());
     try {
-      const msg = await runDry();
+      // Every session below is treated as started AFTER the rule (effective date 2000-01-01).
+      const msg = await runDry("2000-01-01 00:00:00");
       expect(msg).toContain("PHASE 28 DRY RUN: NOTHING WAS APPLIED");
       expect(msg).toMatch(/ 1 open group sessions where everyone submitted[^:]*: 3\n/);
       // names, dates and counts instead of raw ids
       expect(msg).toContain(`"${lose.s.name}", 2026-11-01, 3 participants, 3 submitted`);
       expect(msg).not.toContain(lose.s.id);
       // 7 to 30 days: idle1 (8 d), idle2 (9 d), edge (7 d + 1 min); each has one participant with an email
-      expect(msg).toMatch(/ 2a live sessions idle 7 to 30 days[^:]*: 3 sessions, 3 participants with an email/);
+      expect(msg).toMatch(/ 2a live sessions started on or after the rule \(2000-01-01\), idle 7 days to under 30[^:]*: 3 sessions, 3 participants with an email/);
       expect(msg).toContain(`"${idle2.name}", last activity`);
-      // more than 30 days, silently
-      expect(msg).toMatch(/ 2b live sessions idle more than 30 days[^:]*: 1 sessions/);
+      // 30 days or more, silently
+      expect(msg).toMatch(/ 2b live sessions idle 30 days or more[^:]*: 1 sessions/);
       expect(msg).toContain(`"${silent.name}", last activity`);
+      // none of them started before the rule
+      expect(msg).toMatch(/ 2c live sessions idle 7 days to under 30, left alone: started before the rule; they close silently only if they reach 30 idle days \(read this number\): 0 sessions/);
       expect(msg).toMatch(/ 3 function installed now[^\n]*after PHASE 28 is applied this line reads 0\): 3\b/);
       expect(msg).toMatch(/4 NEW function, outsider viewer, on the sessions of line 1 \(expect 0\): 0/);
       expect(msg).toMatch(/5a [^:]*\(expect 0\): 0/);
@@ -237,6 +268,17 @@ describe("phase28_dry_run.sql against the real schema", () => {
       expect(msg).toMatch(/7b [^:]*: t\b/);
       expect(msg).toMatch(/7c [^:]*: search_path=public/);
       expect(msg).toMatch(/7d [^:]*\(expect t f\): t f/);
+      // The same data with the effective date in the far future: everything started BEFORE the rule.
+      // 2a is empty, 2b is unchanged (30 days or more is silent grandfathered or not), 2c lists the three
+      // sessions that are left alone and the day each reaches 30 idle days.
+      const grand = await runDry("2100-01-01 00:00:00");
+      expect(grand).toMatch(/ 2a live sessions started on or after the rule \(2100-01-01\)[^:]*: 0 sessions, 0 participants with an email/);
+      expect(grand).toMatch(/ 2b live sessions idle 30 days or more[^:]*: 1 sessions/);
+      expect(grand).toMatch(/ 2c [^\n]*\(read this number\): 3 sessions/);
+      expect(grand).toContain(`"${idle2.name}", last activity`);
+      expect(grand).toMatch(/reaches 30 days on \d{4}-\d{2}-\d{2}/);
+      // The real file, with its production literal, also runs to its exception.
+      expect(await runDry()).toContain("PHASE 28 DRY RUN: NOTHING WAS APPLIED");
       // rolled back: the OLD function is still the one installed, no temp table survives
       const def = await pg.query("select pg_get_functiondef('public.can_view_group_results(text)'::regprocedure) as d");
       expect(def.rows[0].d).toContain("isDraft");
@@ -255,7 +297,7 @@ describe("closeIdleLiveSessions (Kim C3)", () => {
     await prisma.cuppingSession.update({
       where: { id: s.id },
       data: {
-        startedAt: opts.startedDaysAgo === null ? null : new Date(Date.now() - opts.startedDaysAgo * DAY),
+        startedAt: opts.startedDaysAgo === null ? null : new Date(NOW - opts.startedDaysAgo * DAY),
         isAsync: opts.isAsync ?? false,
       },
     });
@@ -267,15 +309,15 @@ describe("closeIdleLiveSessions (Kim C3)", () => {
     const recentStart = await live({ startedDaysAgo: 6 });
     const unstarted = await live({ startedDaysAgo: null });
     const solo = await live({ startedDaysAgo: 30, isGroup: false });
-    const dated = await live({ startedDaysAgo: 30, closesAt: new Date(Date.now() + 30 * DAY) });
+    const dated = await live({ startedDaysAgo: 30, closesAt: new Date(NOW + 30 * DAY) });
     const async_ = await live({ startedDaysAgo: 30, isAsync: true });
     const busy = await live({ startedDaysAgo: 30 });
-    await makeEvaluation({ sampleId: busy.s.samples[0].id, sessionId: busy.s.id, cupperId: busy.owner, values: 6 }); // fresh updatedAt
+    await evalAt(busy.s.samples[0].id, busy.s.id, busy.owner, NOW); // fresh updatedAt
     const oldEval = await live({ startedDaysAgo: 30 });
     const ev = await makeEvaluation({ sampleId: oldEval.s.samples[0].id, sessionId: oldEval.s.id, cupperId: oldEval.owner, values: 6 });
-    await prisma.evaluation.update({ where: { id: ev.id }, data: { updatedAt: new Date(Date.now() - 8 * DAY) } });
+    await prisma.evaluation.update({ where: { id: ev.id }, data: { updatedAt: new Date(NOW - 8 * DAY) } });
 
-    const r = await closeIdleLiveSessions(25);
+    const r = await closeIdleLiveSessions(25, NOW);
     expect(r.idleClosed).toBe(2);
     expect(r.idleTruncated).toBe(false);
     expect(r.results.map((x) => x.id).sort()).toEqual([abandoned.s.id, oldEval.s.id].sort());
@@ -294,17 +336,17 @@ describe("closeIdleLiveSessions (Kim C3)", () => {
     const a = await live({ startedDaysAgo: 20 });
     const b = await live({ startedDaysAgo: 15 });
     const c = await live({ startedDaysAgo: 10 });
-    const first = await closeIdleLiveSessions(2);
+    const first = await closeIdleLiveSessions(2, NOW);
     expect(first.idleTruncated).toBe(true);
     expect(first.results.map((x) => x.id)).toEqual([a.s.id, b.s.id]);
     expect((await prisma.cuppingSession.findUniqueOrThrow({ where: { id: c.s.id } })).status).toBe("active");
-    const second = await closeIdleLiveSessions(2);
+    const second = await closeIdleLiveSessions(2, NOW);
     expect(second.results.map((x) => x.id)).toEqual([c.s.id]);
     expect(second.idleTruncated).toBe(false);
   });
 
   it("the boundary is exact: 7 days idle closes, one minute less does not", async () => {
-    const now = Date.now();
+    const now = NOW;
     const edge = await live({ startedDaysAgo: 0 });
     await prisma.cuppingSession.update({ where: { id: edge.s.id }, data: { startedAt: new Date(now - LIVE_AUTO_CLOSE_MS + 60_000) } });
     expect((await closeIdleLiveSessions(25, now)).idleClosed).toBe(0);
@@ -316,7 +358,7 @@ describe("closeIdleLiveSessions (Kim C3)", () => {
     const b = await live({ startedDaysAgo: 15 });
     const c = await live({ startedDaysAgo: 10 });
     hoisted.throwFor = [a.s.id]; // the oldest, so it is processed FIRST
-    const r = await closeIdleLiveSessions(25);
+    const r = await closeIdleLiveSessions(25, NOW);
     expect(hoisted.threw).toBe(1);
     const ra = r.results.find((x) => x.id === a.s.id)!;
     expect(ra.closed).toBe(false);
@@ -332,7 +374,7 @@ describe("closeIdleLiveSessions (Kim C3)", () => {
   it("H2: idle 7 to under 30 days closes WITH emails, 30 days or more closes SILENTLY (finalized, no email, no delivery row)", async () => {
     const withEmails = await live({ startedDaysAgo: 29 });
     const silent = await live({ startedDaysAgo: 45 });
-    const r = await closeIdleLiveSessions(25);
+    const r = await closeIdleLiveSessions(25, NOW);
     expect(r.idleClosed).toBe(2);
     expect(r.idleClosedSilently).toBe(1);
     expect(r.results.find((x) => x.id === silent.s.id)?.silent).toBe(true);
@@ -350,7 +392,7 @@ describe("closeIdleLiveSessions (Kim C3)", () => {
   });
 
   it("H2 boundary: exactly 30 days idle is silent, one minute less is not", async () => {
-    const now = Date.now();
+    const now = NOW;
     const justUnder = await live({ startedDaysAgo: 0 });
     const exactly = await live({ startedDaysAgo: 0 });
     await prisma.cuppingSession.update({ where: { id: justUnder.s.id }, data: { startedAt: new Date(now - IDLE_SILENT_CLOSE_MS + 60_000) } });
@@ -366,7 +408,7 @@ describe("closeIdleLiveSessions (Kim C3)", () => {
     const a = await live({ startedDaysAgo: 20 });
     const b = await live({ startedDaysAgo: 15 });
     let calls = 0;
-    const r = await closeIdleLiveSessions(25, Date.now(), { mayStart: () => ++calls <= 1 });
+    const r = await closeIdleLiveSessions(25, NOW, { mayStart: () => ++calls <= 1 });
     expect(r.idleBudgetTruncated).toBe(true);
     expect(r.idleClosed).toBe(1);
     expect((await prisma.cuppingSession.findUniqueOrThrow({ where: { id: a.s.id } })).status).toBe("closed");
@@ -377,12 +419,12 @@ describe("closeIdleLiveSessions (Kim C3)", () => {
     const a = await live({ startedDaysAgo: 20 });
     const b = await live({ startedDaysAgo: 15 });
     let first = true;
-    const r = await closeIdleLiveSessions(25, Date.now(), {
+    const r = await closeIdleLiveSessions(25, NOW, {
       // runs right before the re-check of the first candidate (a): someone saves an evaluation
       mayStart: async () => {
         if (first) {
           first = false;
-          await makeEvaluation({ sampleId: a.s.samples[0].id, sessionId: a.s.id, cupperId: a.owner, values: 6 });
+          await evalAt(a.s.samples[0].id, a.s.id, a.owner, NOW);
         }
         return true;
       },
@@ -401,13 +443,13 @@ describe("closeIdleLiveSessions walks past failing candidates (L2)", () => {
     const owner = await makeUser({ name: "O" });
     const mk = async (daysAgo: number) => {
       const s = await makeSession({ ownerId: owner, isGroup: true, samples: [{}] });
-      await prisma.cuppingSession.update({ where: { id: s.id }, data: { startedAt: new Date(Date.now() - daysAgo * DAY) } });
+      await prisma.cuppingSession.update({ where: { id: s.id }, data: { startedAt: new Date(NOW - daysAgo * DAY) } });
       return s;
     };
     const bad = [await mk(20), await mk(19), await mk(18), await mk(17), await mk(16)];
     const healthy = await mk(10);
     hoisted.throwFor = bad.map((b) => b.id);
-    const r = await closeIdleLiveSessions(5);
+    const r = await closeIdleLiveSessions(5, NOW);
     expect(hoisted.threw).toBe(5);
     expect(r.idleFailed).toBe(5);
     expect(r.examined).toBe(6);
@@ -420,9 +462,9 @@ describe("closeIdleLiveSessions walks past failing candidates (L2)", () => {
     const owner = await makeUser({ name: "O" });
     for (const d of [20, 19, 18]) {
       const s = await makeSession({ ownerId: owner, isGroup: true, samples: [{}] });
-      await prisma.cuppingSession.update({ where: { id: s.id }, data: { startedAt: new Date(Date.now() - d * DAY) } });
+      await prisma.cuppingSession.update({ where: { id: s.id }, data: { startedAt: new Date(NOW - d * DAY) } });
     }
-    const r = await closeIdleLiveSessions(2);
+    const r = await closeIdleLiveSessions(2, NOW);
     expect(r.idleClosed).toBe(2);
     expect(r.examined).toBe(2);
     expect(r.idleTruncated).toBe(true);
@@ -432,22 +474,28 @@ describe("closeIdleLiveSessions walks past failing candidates (L2)", () => {
 // Second review M-A: a silent idle close whose finalize failed must NOT email the old
 // backlog when the cron repair pass runs the next day.
 describe("repair pass after a silent idle close (M-A)", () => {
+  // The repair owes work only once `Date.now()` is past closedAt + the grace: run on the fixed clock.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW);
+  });
+  afterEach(() => vi.useRealTimers());
   async function liveIdle(days: number) {
     const owner = await makeUser({ name: "O" });
     const member = await makeUser({ name: "M" });
     const s = await makeSession({ ownerId: owner, isGroup: true, participants: [member], samples: [{}] });
-    await prisma.cuppingSession.update({ where: { id: s.id }, data: { startedAt: new Date(Date.now() - days * DAY) } });
+    await prisma.cuppingSession.update({ where: { id: s.id }, data: { startedAt: new Date(NOW - days * DAY) } });
     return { s, owner };
   }
   /** Moves the close back so the 5-minute repair grace has passed, as the next day's run sees it. */
   async function ageTheClose(id: string, closedDaysAgo: number) {
-    await prisma.cuppingSession.update({ where: { id }, data: { closedAt: new Date(Date.now() - closedDaysAgo * DAY) } });
+    await prisma.cuppingSession.update({ where: { id }, data: { closedAt: new Date(NOW - closedDaysAgo * DAY) } });
   }
 
   it("idle 90 days, history sync throws: closed, not finalized, no ledger row; the repair is silent too", async () => {
     const { s } = await liveIdle(90);
     hoisted.historyThrows = true;
-    const r = await closeIdleLiveSessions(5);
+    const r = await closeIdleLiveSessions(5, NOW);
     expect(r.idleClosed).toBe(1);
     expect(r.idleClosedSilently).toBe(1);
     const closed = await prisma.cuppingSession.findUniqueOrThrow({ where: { id: s.id } });
@@ -469,11 +517,11 @@ describe("repair pass after a silent idle close (M-A)", () => {
   it("an evaluation touched AFTER the close does not make the session look recently active", async () => {
     const { s, owner } = await liveIdle(90);
     hoisted.historyThrows = true;
-    await closeIdleLiveSessions(5);
+    await closeIdleLiveSessions(5, NOW);
     hoisted.historyThrows = false;
     await ageTheClose(s.id, 1);
     // updatedAt = now, which is after closedAt (what the aggregate re-fire of a finalize does)
-    await makeEvaluation({ sampleId: s.samples[0].id, sessionId: s.id, cupperId: owner, values: 6 });
+    await evalAt(s.samples[0].id, s.id, owner, NOW);
     await repairClosedSession(s.id);
     expect(sendCloseEmails).not.toHaveBeenCalled();
   });
@@ -481,8 +529,8 @@ describe("repair pass after a silent idle close (M-A)", () => {
   it("counter-case: a deadline (async) session whose finalize failed is repaired WITH emails, as today", async () => {
     const owner = await makeUser({ name: "O" });
     const member = await makeUser({ name: "M" });
-    const s = await makeSession({ ownerId: owner, isGroup: true, participants: [member], samples: [{}], closesAt: new Date(Date.now() - 90 * DAY) });
-    await prisma.cuppingSession.update({ where: { id: s.id }, data: { isAsync: true, startedAt: new Date(Date.now() - 100 * DAY) } });
+    const s = await makeSession({ ownerId: owner, isGroup: true, participants: [member], samples: [{}], closesAt: new Date(NOW - 90 * DAY) });
+    await prisma.cuppingSession.update({ where: { id: s.id }, data: { isAsync: true, startedAt: new Date(NOW - 100 * DAY) } });
     hoisted.historyThrows = true;
     const first = await closeSessionInternal(s.id, { reason: "cron", emails: "await" });
     expect(first.closed).toBe(true);
@@ -498,11 +546,201 @@ describe("repair pass after a silent idle close (M-A)", () => {
   it("a live session idle 10 days (emails by design) is repaired WITH emails", async () => {
     const { s } = await liveIdle(10);
     hoisted.historyThrows = true;
-    await closeIdleLiveSessions(5);
+    await closeIdleLiveSessions(5, NOW);
     hoisted.historyThrows = false;
     await ageTheClose(s.id, 1);
     sendCloseEmails.mockClear();
     await repairClosedSession(s.id);
     expect(sendCloseEmails).toHaveBeenCalledWith(s.id);
+  });
+});
+
+// ─── Third round: the owner's grandfather rule ──────────────────────────────────────────────
+// A session STARTED before IDLE_RULE_EFFECTIVE_AT is never closed with emails; it closes silently
+// at 30 idle days, and it gets no new 24 h reminder. TODO(kim-validar:C3)
+describe("grandfathered sessions (started before the idle rule)", () => {
+  // The repair owes work only once `Date.now()` is past closedAt + the grace: run on the pass clock.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(EFF + 10 * DAY);
+  });
+  afterEach(() => vi.useRealTimers());
+  // The pass runs ten days after the rule shipped.
+  const PASS_AT = EFF + 10 * DAY;
+  async function liveAt(startedAt: number) {
+    const owner = await makeUser({ name: "O" });
+    const member = await makeUser({ name: "M" });
+    const s = await makeSession({ ownerId: owner, isGroup: true, participants: [member], samples: [{}] });
+    await prisma.cuppingSession.update({ where: { id: s.id }, data: { startedAt: new Date(startedAt) } });
+    return { s, owner, member };
+  }
+  const statusOf = async (id: string) => (await prisma.cuppingSession.findUniqueOrThrow({ where: { id } })).status;
+
+  it("a grandfathered session idle 10 days is NOT a candidate (not even fetched) and is not closed", async () => {
+    // started 0.0 d before the rule is still grandfathered: 1 ms before it, idle 10 d at PASS_AT
+    const g = await liveAt(EFF - 1);
+    const r = await closeIdleLiveSessions(25, PASS_AT);
+    expect(r.examined).toBe(0); // the candidate query never returned it
+    expect(r.idleClosed).toBe(0);
+    expect(r.results).toEqual([]);
+    expect(await statusOf(g.s.id)).toBe("active");
+    expect(sendCloseEmails).not.toHaveBeenCalled();
+  });
+
+  it("a grandfathered session idle 31 days is closed SILENTLY, and its repair is silent too", async () => {
+    const started = PASS_AT - 31 * DAY;
+    expect(started).toBeLessThan(EFF); // started 2026-11-17: before the rule
+    const g = await liveAt(started);
+    hoisted.historyThrows = true; // finalize fails halfway: closed, not finalized
+    const r = await closeIdleLiveSessions(25, PASS_AT);
+    expect(r.idleClosed).toBe(1);
+    expect(r.idleClosedSilently).toBe(1);
+    expect(r.results[0].silent).toBe(true);
+    expect(sendCloseEmails).not.toHaveBeenCalled();
+    const closed = await prisma.cuppingSession.findUniqueOrThrow({ where: { id: g.s.id } });
+    expect(closed.status).toBe("closed");
+    expect(closed.closeFinalizedAt).toBeNull();
+    expect(await prisma.closeEmailDelivery.count({ where: { sessionId: g.s.id } })).toBe(0);
+
+    hoisted.historyThrows = false;
+    await prisma.cuppingSession.update({ where: { id: g.s.id }, data: { closedAt: new Date(PASS_AT - DAY) } });
+    const rep = await repairClosedSession(g.s.id);
+    expect(rep.finalized).toBe(true);
+    expect(sendCloseEmails).not.toHaveBeenCalled();
+  });
+
+  it("a grandfathered session idle exactly 30 days is silent, one minute less is left alone", async () => {
+    // started 2026-11-08 12:00-ish, well before the rule
+    const at = EFF - 5 * DAY + IDLE_SILENT_CLOSE_MS;
+    const exactly = await liveAt(at - IDLE_SILENT_CLOSE_MS);
+    const justUnder = await liveAt(at - IDLE_SILENT_CLOSE_MS + 60_000);
+    const r = await closeIdleLiveSessions(25, at);
+    expect(r.results.map((x) => x.id)).toEqual([exactly.s.id]);
+    expect(r.results[0].silent).toBe(true);
+    expect(await statusOf(justUnder.s.id)).toBe("active");
+  });
+
+  it("a session started after the rule and idle 9 days is closed WITH emails, and its repair has emails", async () => {
+    const n = await liveAt(EFF + DAY); // idle 9 d at PASS_AT
+    hoisted.historyThrows = true;
+    const r = await closeIdleLiveSessions(25, PASS_AT);
+    expect(r.idleClosed).toBe(1);
+    expect(r.idleClosedSilently).toBe(0);
+    expect(r.results[0].silent).toBeUndefined();
+    sendCloseEmails.mockClear(); // the idle close itself mails; what is checked below is the repair
+    hoisted.historyThrows = false;
+    await prisma.cuppingSession.update({ where: { id: n.s.id }, data: { closedAt: new Date(PASS_AT - DAY) } });
+    await repairClosedSession(n.s.id);
+    expect(sendCloseEmails).toHaveBeenCalledWith(n.s.id);
+  });
+
+  it("a session that started exactly at the effective instant follows the new rule (7 days = emails)", async () => {
+    const at = await liveAt(EFF);
+    const r = await closeIdleLiveSessions(25, EFF + 7 * DAY);
+    expect(r.results.map((x) => x.id)).toEqual([at.s.id]);
+    expect(r.results[0].silent).toBeUndefined();
+    expect(sendCloseEmails).toHaveBeenCalledWith(at.s.id);
+  });
+
+  it("a session started after the rule and idle 31 days is closed silently", async () => {
+    const n = await liveAt(EFF + DAY);
+    const r = await closeIdleLiveSessions(25, EFF + DAY + 31 * DAY);
+    expect(r.idleClosedSilently).toBe(1);
+    expect(sendCloseEmails).not.toHaveBeenCalled();
+    expect(await statusOf(n.s.id)).toBe("closed");
+  });
+
+  it("the walk is not filled by grandfathered sessions that are left alone", async () => {
+    // Six grandfathered sessions (older start, idle 15 days) sit ahead of one new session idle 8 days.
+    for (let i = 0; i < 6; i++) await liveAt(EFF - 5 * DAY - i * 60_000);
+    const fresh = await liveAt(EFF + 2 * DAY);
+    const r = await closeIdleLiveSessions(1, EFF + 10 * DAY);
+    expect(r.results.map((x) => x.id)).toEqual([fresh.s.id]);
+    expect(r.examined).toBe(1);
+  });
+});
+
+describe("live_idle reminder and the grandfather rule", () => {
+  it("no reminder for a grandfathered session; a new one idle between 24 h and 7 days gets exactly one", async () => {
+    const at = EFF + 3 * DAY;
+    const mk = async (startedAt: number) => {
+      const owner = await makeUser({ name: "O" });
+      const s = await makeSession({ ownerId: owner, isGroup: true, samples: [{}] });
+      await prisma.cuppingSession.update({ where: { id: s.id }, data: { startedAt: new Date(startedAt) } });
+      return s;
+    };
+    const grandfathered = await mk(EFF - 2 * DAY); // idle 5 d
+    const fresh = await mk(EFF); // idle 3 d
+    const r = await sendLiveIdleReminders(25, at);
+    expect(r.sent).toBe(1);
+    expect(sendEmail).toHaveBeenCalledTimes(1);
+    expect(await prisma.sessionReminderDelivery.count({ where: { sessionId: grandfathered.id } })).toBe(0);
+    expect(await prisma.sessionReminderDelivery.count({ where: { sessionId: fresh.id, kind: "live_idle" } })).toBe(1);
+    // and a second run sends nothing more (the ledger is once per session)
+    sendEmail.mockClear();
+    expect((await sendLiveIdleReminders(25, at)).sent).toBe(0);
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Review lows L2 and L3 ──────────────────────────────────────────────────────────────────
+describe("repair pass: the ledger count and the deleted creator (L2, L3)", () => {
+  // The repair owes work only once `Date.now()` is past closedAt + the grace: run on the fixed clock.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW);
+  });
+  afterEach(() => vi.useRealTimers());
+  it("L2: a 90-day silent close that ALREADY has a close_email_deliveries row is repaired WITH emails", async () => {
+    const owner = await makeUser({ name: "O" });
+    const member = await makeUser({ name: "M" });
+    const s = await makeSession({ ownerId: owner, isGroup: true, participants: [member], samples: [{}] });
+    await prisma.cuppingSession.update({ where: { id: s.id }, data: { startedAt: new Date(NOW - 90 * DAY) } });
+    hoisted.historyThrows = true;
+    expect((await closeIdleLiveSessions(5, NOW)).idleClosedSilently).toBe(1);
+    hoisted.historyThrows = false;
+    await prisma.cuppingSession.update({ where: { id: s.id }, data: { closedAt: new Date(NOW - DAY) } });
+
+    // Somebody already started emailing it (a failed "Reenviar"): one ledger row
+    await prisma.closeEmailDelivery.create({ data: { sessionId: s.id, userId: member, status: "failed" } });
+    await repairClosedSession(s.id);
+    expect(sendCloseEmails).toHaveBeenCalledWith(s.id);
+  });
+
+  it("L3: a session whose creator is a deleted-account placeholder is repaired WITHOUT emails, a normal owner's WITH", async () => {
+    const mk = async (deleted: boolean) => {
+      const owner = await makeUser({ name: "O" });
+      const member = await makeUser({ name: "M" });
+      const s = await makeSession({
+        ownerId: owner,
+        isGroup: true,
+        participants: [member],
+        samples: [{}],
+        closesAt: new Date(NOW - 90 * DAY),
+      });
+      await prisma.cuppingSession.update({ where: { id: s.id }, data: { isAsync: true, startedAt: new Date(NOW - 100 * DAY) } });
+      hoisted.historyThrows = true;
+      const first = await closeSessionInternal(s.id, { reason: "cron", emails: "await" });
+      expect(first.finalized).toBe(false);
+      hoisted.historyThrows = false;
+      if (deleted) {
+        // what account deletion leaves behind: a `deleted_<random>` profile the session now points at
+        const ph = `deleted_${s.id.slice(0, 8)}`;
+        await prisma.profile.create({ data: { id: ph, displayName: "Cuenta eliminada" } });
+        await prisma.cuppingSession.update({ where: { id: s.id }, data: { createdBy: ph } });
+      }
+      await prisma.cuppingSession.update({ where: { id: s.id }, data: { closedAt: new Date(NOW - DAY) } });
+      return s;
+    };
+    const gone = await mk(true);
+    sendCloseEmails.mockClear();
+    const rep = await repairClosedSession(gone.id);
+    expect(rep.finalized).toBe(true);
+    expect(sendCloseEmails).not.toHaveBeenCalled();
+
+    const normal = await mk(false);
+    sendCloseEmails.mockClear();
+    await repairClosedSession(normal.id);
+    expect(sendCloseEmails).toHaveBeenCalledWith(normal.id);
   });
 });

@@ -1863,12 +1863,18 @@ them are simulated, Kim has not confirmed them):
   without evaluations ("activity" means an evaluation being saved, nothing else; new pass, close
   reason `idle`). **The backlog rule (review H2):** idle 7 days up to under 30 days = the designed
   flow, the close emails go out; idle **30 days or more** = closed **silently** (no email, still
-  finalized; the owner can use "Reenviar correos"). If a finalize step of such a close failed, the
+  finalized; the owner can use "Reenviar"). **Sessions that started before the rule (owner decision):**
+  a session STARTED before **2026-11-18 00:00 UTC** (`IDLE_RULE_EFFECTIVE_AT`) is grandfathered: it is
+  never closed with emails, only closed silently if it reaches **30 idle days**, and it gets no new
+  24 h reminder (its organiser may already have had the old one, "No la cerramos por ti", and must
+  not be promised a 7-day close). Sessions started on or after that day follow the designed rule.
+  If a finalize step of such a close failed, the
   next day's repair pass is silent too (`repairEmailMode`: live group session, idle 30 days or more
   at the close, no close-email ledger row), so the backlog is not mailed by the repair either.
   **Known and accepted:** an owner who closes by hand a live session idle 30+ days, and whose
   finalize fails before the email step, is repaired without emails; their results page says "Esta
-  cata se cerró sola por inactividad y no se enviaron correos" and **Reenviar** sends them. So the first production run never mails
+  cata se cerró sola por inactividad y no se enviaron correos. Puedes enviarlos con «Reenviar»." and **Reenviar** sends them. A session whose creator deleted their account is also repaired without
+  emails (account deletion closes without them). So the first production run never mails
   people about sessions abandoned months ago, and, because the job is daily, after its first week
   only that backlog can cross 30 days.
 - **"Cerrar ahora" (review M2).** If the nightly job fails, the owner of a group session whose
@@ -1884,11 +1890,14 @@ No Prisma migration, no new environment variable, no new cron entry.
 
 ### Order
 
-1. **Before the deploy: read the idle counts** (step 2, lines 2a and 2b). The idle pass closes every
-   live session idle for 7 days or more, at most **5 per run**, oldest first. Those idle **under 30
-   days** (line 2a) are closed WITH the close emails, to everyone in them: the line also says how
-   many people have an email. Those idle **30 days or more** (line 2b) are closed silently. If 2a
-   is large or surprising, tell Ricardo before deploying: at 5 per run it takes N/5 days to drain.
+1. **Before the deploy: read the idle counts** (step 2, lines 2a, 2b and 2c). The idle pass closes at
+   most **5 sessions per run**, oldest first. **2a** = sessions STARTED on or after 2026-11-18, idle 7
+   to under 30 days: closed WITH the close emails, to everyone in them (the line says how many have an
+   email). Before the 25th of November 2a is normally 0 (nothing started on or after the 18th can be
+   idle 7 days yet). **2b** = every live session idle 30 days or more: closed silently, grandfathered
+   or not. **2c** = sessions started BEFORE the rule, idle 7 to under 30 days: left alone; they close
+   silently only if they reach 30 idle days (the line gives the date). If 2a is large or surprising,
+   tell Ricardo before deploying: at 5 per run it takes N/5 days to drain.
 2. **Dry run** (fail-safe: one statement, nothing is applied, NO placeholders). Open
    `prisma/sql/dry-runs/phase28_dry_run.sql`, paste the whole file into the Supabase **SQL editor of
    the production project** and run it. Expected: a red error starting `PHASE 28 DRY RUN: NOTHING
@@ -1896,12 +1905,16 @@ No Prisma migration, no new environment variable, no new cron entry.
    - line 1: how many open group sessions have every participant submitted today, i.e. whose
      participants lose group visibility when PHASE 28 is applied (read it; 0 is fine). It lists up
      to 10 of them by name, date, participants and how many submitted (no ids);
-   - line 2a: **live sessions idle 7 to 30 days** and **how many participants with an email** would
-     get a close email (the numbers to read in step 1), with up to 10 by name, last activity and
-     participants. Idle = now minus the later of the start and the last saved evaluation, 7 days or
-     more, the same boundary as the code;
-   - line 2b: **live sessions idle more than 30 days**, which the pass closes silently, listed the
+   - line 2a: **sessions started on or after 2026-11-18, idle 7 to under 30 days** and **how many
+     participants with an email** would get a close email (the numbers to read in step 1), with up to
+     10 by name, last activity and participants. Idle = now minus the later of the start and the last
+     saved evaluation, 7 days or more, the same boundary as the code. The top of the DO block holds
+     the effective date as one literal (the same instant as `IDLE_RULE_EFFECTIVE_AT`);
+   - line 2b: **every live session idle 30 days or more**, which the pass closes silently, listed the
      same way;
+   - line 2c: **sessions started before the rule, idle 7 to under 30 days**: "left alone: started
+     before the rule; they close silently only if they reach 30 idle days", with name, last activity
+     and the date they would reach 30 days (an evaluation saved before then restarts their idle clock);
    - line 3 measures the function installed NOW: before PHASE 28 it equals line 1 (it is the old
      function); once PHASE 28 is applied it reads `0` (run the dry run again afterwards and this is
      the expected value);
@@ -1933,7 +1946,7 @@ No Prisma migration, no new environment variable, no new cron entry.
    ```
 
    The JSON now has `idleClosed` (sessions closed by the idle pass in this run),
-   `idleClosedSilently` (of those, the ones idle 30 days or more, closed without email),
+   `idleClosedSilently` (of those, the ones idle 30 days or more, closed without email; a grandfathered session only ever appears here),
    `idleExamined` and `idleFailed` (candidates walked, and those whose close threw),
    `repairBudgetTruncated` (the 150 s budget stopped the repairs),
    `idleTruncated` (`true` means the batch of 5 was full and more are waiting for the next run),
@@ -1941,7 +1954,7 @@ No Prisma migration, no new environment variable, no new cron entry.
    (the same for the deadline closes; `truncated` is true for either) and `idleResults` (id,
    `closed`, `emailsQueued`, `silent` when closed silently, and `error` when one failed; a failure
    on one session never stops the others). `idleClosed` should match what you read in step 2
-   (2a plus 2b), up to the batch of 5 per run. In Vercel
+   (2a plus 2b; 2c are left alone), up to the batch of 5 per run. In Vercel
    logs, `cron.closeIdle` (error level) names a session whose close failed. A session closed this way
    shows the neutral results notice ("La cata se cerró.") and the usual close email; it never says
    the organizer closed it.

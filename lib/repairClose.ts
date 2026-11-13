@@ -4,24 +4,27 @@ import "server-only";
 // review M-A). It only decides the email mode, through the pure `repairEmailMode`
 // (lib/closeRules.ts), and then calls the ONE close routine. A silent idle close
 // (live group, idle 30+ days at close, no close-email ledger row) whose finalize
-// failed halfway is repaired WITHOUT mailing the old backlog; everything else
-// keeps "await".
+// failed halfway is repaired WITHOUT mailing the old backlog, and so is a session
+// whose creator is a deleted-account placeholder (L3); everything else keeps "await".
 
 import { prisma } from "@/lib/prisma";
 import { closeSessionInternal, type CloseResult } from "@/lib/closeSession";
 import { closedSilently, idleAtCloseMs, repairEmailMode } from "@/lib/closeRules";
+import { isDeletedProfileId } from "@/lib/accountDeletion/deletedProfile";
 
 export type CloseSilenceFacts = {
   isLiveGroup: boolean;
+  startedAt: Date | null;
   idleAtCloseMs: number | null;
   closeEmailLedgerRows: number;
+  ownerDeleted: boolean;
 };
 
-/** The three inputs of the silent-close rule for one session (read only). */
+/** The inputs of the silent-close / repair rules for one session (read only). */
 export async function loadCloseSilenceFacts(sessionId: string): Promise<CloseSilenceFacts | null> {
   const s = await prisma.cuppingSession.findUnique({
     where: { id: sessionId },
-    select: { isGroup: true, isAsync: true, closesAt: true, startedAt: true, closedAt: true },
+    select: { isGroup: true, isAsync: true, closesAt: true, startedAt: true, closedAt: true, createdBy: true },
   });
   if (!s) return null;
   const isLiveGroup = s.isGroup && !s.isAsync && s.closesAt === null;
@@ -36,8 +39,10 @@ export async function loadCloseSilenceFacts(sessionId: string): Promise<CloseSil
   ]);
   return {
     isLiveGroup,
+    startedAt: s.startedAt,
     idleAtCloseMs: idleAtCloseMs(s, last?._max.updatedAt ?? null),
     closeEmailLedgerRows: rows,
+    ownerDeleted: isDeletedProfileId(s.createdBy),
   };
 }
 

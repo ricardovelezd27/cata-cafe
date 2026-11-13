@@ -13,11 +13,15 @@
 --   * line 1: open group sessions where everyone has submitted today (name,
 --     date, participants, submitted). Their participants lose group visibility
 --     when PHASE 28 is applied.
---   * line 2a: live sessions idle 7 to 30 days. The idle pass of the daily cron
---     (runbook 33) closes them WITH the close emails, 5 per run, oldest first.
---     "participants with an email" is how many people would receive one.
---   * line 2b: live sessions idle MORE than 30 days. The same pass closes them
---     SILENTLY (no email): sessions abandoned long ago must not mail anyone.
+--   * line 2a: live sessions STARTED on or after the idle rule's effective date
+--     (v_effective below), idle 7 to under 30 days. The idle pass of the daily
+--     cron (runbook 33) closes them WITH the close emails, 5 per run, oldest
+--     first. "participants with an email" is how many people would receive one.
+--   * line 2b: every live session idle 30 days or more. The same pass closes
+--     them SILENTLY (no email): sessions abandoned long ago must not mail anyone.
+--   * line 2c: live sessions started BEFORE the effective date ("grandfathered",
+--     owner decision), idle 7 to under 30 days. They are left alone: they close
+--     silently only if they reach 30 idle days. The line gives that date.
 --   Idle = now minus the later of the start and the last saved evaluation, the
 --   same boundary as the code (7 days or more, 30 days or more).
 --   * line 3 measures the function installed NOW: before PHASE 28 it equals
@@ -29,7 +33,12 @@
 -- NO placeholders. NEVER add BEGIN / COMMIT around this file.
 DO $dry$
 DECLARE
+  -- The same instant as IDLE_RULE_EFFECTIVE_AT in lib/closeRules.ts (UTC; "startedAt" is
+  -- timestamp(3) holding UTC). tests/closeRulesGrandfather.test.ts checks the two are equal.
+  v_effective timestamp := '2026-11-18 00:00:00';
   v_nobody  text := '00000000-0000-4000-8000-000000000000';  -- a viewer who owns nothing
+  v_grand_n int;
+  v_grand_list text;
   v_lose_n  int;
   v_lose_list text;
   v_old_true int;
@@ -96,18 +105,19 @@ BEGIN
         AND cs.status = 'active' AND cs."startedAt" IS NOT NULL
     ) x
     WHERE x.last_activity <= ((now() AT TIME ZONE 'utc') - interval '7 days');
-  -- 2a. 7 days or more, under 30: closed WITH the close emails
+  -- 2a. started ON or AFTER the effective date, idle 7 days or more and under 30: closed WITH the close emails
   SELECT count(*), COALESCE(sum(people_with_email), 0) INTO v_idle_n, v_idle_people
-    FROM dry_idle WHERE last_activity > ((now() AT TIME ZONE 'utc') - interval '30 days');
+    FROM dry_idle WHERE "startedAt" >= v_effective AND last_activity > ((now() AT TIME ZONE 'utc') - interval '30 days');
   SELECT string_agg(format('      - "%s", last activity %s, %s participants (%s with an email)', name,
                            to_char(last_activity, 'YYYY-MM-DD'), people, people_with_email),
                     E'\n' ORDER BY last_activity, name)
     INTO v_idle_list
-    FROM (SELECT * FROM dry_idle WHERE last_activity > ((now() AT TIME ZONE 'utc') - interval '30 days')
+    FROM (SELECT * FROM dry_idle
+           WHERE "startedAt" >= v_effective AND last_activity > ((now() AT TIME ZONE 'utc') - interval '30 days')
           ORDER BY last_activity, name LIMIT 10) z;
-  v_out := v_out || format(E'\n 2a live sessions idle 7 to 30 days (closed WITH emails, 5 per run, oldest first; read these numbers): %s sessions, %s participants with an email%s', v_idle_n, v_idle_people,
+  v_out := v_out || format(E'\n 2a live sessions started on or after the rule (%s), idle 7 days to under 30 (closed WITH emails, 5 per run, oldest first; read these numbers): %s sessions, %s participants with an email%s', to_char(v_effective, 'YYYY-MM-DD'), v_idle_n, v_idle_people,
     CASE WHEN v_idle_n > 0 THEN E'\n' || v_idle_list ELSE '' END);
-  -- 2b. 30 days or more: closed silently
+  -- 2b. 30 days or more (started before or after the rule): closed silently
   SELECT count(*) INTO v_silent_n
     FROM dry_idle WHERE last_activity <= ((now() AT TIME ZONE 'utc') - interval '30 days');
   SELECT string_agg(format('      - "%s", last activity %s, %s participants', name,
@@ -116,8 +126,20 @@ BEGIN
     INTO v_silent_list
     FROM (SELECT * FROM dry_idle WHERE last_activity <= ((now() AT TIME ZONE 'utc') - interval '30 days')
           ORDER BY last_activity, name LIMIT 10) w;
-  v_out := v_out || format(E'\n 2b live sessions idle more than 30 days (closed silently, no email; read this number): %s sessions%s', v_silent_n,
+  v_out := v_out || format(E'\n 2b live sessions idle 30 days or more (closed silently, no email; read this number): %s sessions%s', v_silent_n,
     CASE WHEN v_silent_n > 0 THEN E'\n' || v_silent_list ELSE '' END);
+  -- 2c. started BEFORE the effective date (grandfathered), idle 7 days or more and under 30: left alone
+  SELECT count(*) INTO v_grand_n
+    FROM dry_idle WHERE "startedAt" < v_effective AND last_activity > ((now() AT TIME ZONE 'utc') - interval '30 days');
+  SELECT string_agg(format('      - "%s", last activity %s, reaches 30 days on %s', name,
+                           to_char(last_activity, 'YYYY-MM-DD'), to_char(last_activity + interval '30 days', 'YYYY-MM-DD')),
+                    E'\n' ORDER BY last_activity, name)
+    INTO v_grand_list
+    FROM (SELECT * FROM dry_idle
+           WHERE "startedAt" < v_effective AND last_activity > ((now() AT TIME ZONE 'utc') - interval '30 days')
+          ORDER BY last_activity, name LIMIT 10) g;
+  v_out := v_out || format(E'\n 2c live sessions idle 7 days to under 30, left alone: started before the rule; they close silently only if they reach 30 idle days (read this number): %s sessions%s', v_grand_n,
+    CASE WHEN v_grand_n > 0 THEN E'\n' || v_grand_list ELSE '' END);
 
   -- 3. The function installed NOW, for a viewer who owns nothing: true for exactly the sessions of
   --    line 1 until PHASE 28 is applied

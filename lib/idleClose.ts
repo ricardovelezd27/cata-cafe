@@ -10,7 +10,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { closeSessionInternal } from "@/lib/closeSession";
-import { idleCloseEmailMode, isLiveAbandoned, liveIdleMs, LIVE_AUTO_CLOSE_MS } from "@/lib/closeRules";
+import { emailModeForIdleDecision, idleCandidateBands, idleCloseDecision, liveIdleMs } from "@/lib/closeRules";
 import { errorMessage, logError, logWarn } from "@/lib/log";
 
 export type IdleCloseSummary = {
@@ -49,17 +49,24 @@ export async function closeIdleLiveSessions(
   now: number = Date.now(),
   opts: { mayStart?: () => boolean | Promise<boolean> } = {},
 ): Promise<IdleCloseSummary> {
-  const cutoff = new Date(now - LIVE_AUTO_CLOSE_MS);
-  // The evaluation filter keeps sessions that are busy out of the batch (they
-  // would otherwise fill it forever); isLiveAbandoned below is the rule itself.
+  // The bands mirror idleCloseDecision (a grandfathered session idle under 30
+  // days is not fetched at all); the evaluation filter keeps busy sessions out of
+  // the batch (they would otherwise fill it forever). idleCloseDecision below is
+  // the rule itself.
   const candidates = await prisma.cuppingSession.findMany({
     where: {
       isGroup: true,
       isAsync: false,
       closesAt: null,
       status: "active",
-      startedAt: { not: null, lte: cutoff },
-      samples: { none: { evaluations: { some: { updatedAt: { gt: cutoff } } } } },
+      OR: idleCandidateBands(now).map((b) => ({
+        startedAt: {
+          lte: b.startedAtMost,
+          ...(b.startedFrom ? { gte: b.startedFrom } : {}),
+          ...(b.startedBefore ? { lt: b.startedBefore } : {}),
+        },
+        samples: { none: { evaluations: { some: { updatedAt: { gt: b.activityAfter } } } } },
+      })),
     },
     select: { id: true },
     orderBy: { startedAt: "asc" },
@@ -96,9 +103,11 @@ export async function closeIdleLiveSessions(
       _max: { updatedAt: true },
     });
     const lastAt = last._max.updatedAt ?? null;
-    if (!isLiveAbandoned(s, lastAt, now)) continue;
-    const idleMs = liveIdleMs(s, lastAt, now) ?? 0;
-    const mode = idleCloseEmailMode(idleMs);
+    const idleMs = liveIdleMs(s, lastAt, now);
+    if (idleMs === null) continue;
+    const decision = idleCloseDecision({ startedAt: s.startedAt, idleMs });
+    if (decision === "none") continue;
+    const mode = emailModeForIdleDecision(decision);
     try {
       const r = await closeSessionInternal(s.id, { reason: "idle", emails: mode });
       summary.results.push({

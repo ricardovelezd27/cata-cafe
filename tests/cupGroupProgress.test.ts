@@ -64,9 +64,19 @@ describe("cup page / CupClient wiring", () => {
   it("the page passes the two real ids, never a literal or a derived boolean (second review L6a)", () => {
     const call = page.slice(page.indexOf("cupGroupProgressForViewer({"));
     const args = call.slice(0, call.indexOf("});"));
-    expect(args).toContain("viewerId: user.id");
-    expect(args).toContain("ownerId: session.createdBy");
+    // The WHOLE argument, not a prefix: `viewerId: user.id && session.createdBy` (a boolean
+    // smuggled in as the id) must fail (third review L4).
+    expect(args).toMatch(/^\s*viewerId: user\.id,\s*$/m);
+    expect(args).toMatch(/^\s*ownerId: session\.createdBy,\s*$/m);
     expect(args).not.toMatch(/isOwner/);
+  });
+
+  it("the whole-argument match rejects the boolean-id mutation (sanity)", () => {
+    const WHOLE = /^\s*viewerId: user\.id,\s*$/m;
+    expect(WHOLE.test("    viewerId: user.id,\n    ownerId: session.createdBy,")).toBe(true);
+    expect(WHOLE.test("    viewerId: user.id && session.createdBy,\n")).toBe(false);
+    expect(WHOLE.test("    viewerId: user.id === session.createdBy,\n")).toBe(false);
+    expect(WHOLE.test("    viewerId: user.id ?? \"\",\n")).toBe(false);
   });
 
   it("CupClient renders the submitted line only for the owner", () => {

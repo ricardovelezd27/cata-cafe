@@ -254,10 +254,11 @@ export function isLiveIdle(
   return now - last >= LIVE_IDLE_MS;
 }
 
-/** A live session nobody has touched for LIVE_AUTO_CLOSE_MS: same shape as
- *  isLiveIdle (group, not async, no `closesAt`, active, started; idle = time
- *  since max(startedAt, last evaluation update)). Never started and solo
- *  sessions are never abandoned. Pure. TODO(kim-validar:C3) */
+/** A live session the idle pass would close: same shape as isLiveIdle (group,
+ *  not async, no `closesAt`, active, started; idle = time since max(startedAt,
+ *  last evaluation update)) AND `idleCloseDecision` says "emails" or "silent".
+ *  Never started and solo sessions are never abandoned. Pure.
+ *  TODO(kim-validar:C3) */
 export function isLiveAbandoned(
   row: {
     isGroup: boolean;
@@ -270,7 +271,7 @@ export function isLiveAbandoned(
   now: number = Date.now(),
 ): boolean {
   const idle = liveIdleMs(row, lastEvaluationAt, now);
-  return idle !== null && idle >= LIVE_AUTO_CLOSE_MS;
+  return idle !== null && idleCloseDecision({ startedAt: row.startedAt, idleMs: idle }) !== "none";
 }
 
 /** How long a live session has been idle: now minus max(startedAt, last
@@ -301,31 +302,88 @@ export function liveIdleMs(
  *  TODO(kim-validar:C3) */
 export const IDLE_SILENT_CLOSE_MS = 30 * 24 * 3_600_000;
 
-/** Email mode for an idle close: 7 days up to (excluding) 30 days = the
- *  designed flow, emails; 30 days or more = close silently (`skip` stamps
- *  closeFinalizedAt; if a step failed the stamp stays null and the repair pass
- *  applies `repairEmailMode`, which stays silent for the same sessions; the owner
- *  can still use "Reenviar correos"). Pure. TODO(kim-validar:C3) */
-export function idleCloseEmailMode(idleMs: number): "await" | "skip" {
-  return idleMs >= IDLE_SILENT_CLOSE_MS ? "skip" : "await";
+/** The day the idle auto-close ships. A session STARTED before it is
+ *  "grandfathered": its organiser was told by the old reminder "No la cerramos
+ *  por ti", so it is never closed WITH emails by the idle pass; it is closed
+ *  (silently) only after 30 idle days. A session started ON or AFTER this
+ *  instant follows the designed rule (7 idle days = emails, 30 = silent).
+ *  The PHASE 28 dry run carries the same instant as one literal;
+ *  tests/closeRulesGrandfather.test.ts checks the two are equal.
+ *  TODO(kim-validar:C3) */
+export const IDLE_RULE_EFFECTIVE_AT = new Date("2026-11-18T00:00:00Z");
+
+/** Started before the idle rule existed. A session that never started is not
+ *  grandfathered (the idle pass never touches it anyway). Pure. */
+export function isGrandfatheredIdle(startedAt: Date | null): boolean {
+  return startedAt !== null && startedAt.getTime() < IDLE_RULE_EFFECTIVE_AT.getTime();
+}
+
+export type IdleCloseDecision = "none" | "emails" | "silent";
+
+/** THE idle rule (S10 WP4a, owner decision 2026-11): what the idle pass does
+ *  with a live session idle for `idleMs`.
+ *    started ON/AFTER IDLE_RULE_EFFECTIVE_AT: < 7 d none; 7 d to < 30 d emails; >= 30 d silent
+ *    started BEFORE it (grandfathered):       < 30 d none; >= 30 d silent; never emails
+ *    never started (startedAt null):          none
+ *  Every other idle decision (candidate query, reminder, repair pass, the owner's
+ *  "closed silently" line) goes through this function. Pure.
+ *  TODO(kim-validar:C3) */
+export function idleCloseDecision(input: { startedAt: Date | null; idleMs: number }): IdleCloseDecision {
+  if (input.startedAt === null) return "none";
+  if (input.idleMs >= IDLE_SILENT_CLOSE_MS) return "silent";
+  if (isGrandfatheredIdle(input.startedAt)) return "none";
+  return input.idleMs >= LIVE_AUTO_CLOSE_MS ? "emails" : "none";
+}
+
+/** The close routine's email mode for a decision that closes a session
+ *  (`skip` stamps closeFinalizedAt; if a step failed the stamp stays null and the
+ *  repair pass applies `repairEmailMode`, silent for the same sessions). */
+export function emailModeForIdleDecision(d: Exclude<IdleCloseDecision, "none">): "await" | "skip" {
+  return d === "silent" ? "skip" : "await";
+}
+
+/** Candidate bands of the idle pass, mirroring `idleCloseDecision`, so a
+ *  grandfathered session idle under 30 days is not even fetched (it could fill
+ *  the walk). A session is a candidate of a band when it STARTED in
+ *  [startedFrom, startedBefore), at or before `startedAtMost`, and no
+ *  evaluation was saved after `activityAfter`. Pure. */
+export type IdleCandidateBand = {
+  startedFrom?: Date;
+  startedBefore?: Date;
+  startedAtMost: Date;
+  activityAfter: Date;
+};
+export function idleCandidateBands(now: number): IdleCandidateBand[] {
+  const c7 = new Date(now - LIVE_AUTO_CLOSE_MS);
+  const c30 = new Date(now - IDLE_SILENT_CLOSE_MS);
+  return [
+    // grandfathered: only once they reach 30 idle days
+    { startedBefore: IDLE_RULE_EFFECTIVE_AT, startedAtMost: c30, activityAfter: c30 },
+    // started on or after the rule: from 7 idle days
+    { startedFrom: IDLE_RULE_EFFECTIVE_AT, startedAtMost: c7, activityAfter: c7 },
+  ];
 }
 
 /** Should the owner get the 24 h "nobody is cupping" reminder now? Idle for
- *  LIVE_IDLE_MS but NOT yet abandoned: a session idle 7 days or more is about to
- *  be closed by the idle pass of the same run, and the reminder's "si pasan 7
- *  días…" would be false (second review L3). Pure. */
+ *  LIVE_IDLE_MS and the idle rule would still do nothing (under 7 days), AND the
+ *  session is NOT grandfathered: a session that started before the rule existed
+ *  must never be promised a 7-day close it will not get, and its organiser may
+ *  already have had the old reminder (the ledger is once per session). Pure. */
 export function shouldSendLiveIdleReminder(
   row: Parameters<typeof isLiveIdle>[0],
   lastEvaluationAt: Date | null,
   now: number = Date.now(),
 ): boolean {
+  if (isGrandfatheredIdle(row.startedAt)) return false;
   return isLiveIdle(row, lastEvaluationAt, now) && !isLiveAbandoned(row, lastEvaluationAt, now);
 }
 
 /** Idle time AT the moment a live session was closed: closedAt minus the later
- *  of startedAt and the last evaluation update BEFORE the close (later writes,
- *  such as the aggregate re-fire of the finalize, must not count). `null` when
- *  the session never started or is not closed. Pure. */
+ *  of startedAt and the last evaluation update at or before `closedAt`. The
+ *  finalize's aggregate re-fire is raw SQL and does not bump `updatedAt`; the
+ *  `<= closedAt` filter matters for LATER Prisma writes (a guest merge, an
+ *  account deletion) which do, and must not make the session look recently
+ *  active. `null` when the session never started or is not closed. Pure. */
 export function idleAtCloseMs(
   row: { startedAt: Date | null; closedAt: Date | null },
   lastEvaluationBeforeCloseAt: Date | null,
@@ -337,38 +395,47 @@ export function idleAtCloseMs(
 
 /** Was this close a SILENT one (S10 WP4a second review M-A, and the owner's
  *  results-page line)? True exactly when the session is a live group session
- *  (group, not async, no closesAt), it had been idle 30 days or more AT closedAt
- *  (the same boundary as `idleCloseEmailMode`: IDLE_SILENT_CLOSE_MS), and nobody
- *  ever started emailing it (no close_email_deliveries row at all). Pure.
+ *  (group, not async, no closesAt), `idleCloseDecision` says "silent" for the idle
+ *  it had AT closedAt (30 days or more, grandfathered or not), and nobody ever
+ *  started emailing it (no close_email_deliveries row at all). Pure.
  *  TODO(kim-validar:C3) */
 export function closedSilently(input: {
   isLiveGroup: boolean;
+  startedAt: Date | null;
   idleAtCloseMs: number | null;
   closeEmailLedgerRows: number;
 }): boolean {
   return (
     input.isLiveGroup &&
     input.idleAtCloseMs !== null &&
-    idleCloseEmailMode(input.idleAtCloseMs) === "skip" &&
+    idleCloseDecision({ startedAt: input.startedAt, idleMs: input.idleAtCloseMs }) === "silent" &&
     input.closeEmailLedgerRows === 0
   );
 }
 
 /** Email mode of the cron REPAIR pass for a closed-but-unfinalized session.
- *  "skip" exactly when the close was silent (`closedSilently`), so a silent idle
- *  close whose finalize failed halfway is repaired WITHOUT mailing the months-old
- *  backlog the next day; "await" otherwise (deadline sessions and every session
- *  somebody already started emailing keep today's behaviour).
+ *  "skip" when the close was silent (`closedSilently`), so a silent idle close
+ *  whose finalize failed halfway is repaired WITHOUT mailing the months-old
+ *  backlog the next day, or when the creator is a deleted-account placeholder
+ *  (account deletion closes with emails "skip"; a failed finalize must not email
+ *  later). "await" otherwise (deadline sessions and every session somebody
+ *  already started emailing keep today's behaviour). A grandfathered session is
+ *  only ever closed by the idle pass at 30 idle days or more, i.e. silently, so
+ *  its repair agrees without an extra case.
  *  Known and accepted: an OWNER who closed by hand a live session that had been
  *  idle 30+ days, and whose finalize failed before the email step, is repaired
  *  without emails too; their results page says so and "Reenviar correos" sends
- *  them. No migration: derived from closedAt, startedAt, the evaluations and the
- *  ledger. Pure. TODO(kim-validar:C3) */
+ *  them. No migration: derived from closedAt, startedAt, the evaluations, the
+ *  ledger and the creator id. Pure. TODO(kim-validar:C3) */
 export function repairEmailMode(input: {
   isLiveGroup: boolean;
+  startedAt: Date | null;
   idleAtCloseMs: number | null;
   closeEmailLedgerRows: number;
+  /** createdBy is a deleted-account placeholder (isDeletedProfileId). */
+  ownerDeleted?: boolean;
 }): "await" | "skip" {
+  if (input.ownerDeleted) return "skip";
   return closedSilently(input) ? "skip" : "await";
 }
 

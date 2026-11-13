@@ -111,7 +111,8 @@ describe("live idle windows (Kim C3, TODO(kim-validar:C3))", () => {
 });
 
 describe("isLiveAbandoned", () => {
-  const now = Date.parse("2026-11-20T12:00:00Z");
+  // Sessions started on/after IDLE_RULE_EFFECTIVE_AT (2026-11-18): the designed 7-day rule.
+  const now = Date.parse("2027-02-20T12:00:00Z");
   const base = {
     isGroup: true,
     isAsync: false,

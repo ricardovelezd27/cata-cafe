@@ -803,7 +803,7 @@
     },
     "closeEmails": {
       "label": "Close emails:",
-      "silent": "This cupping closed by itself because of inactivity and no emails were sent. You can send them with “Resend emails”.",
+      "silent": "This cupping closed by itself because of inactivity and no emails were sent. You can send them with “{button}”.",
       "sent": "{count, plural, =1 {1 sent} other {# sent}}",
       "noEmail": "{count, plural, =1 {1 with no email} other {# with no email}}",
       "failed": "{count, plural, =1 {1 failed} other {# failed}}",

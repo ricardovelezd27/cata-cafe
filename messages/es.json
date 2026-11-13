@@ -803,7 +803,7 @@
     },
     "closeEmails": {
       "label": "Correos de cierre:",
-      "silent": "Esta cata se cerró sola por inactividad y no se enviaron correos. Puedes enviarlos con «Reenviar correos».",
+      "silent": "Esta cata se cerró sola por inactividad y no se enviaron correos. Puedes enviarlos con «{button}».",
       "sent": "{count, plural, =1 {1 enviado} other {# enviados}}",
       "noEmail": "{count, plural, =1 {1 sin correo} other {# sin correo}}",
       "failed": "{count, plural, =1 {1 fallido} other {# fallidos}}",
