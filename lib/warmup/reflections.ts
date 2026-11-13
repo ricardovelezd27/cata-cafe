@@ -15,6 +15,10 @@ import * as v from "../validate";
 /** Max length of each answer. */
 export const REFLECTION_MAX = 500;
 
+/** Max saved reflections per person per exercise (S10 WP7 review, F2): the
+ *  201st save is refused with `reflection_limit`. */
+export const REFLECTIONS_PER_EXERCISE_MAX = 200;
+
 export interface ReflectionInput {
   exerciseId: WarmupId;
   feel: string | null;

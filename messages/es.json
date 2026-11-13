@@ -1871,6 +1871,7 @@
       "unknown": "Algo salió mal. Inténtalo de nuevo.",
       "entries_closed": "El organizador cerró las entradas de esta cata.",
       "group_full": "Este grupo ya tiene 200 integrantes, el máximo.",
+      "reflection_limit": "Ya guardaste muchas reflexiones de este ejercicio. Borra alguna para añadir otra.",
       "invalid_email": "Ese correo no parece válido. Revísalo e inténtalo de nuevo.",
       "offline": "Necesitas conexión para hacer esto. Inténtalo cuando vuelvas a estar en línea.",
       "email_exists": "Ese correo ya tiene una cuenta.",

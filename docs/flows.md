@@ -320,7 +320,11 @@ flowchart TD
   (`full` stays the default and byte-identical): posture 5 s + ONE breath cycle (no
   notice beat), the exercise's first steps while their running time (read beats
   included) stays within 75 s (at least one, never half a step), a 15 s closing, the
-  bridge as usual in session mode. 94 to 101 s in library mode for the five exercises.
+  bridge as usual in session mode. When the last kept step ends off-centre
+  (head-rotate, trunk-side) the exercise's OWN return-to-centre step is appended, so it
+  ends at the neutral pose. "Open your eyes" (the `doble` cue and its line) exists only
+  when a kept step closes the eyes (only `eyes`). 93.5 to 111.8 s in library mode, at most
+  116.8 s in session mode, for the five exercises (`TODO(kim-validar:F4)`).
   The short version has no reflect phase. The master-led synced run is always the full
   version. The library intro offers "Completa · N min" / "Corta · 1–2 min"; **Catar
   ahora** has an optional, secondary "Calentar 1–2 min antes" that plays `arm-raise` in
@@ -328,15 +332,16 @@ flowchart TD
   session exists (`createExpressSession` is unchanged).
 - **Entry after the cupping started (F1).** `shouldOfferWarmupEntry` (pure, in
   `overlayGate.ts`): the session has an exercise, is not closed, and the interstitial is
-  not on screen. The cup page then shows one small text button under the exit link
+  not on screen, and it is not the owner of a LIVE group session that has not started
+  (the master panel has its own synced start; `TODO(kim-validar:F1)`). The cup page then shows one small text button under the exit link
   ("Movimiento Sensorial · N min", `WarmupEntry`) that opens the same player in session
   mode. Closing it marks nothing seen and never blocks the cupping.
 - **Seated and small space (F5).** Two optional chips on the player's intro, both off by
   default and remembered per device (`cata_warmup_seated`, `cata_warmup_compact`).
   "Sentado" (only for the standing exercise) swaps the posture card and the arrival line
   for the seated texts in `exercises.ts`; "Poco espacio" draws every movement with the
-  small amplitude and adds "Haz el mismo movimiento, más pequeño." to the intro and the
-  arrival narration. **Timing never changes** (the silent amplitude cross is decided from
+  small amplitude and shows "Haz el mismo movimiento, más pequeño." on the intro only
+  (never in the spoken arrival, which would push the short breath prompts late). **Timing never changes** (the silent amplitude cross is decided from
   the normal schedule). The synced run ignores both.
 
 ### Deleting a session (2026-09-08)

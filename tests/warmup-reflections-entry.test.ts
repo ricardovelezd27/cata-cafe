@@ -59,7 +59,7 @@ describe("warmup reflection actions (static scan)", () => {
   });
 
   it("the user id always comes from the session, never from the client", () => {
-    expect(body("saveWarmupReflection")).toMatch(/userId:\s*user\.id/);
+    expect(body("saveWarmupReflection")).toMatch(/saveReflectionCapped\(user\.id,/);
     expect(body("deleteWarmupReflection")).toMatch(/where:\s*\{\s*id:\s*rowId,\s*userId:\s*user\.id\s*\}/);
     expect(src).not.toMatch(/userId:\s*input\./);
   });

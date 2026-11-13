@@ -25,9 +25,11 @@ function stripComments(sql: string): string {
     .join("\n");
 }
 
-// Bounded to the next phase header, so a phase appended later is not read as part of this one.
-const start = SQL.indexOf("-- PHASE 27");
-const next = /^-- PHASE (2[89]|[3-9]\d)/m.exec(SQL.slice(start + 10));
+// Bounded from this phase's own header to the NEXT "-- PHASE <number>" header of
+// ANY number (or the end of the file), so a phase that lands before or after in
+// either merge order cannot leak into these assertions.
+const start = /^-- PHASE 27 /m.exec(SQL)!.index;
+const next = /^-- PHASE \d+/m.exec(SQL.slice(start + 10));
 const phase27 = SQL.slice(start, next ? start + 10 + next.index : undefined);
 
 const block = (s: string, from: string, to: string) => {

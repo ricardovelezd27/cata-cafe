@@ -5,6 +5,7 @@ import { requireRegisteredUser } from "@/lib/auth";
 import * as v from "@/lib/validate";
 import { run } from "@/lib/safeAction";
 import { parseReflectionInput } from "@/lib/warmup/reflections";
+import { saveReflectionCapped } from "@/lib/warmup/reflectionsData";
 
 // Private warm-up reflections (S10 WP7, Kim F2). Both actions act on the
 // signed-in person's OWN rows only: the user id always comes from the session,
@@ -16,11 +17,9 @@ export async function saveWarmupReflection(input: { exerciseId: string; feel: st
   return run("saveWarmupReflection", async () => {
     const user = await requireRegisteredUser();
     const parsed = parseReflectionInput(input);
-    const row = await prisma.warmupReflection.create({
-      data: { userId: user.id, exerciseId: parsed.exerciseId, feel: parsed.feel, discovery: parsed.discovery },
-      select: { id: true },
-    });
-    return { id: row.id };
+    // At most REFLECTIONS_PER_EXERCISE_MAX per person per exercise, counted in
+    // the same transaction as the insert (throws `reflection_limit`).
+    return saveReflectionCapped(user.id, parsed);
   });
 }
 
