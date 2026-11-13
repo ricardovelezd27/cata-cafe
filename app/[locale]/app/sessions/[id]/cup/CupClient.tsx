@@ -426,6 +426,7 @@ export function CupClient({
     referenceRepinTitle?: string;
     /** `{n}` placeholder, replaced client-side. */
     referenceRepinBody?: string;
+    referenceRatingsRestored?: string;
     /** S8-27: removing the active reference re-pins the earlier one. `{label}` + `{n}`. */
     referenceRemoveRepinTitle?: string;
     referenceRemoveRepinBody?: string;
@@ -1874,7 +1875,12 @@ export function CupClient({
     const seq = ++referenceSeqRef.current;
     applyReferenceOrder(next);
     startTransition(async () => {
-      const r = await feedback.run(setReferenceSample(session.id, next, confirmRepin));
+      const r = await feedback.run(setReferenceSample(session.id, next, confirmRepin), (d) => {
+        // S10 WP5b (B2): non-blocking notice when previous ratings were given back.
+        if (d.restored > 0 && translations.referenceRatingsRestored) {
+          feedback.notifySuccess(translations.referenceRatingsRestored.replace("{n}", String(d.restored)));
+        }
+      });
       if (!r.ok && seq === referenceSeqRef.current) applyRefOrder(prevOrder);
     });
   };

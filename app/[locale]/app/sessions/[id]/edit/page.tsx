@@ -143,6 +143,7 @@ export default async function EditSessionPage({
     warmupLocked: t("edit.warmupLocked"),
     repinTitle: t("edit.repinTitle"),
     repinBody: t.raw("edit.repinBody") as string,
+    ratingsRestored: t.raw("edit.ratingsRestored") as string,
     sampleHasData: t("edit.sampleHasData"),
     removeRepinTitle: t("edit.removeRepinTitle"),
     removeRepinBody: t.raw("edit.removeRepinBody") as string,

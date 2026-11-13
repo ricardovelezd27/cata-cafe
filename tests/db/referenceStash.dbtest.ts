@@ -123,6 +123,7 @@ describe("B2: the pin keeps the ratings, the unpin gives them back", () => {
       moduleKey: "affective",
       cupsPerSample: 2,
       data: affectiveData(9),
+      force: true,
     } as Parameters<typeof replayEvaluation>[0]);
     expect(replay.status).toBe("synced");
     const afterReplay = await row(A.id, u1);

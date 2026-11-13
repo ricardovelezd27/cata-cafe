@@ -69,6 +69,7 @@ export type EditSessionFormTranslations = {
   repinTitle: string;
   /** Raw ICU string (t.raw()) — contains a literal "{n}" token. */
   repinBody: string;
+  ratingsRestored: string;
   sampleHasData: string;
   removeRepinTitle: string;
   /** Raw ICU string (t.raw()) with literal "{label}" and "{n}" tokens. */
@@ -269,8 +270,11 @@ export function EditSessionForm({
     const seq = ++referenceSeq.current;
     setReferenceIdState(next);
     startReference(async () => {
-      const result = await feedback.run(setReferenceSample(sessionId, next, confirmRepin), () => {
-        if (seq === referenceSeq.current) feedback.notifySuccess(t.referenceSaved);
+      const result = await feedback.run(setReferenceSample(sessionId, next, confirmRepin), (d) => {
+        if (seq !== referenceSeq.current) return;
+        feedback.notifySuccess(t.referenceSaved);
+        // S10 WP5b (B2): non-blocking notice when previous ratings were given back.
+        if (d.restored > 0) feedback.notifySuccess(t.ratingsRestored.replace("{n}", String(d.restored)));
       });
       // Naming an existing reference is a server no-op — show what the
       // server kept as the active one (references accumulate, S6).
