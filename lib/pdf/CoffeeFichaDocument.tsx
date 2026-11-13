@@ -144,7 +144,10 @@ export function CoffeeFichaDocument({ model, locale }: { model: CoffeeFichaModel
                     />
                   </View>
                   <View style={{ marginTop: 6 }} wrap={false}>
-                    <Text style={[st.body, { fontWeight: 700 }]}>{results.lifetime.accumulated}</Text>
+                    {results.lifetime.roundingNote ? <Text style={st.small}>{results.lifetime.roundingNote}</Text> : null}
+                    {results.lifetime.accumulated ? (
+                      <Text style={[st.body, { fontWeight: 700 }]}>{results.lifetime.accumulated}</Text>
+                    ) : null}
                     {results.lifetime.arithmetic ? (
                       <Text style={st.small}>{results.lifetime.arithmetic}</Text>
                     ) : null}
@@ -158,6 +161,7 @@ export function CoffeeFichaDocument({ model, locale }: { model: CoffeeFichaModel
                         {results.lifetime.indicative.badge} · {results.lifetime.indicative.note}
                       </Text>
                     ) : null}
+                    {results.lifetime.anchorNote ? <Text style={st.small}>{results.lifetime.anchorNote}</Text> : null}
                     {results.lifetime.noBase ? <Text style={st.small}>{results.lifetime.noBase}</Text> : null}
                     <Text style={[st.small, { marginTop: 2 }]}>{results.lifetime.note}</Text>
                   </View>

@@ -13,13 +13,17 @@
  *
  * What each evaluation feeds (TODO(kim-validar:A2), simulated answers):
  *
+ * The coffee pools the cups and flags of exactly the evaluations a session's
+ * group score pools: the COMPLETE ones (isAffectiveComplete). An empty or
+ * partly filled evaluation feeds nothing (fix of review #132, H1).
+ *
  *   evaluation                                        BASE (one voice)   CUPS + FLAGS
  *   descriptive format                                no                 no
- *   affective/combined, complete, 2+ cups per sample  yes                yes
- *   affective/combined, 1 cup per sample (quick)      NO (decision 4)    yes
- *   affective/combined, incomplete ratings            no                 yes
- *   reference sample, session in "anchor" mode        no                 no   (pinned, not an opinion)
- *   reference sample, session in "free" mode          as any other       as any other
+ *   complete, session with 2+ cups per sample         yes                yes
+ *   complete, quick impression (1 cup per sample)     NO (decision 4)    yes
+ *   incomplete ratings (partly filled or empty)       no                 NO
+ *   any reference sample of an "anchor"-mode session  no                 no   (pinned, not an opinion)
+ *   reference sample of a "free"-mode session         as any other       as any other
  *
  * Privacy: the only thing that leaves this function is numbers. The input
  * carries an opaque per-coffee `cupperKey` (an index, never a profile id) so
@@ -67,7 +71,10 @@ export interface LifetimeTally {
   unspecified: number;
   /** Defective cups = Σ byType + unspecified. */
   defective: number;
+  /** Non-uniform cups in total (a defective cup is ALSO flagged non-uniform: it is in here). */
   nonUniform: number;
+  /** Cups flagged non-uniform and NOT defective, counted positionally inside each evaluation: the number to SAY. */
+  nonUniformOnly: number;
   /** Share of defective cups among cups cupped, 0..100 with one decimal; null with no cups. */
   defectivePct: number | null;
   /** How many DIFFERENT cuppers flagged at least one defective cup. */
@@ -92,6 +99,10 @@ export interface CoffeeLifetimeScore {
   sessions: number;
   /** Fewer than 5 pooled cups (owner's decision 7). */
   indicative: boolean;
+  /** Distinct sessions skipped because this coffee was an anchor-mode reference there (M4). */
+  anchorReferenceSessions: number;
+  /** Why `score` is null (never blames quick impressions when the cause is another); null with a score. */
+  noBaseReason: "quick" | "anchor" | "incomplete" | null;
   tally: LifetimeTally;
 }
 
@@ -104,6 +115,9 @@ export function computeCoffeeLifetimeScore(samples: readonly LifetimeSample[]): 
   const byType = Object.fromEntries(SENSORY_DEFECTS.map((d) => [d, 0])) as Record<SensoryDefect, number>;
   let unspecified = 0;
   let totalCups = 0;
+  let nonUniformOnly = 0;
+  let quickVoices = 0;
+  const anchorSessions = new Set<string>();
   let totalNonUniform = 0;
   let totalDefective = 0;
   let baseSum = 0;
@@ -116,11 +130,16 @@ export function computeCoffeeLifetimeScore(samples: readonly LifetimeSample[]): 
     if (format === "descriptive") continue;
     // An anchor-mode reference is pinned at 5 and its cup checks are cleared:
     // it is not an opinion about the coffee. Free mode scores it like any sample.
-    if (sample.referenceRank !== null && sample.session.referenceMode !== "free") continue;
+    if (sample.referenceRank !== null && sample.session.referenceMode !== "free") {
+      anchorSessions.add(sample.sessionId);
+      continue;
+    }
     const quick = isQuickImpression(sample.session.cupsPerSample);
 
     for (const ev of sample.evaluations) {
       const data = moduleData(format, ev);
+      // Same population as a session's group score: complete evaluations only.
+      if (!isAffectiveComplete(data)) continue;
       const cups = ev.cups ?? sample.session.cupsPerSample;
       const { u, d } = evaluationCupCounts(ev.nonUniformCups, ev.defectiveCups, cups);
       if (Number.isFinite(cups) && cups > 0) {
@@ -129,6 +148,10 @@ export function computeCoffeeLifetimeScore(samples: readonly LifetimeSample[]): 
       }
       totalNonUniform += u;
       totalDefective += d;
+      if (u > 0) {
+        const n = Math.min(Math.floor(cups), Math.max(ev.nonUniformCups.length, ev.defectiveCups.length));
+        for (let i = 0; i < n; i++) if (ev.nonUniformCups[i] === true && ev.defectiveCups[i] !== true) nonUniformOnly += 1;
+      }
 
       if (d > 0) {
         finders.add(ev.cupperKey);
@@ -142,7 +165,8 @@ export function computeCoffeeLifetimeScore(samples: readonly LifetimeSample[]): 
         }
       }
 
-      if (!quick && isAffectiveComplete(data)) {
+      if (quick) quickVoices += 1;
+      else {
         baseSum += calcRawScore(data);
         voices += 1;
       }
@@ -165,11 +189,21 @@ export function computeCoffeeLifetimeScore(samples: readonly LifetimeSample[]): 
     cups: totalCups,
     sessions: sessionsWithCups.size,
     indicative: isIndicativeByCups(totalCups),
+    anchorReferenceSessions: anchorSessions.size,
+    noBaseReason:
+      base !== null
+        ? null
+        : quickVoices > 0
+          ? "quick"
+          : anchorSessions.size > 0 && totalCups === 0
+            ? "anchor"
+            : "incomplete",
     tally: {
       byType,
       unspecified,
       defective: totalDefective,
       nonUniform: totalNonUniform,
+      nonUniformOnly,
       defectivePct: totalCups > 0 ? Math.round((totalDefective / totalCups) * 1000) / 10 : null,
       foundBy: finders.size,
     },

@@ -5,6 +5,7 @@ import {
   type LifetimeSample,
 } from "@/lib/coffeeLifetimeScore";
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
+import { computeGroupAggregate } from "@/lib/scoring";
 
 // Written FIRST from docs/product/cata-descentralizada-puntaje.md (§3, the
 // "Comprobaciones" table, §5 decisions 2-5 and 7) and the S10 WP1c brief.
@@ -162,21 +163,77 @@ describe("what feeds the base and what feeds the cups (the brief's table)", () =
     expect(r.cups).toBe(1);
   });
 
-  it("incomplete ratings: cups and flags in, base out", () => {
+  it("incomplete ratings (partly filled) feed nothing: not the base, not the cups, not the flags (H1)", () => {
     const complete = ev({ rating: 7 });
     const partial = ev({ rating: 9, partial: true, def: [0], nu: [0] });
     const r = computeCoffeeLifetimeScore([smp([complete, partial])]);
     expect(r.voices).toBe(1);
     expect(r.base).toBeCloseTo(0.65625 * 56 + 52.75, 10);
-    expect(r.cups).toBe(4);
-    expect(r.deduction).toBe(6);
+    expect(r.cups).toBe(2);
+    expect(r.deduction).toBe(0);
+    expect(r.tally.defective).toBe(0);
+    expect(r.tally.foundBy).toBe(0);
   });
 
-  it("a submitted evaluation with no ratings at all still counts its cups and flags", () => {
-    const r = computeCoffeeLifetimeScore([smp([ev({ rating: 5 }), ev({ rating: null, def: [1], nu: [1] })])]);
+  it("an EMPTY submitted evaluation feeds nothing (reviewer scenario: 2 cups 1 defective + 4 empty -> -6, not -3)", () => {
+    const real = ev({ rating: 5, def: [0], nu: [0] });
+    const empties = [1, 2, 3, 4].map(() => ev({ rating: null }));
+    const r = computeCoffeeLifetimeScore([smp([real, ...empties])]);
+    expect(r.cups).toBe(2);
+    expect(r.deduction).toBe(6);
     expect(r.voices).toBe(1);
-    expect(r.cups).toBe(4);
-    expect(r.tally.defective).toBe(1);
+    expect(r.score).toBe(73);
+  });
+
+  it("partly filled evaluations do not make the coffee show less than its only session (reviewer scenario)", () => {
+    const real = ev({ rating: 7, def: [0], nu: [0] });
+    const partials = [1, 2].map(() => ev({ rating: 6, partial: true }));
+    const r = computeCoffeeLifetimeScore([smp([real, ...partials])]);
+    expect(r.deduction).toBe(6);
+    expect(r.cups).toBe(2);
+  });
+
+  it("a coffee with ONE session shows the deduction of that session's group score (seeded random cases)", () => {
+    let seed = 777;
+    const rnd = () => {
+      seed = (seed * 1664525 + 1013904223) % 4294967296;
+      return seed / 4294967296;
+    };
+    for (let run = 0; run < 400; run++) {
+      const cupsPer = 2 + Math.floor(rnd() * 4); // 2..5 (not a quick impression)
+      const evs: LifetimeEvaluation[] = Array.from({ length: 1 + Math.floor(rnd() * 6) }, () => {
+        const nu = Array.from({ length: cupsPer }, () => rnd() < 0.3);
+        const def = Array.from({ length: cupsPer }, () => rnd() < 0.2);
+        const kind = rnd();
+        const data: Record<string, unknown> =
+          kind < 0.6
+            ? { ...ratings(1 + Math.floor(rnd() * 9)), tazas_defectuosas: def, tazas_no_uniformes: nu }
+            : kind < 0.8
+              ? { ...ratings(6), tazas_defectuosas: def, tazas_no_uniformes: nu, [`${AFFECTIVE_ATTRIBUTES[0].id}_final`]: 0 }
+              : { tazas_defectuosas: def, tazas_no_uniformes: nu };
+        return {
+          cupperKey: 1,
+          affectiveData: data,
+          combinedData: {},
+          nonUniformCups: nu,
+          defectiveCups: def,
+          cups: rnd() < 0.2 ? null : cupsPer,
+        };
+      });
+      const coffee = computeCoffeeLifetimeScore([smp(evs, { cupsPerSample: cupsPer })]);
+      const group = computeGroupAggregate(
+        evs.map((e) => ({
+          data: e.affectiveData as Record<string, unknown>,
+          nonUniformCups: [...e.nonUniformCups],
+          defectiveCups: [...e.defectiveCups],
+          cups: e.cups ?? undefined,
+        })),
+        cupsPer,
+      );
+      expect(coffee.cups).toBe(group.totalCups);
+      expect(coffee.deduction).toBeCloseTo(group.uniformityPenalty + group.defectPenalty, 9);
+      if (group.communityScore !== null && group.included > 0) expect(coffee.score).toBe(group.communityScore);
+    }
   });
 
   it("an anchor-mode reference sample is out entirely (base, cups, flags, tally)", () => {
@@ -317,18 +374,19 @@ describe("score bounds and the output", () => {
   it("the output carries no cupper id: only numbers", () => {
     const r = computeCoffeeLifetimeScore([smp([ev({ cupper: 987654, def: [0], nu: [0] })])]);
     expect(Object.keys(r).sort()).toEqual(
-      ["base", "cups", "deduction", "factor", "indicative", "score", "sessions", "tally", "voices"].sort(),
+      ["anchorReferenceSessions", "base", "cups", "deduction", "factor", "indicative", "noBaseReason", "score", "sessions", "tally", "voices"].sort(),
     );
     expect(Object.keys(r.tally).sort()).toEqual(
-      ["byType", "defective", "defectivePct", "foundBy", "nonUniform", "unspecified"].sort(),
+      ["byType", "defective", "defectivePct", "foundBy", "nonUniform", "nonUniformOnly", "unspecified"].sort(),
     );
     expect(JSON.stringify(r)).not.toContain("987654");
     const walk = (v: unknown): void => {
       if (v === null) return;
       if (typeof v === "object") Object.values(v as object).forEach(walk);
-      else expect(["number", "boolean"]).toContain(typeof v);
+      else expect(["number", "boolean", "string"]).toContain(typeof v);
     };
     walk(r);
+    expect(["quick", "anchor", "incomplete", null]).toContain(r.noBaseReason);
   });
 
   it("property: the deduction never exceeds 6 per flagged cup (seeded random cases)", () => {
@@ -360,3 +418,48 @@ describe("score bounds and the output", () => {
     }
   });
 });
+
+describe("anchor references are counted, quick impressions are classified, non-uniform-only is positional", () => {
+  it("anchorReferenceSessions counts the distinct sessions skipped for being an anchor reference", () => {
+    const a1 = smp([ev({ rating: 5 })], { sessionId: "a", rank: 1, mode: "anchor" });
+    const a2 = smp([ev({ rating: 5 })], { sessionId: "a", rank: 2, mode: "anchor" });
+    const b = smp([ev({ rating: 5 })], { sessionId: "b", rank: 1, mode: "anchor" });
+    const free = smp([ev({ rating: 5 })], { sessionId: "c", rank: 1, mode: "free" });
+    const r = computeCoffeeLifetimeScore([a1, a2, b, free]);
+    expect(r.anchorReferenceSessions).toBe(2);
+    expect(computeCoffeeLifetimeScore([smp([ev()])]).anchorReferenceSessions).toBe(0);
+  });
+
+  it("noBaseReason: quick / anchor / incomplete / null", () => {
+    const quick = smp([ev({ cups: 1 })], { cupsPerSample: 1 });
+    const anchor = smp([ev()], { rank: 1, mode: "anchor" });
+    const partial = smp([ev({ partial: true })]);
+    expect(computeCoffeeLifetimeScore([quick]).noBaseReason).toBe("quick");
+    expect(computeCoffeeLifetimeScore([anchor]).noBaseReason).toBe("anchor");
+    expect(computeCoffeeLifetimeScore([partial]).noBaseReason).toBe("incomplete");
+    expect(computeCoffeeLifetimeScore([]).noBaseReason).toBe("incomplete");
+    expect(computeCoffeeLifetimeScore([smp([ev()])]).noBaseReason).toBeNull();
+  });
+
+  it("nonUniformOnly = cups non-uniform and NOT defective; a defective cup also flagged non-uniform is one cup", () => {
+    const r = computeCoffeeLifetimeScore([smp([ev({ cups: 3, def: [0], nu: [0, 1, 2] })], { cupsPerSample: 3 })]);
+    expect(r.tally.defective).toBe(1);
+    expect(r.tally.nonUniform).toBe(3);
+    expect(r.tally.nonUniformOnly).toBe(2);
+    expect(r.deduction).toBe(4 + 2 * 3);
+  });
+
+  it("legacy row: a defective cup NOT flagged non-uniform is not counted as non-uniform-only", () => {
+    const e = { ...ev({ cups: 3, def: [0], nu: [1] }) };
+    const r = computeCoffeeLifetimeScore([smp([e], { cupsPerSample: 3 })]);
+    expect(r.tally.defective).toBe(1);
+    expect(r.tally.nonUniformOnly).toBe(1);
+    expect(r.tally.nonUniform).toBe(1);
+  });
+
+  it("with one cup there is no non-uniformity at all", () => {
+    const r = computeCoffeeLifetimeScore([smp([ev({ cups: 1, def: [0], nu: [0] })], { cupsPerSample: 1 })]);
+    expect(r.tally.nonUniformOnly).toBe(0);
+  });
+});
+

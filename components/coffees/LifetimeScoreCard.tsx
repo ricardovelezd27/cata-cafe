@@ -13,7 +13,8 @@ export function LifetimeScoreCard({ title, lines }: { title: string; lines: Life
       aria-label={title}
       className="col-span-2 flex flex-col gap-1.5 rounded-card border border-outline-variant bg-surface-container-lowest p-4 text-sm text-on-surface xl:col-span-4"
     >
-      <p className="font-semibold">{lines.accumulated}</p>
+      {lines.roundingNote && <p className="text-xs text-on-surface-variant">{lines.roundingNote}</p>}
+      {lines.accumulated && <p className="font-semibold">{lines.accumulated}</p>}
       {lines.arithmetic && <p className="text-on-surface-variant">{lines.arithmetic}</p>}
       {lines.tally && <p>{lines.tally}</p>}
       {lines.byType && <p className="text-on-surface-variant">{lines.byType}</p>}
@@ -26,6 +27,7 @@ export function LifetimeScoreCard({ title, lines }: { title: string; lines: Life
           {lines.indicative.note}
         </p>
       )}
+      {lines.anchorNote && <p className="text-on-surface-variant">{lines.anchorNote}</p>}
       {lines.noBase && <p className="text-on-surface-variant">{lines.noBase}</p>}
       <p className="text-xs text-on-surface-variant">{lines.note}</p>
     </section>

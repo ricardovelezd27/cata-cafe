@@ -93,7 +93,6 @@ export async function GET(
           })),
           uniformityPenalty: 0,
           defectPenalty: 0,
-          indicative: lifetime.indicative,
         },
         sessions: aggregate.sessionRows.map((r) => ({
           name: r.sessionName,
