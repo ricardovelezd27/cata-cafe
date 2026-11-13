@@ -50,6 +50,7 @@ import { prepFromForm, prepToForm, type SamplePrep } from "@/lib/samplePrep";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { canPickExistingCoffee } from "@/lib/cupCoffeePick";
+import { resumeCallbackRefreshes } from "@/lib/cupResume";
 import { isEvaluationComplete as isEvaluationCompleteForScore } from "@/lib/evaluationState";
 import { DeadlineBanner, type DeadlineBannerTranslations } from "@/components/session/DeadlineBanner";
 import {
@@ -110,6 +111,7 @@ import {
 } from "@/lib/referenceRules";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { OfflineBanner } from "@/components/offline/OfflineBanner";
+import { StaleBundleNotice } from "@/components/offline/StaleBundleNotice";
 import { noteIfStaleBundle } from "@/lib/staleBundle";
 import { IDENTITY_CHANGED } from "@/lib/expectedUser";
 import { isIdentityChanged, registerBeforeIdentityReload } from "@/lib/identityChange";
@@ -128,6 +130,9 @@ import type { ModuleKey } from "@/lib/offline/types";
 type Data = Record<string, unknown>;
 
 // The five Sample fields that map to persistable evaluation modules.
+/** How long the online owner waits for the rebuilt channel's SUBSCRIBED re-seed after a resume before refreshing anyway. */
+const OWNER_RESEED_FALLBACK_MS = 8000;
+
 const MODULE_KEYS = new Set<ModuleKey>([
   "descriptive",
   "affective",
@@ -386,7 +391,9 @@ export function CupClient({
       conflictKeep: string;
       conflictReplace: string;
       bannerStorageUnavailable: string;
-      // S9-01 C-06. Optional: pre-upgrade offline prop blobs lack them.
+      // S10 WP9b: the "new version, reload" notice, rendered in the shell
+      // slot because the fixed SessionShell covers the app-layout copy.
+      // Optional: pre-upgrade offline prop blobs lack them.
       bannerNewVersion?: string;
       reloadNow?: string;
       // S10 WP8 fourth review: the "device changed user" notice lives in the banner.
@@ -778,6 +785,19 @@ export function CupClient({
   // channel through subscribeWithSessionAuth (S8-15). Never saves: the pagehide
   // flush stays the only writer.
   const [resumeKey, setResumeKey] = useState(0);
+  // When the owner's channel last reached SUBSCRIBED (and re-seeded); the resume
+  // fallback timer checks it so a channel that never subscribes still refreshes.
+  const ownerSeededAtRef = useRef(0);
+  // The resume fallback timer: one at a time, cleared on the next resume, on
+  // unmount and when SUBSCRIBED arrives.
+  const reseedFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearReseedFallback = () => {
+    if (reseedFallbackRef.current) {
+      clearTimeout(reseedFallbackRef.current);
+      reseedFallbackRef.current = null;
+    }
+  };
+  useEffect(() => clearReseedFallback, []);
   const onlineRef = useRef(online);
   useEffect(() => {
     onlineRef.current = online;
@@ -1025,7 +1045,21 @@ export function CupClient({
     void recheck();
     if (!isGroup) return;
     setResumeKey((k) => k + 1);
-    router.refresh();
+    clearReseedFallback();
+    // One refetch per resume: the online owner gets it from the rebuilt channel's
+    // SUBSCRIBED re-seed (it also covers events missed while the socket was down).
+    if (resumeCallbackRefreshes({ isGroup, isOwner, online })) {
+      router.refresh();
+    } else {
+      // Safety net: if the channel never reaches SUBSCRIBED, refresh anyway.
+      // Known limit: a resume that follows the `online` event (the channel
+      // effect re-runs and SUBSCRIBED refreshes) can still refresh twice.
+      const resumedAt = Date.now();
+      reseedFallbackRef.current = setTimeout(() => {
+        reseedFallbackRef.current = null;
+        if (ownerSeededAtRef.current < resumedAt) router.refresh();
+      }, OWNER_RESEED_FALLBACK_MS);
+    }
   });
 
   // ─── Realtime subscription for group sessions ─────────────────
@@ -1125,7 +1159,11 @@ export function CupClient({
       (status) => {
         setLiveCountDown(status !== "SUBSCRIBED");
         // Events missed while the socket was down: re-seed from the server.
-        if (status === "SUBSCRIBED" && isOwner) router.refresh();
+        if (status === "SUBSCRIBED" && isOwner) {
+          ownerSeededAtRef.current = Date.now();
+          clearReseedFallback();
+          router.refresh();
+        }
       },
     );
 
@@ -2472,6 +2510,13 @@ export function CupClient({
         storageUnavailable={storageUnavailable}
         nextRetryAt={nextRetryAt}
       />
+      {translations.offline.bannerNewVersion && translations.offline.reloadNow && (
+        <StaleBundleNotice
+          slot="cup"
+          message={translations.offline.bannerNewVersion}
+          reloadLabel={translations.offline.reloadNow}
+        />
+      )}
       {terminalCount > 0 && translations.offline.terminalNotice && (
         <div
           role="status"

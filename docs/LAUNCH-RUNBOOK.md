@@ -176,7 +176,7 @@ row was detached in the meantime — do not do that without asking.)
 
 ## §3. Vercel — environment variables and the new cron
 
-> **DONE 2026-09-14.** All eight required variables are set; the deploy booting is itself the proof, since `lib/env.ts` fails the boot otherwise.
+> **DONE 2026-09-14.** All eight required variables are set; the deployment serving requests is itself the proof, since `lib/env.ts` makes the server refuse to start otherwise (a missing variable does not fail the build; the deployment goes Ready and then every request returns 500).
 
 
 **When:** before the first production deploy of the WP2 branch (the cron needs
@@ -202,7 +202,7 @@ row was detached in the meantime — do not do that without asking.)
    | `RESEND_API_KEY` | from <https://resend.com/api-keys> | Without it every email is silently skipped. |
    | `EMAIL_FROM` | e.g. `Cata Café <no-reply@your-domain>` | Must be a Resend-verified domain. |
    | `CLOSE_EMAIL_ATTACH_CVA` | *(optional)* `1` | Legacy: also attach each participant's CVA form PDF to the close email. Default (unset) = link to results + personal summary PDF only. |
-   | `ANALYTICS_SUPER_ADMIN_EMAIL` | your admin email | The code fallback is a personal Gmail — set it explicitly. |
+   | `ANALYTICS_SUPER_ADMIN_EMAIL` | your admin email | **Required** (F-insights-5): exactly ONE valid address (a list or a typo counts as missing). Without it the production server refuses to start: the build still succeeds and the deployment goes Ready, then every request returns 500; check a preview deployment first. There is no address built into the code. |
    | `UNSUBSCRIBE_SECRET` | *(optional, recommended)* `openssl rand -base64 48` | Signs the per-group unsubscribe links (S9-02, A-11). Unset = the links use `GUEST_CLAIM_SECRET`. **Once set, never remove or change it** without keeping the old value as `GUEST_CLAIM_SECRET`'s role (see §25): unsubscribe links never expire. Unset means one boot warning, never a failed deploy. |
 
 4. Click **Save** for each. Vercel only applies env changes to NEW deployments: after the
@@ -712,8 +712,9 @@ to `/auth/confirm`, which only exists after the deploy.
      audit's "server rules" change, S8-22 / A-01, which is in the chained S8 tip; only the exact
      value `1` turns deletion on. If that change is not in the deployed commit, account
      deletion is NOT gated: hold the deploy or accept it knowingly.)
-   - `ANALYTICS_SUPER_ADMIN_EMAIL`: recommended, set it to the super-admin address (§17; not
-     boot-fatal, the code falls back to a built-in address and logs a warning).
+   - `ANALYTICS_SUPER_ADMIN_EMAIL`: **required**, the super-admin address (§17). Without it (or with a
+     malformed value) the production server refuses to start (the build still succeeds, every
+     request then returns 500); there is no built-in fallback address any more.
    - `NEXT_PUBLIC_SITE_URL` present for Production AND Preview (§19).
    - Resend plan covers the daily volume, and Supabase **Authentication → Rate Limits → email**
      is not below the 60 per IP per 15 min tripwire (§11).
@@ -1140,8 +1141,11 @@ together with the other nine S8 migrations, §27 step 3.** Old rows stay null; n
 RLS stays on with no policies; nothing else to do.
 
 **2. Env.** Set `ANALYTICS_SUPER_ADMIN_EMAIL` in Vercel Production to the address that
-should be super-admin. It is NOT boot-fatal: until it is set, the code falls back to the
-built-in address and the boot logs one `env` warning. After this PR only the super-admin
+should be super-admin. Since S10 WP9b it is **required** (`REQUIRED_IN_PRODUCTION`): a
+production server without it (or with a malformed value: it must be exactly one address)
+refuses to start, and the built-in fallback address is gone. This does NOT fail the build:
+the deployment goes Ready and then returns 500 on every request, so deploy a Preview first
+(it runs with NODE_ENV=production too). Set it for Production AND Preview before deploying. After the S8 change only the super-admin
 sees platform-wide insights, the platform report PDF, the digest and the email CSV export;
 AI admins and flagged users see their own data.
 
