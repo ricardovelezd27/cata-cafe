@@ -12,14 +12,14 @@ import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
 import { asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { deriveMyEvaluation, summarizeMyProgress } from "@/lib/evaluationState";
-import { canViewGroupResults, isSessionExpired } from "@/lib/sessionState";
+import { isSessionExpired, viewerMayReadGroupResults } from "@/lib/sessionState";
 import { resultsUpdatedAfterClose } from "@/lib/exclusionReasons";
 import { gateSampleForViewer, communityHidden } from "@/lib/reports/sampleGate";
 import { gateSamplePrep } from "@/lib/samplePrep";
 import { getUsableCoffees } from "@/lib/coffees/queries";
 import type { UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { closeSessionInternal } from "@/lib/closeSession";
-import { ON_VIEW_REPAIR_GRACE_MS, soloRepairOwedOnView } from "@/lib/closeRules";
+import { ON_VIEW_REPAIR_GRACE_MS, canCloseNow, soloRepairOwedOnView } from "@/lib/closeRules";
 import { errorMessage, logError } from "@/lib/log";
 import { noIncludedAggregate } from "@/lib/reports/ranking";
 import { ResultsClient } from "./ResultsClient";
@@ -165,12 +165,8 @@ export default async function ResultsPage({
   const sessionExpired = isSessionExpired({ status: "active", closesAt: session.closesAt });
   // Closed OR past its deadline: no more cupping, no more drafts to finish.
   const sessionOver = isSessionExpired(session);
-  const canViewGroup = canViewGroupResults({
-    isGroup: session.isGroup,
-    ownerRead,
-    status: session.status,
-    sessionExpired,
-  });
+  // The ONE call site of the group-visibility rule (shared with the report routes).
+  const canViewGroup = viewerMayReadGroupResults(session, { ownerRead });
 
   // Participants the master has excluded from group results. Used to (a) flag
   // excluded cuppers in the Individual view and (b) drop their descriptors from
@@ -882,6 +878,27 @@ export default async function ResultsPage({
       }}
       myDraftNotice={myDraftNotice}
       closedNotice={closedNotice}
+      // Review M2 (Kim C9): an expired, not closed group session has no other way
+      // out if the nightly job fails, so its OWNER can close it now.
+      closeNow={
+        canCloseNow({
+          isOwner,
+          isGroup: session.isGroup,
+          status: session.status,
+          expired: sessionExpired,
+        })
+          ? {
+              line: tResults("closeNow.line"),
+              button: tResults("closeNow.button"),
+              title: tg("closeSession"),
+              body: tg("confirmClose"),
+              rule: tg("closeRule"),
+              cancel: ta("cancel"),
+              error: tg("closeSessionError"),
+              notFinalized: tg("closeNotFinalized"),
+            }
+          : null
+      }
       finish={
         !isAdminViewer && !session.isGroup && isOwner && !sessionOver
           ? {

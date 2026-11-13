@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
-import { revealSample, refreshAggregateScores, resendCloseEmails, finishSoloSession } from "@/app/actions/community";
+import { revealSample, refreshAggregateScores, resendCloseEmails, finishSoloSession, closeSession } from "@/app/actions/community";
 import { planFinish } from "@/lib/closeRules";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ScoreTable, type ScoreTableTranslations } from "@/components/results/ScoreTable";
@@ -166,6 +166,7 @@ export function ResultsClient({
   myDraftNotice = null,
   closedNotice = null,
   finish = null,
+  closeNow = null,
   sync = null,
   translations,
 }: {
@@ -248,6 +249,18 @@ export function ResultsClient({
     cancel: string;
     close: string;
     errors: Record<string, string>;
+  } | null;
+  // Owner of an expired, not closed GROUP session: "Cerrar ahora" (S10 WP4a
+  // review M2; rule `canCloseNow`). Null for everyone else.
+  closeNow?: {
+    line: string;
+    button: string;
+    title: string;
+    body: string;
+    rule: string;
+    cancel: string;
+    error: string;
+    notFinalized: string;
   } | null;
   // Strings for the device-pending sync pill + conflict modal. Null in the
   // admin read-only view (nothing of the admin's is ever pending here).
@@ -425,6 +438,7 @@ export function ResultsClient({
   const [, startTransition] = useTransition();
   const feedback = useActionFeedback();
   const [finishOpen, setFinishOpen] = useState(false);
+  const [closeNowOpen, setCloseNowOpen] = useState(false);
   // What "Terminar cata" would do, from the per-sample states the server sent.
   const finishPlan = finish
     ? planFinish(
@@ -475,9 +489,11 @@ export function ResultsClient({
   // Manual-refresh design is intentional (no auto re-render); this only tells
   // the viewer that pressing "Actualizar" will show something new. The owner
   // reads submitted evaluation rows (evals_select_owner) and counts them;
-  // everyone else listens to the session row, which submitAllEvaluations
-  // touches once when group results become visible. Mounted for non-owners
-  // BEFORE results are visible so the hidden -> visible flip is announced.
+  // everyone else listens to the session row, which changes when the session
+  // closes (S10 WP4a: that is the moment group results become visible; nothing
+  // touches the row when the last cupper submits any more). Mounted for
+  // non-owners BEFORE results are visible so the hidden -> visible flip is
+  // announced.
   useEffect(() => {
     if (!isGroup) return;
     // The owner always sees group data, so canViewGroup only gates the owner
@@ -868,6 +884,41 @@ export function ResultsClient({
         >
           {closedNotice}
         </div>
+      )}
+      {closeNow && (
+        <div
+          role="status"
+          className="mx-4 mt-4 flex flex-wrap items-center gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6"
+        >
+          <span className="flex-1 min-w-[200px]">{closeNow.line}</span>
+          <Button size="sm" variant="secondary" onClick={() => setCloseNowOpen(true)}>
+            {closeNow.button}
+          </Button>
+        </div>
+      )}
+      {closeNow && (
+        <ConfirmDialog
+          open={closeNowOpen}
+          onOpenChange={setCloseNowOpen}
+          title={closeNow.title}
+          body={
+            <div className="space-y-2">
+              <p>{closeNow.body}</p>
+              <p>{closeNow.rule}</p>
+            </div>
+          }
+          confirmLabel={closeNow.title}
+          cancelLabel={closeNow.cancel}
+          closeLabel={closeNow.cancel}
+          error={closeNow.error}
+          onConfirm={async () => {
+            // closeSession throws on failure: ConfirmDialog shows `error`.
+            const r = await closeSession(session.id);
+            // Non-blocking: the toast outlives the refresh below.
+            if (!r.finalized) feedback.notifySuccess(closeNow.notFinalized);
+            router.refresh();
+          }}
+        />
       )}
       {myDraftNotice && (
         <div

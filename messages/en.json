@@ -779,7 +779,7 @@
       "chart": "Chart"
     },
     "flavorProfiles": "Flavor Profiles",
-    "communityPending": "Group results will appear once the organizer closes the cupping.",
+    "communityPending": "Group results will appear once the cupping closes.",
     "sdAria": "Standard deviation across cuppers — lower means more consensus",
     "referenceBadge": "Reference",
     "deltaVsReference": "Δ vs. reference",
@@ -1025,6 +1025,10 @@
     "needsConnection": "Needs a connection",
     "closedUnsentNotice": "You had {count, plural, one {# complete sample} other {# complete samples}} unsent when the session closed. They do not count in the results.",
     "closedNotice": "The session closed. What you sent counts in the results; anything left unsent does not.",
+    "closeNow": {
+      "line": "The closing date has passed. The cupping closes by itself tonight; you can close it now to send the results.",
+      "button": "Close now"
+    },
     "finish": {
       "button": "Finish cupping",
       "title": "Finish the cupping?",
@@ -1049,7 +1053,7 @@
     "radarChart": "Group sensory profile",
     "myScore": "My score",
     "delta": "Difference vs. community",
-    "noGroupData": "Group results appear once the organizer closes the cupping."
+    "noGroupData": "Group results will appear once the cupping closes."
   },
   "history": {
     "title": "Coffee history",

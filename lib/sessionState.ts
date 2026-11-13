@@ -99,6 +99,23 @@ export function canViewGroupResults(input: {
   return input.isGroup && (input.ownerRead || input.status === "closed" || input.sessionExpired);
 }
 
+/** THE call site of `canViewGroupResults`: builds its argument from the session
+ *  row, so the results page and the report routes cannot feed it anything else
+ *  (in particular no "everyone has submitted" flag, S10 WP4a review M3). The
+ *  expiry is derived from `closesAt` alone, like the SQL twin. Pure. */
+export function viewerMayReadGroupResults(
+  session: { isGroup: boolean; status: string; closesAt: Date | null },
+  viewer: { ownerRead: boolean },
+  now: Date | number = Date.now(),
+): boolean {
+  return canViewGroupResults({
+    isGroup: session.isGroup,
+    ownerRead: viewer.ownerRead,
+    status: session.status,
+    sessionExpired: isSessionExpired({ status: "active", closesAt: session.closesAt }, now),
+  });
+}
+
 /** Whether `updateSession` may change ANYTHING on this session (S10 WP4a, Kim
  *  C9: once the closing date has passed the session is closed for date changes
  *  too, nothing reopens it). Closed OR expired on the server clock is refused.
