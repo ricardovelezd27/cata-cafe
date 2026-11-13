@@ -7,6 +7,8 @@
 //
 // Passes (each capped at BATCH, reported separately in the JSON):
 //   1. close      active sessions whose closesAt has passed
+//   1b. idle      live group sessions idle for 7 days (S10 WP4a, Kim C3; reason
+//                 "idle", same close routine and emails as pass 1)
 //   2. repair     closed sessions whose phase 2 never finished (S8-05: a close
 //                 that threw after the flip is retried here, not lost)
 //   3. reminders  deadline_24h (members with complete unsent notes) and
@@ -19,6 +21,7 @@ import { closeSessionInternal } from "@/lib/closeSession";
 import { FINALIZE_GRACE_MS } from "@/lib/closeRules";
 import { errorMessage, logError, logWarn } from "@/lib/log";
 import { purgeEmailLedger } from "@/lib/emailBudget";
+import { closeIdleLiveSessions } from "@/lib/idleClose";
 import { sendDeadlineReminders, sendLiveIdleReminders } from "@/lib/reminderEmail";
 
 export const runtime = "nodejs";
@@ -67,6 +70,20 @@ export async function GET(request: Request) {
   }
   const truncated = due.length === BATCH;
   if (truncated) logWarn({ where: "cron.closeExpired", message: "batch full, more sessions are due", batch: BATCH });
+
+  // Pass 1b: live sessions nobody has touched for 7 days. A failure here must
+  // never fail the closes above or the passes below.
+  let idle: Awaited<ReturnType<typeof closeIdleLiveSessions>> = {
+    examined: 0,
+    idleClosed: 0,
+    idleTruncated: false,
+    results: [],
+  };
+  try {
+    idle = await closeIdleLiveSessions(BATCH);
+  } catch (err) {
+    logError({ where: "cron.closeIdle", message: errorMessage(err) });
+  }
 
   // Pass 2: repair closed sessions whose phase 2 is owed.
   const owed = await prisma.cuppingSession.findMany({
@@ -130,6 +147,9 @@ export async function GET(request: Request) {
     // More than BATCH due means the next run (or a manual re-trigger) picks
     // up the rest — bounded per invocation on purpose.
     truncated,
+    idleClosed: idle.idleClosed,
+    idleTruncated: idle.idleTruncated,
+    idleResults: idle.results,
     reminders,
     repair: { owed: owed.length, stillUnfinalized, finalized: repairs.filter((r) => r.finalized).length, results: repairs, truncated: repairTruncated },
   });

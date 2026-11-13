@@ -60,6 +60,7 @@ Everything else (`lib/prisma`, the triggers, the lib functions) is the real code
 | `accountDeletion.dbtest.ts` | `deleteAccountData`: whole transaction, manifest tables, placeholder, others untouched |
 | `evaluationWrite.dbtest.ts` | `writeEvaluationOrdered`: ordering by `clientTs`, legacy writes, re-fire, concurrency |
 | `emailLedgers.dbtest.ts` | `reserveEmailBudget` limits, `sendCloseEmails` claim and lease |
+| `closeRules.dbtest.ts` | PHASE 28 (`can_view_group_results` through `agg_select`: all-submitted-but-open is hidden), its dry run against the real schema, and the idle-close cron pass (`closeIdleLiveSessions`) |
 | `harness.dbtest.ts` | the bring-up tolerated EXACTLY the one known SQL failure (a second one, or the known one starting to work, fails the run) |
 | `rls.dbtest.ts` | `authenticated` / `anon` privileges and policies (PHASE 21, 24, 25) |
 

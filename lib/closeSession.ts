@@ -29,7 +29,7 @@ import { errorMessage, logError, logInfo } from "@/lib/log";
 
 /** `owner_deleted`: deleteAccount closes the live group sessions it keeps for
  *  the other cuppers, so none stays open with nobody able to close it (S8-19). */
-export type CloseReason = "owner" | "solo_auto" | "solo_finish" | "cron" | "repair" | "owner_deleted";
+export type CloseReason = "owner" | "solo_auto" | "solo_finish" | "cron" | "idle" | "repair" | "owner_deleted";
 
 export type CloseResult = {
   /** false when the session was already closed (no-op, nothing re-sent). */

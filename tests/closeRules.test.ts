@@ -5,7 +5,9 @@ import {
   deadlineReminderWindow,
   deadlineState,
   isEvaluationComplete,
+  isLiveAbandoned,
   isLiveIdle,
+  LIVE_AUTO_CLOSE_MS,
   LIVE_IDLE_MS,
   planFinish,
 } from "@/lib/closeRules";
@@ -98,6 +100,44 @@ describe("isLiveIdle", () => {
     expect(isLiveIdle({ ...base, status: "closed" }, null, now)).toBe(false);
     expect(isLiveIdle({ ...base, isGroup: false }, null, now)).toBe(false);
     expect(isLiveIdle({ ...base, startedAt: null }, null, now)).toBe(false);
+  });
+});
+
+describe("live idle windows (Kim C3, TODO(kim-validar:C3))", () => {
+  it("the reminder is at 24 h and the automatic close at 7 days", () => {
+    expect(LIVE_IDLE_MS).toBe(24 * 3_600_000);
+    expect(LIVE_AUTO_CLOSE_MS).toBe(7 * 24 * 3_600_000);
+  });
+});
+
+describe("isLiveAbandoned", () => {
+  const now = Date.parse("2026-11-20T12:00:00Z");
+  const base = {
+    isGroup: true,
+    isAsync: false,
+    closesAt: null,
+    status: "active",
+    startedAt: new Date(now - LIVE_AUTO_CLOSE_MS),
+  };
+  it("abandoned exactly at 7 days since the start with no evaluation", () => {
+    expect(isLiveAbandoned(base, null, now)).toBe(true);
+  });
+  it("not abandoned one millisecond before 7 days", () => {
+    expect(isLiveAbandoned({ ...base, startedAt: new Date(now - LIVE_AUTO_CLOSE_MS + 1) }, null, now)).toBe(false);
+  });
+  it("the last evaluation resets the clock, also at the boundary", () => {
+    expect(isLiveAbandoned(base, new Date(now - LIVE_AUTO_CLOSE_MS + 1), now)).toBe(false);
+    expect(isLiveAbandoned(base, new Date(now - LIVE_AUTO_CLOSE_MS - 5000), now)).toBe(true);
+  });
+  it("an old evaluation does not predate the start", () => {
+    expect(isLiveAbandoned(base, new Date(now - 30 * 24 * 3_600_000), now)).toBe(true);
+  });
+  it("never for async, dated, closed, solo or unstarted sessions", () => {
+    expect(isLiveAbandoned({ ...base, isAsync: true }, null, now)).toBe(false);
+    expect(isLiveAbandoned({ ...base, closesAt: new Date(now + 1) }, null, now)).toBe(false);
+    expect(isLiveAbandoned({ ...base, status: "closed" }, null, now)).toBe(false);
+    expect(isLiveAbandoned({ ...base, isGroup: false }, null, now)).toBe(false);
+    expect(isLiveAbandoned({ ...base, startedAt: null }, null, now)).toBe(false);
   });
 });
 

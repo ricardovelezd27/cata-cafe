@@ -220,8 +220,13 @@ export const REMINDER_KINDS = ["deadline_24h", "live_idle"] as const;
 export type ReminderKind = (typeof REMINDER_KINDS)[number];
 
 /** Live sessions with no activity for this long get ONE owner reminder (Kim
- *  C3 default, option a). Never a close. */
-export const LIVE_IDLE_MS = 12 * 3_600_000;
+ *  C3, S10 WP4a: 24 h, was 12 h). The reminder itself never closes anything.
+ *  TODO(kim-validar:C3) */
+export const LIVE_IDLE_MS = 24 * 3_600_000;
+
+/** A live session idle this long is closed by the daily cron (reason "idle").
+ *  TODO(kim-validar:C3) */
+export const LIVE_AUTO_CLOSE_MS = 7 * 24 * 3_600_000;
 
 /** Window for the 24 h deadline reminder: closesAt in (now, now + 24 h]. The
  *  cron runs daily, so a recipient gets it 0 to 24 h ahead; the ledger
@@ -247,6 +252,27 @@ export function isLiveIdle(
   if (!row.startedAt) return false; // not started: still in the waiting room
   const last = Math.max(row.startedAt.getTime(), lastEvaluationAt ? lastEvaluationAt.getTime() : 0);
   return now - last >= LIVE_IDLE_MS;
+}
+
+/** A live session nobody has touched for LIVE_AUTO_CLOSE_MS: same shape as
+ *  isLiveIdle (group, not async, no `closesAt`, active, started; idle = time
+ *  since max(startedAt, last evaluation update)). Never started and solo
+ *  sessions are never abandoned. Pure. TODO(kim-validar:C3) */
+export function isLiveAbandoned(
+  row: {
+    isGroup: boolean;
+    isAsync: boolean;
+    closesAt: Date | null;
+    status: string;
+    startedAt: Date | null;
+  },
+  lastEvaluationAt: Date | null,
+  now: number = Date.now(),
+): boolean {
+  if (!row.isGroup || row.isAsync || row.closesAt || row.status !== "active") return false;
+  if (!row.startedAt) return false;
+  const last = Math.max(row.startedAt.getTime(), lastEvaluationAt ? lastEvaluationAt.getTime() : 0);
+  return now - last >= LIVE_AUTO_CLOSE_MS;
 }
 
 // ─── Manual finish for solo / express sessions (F-express-1, F-solo-3) ───────
