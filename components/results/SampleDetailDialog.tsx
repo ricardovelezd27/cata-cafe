@@ -13,7 +13,7 @@
  */
 
 import { referenceBadgeText } from "@/lib/referenceRules";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Coffee, Pencil } from "lucide-react";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import { PillTabs, Button, type PillTabItem } from "@/components/ui";
@@ -62,6 +62,7 @@ export function SampleDetailDialog({
   onAssignCoffee,
   referenceBadge,
   referenceCount = 1,
+  extra,
   t,
 }: {
   open: boolean;
@@ -88,6 +89,9 @@ export function SampleDetailDialog({
   referenceBadge?: string;
   /** Number of references in the session — numbers the badge when > 1. */
   referenceCount?: number;
+  /** Extra content under the detail for the shown viewer ("me" or a participant id): the
+   *  post-close note (S10 WP4b). Kept as a slot so this dialog never knows about it. */
+  extra?: (viewerId: string) => ReactNode;
   t: SampleDetailDialogTranslations;
 }) {
   const initialViewerId = initialParticipantId ?? "me";
@@ -214,6 +218,7 @@ export function SampleDetailDialog({
           myEvaluation={activeParticipant ? undefined : sample.myEvaluation}
           t={t}
         />
+        {extra?.(viewerId)}
       </div>
     </ResponsiveDialog>
   );

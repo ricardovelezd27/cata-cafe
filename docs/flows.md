@@ -80,8 +80,57 @@ they stay in the database. The owner's close dialog shows how many cuppers hold
 such notes (`getCloseImpact`) and states the rule; the close email repeats the
 rule and tells each affected cupper. A 24 h reminder (`deadline_24h`) goes to them
 before an async deadline. `promote_complete` (submit complete drafts at close) is
-implemented as a constant only: off. // TODO(S8-05/C1-d): the owner "accept late
-contribution" action is a post-close write and awaits Kim.
+implemented as a constant only: off.
+
+**Close announced ahead, late evaluations, a note after close (S10 WP4b, Kim C1 / C2,
+`TODO(kim-validar:C1)` / `TODO(kim-validar:C2)`).**
+
+```mermaid
+flowchart TD
+  O[Owner: Cerrar sesion] --> N{Choice}
+  N -->|Cerrar ahora| X[closeSession]
+  N -->|Avisar y cerrar en 2 o 5 min| A[announceClose: closingAt = now + n]
+  A --> B[Cuppers: banner, realtime + page render, no sound, never blocks]
+  A --> L[Owner page: docked line + countdown]
+  L -->|reaches zero WITH the page open| X
+  L -->|page opened after it passed| P[El cierre anunciado ya paso: Cerrar ahora / Cancelar]
+  L -->|Cancelar| C[cancelAnnouncedClose: closingAt = null]
+  X --> D[Closed: complete drafts stay out]
+  D --> R[Owner results: Evaluaciones recibidas tarde]
+  R -->|Aceptar + confirm| AC[acceptLateEvaluation]
+  AC --> S[isDraft false, submittedAt, acceptedLateAt, that sample's group score recomputed]
+  D --> U[Cupper device: closed_unsent, complete]
+  U -->|Enviar al organizador| SL[submitLateDraft: DRAFT row only]
+  SL --> R
+```
+
+- **Announced close.** `announceClose(sessionId, 2|5)` / `cancelAnnouncedClose` (owner, group
+  sessions, `assertSessionWritable`, `ActionResult`) set and clear `cupping_sessions."closingAt"`.
+  It is display state: **no server enforcement and no cron act on it.** The owner's open cup
+  page calls the existing `closeSession` when it watches the countdown run out
+  (`shouldAutoClose`); a page opened after the moment passed never closes anything and shows
+  "El cierre anunciado ya pasó". `closeSessionInternal` leaves the column alone. Cuppers see a
+  persistent polite banner fed by the `cupping_sessions` realtime UPDATE and the page render
+  (`serverNow` corrects clock skew like the synced warm-up). The waiting room has no banner
+  (a close is only announced once a session runs).
+- **Late evaluations (4th sanctioned post-close write).** `acceptLateEvaluation(evaluationId)`:
+  registered user, resolved to its sample and session on the server, the caller must own the
+  session, `isAcceptableLate` (session `closed`, the evaluation a DRAFT, COMPLETE by the submit
+  path's rule, not a deleted-account placeholder). One transaction: row lock, rewrite of a
+  pre-2026-11 draft (`cups` NULL) exactly as the submit path does, then `isDraft = false`,
+  `submittedAt`, `acceptedLateAt`; the aggregate trigger recomputes THAT sample only. No other
+  stored score changes. Idempotent. After commit: coffee history re-sync, revalidate. The
+  results line "Resultados actualizados el..." also moves (latest of the exclusion stamps and
+  `acceptedLateAt`). The late rows and counts exist in the owner's payload only
+  (`buildOwnerLateRows`); a cupper sees only their own "no se envio / se incluyo" lines.
+- **A note left only on the device (5th).** `submitLateDraft` (`app/actions/offline.ts`, session
+  member, CLOSED group session only) writes a DRAFT row: no row creates, a draft is updated
+  only when the device copy is not older (`clientTs` rule), a submitted row answers `conflict`
+  and is never touched. It never sets `isDraft = false`, `submittedAt` or `acceptedLateAt`.
+- **A text note after close (6th).** `setPostCloseNote(evaluationId, text, expectedUserId?)`:
+  the caller's OWN SUBMITTED evaluation of a CLOSED session, text only (max 500, "" clears),
+  writes only `postCloseNote` / `postCloseNoteAt`. The trigger does not fire. Read by the
+  cupper and the session owner only (`buildPostCloseNotes`); never in a report tier or the CSV.
 
 **Expiry rule (S8-01).** A session is also read-only once its `closesAt` has
 passed (`isSessionExpired`, strict `<`, server clock) even though `status` stays
@@ -106,7 +155,8 @@ discarded.
 `extrinsic_data.edited_at` and returns `ActionResult`), `updateSampleMetadata` naming
 a coffee-less sample (owner), and, decided in S8-12, the owner's
 `setParticipantExclusion` (reason / author / time stamped on `session_participants`,
-returns `ActionResult`, refreshes `UserCoffeeHistory` when the session is closed) and
+returns `ActionResult`, refreshes `UserCoffeeHistory` when the session is closed), the three
+S10 WP4b writes above (`acceptLateEvaluation`, `submitLateDraft`, `setPostCloseNote`) and
 `refreshAggregateScores` (listed only because it is callable after close: it is a NO-OP then, since the aggregates were computed at close and a re-fire would recompute a past score under the current rule; on an open session it re-fires the aggregates). After such a change the results page shows
 "Resultados actualizados el <fecha>" to every viewer and the PDFs carry the same line.
 `closeSession`, `startSession`, `resendCloseEmails`, `deleteSession` and
@@ -1263,8 +1313,10 @@ stateDiagram-v2
   for those; `syncEvaluation` keeps its legacy contract for cached bundles.
 - Service worker v3: static cache capped at 120 entries, `/app/insights` and `/app/profile`
   never cached, page caches purged when the signed-in id differs from the last one.
-- TODO(C1): sending a `closed_unsent` note to the session owner is a post-close write and waits
-  for Kim. TODO(E5): creating a session offline waits for Kim; only detection and the message ship.
+- A COMPLETE `closed_unsent` note of a closed group session can be sent to the organizer
+  (`submitLateDraft`, S10 WP4b, section 1; the module then leaves the panel as `synced`; it
+  lands as a draft and the owner decides). An incomplete one keeps read / copy / discard.
+  TODO(E5): creating a session offline waits for Kim; only detection and the message ship.
 
 ---
 

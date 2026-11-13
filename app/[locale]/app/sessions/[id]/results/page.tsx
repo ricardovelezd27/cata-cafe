@@ -24,6 +24,12 @@ import { closeSessionInternal } from "@/lib/closeSession";
 import { ON_VIEW_REPAIR_GRACE_MS, canCloseNow, soloRepairOwedOnView } from "@/lib/closeRules";
 import { errorMessage, logError } from "@/lib/log";
 import { noIncludedAggregate } from "@/lib/reports/ranking";
+import {
+  buildMyLateNotices,
+  buildOwnerLateRows,
+  buildPostCloseNotes,
+  type PostCloseNoteEval,
+} from "@/lib/lateContributions";
 import { ResultsClient } from "./ResultsClient";
 
 // resendCloseEmails / refreshAggregateScores run from here; give the
@@ -236,6 +242,7 @@ export default async function ResultsPage({
   // realtime-badge dedup set so a later no-op UPDATE storm (owner refresh,
   // exclusion toggle) doesn't re-badge evaluations the viewer already sees.
   let knownEvalIds: string[] = [];
+  let acceptedLateStamps: (Date | null)[] = [];
 
   if (canViewGroup && session.isGroup) {
     const evals = await prisma.evaluation.findMany({
@@ -250,11 +257,14 @@ export default async function ResultsPage({
         nonUniformCups: true,
         defectiveCups: true,
         cups: true,
+        acceptedLateAt: true,
         cupper: { select: { id: true, displayName: true } },
       },
     });
 
     knownEvalIds = evals.map((ev) => ev.id);
+    // S10 WP4b: an owner acceptance of a late evaluation moves "Resultados actualizados el".
+    acceptedLateStamps = evals.map((ev) => ev.acceptedLateAt);
 
     // Recompute each sample's community aggregate, excluding master-excluded
     // cuppers and (inside computeGroupAggregate) incomplete evaluations.
@@ -683,7 +693,7 @@ export default async function ResultsPage({
     session.isGroup && session.status === "closed" && !hideCommunity
       ? resultsUpdatedAfterClose(
           session.closedAt,
-          session.participants.map((p) => p.excludedAt),
+          [...session.participants.map((p) => p.excludedAt), ...acceptedLateStamps],
           [lastComputedAt],
         )
       : null;
@@ -742,9 +752,119 @@ export default async function ResultsPage({
       }))
     : [];
 
+  // ---- S10 WP4b (Kim C1 / C2): what happens after a group session closed ----
+  // `TODO(kim-validar:C1)` / `TODO(kim-validar:C2)`. Every block below is built by a pure
+  // rule in lib/lateContributions.ts that is the privacy gate: the owner's late rows
+  // (names and counts of other cuppers) and the other cuppers' notes only exist in the
+  // owner lens; a participant's payload carries their own rows only.
+  const sampleLabelById = new Map(session.samples.map((s) => [s.id, s.label]));
+  const fmtDate = (d: Date | string) =>
+    new Date(d).toLocaleDateString(locale === "es" ? "es-CO" : "en-US", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  const lateDrafts =
+    isOwner && !isAdminViewer && session.isGroup && session.status === "closed"
+      ? await prisma.evaluation.findMany({
+          where: { sessionSample: { sessionId: id }, isDraft: true },
+          select: {
+            id: true,
+            cupperId: true,
+            sessionSampleId: true,
+            isDraft: true,
+            descriptiveData: true,
+            affectiveData: true,
+            combinedData: true,
+            updatedAt: true,
+            cupper: { select: { id: true, displayName: true } },
+          },
+        })
+      : [];
+  const lateNameById = new Map(lateDrafts.map((d) => [d.cupperId, profileDisplayName(d.cupper, localeStr)]));
+  const lateRows = buildOwnerLateRows({
+    ownerLens: isOwner && !isAdminViewer,
+    isGroup: session.isGroup,
+    session: { status: session.status, format: session.format, closedAt: session.closedAt },
+    drafts: lateDrafts,
+    sampleLabels: sampleLabelById,
+    nameOf: (cupperId) => lateNameById.get(cupperId) ?? "",
+  });
+  const myEvalRows = isAdminViewer ? [] : session.samples.flatMap((s) => s.evaluations);
+  const myLateNotices = isAdminViewer
+    ? []
+    : buildMyLateNotices({
+        isGroup: session.isGroup,
+        session: { status: session.status, format: session.format },
+        mine: myEvalRows,
+        sampleLabels: sampleLabelById,
+      }).map((n) =>
+        n.kind === "left_out"
+          ? tResults("lateNoticeLeftOut", { sample: n.sampleLabel })
+          : tResults("lateNoticeIncluded", { sample: n.sampleLabel, date: fmtDate(n.at) }),
+      );
+  const otherNotes: PostCloseNoteEval[] =
+    isOwner && !isAdminViewer && session.status === "closed"
+      ? await prisma.evaluation.findMany({
+          where: {
+            sessionSample: { sessionId: id },
+            isDraft: false,
+            postCloseNote: { not: null },
+            cupperId: { not: user.id },
+          },
+          select: {
+            id: true,
+            cupperId: true,
+            sessionSampleId: true,
+            isDraft: true,
+            postCloseNote: true,
+            postCloseNoteAt: true,
+          },
+        })
+      : [];
+  const postCloseNotes = isAdminViewer
+    ? null
+    : buildPostCloseNotes({
+        sessionStatus: session.status,
+        ownerLens: isOwner,
+        viewerId: user.id,
+        evals: [...myEvalRows, ...otherNotes],
+      });
+  const lateT = {
+    title: tResults("late.title"),
+    intro: tResults("late.intro"),
+    savedAt: tResults.raw("late.savedAt") as string,
+    receivedAfterClose: tResults("late.receivedAfterClose"),
+    accept: tResults("late.accept"),
+    confirmTitle: tResults("late.confirmTitle"),
+    confirmBody: tResults.raw("late.confirmBody") as string,
+    confirm: tResults("late.confirm"),
+    cancel: tResults("late.cancel"),
+    close: tResults("late.close"),
+    error: tResults("late.error"),
+  };
+  const noteT = {
+    add: tResults("postCloseNote.add"),
+    edit: tResults("postCloseNote.edit"),
+    remove: tResults("postCloseNote.remove"),
+    placeholder: tResults("postCloseNote.placeholder"),
+    hint: tResults("postCloseNote.hint"),
+    save: tResults("postCloseNote.save"),
+    saving: tResults("postCloseNote.saving"),
+    cancel: tResults("postCloseNote.cancel"),
+    added: tResults.raw("postCloseNote.added") as string,
+    ownerTitle: tResults("postCloseNote.ownerTitle"),
+    ownerIntro: tResults("postCloseNote.ownerIntro"),
+  };
+
   return (
     <ResultsClient
       locale={locale}
+      lateRows={lateRows}
+      myLateNotices={myLateNotices}
+      postCloseNotes={postCloseNotes}
+      lateTranslations={lateT}
+      noteTranslations={noteT}
       usableCoffees={usableCoffees}
       isOwner={isOwner}
       isAdminViewer={isAdminViewer}
