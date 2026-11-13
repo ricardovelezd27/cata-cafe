@@ -1299,7 +1299,7 @@ export function ResultsClient({
             {(isOwner || isAdminViewer) && (
               <ReportLink
                 href={`/api/sessions/${session.id}/results-csv?locale=${locale}&names=0`}
-                filename={`resultados-sin-nombres-${session.id}.csv`}
+                filename={locale === "en" ? "results-no-names.csv" : "resultados-sin-nombres.csv"}
                 offlineLabel={translations.needsConnection}
                 size="md"
                 variant="secondary"

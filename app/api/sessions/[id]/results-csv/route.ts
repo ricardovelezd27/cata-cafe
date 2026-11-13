@@ -13,6 +13,7 @@ import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { loadSessionReportSource } from "@/lib/reports/sessionReportData";
 import { buildResultsCsv } from "@/lib/reports/resultsCsv";
+import { csvCupperCodes } from "@/lib/reports/csvCodeKey";
 import { slug, dateSlug } from "@/lib/pdf/filename";
 import { logError, errorMessage } from "@/lib/log";
 
@@ -27,7 +28,7 @@ export async function GET(
   const { id } = await params;
   const sp = request.nextUrl.searchParams;
   const locale: "es" | "en" = sp.get("locale") === "en" ? "en" : "es";
-  const names = sp.get("names") !== "0";
+  const names = sp.get("names") !== "0" && sp.get("codes") !== "1"; // the old ?codes=1 means the same as names=0
 
   const supabase = await createClient();
   const {
@@ -50,6 +51,10 @@ export async function GET(
       locale,
       coffeeDeleted: deletedCoffeeLabel(locale),
       names,
+      codes: csvCupperCodes(
+        id,
+        [...source.participants.map((p) => p.userId), ...source.evals.map((e) => e.cupperId)],
+      ),
     }).csv;
   } catch (err) {
     const digest = Math.random().toString(36).slice(2, 10);

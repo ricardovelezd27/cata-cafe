@@ -53,44 +53,22 @@ function attrValue(data: Record<string, unknown>, id: string): number | "" {
   return Number.isFinite(n) && n > 0 ? n : "";
 }
 
-/** Stable anonymous code per cupper ("C01", "C02"…). Order = participant row
- *  creation (joinedAt, then user id as a deterministic tie-break), NEVER the
- *  display name; a cupper with an evaluation but no participant row follows in
- *  user-id order. Shared by both CSV variants so a code means the same cupper. */
-export function cupperCodes(
-  participants: { userId: string; joinedAt?: Date }[],
-  evalCupperIds: string[],
-): Map<string, string> {
-  const ordered = [...participants].sort((a, b) => {
-    const ta = a.joinedAt ? a.joinedAt.getTime() : Number.POSITIVE_INFINITY;
-    const tb = b.joinedAt ? b.joinedAt.getTime() : Number.POSITIVE_INFINITY;
-    if (ta !== tb) return ta < tb ? -1 : 1;
-    return a.userId < b.userId ? -1 : a.userId > b.userId ? 1 : 0;
-  });
-  const ids = ordered.map((p) => p.userId);
-  for (const id of [...new Set(evalCupperIds)].sort()) if (!ids.includes(id)) ids.push(id);
-  const width = Math.max(2, String(ids.length).length);
-  return new Map(ids.map((id, i) => [id, "C" + String(i + 1).padStart(width, "0")]));
-}
-
 export function buildResultsCsv(
   src: SessionReportSource,
-  opts: { locale: ReportLocale; coffeeDeleted: string; names?: boolean },
+  opts: {
+    locale: ReportLocale;
+    coffeeDeleted: string;
+    names?: boolean;
+    /** cupper id -> keyed code for THIS session (lib/reports/csvCodeKey.ts, tests build it by hand). */
+    codes: ReadonlyMap<string, string>;
+  },
 ): { csv: string; rows: number } {
   const withNames = opts.names !== false;
   const h = HEADERS[opts.locale];
   const excluded = new Set(src.excludedUserIds);
-  const reasonByUser = new Map(
-    src.participants.map((p) => {
-      const stored = p.exclusionReason ?? "";
-      // The free text of "other" can name someone: the shareable file keeps only the code.
-      return [p.userId, withNames ? stored : stored.startsWith("other:") ? "other" : stored];
-    }),
-  );
-  const codeById = cupperCodes(
-    src.participants,
-    src.evals.map((e) => e.cupperId),
-  );
+  const reasonByUser = new Map(src.participants.map((p) => [p.userId, p.exclusionReason ?? ""]));
+  const codeById = opts.codes;
+  const codeOf = (id: string) => codeById.get(id) ?? "";
 
   const header = csvRow([
     ...(withNames ? [h.cupper] : []),
@@ -99,7 +77,8 @@ export function buildResultsCsv(
     h.reference,
     h.coffee,
     h.excluded,
-    h.reason,
+    // The shareable file has no reason column at all: even the code of a reason says something.
+    ...(withNames ? [h.reason] : []),
     ...AFFECTIVE_ATTRIBUTES.map((a) => a.label),
     h.nonUniform,
     h.defective,
@@ -116,7 +95,12 @@ export function buildResultsCsv(
         : "";
     const evals = src.evals
       .filter((e) => e.sessionSampleId === sample.id)
-      .sort((a, b) => a.displayName.localeCompare(b.displayName));
+      .sort((a, b) => {
+        // Never by name, id or join time: by the keyed code (review H1).
+        const ca = codeOf(a.cupperId);
+        const cb = codeOf(b.cupperId);
+        return ca < cb ? -1 : ca > cb ? 1 : 0;
+      });
     for (const ev of evals) {
       const blob = blobForFormat(src.session.format, ev);
       const scored = src.session.format !== "descriptive" && hasAffectiveData(blob);
@@ -132,12 +116,12 @@ export function buildResultsCsv(
       lines.push(
         csvRow([
           ...(withNames ? [ev.displayName] : []),
-          codeById.get(ev.cupperId) ?? "",
+          codeOf(ev.cupperId),
           sample.label,
           sample.isReference ? (sample.referenceRank ?? 1) : "",
           coffee,
           isExcluded ? h.yes : h.no,
-          isExcluded ? (reasonByUser.get(ev.cupperId) ?? "") : "",
+          ...(withNames ? [isExcluded ? (reasonByUser.get(ev.cupperId) ?? "") : ""] : []),
           ...AFFECTIVE_ATTRIBUTES.map((a) => (scored ? attrValue(blob, a.id) : "")),
           evalCupCounts.u,
           evalCupCounts.d,

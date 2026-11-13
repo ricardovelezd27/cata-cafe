@@ -5,7 +5,7 @@ import { CheckCircle2, ChevronLeft, Clipboard, Plus, UserCheck, Users } from "lu
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
 import { maskEmail, memberLabel } from "@/lib/maskEmail";
-import { memberRosterForMember } from "@/lib/groupRoster";
+import { loadGroupForViewer } from "@/lib/groups/memberView";
 import { getCoCupperCandidates } from "@/lib/coCuppers";
 import { claimGroupMembershipsByEmail } from "@/lib/groupMembership";
 import { sessionHref } from "@/lib/sessionRouting";
@@ -59,29 +59,12 @@ export default async function GroupDetailPage({
   // the members.some visibility check below and 404 on their own invite link.
   await claimGroupMembershipsByEmail(user.id, user.email);
 
-  // Visible to the owner OR any linked member — the owner-gate for mutations
-  // stays inside the server actions; this OR is purely about read visibility.
-  const group = await prisma.tastingGroup.findFirst({
-    where: {
-      id,
-      OR: [{ createdBy: user.id }, { members: { some: { userId: user.id } } }],
-    },
-    include: {
-      // S10 WP5a (F-grupos-10): the address is NOT selected here. Only the group owner
-      // ever sees an email (any form), so the owner roster is fetched separately below
-      // and a member's render never has an address to leak.
-      members: {
-        orderBy: { createdAt: "asc" },
-        select: {
-          id: true,
-          userId: true,
-          displayName: true,
-          emailOptOutAt: true,
-          user: { select: { displayName: true } },
-        },
-      },
-      owner: { select: { displayName: true } },
-    },
+  const t = await getTranslations("groups");
+  // Visible to the owner OR any linked member; the member rows come back with a
+  // label and NO address (lib/groups/memberView.ts, S10 WP5a F-grupos-10).
+  const group = await loadGroupForViewer(id, user.id, {
+    pending: t("pendingInvite"),
+    member: t("memberLabel"),
   });
 
   if (!group) notFound();
@@ -93,7 +76,6 @@ export default async function GroupDetailPage({
         orderBy: { createdAt: "asc" },
       })
     : [];
-  const t = await getTranslations("groups");
   const tCommon = await getTranslations("common");
 
   // Announcements feed — visible to both owner and members (read-only for
@@ -234,14 +216,7 @@ export default async function GroupDetailPage({
     // built). If Kim answers (b) teacher-chosen names or (c) teacher-only, add a
     // roster setting here in a follow-up PR; nothing in this PR changes it.
     const myMemberRow = group.members.find((m) => m.userId === user.id);
-    const memberRows = memberRosterForMember(
-      group.members.map((m) => ({
-        id: m.id,
-        displayName: m.displayName,
-        profileName: m.user?.displayName ?? null,
-      })),
-      t("pendingInvite"),
-    );
+    const memberRows = group.members.map((m) => ({ id: m.id, label: m.label }));
     const leaveT = {
       cta: t("leave.cta"),
       title: t("leave.title"),

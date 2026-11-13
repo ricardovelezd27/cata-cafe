@@ -1847,6 +1847,7 @@
     "displayNamePlaceholder": "Nombre (opcional)",
     "unregistered": "Sin cuenta todavía",
     "pendingInvite": "Invitación pendiente",
+    "memberLabel": "Miembro",
     "removeMember": "Quitar",
     "composeEmail": "Enviar correo al grupo",
     "subject": "Asunto",
