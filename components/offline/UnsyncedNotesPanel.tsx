@@ -15,6 +15,7 @@ export type UnsyncedNotesTranslations = {
   empty: string;
   statusClosed: string;
   statusOrphaned: string;
+  statusRevealed: string;
   statusFailed: string;
   view: string;
   hide: string;
@@ -84,7 +85,9 @@ export function UnsyncedNotesPanel({
   const statusLabel = (e: UnsyncedEntry) =>
     e.status === "closed_unsent"
       ? t.statusClosed
-      : e.status === "orphaned"
+      : e.status === "revealed_unsent"
+        ? t.statusRevealed
+        : e.status === "orphaned"
         ? t.statusOrphaned
         : t.statusFailed;
 
@@ -131,7 +134,7 @@ export function UnsyncedNotesPanel({
                         {e.sampleLabel}
                       </span>
                       <Badge tone="outline">{moduleLabel[e.moduleKey]}</Badge>
-                      <Badge tone={e.status === "closed_unsent" ? "accent" : "danger"}>
+                      <Badge tone={e.status === "closed_unsent" || e.status === "revealed_unsent" ? "accent" : "danger"}>
                         {statusLabel(e)}
                       </Badge>
                     </div>

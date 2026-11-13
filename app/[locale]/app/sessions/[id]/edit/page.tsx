@@ -149,6 +149,7 @@ export default async function EditSessionPage({
     removeRepinBody: t.raw("edit.removeRepinBody") as string,
     removeRepinConfirm: t("edit.removeRepinConfirm"),
     referenceRepinBlocked: t("edit.referenceRepinBlocked"),
+    referenceRevealed: t("edit.referenceRevealed"),
     formatLockedStarted: t("edit.formatLockedStarted"),
     invalidWarmup: t("newForm.errors.invalid_warmup"),
     picker: {
@@ -210,6 +211,7 @@ export default async function EditSessionPage({
           label: s.label,
           evalCount: s._count.evaluations,
           referenceRank: s.referenceRank,
+          revealed: s.revealed,
         }))}
         groups={groups}
         evalCount={evalCount}

@@ -20,6 +20,8 @@ import { computeEvaluationDerived } from "@/lib/evaluation";
 import { DEFECT_TYPE_KEY } from "@/lib/cupDefects";
 import { REF_STASH_KEY, type RefStash } from "@/lib/referenceStashKey";
 
+import { MARKET_KEY, MARKET_NOTE_KEY } from "@/lib/marketNote";
+
 export { REF_STASH_KEY, type RefStash };
 
 export const REFERENCE_PIN_VALUE = 5;
@@ -203,6 +205,9 @@ export function pinReferenceAffective(
   pinned.defecto_tipo = [];
   // S10 WP1b: the per-cup defect types go with the flags.
   pinned.tazas_defecto_tipo = Array(cups).fill(null);
+  // S10 WP3a (A10): the optional market note is an affective input too; the pin clears it.
+  delete pinned[MARKET_KEY];
+  delete pinned[MARKET_NOTE_KEY];
   return pinned;
 }
 
@@ -270,7 +275,30 @@ export function isReferencePinned(data: Record<string, unknown>): boolean {
     const v = data[k];
     return !Array.isArray(v) || v.every((x) => x !== true);
   });
-  return allFive && noCups;
+  const noMarket = data[MARKET_KEY] === undefined && data[MARKET_NOTE_KEY] === undefined;
+  return allFive && noCups && noMarket;
+}
+
+/** S10 WP3a review H1 (+ round 3): a reference change that would PIN a sample whose coffee is
+ *  already revealed is refused (`reference_revealed`) ONLY when the pin would actually REWRITE
+ *  stored evaluations of it (`overwrites` = `countRepinOverwrites(...)`, rows not already at the
+ *  79.00 anchor): a revealed sample is frozen for evaluation, so the owner must not move the
+ *  group score after the reveal. When nothing would be rewritten the pointer just moves (later
+ *  saves stay refused by the reveal freeze). `targetRevealed` is the sample that would become the
+ *  ACTIVE pinned reference: newly marked, or an earlier reference being reactivated. Free mode
+ *  (no pin) and descriptive-only sessions are never refused. Pure; the ONE rule used by
+ *  setReferenceSample (add and remove-active) and removeSamplesInTx. */
+export function pinWouldTouchRevealed(input: {
+  mode: unknown;
+  moduleKey: string;
+  targetRevealed: boolean;
+  overwrites: number;
+}): boolean {
+  return (
+    input.targetRevealed &&
+    input.overwrites > 0 &&
+    shouldPinReference({ mode: input.mode, moduleKey: input.moduleKey, isActiveReference: true })
+  );
 }
 
 // ─── The pin never destroys a cupper's ratings (S10 WP5b, B2) ───────────────
@@ -292,6 +320,9 @@ export const PIN_OVERWRITTEN_KEYS: readonly string[] = [
   "tazas_defectuosas",
   "defecto_tipo",
   DEFECT_TYPE_KEY,
+  // S10 WP3a (A10): the pin also deletes the optional market note.
+  MARKET_KEY,
+  MARKET_NOTE_KEY,
 ];
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {

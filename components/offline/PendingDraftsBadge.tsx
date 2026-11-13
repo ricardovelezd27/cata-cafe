@@ -100,6 +100,7 @@ export function PendingDraftsBadge({
                 if (!firstConflict) firstConflict = blob.sessionId;
                 break;
               case "closed_unsent":
+              case "revealed_unsent":
                 next.terminal += 1;
                 break;
               case "orphaned":

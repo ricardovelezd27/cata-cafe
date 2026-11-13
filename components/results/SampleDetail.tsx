@@ -28,6 +28,7 @@ import {
 import { ScoreBreakdownPanel, type ScoreBreakdownTranslations } from "@/components/results/ScoreBreakdownPanel";
 import { ExtrinsicSummary } from "@/components/results/ExtrinsicSummary";
 import { EXPRESS_NOTE_KEY } from "@/lib/expressSession";
+import { MARKET_KEY, MARKET_NOTE_KEY, readMarketNote } from "@/lib/marketNote";
 import { Badge, ScorePill, Button } from "@/components/ui";
 import type { SessionFormat } from "@/lib/constants";
 import type { SamplePrep } from "@/lib/samplePrep";
@@ -68,6 +69,8 @@ export type SampleDetailTranslations = {
   // page passes an evaluation state at all.
   inProgress?: string;
   expressNotes?: string;
+  /** "market" note labels (`results.market.*`, S10 WP3a, A10). */
+  market?: { label: string; known: string };
   notEvaluated?: string;
   /** A9 prep-data labels (`results.samplePrep.*`). */
   prep?: { roastDate: string; preparation: string; offProtocol: string };
@@ -293,7 +296,7 @@ export function SampleDetail({
     format === "affective" ? affective : format === "descriptive" ? descriptive : combined;
 
   const filled = Object.entries(data)
-    .filter(([k]) => k !== EXPRESS_NOTE_KEY)
+    .filter(([k]) => k !== EXPRESS_NOTE_KEY && k !== MARKET_KEY && k !== MARKET_NOTE_KEY)
     .some(([, v]) =>
       Array.isArray(v) ? v.length > 0 : v !== null && v !== undefined && v !== "" && v !== 0,
     );
@@ -310,6 +313,8 @@ export function SampleDetail({
   const overallScore = num(data, "impresion_global_final");
   const overallNotes = (data["impresion_global_notas"] as string | undefined)?.trim() ?? "";
   const expressNote = (data[EXPRESS_NOTE_KEY] as string | undefined)?.trim() ?? "";
+  // S10 WP3a (A10): only shown when the cupper said they rated for a market they know.
+  const marketNote = format === "descriptive" ? null : readMarketNote(data);
 
   return (
     <div className="flex flex-col gap-1">
@@ -385,6 +390,17 @@ export function SampleDetail({
             </>
           )}
         </dl>
+      )}
+
+      {marketNote && t.market && (
+        <div className="mt-2 rounded-card border border-outline-variant bg-surface-container-low px-3 py-2">
+          <div className="text-[9px] font-semibold uppercase tracking-wider text-on-surface-variant">
+            {t.market.label}
+          </div>
+          <div className="whitespace-pre-wrap text-sm text-on-surface">
+            {marketNote.note ? `${t.market.known}: ${marketNote.note}` : t.market.known}
+          </div>
+        </div>
       )}
 
       {expressNote && (

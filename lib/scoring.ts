@@ -8,33 +8,6 @@ import type { ScoreRule } from "./scoreRule";
    Rounded to nearest 0.25.
    ============================================================ */
 
-export type ScoreCategory =
-  | 'exceptional' | 'excellent' | 'vgood' | 'good' | 'average' | 'low'
-
-export function scoreToCategory(score: number): ScoreCategory {
-  if (score >= 90) return 'exceptional'
-  if (score >= 85) return 'excellent'
-  if (score >= 80) return 'vgood'
-  if (score >= 79) return 'good'
-  if (score >= 70) return 'average'
-  return 'low'
-}
-
-export const SCORE_CATEGORY_LABELS: Record<ScoreCategory, string> = {
-  exceptional: 'Excepcional',
-  excellent:   'Excelente',
-  vgood:       'Muy bueno',
-  good:        'Bueno',
-  average:     'Promedio',
-  low:         'Bajo',
-}
-
-export function scoreBand(score: number): 'green' | 'amber' | 'red' {
-  if (score >= 85) return 'green'
-  if (score >= 75) return 'amber'
-  return 'red'
-}
-
 /* ============================================================
    EXISTING: Legacy scoring functions
 

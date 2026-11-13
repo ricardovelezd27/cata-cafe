@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { scorePillClasses } from "@/lib/scorePillClass";
 
 export type BadgeTone = "neutral" | "success" | "accent" | "danger" | "outline";
 export type BadgeSize = "xs" | "sm";
@@ -83,16 +84,9 @@ export function ScorePill({
     return <span className="text-sm text-on-surface-variant">—</span>;
   }
 
-  const bandClass =
-    score >= 85
-      ? "bg-primary-container text-on-primary"
-      : score >= 75
-        ? "bg-secondary text-on-secondary"
-        : "bg-error text-white";
-
   return (
     <span
-      className={`inline-flex items-center rounded-pill px-2.5 py-0.5 text-sm font-semibold tabular-nums ${bandClass}`}
+      className={scorePillClasses()}
     >
       {score.toFixed(decimals)}
     </span>

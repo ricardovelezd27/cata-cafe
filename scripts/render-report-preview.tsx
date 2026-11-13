@@ -10,7 +10,8 @@ import { PDF_PALETTE } from "../lib/pdf/palette";
 import {
   PdfRadar,
   PdfPercentBars,
-  PdfScoreBand,
+  PdfScorePill,
+  PdfDeviationBand,
   PdfDeltaChip,
 } from "../lib/pdf/charts";
 
@@ -81,13 +82,13 @@ function Preview() {
 
         <Text style={styles.h}>Score bands</Text>
         <View style={styles.row}>
-          <PdfScoreBand score={86.25} band="green" />
-          <PdfScoreBand score={79} band="amber" />
-          <PdfScoreBand score={68.5} band="red" />
-          <PdfScoreBand score={null} band="neutral" />
-          <PdfScoreBand score={86.25} band="green" size="lg" />
-          <PdfScoreBand score={79} band="amber" size="lg" />
-          <PdfScoreBand score={68.5} band="red" size="lg" />
+          <PdfScorePill score={86.25} />
+          <PdfScorePill score={79} />
+          <PdfDeviationBand score={68.5} band="red" />
+          <PdfScorePill score={null} />
+          <PdfScorePill score={86.25} size="lg" />
+          <PdfDeviationBand score={79} band="amber" size="lg" />
+          <PdfScorePill score={68.5} size="lg" />
         </View>
 
         <Text style={styles.h}>Delta chips</Text>

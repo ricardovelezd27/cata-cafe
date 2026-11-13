@@ -22,12 +22,6 @@ const STATUS_LABELS: Record<string, string> = {
   closed: "CERRADA",
 };
 
-function scorePillClass(score: number) {
-  if (score >= 85) return "bg-primary-fixed text-primary-container";
-  if (score >= 75) return "bg-[#FEF3E2] text-secondary";
-  return "bg-error-container text-error";
-}
-
 function timeAgo(date: Date, locale: string): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
   if (seconds < 60) return locale === "es" ? "hace un momento" : "just now";
@@ -380,7 +374,7 @@ export default async function Dashboard({
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         <span
-                          className={`text-xs px-2 py-0.5 rounded-full font-semibold ${scorePillClass(avg)}`}
+                          className={`text-xs px-2 py-0.5 rounded-full font-semibold bg-surface-container-high text-on-surface`}
                         >
                           {avg.toFixed(2)}
                         </span>

@@ -61,7 +61,7 @@ interface MasterControlsProps {
    *  "Muestra de referencia" label; options include the "Sin referencia" entry
    *  with value "" — the caller owns the list. */
   referenceLabel?: string;
-  referenceOptions?: { value: string; label: string }[];
+  referenceOptions?: { value: string; label: string; disabled?: boolean }[];
   referenceValue?: string;
   onReferenceChange?: (value: string) => void;
   /** "R1: A · R2: D (activa)" — current references, shown above the select. */
