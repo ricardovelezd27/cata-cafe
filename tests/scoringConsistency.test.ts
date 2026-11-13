@@ -165,6 +165,27 @@ describe("trigger arithmetic == TypeScript, per cup count", () => {
     expect(sqlAggregate([], 5).community).toBe(0);
   });
 
+  it("cups = 0: no deduction on either side, the score is the rounded average", () => {
+    // The trigger's IF v_total_cups > 0 skips the deduction; TypeScript matches.
+    const sql = sqlAggregate(
+      [{ rawScore: 80.1, cups: 0, nonUniform: [true], defective: [true] }],
+      5,
+    );
+    expect(sql.totalCups).toBe(0);
+    expect(sql.community).toBe(80);
+    expect(
+      calcCommunityScore({ avgRawScore: 80.1, totalNonUniform: 1, totalDefective: 1, totalCups: 0 }),
+    ).toBe(80);
+    const ts = computeGroupAggregate(
+      [{ data: attrs(5), cups: 0, nonUniformCups: [true], defectiveCups: [true] }],
+      5,
+    );
+    expect(ts.totalCups).toBe(0);
+    expect(ts.communityScore).toBe(
+      sqlAggregate([{ rawScore: 79, cups: 0, nonUniform: [true], defective: [true] }], 5).community,
+    );
+  });
+
   it("clamps at 0 on both sides", () => {
     expect(sqlAggregate([{ rawScore: 1, cups: 5, nonUniform: Array(5).fill(true), defective: Array(5).fill(true) }], 5).community).toBe(0);
     expect(

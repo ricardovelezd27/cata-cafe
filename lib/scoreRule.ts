@@ -24,10 +24,20 @@ export function evaluationScoreRule(
   return isStoredRow && (cups === null || cups === undefined) ? "v1" : "v2";
 }
 
-/** v1 only when a stored aggregate row exists with ruleVersion 1; no row yet
- *  means the trigger has not run, so a new computation is v2. */
+/** Which rule a sample's score was computed under.
+ *  - A stored aggregate row says so itself: ruleVersion 1 = v1, anything else v2.
+ *  - With NO aggregate row (the trigger has not run for the sample), the
+ *    sample's stored evaluations say: v1 when there is at least one and EVERY
+ *    one has `cups` NULL (all written before the 2026-11 rule); otherwise v2
+ *    (no evaluations at all, or at least one written under the new rule).
+ *  `evaluationCups` = the `cups` of every stored evaluation of the sample. */
 export function sampleScoreRule(
   aggregate: { ruleVersion: number } | null | undefined,
+  evaluationCups: ReadonlyArray<number | null | undefined> = [],
 ): ScoreRule {
-  return aggregate && aggregate.ruleVersion === 1 ? "v1" : "v2";
+  if (aggregate) return aggregate.ruleVersion === 1 ? "v1" : "v2";
+  if (evaluationCups.length > 0 && evaluationCups.every((c) => c === null || c === undefined)) {
+    return "v1";
+  }
+  return "v2";
 }

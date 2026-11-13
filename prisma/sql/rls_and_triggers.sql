@@ -2513,8 +2513,12 @@ END;
 $fn$;
 -- <<< end of PHASE 26 statements <<<
 
--- ROLLBACK: re-create the PHASE 23 function body (verbatim below). The stored
--- scores are not touched by either direction.
+-- ROLLBACK: re-create the PHASE 23 function body (below). It differs from the
+-- original PHASE 23 text in ONE way: it writes "ruleVersion" = 1 in the INSERT
+-- and in the ON CONFLICT UPDATE, because the column survives a rollback and a
+-- sample re-fired under this body must read as the old rule. Stored scores are
+-- not touched by either direction; rows already stamped 2 keep that stamp until
+-- they are re-fired under this body.
 --   CREATE OR REPLACE FUNCTION recompute_aggregate_score()
 --   RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 --   DECLARE
@@ -2621,13 +2625,13 @@ $fn$;
 --       "sessionSampleId", "participantCount", "submittedCount", "cupsPerSample", "totalCups",
 --       "avgRawScore", "totalNonUniform", "totalDefective",
 --       "uniformityPenalty", "defectPenalty", "communityScore",
---       "attrAverages", "computedAt"
+--       "attrAverages", "computedAt", "ruleVersion"
 --     ) VALUES (
 --       gen_random_uuid()::text,
 --       NEW."sessionSampleId", v_participant_count, v_submitted_count, v_cups_per_sample, v_total_cups,
 --       v_avg_raw, v_total_non_uniform, v_total_defective,
 --       v_uniformity_penalty, v_defect_penalty, v_community_score,
---       COALESCE(v_attr_averages, '{}'::jsonb), now()
+--       COALESCE(v_attr_averages, '{}'::jsonb), now(), 1
 --     )
 --     ON CONFLICT ("sessionSampleId") DO UPDATE SET
 --       "participantCount"  = EXCLUDED."participantCount",
@@ -2641,7 +2645,8 @@ $fn$;
 --       "defectPenalty"     = EXCLUDED."defectPenalty",
 --       "communityScore"    = EXCLUDED."communityScore",
 --       "attrAverages"      = EXCLUDED."attrAverages",
---       "computedAt"        = EXCLUDED."computedAt";
+--       "computedAt"        = EXCLUDED."computedAt",
+--       "ruleVersion"       = EXCLUDED."ruleVersion";
 --
 --     RETURN NEW;
 --   END;

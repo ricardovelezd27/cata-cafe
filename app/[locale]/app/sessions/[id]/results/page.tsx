@@ -9,7 +9,7 @@ import { PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
 import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
 import { computeCupperAlignment, type CupperAlignmentRow } from "@/lib/alignment";
 import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
-import { evaluationScoreRule, sampleScoreRule } from "@/lib/scoreRule";
+import { evaluationScoreRule, sampleScoreRule, type ScoreRule } from "@/lib/scoreRule";
 import { asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { deriveMyEvaluation, summarizeMyProgress } from "@/lib/evaluationState";
@@ -231,6 +231,7 @@ export default async function ResultsPage({
   // incomplete/empty submissions don't skew the community average. Keyed by
   // sessionSampleId.
   let groupAggBySample: Map<string, GroupAggregate> | null = null;
+  const ruleBySample = new Map<string, ScoreRule>();
   const submittedAllBySample = new Map<string, number>();
 
   // Ids of evaluations already visible at render time — seeds the client's
@@ -277,9 +278,18 @@ export default async function ResultsPage({
       }
       // Each sample is recomputed under the rule its STORED aggregate row says
       // (ruleVersion 1 = before 2026-11), so past results render unchanged.
-      const ruleBySample = new Map(
-        session.samples.map((s) => [s.id, sampleScoreRule(s.aggregateScore)] as const),
-      );
+      const cupsAllBySample = new Map<string, (number | null)[]>();
+      for (const ev of evals) {
+        const l = cupsAllBySample.get(ev.sessionSampleId);
+        if (l) l.push(ev.cups);
+        else cupsAllBySample.set(ev.sessionSampleId, [ev.cups]);
+      }
+      for (const s of session.samples) {
+        ruleBySample.set(
+          s.id,
+          sampleScoreRule(s.aggregateScore, cupsAllBySample.get(s.id) ?? []),
+        );
+      }
       for (const [sampleId, list] of bySample) {
         groupAggBySample.set(
           sampleId,
@@ -291,6 +301,7 @@ export default async function ResultsPage({
               nonUniformCups: ev.nonUniformCups,
               defectiveCups: ev.defectiveCups,
               cups: ev.cups ?? undefined,
+              rule: evaluationScoreRule(ev.cups, true),
             })),
             session.cupsPerSample,
             { rule: ruleBySample.get(sampleId) },
@@ -791,7 +802,7 @@ export default async function ResultsPage({
                 totalDefective: recomputed.totalDefective,
                 uniformityPenalty: recomputed.uniformityPenalty,
                 defectPenalty: recomputed.defectPenalty,
-                rule: sampleScoreRule(agg),
+                rule: ruleBySample.get(s.id) ?? sampleScoreRule(agg),
                 attrAverages: recomputed.attrAverages,
               }
             : groupAggBySample && (submittedAllBySample.get(s.id) ?? 0) > 0

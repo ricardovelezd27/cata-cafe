@@ -232,6 +232,11 @@ export interface GroupEvalInput {
   /** Cups this evaluation covers (Evaluation.cups). Falls back to the
    *  `cupsPerSample` argument of computeGroupAggregate. */
   cups?: number;
+  /** Rule THIS evaluation was scored under (callers derive it from `cups == null`
+   *  on a stored row via evaluationScoreRule). Used only for the SD, so the
+   *  "± SD" chip agrees with the owner matrix's per-cupper scores. Defaults to
+   *  the aggregate's rule. */
+  rule?: ScoreRule;
 }
 
 export interface GroupAggregate {
@@ -296,7 +301,10 @@ export function computeGroupAggregate(
   // evaluations (filtered above).
   const cupsOf = (e: GroupEvalInput) => e.cups ?? cupsPerSample;
   const individualScores = complete
-    .map((e) => calcIndividualScore(e.data, rule === "v1" ? cupsPerSample : cupsOf(e), { rule }))
+    .map((e) => {
+      const er: ScoreRule = e.rule ?? rule;
+      return calcIndividualScore(e.data, er === "v1" ? cupsPerSample : cupsOf(e), { rule: er });
+    })
     .filter((v): v is number => typeof v === "number");
   let scoreSd: number | null = null;
   if (individualScores.length >= 2) {
@@ -511,12 +519,17 @@ export function calcCommunityScore(params: {
   totalCups: number;
 }): number {
   const { avgRawScore, totalCups } = params;
-  if (!avgRawScore || totalCups === 0) return 0;
-  const { uniformityPenalty, defectPenalty } = cupDeduction({
-    cups: totalCups,
-    nonUniform: params.totalNonUniform,
-    defective: params.totalDefective,
-  });
+  // No pooled cups: nothing to deduct, the score is the rounded average (the
+  // trigger does the same: its IF v_total_cups > 0 skips the deduction).
+  if (!avgRawScore) return 0;
+  const { uniformityPenalty, defectPenalty } =
+    totalCups > 0
+      ? cupDeduction({
+          cups: totalCups,
+          nonUniform: params.totalNonUniform,
+          defective: params.totalDefective,
+        })
+      : { uniformityPenalty: 0, defectPenalty: 0 };
   // Round the final community score to the nearest 0.25, matching the DB trigger.
   return Math.max(0, Math.min(100, roundToQuarter(avgRawScore - uniformityPenalty - defectPenalty)));
 }

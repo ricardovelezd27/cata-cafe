@@ -100,9 +100,9 @@ describe("community score (display-only mirror of the DB trigger)", () => {
     ).toBe(77);
   });
 
-  it("returns 0 when there is nothing to average", () => {
+  it("returns 0 when there is nothing to average; no pooled cups means no deduction", () => {
     expect(calcCommunityScore({ avgRawScore: 0, totalNonUniform: 0, totalDefective: 0, totalCups: 10 })).toBe(0);
-    expect(calcCommunityScore({ avgRawScore: 80, totalNonUniform: 0, totalDefective: 0, totalCups: 0 })).toBe(0);
+    expect(calcCommunityScore({ avgRawScore: 80, totalNonUniform: 0, totalDefective: 0, totalCups: 0 })).toBe(80);
   });
 });
 
@@ -329,10 +329,45 @@ describe("rule selection helpers", () => {
     expect(evaluationScoreRule(5, false)).toBe("v2");
   });
 
-  it("sampleScoreRule: v1 only when a stored aggregate says ruleVersion 1; no row means v2", () => {
+  it("sampleScoreRule: the aggregate row decides; with no row, all-cups-NULL evaluations mean v1", () => {
+    // a stored row wins over the evaluations
     expect(sampleScoreRule({ ruleVersion: 1 })).toBe("v1");
     expect(sampleScoreRule({ ruleVersion: 2 })).toBe("v2");
+    expect(sampleScoreRule({ ruleVersion: 1 }, [5])).toBe("v1");
+    expect(sampleScoreRule({ ruleVersion: 2 }, [null])).toBe("v2");
+    // no row: no evaluations -> v2
     expect(sampleScoreRule(null)).toBe("v2");
-    expect(sampleScoreRule(undefined)).toBe("v2");
+    expect(sampleScoreRule(undefined, [])).toBe("v2");
+    // no row: every stored evaluation has cups NULL -> v1
+    expect(sampleScoreRule(null, [null])).toBe("v1");
+    expect(sampleScoreRule(undefined, [null, undefined, null])).toBe("v1");
+    // no row: at least one new-rule evaluation -> v2
+    expect(sampleScoreRule(null, [null, 5])).toBe("v2");
+    expect(sampleScoreRule(null, [5])).toBe("v2");
+    expect(sampleScoreRule(null, [0])).toBe("v2");
+  });
+
+  it("computeGroupAggregate: the SD uses each evaluation's own rule (mixed sample)", () => {
+    const base = Object.fromEntries(AFFECTIVE_ATTRIBUTES.map((a) => [`${a.id}_final`, 5]));
+    const flagged = { ...base, tazas_defectuosas: [true, false], tazas_no_uniformes: [true, false] };
+    // 2 cups: v1 ignores the flags (below five cups), v2 deducts 6.
+    const mixed = computeGroupAggregate(
+      [
+        { data: flagged, nonUniformCups: [true, false], defectiveCups: [true, false], cups: 2, rule: "v2" },
+        { data: flagged, nonUniformCups: [true, false], defectiveCups: [true, false], rule: "v1" },
+      ],
+      2,
+    );
+    // individual scores 73 (v2) and 79 (v1): population SD = 3
+    expect(mixed.scoreSd).toBe(3);
+    // without per-evaluation rules the aggregate's rule applies to both
+    const uniform = computeGroupAggregate(
+      [
+        { data: flagged, nonUniformCups: [true, false], defectiveCups: [true, false], cups: 2 },
+        { data: flagged, nonUniformCups: [true, false], defectiveCups: [true, false], cups: 2 },
+      ],
+      2,
+    );
+    expect(uniform.scoreSd).toBe(0);
   });
 });
