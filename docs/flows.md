@@ -284,7 +284,7 @@ history sync and close emails as the deadline pass); idle **30 days or more** = 
 `closeFinalizedAt`). **Grandfathered** sessions (started BEFORE `IDLE_RULE_EFFECTIVE_AT`, owner decision 2026-11) are never closed with emails: idle under 30 days = left alone (not even fetched), 30 days or more = silent; they get no new `live_idle` reminder. If a finalize step failed, the stamp stays null and the cron repair pass
 (`lib/repairClose.ts`) applies `repairEmailMode` (`lib/closeRules.ts`): it stays silent too
 (`skip`) exactly when the session is a live group session, was idle 30 days or more AT `closedAt`
-and has no `close_email_deliveries` row, or when the creator is a deleted-account placeholder; every other repair runs with emails. Accepted: an owner who
+and has no `close_email_deliveries` row, or when the creator is a deleted-account placeholder; every other repair runs with emails. **Consequence (accepted, pinned by `tests/repairEmailModeLeftovers.test.ts`):** a session closed by its deadline whose first finalize failed, whose organiser deleted the account before the repair ran, never gets its close email (participants still see the results in the app). Accepted: an owner who
 closes by hand a live session idle 30+ days whose finalize fails before the email step is repaired
 without emails; the results page then says "se cerró sola… no se enviaron correos" and the owner can
 "Reenviar". The pass walks up to 25 oldest candidates until 5 closes SUCCEEDED (a candidate that

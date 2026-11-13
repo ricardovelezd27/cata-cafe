@@ -72,3 +72,29 @@ export function appMetadataRecordingEmailChange(from: string, to: string): Recor
 export function appMetadataClearingEmailChange(): Record<string, unknown> {
   return { [EMAIL_CHANGE_KEY]: null };
 }
+
+export type ReconcileAction = "move" | "clear" | "keep";
+
+/**
+ * What the nightly reconcile pass (lib/emailChangeReconcile.ts) does with ONE
+ * account that still carries an `app_metadata.email_change` record, given the
+ * auth user as the admin API reads it now (S10 leftovers A1: a move that failed
+ * at verify time was never retried):
+ *   - move  : the change is COMPLETED (`completedEmailChange`): run the same
+ *             move the verify path runs (same refusals).
+ *   - keep  : nothing to do tonight: no record at all, or a change still in
+ *             flight (`new_email` set: the person has not confirmed yet).
+ *   - clear : the record is INERT: it can never move anything (not an object,
+ *             `from`/`to` not usable, or the account's current address is not
+ *             the recorded `to` and no change is pending). Only the key is
+ *             removed.
+ * Never "move" unless `completedEmailChange` agrees, so the reconcile can never
+ * move anything the verify path would not.
+ */
+export function reconcileAction(user: UserLike): ReconcileAction {
+  if (completedEmailChange(user)) return "move";
+  const rec = user?.app_metadata?.[EMAIL_CHANGE_KEY];
+  if (rec === null || rec === undefined) return "keep";
+  if (user?.new_email) return "keep";
+  return "clear";
+}
