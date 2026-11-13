@@ -1,16 +1,13 @@
 // Legal publication switch (S8-08, F-landing-1; text supplied in S10 WP9a).
-// The privacy, terms and legal-notice pages carry the final adapted text
-// (lib/legal/es/*, en/*) but are NOT published yet. While this is false: the
-// pages render for a direct visit (with a "Borrador" banner, noindex), but
-// nothing links to them, the footer keeps its mailto links and the waitlist
-// notice line is not shown. The consent columns are written null while this is
-// false (no notice was shown, so no consent is recorded) and stamped only once
-// it is true.
-//
-// TODO(owner): approve the preview of /es|en/privacidad, /terminos and
-// /aviso-legal, then flip this to true in a one-line PR (docs/LAUNCH-RUNBOOK.md
-// "Publishing the legal pages").
-export const LEGAL_PAGES_PUBLISHED = false;
+// PUBLISHED on 2026-11-13: the owner read /privacidad, /terminos and
+// /aviso-legal (es and en) and said "Yes, publish". While this is true the
+// footer, the login page and both waitlist forms link to the pages, the
+// "Borrador" banner is gone, the pages are indexable and listed in the
+// sitemap, and every new waitlist row is stamped with consentAt and
+// CONSENT_NOTICE_VERSION. Setting it back to false hides all of that again
+// (the pages still render for a direct visit, as a draft, noindex).
+// If the legal TEXT changes, bump CONSENT_NOTICE_VERSION in the same PR.
+export const LEGAL_PAGES_PUBLISHED = true;
 
 /** Stored in WaitlistEntry.consentNoticeVersion once the pages are published. */
 export const CONSENT_NOTICE_VERSION = "2026-11-v1";

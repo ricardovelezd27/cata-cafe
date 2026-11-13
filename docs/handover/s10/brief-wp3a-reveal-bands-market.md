@@ -3,7 +3,7 @@
 Branch: `claude/s10-03a-reveal-bands-impl` from `origin/main` (the architect tells you in the
 launch prompt if it must start from another branch instead). DRAFT PR against `main`.
 PR title: `S10 WP3a: a revealed sample can no longer be evaluated, scores shown without bands, optional market note`
-Kim rows: B5 (reveal), A6 (bands), B7 (market). Answers are simulated: mark new behaviour
+Kim rows (as named in `docs/prompts/S10-kim-answers.md` WP3): X3 (reveal), A10 (bands and the market note), X4 (pickers stay). Answers are simulated: mark new behaviour
 `TODO(kim-validar:<row>)`. `npm run test:db` required (write paths change).
 
 Read first: CLAUDE.md ("Session Lifecycle", "Offline-First Pattern", "Server Action
@@ -22,7 +22,7 @@ Before building each part, check whether it already exists.
   79 = the neutral point ("ni alto ni bajo", every attribute at 5) and 100 = the maximum.
 - Once a sample is revealed (its coffee is shown), nobody can keep evaluating it.
 
-## 1. B5 — a revealed sample is frozen for evaluation
+## 1. X3 — a revealed sample is frozen for evaluation
 Today `revealSample` on an OPEN session shows the coffee to everyone while cuppers can still
 change their ratings for it: the evaluation is no longer blind.
 - `requireSampleOwner` / `requireSampleMember` also return the sample's `revealed`.
@@ -58,7 +58,7 @@ change their ratings for it: the evaluation is no longer blind.
 - `tests/useServerExports.test.ts` and its allowlists must still pass; `docs/flows.md` §1
   gets the rule.
 
-## 2. A6 — scores without bands
+## 2. A10 — scores without bands
 - `ScorePill`: neutral surface for every score (MD3 tokens, no hex), no category name, no
   colour that depends on the value. Keep its size/shape API so call sites do not change.
 - Remove every consumer of `scoreBand` / `scoreToCategory` / `SCORE_CATEGORY_LABELS` /
@@ -80,7 +80,7 @@ change their ratings for it: the evaluation is no longer blind.
 - `lib/pdf/palette.ts` stays the only place with hex; drop palette entries that only the
   bands used.
 
-## 3. B7 — optional "market" note per evaluation
+## 3. A10 — optional "market" note per evaluation
 - Two JSON keys in the evaluation's module blob (no column): `mercado` = `"propio"` (default,
   "mi preferencia") | `"conocido"` ("un mercado que conozco"), and `mercado_nota` (free text,
   max 120 chars, only kept when `mercado` is `"conocido"`). Affective and combined formats
@@ -98,7 +98,7 @@ change their ratings for it: the evaluation is no longer blind.
 ## 4. Documentation only
 CLAUDE.md gains one sentence under the cupping form notes: the acidity and sweetness
 descriptor pickers stay on purpose (a recorded departure from the CVA 2024 form, Kim's
-answer), with `TODO(kim-validar:B8)` only in the doc line, not in code.
+answer), with `TODO(kim-validar:X4)` only in the doc line, not in code.
 
 ## Addendum (2026-11-13): what merged since this brief was written
 - Start from the current `origin/main`. It contains #127 (cup forms rebuilt around
