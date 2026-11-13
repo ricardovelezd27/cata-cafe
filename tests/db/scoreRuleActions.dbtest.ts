@@ -269,7 +269,7 @@ describe("close routine never rewrites pre-deploy samples (second review H1)", (
     });
 
     h.userId = owner;
-    const r = await setParticipantExclusion(s.id, u1, true, "other");
+    const r = await setParticipantExclusion(s.id, u1, true, "other", "test reason");
     expect(r.ok).toBe(true);
 
     const after = await storedAggregate(A.id);

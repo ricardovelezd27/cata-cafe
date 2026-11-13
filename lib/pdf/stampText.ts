@@ -30,7 +30,7 @@ const COPY = {
     viewerExcluded:
       "Tu evaluación no está incluida en los números del grupo (la excluyó el propietario de la sesión).",
     updated: (date: string) => `Resultados actualizados el ${date} UTC, después del cierre`,
-    origin: (date: string) => `Origen editado el ${date} UTC`,
+    origin: (date: string) => `Datos de origen editados el ${date} UTC`,
     draft: "BORRADOR · evaluación sin enviar",
   },
   en: {
@@ -41,7 +41,7 @@ const COPY = {
     viewerExcluded:
       "Your evaluation is not included in the group numbers (the session owner excluded it).",
     updated: (date: string) => `Results updated on ${date} UTC, after the session closed`,
-    origin: (date: string) => `Origin edited on ${date} UTC`,
+    origin: (date: string) => `Origin data edited on ${date} UTC`,
     draft: "DRAFT · unsent evaluation",
   },
 } as const;

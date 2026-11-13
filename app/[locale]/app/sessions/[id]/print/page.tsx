@@ -46,7 +46,7 @@ export default async function PrintPage({
         samples: {
           orderBy: { position: "asc" },
           include: {
-            coffee: { select: { name: true, deletedAt: true, roastLevel: true } },
+            coffee: { select: { name: true, deletedAt: true, roastLevel: true, originEditedAt: true } },
             evaluations: { where: { cupperId: viewAsId } },
             physical: true,
             extrinsic: true,
@@ -112,7 +112,7 @@ export default async function PrintPage({
             descriptive: (ev?.descriptiveData as Record<string, unknown>) ?? {},
             affective: (ev?.affectiveData as Record<string, unknown>) ?? {},
             combined: (ev?.combinedData as Record<string, unknown>) ?? {},
-            ...sheetSampleRecords(s, ownerView),
+            ...sheetSampleRecords(s, ownerView, session),
             ...sheetSamplePrep(s, ownerView),
           };
         }),
