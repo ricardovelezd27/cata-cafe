@@ -21,7 +21,7 @@ import {
 import { waitlistPurgeCutoff } from "@/lib/legal/waitlistRetention";
 import { WAITLIST_RETENTION_MONTHS } from "@/lib/legal/config";
 import { moveWaitlistEntry } from "@/lib/waitlistMove";
-import { moveReservationAfterEmailChange, recordOldAddressForEmailChange } from "@/lib/emailChangeMove";
+import { moveReservationAfterEmailChange, recordEmailChange } from "@/lib/emailChangeMove";
 import { getCoCupperCandidates } from "@/lib/coCuppers";
 import { listAllAuthUsersStrict } from "@/lib/supabase/adminUsers";
 import { PROFILE_MANIFEST, manifestKey } from "@/lib/accountDeletion/manifest";
@@ -239,9 +239,21 @@ describe("the SQL and the pure predicate agree", () => {
       { set: { confirmation_sent_at: new Date(CUTOFF.getTime() - 1) } },
       { set: { confirmation_sent_at: CUTOFF } },
       { set: { recovery_sent_at: YOUNG, confirmation_sent_at: OLD } },
+      // exact-cutoff boundary for the three other access-email timestamps
+      { set: { recovery_sent_at: new Date(CUTOFF.getTime() - 1) } },
+      { set: { recovery_sent_at: CUTOFF } },
+      { set: { recovery_sent_at: new Date(CUTOFF.getTime() + 1) } },
+      { set: { email_change_sent_at: new Date(CUTOFF.getTime() - 1) } },
+      { set: { email_change_sent_at: CUTOFF } },
+      { set: { email_change_sent_at: new Date(CUTOFF.getTime() + 1) } },
+      { set: { reauthentication_sent_at: new Date(CUTOFF.getTime() - 1) } },
+      { set: { reauthentication_sent_at: CUTOFF } },
+      { set: { reauthentication_sent_at: new Date(CUTOFF.getTime() + 1) } },
       // staff and odd addresses
       { email: "ai@example.test" },
       { email: "AI@Example.test " },
+      // btrim() removes spaces only: a tab keeps the address distinct on BOTH sides
+      { email: "ai@example.test\t" },
       { email: "   " },
       { email: "" },
       { email: null },
@@ -632,22 +644,28 @@ describe("races between selection and deletion (M2)", () => {
   });
 });
 
-describe("orphan reservations and an email change in flight (M3)", () => {
-  it("a 13-month-old reservation whose address is the recorded old address of a pending change is kept; others are deleted", async () => {
+describe("orphan reservations are NOT protected by any email-change record (M-a)", () => {
+  it("an over-age reservation matching no account is deleted even when some user's STALE record names its address", async () => {
     const mover = await makeUser({ email: "new-address@example.test" });
-    await prisma.$executeRaw`update auth.users set raw_app_meta_data = ${JSON.stringify({ email_change_from: "Old-Address@Example.test" })}::jsonb where id = ${mover}::uuid`;
+    // a record that never completed: the previous design's exclusion kept the
+    // reservation it names forever; now it protects nothing
+    await prisma.$executeRaw`update auth.users set raw_app_meta_data = ${JSON.stringify({
+      email_change: { from: "Old-Address@Example.test", to: "somewhere-else@example.test" },
+      email_change_from: "Old-Address@Example.test",
+    })}::jsonb where id = ${mover}::uuid`;
     await prisma.waitlistEntry.create({ data: { email: "old-address@example.test", createdAt: OLD } });
     await prisma.waitlistEntry.create({ data: { email: "gone@example.test", createdAt: OLD } });
     const r = await run();
-    expect(r.orphanReservations).toEqual({ due: 1, deleted: 1 });
-    expect(await reservationExists("old-address@example.test")).toBe(true);
+    expect(r.orphanReservations).toEqual({ due: 2, deleted: 2 });
+    expect(await reservationExists("old-address@example.test")).toBe(false);
     expect(await reservationExists("gone@example.test")).toBe(false);
   });
 });
 
-describe("email change: the old address comes from app_metadata only (H1)", () => {
+describe("email change: { from, to } in app_metadata only; the move needs the account's address to BE `to`", () => {
   const victim = "victim@example.test";
   const mine = "mine-new@example.test";
+  const rec = (from: string, to: string) => ({ email_change: { from, to } });
 
   it("a forged user_metadata carrying ANOTHER person's address moves nothing", async () => {
     const attacker = await makeUser({ email: mine });
@@ -658,7 +676,7 @@ describe("email change: the old address comes from app_metadata only (H1)", () =
       email: mine,
       new_email: "",
       // what a signed-in user can write with the public key
-      user_metadata: { email_change_from: victim },
+      user_metadata: rec(victim, mine),
     } as never);
     expect(await prisma.waitlistEntry.findMany({ orderBy: { email: "asc" } })).toEqual(before);
     expect(await reservationExists(victim)).toBe(true);
@@ -666,35 +684,69 @@ describe("email change: the old address comes from app_metadata only (H1)", () =
     expect(updateUserById).not.toHaveBeenCalled();
   });
 
-  it("app_metadata carrying the user's real old address moves the row, then clears it (service role)", async () => {
+  it("a completed change (no session needed: the user object from verifyOtp is enough) moves the row, then clears ONLY its key", async () => {
     const me = await makeUser({ email: mine });
     await prisma.waitlistEntry.create({ data: { email: "my-old@example.test", locale: "en", source: "landing" } });
     await moveReservationAfterEmailChange({
       id: me,
       email: mine,
       new_email: "",
-      app_metadata: { provider: "email", email_change_from: "My-Old@example.test" },
+      app_metadata: { provider: "email", providers: ["email"], ...rec("My-Old@example.test", "MINE-new@example.test") },
     });
     expect(await reservationExists("my-old@example.test")).toBe(false);
     expect((await prisma.waitlistEntry.findUniqueOrThrow({ where: { email: mine } })).locale).toBe("en");
-    expect(updateUserById).toHaveBeenCalledWith(me, { app_metadata: { provider: "email", email_change_from: null } });
+    expect(updateUserById).toHaveBeenCalledTimes(1);
+    expect(updateUserById).toHaveBeenCalledWith(me, { app_metadata: { email_change: null } });
   });
 
-  it("belt and braces: the recorded old address is held by ANOTHER auth user: nothing moves", async () => {
+  it("a second call after the move (record cleared) does nothing", async () => {
+    const me = await makeUser({ email: mine });
+    await prisma.waitlistEntry.create({ data: { email: "my-old3@example.test" } });
+    const user = { id: me, email: mine, new_email: "", app_metadata: rec("my-old3@example.test", mine) };
+    await moveReservationAfterEmailChange(user);
+    updateUserById.mockClear();
+    await moveReservationAfterEmailChange({ ...user, app_metadata: { email_change: null } });
+    expect(updateUserById).not.toHaveBeenCalled();
+    expect(await reservationExists(mine)).toBe(true);
+  });
+
+  it("`to` is not the account's current address: nothing moves, nothing is written, the record stays", async () => {
+    const me = await makeUser({ email: mine });
+    await prisma.waitlistEntry.create({ data: { email: "my-old4@example.test" } });
+    await moveReservationAfterEmailChange({ id: me, email: mine, new_email: "", app_metadata: rec("my-old4@example.test", "another@example.test") });
+    expect(await reservationExists("my-old4@example.test")).toBe(true);
+    expect(await reservationExists(mine)).toBe(false);
+    expect(updateUserById).not.toHaveBeenCalled();
+  });
+
+  it("belt and braces: the old address is held by ANOTHER auth user: nothing moves and the record is NOT cleared", async () => {
     await makeUser({ email: victim });
     const me = await makeUser({ email: mine });
     await prisma.waitlistEntry.create({ data: { email: victim } });
-    await moveReservationAfterEmailChange({ id: me, email: mine, new_email: "", app_metadata: { email_change_from: victim } });
+    await moveReservationAfterEmailChange({ id: me, email: mine, new_email: "", app_metadata: rec(victim, mine) });
     expect(await reservationExists(victim)).toBe(true);
     expect(await reservationExists(mine)).toBe(false);
+    expect(updateUserById).not.toHaveBeenCalled();
   });
 
-  it("while the new address is still pending (first of two confirmations) nothing moves", async () => {
+  it("first of two secure confirmations (new_email still pending): nothing moves", async () => {
     const me = await makeUser({ email: "still-old@example.test" });
     await prisma.waitlistEntry.create({ data: { email: "still-old@example.test" } });
-    await moveReservationAfterEmailChange({ id: me, email: "still-old@example.test", new_email: mine, app_metadata: { email_change_from: "still-old@example.test" } });
+    await moveReservationAfterEmailChange({ id: me, email: "still-old@example.test", new_email: mine, app_metadata: rec("still-old@example.test", mine) });
     expect(await reservationExists("still-old@example.test")).toBe(true);
     expect(await reservationExists(mine)).toBe(false);
+    expect(updateUserById).not.toHaveBeenCalled();
+  });
+
+  it("the person never presses \"Si, continuar\" or presses \"No soy yo\": the move never looks at a session, so the row has moved", async () => {
+    // confirmEmailToken calls the move right after verifyOtp, before any session
+    // branch (source-order test in tests/emailChangeRules.test.ts); here, the
+    // move with only what verifyOtp returned
+    const me = await makeUser({ email: mine });
+    await prisma.waitlistEntry.create({ data: { email: "my-old5@example.test", locale: "es" } });
+    await moveReservationAfterEmailChange({ id: me, email: mine, new_email: null, app_metadata: rec("my-old5@example.test", mine) });
+    expect(await reservationExists("my-old5@example.test")).toBe(false);
+    expect(await reservationExists(mine)).toBe(true);
   });
 
   it("a failing admin clear never throws (the sign-in goes on) and the row has still moved", async () => {
@@ -702,21 +754,34 @@ describe("email change: the old address comes from app_metadata only (H1)", () =
     await prisma.waitlistEntry.create({ data: { email: "my-old2@example.test" } });
     updateUserById.mockRejectedValue(Object.assign(new Error("x"), { code: "boom" }));
     await expect(
-      moveReservationAfterEmailChange({ id: me, email: mine, new_email: "", app_metadata: { email_change_from: "my-old2@example.test" } }),
+      moveReservationAfterEmailChange({ id: me, email: mine, new_email: "", app_metadata: rec("my-old2@example.test", mine) }),
     ).resolves.toBeUndefined();
     expect(await reservationExists(mine)).toBe(true);
   });
 
-  it("requesting a change records the SERVER-read old address in app_metadata (existing keys kept); a failure does not throw", async () => {
-    await recordOldAddressForEmailChange({ id: "11111111-1111-1111-1111-111111111111", email: "Old@Example.test", app_metadata: { provider: "email" } });
+  it("requesting a change records { from, to } (server-read, normalised) and sends ONLY that key; a failure does not throw", async () => {
+    await recordEmailChange({ id: "11111111-1111-1111-1111-111111111111", email: "Old@Example.test" }, " New@Example.test");
     expect(updateUserById).toHaveBeenCalledWith("11111111-1111-1111-1111-111111111111", {
-      app_metadata: { provider: "email", email_change_from: "old@example.test" },
+      app_metadata: { email_change: { from: "old@example.test", to: "new@example.test" } },
     });
     updateUserById.mockResolvedValue({ data: null, error: { status: 500, code: "unexpected_failure" } });
-    await expect(recordOldAddressForEmailChange({ id: "x", email: "o@e.test" })).resolves.toBeUndefined();
+    await expect(recordEmailChange({ id: "x", email: "o@e.test" }, "n@e.test")).resolves.toBeUndefined();
+  });
+
+  it("a second request overwrites the record: the first `to` can no longer complete a move", async () => {
+    const me = await makeUser({ email: "first-new@example.test" });
+    await prisma.waitlistEntry.create({ data: { email: "orig@example.test" } });
+    await recordEmailChange({ id: me, email: "orig@example.test" }, "first-new@example.test");
+    await recordEmailChange({ id: me, email: "orig@example.test" }, "second-new@example.test");
+    // what GoTrue now holds: the LAST write
+    const last = updateUserById.mock.calls.at(-1)![1] as { app_metadata: Record<string, unknown> };
+    expect(last.app_metadata).toEqual({ email_change: { from: "orig@example.test", to: "second-new@example.test" } });
+    // the account ends up on the FIRST address: the record is inert
+    await moveReservationAfterEmailChange({ id: me, email: "first-new@example.test", new_email: "", app_metadata: last.app_metadata });
+    expect(await reservationExists("orig@example.test")).toBe(true);
+    expect(await reservationExists("first-new@example.test")).toBe(false);
   });
 });
-
 
 describe("listAllAuthUsersStrict", () => {
   it("returns the full list when the last page has no next page", async () => {

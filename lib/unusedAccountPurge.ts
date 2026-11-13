@@ -6,6 +6,7 @@ import { waitlistPurgeCutoff } from "@/lib/legal/waitlistRetention";
 import { getSuperAdminEmail } from "@/lib/analytics/access";
 import { deleteAuthUser } from "@/lib/accountDeletion/deleteAccount";
 import { logError, logInfo, logWarn } from "@/lib/log";
+import { normalizeAddress } from "@/lib/emailChangeRules";
 import {
   ORPHAN_WAITLIST_BATCH,
   UNUSED_ACCOUNT_BATCH,
@@ -115,9 +116,9 @@ function protectedEmails(): string[] {
   // (unset = no super-admin: required in production, F-insights-5)
   const out = new Set<string>();
   const admin = getSuperAdminEmail();
-  if (admin) out.add(admin.trim().toLowerCase());
+  if (admin) out.add(normalizeAddress(admin));
   for (const e of (process.env.ANALYTICS_AI_ADMIN_EMAILS ?? "").split(",")) {
-    const k = e.trim().toLowerCase();
+    const k = normalizeAddress(e);
     if (k) out.add(k);
   }
   return [...out];
@@ -168,13 +169,14 @@ async function selectCandidates(now: Date, limit: number): Promise<Candidate[]> 
 }
 
 // ── Reservations with no auth user at all ──────────────────────────────────
-// A reservation whose address is the recorded OLD address of an email change in
-// flight (app_metadata.email_change_from, written by the service role only) is
-// not an orphan: the move happens when the change completes.
+// No exception for an email change "in flight": while a change is really in
+// flight the account still HOLDS the old address, so its reservation is not an
+// orphan; once the change completes the move (confirmEmailToken) takes the row
+// along. A stale app_metadata record therefore never protects anything.
+// Addresses compare as lower(btrim()) here and normalizeAddress() in JS (both:
+// lowercase, SPACES trimmed only).
 const ORPHAN_WHERE = `w."createdAt" < $1::timestamptz
-  AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE lower(btrim(u.email)) = lower(btrim(w.email)))
-  AND NOT EXISTS (SELECT 1 FROM auth.users u
-                  WHERE lower(btrim(u.raw_app_meta_data->>'email_change_from')) = lower(btrim(w.email)))`;
+  AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE lower(btrim(u.email)) = lower(btrim(w.email)))`;
 
 async function purgeOrphanReservations(now: Date, enabled: boolean) {
   const cutoff = waitlistPurgeCutoff(now, WAITLIST_RETENTION_MONTHS);

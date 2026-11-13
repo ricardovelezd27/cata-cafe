@@ -7,6 +7,7 @@
 
 import { manifestKey, PROFILE_MANIFEST } from "@/lib/accountDeletion/manifest";
 import { waitlistPurgeCutoff } from "@/lib/legal/waitlistRetention";
+import { normalizeAddress } from "@/lib/emailChangeRules";
 
 /** An access email sent this recently may still be in someone's inbox: the
  *  account is left for a later run so the link is never broken. */
@@ -82,8 +83,8 @@ export function notUnusedReason(
   protectedEmails: readonly string[] = [],
 ): NotUnusedReason | null {
   if (u.isAnonymous) return "anonymous";
-  if (!u.email || !u.email.trim()) return "no_email";
-  if (protectedEmails.includes(u.email.trim().toLowerCase())) return "protected_email";
+  if (!u.email || !normalizeAddress(u.email)) return "no_email";
+  if (protectedEmails.includes(normalizeAddress(u.email))) return "protected_email";
   if (u.emailConfirmedAt || u.phoneConfirmedAt) return "confirmed";
   if (u.lastSignInAt) return "signed_in";
   if (u.invitedAt) return "invited";

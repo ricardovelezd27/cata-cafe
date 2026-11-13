@@ -19,7 +19,7 @@ import { logWarn } from "@/lib/log";
 import { classifyPendingFailure, pendingEmailMatches } from "@/lib/signInPendingRules";
 import { checkSignInIntent, clearSignInIntent, rememberSignInIntent } from "@/lib/signInIntentCookie";
 import { isRegisteredUser } from "@/lib/guestScope";
-import { moveReservationAfterEmailChange, recordOldAddressForEmailChange } from "@/lib/emailChangeMove";
+import { moveReservationAfterEmailChange, recordEmailChange } from "@/lib/emailChangeMove";
 import * as v from "@/lib/validate";
 import type { ActionResult } from "@/lib/actionResult";
 
@@ -129,6 +129,13 @@ export async function confirmEmailToken(
     const ephemeral = createEphemeralClient();
     const { data, error } = await ephemeral.auth.verifyOtp({ type: type as EmailOtpType, token_hash: hash });
     if (error) throw new Error(authCodeFor(error));
+    // S10 WP9a (M-a): the token is verified, so GoTrue has done what the link
+    // says. A COMPLETED email change takes the founding-seat reservation along
+    // NOW, whatever happens to this browser's session below (zero click, parked,
+    // accepted, rejected, expired). The ONLY call site of the move. The record
+    // is service-role-only; the move acts only when the verified user's address
+    // is the recorded `to`; it never fails the sign-in (ids only in logs).
+    if (type === "email_change") await moveReservationAfterEmailChange(data.user);
     const dest = safeNext(next, { fallback: defaultNextFor(localeOf(locale)) });
     const session = data.session;
     // No session (e.g. the first of two email_change confirmations): nothing to
@@ -145,11 +152,6 @@ export async function confirmEmailToken(
       if (!setError) {
         await clearPendingSignIn();
         await clearSignInIntent();
-        // S10 WP9a (H1): only now, with the session of this very user
-        // established, a COMPLETED email change takes the founding-seat
-        // reservation along (old address read from app_metadata only; never
-        // fails the sign-in; ids only in logs). Never on a parked session.
-        if (type === "email_change") await moveReservationAfterEmailChange(data.user);
         return { next: dest };
       }
       // The one-time link is already consumed: do not strand the person. Fall
@@ -213,9 +215,6 @@ export async function acceptPendingSignIn(
     }
     await clearPendingSignIn();
     await clearSignInIntent();
-    // The session is established for the user the card showed: a completed
-    // email change (old address recorded in app_metadata) moves the reservation.
-    await moveReservationAfterEmailChange(who.user);
     return { next: safeNext(next, { fallback: defaultNextFor(localeOf(locale)) }) };
   });
 }
@@ -344,10 +343,11 @@ export async function requestEmailChange(
       }
       throw new Error("unknown");
     }
-    // S10 WP9a (H1): the old address is recorded where only the service role can
-    // write (app_metadata), AFTER the change was accepted, from the address the
-    // server read for the signed-in user. Failure never blocks the change.
-    await recordOldAddressForEmailChange(user);
+    // S10 WP9a (H1, M-a): { from, to } is recorded where only the service role
+    // can write (app_metadata), AFTER the change was accepted: `from` is the
+    // address the server read for the signed-in user, `to` the one it passed to
+    // updateUser. A new request overwrites it. Failure never blocks the change.
+    await recordEmailChange(user, address);
     return { pending: address };
   });
 }

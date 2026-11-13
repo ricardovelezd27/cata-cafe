@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
+import { normalizeAddress } from "@/lib/emailChangeRules";
 import { exactEmailMatches } from "@/lib/accountDeletion/plan";
 
 export type WaitlistMoveResult = "moved" | "no_row" | "target_exists" | "same";
@@ -13,8 +14,8 @@ export type WaitlistMoveResult = "moved" | "no_row" | "target_exists" | "same";
  * outcome; the caller still wraps it so a failure cannot break the sign-in.
  */
 export async function moveWaitlistEntry(from: string, to: string): Promise<WaitlistMoveResult> {
-  const a = from.trim().toLowerCase();
-  const b = to.trim().toLowerCase();
+  const a = normalizeAddress(from);
+  const b = normalizeAddress(to);
   if (!a || !b || a === b) return "same";
   try {
     return await prisma.$transaction(async (tx) => {
