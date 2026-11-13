@@ -8,6 +8,7 @@ import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { EmptyState, ButtonLink } from "@/components/ui";
 import { isSessionExpired } from "@/lib/sessionState";
 import { gateSamplePrep } from "@/lib/samplePrep";
+import { cupGroupProgressForViewer } from "@/lib/cupGroupProgress";
 import { CupClient } from "./CupClient";
 
 // Server actions invoked from this page (closeSession → after() email fan-out
@@ -138,6 +139,12 @@ export default async function CupPage({
 
   const t = await getTranslations();
   const tg = await getTranslations("group");
+  const groupProgress = cupGroupProgressForViewer({
+    isOwner,
+    done: submittedProgress.done,
+    total: submittedProgress.total,
+    format: (count, total) => tg("submittedOf", { count, total }),
+  });
   const tc = await getTranslations("coffee");
   const ta = await getTranslations("actions");
   const tw = await getTranslations("warmup");
@@ -195,8 +202,8 @@ export default async function CupPage({
       participantCount={session.participants.length}
       // S10 WP4a (Kim C5): how many cuppers have submitted is group information,
       // so only the owner receives it (participants never rendered it, now the
-      // payload does not carry it either).
-      submittedCount={isOwner ? submittedProgress.done : 0}
+      // payload does not carry it either: cupGroupProgressForViewer, tested).
+      submittedCount={groupProgress.submittedCount}
       // Only the owner sees peers' rows (RLS) and renders the live counter.
       submittedRows={isOwner ? submittedRows : []}
       evalCountBySample={evalCountBySample}
@@ -318,7 +325,7 @@ export default async function CupPage({
         cancel: ta("cancel"),
         individual: t("score.individual"),
         masterControls: tg("masterControls"),
-        submittedOf: tg("submittedOf", { count: submittedProgress.done, total: submittedProgress.total }),
+        submittedOf: groupProgress.submittedOf,
         submittedTemplate: tg.raw("submittedOf") as string,
         closeSession: tg("closeSession"),
         confirmClose: tg("confirmClose"),
