@@ -121,6 +121,7 @@ import { IDENTITY_CHANGED } from "@/lib/expectedUser";
 import { isIdentityChanged, onIdentityChanged, registerBeforeIdentityReload } from "@/lib/identityChange";
 import { onServerIdentityChanged } from "@/lib/identityResolve";
 import { awaitClaimRekey } from "@/lib/offline/claimRekey";
+import { nextRekeyKick } from "@/lib/offline/claimMarker";
 import { SyncConflictModal } from "@/components/offline/SyncConflictModal";
 import {
   mergeModuleData,
@@ -844,6 +845,13 @@ export function CupClient({
     userId,
     online,
   });
+  // S10 leftovers C2: the latest retrySync and a once-per-page flag for the one
+  // replay kicked after the claim re-key moved drafts (see the hydration effect).
+  const retrySyncRef = useRef(retrySync);
+  useEffect(() => {
+    retrySyncRef.current = retrySync;
+  }, [retrySync]);
+  const rekeyReplayKickedRef = useRef(false);
   const [submitBlocked, setSubmitBlocked] = useState(false);
   const [submitError, setSubmitError] = useState(false);
   const [leaveGuardOpen, setLeaveGuardOpen] = useState(false);
@@ -975,7 +983,7 @@ export function CupClient({
       // from them and the next save cannot replace the module with a stale copy.
       // (The provider's own re-key runs after this effect: effects run child
       // first. Doing it here makes the order explicit, not lucky.)
-      await awaitClaimRekey(userId);
+      const movedByRekey = await awaitClaimRekey(userId);
       if (cancelled) return;
       const blob = await loadSession(session.id, userId);
       if (cancelled) return;
@@ -1020,6 +1028,16 @@ export function CupClient({
         } catch {
           /* ignore */
         }
+      }
+
+      // S10 leftovers C2: the re-key above moved drafts to the account; the
+      // hook's mount replay may have read the store before that, and the
+      // provider's re-key finds nothing left to move. ONE replay now (offline
+      // it is a no-op; the guard is a pure rule, once per page).
+      if (!cancelled) {
+        const next = nextRekeyKick(movedByRekey, rekeyReplayKickedRef.current);
+        rekeyReplayKickedRef.current = next.kicked;
+        if (next.kick) void retrySyncRef.current();
       }
     })();
     return () => {

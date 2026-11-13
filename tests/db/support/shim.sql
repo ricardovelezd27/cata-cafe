@@ -35,6 +35,8 @@ CREATE TABLE auth.users (
   confirmation_sent_at timestamptz,
   recovery_sent_at timestamptz,
   email_change_sent_at timestamptz,
+  -- GoTrue keeps the PENDING new address here (hosted: text, '' when none).
+  email_change text,
   reauthentication_sent_at timestamptz,
   banned_until timestamptz,
   deleted_at timestamptz,
