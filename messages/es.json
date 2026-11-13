@@ -17,6 +17,7 @@
     "warmup": "Movimiento sensorial"
   },
   "common": {
+    "scoreLegend": "79 es el punto neutro (ni alto ni bajo) · 100 es el máximo.",
     "searchPlaceholder": "Buscar…",
     "showing": "Mostrando {from}–{to} de {total}",
     "prev": "Anterior",
@@ -429,6 +430,15 @@
     "referenceLocked": "Muestra de referencia: la calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos y su puntaje es siempre 79.00. Describe lo que percibes; en las demás muestras puntuarás por encima o por debajo de esta.",
     "referenceLockedAffective": "Muestra de referencia: la calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos y no hay nada que puntuar aquí. Pruébala con calma, anota lo que percibas y continúa con la siguiente muestra.",
     "referenceCupsLocked": "Las tazas de la referencia no se marcan: su puntaje se mantiene fijo en 79.00.",
+    "revealedNote": "Muestra revelada: ya no se puede evaluar.",
+    "market": {
+      "title": "¿Desde qué punto de vista calificaste?",
+      "optional": "Opcional",
+      "own": "Mi preferencia",
+      "known": "Un mercado que conozco",
+      "noteLabel": "¿Qué mercado?",
+      "notePlaceholder": "Ej. cafeterías de especialidad en Madrid"
+    },
     "referenceFirstHint": "La cata empieza por la referencia.",
     "expressNotes": {
       "title": "Notas rápidas",
@@ -1073,6 +1083,16 @@
     "needsConnection": "Necesita conexión",
     "closedUnsentNotice": "Tenías {count, plural, one {# muestra completa} other {# muestras completas}} sin enviar cuando se cerró la cata. No cuentan en los resultados.",
     "closedNotice": "La cata se cerró. Lo que enviaste cuenta en los resultados; lo que quedó sin enviar, no.",
+    "revealConfirm": {
+      "title": "¿Revelar esta muestra?",
+      "body": "Todos verán qué café es y nadie podrá seguir evaluando esta muestra. Las evaluaciones en borrador de esta muestra quedarán como están.",
+      "confirm": "Revelar muestra",
+      "cancel": "Cancelar"
+    },
+    "market": {
+      "label": "Punto de vista",
+      "known": "Un mercado que conozco"
+    },
     "closeNow": {
       "line": "La fecha de cierre ya pasó. La cata se cerrará sola en las próximas horas; puedes cerrarla ahora para enviar los resultados.",
       "button": "Cerrar ahora"
@@ -1976,6 +1996,7 @@
       "not_found_or_forbidden": "No encontramos ese elemento o no tienes permiso.",
       "session_not_started": "La cata aún no empezó. Espera a que el maestro la inicie.",
       "session_closed": "Esta cata ya está cerrada; sus resultados son definitivos.",
+      "sample_revealed": "Esta muestra ya fue revelada y no se puede seguir evaluando.",
       "invalid_token": "Este enlace de invitación no es válido.",
       "token_expired": "Este enlace de invitación caducó.",
       "token_exhausted": "Este enlace de invitación ya alcanzó su número máximo de usos.",

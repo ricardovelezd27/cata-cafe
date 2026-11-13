@@ -90,6 +90,9 @@ export async function requireSessionMember(
  *  (lib/scoring.ts cupDeduction) and `format` decides which JSON column an evaluation lands in. */
 export type SampleAuthRow = {
   sessionId: string;
+  /** The sample's own `revealed` flag (S10 WP3a, X3): a revealed sample of an
+   *  open session is frozen for evaluation (lib/evaluationFreeze.ts). */
+  revealed: boolean;
   status: string;
   cupsPerSample: number;
   format: string;
@@ -118,6 +121,7 @@ export async function requireSampleMember(
     where: { id: sessionSampleId },
     select: {
       sessionId: true,
+      revealed: true,
       session: {
         select: {
           createdBy: true,
@@ -144,6 +148,7 @@ export async function requireSampleMember(
   }
   return {
     sessionId: sample.sessionId,
+    revealed: sample.revealed,
     status: sample.session.status,
     cupsPerSample: sample.session.cupsPerSample,
     format: sample.session.format,
@@ -167,6 +172,7 @@ export async function requireSampleOwner(
     where: { id: sessionSampleId },
     select: {
       sessionId: true,
+      revealed: true,
       session: {
         select: {
           createdBy: true,
@@ -188,6 +194,7 @@ export async function requireSampleOwner(
   }
   return {
     sessionId: sample.sessionId,
+    revealed: sample.revealed,
     status: sample.session.status,
     cupsPerSample: sample.session.cupsPerSample,
     format: sample.session.format,

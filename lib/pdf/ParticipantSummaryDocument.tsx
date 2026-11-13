@@ -9,10 +9,9 @@ import type { ReactNode } from "react";
 import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
 import { registerPdfFonts, SANS, SERIF } from "./fonts";
 import { PDF_PALETTE } from "./palette";
-import { PdfRadar, PdfPercentBars, PdfScoreBand, PdfDeltaChip } from "./charts";
+import { PdfRadar, PdfPercentBars, PdfScorePill, PdfDeltaChip } from "./charts";
 import { sanitizePdfText } from "./text";
 import { CVA_TEXT } from "./cvaFormData";
-import { scoreBand } from "../scoring";
 import { ReportStamp } from "./sections/ReportStamp";
 import type {
   ParticipantSummaryModel,
@@ -444,11 +443,7 @@ function SampleCard({
             <View style={s.scoreCol}>
               <Text style={s.scoreCap}>{t.mine}</Text>
               {sample.myScore !== null ? (
-                <PdfScoreBand
-                  score={sample.myScore}
-                  band={scoreBand(sample.myScore)}
-                  size="lg"
-                />
+                <PdfScorePill score={sample.myScore} size="lg" />
               ) : (
                 <Text style={s.communityNum}>—</Text>
               )}
@@ -664,6 +659,7 @@ export function ParticipantSummaryDocument({
           {t.evaluated(kpis.evaluated, kpis.total)}
         </Text>
 
+        <Text style={[s.muted, { marginBottom: 6 }]}>{CVA_TEXT[locale].scoreLegend}</Text>
         {model.samples.map((sample, i) => (
           <SampleCard
             key={i}

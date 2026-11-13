@@ -83,16 +83,9 @@ export function ScorePill({
     return <span className="text-sm text-on-surface-variant">—</span>;
   }
 
-  const bandClass =
-    score >= 85
-      ? "bg-primary-container text-on-primary"
-      : score >= 75
-        ? "bg-secondary text-on-secondary"
-        : "bg-error text-white";
-
   return (
     <span
-      className={`inline-flex items-center rounded-pill px-2.5 py-0.5 text-sm font-semibold tabular-nums ${bandClass}`}
+      className={`inline-flex items-center rounded-pill px-2.5 py-0.5 text-sm font-semibold tabular-nums bg-surface-container-high text-on-surface`}
     >
       {score.toFixed(decimals)}
     </span>

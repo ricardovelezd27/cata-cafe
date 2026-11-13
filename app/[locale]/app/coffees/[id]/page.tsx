@@ -388,6 +388,7 @@ export default async function CoffeeProfilePage({
             {showResults && (
               <section>
                 <h3 className={`mb-2 ${SUB_H3}`}>{t("sessionsListTitle")}</h3>
+                <p className="mb-2 font-sans text-xs text-on-surface-variant">{tc("scoreLegend")}</p>
                 {aggregate.sessionRows.length === 0 ? (
                   <p className="text-sm text-on-surface-variant">
                     {aggregate.sessionsCount > 0 ? t("sessionsOthersNote") : t("noResults")}

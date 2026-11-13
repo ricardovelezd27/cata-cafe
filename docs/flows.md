@@ -17,6 +17,22 @@ manage samples (with guards), reveal, close, delete. A **participant** can only
 evaluate and view results. Deleting a session cascades **all participants'
 evaluations**, physical/extrinsic data, invites, and its tasting-history rows.
 
+**Reveal freezes evaluation (S10 WP3a, Kim X3, `TODO(kim-validar:X3)`):** once a
+sample is revealed on a session that is NOT closed and NOT expired, nobody keeps
+rating it (the evaluation is no longer blind). One pure rule,
+`evaluationWriteRefusal` / `evaluationWriteAllowed` (`lib/sessionState.ts`), used by
+`upsertEvaluation` (live autosave: answers `{ ok:false, error:"sample_revealed" }`,
+nothing is written, the cup page keeps the draft on the device as an unsent note
+and never paints the green "saved" state) and by the offline replay
+(`replayEvaluation`, legacy `syncEvaluation`: answers `closed`, the client keeps
+the note as `closed_unsent`). Deliberately NOT covered: `submitAllEvaluations` /
+`finishSoloSession` (submitting an existing draft changes no rating) and the
+owner-only physical / origin rows. The owner is asked first (`ConfirmDialog` on
+the results page) and `revealSample` touches the session row so open cup pages
+re-fetch over the existing `cupping_sessions` realtime event and show the sample
+read-only ("Muestra revelada: ya no se puede evaluar."). Closing needs no dialog
+(it reveals everything).
+
 **Registered-only creation (S8-03):** `createSession`, `createExpressSession`,
 `createGroupSession` and `duplicateSession` call `requireRegisteredUser()`
 (`lib/auth.ts`); an anonymous QR guest gets the same refusal as a stranger even

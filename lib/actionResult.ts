@@ -13,6 +13,7 @@ export const ACTION_ERROR_CODES = [
   "not_authenticated",
   "not_found_or_forbidden",
   "session_closed",
+  "sample_revealed", // upsertEvaluation: the sample was revealed on an open session, no more ratings (S10 WP3a, X3)
   "session_not_started",
   "entries_closed", // owner closed new entries (S8-11)
   "invalid_token",

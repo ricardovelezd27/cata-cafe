@@ -30,6 +30,7 @@ import {
 } from "@/lib/coffeeHistory";
 import {
   canEditSessionSettings,
+  evaluationWriteAllowed,
   extrinsicWriteAllowed,
   isSessionClosed,
   isSessionExpired,
@@ -778,7 +779,9 @@ export async function upsertEvaluation(input: {
   // Nobody signed in, or an unreachable auth lookup, is NOT an identity change:
   // it throws `not_authenticated` exactly as requireUser() does.
   expectedUserId?: string;
-}): Promise<{ ok: true; evaluationId: string } | { ok: false; error: "identity_changed" }> {
+}): Promise<
+  { ok: true; evaluationId: string } | { ok: false; error: "identity_changed" | "sample_revealed" }
+> {
   let user;
   try {
     user = await requireUserExpecting(input.expectedUserId, { skipProfileUpsert: true });
@@ -793,6 +796,11 @@ export async function upsertEvaluation(input: {
   // without re-firing the aggregate trigger (it only fires on isDraft).
   assertSessionWritable(auth);
   assertSessionStarted(auth);
+  // S10 WP3a (X3, TODO(kim-validar:X3)): a revealed sample of an open session is
+  // frozen for ratings. Answered (not thrown) so the cup page keeps the draft
+  // on the device and never paints the green "saved" state. Submitting an
+  // existing draft (submitAllEvaluations) does not come through here.
+  if (!evaluationWriteAllowed(auth)) return { ok: false, error: "sample_revealed" };
   const { sessionId } = auth;
 
   if (!input.data || typeof input.data !== "object" || Array.isArray(input.data)) {

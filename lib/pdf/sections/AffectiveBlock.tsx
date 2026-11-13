@@ -1,8 +1,8 @@
 import { View, Text } from "@react-pdf/renderer";
-import { scoreBand } from "@/lib/scoring";
 import type { FichaAffective } from "@/lib/reports/fichaTecnica";
-import { PdfRadar, PdfScoreBand } from "../charts";
+import { PdfRadar, PdfScorePill } from "../charts";
 import { PDF_PALETTE } from "../palette";
+import { CVA_TEXT } from "../cvaFormData";
 import { BlockTitle, C, Chip, SECTION_TEXT, fmt, st, type Locale } from "./shared";
 
 const RADAR_SIZE = 200;
@@ -37,11 +37,12 @@ export function AffectiveBlock({
             <Text style={st.kvLabel}>{t.communityScore}</Text>
             <View style={{ marginTop: 3 }}>
               {score !== null ? (
-                <PdfScoreBand score={score} band={scoreBand(score)} size="lg" />
+                <PdfScorePill score={score} size="lg" />
               ) : (
                 <Text style={st.big}>—</Text>
               )}
             </View>
+            <Text style={[st.small, { marginTop: 4 }]}>{CVA_TEXT[locale].scoreLegend}</Text>
             {affective.sd !== null ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 5 }}>
                 <Chip>± {affective.sd.toFixed(1)}</Chip>

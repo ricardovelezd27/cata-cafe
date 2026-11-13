@@ -168,6 +168,7 @@ export function ResultsClient({
   closedNotice = null,
   finish = null,
   closeNow = null,
+  revealConfirm = null,
   sync = null,
   translations,
 }: {
@@ -253,6 +254,10 @@ export function ResultsClient({
   } | null;
   // Owner of an expired, not closed GROUP session: "Cerrar ahora" (S10 WP4a
   // review M2; rule `canCloseNow`). Null for everyone else.
+  // Owner of an OPEN session: asks before revealing a sample, because a revealed
+  // sample can no longer be evaluated (S10 WP3a, X3). Null once the session is over
+  // (closing reveals everything, no dialog).
+  revealConfirm?: { title: string; body: string; confirm: string; cancel: string } | null;
   closeNow?: {
     line: string;
     button: string;
@@ -389,6 +394,7 @@ export function ResultsClient({
       includedOf: string;
       rankIndicative: string;
       rankNoClearGap: string;
+      scoreLegend: string;
       basisMine: string;
       fewNote: string;
     };
@@ -440,6 +446,7 @@ export function ResultsClient({
   const feedback = useActionFeedback();
   const [finishOpen, setFinishOpen] = useState(false);
   const [closeNowOpen, setCloseNowOpen] = useState(false);
+  const [revealTarget, setRevealTarget] = useState<string | null>(null);
   // What "Terminar cata" would do, from the per-sample states the server sent.
   const finishPlan = finish
     ? planFinish(
@@ -627,6 +634,15 @@ export function ResultsClient({
   };
 
   const handleReveal = (sampleId: string) => {
+    // Open session: confirm first (the sample stops accepting evaluations).
+    if (revealConfirm && cuppingOpen) {
+      setRevealTarget(sampleId);
+      return;
+    }
+    doReveal(sampleId);
+  };
+
+  const doReveal = (sampleId: string) => {
     startTransition(async () => {
       await feedback.run(revealSample(sampleId), () => router.refresh());
     });
@@ -900,6 +916,24 @@ export function ResultsClient({
             {closeNow.button}
           </Button>
         </div>
+      )}
+      {revealConfirm && (
+        <ConfirmDialog
+          open={revealTarget !== null}
+          onOpenChange={(o) => {
+            if (!o) setRevealTarget(null);
+          }}
+          title={revealConfirm.title}
+          body={<p>{revealConfirm.body}</p>}
+          confirmLabel={revealConfirm.confirm}
+          cancelLabel={revealConfirm.cancel}
+          closeLabel={revealConfirm.cancel}
+          onConfirm={() => {
+            const id = revealTarget;
+            setRevealTarget(null);
+            if (id) doReveal(id);
+          }}
+        />
       )}
       {closeNow && (
         <ConfirmDialog

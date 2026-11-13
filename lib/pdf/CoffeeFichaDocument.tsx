@@ -5,11 +5,10 @@
 // NEVER import this (or @react-pdf/renderer) from a client component.
 
 import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
-import { scoreBand } from "../scoring";
 import type { FichaAffective, FichaIdentity } from "../reports/fichaTecnica";
 import { registerPdfFonts, SANS } from "./fonts";
 import { CVA_TEXT } from "./cvaFormData";
-import { PdfScoreBand } from "./charts";
+import { PdfScorePill } from "./charts";
 import { sanitizePdfText } from "./text";
 import { IdentityBlock } from "./sections/IdentityBlock";
 import { ReportStamp } from "./sections/ReportStamp";
@@ -159,13 +158,14 @@ export function CoffeeFichaDocument({ model, locale }: { model: CoffeeFichaModel
                           </Text>
                           <View style={{ width: 60, alignItems: "flex-end" }}>
                             {r.score !== null ? (
-                              <PdfScoreBand score={r.score} band={scoreBand(r.score)} />
+                              <PdfScorePill score={r.score} />
                             ) : (
                               <Text style={st.small}>—</Text>
                             )}
                           </View>
                         </View>
                       ))}
+                      <Text style={[st.small, { marginTop: 4 }]}>{CVA_TEXT[locale].scoreLegend}</Text>
                     </View>
                   ) : null}
                 </>

@@ -431,8 +431,46 @@ export function PdfPercentBars({
 
 // ─── PdfScoreBand / PdfDeltaChip ─────────────────────────────────────────────
 
-/** Rounded score pill coloured by traffic-light band. null score renders an em dash. */
-export function PdfScoreBand({
+/** Neutral score pill: the number only, never a colour or a name by quality
+ *  (S10 WP3a, TODO(kim-validar:A10)). null score renders an em dash. */
+export function PdfScorePill({
+  score,
+  size = "sm",
+}: {
+  score: number | null;
+  size?: "sm" | "lg";
+}) {
+  const lg = size === "lg";
+  return (
+    <View
+      style={{
+        backgroundColor: PDF_PALETTE.paper,
+        borderWidth: 0.75,
+        borderColor: PDF_PALETTE.hair,
+        borderRadius: lg ? 6 : 4,
+        paddingVertical: lg ? 4 : 2,
+        paddingHorizontal: lg ? 10 : 6,
+        alignSelf: "flex-start",
+      }}
+    >
+      <Text
+        style={{
+          fontFamily: SANS,
+          fontWeight: 700,
+          fontSize: lg ? 14 : 8,
+          color: PDF_PALETTE.ink,
+        }}
+      >
+        {score === null ? "—" : score.toFixed(2)}
+      </Text>
+    </View>
+  );
+}
+
+/** Rounded score pill coloured by DISTANCE from the group (cupperStats
+ *  `bandFor`: >= 1 SD amber, >= 2 SD red), never by quality. Only the owner
+ *  matrix and the teacher notes use it. null score renders an em dash. */
+export function PdfDeviationBand({
   score,
   band,
   size = "sm",

@@ -379,6 +379,15 @@ export default async function CupPage({
         referenceLocked: t("cupping.referenceLocked"),
         referenceLockedAffective: t("cupping.referenceLockedAffective"),
         referenceCupsLocked: t("cupping.referenceCupsLocked"),
+        revealedNote: t("cupping.revealedNote"),
+        market: {
+          title: t("cupping.market.title"),
+          optional: t("cupping.market.optional"),
+          own: t("cupping.market.own"),
+          known: t("cupping.market.known"),
+          noteLabel: t("cupping.market.noteLabel"),
+          notePlaceholder: t("cupping.market.notePlaceholder"),
+        },
         // Cup grid copy (S10 WP1b): `{n}`, `{u}`, `{d}` are replaced client-side.
         cups: {
           title: t("cupping.cups.title"),
