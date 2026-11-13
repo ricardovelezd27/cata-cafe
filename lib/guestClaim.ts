@@ -285,6 +285,7 @@ export async function mergeGuestData(
     await tx.sessionInvite.updateMany({ where: { createdBy: anon }, data: { createdBy: target } });
     await tx.coffeeInvite.updateMany({ where: { createdBy: anon }, data: { createdBy: target } });
     await tx.savedInsight.updateMany({ where: { createdBy: anon }, data: { createdBy: target } });
+    await tx.warmupReflection.updateMany({ where: { userId: anon }, data: { userId: target } });
     await tx.tastingGroup.updateMany({ where: { createdBy: anon }, data: { createdBy: target } });
     await tx.tastingGroupMember.updateMany({ where: { userId: anon }, data: { userId: target } });
     await tx.groupPost.updateMany({ where: { authorId: anon }, data: { authorId: target } });

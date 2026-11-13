@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { defaultExpressName } from "@/lib/expressSession";
+import { warmupPlayerStrings } from "@/components/warmup/playerStrings";
 import { ExpressForm, type ExpressFormTranslations } from "./ExpressForm";
 
 export function generateStaticParams() {
@@ -14,6 +15,7 @@ export default async function ExpressSessionPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("session");
+  const tw = await getTranslations("warmup");
 
   const defaultName = defaultExpressName(new Date(), locale);
 
@@ -40,6 +42,7 @@ export default async function ExpressSessionPage({
     fullWizard: t("express.fullWizard"),
     nameRequired: t("express.nameRequired"),
     offline: t("express.offline"),
+    warmup: t("express.warmup"),
     sampleWarning: {
       many: t("sampleCountWarning.many"),
       combined: t("sampleCountWarning.combined"),
@@ -47,6 +50,11 @@ export default async function ExpressSessionPage({
   };
 
   return (
-    <ExpressForm locale={locale} defaultName={defaultName} translations={translations} />
+    <ExpressForm
+      locale={locale}
+      defaultName={defaultName}
+      translations={translations}
+      warmupStrings={warmupPlayerStrings(tw)}
+    />
   );
 }

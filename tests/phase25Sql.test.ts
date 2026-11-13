@@ -26,7 +26,12 @@ function stripComments(sql: string): string {
     .join("\n");
 }
 
-const phase25 = SQL.slice(SQL.indexOf("-- PHASE 25"));
+// Bounded from this phase's own header to the NEXT "-- PHASE <number>" header of
+// ANY number (or the end of the file), so a phase that lands before or after
+// (26, 27 ...) in either merge order cannot leak into these assertions.
+const phase25Start = /^-- PHASE 25 /m.exec(SQL)!.index;
+const phase25Next = /^-- PHASE \d+/m.exec(SQL.slice(phase25Start + 10));
+const phase25 = SQL.slice(phase25Start, phase25Next ? phase25Start + 10 + phase25Next.index : undefined);
 
 const block = (s: string, start: string, end: string) => {
   const a = s.indexOf(start);
@@ -40,7 +45,7 @@ describe("PHASE 25: session_participants exclusion metadata hidden from the API"
   const stmts = block(phase25, ">>> PHASE 25 statements", "<<< end of PHASE 25 statements");
   const exec = stripComments(stmts).replace(/\s+/g, " ");
 
-  it("is the last phase and exists once", () => {
+  it("exists once, after PHASE 24 (later phases may follow it)", () => {
     expect(SQL.match(/-- PHASE 25 /g)?.length).toBe(1);
     expect(SQL.indexOf("-- PHASE 25")).toBeGreaterThan(SQL.indexOf("-- PHASE 24"));
   });
