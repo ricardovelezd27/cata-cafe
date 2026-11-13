@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { WifiOff, RefreshCw, CheckCircle2, AlertTriangle } from "lucide-react";
 import type { SyncPhase } from "@/hooks/useOfflineSync";
+import { isIdentityChanged, onIdentityChanged, registerIdentityNoticeHost } from "@/lib/identityChange";
 
 export type OfflineBannerTranslations = {
   bannerOffline: string;
@@ -11,6 +12,14 @@ export type OfflineBannerTranslations = {
   bannerSyncFailed: string;
   retrySync: string;
   bannerStorageUnavailable: string;
+  /** offline.reloadNow: label of the identity notice's reload button. Optional:
+   *  pre-upgrade prop blobs lack it. (The new-version notice is no longer
+   *  rendered here: components/offline/StaleBundleNotice.tsx, S10 WP9b.) */
+  reloadNow?: string;
+  /** errors.codes.identity_changed (S10 WP8 fourth review): the cup page shows the
+   *  "this device changed user" notice HERE because the cup shell covers the
+   *  layout bar. Optional: pre-upgrade prop blobs lack it. */
+  bannerIdentityChanged?: string;
   /** RAW template with "{seconds}" (optional: older cached props lack it). */
   bannerNextAttempt?: string;
 };
@@ -43,6 +52,16 @@ export function OfflineBanner({
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [nextRetryAt]);
+  // S10 WP8: a positive "a different user is signed in" finding (module latch).
+  // Shown FIRST, before the new-version notice. Registering as the notice host
+  // keeps the layout's IdentityWatcher bar from showing the same message too.
+  const identityChanged = useSyncExternalStore(onIdentityChanged, isIdentityChanged, () => false);
+  const hostsIdentityNotice = !!t.bannerIdentityChanged;
+  useEffect(() => {
+    if (!hostsIdentityNotice) return;
+    return registerIdentityNoticeHost();
+  }, [hostsIdentityNotice]);
+  const showIdentity = identityChanged && hostsIdentityNotice;
   const secondsLeft = nextRetryAt ? Math.max(0, Math.ceil((nextRetryAt - now) / 1000)) : null;
 
   let tone: "offline" | "info" | "success" | "warn" | null = null;
@@ -50,7 +69,11 @@ export function OfflineBanner({
   let icon = null;
   let showRetry = false;
 
-  if (storageUnavailable) {
+  if (showIdentity) {
+    tone = "warn";
+    message = t.bannerIdentityChanged ?? "";
+    icon = <RefreshCw size={15} aria-hidden />;
+  } else if (storageUnavailable) {
     tone = "warn";
     message = t.bannerStorageUnavailable;
     icon = <AlertTriangle size={15} aria-hidden />;
@@ -93,6 +116,15 @@ export function OfflineBanner({
     >
       {icon}
       <span className="flex-1">{message}</span>
+      {showIdentity && (
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="shrink-0 font-semibold underline underline-offset-2 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 rounded-sm"
+        >
+          {t.reloadNow ?? "Reload"}
+        </button>
+      )}
       {showRetry && (
         <button
           type="button"

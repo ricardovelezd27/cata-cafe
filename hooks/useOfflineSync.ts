@@ -84,6 +84,8 @@ export function useOfflineSync({
       force: boolean,
       // S8-18: the draft's last edit time, so the server can order this replay.
       clientTs?: number,
+      // M4: the user the draft belongs to; the server refuses to write under anyone else.
+      expectedUserId?: string,
     ): Promise<ReplayResult> => {
       for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         if (!onlineRef.current) return "offline";
@@ -96,6 +98,7 @@ export function useOfflineSync({
               cupsPerSample,
               force,
               clientTs,
+              expectedUserId,
             });
             // "pending" = the master has not started this live session yet; the
             // draft stays pending without burning an attempt (no fast retry).
@@ -103,9 +106,10 @@ export function useOfflineSync({
           }
           const res =
             moduleKey === "physical"
-              ? await replayPhysical({ sessionSampleId: sampleId, data })
-              : await replayExtrinsic({ sessionSampleId: sampleId, data });
-          return res.status;
+              ? await replayPhysical({ sessionSampleId: sampleId, data, expectedUserId })
+              : await replayExtrinsic({ sessionSampleId: sampleId, data, expectedUserId });
+          // "pending" = signed in as someone else right now: keep the draft, no attempt burnt.
+          return res.status === "pending" ? "waiting" : res.status;
         } catch (err) {
           // C-06: the tab predates a deploy; every retry fails the same way.
           // Flag it (the cup banner asks for a reload) and leave the draft
@@ -205,6 +209,7 @@ export function useOfflineSync({
                 blob.cupsPerSample,
                 false,
                 sentAt,
+                blob.userId,
               );
               if (result === "offline") {
                 anyRetry = true;
@@ -296,6 +301,7 @@ export function useOfflineSync({
             conflict.cupsPerSample,
             true,
             mod.updatedAt,
+            conflict.userId,
           );
           if (result === "offline" || result === "retry" || result === "waiting" || result === "conflict") return; // keep it for a later retry
           await applyReplayOutcome(
