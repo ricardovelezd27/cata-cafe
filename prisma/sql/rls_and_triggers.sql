@@ -2771,3 +2771,130 @@ COMMIT;
 --   COMMIT;
 --   -- Prefer NOT to roll back: leaving RLS on with no policy is the safe state.
 -- ============================================================================
+-- PHASE 28 (2026-11-14, S10 WP4a / Kim C5): group results are visible only at
+-- close. Apply via runbook §33, dry run first (prisma/sql/dry-runs/phase28_dry_run.sql).
+-- The Supabase project is production (there is only one). NOT applied by the PR
+-- that adds it: the owner applies it.
+--
+-- TODO(kim-validar:C5) the rule comes from the owner's decision of 2026-11-12
+-- on a SIMULATED answer: "nothing about the group is shown before close".
+--
+-- WHY: until now a participant saw the community score as soon as EVERY
+-- participant had submitted, even with the session still open. It biases the
+-- cuppers and, in a self-paced session, spoils the cupping for whoever has not
+-- cupped yet. The application rule (canViewGroupResults, lib/sessionState.ts)
+-- no longer has that branch; this phase removes it from the SQL twin.
+--
+-- WHAT IT CHANGES: ONE function, public.can_view_group_results(text), same
+-- signature, same attributes (STABLE SECURITY DEFINER SET search_path = public),
+-- same grants. It loses the "every participant has a submitted evaluation"
+-- branch. It is called only by the `agg_select` policy on aggregate_scores, so
+-- the only effect is that a participant of an OPEN group session can no longer
+-- read that session's aggregate_scores rows over the API (Prisma, the app's own
+-- reads, never used the policy). The owner, a closed session and a session past
+-- its closesAt are unchanged. Nothing else reads the function.
+--
+-- ORDER: deploy and this SQL may go in either order; both only NARROW
+-- visibility. Apply the SQL right after the deploy so the two agree.
+--
+-- Pre-flight (read-only):
+--   -- (a) the current body must still be the PHASE 21 one (it mentions "isDraft"):
+--   select pg_get_functiondef('public.can_view_group_results(text)'::regprocedure);
+--   -- (b) the only policy that calls it:
+--   select tablename, policyname from pg_policies
+--     where schemaname = 'public' and qual like '%can_view_group_results%';
+--     -- expect: aggregate_scores / agg_select
+--   -- (c) how many open group sessions lose visibility today, and how many live
+--   --     sessions are idle for 7 to 30 days (the new cron closes those, with
+--   --     emails) or more than 30 days (closed silently): all in the dry run's report.
+--
+-- Dry run: prisma/sql/dry-runs/phase28_dry_run.sql (ONE DO statement, nothing
+-- can be applied, NO placeholders). It ends in an intentional error whose
+-- message lists every check with its expected value.
+--
+-- How to verify after applying:
+--   select pg_get_functiondef('public.can_view_group_results(text)'::regprocedure);
+--     -- expect: no "isDraft" and no "cupperId" in the body
+--   then the two-account smoke test of runbook §33.
+-- Rollback: the commented block at the end of this phase (the PHASE 21 body).
+-- ============================================================================
+BEGIN;
+
+-- >>> PHASE 28 statements (copied verbatim into phase28_dry_run.sql) >>>
+
+-- SQL twin of canViewGroupResults (lib/sessionState.ts). Keep the two in step.
+-- "closesAt" is TIMESTAMP(3) holding UTC, hence now() AT TIME ZONE 'utc'.
+-- Visible to the session owner, once the session is closed, or once its
+-- closesAt has passed. "Everyone has submitted" no longer opens it (Kim C5).
+CREATE OR REPLACE FUNCTION public.can_view_group_results(p_session_id text)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM cupping_sessions cs
+    WHERE cs.id = p_session_id
+      AND cs."isGroup"
+      AND (
+        cs."createdBy" = auth.uid()::text
+        OR cs.status = 'closed'
+        OR (cs."closesAt" IS NOT NULL AND cs."closesAt" < (now() AT TIME ZONE 'utc'))
+      )
+  );
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.can_view_group_results(text) FROM PUBLIC, anon;
+GRANT  EXECUTE ON FUNCTION public.can_view_group_results(text) TO authenticated;
+
+-- <<< end of PHASE 28 statements <<<
+
+-- Self-check (not copied into the dry run, whose probes check the same things).
+-- Any failure aborts the transaction: nothing is applied.
+DO $chk$
+DECLARE
+  v_def text := pg_get_functiondef('public.can_view_group_results(text)'::regprocedure);
+BEGIN
+  IF v_def LIKE '%isDraft%' OR v_def LIKE '%cupperId%' THEN
+    RAISE EXCEPTION 'PHASE 28 aborted, nothing applied: the all-submitted branch is still in the function';
+  END IF;
+  IF NOT (SELECT prosecdef FROM pg_proc WHERE oid = 'public.can_view_group_results(text)'::regprocedure) THEN
+    RAISE EXCEPTION 'PHASE 28 aborted, nothing applied: the function is no longer SECURITY DEFINER';
+  END IF;
+  IF (SELECT proconfig FROM pg_proc WHERE oid = 'public.can_view_group_results(text)'::regprocedure)
+       IS DISTINCT FROM ARRAY['search_path=public']::text[] THEN
+    RAISE EXCEPTION 'PHASE 28 aborted, nothing applied: the function lost SET search_path = public';
+  END IF;
+  IF NOT has_function_privilege('authenticated', 'public.can_view_group_results(text)', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.can_view_group_results(text)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'PHASE 28 aborted, nothing applied: EXECUTE grants are wrong';
+  END IF;
+END
+$chk$;
+
+COMMIT;
+
+-- Rollback (restores the PHASE 21 body; one transaction):
+--   BEGIN;
+--   CREATE OR REPLACE FUNCTION public.can_view_group_results(p_session_id text)
+--   RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+--     SELECT EXISTS (
+--       SELECT 1 FROM cupping_sessions cs
+--       WHERE cs.id = p_session_id
+--         AND cs."isGroup"
+--         AND (
+--           cs."createdBy" = auth.uid()::text
+--           OR cs.status = 'closed'
+--           OR (cs."closesAt" IS NOT NULL AND cs."closesAt" < (now() AT TIME ZONE 'utc'))
+--           OR (
+--             (SELECT count(*) FROM session_participants sp WHERE sp."sessionId" = cs.id) > 0
+--             AND (
+--               SELECT count(DISTINCT e."cupperId")
+--               FROM evaluations e
+--               JOIN session_samples ss ON ss.id = e."sessionSampleId"
+--               WHERE ss."sessionId" = cs.id AND e."isDraft" = false
+--             ) >= (SELECT count(*) FROM session_participants sp WHERE sp."sessionId" = cs.id)
+--           )
+--         )
+--     );
+--   $$;
+--   REVOKE EXECUTE ON FUNCTION public.can_view_group_results(text) FROM PUBLIC, anon;
+--   GRANT  EXECUTE ON FUNCTION public.can_view_group_results(text) TO authenticated;
+--   COMMIT;
+-- ============================================================================

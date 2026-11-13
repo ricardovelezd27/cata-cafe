@@ -374,7 +374,7 @@
       "closesAtHint": "Optional. The session closes by itself in the early hours after this date. Leave it empty for a live tasting you close yourself.",
       "closesAtPast": "The closing date must be today or later.",
       "sessionClosed": "This session is closed and can no longer be edited.",
-      "sessionExpired": "This session's deadline has passed: you can only change the closing date.",
+      "sessionExpired": "This cupping's closing date has passed: it will close in the next few hours and can no longer be edited.",
       "warmupLocked": "The exercise can't be changed once the cupping has started.",
       "repinTitle": "Set this sample as the reference?",
       "repinBody": "{n} cuppers already rated this sample. Marking it as the reference replaces their quality ratings with the 79.00 anchor. This cannot be undone.",
@@ -781,7 +781,7 @@
       "chart": "Chart"
     },
     "flavorProfiles": "Flavor Profiles",
-    "communityPending": "Group results will appear once all participants submit their evaluations or the session master closes the session.",
+    "communityPending": "Group results will appear once the cupping closes.",
     "sdAria": "Standard deviation across cuppers — lower means more consensus",
     "referenceBadge": "Reference",
     "deltaVsReference": "Δ vs. reference",
@@ -803,6 +803,7 @@
     },
     "closeEmails": {
       "label": "Close emails:",
+      "silent": "This cupping closed by itself because of inactivity and no emails were sent. You can send them with “{button}”.",
       "sent": "{count, plural, =1 {1 sent} other {# sent}}",
       "noEmail": "{count, plural, =1 {1 with no email} other {# with no email}}",
       "failed": "{count, plural, =1 {1 failed} other {# failed}}",
@@ -1036,6 +1037,10 @@
     "needsConnection": "Needs a connection",
     "closedUnsentNotice": "You had {count, plural, one {# complete sample} other {# complete samples}} unsent when the session closed. They do not count in the results.",
     "closedNotice": "The session closed. What you sent counts in the results; anything left unsent does not.",
+    "closeNow": {
+      "line": "The closing date has passed. The cupping will close by itself in the next few hours; you can close it now to send the results.",
+      "button": "Close now"
+    },
     "finish": {
       "button": "Finish cupping",
       "title": "Finish the cupping?",
@@ -1060,7 +1065,7 @@
     "radarChart": "Group sensory profile",
     "myScore": "My score",
     "delta": "Difference vs. community",
-    "noGroupData": "Group results appear once participants submit their evaluations."
+    "noGroupData": "Group results will appear once the cupping closes."
   },
   "history": {
     "title": "Coffee history",

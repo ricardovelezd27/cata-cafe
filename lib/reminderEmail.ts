@@ -16,8 +16,9 @@ import { siteOrigin } from "@/lib/inviteUrl";
 import { errorMessage, logError } from "@/lib/log";
 import {
   deadlineReminderWindow,
+  IDLE_RULE_EFFECTIVE_AT,
   isEvaluationComplete,
-  isLiveIdle,
+  shouldSendLiveIdleReminder,
   type ReminderKind,
 } from "@/lib/closeRules";
 import {
@@ -103,8 +104,8 @@ async function sendOne(args: {
 
 /** deadline_24h: asynchronous group sessions whose closesAt falls in the next
  *  24 h; members who hold at least one COMPLETE unsent evaluation get one mail. */
-export async function sendDeadlineReminders(batch: number): Promise<ReminderSummary> {
-  const w = deadlineReminderWindow();
+export async function sendDeadlineReminders(batch: number, now: number = Date.now()): Promise<ReminderSummary> {
+  const w = deadlineReminderWindow(now);
   const sessions = await prisma.cuppingSession.findMany({
     where: { isGroup: true, status: "active", closesAt: { gt: w.gt, lte: w.lte } },
     select: { id: true, name: true, format: true },
@@ -128,14 +129,16 @@ export async function sendDeadlineReminders(batch: number): Promise<ReminderSumm
 
 /** live_idle: a started live session with no activity for LIVE_IDLE_MS gets one
  *  owner reminder. Never closes anything (Kim C3 default, option a). */
-export async function sendLiveIdleReminders(batch: number): Promise<ReminderSummary> {
+export async function sendLiveIdleReminders(batch: number, now: number = Date.now()): Promise<ReminderSummary> {
   const candidates = await prisma.cuppingSession.findMany({
     where: {
       isGroup: true,
       isAsync: false,
       closesAt: null,
       status: "active",
-      startedAt: { not: null },
+      // Not a grandfathered session (started before the idle rule): the reminder
+      // promises a 7-day close those sessions do not get (shouldSendLiveIdleReminder).
+      startedAt: { gte: IDLE_RULE_EFFECTIVE_AT },
       // Already reminded sessions would otherwise fill the batch forever.
       reminderDeliveries: { none: { kind: "live_idle" } },
     },
@@ -161,7 +164,8 @@ export async function sendLiveIdleReminders(batch: number): Promise<ReminderSumm
     if (u && (!cur || u > cur)) lastBySession.set(smp.sessionId, u);
   }
   for (const s of candidates) {
-    if (!isLiveIdle(s, lastBySession.get(s.id) ?? null)) continue;
+    // Not once it is abandoned (7 days): the idle pass closes it in this same run.
+    if (!shouldSendLiveIdleReminder(s, lastBySession.get(s.id) ?? null, now)) continue;
     summary.sessions += 1;
     const r = await sendOne({ sessionId: s.id, sessionName: s.name, userId: s.createdBy, kind: "live_idle" });
     summary[r] += 1;

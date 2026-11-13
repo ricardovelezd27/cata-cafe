@@ -155,7 +155,7 @@ The cupping screen has a sample navigator, the evaluation form and, for the orga
 
 Open the invite link or scan the QR; sign in or "Continuar como invitado". You land in the waiting room (live) or straight in the cupping screen (self-paced, or a live session already started). A participant sees no control panel and no reveal buttons. If the organizer chose a reference, its tab shows a "Referencia" pill and the others suggest comparing with it.
 
-Results of a group session are visible to a participant once the session is closed, once everyone has submitted, or once the closing date has passed; the organizer can see them at any time.
+Results of a group session are visible to a participant only once the session is closed or its closing date has passed (not when everyone has submitted); the organizer can see them at any time.
 
 ### Closing a session
 

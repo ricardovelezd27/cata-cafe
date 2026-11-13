@@ -374,7 +374,7 @@
       "closesAtHint": "Opcional. La sesión se cierra sola en la madrugada siguiente a esta fecha. Déjala vacía para una cata en vivo que cierras tú.",
       "closesAtPast": "La fecha de cierre debe ser hoy o una fecha futura.",
       "sessionClosed": "Esta sesión está cerrada y ya no se puede editar.",
-      "sessionExpired": "El plazo de esta sesión ya pasó: solo puedes cambiar la fecha de cierre.",
+      "sessionExpired": "La fecha de cierre de esta cata ya pasó: se cerrará en las próximas horas y ya no se puede editar.",
       "warmupLocked": "El ejercicio no se puede cambiar una vez iniciada la cata.",
       "repinTitle": "¿Fijar esta muestra como referencia?",
       "repinBody": "{n} catadores ya evaluaron esta muestra. Al marcarla como referencia, sus notas de calidad se reemplazan por el ancla de 79.00. No se puede deshacer.",
@@ -781,7 +781,7 @@
       "chart": "Gráfico"
     },
     "flavorProfiles": "Perfiles de Sabor",
-    "communityPending": "Los resultados grupales aparecerán cuando todos los participantes envíen sus evaluaciones o el maestro cierre la sesión.",
+    "communityPending": "Los resultados del grupo aparecerán cuando se cierre la cata.",
     "sdAria": "Desviación estándar entre catadores — menor es más consenso",
     "referenceBadge": "Referencia",
     "deltaVsReference": "Δ vs. referencia",
@@ -803,6 +803,7 @@
     },
     "closeEmails": {
       "label": "Correos de cierre:",
+      "silent": "Esta cata se cerró sola por inactividad y no se enviaron correos. Puedes enviarlos con «{button}».",
       "sent": "{count, plural, =1 {1 enviado} other {# enviados}}",
       "noEmail": "{count, plural, =1 {1 sin correo} other {# sin correo}}",
       "failed": "{count, plural, =1 {1 fallido} other {# fallidos}}",
@@ -1036,6 +1037,10 @@
     "needsConnection": "Necesita conexión",
     "closedUnsentNotice": "Tenías {count, plural, one {# muestra completa} other {# muestras completas}} sin enviar cuando se cerró la cata. No cuentan en los resultados.",
     "closedNotice": "La cata se cerró. Lo que enviaste cuenta en los resultados; lo que quedó sin enviar, no.",
+    "closeNow": {
+      "line": "La fecha de cierre ya pasó. La cata se cerrará sola en las próximas horas; puedes cerrarla ahora para enviar los resultados.",
+      "button": "Cerrar ahora"
+    },
     "finish": {
       "button": "Terminar cata",
       "title": "¿Terminar la cata?",
@@ -1060,7 +1065,7 @@
     "radarChart": "Perfil sensorial grupal",
     "myScore": "Mi puntaje",
     "delta": "Diferencia vs. comunidad",
-    "noGroupData": "Los resultados grupales aparecen cuando los participantes envíen sus evaluaciones."
+    "noGroupData": "Los resultados del grupo aparecerán cuando se cierre la cata."
   },
   "history": {
     "title": "Historial de cafés",

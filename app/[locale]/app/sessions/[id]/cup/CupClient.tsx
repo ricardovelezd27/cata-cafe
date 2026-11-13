@@ -2210,12 +2210,16 @@ export function CupClient({
       : "next-sample";
 
   // ─── Sidebar slot content ─────────────────────────────────────
-  const ownerSubmittedText =
-    isOwner && translations.submittedTemplate
-      ? translations.submittedTemplate
-          .replace("{count}", String(submittedCount))
-          .replace("{total}", String(submittedTotal))
-      : translations.submittedOf;
+  // Owner only (S10 WP4a, Kim C5): "3 de 5 enviados" is group information. The
+  // page sends participants an empty line and a zero count; this also refuses
+  // to render anything for them, so the line can never reach a participant.
+  const ownerSubmittedText = !isOwner
+    ? ""
+    : translations.submittedTemplate
+    ? translations.submittedTemplate
+        .replace("{count}", String(submittedCount))
+        .replace("{total}", String(submittedTotal))
+    : translations.submittedOf;
   const identity = (
     <>
       <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-brown-mid">
@@ -2225,7 +2229,7 @@ export function CupClient({
       <div className="font-display text-xl leading-tight text-green-dark truncate">
         {session.name}
       </div>
-      {isGroup && (
+      {isGroup && isOwner && (
         <div className="font-mono text-[11px] text-brown-mid mt-0.5">
           {ownerSubmittedText}
         </div>
@@ -2316,7 +2320,7 @@ export function CupClient({
           {translations.sample} {current.label}
         </div>
       )}
-      {isGroup && (
+      {isGroup && isOwner && (
         <div className="font-mono text-[11px] text-brown-mid">{ownerSubmittedText}</div>
       )}
       {referenceContext && <div className="flex items-center">{referenceContext}</div>}

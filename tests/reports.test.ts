@@ -29,7 +29,6 @@ describe("canViewGroupResults", () => {
     isGroup: true,
     ownerRead: false,
     status: "active",
-    allSubmitted: false,
     sessionExpired: false,
   };
   it("is never true for a solo session", () => {
@@ -37,13 +36,14 @@ describe("canViewGroupResults", () => {
       canViewGroupResults({ ...base, isGroup: false, ownerRead: true, status: "closed" }),
     ).toBe(false);
   });
-  it("is false for a participant on an open, incomplete, unexpired group session", () => {
+  it("is false for a participant on an open, unexpired group session (S10 C5: even if everyone submitted)", () => {
     expect(canViewGroupResults(base)).toBe(false);
+    // The all-submitted shortcut is gone: the input has no such field any more.
+    expect(canViewGroupResults({ ...base, allSubmitted: true } as typeof base)).toBe(false);
   });
   it("unlocks for each single reason", () => {
     expect(canViewGroupResults({ ...base, ownerRead: true })).toBe(true);
     expect(canViewGroupResults({ ...base, status: "closed" })).toBe(true);
-    expect(canViewGroupResults({ ...base, allSubmitted: true })).toBe(true);
     expect(canViewGroupResults({ ...base, sessionExpired: true })).toBe(true);
   });
 });
@@ -613,7 +613,7 @@ describe("computeMajoritySets", () => {
 
 describe("gateSampleForViewer (S8-02 F-resultados-2)", () => {
   const input = { physical: { phys_color: "green" }, aggregateScore: { communityScore: 85 } };
-  const open = { status: "active", allSubmitted: false, sessionExpired: false };
+  const open = { status: "active", sessionExpired: false };
 
   it("participant of a hidden group session gets no physical and no aggregate", () => {
     const ctx = {
@@ -645,7 +645,6 @@ describe("gateSampleForViewer (S8-02 F-resultados-2)", () => {
         isGroup: true,
         ownerRead: false,
         status: "closed",
-        allSubmitted: false,
         sessionExpired: false,
       }),
     };
@@ -657,7 +656,7 @@ describe("gateSampleForViewer (S8-02 F-resultados-2)", () => {
   it("owner of a group session can always view, so owner + hidden is unreachable", () => {
     for (const status of ["active", "closed", "draft"]) {
       expect(
-        canViewGroupResults({ isGroup: true, ownerRead: true, status, allSubmitted: false, sessionExpired: false }),
+        canViewGroupResults({ isGroup: true, ownerRead: true, status, sessionExpired: false }),
       ).toBe(true);
     }
   });

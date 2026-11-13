@@ -140,7 +140,7 @@ export function EditSessionForm({
     /** The cupping started: the warm-up can no longer change (warmup_locked). */
     started: boolean;
     closed: boolean;
-    /** Past closesAt but not yet closed by the nightly job: read-only except the closing date. */
+    /** Past closesAt but not yet closed by the nightly job: read-only like a closed one (Kim C9). */
     expired: boolean;
   };
   samples: EditSampleRow[];
@@ -153,13 +153,14 @@ export function EditSessionForm({
   // Format/cups freeze at "Iniciar cata" as well as at the first evaluation
   // (C6 default; the server enforces the same rule via isFormatLocked).
   const locked = evalCount > 0 || initial.started;
-  const closed = initial.closed;
-  // Expired = this form treats the session as read-only except the closing
-  // date. That is a client-side rule here: the session-scoped mutations refuse
-  // an expired session (assertSessionWritable), but updateSession itself checks
-  // status only, so it does not refuse these edits on its own.
-  const expired = initial.expired && !closed;
-  const readOnlyExceptDate = closed || expired;
+  // S10 WP4a (Kim C9): once the closing date has passed the session is closed
+  // for edits too, the closing date included (PR #119 left the date open; the
+  // owner's decision supersedes it), so an expired session renders exactly like
+  // a closed one, with its own sentence. The server refuses it as well
+  // (updateSession). TODO(kim-validar:C9)
+  const closed = initial.closed || initial.expired;
+  // ONE sentence for the state: an expired session is not "cerrada" yet.
+  const closedText = initial.expired && !initial.closed ? t.sessionExpired : t.sessionClosed;
 
   const [name, setName] = useState(initial.name);
   const [date, setDate] = useState(initial.date);
@@ -177,7 +178,7 @@ export function EditSessionForm({
     (initial.warmupExerciseId as WarmupId | null) ?? "eyes",
   );
   // Locked once the cupping started or anyone has evaluated (server rule).
-  const warmupLocked = readOnlyExceptDate || initial.started || locked;
+  const warmupLocked = closed || initial.started || locked;
 
   const [saved, setSaved] = useState(false);
   const [errorCode, setErrorCode] = useState<string | null>(null);
@@ -400,7 +401,7 @@ export function EditSessionForm({
       : errorCode === "invalid_closes_at"
         ? t.closesAtPast
         : errorCode === "session_closed"
-          ? t.sessionClosed
+          ? closedText
           : errorCode === "warmup_locked"
             ? t.warmupLocked
             : errorCode === "invalid_warmup"
@@ -413,11 +414,6 @@ export function EditSessionForm({
       {/* A closed session is read-only: ONE disabled fieldset covers every
           control (S8-10 T6, F-sesiones-9) instead of per-field flags. */}
       <fieldset disabled={closed} className="m-0 min-w-0 space-y-6 border-0 p-0">
-      {/* An EXPIRED session (closesAt passed, nightly close not run yet) is
-          read-only in this form: every card but the closing date is disabled
-          by its own fieldset (the date + save bar stay usable). The server's
-          updateSession checks status only; this is not a server guarantee. */}
-      <fieldset disabled={expired} className="m-0 min-w-0 space-y-6 border-0 p-0">
       {/* a. Metadata */}
       <div className={cardCls}>
         <div>
@@ -553,8 +549,6 @@ export function EditSessionForm({
         </div>
       </div>
 
-      </fieldset>
-
       {/* c. Group link + closing date (group sessions only) */}
       {initial.isGroup && (
         <div className={cardCls}>
@@ -586,7 +580,6 @@ export function EditSessionForm({
           </div>
           <div>
             <label className={labelCls}>{t.linkedGroup}</label>
-            <fieldset disabled={expired} className="contents">
             <Select
               value={groupId}
               onChange={(v) => {
@@ -596,12 +589,10 @@ export function EditSessionForm({
               ariaLabel={t.linkedGroup}
               options={[{ value: "", label: t.noGroup }, ...groups.map((g) => ({ value: g.id, label: g.name }))]}
             />
-            </fieldset>
           </div>
         </div>
       )}
 
-      <fieldset disabled={expired} className="m-0 min-w-0 space-y-6 border-0 p-0">
       {/* d. Samples */}
       <div className={cardCls}>
         <label className={labelCls}>{t.samplesTitle}</label>
@@ -699,8 +690,6 @@ export function EditSessionForm({
         />
       </div>
 
-      </fieldset>
-
       {/* e. Reference sample */}
       <div className={cardCls}>
         <div>
@@ -748,7 +737,7 @@ export function EditSessionForm({
           )}
         </fieldset>
         {/* Native disabled state (keyboard + AT), not just pointer-events. */}
-        <fieldset disabled={readOnlyExceptDate} className={readOnlyExceptDate ? "opacity-60" : ""}>
+        <fieldset disabled={closed} className={closed ? "opacity-60" : ""}>
           <Select
             value={referenceId ?? ""}
             onChange={handleReferenceChange}
@@ -812,7 +801,7 @@ export function EditSessionForm({
           sample_has_data: t.sampleHasData,
           sample_has_evaluations: t.sampleHasEvals,
           reference_repin_required: t.referenceRepinBlocked,
-          session_closed: t.sessionClosed,
+          session_closed: closedText,
         }}
         error={t.error}
       />
@@ -828,8 +817,7 @@ export function EditSessionForm({
         </button>
         {saved && <p className="text-sm text-primary-container">{t.saved}</p>}
         {errorText && <p className="text-sm text-error">{errorText}</p>}
-        {closed && !errorText && <p className="text-sm text-on-surface-variant">{t.sessionClosed}</p>}
-        {expired && initial.isGroup && !errorText && <p className="text-sm text-on-surface-variant">{t.sessionExpired}</p>}
+        {closed && !errorText && <p className="text-sm text-on-surface-variant">{closedText}</p>}
       </div>
       </fieldset>
     </form>

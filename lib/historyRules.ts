@@ -34,6 +34,21 @@ export function historyCommunityScore(
 }
 
 /**
+ * The community score a history row may carry, given the session (S10 WP4a
+ * review, Kim C5; TODO(kim-validar:C5)): a GROUP session that is not closed has
+ * published nothing about the group yet, so a history row written while it is
+ * still open (deleting an open session writes them) carries no community
+ * score. Solo sessions and closed group sessions are unchanged.
+ */
+export function historyCommunityScoreForSession(
+  aggregate: { communityScore: number | null; participantCount: number } | null | undefined,
+  session: { isGroup: boolean; status: string } | null | undefined,
+): number | null {
+  if (session?.isGroup && session.status !== "closed") return null;
+  return historyCommunityScore(aggregate);
+}
+
+/**
  * "Impresion rapida": a session with exactly ONE cup per sample (owner's
  * decision 2026-11-12; it used to mean "under five cups", the old deduction
  * gate). Display-only tag, never changes a score. TODO(kim-validar:A3): ships as

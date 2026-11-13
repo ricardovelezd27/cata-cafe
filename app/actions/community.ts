@@ -86,14 +86,6 @@ async function submitAllEvaluationsBody(
   assertSessionWritable(auth);
   assertSessionStarted({ ...auth, isOwner: auth.createdBy === user.id });
 
-  // Did this cupper already have a submitted evaluation? Needed to detect the
-  // submit that flips group results to visible (see touchOnResultsVisible).
-  const hadSubmittedBefore = auth.isGroup
-    ? (await prisma.evaluation.count({
-        where: { cupperId: user.id, isDraft: false, sessionSample: { sessionId } },
-      })) > 0
-    : true;
-
   // Single batched update instead of one round-trip per draft eval. The aggregate
   // trigger is FOR EACH ROW, so it still fires once per updated evaluation.
   // The write is conditional on the session still being open (F-grupal-6): a
@@ -152,8 +144,6 @@ async function submitAllEvaluationsBody(
       select: { status: true, closesAt: true },
     });
     if (!fresh || isSessionExpired(fresh)) throw new Error("session_closed");
-  } else if (auth.isGroup) {
-    await touchOnResultsVisible(sessionId, hadSubmittedBefore);
   }
 
   await maybeAutoCloseSoloSession(sessionId, user.id);
@@ -167,31 +157,6 @@ async function submitAllEvaluationsBody(
     select: { status: true },
   });
   return { closed: finalRow?.status === "closed", submitted: res.count };
-}
-
-// Group results become visible to participants when every participant row has
-// a submitted cupper (canViewGroupResults.allSubmitted). Non-owners no longer
-// receive peers' evaluation rows over Realtime (S8-01), so the session row is
-// touched ONCE, on the submit that flips that rule, and the existing
-// `cupping_sessions` UPDATE subscription tells the open results screens.
-// One bump per visibility flip: no hot row, no refresh storm.
-async function touchOnResultsVisible(sessionId: string, hadSubmittedBefore: boolean) {
-  const [participantCount, submittedCuppers] = await Promise.all([
-    prisma.sessionParticipant.count({ where: { sessionId } }),
-    prisma.evaluation.groupBy({
-      by: ["cupperId"],
-      where: { isDraft: false, sessionSample: { sessionId } },
-    }),
-  ]);
-  const after = submittedCuppers.length;
-  const before = hadSubmittedBefore ? after : after - 1;
-  if (participantCount > 0 && after >= participantCount && before < participantCount) {
-    await prisma.cuppingSession.update({
-      where: { id: sessionId },
-      data: { updatedAt: new Date() },
-      select: { id: true },
-    });
-  }
 }
 
 // Solo sessions have no group "maestro" close flow — before this existed they

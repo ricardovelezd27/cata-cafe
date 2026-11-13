@@ -330,6 +330,12 @@ export default async function GroupDetailPage({
   let groupEvalCount = 0;
   let events: GroupActivityEvent[] = [];
 
+  // S10 WP4a review (Kim C5): who has submitted in a session that is still open
+  // is group information, so the feed and the count only cover sessions that
+  // are closed or that the viewer owns (the group owner is not always the
+  // session owner). TODO(kim-validar:C5)
+  const visibleSessionsWhere = { OR: [{ status: "closed" }, { createdBy: user.id }] };
+
   if (linkedIds.length > 0) {
     // Scoped to sessions BELONGING TO THIS GROUP (groupId), not just sessions
     // the owner personally created — a co-owner-less group can still have
@@ -340,7 +346,7 @@ export default async function GroupDetailPage({
         where: {
           cupperId: { in: linkedIds },
           isDraft: false,
-          sessionSample: { session: { groupId: id } },
+          sessionSample: { session: { groupId: id, ...visibleSessionsWhere } },
         },
       }),
       prisma.evaluation.findMany({
@@ -348,7 +354,7 @@ export default async function GroupDetailPage({
           cupperId: { in: linkedIds },
           isDraft: false,
           submittedAt: { not: null },
-          sessionSample: { session: { groupId: id } },
+          sessionSample: { session: { groupId: id, ...visibleSessionsWhere } },
         },
         orderBy: { submittedAt: "desc" },
         take: 12,
