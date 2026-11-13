@@ -855,6 +855,24 @@
       "offline": "Offline: you can save your results once you're back online.",
       "error": "We couldn't start the process. Please try again."
     },
+    "compare": {
+      "groupTitle": "You and the group",
+      "groupLine": "Group: {group} · between {min} and {max} · ± {sd}",
+      "mineLine": "Your score: {mine}",
+      "attrLine": "you {mine} · group {group}",
+      "tooFew": "With fewer than 3 cuppers the comparison with the group is not shown.",
+      "notAnError": "Scoring differently from the group is not an error: in affective cupping, preferences can differ.",
+      "intensities": "Intensities",
+      "matches": "You agree on",
+      "missed": "The group chose, you did not",
+      "repeatTitle": "The same sample, twice",
+      "repeatVs": "Against {label}",
+      "total": "Total score",
+      "within": "within tolerance",
+      "beyond": "difference of {x}",
+      "repeatValues": "{mine} and {other}",
+      "repeatNote": "This is the same sample served twice: it shows how much your own cupping varies."
+    },
     "dashboard": {
       "statSamples": "Samples evaluated",
       "anchorTitle": "Reference (anchor)",

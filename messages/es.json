@@ -855,6 +855,24 @@
       "offline": "Sin conexión: podrás guardar tus resultados cuando vuelvas a estar en línea.",
       "error": "No pudimos iniciar el proceso. Inténtalo de nuevo."
     },
+    "compare": {
+      "groupTitle": "Tú y el grupo",
+      "groupLine": "Grupo: {group} · entre {min} y {max} · ± {sd}",
+      "mineLine": "Tu puntaje: {mine}",
+      "attrLine": "tú {mine} · grupo {group}",
+      "tooFew": "Con menos de 3 catadores no se muestra la comparación con el grupo.",
+      "notAnError": "Calificar distinto al grupo no es un error: en la cata afectiva las preferencias pueden diferir.",
+      "intensities": "Intensidades",
+      "matches": "Coincides en",
+      "missed": "El grupo eligió y tú no",
+      "repeatTitle": "La misma muestra, dos veces",
+      "repeatVs": "Frente a {label}",
+      "total": "Puntaje total",
+      "within": "dentro de la tolerancia",
+      "beyond": "diferencia de {x}",
+      "repeatValues": "{mine} y {other}",
+      "repeatNote": "Es la misma muestra servida dos veces: sirve para ver cuánto varía tu propia cata."
+    },
     "dashboard": {
       "statSamples": "Muestras evaluadas",
       "anchorTitle": "Referencia (ancla)",

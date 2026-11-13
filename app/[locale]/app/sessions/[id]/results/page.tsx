@@ -26,6 +26,9 @@ import { closeSessionInternal } from "@/lib/closeSession";
 import { ON_VIEW_REPAIR_GRACE_MS, canCloseNow, soloRepairOwedOnView } from "@/lib/closeRules";
 import { errorMessage, logError } from "@/lib/log";
 import { noIncludedAggregate } from "@/lib/reports/ranking";
+import { buildPersonalComparison, type PersonalComparison } from "@/lib/reports/personalComparison";
+import { compareOwnEvaluations, repeatedSamplePartners } from "@/lib/reports/repeatedSample";
+import type { RepeatDiff } from "./types";
 import { ResultsClient } from "./ResultsClient";
 
 // resendCloseEmails / refreshAggregateScores run from here; give the
@@ -227,6 +230,11 @@ export default async function ResultsPage({
   // data. This is the ONLY alignment information a non-owner ever receives.
   let myAlignment: { alignment: number; matches: number; opportunities: number } | null = null;
 
+  // S10 WP5b B3 (TODO(kim-validar:B3)): personal comparison with the group, per
+  // sample. CLOSED group session, participant lens only (the owner already sees
+  // everything in the matrix). The builder refuses under RANKING_POLICY.minN.
+  const comparisonBySample = new Map<string, PersonalComparison>();
+
   // Per-sample group aggregate recomputed in TS from the raw evaluations,
   // INCLUDING ONLY complete ones. Overrides the trigger-stored AggregateScore so
   // incomplete/empty submissions don't skew the community average. Keyed by
@@ -239,6 +247,13 @@ export default async function ResultsPage({
   // realtime-badge dedup set so a later no-op UPDATE storm (owner refresh,
   // exclusion toggle) doesn't re-badge evaluations the viewer already sees.
   let knownEvalIds: string[] = [];
+  // Submitted evaluations of the session (group, group results viewable) for the B3 comparison.
+  let comparisonEvals: {
+    cupperId: string;
+    sessionSampleId: string;
+    cups: number | null;
+    data: Record<string, unknown>;
+  }[] = [];
 
   if (canViewGroup && session.isGroup) {
     const evals = await prisma.evaluation.findMany({
@@ -258,6 +273,16 @@ export default async function ResultsPage({
     });
 
     knownEvalIds = evals.map((ev) => ev.id);
+    comparisonEvals = evals.map((ev) => ({
+      cupperId: ev.cupperId,
+      sessionSampleId: ev.sessionSampleId,
+      cups: ev.cups,
+      data: (format === "combined"
+        ? ev.combinedData
+        : format === "descriptive"
+          ? ev.descriptiveData
+          : ev.affectiveData) as Record<string, unknown>,
+    }));
 
     // Recompute each sample's community aggregate, excluding master-excluded
     // cuppers and (inside computeGroupAggregate) incomplete evaluations.
@@ -458,6 +483,35 @@ export default async function ResultsPage({
   // majority-based summary sentences (skipSummaries) — a "majority of 1 of 1"
   // sentence would read absurd for a single cupper.
   const isSoloDescriptors = !session.isGroup;
+  // S10 WP5b B3: built here (after the descriptor lists exist) from the same
+  // submitted evaluations; the gate is the page's own canViewGroup.
+  if (canViewGroup && session.isGroup && !ownerRead && session.status === "closed") {
+    for (const s of session.samples) {
+      const mineRow = comparisonEvals.find((e) => e.sessionSampleId === s.id && e.cupperId === user.id);
+      const included = comparisonEvals.filter(
+        (e) => e.sessionSampleId === s.id && !excludedUserIds.has(e.cupperId),
+      );
+      const toEval = (e: (typeof comparisonEvals)[number]) => ({
+        cupperId: e.cupperId,
+        data: e.data,
+        cups: e.cups,
+        rule: evaluationScoreRule(e.cups, true),
+      });
+      const agg = groupAggBySample?.get(s.id) ?? null;
+      const result = buildPersonalComparison({
+        format,
+        cupsPerSample: session.cupsPerSample,
+        locale: localeStr,
+        included: included.map(toEval),
+        viewer: mineRow ? toEval(mineRow) : null,
+        aggregate: agg ? { communityScore: agg.communityScore, scoreSd: agg.scoreSd } : null,
+        groupBlocks:
+          descriptorFrequency?.find((d) => d.sampleId === s.id)?.blocks ?? null,
+      });
+      if (result) comparisonBySample.set(s.id, result);
+    }
+  }
+
   if (isSoloDescriptors && format !== "affective") {
     const soloEvals = session.samples.flatMap((s) => {
       const ev = s.evaluations[0];
@@ -690,6 +744,52 @@ export default async function ResultsPage({
   // computedAt across samples is "when community data last changed".
   let lastComputedAt: Date | null = null;
   const hideCommunity = communityHidden({ ownerRead, isGroup: session.isGroup, canViewGroup });
+
+  // S10 WP5b B6 (TODO(kim-validar:B6)): the same coffee served twice in a CLOSED
+  // session. Each cupper sees only the difference between their OWN two
+  // evaluations. The pairing uses `coffeeId` here on the server; only the
+  // partner's blind label travels. Never for the admin read view (it holds the
+  // owner's rows, not the viewer's).
+  const repeatDiffsBySample = new Map<string, RepeatDiff[]>();
+  if (session.status === "closed" && !isAdminViewer) {
+    const partners = repeatedSamplePartners(
+      session.samples.map((s) => ({
+        id: s.id,
+        position: s.position,
+        coffeeId: s.coffeeId,
+        revealed: s.revealed,
+        isAnchorReference: s.referenceRank != null && !referenceFree,
+      })),
+    );
+    const ownEval = (sampleId: string) => {
+      const row = session.samples.find((s) => s.id === sampleId)?.evaluations[0];
+      if (!row || row.isDraft) return null;
+      const data = (
+        format === "combined" ? row.combinedData : format === "affective" ? row.affectiveData : row.descriptiveData
+      ) as Record<string, unknown> | null;
+      return { data: data ?? {}, cups: row.cups, rule: evaluationScoreRule(row.cups, true) };
+    };
+    for (const [sampleId, partnerIds] of partners) {
+      const diffs: RepeatDiff[] = [];
+      for (const pid of partnerIds) {
+        const cmp = compareOwnEvaluations({
+          format,
+          cupsPerSample: session.cupsPerSample,
+          mine: ownEval(sampleId),
+          other: ownEval(pid),
+          locale: localeStr,
+        });
+        if (cmp) {
+          diffs.push({
+            partnerLabel: session.samples.find((s) => s.id === pid)?.label ?? "",
+            total: cmp.total,
+            intensities: cmp.intensities,
+          });
+        }
+      }
+      if (diffs.length) repeatDiffsBySample.set(sampleId, diffs);
+    }
+  }
   for (const s of hideCommunity ? [] : session.samples) {
     const at = s.aggregateScore?.computedAt ?? null;
     if (at && (!lastComputedAt || at > lastComputedAt)) lastComputedAt = at;
@@ -949,6 +1049,8 @@ export default async function ResultsPage({
             isReference: s.referenceRank != null,
             referenceRank: s.referenceRank ?? null,
             myEvaluation: myEvaluationBySample.get(s.id) ?? { status: "none", complete: false },
+            comparison: comparisonBySample.get(s.id) ?? null,
+            repeatDiffs: repeatDiffsBySample.get(s.id) ?? [],
           };
         }),
       }}
@@ -1180,6 +1282,24 @@ export default async function ResultsPage({
           notEvaluated: tResults("table.notEvaluated"),
           avgQuality: tResults("detail.avgQuality"),
           noBlockData: tResults("detail.noBlockData"),
+          compare: {
+            groupTitle: tResults("compare.groupTitle"),
+            groupLine: tResults.raw("compare.groupLine") as string,
+            mineLine: tResults.raw("compare.mineLine") as string,
+            attrLine: tResults.raw("compare.attrLine") as string,
+            tooFew: tResults("compare.tooFew"),
+            notAnError: tResults("compare.notAnError"),
+            intensities: tResults("compare.intensities"),
+            matches: tResults("compare.matches"),
+            missed: tResults("compare.missed"),
+            repeatTitle: tResults("compare.repeatTitle"),
+            repeatVs: tResults.raw("compare.repeatVs") as string,
+            total: tResults("compare.total"),
+            within: tResults("compare.within"),
+            beyond: tResults.raw("compare.beyond") as string,
+            repeatValues: tResults.raw("compare.repeatValues") as string,
+            repeatNote: tResults("compare.repeatNote"),
+          },
           myEvaluation: tResults("detail.myEvaluation"),
           viewingAs: tResults("detail.viewingAs"),
           editSample: tResults("detail.editSample"),
