@@ -95,7 +95,7 @@ export const TERMS_EN: LegalDoc = {
       // ADDED: the owner / participant rule that the product applies everywhere.
       heading: "4. Cuppings, organizers and participants",
       body: [
-        "Whoever creates a cupping, a coffee or a group is its organizer: they can edit, close and delete it, and invite or exclude participants. Participants take part in the cupping and see their own results and, once the cupping has ended, those of the group.",
+        "Whoever creates a cupping, a coffee or a group is its organizer: they can edit and delete it, and invite or exclude participants; in a cupping, they can also close it. Deleting a coffee removes its identifying data, but keeps the evaluations that other people made of it. Participants take part in the cupping and see their own results; the group's results are shown when the cupping ends.",
         "A closed cupping stays as a record: nobody can change the evaluations already submitted. The organizer can make limited corrections after closing (for example, excluding a participant or completing the origin data of a coffee); the results then show the date of the update. If a participant deletes their account, their evaluations in cuppings shared with other people are kept without their name, so that other people's results do not change.",
         // ADAPTED from the source's "no professional certification" clause for its learning module.
         "The scores and reports of the Platform are for training and working purposes. They do not constitute a professional certification nor are they equivalent to an assessment accredited by any official body.",

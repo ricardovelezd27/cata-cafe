@@ -88,7 +88,9 @@ describe("wiring: who touches the pending cookie and the ephemeral client", () =
   });
 
   it("only app/actions/auth.ts imports the pending cookie helpers", () => {
-    const users = files.filter((f) => readFileSync(f, "utf8").includes('/signInPendingCookie"'));
+    // Single or double quotes, from-imports and dynamic imports alike.
+    const importsCookie = /(?:from\s*|import\s*\(\s*)["'][^"']*\/signInPendingCookie["']/;
+    const users = files.filter((f) => importsCookie.test(readFileSync(f, "utf8")));
     expect(users).toEqual(["app/actions/auth.ts"]);
   });
 

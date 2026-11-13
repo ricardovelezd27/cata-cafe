@@ -27,7 +27,7 @@ function Block({ block }: { block: LegalBlock }) {
     <dl className="mt-3 divide-y divide-outline-variant rounded-card border border-outline-variant">
       {block.rows.map(([term, description], i) => (
         <div key={i} className="px-4 py-3 md:grid md:grid-cols-[minmax(0,14rem)_minmax(0,1fr)] md:gap-6">
-          <dt className="text-sm font-semibold text-on-surface">{term}</dt>
+          <dt className="break-words text-sm font-semibold text-on-surface">{term}</dt>
           <dd className={`mt-1 break-words md:mt-0 ${TEXT}`}>{description}</dd>
         </div>
       ))}

@@ -65,7 +65,7 @@ export const PRIVACY_EN: LegalDoc = {
         {
           list: [
             // ADAPTED: the app's own logs are designed to carry ids and codes only.
-            "Technical data of the application: operation and error logs (action name, error code and internal identifiers). We deliberately do not log the content of your evaluations or your email.",
+            "Technical data of the application: operation and error logs (action name, error code and internal identifiers). We do not intentionally log the content of your evaluations or your email.",
             "Device and connection data: our hosting and authentication providers record technical data of each request (IP address, browser and device type, requested path and timestamps).",
             // ADDED: the email rate limit ledger (keyed hash of IP / address).
             "To limit abuse of sign-in emails we use your IP address and the destination address transiently, and we store only a keyed fingerprint of both, which does not allow the original data to be recovered.",
@@ -94,8 +94,10 @@ export const PRIVACY_EN: LegalDoc = {
           list: [
             "Account management and authentication — Art. 6(1)(b), performance of a contract. It does not allow objection (it is essential).",
             "Provision of the service (cupping sessions, results, PDF reports, coffees and groups) — Art. 6(1)(b), performance of a contract.",
-            // ADDED: the waitlist / founding seats, with the proposed retention.
-            `Founding seat reservation — Art. 6(1)(b), pre-contractual measures at your request: we keep your email to send you access and to notify you about founding seats. If you do not end up creating an account, we keep it for a maximum of ${WAITLIST_RETENTION_MONTHS} months.`,
+            // ADDED: the waitlist / founding seats. OWNER DECISION (2026-11-14): a
+            // reservation or sign-in request that is never completed is really
+            // deleted after the retention period (lib/unusedAccountPurge.ts).
+            `Founding seat reservation and access request — Art. 6(1)(b), pre-contractual measures at your request: when you reserve a seat or ask for a sign-in link or code, we create an account with your email so that we can send it to you. If you never end up signing in, we delete that unused account and the reservation after ${WAITLIST_RETENTION_MONTHS} months.`,
             "Service communications (sign-in links, results of a cupping you took part in, closing reminders) — Art. 6(1)(b), performance of a contract.",
             // ADDED: group mail to addresses supplied by a group owner.
             "Notices from a cupping group to the addresses its organizer added — Art. 6(1)(f), legitimate interest in the group being able to organize itself. Every email includes a link to stop receiving them.",
@@ -124,7 +126,7 @@ export const PRIVACY_EN: LegalDoc = {
         },
         "We do not disclose your data to third parties for their own purposes without your explicit consent. We do not carry out international transfers other than the above, all with adequate safeguards under Chapter V of the GDPR.",
         // ADDED: what other users of a shared cupping can see.
-        "Within the platform, the organizer of a cupping sees the name and the evaluations of those who take part in it, and the members of a cupping group see the names of the other members. People who have cupped with you in a group cupping can see your name, your role and the name of the last cupping you shared when they form a group. Coffees that their creator makes public or shares are visible to other people. Platform administrators may access the data to provide support and produce statistics.",
+        "Within the platform, the organizer of a cupping sees the name and the evaluations of those who take part in it, and the members of a cupping group see the names of the other members. People who have cupped with you in a group cupping see, in the Groups section, your name, your role, how many cuppings they have shared with you and how many evaluations you made in them, and the date and name of the last cupping they shared. Coffees that their creator makes public or shares are visible to other people. Platform administrators may access the data to provide support and produce statistics.",
       ],
     },
     {
@@ -193,7 +195,7 @@ export const PRIVACY_EN: LegalDoc = {
           list: [
             `${E.name} acts as «deployer» for the purposes of the EU AI Act; Google LLC acts as «provider» of the Gemini model.`,
             "To write the summaries in the analytics area, aggregated figures and labels are sent to the model (averages, counts, names of origins or processes). When the person querying breaks down their own cuppings by cupper, the labels include the names of those cuppers. Individual evaluations, notes and email addresses are not sent.",
-            "The analytics assistant, reserved for platform administrators, additionally sends the question typed by the administrator and the names of cupping sessions.",
+            "The analytics assistant, reserved for platform administrators, additionally sends the question typed by the administrator, the names of cupping sessions and the names of the coffees cupped.",
             "No automated decisions are made about you with these systems.",
           ],
         },
@@ -208,7 +210,7 @@ export const PRIVACY_EN: LegalDoc = {
         {
           rows: [
             ["User session (Supabase cookies, named «sb-…-auth-token»)", "They keep you signed in. They are renewed while you use the application and expire after 400 days at most."],
-            ["Sign-in with Google (Supabase cookie, named «sb-…-auth-token-code-verifier»)", "Protects sign-in with Google. It is deleted when sign-in is completed."],
+            ["Sign-in (Supabase cookie, named «sb-…-auth-token-code-verifier»)", "Protects sign-in. It is created when you ask for a sign-in link or code, reserve a seat, change your email or start signing in with Google. It is deleted when sign-in is completed in this same browser; if it is not completed here, it expires after 400 days at most."],
             ["cata_signin_intent", "Protects sign-in: remembers, by means of a keyed fingerprint, that the sign-in link was requested from this browser. 1 hour."],
             ["cata_signin_pending", "Protects sign-in when the link is opened in another browser, until you confirm who you are. 10 minutes."],
           ],
@@ -228,7 +230,8 @@ export const PRIVACY_EN: LegalDoc = {
             "Account data and content: while the account exists.",
             // ADDED: what account deletion really does in this app.
             "When the account is deleted, the profile, the history and the access data are erased. The evaluations you made in cuppings shared with other people are kept without your name, so that other people's results do not change; the cuppings you organized and in which other people took part are kept closed and without your name; and the coffees you created are kept without their identifying data (name, farm, producer, notes).",
-            `Founding seat reservation without an account: a maximum of ${WAITLIST_RETENTION_MONTHS} months. If you created an account, the reservation is kept while the account exists and is deleted when you delete it.`,
+            // OWNER DECISION (2026-11-14): really deleted, by the daily job.
+            `Accounts that were never used (a seat was reserved or access was requested, but the person never signed in): they are deleted, together with the reservation, ${WAITLIST_RETENTION_MONTHS} months after they were created. If you did sign in, the reservation is kept while the account exists and is deleted when you delete it.`,
             // ADDED: addresses a group organiser enters for other people.
             "Addresses added to a cupping group by its organizer: while the group exists or until the organizer removes them.",
             "Fingerprints used to limit email sending: deleted automatically when they are no longer needed.",

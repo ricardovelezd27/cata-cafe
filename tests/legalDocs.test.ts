@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PRIVACY } from "@/lib/legal/privacy";
 import { TERMS } from "@/lib/legal/terms";
@@ -7,7 +8,7 @@ import { LEGAL_PAGES_PUBLISHED, WAITLIST_RETENTION_MONTHS } from "@/lib/legal/co
 import { SUPPORT_EMAIL } from "@/lib/siteContact";
 import { SIGNIN_INTENT_MAX_AGE_S } from "@/lib/signInIntent";
 import { SIGNIN_PENDING_MAX_AGE_S } from "@/lib/signInPending";
-import { waitlistIdsToDelete, waitlistPurgeCutoff } from "@/lib/legal/waitlistRetention";
+import { waitlistPurgeCutoff } from "@/lib/legal/waitlistRetention";
 import type { LegalBlock, LegalDoc, LegalDocs } from "@/lib/legal/types";
 
 const DOCS: [string, LegalDocs][] = [
@@ -116,6 +117,46 @@ describe("privacy policy specifics", () => {
     expect(cell(PRIVACY.en, "cata_signin_pending")).toMatch(new RegExp(`${minutes} minutes\\.$`));
   });
 
+  it("names the same cookies, row by row, in both languages (swapped or mismatched rows fail)", () => {
+    const rowsOf = (doc: LegalDoc) =>
+      doc.sections
+        .flatMap((s) => s.body)
+        .flatMap((b) => (typeof b !== "string" && "rows" in b ? b.rows : []));
+    // A code identifier in the FIRST cell: cata_… or sb-…
+    const ids = (cell: string) => cell.match(/\b(?:cata_[a-z0-9_]+|sb-[^\s»”")]+)/g) ?? [];
+    const es = rowsOf(PRIVACY.es);
+    const en = rowsOf(PRIVACY.en);
+    expect(en.length).toBe(es.length);
+    let checked = 0;
+    es.forEach(([first], i) => {
+      const expected = ids(first);
+      if (expected.length === 0) return;
+      checked++;
+      expect(ids(en[i][0]), `cookie row ${i + 1}`).toEqual(expected);
+    });
+    expect(checked).toBeGreaterThanOrEqual(4);
+  });
+
+  it("never hard-codes the retention period in the privacy text files (it comes from the constant)", () => {
+    for (const f of ["lib/legal/es/privacy.ts", "lib/legal/en/privacy.ts"]) {
+      // Comments excluded: only strings the person reads count.
+      const src = readFileSync(f, "utf8")
+        .split("\n")
+        .filter((l) => !l.trim().startsWith("//"))
+        .join("\n");
+      // Any "<digits> meses/months" must be the interpolation, never a literal number.
+      expect(src, f).not.toMatch(/\b\d+\s+(meses|months)\b/);
+      expect(src, f).toContain("${WAITLIST_RETENTION_MONTHS} ");
+    }
+  });
+
+  it("the privacy files import nothing from the sign-in cookie modules (the cookies are described by name)", () => {
+    for (const f of ["lib/legal/es/privacy.ts", "lib/legal/en/privacy.ts"]) {
+      const src = readFileSync(f, "utf8");
+      expect(src, f).not.toMatch(/lib\/signInPending|lib\/signInIntent|\/signInPending|\/signInIntent/);
+    }
+  });
+
   it("does not list the locale cookie, which the app no longer sets", () => {
     expect(joined(PRIVACY.es)).not.toContain("NEXT_LOCALE");
     expect(joined(PRIVACY.en)).not.toContain("NEXT_LOCALE");
@@ -159,34 +200,5 @@ describe("waitlistPurgeCutoff", () => {
     expect(iso(waitlistPurgeCutoff(new Date("2026-03-31T00:00:00.000Z"), 1))).toBe("2026-02-28T00:00:00.000Z");
     expect(iso(waitlistPurgeCutoff(new Date("2026-05-31T00:00:00.000Z"), 1))).toBe("2026-04-30T00:00:00.000Z");
     expect(iso(waitlistPurgeCutoff(new Date("2026-08-31T00:00:00.000Z"), 6))).toBe("2026-02-28T00:00:00.000Z");
-  });
-});
-
-describe("waitlistIdsToDelete (account exists -> keep)", () => {
-  const rows = [
-    { id: "a", email: "ana@example.com" },
-    { id: "b", email: "bea@example.com" },
-    { id: "c", email: "carla@example.com" },
-  ];
-  it("keeps a row whose address has an account and deletes the others", () => {
-    expect(waitlistIdsToDelete(rows, ["bea@example.com"])).toEqual(["a", "c"]);
-  });
-  it("ignores case differences on either side", () => {
-    expect(waitlistIdsToDelete(rows, ["ANA@Example.COM"])).toEqual(["b", "c"]);
-    expect(waitlistIdsToDelete([{ id: "x", email: "Dora@Example.com" }], ["dora@example.com"])).toEqual([]);
-  });
-  it("ignores surrounding spaces", () => {
-    expect(waitlistIdsToDelete(rows, ["  carla@example.com "])).toEqual(["a", "b"]);
-    expect(waitlistIdsToDelete([{ id: "x", email: " eva@example.com " }], ["eva@example.com"])).toEqual([]);
-  });
-  it("deletes every candidate when the account set is empty", () => {
-    expect(waitlistIdsToDelete(rows, [])).toEqual(["a", "b", "c"]);
-    expect(waitlistIdsToDelete(rows, [null, undefined, ""])).toEqual(["a", "b", "c"]);
-  });
-  it("matches exactly, never by pattern or substring", () => {
-    expect(waitlistIdsToDelete(rows, ["ana@example.co", "na@example.com", "ana@example.com.mx", "%@example.com"])).toEqual(["a", "b", "c"]);
-  });
-  it("keeps a candidate equal to an account address", () => {
-    expect(waitlistIdsToDelete([{ id: "z", email: "same@example.com" }], ["same@example.com"])).toEqual([]);
   });
 });

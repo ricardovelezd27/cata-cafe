@@ -50,6 +50,8 @@ export const LEGAL_NOTICE_EN: LegalDoc = {
     {
       heading: "3. Intellectual and industrial property",
       body: [
+        // ADAPTED: the source lists its own content types (learning modules, recipes,
+        // quizzes, gamification); here "exercises and reference data".
         `All content of the Platform — including, without limitation, texts, images, logos, icons, source code, graphic design, exercises and reference data — is the exclusive property of ${E.name} or of third parties who have authorized its use, and is protected by Spanish and international intellectual and industrial property regulations.`,
         "3.1 The following is expressly prohibited:",
         {
@@ -63,6 +65,7 @@ export const LEGAL_NOTICE_EN: LegalDoc = {
         },
         // ADAPTED: the source says "are trademarks of"; "distinctive signs" is used here
         // because no trademark registration for this name has been shown.
+        // For the same reason "infringement of trademark regulations" became "applicable regulations".
         `3.2 Trademarks and trade names. The name «${E.product}», the associated logo and any other trade name or distinctive sign appearing on the Platform are distinctive signs of ${E.name} or of third parties who have authorized their use. Their unauthorized use constitutes an infringement of the applicable regulations.`,
         `3.3 User-generated content. Users who publish evaluations, cupping notes, coffee records or other content on the Platform retain their copyright over that content, but grant ${E.name} a non-exclusive, worldwide, royalty-free and transferable licence to use, reproduce, display and distribute that content in the context of the operation of the Platform.`,
       ],
@@ -70,7 +73,9 @@ export const LEGAL_NOTICE_EN: LegalDoc = {
     {
       heading: "4. General conditions of use",
       body: [
-        // ADAPTED: there are no passwords here.
+        // ADAPTED: there are no passwords here. The source's sentence "Basic access to
+        // the Platform is free… advanced features" was dropped: there are no paid or
+        // advanced tiers (see section 6).
         "4.1 Access and registration. Account registration is necessary to create cuppings, coffees and groups. By registering, the user guarantees that the information provided is truthful, complete and up to date, and is responsible for keeping control of their email and their sign-in links.",
         "4.2 Prohibited uses. The user undertakes not to use the Platform for:",
         {
@@ -95,7 +100,7 @@ export const LEGAL_NOTICE_EN: LegalDoc = {
         // ADAPTED: the source's clause is about an AI packaging scanner.
         `5.2 Accuracy of content and AI. Texts generated with artificial intelligence in the analytics area are indicative and may contain inaccuracies. ${E.name} does not guarantee the accuracy, completeness or suitability of the information provided by AI systems.`,
         `5.3 Third-party content and links. The Platform may include content or links to third-party websites. ${E.name} has no control over those sites and assumes no responsibility for their content, privacy policies or practices. The inclusion of a link does not imply endorsement of, or a commercial relationship with, the owner of that site.`,
-        `5.4 User responsibility. The user is responsible for their use of the Platform and for the content they enter. ${E.name} is not liable for damages that may arise from misuse of the Platform by the user or by third parties.`,
+        `5.4 User responsibility. The user is responsible for their use of the Platform and for the content they publish. ${E.name} is not liable for damages that may arise from misuse of the Platform by the user or by third parties.`,
       ],
     },
     {
@@ -129,6 +134,10 @@ export const LEGAL_NOTICE_EN: LegalDoc = {
     {
       heading: "9. Applicable law and jurisdiction",
       body: [
+        // ADAPTED: the source's entries for the AI Regulation and the accessibility
+        // law carry a 2025 date clause and a transposition note; both were dropped
+        // here (the transposition is stated in section 10). The source's closing
+        // "Next review" line was dropped too: no review date has been set.
         "9.1 Legal framework. This Legal Notice is governed by Spanish and European law, in particular:",
         {
           list: [
