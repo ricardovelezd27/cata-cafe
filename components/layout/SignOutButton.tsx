@@ -4,6 +4,7 @@ import { useState, useTransition, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { signOut, switchAccount } from "@/app/actions/auth";
 import { clearLocalDeviceState } from "@/lib/offline/deviceState";
+import { announceIdentityLeft } from "@/lib/identityChange";
 import { stripLocale } from "@/lib/guestScope";
 import { useGuestGate, type GuestLeaveTranslations } from "@/components/guest/GuestGateProvider";
 import { useUnsyncedGuard } from "@/components/offline/UnsyncedGuardProvider";
@@ -26,8 +27,10 @@ import { useGuestClaim } from "@/hooks/useGuestClaim";
  *  - A guest never signs out silently (F-cuenta-6, F-guest-4): the identity
  *    lives only in this browser, so a loss warning offers "Guardar mis
  *    resultados" (the normal claim flow) before "Salir de todos modos".
- *    // TODO(E1-Kim): confirm own-phone vs shared tablet; on a shared tablet
- *    // the guest may WANT to leave and let the next person start fresh.
+ *    The own phone is the norm, so the loss warning stays. On a shared tablet
+ *    the join page's "No soy {name}" (components/join/GuestIdentityChoice.tsx)
+ *    is how the next person starts clean, not this button.
+ *    TODO(kim-validar:E1): simulated answer.
  *    The warning for unsynced evaluation drafts is S8-09's (countDeviceOnly).
  */
 export function SignOutButton({
@@ -68,6 +71,10 @@ export function SignOutButton({
           ? switchAccount(locale)
           : signOut(locale, mode === "signOutEverywhere" ? "global" : "local");
       await feedback.run(promise, async (data) => {
+        // Other tabs of this browser still show this person's pages: tell them
+        // (they stop saving and ask for a reload). "" = unknown id, receivers
+        // re-check with the server.
+        announceIdentityLeft(guard?.userId ?? "");
         await clearLocalDeviceState();
         // A full navigation: the auth cookies changed and every cached RSC
         // payload belonged to the previous identity.

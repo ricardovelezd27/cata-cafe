@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluateJoin, joinRefusalCode, type JoinInvite, type JoinSession } from "@/lib/joinRules";
+import { evaluateJoin, joinRefusalCode, joinScreenFor, isSameAnonymousGuest, existingUserAction, classifyGuestLookup, type JoinInvite, type JoinSession } from "@/lib/joinRules";
 
 const NOW = new Date("2026-11-10T12:00:00.000Z");
 const future = new Date(NOW.getTime() + 3_600_000);
@@ -113,5 +113,77 @@ describe("joinRefusalCode", () => {
   it("an admissible link is not a refusal", () => {
     expect(joinRefusalCode(ev({}))).toBeNull();
     expect(joinRefusalCode(ev({ viewer: member }))).toBeNull();
+  });
+});
+
+describe("joinScreenFor (F-guest-4)", () => {
+  const kinds = ["redirect", "ok", "closed", "expired", "exhausted", "entries_closed", "invalid"] as const;
+  it("asks an anonymous viewer who they are for redirect and ok only", () => {
+    for (const k of kinds) {
+      const expected = k === "redirect" || k === "ok" ? "identity" : "decision";
+      expect(joinScreenFor(k, { userId: "g", isAnonymous: true })).toBe(expected);
+    }
+  });
+  it("never changes anything for a registered user", () => {
+    for (const k of kinds) {
+      expect(joinScreenFor(k, { userId: "r", isAnonymous: false })).toBe("decision");
+    }
+  });
+  it("never changes anything when nobody is signed in", () => {
+    for (const k of kinds) {
+      expect(joinScreenFor(k, { userId: null, isAnonymous: false })).toBe("decision");
+      expect(joinScreenFor(k, { userId: null, isAnonymous: true })).toBe("decision");
+    }
+  });
+  it("an owner is never asked, for every decision kind", () => {
+    for (const k of kinds) {
+      expect(joinScreenFor(k, { userId: "o", isAnonymous: true, isOwner: true })).toBe("decision");
+      expect(joinScreenFor(k, { userId: "o", isAnonymous: false, isOwner: true })).toBe("decision");
+    }
+  });
+});
+
+describe("isSameAnonymousGuest", () => {
+  it("matches only the same anonymous user", () => {
+    expect(isSameAnonymousGuest("a", { id: "a", is_anonymous: true })).toBe(true);
+    expect(isSameAnonymousGuest("a", { id: "b", is_anonymous: true })).toBe(false);
+    expect(isSameAnonymousGuest("a", { id: "a", is_anonymous: false })).toBe(false);
+    expect(isSameAnonymousGuest("a", { id: "a" })).toBe(false);
+    expect(isSameAnonymousGuest("a", null)).toBe(false);
+  });
+});
+
+describe("existingUserAction", () => {
+  it("creates when nobody is signed in", () => {
+    expect(existingUserAction(null, null)).toBe("create");
+    expect(existingUserAction(null, "x")).toBe("create");
+  });
+  it("leaves a registered user alone", () => {
+    expect(existingUserAction({ id: "r", is_anonymous: false }, "r")).toBe("registered");
+  });
+  it("reuses only the anonymous user this tab created", () => {
+    expect(existingUserAction({ id: "g", is_anonymous: true }, "g")).toBe("reuse");
+    expect(existingUserAction({ id: "g", is_anonymous: true }, "other")).toBe("identity");
+    expect(existingUserAction({ id: "g", is_anonymous: true }, null)).toBe("identity");
+  });
+});
+
+describe("classifyGuestLookup", () => {
+  const ok = { id: "a", is_anonymous: true };
+  it("same / different user", () => {
+    expect(classifyGuestLookup("a", { user: ok, error: null })).toBe("same");
+    expect(classifyGuestLookup("a", { user: { id: "b", is_anonymous: true }, error: null })).toBe("different");
+    expect(classifyGuestLookup("a", { user: { id: "a", is_anonymous: false }, error: null })).toBe("different");
+  });
+  it("a missing session or 401/403 is no user, not an error", () => {
+    expect(classifyGuestLookup("a", { user: null, error: { name: "AuthSessionMissingError", status: 400 } })).toBe("different");
+    expect(classifyGuestLookup("a", { user: null, error: { status: 401 } })).toBe("different");
+    expect(classifyGuestLookup("a", { user: null, error: { status: 403 } })).toBe("different");
+    expect(classifyGuestLookup("a", { user: null, error: null })).toBe("different");
+  });
+  it("network failures and 5xx are unreachable", () => {
+    expect(classifyGuestLookup("a", { user: null, error: { name: "AuthRetryableFetchError", status: 0 } })).toBe("unreachable");
+    expect(classifyGuestLookup("a", { user: null, error: { status: 503 } })).toBe("unreachable");
+    expect(classifyGuestLookup("a", { user: null, error: {} })).toBe("unreachable");
   });
 });

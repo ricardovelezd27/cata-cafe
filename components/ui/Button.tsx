@@ -12,7 +12,12 @@ export type ButtonVariant = "primary" | "secondary" | "ghost" | "accent" | "acce
 export type ButtonSize = "md" | "sm";
 
 const BASE =
-  "inline-flex items-center justify-center gap-1.5 rounded-pill font-medium transition-colors min-h-[44px] whitespace-nowrap disabled:opacity-60 disabled:cursor-default";
+  "inline-flex items-center justify-center gap-1.5 rounded-pill font-medium transition-colors min-h-[44px] disabled:opacity-60 disabled:cursor-default";
+// `wrap` lets a long label (a user-chosen name) break lines instead of
+// overflowing. Both literals appear in source so Tailwind emits them; they
+// replace each other and never stack (nowrap would win the cascade).
+const NOWRAP = "whitespace-nowrap";
+const WRAP = "h-auto whitespace-normal wrap-anywhere py-2 text-center";
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {
   md: "px-5 text-sm",
@@ -33,7 +38,7 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
 /** Class string of a Button, for wrappers that must render their own element
  * (e.g. GuestGateLink, which is a Link for members and a button for guests). */
 export function buttonClasses(variant: ButtonVariant = "primary", size: ButtonSize = "md"): string {
-  return `${BASE} ${SIZE_CLASSES[size]} ${VARIANT_CLASSES[variant]} no-underline`;
+  return `${BASE} ${NOWRAP} ${SIZE_CLASSES[size]} ${VARIANT_CLASSES[variant]} no-underline`;
 }
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -41,6 +46,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: ButtonSize;
   /** Leading icon — sized and aria-hidden by the caller (e.g. `<Printer size={16} aria-hidden />`). */
   icon?: ReactNode;
+  /** Allow the label to wrap (long names). Default false: single line. */
+  wrap?: boolean;
   className?: string;
 }
 
@@ -48,6 +55,7 @@ export function Button({
   variant = "primary",
   size = "md",
   icon,
+  wrap = false,
   className = "",
   type = "button",
   children,
@@ -56,7 +64,7 @@ export function Button({
   return (
     <button
       type={type}
-      className={`${BASE} ${SIZE_CLASSES[size]} ${VARIANT_CLASSES[variant]} ${className}`}
+      className={`${BASE} ${wrap ? WRAP : NOWRAP} ${SIZE_CLASSES[size]} ${VARIANT_CLASSES[variant]} ${className}`}
       {...props}
     >
       {icon}
@@ -70,6 +78,8 @@ export interface ButtonLinkProps extends AnchorHTMLAttributes<HTMLAnchorElement>
   variant?: ButtonVariant;
   size?: ButtonSize;
   icon?: ReactNode;
+  /** Allow the label to wrap (long names). Default false. */
+  wrap?: boolean;
   className?: string;
 }
 
@@ -80,6 +90,7 @@ export function ButtonLink({
   variant = "primary",
   size = "md",
   icon,
+  wrap = false,
   className = "",
   children,
   ...props
@@ -87,7 +98,7 @@ export function ButtonLink({
   return (
     <a
       href={href}
-      className={`${BASE} ${SIZE_CLASSES[size]} ${VARIANT_CLASSES[variant]} no-underline ${className}`}
+      className={`${BASE} ${wrap ? WRAP : NOWRAP} ${SIZE_CLASSES[size]} ${VARIANT_CLASSES[variant]} no-underline ${className}`}
       {...props}
     >
       {icon}

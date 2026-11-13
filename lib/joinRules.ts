@@ -3,6 +3,7 @@
 // enforces it), so the two can never disagree. Dependency-free for vitest.
 
 import { sessionHref } from "@/lib/sessionRouting";
+import { classifyIdentityLookup, type IdentityLookup } from "@/lib/expectedUser";
 
 export type JoinInvite = {
   active: boolean;
@@ -71,6 +72,82 @@ export function evaluateJoin(
   return { kind: "ok", late: session.startedAt !== null };
 }
 
+/**
+ * Which screen the join page renders for the signed-in viewer (S10 WP8,
+ * F-guest-4). "identity" = ask "¿Eres <nombre>?" before acting as the browser's
+ * anonymous user: a shared tablet may now be in the hands of someone else.
+ * "decision" = today's behaviour, exactly what `evaluateJoin` says (redirect,
+ * join button, refusal, or the guest form when nobody is signed in).
+ *
+ * Only an ANONYMOUS viewer whose decision is `redirect` (already a member) or
+ * `ok` (newcomer) gets "identity". Registered users and refused links are
+ * untouched. An owner is never anonymous, but if one were, they redirect.
+ * TODO(kim-validar:E1): simulated answer, confirm with Kim.
+ */
+export type JoinScreen = "identity" | "decision";
+
+export function joinScreenFor(
+  decisionKind: JoinDecision["kind"],
+  viewer: { userId: string | null; isAnonymous: boolean; isOwner?: boolean },
+): JoinScreen {
+  if (viewer.userId === null || !viewer.isAnonymous || viewer.isOwner) return "decision";
+  return decisionKind === "redirect" || decisionKind === "ok" ? "identity" : "decision";
+}
+
+/**
+ * Is the browser's current user still the guest this screen/tab is about?
+ * A stale tab must never act (sign out, join, sync drafts) as a DIFFERENT
+ * guest who joined on the same device since. `null` = no session / lookup gave
+ * nothing. Registered users never match (the screen is anonymous-only).
+ */
+export function isSameAnonymousGuest(
+  renderedUserId: string,
+  current: { id: string; is_anonymous?: boolean } | null,
+): boolean {
+  return !!current && current.is_anonymous === true && current.id === renderedUserId;
+}
+
+/**
+ * Classifies a `supabase.auth.getUser()` result against the guest a screen was
+ * rendered for. A MISSING SESSION (AuthSessionMissingError, or a 401/403) is
+ * "no user" = not the same guest (the commonest stale-tab case: another tab did
+ * "No soy"), so callers refresh. Only a network failure or a 5xx is
+ * "unreachable" (callers show an error and change nothing).
+ */
+export type GuestLookup = IdentityLookup;
+
+export function classifyGuestLookup(
+  renderedUserId: string,
+  result: {
+    user: { id: string; is_anonymous?: boolean } | null;
+    error: { name?: string; status?: number; code?: string } | null;
+  },
+): GuestLookup {
+  // Third review L1: the no-session / transient split lives in lib/expectedUser.ts
+  // (auth-js guards + any 4xx auth API error = no session).
+  return classifyIdentityLookup(result, (u) =>
+    isSameAnonymousGuest(renderedUserId, u as { id: string; is_anonymous?: boolean }),
+  );
+}
+
+/**
+ * What GuestJoinForm does when it finds a user at submit time.
+ * - "registered": refresh (server shows the signed-in join form).
+ * - "reuse": the anonymous user THIS tab created on an earlier try (S8-07
+ *   F-guest-2: five retries create one user); keep going silently.
+ * - "identity": any other anonymous user (the previous guest on a shared
+ *   device): refresh so the server asks "¿Eres …?".
+ * - "create": nobody is signed in.
+ */
+export function existingUserAction(
+  existing: { id: string; is_anonymous?: boolean } | null,
+  rememberedAnonId: string | null,
+): "create" | "registered" | "reuse" | "identity" {
+  if (!existing) return "create";
+  if (!existing.is_anonymous) return "registered";
+  return rememberedAnonId !== null && existing.id === rememberedAnonId ? "reuse" : "identity";
+}
+
 export type JoinRefusalCode =
   | "session_closed"
   | "token_expired"
@@ -99,4 +176,17 @@ export function joinRefusalCode(decision: JoinDecision): JoinRefusalCode | null 
     case "redirect":
       return null;
   }
+}
+
+/** A join refusal that retrying cannot fix (the link or session is over, full
+ *  or locked). Screens refresh into the page's own refusal screen instead of
+ *  toasting (S10 WP8 third review L5). */
+export function isFinalJoinRefusal(code: string): code is JoinRefusalCode {
+  return (
+    code === "session_closed" ||
+    code === "token_expired" ||
+    code === "token_exhausted" ||
+    code === "entries_closed" ||
+    code === "invalid_token"
+  );
 }
