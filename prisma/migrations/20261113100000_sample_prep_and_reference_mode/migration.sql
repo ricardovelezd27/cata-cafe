@@ -2,7 +2,7 @@
 -- Additive and backwards compatible: nullable columns plus two columns with a
 -- constant default (metadata-only in Postgres 11+, no table rewrite). No trigger,
 -- function, policy, index or FK is created or touched.
--- Apply with `npx prisma migrate deploy` BEFORE the deploy (runbook section 29):
+-- Apply with `npx prisma migrate deploy` BEFORE the deploy (runbook section 32):
 -- the regenerated Prisma client selects these columns immediately.
 --
 --   * session_samples."roastDate"        optional roast date of the sample (DATE)

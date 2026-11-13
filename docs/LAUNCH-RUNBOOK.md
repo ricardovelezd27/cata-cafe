@@ -1715,7 +1715,7 @@ a second statement fails or if this one stops failing.
 
 ---
 
-## §30. Database — apply the `sample_prep_and_reference_mode` migration (2026-11, S10 WP2)
+## §32. Database — apply the `sample_prep_and_reference_mode` migration (2026-11, S10 WP2)
 
 **What it does:** adds five columns, all additive, no trigger, no function, no policy, no index,
 no foreign key:
@@ -1736,7 +1736,10 @@ on the cup, results, print and PDF pages immediately; without them those pages f
    ```bash
    npx prisma migrate deploy
    ```
-   Expected: `1 migration found … 20261113100000_sample_prep_and_reference_mode … applied`.
+   Expected: `… 20261113100000_sample_prep_and_reference_mode … applied`. This migration's name
+   sorts after `20261113090000_evaluation_cups` (PR #117); `migrate deploy` applies pending
+   migrations in name order whichever PR merges first, and neither depends on the other (so
+   the output may list one or two migrations).
 2. **Verify** — Supabase SQL Editor:
    ```sql
    SELECT table_name, column_name, data_type, column_default

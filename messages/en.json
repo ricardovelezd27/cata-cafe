@@ -383,7 +383,9 @@
       "referenceRepinBlocked": "Removing this sample would reactivate an earlier reference and replace its cuppers' ratings. Change the reference first.",
       "formatLockedStarted": "Format and cups per sample lock once the cupping has started or has evaluations.",
       "referenceHelperFree": "The other samples are compared against its average in the results. Everyone scores it like any other sample. Picking another adds it as Reference 2.",
-      "referenceModeLocked": "The reference mode cannot be changed once the tasting has started."
+      "referenceModeLocked": "The reference mode cannot be changed once the tasting has any evaluation, including the pinned reference.",
+      "asyncGroupNoticeFailed": "Saved. With a closing date the tasting no longer has a start, so the group had to be notified now, but we could not send the email. You can resend the notice from the group page.",
+      "asyncGroupNoticePartial": "Saved. The notice reached part of the group; retry the failed ones from the group page."
     },
     "sampleCountWarning": {
       "many": "More than 6 samples tires the palate. Consider splitting them across two cuppings.",
@@ -1862,7 +1864,6 @@
     "saveDetails": "Save details",
     "linkGroupLabel": "Link to a group",
     "noGroupOption": "No group",
-    "autoInviteLive": "Email the group when you start the tasting",
     "autoInviteAsync": "Email the group when the session is created",
     "autoInviteSummary": "Invitation sent to {sent} members · {skipped} skipped · {failed} failed",
     "joinSessionLink": "Join the session"

@@ -706,7 +706,13 @@ is async OR (live AND when = "create"); `notifyAtStartFlag` stores
 `notifyGroupAtStart` true only for live AND when = "start", so one choice never
 sends twice, and the atomic `groupNotifiedAt` claim in `notifyGroupOfSession`
 stops a later start from sending a second email either way. An async session
-(it has a closing date) has no start and ignores the choice. The email body
+(it has a closing date) has no start and ignores the choice. A LIVE session
+ticked "at start" that LATER gets a closing date (`updateSession`) becomes async
+and has no start any more: `shouldNotifyOnBecomingAsync` sends the notice at
+that edit (same claim and email budget; a refusal or failure never blocks the
+save and comes back as `groupNotice`) and clears `notifyGroupAtStart`. So
+exactly one of creation, start or that edit sends the notice; the opposite
+change (async -> live) needs nothing, it was notified at creation. The email body
 ("Te invito a una sesión de catación … Usa el enlace para unirte") is true for a
 live session announced before it starts: the link opens the waiting room.
 

@@ -291,7 +291,7 @@
         "legend": "Cómo se usa la referencia",
         "anchor": "Ancla",
         "free": "Referencia libre",
-        "anchorHelp": "Su calidad queda fijada en 5 (79,00) para todos y solo se describe. Es un ejercicio de Café Sensible, no del CVA.",
+        "anchorHelp": "Su calidad queda fijada en 5 (79.00) para todos y solo se describe. Es un ejercicio de Café Sensible, no del CVA.",
         "freeHelp": "Todos la puntúan como cualquier otra muestra y las demás se comparan con su promedio."
       }
     },
@@ -383,7 +383,9 @@
       "referenceRepinBlocked": "Quitar esta muestra reactivaría una referencia anterior y reemplazaría las notas de sus catadores. Cambia primero la referencia.",
       "formatLockedStarted": "El formato y las tazas por muestra se bloquean cuando la cata ya empezó o tiene evaluaciones.",
       "referenceHelperFree": "Las demás muestras se comparan contra su promedio en los resultados. Todos la puntúan como cualquier otra muestra. Si eliges otra, se añade como Referencia 2.",
-      "referenceModeLocked": "El modo de la referencia no se puede cambiar una vez iniciada la cata."
+      "referenceModeLocked": "El modo de la referencia no se puede cambiar una vez que la cata tiene alguna evaluación, incluida la referencia fijada.",
+      "asyncGroupNoticeFailed": "Guardado. Al ponerle fecha de cierre, la cata ya no tiene un inicio, así que debíamos avisar al grupo ahora, pero no pudimos enviar el correo. Puedes reenviar el aviso desde la página del grupo.",
+      "asyncGroupNoticePartial": "Guardado. El aviso al grupo llegó a una parte de los miembros; reintenta los fallidos desde la página del grupo."
     },
     "sampleCountWarning": {
       "many": "Más de 6 muestras cansa el paladar. Considera repartirlas en dos catas.",
@@ -1862,7 +1864,6 @@
     "saveDetails": "Guardar detalles",
     "linkGroupLabel": "Vincular a un grupo",
     "noGroupOption": "Sin grupo",
-    "autoInviteLive": "Avisar al grupo por correo cuando inicies la cata",
     "autoInviteAsync": "Avisar al grupo por correo al crear la sesión",
     "autoInviteSummary": "Invitación enviada a {sent} integrantes · {skipped} omitidas · {failed} fallidas",
     "joinSessionLink": "Unirme a la sesión"

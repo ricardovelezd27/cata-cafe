@@ -47,7 +47,6 @@ import { fieldErrorId, fieldForErrorCode, fieldInputId, type SessionFormField } 
 type SessionGroupsTranslations = NotifyGroupTranslations & {
   linkGroupLabel: string;
   noGroupOption: string;
-  autoInviteLive: string;
   autoInviteAsync: string;
   // Raw ICU template — interpolated locally via formatTemplate, not t().
   autoInviteSummary: string;
