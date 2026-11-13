@@ -1055,6 +1055,7 @@ export default async function ResultsPage({
           partialLabel: tResults("partial.label"),
           includesOne: tResults.raw("partial.includesOne") as string,
           includesMany: tResults.raw("partial.includesMany") as string,
+          axisNotEvaluated: tResults("partial.axisNotEvaluated"),
         },
         flavorProfiles: tResults("flavorProfiles"),
         referenceBadge: tResults("referenceBadge"),

@@ -449,6 +449,8 @@
       "cooledRemove": "Remove",
       "cooledSummary": "{from} → {to} as it cooled",
       "submitNote": "Your evaluation of {sample} is partial: it will have no total score. What you did rate counts in the per-attribute averages.",
+      "submitNoteSolo": "Your evaluation of {sample} is partial: it will have no total score.",
+      "noneEvaluated": "Mark at least one section as evaluated, or leave the sample unevaluated.",
       "submitTitle": "Submit a partial evaluation",
       "scoreLabel": "Partial · no score",
       "includesOne": "Includes {n} partial evaluation",
@@ -1136,6 +1138,7 @@
       "label": "Partial · no score",
       "notEvaluated": "Not evaluated",
       "cooledSummary": "{from} → {to} as it cooled",
+      "axisNotEvaluated": "· not evaluated",
       "includesOne": "Includes {n} partial evaluation",
       "includesMany": "Includes {n} partial evaluations"
     },

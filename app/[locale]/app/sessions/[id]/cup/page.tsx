@@ -399,6 +399,8 @@ export default async function CupPage({
           cooledRemove: t("cupping.partial.cooledRemove"),
           cooledSummary: t.raw("cupping.partial.cooledSummary") as string,
           submitNote: t.raw("cupping.partial.submitNote") as string,
+          submitNoteSolo: t.raw("cupping.partial.submitNoteSolo") as string,
+          noneEvaluated: t("cupping.partial.noneEvaluated"),
           submitTitle: t("cupping.partial.submitTitle"),
           scoreLabel: t("cupping.partial.scoreLabel"),
           includesOne: t.raw("cupping.partial.includesOne") as string,

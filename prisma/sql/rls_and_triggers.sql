@@ -2915,8 +2915,10 @@ COMMIT;
 --       isAffectiveDeclaredPartial (lib/affectivePartial.ts). TRUE when at least
 --       one of the 8 affective sections is marked `<attr>_ne = true` (the JSON
 --       boolean true, nothing else counts), at least one is rated, and every
---       section is EITHER rated OR marked. A rating is read exactly like
---       is_affective_complete reads it (`<attr>_final`, else `<attr>`, > 0).
+--       section is EITHER rated OR marked. A rating is read ONLY when the JSON
+--       value is a number (`<attr>_final`, else `<attr>`, > 0); a string, boolean,
+--       null, object or array is "not rated". There is NO text cast, so the helper
+--       can never raise on an old odd row (is_affective_complete casts and can).
 --       is_affective_complete itself is UNCHANGED (all 8 rated).
 --   (2) recompute_aggregate_score() re-issued as a copy of the PHASE 26 body with
 --       ONE changed clause: the WHERE of the v_attr_averages subquery becomes
@@ -2953,7 +2955,8 @@ BEGIN;
 
 -- >>> PHASE 29 statements (copied verbatim into phase29_dry_run.sql) >>>
 -- SQL twin of isAffectiveDeclaredPartial (lib/affectivePartial.ts). Same key list and the
--- same rating read as is_affective_complete; a marker counts only as the JSON boolean true.
+-- a rating counts only when its JSON value is a number (no text cast: it cannot raise); a marker counts
+-- only as the JSON boolean true.
 CREATE OR REPLACE FUNCTION public.is_affective_declared_partial(data jsonb)
 RETURNS boolean LANGUAGE sql IMMUTABLE SET search_path = public AS $$
   SELECT COALESCE(bool_and(a.rated OR a.marked), false)
@@ -2961,7 +2964,9 @@ RETURNS boolean LANGUAGE sql IMMUTABLE SET search_path = public AS $$
      AND COALESCE(bool_or(a.rated), false)
   FROM (
     SELECT
-      COALESCE(NULLIF(data->>(k || '_final'),'')::numeric, NULLIF(data->>k,'')::numeric, 0) > 0 AS rated,
+      COALESCE(
+        CASE WHEN jsonb_typeof(data->(k || '_final')) = 'number' THEN (data->(k || '_final'))::numeric
+             WHEN jsonb_typeof(data->k) = 'number' THEN (data->k)::numeric END, 0) > 0 AS rated,
       COALESCE((data->(k || '_ne')) = 'true'::jsonb, false) AS marked
     FROM unnest(ARRAY[
       'fragancia_af', 'aroma_af', 'sabor_af', 'sabor_residual_af',
@@ -3139,6 +3144,10 @@ BEGIN
   END IF;
   IF is_affective_declared_partial(NULL) OR is_affective_declared_partial('{}'::jsonb) THEN
     RAISE EXCEPTION 'PHASE 29 aborted, nothing applied: an empty evaluation reads as a declared partial';
+  END IF;
+  -- an old odd row (non-numeric ratings) must neither raise nor read as a partial
+  IF is_affective_declared_partial('{"aroma_af_final":"abc","fragancia_af_final":true,"impresion_global_ne":true}'::jsonb) THEN
+    RAISE EXCEPTION 'PHASE 29 aborted, nothing applied: a non-numeric rating reads as rated';
   END IF;
 END
 $chk$;

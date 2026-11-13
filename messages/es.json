@@ -449,6 +449,8 @@
       "cooledRemove": "Quitar",
       "cooledSummary": "{from} → {to} al enfriarse",
       "submitNote": "Tu evaluación de {sample} es parcial: no tendrá puntaje total. Lo que sí calificaste cuenta en los promedios por atributo.",
+      "submitNoteSolo": "Tu evaluación de {sample} es parcial: no tendrá puntaje total.",
+      "noneEvaluated": "Marca al menos una sección como evaluada, o deja la muestra sin evaluar.",
       "submitTitle": "Enviar evaluación parcial",
       "scoreLabel": "Parcial · sin puntaje",
       "includesOne": "Incluye {n} evaluación parcial",
@@ -1136,6 +1138,7 @@
       "label": "Parcial · sin puntaje",
       "notEvaluated": "No evaluado",
       "cooledSummary": "{from} → {to} al enfriarse",
+      "axisNotEvaluated": "· no evaluado",
       "includesOne": "Incluye {n} evaluación parcial",
       "includesMany": "Incluye {n} evaluaciones parciales"
     },

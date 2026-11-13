@@ -31,6 +31,7 @@ import { EXPRESS_NOTE_KEY } from "@/lib/expressSession";
 import { sanitizePdfText } from "@/lib/pdf/text";
 import { samplePrepVisible, type SamplePrep } from "@/lib/samplePrep";
 import { calcIndividualBreakdown, evaluationCupCounts, isAffectiveComplete } from "@/lib/scoring";
+import { isAffectiveDeclaredPartial } from "@/lib/affectivePartial";
 import type { ScoreRule } from "@/lib/scoreRule";
 
 export type Locale = "es" | "en";
@@ -98,6 +99,7 @@ export const CVA_TEXT: Record<Locale, Record<string, string>> = {
     beta: "Beta",
     none: "—",
     incomplete: "Evaluación incompleta",
+    partialDeclared: "evaluación parcial (secciones no evaluadas)",
     sheetDescriptive: "Hoja descriptiva",
     sheetAffective: "Hoja afectiva",
     // Official-form furniture
@@ -182,6 +184,7 @@ export const CVA_TEXT: Record<Locale, Record<string, string>> = {
     beta: "Beta",
     none: "—",
     incomplete: "Incomplete evaluation",
+    partialDeclared: "partial evaluation (sections not evaluated)",
     sheetDescriptive: "Descriptive sheet",
     sheetAffective: "Affective sheet",
     // Official-form furniture
@@ -725,6 +728,8 @@ export type CvaSampleSheet = {
    *   form is faithful).
    */
   scoreState: "complete" | "partial" | "empty";
+  /** S10 WP3b: the partial evaluation was DECLARED (sections marked "no evaluado"); labelled differently from an unmarked incomplete one. */
+  partialDeclared?: boolean;
   breakdown: { affectiveSum: number; u: number; d: number };
   extrinsic: LabeledField[];
   physical: LabeledField[];
@@ -955,6 +960,7 @@ export function buildCvaFormData(input: CvaFormInput): CvaSampleSheet {
     score,
     expressNotes,
     scoreState,
+    ...(scoreState === "partial" && isAffectiveDeclaredPartial(scoreSource) ? { partialDeclared: true } : {}),
     breakdown,
     extrinsic:
       input.ownerView || input.sample.revealed

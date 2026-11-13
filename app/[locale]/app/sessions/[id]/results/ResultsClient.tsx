@@ -306,6 +306,7 @@ export function ResultsClient({
       partialLabel?: string;
       includesOne?: string;
       includesMany?: string;
+      axisNotEvaluated?: string;
     };
     flavorProfiles: string;
     referenceBadge: string;

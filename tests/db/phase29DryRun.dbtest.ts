@@ -32,11 +32,12 @@ describe("phase29_dry_run.sql", () => {
 
     expect(message).toMatch(/^PHASE 29 DRY RUN: NOTHING WAS APPLIED/);
     expect(message).toContain('(_ne) key today (expect 0): 0');
+    expect(message).toContain(' 1b submitted evaluations holding a rating key that is present but not a JSON number (expect 0): 0');
     expect(message).toContain("(expect {search_path=public} twice): {search_path=public} {search_path=public}");
     expect(message).toContain("(expect true): true");
     expect(message).toContain("(expect false / false): false / false");
     expect(message).toContain(
-      'all 8 rated=false | 7 rated + 1 marked=true | 7 rated + 1 neither=false | 1 rated + 7 marked=true | 8 marked, none rated=false | marker is the string "true"=false | {}=false | NULL=false',
+      'all 8 rated=false | 7 rated + 1 marked=true | 7 rated + 1 neither=false | 1 rated + 7 marked=true | 8 marked, none rated=false | marker is the string "true"=false | {}=false | NULL=false | rating "abc"=false | rating true=false | rating "7"=false | rating "NaN"=false',
     );
     expect(message).toContain("5a after a complete evaluation (expect included 1, submitted 1, score 84.25, Fragancia 6.00, Sabor 6.00): included 1, submitted 1, score 84.25, Fragancia 6.00, Sabor 6.00");
     expect(message).toContain("5b after a declared-partial evaluation (expect included 1, submitted 2, score 84.25, Fragancia 7.00, Sabor 6.00): included 1, submitted 2, score 84.25, Fragancia 7.00, Sabor 6.00");
@@ -52,6 +53,6 @@ describe("phase29_dry_run.sql", () => {
     const message = await runDry();
     expect(message).toMatch(/^PHASE 29 DRY RUN: NOTHING WAS APPLIED/);
     expect(message).toContain("5 temporary sample: SKIPPED (fewer than three profiles exist)");
-    expect(message).toContain("(expect false | true | false | true | false | false | false | false)");
+    expect(message).toContain("the last four cannot raise)");
   });
 });

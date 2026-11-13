@@ -2333,12 +2333,13 @@ trigger's stored averages.
    red error starting `PHASE 29 DRY RUN: NOTHING WAS APPLIED`. Every numbered line says on the line
    itself what it must read:
    - 1 (expect 0): submitted evaluations that already carry a `_ne` key (the feature is not deployed);
+   - 1b (expect 0, read-only): submitted evaluations holding a rating key that is present but not a JSON number (an odd old row; the helper cannot raise on it, but the owner sees how many there are before applying);
    - 2 (expect `{search_path=public}` twice, and `true`): the two functions are pinned and the live
      trigger function mentions the helper;
    - 3 (expect `false / false`): `authenticated` and `anon` cannot execute the helper;
-   - 4 (expect `false | true | false | true | false | false | false | false`): the helper on eight made-up
+   - 4 (expect `false | true | false | true | false | false | false | false | false | false | false | false`, the last four being the odd ratings): the helper on eight made-up
      evaluations (all rated; 7 rated + 1 marked; 7 rated + 1 neither; 1 rated + 7 marked; 8 marked and
-     none rated; the marker as the string "true"; `{}`; NULL);
+     none rated; the marker as the string "true"; `{}`; NULL; and four odd ratings, "abc", true, "7", "NaN", which must read false and never raise);
    - 5a, 5b, 5c (a TEMPORARY session built and rolled back inside the block, using the ids of three
      existing profiles as cuppers; it says `SKIPPED` if fewer than three profiles exist): a complete
      evaluation (score 84.25, included 1), then a declared partial (included still 1, submitted 2, the
@@ -2349,10 +2350,11 @@ trigger's stored averages.
    ```
    PHASE 29 DRY RUN: NOTHING WAS APPLIED (this error is the expected result). Compare each line with its expectation:
     1 submitted evaluations carrying a "no evaluado" (_ne) key today (expect 0): 0
+    1b submitted evaluations holding a rating key that is present but not a JSON number (expect 0): 0
     2 proconfig of recompute_aggregate_score and is_affective_declared_partial (expect {search_path=public} twice): {search_path=public} {search_path=public}
     2 the live trigger function now mentions is_affective_declared_partial (expect true): true
     3 authenticated / anon can execute is_affective_declared_partial (expect false / false): false / false
-    4 is_affective_declared_partial (expect false | true | false | true | false | false | false | false): all 8 rated=false | 7 rated + 1 marked=true | 7 rated + 1 neither=false | 1 rated + 7 marked=true | 8 marked, none rated=false | marker is the string "true"=false | {}=false | NULL=false
+    4 is_affective_declared_partial (expect false | true | false | true | false | false | false | false | false | false | false | false; the last four cannot raise): all 8 rated=false | 7 rated + 1 marked=true | 7 rated + 1 neither=false | 1 rated + 7 marked=true | 8 marked, none rated=false | marker is the string "true"=false | {}=false | NULL=false | rating "abc"=false | rating true=false | rating "7"=false | rating "NaN"=false
     5a after a complete evaluation (expect included 1, submitted 1, score 84.25, Fragancia 6.00, Sabor 6.00): included 1, submitted 1, score 84.25, Fragancia 6.00, Sabor 6.00
     5b after a declared-partial evaluation (expect included 1, submitted 2, score 84.25, Fragancia 7.00, Sabor 6.00): included 1, submitted 2, score 84.25, Fragancia 7.00, Sabor 6.00
     5c after an unmarked incomplete evaluation (expect NOTHING to move: included 1, submitted 3, score 84.25, Fragancia 7.00, Sabor 6.00): included 1, submitted 3, score 84.25, Fragancia 7.00, Sabor 6.00

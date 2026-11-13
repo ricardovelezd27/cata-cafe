@@ -28,6 +28,17 @@ import { isAffectiveDeclaredPartial } from "@/lib/affectivePartial";
 
 const CHART_HEIGHT = 220;
 
+type RadarDotProps = { cx?: number; cy?: number; index?: number; payload?: Record<string, unknown> };
+
+/** Dots only (no polygon) where an axis has a value: a missing point must not read as 0 (S10 WP3b). */
+function renderRadarDot(key: "mine" | "community", color: string, props: RadarDotProps) {
+  return props.payload && typeof props.payload[key] === "number" && props.cx !== undefined && props.cy !== undefined ? (
+    <circle key={`${key}-${props.index}`} cx={props.cx} cy={props.cy} r={3} fill={color} />
+  ) : (
+    <g key={`${key}-${props.index}`} />
+  );
+}
+
 type AggregateScoreData = {
   communityScore: number | null;
   avgRawScore: number | null;
@@ -123,6 +134,8 @@ export function SampleRadarChart({
       requiresAffective: string;
       /** S10 WP3b: "Parcial · sin puntaje" and the "Incluye {n} evaluación(es) parcial(es)" templates. */
       partialLabel?: string;
+      /** "· no evaluado" appended to the label of an axis the partial evaluation left out. */
+      axisNotEvaluated?: string;
       includesOne?: string;
       includesMany?: string;
     };
@@ -160,11 +173,13 @@ export function SampleRadarChart({
           0
         )
       : 0;
-    // A declared partial plots its unrated sections at the centre (0), never a made-up 5.
-    const myVal = rawVal > 0 ? rawVal : isPartial ? 0 : 5;
+    // A declared partial is NOT drawn as a polygon and has no point on a section it did not rate
+    // (never 0, which reads as "the lowest value"); a normal evaluation keeps the 5 default.
+    const myVal = rawVal > 0 ? rawVal : isPartial ? undefined : 5;
     const comVal = sample.aggregateScore?.attrAverages[attr.label] ?? 0;
     return {
-      subject: attr.label,
+      subject:
+        isPartial && rawVal <= 0 && t.radar.axisNotEvaluated ? `${attr.label} ${t.radar.axisNotEvaluated}` : attr.label,
       mine: hasMyData ? myVal : undefined,
       community: comVal > 0 ? comVal : undefined,
     };
@@ -173,6 +188,7 @@ export function SampleRadarChart({
     showCommunity &&
     Object.keys(sample.aggregateScore?.attrAverages ?? {}).length > 0 &&
     radarData.some((d) => d.community !== undefined && d.community > 0);
+  const communityHasGaps = hasCommunityData && radarData.some((d) => d.community === undefined);
 
   // Mine-vs-community delta rows. Built from the raw values (not radarData)
   // so the chart's "default to 5 when unset" fallback never fakes a delta.
@@ -343,10 +359,10 @@ export function SampleRadarChart({
                 <Radar
                   name={t.mine}
                   dataKey="mine"
-                  stroke={colors.mine}
-                  fill={colors.mine}
-                  fillOpacity={0.2}
-                  dot={false}
+                  stroke={isPartial ? "none" : colors.mine}
+                  fill={isPartial ? "none" : colors.mine}
+                  fillOpacity={isPartial ? 0 : 0.2}
+                  dot={isPartial ? (p: RadarDotProps) => renderRadarDot("mine", colors.mine, p) : false}
                   isAnimationActive
                   animationDuration={600}
                   animationEasing="ease-out"
@@ -356,11 +372,11 @@ export function SampleRadarChart({
                 <Radar
                   name={t.community}
                   dataKey="community"
-                  stroke={colors.community}
-                  fill={colors.community}
-                  fillOpacity={0.1}
+                  stroke={communityHasGaps ? "none" : colors.community}
+                  fill={communityHasGaps ? "none" : colors.community}
+                  fillOpacity={communityHasGaps ? 0 : 0.1}
                   strokeDasharray="5 3"
-                  dot={false}
+                  dot={communityHasGaps ? (p: RadarDotProps) => renderRadarDot("community", colors.community, p) : false}
                   isAnimationActive
                   animationDuration={600}
                   animationEasing="ease-out"

@@ -31,6 +31,10 @@ export type PartialCopy = {
   cooledSummary: string;
   /** "Tu evaluación de {sample} es parcial…": t.raw(), replaced client-side. */
   submitNote: string;
+  /** Solo sessions: the same note without the sentence about group averages. */
+  submitNoteSolo: string;
+  /** Every section marked "no evaluado": the sample is not finished. */
+  noneEvaluated: string;
   submitTitle: string;
   /** Results: shown instead of a score. */
   scoreLabel: string;
@@ -53,6 +57,8 @@ export const PARTIAL_COPY_FALLBACK: Record<"es" | "en", PartialCopy> = {
     cooledSummary: "{from} → {to} al enfriarse",
     submitNote:
       "Tu evaluación de {sample} es parcial: no tendrá puntaje total. Lo que sí calificaste cuenta en los promedios por atributo.",
+    submitNoteSolo: "Tu evaluación de {sample} es parcial: no tendrá puntaje total.",
+    noneEvaluated: "Marca al menos una sección como evaluada, o deja la muestra sin evaluar.",
     submitTitle: "Enviar evaluación parcial",
     scoreLabel: "Parcial · sin puntaje",
     includesOne: "Incluye {n} evaluación parcial",
@@ -68,6 +74,8 @@ export const PARTIAL_COPY_FALLBACK: Record<"es" | "en", PartialCopy> = {
     cooledSummary: "{from} → {to} as it cooled",
     submitNote:
       "Your evaluation of {sample} is partial: it will have no total score. What you did rate counts in the per-attribute averages.",
+    submitNoteSolo: "Your evaluation of {sample} is partial: it will have no total score.",
+    noneEvaluated: "Mark at least one section as evaluated, or leave the sample unevaluated.",
     submitTitle: "Submit a partial evaluation",
     scoreLabel: "Partial · no score",
     includesOne: "Includes {n} partial evaluation",

@@ -30,8 +30,13 @@ export const inicialKey = (id: string) => `${id}${INICIAL_SUFFIX}`;
 /** A rating exactly as the scorer and `is_affective_complete` read it:
  *  `<id>_final`, else the bare `<id>`; counts only when finite and > 0. */
 function rated(data: Data, id: string): boolean {
-  const v = Number(data[`${id}_final`] ?? data[id] ?? 0);
-  return Number.isFinite(v) && v > 0;
+  // Exact twin of is_affective_declared_partial (PHASE 29): a rating is read ONLY when the JSON
+  // value is a number (`_final` first, else the bare key); a string, boolean, null, object or
+  // array is "not rated". The SQL does no text cast, so it cannot raise on an old odd row.
+  const f = data[`${id}_final`];
+  const b = data[id];
+  const v = typeof f === "number" && Number.isFinite(f) ? f : typeof b === "number" && Number.isFinite(b) ? b : 0;
+  return v > 0;
 }
 
 /** The section is marked "no evaluado": ONLY the literal boolean true counts. */

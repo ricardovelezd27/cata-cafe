@@ -96,7 +96,7 @@ describe("PHASE 29: the helper", () => {
     expect(helper).not.toMatch(/\bGRANT\b/);
   });
 
-  it("reads the same eight keys, with the same rating read as is_affective_complete", () => {
+  it("reads the same eight keys; a rating counts only when its JSON value is a number (no text cast, cannot raise)", () => {
     for (const k of [
       "fragancia_af", "aroma_af", "sabor_af", "sabor_residual_af",
       "acidez_af", "dulzor_af", "sensacion_af", "impresion_global",
@@ -105,7 +105,9 @@ describe("PHASE 29: the helper", () => {
       // is_affective_complete reads <k>_final then <k>: the same two keys, in the same order
       expect(SQL).toContain(`data->>'${k}_final'`);
     }
-    expect(helper).toContain("COALESCE(NULLIF(data->>(k || '_final'),'')::numeric, NULLIF(data->>k,'')::numeric, 0) > 0 AS rated");
+    expect(helper).toContain("CASE WHEN jsonb_typeof(data->(k || '_final')) = 'number' THEN (data->(k || '_final'))::numeric WHEN jsonb_typeof(data->k) = 'number' THEN (data->k)::numeric END, 0) > 0 AS rated");
+    expect(helper).not.toMatch(/data->>/); // no text extraction anywhere in the helper
+    expect(helper).not.toMatch(/::text/);
   });
 
   it("a marker counts only as the JSON boolean true; all sections rated or marked, one marked, one rated", () => {
@@ -165,7 +167,8 @@ describe("phase29_dry_run.sql", () => {
       '1 submitted evaluations carrying a "no evaluado" (_ne) key today (expect 0)',
       "2 proconfig of recompute_aggregate_score and is_affective_declared_partial (expect {search_path=public} twice)",
       "3 authenticated / anon can execute is_affective_declared_partial (expect false / false)",
-      "4 is_affective_declared_partial (expect false | true | false | true | false | false | false | false)",
+      "1b submitted evaluations holding a rating key that is present but not a JSON number (expect 0)",
+      "4 is_affective_declared_partial (expect false | true | false | true | false | false | false | false | false | false | false | false; the last four cannot raise)",
       "5a after a complete evaluation (expect included 1, submitted 1, score 84.25, Fragancia 6.00, Sabor 6.00)",
       "5b after a declared-partial evaluation (expect included 1, submitted 2, score 84.25, Fragancia 7.00, Sabor 6.00)",
       "5c after an unmarked incomplete evaluation (expect NOTHING to move: included 1, submitted 3, score 84.25, Fragancia 7.00, Sabor 6.00)",

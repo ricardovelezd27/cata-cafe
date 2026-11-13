@@ -11,6 +11,8 @@
 -- What it reports:
 --   * line 1: how many SUBMITTED evaluations carry any `_ne` ("no evaluado") key
 --     today. Expect 0: the feature is not deployed yet.
+--   * line 1b: submitted evaluations holding a rating key that is present but not a JSON
+--     number (expect 0; read-only, informational: the helper cannot raise on them anyway).
 --   * line 2: the two functions' proconfig after the statements (both pinned).
 --   * line 3: whether an API role can execute the new helper (expect false).
 --   * line 4: the helper on eight hand-made evaluations (truth table).
@@ -29,6 +31,7 @@
 DO $dry$
 DECLARE
   v_marked int;
+  v_odd int;
   v_out text := '';
   v_ids text[];
   v_def text;
@@ -47,9 +50,22 @@ BEGIN
      AND ("affectiveData"::text LIKE '%\_ne"%' OR "combinedData"::text LIKE '%\_ne"%');
   v_out := v_out || E'\n 1 submitted evaluations carrying a "no evaluado" (_ne) key today (expect 0): ' || v_marked;
 
+  -- 1b. Read-only: submitted evaluations whose affective module holds a rating key that is present but is
+  -- not a JSON number (an odd old row). PHASE 29's helper cannot raise on them; this is informational.
+  SELECT count(*) INTO v_odd FROM evaluations e
+   WHERE e."isDraft" = false
+     AND EXISTS (
+       SELECT 1
+         FROM unnest(ARRAY['fragancia_af','aroma_af','sabor_af','sabor_residual_af','acidez_af','dulzor_af','sensacion_af','impresion_global']) AS k,
+              unnest(ARRAY['_final','']) AS sfx,
+              unnest(ARRAY[e."affectiveData", e."combinedData"]) AS d
+        WHERE d ? (k || sfx) AND jsonb_typeof(d->(k || sfx)) <> 'number');
+  v_out := v_out || E'\n 1b submitted evaluations holding a rating key that is present but not a JSON number (expect 0): ' || v_odd;
+
   -- >>> PHASE 29 statements (copy of rls_and_triggers.sql) >>>
 -- SQL twin of isAffectiveDeclaredPartial (lib/affectivePartial.ts). Same key list and the
--- same rating read as is_affective_complete; a marker counts only as the JSON boolean true.
+-- a rating counts only when its JSON value is a number (no text cast: it cannot raise); a marker counts
+-- only as the JSON boolean true.
 CREATE OR REPLACE FUNCTION public.is_affective_declared_partial(data jsonb)
 RETURNS boolean LANGUAGE sql IMMUTABLE SET search_path = public AS $$
   SELECT COALESCE(bool_and(a.rated OR a.marked), false)
@@ -57,7 +73,9 @@ RETURNS boolean LANGUAGE sql IMMUTABLE SET search_path = public AS $$
      AND COALESCE(bool_or(a.rated), false)
   FROM (
     SELECT
-      COALESCE(NULLIF(data->>(k || '_final'),'')::numeric, NULLIF(data->>k,'')::numeric, 0) > 0 AS rated,
+      COALESCE(
+        CASE WHEN jsonb_typeof(data->(k || '_final')) = 'number' THEN (data->(k || '_final'))::numeric
+             WHEN jsonb_typeof(data->k) = 'number' THEN (data->k)::numeric END, 0) > 0 AS rated,
       COALESCE((data->(k || '_ne')) = 'true'::jsonb, false) AS marked
     FROM unnest(ARRAY[
       'fragancia_af', 'aroma_af', 'sabor_af', 'sabor_residual_af',
@@ -236,8 +254,12 @@ $fn$;
     || ' | 8 marked, none rated=' || is_affective_declared_partial(v_all_ne)
     || ' | marker is the string "true"=' || is_affective_declared_partial((v_base - 'impresion_global_final') || '{"impresion_global_ne":"true"}')
     || ' | {}=' || is_affective_declared_partial('{}'::jsonb)
-    || ' | NULL=' || is_affective_declared_partial(NULL);
-  v_out := v_out || E'\n 4 is_affective_declared_partial (expect false | true | false | true | false | false | false | false): ' || v_truth;
+    || ' | NULL=' || is_affective_declared_partial(NULL)
+    || ' | rating "abc"=' || is_affective_declared_partial((v_base - 'aroma_af_final' - 'impresion_global_final') || jsonb_build_object('aroma_af_final', 'abc'::text) || '{"impresion_global_ne":true}')
+    || ' | rating true=' || is_affective_declared_partial((v_base - 'aroma_af_final' - 'impresion_global_final') || '{"aroma_af_final":true,"impresion_global_ne":true}')
+    || ' | rating "7"=' || is_affective_declared_partial((v_base - 'aroma_af_final' - 'impresion_global_final') || jsonb_build_object('aroma_af_final', '7'::text) || '{"impresion_global_ne":true}')
+    || ' | rating "NaN"=' || is_affective_declared_partial((v_base - 'aroma_af_final' - 'impresion_global_final') || jsonb_build_object('aroma_af_final', 'NaN'::text) || '{"impresion_global_ne":true}');
+  v_out := v_out || E'\n 4 is_affective_declared_partial (expect false | true | false | true | false | false | false | false | false | false | false | false; the last four cannot raise): ' || v_truth;
 
   -- 5. A temporary sample: complete, then declared partial, then an old-style incomplete one
   SELECT array_agg(id) INTO v_ids FROM (SELECT id FROM profiles ORDER BY id LIMIT 3) p;

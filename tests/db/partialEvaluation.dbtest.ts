@@ -73,6 +73,10 @@ describe("is_affective_declared_partial (SQL) == isAffectiveDeclaredPartial (TS)
       [{ ...(() => { const d = { ...all }; delete d["impresion_global_final"]; return d; })(), impresion_global_ne: "true" }, false],
       [{}, false],
       [null, false],
+      // an old odd row: a non-numeric rating is "not rated" and must never raise (reviewer round)
+      ...(["abc", true, "7", "NaN", null, {}, [1]] as unknown[]).map(
+        (odd) => [{ ...marked(all, "impresion_global"), aroma_af_final: odd }, false] as [Record<string, unknown>, boolean],
+      ),
     ];
     const sql = await sqlSays(cases.map(([b]) => b));
     expect(sql).toEqual(cases.map(([, want]) => want));
@@ -174,6 +178,26 @@ describe("trigger: partial evaluations feed the attribute averages, never the to
     expect(after?.avgRawScore).toBe(before?.avgRawScore);
     expect(after?.attrAverages).toEqual(before?.attrAverages);
     expect(after?.submittedCount).toBe((before?.submittedCount ?? 0) + 1);
+  });
+
+  it("an OLD submitted row holding a non-numeric rating never blocks a later submit on the sample (PHASE 29 helper cannot raise)", async () => {
+    const owner = await makeUser();
+    const u1 = await makeUser();
+    const s = await makeSession({ ownerId: owner, isGroup: true, cupsPerSample: 2, participants: [u1], samples: [{}] });
+    const sampleId = s.samples[0].id;
+    // As an older app version could have stored it: no fragancia (so is_affective_complete stops before the odd
+    // key, as it did under PHASE 26), then a string and a JSON true where numbers belong.
+    const odd = { aroma_af_final: "abc", sabor_af_final: true, acidez_af_final: "7", dulzor_af_final: "NaN" };
+    await makeEvaluation({
+      sampleId, sessionId: s.id, cupperId: owner, cupsPerSample: 2, values: 6,
+      overrides: { affectiveData: odd, cups: null },
+    });
+    // a new submit on the same sample: the trigger reads the odd row and must not raise
+    await makeEvaluation({ sampleId, sessionId: s.id, cupperId: u1, cupsPerSample: 2, values: 6 });
+    const agg = await storedAggregate(sampleId);
+    expect(agg?.participantCount).toBe(1);
+    expect(agg?.submittedCount).toBe(2);
+    expect(agg?.communityScore).toBeGreaterThan(0);
   });
 
   it("a sample with only a partial: no included evaluation, averages for what it rated", async () => {

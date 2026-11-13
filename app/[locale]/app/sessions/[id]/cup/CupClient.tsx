@@ -1765,7 +1765,7 @@ export function CupClient({
         ? []
         : viewSamples
             .filter((s) => isAffectiveDeclaredPartial(guardFormat === "affective" ? s.affective : s.combined))
-            .map((s) => partialCopy.submitNote.replace("{sample}", s.label));
+            .map((s) => (isGroup ? partialCopy.submitNote : partialCopy.submitNoteSolo).replace("{sample}", s.label));
     if (gaps.length > 0) {
       // Flag every sample+step combo that has a gap so revisiting any of them
       // shows the inline indicator, not just the current one.
@@ -1784,7 +1784,7 @@ export function CupClient({
         kind: "submit",
         items: gaps.map((g) => ({
           sample: g.sampleLabel,
-          sections: sectionLabels(g.sections),
+          sections: g.allNotEvaluated ? [partialCopy.noneEvaluated] : sectionLabels(g.sections),
         })),
         partialNotes: partialNotes.length > 0 ? partialNotes : undefined,
       });
