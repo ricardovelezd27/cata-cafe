@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { PRIVACY } from "@/lib/legal/privacy";
 import { TERMS } from "@/lib/legal/terms";
 import { LEGAL_NOTICE } from "@/lib/legal/legalNotice";
-import { LEGAL_ENTITY } from "@/lib/legal/company";
+import { LEGAL_ENTITY, REGISTRY_PENDING_BY_OWNER } from "@/lib/legal/company";
 import { LEGAL_PAGES_PUBLISHED, WAITLIST_RETENTION_MONTHS } from "@/lib/legal/config";
 import { SUPPORT_EMAIL } from "@/lib/siteContact";
 import { SIGNIN_INTENT_MAX_AGE_S } from "@/lib/signInIntent";
@@ -170,14 +170,28 @@ describe("privacy policy specifics", () => {
 });
 
 describe("publishing guard", () => {
-  it("does not allow publishing without the Registro Mercantil data", () => {
-    if (LEGAL_PAGES_PUBLISHED) {
+  // Changed consciously on 2026-11-13: the owner decided to publish while the
+  // Registro Mercantil line is pending. That decision is a constant in
+  // lib/legal/company.ts, not a silent gap: publishing with a null registry is
+  // allowed only while REGISTRY_PENDING_BY_OWNER is true.
+  it("publishing without the Registro Mercantil data needs the owner's recorded decision", () => {
+    if (LEGAL_PAGES_PUBLISHED && LEGAL_ENTITY.registry === null) {
       expect(
-        LEGAL_ENTITY.registry,
-        "LEGAL_PAGES_PUBLISHED is true but LEGAL_ENTITY.registry is null. The Registro Mercantil data is mandatory under LSSI-CE art. 10.1(b): fill it in lib/legal/company.ts, or consciously change this test.",
-      ).not.toBeNull();
-    } else {
-      expect(LEGAL_PAGES_PUBLISHED).toBe(false);
+        REGISTRY_PENDING_BY_OWNER,
+        "LEGAL_PAGES_PUBLISHED is true and LEGAL_ENTITY.registry is null. The Registro Mercantil data is mandatory under LSSI-CE art. 10.1(b): fill it in lib/legal/company.ts, or record the owner's decision in REGISTRY_PENDING_BY_OWNER.",
+      ).toBe(true);
+    }
+  });
+
+  it("once the registry line is filled in, the pending marker is cleared", () => {
+    if (LEGAL_ENTITY.registry !== null) expect(REGISTRY_PENDING_BY_OWNER).toBe(false);
+  });
+
+  it("a published notice omits the registry row rather than printing an empty one", () => {
+    if (LEGAL_ENTITY.registry === null) {
+      for (const doc of [PRIVACY.es, PRIVACY.en, LEGAL_NOTICE.es, LEGAL_NOTICE.en]) {
+        expect(joined(doc)).not.toMatch(/Registro Mercantil[^.]{0,40}null|Commercial Registry[^.]{0,40}null/);
+      }
     }
   });
 });
