@@ -194,12 +194,26 @@ describe("samplesToRefireAfterMerge (third review M-C)", () => {
     guestSampleIds: ["g1", "g2"],
     accountSampleIds: ["a1", "a2", "a3"],
   };
+  const sub = (sampleId: string) => ({ sampleId, deletedWasSubmitted: true });
+  const drf = (sampleId: string) => ({ sampleId, deletedWasSubmitted: false });
+  it("both submitted: the deleted evaluation was counted, the sample re-fires", () => {
+    expect(samplesToRefireAfterMerge([sub("s1")], [quiet])).toEqual(["s1"]);
+  });
+  it("submitted beats draft: only a draft is deleted, nothing re-fires", () => {
+    expect(samplesToRefireAfterMerge([drf("s1")], [quiet])).toEqual([]);
+  });
+  it("both drafts: nothing re-fires", () => {
+    expect(samplesToRefireAfterMerge([drf("s1"), drf("s2")], [quiet])).toEqual([]);
+  });
+  it("a draft-only conflict still re-fires when the exclusion flag differs for that sample", () => {
+    expect(samplesToRefireAfterMerge([drf("a2")], [{ ...quiet, guestExcluded: true }])).toEqual(["a1", "a2", "a3"]);
+  });
   it("re-fires nothing when there is no conflict and no exclusion difference", () => {
     expect(samplesToRefireAfterMerge([], [quiet])).toEqual([]);
     expect(samplesToRefireAfterMerge([], [])).toEqual([]);
   });
   it("re-fires only the conflicted samples, not the rest of their session", () => {
-    expect(samplesToRefireAfterMerge(["s2"], [{ ...quiet, accountSampleIds: ["s1", "s2", "s3"] }])).toEqual(["s2"]);
+    expect(samplesToRefireAfterMerge([sub("s2")], [{ ...quiet, accountSampleIds: ["s1", "s2", "s3"] }])).toEqual(["s2"]);
   });
   it("guest excluded, account not, both rows: the account's own submitted samples (their flag flipped), not the guest's", () => {
     expect(samplesToRefireAfterMerge([], [{ ...quiet, guestExcluded: true }])).toEqual(["a1", "a2", "a3"]);
@@ -211,7 +225,7 @@ describe("samplesToRefireAfterMerge (third review M-C)", () => {
   });
   it("de-duplicates and sorts conflict and exclusion samples", () => {
     expect(
-      samplesToRefireAfterMerge(["a2", "z"], [{ ...quiet, guestExcluded: true }]),
+      samplesToRefireAfterMerge([sub("a2"), sub("z")], [{ ...quiet, guestExcluded: true }]),
     ).toEqual(["a1", "a2", "a3", "z"]);
   });
   it("ignores a session with no exclusion difference alongside one with it", () => {

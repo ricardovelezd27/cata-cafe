@@ -149,7 +149,9 @@ export type MergeSessionRefireInput = RefireInput & {
  * Third review M-C. The samples whose group score must be recomputed after a guest merge
  * (the trigger only fires on a re-fire, so these are the ones whose INCLUDED set of
  * evaluations really changed):
- *  - every sample where the conflict rule deleted or replaced an evaluation, and
+ *  - every conflicted sample where the evaluation the merge DELETES was SUBMITTED (a conflict
+ *    that only removes a draft changes nothing the group score counts, so it recomputes
+ *    nothing: a stored score of an old session must never move by itself), and
  *  - when the merged exclusion flag differs from the one an identity's evaluations were
  *    counted under: the samples THAT identity has submitted evaluations for (the guest's for
  *    a moved-evaluation change, the account's own for a flipped account flag).
@@ -157,10 +159,11 @@ export type MergeSessionRefireInput = RefireInput & {
  * (cupperId only) changes nothing the trigger reads. Sorted, no duplicates.
  */
 export function samplesToRefireAfterMerge(
-  conflictSampleIds: readonly string[],
+  conflicts: readonly { sampleId: string; deletedWasSubmitted: boolean }[],
   sessions: readonly MergeSessionRefireInput[],
 ): string[] {
-  const out = new Set<string>(conflictSampleIds);
+  const out = new Set<string>();
+  for (const c of conflicts) if (c.deletedWasSubmitted) out.add(c.sampleId);
   for (const s of sessions) {
     if (guestEvaluationsChangeInclusion(s)) for (const id of s.guestSampleIds) out.add(id);
     if (accountEvaluationsChangeInclusion(s)) for (const id of s.accountSampleIds) out.add(id);

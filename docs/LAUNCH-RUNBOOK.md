@@ -1767,7 +1767,7 @@ new sample `ruleVersion = 1` while its evaluations already carry `cups`.
 **Steps** (Supabase SQL editor of the production project; there is only one)
 
 1. **Migration (adds two columns, NO backfill, fires no trigger).** From the checkout you
-   choose (`.env.local` IS production) run `npx prisma migrate deploy`. It applies
+   choose (`.env.local` IS production) run `npx.cmd prisma migrate deploy`. It applies
    `20261113090000_evaluation_cups`: `ALTER TABLE "evaluations" ADD COLUMN "cups" INTEGER`
    (left NULL on every existing row on purpose: **NULL means "scored before the 2026-11 rule"**
    and the app keeps showing those evaluations under the old rule) and
@@ -1817,10 +1817,18 @@ new sample `ruleVersion = 1` while its evaluations already carry `cups`.
    ```
 
    What the code does with C: nothing. The close routine's pass does not give a first score to a
-   sample whose submitted evaluations all have `cups` NULL (it has no new data), so its displayed
-   number stays the old-rule one; the sample is still revealed and its history written like any
-   other. A first score appears only when a cupper submits with the new code (`cups` set) or the
-   owner excludes or includes someone.
+   sample whose submitted evaluations all have `cups` NULL (it has no new data), so the sample
+   keeps having no aggregate row; it is still revealed and its history written like any other. A
+   first score appears only when a cupper submits with the new code (`cups` set) or the owner
+   excludes or includes someone. What each surface shows for such a sample in the meantime:
+   - group results page, and the PDF, close-email attachment and CSV: the TypeScript recompute
+     under the OLD rule;
+   - solo results: the cupper's own score, with no community block;
+   - coffee history: the community score is empty ("—");
+   - coffee profile and ficha: that sample is left out of the coffee's average.
+
+   **Run query C BEFORE the deploy and read the list**: every row is a sample that will show
+   as above until it gets its first score.
 
    **Right before the migration, a read-only check that nothing long is running** (the
    migration waits at most 5 s for its locks and then gives up). Expect no rows; if there are
@@ -1835,10 +1843,25 @@ new sample `ruleVersion = 1` while its evaluations already carry `cups`.
    (`BEGIN; SET LOCAL lock_timeout = '5s'; ALTER …; ALTER …; COMMIT;`; `migrate deploy` sends it
    statement by statement, and only the explicit `BEGIN` makes the timeout apply and the two
    ALTERs succeed or fail together), so it gives up instead of queueing behind a long
-   transaction and nothing is applied when it fails. Then `migrate deploy` fails with `P3018`
-   (database code `55P03`), the migration row is left marked failed and a re-run is refused with
-   `P3009`. Run `npx prisma migrate resolve --rolled-back 20261113090000_evaluation_cups` and
-   then `npx prisma migrate deploy` again (at a quieter moment).
+   transaction and nothing is applied when it fails. Then `migrate deploy` prints
+   `Error: ERROR: current transaction is aborted, commands ignored until end of transaction block`
+   (the lock timeout aborts the file's transaction and Prisma's own bookkeeping write then fails
+   on the same connection; the real cause, `55P03`, is NOT shown, and the same message appears
+   for ANY statement error in this file). Neither column exists afterwards, the migration row is
+   left marked failed and a re-run is refused with `P3009`.
+
+   **After ANY failed run, choose the recovery command from the database, not from the
+   message.** If the COMMIT succeeded but Prisma's "finished" write failed, both columns exist,
+   the next deploy answers `P3009` just like a real failure, and `--rolled-back` plus a deploy
+   would fail again. First run this read-only query in the SQL editor:
+
+   ```sql
+   select column_name from information_schema.columns where table_schema = 'public' and table_name = 'evaluations' and column_name = 'cups';
+   ```
+
+   - A row comes back: run `npx.cmd prisma migrate resolve --applied 20261113090000_evaluation_cups`.
+   - No row: run `npx.cmd prisma migrate resolve --rolled-back 20261113090000_evaluation_cups`
+     and then `npx.cmd prisma migrate deploy` again (at a quieter moment).
 2. **Dry run** (fail-safe: one statement, nothing is applied). Open
    `prisma/sql/dry-runs/phase26_dry_run.sql`, paste the whole file, run it. Expected: a red
    error starting `PHASE 26 DRY RUN: NOTHING WAS APPLIED`. Every numbered line says on the line
@@ -1896,12 +1919,14 @@ new sample `ruleVersion = 1` while its evaluations already carry `cups`.
    The "Actualizar" button on a CLOSED or expired session does NOT re-fire (it only re-reads
    the page), so a routine click never rewrites a past score.
    **One remaining exception, a decision the ARCHITECT took (the owner must be told):** when a
-   guest claim (`mergeGuestData`) removes or replaces an evaluation of a sample (a conflict
+   guest claim (`mergeGuestData`) removes or replaces a SUBMITTED evaluation of a sample (a conflict
    between the guest's and the account's evaluation of the same sample, or a participant
    exclusion that differs between the two rows and changes who is included), that sample's group
    score is recomputed, and the only function that exists computes the current rule; an old
    sample in that situation moves to the current rule. Only the samples whose included set
-   changed are recomputed; every other sample of those sessions is not touched.
+   changed are recomputed; every other sample of those sessions is not touched. A conflict that
+   only removes a draft (a submitted evaluation always beats a draft, and both drafts change
+   nothing the group score counts) recomputes nothing.
 4. **Verify (read-only). HARD STOP: this must run and pass BEFORE step 5; do not merge
    otherwise.** If the live function body does not contain `v_factor` and write `"ruleVersion"`
    (it is still the PHASE 23 body), the old trigger stamps every new sample `ruleVersion = 1`

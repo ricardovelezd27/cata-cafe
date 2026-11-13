@@ -23,8 +23,9 @@ beforeEach(async () => {
 });
 
 /** A submitted evaluation as the OLD code stored it (cups NULL). */
-const oldEval = (sessionId: string, sampleId: string, cupperId: string, values = 7) =>
+const oldEval = (sessionId: string, sampleId: string, cupperId: string, values = 7, draft = false) =>
   makeEvaluation({
+    draft,
     sampleId,
     sessionId,
     cupperId,
@@ -49,9 +50,11 @@ async function pinAndClose(sessionId: string, sampleIds: string[]) {
   });
 }
 
+/** The WHOLE stored aggregate row, every column (R3: never compare only a few of them). */
 async function snapshot(sampleId: string) {
-  const a = await storedAggregate(sampleId);
-  return { communityScore: a?.communityScore, ruleVersion: a?.ruleVersion, computedAt: a?.computedAt.getTime() };
+  const rows = await prisma.$queryRaw<{ r: unknown }[]>`
+    select to_jsonb(a) as r from aggregate_scores a where a."sessionSampleId" = ${sampleId}`;
+  return rows[0]?.r ?? null;
 }
 
 describe("mergeGuestData re-fires only the samples that changed (M-C)", () => {
@@ -155,5 +158,59 @@ describe("mergeGuestData re-fires only the samples that changed (M-C)", () => {
     expect([await snapshot(A.id), await snapshot(B.id), await snapshot(C.id)]).toEqual(before);
     // the guest's evaluation did move to the account
     expect(await prisma.evaluation.count({ where: { cupperId: account, sessionSampleId: A.id } })).toBe(1);
+  });
+
+  it("R1: account submitted, guest only a DRAFT on the same sample: nothing counted changed, the aggregate row is identical", async () => {
+    const owner = await makeUser();
+    const guest = await makeUser({ anonymous: true });
+    const account = await makeUser();
+    const s = await makeSession({
+      ownerId: owner,
+      isGroup: true,
+      participants: [guest, account],
+      cupsPerSample: 2,
+      samples: [{ label: "A" }],
+    });
+    const [A] = s.samples;
+    await oldEval(s.id, A.id, owner);
+    await oldEval(s.id, A.id, account, 6);
+    await oldEval(s.id, A.id, guest, 8, true);
+    await pinAndClose(s.id, [A.id]);
+    const before = await snapshot(A.id);
+    expect(before).not.toBeNull();
+
+    const r = await mergeGuestData(guest, account, new Date(0));
+    expect(r.ok).toBe(true);
+
+    expect(await snapshot(A.id)).toEqual(before);
+    // the draft lost: the account's submitted evaluation stands
+    const mine = await prisma.evaluation.findMany({ where: { cupperId: account, sessionSampleId: A.id } });
+    expect(mine).toHaveLength(1);
+    expect(mine[0].isDraft).toBe(false);
+  });
+
+  it("R2: both identities only have DRAFTS on the sample, another cupper submitted: the aggregate row is identical", async () => {
+    const owner = await makeUser();
+    const guest = await makeUser({ anonymous: true });
+    const account = await makeUser();
+    const s = await makeSession({
+      ownerId: owner,
+      isGroup: true,
+      participants: [guest, account],
+      cupsPerSample: 2,
+      samples: [{ label: "A" }],
+    });
+    const [A] = s.samples;
+    await oldEval(s.id, A.id, owner);
+    await oldEval(s.id, A.id, account, 6, true);
+    await oldEval(s.id, A.id, guest, 8, true);
+    await pinAndClose(s.id, [A.id]);
+    const before = await snapshot(A.id);
+    expect(before).not.toBeNull();
+
+    const r = await mergeGuestData(guest, account, new Date(0));
+    expect(r.ok).toBe(true);
+
+    expect(await snapshot(A.id)).toEqual(before);
   });
 });

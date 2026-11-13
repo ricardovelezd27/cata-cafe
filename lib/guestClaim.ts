@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
+  anonEvalWins,
   resolveEvalConflicts,
   samplesToRefireAfterMerge,
   type MergeSessionRefireInput,
@@ -164,12 +165,17 @@ export async function mergeGuestData(
     const accountSubmittedBySession = submittedSamplesBySession(accountSubmitted);
     const targetBySample = new Map(targetEvals.map((e) => [e.sessionSampleId, e]));
     const conflictSamples: string[] = [];
+    // Per conflict: was the evaluation the merge DELETES a submitted one? Only then did the
+    // group score's included set change (anonEvalWins: a submitted row always beats a draft).
+    const conflicts: { sampleId: string; deletedWasSubmitted: boolean }[] = [];
     const pairs: { anon: (typeof anonEvals)[number]; target: (typeof anonEvals)[number] }[] = [];
     for (const a of anonEvals) {
       const t = targetBySample.get(a.sessionSampleId);
       if (!t) continue;
       conflictSamples.push(a.sessionSampleId);
       pairs.push({ anon: a, target: t });
+      const deleted = anonEvalWins(a, t) ? t : a;
+      conflicts.push({ sampleId: a.sessionSampleId, deletedWasSubmitted: !deleted.isDraft });
     }
     const { deleteIds, accountLoserIds } = resolveEvalConflicts(pairs);
     if (accountLoserIds.length > 0) {
@@ -255,7 +261,7 @@ export async function mergeGuestData(
         accountSampleIds: accountSubmittedBySession.get(sessionId) ?? [],
       });
     }
-    const refireSamples = samplesToRefireAfterMerge(conflictSamples, mergeInputs);
+    const refireSamples = samplesToRefireAfterMerge(conflicts, mergeInputs);
     for (const p of anonParts) {
       const existing = targetPartBySession.get(p.sessionId);
       if (!existing) continue;
