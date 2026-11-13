@@ -15,7 +15,8 @@ export const LEGAL_PAGES_PUBLISHED = false;
 /** Stored in WaitlistEntry.consentNoticeVersion once the pages are published. */
 export const CONSENT_NOTICE_VERSION = "2026-11-v1";
 
-/** Waitlist rows are deleted after this many months (daily cron, purgeWaitlist). */
-// TODO(owner): the 12 months are a proposal; confirm or change the period (the
-// privacy text states it through this constant, so one edit updates both).
+/** An account that was never used (a founding-seat reservation or a sign-in
+ *  request whose person never signed in) is deleted, with its reservation,
+ *  after this many months (daily cron). Owner decision, 2026-11-14: 12 months,
+ *  really deleted. The privacy text states the period through this constant. */
 export const WAITLIST_RETENTION_MONTHS = 12;

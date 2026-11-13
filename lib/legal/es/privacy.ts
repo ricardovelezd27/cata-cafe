@@ -99,8 +99,10 @@ export const PRIVACY_ES: LegalDoc = {
           list: [
             "Gestión de cuenta y autenticación — art. 6(1)(b), ejecución del contrato. No admite oposición (es esencial).",
             "Prestación del servicio (sesiones de cata, resultados, informes en PDF, cafés y grupos) — art. 6(1)(b), ejecución del contrato.",
-            // ADDED: the waitlist / founding seats, with the proposed retention.
-            `Reserva de plaza fundadora — art. 6(1)(b), medidas precontractuales a petición suya: guardamos su correo para enviarle el acceso y avisarle sobre las plazas fundadoras. Si no llega a crear una cuenta, lo conservamos como máximo ${WAITLIST_RETENTION_MONTHS} meses.`,
+            // ADDED: the waitlist / founding seats. OWNER DECISION (2026-11-14): a
+            // reservation or sign-in request that is never completed is really
+            // deleted after the retention period (lib/unusedAccountPurge.ts).
+            `Reserva de plaza fundadora y solicitud de acceso — art. 6(1)(b), medidas precontractuales a petición suya: cuando usted reserva una plaza o pide un enlace o un código de acceso, creamos una cuenta con su correo para poder enviárselo. Si nunca llega a entrar, eliminamos esa cuenta sin usar y la reserva pasados ${WAITLIST_RETENTION_MONTHS} meses.`,
             "Comunicaciones de servicio (enlaces de acceso, resultados de una cata en la que participó, recordatorios de cierre) — art. 6(1)(b), ejecución del contrato.",
             // ADDED: group mail to addresses supplied by a group owner.
             "Avisos de un grupo de cata a las direcciones que añadió su organizador — art. 6(1)(f), interés legítimo en que el grupo pueda organizarse. Cada correo incluye un enlace para dejar de recibirlos.",
@@ -233,7 +235,8 @@ export const PRIVACY_ES: LegalDoc = {
             "Datos de cuenta y contenido: mientras exista la cuenta.",
             // ADDED: what account deletion really does in this app.
             "Al suprimir la cuenta se eliminan el perfil, el historial y los datos de acceso. Las evaluaciones que hizo en catas compartidas con otras personas se conservan sin su nombre, para que los resultados de los demás no cambien; las catas que organizó y en las que evaluaron otras personas se conservan cerradas y sin su nombre; y los cafés que creó se conservan sin sus datos identificativos (nombre, finca, productor, notas).",
-            `Reserva de plaza fundadora sin cuenta: como máximo ${WAITLIST_RETENTION_MONTHS} meses. Si creó una cuenta, la reserva se conserva mientras exista la cuenta y se elimina al suprimirla.`,
+            // OWNER DECISION (2026-11-14): really deleted, by the daily job.
+            `Cuentas que nunca se usaron (se reservó una plaza o se pidió un acceso, pero nunca se llegó a entrar): se eliminan, junto con la reserva, pasados ${WAITLIST_RETENTION_MONTHS} meses desde su creación. Si usted llegó a entrar, la reserva se conserva mientras exista la cuenta y se elimina al suprimirla.`,
             // ADDED: addresses a group organiser enters for other people.
             "Direcciones añadidas a un grupo de cata por su organizador: mientras exista el grupo o hasta que el organizador las retire.",
             "Huellas usadas para limitar los envíos de correo: se eliminan automáticamente cuando dejan de ser necesarias.",
