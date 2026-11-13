@@ -5,6 +5,7 @@ import { CheckCircle2, ChevronLeft, Clipboard, Plus, UserCheck, Users } from "lu
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
 import { maskEmail, memberLabel } from "@/lib/maskEmail";
+import { loadGroupForViewer } from "@/lib/groups/memberView";
 import { getCoCupperCandidates } from "@/lib/coCuppers";
 import { claimGroupMembershipsByEmail } from "@/lib/groupMembership";
 import { sessionHref } from "@/lib/sessionRouting";
@@ -58,23 +59,23 @@ export default async function GroupDetailPage({
   // the members.some visibility check below and 404 on their own invite link.
   await claimGroupMembershipsByEmail(user.id, user.email);
 
-  // Visible to the owner OR any linked member — the owner-gate for mutations
-  // stays inside the server actions; this OR is purely about read visibility.
-  const group = await prisma.tastingGroup.findFirst({
-    where: {
-      id,
-      OR: [{ createdBy: user.id }, { members: { some: { userId: user.id } } }],
-    },
-    include: {
-      members: { orderBy: { createdAt: "asc" } },
-      owner: { select: { displayName: true } },
-    },
+  const t = await getTranslations("groups");
+  // Visible to the owner OR any linked member; the member rows come back with a
+  // label and NO address (lib/groups/memberView.ts, S10 WP5a F-grupos-10).
+  const group = await loadGroupForViewer(id, user.id, {
+    pending: t("pendingInvite"),
+    member: t("memberLabel"),
   });
 
   if (!group) notFound();
 
   const isOwner = group.createdBy === user.id;
-  const t = await getTranslations("groups");
+  const ownerMembers = isOwner
+    ? await prisma.tastingGroupMember.findMany({
+        where: { groupId: id },
+        orderBy: { createdAt: "asc" },
+      })
+    : [];
   const tCommon = await getTranslations("common");
 
   // Announcements feed — visible to both owner and members (read-only for
@@ -209,15 +210,13 @@ export default async function GroupDetailPage({
 
   if (!isOwner) {
     // ── Member (read-only) view — no stats, add-member forms, composer, or
-    //    activity feed; only displayName or a masked email is ever shown. ──
+    //    activity feed; only a name or "Invitación pendiente" is ever shown (never an email,
+    //    masked or not; S10 WP5a, F-grupos-10). ──
     // TODO(D7): roster visibility is (a) every member sees names (the Kim default,
     // built). If Kim answers (b) teacher-chosen names or (c) teacher-only, add a
     // roster setting here in a follow-up PR; nothing in this PR changes it.
     const myMemberRow = group.members.find((m) => m.userId === user.id);
-    const memberRows = group.members.map((m) => ({
-      id: m.id,
-      label: memberLabel(m),
-    }));
+    const memberRows = group.members.map((m) => ({ id: m.id, label: m.label }));
     const leaveT = {
       cta: t("leave.cta"),
       title: t("leave.title"),
@@ -290,7 +289,7 @@ export default async function GroupDetailPage({
   // userId side of each member row (email-only/unregistered members can never
   // collide with a candidate this way).
   const memberUserIds = new Set(
-    group.members.map((m) => m.userId).filter((v): v is string => !!v),
+    ownerMembers.map((m) => m.userId).filter((v): v is string => !!v),
   );
   const eligibleCuppers = cuppers.filter((c) => !memberUserIds.has(c.userId));
 
@@ -298,7 +297,7 @@ export default async function GroupDetailPage({
   //    no account yet, so no activity can exist for them) ─────────────────────
   const linkedIds = [...memberUserIds];
   const nameByUserId = new Map(
-    group.members
+    ownerMembers
       .filter((m): m is typeof m & { userId: string } => !!m.userId)
       .map((m) => [m.userId, memberLabel(m)]),
   );
@@ -440,7 +439,7 @@ export default async function GroupDetailPage({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatCard
           label={t("members")}
-          value={String(group.members.length)}
+          value={String(ownerMembers.length)}
           subtext=""
           icon={<Users size={18} />}
         />
@@ -468,7 +467,7 @@ export default async function GroupDetailPage({
       {/* Announcements — the group's pulse, front and center right after stats */}
       <div className="space-y-3">
         <h2 className="font-display text-2xl text-primary-container">{t("feed.title")}</h2>
-        <PostComposer groupId={group.id} recipientCount={group.members.length} t={composerT} />
+        <PostComposer groupId={group.id} recipientCount={ownerMembers.length} t={composerT} />
         <GroupFeed posts={feedPosts} isOwner locale={locale} t={feedT} />
       </div>
 
@@ -477,11 +476,11 @@ export default async function GroupDetailPage({
         <h2 className="font-display text-xl text-primary-container">{t("members")}</h2>
         <MemberList
           groupId={group.id}
-          members={group.members.map((m) => ({
+          members={ownerMembers.map((m) => ({
             id: m.id,
             // Linked accounts' addresses were resolved server-side from a
-            // user id (co-cupper add) — show them masked, same rule as the
-            // member view. Email-only invitees keep the address the owner
+            // user id (co-cupper add) — the OWNER sees them masked; a member sees no
+            // address at all (lib/groupRoster.ts). Email-only invitees keep the address the owner
             // typed so "resend invitation" stays verifiable.
             email: m.userId ? maskEmail(m.email) : m.email,
             displayName: m.displayName,

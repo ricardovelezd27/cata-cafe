@@ -40,6 +40,7 @@ export interface RawCoffeeSample {
     id: string;
     name: string;
     date: Date;
+    closedAt?: Date | null;
     status: string;
     format: string;
     cupsPerSample: number;
@@ -107,6 +108,7 @@ export function filterCoffeeSamples(
         id: sample.session.id,
         name: knowsSession ? sample.session.name : null,
         date: knowsSession ? sample.session.date : null,
+        closedAt: knowsSession ? (sample.session.closedAt ?? null) : null,
       },
       aggregateScore: sample.aggregateScore,
       evaluations: evaluations.map((ev) => ({
