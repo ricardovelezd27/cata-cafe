@@ -48,7 +48,7 @@ const FALLBACK: Record<keyof typeof TOKENS, string> = {
   bright: "#fd8c6a",
   mint: "#c7ebd4",
   cream: "#fff8f6",
-  haloLight: "#ffdbcf",
+  haloLight: "#ffdbd0",
 };
 
 function mulberry32(seed: number) {

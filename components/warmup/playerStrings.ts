@@ -16,6 +16,10 @@ export interface WarmupPlayerStrings {
   evolutionLabel: string;
   sequenceLabel: string;
   optionsTitle: string;
+  /** Kicker of the intro's sound section ("Lo que vas a oír"). */
+  soundTitle: string;
+  /** Shown under the sound chips while the sound is off. */
+  soundOffNote: string;
   soundLabel: string;
   voiceToggle: string;
   voiceHint: string;
@@ -127,6 +131,8 @@ export function warmupPlayerStrings(t: T): WarmupPlayerStrings {
     evolutionLabel: t("player.evolutionLabel"),
     sequenceLabel: t("player.sequenceLabel"),
     optionsTitle: t("player.optionsTitle"),
+    soundTitle: t("player.soundTitle"),
+    soundOffNote: t("player.soundOffNote"),
     soundLabel: t("player.soundLabel"),
     voiceToggle: t("player.voiceToggle"),
     voiceHint: t("player.voiceHint"),

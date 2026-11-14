@@ -150,6 +150,9 @@
   /* ── Motion ─────────────────────────────────────────────── */
   --transition-fast: 150ms ease;
   --transition-med:  240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* How a thing ARRIVES (fast out, long soft landing): the landing's hero and
+     the warm-up's stage use the same curve, so both arrive the same way. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 
   /* ── Spacing (4px unit) ─────────────────────────────────── */
   --space-1: 4px;
@@ -1033,10 +1036,10 @@ button { font-family: inherit; cursor: pointer; }
     from { transform: translateY(22px); }
     to   { transform: none; }
   }
-  .hero-rise   { opacity: 0; animation: hero-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+  .hero-rise   { opacity: 0; animation: hero-rise 0.7s var(--ease-out) forwards; }
   /* Transform-only variant for LCP candidates (h1, widget): always painted,
      so the entrance never delays Largest Contentful Paint. */
-  .hero-slide  { animation: hero-slide 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .hero-slide  { animation: hero-slide 0.7s var(--ease-out) both; }
   .hero-rise-1 { animation-delay: 0.08s; }
   .hero-rise-2 { animation-delay: 0.16s; }
   .hero-rise-3 { animation-delay: 0.24s; }
@@ -1052,7 +1055,7 @@ button { font-family: inherit; cursor: pointer; }
   .contour-path {
     stroke-dasharray: 1;
     stroke-dashoffset: 1;
-    animation: contour-draw 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.45s forwards;
+    animation: contour-draw 1.4s var(--ease-out) 0.45s forwards;
   }
   .contour-path:nth-of-type(2) { animation-delay: 0.55s; }
   .contour-path:nth-of-type(3) { animation-delay: 0.65s; }

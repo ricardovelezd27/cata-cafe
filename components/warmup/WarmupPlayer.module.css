@@ -8,6 +8,13 @@
  * `[data-dusk]` set swaps them for the eyes-closed legs (1.2 s ease). Fills
  * are opaque color-mix, never opacity, so overlapping body parts show no
  * seams. No hex literals: tokens from app/globals.css only.
+ *
+ * The eyes-closed stage IS the landing's stage (DESIGN.md "Stage and
+ * surfaces"): the same deep green ground, cream ink, mint for what is filled,
+ * terracotta for what moves. One dark ground in the whole product.
+ * A filled control always pairs `--wu-fill` with `--wu-on-fill` (its text or
+ * icon colour): the pair is what keeps contrast on both stages
+ * (tests/warmup-stage.test.ts).
  */
 
 .root {
@@ -17,6 +24,8 @@
   --wu-chair: var(--color-surface-container-highest);
   --wu-move: var(--color-secondary);
   --wu-fill: var(--color-primary-container);
+  --wu-fill-hover: var(--color-primary);
+  --wu-on-fill: var(--color-on-primary);
   --wu-track: color-mix(in oklch, var(--color-outline-variant) 60%, transparent);
   --wu-ink: var(--color-on-surface);
   --wu-muted: var(--color-on-surface-variant);
@@ -30,18 +39,20 @@
   background: radial-gradient(circle at 50% 38%, var(--wu-bg) 0%, var(--wu-bg-far) 68%);
   color: var(--wu-ink);
   font-family: var(--font-ui);
-  transition: background 1200ms ease, color 1200ms ease;
+  transition: background 1200ms var(--ease-out), color 1200ms var(--ease-out);
 }
 .root[data-dusk="1"] {
-  --wu-bg: color-mix(in oklch, var(--color-inverse-surface) 94%, var(--color-primary));
-  --wu-bg-far: color-mix(in oklch, var(--color-inverse-surface) 96%, var(--color-primary));
-  --wu-body: color-mix(in oklch, var(--color-inverse-on-surface) 18%, var(--wu-bg));
-  --wu-chair: color-mix(in oklch, var(--color-inverse-on-surface) 10%, var(--wu-bg));
-  --wu-move: var(--color-secondary-fixed-dim);
-  --wu-fill: var(--color-primary-fixed-dim);
-  --wu-track: color-mix(in oklch, var(--color-inverse-on-surface) 20%, transparent);
-  --wu-ink: var(--color-inverse-on-surface);
-  --wu-muted: color-mix(in oklch, var(--color-inverse-on-surface) 70%, transparent);
+  --wu-bg: var(--color-stage);
+  --wu-bg-far: var(--color-stage-deep);
+  --wu-body: color-mix(in oklch, var(--color-surface) 20%, var(--color-stage));
+  --wu-chair: color-mix(in oklch, var(--color-surface) 10%, var(--color-stage));
+  --wu-move: var(--color-secondary-container);
+  --wu-fill: var(--color-primary-fixed);
+  --wu-fill-hover: var(--color-surface);
+  --wu-on-fill: var(--color-on-primary-fixed);
+  --wu-track: color-mix(in oklch, var(--color-surface) 20%, transparent);
+  --wu-ink: var(--color-surface);
+  --wu-muted: color-mix(in oklch, var(--color-surface) 72%, transparent);
 }
 
 /* ── Dusk veil: the rest of the app darkens with the eyes ── */
@@ -49,10 +60,10 @@
   position: fixed;
   inset: 0;
   z-index: 59;
-  background: color-mix(in oklch, var(--color-inverse-surface) 96%, var(--color-primary));
+  background: var(--color-stage-deep);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 1200ms ease;
+  transition: opacity 1200ms var(--ease-out);
 }
 .duskVeil[data-on="1"] { opacity: 0.94; }
 
@@ -249,7 +260,7 @@
   width: 44px;
   height: 44px;
   border: none;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: none;
   color: var(--wu-muted);
   cursor: pointer;
@@ -263,9 +274,9 @@
   width: 56px;
   height: 56px;
   border: none;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--wu-fill);
-  color: var(--color-on-primary);
+  color: var(--wu-on-fill);
   cursor: pointer;
   transition: background-color var(--transition-fast), transform var(--transition-fast);
 }
@@ -281,16 +292,16 @@
   padding: 0 20px;
   white-space: nowrap;
   border: none;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--wu-fill);
-  color: var(--color-on-primary);
+  color: var(--wu-on-fill);
   font: inherit;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: background-color var(--transition-fast);
 }
-.primaryBtn:hover { background: var(--color-primary); }
+.primaryBtn:hover { background: var(--wu-fill-hover); }
 .bodyRun .primaryBtn { margin-top: 20px; }
 .ghostBtn {
   background: none;
@@ -302,9 +313,12 @@
   font-weight: 500;
   color: var(--wu-muted);
   cursor: pointer;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 .ghostBtn:hover { color: var(--wu-ink); }
+.ghostBtn:disabled { opacity: 0.45; cursor: default; }
+/* A ghost button with an icon in front of its label, on one line. */
+.listenBtn { display: inline-flex; align-items: center; gap: 6px; }
 
 /* ── "La cata empezó" docked bar ── */
 .exitBar {
@@ -319,7 +333,7 @@
   animation: barUp 300ms ease both;
 }
 @keyframes barUp { from { transform: translateY(100%); } to { transform: none; } }
-.exitDot { width: 8px; height: 8px; border-radius: 999px; background: var(--color-primary-container); flex: 0 0 auto; }
+.exitDot { width: 8px; height: 8px; border-radius: var(--radius-pill); background: var(--color-primary-container); flex: 0 0 auto; }
 .exitText { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
 .exitTitle { font-size: 14px; font-weight: 600; }
 .exitSub { font-size: 12px; color: var(--color-on-surface-variant); font-variant-numeric: tabular-nums; }
@@ -364,7 +378,7 @@
   font-size: 12px;
   font-weight: 500;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--color-outline-variant);
   color: var(--wu-muted);
   background: var(--color-surface-container-lowest);
@@ -390,7 +404,7 @@
   font-size: 12px;
   font-weight: 500;
   padding: 3px 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   color: var(--color-on-secondary-fixed);
   background: var(--color-secondary-fixed);
 }
@@ -431,7 +445,7 @@
   height: 28px;
   display: grid;
   place-items: center;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--color-surface-container-lowest);
   border: 2px solid var(--color-outline-variant);
   font-family: var(--font-display);
@@ -472,8 +486,9 @@
   height: 2px;
   background: var(--color-outline-variant);
 }
-.stageDot { width: 14px; height: 14px; border-radius: 999px; background: var(--color-primary-fixed-dim); }
-.stageDotClosed { background: var(--color-inverse-surface); }
+.stageDot { width: 14px; height: 14px; border-radius: var(--radius-pill); background: var(--color-primary-fixed-dim); }
+/* The eyes-closed stage, in the colour that stage has. */
+.stageDotClosed { background: var(--color-stage); }
 .stageLabel { font-size: 12px; line-height: 1.3; color: var(--wu-ink); max-width: 11ch; }
 
 /* Settings fold */
@@ -530,7 +545,7 @@
   position: relative;
   width: 40px;
   height: 24px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--color-outline-variant);
   transition: background-color var(--transition-fast);
 }
@@ -541,7 +556,7 @@
   left: 3px;
   width: 18px;
   height: 18px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--color-surface-container-lowest);
   transition: transform var(--transition-fast);
 }
@@ -571,6 +586,7 @@
 .seg:focus-visible,
 .toggleChip:focus-visible { outline: 2px solid var(--wu-fill); outline-offset: 2px; }
 .chipRow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.toggleChip:disabled { opacity: 0.45; cursor: default; }
 
 /* Reflection */
 .textarea {

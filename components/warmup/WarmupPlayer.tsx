@@ -1234,6 +1234,51 @@ function IntroScreen({
         </section>
       </div>
 
+      {/* What you will hear. On the screen, not behind a fold: most of the
+          exercise happens with the eyes closed, so the sound IS the guide. */}
+      <section aria-label={t.soundTitle}>
+        <p className={s.kicker}>{t.soundTitle}</p>
+        <div className={s.chipRow}>
+          <button
+            type="button"
+            aria-pressed={!audio.muted}
+            className={[s.toggleChip, !audio.muted ? s.toggleChipOn : ""].join(" ")}
+            onClick={() => {
+              audio.unlock();
+              audio.setMuted(!audio.muted);
+            }}
+          >
+            {t.soundLabel}
+          </button>
+          <button
+            type="button"
+            aria-pressed={audio.voice && !audio.muted}
+            disabled={audio.muted}
+            className={[s.toggleChip, audio.voice && !audio.muted ? s.toggleChipOn : ""].join(" ")}
+            onClick={() => audio.setVoice(!audio.voice)}
+          >
+            {t.voiceToggle}
+          </button>
+          <button
+            type="button"
+            className={[s.ghostBtn, s.listenBtn].join(" ")}
+            disabled={audio.muted}
+            onClick={() => {
+              audio.unlock();
+              audio.playDemo("campana");
+              setTimeout(() => audio.playDemo("tic"), 1400);
+              setTimeout(() => audio.playDemo("cuenco"), 2600);
+              if (opensEyes) setTimeout(() => audio.playDemo("doble"), 5200);
+            }}
+          >
+            <Volume2 size={14} aria-hidden /> {t.soundDemo}
+          </button>
+        </div>
+        <p className={[s.muted, s.note].join(" ")}>
+          {audio.muted ? t.soundOffNote : audio.voice ? t.voiceHint : opensEyes ? t.soundDemoCaptions : t.soundDemoCaptionsEyesOpen}
+        </p>
+      </section>
+
       {/* Run length (library page): full or the 1-2 minute version. */}
       {lengthChoice && (
         <section aria-label={t.lengthLabel}>
@@ -1296,39 +1341,12 @@ function IntroScreen({
           <Settings2 size={16} aria-hidden />
           <span className={s.settingsTitle}>{t.optionsTitle}</span>
           <span className={s.settingsSummary}>
-            {audio.muted ? t.muteLabel : t.soundLabel}
-            {audio.voice && !audio.muted ? ` · ${t.voiceToggle}` : ""}
-            {still ? ` · ${t.stillLabel}` : ""}
+            {[accessible ? t.accessibleLabel : "", largeText ? t.largeTextLabel : "", still ? t.stillLabel : ""].filter(Boolean).join(" · ")}
           </span>
           <ChevronDown size={16} className={settingsOpen ? s.chevOpen : ""} aria-hidden />
         </button>
         {settingsOpen && (
           <div className={s.options}>
-            <Switch
-              label={t.soundLabel}
-              checked={!audio.muted}
-              onChange={(on) => {
-                audio.unlock();
-                audio.setMuted(!on);
-              }}
-            />
-            <div className={s.demoRow}>
-              <button
-                type="button"
-                className={s.ghostBtn}
-                onClick={() => {
-                  audio.unlock();
-                  audio.playDemo("campana");
-                  setTimeout(() => audio.playDemo("tic"), 1400);
-                  setTimeout(() => audio.playDemo("cuenco"), 2600);
-                  if (opensEyes) setTimeout(() => audio.playDemo("doble"), 5200);
-                }}
-              >
-                <Volume2 size={14} aria-hidden /> {t.soundDemo}
-              </button>
-              <span className={s.switchHint}>{opensEyes ? t.soundDemoCaptions : t.soundDemoCaptionsEyesOpen}</span>
-            </div>
-            <Switch label={t.voiceToggle} hint={t.voiceHint} checked={audio.voice} onChange={audio.setVoice} />
             <Switch label={t.accessibleLabel} checked={accessible} onChange={setAccessible} />
             <Switch label={t.largeTextLabel} checked={largeText} onChange={setLargeText} />
             <Switch label={t.stillLabel} hint={t.stillHelp} checked={still} onChange={setStill} />

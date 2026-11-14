@@ -2271,6 +2271,8 @@
       "evolutionLabel": "Progression",
       "sequenceLabel": "Sequence",
       "optionsTitle": "Your way",
+      "soundTitle": "What you will hear",
+      "soundOffNote": "With the sound off, follow the text and the figure on screen. The phone vibrates on each cue.",
       "soundLabel": "Sound and vibration",
       "voiceToggle": "Guiding voice",
       "voiceHint": "A voice says every step and cue, so you can keep your eyes closed. It is a computer-generated voice.",
