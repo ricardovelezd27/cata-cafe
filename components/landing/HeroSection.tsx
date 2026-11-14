@@ -13,7 +13,7 @@ export default async function HeroSection({ locale }: { locale: string }) {
         viewBox="0 0 1200 800"
         preserveAspectRatio="xMidYMid slice"
       >
-        <g fill="none" stroke="#c7ebd4" strokeWidth="1.5">
+        <g fill="none" className="stroke-primary-fixed" strokeWidth="1.5">
           <path className="contour-path" pathLength={1} d="M-50 620 C 200 540, 380 700, 640 600 S 1050 520, 1280 610" />
           <path className="contour-path" pathLength={1} d="M-50 560 C 220 480, 400 640, 660 540 S 1060 460, 1280 550" />
           <path className="contour-path" pathLength={1} d="M-50 500 C 240 420, 420 580, 680 480 S 1070 400, 1280 490" />
@@ -23,18 +23,26 @@ export default async function HeroSection({ locale }: { locale: string }) {
         </g>
       </svg>
 
-      <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-9 px-5 pb-16 pt-14 sm:px-8 sm:pt-20 lg:grid-cols-2 lg:gap-14 lg:pb-24">
+      {/* Warm light behind the offer card: the one terracotta glow on the page. */}
+      <span
+        aria-hidden="true"
+        className="stage-light stage-light-terra left-1/2 top-[38%] h-[560px] w-[560px] -translate-x-1/2 lg:left-auto lg:right-[2%] lg:top-1/2 lg:h-[760px] lg:w-[760px] lg:-translate-y-1/2 lg:translate-x-0"
+      />
+
+      {/* Phone spacing is tight on purpose: with the number and the form at the
+          top of the card, the reserve button sits in the first screen. */}
+      <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-10 px-5 pb-16 pt-8 sm:px-8 sm:pt-20 lg:grid-cols-2 lg:gap-14 lg:pb-24">
         <div className="lg:self-center">
           <p className="hero-rise text-[11px] font-semibold uppercase tracking-[0.22em] text-green-light">
             {t("eyebrow")}
           </p>
           {/* pt-, not mt-: the global heading reset in globals.css zeroes heading margins. */}
-          <h1 className="hero-slide pt-6 font-serif text-4xl leading-[1.08] text-surface sm:text-5xl lg:text-6xl">
+          <h1 className="hero-slide pt-4 font-serif text-4xl leading-[1.08] text-surface sm:pt-6 sm:text-5xl lg:text-6xl">
             {t("title")}
           </h1>
           {/* Transform-only entrance: the subtitle is now the largest text block
               on mobile (LCP candidate), so it must never start at opacity 0. */}
-          <p className="hero-slide mt-6 max-w-xl text-base leading-relaxed text-surface/80 sm:text-lg">
+          <p className="hero-slide mt-4 max-w-xl text-[15px] leading-relaxed text-surface/80 sm:mt-6 sm:text-lg">
             {t("subtitle")}
           </p>
         </div>

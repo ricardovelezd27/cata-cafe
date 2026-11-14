@@ -574,6 +574,7 @@
   },
   "score": {
     "individual": "Individual score",
+    "group": "Group score",
     "raw": "Raw score",
     "cva": "CVA"
   },
@@ -1600,8 +1601,7 @@
     "header": {
       "wordmark": "cafesensible",
       "signIn": "Sign in",
-      "signInShort": "Sign in",
-      "cta": "Start free"
+      "signInShort": "Sign in"
     },
     "hero": {
       "eyebrow": "The tool for the Café Sensible Method · SCA CVA",
@@ -1637,27 +1637,25 @@
     },
     "how": {
       "eyebrow": "How it works",
-      "title": "Perceive, describe, align. In that order.",
+      "title": "This is how a cupping works.",
+      "titleAssertion": "Perceive, describe, align.",
       "step1Kicker": "Perceive",
       "step1Title": "Cup it",
       "step1Desc": "Every person evaluates the cup with the official CVA protocol, at their own pace. Works offline, group sessions included.",
-      "step1Caption": "The method's cupping table, app in hand.",
       "step2Kicker": "Name",
       "step2Title": "Describe it",
       "step2Desc": "The group records intensities and descriptors, cup by cup. The vocabulary is built together.",
-      "step2Caption": "Live workshop. Real group.",
       "step3Kicker": "Measure",
-      "step3Title": "Align",
-      "step3Desc": "Compare each evaluation with the instructor's reference, measure the deviation and export the PDF report. Convergence, made visible.",
+      "step3Title": "Compare & learn",
+      "step3Desc": "See each evaluation next to the group's and the instructor's reference, measure the deviation and export the PDF report. Convergence, made visible.",
       "frame1Aria": "Recreation of the affective evaluation screen with a 1-to-9 scale",
       "frame2Aria": "Recreation of the flavor descriptor selector",
-      "frame3Aria": "Recreation of the score card with PDF report",
-      "photo2Alt": "Cupping table with cups, spoons and flavor wheels; someone logging on their phone.",
-      "photo4Alt": "Live cupping workshop: a group evaluating cups with spoons and notebooks."
+      "frame3Aria": "Recreation of the card with the individual score, the group score and a PDF report"
     },
     "features": {
       "eyebrow": "What's included",
-      "title": "The whole protocol. Zero friction.",
+      "title": "This is what's included.",
+      "titleAssertion": "The whole protocol, zero friction.",
       "item1": {
         "title": "SCA CVA methodology",
         "desc": "The full official protocol across its three sheets: descriptive, affective and extrinsic."
@@ -1685,11 +1683,15 @@
       "factsSheets": "3 sheets",
       "factsAttrs": "8 attributes",
       "factsRef": "1 reference",
-      "heatmapAria": "Deviation map by attribute and cupper, illustrative"
+      "heatmapAria": "Deviation map by attribute and cupper, illustrative",
+      "formulaBase": "Base",
+      "formulaDeduction": "Deduction",
+      "formulaScore": "Score"
     },
     "audience": {
       "eyebrow": "Who it's for",
-      "title": "Built for people who train palates",
+      "title": "Who it's for.",
+      "titleAssertion": "For people who train palates.",
       "card1Title": "Trainers and facilitators",
       "card1Desc": "You run cuppings and workshops and want your attendees to see their progress in data, not just your word for it. Align the group against your reference and hand them their own evolution.",
       "card2Title": "Schools",
@@ -1701,8 +1703,14 @@
       "card5Title": "Importers",
       "card5Desc": "Group quality control with scores that compare across cuppers.",
       "galleryCaption": "Real sessions of the method. Groups from several countries.",
-      "photo1Alt": "Trainers and method partners gathered around a table, with coffee and notebooks.",
-      "photo3Alt": "A gathering of trainers in a room overlooking the city."
+      "photo01Alt": "Trainers and method partners gathered around a table, with coffee and notebooks.",
+      "photo02Alt": "Cupping table with cups, spoons and flavor wheels; someone logging on their phone.",
+      "photo03Alt": "A gathering of trainers in a room overlooking the city.",
+      "photo04Alt": "Live cupping workshop: a group evaluating cups with spoons and notebooks.",
+      "photo05Alt": "Cuppers leaning over the cups during the evaluation.",
+      "carouselLabel": "Who it is for: five profiles. Swipe or use the arrows to see them.",
+      "carouselPrev": "Previous profile",
+      "carouselNext": "Next profile"
     },
     "founding": {
       "eyebrow": "Founding members",
@@ -1736,8 +1744,7 @@
       "title": "Stop <em>guessing</em> whether your team cups alike.",
       "sub": "Measure it. In your next session.",
       "cta": "Align your team for free →",
-      "note": "No passwords. Sign in with a magic link to your email.",
-      "photo5Alt": "Cuppers leaning over the cups during the evaluation."
+      "note": "No passwords. Sign in with a magic link to your email."
     },
     "footer": {
       "language": "Language",

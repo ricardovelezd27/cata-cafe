@@ -574,6 +574,7 @@
   },
   "score": {
     "individual": "Puntaje individual",
+    "group": "Puntaje grupal",
     "raw": "Puntaje bruto",
     "cva": "CVA"
   },
@@ -1600,8 +1601,7 @@
     "header": {
       "wordmark": "cafesensible",
       "signIn": "Iniciar sesión",
-      "signInShort": "Entrar",
-      "cta": "Empieza gratis"
+      "signInShort": "Entrar"
     },
     "hero": {
       "eyebrow": "La herramienta del Método Café Sensible · SCA CVA",
@@ -1637,27 +1637,25 @@
     },
     "how": {
       "eyebrow": "Cómo funciona",
-      "title": "Percibir, describir, alinear. En ese orden.",
+      "title": "Así funciona una cata.",
+      "titleAssertion": "Percibir, describir, alinear.",
       "step1Kicker": "Percibe",
       "step1Title": "Cátalo",
       "step1Desc": "Cada persona evalúa la taza con el protocolo CVA oficial, a su ritmo. Funciona sin conexión, también en sesiones de grupo.",
-      "step1Caption": "Mesa de cata del método, con la app en la mano.",
       "step2Kicker": "Nombra",
       "step2Title": "Descríbelo",
       "step2Desc": "El grupo registra intensidades y descriptores, taza a taza. El vocabulario se construye entre todos.",
-      "step2Caption": "Taller en directo. Grupo real.",
       "step3Kicker": "Mide",
-      "step3Title": "Alinea",
-      "step3Desc": "Compara cada evaluación con la referencia del instructor, mide la desviación y exporta el informe en PDF. La convergencia se ve.",
+      "step3Title": "Compara y aprende",
+      "step3Desc": "Mira cada evaluación junto a la del grupo y a la referencia del instructor, mide la desviación y exporta el informe en PDF. La convergencia se ve.",
       "frame1Aria": "Recreación de la pantalla de evaluación afectiva con escala de 1 a 9",
       "frame2Aria": "Recreación del selector de descriptores de sabor",
-      "frame3Aria": "Recreación de la tarjeta de puntaje con informe PDF",
-      "photo2Alt": "Mesa de cata con tazas, cucharas y ruedas de sabor; una persona registra en el móvil.",
-      "photo4Alt": "Taller de cata en directo: un grupo evalúa tazas con cucharas y cuadernos."
+      "frame3Aria": "Recreación de la tarjeta con el puntaje individual, el puntaje grupal e informe PDF"
     },
     "features": {
       "eyebrow": "Qué incluye",
-      "title": "Todo el protocolo. Cero fricción.",
+      "title": "Esto es lo que incluye.",
+      "titleAssertion": "Todo el protocolo, cero fricción.",
       "item1": {
         "title": "Metodología SCA CVA",
         "desc": "El protocolo oficial completo en sus tres hojas: descriptiva, afectiva y extrínseca."
@@ -1685,11 +1683,15 @@
       "factsSheets": "3 hojas",
       "factsAttrs": "8 atributos",
       "factsRef": "1 referencia",
-      "heatmapAria": "Mapa de desviación por atributo y catador, ilustrativo"
+      "heatmapAria": "Mapa de desviación por atributo y catador, ilustrativo",
+      "formulaBase": "Base",
+      "formulaDeduction": "Descuento",
+      "formulaScore": "Puntaje"
     },
     "audience": {
       "eyebrow": "Para quién es",
-      "title": "Hecho para quien forma paladares",
+      "title": "Para quién es.",
+      "titleAssertion": "Para quien forma paladares.",
       "card1Title": "Formadores y facilitadores",
       "card1Desc": "Das catas y talleres y quieres que tus asistentes vean su progreso con datos, no solo con tu palabra. Alinea al grupo contra tu referencia y entrégales su evolución.",
       "card2Title": "Escuelas",
@@ -1701,8 +1703,14 @@
       "card5Title": "Importadores",
       "card5Desc": "Control de calidad en grupo con puntajes comparables entre catadores.",
       "galleryCaption": "Sesiones reales del método. Grupos de varios países.",
-      "photo1Alt": "Formadores y socios del método reunidos alrededor de una mesa, con cafés y cuadernos.",
-      "photo3Alt": "Encuentro de formadores en una sala con vistas a la ciudad."
+      "photo01Alt": "Formadores y socios del método reunidos alrededor de una mesa, con cafés y cuadernos.",
+      "photo02Alt": "Mesa de cata con tazas, cucharas y ruedas de sabor; una persona registra en el móvil.",
+      "photo03Alt": "Encuentro de formadores en una sala con vistas a la ciudad.",
+      "photo04Alt": "Taller de cata en directo: un grupo evalúa tazas con cucharas y cuadernos.",
+      "photo05Alt": "Catadores inclinados sobre las tazas durante la evaluación.",
+      "carouselLabel": "Para quién es: cinco perfiles. Desliza o usa las flechas para verlos.",
+      "carouselPrev": "Perfil anterior",
+      "carouselNext": "Perfil siguiente"
     },
     "founding": {
       "eyebrow": "Miembros fundadores",
@@ -1736,8 +1744,7 @@
       "title": "Deja de <em>adivinar</em> si tu equipo cata igual.",
       "sub": "Mídelo. En la próxima sesión.",
       "cta": "Alinea a tu equipo gratis →",
-      "note": "Sin contraseñas. Entra con un enlace mágico a tu correo.",
-      "photo5Alt": "Catadores inclinados sobre las tazas durante la evaluación."
+      "note": "Sin contraseñas. Entra con un enlace mágico a tu correo."
     },
     "footer": {
       "language": "Idioma",

@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { Check } from "lucide-react";
+import SectionHeading from "./SectionHeading";
 import WaitlistForm from "./WaitlistForm";
 import { emailSentCopy } from "@/components/auth/authCopy";
 import { supportMailto } from "@/lib/siteContact";
@@ -47,23 +48,16 @@ export default async function FoundingSection({ locale }: { locale: string }) {
   return (
     <section data-fold="4" className="cv-auto relative z-10 bg-transparent">
       <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
-        <div data-reveal className="text-center">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-secondary-container">
-            {t("eyebrow")}
-          </p>
-          <h2 className="pt-4 font-serif text-3xl leading-tight text-surface sm:text-4xl">
-            {t("title")}
-          </h2>
-        </div>
+        <SectionHeading eyebrow={t("eyebrow")} title={t("title")} />
 
         <div
           data-reveal
-          className="stage-card mx-auto mt-12 flex max-w-xl flex-col rounded-[2rem] p-7 sm:p-9"
+          className="surface-glass mx-auto mt-12 flex max-w-xl flex-col rounded-lg p-7 sm:p-9"
         >
           <span className="w-fit rounded-full bg-secondary-container px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-primary">
             {t("badge")}
           </span>
-          <p data-counter className="mt-8 font-serif tabular-nums text-4xl text-surface">
+          <p className="mt-8 font-serif tabular-nums text-4xl text-surface">
             {t("offer", { count: FOUNDING_SEATS })}
           </p>
           <FeatureList

@@ -11,7 +11,7 @@ export default async function LandingFooter({ locale }: { locale: string }) {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="border-t border-surface/12 bg-primary text-surface/70">
+    <footer className="relative z-10 border-t border-surface/12 bg-stage-deep text-surface/70">
       <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8">
         <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
           <div>

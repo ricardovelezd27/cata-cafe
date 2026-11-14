@@ -15,15 +15,15 @@ const PILLS = [
 
 export default async function MockFrameFlavorPills({
   ariaLabel,
-  translucent,
+  tab,
 }: {
   ariaLabel: string;
-  translucent?: boolean;
+  tab?: string;
 }) {
   const t = await getTranslations();
 
   return (
-    <Frame ariaLabel={ariaLabel} translucent={translucent}>
+    <Frame ariaLabel={ariaLabel} tab={tab}>
       <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-on-surface-variant">
         {t("cupping.flavor")}
       </p>
@@ -34,7 +34,7 @@ export default async function MockFrameFlavorPills({
             className="rounded-full border px-2.5 py-1 text-[11px] font-medium"
             style={
               pill.on
-                ? { backgroundColor: pill.color, borderColor: pill.color, color: "#fff" }
+                ? { backgroundColor: pill.color, borderColor: pill.color, color: "var(--color-on-primary)" }
                 : { borderColor: "var(--color-outline-variant)", color: pill.color }
             }
           >

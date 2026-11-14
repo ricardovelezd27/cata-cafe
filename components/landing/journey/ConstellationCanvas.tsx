@@ -9,8 +9,9 @@ import {
   seedIdentity,
   type Formation,
 } from "./formations";
-import { markKilled } from "./flags";
+import { introSeen, markIntroSeen, markKilled } from "./flags";
 import { createGovernor } from "./governor";
+import { buildIntro, introProgress, shouldPlayIntro } from "./intro";
 
 /**
  * The landing page's single persistent particle field: one fixed full-viewport
@@ -27,6 +28,10 @@ import { createGovernor } from "./governor";
  *  - idle throttle: 30 fps after 4 s without input, paused after 12 s
  *  - prefers-reduced-motion: snapped static frame per fold, loop stops after
  *    settling, wakes on scroll only to crossfade
+ *  - arrival (./intro.ts): once per tab, the first two seconds are driven by
+ *    time, not scroll: scattered dots gather into a ring, then settle into
+ *    the hero. It reuses the same (A, B, blend) step; the governor is not
+ *    sampled while it plays, and a scroll or a resize ends it at once
  */
 
 type Props = { reduced: boolean };
@@ -171,6 +176,8 @@ type DebugHandle = {
   running: boolean;
   /** mean draw cost of the last evaluated governor window, ms */
   meanDt: number;
+  /** true while the arrival animation (./intro.ts) is driving the field */
+  intro: boolean;
 };
 
 export default function ConstellationCanvas({ reduced }: Props) {
@@ -187,7 +194,8 @@ export default function ConstellationCanvas({ reduced }: Props) {
       window.matchMedia("(max-width: 768px)").matches ||
       window.matchMedia("(pointer: coarse)").matches;
     const nav = navigator as Navigator & { connection?: { saveData?: boolean } };
-    const weak = (navigator.hardwareConcurrency ?? 8) <= 4 || nav.connection?.saveData === true;
+    const saveData = nav.connection?.saveData === true;
+    const weak = (navigator.hardwareConcurrency ?? 8) <= 4 || saveData;
     const N = Math.floor((mobile ? 600 : 1600) * (weak ? 0.6 : 1));
     let live = N;
 
@@ -213,6 +221,17 @@ export default function ConstellationCanvas({ reduced }: Props) {
     let dot = 2;
     let inited = false;
 
+    // The arrival, while it plays. Decided once, before the first frame.
+    const wantIntro = shouldPlayIntro({
+      reduced,
+      saveData,
+      seen: introSeen(),
+      hidden: document.hidden,
+      scrollY: window.scrollY,
+    });
+    let intro: { scatter: Formation; ring: Formation; t0: number } | null = null;
+    let introMarked = false;
+
     const build = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
       W = window.innerWidth;
@@ -229,9 +248,19 @@ export default function ConstellationCanvas({ reduced }: Props) {
       formations = [];
       for (let f = 0; f < FOLD_COUNT; f++) formations.push(buildFormation(f, N, W, H, idR, narrow));
       if (!inited) {
-        px.set(formations[0].x);
-        py.set(formations[0].y);
+        if (wantIntro) {
+          // Start from the scatter, so the hero formation never flashes first.
+          intro = { ...buildIntro(N, W, H, idR, narrow), t0: performance.now() };
+          px.set(intro.scatter.x);
+          py.set(intro.scatter.y);
+        } else {
+          px.set(formations[0].x);
+          py.set(formations[0].y);
+        }
         inited = true;
+      } else {
+        // A resize rebuilt everything: the arrival's geometry is stale.
+        intro = null;
       }
     };
 
@@ -259,9 +288,31 @@ export default function ConstellationCanvas({ reduced }: Props) {
 
     // ── one physics + draw step ──────────────────────────────────────────────
     const step = (now: number, dt: number, snap: boolean) => {
-      const A = formations[foldA] ?? formations[0];
-      const B = formations[foldB] ?? A;
-      const bl = smoothstep(clamp(blend, 0, 1));
+      let A = formations[foldA] ?? formations[0];
+      let B = formations[foldB] ?? A;
+      let bl = smoothstep(clamp(blend, 0, 1));
+      if (intro) {
+        // Time-driven: the arrival swaps in its own pair of formations.
+        const p = introProgress(now - intro.t0);
+        if (p.phase === "done" || foldA !== 0 || blend > 0.5) {
+          intro = null; // finished, or the visitor scrolled away: scroll takes over
+        } else if (p.phase === "gather") {
+          A = intro.scatter;
+          B = intro.ring;
+          bl = p.t;
+        } else if (p.phase === "hold") {
+          A = intro.ring;
+          B = intro.ring;
+          bl = 0;
+        } else {
+          B = A; // the hero formation
+          A = intro.ring;
+          bl = smoothstep(p.t);
+        }
+      }
+      const sA = A.scale;
+      const sB = B.scale;
+      const scaled = sA !== undefined || sB !== undefined;
       const stepIdx = Math.round(bl * (BLEND_STEPS - 1));
       const jit = lerp(A.jitter, B.jitter, bl);
       const animate = !snap && !reduced;
@@ -286,7 +337,13 @@ export default function ConstellationCanvas({ reduced }: Props) {
         px[i] += (tx - px[i]) * ease;
         py[i] += (ty - py[i]) * ease;
         ctx.fillStyle = lut[(A.c[i] * K + B.c[i]) * BLEND_STEPS + stepIdx];
-        ctx.fillRect(px[i], py[i], dot, dot);
+        if (scaled) {
+          // Arrival only: nearer dots are drawn larger (depth).
+          const s = dot * lerp(sA ? sA[i] : 1, sB ? sB[i] : 1, bl);
+          ctx.fillRect(px[i], py[i], s, s);
+        } else {
+          ctx.fillRect(px[i], py[i], dot, dot);
+        }
       }
 
       // Closing net: faint segments between the anchor particles once the
@@ -330,10 +387,11 @@ export default function ConstellationCanvas({ reduced }: Props) {
 
     const debug: DebugHandle | null =
       process.env.NODE_ENV !== "production"
-        ? { live, n: N, fold: { a: 0, b: 0, blend: 0 }, downgrades: 0, killed, running, meanDt: 0 }
+        ? { live, n: N, fold: { a: 0, b: 0, blend: 0 }, downgrades: 0, killed, running, meanDt: 0, intro: false }
         : null;
     const syncDebug = () => {
       if (!debug) return;
+      debug.intro = intro !== null;
       debug.live = live;
       debug.fold = { a: foldA, b: foldB, blend };
       debug.downgrades = gov.downgrades;
@@ -397,8 +455,20 @@ export default function ConstellationCanvas({ reduced }: Props) {
       }
 
       const t0 = performance.now();
+      const arriving = intro !== null;
+      if (intro && !introMarked) {
+        // The arrival's clock starts, and it is remembered, on the first
+        // frame actually drawn, not at mount. A slow first frame must not
+        // eat the animation; and in development React mounts every effect
+        // twice, where the first mount (torn down before any frame) must not
+        // use up the one arrival.
+        intro.t0 = now;
+        markIntroSeen();
+        introMarked = true;
+      }
       step(now, dt, false);
-      govern(performance.now() - t0);
+      // Not during the arrival: a cut there would pop 40 % of the dots mid-ring.
+      if (!arriving) govern(performance.now() - t0);
       syncDebug();
       if (running) raf = requestAnimationFrame(frame);
     };
