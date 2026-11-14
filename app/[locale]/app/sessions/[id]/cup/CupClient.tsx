@@ -409,6 +409,8 @@ export function CupClient({
     };
     /** S10 WP6 fix round (4): a solo cupping that "Terminar cata" cannot finish because of revealed
      *  samples is closed as it is (same strings as the results page). Optional like the others. */
+    /** S10 WP6b: a solo cupping whose every sample is a reference cannot be closed; says what to do. */
+    allReferencesNotice?: string;
     closeAsIs?: {
       line: string;
       go: string;
@@ -2209,6 +2211,12 @@ export function CupClient({
 
   const handleSaveSampleMetadata = async (data: SampleMetadataFormData) => {
     const result = await updateSampleMetadata(current.id, data);
+    if (!result.ok) {
+      // S10 WP6b: a busy session (or any refusal) toasts its localized copy; nothing was
+      // saved. Rethrow so the dialog stays open with what the person typed.
+      feedback.notifyError(result.error);
+      throw new Error(result.error);
+    }
     setSamples((prev) =>
       prev.map((s) =>
         s.id === current.id
@@ -2355,6 +2363,10 @@ export function CupClient({
         isReference: refOrder.includes(s.id),
       })),
     });
+  // S10 WP6b: planFinish never lets a reference row alone close a cupping, so a solo owner whose
+  // EVERY sample is a reference is stuck with no offer; the notice says what to do.
+  const allReferencesStuck =
+    isSoloOwner && viewSamples.length > 0 && viewSamples.every((s) => refOrder.includes(s.id));
   const guardOutcome =
     isSoloOwner && guard?.kind === "submit"
       ? unopenedCount === 0
@@ -2885,6 +2897,11 @@ export function CupClient({
         nextRetryAt={nextRetryAt}
         renderedUserId={userId}
       />
+      {allReferencesStuck && translations.allReferencesNotice && (
+        <div role="status" className="mx-4 mt-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface">
+          {translations.allReferencesNotice}
+        </div>
+      )}
       {closeAsIsApplies && translations.closeAsIs && (
         <div
           role="status"
@@ -3282,7 +3299,7 @@ export function CupClient({
           onConfirm={async () => {
             // The existing owner close (closeSessionInternal); it throws on failure and the dialog shows `error`.
             const r = await closeSession(session.id);
-            if (!r.finalized && translations.closeAsIs) feedback.notifySuccess(translations.closeAsIs.notFinalized);
+            if (!r.finalized && translations.closeAsIs) feedback.notifyWarning(translations.closeAsIs.notFinalized);
             router.push(`/${locale}/app/sessions/${session.id}/results`);
           }}
         />

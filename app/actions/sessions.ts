@@ -7,9 +7,9 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser, requireRegisteredUser, requireUserExpecting } from "@/lib/auth";
 import { IDENTITY_CHANGED } from "@/lib/expectedUser";
-import { run } from "@/lib/safeAction";
+import { run, runFlat } from "@/lib/safeAction";
 import { notifyFlagAfterGroupChange } from "@/lib/groupNotify";
-import type { ActionResult } from "@/lib/actionResult";
+import type { ActionErrorCode, ActionResult } from "@/lib/actionResult";
 import type { Prisma } from "@/app/generated/prisma/client";
 import {
   generateUniqueCoffeeCodes,
@@ -39,6 +39,7 @@ import {
 } from "@/lib/sessionState";
 import { endOfDayInZone, normalizeZone } from "@/lib/closeRules";
 import { lockSessionRow } from "@/lib/sessionLock";
+import { isLockTimeoutError } from "@/lib/lockTimeout";
 import { REFERENCE_REPIN_REQUIRED, REFERENCE_REVEALED, removeSamplesInTx } from "@/lib/sampleRemoval";
 import { coffeeDisplayName, deletedCoffeeLabel } from "@/lib/coffeeAnonymize";
 import { moduleKeyForFormat } from "@/lib/evaluation";
@@ -749,6 +750,12 @@ async function createGroupSessionBody(input: {
   };
 }
 
+// A session-row lock that was not free within 5 s (lib/sessionLock.ts throws the typed code;
+// a raw 55P03 from elsewhere in the transaction counts too).
+function isBusyRetry(e: unknown): boolean {
+  return (e instanceof Error && e.message === "busy_retry") || isLockTimeoutError(e);
+}
+
 // Prisma unique-constraint violation (duck-typed like app/actions/waitlist.ts —
 // avoids importing error classes from the generated client).
 function isP2002(e: unknown): boolean {
@@ -789,7 +796,7 @@ export async function upsertEvaluation(input: {
   // lib/referenceRules.ts resolvePinnedPayload. Absent = an ordinary save.
   pinnedView?: boolean;
 }): Promise<
-  { ok: true; evaluationId: string } | { ok: false; error: "identity_changed" | "sample_revealed" }
+  { ok: true; evaluationId: string } | { ok: false; error: "identity_changed" | "sample_revealed" | "busy_retry" }
 > {
   let user;
   try {
@@ -848,6 +855,10 @@ export async function upsertEvaluation(input: {
     // Two concurrent first-saves can both take the create path of the upsert;
     // the loser hits the (sessionSampleId, cupperId) unique constraint. One
     // retry lands on the update path.
+    // S10 WP6b: the pinned save waited 5 s for the session row (lib/sessionLock.ts) and
+    // nothing was written: answered, not thrown, so the cup page keeps the draft PENDING
+    // (amber, never green) and retries on its next flush.
+    if (isBusyRetry(e)) return { ok: false, error: "busy_retry" };
     if (!isP2002(e)) throw e;
     result = await doUpsert();
   }
@@ -1720,86 +1731,90 @@ async function addSessionSampleBody(
 // Label-only rename. Deliberately separate from updateSampleMetadata (which
 // rewrites the linked coffee's fields and expects the full metadata input).
 export async function renameSessionSample(sampleId: string, label: string) {
-  const user = await requireUser();
-  const auth = await requireSampleOwner(sampleId, user.id);
-  assertSessionWritable(auth);
-  const { sessionId } = auth;
+  return runFlat("renameSessionSample", async () => {
+    const user = await requireUser();
+    const auth = await requireSampleOwner(sampleId, user.id);
+    assertSessionWritable(auth);
+    const { sessionId } = auth;
 
-  let trimmed: string;
-  try {
-    trimmed = v.str(label, "label", { max: 120 })!;
-  } catch {
-    return { ok: false as const, error: "invalid_label" };
-  }
+    let trimmed: string;
+    try {
+      trimmed = v.str(label, "label", { max: 120 })!;
+    } catch {
+      return { ok: false as const, error: "invalid_label" };
+    }
 
-  await prisma.$transaction(async (tx) => {
-    // S10 WP6 D2: the session row first (lib/sessionLock.ts).
-    await lockSessionRow(tx, sessionId);
-    await tx.sessionSample.update({
-      where: { id: sampleId },
-      data: { label: trimmed },
+    await prisma.$transaction(async (tx) => {
+      // S10 WP6 D2: the session row first (lib/sessionLock.ts).
+      await lockSessionRow(tx, sessionId);
+      await tx.sessionSample.update({
+        where: { id: sampleId },
+        data: { label: trimmed },
+      });
+      await touchSession(tx, sessionId);
     });
-    await touchSession(tx, sessionId);
-  });
 
-  revalidatePath(`/es/app/sessions/${sessionId}/cup`);
-  revalidatePath(`/en/app/sessions/${sessionId}/cup`);
-  return { ok: true as const };
+    revalidatePath(`/es/app/sessions/${sessionId}/cup`);
+    revalidatePath(`/en/app/sessions/${sessionId}/cup`);
+    return { ok: true as const };
+  });
 }
 
 export async function removeSessionSample(sampleId: string, locale: string = "es") {
-  const user = await requireUser();
+  return runFlat("removeSessionSample", async () => {
+    const user = await requireUser();
 
-  // Owner gate + closed/expired guard (F-sesiones-3, closed half). A closed
-  // session returns a code instead of throwing so the client can show copy.
-  const auth = await requireSampleOwner(sampleId, user.id);
-  if (isSessionExpired(auth)) return { ok: false as const, error: "session_closed" };
-  const sample = await prisma.sessionSample.findUnique({
-    where: { id: sampleId },
-    select: { id: true, sessionId: true },
+    // Owner gate + closed/expired guard (F-sesiones-3, closed half). A closed
+    // session returns a code instead of throwing so the client can show copy.
+    const auth = await requireSampleOwner(sampleId, user.id);
+    if (isSessionExpired(auth)) return { ok: false as const, error: "session_closed" };
+    const sample = await prisma.sessionSample.findUnique({
+      where: { id: sampleId },
+      select: { id: true, sessionId: true },
+    });
+    if (!sample) throw new Error("not_found_or_forbidden");
+
+    // A sample with ANY cupper's evaluation, physical or origin data is
+    // load-bearing (deleting cascades all of it). The count is taken INSIDE the
+    // transaction so a first evaluation landing between the check and the delete
+    // cannot be cascaded away (S8-10 T5; F-sesiones-3, race half).
+    const refused = await prisma.$transaction(async (tx) => {
+      // LOCK ORDER (lib/sessionLock.ts): the session row before the sample row below.
+      await lockSessionRow(tx, sample.sessionId);
+      // (S8-27: removeSamplesInTx may throw REFERENCE_REPIN_REQUIRED; the
+      // transaction rolls back and the catch below turns it into a code.)
+      // READ COMMITTED does not stop a cupper's first auto-save from committing
+      // between the counts and the delete. Row-lock the sample first: the
+      // FK key-share lock that an evaluation/physical/extrinsic INSERT takes on
+      // its parent conflicts with FOR UPDATE, so a concurrent insert either
+      // lands before the lock (and is counted) or waits until we are done.
+      await tx.$queryRaw`SELECT id FROM session_samples WHERE id = ${sampleId} FOR UPDATE`;
+      const [evaluations, physical, extrinsic] = await Promise.all([
+        tx.evaluation.count({ where: { sessionSampleId: sampleId } }),
+        tx.physicalEvaluation.count({ where: { sessionSampleId: sampleId } }),
+        tx.extrinsicData.count({ where: { sessionSampleId: sampleId } }),
+      ]);
+      if (evaluations > 0) return "sample_has_evaluations" as const;
+      if (physical > 0 || extrinsic > 0) return "sample_has_data" as const;
+      // Delete + reference-rank compaction + position re-pack (lib/sampleRemoval.ts,
+      // shared with the solo "Terminar cata" finish, S8-05).
+      await removeSamplesInTx(tx, sample.sessionId, [sampleId], { onReactivate: "refuse" });
+      await touchSession(tx, sample.sessionId);
+      return null;
+    }).catch((e: unknown) => {
+      if (e instanceof Error && e.message === REFERENCE_REPIN_REQUIRED) {
+        return "reference_repin_required" as const;
+      }
+      if (e instanceof Error && e.message === REFERENCE_REVEALED) {
+        return "reference_revealed" as const;
+      }
+      throw e;
+    });
+    if (refused) return { ok: false as const, error: refused };
+
+    revalidatePath(`/${safeLocale(locale)}/app/sessions/${sample.sessionId}/cup`);
+    return { ok: true as const };
   });
-  if (!sample) throw new Error("not_found_or_forbidden");
-
-  // A sample with ANY cupper's evaluation, physical or origin data is
-  // load-bearing (deleting cascades all of it). The count is taken INSIDE the
-  // transaction so a first evaluation landing between the check and the delete
-  // cannot be cascaded away (S8-10 T5; F-sesiones-3, race half).
-  const refused = await prisma.$transaction(async (tx) => {
-    // LOCK ORDER (lib/sessionLock.ts): the session row before the sample row below.
-    await lockSessionRow(tx, sample.sessionId);
-    // (S8-27: removeSamplesInTx may throw REFERENCE_REPIN_REQUIRED; the
-    // transaction rolls back and the catch below turns it into a code.)
-    // READ COMMITTED does not stop a cupper's first auto-save from committing
-    // between the counts and the delete. Row-lock the sample first: the
-    // FK key-share lock that an evaluation/physical/extrinsic INSERT takes on
-    // its parent conflicts with FOR UPDATE, so a concurrent insert either
-    // lands before the lock (and is counted) or waits until we are done.
-    await tx.$queryRaw`SELECT id FROM session_samples WHERE id = ${sampleId} FOR UPDATE`;
-    const [evaluations, physical, extrinsic] = await Promise.all([
-      tx.evaluation.count({ where: { sessionSampleId: sampleId } }),
-      tx.physicalEvaluation.count({ where: { sessionSampleId: sampleId } }),
-      tx.extrinsicData.count({ where: { sessionSampleId: sampleId } }),
-    ]);
-    if (evaluations > 0) return "sample_has_evaluations" as const;
-    if (physical > 0 || extrinsic > 0) return "sample_has_data" as const;
-    // Delete + reference-rank compaction + position re-pack (lib/sampleRemoval.ts,
-    // shared with the solo "Terminar cata" finish, S8-05).
-    await removeSamplesInTx(tx, sample.sessionId, [sampleId], { onReactivate: "refuse" });
-    await touchSession(tx, sample.sessionId);
-    return null;
-  }).catch((e: unknown) => {
-    if (e instanceof Error && e.message === REFERENCE_REPIN_REQUIRED) {
-      return "reference_repin_required" as const;
-    }
-    if (e instanceof Error && e.message === REFERENCE_REVEALED) {
-      return "reference_revealed" as const;
-    }
-    throw e;
-  });
-  if (refused) return { ok: false as const, error: refused };
-
-  revalidatePath(`/${safeLocale(locale)}/app/sessions/${sample.sessionId}/cup`);
-  return { ok: true as const };
 }
 
 // Physical (green-bean) assessment is ONE row per sample, not per cupper, and
@@ -1875,80 +1890,88 @@ function hasAnyCoffeeField(input: SampleMetadataInput): boolean {
 export async function updateSampleMetadata(
   sampleId: string,
   input: SampleMetadataInput
-): Promise<{ ok: true; coffeeUpdated: boolean }> {
-  const user = await requireRegisteredUser();
+): Promise<{ ok: true; coffeeUpdated: boolean } | { ok: false; error: ActionErrorCode }> {
+  return runFlat("updateSampleMetadata", async () => {
+    const user = await requireRegisteredUser();
 
-  const sample = await prisma.sessionSample.findUnique({
-    where: { id: sampleId },
-    select: {
-      id: true,
-      sessionId: true,
-      coffeeId: true,
-      offProtocol: true,
-      coffee: {
-        select: {
-          createdBy: true,
-          deletedAt: true,
-          country: true,
-          region: true,
-          farm: true,
-          producer: true,
-          variety: true,
-          processType: true,
-          altitude: true,
-          roastLevel: true,
+    const sample = await prisma.sessionSample.findUnique({
+      where: { id: sampleId },
+      select: {
+        id: true,
+        sessionId: true,
+        coffeeId: true,
+        offProtocol: true,
+        coffee: {
+          select: {
+            createdBy: true,
+            deletedAt: true,
+            country: true,
+            region: true,
+            farm: true,
+            producer: true,
+            variety: true,
+            processType: true,
+            altitude: true,
+            roastLevel: true,
+          },
         },
+        // closesAt: assertSessionWritable is expiry-aware (S8-22 A-05), so a
+        // label edit stops at the deadline, not at the next 06:00 UTC cron.
+        session: { select: { createdBy: true, status: true, closesAt: true } },
       },
-      // closesAt: assertSessionWritable is expiry-aware (S8-22 A-05), so a
-      // label edit stops at the deadline, not at the next 06:00 UTC cron.
-      session: { select: { createdBy: true, status: true, closesAt: true } },
-    },
-  });
-  if (!sample) throw new Error("not_found_or_forbidden");
-  if (sample.session.createdBy !== user.id) throw new Error("not_found_or_forbidden");
+    });
+    if (!sample) throw new Error("not_found_or_forbidden");
+    if (sample.session.createdBy !== user.id) throw new Error("not_found_or_forbidden");
 
-  // Post-close coffee naming — the SECOND sanctioned post-close write (the
-  // first is upsertExtrinsic on a revealed sample, via ExtrinsicEditDialog). Express sessions create
-  // their samples without a coffee; the owner may name one AFTER the session
-  // closed so the cupping still feeds UserCoffeeHistory. Allowed only when:
-  // owner (checked above) AND the sample has no coffee yet AND the call
-  // actually names a coffee. Anything else on a closed session stays
-  // read-only (session_closed), including label-only renames.
-  const postCloseNaming = isPostCloseNaming(sample.session, sample, hasAnyCoffeeField(input));
-  assertSampleMetadataWritable(sample.session, sample, hasAnyCoffeeField(input));
+    // Post-close coffee naming — the SECOND sanctioned post-close write (the
+    // first is upsertExtrinsic on a revealed sample, via ExtrinsicEditDialog). Express sessions create
+    // their samples without a coffee; the owner may name one AFTER the session
+    // closed so the cupping still feeds UserCoffeeHistory. Allowed only when:
+    // owner (checked above) AND the sample has no coffee yet AND the call
+    // actually names a coffee. Anything else on a closed session stays
+    // read-only (session_closed), including label-only renames.
+    const postCloseNaming = isPostCloseNaming(sample.session, sample, hasAnyCoffeeField(input));
+    assertSampleMetadataWritable(sample.session, sample, hasAnyCoffeeField(input));
 
-  // A9: per-sample prep data. Same merge semantics as the coffee fields (absent
-  // key = untouched, "" = clear) and validated before anything is written.
-  // NOT a sanctioned post-close write: on a closed or expired session it is
-  // refused even when the call also names a coffee (postCloseNaming).
-  const prepUpdate = parseSamplePrepInput(
-    pickSamplePrepInput(input as Record<string, unknown>),
-    Date.now(),
-    sample.offProtocol,
-  );
-  if (touchesSamplePrep(prepUpdate) && isSessionExpired(sample.session)) {
-    throw new Error("session_closed");
-  }
+    // A9: per-sample prep data. Same merge semantics as the coffee fields (absent
+    // key = untouched, "" = clear) and validated before anything is written.
+    // NOT a sanctioned post-close write: on a closed or expired session it is
+    // refused even when the call also names a coffee (postCloseNaming).
+    const prepUpdate = parseSamplePrepInput(
+      pickSamplePrepInput(input as Record<string, unknown>),
+      Date.now(),
+      sample.offProtocol,
+    );
+    if (touchesSamplePrep(prepUpdate) && isSessionExpired(sample.session)) {
+      throw new Error("session_closed");
+    }
 
-  let coffeeUpdated: boolean;
+    // S10 WP6b: ONE transaction for every write of this action, the session-row lock first
+    // (lib/sessionLock.ts). A lock wait that times out (`busy_retry`) therefore leaves NOTHING
+    // written: the coffee fields, the implicit coffee, the link, the label and the prep data
+    // commit together or not at all. A coffee-code collision aborts the whole Postgres
+    // transaction (25P02), so the retry is of the WHOLE transaction with a fresh code.
+    // The post-close naming path takes no lock (its only write is the coffee link), as before.
+    let coffeeUpdated = true;
 
-  if (sample.coffeeId) {
     // Samples can point at coffees the session owner merely USES (picked
     // shared/public coffees) — only the coffee's own creator may edit the
-    // coffee record itself. For non-owned coffees the label update below
-    // still applies; the coffee edit is silently skipped — surfaced to the
-    // caller via coffeeUpdated: false so the UI can show a notice instead of
-    // pretending the whole save succeeded. An anonymized coffee (deletedAt)
-    // takes the same path: its identifying fields must never be rewritten.
-    if (sample.coffee?.createdBy === user.id && !sample.coffee.deletedAt) {
-      // Merge, don't overwrite: only keys actually present in the input
-      // touch the coffee row. `undefined` (key absent) leaves the existing
-      // value alone; an explicit "" clears it to null. `name` is exempt from
-      // the clear rule — a blank/absent name never blanks the coffee's name
-      // (also why it's typed `string`, not `string | null`, unlike the rest).
-      const coffeeData: {
-        name?: string;
-      } & Partial<Record<(typeof CLEARABLE_COFFEE_FIELDS)[number], string | null>> = {};
+    // coffee record itself. For non-owned coffees the label update still
+    // applies; the coffee edit is silently skipped — surfaced to the caller via
+    // coffeeUpdated: false so the UI can show a notice instead of pretending
+    // the whole save succeeded. An anonymized coffee (deletedAt) takes the same
+    // path: its identifying fields must never be rewritten.
+    const editsOwnCoffee =
+      !!sample.coffeeId && sample.coffee?.createdBy === user.id && !sample.coffee.deletedAt;
+    // Merge, don't overwrite: only keys actually present in the input touch the
+    // coffee row. `undefined` (key absent) leaves the existing value alone; an
+    // explicit "" clears it to null. `name` is exempt from the clear rule — a
+    // blank/absent name never blanks the coffee's name (also why it's typed
+    // `string`, not `string | null`, unlike the rest).
+    const coffeeData: {
+      name?: string;
+    } & Partial<Record<(typeof CLEARABLE_COFFEE_FIELDS)[number], string | null>> = {};
+    if (editsOwnCoffee) {
       if (input.name !== undefined && input.name.trim() !== "") {
         coffeeData.name = input.name;
       }
@@ -1958,104 +1981,111 @@ export async function updateSampleMetadata(
           coffeeData[field] = value === "" ? null : value;
         }
       }
-      if (Object.keys(coffeeData).length > 0) {
-        await prisma.coffee.update({
-          where: { id: sample.coffeeId },
-          data: {
-            ...coffeeData,
-            // F-cafes-9: stamp the origin edit only when an origin field really changed.
-            ...(originFieldsChanged(sample.coffee, coffeeData) ? { originEditedAt: new Date() } : {}),
-          },
-        });
-      }
-      coffeeUpdated = true;
-    } else {
-      coffeeUpdated = false;
     }
-  } else if (!hasAnyCoffeeField(input)) {
-    // Coffee-less sample (express sessions create them on purpose) and the
-    // caller only touched the label: nothing to create. Minting a private
-    // "Sin nombre" coffee here used to be the trap — every label rename on
-    // such a sample left a ghost coffee in the owner's library. Not a refused
-    // edit, so the "coffee not owned" notice must NOT show.
-    coffeeUpdated = true;
-  } else {
-    // Implicit create: no linked coffee yet, so (unlike the merge path
-    // above) this needs a FULL object — every field not supplied defaults to
-    // null, and a missing/blank name defaults to "Sin nombre".
-    // Create + link in ONE transaction (S8-10 T10, F-express-3): a failed link
-    // used to leave an orphan coffee that the next try duplicated. A code
-    // collision aborts the surrounding Postgres tx (25P02), so the WHOLE
-    // transaction is retried with a fresh pre-generated code.
+    // Coffee-less sample (express sessions create them on purpose) and the caller only
+    // touched the label: nothing to create (minting a "Sin nombre" coffee here used to be
+    // the trap). Not a refused edit, so the "coffee not owned" notice must NOT show.
+    const createsCoffee = !sample.coffeeId && hasAnyCoffeeField(input);
+
     let attempts = 0;
     for (;;) {
+      // Implicit create needs a FULL object (every field not supplied is null, a blank name is
+      // "Sin nombre") and a pre-generated code (one per attempt).
       const [code] = generateUniqueCoffeeCodes(1);
       try {
-        await prisma.$transaction(async (tx) => {
-          const coffee = await tx.coffee.create({
-            data: {
-              code,
-              name: input.name?.trim() ? input.name : "Sin nombre",
-              country: input.country || null,
-              region: input.region || null,
-              farm: input.farm || null,
-              producer: input.producer || null,
-              variety: input.variety || null,
-              processType: input.processType || null,
-              altitude: input.altitude || null,
-              roastLevel: input.roastLevel || null,
-              createdBy: user.id,
-              visibility: "private",
-            },
-            select: { id: true },
-          });
-          // Guarded link: a concurrent call that already linked a coffee makes
-          // count 0 -> conflict, rolling back this tx (incl. the coffee create).
-          // `conflict` is not a code collision, so the retry loop rethrows it.
-          const linked = await tx.sessionSample.updateMany({
-            where: { id: sampleId, coffeeId: null },
-            // Named after the close: the close routine revealed every coffee-linked
-            // sample, so this one is revealed on the spot (nothing is blind any more).
-            data: { coffeeId: coffee.id, ...(postCloseNaming ? { revealed: true } : {}) },
-          });
-          if (linked.count === 0) throw new Error("conflict");
-        });
+        await prisma.$transaction(
+          async (tx) => {
+            if (!postCloseNaming) {
+              // S10 WP6 D2: the session row first (lib/sessionLock.ts).
+              await lockSessionRow(tx, sample.sessionId);
+            }
+            if (sample.coffeeId) {
+              if (editsOwnCoffee) {
+                if (Object.keys(coffeeData).length > 0) {
+                  await tx.coffee.update({
+                    where: { id: sample.coffeeId },
+                    data: {
+                      ...coffeeData,
+                      // F-cafes-9: stamp the origin edit only when an origin field really changed.
+                      ...(originFieldsChanged(sample.coffee!, coffeeData) ? { originEditedAt: new Date() } : {}),
+                    },
+                  });
+                }
+                coffeeUpdated = true;
+              } else {
+                coffeeUpdated = false;
+              }
+            } else if (createsCoffee) {
+              // Create + link in the same transaction (S8-10 T10, F-express-3): a failed link
+              // used to leave an orphan coffee that the next try duplicated.
+              const coffee = await tx.coffee.create({
+                data: {
+                  code,
+                  name: input.name?.trim() ? input.name : "Sin nombre",
+                  country: input.country || null,
+                  region: input.region || null,
+                  farm: input.farm || null,
+                  producer: input.producer || null,
+                  variety: input.variety || null,
+                  processType: input.processType || null,
+                  altitude: input.altitude || null,
+                  roastLevel: input.roastLevel || null,
+                  createdBy: user.id,
+                  visibility: "private",
+                },
+                select: { id: true },
+              });
+              // Guarded link: a concurrent call that already linked a coffee makes
+              // count 0 -> conflict, rolling back this tx (incl. the coffee create).
+              // `conflict` is not a code collision, so the retry loop rethrows it.
+              const linked = await tx.sessionSample.updateMany({
+                where: { id: sampleId, coffeeId: null },
+                // Named after the close: the close routine revealed every coffee-linked
+                // sample, so this one is revealed on the spot (nothing is blind any more).
+                data: { coffeeId: coffee.id, ...(postCloseNaming ? { revealed: true } : {}) },
+              });
+              if (linked.count === 0) throw new Error("conflict");
+              coffeeUpdated = true;
+            } else {
+              coffeeUpdated = true;
+            }
+            if (!postCloseNaming) {
+              await tx.sessionSample.update({
+                where: { id: sampleId },
+                data: { label: input.label || undefined, ...prepUpdate },
+              });
+              await touchSession(tx, sample.sessionId);
+            }
+          },
+          // The lock wait is capped at LOCK_TIMEOUT_MS: the transaction must outlive it so a
+          // busy session answers `busy_retry`, never an expired-transaction error.
+          { maxWait: 10_000, timeout: 20_000 },
+        );
         break;
       } catch (err) {
         if (!isCoffeeCodeCollision(err) || ++attempts >= 5) throw err;
       }
     }
-    coffeeUpdated = true;
-  }
 
-  if (!postCloseNaming) {
-    await prisma.$transaction(async (tx) => {
-      // S10 WP6 D2: the session row first (lib/sessionLock.ts).
-      await lockSessionRow(tx, sample.sessionId);
-      await tx.sessionSample.update({
-        where: { id: sampleId },
-        data: { label: input.label || undefined, ...prepUpdate },
-      });
-      await touchSession(tx, sample.sessionId);
-    });
-  } else {
-    // The session already closed without a history row for this sample (no
-    // coffee at close time) — same idempotent sync the close routine runs.
-    await syncCoffeeHistoryForSession(sample.sessionId);
-    for (const l of ["es", "en"] as const) {
-      revalidatePath(`/${l}/app/profile/history`);
-      revalidatePath(`/${l}/app/coffees`);
+    if (postCloseNaming) {
+      // The session already closed without a history row for this sample (no
+      // coffee at close time) — same idempotent sync the close routine runs.
+      await syncCoffeeHistoryForSession(sample.sessionId);
+      for (const l of ["es", "en"] as const) {
+        revalidatePath(`/${l}/app/profile/history`);
+        revalidatePath(`/${l}/app/coffees`);
+      }
     }
-  }
 
-  // Locale-prefixed: a bare "/app/..." path matches no cached page (S9-03 review).
-  for (const l of ["es", "en"] as const) {
-    revalidatePath(`/${l}/app/sessions/${sample.sessionId}/cup`);
-    revalidatePath(`/${l}/app/sessions/${sample.sessionId}/results`);
-    revalidatePath(`/${l}/app/sessions/${sample.sessionId}/print`);
-  }
+    // Locale-prefixed: a bare "/app/..." path matches no cached page (S9-03 review).
+    for (const l of ["es", "en"] as const) {
+      revalidatePath(`/${l}/app/sessions/${sample.sessionId}/cup`);
+      revalidatePath(`/${l}/app/sessions/${sample.sessionId}/results`);
+      revalidatePath(`/${l}/app/sessions/${sample.sessionId}/print`);
+    }
 
-  return { ok: true as const, coffeeUpdated };
+    return { ok: true as const, coffeeUpdated };
+  });
 }
 
 /**
@@ -2087,7 +2117,8 @@ export async function assignSampleCoffee(
     if (current.coffeeId) throw new Error("conflict");
 
     if (plan.mode === "create") {
-      await updateSampleMetadata(sampleId, plan.fields);
+      const created = await updateSampleMetadata(sampleId, plan.fields);
+      if (!created.ok) throw new Error(created.error);
       return { linked: false };
     }
 

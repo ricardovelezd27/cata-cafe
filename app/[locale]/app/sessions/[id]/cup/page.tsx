@@ -545,6 +545,7 @@ export default async function CupPage({
           finishWith: t.raw("cupping.guard.finishWith") as string,
         },
         // S10 WP6 fix round (4): the owner of a solo cupping stuck after a reveal closes it as it is.
+        allReferencesNotice: t("cupping.allReferencesNotice"),
         closeAsIs: {
           line: t("results.closeAsIs.line"),
           go: t("results.closeAsIs.go"),

@@ -371,7 +371,7 @@
       "referenceTitle": "Muestra de referencia",
       "referenceNone": "Sin referencia",
       "referenceHelper": "Las demás muestras se comparan contra esta en los resultados. No afecta el puntaje. Si eliges otra, se añade como Referencia 2: la anterior se desbloquea y la nueva queda fijada.",
-      "referenceHelperDescriptive": "Las demás muestras se comparan contra esta en los resultados. Si eliges otra, se añade como Referencia 2. La referencia se cata primero y sirve de punto de comparación para las demás muestras.",
+      "referenceHelperDescriptive": "La referencia se cata primero y sirve de punto de comparación para las demás muestras. Si eliges otra, se añade como Referencia 2.",
       "referenceSaved": "Referencia actualizada",
       "closesAt": "Fecha de cierre",
       "closesAtHint": "Opcional. La sesión se cierra sola en la madrugada siguiente a esta fecha. Déjala vacía para una cata en vivo que cierras tú.",
@@ -432,6 +432,7 @@
     "referenceBadge": "Referencia",
     "compareHint": "Compara con la referencia ({label})",
     "referenceLocked": "Referencia fija: la calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos y su puntaje es siempre 79.00. Describe lo que percibes; en las demás muestras puntuarás por encima o por debajo de esta.",
+    "allReferencesNotice": "Todas las muestras son referencia y no hay nada que cerrar. Quita la referencia de una muestra para poder cerrar la cata.",
     "referenceLockedAffective": "Referencia fija: la calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos y no hay nada que puntuar aquí. Pruébala con calma, anota lo que percibas y continúa con la siguiente muestra.",
     "referenceCupsLocked": "Las tazas de la referencia no se marcan: su puntaje se mantiene fijo en 79.00.",
     "revealedNote": "Muestra revelada: ya no se puede evaluar.",
@@ -960,7 +961,9 @@
       "rankHelp": "\"Indicativo\": hay menos de 6 catadores o menos de 5 tazas, así que el puntaje es una primera señal. \"Sin diferencia clara\": dos muestras vecinas están a menos de 1 punto, o a menos de la mitad de la dispersión del grupo.",
       "fewNote": "Con menos de 3 catadores el puntaje es indicativo: no se muestra dispersión ni se elige mejor muestra.",
       "anchorTitleFree": "Referencia",
-      "anchorHintFree": "Puntuada como cualquier otra muestra · fuera del ranking, del promedio y de la mejor muestra"
+      "anchorHintFree": "Puntuada como cualquier otra muestra · fuera del ranking, del promedio y de la mejor muestra",
+      "anchorTitleDescriptive": "Referencia",
+      "anchorHintDescriptive": "Punto de comparación · fuera del ranking, del promedio y de la mejor muestra"
     },
     "table": {
       "sample": "Muestra",
@@ -1142,7 +1145,8 @@
       "referencia": {
         "title": "Muestra de referencia",
         "body": "El maestro de cata puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La cata empieza por ella y su calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos, así que cada catador le da siempre 79.00 y solo describe lo que percibe. No entra en el ranking, en el promedio ni en la mejor muestra. La referencia fija es un ejercicio de Café Sensible para alinear al grupo: todos le dan 79.00. No es parte del CVA, donde cada persona puntúa su propia impresión.\nLo que agrega es contexto: junto a cada muestra verás Δ, la diferencia entre su puntaje y el de la referencia, calculada siempre con el mismo tipo de puntaje que ves al lado (comunitario cuando está visible; si no, el tuyo).\nReferencia, media del grupo y desviación son cosas distintas: la referencia es el punto de partida elegido por el maestro; la media es lo que percibió el grupo; la desviación (±) es cuánto se dispersó el grupo.",
-        "bodyFree": "El maestro de cata puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La cata empieza por ella y todos la puntúan libremente, como cualquier otra muestra. No entra en el ranking, en el promedio ni en la mejor muestra.\nLo que agrega es contexto: junto a cada muestra verás Δ, la diferencia entre su puntaje y el de la referencia, calculada siempre con el mismo tipo de puntaje que ves al lado (comunitario cuando está visible; si no, el tuyo).\nReferencia, media del grupo y desviación son cosas distintas: la referencia es el punto de partida elegido por el maestro; la media es lo que percibió el grupo; la desviación (±) es cuánto se dispersó el grupo."
+        "bodyFree": "El maestro de cata puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La cata empieza por ella y todos la puntúan libremente, como cualquier otra muestra. No entra en el ranking, en el promedio ni en la mejor muestra.\nLo que agrega es contexto: junto a cada muestra verás Δ, la diferencia entre su puntaje y el de la referencia, calculada siempre con el mismo tipo de puntaje que ves al lado (comunitario cuando está visible; si no, el tuyo).\nReferencia, media del grupo y desviación son cosas distintas: la referencia es el punto de partida elegido por el maestro; la media es lo que percibió el grupo; la desviación (±) es cuánto se dispersó el grupo.",
+        "bodyDescriptive": "El maestro de cata puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La cata empieza por ella. En una cata descriptiva no hay puntajes de calidad, así que la referencia solo sirve de punto de comparación de lo que se describe. No entra en el ranking, en el promedio ni en la mejor muestra."
       }
     },
     "radar": {

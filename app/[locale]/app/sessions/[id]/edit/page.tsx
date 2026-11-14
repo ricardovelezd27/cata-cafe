@@ -83,6 +83,7 @@ export default async function EditSessionPage({
   const tc = await getTranslations("common");
   const tw = await getTranslations("warmup");
   const tg = await getTranslations("group");
+  const terr = await getTranslations("errors");
 
   const translations: EditSessionFormTranslations = {
     warmup: {
@@ -150,6 +151,7 @@ export default async function EditSessionPage({
     removeRepinBody: t.raw("edit.removeRepinBody") as string,
     removeRepinConfirm: t("edit.removeRepinConfirm"),
     referenceRepinBlocked: t("edit.referenceRepinBlocked"),
+    busyRetry: terr("codes.busy_retry"),
     referenceRevealed: t("edit.referenceRevealed"),
     formatLockedStarted: t("edit.formatLockedStarted"),
     invalidWarmup: t("newForm.errors.invalid_warmup"),
