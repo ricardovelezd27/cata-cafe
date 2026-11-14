@@ -57,8 +57,12 @@ describe("the recordings match the script", () => {
       }
     });
   }
-  it("the voice sets are the owner's pick (Dora with the Spain pronunciation, Heart US)", () => {
-    expect(VOICE_SETS.es).toMatchObject({ voice: "ef_dora", lang: "es" });
+  it("the voice sets are the owner's pick (Dora with the Latin American pronunciation, Heart US)", () => {
+    expect(VOICE_SETS.es).toMatchObject({ voice: "ef_dora", lang: "es-419" });
+    // The folder says which pronunciation it holds: a changed voice must
+    // never reuse a folder phones have already cached (see voice.ts).
+    expect(VOICE_SETS.es.id).toBe("es-dora-419");
+    for (const set of Object.values(VOICE_SETS)) expect(set.id).toMatch(/^[a-z0-9-]+$/);
     expect(VOICE_SETS.en).toMatchObject({ voice: "af_heart", lang: "en-us" });
   });
 });

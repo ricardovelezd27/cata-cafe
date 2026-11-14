@@ -75,10 +75,16 @@ Safari and Android Chrome decode reliably with `decodeAudioData`.
 
 ## The real set (what the app plays)
 
-The owner picked the voices by ear on 2026-11-14: Dora with the Spain
-pronunciation for Spanish (`ef_dora`, `es`) and Heart for English (`af_heart`,
-`en-us`), both at speed 0.9. They are declared in `lib/warmup/voice.ts`
-(`VOICE_SETS`).
+The owner picked the voices by ear on 2026-11-14: Dora with the Latin American
+pronunciation for Spanish (`ef_dora`, `es-419`) and Heart for English
+(`af_heart`, `en-us`), both at speed 0.9. They are declared in
+`lib/warmup/voice.ts` (`VOICE_SETS`).
+
+**Changing a voice needs a new set `id`** (the folder under
+`public/warmup/voice/`). The files are named after their text, so a line keeps
+its file name under any voice, and phones keep the files for good: under the
+old folder name they would go on playing the old voice. After changing the
+id, delete the old folder.
 
 Three commands, in this order, every time a spoken line changes:
 

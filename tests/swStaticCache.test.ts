@@ -79,10 +79,10 @@ describe("service worker never-cached pages (S10 WP7, F2)", () => {
 describe("service worker: the warm-up's recorded voice", () => {
   it("recognises the voice files and nothing else", () => {
     const { sw } = loadSw();
-    for (const p of ["/warmup/voice/es-dora/618384ff19aeb32b.mp3", "/warmup/voice/en-heart/d315c82af572615e.mp3"]) {
+    for (const p of ["/warmup/voice/es-dora-419/618384ff19aeb32b.mp3", "/warmup/voice/en-heart/d315c82af572615e.mp3"]) {
       expect(sw.isWarmupVoice(p), p).toBe(true);
     }
-    for (const p of ["/warmup/dev/voice-reference.mp3", "/warmup/voice/es-dora/", "/es/app/warmup/ojos", "/warmup/voice/es-dora/x.json", "/api/warmup/voice/a/b.mp3"]) {
+    for (const p of ["/warmup/dev/voice-reference.mp3", "/warmup/voice/es-dora-419/", "/es/app/warmup/ojos", "/warmup/voice/es-dora-419/x.json", "/api/warmup/voice/a/b.mp3"]) {
       expect(sw.isWarmupVoice(p), p).toBe(false);
     }
   });
