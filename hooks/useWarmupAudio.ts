@@ -7,6 +7,7 @@ import { dueCues, dueHums, type ScheduleWindow } from "@/lib/warmup/audioWindow"
 import { FALLBACK_VOICE_VOLUME, LIMITER, MIX, duckingPlan, laneGains, type MixLevels, type SpeechWindow } from "@/lib/warmup/mix";
 import { AIR, HUM, VIBRATION, cueDurationMs, renderAir, renderCue, renderHum, type HumRecipe } from "@/lib/warmup/sounds";
 import type { CueKind, CuePoint, HumWindow } from "@/lib/warmup/timelineTypes";
+import { CLIP_PICKUP_FADE_MS, dueClips, type ClipPoint } from "@/lib/warmup/voiceSchedule";
 
 /**
  * Sound channel of the warm-up player (v3). Eyes are closed for half the
@@ -18,9 +19,12 @@ import type { CueKind, CuePoint, HumWindow } from "@/lib/warmup/timelineTypes";
  *    `cancel()` on pause;
  *  - haptics (navigator.vibrate) on the same beats. They also play while the
  *    sound is muted (silently absent on iOS);
- *  - an optional read-aloud of the step text via speechSynthesis;
+ *  - the GUIDE VOICE: recorded files (lib/warmup/voice.ts), loaded with
+ *    `loadWarmupVoice()` and started on the same audio clock as the bells,
+ *    through the voice lane of the mix. The phone's own speechSynthesis is
+ *    only the fallback when the files cannot be loaded;
  *  - mute + voice toggles persisted in localStorage (`cata_warmup_sound`,
- *    `cata_warmup_voice`, "on"/"off"). A host can also set the sound for ONE
+ *    `cata_warmup_voice`, "on"/"off"; the voice is ON unless turned off). A host can also set the sound for ONE
  *    run without touching the person's stored choice (`persist: false`: a
  *    follower of a group run starts muted, the master's phone sounds).
  *
@@ -37,9 +41,9 @@ import type { CueKind, CuePoint, HumWindow } from "@/lib/warmup/timelineTypes";
  *              ◄─ air  (continuous bed) ─┘
  *
  * The voice, the limiter and the background lane live as long as the
- * context. Each `schedule()` hangs three short-lived gain nodes on them
- * (markers, tone, air) at the lane levels of the mix; `cancel()` fades and
- * drops those three. The background lane's own gain is the DUCKING: it is
+ * context. Each `schedule()` hangs four short-lived gain nodes on them
+ * (markers, tone, air, and the recorded lines of the stretch) at the lane
+ * levels of the mix; `cancel()` fades and drops them. The background lane's own gain is the DUCKING: it is
  * drawn ahead of time from the known speech windows, never reacting to the
  * signal.
  */
@@ -55,6 +59,10 @@ export interface ScheduleOptions extends ScheduleWindow {
   /** When a line is spoken, ms on the run's timeline: the background dips
    *  under each one (lib/warmup/mix.ts duckingPlan). */
   readonly speech?: readonly SpeechWindow[];
+  /** The recorded lines of the run (lib/warmup/voiceLines.ts). Those due in
+   *  this stretch are started on the audio clock (voiceSchedule.ts); a line
+   *  whose file is not loaded is skipped. */
+  readonly clips?: readonly ClipPoint[];
 }
 
 export interface WarmupAudio {
@@ -62,7 +70,7 @@ export interface WarmupAudio {
   /** `persist: false` sets the sound for this run only (a host default); the
    *  default is the person's own choice, stored for every later run. */
   setMuted(m: boolean, opts?: { persist?: boolean }): void;
-  /** speechSynthesis read-aloud (default off). */
+  /** The guide voice (default on). */
   voice: boolean;
   setVoice(v: boolean): void;
   /** speechSynthesis exists AND lists a voice for the locale's language. */
@@ -195,7 +203,95 @@ export function setWarmupMixOverride(mix: MixLevels | null): void {
   mixListeners.forEach((l) => l());
 }
 
+// ── The recorded voice files ───────────────────────────────────────────────
+// Fetched as bytes (no audio context needed: it can happen on the intro
+// screen, before any tap) and decoded once a context exists.
+
+const clipBytes = new Map<string, ArrayBuffer>();
 const clipBuffers = new Map<string, AudioBuffer>();
+const clipFetches = new Map<string, Promise<boolean>>();
+const clipDecodes = new Map<string, Promise<boolean>>();
+/** How many files are fetched or decoded at once. */
+const VOICE_LOAD_PARALLEL = 6;
+
+async function eachLimited<T>(items: readonly T[], limit: number, fn: (item: T) => Promise<boolean>): Promise<boolean> {
+  let ok = true;
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length && ok) {
+      const item = items[next++];
+      if (!(await fn(item))) ok = false;
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return ok;
+}
+
+/**
+ * Load the recorded lines of a run. `decode: false` only downloads them (the
+ * intro screen: it warms the browser and service-worker caches without
+ * creating an audio context before a tap); `decode: true` also decodes them,
+ * which is what `schedule()` needs. Resolves false when ANY file could not be
+ * loaded: the caller then falls back to the phone's own voice for the whole
+ * run, never a mix of two voices. Decoded lines of other runs are dropped.
+ */
+export async function loadWarmupVoice(urls: readonly string[], decode: boolean): Promise<boolean> {
+  const wanted = [...new Set(urls)];
+  try {
+    const fetched = await eachLimited(wanted, VOICE_LOAD_PARALLEL, async (url) => {
+      if (clipBuffers.has(url) || clipBytes.has(url)) return true;
+      // One download per file, even when two loads ask for it at once.
+      let pending = clipFetches.get(url);
+      if (!pending) {
+        pending = (async () => {
+          try {
+            const res = await fetch(url);
+            if (!res.ok) return false;
+            clipBytes.set(url, await res.arrayBuffer());
+            return true;
+          } catch {
+            return false;
+          } finally {
+            clipFetches.delete(url);
+          }
+        })();
+        clipFetches.set(url, pending);
+      }
+      return pending;
+    });
+    if (!fetched) return false;
+    if (!decode) return true;
+    const c = getCtx(true);
+    if (!c) return false;
+    const keep = new Set(wanted);
+    for (const url of [...clipBuffers.keys()]) if (!keep.has(url)) clipBuffers.delete(url);
+    return await eachLimited(wanted, VOICE_LOAD_PARALLEL, async (url) => {
+      if (clipBuffers.has(url)) return true;
+      let pending = clipDecodes.get(url);
+      if (!pending) {
+        const bytes = clipBytes.get(url);
+        if (!bytes) return false;
+        // decodeAudioData detaches the buffer it is given; the bytes are not
+        // needed again.
+        clipBytes.delete(url);
+        pending = (async () => {
+          try {
+            clipBuffers.set(url, await c.decodeAudioData(bytes));
+            return true;
+          } catch {
+            return false;
+          } finally {
+            clipDecodes.delete(url);
+          }
+        })();
+        clipDecodes.set(url, pending);
+      }
+      return pending;
+    });
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Dev only for now: play one rendered voice file through the VOICE lane,
@@ -214,7 +310,6 @@ export async function playWarmupVoiceClip(url: string): Promise<() => void> {
       const res = await fetch(url);
       if (!res.ok) return () => {};
       buf = await c.decodeAudioData(await res.arrayBuffer());
-      clipBuffers.set(url, buf);
     }
     const mix = currentMix();
     const now = c.currentTime;
@@ -324,7 +419,7 @@ function documentLocale(): string {
 /** `locale` only feeds `voiceAvailable`; it defaults to `<html lang>`. */
 export function useWarmupAudio(locale?: string): WarmupAudio {
   const [sound, setSound] = useLocalFlag(WARMUP_SOUND_KEY, true, FLAG_STRINGS);
-  const [voice, setVoiceFlag] = useLocalFlag(WARMUP_VOICE_KEY, false, FLAG_STRINGS);
+  const [voice, setVoiceFlag] = useLocalFlag(WARMUP_VOICE_KEY, true, FLAG_STRINGS);
   // A host default for this run only (null = follow the stored choice).
   const [runMuted, setRunMuted] = useState<boolean | null>(null);
   const muted = runMuted ?? !sound;
@@ -343,7 +438,7 @@ export function useWarmupAudio(locale?: string): WarmupAudio {
     voiceRef.current = voice;
   }, [muted, voice]);
 
-  // The three short-lived lane nodes of the stretch that is scheduled now.
+  // The short-lived lane nodes of the stretch that is scheduled now.
   const stretchRef = useRef<GainNode[] | null>(null);
   const demoBusRef = useRef<GainNode | null>(null);
   const vibrateTimers = useRef<number[]>([]);
@@ -435,8 +530,9 @@ export function useWarmupAudio(locale?: string): WarmupAudio {
       const markers = lane(c, gains.markers, g.out);
       const toneLane = lane(c, gains.tone, g.background);
       const airLane = lane(c, gains.air, g.background);
-      if (!markers || !toneLane || !airLane) return;
-      stretchRef.current = [markers, toneLane, airLane];
+      const voiceLane = lane(c, gains.voice, g.voice);
+      if (!markers || !toneLane || !airLane || !voiceLane) return;
+      stretchRef.current = [markers, toneLane, airLane, voiceLane];
       const now = c.currentTime;
       const at = (ms: number) => now + (ms - elapsedMs) / 1000;
       for (const cue of due) renderCue(c, cue.kind, at(cue.atMs), markers);
@@ -445,6 +541,30 @@ export function useWarmupAudio(locale?: string): WarmupAudio {
       for (const h of dueHums(hums, elapsedMs, opts)) renderHum(c, at(h.fromMs), at(h.toMs), toneLane, h.contour, tone);
       // The air runs for the whole stretch and fades out into its end.
       if (opts.untilMs !== undefined) renderAir(c, now, at(opts.untilMs), airLane);
+      // The recorded lines, on the same clock as the bells.
+      if (voiceRef.current) {
+        for (const d of dueClips(opts.clips ?? [], elapsedMs, opts)) {
+          const buf = clipBuffers.get(d.url);
+          if (!buf) continue;
+          try {
+            const src = c.createBufferSource();
+            src.buffer = buf;
+            let into: AudioNode = voiceLane;
+            if (d.offsetMs > 0) {
+              // Picked up mid-line: a short fade-in instead of a click.
+              const fade = c.createGain();
+              fade.gain.setValueAtTime(0, at(d.atMs));
+              fade.gain.linearRampToValueAtTime(1, at(d.atMs) + CLIP_PICKUP_FADE_MS / 1000);
+              fade.connect(voiceLane);
+              into = fade;
+            }
+            src.connect(into);
+            src.start(at(d.atMs), d.offsetMs / 1000);
+          } catch {
+            /* audio is best-effort */
+          }
+        }
+      }
       // Ducking: the background lane, drawn ahead from the speech windows.
       try {
         const plan = duckingPlan(opts.speech ?? [], elapsedMs, mix);

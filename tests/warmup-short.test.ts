@@ -7,13 +7,10 @@ import { describe, expect, it } from "vitest";
 import { WARMUP_EXERCISES, WARMUP_SHARED, WARMUP_SHORT_STEP_BUDGET_SEC, warmupById } from "@/lib/warmup/exercises";
 import { SMALL_AMPLITUDE, buildExerciseTimeline, exerciseForLength, poseAt, poseInSegment, shortStepCount, timelineOpensEyes, timelineTotalMs } from "@/lib/warmup/timeline";
 import { ARRIVE_PLAN_SHORT, arrivePhaseAt } from "@/lib/warmup/breath";
-import type { ExerciseTimeline, Segment } from "@/lib/warmup/timelineTypes";
+import type { ExerciseTimeline } from "@/lib/warmup/timelineTypes";
+import { at, shape } from "./helpers/warmupRows";
 
 const ex1 = warmupById("arm-raise")!;
-
-type Row = [kind: Segment["kind"], t0: number, dur: number, from: number, to: number, label: string, cue: string | null];
-const rows = (tl: ExerciseTimeline): Row[] =>
-  tl.segments.map((s) => [s.kind, s.t0Ms, s.durMs, s.from.a, s.to.a, s.label, s.cueAtStart ?? null]);
 
 describe("short version: 1 to 2 minutes for every exercise", () => {
   for (const ex of WARMUP_EXERCISES) {
@@ -27,15 +24,18 @@ describe("short version: 1 to 2 minutes for every exercise", () => {
     }
   }
 
-  it("totals of the five exercises (library), pinned", () => {
+  it("how many steps each short run keeps, pinned; a session adds the 5 s bridge", () => {
     // TODO(kim-validar:F4): head-rotate and trunk-side carry their own return-to-centre step.
-    expect(WARMUP_EXERCISES.map((e) => [e.id, shortStepCount(e), timelineTotalMs(e, "library", "short"), timelineTotalMs(e, "session", "short")])).toEqual([
-      ["arm-raise", 4, 100250, 105250],
-      ["eyes", 3, 101000, 106000],
-      ["head-rotate", 2, 106250, 111250],
-      ["trunk-forward-back", 2, 93500, 98500],
-      ["trunk-side", 2, 111750, 116750],
+    expect(WARMUP_EXERCISES.map((e) => [e.id, shortStepCount(e)])).toEqual([
+      ["arm-raise", 4],
+      ["eyes", 3],
+      ["head-rotate", 2],
+      ["trunk-forward-back", 2],
+      ["trunk-side", 2],
     ]);
+    for (const e of WARMUP_EXERCISES) {
+      expect(timelineTotalMs(e, "session", "short")).toBe(timelineTotalMs(e, "library", "short") + 5000);
+    }
   });
 
   it("every short timeline ends at the neutral pose, with contiguous segments and a continuous pose", () => {
@@ -126,59 +126,68 @@ describe("short version: 1 to 2 minutes for every exercise", () => {
   describe("golden fixture: ex 1 El brazo lento (short, library)", () => {
     const tl = buildExerciseTimeline(ex1, { mode: "library", length: "short" });
     it("posture 5 s + ONE breath cycle 10 s, the first four steps, a 15 s closing", () => {
-      expect(rows(tl)).toEqual([
-        ["arrive", 0, 5000, 0, 0, "arrive", null],
-        ["arrive", 5000, 10000, 0, 0, "arrive", "campana"],
-        ["read", 15000, 8250, 0, 0, "upNext", "tic"], // the tic that ends the breaths (no notice beat)
-        ["lead-in", 23250, 400, 0, 0, "fast", "campana"],
-        ["reps", 23650, 2100, 0, 0, "fast", null],
-        ["still", 25750, 5500, 0, 0, "still", "tic"],
-        ["read", 31250, 7750, 0, 0, "upNext", null],
-        ["out", 39000, 15000, 0, 1, "up", "campana"],
-        ["rest", 54000, 10000, 1, 1, "still", "tic"],
-        ["read", 64000, 6250, 1, 1, "upNext", null],
-        ["out", 70250, 15000, 1, 0, "down", "campana"],
-        ["closing", 85250, 15000, 0, 0, "closing", "cuenco"],
+      // Pauses show as "beat": they are sized by the recorded voice
+      // (tests/helpers/warmupRows.ts, tests/warmup-voice.test.ts).
+      expect(shape(tl)).toEqual([
+        ["arrive", 5000, 0, 0, "arrive", null],
+        ["arrive", 10000, 0, 0, "arrive", "campana"],
+        ["read", "beat", 0, 0, "upNext", "tic"], // the tic that ends the breaths (no notice beat)
+        ["lead-in", 400, 0, 0, "fast", "campana"],
+        ["reps", 2100, 0, 0, "fast", null],
+        ["still", 5500, 0, 0, "still", "tic"],
+        ["read", "beat", 0, 0, "upNext", null],
+        ["out", 15000, 0, 1, "up", "campana"],
+        ["rest", 10000, 1, 1, "still", "tic"],
+        ["read", "beat", 1, 1, "upNext", null],
+        ["out", 15000, 1, 0, "down", "campana"],
+        ["closing", 15000, 0, 0, "closing", "cuenco"],
       ]);
+      const full = buildExerciseTimeline(ex1, { mode: "library" });
+      // The same pauses as the full run's first four steps.
+      expect(tl.segments.filter((x) => x.kind === "read").map((x) => x.durMs)).toEqual(
+        full.segments.filter((x) => x.kind === "read" && x.stepIdx < 4).map((x) => x.durMs),
+      );
       expect(tl.arriveMs).toBe(15000);
-      expect(tl.closingAt).toBe(85250);
-      expect(tl.totalMs).toBe(100250);
-      expect(tl.stepStart).toEqual([15000, 31250, 54000, 64000]);
-      expect(tl.stepEnd).toEqual([31250, 54000, 64000, 85250]);
+      expect(tl.totalMs).toBe(tl.closingAt + 15000);
+      expect(tl.stepStart.map((ms) => at(tl, ms))).toEqual(["s1:read+0", "s2:read+0", "s3:rest+0", "s4:read+0"]);
+      expect(tl.stepEnd.map((ms) => at(tl, ms))).toEqual(["s2:read+0", "s3:rest+0", "s4:read+0", "closing+0"]);
     });
     it("cues, hums and narrations come from the same code paths", () => {
-      expect(tl.cues.map((c) => [c.atMs, c.kind])).toEqual([
-        [5000, "campana"],
-        [15000, "tic"],
-        [23250, "campana"],
-        [25750, "tic"],
-        [39000, "campana"],
-        [54000, "tic"],
-        [70250, "campana"],
-        [85250, "cuenco"],
+      expect(tl.cues.map((c) => [at(tl, c.atMs), c.kind])).toEqual([
+        ["breath+0", "campana"],
+        ["s1:read+0", "tic"],
+        ["s1:lead-in+0", "campana"],
+        ["s1:still+0", "tic"],
+        ["s2:out+0", "campana"],
+        ["s3:rest+0", "tic"],
+        ["s4:out+0", "campana"],
+        ["closing+0", "cuenco"],
         // no doble: arm-raise's short run never closes the eyes (TODO(kim-validar:F4))
       ]);
-      expect(tl.hums.map((h) => [h.fromMs, h.toMs, h.contour])).toEqual([
-        [5000, 15000, "breath"],
-        [23250, 25750, "wave"],
-        [39000, 54000, "rise"],
-        [54000, 64000, "flat"],
-        [70250, 85250, "fall"],
+      expect(tl.hums.map((h) => [at(tl, h.fromMs), h.toMs - h.fromMs, h.contour])).toEqual([
+        ["breath+0", 10000, "breath"],
+        ["s1:lead-in+0", 2500, "wave"],
+        ["s2:out+0", 15000, "rise"],
+        ["s3:rest+0", 10000, "flat"],
+        ["s4:out+0", 15000, "fall"],
       ]);
-      expect(tl.narrations.map((n) => [n.atMs, n.source.kind])).toEqual([
-        [0, "arrive"],
-        [5000, "breath"],
-        [9000, "breath"],
-        [15000, "step"],
-        [23250, "label"],
-        [25750, "label"],
-        [31250, "step"],
-        [39000, "label"],
-        [44000, "step"],
-        [54000, "label"],
-        [64000, "step"],
-        [70250, "label"],
-        [85250, "closing"],
+      // [moment, how long the voice waits for a bell there, what it is]
+      expect(tl.narrations.map((n) => [at(tl, n.atMs), n.sayAtMs - n.atMs, n.source.kind])).toEqual([
+        ["posture+0", 0, "arrive"],
+        ["breath+0", 700, "breath"],
+        ["breath+4000", 0, "breath"],
+        ["s1:read+0", 700, "step"],
+        ["s1:lead-in+0", 700, "label"],
+        ["s1:still+0", 700, "label"],
+        ["s2:read+0", 0, "step"],
+        ["s2:out+0", 700, "label"],
+        ["s2:out+5000", 0, "step"], // s3's text, said while the arm rises
+        ["s3:rest+0", 700, "label"],
+        ["s4:read+0", 0, "step"],
+        ["s4:out+0", 700, "label"],
+        ["s4:out+9000", 0, "observe"],
+        ["closing+0", 700, "closing"],
+        ["closing+8000", 0, "observe"],
       ]);
       // steps 5-6 are not part of the short run: their whispers do not exist
       expect(tl.whispers.map((w) => w.observeIdx)).toEqual([0, 2]);
@@ -186,8 +195,8 @@ describe("short version: 1 to 2 minutes for every exercise", () => {
     });
     it("session mode appends the 5 s bridge as usual", () => {
       const s = buildExerciseTimeline(ex1, { mode: "session", length: "short" });
-      expect(s.bridgeAt).toBe(100250);
-      expect(s.totalMs).toBe(105250);
+      expect(s.bridgeAt).toBe(tl.totalMs);
+      expect(s.totalMs).toBe(tl.totalMs + 5000);
       expect(s.cues.filter((c) => c.kind === "doble")).toHaveLength(0);
     });
   });

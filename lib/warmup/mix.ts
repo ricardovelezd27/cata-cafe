@@ -208,13 +208,6 @@ export function duckingPlan(windows: readonly SpeechWindow[], elapsedMs: number,
   return { start: duckGainAt(windows, elapsedMs, mix), points: lane(windows, mix).filter((p) => p.atMs > elapsedMs) };
 }
 
-/** How long the phone's own voice takes to say `text`, ms: an ESTIMATE for
- *  the fallback (speechSynthesis reports nothing ahead of time), used only to
- *  duck the background under it. About 2.4 words a second at rate 0.88, plus
- *  the pause of each sentence end. */
-export function estimateSpeechMs(text: string): number {
-  const words = text.trim().split(/\s+/).filter(Boolean).length;
-  if (words === 0) return 0;
-  const stops = (text.match(/[.!?…:;]/g) ?? []).length;
-  return Math.round(350 + words * 420 + stops * 250);
-}
+// The estimate of how long the phone's own voice takes to say a line lives
+// with the rest of the voice rules (lib/warmup/voice.ts).
+export { estimateSpeechMs } from "./voice";
