@@ -1,4 +1,21 @@
 import type { Prisma } from "@/app/generated/prisma/client";
+import { isLockTimeoutError, LOCK_TIMEOUT_MS } from "@/lib/lockTimeout";
+
+type LockTx = Pick<Prisma.TransactionClient, "$queryRaw" | "$executeRawUnsafe">;
+
+// S10 WP6 fix round (1): BOTH helpers wait at most LOCK_TIMEOUT_MS (`SET LOCAL lock_timeout`,
+// the first statement of the transaction; it lasts to the end of it) and turn a lock timeout
+// (SQLSTATE 55P03) into the typed `busy_retry` code (lib/actionResult.ts). Without it a
+// submit queued behind a long exclusive holder hung and then failed as `unknown`.
+async function withLockTimeout(tx: LockTx, take: () => Promise<unknown>): Promise<void> {
+  try {
+    await tx.$executeRawUnsafe(`SET LOCAL lock_timeout = '${LOCK_TIMEOUT_MS}ms'`);
+    await take();
+  } catch (e) {
+    if (isLockTimeoutError(e)) throw new Error("busy_retry");
+    throw e;
+  }
+}
 
 // S10 WP5b review (round 3): THE lock order for everything that touches a
 // session's reference.
@@ -15,11 +32,8 @@ import type { Prisma } from "@/app/generated/prisma/client";
 // `referenceSampleId` or `referenceRank` or deletes a sample takes the session row
 // FIRST, exclusively. (Transactions that create the session and its samples in one
 // go need nothing: nobody else can see the rows yet.)
-export async function lockSessionRow(
-  tx: Pick<Prisma.TransactionClient, "$queryRaw">,
-  sessionId: string,
-): Promise<void> {
-  await tx.$queryRaw`SELECT id FROM cupping_sessions WHERE id = ${sessionId} FOR UPDATE`;
+export async function lockSessionRow(tx: LockTx, sessionId: string): Promise<void> {
+  await withLockTimeout(tx, () => tx.$queryRaw`SELECT id FROM cupping_sessions WHERE id = ${sessionId} FOR UPDATE`);
 }
 
 // S10 WP6 D1: the SHARED form of the same lock, for every transaction that writes
@@ -29,9 +43,6 @@ export async function lockSessionRow(
 // what keeps "evaluation row, then the aggregate trigger's sample key-share" from
 // crossing "sample row FOR UPDATE, then evaluation rows" (the owner naming the sample
 // that is being submitted as the reference): the shared holder simply finishes first.
-export async function lockSessionRowShared(
-  tx: Pick<Prisma.TransactionClient, "$queryRaw">,
-  sessionId: string,
-): Promise<void> {
-  await tx.$queryRaw`SELECT id FROM cupping_sessions WHERE id = ${sessionId} FOR SHARE`;
+export async function lockSessionRowShared(tx: LockTx, sessionId: string): Promise<void> {
+  await withLockTimeout(tx, () => tx.$queryRaw`SELECT id FROM cupping_sessions WHERE id = ${sessionId} FOR SHARE`);
 }

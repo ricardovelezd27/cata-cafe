@@ -188,8 +188,8 @@ export const WARMUP_SHARED = {
     en: "Café Sensible Method · Pillar 3: Sensitivity",
   },
   intro: {
-    es: "Calmar y enfocar la atención antes de catar. El orden recomendado es del 1 al 5: el primero es la puerta de entrada. Cada ejercicio se puede hacer solo.",
-    en: "Calm and focus your attention before cupping. The recommended order is 1 to 5: the first one is the way in. Each exercise can be done on its own.",
+    es: "Cinco ejercicios para asentarte antes de catar. El orden recomendado es del 1 al 5: el primero es la puerta de entrada. Cada uno se puede hacer solo.",
+    en: "Five exercises to settle in before cupping. The recommended order is 1 to 5: the first one is the way in. Each can be done on its own.",
   },
   safety: {
     title: { es: "Regla de seguridad", en: "Safety rule" },
@@ -355,8 +355,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
     order: 2,
     name: { es: "Los ojos", en: "The eyes" },
     purpose: {
-      es: "Descansar la vista para que la atención pase a los demás sentidos. Ideal justo antes de oler o probar un café.",
-      en: "Rest your eyes so your attention can move to the other senses. Ideal right before smelling or tasting a coffee.",
+      es: "Relajar el sentido que más ocupa el cerebro (la vista) para dar sitio a los demás. Ideal justo antes de oler o probar un café.",
+      en: "Relax the sense that keeps the brain busiest (sight) to make room for the others. Ideal right before smelling or tasting a coffee.",
     },
     posture: "seated",
     postureText: {
@@ -765,8 +765,8 @@ export const WARMUP_EXERCISES: readonly WarmupExercise[] = [
         en: "The exact moment you cross the centre.",
       },
       {
-        es: "Si sientes calor en las manos, solo nótalo.",
-        en: "If you feel warmth in your hands, just notice it.",
+        es: "Si sientes calor en las manos: es normal, la circulación se abre.",
+        en: "If you feel warmth in your hands: that is normal, circulation is opening up.",
       },
     ],
     observeAt: [{ step: "trunk-side-4", atSec: 9 }, { step: "trunk-side-2", atSec: 22 }, { slot: "closing", atSec: 8 }], // v3 (council 2026-10-28)

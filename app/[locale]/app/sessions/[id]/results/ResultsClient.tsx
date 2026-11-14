@@ -521,6 +521,7 @@ export function ResultsClient({
       samples: session.samples.map((s) => ({
         revealed: s.revealed,
         submitted: s.myEvaluation?.status === "submitted",
+        isReference: s.isReference,
       })),
     });
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent" | "error">("idle");

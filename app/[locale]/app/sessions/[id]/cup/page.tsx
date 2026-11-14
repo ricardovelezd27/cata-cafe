@@ -1,4 +1,5 @@
-import { computeSubmitProgress, seedSubmitMap } from "@/lib/submitProgress";
+import { computeSubmitProgress, seedSubmitMap } from "@/lib/submitProgress";
+import { referenceExplanation } from "@/lib/referenceRules";
 import { notFound, redirect } from "next/navigation";
 import { requireAppUser } from "@/lib/auth";
 import { warmupPlayerStrings } from "@/components/warmup/playerStrings";
@@ -388,7 +389,14 @@ export default async function CupPage({
         referenceActive: tg("referenceActive"),
         referenceAdd: tg("referenceAdd"),
         referenceRemoveActive: tg("referenceRemoveActive"),
-        referenceAddHint: tg(session.referenceMode === "free" ? "referenceAddHintFree" : "referenceAddHint"),
+        // S10 WP6 fix round (2): the wording follows referenceExplanation (pinned / free / descriptive).
+        referenceAddHint: tg(
+          {
+            pinned: "referenceAddHint",
+            free: "referenceAddHintFree",
+            descriptive: "referenceAddHintDescriptive",
+          }[referenceExplanation({ mode: session.referenceMode, moduleKey: session.format })],
+        ),
         referenceAddTitle: tg("referenceAddTitle"),
         referenceAddConfirm: tg("referenceAddConfirm"),
         referenceRepinTitle: t("session.edit.repinTitle"),
@@ -535,6 +543,17 @@ export default async function CupPage({
           outcomeCloses: t("cupping.guard.outcomeCloses"),
           outcomeStays: t.raw("cupping.guard.outcomeStays") as string,
           finishWith: t.raw("cupping.guard.finishWith") as string,
+        },
+        // S10 WP6 fix round (4): the owner of a solo cupping stuck after a reveal closes it as it is.
+        closeAsIs: {
+          line: t("results.closeAsIs.line"),
+          go: t("results.closeAsIs.go"),
+          title: t("results.closeAsIs.title"),
+          body: t("results.closeAsIs.body"),
+          confirm: t("results.closeAsIs.confirm"),
+          cancel: t("results.closeAsIs.cancel"),
+          error: tg("closeSessionError"),
+          notFinalized: tg("closeNotFinalized"),
         },
         leaveGuard: {
           title: t("cupping.leaveGuard.title"),

@@ -123,6 +123,7 @@ export default async function EditSessionPage({
     referenceNone: t("edit.referenceNone"),
     referenceHelper: t("edit.referenceHelper"),
     referenceHelperFree: t("edit.referenceHelperFree"),
+    referenceHelperDescriptive: t("edit.referenceHelperDescriptive"),
     referenceModeLegend: t("newForm.referenceMode.legend"),
     referenceModeAnchor: t("newForm.referenceMode.anchor"),
     referenceModeFree: t("newForm.referenceMode.free"),

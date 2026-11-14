@@ -561,6 +561,9 @@ export type CloseAsIsSample = {
   revealed: boolean;
   /** The owner has a SUBMITTED evaluation of this sample. */
   submitted: boolean;
+  /** The sample is a reference: its row is pinned or out of the ranking, so an unrevealed
+   *  reference is not "something still to score". */
+  isReference?: boolean;
 };
 
 export function soloCloseAsIsOffer(input: {
@@ -568,5 +571,9 @@ export function soloCloseAsIsOffer(input: {
   samples: CloseAsIsSample[];
 }): boolean {
   if (input.canFinish) return false;
+  // Only when the owner is truly stuck: while an unrevealed, unsubmitted, non-reference sample
+  // remains they can still cup it and finish the normal way (fix round 4c).
+  const couldStillScore = input.samples.some((s) => !s.revealed && !s.submitted && !s.isReference);
+  if (couldStillScore) return false;
   return input.samples.some((s) => s.revealed && !s.submitted);
 }

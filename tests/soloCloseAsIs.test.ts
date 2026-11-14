@@ -10,7 +10,7 @@ describe("soloCloseAsIsOffer", () => {
         canFinish: false,
         samples: [
           { revealed: true, submitted: false },
-          { revealed: false, submitted: false },
+          { revealed: false, submitted: true },
         ],
       }),
     ).toBe(true);
@@ -32,6 +32,29 @@ describe("soloCloseAsIsOffer", () => {
     ).toBe(false);
     expect(soloCloseAsIsOffer({ canFinish: false, samples: [] })).toBe(false);
   });
+  it("does NOT offer it while an unrevealed sample could still be scored (fix round 4c)", () => {
+    expect(
+      soloCloseAsIsOffer({
+        canFinish: false,
+        samples: [
+          { revealed: true, submitted: false },
+          { revealed: false, submitted: false },
+        ],
+      }),
+    ).toBe(false);
+  });
+  it("an unrevealed reference does not count as something still to score; a submitted unrevealed sample neither", () => {
+    expect(
+      soloCloseAsIsOffer({
+        canFinish: false,
+        samples: [
+          { revealed: true, submitted: false },
+          { revealed: false, submitted: false, isReference: true },
+          { revealed: false, submitted: true },
+        ],
+      }),
+    ).toBe(true);
+  });
   it("matches planFinish: every non-reference sample unscored, some revealed", () => {
     const plan = planFinish([
       { id: "ref", isReference: true, evaluation: { isDraft: true, complete: true } },
@@ -43,7 +66,7 @@ describe("soloCloseAsIsOffer", () => {
       soloCloseAsIsOffer({
         canFinish: plan.canFinish,
         samples: [
-          { revealed: false, submitted: false },
+          { revealed: false, submitted: false, isReference: true },
           { revealed: true, submitted: false },
           { revealed: true, submitted: false },
         ],

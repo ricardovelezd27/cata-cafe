@@ -1065,7 +1065,7 @@ export async function acceptLateEvaluation(
         // LOCK ORDER (lib/sessionLock.ts): the session row first, SHARED (the flip below fires the
         // aggregate trigger, which needs the sample row; a reference change takes the session row
         // exclusively first), then the evaluation row.
-        await tx.$queryRaw`SELECT 1 FROM cupping_sessions WHERE id = ${auth.sessionId} FOR SHARE`;
+        await lockSessionRowShared(tx, auth.sessionId);
         // Lock the row so a late device send (submitLateDraft) cannot change the
         // draft between the completeness check and the flip.
         await tx.$queryRaw`SELECT id FROM evaluations WHERE id = ${id} FOR UPDATE`;

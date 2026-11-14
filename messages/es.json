@@ -293,6 +293,7 @@
         "anchor": "Referencia fija",
         "free": "Referencia libre",
         "anchorHelp": "Su calidad queda fijada en 5 y solo se describe. La referencia fija es un ejercicio de Café Sensible para alinear al grupo: todos le dan 79.00. No es parte del CVA, donde cada persona puntúa su propia impresión.",
+        "descriptiveHelp": "La referencia se cata primero y sirve de punto de comparación para las demás muestras.",
         "freeHelp": "Todos la puntúan como cualquier otra muestra y las demás se comparan con su promedio."
       }
     },
@@ -369,7 +370,8 @@
       "backToSessions": "Volver a sesiones",
       "referenceTitle": "Muestra de referencia",
       "referenceNone": "Sin referencia",
-      "referenceHelper": "Las demás muestras se comparan contra esta en los resultados. No afecta el puntaje. Si eliges otra, se añade como Referencia 2: la anterior conserva sus 79.00 y la nueva queda fijada.",
+      "referenceHelper": "Las demás muestras se comparan contra esta en los resultados. No afecta el puntaje. Si eliges otra, se añade como Referencia 2: la anterior se desbloquea y la nueva queda fijada.",
+      "referenceHelperDescriptive": "Las demás muestras se comparan contra esta en los resultados. Si eliges otra, se añade como Referencia 2. La referencia se cata primero y sirve de punto de comparación para las demás muestras.",
       "referenceSaved": "Referencia actualizada",
       "closesAt": "Fecha de cierre",
       "closesAtHint": "Opcional. La sesión se cierra sola en la madrugada siguiente a esta fecha. Déjala vacía para una cata en vivo que cierras tú.",
@@ -783,7 +785,8 @@
     "referenceAdd": "Añadir referencia…",
     "referenceRemoveActive": "Quitar la referencia activa",
     "referenceRevealed": "revelada, no puede ser referencia fija",
-    "referenceAddHint": "La referencia anterior conserva sus 79.00; la nueva queda fijada. La referencia fija es un ejercicio de Café Sensible para alinear al grupo: todos le dan 79.00. No es parte del CVA, donde cada persona puntúa su propia impresión.",
+    "referenceAddHint": "La nueva referencia queda fijada y la anterior se desbloquea. La referencia fija es un ejercicio de Café Sensible para alinear al grupo: todos le dan 79.00. No es parte del CVA, donde cada persona puntúa su propia impresión.",
+    "referenceAddHintDescriptive": "La referencia se cata primero y sirve de punto de comparación para las demás muestras.",
     "referenceAddTitle": "Añadir referencia",
     "referenceAddConfirm": "Añadir referencia",
     "warmupStart": "Movimiento sensorial · Empezar con el grupo",
@@ -1220,6 +1223,7 @@
     "closeAsIs": {
       "line": "Las muestras ya reveladas no se pueden seguir evaluando. Puedes cerrar la cata tal como está: lo que ya enviaste se conserva.",
       "button": "Cerrar la cata",
+      "go": "Ir a los resultados",
       "title": "¿Cerrar la cata?",
       "body": "La cata se cierra tal como está y ya no se podrá editar. Lo que ya enviaste se conserva.",
       "confirm": "Cerrar la cata",
@@ -2185,6 +2189,7 @@
       "not_found_or_forbidden": "No encontramos ese elemento o no tienes permiso.",
       "session_not_started": "La cata aún no empezó. Espera a que el maestro la inicie.",
       "session_closed": "Esta cata ya está cerrada; sus resultados son definitivos.",
+      "busy_retry": "La cata está ocupada en este momento. Inténtalo de nuevo en unos segundos.",
       "reference_revealed": "Esta acción cambiaría las calificaciones de una muestra ya revelada. Puedes marcar otra muestra como referencia o dejar la referencia como está.",
       "sample_revealed": "Esta muestra ya fue revelada y no se puede seguir evaluando.",
       "invalid_token": "Este enlace de invitación no es válido.",
@@ -2220,6 +2225,7 @@
       "mobileLink": "Movimiento sensorial",
       "count": "5 ejercicios",
       "eyesClosed": "Ojos cerrados",
+      "intro": "Calmar y enfocar la atención antes de catar. El orden recomendado es del 1 al 5: el primero es la puerta de entrada. Cada ejercicio se puede hacer solo.",
       "kimLine": "«En mis clases veo que los catadores llegan más presentes a la mesa.» — Kim Ossenblok"
     },
     "dashboard": {

@@ -51,6 +51,8 @@ import { SampleKey, type SampleKeyTranslations } from "@/components/cupping/Samp
 import type { SamplePrepTranslations } from "@/components/cupping/SamplePrepFields";
 import { prepFromForm, prepToForm, type SamplePrep } from "@/lib/samplePrep";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import Link from "next/link";
+import { planFinish, soloCloseAsIsOffer } from "@/lib/closeRules";
 import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { canPickExistingCoffee } from "@/lib/cupCoffeePick";
 import { resumeCallbackRefreshes } from "@/lib/cupResume";
@@ -404,6 +406,18 @@ export function CupClient({
       outcomeCloses?: string;
       outcomeStays?: string;
       finishWith?: string;
+    };
+    /** S10 WP6 fix round (4): a solo cupping that "Terminar cata" cannot finish because of revealed
+     *  samples is closed as it is (same strings as the results page). Optional like the others. */
+    closeAsIs?: {
+      line: string;
+      go: string;
+      title: string;
+      body: string;
+      confirm: string;
+      cancel: string;
+      error: string;
+      notFinalized: string;
     };
     // Optional: props can be rehydrated from a pre-upgrade IndexedDB cache
     // (cup/error.tsx offline rebuild) that predates this key — CupClient
@@ -850,6 +864,7 @@ export function CupClient({
   const [startError, setStartError] = useState(false);
   const [groupNotice, setGroupNotice] = useState<"failed" | "partial" | null>(null);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
+  const [closeAsIsOpen, setCloseAsIsOpen] = useState(false);
   // S10 WP4b (Kim C1): the announced close moment. Realtime sets it from the session-row
   // UPDATE below; the server page's value wins whenever IT changes (adjusted during render).
   const [closingAtMs, setClosingAtMs] = useState<number | null>(() =>
@@ -1833,6 +1848,13 @@ export function CupClient({
         // close (lib/closeRules.ts planFinish; community.ts finishSoloSession).
         const r = await finishSoloSession(session.id, userId);
         if (!r.ok) {
+          if (r.error === "invalid_input" && closeAsIsApplies && translations.closeAsIs) {
+            // Nothing can be finished because revealed samples can no longer be evaluated:
+            // offer the close-as-it-is dialog instead of a generic error (S10 WP6 fix round, 4a).
+            setCloseAsIsOpen(true);
+            setIsGoingToResults(false);
+            return;
+          }
           if (r.error === IDENTITY_CHANGED) {
             // Either latches (then say so) or is the claim case (page reloads).
             await onServerIdentityChanged(userId);
@@ -2304,6 +2326,35 @@ export function CupClient({
       guardFormat === "combined" ? s.combined : guardFormat === "affective" ? s.affective : s.descriptive;
     return isEvaluationCompleteForScore(guardFormat, data);
   }).length;
+  // S10 WP6 fix round (4): the same pure rules the server and the results page use (planFinish,
+  // soloCloseAsIsOffer): the owner is stuck only when nothing can be finished AND every unfinished
+  // sample that could still be scored is revealed.
+  const closeAsIsApplies =
+    isSoloOwner &&
+    soloCloseAsIsOffer({
+      canFinish: planFinish(
+        viewSamples.map((s) => {
+          const opened = !!s.evaluationId || CUPPING_STEPS.some((st) => hasStepFill(s, st));
+          const data =
+            guardFormat === "combined" ? s.combined : guardFormat === "affective" ? s.affective : s.descriptive;
+          return {
+            id: s.id,
+            isReference: refOrder.includes(s.id),
+            evaluation: opened
+              ? {
+                  isDraft: s.isDraft || !s.evaluationId,
+                  complete: (!s.isDraft && !!s.evaluationId) || isEvaluationCompleteForScore(guardFormat, data),
+                }
+              : null,
+          };
+        }),
+      ).canFinish,
+      samples: viewSamples.map((s) => ({
+        revealed: s.revealed === true,
+        submitted: !s.isDraft && !!s.evaluationId,
+        isReference: refOrder.includes(s.id),
+      })),
+    });
   const guardOutcome =
     isSoloOwner && guard?.kind === "submit"
       ? unopenedCount === 0
@@ -2834,6 +2885,20 @@ export function CupClient({
         nextRetryAt={nextRetryAt}
         renderedUserId={userId}
       />
+      {closeAsIsApplies && translations.closeAsIs && (
+        <div
+          role="status"
+          className="mx-4 mt-2 flex flex-wrap items-center gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface"
+        >
+          <span className="flex-1 min-w-[200px]">{translations.closeAsIs.line}</span>
+          <Link
+            href={`/${locale}/app/sessions/${session.id}/results`}
+            className="inline-flex min-h-[44px] items-center font-semibold text-primary-container hover:underline"
+          >
+            {translations.closeAsIs.go}
+          </Link>
+        </div>
+      )}
       {translations.offline.bannerNewVersion && translations.offline.reloadNow && (
         <StaleBundleNotice
           slot="cup"
@@ -3112,7 +3177,7 @@ export function CupClient({
         title={translations.referenceAddTitle ?? "Añadir referencia"}
         body={
           translations.referenceAddHint ??
-          "La referencia anterior conserva sus 79.00; la nueva queda fijada."
+          "La nueva referencia queda fijada y la anterior se desbloquea."
         }
         confirmLabel={translations.referenceAddConfirm ?? "Añadir referencia"}
         cancelLabel={translations.cancel}
@@ -3202,6 +3267,24 @@ export function CupClient({
           closeLabel={translations.cancel}
           onConfirm={handleConfirmClose}
           error={translations.closeSessionError}
+        />
+      )}
+      {translations.closeAsIs && (
+        <ConfirmDialog
+          open={closeAsIsOpen}
+          onOpenChange={setCloseAsIsOpen}
+          title={translations.closeAsIs.title}
+          body={<p>{translations.closeAsIs.body}</p>}
+          confirmLabel={translations.closeAsIs.confirm}
+          cancelLabel={translations.closeAsIs.cancel}
+          closeLabel={translations.closeAsIs.cancel}
+          error={translations.closeAsIs.error}
+          onConfirm={async () => {
+            // The existing owner close (closeSessionInternal); it throws on failure and the dialog shows `error`.
+            const r = await closeSession(session.id);
+            if (!r.finalized && translations.closeAsIs) feedback.notifySuccess(translations.closeAsIs.notFinalized);
+            router.push(`/${locale}/app/sessions/${session.id}/results`);
+          }}
         />
       )}
       <SyncConflictModal

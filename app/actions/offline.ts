@@ -21,6 +21,8 @@ import { effectiveClientTs } from "@/lib/offline/clientWrite";
 import { isModuleSendable, planLateDraftWrite } from "@/lib/lateContributions";
 import { isEvaluationComplete } from "@/lib/closeRules";
 import { logInfo } from "@/lib/log";
+import { isLockTimeoutError } from "@/lib/lockTimeout";
+import { lockSessionRowShared } from "@/lib/sessionLock";
 import { replayOverExisting } from "@/lib/aggregateRefire";
 
 // Conflict-aware replay of an offline evaluation draft, called on reconnect.
@@ -320,7 +322,7 @@ export async function submitLateDraft(input: {
   const once = (): Promise<Outcome> =>
     prisma.$transaction(
       async (tx): Promise<Outcome> => {
-        await tx.$queryRaw`SELECT 1 FROM cupping_sessions WHERE id = ${auth.sessionId} FOR SHARE`;
+        await lockSessionRowShared(tx, auth.sessionId);
         const sess = await tx.cuppingSession.findUniqueOrThrow({
           where: { id: auth.sessionId },
           select: { status: true, referenceSampleId: true, referenceMode: true },
@@ -409,6 +411,9 @@ export async function submitLateDraft(input: {
   } catch (e) {
     // Two first sends racing: the loser hit the unique key (this aborted its transaction); run once more, it finds the row.
     if (isUniqueViolation(e)) return once();
+    // The session row was busy for 5 s (lib/sessionLock.ts): the late draft stays on the device, the
+    // client retries later (nothing was written).
+    if (isLockTimeoutError(e) || (e instanceof Error && e.message === "busy_retry")) return { status: "pending" };
     throw e;
   }
 }
