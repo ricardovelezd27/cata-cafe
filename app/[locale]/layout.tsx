@@ -30,15 +30,10 @@ export default async function LocaleLayout({
   return (
     <NextIntlClientProvider>
       <ActionFeedbackProvider translations={feedbackTranslations}>
-        {/* The <html> tag lives in the root layout (above [locale]) with
-            lang="es" (default locale). Correct it before paint for /en. */}
-        {locale !== "es" && (
-          <script
-            dangerouslySetInnerHTML={{
-              __html: `document.documentElement.lang=${JSON.stringify(locale)}`,
-            }}
-          />
-        )}
+        {/* <html lang> is corrected for /en by the inline script in the root
+            layout (app/layout.tsx), not here: a <script> rendered under
+            [locale] is created again by React on a client-side change of
+            language, where it never runs and React reports it. */}
         {children}
       </ActionFeedbackProvider>
     </NextIntlClientProvider>

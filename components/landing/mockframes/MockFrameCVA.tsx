@@ -4,10 +4,10 @@ import Frame from "./Frame";
 // Stylized recreation of the affective evaluation screen (1–9 scale).
 export default async function MockFrameCVA({
   ariaLabel,
-  translucent,
+  tab,
 }: {
   ariaLabel: string;
-  translucent?: boolean;
+  tab?: string;
 }) {
   const t = await getTranslations();
 
@@ -18,7 +18,7 @@ export default async function MockFrameCVA({
   ];
 
   return (
-    <Frame ariaLabel={ariaLabel} translucent={translucent}>
+    <Frame ariaLabel={ariaLabel} tab={tab}>
       <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-on-surface-variant">
         {t("cupping.sample")} A
       </p>

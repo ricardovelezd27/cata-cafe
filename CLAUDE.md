@@ -213,8 +213,13 @@ cata-cafe/
 │   │   #   ResumenTab.tsx (dashboard), DescriptoresTab.tsx (filters + cloud + frequency +
 │   │   #   alignment). The Resultados tab has no separate file — its Tabla/Gráfico
 │   │   #   sub-view is inline JSX in ResultsClient.tsx.
-│   ├── landing/                    # Marketing landing (dark stage): Hero, StepSection ×3, Features bento,
-│   │   #   Audience, Founding, FinalCTA, PhotoSlot, WaitlistForm, ScrollFx (GSAP text reveals only)
+│   ├── landing/                    # Marketing landing (dark stage), rebuilt 2026-11 as the design system's reference:
+│   │   #   Hero + HeroFoundingCard, StepsShowcase (three app screens that pile up; StepsActiveObserver + stepsProgress.ts),
+│   │   #   FeaturesSection (six equal cards, each with a drawing), AudienceSection (photo cards), Founding, FinalCTA,
+│   │   #   SectionHeading (THE section header: fold line + idea/assertion title), PhotoSlot, WaitlistForm,
+│   │   #   ScrollDeck + DeckRail + deckProgress.ts (the phone "scroll stage" shared by the three card sections),
+│   │   #   LocaleSwitch + scrollAnchor.ts (language change without reload, keeps the reader's place),
+│   │   #   ScrollFx (GSAP text reveals only; it clears the inline styles of every data-reveal element)
 │   │   └── journey/                # Persistent particle canvas: formations.ts + bracket.ts (pure, tested),
 │   │       #   ConstellationCanvas (engine + governor + kill-switch), ConstellationMount (idle gate). README inside.
 │   ├── offline/                    # OfflineBanner, SyncConflictModal, OfflineFirstLoadError, UnsyncedNotesPanel, StaleBundleNotice
@@ -624,7 +629,9 @@ All cupping reference data is in `lib/constants.ts` (Spanish-labeled):
 ## Styling
 
 - **Tailwind CSS 4** — PostCSS-based, no `tailwind.config.js` safelist
-- **`DESIGN.md` is the single source of truth for tokens** (MD3 role system in `app/globals.css`): `primary-container`, `surface`/`surface-container-*`, `on-surface`/`on-surface-variant`, `outline`/`outline-variant`, `secondary` (terracotta), `error`, radius tokens `rounded-card/input/pill`. **Never write hex literals in components.**
+- **`DESIGN.md` is the design system that governs the product** (landing and app): principles in order of precedence, the two modes (paper = the app, stage = the dark ground with the dots), tokens, surfaces, patterns, the accessibility baseline and a "what not to do" table. Read its "How this document governs" before any UI work. The app has not been audited against it yet: `docs/design-system/AUDIT-RUBRIC.md` is the checklist and `docs/prompts/S11-app-ui-ux-audit.md` starts that session.
+- **`<html lang>`** is set by an inline script in the ROOT layout (`app/layout.tsx`, from the URL), not under `[locale]`: Next mounts everything under `[locale]` anew when the language changes without a reload, and a `<script>` created by React on the client never runs. `components/landing/LocaleSwitch.tsx` sets the attribute itself after such a change.
+- **`DESIGN.md` is also the single source of truth for tokens** (MD3 role system in `app/globals.css`): `primary-container`, `surface`/`surface-container-*`, `on-surface`/`on-surface-variant`, `outline`/`outline-variant`, `secondary` (terracotta), `error`, radius tokens `rounded-card/input/pill`. **Never write hex literals in components.**
 - Legacy alias classes (`green-dark`, `brown-*`, `cream`, `amber-warm`, `red-defect`, `bg`) still resolve via a back-compat block in `globals.css` — do not use them in NEW code; prefer MD3 names.
 - Responsive breakpoint rule: **content layouts switch at `md:`** (DataTable table↔cards), **the app shell at `lg:`** (Sidebar↔BottomNav), **dialogs at 640px** (ResponsiveDialog internal media query).
 - Reuse the shared UI kit for anything list/CRUD-shaped: `DataTable`, `Badge`/`StatusPill`/`ScorePill`, `PageHeader`, `EmptyState`, `ConfirmDialog`, `SearchInput`, `Select`, `Pagination`, `FilterBar`, plus `InfoHint` for an inline info-icon → `ResponsiveDialog` explainer (all in `components/ui/`).

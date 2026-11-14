@@ -71,35 +71,8 @@ export default function ScrollFx() {
           if (hidden.size === 0 && safety) clearInterval(safety);
         }, 1500);
 
-        // Count-up numerals. Final formatted value is already in SSR HTML;
-        // we parse it, animate from 0 and restore the exact original string.
-        gsap.utils.toArray<HTMLElement>("[data-counter]").forEach((el) => {
-          const original = el.textContent ?? "";
-          const match = original.match(/^([^\d−-]*)([\d.,]+)(.*)$/);
-          if (!match) return;
-          const [, prefix, num, suffix] = match;
-          const target = parseFloat(num.replace(/[.,](?=\d{3})/g, "").replace(",", "."));
-          if (!Number.isFinite(target)) return;
-          const fmt = new Intl.NumberFormat(document.documentElement.lang || "es");
-          const obj = { v: 0 };
-          ScrollTrigger.create({
-            trigger: el,
-            start: "top 88%",
-            once: true,
-            onEnter: () =>
-              gsap.to(obj, {
-                v: target,
-                duration: 1.0,
-                ease: "power2.out",
-                onUpdate: () => {
-                  el.textContent = `${prefix}${fmt.format(Math.round(obj.v))}${suffix}`;
-                },
-                onComplete: () => {
-                  el.textContent = original;
-                },
-              }),
-          });
-        });
+        // No count-up numerals: an offer ("100") or a fact ("3 hojas") must
+        // never show a wrong number while it animates.
       });
     };
 

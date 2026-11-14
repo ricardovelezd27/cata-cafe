@@ -118,6 +118,35 @@
   --shadow-card-lg: 0 4px 16px rgba(31, 27, 25, 0.08), 0 1px 4px rgba(31, 27, 25, 0.04);
   --shadow-inset:   inset 0 1px 2px rgba(31, 27, 25, 0.04);
 
+  /* ── Stage (the dark mode with the constellation) ───────── */
+  /* DESIGN.md "Stage and surfaces". Three depths of the same green, two
+     soft lights, and the recipes of the three surfaces. */
+  --color-stage:        var(--color-primary);          /* #153526 */
+  --color-stage-deep:   #0e2a1c;
+  --color-stage-raised: #1d4532;
+  --color-glow-mint:  color-mix(in srgb, var(--color-primary-fixed) 15%, transparent);
+  --color-glow-terra: color-mix(in srgb, var(--color-secondary-container) 22%, transparent);
+
+  /* The hairline a section opens with (.section-rule). */
+  --stage-rule:   color-mix(in srgb, var(--color-surface) 42%, transparent);
+
+  --glass-tint:   color-mix(in srgb, var(--color-surface) 8%, transparent);
+  --glass-border: color-mix(in srgb, var(--color-surface) 12%, transparent);
+  --glass-blur:   6px;
+  /* Glass laid over a photo: dark enough for AA text on any picture. */
+  --glass-ink:    color-mix(in srgb, var(--color-stage-deep) 74%, transparent);
+
+  /* Static film grain: one 160px tile of fractal noise, grey around 50%
+     so "soft-light" lightens and darkens evenly. No image file. */
+  --texture-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 0 0 0 0 1'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+
+  --radius-device:       1.75rem;
+  --radius-device-inner: 1.375rem;
+  --shadow-stage-card: 0 24px 60px -24px rgba(8, 24, 16, 0.55);
+  --shadow-screen:     0 28px 60px -26px rgba(8, 24, 16, 0.75);
+  --shadow-photo:      0 24px 48px -28px rgba(8, 24, 16, 0.8);
+  --text-hero-numeral: clamp(92px, 25vw, 144px);
+
   /* ── Motion ─────────────────────────────────────────────── */
   --transition-fast: 150ms ease;
   --transition-med:  240ms cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -237,6 +266,17 @@
   --shadow-card:    0 1px 3px rgba(31, 27, 25, 0.06);
   --shadow-card-lg: 0 4px 16px rgba(31, 27, 25, 0.08), 0 1px 4px rgba(31, 27, 25, 0.04);
   --shadow-inset:   inset 0 1px 2px rgba(31, 27, 25, 0.04);
+
+  /* Stage (mirror of the :root block; keep both in step) */
+  --color-stage:        #153526;
+  --color-stage-deep:   #0e2a1c;
+  --color-stage-raised: #1d4532;
+  --radius-device:       1.75rem;
+  --radius-device-inner: 1.375rem;
+  --shadow-stage-card: 0 24px 60px -24px rgba(8, 24, 16, 0.55);
+  --shadow-screen:     0 28px 60px -26px rgba(8, 24, 16, 0.75);
+  --shadow-photo:      0 24px 48px -28px rgba(8, 24, 16, 0.8);
+  --text-hero-numeral: clamp(92px, 25vw, 144px);
 
   /* Fonts */
   --font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
@@ -395,13 +435,580 @@ button { font-family: inherit; cursor: pointer; }
   content-visibility: auto;
   contain-intrinsic-size: auto 720px;
 }
+/* While a scroll position is being restored (LocaleSwitch), every section is
+   laid out so its real height can be measured. */
+[data-cv-visible] .cv-auto { content-visibility: visible; }
 
-/* Dark-stage glass recipe: shared by content cards sitting over the
-   particle canvas so the field reads through them (landing redesign). */
+/* ============================================================
+   Stage and surfaces (DESIGN.md "Stage and surfaces")
+   ------------------------------------------------------------
+   The stage is the dark green ground with the constellation.
+   Exactly three surfaces sit on it:
+     .surface-solid  opaque cream: what must be read or acted on
+     .surface-photo  a real photo with a designed grain
+     .surface-glass  translucent: only where the constellation or
+                     a photo is behind it, never on a flat ground
+   ============================================================ */
+
+/* The ground: one tall gradient through the three depths. It is the
+   background of the element that CONTAINS the fixed canvas, so the dots
+   always paint over it; sections themselves stay transparent. */
+.stage-ground {
+  background-color: var(--color-stage);
+  background-image: linear-gradient(
+    180deg,
+    var(--color-stage) 0%,
+    var(--color-stage-deep) 20%,
+    var(--color-stage-deep) 38%,
+    var(--color-stage-raised) 52%,
+    var(--color-stage-deep) 70%,
+    var(--color-stage-deep) 100%
+  );
+}
+
+/* Soft lights. Each fades to nothing well inside its box, so a section
+   with paint containment (.cv-auto) never shows a cut edge. */
+.stage-light {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 9999px;
+  background: radial-gradient(closest-side, var(--stage-light-color), transparent);
+}
+.stage-light-terra { --stage-light-color: var(--color-glow-terra); }
+.stage-light-mint  { --stage-light-color: var(--color-glow-mint); }
+/* The opposite of a light: a soft pool of the deepest green behind text
+   that sits directly on the constellation with no card under it. */
+.stage-light-shade { --stage-light-color: color-mix(in srgb, var(--color-stage-deep) 80%, transparent); }
+
+/* The fold line: how a section of the stage opens (SectionHeading.tsx).
+   The section's name sits on a hairline that fades out before the edge of
+   the content. Phones: centred, the line runs out to both sides of the
+   name. From 640px up: the name on the left, then the line to the right.
+   The same for every section. */
+.section-rule {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.section-rule::before,
+.section-rule::after {
+  content: "";
+  height: 1px;
+  flex: 1 1 0;
+}
+.section-rule::before {
+  background: linear-gradient(270deg, var(--stage-rule) 0%, var(--stage-rule) 55%, transparent);
+}
+.section-rule::after {
+  background: linear-gradient(90deg, var(--stage-rule) 0%, var(--stage-rule) 55%, transparent);
+}
+@media (min-width: 640px) {
+  .section-rule::before { display: none; }
+}
+
+/* ============================================================
+   "Cómo funciona": the screens pile up
+   ------------------------------------------------------------
+   Default (phones, reduced motion, no script, older browsers):
+   each step is its text followed by the pile AS IT STANDS at
+   that step (.steps-snapshot). Nothing sticks, nothing moves.
+
+   Enhanced (wide screen + script + motion allowed): one pile
+   stays put on the left (.steps-pile) and grows as the texts
+   scroll past on the right. StepsActiveObserver writes the scroll
+   progress (--p2, --p3) and data-active="1|2|3" on .steps-root;
+   everything else is the static rules below (transform and
+   opacity only). A screen is in place when its step's title is in
+   the middle of the viewport.
+
+   The pile geometry is mirrored in PILE / deviceRect()
+   (components/landing/journey/formations.ts) so the
+   constellation draws around the card. Change both together.
+   ============================================================ */
+.steps-root { display: block; }
+.steps-pile { display: none; }
+.steps-article {
+  display: grid;
+  gap: 2rem;
+  padding-block: 2.5rem;
+}
+.steps-snapshot {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+}
+/* Top edges of the screens already on the pile, behind the front one. */
+.steps-strip {
+  position: absolute;
+  height: 64px;
+  border-radius: var(--radius-device) var(--radius-device) 0 0;
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 60%, transparent);
+  border-bottom: 0;
+  background: var(--color-surface);
+  padding: 11px 22px 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-secondary);
+}
+
+.steps-rail { display: flex; align-items: center; gap: 0; }
+.steps-rail-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  border: 1.5px solid color-mix(in srgb, var(--color-surface) 45%, transparent);
+  transition: background-color 300ms ease-out, border-color 300ms ease-out;
+}
+.steps-rail-line {
+  width: 44px;
+  height: 1.5px;
+  background: color-mix(in srgb, var(--color-surface) 22%, transparent);
+  transition: background-color 300ms ease-out;
+}
+.steps-rail-dot[data-on="1"] {
+  background: var(--color-secondary-container);
+  border-color: var(--color-secondary-container);
+}
+.steps-rail-line[data-on="1"] { background: var(--color-secondary-container); }
+
+@media (min-width: 640px) {
+  .steps-article { padding-block: 3.5rem; }
+}
+
+@media (min-width: 1024px) {
+  /* Wide fallback: screen left, text right, still no sticky. */
+  .steps-article {
+    grid-template-columns: minmax(0, 9fr) minmax(0, 11fr);
+    column-gap: 56px;
+    align-items: center;
+  }
+  .steps-snapshot { order: 1; justify-self: center; }
+  .steps-copy { order: 2; }
+}
+
+@media (min-width: 1024px) and (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  .steps-root {
+    display: grid;
+    grid-template-columns: minmax(0, 9fr) minmax(0, 11fr);
+    column-gap: 56px;
+    align-items: start;
+  }
+  .steps-snapshot { display: none; }
+  .steps-article {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 78vh;
+    padding-block: 0;
+  }
+
+  /* 424px box = 80 headroom + 300 card + 44 rail, centred on the viewport. */
+  .steps-pile {
+    display: block;
+    position: sticky;
+    top: max(76px, calc(50vh - 212px));
+    height: 424px;
+  }
+  .steps-pile-stack {
+    position: absolute;
+    top: 80px;
+    left: 50%;
+    width: 320px;
+    height: 300px;
+    margin-left: -160px;
+    display: grid;
+  }
+  /* The scroll is the timeline. --p2 and --p3 (0..1, written by
+     StepsActiveObserver) say how far the screens of steps 2 and 3 have come
+     onto the pile: 0 while the step's title is still below the viewport,
+     1 when the title is in the middle of it. No transition here: the
+     smoothing is done where the values are written.
+
+     At rest: a screen one step behind
+     the front one sits at translate(-14px, -38px) scale(0.955), two steps
+     behind at twice that; a screen on its way in rises 80px and fades in
+     over the first fifth of its travel, so it is solid before it covers the
+     text of the screen behind it. */
+  .steps-root { --p2: 0; --p3: 0; }
+  .steps-card {
+    grid-area: 1 / 1;
+    transform-origin: 50% 0;
+    will-change: transform, opacity;
+  }
+  .steps-card[data-card="1"] {
+    transform:
+      translate(
+        calc((var(--p2) + var(--p3)) * -14px),
+        calc((var(--p2) + var(--p3)) * -38px)
+      )
+      scale(calc(1 - (var(--p2) + var(--p3)) * 0.045));
+  }
+  .steps-card[data-card="2"] {
+    opacity: min(1, calc(var(--p2) * 5));
+    transform:
+      translate(
+        calc(var(--p3) * -14px),
+        calc((1 - var(--p2)) * 80px + var(--p3) * -38px)
+      )
+      scale(calc(0.97 + var(--p2) * 0.03 - var(--p3) * 0.045));
+  }
+  .steps-card[data-card="3"] {
+    opacity: min(1, calc(var(--p3) * 5));
+    transform:
+      translateY(calc((1 - var(--p3)) * 80px))
+      scale(calc(0.97 + var(--p3) * 0.03));
+  }
+
+  .steps-pile-rail {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+  }
+  /* The rail's lines fill with the same progress; a dot lights when its
+     step has settled (data-active). */
+  .steps-pile-rail .steps-rail-line { position: relative; }
+  .steps-pile-rail .steps-rail-line::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--color-secondary-container);
+    transform-origin: 0 50%;
+    transform: scaleX(var(--p2));
+  }
+  .steps-pile-rail .steps-rail-line[data-rail="3"]::after { transform: scaleX(var(--p3)); }
+  .steps-root[data-active="2"] .steps-pile-rail .steps-rail-dot[data-rail="2"],
+  .steps-root[data-active="3"] .steps-pile-rail .steps-rail-dot[data-rail="2"],
+  .steps-root[data-active="3"] .steps-pile-rail .steps-rail-dot[data-rail="3"] {
+    background: var(--color-secondary-container);
+    border-color: var(--color-secondary-container);
+  }
+  /* The rail inside each text block is the phone's; the pile has its own. */
+  .steps-copy .steps-rail { display: none; }
+}
+
+/* ============================================================
+   Phone scroll stage (.deck-*)
+   ------------------------------------------------------------
+   One way to move through a section on a phone, used by "Cómo
+   funciona", "Qué incluye" and "Para quién es": the section's
+   header stays under the top bar and the vertical scroll brings
+   the cards in one by one. No sideways swipe to learn.
+
+   Default: nothing here applies; the sections keep their plain
+   layout (also from 640px up, with reduced motion, without
+   script, and on a phone too short for the cards to fit).
+
+   On: ScrollDeck sets `data-deck-on` on the section. The section
+   becomes a tall TRACK; `.deck-stage` sticks under the 60px site
+   header for the length of it. ScrollDeck writes --e (how far in,
+   0..1) and --b (how far behind the front card) on every card;
+   the rules below are static.
+   ============================================================ */
+.deck-rail { display: none; }
+.deck-rail-dot {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 9999px;
+  border: 1.5px solid color-mix(in srgb, var(--color-surface) 45%, transparent);
+  transition: background-color 200ms ease-out, border-color 200ms ease-out;
+}
+.deck-rail-dot[data-on="1"] {
+  background: var(--color-secondary-container);
+  border-color: var(--color-secondary-container);
+}
+.deck-rail-line {
+  position: relative;
+  width: 28px;
+  height: 1.5px;
+  flex: none;
+  background: color-mix(in srgb, var(--color-surface) 22%, transparent);
+}
+.deck-rail-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--color-secondary-container);
+  transform-origin: 0 50%;
+  transform: scaleX(var(--f, 0));
+}
+/* Anchors the constellation follows while the stage is on. */
+.deck-fold {
+  display: none;
+  position: absolute;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+[data-deck-on] {
+  /* The stage fills the screen under the header; each further card costs
+     HALF a screen of scroll. At a quarter of a screen a slight touch swapped
+     a whole card and the section felt out of control; half a screen means
+     the card moves about as far as the finger does. svh: the height with
+     the browser's bars showing, so nothing jumps when they hide. */
+  --deck-stage-h: calc(100vh - 60px);
+  --deck-step: 50vh;
+  position: relative;
+  height: calc(var(--deck-stage-h) + (var(--deck-n) - 1) * var(--deck-step));
+  margin-top: 40px;
+  /* .cv-auto skips layout off screen; the fit check needs real sizes. */
+  content-visibility: visible;
+}
+@supports (height: 100svh) {
+  [data-deck-on] {
+    --deck-stage-h: calc(100svh - 60px);
+    --deck-step: 50svh;
+  }
+}
+[data-deck-on] > .deck-fold { display: block; }
+[data-deck-on] > .deck-stage {
+  position: sticky;
+  top: 60px;
+  height: var(--deck-stage-h);
+  display: flex;
+  flex-direction: column;
+  padding-block: 18px 12px;
+}
+
+/* The header, a size down so two lines of title leave room for the cards. */
+[data-deck-on] .deck-head { flex: none; margin: 0; }
+[data-deck-on] .deck-head h2 { font-size: 24px; }
+[data-deck-on] .deck-head .section-rule + div { padding-top: 10px; }
+[data-deck-on] .deck-hide { display: none; }
+[data-deck-on] .deck-rail {
+  display: flex;
+  flex: none;
+  align-items: center;
+  /* Under a centred header (the stage exists on phones only). */
+  justify-content: center;
+  margin-top: 18px;
+}
+[data-deck-on] .deck-note { flex: none; margin-top: 10px; }
+
+/* The cards share one cell: the room left under the header. */
+[data-deck-on] .deck-cards {
+  flex: 1 1 0;
+  min-height: 0;
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0;
+  padding-block: 0;
+  overflow: visible;
+  scroll-snap-type: none;
+}
+[data-deck-on] .deck-card {
+  grid-area: 1 / 1;
+  align-self: start;
+  width: 100%;
+  max-width: none;
+  transform-origin: 50% 0;
+  will-change: transform, opacity;
+}
+/* Glass cards: the one in front leaves as the next arrives, one after the
+   other, so two translucent cards are never read through each other. Out
+   during the first 45% of the next card's travel, in from 35%. */
+[data-deck-on] .deck-swap > .deck-card {
+  opacity: calc(
+    clamp(0, (var(--e) - 0.35) / 0.45, 1) * clamp(0, 1 - var(--b) / 0.45, 1)
+  );
+  transform:
+    translateY(calc((1 - var(--e)) * 56px - var(--b) * 40px))
+    scale(calc(1 - var(--b) * 0.05));
+}
+/* Photo cards: each one slides up OVER the one before it, which stays where
+   it is underneath. The card is opaque from the moment it shows, so the
+   stage is never left empty between two pictures, two captions are never
+   read through each other, and the constellation simply goes on behind.
+   It travels its own height (it comes from under the bottom of the room);
+   the one underneath is dropped only once it is fully covered. */
+[data-deck-on] .deck-over > .deck-card {
+  opacity: calc(clamp(0, var(--e) * 25, 1) * clamp(0, (1 - var(--b)) * 100, 1));
+  transform: translateY(calc((1 - var(--e)) * 104%));
+}
+/* A card shorter than the room sits in the middle of it, with the
+   constellation above and below. */
+[data-deck-on] .deck-swap:not(.deck-fill) > .deck-card { align-self: center; }
+/* "Qué incluye": one cell at a time has the screen to itself, so the three
+   compact cells are set as large as the leading ones. */
+[data-deck-on] .features-cell {
+  padding: 26px;
+  /* The constellation gathers into the "100" right behind this stage. A
+     darker, more blurred glass keeps the text readable over a dense
+     cluster and still lets the dots show through. */
+  background: color-mix(in srgb, var(--color-stage-deep) 58%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+[data-deck-on] .features-cell h3 { font-size: 24px; line-height: 1.2; }
+[data-deck-on] .features-cell h3 + p { margin-top: 10px; font-size: 16px; line-height: 1.55; }
+/* Cards that take the whole room (a photo fills what is left). */
+[data-deck-on] .deck-fill > .deck-card {
+  align-self: stretch;
+  height: 100%;
+  min-height: 0;
+}
+[data-deck-on] .deck-photo { flex: 1 1 0; min-height: 0; }
+[data-deck-on] .deck-photo > .surface-photo { aspect-ratio: auto; height: 100%; }
+[data-deck-on] .deck-caption { flex: none; }
+
+/* "Cómo funciona" on the stage: the three texts share one place and the
+   one being read shows; under them the pile of screens grows, as on a
+   wide screen. The screens are solid, so they stay behind one another. */
+[data-deck-on] .steps-root {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+}
+[data-deck-on] .steps-slides {
+  order: 1;
+  display: grid;
+  flex: none;
+  margin-top: 16px;
+}
+[data-deck-on] .steps-article {
+  grid-area: 1 / 1;
+  display: block;
+  padding: 0;
+  opacity: 0;
+  /* Out first, then in: the two texts are never read through each other. */
+  transition: opacity 130ms ease-out;
+}
+[data-deck-on][data-active="1"] .steps-article[data-step="1"],
+[data-deck-on][data-active="2"] .steps-article[data-step="2"],
+[data-deck-on][data-active="3"] .steps-article[data-step="3"] {
+  opacity: 1;
+  transition: opacity 220ms ease-out 130ms;
+}
+[data-deck-on] .steps-snapshot,
+[data-deck-on] .steps-copy .steps-rail,
+[data-deck-on] .steps-pile-rail,
+[data-deck-on] .steps-pile > .stage-light,
+[data-deck-on] .steps-num {
+  display: none;
+}
+/* The step's text is centred like the header above it. */
+[data-deck-on] .steps-copy { text-align: center; }
+[data-deck-on] .steps-kicker { margin-top: 0; }
+[data-deck-on] .steps-copy h3 { font-size: 26px; }
+[data-deck-on] .steps-desc { margin-top: 8px; font-size: 15px; line-height: 1.5; }
+[data-deck-on] .steps-pile {
+  order: 2;
+  display: block;
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  margin-top: 14px;
+}
+/* Drawn at 320x300 and scaled to the room it gets (--deck-fit, ScrollDeck).
+   72px above the front screen for the labelled edges of the two behind it
+   (DECK.pileHeadroom in deckProgress.ts: change both together). */
+[data-deck-on] .steps-pile-stack {
+  position: absolute;
+  top: calc(72px * var(--deck-fit, 1));
+  left: 50%;
+  width: 320px;
+  height: 300px;
+  margin-left: -160px;
+  display: grid;
+  transform-origin: 50% 0;
+  transform: scale(var(--deck-fit, 1));
+}
+[data-deck-on] .steps-card {
+  grid-area: 1 / 1;
+  transform-origin: 50% 0;
+  will-change: transform, opacity;
+  opacity: min(1, calc(var(--e) * 5));
+  transform:
+    translate(
+      calc(var(--b) * -6px),
+      calc((1 - var(--e)) * 90px + var(--b) * -36px)
+    )
+    scale(calc(0.97 + var(--e) * 0.03 - var(--b) * 0.045));
+}
+
+.surface-solid {
+  background: var(--color-surface);
+  color: var(--color-on-surface);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 60%, transparent);
+  box-shadow: var(--shadow-stage-card);
+}
+
+/* .stage-card is the earlier name of the same recipe. */
+.surface-glass,
 .stage-card {
-  background: color-mix(in srgb, var(--color-surface) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-surface) 12%, transparent);
-  backdrop-filter: blur(6px);
+  background: var(--glass-tint);
+  border: 1px solid var(--glass-border);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+}
+
+/* Glass caption laid over a photo: the picture shows through, the text
+   keeps its contrast. */
+.surface-glass-ink {
+  background: var(--glass-ink);
+  border: 1px solid color-mix(in srgb, var(--color-surface) 16%, transparent);
+  -webkit-backdrop-filter: blur(10px) saturate(1.15);
+  backdrop-filter: blur(10px) saturate(1.15);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .surface-glass,
+  .stage-card {
+    background: color-mix(in srgb, var(--color-stage-raised) 88%, transparent);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .surface-glass-ink {
+    background: color-mix(in srgb, var(--color-stage-deep) 92%, transparent);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* Photo frame. The grain sits in ::after above the picture (an image
+   with `fill` has no z-index, so the pseudo-element paints over it);
+   `isolation` keeps the blend inside the frame and makes the rounded
+   clip hold in Safari. */
+.surface-photo {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--color-stage-deep);
+  box-shadow: var(--shadow-photo);
+}
+.surface-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background-image: var(--texture-grain);
+  background-size: 160px 160px;
+  mix-blend-mode: soft-light;
+  opacity: 0.6;
+}
+/* A green veil rising from the bottom of the picture: ties photos taken
+   in different rooms to the stage. Rendered by PhotoSlot as a <span>. */
+.surface-photo-veil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-stage) 10%, transparent) 0%,
+    transparent 35%,
+    color-mix(in srgb, var(--color-stage-deep) 55%, transparent) 100%
+  );
 }
 
 /* PhotoSlot placeholder (no src wired yet): faint centred mint dot grid. */

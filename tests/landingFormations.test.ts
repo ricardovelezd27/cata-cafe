@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   FOLD_COUNT,
+  NARROW_TEXT_BAND,
   NET_ANCHORS,
+  NET_CLEAR,
   PALETTE,
+  PILE,
   buildFormation,
+  deviceRect,
   seedIdentity,
+  trackSpan,
   type Formation,
 } from "@/components/landing/journey/formations";
 
@@ -88,16 +93,61 @@ describe("text lanes (desktop)", () => {
     expect(fractionWhere(f, (x) => x < DESKTOP.W * 0.5)).toBeLessThanOrEqual(0.35);
   });
 
-  it("folds 1 and 3 keep ≤ 25 % of particles in the left 55 % (copy column)", () => {
-    for (const fold of [1, 3]) {
+  // "Cómo funciona": the screens pile up on the left, the three texts scroll
+  // on the right, for all three steps.
+  it("folds 1, 2 and 3 keep ≤ 25 % of particles in the right 55 % (copy column)", () => {
+    for (const fold of [1, 2, 3]) {
       const f = build(fold);
-      expect(fractionWhere(f, (x) => x < DESKTOP.W * 0.55)).toBeLessThanOrEqual(0.25);
+      expect(fractionWhere(f, (x) => x > DESKTOP.W * 0.45)).toBeLessThanOrEqual(0.25);
     }
   });
+});
 
-  it("fold 2 mirrors the layout — ≤ 25 % in the right 55 % (copy column)", () => {
-    const f = build(2);
-    expect(fractionWhere(f, (x) => x > DESKTOP.W * 0.45)).toBeLessThanOrEqual(0.25);
+describe("the pinned pile of screens (desktop)", () => {
+  it("deviceRect is the front card: fixed size, in the left column, vertically centred", () => {
+    const d = deviceRect(DESKTOP.W, DESKTOP.H, false)!;
+    expect(d.x1 - d.x0).toBe(PILE.cardW);
+    expect(d.y1 - d.y0).toBe(PILE.cardH);
+    expect(d.x1).toBeLessThan(DESKTOP.W * 0.45);
+    expect(d.x0).toBeGreaterThan(0);
+    // The whole box (headroom + card + rail) is centred on the viewport.
+    const boxTop = d.y0 - PILE.headroom;
+    const boxBottom = d.y1 + PILE.footroom;
+    expect((boxTop + boxBottom) / 2).toBeCloseTo(DESKTOP.H / 2, 5);
+  });
+
+  it("never rises above the sticky offset on a short viewport", () => {
+    const d = deviceRect(1280, 420, false)!;
+    expect(d.y0).toBe(PILE.minTop + PILE.headroom);
+  });
+
+  it("has no pinned pile on phones", () => {
+    expect(deviceRect(MOBILE.W, MOBILE.H, true)).toBeNull();
+  });
+
+  it("folds 1, 2 and 3 are a halo: ≤ 40 % of particles hidden behind the card", () => {
+    const d = deviceRect(DESKTOP.W, DESKTOP.H, false)!;
+    for (const fold of [1, 2, 3]) {
+      const f = build(fold);
+      const hidden = fractionWhere(f, (x, y) => x > d.x0 && x < d.x1 && y > d.y0 && y < d.y1);
+      expect(hidden).toBeLessThanOrEqual(0.4);
+    }
+  });
+});
+
+describe("text band (phones)", () => {
+  // Every section leads with its text on a phone, so when a fold is centred
+  // its copy sits in the upper band of the screen. "Ink" there is the share
+  // of particles in the band times the formation's opacity.
+  it("folds 0 to 3 put little ink over the copy", () => {
+    for (const fold of [0, 1, 2, 3]) {
+      const f = build(fold, MOBILE);
+      const inBand = fractionWhere(
+        f,
+        (_x, y) => y > MOBILE.H * NARROW_TEXT_BAND.y0 && y < MOBILE.H * NARROW_TEXT_BAND.y1,
+      );
+      expect(inBand * f.alpha).toBeLessThanOrEqual(0.16);
+    }
   });
 });
 
@@ -138,7 +188,10 @@ describe("meaning of each formation", () => {
     const ySpread = Math.max(...cohortYs) - Math.min(...cohortYs);
     expect(ySpread).toBeLessThan(DESKTOP.H * 0.08);
     // ≥ 60 % of the cohort sits within ±6 % of the track around the reference (7.5 on 1–9).
-    const x0 = DESKTOP.W * 0.5, x1 = DESKTOP.W * 0.95;
+    const { x0, x1, y } = trackSpan(DESKTOP.W, DESKTOP.H, false);
+    // The track runs UNDER the pinned card, never through it.
+    expect(y).toBeGreaterThan(deviceRect(DESKTOP.W, DESKTOP.H, false)!.y1);
+    expect(y).toBeLessThan(DESKTOP.H);
     const ref = x0 + ((7.5 - 1) / 8) * (x1 - x0);
     const near = cohortXs.filter((x) => Math.abs(x - ref) <= (x1 - x0) * 0.06).length;
     expect(near / cohortXs.length).toBeGreaterThanOrEqual(0.6);
@@ -184,5 +237,16 @@ describe("meaning of each formation", () => {
       expect(d).toBeLessThanOrEqual(maxLen);
     }
     expect(f.alpha).toBeLessThan(build(0).alpha);
+  });
+
+  it("fold 5 frames the closing line: no anchor in the centre, and thin dust there", () => {
+    const inClear = (u: number, v: number) =>
+      u > NET_CLEAR.u0 && u < NET_CLEAR.u1 && v > NET_CLEAR.v0 && v < NET_CLEAR.v1;
+    for (const [u, v] of NET_ANCHORS) expect(inClear(u, v)).toBe(false);
+    for (const vp of [DESKTOP, MOBILE]) {
+      const f = build(5, vp);
+      const centre = fractionWhere(f, (x, y) => inClear(x / vp.W, y / vp.H));
+      expect(centre).toBeLessThanOrEqual(0.06);
+    }
   });
 });

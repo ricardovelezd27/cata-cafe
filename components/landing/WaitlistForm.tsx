@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { reserveFoundingSeat, type WaitlistState } from "@/app/actions/waitlist";
 import { EmailSentState, type EmailSentLabels } from "@/components/auth/EmailSentState";
@@ -23,7 +23,8 @@ type Labels = {
 // onDark: glass card on the green stage. onLight: the solid cream hero card.
 const STYLES = {
   onDark: {
-    success: "stage-card rounded-2xl px-4 py-3 text-sm text-surface/80",
+    // A plain tint, not glass: this sits INSIDE the glass founding card.
+    success: "rounded-2xl bg-surface/10 px-4 py-3 text-sm text-surface/80",
     input:
       "w-full rounded-2xl border border-outline-variant bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary-container",
     button:
@@ -56,6 +57,8 @@ export default function WaitlistForm({
   notice?: { text: string; linkLabel: string; href: string };
 }) {
   const s = STYLES[variant];
+  // The form is on the page twice (hero and founding card): one id each.
+  const emailId = useId();
   const [state, formAction, pending] = useActionState<WaitlistState, FormData>(
     reserveFoundingSeat,
     { status: "idle" },
@@ -112,7 +115,7 @@ export default function WaitlistForm({
 
   return (
     <form action={formAction} className="space-y-2">
-      <label htmlFor="waitlist-email" className="sr-only">
+      <label htmlFor={emailId} className="sr-only">
         {labels.label}
       </label>
       {/* Honeypot — hidden from real users */}
@@ -131,7 +134,7 @@ export default function WaitlistForm({
           email input must never truncate its own placeholder. */}
       <div className="flex flex-col gap-2">
         <input
-          id="waitlist-email"
+          id={emailId}
           type="email"
           name="email"
           required

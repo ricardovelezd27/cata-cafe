@@ -12,6 +12,26 @@ export function isKilled(): boolean {
   }
 }
 
+/** sessionStorage key set when the arrival animation (./intro.ts) starts: once per tab. */
+export const INTRO_FLAG = "cs_constellation_intro";
+
+export function introSeen(): boolean {
+  try {
+    return sessionStorage.getItem(INTRO_FLAG) === "1";
+  } catch {
+    // No storage: we cannot remember, so do not replay it on every visit.
+    return true;
+  }
+}
+
+export function markIntroSeen(): void {
+  try {
+    sessionStorage.setItem(INTRO_FLAG, "1");
+  } catch {
+    // storage unavailable — introSeen() already answers true in that case
+  }
+}
+
 export function markKilled(): void {
   try {
     sessionStorage.setItem(KILL_FLAG, "1");
