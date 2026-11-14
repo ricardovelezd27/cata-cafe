@@ -21,12 +21,18 @@ export interface VoiceSet {
   readonly speed: number;
 }
 
-// The owner's pick by ear, 2026-11-14 (audition page): Dora with the Spain
-// pronunciation for Spanish, Heart (US) for English. The WORDING stays
-// neutral Spanish (no "vosotros", "detente" over "párate"): the voice has an
-// accent, the text does not take sides.
+// The owner's pick by ear, 2026-11-14 (audition page): Dora with the LATIN
+// AMERICAN pronunciation for Spanish (no "th" sound for c and z), Heart (US)
+// for English. He picked the Spain pronunciation first and changed to this
+// one the same day. The WORDING is neutral Spanish either way (no "vosotros",
+// "detente" over "párate").
+//
+// CHANGING A VOICE NEEDS A NEW `id`. The files are named after their text, so
+// the same line keeps the same file name under any voice, and phones keep the
+// files for good (public/sw.js, cache-first): under the old folder name they
+// would go on playing the old voice. A new id is a new folder, so new URLs.
 export const VOICE_SETS: Readonly<Record<WarmupLocale, VoiceSet>> = {
-  es: { id: "es-dora", voice: "ef_dora", lang: "es", speed: 0.9 },
+  es: { id: "es-dora-419", voice: "ef_dora", lang: "es-419", speed: 0.9 },
   en: { id: "en-heart", voice: "af_heart", lang: "en-us", speed: 0.9 },
 };
 
