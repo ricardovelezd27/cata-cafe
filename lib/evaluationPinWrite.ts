@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { computeEvaluationDerived, type EvalModuleKey } from "@/lib/evaluation";
 import { writeEvaluationOrdered, type EvaluationWriteDb } from "@/lib/evaluationWrite";
 import { resolvePinnedPayload, shouldPinReference } from "@/lib/referenceRules";
+import { lockSessionRowShared } from "@/lib/sessionLock";
 
 // S10 WP5b review H1 (TODO(kim-validar:B2)): the ONE entry point that writes an
 // evaluation module of a sample that is, was or may be the pinned reference.
@@ -67,7 +68,9 @@ async function writeOnce(args: Args): Promise<{ id: string; applied: boolean }> 
     async (tx) => {
       // LOCK ORDER (lib/sessionLock.ts): the session row first (shared), then the sample
       // key-share of the evaluation write. Reference changes take it exclusively first.
-      await tx.$queryRaw`SELECT 1 FROM cupping_sessions WHERE id = ${args.sessionId} FOR SHARE`;
+      // S10 WP6b: waits at most LOCK_TIMEOUT_MS (5 s) and answers `busy_retry` on a timeout,
+      // like every other session-row lock (the first statement of this transaction).
+      await lockSessionRowShared(tx, args.sessionId);
       const sess = await tx.cuppingSession.findUniqueOrThrow({
         where: { id: args.sessionId },
         select: { referenceSampleId: true, referenceMode: true },

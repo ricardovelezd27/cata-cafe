@@ -77,6 +77,8 @@ export type EditSessionFormTranslations = {
   removeRepinBody: string;
   removeRepinConfirm: string;
   referenceRepinBlocked: string;
+  /** errors.codes.busy_retry: the session row was busy, nothing was changed (S10 WP6b). */
+  busyRetry: string;
   referenceRevealed: string;
   formatLockedStarted: string;
   warmup: { toggle: string; label: string; hint: string; minutes: string };
@@ -822,6 +824,7 @@ export function EditSessionForm({
           sample_has_data: t.sampleHasData,
           sample_has_evaluations: t.sampleHasEvals,
           reference_repin_required: t.referenceRepinBlocked,
+          busy_retry: t.busyRetry,
           session_closed: closedText,
         }}
         error={t.error}

@@ -544,3 +544,10 @@ export function referenceExplanation(input: { mode: unknown; moduleKey: string }
   if (!isPinnedModule(input.moduleKey)) return "descriptive";
   return normalizeReferenceMode(input.mode) === "anchor" ? "pinned" : "free";
 }
+
+/** Suffix of the message key a surface uses for its reference wording: "" (pinned, the
+ *  original copy), "Free" or "Descriptive". Surfaces that hold a pre-built string choose it
+ *  through here, so no one of them decides by the mode alone (S10 WP6b). */
+export function referenceCopySuffix(explanation: ReferenceExplanation): "" | "Free" | "Descriptive" {
+  return explanation === "pinned" ? "" : explanation === "free" ? "Free" : "Descriptive";
+}

@@ -12,6 +12,7 @@ import { PDF_PALETTE } from "./palette";
 import { PdfRadar, PdfPercentBars, PdfScorePill, PdfDeltaChip } from "./charts";
 import { sanitizePdfText } from "./text";
 import { CVA_TEXT } from "./cvaFormData";
+import { referenceExplanation } from "@/lib/referenceRules";
 import { ReportStamp } from "./sections/ReportStamp";
 import type {
   ParticipantSummaryModel,
@@ -397,13 +398,14 @@ function SampleCard({
   sample,
   t,
   hasCommunity,
-  referenceFree,
+  referencePinned,
 }: {
   sample: ParticipantSummarySample;
   t: Copy;
   hasCommunity: boolean;
-  /** B1: a "free" reference is scored like any sample, so it is not called an anchor. */
-  referenceFree: boolean;
+  /** Only a pinned reference (anchor mode AND a format with quality ratings) is called fixed / 79.00;
+   *  free and descriptive references are just "Referencia" (S10 WP6b, referenceExplanation). */
+  referencePinned: boolean;
 }) {
   const radar = sample.radar;
   const series = radar
@@ -439,9 +441,9 @@ function SampleCard({
             <Text style={s.coffee}>{sanitizePdfText(sample.coffee)}</Text>
           ) : null}
           {sample.isReference ? (
-            <Text style={s.refNote}>{referenceFree ? t.referenceNoteFree : t.referenceNote}</Text>
+            <Text style={s.refNote}>{referencePinned ? t.referenceNote : t.referenceNoteFree}</Text>
           ) : null}
-          {sample.isReference && !referenceFree ? <Text style={s.refNote}>{t.referenceExplain}</Text> : null}
+          {sample.isReference && referencePinned ? <Text style={s.refNote}>{t.referenceExplain}</Text> : null}
         </View>
         {sample.myScore === null && sample.communityScore === null ? (
           <Text style={s.muted}>{t.notEvaluated}</Text>
@@ -673,7 +675,7 @@ export function ParticipantSummaryDocument({
             sample={sample}
             t={t}
             hasCommunity={hasCommunity}
-            referenceFree={header.referenceMode === "free"}
+            referencePinned={referenceExplanation({ mode: header.referenceMode, moduleKey: header.format }) === "pinned"}
           />
         ))}
 

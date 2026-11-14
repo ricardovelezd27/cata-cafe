@@ -691,6 +691,12 @@ export function ResultsClient({
       return;
     }
     const result = await updateSampleMetadata(editingSampleId, data);
+    if (!result.ok) {
+      // S10 WP6b: localized copy for the refusal (a busy session says "try again");
+      // nothing was saved. Rethrow so the dialog stays open with the typed values.
+      feedback.notifyError(result.error);
+      throw new Error(result.error);
+    }
     setEditingSampleId(null);
     setCoffeeNotOwnedNotice(!result.coffeeUpdated);
     router.refresh();

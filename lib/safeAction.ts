@@ -1,7 +1,7 @@
 import "server-only";
 
 import { unstable_rethrow } from "next/navigation";
-import { type ActionResult, classifyActionError } from "@/lib/actionResult";
+import { type ActionErrorCode, type ActionResult, classifyActionError } from "@/lib/actionResult";
 import { errorMessage, logError } from "@/lib/log";
 
 // Use INSIDE a server action body (not as a top-level wrapper, so "use server"
@@ -39,6 +39,33 @@ export async function run<T>(
   try {
     const data = await fn();
     return { ok: true, data };
+  } catch (err) {
+    unstable_rethrow(err);
+    const error = classifyActionError(err);
+    if (error === "unknown") {
+      logError({
+        where: `action.${name}`,
+        message: errorMessage(err),
+        digest: (err as { digest?: string } | null)?.digest,
+        ...ctx,
+      });
+    }
+    return { ok: false, error };
+  }
+}
+
+// S10 WP6b: for the actions that already answer `{ ok: false, error }` for their OWN soft
+// refusals (and `{ ok: true, ...fields }` for success) and whose callers read those fields
+// directly. `runFlat` keeps that shape untouched and only adds what `run()` adds: anything
+// THROWN (a busy lock, a lost session, a Prisma error) comes back as the typed
+// `{ ok: false, error: ActionErrorCode }` instead of an opaque production digest.
+export async function runFlat<T extends { ok: boolean }>(
+  name: string,
+  fn: () => Promise<T>,
+  ctx: { userId?: string; sessionId?: string } = {},
+): Promise<T | { ok: false; error: ActionErrorCode }> {
+  try {
+    return await fn();
   } catch (err) {
     unstable_rethrow(err);
     const error = classifyActionError(err);
