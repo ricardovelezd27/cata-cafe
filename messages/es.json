@@ -2271,6 +2271,8 @@
       "evolutionLabel": "Evolución",
       "sequenceLabel": "Secuencia",
       "optionsTitle": "A tu manera",
+      "soundTitle": "Lo que vas a oír",
+      "soundOffNote": "Sin sonido, sigue el texto y la figura en la pantalla. El teléfono vibra en cada señal.",
       "soundLabel": "Sonido y vibración",
       "voiceToggle": "Voz que guía",
       "voiceHint": "Una voz dice cada paso y cada indicación, para que puedas mantener los ojos cerrados. Es una voz generada por computadora.",

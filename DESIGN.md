@@ -361,11 +361,28 @@ The landing was the place to find the rules; the app is where most of them apply
 | Sign-in, the emailed-link confirmation, the guest claim card | Yes: stage ground, the offer-card recipe (`surface-solid`) for the form | Nothing is being evaluated; this is an arrival |
 | Waiting room before a live session starts | Yes, behind the status, never behind the participant list or a control | A moment of waiting |
 | Empty states of a list (no sessions, no coffees yet) | A still, small formation as the illustration, on paper | It explains "nothing here yet" without a stock drawing |
-| The warm-up ("Movimiento sensorial") | Already uses the particle language for breathing | It is a guided moment, not data entry |
+| The warm-up ("Movimiento sensorial") | Yes: its eyes-closed legs ARE the stage (see "The warm-up's two stages" below), and it uses the particle language for breathing | It is a guided moment, not data entry |
 | A session's closing moment (results first shown) | Once, briefly, never over the numbers | A moment of arrival at a result |
 | The cup form, results tables, any list, any dialog, any form | **Never** | Sensory focus and legibility: principles 1 and 3 |
 
 A screen that uses the constellation must take it from the one engine (`components/landing/journey/`), keep its governor and kill switch, and respect reduced motion. A second particle implementation is a finding.
+
+### The warm-up's two stages
+
+The warm-up player (`components/warmup/WarmupPlayer.tsx`) is the first screen of the app built on both modes. While the eyes are open it is paper (a warm cream ground); while the exercise asks for closed eyes it is the stage. Since 2026-11-14 that dark ground is the landing's own, not a second dark:
+
+| Player variable | Eyes open (paper) | Eyes closed (stage) |
+|---|---|---|
+| `--wu-bg` / `--wu-bg-far` | warm cream to `surface` | `stage` to `stage-deep` |
+| `--wu-ink` | `on-surface` | `surface` (cream) |
+| `--wu-fill` + `--wu-on-fill` | `primary-container` + `on-primary` | `primary-fixed` (mint) + `on-primary-fixed` |
+| `--wu-move` (the part that moves) | `secondary` | `secondary-container` (the stage's terracotta) |
+
+- **(rule) A filled control names its text colour with its fill.** `--wu-fill` is always paired with `--wu-on-fill`; never pair a fill that changes between modes with a fixed text colour (white on mint was about 1.7 to 1). `tests/warmup-stage.test.ts` computes the contrast of both pairs from the tokens.
+- **(rule) What the person will hear is on the intro screen**, not behind a fold: sound, the guiding voice (with the line that says it is a computer-generated voice) and "listen to the sounds". Most of the exercise happens with the eyes closed, so the sound is the interface. The folded "A tu manera" holds only the three display options.
+- The change between the two stages takes 1.2 s on `--ease-out`, and starts when the voice says "cierra los ojos".
+- The transport controls (previous, play, next) and the chips are the player's own, a documented exception to "use `Button`": they change colour with the stage, which `Button` does not do.
+- **Known finding:** the breathing field (`components/warmup/BreathField.tsx`) is a second particle implementation, which the rule above forbids. It predates the rule. Moving it onto the landing's engine is planned work; do not add a third.
 
 ### Glass and grain on paper
 
@@ -384,6 +401,7 @@ A feature, an empty state or an explanation may carry a small drawing when it sh
 |---|---|---|
 | `--transition-fast` | `150ms ease` | Color/border state changes, hover |
 | `--transition-med` | `240ms cubic-bezier(0.2, 0.8, 0.2, 1)` | Panel open/close, layout transitions |
+| `--ease-out` | `cubic-bezier(0.22, 1, 0.36, 1)` | How a thing ARRIVES (fast out, long soft landing): the landing's hero entrance, the warm-up's change of stage. One definition; never paste the curve |
 
 **Animation:** `@keyframes phase-in` — `opacity 0→1` + `translateY 8px→0`. For page/section entry.
 
