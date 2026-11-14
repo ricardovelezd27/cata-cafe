@@ -1,7 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
-import { memberRosterForMember } from "@/lib/groupRoster";
+import { toMemberViewRows } from "@/lib/groups/memberViewRows";
 
 // The group page's ONE query for any viewer (S10 WP5a, F-grupos-10, review H2/M2).
 // It reads the member address only to decide whether a profile name is really the
@@ -41,31 +41,14 @@ export async function loadGroupForViewer(
   });
   if (!group) return null;
 
-  const labelById = new Map(
-    memberRosterForMember(
-      group.members.map((m) => ({
-        id: m.id,
-        displayName: m.displayName,
-        profileName: m.user?.displayName ?? null,
-        emails: [m.email],
-        linked: !!m.userId,
-      })),
-      labels,
-    ).map((r) => [r.id, r.label]),
-  );
-
   return {
     id: group.id,
     name: group.name,
     description: group.description,
     createdBy: group.createdBy,
     owner: group.owner,
-    // No `email` key: it is dropped here, after the label rule used it.
-    members: group.members.map((m) => ({
-      id: m.id,
-      userId: m.userId,
-      emailOptOutAt: m.emailOptOutAt,
-      label: labelById.get(m.id) ?? labels.pending,
-    })),
+    // No `email` key: it is dropped by the pure mapper, after the label rule used it
+    // (lib/groups/memberViewRows.ts, whose key allow-list the tests assert on).
+    members: toMemberViewRows(group.members, labels),
   };
 }

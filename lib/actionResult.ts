@@ -9,6 +9,8 @@
 //
 // Shared by server and client code — keep this file free of server imports.
 
+import { isLockTimeoutError } from "@/lib/lockTimeout";
+
 export const ACTION_ERROR_CODES = [
   "not_authenticated",
   "not_found_or_forbidden",
@@ -32,6 +34,7 @@ export const ACTION_ERROR_CODES = [
   "already_claimed", // confirmGuestClaim: the guest account is gone or no longer anonymous (S8-07)
   "account_protected", // deleteAccount: the super-admin account cannot be deleted from the app (S8-19)
   "account_too_large", // deleteAccount: more own sessions than one transaction may delete (S8-19, runbook §24)
+  "busy_retry", // a session-row lock was not free within 5 s (lib/sessionLock.ts, SQLSTATE 55P03): nothing was written, try again (S10 WP6 fix round)
   "conflict", // Prisma P2002 — unique constraint
   "not_found", // Prisma P2025 — row vanished (concurrent delete)
   "invalid_reference", // Prisma P2003 — FK target vanished
@@ -74,6 +77,7 @@ export function classifyActionError(err: unknown): ActionErrorCode {
     // Legacy throw from before the contract existed.
     if (err.message === "forbidden") return "not_found_or_forbidden";
   }
+  if (isLockTimeoutError(err)) return "busy_retry";
   const code = (err as { code?: unknown } | null)?.code;
   if (typeof code === "string" && code in PRISMA_CODE_MAP) return PRISMA_CODE_MAP[code];
   return "unknown";

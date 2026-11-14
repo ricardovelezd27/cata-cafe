@@ -56,6 +56,23 @@ export function originEditedAfterClose(input: {
   return latest;
 }
 
+/** The coffee profile's session list and the coffee ficha: the same note, from the
+ *  same rule as the results page (S10 WP6 B3). The row carries both moments, so a
+ *  coffee edit made between a passed `closesAt` and the later `closedAt` counts. */
+export function coffeeSessionOriginEditedAt(input: {
+  sessionClosedAt: MaybeDate;
+  sessionClosesAt?: MaybeDate;
+  coffeeOriginEditedAt: MaybeDate;
+  now?: Date;
+}): Date | null {
+  return originEditedAfterClose({
+    closedAt: input.sessionClosedAt,
+    closesAt: input.sessionClosesAt,
+    now: input.now,
+    coffeeOriginEditedAt: input.coffeeOriginEditedAt,
+  });
+}
+
 /** The results page / report note for ONE sample: only a revealed sample says it. */
 export function sampleOriginEditedAt(input: {
   revealed: boolean;

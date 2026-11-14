@@ -71,6 +71,17 @@ export default async function GroupsPage({
     sessionMany: t("sessionMany"),
     evaluationOne: t("evaluationOne"),
     evaluationMany: t("evaluationMany"),
+    lastSession: t("lastSession"),
+    // Raw templates: "{n}" is filled in lib/relativeDate.ts (never an ICU plural).
+    relative: {
+      today: t("relToday"),
+      oneDay: t("relOneDay"),
+      days: t.raw("relDays") as string,
+      oneMonth: t("relOneMonth"),
+      months: t.raw("relMonths") as string,
+      oneYear: t("relOneYear"),
+      years: t.raw("relYears") as string,
+    },
   };
 
   const createGroupT = {
@@ -178,7 +189,7 @@ export default async function GroupsPage({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {cuppers.map((c) => (
-              <CoCupperCard key={c.userId} cupper={c} groups={groupOptions} t={addToGroupT} />
+              <CoCupperCard key={c.userId} cupper={c} groups={groupOptions} locale={locale} t={addToGroupT} />
             ))}
           </div>
         )}

@@ -16,7 +16,7 @@ import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useActionFeedback } from "@/components/ui/Toast";
 import { browserZone, dateInZone } from "@/lib/closeRules";
-import { planRemoveActive, shouldPinReference, type ReferenceMode } from "@/lib/referenceRules";
+import { planRemoveActive, referenceExplanation, shouldPinReference, type ReferenceMode } from "@/lib/referenceRules";
 
 export type EditSessionFormTranslations = {
   name: string;
@@ -48,6 +48,7 @@ export type EditSessionFormTranslations = {
   referenceNone: string;
   referenceHelper: string;
   referenceHelperFree: string;
+  referenceHelperDescriptive: string;
   referenceModeLegend: string;
   referenceModeAnchor: string;
   referenceModeFree: string;
@@ -172,6 +173,8 @@ export function EditSessionForm({
   const [cupsInput, setCupsInput] = useState(String(initial.cupsPerSample));
   // B1: how the reference is scored; frozen with the format (server: format_locked).
   const [referenceMode, setReferenceMode] = useState<ReferenceMode>(initial.referenceMode);
+  // S10 WP6 fix round (2): which explanation the reference gets (lib/referenceRules.ts).
+  const explanation = referenceExplanation({ mode: referenceMode, moduleKey: format });
   const [groupId, setGroupId] = useState(initial.groupId ?? "");
   const [closesAt, setClosesAt] = useState(initial.closesAt);
   // Today in the owner's own zone (see the date input below).
@@ -701,10 +704,15 @@ export function EditSessionForm({
         <div>
           <label className={labelCls}>{t.referenceTitle}</label>
           <p className="text-xs text-on-surface-variant mb-2">
-            {referenceMode === "free" ? t.referenceHelperFree : t.referenceHelper}
+            {explanation === "descriptive"
+              ? t.referenceHelperDescriptive
+              : explanation === "free"
+                ? t.referenceHelperFree
+                : t.referenceHelper}
           </p>
         </div>
         {/* B1: how the reference is scored. Frozen with the format. */}
+        {explanation !== "descriptive" && (
         <fieldset disabled={closed || locked} className="space-y-1.5 border-0 p-0">
           <legend className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
             {t.referenceModeLegend}
@@ -742,6 +750,7 @@ export function EditSessionForm({
             <p className="text-xs text-on-surface-variant">{t.referenceModeLocked}</p>
           )}
         </fieldset>
+        )}
         {/* Native disabled state (keyboard + AT), not just pointer-events. */}
         <fieldset disabled={closed} className={closed ? "opacity-60" : ""}>
           <Select

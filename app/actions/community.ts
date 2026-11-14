@@ -28,6 +28,7 @@ import { syncCoffeeHistoryForSession } from "@/lib/coffeeHistory";
 import { encodeExclusionReason, exclusionData } from "@/lib/exclusionReasons";
 import type { ActionResult } from "@/lib/actionResult";
 import { refireAggregates } from "@/lib/aggregates";
+import { lockSessionRow, lockSessionRowShared } from "@/lib/sessionLock";
 import { reserveEmailBudget } from "@/lib/emailBudget";
 import { countUnsentComplete, isEvaluationComplete, planFinish } from "@/lib/closeRules";
 import { removeSamplesInTx } from "@/lib/sampleRemoval";
@@ -123,24 +124,30 @@ async function submitAllEvaluationsBody(
         select: { format: true, cupsPerSample: true, referenceSampleId: true, referenceMode: true },
       })
     : null;
-  const res =
-    legacy && rule
-      ? await prisma.$transaction(
-          async (tx) => {
-            await recomputeLegacyDraftsInTx(tx, {
-              sessionId,
-              cupperId: user.id,
-              now,
-              format: rule.format,
-              cupsPerSample: rule.cupsPerSample,
-              referenceSampleId: rule.referenceSampleId,
-              referenceMode: rule.referenceMode,
-            });
-            return tx.evaluation.updateMany({ where: flipWhere, data: flipData });
-          },
-          { maxWait: 10_000, timeout: 30_000 },
-        )
-      : await prisma.evaluation.updateMany({ where: flipWhere, data: flipData });
+  // S10 WP6 D1: the flip always runs in a short transaction whose FIRST statement
+  // takes the session row FOR SHARE (lib/sessionLock.ts). Without it the flip locks the
+  // cupper's evaluation row, then the aggregate trigger's first INSERT needs the sample
+  // row, while the owner naming that sample the reference holds the sample row and
+  // waits for the evaluation row: a deadlock (40P01, `unknown`). With it the owner
+  // waits for the session row and the two never cross.
+  const res = await prisma.$transaction(
+    async (tx) => {
+      await lockSessionRowShared(tx, sessionId);
+      if (legacy && rule) {
+        await recomputeLegacyDraftsInTx(tx, {
+          sessionId,
+          cupperId: user.id,
+          now,
+          format: rule.format,
+          cupsPerSample: rule.cupsPerSample,
+          referenceSampleId: rule.referenceSampleId,
+          referenceMode: rule.referenceMode,
+        });
+      }
+      return tx.evaluation.updateMany({ where: flipWhere, data: flipData });
+    },
+    { maxWait: 10_000, timeout: 30_000 },
+  );
 
   if (res.count === 0) {
     // Zero rows is normal (double click, nothing left in draft). Only a session
@@ -278,9 +285,13 @@ export async function finishSoloSession(
         } satisfies Prisma.EvaluationWhereInput;
         const flipData = { isDraft: false, submittedAt: now };
         const legacyArgs = { sessionId, cupperId: user.id, sampleIds: plan.submitIds, now };
-        if (await hasLegacyDrafts(prisma, legacyArgs)) {
-          await prisma.$transaction(
-            async (tx) => {
+        const legacy = await hasLegacyDrafts(prisma, legacyArgs);
+        // S10 WP6 D1: always a short transaction, session row FOR SHARE first (see
+        // submitAllEvaluations), so a reference change from another tab cannot cross it.
+        await prisma.$transaction(
+          async (tx) => {
+            await lockSessionRowShared(tx, sessionId);
+            if (legacy) {
               await recomputeLegacyDraftsInTx(tx, {
                 ...legacyArgs,
                 format: session.format,
@@ -288,13 +299,11 @@ export async function finishSoloSession(
                 referenceSampleId: session.referenceSampleId,
                 referenceMode: session.referenceMode,
               });
-              await tx.evaluation.updateMany({ where: flipWhere, data: flipData });
-            },
-            { maxWait: 10_000, timeout: 30_000 },
-          );
-        } else {
-          await prisma.evaluation.updateMany({ where: flipWhere, data: flipData });
-        }
+            }
+            await tx.evaluation.updateMany({ where: flipWhere, data: flipData });
+          },
+          { maxWait: 10_000, timeout: 30_000 },
+        );
       }
 
       // Only samples that STILL have no evaluation are removed (a concurrent
@@ -637,17 +646,21 @@ export async function revealSample(sampleId: string): Promise<ActionResult> {
     // is not in the realtime publication, so the session row's updatedAt is
     // touched in the same transaction: open cup pages get the cupping_sessions
     // UPDATE event, re-fetch, and show the sample read-only without a reload.
-    await prisma.$transaction([
-      prisma.sessionSample.update({
+    // S10 WP6 D2: the session row FIRST (lib/sessionLock.ts), like every other owner
+    // change of a sample; the old order (sample, then session) could cross
+    // setReferenceSample from a second tab.
+    await prisma.$transaction(async (tx) => {
+      await lockSessionRow(tx, auth.sessionId);
+      await tx.sessionSample.update({
         where: { id: sampleId },
         data: { revealed: true },
-      }),
-      prisma.cuppingSession.update({
+      });
+      await tx.cuppingSession.update({
         where: { id: auth.sessionId },
         data: { updatedAt: new Date() },
         select: { id: true },
-      }),
-    ]);
+      });
+    });
 
     revalidatePath(`/app/sessions/${auth.sessionId}/results`);
     revalidatePath(`/app/sessions/${auth.sessionId}/cup`);
@@ -1052,7 +1065,7 @@ export async function acceptLateEvaluation(
         // LOCK ORDER (lib/sessionLock.ts): the session row first, SHARED (the flip below fires the
         // aggregate trigger, which needs the sample row; a reference change takes the session row
         // exclusively first), then the evaluation row.
-        await tx.$queryRaw`SELECT 1 FROM cupping_sessions WHERE id = ${auth.sessionId} FOR SHARE`;
+        await lockSessionRowShared(tx, auth.sessionId);
         // Lock the row so a late device send (submitLateDraft) cannot change the
         // draft between the completeness check and the flip.
         await tx.$queryRaw`SELECT id FROM evaluations WHERE id = ${id} FOR UPDATE`;

@@ -121,6 +121,7 @@ export default async function NewSessionPage({
         free: t("newForm.referenceMode.free"),
         anchorHelp: t("newForm.referenceMode.anchorHelp"),
         freeHelp: t("newForm.referenceMode.freeHelp"),
+        descriptiveHelp: t("newForm.referenceMode.descriptiveHelp"),
       },
       samplePrep: {
         summary: t("newForm.samplePrep.summary"),

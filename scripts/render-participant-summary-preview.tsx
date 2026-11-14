@@ -162,7 +162,7 @@ const samples: ParticipantSummarySample[] = [
 
 const model: ParticipantSummaryModel = {
   header: {
-    sessionName: "Cata de calibración · Laboratorio Huila",
+    sessionName: "Cata de alineación · Laboratorio Huila",
     date: new Date("2026-10-14T15:00:00Z"),
     cupperName: "Ana María Velásquez",
     format: "combined",

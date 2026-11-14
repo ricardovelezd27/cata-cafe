@@ -35,7 +35,7 @@ import {
 } from "@/components/coffees/DeleteCoffeeButton";
 import { Badge, ButtonLink, ScorePill } from "@/components/ui";
 import { ReportLink } from "@/components/ui/ReportLink";
-import { originEditedAfterClose } from "@/lib/originEdit";
+import { coffeeSessionOriginEditedAt } from "@/lib/originEdit";
 import { historyCupsPerSample, isQuickImpression } from "@/lib/historyRules";
 import { DuplicateButton } from "@/components/DuplicateButton";
 
@@ -424,8 +424,9 @@ export default async function CoffeeProfilePage({
                           </div>
                           {(() => {
                             // F-cafes-9: this coffee's origin data is live; say so when it changed after that session closed.
-                            const edited = originEditedAfterClose({
-                              closedAt: row.sessionClosedAt,
+                            const edited = coffeeSessionOriginEditedAt({
+                              sessionClosedAt: row.sessionClosedAt,
+                              sessionClosesAt: row.sessionClosesAt,
                               coffeeOriginEditedAt: coffee.originEditedAt,
                             });
                             return edited ? (

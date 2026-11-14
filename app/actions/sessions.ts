@@ -1733,6 +1733,8 @@ export async function renameSessionSample(sampleId: string, label: string) {
   }
 
   await prisma.$transaction(async (tx) => {
+    // S10 WP6 D2: the session row first (lib/sessionLock.ts).
+    await lockSessionRow(tx, sessionId);
     await tx.sessionSample.update({
       where: { id: sampleId },
       data: { label: trimmed },
@@ -2028,6 +2030,8 @@ export async function updateSampleMetadata(
 
   if (!postCloseNaming) {
     await prisma.$transaction(async (tx) => {
+      // S10 WP6 D2: the session row first (lib/sessionLock.ts).
+      await lockSessionRow(tx, sample.sessionId);
       await tx.sessionSample.update({
         where: { id: sampleId },
         data: { label: input.label || undefined, ...prepUpdate },

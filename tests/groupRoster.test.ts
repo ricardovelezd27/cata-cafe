@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { looksLikeAddress, memberRosterForMember } from "@/lib/groupRoster";
+import { MEMBER_VIEW_KEYS, toMemberViewRows } from "@/lib/groups/memberViewRows";
 
 const L = { pending: "Invitación pendiente", member: "Miembro" };
 
@@ -66,6 +67,52 @@ describe("looksLikeAddress", () => {
     expect(looksLikeAddress("Ricardo Vélez", emails)).toBe(false);
     expect(looksLikeAddress("", emails)).toBe(false);
     expect(looksLikeAddress("Ana", [])).toBe(false);
+  });
+});
+
+// S10 WP6 B6: the guard is on the RETURNED OBJECTS (a typed allow-list), not on the source text.
+// Rows are poisoned with an address, a whole profile and extra columns: whatever way the
+// mapper let one through (a spread of the row, `user: true`, a renamed key) fails here.
+describe("toMemberViewRows returns only the allow-listed keys", () => {
+  const poisoned = [
+    {
+      id: "m1",
+      userId: "u1",
+      displayName: "Ana Ríos",
+      email: "ana.rios@secreto.example",
+      emailOptOutAt: null,
+      user: { displayName: "Ana", email: "ana.rios@secreto.example", id: "u1" },
+      groupId: "g1",
+      extra: "x",
+    },
+    {
+      id: "m2",
+      userId: null,
+      displayName: null,
+      email: "zzq@secreto.example",
+      emailOptOutAt: new Date("2026-11-01T00:00:00Z"),
+      user: null,
+    },
+  ];
+  const rows = toMemberViewRows(poisoned, L);
+
+  it("every row has exactly MEMBER_VIEW_KEYS, in any order", () => {
+    for (const r of rows) expect(Object.keys(r).sort()).toEqual([...MEMBER_VIEW_KEYS]);
+  });
+  it("no address, local part or profile object survives anywhere in the output", () => {
+    const json = JSON.stringify(rows).toLowerCase();
+    expect(json).not.toContain("@");
+    expect(json).not.toContain("secreto");
+    expect(json).not.toContain("zzq");
+    expect(json).not.toContain("groupid");
+    expect(json).not.toContain('"user"');
+  });
+  it("keeps what the page needs", () => {
+    expect(rows.map((r) => [r.id, r.userId, r.label])).toEqual([
+      ["m1", "u1", "Ana Ríos"],
+      ["m2", null, L.pending],
+    ]);
+    expect(rows[1].emailOptOutAt).toEqual(new Date("2026-11-01T00:00:00Z"));
   });
 });
 

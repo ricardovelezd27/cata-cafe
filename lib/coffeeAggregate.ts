@@ -27,7 +27,14 @@ export interface CoffeeAggregateSampleInput {
   id: string;
   sessionId: string;
   /** name/date are null when the viewer neither owns nor joined the session: the row still feeds the anonymous totals but is never listed. */
-  session: { id: string; name: string | null; date: Date | null; closedAt?: Date | null };
+  session: {
+    id: string;
+    name: string | null;
+    date: Date | null;
+    closedAt?: Date | null;
+    /** The session deadline (S10 WP6 B3): with `closedAt` it gives the moment writing stopped (`stoppedWritingAt`). */
+    closesAt?: Date | null;
+  };
   aggregateScore: {
     communityScore: number | null;
     participantCount: number;
@@ -44,6 +51,8 @@ export interface CoffeeSessionRow {
   sessionDate: Date;
   /** When the session closed (only for sessions the viewer owns or joined); drives the "origin data edited" note. */
   sessionClosedAt: Date | null;
+  /** The deadline, for the same note (the earlier of closedAt and a passed closesAt). */
+  sessionClosesAt: Date | null;
   communityScore: number | null;
 }
 
@@ -187,6 +196,7 @@ export function computeCoffeeAggregate(
               sessionName: s.session.name,
               sessionDate: s.session.date,
               sessionClosedAt: s.session.closedAt ?? null,
+              sessionClosesAt: s.session.closesAt ?? null,
               communityScore: s.aggregateScore?.communityScore ?? null,
             },
           ],

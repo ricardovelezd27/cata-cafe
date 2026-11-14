@@ -228,9 +228,9 @@ const alignInput = {
 const source: SessionReportSource = {
   session: {
     id: "sess-1",
-    name: "Cata de calibración · Laboratorio Huila",
+    name: "Cata de alineación · Laboratorio Huila",
     date: new Date("2026-10-14T15:00:00Z"),
-    objective: "Calibrar el paladar del equipo contra la referencia y revisar lotes de Nariño y Tolima antes de la compra.",
+    objective: "Alinear el paladar del equipo contra la referencia y revisar lotes de Nariño y Tolima antes de la compra.",
     format: "combined",
     cupsPerSample: 5,
     isGroup: true,
@@ -326,7 +326,7 @@ const coffeeModel: CoffeeFichaModel = {
       defectPenalty: 0,
     },
     sessions: [
-      { name: "Cata de calibración · Laboratorio Huila", date: new Date("2026-10-14"), score: 84.1 },
+      { name: "Cata de alineación · Laboratorio Huila", date: new Date("2026-10-14"), score: 84.1 },
       { name: "Revisión de lotes septiembre", date: new Date("2026-09-20"), score: 82.35 },
       { name: "Cata de bienvenida", date: new Date("2026-08-02"), score: null },
     ],

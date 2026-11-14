@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { subscribeWithSessionAuth } from "@/lib/supabase/realtimeAuth";
 import { revealSample, refreshAggregateScores, resendCloseEmails, finishSoloSession, closeSession } from "@/app/actions/community";
-import { planFinish } from "@/lib/closeRules";
+import { planFinish, soloCloseAsIsOffer } from "@/lib/closeRules";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ScoreTable, type ScoreTableTranslations } from "@/components/results/ScoreTable";
 import { SampleRadarChart } from "@/components/results/SampleRadarChart";
@@ -188,6 +188,7 @@ export function ResultsClient({
   noteTranslations,
   finish = null,
   closeNow = null,
+  closeAsIs = null,
   revealConfirm = null,
   sync = null,
   translations,
@@ -288,6 +289,18 @@ export function ResultsClient({
   // sample can no longer be evaluated (S10 WP3a, X3). Null once the session is over
   // (closing reveals everything, no dialog).
   revealConfirm?: { title: string; body: string; confirm: string; cancel: string } | null;
+  // S10 WP6 C1: solo owner whose "Terminar cata" cannot finish because of revealed,
+  // unfinished samples: "Cerrar la cata" closes it as it is (owner `closeSession`).
+  closeAsIs?: {
+    line: string;
+    button: string;
+    title: string;
+    body: string;
+    confirm: string;
+    cancel: string;
+    error: string;
+    notFinalized: string;
+  } | null;
   closeNow?: {
     line: string;
     button: string;
@@ -497,6 +510,20 @@ export function ResultsClient({
         })),
       )
     : null;
+  const [closeAsIsOpen, setCloseAsIsOpen] = useState(false);
+  const showCloseAsIs =
+    closeAsIs !== null &&
+    !isAdminViewer &&
+    cuppingOpen &&
+    finishPlan !== null &&
+    soloCloseAsIsOffer({
+      canFinish: finishPlan.canFinish,
+      samples: session.samples.map((s) => ({
+        revealed: s.revealed,
+        submitted: s.myEvaluation?.status === "submitted",
+        isReference: s.isReference,
+      })),
+    });
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [editingSampleId, setEditingSampleId] = useState<string | null>(null);
   const [pickingCoffee, setPickingCoffee] = useState(false);
@@ -949,6 +976,36 @@ export function ResultsClient({
         >
           {closedNotice}
         </div>
+      )}
+      {closeAsIs && showCloseAsIs && (
+        <div
+          role="status"
+          className="mx-4 mt-4 flex flex-wrap items-center gap-2 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6"
+        >
+          <span className="flex-1 min-w-[200px]">{closeAsIs.line}</span>
+          <Button size="sm" variant="secondary" onClick={() => setCloseAsIsOpen(true)}>
+            {closeAsIs.button}
+          </Button>
+        </div>
+      )}
+      {closeAsIs && showCloseAsIs && (
+        <ConfirmDialog
+          open={closeAsIsOpen}
+          onOpenChange={setCloseAsIsOpen}
+          title={closeAsIs.title}
+          body={<p>{closeAsIs.body}</p>}
+          confirmLabel={closeAsIs.confirm}
+          cancelLabel={closeAsIs.cancel}
+          closeLabel={closeAsIs.cancel}
+          error={closeAsIs.error}
+          onConfirm={async () => {
+            // The existing owner close (closeSessionInternal): closeSession throws on
+            // failure and ConfirmDialog shows `error`.
+            const r = await closeSession(session.id);
+            if (!r.finalized) feedback.notifySuccess(closeAsIs.notFinalized);
+            router.refresh();
+          }}
+        />
       )}
       {myLateNotices.map((line) => (
         <div

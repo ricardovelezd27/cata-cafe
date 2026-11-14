@@ -290,9 +290,10 @@
       },
       "referenceMode": {
         "legend": "Cómo se usa la referencia",
-        "anchor": "Ancla",
+        "anchor": "Referencia fija",
         "free": "Referencia libre",
-        "anchorHelp": "Su calidad queda fijada en 5 (79.00) para todos y solo se describe. Es un ejercicio de Café Sensible, no del CVA.",
+        "anchorHelp": "Su calidad queda fijada en 5 y solo se describe. La referencia fija es un ejercicio de Café Sensible para alinear al grupo: todos le dan 79.00. No es parte del CVA, donde cada persona puntúa su propia impresión.",
+        "descriptiveHelp": "La referencia se cata primero y sirve de punto de comparación para las demás muestras.",
         "freeHelp": "Todos la puntúan como cualquier otra muestra y las demás se comparan con su promedio."
       }
     },
@@ -369,7 +370,8 @@
       "backToSessions": "Volver a sesiones",
       "referenceTitle": "Muestra de referencia",
       "referenceNone": "Sin referencia",
-      "referenceHelper": "Las demás muestras se comparan contra esta en los resultados. No afecta el puntaje. Si eliges otra, se añade como Referencia 2: la anterior conserva sus 79.00 y la nueva queda fijada.",
+      "referenceHelper": "Las demás muestras se comparan contra esta en los resultados. No afecta el puntaje. Si eliges otra, se añade como Referencia 2: la anterior se desbloquea y la nueva queda fijada.",
+      "referenceHelperDescriptive": "Las demás muestras se comparan contra esta en los resultados. Si eliges otra, se añade como Referencia 2. La referencia se cata primero y sirve de punto de comparación para las demás muestras.",
       "referenceSaved": "Referencia actualizada",
       "closesAt": "Fecha de cierre",
       "closesAtHint": "Opcional. La sesión se cierra sola en la madrugada siguiente a esta fecha. Déjala vacía para una cata en vivo que cierras tú.",
@@ -378,10 +380,10 @@
       "sessionExpired": "La fecha de cierre de esta cata ya pasó: se cerrará en las próximas horas y ya no se puede editar.",
       "warmupLocked": "El ejercicio no se puede cambiar una vez iniciada la cata.",
       "repinTitle": "¿Fijar esta muestra como referencia?",
-      "repinBody": "{n} catadores ya evaluaron esta muestra. Al marcarla como referencia, sus notas de calidad se reemplazan por el ancla de 79.00. Sus calificaciones anteriores de esta muestra se guardan y vuelven si quitas la referencia.",
+      "repinBody": "{n} catadores ya evaluaron esta muestra. Al marcarla como referencia, sus notas de calidad se reemplazan por los 79.00 de la referencia fija. Sus calificaciones anteriores de esta muestra se guardan y vuelven si quitas la referencia.",
       "sampleHasData": "Tiene datos físicos o de origen — no se puede eliminar",
       "removeRepinTitle": "¿Quitar la referencia activa?",
-      "removeRepinBody": "Al quitarla, {label} vuelve a ser la referencia y {n} catadores verán sus notas de calidad reemplazadas por el ancla de 79.00. Sus calificaciones anteriores de esta muestra se guardan y vuelven si quitas la referencia.",
+      "removeRepinBody": "Al quitarla, {label} vuelve a ser la referencia y {n} catadores verán sus notas de calidad reemplazadas por los 79.00 de la referencia fija. Sus calificaciones anteriores de esta muestra se guardan y vuelven si quitas la referencia.",
       "ratingsRestored": "Se recuperaron las calificaciones anteriores de {n} evaluaciones.",
       "removeRepinConfirm": "Quitar referencia",
       "referenceRepinBlocked": "Quitar esta muestra reactivaría una referencia anterior y reemplazaría las notas de sus catadores. Cambia primero la referencia.",
@@ -429,8 +431,8 @@
     "noSamplesBody": "Añade al menos una muestra para empezar a catar.",
     "referenceBadge": "Referencia",
     "compareHint": "Compara con la referencia ({label})",
-    "referenceLocked": "Muestra de referencia: la calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos y su puntaje es siempre 79.00. Describe lo que percibes; en las demás muestras puntuarás por encima o por debajo de esta.",
-    "referenceLockedAffective": "Muestra de referencia: la calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos y no hay nada que puntuar aquí. Pruébala con calma, anota lo que percibas y continúa con la siguiente muestra.",
+    "referenceLocked": "Referencia fija: la calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos y su puntaje es siempre 79.00. Describe lo que percibes; en las demás muestras puntuarás por encima o por debajo de esta.",
+    "referenceLockedAffective": "Referencia fija: la calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos y no hay nada que puntuar aquí. Pruébala con calma, anota lo que percibas y continúa con la siguiente muestra.",
     "referenceCupsLocked": "Las tazas de la referencia no se marcan: su puntaje se mantiene fijo en 79.00.",
     "revealedNote": "Muestra revelada: ya no se puede evaluar.",
     "market": {
@@ -783,7 +785,8 @@
     "referenceAdd": "Añadir referencia…",
     "referenceRemoveActive": "Quitar la referencia activa",
     "referenceRevealed": "revelada, no puede ser referencia fija",
-    "referenceAddHint": "La referencia anterior conserva sus 79.00; la nueva queda fijada.",
+    "referenceAddHint": "La nueva referencia queda fijada y la anterior se desbloquea. La referencia fija es un ejercicio de Café Sensible para alinear al grupo: todos le dan 79.00. No es parte del CVA, donde cada persona puntúa su propia impresión.",
+    "referenceAddHintDescriptive": "La referencia se cata primero y sirve de punto de comparación para las demás muestras.",
     "referenceAddTitle": "Añadir referencia",
     "referenceAddConfirm": "Añadir referencia",
     "warmupStart": "Movimiento sensorial · Empezar con el grupo",
@@ -933,8 +936,8 @@
     },
     "dashboard": {
       "statSamples": "Muestras evaluadas",
-      "anchorTitle": "Referencia (ancla)",
-      "anchorHint": "Calidad fijada en 5 en todos los atributos · siempre 79.00 · fuera del ranking, del promedio y de la mejor muestra",
+      "anchorTitle": "Referencia fija",
+      "anchorHint": "Calidad fijada en 5 en todos los atributos · siempre 79.00 · fuera del ranking, del promedio y de la mejor muestra. La referencia fija es un ejercicio de Café Sensible para alinear al grupo: todos le dan 79.00. No es parte del CVA, donde cada persona puntúa su propia impresión.",
       "statParticipation": "Participación",
       "statAvg": "Promedio de sesión",
       "statBest": "Mejor muestra",
@@ -1138,7 +1141,7 @@
       },
       "referencia": {
         "title": "Muestra de referencia",
-        "body": "El maestro de cata puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La cata empieza por ella y su calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos, así que cada catador le da siempre 79.00 y solo describe lo que percibe. No entra en el ranking, en el promedio ni en la mejor muestra: es el ancla.\nLo que agrega es contexto: junto a cada muestra verás Δ, la diferencia entre su puntaje y el de la referencia, calculada siempre con el mismo tipo de puntaje que ves al lado (comunitario cuando está visible; si no, el tuyo).\nReferencia, media del grupo y desviación son cosas distintas: la referencia es el punto de partida elegido por el maestro; la media es lo que percibió el grupo; la desviación (±) es cuánto se dispersó el grupo.",
+        "body": "El maestro de cata puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La cata empieza por ella y su calidad queda fijada en 5 (ni alto ni bajo) en todos los atributos, así que cada catador le da siempre 79.00 y solo describe lo que percibe. No entra en el ranking, en el promedio ni en la mejor muestra. La referencia fija es un ejercicio de Café Sensible para alinear al grupo: todos le dan 79.00. No es parte del CVA, donde cada persona puntúa su propia impresión.\nLo que agrega es contexto: junto a cada muestra verás Δ, la diferencia entre su puntaje y el de la referencia, calculada siempre con el mismo tipo de puntaje que ves al lado (comunitario cuando está visible; si no, el tuyo).\nReferencia, media del grupo y desviación son cosas distintas: la referencia es el punto de partida elegido por el maestro; la media es lo que percibió el grupo; la desviación (±) es cuánto se dispersó el grupo.",
         "bodyFree": "El maestro de cata puede marcar una muestra como referencia: un punto de partida común contra el que se leen las demás. La cata empieza por ella y todos la puntúan libremente, como cualquier otra muestra. No entra en el ranking, en el promedio ni en la mejor muestra.\nLo que agrega es contexto: junto a cada muestra verás Δ, la diferencia entre su puntaje y el de la referencia, calculada siempre con el mismo tipo de puntaje que ves al lado (comunitario cuando está visible; si no, el tuyo).\nReferencia, media del grupo y desviación son cosas distintas: la referencia es el punto de partida elegido por el maestro; la media es lo que percibió el grupo; la desviación (±) es cuánto se dispersó el grupo."
       }
     },
@@ -1197,7 +1200,7 @@
     },
     "revealConfirm": {
       "title": "¿Revelar esta muestra?",
-      "body": "Todos verán qué café es y nadie podrá seguir evaluando esta muestra. Las evaluaciones en borrador de esta muestra quedarán como están.",
+      "body": "Todos verán qué café es y nadie podrá seguir evaluando esta muestra. Las evaluaciones en borrador de esta muestra quedarán como están. Si todavía no la evaluaste, ya no podrás hacerlo.",
       "confirm": "Revelar muestra",
       "cancel": "Cancelar"
     },
@@ -1216,6 +1219,15 @@
     "closeNow": {
       "line": "La fecha de cierre ya pasó. La cata se cerrará sola en las próximas horas; puedes cerrarla ahora para enviar los resultados.",
       "button": "Cerrar ahora"
+    },
+    "closeAsIs": {
+      "line": "Las muestras ya reveladas no se pueden seguir evaluando. Puedes cerrar la cata tal como está: lo que ya enviaste se conserva.",
+      "button": "Cerrar la cata",
+      "go": "Ir a los resultados",
+      "title": "¿Cerrar la cata?",
+      "body": "La cata se cierra tal como está y ya no se podrá editar. Lo que ya enviaste se conserva.",
+      "confirm": "Cerrar la cata",
+      "cancel": "Seguir catando"
     },
     "finish": {
       "button": "Terminar cata",
@@ -1408,7 +1420,7 @@
       "creating": "Creando…",
       "nameRequired": "El nombre es obligatorio.",
       "error": "No se pudo crear el café. Inténtalo de nuevo.",
-      "conflict": "Este café cambió en otro dispositivo. Recarga para ver la versión actual.",
+      "conflict": "Este café cambió en otro dispositivo. Al recargar verás la versión actual y se perderá lo que escribiste aquí: cópialo antes si lo necesitas.",
       "conflictReload": "Recargar"
     },
     "share": {
@@ -1576,9 +1588,9 @@
   },
   "landing": {
     "meta": {
-      "title": "cafesensible.ai — Calibra el paladar de tu grupo, con datos",
+      "title": "cafesensible.ai — Alinea el paladar de tu grupo, con datos",
       "description": "La herramienta del Método Café Sensible: sesiones de cata en grupo sobre el protocolo SCA CVA completo, con la referencia del instructor y una convergencia que se ve. Para escuelas, formadores y facilitadores.",
-      "ogTitle": "cafesensible.ai — El paladar de tu grupo, calibrado y medido.",
+      "ogTitle": "cafesensible.ai — El paladar de tu grupo, alineado y medido.",
       "ogDescription": "Cata SCA CVA en grupo con referencia del instructor, desviación por persona y convergencia visible, sesión a sesión."
     },
     "header": {
@@ -1589,7 +1601,7 @@
     },
     "hero": {
       "eyebrow": "La herramienta del Método Café Sensible · SCA CVA",
-      "title": "El paladar de tu grupo, calibrado y medido.",
+      "title": "El paladar de tu grupo, alineado y medido.",
       "subtitle": "Sesiones de cata en grupo sobre el protocolo SCA CVA completo, con la referencia del instructor y una convergencia que puedes ver. La herramienta del Método Café Sensible, para escuelas, formadores y facilitadores.",
       "ctaNote": "Sin tarjeta. Sin contraseña. Solo tu correo."
     },
@@ -1621,7 +1633,7 @@
     },
     "how": {
       "eyebrow": "Cómo funciona",
-      "title": "Percibir, describir, calibrar. En ese orden.",
+      "title": "Percibir, describir, alinear. En ese orden.",
       "step1Kicker": "Percibe",
       "step1Title": "Cátalo",
       "step1Desc": "Cada persona evalúa la taza con el protocolo CVA oficial, a su ritmo. Funciona sin conexión, también en sesiones de grupo.",
@@ -1631,7 +1643,7 @@
       "step2Desc": "El grupo registra intensidades y descriptores, taza a taza. El vocabulario se construye entre todos.",
       "step2Caption": "Taller en directo. Grupo real.",
       "step3Kicker": "Mide",
-      "step3Title": "Calibra",
+      "step3Title": "Alinea",
       "step3Desc": "Compara cada evaluación con la referencia del instructor, mide la desviación y exporta el informe en PDF. La convergencia se ve.",
       "frame1Aria": "Recreación de la pantalla de evaluación afectiva con escala de 1 a 9",
       "frame2Aria": "Recreación del selector de descriptores de sabor",
@@ -1663,7 +1675,7 @@
         "desc": "Informe y certificado en PDF por sesión, listos para entregar."
       },
       "item6": {
-        "title": "Calibración en grupo",
+        "title": "Alineación en grupo",
         "desc": "Sesiones en grupo contra la referencia del instructor, también en asíncrono: cada persona cata cuando puede."
       },
       "factsSheets": "3 hojas",
@@ -1675,13 +1687,13 @@
       "eyebrow": "Para quién es",
       "title": "Hecho para quien forma paladares",
       "card1Title": "Formadores y facilitadores",
-      "card1Desc": "Das catas y talleres y quieres que tus asistentes vean su progreso con datos, no solo con tu palabra. Calibra al grupo contra tu referencia y entrégales su evolución.",
+      "card1Desc": "Das catas y talleres y quieres que tus asistentes vean su progreso con datos, no solo con tu palabra. Alinea al grupo contra tu referencia y entrégales su evolución.",
       "card2Title": "Escuelas",
-      "card2Desc": "Calibra cohortes enteras, sigue la desviación de cada alumno sesión a sesión y cierra el curso con certificados en PDF.",
+      "card2Desc": "Alinea cohortes enteras, sigue la desviación de cada alumno sesión a sesión y cierra el curso con certificados en PDF.",
       "card3Title": "Tostadores",
       "card3Desc": "Alinea el criterio de tu mesa de cata antes de decidir un lote.",
       "card4Title": "Cooperativas",
-      "card4Desc": "Mantén a tu panel calibrado, con evidencia de consistencia.",
+      "card4Desc": "Mantén a tu panel alineado, con evidencia de consistencia.",
       "card5Title": "Importadores",
       "card5Desc": "Control de calidad en grupo con puntajes comparables entre catadores.",
       "galleryCaption": "Sesiones reales del método. Grupos de varios países.",
@@ -1696,7 +1708,7 @@
       "heroUnit": "miembros fundadores",
       "offer": "Gratis para los primeros {count} miembros fundadores",
       "feature1": "Cata CVA completa en sus tres hojas: descriptiva, afectiva y extrínseca",
-      "feature2": "Sesiones en grupo y calibración con referencia del instructor",
+      "feature2": "Sesiones en grupo y alineación con referencia del instructor",
       "feature3": "Informes y certificados en PDF",
       "feature4": "Funciona sin conexión, pensado para el laboratorio",
       "cta": "Reserva tu plaza fundadora →",
@@ -1719,7 +1731,7 @@
       "kicker": "Muchos paladares. Una referencia. Un número.",
       "title": "Deja de <em>adivinar</em> si tu equipo cata igual.",
       "sub": "Mídelo. En la próxima sesión.",
-      "cta": "Calibra a tu equipo gratis →",
+      "cta": "Alinea a tu equipo gratis →",
       "note": "Sin contraseñas. Entra con un enlace mágico a tu correo.",
       "photo5Alt": "Catadores inclinados sobre las tazas durante la evaluación."
     },
@@ -2064,6 +2076,14 @@
     "sessionMany": "sesiones",
     "evaluationOne": "evaluación",
     "evaluationMany": "evaluaciones",
+    "lastSession": "Última sesión:",
+    "relToday": "hoy",
+    "relOneDay": "hace 1 día",
+    "relDays": "hace {n} días",
+    "relOneMonth": "hace 1 mes",
+    "relMonths": "hace {n} meses",
+    "relOneYear": "hace 1 año",
+    "relYears": "hace {n} años",
     "addToGroup": "Añadir a grupo",
     "members": "Integrantes",
     "addMember": "Añadir integrante",
@@ -2169,7 +2189,8 @@
       "not_found_or_forbidden": "No encontramos ese elemento o no tienes permiso.",
       "session_not_started": "La cata aún no empezó. Espera a que el maestro la inicie.",
       "session_closed": "Esta cata ya está cerrada; sus resultados son definitivos.",
-      "reference_revealed": "Esta acción cambiaría las calificaciones de una muestra ya revelada. Elige otra muestra como referencia.",
+      "busy_retry": "La cata está ocupada en este momento. Inténtalo de nuevo en unos segundos.",
+      "reference_revealed": "Esta acción cambiaría las calificaciones de una muestra ya revelada. Puedes marcar otra muestra como referencia o dejar la referencia como está.",
       "sample_revealed": "Esta muestra ya fue revelada y no se puede seguir evaluando.",
       "invalid_token": "Este enlace de invitación no es válido.",
       "token_expired": "Este enlace de invitación caducó.",
@@ -2203,17 +2224,19 @@
       "open": "Abrir ejercicio",
       "mobileLink": "Movimiento sensorial",
       "count": "5 ejercicios",
-      "eyesClosed": "Ojos cerrados"
+      "eyesClosed": "Ojos cerrados",
+      "intro": "Calmar y enfocar la atención antes de catar. El orden recomendado es del 1 al 5: el primero es la puerta de entrada. Cada ejercicio se puede hacer solo.",
+      "kimLine": "«En mis clases veo que los catadores llegan más presentes a la mesa.» — Kim Ossenblok"
     },
     "dashboard": {
       "eyebrow": "Antes de catar",
       "title": "Movimiento Sensorial",
-      "body": "Cinco movimientos lentos de Kim para asentarte y llegar con calma antes de oler y probar. De 3 a 8 minutos, con silla o de pie.",
+      "body": "Cinco movimientos lentos de Kim. Calmar y enfocar la atención antes de catar. De 3 a 8 minutos, con silla o de pie.",
       "cta": "Ver los ejercicios"
     },
     "waiting": {
       "title": "Mientras esperas",
-      "body": "Un movimiento lento te ayuda a asentarte antes de catar. Elige un ejercicio; si la cata empieza, te llevamos a la mesa.",
+      "body": "Un movimiento lento para calmar y enfocar la atención antes de catar. Elige un ejercicio; si la cata empieza, te llevamos a la mesa.",
       "minutes": "{min} min",
       "hero": "Tu maestro eligió",
       "heroStart": "Empezar",

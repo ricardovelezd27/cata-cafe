@@ -6,29 +6,18 @@
 import { Avatar } from "@/components/ui/Avatar";
 import type { CoCupperCandidate } from "@/lib/coCuppers";
 import { ROLE_LABELS } from "@/lib/constants";
+import { formatRelativeDate, type RelativeDateLabels } from "@/lib/relativeDate";
 import { AddToGroupButton, type GroupOption } from "./AddToGroupButton";
-
-function formatRelativeDate(date: Date): string {
-  const now = Date.now();
-  const diff = now - date.getTime();
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  if (days === 0) return "hoy";
-  if (days === 1) return "hace 1 día";
-  if (days < 30) return `hace ${days} días`;
-  const months = Math.floor(days / 30);
-  if (months === 1) return "hace 1 mes";
-  if (months < 12) return `hace ${months} meses`;
-  const years = Math.floor(months / 12);
-  return years === 1 ? "hace 1 año" : `hace ${years} años`;
-}
 
 export function CoCupperCard({
   cupper,
   groups,
+  locale,
   t,
 }: {
   cupper: CoCupperCandidate;
   groups: GroupOption[];
+  locale: string;
   t: {
     addToGroup: string;
     newGroupOption: string;
@@ -40,11 +29,13 @@ export function CoCupperCard({
     sessionMany: string;
     evaluationOne: string;
     evaluationMany: string;
+    lastSession: string;
+    relative: RelativeDateLabels;
   };
 }) {
-  // This component isn't passed a locale today, so it keeps rendering Spanish
-  // labels (matching its prior hard-coded map) via the shared ROLE_LABELS.
-  const roleLabel = ROLE_LABELS[cupper.role]?.es ?? cupper.role;
+  // Role names come from the shared ROLE_LABELS in the page's locale; every other
+  // string comes in through `t` (S10 WP6 A4).
+  const roleLabel = ROLE_LABELS[cupper.role]?.[locale === "en" ? "en" : "es"] ?? cupper.role;
 
   return (
     <div className="bg-surface-container-lowest rounded-card border border-outline-variant p-5 flex flex-col gap-4">
@@ -70,7 +61,7 @@ export function CoCupperCard({
           {cupper.evaluationCount === 1 ? t.evaluationOne : t.evaluationMany}
         </p>
         <p className="text-xs text-on-surface-variant">
-          Última sesión: {formatRelativeDate(cupper.lastSessionDate)} —{" "}
+          {t.lastSession} {formatRelativeDate(cupper.lastSessionDate, t.relative)} —{" "}
           <span className="italic">{cupper.lastSessionName}</span>
         </p>
       </div>

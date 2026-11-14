@@ -1241,6 +1241,22 @@ export default async function ResultsPage({
             }
           : null
       }
+      // S10 WP6 C1: a solo cupping that "Terminar cata" cannot finish because revealed
+      // samples can no longer be evaluated gets "Cerrar la cata" (the owner close).
+      closeAsIs={
+        !isAdminViewer && !session.isGroup && isOwner && !sessionOver
+          ? {
+              line: tResults("closeAsIs.line"),
+              button: tResults("closeAsIs.button"),
+              title: tResults("closeAsIs.title"),
+              body: tResults("closeAsIs.body"),
+              confirm: tResults("closeAsIs.confirm"),
+              cancel: tResults("closeAsIs.cancel"),
+              error: tg("closeSessionError"),
+              notFinalized: tg("closeNotFinalized"),
+            }
+          : null
+      }
       revealConfirm={
         !isAdminViewer && isOwner && !sessionOver
           ? {

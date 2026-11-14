@@ -2,6 +2,7 @@ import "server-only";
 
 import { Prisma } from "@/app/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { lockSessionRowShared } from "@/lib/sessionLock";
 
 export type RefireMode =
   /** An explicit owner change (exclusion, "Actualizar" on an open session):
@@ -71,7 +72,15 @@ export async function refireAggregates(
         )
       )`
       : Prisma.empty;
-  await prisma.$executeRaw`
+  // S10 WP6 D2: the session row FOR SHARE first (lib/sessionLock.ts). The statement
+  // updates evaluation rows and its trigger inserts/updates aggregate rows (a sample
+  // key-share); a reference change (session row exclusively, then sample rows FOR
+  // UPDATE, then evaluation rows) must not interleave with it. Callers never hold
+  // another interactive transaction here.
+  await prisma.$transaction(
+    async (tx) => {
+      await lockSessionRowShared(tx, sessionId);
+      await tx.$executeRaw`
     UPDATE evaluations e
     SET "isDraft" = e."isDraft"
     FROM session_samples ss
@@ -79,4 +88,7 @@ export async function refireAggregates(
       AND ss."sessionId" = ${sessionId}
       AND e."isDraft" = false${skipOldRule}
   `;
+    },
+    { maxWait: 10_000, timeout: 60_000 },
+  );
 }

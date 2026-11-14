@@ -14,7 +14,7 @@ The tool exists to make rigorous, reproducible cupping sessions as frictionless 
 
 **Standing product law: valor antes que fricción.** The app delivers value first and asks for identity, data, or money only afterwards — always dismissibly. Every gate we design, present and future, is checked against this ordering before it ships.
 
-**El puntaje necesita contexto.** A CVA number alone is not a decision: the same coffee can be excellent for one objective (filter, education, calibration) and wrong for another (espresso, a buyer's target). Every score surface therefore ships with its comparison — community mean, consensus SD, and now the owner's reference sample with a signed Δ — all display-only; the CVA formula is never mutated. As of 2026-09-25 the reference is cupped first and its quality pinned at 5, so it functions as a true anchor the room calibrates against rather than another competitor in the ranking. New features are checked against one question: does this help the user understand what they are evaluating, against what, and what the result means? Adding numbers without context is regression.
+**El puntaje necesita contexto.** A CVA number alone is not a decision: the same coffee can be excellent for one objective (filter, education, alignment) and wrong for another (espresso, a buyer's target). Every score surface therefore ships with its comparison — community mean, consensus SD, and now the owner's reference sample with a signed Δ — all display-only; the CVA formula is never mutated. As of 2026-09-25 the reference is cupped first and its quality pinned at 5, so it works as a fixed reference the room aligns on (a Café Sensible exercise, not part of the CVA) rather than another competitor in the ranking. New features are checked against one question: does this help the user understand what they are evaluating, against what, and what the result means? Adding numbers without context is regression.
 
 **Product rules decided on 2026-11-12 (decided, pending implementation — none of this is built yet).** Source: `docs/product/cata-descentralizada-puntaje.md` and the top of `docs/prompts/S10-kim-answers.md`.
 - **Stay close to the CVA.** The cupper sees the CVA's own deductions, not a reinterpretation: 4 points per defective cup, 2 per non-uniform cup.
@@ -258,7 +258,7 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 - [x] Coffee short codes + progressive metadata (2026-09): unique 6-char coffee codes end to end (creation, search, display); session/coffee creation now needs only a name, with post-close origin-data editing added to the results drill-down
 - [x] Consensus SD + CVA PDF fixes (2026-09): a display-only standard-deviation figure alongside community scores; the exported PDF's physical-evaluation block now renders real defect/screen/color data and gates roast level on reveal like the coffee name
 - [x] Guest → account claim (2026-09): the results-page banner now routes guests through the normal login flow (magic link or Google) and merges their tasting data onto the resulting account — new or existing — instead of an in-place email swap
-- [x] Reference sample (2026-09): owner marks one sample as "Referencia" from the wizard, edit page or master panel (live to participants); cup, waiting room, results, PDF and print show it, results add a signed Δ against it — scoring untouched. First live test: end-of-month calibration cupping.
+- [x] Reference sample (2026-09): owner marks one sample as "Referencia" from the wizard, edit page or master panel (live to participants); cup, waiting room, results, PDF and print show it, results add a signed Δ against it — scoring untouched. First live test: end-of-month alignment cupping.
 - [x] QR code for invite link (wizard step 2 + printable sheet)
 - [x] Reference-first anchor (2026-09-25): the reference is now cupped FIRST (order swaps live if the owner changes it mid-session), its affective quality is pinned at 5 on every attribute with cup checks cleared (server-enforced, affective/combined formats only), and results show it as an anchor card above the ranking — excluded from the ranking, session average and "Mejor muestra" — instead of competing inside it.
 
@@ -266,7 +266,7 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 - [ ] Multi-session coffee comparison view
 - [ ] Export to CSV
 - [ ] Radar overlay: mine vs reference vs group mean (three polygons) — only after the reference experiment validates the concept
-- [ ] Structured objectives + methodologies per session (educational / calibration / selection / consumer / professional) — design first outside the software (docs/product/objetivos-y-metodologias.md)
+- [ ] Structured objectives + methodologies per session (educational / alignment / selection / consumer / professional) — design first outside the software (docs/product/objetivos-y-metodologias.md)
 
 ### Next — Session Controls & Workflow
 - [ ] Sample order randomization per participant

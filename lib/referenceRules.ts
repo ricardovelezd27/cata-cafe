@@ -529,3 +529,18 @@ export function orderByReferenceIds<T extends { id: string }>(
   const ids = new Set(refs.map((r) => r.id));
   return [...refs, ...samples.filter((s) => !ids.has(s.id))];
 }
+
+// ─── Which explanation a reference gets (S10 WP6 fix round, 2) ───────────────────────────────
+// The "everyone gives it 79.00, a Café Sensible exercise, not the CVA" sentence is true only
+// where the pin applies. This is the ONE rule every surface uses to pick its wording; it is
+// `shouldPinReference` seen from the explanation side (tests pin the equivalence).
+//   pinned      anchor mode + a module with affective ratings (affective, combined)
+//   free        free mode + a module with affective ratings: scored like any sample
+//   descriptive no quality ratings at all (descriptive format): nothing is pinned or scored,
+//               the reference is only cupped first and used as a point of comparison
+export type ReferenceExplanation = "pinned" | "free" | "descriptive";
+
+export function referenceExplanation(input: { mode: unknown; moduleKey: string }): ReferenceExplanation {
+  if (!isPinnedModule(input.moduleKey)) return "descriptive";
+  return normalizeReferenceMode(input.mode) === "anchor" ? "pinned" : "free";
+}

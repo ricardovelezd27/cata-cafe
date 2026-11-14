@@ -34,7 +34,7 @@ import {
 import { Select } from "@/components/ui/Select";
 import { sampleCountWarning, type SampleCountWarning } from "@/lib/sampleCount";
 import { DEFAULT_NOTIFY_WHEN, type NotifyWhen } from "@/lib/groupNotify";
-import { DEFAULT_REFERENCE_MODE, type ReferenceMode } from "@/lib/referenceRules";
+import { DEFAULT_REFERENCE_MODE, referenceExplanation, type ReferenceMode } from "@/lib/referenceRules";
 import { browserZone, dateInZone } from "@/lib/closeRules";
 import { WARMUP_EXERCISES, lw, type WarmupId } from "@/lib/warmup/exercises";
 import { fieldErrorId, fieldForErrorCode, fieldInputId, type SessionFormField } from "@/lib/sessionFormErrors";
@@ -179,7 +179,7 @@ type Translations = {
     /** X6: non-blocking line above the add button when the count is high for the format. */
     sampleWarning: Record<SampleCountWarning, string>;
     /** B1: how the reference is scored (anchor / free) and the helper for each. */
-    referenceMode: { legend: string; anchor: string; free: string; anchorHelp: string; freeHelp: string };
+    referenceMode: { legend: string; anchor: string; free: string; anchorHelp: string; freeHelp: string; descriptiveHelp: string };
     /** A9: the collapsed "Más datos de la muestra" section of each sample row. */
     samplePrep: SamplePrepTranslations;
     /** C8: when a LIVE session's linked group is emailed. */
@@ -1447,7 +1447,12 @@ export function NewSessionForm({
         </div>
 
         {/* B1: how the reference is scored. Shown only once one is marked. */}
-        {referenceId !== null && (
+        {referenceId !== null && referenceExplanation({ mode: referenceMode, moduleKey: format }) === "descriptive" && (
+          // S10 WP6 fix round (2): a descriptive session has no quality ratings, so nothing is pinned
+          // and the mode choice does not exist: say only what the reference is for.
+          <p className="text-xs text-on-surface-variant">{t.newForm.referenceMode.descriptiveHelp}</p>
+        )}
+        {referenceId !== null && referenceExplanation({ mode: referenceMode, moduleKey: format }) !== "descriptive" && (
           <fieldset className="space-y-1.5 border-0 p-0">
             <legend className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
               {t.newForm.referenceMode.legend}

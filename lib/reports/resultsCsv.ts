@@ -4,7 +4,11 @@
 // carries cupper identities, so participants never get it.
 //
 // S10 WP5a (D5, TODO(kim-validar:D5)): every row carries a stable code per cupper
-// ("C01", "C02"…, ordered by the participant row's creation, never by name). The
+// ("C01", "C02"…). The code is KEYED (lib/reports/csvCodeKey.ts: an HMAC of the session
+// id and the cupper id, under its own domain prefix, turned into numbers by
+// lib/reports/csvCodes.ts), so it is stable for one cupper within one session, differs
+// across sessions, and says nothing about join order, name or id. Rows are ordered by
+// that code, never by name, id or when someone joined. The
 // default export has the name AND the code; `names: false` drops the name column
 // (the code stays) so the file can be shared without identifying anyone: no
 // display name, id or email, and the free text of an "other" exclusion reason

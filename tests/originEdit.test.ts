@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { originEditedAfterClose, sampleOriginEditedAt, stoppedWritingAt } from "@/lib/originEdit";
+import {
+  coffeeSessionOriginEditedAt,
+  originEditedAfterClose,
+  sampleOriginEditedAt,
+  stoppedWritingAt,
+} from "@/lib/originEdit";
 import { COFFEE_ORIGIN_FIELDS, originFieldsChanged } from "@/lib/coffeeOrigin";
 import { buildStampLines } from "@/lib/pdf/stampText";
 
@@ -55,6 +60,35 @@ describe("sampleOriginEditedAt (the results page rule)", () => {
     expect(sampleOriginEditedAt({ revealed: false, ...base })).toBeNull();
     expect(sampleOriginEditedAt({ revealed: true, ...base })).toEqual(later);
     expect(sampleOriginEditedAt({ revealed: true, closedAt: closed })).toBeNull();
+  });
+});
+
+describe("coffeeSessionOriginEditedAt (coffee profile + ficha use the results page rule, S10 WP6 B3)", () => {
+  // The deadline passed on 2026-11-01; the nightly job closed the session two days later.
+  const closesAt = new Date("2026-11-01T10:00:00Z");
+  const closedAt = new Date("2026-11-03T06:00:00Z");
+  const editBetween = new Date("2026-11-02T10:00:00Z");
+
+  it("an edit between the passed deadline and the close keeps its note (closedAt alone would drop it)", () => {
+    expect(
+      coffeeSessionOriginEditedAt({ sessionClosedAt: closedAt, sessionClosesAt: closesAt, coffeeOriginEditedAt: editBetween }),
+    ).toEqual(editBetween);
+    expect(originEditedAfterClose({ closedAt, coffeeOriginEditedAt: editBetween })).toBeNull();
+  });
+  it("gives exactly what the results page rule gives for the same moments", () => {
+    for (const edit of [before, editBetween, after, null]) {
+      const input = { closedAt, closesAt, coffeeOriginEditedAt: edit };
+      expect(
+        coffeeSessionOriginEditedAt({ sessionClosedAt: closedAt, sessionClosesAt: closesAt, coffeeOriginEditedAt: edit }),
+      ).toEqual(sampleOriginEditedAt({ revealed: true, ...input }));
+    }
+  });
+  it("a future deadline changes nothing and no deadline falls back to closedAt", () => {
+    const future = new Date("2999-01-01T00:00:00Z");
+    expect(
+      coffeeSessionOriginEditedAt({ sessionClosedAt: closedAt, sessionClosesAt: future, coffeeOriginEditedAt: editBetween }),
+    ).toBeNull();
+    expect(coffeeSessionOriginEditedAt({ sessionClosedAt: closedAt, coffeeOriginEditedAt: after })).toEqual(after);
   });
 });
 

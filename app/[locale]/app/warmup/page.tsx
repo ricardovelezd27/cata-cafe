@@ -33,7 +33,7 @@ export default async function WarmupLibraryPage({
       {/* Editorial lead: the method's three shared ideas, no cards. */}
       <section className="grid gap-6 md:grid-cols-[1.2fr_1fr] md:gap-12">
         <p className="font-display text-xl leading-snug text-on-surface md:text-2xl">
-          {lw(WARMUP_SHARED.intro, locale)}
+          {t("library.intro")}
         </p>
         <dl className="space-y-4 border-l-2 border-outline-variant pl-5">
           {shared.map((block) => (
@@ -99,6 +99,11 @@ export default async function WarmupLibraryPage({
           })}
         </ol>
       </section>
+
+      {/* One first-person line, attributed to Kim. The wording is a DRAFT written for him: the owner
+          decided on 2026-11-13 to ship it BEFORE Kim has confirmed it. TODO(kim-validar:F3): remove or
+          replace it when he answers. */}
+      <p className="font-display text-base italic text-on-surface-variant">{t("library.kimLine")}</p>
 
       <p className="text-xs text-on-surface-variant">
         {lw(WARMUP_SHARED.closing.text, locale)}{" "}

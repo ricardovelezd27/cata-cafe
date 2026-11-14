@@ -31,6 +31,7 @@ export async function loadCoffeeAggregateSamples(coffeeId: string, viewer: Coffe
           name: true,
           date: true,
           closedAt: true,
+          closesAt: true,
           status: true,
           format: true,
           cupsPerSample: true,

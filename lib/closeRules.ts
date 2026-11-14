@@ -549,3 +549,31 @@ export function soloRepairOwedOnView(
   if (row.isGroup || row.createdBy !== viewerId) return false;
   return needsFinalize(row, now, graceMs);
 }
+
+// ─── S10 WP6 C1: a solo cupping that "Terminar cata" cannot finish ───────────────────────
+// After a reveal (S10 WP3a) a sample can no longer be evaluated. A solo owner who
+// revealed a sample before scoring it (or while its draft was incomplete) can end up
+// with no sample left to finish: `planFinish` says `canFinish: false` and the owner has
+// no other close control, so the only way out was deleting the cupping. When that is the
+// case AND at least one unfinished sample (no submitted evaluation) is revealed, the
+// results page offers to close the cupping as it is. TODO(kim-validar:X3)
+export type CloseAsIsSample = {
+  revealed: boolean;
+  /** The owner has a SUBMITTED evaluation of this sample. */
+  submitted: boolean;
+  /** The sample is a reference: its row is pinned or out of the ranking, so an unrevealed
+   *  reference is not "something still to score". */
+  isReference?: boolean;
+};
+
+export function soloCloseAsIsOffer(input: {
+  canFinish: boolean;
+  samples: CloseAsIsSample[];
+}): boolean {
+  if (input.canFinish) return false;
+  // Only when the owner is truly stuck: while an unrevealed, unsubmitted, non-reference sample
+  // remains they can still cup it and finish the normal way (fix round 4c).
+  const couldStillScore = input.samples.some((s) => !s.revealed && !s.submitted && !s.isReference);
+  if (couldStillScore) return false;
+  return input.samples.some((s) => s.revealed && !s.submitted);
+}

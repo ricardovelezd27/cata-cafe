@@ -4,6 +4,9 @@ import { join } from "node:path";
 import { isEvaluationReadOnly, isModuleFrozenForRevealed } from "@/lib/revealFreeze";
 import { scorePillClasses } from "@/lib/scorePillClass";
 import { pinWouldTouchRevealed } from "@/lib/referenceRules";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { ScorePill } from "@/components/ui/Badge";
 
 const read = (...p: string[]) => readFileSync(join(process.cwd(), ...p), "utf8");
 
@@ -60,6 +63,16 @@ describe("scorePillClasses (A10)", () => {
   it("ScorePill uses it and passes nothing derived from the score", () => {
     const src = read("components", "ui", "Badge.tsx");
     expect(src).toMatch(/className=\{scorePillClasses\(\)\}/);
+  });
+  it("ScorePill renders identical markup for 60, 79 and 95 apart from the number (no style or class from the score)", () => {
+    // S10 WP6 C4: a colour set through `style` (not `className`) must fail too.
+    const html = (score: number) => renderToStaticMarkup(createElement(ScorePill, { score }));
+    const stripNumber = (h: string, score: number) => h.replace(score.toFixed(2), "#");
+    const [a, b, c] = [60, 79, 95].map((n) => stripNumber(html(n), n));
+    expect(a).toBe(b);
+    expect(b).toBe(c);
+    expect(a).not.toMatch(/style=/);
+    expect(a).toContain("#");
   });
 });
 
