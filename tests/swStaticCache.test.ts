@@ -24,13 +24,15 @@ function loadSw() {
   const factory = new Function(
     "self",
     "caches",
-    `${src}\nreturn { trimCache, MAX_STATIC_ENTRIES, isNeverCachedPage, SW_VERSION };`,
+    `${src}\nreturn { trimCache, MAX_STATIC_ENTRIES, isNeverCachedPage, SW_VERSION, isWarmupVoice, VOICE_CACHE };`,
   );
   const sw = factory(stubs.self, stubs.caches) as {
     trimCache: (name: string, max: number) => Promise<void>;
     MAX_STATIC_ENTRIES: number;
     isNeverCachedPage: (pathname: string) => boolean;
     SW_VERSION: string;
+    isWarmupVoice: (pathname: string) => boolean;
+    VOICE_CACHE: string;
   };
   return { sw, setKeys: (k: string[]) => (keys = k), deleted, getKeys: () => keys };
 }
@@ -71,5 +73,24 @@ describe("service worker never-cached pages (S10 WP7, F2)", () => {
   });
   it("the cache version was bumped for the new rule", () => {
     expect(loadSw().sw.SW_VERSION).toBe("v5");
+  });
+});
+
+describe("service worker: the warm-up's recorded voice", () => {
+  it("recognises the voice files and nothing else", () => {
+    const { sw } = loadSw();
+    for (const p of ["/warmup/voice/es-dora/618384ff19aeb32b.mp3", "/warmup/voice/en-heart/d315c82af572615e.mp3"]) {
+      expect(sw.isWarmupVoice(p), p).toBe(true);
+    }
+    for (const p of ["/warmup/dev/voice-reference.mp3", "/warmup/voice/es-dora/", "/es/app/warmup/ojos", "/warmup/voice/es-dora/x.json", "/api/warmup/voice/a/b.mp3"]) {
+      expect(sw.isWarmupVoice(p), p).toBe(false);
+    }
+  });
+  it("keeps the voice in its own cache, with its own version, and activate does not drop it", () => {
+    const { sw } = loadSw();
+    expect(sw.VOICE_CACHE).toBe("cata-warmup-voice-v1");
+    expect(sw.VOICE_CACHE).not.toContain(sw.SW_VERSION);
+    const src = readFileSync(join(process.cwd(), "public", "sw.js"), "utf8");
+    expect(src).toMatch(/key !== RSC_CACHE && key !== VOICE_CACHE/);
   });
 });

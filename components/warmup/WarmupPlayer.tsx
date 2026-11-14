@@ -10,15 +10,18 @@ import { partTransforms, passedDots, torsoBreathTransform } from "@/lib/warmup/p
 import { previewSpec } from "@/lib/warmup/preview";
 import { RESUME_WAIT_MS, audioResumeDecision } from "@/lib/warmup/audioResume";
 import { resumeAfterStop, ringsOut } from "@/lib/warmup/audioWindow";
-import { estimateSpeechMs, type SpeechWindow } from "@/lib/warmup/mix";
+import type { SpeechWindow } from "@/lib/warmup/mix";
+import { postureLine as postureLineOf, type ScriptContext } from "@/lib/warmup/script";
+import { runSpeech } from "@/lib/warmup/voiceLines";
+import type { ClipPoint } from "@/lib/warmup/voiceSchedule";
 import { toneFor } from "@/lib/warmup/sounds";
 import type { RunClockEvent } from "@/lib/warmup/runClock";
 import { shouldResync } from "@/lib/warmup/syncedRun";
 import { skipNeedsConfirm, type WarmupExitInfo } from "@/lib/warmup/overlayGate";
 import { REFLECTION_MAX } from "@/lib/warmup/reflections";
-import type { NarrationSource, Pose, Segment, TimelineLength } from "@/lib/warmup/timelineTypes";
+import type { Pose, Segment, TimelineLength } from "@/lib/warmup/timelineTypes";
 import { useRunClock } from "@/hooks/useRunClock";
-import { useWarmupAudio } from "@/hooks/useWarmupAudio";
+import { loadWarmupVoice, useWarmupAudio } from "@/hooks/useWarmupAudio";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { useLocalFlag } from "@/hooks/useLocalFlag";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
@@ -301,71 +304,67 @@ export function WarmupPlayer({
   );
 
   // ── Voice: every segment is narrated (lib/warmup/timeline.ts narrations) ──
-  // Resolved here because step texts live in the exercise and the rest in
-  // the chrome strings. Read through a ref so the loop never re-subscribes.
-  // The posture line of the arrival: the seated substitution (standing
-  // exercise only) is applied here, so the text on screen and the voice agree.
-  const postureLine = useMemo(() => {
-    const base =
-      exercise.posture === "standing"
-        ? seated && exerciseProp.seated
-          ? lw(exerciseProp.seated.arrivePosture, locale)
-          : t.arrivePostureStanding
-        : t.arrivePosture;
-    // The "Poco espacio" line is on the intro screen only (text): a long
-    // spoken arrival would push the short version's breath prompts late.
-    // TODO(kim-validar:F5)
-    return base;
-  }, [exercise.posture, exerciseProp.seated, seated, locale, t.arrivePosture, t.arrivePostureStanding]);
+  // lib/warmup/script.ts turns each point into words (or silence); the text on
+  // screen and the voice come from the same strings.
+  const script = useMemo<ScriptContext>(() => ({ exercise, locale, chrome: t, seated }), [exercise, locale, t, seated]);
+  // The posture line of the arrival (the seated substitution of the standing
+  // exercise is applied there, so the text on screen and the voice agree).
+  const postureLine = useMemo(() => postureLineOf(script), [script]);
+  // Everything the voice says in this run, with the recorded file of each line.
+  const speech = useMemo(() => runSpeech(tl, script), [tl, script]);
+  const clipUrls = useMemo(() => [...new Set(speech.flatMap((sp) => (sp.clip ? [sp.clip.url] : [])))], [speech]);
+  const allRecorded = speech.length > 0 && speech.every((sp) => sp.clip);
+  const clipKey = clipUrls.join("|");
 
-  const narrationText = useCallback(
-    (src: NarrationSource): string => {
-      switch (src.kind) {
-        case "step":
-          return lw(steps[src.stepIdx].text, locale);
-        case "label":
-          return t.labels[src.label];
-        case "chrome":
-          return src.cue === "stop" ? t.cueStop : src.cue === "return" ? t.cueReturn : t.cueOtherSide;
-        case "arrive":
-          return src.phase === "notice" ? t.arriveNotice : postureLine;
-        case "breath":
-          return src.dir === "in" ? (src.first ? t.breathInFirst : t.breathIn) : src.first ? t.breathOutFirst : t.breathOut;
-        case "closing":
-          return t.closingStill;
-        case "closingOpen":
-          return t.closingOpen;
-        case "bridge":
-          return t.bridge;
-      }
-    },
-    [steps, locale, t, postureLine],
+  // The recorded files: downloaded while the intro is on screen, decoded once
+  // the run starts (an audio context exists after the tap on "Empezar").
+  const voiceWanted = audio.voice && !audio.muted;
+  const inRun = phase === "run";
+  const [pack, setPack] = useState<{ key: string; decoded: boolean; ok: boolean } | null>(null);
+  useEffect(() => {
+    if (!voiceWanted || !allRecorded) return;
+    let stale = false;
+    void loadWarmupVoice(clipUrls, inRun).then((ok) => {
+      if (!stale) setPack({ key: clipKey, decoded: inRun, ok });
+    });
+    return () => {
+      stale = true;
+    };
+    // clipUrls is derived from clipKey.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voiceWanted, allRecorded, clipKey, inRun]);
+  const packFailed = pack?.key === clipKey && !pack.ok;
+  const packReady = pack?.key === clipKey && pack.ok && pack.decoded;
+  // One voice per run: the recorded one, or (only when its files cannot be
+  // loaded) the phone's own. Never a mix of the two.
+  const recorded = inRun && voiceWanted && allRecorded && !packFailed;
+  const clips = useMemo<ClipPoint[]>(
+    () => (recorded && packReady ? speech.map((sp) => ({ atMs: sp.atMs, durMs: sp.durMs, url: sp.clip!.url })) : []),
+    [recorded, packReady, speech],
   );
-  const voiceOn = phase === "run" && audio.voice && audio.voiceAvailable && !synced;
+  const ttsOn = inRun && voiceWanted && !recorded && audio.voiceAvailable && !synced;
   // The exercise's own tone (one root note and brightness each).
   const tone = useMemo(() => toneFor(tl.exerciseId), [tl.exerciseId]);
-  // When the voice speaks, for the ducking of the background. The phone's own
-  // voice reports nothing ahead of time, so each line's length is estimated.
+  // When the voice speaks, for the ducking of the background: exact for the
+  // recorded lines, an estimate for the phone's own voice.
   const speechWindows = useMemo<SpeechWindow[]>(
-    () =>
-      voiceOn
-        ? tl.narrations.map((n) => ({ fromMs: n.atMs, toMs: n.atMs + estimateSpeechMs(narrationText(n.source)) }))
-        : [],
-    [voiceOn, tl, narrationText],
+    () => (clips.length > 0 || ttsOn ? speech.map((sp) => ({ fromMs: sp.atMs, toMs: sp.atMs + sp.durMs })) : []),
+    [clips, ttsOn, speech],
   );
   const narrateRef = useRef<(elapsed: number) => void>(() => {});
   useEffect(() => {
     narrateRef.current = (elapsed: number) => {
-      const list = tl.narrations;
+      // Only the fallback voice is driven from the loop; the recorded lines
+      // are scheduled ahead on the audio clock.
       // A line that starts ON a "Quieto" stop belongs to the next stretch: it
       // is read when the run resumes, not into the stop.
-      while (narrCursor.current < list.length && list[narrCursor.current].atMs <= elapsed && list[narrCursor.current].atMs < narrUntil.current) {
-        const n = list[narrCursor.current++];
-        if (!voiceOn) continue;
-        void audio.speak(narrationText(n.source), locale, { interrupt: n.interrupt });
+      while (narrCursor.current < speech.length && speech[narrCursor.current].atMs <= elapsed && speech[narrCursor.current].atMs < narrUntil.current) {
+        const sp = speech[narrCursor.current++];
+        if (!ttsOn) continue;
+        void audio.speak(sp.text, locale, { interrupt: sp.point.interrupt });
       }
     };
-  }, [tl, voiceOn, audio, narrationText, locale]);
+  }, [speech, ttsOn, audio, locale]);
 
   // ── The loop: runs only while the clock runs ──────────────────────────
   useEffect(() => {
@@ -490,10 +489,11 @@ export function WarmupPlayer({
         afterMs: resumeAfterStop(stoppedAt.current, elapsed),
         tone,
         speech: speechWindows,
+        clips,
       });
       // Lines at or just after the seek point play; earlier ones are skipped.
-      narrCursor.current = tl.narrations.findIndex((n) => n.atMs >= elapsed - 50);
-      if (narrCursor.current < 0) narrCursor.current = tl.narrations.length;
+      narrCursor.current = speech.findIndex((sp) => sp.atMs >= elapsed - 50);
+      if (narrCursor.current < 0) narrCursor.current = speech.length;
     } else if (ringsOut(lastClockEvent.current)) {
       // Where a Quieto stop rang out, so the resume does not repeat its tic.
       if (lastClockEvent.current === "stop") stoppedAt.current = elapsedMs();
@@ -501,7 +501,7 @@ export function WarmupPlayer({
       audio.cancel();
       audio.cancelSpeech();
     }
-  }, [running, runId, audio, tl, elapsedMs, stopForQuieto, tone, speechWindows]);
+  }, [running, runId, audio, tl, elapsedMs, stopForQuieto, tone, speechWindows, clips, speech]);
   useEffect(() => () => audio.cancel(), [audio]);
 
   // iOS "interrupted" → pause.
@@ -1297,7 +1297,7 @@ function IntroScreen({
           <span className={s.settingsTitle}>{t.optionsTitle}</span>
           <span className={s.settingsSummary}>
             {audio.muted ? t.muteLabel : t.soundLabel}
-            {audio.voice && audio.voiceAvailable ? ` · ${t.voiceToggle}` : ""}
+            {audio.voice && !audio.muted ? ` · ${t.voiceToggle}` : ""}
             {still ? ` · ${t.stillLabel}` : ""}
           </span>
           <ChevronDown size={16} className={settingsOpen ? s.chevOpen : ""} aria-hidden />
@@ -1328,9 +1328,7 @@ function IntroScreen({
               </button>
               <span className={s.switchHint}>{opensEyes ? t.soundDemoCaptions : t.soundDemoCaptionsEyesOpen}</span>
             </div>
-            {audio.voiceAvailable && (
-              <Switch label={t.voiceToggle} hint={t.voiceHint} checked={audio.voice} onChange={audio.setVoice} />
-            )}
+            <Switch label={t.voiceToggle} hint={t.voiceHint} checked={audio.voice} onChange={audio.setVoice} />
             <Switch label={t.accessibleLabel} checked={accessible} onChange={setAccessible} />
             <Switch label={t.largeTextLabel} checked={largeText} onChange={setLargeText} />
             <Switch label={t.stillLabel} hint={t.stillHelp} checked={still} onChange={setStill} />

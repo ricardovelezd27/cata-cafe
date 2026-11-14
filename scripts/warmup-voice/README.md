@@ -64,7 +64,7 @@ variant of that locale). See `audition.json` and the docstring of `render.py`.
 ## Loudness
 
 Loudness is set once per voice (voice + lang + speed), never per line: one
-gain from the loudness of all that voice's lines together, to -18 LUFS, with a
+gain from the loudness of all that voice's lines together, to -19 LUFS, with a
 -1.5 dB peak ceiling. Normalising line by line would turn a one-word "Para."
 up until it shouts.
 
@@ -72,3 +72,50 @@ up until it shouts.
 
 MP3, mono, 24 kHz (Kokoro's native rate). MP3 is the one format both iPhone
 Safari and Android Chrome decode reliably with `decodeAudioData`.
+
+## The real set (what the app plays)
+
+The owner picked the voices by ear on 2026-11-14: Dora with the Spain
+pronunciation for Spanish (`ef_dora`, `es`) and Heart for English (`af_heart`,
+`en-us`), both at speed 0.9. They are declared in `lib/warmup/voice.ts`
+(`VOICE_SETS`).
+
+Three commands, in this order, every time a spoken line changes:
+
+```bash
+npx tsx scripts/warmup-voice/lines.ts export --all
+```
+
+```bash
+uv run --python 3.11 scripts/warmup-voice/render.py scripts/warmup-voice/.out/voice-job.json --mp3-level 0.8
+```
+
+```bash
+npx tsx scripts/warmup-voice/lines.ts manifest
+```
+
+- `export` lists every line the voice can say (every exercise, both modes,
+  both lengths, the seated variant) from `lib/warmup/exercises.ts`,
+  `messages/*.json` (`warmup.*`) and `lib/warmup/script.ts`. Without `--all`
+  it lists only the lines that have no file yet; use `--all` before shipping,
+  because the loudness of a voice is set from all its lines together.
+- `render.py` takes about 4 minutes for the 140 lines on a laptop.
+- `manifest` copies the files to `public/warmup/voice/<set>/<key>.mp3` (the
+  key is a hash of the line's text), deletes the files no line uses any more,
+  and rewrites `lib/warmup/voiceManifest.ts` with each line's measured length.
+
+Then run `npm test`. `tests/warmup-voice.test.ts` fails when a line has no
+file, when a file is left over, when two lines overlap, when a line sits over
+a bell or when one runs past the end of a run. If it fails on a fit, shorten
+the line (never the pause constants) and run the three commands again.
+
+To see what a change did to the timing:
+
+```bash
+npx tsx scripts/warmup-voice/report.ts arm-raise
+```
+
+It prints each run's length, the pause before each step and, for the named
+exercise, every spoken line with the quiet left after it.
+
+`--mp3-level 0.8` gives about 40 kbps mono: the whole set is about 3 MB.

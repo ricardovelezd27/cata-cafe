@@ -73,6 +73,21 @@ dulzor (se quedan las listas, X4), C3 (los plazos de 24 h y 7 días son decisió
 | F4 | ``lib/warmup/exercises.ts:155`` `:163` `:166`, ``lib/warmup/timeline.ts:153`` `:175` `:359` `:360` | Versión corta de 1 a 2 minutos (postura 5 s, una respiración, los primeros pasos, vuelta al centro, cierre de 15 s). Sin cue "abre los ojos" salvo que un paso cierre los ojos. | Una corrida corta con los ojos abiertos no tiene sonido de final (el último es el cuenco al empezar el cierre). ¿Añadimos un solo tic? |
 | F5 | ``components/warmup/WarmupPlayer.tsx:309``, ``lib/warmup/exercises.ts:231`` y `:262` | Dos opciones en la introducción: "Sentado" (solo el ejercicio de pie) y "Poco espacio" (movimientos de amplitud pequeña); se recuerdan en el aparato y no cambian la duración. | ¿Faltan sustituciones para otros ejercicios? |
 
+### V · La voz que guía el Movimiento Sensorial (2026-11-14)
+
+Desde el 2026-11-14 una voz grabada dice cada paso mientras la persona tiene los ojos cerrados.
+Para eso se reescribieron TODOS los textos de los cinco ejercicios (pasos y "qué notar"), en
+español y en inglés, pensados para oírse y no para leerse. Tus textos originales siguen en el
+historial (commit 2c7ae35). Nada de esto es definitivo hasta que lo revises.
+
+| Código | Dónde | Qué se hizo | Qué necesitamos de ti |
+|---|---|---|---|
+| V1 | `lib/warmup/exercises.ts` (los 38 pasos y los 13 "qué notar") | Frases más cortas. La duración ya no se repite en cada frase ("en 15 segundos"): se dice una vez por ejercicio ("mientras dure el sonido, unos 15 segundos") y después la lleva el sonido. "Detente" en vez de "párate"; "hacia adelante" en vez de "hacia delante". El último movimiento de cada ejercicio lo dice ("último"); los tres ejercicios largos avisan "Vas por la mitad". Se mantienen tus datos: trayectos de 15 s, pausas de 3 s, las direcciones, los puntos de arranque y el orden rápido / lento / ojos cerrados. | Leer (o mejor, oír) los cinco ejercicios y corregir lo que no dirías así. |
+| V1 | `lib/warmup/exercises.ts`, "qué notar" | Ahora también se DICEN en voz baja durante el movimiento (antes solo se veían en pantalla, y con los ojos cerrados nadie los leía). Se acortaron y casi todos empiezan por "Nota…". | ¿Te parece bien que se digan? ¿El momento en que suena cada uno es el correcto? |
+| V1 | `messages/es.json`, `messages/en.json` (`warmup.arrive`, `warmup.breath`, `warmup.closing`) | La llegada y el cierre se acortaron para que quepan en su tiempo: "Pies en el suelo, manos sobre las piernas, hombros sueltos."; "No hay nada que hacer bien. Solo notar."; "Ahora quédate en quietud, en posición neutral. Nota lo que deja el movimiento." | Confirmar o corregir. |
+| V1 | `lib/warmup/script.ts` | Después de cada campana la voz dice la dirección con una frase corta ("A la derecha.", "Al centro.", "Para."). "Rápido", "Quieto" y "A continuación" ya no se dicen: solo se ven. | ¿Falta o sobra alguna indicación hablada? |
+| V1 | la voz | La voz en español es "Dora" con pronunciación de España (elección de Ricardo, de oído); el texto es español neutro. Es una voz generada por computadora y la app lo dice. | ¿La pronunciación de España te parece adecuada para tus grupos? |
+
 ### X · Otros
 
 | Código | Dónde | Lo que está construido | Pregunta para Kim |

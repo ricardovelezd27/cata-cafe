@@ -114,6 +114,9 @@ export interface HumWindow {
  *  line queues behind it. */
 export type NarrationSource =
   | { readonly kind: "step"; readonly stepIdx: number }
+  /** An "observe" prompt, said softly while the movement runs (index into
+   *  exercise.observe; its text twin is the whisper under the step text). */
+  | { readonly kind: "observe"; readonly observeIdx: number }
   | { readonly kind: "label"; readonly label: SegmentLabel }
   | { readonly kind: "chrome"; readonly cue: ChromeCue }
   | { readonly kind: "arrive"; readonly phase: "posture" | "notice" }
@@ -123,7 +126,12 @@ export type NarrationSource =
   | { readonly kind: "bridge" };
 
 export interface NarrationPoint {
+  /** The moment the line belongs to (a segment start, a whisper start). */
   readonly atMs: number;
+  /** When the voice actually starts: `atMs`, or a little later when a bell
+   *  sounds at `atMs` (the bell first, the word after it; timeline.ts
+   *  VOICE_AFTER_CUE_MS). */
+  readonly sayAtMs: number;
   readonly segIdx: number;
   readonly source: NarrationSource;
   readonly interrupt: boolean;

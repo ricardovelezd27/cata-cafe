@@ -4,10 +4,12 @@
 // through `segmentAt` / `poseAt` / `cuePoints`. No React, no DOM.
 //
 // Rules (design council 2026-10-28, see docs/notes/S6-B.md and the plan):
-//  - A READ BEAT precedes every step: clamp(3 + 0.25 × words, 4, 12) s with
-//    words = max(es, en), so a mixed-locale room shares one timeline. The
-//    figure stands in the step's START pose, which is always the previous
-//    step's END pose (continuity rule).
+//  - A READ BEAT precedes every step, sized BY THE VOICE: the bell's head
+//    start + the measured length of the recorded instruction (the longer of
+//    es and en, so a mixed-locale room shares one timeline) + a breath, in
+//    steps of 250 ms, never under 4 s nor over 12 s. A line with no recording
+//    falls back to an estimate. The figure stands in the step's START pose,
+//    which is always the previous step's END pose (continuity rule).
 //  - `holdBeforeSec` folds into the read beat: read(readMs − hold) + hold.
 //  - Right-left round trips without `returns` go extreme → extreme (Kim Q1);
 //    `returns` and forward-back end at centre. "center" steps cross back.
@@ -18,10 +20,14 @@
 //    closing end. The arrival breaths are a movement too: campana → hum → tic.
 //    Every movement unit carries ONE hum window with a pitch contour (out =
 //    rise, back = fall, reps = wave, rest = flat, breaths = breath).
-//  - Voice: `narrations` covers EVERY segment — step texts on their read beat,
+//  - Voice: `narrations` covers every segment (step texts on their read beat,
 //    a direction word at each leg start, the chrome line on holds/returns,
-//    the arrival / breath / closing / bridge lines — so the run can be
-//    followed with the eyes closed. Whispers/secondary texts are timed too.
+//    the arrival / breath / closing / bridge lines, the observe prompts) so
+//    the run can be followed with the eyes closed. lib/warmup/script.ts turns
+//    each point into words, or into silence. NEVER TWO ATTACKS AT ONCE: when
+//    a bell sounds at a line's moment, the bell goes first and the word
+//    follows VOICE_AFTER_CUE_MS later (`sayAtMs`). The one exception is "abre
+//    los ojos": it comes first and the doble campana confirms it.
 
 import {
   READ_BEAT,
@@ -41,6 +47,7 @@ import {
 } from "./exercises";
 import { ARRIVE_PLAN, ARRIVE_PLAN_SHORT, arrivePlanTotalMs } from "./breath";
 import { rampFracFor, sineWave, softLinear, upDownWave } from "./easing";
+import { spokenMs } from "./voice";
 import type {
   ChromeCue,
   CuePoint,
@@ -67,6 +74,12 @@ export const MIN_PLAIN_READ_MS = 3000;
 /** "Abre los ojos" is spoken this long before the closing ends (the doble
  *  campana then confirms it). */
 export const CLOSING_OPEN_LEAD_MS = 4000;
+/** The bell first, the word after it: how long the voice waits when a cue
+ *  sounds at the moment its line belongs to. */
+export const VOICE_AFTER_CUE_MS = 700;
+/** Quiet after the last word of an instruction, before the bell that starts
+ *  the movement. */
+export const READ_TAIL_MS = 800;
 const LEG_MS = WARMUP_LEG_SEC * 1000;
 const HOLD_MS = WARMUP_HOLD_SEC * 1000;
 
@@ -80,12 +93,14 @@ export function wordCount(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
-/** Read beat for a step (0 when its text is shown during the previous step). */
+/** Read beat for a step (0 when its text is shown during the previous step):
+ *  the voice is the clock. */
 export function readBeatMs(step: WarmupStep): number {
   if (step.readDuringPrevAtSec != null) return 0;
-  const words = Math.max(wordCount(step.text.es), wordCount(step.text.en));
-  const sec = Math.min(READ_BEAT.maxSec, Math.max(READ_BEAT.minSec, READ_BEAT.baseSec + READ_BEAT.perWordSec * words));
-  return Math.round(sec * 1000);
+  const spoken = Math.max(spokenMs(step.text.es, "es"), spokenMs(step.text.en, "en"));
+  const raw = VOICE_AFTER_CUE_MS + spoken + READ_TAIL_MS;
+  const ms = Math.ceil(raw / 250) * 250;
+  return Math.min(READ_BEAT.maxSec * 1000, Math.max(READ_BEAT.minSec * 1000, ms));
 }
 
 /** Pose at the far end of a one-way direction, for this kind and amplitude. */
@@ -214,6 +229,9 @@ export function buildExerciseTimeline(exercise: WarmupExercise, opts: TimelineOp
   const kind = ex.figureKind;
   const neutral = neutralPose(kind);
   const segs: Segment[] = [];
+  /** Holds folded in front of a leg ("quedate arriba un momento, y baja"):
+   *  the instruction just said it, so the hold itself is not announced. */
+  const announcedHolds = new Set<number>();
   const stepStart: number[] = [];
   const stepEnd: number[] = [];
   const stepFirstMove: number[] = [];
@@ -283,6 +301,7 @@ export function buildExerciseTimeline(exercise: WarmupExercise, opts: TimelineOp
       prevMoved = false;
     }
     if (holdMs > 0) {
+      announcedHolds.add(segs.length);
       push({ kind: "hold", stepIdx: i, durMs: holdMs, from: cur, to: cur, ease: "none", label: "hold", cueAtStart: ticIf(), chromeCue: "stop" });
       prevMoved = false;
     }
@@ -407,9 +426,13 @@ export function buildExerciseTimeline(exercise: WarmupExercise, opts: TimelineOp
   // Voice: every segment gets a line. Step texts interrupt (a new step is a
   // new instruction); the short leg / hold / return lines queue behind
   // whatever is still being read so nothing is cut mid-sentence.
+  const cueTimes = new Set(cues.map((c) => c.atMs));
   const narrations: NarrationPoint[] = [];
-  const say = (atMs: number, segIdx: number, source: NarrationPoint["source"], interrupt = false) =>
-    narrations.push({ atMs, segIdx, source, interrupt });
+  const say = (atMs: number, segIdx: number, source: NarrationPoint["source"], interrupt = false) => {
+    // The bell first, the word after it. "Abre los ojos" is the exception.
+    const afterCue = source.kind !== "closingOpen" && cueTimes.has(atMs);
+    narrations.push({ atMs, sayAtMs: atMs + (afterCue ? VOICE_AFTER_CUE_MS : 0), segIdx, source, interrupt });
+  };
   const readSpoken = new Set<number>();
   segs.forEach((sg, idx) => {
     switch (sg.kind) {
@@ -432,6 +455,7 @@ export function buildExerciseTimeline(exercise: WarmupExercise, opts: TimelineOp
         }
         return;
       case "hold":
+        if (announcedHolds.has(idx)) return;
         say(sg.t0Ms, idx, sg.chromeCue ? { kind: "chrome", cue: sg.chromeCue } : { kind: "label", label: "hold" });
         return;
       case "lead-in": {
@@ -455,10 +479,11 @@ export function buildExerciseTimeline(exercise: WarmupExercise, opts: TimelineOp
       }
       case "closing":
         say(sg.t0Ms, idx, { kind: "closing" }, true);
-        if (opts.mode !== "session" && opensEyes) say(sg.t0Ms + sg.durMs - CLOSING_OPEN_LEAD_MS, idx, { kind: "closingOpen" }, true);
+        // In both modes "abre los ojos" comes before the doble campana (at the
+        // end of a library run, at the start of the bridge in a session).
+        if (opensEyes) say(sg.t0Ms + sg.durMs - CLOSING_OPEN_LEAD_MS, idx, { kind: "closingOpen" }, true);
         return;
       case "bridge":
-        if (opensEyes) say(sg.t0Ms, idx, { kind: "closingOpen" }, true);
         say(sg.t0Ms, idx, { kind: "bridge" });
         return;
     }
@@ -472,7 +497,6 @@ export function buildExerciseTimeline(exercise: WarmupExercise, opts: TimelineOp
     while (segIdx + 1 < segs.length && segs[segIdx + 1].t0Ms <= atMs) segIdx++;
     say(atMs, segIdx, { kind: "step", stepIdx: i });
   });
-  narrations.sort((a, b) => a.atMs - b.atMs);
 
   const whispers: WhisperSlot[] = [];
   const doneObserveIdx: number[] = [];
@@ -494,6 +518,14 @@ export function buildExerciseTimeline(exercise: WarmupExercise, opts: TimelineOp
     }
   });
   whispers.sort((a, b) => a.fromMs - b.fromMs);
+  // The observe prompts are spoken too, when their text appears: with the
+  // eyes closed nobody reads them, and they are the heart of the practice.
+  for (const w of whispers) {
+    let segIdx = 0;
+    while (segIdx + 1 < segs.length && segs[segIdx + 1].t0Ms <= w.fromMs) segIdx++;
+    say(w.fromMs, segIdx, { kind: "observe", observeIdx: w.observeIdx });
+  }
+  narrations.sort((a, b) => a.sayAtMs - b.sayAtMs || a.atMs - b.atMs);
 
   const secondaryTexts: SecondaryText[] = [];
   ex.steps.forEach((step, i) => {

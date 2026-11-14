@@ -20,6 +20,16 @@ const MAX_PAGES_ENTRIES = 60;
 // chunks + images, so the core chunks fetched once at boot could be evicted
 // before the user went offline. 400 small hashed files is a few MB at most.
 const MAX_STATIC_ENTRIES = 400;
+// The recorded guide voice of the warm-up (/warmup/voice/<set>/<hash>.mp3).
+// A file is named after the text it says, so a URL never changes what it
+// plays: cache-first, for good. Its cache has ITS OWN version, never
+// SW_VERSION: a bump there must not make people download the voice again or
+// lose it while offline. Lines no longer used leave when the cap is reached.
+const VOICE_CACHE = "cata-warmup-voice-v1";
+const MAX_VOICE_ENTRIES = 400;
+function isWarmupVoice(pathname) {
+  return /^\/warmup\/voice\/[a-z0-9-]+\/[0-9a-f]+\.mp3$/.test(pathname);
+}
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -32,7 +42,7 @@ self.addEventListener("activate", (event) => {
       await Promise.all(
         keys
           .filter(
-            (key) => key !== STATIC_CACHE && key !== PAGES_CACHE && key !== RSC_CACHE,
+            (key) => key !== STATIC_CACHE && key !== PAGES_CACHE && key !== RSC_CACHE && key !== VOICE_CACHE,
           )
           .map((key) => caches.delete(key)),
       );
@@ -102,6 +112,25 @@ self.addEventListener("fetch", (event) => {
 
   // Dev-only paths (Turbopack/webpack HMR sockets, etc.) — never intercept.
   if (url.pathname.includes("hmr")) return;
+
+  // 0. The warm-up's recorded voice: cache-first, so a second run works
+  // offline and never downloads a line twice.
+  if (isWarmupVoice(url.pathname)) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(VOICE_CACHE);
+        const cached = await cache.match(request);
+        if (cached) return cached;
+        const response = await fetch(request);
+        if (response.status === 200 && response.type === "basic") {
+          cache.put(request, response.clone());
+          event.waitUntil(trimCache(VOICE_CACHE, MAX_VOICE_ENTRIES));
+        }
+        return response;
+      })(),
+    );
+    return;
+  }
 
   // 1. Static assets: cache-first.
   if (isStaticAsset(url, request)) {
