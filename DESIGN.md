@@ -361,11 +361,11 @@ The landing was the place to find the rules; the app is where most of them apply
 | Sign-in, the emailed-link confirmation, the guest claim card | Yes: stage ground, the offer-card recipe (`surface-solid`) for the form | Nothing is being evaluated; this is an arrival |
 | Waiting room before a live session starts | Yes, behind the status, never behind the participant list or a control | A moment of waiting |
 | Empty states of a list (no sessions, no coffees yet) | A still, small formation as the illustration, on paper | It explains "nothing here yet" without a stock drawing |
-| The warm-up ("Movimiento sensorial") | Yes: its eyes-closed legs ARE the stage (see "The warm-up's two stages" below), and it uses the particle language for breathing | It is a guided moment, not data entry |
+| The warm-up ("Movimiento sensorial") | Yes: its eyes-closed legs ARE the stage (see "The warm-up's two stages" below), and the dots follow the instruction for the whole run (they breathe, travel with the movement, gather on a hold, settle into a ring) | It is a guided moment, not data entry |
 | A session's closing moment (results first shown) | Once, briefly, never over the numbers | A moment of arrival at a result |
 | The cup form, results tables, any list, any dialog, any form | **Never** | Sensory focus and legibility: principles 1 and 3 |
 
-A screen that uses the constellation must take it from the one engine (`components/landing/journey/`), keep its governor and kill switch, and respect reduced motion. A second particle implementation is a finding.
+A screen that uses the dots must speak the one dialect: the seed, the easing, the idle drift, the dot size and the colour parsing of `lib/canvas/particles.ts`, and the draw-cost governor of `lib/canvas/governor.ts` with its kill switch; and it must respect reduced motion. There are two hosts today, because they are driven by different things: the landing's canvas (`components/landing/journey/`, driven by scroll, with its own loop) and the warm-up's stage field (`components/warmup/StageField.tsx`, drawn from the player's single clock, which may not have a second loop). A canvas that draws dots without taking these is a finding (`tests/canvasParticles.test.ts` checks both hosts). And the dots must MEAN something where they appear: a formation per section on the landing, the instruction in the warm-up.
 
 ### The warm-up's two stages
 
@@ -382,7 +382,7 @@ The warm-up player (`components/warmup/WarmupPlayer.tsx`) is the first screen of
 - **(rule) What the person will hear is on the intro screen**, not behind a fold: sound, the guiding voice (with the line that says it is a computer-generated voice) and "listen to the sounds". Most of the exercise happens with the eyes closed, so the sound is the interface. The folded "A tu manera" holds only the three display options.
 - The change between the two stages takes 1.2 s on `--ease-out`, and starts when the voice says "cierra los ojos".
 - The transport controls (previous, play, next) and the chips are the player's own, a documented exception to "use `Button`": they change colour with the stage, which `Button` does not do.
-- **Known finding:** the breathing field (`components/warmup/BreathField.tsx`) is a second particle implementation, which the rule above forbids. It predates the rule. Moving it onto the landing's engine is planned work; do not add a third.
+- **The dots follow the instruction** (`lib/warmup/stageField.ts`): a breathing disc on the arrival, a cloud that travels with the body part during a movement, gathering and stillness on a hold, one ring at the closing, a cup at the bridge. During a step they recede behind the figure, because the figure is the instruction there. The earlier finding (the breathing field was a second particle implementation, with its own easing, a larger dot, a glow drawn on the canvas and a rotation) is closed: the field takes the shared dialect and governor described above.
 
 ### Glass and grain on paper
 

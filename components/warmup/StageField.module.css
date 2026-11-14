@@ -1,13 +1,30 @@
-/* Breathing particle field (components/warmup/BreathField.tsx).
- * The canvas is drawn by the player's loop; only the label is DOM. */
+/* The dots of the warm-up's stage (components/warmup/StageField.tsx).
+ * The canvas and the pool of light are drawn by the player's loop; only the
+ * breath label is DOM. The whole layer sits behind the figure. */
 
 .root {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
   pointer-events: none;
+}
+
+/* The pool of light under the cloud: the landing's "stage light", moved with
+ * transform and opacity only (never a gradient made per frame on the canvas). */
+.halo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--halo-d, 0px);
+  height: var(--halo-d, 0px);
+  margin: calc(var(--halo-d, 0px) / -2) 0 0 calc(var(--halo-d, 0px) / -2);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in oklch, var(--color-secondary-fixed) 55%, transparent), transparent);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.dusk .halo {
+  background: radial-gradient(closest-side, color-mix(in oklch, var(--color-primary-fixed) 28%, transparent), transparent);
 }
 
 .canvas {
@@ -28,7 +45,10 @@
   border-radius: var(--radius-pill);
   background: color-mix(in oklch, var(--wu-bg, var(--color-surface)) 72%, transparent);
   backdrop-filter: blur(6px);
+  transition: opacity 500ms ease-out;
 }
+/* No label to show: the pill leaves with its last word. */
+.labelBox[data-empty] { opacity: 0; }
 .label {
   grid-area: 1 / 1;
   font-family: var(--font-display);
@@ -56,6 +76,7 @@
 @media (prefers-reduced-motion: reduce) {
   .in  { animation: labelFade 600ms ease-out both; }
   .out { display: none; }
+  .labelBox { transition: none; }
 }
 @keyframes labelFade {
   from { opacity: 0; }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createGovernor } from "@/components/landing/journey/governor";
+import { createGovernor } from "@/lib/canvas/governor";
 
 const opts = { budgetMs: 8, windowSize: 10, warmupFrames: 5, maxDowngrades: 2 };
 

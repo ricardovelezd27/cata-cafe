@@ -8,12 +8,19 @@ measure → converge → constellation.
 ```
 journey/
   ConstellationMount.tsx   client wrapper: idle gate, kill-switch check, next/dynamic (ssr:false)
-  ConstellationCanvas.tsx  the engine (canvas, bracketing, rAF loop, governor). Rarely edit.
+  ConstellationCanvas.tsx  the engine (canvas, bracketing, rAF loop). Rarely edit.
   formations.ts            one builder per fold — THIS is what you author. Pure, unit-tested.
   bracket.ts               pure scroll→(foldA, foldB, blend). Unit-tested.
   intro.ts                 the arrival (scatter -> ring -> hero), time-driven. Pure, unit-tested.
   flags.ts                 sessionStorage flags shared by wrapper + engine (kill switch, arrival seen).
 ```
+
+The dialect itself is shared with the warm-up's stage field
+(`components/warmup/StageField.tsx`) and lives outside this folder:
+`lib/canvas/particles.ts` (seeded randomness, frame-rate-independent easing,
+idle drift, dot size, colour parsing) and `lib/canvas/governor.ts` (the
+draw-cost governor). Change a dot's size, easing or drift THERE, so both
+canvases change together (`tests/canvasParticles.test.ts`).
 
 Mounted once in `app/[locale]/page.tsx`, first child of `<main>`.
 
@@ -60,8 +67,8 @@ new meaning in the builder's comment; and keep the three layout rules, all in
 | `N` | `mobile ? 600 : 1600`, ×0.6 on ≤ 4 cores / Save-Data | particle count |
 | DPR | `min(devicePixelRatio, 1.5)` | backing-store size |
 | blend | `"lighter"` | additive glow over the green stage |
-| `dot` | `max(1.8, min(W,H)·0.0028)` (×1.3 mobile) | dot size (the arrival multiplies it per dot by `Formation.scale`, i.e. depth) |
-| ease | `1 − (1−0.085)^(dt/16.667)` | frame-rate-independent lerp |
+| `dot` | `dotSize(W, H, mobile)` = `max(1.8, min(W,H)·0.0028)` (×1.3 mobile), in `lib/canvas/particles.ts` | dot size (the arrival multiplies it per dot by `Formation.scale`, i.e. depth) |
+| ease | `frameEase(dt)` = `1 − (1−0.085)^(dt/16.667)`, in `lib/canvas/particles.ts` | frame-rate-independent lerp |
 | `DRAW_BUDGET_MS` | 8 | governor threshold on the DRAW cost (mean of 60 frames, after 90 warm-up frames); not sampled during the arrival |
 | `MAX_DOWNGRADES` | 2 | each cuts `live` to 60 %; the next miss trips the kill-switch |
 | idle | 4 s → 30 fps, 12 s → paused | wakes on scroll / pointer / visibility |

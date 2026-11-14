@@ -95,7 +95,7 @@ describe("shapes and motion come from the tokens", () => {
     expect(rule(".duskVeil")).toContain("var(--ease-out)");
   });
   it("no hex colour in the player's stylesheets", () => {
-    for (const f of ["WarmupPlayer.module.css", "BreathField.module.css", "StepProgress.module.css", "figures/figures.module.css"]) {
+    for (const f of ["WarmupPlayer.module.css", "StageField.module.css", "StepProgress.module.css", "figures/figures.module.css"]) {
       const text = readFileSync(resolve(__dirname, "../components/warmup", f), "utf8");
       expect(text, f).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
     }

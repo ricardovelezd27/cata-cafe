@@ -1,4 +1,5 @@
-// Adaptive draw-cost governor for the constellation engine. Pure (no DOM) so
+// Adaptive draw-cost governor for every canvas that draws the dots (the
+// landing's constellation and the warm-up's stage field). Pure (no DOM) so
 // it is unit-tested in tests/landingGovernor.test.ts. It samples the time
 // spent drawing one frame — never the rAF interval, which browsers throttle
 // on their own — and decides once per full window: keep, cut the live particle
