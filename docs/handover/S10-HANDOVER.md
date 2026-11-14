@@ -56,6 +56,28 @@ Decisions of day two (2026-11-14):
 
 ## 3. Pull requests (state during day three, 2026-11-13 by the database clock)
 
+### Update of 2026-11-14 (written by WP10, from `git log` on `main`; this wins over everything below)
+
+Every S10 CODE package is now merged to `main`: #131 WP4b (`e594d13`, 2026-11-14 00:34 +01:00), #133 WP3a
+(`29cc4aa`, 2026-11-13 22:34 +01:00), #136 WP5b (`1b6a192`, 23:57), #137 WP3b (`4265305`, 2026-11-14 00:48), #138 WP6
+(`b7ff6d7`, 03:31). The branches listed as "open" in the Late update below are all merged.
+
+- **SQL phases applied in S10:** 27, 26, 28 (2026-11-13) and **29** (dry run 2026-11-13 22:36 UTC, applied 23:36 UTC on the
+  owner's yes, verified read-only: helper present and not executable by `authenticated`/`anon`, the trigger function mentions
+  it, 354 aggregate rows all `ruleVersion` 1, none recomputed). The live `recompute_aggregate_score` is the PHASE 29 body.
+  PHASE 23 step 2 stays CANCELLED.
+- **Migrations applied in S10 (all by the owner):** `evaluation_cups`, `sample_prep_and_reference_mode`, `warmup_reflections`
+  (2026-11-13), `coffee_origin_edited_at` (before #128 merged), `close_notice_and_late_contributions` (before #131 merged).
+  Nothing is pending.
+- **Legal pages are PUBLISHED** (2026-11-13). `UNUSED_ACCOUNT_PURGE_ENABLED` is OFF: rehearse and switch it on before 2027-05-30.
+- **WP10 (documentation)** is the PR titled "S10 WP10: documentation checked against the code after S10". It rewrites the
+  top of `CLAUDE.md`, checks `docs/flows.md`, the runbook (a "Still owed by the owner" list at its top and a STATUS line on
+  §30 to §36), `README.md` and `PRODUCT.md`, and adds `docs/product/kim-validar-S10.md` (every `TODO(kim-validar:...)` with the
+  question for Kim). The first-person warm-up line attributed to Kim (`TODO(kim-validar:F3)`) shipped by the owner's decision
+  ("ship now", 2026-11-13) and needs his yes.
+- **Still to do:** the final handover and the Flowmap card `k-s10` (done, with the parked items recorded: B4, E2, group member
+  consent, accessibility statement, `__Host-` cookie prefix, replayable old migrations); the owner items at the top of the runbook.
+
 ### Late update (end of day three, written when the 5-hour usage limit was at 97%) — READ THIS FIRST; where it differs from the text below, this wins
 
 **The Flowmap board has ZERO open findings.** F-grupal-1, F-grupos-10, F-cafes-9 and F-landing-1 are `fixed`. The plan is NOT finished: see "Still to do".

@@ -2,8 +2,40 @@
 
 Every step here is something only you can do (dashboard clicks, secrets). Each section
 says **when** to do it, **exactly where to click**, **what to paste**, and **how to verify**.
-Sections are added as the code that needs them lands; check `docs/HANDOVER.md` for which
-ones are still owed.
+Sections are added as the code that needs them lands. Section numbers are unique, in file
+order (§1 to §36, plus §1b) and never reused. `docs/handover/S10-HANDOVER.md` has the order of events.
+
+## Still owed by the owner (state on 2026-11-14)
+
+Nothing in the database is pending: every migration and SQL phase written in S10 is applied
+(see the STATUS line at the top of §30 to §36). What is left is yours:
+
+1. **Registro Mercantil line** of the legal notice (§17 item 3). The pages are published
+   without it by your decision (`REGISTRY_PENDING_BY_OWNER` in `lib/legal/company.ts`);
+   it is mandatory under LSSI-CE art. 10.1(b). Fill `LEGAL_ENTITY.registry` and set that constant
+   to false in the same change.
+2. **Unused-account deletion: rehearse, then switch on `UNUSED_ACCOUNT_PURGE_ENABLED=1` before
+   2027-05-30** (§17 item 4). The published privacy text promises the deletion after 12 months;
+   the oldest never-used account reaches 12 months on 2027-05-30. Today the switch is OFF (count only).
+3. **Paste the email-change template** in Supabase (§15). Not recorded as done.
+4. **Founding-offer conditions** (terms section 6), the **Vercel/Resend transfer-safeguards
+   wording** and the **contact address** in the legal pages (`TODO(owner)` in `lib/legal/company.ts`
+   and `lib/siteContact.ts`).
+5. **Supabase auth settings and guest capacity** (§16: Secure email change, anonymous sign-in
+   rate limit) and the **rate-limit review** (§15). The runbook has no record that they were done:
+   open the dashboard and confirm.
+6. **Signed-in and device checks that only a person can do** (list in
+   `docs/handover/S10-HANDOVER.md` section 4, item 5): two people on one tablet; a 2-cup session with
+   one defective cup shows -6 and asks the defect type; an old closed session shows unchanged
+   numbers; reflections and the short warm-up; the new session wizard; results of an open group
+   session as participant and as organiser; the coffee page's lifetime score card; the announced
+   close and late evaluations; the timer and "no evaluado".
+7. Optional env variables not set in production on 2026-11-13: `UNSUBSCRIBE_SECRET` (the boot
+   logs one warning until it is set; it falls back to `GUEST_CLAIM_SECRET`) and
+   `ACCOUNT_DELETION_ENABLED` (the "Eliminar cuenta" button stays hidden until §24 is rehearsed).
+8. **Decision pending:** the default profile name (the first part of the email) is shown to
+   co-cuppers in the waiting room, the organiser's matrix, group feed authors and the group page's
+   "Propietario". Not changed in S10.
 
 ---
 
@@ -564,207 +596,6 @@ alone.
 
 **Rollback:** the column is nullable and unused by the old code — roll the app back and
 leave the column in place.
-
----
-
-## §27. S8 combined rollout (all of S8 in one release)
-
-> Placed here, at the top of the S8 material, on purpose; numbered §27 because §10–§26 were
-> taken when it was written. **For the S8 release this section supersedes every
-> per-section "exactly one pending migration, else stop" / "1 migration applied" line in
-> §10–§26**: those were written for one PR each, but S8 ships as ONE chained branch, so ten
-> migrations are pending at once. Follow the order below; use §10–§26 only for the detail
-> each step points to. Every step here is in production (there is only one Supabase project).
-
-**Why one procedure:** the regenerated Prisma client selects the new columns on every read, so
-code that reaches production before its migration returns 500s (sessions, groups, invites,
-results) and the sign-in form fails (it reads `outbound_email_events`). The migrations are all
-additive and independent and the OLD app ignores every new object, so applying all of them
-first is safe; the reverse order is not. The email templates are the opposite case: they link
-to `/auth/confirm`, which only exists after the deploy.
-
-### Before the deploy
-
-0. **Right checkout.** On your Windows machine, check out the commit you are about to deploy
-   (the merged S8 tip), `npm ci`, `npx prisma generate`, `.env.local` with the production
-   `DIRECT_URL` (direct connection, not the pooler; same precondition as §7). Ignore the
-   pre-existing `cupping_sessions."startedAt"` drift (§9): never apply or "fix" it.
-
-1. **PHASE 21: already applied 2026-11-10 (§10).** Confirm it is still in place (expect no
-   rows):
-
-   ```sql
-   select tablename, policyname, cmd from pg_policies
-   where schemaname = 'public' and cmd <> 'SELECT'
-     and tablename in ('evaluations','aggregate_scores','cupping_sessions','session_samples',
-       'session_participants','physical_evaluations','extrinsic_data','session_invites','profiles');
-   ```
-
-   Why first: the new app expects participants to learn about new results from the
-   `cupping_sessions` channel only, and the API to be read-only on the session tables.
-
-2. **Never-started live sessions: close or start them.** After the deploy a participant
-   cannot save in a live group session that never recorded a start (`session_not_started`).
-   There were **three** on 2026-11-10; re-run the query, it may differ now:
-
-   ```sql
-   select id, name, "createdBy" from cupping_sessions
-   where "isGroup" and not "isAsync" and status = 'active' and "startedAt" is null;
-   ```
-
-   For each row, ask the owner to press "Iniciar cata" or close it (from the app) before the
-   deploy. Why before: the moment the new code is live, their participants are locked out.
-
-3. **The ten migrations, in timestamp order, BEFORE the deploy.** `npx prisma migrate status`
-   must list exactly these ten as pending (anything else, or a drift message other than the
-   `startedAt` one: stop and paste the output):
-
-   1. `20261110120000_outbound_email_ledger` (§11)
-   2. `20261111090000_close_lifecycle` (§13)
-   3. `20261111100000_waitlist_consent` (§17)
-   4. `20261111110000_invite_active_entries_locked` (§18)
-   5. `20261111120000_digest_run_status` (§19)
-   6. `20261111130000_exclusion_audit_extrinsic_edited` (§20)
-   7. `20261111140000_history_coffee_optional` (§21)
-   8. `20261111150000_session_notify_group_at_start` (§22)
-   9. `20261111160000_evaluation_last_client_write` (§23)
-   10. `20261111170000_group_member_email_opt_out` (§25)
-
-   **Preferred:** `npx prisma migrate deploy` from that checkout. It applies them in this order,
-   stops at the first failure and records each one in `_prisma_migrations` itself. Expected:
-   `10 migrations found … applied`.
-
-   **Only if you apply them through the Supabase SQL editor instead:** each migration needs
-   its own row in `_prisma_migrations`, or the next `migrate status` / `migrate deploy` will
-   try to apply it again. One editor run per migration, in the order above:
-
-   ```sql
-   BEGIN;
-   -- paste the full contents of prisma/migrations/<name>/migration.sql here
-   INSERT INTO _prisma_migrations (id, checksum, migration_name, started_at, finished_at, applied_steps_count)
-   VALUES (gen_random_uuid()::text, '<sha256 of that migration.sql>', '<name>', now(), now(), 1);
-   COMMIT;
-   ```
-
-   - `checksum` = SHA-256 (lowercase hex) of the `migration.sql` file **as checked out on your
-     Windows machine, i.e. with CRLF line endings** (git `core.autocrlf=true`), because every
-     existing row was recorded that way by `migrate deploy` run from that machine. Compute it in
-     PowerShell:
-     `(Get-FileHash -Algorithm SHA256 prisma\migrations\<name>\migration.sql).Hash.ToLower()`.
-   - Check the CRLF assumption once first: the existing row for
-     `20261028120000_session_warmup_started_at` must hold the hash of your local file
-     (`eb9e4c3733a9053c18e48077d5872b09acc77b56a663cb3b54cbcddd3cedc108` with CRLF;
-     `f7fea817e9ab9e17fc9b516221ef7aad2bea8d10a81b1ffc83e1ce311c2937b5` would mean LF, in
-     which case hash LF copies of the files instead).
-   - For cross-checking, the CRLF hashes computed from a checkout of this branch (yours must
-     match; if one differs, the file changed: stop and ask):
-
-     | # | sha256 (CRLF) |
-     |---|---|
-     | 1 | `a733f82bab4b27f64e74608acfe81c51f6eb5f35267f3f866950f04ca262d9bb` |
-     | 2 | `ac7ecbf0e3bc8e5fd054ff035322a83f1cdefe124fd85a65c6384ebaa43443b9` |
-     | 3 | `6af5a6fc9a0e90d562607ad2954d6f9a28c17cb2aa57046255f939304743179b` |
-     | 4 | `065a012d204d859e46ae9ba8ad3066536f137e2493cc9f23f5ab537fffb2aab4` |
-     | 5 | `c645ba5e327f9b47d16133b1ed4e849791edc328575f937984f24a4b5bf4140b` |
-     | 6 | `ae6749f3161d552b5b78149ebb45f911913a4eb3dbaa984e12c934a6bf81f588` |
-     | 7 | `692a0d351c53d30f69ef4eb0f2580b5f544e3b27b9b98b3520f872f987deb0f6` |
-     | 8 | `aa9026f67f47970c087da0ec92720cf2b619e6ff8415aeb56427abb7588c12b1` |
-     | 9 | `56044d52d76d17b943f26e6b9978ad88df515ff16d3235dbfc622239fef9520a` |
-     | 10 | `19b678ba350a63465cebedbdc9d3887aa7be60218381c38509f5336cc736aa0d` |
-   - `id`: any uuid; `started_at`/`finished_at`: `now()`; `applied_steps_count`: `1`;
-     `logs` and `rolled_back_at` stay NULL.
-   - Never edit a `migration.sql` after recording it: the checksum would no longer match.
-
-   **Verify** (either path):
-
-   ```sql
-   select migration_name, left(checksum, 8) as sum, finished_at is not null as finished,
-          rolled_back_at, applied_steps_count
-   from _prisma_migrations where migration_name >= '20261110120000' order by migration_name;
-   ```
-
-   Expected: the ten names above, `finished = true`, `rolled_back_at` NULL, `1` step each. Then
-   `npx prisma migrate status` reports the schema up to date (a "modified after it was applied"
-   warning means a checksum is wrong: fix the row, not the file). Then run the per-migration
-   checks: §13 step 2 (`owed` must be `0`), and the column queries of §18–§25.
-   Never accept a `prisma migrate dev` proposal to drop
-   `user_coffee_history_label_row_evaluation_key` (§21).
-
-4. **PHASE 22 right after the migrations (§11 step 3).** The two ledger tables exist only once
-   migration 1 ran; enabling RLS on them before the new code writes to them keeps them closed to
-   the public key from the first row. Verify with §11 step 4.
-
-5. **PHASE 23 STEP 1 only (§12 steps 1–3: pre-flight, dry run, re-issue the function).** Before
-   the deploy, so the stored community score written by the first new submission already agrees
-   with what the new app shows (no deductions under 5 cups). It changes nothing stored by itself
-   and is safe against the old app. **HOLD STEP 2** (the recompute of past scores, §12 steps 4–5,
-   plus `scripts/resync-low-cup-history.ts`) until Kim has been told; it raises the stored score
-   of past sessions under 5 cups with a flagged cup.
-
-6. **PHASE 24 (§26): pre-flight, dry run, apply.** No dependency on the code (the app writes
-   nothing through the API roles), so it can go before the deploy and closes the group-member
-   mail hole sooner. Save the pre-flight (b) output: it is the rollback. This phase also fixes
-   the `coffees`/`coffee_shares` policy recursion (42P17) with a new helper, `is_coffee_owner`.
-
-7. **Environment (Vercel → Production).**
-   - `ACCOUNT_DELETION_ENABLED`: leave **unset** (the account-deletion entry point stays off) until
-     §24 has been run on a non-production environment and signed off. (The flag arrives with the
-     audit's "server rules" change, S8-22 / A-01, which is in the chained S8 tip; only the exact
-     value `1` turns deletion on. If that change is not in the deployed commit, account
-     deletion is NOT gated: hold the deploy or accept it knowingly.)
-   - `ANALYTICS_SUPER_ADMIN_EMAIL`: **required**, the super-admin address (§17). Without it (or with a
-     malformed value) the production server refuses to start (the build still succeeds, every
-     request then returns 500); there is no built-in fallback address any more.
-   - `NEXT_PUBLIC_SITE_URL` present for Production AND Preview (§19).
-   - Resend plan covers the daily volume, and Supabase **Authentication → Rate Limits → email**
-     is not below the 60 per IP per 15 min tripwire (§11).
-
-### Deploy
-
-8. **Merge → Vercel deploys.** Outside a live tasting: the service worker goes to v4 (S8-09 took it
-   to v3, S8-23 to v4; one release, so devices jump straight to v4) and every device rebuilds
-   its caches once (§14).
-
-### After the deploy
-
-9. **Supabase dashboard (§15, §16)**, in this order:
-   - Authentication → Sign In / Providers → Email: **OTP length = 6**; turn on **Secure email
-     change**.
-   - Authentication → URL Configuration: the redirect allow-list covers
-     `https://cafesensible.ai/**` (includes `/auth/confirm` and `/en/auth/confirm`).
-   - Authentication → Email Templates: paste Magic Link, Confirm signup, Change Email Address
-     (copy the old ones first; they are the rollback). Why after the deploy: the new templates
-     link to `/auth/confirm`, which did not exist before. Old emails keep working.
-   - Authentication → Rate Limits: anonymous sign-ins at least 2x the largest room per hour; email
-     as in step 7.
-
-10. **Post-deploy checks.**
-    - Sign-in: §15 smoke test (a bare GET of the link does not burn it; the 6-digit code works).
-    - **Two-account Realtime** (owner + participant on an active group session): waiting room,
-      cup and results update live; the owner's "enviados" counter moves (§10 step 5, §26 step 5).
-    - **Phone offline**: §14 device checks and the §23 two-tab stale-replay test.
-    - **Warm-up on two phones**: §9's synced warm-up check (master starts, participant follows,
-      Detener closes it).
-    - §13 `owed` query again after the next cron (06:00 UTC); Security Advisor shows nothing new.
-    - The remaining per-PR smoke tests as time allows: §11, §18, §20, §21, §22, §25.
-
-11. **Later, separately:** PHASE 23 STEP 2 + history resync once Kim knows (§12 steps 4–6);
-    legal pages (§17 step 3); §24 on a non-production environment before turning on account
-    deletion.
-
-### Rollback order
-
-Reverse, and only as far as needed:
-
-1. **Email templates first** (paste the saved old ones): the old app has no `/auth/confirm`.
-2. **Revert the deploy.** The schema stays: every migration is additive and the old code ignores
-   the new objects. Exception (§21): once label-only history rows exist (`"coffeeId" IS NULL`),
-   do NOT roll the code back below S8-16 (old code crashes the history page on them).
-3. **SQL phases only if they are the cause**, newest first: PHASE 24 (its commented rollback +
-   the saved pre-flight output), PHASE 23 (re-create the old function; re-run STEP 2 only if it
-   had been run), PHASE 21 (its commented rollback). PHASE 22 needs none.
-4. **Never roll back a migration** by hand, and never drop a new table or column while code that
-   uses it is deployed.
 
 ---
 
@@ -1669,6 +1500,207 @@ in one transaction. The app keeps working under either state.
 
 ---
 
+## §27. S8 combined rollout (all of S8 in one release)
+
+> Placed here, at the top of the S8 material, on purpose; numbered §27 because §10–§26 were
+> taken when it was written. **For the S8 release this section supersedes every
+> per-section "exactly one pending migration, else stop" / "1 migration applied" line in
+> §10–§26**: those were written for one PR each, but S8 ships as ONE chained branch, so ten
+> migrations are pending at once. Follow the order below; use §10–§26 only for the detail
+> each step points to. Every step here is in production (there is only one Supabase project).
+
+**Why one procedure:** the regenerated Prisma client selects the new columns on every read, so
+code that reaches production before its migration returns 500s (sessions, groups, invites,
+results) and the sign-in form fails (it reads `outbound_email_events`). The migrations are all
+additive and independent and the OLD app ignores every new object, so applying all of them
+first is safe; the reverse order is not. The email templates are the opposite case: they link
+to `/auth/confirm`, which only exists after the deploy.
+
+### Before the deploy
+
+0. **Right checkout.** On your Windows machine, check out the commit you are about to deploy
+   (the merged S8 tip), `npm ci`, `npx prisma generate`, `.env.local` with the production
+   `DIRECT_URL` (direct connection, not the pooler; same precondition as §7). Ignore the
+   pre-existing `cupping_sessions."startedAt"` drift (§9): never apply or "fix" it.
+
+1. **PHASE 21: already applied 2026-11-10 (§10).** Confirm it is still in place (expect no
+   rows):
+
+   ```sql
+   select tablename, policyname, cmd from pg_policies
+   where schemaname = 'public' and cmd <> 'SELECT'
+     and tablename in ('evaluations','aggregate_scores','cupping_sessions','session_samples',
+       'session_participants','physical_evaluations','extrinsic_data','session_invites','profiles');
+   ```
+
+   Why first: the new app expects participants to learn about new results from the
+   `cupping_sessions` channel only, and the API to be read-only on the session tables.
+
+2. **Never-started live sessions: close or start them.** After the deploy a participant
+   cannot save in a live group session that never recorded a start (`session_not_started`).
+   There were **three** on 2026-11-10; re-run the query, it may differ now:
+
+   ```sql
+   select id, name, "createdBy" from cupping_sessions
+   where "isGroup" and not "isAsync" and status = 'active' and "startedAt" is null;
+   ```
+
+   For each row, ask the owner to press "Iniciar cata" or close it (from the app) before the
+   deploy. Why before: the moment the new code is live, their participants are locked out.
+
+3. **The ten migrations, in timestamp order, BEFORE the deploy.** `npx prisma migrate status`
+   must list exactly these ten as pending (anything else, or a drift message other than the
+   `startedAt` one: stop and paste the output):
+
+   1. `20261110120000_outbound_email_ledger` (§11)
+   2. `20261111090000_close_lifecycle` (§13)
+   3. `20261111100000_waitlist_consent` (§17)
+   4. `20261111110000_invite_active_entries_locked` (§18)
+   5. `20261111120000_digest_run_status` (§19)
+   6. `20261111130000_exclusion_audit_extrinsic_edited` (§20)
+   7. `20261111140000_history_coffee_optional` (§21)
+   8. `20261111150000_session_notify_group_at_start` (§22)
+   9. `20261111160000_evaluation_last_client_write` (§23)
+   10. `20261111170000_group_member_email_opt_out` (§25)
+
+   **Preferred:** `npx prisma migrate deploy` from that checkout. It applies them in this order,
+   stops at the first failure and records each one in `_prisma_migrations` itself. Expected:
+   `10 migrations found … applied`.
+
+   **Only if you apply them through the Supabase SQL editor instead:** each migration needs
+   its own row in `_prisma_migrations`, or the next `migrate status` / `migrate deploy` will
+   try to apply it again. One editor run per migration, in the order above:
+
+   ```sql
+   BEGIN;
+   -- paste the full contents of prisma/migrations/<name>/migration.sql here
+   INSERT INTO _prisma_migrations (id, checksum, migration_name, started_at, finished_at, applied_steps_count)
+   VALUES (gen_random_uuid()::text, '<sha256 of that migration.sql>', '<name>', now(), now(), 1);
+   COMMIT;
+   ```
+
+   - `checksum` = SHA-256 (lowercase hex) of the `migration.sql` file **as checked out on your
+     Windows machine, i.e. with CRLF line endings** (git `core.autocrlf=true`), because every
+     existing row was recorded that way by `migrate deploy` run from that machine. Compute it in
+     PowerShell:
+     `(Get-FileHash -Algorithm SHA256 prisma\migrations\<name>\migration.sql).Hash.ToLower()`.
+   - Check the CRLF assumption once first: the existing row for
+     `20261028120000_session_warmup_started_at` must hold the hash of your local file
+     (`eb9e4c3733a9053c18e48077d5872b09acc77b56a663cb3b54cbcddd3cedc108` with CRLF;
+     `f7fea817e9ab9e17fc9b516221ef7aad2bea8d10a81b1ffc83e1ce311c2937b5` would mean LF, in
+     which case hash LF copies of the files instead).
+   - For cross-checking, the CRLF hashes computed from a checkout of this branch (yours must
+     match; if one differs, the file changed: stop and ask):
+
+     | # | sha256 (CRLF) |
+     |---|---|
+     | 1 | `a733f82bab4b27f64e74608acfe81c51f6eb5f35267f3f866950f04ca262d9bb` |
+     | 2 | `ac7ecbf0e3bc8e5fd054ff035322a83f1cdefe124fd85a65c6384ebaa43443b9` |
+     | 3 | `6af5a6fc9a0e90d562607ad2954d6f9a28c17cb2aa57046255f939304743179b` |
+     | 4 | `065a012d204d859e46ae9ba8ad3066536f137e2493cc9f23f5ab537fffb2aab4` |
+     | 5 | `c645ba5e327f9b47d16133b1ed4e849791edc328575f937984f24a4b5bf4140b` |
+     | 6 | `ae6749f3161d552b5b78149ebb45f911913a4eb3dbaa984e12c934a6bf81f588` |
+     | 7 | `692a0d351c53d30f69ef4eb0f2580b5f544e3b27b9b98b3520f872f987deb0f6` |
+     | 8 | `aa9026f67f47970c087da0ec92720cf2b619e6ff8415aeb56427abb7588c12b1` |
+     | 9 | `56044d52d76d17b943f26e6b9978ad88df515ff16d3235dbfc622239fef9520a` |
+     | 10 | `19b678ba350a63465cebedbdc9d3887aa7be60218381c38509f5336cc736aa0d` |
+   - `id`: any uuid; `started_at`/`finished_at`: `now()`; `applied_steps_count`: `1`;
+     `logs` and `rolled_back_at` stay NULL.
+   - Never edit a `migration.sql` after recording it: the checksum would no longer match.
+
+   **Verify** (either path):
+
+   ```sql
+   select migration_name, left(checksum, 8) as sum, finished_at is not null as finished,
+          rolled_back_at, applied_steps_count
+   from _prisma_migrations where migration_name >= '20261110120000' order by migration_name;
+   ```
+
+   Expected: the ten names above, `finished = true`, `rolled_back_at` NULL, `1` step each. Then
+   `npx prisma migrate status` reports the schema up to date (a "modified after it was applied"
+   warning means a checksum is wrong: fix the row, not the file). Then run the per-migration
+   checks: §13 step 2 (`owed` must be `0`), and the column queries of §18–§25.
+   Never accept a `prisma migrate dev` proposal to drop
+   `user_coffee_history_label_row_evaluation_key` (§21).
+
+4. **PHASE 22 right after the migrations (§11 step 3).** The two ledger tables exist only once
+   migration 1 ran; enabling RLS on them before the new code writes to them keeps them closed to
+   the public key from the first row. Verify with §11 step 4.
+
+5. **PHASE 23 STEP 1 only (§12 steps 1–3: pre-flight, dry run, re-issue the function).** Before
+   the deploy, so the stored community score written by the first new submission already agrees
+   with what the new app shows (no deductions under 5 cups). It changes nothing stored by itself
+   and is safe against the old app. **HOLD STEP 2** (the recompute of past scores, §12 steps 4–5,
+   plus `scripts/resync-low-cup-history.ts`) until Kim has been told; it raises the stored score
+   of past sessions under 5 cups with a flagged cup.
+
+6. **PHASE 24 (§26): pre-flight, dry run, apply.** No dependency on the code (the app writes
+   nothing through the API roles), so it can go before the deploy and closes the group-member
+   mail hole sooner. Save the pre-flight (b) output: it is the rollback. This phase also fixes
+   the `coffees`/`coffee_shares` policy recursion (42P17) with a new helper, `is_coffee_owner`.
+
+7. **Environment (Vercel → Production).**
+   - `ACCOUNT_DELETION_ENABLED`: leave **unset** (the account-deletion entry point stays off) until
+     §24 has been run on a non-production environment and signed off. (The flag arrives with the
+     audit's "server rules" change, S8-22 / A-01, which is in the chained S8 tip; only the exact
+     value `1` turns deletion on. If that change is not in the deployed commit, account
+     deletion is NOT gated: hold the deploy or accept it knowingly.)
+   - `ANALYTICS_SUPER_ADMIN_EMAIL`: **required**, the super-admin address (§17). Without it (or with a
+     malformed value) the production server refuses to start (the build still succeeds, every
+     request then returns 500); there is no built-in fallback address any more.
+   - `NEXT_PUBLIC_SITE_URL` present for Production AND Preview (§19).
+   - Resend plan covers the daily volume, and Supabase **Authentication → Rate Limits → email**
+     is not below the 60 per IP per 15 min tripwire (§11).
+
+### Deploy
+
+8. **Merge → Vercel deploys.** Outside a live tasting: the service worker goes to v4 (S8-09 took it
+   to v3, S8-23 to v4; one release, so devices jump straight to v4) and every device rebuilds
+   its caches once (§14).
+
+### After the deploy
+
+9. **Supabase dashboard (§15, §16)**, in this order:
+   - Authentication → Sign In / Providers → Email: **OTP length = 6**; turn on **Secure email
+     change**.
+   - Authentication → URL Configuration: the redirect allow-list covers
+     `https://cafesensible.ai/**` (includes `/auth/confirm` and `/en/auth/confirm`).
+   - Authentication → Email Templates: paste Magic Link, Confirm signup, Change Email Address
+     (copy the old ones first; they are the rollback). Why after the deploy: the new templates
+     link to `/auth/confirm`, which did not exist before. Old emails keep working.
+   - Authentication → Rate Limits: anonymous sign-ins at least 2x the largest room per hour; email
+     as in step 7.
+
+10. **Post-deploy checks.**
+    - Sign-in: §15 smoke test (a bare GET of the link does not burn it; the 6-digit code works).
+    - **Two-account Realtime** (owner + participant on an active group session): waiting room,
+      cup and results update live; the owner's "enviados" counter moves (§10 step 5, §26 step 5).
+    - **Phone offline**: §14 device checks and the §23 two-tab stale-replay test.
+    - **Warm-up on two phones**: §9's synced warm-up check (master starts, participant follows,
+      Detener closes it).
+    - §13 `owed` query again after the next cron (06:00 UTC); Security Advisor shows nothing new.
+    - The remaining per-PR smoke tests as time allows: §11, §18, §20, §21, §22, §25.
+
+11. **Later, separately:** PHASE 23 STEP 2 + history resync once Kim knows (§12 steps 4–6);
+    legal pages (§17 step 3); §24 on a non-production environment before turning on account
+    deletion.
+
+### Rollback order
+
+Reverse, and only as far as needed:
+
+1. **Email templates first** (paste the saved old ones): the old app has no `/auth/confirm`.
+2. **Revert the deploy.** The schema stays: every migration is additive and the old code ignores
+   the new objects. Exception (§21): once label-only history rows exist (`"coffeeId" IS NULL`),
+   do NOT roll the code back below S8-16 (old code crashes the history page on them).
+3. **SQL phases only if they are the cause**, newest first: PHASE 24 (its commented rollback +
+   the saved pre-flight output), PHASE 23 (re-create the old function; re-run STEP 2 only if it
+   had been run), PHASE 21 (its commented rollback). PHASE 22 needs none.
+4. **Never roll back a migration** by hand, and never drop a new table or column while code that
+   uses it is deployed.
+
+---
+
 ## §28. Supabase — apply PHASE 25 (hide exclusion metadata from the API, 2026-11, S9-02 / audit A-10)
 
 **When:** any time, before or after the deploy; the app never reads `session_participants`
@@ -1778,6 +1810,8 @@ a second statement fails or if this one stops failing.
 ---
 
 ## §30. The cup deduction at any cup count: migration, PHASE 26, deploy (2026-11, S10 WP1a)
+
+**STATUS: DONE, 2026-11-13.** Migration `20261113090000_evaluation_cups` run by the owner (`npx.cmd prisma migrate deploy`), PHASE 26 applied by the owner after its dry run, then the deploy (#117). Verified read-only the same day: the new function has the `v_factor` line and the old `>= 5` gate is gone; the 354 aggregate rows were all still `ruleVersion` 1 (nothing recomputed). PHASE 23 STEP 2 stays CANCELLED.
 
 **Read this first.** The score that existed before S8 was right in principle and had bugs; this
 goes back to it (flagged cups cost points at any cup count, everyone's cups share the
@@ -2018,6 +2052,8 @@ new sample `ruleVersion = 1` while its evaluations already carry `cups`.
 
 ## §31. Movimiento Sensorial: private reflections, the `warmup_reflections` migration and PHASE 27 (2026-11, S10 WP7)
 
+**STATUS: DONE, 2026-11-13.** Migration `20261113110000_warmup_reflections` run by the owner, PHASE 27 applied by the owner (#122). Verified read-only: `rls=t; policies=0; grants=none` for `warmup_reflections`.
+
 **What it does:** adds ONE new table, `warmup_reflections` (a person's saved answers to the two
 closing questions of a warm-up exercise: `id`, `userId` → `profiles` with `ON DELETE RESTRICT`,
 `exerciseId`, `feel`, `discovery`, `createdAt`), and PHASE 27 closes it to the API roles. The rows are
@@ -2082,6 +2118,8 @@ rollback is the commented block at its end (leaving RLS on is the safe state).
 ---
 
 ## §32. Database — apply the `sample_prep_and_reference_mode` migration (2026-11, S10 WP2)
+
+**STATUS: DONE, 2026-11-13.** Migration `20261113100000_sample_prep_and_reference_mode` run by the owner before the deploy of #120; checked after the deploy by the health endpoint and the logs (no error). The wizard itself needs a signed-in check (section 4 of the S10 handover).
 
 **What it does:** adds five columns, all additive, no trigger, no function, no policy, no index,
 no foreign key:
@@ -2276,6 +2314,8 @@ app works under either state.
 
 ## §34. Database — apply the `coffee_origin_edited_at` migration (2026-11, S10 WP5a)
 
+**STATUS: DONE, 2026-11-13.** Migration `20261115090000_coffee_origin_edited_at` run by the owner (`npx.cmd prisma migrate deploy`) before #128 merged (the folder name carries a later date than the day it was run). Existing coffees keep `originEditedAt` NULL, so past origin edits show no note.
+
 **What it does:** adds ONE column, additive, no default, no backfill, no trigger, no function, no
 policy, no index, no foreign key: `coffees."originEditedAt"` (TIMESTAMPTZ(3), nullable). It records
 when a coffee's ORIGIN data (country, region, farm, producer, species, variety, harvest, process,
@@ -2317,7 +2357,7 @@ reads it is rolled back; code rolled back ignores the column anyway.
 rating). PHASE 29 was APPLIED on 2026-11-13 at 23:36 UTC, on the owner's explicit yes, exactly as it stands
 in `rls_and_triggers.sql`. Verified read-only afterwards: the helper is present and not executable by
 `authenticated` / `anon`, the trigger function mentions it, and the 354 aggregate rows are all
-`ruleVersion` 1 (none recomputed). What remains is step 4 (merge and deploy of the application code).
+`ruleVersion` 1 (none recomputed). The application code (#137) is merged to `main` and deployed.
 
 **What it does:** a cupper who could not judge one affective section (for instance arrived after the
 fragrance) marks it "No evaluado" instead of inventing a value. That evaluation is a **declared
@@ -2403,6 +2443,8 @@ trigger's stored averages.
 ---
 
 ## §36. Database — apply the `close_notice_and_late_contributions` migration (2026-11, S10 WP4b)
+
+**STATUS: DONE, applied by the owner before #131 merged** (merge commit `e594d13`, 2026-11-14 00:34 in +01:00, so before 2026-11-13 23:34 UTC). The handover files do not record the exact hour; the launch notes of 2026-11-14 say every S10 migration is applied and nothing is pending. (The comment in the migration file says "runbook section 35"; the right section is this one, §36. Applied migration files are not edited.)
 
 **What it does:** five NULLABLE columns, no default, no backfill, no index, no trigger, no policy:
 

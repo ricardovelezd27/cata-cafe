@@ -16,13 +16,19 @@ The tool exists to make rigorous, reproducible cupping sessions as frictionless 
 
 **El puntaje necesita contexto.** A CVA number alone is not a decision: the same coffee can be excellent for one objective (filter, education, alignment) and wrong for another (espresso, a buyer's target). Every score surface therefore ships with its comparison — community mean, consensus SD, and now the owner's reference sample with a signed Δ — all display-only; the CVA formula is never mutated. As of 2026-09-25 the reference is cupped first and its quality pinned at 5, so it works as a fixed reference the room aligns on (a Café Sensible exercise, not part of the CVA) rather than another competitor in the ranking. New features are checked against one question: does this help the user understand what they are evaluating, against what, and what the result means? Adding numbers without context is regression.
 
-**Product rules decided on 2026-11-12 (decided, pending implementation — none of this is built yet).** Source: `docs/product/cata-descentralizada-puntaje.md` and the top of `docs/prompts/S10-kim-answers.md`.
+**Product rules decided on 2026-11-12 (built in S10; all merged to `main` in November 2026).** Source: `docs/product/cata-descentralizada-puntaje.md` and the top of `docs/prompts/S10-kim-answers.md`.
 - **Stay close to the CVA.** The cupper sees the CVA's own deductions, not a reinterpretation: 4 points per defective cup, 2 per non-uniform cup.
-- **A defect must cost the cupper points at any cup count.** The current "no deductions under five cups" rule is being replaced.
+- **A defect costs the cupper points at any cup count.** The earlier "no deductions under five cups" rule is gone. Scores stored before the change are never recomputed.
 - **One cup never costs more than 6 points.** A rule under which a single cup cost 15 to 30 points was considered and rejected.
-- **A coffee's lifetime score weighs a bad cup less as more cups are tasted.** The deduction is diluted only when more than five cups are pooled (a session's group score, a coffee's lifetime score); a cupper's own score is always the flat CVA deduction. No past score is rewritten.
-- **As little free text as possible.** Prefer fixed option lists so cuppings stay comparable (the acidity and sweetness pickers stay as they are).
+- **A shared deduction is diluted only beyond five pooled cups.** This holds for a session's group score and a coffee's lifetime score; a cupper's own score is always the flat CVA deduction.
+- **The number is named "Puntaje Café Sensible (base CVA)".** It follows the CVA form but is not a CVA report.
+- **A score is a number only.** No colour and no category name by quality; the legend gives two anchors, 79 as the neutral point and 100 as the maximum.
+- **The total is not shown while cupping**, so nobody decides the final number and spreads it backwards. It appears after "Enviar", with its arithmetic in one line.
+- **The fixed reference (79.00) is a Café Sensible classroom exercise, not part of the CVA.** The organizer can instead choose a free reference that everyone scores like any other sample.
+- **Group results appear only when the session is closed**, so seeing the group cannot bias a cupper who has not finished.
+- **As little free text as possible.** Prefer fixed option lists so cuppings stay comparable (the acidity and sweetness pickers stay as they are, a recorded departure from the CVA 2024 form).
 - **Teaching and comparisons appear only when a session is closed**, never as guidance during the cupping.
+- Every behaviour built on a simulated answer of Kim awaits his confirmation: `docs/product/kim-validar-S10.md`.
 
 ---
 
@@ -84,31 +90,30 @@ Both descriptive intensities and affective quality scores evaluated together. Th
 
 ---
 
-## CVA Scoring Formula
+## Scoring (Puntaje Café Sensible, base CVA)
 
 ```
-S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
+S = 0.65625 × Σhᵢ + 52.75 − uniformityPenalty − defectPenalty
 ```
 
 | Variable | Definition |
 |---|---|
 | `hᵢ` | 9-point affective score for each of 8 sections (fragrance → overall) |
-| `u` | Non-uniform cups (0–5) |
-| `d` | Defective cups (0–5) |
-| Result | Rounded to nearest 0.25 |
+| uniformity penalty | 2 per non-uniform cup (only with 2 or more cups) |
+| defect penalty | 4 per defective cup; a defective cup is also non-uniform, so at most 6 per cup |
+| Result | Rounded to the nearest 0.25, kept between 0 and 100 |
 
-**Score bands:**
+Every attribute at 5 gives 79.00 and every attribute at 9 gives 100.00.
 
-| Score | Category | UI Color |
-|---|---|---|
-| ≥ 90 | Excepcional | Green |
-| 85–89 | Excelente | Green |
-| 80–84 | Muy bueno | Green |
-| 79 | Bueno | Amber |
-| 70–78 | Promedio | Amber |
-| < 70 | Bajo | Red |
+**Three scopes, one deduction rule** (`lib/scoring.ts`):
 
-**Community score** (group sessions): computed by PostgreSQL trigger `trg_recompute_aggregate` — normalized penalties across all participants. The TypeScript function is display-only; the trigger result is authoritative.
+1. **Individual**: the cupper's own cups, always the flat CVA deduction.
+2. **Session (group)**: the average of the included cuppers' raw scores, minus the deductions of all their pooled cups scaled by `5 ÷ max(5, pooled cups)`: flat up to five pooled cups, diluted beyond. Computed by the PostgreSQL trigger `trg_recompute_aggregate` (authoritative); the TypeScript function is display-only. An evaluation with a section marked "no evaluado" is a partial one: it has no total and is not included, but its rated sections feed the attribute averages.
+3. **Coffee lifetime**: the same rule over every counted cup of a coffee (closed sessions, revealed samples, excluded cuppers out), computed when the coffee page is read and never stored. It also tallies defective cups by type (mohoso, fenólico, papa).
+
+"Indicativo" labels a number built on few cuppers (3 to 5; firm from 6) or on fewer than 5 pooled cups. Equal or very close scores are shown as "sin diferencia clara". These labels, the reference, Δ chips and the spread (SD) are display only and never change a score.
+
+**What was never recomputed:** scores stored before the rule change keep their value and are shown unchanged (the data says which rule produced them).
 
 ---
 
@@ -130,10 +135,12 @@ S = 0.65625 × Σhᵢ + 52.75 − 2u − 4d
 - [x] `IntensitySlider` (0–15, step 0.5) for descriptive attributes
 - [x] `AffectiveBubbles` (1–9) for affective scores
 - [x] `FlavorPicker` for flavor-wheel CATA selection — browse the hierarchy **or** predictive typeahead (Fuse.js, accent/typo-tolerant, breadcrumbed); unmatched input kept as a free note
-- [x] `CupIndicators` for cup uniformity and defect tracking
+- [x] `CupToggleGrid` for cup uniformity and defect tracking (also at one cup: defect row only)
 - [x] Auto-save at 800ms debounce (no manual save)
 - [x] Master Controls (session leader only): reveal, close
-- [x] Score preview (`ScoreDisplay` with expandable formula breakdown)
+- [x] No live total while cupping; after submitting, the total with its arithmetic in one line (the live "Puntaje calculado" card was removed in S10)
+- [x] Defect type per cup, optional timer, a second value "as it cooled", "no evaluado" per section, an optional market note
+- [x] A revealed sample of an open session takes no more ratings
 - [x] Responsive cupping layout with mobile sample navigation bar
 - [x] Sample selection persists across phase tabs
 

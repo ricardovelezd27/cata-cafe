@@ -144,7 +144,7 @@ flowchart TD
   persistent polite banner fed by the `cupping_sessions` realtime UPDATE and the page render
   (`serverNow` corrects clock skew like the synced warm-up). The waiting room has no banner
   (a close is only announced once a session runs).
-- **Late evaluations (4th sanctioned post-close write).** `acceptLateEvaluation(evaluationId)`:
+- **Late evaluations (sanctioned write 5 in the list below).** `acceptLateEvaluation(evaluationId)`:
   registered user, resolved to its sample and session on the server, the caller must own the
   session, `isAcceptableLate` (session `closed`, the evaluation a DRAFT, COMPLETE by the submit
   path's rule, not a deleted-account placeholder). One transaction: row lock, rewrite of a
@@ -154,11 +154,11 @@ flowchart TD
   results line "Resultados actualizados el..." also moves (latest of the exclusion stamps and
   `acceptedLateAt`). The late rows and counts exist in the owner's payload only
   (`buildOwnerLateRows`); a cupper sees only their own "no se envio / se incluyo" lines.
-- **A note left only on the device (5th).** `submitLateDraft` (`app/actions/offline.ts`, session
+- **A note left only on the device (sanctioned write 6).** `submitLateDraft` (`app/actions/offline.ts`, session
   member, CLOSED group session only) writes a DRAFT row: no row creates, a draft is updated
   only when the device copy is not older (`clientTs` rule), a submitted row answers `conflict`
   and is never touched. It never sets `isDraft = false`, `submittedAt` or `acceptedLateAt`.
-- **A text note after close (6th).** `setPostCloseNote(evaluationId, text, expectedUserId?)`:
+- **A text note after close (sanctioned write 7).** `setPostCloseNote(evaluationId, text, expectedUserId?)`:
   the caller's OWN SUBMITTED evaluation of a CLOSED session, text only (max 500, "" clears),
   writes only `postCloseNote` / `postCloseNoteAt`. The trigger does not fire. Read by the
   cupper and the session owner only (`buildPostCloseNotes`); never in a report tier or the CSV.
@@ -212,20 +212,34 @@ group session before the master starts it (`assertSessionStarted`,
 `session_not_started`); offline replay keeps such a draft pending, never
 discarded.
 
-**Written list after close** (everything else throws `session_closed`; enforced by
-`tests/useServerExports.test.ts`): `upsertExtrinsic` via `ExtrinsicEditDialog`
-(owner AND a revealed sample, otherwise `session_closed`; stamps
-`extrinsic_data.edited_at` and returns `ActionResult`), `updateSampleMetadata` naming
-a coffee-less sample (owner), and, decided in S8-12, the owner's
-`setParticipantExclusion` (reason / author / time stamped on `session_participants`,
-returns `ActionResult`, refreshes `UserCoffeeHistory` when the session is closed), the three
-S10 WP4b writes above (`acceptLateEvaluation`, `submitLateDraft`, `setPostCloseNote`) and
-`refreshAggregateScores` (listed only because it is callable after close: it is a NO-OP then, since the aggregates were computed at close and a re-fire would recompute a past score under the current rule; on an open session it re-fires the aggregates). After such a change the results page shows
-"Resultados actualizados el <fecha>" to every viewer and the PDFs carry the same line.
-`closeSession`, `startSession`, `resendCloseEmails`, `deleteSession` and
-`duplicateSession` are lifecycle actions, idempotent or allowed on a closed session
-by design. **TODO(Kim-D1/D2):** both extensions are the spec defaults and stay
-reversible (hide the button, drop the allow-list).
+**Sanctioned post-close writes: the full list.** Everything else throws `session_closed`.
+This list equals the sanctioned entries of the `ALLOWLIST` in `tests/useServerExports.test.ts`
+plus the two that are guarded by their own rule inside the action (`upsertExtrinsic`,
+`updateSampleMetadata`) and account deletion (not session-scoped, so not in the test).
+
+| # | Action | Who | Gate | What it writes |
+|---|---|---|---|---|
+| 1 | `upsertExtrinsic` via `ExtrinsicEditDialog` (S8-12) | session owner | the sample is revealed (`extrinsicWriteAllowed`), else `session_closed` | the origin row, stamps `extrinsic_data.edited_at` |
+| 2 | `setParticipantExclusion` (S8-12, reasons S10 WP5a) | session owner | none beyond ownership | `excluded_*` on `session_participants`; re-fires the aggregate; refreshes history on a closed session |
+| 3 | `updateSampleMetadata` naming a coffee on a coffee-less sample (S8-12) | session owner | the sample has no coffee and the input carries a coffee field | creates and links the coffee, `revealed: true`, history re-sync |
+| 4 | `deleteAccount` (S8-19) | the person | typed confirmation, not the super-admin | moves the person's rows in closed sessions to a placeholder profile; no score changes |
+| 5 | `acceptLateEvaluation` (S10 WP4b, C1) | session owner | `isAcceptableLate` (closed, a COMPLETE draft, not excluded) and a matching `expectedUpdatedAt` | `isDraft` false, `submittedAt`, `acceptedLateAt`; that sample's group score |
+| 6 | `submitLateDraft` (S10 WP4b, C1) | a member | CLOSED group session; never over a submitted row | a DRAFT row only, stamped `receivedLateAt` |
+| 7 | `setPostCloseNote` (S10 WP4b, C2) | the cupper | their OWN submitted evaluation of a CLOSED session | `postCloseNote`, `postCloseNoteAt`, text only |
+
+Also on the allowlist, and not writes to a result: the reads (`getDeleteImpact`,
+`getWaitingState`, `checkSessionStarted`, `getCloseImpact`), the lifecycle actions that are
+idempotent or valid on a closed session by design (`closeSession`, `closeAnnounced`,
+`resendCloseEmails`, `startSession`, `deleteSession`, `duplicateSession`), the legacy replay
+`syncEvaluation` (answers `discarded` instead of throwing) and `refreshAggregateScores` (a NO-OP
+after close or expiry: the aggregates were computed at close and a re-fire would recompute a past
+score under the current rule; on an open session it re-fires them).
+After a change of 2 or 5 the results page shows "Resultados actualizados el <fecha>" to every
+viewer (`resultsUpdatedAfterClose`: the latest exclusion stamp or `acceptedLateAt`) and the PDFs carry
+the same line. A change of origin data (1, 3) shows "Datos de origen editados el <fecha>" instead
+(`lib/originEdit.ts`).
+Rows 1 to 3 (decided in S8-12) are owner decisions and stay reversible: hide the button, drop the
+allow-list entry.
 
 **Group results are visible only at close (S10 WP4a, Kim C5, `TODO(kim-validar:C5)`).**
 `canViewGroupResults` (`lib/sessionState.ts`) is: group session AND (owner / admin lens
@@ -611,9 +625,7 @@ flowchart TD
     I -- Continuar como nombre --> C[member: go in / newcomer: join action]
     I -- No soy nombre --> W[confirm: cuppings no longer openable from here;\nunsynced note count if any]
     W -- confirm --> S[signOut local, then clearLocalDeviceState]
-    S --> H[hard navigation to the SAME join URL] --> N[normal decision again:
-guest form, or the refusal screen when the link is closed,
-expired, full or entries-locked]
+    S --> H[hard navigation to the SAME join URL] --> N["normal decision again:<br/>guest form, or the refusal screen when the link is closed,<br/>expired, full or entries-locked"]
 ```
 
 Nothing is deleted from the device's draft store (drafts are keyed by user id and
@@ -769,10 +781,10 @@ appears. From the moment a session closes, each submitted evaluation on a
 coffee-less sample already has a **label-only** history row (`coffeeId` NULL,
 shown as "Sin café asignado", links to the session results, never to a coffee
 page, not counted as a coffee tasted); assigning the coffee REPLACES it with the
-normal coffee row (S8-16). This is the second sanctioned post-close write (the first is
+normal coffee row (S8-16). This is sanctioned write 3 in the list at the top of this section (write 1 is
 `ExtrinsicEditDialog` → `upsertExtrinsic`, owner + revealed sample, S8-12).
 
-**Third sanctioned post-close write: account deletion (S8-19).** `deleteAccount`
+**Sanctioned post-close write 4: account deletion (S8-19).** `deleteAccount`
 rewrites the deleted person's rows in CLOSED sessions without going through
 `assertSessionWritable`: their `Evaluation.cupperId`, `SessionParticipant.userId`
 (with `excludedFromResults` and its trail), `PhysicalEvaluation.evaluatedBy`,
@@ -933,7 +945,7 @@ flowchart TD
         S -- "setCoffeeVisibility(private)\ninvites DELETED · share rows stay but go INERT" --> P
         PUB -- setCoffeeVisibility --> S
     end
-    S -- "join link /join/coffee/[token]" --> CS[CoffeeShare row\n(per user)]
+    S -- "join link /join/coffee/[token]" --> CS["CoffeeShare row<br/>per user"]
     CS --> U[usable by that user]
     PUB --> U2[usable by everyone]
     P --> U3[usable by owner only]
@@ -1118,8 +1130,7 @@ flowchart TD
         SL --> ED[/edit — metadata + samples/]
         SL --> RES[/"/results/ — 3-tab structure, see §5"/]
         NW[New session wizard]
-        EX[Express: name · format · N
-coffee-less samples] -->|createExpressSession| CUP
+        EX["Express: name · format · N<br/>coffee-less samples"] -->|createExpressSession| CUP
     end
 
     subgraph CO [Coffees]
@@ -1231,6 +1242,19 @@ removes the reference, or names another sample), each evaluation still at the an
 state gets its ratings back in the same transaction (aggregate re-fired for submitted
 rows); one re-rated meanwhile keeps its values and drops the stash. A restore on an already REVEALED sample is allowed (it puts back ratings given blind, before the pin; the reveal refusal applies to a new pin only). Known and accepted: an ORDINARY save (authorised while the sample was not pinned) that lands just after the owner marks that sample writes real ratings on a freshly pinned reference with no stash; the cupper's next save pins it and stashes those values. A page that was showing the pin keeps sending `pinnedView` (also after a reload), so a stale pinned save after the reference moved never overwrites the restored ratings. The owner sees a
 non-blocking "Se recuperaron las calificaciones anteriores de {n} evaluaciones."
+
+**Lock order and `busy_retry` (S10 WP5b review, `lib/sessionLock.ts`).** One order everywhere: the
+SESSION row first, then sample rows, then evaluation and aggregate rows. A pinned (or `pinnedView`)
+save takes the session row `FOR SHARE` in `lib/evaluationPinWrite.ts`; "Enviar", "Terminar cata" and
+the aggregate re-fire take it shared through `lockSessionRowShared`; every transaction that changes
+`referenceSampleId` or `referenceRank`, deletes a sample, reveals one, renames one or writes the label /
+prep data of `updateSampleMetadata` takes it `FOR UPDATE` first (`lockSessionRow`); a submit, a
+"Terminar cata" flip, an aggregate re-fire, `acceptLateEvaluation` and `submitLateDraft` take it `FOR SHARE`
+(`lockSessionRowShared`). The two session-row helpers wait at most 5 s (`LOCK_TIMEOUT_MS`,
+`lib/lockTimeout.ts`) and turn a lock timeout (SQLSTATE 55P03) into the typed code `busy_retry`
+("La cata está ocupada en este momento…"), which `run()` maps for actions; the offline replay answers
+`pending` for it. The pinned-save transaction in `lib/evaluationPinWrite.ts` takes its `FOR SHARE` with a plain
+SELECT, without that timeout.
 
 ### Personal comparisons and repeated sample (S10 WP5b, B3 / B6)
 
@@ -1362,8 +1386,8 @@ flowchart TD
   W[Waitlist form] --> R[row: source, consentAt, consentNoticeVersion]
   W --> Q{LEGAL_PAGES_PUBLISHED}
   Q -- false --> X[notice line + footer/login links hidden; privacidad, terminos, aviso-legal direct-visit only, Borrador, noindex]
-  Q -- true --> Y[notice line + links shown, consent stamped, banner gone, indexable]
-  W --> K[daily cron: purgeUnusedAccounts - an account never used (never confirmed or signed in, empty, its last reservation, access request and creation all older than 12 months, no access email in 48 h) is deleted with its reservation, after a last re-check right before the auth delete; switch UNUSED_ACCOUNT_PURGE_ENABLED, off = count only]
+  Q -- "true since 2026-11-13" --> Y[notice line + links shown, consent stamped, banner gone, indexable]
+  W --> K["daily cron: purgeUnusedAccounts. An account never used (never confirmed or signed in, empty, its last reservation, access request and creation all older than 12 months, no access email in 48 h) is deleted with its reservation, after a last re-check right before the auth delete. Switch UNUSED_ACCOUNT_PURGE_ENABLED: off = count only (OFF on 2026-11-14)"]
 ```
 
 ## 7. Offline drafts and replay (S8-09)
@@ -1374,12 +1398,15 @@ stateDiagram-v2
   pending --> synced: replay ok
   pending --> conflict: server holds a submitted row (group)
   pending --> closed_unsent: session closed or expired
+  pending --> revealed_unsent: sample revealed on an open session
   pending --> orphaned: sample or session gone for this user
   pending --> pending: replay failed, retry in 15 s doubling to 5 min
   pending --> failed: 5 failed runs
   failed --> pending: cupper taps Reintentar
   conflict --> synced: keep submitted, or replace and replay
+  closed_unsent --> synced: complete note sent to the organiser (submitLateDraft)
   closed_unsent --> [*]: cupper discards after reading or copying
+  revealed_unsent --> [*]: cupper discards after reading or copying
   orphaned --> [*]: cupper discards after reading or copying
 ```
 
@@ -1396,17 +1423,20 @@ stateDiagram-v2
   `staleClientWrite` line (ids only). A missing, malformed or > 5 min future `clientTs` counts as
   absent (old cached bundles behave as before). Scoring, the trigger and `AggregateScore` never read
   the column; cross-device clock skew is accepted (same user, same sample).
-- Only `pending` blocks the final submit. `failed`, `closed_unsent` and `orphaned` never do; the
+- Only `pending` blocks the final submit. `failed`, `closed_unsent`, `revealed_unsent` and `orphaned` never do; the
   cup screen names them in a notice and the app-shell badge opens "Notas sin sincronizar"
   (read, copy, confirmed discard; nothing is deleted automatically).
 - `conflict` is rebuilt from the stored blobs, so it survives a reload.
 - Sign-out and the guest claim ask first when anything exists only on the device
   (`UnsyncedGuardProvider`). The claim stores the anonymous id in `cata_claim_anon`; the next app
   mount under the signed-in account re-keys the blobs (`rekeyUserBlobs`).
-- Replay actions return `synced | conflict | closed | pending | gone | rejected` and never throw
+- Replay actions return `synced | conflict | closed | revealed | pending | gone | rejected` (`identity_changed` when a different user is signed in, S10 WP8b; a session-row lock timeout, `busy_retry`, answers `pending`) and never throw
   for those; `syncEvaluation` keeps its legacy contract for cached bundles.
-- Service worker v3: static cache capped at 120 entries, `/app/insights` and `/app/profile`
-  never cached, page caches purged when the signed-in id differs from the last one.
+- Service worker v5 (`public/sw.js`): static cache capped at 400 entries and least-recently-used,
+  `/app/insights`, `/app/profile` and the warm-up exercise pages `/app/warmup/<slug>` never cached,
+  page caches purged when the signed-in id differs from the last one.
+- A note refused because its sample was revealed (`revealed_unsent`, S10 WP3a) is kept on the device:
+  read, copy, confirmed discard; it is never retried and NEVER offered a send action.
 - A COMPLETE `closed_unsent` note of a closed group session can be sent to the organizer
   (`submitLateDraft`, S10 WP4b, section 1; the module then leaves the panel as `synced`; it
   lands as a draft and the owner decides). An incomplete one keeps read / copy / discard.
@@ -1426,10 +1456,13 @@ When you touch any of these, update the matching diagram **in the same PR**:
 - Any new cross-section navigation or a new consumer of `UserCoffeeHistory` → §4
 - Analytics scope, admin audit/masking, legal pages switch or waitlist consent fields → the S8-08 diagram above
 - Results page tab structure, gating (owner vs. participant), or the drill-down dialog → §5
+- The list of sanctioned post-close writes, the reveal freeze or the announced close → §1 (and the `ALLOWLIST` in `tests/useServerExports.test.ts`)
+- Reference modes, pin, stash and restore, multi-reference → "Reference sample" in §1
+- The scoring scopes or the PHASE 26 / 29 trigger → the last section of this file (and `tests/scoringConsistency.test.ts`)
 
 ## The cup deduction at any cup count (S10 WP1a; replaces S8-04)
 
-> The score that existed before S8 was right in principle and had bugs. This is that score with its three bugs fixed (spec: `docs/product/cata-descentralizada-puntaje.md`). It is not a new scoring system. The coffee lifetime score arrives in a later S10 PR.
+> The score that existed before S8 was right in principle and had bugs. This is that score with its three bugs fixed (spec: `docs/product/cata-descentralizada-puntaje.md`). It is not a new scoring system. The coffee lifetime score (S10 WP1c) is built: see the end of this section.
 
 ```mermaid
 flowchart TD
@@ -1446,4 +1479,26 @@ flowchart TD
   I -- no --> K[history communityScore = null, shown as a dash]
 ```
 
-The same `cupDeduction` / `evaluationCupCounts` rule (`lib/scoring.ts`) feeds the individual score, the group aggregate shown on results and, through its SQL twin (PHASE 26, reading `Evaluation.cups`), the trigger, so a coffee never shows two scores. A session of exactly one cup per sample carries an "Impresión rápida" tag in history and on the coffee profile. Scores stored before the deploy are not recomputed AND are displayed unchanged: wherever the screen, a PDF or the CSV recomputes a score in TypeScript it applies the rule the data says (`lib/scoreRule.ts`: an evaluation with `cups` NULL and an aggregate with `ruleVersion` 1 are the rule before 2026-11). A re-fire of an old sample (exclusion after close, repair) recomputes it under the current rule and stamps `ruleVersion` 2.
+The same `cupDeduction` / `evaluationCupCounts` rule (`lib/scoring.ts`) feeds the individual score, the group aggregate shown on results and, through its SQL twin (PHASE 26, reading `Evaluation.cups`), the trigger, so a coffee never shows two scores. A session of exactly one cup per sample carries an "Impresión rápida" tag in history and on the coffee profile. Scores stored before the deploy are not recomputed AND are displayed unchanged: wherever the screen, a PDF or the CSV recomputes a score in TypeScript it applies the rule the data says (`lib/scoreRule.ts`: an evaluation with `cups` NULL and an aggregate with `ruleVersion` 1 are the rule before 2026-11). A deliberate re-fire of an old sample (an owner exclusion or inclusion, a guest claim that removes or replaces an evaluation of it) recomputes it under the current rule and stamps `ruleVersion` 2; the close, repair and cron passes do NOT re-fire a sample made only of pre-deploy data (`keep-old-rule`, `lib/aggregates.ts`), and `refreshAggregateScores` is a no-op on a closed session.
+
+**Three scopes, one deduction function** (`cupDeduction`, `lib/scoring.ts`):
+
+```mermaid
+flowchart LR
+  E[Stored evaluations: cups, flags, ratings] --> I[Individual scope: that evaluation's own cups, factor 1]
+  E --> G[Session scope: trigger sums the cups of the INCLUDED COMPLETE evaluations, PHASE 29 body]
+  E --> C[Coffee lifetime scope: computeCoffeeLifetimeScore at read time, never stored]
+  G --> A[aggregate_scores with ruleVersion 2]
+  C --> P[coffee page and coffee ficha PDF]
+  I --> D[drill-down line and individual score]
+```
+
+- A declared partial evaluation ("no evaluado" in some section) is submitted but is NOT included in
+  the session total, `participantCount`, the cup pooling, the deductions or the SD; it feeds only
+  the per-attribute averages (the PHASE 29 clause), each averaged over the evaluations that rated it.
+- The coffee lifetime scope counts closed sessions and revealed samples only, excluded cuppers out,
+  one voice per evaluation for the base and every cup for the deduction; every reference sample of
+  an `anchor`-mode session feeds nothing. It is "indicativo" under 5 pooled cups and is never read
+  or written by the trigger or `AggregateScore`.
+- A score is a number only: no colour or category name by quality band; the legend gives the anchors
+  79 and 100. The number's name is "Puntaje Café Sensible (base CVA)".
