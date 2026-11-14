@@ -1,10 +1,23 @@
 # S10 — session handover
 
-- **status:** in-progress
-- **last updated:** 2026-11-13 by the database clock, end of day three: FOURTEEN PRs merged and live, four migrations and SQL phases 27, 26, 28 applied, legal pages published, **zero open findings on the Flowmap**; three branches in flight (see the "Late update" at the top of §3)
+- **status:** complete (2026-11-14). Nothing is in flight. What remains is for Ricardo and Kim only: see "FINAL STATE" right below.
+- **last updated:** 2026-11-14, end of the run: TWENTY S10 code pull requests and the documentation pass merged and live, five migrations and SQL phases 27, 26, 28, 29 applied, legal pages published, **zero open findings on the Flowmap**, all 59 cards complete.
 - **prompt:** `docs/prompts/S10-kim-answers.md`. **Approved plan with every decision:** `docs/handover/s10/approved-plan.md`.
 - **goal:** the Flowmap board (https://claude.ai/artifact/R4tkTWDPXYVJd3mDji91t9) ends with zero open findings.
 - **Resuming?** Read this file, then the plan. Do not re-plan and do not ask Ricardo again what §2 lists as decided. Continue from §5 "Next actions".
+
+## FINAL STATE (2026-11-14) — read this first; it wins over everything below
+
+- **Main is `f78609a`** (PR #140) plus the pull request that adds this block and the report. No branch is open, no agent is running, no migration or SQL phase is pending.
+- **Merged in S10, code:** #115 #116 #117 #118 #119 #120 #122 #123 #126 #127 #128 #130 #131 #132 #133 #134 #136 #137 #138 #139. **Documentation:** #121 #124 #125 #129 #135 #140.
+- **Finished overnight on 2026-11-14 without the owner** (his instruction): #138 (wording, lock safety, solo close from the cup page), #139 (descriptive sessions never say 79.00; a busy lock answers `busy_retry` and never saves half an edit), #140 (documentation checked against the code; `docs/product/kim-validar-S10.md`). Each merged only after an independent review said yes. None needed a database change.
+- **The report for the owner** (what changed, before and after, what is not verified, what we learned): `docs/reports/2026-11-14-after-the-flowmap.md`; editable copy with the signed-in checks as tick boxes: https://claude.ai/artifact/W3T1tY4sAbNEFrHKNKCKTo
+- **Flowmap:** 157 findings = 156 fixed + 1 rejected, every fixed finding has a `fixNote`; 59 cards, 57 done, every field filled; the two open cards are owner to-dos (`k-s8-open`, `k-s9-cleanup`, proposed due 2026-11-30).
+- **Verified:** after every merge, from outside only (deploy success, `/api/health` 204, login and home 200, the cron endpoint 401) and a read-only query after every SQL phase. **Never verified:** anything that needs a signed-in person or a real phone. The checklist is in the report.
+- **Waits on Ricardo:** the signed-in checks; the Registro Mercantil line (`LEGAL_ENTITY.registry`, then set `REGISTRY_PENDING_BY_OWNER` to false); rehearse and switch on `UNUSED_ACCOUNT_PURGE_ENABLED` before 2027-05-30 (runbook §17 item 4); the default display name (today the first part of the email address); the email-change template in Supabase (runbook §15); founding-offer conditions; whether `DigestRun.results` should stop keeping the super-admin's address in clear.
+- **Waits on Kim:** every answer was simulated in his place. `docs/product/kim-validar-S10.md` lists what was built on each one and the question to ask. The first-person warm-up line attributed to him shipped on the owner's "ship now" (2026-11-13) and needs his yes or a reword (`TODO(kim-validar:F3)`). His simulated D3 answer reads "up to 6"; the code treats 3 to 5 cuppers as indicative and 6 as firm.
+- **Known and accepted (from the last reviews):** a replay that meets a busy lock waits for the next trigger (no retry timer); in a descriptive session the reference takes part in the repeated-sample comparison; a failed sample-data save shows a toast and the form's own message; a solo session where every sample is a reference must have one reference removed before it can close; a comment in the applied migration `20261115100000_close_notice_and_late_contributions` points to runbook section 35 (the section is §36; applied migrations are not edited).
+- **Parked by the owner:** the teacher's guide (B4), optional email at join (E2), group member consent, the accessibility statement, a stricter cookie prefix, making old migrations replayable.
 
 ## 1. How this run works
 
