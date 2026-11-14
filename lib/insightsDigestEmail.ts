@@ -328,7 +328,7 @@ async function runClaimedDigest(args: {
   // S8-08 F-insights-1: the digest carries PLATFORM-wide KPIs, so it goes to
   // the super-admin only. Flagged analytics users used to receive it too;
   // they now get nothing rather than another user's numbers.
-  // TODO(S8-08): per-recipient user-scoped digests, if Ricardo wants them.
+  // TODO(owner): per-recipient user-scoped digests, if Ricardo wants them.
   const targets = new Map<string, Locale>();
   const superEmail = getSuperAdminEmail();
   if (superEmail && !targets.has(superEmail)) {

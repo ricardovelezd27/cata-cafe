@@ -212,9 +212,9 @@ export default async function GroupDetailPage({
     // ── Member (read-only) view — no stats, add-member forms, composer, or
     //    activity feed; only a name or "Invitación pendiente" is ever shown (never an email,
     //    masked or not; S10 WP5a, F-grupos-10). ──
-    // TODO(D7): roster visibility is (a) every member sees names (the Kim default,
-    // built). If Kim answers (b) teacher-chosen names or (c) teacher-only, add a
-    // roster setting here in a follow-up PR; nothing in this PR changes it.
+    // D7 (Kim's simulated answer, built): every member sees the names of the other members,
+    // never an email. A teacher-chosen or teacher-only roster is not built (TODO(kim-validar:D7));
+    // there is no roster setting.
     const myMemberRow = group.members.find((m) => m.userId === user.id);
     const memberRows = group.members.map((m) => ({ id: m.id, label: m.label }));
     const leaveT = {

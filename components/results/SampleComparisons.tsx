@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * S10 WP5b (B3 + B6, TODO(kim-validar:B3 / B6)): two small neutral blocks under
+ * S10 WP5b (B3 + B6, TODO(kim-validar:B3), TODO(kim-validar:B6)): two small neutral blocks under
  * the personal drill-down of a sample of a CLOSED session.
  *  - "Tú y el grupo" (B3): the viewer's own numbers next to the group's. Built on
  *    the server (lib/reports/personalComparison.ts), already gated by n >= 3.

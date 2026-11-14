@@ -167,7 +167,7 @@ export function buildFichaTecnica(
       const n = agg?.included ?? 0;
       affective = {
         communityScore: agg?.communityScore ?? null,
-        // Too few cuppers for a meaningful spread (RANKING_POLICY, TODO(Kim-D3)).
+        // Too few cuppers for a meaningful spread (RANKING_POLICY, TODO(kim-validar:D3)).
         sd: n >= RANKING_POLICY.minN ? (agg?.scoreSd ?? null) : null,
         included: n,
         // N = every submitted evaluation incl. excluded cuppers ("n de N incluidos").
