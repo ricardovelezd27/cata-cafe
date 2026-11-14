@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { useLocalFlag } from "@/hooks/useLocalFlag";
 import type { AudioCtxState } from "@/lib/warmup/audioResume";
 import { dueCues, dueHums, type ScheduleWindow } from "@/lib/warmup/audioWindow";
-import { VIBRATION, cueDurationMs, renderCue, renderHum } from "@/lib/warmup/sounds";
+import { FALLBACK_VOICE_VOLUME, LIMITER, MIX, duckingPlan, laneGains, type MixLevels, type SpeechWindow } from "@/lib/warmup/mix";
+import { AIR, HUM, VIBRATION, cueDurationMs, renderAir, renderCue, renderHum, type HumRecipe } from "@/lib/warmup/sounds";
 import type { CueKind, CuePoint, HumWindow } from "@/lib/warmup/timelineTypes";
 
 /**
@@ -27,12 +28,34 @@ import type { CueKind, CuePoint, HumWindow } from "@/lib/warmup/timelineTypes";
  * `unlock()` / `unlockWarmupAudio()` (which must be called synchronously
  * inside a user gesture) or the first `schedule()`. Never closed; suspended
  * when the last consumer unmounts.
+ *
+ * THE MIX (lib/warmup/mix.ts holds the numbers and the rules):
+ *
+ *   voice ──────────────────────────────┐
+ *   markers (campana, tic, cuenco, doble)┼─► limiter ─► output
+ *   background ◄─ tone (movement hum)    │
+ *              ◄─ air  (continuous bed) ─┘
+ *
+ * The voice, the limiter and the background lane live as long as the
+ * context. Each `schedule()` hangs three short-lived gain nodes on them
+ * (markers, tone, air) at the lane levels of the mix; `cancel()` fades and
+ * drops those three. The background lane's own gain is the DUCKING: it is
+ * drawn ahead of time from the known speech windows, never reacting to the
+ * signal.
  */
 export const WARMUP_SOUND_KEY = "cata_warmup_sound";
 export const WARMUP_VOICE_KEY = "cata_warmup_voice";
 
 const FLAG_STRINGS = { on: "on", off: "off" };
 const SPEECH_RATE = 0.88;
+
+export interface ScheduleOptions extends ScheduleWindow {
+  /** The exercise's own tone (lib/warmup/sounds.ts toneFor). Default: HUM. */
+  readonly tone?: HumRecipe;
+  /** When a line is spoken, ms on the run's timeline: the background dips
+   *  under each one (lib/warmup/mix.ts duckingPlan). */
+  readonly speech?: readonly SpeechWindow[];
+}
 
 export interface WarmupAudio {
   muted: boolean;
@@ -47,9 +70,10 @@ export interface WarmupAudio {
   /** Call synchronously inside a user gesture. */
   unlock(): void;
   /** cancel(), then schedule the cues and hum windows that are due inside
-   *  `window` (lib/warmup/audioWindow.ts: nothing past the point where the
-   *  clock stops by itself; lib/warmup/sounds.ts renderHum). */
-  schedule(cues: readonly CuePoint[], elapsedMs: number, hums?: readonly HumWindow[], window?: ScheduleWindow): void;
+   *  the window of `opts` (lib/warmup/audioWindow.ts: nothing past the point
+   *  where the clock stops by itself), the air for the whole stretch, and
+   *  the ducking of the background under `opts.speech`. */
+  schedule(cues: readonly CuePoint[], elapsedMs: number, hums?: readonly HumWindow[], opts?: ScheduleOptions): void;
   cancel(): void;
   /** Immediate single cue (intro "Escucha" demo). */
   playDemo(kind: CueKind): void;
@@ -65,6 +89,10 @@ export interface WarmupAudio {
    *  its state once it settled or after `waitMs` (iOS may never settle the
    *  promise outside a gesture). "none" when no context exists yet. */
   checkContext(waitMs?: number): Promise<AudioCtxState>;
+  /** Counts the changes of the dev mix override (setWarmupMixOverride). It
+   *  changes this object's identity, which is what makes a running player
+   *  reschedule with the new levels. */
+  mixVersion: number;
 }
 
 // ── AudioContext singleton ─────────────────────────────────────────────────
@@ -102,6 +130,116 @@ function subscribeCtx(cb: () => void) {
 
 function resumeIfNeeded(c: AudioContext) {
   if (c.state !== "running" && c.state !== "closed") void c.resume().catch(() => {});
+}
+
+// ── The persistent part of the mix ─────────────────────────────────────────
+
+interface Graph {
+  readonly ctx: AudioContext;
+  /** Where the markers lane and the two lanes below plug in (the limiter). */
+  readonly out: AudioNode;
+  readonly voice: GainNode;
+  /** Tone + air. Its gain is the ducking lane (1 = nobody speaks). */
+  readonly background: GainNode;
+}
+
+let graph: Graph | null = null;
+
+function getGraph(c: AudioContext): Graph | null {
+  if (graph && graph.ctx === c) return graph;
+  try {
+    let out: AudioNode = c.destination;
+    try {
+      const limiter = c.createDynamicsCompressor();
+      limiter.threshold.value = LIMITER.thresholdDb;
+      limiter.knee.value = LIMITER.kneeDb;
+      limiter.ratio.value = LIMITER.ratio;
+      limiter.attack.value = LIMITER.attackS;
+      limiter.release.value = LIMITER.releaseS;
+      limiter.connect(c.destination);
+      out = limiter;
+    } catch {
+      /* no compressor: the mix's own headroom has to do */
+    }
+    const voice = c.createGain();
+    voice.gain.value = 1;
+    voice.connect(out);
+    const background = c.createGain();
+    background.gain.value = 1;
+    background.connect(out);
+    graph = { ctx: c, out, voice, background };
+  } catch {
+    graph = null;
+  }
+  return graph;
+}
+
+// The mix in force. `MIX` unless the dev player is trying other numbers.
+let mixOverride: MixLevels | null = null;
+let mixVersion = 0;
+const mixListeners = new Set<() => void>();
+const currentMix = (): MixLevels => mixOverride ?? MIX;
+function subscribeMix(cb: () => void) {
+  mixListeners.add(cb);
+  return () => {
+    mixListeners.delete(cb);
+  };
+}
+
+/** Dev only (/app/warmup/dev-player): try other mix numbers without editing
+ *  lib/warmup/mix.ts. A running player reschedules at once. `null` restores
+ *  the committed mix. */
+export function setWarmupMixOverride(mix: MixLevels | null): void {
+  mixOverride = mix;
+  mixVersion += 1;
+  mixListeners.forEach((l) => l());
+}
+
+const clipBuffers = new Map<string, AudioBuffer>();
+
+/**
+ * Dev only for now: play one rendered voice file through the VOICE lane,
+ * with the background ducked under it exactly as the mix says, so the levels
+ * can be judged against a real line. Call inside a tap. Resolves with a stop
+ * function (a no-op when the clip could not be played).
+ */
+export async function playWarmupVoiceClip(url: string): Promise<() => void> {
+  unlockWarmupAudio();
+  const c = getCtx(false);
+  const g = c ? getGraph(c) : null;
+  if (!c || !g) return () => {};
+  try {
+    let buf = clipBuffers.get(url);
+    if (!buf) {
+      const res = await fetch(url);
+      if (!res.ok) return () => {};
+      buf = await c.decodeAudioData(await res.arrayBuffer());
+      clipBuffers.set(url, buf);
+    }
+    const mix = currentMix();
+    const now = c.currentTime;
+    const startMs = mix.duckAttackMs + 20;
+    const plan = duckingPlan([{ fromMs: startMs, toMs: startMs + buf.duration * 1000 }], 0, mix);
+    g.background.gain.cancelScheduledValues(now);
+    g.background.gain.setValueAtTime(plan.start, now);
+    for (const p of plan.points) g.background.gain.linearRampToValueAtTime(p.gain, now + p.atMs / 1000);
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    src.connect(g.voice);
+    src.start(now + startMs / 1000);
+    return () => {
+      try {
+        src.stop();
+        const t = c.currentTime;
+        g.background.gain.cancelScheduledValues(t);
+        g.background.gain.setTargetAtTime(1, t, 0.15);
+      } catch {
+        /* already ended */
+      }
+    };
+  } catch {
+    return () => {};
+  }
 }
 
 function vibrateNow(pattern: number | number[]) {
@@ -205,76 +343,119 @@ export function useWarmupAudio(locale?: string): WarmupAudio {
     voiceRef.current = voice;
   }, [muted, voice]);
 
-  const busRef = useRef<GainNode | null>(null);
+  // The three short-lived lane nodes of the stretch that is scheduled now.
+  const stretchRef = useRef<GainNode[] | null>(null);
   const demoBusRef = useRef<GainNode | null>(null);
   const vibrateTimers = useRef<number[]>([]);
   const speechDone = useRef(new Set<() => void>());
+  // Re-render (and so reschedule a running player) when the dev mix changes.
+  const mixTick = useSyncExternalStore(
+    subscribeMix,
+    () => mixVersion,
+    () => 0,
+  );
 
-  /** Fade a bus out and disconnect it 300 ms later; its voices die with it. */
-  const fadeBus = useCallback((ref: { current: GainNode | null }) => {
-    const bus = ref.current;
-    ref.current = null;
-    if (!bus) return;
+  /** Fade a node out and disconnect it 300 ms later; its voices die with it. */
+  const fadeNode = useCallback((node: GainNode | null) => {
+    if (!node) return;
     try {
-      const now = bus.context.currentTime;
-      bus.gain.cancelScheduledValues(now);
-      bus.gain.setTargetAtTime(0, now, 0.05);
+      const now = node.context.currentTime;
+      node.gain.cancelScheduledValues(now);
+      node.gain.setTargetAtTime(0, now, 0.05);
     } catch {
       /* context gone */
     }
     window.setTimeout(() => {
       try {
-        bus.disconnect();
+        node.disconnect();
       } catch {
         /* already disconnected */
       }
     }, 300);
   }, []);
+  const fadeBus = useCallback(
+    (ref: { current: GainNode | null }) => {
+      const bus = ref.current;
+      ref.current = null;
+      fadeNode(bus);
+    },
+    [fadeNode],
+  );
 
-  const freshBus = useCallback((c: AudioContext): GainNode | null => {
+  /** A gain node at `gain` feeding `into`. */
+  const lane = useCallback((c: AudioContext, gain: number, into: AudioNode): GainNode | null => {
     try {
-      const bus = c.createGain();
-      bus.gain.value = 1;
-      bus.connect(c.destination);
-      return bus;
+      const node = c.createGain();
+      node.gain.value = gain;
+      node.connect(into);
+      return node;
     } catch {
       return null;
     }
   }, []);
 
   const cancel = useCallback(() => {
-    fadeBus(busRef);
+    const stretch = stretchRef.current;
+    stretchRef.current = null;
+    stretch?.forEach(fadeNode);
     fadeBus(demoBusRef);
     vibrateTimers.current.forEach((t) => window.clearTimeout(t));
     vibrateTimers.current = [];
-  }, [fadeBus]);
+    // Nobody speaks while the run is stopped: the background lane rests at 1.
+    const g = graph;
+    if (g) {
+      try {
+        const now = g.ctx.currentTime;
+        g.background.gain.cancelScheduledValues(now);
+        g.background.gain.setTargetAtTime(1, now, 0.1);
+      } catch {
+        /* context gone */
+      }
+    }
+  }, [fadeNode, fadeBus]);
 
   const unlock = unlockWarmupAudio;
 
   const schedule = useCallback(
-    (cues: readonly CuePoint[], elapsedMs: number, hums: readonly HumWindow[] = [], win: ScheduleWindow = {}) => {
+    (cues: readonly CuePoint[], elapsedMs: number, hums: readonly HumWindow[] = [], opts: ScheduleOptions = {}) => {
       cancel();
-      const due = dueCues(cues, elapsedMs, win);
+      const due = dueCues(cues, elapsedMs, opts);
       for (const cue of due) {
         const delay = Math.max(0, cue.atMs - elapsedMs);
         vibrateTimers.current.push(window.setTimeout(() => vibrateNow(VIBRATION[cue.kind]), delay));
       }
       if (mutedRef.current) return;
       const c = getCtx(true);
-      if (!c) return;
+      const g = c ? getGraph(c) : null;
+      if (!c || !g) return;
       resumeIfNeeded(c);
-      const bus = freshBus(c);
-      if (!bus) return;
-      busRef.current = bus;
+      const mix = currentMix();
+      const tone = opts.tone ?? HUM;
+      const gains = laneGains(mix, tone, AIR, c.sampleRate);
+      const markers = lane(c, gains.markers, g.out);
+      const toneLane = lane(c, gains.tone, g.background);
+      const airLane = lane(c, gains.air, g.background);
+      if (!markers || !toneLane || !airLane) return;
+      stretchRef.current = [markers, toneLane, airLane];
       const now = c.currentTime;
-      for (const cue of due) renderCue(c, cue.kind, now + (cue.atMs - elapsedMs) / 1000, bus);
-      // The hum follows the movement windows; a window already running when
+      const at = (ms: number) => now + (ms - elapsedMs) / 1000;
+      for (const cue of due) renderCue(c, cue.kind, at(cue.atMs), markers);
+      // The tone follows the movement windows; a window already running when
       // we (re)schedule starts at once (renderHum clamps to currentTime).
-      for (const h of dueHums(hums, elapsedMs, win)) {
-        renderHum(c, now + (h.fromMs - elapsedMs) / 1000, now + (h.toMs - elapsedMs) / 1000, bus, h.contour);
+      for (const h of dueHums(hums, elapsedMs, opts)) renderHum(c, at(h.fromMs), at(h.toMs), toneLane, h.contour, tone);
+      // The air runs for the whole stretch and fades out into its end.
+      if (opts.untilMs !== undefined) renderAir(c, now, at(opts.untilMs), airLane);
+      // Ducking: the background lane, drawn ahead from the speech windows.
+      try {
+        const plan = duckingPlan(opts.speech ?? [], elapsedMs, mix);
+        g.background.gain.cancelScheduledValues(now);
+        g.background.gain.setValueAtTime(plan.start, now);
+        for (const p of plan.points) g.background.gain.linearRampToValueAtTime(p.gain, at(p.atMs));
+      } catch {
+        /* audio is best-effort */
       }
     },
-    [cancel, freshBus],
+    [cancel, lane],
   );
 
   const checkContext = useCallback(async (waitMs = 300): Promise<AudioCtxState> => {
@@ -297,9 +478,11 @@ export function useWarmupAudio(locale?: string): WarmupAudio {
       vibrateNow(VIBRATION[kind]);
       if (mutedRef.current) return;
       const c = getCtx(false);
-      if (!c) return;
+      const g = c ? getGraph(c) : null;
+      if (!c || !g) return;
       fadeBus(demoBusRef);
-      const bus = freshBus(c);
+      // The demo plays in the markers lane, at the level a cue has in a run.
+      const bus = lane(c, laneGains(currentMix()).markers, g.out);
       if (!bus) return;
       demoBusRef.current = bus;
       renderCue(c, kind, c.currentTime + 0.02, bus);
@@ -307,7 +490,7 @@ export function useWarmupAudio(locale?: string): WarmupAudio {
         if (demoBusRef.current === bus) fadeBus(demoBusRef);
       }, cueDurationMs(kind) + 200);
     },
-    [fadeBus, freshBus],
+    [fadeBus, lane],
   );
 
   const cancelSpeech = useCallback(() => {
@@ -347,6 +530,8 @@ export function useWarmupAudio(locale?: string): WarmupAudio {
         u.lang = speechLang(loc);
         u.voice = v;
         u.rate = SPEECH_RATE;
+        // Outside the mixer: brought roughly in line with it (lib/warmup/mix.ts).
+        u.volume = FALLBACK_VOICE_VOLUME;
         u.onend = done;
         u.onerror = done;
         s.speak(u);
@@ -368,12 +553,14 @@ export function useWarmupAudio(locale?: string): WarmupAudio {
       mutedRef.current = m;
       if (m) {
         // Silence what is already scheduled; vibration timers keep running.
-        fadeBus(busRef);
+        const stretch = stretchRef.current;
+        stretchRef.current = null;
+        stretch?.forEach(fadeNode);
         fadeBus(demoBusRef);
         cancelSpeech();
       }
     },
-    [setSound, fadeBus, cancelSpeech],
+    [setSound, fadeNode, fadeBus, cancelSpeech],
   );
 
   const setVoice = useCallback(
@@ -414,7 +601,8 @@ export function useWarmupAudio(locale?: string): WarmupAudio {
       cancelSpeech,
       interrupted,
       checkContext,
+      mixVersion: mixTick,
     }),
-    [muted, setMuted, voice, setVoice, voiceAvailable, unlock, schedule, cancel, playDemo, speak, cancelSpeech, interrupted, checkContext],
+    [muted, setMuted, voice, setVoice, voiceAvailable, unlock, schedule, cancel, playDemo, speak, cancelSpeech, interrupted, checkContext, mixTick],
   );
 }

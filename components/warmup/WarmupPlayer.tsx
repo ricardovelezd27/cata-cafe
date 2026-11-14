@@ -10,6 +10,8 @@ import { partTransforms, passedDots, torsoBreathTransform } from "@/lib/warmup/p
 import { previewSpec } from "@/lib/warmup/preview";
 import { RESUME_WAIT_MS, audioResumeDecision } from "@/lib/warmup/audioResume";
 import { resumeAfterStop, ringsOut } from "@/lib/warmup/audioWindow";
+import { estimateSpeechMs, type SpeechWindow } from "@/lib/warmup/mix";
+import { toneFor } from "@/lib/warmup/sounds";
 import type { RunClockEvent } from "@/lib/warmup/runClock";
 import { shouldResync } from "@/lib/warmup/syncedRun";
 import { skipNeedsConfirm, type WarmupExitInfo } from "@/lib/warmup/overlayGate";
@@ -340,6 +342,17 @@ export function WarmupPlayer({
     [steps, locale, t, postureLine],
   );
   const voiceOn = phase === "run" && audio.voice && audio.voiceAvailable && !synced;
+  // The exercise's own tone (one root note and brightness each).
+  const tone = useMemo(() => toneFor(tl.exerciseId), [tl.exerciseId]);
+  // When the voice speaks, for the ducking of the background. The phone's own
+  // voice reports nothing ahead of time, so each line's length is estimated.
+  const speechWindows = useMemo<SpeechWindow[]>(
+    () =>
+      voiceOn
+        ? tl.narrations.map((n) => ({ fromMs: n.atMs, toMs: n.atMs + estimateSpeechMs(narrationText(n.source)) }))
+        : [],
+    [voiceOn, tl, narrationText],
+  );
   const narrateRef = useRef<(elapsed: number) => void>(() => {});
   useEffect(() => {
     narrateRef.current = (elapsed: number) => {
@@ -475,6 +488,8 @@ export function WarmupPlayer({
       audio.schedule(tl.cues, elapsed, tl.hums, {
         untilMs: stop ?? tl.totalMs,
         afterMs: resumeAfterStop(stoppedAt.current, elapsed),
+        tone,
+        speech: speechWindows,
       });
       // Lines at or just after the seek point play; earlier ones are skipped.
       narrCursor.current = tl.narrations.findIndex((n) => n.atMs >= elapsed - 50);
@@ -486,7 +501,7 @@ export function WarmupPlayer({
       audio.cancel();
       audio.cancelSpeech();
     }
-  }, [running, runId, audio, tl, elapsedMs, stopForQuieto]);
+  }, [running, runId, audio, tl, elapsedMs, stopForQuieto, tone, speechWindows]);
   useEffect(() => () => audio.cancel(), [audio]);
 
   // iOS "interrupted" → pause.

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { WARMUP_EXERCISES, warmupById } from "@/lib/warmup/exercises";
 import { WarmupPlayer, type WarmupPlayerMode, type WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
+import { DevMix } from "./DevMix";
 
 export function DevPlayer({
   exerciseId,
@@ -68,6 +69,7 @@ export function DevPlayer({
           <span data-dev-log>{log.join(" · ")}</span>
         </div>
       )}
+      {inline && <DevMix />}
       <WarmupPlayer
         key={epoch}
         exercise={exercise}

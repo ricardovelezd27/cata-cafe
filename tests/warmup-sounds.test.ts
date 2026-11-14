@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HUM, RECIPES, VIBRATION, cueDurationMs, renderCue, renderHum } from "@/lib/warmup/sounds";
+import { AIR, HUM, RECIPES, TONES, VIBRATION, airRmsDb, cueAttackRmsDb, cueDurationMs, cuePeakMax, humPeakMax, humRmsDb, renderAir, renderCue, renderHum, toneFor } from "@/lib/warmup/sounds";
 import type { CueKind } from "@/lib/warmup/timelineTypes";
 
 type Event = { op: "set" | "linear" | "exp" | "target"; value: number; time: number };
@@ -277,5 +277,114 @@ describe("renderHum (the drone under a movement)", () => {
     const env = ctx.gains().find((g) => g.gain.events.some((e) => e.op === "linear" && e.value === HUM.peak))!;
     expect(env.gain.events[1].time).toBeCloseTo(5.5, 5); // fade-in = len/3
     expect(() => renderHum({ currentTime: 0 } as unknown as BaseAudioContext, 0, 10, {} as unknown as GainNode)).not.toThrow();
+  });
+});
+
+describe("the tone tells you the movement is about to end (arrival bloom)", () => {
+  const envOf = (contour: Parameters<typeof renderHum>[4], toS = 17) => {
+    const ctx = new FakeContext();
+    const bus = ctx.createGain();
+    ctx.nodes = [];
+    renderHum(ctx as unknown as BaseAudioContext, 2, toS, bus as unknown as GainNode, contour);
+    return ctx.gains().find((g) => g.gain.events.some((e) => e.op === "linear" && e.value === HUM.peak))!.gain.events;
+  };
+  it("a leg blooms over its last seconds, then closes just before the tic", () => {
+    for (const contour of ["rise", "fall"] as const) {
+      expect(envOf(contour)).toEqual([
+        { op: "set", value: 0, time: 2 },
+        { op: "linear", value: HUM.peak, time: 3.5 },
+        { op: "set", value: HUM.peak, time: expect.closeTo(17 - HUM.arrive.leadMs / 1000) as number },
+        { op: "linear", value: expect.closeTo(HUM.peak * HUM.arrive.boost) as number, time: expect.closeTo(17 - HUM.arrive.closeMs / 1000) as number },
+        { op: "linear", value: 0, time: 17 },
+      ]);
+    }
+    expect(HUM.arrive.boost).toBeGreaterThan(1);
+    expect(HUM.arrive.leadMs).toBeGreaterThan(HUM.arrive.closeMs);
+  });
+  it("stillness, breaths and fast reps keep the plain fade, and so does a leg too short to bloom", () => {
+    for (const contour of ["flat", "breath", "wave"] as const) expect(envOf(contour)).toHaveLength(4);
+    expect(envOf("rise", 2 + HUM.arrive.minWindowMs / 1000 - 0.5)).toHaveLength(4);
+  });
+});
+
+describe("each exercise has its own tone, one instrument", () => {
+  it("only the root note and the brightness change", () => {
+    for (const [id, t] of Object.entries(TONES)) {
+      const tone = toneFor(id);
+      expect({ ...tone, baseHz: HUM.baseHz, lowpassHz: HUM.lowpassHz }, id).toEqual(HUM);
+      expect(tone.baseHz).toBe(t.baseHz);
+      expect(tone.lowpassHz).toBe(t.lowpassHz);
+    }
+  });
+  it("a phone speaker can reproduce it: for every tone, most of the energy is at or above 240 Hz and under its lowpass", () => {
+    for (const id of Object.keys(TONES)) {
+      const tone = toneFor(id);
+      let all = 0;
+      let audible = 0;
+      for (const p of tone.partials) {
+        const power = (p.amp * (p.ratio === 1 ? 0.62 : 1)) ** 2 * (p.ratio === 1 ? 2 : 1);
+        all += power;
+        const hz = tone.baseHz * p.ratio;
+        if (hz >= 240 && hz < tone.lowpassHz) audible += power;
+      }
+      expect(audible / all, id).toBeGreaterThan(0.6);
+    }
+  });
+  it("plays the given recipe's root", () => {
+    const ctx = new FakeContext();
+    const bus = ctx.createGain();
+    ctx.nodes = [];
+    const tone = toneFor("eyes");
+    renderHum(ctx as unknown as BaseAudioContext, 0, 10, bus as unknown as GainNode, "flat", tone);
+    const bases = ctx.sources().map((s) => s.frequency.events[0]?.value);
+    expect(bases).toContain(tone.baseHz);
+    expect(bases).toContain(tone.baseHz * 2);
+    expect(bases).not.toContain(HUM.baseHz);
+  });
+  it("reports nominal levels the mix can use", () => {
+    expect(humRmsDb()).toBeGreaterThan(-40);
+    expect(humRmsDb()).toBeLessThan(-20);
+    expect(cueAttackRmsDb("campana")).toBeCloseTo(20 * Math.log10(0.22 * Math.sqrt((1 + 0.3 ** 2 + 0.35 ** 2 + 0.12 ** 2) / 2)), 6);
+    expect(cuePeakMax()).toBeCloseTo(0.25 * (1 + 0.3 + 0.6 + 0.1), 6); // the cuenco
+    expect(humPeakMax()).toBeGreaterThan(0);
+  });
+});
+
+describe("renderAir (the continuous bed under the whole run)", () => {
+  const air = (fromS: number, toS: number, now = 0) => {
+    const ctx = new FakeContext();
+    ctx.currentTime = now;
+    const bus = ctx.createGain();
+    ctx.nodes = [];
+    renderAir(ctx as unknown as BaseAudioContext, fromS, toS, bus as unknown as GainNode);
+    return ctx;
+  };
+  it("is looped filtered noise with a slow tide, fading in and out inside its window", () => {
+    const ctx = air(1, 31);
+    expect(ctx.count("buffer")).toBe(1);
+    expect(ctx.count("biquad")).toBe(2); // band-pass + lowpass
+    expect(ctx.count("osc")).toBe(1); // the tide
+    const src = ctx.sources().find((s) => s.kind === "buffer")!;
+    expect((src as unknown as { loop: boolean }).loop).toBe(true);
+    expect(src.startAt).toBe(1);
+    expect(src.stopAt).toBeCloseTo(31.05, 5);
+    const env = ctx.gains().find((g) => g.gain.events.some((e) => e.op === "linear" && e.value === AIR.level))!.gain.events;
+    expect(env).toEqual([
+      { op: "set", value: 0, time: 1 },
+      { op: "linear", value: AIR.level, time: 1 + AIR.fadeInMs / 1000 },
+      { op: "set", value: AIR.level, time: 31 - AIR.fadeOutMs / 1000 },
+      { op: "linear", value: 0, time: 31 },
+    ]);
+  });
+  it("clamps a start in the past, skips a window too short to hear, never throws", () => {
+    const ctx = air(0, 20, 8);
+    expect(ctx.sources().find((s) => s.kind === "buffer")!.startAt).toBe(8);
+    expect(air(0, 8.3, 8).nodes).toHaveLength(0);
+    expect(() => renderAir({ currentTime: 0 } as unknown as BaseAudioContext, 0, 10, {} as unknown as GainNode)).not.toThrow();
+  });
+  it("its nominal level is an estimate in a sane range", () => {
+    expect(airRmsDb()).toBeGreaterThan(-32);
+    expect(airRmsDb()).toBeLessThan(-18);
+    expect(AIR.loopMs).toBeGreaterThanOrEqual(3000);
   });
 });
