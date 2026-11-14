@@ -101,7 +101,6 @@ describe("reveal freezes evaluation on an open session", () => {
     const { s, blind } = await setup();
     const r = await replayEvaluation({
       sessionSampleId: blind.id,
-      sessionId: s.id,
       moduleKey: "affective",
       data: payload(s.id, blind.id, 8).data,
       cupsPerSample: 2,

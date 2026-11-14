@@ -214,16 +214,18 @@ discarded.
 
 **Sanctioned post-close writes: the full list.** Everything else throws `session_closed`.
 This list equals the sanctioned entries of the `ALLOWLIST` in `tests/useServerExports.test.ts`
-plus the two that are guarded by their own rule inside the action (`upsertExtrinsic`,
-`updateSampleMetadata`) and account deletion (not session-scoped, so not in the test).
+plus the four that are guarded by their own rule inside the action (`upsertExtrinsic` and its offline twin
+`replayExtrinsic`, `updateSampleMetadata` and `assignSampleCoffee`, which passes the static test through its
+`isSessionClosed(` guard) and the two row moves that are not session-scoped (`deleteAccount`, `confirmGuestClaim`),
+so not in the test.
 
 | # | Action | Who | Gate | What it writes |
 |---|---|---|---|---|
-| 1 | `upsertExtrinsic` via `ExtrinsicEditDialog` (S8-12) | session owner | the sample is revealed (`extrinsicWriteAllowed`), else `session_closed` | the origin row, stamps `extrinsic_data.edited_at` |
+| 1 | `upsertExtrinsic` via `ExtrinsicEditDialog` and `replayExtrinsic` (its offline twin) (S8-12) | session owner | the sample is revealed (`extrinsicWriteAllowed`), else `session_closed` | the origin row, stamps `extrinsic_data.edited_at` |
 | 2 | `setParticipantExclusion` (S8-12, reasons S10 WP5a) | session owner | none beyond ownership | `excluded_*` on `session_participants`; re-fires the aggregate; refreshes history on a closed session |
-| 3 | `updateSampleMetadata` naming a coffee on a coffee-less sample (S8-12) | session owner | the sample has no coffee and the input carries a coffee field | creates and links the coffee, `revealed: true`, history re-sync |
-| 4 | `deleteAccount` (S8-19) | the person | typed confirmation, not the super-admin | moves the person's rows in closed sessions to a placeholder profile; no score changes |
-| 5 | `acceptLateEvaluation` (S10 WP4b, C1) | session owner | `isAcceptableLate` (closed, a COMPLETE draft, not excluded) and a matching `expectedUpdatedAt` | `isDraft` false, `submittedAt`, `acceptedLateAt`; that sample's group score |
+| 3 | `updateSampleMetadata` naming a coffee on a coffee-less sample, and `assignSampleCoffee` (results "Asignar café", cup-page picker) (S8-12) | session owner | the sample has no coffee and the input carries a coffee field (`assignSampleCoffee`: `conflict` when it already has one; on a CLOSED session `isSessionClosed(` lets it through) | creates or links the coffee, sets `revealed: true`, history re-sync |
+| 4 | `deleteAccount` (S8-19) and `confirmGuestClaim` (S8-07) | the person | typed confirmation, not the super-admin; the claim needs the signed token and the confirmation button | moves the person's rows in closed sessions to a placeholder profile (deletion) or to the account (claim); a claim that removes or replaces a submitted evaluation re-fires that sample |
+| 5 | `acceptLateEvaluation` (S10 WP4b, C1) | registered session owner | `isAcceptableLate` (closed, a COMPLETE draft, not a deleted-account placeholder, not an excluded cupper) and a matching `expectedUpdatedAt` | `isDraft` false, `submittedAt`, `acceptedLateAt`; that sample's group score |
 | 6 | `submitLateDraft` (S10 WP4b, C1) | a member | CLOSED group session; never over a submitted row | a DRAFT row only, stamped `receivedLateAt` |
 | 7 | `setPostCloseNote` (S10 WP4b, C2) | the cupper | their OWN submitted evaluation of a CLOSED session | `postCloseNote`, `postCloseNoteAt`, text only |
 
@@ -745,7 +747,7 @@ sequenceDiagram
 flowchart LR
     A[Session row clicked] --> B{closed OR closesAt passed?}
     B -- yes --> R[/sessions/id/results/]
-    B -- no --> C{live group (not async) && !startedAt\n&& viewer is not owner?}
+    B -- no --> C{"live group, not async, not started, viewer not owner?"}
     C -- yes --> W[/sessions/id/waiting/]
     C -- no --> K[/sessions/id/cup/]
 ```
@@ -1253,8 +1255,14 @@ prep data of `updateSampleMetadata` takes it `FOR UPDATE` first (`lockSessionRow
 (`lockSessionRowShared`). The two session-row helpers wait at most 5 s (`LOCK_TIMEOUT_MS`,
 `lib/lockTimeout.ts`) and turn a lock timeout (SQLSTATE 55P03) into the typed code `busy_retry`
 ("La cata está ocupada en este momento…"), which `run()` maps for actions; the offline replay answers
-`pending` for it. The pinned-save transaction in `lib/evaluationPinWrite.ts` takes its `FOR SHARE` with a plain
-SELECT, without that timeout.
+`pending` for it. Since S10 WP6b the pinned save (`lib/evaluationPinWrite.ts`) takes the session row through
+`lockSessionRowShared` too, so it waits at most 5 s: `upsertEvaluation` answers `busy_retry` and the cup page keeps the
+save pending. The timeout lasts for the whole transaction, so every later lock in it also gives up after 5 s, all
+mapped to `busy_retry`. `updateSampleMetadata` writes coffee, label and prep data in ONE locked transaction (a busy
+lock leaves nothing written); it, `renameSessionSample` and `removeSessionSample` return their flat result through
+`runFlat` (`lib/safeAction.ts`, see CLAUDE.md "Server Action Contract"). A replay that meets a busy lock answers
+`pending`; the hook treats it as `waiting`, a waiting module gets no retry timer and is retried at the next trigger
+(resume, reconnect, remount, a new live save); no data is lost and no attempt is burnt.
 
 ### Personal comparisons and repeated sample (S10 WP5b, B3 / B6)
 
@@ -1479,7 +1487,7 @@ flowchart TD
   I -- no --> K[history communityScore = null, shown as a dash]
 ```
 
-The same `cupDeduction` / `evaluationCupCounts` rule (`lib/scoring.ts`) feeds the individual score, the group aggregate shown on results and, through its SQL twin (PHASE 26, reading `Evaluation.cups`), the trigger, so a coffee never shows two scores. A session of exactly one cup per sample carries an "Impresión rápida" tag in history and on the coffee profile. Scores stored before the deploy are not recomputed AND are displayed unchanged: wherever the screen, a PDF or the CSV recomputes a score in TypeScript it applies the rule the data says (`lib/scoreRule.ts`: an evaluation with `cups` NULL and an aggregate with `ruleVersion` 1 are the rule before 2026-11). A deliberate re-fire of an old sample (an owner exclusion or inclusion, a guest claim that removes or replaces an evaluation of it) recomputes it under the current rule and stamps `ruleVersion` 2; the close, repair and cron passes do NOT re-fire a sample made only of pre-deploy data (`keep-old-rule`, `lib/aggregates.ts`), and `refreshAggregateScores` is a no-op on a closed session.
+The same `cupDeduction` / `evaluationCupCounts` rule (`lib/scoring.ts`) feeds the individual score, the group aggregate shown on results and, through its SQL twin (PHASE 26, reading `Evaluation.cups`), the trigger, so a coffee never shows two scores. A session of exactly one cup per sample carries an "Impresión rápida" tag in history and on the coffee profile. Scores stored before the deploy are not recomputed AND are displayed unchanged: wherever the screen, a PDF or the CSV recomputes a score in TypeScript it applies the rule the data says (`lib/scoreRule.ts`: an evaluation with `cups` NULL and an aggregate with `ruleVersion` 1 are the rule before 2026-11). A deliberate re-fire of an old sample (an owner exclusion or inclusion, accepting a late evaluation, a guest claim that removes or replaces a SUBMITTED evaluation of it; editing an old evaluation moves that evaluation) recomputes it under the current rule and stamps `ruleVersion` 2; the close, repair and cron passes do NOT re-fire a sample made only of pre-deploy data (`keep-old-rule`, `lib/aggregates.ts`), and `refreshAggregateScores` is a no-op on a closed session.
 
 **Three scopes, one deduction function** (`cupDeduction`, `lib/scoring.ts`):
 
@@ -1496,8 +1504,9 @@ flowchart LR
 - A declared partial evaluation ("no evaluado" in some section) is submitted but is NOT included in
   the session total, `participantCount`, the cup pooling, the deductions or the SD; it feeds only
   the per-attribute averages (the PHASE 29 clause), each averaged over the evaluations that rated it.
-- The coffee lifetime scope counts closed sessions and revealed samples only, excluded cuppers out,
-  one voice per evaluation for the base and every cup for the deduction; every reference sample of
+- The coffee lifetime scope counts closed sessions and revealed samples only, excluded cuppers out. A complete
+  evaluation feeds the base (one voice) and its cups and flags; a quick impression (exactly 1 cup per sample) feeds
+  cups and flags only, not the base; a partial or incomplete evaluation feeds nothing; every reference sample of
   an `anchor`-mode session feeds nothing. It is "indicativo" under 5 pooled cups and is never read
   or written by the trigger or `AggregateScore`.
 - A score is a number only: no colour or category name by quality band; the legend gives the anchors

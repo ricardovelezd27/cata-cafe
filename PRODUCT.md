@@ -18,7 +18,7 @@ The tool exists to make rigorous, reproducible cupping sessions as frictionless 
 
 **Product rules decided on 2026-11-12 (built in S10; all merged to `main` in November 2026).** Source: `docs/product/cata-descentralizada-puntaje.md` and the top of `docs/prompts/S10-kim-answers.md`.
 - **Stay close to the CVA.** The cupper sees the CVA's own deductions, not a reinterpretation: 4 points per defective cup, 2 per non-uniform cup.
-- **A defect costs the cupper points at any cup count.** The earlier "no deductions under five cups" rule is gone. Scores stored before the change are never recomputed.
+- **A defect costs the cupper points at any cup count.** The earlier "no deductions under five cups" rule is gone. Stored scores keep their value and render unchanged (nothing was recomputed in bulk).
 - **One cup never costs more than 6 points.** A rule under which a single cup cost 15 to 30 points was considered and rejected.
 - **A shared deduction is diluted only beyond five pooled cups.** This holds for a session's group score and a coffee's lifetime score; a cupper's own score is always the flat CVA deduction.
 - **The number is named "Puntaje Café Sensible (base CVA)".** It follows the CVA form but is not a CVA report.
@@ -113,7 +113,7 @@ Every attribute at 5 gives 79.00 and every attribute at 9 gives 100.00.
 
 "Indicativo" labels a number built on few cuppers (3 to 5; firm from 6) or on fewer than 5 pooled cups. Equal or very close scores are shown as "sin diferencia clara". These labels, the reference, Δ chips and the spread (SD) are display only and never change a score.
 
-**What was never recomputed:** scores stored before the rule change keep their value and are shown unchanged (the data says which rule produced them).
+**Old scores:** Stored scores from before the rule keep their value and render unchanged; the close, repair and cron passes and "Actualizar" on a closed session never recompute them. A deliberate re-fire (owner exclusion or inclusion, accepting a late evaluation, a guest claim that removes or replaces a submitted evaluation) or editing an old evaluation recomputes that sample under the current rule. The data says which rule produced a stored score.
 
 ---
 

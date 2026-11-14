@@ -60,7 +60,7 @@ Decisions of day two (2026-11-14):
 
 Every S10 CODE package is now merged to `main`: #131 WP4b (`e594d13`, 2026-11-14 00:34 +01:00), #133 WP3a
 (`29cc4aa`, 2026-11-13 22:34 +01:00), #136 WP5b (`1b6a192`, 23:57), #137 WP3b (`4265305`, 2026-11-14 00:48), #138 WP6
-(`b7ff6d7`, 03:31). The branches listed as "open" in the Late update below are all merged.
+(`b7ff6d7`, 03:31) and #139 WP6b (`bf3e267`, after that). The branches listed as "open" in the Late update below are all merged.
 
 - **SQL phases applied in S10:** 27, 26, 28 (2026-11-13) and **29** (dry run 2026-11-13 22:36 UTC, applied 23:36 UTC on the
   owner's yes, verified read-only: helper present and not executable by `authenticated`/`anon`, the trigger function mentions

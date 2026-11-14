@@ -1818,7 +1818,7 @@ goes back to it (flagged cups cost points at any cup count, everyone's cups shar
 deduction) and fixes three bugs: a cupper under five cups saw no deduction, a group under five
 pooled cups had its stored deduction amplified, a defective cup was counted twice in the group.
 Spec: `docs/product/cata-descentralizada-puntaje.md`. **Scores stored before this deploy were
-computed under older rules and are NOT recomputed, and they are DISPLAYED unchanged (owner's
+computed under older rules and are NOT recomputed in bulk (only a deliberate re-fire of that sample recomputes it, see CLAUDE.md), and they are DISPLAYED unchanged (owner's
 decision: no past score ever changes).** The data says which rule a stored score used
 (`evaluations.cups` NULL = old; `aggregate_scores."ruleVersion"` 1 = old), so there is no backfill. PHASE 23 STEP 2 (§12
 steps 4–5) and `scripts/resync-low-cup-history.ts` are CANCELLED and must never run.

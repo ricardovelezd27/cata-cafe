@@ -89,7 +89,7 @@ describe("acceptLateEvaluation: version guard, excluded cuppers", () => {
     // the content changes after the page rendered (79.00 shown, 100.00 now)
     await prisma.evaluation.update({
       where: { id: draft.id },
-      data: { affectiveData: affectiveData(9), individualScore: 100 },
+      data: { affectiveData: affectiveData(9) as never, individualScore: 100 },
     });
     const aggBefore = await storedAggregate(A.id);
     h.userId = owner;
@@ -122,7 +122,7 @@ describe("acceptLateEvaluation: version guard, excluded cuppers", () => {
     // auto-save left a PARTIAL draft at the close
     const partial: Record<string, unknown> = {};
     Object.entries(affectiveData(6)).slice(0, 4).forEach(([k, v]) => (partial[k] = v));
-    await prisma.evaluation.update({ where: { id: draft.id }, data: { affectiveData: partial, individualScore: null } });
+    await prisma.evaluation.update({ where: { id: draft.id }, data: { affectiveData: partial as never, individualScore: null } });
     h.userId = u2;
     expect(await submitLateDraft({ sessionSampleId: A.id, moduleKey: "affective", data: affectiveData(8), clientTs: Date.now() })).toEqual({ status: "synced" });
     const row = await prisma.evaluation.findUniqueOrThrow({ where: { id: draft.id } });
@@ -383,7 +383,7 @@ describe("submitLateDraft", () => {
     // a NEWER device copy updates it and keeps the server stamp
     expect(await submitLateDraft({ sessionSampleId: A.id, moduleKey: "affective", data: complete(7), clientTs: t1 + 10_000 })).toEqual({ status: "synced" });
     expect(((await prisma.evaluation.findUniqueOrThrow({ where: { id: afterNewer.id } })).affectiveData as Record<string, unknown>).fragancia_af_final).toBe(7);
-    await prisma.evaluation.update({ where: { id: afterNewer.id }, data: { affectiveData: complete(8) } });
+    await prisma.evaluation.update({ where: { id: afterNewer.id }, data: { affectiveData: complete(8) as never } });
     expect((afterNewer.affectiveData as Record<string, unknown>).fragancia_af_final).toBe(8);
     // an OLDER device copy does not overwrite it, and still answers synced
     expect(await submitLateDraft({ sessionSampleId: A.id, moduleKey: "affective", data: complete(3), clientTs: t1 - 30_000 })).toEqual({ status: "synced" });
