@@ -34,39 +34,50 @@ export default async function HeroFoundingCard({ locale }: { locale: string }) {
     ? { text: tw("notice"), linkLabel: tw("noticeLink"), href: localeHref(locale, "/privacidad") }
     : undefined;
 
+  // Three layers: a glass plate set back and offset (the constellation shows
+  // through it), the solid cream card, and the terracotta tab riding its top
+  // edge. Order inside the card is the same at every width: the number, then
+  // the form (so the button is reachable in the first phone screen), then
+  // what is included.
   return (
-    <div className="rounded-[2rem] border border-outline-variant/60 bg-surface p-6 text-on-surface shadow-[0_24px_60px_-24px_rgba(21,53,38,0.45)] sm:p-8">
-      <span className="inline-block rounded-full bg-secondary-container px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-primary">
-        {t("badge")}
-      </span>
-
-      <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.18em] text-on-surface-variant">
-        {t("heroLead")}
-      </p>
-      <p className="mt-1 flex flex-wrap items-baseline gap-x-3">
-        <span
-          data-counter
-          className="font-serif tabular-nums leading-none text-[72px] text-primary sm:text-[88px]"
-        >
-          {FOUNDING_SEATS}
+    <div className="relative mr-3 sm:mr-4">
+      <div
+        aria-hidden="true"
+        className="surface-glass absolute inset-0 translate-x-3 translate-y-3 rounded-lg sm:translate-x-4 sm:translate-y-4"
+      />
+      <div className="surface-solid relative rounded-lg px-6 pb-6 pt-9 sm:px-8 sm:pb-8 sm:pt-10">
+        <span className="absolute left-6 top-0 -translate-y-1/2 rounded-full bg-secondary-container px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-primary shadow-card-lg sm:left-8">
+          {t("badge")}
         </span>
-        <span className="font-serif text-xl text-on-surface sm:text-2xl">{t("heroUnit")}</span>
-      </p>
 
-      <ul className="mt-6 grid grid-cols-1 gap-x-6 gap-y-2 border-t border-outline-variant/50 pt-5 sm:grid-cols-2">
-        {[t("feature1"), t("feature2"), t("feature3"), t("feature4")].map((item) => (
-          <li key={item} className="flex items-start gap-2 text-sm leading-snug text-on-surface-variant">
-            <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary-container" />
-            {item}
-          </li>
-        ))}
-      </ul>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-on-surface-variant">
+          {t("heroLead")}
+        </p>
+        {/* No count-up: an offer number must never show a wrong value. */}
+        <p className="mt-3 flex flex-wrap items-end gap-x-3 gap-y-2 sm:gap-x-4">
+          <span className="font-serif tabular-nums text-hero-numeral leading-[0.9] tracking-[-0.04em] text-primary">
+            {FOUNDING_SEATS}
+          </span>
+          <span className="max-w-[9ch] pb-2 font-serif text-xl leading-[1.05] text-on-surface sm:pb-4 sm:text-2xl">
+            {t("heroUnit")}
+          </span>
+        </p>
 
-      <div className="mt-6">
-        <WaitlistForm locale={locale} labels={waitlistLabels} variant="onLight" source="hero" notice={notice} />
+        <div className="mt-6">
+          <WaitlistForm locale={locale} labels={waitlistLabels} variant="onLight" source="hero" notice={notice} />
+        </div>
+        <p className="mt-3 text-sm font-medium text-on-surface">{th("ctaNote")}</p>
+
+        <ul className="mt-6 grid grid-cols-1 gap-x-6 gap-y-2 border-t border-outline-variant/50 pt-5 sm:grid-cols-2">
+          {[t("feature1"), t("feature2"), t("feature3"), t("feature4")].map((item) => (
+            <li key={item} className="flex items-start gap-2 text-sm leading-snug text-on-surface-variant">
+              <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary-container" />
+              {item}
+            </li>
+          ))}
+        </ul>
+        <p className="mt-4 text-xs leading-relaxed text-on-surface-variant">{t("note")}</p>
       </div>
-      <p className="mt-3 text-sm font-medium text-on-surface">{th("ctaNote")}</p>
-      <p className="mt-2 text-xs leading-relaxed text-on-surface-variant">{t("note")}</p>
     </div>
   );
 }

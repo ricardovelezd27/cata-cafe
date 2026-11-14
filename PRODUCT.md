@@ -1,6 +1,6 @@
 # Cata Café — Product Document
 
-> Last updated: 2026-09-07
+> Last updated: 2026-11-14 (design rules and the landing page; the rest dates from 2026-09-07 and the S10 rules of 2026-11-12)
 
 ---
 
@@ -29,6 +29,17 @@ The tool exists to make rigorous, reproducible cupping sessions as frictionless 
 - **As little free text as possible.** Prefer fixed option lists so cuppings stay comparable (the acidity and sweetness pickers stay as they are, a recorded departure from the CVA 2024 form).
 - **Teaching and comparisons appear only when a session is closed**, never as guidance during the cupping.
 - Every behaviour built on a simulated answer of Kim awaits his confirmation: `docs/product/kim-validar-S10.md`.
+
+**How the product presents itself (decided 2026-11-14, while rebuilding the landing page).** These are product rules, not styling: they decide what a screen may contain. `DESIGN.md` is the design system that carries them out and governs every screen.
+- **One action per screen or fold.** The landing's header has one action (sign in); the offer is made once, in the hero card. A second call to action in the same view competes with the first.
+- **Say what a thing is, then what is true about it.** A section's title names the section in plain words ("Así funciona una cata.") and the line under it makes the claim ("Percibir, describir, alinear."). No clever title that hides what the section is.
+- **Show the product, not a picture next to it.** "Cómo funciona" shows the app's own screens piling up through the three steps. Real photos of real sessions are for people ("Para quién es"), never as testimonials: no names, no quotes.
+- **A feature is a name, an explanation and a drawing of it.** Every feature gets the same three parts and the same weight.
+- **One way to move through a page.** On a phone every set of cards is worked the same way (the header stays, the scroll brings the cards one by one). A visitor does not learn a second gesture.
+- **Changing language keeps your place.** The page does not reload and does not go back to the top.
+- **Control before speed.** A card moves about as far as the finger does. A page that is a little longer but obeys the thumb beats a shorter one that runs away.
+- **The dots never sit behind work.** The constellation belongs to moments of arrival (the landing; later sign-in, a waiting room, an empty state), never behind a form, a table or a cupping.
+- **A score on the landing is a sample, and looks like one.** Group and individual are told apart by colour as two series, never as good and bad.
 
 ---
 
@@ -190,7 +201,7 @@ Every attribute at 5 gives 79.00 and every attribute at 9 gives 100.00.
 - [x] PDF certificate export (`/sessions/[id]/print`) — physical-evaluation appendix with real defect/screen/color data and derived Cat.1/Cat.2 totals, roast level in the header (revealed-gated, same as the coffee name)
 
 ### Marketing / Public
-- [x] Public marketing landing page at `/[locale]` (Spanish default, `/en` secondary) — animated hero (GSAP), audience/comparison/pricing/roadmap sections
+- [x] Public marketing landing page at `/[locale]` (Spanish default, `/en` secondary), rebuilt 2026-11: one header action, the founding offer in the hero card, "Cómo funciona" as three app screens that pile up, six equal feature cards each with a drawing, five people cards with real session photos, the founding offer again, a closing line. A constellation of dots runs behind it and changes shape with each section. On a phone the three card sections share one scroll behaviour. Switching language keeps the reader's place.
 - [x] Waitlist signup form (`app/actions/waitlist.ts`)
 
 ### Coffee Library
@@ -260,7 +271,7 @@ Every attribute at 5 gives 79.00 and every attribute at 9 gives 100.00.
 - [x] Mobile/responsive cupping layout
 - [x] `FlavorPicker` — predictive typeahead over the 3-level flavor wheel (Fuse.js), replacing the browse-only `CATAPills` flavor flow
 - [x] `ScoreBreakdownPanel` — score transparency ("¿Cómo se calculó?") for individual and community scores
-- [x] Public marketing landing page (animated, bilingual) + waitlist
+- [x] Public marketing landing page (animated, bilingual) + waitlist; rebuilt 2026-11 as the reference for the design system (`DESIGN.md`)
 - [x] Results page redesign (2026-08): collapsed to 3 tabs for every viewer (Resumen dashboard / merged Resultados / unified-filter Descriptores), removed the old "mis resultados vs. grupales" toggle and the separate master-only Individual tab, added a personal drill-down dialog with an owner catador switcher, and made the refresh control always visible
 - [x] Coffee short codes + progressive metadata (2026-09): unique 6-char coffee codes end to end (creation, search, display); session/coffee creation now needs only a name, with post-close origin-data editing added to the results drill-down
 - [x] Consensus SD + CVA PDF fixes (2026-09): a display-only standard-deviation figure alongside community scores; the exported PDF's physical-evaluation block now renders real defect/screen/color data and gates roast level on reveal like the coffee name
@@ -268,6 +279,11 @@ Every attribute at 5 gives 79.00 and every attribute at 9 gives 100.00.
 - [x] Reference sample (2026-09): owner marks one sample as "Referencia" from the wizard, edit page or master panel (live to participants); cup, waiting room, results, PDF and print show it, results add a signed Δ against it — scoring untouched. First live test: end-of-month alignment cupping.
 - [x] QR code for invite link (wizard step 2 + printable sheet)
 - [x] Reference-first anchor (2026-09-25): the reference is now cupped FIRST (order swaps live if the owner changes it mid-session), its affective quality is pinned at 5 on every attribute with cup checks cleared (server-enforced, affective/combined formats only), and results show it as an anchor card above the ranking — excluded from the ranking, session average and "Mejor muestra" — instead of competing inside it.
+
+### Next — Design system across the app
+- [ ] UI/UX audit of the app against `DESIGN.md` (rubric: `docs/design-system/AUDIT-RUBRIC.md`; session prompt: `docs/prompts/S11-app-ui-ux-audit.md`)
+- [ ] App revamp from that audit: shared primitives first (a card, a section heading for the app, a stage wrapper for the screens of arrival), then screen by screen
+- [ ] The stage in the app's moments of arrival: sign-in, the waiting room, empty states
 
 ### Next — Results & Analytics
 - [ ] Multi-session coffee comparison view

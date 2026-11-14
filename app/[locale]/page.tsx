@@ -3,7 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { routing } from "@/i18n/routing";
 import LandingHeader from "@/components/landing/LandingHeader";
 import HeroSection from "@/components/landing/HeroSection";
-import StepSection from "@/components/landing/StepSection";
+import StepsShowcase from "@/components/landing/StepsShowcase";
 import FeaturesSection from "@/components/landing/FeaturesSection";
 import AudienceSection from "@/components/landing/AudienceSection";
 import FoundingSection from "@/components/landing/FoundingSection";
@@ -66,13 +66,13 @@ export default async function LandingPage({
   return (
     <>
       <LandingHeader locale={locale} />
-      <main className="relative flex-1 bg-primary text-surface">
+      {/* stage-ground: the three depths of green, painted UNDER the fixed
+          constellation canvas (sections stay transparent). */}
+      <main className="stage-ground relative flex-1 text-surface">
         <ConstellationMount />
         <HeroSection locale={locale} />
-        <StepSection locale={locale} step={1} />
-        <StepSection locale={locale} step={2} />
-        <StepSection locale={locale} step={3} />
-        <FeaturesSection />
+        <StepsShowcase locale={locale} />
+        <FeaturesSection locale={locale} />
         <AudienceSection />
         <FoundingSection locale={locale} />
         <FinalCTASection locale={locale} />

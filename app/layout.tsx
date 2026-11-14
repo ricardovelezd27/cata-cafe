@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Newsreader, Hanken_Grotesk } from "next/font/google";
 import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
 import { siteOrigin } from "@/lib/inviteUrl";
+import { routing } from "@/i18n/routing";
 import "./globals.css";
 
 // Single variable-font file instead of three static weight cuts. Not
@@ -53,6 +54,12 @@ export const metadata: Metadata = {
     "La herramienta del Método Café Sensible: cata SCA CVA en grupo con referencia del instructor y convergencia visible.",
 };
 
+// The first path segment is the locale only for the non-default ones ("/en");
+// everything else is the default. No regular expression on purpose: this is a
+// string inside a string, and an escape lost on the way would break it.
+const OTHER_LOCALES = routing.locales.filter((l) => l !== routing.defaultLocale);
+const HTML_LANG_SCRIPT = `(function(){var s=location.pathname.split("/")[1];document.documentElement.lang=${JSON.stringify(OTHER_LOCALES)}.indexOf(s)>-1?s:${JSON.stringify(routing.defaultLocale)}})()`;
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -63,6 +70,12 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
+        {/* <html> is rendered here, above [locale], with lang="es". Correct
+            it before paint from the URL ("/en" and below). It lives in the
+            root layout because this layout is never mounted again on a
+            client-side navigation; a change of language without a reload
+            sets the attribute itself (components/landing/LocaleSwitch.tsx). */}
+        <script dangerouslySetInnerHTML={{ __html: HTML_LANG_SCRIPT }} />
         <ServiceWorkerRegister />
         {children}
       </body>
