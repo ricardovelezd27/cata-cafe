@@ -2,7 +2,7 @@
 
 - **Decidido por:** Ricardo, 2026-11-12 (versión 2, la que vale). Sustituye a la decisión
   S8-04 ("sin descuentos con menos de cinco tazas").
-- **Estado:** especificado, NO construido. Kim no lo ha validado.
+- **Estado (2026-11-14):** CONSTRUIDO en S10 (WP1a, WP1b, WP1c, en `main` desde el 2026-11-13; trigger: PHASE 26, hoy el cuerpo de la PHASE 29). Kim NO lo ha validado: lo construido sobre sus respuestas simuladas lleva `TODO(kim-validar:A1)`, `A2` y `A3` (lista en `docs/product/kim-validar-S10.md`). El texto de abajo es la especificación original; las secciones 4 y 8 describen el estado ANTERIOR a S10.
 - **Para quién es este documento:** la sesión que lo implemente y quien revise su trabajo.
 - **Historia de la decisión:** el mismo día se consideró y se descartó una regla proporcional
   pura (20 × defectuosas ÷ tazas), porque con pocas tazas descontaba 15 o 20 puntos por una
@@ -210,6 +210,8 @@ AskUserQuestion, con estas recomendaciones)
   encontraron.
 
 ## 8. Dónde vive el cálculo hoy
+
+> Nota de 2026-11-14: esta lista es la de antes de S10. `MIN_CUPS_FOR_PENALTIES`, `penaltiesApply`, `scoreBand` y `scoreToCategory` ya no existen; la regla vive en `cupDeduction` / `evaluationCupCounts` (`lib/scoring.ts`), `fichaTecnica.ts` ya no repite la fórmula 10/30 y las versiones de regla están en `lib/scoreRule.ts`.
 
 - `lib/scoring.ts`: `MIN_CUPS_FOR_PENALTIES`, `penaltiesApply`, `calcIndividualBreakdown`,
   `computeGroupAggregate`, `calcCommunityScore`, `roundToQuarter`, `scoreBand`,

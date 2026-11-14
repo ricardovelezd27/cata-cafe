@@ -50,7 +50,7 @@ describe("writeEvaluationOrdered", () => {
       },
       3,
     );
-    const r = await writeEvaluationOrdered(db, { sessionSampleId: sampleId, sessionId, cupperId: owner, fields: f });
+    const r = await writeEvaluationOrdered(db, { sessionSampleId: sampleId, sessionId, cupperId: owner, fields: f, clientTs: undefined });
     expect(r.applied).toBe(true);
     const e = await row(sampleId, owner);
     expect(e.defectiveCups).toEqual([true, true, false]);

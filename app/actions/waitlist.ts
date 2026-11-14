@@ -22,7 +22,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * F-landing-5: the cohort size lives in lib/landing/founding.ts (copy only).
  * This action never counts rows and never refuses a signup because the cohort
  * is "full"; a duplicate email is idempotent (P2002 below).
- * TODO(S8-14): enforcing the cap (what the 101st person sees) is the owner's call.
+ * TODO(owner): enforcing the cap (what the 101st person sees) is the owner's call.
  */
 export async function reserveFoundingSeat(
   _prev: WaitlistState,

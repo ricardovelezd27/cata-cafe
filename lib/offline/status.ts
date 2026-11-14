@@ -122,7 +122,7 @@ export function applyOutcome(
   // S8-23 (C-05c): a failed send of a module whose next timed attempt is not yet
   // due (a pass triggered by returning to the tab, not by the schedule) is not a
   // consumed attempt; otherwise five app switches on a captive portal park the
-  // draft as `failed`. TODO(S8-23): confirm with the owner that "not due" is the
+  // draft as `failed`. TODO(owner): confirm with the owner that "not due" is the
   // right reading of "nothing was attempted".
   if (outcome === "retry" && mod.nextAttemptAt !== undefined && mod.nextAttemptAt > (opts.now ?? Date.now())) {
     return mod;

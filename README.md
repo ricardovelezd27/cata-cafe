@@ -76,7 +76,8 @@ Product principle (see `PRODUCT.md`): *valor antes que fricción* — ask for as
 - Runs **solo, live-group and self-paced group** cupping sessions, plus a three-tap quick start ("Catar ahora").
 - Supports three **formats**: Descriptive (intensities and sensory descriptors), Affective (1–9 quality ratings of eight attributes) and Combined.
 - Records an optional **green-bean (physical) assessment** and **origin data** that the organizer can fill in around the reveal.
-- Lets the organizer mark up to three samples as a **reference** that the other samples are compared against.
+- Lets the organizer mark up to three samples as a **reference** that the other samples are compared against, in one of two modes: a fixed "anchor" exercise (every cupper's score is 79.00) or a free reference that everyone scores like any other sample.
+- Keeps scoring honest: the total is shown only after submitting, with its arithmetic; a score is a number, never a quality label; group results appear only when the organizer closes the session.
 - Computes **individual and community scores**, a consensus figure, and ranks the samples with labels that say when a number is only indicative.
 - Keeps working **offline** and syncs drafts on reconnect.
 - Builds a **coffee library** (short codes, visibility, sharing) and a personal **tasting history**.
@@ -117,8 +118,11 @@ From the dashboard or the **Sesiones** page:
 - **"Nueva sesión"** (full wizard):
   - **Name** and **date** (required name), optional **objective**.
   - **Format**: Descriptivo, Afectivo or Combinado.
-  - **Cups per sample**: 1 to 5.
+  - **Cups per sample**: 1 to 5 (the wizard proposes 2 for affective and combined; "Catar ahora" uses 1).
   - **Samples**: one row each, with a blind label and a coffee, either one from your library or a new one created together with the session (only the coffee's name is required; altitude, roast and the rest can be filled in later). A coffee created this way is saved in the same step as the session, so a failed save leaves no stray coffee.
+  - Blind labels are assigned **at random** when the session is created (leave the label empty); the organizer reads letter to coffee in the collapsed "Clave de muestras". A typed label is kept as typed.
+  - Optional per-sample prep data: roast date, a preparation note, and a "fuera de protocolo" tick with a note. Only the organizer sees it until the sample is revealed.
+  - A non-blocking warning appears above 6 samples (above 4 in the combined format); it never stops you.
   - Optionally one sample marked as the **Referencia** (see below).
   - **"Sesión grupal"** switches on the group options: **"Asíncrona"** (self-paced) and **"Fecha de cierre"** (closing date). Setting a date makes the session self-paced: no waiting room and no "Iniciar cata". Leave the date empty for a live cupping that you close yourself.
   - A group session has a second step that shows the invite link and a QR code.
@@ -126,7 +130,7 @@ From the dashboard or the **Sesiones** page:
 
 The organizer can later edit the session, add, rename or remove samples, change the reference, and (for a group session) change or clear the closing date, as long as the session is not closed. The warm-up exercise can only be chosen before the session starts or anyone evaluates.
 
-**Reference sample ("Referencia").** The organizer can mark one sample as the control that the others are compared against, and up to three over time (each new one becomes the active reference; the earlier ones keep their data but are no longer fixed). The reference is cupped first. In affective and combined formats the active reference's quality is fixed at 5 ("ni alto ni bajo") on all eight attributes, so every cupper's score for it is exactly 79.00 and cuppers only describe what they perceive. On the results page the reference is shown as an anchor above the ranking, is left out of the ranking, the session average and "Mejor muestra", and every other sample shows a signed **Δ** against it (the "Comparar con" selector chooses which reference to compare against). The reference never changes any score; it only gives context.
+**Reference sample ("Referencia").** The organizer can mark one sample as the control that the others are compared against, and up to three over time (each new one becomes the active reference; the earlier ones keep their data but are no longer fixed). The reference is cupped first. In affective and combined formats the active reference's quality is fixed at 5 ("ni alto ni bajo") on all eight attributes, so every cupper's score for it is exactly 79.00 and cuppers only describe what they perceive. On the results page the reference is shown as an anchor above the ranking, is left out of the ranking, the session average and "Mejor muestra", and every other sample shows a signed **Δ** against it (the "Comparar con" selector chooses which reference to compare against). The reference never changes any score; it only gives context. **Reference mode (S10):** the organizer chooses, when marking a reference, between `anchor` (the fixed 79.00 exercise described above, a Café Sensible classroom exercise, not part of the CVA) and `free` (everyone scores the reference like any other sample and the others are compared with its average). The mode can be changed only while the session has not started and nobody has evaluated yet (`isFormatLocked`). If a sample is made the fixed reference after cuppers rated it, their ratings are kept aside and come back when it stops being the active fixed reference. The fixed reference (79.00) exists in the affective and combined formats only: a descriptive session never pins and never says "fija" or "79.00".
 
 ### Cupping
 
@@ -137,6 +141,12 @@ The cupping screen has a sample navigator, the evaluation form and, for the orga
 - **Combined:** both on one page.
 - **Cups:** for each cup you can mark it non-uniform or defective. A defective cup is also counted as non-uniform. Each marked cup costs points at any number of cups (see [Scoring](#scoring-system)); with a single cup uniformity is not evaluated.
 - **Físico (physical) and Extrínseco (origin) modules:** green-bean defects, screen size, color, and origin data (country, farm, variety, process…). These are per sample, not per cupper, so only the session owner edits them; participants do not see the physical data, and the origin data is shown only to the owner or once the sample is revealed.
+- **Defect type:** marking a cup defective asks for its type (mohoso, fenólico or papa). A cup already marked defective always counts, typed or not (an untyped one reads "sin especificar").
+- **No total while cupping:** the score appears only after you submit, with its arithmetic in one line (for example "base − 4 (1 taza fenólica) − 2 (1 taza no uniforme) = total").
+- **Timer (optional):** a discreet timer with cues for breaking the crust (4:00) and the first pass (8:00); it is stored only on the device and never scored.
+- **As it cooled and "No evaluado":** an affective attribute can keep a second value "as it cooled" (the final value is the one that scores), and a section can be marked "no evaluado" when you could not judge it. An evaluation with such sections is a partial one: it has no total and is left out of the group total, but its rated sections still feed the group's per-attribute averages.
+- **Market note (optional):** "mi preferencia" or "un mercado que conozco" with a short text. Never part of the score.
+- **Revealed samples are frozen:** once the organizer reveals a sample of a session that is still open, nobody can keep rating it; a note refused for that reason stays on the device and is never retried.
 - **Notas rápidas:** an optional last step with a free-text note per sample. It is never part of the score.
 - Your work **saves itself** a moment after you stop typing. The indicator says "saved" only when the server has it; if you are offline or the write failed it says the note is saved on this device and pending sync.
 - **Offline:** the page keeps working without a connection. Drafts live in the browser's IndexedDB and are sent when you reconnect. If an evaluation was already submitted (for example from another device) while you were offline, a conflict dialog lets you choose what to keep. A service worker (production builds only) lets the app shell reopen offline. Drafts that cannot be synced (for example because the session closed meanwhile) are listed in a "Notas sin sincronizar" panel where you can read and copy them; nothing is deleted automatically.
@@ -162,7 +172,10 @@ Results of a group session are visible to a participant only once the session is
 - **Solo:** the session closes itself when every sample has a submitted evaluation. "Terminar cata" closes it early: it submits your complete drafts, removes samples with no evaluation, and closes.
 - **Group:** the organizer closes it with "Cerrar sesión", or the daily job closes a session whose closing date has passed (see [Scheduled jobs](#scheduled-jobs)). The dialog warns how many cuppers have complete notes that were never submitted: at close, those notes are **left out** of the results.
 - **What closing does**, in one routine: the session becomes read-only; every sample that has a coffee linked is revealed; community scores are recomputed; each cupper's coffee history is written; and for a group session each participant with an email address is emailed a link to the results plus a personal summary PDF. If a later step fails, the close is marked unfinished and retried automatically (by the daily job, by an owner action, or when a solo owner opens the results).
-- **Read-only:** a closed or expired session accepts no new evaluations. The few things that can still be changed are: the owner editing a revealed sample's origin data, the owner excluding or re-including a cupper (the results then say "Resultados actualizados el …"), and the owner attaching a coffee to a sample that had none (which also reveals it).
+- **Announced close:** the organizer can announce the close 2 or 5 minutes ahead; cuppers see a polite banner with a countdown. The announcement is display only: the organizer's own open page closes the session at zero (nothing on the server does).
+- **Forgotten live sessions:** a live group session with no evaluation saved is handled by the idle rule. Started on or after 2026-11-18 (UTC): a reminder to its owner at 24 hours, closed with emails after 7 to under 30 idle days, closed silently after 30 or more. Started before that date: no reminder, closed silently only after 30 idle days, never emailed.
+- **Read-only:** a closed or expired session accepts no new evaluations and its closing date can no longer be changed. The things that can still be written are the **sanctioned post-close writes**: the owner editing a revealed sample's origin data, excluding or re-including a cupper (the results then say "Resultados actualizados el …"), attaching a coffee to a sample that had none (which also reveals it), and accepting a late evaluation; a cupper can send a note left on the device (it reaches the organizer as a draft) and add a text note to their own submitted evaluation; deleting an account also rewrites rows. The full list is in `docs/flows.md` section 1.
+- **Late evaluations:** a complete evaluation that was not sent before the close stays out of the results. The organizer sees it in "Evaluaciones recibidas tarde", with its total and whether it was saved before the close or received after it (it may have been written after seeing the results), and accepts it one by one.
 
 ### Results, reports and exports
 
@@ -171,16 +184,20 @@ The results page (`/app/sessions/[id]/results`) is one page with three tabs, the
 - **Resumen:** a dashboard with the ranking (community score in a group session, your own score in a solo session, with a "± X.X" consensus chip), your performance against the community, and a one-line descriptor summary per sample.
 - **Resultados:** a table or chart view (Tabla / Gráfico), and for the owner a per-cupper CVA matrix with the exclusion switches and a standard deviation column.
 - **Descriptores:** word cloud, frequency bars and consensus sentences, filterable by sample and by perceptual block.
-- **Ranking honesty:** community numbers are shown as "n de N incluidos". Equal scores share a rank; with fewer than 5 cuppers the score is labelled "indicativo"; with fewer than 3 there is no spread and no "best sample"; samples whose gap is within the spread are marked "sin diferencia clara". These labels are display only and never change a score.
+- **Ranking honesty:** community numbers are shown as "n de N incluidos". Equal scores share a rank; with 3 to 5 cuppers (or fewer than 5 pooled cups) the score is labelled "indicativo" and it is firm from 6 cuppers; with fewer than 3 there is no spread and no "best sample"; samples whose gap is smaller than the larger of 1 point and half the spread are marked "sin diferencia clara". These labels are display only and never change a score.
 - A collapsible "¿Cómo se calculó?" panel breaks down how a score was computed.
+- **On a closed session**, a cupper's own drill-down adds "tú vs. grupo" (their total and each attribute and intensity next to the group's, only where at least 3 included cuppers have a value) and, when the session has the same coffee twice, the difference between their two own evaluations (within 2 points reads "dentro de la tolerancia").
+- A score is a number only; the legend gives two anchors (79 is the neutral point, 100 the maximum). Scores are never coloured or named by quality.
 - **PDFs** ("Descargar PDF" and related links): the CVA form for a session, a personal summary, a technical sheet for the owner, and a coffee sheet. They carry a stamp with the generation date, the language, how many cuppers the group numbers include, and a note when results or origin data changed after the close. A printable HTML version of the CVA form is also available.
-- **CSV** ("Datos por catador (CSV)"): per-cupper data, for the session owner only.
+- **CSV** ("Datos por catador (CSV)"): per-cupper data, for the session owner only. Every row has a code `C-XXXX` that reveals neither join order nor name order; a variant without names (no name, id, email or exclusion reason) can be shared. The score column is `puntaje_cafe_sensible`.
 
 ### Coffees
 
 - The **Cafés** page lists coffees you own and coffees shared with you or public. Each coffee has a unique 6-character **short code** (for example `K7M-3FP`) that you can quote to others and search for in the coffee picker.
 - **Visibility** is private, shared (with people you invite or who open your invite link) or public. The owner can also choose whether the community results on the coffee page are visible to others.
 - A coffee's page shows its origin data and every session it appeared in, with individual and community scores. Only sessions that are closed and revealed contribute, so a blind coffee is not given away before its reveal.
+- It also shows a **lifetime score** over every counted cup of that coffee, the tally of defective cups by type and how many different people found it, and "indicativo" when fewer than 5 cups are pooled. It is computed when the page is read, never stored. Fixed-reference (anchor) samples are left out.
+- When origin data changes after a session closed, reports and the coffee page say "Datos de origen editados el …".
 - **Deleting a coffee** anonymizes it rather than erasing it: identifying fields are wiped and it disappears from lists, while the tasting data attached to it stays for analysis. Only the owner can do this.
 - Coffees can be duplicated, and an existing coffee can be linked to a sample from the session wizard, the session edit form, or the sample editor on the cupping page.
 
@@ -192,7 +209,7 @@ Group emails carry an unsubscribe link (and the standard one-click unsubscribe h
 
 ### Sensory warm-up
 
-"Movimiento sensorial" is a library of five guided warm-up exercises with an animated figure, optional sound cues, and optional spoken narration ("Leer en voz alta"). It is in the sidebar under Sesiones (on phones, reached from the dashboard and the Sesiones page). A session owner can choose an exercise in the session wizard or edit form; cuppers who have not evaluated yet are offered it when they open the cupping screen. In a live group session the organizer can start it for everybody at once ("Empezar con el grupo").
+"Movimiento sensorial" is a library of five guided warm-up exercises with an animated figure, optional sound cues, and optional spoken narration ("Leer en voz alta"). It is in the sidebar under Sesiones (on phones, reached from the dashboard and the Sesiones page). A session owner can choose an exercise in the session wizard or edit form; cuppers who have not evaluated yet are offered it when they open the cupping screen. In a live group session the organizer can start it for everybody at once ("Empezar con el grupo"). There is a short version (1 to 2 minutes), a seated option and a small-space option; after the cupping has started a discreet "Movimiento Sensorial" link in the cupping sidebar opens it again. A registered person can save two private reflections after an exercise; nobody else (teacher, group, admin) can read them.
 
 The group synchronized run, and the audio and narration on real phones, have not been verified on two physical devices.
 
@@ -214,7 +231,7 @@ The profile page holds your display name, language, role and country, your sessi
 
 **Account deletion** is built (with a typed confirmation) but **disabled**: it appears only when the server setting `ACCOUNT_DELETION_ENABLED=1` is on, and it has never been run against real data. It should be rehearsed on a throwaway account first (`docs/LAUNCH-RUNBOOK.md` §24).
 
-**Legal pages** (`/privacidad`, `/terminos`) exist as unpublished drafts. Nothing links to them until the owner pastes the final text and switches `LEGAL_PAGES_PUBLISHED` in `lib/legal/config.ts`.
+**Legal pages** (`/privacidad`, `/terminos`, `/aviso-legal`, in Spanish and English) are published (`LEGAL_PAGES_PUBLISHED` is true in `lib/legal/config.ts` since 2026-11-13). The Registro Mercantil line of the legal notice is still missing, by the owner's decision. Accounts that were never used are meant to be deleted after 12 months; that deletion is built but OFF (`UNUSED_ACCOUNT_PURGE_ENABLED`) and must be rehearsed and switched on before 2027-05-30 (runbook §17).
 
 ### Scheduled jobs
 
@@ -222,7 +239,7 @@ Two jobs are registered in `vercel.json` and protected by `CRON_SECRET`:
 
 | Path | Schedule (UTC) | What it does |
 |---|---|---|
-| `/api/cron/close-expired-sessions` | every day, 06:00 | Closes active sessions whose closing date has passed, finishes closes that were left unfinished, and sends a 24-hour deadline reminder and (for a live session forgotten open) an idle reminder. It never closes a session through a reminder. |
+| `/api/cron/close-expired-sessions` | every day, 06:00 | Closes active sessions whose closing date has passed, finishes closes that were left unfinished, and sends a 24-hour deadline reminder and (for a live session forgotten open) an idle reminder. It also closes live group sessions idle for 7 days, retries email-change reservation moves, purges old email-ledger rows and, only when `UNUSED_ACCOUNT_PURGE_ENABLED=1`, deletes accounts never used after 12 months. It never closes a session through a reminder. |
 | `/api/cron/insights-digest` | the 1st of each month, 12:00 | Sends the monthly insights digest to the super-admin |
 
 A closing date means the end of that day in the time zone of the browser that set it, so the job closes the session in the early hours after that day.
@@ -274,13 +291,18 @@ communityScore    = avgRawScore − uniformityPenalty − defectPenalty
 - The result is rounded to the nearest 0.25 and kept between 0 and 100.
 - The authoritative value is computed by a PostgreSQL trigger (`trg_recompute_aggregate`) when an evaluation is submitted and stored in `aggregate_scores`. The TypeScript `calcCommunityScore()` is only for display, and a test keeps the two in agreement.
 
+### Name and scopes
+
+The number is called **"Puntaje Café Sensible (base CVA)"**: it follows the CVA form but is not a CVA report. There are three scopes of one formula: the cupper's own score, the session's community score (the trigger above) and a **coffee lifetime score** computed when the coffee page is read, over the cups of every counted evaluation of that coffee (closed, revealed, excluded cuppers out; it is never stored and the trigger never reads it).
+
 ### Other numbers
 
 - **Consensus (SD):** the "± X.X" next to the community score is the population standard deviation of the included cuppers' individual scores; it is `null` for fewer than two cuppers. Display only.
 - **"Impresión rápida":** a session with exactly one cup per sample is tagged this way in the tasting history and on the coffee page, because its score is not a full CVA score.
-- **Reference sample:** pinned at 79.00 as described above; never read by scoring.
+- **Reference sample:** in anchor mode pinned at 79.00 as described above; never read by scoring.
+- **Partial evaluations:** an evaluation with a section marked "no evaluado" has no total; it is not counted in the community total, its cups or its spread, and only feeds the per-attribute averages (PHASE 29).
 
-> **Rule of 2026-11-12 (S10 WP1a).** The score that existed before S8 was right in principle and had three bugs; this is that score with the bugs fixed (a cupper under five cups saw no deduction, a group under five pooled cups had its deduction amplified, a defective cup was counted twice in the group). The specification is `docs/product/cata-descentralizada-puntaje.md`. The database function (PHASE 26) and the `evaluations.cups` column are applied by the owner (runbook §30); no stored score is recomputed and past results render unchanged (the rule version is read from the data: `evaluations.cups` NULL and `aggregate_scores."ruleVersion"` 1 mean the rule before 2026-11), until a sample is re-fired, which recomputes it under the current rule. The coffee lifetime score arrives in a later S10 PR.
+> **Rule of 2026-11-12 (S10 WP1a).** The score that existed before S8 was right in principle and had three bugs; this is that score with the bugs fixed (a cupper under five cups saw no deduction, a group under five pooled cups had its deduction amplified, a defective cup was counted twice in the group). The specification is `docs/product/cata-descentralizada-puntaje.md`. The database function (PHASE 26) and the `evaluations.cups` column are applied by the owner (runbook §30); nothing was recomputed in bulk and past results render unchanged (the rule version is read from the data: `evaluations.cups` NULL and `aggregate_scores."ruleVersion"` 1 mean the rule before 2026-11). The close, repair and cron passes and "Actualizar" on a closed session never recompute an old score; a deliberate re-fire (owner exclusion or inclusion, accepting a late evaluation, a guest claim that removes or replaces a submitted evaluation) or editing an old evaluation recomputes that sample under the current rule. The coffee lifetime score is built (S10 WP1c, #132).
 
 ---
 
@@ -319,7 +341,7 @@ Hosting is on Vercel (cron jobs in `vercel.json`).
 
 ## Local Development Setup
 
-The only database the project has is the production one. **A local `.env.local` that points at the real Supabase project talks to production data.** For experiments, create a separate Supabase project.
+The only hosted database the project has is the production one. **A local `.env.local` that points at the real Supabase project talks to production data.** Do not run `prisma migrate` (any form), the seed scripts or the dev server against it; migrations and SQL phases are applied by the owner, following `docs/LAUNCH-RUNBOOK.md`. For experiments, create a separate Supabase project. `npm run test:db` is safe: it uses its own throwaway local Postgres.
 
 ### Prerequisites
 
@@ -396,7 +418,7 @@ Create `.env.local`. The boot check in `instrumentation.ts` (`lib/env.ts`) makes
 
 ### Migrations (Prisma)
 
-The schema is `prisma/schema.prisma`; migrations are in `prisma/migrations/` (40 of them). Apply with `npx prisma migrate deploy`; after any schema change run `npx prisma generate`. Prisma connects as the `postgres` role, which bypasses Row Level Security, so authorization is enforced in application code (`lib/sessionAuth.ts` and friends), not by RLS. The generated client lives in `app/generated/prisma/` and is imported from there, not from `@prisma/client`.
+The schema is `prisma/schema.prisma`; migrations are in `prisma/migrations/` (45 of them). Apply with `npx prisma migrate deploy`; after any schema change run `npx prisma generate`. Prisma connects as the `postgres` role, which bypasses Row Level Security, so authorization is enforced in application code (`lib/sessionAuth.ts` and friends), not by RLS. The generated client lives in `app/generated/prisma/` and is imported from there, not from `@prisma/client`.
 
 ### Manual SQL: `prisma/sql/rls_and_triggers.sql`
 
@@ -427,7 +449,10 @@ Prisma does not manage policies, triggers or functions. The file `prisma/sql/rls
 | 23 | Community score deducts nothing below five cups (superseded by 26). Step 1 (the function) is applied; step 2 (recomputing past scores) was **cancelled** and must not be run |
 | 24 | API roles are read-only across the whole `public` schema |
 | 25 | Hides exclusion metadata of other participants from the API |
-| 26 | Community score: flat CVA deduction at any cup count, shared across the pooled cups of the included evaluations (`evaluations.cups`), diluted beyond five. Owner applies it after the `evaluation_cups` migration and a dry run (runbook §30); recomputes nothing |
+| 26 | Community score: flat CVA deduction at any cup count, shared across the pooled cups of the included evaluations (`evaluations.cups`), diluted beyond five. Applied 2026-11-13 after the `evaluation_cups` migration and a dry run (runbook §30); recomputes nothing |
+| 27 | `warmup_reflections` is private: RLS on, no policy, no privilege for the API roles (applied 2026-11-13, runbook §31) |
+| 28 | `can_view_group_results` loses the "everyone submitted" branch: group results are visible only at close (applied 2026-11-13, runbook §33) |
+| 29 | The per-attribute averages also count declared partial evaluations ("no evaluado"); it is the live body of `recompute_aggregate_score` (applied 2026-11-13, runbook §35) |
 
 There is no phase numbered 19 in the file. The runbook (`docs/LAUNCH-RUNBOOK.md`) has a section per phase and per migration, including **§29, building a new environment from an empty database**: two things fail on an empty database (one migration and one statement of the SQL file), and §29 gives the workaround. Which phases are applied in production, and what is still owed, is tracked in `docs/handover/S8-ROLLOUT-HANDOVER.md`.
 
@@ -450,7 +475,7 @@ Realtime updates (live submission counts, waiting-room start, reference changes)
 
 ```bash
 npm test          # Vitest over tests/**: pure unit tests, no database, no network
-npm run test:db   # 54 tests against a throwaway local Postgres
+npm run test:db   # 332 tests (31 files) against a throwaway local Postgres
 ```
 
 `npm run test:db` starts its own temporary PostgreSQL (the `embedded-postgres` package, installed from `tests/db/package.json` on first run), builds a database from the migrations and the SQL file, runs the tests that move data (scoring trigger, close, deletion, guest merge, email ledgers, RLS), and deletes everything afterwards. A guard refuses any host other than `127.0.0.1`/`localhost` and any database whose name does not start with `cata_test_`, so it cannot touch production. It takes about two minutes. It does not cover Supabase's own services (Auth, the REST layer, Realtime). Details are in `tests/db/README.md`.
@@ -574,7 +599,9 @@ The seed and import scripts write to whatever database `.env.local` points at.
 | `CLAUDE.md` | Working guide for coding agents: conventions, patterns, pitfalls |
 | `docs/flows.md` | Diagrams of the session lifecycle, sign-in, coffees, groups, results and offline flows |
 | `docs/LAUNCH-RUNBOOK.md` | Step-by-step operations: environment, migrations, SQL phases, smoke test, account-deletion rehearsal, empty-database build |
-| `docs/handover/S8-ROLLOUT-HANDOVER.md` | What shipped, what is applied in production, what is still owed |
+| `docs/handover/S8-ROLLOUT-HANDOVER.md` | What shipped in S8, what was applied in production |
+| `docs/handover/S10-HANDOVER.md` | The S10 run in order: PRs, SQL phases, decisions, what was verified |
+| `docs/product/kim-validar-S10.md` | Every behaviour built on a simulated answer of Kim, with the question to ask him |
 | `docs/HANDOVER.md` | Status ledger for work in progress |
-| `docs/product/cata-descentralizada-puntaje.md` | The decided, not-yet-built scoring change |
+| `docs/product/cata-descentralizada-puntaje.md` | The decided scoring rule (built in S10) |
 | `docs/prompts/` | Specifications for upcoming work |
