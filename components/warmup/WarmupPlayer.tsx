@@ -9,6 +9,10 @@ import { ARRIVE_PLAN, ARRIVE_PLAN_SHORT, arrivePhaseAt, halo as haloAt } from "@
 import { partTransforms, passedDots, torsoBreathTransform } from "@/lib/warmup/poses";
 import { previewSpec } from "@/lib/warmup/preview";
 import { RESUME_WAIT_MS, audioResumeDecision } from "@/lib/warmup/audioResume";
+import { resumeAfterStop, ringsOut } from "@/lib/warmup/audioWindow";
+import { estimateSpeechMs, type SpeechWindow } from "@/lib/warmup/mix";
+import { toneFor } from "@/lib/warmup/sounds";
+import type { RunClockEvent } from "@/lib/warmup/runClock";
 import { shouldResync } from "@/lib/warmup/syncedRun";
 import { skipNeedsConfirm, type WarmupExitInfo } from "@/lib/warmup/overlayGate";
 import { REFLECTION_MAX } from "@/lib/warmup/reflections";
@@ -135,7 +139,7 @@ export function WarmupPlayer({
       else setPhase(length === "short" ? "done" : "reflect");
     },
   });
-  const { elapsedMs, setStopAt: setClockStopAt, seek: clockSeek, runId } = clock;
+  const { elapsedMs, setStopAt: setClockStopAt, seek: clockSeek, runId, subscribe: subscribeClock } = clock;
   const running = phase === "run" && clock.running;
   const paused = phase === "run" && !clock.running && !clock.done;
   const wake = useWakeLock(phase === "run");
@@ -148,12 +152,14 @@ export function WarmupPlayer({
     clockSeek(seekToMs, { play: true });
   }, [seekToMs, clockSeek]);
 
-  // Sound default (synced followers start muted).
+  // Sound default (synced followers start muted). For THIS run only: it must
+  // never overwrite the person's stored choice, or one group run as a
+  // follower would silence every later solo run.
   const soundDefaultApplied = useRef(false);
   useEffect(() => {
     if (soundDefault === undefined || soundDefaultApplied.current) return;
     soundDefaultApplied.current = true;
-    audio.setMuted(!soundDefault);
+    audio.setMuted(!soundDefault, { persist: false });
   }, [soundDefault, audio]);
 
   // ── Derived segment state (React updates only when the index changes) ──
@@ -198,6 +204,8 @@ export function WarmupPlayer({
   const fieldRef = useRef<BreathFieldHandle>(null);
   /** Index of the next narration to speak (reset on every schedule). */
   const narrCursor = useRef(0);
+  /** Narration lines at or after this ms wait for the next stretch (Quieto stop). */
+  const narrUntil = useRef(Number.POSITIVE_INFINITY);
   const lastWrite = useRef<Record<string, string>>({});
   const lastSegRef = useRef(segIdx);
   const lastFrameAt = useRef(0);
@@ -334,11 +342,24 @@ export function WarmupPlayer({
     [steps, locale, t, postureLine],
   );
   const voiceOn = phase === "run" && audio.voice && audio.voiceAvailable && !synced;
+  // The exercise's own tone (one root note and brightness each).
+  const tone = useMemo(() => toneFor(tl.exerciseId), [tl.exerciseId]);
+  // When the voice speaks, for the ducking of the background. The phone's own
+  // voice reports nothing ahead of time, so each line's length is estimated.
+  const speechWindows = useMemo<SpeechWindow[]>(
+    () =>
+      voiceOn
+        ? tl.narrations.map((n) => ({ fromMs: n.atMs, toMs: n.atMs + estimateSpeechMs(narrationText(n.source)) }))
+        : [],
+    [voiceOn, tl, narrationText],
+  );
   const narrateRef = useRef<(elapsed: number) => void>(() => {});
   useEffect(() => {
     narrateRef.current = (elapsed: number) => {
       const list = tl.narrations;
-      while (narrCursor.current < list.length && list[narrCursor.current].atMs <= elapsed) {
+      // A line that starts ON a "Quieto" stop belongs to the next stretch: it
+      // is read when the run resumes, not into the stop.
+      while (narrCursor.current < list.length && list[narrCursor.current].atMs <= elapsed && list[narrCursor.current].atMs < narrUntil.current) {
         const n = list[narrCursor.current++];
         if (!voiceOn) continue;
         void audio.speak(narrationText(n.source), locale, { interrupt: n.interrupt });
@@ -431,19 +452,56 @@ export function WarmupPlayer({
     paint(elapsed);
   }, [phase, segIdx, elapsedMs, runId, tl, paint]);
 
+  // ── Manual ("Quieto") mode: stop at the end of every step ─────────────
+  const stopForQuieto = useCallback(
+    (idx: number) => {
+      if (!still || synced) return null;
+      const sg = tl.segments[idx];
+      if (sg.stepIdx >= 0) return tl.stepEnd[sg.stepIdx];
+      if (sg.kind === "arrive") return tl.arriveMs;
+      return null;
+    },
+    [still, synced, tl],
+  );
+
   // ── Audio schedule follows the clock ─────────────────────────────────
+  // Each stretch of running time is scheduled only up to the point where the
+  // clock stops by itself (the end of the run, or the step end in Quieto).
+  // When it gets there the sound FINISHES (the doble that ends the run, the
+  // tic of a step end); only a stop the person asked for cancels it
+  // (lib/warmup/audioWindow.ts).
+  const lastClockEvent = useRef<RunClockEvent | null>(null);
+  const stoppedAt = useRef<number | null>(null);
+  useEffect(
+    () =>
+      subscribeClock((e) => {
+        lastClockEvent.current = e;
+        if (e === "seek") stoppedAt.current = null;
+      }),
+    [subscribeClock],
+  );
   useEffect(() => {
     if (running) {
       const elapsed = elapsedMs();
-      audio.schedule(tl.cues, elapsed, tl.hums);
+      const stop = stopForQuieto(segmentAt(tl, elapsed).i);
+      narrUntil.current = stop ?? Number.POSITIVE_INFINITY;
+      audio.schedule(tl.cues, elapsed, tl.hums, {
+        untilMs: stop ?? tl.totalMs,
+        afterMs: resumeAfterStop(stoppedAt.current, elapsed),
+        tone,
+        speech: speechWindows,
+      });
       // Lines at or just after the seek point play; earlier ones are skipped.
       narrCursor.current = tl.narrations.findIndex((n) => n.atMs >= elapsed - 50);
       if (narrCursor.current < 0) narrCursor.current = tl.narrations.length;
+    } else if (ringsOut(lastClockEvent.current)) {
+      // Where a Quieto stop rang out, so the resume does not repeat its tic.
+      if (lastClockEvent.current === "stop") stoppedAt.current = elapsedMs();
     } else {
       audio.cancel();
       audio.cancelSpeech();
     }
-  }, [running, runId, audio, tl, elapsedMs]);
+  }, [running, runId, audio, tl, elapsedMs, stopForQuieto, tone, speechWindows]);
   useEffect(() => () => audio.cancel(), [audio]);
 
   // iOS "interrupted" → pause.
@@ -483,12 +541,16 @@ export function WarmupPlayer({
     };
     document.addEventListener("visibilitychange", check);
     window.addEventListener("pageshow", check);
+    // A synced player opens already running, with no tap of its own: check
+    // once at mount too, so a phone whose audio never opened asks for the tap
+    // instead of running the whole exercise in silence.
+    if (synced) void check();
     return () => {
       cancelled = true;
       document.removeEventListener("visibilitychange", check);
       window.removeEventListener("pageshow", check);
     };
-  }, [phase, checkContext, clockPause]);
+  }, [phase, checkContext, clockPause, synced]);
   // ── Synced follower: re-seek after the page was away (S8-13 F-2) ───────
   const resyncRef = useRef(resyncPositionMs);
   useEffect(() => {
@@ -523,17 +585,6 @@ export function WarmupPlayer({
     else clockToggle();
   }, [audio, clockToggle, clockSeekFn, synced, paused]);
 
-  // ── Manual ("Quieto") mode: stop at the end of every step ─────────────
-  const stopForQuieto = useCallback(
-    (idx: number) => {
-      if (!still || synced) return null;
-      const sg = tl.segments[idx];
-      if (sg.stepIdx >= 0) return tl.stepEnd[sg.stepIdx];
-      if (sg.kind === "arrive") return tl.arriveMs;
-      return null;
-    },
-    [still, synced, tl],
-  );
   // Manual ("Quieto") mode: stop at the end of every step.
   useEffect(() => {
     if (phase !== "run") return;
@@ -543,6 +594,9 @@ export function WarmupPlayer({
   // ── Navigation ────────────────────────────────────────────────────────
   const start = useCallback(() => {
     audio.unlock();
+    // A new run starts with no clock event: forget how the last one ended.
+    lastClockEvent.current = null;
+    stoppedAt.current = null;
     setFeel("");
     setDiscovery("");
     setSavedNote(false);
@@ -1223,7 +1277,7 @@ function IntroScreen({
         <p className={s.kicker}>{t.evolutionLabel}</p>
         <ol className={s.stages}>
           {evolution.map((e, i) => (
-            <li key={e} className={s.stage}>
+            <li key={e} className={s.evoStage}>
               <span className={[s.stageDot, i === 2 ? s.stageDotClosed : ""].join(" ")} aria-hidden />
               <span className={s.stageLabel}>{e}</span>
             </li>

@@ -21,6 +21,7 @@ import { WarmupMoment } from "@/components/session-moments/WarmupMoment";
 import { WarmupEntry } from "@/components/session-moments/WarmupEntry";
 import { SessionMomentOverlay } from "@/components/session-moments/SessionMomentOverlay";
 import { WarmupPlayer, type WarmupPlayerStrings } from "@/components/warmup/WarmupPlayer";
+import { unlockWarmupAudio } from "@/hooks/useWarmupAudio";
 import { lw, warmupById } from "@/lib/warmup/exercises";
 import { shouldShowWarmupOverlay } from "@/lib/warmup/overlayGate";
 import { formatTimeLeft, isRunning as isWarmupRunning, parseDbTimestamp, resyncPositionMs, runLengthMs, seekFor, skewMs, timeLeftMs } from "@/lib/warmup/syncedRun";
@@ -835,6 +836,9 @@ export function CupClient({
 
   const handleWarmupStart = () => {
     if (warmupPending) return;
+    // The player mounts only after the server answered, when this tap is no
+    // longer a gesture: open the audio output now, or iOS keeps it silent.
+    unlockWarmupAudio();
     setWarmupPending(true);
     feedback.run(
       startWarmup(session.id).finally(() => setWarmupPending(false)),
@@ -860,6 +864,7 @@ export function CupClient({
   };
   const handleWarmupReopen = () => {
     if (warmupStartedAtMs === null || warmupServerNow === 0) return;
+    unlockWarmupAudio();
     // warmupServerNow is already server-adjusted (ticked every second).
     setMasterPlayer({ seekMs: seekFor(warmupStartedAtMs, warmupServerNow, 0, { live: false }) });
   };

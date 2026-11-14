@@ -2,8 +2,8 @@
 // Pure: no DOM, no window. `renderCue` only uses the BaseAudioContext API, so
 // it runs against a fake context in tests and against a real AudioContext in
 // the browser. Each sound has ONE meaning (lib/warmup/timelineTypes.ts):
-//   campana — step start / turn      tic   — light tick (reps, hold end)
-//   cuenco  — long bowl (arrive/closing)   doble — two strikes (step change)
+//   campana — a movement starts      tic   — a movement ends / a read beat starts
+//   cuenco  — the closing starts     doble — two strikes: open your eyes
 
 import type { CueKind, HumContour } from "./timelineTypes";
 
@@ -186,7 +186,7 @@ function renderStrike(ctx: BaseAudioContext, s: StrikeRecipe, when: number, bus:
 // cues so they still read as events.
 
 export interface HumRecipe {
-  /** Fundamental, Hz. 132 Hz sits near the "Om" 136 Hz relaxation drones. */
+  /** Fundamental (the root note), Hz. Each exercise has its own (TONES). */
   readonly baseHz: number;
   /** Overtones as ratios of the fundamental (the fundamental itself is 1). */
   readonly partials: readonly { readonly ratio: number; readonly amp: number; readonly wave: OscillatorType }[];
@@ -206,18 +206,29 @@ export interface HumRecipe {
   readonly span: { readonly leg: number; readonly wave: number; readonly breath: number };
   /** Breath timing of the arrival window (contour "breath"). */
   readonly breath: { readonly inMs: number; readonly outMs: number };
+  /** "You are arriving": on a leg (contour rise / fall) the tone blooms to
+   *  `boost` x peak over the last `leadMs`, then closes in `closeMs`, so the
+   *  tic that ends the movement is never a surprise with the eyes closed.
+   *  Legs shorter than `minWindowMs` keep the plain fade. */
+  readonly arrive: { readonly leadMs: number; readonly boost: number; readonly closeMs: number; readonly minWindowMs: number };
 }
 
+// 2026-11 retune. The first tone sat at 132 Hz behind a 640 Hz lowpass: on
+// headphones a warm drone, on a PHONE SPEAKER (which reproduces little under
+// 300 Hz) almost nothing, and it is the only sound that says where a slow
+// movement is. The energy now sits in the 2nd to 4th harmonics (about 290 to
+// 590 Hz for the default root); the ear still hears the low root from them.
 export const HUM: HumRecipe = {
-  baseHz: 132,
+  baseHz: 146.83, // D3
   partials: [
-    { ratio: 1, amp: 1, wave: "sine" },
-    { ratio: 2, amp: 0.28, wave: "triangle" },
-    { ratio: 1.5, amp: 0.14, wave: "sine" }, // the fifth, barely there
-    { ratio: 3, amp: 0.06, wave: "sine" }, // shimmer
+    { ratio: 1, amp: 0.55, wave: "sine" },
+    { ratio: 2, amp: 0.6, wave: "sine" },
+    { ratio: 3, amp: 0.32, wave: "sine" },
+    { ratio: 4, amp: 0.14, wave: "sine" },
+    { ratio: 1.5, amp: 0.1, wave: "sine" }, // the fifth, barely there
   ],
-  binauralHz: 6,
-  lowpassHz: 640,
+  binauralHz: 4,
+  lowpassHz: 1200,
   peak: 0.05,
   fadeInMs: 1500,
   fadeOutMs: 1200,
@@ -225,7 +236,70 @@ export const HUM: HumRecipe = {
   vibrato: { hz: 0.18, depth: 0.006 },
   span: { leg: 5, wave: 3, breath: 3 },
   breath: { inMs: 4000, outMs: 6000 },
+  arrive: { leadMs: 2200, boost: 1.5, closeMs: 600, minWindowMs: 6000 },
 };
+
+/** The tone of each exercise: ONE root note and ONE brightness, matched to
+ *  what the exercise is for. Everything else (contours, fades, the arrival
+ *  bloom) is shared, so the five still sound like one instrument.
+ *  Keys are the exercise ids of lib/warmup/exercises.ts. */
+export const TONES: Readonly<Record<string, { readonly baseHz: number; readonly lowpassHz: number }>> = {
+  "arm-raise": { baseHz: 146.83, lowpassHz: 1200 }, // D3: the way in, neutral and open
+  eyes: { baseHz: 130.81, lowpassHz: 800 }, // C3, darker and softer: the sight rests
+  "head-rotate": { baseHz: 164.81, lowpassHz: 1300 }, // E3, lighter: the head, where four senses live
+  "trunk-forward-back": { baseHz: 123.47, lowpassHz: 1100 }, // B2, lower: the centre of the body
+  "trunk-side": { baseHz: 138.59, lowpassHz: 1100 }, // C#3: weight passing from side to side
+};
+
+/** The tone recipe of an exercise (the default tone for an unknown id). */
+export function toneFor(exerciseId: string | null | undefined): HumRecipe {
+  const t = exerciseId ? TONES[exerciseId] : undefined;
+  return t ? { ...HUM, baseHz: t.baseHz, lowpassHz: t.lowpassHz } : HUM;
+}
+
+const rmsDb = (power: number) => 10 * Math.log10(Math.max(power, 1e-12));
+
+/** Nominal level of the tone, dB RMS re full scale, at lane gain 1 (sum of
+ *  the partials' powers; the fundamental is a doubled pair; the lowpass, the
+ *  swell and the arrival bloom are not counted). Used by lib/warmup/mix.ts to
+ *  place the tone a chosen number of dB under the voice. */
+export function humRmsDb(recipe: HumRecipe = HUM): number {
+  let power = 0;
+  for (const p of recipe.partials) {
+    const a = recipe.peak * p.amp;
+    power += p.ratio === 1 ? 2 * ((a * 0.62) ** 2 / 2) : a ** 2 / 2;
+  }
+  return rmsDb(power);
+}
+
+/** Nominal level of a cue at its loudest instant (the first strike, right
+ *  after the attack), dB RMS re full scale, at lane gain 1. */
+export function cueAttackRmsDb(kind: CueKind): number {
+  const { gainScale, strike } = RECIPES[kind].strikes[0];
+  let power = 0;
+  for (const p of strike.partials) power += (strike.peak * p.amp * gainScale) ** 2 / 2;
+  return rmsDb(power);
+}
+
+/** Highest instantaneous level any cue can reach at lane gain 1 (all partials
+ *  of a strike in phase, plus its noise burst). Linear, for the headroom check. */
+export function cuePeakMax(): number {
+  let max = 0;
+  for (const recipe of Object.values(RECIPES)) {
+    for (const { gainScale, strike } of recipe.strikes) {
+      const sum = strike.partials.reduce((a, p) => a + strike.peak * p.amp * gainScale, 0) + (strike.noise?.gain ?? 0) * gainScale;
+      max = Math.max(max, sum);
+    }
+  }
+  return max;
+}
+
+/** Highest instantaneous level of the tone at lane gain 1 (linear), with the
+ *  arrival bloom. */
+export function humPeakMax(recipe: HumRecipe = HUM): number {
+  const sum = recipe.partials.reduce((a, p) => a + recipe.peak * p.amp * (p.ratio === 1 ? 2 * 0.62 : 1), 0);
+  return sum * recipe.arrive.boost;
+}
 
 const semis = (n: number) => Math.pow(2, n / 12);
 
@@ -301,7 +375,15 @@ export function renderHum(
     const env = ctx.createGain();
     env.gain.setValueAtTime(0, start);
     env.gain.linearRampToValueAtTime(recipe.peak, start + fadeIn);
-    env.gain.setValueAtTime(recipe.peak, toS - fadeOut);
+    const a = recipe.arrive;
+    const arrives = (contour === "rise" || contour === "fall") && len * 1000 >= a.minWindowMs;
+    if (arrives) {
+      // Bloom, then close: the movement is about to end.
+      env.gain.setValueAtTime(recipe.peak, toS - a.leadMs / 1000);
+      env.gain.linearRampToValueAtTime(recipe.peak * a.boost, toS - a.closeMs / 1000);
+    } else {
+      env.gain.setValueAtTime(recipe.peak, toS - fadeOut);
+    }
     env.gain.linearRampToValueAtTime(0, toS);
     lp.connect(env);
     env.connect(bus);
@@ -359,6 +441,100 @@ export function renderHum(
         voice(hz, p.amp, p.wave, null);
       }
     }
+  } catch {
+    /* audio is best-effort */
+  }
+}
+
+// ── Air ─────────────────────────────────────────────────────────────────
+// The continuous bed under the WHOLE run: soft filtered noise, like the air
+// of a quiet room, with a slow tide on its colour. It has one meaning: "the
+// session is running". Without it, the silence of a read beat or a hold is
+// indistinguishable from a phone that stopped; with it, the fade-out of a
+// pause and the fade-in of a resume are heard. Not tonal on purpose: the
+// tone above carries the movement, the cues carry the events.
+
+export interface AirRecipe {
+  readonly bandHz: number;
+  readonly q: number;
+  readonly lowpassHz: number;
+  /** Gain after the filters, at lane gain 1. */
+  readonly level: number;
+  readonly fadeInMs: number;
+  readonly fadeOutMs: number;
+  /** Slow drift of the band centre: +-depthHz at this rate. */
+  readonly tide: { readonly hz: number; readonly depthHz: number };
+  /** Length of the looped noise, ms (long enough that the loop is not heard). */
+  readonly loopMs: number;
+}
+
+export const AIR: AirRecipe = {
+  bandHz: 520,
+  q: 0.7,
+  lowpassHz: 1500,
+  level: 0.5,
+  fadeInMs: 1200,
+  fadeOutMs: 1500,
+  tide: { hz: 0.07, depthHz: 140 },
+  loopMs: 4000,
+};
+
+/** Nominal level of the air, dB RMS re full scale, at lane gain 1. An
+ *  ESTIMATE (uniform white noise is -4.8 dB RMS; a 2nd-order band-pass keeps
+ *  (pi/2) x f0/Q of the band up to Nyquist), good to a few dB: the mix is
+ *  tuned by ear, this only makes its numbers mean roughly what they say. */
+export function airRmsDb(recipe: AirRecipe = AIR, sampleRate = 48000): number {
+  const noiseDb = 10 * Math.log10(1 / 3);
+  const keptDb = 10 * Math.log10(Math.min(1, ((Math.PI / 2) * recipe.bandHz) / recipe.q / (sampleRate / 2)));
+  return noiseDb + keptDb + 20 * Math.log10(recipe.level);
+}
+
+/**
+ * Schedule the air from `fromS` to `toS` (context seconds) into `bus`. A
+ * start in the past is clamped to now; a window under 0.5 s is skipped.
+ * Never throws.
+ */
+export function renderAir(ctx: BaseAudioContext, fromS: number, toS: number, bus: AudioNode, recipe: AirRecipe = AIR): void {
+  try {
+    const start = Math.max(fromS, ctx.currentTime);
+    const len = toS - start;
+    if (len < 0.5) return;
+    const fadeIn = Math.min(recipe.fadeInMs / 1000, len / 3);
+    const fadeOut = Math.min(recipe.fadeOutMs / 1000, len / 3);
+    const stopAt = toS + STOP_PAD_S;
+
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuffer(ctx, recipe.loopMs);
+    src.loop = true;
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.setValueAtTime(recipe.bandHz, start);
+    bp.Q.setValueAtTime(recipe.q, start);
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.setValueAtTime(recipe.lowpassHz, start);
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0, start);
+    env.gain.linearRampToValueAtTime(recipe.level, start + fadeIn);
+    env.gain.setValueAtTime(recipe.level, toS - fadeOut);
+    env.gain.linearRampToValueAtTime(0, toS);
+    src.connect(bp);
+    bp.connect(lp);
+    lp.connect(env);
+    env.connect(bus);
+
+    const tide = ctx.createOscillator();
+    tide.type = "sine";
+    tide.frequency.setValueAtTime(recipe.tide.hz, start);
+    const tideDepth = ctx.createGain();
+    tideDepth.gain.setValueAtTime(recipe.tide.depthHz, start);
+    tide.connect(tideDepth);
+    tideDepth.connect(bp.frequency);
+    tide.start(start);
+    tide.stop(stopAt);
+
+    src.start(start);
+    src.stop(stopAt);
   } catch {
     /* audio is best-effort */
   }

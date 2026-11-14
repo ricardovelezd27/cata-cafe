@@ -53,3 +53,8 @@ graphify-out/
 /.worktrees/
 # DB suite deps (tests/db/package.json)
 /tests/db/node_modules
+
+# Movimiento Sensorial voice pipeline: the Kokoro model files (about 340 MB)
+# and scratch renders stay on the machine that renders them.
+scripts/warmup-voice/.models/
+scripts/warmup-voice/.out/
