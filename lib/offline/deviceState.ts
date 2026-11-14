@@ -77,6 +77,13 @@ export async function clearLocalDeviceState(
     // best effort
   }
   try {
+    // The optional cupping timer's start timestamps (S10 WP3b): per user, same shared-tablet rule.
+    const { clearTimerKeys } = await import("@/lib/cuppingTimer");
+    clearTimerKeys(window.localStorage);
+  } catch {
+    // best effort
+  }
+  try {
     // Unsent session-wizard drafts (S8-10 T3): per user, same shared-tablet rule.
     const { clearWizardDrafts } = await import("@/lib/wizardDraft");
     clearWizardDrafts(window.localStorage);

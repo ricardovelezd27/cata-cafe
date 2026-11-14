@@ -2271,6 +2271,7 @@ No Prisma migration, no new environment variable, no new cron entry.
 rollback at its end (the PHASE 21 body of `can_view_group_results`). Run it in one transaction; the
 app works under either state.
 
+
 ---
 
 ## §34. Database — apply the `coffee_origin_edited_at` migration (2026-11, S10 WP5a)
@@ -2306,3 +2307,150 @@ closed sessions. Change its country: the note appears with today's date.
 
 **Rollback:** `ALTER TABLE "coffees" DROP COLUMN "originEditedAt";` is safe only after the code that
 reads it is rolled back; code rolled back ignores the column anyway.
+
+---
+
+## §35. Partial evaluations ("no evaluado"): dry run, PHASE 29, check, merge (2026-11, S10 WP3b)
+
+**Status (2026-11-13/14): PHASE 29 is LIVE in production.** The dry run was executed in production on
+2026-11-13 at 22:36 UTC (every line as expected: 0 evaluations with a `_ne` marker, 0 with a non-numeric
+rating). PHASE 29 was APPLIED on 2026-11-13 at 23:36 UTC, on the owner's explicit yes, exactly as it stands
+in `rls_and_triggers.sql`. Verified read-only afterwards: the helper is present and not executable by
+`authenticated` / `anon`, the trigger function mentions it, and the 354 aggregate rows are all
+`ruleVersion` 1 (none recomputed). What remains is step 4 (merge and deploy of the application code).
+
+**What it does:** a cupper who could not judge one affective section (for instance arrived after the
+fragrance) marks it "No evaluado" instead of inventing a value. That evaluation is a **declared
+partial**: it has no total score (its `rawScore` and `individualScore` are stored NULL), it is not
+counted in the group total or the deductions, and what it did rate counts in the per-attribute
+averages, each attribute over the evaluations that rated it. The same PR adds a second optional value
+per section ("as it cooled", display-only, never scored) and an optional client-side timer; neither
+touches the database. **Database change: ONE SQL phase, PHASE 29, no migration** (the markers live in
+the module JSON). PHASE 29 adds the helper `is_affective_declared_partial(jsonb)` and re-issues
+`recompute_aggregate_score()` as a copy of the PHASE 26 body with ONE changed clause (the WHERE of the
+per-attribute averages). Nothing stored is recomputed by the phase.
+
+**Order, and why.** (1) dry run, (2) the owner's explicit yes, (3) PHASE 29, (4) check, (5) merge and
+deploy. PHASE 29 goes **before** the merge: with the old application code no row carries a marker, so
+the new function behaves exactly like PHASE 26 (a no-op). If the code were deployed first, a partial
+evaluation would be counted in the averages on screen (the TypeScript recompute) but ignored by the
+trigger's stored averages.
+
+1. **Dry run** (fail-safe: one statement, nothing is applied). Open
+   `prisma/sql/dry-runs/phase29_dry_run.sql`, paste the whole file in the SQL editor, run it. Expected: a
+   red error starting `PHASE 29 DRY RUN: NOTHING WAS APPLIED`. Every numbered line says on the line
+   itself what it must read:
+   - 1 (expect 0): submitted evaluations that already carry a `_ne` key (the feature is not deployed);
+   - 1b (expect 0, read-only): submitted evaluations holding a rating key that is present but not a JSON number (an odd old row; the helper cannot raise on it, but the owner sees how many there are before applying);
+   - 2 (expect `{search_path=public}` twice, and `true`): the two functions are pinned and the live
+     trigger function mentions the helper;
+   - 3 (expect `false / false`): `authenticated` and `anon` cannot execute the helper;
+   - 4 (expect `false | true | false | true | false | false | false | false | false | false | false | false`, the last four being the odd ratings): the helper on eight made-up
+     evaluations (all rated; 7 rated + 1 marked; 7 rated + 1 neither; 1 rated + 7 marked; 8 marked and
+     none rated; the marker as the string "true"; `{}`; NULL; and four odd ratings, "abc", true, "7", "NaN", which must read false and never raise);
+   - 5a, 5b, 5c (a TEMPORARY session built and rolled back inside the block, using the ids of three
+     existing profiles as cuppers; it says `SKIPPED` if fewer than three profiles exist): a complete
+     evaluation (score 84.25, included 1), then a declared partial (included still 1, submitted 2, the
+     score still 84.25, Fragancia 7.00, Sabor 6.00: the partial did not rate Sabor), then an unmarked
+     incomplete evaluation (NOTHING moves). Example of a real report (a throwaway local database;
+     `tests/db/phase29DryRun.dbtest.ts` produces it):
+
+   ```
+   PHASE 29 DRY RUN: NOTHING WAS APPLIED (this error is the expected result). Compare each line with its expectation:
+    1 submitted evaluations carrying a "no evaluado" (_ne) key today (expect 0): 0
+    1b submitted evaluations holding a rating key that is present but not a JSON number (expect 0): 0
+    2 proconfig of recompute_aggregate_score and is_affective_declared_partial (expect {search_path=public} twice): {search_path=public} {search_path=public}
+    2 the live trigger function now mentions is_affective_declared_partial (expect true): true
+    3 authenticated / anon can execute is_affective_declared_partial (expect false / false): false / false
+    4 is_affective_declared_partial (expect false | true | false | true | false | false | false | false | false | false | false | false; the last four cannot raise): all 8 rated=false | 7 rated + 1 marked=true | 7 rated + 1 neither=false | 1 rated + 7 marked=true | 8 marked, none rated=false | marker is the string "true"=false | {}=false | NULL=false | rating "abc"=false | rating true=false | rating "7"=false | rating "NaN"=false
+    5a after a complete evaluation (expect included 1, submitted 1, score 84.25, Fragancia 6.00, Sabor 6.00): included 1, submitted 1, score 84.25, Fragancia 6.00, Sabor 6.00
+    5b after a declared-partial evaluation (expect included 1, submitted 2, score 84.25, Fragancia 7.00, Sabor 6.00): included 1, submitted 2, score 84.25, Fragancia 7.00, Sabor 6.00
+    5c after an unmarked incomplete evaluation (expect NOTHING to move: included 1, submitted 3, score 84.25, Fragancia 7.00, Sabor 6.00): included 1, submitted 3, score 84.25, Fragancia 7.00, Sabor 6.00
+   ```
+
+   The temporary session writes and rolls back three evaluations; the trigger fires on them. It touches no
+   existing row, but run it when no cupping is live. Any OTHER error: stop and report; nothing was applied
+   either way.
+2. **Only on the owner's explicit yes**, run the PHASE 29 block of `prisma/sql/rls_and_triggers.sql`
+   (from `BEGIN;` to `COMMIT;`). Expected: `Success. No rows returned`. It runs in one transaction with a
+   self-check that aborts (nothing applied) if either function lost its `search_path`, the helper is
+   executable by an API role, or the trigger function is not the expected body.
+3. **Verify (read-only). HARD STOP: this must pass BEFORE step 4.**
+
+   ```sql
+   select pg_get_functiondef('public.recompute_aggregate_score()'::regprocedure) like '%is_affective_declared_partial%';  -- t
+   select pg_get_functiondef('public.recompute_aggregate_score()'::regprocedure) like '%v_factor%';  -- t (still the PHASE 26 arithmetic)
+   select proconfig from pg_proc where proname in ('recompute_aggregate_score','is_affective_declared_partial');  -- {search_path=public} twice
+   select has_function_privilege('authenticated', 'public.is_affective_declared_partial(jsonb)', 'EXECUTE');  -- f
+   select count(*) from aggregate_scores where "computedAt" > now() - interval '10 minutes';  -- 0: nothing recomputed
+   ```
+
+   The last count may be non-zero only if someone submitted an evaluation in those minutes.
+4. **Merge and deploy** the PR. Smoke test with a throwaway SOLO session of two samples and two cups:
+   (a) on the first sample mark one section "No evaluado" and rate the rest, rate the second sample
+   completely, press the finish button: the confirmation names the first sample as partial ("no tendrá
+   puntaje total"); (b) the results page shows "Parcial · sin puntaje" instead of a number for the first
+   sample and the radar plots the unrated section at the centre; (c) open the cup page, start the timer
+   (a small "Temporizador" button under the sample bar), reload the page: the time keeps running; "Reiniciar"
+   clears it. A tab left open across the deploy shows the reload notice (Next 16 action ids change per
+   build); drafts stay on the device.
+5. **Rollback.** Code: revert the PR. Database: the commented block at the end of PHASE 29 in
+   `rls_and_triggers.sql` (the PHASE 26 body, then `DROP FUNCTION public.is_affective_declared_partial(jsonb)`),
+   in one transaction. **The app revert must land BEFORE or together with the database rollback**: the new
+   app on the PHASE 26 function would count partial evaluations in the averages on screen while the trigger
+   ignores them. Neither direction touches a stored score; evaluations already stored with a marker keep it
+   (and NULL scores), which the old code reads as an ordinary incomplete evaluation.
+---
+
+## §36. Database — apply the `close_notice_and_late_contributions` migration (2026-11, S10 WP4b)
+
+**What it does:** five NULLABLE columns, no default, no backfill, no index, no trigger, no policy:
+
+- `cupping_sessions."closingAt"` (TIMESTAMPTZ): the close the owner announced a few minutes ahead.
+- `evaluations."acceptedLateAt"` (TIMESTAMPTZ): when the owner accepted a complete draft after the close.
+- `evaluations."receivedLateAt"` (TIMESTAMPTZ): the server's own record that a device's late send arrived after the close.
+- `evaluations."postCloseNote"` (TEXT) and `"postCloseNoteAt"` (TIMESTAMPTZ): a cupper's text note
+  on their own submitted evaluation after the close.
+
+**No SQL phase.** `cupping_sessions` and `evaluations` are granted table-wide to the browser key
+(only `session_samples` and `session_participants` are column-level), so the realtime banner
+and the owner's reads need nothing more. Participants still read only their own `evaluations`
+rows (PHASE 21), so another cupper's note never reaches the browser key.
+
+**Order matters:** run it BEFORE the merge and the deploy. The regenerated Prisma client selects the
+columns on the cup and results pages at once; without them those pages fail. Code that predates
+the migration ignores the columns, so applying it early is safe.
+
+1. On your machine, with `.env.local` pointing at the project (it is production):
+   ```bash
+   npx.cmd prisma migrate deploy
+   ```
+   Expected: `… 20261115100000_close_notice_and_late_contributions … applied` (the output may list
+   other pending migrations before it, in name order).
+2. **Verify** — Supabase SQL Editor:
+   ```sql
+   SELECT table_name, column_name, data_type, is_nullable
+   FROM information_schema.columns
+   WHERE (table_name = 'cupping_sessions' AND column_name = 'closingAt')
+      OR (table_name = 'evaluations' AND column_name IN ('acceptedLateAt','receivedLateAt','postCloseNote','postCloseNoteAt'))
+   ORDER BY table_name, column_name;
+   ```
+   Expected: five rows, all `is_nullable = YES`.
+3. Deploy the branch. No new environment variable.
+
+**Limit to know:** the announced close is NOT enforced by the server and no cron acts on it. The
+owner's open cup page calls "Cerrar" when the countdown reaches zero; if that page is not open
+then, nothing closes and the owner sees "El cierre anunciado ya pasó" with "Cerrar ahora" /
+"Cancelar" on return. The cron deadline close and the idle close are unchanged.
+
+**Smoke test (two accounts, a live group session with a complete unsent draft):** the owner opens
+"Cerrar sesión" and picks "Avisar y cerrar en 2 min"; the other cupper's cup page shows "El
+organizador cerrará la cata en 2 min. Envía tus evaluaciones." (no sound, input never blocked);
+"Cancelar" removes it; at zero the owner's page closes. On the owner's results page "Evaluaciones
+recibidas tarde" lists the complete draft; "Aceptar" asks to confirm, then the cupper's own results
+page says "Tu evaluación de … se incluyó el …" and "Resultados actualizados el …" shows on the
+owner's page. A cupper adds "una nota después del cierre" on their sample drill-down; the owner
+reads it under "Notas añadidas después del cierre"; nobody else sees it.
+
+**Rollback:** the columns are additive; code rolled back ignores them. Do not drop them while the
+new code is deployed.

@@ -39,6 +39,17 @@ import {
   type SampleMetadataFormData,
 } from "@/components/cupping/EditSampleMetadataForm";
 import { ExtrinsicEditDialog } from "@/components/results/ExtrinsicEditDialog";
+import {
+  LateEvaluationsPanel,
+  type LateEvaluationsTranslations,
+} from "@/components/results/LateEvaluationsPanel";
+import {
+  PostCloseNoteEditor,
+  PostCloseNoteReadOnly,
+  PostCloseNotesOwnerList,
+  type PostCloseNoteTranslations,
+} from "@/components/results/PostCloseNote";
+import type { OwnerLateRow, PostCloseNotesPayload } from "@/lib/lateContributions";
 import { ResponsiveDialog } from "@/components/ui/ResponsiveDialog";
 import {
   PillTabs,
@@ -53,7 +64,7 @@ import { useForegroundResume } from "@/hooks/useForegroundResume";
 import { assignSampleCoffee, updateSampleMetadata } from "@/app/actions/sessions";
 import { CoffeePicker, type UsableCoffee } from "@/components/coffees/CoffeePicker";
 import { asSessionFormat, type SessionFormat } from "@/lib/constants";
-import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
+import { calcIndividualScore, hasIndividualScore } from "@/lib/scoring";
 import { ArrowLeft, FileDown, Printer, RefreshCw } from "lucide-react";
 import { ResumenTab } from "./ResumenTab";
 import type { SampleResult, ResultsHelp } from "./types";
@@ -69,6 +80,7 @@ type MatrixTranslations = {
   legendAmber: string;
   legendRed: string;
   noScore: string;
+  partialLabel?: string;
   sdHeader: string;
   includedCount: string;
   excludeDialogTitle: string;
@@ -169,6 +181,11 @@ export function ResultsClient({
   guestSave = null,
   myDraftNotice = null,
   closedNotice = null,
+  lateRows = null,
+  myLateNotices = [],
+  postCloseNotes = null,
+  lateTranslations,
+  noteTranslations,
   finish = null,
   closeNow = null,
   closeAsIs = null,
@@ -243,6 +260,14 @@ export function ResultsClient({
   myDraftNotice?: string | null;
   // Closed-session line for the viewer: did their unsent notes count? (S8-05)
   closedNotice?: string | null;
+  // S10 WP4b (Kim C1 / C2): owner-only late evaluations to accept (null = none / not the
+  // owner), the viewer's own "left out / included" lines, and the post-close notes the
+  // viewer may read (own; the owner also gets everyone's). All gated on the server.
+  lateRows?: OwnerLateRow[] | null;
+  myLateNotices?: string[];
+  postCloseNotes?: PostCloseNotesPayload | null;
+  lateTranslations?: LateEvaluationsTranslations;
+  noteTranslations?: PostCloseNoteTranslations;
   // Solo owner of an open session with unscored samples: "Terminar cata"
   // (F-express-1 / F-solo-3). Null for everyone else.
   finish?: {
@@ -315,6 +340,10 @@ export function ResultsClient({
       includedLine: string;
       noAffective: string;
       requiresAffective: string;
+      partialLabel?: string;
+      includesOne?: string;
+      includesMany?: string;
+      axisNotEvaluated?: string;
     };
     flavorProfiles: string;
     referenceBadge: string;
@@ -750,7 +779,7 @@ export function ResultsClient({
         : resolvedFormat === "combined"
           ? referenceSample.combined
           : null;
-    if (!affData || !hasAffectiveData(affData) || !canShowMyScore(referenceSample.myEvaluation)) {
+    if (!affData || !hasIndividualScore(affData) || !canShowMyScore(referenceSample.myEvaluation)) {
       return null;
     }
     const score = calcIndividualScore(affData, session.cupsPerSample, {
@@ -976,6 +1005,18 @@ export function ResultsClient({
             router.refresh();
           }}
         />
+      )}
+      {myLateNotices.map((line) => (
+        <div
+          key={line}
+          role="status"
+          className="mx-4 mt-4 rounded-card border border-secondary/30 bg-secondary-container/20 px-4 py-2 font-sans text-sm text-on-surface lg:mx-6"
+        >
+          {line}
+        </div>
+      ))}
+      {lateRows && lateTranslations && !isAdminViewer && (
+        <LateEvaluationsPanel rows={lateRows} locale={locale} translations={lateTranslations} />
       )}
       {closeNow && (
         <div
@@ -1307,6 +1348,16 @@ export function ResultsClient({
               />
             </section>
           )}
+          {/* Owner-only: notes the cuppers added after the close (S10 WP4b, Kim C2). */}
+          {canViewIndividual && postCloseNotes?.byCupper && noteTranslations && (
+            <PostCloseNotesOwnerList
+              byCupper={postCloseNotes.byCupper}
+              cupperNames={Object.fromEntries((participants ?? []).map((p) => [p.id, p.name]))}
+              sampleLabels={Object.fromEntries(session.samples.map((s) => [s.id, s.label]))}
+              locale={locale}
+              translations={noteTranslations}
+            />
+          )}
         </div>
       )}
       </div>
@@ -1417,6 +1468,27 @@ export function ResultsClient({
           locale={locale}
           referenceBadge={translations.referenceBadge}
           referenceCount={references.length}
+          // S10 WP4b (Kim C2): the cupper's own post-close note (editable) under their notes;
+          // the owner reads another cupper's note here, read-only. Never in the score area.
+          extra={(viewerId) => {
+            if (!sessionClosed || !noteTranslations || !postCloseNotes) return null;
+            if (viewerId === "me") {
+              const mine = postCloseNotes.mine[detailSample.id];
+              return mine && !isAdminViewer ? (
+                <PostCloseNoteEditor
+                  key={detailSample.id}
+                  note={mine}
+                  locale={locale}
+                  userId={currentUserId}
+                  translations={noteTranslations}
+                />
+              ) : null;
+            }
+            const theirs = postCloseNotes.byCupper?.[viewerId]?.[detailSample.id];
+            return theirs ? (
+              <PostCloseNoteReadOnly text={theirs.text} at={theirs.at} locale={locale} translations={noteTranslations} />
+            ) : null;
+          }}
           // Closed = read-only: /cup redirects a closed session to results, so
           // "Editar" would be a dead button (F-resultados-10).
           onEdit={

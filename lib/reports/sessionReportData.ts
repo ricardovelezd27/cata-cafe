@@ -92,6 +92,8 @@ export async function loadSessionReportSource(
         nonUniformCups: true,
         defectiveCups: true,
         cups: true,
+        // S10 WP4b: moves the "results updated" stamp when the owner accepts a late evaluation.
+        acceptedLateAt: true,
         cupper: { select: { displayName: true } },
       },
     }),
@@ -220,7 +222,7 @@ export async function loadSessionReportSource(
       session.isGroup && session.status === "closed"
         ? resultsUpdatedAfterClose(
             session.closedAt,
-            session.participants.map((p) => p.excludedAt),
+            [...session.participants.map((p) => p.excludedAt), ...evalRows.map((e) => e.acceptedLateAt)],
           )
         : null,
     originEditedAt,

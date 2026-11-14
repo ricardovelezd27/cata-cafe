@@ -650,7 +650,7 @@ function ScoreCell({ sheet, t }: { sheet: CvaSampleSheet; t: T }) {
         </div>
       ) : sheet.scoreState === "partial" ? (
         <div style={{ fontSize: "4.5pt", color: C.soft, fontStyle: "italic", marginTop: "0.5pt" }}>
-          {t.incomplete}
+          {sheet.partialDeclared ? t.partialDeclared : t.incomplete}
         </div>
       ) : null}
     </div>

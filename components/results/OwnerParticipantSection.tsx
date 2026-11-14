@@ -11,6 +11,7 @@ import { Badge, useActionFeedback } from "@/components/ui";
 import { ExclusionDialog } from "@/components/results/ExclusionDialog";
 import { exclusionReasonText } from "@/lib/exclusionReasons";
 import type { SessionFormat } from "@/lib/constants";
+import { isAffectiveDeclaredPartial } from "@/lib/affectivePartial";
 
 type SampleResult = {
   id: string;
@@ -58,7 +59,7 @@ function cvaFor(
 ): number | null {
   if (format === "descriptive") return null; // no CVA without affective scores
   const data = dataFor(s, format);
-  if (!hasData(data)) return null;
+  if (!hasData(data) || isAffectiveDeclaredPartial(data)) return null;
   const cva = calcIndividualScore(data, cupsPerSample, { rule: s.scoreRule });
   return typeof cva === "number" ? cva : null;
 }
@@ -142,6 +143,8 @@ export function OwnerParticipantSection({
     legendAmber: string;
     legendRed: string;
     noScore: string;
+    /** S10 WP3b: shown in a cell whose evaluation is a declared partial. */
+    partialLabel?: string;
     sdHeader: string;
     /** "{n} de {total} catadores incluidos…" — raw template. */
     includedCount: string;
@@ -221,6 +224,14 @@ export function OwnerParticipantSection({
       const s = p.samples[si];
       return s ? cvaFor(s, format, cupsPerSample) : null;
     })
+  );
+
+  // S10 WP3b: cells whose evaluation is a declared partial ("no evaluado"): no total, a label.
+  const partialMatrix: boolean[][] = sampleAxis.map((_, si) =>
+    participants.map((p) => {
+      const s = p.samples[si];
+      return !!s && format !== "descriptive" && isAffectiveDeclaredPartial(dataFor(s, format));
+    }),
   );
 
   // Per-row mean + population SD over the INCLUDED numeric values only — outlier
@@ -400,7 +411,7 @@ export function OwnerParticipantSection({
                           onClick={() => onOpenDetail(sample.id, p.id)}
                           className={`min-h-[44px] w-full px-2.5 py-2 text-sm tabular-nums transition-colors hover:brightness-95 ${toneClass(tone, excluded)}`}
                         >
-                          {value !== null ? value.toFixed(2) : t.noScore}
+                          {value !== null ? value.toFixed(2) : partialMatrix[si][pi] ? (t.partialLabel ?? t.noScore) : t.noScore}
                         </button>
                       </td>
                     );

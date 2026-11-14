@@ -1,5 +1,6 @@
 import { AFFECTIVE_ATTRIBUTES } from "./constants";
 import type { ScoreRule } from "./scoreRule";
+import { isAffectiveDeclaredPartial } from "./affectivePartial";
 
 /* ============================================================
    NEW: SCA CVA scoring — design system API
@@ -159,6 +160,37 @@ export function hasAffectiveData(data: EvalData | null | undefined): boolean {
   });
 }
 
+// S10 WP3b: whether an evaluation has an INDIVIDUAL total to show. False for an
+// evaluation without any rating (as hasAffectiveData) and for a declared partial
+// ("no evaluado" in some section): it has no total, never a 5-filled one. An old
+// incomplete evaluation WITHOUT a marker keeps today's behaviour (still true).
+export function hasIndividualScore(data: EvalData | null | undefined): boolean {
+  return hasAffectiveData(data) && !isAffectiveDeclaredPartial(data);
+}
+
+// S10 WP3b (C4, PHASE 29; SQL twin: recompute_aggregate_score): per-attribute
+// averages come from the complete AND the declared-partial evaluations, each
+// attribute over the evaluations that RATED it (its own denominator); an attribute
+// nobody rated is absent. Totals, deductions, `included` and the SD still use the
+// complete evaluations only. Used by the v2 branch only.
+function attrAveragesV2(evals: { data: EvalData }[]): Record<string, number> {
+  const feeding = evals.filter((e) => isAffectiveComplete(e.data) || isAffectiveDeclaredPartial(e.data));
+  const out: Record<string, number> = {};
+  for (const attr of AFFECTIVE_ATTRIBUTES) {
+    let sum = 0;
+    let n = 0;
+    for (const e of feeding) {
+      const v = Number(e.data[`${attr.id}_final`] ?? e.data[attr.id] ?? 0);
+      if (Number.isFinite(v) && v > 0) {
+        sum += v;
+        n += 1;
+      }
+    }
+    if (n > 0) out[attr.label] = Math.round((sum / n) * 100) / 100;
+  }
+  return out;
+}
+
 export interface GroupEvalInput {
   data: EvalData;
   nonUniformCups?: boolean[];
@@ -222,7 +254,9 @@ export function computeGroupAggregate(
       uniformityPenalty: 0,
       defectPenalty: 0,
       deductionFactor: 1,
-      attrAverages: {},
+      // v2: a sample whose only evaluations are declared partials still has per-attribute
+      // averages (PHASE 29); v1 is history and stays {}.
+      attrAverages: rule === "v1" ? {} : attrAveragesV2(evals),
     };
   }
 
@@ -311,14 +345,7 @@ export function computeGroupAggregate(
     totalCups,
   });
 
-  const attrAverages: Record<string, number> = {};
-  for (const attr of AFFECTIVE_ATTRIBUTES) {
-    let sum = 0;
-    for (const e of complete) {
-      sum += Number(e.data[`${attr.id}_final`] ?? e.data[attr.id] ?? 0);
-    }
-    attrAverages[attr.label] = Math.round((sum / included) * 100) / 100;
-  }
+  const attrAverages = attrAveragesV2(evals);
 
   return {
     submitted,

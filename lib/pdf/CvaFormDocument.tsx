@@ -557,7 +557,7 @@ function ScoreCell({ sheet, t }: { sheet: CvaSampleSheet; t: Record<string, stri
           {t.sumH}={sheet.breakdown.affectiveSum} · u={sheet.breakdown.u} · d={sheet.breakdown.d}
         </Text>
       ) : sheet.scoreState === "partial" ? (
-        <Text style={s.scoreFormula}>{t.incomplete}</Text>
+        <Text style={s.scoreFormula}>{sheet.partialDeclared ? t.partialDeclared : t.incomplete}</Text>
       ) : null}
     </View>
   );

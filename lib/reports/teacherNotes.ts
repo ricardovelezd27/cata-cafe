@@ -4,7 +4,7 @@
 // it carries cupper identity by design; never hand it to a participant route.
 
 import { collectDescriptors, PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
-import { calcIndividualScore, hasAffectiveData } from "@/lib/scoring";
+import { calcIndividualScore, hasIndividualScore } from "@/lib/scoring";
 import { evaluationScoreRule } from "@/lib/scoreRule";
 import { bandFor, rowStats, type Band } from "./cupperStats";
 import { blobForFormat, type SessionReportSource } from "./types";
@@ -50,7 +50,7 @@ export function buildTeacherNotes(src: SessionReportSource): TeacherCupperNotes[
     const ev = evalOf(cupperId, sampleId);
     if (!ev) return null;
     const blob = blobForFormat(format, ev);
-    if (!hasAffectiveData(blob)) return null;
+    if (!hasIndividualScore(blob)) return null;
     const sc = calcIndividualScore(blob, session.cupsPerSample, {
       rule: evaluationScoreRule(ev.cups, true),
     });

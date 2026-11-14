@@ -181,6 +181,7 @@ export default async function CupPage({
       sessionStartedAt={session.startedAt?.toISOString() ?? null}
       sessionIsAsync={session.isAsync}
       sessionEntriesLocked={session.entriesLocked}
+      closeNotice={{ closingAt: session.closingAt?.toISOString() ?? null, serverNow: new Date().toISOString() }}
       warmup={{
         exerciseId: session.warmupExerciseId,
         hasOwnEvaluation,
@@ -345,6 +346,34 @@ export default async function CupPage({
         closeUnsentMany: tg.raw("closeUnsentMany") as string,
         closeUnsentNone: tg("closeUnsentNone"),
         closeNotFinalized: tg("closeNotFinalized"),
+        closeAnnounce: {
+          dialog: {
+            title: tg("closeSession"),
+            closeNow: tg("closeNowAction"),
+            announce2: tg("closeAnnounce2"),
+            announce5: tg("closeAnnounce5"),
+            hint: tg("closeAnnounceHint"),
+            cancel: tg("closeLineCancel"),
+            close: tg("closeLineCancel"),
+            closeError: tg("closeSessionError"),
+            announceError: tg("closeAnnounceError"),
+          },
+          banner: {
+            counting: tg.raw("closeBannerCounting") as string,
+            due: tg("closeBannerDue"),
+            notDone: tg("closeBannerNotDone"),
+            minutes: tg.raw("closeBannerMinutes") as string,
+            lessThanMinute: tg("closeBannerLessThanMinute"),
+          },
+          line: {
+            counting: tg.raw("closeLineCounting") as string,
+            passed: tg("closeLinePassed"),
+            closeNow: tg("closeLineCloseNow"),
+            cancel: tg("closeLineCancel"),
+            closing: tg("closeLineClosing"),
+            error: tg("closeSessionError"),
+          },
+        },
         closeImpactLoading: tg("closeImpactLoading"),
         startSession: tg("startSession"),
         starting: tg("starting"),
@@ -389,6 +418,37 @@ export default async function CupPage({
           known: t("cupping.market.known"),
           noteLabel: t("cupping.market.noteLabel"),
           notePlaceholder: t("cupping.market.notePlaceholder"),
+        },
+        // "No evaluado" / "as it cooled" (S10 WP3b): {from}/{to}/{sample}/{n} are replaced client-side.
+        partial: {
+          notEvaluated: t("cupping.partial.notEvaluated"),
+          notEvaluatedOn: t("cupping.partial.notEvaluatedOn"),
+          evaluateIt: t("cupping.partial.evaluateIt"),
+          cooledPrompt: t("cupping.partial.cooledPrompt"),
+          cooledLabel: t("cupping.partial.cooledLabel"),
+          cooledRemove: t("cupping.partial.cooledRemove"),
+          cooledSummary: t.raw("cupping.partial.cooledSummary") as string,
+          submitNote: t.raw("cupping.partial.submitNote") as string,
+          submitNoteSolo: t.raw("cupping.partial.submitNoteSolo") as string,
+          noneEvaluated: t("cupping.partial.noneEvaluated"),
+          submitTitle: t("cupping.partial.submitTitle"),
+          scoreLabel: t("cupping.partial.scoreLabel"),
+          includesOne: t.raw("cupping.partial.includesOne") as string,
+          includesMany: t.raw("cupping.partial.includesMany") as string,
+        },
+        timer: {
+          title: t("cupping.timer.title"),
+          show: t("cupping.timer.show"),
+          hide: t("cupping.timer.hide"),
+          start: t("cupping.timer.start"),
+          reset: t("cupping.timer.reset"),
+          nextPass: t("cupping.timer.nextPass"),
+          cueWait: t("cupping.timer.cueWait"),
+          cueBreak: t("cupping.timer.cueBreak"),
+          cuePass1: t("cupping.timer.cuePass1"),
+          cuePass2: t("cupping.timer.cuePass2"),
+          cuePass3: t("cupping.timer.cuePass3"),
+          hint: t("cupping.timer.hint"),
         },
         // Cup grid copy (S10 WP1b): `{n}`, `{u}`, `{d}` are replaced client-side.
         cups: {

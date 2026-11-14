@@ -15,7 +15,7 @@
 // (which could name someone) is reduced to the bare code "other".
 
 import { AFFECTIVE_ATTRIBUTES } from "@/lib/constants";
-import { calcIndividualScore, evaluationCupCounts, hasAffectiveData } from "@/lib/scoring";
+import { calcIndividualScore, evaluationCupCounts, hasAffectiveData, hasIndividualScore } from "@/lib/scoring";
 import { evaluationScoreRule } from "@/lib/scoreRule";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { CSV_BOM, csvRow } from "@/lib/csv";
@@ -115,7 +115,7 @@ export function buildResultsCsv(
         rule === "v1"
           ? { u: ev.nonUniformCups.filter(Boolean).length, d: ev.defectiveCups.filter(Boolean).length }
           : evaluationCupCounts(ev.nonUniformCups, ev.defectiveCups, cups);
-      const score = scored ? calcIndividualScore(blob, cups, { rule }) : "";
+      const score = scored && hasIndividualScore(blob) ? calcIndividualScore(blob, cups, { rule }) : "";
       const isExcluded = excluded.has(ev.cupperId);
       lines.push(
         csvRow([

@@ -9,8 +9,9 @@ import { PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
 import { computeSampleBlockFrequencies } from "@/lib/resultsAggregation";
 import { computeCupperAlignment, type CupperAlignmentRow } from "@/lib/alignment";
 import { computeGroupAggregate, type GroupAggregate } from "@/lib/scoring";
+import { isAffectiveDeclaredPartial } from "@/lib/affectivePartial";
 import { evaluationScoreRule, sampleScoreRule, type ScoreRule } from "@/lib/scoreRule";
-import { asSessionFormat, type SessionFormat } from "@/lib/constants";
+import { AFFECTIVE_ATTRIBUTES, asSessionFormat, type SessionFormat } from "@/lib/constants";
 import { coffeeDisplayName } from "@/lib/coffeeAnonymize";
 import { deriveMyEvaluation, summarizeMyProgress } from "@/lib/evaluationState";
 import { isSessionExpired, viewerMayReadGroupResults } from "@/lib/sessionState";
@@ -26,6 +27,12 @@ import { closeSessionInternal } from "@/lib/closeSession";
 import { ON_VIEW_REPAIR_GRACE_MS, canCloseNow, soloRepairOwedOnView } from "@/lib/closeRules";
 import { errorMessage, logError } from "@/lib/log";
 import { noIncludedAggregate } from "@/lib/reports/ranking";
+import {
+  buildMyLateNotices,
+  buildOwnerLateRows,
+  buildPostCloseNotes,
+  type PostCloseNoteEval,
+} from "@/lib/lateContributions";
 import { buildPersonalComparison, type PersonalComparison } from "@/lib/reports/personalComparison";
 import { mayBuildPersonalComparison, mayBuildRepeatedDiffs } from "@/lib/reports/comparisonGates";
 import { compareOwnEvaluations, repeatedSamplePartners } from "@/lib/reports/repeatedSample";
@@ -243,11 +250,13 @@ export default async function ResultsPage({
   let groupAggBySample: Map<string, GroupAggregate> | null = null;
   const ruleBySample = new Map<string, ScoreRule>();
   const submittedAllBySample = new Map<string, number>();
+  const partialBySample = new Map<string, number>();
 
   // Ids of evaluations already visible at render time — seeds the client's
   // realtime-badge dedup set so a later no-op UPDATE storm (owner refresh,
   // exclusion toggle) doesn't re-badge evaluations the viewer already sees.
   let knownEvalIds: string[] = [];
+  let acceptedLateStamps: (Date | null)[] = [];
   // Submitted evaluations of the session (group, group results viewable) for the B3 comparison.
   let comparisonEvals: {
     cupperId: string;
@@ -269,11 +278,14 @@ export default async function ResultsPage({
         nonUniformCups: true,
         defectiveCups: true,
         cups: true,
+        acceptedLateAt: true,
         cupper: { select: { id: true, displayName: true } },
       },
     });
 
     knownEvalIds = evals.map((ev) => ev.id);
+    // S10 WP4b: an owner acceptance of a late evaluation moves "Resultados actualizados el".
+    acceptedLateStamps = evals.map((ev) => ev.acceptedLateAt);
     comparisonEvals = evals.map((ev) => ({
       cupperId: ev.cupperId,
       sessionSampleId: ev.sessionSampleId,
@@ -318,6 +330,13 @@ export default async function ResultsPage({
         );
       }
       for (const [sampleId, list] of bySample) {
+        // S10 WP3b: how many of the included-in-averages cuppers declared a partial evaluation.
+        const nPartial = list.filter((ev) =>
+          isAffectiveDeclaredPartial(
+            (format === "combined" ? ev.combinedData : ev.affectiveData) as Record<string, unknown>,
+          ),
+        ).length;
+        if (nPartial > 0) partialBySample.set(sampleId, nPartial);
         groupAggBySample.set(
           sampleId,
           computeGroupAggregate(
@@ -548,6 +567,7 @@ export default async function ResultsPage({
   }
 
   const tResults = await getTranslations("results");
+  const tAttr = await getTranslations("attributes");
   const tg = await getTranslations("group");
   const tDesc = await getTranslations("descriptors");
   const tAlign = await getTranslations("alignment");
@@ -808,7 +828,7 @@ export default async function ResultsPage({
     session.isGroup && session.status === "closed" && !hideCommunity
       ? resultsUpdatedAfterClose(
           session.closedAt,
-          session.participants.map((p) => p.excludedAt),
+          [...session.participants.map((p) => p.excludedAt), ...acceptedLateStamps],
           [lastComputedAt],
         )
       : null;
@@ -900,9 +920,144 @@ export default async function ResultsPage({
       }))
     : [];
 
+  // ---- S10 WP4b (Kim C1 / C2): what happens after a group session closed ----
+  // `TODO(kim-validar:C1)` / `TODO(kim-validar:C2)`. Every block below is built by a pure
+  // rule in lib/lateContributions.ts that is the privacy gate: the owner's late rows
+  // (names and counts of other cuppers) and the other cuppers' notes only exist in the
+  // owner lens; a participant's payload carries their own rows only.
+  const sampleLabelById = new Map(session.samples.map((s) => [s.id, s.label]));
+  const fmtDate = (d: Date | string) =>
+    new Date(d).toLocaleDateString(locale === "es" ? "es-CO" : "en-US", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  const lateDrafts =
+    isOwner && !isAdminViewer && session.isGroup && session.status === "closed"
+      ? await prisma.evaluation.findMany({
+          where: { sessionSample: { sessionId: id }, isDraft: true },
+          select: {
+            id: true,
+            cupperId: true,
+            sessionSampleId: true,
+            isDraft: true,
+            descriptiveData: true,
+            affectiveData: true,
+            combinedData: true,
+            updatedAt: true,
+            individualScore: true,
+            cups: true,
+            receivedLateAt: true,
+            cupper: { select: { id: true, displayName: true } },
+          },
+        })
+      : [];
+  const lateNameById = new Map(lateDrafts.map((d) => [d.cupperId, profileDisplayName(d.cupper, localeStr)]));
+  const lateRows = buildOwnerLateRows({
+    ownerLens: isOwner && !isAdminViewer,
+    isGroup: session.isGroup,
+    session: { status: session.status, format: session.format, closedAt: session.closedAt },
+    drafts: lateDrafts,
+    sampleLabels: sampleLabelById,
+    nameOf: (cupperId) => lateNameById.get(cupperId) ?? "",
+    excludedUserIds,
+    rule: {
+      cupsPerSample: session.cupsPerSample,
+      referenceSampleId: session.referenceSampleId,
+      referenceMode: session.referenceMode,
+    },
+    groupScoreBySample: new Map(
+      session.samples.map((s) => [s.id, groupAggBySample?.get(s.id)?.communityScore ?? null] as const),
+    ),
+    oldRuleSampleIds: new Set(session.samples.filter((s) => ruleBySample.get(s.id) === "v1").map((s) => s.id)),
+  });
+  const myEvalRows = isAdminViewer ? [] : session.samples.flatMap((s) => s.evaluations);
+  const myLateNotices = isAdminViewer
+    ? []
+    : buildMyLateNotices({
+        isGroup: session.isGroup,
+        session: { status: session.status, format: session.format },
+        mine: myEvalRows,
+        sampleLabels: sampleLabelById,
+        viewerExcluded: excludedUserIds.has(user.id),
+      }).map((n) =>
+        n.kind === "left_out"
+          ? tResults("lateNoticeLeftOut", { sample: n.sampleLabel })
+          : tResults("lateNoticeIncluded", { sample: n.sampleLabel, date: fmtDate(n.at) }),
+      );
+  const otherNotes: PostCloseNoteEval[] =
+    isOwner && !isAdminViewer && session.status === "closed"
+      ? await prisma.evaluation.findMany({
+          where: {
+            sessionSample: { sessionId: id },
+            isDraft: false,
+            postCloseNote: { not: null },
+            cupperId: { not: user.id },
+          },
+          select: {
+            id: true,
+            cupperId: true,
+            sessionSampleId: true,
+            isDraft: true,
+            postCloseNote: true,
+            postCloseNoteAt: true,
+          },
+        })
+      : [];
+  const postCloseNotes = isAdminViewer
+    ? null
+    : buildPostCloseNotes({
+        sessionStatus: session.status,
+        ownerLens: isOwner,
+        viewerId: user.id,
+        evals: [...myEvalRows, ...otherNotes],
+      });
+  const lateT = {
+    title: tResults("late.title"),
+    intro: tResults("late.intro"),
+    savedAt: tResults.raw("late.savedAt") as string,
+    savedBeforeClose: tResults("late.savedBeforeClose"),
+    receivedLate: tResults("late.receivedLate"),
+    score: tResults.raw("late.score") as string,
+    scorePartial: tResults("late.scorePartial"),
+    diff: tResults.raw("late.diff") as string,
+    showRatings: tResults("late.showRatings"),
+    hideRatings: tResults("late.hideRatings"),
+    oldRule: tResults("late.oldRule"),
+    stale: tResults("late.stale"),
+    attributeLabels: Object.fromEntries(
+      AFFECTIVE_ATTRIBUTES.map((a) => [a.id, tAttr(a.id as Parameters<typeof tAttr>[0])]),
+    ),
+    accept: tResults("late.accept"),
+    confirmTitle: tResults("late.confirmTitle"),
+    confirmBody: tResults.raw("late.confirmBody") as string,
+    confirm: tResults("late.confirm"),
+    cancel: tResults("late.cancel"),
+    close: tResults("late.close"),
+    error: tResults("late.error"),
+  };
+  const noteT = {
+    add: tResults("postCloseNote.add"),
+    edit: tResults("postCloseNote.edit"),
+    remove: tResults("postCloseNote.remove"),
+    placeholder: tResults("postCloseNote.placeholder"),
+    hint: tResults("postCloseNote.hint"),
+    save: tResults("postCloseNote.save"),
+    saving: tResults("postCloseNote.saving"),
+    cancel: tResults("postCloseNote.cancel"),
+    added: tResults.raw("postCloseNote.added") as string,
+    ownerTitle: tResults("postCloseNote.ownerTitle"),
+    ownerIntro: tResults("postCloseNote.ownerIntro"),
+  };
+
   return (
     <ResultsClient
       locale={locale}
+      lateRows={lateRows}
+      myLateNotices={myLateNotices}
+      postCloseNotes={postCloseNotes}
+      lateTranslations={lateT}
+      noteTranslations={noteT}
       usableCoffees={usableCoffees}
       isOwner={isOwner}
       isAdminViewer={isAdminViewer}
@@ -970,6 +1125,7 @@ export default async function ResultsPage({
                 defectPenalty: recomputed.defectPenalty,
                 rule: ruleBySample.get(s.id) ?? sampleScoreRule(agg),
                 attrAverages: recomputed.attrAverages,
+                partialCount: partialBySample.get(s.id) ?? 0,
               }
             : groupAggBySample && (submittedAllBySample.get(s.id) ?? 0) > 0
               ? // B-07: every submitted evaluation is excluded -> n = 0, no score
@@ -1167,6 +1323,11 @@ export default async function ResultsPage({
           includedLine: tResults.raw("radar.includedLine") as string,
           noAffective: tResults("radar.noAffective"),
           requiresAffective: tResults("radar.requiresAffective"),
+          // S10 WP3b: partial evaluations ({n} substituted client-side).
+          partialLabel: tResults("partial.label"),
+          includesOne: tResults.raw("partial.includesOne") as string,
+          includesMany: tResults.raw("partial.includesMany") as string,
+          axisNotEvaluated: tResults("partial.axisNotEvaluated"),
         },
         flavorProfiles: tResults("flavorProfiles"),
         referenceBadge: tResults("referenceBadge"),
@@ -1285,6 +1446,7 @@ export default async function ResultsPage({
           inProgress: tResults("table.inProgress"),
           notEvaluated: tResults("table.notEvaluated"),
           inProgressLegend: tResults("table.inProgressLegend"),
+          partialLabel: tResults("partial.label"),
         },
         detail: {
           prep: {
@@ -1342,6 +1504,12 @@ export default async function ResultsPage({
           editExtrinsic: tResults("detail.editExtrinsic"),
           expressNotes: tResults("detail.expressNotes"),
           market: { label: tResults("market.label"), known: tResults("market.known") },
+          partial: {
+            label: tResults("partial.label"),
+            notEvaluated: tResults("partial.notEvaluated"),
+            // {from}/{to} are substituted client-side.
+            cooledSummary: tResults.raw("partial.cooledSummary") as string,
+          },
           assignCoffee: tResults("detail.assignCoffee"),
           close: tResults("detail.close"),
           breakdown: breakdownT,
@@ -1358,6 +1526,7 @@ export default async function ResultsPage({
           legendAmber: tResults("matrix.legendAmber"),
           legendRed: tResults("matrix.legendRed"),
           noScore: tResults("matrix.noScore"),
+          partialLabel: tResults("partial.label"),
           sdHeader: tResults("matrix.sdHeader"),
           // ICU args: fetched raw and filled client-side.
           includedCount: tResults.raw("matrix.includedCount") as string,

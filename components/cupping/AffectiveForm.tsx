@@ -12,7 +12,13 @@ import {
   CupToggleGrid,
 } from "@/components/ui";
 
-import { MarketNote, MARKET_COPY_FALLBACK, type MarketCopy } from "@/components/cupping/MarketNote";
+import {
+  AttributeExtras,
+  PARTIAL_COPY_FALLBACK,
+  sectionNotEvaluated,
+  type PartialCopy,
+} from "@/components/cupping/AttributeExtras";
+import { MarketNote,MARKET_COPY_FALLBACK, type MarketCopy } from "@/components/cupping/MarketNote";
 import { CUP_COPY_FALLBACK, cupSummary, type CupCopy } from "@/lib/cupCopy";
 import { applyDefectChoice, applyNonUniformToggle, formCupState } from "@/lib/cupDefects";
 
@@ -31,6 +37,7 @@ export function AffectiveForm({
   locale = "es",
   cupCopy,
   marketCopy,
+  partialCopy,
 }: {
   sampleData: Data;
   onChange: (d: Data) => void;
@@ -52,8 +59,11 @@ export function AffectiveForm({
   cupCopy?: CupCopy;
   /** Optional "market" line copy (messages `cupping.market`, S10 WP3a). */
   marketCopy?: MarketCopy;
+  /** "No evaluado" / "as it cooled" copy (messages `cupping.partial`, S10 WP3b). */
+  partialCopy?: PartialCopy;
 }) {
   const copy = cupCopy ?? CUP_COPY_FALLBACK[locale];
+  const partial = partialCopy ?? PARTIAL_COPY_FALLBACK[locale];
   const isFlagged = (id: string) => missingIds?.includes(id) ?? false;
   const d = sampleData;
   const set = (key: string, val: unknown) => onChange({ ...d, [key]: val });
@@ -105,7 +115,14 @@ export function AffectiveForm({
                   <AffectiveBubbles
                     value={getNum(`${attr.affectiveId}_final`)}
                     onChange={(v) => set(`${attr.affectiveId}_final`, v)}
-                    disabled={lockedAffective}
+                    disabled={lockedAffective || sectionNotEvaluated(d, attr.affectiveId)}
+                  />
+                  <AttributeExtras
+                    data={d}
+                    onChange={onChange}
+                    attrId={attr.affectiveId}
+                    copy={partial}
+                    locked={lockedAffective}
                   />
                 </div>
 
@@ -133,7 +150,14 @@ export function AffectiveForm({
         <AffectiveBubbles
           value={getNum("impresion_global_final")}
           onChange={(v) => set("impresion_global_final", v)}
-          disabled={lockedAffective}
+          disabled={lockedAffective || sectionNotEvaluated(d, "impresion_global")}
+        />
+        <AttributeExtras
+          data={d}
+          onChange={onChange}
+          attrId="impresion_global"
+          copy={partial}
+          locked={lockedAffective}
         />
         <div className="mt-3">
           <Notes
