@@ -40,19 +40,35 @@ export interface MixLevels {
   readonly duckReleaseMs: number;
 }
 
-// TODO(human): set the mix. These six numbers are a judgement of the ear, and
-// they are yours. The starting values below are HeyGen HyperFrames' guidance
-// (a bed about 18 dB under a voice, event sounds 3 to 6 dB over the bed) and
-// have NOT been listened to. Tune them live in /app/warmup/dev-player (the
-// "mix" sliders, with "voz de prueba" playing a real rendered line), on
-// headphones AND on a phone speaker, then write the numbers you land on here.
-// tests/warmup-mix.test.ts will tell you if a choice breaks a hard limit
-// (the voice must stay at least 12 dB above the background while it speaks;
-// the sum of everything must not clip).
+// SET BY MEASUREMENT, NOT BY EAR (2026-11-14). The owner could not listen
+// before this shipped and asked for it to be made right without him, so these
+// six numbers come from computed, ear-weighted (dB(A)) levels of each sound,
+// on full-range playback and through a small-speaker model (a 400 Hz
+// high-pass, roughly a phone). They are still a judgement of the ear and they
+// are still his: tune them live in /app/warmup/dev-player (the "mix"
+// sliders, with "Voz de prueba" playing a real rendered line), on headphones
+// AND on a phone speaker, and write what you land on here.
+//
+// What each number was chosen to do, and what it measures:
+//   markersDb  0   The bells stay close to what people already know: 3.7 dB
+//                  under their level before the mixer existed, and never
+//                  above the voice.
+//   toneDb   -12   The movement tone is 15 to 20 dB under the bell's strike,
+//                  so the bell still reads as an event. On a phone speaker it
+//                  is about 12 dB more present than the old tone, which was
+//                  33 dB under the bell there (in practice, silent).
+//   airDb    -30   The air sits 7 to 14 dB under the tone (the low-rooted
+//                  tones lose the most on a phone speaker, which sets the
+//                  7): noticed only when it stops.
+//   duckDb    -8   While a line is spoken the tone is 20 dB under the voice
+//                  and the air 38 dB under it.
+// tests/warmup-mix.test.ts keeps those relations true and enforces the hard
+// limits (the voice at least 12 dB above the background while it speaks; the
+// sum of everything must not clip).
 export const MIX: MixLevels = {
-  markersDb: -6,
-  toneDb: -10,
-  airDb: -20,
+  markersDb: 0,
+  toneDb: -12,
+  airDb: -30,
   duckDb: -8,
   duckAttackMs: 250,
   duckReleaseMs: 700,
@@ -66,9 +82,11 @@ export const LIMITER = { thresholdDb: -1.5, kneeDb: 0, ratio: 20, attackS: 0.003
 
 /** The phone's own voice (speechSynthesis, the fallback when the rendered
  *  voice is not available) plays OUTSIDE the mixer, at whatever level the
- *  phone gives it, usually well above -19 LUFS. This volume (0..1) brings it
- *  roughly in line with a mix that is balanced around the rendered voice. */
-export const FALLBACK_VOICE_VOLUME = 0.4;
+ *  phone gives it. The bells are 3.7 dB quieter than they were before the
+ *  mixer existed (MIX.markersDb), so this volume (0..1) turns the phone's
+ *  voice down by the same amount: the balance people already know between
+ *  that voice and the bells is kept. */
+export const FALLBACK_VOICE_VOLUME = 0.65;
 
 export const dbToGain = (db: number): number => Math.pow(10, db / 20);
 export const gainToDb = (gain: number): number => 20 * Math.log10(Math.max(gain, 1e-9));

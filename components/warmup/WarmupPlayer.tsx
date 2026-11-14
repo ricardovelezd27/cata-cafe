@@ -1277,7 +1277,7 @@ function IntroScreen({
         <p className={s.kicker}>{t.evolutionLabel}</p>
         <ol className={s.stages}>
           {evolution.map((e, i) => (
-            <li key={e} className={s.stage}>
+            <li key={e} className={s.evoStage}>
               <span className={[s.stageDot, i === 2 ? s.stageDotClosed : ""].join(" ")} aria-hidden />
               <span className={s.stageLabel}>{e}</span>
             </li>

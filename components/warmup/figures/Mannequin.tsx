@@ -1,5 +1,6 @@
-import { useId, type Ref } from "react";
+import { useId, type CSSProperties, type Ref } from "react";
 import type { WarmupFigureKind, WarmupLead } from "@/lib/warmup/exercises";
+import { closeFrameStyle } from "@/lib/warmup/figureCrop";
 import type { PartTransforms } from "@/lib/warmup/poses";
 import type { Pose } from "@/lib/warmup/timelineTypes";
 import { Trajectory } from "./Trajectory";
@@ -99,6 +100,9 @@ export function Mannequin({
       data-kind={kind}
       data-eyes={eyes}
       data-frame={frame}
+      // The numbers of the half-body frame; only the player's phone layout
+      // reads them (lib/warmup/figureCrop.ts).
+      style={tile ? undefined : (closeFrameStyle(kind) as CSSProperties | undefined)}
     >
       {title ? <title>{title}</title> : null}
       <defs>

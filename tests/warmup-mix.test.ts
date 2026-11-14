@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  FALLBACK_VOICE_VOLUME,
   LIMITER,
   MIX,
   VOICE_LUFS,
@@ -16,7 +17,7 @@ import {
   type MixLevels,
 } from "@/lib/warmup/mix";
 import { WARMUP_EXERCISES } from "@/lib/warmup/exercises";
-import { AIR, HUM, TONES, airRmsDb, cueAttackRmsDb, humRmsDb, toneFor } from "@/lib/warmup/sounds";
+import { AIR, HUM, RECIPES, TONES, airRmsDb, cueAttackRmsDb, humRmsDb, toneFor } from "@/lib/warmup/sounds";
 
 const mix: MixLevels = { markersDb: -6, toneDb: -10, airDb: -20, duckDb: -8, duckAttackMs: 250, duckReleaseMs: 700 };
 const ducked = dbToGain(-8);
@@ -176,5 +177,102 @@ describe("estimateSpeechMs (the phone's own voice, fallback only)", () => {
     expect(estimateSpeechMs("Para.")).toBe(350 + 420 + 250);
     expect(estimateSpeechMs("Cierra los ojos. Sube el brazo.")).toBe(350 + 6 * 420 + 2 * 250);
     expect(estimateSpeechMs("uno dos tres cuatro")).toBeLessThan(estimateSpeechMs("uno dos tres cuatro cinco"));
+  });
+});
+
+// ── How loud each sound is TO THE EAR ─────────────────────────────────────
+// The mix was set by measurement (nobody could listen before it shipped), so
+// the measurements are kept here as tests. Levels are A-weighted (the ear is
+// far less sensitive to low notes at quiet levels), on full-range playback
+// and through a small-speaker model: a 400 Hz 12 dB/octave high-pass, roughly
+// a phone speaker.
+describe("perceived levels of the committed mix", () => {
+  const aWeight = (f: number) => {
+    const f2 = f * f;
+    const ra = (12194 ** 2 * f2 * f2) / ((f2 + 20.6 ** 2) * Math.sqrt((f2 + 107.7 ** 2) * (f2 + 737.9 ** 2)) * (f2 + 12194 ** 2));
+    return 20 * Math.log10(ra) + 2.0;
+  };
+  const highPass = (f: number, fc: number) => 10 * Math.log10((f / fc) ** 4 / (1 + (f / fc) ** 4));
+  const lowPass = (f: number, fc: number) => 10 * Math.log10(1 / (1 + (f / fc) ** 4));
+  const PHONE_HZ = 400;
+  type Partial_ = { f: number; a: number };
+  const heard = (ps: Partial_[], phone: boolean, lowpassHz?: number) =>
+    10 *
+    Math.log10(
+      ps.reduce((sum, p) => sum + (p.a ** 2 / 2) * 10 ** ((aWeight(p.f) + (phone ? highPass(p.f, PHONE_HZ) : 0) + (lowpassHz ? lowPass(p.f, lowpassHz) : 0)) / 10), 0),
+    );
+  const bell = (): Partial_[] => {
+    const s = RECIPES.campana.strikes[0].strike;
+    return s.partials.map((p) => ({ f: p.freq, a: s.peak * p.amp }));
+  };
+  const toneParts = (r: typeof HUM): Partial_[] =>
+    r.partials.flatMap((p) =>
+      p.ratio === 1
+        ? [
+            { f: r.baseHz, a: r.peak * p.amp * 0.62 },
+            { f: r.baseHz + r.binauralHz, a: r.peak * p.amp * 0.62 },
+          ]
+        : [{ f: r.baseHz * p.ratio, a: r.peak * p.amp }],
+    );
+  /** The tone before the 2026-11 retune, at the level it played at (gain 1). */
+  const OLD_TONE: typeof HUM = {
+    ...HUM,
+    baseHz: 132,
+    binauralHz: 6,
+    lowpassHz: 640,
+    partials: [
+      { ratio: 1, amp: 1, wave: "sine" },
+      { ratio: 2, amp: 0.28, wave: "triangle" },
+      { ratio: 1.5, amp: 0.14, wave: "sine" },
+      { ratio: 3, amp: 0.06, wave: "sine" },
+    ],
+  };
+  const airHeard = (phone: boolean) => airRmsDb(AIR) + aWeight(AIR.bandHz) + (phone ? highPass(AIR.bandHz, PHONE_HZ) : 0);
+  const levels = (id: string, phone: boolean) => {
+    const tone = toneFor(id);
+    const g = laneGains(MIX, tone);
+    return {
+      bell: heard(bell(), phone) + gainToDb(g.markers),
+      tone: heard(toneParts(tone), phone, tone.lowpassHz) + gainToDb(g.tone),
+      air: airHeard(phone) + gainToDb(g.air),
+    };
+  };
+
+  it("the old tone really was lost on a phone speaker: over 30 dB under the bell", () => {
+    expect(heard(bell(), true) - heard(toneParts(OLD_TONE), true, 640)).toBeGreaterThan(30);
+  });
+
+  it("on a phone speaker every exercise's tone is at least 8 dB more present than the old one was", () => {
+    const old = heard(toneParts(OLD_TONE), true, 640);
+    for (const ex of WARMUP_EXERCISES) expect(levels(ex.id, true).tone - old, ex.id).toBeGreaterThanOrEqual(8);
+  });
+
+  it("the bell still reads as an event: its strike is 14 to 26 dB above the tone, on both kinds of playback", () => {
+    for (const ex of WARMUP_EXERCISES) {
+      for (const phone of [false, true]) {
+        const l = levels(ex.id, phone);
+        expect(l.bell - l.tone, `${ex.id} phone=${phone}`).toBeGreaterThanOrEqual(14);
+        expect(l.bell - l.tone, `${ex.id} phone=${phone}`).toBeLessThanOrEqual(26);
+      }
+    }
+  });
+
+  it("the air stays under the tone (at least 6 dB) on both kinds of playback", () => {
+    for (const ex of WARMUP_EXERCISES) {
+      for (const phone of [false, true]) {
+        const l = levels(ex.id, phone);
+        expect(l.tone - l.air, `${ex.id} phone=${phone}`).toBeGreaterThanOrEqual(6);
+      }
+    }
+  });
+
+  it("the bells did not get much quieter than people know them (within 6 dB of the level before the mixer)", () => {
+    const drop = -gainToDb(laneGains(MIX).markers);
+    expect(drop).toBeGreaterThanOrEqual(0);
+    expect(drop).toBeLessThanOrEqual(6);
+  });
+
+  it("the phone's own voice is turned down by what the bells were turned down (within 1 dB)", () => {
+    expect(Math.abs(gainToDb(FALLBACK_VOICE_VOLUME) - gainToDb(laneGains(MIX).markers))).toBeLessThanOrEqual(1);
   });
 });
