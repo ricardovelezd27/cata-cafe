@@ -29,6 +29,7 @@ import { submitLateDraft } from "@/app/actions/offline";
 import { closeSessionInternal } from "@/lib/closeSession";
 import { buildOwnerLateRows, totalAcceptanceWillStore } from "@/lib/lateContributions";
 import { calcIndividualScore } from "@/lib/scoring";
+import { REF_STASH_KEY, pinReferenceAffective, stashBeforePin } from "@/lib/referenceRules";
 import { computeEvaluationDerived } from "@/lib/evaluation";
 import {
   affectiveData,
@@ -37,6 +38,7 @@ import {
   makeSession,
   makeUser,
   prisma,
+  rawClient,
   resetDb,
   storedAggregate,
 } from "./support/db";
@@ -590,4 +592,93 @@ describe("acceptLateEvaluation with a declared-partial late draft", () => {
     expect(attrs["Fragancia"]).toBe(8); // (7 + 9) / 2
     expect(attrs["Sabor"]).toBe(7); // only the complete evaluation rated it
   });
+});
+
+// S10 WP10: documentation pass. Two facts the guide states are pinned here.
+describe("acceptLateEvaluation of an old-rule draft of the ACTIVE pinned reference", () => {
+  it("keeps its stash (ref_previo) intact while it rewrites the old row under the current rule", async () => {
+    const { owner, A, s, draft } = await closedScenario({ cups: 2, legacyDraft: true });
+    await prisma.sessionSample.update({ where: { id: A.id }, data: { referenceRank: 1 } });
+    await prisma.cuppingSession.update({ where: { id: s.id }, data: { referenceSampleId: A.id, referenceMode: "anchor" } });
+    // the draft as the pin left it: anchor ratings plus the cupper's previous real ratings in the stash
+    const real = { ...affectiveData(8), tazas_no_uniformes: [true, false], tazas_defectuosas: [false, false] };
+    const stash = stashBeforePin(real, pinReferenceAffective(real, 2), new Date("2026-11-01T10:00:00.000Z"));
+    expect(stash).not.toBeNull();
+    await prisma.evaluation.update({
+      where: { id: draft.id },
+      data: { affectiveData: { ...pinReferenceAffective(real, 2), [REF_STASH_KEY]: stash } as never },
+    });
+    expect((await prisma.evaluation.findUniqueOrThrow({ where: { id: draft.id } })).cups).toBeNull();
+
+    h.userId = owner;
+    expect((await accept(draft.id)).ok).toBe(true);
+    const row = await prisma.evaluation.findUniqueOrThrow({ where: { id: draft.id } });
+    const stored = row.affectiveData as Record<string, unknown>;
+    expect(row.isDraft).toBe(false);
+    expect(row.acceptedLateAt).toBeInstanceOf(Date);
+    expect(row.cups).toBe(2); // rewritten under the current rule
+    expect(stored.fragancia_af_final).toBe(5); // still the anchor
+    expect(stored[REF_STASH_KEY]).toEqual(stash); // the stash is untouched
+  });
+});
+
+describe("a busy session row (another transaction holds it for longer than the 5 s lock timeout)", () => {
+  async function holdSessionRow(sessionId: string) {
+    const c = await rawClient();
+    await c.query("BEGIN");
+    await c.query("SELECT id FROM cupping_sessions WHERE id = $1 FOR UPDATE", [sessionId]);
+    return {
+      release: async () => {
+        await c.query("ROLLBACK");
+        await c.end();
+      },
+    };
+  }
+
+  it("acceptLateEvaluation answers busy_retry, flips nothing, and works once the row is free", async () => {
+    const { owner, A, s, draft } = await closedScenario();
+    const rendered = (await prisma.evaluation.findUniqueOrThrow({ where: { id: draft.id } })).updatedAt.toISOString();
+    const aggBefore = await storedAggregate(A.id);
+    h.userId = owner;
+    const held = await holdSessionRow(s.id);
+    let r: Awaited<ReturnType<typeof acceptLateEvaluation>>;
+    const t0 = Date.now();
+    try {
+      r = await acceptLateEvaluation(draft.id, rendered);
+    } finally {
+      await held.release();
+    }
+    const waited = Date.now() - t0;
+    expect(r).toEqual({ ok: false, error: "busy_retry" });
+    expect(waited).toBeGreaterThanOrEqual(4500);
+    expect(waited).toBeLessThan(9000);
+    const row = await prisma.evaluation.findUniqueOrThrow({ where: { id: draft.id } });
+    expect(row.isDraft).toBe(true);
+    expect(row.acceptedLateAt).toBeNull();
+    expect((await storedAggregate(A.id))?.communityScore).toBe(aggBefore?.communityScore);
+    expect((await accept(draft.id)).ok).toBe(true);
+  }, 40_000);
+
+  it("submitLateDraft answers pending, writes nothing, and syncs once the row is free", async () => {
+    const { A, s } = await closedScenario();
+    const late = await makeUser({ name: "Tres" });
+    await prisma.sessionParticipant.create({ data: { sessionId: s.id, userId: late, status: "joined" } });
+    h.userId = late;
+    const held = await holdSessionRow(s.id);
+    let r: Awaited<ReturnType<typeof submitLateDraft>>;
+    const t0 = Date.now();
+    try {
+      r = await submitLateDraft({ sessionSampleId: A.id, moduleKey: "affective", data: affectiveData(8), clientTs: Date.now() });
+    } finally {
+      await held.release();
+    }
+    const waited = Date.now() - t0;
+    expect(r).toEqual({ status: "pending" });
+    expect(waited).toBeGreaterThanOrEqual(4500);
+    expect(waited).toBeLessThan(9000);
+    expect(await prisma.evaluation.count({ where: { sessionSampleId: A.id, cupperId: late } })).toBe(0);
+    expect(
+      await submitLateDraft({ sessionSampleId: A.id, moduleKey: "affective", data: affectiveData(8), clientTs: Date.now() }),
+    ).toEqual({ status: "synced" });
+  }, 40_000);
 });
