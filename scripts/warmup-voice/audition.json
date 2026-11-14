@@ -1,0 +1,53 @@
+{
+  "lines": {
+    "es": [
+      {
+        "id": "llegada",
+        "text": "Vamos a empezar respirando. Pies en el suelo, manos sobre las piernas, hombros sueltos."
+      },
+      {
+        "id": "instruccion",
+        "text": "Si en algún punto notas una pequeña resistencia, detente ahí unos segundos. Ese es tu punto de apoyo. El cuerpo se reajusta solo."
+      },
+      {
+        "id": "ojos",
+        "text": "Cierra los ojos. Esta vez, sin mirar, sube el brazo muy despacio."
+      },
+      {
+        "id": "cortas",
+        "text": "Para. Y ahora vuelve, igual de lento."
+      }
+    ],
+    "en": [
+      {
+        "id": "arrive",
+        "text": "Let's begin by breathing. Feet on the floor, hands on your thighs, shoulders loose."
+      },
+      {
+        "id": "instruction",
+        "text": "If at some point you notice a slight resistance, stop there for a few seconds. That is your support point. The body readjusts on its own."
+      },
+      {
+        "id": "eyes",
+        "text": "Close your eyes. This time, without looking, raise your arm very slowly."
+      },
+      {
+        "id": "short",
+        "text": "Hold. And now come back, just as slowly."
+      }
+    ]
+  },
+  "variants": [
+    { "id": "es-dora-latam", "locale": "es", "voice": "ef_dora", "lang": "es-419", "speed": 0.9, "label": "Dora · latinoamericano" },
+    { "id": "es-dora-es", "locale": "es", "voice": "ef_dora", "lang": "es", "speed": 0.9, "label": "Dora · España" },
+    { "id": "es-alex-latam", "locale": "es", "voice": "em_alex", "lang": "es-419", "speed": 0.9, "label": "Alex · latinoamericano" },
+    { "id": "es-alex-es", "locale": "es", "voice": "em_alex", "lang": "es", "speed": 0.9, "label": "Alex · España" },
+    { "id": "es-santa-latam", "locale": "es", "voice": "em_santa", "lang": "es-419", "speed": 0.9, "label": "Santa · latinoamericano" },
+    { "id": "es-santa-es", "locale": "es", "voice": "em_santa", "lang": "es", "speed": 0.9, "label": "Santa · España" },
+    { "id": "en-heart", "locale": "en", "voice": "af_heart", "lang": "en-us", "speed": 0.9, "label": "Heart · US" },
+    { "id": "en-nicole", "locale": "en", "voice": "af_nicole", "lang": "en-us", "speed": 0.9, "label": "Nicole · US, soft" },
+    { "id": "en-emma", "locale": "en", "voice": "bf_emma", "lang": "en-gb", "speed": 0.9, "label": "Emma · British" },
+    { "id": "en-michael", "locale": "en", "voice": "am_michael", "lang": "en-us", "speed": 0.9, "label": "Michael · US" },
+    { "id": "en-george", "locale": "en", "voice": "bm_george", "lang": "en-gb", "speed": 0.9, "label": "George · British" }
+  ]
+}
