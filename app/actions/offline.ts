@@ -204,6 +204,9 @@ async function replayEvaluationCore(input: EvaluationReplayInput): Promise<Repla
     });
   } catch (e) {
     if (e instanceof Error && e.message === "invalid_input") return "rejected";
+    // S10 WP6b: the session row was busy for 5 s; nothing was written, the draft stays on
+    // the device and the next replay retries (no attempt burnt).
+    if (isLockTimeoutError(e) || (e instanceof Error && e.message === "busy_retry")) return "pending";
     throw e;
   }
 

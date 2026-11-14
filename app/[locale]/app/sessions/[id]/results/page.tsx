@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { requireAppUser } from "@/lib/auth";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
-import { orderReferencesFirst } from "@/lib/referenceRules";
+import { orderReferencesFirst, referenceCopySuffix, referenceExplanation } from "@/lib/referenceRules";
 import { profileDisplayName } from "@/lib/accountDeletion/deletedProfile";
 import { isSuperAdminEmail } from "@/lib/analytics/access";
 import { PERCEPTUAL_BLOCKS } from "@/lib/descriptors";
@@ -157,8 +157,10 @@ export default async function ResultsPage({
   const isAdminViewer = isSuperAdmin && !isOwner;
   // Owner-perspective read gate — shared by every owner-only READ block below.
   const ownerRead = isOwner || isAdminViewer;
-  // B1: a "free" reference is scored like any sample (no "79.00 anchor" copy).
-  const referenceFree = session.referenceMode === "free";
+  // B1 + S10 WP6b: the "79.00 anchor" wording applies only where the pin does (anchor mode AND a
+  // format with quality ratings); a free or descriptive reference is only a point of comparison.
+  const refExplanation = referenceExplanation({ mode: session.referenceMode, moduleKey: session.format });
+  const refCopy = referenceCopySuffix(refExplanation);
   // Narrowed session format — used for every format-shaped gate below.
   // `session.format` (raw string) is still passed inside the `session` prop
   // unchanged, since the client-side type there is a plain string.
@@ -786,7 +788,7 @@ export default async function ResultsPage({
         position: s.position,
         coffeeId: s.coffeeId,
         revealed: s.revealed,
-        isAnchorReference: s.referenceRank != null && !referenceFree,
+        isAnchorReference: s.referenceRank != null && refExplanation === "pinned",
       })),
     );
     const ownEval = (sampleId: string) => {
@@ -1421,8 +1423,8 @@ export default async function ResultsPage({
           referenceBadge: tResults("referenceBadge"),
           deltaVsReference: tResults("deltaVsReference"),
           deltaVsReferenceAria: tResults("deltaVsReferenceAria"),
-          anchorTitle: tResults(referenceFree ? "dashboard.anchorTitleFree" : "dashboard.anchorTitle"),
-          anchorHint: tResults(referenceFree ? "dashboard.anchorHintFree" : "dashboard.anchorHint"),
+          anchorTitle: tResults(`dashboard.anchorTitle${refCopy}`),
+          anchorHint: tResults(`dashboard.anchorHint${refCopy}`),
           // Templates / ICU args: fetched raw, filled client-side.
           includedOf: tResults.raw("dashboard.includedOf") as string,
           rankIndicative: tResults("dashboard.rankIndicative"),
@@ -1579,7 +1581,7 @@ export default async function ResultsPage({
           },
           referencia: {
             title: tResults("help.referencia.title"),
-            body: tResults(referenceFree ? "help.referencia.bodyFree" : "help.referencia.body"),
+            body: tResults(`help.referencia.body${refCopy}`),
           },
         },
       }}
