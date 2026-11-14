@@ -15,6 +15,7 @@ import { postureLine as postureLineOf, type ScriptContext } from "@/lib/warmup/s
 import { runSpeech } from "@/lib/warmup/voiceLines";
 import type { ClipPoint } from "@/lib/warmup/voiceSchedule";
 import { toneFor } from "@/lib/warmup/sounds";
+import { blankField, fieldStateAt } from "@/lib/warmup/stageField";
 import type { RunClockEvent } from "@/lib/warmup/runClock";
 import { shouldResync } from "@/lib/warmup/syncedRun";
 import { skipNeedsConfirm, type WarmupExitInfo } from "@/lib/warmup/overlayGate";
@@ -27,7 +28,7 @@ import { useLocalFlag } from "@/hooks/useLocalFlag";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { WarmupFigure } from "@/components/warmup/figures";
 import { StepProgress } from "./StepProgress";
-import { BreathField, type BreathFieldHandle } from "./BreathField";
+import { StageField, type StageFieldHandle } from "./StageField";
 import type { WarmupPlayerStrings } from "./playerStrings";
 import s from "./WarmupPlayer.module.css";
 
@@ -204,7 +205,13 @@ export function WarmupPlayer({
   // ── DOM refs the loop writes to ───────────────────────────────────────
   const svgRef = useRef<SVGSVGElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
-  const fieldRef = useRef<BreathFieldHandle>(null);
+  const fieldRef = useRef<StageFieldHandle>(null);
+  /** The field's state, written in place every paint (no allocation). */
+  const fieldState = useRef(blankField());
+  /** Eyes closed with the controls hidden: nobody is watching the dots. */
+  const unwatchedRef = useRef(false);
+  /** The clock is running (a paint while it is not snaps the dots). */
+  const runningRef = useRef(false);
   /** Index of the next narration to speak (reset on every schedule). */
   const narrCursor = useRef(0);
   /** Narration lines at or after this ms wait for the next stretch (Quieto stop). */
@@ -221,10 +228,11 @@ export function WarmupPlayer({
       const local = elapsed - sg.t0Ms;
       const svg = svgRef.current;
       const bar = barRef.current;
+      // The pose of this moment: the figure shows it, the dots follow it.
+      const pose: Pose = reducedMotion ? (u >= 1 || !MOVING.has(sg.kind) ? sg.to : sg.from) : poseInSegment(sg, local, u);
 
       // Figure pose.
       if (svg && sg.kind !== "arrive") {
-        const pose: Pose = reducedMotion ? (u >= 1 || !MOVING.has(sg.kind) ? sg.to : sg.from) : poseInSegment(sg, local, u);
         const tf = partTransforms(tl.kind, pose);
         for (const [part, value] of Object.entries(tf)) {
           if (lastWrite.current[part] === value) continue;
@@ -265,16 +273,26 @@ export function WarmupPlayer({
         bar.querySelector<HTMLElement>("[data-halo]")?.style.setProperty("--p", p.toFixed(4));
       }
 
-      // Breathing field (arrive).
-      if (sg.kind === "arrive" && fieldRef.current) {
-        const ap = arrivePhaseAt(elapsed, arrivePlan);
-        if (ap.phase === "breath" && ap.breath) fieldRef.current.draw(ap.breath.scale, haloAt(elapsed - arrivePlan.postureMs), elapsed);
-        else fieldRef.current.draw(0.62, 0.25, elapsed);
+      // The dots of the stage (lib/warmup/stageField.ts says what they do).
+      const field = fieldRef.current;
+      if (field) {
+        let breath: { scale: number; halo: number } | null = null;
+        if (sg.kind === "arrive") {
+          const ap = arrivePhaseAt(elapsed, arrivePlan);
+          if (ap.phase === "breath" && ap.breath) breath = { scale: ap.breath.scale, halo: haloAt(elapsed - arrivePlan.postureMs) };
+        }
+        fieldStateAt({ kind: tl.kind, seg: sg, u, localMs: local, pose, breath, reduced: reducedMotion }, fieldState.current);
+        field.draw(fieldState.current, elapsed, unwatchedRef.current, !runningRef.current);
       }
       return { i, u, local, sg };
     },
     [tl, reducedMotion, pathSeg, arrivePlan],
   );
+
+  useLayoutEffect(() => {
+    unwatchedRef.current = dusk && chromeHidden;
+    runningRef.current = running;
+  }, [dusk, chromeHidden, running]);
 
   // Segment-level reactions (edge-detected by the loop and by the layout paint).
   const onSegmentChange = useCallback(
@@ -880,8 +898,15 @@ export function WarmupPlayer({
 
       {/* ── Stage ── */}
       <div className={[s.stage, stageDim ? s.stageDim : ""].join(" ")}>
-        {phase === "run" && isArrive && (
-          <BreathField ref={fieldRef} phase={arriveLabel.phase} label={arriveLabel.text} dusk={dusk} reduced={reducedMotion} />
+        {/* The dots: there for the whole run, behind the figure. */}
+        {phase === "run" && (
+          <StageField
+            ref={fieldRef}
+            phase={isArrive ? arriveLabel.phase : "rest"}
+            label={isArrive ? arriveLabel.text : ""}
+            dusk={dusk}
+            reduced={reducedMotion}
+          />
         )}
         {showFigure && (
           <div className={[s.figureBox, isClosing ? s.figureQuiet : ""].join(" ")}>

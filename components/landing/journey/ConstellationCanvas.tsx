@@ -10,7 +10,8 @@ import {
   type Formation,
 } from "./formations";
 import { introSeen, markIntroSeen, markKilled } from "./flags";
-import { createGovernor } from "./governor";
+import { createGovernor } from "@/lib/canvas/governor";
+import { dotSize, driftX, driftY, frameEase, luminance, resolveRgb, type RGB } from "@/lib/canvas/particles";
 import { buildIntro, introProgress, shouldPlayIntro } from "./intro";
 
 /**
@@ -82,33 +83,6 @@ const IDLE_PAUSE_MS = 12000;
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const smoothstep = (t: number) => t * t * (3 - 2 * t);
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
-
-type RGB = [number, number, number];
-
-/** Resolve any CSS colour string to [r,g,b] via the canvas' own parser. */
-function resolveRgb(ctx: CanvasRenderingContext2D, css: string, fallback: string): RGB {
-  ctx.fillStyle = css || fallback;
-  const norm = String(ctx.fillStyle);
-  if (norm.startsWith("#") && norm.length >= 7) {
-    return [
-      parseInt(norm.slice(1, 3), 16),
-      parseInt(norm.slice(3, 5), 16),
-      parseInt(norm.slice(5, 7), 16),
-    ];
-  }
-  const m = norm.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-  if (m) return [+m[1], +m[2], +m[3]];
-  ctx.fillStyle = fallback;
-  return resolveRgb(ctx, fallback, "#ffffff");
-}
-
-function luminance([r, g, b]: RGB): number {
-  const f = (c: number) => {
-    const s = c / 255;
-    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-  };
-  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
-}
 
 /**
  * Palette (index → rgb + base alpha) for every PALETTE slot. Dark flavour
@@ -241,7 +215,7 @@ export default function ConstellationCanvas({ reduced }: Props) {
       canvas.style.width = `${W}px`;
       canvas.style.height = `${H}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      dot = Math.max(1.8, Math.min(W, H) * 0.0028) * (mobile ? 1.3 : 1);
+      dot = dotSize(W, H, mobile);
       // Formation geometry follows the LAYOUT breakpoint (sections go
       // two-column at Tailwind `lg`), not the particle-count one.
       const narrow = W < 1024;
@@ -316,7 +290,7 @@ export default function ConstellationCanvas({ reduced }: Props) {
       const stepIdx = Math.round(bl * (BLEND_STEPS - 1));
       const jit = lerp(A.jitter, B.jitter, bl);
       const animate = !snap && !reduced;
-      const ease = animate ? 1 - Math.pow(1 - 0.085, dt / 16.667) : 1;
+      const ease = animate ? frameEase(dt) : 1;
       const time = now * 0.001;
       const breath = dot * 0.9;
 
@@ -328,11 +302,8 @@ export default function ConstellationCanvas({ reduced }: Props) {
         let tx = lerp(A.x[i], B.x[i], bl);
         let ty = lerp(A.y[i], B.y[i], bl);
         if (animate) {
-          const n1 = Math.sin(time * 1.1 + phaseA[i]);
-          const n2 = Math.sin(time * 0.63 + phaseB[i]);
-          const n3 = Math.cos(time * 0.37 + phaseA[i] * 0.5);
-          tx += (n1 * 0.6 + n3 * 0.4) * jit + Math.cos(time * 0.45 + phaseB[i]) * breath * 0.5;
-          ty += (n2 * 0.7 + n3 * 0.3) * jit + Math.sin(time * 0.6 + phaseA[i]) * breath;
+          tx += driftX(time, phaseA[i], phaseB[i], jit, breath);
+          ty += driftY(time, phaseA[i], phaseB[i], jit, breath);
         }
         px[i] += (tx - px[i]) * ease;
         py[i] += (ty - py[i]) * ease;
