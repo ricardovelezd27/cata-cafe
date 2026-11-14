@@ -2,8 +2,8 @@
 // Pure: no DOM, no window. `renderCue` only uses the BaseAudioContext API, so
 // it runs against a fake context in tests and against a real AudioContext in
 // the browser. Each sound has ONE meaning (lib/warmup/timelineTypes.ts):
-//   campana — step start / turn      tic   — light tick (reps, hold end)
-//   cuenco  — long bowl (arrive/closing)   doble — two strikes (step change)
+//   campana — a movement starts      tic   — a movement ends / a read beat starts
+//   cuenco  — the closing starts     doble — two strikes: open your eyes
 
 import type { CueKind, HumContour } from "./timelineTypes";
 

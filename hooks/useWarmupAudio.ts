@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useLocalFlag } from "@/hooks/useLocalFlag";
 import type { AudioCtxState } from "@/lib/warmup/audioResume";
+import { dueCues, dueHums, type ScheduleWindow } from "@/lib/warmup/audioWindow";
 import { VIBRATION, cueDurationMs, renderCue, renderHum } from "@/lib/warmup/sounds";
 import type { CueKind, CuePoint, HumWindow } from "@/lib/warmup/timelineTypes";
 
@@ -18,12 +19,14 @@ import type { CueKind, CuePoint, HumWindow } from "@/lib/warmup/timelineTypes";
  *    sound is muted (silently absent on iOS);
  *  - an optional read-aloud of the step text via speechSynthesis;
  *  - mute + voice toggles persisted in localStorage (`cata_warmup_sound`,
- *    `cata_warmup_voice`, "on"/"off").
+ *    `cata_warmup_voice`, "on"/"off"). A host can also set the sound for ONE
+ *    run without touching the person's stored choice (`persist: false`: a
+ *    follower of a group run starts muted, the master's phone sounds).
  *
  * One AudioContext per page (module singleton), created lazily inside
- * `unlock()` (which the player must call synchronously inside a user
- * gesture) or the first `schedule()`. Never closed; suspended when the last
- * consumer unmounts.
+ * `unlock()` / `unlockWarmupAudio()` (which must be called synchronously
+ * inside a user gesture) or the first `schedule()`. Never closed; suspended
+ * when the last consumer unmounts.
  */
 export const WARMUP_SOUND_KEY = "cata_warmup_sound";
 export const WARMUP_VOICE_KEY = "cata_warmup_voice";
@@ -33,7 +36,9 @@ const SPEECH_RATE = 0.88;
 
 export interface WarmupAudio {
   muted: boolean;
-  setMuted(m: boolean): void;
+  /** `persist: false` sets the sound for this run only (a host default); the
+   *  default is the person's own choice, stored for every later run. */
+  setMuted(m: boolean, opts?: { persist?: boolean }): void;
   /** speechSynthesis read-aloud (default off). */
   voice: boolean;
   setVoice(v: boolean): void;
@@ -41,9 +46,10 @@ export interface WarmupAudio {
   voiceAvailable: boolean;
   /** Call synchronously inside a user gesture. */
   unlock(): void;
-  /** cancel(), then schedule every cue with atMs >= elapsedMs - 50 and the
-   *  hum windows that have not ended (lib/warmup/sounds.ts renderHum). */
-  schedule(cues: readonly CuePoint[], elapsedMs: number, hums?: readonly HumWindow[]): void;
+  /** cancel(), then schedule the cues and hum windows that are due inside
+   *  `window` (lib/warmup/audioWindow.ts: nothing past the point where the
+   *  clock stops by itself; lib/warmup/sounds.ts renderHum). */
+  schedule(cues: readonly CuePoint[], elapsedMs: number, hums?: readonly HumWindow[], window?: ScheduleWindow): void;
   cancel(): void;
   /** Immediate single cue (intro "Escucha" demo). */
   playDemo(kind: CueKind): void;
@@ -106,6 +112,35 @@ function vibrateNow(pattern: number | number[]) {
   }
 }
 
+/**
+ * Open the audio output. Call SYNCHRONOUSLY inside a user gesture (a tap):
+ * iOS only lets a context start there. The player calls it from "Empezar";
+ * a host whose player mounts later, after an awaited server action (the
+ * master starting a group warm-up), must call it in the tap itself, because
+ * by the time the player mounts the gesture is gone and the phone stays
+ * silent.
+ */
+export function unlockWarmupAudio(): void {
+  const c = getCtx(true);
+  try {
+    const nav = navigator as unknown as { audioSession?: { type: string } };
+    if (nav.audioSession) nav.audioSession.type = "playback";
+  } catch {
+    /* not supported */
+  }
+  if (!c) return;
+  resumeIfNeeded(c);
+  try {
+    // iOS only opens the output once a buffer actually plays inside the gesture.
+    const src = c.createBufferSource();
+    src.buffer = c.createBuffer(1, 1, c.sampleRate);
+    src.connect(c.destination);
+    src.start(0);
+  } catch {
+    /* best-effort */
+  }
+}
+
 // ── speechSynthesis voices ─────────────────────────────────────────────────
 
 function synth(): SpeechSynthesis | null {
@@ -152,7 +187,9 @@ function documentLocale(): string {
 export function useWarmupAudio(locale?: string): WarmupAudio {
   const [sound, setSound] = useLocalFlag(WARMUP_SOUND_KEY, true, FLAG_STRINGS);
   const [voice, setVoiceFlag] = useLocalFlag(WARMUP_VOICE_KEY, false, FLAG_STRINGS);
-  const muted = !sound;
+  // A host default for this run only (null = follow the stored choice).
+  const [runMuted, setRunMuted] = useState<boolean | null>(null);
+  const muted = runMuted ?? !sound;
 
   const interrupted = useSyncExternalStore(subscribeCtx, isInterrupted, () => false);
   const voiceAvailable = useSyncExternalStore(
@@ -212,31 +249,12 @@ export function useWarmupAudio(locale?: string): WarmupAudio {
     vibrateTimers.current = [];
   }, [fadeBus]);
 
-  const unlock = useCallback(() => {
-    const c = getCtx(true);
-    try {
-      const nav = navigator as unknown as { audioSession?: { type: string } };
-      if (nav.audioSession) nav.audioSession.type = "playback";
-    } catch {
-      /* not supported */
-    }
-    if (!c) return;
-    resumeIfNeeded(c);
-    try {
-      // iOS only opens the output once a buffer actually plays inside the gesture.
-      const src = c.createBufferSource();
-      src.buffer = c.createBuffer(1, 1, c.sampleRate);
-      src.connect(c.destination);
-      src.start(0);
-    } catch {
-      /* best-effort */
-    }
-  }, []);
+  const unlock = unlockWarmupAudio;
 
   const schedule = useCallback(
-    (cues: readonly CuePoint[], elapsedMs: number, hums: readonly HumWindow[] = []) => {
+    (cues: readonly CuePoint[], elapsedMs: number, hums: readonly HumWindow[] = [], win: ScheduleWindow = {}) => {
       cancel();
-      const due = cues.filter((c) => c.atMs >= elapsedMs - 50);
+      const due = dueCues(cues, elapsedMs, win);
       for (const cue of due) {
         const delay = Math.max(0, cue.atMs - elapsedMs);
         vibrateTimers.current.push(window.setTimeout(() => vibrateNow(VIBRATION[cue.kind]), delay));
@@ -252,8 +270,7 @@ export function useWarmupAudio(locale?: string): WarmupAudio {
       for (const cue of due) renderCue(c, cue.kind, now + (cue.atMs - elapsedMs) / 1000, bus);
       // The hum follows the movement windows; a window already running when
       // we (re)schedule starts at once (renderHum clamps to currentTime).
-      for (const h of hums) {
-        if (h.toMs <= elapsedMs) continue;
+      for (const h of dueHums(hums, elapsedMs, win)) {
         renderHum(c, now + (h.fromMs - elapsedMs) / 1000, now + (h.toMs - elapsedMs) / 1000, bus, h.contour);
       }
     },
@@ -276,7 +293,7 @@ export function useWarmupAudio(locale?: string): WarmupAudio {
 
   const playDemo = useCallback(
     (kind: CueKind) => {
-      unlock();
+      unlockWarmupAudio();
       vibrateNow(VIBRATION[kind]);
       if (mutedRef.current) return;
       const c = getCtx(false);
@@ -290,7 +307,7 @@ export function useWarmupAudio(locale?: string): WarmupAudio {
         if (demoBusRef.current === bus) fadeBus(demoBusRef);
       }, cueDurationMs(kind) + 200);
     },
-    [unlock, fadeBus, freshBus],
+    [fadeBus, freshBus],
   );
 
   const cancelSpeech = useCallback(() => {
@@ -340,8 +357,14 @@ export function useWarmupAudio(locale?: string): WarmupAudio {
   }, []);
 
   const setMuted = useCallback(
-    (m: boolean) => {
-      setSound(!m);
+    (m: boolean, opts?: { persist?: boolean }) => {
+      if (opts?.persist === false) {
+        setRunMuted(m);
+      } else {
+        // The person's own choice: stored, and it ends any host default.
+        setRunMuted(null);
+        setSound(!m);
+      }
       mutedRef.current = m;
       if (m) {
         // Silence what is already scheduled; vibration timers keep running.

@@ -20,6 +20,9 @@ export function DevPlayer({
   const [mode, setMode] = useState<WarmupPlayerMode>("library");
   const [seekSec, setSeekSec] = useState<number | null>(null);
   const [exitAt, setExitAt] = useState<number | null>(null);
+  // The host's sound default for one run: a follower of a group run starts
+  // muted, the master's phone sounds. Must never change the stored choice.
+  const [soundDefault, setSoundDefault] = useState<"none" | "on" | "off">("none");
   const exercise = warmupById(exerciseId) ?? WARMUP_EXERCISES[0];
   const push = (m: string) => setLog((l) => [...l, `${new Date().toISOString().slice(11, 19)} ${m}`]);
   const btn = "rounded-pill border border-outline-variant px-3 py-1";
@@ -35,6 +38,19 @@ export function DevPlayer({
             <option value="library">library</option>
             <option value="session">session</option>
             <option value="synced">synced</option>
+          </select>
+          <select
+            className={btn}
+            value={soundDefault}
+            onChange={(e) => {
+              setSoundDefault(e.target.value as "none" | "on" | "off");
+              setEpoch((n) => n + 1);
+            }}
+            aria-label="soundDefault"
+          >
+            <option value="none">sound: stored choice</option>
+            <option value="on">sound: host on (master)</option>
+            <option value="off">sound: host off (follower)</option>
           </select>
           <button
             type="button"
@@ -60,6 +76,7 @@ export function DevPlayer({
         inline={inline}
         mode={mode}
         seekToMs={seekSec !== null ? seekSec * 1000 : undefined}
+        soundDefault={soundDefault === "none" ? undefined : soundDefault === "on"}
         exitRequest={exitAt ? { deadlineMs: exitAt, label: "La cata empezó", leavingIn: "Te llevamos en {time}" } : null}
         onFinish={() => push("finish")}
         onExit={() => push("exit")}

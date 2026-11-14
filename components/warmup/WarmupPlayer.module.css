@@ -555,7 +555,7 @@
 
 /* Large-text mode */
 .large .cue { font-size: clamp(30px, 8.4vw, 40px); }
-.large .root[data-dusk="1"] .cue { font-size: 22px; }
+.large.root[data-dusk="1"] .cue { font-size: 22px; }
 .large .whisperSlot { font-size: 19px; }
 .large .lead, .large .list, .large .switchLabel, .large .sequence { font-size: 18px; }
 .large .muted, .large .switchHint, .large .safety { font-size: 16px; }
