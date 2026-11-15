@@ -5,10 +5,10 @@ import type { ReactNode } from "react";
  * sitting on it (the fold line), then the title, one clear step larger than
  * anything inside the section.
  *
- * One alignment for every section, so all the section breaks look the same:
- *  - phones: centred, the line running out to both sides of the name;
- *  - from 640px up (tablet and desktop): left, the line running to the right.
- * There is no per-section choice on purpose.
+ * One alignment for every section and every width: CENTRED, the line running
+ * out to both sides of the name. (Until 2026-11-15 it turned left from 640px
+ * up; the owner chose centred everywhere.) There is no per-section choice on
+ * purpose.
  *
  * The title tells a small story in two lines: the IDEA (`title`), then the
  * ASSERTION (`assertion`) under it. The idea says in plain words what the
@@ -19,8 +19,9 @@ import type { ReactNode } from "react";
  * A pool of the deepest green sits behind the text (`stage-light-shade`), so
  * the constellation never crosses the title while it travels between folds.
  *
- * `children` go with the title: to its right on the same baseline from 640px
- * up, under it on a phone (the people cards put their controls there).
+ * `children` go with the title: centred under it on a phone, and from 640px
+ * up at the right end of the title's own row (the people cards put their
+ * arrows there), so they never add a row of their own under a centred title.
  */
 export default function SectionHeading({
   eyebrow,
@@ -39,13 +40,13 @@ export default function SectionHeading({
     <div className="relative">
       <span
         aria-hidden="true"
-        className="stage-light stage-light-shade -inset-y-16 left-1/2 w-[min(100%,820px)] -translate-x-1/2 sm:-left-[12%] sm:w-[min(92%,760px)] sm:translate-x-0"
+        className="stage-light stage-light-shade -inset-y-16 left-1/2 w-[min(100%,820px)] -translate-x-1/2"
       />
       <div data-reveal className="relative">
         <p className="section-rule text-[12px] font-semibold uppercase tracking-[0.24em] text-secondary-container">
           <span>{eyebrow}</span>
         </p>
-        <div className="flex flex-col items-center gap-4 pt-6 text-center sm:flex-row sm:items-end sm:justify-between sm:gap-6 sm:pt-8 sm:text-left">
+        <div className="relative flex flex-col items-center gap-4 pt-5 text-center sm:pt-6">
           {/* Idea, then assertion: two lines of one heading. The space between
               the spans keeps it one sentence for a screen reader or a copy. */}
           <h2 className="max-w-3xl text-balance font-serif text-4xl leading-[1.1] text-surface sm:text-5xl">
@@ -59,7 +60,7 @@ export default function SectionHeading({
               </>
             ) : null}
           </h2>
-          {children}
+          {children ? <div className="sm:absolute sm:bottom-0 sm:right-0">{children}</div> : null}
         </div>
       </div>
     </div>

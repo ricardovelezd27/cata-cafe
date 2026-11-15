@@ -210,6 +210,8 @@ Loaded via `next/font/google` in `app/layout.tsx` with variables `--font-display
 
 Desktop outer margin: 48px. Mobile: 16px. Container max: 1280px.
 
+**Vertical rhythm has a ceiling.** The gaps between sections, and between a section's heading and its content, are fixed per device class and never set per section: see "Density: four rules learned on the landing" ("White space has a ceiling").
+
 ---
 
 ## Border Radius
@@ -303,12 +305,57 @@ A photo and an app screen are never simply placed one under the other.
 Every section of the stage opens the same way, through `components/landing/SectionHeading.tsx`:
 
 - **The fold line.** The section's name sits on a hairline (`.section-rule`, colour `--stage-rule`) that fades out before the edge of the content. The name is small print on purpose (12 px, uppercase, terracotta, no box around it): the pill shape is reserved for the offer ("Cohorte fundadora"). A larger, boxed section name was tried and rejected (2026-11-14).
-- **One alignment for every section.** On a phone the header is centred and the line runs out to both sides of the name. From 640 px up (tablet and desktop) it is on the left and the line runs to the right. There is no per-section choice: all the section breaks of a page look the same.
+- **One alignment for every section, at every width: centred.** The header is centred and the line runs out to both sides of the name, on a phone, a tablet and a desktop. (Until 2026-11-15 it turned left from 640 px up; the owner chose centred everywhere.) There is no per-section choice: all the section breaks of a page look the same. Anything that goes with the title (the arrows of a carousel) sits at the right end of the title's own row from 640 px up, and under it on a phone; it never adds a row under a centred title.
 - **The title is one clear step above anything inside the section.** Stage scale on a wide screen: page title 52.5 px, section title 42 px, titles inside a section 31.5 px (a 1.25 to 1.33 step). A title inside a section is never as large as the section's own.
 - **Idea, then assertion.** A section title tells a small story in two lines: first the idea, which says in plain words what the section is ("Así funciona una cata.", "Esto es lo que incluye.", "Para quién es."), then, on its own line under it, what we assert about it ("Percibir, describir, alinear.", "Todo el protocolo, cero fricción.", "Para quien forma paladares."). They are two message keys, `title` and `titleAssertion`, and two props of the component, so the break is fixed and never left to where the browser wraps. The idea stays on one line wherever it fits; the assertion is set in the display italic (`.display-italic`), same size and colour, so the two parts stay told apart on a small phone where the idea itself wraps. Write new section titles in this shape; a title that is a single statement has no `titleAssertion` and stays on one line.
 - **A shade behind the text** (`stage-light-shade`), so the constellation never crosses a title while it travels between two folds.
 
 Do not hand-write an eyebrow plus `<h2>` in a stage section; use the component. The closing section is the exception: it is the finale, with its own larger title.
+
+### Density: four rules learned on the landing (2026-11-15)
+
+The owner reviewed the live landing and asked for less text, less empty space and a progress that says where the page goes. These four rules came out of it. They are written for the stage, and they hold on paper too: the app audit (`docs/design-system/AUDIT-RUBRIC.md`) checks every screen against them.
+
+#### White space has a ceiling
+
+White space is rhythm, not filler. Each kind of gap has a largest value; a gap above it is a finding.
+
+| Gap | Phone | Tablet (from 640 px) | Desktop (from 1024 px) |
+|---|---|---|---|
+| Padding above and below a section (`.stage-section`) | 40 px | 48 px | 56 px |
+| So: end of one section's content to the next section's heading | 80 px | 96 px | 112 px |
+| A section's heading to its content (`.stage-section-head`) | 24 px | 28 px | 36 px |
+
+- **(rule) A section never sets its own vertical padding.** On the stage it takes `.stage-section` and `.stage-section-head` (`app/globals.css`). Before this, six sections had six different paddings, from 70 to 140 px, and a desktop reader met 182 px between two sections and 238 px before the closing block.
+- **(rule) A pinned or sticky layout may not buy its effect with empty screens.** In "Cómo funciona" each step's text block was 78 % of the screen tall so the pile had room to animate: three short texts took 1,870 px of scroll. A block is now as tall as the effect needs and no taller (56 % of the screen: a screen travels 42 %, `stepsProgress.ts`), the first text starts level with the pinned object instead of floating in the middle of its block, and the last block is long enough for the effect to finish before the pin lets go. Measure at an 800 px tall window: a column held by a pin should not be more than about half empty.
+- **(rule) Stacked on a tablet means half the width is empty.** From 768 px a "picture plus text" block is two columns, even in the plain fallback.
+- **(rule) A card is as wide as its content needs.** A card that spans the whole width of a tablet to hold one number and one button is capped (the hero's offer card: 480 px until the two-column layout).
+- On paper the same idea applies with paper's own numbers: the audit measures the real gaps between a page header, its sections and its cards, and proposes one scale.
+
+#### Progress follows the direction of travel
+
+- **(rule) An indicator of progress runs the way the person moves.** The page scrolls DOWN, so the progress of a scroll-driven sequence is VERTICAL and fills downward. A horizontal row of dots under a header says "swipe sideways", which is the wrong instruction for a vertical scroll (feedback from users, 2026-11-15).
+- **(rule) Say that there is more, and where.** While another item is still to come, show a plain cue in the direction of travel: a counter ("02 / 05") with a down chevron at the bottom of a phone stage; a chevron under the rail on a wide screen. It goes when the last item is reached. It does not bounce or pulse.
+- **(rule) Horizontal progress is only for horizontal movement**: a carousel moved with arrows or a sideways swipe, a wizard whose steps are laid out left to right AND advanced with a "next" button.
+- The rail stands beside what it describes (between the pinned pile and its texts on a wide screen, in the left gutter on a phone; the right gutter belongs to the browser's own scroll indicator), out of the flow, so it costs the content no room.
+- Implementation: `components/landing/DeckRail.tsx`, `.deck-rail*`, `.deck-more`, `.steps-rail*`, `.rail-more`. No new clock: the same progress values the scroll code already writes.
+- In the app this covers every stepper, wizard and phase indicator (`PhaseStepper`, the session wizard, the warm-up's step sequence on its intro).
+
+#### A first screen has a word budget
+
+- **(rule) One message.** The top of a page says what the product (or the screen) does for the person, once: a title of at most 7 words, one supporting sentence or two short ones of at most 25 words together, and nothing else that has to be read to understand it.
+- **(rule) What it gives is seen, not read.** Up to four things, each an icon and at most three words ("Catas en grupo", "Funciona sin conexión"). The sentences that explain them live further down, once.
+- **(rule) Do not say the same thing in the eyebrow, the title, the sentence and the chips.** A word that appears in three of them is in two too many.
+- **(rule) The explanation of an offer lives in one place.** A card that repeats its section's name as a badge, its title as a sentence and the feature list of the section above is a wall of text; keep the one line that is new and the action.
+- The landing's first screen went from about 150 words to about 45. Count the words of a screen's top block when auditing.
+- Icons are `lucide-react`, the same icon for the same idea everywhere; a row of identical check marks is not "using icons".
+
+#### An ask appears once
+
+- **(rule) One form per ask, per page.** The reservation form is in one place (the founding card, `#fundadores`). Everywhere else that wants the same ask, a button takes the person there (`components/landing/ScrollToLink.tsx`): a real `#link` that jumps (never a smooth scroll through pinned sections, which would play every card on the way), and puts the cursor in the field only where there is a real keyboard.
+- **(rule) A second, different ask is visibly quieter.** The newsletter sign-up at the end of the page has no card, an outlined button and smaller type; the page still has one primary action.
+- **(rule) An ask that collects an address says, right under the field, who is responsible, what the address is for and how to stop**, and links the privacy policy. The policy must already say it (changing what is collected changes the policy in the same pull request).
+- In the app: a screen with two primary buttons, or the same action offered in two places of one screen, is a finding.
 
 ### Motion on the stage
 
@@ -322,7 +369,8 @@ Do not hand-write an eyebrow plus `<h2>` in a stage section; use the component. 
 On a phone, a section made of several cards is not a long list and not a sideways swipe: it is a **scroll stage** (`components/landing/ScrollDeck.tsx`, `DeckRail.tsx`, pure rules in `deckProgress.ts`, `.deck-*` in `app/globals.css`). "Cómo funciona", "Qué incluye" and "Para quién es" all use it, so the visitor learns one gesture.
 
 - **The header stays.** The section's fold line and title stay under the top bar, a size down (24 px).
-- **The vertical scroll brings the cards in one by one.** Each card costs half a screen of scroll, so a card moves about as far as the finger does (at a quarter of a screen a slight touch swapped a whole card): it arrives during the first 70 % of that stretch and rests for the last 30 %. A progress rail (one dot per card) advances with it.
+- **The vertical scroll brings the cards in one by one.** Each card costs half a screen of scroll, so a card moves about as far as the finger does (at a quarter of a screen a slight touch swapped a whole card): it arrives during the first 70 % of that stretch and rests for the last 30 %.
+- **The progress says "down".** A vertical rail (one dot per card, filling downward) stands in the left gutter, and a counter with a chevron ("02 / 05 ⌄") stands at the bottom of the stage until the last card is reached. See "Progress follows the direction of travel" below. A horizontal rail under the header was tried and read as "swipe sideways" (2026-11-15).
 - **Opaque surfaces go over one another; glass surfaces take turns.** The app screens pile up with their labelled edges showing. A photo card lands over the previous photo, which stays underneath until it is covered, so the stage is never empty between two pictures. A glass card leaves as the next one arrives, one after the other, because two translucent cards would be read through each other.
 - **Text that belongs to a card changes with it**, at the halfway point of the card's arrival, out first and then in.
 - **It is switched on only where it fits.** Under 640 px wide, motion allowed, script running, and the cards fit the room under the header (the pile may scale down to 72 %). Otherwise the section keeps its plain layout. The decision is made on load and when the width changes, never when a phone's toolbar hides (that would make the page jump).
@@ -650,7 +698,7 @@ The baseline is WCAG 2.2 AA. These are the measurable parts; each is a line of t
 | Use `error` / `red-defect` decoratively | Reserve strictly for cup defects and errors |
 | Colour or name a score by how good it is | A score is a number; colour may mark the series, the distance from the group, or a defect ("No quality bands") |
 | Put two primary buttons in one view | One primary action per screen or fold; the rest are `secondary` or `ghost` |
-| Style a section heading by hand, or align it differently from its neighbours | One heading component, one alignment (centred on a phone, left from 640 px on the stage) |
+| Style a section heading by hand, or align it differently from its neighbours | One heading component, one alignment (centred, at every width, on the stage) |
 | Make a heading smaller than a heading inside its own section | A title is one clear step above its content |
 | Give one card of a set an extra part, or leave one without | One anatomy per kind of card |
 | Offer a sideways swipe for one set and a vertical list for another on the same device | One gesture per device |

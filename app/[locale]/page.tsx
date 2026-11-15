@@ -70,7 +70,7 @@ export default async function LandingPage({
           constellation canvas (sections stay transparent). */}
       <main className="stage-ground relative flex-1 text-surface">
         <ConstellationMount />
-        <HeroSection locale={locale} />
+        <HeroSection />
         <StepsShowcase locale={locale} />
         <FeaturesSection locale={locale} />
         <AudienceSection />

@@ -266,8 +266,8 @@ export default async function FeaturesSection({ locale }: { locale: string }) {
     // drifts from the track (step 3) to the founding "100". A formation held
     // here would put its densest cluster under a cell's text.
     <section id={DECK_ID} data-deck="swap" className="cv-auto relative z-10 bg-transparent">
-      <div className="deck-stage mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-24">
-        <div className="deck-head">
+      <div className="deck-stage stage-section mx-auto max-w-6xl px-5 sm:px-8">
+        <div className="deck-head stage-section-head">
           <SectionHeading
             eyebrow={t("eyebrow")}
             title={t("title")}
@@ -278,7 +278,7 @@ export default async function FeaturesSection({ locale }: { locale: string }) {
 
         <ul
           data-deck-area=""
-          className="deck-cards deck-swap mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          className="deck-cards deck-swap grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
         >
           {CELLS.map(({ item, Icon }) => (
             // The <li> is the card the phone stage moves; the reveal lives on

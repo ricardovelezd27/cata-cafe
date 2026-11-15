@@ -103,6 +103,11 @@ Each line is a question to answer for every screen. The heading in brackets is t
 ### C. Actions
 - C-1. How many primary buttons are visible at once? More than one is a finding. [Bringing
   the stage into the app: one action per fold]
+- C-6. Is the same ask (a form, an action) offered in more than one place of a screen or a
+  page? One place has it; the others link to it. Is a second, different ask visibly
+  quieter than the primary one? [An ask appears once]
+- C-7. Does every field that collects an address say, right under it, who is responsible,
+  what it is for and how to stop, with a link to the privacy policy? [An ask appears once]
 - C-2. Is every action a `Button` / `ButtonLink`, with the right variant for its weight?
 - C-3. Are `Button`, `PillTabs` and `SegmentedControl` each used for what they mean?
   [Interactive control vocabulary]
@@ -122,6 +127,11 @@ Each line is a question to answer for every screen. The heading in brackets is t
 - D-5. Does changing language, tab, filter or view keep the person where they were? [Keep
   the reader's place]
 - D-6. Is anything implemented twice (two dialogs, two pill styles, two card recipes)?
+- D-7. Does every indicator of progress run the way the person moves? List every stepper,
+  wizard, phase indicator, carousel dot row and scroll-driven sequence with: the direction
+  of the movement (scroll down, swipe sideways, a "next" button), the direction of the
+  indicator, and whether it says that more is coming. A horizontal row of dots for a
+  vertical scroll is a finding. [Progress follows the direction of travel]
 
 ### E. Surfaces, colour and tokens
 - E-1. Any hex, rgba, pixel radius or shadow literal in a component? [How this document governs]
@@ -140,6 +150,15 @@ Each line is a question to answer for every screen. The heading in brackets is t
 - F-2. Any horizontal scroll of the page at 320 px wide? Any text or control cut off?
 - F-3. Are all touch targets at least 44 × 44 px (measured, not read from a class name)?
 - F-4. Is spacing on the 4 px grid, with a rhythm (not the same padding everywhere)?
+- F-7. Measure the vertical gaps of every screen at 375, 768 and 1440 px: page header to
+  first section, the end of one section's content to the next section's heading, a
+  heading to its content, and the empty height inside any pinned, sticky or min-height
+  block. Report each as a number. A gap above the ceiling of its device class, a section
+  that sets its own padding, a pinned column more than about half empty at an 800 px tall
+  window, and a "picture plus text" block stacked from 768 px are findings. The audit
+  proposes ONE scale for paper, as the stage has. [White space has a ceiling]
+- F-8. Is any card or panel wider than its content needs (a full-width card on a tablet
+  holding one number and one button)? [White space has a ceiling]
 - F-5. Do long Spanish and English strings both fit (buttons, tabs, table headers)?
 - F-6. Does an enhanced layout have a plain fallback, and is it switched on only where it fits?
 
@@ -158,6 +177,11 @@ transparency, the page's language attribute.
 ### I. Words
 - I-1. Does each title say in plain words what the thing is? [Idea, then assertion]
 - I-2. Is anything said twice (a heading restated by the line under it)?
+- I-6. Count the words of each screen's top block (everything a person must read before
+  the first action). Title over 7 words, supporting text over 25, a word repeated in the
+  eyebrow, the title, the sentence and the chips, or a feature list of full sentences
+  where an icon and three words would do: each is a finding, with the count. [A first
+  screen has a word budget]
 - I-3. Are labels the same word for the same thing on every screen (and the same in both
   languages)? List the synonyms found.
 - I-4. Do error messages say what happened and what to do, in the user's language?
@@ -190,6 +214,14 @@ the stage version would be, and what it would cost. Never propose the dots behin
 | Insights | `/app/insights`, `/explorer`, `/benchmark`, `/chat`, `/users`, `/access` |
 | Shell | Sidebar, bottom navigation, top bar, the guest gate dialog, toasts, the pending-drafts badge |
 | Edges | The error boundaries, the two not-found pages, `/privacidad`, `/terminos`, `/aviso-legal` |
+
+### What the landing taught (2026-11-15)
+
+The owner reviewed the live landing on 2026-11-15 and asked for four things, now rules in
+`DESIGN.md` ("Density: four rules learned on the landing"): less empty space between one
+header and the next (F-7, F-8), progress that says "scroll down" (D-7), far less text at
+the top of a screen (I-6), and one place for each ask (C-6, C-7). He wants these applied
+"throughout the whole app", so every screen is checked against all four, with numbers.
 
 ## 7. Known drift (measured 2026-11-14; a baseline, not the audit)
 

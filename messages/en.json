@@ -1604,10 +1604,15 @@
       "signInShort": "Sign in"
     },
     "hero": {
-      "eyebrow": "The tool for the Café Sensible Method · SCA CVA",
-      "title": "Your group's palate, aligned and measured.",
-      "subtitle": "Group cupping sessions on the full SCA CVA protocol, with the instructor's reference and convergence you can see. The tool for the Café Sensible Method, for schools, trainers and facilitators.",
-      "ctaNote": "No card. No password. Just your email."
+      "eyebrow": "Café Sensible Method",
+      "title": "Align your group's palate.",
+      "subtitle": "Everyone scores blind on their phone. At the close, each person sees how far they are from the group and the reference.",
+      "ctaNote": "No card. Just your email.",
+      "chip1": "Group cuppings",
+      "chip2": "SCA CVA protocol",
+      "chip3": "Works offline",
+      "chip4": "PDF reports",
+      "cta": "Claim your spot →"
     },
     "widget": {
       "title": "Estimate the value band",
@@ -1719,12 +1724,7 @@
       "heroLead": "Free for the first",
       "heroUnit": "founding members",
       "offer": "Free for the first {count} founding members",
-      "feature1": "Full CVA cupping across its three sheets: descriptive, affective and extrinsic",
-      "feature2": "Group sessions and alignment with an instructor reference",
-      "feature3": "PDF reports and certificates",
-      "feature4": "Works offline, built for the lab",
-      "cta": "Claim your founding spot →",
-      "note": "No countdown and no card. We'll simply tell you when the founding spots run out."
+      "cta": "Claim your founding spot →"
     },
     "waitlist": {
       "label": "Claim your founding spot",
@@ -1742,9 +1742,7 @@
     "finalCta": {
       "kicker": "Many palates. One reference. One number.",
       "title": "Stop <em>guessing</em> whether your team cups alike.",
-      "sub": "Measure it. In your next session.",
-      "cta": "Align your team for free →",
-      "note": "No passwords. Sign in with a magic link to your email."
+      "sub": "Measure it. In your next session."
     },
     "footer": {
       "language": "Language",
@@ -1755,6 +1753,15 @@
       "legalNotice": "Legal notice",
       "copyright": "© {year} cafesensible.ai. All rights reserved.",
       "madeFor": "The tool for the Café Sensible Method. Made for specialty coffee professionals."
+    },
+    "newsletter": {
+      "eyebrow": "Newsletter",
+      "lead": "Not yet? We're preparing a specialty-coffee newsletter. Leave your email and you'll get the first issue.",
+      "label": "Your email for the newsletter",
+      "button": "Subscribe",
+      "success": "Done. We'll write when the first issue is out.",
+      "error": "We could not save your email. Try again.",
+      "notice": "Controller: {company}. We use your email only to send you the newsletter. To unsubscribe, write to {email}."
     }
   },
   "insights": {

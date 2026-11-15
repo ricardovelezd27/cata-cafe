@@ -44,7 +44,7 @@ export const PILE = {
   cardW: 320,
   cardH: 300,
   headroom: 80, // space above the front card for the two cards behind it
-  footroom: 44, // the 1-2-3 rail under the card
+  footroom: 0, // nothing under the card (the 1-2-3 rail stands beside it)
   minTop: 76,
 } as const;
 

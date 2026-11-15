@@ -52,7 +52,7 @@ export const PRIVACY_ES: LegalDoc = {
           list: [
             // ADAPTED: the default name is the first part of the address until the person changes it.
             "Datos identificativos: el nombre con el que se muestra. Por defecto es la primera parte de su correo; puede cambiarlo en su perfil.",
-            "Datos de contacto: su dirección de correo electrónico, cuando crea una cuenta, reserva una plaza fundadora o pide un enlace de acceso.",
+            "Datos de contacto: su dirección de correo electrónico, cuando crea una cuenta, reserva una plaza fundadora, se suscribe al boletín o pide un enlace de acceso.",
             "Datos de perfil: rol, país, idioma preferido y, si la añade, una biografía breve.",
             "Contenido generado: sesiones de cata, evaluaciones, puntajes, descriptores, notas, cafés que registra (incluidos datos de origen como finca o productor) y grupos de cata.",
             // ADDED: guests exist only in this app.
@@ -108,7 +108,8 @@ export const PRIVACY_ES: LegalDoc = {
             "Avisos de un grupo de cata a las direcciones que añadió su organizador — art. 6(1)(f), interés legítimo en que el grupo pueda organizarse. Cada correo incluye un enlace para dejar de recibirlos.",
             "Seguridad, prevención del abuso y registros técnicos — art. 6(1)(f), interés legítimo.",
             "Estadísticas internas de uso, elaboradas con datos agregados de la propia base de datos y sin cookies — art. 6(1)(f), interés legítimo. Puede oponerse escribiéndonos.",
-            "Marketing y boletines — art. 6(1)(a), consentimiento. Actualmente no enviamos comunicaciones comerciales (véase la sección 11).",
+            // ADDED 2026-11-15: the newsletter sign-up on the landing page (lib/newsletter.ts).
+            "Marketing y boletines — art. 6(1)(a), consentimiento: solo si usted se suscribe al boletín en nuestra web. Aún no hemos enviado ningún boletín (véase la sección 11).",
             "Cumplimiento de obligaciones legales — art. 6(1)(c).",
           ],
         },
@@ -237,6 +238,8 @@ export const PRIVACY_ES: LegalDoc = {
             "Al suprimir la cuenta se eliminan el perfil, el historial y los datos de acceso. Las evaluaciones que hizo en catas compartidas con otras personas se conservan sin su nombre, para que los resultados de los demás no cambien; las catas que organizó y en las que evaluaron otras personas se conservan cerradas y sin su nombre; y los cafés que creó se conservan sin sus datos identificativos (nombre, finca, productor, notas).",
             // OWNER DECISION (2026-11-14): really deleted, by the daily job.
             `Cuentas que nunca se usaron (se reservó una plaza o se pidió un acceso, pero nunca se llegó a entrar): se eliminan, junto con la reserva, una vez transcurridos ${WAITLIST_RETENTION_MONTHS} meses desde la última reserva o solicitud de acceso. Si usted entra con la dirección de la reserva, la reserva se conserva mientras su cuenta tenga esa dirección y se elimina al suprimir la cuenta; si cambia de correo, trasladamos la reserva a la nueva dirección al completarse el cambio. Las reservas cuya dirección ya no corresponde a ninguna cuenta se eliminan una vez transcurridos ${WAITLIST_RETENTION_MONTHS} meses desde la reserva.`,
+            // ADDED 2026-11-15: the newsletter sign-up on the landing page (lib/newsletter.ts).
+            `Suscripción al boletín: hasta que usted se dé de baja. Si su dirección no tiene una cuenta, la suscripción se elimina además a los ${WAITLIST_RETENTION_MONTHS} meses de haberse suscrito; si tiene una cuenta, se elimina al suprimirla.`,
             // ADDED: addresses a group organiser enters for other people.
             "Direcciones añadidas a un grupo de cata por su organizador: mientras exista el grupo o hasta que el organizador las retire.",
             "Huellas usadas para limitar los envíos de correo: se eliminan automáticamente cuando dejan de ser necesarias.",
@@ -256,8 +259,8 @@ export const PRIVACY_ES: LegalDoc = {
         "De conformidad con el artículo 21 de la LSSI y el artículo 6(1)(a) del RGPD, únicamente le enviaremos comunicaciones comerciales, boletines o notificaciones de marketing si usted ha prestado su consentimiento expreso e inequívoco.",
         {
           list: [
-            // ADAPTED: states the present situation.
-            "Actualmente no enviamos comunicaciones comerciales.",
+            // ADAPTED 2026-11-15: states the present situation (a sign-up exists, no issue has been sent).
+            "La única comunicación comercial es el boletín, y solo lo recibe quien se suscribe en nuestra web. Aún no hemos enviado ninguno: si se suscribe, guardamos su correo, la fecha y el aviso que vio, para enviárselo cuando empiece.",
             "El consentimiento para recibir marketing es siempre opcional y no condiciona la prestación del servicio.",
             `Puede revocar su consentimiento en cualquier momento escribiendo a ${SUPPORT_EMAIL}.`,
             "Jamás enviaremos correos electrónicos solicitando permiso para enviar marketing: dicho correo constituiría en sí mismo una comunicación no solicitada e infringiría el art. 21 LSSI.",

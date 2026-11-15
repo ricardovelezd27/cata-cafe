@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
-import { Check } from "lucide-react";
 import SectionHeading from "./SectionHeading";
+import { FOUNDING_ID } from "./anchors";
 import WaitlistForm from "./WaitlistForm";
 import { emailSentCopy } from "@/components/auth/authCopy";
 import { supportMailto } from "@/lib/siteContact";
@@ -8,21 +8,9 @@ import { LEGAL_PAGES_PUBLISHED } from "@/lib/legal/config";
 import { localeHref } from "./locale-href";
 import { FOUNDING_SEATS } from "@/lib/landing/founding";
 
-function FeatureList({ items }: { items: string[] }) {
-  return (
-    <ul className="mt-5 space-y-2.5">
-      {items.map((item) => (
-        <li key={item} className="flex items-start gap-2 text-sm text-surface/80">
-          <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary-fixed" />
-          {item}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 export default async function FoundingSection({ locale }: { locale: string }) {
   const t = await getTranslations("landing.founding");
+  const th = await getTranslations("landing.hero");
   const tw = await getTranslations("landing.waitlist");
   const ta = await getTranslations("auth");
 
@@ -47,28 +35,30 @@ export default async function FoundingSection({ locale }: { locale: string }) {
 
   return (
     <section data-fold="4" className="cv-auto relative z-10 bg-transparent">
-      <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
-        <SectionHeading eyebrow={t("eyebrow")} title={t("title")} />
+      <div className="stage-section mx-auto max-w-6xl px-5 sm:px-8">
+        <div className="stage-section-head">
+          <SectionHeading eyebrow={t("eyebrow")} title={t("title")} />
+        </div>
 
+        {/* The page's ONE reservation form. The hero's button comes here
+            (ScrollToLink); scroll-mt keeps it clear of the header for a plain
+            #link too. The id sits on a wrapper, not on the data-reveal card. */}
+        <div id={FOUNDING_ID} className="mx-auto max-w-xl scroll-mt-[76px]">
         <div
           data-reveal
-          className="surface-glass mx-auto mt-12 flex max-w-xl flex-col rounded-lg p-7 sm:p-9"
+          className="surface-glass flex flex-col rounded-lg p-7 sm:p-9"
         >
-          <span className="w-fit rounded-full bg-secondary-container px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-primary">
-            {t("badge")}
-          </span>
-          <p className="mt-8 font-serif tabular-nums text-4xl text-surface">
+          {/* No badge here: the section's own name, just above, says it. */}
+          <p className="font-serif tabular-nums text-3xl leading-tight text-surface sm:text-4xl">
             {t("offer", { count: FOUNDING_SEATS })}
           </p>
-          <FeatureList
-            items={[t("feature1"), t("feature2"), t("feature3"), t("feature4")]}
-          />
-          <div className="mt-7">
+          {/* The offer and the form, nothing else: what is included is the
+              section above ("Qué incluye"), said once. */}
+          <div className="mt-6">
             <WaitlistForm locale={locale} labels={waitlistLabels} source="founding" notice={notice} />
           </div>
-          <p className="mt-4 text-xs leading-relaxed text-surface/70">
-            {t("note")}
-          </p>
+          <p className="mt-3 text-sm text-surface/80">{th("ctaNote")}</p>
+        </div>
         </div>
       </div>
     </section>

@@ -47,7 +47,7 @@ export const PRIVACY_EN: LegalDoc = {
           list: [
             // ADAPTED: the default name is the first part of the address until the person changes it.
             "Identification data: the name under which you are displayed. By default it is the first part of your email; you can change it in your profile.",
-            "Contact data: your email address, when you create an account, reserve a founding seat or request a sign-in link.",
+            "Contact data: your email address, when you create an account, reserve a founding seat, subscribe to the newsletter or request a sign-in link.",
             "Profile data: role, country, preferred language and, if you add it, a short biography.",
             "Generated content: cupping sessions, evaluations, scores, descriptors, notes, coffees you register (including origin data such as farm or producer) and cupping groups.",
             // ADDED: guests exist only in this app.
@@ -103,7 +103,7 @@ export const PRIVACY_EN: LegalDoc = {
             "Notices from a cupping group to the addresses its organizer added — Art. 6(1)(f), legitimate interest in the group being able to organize itself. Every email includes a link to stop receiving them.",
             "Security, abuse prevention and technical logs — Art. 6(1)(f), legitimate interest.",
             "Internal usage statistics, produced from aggregated data in our own database and without cookies — Art. 6(1)(f), legitimate interest. You may object by writing to us.",
-            "Marketing and newsletters — Art. 6(1)(a), consent. We currently do not send commercial communications (see section 11).",
+            "Marketing and newsletters — Art. 6(1)(a), consent: only if you subscribe to the newsletter on our site. We have not sent any newsletter yet (see section 11).",
             "Compliance with legal obligations — Art. 6(1)(c).",
           ],
         },
@@ -232,6 +232,7 @@ export const PRIVACY_EN: LegalDoc = {
             "When the account is deleted, the profile, the history and the access data are erased. The evaluations you made in cuppings shared with other people are kept without your name, so that other people's results do not change; the cuppings you organized and in which other people took part are kept closed and without your name; and the coffees you created are kept without their identifying data (name, farm, producer, notes).",
             // OWNER DECISION (2026-11-14): really deleted, by the daily job.
             `Accounts that were never used (a seat was reserved or access was requested, but the person never signed in): they are deleted, together with the reservation, once ${WAITLIST_RETENTION_MONTHS} months have passed since the last reservation or access request. If you sign in with the address of the reservation, the reservation is kept while your account has that address and is deleted when you delete the account; if you change your email, we move the reservation to the new address when the change is completed. Reservations whose address no longer matches any account are deleted once ${WAITLIST_RETENTION_MONTHS} months have passed since the reservation.`,
+            `Newsletter subscription: until you unsubscribe. If your address has no account, the subscription is also deleted ${WAITLIST_RETENTION_MONTHS} months after you subscribed; if it has an account, it is deleted when you delete the account.`,
             // ADDED: addresses a group organiser enters for other people.
             "Addresses added to a cupping group by its organizer: while the group exists or until the organizer removes them.",
             "Fingerprints used to limit email sending: deleted automatically when they are no longer needed.",
@@ -252,7 +253,7 @@ export const PRIVACY_EN: LegalDoc = {
         {
           list: [
             // ADAPTED: states the present situation.
-            "We currently do not send commercial communications.",
+            "The only commercial communication is the newsletter, and only people who subscribe on our site receive it. We have not sent one yet: if you subscribe, we keep your email, the date and the notice you saw, to send it to you when it starts.",
             "Consent to receive marketing is always optional and does not condition the provision of the service.",
             `You may withdraw your consent at any time by writing to ${SUPPORT_EMAIL}.`,
             "We will never send emails asking for permission to send marketing: such an email would itself be an unsolicited communication and would infringe Art. 21 LSSI.",
