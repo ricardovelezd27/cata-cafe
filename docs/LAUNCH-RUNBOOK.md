@@ -2496,3 +2496,51 @@ reads it under "Notas añadidas después del cierre"; nobody else sees it.
 
 **Rollback:** the columns are additive; code rolled back ignores them. Do not drop them while the
 new code is deployed.
+
+---
+
+## §37. Newsletter sign-up: what shipped, how to unsubscribe someone, what is yours to decide (2026-11-15)
+
+**What shipped.** The landing page's last block has a newsletter sign-up. It stores the address and the consent; it sends no email and creates no account. There is no newsletter table: a subscription is a row of `waitlist_entries` (rules in `lib/newsletter.ts`):
+
+| Who signs up | What is stored |
+|---|---|
+| An address with no row | A row with `plan = 'newsletter'`, `source = 'newsletter'` (or `newsletter:<tag>`), `consentAt` = now, `consentNoticeVersion = 'newsletter-2026-11-v1'` |
+| An address that already reserved a founding seat | The same row, with `+newsletter@YYYY-MM-DD` added at the end of `source` |
+| A newsletter-only address that later reserves a seat | The row becomes a reservation (`plan = 'pro'`), dated the day of the reservation; the newsletter mark stays in `source` |
+
+No migration, no SQL phase, no environment variable. The privacy policy (Spanish and English) now mentions the newsletter in sections 2.1, 3, 10 and 11, its version is 1.1, and `CONSENT_NOTICE_VERSION` is `2026-11-v2`.
+
+**Read the list** (Supabase, SQL editor, read-only):
+
+```sql
+select email, locale, plan, source, "consentAt", "createdAt"
+from waitlist_entries
+where plan = 'newsletter' or source ~ '\+newsletter@\d{4}-\d{2}-\d{2}$'
+order by "createdAt";
+```
+
+**Unsubscribe someone who wrote to ask** (there is no link yet, so this is done by hand). Replace the address, lower case:
+
+```sql
+-- 1. Only subscribed to the newsletter: remove the row.
+delete from waitlist_entries
+where email = 'person@example.com' and plan = 'newsletter';
+
+-- 2. Has a founding reservation too: keep the reservation, remove the mark.
+update waitlist_entries
+set source = regexp_replace(source, '\+newsletter@\d{4}-\d{2}-\d{2}$', '')
+where email = 'person@example.com' and plan <> 'newsletter';
+```
+
+Run the first; if it says 0 rows, run the second. Then run the read query to confirm.
+
+**How long a subscription is kept.** A subscription whose address has no account is deleted by the daily job 12 months after it was made, like a reservation that was never used (once `UNUSED_ACCOUNT_PURGE_ENABLED=1`, see §17 item 4). With an account, it is deleted when the account is deleted.
+
+**Yours to decide before the first issue is sent:**
+
+1. **Read the four changed lines of the privacy policy** (`/privacidad`, sections 2.1, 3, 10, 11). They were written without your review. If a line is wrong, it is in `lib/legal/es/privacy.ts` and `lib/legal/en/privacy.ts`.
+2. **Confirmed addresses.** Anyone can type any address into the form; nothing checks that it is theirs. Before sending a newsletter, decide whether the first email is a confirmation ("click to confirm you asked for this") or whether you send only to addresses that also have an account.
+3. **A real home.** When the newsletter exists it should have its own table (address, language, consent, unsubscribed-at) and a one-click unsubscribe link in every email. That is a migration, which is yours to run; the rows above are moved then.
+4. **The sender.** The form's line says the responsible company is the one in `lib/legal/company.ts` and that unsubscribing is by writing to the support address. Check both are what you want.
+

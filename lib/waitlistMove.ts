@@ -12,7 +12,17 @@ import { planWaitlistMerge } from "@/lib/waitlistMoveRules";
  *  was changed. */
 export type WaitlistMoveResult = "moved" | "merged" | "no_row" | "target_exists" | "same";
 
-const PICK = { id: true, email: true, createdAt: true, consentAt: true, consentNoticeVersion: true } as const;
+const PICK = {
+  id: true,
+  email: true,
+  createdAt: true,
+  consentAt: true,
+  consentNoticeVersion: true,
+  // A row can be a newsletter subscription (lib/newsletter.ts): the merge
+  // rule needs to know which, and carries the opt-in.
+  plan: true,
+  source: true,
+} as const;
 
 /**
  * Moves the founding-seat reservation of `from` to `to` after a COMPLETED email
@@ -53,7 +63,7 @@ export async function moveWaitlistEntry(from: string, to: string): Promise<Waitl
         await tx.waitlistEntry.delete({ where: { id: plan.deleteId } });
         await tx.waitlistEntry.update({
           where: { id: plan.keepId },
-          data: { email: b, ...(plan.adoptConsent ?? {}) },
+          data: { email: b, ...(plan.adoptConsent ?? {}), ...(plan.source ? { source: plan.source } : {}) },
         });
         return "merged";
       }

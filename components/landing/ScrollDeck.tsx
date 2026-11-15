@@ -27,8 +27,9 @@ const PILE = { w: 320, h: 300 };
  *  - `data-deck-on` and `--deck-n` on the root (the CSS does the layout);
  *  - `--e` (how far in, 0..1) and `--b` (how far behind the front) on every
  *    `[data-deck-card]`;
- *  - `data-active="1..n"` on the root (the card being shown), `data-on` on
- *    the rail dots that are reached and `--f` on the rail lines;
+ *  - `data-active="1..n"` on the root (the card being shown), `data-deck-end`
+ *    once the last card is reached, `data-on` on the rail dots that are
+ *    reached and `--f` on the rail lines;
  *  - where the constellation's anchors sit (`[data-deck-fold]`).
  *
  * The stage is switched on only when it fits. `data-deck` says how to tell:
@@ -56,6 +57,7 @@ export default function ScrollDeck({ rootId }: { rootId: string }) {
     const dots = Array.from(root.querySelectorAll<HTMLElement>("[data-deck-dot]"));
     const lines = Array.from(root.querySelectorAll<HTMLElement>("[data-deck-line]"));
     const markers = Array.from(root.querySelectorAll<HTMLElement>("[data-deck-fold]"));
+    const nowEl = root.querySelector<HTMLElement>("[data-deck-now]");
     // The anchors the constellation uses in the plain layout. While the stage
     // is on, the markers along the track take over.
     const plainFolds = Array.from(root.querySelectorAll<HTMLElement>("[data-fold]")).map(
@@ -81,7 +83,13 @@ export default function ScrollDeck({ rootId }: { rootId: string }) {
       });
       const step = deckActive(current);
       const active = String(step);
-      if (root.dataset.active !== active) root.dataset.active = active;
+      if (root.dataset.active !== active) {
+        root.dataset.active = active;
+        if (nowEl) nowEl.textContent = active.padStart(2, "0");
+      }
+      // The last card is reached: the "more below" chevron goes.
+      if (step >= count) root.dataset.deckEnd = "";
+      else delete root.dataset.deckEnd;
       dots.forEach((dot, i) => {
         if (i < step) dot.dataset.on = "1";
         else delete dot.dataset.on;
@@ -125,6 +133,7 @@ export default function ScrollDeck({ rootId }: { rootId: string }) {
       root.style.removeProperty("--deck-n");
       root.style.removeProperty("--deck-fit");
       delete root.dataset.active;
+      delete root.dataset.deckEnd;
       cards.forEach((card) => {
         card.style.removeProperty("--e");
         card.style.removeProperty("--b");

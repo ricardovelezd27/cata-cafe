@@ -1604,10 +1604,15 @@
       "signInShort": "Entrar"
     },
     "hero": {
-      "eyebrow": "La herramienta del Método Café Sensible · SCA CVA",
-      "title": "El paladar de tu grupo, alineado y medido.",
-      "subtitle": "Sesiones de cata en grupo sobre el protocolo SCA CVA completo, con la referencia del instructor y una convergencia que puedes ver. La herramienta del Método Café Sensible, para escuelas, formadores y facilitadores.",
-      "ctaNote": "Sin tarjeta. Sin contraseña. Solo tu correo."
+      "eyebrow": "Método Café Sensible",
+      "title": "Alinea el paladar de tu grupo.",
+      "subtitle": "Cada persona puntúa a ciegas en su móvil. Al cerrar, cada una ve cuánto se aleja del grupo y de la referencia.",
+      "ctaNote": "Sin tarjeta. Solo tu correo.",
+      "chip1": "Catas en grupo",
+      "chip2": "Protocolo SCA CVA",
+      "chip3": "Funciona sin conexión",
+      "chip4": "Informes en PDF",
+      "cta": "Reserva tu plaza →"
     },
     "widget": {
       "title": "Calcula la banda de valor",
@@ -1719,12 +1724,7 @@
       "heroLead": "Gratis para los primeros",
       "heroUnit": "miembros fundadores",
       "offer": "Gratis para los primeros {count} miembros fundadores",
-      "feature1": "Cata CVA completa en sus tres hojas: descriptiva, afectiva y extrínseca",
-      "feature2": "Sesiones en grupo y alineación con referencia del instructor",
-      "feature3": "Informes y certificados en PDF",
-      "feature4": "Funciona sin conexión, pensado para el laboratorio",
-      "cta": "Reserva tu plaza fundadora →",
-      "note": "Sin cuenta atrás y sin tarjeta. Simplemente te avisaremos cuando se agoten las plazas fundadoras."
+      "cta": "Reserva tu plaza fundadora →"
     },
     "waitlist": {
       "label": "Reserva tu plaza fundadora",
@@ -1742,9 +1742,7 @@
     "finalCta": {
       "kicker": "Muchos paladares. Una referencia. Un número.",
       "title": "Deja de <em>adivinar</em> si tu equipo cata igual.",
-      "sub": "Mídelo. En la próxima sesión.",
-      "cta": "Alinea a tu equipo gratis →",
-      "note": "Sin contraseñas. Entra con un enlace mágico a tu correo."
+      "sub": "Mídelo. En la próxima sesión."
     },
     "footer": {
       "language": "Idioma",
@@ -1755,6 +1753,15 @@
       "legalNotice": "Aviso legal",
       "copyright": "© {year} cafesensible.ai. Todos los derechos reservados.",
       "madeFor": "La herramienta del Método Café Sensible. Hecha para profesionales del café de especialidad."
+    },
+    "newsletter": {
+      "eyebrow": "Boletín",
+      "lead": "¿Todavía no? Estamos preparando un boletín sobre café de especialidad. Deja tu correo y recibirás el primero.",
+      "label": "Tu correo para el boletín",
+      "button": "Suscribirme",
+      "success": "Listo. Te escribiremos cuando salga el primer número.",
+      "error": "No pudimos guardar tu correo. Inténtalo de nuevo.",
+      "notice": "Responsable: {company}. Usamos tu correo solo para enviarte el boletín. Para darte de baja, escribe a {email}."
     }
   },
   "insights": {

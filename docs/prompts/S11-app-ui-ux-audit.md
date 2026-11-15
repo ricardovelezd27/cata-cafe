@@ -36,6 +36,13 @@ changes in this session: the audit ends in documents.
 
 ## How to work
 
+0. Load the project skill `cafe-sensible-design` (`.claude/skills/cafe-sensible-design/SKILL.md`)
+   first: it says what to read and in what order. Pay particular attention to the four
+   density rules the owner asked for on 2026-11-15 after reviewing the landing (white space
+   has a ceiling, progress follows the direction of travel, a first screen has a word
+   budget, an ask appears once: rubric checks F-7, F-8, D-7, I-6, C-6, C-7). He wants them
+   applied to every screen of the app, so measure and count for each one.
+
 1. Start with the cheap, countable checks of rubric section 7 ("Known drift"): confirm each
    number with a search, so the report opens with facts.
 2. Then go screen by screen in the order of rubric section 6, at the four viewports and in

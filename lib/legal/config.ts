@@ -10,7 +10,8 @@
 export const LEGAL_PAGES_PUBLISHED = true;
 
 /** Stored in WaitlistEntry.consentNoticeVersion once the pages are published. */
-export const CONSENT_NOTICE_VERSION = "2026-11-v1";
+// v2 (2026-11-15): the privacy text gained the newsletter (sections 2.1, 3, 10, 11).
+export const CONSENT_NOTICE_VERSION = "2026-11-v2";
 
 /** An account that was never used (a founding-seat reservation or a sign-in
  *  request whose person never signed in) is deleted, with its reservation,

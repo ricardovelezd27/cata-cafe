@@ -483,11 +483,28 @@ button { font-family: inherit; cursor: pointer; }
    that sits directly on the constellation with no card under it. */
 .stage-light-shade { --stage-light-color: color-mix(in srgb, var(--color-stage-deep) 80%, transparent); }
 
+/* One vertical rhythm for every section of the stage (DESIGN.md "White
+   space has a ceiling"): the same padding above and below each section and
+   the same gap between its heading and its content, in three steps. From
+   the end of one section's content to the next section's heading that is
+   80px on a phone, 96px on a tablet and 112px on a desktop. A section
+   never sets its own. The phone scroll stage (.deck-*) overrides both while
+   it is on. */
+.stage-section { padding-block: 40px; }
+.stage-section-head { margin-bottom: 24px; }
+@media (min-width: 640px) {
+  .stage-section { padding-block: 48px; }
+  .stage-section-head { margin-bottom: 28px; }
+}
+@media (min-width: 1024px) {
+  .stage-section { padding-block: 56px; }
+  .stage-section-head { margin-bottom: 36px; }
+}
+
 /* The fold line: how a section of the stage opens (SectionHeading.tsx).
    The section's name sits on a hairline that fades out before the edge of
-   the content. Phones: centred, the line runs out to both sides of the
-   name. From 640px up: the name on the left, then the line to the right.
-   The same for every section. */
+   the content: centred, the line running out to both sides of the name, at
+   every width. The same for every section. */
 .section-rule {
   display: flex;
   align-items: center;
@@ -504,9 +521,6 @@ button { font-family: inherit; cursor: pointer; }
 }
 .section-rule::after {
   background: linear-gradient(90deg, var(--stage-rule) 0%, var(--stage-rule) 55%, transparent);
-}
-@media (min-width: 640px) {
-  .section-rule::before { display: none; }
 }
 
 /* ============================================================
@@ -532,8 +546,8 @@ button { font-family: inherit; cursor: pointer; }
 .steps-pile { display: none; }
 .steps-article {
   display: grid;
-  gap: 2rem;
-  padding-block: 2.5rem;
+  gap: 20px;
+  padding-block: 20px;
 }
 .steps-snapshot {
   position: relative;
@@ -556,39 +570,59 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--color-secondary);
 }
 
-.steps-rail { display: flex; align-items: center; gap: 0; }
+/* Progress follows the direction of travel (DESIGN.md): the page scrolls
+   DOWN, so the rail is vertical and fills downward, with a small chevron
+   under it for as long as there is more below. */
+.steps-rail { display: flex; flex-direction: column; align-items: center; gap: 0; }
 .steps-rail-dot {
   width: 10px;
   height: 10px;
+  flex: none;
   border-radius: 9999px;
   border: 1.5px solid color-mix(in srgb, var(--color-surface) 45%, transparent);
   transition: background-color 300ms ease-out, border-color 300ms ease-out;
 }
 .steps-rail-line {
-  width: 44px;
-  height: 1.5px;
+  position: relative;
+  width: 1.5px;
+  height: 44px;
+  flex: none;
   background: color-mix(in srgb, var(--color-surface) 22%, transparent);
-  transition: background-color 300ms ease-out;
 }
 .steps-rail-dot[data-on="1"] {
   background: var(--color-secondary-container);
   border-color: var(--color-secondary-container);
 }
-.steps-rail-line[data-on="1"] { background: var(--color-secondary-container); }
-
-@media (min-width: 640px) {
-  .steps-article { padding-block: 3.5rem; }
+/* "More below": a chevron under the last dot, gone once the last one is reached. */
+.rail-more {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  margin-top: 10px;
+  border-right: 1.5px solid color-mix(in srgb, var(--color-surface) 70%, transparent);
+  border-bottom: 1.5px solid color-mix(in srgb, var(--color-surface) 70%, transparent);
+  transform: rotate(45deg);
+  transition: opacity 300ms ease-out;
 }
 
-@media (min-width: 1024px) {
-  /* Wide fallback: screen left, text right, still no sticky. */
+@media (min-width: 640px) {
+  .steps-article { padding-block: 24px; }
+}
+
+@media (min-width: 768px) {
+  /* Tablet, and the wide fallback: the screen beside its text (a stacked
+     step on a tablet left half the width empty), still no sticky. */
   .steps-article {
     grid-template-columns: minmax(0, 9fr) minmax(0, 11fr);
-    column-gap: 56px;
+    column-gap: 40px;
     align-items: center;
+    padding-block: 28px;
   }
   .steps-snapshot { order: 1; justify-self: center; }
   .steps-copy { order: 2; }
+}
+@media (min-width: 1024px) {
+  .steps-article { column-gap: 56px; }
 }
 
 @media (min-width: 1024px) and (scripting: enabled) and (prefers-reduced-motion: no-preference) {
@@ -603,16 +637,30 @@ button { font-family: inherit; cursor: pointer; }
     display: flex;
     flex-direction: column;
     justify-content: center;
-    min-height: 78vh;
+    /* Each step's text takes a little over half a screen of scroll: enough
+       for its screen to land before the next one starts (a screen travels
+       42vh, stepsProgress.ts), without three near-empty screens of text. */
+    min-height: 56vh;
     padding-block: 0;
   }
+  /* The first text starts level with the top of the front card (80px of
+     headroom above it) instead of floating in the middle of its block: a
+     centred first step left 170 to 230px of nothing under the section title. */
+  .steps-article:first-child {
+    justify-content: flex-start;
+    padding-top: 80px;
+  }
+  /* The last block is never shorter than 470px, so the third screen has
+     landed before the pile lets go, on a 720px-tall laptop too. */
+  .steps-article:last-child { min-height: max(56vh, 470px); }
 
-  /* 424px box = 80 headroom + 300 card + 44 rail, centred on the viewport. */
+  /* 380px box = 80 headroom + 300 card, centred on the viewport. The rail
+     stands beside the card, so nothing is kept under it. */
   .steps-pile {
     display: block;
     position: sticky;
-    top: max(76px, calc(50vh - 212px));
-    height: 424px;
+    top: max(76px, calc(50vh - 190px));
+    height: 380px;
   }
   .steps-pile-stack {
     position: absolute;
@@ -664,34 +712,35 @@ button { font-family: inherit; cursor: pointer; }
       scale(calc(0.97 + var(--p3) * 0.03));
   }
 
+  /* The rail stands between the pile and the texts, as tall as the front
+     card: the texts scroll down beside it and it fills downward. */
   .steps-pile-rail {
     position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    top: 80px;
+    left: calc(50% + 160px + 30px);
+    height: 300px;
     display: flex;
+    flex-direction: column;
     justify-content: center;
   }
   /* The rail's lines fill with the same progress; a dot lights when its
      step has settled (data-active). */
-  .steps-pile-rail .steps-rail-line { position: relative; }
   .steps-pile-rail .steps-rail-line::after {
     content: "";
     position: absolute;
     inset: 0;
     background: var(--color-secondary-container);
-    transform-origin: 0 50%;
-    transform: scaleX(var(--p2));
+    transform-origin: 50% 0;
+    transform: scaleY(var(--p2));
   }
-  .steps-pile-rail .steps-rail-line[data-rail="3"]::after { transform: scaleX(var(--p3)); }
+  .steps-pile-rail .steps-rail-line[data-rail="3"]::after { transform: scaleY(var(--p3)); }
+  .steps-root[data-active="3"] .steps-pile-rail .rail-more { opacity: 0; }
   .steps-root[data-active="2"] .steps-pile-rail .steps-rail-dot[data-rail="2"],
   .steps-root[data-active="3"] .steps-pile-rail .steps-rail-dot[data-rail="2"],
   .steps-root[data-active="3"] .steps-pile-rail .steps-rail-dot[data-rail="3"] {
     background: var(--color-secondary-container);
     border-color: var(--color-secondary-container);
   }
-  /* The rail inside each text block is the phone's; the pile has its own. */
-  .steps-copy .steps-rail { display: none; }
 }
 
 /* ============================================================
@@ -713,9 +762,10 @@ button { font-family: inherit; cursor: pointer; }
    the rules below are static.
    ============================================================ */
 .deck-rail { display: none; }
+.deck-more { display: none; }
 .deck-rail-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   flex: none;
   border-radius: 9999px;
   border: 1.5px solid color-mix(in srgb, var(--color-surface) 45%, transparent);
@@ -727,8 +777,8 @@ button { font-family: inherit; cursor: pointer; }
 }
 .deck-rail-line {
   position: relative;
-  width: 28px;
-  height: 1.5px;
+  width: 1.5px;
+  height: 20px;
   flex: none;
   background: color-mix(in srgb, var(--color-surface) 22%, transparent);
 }
@@ -737,8 +787,8 @@ button { font-family: inherit; cursor: pointer; }
   position: absolute;
   inset: 0;
   background: var(--color-secondary-container);
-  transform-origin: 0 50%;
-  transform: scaleX(var(--f, 0));
+  transform-origin: 50% 0;
+  transform: scaleY(var(--f, 0));
 }
 /* Anchors the constellation follows while the stage is on. */
 .deck-fold {
@@ -777,7 +827,8 @@ button { font-family: inherit; cursor: pointer; }
   height: var(--deck-stage-h);
   display: flex;
   flex-direction: column;
-  padding-block: 18px 12px;
+  /* 40px at the bottom: the "2 / 6" cue stands there. */
+  padding-block: 18px 40px;
 }
 
 /* The header, a size down so two lines of title leave room for the cards. */
@@ -785,14 +836,47 @@ button { font-family: inherit; cursor: pointer; }
 [data-deck-on] .deck-head h2 { font-size: 24px; }
 [data-deck-on] .deck-head .section-rule + div { padding-top: 10px; }
 [data-deck-on] .deck-hide { display: none; }
+/* The rail stands in the LEFT gutter of the stage (the 17.5px the cards
+   leave free; the right one belongs to the browser's own scroll indicator),
+   centred on the room the cards have. Out of the flow, so the cards get its
+   room. */
 [data-deck-on] .deck-rail {
   display: flex;
-  flex: none;
+  flex-direction: column;
   align-items: center;
-  /* Under a centred header (the stage exists on phones only). */
-  justify-content: center;
-  margin-top: 18px;
+  position: absolute;
+  z-index: 2;
+  left: 5px;
+  top: 56%;
+  transform: translateY(-50%);
 }
+[data-deck-on] .deck-rail .rail-more { display: none; }
+/* "02 / 06" and a chevron at the bottom of the stage: which card this is,
+   how many there are, and that the next one is below. It goes with the last
+   card. */
+[data-deck-on] .deck-more {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  /* Its own dark pill: the next card passes behind it on its way in. */
+  padding: 4px 14px 5px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--color-stage-deep) 78%, transparent);
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--color-surface) 80%, transparent);
+  transition: opacity 300ms ease-out;
+}
+[data-deck-on] .deck-more .rail-more { margin-top: -4px; }
+[data-deck-on] .deck-more b { font-weight: 400; color: var(--color-secondary-container); }
+[data-deck-on][data-deck-end] .deck-more { opacity: 0; }
 [data-deck-on] .deck-note { flex: none; margin-top: 10px; }
 
 /* The cards share one cell: the room left under the header. */
@@ -893,7 +977,6 @@ button { font-family: inherit; cursor: pointer; }
   transition: opacity 220ms ease-out 130ms;
 }
 [data-deck-on] .steps-snapshot,
-[data-deck-on] .steps-copy .steps-rail,
 [data-deck-on] .steps-pile-rail,
 [data-deck-on] .steps-pile > .stage-light,
 [data-deck-on] .steps-num {

@@ -39,6 +39,6 @@ export const REGISTRY_PENDING_BY_OWNER = true;
 
 /** The published text's version, shown under each title. */
 export const LEGAL_TEXT_VERSION = {
-  es: "Versión 1.0 — noviembre de 2026",
-  en: "Version 1.0 — November 2026",
+  es: "Versión 1.1 — noviembre de 2026",
+  en: "Version 1.1 — November 2026",
 } as const;

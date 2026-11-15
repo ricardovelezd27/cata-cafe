@@ -50,9 +50,9 @@ export default async function AudienceSection() {
       data-deck-min="330"
       className="cv-auto relative z-10 bg-transparent"
     >
-      <div className="deck-stage mx-auto max-w-6xl py-20 sm:py-24">
+      <div className="deck-stage stage-section mx-auto max-w-6xl">
         <div className="px-5 sm:px-8">
-          <div className="deck-head">
+          <div className="deck-head stage-section-head">
             <SectionHeading
               eyebrow={t("eyebrow")}
               title={t("title")}
@@ -76,7 +76,7 @@ export default async function AudienceSection() {
           tabIndex={0}
           aria-label={t("carouselLabel")}
           data-deck-area=""
-          className="deck-cards deck-over deck-fill mt-10 flex snap-x snap-mandatory scroll-px-5 gap-4 overflow-x-auto px-5 pb-8 pt-1 [scrollbar-width:none] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-fixed sm:scroll-px-8 sm:px-8 [&::-webkit-scrollbar]:hidden"
+          className="deck-cards deck-over deck-fill flex snap-x snap-mandatory scroll-px-5 gap-4 overflow-x-auto px-5 pb-8 pt-1 [scrollbar-width:none] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-fixed sm:scroll-px-8 sm:px-8 [&::-webkit-scrollbar]:hidden"
         >
           {cards.map((card) => (
             <li

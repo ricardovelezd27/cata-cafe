@@ -1,44 +1,21 @@
 import { getTranslations } from "next-intl/server";
-import { Check } from "lucide-react";
-import WaitlistForm from "./WaitlistForm";
-import { emailSentCopy } from "@/components/auth/authCopy";
-import { supportMailto } from "@/lib/siteContact";
-import { LEGAL_PAGES_PUBLISHED } from "@/lib/legal/config";
-import { localeHref } from "./locale-href";
+import ScrollToLink from "./ScrollToLink";
 import { FOUNDING_SEATS } from "@/lib/landing/founding";
+import { FOUNDING_ID } from "./anchors";
 
-// The hero's "instrument": the one solid cream card on the dark stage, now the
-// founding-cohort reservation instead of the calibration demo.
-export default async function HeroFoundingCard({ locale }: { locale: string }) {
+// The hero's offer: the one solid cream card on the dark stage. It is a
+// TOKEN of the offer, not a form: the number, what it is, and one button
+// that takes the reader to the founding card further down, where the page's
+// single reservation form lives (DESIGN.md "An ask appears once"). Until
+// 2026-11-15 this card carried the form, four feature lines and a note, and
+// the first screen read as a wall of text.
+export default async function HeroFoundingCard() {
   const t = await getTranslations("landing.founding");
   const th = await getTranslations("landing.hero");
-  const tw = await getTranslations("landing.waitlist");
-  const ta = await getTranslations("auth");
-
-  const waitlistLabels = {
-    label: tw("label"),
-    emailPlaceholder: tw("emailPlaceholder"),
-    button: t("cta"),
-    submitting: tw("submitting"),
-    success: tw("success"),
-    sentHint: tw("sentHint"),
-    invalid: tw("invalid"),
-    error: tw("error"),
-    rateLimit: tw("rateLimit"),
-    sent: emailSentCopy(ta),
-    supportHref: supportMailto(),
-  };
-
-  // F-landing-1: shown only once the owner has published the final legal text.
-  const notice = LEGAL_PAGES_PUBLISHED
-    ? { text: tw("notice"), linkLabel: tw("noticeLink"), href: localeHref(locale, "/privacidad") }
-    : undefined;
 
   // Three layers: a glass plate set back and offset (the constellation shows
   // through it), the solid cream card, and the terracotta tab riding its top
-  // edge. Order inside the card is the same at every width: the number, then
-  // the form (so the button is reachable in the first phone screen), then
-  // what is included.
+  // edge.
   return (
     <div className="relative mr-3 sm:mr-4">
       <div
@@ -63,20 +40,14 @@ export default async function HeroFoundingCard({ locale }: { locale: string }) {
           </span>
         </p>
 
-        <div className="mt-6">
-          <WaitlistForm locale={locale} labels={waitlistLabels} variant="onLight" source="hero" notice={notice} />
-        </div>
-        <p className="mt-3 text-sm font-medium text-on-surface">{th("ctaNote")}</p>
-
-        <ul className="mt-6 grid grid-cols-1 gap-x-6 gap-y-2 border-t border-outline-variant/50 pt-5 sm:grid-cols-2">
-          {[t("feature1"), t("feature2"), t("feature3"), t("feature4")].map((item) => (
-            <li key={item} className="flex items-start gap-2 text-sm leading-snug text-on-surface-variant">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary-container" />
-              {item}
-            </li>
-          ))}
-        </ul>
-        <p className="mt-4 text-xs leading-relaxed text-on-surface-variant">{t("note")}</p>
+        <ScrollToLink
+          targetId={FOUNDING_ID}
+          focus="input[type=email]"
+          className="mt-6 flex min-h-[48px] w-full items-center justify-center rounded-2xl bg-primary-container px-4 text-sm font-semibold text-white transition-colors hover:bg-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container"
+        >
+          {th("cta")}
+        </ScrollToLink>
+        <p className="mt-3 text-center text-sm text-on-surface-variant">{th("ctaNote")}</p>
       </div>
     </div>
   );

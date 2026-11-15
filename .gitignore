@@ -48,6 +48,8 @@ graphify-out/
 # claude code internals
 .claude/*
 !.claude/agents/
+# the project's design skill (rules live in DESIGN.md; this says how to use them)
+!.claude/skills/
 
 # git worktrees (local dev isolation)
 /.worktrees/

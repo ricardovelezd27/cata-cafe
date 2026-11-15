@@ -16,18 +16,18 @@ const ROOT_ID = "como-funciona-pasos";
 /** The whole section as a phone scroll stage (ScrollDeck). */
 const DECK_ID = "como-funciona";
 
-/** The 1-2-3 progress rail. `filled` = how many steps are done, this one included. */
-function Rail({ filled }: { filled: number }) {
+/** The 1-2-3 progress rail of the pinned pile: vertical, it fills downward
+ *  as the texts scroll past (`.steps-rail*` in app/globals.css). */
+function Rail() {
   return (
     <div className="steps-rail" aria-hidden="true">
       {STEPS.map((n) => (
         <Fragment key={n}>
-          {n > 1 ? (
-            <span className="steps-rail-line" data-rail={n} data-on={n <= filled ? "1" : undefined} />
-          ) : null}
-          <span className="steps-rail-dot" data-rail={n} data-on={n <= filled ? "1" : undefined} />
+          {n > 1 ? <span className="steps-rail-line" data-rail={n} /> : null}
+          <span className="steps-rail-dot" data-rail={n} data-on={n === 1 ? "1" : undefined} />
         </Fragment>
       ))}
+      <span className="rail-more" />
     </div>
   );
 }
@@ -75,8 +75,8 @@ export default async function StepsShowcase({ locale }: { locale: string }) {
       data-deck-min="250"
       className="relative z-10 bg-transparent"
     >
-      <div className="deck-stage mx-auto max-w-6xl px-5 pb-8 pt-20 sm:px-8 sm:pb-12 sm:pt-32">
-        <div className="deck-head mb-6 sm:mb-12">
+      <div className="deck-stage stage-section mx-auto max-w-6xl px-5 sm:px-8">
+        <div className="deck-head stage-section-head">
           <SectionHeading
             eyebrow={t("eyebrow")}
             title={t("title")}
@@ -100,7 +100,7 @@ export default async function StepsShowcase({ locale }: { locale: string }) {
               ))}
             </div>
             <div className="steps-pile-rail">
-              <Rail filled={1} />
+              <Rail />
             </div>
           </div>
 
@@ -108,8 +108,7 @@ export default async function StepsShowcase({ locale }: { locale: string }) {
             {STEPS.map((n) => (
               <article key={n} data-step={n} data-fold={n} className="steps-article">
                 <div data-reveal className="steps-copy">
-                  <Rail filled={n} />
-                  <p className="steps-kicker mt-5 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary-fixed lg:mt-0">
+                  <p className="steps-kicker text-[11px] font-semibold uppercase tracking-[0.22em] text-primary-fixed">
                     {t(`step${n}Kicker`)}
                   </p>
                   <p className="steps-num mt-3 font-serif tabular-nums text-lg text-secondary-container">

@@ -1,7 +1,18 @@
 import { getTranslations } from "next-intl/server";
+import { ClipboardCheck, FileText, Users, WifiOff } from "lucide-react";
 import HeroFoundingCard from "./HeroFoundingCard";
 
-export default async function HeroSection({ locale }: { locale: string }) {
+// What the product gives, as four things to see at a glance (an icon and two
+// or three words each). The sentences that explain them are further down the
+// page (DESIGN.md "A first screen has a word budget").
+const CHIPS = [
+  { key: "chip1", Icon: Users },
+  { key: "chip2", Icon: ClipboardCheck },
+  { key: "chip3", Icon: WifiOff },
+  { key: "chip4", Icon: FileText },
+] as const;
+
+export default async function HeroSection() {
   const t = await getTranslations("landing.hero");
 
   return (
@@ -29,9 +40,8 @@ export default async function HeroSection({ locale }: { locale: string }) {
         className="stage-light stage-light-terra left-1/2 top-[38%] h-[560px] w-[560px] -translate-x-1/2 lg:left-auto lg:right-[2%] lg:top-1/2 lg:h-[760px] lg:w-[760px] lg:-translate-y-1/2 lg:translate-x-0"
       />
 
-      {/* Phone spacing is tight on purpose: with the number and the form at the
-          top of the card, the reserve button sits in the first screen. */}
-      <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-10 px-5 pb-16 pt-8 sm:px-8 sm:pt-20 lg:grid-cols-2 lg:gap-14 lg:pb-24">
+      {/* One message, four things at a glance, one offer with one button. */}
+      <div className="stage-section relative mx-auto grid max-w-6xl grid-cols-1 gap-9 px-5 sm:px-8 lg:grid-cols-2 lg:gap-14">
         <div className="lg:self-center">
           <p className="hero-rise text-[11px] font-semibold uppercase tracking-[0.22em] text-green-light">
             {t("eyebrow")}
@@ -42,14 +52,24 @@ export default async function HeroSection({ locale }: { locale: string }) {
           </h1>
           {/* Transform-only entrance: the subtitle is now the largest text block
               on mobile (LCP candidate), so it must never start at opacity 0. */}
-          <p className="hero-slide mt-4 max-w-xl text-[15px] leading-relaxed text-surface/80 sm:mt-6 sm:text-lg">
+          <p className="hero-slide mt-4 max-w-xl text-base leading-relaxed text-surface/80 sm:mt-5 sm:text-lg">
             {t("subtitle")}
           </p>
+          <ul className="hero-slide mt-6 flex flex-wrap gap-x-5 gap-y-3 sm:mt-7">
+            {CHIPS.map(({ key, Icon }) => (
+              <li key={key} className="flex items-center gap-2 text-sm font-medium text-surface/90">
+                <Icon aria-hidden="true" className="h-[18px] w-[18px] shrink-0 text-primary-fixed" />
+                {t(key)}
+              </li>
+            ))}
+          </ul>
         </div>
 
-        {/* The founding card is the hero's only ask; no competing button. */}
-        <div className="hero-slide lg:self-center">
-          <HeroFoundingCard locale={locale} />
+        {/* The offer card is the hero's only ask; its button goes to the form. */}
+        {/* Capped below the two-column layout: a full-width card on a tablet
+            was mostly empty cream. */}
+        <div className="hero-slide w-full max-w-[480px] lg:max-w-none lg:self-center">
+          <HeroFoundingCard />
         </div>
       </div>
     </section>
