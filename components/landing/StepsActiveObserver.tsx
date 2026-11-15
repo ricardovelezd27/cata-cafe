@@ -4,10 +4,10 @@ import { useEffect } from "react";
 import { follow, reachedStep, stepProgress } from "./stepsProgress";
 
 /** The same gate as the enhanced `.steps-*` layout in app/globals.css. */
-const ENHANCED = "(min-width: 1024px) and (prefers-reduced-motion: no-preference)";
+const ENHANCED = "(min-width: 768px) and (prefers-reduced-motion: no-preference)";
 
 /**
- * Drives the "Cómo funciona" pile from the scroll position (wide screens).
+ * Drives the "Cómo funciona" pile from the scroll position (from 768px).
  * It writes on the root:
  *
  *  - `--p2`, `--p3`: how far the screens of steps 2 and 3 have come onto the

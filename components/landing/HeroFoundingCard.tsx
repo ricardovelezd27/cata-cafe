@@ -30,12 +30,15 @@ export default async function HeroFoundingCard() {
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-on-surface-variant">
           {t("heroLead")}
         </p>
-        {/* No count-up: an offer number must never show a wrong value. */}
-        <p className="mt-3 flex flex-wrap items-end gap-x-3 gap-y-2 sm:gap-x-4">
-          <span className="font-serif tabular-nums text-hero-numeral leading-[0.9] tracking-[-0.04em] text-primary">
+        {/* No count-up: an offer number must never show a wrong value.
+            Between 768 and 1023px the card is half a tablet wide: the numeral
+            follows the width (11vw) so the unit stays beside it, as on a
+            desktop. */}
+        <p className="mt-3 flex flex-wrap items-end gap-x-3 gap-y-2 sm:gap-x-4 md:max-lg:gap-x-3">
+          <span className="font-serif tabular-nums text-hero-numeral leading-[0.9] tracking-[-0.04em] text-primary md:max-lg:text-[11vw]">
             {FOUNDING_SEATS}
           </span>
-          <span className="max-w-[9ch] pb-2 font-serif text-xl leading-[1.05] text-on-surface sm:pb-4 sm:text-2xl">
+          <span className="max-w-[9ch] pb-2 font-serif text-xl leading-[1.05] text-on-surface sm:pb-4 sm:text-2xl md:max-lg:pb-2 md:max-lg:text-xl">
             {t("heroUnit")}
           </span>
         </p>

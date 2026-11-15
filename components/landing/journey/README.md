@@ -38,7 +38,9 @@ Mounted once in `app/[locale]/page.tsx`, first child of `<main>`.
 | 5 | Cierre | sparse net framing the closing line (no photo), neighbour segments drawn once arrived | mint |
 
 **Anchors on the phone scroll stage.** The canvas reads every `[data-fold]`
-element's position on each scroll. On a phone "Cómo funciona" is a scroll
+element's position on each scroll. Under 768px wide (`narrow` in
+ConstellationCanvas: from 768px a tablet gets the desktop formations, drawn
+around the pinned pile) "Cómo funciona" is a scroll
 stage (`../ScrollDeck.tsx`): its three step blocks sit in one place inside a
 sticky stage, so they can no longer mark folds 1 to 3. While the stage is on,
 ScrollDeck takes `data-fold` off them and puts it on three markers along the

@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
-import DeckRail from "./DeckRail";
-import ScrollDeck from "./ScrollDeck";
+import { CarouselSteps } from "./CarouselControls";
 import SectionHeading from "./SectionHeading";
 import {
   ShieldCheck,
@@ -101,19 +100,19 @@ function ScoreFormula({
   parts: { value: string; label: string; sign?: string }[];
 }) {
   return (
-    <div className="flex items-start gap-3">
+    <div className="flex items-start gap-3 md:gap-1.5 lg:gap-3">
       {parts.map((part) => (
-        <div key={part.label} className="flex items-start gap-3">
+        <div key={part.label} className="flex items-start gap-3 md:gap-1.5 lg:gap-3">
           {part.sign ? (
-            <span aria-hidden="true" className="pt-0.5 font-serif text-2xl leading-none text-secondary-container">
+            <span aria-hidden="true" className="pt-0.5 font-serif text-2xl leading-none text-secondary-container md:text-lg lg:text-2xl">
               {part.sign}
             </span>
           ) : null}
           <div>
-            <p className="font-serif tabular-nums text-3xl leading-none text-surface">
+            <p className="font-serif tabular-nums text-3xl leading-none text-surface md:text-xl lg:text-3xl">
               {part.value}
             </p>
-            <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-surface/65">
+            <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-surface/65 md:text-[9px] md:tracking-[0.08em] lg:text-[10px] lg:tracking-[0.14em]">
               {part.label}
             </p>
           </div>
@@ -201,7 +200,7 @@ const CELLS: { item: Item; Icon: LucideIcon }[] = [
   { item: 5, Icon: FileText },
 ];
 
-const DECK_ID = "que-incluye";
+const LIST_ID = "que-incluye";
 
 /**
  * "Qué incluye": six cells of EQUAL weight. Each one is the GLASS surface
@@ -209,13 +208,14 @@ const DECK_ID = "que-incluye";
  * the feature's name, a short explanation, and a small drawing of it at the
  * bottom of the cell. No cell is only text.
  *
- * Wide screens: a 3 x 2 grid (2 x 3 on a tablet); the drawings sit on one
- * line across a row.
+ * From 768px (tablet and desktop, one layout): a 3 x 2 grid; the drawings
+ * sit on one line across a row.
  *
- * On a phone the section is a scroll stage (`ScrollDeck`, `.deck-*` CSS): the
- * header stays under the top bar and the six cells come one at a time as the
- * page scrolls. Glass cells never pile up (one would be read through the
- * other), so the cell in front leaves as the next one arrives.
+ * On a phone the six cells are a sideways row (CSS scroll-snap, no script
+ * needed): one cell shows with the next one peeking in, and `CarouselSteps`
+ * puts the numbered steps 1 to 6 under it. This is optional detail, so it is
+ * off the vertical scroll: a reader who does not want it passes the section
+ * in one screen. (For a day in 2026-11 it was a pinned scroll stage.)
  */
 export default async function FeaturesSection({ locale }: { locale: string }) {
   const t = await getTranslations("landing.features");
@@ -233,10 +233,10 @@ export default async function FeaturesSection({ locale }: { locale: string }) {
     1: (
       // Numeral over its label, like the score line: three short columns
       // that stay on one row in the narrowest cell.
-      <dl className="flex gap-6">
+      <dl className="flex gap-6 md:gap-3 lg:gap-6">
         {facts.map((fact) => (
           <div key={fact.label} className="flex flex-col-reverse">
-            <dt className="mt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-surface/65">
+            <dt className="mt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-surface/65 md:text-[9px] md:tracking-[0.08em] lg:text-[10px] lg:tracking-[0.14em]">
               {fact.label}
             </dt>
             <dd className="font-serif tabular-nums text-3xl leading-none text-surface">
@@ -265,29 +265,28 @@ export default async function FeaturesSection({ locale }: { locale: string }) {
     // No data-fold: this section and the next are where the constellation
     // drifts from the track (step 3) to the founding "100". A formation held
     // here would put its densest cluster under a cell's text.
-    <section id={DECK_ID} data-deck="swap" className="cv-auto relative z-10 bg-transparent">
-      <div className="deck-stage stage-section mx-auto max-w-6xl px-5 sm:px-8">
-        <div className="deck-head stage-section-head">
+    <section className="cv-auto relative z-10 bg-transparent">
+      <div className="stage-section mx-auto max-w-6xl">
+        <div className="stage-section-head px-5 sm:px-8">
           <SectionHeading
             eyebrow={t("eyebrow")}
             title={t("title")}
             assertion={t("titleAssertion")}
           />
         </div>
-        <DeckRail count={CELLS.length} />
 
         <ul
-          data-deck-area=""
-          className="deck-cards deck-swap grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          id={LIST_ID}
+          className="features-list flex snap-x snap-mandatory scroll-px-5 gap-4 overflow-x-auto px-5 pb-2 pt-1 [scrollbar-width:none] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-fixed sm:scroll-px-8 sm:px-8 md:grid md:grid-cols-3 md:overflow-visible md:pb-0 md:pt-0 [&::-webkit-scrollbar]:hidden"
         >
           {CELLS.map(({ item, Icon }) => (
-            // The <li> is the card the phone stage moves; the reveal lives on
-            // the surface inside it, because ScrollFx clears every inline
-            // style of a data-reveal element (it would wipe the stage values).
-            <li key={item} data-deck-card="" className="deck-card flex">
+            <li
+              key={item}
+              className="flex w-[82vw] max-w-[320px] shrink-0 snap-start md:w-auto md:min-w-0 md:max-w-none md:shrink"
+            >
               <div
                 data-reveal
-                className="features-cell surface-glass flex flex-1 flex-col rounded-md p-7"
+                className="features-cell surface-glass flex min-w-0 flex-1 flex-col rounded-md p-7 md:p-4 lg:p-7"
               >
                 <div className="flex items-start gap-3">
                   <Icon aria-hidden="true" className="mt-1 h-6 w-6 shrink-0 text-primary-fixed" />
@@ -310,8 +309,8 @@ export default async function FeaturesSection({ locale }: { locale: string }) {
             </li>
           ))}
         </ul>
+        <CarouselSteps listId={LIST_ID} total={CELLS.length} focusable />
       </div>
-      <ScrollDeck rootId={DECK_ID} />
     </section>
   );
 }

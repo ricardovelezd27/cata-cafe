@@ -41,6 +41,7 @@ export const PILE = {
   pad: 28, // sm:px-8 at the 14px root
   gap: 56,
   leftShare: 0.45,
+  minColW: 348, // the card plus the reach of the two screens behind it (a tablet)
   cardW: 320,
   cardH: 300,
   headroom: 80, // space above the front card for the two cards behind it
@@ -48,11 +49,11 @@ export const PILE = {
   minTop: 76,
 } as const;
 
-/** Screen rectangle of the FRONT card of the pile; null where nothing is pinned (phones). */
+/** Screen rectangle of the FRONT card of the pile; null where nothing is pinned (phones, under 768px). */
 export function deviceRect(W: number, H: number, narrow: boolean): Rect | null {
   if (narrow) return null;
   const content = Math.min(W, PILE.contentMax);
-  const colW = (content - PILE.pad * 2 - PILE.gap) * PILE.leftShare;
+  const colW = Math.max(PILE.minColW, (content - PILE.pad * 2 - PILE.gap) * PILE.leftShare);
   const cx = (W - content) / 2 + PILE.pad + colW / 2;
   const boxH = PILE.headroom + PILE.cardH + PILE.footroom;
   const y0 = Math.max(PILE.minTop, H / 2 - boxH / 2) + PILE.headroom;

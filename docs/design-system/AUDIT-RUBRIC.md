@@ -132,6 +132,13 @@ Each line is a question to answer for every screen. The heading in brackets is t
   of the movement (scroll down, swipe sideways, a "next" button), the direction of the
   indicator, and whether it says that more is coming. A horizontal row of dots for a
   vertical scroll is a finding. [Progress follows the direction of travel]
+- D-8. Does every step of every progress indicator carry its number (1, 2, 3), in the one
+  recipe (`.rail-step`)? Bare dots are a finding. [A step of progress carries its number]
+- D-9. On a phone, list every set of items a screen moves through (steps, cards, tabs) as
+  "must be read in order" or "optional detail". Is each sequence on the vertical scroll
+  and each optional set a sideways row with the next card showing and numbered steps
+  under it? A pinned set of optional cards, a required step hidden in a sideways row, or
+  two sets of one kind moved differently is a finding. [One gesture per kind of content]
 
 ### E. Surfaces, colour and tokens
 - E-1. Any hex, rgba, pixel radius or shadow literal in a component? [How this document governs]
@@ -159,6 +166,13 @@ Each line is a question to answer for every screen. The heading in brackets is t
   proposes ONE scale for paper, as the stage has. [White space has a ceiling]
 - F-8. Is any card or panel wider than its content needs (a full-width card on a tablet
   holding one number and one button)? [White space has a ceiling]
+- F-9. At 768 x 1024 and at a 900 px wide window: is the screen the DESKTOP arrangement, a
+  size down where a part would not fit, with nothing rearranged? A third in-between
+  layout, or a phone layout stretched across a tablet, is a finding. Record what the app
+  shell gives a tablet today (it switches at `lg`, so a tablet gets the phone's bottom
+  bar): the owner decided "a tablet is a small desktop" for the landing; whether the app
+  shell follows is his decision, so report it as a question with screenshots, not as a
+  fix. [A tablet is a small desktop]
 - F-5. Do long Spanish and English strings both fit (buttons, tabs, table headers)?
 - F-6. Does an enhanced layout have a plain fallback, and is it switched on only where it fits?
 
@@ -222,6 +236,11 @@ The owner reviewed the live landing on 2026-11-15 and asked for four things, now
 header and the next (F-7, F-8), progress that says "scroll down" (D-7), far less text at
 the top of a screen (I-6), and one place for each ask (C-6, C-7). He wants these applied
 "throughout the whole app", so every screen is checked against all four, with numbers.
+
+A second review the same day added three (`DESIGN.md` "Two more from the second review"
+and "A step of progress carries its number"): a tablet is laid out as a desktop (F-9), a
+phone shows what must be read on the vertical scroll and optional cards in a sideways
+row (D-9), and every progress indicator shows numbers, not dots (D-8).
 
 ## 7. Known drift (measured 2026-11-14; a baseline, not the audit)
 

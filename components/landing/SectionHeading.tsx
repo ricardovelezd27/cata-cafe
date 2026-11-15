@@ -19,9 +19,10 @@ import type { ReactNode } from "react";
  * A pool of the deepest green sits behind the text (`stage-light-shade`), so
  * the constellation never crosses the title while it travels between folds.
  *
- * `children` go with the title: centred under it on a phone, and from 640px
- * up at the right end of the title's own row (the people cards put their
- * arrows there), so they never add a row of their own under a centred title.
+ * `children` are controls for the desktop layout (the people cards put
+ * their arrows there): shown from 768px up, at the right end of the title's
+ * own row, so they never add a row of their own under a centred title. On a
+ * phone they are not rendered visible at all.
  */
 export default function SectionHeading({
   eyebrow,
@@ -49,7 +50,7 @@ export default function SectionHeading({
         <div className="relative flex flex-col items-center gap-4 pt-5 text-center sm:pt-6">
           {/* Idea, then assertion: two lines of one heading. The space between
               the spans keeps it one sentence for a screen reader or a copy. */}
-          <h2 className="max-w-3xl text-balance font-serif text-4xl leading-[1.1] text-surface sm:text-5xl">
+          <h2 className="max-w-3xl text-balance font-serif text-4xl leading-[1.1] text-surface sm:text-5xl md:max-lg:text-[2.6rem]">
             <span className="block">{title}</span>
             {assertion ? (
               <>
@@ -60,7 +61,9 @@ export default function SectionHeading({
               </>
             ) : null}
           </h2>
-          {children ? <div className="sm:absolute sm:bottom-0 sm:right-0">{children}</div> : null}
+          {children ? (
+            <div className="hidden md:absolute md:bottom-0 md:right-0 md:block">{children}</div>
+          ) : null}
         </div>
       </div>
     </div>
