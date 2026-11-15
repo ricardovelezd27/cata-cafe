@@ -32,10 +32,12 @@ Each is one line here and a full section in `DESIGN.md`. Read the section before
 | Nothing moves during a cupping that is not an answer to a touch; no dots behind a form | Design Principles; Where the dots may appear |
 | Every section opens the same way: one heading component, centred at every width | How a section opens |
 | White space has a ceiling: fixed gaps per device class, never set per section | Density: White space has a ceiling |
-| Progress runs the way the person moves: a vertical scroll gets a vertical indicator and a "more below" cue | Density: Progress follows the direction of travel |
+| Progress runs the way the person moves, and each step shows its number (never bare dots) | Density: Progress follows the direction of travel |
+| A tablet is a small desktop: one layout breakpoint (768 px on the landing), no third layout | Density: Two more from the second review |
+| On a phone, what must be read rides the vertical scroll; optional cards are a sideways row | Density: Two more from the second review |
 | The top of a screen has a word budget: title up to 7 words, up to 25 more, features as icon plus three words | Density: A first screen has a word budget |
 | An ask appears once: one form per ask, other places link to it, a second ask is quieter | Density: An ask appears once |
-| One way to do a thing: one card anatomy per kind, one gesture per device, one dialog | What carries over unchanged |
+| One way to do a thing: one card anatomy per kind, one gesture per kind of content, one dialog | What carries over unchanged |
 | Tokens only: no hex, no pixel radius, no legacy colour alias in new code | How this document governs; Color Palette |
 | The root font size is 14 px: a rem is 87.5 %, so write touch targets in px | Typography; Accessibility |
 
@@ -59,6 +61,11 @@ Each is one line here and a full section in `DESIGN.md`. Read the section before
 - One rule everywhere. He does not want per-section options or to be asked to choose
   between variants; decide, apply it to every place, and say what you decided.
 - On phones he wants control over speed: never shorten a scroll-driven step to save length.
+- He will walk a decision back after seeing it live (three pinned sections became one, the
+  next day). Build so that is cheap: keep the plain layout working under every enhanced
+  one, and when a rule is replaced, rewrite it and say what it replaced.
+- "Desktop is good, do not change it" is a constraint to verify with measurements at 1440
+  (grid tracks, paddings, positions before and after), not to assume.
 - He is sceptical of output that looks uniform. Say what you verified, how, and what you
   did not.
 

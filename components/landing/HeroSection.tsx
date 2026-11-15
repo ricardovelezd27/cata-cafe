@@ -37,12 +37,12 @@ export default async function HeroSection() {
       {/* Warm light behind the offer card: the one terracotta glow on the page. */}
       <span
         aria-hidden="true"
-        className="stage-light stage-light-terra left-1/2 top-[38%] h-[560px] w-[560px] -translate-x-1/2 lg:left-auto lg:right-[2%] lg:top-1/2 lg:h-[760px] lg:w-[760px] lg:-translate-y-1/2 lg:translate-x-0"
+        className="stage-light stage-light-terra left-1/2 top-[38%] h-[560px] w-[560px] -translate-x-1/2 md:left-auto md:right-[2%] md:top-1/2 md:h-[760px] md:w-[760px] md:-translate-y-1/2 md:translate-x-0"
       />
 
       {/* One message, four things at a glance, one offer with one button. */}
-      <div className="stage-section relative mx-auto grid max-w-6xl grid-cols-1 gap-9 px-5 sm:px-8 lg:grid-cols-2 lg:gap-14">
-        <div className="lg:self-center">
+      <div className="stage-section relative mx-auto grid max-w-6xl grid-cols-1 gap-9 px-5 sm:px-8 md:grid-cols-2 md:gap-10 lg:gap-14">
+        <div className="md:self-center">
           <p className="hero-rise text-[11px] font-semibold uppercase tracking-[0.22em] text-green-light">
             {t("eyebrow")}
           </p>
@@ -66,9 +66,8 @@ export default async function HeroSection() {
         </div>
 
         {/* The offer card is the hero's only ask; its button goes to the form. */}
-        {/* Capped below the two-column layout: a full-width card on a tablet
-            was mostly empty cream. */}
-        <div className="hero-slide w-full max-w-[480px] lg:max-w-none lg:self-center">
+        {/* Two columns from 768px: a tablet is laid out as a desktop. */}
+        <div className="hero-slide w-full max-w-[480px] md:max-w-none md:self-center">
           <HeroFoundingCard />
         </div>
       </div>

@@ -1,13 +1,10 @@
 import { getTranslations } from "next-intl/server";
 import PhotoSlot from "./PhotoSlot";
-import CarouselControls from "./CarouselControls";
-import DeckRail from "./DeckRail";
-import ScrollDeck from "./ScrollDeck";
+import CarouselControls, { CarouselSteps } from "./CarouselControls";
 import SectionHeading from "./SectionHeading";
 import { AUDIENCE_CARDS, AUDIENCE_PHOTOS } from "./audienceCards";
 
 const LIST_ID = "para-quien-es";
-const DECK_ID = "para-quien-es-seccion";
 
 /**
  * "Para quién es": five people cards, one per audience, starting with the
@@ -19,14 +16,13 @@ const DECK_ID = "para-quien-es-seccion";
  * sessions of the method (the shared caption says so); which photo stands
  * for which audience is set in ./audienceCards.ts.
  *
- * A real <ul> with CSS scroll-snap: it scrolls by touch, wheel and keyboard
- * with no script. CarouselControls only adds the counter and the arrows.
- *
- * On a phone the section is a scroll stage instead (`ScrollDeck`, `.deck-*`
- * CSS), the same way of moving as the two sections before it: the header
- * stays under the top bar and the vertical scroll brings the five cards one
- * at a time. No sideways swipe to learn; the swipe list remains the layout
- * when the stage is off (reduced motion, no script, a very short phone).
+ * A real <ul> with CSS scroll-snap at every width: it scrolls by touch,
+ * wheel and keyboard with no script. From 768px three cards show and
+ * CarouselControls adds the arrows; on a phone one card shows with the next
+ * one peeking in, and CarouselSteps adds the numbered steps under the list.
+ * (For a day in 2026-11 the phone had a pinned scroll stage here; the owner
+ * chose the sideways row: these cards are optional reading, and a reader who
+ * does not want them scrolls straight past.)
  */
 export default async function AudienceSection() {
   const t = await getTranslations("landing.audience");
@@ -44,30 +40,20 @@ export default async function AudienceSection() {
   });
 
   return (
-    <section
-      id={DECK_ID}
-      data-deck="fill"
-      data-deck-min="330"
-      className="cv-auto relative z-10 bg-transparent"
-    >
-      <div className="deck-stage stage-section mx-auto max-w-6xl">
-        <div className="px-5 sm:px-8">
-          <div className="deck-head stage-section-head">
-            <SectionHeading
-              eyebrow={t("eyebrow")}
-              title={t("title")}
-              assertion={t("titleAssertion")}
-            >
-              <div className="deck-hide">
-                <CarouselControls
-                  listId={LIST_ID}
-                  total={cards.length}
-                  labels={{ prev: t("carouselPrev"), next: t("carouselNext") }}
-                />
-              </div>
-            </SectionHeading>
-          </div>
-          <DeckRail count={cards.length} />
+    <section className="cv-auto relative z-10 bg-transparent">
+      <div className="stage-section mx-auto max-w-6xl">
+        <div className="stage-section-head px-5 sm:px-8">
+          <SectionHeading
+            eyebrow={t("eyebrow")}
+            title={t("title")}
+            assertion={t("titleAssertion")}
+          >
+            <CarouselControls
+              listId={LIST_ID}
+              total={cards.length}
+              labels={{ prev: t("carouselPrev"), next: t("carouselNext") }}
+            />
+          </SectionHeading>
         </div>
 
         {/* tabIndex: Safari does not focus a scroll container on its own. */}
@@ -75,26 +61,24 @@ export default async function AudienceSection() {
           id={LIST_ID}
           tabIndex={0}
           aria-label={t("carouselLabel")}
-          data-deck-area=""
-          className="deck-cards deck-over deck-fill flex snap-x snap-mandatory scroll-px-5 gap-4 overflow-x-auto px-5 pb-8 pt-1 [scrollbar-width:none] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-fixed sm:scroll-px-8 sm:px-8 [&::-webkit-scrollbar]:hidden"
+          className="flex snap-x snap-mandatory scroll-px-5 gap-4 overflow-x-auto px-5 pb-2 pt-1 md:pb-8 [scrollbar-width:none] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-fixed sm:scroll-px-8 sm:px-8 [&::-webkit-scrollbar]:hidden"
         >
           {cards.map((card) => (
             <li
               key={card.n}
-              data-deck-card=""
-              className="deck-card flex w-[82vw] max-w-[320px] shrink-0 snap-start flex-col lg:w-[calc((100%-2rem)/3)] lg:max-w-none"
+              className="flex w-[82vw] max-w-[320px] shrink-0 snap-start flex-col md:w-[calc((100%-2rem)/3)] md:max-w-none"
             >
               <PhotoSlot
                 src={card.src}
                 alt={card.alt}
                 aspect="4/5"
                 position={card.position}
-                sizes="(min-width: 1024px) 320px, (min-width: 640px) 320px, 92vw"
-                className="deck-photo"
+                sizes="(min-width: 768px) 320px, 82vw"
+                className="audience-photo"
               />
               {/* A sibling of the photo frame, pulled up over it: the grain
                   stays on the picture and off the text. */}
-              <div className="deck-caption surface-glass-ink relative z-10 mx-3 -mt-24 flex flex-1 flex-col rounded-md p-5">
+              <div className="surface-glass-ink relative z-10 mx-3 -mt-24 flex flex-1 flex-col rounded-md p-5">
                 <p className="font-serif tabular-nums text-sm text-secondary-container">
                   {card.n}
                 </p>
@@ -109,11 +93,12 @@ export default async function AudienceSection() {
           ))}
         </ul>
 
-        <p className="deck-note px-5 text-xs text-surface/60 sm:px-8">
+        <CarouselSteps listId={LIST_ID} total={cards.length} />
+
+        <p className="mt-4 px-5 text-center text-xs text-surface/60 sm:px-8 md:mt-0 md:text-left">
           {t("galleryCaption")}
         </p>
       </div>
-      <ScrollDeck rootId={DECK_ID} />
     </section>
   );
 }

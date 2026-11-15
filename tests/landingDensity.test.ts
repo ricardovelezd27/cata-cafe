@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { PILE } from "@/components/landing/journey/formations";
+import { PILE, deviceRect } from "@/components/landing/journey/formations";
+import { PHONE_MAX, carouselIndex } from "@/components/landing/carouselIndex";
 
 // The four density rules the owner asked for on 2026-11-15 (DESIGN.md
-// "Density: four rules learned on the landing"), held on the landing itself.
+// "Density: four rules learned on the landing"), held on the landing itself,
+// plus the three of his second review the same day: a tablet is a small
+// desktop, optional cards go sideways on a phone, and progress shows numbers.
 
 const root = (p: string) => resolve(__dirname, "..", p);
 const read = (p: string) => readFileSync(root(p), "utf8");
@@ -36,7 +39,8 @@ describe("white space has a ceiling", () => {
     const tablet = media(640, "\n.stage-section {");
     expect(tablet).toContain(".stage-section { padding-block: 48px; }");
     expect(tablet).toContain(".stage-section-head { margin-bottom: 28px; }");
-    const desktop = media(1024, "\n.stage-section {");
+    // A tablet takes the desktop's spacing: the top step starts at 768px.
+    const desktop = media(768, "\n.stage-section {");
     expect(desktop).toContain(".stage-section { padding-block: 56px; }");
     expect(desktop).toContain(".stage-section-head { margin-bottom: 36px; }");
   });
@@ -103,7 +107,7 @@ describe("progress follows the direction of travel", () => {
   it("the phone rail stands in the left gutter, out of the flow", () => {
     const r = rule("[data-deck-on] .deck-rail");
     expect(r).toContain("position: absolute;");
-    expect(r).toContain("left: 5px;");
+    expect(r).toContain("left: 4px;");
     expect(r).not.toContain("margin-top");
   });
   it("a counter with a chevron says more is below, and goes with the last card", () => {
@@ -187,5 +191,128 @@ describe("an ask appears once", () => {
     expect(founding).not.toContain("FeatureList");
     expect(founding).not.toContain('t("badge")');
     expect(founding).not.toContain('t("note")');
+  });
+});
+
+describe("a tablet is a small desktop: one layout breakpoint, 768px", () => {
+  it("the phone layout ends where the desktop one begins", () => {
+    expect(PHONE_MAX).toBe("(max-width: 767.98px)");
+    expect(file("ScrollDeck.tsx")).toContain("${PHONE_MAX} and (prefers-reduced-motion: no-preference)");
+    expect(file("StepsActiveObserver.tsx")).toContain(
+      'const ENHANCED = "(min-width: 768px) and (prefers-reduced-motion: no-preference)";',
+    );
+    expect(read("components/landing/journey/ConstellationCanvas.tsx")).toContain("const narrow = W < 768;");
+    expect(css).toContain(
+      "@media (min-width: 768px) and (scripting: enabled) and (prefers-reduced-motion: no-preference) {",
+    );
+  });
+  it("no section of the page is arranged at 640 or at 1024px", () => {
+    // Type sizes and paddings may still step at sm: or lg:; an arrangement may not.
+    const arranged = "(?:grid-cols|flex-row|w-\\[|absolute|hidden|block|grid\\b|flex\\b)";
+    // Nothing on the page is arranged differently from 1024px: a tablet has it already.
+    for (const { name, src } of LANDING) {
+      expect(src, name).not.toMatch(new RegExp(`\\blg:${arranged}`));
+    }
+    // And no SECTION has an in-between arrangement from 640px. (A field with
+    // its button, the footer's rows and the header's label may sit in a row
+    // from 640px: they are the same on a tablet and on a desktop.)
+    const sections = [
+      "HeroSection.tsx",
+      "HeroFoundingCard.tsx",
+      "StepsShowcase.tsx",
+      "FeaturesSection.tsx",
+      "AudienceSection.tsx",
+      "SectionHeading.tsx",
+      "FoundingSection.tsx",
+      "FinalCTASection.tsx",
+    ];
+    for (const name of sections) {
+      expect(file(name), name).not.toMatch(new RegExp(`\\bsm:${arranged}`));
+    }
+    expect(css).not.toMatch(/@media \(min-width: 1024px\)[^{]*\{\s*\.(?:steps|deck|stage-section)/);
+  });
+  it("the same arrangement from 768px: two-column hero, 3 x 2 grid, three photo cards", () => {
+    expect(file("HeroSection.tsx")).toContain("md:grid-cols-2");
+    expect(file("FeaturesSection.tsx")).toContain("md:grid md:grid-cols-3");
+    expect(file("AudienceSection.tsx")).toContain("md:w-[calc((100%-2rem)/3)]");
+    // The arrows of the people cards are a desktop control.
+    expect(file("SectionHeading.tsx")).toContain("hidden md:absolute md:bottom-0 md:right-0 md:block");
+  });
+  it("the pile's column never gets narrower than the card and the two behind it", () => {
+    expect(css).toContain("grid-template-columns: minmax(348px, 9fr) minmax(0, 11fr);");
+    expect(PILE.minColW).toBe(PILE.cardW + 28);
+    // At 768px the front card and the screens behind it stay inside the page.
+    const tablet = deviceRect(768, 1024, false)!;
+    expect(tablet.x0 - 28).toBeGreaterThanOrEqual(0);
+    // At 1024px and wider the 9-to-11 split decides, exactly as before.
+    for (const W of [1024, 1280, 1440, 1920]) {
+      const content = Math.min(W, PILE.contentMax);
+      const colW = (content - PILE.pad * 2 - PILE.gap) * PILE.leftShare;
+      expect(colW).toBeGreaterThan(PILE.minColW);
+      const d = deviceRect(W, 900, false)!;
+      expect(d.x0).toBeCloseTo((W - content) / 2 + PILE.pad + colW / 2 - PILE.cardW / 2, 6);
+    }
+    expect(deviceRect(767, 900, true)).toBeNull();
+  });
+});
+
+describe("on a phone, what must be read rides the scroll and optional cards go sideways", () => {
+  it("the scroll stage is \"Cómo funciona\" and nothing else", () => {
+    const users = LANDING.filter((f) => f.src.includes("<ScrollDeck")).map((f) => f.name);
+    expect(users).toEqual(["StepsShowcase.tsx"]);
+    for (const name of ["FeaturesSection.tsx", "AudienceSection.tsx"]) {
+      expect(file(name), name).not.toContain("data-deck");
+      expect(file(name), name).not.toContain("deck-");
+    }
+    // The rules only the pinned card sections used are gone.
+    for (const gone of [".deck-swap", ".deck-over", ".deck-fill", ".deck-card", ".deck-cards"]) {
+      expect(css, gone).not.toContain(gone);
+    }
+  });
+  it("the two card sections are sideways rows with the next card showing", () => {
+    for (const name of ["FeaturesSection.tsx", "AudienceSection.tsx"]) {
+      const src = file(name);
+      expect(src, name).toContain("snap-x snap-mandatory");
+      expect(src, name).toContain("overflow-x-auto");
+      // 82% of the screen: the next card is always at the edge.
+      expect(src, name).toContain("w-[82vw] max-w-[320px] shrink-0 snap-start");
+      expect(src, name).toContain("<CarouselSteps");
+    }
+    // The grid is a Tab stop only while it scrolls sideways.
+    expect(file("FeaturesSection.tsx")).toMatch(/<CarouselSteps[^>]*focusable/);
+    expect(file("FeaturesSection.tsx")).not.toContain("tabIndex");
+  });
+  it("the step being read: by position, and the last one when the row cannot scroll further", () => {
+    expect(carouselIndex(0, 322, 6, false)).toBe(0);
+    expect(carouselIndex(322, 322, 6, false)).toBe(1);
+    expect(carouselIndex(480, 322, 6, false)).toBe(1);
+    expect(carouselIndex(484, 322, 6, false)).toBe(2);
+    expect(carouselIndex(5 * 322, 322, 6, true)).toBe(5);
+    // A wide phone shows two cards: the row stops before the last one snaps.
+    expect(carouselIndex(4 * 322 - 60, 322, 6, true)).toBe(5);
+    // A row that does not scroll at all is at its first card, not its last.
+    expect(carouselIndex(0, 322, 6, true)).toBe(0);
+    expect(carouselIndex(99999, 322, 6, false)).toBe(5);
+    expect(carouselIndex(Number.NaN, 322, 6, false)).toBe(0);
+    expect(carouselIndex(100, 0, 6, false)).toBe(0);
+  });
+});
+
+describe("a step of progress carries its number", () => {
+  it("one recipe for every rail: a numbered circle, filled when it is on", () => {
+    const step = rule(".rail-step");
+    expect(step).toContain("width: 20px;");
+    expect(step).toContain("font-variant-numeric: tabular-nums;");
+    expect(rule('.rail-step[data-on="1"]')).toContain("background: var(--color-secondary-container);");
+    expect(css).not.toContain(".deck-rail-dot");
+    expect(css).not.toContain(".steps-rail-dot");
+  });
+  it("every indicator prints the number: the pile's rail, the phone stage's rail, the rows' steps", () => {
+    expect(file("StepsShowcase.tsx")).toMatch(/className="rail-step" data-rail=\{n\}[^>]*>\s*\{n\}/);
+    expect(file("DeckRail.tsx")).toMatch(/className="rail-step" data-deck-dot=""[^>]*>\s*\{i \+ 1\}/);
+    expect(file("CarouselControls.tsx")).toMatch(/className="rail-step"[^>]*>\s*\{i \+ 1\}/);
+  });
+  it("a sideways row's steps run sideways, under it, on phones only", () => {
+    expect(file("CarouselControls.tsx")).toContain("flex items-center justify-center gap-2 md:hidden");
   });
 });

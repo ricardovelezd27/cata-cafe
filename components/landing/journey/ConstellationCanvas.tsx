@@ -218,7 +218,7 @@ export default function ConstellationCanvas({ reduced }: Props) {
       dot = dotSize(W, H, mobile);
       // Formation geometry follows the LAYOUT breakpoint (sections go
       // two-column at Tailwind `lg`), not the particle-count one.
-      const narrow = W < 1024;
+      const narrow = W < 768;
       formations = [];
       for (let f = 0; f < FOLD_COUNT; f++) formations.push(buildFormation(f, N, W, H, idR, narrow));
       if (!inited) {

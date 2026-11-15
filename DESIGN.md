@@ -320,7 +320,7 @@ The owner reviewed the live landing and asked for less text, less empty space an
 
 White space is rhythm, not filler. Each kind of gap has a largest value; a gap above it is a finding.
 
-| Gap | Phone | Tablet (from 640 px) | Desktop (from 1024 px) |
+| Gap | Phone | Large phone (from 640 px) | Tablet and desktop (from 768 px) |
 |---|---|---|---|
 | Padding above and below a section (`.stage-section`) | 40 px | 48 px | 56 px |
 | So: end of one section's content to the next section's heading | 80 px | 96 px | 112 px |
@@ -335,10 +335,11 @@ White space is rhythm, not filler. Each kind of gap has a largest value; a gap a
 #### Progress follows the direction of travel
 
 - **(rule) An indicator of progress runs the way the person moves.** The page scrolls DOWN, so the progress of a scroll-driven sequence is VERTICAL and fills downward. A horizontal row of dots under a header says "swipe sideways", which is the wrong instruction for a vertical scroll (feedback from users, 2026-11-15).
-- **(rule) Say that there is more, and where.** While another item is still to come, show a plain cue in the direction of travel: a counter ("02 / 05") with a down chevron at the bottom of a phone stage; a chevron under the rail on a wide screen. It goes when the last item is reached. It does not bounce or pulse.
-- **(rule) Horizontal progress is only for horizontal movement**: a carousel moved with arrows or a sideways swipe, a wizard whose steps are laid out left to right AND advanced with a "next" button.
-- The rail stands beside what it describes (between the pinned pile and its texts on a wide screen, in the left gutter on a phone; the right gutter belongs to the browser's own scroll indicator), out of the flow, so it costs the content no room.
-- Implementation: `components/landing/DeckRail.tsx`, `.deck-rail*`, `.deck-more`, `.steps-rail*`, `.rail-more`. No new clock: the same progress values the scroll code already writes.
+- **(rule) Say that there is more, and where.** While another item is still to come, show a plain cue in the direction of travel: a counter ("02 / 03") with a down chevron at the bottom of a phone stage; a chevron under the rail on a wide screen; in a sideways row, the next card showing at the edge. It goes when the last item is reached. It does not bounce or pulse.
+- **(rule) A step of progress carries its number.** Every indicator is a row or a column of small NUMBERED steps (1, 2, 3 in a 20 px circle), never bare dots: a dot says "there are some", a number says which one this is and how many there are (the owner, second review of 2026-11-15: "not just the dots"). One recipe, `.rail-step`, for the vertical rails and for the sideways rows; the step being read is filled.
+- **(rule) Horizontal progress is only for horizontal movement**: a sideways row moved with arrows or a swipe (its numbered steps run in a row under it), a wizard whose steps are laid out left to right AND advanced with a "next" button.
+- The rail stands beside what it describes (between the pinned pile and its texts from 768 px, at the left edge on a phone; the right edge belongs to the browser's own scroll indicator), out of the flow, so it costs the content no room.
+- Implementation: `.rail-step` (the numbered step), `components/landing/DeckRail.tsx`, `.deck-rail*`, `.deck-more`, `.steps-rail*`, `.rail-more`, and `CarouselSteps` in `components/landing/CarouselControls.tsx` (index rule in the pure `carouselIndex.ts`). No new clock: the same progress values the scroll code already writes.
 - In the app this covers every stepper, wizard and phase indicator (`PhaseStepper`, the session wizard, the warm-up's step sequence on its intro).
 
 #### A first screen has a word budget
@@ -357,6 +358,13 @@ White space is rhythm, not filler. Each kind of gap has a largest value; a gap a
 - **(rule) An ask that collects an address says, right under the field, who is responsible, what the address is for and how to stop**, and links the privacy policy. The policy must already say it (changing what is collected changes the policy in the same pull request).
 - In the app: a screen with two primary buttons, or the same action offered in two places of one screen, is a finding.
 
+#### Two more from the second review (2026-11-15)
+
+The owner looked at the live page again the same day and walked back one decision of the day before. Both rules below replace what was built then.
+
+- **(rule) A tablet is a small desktop, never a large phone.** The landing has ONE layout breakpoint, 768 px: under it the phone layout, from it the desktop layout (two-column hero, the pinned pile of "Cómo funciona", the 3 x 2 grid, three photo cards with arrows). There is no third, in-between layout: the 640 to 1023 px range used to have its own (a stacked hero, a 2 x 3 grid, unpinned steps) and it was the one that looked wrong. Between 768 and 1023 px the same composition is set a size down where a part would not fit (the section title 36 px instead of 42, the offer numeral follows the width, 16 px of padding in a feature cell, the pile's column never narrower than 348 px), and nothing is rearranged. `sm:` (640 px) may still change a padding or a type size; it may not change an arrangement.
+- **(rule) What must be read in order rides the vertical scroll; optional detail goes sideways (phones).** On a phone, "Cómo funciona" is the one scroll stage: it is the explanation of the product and a reader goes through its three screens by scrolling down. "Qué incluye" and "Para quién es" are sets of equal, optional cards: each is a sideways row (CSS scroll-snap, no script needed), one card showing with the next one at the edge and the numbered steps under it, so a reader who does not want the detail passes the section in one screen. For one day all three were pinned stages; three in a row made the page long and gave the reader no way past. A set is one kind or the other: never pin optional cards, and never hide a required step in a sideways row.
+
 ### Motion on the stage
 
 - Scroll storytelling uses CSS `position: sticky` plus one small script that only READS the scroll position and writes progress values (`--p2`, `--p3`, 0 to 1) and a `data-active` state on the section root; the visuals are static CSS rules over those values (transform and opacity only). No scroll hijacking, no pinning library.
@@ -364,20 +372,23 @@ White space is rhythm, not filler. Each kind of gap has a largest value; a gap a
 - An arriving solid surface becomes opaque within the first fifth of its travel: it never sits half see-through over the text of the surface behind it.
 - Every such layout has a plain fallback (`prefers-reduced-motion`, no script, a screen where it does not fit) that shows the same content without sticking or moving.
 
-#### One way to move through a section on a phone (the scroll stage)
+#### The phone scroll stage ("Cómo funciona")
 
-On a phone, a section made of several cards is not a long list and not a sideways swipe: it is a **scroll stage** (`components/landing/ScrollDeck.tsx`, `DeckRail.tsx`, pure rules in `deckProgress.ts`, `.deck-*` in `app/globals.css`). "Cómo funciona", "Qué incluye" and "Para quién es" all use it, so the visitor learns one gesture.
+On a phone, the one sequence that must be read in order is a **scroll stage** (`components/landing/ScrollDeck.tsx`, `DeckRail.tsx`, pure rules in `deckProgress.ts`, `.deck-*` in `app/globals.css`). The two card sections after it are sideways rows; see "What must be read in order rides the vertical scroll" above.
 
 - **The header stays.** The section's fold line and title stay under the top bar, a size down (24 px).
-- **The vertical scroll brings the cards in one by one.** Each card costs half a screen of scroll, so a card moves about as far as the finger does (at a quarter of a screen a slight touch swapped a whole card): it arrives during the first 70 % of that stretch and rests for the last 30 %.
-- **The progress says "down".** A vertical rail (one dot per card, filling downward) stands in the left gutter, and a counter with a chevron ("02 / 05 ⌄") stands at the bottom of the stage until the last card is reached. See "Progress follows the direction of travel" below. A horizontal rail under the header was tried and read as "swipe sideways" (2026-11-15).
-- **Opaque surfaces go over one another; glass surfaces take turns.** The app screens pile up with their labelled edges showing. A photo card lands over the previous photo, which stays underneath until it is covered, so the stage is never empty between two pictures. A glass card leaves as the next one arrives, one after the other, because two translucent cards would be read through each other.
-- **Text that belongs to a card changes with it**, at the halfway point of the card's arrival, out first and then in.
-- **It is switched on only where it fits.** Under 640 px wide, motion allowed, script running, and the cards fit the room under the header (the pile may scale down to 72 %). Otherwise the section keeps its plain layout. The decision is made on load and when the width changes, never when a phone's toolbar hides (that would make the page jump).
-- **Control comes before length.** The three stages make the page longer than the plain layouts they replace (about half a screen per card). That is the price of a pace the thumb controls; do not shorten the step to win the length back.
-- The constellation follows markers along the stage's track (`.deck-fold`), since the cards themselves no longer move down the page.
+- **The vertical scroll brings the screens in one by one.** Each screen costs half a screen of scroll, so it moves about as far as the finger does (at a quarter of a screen a slight touch swapped a whole card): it arrives during the first 70 % of that stretch and rests for the last 30 %.
+- **The progress says "down".** A vertical rail of numbered steps, filling downward, stands at the left edge, and a counter with a chevron ("02 / 03 ⌄") stands at the bottom of the stage until the last screen is reached. A horizontal rail under the header was tried and read as "swipe sideways" (2026-11-15).
+- **Opaque surfaces go over one another.** The app screens pile up with their labelled edges showing. (Glass cards, which would be read through each other, are never piled.)
+- **Text that belongs to a screen changes with it**, at the halfway point of the screen's arrival, out first and then in.
+- **It is switched on only where it fits.** Under 768 px wide, motion allowed, script running, and the pile fits the room under the header (it may scale down to 72 %). Otherwise the section keeps its plain layout. The decision is made on load and when the width changes, never when a phone's toolbar hides (that would make the page jump).
+- **Control comes before length.** The stage makes the section longer than its plain layout (about half a screen per step). That is the price of a pace the thumb controls; do not shorten the step to win the length back. It is also why only the required sequence is a stage.
+- The constellation follows markers along the stage's track (`.deck-fold`), since the screens themselves no longer move down the page.
 
-To give a new section this behaviour: `data-deck="pile | swap | fill"` on the `<section>`, `deck-stage` on its inner container, `deck-head` around the `SectionHeading`, a `DeckRail`, `data-deck-area` on the element that holds the cards, `data-deck-card` on each card, and one `<ScrollDeck rootId>`. A card that carries `data-reveal` cannot be the deck card itself (the reveal clears its inline styles); put the reveal on an element inside it.
+#### A sideways row (phones)
+
+`FeaturesSection` and `AudienceSection`: a real `<ul>` with `snap-x snap-mandatory`, cards `w-[82vw] max-w-[320px]` so the next card always shows at the edge, the list bleeding to the screen's edges with `scroll-px` equal to the page padding, and `<CarouselSteps listId total />` under it. From 768 px the same list is the desktop layout (a grid, or three cards with `CarouselControls` arrows in the heading). The list scrolls by touch, wheel and keyboard with no script; the script only lights the step being read. A list that is a grid from 768 px passes `focusable`, so it is a Tab stop only while it scrolls.
+
 - No count-up on a number that states an offer or a fact.
 - The constellation's arrival (`journey/intro.ts`) plays once per tab and never delays the headline.
 
@@ -395,7 +406,7 @@ The landing was the place to find the rules; the app is where most of them apply
 | **One header for every section** | A screen's sections open the same way, with the same component, the same alignment and the same step in size. Per-screen heading styles are a finding. (Paper has `PageHeader` for the page; it has no shared section-heading component yet. That gap is the first thing the audit should size.) |
 | **Idea, then assertion** | A title says in plain words what the thing is; the line under it says what is true about it. A clever title that hides what the section is, is a finding. |
 | **One anatomy per kind of card** | All cards of one kind have the same parts in the same order (for a feature: name, explanation, drawing). A list where one card has an extra part, or lacks one, is a finding. |
-| **One gesture** | A set of items is moved through the same way everywhere on a given device. Mixing a sideways swipe, a vertical list and tabs for the same kind of content is a finding. |
+| **One gesture per kind of content** | On a given device, content of one kind is moved through one way: a sequence that must be read in order rides the vertical scroll, a set of optional equal cards is a sideways row with numbered steps. Two sets of the same kind moved through differently, a pinned set of optional cards, or a required step hidden in a sideways row is a finding. |
 | **Keep the reader's place** | Switching language, tab, filter or view must not send the person back to the top or lose what they were looking at (`components/landing/scrollAnchor.ts` is the model: "this section, this far through it"). |
 | **Hierarchy is a step** | A heading is never smaller than a heading inside its own section. |
 | **Numbers are printed** | No count-up, no animated score, no number that is briefly wrong. |
@@ -701,7 +712,9 @@ The baseline is WCAG 2.2 AA. These are the measurable parts; each is a line of t
 | Style a section heading by hand, or align it differently from its neighbours | One heading component, one alignment (centred, at every width, on the stage) |
 | Make a heading smaller than a heading inside its own section | A title is one clear step above its content |
 | Give one card of a set an extra part, or leave one without | One anatomy per kind of card |
-| Offer a sideways swipe for one set and a vertical list for another on the same device | One gesture per device |
+| Move two sets of the same kind differently on one device, pin optional cards, or put a required step in a sideways row | One gesture per kind of content |
+| Give a tablet its own third layout, or a stretched phone layout | A tablet is a small desktop |
+| Show progress as bare dots | A step of progress carries its number |
 | Send the reader to the top when the language, tab or filter changes | Keep their place |
 | Box or enlarge a section's small name to make it "clearer" | Say what the section is in the title's first line; the pill shape is the offer's |
 | Use `h-11`, `w-11` and other rem sizes for a touch target | Pixels: `min-h-[44px]` (the root is 14 px) |

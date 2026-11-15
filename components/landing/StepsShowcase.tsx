@@ -16,15 +16,18 @@ const ROOT_ID = "como-funciona-pasos";
 /** The whole section as a phone scroll stage (ScrollDeck). */
 const DECK_ID = "como-funciona";
 
-/** The 1-2-3 progress rail of the pinned pile: vertical, it fills downward
- *  as the texts scroll past (`.steps-rail*` in app/globals.css). */
+/** The 1-2-3 progress rail of the pinned pile: vertical, numbered, it fills
+ *  downward as the texts scroll past (`.steps-rail*`, `.rail-step` in
+ *  app/globals.css). */
 function Rail() {
   return (
     <div className="steps-rail" aria-hidden="true">
       {STEPS.map((n) => (
         <Fragment key={n}>
           {n > 1 ? <span className="steps-rail-line" data-rail={n} /> : null}
-          <span className="steps-rail-dot" data-rail={n} data-on={n === 1 ? "1" : undefined} />
+          <span className="rail-step" data-rail={n} data-on={n === 1 ? "1" : undefined}>
+            {n}
+          </span>
         </Fragment>
       ))}
       <span className="rail-more" />
@@ -37,7 +40,8 @@ function Rail() {
  * the reader moves through the steps; nothing is ever replaced, and the last
  * screen on the pile is the score (three steps, one result).
  *
- *  - Wide screens: one pile stays put on the left and grows while the texts
+ *  - From 768px (tablet and desktop, one layout): one pile stays put on the
+ *    left and grows while the texts
  *    scroll normally on the right. The scroll is the timeline: a screen is
  *    in place when its step's title is in the middle of the viewport
  *    (`StepsActiveObserver` + `stepsProgress.ts` + `.steps-*` CSS).

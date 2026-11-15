@@ -9,19 +9,22 @@ import {
   deckTrackProgress,
   pileFit,
 } from "./deckProgress";
+import { PHONE_MAX } from "./carouselIndex";
 import { follow } from "./stepsProgress";
 
-/** Phones only, and never against a reduced-motion setting. */
-const PHONE = "(max-width: 639px) and (prefers-reduced-motion: no-preference)";
+/** Phones only (the layout under 768px), and never against a reduced-motion setting. */
+const PHONE = `${PHONE_MAX} and (prefers-reduced-motion: no-preference)`;
 
 /** Size the pile of app screens was drawn at (`.steps-pile-stack`). */
 const PILE = { w: 320, h: 300 };
 
 /**
- * The phone "scroll stage". Turns a `[data-deck]` section into a tall track
- * whose stage (`.deck-stage`: the section header, a progress rail and the
- * cards) stays under the top bar while the cards come in one by one as the
- * page scrolls. The page scrolls normally: this only reads the position.
+ * The phone "scroll stage" of "Cómo funciona". Turns the `[data-deck]`
+ * section into a tall track whose stage (`.deck-stage`: the section header,
+ * a progress rail and the pile of screens) stays under the top bar while the
+ * screens come in one by one as the page scrolls. The page scrolls normally:
+ * this only reads the position. (Until 2026-11-15 the two card sections were
+ * stages too; on a phone they are sideways rows now, see CarouselSteps.)
  *
  * It writes, and only while the stage is on:
  *  - `data-deck-on` and `--deck-n` on the root (the CSS does the layout);
@@ -32,12 +35,10 @@ const PILE = { w: 320, h: 300 };
  *    reached and `--f` on the rail lines;
  *  - where the constellation's anchors sit (`[data-deck-fold]`).
  *
- * The stage is switched on only when it fits. `data-deck` says how to tell:
- *  - "pile": app screens that scale down a little (`--deck-fit`);
- *  - "swap": every card must fit the room at its natural height;
- *  - "fill": cards take the room they get; `data-deck-min` is the least.
- * When it does not fit (a short phone), or on a wide screen, with reduced
- * motion or without script, the section keeps its plain layout.
+ * The stage is switched on only when it fits: the pile of app screens may
+ * scale down a little (`--deck-fit`), and `data-deck-min` is the least room
+ * it needs. When it does not fit (a short phone), or from 768px up, with
+ * reduced motion or without script, the section keeps its plain layout.
  */
 export default function ScrollDeck({ rootId }: { rootId: string }) {
   // A layout effect: the stage is decided before the browser paints, so the
@@ -52,7 +53,6 @@ export default function ScrollDeck({ rootId }: { rootId: string }) {
     if (!stage || !area || cards.length < 2) return;
 
     const count = cards.length;
-    const mode = root.dataset.deck || "swap";
     const minArea = Number(root.dataset.deckMin) || 0;
     const dots = Array.from(root.querySelectorAll<HTMLElement>("[data-deck-dot]"));
     const lines = Array.from(root.querySelectorAll<HTMLElement>("[data-deck-line]"));
@@ -114,13 +114,9 @@ export default function ScrollDeck({ rootId }: { rootId: string }) {
     const fits = (): boolean => {
       const h = area.clientHeight;
       if (h < minArea) return false;
-      if (mode === "pile") {
-        const fit = pileFit(area.clientWidth, h, PILE);
-        if (fit === null) return false;
-        root.style.setProperty("--deck-fit", fit.toFixed(3));
-        return true;
-      }
-      if (mode === "swap") return cards.every((card) => card.offsetHeight <= h + 1);
+      const fit = pileFit(area.clientWidth, h, PILE);
+      if (fit === null) return false;
+      root.style.setProperty("--deck-fit", fit.toFixed(3));
       return true;
     };
 
