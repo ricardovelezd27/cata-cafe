@@ -1,0 +1,19 @@
+{
+  "name": "visitor",
+  "description": "A person who is not signed in: sign-in, confirm, claim, join, not-found, the legal pages, the landing, and the redirect of /app to sign-in. No account needed.",
+  "signIn": false,
+  "screens": [
+    {"id":"auth-login","path":"/auth/login"},
+    {"id":"auth-confirm","path":"/auth/confirm","state":"no-token"},
+    {"id":"auth-claim","path":"/auth/claim","state":"no-token"},
+    {"id":"join-token","path":"/join/00000000-0000-0000-0000-000000000000","state":"invalid"},
+    {"id":"join-coffee-token","path":"/join/coffee/00000000-0000-0000-0000-000000000000","state":"invalid"},
+    {"id":"edges-two-not-found-pages","path":"/esta-pagina-no-existe","state":"localized"},
+    {"id":"privacidad","path":"/privacidad"},
+    {"id":"terminos","path":"/terminos"},
+    {"id":"aviso-legal","path":"/aviso-legal"},
+    {"id":"landing","path":""},
+    {"id":"join-token","path":"/join/{{inviteToken}}","state":"visitor"},
+    {"id":"app","path":"/app","state":"signed-out-redirect"}
+  ]
+}

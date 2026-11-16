@@ -1,0 +1,14 @@
+{
+  "name": "empty",
+  "description": "An account with no data: pass par2@cata.test. First-run onboarding dialog, the empty lists, and the join page as a signed-in newcomer.",
+  "signIn": true,
+  "screens": [
+    {"id":"arriving-onboarding-dialog","path":"/app","state":"first-run"},
+    {"id":"app-sessions","path":"/app/sessions","state":"empty"},
+    {"id":"app-coffees","path":"/app/coffees","state":"empty"},
+    {"id":"app-groups","path":"/app/groups","state":"empty"},
+    {"id":"app-profile","path":"/app/profile","state":"empty"},
+    {"id":"app-profile-history","path":"/app/profile/history","state":"empty"},
+    {"id":"join-token","path":"/join/{{inviteToken}}","state":"signed-in-newcomer"}
+  ]
+}

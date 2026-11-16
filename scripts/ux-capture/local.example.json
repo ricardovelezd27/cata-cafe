@@ -1,0 +1,28 @@
+{
+  "ids": {
+    "groupNotStarted": "PASTE-A-SESSION-ID",
+    "closedGroupSession": "PASTE-A-SESSION-ID",
+    "closedGroupCombined": "PASTE-A-SESSION-ID",
+    "closedGroupDescriptive": "PASTE-A-SESSION-ID",
+    "closedGroupAffective": "PASTE-A-SESSION-ID",
+    "closedGroupOneCupper": "PASTE-A-SESSION-ID",
+    "closedSoloCombined": "PASTE-A-SESSION-ID",
+    "soloAffective": "PASTE-A-SESSION-ID",
+    "soloDescriptiveCup": "PASTE-A-SESSION-ID",
+    "soloCombinedCup": "PASTE-A-SESSION-ID",
+    "groupCombinedCup": "PASTE-A-SESSION-ID",
+    "coffeeManySessions": "PASTE-A-COFFEE-ID",
+    "coffeeManyCuppers": "PASTE-A-COFFEE-ID",
+    "coffeeOwned": "PASTE-A-COFFEE-ID",
+    "coffeeOneSession": "PASTE-A-COFFEE-ID",
+    "group": "PASTE-A-GROUP-ID",
+    "inviteToken": "PASTE-AN-INVITE-TOKEN"
+  },
+  "redact": [
+    ["A real person's name as it appears on screen", "Catador 1"],
+    ["A real session name", "Sesión 1"],
+    ["A real coffee name", "Café 1"],
+    ["A real farm name", "Finca 1"],
+    ["A real producer name", "Productor 1"]
+  ]
+}
